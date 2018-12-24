@@ -186,7 +186,7 @@ class NgramCounts(object):
                 print('{0}: total={1} '.format(hist, this_total_count),
                       end='', file=sys.stderr)
                 print(' '.join(['{0} -> {1} '.format(word, count)
-                                for word, count in list(word_to_count.items()) ]),
+                                for word, count in word_to_count.items() ]),
                       file = sys.stderr)
                 total += this_total_count
                 total_excluding_backoff += this_total_count
@@ -243,10 +243,10 @@ class NgramCounts(object):
     def GetProb(self, hist, word, total_count_map):
         total_count = total_count_map[hist]
         word_to_count = self.counts[len(hist)][hist]
-        prob = int(word_to_count[word] / total_count)
+        prob = float(word_to_count[word]) / total_count
         if len(hist) > 0 and word != self.backoff_symbol:
             prob_in_backoff = self.GetProb(hist[1:], word, total_count_map)
-            backoff_prob = int(word_to_count[self.backoff_symbol] / total_count)
+            backoff_prob = float(word_to_count[self.backoff_symbol]) / total_count
             prob += backoff_prob * prob_in_backoff
         return prob
 
@@ -266,7 +266,7 @@ class NgramCounts(object):
         for n in [ 1, 0 ] + list(range(2, self.ngram_order)):
             this_order_counts = self.counts[n]
             # For order 1, make sure the keys are sorted.
-            keys = list(this_order_counts.keys()) if n != 1 else sorted(this_order_counts.keys())
+            keys = this_order_counts.keys() if n != 1 else sorted(this_order_counts.keys())
             for hist in keys:
                 word_to_count = this_order_counts[hist]
                 this_fst_state = hist_to_state[hist]

@@ -320,7 +320,7 @@ def ParseNnet3String(string):
 def Nnet3ComponentToDot(component_config, component_attributes = None):
     label = ''
     if component_attributes is None:
-        component_attributes = list(component_config.keys())
+        component_attributes = component_config.keys()
     attributes_to_print = set(component_attributes).intersection(list(component_config.keys()))
     # process the known fields
     for key in attributes_to_print:

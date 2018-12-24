@@ -11,7 +11,6 @@
 # https://www.nist.gov/sites/default/files/documents/2016/10/07/sre16_eval_plan_v1.3.pdf
 # for more details about the metric.
 from __future__ import print_function
-from __future__ import division
 from operator import itemgetter
 import sys, argparse, os
 
@@ -103,7 +102,7 @@ def ComputeMinDcf(fnrs, fprs, thresholds, p_target, c_miss, c_fa):
             min_c_det_threshold = thresholds[i]
     # See Equations (3) and (4).  Now we normalize the cost.
     c_def = min(c_miss * p_target, c_fa * (1 - p_target))
-    min_dcf = float(min_c_det) / c_def
+    min_dcf = min_c_det / c_def
     return min_dcf, min_c_det_threshold
 
 def main():

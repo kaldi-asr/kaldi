@@ -57,7 +57,7 @@ for row in range(dim_mat):
             print_on_same_line('0')
         else:
             i=int(row/dim)
-            print_on_same_line(str(0.54 - 0.46*cos(old_div((M_2PI * i), (timeContext-1)))))
+            print_on_same_line(str(0.54 - 0.46*cos((M_2PI * i) / (timeContext-1))))
     print()
 
 print(']')

@@ -200,8 +200,8 @@ def main(infile, outfile, num_symbols, min_frequency=2, verbose=False, is_dict=F
     outfile.write('#version: 0.2\n')
 
     vocab = get_vocabulary(infile, is_dict)
-    vocab = dict([(tuple(x[:-1])+(x[-1]+'</w>',) ,y) for (x,y) in list(vocab.items())])
-    sorted_vocab = sorted(list(vocab.items()), key=lambda x: x[1], reverse=True)
+    vocab = dict([(tuple(x[:-1])+(x[-1]+'</w>',) ,y) for (x,y) in vocab.items()])
+    sorted_vocab = sorted(vocab.items(), key=lambda x: x[1], reverse=True)
 
     stats, indices = get_pair_statistics(sorted_vocab)
     big_stats = copy.deepcopy(stats)

@@ -13,7 +13,7 @@ head_pos = [0, 1]
 mockup_types = [1, 2]
 room_string = ['booth' ,  'office' ,  'meeting' ,  'lecture' ,  'stairway' ,  'stairway1' ,  'stairway2' ,  'corridor' ,  'bathroom' ,  'lecture1' ,  'aula_carolina', 'kitchen']
 azimuths = set(range(0, 181, 15))
-azimuths.union(list(range(0, 181, 45)))
+azimuths.union(range(0, 181, 45))
 azimuths = list(azimuths)
 azimuths.sort()
 file_patterns = []

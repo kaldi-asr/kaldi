@@ -125,7 +125,7 @@ def to_xy_coordinates(unit_vector_angle, point):
     ------
     (float, float): converted x,y coordinate of the unit vector.
     """
-    angle_orthogonal = unit_vector_angle + float(pi) / 2
+    angle_orthogonal = unit_vector_angle + pi / 2
     return point[0] * cos(unit_vector_angle) + point[1] * cos(angle_orthogonal), \
            point[0] * sin(unit_vector_angle) + point[1] * sin(angle_orthogonal)
 
@@ -290,9 +290,9 @@ def get_horizontal_angle(unit_vector_angle):
     (float): updated angle of the unit vector to be in radians.
              It is only in first or fourth quadrant.
     """
-    if unit_vector_angle > float(pi) / 2 and unit_vector_angle <= pi:
+    if unit_vector_angle > pi / 2 and unit_vector_angle <= pi:
         unit_vector_angle = unit_vector_angle - pi
-    elif unit_vector_angle > -pi and unit_vector_angle < float(-pi) / 2:
+    elif unit_vector_angle > -pi and unit_vector_angle < -pi / 2:
         unit_vector_angle = unit_vector_angle + pi
 
     return unit_vector_angle

@@ -71,7 +71,7 @@ if args.color == 3:
     if num_cols % 3 != 0:
         raise Exception("Number of columns should be a multiple of 3 in the color mode")
     width = num_rows
-    height = int(num_cols/3)
+    height = num_cols/3
     # reform the image matrix
     image_array = [[0 for i in range(width * 3)] for j in range(height)]
     for i in range(height):

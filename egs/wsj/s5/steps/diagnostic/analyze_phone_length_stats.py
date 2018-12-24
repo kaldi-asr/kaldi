@@ -5,7 +5,6 @@
 # Apache 2.0.
 
 from __future__ import print_function
-from __future__ import division
 import argparse
 import sys, os
 from collections import defaultdict
@@ -154,7 +153,7 @@ def GetMean(length_to_count):
     if total_phones == 0:
         return 0.0
     total_frames = sum([ float(l * c) for l,c in length_to_count.items() ])
-    return float(total_frames) / total_phones
+    return total_frames / total_phones
 
 
 # Analyze frequency, median and mean of optional-silence at beginning and end of utterances.
@@ -199,7 +198,7 @@ for boundary_type in 'begin', 'end', 'all':
     phone_to_lengths = phone_lengths[boundary_type]
     tot_num_phones = total_phones[boundary_type]
     # sort the phones in decreasing order of count.
-    for phone,lengths in sorted(list(phone_to_lengths.items()), key = lambda x : -sum(x[1].values())):
+    for phone,lengths in sorted(phone_to_lengths.items(), key = lambda x : -sum(x[1].values())):
         frequency_percentage = sum(lengths.values()) * 100.0 / tot_num_phones
         if frequency_percentage < args.frequency_cutoff_percentage:
             continue
@@ -248,7 +247,7 @@ if total_phones['internal'] != 0.0:
 
     print("The optional-silence phone {0} occupies {1}% of frames overall ".format(
             optional_silence_phone_text, "%.1f" % opt_sil_total_frame_percent))
-    hours_total = total_frames['all']/ 360000.0;
+    hours_total = total_frames['all'] / 360000.0;
     hours_nonsil = (total_frames['all'] - total_optsil_frames) / 360000.0
     print("Limiting the stats to the {0}% of frames not covered by an utterance-[begin/end] phone, "
           "optional-silence {1} occupies {2}% of frames.".format("%.1f" % internal_frame_percent,

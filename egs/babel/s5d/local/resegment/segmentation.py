@@ -276,7 +276,7 @@ def read_rttm_file(rttm_file, temp_dir, frame_shift):
     category = splits[6]
     word = splits[5]
     start_time = int((float(splits[3])/frame_shift) + 0.5)
-    duration = int((float(splits[4]),frame_shift) + 0.5)
+    duration = int((float(splits[4])/frame_shift) + 0.5)
     if i < start_time:
       this_file.extend(["0"]*(start_time - i))
     if type1 == "NON-LEX":
@@ -354,7 +354,7 @@ class JointResegmenter(object):
     # Convert length in seconds to frames
     self.max_frames = int(options.max_segment_length/options.frame_shift)
     self.hard_max_frames = int(options.hard_max_segment_length/options.frame_shift)
-    self.min_inter_utt_nonspeech_length = int(options.min_inter_utt_silence_length, options.frame_shift)
+    self.min_inter_utt_nonspeech_length = int(options.min_inter_utt_silence_length / options.frame_shift)
     if ( options.remove_noise_only_segments == "false" ):
       self.remove_noise_segments = False
     elif ( options.remove_noise_only_segments == "true" ):
@@ -1455,7 +1455,7 @@ def main():
         f2 = f3
       # End if
 
-      if (len(A1) - len(A2)) > int(options.max_length_diff/options.frame_shift):
+      if (len(A1) - len(A2)) > options.max_length_diff/options.frame_shift:
         sys.stderr.write( \
             "%s: Warning: Lengths of %s and %s differ by more than %f. " \
             % (sys.argv[0], f1,f2, options.max_length_diff) \

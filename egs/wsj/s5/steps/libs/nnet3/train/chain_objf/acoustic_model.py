@@ -10,9 +10,6 @@ deep neural network acoustic model with chain objective.
 from __future__ import division
 from __future__ import print_function
 
-from future import standard_library
-standard_library.install_aliases()
-from past.utils import old_div
 import logging
 import math
 import os

@@ -100,7 +100,7 @@ def Main():
                 command_times[command] = time
 
     total_time = sum(command_times.values())
-    sorted_commands = sorted(list(command_times.items()), key = lambda x: x[1], reverse = True)
+    sorted_commands = sorted(command_times.items(), key = lambda x: x[1], reverse = True)
     for item in sorted_commands:
         print("{c} : time {t} : fraction {f}".format(c=item[0], t=item[1], f=float(item[1]) / total_time))
 

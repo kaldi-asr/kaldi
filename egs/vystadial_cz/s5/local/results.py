@@ -16,7 +16,6 @@
 # limitations under the License. #
 from __future__ import division
 from __future__ import print_function
-from builtins import object
 import argparse
 import glob
 import sys

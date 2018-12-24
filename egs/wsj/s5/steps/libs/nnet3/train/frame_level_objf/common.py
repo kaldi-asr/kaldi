@@ -11,8 +11,6 @@ network without transition model) with frame-level objectives.
 
 from __future__ import print_function
 from __future__ import division
-from future import standard_library
-standard_library.install_aliases()
 import glob
 import logging
 import math

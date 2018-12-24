@@ -65,7 +65,7 @@ for k in range(dct_basis):
               print_on_same_line(m*'0 ')
           else:
               print_on_same_line((dim-1)*'0 ')
-          print_on_same_line(str(sqrt(old_div(2.0,timeContext))*cos(M_PI/timeContext*k*(n+0.5))))
+          print_on_same_line(str(sqrt(2.0/timeContext)*cos(M_PI/timeContext*k*(n+0.5))))
           if(n==timeContext-1):
               print_on_same_line((dim-m-1)*'0 ')
         print()

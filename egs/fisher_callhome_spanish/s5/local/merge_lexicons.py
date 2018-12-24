@@ -38,7 +38,7 @@ print("After adding the LDC data, the lexicon contains {} entries".format(len(me
 
 # Finally add the gigaword data
 gigaword = json.load(open(uw_gigaword))
-gigaword = reversed(sorted(iter(gigaword.items()), key=operator.itemgetter(1)))
+gigaword = reversed(sorted(gigaword.items(), key=operator.itemgetter(1)))
 
 for item in gigaword:
     # We need a maximum of wordlimit words in the lexicon

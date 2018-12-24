@@ -51,7 +51,7 @@ def get_scaled_image(im):
     scale_size = args.feat_dim
     sx = im.shape[1]
     sy = im.shape[0]
-    scale = int((1.0 * scale_size)/ sy)
+    scale = (1.0 * scale_size)/ sy
     nx = int(scale_size)
     ny = int(scale * sx)
     im = misc.imresize(im, (nx, ny))

@@ -280,8 +280,8 @@ def perturb_utterances(utterances, allowed_durations, args):
 
         if i < len(allowed_durations):  # we have a larger allowed duration
             allowed_dur2 = allowed_durations[i]
-            speed = old_div(u.dur, allowed_dur2)
-            if max(speed, old_div(1.0,speed)) > args.factor:
+            speed = u.dur / allowed_dur2
+            if max(speed, 1.0/speed) > args.factor:
                 continue
 
             ## Add two versions for the second allowed_duration

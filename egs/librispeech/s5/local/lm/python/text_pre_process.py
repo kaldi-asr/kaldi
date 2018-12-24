@@ -30,7 +30,7 @@ def parse_args():
     return parser.parse_args()
 
 # http://rosettacode.org/wiki/Roman_numerals/Decode#Python
-_rdecode = dict(list(zip('XVI', (10, 5, 1))))
+_rdecode = dict(zip('XVI', (10, 5, 1)))
 def decode(roman):
     result = 0
     for r, r1 in zip(roman, roman[1:]):

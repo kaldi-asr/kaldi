@@ -276,7 +276,7 @@ def read_rttm_file(rttm_file, temp_dir, frame_shift):
     category = splits[6]
     word = splits[5]
     start_time = int((float(splits[3])/frame_shift) + 0.5)
-    duration = int(old_div(float(splits[4]),frame_shift) + 0.5)
+    duration = int(float(splits[4])/frame_shift + 0.5)
     if i < start_time:
       this_file.extend(["0"]*(start_time - i))
     if type1 == "NON-LEX":

@@ -261,7 +261,7 @@ class TFIDF(object):
         if do_length_normalization:
             for doc_pair, value in similarity_scores.items():
                 doc, src_doc = doc_pair
-                similarity_scores[(doc, src_doc)] = (old_div(value, num_terms_per_doc[doc]))
+                similarity_scores[(doc, src_doc)] = value / num_terms_per_doc[doc]
 
         if logger.isEnabledFor(logging.DEBUG):
             for doc, count in num_terms_per_doc.items():

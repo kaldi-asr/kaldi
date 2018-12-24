@@ -338,10 +338,10 @@ def encode(unicode_transcription, tag_percentage, log=False):
                 graph_list.append(graph["SYMBOL"].lower())
 
     graph2int = {v: k for k, v in enumerate(set(graph_list))}
-    int2graph = {v: k for k, v in list(graph2int.items())}
+    int2graph = {v: k for k, v in graph2int.items()}
     graph_list_int = [graph2int[g] for g in graph_list]
     bin_edges = range(0, len(int2graph.keys()) + 1)
-    graph_counts = int(np.histogram(graph_list_int, bins=bin_edges)[0]/float(len(graph_list_int)))
+    graph_counts = np.histogram(graph_list_int, bins=bin_edges)[0]/float(len(graph_list_int))
     # Set count threshold to frequency that tags the bottom 10% of graphemes
     bottom_idx = int(np.floor(tag_percentage * len(graph_counts)))
     count_thresh = sorted(graph_counts)[bottom_idx]

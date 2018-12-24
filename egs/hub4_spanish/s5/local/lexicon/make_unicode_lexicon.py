@@ -561,7 +561,7 @@ def write_table(table, outfile):
     # Start writing to output
     with codecs.open(outfile, "w", "utf-8") as fo:
         # Get header names
-        header_names = sorted(set().union(*[list(d.keys()) for d in table]))
+        header_names = sorted(set().union(*[d.keys() for d in table]))
         # Write headers
         for h in header_names[:-1]:
             fo.write("%s\t" % h)

@@ -352,9 +352,9 @@ class JointResegmenter(object):
 
     self.frame_shift = options.frame_shift
     # Convert length in seconds to frames
-    self.max_frames = int(options.max_segment_length/options.frame_shift)
-    self.hard_max_frames = int(options.hard_max_segment_length/options.frame_shift)
-    self.min_inter_utt_nonspeech_length = int(options.min_inter_utt_silence_length/options.frame_shift)
+    self.max_frames = int(options.max_segment_length / options.frame_shift)
+    self.hard_max_frames = int(options.hard_max_segment_length / options.frame_shift)
+    self.min_inter_utt_nonspeech_length = int(options.min_inter_utt_silence_length / options.frame_shift)
     if ( options.remove_noise_only_segments == "false" ):
       self.remove_noise_segments = False
     elif ( options.remove_noise_only_segments == "true" ):
@@ -541,7 +541,7 @@ class JointResegmenter(object):
     # Set the number of non-speech frames to be added depending on the
     # silence proportion. The target number of frames in the segments
     # is computed as below:
-    target_segment_frames = int(num_speech_frames/(1.0 - self.options.silence_proportion))
+    target_segment_frames = int(num_speech_frames / (1.0 - self.options.silence_proportion))
 
     # The number of frames currently in the segments
     num_segment_frames = num_speech_frames
@@ -600,7 +600,7 @@ class JointResegmenter(object):
       if not changed:   # avoid an infinite loop. if no changes, then break.
         break
     if num_segment_frames < target_segment_frames:
-      proportion = float(num_segment_frames - num_speech_frames)/num_segment_frames
+      proportion = float(num_segment_frames - num_speech_frames) / num_segment_frames
       sys.stderr.write("%s: Warning: for recording %s, only got a proportion %f of non-speech frames, versus target %f\n" % (sys.argv[0], self.file_id, proportion, self.options.silence_proportion))
 
     ###########################################################################
@@ -864,14 +864,14 @@ class JointResegmenter(object):
           # Count the number of times long segments are split
           self.stats.split_segments += 1
 
-          num_pieces = int((float(segment_length)/self.hard_max_frames) + 0.99999)
+          num_pieces = int((float(segment_length) / self.hard_max_frames) + 0.99999)
           sys.stderr.write("%s: Warning: for recording %s, " \
               % (sys.argv[0], self.file_id) \
               + "splitting segment of length %f seconds into %d pieces " \
               % (segment_length * self.frame_shift, num_pieces) \
               + "(--hard-max-segment-length %f)\n" \
               % self.options.hard_max_segment_length)
-          frames_per_piece = int(old_div(segment_length, num_pieces))
+          frames_per_piece = int(segment_length / num_pieces)
           for i in range(1,num_pieces):
             q = n + i * frames_per_piece
             self.S[q] = True

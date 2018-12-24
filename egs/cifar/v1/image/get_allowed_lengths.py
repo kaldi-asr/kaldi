@@ -125,7 +125,7 @@ def find_allowed_durations(start_len, end_len, args):
 
 def main():
     args = get_args()
-    args.factor = 1.0 + float(args.factor)/100.0
+    args.factor = 1.0 + args.factor/100.0
 
     image2length = read_kaldi_mapfile(os.path.join(args.srcdir, 'image2num_frames'))
 

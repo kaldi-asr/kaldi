@@ -385,7 +385,7 @@ def PrintNonScoredStats():
             percent_modified, percent_of_incorrect_modified),
           file = sys.stderr)
 
-    keys = sorted(list(ref_change_stats.keys()), reverse=True,
+    keys = sorted(ref_change_stats.keys(), reverse=True,
                   key = lambda x: ref_change_stats[x])
     num_keys_to_print = 40 if args.verbose >= 2 else 10
 
@@ -416,7 +416,7 @@ def PrintRepetitionStats():
             percent_modified, percent_of_incorrect_modified),
           file = sys.stderr)
 
-    keys = sorted(list(repetition_stats.keys()), reverse=True,
+    keys = sorted(repetition_stats.keys(), reverse=True,
                   key = lambda x: repetition_stats[x])
     num_keys_to_print = 40 if args.verbose >= 2 else 10
 
