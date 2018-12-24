@@ -26,6 +26,7 @@
 #include "base/kaldi-common.h"
 #include "hmm/transition-model.h"
 #include "itf/decodable-itf.h"
+#include "matrix/kaldi-matrix.h"
 
 namespace kaldi {
 
@@ -241,8 +242,6 @@ class DecodableMatrixScaled: public DecodableInterface {
   BaseFloat scale_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableMatrixScaled);
 };
-
-
 }  // namespace kaldi
 
 #endif  // KALDI_DECODER_DECODABLE_MATRIX_H_
