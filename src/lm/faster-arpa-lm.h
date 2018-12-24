@@ -275,7 +275,7 @@ class FasterArpaLm {
 
     const LmState *lm_state = GetHashedState(word_ids, ngram_order, lm_state_idx);
     if (lm_state) { //found out
-      assert(lm_state->IsExist());
+      if (!lm_state->IsExist()) return std::numeric_limits<float>::min();
       //assert(ngram_order==1 || GetHashedState(word_ids, ngram_order-1)->IsExist());
       prob = lm_state->logprob_;
      
@@ -438,6 +438,7 @@ class FasterArpaLmDeterministicFst
     // At this point, we should have created the state.
     int32 lm_state_idx;
     float logprob = GetNgramLogprob(s, lm_.EosSymbol(), &lm_state_idx);
+    if (logprob <= Weight::Zero().Value()) logprob =  Weight::Zero().Value();
     return Weight(-logprob);
   }
 
@@ -447,7 +448,7 @@ class FasterArpaLmDeterministicFst
     int32 wseq_order;
     lm_.GetWordIdsByLmStateIdx(&wseq, &wseq_order, pre_lm_state_idx);
     int32 n = wseq_order;
-    assert(n>0);
+    if (n<=0) return std::numeric_limits<float>::min();
     int32 word_ids[MAX_NGRAM];
     assert(n+1 <= MAX_NGRAM);
 

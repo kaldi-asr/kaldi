@@ -1,4 +1,4 @@
-// bin/latgen-fasterlm-faster-mapped .cc
+// bin/latgen-cfasterlm-faster-mapped .cc
 
 // Copyright      2018  Zhehuai Chen
 
@@ -159,8 +159,9 @@ int main(int argc, char *argv[]) {
     Timer timer;
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
-    int32 symbol_size = 0;
+    int32 symbol_size = 0, init_mode=0;
     LatticeBiglmFasterDecoderConfig config;
+    std::string init_fst_str = "";
     config.Register(&po);
 
     ArpaParseOptions arpa_options;
@@ -182,6 +183,8 @@ int main(int argc, char *argv[]) {
 
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
+    po.Register("init-mode", &init_mode, "TODO.");
+    po.Register("init-fst", &init_fst_str, "TODO.");
     
     po.Read(argc, argv);
 
@@ -230,8 +233,12 @@ int main(int argc, char *argv[]) {
         clm_vec.emplace_back(&clm_vec.back(),&dlm_vec.back());
       }
     }
-    // multiple compose
-    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&clm_vec.back(), 1e9);
+    Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
+    Fst<StdArc> *init_fst = decode_fst;
+    if (init_fst_str != "") {
+      init_fst = fst::ReadFstKaldiGeneric(init_fst_str);
+    }
+    fst::PreinitDeterministicOnDemandFst<StdArc> cache_dfst(&clm_vec.back(), 1e9, init_mode, init_fst);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
@@ -259,7 +266,6 @@ int main(int argc, char *argv[]) {
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
-      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
 
       {
         LatticeBiglmFasterDecoder decoder(*decode_fst, config, &cache_dfst);
@@ -290,6 +296,7 @@ int main(int argc, char *argv[]) {
         }
         elapsed = timer.Elapsed();
       }
+      if (init_fst != decode_fst) delete init_fst;
       delete decode_fst; // delete this only after decoder goes out of scope.
     } else { // We have different FSTs for different utterances.
       assert(0);
