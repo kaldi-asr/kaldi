@@ -44,7 +44,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=9
+CONFIGURE_VERSION=10
 
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
@@ -863,6 +863,7 @@ android=false
 MATHLIB='ATLAS'
 ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
 FSTROOT=`rel2abs ../tools/openfst`
+CUBROOT=`rel2abs ../tools/cub`
 
 # Save the command line to include in kaldi.mk
 cmd_line="$0 $@"
@@ -954,6 +955,9 @@ do
     shift ;;
   --fst-root=*)
     FSTROOT=`read_dirname $1`;
+    shift ;;
+  --cub-root=*)
+    CUBROOT=`read_dirname $1`;
     shift ;;
   --clapack-root=*)
     CLAPACKROOT=`read_dirname $1`;
@@ -1123,6 +1127,16 @@ fi
 echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
 echo "OPENFSTLDFLAGS = $OPENFSTLDFLAGS" >> kaldi.mk
 echo >> kaldi.mk
+
+$use_cuda && echo "Checking cub library in $CUBROOT ..."
+if [[ "$use_cuda" = true  && ! -f $CUBROOT/cub/cub.cuh ]]; then
+  failure "Could not find file $CUBROOT/cub/cub.cuh:
+  you may not have installed cub.  Go to ../tools/ and type
+  e.g. 'make cub'; cub is a new requirement."
+else
+  echo "CUBROOT = $CUBROOT" >> kaldi.mk
+fi
+
 
 # OS-specific steps given below append to kaldi.mk
 echo "Doing OS specific configurations ..."
@@ -1336,7 +1350,7 @@ elif [ "`uname`" == "Linux" ]; then
     elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
       # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
       OPENBLASINCDIR=$OPENBLASROOT/include/openblas
-    else 
+    else
       echo "$0: ***** Using OpenBlas from $OPENBLASROOT but cblas.h is not found. "
       echo " ****** Assuming openblas is aleady in a default include path, but"
       echo " ***** if you get compilation messages about not finding files like cblas.h,"

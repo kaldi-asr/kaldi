@@ -69,6 +69,7 @@ echo "Building tools..." [Time: $(date)]
 runvx cd tools
 runvx make -j$MAXPAR openfst "$CCC" CXXFLAGS="$CF" \
       OPENFST_CONFIGURE="--disable-static --enable-shared --disable-bin --disable-dependency-tracking"
+runvx make -j$MAXPAR cub "$CCC" CXXFLAGS="$CF"
 cd ..
 
 runvx cd src
