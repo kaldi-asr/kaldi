@@ -24,6 +24,7 @@
 #include "hmm/hmm-topology.h"
 #include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
+#include "tree/context-dep.h"
 
 namespace kaldi {
 
