@@ -150,21 +150,28 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Generate lattices using on-the-fly composition.\n"
+        "e.g. HCLG_1 - G_1 + (G_2a \\dynamic_int G_2b) \n"
         "User supplies LM used to generate decoding graph, and desired LM;\n"
         "this decoder applies the difference during decoding\n"
-        "Usage: latgen-biglm-faster-mapped [options] model-in (fst-in|fsts-rspecifier) "
-        "oldlm-fst-in newlm-fst-in features-rspecifier"
-        " lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
+        "Usage: latgen-fasterlm-faster-mapped [options] model-in(for ctc, the model is ignored) HCLG-1-fstin "
+        "G-1-oldlm G-1-weight G-2a-newlm G-2a-weight G-2b-newlm G-2b-weight G-2c... features-rspecifier"
+        " lattice-wspecifier  words-wspecifier \n"
+        "Notably, we always make G-1-weight = -1\n"
+        "ctc example: /fgfs/users/zhc00/works/dyn_dec/kaldi_ctc/README\n"
+        "hmm example: /fgfs/users/zhc00/works/dyn_dec/kaldi_minilibri/README\n"
+        ;
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     int32 symbol_size = 0, init_mode=0;
+    bool ctc = false;
     LatticeBiglmFasterDecoderConfig config;
     config.Register(&po);
 
     ArpaParseOptions arpa_options;
     arpa_options.Register(&po);
+    po.Register("ctc", &ctc, "is ctc decoding");
     po.Register("symbol-size", &symbol_size, "symbol table size");
     po.Register("unk-symbol", &arpa_options.unk_symbol,
                 "Integer corresponds to unknown-word in language model. -1 if "
@@ -204,7 +211,8 @@ int main(int argc, char *argv[]) {
     //new_lm_fst_rxfilename = po.GetArg(4),   
 
     TransitionModel trans_model;
-    ReadKaldiObject(model_in_filename, &trans_model);
+    if (!ctc)
+        ReadKaldiObject(model_in_filename, &trans_model);
 
     /*
     FasterArpaLm old_lm;
@@ -275,11 +283,17 @@ int main(int argc, char *argv[]) {
             num_fail++;
             continue;
           }
-                
-          DecodableMatrixScaledMapped decodable(trans_model, features, acoustic_scale);
+         
+          DecodableInterface* decodable = NULL;
+          if (!ctc) 
+            decodable = new DecodableMatrixScaledMapped(trans_model, features, acoustic_scale);
+          else {
+            decodable = new DecodableMatrixScaledMappedCtc(features, acoustic_scale);
+            decoder.GetOptions().det_opts.phone_determinize = false; // disable DeterminizeLatticePhonePrunedFirstPass
+          }
 
           double like;
-          if (DecodeUtterance(decoder, decodable, trans_model, word_syms,
+          if (DecodeUtterance(decoder, *decodable, trans_model, word_syms,
                               utt, acoustic_scale, determinize, allow_partial,
                               NULL, &words_writer,
                               &compact_lattice_writer, &lattice_writer,
@@ -288,6 +302,7 @@ int main(int argc, char *argv[]) {
             frame_count += features.NumRows();
             num_success++;
           } else num_fail++;
+          delete decodable;
         }
         elapsed = timer.Elapsed();
       }
