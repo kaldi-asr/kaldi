@@ -31,7 +31,7 @@ if [ $stage -le 0 ]; then
 
 fi
 
-mkdir -p data/{train,test, val}/data
+mkdir -p data/{train,test,val}/data
 if [ $stage -le 1 ]; then
   echo "$(date) stage 1: getting allowed image widths for e2e training..."
   image/get_image2num_frames.py --feat-dim 40 data/train
