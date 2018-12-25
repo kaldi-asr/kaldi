@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
       }
     }
     // multiple compose
-    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&clm_vec.back(), 1e9, init_mode==0);
+    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&clm_vec.back(), 1e9, (init_mode==0));
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
