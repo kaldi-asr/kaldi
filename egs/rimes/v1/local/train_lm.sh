@@ -75,13 +75,7 @@ if [ $stage -le 0 ]; then
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
-
-  if [ -d "data/local/text_data/fr_text" ]; then
-    cat ${dir}/data/text/{train,corpus_text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  else
-    echo "$0: Wellington Corpus not found. Proceeding without using that corpus."
-    cat ${dir}/data/text/train.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  fi
+  cat ${dir}/data/text/{train,corpus_text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 

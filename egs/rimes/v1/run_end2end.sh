@@ -31,13 +31,13 @@ if [ $stage -le 0 ]; then
 
 fi
 
-mkdir -p data/{train,test}/data
+mkdir -p data/{train,test, val}/data
 if [ $stage -le 1 ]; then
   echo "$(date) stage 1: getting allowed image widths for e2e training..."
   image/get_image2num_frames.py --feat-dim 40 data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   echo "$(date) Extracting features, creating feats.scp file"
-  for set in train test; do
+  for set in train test val; do
     local/extract_features.sh --nj $nj --cmd "$cmd" data/${set}
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
@@ -69,7 +69,7 @@ END
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
   
-  for set in test train; do
+  for set in test train val; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | \
       utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \

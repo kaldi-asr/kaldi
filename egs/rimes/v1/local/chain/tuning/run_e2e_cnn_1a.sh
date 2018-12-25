@@ -21,7 +21,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1d
+affix=1a
 nj=50
 
 # training options
@@ -105,7 +105,6 @@ fi
 if [ $stage -le 3 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
-
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
@@ -140,7 +139,6 @@ if [ $stage -le 4 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
     --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
@@ -149,7 +147,6 @@ fi
 if [ $stage -le 5 ]; then
   for decode_set in test $maybe_val; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --frames-per-chunk $frames_per_chunk \
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
   done
