@@ -31,7 +31,6 @@ common_egs_dir=
 train_set=train
 decode_val=true
 lang_decode=data/lang
-lang_rescore=data/lang_rescore_6g
 if $decode_val; then maybe_val=val; else maybe_val= ; fi
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -148,8 +147,9 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  for decode_set in test; do
+  for decode_set in test $maybe_val; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+      --frames-per-chunk $frames_per_chunk \
       --nj $nj --cmd "$cmd" \
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
   done

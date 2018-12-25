@@ -14,6 +14,12 @@
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a
 # exp/chain/cnn_e2eali_1a: num-iters=36 nj=3..8 num-params=5.0M dim=40->944 combine=-0.076->-0.076 (over 1) xent:train/valid[23,35,final]=(-1.48,-0.871,-0.774/-1.46,-0.888,-0.811) logprob:train/valid[23,35,final]=(-0.208,-0.102,-0.078/-0.189,-0.104,-0.086)
+
+# line level scoring result
+# WER 7.75 [ 437 / 5639, 62 ins, 55 del, 320 sub ] exp/chain/cnn_e2eali_1d/decode_test/wer_7_1.0
+# paragraph scoring result
+# WER 6.69 [ 377 / 5639, 44 ins, 37 del, 296 sub ] exp/chain/cnn_e2eali_1a/decode_test/para/wer_7_1.0
+
 set -e -o pipefail
 
 stage=0
@@ -22,10 +28,10 @@ nj=50
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1d
-tree_affix=_1d
-bnf_chain_model_dir=exp/chain/e2e_cnn_1d
+affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+e2echain_model_dir=exp/chain/e2e_cnn_1a
+tree_affix=_1a
+bnf_chain_model_dir=exp/chain/e2e_cnn_1a
 bnf_layer_name=tdnn6.affine
 common_egs_dir=
 reporting_email=

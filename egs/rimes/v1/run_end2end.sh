@@ -9,11 +9,9 @@ set -e
 stage=0
 nj=50
 overwrite=false
-username=
-password=
 rimes_database=/export/corpora5/handwriting_ocr/RIMES
-check=data/local/rimes_data
 train_set=train
+use_extra_corpus_text=true
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -29,7 +27,7 @@ if [ $stage -le 0 ]; then
 
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$rimes_database" \
-    --username "$username" --password "$password"
+    --use_extra_corpus_text $use_extra_corpus_text
 
 fi
 
@@ -106,7 +104,7 @@ if [ $stage -le 7 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/$train_set data/lang exp/chain/e2e_cnn_1d exp/chain/e2e_ali_train
+                       data/$train_set data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 8 ]; then

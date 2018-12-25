@@ -14,13 +14,12 @@ download_dir=data/local/rimes_data
 data_dir=data/local/rimes_data
 page_image=$data_dir/page_image
 xml=$data_dir/xml
-username=
-password=
 train_img_url="http://www.a2ialab.com/lib/exe/fetch.php?media=rimes_database:data:icdar2011:line:training_2011.tar";
 train_xml_url="http://www.a2ialab.com/lib/exe/fetch.php?media=rimes_database:data:icdar2011:line:training_2011.xml";
 test_xml_url="http://www.a2ialab.com/lib/exe/fetch.php?media=rimes_database:data:icdar2011:line:eval_2011_annotated.xml";
 test_img_url="http://www.a2ialab.com/lib/exe/fetch.php?media=rimes_database:data:icdar2011:line:eval_2011.tar";
 text_url="http://opus.nlpl.eu/download.php?f=OfisPublik.tar.gz"
+use_extra_corpus_text=true
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh || exit 1;
@@ -46,7 +45,9 @@ else
   cat $xml/train_total/rimes_2011.xml | head -1  > $xml/train/rimes_2011.xml
   cat $xml/train_total/rimes_2011.xml | tail -n+452  >> $xml/train/rimes_2011.xml
   cp -r $page_image/train_total/* $page_image/val
+fi
 
+if $use_extra_corpus_text; then
   # using freely available french text corpus for language modeling
   mkdir -p data/local/text_data
   wget -P data/local/text_data $text_url || exit 1;

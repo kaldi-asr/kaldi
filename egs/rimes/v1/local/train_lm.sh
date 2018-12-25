@@ -57,18 +57,17 @@ if [ $stage -le 0 ]; then
   # use the validation data as the dev set.
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
-
-  #cat data/dev/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
   head -2000 data/train/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
-  #cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
   tail -n +2000 data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
 
-  cat data/local/text_data/fr_text | \
-    utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
-    | sed 's/@@//g' > ${dir}/data/text/corpus_text.txt
+  if [ -d "data/local/text_data/fr_text" ]; then
+    cat data/local/text_data/fr_text | \
+      utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+      | sed 's/@@//g' > ${dir}/data/text/corpus_text.txt
+  fi
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
@@ -77,7 +76,12 @@ if [ $stage -le 0 ]; then
   # it as one of the data sources.
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
-  cat ${dir}/data/text/{train,corpus_text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  if [ -d "data/local/text_data/fr_text" ]; then
+    cat ${dir}/data/text/{train,corpus_text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  else
+    echo "$0: Wellington Corpus not found. Proceeding without using that corpus."
+    cat ${dir}/data/text/train.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  fi
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
