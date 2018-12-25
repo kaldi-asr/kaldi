@@ -234,7 +234,13 @@ void FmllrTransform::TrainingBackward(
                                         info->estimators[s]->GetVarDeriv());
 
   info->target_model.AccStatsBackward(input_cpu, posteriors, &input_deriv_cpu);
-  input_deriv->CopyFromMat(input_deriv_cpu);
+  // These TrainingBackward() functions are all supposed to add to the
+  // 'input_deriv'.
+  CuMatrix<BaseFloat> input_deriv_temp(input_deriv->NumRows(),
+                                       input_deriv->NumCols(),
+                                       kUndefined);
+  input_deriv_temp.CopyFromMat(input_deriv_cpu);
+  input_deriv->AddMat(1.0, input_deriv_temp);
 
   delete info;
 }
@@ -499,8 +505,13 @@ void MeanOnlyTransform::TrainingBackward(
   }
 
   info->target_model.AccStatsBackward(input_cpu, posteriors, &input_deriv_cpu);
-  input_deriv->CopyFromMat(input_deriv_cpu);
-
+  // These TrainingBackward() functions are all supposed to add to the
+  // 'input_deriv'.
+  CuMatrix<BaseFloat> input_deriv_temp(input_deriv->NumRows(),
+                                       input_deriv->NumCols(),
+                                       kUndefined);
+  input_deriv_temp.CopyFromMat(input_deriv_cpu);
+  input_deriv->AddMat(1.0, input_deriv_temp);
   delete info;
 }
 

@@ -136,6 +136,13 @@ void TestTraining(DifferentiableTransform *transform) {
       output_feats(num_rows, dim, kUndefined),
       output_deriv(num_rows, dim, kUndefined),
       input_deriv(num_rows, dim);
+
+  // This is to verify that TrainingBackward() adds to, rather than
+  // setting to, the input deriv.
+  CuMatrix<BaseFloat> random_input_deriv(num_rows, dim);
+  random_input_deriv.SetRandn();
+  input_deriv.AddMat(1.0, random_input_deriv);
+
   input_feats.SetRandn();
   output_deriv.SetRandn();
   Posterior post;
@@ -154,6 +161,8 @@ void TestTraining(DifferentiableTransform *transform) {
 
   transform->TrainingBackward(input_feats, output_deriv, num_chunks,
                               num_spk, post, info, &input_deriv);
+  // testing that TrainingBackward adds to the input deriv.
+  input_deriv.AddMat(-1.0, random_input_deriv);
 
   int32 n = 5;
   Vector<BaseFloat> expected_changes(n), observed_changes(n);
