@@ -377,7 +377,7 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
                              num_max_change_per_component_applied,
                              int32 *num_max_change_global_applied);
 
-class MaxChangeStats;
+struct MaxChangeStats;
 
 // This overloaded version of UpdateNnetWithMaxChange() is a convenience
 // wrapper for when you have a MaxChangeStats object to keep track

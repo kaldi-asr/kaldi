@@ -81,6 +81,27 @@ prepare_egs.sh...
 
 ===
 
+nnet3-chain-merge-egs --keep-distinct
+
+
+  ?aaa=xxxx&bbb=yyyy
+
+
+
+
+```
+This copies nnet3+chain training examples from input to output, merging them
+into composite examples.  The --minibatch-size option controls how many egs
+are merged into a single output eg.
+
+Usage:  nnet3-chain-merge-egs [options] <egs-rspecifier> <egs-wspecifier>
+e.g.
+nnet3-chain-merge-egs --minibatch-size=128 ark:1.cegs ark:- | nnet3-chain-train-simple ...
+See also nnet3-chain-copy-egs
+```
+
+
+
     BUT, we don't want to do this on minibatches
 
 
@@ -97,7 +118,14 @@ prepare_egs.sh...
 
  We'll use that info, together with the speaker-id and utt2uniq information, to
  merge chunks together into groups (preferably by utterance; if not, by speaker)
- in process_egs.sh (the merging will be done in python).
+ in process_egs.sh (the choice of which egs to merge will be done in python).
+
+======
+
+======
+ later, when
+
+ The merging script will decide the key for the merged egs.
 
  process_egs.sh will dump these as archives *and* scp files, but they will now
  be in groups of chunks_per_spk (e.g. 4).  The language name will be added as the

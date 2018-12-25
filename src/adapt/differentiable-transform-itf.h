@@ -156,10 +156,11 @@ class DifferentiableTransform {
               will typically be output by a neural net, the 'bottom' net in our
               terminology.  This will correspond to a whole minibatch,
               consisting of multiple speakers and multiple sequences (chunks)
-              per speaker.  Caution: the order of both the input and
-              output features, and the posteriors, does not consist of blocks,
-              one per sequence, but rather blocks, one per time frame, so the
-              sequences are intercalated.  This is the default order in
+              per speaker.  Caution: in the input and
+              output features, and the posteriors, the 't' has the larger
+              stride than the minibatch-index 'n', so the order is:
+              first frame of all sequences; then the second frame of
+              all sequences; and so on.  This is the default order in
               nnet3; see operator < of nnet3::Index.
      @param [in] num_chunks   The number of individual sequences
               (e.g., chunks of speech) represented in 'input'.
@@ -174,9 +175,10 @@ class DifferentiableTransform {
              form, the class supervision information that is used for the
              adaptation.  posteriors.size() will be equal to input.NumRows(),
              and the ordering of its elements is the same as the ordering
-             of the rows of input, i.e. the sequences are intercalated.
+             of the rows of input (i.e. the 't' has the larger stride).
              There is no assumption that the posteriors sum to one;
-             this allows you to do things like silence weighting.
+             this allows you to do things like silence weighting.  But
+             the posteriors are expected to be nonnegative.
      @param [out] output  The adapted output.  This matrix should have the
              same dimensions as 'input'.  It does not have to be free of
              NaNs when you call this function.

@@ -32,6 +32,7 @@
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 #include "chain/chain-den-graph.h"
 #include "chain/chain-supervision.h"
 
