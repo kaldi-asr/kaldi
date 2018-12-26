@@ -63,7 +63,7 @@ if [ $stage -le 0 ]; then
   # we can later fold the dev data into this.
   tail -n +2000 data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
 
-  if [ -d "data/local/text_data/fr_text" ]; then
+  if [ -d "data/local/text_data" ]; then
     cat data/local/text_data/fr_text | \
       utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > ${dir}/data/text/corpus_text.txt
@@ -86,7 +86,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='train=1'
+  min_counts='corpus_text=2 train=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
