@@ -35,8 +35,7 @@ if [ $stage -le 0 ]; then
     echo "Exiting with status 1 to avoid data corruption"
     exit 1;
   fi
-  echo "$0: Downloading data splits...$(date)"
-  local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
+  local/prepare_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
                          --download_dir2 $download_dir2 --download_dir3 $download_dir3
 
   for set in test train dev; do
@@ -48,7 +47,7 @@ if [ $stage -le 0 ]; then
         --data data/local/$set --subset $subset --augment $augment || exit 1
   done
 
-  echo "$0: Preparing data..."
+  echo "$0: Processing data..."
   for set in dev train test; do
     local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
       $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
