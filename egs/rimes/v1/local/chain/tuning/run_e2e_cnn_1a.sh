@@ -118,7 +118,7 @@ if [ $stage -le 3 ]; then
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter 2000000 \
-    --trainer.num-epochs 4 \
+    --trainer.num-epochs 3 \
     --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial 2 \
     --trainer.optimization.num-jobs-final 4 \
