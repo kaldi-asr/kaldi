@@ -19,6 +19,7 @@ images_scp_dir=data/local
 overwrite=false
 subset=false
 augment=false
+use_extra_corpus_text=true
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -36,7 +37,8 @@ if [ $stage -le 0 ]; then
     exit 1;
   fi
   local/prepare_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
-                         --download_dir2 $download_dir2 --download_dir3 $download_dir3
+                         --download_dir2 $download_dir2 --download_dir3 $download_dir3 \
+                         --use_extra_corpus_text $use_extra_corpus_text
 
   for set in test train dev; do
     data_split_file=$data_splits_dir/madcat.$set.raw.lineid
