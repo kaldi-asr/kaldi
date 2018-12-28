@@ -175,7 +175,7 @@ if [ $stage -le 5 ]; then
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' mod?els... this
+  # trained with a cross-entropy objective in the 'chain' models... this
   # has the effect of regularizing the hidden parts of the model.  we use
   # 0.5 / args.xent_regularize as the learning rate factor- the factor of
   # 0.5 / args.xent_regularize is suitable as it means the xent
