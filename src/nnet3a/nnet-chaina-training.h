@@ -42,13 +42,17 @@ struct NnetChainaTrainingOptions {
   BaseFloat unadapted_bottom_weight;
   int32 bottom_subsampling_factor;
   bool keep_embedding_context;
+  bool bottom_model_test_mode;
+  bool top_model_test_mode;
 
   NnetChainaTrainingOptions():
       apply_deriv_weights(true),
       unadapted_top_weight(1.0),
       unadapted_bottom_weight(0.5),
       bottom_subsampling_factor(1),
-      keep_embedding_context(true) { }
+      keep_embedding_context(true),
+      bottom_model_test_mode(false),
+      top_model_test_mode(false) { }
 
   void Register(OptionsItf *opts) {
     nnet_config.Register(opts);
@@ -83,6 +87,20 @@ struct NnetChainaTrainingOptions {
                    "optional dependencies (for example: if it uses "
                    "StatisticsExtractionComponent, IfDefined(), Failover(), "
                    "etc.).");
+    opts->Register("bottom-model-test-mode", &bottom_model_test_mode,
+                   "Set this to true to disable training of the bottom nnet, "
+                   "to use test-mode for any batch-norm or dropout"
+                   "components in it, and to disable the accumulation of "
+                   "statistics for the bottom model (to keep the batchnorm "
+                   "stats frozen).  Setting this to false can be used to "
+                   "evaluate train or valid probs.");
+    opts->Register("top-model-test-mode", &top_model_test_mode,
+                   "Set this to true to disable training of the top nnet, "
+                   "to use test-mode for any batch-norm or dropout"
+                   "components in it, and to disable the accumulation of "
+                   "statistics for the top model (to keep the batchnorm "
+                   "stats frozen).  Setting this to false can be used to "
+                   "evaluate train or valid probs.");
   }
   void Check() {
     KALDI_ASSERT(unadapted_top_weight > 0.0 &&
@@ -124,8 +142,40 @@ class NnetChainaModels {
      The models and denominator FSTs will only be read when they are actually
      required, so languages that are not used by a particular job (e.g. because
      they were not represented in the egs) will not actually be read.
+
+
+         @param [in] zero_components stats...  The --zero-component-stats option
+                     from NnetChainaTrainingOptions::nnet_config.  Note: if
+                     bottom_model_test_mode is true, we won't zero the stats on
+                     the bottom model regardless of this value.
+         @param [in] bottom_model_test_mode   If true, the bottom model will not be
+                     trained (should be set to the same-named option from
+                     NnetChainaTrainingOptions).  It's needed to know
+                     whether to write the bottom model in WriteRawModels(),
+                     and whether to zero the component stats, set batch-norm
+                     test mode, and collapse the model.
+         @param [in] top_model_test_mode   If true, the top model will not be
+                     trained (should be set to the same-named option from
+                     NnetChainaTrainingOptions).  It's needed to know
+                     whether to write the top models in WriteRawModels(),
+                     and whether to zero the component stats, set batch-norm
+                     test mode, and collapse the model.
+         @param  [in] model_dir  Directory where we'll find bottom.raw, and
+                      <lang>.mdl for each language <lang> present in the egs
+                      (the <lang> will be worked out from the key name from
+                      "...?lang=xxx" in the key when reading the egs,
+                      see ParseFromQueryString() in nnet-chain-utils.h.
+         @param [in] den_fst_ir  Directory where we'll find the denominator
+                      FST <lang>.fst for each language <lang> present in
+                      the egs.
+         @param [in] transform_dir  Directory where we'll find the
+                      transforms (of type DifferentiableTransformItf),
+                      as files <lang>.ada for each language <lang> present
+                      in the egs.
    */
   NnetChainaModels(bool zero_component_stats,
+                   bool bottom_model_test_mode,
+                   bool top_model_test_mode,
                    const std::string &model_dir,
                    const std::string &den_fst_dir,
                    const std::string &transform_dir);
@@ -202,6 +252,10 @@ class NnetChainaModels {
   // True if we are going to call ZeroComponentStats() on models when they are
   // read.
   bool zero_component_stats_;
+  // A copy of the "bottom-model-test-mode" option in NnetChainaTrainingOptions.
+  bool bottom_model_test_mode_;
+  // A copy of the "top-model-test-mode" option in NnetChainaTrainingOptions.
+  bool top_model_test_mode_;
   // Directory where models are located.
   std::string model_dir_;
   // Directory where denominator FSTs are located.
@@ -232,8 +286,8 @@ class NnetChainaTopTrainer {
       @param [in] lang_name  The name of the language this corresponds to
                              (needed for diagnostics).   E.g. "default",
                              "english".
-      @param [in] config   Options class
-      @param [in] den_fst   The denominator FST for this language
+      @param [in] config     Options class
+      @param [in] den_fst    The denominator FST for this language
       @param [in] transform  The transform object which will be used to produce adapted
                              features after the first pass of training.
       @param [in,out] nnet   The neural net we are training.  Expected to have
