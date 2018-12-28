@@ -69,13 +69,13 @@ _kaldi_build()
     echo "Building toolkit"
     # Build the tools directory
     cd $KALDI/tools
-    make -j 4 &> $ASR_LOG/make_tools.log
+    make -j 8 &> $ASR_LOG/make_tools.log
     make_tools_status=$( tail -n 1 $ASR_LOG/make_tools.log )
 
     if [ "$make_tools_status" != "All done OK." ]
     then
         echo -e "\e[34m\e[1m Make kaldi/tools failed \e[0m"
-        exit 1
+        return 1
     fi
 
     # Install IRSTLM
@@ -85,7 +85,7 @@ _kaldi_build()
     if [ -z "$install_irstlm_status" ]
     then
         echo -e "\e[34m\e[1m Install kaldi/tools/extras/install_irstlm.sh failed \e[0m"
-        exit 1
+        return 1
     fi
 
     # Install Sequitur
@@ -99,17 +99,17 @@ _kaldi_build()
     if [ -z "$configure_src_status" ]
     then
         echo -e "\e[34m\e[1m Configure kaldi/src failed \e[0m"
-        exit 1
+        return 1
     fi
 
-    make depend -j 4 > /dev/null
-    make -j 4 &> $ASR_LOG/make_src.log
+    make depend -j 8 > /dev/null
+    make -j 8 &> $ASR_LOG/make_src.log
     make_src_status=$( grep "Done" $ASR_LOG/make_src.log )
 
     if [ -z "$make_src_status" ]
     then
         echo -e "\e[34m\e[1m Make kaldi/src failed \e[0m"
-        exit 1
+        return 1
     fi
 
     # Create a STATUS file to monitor installation
