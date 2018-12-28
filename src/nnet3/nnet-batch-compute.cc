@@ -1094,7 +1094,7 @@ bool NnetBatchDecoder::GetOutput(
       return false;
     UtteranceOutput *this_output = pending_utts_.front();
     pending_utts_.pop_front();
-    if (this_output->compact_lat.NumStates() == 0) {
+    if (this_output->lat.NumStates() == 0) {
       delete this_output;
       // ... and continue round the loop, without returning any output to the
       // user for this utterance.  Something went wrong in decoding: for
