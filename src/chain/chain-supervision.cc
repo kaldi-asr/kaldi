@@ -720,17 +720,16 @@ Supervision::Supervision(const Supervision &other):
 void MergeSupervisionE2e(const std::vector<const Supervision*> &input,
                           Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
-  KALDI_ASSERT(input[0]->e2e_fsts.size() == 1);
   *output_supervision = *(input[0]);
   output_supervision->e2e_fsts.reserve(input.size());
   int32 frames_per_sequence = output_supervision->frames_per_sequence,
       num_seqs = input.size();
   for (int32 i = 1; i < num_seqs; i++) {
-    output_supervision->num_sequences++;
-    KALDI_ASSERT(input[i]->e2e_fsts.size() == 1);
+    output_supervision->num_sequences += input[i]->num_sequences;
     KALDI_ASSERT(input[i]->frames_per_sequence ==
                  frames_per_sequence);
-    output_supervision->e2e_fsts.push_back(input[i]->e2e_fsts[0]);
+    for (int32 j = 0; j < input[i]->num_sequences; ++j)
+      output_supervision->e2e_fsts.push_back(input[i]->e2e_fsts[j]);
   }
   output_supervision->alignment_pdfs.clear();
   // The program nnet3-chain-acc-lda-stats works on un-merged egs,
@@ -766,7 +765,7 @@ void MergeSupervision(const std::vector<const Supervision*> &input,
       // append src.fst to output_supervision->fst.
       // the complexity here is O(V1 + E1)
       fst::Concat(src.fst, &output_supervision->fst);
-      output_supervision->num_sequences++;
+      output_supervision->num_sequences += src.num_sequences;
     } else {
       KALDI_ERR << "Mismatch weight or frames_per_sequence  between inputs";
     }

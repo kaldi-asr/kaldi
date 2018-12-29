@@ -81,7 +81,13 @@ static void GetIoSizes(const std::vector<NnetExample> &src,
 }
 
 
-
+static int32 FindMaxNValue(const NnetIo &io) {
+  int32 max_n = 0;
+  for (auto &index: io.indexes)
+    if (index.n > max_n)
+      max_n = index.n;
+  return max_n;
+}
 
 // Do the final merging of NnetIo, once we have obtained the names, dims and
 // sizes for each feature/supervision type.
@@ -98,6 +104,9 @@ static void MergeIo(const std::vector<NnetExample> &src,
   // The features in the different NnetIo in the Indexes across all examples
   std::vector<std::vector<GeneralMatrix const*> > output_lists(num_feats);
 
+  // This is 1 for single examples and larger than 1 for already-merged egs, and
+  // it must be the same for all io's across all examples:
+  int32 example_stride = FindMaxNValue(src[0].io[0]) + 1;
   // Initialize the merged_eg
   merged_eg->io.clear();
   merged_eg->io.resize(num_feats);
@@ -137,11 +146,8 @@ static void MergeIo(const std::vector<NnetExample> &src,
       std::vector<Index>::iterator output_iter = output_io.indexes.begin();
       // Set the n index to be different for each of the original examples.
       for (int32 i = this_offset; i < this_offset + this_size; i++) {
-        // we could easily support merging already-merged egs, but I don't see a
-        // need for it right now.
-        KALDI_ASSERT(output_iter[i].n == 0 &&
-                     "Merging already-merged egs?  Not currently supported.");
-        output_iter[i].n = n;
+        KALDI_ASSERT(output_iter[i].n < example_stride);
+        output_iter[i].n += n * example_stride;
       }
       this_offset += this_size;  // note: this_offset is a reference.
     }

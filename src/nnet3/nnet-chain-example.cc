@@ -221,6 +221,14 @@ static void MergeSupervision(
                    &output_supervision);
   output->supervision.Swap(&output_supervision);
 
+  int32 example_stride = 0;
+  for (auto &index: inputs[0]->indexes)
+    if (index.n > example_stride)
+      example_stride = index.n;
+  example_stride++;
+
+  KALDI_ASSERT(example_stride == inputs[0]->supervision.num_sequences);
+
   output->indexes.clear();
   output->indexes.reserve(num_indexes);
   for (int32 n = 0; n < num_inputs; n++) {
@@ -233,8 +241,8 @@ static void MergeSupervision(
     // change the 'n' index to correspond to the index into 'input'.
     // Each example gets a different 'n' value, starting from 0.
     for (; iter != end; ++iter) {
-      KALDI_ASSERT(iter->n == 0 && "Merging already-merged chain egs");
-      iter->n = n;
+      KALDI_ASSERT(iter->n < example_stride);
+      iter->n += n * example_stride;
     }
   }
   KALDI_ASSERT(output->indexes.size() == num_indexes);
@@ -259,6 +267,7 @@ static void MergeSupervision(
       }
     }
   }
+  output->chunks_per_spk = example_stride;
   output->CheckDim();
 }
 
