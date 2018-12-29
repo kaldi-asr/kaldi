@@ -564,7 +564,7 @@ function linux_configure_atlas_generic {
   # returns 0; on failure, it returns 1.
   dir=$1
   suffix=$2
-  ATLASLIBS="$dir/libatlas.$suffix $dir/libf77blas.$suffix $dir/libcblas.$suffix $dir/liblapack_atlas.$suffix"    
+  ATLASLIBS="$dir/libatlas.$suffix $dir/libf77blas.$suffix $dir/libcblas.$suffix $dir/liblapack_atlas.$suffix"
   for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
@@ -574,7 +574,7 @@ function linux_configure_atlas_generic {
     exit 1;
   fi
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_atlas_generic for $system_name" && exit 1;
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_atlas_generic: dir=$dir,suffix=$suffix" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo >> kaldi.mk
@@ -589,7 +589,7 @@ function linux_configure_atlas_generic {
   $use_cuda && configure_cuda
   linux_configure_speex
 }
-  
+
 function linux_configure_redhat_fat {
   # This is for when only two so-called 'fat' ATLAS libs are provided:
   # libsatlas.so.3 and libtatlas.so.3.
