@@ -28,6 +28,17 @@ namespace kaldi {
 namespace chain {
 
 
+void ConvertDerivsToPosterior(const CuMatrixBase<BaseFloat> &numerator_derivs,
+                              Posterior *numerator_post) {
+  numerator_post->resize(numerator_derivs.NumRows());
+  for (size_t i = 0; i < numerator_derivs.NumRows(); ++i) {
+    const auto &row = numerator_derivs.Row(i);
+    for (size_t pdfid = 0; pdfid < row.Dim(); ++pdfid)
+      if (row(pdfid) != 0.0)
+        (*numerator_post)[i].push_back(std::make_pair(pdfid, row(pdfid)));
+  }
+}
+
 
 void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                  const DenominatorGraph &den_graph,
@@ -37,7 +48,8 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                  BaseFloat *l2_term,
                                  BaseFloat *weight,
                                  CuMatrixBase<BaseFloat> *nnet_output_deriv,
-                                 CuMatrix<BaseFloat> *xent_output_deriv) {
+                                 CuMatrix<BaseFloat> *xent_output_deriv,
+                                 Posterior *numerator_post = NULL) {
   BaseFloat num_logprob_weighted, den_logprob_weighted;
   bool denominator_ok = true;
   bool numerator_ok = true;
@@ -91,6 +103,11 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
   }
   numerator_ok = numerator_ok &&
                  (num_logprob_weighted - num_logprob_weighted == 0);
+
+  if (numerator_post && (xent_output_deriv || nnet_output_deriv)) {
+    ConvertDerivsToPosterior(nnet_output_deriv ? *nnet_output_deriv :
+                             *xent_output_deriv, numerator_post);
+  }
 
   *objf = num_logprob_weighted - den_logprob_weighted;
   if (!((*objf) - (*objf) == 0) || !denominator_ok || !numerator_ok) {
@@ -146,11 +163,13 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *l2_term,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
-                              CuMatrix<BaseFloat> *xent_output_deriv) {
+                              CuMatrix<BaseFloat> *xent_output_deriv,
+                              Posterior *numerator_post) {
   if (!supervision.e2e_fsts.empty()) {
     ComputeChainObjfAndDerivE2e(opts, den_graph, supervision,
                                 nnet_output, objf, l2_term,
-                                weight, nnet_output_deriv, xent_output_deriv);
+                                weight, nnet_output_deriv,
+                                xent_output_deriv, numerator_post);
     return;
   }
 
@@ -196,6 +215,11 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     } else if (nnet_output_deriv) {
       numerator.Backward(nnet_output_deriv);
     }
+  }
+
+  if (numerator_post && (xent_output_deriv || nnet_output_deriv)) {
+    ConvertDerivsToPosterior(nnet_output_deriv ? *nnet_output_deriv :
+                             *xent_output_deriv, numerator_post);
   }
 
   *objf = num_logprob_weighted - den_logprob_weighted;
