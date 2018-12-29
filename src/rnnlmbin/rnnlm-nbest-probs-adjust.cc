@@ -23,6 +23,7 @@
 #include "rnnlm/rnnlm-example-utils.h"
 #include "rnnlm/rnnlm-core-compute.h"
 #include "rnnlm/rnnlm-compute-state.h"
+#include "rnnlm/rnnlm-utils.h"
 #include "nnet3/nnet-utils.h"
 #include <fstream>
 #include <sstream>
@@ -31,36 +32,7 @@ using std::ifstream;
 using std::map;
 using std::unordered_map;
 
-// read the file and genereate a map from [utt-id] to [convo-id], stored in *m
-void ReadUttToConvo(string filename, map<string, string> &m) {
-  KALDI_ASSERT(m.size() == 0);
-  ifstream ifile(filename.c_str());
-  string utt, convo;
-  while (ifile >> utt >> convo) {
-    m[utt] = convo;
-  }
-}
-
-// read a unigram count file and generate unigram mapping from [word-id] to
-// its unigram prob
-void ReadUnigram(string filename, std::vector<double> *unigram) {
-  std::vector<double> &m = *unigram;
-  ifstream ifile(filename.c_str());
-  int32 word;
-  double count;
-  double sum = 0.0;
-  while (ifile >> word >> count) {
-    m[word] = count;
-    sum += count;
-  }
-
-  for (int32 i = 0; i < m.size(); i++) {
-    m[i] /= sum;
-  }
-}
-
-// first set *key to the first field, and then break the remaining line into a
-// vector of integers
+// first set *key to the first field, and then break the remaining line into a // vector of integers
 void GetNumbersFromLine(std::string line, std::string *key,
                         std::vector<int32> *v) {
   std::stringstream ss(line);
@@ -79,17 +51,20 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "This program computes the probability per word of the provided training\n"
-        "data in 'egs' format as prepared by rnnlm-get-egs.  The interface is similar\n"
-        "to rnnlm-train, except that it doesn't train, and doesn't write the model;\n"
-        "it just prints the average probability to the standard output (in addition\n"
+        "This program computes the probability of the provided text data by an\n"
+        "RNNLM adjusted by a unigram cache model. The cache model is estimated\n"
+        "on the given text data (transcription).\n"
+        "This program doesn't train, and doesn't write the model; it just prints\n"
+        "the average probability to the standard output (in addition\n"
         "to printing various diagnostics to the standard error).\n"
         "\n"
         "Usage:\n"
-        " rnnlm-compute-prob [options] <rnnlm> <word-embedding-matrix> <egs-rspecifier>\n"
+        " rnnlm-nbest-probs-adjust [options] <rnnlm> <word-embedding-matrix> \\\n"
+        "                          <text> <utt2spk> <background-unigram>\n"
         "e.g.:\n"
-        " rnnlm-get-egs ... ark:- | \\\n"
-        " rnnlm-compute-prob 0.raw 0.word_embedding ark:-\n"
+        " rnnlm-nbest-probs-adjust final.raw 0.word_embedding \n"
+        "                          data/rnnlm_cache/eval2000.txt\n"
+        "                          data/eval2000/utt2spk data/rnnlm_cache/train.unigram\n"
         "(note: use rnnlm-get-word-embedding to get the word embedding matrix if\n"
         "you are using sparse word features.)\n";
 
@@ -127,7 +102,7 @@ int main(int argc, char *argv[]) {
                 unigram_file = po.GetArg(5);
 
     map<string, string> utt2convo;
-    ReadUttToConvo(utt_to_convo_file, utt2convo);
+    ReadUttToConvo(utt_to_convo_file, &utt2convo);
 
 #if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);

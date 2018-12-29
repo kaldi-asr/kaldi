@@ -25,6 +25,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 #include "rnnlm/rnnlm-lattice-rescoring.h"
+#include "rnnlm/rnnlm-utils.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-nnet.h"
@@ -136,50 +137,27 @@ class ArcPosteriorComputer {
 };
 }  // namespace kaldi
 
-void ReadUttToConvo(string filename, map<string, string> &m) {
-  KALDI_ASSERT(m.size() == 0);
-  ifstream ifile(filename.c_str());
-  string utt, convo;
-  while (ifile >> utt >> convo) {
-    m[utt] = convo;
-  }
-}
-
-void ReadUnigram(string filename, std::vector<double> *unigram) {
-  std::vector<double> &m = *unigram;
-  ifstream ifile(filename.c_str());
-  int32 word;
-  double count;
-  double sum = 0.0;
-  while (ifile >> word >> count) {
-    m[word] = count;
-    sum += count;
-  }
-
-  for (int32 i = 0; i < m.size(); i++) {
-    m[i] /= sum;
-  }
-}
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace kaldi::nnet3;
+    using namespace kaldi::rnnlm;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Rescores lattice with kaldi-rnnlm. This script is called from \n"
-        "scripts/rnnlm/lmrescore_rnnlm_lat.sh. An example for rescoring \n"
-        "lattices is at egs/swbd/s5/local/rnnlm/run_rescoring.sh \n"
+        "Rescores lattice with cache-adapted kaldi-rnnlm. This script is \n"
+        "called from scripts/rnnlm/lmrescore_rnnlm_lat_adapt.sh. \n"
         "\n"
-        "Usage: lattice-lmrescore-kaldi-rnnlm [options] \\\n"
+        "Usage: lattice-lmrescore-kaldi-rnnlm-adaptation [options] \\\n"
         "             <embedding-file> <raw-rnnlm-rxfilename> \\\n"
         "             <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-kaldi-rnnlm --lm-scale=-1.0 \\\n"
+        "             <utt2conv-mapfile> <background-unigram>\n"
+        " e.g.: lattice-lmrescore-kaldi-rnnlm-adaptation --lm-scale=-1.0 \\\n"
         "              word_embedding.mat \\\n"
         "              --bos-symbol=1 --eos-symbol=2 \\\n"
-        "              final.raw ark:in.lats ark:out.lats\n";
+        "              final.raw ark:in.lats ark:out.lats \\\n"
+        "              utt2conv unigram-file\n\n";
 
     ParseOptions po(usage);
     rnnlm::RnnlmComputeStateComputationOptions opts;
@@ -228,7 +206,7 @@ int main(int argc, char *argv[]) {
                 unigram_file = po.GetArg(7);
 
     map<string, string> utt2convo;
-    ReadUttToConvo(utt_to_convo_file, utt2convo);
+    ReadUttToConvo(utt_to_convo_file, &utt2convo);
 
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);

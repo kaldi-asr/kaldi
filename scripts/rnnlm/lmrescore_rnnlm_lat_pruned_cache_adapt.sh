@@ -5,7 +5,7 @@
 #           2018  Ke Li
 # Apache 2.0
 
-# This script rescores lattices with KALDI RNNLM.
+# This script rescores lattices with KALDI RNNLM adapted by a unigram cache model.
 
 # Begin configuration section.
 cmd=run.pl
@@ -27,12 +27,16 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 7 ]; then
    echo Getting num-params = $#
    echo "Does language model rescoring of lattices (remove old LM, add new LM)"
-   echo "with Kaldi RNNLM."
+   echo "with pruned Kaldi RNNLM adapted by a unigram cache model."
    echo ""
    echo "Usage: $0 [options] <old-lang-dir> <rnnlm-dir> \\"
-   echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
-   echo " e.g.: $0 data/lang_tg exp/rnnlm_lstm/ data/test \\"
-   echo "                   exp/tri3/test_tg exp/tri3/test_rnnlm_4gram"
+   echo "                   <data-dir> <input-decode-dir> <output-decode-dir> \\"
+   echo "                   <utt2spk-file> <background-unigram-file>"
+   echo " e.g.: $0 data/lang_tg exp/rnnlm_lstm_1c/ data/eval2000_hires \\"
+   echo "                   exp/chain/tdnn_lstm_1e/decode_eval2000_tg \\"
+   echo "                   exp/chain/tdnn_lstm_1e/decode_eval2000_tg_rnnlm \\"
+   echo "                   data/eval2000/utt2spk \\"
+   echo "                   data/rnnlm_cache_adapt/eval2000/train.unigram"
    echo "options: [--cmd (run.pl|queue.pl [queue opts])]"
    exit 1;
 fi
@@ -78,7 +82,6 @@ word_embedding=
 if [ -f $rnnlm_dir/word_embedding.final.mat ]; then
   word_embedding=$rnnlm_dir/word_embedding.final.mat
 else
-  # word_embedding="'rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|'"
   word_embedding="rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|"
 fi
 
@@ -105,5 +108,4 @@ if ! $skip_scoring ; then
 else
   echo "Not scoring because requested so..."
 fi
-
 exit 0;

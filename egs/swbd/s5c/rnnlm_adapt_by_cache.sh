@@ -16,8 +16,6 @@ run_rescore=true
 two_spks_mode=true
 one_best_mode=false
 
-# context_weight=5.0
-# range=8
 lm_weight=0.8
 correction_weight=0.75
 

@@ -1,4 +1,4 @@
-// latbin/lattice-lmrescore-kaldi-rnnlm-pruned.cc
+// latbin/lattice-lmrescore-kaldi-rnnlm-pruned-cache-adapt.cc
 
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey)
 //           2017 Hainan Xu
@@ -23,6 +23,7 @@
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
 #include "rnnlm/rnnlm-lattice-rescoring.h"
+#include "rnnlm/rnnlm-utils.h"
 #include "lm/const-arpa-lm.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-utils.h"
@@ -37,8 +38,7 @@ using std::unordered_map;
 
 namespace kaldi {
 
-// This class computes and outputs
-// the information about arc posteriors.
+// This class computes and outputs the information about arc posteriors.
 
 class ArcPosteriorComputer {
  public:
@@ -97,36 +97,12 @@ class ArcPosteriorComputer {
 
   BaseFloat min_post_;
 };
-} // namespace kaldi
-
-void ReadUttToConvo(string filename, map<string, string> &m) {
-  KALDI_ASSERT(m.size() == 0);
-  ifstream ifile(filename.c_str());
-  string utt, convo;
-  while (ifile >> utt >> convo) {
-    m[utt] = convo;
-  }
-}
-
-void ReadUnigram(string filename, std::vector<double> *unigram) {
-  std::vector<double> &m = *unigram;
-  ifstream ifile(filename.c_str());
-  int32 word;
-  double count;
-  double sum = 0.0;
-  while (ifile >> word >> count) {
-    m[word] = count;
-    sum += count;
-  }
-
-  for (int32 i = 0; i < m.size(); i++) {
-    m[i] /= sum;
-  }
-}
+}  // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using namespace kaldi::rnnlm;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
     using fst::SymbolTable;
@@ -135,18 +111,23 @@ int main(int argc, char *argv[]) {
     using fst::ReadFstKaldi;
 
     const char *usage =
-        "Rescores lattice with kaldi-rnnlm. This script is called from \n"
-        "scripts/rnnlm/lmrescore_pruned.sh. An example for rescoring \n"
-        "lattices is at egs/swbd/s5c/local/rnnlm/run_lstm.sh \n"
+        "Rescores lattice with pruned and cache-adapted kaldi-rnnlm. This script \n"
+        "is called from scripts/rnnlm/lmrescore_rnnlm_lat_pruned_cache_adapt.sh\n"
+        "An example for rescoring lattices with the adapted rnnlm is at \n"
+        "egs/swbd/s5c/rnnlm_adapt_by_cache.sh \n"
         "\n"
         "Usage: lattice-lmrescore-kaldi-rnnlm-pruned-cache-adapt [options] \\\n"
         "             <old-lm-rxfilename> <embedding-file> \\\n"
         "             <raw-rnnlm-rxfilename> \\\n"
-        "             <lattice-rspecifier> <lattice-wspecifier>\n"
+        "             <lattice-rspecifier> <lattice-wspecifier> \\\n"
+        "             <utt2conv-mapfile> <background-unigram>\n"
         " e.g.: lattice-lmrescore-kaldi-rnnlm-pruned-cache-adapt --lm-scale=-1.0 fst_words.txt \\\n"
         "              --bos-symbol=1 --eos-symbol=2 \\\n"
+        "              --correction_weight=0.8 --two-speaker-mode=true \\\n"
+        "              --one-best-mode=true \\\n"
         "              data/lang_test/G.fst word_embedding.mat \\\n"
-        "              final.raw ark:in.lats ark:out.lats\n\n";
+        "              final.raw ark:in.lats ark:out.lats \\\n"
+        "              utt2conv unigram-file\n\n";
 
     ParseOptions po(usage);
     rnnlm::RnnlmComputeStateComputationOptions opts;
@@ -233,8 +214,8 @@ int main(int argc, char *argv[]) {
                                                   lm_to_subtract_det_backoff);
     }
 
-    map<string, string> utt2convo;
-    ReadUttToConvo(utt_to_convo_file, utt2convo);
+    map<std::string, std::string> utt2convo;
+    ReadUttToConvo(utt_to_convo_file, &utt2convo);
 
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);
@@ -255,10 +236,10 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_err = 0;
 
-    std::map<string, map<int, double> > per_convo_counts;
-    std::map<string, map<int, double> > per_utt_counts;
-    std::map<string, double> per_convo_sums;
-    std::map<string, double> per_utt_sums;
+    std::map<std::string, map<int, double> > per_convo_counts;
+    std::map<std::string, map<int, double> > per_utt_counts;
+    std::map<std::string, double> per_convo_sums;
+    std::map<std::string, double> per_utt_sums;
 
     {
       SequentialCompactLatticeReader clat_reader(lats_rspecifier);
@@ -270,7 +251,7 @@ int main(int argc, char *argv[]) {
         fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
         kaldi::TopSortCompactLatticeIfNeeded(&clat);
 
-        string convo_id = utt2convo[utt_id];
+        std::string convo_id = utt2convo[utt_id];
         if (two_speaker_mode) {
           std::string convo_id_2spk = std::string(convo_id.begin(),
                                                   convo_id.end() - 2);
