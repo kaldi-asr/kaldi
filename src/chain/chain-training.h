@@ -28,6 +28,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
+#include "hmm/posterior.h"
 #include "tree/context-dep.h"
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
@@ -118,7 +119,9 @@ struct ChainTrainingOptions {
                            used in computing the cross-entropy objective value.
    @param [out] numerator_post  If non-NULL, then the posterior from the numerator
                            forward-backward will be written here (note: it won't be
-                           scaled by the supervision weight).  This is intended for
+                           scaled by the supervision weight).  The order is the
+                           same as the input (i.e., frame 0 for all sequences,
+                           then frame 1, etc). This is intended for
                            use in the adaptation framework used in "chaina" training.
 */
 void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
