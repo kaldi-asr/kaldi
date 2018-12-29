@@ -172,7 +172,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     // derivatives first (and to compute them, at least one of the *_deriv
     // arguments should be non-NULL).
     CuMatrix<BaseFloat> xent_deriv;
-    // Rcurse
+    // Recurse
     ComputeChainObjfAndDeriv(opts, den_graph, supervision,
                              nnet_output, objf, l2_term,
                              weight, nnet_output_deriv,
