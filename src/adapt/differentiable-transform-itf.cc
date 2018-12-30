@@ -136,5 +136,34 @@ DifferentiableTransform* DifferentiableTransform::ReadFromConfig(
   return transform;
 }
 
+int32 DifferentiableTransformMapped::NumPdfs() const {
+  if (pdf_map.empty())
+    return transform->NumClasses();
+  else
+    return static_cast<int32>(pdf_map.size());
+}
+
+void DifferentiableTransformMapped::Read(std::istream &is, bool binary) {
+  if (transform)
+    delete transform;
+  transform = DifferentiableTransform::ReadNew(is, binary);
+  ReadIntegerVector(is, binary, &pdf_map);
+  Check();
+}
+
+void DifferentiableTransformMapped::Write(std::ostream &os, bool binary) const {
+  Check();
+  transform->Write(os, binary);
+  WriteIntegerVector(os, binary, pdf_map);
+}
+
+
+void DifferentiableTransformMapped::Check() const {
+  KALDI_ASSERT(transform != NULL &&
+               (pdf_map.empty() ||
+                *std::max_element(pdf_map.begin(), pdf_map.end()) + 1 ==
+                transform->NumClasses()));
+}
+
 }  // namespace differentiable_transform
 }  // namespace kaldi

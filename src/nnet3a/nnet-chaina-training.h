@@ -200,7 +200,7 @@ class NnetChainaModels {
   // AmNnetSimple object returned by 'GetNnetForLang'.
   Nnet *GetRawNnetForLang(const std::string &language_name);
 
-  differentiable_transform::DifferentiableTransform *GetTransformForLang(
+  differentiable_transform::DifferentiableTransformMapped *GetTransformForLang(
       const std::string &language_name);
 
   // Writes the files
@@ -237,11 +237,7 @@ class NnetChainaModels {
     // den_fst comes from <den_fst_dir>/<language_name>.fst
     fst::StdVectorFst den_fst;
     // transform comes from <transform_dir>/<language_name>.ada
-    differentiable_transform::DifferentiableTransform *transform;
-    LanguageInfo(): transform(NULL) { }
-    ~LanguageInfo() {
-      delete transform;
-    }
+    differentiable_transform::DifferentiableTransformMapped transform;
   };
 
 
@@ -260,7 +256,7 @@ class NnetChainaModels {
   std::string model_dir_;
   // Directory where denominator FSTs are located.
   std::string den_fst_dir_;
-  // Directory where transforms (type: DifferentiableTransform) are located.
+  // Directory where transforms (type: DifferentiableTransformMapped) are located.
   std::string transform_dir_;
 
   // This corresponds to <model_dir>/bottom.raw.
@@ -302,7 +298,7 @@ class NnetChainaTopTrainer {
       const std::string &lang_name,
       const NnetChainaTrainingOptions &config,
       const fst::StdVectorFst &den_fst,
-      const differentiable_transform::DifferentiableTransform &transform,
+      const differentiable_transform::DifferentiableTransformMapped &transform,
       Nnet *nnet);
 
   /**  Train on one minibatch.
@@ -530,6 +526,21 @@ class NnetChainaTopTrainer {
                       at the input are assumed to be consecutive.
         @param [in] top_subsampling_factor  The number of frames with which
                       't' values at the output are separated.
+        @param [in] pdf_map  This is either the empty vector (meaning:
+                     the DifferentiableTransform object deals with pdf-ids
+                     directly), or it is a map from pdf-ids to cluster-ids.
+                     This would actually be obtained from build-tree-two-level
+                     after building a two-level tree, and it would be stored
+                     in the .ada object.  The actual class labels that
+                     the DifferentiableTransform object deals with, will
+                     be the values stored in 'pfd_map' (i.e. these cluster-ids).
+        @param [in] num_classes  Provided for checking purposes only: the
+                     number of classes that the DifferentiableTransform object
+                     expects.  If pdf_map is empty we expect this to be the
+                     same as the number of pdf-ids (and the ints in
+                     post_at_output to be in the range [0, num_classes - 1]).
+                     If pdf_map is nonempty, we expect this to be the same
+                     as the maximum element in pdf_map, plus one.
         @param [out] post_at_input  The posterior after padding and possibly
                       subsampling.  Should have the correct size but its
                       elements are expected to be empty at entry.  Like
@@ -541,6 +552,8 @@ class NnetChainaTopTrainer {
                         int32 num_sequences,
                         int32 first_input_t,
                         int32 top_subsampling_factor,
+                        const std::vector<int32> &pdf_map,
+                        int32 num_classes,
                         Posterior *post_at_input);
 
   /**
@@ -590,7 +603,7 @@ class NnetChainaTopTrainer {
 
   const NnetChainaTrainingOptions &opts_;
   chain::DenominatorGraph den_graph_;
-  const differentiable_transform::DifferentiableTransform &transform_;
+  const differentiable_transform::DifferentiableTransformMapped &transform_;
   CachingOptimizingCompiler compiler_;
 
 
@@ -703,9 +716,8 @@ class NnetChainaBottomTrainer {
                 NnetComputer *computer,
                 CuMatrix<BaseFloat> *output_deriv);
 
-
-  // Prints out the final stats, and return true if there was a nonzero count.
-  bool PrintTotalStats() const;
+  // Prints the max-change stats for the bottom nnet.
+  void PrintTotalStats() const;
 
   // Calls kaldi::nnet3::ConsolidateMemory() on nnet_ and delta_nnet_; we do
   // this after the first minibatch of training, to reduce fragmentation.

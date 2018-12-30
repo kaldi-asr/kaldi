@@ -183,7 +183,7 @@ class DifferentiableTransform {
              same dimensions as 'input'.  It does not have to be free of
              NaNs when you call this function.
      @return  This function returns either NULL or an object of type
-             DifferentiableTransformItf*, which is expected to later be given
+             DifferentiableTransform*, which is expected to later be given
              to the function TrainingBackward().  It will store
              any information that needs to be remembered for the backward
              phase.
@@ -369,6 +369,41 @@ class DifferentiableTransform {
   virtual ~DifferentiableTransform() { }
  protected:
   int32 num_classes_;
+};
+
+
+/**
+   struct DifferentiableTransformMapped is just a holder of an object of type
+   DifferentiableTransform and a vector<int32> representing a map from
+   pdf-ids to classes.
+
+   This map (if present) will be obtained from the binary build-tree-two-level,
+   and will map from tree leaves to a smaller number of classes (e.g. 200), so
+   that we can reasonably estimate the class means from a single minibatch
+   during training.  The contents of 'pdf_map' should be in the range [0,
+   transform->NumClases() - 1].
+
+ */
+struct DifferentiableTransformMapped {
+  DifferentiableTransform *transform;
+  std::vector<int32> pdf_map;
+
+  // This function returns pdf_map.size() if pdf_map is nonempty; otherwise
+  // it returns transform->NumClasses().
+  int32 NumPdfs() const;
+
+  void Read(std::istream &is, bool binary);
+
+  void Write(std::ostream &os, bool binary) const;
+
+  // Check that the dimensions are consistent, i.e. pdf_map.empty() or
+  // transform->NumClasses() == max-element-in-pdf_map + 1.
+  void Check() const;
+
+  DifferentiableTransformMapped(): transform(NULL)  {}
+
+  ~DifferentiableTransformMapped() { delete transform; }
+
 };
 
 

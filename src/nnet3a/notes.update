@@ -1,3 +1,80 @@
+===
+
+ Meta-info for dumping egs:
+   only really need tree,trans_mdl,normalization.fst,den.fst
+
+
+===
+
+
+Things needed per language in order to dump raw egs:
+
+ Configuration values:
+   - left and right acoustic context
+   - frames_per_eg, frames_overlap_per_eg, frame_subsampling_factor,
+     alignment_subsampling_factor, constrained, compress, left_tolerance,
+     right_tolerance, lattice_lm_scale, lattice_prune_beam, acwt
+
+     (Also: left_context_initial,right_context_initial... although
+      the use of these will make it harder to deal with setups with
+      little data per speaker).
+
+  - tree, tree.map, 0.trans_mdl, normalization.fst (and probably den.fst
+    so we can save it in the egs dir).
+
+  - Format of raw egs dir (we'll likely delete this right after creation):
+
+    info.txt:
+     dir_type raw_chaina_egs
+     num_clusters 200
+     num_chunks 120000
+     num_leaves 6543
+     frames_per_chunk 140,110,100
+     # number of input frames, not including context
+     num_input_frames_tot 432143218
+     left_context 10
+     left_context_initial 10
+     right_context 10
+     right_context_initial 10
+     ... various configuration values here...
+
+     # note: tree.map is optional, since the egs don't depend on it, but it will generally
+     # be generated with the tree.
+     misc/{tree,tree.map,0.trans_mdl,normalization.fst,den.fst}
+
+     egs.scp will contain encodings like:
+      <utt_id>-<frame_id>-<chunk_left_context>-<chunk_num_frames>-<chunk_right_context>-v1
+
+  - Format of merged-egs dir
+
+     dir_type merged_chaina_egs
+     chunks_per_spk 4
+    .. otherwise like raw one.  misc/ directory contains similar things.
+
+  - Format of final-egs dir (might be merged).
+   info.txt:
+     dir_type final_chain_egs
+     langs  english french
+     num_input_frames_tot 432143218
+     num_scp_files 24
+     frames_per_scp_file 143241
+     chunks_per_spk 4
+     num_chunks xxxx
+
+   den_fsts
+
+
+=================
+
+
+
+  - contains egs.N.{scp,ark}, which might be links to files in the storage dir.
+
+  egs.scp
+
+The
+
+
 
 
 

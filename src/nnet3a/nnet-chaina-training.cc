@@ -104,12 +104,7 @@ NnetChainaModels::LanguageInfo *NnetChainaModels::GetInfoForLang(
       }
     }
     ReadFstKaldi(den_fst_filename, &(info->den_fst));
-    {
-      bool binary;
-      Input ki(transform_filename, &binary);
-      info->transform = differentiable_transform::DifferentiableTransform::ReadNew(
-          ki.Stream(), binary);
-    }
+    ReadKaldiObject(transform_filename, &(info->transform));
     lang_info_[lang] = info;
     return info;
   }
@@ -144,11 +139,11 @@ Nnet* NnetChainaModels::GetRawNnetForLang(
   return &(info->am_nnet.GetNnet());
 }
 
-differentiable_transform::DifferentiableTransform*
+differentiable_transform::DifferentiableTransformMapped*
 NnetChainaModels::GetTransformForLang(
     const std::string &language_name) {
   LanguageInfo *info = GetInfoForLang(language_name);
-  return info->transform;
+  return &(info->transform);
 }
 
 
@@ -190,7 +185,7 @@ NnetChainaTopTrainer::NnetChainaTopTrainer(
     const std::string &lang_name,
     const NnetChainaTrainingOptions &config,
     const fst::StdVectorFst &den_fst,
-    const differentiable_transform::DifferentiableTransform &transform,
+    const differentiable_transform::DifferentiableTransformMapped &transform,
     Nnet *nnet):
     lang_name_(lang_name),
     opts_(config),
@@ -594,7 +589,10 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
 
   Posterior post_padded(input.NumRows());
   ConvertPosterior(post, num_sequences, first_input_t,
-                   top_subsampling_factor, &post_padded);
+                   top_subsampling_factor,
+                   transform_.pdf_map,
+                   transform_.transform->NumClasses(),
+                   &post_padded);
 
   structure.adapted = true;
   std::shared_ptr<const NnetComputation> computation_adapted =
@@ -605,7 +603,7 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
       adapted_input_deriv;
 
   using namespace differentiable_transform;
-  MinibatchInfoItf *minibatch_info = transform_.TrainingForward(
+  MinibatchInfoItf *minibatch_info = transform_.transform->TrainingForward(
       input, num_sequences, num_spk, post_padded, &adapted_input);
 
   success = TrainAdapted(
@@ -620,18 +618,53 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
   if (input_deriv == NULL)
     delete minibatch_info;
   else
-    transform_.TrainingBackward(input, adapted_input_deriv,
-                                num_sequences, num_spk, post_padded,
-                                minibatch_info, input_deriv);
+    transform_.transform->TrainingBackward(input, adapted_input_deriv,
+                                           num_sequences, num_spk, post_padded,
+                                           minibatch_info, input_deriv);
   return true;
 }
 
+
+/**
+   This helper function for ConvertPosterior() converts from pdf-ids to
+   cluster-ids using the map provided in pdf_map, if it is nonempty.
+   If pdf_map is empty, it just copies the pairs over unchanged.
+ */
+static inline void ConvertPosteriorElement(
+    const std::vector<int32> &pdf_map,
+    int32 num_classes,
+    const std::vector<std::pair<int32, BaseFloat> > &post_elem_in,
+    std::vector<std::pair<int32, BaseFloat> > *post_elem_out) {
+  if (pdf_map.empty()) {
+    *post_elem_out = post_elem_in;
+    if (!post_elem_in.empty()) {
+      // We just check the first int32-- this is a spot-check that the
+      // pdf-ids are in the correct range.
+      KALDI_ASSERT(post_elem_in[0].first < num_classes);
+    }
+  } else {
+    int32 num_classes_in = pdf_map.size();
+    size_t num_pairs = post_elem_in.size();
+    post_elem_out->resize(num_pairs);
+    for (size_t i =0; i < num_pairs; i++) {
+      int32 pdf_id = post_elem_in[i].first;
+      BaseFloat weight = post_elem_in[i].second;
+      KALDI_ASSERT(pdf_id < num_classes_in);
+      int32 cluster_id = pdf_map[pdf_id];
+      KALDI_ASSERT(cluster_id < num_classes);
+      (*post_elem_out)[i].first = cluster_id;
+      (*post_elem_out)[i].second = weight;
+    }
+  }
+}
 
 void NnetChainaTopTrainer::ConvertPosterior(
     const Posterior &post_at_output,
     int32 num_sequences,
     int32 first_input_t,
     int32 top_subsampling_factor,
+    const std::vector<int32> &pdf_map,
+    int32 num_classes,
     Posterior *post_at_input) {
   int32 output_post_size = post_at_output.size(),
       input_post_size = post_at_input->size(),
@@ -657,11 +690,13 @@ void NnetChainaTopTrainer::ConvertPosterior(
       for (int32 n = 0; n < num_sequences; n++) {
         int32 input_index = num_sequences * (t_in - first_input_t) + n,
             output_index = num_sequences * ((t_out - first_output_t) / s) + n;
-        (*post_at_input)[input_index] = post_at_output[output_index];
+        ConvertPosteriorElement(pdf_map, num_classes,
+                                post_at_output[output_index],
+                                &((*post_at_input)[input_index]));
       }
     }
-    // else just leave the posterior for this frame empty.  This will happen for
-    // most of the frames that were added for left and right context.
+    // else just leave the input posterior for this frame empty.  This will
+    // happen for most of the frames that were added for left and right context.
   }
 }
 
@@ -865,7 +900,10 @@ std::shared_ptr<const NnetComputation> NnetChainaBottomTrainer::GetComputation(
   return computation;
 }
 
-
+void NnetChainaBottomTrainer::PrintTotalStats() const {
+  KALDI_LOG << "Max-change stats for bottom nnet:";
+  max_change_stats_.Print(*nnet_);
+}
 NnetChainaBottomTrainer::~NnetChainaBottomTrainer() {
   delete delta_nnet_;
 }
