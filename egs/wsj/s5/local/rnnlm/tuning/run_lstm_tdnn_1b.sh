@@ -33,7 +33,7 @@ stage=-10
 train_stage=-10
 
 # variables for rnnlm rescoring
-ac_model_dir=exp/chain/tdnn_lstm1b_sp
+ac_model_dir=exp/chain/tdnn1g_sp
 ngram_order=4
 decode_dir_suffix=rnnlm
 
@@ -43,7 +43,7 @@ decode_dir_suffix=rnnlm
 
 
 text=data/local/dict_nosp_larger/cleaned.gz
-wordlist=data/lang_nosp/words.txt
+wordlist=data/lang_nosp_bd/words.txt
 text_dir=data/rnnlm/text_nosp
 mkdir -p $dir/config
 set -e
@@ -127,7 +127,7 @@ if [ $stage -le 4 ]; then
     rnnlm/lmrescore_pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.8 --max-ngram-order $ngram_order \
-      data/lang_test_$LM $dir \
+      data/lang_test_bd_$LM $dir \
       data/test_${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix} &
   done
