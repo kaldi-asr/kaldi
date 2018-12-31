@@ -34,7 +34,8 @@ if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --dir1 $dir1 --dir2 $dir2 --dir3 $dir3 \
                         --text1 $text1 --text2 $text2 --text3 $text3
- 
+
+  echo "$0: Preparing lexicon and LM..." 
   local/prepare_dict.sh
 
   utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
@@ -45,9 +46,6 @@ if [ $stage -le 0 ]; then
                      data/local/dict/lexicon.txt data/lang
 fi
 
-# Now make MFCC features.
-# mfccdir should be some place with a largish disk where you
-# want to store MFCC features.
 mfccdir=mfcc
 if [ $stage -le 1 ]; then
   echo "$0: Preparing the test and train feature files..."
@@ -59,41 +57,41 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-# Here we start the AM
 if [ $stage -le 2 ]; then
-  # Let's create a subset with 10k segments to make quick flat-start training:
+  echo "$0: creating sub-set and training monophone system"
   utils/subset_data_dir.sh data/train 10000 data/train.10K || exit 1;
 
-  # Train monophone models on a subset of the data, 10K segment
-  # Note: the --boost-silence option should probably be omitted by default
   steps/train_mono.sh --nj 40 --cmd "$train_cmd" \
     data/train.10K data/lang exp/mono || exit 1;
 fi
 
 if [ $stage -le 3 ]; then
-  # Get alignments from monophone system.
+  echo "$0: Aligning data using monophone system"
   steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
     data/train data/lang exp/mono exp/mono_ali || exit 1;
-  
-  # train tri1 [first triphone pass]
+
+  echo "$0: training triphone system with delta features"
   steps/train_deltas.sh --cmd "$train_cmd" \
     2500 30000 data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 fi
 
 if [ $stage -le 4 ] && $decode_gmm; then
-  # First triphone decoding
   utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
   steps/decode.sh  --nj $num_decode_jobs --cmd "$decode_cmd" \
     exp/tri1/graph data/test exp/tri1/decode
 fi
 
 if [ $stage -le 5 ]; then
+  echo "$0: Aligning data and retraining and realigning with lda_mllt"
   steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
     data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
   # train and decode tri2b [LDA+MLLT]
   steps/train_lda_mllt.sh --cmd "$train_cmd" 4000 50000 \
     data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
+
+  steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
+    --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
 fi
 
 if [ $stage -le 6 ] && $decode_gmm; then
@@ -103,10 +101,9 @@ if [ $stage -le 6 ] && $decode_gmm; then
 fi
 
 if [ $stage -le 7 ]; then
-  steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
-    --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
-
+  echo "$0: Training a regular chain model using the e2e alignments..."
   local/chain/run_tdnn.sh      #tdnn recipe:
 fi
+
 echo training succedded
 exit 0
