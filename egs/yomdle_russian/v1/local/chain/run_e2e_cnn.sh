@@ -27,8 +27,6 @@ tdnn_dim=450
 minibatch_size=150=64,32/300=32,16/600=16,8/1200=8,4
 cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
-lang_decode=data/lang
-decode_e2e=true
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 

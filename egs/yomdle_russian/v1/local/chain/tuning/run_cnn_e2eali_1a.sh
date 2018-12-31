@@ -32,8 +32,6 @@ tdnn_dim=550
 # training options
 srand=0
 remove_egs=false
-lang_decode=data/lang
-decode_chain=true
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
