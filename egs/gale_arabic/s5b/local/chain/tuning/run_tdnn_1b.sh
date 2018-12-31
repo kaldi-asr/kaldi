@@ -100,7 +100,7 @@ if $run_chain_common; then
                                   --lores-train-data-dir ${lores_train_data_dir} \
                                   --lang $lang \
                                   --lat-dir $lat_dir \
-                                  --num-leaves 7000 \
+                                  --num-leaves 3500 \
                                   --tree-dir $tree_dir || exit 1;
 fi
 
