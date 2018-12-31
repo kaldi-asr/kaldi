@@ -7,7 +7,6 @@
 #
 # Given a trials and scores file, this script
 # prepares input for the binary compute-eer.
-from __future__ import print_function
 import sys
 trials = open(sys.argv[1], 'r').readlines()
 scores = open(sys.argv[2], 'r').readlines()

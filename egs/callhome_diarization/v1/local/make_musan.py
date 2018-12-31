@@ -4,7 +4,6 @@
 #
 # This file is meant to be invoked by make_musan.sh.
 
-from __future__ import print_function
 import os, sys
 
 def process_music_annotations(path):

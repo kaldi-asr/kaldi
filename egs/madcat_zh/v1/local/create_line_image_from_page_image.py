@@ -14,8 +14,6 @@
  be vertically or horizontally aligned). Hence to extract line image from line bounding box,
  page image is rotated and line image is cropped and saved.
 """
-from __future__ import division
-from __future__ import print_function
 
 import sys
 import argparse

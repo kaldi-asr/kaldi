@@ -5,7 +5,6 @@
     and end of the word.
     Eg. normalize_spaces.py <input-file> <output-file>
 """
-from __future__ import print_function
 import sys
 from snor import SnorIter
 

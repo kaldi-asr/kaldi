@@ -4,7 +4,6 @@
     are not present in the reference utterance ids.
     Eg. find_missing_hyp_ids.py <ref-file> <hyp-file>
 """
-from __future__ import print_function
 
 import sys
 from snor import SnorIter

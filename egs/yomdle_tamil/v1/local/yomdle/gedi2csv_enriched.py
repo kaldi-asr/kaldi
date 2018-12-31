@@ -3,7 +3,6 @@
 '''
 Convert GEDI-type bounding boxes to CSV format
 '''
-from __future__ import print_function
 
 import logging
 import os

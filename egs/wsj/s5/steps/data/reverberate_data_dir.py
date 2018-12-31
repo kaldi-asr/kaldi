@@ -5,8 +5,6 @@
 # script to generate reverberated data
 
 # we're using python 3.x style print but want it to work in python 2.x,
-from __future__ import print_function
-from __future__ import division
 import argparse, shlex, glob, math, os, random, sys, warnings, copy, imp, ast
 
 data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')

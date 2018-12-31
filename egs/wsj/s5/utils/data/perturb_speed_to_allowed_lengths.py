@@ -7,7 +7,6 @@
 """ This script perturbs speeds of utterances to force their lengths to some
     allowed lengths spaced by a factor (like 10%)
 """
-from __future__ import division
 
 import argparse
 import os

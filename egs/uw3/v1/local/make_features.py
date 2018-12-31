@@ -11,7 +11,6 @@
 
     eg. local/make_features.py data/train --feat-dim 40
 """
-from __future__ import division
 
 import argparse
 import os

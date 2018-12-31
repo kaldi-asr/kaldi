@@ -12,7 +12,6 @@
       images.scp file: LDC0009_000000_arb-NG-2-76513-5612324_2_LDC0009_00z0
       data/local/lines/1/arb-NG-2-76513-5612324_2_LDC0009_00z0.tif
 """
-from __future__ import print_function
 
 import argparse
 import os

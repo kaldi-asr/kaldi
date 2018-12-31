@@ -7,7 +7,6 @@
     arabic comma to regular comma.
     Eg. normalize_farsi.py <input-file> <output-file>
 """
-from __future__ import print_function
 
 import sys
 from snor import SnorIter

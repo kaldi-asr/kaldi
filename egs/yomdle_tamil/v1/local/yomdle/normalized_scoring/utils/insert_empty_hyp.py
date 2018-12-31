@@ -4,7 +4,6 @@
     in cases where some of the reference ids are missing in the hypothesis.
     Eg. insert_empty_hyp.py <ids-to-insert> <in-hyp-file> <out-hyp-file>
 """
-from __future__ import print_function
 
 import sys
 from snor import SnorIter

@@ -16,7 +16,6 @@
       images.scp file: english_phone_books_0001_0 \
       data/download/truth_line_image/english_phone_books_0001_0.png
 """
-from __future__ import print_function
 import argparse
 import os
 import sys

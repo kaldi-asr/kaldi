@@ -6,7 +6,6 @@
         " They have come ! " he said reverently , gripping his
     Eg. trans_to_tokenized_words.py <input-file> <output-file>
 """
-from __future__ import print_function
 
 import unicodedata
 import sys

@@ -12,7 +12,6 @@
       utt2spk file: 000_a01-000u-00 000
       images.scp file: 000_a01-000u-00 data/local/lines/a01/a01-000u/a01-000u-00.png
 """
-from __future__ import print_function
 
 import argparse
 import os
