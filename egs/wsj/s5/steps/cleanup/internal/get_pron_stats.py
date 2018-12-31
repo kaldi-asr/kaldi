@@ -4,6 +4,7 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import sys
 import warnings
@@ -211,7 +212,7 @@ def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_pron
     return stats
 
 def WriteStats(stats, file_handle):            
-    for word_pron, count in stats.iteritems():
+    for word_pron, count in stats.items():
         print('{0} {1} {2}'.format(count, word_pron[0], word_pron[1]), file=file_handle)
     file_handle.close()
 

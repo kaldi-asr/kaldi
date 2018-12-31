@@ -76,14 +76,14 @@ def GetStatsFromArcInfo(arc_info_file_handle, phone_map_handle):
         prons[word].add(phones)
         stats_unmapped[(word, phones)] = stats_unmapped.get((word, phones), 0) + count
      
-    for word_pron, count in stats_unmapped.iteritems():
+    for word_pron, count in stats_unmapped.items():
         phones_unmapped = word_pron[1].split()
         phones = [phone_map[phone] for phone in phones_unmapped]
         stats[(word_pron[0], " ".join(phones))] = count
     return stats
 
 def WriteStats(stats, file_handle):
-    for word_pron, count in stats.iteritems():
+    for word_pron, count in stats.items():
         print('{2} {0} {1}'.format(word_pron[0], word_pron[1], count),
               file=file_handle)
     file_handle.close()
