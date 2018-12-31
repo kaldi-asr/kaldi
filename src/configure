@@ -558,66 +558,23 @@ function linux_check_static {
   fi
 }
 
-function linux_configure_debian_ubuntu {
-  m=$1
-  ATLASLIBS="/usr/lib$m/atlas-base/libatlas.so.3gf  /usr/lib$m/atlas-base/libf77blas.so.3gf /usr/lib$m/atlas-base/libcblas.so.3gf  /usr/lib$m/atlas-base/liblapack_atlas.so.3gf"
+function linux_configure_atlas_generic {
+  # You pass in a directory (e.g. /usr/lib/atlas-base) and a suffix (e.g. so.3.0)
+  # and it tries to find ATLAS libraries with that dir and suffix.  On success it
+  # returns 0; on failure, it returns 1.
+  dir=$1
+  suffix=$2
+  ATLASLIBS="$dir/libatlas.$suffix $dir/libf77blas.$suffix $dir/libcblas.$suffix $dir/liblapack_atlas.$suffix"
   for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
   if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
-    exit 1;
-  fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  echo >> kaldi.mk
-  if [[ "$TARGET_ARCH" == arm* ]]; then
-    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-   elif [[ "$TARGET_ARCH" == ppc64le ]]; then
-    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
-  else
-    cat makefiles/linux_atlas.mk >> kaldi.mk
-  fi
-  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  linux_configure_speex
-}
-
-function linux_configure_debian_ubuntu3 {
-  ATLASLIBS="/usr/lib/libatlas.so.3  /usr/lib/libf77blas.so.3 /usr/lib/libcblas.so.3  /usr/lib/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
-    exit 1;
-  fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  echo >> kaldi.mk
-  if [[ "$TARGET_ARCH" == arm* ]]; then
-    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
-    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
-  else
-    cat makefiles/linux_atlas.mk >> kaldi.mk
-  fi
-  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  linux_configure_speex
-}
-
-function linux_configure_debian7 {
-  ATLASLIBS="/usr/lib/atlas-base/libatlas.so.3.0 /usr/lib/atlas-base/libf77blas.so.3.0 /usr/lib/atlas-base/libcblas.so.3 /usr/lib/atlas-base/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
+    echo "configure: failed to find symbol ATL_cgetrf in library $lapacklib"
     exit 1;
   fi
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_atlas_generic: dir=$dir,suffix=$suffix" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo >> kaldi.mk
@@ -628,31 +585,9 @@ function linux_configure_debian7 {
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
-  echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  echo "Successfully configured ATLAS with ATLASLIBS=$ATLASLIBS"
   $use_cuda && configure_cuda
   linux_configure_speex
-}
-
-function linux_configure_redhat {
-  m=$1  # 64 or empty.
-  ATLASLIBS="/usr/lib$m/atlas/libatlas.so.3 /usr/lib$m/atlas/libf77blas.so.3 /usr/lib$m/atlas/libcblas.so.3 /usr/lib$m/atlas/libclapack.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat" && exit 1;
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo >> kaldi.mk
-  if [[ "$TARGET_ARCH" == arm* ]]; then
-    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
-    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
-  else
-    cat makefiles/linux_atlas.mk >> kaldi.mk
-  fi
-  echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
 }
 
 function linux_configure_redhat_fat {
@@ -680,7 +615,7 @@ function linux_configure_redhat_fat {
   $use_cuda && configure_cuda
 }
 
-function linux_configure_static {
+function linux_configure_atlas_static {
   if $threaded_atlas; then pt=pt; else pt=""; fi
 
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
@@ -699,11 +634,11 @@ function linux_configure_static {
   echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
-  # should always have symbols like ATL_cgetrf defined, so we test for this,
-  # for all the names we have encountered.
+  # should always have symbols like ATL_cgetrf and clapack_cgetrf defined, so we test for this.
   for libname in liblapack liblapack_atlas  libclapack; do
     if [ -f $ATLASLIBDIR/${libname}.a -a "$ATLASLIBS" == "" ]; then
-      if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null; then
+      if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null && \
+	 nm  $ATLASLIBDIR/${libname}.a  | grep clapack_cgetrf >/dev/null; then
          ATLASLIBS=$ATLASLIBDIR/${libname}.a
          echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
       fi
@@ -782,11 +717,11 @@ function linux_configure_dynamic {
     echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
     ATLASLIBS=
     # The Lapack part of ATLAS seems to appear under various different names.. but it
-    # should always have symbols like ATL_cgetrf defined, so we test for this,
-    # for all the names we have encountered.
+    # should always have symbols like clapack_cgetrf and ATL_cgetrf defined, so we test for this.
     for libname in lapack lapack_atlas  clapack; do
       if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
-        if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
+        if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep clapack_cgetrf >/dev/null && \
+           nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
            ATLASLIBS="$ATLASLIBDIR/lib${libname}.so"
            echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
         fi
@@ -1229,33 +1164,18 @@ elif [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two
     # libraries worked.
 
-    if $static_math; then
-      # Prefer static to dynamic math.
-      linux_configure_static || \
-        linux_configure_debian_ubuntu3 || \
-        linux_configure_dynamic || \
-        linux_configure_debian_ubuntu 64 || \
-        linux_configure_debian_ubuntu || \
-        linux_configure_debian7 || \
-        linux_configure_redhat 64 || \
-        linux_configure_redhat || \
-        linux_configure_redhat_fat 64 || \
-        linux_configure_redhat_fat || \
-        linux_atlas_failure "Failed to configure ATLAS libraries";
-    else
-      # Prefer dynamic to static math.
-      linux_configure_debian_ubuntu3 || \
-        linux_configure_dynamic || \
-        linux_configure_static || \
-        linux_configure_debian_ubuntu 64 || \
-        linux_configure_debian_ubuntu || \
-        linux_configure_debian7 || \
-        linux_configure_redhat 64 || \
-        linux_configure_redhat || \
-        linux_configure_redhat_fat 64 || \
-        linux_configure_redhat_fat || \
-        linux_atlas_failure "Failed to configure ATLAS libraries";
-    fi
+    ( $static_math && linux_configure_atlas_static ) || \
+      linux_configure_atlas_generic /usr/lib "so.3" || \
+      linux_configure_atlas_generic /usr/lib/atlas-base "so.3gf" || \
+      linux_configure_atlas_generic /usr/lib64/atlas-base "so.3gf" \
+      linux_configure_atlas_generic /usr/lib/atlas "so.3" || \
+      linux_configure_atlas_generic /usr/lib64/atlas "so.3" || \
+      linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so.3" || \
+      linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so" || \
+      linux_configure_redhat_fat 64 || \
+      linux_configure_redhat_fat || \
+      linux_configure_atlas_static || \
+      linux_atlas_failure "Failed to configure ATLAS libraries";
 
   elif [ "$MATHLIB" == "MKL" ]; then
     if [ "$TARGET_ARCH" != "x86_64" ]; then
