@@ -19,6 +19,7 @@ images_scp_dir=data/local
 overwrite=false
 subset=false
 augment=false
+use_extra_corpus_text=true
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -35,9 +36,9 @@ if [ $stage -le 0 ]; then
     echo "Exiting with status 1 to avoid data corruption"
     exit 1;
   fi
-  echo "$0: Downloading data splits...$(date)"
-  local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
-                         --download_dir2 $download_dir2 --download_dir3 $download_dir3
+  local/prepare_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
+                         --download_dir2 $download_dir2 --download_dir3 $download_dir3 \
+                         --use_extra_corpus_text $use_extra_corpus_text
 
   for set in test train dev; do
     data_split_file=$data_splits_dir/madcat.$set.raw.lineid
@@ -48,7 +49,7 @@ if [ $stage -le 0 ]; then
         --data data/local/$set --subset $subset --augment $augment || exit 1
   done
 
-  echo "$0: Preparing data..."
+  echo "$0: Processing data..."
   for set in dev train test; do
     local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
       $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
