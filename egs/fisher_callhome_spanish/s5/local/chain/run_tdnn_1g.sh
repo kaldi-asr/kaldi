@@ -2,7 +2,13 @@
 
 # 1g is like 1f but upgrading to a "resnet-style TDNN-F model", i.e.
 #   with bypass resnet connections, and re-tuned.
+# compute-wer --text --mode=present ark:exp/chain/multipsplice_tdnn/decode_fsp_train_test/scoring_kaldi/test_filt.txt ark,p:- 
+# %WER 22.21 [ 8847 / 39831, 1965 ins, 2127 del, 4755 sub ]
+# %SER 56.98 [ 3577 / 6278 ]
+# Scored 6278 sentences, 0 not present in hyp.
 
+# steps/info/chain_dir_info.pl  exp/chain/multipsplice_tdnn
+# exp/chain/multipsplice_tdnn: num-iters=296 nj=1..2 num-params=8.2M dim=40+100->2489 combine=-0.170->-0.165 (over 8) xent:train/valid[196,295,final]=(-2.30,-1.93,-1.83/-2.24,-1.96,-1.86) logprob:train/valid[196,295,final]=(-0.208,-0.169,-0.164/-0.189,-0.161,-0.158)
 
 set -e -o pipefail
 
