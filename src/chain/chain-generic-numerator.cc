@@ -209,9 +209,33 @@ BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
   return log_prob_product + log_scale_product;
 }
 
+/* This function converts the pdf occupation probabilties (computed
+   using Forward-Backward on the numerator graph) to posteriors.
+   "derivs" is frames_per_sequence by pdf_index_size (i.e., indices.size())
+*/
+static void ConvertDerivsToPosterior(const MatrixBase<BaseFloat> &derivs,
+                                     const std::vector<MatrixIndexT> &indices,
+                                     int32 pdf_stride,
+                                     int32 frames_per_sequence,
+                                     int32 num_sequences,
+                                     Posterior *post) {
+  post->resize(frames_per_sequence * num_sequences);
+  for (size_t t = 0; t < derivs.NumRows(); ++t)
+    for (int32 n = 0; n < derivs.NumCols(); ++n) {
+      BaseFloat posterior = Exp(derivs(t, n));
+      if (posterior != 0.0) {
+        int32 seq = indices[n] / pdf_stride;
+        int32 pdfid = indices[n] % pdf_stride;
+        (*post)[t * num_sequences + seq].push_back(
+            std::make_pair(pdfid, posterior));
+      }
+    }
+}
+
 bool GenericNumeratorComputation::ForwardBackward(
                                  BaseFloat *total_loglike,
-                                 CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+                                 CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                                 Posterior *numerator_post) {
   KALDI_ASSERT(total_loglike != NULL);
   KALDI_ASSERT(nnet_output_deriv != NULL);
   KALDI_ASSERT(nnet_output_deriv->NumCols() == nnet_output_.NumCols());
@@ -243,6 +267,10 @@ bool GenericNumeratorComputation::ForwardBackward(
     if (GetVerboseLevel() >= 1)
       ok = ok && CheckValues(seq, probs, alpha, beta, derivs);
   }
+  if (numerator_post)
+    ConvertDerivsToPosterior(derivs, index_to_pdf_, nnet_output_.Stride(),
+                             supervision_.frames_per_sequence,
+                             num_sequences, numerator_post);
   // Transfer and add the derivatives to the values in the matrix
   AddSpecificPdfsIndirect(&derivs, index_to_pdf_, nnet_output_deriv);
   *total_loglike = partial_loglike;

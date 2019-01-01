@@ -27,20 +27,6 @@
 namespace kaldi {
 namespace chain {
 
-/* This function converts the pdf occupation probabilties (e.g. computed
-   using Forward-Backward on the numerator graph) to posteriors.
- */
-void ConvertDerivsToPosterior(const CuMatrixBase<BaseFloat> &numerator_derivs,
-                              Posterior *numerator_post) {
-  numerator_post->resize(numerator_derivs.NumRows());
-  for (size_t i = 0; i < numerator_derivs.NumRows(); ++i) {
-    const auto &row = numerator_derivs.Row(i);
-    for (size_t pdfid = 0; pdfid < row.Dim(); ++pdfid)
-      if (row(pdfid) != 0.0)
-        (*numerator_post)[i].push_back(std::make_pair(pdfid, row(pdfid)));
-  }
-}
-
 
 void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                  const DenominatorGraph &den_graph,
@@ -91,12 +77,14 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
     // the numerator object, as well as the returned logprob.
     if (xent_output_deriv) {
       numerator_ok = numerator.ForwardBackward(&num_logprob_weighted,
-                                               xent_output_deriv);
+                                               xent_output_deriv,
+                                               numerator_post);
       if (numerator_ok && nnet_output_deriv)
         nnet_output_deriv->AddMat(1.0, *xent_output_deriv);
     } else if (nnet_output_deriv) {
       numerator_ok = numerator.ForwardBackward(&num_logprob_weighted,
-                                               nnet_output_deriv);
+                                               nnet_output_deriv,
+                                               numerator_post);
     } else {
       num_logprob_weighted = numerator.ComputeObjf();
     }
@@ -105,11 +93,6 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
   }
   numerator_ok = numerator_ok &&
                  (num_logprob_weighted - num_logprob_weighted == 0);
-
-  if (numerator_post && (xent_output_deriv || nnet_output_deriv)) {
-    ConvertDerivsToPosterior(nnet_output_deriv ? *nnet_output_deriv :
-                             *xent_output_deriv, numerator_post);
-  }
 
   *objf = num_logprob_weighted - den_logprob_weighted;
   if (!((*objf) - (*objf) == 0) || !denominator_ok || !numerator_ok) {
@@ -224,17 +207,12 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     num_logprob_weighted = numerator.Forward();
 
     if (xent_output_deriv) {
-      numerator.Backward(xent_output_deriv);
+      numerator.Backward(xent_output_deriv, numerator_post);
       if (nnet_output_deriv)
         nnet_output_deriv->AddMat(1.0, *xent_output_deriv);
     } else if (nnet_output_deriv) {
-      numerator.Backward(nnet_output_deriv);
+      numerator.Backward(nnet_output_deriv, numerator_post);
     }
-  }
-
-  if (numerator_post && (xent_output_deriv || nnet_output_deriv)) {
-    ConvertDerivsToPosterior(nnet_output_deriv ? *nnet_output_deriv :
-                             *xent_output_deriv, numerator_post);
   }
 
   *objf = num_logprob_weighted - den_logprob_weighted;
