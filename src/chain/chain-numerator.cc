@@ -146,9 +146,29 @@ BaseFloat NumeratorComputation::Forward() {
   return tot_log_prob_ * supervision_.weight;
 }
 
+/* This function converts the pdf occupation probabilties (computed
+   using Forward-Backward on the numerator graph) to posteriors.
+*/
+static void ConvertDerivsToPosterior(
+    const Vector<BaseFloat> &derivs,
+    const std::vector<Int32Pair> &nnet_output_indexes,
+    int32 nnet_output_rows,
+    Posterior *post) {
+  post->resize(nnet_output_rows);
+  for (size_t i = 0; i < nnet_output_indexes.size(); ++i) {
+    if (derivs(i) != 0.0) {
+      int32 row = nnet_output_indexes[i].first;
+      int32 pdfid = nnet_output_indexes[i].second;
+      (*post)[row].push_back(
+          std::make_pair(pdfid, derivs(i)));
+    }
+  }
+}
+
 
 void NumeratorComputation::Backward(
-    CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+    CuMatrixBase<BaseFloat> *nnet_output_deriv,
+    Posterior *numerator_post) {
   const fst::StdVectorFst &fst = supervision_.fst;
   int32 num_states = fst.NumStates();
   log_beta_.Resize(num_states, kUndefined);
@@ -200,6 +220,13 @@ void NumeratorComputation::Backward(
   if (!ApproxEqual(tot_log_prob_backward, tot_log_prob_))
     KALDI_WARN << "Disagreement in forward/backward log-probs: "
                << tot_log_prob_backward << " vs. " << tot_log_prob_;
+
+  if (numerator_post) {
+    std::vector<Int32Pair> nnet_output_indexes_cpu;
+    nnet_output_indexes_.CopyToVec(&nnet_output_indexes_cpu);
+    ConvertDerivsToPosterior(nnet_logprob_derivs_, nnet_output_indexes_cpu,
+                             nnet_output_.NumRows(), numerator_post);
+  }
 
   // copy this data to GPU.
   CuVector<BaseFloat> nnet_logprob_deriv_cuda;

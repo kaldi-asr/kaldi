@@ -33,6 +33,7 @@
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 #include "chain/chain-supervision.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-array.h"
@@ -121,7 +122,8 @@ class GenericNumeratorComputation {
   // nnet output w.r.t. the (log-prob times supervision_.weight times
   // deriv_weight) to 'nnet_output_deriv'.
   bool ForwardBackward(BaseFloat *total_loglike,
-                       CuMatrixBase<BaseFloat> *nnet_output_deriv);
+                       CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                       Posterior *numerator_post = NULL);
 
   BaseFloat ComputeObjf();
  private:

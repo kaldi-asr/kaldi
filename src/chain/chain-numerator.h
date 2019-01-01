@@ -32,6 +32,7 @@
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 #include "chain/chain-supervision.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-array.h"
@@ -78,7 +79,8 @@ class NumeratorComputation {
   // Does the backward computation and (efficiently) adds the derivative of the
   // nnet output w.r.t. the (log-prob times supervision_.weight times
   // deriv_weight) to 'nnet_output_deriv'.
-  void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                Posterior *numerator_post = NULL);
 
  private:
 
@@ -143,4 +145,3 @@ class NumeratorComputation {
 }  // namespace kaldi
 
 #endif  // KALDI_CHAIN_CHAIN_NUMERATOR_H_
-
