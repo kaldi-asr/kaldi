@@ -4,24 +4,27 @@
 #           2017  Hainan Xu
 #           2017  Ke Li
 
-# rnnlm/train_rnnlm.sh: best iteration (out of 80) was 79, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 44.3 / 49.9. 
-# Train objf: -1038.00 -5.35 -5.04 -4.87 -4.76 -4.68 -4.61 -4.56 -4.52 -4.47 -4.44 -4.41 -4.37 -4.35 -4.33 -4.31 -4.29 -4.27 -4.25 -4.24 -4.23 -4.21 -4.19 -4.17 -4.16 -4.15 -4.13 -4.12 -4.11 -4.10 -4.09 -4.07 -4.07 -4.06 -4.05 -4.04 -4.03 -4.02 -4.01 -4.00 -3.99 -3.98 -3.98 -3.97 -3.96 -3.96 -3.95 -3.94 -3.93 -3.93 -3.92 -3.92 -3.91 -3.91 -3.90 -3.90 -3.89 -3.88 -3.88 -3.88 -3.88 -3.88 -3.86 -3.86 -3.85 -3.85 -3.84 -3.83 -3.83 -3.83 -3.82 -3.82 -3.81 -3.81 -3.80 -3.80 -3.79 -3.79 -3.79 -3.79 
-# Dev objf:   -11.73 -5.66 -5.18 -4.96 -4.82 -4.73 -4.66 -4.59 -4.54 -4.51 -4.47 -4.44 -4.40 -4.38 -4.36 -4.34 -4.32 -4.30 -4.28 -4.27 -4.26 -4.21 -4.19 -4.18 -4.16 -4.15 -4.14 -4.13 -4.12 -4.12 -4.11 -4.09 -4.09 -4.08 -4.07 -4.07 -4.06 -4.06 -4.05 -4.04 -4.04 -4.04 -4.03 -4.02 -4.02 -4.01 -4.01 -4.00 -4.00 -4.00 -3.99 -3.99 -3.98 -3.98 -3.98 -3.98 -3.97 -3.97 -3.97 -3.97 -3.96 -3.95 -3.95 -3.94 -3.94 -3.94 -3.94 -3.93 -3.93 -3.93 -3.93 -3.93 -3.93 -3.92 -3.92 -3.92 -3.92 -3.92 -3.91 -3.91 
+# This is the same as 1b, with two exceptions: TDNN is used as the acoustic model,
+# and the baseline is big-dict 4-gram LM.
 
-# WER numbers
-
-# without RNNLM
-# %WER 7.51 [ 618 / 8234, 82 ins, 112 del, 424 sub ] exp/chain/tdnn_lstm1b_sp/decode_looped_tgpr_dev93/wer_10_1.0
-# %WER 5.21 [ 294 / 5643, 55 ins, 34 del, 205 sub ] exp/chain/tdnn_lstm1b_sp/decode_looped_tgpr_eval92/wer_11_0.5
-
-# with RNNLM
-# %WER 5.74 [ 473 / 8234, 81 ins, 76 del, 316 sub ] exp/chain/tdnn_lstm1b_sp/decode_looped_tgpr_dev93_rnnlm/wer_14_1.0
-# %WER 4.27 [ 241 / 5643, 62 ins, 23 del, 156 sub ] exp/chain/tdnn_lstm1b_sp/decode_looped_tgpr_eval92_rnnlm/wer_12_1.0
+# System                    lstm_tdnn_1b lstm_tdnn_1c
+#WER dev93 (tgpr)                6.72      6.62
+#WER dev93 (tg)                  6.46      6.39
+#WER dev93 (big-dict,tgpr)       4.76      4.64
+#WER dev93 (big-dict,fg)         4.24      4.21
+#WER eval92 (tgpr)               4.75      4.73
+#WER eval92 (tg)                 4.41      4.32
+#WER eval92 (big-dict,tgpr)      2.73      2.69
+#WER eval92 (big-dict,fg)        2.50      2.29
+# Final train prob        -0.0415   -0.0399
+# Final valid prob        -0.0490   -0.0489
+# Final train prob (xent)   -0.6449   -0.6345
+# Final valid prob (xent)   -0.7038   -0.6937
+# Num-params                 8367760   8352320
 
 # Begin configuration section.
 
-dir=exp/rnnlm_lstm_tdnn_1b
+dir=exp/rnnlm_lstm_tdnn_1c
 embedding_dim=800
 lstm_rpd=200
 lstm_nrpd=200
@@ -33,7 +36,7 @@ stage=-10
 train_stage=-10
 
 # variables for rnnlm rescoring
-ac_model_dir=exp/chain/tdnn_lstm1b_sp
+ac_model_dir=exp/chain/tdnn1g_sp
 ngram_order=4
 decode_dir_suffix=rnnlm
 
@@ -43,7 +46,7 @@ decode_dir_suffix=rnnlm
 
 
 text=data/local/dict_nosp_larger/cleaned.gz
-wordlist=data/lang_nosp/words.txt
+wordlist=data/lang_nosp_bd/words.txt
 text_dir=data/rnnlm/text_nosp
 mkdir -p $dir/config
 set -e
@@ -127,7 +130,7 @@ if [ $stage -le 4 ]; then
     rnnlm/lmrescore_pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.8 --max-ngram-order $ngram_order \
-      data/lang_test_$LM $dir \
+      data/lang_test_bd_$LM $dir \
       data/test_${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix} &
   done
