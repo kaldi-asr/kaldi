@@ -126,7 +126,7 @@ ifeq ($(CUDA), true)
 CUDA_SRCS=$(wildcard *.cu)
 #check if files exist to run dependency commands on
 ifneq ($(CUDA_SRCS),)
-NVCC_DEP_COMMAND = $(CUDATKDIR)/bin/nvcc -M $(CUDA_FLAGS) $(CUDA_INCLUDE) -Xcompiler "$(CXXFLAGS)" $(CUDA_SRCS)
+NVCC_DEP_COMMAND = $(CUDATKDIR)/bin/nvcc -M $(CUDA_FLAGS) $(CUDA_INCLUDE) $(CUDA_SRCS)
 endif
 endif
 
