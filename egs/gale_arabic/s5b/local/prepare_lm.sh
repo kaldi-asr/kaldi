@@ -8,8 +8,9 @@
 
 echo "=== Building a language model ..."
 
-locdata=data/local/lm/
-mkdir -p $locdata
+locdata dir=data/local/lm/
+text=data/local/train/text
+lexicon=data/local/dict/lexicon.txt
 
 # Language model order
 order=3
@@ -17,7 +18,11 @@ order=3
 . utils/parse_options.sh
 
 # Prepare a LM training corpus from the transcripts
-mkdir -p $locdata
+mkdir -p $dir
+
+for f in "$text" "$lexicon"; do
+  [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
+done
 
 loc=`which ngram-count`;
 if [ -z $loc ]; then
@@ -37,10 +42,11 @@ if [ -z $loc ]; then
   fi
 fi
 
-cat data/train/text | cut -d " " -f 2- >  $locdata/train.txt
+cat data/train/text | cut -d " " -f 2- >  $dir/train.txt
+cut -d' ' -f1 $lexicon > $dir/wordlist
 
-ngram-count -text $locdata/train.txt -order $order -interpolate \
-  -kndiscount -lm $locdata/lm.gz
+ngram-count -text $dir/train.txt -order $order -limit-vocab -vocab $dir/wordlist \
+  -unk -map-unk "<unk>" -kndiscount -interpolate -lm $dir/lm.gz
 
-#ngram -lm $locdata/lm.gz -ppl $locdata/dev.txt
+#ngram -lm $dir/lm.gz -ppl $dir/dev.txt
 echo "*** Finished building the LM model!"
