@@ -20,7 +20,7 @@ import sys
 import threading
 
 try:
-    import _thread as thread_module
+    import thread as thread_module
 except:
     import _thread as thread_module
 
