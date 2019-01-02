@@ -264,6 +264,16 @@ void CalculateFrameSubsamplingFactor(const NnetChainExample &eg,
                               - eg.outputs[0].indexes[0].t;
 }
 
+/* This function adds or removes context for the examples inside
+   "eg" (which can contain just a single example or it can be a
+   merged-eg which would contain more than one example). Addition or
+   removal of context is determined by comparing "left_context" with
+   the observed left context of "eg" (the same goes for right context):
+   if it's more, it'll extend input context by duplicating the first (or last,
+   for right context) frame. Otherwise, it'll remove the extra context from
+   both inputs and outputs in "eg". Note that when extending context, only the
+   "input" io will be modified (the "output" io will remain the same).
+ */
 void ModifyChainExampleContext(int32 left_context,
                                int32 right_context,
                                const int32 frame_subsampling_factor,
@@ -291,12 +301,12 @@ void ModifyChainExampleContext(int32 left_context,
     max_input_t = max_output_t + right_context;
   }
 
-  if (*left_context_extension > 0 || *right_context_extension > 0)
-    ExtendContext(eg, example_stride, min_input_t, max_input_t,
-                  *left_context_extension, *right_context_extension);
   FilterExample(min_input_t, max_input_t,
                 min_output_t, max_output_t,
                 eg);
+  if (*left_context_extension > 0 || *right_context_extension > 0)
+    ExtendContext(eg, example_stride, min_input_t, max_input_t,
+                  *left_context_extension, *right_context_extension);
 }  // ModifyChainExampleContext
 
 }  // namespace nnet3
