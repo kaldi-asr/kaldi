@@ -462,7 +462,8 @@ function configure_cuda {
     elif [ "`uname -m`" == "ppc64le" ]; then
       cat makefiles/cuda_64bit.mk >> kaldi.mk
     else
-      cat makefiles/cuda_32bit.mk >> kaldi.mk
+      echo "CUDA will not be used! CUDA is not supported with 32-bit builds."
+      exit 1;
     fi
 
   else
