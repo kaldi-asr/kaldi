@@ -121,8 +121,30 @@ valgrind: .valgrind
 	rm valgrind.out
 	touch .valgrind
 
+
+#buid up dependency commands
+CC_SRCS=$(wildcard *.cc)
+#check if files exist to run dependency commands on
+ifneq ($(CC_SRCS),)										
+CC_DEP_COMMAND=$(CXX) -M $(CXXFLAGS) $(CC_SRCS)
+endif
+
+ifeq ($(CUDA), true)
+CUDA_SRCS=$(wildcard *.cu)
+#check if files exist to run dependency commands on
+ifneq ($(CUDA_SRCS),)
+NVCC_DEP_COMMAND = $(CUDATKDIR)/bin/nvcc -M $(CUDA_FLAGS) $(CUDA_INCLUDE) $(CUDA_SRCS)
+endif
+endif
+
 depend:
-	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk
+	rm -f .depend.mk
+ifneq ($(CC_DEP_COMMAND),)
+	$(CC_DEP_COMMAND) >> .depend.mk
+endif
+ifneq ($(NVCC_DEP_COMMAND),)
+	$(NVCC_DEP_COMMAND) >> .depend.mk
+endif
 
 # removing automatic making of "depend" as it's quite slow.
 #.depend.mk: depend
