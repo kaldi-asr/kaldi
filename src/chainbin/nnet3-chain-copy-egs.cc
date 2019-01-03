@@ -91,7 +91,7 @@ void FilterExample(int32 min_input_t,
     if (io.name == "input") {
       min_t = min_input_t;
       max_t = max_input_t;
-      
+
       const std::vector<Index> &indexes_in = io.indexes;
       std::vector<Index> indexes_out;
       indexes_out.reserve(indexes_in.size());
@@ -124,22 +124,88 @@ void FilterExample(int32 min_input_t,
   }
 }
 
+/**
+   This function extends the left/right input context by adding
+   necessary indexes (and feature rows) for the NnetIo named "input".
+   First/last frame will be duplicated to add left/right context respectively.
+ */
+void ExtendContext(NnetChainExample *eg,
+                   int32 n_stride,
+                   int32 min_input_t,
+                   int32 max_input_t,
+                   int32 extend_left_context,
+                   int32 extend_right_context) {
+  // process the <NnetIo> inputs
+  for (size_t i = 0; i < eg->inputs.size(); i++) {
+    NnetIo &io = eg->inputs[i];
+    if (io.name == "input") {
+      // Assume t_stride = 1 (since it's input)
+      std::vector<Index> &indexes = io.indexes;
+      KALDI_ASSERT(indexes.size() < 2 || indexes[0].t + 1 == indexes[1].t);
+      // The input indexes are not re-ordered. The order is: all frames of first
+      // sequence, then all frames of 2nd seq, ...
+      indexes.resize(indexes.size() + n_stride * (extend_left_context
+                                                  + extend_right_context));
+      KALDI_ASSERT(indexes.size() == n_stride *
+                   (max_input_t - min_input_t + 1));
 
-/** Returns true if the "eg" contains just a single example, meaning
-    that all the "n" values in the indexes are zero, and the example
-    has NnetIo members named both "input" and "output"
+      for (int32 n = 0, i = 0; n < n_stride; ++n) {
+        for (int32 t = min_input_t; t <= max_input_t; ++t, ++i) {
+          indexes[i].t = t;
+          indexes[i].n = n;
+        }
+      }
+
+      Matrix<BaseFloat> features_out(indexes.size(), io.features.NumCols());
+      Matrix<BaseFloat> features_in;
+      io.features.GetMatrix(&features_in);
+
+      int32 original_min_t = min_input_t + extend_left_context,
+          original_max_t = max_input_t - extend_right_context;
+      // For each "n", duplicate the first frame to extend left context,
+      // then copy the features, then duplicate the last frame to extend right
+      // context.
+      int32 i_in = 0, i_out = 0;
+      for (int32 n = 0; n < n_stride; ++n) {
+        // Duplicate frame i_in, "extend_left_context" times
+        for (int32 j = 0; j < extend_left_context; ++j, ++i_out)
+          features_out.Row(i_out).CopyFromVec(features_in.Row(i_in));
+
+        for (int32 t = original_min_t; t <= original_max_t; ++t, ++i_out, ++i_in)
+          features_out.Row(i_out).CopyFromVec(features_in.Row(i_in));
+
+        // Duplicate frame i_in - 1, "extend_right_context" times
+        for (int32 j = 0; j < extend_right_context; ++j, ++i_out)
+          features_out.Row(i_out).CopyFromVec(features_in.Row(i_in - 1));
+
+      }
+      KALDI_ASSERT(i_in == features_in.NumRows());
+      KALDI_ASSERT(i_out == features_out.NumRows());
+
+      GeneralMatrix features_out_gmat;
+      features_out_gmat.SwapFullMatrix(&features_out);
+      io.features = features_out_gmat;
+    }
+  }
+}
+
+/** Counts the number of single examples in "eg", which is equal to
+    the maximum "n" value in the indexes plus 1.
+    If the example does not have both "input" and "output" NnetIo members,
+    this function will exit the program with an error.
 
     Also computes the minimum and maximum "t" values in the "input" and
     "output" NnetIo members.
  */
-bool ContainsSingleExample(const NnetChainExample &eg,
-                           int32 *min_input_t,
-                           int32 *max_input_t,
-                           int32 *min_output_t,
-                           int32 *max_output_t) {
+static int32 CountSingleExamples(const NnetChainExample &eg,
+                                 int32 *min_input_t,
+                                 int32 *max_input_t,
+                                 int32 *min_output_t,
+                                 int32 *max_output_t) {
   bool done_input = false, done_output = false;
   int32 num_indexes_input = eg.inputs.size();
   int32 num_indexes_output = eg.outputs.size();
+  int32 max_n = 0;
   for (int32 i = 0; i < num_indexes_input; i++) {
     const NnetIo &input = eg.inputs[i];
     std::vector<Index>::const_iterator iter = input.indexes.begin(),
@@ -152,23 +218,12 @@ bool ContainsSingleExample(const NnetChainExample &eg,
         int32 this_t = iter->t;
         min_t = std::min(min_t, this_t);
         max_t = std::max(max_t, this_t);
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-          return false;
-        }
+        if (iter->n > max_n)
+          max_n = iter->n;
       }
       done_input = true;
       *min_input_t = min_t;
       *max_input_t = max_t;
-    } else {
-      for (; iter != end; ++iter) {
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-          return false;
-        }
-      }
     }
   }
 
@@ -184,34 +239,22 @@ bool ContainsSingleExample(const NnetChainExample &eg,
         int32 this_t = iter->t;
         min_t = std::min(min_t, this_t);
         max_t = std::max(max_t, this_t);
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-          return false;
-        }
+        // max_n must be the same for all io's (either input or output).
+        KALDI_ASSERT(iter->n <= max_n
+                     && "Mismatched 'n' values. Partially merged?");
       }
       done_output = true;
       *min_output_t = min_t;
       *max_output_t = max_t;
-    } else {
-      for (; iter != end; ++iter) {
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-          return false;
-        }
-      }
     }
   }
-  if (!done_input) {
-    KALDI_WARN << "Example does not have any input named 'input'";
-    return false;
-  }
-  if (!done_output) {
-    KALDI_WARN << "Example does not have any output named 'output'";
-    return false;
-  }
-  return true;
+  if (!done_input)
+    KALDI_ERR << "Example does not have any input named 'input'";
+
+  if (!done_output)
+    KALDI_ERR << "Example does not have any output named 'output'";
+
+  return max_n + 1;
 }
 
 // calculate the frame_subsampling_factor
@@ -221,47 +264,49 @@ void CalculateFrameSubsamplingFactor(const NnetChainExample &eg,
                               - eg.outputs[0].indexes[0].t;
 }
 
+/* This function adds or removes context for the examples inside
+   "eg" (which can contain just a single example or it can be a
+   merged-eg which would contain more than one example). Addition or
+   removal of context is determined by comparing "left_context" with
+   the observed left context of "eg" (the same goes for right context):
+   if it's more, it'll extend input context by duplicating the first (or last,
+   for right context) frame. Otherwise, it'll remove the extra context from
+   both inputs and outputs in "eg". Note that when extending context, only the
+   "input" io will be modified (the "output" io will remain the same).
+ */
 void ModifyChainExampleContext(int32 left_context,
                                int32 right_context,
                                const int32 frame_subsampling_factor,
-                               NnetChainExample *eg) {
-  static bool warned_left = false, warned_right = false;
+                               NnetChainExample *eg,
+                               int32 *left_context_extension,
+                               int32 *right_context_extension) {
   int32 min_input_t, max_input_t,
-        min_output_t, max_output_t;
-  if (!ContainsSingleExample(*eg, &min_input_t, &max_input_t,
-                             &min_output_t, &max_output_t))
-    KALDI_ERR << "Too late to perform frame selection/context reduction on "
-              << "these examples (already merged?)";
-  if (left_context != -1) {
+      min_output_t, max_output_t;
+  *left_context_extension = 0;
+  *right_context_extension = 0;
+  // Example stride really means "n" stride (of the NnetIo's)
+  int32 example_stride = CountSingleExamples(*eg, &min_input_t, &max_input_t,
+                                             &min_output_t, &max_output_t);
+  if (left_context >= 0) {
     int32 observed_left_context = min_output_t - min_input_t;
-    if (!warned_left && observed_left_context < left_context) {
-      warned_left = true;
-      KALDI_WARN << "You requested --left-context=" << left_context
-                 << ", but example only has left-context of "
-                 <<  observed_left_context
-                 << " (will warn only once; this may be harmless if "
-          "using any --*left-context-initial options)";
-    }
-    min_input_t = std::max(min_input_t, min_output_t - left_context);
+    if (left_context > observed_left_context)  // Extend
+      *left_context_extension = left_context - observed_left_context;
+    // Adjust min input t
+    min_input_t = min_output_t - left_context;
   }
-  if (right_context != -1) {
+  if (right_context >= 0) {
     int32 observed_right_context = max_input_t - max_output_t;
-
-    if (right_context != -1) {
-      if (!warned_right && observed_right_context < right_context) {
-        warned_right = true;
-        KALDI_WARN << "You requested --right-context=" << right_context
-                  << ", but example only has right-context of "
-                  << observed_right_context
-                 << " (will warn only once; this may be harmless if "
-            "using any --*right-context-final options.";
-      }
-      max_input_t = std::min(max_input_t, max_output_t + right_context);
-    }
+    if (right_context > observed_right_context)  // Extend
+      *right_context_extension = right_context - observed_right_context;
+    max_input_t = max_output_t + right_context;
   }
+
   FilterExample(min_input_t, max_input_t,
                 min_output_t, max_output_t,
                 eg);
+  if (*left_context_extension > 0 || *right_context_extension > 0)
+    ExtendContext(eg, example_stride, min_input_t, max_input_t,
+                  *left_context_extension, *right_context_extension);
 }  // ModifyChainExampleContext
 
 }  // namespace nnet3
@@ -348,6 +393,8 @@ int main(int argc, char *argv[]) {
     exclude_names.push_back(std::string("ivector"));
 
     int64 num_read = 0, num_written = 0, num_err = 0;
+    int64 num_left_context_extensions = 0, num_right_context_extensions = 0,
+        total_left_context_extension = 0, total_right_context_extension = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       const std::string &key = example_reader.Key();
       NnetChainExample &eg = example_reader.Value();
@@ -367,7 +414,7 @@ int main(int argc, char *argv[]) {
         weight = egs_weight_reader.Value(key);
         ScaleSupervisionWeight(weight, &eg);
       }
-      
+
       if (!eg_output_name_rspecifier.empty()) {
         if (!output_name_reader.HasKey(key)) {
           KALDI_WARN << "No new output-name for example key " << key;
@@ -377,13 +424,25 @@ int main(int argc, char *argv[]) {
         std::string new_output_name = output_name_reader.Value(key);
         RenameOutputs(new_output_name, &eg);
       }
-      
+
       if (frame_shift != 0)
         ShiftChainExampleTimes(frame_shift, exclude_names, &eg);
-      if (left_context != -1 || right_context != -1)
+      if (left_context != -1 || right_context != -1) {
+        int32 right_context_extension, left_context_extension;
         ModifyChainExampleContext(left_context, right_context,
-                                  frame_subsampling_factor, &eg);
-        
+                                  frame_subsampling_factor, &eg,
+                                  &left_context_extension,
+                                  &right_context_extension);
+        if (left_context_extension > 0) {
+          num_left_context_extensions++;
+          total_left_context_extension += left_context_extension;
+        }
+        if (right_context_extension > 0) {
+          num_right_context_extensions++;
+          total_right_context_extension += right_context_extension;
+        }
+      }
+
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         example_writers[index]->Write(key, eg);
@@ -394,6 +453,16 @@ int main(int argc, char *argv[]) {
       delete example_writers[i];
     KALDI_LOG << "Read " << num_read
               << " neural-network training examples, wrote " << num_written;
+    if (num_left_context_extensions > 0)
+      KALDI_LOG  << "Left context was extended for "
+                 << num_left_context_extensions << " examples, by an average of "
+                 << (1.0 * total_left_context_extension /
+                     num_left_context_extensions) << " frames";
+    if (num_right_context_extensions > 0)
+      KALDI_LOG << "Right context was extended for "
+                << num_right_context_extensions << " examples, by an average of "
+                << (1.0 * total_right_context_extension
+                    / num_right_context_extensions) << " frames.";
     return (num_written == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
