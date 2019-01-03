@@ -1407,6 +1407,43 @@ bool DeterminizeLatticePhonePrunedFirstPass(
   return ans;
 }
 
+
+// "Destructive" version of DeterminizeLatticePruned() where the input
+// lattice might be modified.
+template<class Weight, class IntType>
+bool DeterminizeLatticePruned(
+    MutableFst<ArcTpl<Weight> > *ifst,
+    double beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  // Returning status.
+  bool ans = true;
+
+  // Determinization options.
+  DeterminizeLatticePrunedOptions det_opts;
+  det_opts.delta = opts.delta;
+  det_opts.max_mem = opts.max_mem;
+
+    // If --word-determinize is true, do the determinization on word lattices.
+  if (opts.word_determinize) {
+    KALDI_VLOG(3) << "Doing second pass of determinization on word lattices.";
+    ans = DeterminizeLatticePruned<Weight, IntType>(
+        *ifst, beam, ofst, det_opts) && ans;
+  }
+
+  // If --minimize is true, push and minimize after determinization.
+  if (opts.minimize) {
+    KALDI_VLOG(3) << "Pushing and minimizing on word lattices.";
+    ans = PushCompactLatticeStrings<Weight, IntType>(ofst) && ans;
+    ans = PushCompactLatticeWeights<Weight, IntType>(ofst) && ans;
+    ans = MinimizeCompactLattice<Weight, IntType>(ofst) && ans;
+  }
+
+  return ans;
+}
+
+
+
 // "Destructive" version of DeterminizeLatticePhonePruned() where the input
 // lattice might be modified.
 template<class Weight, class IntType>
@@ -1481,6 +1518,43 @@ bool DeterminizeLatticePhonePruned(
   return DeterminizeLatticePhonePruned(trans_model, &temp_fst,
                                        beam, ofst, opts);
 }
+
+// Normal verson of DeterminizeLatticePhonePruned(), where the input lattice
+// will be kept as unchanged.
+template<class Weight, class IntType>
+bool DeterminizeLatticePruned(
+    const ExpandedFst<ArcTpl<Weight> > &ifst,
+    double beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  VectorFst<ArcTpl<Weight> > temp_fst(ifst);
+  return DeterminizeLatticePruned(&temp_fst,
+                                  beam, ofst, opts);
+}
+
+bool DeterminizeLatticePrunedWrapper(
+    MutableFst<kaldi::LatticeArc> *ifst,
+    double beam,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  bool ans = true;
+  Invert(ifst);
+  if (ifst->Properties(fst::kTopSorted, true) == 0) {
+    if (!TopSort(ifst)) {
+      // Cannot topologically sort the lattice -- determinization will fail.
+      KALDI_ERR << "Topological sorting of state-level lattice failed (probably"
+                << " your lexicon has empty words or your LM has epsilon cycles"
+                << ").";
+    }
+  }
+  ILabelCompare<kaldi::LatticeArc> ilabel_comp;
+  ArcSort(ifst, ilabel_comp);
+  ans = DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+      ifst, beam, ofst, opts);
+  Connect(ofst);
+  return ans;
+}
+
 
 bool DeterminizeLatticePhonePrunedWrapper(
     const kaldi::TransitionModel &trans_model,

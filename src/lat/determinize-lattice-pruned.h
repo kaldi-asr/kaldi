@@ -272,6 +272,35 @@ bool DeterminizeLatticePhonePruned(
     DeterminizeLatticePhonePrunedOptions opts
       = DeterminizeLatticePhonePrunedOptions());
 
+/** "Destructive" version of DeterminizeLatticePruned() where the input
+    lattice might be changed. 
+*/
+template<class Weight, class IntType>
+bool DeterminizeLatticePruned(
+    MutableFst<ArcTpl<Weight> > *ifst,
+    double prune,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts
+      = DeterminizeLatticePrunedOptions());
+
+template<class Weight, class IntType>
+bool DeterminizeLatticePruned(
+    const ExpandedFst<ArcTpl<Weight> > &ifst,
+    double prune,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts
+      = DeterminizeLatticePrunedOptions());
+
+
+bool DeterminizeLatticePrunedWrapper(
+    MutableFst<kaldi::LatticeArc> *ifst,
+    double prune,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts
+      = DeterminizeLatticePhonePrunedOptions());
+
+
+
 /** This function is a wrapper of DeterminizeLatticePhonePruned() that works for
     Lattice type FSTs.  It simplifies the calling process by calling
     TopSort() Invert() and ArcSort() for you.
