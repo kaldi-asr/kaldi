@@ -88,7 +88,6 @@ struct ExampleGenerationConfig {
   int32 frame_subsampling_factor;
   std::string num_frames_str;
 
-
   // The following parameters are derived parameters, computed by
   // ComputeDerived().
 
@@ -325,12 +324,14 @@ public:
   std::string measure_output_frames;  // for back-compatibility, not used.
   std::string minibatch_size;
   std::string discard_partial_minibatches;   // for back-compatibility, not used.
+  bool use_query_string;
 
   ExampleMergingConfig(const char *default_minibatch_size = "256"):
       compress(false),
       measure_output_frames("deprecated"),
       minibatch_size(default_minibatch_size),
-      discard_partial_minibatches("deprecated") { }
+      discard_partial_minibatches("deprecated"),
+      use_query_string(false) { }
 
   void Register(OptionsItf *po) {
     po->Register("compress", &compress, "If true, compress the output examples "
@@ -354,6 +355,14 @@ public:
                  "--minibatch-size=128=64:128,256/256=32:64,128.  Egs are given "
                  "minibatch-sizes based on the specified eg-size closest to "
                  "their actual size.");
+    po->Register("use-query-string", &use_query_string, "If true, the part of "
+                 "the key name after the final '?' in the string (if one "
+                 "is present) will be required to match when determining "
+                 "which egs may be merged (so only egs with the same text "
+                 "after the '?' will be merged), and the key used in the "
+                 "output will end with the same query string, including "
+                 "the '?'. An example query string is: "
+                 "'?lang=english&tw=0.5&bw=1.0'");
   }
 
 

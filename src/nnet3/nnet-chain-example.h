@@ -128,6 +128,12 @@ struct NnetChainExample {
   /// be just one member with name == "output".
   std::vector<NnetChainSupervision> outputs;
 
+  /// This relates to the '--use-query-string' option for merging. Examples
+  /// with different values of 'bucket' won't be merged together. Note that
+  /// this member variable is not written or read (in the Write/Read functions)
+  /// as it's not a permanent part of an eg. It's only used in the merging code.
+  std::string bucket;
+
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
