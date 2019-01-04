@@ -85,26 +85,31 @@ parser.add_argument("--training-subset-out", type=str, required=True,
 
 
 """
-Notes on plan for how to implement this (we can keep this as documentation).
+Notes on plan for how to implement this (we can keep this as documentation, but
+we'll maybe move some of it around when things get implemented).
+
 This is a rather simple plan and we might later implement something more
 sophisticated that does a better job of keeping chunks from the same utterance
-or speaker together.
+or the same speaker together.
 
-It's pretty trivial.  Basically we rely on the fact that the input utterances
-come in in sorted order (so utterances from adjacent speakers will naturally be
-together.
+Basically we rely on the fact that the input utterances come in in sorted order
+(so utterances from adjacent speakers will naturally be together.
 
 We read the entries in the input scp file as a list, keeping them in the order
-they were in the input.  We split that list into distinct sub-lists, each with a unique value
-of <left_context>-<num_frames>-<right_context>, although in the expected
-case there will be just one such sub-list.
+they were in the input (which will naturally keep together chunks from the
+same utterance and utterances from the same speaker, since the raw egs were
+not randomized).  We split that list into distinct sub-lists, each with a unique value
+of <left_context>-<num_frames>-<right_context>.  In the normal case
+there will be just one such sub-list.
 
 In the case where --chunks-per-spk=4 and --num-repeats=1, the groups of
 chunks would then just be (and we do this for each of the sub-lists):
 the first 4 chunks; the second 4 chunks; and so on.  In the case where
 --chunks-per-spk=4 and --num-repeats=2, we'd obtain the groups as above, then
 we'd discard the first 2 chunks of each sub-list and repeat the process, giving
-us twice the original number of groups.
+us twice the original number of groups.  If you want you can just
+assert that --num-repeats is either 1 or 2 for now; higher values don't
+really make sense with the current approach for choosing groups.
 
 Once we have the groups as above, we need to figure out the subset of
 size --num-heldout-groups which will be chosen to appear in the output
@@ -114,28 +119,37 @@ be excluding some groups from the output --training-data-out (any
 utterances that appeared in --heldout-subset-out, or which were linked
 with such utterances via the --utt2uniq map, will be excluded).
 
-The way we choose the groups to hold out is as follows.  In cases where
-the utt2uniq file is undefined, treat it as the identity map.
-We are given list of groups.  We compute, for each group, the set of
-utterances represented in it, and from that, the set of "uniq"
-values (a "uniq" value is a string, representing a pre-augmentation
-utterance-id).  For each "uniq" value, we compute the set of
-group-ids in which it was represented.  For a given group, we
-take the union of all those sets for its "uniq" value, and remove
-its own group-id.  The size of this set gives us a number >= 0 of the
-number of other groups we'd have to exclude if we were to include
-this particular group in the heldout subset.  It might be zero only in
-the case where there was no augmentation and --num-repeats=1, and
-some particular utterance had been split into exactly 4 chunks which
-all ended up in the same group.
+The way we choose the groups to appear in --heldout-subset-out is as follows.
+Firstly: in cases where the utt2uniq file is undefined, treat it as the identity
+map.  We are given list of groups.  We compute, for each group, the set of
+utterances represented in it, and from that, the set of "uniq" values (a "uniq"
+value is a string, representing a pre-augmentation utterance-id).  For each
+"uniq" value, we will compute the set of group-ids in which it was represented.
+For a given group, we take the union of all those sets for its "uniq" value, and
+remove its own group-id; this gives us the set of other groups that share a
+pre-augmentation utterance in common with this group.  This set might be empty
+only in the case where there was no augmentation and --num-repeats=1, and some
+particular utterance had been split into exactly 4 chunks which all ended up in
+the same group.
 
+From the information above we can sort the groups by the number of groups we'd
+have to hold out if we were to put that group in the heldout set.  Then if, say,
+--heldout-data-selection-proportion=0.2, we take the bottom 20% of groups by
+this measure, meaning the groups which will cause less training data to have to
+be held out.  This is the set from which we'll select the heldout data and the
+matched subset of training data.  Call this the "candidate set".  We first
+choose --num-heldout-groups groups from the candidate set.  This is the heldout
+subset.  From the heldout subset we compute the set of "uniq" values represented,
+and we remove from the training set any groups which share those "uniq" values.
 
-num_groups which is
-the number of groups in which that "uniq" value is represented.
-Then, for each group, we can compute
-
-
-
-
+Next we need to choose the matched subset of training examples.  The way we do
+this is that we choose --num-heldout-groups from the "candidate set", after
+excluding groups that were in the heldout subset or which were removed from the
+training set because they contained "uniq" values in common with those in the
+heldout set.  If this fails because there were too few groups in the candidate
+set, just double --heldout-data-selection-proportion and retry.  Make sure to do
+something sensible in the case where the dataset is too tiny to choose the
+requested heldout set size (i.e. print an informative error message before
+dying).
 
 """
