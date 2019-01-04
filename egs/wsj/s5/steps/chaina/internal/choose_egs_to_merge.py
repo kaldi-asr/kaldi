@@ -28,14 +28,14 @@ parser.add_argument("--chunks-per-spk", type=int, default=4,
                     "means the number of chunks per group of chunks, and they are "
                     "only preferentially taken from the same speaker.")
 parser.add_argument("--num-repeats", type=int, default=1,
-                    "The number of times the data is to be repeated.  Must divide "
+                    help="The number of times the data is to be repeated.  Must divide "
                     "--chunks-per-spk.  Suggest to try only 1 or 2.  The idea "
                     "is to divide chunks into groups in different ways, to give "
                     "more variety to the egs (since the adaptation information "
                     "will differ.")
 parser.add_argument("--heldout-data-selection-proportion", type=float,
                     default=0.2,
-                    "This parameter governs the selection of the heldout "
+                    help="This parameter governs the selection of the heldout "
                     "subset and the statistically matched training subset. "
                     "It does not affect the size of that subset, but only "
                     "affects what pool the examples are drawb from.  "
@@ -49,11 +49,11 @@ parser.add_argument("--heldout-data-selection-proportion", type=float,
                     "gives a selection that's statistically more "
                     "representative).")
 parser.add_argument("--num-heldout-groups", type=int, default=200,
-                    "Number of utterance groups "
+                    help="Number of utterance groups "
                     "that will go in the heldout subset (and in the "
                     "statistically matched training subset)")
 parser.add_argument("--utt2uniq", type=str, default='',
-                    "File used in setups with data "
+                    help="File used in setups with data "
                     "augmentation, that maps from utterance-ids to the "
                     "pre-augmentation utterance-id.  The reason it's needed "
                     "is to ensure that the heldout set is properly held "
@@ -61,7 +61,7 @@ parser.add_argument("--utt2uniq", type=str, default='',
                     "weren't trained on.  If not specified, we assume the "
                     "identity map.")
 parser.add_argument("--scp-in", type=str, required=True,
-                    "The scp file in, likely containing chain egs.  The "
+                    help="The scp file in, likely containing chain egs.  The "
                     "keys are expected to be of the form: "
                     "'<utterance_id>-<first_frame>-<left_context>-<num_frames>-<right_context>-v1', "
                     "where the left_context, num_frames and right_context are required to be the "
@@ -71,18 +71,21 @@ parser.add_argument("--scp-in", type=str, required=True,
                     "order to prevent this constraint from splitting up the utterances from "
                     "a single speaker")
 parser.add_argument("--training-data-out", type=str, required=True,
-                    "The output file containing the chunks that are to be grouped; each "
+                    help="The output file containing the chunks that are to be grouped; each "
                     "line will contain --chunks-per-spk (e.g. 4) rxfilenames, obtained "
                     "from the second field of the input --scp-in file.")
 parser.add_argument("--heldout-subset-out", type=str, required=True,
-                    "This is the name of the file to which the heldout data subset "
+                    help="This is the name of the file to which the heldout data subset "
                     "will be written; the format is the same as --training-data-out.")
 parser.add_argument("--training-subset-out", type=str, required=True,
-                    "This is the name of the file to which the statistically matched "
+                    help="This is the name of the file to which the statistically matched "
                     "(to --heldout-subset-out) set of training data will be written")
 
+args = parser.parse_args()
 
 
+# TODO: please print the command line to stderr for logging purposes.
+# Any useful debugging messages can go to stderr too.
 
 """
 Notes on plan for how to implement this (we can keep this as documentation, but
