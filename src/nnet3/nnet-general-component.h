@@ -910,8 +910,6 @@ class GeneralDropoutComponent: public RandomComponent {
 
   bool continuous_;
 
-  bool test_mode_;
-
   const GeneralDropoutComponent &operator
   = (const GeneralDropoutComponent &other); // Disallow.
 };
