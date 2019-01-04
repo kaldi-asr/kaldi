@@ -64,7 +64,16 @@ int main(int argc, char *argv[]) {
     ChainExampleMerger merger(merging_config, &example_writer);
     for (; !example_reader.Done(); example_reader.Next()) {
       const NnetChainExample &cur_eg = example_reader.Value();
-      merger.AcceptExample(new NnetChainExample(cur_eg));
+      NnetChainExample *cur_eg_copy = new NnetChainExample(cur_eg);
+      if (merging_config.use_query_string) {
+        std::string key = example_reader.Key();
+        int pos = key.find('?');
+        if (pos != std::string::npos) {
+          std::string query = key.substr(pos + 1, key.size() - pos - 1);
+          cur_eg_copy->bucket = query;
+        }
+      }
+      merger.AcceptExample(cur_eg_copy);
     }
     // the merger itself prints the necessary diagnostics.
     merger.Finish();

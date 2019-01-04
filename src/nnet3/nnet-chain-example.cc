@@ -187,6 +187,7 @@ void NnetChainExample::Read(std::istream &is, bool binary) {
 void NnetChainExample::Swap(NnetChainExample *other) {
   inputs.swap(other->inputs);
   outputs.swap(other->outputs);
+  std::swap(bucket, other->bucket);
 }
 
 void NnetChainExample::Compress() {
@@ -420,12 +421,13 @@ size_t NnetChainExampleStructureHasher::operator () (
     const NnetChainExample &eg) const noexcept {
   // these numbers were chosen at random from a list of primes.
   NnetIoStructureHasher io_hasher;
+  StringHasher string_hasher;
   size_t size = eg.inputs.size(), ans = size * 35099;
+  ans += string_hasher(eg.bucket);
   for (size_t i = 0; i < size; i++)
     ans = ans * 19157 + io_hasher(eg.inputs[i]);
   for (size_t i = 0; i < eg.outputs.size(); i++) {
     const NnetChainSupervision &sup = eg.outputs[i];
-    StringHasher string_hasher;
     IndexVectorHasher indexes_hasher;
     ans = ans * 17957 +
         string_hasher(sup.name) + indexes_hasher(sup.indexes);
@@ -436,6 +438,8 @@ size_t NnetChainExampleStructureHasher::operator () (
 bool NnetChainExampleStructureCompare::operator () (
     const NnetChainExample &a,
     const NnetChainExample &b) const {
+  if (a.bucket != b.bucket)
+    return false;
   NnetIoStructureCompare io_compare;
   if (a.inputs.size() != b.inputs.size() ||
       a.outputs.size() != b.outputs.size())
@@ -518,6 +522,8 @@ void ChainExampleMerger::WriteMinibatch(
   MergeChainExamples(config_.compress, egs, &merged_eg);
   std::ostringstream key;
   key << "merged-" << (num_egs_written_++) << "-" << minibatch_size;
+  if (!(*egs)[0].bucket.empty())
+    key << "?" << (*egs)[0].bucket;
   writer_->Write(key.str(), merged_eg);
 }
 
