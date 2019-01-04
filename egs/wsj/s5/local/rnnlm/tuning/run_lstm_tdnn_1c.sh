@@ -7,7 +7,10 @@
 # This is the same as 1b, with two exceptions: TDNN is used as the acoustic model,
 # and the baseline is big-dict 4-gram LM.
 
-# System                    lstm_tdnn_1b lstm_tdnn_1c
+# (Manually rename chain dirs for lstm_tdnn_1b and lstm_tdnn_1c as 
+# chain1b and chain1c)
+# local/chain/compare_wer.sh exp/chain1b/tdnn1g_sp exp/chain1c/tdnn1g_sp
+# System                   tdnn1g_sp (1b) tdnn1g_sp (1c)
 #WER dev93 (tgpr)                6.72      6.62
 #WER dev93 (tg)                  6.46      6.39
 #WER dev93 (big-dict,tgpr)       4.76      4.64
