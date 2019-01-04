@@ -83,7 +83,7 @@ NnetChainaModels::LanguageInfo *NnetChainaModels::GetInfoForLang(
 
     std::string model_filename, den_fst_filename, transform_filename;
     GetPathname(model_dir_, lang, "mdl", &model_filename);
-    GetPathname(den_fst_dir_, lang, "fst", &den_fst_filename);
+    GetPathname(den_fst_dir_, lang, "den.fst", &den_fst_filename);
     GetPathname(transform_dir_, lang, "ada", &transform_filename);
 
     {

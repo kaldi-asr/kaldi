@@ -363,7 +363,8 @@ UtteranceSplitter::~UtteranceSplitter() {
   KALDI_LOG << "Split " << total_num_utterances_ << " utts, with "
             << "total length " << total_input_frames_ << " frames ("
             << (total_input_frames_ / 360000.0) << " hours assuming "
-            << "100 frames per second)";
+            << "100 frames per second) into " << total_num_chunks
+            << " chunks.";
   float average_chunk_length = total_frames_in_chunks_ * 1.0 / total_num_chunks_,
       overlap_percent = total_frames_overlap_ * 100.0 / total_input_frames_,
       output_percent = total_frames_in_chunks_ * 100.0 / total_input_frames_,

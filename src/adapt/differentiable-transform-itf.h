@@ -396,6 +396,16 @@ struct DifferentiableTransformMapped {
 
   void Write(std::ostream &os, bool binary) const;
 
+  // Returns a string something like:
+  // dim=256
+  // num-classes=200
+  // num-pdfs=6391
+  // ... in future we will likely add more information, but for now you can get it by
+  // copying to text form and looking at it directly.
+  // the "num-classes" is transform->NumClasses(), and "num-pdfs" is
+  // pdf_map.size() if pdf_map is nonempty; else, transform->NumClasses().
+  std::string Info() const;
+
   // Check that the dimensions are consistent, i.e. pdf_map.empty() or
   // transform->NumClasses() == max-element-in-pdf_map + 1.
   void Check() const;

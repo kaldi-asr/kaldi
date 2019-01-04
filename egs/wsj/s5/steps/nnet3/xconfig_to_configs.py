@@ -39,8 +39,13 @@ def get_args():
                              'to the existing model.'
                              'e.g. In Transfer learning: generate new model using '
                              'component nodes in existing model.')
-    parser.add_argument('--config-dir', required=True,
-                        help='Directory to write config files and variables')
+    parser.add_argument('--config-dir', required=False,
+                        help='Directory to write config files and variables; either '
+                        'this or --config-out must be specified.')
+    parser.add_argument('--config-out', required=False,
+                        help='Filename to write nnet config file.  This is the '
+                        'simplified interface that does not support lda-layer. '
+                        'Either this or --config-dir must be supplied.')
     parser.add_argument('--nnet-edits', type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
                         help="""This option is useful in case the network you
@@ -141,7 +146,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
 
 def get_config_headers():
     """ This function returns a map from config-file basename
-    e.g. 'init', 'ref', 'layer1' to a documentation string that goes
+    e.g. 'init', 'ref', 'final' to a documentation string that goes
     at the top of the file.
     """
     # resulting dict will default to the empty string for any config files not
@@ -228,6 +233,41 @@ def write_config_files(config_dir, all_layers):
             # we use raise rather than raise(e) as using a blank raise
             # preserves the backtrace
             raise
+
+
+# This is an alternative to 'write_config_files' where a single output
+# file is desired (would correspond to the output 'final.config' in the
+# normal setup).  In this case, things like LDA and presoftmax are not
+# supported.
+def write_single_config_file(config_file_out, all_layers):
+    # config_basename_to_lines is map from the basename of the
+    # config, as a string (i.e. 'ref', 'all', 'init') to a list of
+    # strings representing lines to put in the config file.
+    config_basename_to_lines = defaultdict(list)
+
+    config_basename_to_header = get_config_headers()
+
+    for layer in all_layers:
+        try:
+            pairs = layer.get_full_config()
+            for config_basename, line in pairs:
+                config_basename_to_lines[config_basename].append(line)
+        except Exception as e:
+            print("{0}: error producing config lines from xconfig "
+                  "line '{1}': error was: {2}".format(sys.argv[0],
+                                                      str(layer), repr(e)),
+                  file=sys.stderr)
+            # we use raise rather than raise(e) as using a blank raise
+            # preserves the backtrace
+            raise
+
+
+    with open(config_file_out, 'w') as f:
+        header = config_basename_to_header['final']
+        print(header, file=f)
+        lines = config_basename_to_lines['final']
+        for line in lines:
+            print(line, file=f)
 
 
 def add_nnet_context_info(config_dir, nnet_edits=None,

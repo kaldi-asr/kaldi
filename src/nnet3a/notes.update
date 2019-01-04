@@ -25,18 +25,19 @@ Things needed per language in order to dump raw egs:
   - Format of raw egs dir (we'll likely delete this right after creation):
 
     info.txt:
+
      dir_type raw_chaina_egs
-     num_clusters 200
      num_chunks 120000
      num_leaves 6543
      frames_per_chunk 140,110,100
-     # number of input frames, not including context
      num_input_frames_tot 432143218
      left_context 10
      left_context_initial 10
      right_context 10
      right_context_initial 10
+
      ... various configuration values here...
+     ... need utt2spk and utt2uniq file ...
 
      # note: tree.map is optional, since the egs don't depend on it, but it will generally
      # be generated with the tree.
@@ -61,7 +62,23 @@ Things needed per language in order to dump raw egs:
      chunks_per_spk 4
      num_chunks xxxx
 
-   den_fsts
+   den_fsts/ -> lang.fst
+   norm_fsts/ -> lang.fst
+   trees/lang.tree, ?lang.tree.map
+   trans_models/lang.trans_mdl
+
+
+  - Format of chain-training-input dir:
+
+  - Two purposes: as input to the model training, and (if single language) as input for getting the egs?
+
+  Need:
+    - the input models (bottom and top-per-language), the input .ada objects
+    - The trees per language?
+    - Options and the like
+    - List of languages
+    - Left and right context required for egs
+    - extra left/right context???
 
 
 =================
@@ -89,12 +106,23 @@ Plans for binaries.
 
 ================
 
+  steps/chaina/init_den_fst.sh
+     make den.fst, normalization.fst
+
+  # Maybe just use nnet3-init in the scripts, to initialize the nnets, and
+  # copy them where they are needed.
+
+
+  # What's needed in a chain dir?
+  0/bottom.raw,lang.mdl,lang.ada
+
+
   steps/chaina/init_chain_dir.sh
      make den.fst, normalization.fst,
      bottom.config, top.config,
      bottom.raw, top.raw
 
-init.config, init.raw, 0.trans_mdl,
+ init.config, init.raw, 0.trans_mdl,
      final.config (but not 0.raw yet, might need egs first).
 
 

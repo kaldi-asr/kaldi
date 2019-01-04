@@ -130,7 +130,7 @@ class NnetChainaModels {
        <model_dir>/bottom.raw
      should exist, and then for each language name (e.g. "english"), the following
      files should exist:
-       <model_dir>/english.mdl <den_fst_dir>/english.fst <transform_dir>/english.ada
+       <model_dir>/english.mdl <den_fst_dir>/english.den.fst <transform_dir>/english.ada
      There is no requirement that all these directories be distinct.
 
      In practice, the language name will be either "default", in the
@@ -166,7 +166,7 @@ class NnetChainaModels {
                       "...?lang=xxx" in the key when reading the egs,
                       see ParseFromQueryString() in nnet-chain-utils.h.
          @param [in] den_fst_ir  Directory where we'll find the denominator
-                      FST <lang>.fst for each language <lang> present in
+                      FST <lang>.den.fst for each language <lang> present in
                       the egs.
          @param [in] transform_dir  Directory where we'll find the
                       transforms (of type DifferentiableTransformItf),
@@ -234,7 +234,7 @@ class NnetChainaModels {
     // stores a TransitionModel.
     TransitionModel trans_model;
     AmNnetSimple am_nnet;
-    // den_fst comes from <den_fst_dir>/<language_name>.fst
+    // den_fst comes from <den_fst_dir>/<language_name>.den.fst
     fst::StdVectorFst den_fst;
     // transform comes from <transform_dir>/<language_name>.ada
     differentiable_transform::DifferentiableTransformMapped transform;

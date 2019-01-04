@@ -286,9 +286,9 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs with input features "
                 "in compressed format (recommended).  Update: this is now "
-                "only relevant if the features being read are un-compressed; "
-                "if already compressed, we keep we same compressed format when "
-                "dumping-egs.");
+                "only relevant if the features being read are uncompressed; "
+                "if already compressed, we keep the same compressed format when "
+                "dumping egs.");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
                 "--online-ivectors option, for back compatibility");
     po.Register("online-ivectors", &online_ivector_rspecifier, "Rspecifier of "

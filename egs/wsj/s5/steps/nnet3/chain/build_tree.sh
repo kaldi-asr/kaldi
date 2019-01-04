@@ -27,6 +27,11 @@ leftmost_questions_truncate=-1  # note: this option is deprecated and has no eff
 tree_stats_opts=
 cluster_phones_opts=
 repeat_frames=false
+num_clusters=           # e.g. 200; can be used if you want a 2-level tree, and
+                        # in that case the file tree.map will be output, which
+                        # maps from the leaves to (effectively) clusters of
+                        # leaves.  We'll also output the file num_clusters which is
+                        # the number of these clusters (normally == the option).
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -58,6 +63,9 @@ if [ $# != 5 ]; then
   echo "  --frame-subsampling-factor <factor>              # Factor (e.g. 3) controlling frame subsampling"
   echo "                                                   # at the neural net output, so the frame rate at"
   echo "                                                   # the output is less than at the input."
+  echo " --num-clusters <num-clust>                        # Default: none.  E.g. 200; can be used if you want"
+  echo "                                                   # a 2-level tree.  Used in 'chaina' setup.  The file"
+  echo "                                                   # tree.map will be output in this case."
   exit 1;
 fi
 
@@ -168,11 +176,28 @@ if [ $stage -le -3 ] && $train_tree; then
     compile-questions $context_opts $lang/topo \
       $dir/questions.int $dir/questions.qst || exit 1;
 
-  echo "$0: Building the tree"
-  $cmd $dir/log/build_tree.log \
-    build-tree $context_opts --verbose=1 --max-leaves=$numleaves \
-    --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
-    $dir/questions.qst $lang/topo $dir/tree || exit 1;
+  if [ -z "$num_clusters" ]; then
+    # normal case: single tree.
+    echo "$0: Building the tree"
+    $cmd $dir/log/build_tree.log \
+         build-tree $context_opts --verbose=1 --max-leaves=$numleaves \
+         --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
+         $dir/questions.qst $lang/topo $dir/tree || exit 1;
+  else
+    if ! [ $num_clusters -lt $numleaves ]; then
+      echo "$0: --num-clusters=$num_clusters must be less than num-leaves=$numleaves"
+      exit 1;
+    fi
+    $cmd $dir/log/build_tree.log \
+         build-tree-two-level $context_opts --verbose=1 \
+             --max-leaves-first=$num_clusters --max-leaves-second=$numleaves \
+          $dir/treeacc $lang/phones/roots.int \
+          $dir/questions.qst $lang/topo $dir/tree \
+          "|copy-int-vector --binary=false - $dir/tree.map" || exit 1;
+    num_clusters_effective=$(cat $dir/tree.map awk '{nc=0; for(n=2;n<NF;n++) if($n>=nc) nc=1+$n; }END{print nc}')
+    echo $num_clusters_effective >$dir/num_clusters
+    echo "$0: you requested --num-clusters=$num_clusters, you got 2nd-level tree num-leaves=$num_clusters_effective"
+  fi
 fi
 
 if [ $stage -le -2 ]; then

@@ -165,5 +165,14 @@ void DifferentiableTransformMapped::Check() const {
                 transform->NumClasses()));
 }
 
+std::string DifferentiableTransformMapped::Info() const {
+  KALDI_ASSERT(transform != NULL);
+  std::ostringstream os;
+  os << "dim=" << transform->Dim() << std::endl
+     << "num-classes=" << transform->NumClasses() << std::endl
+     << "num-pdfs=" << NumPdfs() << std::endl;
+  return os.str();
+}
+
 }  // namespace differentiable_transform
 }  // namespace kaldi
