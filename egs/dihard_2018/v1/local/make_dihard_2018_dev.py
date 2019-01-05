@@ -35,7 +35,7 @@ def prepare_dihard_2018_dev(src_dir, data_dir):
                 rttm_fi.write(rttm_str)
                 with open("{}/data/rttm/{}.rttm".format(src_dir, utt), 'r') as fh:
                     rttm_list = fh.readlines()
-                spk_list = map(lambda x: (x.split())[7], rttm_list) 
+                spk_list = [(x.split())[7] for x in rttm_list] 
                 num_spk = len(set(spk_list))
                 reco2num_spk_fi.write("{} {}\n".format(utt, num_spk))
     wavscp_fi.close()

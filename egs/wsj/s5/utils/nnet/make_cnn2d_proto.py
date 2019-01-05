@@ -17,6 +17,8 @@
 
 # Generated Nnet prototype, to be initialized by 'nnet-initialize'.
 
+from __future__ import division
+from __future__ import print_function
 import math, random, sys, warnings
 from optparse import OptionParser
 
@@ -139,8 +141,8 @@ assert( (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) % o.cnn1_filt_y_step == 0 )
 assert( (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) % o.cnn1_filt_x_step == 0 )
 
 # subsample1
-cnn1_out_fmap_y_len=((1 + (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) / o.cnn1_filt_y_step))
-cnn1_out_fmap_x_len=((1 + (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) / o.cnn1_filt_x_step))
+cnn1_out_fmap_y_len=(1 + (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) / o.cnn1_filt_y_step)
+cnn1_out_fmap_x_len=(1 + (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) / o.cnn1_filt_x_step)
 
 # fix filt_len and filt_step
 def fix_filt_step(inp_len, filt_len, filt_step):
@@ -149,7 +151,7 @@ def fix_filt_step(inp_len, filt_len, filt_step):
     return filt_step
   else:
     # filt_step <= filt_len
-    for filt_step in xrange(filt_len, 0, -1):
+    for filt_step in range(filt_len, 0, -1):
       if ((inp_len - filt_len) % filt_step == 0):
         return filt_step
     
@@ -167,29 +169,29 @@ if o.pool1_x_step == 1 and o.pool1_x_len != 1:
 ###
 
 # Begin the prototype
-print "<NnetProto>"
+print("<NnetProto>")
 
 # Convolutional part of network
 '''1st CNN layer'''
 cnn1_input_dim=feat_raw_dim * (o.delta_order+1) * (o.splice*2+1)
-cnn1_out_fmap_x_len=((1 + (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) / o.cnn1_filt_x_step))
-cnn1_out_fmap_y_len=((1 + (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) / o.cnn1_filt_y_step))
+cnn1_out_fmap_x_len=(1 + (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) / o.cnn1_filt_x_step)
+cnn1_out_fmap_y_len=(1 + (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) / o.cnn1_filt_y_step)
 cnn1_output_dim=o.cnn1_num_filters * cnn1_out_fmap_x_len * cnn1_out_fmap_y_len
 
 '''1st Pooling layer'''
 pool1_input_dim=cnn1_output_dim
 pool1_fmap_x_len=cnn1_out_fmap_x_len
-pool1_out_fmap_x_len=((1 + (pool1_fmap_x_len - o.pool1_x_len) / o.pool1_x_step))
+pool1_out_fmap_x_len=(1 + (pool1_fmap_x_len - o.pool1_x_len) / o.pool1_x_step)
 pool1_fmap_y_len=cnn1_out_fmap_y_len
-pool1_out_fmap_y_len=((1 + (pool1_fmap_y_len - o.pool1_y_len) / o.pool1_y_step))
+pool1_out_fmap_y_len=(1 + (pool1_fmap_y_len - o.pool1_y_len) / o.pool1_y_step)
 pool1_output_dim=o.cnn1_num_filters*pool1_out_fmap_x_len*pool1_out_fmap_y_len
 
 '''2nd CNN layer'''
 cnn2_input_dim=pool1_output_dim
 cnn2_fmap_x_len=pool1_out_fmap_x_len
-cnn2_out_fmap_x_len=((1 + (cnn2_fmap_x_len - o.cnn2_filt_x_len) / o.cnn2_filt_x_step))
+cnn2_out_fmap_x_len=(1 + (cnn2_fmap_x_len - o.cnn2_filt_x_len) / o.cnn2_filt_x_step)
 cnn2_fmap_y_len=pool1_out_fmap_y_len
-cnn2_out_fmap_y_len=((1 + (cnn2_fmap_y_len - o.cnn2_filt_y_len) / o.cnn2_filt_y_step))
+cnn2_out_fmap_y_len=(1 + (cnn2_fmap_y_len - o.cnn2_filt_y_len) / o.cnn2_filt_y_step)
 cnn2_output_dim=o.cnn2_num_filters * cnn2_out_fmap_x_len * cnn2_out_fmap_y_len
 
 
@@ -242,14 +244,14 @@ if (o.pitch_dim > 0):
     vector += '%d:1:%d ' % (i, i + feat_raw_dim - 1)
   for i in range(feat_raw_dim+1, (feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), feat_raw_dim + o.pitch_dim):
     vector += '%d:1:%d ' % (i, i + o.pitch_dim - 1)
-  print '<Copy> <InputDim> %d <OutputDim> %d <BuildVector>  %s </BuildVector> ' % \
-	((feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), (feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), vector)
-  print '<ParallelComponent> <InputDim> %d <OutputDim> %d <NestedNnetProto> %s %s </NestedNnetProto>' % \
-	((feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), o.num_pitch_neurons + cnn2_output_dim, '%s/nnet.proto.convolution' % o.dirct, '%s/nnet.proto.pitch' % o.dirct)
+  print('<Copy> <InputDim> %d <OutputDim> %d <BuildVector>  %s </BuildVector> ' % \
+	((feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), (feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), vector))
+  print('<ParallelComponent> <InputDim> %d <OutputDim> %d <NestedNnetProto> %s %s </NestedNnetProto>' % \
+	((feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), o.num_pitch_neurons + cnn2_output_dim, '%s/nnet.proto.convolution' % o.dirct, '%s/nnet.proto.pitch' % o.dirct))
 
   num_convolution_output = o.num_pitch_neurons + cnn2_output_dim
 else: # no pitch
-  print convolution_proto
+  print(convolution_proto)
 
 # We are done!
 sys.exit(0)

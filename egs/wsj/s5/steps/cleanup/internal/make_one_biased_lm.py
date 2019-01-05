@@ -4,6 +4,7 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
 import sys
 import argparse
 import math
@@ -47,7 +48,7 @@ if args.verbose >= 1:
 
 
 
-class NgramCounts:
+class NgramCounts(object):
     ## A note on data-structure.
     ## Firstly, all words are represented as integers.
     ## We store n-gram counts as an array, indexed by (history-length == n-gram order minus one)
@@ -139,7 +140,7 @@ class NgramCounts:
     # LM-states that would back off to 'this' lm-state, in the total.
     def CompletelyDiscountLowCountStates(self, min_count):
         hist_to_total_count = self.GetHistToTotalCount()
-        for n in reversed(range(2, self.ngram_order)):
+        for n in reversed(list(range(2, self.ngram_order))):
             this_order_counts = self.counts[n]
             for hist in this_order_counts.keys():
                 if hist_to_total_count[hist] < min_count:
@@ -156,7 +157,7 @@ class NgramCounts:
     # with interpolation).
     def ApplyBackoff(self, D):
         assert D > 0.0 and D < 1.0
-        for n in reversed(range(1, self.ngram_order)):
+        for n in reversed(list(range(1, self.ngram_order))):
             this_order_counts = self.counts[n]
             for hist, word_to_count in this_order_counts.items():
                 backoff_hist = hist[1:]
@@ -182,7 +183,7 @@ class NgramCounts:
         for this_order_counts in self.counts:
             for hist, word_to_count in this_order_counts.items():
                 this_total_count = sum(word_to_count.values())
-                print(str(hist) + ': total={0} '.format(this_total_count),
+                print('{0}: total={1} '.format(hist, this_total_count),
                       end='', file=sys.stderr)
                 print(' '.join(['{0} -> {1} '.format(word, count)
                                 for word, count in word_to_count.items() ]),
@@ -242,10 +243,10 @@ class NgramCounts:
     def GetProb(self, hist, word, total_count_map):
         total_count = total_count_map[hist]
         word_to_count = self.counts[len(hist)][hist]
-        prob = word_to_count[word] / total_count
+        prob = float(word_to_count[word]) / total_count
         if len(hist) > 0 and word != self.backoff_symbol:
             prob_in_backoff = self.GetProb(hist[1:], word, total_count_map)
-            backoff_prob = word_to_count[self.backoff_symbol] / total_count
+            backoff_prob = float(word_to_count[self.backoff_symbol]) / total_count
             prob += backoff_prob * prob_in_backoff
         return prob
 
@@ -262,7 +263,7 @@ class NgramCounts:
         hist_to_state = self.GetHistToStateMap()
         total_count_map = self.GetTotalCountMap()
 
-        for n in [ 1, 0 ] + range(2, self.ngram_order):
+        for n in [ 1, 0 ] + list(range(2, self.ngram_order)):
             this_order_counts = self.counts[n]
             # For order 1, make sure the keys are sorted.
             keys = this_order_counts.keys() if n != 1 else sorted(this_order_counts.keys())

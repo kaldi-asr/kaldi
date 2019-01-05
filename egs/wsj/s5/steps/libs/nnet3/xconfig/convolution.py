@@ -7,6 +7,7 @@
 """ This module has the implementation of convolutional layers.
 """
 from __future__ import print_function
+from __future__ import division
 import math
 import re
 import sys
@@ -880,7 +881,7 @@ class XconfigRes2Block(XconfigLayerBase):
         num_filters_out = self.config['num-filters']
 
         if height_out != height_in:
-            if height_out < height_in / 2 - 1 or height_out > height_in /  2 + 1:
+            if height_out < height_in / 2 - 1 or height_out > height_in / 2 + 1:
                 raise RuntimeError("Expected height-out to be about half height-in, or the same: "
                                    "height-in={0} height-out={1}".format(height_in, height_out))
             if not time_period_out % 2 == 0:
@@ -1030,7 +1031,7 @@ class XconfigRes2Block(XconfigLayerBase):
         num_filters_out = self.config['num-filters']
 
         if height_out != height_in:
-            if height_out < height_in / 2 - 1 or height_out > height_in /  2 + 1:
+            if height_out < height_in / 2 - 1 or height_out > height_in / 2 + 1:
                 raise RuntimeError("Expected height-out to be about half height-in, or the same: "
                                    "height-in={0} height-out={1}".format(height_in, height_out))
             height_subsample = 2

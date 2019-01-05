@@ -20,7 +20,7 @@ for subdir, dirs, files in os.walk(wav_dir):
   for file in files:
     utt = str(file).replace(".sph", "")
     if file.endswith(".sph") and utt in utts:
-      wav = wav + utt + " sox " + subdir + "/" + utt + ".sph"  + " -c 1 -r 16000 -t wav - |\n"
+      wav = "{0}{1} sox {2}/{1}.sph -c 1 -r 16000 -t -wav - |\n".format(wav, utt, subdir)
 wav_fi = open(os.path.join(out_dir, "wav.scp"), 'w')
 wav_fi.write(wav)
 
@@ -32,14 +32,14 @@ for utt in utts:
   count = 1
   for line in music_fi:
     left, right = line.rstrip().split(" ")
-    segments = segments + utt + "-music-" + str(count) + " " + utt + " " + left + " " + right + "\n"
-    utt2spk = utt2spk + utt + "-music-" + str(count) + " " + utt + "-music-" + str(count) + "\n"
+    segments = "{0}{1}-music-{2} {1} {3} {4}\n".format(segments, utt, count, left, right)
+    utt2spk = "{0}{1}-music-{2} {1}-music-{2}".format(utt2spk, utt,count)
     count += 1
   count = 1
   for line in speech_fi:
     left, right = line.rstrip().split(" ")
-    segments = segments + utt + "-speech-" + str(count) + " " + utt + " " + left + " " + right + "\n"
-    utt2spk = utt2spk + utt + "-speech-" + str(count) + " " + utt + "-speech-" + str(count) + "\n"
+    segments = "{0}{1}-speech-{2} {1} {3} {4}\n".format(segments, utt, count, left, right)
+    utt2spk = "{0}{1}-speech-{2} {1}-music-{2}".format(utt2spk, utt, count)
     count += 1
 utt2spk_fi = open(os.path.join(out_dir, "utt2spk"), 'w')
 utt2spk_fi.write(utt2spk)

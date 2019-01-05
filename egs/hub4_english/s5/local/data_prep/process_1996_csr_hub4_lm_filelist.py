@@ -36,9 +36,9 @@ def get_args():
     corpus (LDC98T31).""")
     parser.add_argument("--verbose", choices=[0,1,2,3], type=int, default=0,
                         help="Set higher for more verbose logging.")
-    parser.add_argument("file_list", type=str,
+    parser.add_argument("file_list",
                         help="""List of compressed source files""")
-    parser.add_argument("dir", type=str,
+    parser.add_argument("dir",
                         help="Output directory to dump processed files to")
 
     args = parser.parse_args()
@@ -83,7 +83,7 @@ def process_file_lines(lines, out_file_handle):
                 for x in para.contents:
                     try:
                         if x.name is None:
-                            normalized_text = normalize_text(unicode(x))
+                            normalized_text = normalize_text(str(x))
                             if len(normalized_text) == 0:
                                 continue
                             out_file_handle.write("{0}\n".format(

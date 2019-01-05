@@ -5,6 +5,7 @@
 # Apache 2.0
 
 from __future__ import print_function
+from __future__ import division
 import sys, operator, argparse, os
 from collections import defaultdict
 
@@ -171,7 +172,7 @@ def ComputeSegmentCores(split_lines_of_utt):
 
     return segment_ranges
 
-class Segment:
+class Segment(object):
     def __init__(self, split_lines_of_utt, start_index, end_index, debug_str = None):
         self.split_lines_of_utt = split_lines_of_utt
         # start_index is the index of the first line that appears in this
@@ -551,7 +552,7 @@ class Segment:
         if candidate_start_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = candidate_start_time - self.StartTime()
-        if begin_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
+        if float(begin_junk_duration) / candidate_removed_piece_duration < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -593,7 +594,7 @@ class Segment:
         if candidate_end_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = self.EndTime() - candidate_end_time
-        if end_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
+        if float(end_junk_duration) / candidate_removed_piece_duration < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -807,7 +808,7 @@ def TimeToString(time, frame_length):
 
 def WriteSegmentsForUtterance(text_output_handle, segments_output_handle,
                               old_utterance_name, segments):
-    num_digits = len(str(len(segments)))
+    num_digits = len('{}'.format(len(segments)))
     for n in range(len(segments)):
         segment = segments[n]
         # split utterances will be named foo-bar-1 foo-bar-2, etc.
@@ -840,24 +841,24 @@ def PrintDebugInfoForUtterance(ctm_edits_out_handle,
     info_to_print = []
     for n in range(len(segments_for_utterance)):
         segment = segments_for_utterance[n]
-        start_string = 'start-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
+        start_string = 'start-segment-{0}[{1}]'.format(n+1, segment.DebugInfo())
         info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-segment-' + str(n+1)
+        end_string = 'end-segment-{}'.format(n+1)
         info_to_print.append( (segment.EndTime(), end_string) )
     # for segments that were deleted we print info like start-deleted-segment-1, and
     # otherwise similar info to segments that were retained.
     for n in range(len(deleted_segments_for_utterance)):
         segment = deleted_segments_for_utterance[n]
-        start_string = 'start-deleted-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
+        start_string = 'start-deleted-segment-{0}[{1}]'.format(n+1, segment.DebugInfo())
         info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-deleted-segment-' + str(n+1)
+        end_string = 'end-deleted-segment-{}'.format(n+1)
         info_to_print.append( (segment.EndTime(), end_string) )
 
     info_to_print = sorted(info_to_print)
 
     for i in range(len(split_lines_of_cur_utterance)):
         split_line=split_lines_of_cur_utterance[i]
-        split_line[0] += '[' + str(i) + ']'  # add an index like [0], [1], to
+        split_line[0] += '[{}]'.format(i)    # add an index like [0], [1], to
                                              # the utterance-id so we can easily
                                              # look up segment indexes.
         start_time = float(split_line[2])

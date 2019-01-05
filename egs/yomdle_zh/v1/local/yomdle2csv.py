@@ -55,7 +55,7 @@ def npbox2string(npar):
 # cv2.minAreaRect() returns a Box2D structure which contains following detals - ( center (x,y), (width, height), angle of rotation )
 # Get 4 corners of the rectangle using cv2.boxPoints()
 
-class GEDI2CSV():
+class GEDI2CSV(object):
 
     """ Initialize the extractor"""
     def __init__(self, logger, args):

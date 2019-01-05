@@ -36,6 +36,7 @@ all:
 	$(MAKE) kaldi.mk
 	$(MAKE) mklibdir
 	$(MAKE) subdirs
+	$(MAKE) -C matrix test
 	-echo Done
 
 subdirs: $(SUBDIRS)
