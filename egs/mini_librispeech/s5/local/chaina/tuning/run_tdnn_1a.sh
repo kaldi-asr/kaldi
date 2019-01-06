@@ -164,7 +164,7 @@ if [ $stage -le 13 ]; then
   # this 'batchnorm-layer' has an affine component but no nonlinearlity
   linear-component name=linear_bottleneck dim=256 l2-regularize=$l2
   batchnorm-component name=linear_bottleneck_bn
-  output name=output input=linear_bottleneck
+  output name=output input=linear_bottleneck_bn
 EOF
   steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/bottom.xconfig \
                                    --config-file-out $dir/configs/bottom.config
