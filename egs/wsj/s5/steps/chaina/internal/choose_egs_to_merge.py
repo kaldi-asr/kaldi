@@ -261,8 +261,7 @@ def choose_egs(args):
                     groups.append(group)
 
     logger.info('Created {} groups.'.format(len(groups)))
-    #for i in range(len(groups)):
-    #    print('Group {}:   {}'.format(i, str(groups[i])))
+
     utt2uniq = {}
     if args.utt2uniq:
         utt2uniq = load_utt2uniq(args.utt2uniq)
