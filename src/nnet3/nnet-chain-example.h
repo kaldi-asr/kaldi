@@ -81,10 +81,11 @@ struct NnetChainSupervision {
 
   /// This will be 1 in normal cases, but in the 'chaina' code (chain training
   /// with adaptation) it will be set to the number of chunks/sequences per
-  /// speaker in this minibatch.  For example if it's 4, then we are asserting
-  /// that sequences n=0 through 3 all come from the same speaker, n=4 through 7
-  /// all come from the same speaker, and so on.
-  int32 chunks_per_spk;
+  /// group in this minibatch (the chunks from a particular group are expected
+  /// to come from the same speaker).  For example if it's 4, then we are
+  /// asserting that sequences n=0 through 3 all come from the same speaker, n=4
+  /// through 7 all come from the same speaker, and so on.
+  int32 chunks_per_group;
 
   // Use default assignment operator
 

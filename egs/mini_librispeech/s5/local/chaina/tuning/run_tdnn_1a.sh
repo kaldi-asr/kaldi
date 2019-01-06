@@ -39,7 +39,7 @@ egs_extra_right_context=5
 # The number of chunks (of length: see $chunk_width above) that we group
 # together for each "speaker" (actually: pseudo-speaker, since we may have
 # to group multiple speaker together in some cases).
-chunks_per_spk=4
+chunks_per_group=4
 
 
 # End configuration section.
@@ -299,7 +299,7 @@ fi
 if [ $stage -le 19 ]; then
   echo "$0: about to process egs"
   steps/chaina/process_egs.sh \
-    --chunks-per-spk ${chunks_per_spk} ${dir}/raw_egs ${dir}/processed_egs
+    --chunks-per-group ${chunks_per_group} ${dir}/raw_egs ${dir}/processed_egs
 fi
 
 

@@ -12,24 +12,24 @@ import re
 
 
 parser = argparse.ArgumentParser(description="Chooses groups of examples to merge into groups "
-                                 "of size given by the --chunks-per-spk option, based on speaker "
+                                 "of size given by the --chunks-per-group option, based on speaker "
                                  "information (preferentially, chunks from the same utterance "
                                  "and, if possible, the same speaker, get combined into "
                                  "groups).  This script also computes a held-out subset of...",
                                  epilog="E.g. " + sys.argv[0] + "*** TODO *** ",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-# Also maybe have --num-repeats, which must divide --chunks-per-spk?  Can be
+# Also maybe have --num-repeats, which must divide --chunks-per-group?  Can be
 # used to divide data into different groups than the default ones.
 
 
-parser.add_argument("--chunks-per-spk", type=int, default=4,
+parser.add_argument("--chunks-per-group", type=int, default=4,
                     help="Number of chunks per speaker in the final egs (actually "
                     "means the number of chunks per group of chunks, and they are "
                     "only preferentially taken from the same speaker.")
 parser.add_argument("--num-repeats", type=int, default=1,
                     help="The number of times the data is to be repeated.  Must divide "
-                    "--chunks-per-spk.  Suggest to try only 1 or 2.  The idea "
+                    "--chunks-per-group.  Suggest to try only 1 or 2.  The idea "
                     "is to divide chunks into groups in different ways, to give "
                     "more variety to the egs (since the adaptation information "
                     "will differ.")
@@ -72,7 +72,7 @@ parser.add_argument("--scp-in", type=str, required=True,
                     "a single speaker")
 parser.add_argument("--training-data-out", type=str, required=True,
                     help="The output file containing the chunks that are to be grouped; each "
-                    "line will contain --chunks-per-spk (e.g. 4) rxfilenames, obtained "
+                    "line will contain --chunks-per-group (e.g. 4) rxfilenames, obtained "
                     "from the second field of the input --scp-in file.")
 parser.add_argument("--heldout-subset-out", type=str, required=True,
                     help="This is the name of the file to which the heldout data subset "
@@ -105,10 +105,10 @@ not randomized).  We split that list into distinct sub-lists, each with a unique
 of <left_context>-<num_frames>-<right_context>.  In the normal case
 there will be just one such sub-list.
 
-In the case where --chunks-per-spk=4 and --num-repeats=1, the groups of
+In the case where --chunks-per-group=4 and --num-repeats=1, the groups of
 chunks would then just be (and we do this for each of the sub-lists):
 the first 4 chunks; the second 4 chunks; and so on.  In the case where
---chunks-per-spk=4 and --num-repeats=2, we'd obtain the groups as above, then
+--chunks-per-group=4 and --num-repeats=2, we'd obtain the groups as above, then
 we'd discard the first 2 chunks of each sub-list and repeat the process, giving
 us twice the original number of groups.  If you want you can just
 assert that --num-repeats is either 1 or 2 for now; higher values don't

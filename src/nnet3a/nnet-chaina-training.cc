@@ -543,7 +543,7 @@ bool NnetChainaTopTrainer::TrainAdapted(
 
 bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
                                  int32 num_sequences,
-                                 int32 num_spk,
+                                 int32 num_groups,
                                  int32 first_input_t,
                                  int32 top_subsampling_factor,
                                  const VectorBase<BaseFloat> &deriv_weights_in,
@@ -604,7 +604,7 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
 
   using namespace differentiable_transform;
   MinibatchInfoItf *minibatch_info = transform_.transform->TrainingForward(
-      input, num_sequences, num_spk, post_padded, &adapted_input);
+      input, num_sequences, num_groups, post_padded, &adapted_input);
 
   success = TrainAdapted(
       *computation_adapted, supervision,
@@ -619,7 +619,7 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
     delete minibatch_info;
   else
     transform_.transform->TrainingBackward(input, adapted_input_deriv,
-                                           num_sequences, num_spk, post_padded,
+                                           num_sequences, num_groups, post_padded,
                                            minibatch_info, input_deriv);
   return true;
 }
@@ -977,17 +977,17 @@ void NnetChainaTrainer::Train(const std::string &key,
   if (opts_.top_model_test_mode)
     top_weight = 0.0;
 
-  int32 num_sequences, chunks_per_spk, first_input_t,
+  int32 num_sequences, chunks_per_group, first_input_t,
       num_input_frames, num_output_frames,
       frame_subsampling_factor,
       eg_left_context, eg_right_context;
-  FindChainaExampleStructure(eg, &num_sequences, &chunks_per_spk,
+  FindChainaExampleStructure(eg, &num_sequences, &chunks_per_group,
                              &first_input_t,
                              &num_input_frames, &num_output_frames,
                              &frame_subsampling_factor,
                              &eg_left_context, &eg_right_context);
-  KALDI_ASSERT(chunks_per_spk % num_sequences == 0);
-  int32 num_spk = num_sequences / chunks_per_spk;
+  KALDI_ASSERT(chunks_per_group % num_sequences == 0);
+  int32 num_groups = num_sequences / chunks_per_group;
 
   AmNnetSimple *top_am_nnet = models_->GetNnetForLang(lang_name);
   int32 top_left_context = top_am_nnet->LeftContext(),
@@ -1029,7 +1029,7 @@ void NnetChainaTrainer::Train(const std::string &key,
 
 
   bool success = top_trainer->Train(cu_embedding, num_sequences,
-                                    num_spk,
+                                    num_groups,
                                     first_embedding_t_subsampled,
                                     top_subsampling_factor,
                                     eg.outputs[0].deriv_weights,

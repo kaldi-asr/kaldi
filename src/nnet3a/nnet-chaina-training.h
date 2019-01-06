@@ -311,9 +311,10 @@ class NnetChainaTopTrainer {
                     in 'input' (a.k.a. the minibatch size).  Actually this must
                     be equal to supervision.num_sequences, but it's easier for
                     reasons of clarity and documentation to repeat it here.
-          @param [in] num_spk  The total number of speakers.  Must be >1, and must divide
+          @param [in] num_groups  The total number of groups of chunks (you
+                     can think of these as the same as speakers).  Must be >1, and must divide
                      num_sequences.   The number of sequences per speaker
-                     must be the same for all speakers (it will equal num_sequences / num_spk),
+                     must be the same for all speakers (it will equal num_sequences / num_groups),
                      and the sequences for a speaker must be consecutively numbered.
           @param [in] first_input_t The 't' value corresponding to the first
                      input frame (will normally be a negative number,
@@ -353,7 +354,7 @@ class NnetChainaTopTrainer {
   */
   bool Train(const CuMatrixBase<BaseFloat> &input,
              int32 num_sequences,
-             int32 num_spk,
+             int32 num_groups,
              int32 first_input_t,
              int32 top_subsampling_factor,
              const VectorBase<BaseFloat> &deriv_weights,
@@ -851,7 +852,7 @@ class NnetChainaTrainer {
             @param [in] eg  The example we are training on.  It is expected
                         to have an input named 'input' (the features) and an
                          output named 'output' (containing the chain supervision
-                         object).  We'll make use of the chunks_per_spk member
+                         object).  We'll make use of the chunks_per_group member
                          of the NnetChainSupervision object, which is not used
                          outside the 'chaina' framework.
   */
