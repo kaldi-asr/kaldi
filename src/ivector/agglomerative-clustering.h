@@ -63,7 +63,7 @@ class AgglomerativeClusterer {
         assignments_(assignments_out) {
     num_clusters_ = costs.NumRows();
     num_points_ = costs.NumRows();
-    max_cluster_size_ = int(num_points_ * max_cluster_fraction);
+    max_cluster_size_ = ceil(num_points_ * max_cluster_fraction);
   }
 
   // Performs the clustering
