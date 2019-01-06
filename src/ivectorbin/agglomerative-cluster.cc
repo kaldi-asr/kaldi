@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     std::string reco2num_spk_rspecifier;
-    BaseFloat threshold = 0.0;
+    BaseFloat threshold = 0.0, max_spk_fraction = 1.0;
     bool read_costs = false;
 
     po.Register("reco2num-spk-rspecifier", &reco2num_spk_rspecifier,
@@ -55,6 +55,10 @@ int main(int argc, char *argv[]) {
       " recording and the option --threshold is ignored.");
     po.Register("threshold", &threshold, "Merge clusters if their distance"
       " is less than this threshold.");
+    po.Register("max-spk-fraction", &max_spk_fraction, "Merge clusters if the"
+      " total fraction of utterances in them is less than this threshold."
+      " This is active only when reco2num-spk-rspecifier is supplied and"
+      " 1.0 / num-spk <= max-spk-fraction <= 1.0.");
     po.Register("read-costs", &read_costs, "If true, the first"
       " argument is interpreted as a matrix of costs rather than a"
       " similarity matrix.");
@@ -90,10 +94,14 @@ int main(int argc, char *argv[]) {
       std::vector<int32> spk_ids;
       if (reco2num_spk_rspecifier.size()) {
         int32 num_speakers = reco2num_spk_reader.Value(reco);
-        AgglomerativeCluster(costs,
-          std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
+        if (1.0 / num_speakers <= max_spk_fraction && max_spk_fraction <= 1.0)
+          AgglomerativeCluster(costs, std::numeric_limits<BaseFloat>::max(),
+                               num_speakers, max_spk_fraction, &spk_ids);
+        else
+          AgglomerativeCluster(costs, std::numeric_limits<BaseFloat>::max(),
+                               num_speakers, 1.0, &spk_ids);
       } else {
-        AgglomerativeCluster(costs, threshold, 1, &spk_ids);
+        AgglomerativeCluster(costs, threshold, 1, 1.0, &spk_ids);
       }
       for (int32 i = 0; i < spk_ids.size(); i++)
         label_writer.Write(uttlist[i], spk_ids[i]);

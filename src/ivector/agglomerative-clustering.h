@@ -57,11 +57,13 @@ class AgglomerativeClusterer {
       const Matrix<BaseFloat> &costs,
       BaseFloat thresh,
       int32 min_clust,
+      BaseFloat max_cluster_fraction,
       std::vector<int32> *assignments_out)
       : count_(0), costs_(costs), thresh_(thresh), min_clust_(min_clust),
         assignments_(assignments_out) {
     num_clusters_ = costs.NumRows();
     num_points_ = costs.NumRows();
+    max_cluster_size_ = int(num_points_ * max_cluster_fraction);
   }
 
   // Performs the clustering
@@ -80,6 +82,7 @@ class AgglomerativeClusterer {
   const Matrix<BaseFloat> &costs_;  // cost matrix
   BaseFloat thresh_;  // stopping criterion threshold
   int32 min_clust_;  // minimum number of clusters
+  BaseFloat max_cluster_size_;  // maximum number of points in a cluster
   std::vector<int32> *assignments_;  // assignments out
 
   // Priority queue using greater (lowest costs are highest priority).
@@ -107,6 +110,7 @@ class AgglomerativeClusterer {
         cost for pairing the utterances for its row and column
  *   - A threshold which is used as the stopping criterion for the clusters
  *   - A minimum number of clusters that will not be merged past
+ *   - A maximum fraction of points that can be in a cluster
  *   - A vector which will be filled with integer IDs corresponding to each
  *      of the rows/columns of the score matrix.
  *
@@ -131,6 +135,7 @@ void AgglomerativeCluster(
     const Matrix<BaseFloat> &costs,
     BaseFloat thresh,
     int32 min_clust,
+    BaseFloat max_cluster_fraction,
     std::vector<int32> *assignments_out);
 
 }  // end namespace kaldi.

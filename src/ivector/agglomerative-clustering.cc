@@ -36,8 +36,10 @@ void AgglomerativeClusterer::Cluster() {
     queue_.pop();
     // check to make sure clusters have not already been merged
     if ((active_clusters_.find(i) != active_clusters_.end()) &&
-        (active_clusters_.find(j) != active_clusters_.end()))
-      MergeClusters(i, j);
+        (active_clusters_.find(j) != active_clusters_.end())) {
+      if (clusters_map_[i]->size + clusters_map_[j]->size <= max_cluster_size_)
+        MergeClusters(i, j);
+    }
   }
 
   std::vector<int32> new_assignments(num_points_);
@@ -123,9 +125,12 @@ void AgglomerativeCluster(
     const Matrix<BaseFloat> &costs,
     BaseFloat thresh,
     int32 min_clust,
+    BaseFloat max_cluster_fraction,
     std::vector<int32> *assignments_out) {
   KALDI_ASSERT(min_clust >= 0);
-  AgglomerativeClusterer ac(costs, thresh, min_clust, assignments_out);
+  KALDI_ASSERT(max_cluster_fraction >= 1.0 / min_clust);
+  AgglomerativeClusterer ac(costs, thresh, min_clust, max_cluster_fraction,
+                            assignments_out);
   ac.Cluster();
 }
 
