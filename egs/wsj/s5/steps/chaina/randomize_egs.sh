@@ -49,7 +49,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 2 ]; then
   echo "Usage: $0 [opts] <processed-egs-dir> <randomized-egs-dir>"
-  echo " e.g.: $0 --frames-per-job 200000 exp/chaina/tdnn1a_sp/processed_egs exp/chaina/tdnn1a_sp/egs"
+  echo " e.g.: $0 --frames-per-job 2000000 exp/chaina/tdnn1a_sp/processed_egs exp/chaina/tdnn1a_sp/egs"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options (alternative to this"

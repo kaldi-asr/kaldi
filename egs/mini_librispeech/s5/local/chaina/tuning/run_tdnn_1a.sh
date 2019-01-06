@@ -283,6 +283,15 @@ egs_left_context=$[[model_left_context+egs_extra_left_context]]
 egs_right_context=$[[model_right_context+egs_extra_right_context]]
 
 
+if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $d/storage ]; then
+  for d in $dir/raw_egs $dir/processed_egs; do
+    mkdir -p $d
+    utils/create_split_dir.pl \
+      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$d/storage $d/storage
+  done
+fi
+
+
 if [ $stage -le 18 ]; then
   echo "$0: about to dump raw egs."
   # Dump raw egs.
@@ -302,20 +311,17 @@ if [ $stage -le 19 ]; then
     --chunks-per-group ${chunks_per_group} ${dir}/raw_egs ${dir}/processed_egs
 fi
 
-
-  for d in $dir/raw_egs $dir/merged_egs; do
-    mkdir -p $d
-    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $d/storage ]; then
-      utils/create_split_dir.pl \
-        /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$d/storage $d/storage
-    fi
-  done
-
-
-  mkdir -p $dir/raw_egs
-  steps/chaina/get_raw_egs.sh --lang default \
-          ${train_data_dir} $dir exp/tri3_lats $dir/raw_egs
+if [ $stage -le 20 ]; then
+  echo "$0: about to randomize egs"
+  steps/chaina/randomize_egs.sh --frames-per-job 3000000 \
+    ${dir}/processed_egs ${dir}/egs
 fi
+
+
+
+
+exit 0;
+
 
   # Work out the model
   # The following script is equivalent to doing something like the
