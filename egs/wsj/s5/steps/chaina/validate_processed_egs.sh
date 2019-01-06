@@ -2,8 +2,9 @@
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script validates a directory containing 'raw' egs for 'chaina' training.
-# It also helps to document the expectations on such a directory.
+# This script validates a directory containing 'processed' egs for 'chaina'
+# training, i.e. the output of process_egs.sh.  It also helps to document the
+# expectations on such a directory.
 
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -45,4 +46,4 @@ for f in $dir/misc/$lang.{trans_mdl,normalization.fst,den.fst}; do
   fi
 done
 
-echo "$0: sucessefully validated raw egs in $dir"
+echo "$0: sucessefully validated processed egs in $dir"

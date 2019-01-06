@@ -21,7 +21,7 @@ dir=$1
 
 for f in $dir/all.scp $dir/cegs.1.ark $dir/info.txt \
          $dir/misc/utt2spk; do
-  if ! [ -f $f -a -s $f ]; then
+  if ! [ -s $f ]; then
     echo "$0: expected file $f to exist and be nonempty."
     exit 1
   fi
@@ -37,7 +37,7 @@ fi
 lang=$(awk '/^lang / {print $2; }' <$dir/info.txt)
 
 for f in $dir/misc/$lang.{trans_mdl,normalization.fst,den.fst}; do
-  if ! [ -f $f -a -s $f ]; then
+  if ! [ -s $f ]; then
     echo "$0: expected file $f to exist and be nonempty."
     exit 1
   fi

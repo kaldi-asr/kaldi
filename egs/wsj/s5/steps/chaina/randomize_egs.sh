@@ -79,17 +79,10 @@ dir=$2
 # die on error or undefined variable.
 set -e -u
 
-for f in train.scp heldout_subset.scp train_subset.scp info.txt; do
-  if [ ! -f $processed_egs_dir/$f ]; then
-    echo "$0: expected file $processed_egs_dir/$f to exist."
-    exit 1
-  fi
-done
-
-if ! awk '/dir_type /{if ($2 != "processed_chaina_dir") exit(1); }' <$processed_egs_dir/info.txt; then
-  echo "$0: input directory $processed_egs_dir does not seem to be of the right type."
+if ! steps/chaina/validate_processed_egs.sh $processed_egs_dir; then
+  echo "$0: could not validate input directory $processed_egs_dir"
+  exit 1
 fi
-
 
 # Work out how many groups per job and how many frames per job we'll have
 
@@ -144,7 +137,7 @@ utils/apply_map.pl -f 2 $dir/temp/block2rand <$dir/temp/key2block | \
 # match the order in key2block_rand (which has the order of blocks
 # of lines randomly moved around).
 awk '{print $1, $1}' $dir/temp/key2block_rand | \
-  utils/apply_map.pl $processed_egs_dir/train.scp \
+  utils/apply_map.pl -f 2 $processed_egs_dir/train.scp \
                      >$dir/temp/train.scp_rand
 
 
@@ -161,7 +154,7 @@ cp $processed_egs_dir/heldout_subset.scp $processed_egs_dir/train_subset.scp $di
 
 
 cat $processed_egs_dir/info.txt  | awk '
-  /^dir_type/ { print "dir_type processed_chaina_egs"; next; }
+  /^dir_type/ { print "dir_type randomized_chaina_egs"; next; }
   /^lang / { print "langs", $2; next }
   /^num_input_frames/ { print $2 * num_repeats; next; } # approximate; ignores held-out egs.
    {print;}
