@@ -43,7 +43,7 @@ void FindChainaExampleStructure(const NnetChainExample &eg,
 
   const NnetChainSupervision &supervision = eg.outputs[0];
   *num_sequences = supervision.supervision.num_sequences;
-  *chunks_per_spk = supervision.chunks_per_spk;
+  *chunks_per_spk = supervision.chunks_per_group;
 
   KALDI_ASSERT(supervision.indexes.size() % *num_sequences == 0 &&
                !supervision.indexes.empty());

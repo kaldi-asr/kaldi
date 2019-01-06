@@ -230,6 +230,21 @@ NnetChainaTopTrainer::ComputationStructure::ComputationStructure(
     top_subsampling_factor(top_subsampling_factor) { }
 
 
+NnetChainaBottomTrainer::ComputationStructure::ComputationStructure(
+    bool train_model,
+    int32 num_sequences,
+    int32 frames_per_sequence_in,
+    int32 frames_per_sequence_out,
+    int32 first_input_t,
+    int32 first_output_t):
+    train_model(train_model),
+    num_sequences(num_sequences),
+    frames_per_sequence_in(frames_per_sequence_in),
+    frames_per_sequence_out(frames_per_sequence_out),
+    first_input_t(first_input_t),
+    first_output_t(first_output_t) { }
+
+
 void NnetChainaTopTrainer::ConsolidateMemory() {
   ::kaldi::nnet3::ConsolidateMemory(nnet_);
   ::kaldi::nnet3::ConsolidateMemory(delta_nnet_);
