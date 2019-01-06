@@ -28,6 +28,8 @@
 #include "util/kaldi-holder.h"
 #include "hmm/posterior.h"
 #include "matrix/matrix-functions.h"
+#include "matrix/matrix-common.h"
+#include "matrix/sp-matrix.h"
 
 namespace kaldi {
 namespace differentiable_transform {

@@ -60,7 +60,7 @@ fi
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
-local/chaina/run_data_prep.sh.sh --stage $stage \
+local/chaina/data_prep_common.sh --stage $stage \
                                  --train-set $train_set \
                                  --gmm $gmm  || exit 1;
 
@@ -75,7 +75,7 @@ dir=exp/chaina/tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires2
 lores_train_data_dir=data/${train_set}_sp
 
-for f in $gmm_dir/final.mdl $train_data_dir/feats.sc \
+for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
     $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
@@ -156,14 +156,14 @@ if [ $stage -le 13 ]; then
 
   batchnorm-component name=input-batchnorm
 
-  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=768 input=Splice(-1,0,1)
+  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=768 input=Append(-1,0,1)
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
   tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=0
   # this 'batchnorm-layer' has an affine component but no nonlinearlity
   linear-component name=linear_bottleneck dim=256 l2-regularize=$l2
-  batchnorm-component name=linear_bottleneck_bn dim=256
+  batchnorm-component name=linear_bottleneck_bn
   output name=output input=linear_bottleneck
 EOF
   steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/bottom.xconfig \
