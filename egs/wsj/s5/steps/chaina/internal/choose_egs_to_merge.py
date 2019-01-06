@@ -23,7 +23,7 @@ formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.info('Start generating multilingual examples')
+logger.info('Starting choose_egs_to_merge.py')
 
 
 
@@ -36,10 +36,6 @@ def get_args():
                                      "groups).  This script also computes a held-out subset of...",
                                      epilog="E.g. " + sys.argv[0] + "*** TODO *** ",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    # Also maybe have --num-repeats, which must divide --chunks-per-group?  Can be
-    # used to divide data into different groups than the default ones.
-
 
     parser.add_argument("--chunks-per-group", type=int, default=4,
                         help="Number of chunks per speaker in the final egs (actually "
@@ -104,9 +100,6 @@ def get_args():
 
     return args
 
-
-# TODO: please print the command line to stderr for logging purposes.
-# Any useful debugging messages can go to stderr too.
 
 """
 Notes on plan for how to implement this (we can keep this as documentation, but
@@ -181,6 +174,7 @@ dying).
 class Chunk:
     """ This is a data structure for a chunk. A chunk is a single entry
         of the --scp-in file.
+        'eg'  second field of --scp-in file
     """
     def __init__(self, scp_line):
         result = re.match("^(.*)-(\d+)-(\d+)-(\d+)-(\d+)-v1\s+(.*)$", scp_line)
@@ -215,7 +209,7 @@ def load_utt2uniq(filename):
     return utt2uniq
 
 def write_egs(filename, group_indexes, all_groups):
-    """ Writes the output data of this program, i.e. the second field of
+    """ Writes the output egs, i.e. the second field of
         the --scp-in file for specific chunks specified by `group_indexes`.
     """
     with open(filename, 'w', encoding='latin-1') as f:
@@ -244,7 +238,7 @@ def choose_egs(args):
 
 
     assert(args.num_repeats == 1 or args.num_repeats == 2)
-    groups = []
+    groups = []  # All groups from all sub-lists
     for sublist in chunk_to_sublist.values():
         logger.info('Processing chunks with context '
                     'structure: {}'.format(sublist[0].context_structure))
@@ -260,7 +254,7 @@ def choose_egs(args):
                 if group:
                     groups.append(group)
 
-    logger.info('Created {} groups.'.format(len(groups)))
+    logger.info('Created a total of {} groups.'.format(len(groups)))
 
     utt2uniq = {}
     if args.utt2uniq:
@@ -284,6 +278,7 @@ def choose_egs(args):
                 '{}'.format(len(uniq_to_groups),
                             sum([len(g) for g in uniq_to_groups.values()]) /
                             len(uniq_to_groups)))
+
     # This is indexed by group-index (same len as groups). other_groups[i] is
     # the set of other groups which share some utterance with group i.
     other_groups = [set() for g in groups]
@@ -293,7 +288,7 @@ def choose_egs(args):
             other_groups_this_uniq = uniq_to_groups[uniq]
             other_groups[i].update(other_groups_this_uniq)
 
-    for i, other in enumerate(other_groups):
+    for i, other in enumerate(other_groups):  # Remove self
         other.remove(i)
 
     # 'group_shared_size' is a list of pairs (i, n) where i is group-index and
