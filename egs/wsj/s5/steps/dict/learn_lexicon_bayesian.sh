@@ -36,6 +36,7 @@ oov_symbol=
 lexicon_g2p=
 
 min_prob=0.3
+variant_counts_ratio=8 
 variants_prob_mass=0.7
 variants_prob_mass_ref=0.9
 
@@ -93,6 +94,10 @@ if [ $# -lt 6 ] || [ $# -gt 7 ]; then
   echo "  --min-prob <float>           # The cut-off parameter used to select pronunciation candidates from phonetic"
   echo "                               # decoding. We remove pronunciations with probabilities less than this value"
   echo "                               # after normalizing the probs s.t. the max-prob is 1.0 for each word."
+  echo "  --variant-counts-ratio <int> # This ratio parameter determines the maximum number of pronunciation"
+  echo "                               # candidates we will keep for each word, after pruning according to lattice statistics from"
+  echo "                               # the first iteration of lattice generation. See steps/dict/internal/prune_pron_candidates.py"
+  echo "                               # for details."
   echo "  --prior-mean                 # Mean of priors (summing up to 1) assigned to three exclusive pronunciation"
   echo "         <float,float,float>   # source: reference lexicon, g2p, and phonetic decoding (used in the Bayesian"
   echo "                               # pronunciation selection procedure). We recommend setting a larger prior"
@@ -150,17 +155,17 @@ if [ $stage -le 0 ]; then
 
   # Remove non-scored-words from the reference lexicon.
   awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $0}' $dir/non_scored_words \
-    $ref_dict/lexicon.txt | tr -s '\t' ' ' > $dir/ref_lexicon.txt
+    $ref_dict/lexicon.txt | tr -s '\t' ' ' | awk '$1=$1' > $dir/ref_lexicon.txt
 
   cat $dir/ref_lexicon.txt | awk '{print $1}' | sort | uniq > $dir/ref_vocab.txt
   awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $0}' $dir/non_scored_words \
     $target_vocab | sort | uniq > $dir/target_vocab.txt
     
   # From the reference lexicon, we estimate the target_num_prons_per_word as,
-  # ceiling(avg. # prons per word in the reference lexicon). This'll be used as 
+  # round(avg. # prons per word in the reference lexicon). This'll be used as 
   # the upper bound of # pron variants per word when we apply G2P or select prons to
   # construct the learned lexicon in later stages.
-  python -c 'import sys; import math; print int(math.ceil(float(sys.argv[1])/float(sys.argv[2])))' \
+  python -c 'import sys; import math; print int(round(float(sys.argv[1])/float(sys.argv[2])))' \
     `wc -l $dir/ref_lexicon.txt | awk '{print $1}'` `wc -l $dir/ref_vocab.txt | awk '{print $1}'` \
     > $dir/target_num_prons_per_word || exit 1;
 
@@ -225,10 +230,11 @@ if [ $stage -le 2 ]; then
 
   # Get the oov words list (w.r.t ref vocab) which are in training data. 
   awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $1}' $dir/ref_lexicon.txt \
-    $dir/train_counts.txt | sort > $dir/oov_train.txt 
+    $dir/train_counts.txt | awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $0}' \
+    $dir/non_scored_words - | sort > $dir/oov_train.txt || exit 1; 
   
   awk 'NR==FNR{a[$1] = 1; next} {if(($1 in a)) b+=$2; else c+=$2} END{print c/(b+c)}' \
-    $dir/ref_vocab.txt $dir/train_counts.txt > $dir/train_oov_rate
+    $dir/ref_vocab.txt $dir/train_counts.txt > $dir/train_oov_rate || exit 1;
   
   echo "OOV rate (w.r.t. the reference lexicon) of the acoustic training data is:"
   cat $dir/train_oov_rate
@@ -237,14 +243,14 @@ if [ $stage -le 2 ]; then
   # cannot be found in lexicon_g2p, we simply assign oov_symbol's pronunciaiton
   # (like NSN) to them, in order to get phonetic decoding pron candidates for them later on.
   awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/oov_train.txt \
-    $dir/lexicon_g2p.txt > $dir/g2p_prons_for_oov_train.txt
+    $dir/lexicon_g2p.txt > $dir/g2p_prons_for_oov_train.txt || exit 1;
   
   # Get the pronunciation of oov_symbol.
-  oov_pron=`cat $dir/non_scored_entries | grep $oov_symbol | cut -f2- -d' '`
+  oov_pron=`cat $dir/non_scored_entries | grep $oov_symbol | awk '{print $2}'`
   # For oov words in training data for which we don't even have G2P pron candidates,
   # we simply assign them the pronunciation of the oov symbol (like <unk>).
   awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $1}' $dir/g2p_prons_for_oov_train.txt \
-    $dir/oov_train.txt | awk -v op=$oov_pron '{print $0" "op}' > $dir/oov_train_no_pron.txt
+    $dir/oov_train.txt | awk -v op="$oov_pron" '{print $0" "op}' > $dir/oov_train_no_pron.txt || exit 1;
     
   cat $dir/oov_train_no_pron.txt $dir/g2p_prons_for_oov_train.txt $dir/ref_lexicon.txt | \
     awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/train_counts.txt - | \
@@ -263,7 +269,7 @@ if [ $stage -le 3 ]; then
   
   # We prune the phonetic decoding generated prons relative to the largest count, by setting "min_prob",
   # and only leave prons who are not present in the reference lexicon / g2p-generated lexicon.
-  cat $dir/ref_lexicon.txt $dir/lexicon_g2p.txt > $dir/phonetic_decoding/filter_lexicon.txt 
+  cat $dir/ref_lexicon.txt $dir/lexicon_g2p.txt | sort -u > $dir/phonetic_decoding/filter_lexicon.txt 
   
   $cmd $dir/phonetic_decoding/log/prons_to_lexicon.log steps/dict/prons_to_lexicon.py \
     --min-prob=$min_prob --filter-lexicon=$dir/phonetic_decoding/filter_lexicon.txt \
@@ -295,7 +301,7 @@ if [ $stage -le 4 ]; then
   
   # Generate lattices for the acoustic training data with the combined lexicon.
   if $retrain_src_mdl; then mdl_dir=$dir/${src_mdl_dir}_retrained; else mdl_dir=$src_mdl_dir; fi
-  steps/align_fmllr_lats.sh --cmd "$decode_cmd" --nj $nj \
+  steps/align_fmllr_lats.sh --acoustic-scale 0.05 --cmd "$decode_cmd" --nj $nj \
     $data $dir/lang_combined_iter1 $mdl_dir $dir/lats_iter1 || exit 1;
 
   # Get arc level information from the lattice.
@@ -321,13 +327,10 @@ if [ $stage -le 5 ]; then
   rm $dir/dict_combined_iter2/lexiconp.txt $dir/dict_combined_iter2/lexicon.txt 2>/dev/null
 
   # Prune away pronunciations which have low acoustic evidence from the first pass of lattice alignment.
-  $cmd $dir/lats_iter1/log/prune_pron_candidates.log steps/dict/internal/prune_pron_candidates.py $dir/lats_iter1/pron_stats.txt $dir/ref_lexicon.txt $dir/pruned_prons.txt
- 
-  awk 'NR==FNR{a[$0] = 1; next} (!($0 in a))' $dir/pruned_prons.txt $dir/lexicon_phonetic_decoding.txt \
-    > $dir/lexicon_phonetic_decoding_pruned.txt
-
-  awk 'NR==FNR{a[$0] = 1; next} (!($0 in a))' $dir/pruned_prons.txt $dir/lexicon_g2p.txt \
-    > $dir/lexicon_g2p_pruned.txt \
+  $cmd $dir/lats_iter1/log/prune_pron_candidates.log steps/dict/internal/prune_pron_candidates.py \
+    --variant-counts-ratio $variant_counts_ratio \
+    $dir/lats_iter1/pron_stats.txt $dir/lexicon_phonetic_decoding_pruned.txt $dir/lexiconp_g2p.txt $dir/ref_lexicon.txt \
+    $dir/lexicon_phonetic_decoding_pruned.txt $dir/lexicon_g2p_pruned.txt
 
   # Filter out words which don't appear in the acoustic training data
   cat $dir/lexicon_phonetic_decoding_pruned.txt $dir/lexicon_g2p_pruned.txt \
@@ -402,7 +405,7 @@ if [ $stage -le 7 ]; then
   # target vocab. We'll just assign to them pronunciations from lexicon_g2p, if any.
   cat $dir/lats_iter2/out_of_ref_vocab_prons_learned.txt $dir/ref_lexicon.txt | \
     awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' - \
-    $dir/target_vocab.txt | sort | uniq > $dir/oov_no_acoustics.txt
+    $dir/target_vocab.txt | sort | uniq > $dir/oov_no_acoustics.txt || exit 1;
 
   awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/oov_no_acoustics.txt \
     $dir/lexicon_g2p.txt > $dir/g2p_prons_for_oov_no_acoustics.txt
@@ -426,5 +429,5 @@ if [ $stage -le 8 ]; then
   echo "  ...   sort -u \> $dest_dict/lexicon.txt to re-produce the final learned lexicon."
   cp $dir/lats_iter2/ref_lexicon_edits.txt $dest_dict/lexicon_edits.txt 2>/dev/null
   steps/dict/apply_lexicon_edits.py $dest_dict/lexicon0.txt $dir/lats_iter2/ref_lexicon_edits.txt - | \
-    sort | uniq > $dest_dict/lexicon.txt
+    sort | uniq > $dest_dict/lexicon.txt || exit 1;
 fi

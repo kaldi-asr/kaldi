@@ -11,9 +11,9 @@
 
 # Begin configuration section.
 cmd=run.pl
-chunks_per_spk=4
+chunks_per_group=4
 num_repeats=2  # number of times we repeat the same chunks with different
-               # grouping.  Recommend 1 or 2; must divide chunks_per_spk
+               # grouping.  Recommend 1 or 2; must divide chunks_per_group
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -28,7 +28,7 @@ num_heldout_groups=200    # The number of groups (i.e. groups of chunks) that
                           # meaningfully compared with those from
                           # heldout_subset.scp.  Note: the number (e.g. 200) is
                           # *after* merging chunks into groups of size
-                          # $chunks_per_spk.
+                          # $chunks_per_group.
 
 
 shuffle_buffer_size=5000   # Size of buffer (containing grouped egs) to use
@@ -46,13 +46,13 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 2 ]; then
   echo "Usage: $0 [opts] <raw-egs-dir> <processed-egs-dir>"
-  echo " e.g.: $0 --chunks-per-spk 4 exp/chaina/tdnn1a_sp/raw_egs exp/chaina/tdnn1a_sp/processed_egs"
+  echo " e.g.: $0 --chunks-per-group 4 exp/chaina/tdnn1a_sp/raw_egs exp/chaina/tdnn1a_sp/processed_egs"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options (alternative to this"
   echo "                                                   # command line)"
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --chunks-per-spk <n;4>                           # Number of chunks (preferentially, from a single speaker"
+  echo "  --chunks-per-group <n;4>                           # Number of chunks (preferentially, from a single speaker"
   echo "                                                   # to combine into each example.  This grouping of"
   echo "                                                   # egs is part of the 'chaina' framework; the adaptation"
   echo "                                                   # parameters will be estimated from these groups."
@@ -68,12 +68,12 @@ if [ $# != 2 ]; then
   echo "                                                   # check that the compression is not hurting)."
   echo "  --num-heldout-egs <n;200>                        # Number of egs to put in train_subset.scp and heldout_subset.scp."
   echo "                                                   # These will be used for diagnostics.  Note: this number is"
-  echo "                                                   # the number of  grouped egs, after merging --chunks-per-spk"
+  echo "                                                   # the number of  grouped egs, after merging --chunks-per-group"
   echo "                                                   # chunks into a single eg."
   echo "                                                   # ... may be a comma separated list, but we advise a single"
   echo "                                                   #  number in most cases, due to interaction with the need "
   echo "                                                   # to group egs from the same speaker into groups."
-  echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
+  echo "  --stage <stage|0>                                # Used to run this script from somewhere in"
   echo "                                                   # the middle."
   exit 1;
 fi
@@ -84,17 +84,10 @@ dir=$2
 # die on error or undefined variable.
 set -e -u
 
-for f in $raw_egs_dir/all.scp $raw_egs_dir/info.txt $raw_egs_dir/misc/utt2spk; do
-  if [ ! -f $f ]; then
-    echo "$0: expected file $f to exist."
-    exit 1
-  fi
-done
-
-if ! awk '/dir_type /{if ($2 != "raw_chaina_dir") exit(1); }'; then
-  echo "$0: input directory $raw_egs_dir does not seem to be of the right type."
+if ! steps/chaina/validate_raw_egs_dir $raw_egs_dir; then
+  echo "$0: failed to validate input directory $raw_egs_dir"
+  exit 1
 fi
-
 
 
 mkdir -p $dir/temp $dir/log
@@ -107,7 +100,7 @@ if [ $stage -le 0 ]; then
   [ -f $raw_egs_dir/misc/utt2uniq ] && utt2uniq_opt="--utt2uniq=$raw_egs_dir/misc/utt2uniq"
 
   $cmd $dir/log/choose_egs_to_merge.log steps/chaina/internal/choose_egs_to_merge.py \
-    --chunks-per-spk=$chunks_per_spk \
+    --chunks-per-group=$chunks_per_group \
     --num-repeats=$num_repeats \
     --num-heldout-groups=$num_heldout_groups \
     $utt2uniq_opt \
@@ -119,7 +112,6 @@ fi
 
 if [ $stage -le 1 ]; then
 
-
   for name in heldout_subset train_subset; do
     echo "$0: merging and shuffling $train egs"
 
@@ -127,12 +119,16 @@ if [ $stage -le 1 ]; then
     awk '{for (n=1;n<=NF;n++) { count++; print count "-" $n; }' <$dir/temp/${name}.list >$dir/temp/${name}.scp
 
     $cmd $dir/log/merge_${name}_egs.log \
-       nnet3-chain-merge-egs --compress=$compress scp:$dir/temp/${name}.scp ark:- \| \
-       nnet3-chain-shuffle-egs --srand=$srand $ark:- ark,scp:$dir/${name}.ark,$dir/${name}.scp
+      nnet3-chain-merge-egs --minibatch-size=$chunks_per_group --compress=$compress \
+           scp:$dir/temp/${name}.scp ark:- \| \
+      nnet3-chain-shuffle-egs --srand=$srand $ark:- ark,scp:$dir/${name}.ark,$dir/${name}.scp
   done
 
   # Split up the training list into multiple smaller lists, as it could be long.
   utils/split_scp.pl $dir/train.list  $(for j in $(seq $nj); do echo $dir/temp/train.$j.list; done)
+  # Linearize these lists and add keys to make them in scp format;
+  # nnet3-chain-merge-egs will merge the right groups, it's deterministic
+  # and we specified --minibatch-size=$chunks_per_group.
   for j in $(seq $nj); do
     awk '{for (n=1;n<=NF;n++) { count++; print count "-" $n; }' <$dir/temp/train.$j.list >$dir/temp/train.$j.scp
   done
@@ -146,13 +142,46 @@ if [ $stage -le 1 ]; then
 
 
   $cmd JOB=1:$nj $dir/log/merge_train_egs.JOB.log \
-     nnet3-chain-merge-egs --compress=$compress scp:$dir/temp/train.JOB.scp ark:- \| \
+     nnet3-chain-merge-egs --compress=$compress --minibatch-size=$chunks_per_group \
+       scp:$dir/temp/train.JOB.scp ark:- \| \
      nnet3-chain-shuffle-egs --shuffle-buffer-size=$shuffle_buffer_size \
          --srand=\$[JOB+$srand] ark:- ark,scp:$dir/train.JOB.ark,$dir/train.JOB.scp
 
-  cat $(for j in $(seq $nj); do echo $dir/train.$j.scp; done) > $dir/train.scp
+  # the awk command is to ensure unique ids for each group.
+  cat $(for j in $(seq $nj); do echo $dir/train.$j.scp; done) | awk '{printf("%09d %s\n", NR, $2);}' > $dir/train.scp
 fi
 
+
+cat $raw_egs_dir/info.txt  | awk  -v num_repeats=$num_repeats \
+   -v chunks_per_group=$chunks_per_group '
+  /^dir_type/ { print "dir_type processed_chaina_egs"; next; }
+  /^num_input_frames/ { print $2 * num_repeats; next; } # approximate; ignores held-out egs.
+   {print;}
+  END{print "chunks_per_group " chunks_per_group; print "num_repeats " num_repeats;}' >$dir/info.txt
+
+# # Note: the info.txt will actually look like the following, in general,
+# # taking into account the fields present in the info.txt in the source dir:
+# dir_type processed_chaina_egs
+# num_input_frames $num_frames
+# num_chunks $num_chunks
+# lang $lang
+# feat_dim $feat_dim
+# num_leaves $num_leaves
+# frames_per_chunk $frames_per_chunk
+# frames_per_chunk_avg $frames_per_chunk_avg
+# left_context $left_context
+# left_context_initial $left_context_initial
+# right_context $right_context
+# right_context_final $right_context_final
+# chunks_per_group $chunks_per_group
+
+
+if ! cat $dir/info.txt | awk '{if (NF == 1) exit(1);}'; then
+  echo "$0: we failed to obtain at least one of the fields in $dir/info.txt"
+  exit 1
+fi
+
+cp -r $raw_egs_dir/misc/ $dir/
 
 
 echo "$0: Finished processing egs"

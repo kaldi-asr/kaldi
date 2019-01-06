@@ -17,6 +17,7 @@ option.
 """
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import logging
 import numpy as np

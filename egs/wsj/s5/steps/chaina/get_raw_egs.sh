@@ -113,7 +113,7 @@ if [ $# != 4 ]; then
   echo "                                                   # supervision lattices are to be interpreted.  Affects pruning"
   echo "  --deriv-weights-scp <str>                        # If supplied, adds per-frame weights to the supervision."
   echo "                                                   # (e.g., might be relevant for unsupervised training)."
-  echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
+  echo "  --stage <stage|0>                                # Used to run this script from somewhere in"
   echo "                                                   # the middle."
   exit 1;
 fi
@@ -124,7 +124,8 @@ latdir=$3
 dir=$4
 
 tree=$chaindir/${lang}.tree
-trans_mdl=$chaindir/0/${lang}.mdl  # contains the transition model and a nnet.
+trans_mdl=$chaindir/0/${lang}.mdl  # contains the transition model and a nnet, but
+                                   # we won't be making use of the nnet part.
 normalization_fst=$chaindir/0/${lang}.normalization.fst
 den_fst=$chaindir/0/${lang}.den.fst
 

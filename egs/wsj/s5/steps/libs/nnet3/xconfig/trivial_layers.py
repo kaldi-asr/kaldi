@@ -580,3 +580,67 @@ class XconfigPerElementOffsetComponent(XconfigLayerBase):
             self.name, input_desc))
         configs.append(line)
         return configs
+
+
+class XconfigDimRangeComponent(XconfigLayerBase):
+    """This class is for parsing lines like
+     'dim-range-component name=feature1 input=Append(-3,0,3) dim=40 dim-offset=0'
+    which will produce just a single component, of part of the input.
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer.]
+      dim=-1                   [Dimension of the output.]
+      dim-offset=0             [Dimension offset of the input.]
+    """
+    def __init__(self, first_token, key_to_value, prev_names=None):
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'dim-offset': 0 }
+
+    def check_configs(self):
+        input_dim = self.descriptors['input']['dim']
+        if self.config['dim'] <= 0:
+            raise RuntimeError("'dim' must be specified and > 0.")
+        elif self.config['dim'] > input_dim:
+            raise RuntimeError("'dim' must be specified and lower than the input dim.")
+        if self.config['dim-offset'] < 0 :
+            raise RuntimeError("'dim-offset' must be specified and >= 0.")
+        elif self.config['dim-offset'] + self.config['dim'] > input_dim:
+            raise RuntimeError("'dim-offset' plus output dim must be lower than the input dim.")
+
+    def output_name(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return self.name
+
+    def output_dim(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        output_dim = self.config['dim']
+        if output_dim <= 0:
+            self.config['dim'] = self.descriptors['input']['dim']
+        return output_dim
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    def _generate_config(self):
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        input_node = self.descriptors['input']['final-string']
+        output_dim = self.config['dim']
+        dim_offset = self.config['dim-offset']
+
+        configs = []
+        line = ('dim-range-node name={0} input-node={1} dim={2} dim-offset={3}'.format(
+            self.name, input_node, output_dim, dim_offset))
+        configs.append(line)
+        return configs

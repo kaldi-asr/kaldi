@@ -8,6 +8,7 @@
     to phone transcriptions using the provided lexicon,
     and writes them to standard output.
 """
+from __future__ import print_function
 
 import argparse
 from os.path import join

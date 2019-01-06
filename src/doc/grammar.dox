@@ -336,7 +336,7 @@ Z_S  243
   that consume CLG.fst always also consume the <code>ilabel_info</code>, which is a <code>vector<vector<int32> ></code>.
   For a particular ilabel, say 1536, <code>ilabel_info[1536] = { 5, 21 }</code> is a vector of integers representing
   a phone-in-context.  E.g. this would represent the phone 21 with a left-context of 5.
-  Disambiguation symbols also appear on the input of CLG.fst, and they are are represented in the <code>ilabel_info</code>
+  Disambiguation symbols also appear on the input of CLG.fst, and they are represented in the <code>ilabel_info</code>
   a 1-dimensional vector like <code>{ -104 }</code> containing the negative of the disambiguation symbol's
   integer id.
 
@@ -352,7 +352,7 @@ Z_S  243
   The special symbols in CLG.fst will be as follows.
 
   The following special symbols may appear in any CLG graph, top-level or not:
-   - When any graph invokes a sub-graph, there will ben arc with an ilabel
+   - When any graph invokes a sub-graph, there will be n arc with an ilabel
      (</code>\#nonterm:foo</code>, <em>left-context-phone</em>) representing the
      user-specified nonterminal and the actual left-context, which will be
      followed by arcs with ilabels of the form (</code>\#nonterm_reenter</code>,

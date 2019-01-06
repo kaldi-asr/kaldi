@@ -96,8 +96,9 @@ if [ $stage -le 1 ]; then
   mkdir -p $treedir/log
   $train_cmd $treedir/log/make_phone_lm.log \
              cat data/$train_set/text \| \
-             steps/nnet3/chain/e2e/text_to_phones.py data/lang_nosp \| \
-             utils/sym2int.pl -f 2- data/lang_nosp/phones.txt \| \
+             steps/nnet3/chain/e2e/text_to_phones.py --between-silprob 0.1 \
+             data/lang_char \| \
+             utils/sym2int.pl -f 2- data/lang_char/phones.txt \| \
              chain-est-phone-lm --num-extra-lm-states=2000 \
              ark:- $treedir/phone_lm.fst
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \

@@ -5,7 +5,6 @@
 # script to generate reverberated data
 
 # we're using python 3.x style print but want it to work in python 2.x,
-from __future__ import print_function
 import argparse, shlex, glob, math, os, random, sys, warnings, copy, imp, ast
 
 data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')
@@ -121,17 +120,18 @@ def CheckArgs(args):
     return args
 
 
-class list_cyclic_iterator:
+class list_cyclic_iterator(object):
   def __init__(self, list):
     self.list_index = 0
     self.list = list
     random.shuffle(self.list)
 
-  def next(self):
+  def __next__(self):
     item = self.list[self.list_index]
     self.list_index = (self.list_index + 1) % len(self.list)
     return item
 
+  next = __next__  # for Python 2
 
 # This functions picks an item from the collection according to the associated probability distribution.
 # The probability estimate of each item in the collection is stored in the "probability" field of
@@ -218,11 +218,11 @@ def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the in
             if noise.bg_fg_type == "background":
                 noise_rvb_command = """wav-reverberate --impulse-response="{0}" --duration={1}""".format(noise_rir.rir_rspecifier, speech_dur)
                 noise_addition_descriptor['start_times'].append(0)
-                noise_addition_descriptor['snrs'].append(background_snrs.next())
+                noise_addition_descriptor['snrs'].append(next(background_snrs))
             else:
                 noise_rvb_command = """wav-reverberate --impulse-response="{0}" """.format(noise_rir.rir_rspecifier)
                 noise_addition_descriptor['start_times'].append(round(random.random() * speech_dur, 2))
-                noise_addition_descriptor['snrs'].append(foreground_snrs.next())
+                noise_addition_descriptor['snrs'].append(next(foreground_snrs))
 
             # check if the rspecifier is a pipe or not
             if len(noise.noise_rspecifier.split()) == 1:
@@ -273,7 +273,7 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
         else:
             noise_addition_descriptor['noise_io'].append("{0} wav-reverberate --duration={1} - - |".format(isotropic_noise.noise_rspecifier, speech_dur))
         noise_addition_descriptor['start_times'].append(0)
-        noise_addition_descriptor['snrs'].append(background_snrs.next())
+        noise_addition_descriptor['snrs'].append(next(background_snrs))
 
     noise_addition_descriptor = AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the information of the noise added
                                                     room,  # the room selected
