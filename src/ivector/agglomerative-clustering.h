@@ -82,7 +82,7 @@ class AgglomerativeClusterer {
   const Matrix<BaseFloat> &costs_;  // cost matrix
   BaseFloat thresh_;  // stopping criterion threshold
   int32 min_clust_;  // minimum number of clusters
-  BaseFloat max_cluster_size_;  // maximum number of points in a cluster
+  int32 max_cluster_size_;  // maximum number of points in a cluster
   std::vector<int32> *assignments_;  // assignments out
 
   // Priority queue using greater (lowest costs are highest priority).
