@@ -208,7 +208,7 @@ if [ $stage -le 0 ]; then
        lattice-align-phones --replace-output-symbols=true $latdir/final.mdl \
        "$lats_rspecifier" ark:- \| \
        chain-get-supervision $chain_supervision_all_opts \
-       $dir/misc/default.tree $dir/misc/${lang}.trans_mdl ark:- ark:- \| \
+       $dir/misc/${lang}.tree $dir/misc/${lang}.trans_mdl ark:- ark:- \| \
        nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
        "$normalization_fst" scp:$sdata/JOB/feats.scp ark,s,cs:- \
        ark,scp:$dir/cegs.JOB.ark,$dir/cegs.JOB.scp || exit 1;
