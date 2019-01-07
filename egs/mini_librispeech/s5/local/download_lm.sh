@@ -58,7 +58,7 @@ function check_and_download () {
   return 0
 }
 
-mkdir -p $dst_dir
+mkdir -p $dst_dir $local_dir
 
 for f in 3-gram.arpa.gz 3-gram.pruned.1e-7.arpa.gz 3-gram.pruned.3e-7.arpa.gz  \
          librispeech-vocab.txt librispeech-lexicon.txt; do
