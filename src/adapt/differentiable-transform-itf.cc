@@ -161,7 +161,7 @@ void DifferentiableTransformMapped::Write(std::ostream &os, bool binary) const {
 void DifferentiableTransformMapped::Check() const {
   KALDI_ASSERT(transform != NULL &&
                (pdf_map.empty() ||
-                *std::max_element(pdf_map.begin(), pdf_map.end()) + 1 ==
+                *std::max_element(pdf_map.begin(), pdf_map.end()) ==
                 transform->NumClasses()));
 }
 

@@ -178,7 +178,7 @@ if [ $stage -le 14 ]; then
   # is not really a multilingual setup.
   # Note: the bottleneck dimension of 256 specified in the bottom.nnet must match
   # with the dimension of this transform (256).
-  cat <<EOF | nnet3-adapt --binary=false --num-classes=200 init - $tree_dir/tree.map $dir/0/default.ada
+  cat <<EOF | nnet3-adapt --binary=false init - $tree_dir/tree.map $dir/0/default.ada
 AppendTransform num-transforms=6
   NoOpTransform dim=64
   MeanOnlyTransform dim=64
