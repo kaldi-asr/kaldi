@@ -221,19 +221,19 @@ if [ $stage -le 15 ]; then
   prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
   output-layer name=output include-log-softmax=false dim=$num_leaves $output_opts
   # .. and its speaker-independent version
-  prefinal-layer name=prefinal-chain input=prefinal-si-l $prefinal_opts small-dim=192 big-dim=768
+  prefinal-layer name=prefinal-chain-si input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
   output-layer name=output-si include-log-softmax=false dim=$num_leaves $output_opts
 
   # adding the output layer for xent branch
   prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
   output-layer name=output-xent dim=$num_leaves learning-rate-factor=$learning_rate_factor $output_opts
   # .. and its speaker-independent version
-  prefinal-layer name=prefinal-xent input=prefinal-si-l $prefinal_opts small-dim=192 big-dim=768
+  prefinal-layer name=prefinal-xent-si input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
   output-layer name=output-si-xent dim=$num_leaves learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/default.xconfig \
                                    --config-file-out $dir/configs/default.config
-  nnet3-init --srand=$srand $dir/configs/default.config 0 - | \
+  nnet3-init --srand=$srand $dir/configs/default.config - | \
      nnet3-am-init $tree_dir/final.mdl - $dir/0/default.mdl
 fi
 
@@ -281,11 +281,11 @@ fi
 
 model_left_context=$(awk '/^model_left_context/ {print $2;}' $dir/0/info.txt)
 model_right_context=$(awk '/^model_right_context/ {print $2;}' $dir/0/info.txt)
-egs_left_context=$[[model_left_context+egs_extra_left_context]]
-egs_right_context=$[[model_right_context+egs_extra_right_context]]
+egs_left_context=$[model_left_context+egs_extra_left_context]
+egs_right_context=$[model_right_context+egs_extra_right_context]
 
 
-if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $d/storage ]; then
+if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [[ ! -d $dir/storage ]]; then
   for d in $dir/raw_egs $dir/processed_egs; do
     mkdir -p $d
     utils/create_split_dir.pl \
@@ -303,7 +303,7 @@ if [ $stage -le 18 ]; then
     --right-context $egs_right_context \
     --frame-subsampling-factor $frame_subsampling_factor \
     --alignment-subsampling-factor $frame_subsampling_factor \
-    --frames-per-egs 150 \
+    --frames-per-chunk 150 \
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
