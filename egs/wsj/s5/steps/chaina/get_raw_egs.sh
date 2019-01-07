@@ -126,8 +126,8 @@ dir=$4
 tree=$chaindir/${lang}.tree
 trans_mdl=$chaindir/0/${lang}.mdl  # contains the transition model and a nnet, but
                                    # we won't be making use of the nnet part.
-normalization_fst=$chaindir/0/${lang}.normalization.fst
-den_fst=$chaindir/0/${lang}.den.fst
+normalization_fst=$chaindir/den_fsts/${lang}.normalization.fst
+den_fst=$chaindir/den_fsts/${lang}.den.fst
 
 for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
          $tree $trans_mdl $normalization_fst $den_fst; do
@@ -148,7 +148,7 @@ mkdir -p $dir/log  $dir/misc
 cp $tree $dir/misc/
 copy-transition-model $trans_mdl $dir/misc/${lang}.trans_mdl
 cp $normalization_fst $den_fst $dir/misc/
-cp data/utt2spk $dir/misc/
+cp $data/utt2spk $dir/misc/
 if [ -f $data/utt2uniq ]; then
   cp $data/utt2uniq $dir/misc/
 elif [ -f $dir/misc/utt2uniq ]; then
@@ -208,21 +208,21 @@ if [ $stage -le 0 ]; then
        lattice-align-phones --replace-output-symbols=true $latdir/final.mdl \
        "$lats_rspecifier" ark:- \| \
        chain-get-supervision $chain_supervision_all_opts \
-       $dir/misc/tree $dir/misc/${lang}.trans_mdl ark:- ark:- \| \
+       $dir/misc/default.tree $dir/misc/${lang}.trans_mdl ark:- ark:- \| \
        nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
-       "$normalization_fst" $sdata/JOB/feats.scp ark,s,cs:- \
+       "$normalization_fst" scp:$sdata/JOB/feats.scp ark,s,cs:- \
        ark,scp:$dir/cegs.JOB.ark,$dir/cegs.JOB.scp || exit 1;
 fi
 
 
 if [ $stage -le 1 ]; then
-  frames_and_chunks=$(for n in $(seq nj); do cat $dir/log/get_egs.$n.log; done | \
-                      perl -e '$nf=0;$nc=0; while(<STDIN>) { if(m/with total length (\d+) frames.+ into (\d+) chunks/) { $nf += $1; $nc += $2; } print "$nf $nc";')
-  num_frames=$(echo $frames_and_chunks || awk '{print $1}')
-  num_chunks=$(echo $frames_and_chunks || awk '{print $2}')
-  frames_per_chunk_avg=$[$num_frames/$num_chunks]
-  feat_dim=$(feat-to-dim scp:$sdata/JOB/feats.scp -)
-  num_leaves=$(tree-info $chaindir/tree | awk '/^num-pdfs/ {print $2}')
+  frames_and_chunks=$(for n in $(seq $nj); do cat $dir/log/get_egs.$n.log; done | \
+                        perl -e '$nf=0;$nc=0; while(<STDIN>) { if(m/with total length (\d+) frames.+ into (\d+) chunks/) { $nf += $1; $nc += $2; }} print "$nf $nc";')
+  num_frames=$(echo $frames_and_chunks | awk '{print $1}')
+  num_chunks=$(echo $frames_and_chunks | awk '{print $2}')
+  frames_per_chunk_avg=$[num_frames/num_chunks]
+  feat_dim=$(feat-to-dim scp:$sdata/1/feats.scp -)
+  num_leaves=$(tree-info $tree | awk '/^num-pdfs/ {print $2}')
   if [ $left_context_initial -lt 0 ]; then
     left_context_initial=$left_context
   fi
