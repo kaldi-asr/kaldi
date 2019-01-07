@@ -205,6 +205,8 @@ if [ $stage -le 15 ]; then
 
   echo "$0: creating top model"
   cat <<EOF > $dir/configs/default.xconfig
+  input name=input dim=256
+  linear-component $linear_opts name=linear_from_input dim=768
   tdnnf-layer name=tdnnf1 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
