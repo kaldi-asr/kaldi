@@ -135,7 +135,7 @@ NnetBatchComputer::GetHighestPriorityComputation(
     int32 *minibatch_size_out,
     std::vector<NnetInferenceTask*> *tasks) {
   tasks->clear();
-  std::unique_lock<std::mutex>(mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   MapType::iterator iter = tasks_.begin(), end = tasks_.end(),
       best_iter = tasks_.end();
   double highest_priority = -std::numeric_limits<double>::infinity();
@@ -1094,7 +1094,7 @@ bool NnetBatchDecoder::GetOutput(
       return false;
     UtteranceOutput *this_output = pending_utts_.front();
     pending_utts_.pop_front();
-    if (this_output->compact_lat.NumStates() == 0) {
+    if (this_output->lat.NumStates() == 0) {
       delete this_output;
       // ... and continue round the loop, without returning any output to the
       // user for this utterance.  Something went wrong in decoding: for

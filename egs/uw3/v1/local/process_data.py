@@ -14,8 +14,8 @@ import os
 import random
 
 parser = argparse.ArgumentParser(description="""Creates data/train and data/test.""")
-parser.add_argument('database_path', type=str, help='path to downloaded (and extracted) UW3 corpus')
-parser.add_argument('out_dir', type=str, default='data',
+parser.add_argument('database_path', help='path to downloaded (and extracted) UW3 corpus')
+parser.add_argument('out_dir', default='data',
                     help='where to create the train and test data directories')
 args = parser.parse_args()
 
@@ -53,9 +53,9 @@ for page in sorted(os.listdir(args.database_path)):
       coin = random.randint(0, 20)
       if coin >= 1:
         train_text_fh.write(utt_id + ' ' + text + '\n')
-        train_utt2spk_fh.write(utt_id + ' ' + str(page_count) + '\n')
-        train_image_fh.write(utt_id + ' ' + image_path + '\n')
+        train_utt2spk_fh.write("{} {}\n".format(utt_id, page_count))
+        train_image_fh.write("{} {}\n".format(utt_id, image_path)
       elif coin < 1:
-        test_text_fh.write(utt_id + ' ' + text + '\n')
-        test_utt2spk_fh.write(utt_id + ' ' + str(page_count) + '\n')
-        test_image_fh.write(utt_id + ' ' + image_path + '\n')
+        test_text_fh.write("{} {}\n".format(utt_id, text))
+        test_utt2spk_fh.write("{} {}\n".format(utt_id, page_count))
+        train_image_fh.write("{} {}\n".format(utt_id, image_path)
