@@ -22,8 +22,8 @@ set -e
 
 
 tree_dir=exp/chain/tree_sp
-lang_base=data/lang_nosp_expanded_basevocab
-lang_ext=data/lang_nosp_expanded_extvocab
+lang_base=data/lang_basevocab
+lang_ext=data/lang_extvocab
 
 # For the purposes of this script we just need a biphone tree and associated
 # transition-model for testing, because we're testing it at the graph level,
@@ -35,15 +35,15 @@ lang_ext=data/lang_nosp_expanded_extvocab
 
 # For reference, here is how we could create the 'lang' dir for the
 # baseline.
-#utils/prepare_lang.sh data/local/dict_nosp_expanded \
-#   "<UNK>" data/local/lang_tmp_nosp_expanded data/lang_nosp_expanded
+#utils/prepare_lang.sh data/local/dict \
+#   "<UNK>" data/local/lang_tmp data/lang
 
 if [ $stage -le 0 ]; then
-  cp -r data/local/dict_nosp_expanded data/local/dict_nosp_expanded_basevocab
-  echo "#nonterm:unk" > data/local/dict_nosp_expanded_basevocab/nonterminals.txt
+  cp -r data/local/dict data/local/dict_basevocab
+  echo "#nonterm:unk" > data/local/dict_basevocab/nonterminals.txt
 
-  utils/prepare_lang.sh data/local/dict_nosp_expanded_basevocab \
-       "<UNK>" data/local/lang_tmp_nosp_expanded $lang_base
+  utils/prepare_lang.sh data/local/dict_basevocab \
+       "<UNK>" data/local/lang_tmp $lang_base
 fi
 
 if [ $stage -le 1 ]; then
@@ -70,34 +70,34 @@ fi
 
 if [ $stage -le 2 ]; then
   # make the top-level part of the graph.
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_base $tree_dir $tree_dir/extvocab_nosp_expanded_top
+  utils/mkgraph.sh --self-loop-scale 1.0 $lang_base $tree_dir $tree_dir/extvocab_top
 fi
 
 if [ $stage -le 3 ] && $run_g2p; then
   # you may have to do some stuff manually to install sequitur, to get this to work.
-  dict=data/local/dict_nosp_expanded_basevocab
-  #steps/dict/train_g2p.sh --silence-phones $dict/silence_phones.txt $dict/lexicon.txt  $tree_dir/extvocab_nosp_expanded_g2p
-  local/g2p/train_g2p.sh --silence-phones $dict/silence_phones.txt $dict/lexicon.txt  $tree_dir/extvocab_nosp_expanded_g2p
+  dict=data/local/dict_basevocab
+  #steps/dict/train_g2p.sh --silence-phones $dict/silence_phones.txt $dict/lexicon.txt  $tree_dir/extvocab_g2p
+  local/g2p/train_g2p.sh --silence-phones $dict/silence_phones.txt $dict/lexicon.txt  $tree_dir/extvocab_g2p
 fi
 
 
 if [ $stage -le 4 ]; then
-  # Create data/local/dict_nosp_expanded_newvocab as a dict-dir containing just the
+  # Create data/local/dict_newvocab as a dict-dir containing just the
   # newly created vocabulary entries (but the same phone list as our old setup, not
   # that it matters)
 
-  mkdir -p $tree_dir/extvocab_nosp_expanded_lexicon
+  mkdir -p $tree_dir/extvocab_lexicon
 
   # First find a list of words in the test set that are out of vocabulary.
   # Of course this is totally cheating.
   awk -v w=data/lang/words.txt 'BEGIN{while(getline <w) seen[$1] = $1} {for(n=2;n<=NF;n++) if(!($n in seen)) oov[$n] = 1}
-                                END{ for(k in oov) print k;}' < data/dev/text > $tree_dir/extvocab_nosp_expanded_lexicon/words
-  echo "$0: generating g2p entries for $(wc -l <$tree_dir/extvocab_nosp_expanded_lexicon/words) words"
+                                END{ for(k in oov) print k;}' < data/dev/text > $tree_dir/extvocab_lexicon/words
+  echo "$0: generating g2p entries for $(wc -l <$tree_dir/extvocab_lexicon/words) words"
 
   if $run_g2p; then
-    steps/dict/apply_g2p.sh $tree_dir/extvocab_nosp_expanded_lexicon/words $tree_dir/extvocab_nosp_expanded_g2p  $tree_dir/extvocab_nosp_expanded_lexicon
+    steps/dict/apply_g2p.sh $tree_dir/extvocab_lexicon/words $tree_dir/extvocab_g2p  $tree_dir/extvocab_lexicon
   else
-    cat <<EOF >$tree_dir/extvocab_nosp_expanded_lexicon//lexicon.lex
+    cat <<EOF >$tree_dir/extvocab_lexicon//lexicon.lex
 abalone	0.962436	aa bb aa ll oo nn
 babaganoush	0.162048	bb aa bb aa gg aa nn ou ch
 cabalistique	0.133349	kk aa bb aa ll ii ss tt ii kk
@@ -105,10 +105,10 @@ EOF
   fi
 
   # extend_lang.sh needs it to have basename 'lexiconp.txt'.
-  mv $tree_dir/extvocab_nosp_expanded_lexicon/lexicon.lex $tree_dir/extvocab_nosp_expanded_lexicon/lexiconp.txt
+  mv $tree_dir/extvocab_lexicon/lexicon.lex $tree_dir/extvocab_lexicon/lexiconp.txt
 
-  [ -f data/lang_nosp_expanded_extvocab/G.fst ] && rm data/lang_nosp_expanded_extvocab/G.fst
-  utils/lang/extend_lang.sh  data/lang_nosp_expanded_basevocab $tree_dir/extvocab_nosp_expanded_lexicon/lexiconp.txt  data/lang_nosp_expanded_extvocab
+  [ -f data/lang_extvocab/G.fst ] && rm data/lang_extvocab/G.fst
+  utils/lang/extend_lang.sh  data/lang_basevocab $tree_dir/extvocab_lexicon/lexiconp.txt  data/lang_extvocab
 fi
 
 if [ $stage -le 5 ]; then
@@ -119,7 +119,7 @@ if [ $stage -le 5 ]; then
 2    3    #nonterm_end <eps>
 3
 EOF
-  lexicon=$tree_dir/extvocab_nosp_expanded_lexicon/lexiconp.txt
+  lexicon=$tree_dir/extvocab_lexicon/lexiconp.txt
   num_words=$(wc -l <$lexicon)
   cost=$(perl -e "print log($num_words)");
   awk -v cost=$cost '{print 1, 2, $1, $1, cost}' <$lexicon >>$lang_ext/G.txt
@@ -131,29 +131,29 @@ if [ $stage -le 6 ]; then
   # make the part of the graph that will be included.
   # Refer to the 'compile-graph' commands in ./simple_demo.sh for how you'd do
   # this in code.
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_ext $tree_dir $tree_dir/extvocab_nosp_expanded_part
+  utils/mkgraph.sh --self-loop-scale 1.0 $lang_ext $tree_dir $tree_dir/extvocab_part
 fi
 
 if [ $stage -le 7 ]; then
   offset=$(grep nonterm_bos $lang_ext/phones.txt | awk '{print $2}')
   nonterm_unk=$(grep nonterm:unk $lang_ext/phones.txt | awk '{print $2}')
 
-  mkdir -p $tree_dir/extvocab_nosp_expanded_combined
-  [ -d $tree_dir/extvocab_nosp_expanded_combined/phones ] && rm -r $tree_dir/extvocab_nosp_expanded_combined/phones
+  mkdir -p $tree_dir/extvocab_combined
+  [ -d $tree_dir/extvocab_combined/phones ] && rm -r $tree_dir/extvocab_combined/phones
   # the decoding script expects words.txt and phones/, copy them from the extvocab_part
   # graph directory where they will have suitable values.
-  cp -r $tree_dir/extvocab_nosp_expanded_part/{words.txt,phones.txt,phones/} $tree_dir/extvocab_nosp_expanded_combined
+  cp -r $tree_dir/extvocab_part/{words.txt,phones.txt,phones/} $tree_dir/extvocab_combined
 
   # the following, due to --write-as-grammar=false, compiles it into an FST
   # which can be decoded by our normal decoder.
-  make-grammar-fst --write-as-grammar=false --nonterm-phones-offset=$offset $tree_dir/extvocab_nosp_expanded_top/HCLG.fst \
-                   $nonterm_unk $tree_dir/extvocab_nosp_expanded_part/HCLG.fst  $tree_dir/extvocab_nosp_expanded_combined/HCLG.fst
+  make-grammar-fst --write-as-grammar=false --nonterm-phones-offset=$offset $tree_dir/extvocab_top/HCLG.fst \
+                   $nonterm_unk $tree_dir/extvocab_part/HCLG.fst  $tree_dir/extvocab_combined/HCLG.fst
 
   # the following compiles it and writes as GrammarFst.  The size is 176M, vs. 182M for HCLG.fst.
   # In other examples, of course the difference might be more.
 
-  make-grammar-fst --write-as-grammar=true --nonterm-phones-offset=$offset $tree_dir/extvocab_nosp_expanded_top/HCLG.fst \
-                $nonterm_unk $tree_dir/extvocab_nosp_expanded_part/HCLG.fst  $tree_dir/extvocab_nosp_expanded_combined/HCLG.gra
+  make-grammar-fst --write-as-grammar=true --nonterm-phones-offset=$offset $tree_dir/extvocab_top/HCLG.fst \
+                $nonterm_unk $tree_dir/extvocab_part/HCLG.fst  $tree_dir/extvocab_combined/HCLG.gra
 fi
 
 
@@ -165,15 +165,15 @@ if [ $stage -le 8 ]; then
   #   --cmd "queue.pl --mem 4G --num-threads 4" --online-ivector-dir exp/nnet3/ivectors_dev_clean_2_hires \
   #   exp/chain/tree_sp/graph_tgsmall data/dev_clean_2_hires exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2
 
-  # We just replace the graph with the one in $treedir/extvocab_nosp_expanded_combined.
+  # We just replace the graph with the one in $treedir/extvocab_combined.
 
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 140 --nj 23 \
     --cmd "run.pl --mem 4G --num-threads 4" --online-ivector-dir exp/nnet3/ivectors_dev_hires \
-    exp/chain/tree_sp/extvocab_nosp_expanded_combined data/dev_hires exp/chain/tdnn1a_sp/decode_tgsmall_dev_ev_nosp_expanded_comb
+    exp/chain/tree_sp/extvocab_combined data/dev_hires exp/chain/tdnn1a_sp/decode_tgsmall_dev_ev_comb
 
 
 
-#  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_ev_nosp_expanded_comb/wer_* | utils/best_wer.sh
+#  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_ev_comb/wer_* | utils/best_wer.sh
 
 
  #.. versus the baseline below note, the baseline is not 100% comparable as it used the
@@ -185,5 +185,5 @@ fi
 if [ $stage -le 9 ]; then
   steps/nnet3/decode_grammar.sh --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 140 --nj 23 \
     --cmd "run.pl --mem 4G --num-threads 4" --online-ivector-dir exp/nnet3/ivectors_dev_hires \
-    exp/chain/tree_sp/extvocab_nosp_expanded_combined data/dev_hires exp/chain/tdnn1a_sp/decode_tgsmall_dev_ev_nosp_expanded_comb_gra
+    exp/chain/tree_sp/extvocab_combined data/dev_hires exp/chain/tdnn1a_sp/decode_tgsmall_dev_ev_comb_gra
 fi

@@ -84,7 +84,7 @@ if [ $stage -le 3 ] ; then
 fi
 
 #system=exp/chain/tdnn1a_sp_online/decode_tglarge_dev/
-system=exp/tri3b/decode_nosp_expanded_tglarge_dev
+system=exp/tri3b/decode_tglarge_dev
 if [ $stage -le 4 ]; then
   ## this is not exactly necessary for a single system and single keyword set
   ## but if you have multiple keyword sets, then it avoids having to recompute

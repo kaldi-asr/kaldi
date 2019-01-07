@@ -19,7 +19,7 @@ my $up_bound = 100;
 # only segments with fewer than $up_bound words will be written
 # input and output files
 my $corpus = "subs.txt";
-my $symbol_table = "data/lang_nosp_expanded/words.txt";
+my $symbol_table = "data/lang/words.txt";
 my $filtered = "data/local/tmp/subs/lm/fr.txt";
 my $oovs = "data/local/tmp/subs/lm/oovs.txt";
 my $iv = "data/local/tmp/subs/lm/in_vocabulary.txt";
