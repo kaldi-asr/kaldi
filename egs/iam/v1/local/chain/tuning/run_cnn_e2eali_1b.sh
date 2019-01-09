@@ -1,29 +1,27 @@
 #!/bin/bash
 
 # e2eali_1b is the same as e2eali_1a but uses unconstrained egs
-
-# local/chain/compare_wer.sh /home/hhadian/kaldi-rnnlm/egs/iam/v1/exp/chain/cnn_e2eali_1a exp/chain/cnn_e2eali_1b
-# System                      cnn_e2eali_1a cnn_e2eali_1b
-# WER                             12.79     12.23
-# CER                              5.73      5.48
-# Final train prob              -0.0556   -0.0367
-# Final valid prob              -0.0795   -0.0592
-# Final train prob (xent)       -0.9178   -0.8382
-# Final valid prob (xent)       -1.0604   -0.9853
-# Parameters                      3.95M     3.95M
+# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b
+# System                      cnn_e2eali_1b (dict_50k) cnn_e2eali_1b (dict_500k)
+# WER                             11.41                   10.25
+# CER                              4.87                    4.60
+# Final train prob              -0.0384                 -0.0384
+# Final valid prob              -0.0444                 -0.0444
+# Final train prob (xent)       -0.8084                 -0.8084
+# Final valid prob (xent)       -0.8470                 -0.8470
+# Parameters                      3.97M                   3.97M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
-# exp/chain/cnn_e2eali_1b: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.038->-0.038 (over 1) xent:train/valid[13,20,final]=(-1.34,-0.967,-0.838/-1.40,-1.07,-0.985) logprob:train/valid[13,20,final]=(-0.075,-0.054,-0.037/-0.083,-0.072,-0.059)
+# exp/chain/cnn_e2eali_1b: num-iters=42 nj=2..4 num-params=4.0M dim=40->376 combine=-0.039->-0.039 (over 1) xent:train/valid[27,41,final]=(-1.28,-0.846,-0.808/-1.27,-0.871,-0.847) logprob:train/valid[27,41,final]=(-0.064,-0.043,-0.038/-0.065,-0.051,-0.044)
 
 set -e -o pipefail
-
 stage=0
 
 nj=30
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1a
+e2echain_model_dir=exp/chain/e2e_cnn_1b
 common_egs_dir=
 reporting_email=
 
@@ -141,7 +139,6 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
@@ -152,11 +149,9 @@ if [ $stage -le 4 ]; then
   relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts
   relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
   relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
-
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $tdnn_opts
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
-
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' mod?els... this
