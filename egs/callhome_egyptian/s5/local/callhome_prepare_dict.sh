@@ -55,7 +55,7 @@ $dir/extra_questions.txt || exit 1;
 
 # Add prons for laughter, noise, oov
 for w in `grep -v sil $dir/silence_phones.txt`; do
-sed -i "/\[$w\]/d" $tmpdir/lexicon.3
+perl -i -pe "/\[$w\]/d" $tmpdir/lexicon.3
 done
 
 for w in `grep -v sil $dir/silence_phones.txt`; do

@@ -28,9 +28,9 @@ function split {
         echo $name $spkid >> $split_dir/utt2spk 
 	done < "$line_file"
     
-    sed -i '/^\s*$/d' $split_dir/images.scp
-    sed -i '/^\s*$/d' $split_dir/text
-    sed -i '/^\s*$/d' $split_dir/utt2spk
+    perl -i -pe '/^\s*$/d' $split_dir/images.scp
+    perl -i -pe '/^\s*$/d' $split_dir/text
+    perl -i -pe '/^\s*$/d' $split_dir/utt2spk
     utils/utt2spk_to_spk2utt.pl $split_dir/utt2spk > $split_dir/spk2utt
 }
 

@@ -97,7 +97,7 @@ if [ `cat $dir/segments_to_fix | wc -l` -gt 0 ]; then
   while read line; do
      p1=`echo $line | awk -F'>' '{print $1}'`
      p2=`echo $line | awk -F'>' '{print $2}'`
-     sed -ir "s!$p1!$p2!" $dir/segments
+     perl -i -pe "s!$p1!$p2!" $dir/segments
   done < $dir/segments_to_fix
 fi
 

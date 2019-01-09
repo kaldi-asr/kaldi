@@ -106,7 +106,7 @@ if [ $stage -le 4 ]; then
 
   # Add prons for laughter, noise, oov
   for w in `grep -v sil $dir/silence_phones.txt`; do
-    sed -i "/\[$w\]/d" $tmpdir/lexicon.2
+    perl -i -pe "/\[$w\]/d" $tmpdir/lexicon.2
   done
 
   for w in `grep -v sil $dir/silence_phones.txt`; do
