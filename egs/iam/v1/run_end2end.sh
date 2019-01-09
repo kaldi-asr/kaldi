@@ -22,10 +22,7 @@ train_set=train_aug
 . ./path.sh
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
-
-
 ./local/check_tools.sh
-
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
@@ -35,13 +32,13 @@ fi
 mkdir -p data/{train,test,val}/data
 
 if [ $stage -le 1 ]; then
-  echo "$(date) stage 1: getting allowed image widths for e2e training..."
+  echo "$0: $(date) stage 1: getting allowed image widths for e2e training..."
   image/get_image2num_frames.py --feat-dim 40 data/train # This will be needed for the next command
   # The next command creates a "allowed_lengths.txt" file in data/train
   # which will be used by local/make_features.py to enforce the images to
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-  echo "$(date) Extracting features, creating feats.scp file"
+  echo "$0: $(date) Extracting features, creating feats.scp file"
   local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/train
   steps/compute_cmvn_stats.sh data/train || exit 1;
   for set in val test; do
@@ -54,7 +51,7 @@ fi
 
 if [ $stage -le 2 ]; then
   for set in train; do
-    echo "$(date) stage 2: Performing augmentation, it will double training data"
+    echo "$0: $(date) stage 2: Performing augmentation, it will double training data"
     local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}_aug data
     steps/compute_cmvn_stats.sh data/${set}_aug || exit 1;
   done
@@ -74,7 +71,6 @@ if [ $stage -le 4 ]; then
   local/prepare_dict.sh --vocab-size 500k --dir data/local/dict
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
                         data/local/dict "<unk>" data/lang/temp data/lang
-
   silphonelist=`cat data/lang/phones/silence.csl`
   nonsilphonelist=`cat data/lang/phones/nonsilence.csl`
   local/gen_topo.py 8 4 4 $nonsilphonelist $silphonelist data/lang/phones.txt >data/lang/topo
@@ -97,7 +93,7 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: Calling the flat-start chain recipe..."
-  local/chain/run_e2e_cnn_1b.sh --train_set $train_set
+  local/chain/run_e2e_cnn.sh --train_set $train_set
 fi
 
 if [ $stage -le 6 ]; then
@@ -105,10 +101,10 @@ if [ $stage -le 6 ]; then
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --use-gpu false \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/$train_set data/lang exp/chain/e2e_cnn_1b exp/chain/e2e_ali_train
+                       data/$train_set data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali_1d.sh --train_set $train_set
+  local/chain/run_cnn_e2eali.sh --train_set $train_set
 fi
