@@ -23,7 +23,7 @@ nj=30
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1b
+e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
 

@@ -165,6 +165,7 @@ if [ $stage -le 0 ]; then
   local/process_data.py data/local data/test --dataset test || exit 1
   local/process_data.py data/local data/val --dataset validation || exit 1
 
-  utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
+  image/fix_data_dir.sh data/train
+  image/fix_data_dir.sh data/test
+  image/fix_data_dir.sh data/val
 fi
