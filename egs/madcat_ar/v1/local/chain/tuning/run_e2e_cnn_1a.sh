@@ -2,18 +2,17 @@
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)
-
 # ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
-# System                      e2e_cnn_1a
-# WER                              5.73
-# WER (rescored)                   5.67
-# CER                              1.45
-# CER (rescored)                   1.42
-# Final train prob              -0.0934
-# Final valid prob              -0.0746
+# System                      e2e_cnn_1a     e2e_cnn_1a (with extra corpus text)
+# WER                              9.47            5.73
+# WER (rescored)                   8.05            5.67
+# CER                              2.45            1.45
+# CER (rescored)                   2.10            1.42
+# Final train prob              -0.0934         -0.0934
+# Final valid prob              -0.0746         -0.0746
 # Final train prob (xent)
 # Final valid prob (xent)
-# Parameters                      2.94M
+# Parameters                      2.94M           2.94M
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
 # exp/chain/e2e_cnn_1a/: num-iters=98 nj=6..16 num-params=2.9M dim=40->330 combine=-0.071->-0.070 (over 5) logprob:train/valid[64,97,final]=(-0.089,-0.084,-0.093/-0.075,-0.073,-0.075)
