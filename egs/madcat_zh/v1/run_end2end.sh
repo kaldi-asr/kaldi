@@ -81,13 +81,27 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  echo "$0: calling the flat-start chain recipe..."
+  local/chain/run_e2e_cnn.sh
+fi
+
+lang_decode=data/lang_test
+decode_e2e=true
+if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
+                     data/local/dict/lexicon.txt $lang_decode
 fi
 
-if [ $stage -le 4 ]; then
-  echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh
+if [ $stage -le 5 ] && $decode_e2e; then
+  echo "$0: $(date) stage 5: decoding end2end setup..."
+  utils/mkgraph.sh --self-loop-scale 1.0 $lang_decode \
+    exp/chain/e2e_cnn_1a/ exp/chain/e2e_cnn_1a/graph || exit 1;
+
+  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --nj $nj --cmd "$cmd" \
+    exp/chain/e2e_cnn_1a/graph data/test exp/chain/e2e_cnn_1a/decode_test || exit 1;
+
+  echo "$0: Done. Date: $(date). Results:"
+  local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
 fi

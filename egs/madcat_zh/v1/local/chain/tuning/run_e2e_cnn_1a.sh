@@ -1,16 +1,18 @@
 #!/bin/bash
 # Copyright    2017  Hossein Hadian
 
-# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/ exp/chain/e2e_cnn_1a/
-# System                         cnn_1a cnn_chainali_1b e2e_cnn_1a
-# WER                             13.51      6.76     10.55
-# Final train prob              -0.0291   -0.0138   -0.0702
-# Final valid prob              -0.0712   -0.0171   -0.0578
-# Final train prob (xent)       -0.3847   -0.4169
-# Final valid prob (xent)       -0.4962   -0.5040
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a
+# System                      e2e_cnn_1a
+# WER                             10.41
+# Final train prob              -0.0536
+# Final valid prob              -0.0489
+# Final train prob (xent)
+# Final valid prob (xent)
+
+# steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
+# exp/chain/e2e_cnn_1a/: num-iters=63 nj=6..12 num-params=6.1M dim=80->5760 combine=-0.048->-0.048 (over 5) logprob:train/valid[41,62,final]=(-0.062,-0.065,-0.054/-0.058,-0.062,-0.049)
 
 set -e
-
 # configs for 'chain'
 stage=0
 train_stage=-10
@@ -126,26 +128,3 @@ if [ $stage -le 3 ]; then
     --tree-dir $treedir \
     --dir $dir  || exit 1;
 fi
-
-if [ $stage -le 4 ]; then
-  # The reason we are using data/lang here, instead of $lang, is just to
-  # emphasize that it's not actually important to give mkgraph.sh the
-  # lang directory with the matched topology (since it gets the
-  # topology file from the model).  So you could give it a different
-  # lang directory, one that contained a wordlist and LM of your choice,
-  # as long as phones.txt was compatible.
-
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test \
-    $dir $dir/graph || exit 1;
-fi
-
-if [ $stage -le 5 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj 70 --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
-fi
-
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
