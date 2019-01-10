@@ -6,6 +6,8 @@ stage=0
 nj=20
 username=
 password=
+process_aachen_split=false
+overwrite=false
 # iam_database points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
@@ -24,10 +26,18 @@ train_set=train_aug
                             # if supplied.
 ./local/check_tools.sh
 if [ $stage -le 0 ]; then
+
+ if [ -f data/train/text ] && ! $overwrite; then
+    echo "$0: Not processing, probably script have run from wrong stage"
+    echo "Exiting with status 1 to avoid data corruption"
+    exit 1;
+  fi
+
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
     --wellington-dir "$wellington_database" \
-    --username "$username" --password "$password"
+    --username "$username" --password "$password" \
+    --process_aachen_split $process_aachen_split
 fi
 mkdir -p data/{train,test,val}/data
 

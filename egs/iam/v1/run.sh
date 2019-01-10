@@ -21,6 +21,8 @@ iam_database=/export/corpora5/handwriting_ocr/IAM
 # "https://www.victoria.ac.nz/lals/resources/corpora-default"
 wellington_database=/export/corpora5/Wellington/WWC/
 train_set=train_aug
+process_aachen_split=false
+overwrite=false
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -40,7 +42,8 @@ if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
     --wellington-dir "$wellington_database" \
-    --username "$username" --password "$password"
+    --username "$username" --password "$password" \
+    --process_aachen_split $process_aachen_split
 fi
 mkdir -p data/{train,test,val}/data
 
@@ -84,7 +87,9 @@ if [ $stage -le 4 ]; then
   local/prepare_dict.sh --vocab-size 500k --dir data/local/dict  # this is for training
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
                         data/local/dict "<unk>" data/lang/temp data/lang
-
+  silphonelist=`cat data/lang/phones/silence.csl`
+  nonsilphonelist=`cat data/lang/phones/nonsilence.csl`
+  local/gen_topo.py 8 4 4 $nonsilphonelist $silphonelist data/lang/phones.txt >data/lang/topo
   # This is for decoding. We use a 50k lexicon to be consistent with the papers
   # reporting WERs on IAM:
   local/prepare_dict.sh --vocab-size 50k --dir data/local/dict_50k  # this is for decoding
@@ -99,6 +104,9 @@ if [ $stage -le 4 ]; then
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
                         --unk-fst exp/unk_lang_model/unk_fst.txt \
                         data/local/dict_50k "<unk>" data/lang_unk/temp data/lang_unk
+  silphonelist=`cat data/lang/phones/silence.csl`
+  nonsilphonelist=`cat data/lang/phones/nonsilence.csl`
+  local/gen_topo.py 8 4 4 $nonsilphonelist $silphonelist data/lang/phones.txt >data/lang_unk/topo
   cp data/lang_test/G.fst data/lang_unk/G.fst
 fi
 
