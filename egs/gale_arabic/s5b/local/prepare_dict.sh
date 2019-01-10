@@ -35,6 +35,8 @@ cut -d' ' -f2- $dir/lexicon.txt | sed 's/SIL//g' | tr ' ' '\n' | sort -u | sed '
 
 sed -i '1i<UNK> UNK' $dir/lexicon.txt
 
+echo UNK >> $dir/nonsilence_phones.txt
+
 echo '<sil> SIL' >> $dir/lexicon.txt
 
 echo SIL > $dir/silence_phones.txt

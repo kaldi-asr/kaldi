@@ -13,7 +13,7 @@ output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 for line in infile:
   words = line.strip().split()
-  words = [word for word in words if '<unk>' not in word]
+  words = [word for word in words if '<UNK>' not in word]
   uttid = words[0]
   transcript = ' '.join(words[1:])
   output.write(uttid + ' ' + transcript + '\n')

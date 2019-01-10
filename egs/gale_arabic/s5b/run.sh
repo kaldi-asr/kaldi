@@ -5,7 +5,7 @@
 
 num_jobs=120
 num_decode_jobs=40
-decode_gmm=false
+decode_gmm=true
 stage=0
 overwrite=false
 
@@ -43,7 +43,7 @@ if [ $stage -le 0 ]; then
   local/prepare_lm.sh
 
   utils/format_lm.sh data/lang data/local/lm/lm.gz \
-                     data/local/dict/lexicon.txt data/lang
+                     data/local/dict/lexicon.txt data/lang_test
 fi
 
 mfccdir=mfcc
@@ -86,12 +86,8 @@ if [ $stage -le 5 ]; then
   steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
     data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
-  # train and decode tri2b [LDA+MLLT]
   steps/train_lda_mllt.sh --cmd "$train_cmd" 4000 50000 \
     data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
-
-  steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
-    --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
 fi
 
 if [ $stage -le 6 ] && $decode_gmm; then
@@ -101,9 +97,27 @@ if [ $stage -le 6 ] && $decode_gmm; then
 fi
 
 if [ $stage -le 7 ]; then
-  echo "$0: Training a regular chain model using the e2e alignments..."
-  local/chain/run_tdnn.sh      #tdnn recipe:
+  echo "$0: Aligning data and retraining and realigning with sat_basis"
+  steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
+    data/train data/lang exp/tri2b exp/tri2b_ali || exit 1;
+
+  steps/train_sat_basis.sh --cmd "$train_cmd" \
+    5000 100000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
+
+  steps/align_fmllr.sh --nj $num_jobs --cmd "$train_cmd" \
+    data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
 fi
 
-echo training succedded
+if [ $stage -le 8 ] && $decode_gmm; then
+  utils/mkgraph.sh data/lang_test exp/tri3b exp/tri3b/graph
+  steps/decode_fmllr.sh --nj $num_decode_jobs --cmd \
+    "$decode_cmd" exp/tri3b/graph data/test exp/tri3b/decode
+fi
+
+if [ $stage -le 9 ]; then
+  echo "$0: Training a regular chain model using the e2e alignments..."
+  local/chain/run_tdnn.sh
+fi
+
+echo "$0: training succedded"
 exit 0

@@ -11,7 +11,6 @@ echo "=== Building a language model ..."
 dir=data/local/lm/
 text=data/train/text
 lexicon=data/local/dict/lexicon.txt
-
 # Language model order
 order=3
 
@@ -42,10 +41,10 @@ if [ -z $loc ]; then
   fi
 fi
 
-cat data/train/text | cut -d " " -f 2- >  $dir/train.txt
+cat data/train/text | cut -d " " -f 2- >  $dir/text.txt
 cut -d' ' -f1 $lexicon > $dir/wordlist
 
-ngram-count -text $dir/train.txt -order $order -limit-vocab -vocab $dir/wordlist \
+ngram-count -text $dir/text.txt -order $order -limit-vocab -vocab $dir/wordlist \
   -unk -map-unk "<UNK>" -kndiscount -interpolate -lm $dir/lm.gz
 
 #ngram -lm $dir/lm.gz -ppl $dir/dev.txt

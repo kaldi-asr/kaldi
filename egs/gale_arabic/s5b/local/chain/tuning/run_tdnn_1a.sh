@@ -19,7 +19,7 @@ stage=0
 nj=30
 train_set=train
 test_set=test
-gmm=tri2b        # this is the source gmm-dir that we'll use for alignments; it
+gmm=tri3b        # this is the source gmm-dir that we'll use for alignments; it
                  # should have alignments for the specified training data.
 num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
@@ -201,7 +201,7 @@ if [ $stage -le 17 ]; then
   utils/lang/check_phones_compatible.sh \
     data/lang_test/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang \
+    --self-loop-scale 1.0 data/lang_test \
     $tree_dir $tree_dir/graph || exit 1;
 fi
 

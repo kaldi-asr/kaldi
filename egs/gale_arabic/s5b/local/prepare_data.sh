@@ -15,20 +15,20 @@ mkdir -p $gale_data
 # check that sox is installed 
 which sox  &>/dev/null
 if [[ $? != 0 ]]; then 
- echo "sox is not installed"; exit 1 
+ echo "$0: sox is not installed"; exit 1
 fi
 
 for dvd in $dir1 $dir2 $dir3; do
   dvd_full_path=$(utils/make_absolute.sh $dvd)
   if [[ ! -e $dvd_full_path ]]; then 
-    echo missing $dvd_full_path; exit 1;
+    echo "$0: missing $dvd_full_path"; exit 1;
   fi
   find $dvd_full_path \( -name "*.wav" -o -name "*.flac" \)  | while read file; do
     id=$(basename $file | awk '{gsub(".wav","");gsub(".flac","");print}')
     echo "$id sox $file -r 16000 -t wav - |"
   done 
 done | sort -u > $gale_data/wav.scp
-echo data prep audio succeded
+echo "$0:data prep audio succeded"
 
 gale_data=$(utils/make_absolute.sh "GALE" );
 top_pwd=`pwd`
@@ -36,13 +36,13 @@ txtdir=$gale_data/txt
 mkdir -p $txtdir; cd $txtdir
 
 for cdx in $text1 $text2 $text3; do
-  echo "Preparing $cdx"
+  echo "$0:Preparing $cdx"
   if [[ $cdx  == *.tgz ]] ; then
      tar -xvf $cdx
   elif [  -d "$cdx" ]; then
     ln -s $cdx `basename $cdx`
   else
-    echo "I don't really know what I shall do with $cdx " >&2
+    echo "$0:I don't really know what I shall do with $cdx " >&2
   fi
 done
 
@@ -78,7 +78,7 @@ awk '{if ($1 == "conversational") {$1="";print $0}}' all_1.tmp$$ | sed 's:^ ::' 
 cd ..;
 rm -fr $txtdir
 cd $top_pwd
-echo data prep text succeeded
+echo "$0:dat a prep text succeeded"
 
 mkdir -p data
 dir=$(utils/make_absolute.sh data/)
@@ -100,6 +100,5 @@ grep -f local/test_list $gale_data/wav.scp > $dir/test/wav.scp
 cat $gale_data/wav.scp | awk -v seg=$dir/train/segments 'BEGIN{while((getline<seg) >0) {seen[$2]=1;}}
  {if (seen[$1]) { print $0}}' > $dir/train/wav.scp
  
-echo data prep split succeeded
-
+echo "$0:data prep split succeeded"
 exit 0

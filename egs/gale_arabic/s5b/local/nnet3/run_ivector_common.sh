@@ -12,7 +12,7 @@ stage=0
 nj=100
 train_set=train   # you might set this to e.g. train.
 test_sets="test"
-gmm=tri2b # This specifies a GMM-dir from the features of the type you're training the system on;
+gmm=tri3b # This specifies a GMM-dir from the features of the type you're training the system on;
                          # it should contain alignments for 'train_set'.
 
 num_threads_ubm=32
@@ -146,7 +146,7 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ -f data/${train_set}_sp/feats.scp ] && [ $stage -le 7 ]; then
-  echo "$0: $feats already exists.  Refusing to overwrite the features "
+  echo "$0: data/${train_set}_sp/feats.scp already exists.  Refusing to overwrite the features "
   echo " to avoid wasting time.  Please remove the file and continue if you really mean this."
   exit 1;
 fi
