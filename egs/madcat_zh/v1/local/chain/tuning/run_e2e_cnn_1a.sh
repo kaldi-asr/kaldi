@@ -56,7 +56,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
+  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 70 --cmd "$cmd" \
                                        --shared-phones true \
                                        --type mono \
                                        data/$train_set $lang $treedir
@@ -116,7 +116,7 @@ if [ $stage -le 3 ]; then
     --trainer.num-epochs 2 \
     --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial 6 \
-    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
@@ -143,7 +143,7 @@ fi
 if [ $stage -le 5 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj 30 --cmd "$cmd" \
+    --nj 70 --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 fi
 
