@@ -61,16 +61,11 @@ if [ $stage -le 0 ]; then
   done
 fi
 
-# This script uses feat-dim of 60 while the end2end version uses a feat-dim of 80
 mkdir -p data/{train,test,dev}/data
 if [ $stage -le 1 ]; then
   for dataset in train test dev; do
-    for prepared in utt2spk text images.scp spk2utt; do
-      cp data/$dataset/$prepared data/${dataset}/$prepared
-    done
-
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 60 data/${dataset}
-    steps/compute_cmvn_stats.sh data/${dataset}
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 60 data/$dataset
+    steps/compute_cmvn_stats.sh data/$dataset
   done
 fi
 
