@@ -106,7 +106,7 @@ if [ $stage -le 4 ]; then
                         data/local/dict_50k "<unk>" data/lang_unk/temp data/lang_unk
   silphonelist=`cat data/lang/phones/silence.csl`
   nonsilphonelist=`cat data/lang/phones/nonsilence.csl`
-  local/gen_topo.py 8 4 4 $nonsilphonelist $silphonelist data/lang/phones.txt >data/lang_unk/topo
+  local/gen_topo.py 8 4 4 $nonsilphonelist $silphonelist data/lang_unk/phones.txt >data/lang_unk/topo
   cp data/lang_test/G.fst data/lang_unk/G.fst
 fi
 
