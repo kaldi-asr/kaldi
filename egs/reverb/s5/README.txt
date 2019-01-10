@@ -1,23 +1,11 @@
-Improved baseline for REVERB challenge based on Kaldi
-==============================================================================
+Improved baseline for REVERB challenge 
+======================================
 
-updated
-Wed Nov 28 11:36:30 EST 2018 Szu-Jui Chen <schen146@jhu.edu>
-
-updated
-Wed Apr 29 19:10:33 EDT 2015 Shinji Watanabe <watanabe@merl.com>
-
-updated 
-Wed Apr  9 12:14:02 CEST 2014 Felix Weninger <felix@weninger.de>
-
-original:
-Wed Nov  6 14:47:59 EST 2013 Felix Weninger <felix@weninger.de>
+This is an improvement over "Improved multi condition training baseline" from Felix Weninger & Shinji Watanabe
 
 Key specs:
-- MFCC-LDA-STC front-end(not sure)
+- Nara-WPE and BeamformIt front-end enhancement
 - TDNN acoustic model
-- Utterance-based adaptation using basis fMLLR
-- Tri-gram LM minimum Bayes risk decoding(not sure)
 
 RESULT:
 For experiment results, please see RESULTS for more detail
@@ -42,4 +30,3 @@ INSTRUCTIONS:
    Depending on your system specs (# of CPUs, RAM) you might want (or have) to 
    change the number of parallel jobs -- this is controlled by the nj
    and decode_nj variables (# of jobs for training, for decoding).
-
