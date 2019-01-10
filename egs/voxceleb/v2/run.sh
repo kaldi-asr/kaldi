@@ -16,20 +16,30 @@ vaddir=`pwd`/mfcc
 
 
 # The trials file is downloaded by local/make_voxceleb1.pl.
-voxceleb1_trials=data/voxceleb1_test/trials
-voxceleb1_root=/export/corpora/VoxCeleb1
-voxceleb2_root=/export/corpora/VoxCeleb2
+#voxceleb1_trials=data/voxceleb1_test/trials
+voxceleb1_root=/home/data2/VoxCeleb/nivedita/VoxCeleb1
+voxceleb2_root=/home/data2/VoxCeleb/nivedita/VoxCeleb2
 nnet_dir=exp/xvector_nnet_1a
-musan_root=/export/corpora/JHU/musan
+musan_root=/home/data2/VoxCeleb/nivedita/musan
+
 
 stage=0
+# The user of this script could change some of the above parameters. Example:
+# /bin/bash run.sh --stage 0
+. utils/parse_options.sh || exit 1
+
+
+
 
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
   local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
   # This script creates data/voxceleb1_test and data/voxceleb1_train.
   # Our evaluation set is the test portion of VoxCeleb1.
-  local/make_voxceleb1.pl $voxceleb1_root data
+  #local/make_voxceleb1.pl $voxceleb1_root data
+  local/make_voxceleb1.pl $voxceleb1_root test data/voxceleb1_test
+  local/make_voxceleb1.pl $voxceleb1_root dev data/voxceleb1_train
+
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
   # This should give 7,351 speakers and 1,277,503 utterances.
   utils/combine_data.sh data/train data/voxceleb2_train data/voxceleb2_test data/voxceleb1_train
