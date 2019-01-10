@@ -19,16 +19,9 @@ affix=1a
 
 # training options
 tdnn_dim=450
-num_epochs=4
-num_jobs_initial=3
-num_jobs_final=12
 minibatch_size=150=48,24/300=24,12/600=12,6/1200=4,4
 common_egs_dir=
-l2_regularize=0.00005
-frames_per_iter=1000000
-cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train
-lang_test=lang_test
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -78,17 +71,12 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
-
-  opts="l2-regularize=0.075"
-  opts_2="l2-regularize=0.075"
-  opts_3="l2-regularize=0.1"
-  common1="$opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="$opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="$opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=80 name=input
-
   conv-relu-batchnorm-layer name=cnn1 height-in=80 height-out=80 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=80 height-out=40 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=40 height-out=40 time-offsets=-4,-2,0,2,4 $common2
@@ -97,13 +85,12 @@ if [ $stage -le 2 ]; then
   conv-relu-batchnorm-layer name=cnn6 height-in=20 height-out=20 time-offsets=-1,0,1 $common3
   conv-relu-batchnorm-layer name=cnn7 height-in=20 height-out=20 time-offsets=-1,0,1 $common3
   conv-relu-batchnorm-layer name=cnn8 height-in=20 height-out=10 time-offsets=-1,0,1 $common3 height-subsample-out=2
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $opts_2
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $opts_2
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $opts_2
-
+  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $opts_2
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $opts_3
+  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
@@ -115,9 +102,9 @@ if [ $stage -le 3 ]; then
 
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
-    --feat.cmvn-opts "$cmvn_opts" \
+    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize $l2_regularize \
+    --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
@@ -125,11 +112,11 @@ if [ $stage -le 3 ]; then
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter $frames_per_iter \
-    --trainer.num-epochs $num_epochs \
+    --trainer.frames-per-iter 2000000 \
+    --trainer.num-epochs 2 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
+    --trainer.optimization.num-jobs-initial 6 \
+    --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
@@ -149,7 +136,7 @@ if [ $stage -le 4 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 data/lang_test \
     $dir $dir/graph || exit 1;
 fi
 

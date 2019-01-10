@@ -1,10 +1,20 @@
 #!/bin/bash
 
-# Copyright      2018  Ashish Arora
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
+#                2017  Hossein Hadian
 # Apache 2.0
 
-# This script downloads data splits for MADCAT Chinese dataset.
-# It also check if madcat chinese data is present or not.
+# This script downloads the Madcat Chinese handwriting database and prepares the training
+# and test data (i.e text, images.scp, utt2spk and spk2utt) by calling process_data.py.
+# It also downloads the LOB and Brown text corpora. It downloads the database files
+# only if they do not already exist in download directory.
+
+#  Eg. local/prepare_data.sh
+#  Eg. text file: 000_a01-000u-00 A MOVE to stop Mr. Gaitskell from
+#      utt2spk file: 000_a01-000u-00 000
+#      images.scp file: 000_a01-000u-00 data/local/lines/a01/a01-000u/a01-000u-00.png
+#      spk2utt file: 000 000_a01-000u-00 000_a01-000u-01 000_a01-000u-02 000_a01-000u-03
 
 download_dir1=/export/corpora/LDC/LDC2014T13/data
 train_split_url=http://www.openslr.org/resources/50/madcat.train.raw.lineid
