@@ -70,3 +70,8 @@ Combined Results for Reports and Conversational WER:
 %WER 36.17 [ 25196 / 69668, 2429 ins, 5393 del, 17374 sub ] exp/tri2b/decode/wer_16
 %WER 39.42 [ 27462 / 69668, 2473 ins, 6051 del, 18938 sub ] exp/tri2a/decode/wer_14
 %WER 40.35 [ 28113 / 69668, 2713 ins, 5635 del, 19765 sub ] exp/tri1/decode/wer_13
+
+
+WER 33.35 [ 23233 / 69668, 2385 ins, 5274 del, 15574 sub ] exp/tri3b/decode/wer_16_0.5 (train_sat_basis)
+current best 'chain' models  (see local/chain/tuning/run_tdnn_1a.sh)
+%WER 16.66 [ 11610 / 69668, 1233 ins, 2747 del, 7630 sub ] exp/chain/tdnn_1a_sp/decode_test/wer_10_0.0

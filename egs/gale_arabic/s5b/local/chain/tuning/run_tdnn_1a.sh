@@ -1,18 +1,16 @@
 #!/bin/bash
 
-# ./local/chain/compare_wer.sh exp/chain/tdnn_1b/
-# System                      tdnn_1b
-# WER                             17.23
-# CER                              6.83
-# Final train prob              -0.0825
-# Final valid prob              -0.0987
-# Final train prob (xent)       -0.6611
-# Final valid prob (xent)       -0.7393
+# ./local/chain/compare_wer.sh exp/chain/tdnn_1a_sp
+# System                      tdnn_1a_sp
+# WER                             16.66
+# CER                              6.70
+# Final train prob              -0.0674
+# Final valid prob              -0.0832
+# Final train prob (xent)       -0.8575
+# Final valid prob (xent)       -0.9472
 
-# head exp/chain/tdnn_1b/decode_test_rnnlm_1e_2_0.40/scoring_kaldi/best_wer
-# WER 16.58 [ 11549 / 69668, 1290 ins, 2389 del, 7870 sub ] exp/chain/tdnn1c_swbd_sp/decode_test_rnnlm_1e_2_0.40/wer_10_0.5
-
-# exp/chain/tdnn_1b/: num-iters=441 nj=3..16 num-params=16.5M dim=40+100->1792 combine=-0.081->-0.081 (over 6) xent:train/valid[293,440,final]=(-0.937,-0.659,-0.661/-0.960,-0.739,-0.739) logprob:train/valid[293,440,final]=(-0.124,-0.083,-0.083/-0.127,-0.100,-0.099)
+# steps/info/chain_dir_info.pl exp/chain/tdnn_1a_sp/
+# exp/chain/tdnn_1a_sp/: num-iters=441 nj=3..16 num-params=17.2M dim=40+100->3024 combine=-0.064->-0.064 (over 5) xent:train/valid[293,440,final]=(-1.17,-0.868,-0.858/-1.24,-0.956,-0.947) logprob:train/valid[293,440,final]=(-0.102,-0.068,-0.067/-0.113,-0.084,-0.083)
 
 set -e -o pipefail
 stage=0
