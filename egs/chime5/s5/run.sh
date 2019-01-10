@@ -73,10 +73,20 @@ if [ $stage -le 4 ]; then
   # Beamforming using reference arrays
   # enhanced WAV directory
   enhandir=enhan
+  dereverb_dir=${PWD}/wav/wpe/
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_wpe.sh --cmd "$train_cmd" \
+			      ${audio_dir}/${dset} \
+			      ${dereverb_dir}/${dset} \
+			      ${mictype}
+    done
+  done
+
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
-			      ${audio_dir}/${dset} \
+			      ${dereverb_dir}/${dset} \
 			      ${enhandir}/${dset}_${enhancement}_${mictype} \
 			      ${mictype}
     done
@@ -84,7 +94,7 @@ if [ $stage -le 4 ]; then
 
   for dset in dev eval; do
     local/prepare_data.sh --mictype ref "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-			  ${json_dir}/${dset} data/${dset}_${enhancement}_ref
+			  ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
   done
 fi
 
@@ -243,7 +253,7 @@ fi
 
 if [ $stage -le 17 ]; then
   rm -r data/train_worn_cleaned 2>/dev/null || true
-  utils/copy_data_dir.sh data/${train_set}_clean data/train_worn_cleaned
+  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_worn_cleaned
 
   awk '{print $1}' data/train_worn/wav.scp > data/train_worn_cleaned/recos.tmp
   utils/filter_scp.pl data/train_worn_cleaned/recos.tmp \
@@ -252,7 +262,7 @@ if [ $stage -le 17 ]; then
   utils/fix_data_dir.sh data/train_worn_cleaned
   
   rm -r data/train_u400k_cleaned 2>/dev/null || true
-  utils/copy_data_dir.sh data/${train_set}_clean data/train_u400k_cleaned
+  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_u400k_cleaned
 
   utils/filter_scp.pl --exclude data/train_worn_cleaned/recos.tmp \
     data/${train_set}_cleaned/wav.scp > data/train_u400k_cleaned/wav.scp
@@ -262,7 +272,8 @@ fi
 
 if [ $stage -le 18 ]; then
   # chain TDNN
-  local/chain/multi_condition/run_tdnn.sh --nj ${nj} \
+  #local/chain/tuning/run_tdnn_rvb_1b.sh --nj ${nj} --train-set ${train_set}_cleaned --test-sets "$test_sets" --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned
+  local/chain/tuning/run_tdnn_rvb_1b.sh --stage 16 --nj ${nj} \
     --train-set-clean train_worn_cleaned \
     --train-set-noisy train_u400k_cleaned \
     --combined-train-set ${train_set}_cleaned \
@@ -275,6 +286,6 @@ if [ $stage -le 19 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
-      --dev exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_dev_${enhancement}_ref \
-      --eval exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_eval_${enhancement}_ref
+      --dev exp/chain_${train_set}_cleaned_rvb/tdnn_rvb_1b_sp/decode_dev_${enhancement}_ref \
+      --eval exp/chain_${train_set}_cleaned_rvb/tdnn_rvb_1b_sp/decode_eval_${enhancement}_ref
 fi
