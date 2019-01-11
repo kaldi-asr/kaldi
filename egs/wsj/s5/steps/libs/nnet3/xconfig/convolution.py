@@ -149,7 +149,7 @@ class XconfigConvLayer(XconfigLayerBase):
         if input_dim % height_in != 0:
             raise RuntimeError("Input dimension {0} is not a multiple of height-in={1}".format(
                 input_dim, height_in))
-        self.config['num-filters-in'] = input_dim / height_in
+        self.config['num-filters-in'] = input_dim // height_in
 
 
     # Check whether 'str' is a sorted, unique, nonempty list of integers, like -1,0,1.,
