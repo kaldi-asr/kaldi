@@ -3,31 +3,36 @@
 
 # This script performs chain training in a flat-start manner
 # and without building or using any context-dependency tree.
-# It does not use ivecors or other forms of speaker adaptation.
-# It is called from run_e2e_phone.sh
+# It does not use ivecors or other forms of speaker adaptation
+# It is called from run_e2e_char.sh
 
-# Note: this script is configured as phone-based, if you want
-# to run it in character mode, you'll need to change _nosp
-# to _char everywhere.
+# Note: this script is configured as grapheme-based, if you want
+# to run it in phoneme mode, you'll need to change _char
+# to _nosp everywhere.
 
-# local/chain/compare_wer.sh exp/chain/e2e_tdnnf_1a
-# System                e2e_tdnnf_1a
-#WER dev93 (tgpr)                8.77
-#WER dev93 (tg)                  8.11
-#WER dev93 (big-dict,tgpr)       6.17
-#WER dev93 (big-dict,fg)         5.66
-#WER eval92 (tgpr)               5.62
-#WER eval92 (tg)                 5.19
-#WER eval92 (big-dict,tgpr)      3.23
-#WER eval92 (big-dict,fg)        2.80
-# Final train prob        -0.0618
-# Final valid prob        -0.0825
+# This is the same as run_tdnn_lstm_flatstart.sh except it uses
+# TDNN-F (and CMVN is disabled).
+
+
+# local/chain/compare_wer.sh exp/chain/e2e_tdnn_lstm_bichar_1a exp/chain/e2e_tdnnf_bichar1a
+# System                e2e_tdnn_lstm_bichar_1a e2e_tdnnf_bichar1a
+# WER dev93 (tgpr)                9.42      8.89
+# WER dev93 (tg)                  8.85      8.20
+# WER dev93 (big-dict,tgpr)       7.70      6.96
+# WER dev93 (big-dict,fg)         6.79      6.01
+# WER eval92 (tgpr)               6.42      6.08
+# WER eval92 (tg)                 6.11      5.79
+# WER eval92 (big-dict,tgpr)      4.50      4.39
+# WER eval92 (big-dict,fg)        4.09      3.88
+# Final train prob        -0.0610   -0.0598
+# Final valid prob        -0.0836   -0.0854
 # Final train prob (xent)
 # Final valid prob (xent)
-# Num-params                 6772564
+# Num-params                 9219188   7421044
 
-# steps/info/chain_dir_info.pl exp/chain/e2e_tdnnf_1a
-# exp/chain/e2e_tdnnf_1a: num-iters=180 nj=2..8 num-params=6.8M dim=40->84 combine=-0.060->-0.060 (over 3) logprob:train/valid[119,179,final]=(-0.080,-0.062,-0.062/-0.089,-0.083,-0.083)
+# steps/info/chain_dir_info.pl exp/chain/e2e_tdnnf_bichar1a
+# exp/chain/e2e_tdnnf_bichar1a: num-iters=180 nj=2..8 num-params=7.4M dim=40->3444 combine=-0.064->-0.064 (over 3) logprob:train/valid[119,179,final]=(-0.093,-0.060,-0.060/-0.107,-0.086,-0.085)
+
 
 set -e
 
@@ -65,16 +70,16 @@ where "nvcc" is installed.
 EOF
 fi
 
-lang=data/lang_e2e
-treedir=exp/chain/e2e_tree  # it's actually just a trivial tree (no tree building)
-dir=exp/chain/e2e_tdnnf_${affix}
+lang=data/lang_e2e_char
+treedir=exp/chain/e2e_bichar_tree
+dir=exp/chain/e2e_tdnnf_bichar${affix}
 
 if [ $stage -le 0 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   rm -rf $lang
-  cp -r data/lang_nosp $lang
+  cp -r data/lang_char $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
@@ -88,11 +93,12 @@ if [ $stage -le 1 ]; then
   $train_cmd $treedir/log/make_phone_lm.log \
              cat data/$train_set/text \| \
              steps/nnet3/chain/e2e/text_to_phones.py --between-silprob 0.1 \
-             data/lang_nosp \| \
-             utils/sym2int.pl -f 2- data/lang_nosp/phones.txt \| \
+             data/lang_char \| \
+             utils/sym2int.pl -f 2- data/lang_char/phones.txt \| \
              chain-est-phone-lm --num-extra-lm-states=2000 \
              ark:- $treedir/phone_lm.fst
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
+                                       --type biphone \
                                        --shared-phones true \
                                        data/$train_set $lang $treedir
 fi
@@ -173,15 +179,15 @@ if [ $stage -le 4 ]; then
   # as long as phones.txt was compatible.
 
   utils/lang/check_phones_compatible.sh \
-    data/lang_nosp_test_tgpr/phones.txt $lang/phones.txt
+    data/lang_char_test_tgpr/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_nosp_test_tgpr \
+    --self-loop-scale 1.0 data/lang_char_test_tgpr \
     $dir $treedir/graph_tgpr || exit 1;
 
   utils/lang/check_phones_compatible.sh \
-    data/lang_nosp_test_bd_tgpr/phones.txt $lang/phones.txt
+    data/lang_char_test_bd_tgpr/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_nosp_test_bd_tgpr \
+    --self-loop-scale 1.0 data/lang_char_test_bd_tgpr \
     $dir $treedir/graph_bd_tgpr || exit 1;
 fi
 
@@ -204,10 +210,10 @@ if [ $stage -le 5 ]; then
       done
       steps/lmrescore.sh \
         --self-loop-scale 1.0 \
-        --cmd "$decode_cmd" data/lang_nosp_test_{tgpr,tg} \
+        --cmd "$decode_cmd" data/lang_char_test_{tgpr,tg} \
         data/${data}_hires ${dir}/decode_{tgpr,tg}_${data_affix} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_nosp_test_bd_{tgpr,fgconst} \
+        data/lang_char_test_bd_{tgpr,fgconst} \
        data/${data}_hires ${dir}/decode_${lmtype}_${data_affix}{,_fg} || exit 1
     ) || touch $dir/.error &
   done
