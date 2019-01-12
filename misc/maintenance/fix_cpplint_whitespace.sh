@@ -8,6 +8,6 @@ for file in $@; do
   perl -i -pe 's/} \/\//}  \/\//' $file # '} //' -> '}  //'
   perl -i -pe 's/for(/for (/' $file     # 'for(' -> 'for ('
   perl -i -pe 's/if(/if (/' $file       # 'if(' -> 'if ('
-  perl -i -pe 's/\s\s*$//' $file        # 'remove white-space at the end of lines'
+  perl -i -pe 's/[ \t]+$//' $file       # 'remove white-space at the end of lines'
 done
 
