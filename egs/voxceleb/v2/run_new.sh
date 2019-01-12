@@ -3,6 +3,7 @@
 #             2017   Johns Hopkins University (Author: Daniel Povey)
 #        2017-2018   David Snyder
 #             2018   Ewald Enzinger
+#             2019   Sayint.ai
 # Apache 2.0.
 #
 # See ../README.txt for more info on data required.
@@ -22,14 +23,24 @@ voxceleb2_root=/export/corpora/VoxCeleb2
 nnet_dir=exp/xvector_nnet_1a
 musan_root=/export/corpora/JHU/musan
 
+
 stage=0
+# The user of this script could change some of the above parameters. Example:
+# /bin/bash run.sh --stage 0
+. utils/parse_options.sh || exit 1
+
+
+
 
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
   local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
   # This script creates data/voxceleb1_test and data/voxceleb1_train.
   # Our evaluation set is the test portion of VoxCeleb1.
-  local/make_voxceleb1.pl $voxceleb1_root data
+  #local/make_voxceleb1.pl $voxceleb1_root data
+  local/make_voxceleb1_v2.pl $voxceleb1_root dev data/voxceleb1_train
+  local/make_voxceleb1_v2.pl $voxceleb1_root test data/voxceleb1_test
+
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
   # This should give 7,351 speakers and 1,277,503 utterances.
   utils/combine_data.sh data/train data/voxceleb2_train data/voxceleb2_test data/voxceleb1_train
@@ -38,10 +49,10 @@ fi
 if [ $stage -le 1 ]; then
   # Make MFCCs and compute the energy-based VAD for each dataset
   for name in train voxceleb1_test; do
-    steps/make_mfcc.sh --write-utt2num-frames true --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+    steps/make_mfcc.sh --write-utt2num-frames true --mfcc-config conf/mfcc.conf --nj 40 --cmd "$feats_cmd" \
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
-    sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
+    sid/compute_vad_decision.sh --nj 40 --cmd "$feats_cmd" \
       data/${name} exp/make_vad $vaddir
     utils/fix_data_dir.sh data/${name}
   done
@@ -109,7 +120,7 @@ if [ $stage -le 3 ]; then
   # Make MFCCs for the augmented data.  Note that we do not compute a new
   # vad.scp file here.  Instead, we use the vad.scp from the clean version of
   # the list.
-  steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$feats_cmd" \
     data/train_aug_1m exp/make_mfcc $mfccdir
 
   # Combine the clean and augmented VoxCeleb2 list.  This is now roughly
@@ -122,7 +133,7 @@ if [ $stage -le 4 ]; then
   # This script applies CMVN and removes nonspeech frames.  Note that this is somewhat
   # wasteful, as it roughly doubles the amount of training data on disk.  After
   # creating training examples, this can be removed.
-  local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd "$train_cmd" \
+  local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd "$feats_cmd" \
     data/train_combined data/train_combined_no_sil exp/train_combined_no_sil
   utils/fix_data_dir.sh data/train_combined_no_sil
 fi
