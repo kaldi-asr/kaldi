@@ -25,7 +25,7 @@ perl -i -pe 's/SRMR_main/SRMR/g' prog/score_real.m
 perl -i -pe 's/SRMR_main/SRMR/g' prog/score_sim.m
 perl -i -pe 's/+wb\ //g' prog/calcpesq.m
 perl -i -pe 's/pesq_/_pesq_/g' prog/calcpesq.m
-perl -i -pe '30d;31d' prog/calcpesq.m
+perl -n -i -e 'print if $. != 30 && $. != 31' prog/calcpesq.m  # Delete lines 30 and 31 from file
 patch score_RealData.m -i ../../../score_RealData.patch -o score_RealData_new.m
 mv score_RealData_new.m score_RealData.m
 patch score_SimData.m -i ../../../score_SimData.patch -o score_SimData_new.m

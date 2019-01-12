@@ -30,7 +30,7 @@ echo SIL > $dir/optional_silence.txt
 # really to the same base phone.
 cat tmp2.$$ | tr -s ' ' '\n' | grep -v ^$  | sort -u >  $dir/nonsilence_phones.txt || exit 1;
 
-perl -i -pe '1i<UNK> SIL' $dir/lexicon.txt # insert word <UNK> with phone sil at the begining of the dictionary
+ex -s -c '1i|<UNK> SIL' -c x $dir/lexicon.txt # insert word <UNK> with phone sil at the begining of the dictionary
 
 rm -fr ar-ar_lexicon_2014-03-17.txt.bz2 ar-ar_grapheme_lexicon_2016-02-09.bz2 tmp$$ tmp1.$$ tmp2.$$ 
 echo Dictionary preparation succeeded
