@@ -86,18 +86,20 @@ fi
 
 # Work out how many groups per job and how many frames per job we'll have
 
-frames_per_group_avg=$(awk '/^frames_per_chunk_avg/ { fpc=$2; } /^chunks_per_group/ { print int(fpc * $2); }')
+info_in=$processed_egs_dir/info.txt
+
+frames_per_group_avg=$(awk '/^frames_per_chunk_avg/ { fpc=$2; } /^chunks_per_group/ { print int(fpc * $2); }' $info_in)
 if ! [ $frames_per_group_avg -gt 0 ]; then
   echo "$0: error getting frames per group.";
 fi
 
 num_groups=$(wc -l <$processed_egs_dir/train.scp)
 
-num_scp_files=$[[ (frames_per_group_avg + frames_per_job / 2) / frames_per_job ]]
+num_scp_files=$[(frames_per_group_avg*num_groups + frames_per_job/2) / frames_per_job]
 [ $num_scp_files -eq 0 ] && num_scp_files=1
 
-frames_per_scp_file=$[[(frames_per_group_avg * num_groups) / num_scp_files]]
-groups_per_scp_file=$[[ num_groups / num_scp_files]]
+frames_per_scp_file=$[(frames_per_group_avg * num_groups) / num_scp_files]
+groups_per_scp_file=$[ num_groups / num_scp_files]
 
 
 mkdir -p $dir/temp
@@ -115,11 +117,12 @@ cp $processed_egs_dir/misc/* $dir/misc
 # do this in a specially-written python script, but instead we do it with a
 # combination of existing Kaldi and UNIX utilities.
 
-awk '{block=sprintf("%05d", NR / groups_per_block); group_id=$1; print group_id, block;}' \
+awk -v gpb=$groups_per_block \
+    '{block=sprintf("%05d", NR / gpb); group_id=$1; print group_id, block;}' \
     <$processed_egs_dir/train.scp >$dir/temp/key2block
 
 # get list of blocks
-awk '{print $2}' | uniq <$dir/temp/key2block > $dir/temp/blocks
+awk '{print $2}' <$dir/temp/key2block | uniq > $dir/temp/blocks
 # get randomized-order list of blocks
 utils/shuffle_list.pl --srand "$srand" <$dir/temp/blocks > $dir/temp/blocks_rand
 # Map block-ids to randomized-order block-ids
@@ -152,21 +155,34 @@ utils/split_scp.pl --utt2spk=$dir/temp/key2block_rand \
 cp $processed_egs_dir/heldout_subset.scp $processed_egs_dir/train_subset.scp $dir/
 
 
+# note: there is only one language in $processed_egs_dir (any
+# merging would be done at the randomization stage but that is not supported yet).
 
-cat $processed_egs_dir/info.txt  | awk '
-  /^dir_type/ { print "dir_type randomized_chaina_egs"; next; }
-  /^lang / { print "langs", $2; next }
-  /^num_input_frames/ { print $2 * num_repeats; next; } # approximate; ignores held-out egs.
-   {print;}
-  END{print "chunks_per_group " chunks_per_group; print "num_repeats " num_repeats;}' >$dir/info.txt
+lang=$(awk '/^lang / { print $2; }' <$processed_egs_dir/info.txt)
 
-cat <<EOF >>$dir/info.txt
+# We'll store info files per language, containing the part of the information
+# that is language-specific, plus a single global info.txt containing stuff that
+# is not language specific.
+# This will get more complicated once we actually support multiple languages,
+# and when we allow multiple input processed egs dirs for the same language.
+
+grep -v -E '^dir_type|^lang|^feat_dim' <$processed_egs_dir/info.txt | \
+  cat <(echo "dir_type randomized_chaina_egs") - > $dir/info_$lang.txt
+
+
+cat <<EOF >$dir/info.txt
+dir_type randomized_chaina_egs
 num_scp_files $num_scp_files
+langs $lang
 frames_per_scp_file $frames_per_scp_file
 groups_per_scp_file $groups_per_scp_file
 EOF
+# frames_per_job, after rounding, becomes frames_per_scp_file.
 
-# Note: frame_per_job, after rounding, becomes frames_per_scp_file.
+# note: frames_per_chunk_avg will be present in the info.txt file as well as
+# the per-language files.
+grep -E '^feat_dim|^frames_per_chunk_avg' <$processed_egs_dir/info.txt >>$dir/info.txt
+
 
 
 if ! cat $dir/info.txt | awk '{if (NF == 1) exit(1);}'; then

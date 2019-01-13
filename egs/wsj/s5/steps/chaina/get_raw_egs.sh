@@ -72,6 +72,7 @@ lattice_prune_beam=        # If supplied, the lattices will be pruned to this be
 acwt=0.1   # For pruning.  Should be, for instance, 1.0 for chain lattices.
 deriv_weights_scp=
 
+# end configuration section
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -217,7 +218,10 @@ fi
 
 if [ $stage -le 1 ]; then
   frames_and_chunks=$(for n in $(seq $nj); do cat $dir/log/get_egs.$n.log; done | \
-                        perl -e '$nf=0;$nc=0; while(<STDIN>) { if(m/with total length (\d+) frames.+ into (\d+) chunks/) { $nf += $1; $nc += $2; }} print "$nf $nc";')
+           perl -e '$nc=0; $nf=0; while(<STDIN>) {
+     if (m/Split .+ into (\d+) chunks/) { $this_nc = $1;  }
+     if (m/Average chunk length was (\d+) frames/) { $nf += $1 * $this_nc;  $nc += $this_nc; }
+    } print "$nf $nc"; ')
   num_frames=$(echo $frames_and_chunks | awk '{print $1}')
   num_chunks=$(echo $frames_and_chunks | awk '{print $2}')
   frames_per_chunk_avg=$[num_frames/num_chunks]
@@ -227,7 +231,7 @@ if [ $stage -le 1 ]; then
     left_context_initial=$left_context
   fi
   if [ $right_context_final -lt 0 ]; then
-    right_context_initial=$right_context
+    right_context_final=$right_context
   fi
 
   cat >$dir/info.txt <<EOF

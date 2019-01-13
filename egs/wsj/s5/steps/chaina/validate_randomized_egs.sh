@@ -15,7 +15,7 @@ if [ $# != 1 ]; then
   echo "Usage: $0  <randomized-egs-dir>"
   echo " e.g.: $0 exp/chaina/tdnn1a_sp/egs"
   echo ""
-  echo "Validates that the final (ranodmized) egs dir has the expected format"
+  echo "Validates that the final (randomized) egs dir has the expected format"
 fi
 
 dir=$1
@@ -23,7 +23,7 @@ dir=$1
 # Note: the .ark files are not actually consumed directly downstream (only via
 # the top-level .scp files), but we check them anyway for now.
 for f in $dir/train.1.scp $dir/info.txt \
-         $dir/heldout_subset.{ark,scp} $dir/train_subset.{ark,scp}; do
+         $dir/heldout_subset.scp $dir/train_subset.scp; do
   if ! [ -f $f -a -s $f ]; then
     echo "$0: expected file $f to exist and be nonempty."
     exit 1
@@ -31,7 +31,7 @@ for f in $dir/train.1.scp $dir/info.txt \
 done
 
 
-if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "ranodmized_chaina_egs" ]; then
+if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "randomized_chaina_egs" ]; then
   grep dir_type $dir/info.txt
   echo "$0: dir_type should be randomized_chaina_egs in $dir/info.txt"
   exit 1
@@ -46,7 +46,7 @@ if [ -z "$langs" ]; then
 fi
 
 for lang in $langs; do
-  for f in $dir/misc/$lang.{trans_mdl,normalization.fst,den.fst}; do
+  for f in $dir/misc/$lang.{trans_mdl,normalization.fst,den.fst} $dir/info_${lang}.txt; do
     if ! [ -f $f -a -s $f ]; then
       echo "$0: expected file $f to exist and be nonempty."
       exit 1
@@ -62,4 +62,4 @@ for i in $(seq $num_scp_files); do
 done
 
 
-echo "$0: sucessefully validated randomized egs in $dir"
+echo "$0: sucessfully validated randomized egs in $dir"

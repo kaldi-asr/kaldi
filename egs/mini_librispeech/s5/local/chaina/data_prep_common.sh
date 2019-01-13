@@ -51,7 +51,7 @@ if [ $stage -le 3 ]; then
   # Create high-resolution MFCC features (with 40 cepstra instead of 13).
   # this shows how you can split across multiple file-systems.
   echo "$0: creating high-resolution MFCC features"
-  mfccdir=data/${train_set}_sp_hires2/data
+  mfccdir=data/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     utils/create_split_dir.pl /export/fs0{1,2}/$USER/kaldi-data/mfcc/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
@@ -62,10 +62,10 @@ if [ $stage -le 3 ]; then
 
   # do volume-perturbation on the training data prior to extracting hires
   # features; this helps make trained nnets more invariant to test data volume.
-  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires2 || exit 1;
+  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires || exit 1;
 
   for datadir in ${train_set}_sp ${test_sets}; do
-    steps/make_mfcc.sh --nj 10 --mfcc-config conf/mfcc_hires2.conf \
+    steps/make_mfcc.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/${datadir}_hires || exit 1;
     steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
     utils/fix_data_dir.sh data/${datadir}_hires || exit 1;

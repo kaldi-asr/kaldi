@@ -47,7 +47,7 @@ struct NnetChainaTrainingOptions {
 
   NnetChainaTrainingOptions():
       apply_deriv_weights(true),
-      unadapted_top_weight(1.0),
+      unadapted_top_weight(0.5),
       unadapted_bottom_weight(0.5),
       bottom_subsampling_factor(1),
       keep_embedding_context(true),
@@ -465,12 +465,9 @@ class NnetChainaTopTrainer {
       @param [in] supervision   The chain supervision object.  The nnet output
                                dimensions are worked out from this, as well as
                                using this object to compute the objective function.
-      @param [in] model_training_scale  A scale we'll apply to the parameter
-                        changes and max-change values when taking any step.
-                        This will be the product of the top_weight ("tw") from
-                        the key in the egs, with the value of the
-                        --unadapted-top-weight option.  If this is zero, we
-                        won't be training the top model on this eg at all.
+      @param [in] need_model_deriv   True if we are training on this minibatch,
+                              on the unadapted data-- i.e. if we need to compute
+                              the model derivative.
       @param [in] deriv_weights  Weights to be applied to the derivatives for the
                                corresponding frames of the output (order is:
                                first frame for all sequences; second frame for
@@ -494,7 +491,7 @@ class NnetChainaTopTrainer {
   bool TrainUnadapted(const CuMatrixBase<BaseFloat> &input,
                       const NnetComputation &computation,
                       const chain::Supervision &supervision,
-                      BaseFloat model_training_scale,
+                      bool need_model_deriv,
                       const CuVectorBase<BaseFloat> &deriv_weights,
                       Posterior *posterior,
                       CuMatrix<BaseFloat> *input_deriv);
@@ -626,9 +623,10 @@ class NnetChainaTopTrainer {
   // speaker-dependent passes.
   int32 num_minibatches_processed_;
 
-  // stats for max-change (for speaker-independent phases of training)
-  MaxChangeStats max_change_stats_si_;
-  // stats for max-change (for speaker-adapted phases of training)
+  // stats for max-change.  This combines both speaker-independent and
+  // speaker-adapted phases of training, since we compute the gradient summed
+  // over both passes (with the unadapted derivatives weighted by
+  // opts_.unadapted_top_weight) before updating the model.
   MaxChangeStats max_change_stats_;
 };
 

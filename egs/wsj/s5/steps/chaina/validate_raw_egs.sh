@@ -43,4 +43,4 @@ for f in $dir/misc/$lang.{trans_mdl,normalization.fst,den.fst}; do
   fi
 done
 
-echo "$0: sucessefully validated raw egs in $dir"
+echo "$0: sucessfully validated raw egs in $dir"

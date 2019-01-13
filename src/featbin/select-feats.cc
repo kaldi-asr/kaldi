@@ -37,7 +37,9 @@ int main(int argc, char *argv[]) {
         "command cut -f ...\n"
         "Usage: select-feats <selection> <in-rspecifier> <out-wspecifier>\n"
         "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n"
-        "See also copy-feats, extract-feature-segments, subset-feats, subsample-feats\n";
+        "See also copy-feats, extract-feature-segments, subset-feats, subsample-feats\n"
+        "Note: this command should no longer be needed in most cases, as it can be done\n"
+        "more efficiently at the script level; see the script utils/data/limit_feature_dim.sh";
 
     ParseOptions po(usage);
 

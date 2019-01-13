@@ -57,9 +57,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-# The iVector-extraction and feature-dumping parts are the same as the standard
-# nnet3 setup, and you can skip them by setting "--stage 11" if you have already
-# run those things.
 local/chaina/data_prep_common.sh --stage $stage \
                                  --train-set $train_set \
                                  --gmm $gmm  || exit 1;
@@ -72,7 +69,7 @@ tree_dir=exp/chaina/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chaina/${gmm}_${train_set}_sp_lats
 dir=exp/chaina/tdnn${affix}_sp
-train_data_dir=data/${train_set}_sp_hires2
+train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
@@ -253,9 +250,9 @@ if [ $stage -le 16 ]; then
   #
   # note: $langs is "default"
   steps/chaina/get_model_context.sh \
-        --frame-subsampling-factor=$frame_subsampling_factor \
-        --bottom-subsampling-factor=$bottom_subsampling_factor \
-       --langs="$langs" $dir/0/ > $dir/0/info.txt
+        --frame-subsampling-factor $frame_subsampling_factor \
+        --bottom-subsampling-factor $bottom_subsampling_factor \
+       --langs "$langs" $dir/0/ $dir/0/info.txt
 fi
 
 
@@ -281,23 +278,26 @@ fi
 
 model_left_context=$(awk '/^model_left_context/ {print $2;}' $dir/0/info.txt)
 model_right_context=$(awk '/^model_right_context/ {print $2;}' $dir/0/info.txt)
-egs_left_context=$[model_left_context+egs_extra_left_context]
-egs_right_context=$[model_right_context+egs_extra_right_context]
+# Note: we add frame_subsampling_factor/2 so that we can support the frame
+# shifting that's done during training, so if frame-subsampling-factor=3, we
+# train on the same egs with the input shifted by -1,0,1 frames.  This is done
+# via the --frame-shift option to nnet3-chain-copy-egs in the script.
+egs_left_context=$[model_left_context+(frame_subsampling_factor/2)+egs_extra_left_context]
+egs_right_context=$[model_right_context+(frame_subsampling_factor/2)+egs_extra_right_context]
 
-
-if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [[ ! -d $dir/storage ]]; then
-  for d in $dir/raw_egs $dir/processed_egs; do
+for d in $dir/raw_egs $dir/processed_egs; do
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $d/storage ] ; then
     mkdir -p $d
     utils/create_split_dir.pl \
       /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$d/storage $d/storage
-  done
-fi
+  fi
+done
 
 
 if [ $stage -le 18 ]; then
   echo "$0: about to dump raw egs."
   # Dump raw egs.
-  steps/chaina/get_raw_egs.sh \
+  steps/chaina/get_raw_egs.sh --cmd "$cmd" \
     --lang "default" \
     --left-context $egs_left_context \
     --right-context $egs_right_context \
@@ -309,7 +309,7 @@ fi
 
 if [ $stage -le 19 ]; then
   echo "$0: about to process egs"
-  steps/chaina/process_egs.sh \
+  steps/chaina/process_egs.sh  --cmd "$cmd" \
     --chunks-per-group ${chunks_per_group} ${dir}/raw_egs ${dir}/processed_egs
 fi
 
@@ -319,7 +319,14 @@ if [ $stage -le 20 ]; then
     ${dir}/processed_egs ${dir}/egs
 fi
 
+if [ $stage -le 21 ]; then
+  echo "$0: about to train model"
+  steps/chaina/train.sh \
+    --stage $train_stage --cmd "$cmd" \
+    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
+    --dropout-schedule "$dropout_schedule" \
 
+fi
 
 
 exit 0;

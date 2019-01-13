@@ -152,8 +152,9 @@ fi
 
 cat $raw_egs_dir/info.txt  | awk  -v num_repeats=$num_repeats \
    -v chunks_per_group=$chunks_per_group '
-  /^dir_type/ { print "dir_type processed_chaina_egs"; next; }
-  /^num_input_frames/ { print "num_input_frames "$2 * num_repeats; next; } # approximate; ignores held-out egs.
+  /^dir_type / { print "dir_type processed_chaina_egs"; next; }
+  /^num_input_frames / { print "num_input_frames "$2 * num_repeats; next; } # approximate; ignores held-out egs.
+  /^num_chunks / { print "num_chunks " $2 * num_repeats; next; }
    {print;}
   END{print "chunks_per_group " chunks_per_group; print "num_repeats " num_repeats;}' >$dir/info.txt
 

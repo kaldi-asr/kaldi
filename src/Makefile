@@ -8,14 +8,14 @@ SHELL := /bin/bash
 SUBDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat kws cudamatrix adapt nnet \
           bin fstbin gmmbin fgmmbin featbin \
-          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 rnnlm chain nnet3bin nnet2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin
+          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 nnet3a rnnlm chain nnet3bin nnet2bin kwsbin \
+          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin nnet3abin
 
 MEMTESTDIRS = base matrix util feat tree gmm transform \
-          fstext hmm lm decoder lat nnet kws chain \
+          fstext hmm lm decoder lat nnet kws chain nnet3a \
           bin fstbin gmmbin fgmmbin featbin \
           nnetbin latbin sgmm2 nnet2 nnet3 rnnlm nnet2bin nnet3bin sgmm2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin
+          ivector ivectorbin online2 online2bin lmbin nnet3abin
 
 CUDAMEMTESTDIR = cudamatrix
 
@@ -150,7 +150,7 @@ $(EXT_SUBDIRS) : mklibdir ext_depend
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-bin fstbin gmmbin fgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin: \
+bin fstbin gmmbin fgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin nnet3abin: \
  base matrix util feat tree gmm transform sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 rnnlm
 

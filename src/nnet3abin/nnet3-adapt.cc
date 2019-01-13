@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     po.Read(argc, argv);
 
 
-    if (po.GetArg(1) == "init" && po.NumArgs() == 3) {
+    if (po.GetOptArg(1) == "init" && po.NumArgs() == 3) {
       // This block does the "init" command where the tree.map was not provided.
       if (num_classes <= 0)
         KALDI_ERR << "The --num-classes option is required with the "
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
       WriteKaldiObject(transform, transform_wxfilename, binary_write);
       return 0;
-    } else if (po.GetArg(1) == "init" && po.NumArgs() == 4) {
+    } else if (po.GetOptArg(1) == "init" && po.NumArgs() == 4) {
       // This block does the "init" command where the tree.map was provided.
       std::string config_rxfilename = po.GetArg(2),
           tree_map_rxfilename = po.GetArg(3),
@@ -109,13 +109,13 @@ int main(int argc, char *argv[]) {
           ki.Stream(), num_classes);
       WriteKaldiObject(transform, transform_wxfilename, binary_write);
       return 0;
-    } else if (po.GetArg(1) == "info" && po.NumArgs() == 2) {
+    } else if (po.GetOptArg(1) == "info" && po.NumArgs() == 2) {
       std::string transform_rxfilename = po.GetArg(2);
       DifferentiableTransformMapped transform;
       ReadKaldiObject(transform_rxfilename, &transform);
       std::cout << transform.Info();
       return 0;
-    } else if (po.GetArg(1) == "copy" && po.NumArgs() == 3) {
+    } else if (po.GetOptArg(1) == "copy" && po.NumArgs() == 3) {
       std::string transform_rxfilename = po.GetArg(2),
           transform_wxfilename = po.GetArg(3);
       DifferentiableTransformMapped transform;
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
       }
       WriteKaldiObject(transform, transform_wxfilename, binary_write);
       return 0;
-    } else if (po.GetArg(1) == "adapt" && po.NumArgs() == 5) {
+    } else if (po.GetOptArg(1) == "adapt" && po.NumArgs() == 5) {
       KALDI_ERR << "The 'adapt' command has not been implemented yet.";
       return 0;
     } else {

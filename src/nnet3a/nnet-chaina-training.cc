@@ -196,7 +196,6 @@ NnetChainaTopTrainer::NnetChainaTopTrainer(
     nnet_(nnet),
     delta_nnet_(nnet->Copy()),
     num_minibatches_processed_(0),
-    max_change_stats_si_(*nnet),
     max_change_stats_(*nnet) {
 
   if (opts_.nnet_config.zero_component_stats)
@@ -323,7 +322,7 @@ bool NnetChainaTopTrainer::TrainUnadapted(
     const CuMatrixBase<BaseFloat> &input,
     const NnetComputation &computation,
     const chain::Supervision &supervision,
-    BaseFloat model_training_scale,
+    bool need_model_deriv,
     const CuVectorBase<BaseFloat> &deriv_weights,
     Posterior *posterior,
     CuMatrix<BaseFloat> *input_deriv) {
@@ -393,14 +392,14 @@ bool NnetChainaTopTrainer::TrainUnadapted(
                               num_minibatches_processed_,
                               tot_weight, tot_objf, tot_l2_term);
 
-  if (input_deriv == NULL && model_training_scale == 0.0)
+  if (input_deriv == NULL && !need_model_deriv)
     return true;
 
   // Freeze the natural gradient.  We don't want to update the NG scatter
   // matrices on this data because we'll next be running the same nnet on the
   // speaker-adapted version of the same data, and it would violate the
   // independence assumptions needed for NG to work if we updated them.
-  if (model_training_scale != 0.0)
+  if (need_model_deriv)
     FreezeNaturalGradient(true, delta_nnet_);
 
   computer.AcceptInput("output-si", &output_deriv);
@@ -414,37 +413,14 @@ bool NnetChainaTopTrainer::TrainUnadapted(
   if (input_deriv != NULL)
     computer.GetOutputDestructive("input", input_deriv);
 
-  static bool warned_momentum = false;
-  if (model_training_scale != 1.0 &&
-      nnet_config.momentum != 0.0 && !warned_momentum) {
-    KALDI_WARN << "Momentum does not interact correctly with top_weight or "
-        "bottom_weight values.  Will not warn again.";
-    warned_momentum = true;
-  }
-
-  if (model_training_scale != 0.0) {
-    // If we're actually training the top model...
-
-    // Update the parameters of nnet.
-    // Note: normally momentum is 0.0.
-    bool success = UpdateNnetWithMaxChange(
-        *delta_nnet_,
-        nnet_config.max_param_change,
-        1.0,
-        model_training_scale * (1.0 - nnet_config.momentum),
-        nnet_, &max_change_stats_si_);
-
-    // Un-freeze the natural gradient.
+  if (need_model_deriv)  // Un-freeze the natural gradient.
     FreezeNaturalGradient(false, delta_nnet_);
 
-    if (success)
-      ScaleNnet(nnet_config.momentum, delta_nnet_);
-    else
-      ScaleNnet(0.0, delta_nnet_);
-    return success;
-  } else {
-    return true;
-  }
+  // We'll wait until after the adapted pass to call UpdateNnetWithMaxChange().
+  // Training the model on these features in between the two passes would leave
+  // a strong memory of this minibatch in the model's parameters which could
+  // cause weird effects.
+  return true;
 }
 
 bool NnetChainaTopTrainer::TrainAdapted(
@@ -583,11 +559,15 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
   if (opts_.apply_deriv_weights)
     deriv_weights = deriv_weights_in;
 
+
+  bool need_unadapted_model_deriv =
+      (model_training_scale * opts_.unadapted_top_weight) != 0.0;
+
   std::shared_ptr<const NnetComputation> computation_unadapted =
       GetComputation(structure);
   bool success = TrainUnadapted(
       input, *computation_unadapted, supervision,
-      model_training_scale * opts_.unadapted_top_weight,
+      need_unadapted_model_deriv,
       deriv_weights, &post, input_deriv);
 
   if (!success) {
@@ -595,7 +575,11 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
     return false;
   }
 
-  if (input_deriv) {
+  // Scale down the model derivatives from the unadapted pass.
+  if (need_unadapted_model_deriv && opts_.unadapted_top_weight != 1.0)
+    ScaleNnet(opts_.unadapted_top_weight, delta_nnet_);
+
+  if (input_deriv && opts_.unadapted_bottom_weight != 1.0) {
     // Apply the scale from --unadapted-bottom-weight.  We'll supply the other
     // factor that comes from from the language-specific bottom_weight ("bw")
     // ito UpdateNnetWithMaxChange() later on when we train the bottom nnet.
@@ -725,10 +709,7 @@ bool NnetChainaTopTrainer::PrintTotalStats() const {
     ans = true;
   if (output_xent_objf_.PrintTotalStats(lang_name_ + ":output-xent"))
     ans = true;
-  KALDI_LOG << "Speaker-independent max-change stats for language "
-            << lang_name_ << ":";
-  max_change_stats_si_.Print(*nnet_);
-  KALDI_LOG << "Speaker-dependent max-change stats for language "
+  KALDI_LOG << "Max-change stats for language "
             << lang_name_ << ":";
   max_change_stats_.Print(*nnet_);
   return ans;

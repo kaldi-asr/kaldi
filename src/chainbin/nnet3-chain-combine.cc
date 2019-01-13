@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-chain-combine [options] <den-fst> <raw-nnet-in1> <raw-nnet-in2> ... <raw-nnet-inN> <chain-examples-in> <raw-nnet-out>\n"
         "\n"
         "e.g.:\n"
-        " nnet3-combine den.fst 35.raw 36.raw 37.raw 38.raw ark:valid.cegs final.raw\n";
+        " nnet3-chain-combine den.fst 35.raw 36.raw 37.raw 38.raw ark:valid.cegs final.raw\n";
 
     bool binary_write = true;
     int32 max_objective_evaluations = 30;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
                 "maximum number of objective evaluations in order to figure "
                 "out the best number of models to combine. It helps to speedup "
                 "if the number of models provided to this binary is quite "
-                "large (e.g. several hundred)."); 
+                "large (e.g. several hundred).");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("batchnorm-test-mode", &batchnorm_test_mode,
