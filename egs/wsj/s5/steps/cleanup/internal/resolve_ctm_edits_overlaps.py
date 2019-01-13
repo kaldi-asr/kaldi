@@ -229,7 +229,7 @@ def resolve_overlaps(ctm_edits, segments):
             try:
                 cur_utt_end_index = next(
                     (i for i, line in enumerate(ctm_edits_for_cur_utt)
-                     if line[2] + line[3] / 2.0)> window_length - overlap))
+                     if line[2] + line[3] / 2.0 > window_length - overlap))
             except StopIteration:
                 cur_utt_end_index = len(ctm_edits_for_cur_utt)
 
