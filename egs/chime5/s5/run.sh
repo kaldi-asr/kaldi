@@ -28,7 +28,7 @@ json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
 
 # training and test data
-train_set=train_worn_u100k
+train_set=train_worn_u400k
 test_sets="dev_worn dev_${enhancement}_ref eval_${enhancement}_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
@@ -73,10 +73,20 @@ if [ $stage -le 4 ]; then
   # Beamforming using reference arrays
   # enhanced WAV directory
   enhandir=enhan
+  dereverb_dir=${PWD}/wav/wpe/
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_wpe.sh --cmd "$train_cmd" \
+			      ${audio_dir}/${dset} \
+			      ${dereverb_dir}/${dset} \
+			      ${mictype}
+    done
+  done
+
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
-			      ${audio_dir}/${dset} \
+			      ${dereverb_dir}/${dset} \
 			      ${enhandir}/${dset}_${enhancement}_${mictype} \
 			      ${mictype}
     done
@@ -84,7 +94,7 @@ if [ $stage -le 4 ]; then
 
   for dset in dev eval; do
     local/prepare_data.sh --mictype ref "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-			  ${json_dir}/${dset} data/${dset}_${enhancement}_ref
+			  ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
   done
 fi
 
@@ -99,8 +109,8 @@ if [ $stage -le 5 ]; then
   # randomly extract first 100k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u04 data/train_u05 data/train_u06
-  utils/subset_data_dir.sh data/train_uall 100000 data/train_u100k
-  utils/combine_data.sh data/${train_set} data/train_worn data/train_u100k
+  utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_u400k
 
   # only use left channel for worn mic recognition
   # you can use both left and right channels for training
@@ -216,15 +226,40 @@ if [ $stage -le 16 ]; then
 fi
 
 if [ $stage -le 17 ]; then
-  # chain TDNN
-  local/chain/run_tdnn.sh --nj ${nj} --train-set ${train_set}_cleaned --test-sets "$test_sets" --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned
+  rm -r data/train_worn_cleaned 2>/dev/null || true
+  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_worn_cleaned
+
+  awk '{print $1}' data/train_worn/wav.scp > data/train_worn_cleaned/recos.tmp
+  utils/filter_scp.pl data/train_worn_cleaned/recos.tmp \
+    data/${train_set}_cleaned/wav.scp > data/train_worn_cleaned/wav.scp
+
+  utils/fix_data_dir.sh data/train_worn_cleaned
+  
+  rm -r data/train_u400k_cleaned 2>/dev/null || true
+  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_u400k_cleaned
+
+  utils/filter_scp.pl --exclude data/train_worn_cleaned/recos.tmp \
+    data/${train_set}_cleaned/wav.scp > data/train_u400k_cleaned/wav.scp
+
+  utils/fix_data_dir.sh data/train_u400k_cleaned
 fi
 
 if [ $stage -le 18 ]; then
+  # chain TDNN
+  #local/chain/tuning/run_tdnn_rvb_1b.sh --nj ${nj} --train-set ${train_set}_cleaned --test-sets "$test_sets" --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned
+  local/chain/tuning/run_tdnn_rvb_1b.sh --stage 16 --nj ${nj} \
+    --train-set-clean train_worn_cleaned \
+    --train-set-noisy train_u400k_cleaned \
+    --combined-train-set ${train_set}_cleaned \
+    --test-sets "$test_sets" \
+    --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
+fi
+
+if [ $stage -le 19 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
-      --dev exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_dev_${enhancement}_ref \
-      --eval exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_eval_${enhancement}_ref
+      --dev exp/chain_${train_set}_cleaned_rvb/tdnn_rvb_1b_sp/decode_dev_${enhancement}_ref \
+      --eval exp/chain_${train_set}_cleaned_rvb/tdnn_rvb_1b_sp/decode_eval_${enhancement}_ref
 fi
