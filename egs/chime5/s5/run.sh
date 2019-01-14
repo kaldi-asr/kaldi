@@ -76,7 +76,7 @@ if [ $stage -le 4 ]; then
   dereverb_dir=${PWD}/wav/wpe/
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_wpe.sh --cmd "$train_cmd" \
+      local/run_wpe.sh --cmd "$train_cmd --mem 120G" \
 			      ${audio_dir}/${dset} \
 			      ${dereverb_dir}/${dset} \
 			      ${mictype}
