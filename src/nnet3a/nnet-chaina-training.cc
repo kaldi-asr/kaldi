@@ -310,7 +310,7 @@ std::shared_ptr<const NnetComputation> NnetChainaTopTrainer::GetComputation(
     }
   }
   request.outputs[1].has_deriv = !opts_.top_model_test_mode;
-  request.outputs[1].name = (s.adapted ? "output-xent" : "output-xent-si");
+  request.outputs[1].name = (s.adapted ? "output-xent" : "output-si-xent");
   request.outputs[1].indexes = request.outputs[0].indexes;
   std::shared_ptr<const NnetComputation> computation = compiler_.Compile(
       request);
@@ -541,7 +541,7 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
                                  const chain::Supervision &supervision,
                                  BaseFloat model_training_scale,
                                  CuMatrix<BaseFloat> *input_deriv) {
-  KALDI_ASSERT(input.NumRows() != 0 && input.NumRows() % num_sequences != 0);
+  KALDI_ASSERT(input.NumRows() != 0 && input.NumRows() % num_sequences == 0);
   int32 frames_per_sequence_in = input.NumRows() / num_sequences,
       frames_per_sequence_out = supervision.frames_per_sequence;
 
@@ -982,7 +982,7 @@ void NnetChainaTrainer::Train(const std::string &key,
                              &num_input_frames, &num_output_frames,
                              &frame_subsampling_factor,
                              &eg_left_context, &eg_right_context);
-  KALDI_ASSERT(chunks_per_group % num_sequences == 0);
+  KALDI_ASSERT(num_sequences % chunks_per_group == 0);
   int32 num_groups = num_sequences / chunks_per_group;
 
   AmNnetSimple *top_am_nnet = models_->GetNnetForLang(lang_name);

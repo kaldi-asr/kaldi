@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
         "<model-in-dir> should contain bottom.raw, and <lang>.mdl for each language <lang>\n"
         "<den-fst-dir> should contain <lang>.den.fst for each language <lang>\n"
         "<transform-dir> should contain <lang>.ada for each language <lang>\n"
-        "<model-out-dir> is a place to where bottom.raw and <lang>.raw for each language\n"
-        "  <lang> that was seen in the egs, will be written.\n";
+        "<model-out-dir> is a place to where bottom.<job-id>.raw and <lang>.<job-id>.raw for each language\n"
+        "  <lang> that was seen in the egs, will be written (for <job-id>, see the --job-id option).\n";
 
 
     int32 srand_seed = 0;

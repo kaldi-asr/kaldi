@@ -133,8 +133,8 @@ fi
 # models.  It's a scratch space used by this script but not by
 # scripts called from here.
 mkdir -p $dir/configs/
-# $dir/0 will contain the models for iteration zero.
-mkdir -p $dir/0/
+# $dir/init will contain the initial models
+mkdir -p $dir/init/
 
 l2=0.03
 tdnn_opts="l2-regularize=0.03 dropout-proportion=0.0 dropout-per-dim-continuous=true"
@@ -149,7 +149,7 @@ if [ $stage -le 13 ]; then
   echo "$0: creating top neural net using the xconfig parser";
 
   cat <<EOF > $dir/configs/bottom.xconfig
-  input dim=256 name=input
+  input dim=40 name=input
 
   batchnorm-component name=input-batchnorm
 
@@ -165,7 +165,7 @@ if [ $stage -le 13 ]; then
 EOF
   steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/bottom.xconfig \
                                    --config-file-out $dir/configs/bottom.config
-  nnet3-init --srand=$srand $dir/configs/bottom.config $dir/0/bottom.raw
+  nnet3-init --srand=$srand $dir/configs/bottom.config $dir/init/bottom.raw
 fi
 
 if [ $stage -le 14 ]; then
@@ -175,7 +175,7 @@ if [ $stage -le 14 ]; then
   # is not really a multilingual setup.
   # Note: the bottleneck dimension of 256 specified in the bottom.nnet must match
   # with the dimension of this transform (256).
-  cat <<EOF | nnet3-adapt --binary=false init - $tree_dir/tree.map $dir/0/default.ada
+  cat <<EOF | nnet3-adapt --binary=false init - $tree_dir/tree.map $dir/init/default.ada
 AppendTransform num-transforms=6
   NoOpTransform dim=64
   MeanOnlyTransform dim=64
@@ -186,8 +186,8 @@ AppendTransform num-transforms=6
 EOF
 
   # check the dimensions match
-  transform_dim=$(nnet3-adapt info $dir/0/default.ada | grep '^dim' | awk -F= '/^dim/ { print $2; }')
-  bottom_output_dim=$(nnet3-info $dir/0/bottom.raw | grep 'output-node name=output ' | perl -ane 'm/dim=(\d+)/ && print $1;')
+  transform_dim=$(nnet3-adapt info $dir/init/default.ada | grep '^dim' | awk -F= '/^dim/ { print $2; }')
+  bottom_output_dim=$(nnet3-info $dir/init/bottom.raw | grep 'output-node name=output ' | perl -ane 'm/dim=(\d+)/ && print $1;')
   if ! [ "$transform_dim" -eq "$bottom_output_dim" ]; then
     echo "$0: expected dim of transform to equal output-dim of bottom nnet, got '$transform_dim' != '$bottom_output_dim'"
     exit 1
@@ -231,7 +231,7 @@ EOF
   steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/default.xconfig \
                                    --config-file-out $dir/configs/default.config
   nnet3-init --srand=$srand $dir/configs/default.config - | \
-     nnet3-am-init $tree_dir/final.mdl - $dir/0/default.mdl
+     nnet3-am-init $tree_dir/final.mdl - $dir/init/default.mdl
 fi
 
 
@@ -240,7 +240,7 @@ if [ $stage -le 16 ]; then
   # feature frame-sampling rate).
   # The following script is equivalent to doing something like the
   # following:
-  # cat > $dir/0/info.txt <<EOF
+  # cat > $dir/init/info.txt <<EOF
   # langs default
   # frame_subsampling_factor 3
   # bottom_subsampling_factor 3
@@ -252,7 +252,7 @@ if [ $stage -le 16 ]; then
   steps/chaina/get_model_context.sh \
         --frame-subsampling-factor $frame_subsampling_factor \
         --bottom-subsampling-factor $bottom_subsampling_factor \
-       --langs "$langs" $dir/0/ $dir/0/info.txt
+       --langs "$langs" $dir/init/ $dir/init/info.txt
 fi
 
 
@@ -271,13 +271,13 @@ if [ $stage -le 17 ]; then
 
   echo "$0: creating denominator FST"
   $cmd $dir/den_fsts/log/make_den_fst.log \
-     chain-make-den-fst $dir/default.tree $dir/0/default.mdl $dir/den_fsts/default.phone_lm.fst \
+     chain-make-den-fst $dir/default.tree $dir/init/default.mdl $dir/den_fsts/default.phone_lm.fst \
      $dir/den_fsts/default.den.fst $dir/den_fsts/default.normalization.fst || exit 1;
 fi
 
 
-model_left_context=$(awk '/^model_left_context/ {print $2;}' $dir/0/info.txt)
-model_right_context=$(awk '/^model_right_context/ {print $2;}' $dir/0/info.txt)
+model_left_context=$(awk '/^model_left_context/ {print $2;}' $dir/init/info.txt)
+model_right_context=$(awk '/^model_right_context/ {print $2;}' $dir/init/info.txt)
 # Note: we add frame_subsampling_factor/2 so that we can support the frame
 # shifting that's done during training, so if frame-subsampling-factor=3, we
 # train on the same egs with the input shifted by -1,0,1 frames.  This is done
@@ -325,6 +325,7 @@ if [ $stage -le 21 ]; then
     --stage $train_stage --cmd "$cmd" \
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
     --dropout-schedule "$dropout_schedule" \
+     $dir/egs $dir
 
 fi
 
@@ -335,7 +336,7 @@ exit 0;
   # Work out the model
   # The following script is equivalent to doing something like the
   # following:
-  # cat > $dir/0/info.txt <<EOF
+  # cat > $dir/init/info.txt <<EOF
   # langs default
   # frame_subsampling_factor 3
   # bottom_subsampling_factor 3
@@ -347,7 +348,7 @@ exit 0;
   steps/chaina/get_model_context.sh \
         --frame-subsampling-factor=$frame_subsampling_factor \
         --bottom-subsampling-factor=$bottom_subsampling_factor \
-       --langs="$langs" $dir/0/ > $dir/0/info.txt
+       --langs="$langs" $dir/init/ > $dir/init/info.txt
 fi
 
 if [ $stage -le 14 ]; then

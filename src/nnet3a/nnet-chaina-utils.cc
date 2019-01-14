@@ -61,10 +61,10 @@ void FindChainaExampleStructure(const NnetChainExample &eg,
 
 
   const NnetIo &input_io = eg.inputs[0];
-  *first_input_t = - input_io.indexes[0].t;
-  if (input_io.indexes[0].t != *first_input_t + 1) {
+  *first_input_t = input_io.indexes[0].t;
+  if (input_io.indexes[1].t != *first_input_t + 1) {
     KALDI_ERR << "Input indexes are in the wrong order or not consecutive: "
-              << input_io.indexes[0].t << " != " << (*first_input_t + 1);
+              << input_io.indexes[1].t << " != " << (*first_input_t) << " + 1";
   }
   Index last_input_index = input_io.indexes.back();
   KALDI_ASSERT(last_input_index.n == *num_sequences - 1);

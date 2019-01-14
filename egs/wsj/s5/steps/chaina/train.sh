@@ -27,7 +27,7 @@ num_epochs=4.0   #  Note: each epoch may actually contain multiple repetitions o
                  #    using the --num-repeats option in process_egs.sh
                  #    data augmentation
                  #    different data shifts (this includes 3 different shifts
-                 #    of the data if frame_subsampling_factor=3 (see $dir/0/info.txt)
+                 #    of the data if frame_subsampling_factor=3 (see $dir/init/info.txt)
 
 num_jobs_initial=1
 num_jobs_final=1
@@ -54,6 +54,7 @@ if [ $# != 2 ]; then
   echo " e.g.: $0 exp/chaina/tdnn1a_sp/egs  exp/chaina/tdnn1a_sp"
   echo ""
   echo " TODO: more documentation"
+  exit 1
 fi
 
 egs_dir=$1
@@ -63,14 +64,16 @@ set -e -u  # die on failed command or undefined variable
 
 steps/chaina/validate_randomized_egs.sh $egs_dir
 
-for f in $dir/0/info.txt $dir/0/bottom.raw; do
-  echo "$0: expected file $f to exist"
-  exit 1
+for f in $dir/init/info.txt $dir/init/bottom.raw; do
+  if [ ! -f $f ]; then
+    echo "$0: expected file $f to exist"
+    exit 1
+  fi
 done
 
 
-frame_subsampling_factor=$(awk '/^frame_subsampling_factor/ {print $2}')
-num_scp_files=$(awk '/^num_scp_files/ {print $2}')
+frame_subsampling_factor=$(awk '/^frame_subsampling_factor/ {print $2}' <$dir/init/info.txt)
+num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$dir/init/info.txt)
 
 steps/chaina/internal/get_train_schedule.py \
   --frame-subsampling-factor=$frame_subsampling_factor \
@@ -82,6 +85,31 @@ steps/chaina/internal/get_train_schedule.py \
   --initial-effective-lrate=$initial_effective_lrate \
   --final-effective-lrate=$final_effective_lrate \
   --schedule-out=$dir/schedule.txt
+
+
+
+num_iters=$(wc -l <$dir/schedule.txt)
+langs=$(awk '/^langs/ { $1=""; print; }' <$dir/0/info.txt)
+
+mkdir -p $dir/log
+
+
+# Copy models with initial learning rate and dropout options from $dir/init to $dir/0
+mkdir -p $dir/0
+lrate=$(awk ' {if(NR-1==0) { print;exit(0);}}' <$dir/schedule.txt | cut -f 5)
+dropout_str=$(awk ' {if(NR-1==0) { print;exit(0);}}' <$dir/schedule.txt | cut -f 4)
+run.pl $dir/log/init_bottom_model.log \
+  nnet3-copy --learning-rate=$lrate --edits="$dropout_str" $dir/init/bottom.raw $dir/0/bottom.raw
+for lang in $langs; do
+  run.pl $dir/log/init_model_$lang.log \
+         nnet3-am-copy --learning-rate=$lrate --edits="$dropout_str" $dir/init/$lang.mdl $dir/0/$lang.mdl
+done
+
+
+iter=0
+
+echo "exiting early"
+exit 0
 
 
 # Note: the .ark files are not actually consumed directly downstream (only via
