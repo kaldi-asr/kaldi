@@ -21,6 +21,9 @@ type=mono             # can be either mono or biphone -- either way
 ci_silence=false      # if true, silence phones will be treated as context independent
 
 scale_opts="--transition-scale=0.0 --self-loop-scale=0.0"
+prune=false
+min_biphone_count=100
+min_monophone_count=20
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -69,12 +72,22 @@ if $ci_silence; then
   ci_opt="--ci-phones=$ciphonelist"
 fi
 
+prune_opts=
+if [[ "$prune" = true ]] && [[ "$type" = "biphone" ]]; then
+  cat $data/text | steps/chain/e2e/text_to_phones.py --edge-silprob 0 \
+                                                     --between-silprob 0 \
+                                                     $lang | \
+    cut -d' ' -f 2- | utils/sym2int.pl $lang/phones.txt | \
+    steps/chain/e2e/compute-biphone-stats.py $lang >$dir/phone-stats.txt
+  prune_opts="--min-biphone-count=$min_biphone_count --min-monophone-count=$min_monophone_count --phone-counts=$dir/phone-stats.txt"
+fi
+
 if [ $stage -le 0 ]; then
   if [ -z $treedir ]; then
     echo "$0: Initializing $type system."
     # feat dim does not matter here. Just set it to 10
     $cmd $dir/log/init_${type}_mdl_tree.log \
-         gmm-init-$type $ci_opt $shared_phones_opt $lang/topo 10 \
+         gmm-init-$type $prune_opts $ci_opt $shared_phones_opt $lang/topo 10 \
          $dir/0.mdl $dir/tree || exit 1;
   else
     echo "$0: Copied tree/mdl from $treedir." >$dir/log/init_mdl_tree.log
