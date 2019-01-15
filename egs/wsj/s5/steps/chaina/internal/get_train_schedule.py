@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2019    Johns Hopkins University (author: Daniel Povey)
+# Copyright         Hossein Hadian
 
 
 # Apache 2.0.
@@ -15,8 +16,6 @@ import sys
 sys.path.insert(0, 'steps')
 import libs.nnet3.train.common as common_train_lib
 import libs.common as common_lib
-
-
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -72,8 +71,10 @@ def get_args():
                         lstm*=0,0.2,0'.  More general should precede less
                         general patterns, as they are applied sequentially.""")
 
+    parser.add_argument("--num-scp-files", type=int, default=0, required=True,
+                        help="""The number of .scp files in the egs dir.""")
     parser.add_argument("--schedule-out", type=str, required=True,
-                        "Output file containing the training schedule.  The output
+                        help="""Output file containing the training schedule.  The output
                         is lines, one per training iteration.  Each line contains
                         tab-separated fields of the form:
                         <iteration-index> <num-jobs> <scp-indexes> <dropout-string> <learning-rate> <frame-shifts>
@@ -87,11 +88,63 @@ def get_args():
                         nnet3-am-copy or nnet3-copy; <learning-rate> is the
                         actual learning rate on this iteration (the effective learning
                         rate times the num-jobs), and <frame-shifts> is a space-separated
-                        string containing the frame shifts for each job.")
+                        string containing the frame shifts for each job.""")
 
+    print(sys.argv, file=sys.stderr)
+    args = parser.parse_args()
+
+    return args
+
+def get_schedules(args):
+    num_scp_files_expanded = args.num_scp_files * args.frame_subsampling_factor
+    num_scp_files_to_process = int(args.num_epochs * num_scp_files_expanded)
+    num_scp_files_processed = 0
+    num_iters = ((num_scp_files_to_process * 2)
+                 // (args.num_jobs_initial + args.num_jobs_final))
+
+    with open(args.schedule_out, 'w', encoding='latin-1') as ostream:
+        for iter in range(num_iters):
+            current_num_jobs = int(0.5 + args.num_jobs_initial
+                                   + (args.num_jobs_final - args.num_jobs_initial)
+                                   * float(iter) / num_iters)
+
+            lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
+                                                       num_iters,
+                                                       num_scp_files_processed,
+                                                       num_scp_files_to_process,
+                                                       args.initial_effective_lrate,
+                                                       args.final_effective_lrate)
+
+            dropout_edit_string = common_train_lib.get_dropout_edit_string(
+                args.dropout_schedule,
+                float(num_scp_files_processed) / num_scp_files_to_process,
+                iter)
+
+            frame_shifts = []
+            egs = []
+            for job in range(1, current_num_jobs + 1):
+                # k is a zero-based index that we will derive the other indexes from.
+                k = num_scp_files_processed + job - 1
+                # work out the 1-based scp index.
+                scp_index = (k % args.num_scp_files) + 1
+                # previous : frame_shift = (k/num_scp_files) % frame_subsampling_factor
+                frame_shift = ((scp_index + k // args.num_scp_files)
+                               % args.frame_subsampling_factor)
+                frame_shifts.append(str(frame_shift))
+                egs.append(str(scp_index))
+
+            print('{iteration}\t{nj}\t{egs}\t{dropout}\t{lr}\t'
+                  '{shifts}'.format(iteration=iter, nj=current_num_jobs,
+                                    egs=' '.join(egs),
+                                    dropout=dropout_edit_string, lr=lrate,
+                                    shifts=' '.join(frame_shifts)), file=ostream)
+
+            num_scp_files_processed = num_scp_files_processed + current_num_jobs
 
 
 def main():
-    pass
+    args = get_args()
+    get_schedules(args)
+
 if __name__ == "__main__":
     main()
