@@ -608,7 +608,8 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
   success = TrainAdapted(
       *computation_adapted, supervision,
       model_training_scale, deriv_weights,
-      &adapted_input, &adapted_input_deriv);
+      &adapted_input,
+      (input_deriv != NULL ? &adapted_input_deriv : NULL));
 
   num_minibatches_processed_++;
   if (!success)
@@ -750,11 +751,12 @@ NnetComputer* NnetChainaBottomTrainer::Forward(
                                             *computation, nnet_, delta_nnet_);
   computer->AcceptInput("input", input);
   computer->Run();
-  computer->GetOutputDestructive("output", output);
   if (!train_model) {
+    computer->GetOutputDestructive("output", output);
     delete computer;
     return NULL;
   } else {
+    *output = computer->GetOutput("output");
     return computer;
   }
 }
@@ -1004,7 +1006,7 @@ void NnetChainaTrainer::Train(const std::string &key,
                                kUndefined),
       cu_embedding;
   eg_input.CopyToMat(&cu_input);
-  bool train_bottom_nnet = bottom_weight != 1.0;
+  bool train_bottom_nnet = bottom_weight != 0.0;
   KALDI_ASSERT(cu_input.NumRows() == num_input_frames * num_sequences);
 
   NnetComputer *computer = bottom_trainer_.Forward(

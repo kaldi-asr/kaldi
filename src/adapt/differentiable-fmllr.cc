@@ -141,9 +141,11 @@ void CoreFmllrEstimator::ComputeB() {
     KALDI_ASSERT(floor > 0.0);
     MatrixIndexT num_floored = 0;
     v.ApplyFloor(floor, &num_floored);
-    if (num_floored > 0.0)
+    static int num_warned = 100;
+    if (num_floored > 0.0 && num_warned > 0)
       KALDI_WARN << num_floored << " out of " << dim
-                 << " singular values floored in L matrix.";
+                 << " singular values floored in L matrix."
+                 << (--num_warned == 0 ? "  Will not warn again." : "");
   }
   // f is where we put f(lambda).
   // f_prime is where we put f'(lambda) (the function-derivative of f w.r.t

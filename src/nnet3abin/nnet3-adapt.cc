@@ -31,11 +31,8 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Initialize nnet3 neural network from a config file; outputs 'raw' nnet\n"
-        "without associated information such as transition model and priors.\n"
-        "Search for examples in scripts in /egs/wsj/s5/steps/nnet3/\n"
-        "Can also be used to add layers to existing model (provide existing model\n"
-        "as 1st arg)\n"
+        "This binary supports various modes that manipulate transform objects for\n"
+        "the nnet3a/chaina adaptation framework.  See patterns below\n"
         "\n"
         "Usage:  nnet3-adapt [options] init <config-file-in> [<tree-map-in>] <transform-out>\n"
         " e.g.:  nnet3-adapt --num-classes=201 init init.aconfig  0.ada\n"
@@ -94,8 +91,9 @@ int main(int argc, char *argv[]) {
         ReadIntegerVector(ki.Stream(), binary_in, &(transform.pdf_map));
         if (transform.pdf_map.empty())
           KALDI_ERR << "Expected <tree-map> to be nonempty vector.";
-        int32 expected_num_classes = *std::max_element(transform.pdf_map.begin(),
-                                                       transform.pdf_map.end());
+        int32 expected_num_classes =
+            1 + *std::max_element(transform.pdf_map.begin(),
+                                  transform.pdf_map.end());
         if (num_classes > 0 && num_classes != expected_num_classes)
           KALDI_ERR << "The --num-classes given via the option " << num_classes
                     << " differs from the expected value given the tree-map: "
