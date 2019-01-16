@@ -69,8 +69,8 @@ void MinimumBayesRisk::MbrDecode() {
               one_best_times_[i-2].second - one_best_times_[i-2].first;
           BaseFloat second_dur =
               one_best_times_[i-1].second - one_best_times_[i-1].first;
-          BaseFloat mid = left + (right - left) * first_dur /
-                                     (first_dur + second_dur);
+          BaseFloat mid = first_dur > 0 ? left + (right - left) * first_dur /
+                                     (first_dur + second_dur) : left;
           one_best_times_[i-2].first = left;
           one_best_times_[i-2].second = one_best_times_[i-1].first = mid;
           one_best_times_[i-1].second = right;
