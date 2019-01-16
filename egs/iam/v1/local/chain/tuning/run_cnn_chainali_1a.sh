@@ -1,11 +1,23 @@
 #!/bin/bash
 
 # chainali_1a is as 1a except it uses chain alignments (using 1a system) instead of gmm alignments
+# local/chain/compare_wer.sh exp/chain/cnn_chainali_1a
+# System                      cnn_chainali_1a (dict_50k)        cnn_chainali_1a(dict_50k + unk_model)
+# WER                             15.93                             14.09
+# CER                              7.79                              6.70
+# WER val                         15.10                             12.63
+# CER val                          6.72                              5.36
+# Final train prob              -0.0220
+# Final valid prob              -0.0157
+# Final train prob (xent)       -0.4238
+# Final valid prob (xent)       -0.6119
+# Parameters                      4.36M
 
+# steps/info/chain_dir_info.pl exp/chain/cnn_chainali_1a
+# exp/chain/cnn_chainali_1a: num-iters=42 nj=2..4 num-params=4.4M dim=40->368 combine=-0.020->-0.020 (over 2) xent:train/valid[27,41,final]=(-0.534,-0.425,-0.424/-0.659,-0.612,-0.612) logprob:train/valid[27,41,final]=(-0.026,-0.022,-0.022/-0.017,-0.016,-0.016)
 set -e -o pipefail
 
 stage=0
-
 nj=30
 train_set=train
 decode_val=true
@@ -21,28 +33,17 @@ reporting_email=
 # chain options
 train_stage=-10
 xent_regularize=0.1
-frame_subsampling_factor=4
-alignment_subsampling_factor=1
-# training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500
-# we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
 tdnn_dim=450
-# training options
-srand=0
-remove_egs=false
-lang_test=lang_unk
+lang_decode=lang_unk
 if $decode_val; then maybe_val=val; else maybe_val= ; fi
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -100,7 +101,7 @@ if [ $stage -le 2 ]; then
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
+                            $train_data_dir data/lang $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
 
@@ -114,17 +115,15 @@ if [ $stage -le 3 ]; then
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor $frame_subsampling_factor \
+    --frame-subsampling-factor 4 \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$cmd" $num_leaves ${train_data_dir} \
+    --cmd "$cmd" $num_leaves $train_data_dir \
     $lang $ali_dir $tree_dir
 fi
-
 
 if [ $stage -le 4 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
-
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
@@ -133,7 +132,6 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
@@ -162,7 +160,6 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
-
 if [ $stage -le 5 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
@@ -177,9 +174,9 @@ if [ $stage -le 5 ]; then
     --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=500" \
-    --chain.frame-subsampling-factor=$frame_subsampling_factor \
-    --chain.alignment-subsampling-factor=$alignment_subsampling_factor \
-    --trainer.srand=$srand \
+    --chain.frame-subsampling-factor=4 \
+    --chain.alignment-subsampling-factor=1 \
+    --trainer.srand=0 \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
@@ -189,15 +186,10 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=64,32 \
-    --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
-    --cleanup.remove-egs=$remove_egs \
+    --cleanup.remove-egs=false \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
     --feat-dir=$train_data_dir \
@@ -213,9 +205,8 @@ if [ $stage -le 6 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 data/$lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
@@ -229,5 +220,5 @@ if [ $stage -le 7 ]; then
   done
 fi
 
-echo "Done. Date: $(date). Results:"
+echo "$0 Done. Date: $(date). Results:"
 local/chain/compare_wer.sh $dir

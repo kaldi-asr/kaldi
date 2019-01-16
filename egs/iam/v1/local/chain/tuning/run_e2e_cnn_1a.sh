@@ -2,22 +2,22 @@
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a
-# System                      e2e_cnn_1a
-# WER                             15.24
-# CER                              7.27
-# Final train prob              -0.0209
-# Final valid prob              -0.0417
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
+# System                      e2e_cnn_1a (dict_50k)  e2e_cnn_1a (dict_50k + unk_model)
+# WER                             15.21                  14.41
+# CER                              7.43                   6.82
+# WER val                         14.84                  13.51
+# CER val                          6.41                   5.60
+# Final train prob              -0.0206
+# Final valid prob              -0.0393
 # Final train prob (xent)
 # Final valid prob (xent)
 # Parameters                      9.52M
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a
-# exp/chain/e2e_cnn_1a: num-iters=42 nj=2..4 num-params=9.5M dim=40->12640 combine=-0.021->-0.021 (over 1) logprob:train/valid[27,41,final]=(-0.025,-0.021,-0.021/-0.044,-0.043,-0.042)
+# exp/chain/e2e_cnn_1a: num-iters=42 nj=2..4 num-params=9.5M dim=40->12640 combine=-0.020->-0.020 (over 1) logprob:train/valid[27,41,final]=(-0.025,-0.021,-0.021/-0.044,-0.040,-0.039)
 
 set -e
-
-# configs for 'chain'
 stage=0
 train_stage=-10
 get_egs_stage=-10
@@ -30,7 +30,7 @@ minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
 common_egs_dir=
 train_set=train
 decode_val=true
-lang_decode=data/lang_test
+lang_decode=data/lang_unk
 if $decode_val; then maybe_val=val; else maybe_val= ; fi
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -85,7 +85,6 @@ if [ $stage -le 2 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
@@ -98,14 +97,12 @@ if [ $stage -le 2 ]; then
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $output_opts
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
 EOF
-
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
 fi
 
 if [ $stage -le 3 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
-
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
@@ -128,7 +125,7 @@ if [ $stage -le 3 ]; then
     --trainer.optimization.shrink-value 1.0 \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs true \
-    --feat-dir data/${train_set} \
+    --feat-dir data/$train_set \
     --tree-dir $treedir \
     --dir $dir  || exit 1;
 fi
@@ -140,7 +137,6 @@ if [ $stage -le 4 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
     --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
@@ -154,5 +150,5 @@ if [ $stage -le 5 ]; then
   done
 fi
 
-echo "Done. Date: $(date). Results:"
+echo "$0 Done. Date: $(date). Results:"
 local/chain/compare_wer.sh $dir

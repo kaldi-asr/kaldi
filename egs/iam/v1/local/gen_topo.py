@@ -36,7 +36,7 @@ exclude = set("!(),.?;:'-\"")
 with open(args.phone_list) as f:
     for line in f:
         line = line.strip()
-        phone = line.split(' ')[0]
+        phone = line.split('_')[0]
         if len(phone) == 1 and phone in exclude:
             punctuation_phones.append(int(line.split(' ')[1]))
 # For nonsilence phones that are not punctuations
