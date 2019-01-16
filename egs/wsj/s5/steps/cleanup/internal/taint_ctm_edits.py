@@ -201,7 +201,7 @@ def PrintNonScoredStats():
             percent_modified, percent_of_incorrect_modified),
           file = sys.stderr)
 
-    keys = sorted(ref_change_stats.keys(), reverse=True,
+    keys = sorted(list(ref_change_stats.keys()), reverse=True,
                   key = lambda x: ref_change_stats[x])
     num_keys_to_print = 40 if args.verbose >= 2 else 10
 
@@ -219,7 +219,7 @@ def PrintStats():
         return
     print("taint_ctm_edits.py: processed {0} input lines, whose edit-types were: ".format(tot_lines) +
           ', '.join([ '%s = %.2f%%' % (k, num_lines_of_type[k] * 100.0 / tot_lines)
-                      for k in sorted(num_lines_of_type.keys(), reverse = True,
+                      for k in sorted(list(num_lines_of_type.keys()), reverse = True,
                                       key = lambda k: num_lines_of_type[k])  ]),
           file = sys.stderr)
 

@@ -14,6 +14,7 @@ stage=0
 nj=10
 cleanup=true
 threshold=0.5
+rttm_channel=0
 read_costs=false
 reco2num_spk=
 # End configuration section.
@@ -35,6 +36,8 @@ if [ $# != 2 ]; then
   echo "  --threshold <threshold|0>                        # Cluster stopping criterion. Clusters with scores greater"
   echo "                                                   # than this value will be merged until all clusters"
   echo "                                                   # exceed this value."
+  echo "  --rttm-channel <rttm-channel|0>                  # The value passed into the RTTM channel field. Only affects"
+  echo "                                                   # the format of the RTTM file."
   echo "  --read-costs <read-costs|false>                  # If true, interpret input scores as costs, i.e. similarity"
   echo "                                                   # is indicated by smaller values. If enabled, clusters will"
   echo "                                                   # be merged until all cluster scores are less than the"
@@ -86,7 +89,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: computing RTTM"
-  diarization/make_rttm.py $srcdir/segments $dir/labels $dir/rttm || exit 1;
+  diarization/make_rttm.py --rttm-channel $rttm_channel $srcdir/segments $dir/labels $dir/rttm || exit 1;
 fi
 
 if $cleanup ; then

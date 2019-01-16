@@ -143,8 +143,9 @@ void CuPackedMatrix<Real>::CopyFromPacked(const CuPackedMatrix<Real> &src) {
     size_t nr = static_cast<size_t>(num_rows_),
         num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
 
-    CU_SAFE_CALL(cudaMemcpy(data_, src.data_, num_bytes,
-                            cudaMemcpyDeviceToDevice));
+    CU_SAFE_CALL(
+      cudaMemcpyAsync(data_, src.data_, num_bytes, cudaMemcpyDeviceToDevice,
+                      cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::CopyFromPacked1",
                                         tim);
   } else

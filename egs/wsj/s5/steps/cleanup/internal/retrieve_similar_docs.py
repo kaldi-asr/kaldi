@@ -223,7 +223,7 @@ def read_map(file_handle, num_values_per_key=None,
 
 def get_document_ids(source_docs, indexes):
     indexes = sorted(
-        [(key, value[0], value[1]) for key, value in indexes.iteritems()],
+        [(key, value[0], value[1]) for key, value in indexes.items()],
         key=lambda x: x[0])
 
     doc_ids = []
@@ -273,7 +273,7 @@ def run(args):
             "Did not get scores for query {0}".format(query_id))
 
         if args.verbose > 2:
-            for tup, score in scores.iteritems():
+            for tup, score in scores.items():
                 logger.debug("Score, {num}: {0} {1} {2}".format(
                     tup[0], tup[1], score, num=num_queries))
 

@@ -51,6 +51,9 @@ def get_args():
                       help="Input labels file")
   parser.add_argument("rttm_file", type=str,
                       help="Output RTTM file")
+  parser.add_argument("--rttm-channel", type=int, default=0,
+                      help="The value passed into the RTTM channel field. \
+                      Only affects the format of the RTTM file.")
 
   args = parser.parse_args()
   return args
@@ -120,8 +123,8 @@ def main():
       reco = segs[0]
       for i in range(1, len(segs)):
         start, end, label = segs[i].strip().split(',')
-        print("SPEAKER {0} 0 {1:7.3f} {2:7.3f} <NA> <NA> {3} <NA> <NA>".format(
-          reco, float(start), float(end)-float(start), label), file=rttm_writer)
+        print("SPEAKER {0} {1} {2:7.3f} {3:7.3f} <NA> <NA> {4} <NA> <NA>".format(
+          reco, args.rttm_channel, float(start), float(end)-float(start), label), file=rttm_writer)
 
 if __name__ == '__main__':
   main()

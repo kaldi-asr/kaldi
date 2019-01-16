@@ -82,7 +82,7 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
 
   // Compute energy after window function (not the raw one).
   if (opts_.use_energy && !opts_.raw_energy)
-    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
+    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
                                      std::numeric_limits<float>::min()));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
