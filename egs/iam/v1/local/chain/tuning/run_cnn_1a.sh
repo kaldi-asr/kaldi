@@ -4,23 +4,23 @@
 #              2017 Chun Chieh Chang
 #              2017 Ashish Arora
 
-# steps/info/chain_dir_info.pl exp/chain/cnn_1a/
-# exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
-
 # local/chain/compare_wer.sh exp/chain/cnn_1a/
-# System                         cnn_1a
-# WER                             18.52
-# CER                             10.07
-# Final train prob              -0.0077
-# Final valid prob              -0.0970
-# Final train prob (xent)       -0.5484
-# Final valid prob (xent)       -0.9643
-# Parameters                      4.36M
+# System                         cnn_1a(dict_50k)      cnn_1a(dict_50k + unk model)
+# WER                              16.88                    15.18
+# CER                               8.52                    7.58
+# WER val                          16.17                    13.53
+# CER val                           7.15                    5.89
+# Final train prob               -0.0299
+# Final valid prob               -0.0574
+# Final train prob (xent)        -0.3912
+# Final valid prob (xent)        -0.6439
+# Parameters                       4.36M
+
+# steps/info/chain_dir_info.pl exp/chain/cnn_1a/
+# exp/chain/cnn_1a/: num-iters=42 nj=2..4 num-params=4.4M dim=40->368 combine=-0.029->-0.029 (over 2) xent:train/valid[27,41,final]=(-0.522,-0.394,-0.391/-0.695,-0.644,-0.644) logprob:train/valid[27,41,final]=(-0.035,-0.030,-0.030/-0.056,-0.057,-0.057)
 
 set -e -o pipefail
-
 stage=0
-
 nj=30
 train_set=train
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
@@ -34,27 +34,20 @@ reporting_email=
 # chain options
 train_stage=-10
 xent_regularize=0.1
-frame_subsampling_factor=4
-alignment_subsampling_factor=1
 # training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500
-# we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
 tdnn_dim=450
 # training options
-srand=0
-remove_egs=false
-lang_test=lang_unk
+lang_decode=lang_unk
+decode_val=true
+if $decode_val; then maybe_val=val; else maybe_val= ; fi
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
-
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -109,7 +102,7 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" ${train_data_dir} \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" $train_data_dir \
     data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -124,9 +117,9 @@ if [ $stage -le 3 ]; then
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor $frame_subsampling_factor \
+    --frame-subsampling-factor 4 \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$cmd" $num_leaves ${train_data_dir} \
+    --cmd "$cmd" $num_leaves $train_data_dir \
     $lang $ali_dir $tree_dir
 fi
 
@@ -134,7 +127,6 @@ fi
 if [ $stage -le 4 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
-
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
@@ -155,7 +147,6 @@ if [ $stage -le 4 ]; then
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' mod?els... this
@@ -186,9 +177,9 @@ if [ $stage -le 5 ]; then
     --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=500" \
-    --chain.frame-subsampling-factor=$frame_subsampling_factor \
-    --chain.alignment-subsampling-factor=$frame_subsampling_factor \
-    --trainer.srand=$srand \
+    --chain.frame-subsampling-factor=4 \
+    --chain.alignment-subsampling-factor=4 \
+    --trainer.srand=0 \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
@@ -198,15 +189,10 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=64,32 \
-    --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
-    --cleanup.remove-egs=$remove_egs \
+    --cleanup.remove-egs=false \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
     --feat-dir=$train_data_dir \
@@ -222,20 +208,20 @@ if [ $stage -le 6 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 data/$lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context $chunk_left_context \
-    --extra-right-context $chunk_right_context \
-    --extra-left-context-initial 0 \
-    --extra-right-context-final 0 \
-    --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
+  for decode_set in test $maybe_val; do
+    steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+      --frames-per-chunk $frames_per_chunk \
+      --nj $nj --cmd "$cmd" \
+      $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
+  done
 fi
+
+echo "$0 Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir

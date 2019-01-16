@@ -36,6 +36,8 @@ if [ $stage -le 0 ]; then
     echo "Exiting with status 1 to avoid data corruption"
     exit 1;
   fi
+
+  echo "$0: preparing data...$(date)"
   local/prepare_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
                          --download_dir2 $download_dir2 --download_dir3 $download_dir3 \
                          --use_extra_corpus_text $use_extra_corpus_text
@@ -64,7 +66,7 @@ if [ $stage -le 1 ]; then
   image/get_image2num_frames.py data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
 
-  for set in test train; do
+  for set in test dev train; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. $(date)"
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
     steps/compute_cmvn_stats.sh data/$set || exit 1;
@@ -99,28 +101,33 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  echo "$0: Calling the flat-start chain recipe... $(date)."
+  local/chain/run_e2e_cnn.sh
+fi
+
+lang_decode=data/lang
+lang_rescore=data/lang_rescore_6g
+decode_e2e=true
+if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_big.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang
+                     data/local/dict/lexicon.txt $lang_decode
   utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
-                               data/lang data/lang_rescore_6g
+                               data/lang $lang_rescore
 fi
 
-if [ $stage -le 4 ]; then
-  echo "$0: Calling the flat-start chain recipe... $(date)."
-  local/chain/run_e2e_cnn.sh --nj $nj
-fi
+if [ $stage -le 5 ] && $decode_e2e; then
+  echo "$0: $(date) stage 5: decoding end2end setup..."
+  utils/mkgraph.sh --self-loop-scale 1.0 $lang_decode \
+    exp/chain/e2e_cnn_1a/ exp/chain/e2e_cnn_1a/graph || exit 1;
 
-if [ $stage -le 5 ]; then
-  echo "$0: Aligning the training data using the e2e chain model...$(date)."
-  steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
-                       --use-gpu false \
-                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
-fi
+  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --nj $nj --cmd "$cmd" \
+    exp/chain/e2e_cnn_1a/graph data/test exp/chain/e2e_cnn_1a/decode_test || exit 1;
 
-if [ $stage -le 6 ]; then
-  echo "$0: Building a tree and training a regular chain model using the e2e alignments...$(date)"
-  local/chain/run_cnn_e2eali.sh --nj $nj
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+    data/test exp/chain/e2e_cnn_1a/decode_test{,_rescored} || exit 1
+
+  echo "$0: Done. Date: $(date). Results:"
+  local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
 fi

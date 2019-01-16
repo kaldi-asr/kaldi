@@ -210,7 +210,7 @@ with open(args.data_splits) as f:
                     image_file_path = os.path.join(location, updated_base_name)
                     line = text_line_word_dict[line_id]
                     text = ' '.join(line)
-                    utt_id = "{}_{}_{}_{}".format(writer_id, str(image_num).zfill(6), base_line_image_file_name, str(line_id).zfill(4))
+                    utt_id = "{}_{}_{}_{}".format(writer_id, str(image_num).zfill(6), base_name, str(line_id).zfill(4))
                     text_fh.write(utt_id + ' ' + text + '\n')
                     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                     image_fh.write(utt_id + ' ' + image_file_path + '\n')

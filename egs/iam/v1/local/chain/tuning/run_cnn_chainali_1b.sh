@@ -1,46 +1,48 @@
 #!/bin/bash
 
-# chainali_1a is as 1a except it uses chain alignments (using 1a system) instead of gmm alignments
+# chainali_1b is as chainali_1a except it has 3 more cnn layers and 1 less tdnn layer.
+# local/chain/compare_wer.sh exp/chain/cnn_chainali_1b
+# System                      cnn_chainali_1b(dict_50k)   cnn_chainali_1b(dict_50k + unk_model)
+# WER                             15.09                       13.29
+# CER                              7.13                        6.08
+# WER val                         14.80                       11.98
+# CER val                          6.16                        4.87
+# Final train prob              -0.0225
+# Final valid prob              -0.0132
+# Final train prob (xent)       -0.4466
+# Final valid prob (xent)       -0.6048
+# Parameters                      3.96M
+
+# steps/info/chain_dir_info.pl exp/chain/chainali_cnn_1b/
+# exp/chain/cnn_chainali_1b: num-iters=42 nj=2..4 num-params=4.0M dim=40->368 combine=-0.019->-0.019 (over 2) xent:train/valid[27,41,final]=(-0.545,-0.448,-0.447/-0.645,-0.605,-0.605) logprob:train/valid[27,41,final]=(-0.026,-0.023,-0.023/-0.014,-0.013,-0.013)
 
 set -e -o pipefail
-
 stage=0
-
 nj=30
 train_set=train
+decode_val=true
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 ali=tri3_ali
 chain_model_dir=exp/chain${nnet3_affix}/cnn_1a
 common_egs_dir=
 reporting_email=
 
-# chain options
 train_stage=-10
 xent_regularize=0.1
-frame_subsampling_factor=4
-alignment_subsampling_factor=1
-# training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500
-# we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
 tdnn_dim=450
-# training options
-srand=0
-remove_egs=false
-lang_test=lang_test
+lang_decode=lang_unk
+if $decode_val; then maybe_val=val; else maybe_val= ; fi
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
-
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -67,7 +69,6 @@ for f in $train_data_dir/feats.scp \
     $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
-
 
 if [ $stage -le 1 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
@@ -98,7 +99,7 @@ if [ $stage -le 2 ]; then
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
+                            $train_data_dir data/lang $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
 
@@ -112,9 +113,9 @@ if [ $stage -le 3 ]; then
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor $frame_subsampling_factor \
+    --frame-subsampling-factor 4 \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$cmd" $num_leaves ${train_data_dir} \
+    --cmd "$cmd" $num_leaves $train_data_dir \
     $lang $ali_dir $tree_dir
 fi
 
@@ -122,29 +123,28 @@ fi
 if [ $stage -le 4 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
-
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="height-offsets=-1,0,1 num-filters-out=70"
+  common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
+  conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
   relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn4 input=Append(-4,0,4) dim=$tdnn_dim
 
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' mod?els... this
@@ -154,7 +154,7 @@ if [ $stage -le 4 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn4 dim=$tdnn_dim target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -175,9 +175,9 @@ if [ $stage -le 5 ]; then
     --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=500" \
-    --chain.frame-subsampling-factor=$frame_subsampling_factor \
-    --chain.alignment-subsampling-factor=$alignment_subsampling_factor \
-    --trainer.srand=$srand \
+    --chain.frame-subsampling-factor=4 \
+    --chain.alignment-subsampling-factor=1 \
+    --trainer.srand=0 \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
@@ -187,15 +187,10 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=64,32 \
-    --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
-    --cleanup.remove-egs=$remove_egs \
+    --cleanup.remove-egs=false \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
     --feat-dir=$train_data_dir \
@@ -211,20 +206,20 @@ if [ $stage -le 6 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 data/$lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context $chunk_left_context \
-    --extra-right-context $chunk_right_context \
-    --extra-left-context-initial 0 \
-    --extra-right-context-final 0 \
-    --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
+  for decode_set in test $maybe_val; do
+    steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+      --frames-per-chunk $frames_per_chunk \
+      --nj $nj --cmd "$cmd" \
+      $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
+  done
 fi
+
+echo "$0 Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir
