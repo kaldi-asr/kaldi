@@ -370,6 +370,30 @@ void GetChainComputationRequest(const Nnet &nnet,
     KALDI_ERR << "No outputs in computation request.";
 }
 
+
+// Returns the frame subsampling factor, which is the difference between the
+// first 't' value we encounter in 'indexes', and the next 't' value that is
+// different from the first 't'.  It will typically be 3.
+// This function will crash if it could not figure it out (e.g. because
+// 'indexes' was empty or had only one element).
+static int32 GetFrameSubsamplingFactor(const std::vector<Index> &indexes) {
+
+  auto iter = indexes.begin(), end = indexes.end();
+  int32 cur_t_value;
+  if (iter != end) {
+    cur_t_value = iter->t;
+    ++iter;
+  }
+  for (; iter != end; ++iter) {
+    if (iter->t != cur_t_value) {
+      KALDI_ASSERT(iter->t > cur_t_value);
+      return iter->t - cur_t_value;
+    }
+  }
+  KALDI_ERR << "Error getting frame subsampling factor";
+  return 0;  // Shouldn't be reached, this is to avoid compiler warnings.
+}
+
 void ShiftChainExampleTimes(int32 frame_shift,
                             const std::vector<std::string> &exclude_names,
                             NnetChainExample *eg) {
@@ -397,10 +421,7 @@ void ShiftChainExampleTimes(int32 frame_shift,
       sup_end = eg->outputs.end();
   for (; sup_iter != sup_end; ++sup_iter) {
     std::vector<Index> &indexes = sup_iter->indexes;
-    KALDI_ASSERT(indexes.size() >= 2 && indexes[0].n == indexes[1].n &&
-                 indexes[0].x == indexes[1].x);
-    int32 frame_subsampling_factor = indexes[1].t - indexes[0].t;
-    KALDI_ASSERT(frame_subsampling_factor > 0);
+    int32 frame_subsampling_factor = GetFrameSubsamplingFactor(indexes);
 
     // We need to shift by a multiple of frame_subsampling_factor.
     // Round to the closest multiple.

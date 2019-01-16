@@ -325,6 +325,7 @@ if [ $stage -le 21 ]; then
     --stage $train_stage --cmd "$cmd" \
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
     --dropout-schedule "$dropout_schedule" \
+    --num-jobs-initial 2 --num-jobs-final 4 \
      $dir/egs $dir
 
 fi

@@ -38,13 +38,15 @@ int main(int argc, char *argv[]) {
         "use it with a GPU).\n"
         "\n"
         "Usage:  nnet3-chaina-train [options] <model-in-dir> <den-fst-dir> <transform-dir>\n"
-        "        <egs-rspecifier>  <model-out-dir>\n"
+        "        <egs-rspecifier> [<model-out-dir>]\n"
         "\n"
         "<model-in-dir> should contain bottom.raw, and <lang>.mdl for each language <lang>\n"
         "<den-fst-dir> should contain <lang>.den.fst for each language <lang>\n"
         "<transform-dir> should contain <lang>.ada for each language <lang>\n"
         "<model-out-dir> is a place to where bottom.<job-id>.raw and <lang>.<job-id>.raw for each language\n"
-        "  <lang> that was seen in the egs, will be written (for <job-id>, see the --job-id option).\n";
+        "  <lang> that was seen in the egs, will be written (for <job-id>, see the --job-id option).\n"
+        "  If it is not specified, the trained models will not be written (e.g. when you are using\n"
+        "  --bottom-model-test-mode=true --top-model-test-mode=true and only want diagnostics).\n";
 
 
     int32 srand_seed = 0;
@@ -69,7 +71,7 @@ int main(int argc, char *argv[]) {
 
     srand(srand_seed);
 
-    if (po.NumArgs() != 5) {
+    if (po.NumArgs() < 4 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }
@@ -84,7 +86,7 @@ int main(int argc, char *argv[]) {
         den_fst_dir = po.GetArg(2),
         transform_dir = po.GetArg(3),
         egs_rspecifier = po.GetArg(4),
-        model_out_dir = po.GetArg(5);
+        model_out_dir = po.GetOptArg(5);
 
     NnetChainaModels models(chaina_opts.nnet_config.zero_component_stats,
                             chaina_opts.bottom_model_test_mode,
@@ -102,7 +104,8 @@ int main(int argc, char *argv[]) {
 
       ok = trainer.PrintTotalStats();
     }
-    models.WriteRawModels(model_out_dir, binary_write, job_id);
+    if (po.NumArgs() == 5)
+      models.WriteRawModels(model_out_dir, binary_write, job_id);
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();

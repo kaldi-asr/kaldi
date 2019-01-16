@@ -224,18 +224,21 @@ def _get_dropout_proportions(dropout_schedule, data_fraction):
     return dropout_proportions
 
 
-def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
-    """Return an nnet3-copy --edits line to modify raw_model_string to
-    set dropout proportions according to dropout_proportions.
-    E.g. if _dropout_proportions(dropout_schedule, data_fraction)
-    returns [('*', 0.625)],  this will return the string:
-     "nnet3-copy --edits='set-dropout-proportion name=* proportion=0.625'"
 
+def get_dropout_edit_option(dropout_schedule, data_fraction, iter_):
+    """Return an option to be passed to nnet3-copy (or nnet3-am-copy)
+    that will set the appropriate dropout proportion.  If no dropout
+    is being used (dropout_schedule is None), returns the empty
+    string, otherwise returns something like
+    "--edits='set-dropout-proportion name=* proportion=0.625'"
 
     Arguments:
         dropout_schedule: Value for the --trainer.dropout-schedule option.
             See help for --trainer.dropout-schedule.
             See _self_test() for examples.
+        data_fraction: real number in [0,1] that says how far along
+            in training we are.
+        iter_: iteration number (needed for debug printing only)
 
     See ReadEditConfig() in nnet3/nnet-utils.h to see how
     set-dropout-proportion directive works.
@@ -259,9 +262,39 @@ def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
 
     if _debug_dropout:
         logger.info("On iteration %d, %s", iter_, ', '.join(dropout_info))
-    return ("""nnet3-copy --edits='{edits}' - - |""".format(
-        edits=";".join(edit_config_lines)))
 
+    return "--edits='{0}'".format(";".join(edit_config_lines))
+
+
+def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
+    """Return an nnet3-copy --edits line to modify raw_model_string to
+    set dropout proportions according to dropout_proportions.
+    E.g. if _dropout_proportions(dropout_schedule, data_fraction)
+    returns [('*', 0.625)],  this will return the string:
+     "nnet3-copy --edits='set-dropout-proportion name=* proportion=0.625'"
+
+    This is a wrapper of the function get_dropout_edit_option which
+    gets the --edits option; this function just adds the nnet3-copy
+    and its arguments.
+
+    Arguments:
+        dropout_schedule: Value for the --trainer.dropout-schedule option.
+            See help for --trainer.dropout-schedule.
+            See _self_test() for examples.
+        data_fraction: real number in [0,1] that says how far along
+            in training we are.
+        iter_: iteration number (needed for debug printing only)
+
+    See ReadEditConfig() in nnet3/nnet-utils.h to see how
+    set-dropout-proportion directive works.
+    """
+
+    edit_option = get_dropout_edit_option(dropout_schedule, data_fraction, iter_)
+
+    if edit_option == "":
+        return ""
+    else:
+        return ("nnet3-copy {0} - - |".format(edit_option))
 
 def _self_test():
     """Run self-test.

@@ -14,7 +14,8 @@ memory_compression_level=2  # Enables us to use larger minibatch size than we
                             # (--> set to 0 if you have plenty of memory.
 dropout_schedule=
 srand=0
-max_param_change=2.0
+max_param_change=1.0    # we use a smaller than normal default (it's normally
+                        # 2.0), because there are two models (bottom and top).
 use_gpu=yes   # can be "yes", "no", "optional", "wait"
 
 common_opts=           # Options passed through to nnet3-chaina-train and nnet3-chaina-combine
@@ -33,11 +34,20 @@ num_jobs_initial=1
 num_jobs_final=1
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-num_groups_per_minibatch=32  # note: if chunks_per_group=4, this would mean 128
-                             # chunks per minibatch.
+groups_per_minibatch=32  # This is how you set the minibatch size.  Note: if
+                         # chunks_per_group=4, this would mean 128 chunks per
+                         # minibatch.
 
 max_iters_combine=80
 max_models_combine=20
+diagnostic_period=5    # Get diagnostics every this-many iterations
+
+shuffle_buffer_size=1000  # This "buffer_size" variable controls randomization of the groups
+                          # on each iter.
+train=true            # use --train false to run only diagnostics.
+
+
+
 
 # End configuration section
 
@@ -73,13 +83,14 @@ done
 
 
 frame_subsampling_factor=$(awk '/^frame_subsampling_factor/ {print $2}' <$dir/init/info.txt)
-num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$dir/init/info.txt)
+num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$dir/egs/info.txt)
 
 steps/chaina/internal/get_train_schedule.py \
   --frame-subsampling-factor=$frame_subsampling_factor \
   --num-jobs-initial=$num_jobs_initial \
   --num-jobs-final=$num_jobs_final \
   --num-epochs=$num_epochs \
+  --dropout-schedule="$dropout_schedule" \
   --num-scp-files=$num_scp_files \
   --frame-subsampling-factor=$frame_subsampling_factor \
   --initial-effective-lrate=$initial_effective_lrate \
@@ -88,55 +99,116 @@ steps/chaina/internal/get_train_schedule.py \
 
 
 
+if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
+
 num_iters=$(wc -l <$dir/schedule.txt)
+# source the 1st line of schedule.txt in the shell; this sets
+# lrate and dropout_opt, among other variables.
+. <(head -n 1 $dir/schedule.txt)
 langs=$(awk '/^langs/ { $1=""; print; }' <$dir/0/info.txt)
 
 mkdir -p $dir/log
 
-
 # Copy models with initial learning rate and dropout options from $dir/init to $dir/0
 mkdir -p $dir/0
-lrate=$(awk ' {if(NR-1==0) { print;exit(0);}}' <$dir/schedule.txt | cut -f 5)
-dropout_str=$(awk ' {if(NR-1==0) { print;exit(0);}}' <$dir/schedule.txt | cut -f 4)
 run.pl $dir/log/init_bottom_model.log \
-  nnet3-copy --learning-rate=$lrate --edits="$dropout_str" $dir/init/bottom.raw $dir/0/bottom.raw
+  nnet3-copy --learning-rate=$lrate $dropout_opt $dir/init/bottom.raw $dir/0/bottom.raw
 for lang in $langs; do
   run.pl $dir/log/init_model_$lang.log \
-         nnet3-am-copy --learning-rate=$lrate --edits="$dropout_str" $dir/init/$lang.mdl $dir/0/$lang.mdl
+      nnet3-am-copy --learning-rate=$lrate $dropout_opt $dir/init/$lang.mdl $dir/0/$lang.mdl
 done
 
 
-iter=0
+x=0
+if [ $stage -gt $x ]; then x=$stage; fi
 
-echo "exiting early"
+while [ $x -lt $num_iters ]; do
+  # Source some variables fromm schedule.txt.  The effect will be something
+  # like the following:
+  # iter=0; num_jobs=2; inv_num_jobs=0.5; scp_indexes=(pad 1 2); frame_shifts=(pad 1 2); dropout_opt="--edits='set-dropout-proportion name=* proportion=0.0'" lrate=0.002
+  . <(grep "^iter=$x;" $dir/schedule.txt)
+
+  echo "$0: training, iteration $x, num-jobs is $num_jobs"
+
+  next_x=$[$x+1]
+  model_in_dir=$dir/$x
+  if [ ! -f $model_in_dir/bottom.raw ]; then
+    echo "$0: expected $model_in_dir/bottom.raw to exist"
+    exit 1
+  fi
+  den_fst_dir=$egs_dir/misc
+  transform_dir=$dir/init
+  model_out_dir=$dir/${next_x}
+
+
+  # for the first 4 iterations, plus every $diagnostic_period iterations, launch
+  # some diagnostic processes.  We don't do this on iteration 0, because
+  # the batchnorm stats wouldn't be ready
+  if [ $x -gt 0 ] && [ $[x%diagnostic_period] -eq 0 -o $x -lt 5 ]; then
+    diagnostic_opts="--bottom-model-test-mode=true --top-model-test-mode=true"
+
+    [ -f $dir/$x/.error_diagnostic ] && rm $dir/$x/.error_diagnostic
+    for name in train heldout; do
+      $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.$x.log \
+        nnet3-chaina-train $diagnostic_opts --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
+           --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
+           --print-interval=10  \
+           $model_in_dir $den_fst_dir $transform_dir \
+           "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/${name}_subset.scp ark:-|" \
+      || touch $dir/$x/.error_diagnostic &
+    done
+  fi
+
+  if $train; then
+    if [ -d $dir/$next_x ]; then
+      echo "$0: removing previous contents of $dir/$next_x"
+      rm -r $dir/$next_x || exit 1
+    fi
+    mkdir -p $dir/$next_x
+
+    for j in $(seq $num_jobs); do
+      scp_index=${scp_indexes[$j]}
+      frame_shift=${frame_shifts[$j]}
+
+      $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
+           nnet3-chaina-train --job-id=$j --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
+           --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
+           --print-interval=10 --max-param-change=$max_param_change \
+           --l2-regularize-factor=$inv_num_jobs --optimization.memory-compression-level=$memory_compression_level \
+           $model_in_dir $den_fst_dir $transform_dir \
+           "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
+           $model_out_dir || touch $dir/$next_x/.error &
+    done
+    wait
+    if [ -f $dir/$next_x/.error ]; then
+      echo "$0: error detected training on iteration $x"
+      exit 1
+    fi
+    # First average the bottom models
+    models=$(for j in $(seq $num_jobs); do echo $dir/$next_x/bottom.$j.raw; done)
+    run.pl $dir/log/average.$x.log \
+           nnet3-average $models - \| \
+           nnet3-copy --learning-rate=$lrate $dropout_opt - $dir/$next_x/bottom.raw
+    rm $models
+    for lang in $langs; do
+      models=$dir/$next_x/$lang.*.raw
+      run.pl $dir/log/average_${lang}.$x.log \
+             nnet3-average $models - \| \
+             nnet3-am-copy --set-raw-nnet=- --learning-rate=$lrate $dropout_opt $dir/$iter/$lang.mdl $dir/$next_x/$lang.mdl
+      rm $models
+    done
+  fi
+
+  wait
+  if [ -f $dir/$x/.error_diagnostic ]; then
+    echo "$0: error detected in diagnostics on iteration $x"
+    exit 1
+  fi
+
+  # TODO: diagnostics; cleanup
+  x=$[x+1]
+done
+
+
+echo "$0: done"
 exit 0
-
-
-# Note: the .ark files are not actually consumed directly downstream (only via
-# the top-level .scp files), but we check them anyway for now.
-for f in $dir/train.scp $dir/info.txt \
-         $dir/heldout_subset.{ark,scp} $dir/train_subset.{ark,scp} \
-         $dir/train.1.scp $dir/train.1.ark; do
-  if ! [ -f $f -a -s $f ]; then
-    echo "$0: expected file $f to exist and be nonempty."
-    exit 1
-  fi
-done
-
-
-if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "processed_chaina_egs" ]; then
-  grep dir_type $dir/info.txt
-  echo "$0: dir_type should be processed_chaina_egs in $dir/info.txt"
-  exit 1
-fi
-
-lang=$(awk '/^lang / {print $2; }' <$dir/info.txt)
-
-for f in $dir/misc/$lang.{trans_mdl,normalization.fst,den.fst}; do
-  if ! [ -f $f -a -s $f ]; then
-    echo "$0: expected file $f to exist and be nonempty."
-    exit 1
-  fi
-done
-
-echo "$0: sucessfully validated processed egs in $dir"

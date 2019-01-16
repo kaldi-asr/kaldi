@@ -7,7 +7,8 @@
 # Apache 2.0.
 
 """ This script outputs information about a neural net training schedule,
-    to be used by ../train.py.
+    to be used by ../train.sh, in the form of lines that can be selected
+    and sourced by the shell.
 """
 
 import argparse
@@ -19,7 +20,7 @@ import libs.common as common_lib
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="Output training schedule information to be consumed by ../train.py",
+        description="""Output training schedule information to be consumed by ../train.sh""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("--frame-subsampling-factor", type=int, default=3,
@@ -75,20 +76,11 @@ def get_args():
                         help="""The number of .scp files in the egs dir.""")
     parser.add_argument("--schedule-out", type=str, required=True,
                         help="""Output file containing the training schedule.  The output
-                        is lines, one per training iteration.  Each line contains
-                        tab-separated fields of the form:
-                        <iteration-index> <num-jobs> <scp-indexes> <dropout-string> <learning-rate> <frame-shifts>
-                        where <iteration-index> is an iteration index starting from 0,
-                        <num-jobs> is the number of jobs for this iteration (between
-                        num-jobs-initial and num-jobs-final),
-                        <scp-indexes> is a space-separated string containing the
-                        indexes of the .scp files in the egs dir to use for this
-                        iteration (e.g. '1 2 3'), <dropout-string> is either the empty
-                        string or something to be passed to the --edits command of
-                        nnet3-am-copy or nnet3-copy; <learning-rate> is the
-                        actual learning rate on this iteration (the effective learning
-                        rate times the num-jobs), and <frame-shifts> is a space-separated
-                        string containing the frame shifts for each job.""")
+                        is lines, one per training iteration.
+                        Each line (one per iteration) is a list of ;-separated commands setting shell
+                        variables.  Currently the following variables are set:
+                        iter, num_jobs, inv_num_jobs, scp_indexes, frame_shifts, dropout_opt, lrate.
+                        """)
 
     print(sys.argv, file=sys.stderr)
     args = parser.parse_args()
@@ -107,6 +99,12 @@ def get_schedules(args):
             current_num_jobs = int(0.5 + args.num_jobs_initial
                                    + (args.num_jobs_final - args.num_jobs_initial)
                                    * float(iter) / num_iters)
+            # as a special case, for iteration zero we use just one job
+            # regardless of the --num-jobs-initial and --num-jobs-final.  This
+            # is because the model averaging does not work reliably for a
+            # freshly initialized model.
+            if iter == 0:
+                current_num_jobs = 1
 
             lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
                                                        num_iters,
@@ -115,7 +113,9 @@ def get_schedules(args):
                                                        args.initial_effective_lrate,
                                                        args.final_effective_lrate)
 
-            dropout_edit_string = common_train_lib.get_dropout_edit_string(
+            if args.dropout_schedule == "":
+                args.dropout_schedule = None
+            dropout_edit_option = common_train_lib.get_dropout_edit_option(
                 args.dropout_schedule,
                 float(num_scp_files_processed) / num_scp_files_to_process,
                 iter)
@@ -130,15 +130,22 @@ def get_schedules(args):
                 # previous : frame_shift = (k/num_scp_files) % frame_subsampling_factor
                 frame_shift = ((scp_index + k // args.num_scp_files)
                                % args.frame_subsampling_factor)
+
+                # Instead of frame shifts like [0, 1, 2], we make them more like
+                # [0, 1, -1].  This is clearer in intent, and keeps the
+                # supervision starting at frame zero, which IIRC is a
+                # requirement somewhere in the 'chaina' code.
+                if frame_shift > (args.frame_subsampling_factor // 2):
+                    frame_shift = frame_shift - args.frame_subsampling_factor
+
                 frame_shifts.append(str(frame_shift))
                 egs.append(str(scp_index))
 
-            print('{iteration}\t{nj}\t{egs}\t{dropout}\t{lr}\t'
-                  '{shifts}'.format(iteration=iter, nj=current_num_jobs,
-                                    egs=' '.join(egs),
-                                    dropout=dropout_edit_string, lr=lrate,
-                                    shifts=' '.join(frame_shifts)), file=ostream)
 
+            print("""iter={iter}; num_jobs={nj}; inv_num_jobs={nj_inv}; scp_indexes=(pad {indexes}); frame_shifts=(pad {shifts}); dropout_opt="{opt}"; lrate={lrate}""".format(
+                iter=iter, nj=current_num_jobs, nj_inv=(1.0 / current_num_jobs),
+                indexes = ' '.join(egs), shifts=' '.join(frame_shifts),
+                opt=dropout_edit_option, lrate=lrate), file=ostream)
             num_scp_files_processed = num_scp_files_processed + current_num_jobs
 
 
