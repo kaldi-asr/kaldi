@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 #           2018  Ke Li
 
-# This script trains LMs on the librispeech 960 hours training data.
+# This script trains LMs on the librispeech-lm-norm.txt.gz.
 
 # rnnlm/train_rnnlm.sh: best iteration (out of 143) was 142, linking it to final iteration.
 # rnnlm/train_rnnlm.sh: train/dev perplexity was 109.2 / 110.7.

@@ -6,6 +6,7 @@
 
 """ This script prepares the training and test data for SVHN.
 """
+from __future__ import division
 
 import argparse
 import os
@@ -16,11 +17,11 @@ import numpy as np
 parser = argparse.ArgumentParser(description="""Converts train/test data of
                                                 SVHN (Street View House Numbers)
                                                 dataset to Kaldi feature format""")
-parser.add_argument('matlab_file', type=str,
+parser.add_argument('matlab_file',
                     help='path to SVHN matlab data file (cropped version)')
-parser.add_argument('dir', type=str,
+parser.add_argument('dir',
                     help='output dir')
-parser.add_argument('--out-ark', type=str,
+parser.add_argument('--out-ark',
                     default='-', help='where to write output feature data')
 
 args = parser.parse_args()
@@ -48,7 +49,7 @@ def write_kaldi_matrix(file_handle, matrix, key):
         if num_cols != len(matrix[row_index]):
             raise Exception("All the rows of a matrix are expected to "
                             "have the same length")
-        file_handle.write(" ".join(map(lambda x: str(x), matrix[row_index])))
+        file_handle.write(" ".join([str(x) for x in matrix[row_index]]))
         if row_index != num_rows - 1:
             file_handle.write("\n")
     file_handle.write(" ]\n")
@@ -80,7 +81,7 @@ for i in range(num_images):
     lbl = labels[i, 0]
     if lbl == 10:
         lbl = 0
-    labels_fh.write(key + ' ' + str(lbl) + '\n')
+    labels_fh.write("{} {}\n".format(key, lbl))
     img = data[i]
     write_kaldi_matrix(out_fh, img, key)
     img_id += 1

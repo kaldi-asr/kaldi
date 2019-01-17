@@ -64,6 +64,12 @@ if [ $stage -le 0 ]; then
   # we can later fold the dev data into this.
   cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
 
+  if [ -d "data/local/gigawordcorpus/arb_gw_5/data" ]; then
+    cat data/local/gigawordcorpus/arb_gw_5/data/nhr_arb_combined.txt | \
+      utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+      | sed 's/@@//g' > ${dir}/data/text/corpus_text.txt
+  fi
+
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
   # out interpolation weights.)
@@ -72,7 +78,7 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get the wordlist from MADCAT text
-  cat ${dir}/data/text/train.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  cat ${dir}/data/text/{train,corpus_text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
@@ -83,7 +89,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='train=1'
+  min_counts='corpus_text=2 train=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
@@ -103,8 +109,8 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: pruning the LM (to larger size)"
-  # Using 1 million n-grams for a big LM for rescoring purposes.
-  size=1000000
+  # Using 20 million n-grams for a big LM for rescoring purposes.
+  size=20000000
   prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
@@ -114,9 +120,9 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0: pruning the LM (to smaller size)"
-  # Using 500k n-grams for a smaller LM for graph building.  Prune from the
+  # Using 10 million n-grams for a smaller LM for graph building.  Prune from the
   # bigger-pruned LM, it'll be faster.
-  size=500000
+  size=10000000
   prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'

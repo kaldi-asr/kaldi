@@ -7,6 +7,7 @@
 """This module contains classes and methods common to training of
 nnet3 neural networks.
 """
+from __future__ import division
 
 import argparse
 import glob
@@ -528,13 +529,13 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
                                          presoftmax_prior_scale_power=-0.25,
                                          smooth=0.01):
     total = sum(pdf_counts)
-    average_count = total/len(pdf_counts)
+    average_count = float(total) / len(pdf_counts)
     scales = []
     for i in range(len(pdf_counts)):
         scales.append(math.pow(pdf_counts[i] + smooth * average_count,
                                presoftmax_prior_scale_power))
     num_pdfs = len(pdf_counts)
-    scaled_counts = list(map(lambda x: x * float(num_pdfs) / sum(scales), scales))
+    scaled_counts = [x * float(num_pdfs) / sum(scales) for x in scales]
     return scaled_counts
 
 
@@ -564,7 +565,7 @@ def get_model_combine_iters(num_iters, num_epochs,
         in the final model-averaging phase.  (note: it's a weighted average
         where the weights are worked out from a subset of training data.)"""
 
-    approx_iters_per_epoch_final = num_archives/num_jobs_final
+    approx_iters_per_epoch_final = float(num_archives) / num_jobs_final
     # Note: it used to be that we would combine over an entire epoch,
     # but in practice we very rarely would use any weights from towards
     # the end of that range, so we are changing it to use not
@@ -581,8 +582,8 @@ def get_model_combine_iters(num_iters, num_epochs,
     # But if this value is > max_models_combine, then the models
     # are subsampled to get these many models to combine.
 
-    num_iters_combine_initial = min(approx_iters_per_epoch_final/2 + 1,
-                                    num_iters/2)
+    num_iters_combine_initial = min(int(approx_iters_per_epoch_final/2) + 1,
+                                    int(num_iters/2))
 
     if num_iters_combine_initial > max_models_combine:
         subsample_model_factor = int(
@@ -610,8 +611,7 @@ def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
         effective_learning_rate = (
                 initial_effective_lrate
                 * math.exp(num_archives_processed
-                           * math.log(final_effective_lrate
-                                      / initial_effective_lrate)
+                           * math.log(float(final_effective_lrate) / initial_effective_lrate)
                            / num_archives_to_process))
 
     return num_jobs * effective_learning_rate

@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 # Copyright 2012 Mirko Hannemann BUT, mirko.hannemann@gmail.com
 
+from __future__ import print_function
 import sys
 import codecs # for UTF-8/unicode
 
 if len(sys.argv) != 2:
-    print 'usage: reverse_arpa arpa.in'
+    print('usage: reverse_arpa arpa.in')
     sys.exit()
 arpaname = sys.argv[1]
 
@@ -34,13 +35,13 @@ arpaname = sys.argv[1]
 try:
   file = codecs.open(arpaname, "r", "utf-8")
 except IOError:
-  print 'file not found: ' + arpaname
+  print('file not found: ' + arpaname)
   sys.exit()
 
 text=file.readline()
 while (text and text[:6] != "\\data\\"): text=file.readline()
 if not text:
-  print "invalid ARPA file"
+  print("invalid ARPA file")
   sys.exit()
 #print text,
 while (text and text[:5] != "ngram"): text=file.readline()
@@ -54,7 +55,7 @@ while (text and text[:5] == "ngram"):
   r = ind[0].split()
   read_n = int(r[1].strip())
   if read_n != n+1:
-    print "invalid ARPA file:", text
+    print("invalid ARPA file: {}".format(text))
     sys.exit()
   n = read_n
   cngrams.append(counts)
@@ -68,7 +69,7 @@ inf=float("inf")
 for n in range(1,len(cngrams)+1): # unigrams, bigrams, trigrams
   while (text and "-grams:" not in text): text=file.readline()
   if n != int(text[1]):
-    print "invalid ARPA file:", text
+    print("invalid ARPA file:{}".format(text))
     sys.exit()
   #print text,cngrams[n-1]
   this_ngrams={} # stores all read ngrams
@@ -115,7 +116,7 @@ for n in range(1,len(cngrams)+1): # unigrams, bigrams, trigrams
 
 while (text and text[:5] != "\\end\\"): text=file.readline()
 if not text:
-  print "invalid ARPA file"
+  print("invalid ARPA file")
   sys.exit()
 file.close()
 #print text,
@@ -133,14 +134,13 @@ file.close()
 #p(ABCD)+b(ABCD)-p(BCD)+p(ABC)-p(BC)+p(AB)-p(B)+p(A) DCBA 0
 
 # compute new reversed ARPA model
-print "\\data\\"
+print("\\data\\")
 for n in range(1,len(cngrams)+1): # unigrams, bigrams, trigrams
-  print "ngram "+str(n)+"="+str(len(ngrams[n-1].keys()))
+  print("ngram {0} = {1}".format(n, len(ngrams[n-1].keys())))
 offset = 0.0
 for n in range(1,len(cngrams)+1): # unigrams, bigrams, trigrams
-  print "\\"+str(n)+"-grams:"
-  keys = ngrams[n-1].keys()
-  keys.sort()
+  print("\\{}-grams:".format(n))
+  keys = sorted(ngrams[n-1].keys())
   for ngram in keys:
     prob = ngrams[n-1][ngram]
     # reverse word order
@@ -179,10 +179,10 @@ for n in range(1,len(cngrams)+1): # unigrams, bigrams, trigrams
         elif n == 2:
           revprob = revprob + offset # add <s> weight to bigrams starting with <s>
       if (prob[1] != inf): # only backoff weights from not newly created ngrams
-        print revprob,rev_ngram.encode("utf-8"),back
+        print(revprob,rev_ngram.encode("utf-8"),back)
       else:
-        print revprob,rev_ngram.encode("utf-8"),"-100000.0"
+        print(revprob,rev_ngram.encode("utf-8"),"-100000.0")
     else: # highest order - no backoff weights
       if (n==2) and (rev_ngram[:3] == "<s>"): revprob = revprob + offset
-      print revprob,rev_ngram.encode("utf-8")
-print "\\end\\"
+      print(revprob,rev_ngram.encode("utf-8"))
+print("\\end\\")

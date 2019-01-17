@@ -2,25 +2,24 @@
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)
-
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a
-# System                      e2e_cnn_1a
-# WER                              7.81
-# CER                              2.05
-# Final train prob              -0.0812
-# Final valid prob              -0.0708
+# ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
+# System                      e2e_cnn_1a     e2e_cnn_1a (with extra corpus text)
+# WER                              9.47            5.73
+# WER (rescored)                   8.05            5.67
+# CER                              2.45            1.45
+# CER (rescored)                   2.10            1.42
+# Final train prob              -0.0934         -0.0934
+# Final valid prob              -0.0746         -0.0746
 # Final train prob (xent)
 # Final valid prob (xent)
-# Parameters                      2.94M
+# Parameters                      2.94M           2.94M
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
-# exp/chain/e2e_cnn_1a/: num-iters=98 nj=6..16 num-params=2.9M dim=40->330 combine=-0.073->-0.073 (over 2) logprob:train/valid[64,97,final]=(-0.084,-0.080,-0.081/-0.073,-0.070,-0.071)
-
+# exp/chain/e2e_cnn_1a/: num-iters=98 nj=6..16 num-params=2.9M dim=40->330 combine=-0.071->-0.070 (over 5) logprob:train/valid[64,97,final]=(-0.089,-0.084,-0.093/-0.075,-0.073,-0.075)
 set -e
 
 # configs for 'chain'
 stage=0
-nj=70
 train_stage=-10
 get_egs_stage=-10
 affix=1a
@@ -31,9 +30,6 @@ minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
 common_egs_dir=
 cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
-lang_decode=data/lang
-lang_rescore=data/lang_rescore_6g
-
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -67,7 +63,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/e2e/prepare_e2e.sh --nj $nj --cmd "$cmd" \
+  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
                                        --shared-phones true \
                                        --type mono \
                                        data/$train_set $lang $treedir
@@ -107,9 +103,6 @@ EOF
 fi
 
 if [ $stage -le 3 ]; then
-  # no need to store the egs in a shared storage because we always
-  # remove them. Anyway, it takes only 5 minutes to generate them.
-
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts "$cmvn_opts" \
@@ -138,29 +131,3 @@ if [ $stage -le 3 ]; then
     --tree-dir $treedir \
     --dir $dir  || exit 1;
 fi
-
-if [ $stage -le 4 ]; then
-  # The reason we are using data/lang here, instead of $lang, is just to
-  # emphasize that it's not actually important to give mkgraph.sh the
-  # lang directory with the matched topology (since it gets the
-  # topology file from the model).  So you could give it a different
-  # lang directory, one that contained a wordlist and LM of your choice,
-  # as long as phones.txt was compatible.
-
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 $lang_decode \
-    $dir $dir/graph || exit 1;
-fi
-
-if [ $stage -le 5 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
-
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/test $dir/decode_test{,_rescored} || exit 1
-fi
-
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
