@@ -105,7 +105,7 @@ num_iters=$(wc -l <$dir/schedule.txt)
 # source the 1st line of schedule.txt in the shell; this sets
 # lrate and dropout_opt, among other variables.
 . <(head -n 1 $dir/schedule.txt)
-langs=$(awk '/^langs/ { $1=""; print; }' <$dir/0/info.txt)
+langs=$(awk '/^langs/ { $1=""; print; }' <$dir/init/info.txt)
 
 mkdir -p $dir/log
 
