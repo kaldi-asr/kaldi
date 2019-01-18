@@ -261,6 +261,11 @@ class DifferentiableTransform {
       int32 num_spk,
       const Posterior &posteriors) = 0;
 
+  // Adds any stats accumulated via Accumulate() that are present in 'other' to
+  // 'this'.  Used when summing adaptation-model statistics across multiple
+  // jobs.
+  virtual void Add(const DifferentiableTransform &other) = 0;
+
   // To be called after repeated calls to Accumulate(), does any estimation that
   // is required in training time (normally per-speaker means and possibly
   // variances.

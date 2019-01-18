@@ -239,7 +239,9 @@ void CoreFmllrEstimator::Backward(const MatrixBase<BaseFloat> &A_deriv,
 GaussianEstimator::GaussianEstimator(int32 num_classes, int32 feature_dim):
     gamma_(num_classes),
     m_(num_classes, feature_dim),
-    v_(num_classes) {
+    v_(num_classes),
+    variance_floor_(-1), variance_sharing_weight_(-1) {
+  // the floor and weight are actually set later on, in Estimate().
   KALDI_ASSERT(num_classes > 0 && feature_dim > 0);
 }
 
@@ -375,6 +377,13 @@ void GaussianEstimator::AccStatsBackward(
 
 void GaussianEstimator::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<GaussianEstimator>");
+  WriteToken(os, binary, "<Stats>");
+  gamma_.Write(os, binary);
+  m_.Write(os, binary);
+  v_.Write(os, binary);
+  WriteToken(os, binary, "<Config>");
+  WriteBasicType(os, binary, variance_floor_);
+  WriteBasicType(os, binary, variance_sharing_weight_);
   WriteToken(os, binary, "<Mu>");
   mu_.Write(os, binary);
   WriteToken(os, binary, "<t>");
@@ -382,8 +391,22 @@ void GaussianEstimator::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</GaussianEstimator>");
 }
 
+void GaussianEstimator::Add(const GaussianEstimator &other) {
+  gamma_.AddVec(1.0, other.gamma_);
+  m_.AddMat(1.0, other.m_);
+  v_.AddVec(1.0, other.v_);
+}
+
+
 void GaussianEstimator::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<GaussianEstimator>", "<Mu>");
+  ExpectOneOrTwoTokens(is, binary, "<GaussianEstimator>", "<Stats>");
+  gamma_.Read(is, binary);
+  m_.Read(is, binary);
+  v_.Read(is, binary);
+  ExpectToken(is, binary, "<Config>");
+  ReadBasicType(is, binary, &variance_floor_);
+  ReadBasicType(is, binary, &variance_sharing_weight_);
+  ExpectToken(is, binary, "<Mu>");
   mu_.Read(is, binary);
   ExpectToken(is, binary, "<t>");
   t_.Read(is, binary);

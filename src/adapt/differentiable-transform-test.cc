@@ -195,6 +195,7 @@ void TestTraining(DifferentiableTransform *transform) {
     int32 num_final_iters = transform->NumFinalIterations();
     for (int32 i = 0; i < num_final_iters; i++) {
       transform->Accumulate(i, input_feats, num_chunks, num_spk, post);
+      transform->Add(*transform);  // Just check Add() does not crash.
       transform->Estimate(i);
     }
     CuMatrix<BaseFloat> output_feats2(output_feats.NumRows(),

@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
     NnetChainaModels models(chaina_opts.nnet_config.zero_component_stats,
                             chaina_opts.bottom_model_test_mode,
                             chaina_opts.top_model_test_mode,
+                            chaina_opts.adaptation_model_accumulate,
                             model_in_dir, den_fst_dir, transform_dir);
 
     {
@@ -105,7 +106,7 @@ int main(int argc, char *argv[]) {
       ok = trainer.PrintTotalStats();
     }
     if (po.NumArgs() == 5)
-      models.WriteRawModels(model_out_dir, binary_write, job_id);
+      models.Write(model_out_dir, binary_write, job_id);
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();

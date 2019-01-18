@@ -348,11 +348,15 @@ class GaussianEstimator {
                         const MatrixBase<BaseFloat> *feats_deriv);
 
 
-  // Note: the Write() and Read() functions are only designed to write the means
-  // mu_ and the smoothed variances t_.  We'll later modify them to (maybe
-  // conditionally) write other things if needed.
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
+
+  // Adds any statistics in gamma_, m_ and v_ from 'other' to *this.
+  // Used when summing adaptation-model statistics over multiple
+  // jobs.  Requires that '*this' and 'other' have identical
+  // structure.
+  void Add(const GaussianEstimator &other);
+
  private:
   /*
     Notes on implementation of GaussianEstimator.
@@ -418,8 +422,9 @@ class GaussianEstimator {
   // it's of dimension num_classes.
   Vector<BaseFloat> v_;
 
-  // variance_floor_ and variance_sharing_weight_ are copies of the corresponding
-  // variables in class FmllrEstimatorOptions; they are set when Estimate() is called.
+  // variance_floor_ and variance_sharing_weight_ are copies of the
+  // corresponding variables in class FmllrEstimatorOptions; they are set when
+  // Estimate() is called.  They are temporaries, not permanent members.
   BaseFloat variance_floor_;
   BaseFloat variance_sharing_weight_;
 

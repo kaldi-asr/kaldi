@@ -44,6 +44,8 @@ struct NnetChainaTrainingOptions {
   bool keep_embedding_context;
   bool bottom_model_test_mode;
   bool top_model_test_mode;
+  bool adaptation_model_accumulate;
+  bool adaptation_test_mode;
 
   NnetChainaTrainingOptions():
       apply_deriv_weights(true),
@@ -52,7 +54,9 @@ struct NnetChainaTrainingOptions {
       bottom_subsampling_factor(1),
       keep_embedding_context(true),
       bottom_model_test_mode(false),
-      top_model_test_mode(false) { }
+      top_model_test_mode(false),
+      adaptation_model_accumulate(false),
+      adaptation_test_mode(false) { }
 
   void Register(OptionsItf *opts) {
     nnet_config.Register(opts);
@@ -101,11 +105,31 @@ struct NnetChainaTrainingOptions {
                    "statistics for the top model (to keep the batchnorm "
                    "stats frozen).  Setting this to false can be used to "
                    "evaluate train or valid probs.");
+    opts->Register("adaptation-model-accumulate", &adaptation_model_accumulate,
+                   "Set this to true if you want to accumulate stats for "
+                   "the adaptation model (i.e., its class-dependent means). "
+                   "This will normally be done just once after training the "
+                   "model, and will cause the adaptation objects to be "
+                   "written out to <model-dir>.  If this option is given, "
+                   "the speaker adapted pass of the top model, and training "
+                   "of the top or bottom model, will not be done; and we "
+                   "expect --bottom-model-test-mode=true and "
+                   "--top-model-test-mode=true to be set.");
+    opts->Register("adaptation-test-mode", &adaptation_test_mode,
+                   "If true, use test mode for the adaptation model, which "
+                   "means we'll use previously computed target models "
+                   "rather than ones estimated from the minibatch.  Training of "
+                   "the bottom model is currently not supported in this case "
+                   "(and, in any case, is likely undesirable).");
   }
-  void Check() {
+  void Check() const {
     KALDI_ASSERT(unadapted_top_weight > 0.0 &&
                  unadapted_bottom_weight >= 0.0 &&
                  bottom_subsampling_factor > 0);
+    if (adaptation_model_accumulate)
+      KALDI_ASSERT(top_model_test_mode && bottom_model_test_mode);
+    if (adaptation_test_mode)
+      KALDI_ASSERT(bottom_model_test_mode);
   }
 };
 
@@ -160,6 +184,9 @@ class NnetChainaModels {
                      whether to write the top models in WriteRawModels(),
                      and whether to zero the component stats, set batch-norm
                      test mode, and collapse the model.
+         @param [in] adaptation_model_accumulate  If true, the adaptation
+                     models will be written out instead of the top models.
+                     Expect both test modes above to be true in this case.
          @param  [in] model_dir  Directory where we'll find bottom.raw, and
                       <lang>.mdl for each language <lang> present in the egs
                       (the <lang> will be worked out from the key name from
@@ -176,6 +203,7 @@ class NnetChainaModels {
   NnetChainaModels(bool zero_component_stats,
                    bool bottom_model_test_mode,
                    bool top_model_test_mode,
+                   bool adaptation_model_accumulate,
                    const std::string &model_dir,
                    const std::string &den_fst_dir,
                    const std::string &transform_dir);
@@ -203,13 +231,17 @@ class NnetChainaModels {
   differentiable_transform::DifferentiableTransformMapped *GetTransformForLang(
       const std::string &language_name);
 
-  // Writes the files
-  //  <model_out_dir>/bottom.<job_id>.raw
+  // Writes out the following files:
+  //  <model_out_dir>/bottom.<job_id>.raw (if !bottom_model_test_mode)
   // and, for each language <lang> that we accessed,
-  //  <model_out_dir>/<lang>.<job_id>.raw
-  void WriteRawModels(const std::string &model_out_dir,
-                      bool binary,
-                      int32 job_id);
+  //  <model_out_dir>/<lang>.<job_id>.raw (if !top_model_test_mode)
+  //  <model_out_dir>/<lang>.<job_id>.ada (if adaptation_model_accumulate)
+  //
+  // Thus, this writes out any models that we trained.  There is no
+  // corresponding Read() function.
+  void Write(const std::string &model_out_dir,
+             bool binary,
+             int32 job_id);
 
   ~NnetChainaModels();
  private:
@@ -252,6 +284,8 @@ class NnetChainaModels {
   bool bottom_model_test_mode_;
   // A copy of the "top-model-test-mode" option in NnetChainaTrainingOptions.
   bool top_model_test_mode_;
+  // A copy of the "adaptation-model-accumulate" option in NnetChainaTrainingOptions.
+  bool adaptation_model_accumulate_;
   // Directory where models are located.
   std::string model_dir_;
   // Directory where denominator FSTs are located.

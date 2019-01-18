@@ -142,6 +142,14 @@ void SequenceTransform::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "</SequenceTransform>");
 }
 
+void SequenceTransform::Add(const DifferentiableTransform &other_in) {
+  const SequenceTransform *other = dynamic_cast<const SequenceTransform*>(
+      &other_in);
+  KALDI_ASSERT(transforms_.size() == other->transforms_.size());
+  for (size_t i = 0; i < transforms_.size(); i++)
+    transforms_[i]->Add(*(other->transforms_[i]));
+}
+
 int32 SequenceTransform::Dim() const {
   size_t num_transforms = transforms_.size();
   KALDI_ASSERT(num_transforms > 0);
@@ -386,6 +394,14 @@ void AppendTransform::Read(std::istream &is, bool binary) {
     transforms_.push_back(transform);
   }
   ExpectToken(is, binary, "</AppendTransform>");
+}
+
+void AppendTransform::Add(const DifferentiableTransform &other_in) {
+  const AppendTransform *other = dynamic_cast<const AppendTransform*>(
+      &other_in);
+  KALDI_ASSERT(transforms_.size() == other->transforms_.size());
+  for (size_t i = 0; i < transforms_.size(); i++)
+    transforms_[i]->Add(*(other->transforms_[i]));
 }
 
 int32 AppendTransform::Dim() const {

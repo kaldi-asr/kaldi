@@ -102,6 +102,9 @@ steps/chaina/internal/get_train_schedule.py \
 if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
 
 num_iters=$(wc -l <$dir/schedule.txt)
+
+echo "$0: will train for $num_epochs epochs = $num_iters iterations"
+
 # source the 1st line of schedule.txt in the shell; this sets
 # lrate and dropout_opt, among other variables.
 . <(head -n 1 $dir/schedule.txt)
@@ -145,14 +148,15 @@ while [ $x -lt $num_iters ]; do
   # some diagnostic processes.  We don't do this on iteration 0, because
   # the batchnorm stats wouldn't be ready
   if [ $x -gt 0 ] && [ $[x%diagnostic_period] -eq 0 -o $x -lt 5 ]; then
-    diagnostic_opts="--bottom-model-test-mode=true --top-model-test-mode=true"
 
     [ -f $dir/$x/.error_diagnostic ] && rm $dir/$x/.error_diagnostic
     for name in train heldout; do
       $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.$x.log \
-        nnet3-chaina-train $diagnostic_opts --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
-           --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
-           --print-interval=10  \
+         nnet3-chaina-train --use-gpu=$use_gpu \
+            --bottom-model-test-mode=true --top-model-test-mode=true
+            --leaky-hmm-coefficient=$leaky_hmm_coefficient \
+            --xent-regularize=$xent_regularize \
+            --print-interval=10  \
            $model_in_dir $den_fst_dir $transform_dir \
            "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/${name}_subset.scp ark:-|" \
       || touch $dir/$x/.error_diagnostic &
@@ -162,7 +166,7 @@ while [ $x -lt $num_iters ]; do
   if $train; then
     if [ -d $dir/$next_x ]; then
       echo "$0: removing previous contents of $dir/$next_x"
-      rm -r $dir/$next_x || exit 1
+      rm -r $dir/$next_x
     fi
     mkdir -p $dir/$next_x
 
@@ -209,6 +213,75 @@ while [ $x -lt $num_iters ]; do
   x=$[x+1]
 done
 
+# TODO: later we'll have a model combination phase.
+
+if [ $stage -le $num_iters ] && $train; then
+  # Now accumulate the class-dependent mean (and variance) stats of the
+  # adaptation model, which will be needed for decoding.  We remove the map that
+  # had reduced the num-classes from several thousand to (e.g.) 200, because we
+  # are now estimating the means on a larger set of data and we're not concerned
+  # about noisy estimates.
+  mkdir -p $dir/transforms_unmapped
+  # Note: the plan was to add the option --remove-pdf-map=true to the 'copy'
+  # command below (to use the full number of pdf-ids as classes in test time),
+  # but it seemed to degrade the objective function, based on diagnostics.
+  # We'll look into this later.
+  for lang in $langs; do
+    run.pl $dir/log/copy_transform_${lang}.log \
+        nnet3-adapt copy $dir/init/${lang}.ada $dir/transforms_unmapped/${lang}.ada
+  done
+  if [ -d $dir/final ]; then
+    echo "$0: removing previous contents of $dir/final"
+    rm -r $dir/final
+  fi
+  mkdir -p $dir/final
+  den_fst_dir=$egs_dir/misc
+
+  $cmd $gpu_cmd_opt JOB=1:$num_scp_files $dir/log/acc_target_model.JOB.log \
+    nnet3-chaina-train --job-id=JOB --use-gpu=$use_gpu \
+      --print-interval=10 \
+      --bottom-model-test-mode=true --top-model-test-mode=true \
+      --adaptation-model-accumulate=true \
+         $dir/$num_iters $den_fst_dir $dir/transforms_unmapped \
+        "ark:nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size scp:$egs_dir/train.JOB.scp ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
+        $dir/final
+
+  for lang in $langs; do
+    stats=$dir/final/${lang}.*.ada
+    run.pl $dir/log/estimate_target_model_${lang}.log \
+           nnet3-adapt estimate $stats $dir/final/${lang}.ada
+    #rm $stats
+  done
+  cp $dir/$num_iters/bottom.raw $dir/$num_iters/*.mdl $dir/final
+fi
+
+if [ $stage -le $[num_iters+1] ]; then
+  # Accumulate some final diagnostics.  The difference with the last iteration's
+  # diagnostics is that we use test-mode for the adaptation model (i.e. a target
+  # model computed from all the data, not just one minibatch).
+  [ -f $dir/final/.error_diagnostic ] && rm $dir/final/.error_diagnostic
+  for name in train heldout; do
+    den_fst_dir=$egs_dir/misc
+    $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.final.log \
+       nnet3-chaina-train --use-gpu=$use_gpu \
+         --bottom-model-test-mode=true --top-model-test-mode=true \
+         --adaptation-test-mode=true \
+         --leaky-hmm-coefficient=$leaky_hmm_coefficient \
+         --xent-regularize=$xent_regularize \
+         --print-interval=10  \
+          $dir/final $den_fst_dir $dir/final \
+           "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/${name}_subset.scp ark:-|" \
+      || touch $dir/final/.error_diagnostic &
+  done
+  wait
+  if [ -f $dir/final/.error_diagnostic ]; then
+    echo "$0: error getting final diagnostic information"
+    exit 1
+  fi
+fi
+
+
+transform_dir=$dir/init
 
 echo "$0: done"
 exit 0

@@ -106,16 +106,20 @@ class FmllrTransform: public DifferentiableTransform {
 
   void Read(std::istream &is, bool binary) override;
 
+  void Add(const DifferentiableTransform &other) override;
+
   ~FmllrTransform();
  private:
   int32 dim_;
 
   FmllrEstimatorOptions fmllr_opts_;
 
-  // Note: this target model is only for use in test time.  We allocate it the
-  // first time Accumulate() is called.  In training time we estimate it
-  // minibatch by minibatch (which is why we don't expect to have that many
-  // classes).  At the end of training we'll accumulate stats here in
+  // Note: this target model is only for consumption in test time; it is
+  // produced right at the end of training when Accumulate() and Estimate() are
+  // called.  We allocate it the first time Accumulate() is called.  In training
+  // time the corresponding stats are esimated minibatch by minibatch, not via
+  // this member (which is why we don't expect to have that many classes in
+  // training time).  At the end of training we'll accumulate stats here in
   // Accumulate(), and Estimate() will estimate it.
   GaussianEstimator *target_model_;
 };
@@ -221,14 +225,18 @@ class MeanOnlyTransform: public DifferentiableTransform {
 
   void Read(std::istream &is, bool binary) override;
 
+  void Add(const DifferentiableTransform &other) override;
+
   ~MeanOnlyTransform();
  private:
   int32 dim_;
 
-  // Note: this target model is only for use in test time.  We allocate it the
-  // first time Accumulate() is called.  In training time we estimate it
-  // minibatch by minibatch (which is why we don't expect to have that many
-  // classes).  At the end of training we'll accumulate stats here in
+  // Note: this target model is only for consumption in test time; it is
+  // produced right at the end of training when Accumulate() and Estimate() are
+  // called.  We allocate it the first time Accumulate() is called.  In training
+  // time the corresponding stats are esimated minibatch by minibatch, not via
+  // this member (which is why we don't expect to have that many classes in
+  // training time).  At the end of training we'll accumulate stats here in
   // Accumulate(), and Estimate() will estimate it.
   GaussianEstimator *target_model_;
 };

@@ -35,12 +35,15 @@ int main(int argc, char *argv[]) {
         "the nnet3a/chaina adaptation framework.  See patterns below\n"
         "\n"
         "Usage:  nnet3-adapt [options] init <config-file-in> [<tree-map-in>] <transform-out>\n"
-        " e.g.:  nnet3-adapt --num-classes=201 init init.aconfig  0.ada\n"
+        "(e.g.:  nnet3-adapt --num-classes=201 init init.aconfig  0.ada)\n"
         "  or:   nnet3-adapt init init.aconfig tree.map 0.ada\n"
-        "   or:  nnet3-adapt [options] copy <transform-in> <transform-out>\n"
-        " e.g.:  nnet3-adapt copy --binary=false 0.ada 0.txt\n"
+        "  or:  nnet3-adapt [options] copy <transform-in> <transform-out>\n"
+        "(e.g.:  nnet3-adapt copy --binary=false 0.ada 0.txt)\n"
         "   or:  nnet3-adapt info <transform-in>\n"
-        " e.g.:  nnet3-adapt info 0.ada\n"
+        "(e.g.:  nnet3-adapt info 0.ada\n"
+        "   or:  nnet3-adapt estimate <transform1-in> <transform2-in> ... <transform-out> \n"
+        "    .. which sums stats and calls Estimate(), to get the final class-dependent means... \n"
+        "(e.g.   nnet3-adapt estimate foo/final/default.{1,2,3,4,5,6}.ada foo/final/default.ada\n"
         "   or:  nnet3-adapt [options] adapt <transform-in> <posteriors-in> <feats-in> <feats-out>\n"
         "\n"
         "See also: nnet3-chaina-train\n";
@@ -48,6 +51,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     bool remove_pdf_map = false;
     int32 num_classes = -1;
+    int32 iter = 0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -58,6 +62,8 @@ int main(int argc, char *argv[]) {
                 "For the 'copy' command: if true, the pdf_map will be "
                 "removed so that the transform will be based on "
                 "pdf-ids.");
+    po.Register("iter", &iter, "Only for the 'estimate' command: iteration "
+                "of estimation, will always be 0 in most setups.");
 
     po.Read(argc, argv);
 
@@ -130,6 +136,21 @@ int main(int argc, char *argv[]) {
       return 0;
     } else if (po.GetOptArg(1) == "adapt" && po.NumArgs() == 5) {
       KALDI_ERR << "The 'adapt' command has not been implemented yet.";
+      return 0;
+    } else if (po.GetOptArg(1) == "estimate" && po.NumArgs() >= 3) {
+      DifferentiableTransformMapped transform;
+      std::string transform_rxfilename = po.GetArg(2);
+      ReadKaldiObject(transform_rxfilename, &transform);
+      for (int32 i = 3; i < po.NumArgs(); i++) {
+        std::string other_transform_rxfilename = po.GetArg(i);
+        DifferentiableTransformMapped other_transform;
+        ReadKaldiObject(other_transform_rxfilename, &other_transform);
+        // sum the stats.
+        transform.transform->Add(*(other_transform.transform));
+      }
+      transform.transform->Estimate(iter);
+      std::string transform_wxfilename = po.GetArg(po.NumArgs());
+      WriteKaldiObject(transform, transform_wxfilename, binary_write);
       return 0;
     } else {
       po.PrintUsage();

@@ -66,6 +66,12 @@ DifferentiableTransform *FmllrTransform::Copy() const {
   return new FmllrTransform(*this);
 }
 
+void FmllrTransform::Add(const DifferentiableTransform &other_in) {
+  const FmllrTransform *other = dynamic_cast<const FmllrTransform*>(&other_in);
+  if (target_model_ && other->target_model_)
+    target_model_->Add(*(other->target_model_));
+}
+
 void FmllrTransform::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<FmllrTransform>");
   WriteToken(os, binary, "<NumClasses>");
@@ -94,6 +100,7 @@ void FmllrTransform::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &tok);
   if (tok == "<TargetModel>") {
     target_model_ = new GaussianEstimator(num_classes_, dim_);
+    target_model_->Read(is, binary);
   } // else "<NoTargetModel>".
   ExpectToken(is, binary, "</FmllrTransform>");
 }
@@ -336,6 +343,14 @@ MeanOnlyTransform::MeanOnlyTransform(const MeanOnlyTransform &other):
     dim_(other.dim_), target_model_(other.target_model_ == NULL ? NULL :
                                     new GaussianEstimator(*other.target_model_)) { }
 
+
+void MeanOnlyTransform::Add(const DifferentiableTransform &other_in) {
+  const MeanOnlyTransform *other =
+      dynamic_cast<const MeanOnlyTransform*>(&other_in);
+  if (target_model_ && other->target_model_)
+    target_model_->Add(*(other->target_model_));
+}
+
 void MeanOnlyTransform::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<MeanOnlyTransform>");
   WriteToken(os, binary, "<NumClasses>");
@@ -362,6 +377,7 @@ void MeanOnlyTransform::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &tok);
   if (tok == "<TargetModel>") {
     target_model_ = new GaussianEstimator(num_classes_, dim_);
+    target_model_->Read(is, binary);
   } // else "<NoTargetModel>".
   ExpectToken(is, binary, "</MeanOnlyTransform>");
 }

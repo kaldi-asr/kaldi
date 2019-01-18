@@ -28,12 +28,14 @@ NnetChainaModels::NnetChainaModels(
     bool zero_component_stats,
     bool bottom_model_test_mode,
     bool top_model_test_mode,
+    bool adaptation_model_accumulate,
     const std::string &model_dir,
     const std::string &den_fst_dir,
     const std::string &transform_dir):
     zero_component_stats_(zero_component_stats),
     bottom_model_test_mode_(bottom_model_test_mode),
     top_model_test_mode_(top_model_test_mode),
+    adaptation_model_accumulate_(adaptation_model_accumulate),
     model_dir_(model_dir),
     den_fst_dir_(den_fst_dir),
     transform_dir_(transform_dir) {
@@ -148,31 +150,45 @@ NnetChainaModels::GetTransformForLang(
 
 
 
-void NnetChainaModels::WriteRawModels(const std::string &model_out_dir,
-                                      bool binary,
-                                      int32 job_id) {
+void NnetChainaModels::Write(const std::string &model_out_dir,
+                             bool binary, int32 job_id) {
+  std::ostringstream ss;
   if (!bottom_model_test_mode_) {
+    ss << "bottom nnet and ";
     std::string bottom_model_name;
     GetPathname(model_out_dir, "bottom", job_id, "raw", &bottom_model_name);
     WriteKaldiObject(bottom_nnet_, bottom_model_name, binary);
   }
-  std::ostringstream lang_names_ss;
-  for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter) {
-    const std::string &lang_name = iter->first;
-    lang_names_ss << lang_name << " ";
-    LanguageInfo *info = iter->second;
-    {
-      // we write it as a 'raw' model without the TransitionModel or
-      // the AmNnetSimple wrapper, since we can reconstruct those parts
-      // from the previous iter's model.
-      std::string top_model_name;
-      GetPathname(model_out_dir, lang_name, job_id, "raw", &top_model_name);
-      WriteKaldiObject(info->am_nnet.GetNnet(), top_model_name, binary);
+  if (!top_model_test_mode_) {
+    ss << "nnets for languages ";
+    for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter) {
+      const std::string &lang_name = iter->first;
+      ss << lang_name << " ";
+      LanguageInfo *info = iter->second;
+      {
+        // we write it as a 'raw' model without the TransitionModel or
+        // the AmNnetSimple wrapper, since we can reconstruct those parts
+        // from the previous iter's model.
+        std::string top_model_name;
+        GetPathname(model_out_dir, lang_name, job_id, "raw", &top_model_name);
+        WriteKaldiObject(info->am_nnet.GetNnet(), top_model_name, binary);
+      }
     }
   }
-  KALDI_LOG << "Wrote " << (bottom_model_test_mode_ ? "" : " bottom nnet and ")
-            << "nnets for languages " << lang_names_ss.str() << "to "
-            << model_out_dir;
+  if (adaptation_model_accumulate_) {
+    ss << "adaptation-model stats for languages ";
+    for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter) {
+      const std::string &lang_name = iter->first;
+      ss << lang_name << " ";
+      LanguageInfo *info = iter->second;
+      {
+        std::string transform_name;
+        GetPathname(model_out_dir, lang_name, job_id, "ada", &transform_name);
+        WriteKaldiObject(info->transform, transform_name, binary);
+      }
+    }
+  }
+  KALDI_LOG << "Wrote " << ss.str() << "to " << model_out_dir;
 }
 
 
@@ -197,6 +213,8 @@ NnetChainaTopTrainer::NnetChainaTopTrainer(
     delta_nnet_(nnet->Copy()),
     num_minibatches_processed_(0),
     max_change_stats_(*nnet) {
+
+  config.Check();
 
   if (opts_.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
@@ -593,6 +611,18 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
                    transform_.transform->NumClasses(),
                    &post_padded);
 
+  if (opts_.adaptation_model_accumulate) {
+    // We will later add a way to handle iteration indexes >0, which is needed
+    // when the adaptation model contains cascaded transforms, but 0 is the
+    // normal case.
+    int32 accumulate_iter = 0;
+    transform_.transform->Accumulate(accumulate_iter, input,
+                                     num_sequences, num_groups,
+                                     post_padded);
+    return true;  // We don't be evaluating the adapted version of the top model
+  }
+
+
   structure.adapted = true;
   std::shared_ptr<const NnetComputation> computation_adapted =
       GetComputation(structure);
@@ -602,8 +632,14 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
       adapted_input_deriv;
 
   using namespace differentiable_transform;
-  MinibatchInfoItf *minibatch_info = transform_.transform->TrainingForward(
-      input, num_sequences, num_groups, post_padded, &adapted_input);
+  MinibatchInfoItf *minibatch_info = NULL;
+  if (!opts_.adaptation_test_mode) {
+    minibatch_info = transform_.transform->TrainingForward(
+        input, num_sequences, num_groups, post_padded, &adapted_input);
+  } else {
+    transform_.transform->TestingForwardBatch(
+        input, num_sequences, num_groups, post_padded, &adapted_input);
+  }
 
   success = TrainAdapted(
       *computation_adapted, supervision,
@@ -617,10 +653,11 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
 
   if (input_deriv == NULL)
     delete minibatch_info;
-  else
+  else {
     transform_.transform->TrainingBackward(input, adapted_input_deriv,
                                            num_sequences, num_groups, post_padded,
                                            minibatch_info, input_deriv);
+  }
   return true;
 }
 

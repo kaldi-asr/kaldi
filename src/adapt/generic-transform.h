@@ -114,6 +114,7 @@ class NoOpTransform: public DifferentiableTransform {
 
   void Read(std::istream &is, bool binary) override;
 
+  void Add(const DifferentiableTransform &other) override { }
  private:
   int32 dim_;
 };
@@ -199,6 +200,8 @@ class SequenceTransform: public DifferentiableTransform {
   void Write(std::ostream &os, bool binary) const override;
 
   void Read(std::istream &is, bool binary) override;
+
+  void Add(const DifferentiableTransform &other) override;
 
   ~SequenceTransform() override;
  private:
@@ -296,6 +299,8 @@ class AppendTransform: public DifferentiableTransform {
   void Read(std::istream &is, bool binary) override;
 
   ~AppendTransform();
+
+  void Add(const DifferentiableTransform &other) override;
  private:
   std::vector<DifferentiableTransform*> transforms_;
 };
