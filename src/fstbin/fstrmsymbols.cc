@@ -20,10 +20,12 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "util/const-integer-set.h"
 #include "fst/fstlib.h"
 #include "fstext/determinize-star.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/kaldi-fst-io.h"
+#include "fstext/deterministic-fst.h"
 
 namespace fst {
 // we can move these functions elsewhere later, if they are needed in other
@@ -79,6 +81,50 @@ void PenalizeArcsWithSomeInputSymbols(const std::vector<I> &symbols_in,
   }
 }
 
+class SymbolAtStartRemover: public DeterministicOnDemandFst<StdArc> {
+ public:
+  typedef StdArc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+
+  StateId Start() { return 0; }
+
+  SymbolAtStartRemover(const std::vector<int32> &disambig_syms):
+      disambig_set_(disambig_syms) { }
+
+  Weight Final(StateId s) override { return Weight::One(); }
+
+  virtual bool GetArc(StateId s, Label ilabel, Arc *oarc) {
+    oarc->weight = Weight::One();
+    if (s == 0) {
+      if (disambig_set_.count(ilabel) != 0) {
+        // In state 0, if we see a disambig sym, we replace it with
+        // epsilon (so if the disambig sym is the first in the sequence,
+        // it is removed.
+        oarc->ilabel = ilabel;
+        oarc->olabel = 0;
+        // Transitioning to state 0 here means we will remove sequences of
+        // disambig ilabels at the start.
+        oarc->nextstate = 0;
+      } else {
+        oarc->ilabel = ilabel;
+        oarc->olabel = ilabel;
+        oarc->nextstate = 1;
+      }
+    } else {
+      // in state 1, we just duplicate any symbol that we see.
+      KALDI_ASSERT(s == 1);
+      oarc->ilabel = ilabel;
+      oarc->olabel = ilabel;
+      oarc->nextstate = 1;
+    }
+    return true;
+  }
+ private:
+  kaldi::ConstIntegerSet<int32> disambig_set_;
+};
+
+
 }
 
 
@@ -88,6 +134,7 @@ int main(int argc, char *argv[]) {
     using namespace fst;
     using kaldi::int32;
 
+    bool only_at_start = false;
     bool apply_to_output = false;
     bool remove_arcs = false;
     float penalty = -std::numeric_limits<BaseFloat>::infinity();
@@ -119,7 +166,13 @@ int main(int argc, char *argv[]) {
     po.Register("penalty", &penalty, "If specified, instead of converting "
                 "the symbol to <eps>, penalize the arc it is on by adding this "
                 "value to its cost.");
-
+    po.Register("only-at-start", &only_at_start,
+                "If true, only replace disambiguation symbols with epsilons "
+                "at the very beginning of sequences (i.e. before encountering "
+                "any non-epsilon symbol).  After doing this and determinizing, "
+                "the start state will be deterministic (useful for grammar-FSTs). "
+                "In this case, other command line options will be ignored "
+                "(it's as if they were all defaults.)");
 
     po.Read(argc, argv);
 
@@ -144,16 +197,27 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "fstrmsymbols: Could not read disambiguation symbols from "
                 << (disambig_rxfilename == "" ? "standard input" : disambig_rxfilename);
 
-    if (apply_to_output) Invert(fst);
-    if (remove_arcs) {
-      RemoveArcsWithSomeInputSymbols(disambig_in, fst);
-    } else if (penalty != -std::numeric_limits<BaseFloat>::infinity()) {
-      PenalizeArcsWithSomeInputSymbols(disambig_in, penalty, fst);
+    if (only_at_start) {
+      SymbolAtStartRemover r(disambig_in);
+      VectorFst<StdArc> new_fst;
+      // The following does, conceptually,
+      // new_fst = Inverse(r) * fst
+      // What this does is remove disambig symbols only if they occur earlier in the
+      // ilabel sequence than real non-disambig symbols.
+      ComposeDeterministicOnDemandInverse(*fst, &r,
+                                          &new_fst);
+      *fst = new_fst;
     } else {
-      RemoveSomeInputSymbols(disambig_in, fst);
+      if (apply_to_output) Invert(fst);
+      if (remove_arcs) {
+        RemoveArcsWithSomeInputSymbols(disambig_in, fst);
+      } else if (penalty != -std::numeric_limits<BaseFloat>::infinity()) {
+        PenalizeArcsWithSomeInputSymbols(disambig_in, penalty, fst);
+      } else {
+        RemoveSomeInputSymbols(disambig_in, fst);
+      }
+      if (apply_to_output) Invert(fst);
     }
-    if (apply_to_output) Invert(fst);
-
     WriteFstKaldi(*fst, fst_wxfilename);
 
     delete fst;
@@ -189,5 +253,8 @@ int main(int argc, char *argv[]) {
  # 0   0   1   1
  # 0   0   3   2   2
  # 0
+
+
+ ( echo "0 1 10 10"; echo "1 2 11 11"; echo "2 0"; ) | fstcompile | fstrmsymbols --only-at-start=true "echo 10|" | fstprint
 
 */

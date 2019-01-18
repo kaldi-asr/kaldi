@@ -86,9 +86,14 @@ if [ -f $lang/phones/nonterm_phones_offset.int ]; then
   nonterm_phones_offset=$(cat $lang/phones/nonterm_phones_offset.int)
   nonterm_opt="--nonterm-phones-offset=$nonterm_phones_offset"
   prepare_grammar_command="make-grammar-fst --nonterm-phones-offset=$nonterm_phones_offset - -"
+  # for grammar decoding we need to make sure the start state is deterministic,
+  # which simplifies the core GrammarFst code when entering sub-FSTs; the
+  # following ensures that.
+  rmsymbols_command="fstrmsymbols --only-at-start=true $dir/disambig_tid.int"
 else
   prepare_grammar_command="cat"
   nonterm_opt=
+  rmsymbols_command="cat"
 fi
 
 mkdir -p $lang/tmp
@@ -137,7 +142,7 @@ if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
       echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
     clg="fstrmsymbols --remove-arcs=true --apply-to-output=true $lang/oov.int $clg|"
   fi
-  fsttablecompose $dir/Ha.fst "$clg" | fstdeterminizestar --use-log=true \
+  fsttablecompose $dir/Ha.fst "$clg" | $rmsymbols_command | fstdeterminizestar --use-log=true \
     | fstrmsymbols $dir/disambig_tid.int | fstrmepslocal | \
      fstminimizeencoded > $dir/HCLGa.fst.$$ || exit 1;
   mv $dir/HCLGa.fst.$$ $dir/HCLGa.fst
