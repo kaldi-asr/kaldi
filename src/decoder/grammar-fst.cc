@@ -569,7 +569,7 @@ class GrammarFstPreparer {
           // a single arc per left-context phone (the graph-building recipe can
           // end up creating more than one if there were disambiguation symbols,
           // e.g. for langauge model backoff).
-          if (s == fst_->Start())
+          if (s == fst_->Start() && IsEntryState(s))
             InputDeterminizeSingleState(s, fst_);
         }
       }
@@ -583,7 +583,7 @@ class GrammarFstPreparer {
 
   // Returns true if state 's' has at least one arc coming out of it with a
   // special nonterminal-related ilabel on it (i.e. an ilabel >=
-  // kNontermBigNumber)
+  // kNontermBigNumber), and false otherwise.
   bool IsSpecialState(StateId s) const;
 
   // This function verifies that state s does not currently have any
@@ -604,6 +604,10 @@ class GrammarFstPreparer {
   // conditions that we need to fix.  It returns true if we need to
   // modify this state (by adding input-epsilon arcs), and false otherwise.
   bool NeedEpsilons(StateId s) const;
+
+  // Returns true if state s (which is expected to be the start state, although we
+  // don't check this) has arcs with nonterminal symbols #nonterm_begin.
+  bool IsEntryState(StateId s) const;
 
   // Fixes any final-prob-related problems with this state.  The problem we aim
   // to fix is that there may be arcs with nonterminal symbol #nonterm_end which
@@ -694,6 +698,24 @@ bool GrammarFstPreparer::IsSpecialState(StateId s) const {
   }
   return false;
 }
+
+bool GrammarFstPreparer::IsEntryState(StateId s) const {
+  int32 big_number = kNontermBigNumber,
+      encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_);
+
+  for (ArcIterator<FST> aiter(*fst_, s ); !aiter.Done(); aiter.Next()) {
+    const Arc &arc = aiter.Value();
+    int32 nonterminal = (arc.ilabel - big_number) /
+        encoding_multiple;
+    // we check that at least one has label with nonterminal equal to #nonterm_begin...
+    // in fact they will all have this value if at least one does, and this was checked
+    // in NeedEpsilons().
+    if (nonterminal == kNontermBegin)
+      return true;
+  }
+  return false;
+}
+
 
 bool GrammarFstPreparer::NeedEpsilons(StateId s) const {
 
