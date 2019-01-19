@@ -15,7 +15,7 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=1b   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
@@ -25,7 +25,7 @@ get_egs_stage=-10
 chunk_width=140
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 xent_regularize=0.1
-bottom_subsampling_factor=1  # I'll set this to 3 later, 1 is for compatibility with a broken ru.
+bottom_subsampling_factor=3
 frame_subsampling_factor=3
 langs="default"  # list of language names
 

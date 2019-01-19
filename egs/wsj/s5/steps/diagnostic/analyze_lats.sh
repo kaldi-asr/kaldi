@@ -9,6 +9,7 @@
 # begin configuration section.
 iter=final
 cmd=run.pl
+model=
 acwt=0.1
 #end configuration section.
 
@@ -22,6 +23,10 @@ if [ $# -ne 2 ]; then
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --acwt <acoustic-scale>         # Acoustic scale for getting best-path (default: 0.1)"
+  echo "    --iter  <iter>                  # default: final; affects model location if --model"
+  echo "                                    # not specified."
+  echo "    --model <model-name>            # Name of .mdl file (if not specified, defaults"
+  echo "                                    # to <decode-dir>/../<iter>.mdl if not specified."
   echo "e.g.:"
   echo "$0 data/lang exp/tri4b/decode_dev"
   echo "This script writes some diagnostics to <decode-dir>/log/alignments.log"
@@ -31,7 +36,9 @@ fi
 lang=$1
 dir=$2
 
-model=$dir/../${iter}.mdl
+if [ -z $model ]; then
+  model=$dir/../${iter}.mdl
+fi
 
 for f in $lang/words.txt $model $dir/lat.1.gz $dir/num_jobs; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;

@@ -83,6 +83,13 @@ done
 
 
 frame_subsampling_factor=$(awk '/^frame_subsampling_factor/ {print $2}' <$dir/init/info.txt)
+bottom_subsampling_factor=$(awk '/^bottom_subsampling_factor/ {print $2}' <$dir/init/info.txt)
+
+if ! [ $[frame_subsampling_factor%bottom_subsampling_factor] == 0 ]; then
+  echo "$0: bad subsampling factors in $dir/init/info.txt"
+  exit 1
+fi
+
 num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$dir/egs/info.txt)
 
 steps/chaina/internal/get_train_schedule.py \
@@ -153,8 +160,9 @@ while [ $x -lt $num_iters ]; do
     for name in train heldout; do
       $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.$x.log \
          nnet3-chaina-train --use-gpu=$use_gpu \
-            --bottom-model-test-mode=true --top-model-test-mode=true
+            --bottom-model-test-mode=true --top-model-test-mode=true \
             --leaky-hmm-coefficient=$leaky_hmm_coefficient \
+            --bottom-subsampling-factor=$bottom_subsampling_factor \
             --xent-regularize=$xent_regularize \
             --print-interval=10  \
            $model_in_dir $den_fst_dir $transform_dir \
@@ -177,6 +185,7 @@ while [ $x -lt $num_iters ]; do
       $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
            nnet3-chaina-train --job-id=$j --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
            --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
+           --bottom-subsampling-factor=$bottom_subsampling_factor \
            --print-interval=10 --max-param-change=$max_param_change \
            --l2-regularize-factor=$inv_num_jobs --optimization.memory-compression-level=$memory_compression_level \
            $model_in_dir $den_fst_dir $transform_dir \
@@ -239,6 +248,7 @@ if [ $stage -le $num_iters ] && $train; then
 
   $cmd $gpu_cmd_opt JOB=1:$num_scp_files $dir/log/acc_target_model.JOB.log \
     nnet3-chaina-train --job-id=JOB --use-gpu=$use_gpu \
+      --bottom-subsampling-factor=$bottom_subsampling_factor \
       --print-interval=10 \
       --bottom-model-test-mode=true --top-model-test-mode=true \
       --adaptation-model-accumulate=true \
@@ -263,7 +273,8 @@ if [ $stage -le $[num_iters+1] ]; then
   for name in train heldout; do
     den_fst_dir=$egs_dir/misc
     $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.final.log \
-       nnet3-chaina-train --use-gpu=$use_gpu \
+         nnet3-chaina-train --use-gpu=$use_gpu \
+         --bottom-subsampling-factor=$bottom_subsampling_factor \
          --bottom-model-test-mode=true --top-model-test-mode=true \
          --adaptation-test-mode=true \
          --leaky-hmm-coefficient=$leaky_hmm_coefficient \
@@ -278,6 +289,7 @@ if [ $stage -le $[num_iters+1] ]; then
     echo "$0: error getting final diagnostic information"
     exit 1
   fi
+  cp $dir/init/info.txt $dir/final/
 fi
 
 

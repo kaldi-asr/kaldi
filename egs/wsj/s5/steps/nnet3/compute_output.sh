@@ -35,6 +35,7 @@ if [ $# -ne 3 ]; then
   echo "e.g.:   steps/nnet3/compute_output.sh --nj 8 \\"
   echo "--online-ivector-dir exp/nnet3/ivectors_test_eval92 \\"
   echo "    data/test_eval92_hires exp/nnet3/tdnn exp/nnet3/tdnn/output"
+  echo "Output will be in <output-dir>/output.scp"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                   # config containing options"
   echo "  --nj <nj>                                # number of parallel jobs"

@@ -124,6 +124,7 @@ right_context=$[bottom_right_context+(max_top_right_context*bottom_subsampling_f
 
 cat >$info_file <<EOF
 frame_subsampling_factor $frame_subsampling_factor
+bottom_subsampling_factor $bottom_subsampling_factor
 langs $langs
 model_left_context $left_context
 model_right_context $right_context
