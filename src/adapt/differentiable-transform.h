@@ -94,6 +94,10 @@ class FmllrTransform: public DifferentiableTransform {
       const SpeakerStatsItf &speaker_stats,
       MatrixBase<BaseFloat> *output) const override;
 
+  void GetTransformAsMatrix(
+      const SpeakerStatsItf &speaker_stats,
+      MatrixBase<BaseFloat> *transform) const override;
+
   FmllrTransform(const FmllrTransform &other);
 
   FmllrTransform(): target_model_(NULL) { }
@@ -148,7 +152,7 @@ class FmllrSpeakerStats: public SpeakerStatsItf {
                     const VectorBase<BaseFloat> &s):
       estimator(opts, mu, s) { }
 
-  void Estimate() override { estimator.Estimate(); }
+  void Estimate() override;
 
   FmllrEstimator estimator;
 
@@ -212,6 +216,10 @@ class MeanOnlyTransform: public DifferentiableTransform {
       const MatrixBase<BaseFloat> &input,
       const SpeakerStatsItf &speaker_stats,
       MatrixBase<BaseFloat> *output) const override;
+
+  void GetTransformAsMatrix(
+      const SpeakerStatsItf &speaker_stats,
+      MatrixBase<BaseFloat> *transform) const override;
 
   MeanOnlyTransform(const MeanOnlyTransform &other);
 

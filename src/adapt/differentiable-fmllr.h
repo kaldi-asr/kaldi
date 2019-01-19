@@ -546,10 +546,10 @@ class FmllrEstimator {
   /// Return the linear parameter matrix.  Adapted features are
   /// y_t = A x_t  +  b.  You won't necessarily need to
   /// call this, you can use ComputeAdaptedFeatures() intead.
-  const MatrixBase<BaseFloat> &GetLinearParams() { return A_; }
+  const MatrixBase<BaseFloat> &GetLinearParams() const { return A_; }
 
   /// Return the bias term b.
-  const VectorBase<BaseFloat> &GetBiasParams() { return b_; }
+  const VectorBase<BaseFloat> &GetBiasParams() const { return b_; }
 
   /// Computes the adapted features y_t = A x_t + b.
   /// feats (x) and adapted_feats (y) must have the same dimension.  Must
@@ -816,7 +816,7 @@ class FmllrEstimator {
        and eventually to the features).
 
    Or: if there is only one training sequence, you can use the
-o   simplified interface:  after calling the constructor,
+   simplified interface:  after calling the constructor,
 
       - call ForwardCombined()
       - call BackwardCombined()
@@ -862,7 +862,7 @@ class MeanOnlyTransformEstimator {
   BaseFloat TotalCount() { return gamma_.Sum(); }
 
   /// Return the bias term b.
-  const VectorBase<BaseFloat> &GetOffset() { return offset_; }
+  const VectorBase<BaseFloat> &GetOffset() const { return offset_; }
 
   /// Computes the adapted features y_t = x_t + b.
   /// feats (x) and adapted_feats (y) must have the same dimension.  Must

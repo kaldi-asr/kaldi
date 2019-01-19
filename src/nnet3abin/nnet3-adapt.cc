@@ -22,6 +22,7 @@
 #include "nnet3/nnet-nnet.h"
 #include "hmm/transition-model.h"
 #include "adapt/differentiable-transform-itf.h"
+#include "nnet3a/nnet-chaina-training.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -44,7 +45,12 @@ int main(int argc, char *argv[]) {
         "   or:  nnet3-adapt estimate <transform1-in> <transform2-in> ... <transform-out> \n"
         "    .. which sums stats and calls Estimate(), to get the final class-dependent means... \n"
         "(e.g.   nnet3-adapt estimate foo/final/default.{1,2,3,4,5,6}.ada foo/final/default.ada\n"
-        "   or:  nnet3-adapt [options] adapt <transform-in> <posteriors-in> <feats-in> <feats-out>\n"
+        "   or:  nnet3-adapt [options] get-transforms <transform-in> <spk2utt-rspecifier> <feats-in> <posteriors-in> <transforms-out>\n"
+        "  ... which estimates and dumps speaker-specific transforms as matrices, which\n"
+        "      could be applied to the features with transform-feats; if you want\n"
+        "      utterance-specific transforms, make spk2utt a one-to-one map.\n"
+        "      <transforms-out> is a wspecifier where matrices will be written.\n"
+        "(e.g.:  nnet3-adapt final.ada spk2utt ark:- ark:feats.scp ark:1.trans)\n"
         "\n"
         "See also: nnet3-chaina-train\n";
 
@@ -52,6 +58,7 @@ int main(int argc, char *argv[]) {
     bool remove_pdf_map = false;
     int32 num_classes = -1;
     int32 iter = 0;
+    int32 frame_subsampling_factor = 1;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -64,6 +71,12 @@ int main(int argc, char *argv[]) {
                 "pdf-ids.");
     po.Register("iter", &iter, "Only for the 'estimate' command: iteration "
                 "of estimation, will always be 0 in most setups.");
+    po.Register("frame-subsampling-factor", &frame_subsampling_factor,
+                "Factor by which the posteriors we read are subsampled relative "
+                "to the features (only for the get-transforms command). "
+                "Will correspond to the top-subsampling-factor,"
+                "which, in chaina scripts, refers to frame_subsampling_factor "
+                "divided by bottom_subsampling_factor");
 
     po.Read(argc, argv);
 
@@ -134,9 +147,6 @@ int main(int argc, char *argv[]) {
       }
       WriteKaldiObject(transform, transform_wxfilename, binary_write);
       return 0;
-    } else if (po.GetOptArg(1) == "adapt" && po.NumArgs() == 5) {
-      KALDI_ERR << "The 'adapt' command has not been implemented yet.";
-      return 0;
     } else if (po.GetOptArg(1) == "estimate" && po.NumArgs() >= 3) {
       DifferentiableTransformMapped transform;
       std::string transform_rxfilename = po.GetArg(2);
@@ -152,6 +162,70 @@ int main(int argc, char *argv[]) {
       std::string transform_wxfilename = po.GetArg(po.NumArgs());
       WriteKaldiObject(transform, transform_wxfilename, binary_write);
       return 0;
+    } else if (po.GetOptArg(1) == "get-transforms" && po.NumArgs() == 6) {
+      std::string transform_rxfilename = po.GetArg(2),
+          spk2utt_rspecifier = po.GetArg(3),
+          feats_rspecifier = po.GetArg(4),
+          post_rspecifier = po.GetArg(5),
+          transforms_wspecifier = po.GetArg(6);
+
+      DifferentiableTransformMapped transform;
+      ReadKaldiObject(transform_rxfilename, &transform);
+      SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
+      RandomAccessPosteriorReader post_reader(post_rspecifier);
+      RandomAccessBaseFloatMatrixReader feature_reader(feats_rspecifier);
+      BaseFloatMatrixWriter transform_writer(transforms_wspecifier);
+      int32 num_done = 0, num_no_post = 0, num_other_error = 0;
+
+      for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
+        std::unique_ptr <SpeakerStatsItf> stats(
+            transform.transform->GetEmptySpeakerStats());
+        std::string spk = spk2utt_reader.Key();
+        bool got_stats = false;
+        const std::vector<std::string> &uttlist = spk2utt_reader.Value();
+        for (size_t i = 0; i < uttlist.size(); i++) {
+          std::string utt = uttlist[i];
+          if (!feature_reader.HasKey(utt)) {
+            KALDI_WARN << "Did not find features for utterance " << utt;
+            num_other_error++;
+            continue;
+          }
+          if (!post_reader.HasKey(utt)) {
+            KALDI_WARN << "Did not find posteriors for utterance " << utt;
+            num_no_post++;
+            continue;
+          }
+          const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
+          const Posterior &post_in = post_reader.Value(utt);
+          Posterior post_upsampled(feats.NumRows());
+          const Posterior *post_to_use = NULL;
+          if (frame_subsampling_factor != 1 || !transform.pdf_map.empty()) {
+            ConvertPosterior(
+                post_in, 1, 0, frame_subsampling_factor, transform.pdf_map,
+                transform.transform->NumClasses(), &post_upsampled);
+            post_to_use = &post_upsampled;
+          } else {
+            KALDI_ASSERT(post_in.size() == size_t(feats.NumRows()) &&
+                         "Mismatch in posterior vs. feats dimension");
+            post_to_use = &post_in;
+          }
+          transform.transform->TestingAccumulate(feats, *post_to_use, stats.get());
+          got_stats = true;
+          num_done++;
+        }
+        if (!got_stats) {
+          KALDI_WARN << "Got no stats for speaker " << spk;
+        } else {
+          stats->Estimate();
+          int32 dim = transform.transform->Dim();
+          Matrix<BaseFloat> transform_mat(dim, dim + 1, kUndefined);
+          transform.transform->GetTransformAsMatrix(*stats, &transform_mat);
+          transform_writer.Write(spk, transform_mat);
+        }
+      }
+      KALDI_LOG << "Done " << num_done << " files, " << num_no_post
+                << " with no posts, " << num_other_error << " with other errors.";
+      return (num_done != 0 && num_done > (num_no_post + num_other_error)) ? 0 : 1;
     } else {
       po.PrintUsage();
       exit(1);

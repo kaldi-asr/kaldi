@@ -291,6 +291,7 @@ class DifferentiableTransform {
       const SubPosterior &posteriors,
       SpeakerStatsItf *speaker_stats) const = 0;
 
+
   // Applies the transformation implied by the statistics in 'speaker_stats' to
   // 'input', storing in the result in 'output'.  You must have done any estimation
   // procedure that is required first, by calling Estimate() on the speaker-stats
@@ -299,6 +300,19 @@ class DifferentiableTransform {
       const MatrixBase<BaseFloat> &input,
       const SpeakerStatsItf &speaker_stats,
       MatrixBase<BaseFloat> *output) const = 0;
+
+
+  // This function outputs the speaker-specific transformation in a matrix form
+  // with an offset, i.e., a matrix of dimension Dim() by Dim() + 1 where
+  // the last column represents the offset term (the same way Kaldi represents
+  // LDA and fMLLR transforms as matrices.
+  // The 'speaker_stats' object must have had Estimate() called on it.
+  // 'transform' must be of dimension Dim() by Dim() + 1; it may contain
+  // NaN's at entry.
+  virtual void GetTransformAsMatrix(
+      const SpeakerStatsItf &speaker_stats,
+      MatrixBase<BaseFloat> *transform) const = 0;
+
 
   // TestingForwardBatch() combines GetEmptySpeakerStats(), TestingAccumulate() and
   // TestingForward().  It has a default implementation.   It is a convenience

@@ -695,7 +695,7 @@ static inline void ConvertPosteriorElement(
   }
 }
 
-void NnetChainaTopTrainer::ConvertPosterior(
+void ConvertPosterior(
     const Posterior &post_at_output,
     int32 num_sequences,
     int32 first_input_t,

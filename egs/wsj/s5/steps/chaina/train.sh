@@ -246,7 +246,11 @@ if [ $stage -le $num_iters ] && $train; then
   mkdir -p $dir/final
   den_fst_dir=$egs_dir/misc
 
-  $cmd $gpu_cmd_opt JOB=1:$num_scp_files $dir/log/acc_target_model.JOB.log \
+  num_jobs=$num_scp_files
+  [ $num_jobs -gt 4 ] && num_jobs=4   # there are so few params to estimate that
+                                      # more than 4 jobs would be a waste.
+
+  $cmd $gpu_cmd_opt JOB=1:$num_jobs $dir/log/acc_target_model.JOB.log \
     nnet3-chaina-train --job-id=JOB --use-gpu=$use_gpu \
       --bottom-subsampling-factor=$bottom_subsampling_factor \
       --print-interval=10 \
@@ -260,7 +264,7 @@ if [ $stage -le $num_iters ] && $train; then
     stats=$dir/final/${lang}.*.ada
     run.pl $dir/log/estimate_target_model_${lang}.log \
            nnet3-adapt estimate $stats $dir/final/${lang}.ada
-    #rm $stats
+    rm $stats
   done
   cp $dir/$num_iters/bottom.raw $dir/$num_iters/*.mdl $dir/final
 fi

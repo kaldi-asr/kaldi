@@ -95,8 +95,11 @@ class NoOpTransform: public DifferentiableTransform {
     output->CopyFromMat(input);
   }
 
-  void Estimate(int32 final_iter) override { }
+  void GetTransformAsMatrix(
+      const SpeakerStatsItf &speaker_stats,
+      MatrixBase<BaseFloat> *transform) const override { transform->SetUnit(); }
 
+  void Estimate(int32 final_iter) override { }
 
   NoOpTransform(): dim_(-1) { }
 
@@ -186,6 +189,10 @@ class SequenceTransform: public DifferentiableTransform {
       const MatrixBase<BaseFloat> &input,
       const SpeakerStatsItf &speaker_stats,
       MatrixBase<BaseFloat> *output) const override;
+
+  void GetTransformAsMatrix(
+      const SpeakerStatsItf &speaker_stats,
+      MatrixBase<BaseFloat> *transform) const override;
 
   SequenceTransform(const SequenceTransform &other);
 
@@ -281,6 +288,10 @@ class AppendTransform: public DifferentiableTransform {
       const MatrixBase<BaseFloat> &input,
       const SpeakerStatsItf &speaker_stats,
       MatrixBase<BaseFloat> *output) const override;
+
+  void GetTransformAsMatrix(
+      const SpeakerStatsItf &speaker_stats,
+      MatrixBase<BaseFloat> *transform) const override;
 
   void Estimate(int32 final_iter) override;
 

@@ -106,6 +106,19 @@ void DifferentiableTransform::TestingForwardBatch(
           this_output(output_cpu.RowData(chunk),
                       frames_per_chunk, dim,
                       output_cpu.Stride() * num_chunks);
+      /*
+        // The following  testing code was temporarily present to test
+        // GetTransformAsMatrix()..
+      if (GetVerboseLevel() >= 3 && RandInt(0, 1) == 0) {
+        Matrix<BaseFloat> transform(dim, dim + 1, kUndefined);
+        this->GetTransformAsMatrix(*stats, &transform);
+        SubMatrix<BaseFloat> linear_part(transform, 0, dim, 0, dim);
+        Vector<BaseFloat> offset(dim);
+        offset.CopyColFromMat(transform, dim);
+        this_output.CopyRowsFromVec(offset);
+        this_output.AddMatMat(1.0, this_input, kNoTrans,
+                              linear_part, kTrans, 1.0);
+                              } else */
       this->TestingForward(this_input, *stats, &this_output);
     }
     delete stats;

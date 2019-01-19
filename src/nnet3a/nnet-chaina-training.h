@@ -531,64 +531,6 @@ class NnetChainaTopTrainer {
                       CuMatrix<BaseFloat> *input_deriv);
 
   /**
-     Converts the format of the posterior from how it is at the output of the
-     network to how it is at the input (i.e. in the embedding space).
-     Basically, this will consist of padding with empty posteriors for the
-     "context frames", and possibly upsampling the posteriors (by just repeating
-     each one for, say, 3 frames, if top_subsampling_factor == 3).  The
-     rule we'll use is: copy the posterior from the output frame that
-     is closest in numbering, rounding down in case of ties (i.e., for even
-     subsampling factor).
-
-        @param [in] post_at_output  The posterior that needs to be padded,
-                      consisting of 'num_sequences' sequences, each with 't'
-                      values starting at zero, at multiples of
-                      'top_subsampling_factor', and with number of 't' values
-                      determined by: num_frames_out = post_at_output.size() /
-                      num_sequences.  The 't' has the larger stride than the
-                      minibatch index 'n', so it's: frame t=0 of all sequences,
-                      then frame t=1*top_subsampling_factor of all sequences,
-                      and so on.
-        @param [in] num_sequences  The number of sequences/chunks
-        @param [in] first_input_t  The first 't' value at the input, for which
-                      we need a posterior for (note: negative 't' values will
-                      get zero posterior).  Implicitly, first_output_t = 0.
-                      The number of input frames is worked out as
-                      post_at_input->size() / num_sequences; the 't' values
-                      at the input are assumed to be consecutive.
-        @param [in] top_subsampling_factor  The number of frames with which
-                      't' values at the output are separated.
-        @param [in] pdf_map  This is either the empty vector (meaning:
-                     the DifferentiableTransform object deals with pdf-ids
-                     directly), or it is a map from pdf-ids to cluster-ids.
-                     This would actually be obtained from build-tree-two-level
-                     after building a two-level tree, and it would be stored
-                     in the .ada object.  The actual class labels that
-                     the DifferentiableTransform object deals with, will
-                     be the values stored in 'pfd_map' (i.e. these cluster-ids).
-        @param [in] num_classes  Provided for checking purposes only: the
-                     number of classes that the DifferentiableTransform object
-                     expects.  If pdf_map is empty we expect this to be the
-                     same as the number of pdf-ids (and the ints in
-                     post_at_output to be in the range [0, num_classes - 1]).
-                     If pdf_map is nonempty, we expect this to be the same
-                     as the maximum element in pdf_map, plus one.
-        @param [out] post_at_input  The posterior after padding and possibly
-                      subsampling.  Should have the correct size but its
-                      elements are expected to be empty at entry.  Like
-                      post_at_output, the 't' has the larger stride than
-                      the minibatch-index 'n'.
-
-  */
-  void ConvertPosterior(const Posterior &post_at_output,
-                        int32 num_sequences,
-                        int32 first_input_t,
-                        int32 top_subsampling_factor,
-                        const std::vector<int32> &pdf_map,
-                        int32 num_classes,
-                        Posterior *post_at_input);
-
-  /**
      Does the adapted pass of training.
          @param [in] computation  The adapted version of the
                      computation (this one uses the outputs
@@ -926,6 +868,66 @@ class NnetChainaTrainer {
   std::unordered_map<std::string, NnetChainaTopTrainer*,
                      StringHasher> top_trainers_;
 };
+
+
+/**
+     This utility function, used in training and test-time adaptation code,
+     converts the format of the posterior from how it is at the output of the
+     top network to how it is at the input (i.e. in the embedding space).
+     Basically, this will consist of padding with empty posteriors for the
+     "context frames", and possibly upsampling the posteriors (by just repeating
+     each one for, say, 3 frames, if top_subsampling_factor == 3).  The
+     rule we'll use is: copy the posterior from the output frame that
+     is closest in numbering, rounding down in case of ties (i.e., for even
+     subsampling factor).
+
+        @param [in] post_at_output  The posterior that needs to be padded,
+                      consisting of 'num_sequences' sequences, each with 't'
+                      values starting at zero, at multiples of
+                      'top_subsampling_factor', and with number of 't' values
+                      determined by: num_frames_out = post_at_output.size() /
+                      num_sequences.  The 't' has the larger stride than the
+                      minibatch index 'n', so it's: frame t=0 of all sequences,
+                      then frame t=1*top_subsampling_factor of all sequences,
+                      and so on.
+        @param [in] num_sequences  The number of sequences/chunks
+        @param [in] first_input_t  The first 't' value at the input, for which
+                      we need a posterior for (note: negative 't' values will
+                      get zero posterior).  Implicitly, first_output_t = 0.
+                      The number of input frames is worked out as
+                      post_at_input->size() / num_sequences; the 't' values
+                      at the input are assumed to be consecutive.
+        @param [in] top_subsampling_factor  The number of frames with which
+                      't' values at the output are separated.
+        @param [in] pdf_map  This is either the empty vector (meaning:
+                     the DifferentiableTransform object deals with pdf-ids
+                     directly), or it is a map from pdf-ids to cluster-ids.
+                     This would actually be obtained from build-tree-two-level
+                     after building a two-level tree, and it would be stored
+                     in the .ada object.  The actual class labels that
+                     the DifferentiableTransform object deals with, will
+                     be the values stored in 'pfd_map' (i.e. these cluster-ids).
+        @param [in] num_classes  Provided for checking purposes only: the
+                     number of classes that the DifferentiableTransform object
+                     expects.  If pdf_map is empty we expect this to be the
+                     same as the number of pdf-ids (and the ints in
+                     post_at_output to be in the range [0, num_classes - 1]).
+                     If pdf_map is nonempty, we expect this to be the same
+                     as the maximum element in pdf_map, plus one.
+        @param [out] post_at_input  The posterior after padding and possibly
+                      subsampling.  Should have the correct size but its
+                      elements are expected to be empty at entry.  Like
+                      post_at_output, the 't' has the larger stride than
+                      the minibatch-index 'n'.
+*/
+void ConvertPosterior(const Posterior &post_at_output,
+                      int32 num_sequences,
+                      int32 first_input_t,
+                      int32 top_subsampling_factor,
+                      const std::vector<int32> &pdf_map,
+                      int32 num_classes,
+                      Posterior *post_at_input);
+
 
 
 } // namespace nnet3

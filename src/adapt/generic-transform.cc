@@ -310,6 +310,12 @@ void SequenceTransform::TestingForward(
   transforms_.back()->TestingForward(input, speaker_stats, output);
 }
 
+void SequenceTransform::GetTransformAsMatrix(
+    const SpeakerStatsItf &speaker_stats,
+    MatrixBase<BaseFloat> *transform) const {
+  transforms_.back()->GetTransformAsMatrix(speaker_stats, transform);
+}
+
 
 SequenceMinibatchInfo::~SequenceMinibatchInfo() {
   for (size_t i = 0; i < info_vec.size(); i++)
@@ -563,6 +569,36 @@ void AppendTransform::TestingForward(
     dim_offset += this_dim;
   }
   KALDI_ASSERT(dim_offset == input.NumCols());
+}
+
+void AppendTransform::GetTransformAsMatrix(
+    const SpeakerStatsItf &speaker_stats,
+    MatrixBase<BaseFloat> *transform) const {
+  int32 dim = Dim();
+  KALDI_ASSERT(transform->NumRows() == dim && transform->NumCols() == dim + 1);
+  // first make sure the off-diagonal elements are zero.
+  transform->SetZero();
+  const AppendSpeakerStats *stats =
+      dynamic_cast<const AppendSpeakerStats*>(&speaker_stats);
+  KALDI_ASSERT(stats != NULL && stats->stats.size() == transforms_.size() &&
+               "Wrong type of stats supplied to AppendTransform.");
+  int32 dim_offset = 0;
+  for (size_t i = 0; i < transforms_.size(); i++) {
+    int32 this_dim = transforms_[i]->Dim();
+    SubMatrix<BaseFloat> transform_part(*transform, dim_offset, this_dim,
+                                        dim_offset, this_dim + 1);
+    transforms_[i]->GetTransformAsMatrix(*(stats->stats[i]), &transform_part);
+    if (i + 1 < transforms_.size()) {
+      int32 current_offset_column = dim_offset + this_dim,
+          required_offset_column = dim;
+      for (int32 r = dim_offset; r < dim_offset + this_dim; r++) {
+        (*transform)(r, required_offset_column) = (*transform)(r, current_offset_column);
+        (*transform)(r, current_offset_column) = BaseFloat(0.0);
+      }
+    }
+    dim_offset += this_dim;
+  }
+  KALDI_ASSERT(dim_offset == Dim());
 }
 
 void AppendSpeakerStats::Estimate() {

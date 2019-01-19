@@ -37,6 +37,12 @@ FmllrMinibatchInfo::~FmllrMinibatchInfo() {
 }
 
 
+void FmllrSpeakerStats::Estimate() {
+  BaseFloat objf_impr = estimator.Estimate();
+  KALDI_VLOG(1) << "Objective function improvement per frame is " << objf_impr;
+}
+
+
 int32 FmllrTransform::InitFromConfig(
     int32 cur_pos,
     std::vector<ConfigLine> *config_lines) {
@@ -303,6 +309,17 @@ void FmllrTransform::TestingForward(
                "You can't call TestingForward() without calling Estimate() on "
                "the speaker stats.");
   stats->estimator.AdaptFeatures(input, output);
+}
+
+void FmllrTransform::GetTransformAsMatrix(
+    const SpeakerStatsItf &speaker_stats,
+    MatrixBase<BaseFloat> *transform) const {
+  const FmllrSpeakerStats *stats = dynamic_cast<const FmllrSpeakerStats*>(
+      &speaker_stats);
+  int32 dim = Dim();
+  KALDI_ASSERT(transform->NumRows() == dim && transform->NumCols() == dim + 1);
+  transform->ColRange(0, dim).CopyFromMat(stats->estimator.GetLinearParams());
+  transform->CopyColFromVec(stats->estimator.GetBiasParams(), dim);
 }
 
 FmllrTransform::~FmllrTransform() {
@@ -584,6 +601,17 @@ void MeanOnlyTransform::TestingForward(
                "You can't call TestingForward() without calling Estimate() on "
                "the speaker stats.");
   stats->estimator.AdaptFeatures(input, output);
+}
+
+void MeanOnlyTransform::GetTransformAsMatrix(
+    const SpeakerStatsItf &speaker_stats,
+    MatrixBase<BaseFloat> *transform) const {
+  const MeanOnlyTransformSpeakerStats *stats =
+      dynamic_cast<const MeanOnlyTransformSpeakerStats*>(&speaker_stats);
+  int32 dim = Dim();
+  KALDI_ASSERT(transform->NumRows() == dim && transform->NumCols() == dim + 1);
+  transform->SetUnit();
+  transform->CopyColFromVec(stats->estimator.GetOffset(), dim);
 }
 
 MeanOnlyTransform::~MeanOnlyTransform() {

@@ -2,6 +2,9 @@ all:
 
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
+
 TESTFILES = differentiable-fmllr-test differentiable-transform-test
 
 OBJFILES = differentiable-fmllr.o differentiable-transform-itf.o \
