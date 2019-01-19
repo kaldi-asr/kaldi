@@ -369,7 +369,7 @@ if [ $stage -le 25 ]; then
   # Do the speaker-dependent decoding pass
   test_sets=dev_clean_2
   for data in $test_sets; do
-    steps/chaina/decode.sh --cmd "$cmd" --num-threads 4 --stage 2 \
+    steps/chaina/decode.sh --cmd "$cmd" --num-threads 4 \
         data/${data}_hires $tree_dir/graph_tgsmall\
         $dir/final $dir/data/final/${data} \
         $dir/decode_${data}_tgsmall.si $dir/decode_${data}_tgsmall

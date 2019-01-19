@@ -708,7 +708,7 @@ void ConvertPosterior(
       s = top_subsampling_factor;
   KALDI_ASSERT(input_post_size % num_sequences == 0 &&
                output_post_size % num_sequences == 0 &&
-               input_post_size >= output_post_size * top_subsampling_factor &&
+               input_post_size >= (output_post_size - 1) * top_subsampling_factor &&
                top_subsampling_factor > 0);
   int32 num_frames_out = output_post_size / num_sequences,
       num_frames_in = input_post_size / num_sequences,

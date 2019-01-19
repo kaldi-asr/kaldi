@@ -1,5 +1,11 @@
 #!/bin/bash
 
+
+# grep WER exp/chaina/tdnn1a_sp/decode_dev_clean_2_tgsmall.si/wer_* | utils/best_wer.sh
+# %WER 21.44 [ 4317 / 20138, 341 ins, 947 del, 3029 sub ] exp/chaina/tdnn1a_sp/decode_dev_clean_2_tgsmall.si/wer_11_0.0
+# a09:s5: grep WER exp/chaina/tdnn1a_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
+# %WER 19.72 [ 3971 / 20138, 317 ins, 771 del, 2883 sub ] exp/chaina/tdnn1a_sp/decode_dev_clean_2_tgsmall/wer_17_0.0
+
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
@@ -354,7 +360,18 @@ if [ $stage -le 24 ]; then
     steps/chaina/decode_si.sh --cmd "$cmd" --nj 10 --num-threads 4 \
         data/${data}_hires $tree_dir/graph_tgsmall\
         $dir/final $dir/data/final/${data} \
-        $dir/decode_${data}_tgsmall
+        $dir/decode_${data}_tgsmall.si
+  done
+fi
+
+if [ $stage -le 25 ]; then
+  # Do the speaker-dependent decoding pass
+  test_sets=dev_clean_2
+  for data in $test_sets; do
+    steps/chaina/decode.sh --cmd "$cmd" --num-threads 4 \
+        data/${data}_hires $tree_dir/graph_tgsmall\
+        $dir/final $dir/data/final/${data} \
+        $dir/decode_${data}_tgsmall.si $dir/decode_${data}_tgsmall
   done
 fi
 
