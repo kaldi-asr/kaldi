@@ -443,6 +443,96 @@ void GrammarFst::Read(std::istream &is, bool binary) {
 }
 
 
+/**
+   This utility function input-determinizes a specified state s of the FST
+   'fst'.   (This input-determinizes while treating epsilon as a real symbol,
+   although for the application we expect to use it, there won't be epsilons).
+
+   What this function does is: for any symbol s that appears as the ilabel of
+   more than one arc leaving state s of FST 'fst', it creates an additional
+   state, it creates a new arc with epsilon-input transitions leaving it for
+   each of those multiple arcs leaving state s; it deletes the original arcs
+   leaving state s; and it creates a single arc leaving state s to the newly
+   created state with the ilabel on it.  It sets the weights as necessary to
+   preserve equivalence and also to ensure that if, prior to this modification,
+   the FST was stochastic when cast to the log semiring (see
+   IsStochasticInLog()), it still will be.  I.e.  if things summed to one when
+   viewed as probabilities, they will still sum to one.
+
+   This is used as a very cheap solution when preparing FSTs for the grammar
+   decoder, to ensure that there is only one entry-state to the sub-FST for each
+   phonetic left-context; this keeps the grammar-FST code (i.e. the code that
+   stitches them together) simple.  Of course it will tend to introduce
+   unnecessary epsilons, and if we were careful we might be able to remove
+   some of those.
+ */
+static void InputDeterminizeSingleState(StdArc::StateId s,
+                                        VectorFst<StdArc> *fst) {
+  bool was_input_deterministic = true;
+  typedef StdArc Arc;
+  typedef Arc::StateId StateId;
+  typedef Arc::Label Label;
+  typedef Arc::Weight Weight;
+
+  struct InfoForIlabel {
+    std::vector<size_t> arc_indexes;  // indexes of all arcs with this ilabel
+    float tot_cost;  // total cost of all arcs leaving state s for this
+                     // ilabel, summed as if they were negative log-probs.
+    StateId new_state;  // state-id of new state, if any, that we have created
+                        // to remove duplicate symbols with this ilabel.
+    InfoForIlabel(): new_state(-1) { }
+  };
+
+  std::unordered_map<Label, InfoForIlabel> label_map;
+
+  size_t arc_index = 0;
+  for (ArcIterator<VectorFst<Arc> > aiter(*fst, s);
+       !aiter.Done(); aiter.Next(), ++arc_index) {
+    const Arc &arc = aiter.Value();
+    InfoForIlabel &info = label_map[arc.ilabel];
+    if (info.arc_indexes.empty()) {
+      info.tot_cost = arc.weight.Value();
+    } else {
+      info.tot_cost = -kaldi::LogAdd(-info.tot_cost, -arc.weight.Value());
+      was_input_deterministic = false;
+    }
+    info.arc_indexes.push_back(arc_index);
+  }
+
+  if (was_input_deterministic)
+    return;  // Nothing to do.
+
+  // 'new_arcs' will contain the modified list of arcs
+  // leaving state s
+  std::vector<Arc> new_arcs;
+  new_arcs.reserve(arc_index);
+  arc_index = 0;
+  for (ArcIterator<VectorFst<Arc> > aiter(*fst, s);
+       !aiter.Done(); aiter.Next(), ++arc_index) {
+    const Arc &arc = aiter.Value();
+    Label ilabel = arc.ilabel;
+    InfoForIlabel &info = label_map[ilabel];
+    if (info.arc_indexes.size() == 1) {
+      new_arcs.push_back(arc);  // no changes needed
+    } else {
+      if (info.new_state < 0) {
+        info.new_state = fst->AddState();
+        // add arc from state 's' to newly created state.
+        new_arcs.push_back(Arc(ilabel, 0, Weight(info.tot_cost),
+                               info.new_state));
+      }
+      // add arc from new state to original destination of this arc.
+      fst->AddArc(info.new_state, Arc(0, arc.olabel,
+                                      Weight(arc.weight.Value() - info.tot_cost),
+                                      arc.nextstate));
+    }
+  }
+  fst->DeleteArcs(s);
+  for (size_t i = 0; i < new_arcs.size(); i++)
+    fst->AddArc(s, new_arcs[i]);
+}
+
+
 // This class contains the implementation of the function
 // PrepareForGrammarFst(), which is declared in grammar-fst.h.
 class GrammarFstPreparer {
@@ -475,6 +565,12 @@ class GrammarFstPreparer {
           // OK, state s is a special state.
           FixArcsToFinalStates(s);
           MaybeAddFinalProbToState(s);
+          // The following ensures that the start-state of sub-FSTs only has
+          // a single arc per left-context phone (the graph-building recipe can
+          // end up creating more than one if there were disambiguation symbols,
+          // e.g. for langauge model backoff).
+          if (s == fst_->Start())
+            InputDeterminizeSingleState(s, fst_);
         }
       }
     }
@@ -647,7 +743,7 @@ bool GrammarFstPreparer::NeedEpsilons(StateId s) const {
     if (nonterminal == GetPhoneSymbolFor(kNontermBegin) &&
         s != fst_->Start()) {
       KALDI_ERR << "#nonterm_begin symbol is present but this is not the "
-          "first arc.  Did you do fstdeterminizestar while compiling?";
+          "first state.  Did you do fstdeterminizestar while compiling?";
     }
     if (nonterminal == GetPhoneSymbolFor(kNontermEnd)) {
       if (fst_->NumArcs(arc.nextstate) != 0 ||
