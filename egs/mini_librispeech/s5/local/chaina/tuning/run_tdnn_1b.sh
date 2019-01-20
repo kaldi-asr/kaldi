@@ -2,10 +2,11 @@
 
 
 # Not working well yet (WER should be closer to 12%.  Need to check for bugs).
-#a09:s5: grep WER exp/chaina/tdnn1b_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
-#%WER 17.08 [ 3440 / 20138, 306 ins, 608 del, 2526 sub ] exp/chaina/tdnn1b_sp/decode_dev_clean_2_tgsmall/wer_17_0.0
+
 #a09:s5: grep WER exp/chaina/tdnn1b_sp/decode_dev_clean_2_tgsmall.si/wer_* | utils/best_wer.sh
-#%WER 19.81 [ 3990 / 20138, 389 ins, 657 del, 2944 sub ] exp/chaina/tdnn1b_sp/decode_dev_clean_2_tgsmall.si/wer_12_0.0
+#%WER 20.12 [ 4052 / 20138, 394 ins, 569 del, 3089 sub ] exp/chaina/tdnn1b_sp/decode_dev_clean_2_tgsmall.si/wer_10_0.0
+#a09:s5: grep WER exp/chaina/tdnn1b_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
+#%WER 18.13 [ 3652 / 20138, 297 ins, 613 del, 2742 sub ] exp/chaina/tdnn1b_sp/decode_dev_clean_2_tgsmall/wer_13_0.0
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail

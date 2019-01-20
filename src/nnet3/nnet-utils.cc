@@ -2211,7 +2211,7 @@ void MaxChangeStats::Print(const Nnet &nnet) const {
     KALDI_LOG << "The global max-change was enforced "
               << ((100.0 * num_max_change_global_applied) /
                   num_minibatches_processed)
-              << " \% of the time.";
+              << "\% of the time.";
 }
 
 

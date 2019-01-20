@@ -117,7 +117,7 @@ def get_schedules(args):
                 args.dropout_schedule = None
             dropout_edit_option = common_train_lib.get_dropout_edit_option(
                 args.dropout_schedule,
-                float(num_scp_files_processed) / num_scp_files_to_process,
+                float(num_scp_files_processed) / max(1, (num_scp_files_to_process - args.num_jobs_final)),
                 iter)
 
             frame_shifts = []

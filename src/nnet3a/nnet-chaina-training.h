@@ -671,14 +671,16 @@ class NnetChainaBottomTrainer {
   /**
       Does the backward pass, which will do model training.  This should only be
       called if the bottom nnet needs to be trained.
-         @param [in] model_training_scale  A scale we'll apply to the parameter changes
-                     and max-change values when taking the step..  This will be
+         @param [in] model_training_scale  A scale we'll apply to the parameter changes,
+                     l2 term and max-change values when taking the step..  This will be
                      referred to elsewhere as bottom_weight, or "bw" when present in
                      keys of egs in scp files; we'll have a separately specifiable
                      weight for the top nnet.  If this is zero, we won't be training
                      the top model on this eg at all (and we'll expect 'false' to
                      have been passed in for the 'train_model' arg on the corresponding
                      call to Forward()).
+         @param [in] num_sequences  The number of sequences (chunks) we had in this
+                     minibatch-- needed for the application of l2.
          @param [in] computer   The computer object returned from the
                     forward pass.  This function takes ownership of it and
                     will delete it when done with it.
@@ -688,6 +690,7 @@ class NnetChainaBottomTrainer {
 
    */
   void Backward(BaseFloat model_training_scale,
+                int32 num_sequences,
                 NnetComputer *computer,
                 CuMatrix<BaseFloat> *output_deriv);
 

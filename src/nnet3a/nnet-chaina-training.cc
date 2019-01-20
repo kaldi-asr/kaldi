@@ -522,12 +522,21 @@ bool NnetChainaTopTrainer::TrainAdapted(
   if (model_training_scale != 0.0) {
     // If we're actually training the top model...
 
+    // If relevant, add in the part of the gradient that comes from L2
+    // regularization.  The factor of (1.0 + opts_.unadapted_top_weight)
+    // is to make it proportional to the magnitude of the derivative.
+    ApplyL2Regularization(
+        *nnet_,
+        supervision.num_sequences * opts_.nnet_config.l2_regularize_factor *
+        (1.0 + opts_.unadapted_top_weight),
+        delta_nnet_);
+
     // Update the parameters of nnet.
     // Note: normally, momentum is 0.0.
     bool success = UpdateNnetWithMaxChange(
         *delta_nnet_,
         nnet_config.max_param_change,
-        1.0,
+        model_training_scale,
         model_training_scale * (1.0 - nnet_config.momentum),
         nnet_, &max_change_stats_);
 
@@ -800,6 +809,7 @@ NnetComputer* NnetChainaBottomTrainer::Forward(
 
 
 void NnetChainaBottomTrainer::Backward(BaseFloat model_training_scale,
+                                       int32 num_sequences,
                                        NnetComputer *computer,
                                        CuMatrix<BaseFloat> *output_deriv) {
   // if model_training_scale was 0.0, this function should not have been called.
@@ -811,13 +821,24 @@ void NnetChainaBottomTrainer::Backward(BaseFloat model_training_scale,
 
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
 
+
+  // If relevant, add in the part of the gradient that comes from L2
+  // regularization.  The factor of (1.0 + opts_.unadapted_bottom_weight)
+  // is to make it proportional to the magnitude of the derivative.
+  ApplyL2Regularization(
+      *nnet_,
+      num_sequences * opts_.nnet_config.l2_regularize_factor *
+      (1.0 + opts_.unadapted_bottom_weight),
+      delta_nnet_);
+
+
   // we may later provide a way to set a different max-change for the bottom
   // nnet than on the top nnet.
   // Note: normally, momentum is 0.0.
   bool success = UpdateNnetWithMaxChange(
       *delta_nnet_,
       nnet_config.max_param_change,
-      1.0,
+      model_training_scale,
       model_training_scale * (1.0 - nnet_config.momentum),
       nnet_,
       &max_change_stats_);
@@ -1074,7 +1095,7 @@ void NnetChainaTrainer::Train(const std::string &key,
                                      &cu_embedding_deriv : NULL));
 
   if (success && train_bottom_nnet) {
-    bottom_trainer_.Backward(bottom_weight, computer,
+    bottom_trainer_.Backward(bottom_weight, num_sequences, computer,
                              &cu_embedding_deriv);
   } else {
     delete computer;  // if it's NULL, this will do nothing.

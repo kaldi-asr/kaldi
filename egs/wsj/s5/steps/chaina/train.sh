@@ -90,7 +90,7 @@ if ! [ $[frame_subsampling_factor%bottom_subsampling_factor] == 0 ]; then
   exit 1
 fi
 
-num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$dir/egs/info.txt)
+num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$egs_dir/info.txt)
 
 steps/chaina/internal/get_train_schedule.py \
   --frame-subsampling-factor=$frame_subsampling_factor \

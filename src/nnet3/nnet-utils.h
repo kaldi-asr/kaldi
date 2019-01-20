@@ -331,13 +331,13 @@ void ReadEditConfig(std::istream &config_file, Nnet *nnet);
 
    \code
      Nnet temp_nnet(delta_nnet);
-     ScaleNnet(1.0 / max_change_scale, &temp_nnet);
-     [ Scale down parameters for each component of temp_nnet as needed so
-     their Euclidean norms do not exceed their per-component max-changes ]
+     ScaleNnet(scale, &temp_nnet);
+      [ Scale down parameters for each component of temp_nnet as needed so
+       their Euclidean norms do not exceed (their per-component max-changes
+        each multiplied by max_change_scale) ]
      [ Scale down temp_nnet as needed so its Euclidean norm does not exceed
-       the global max-change ]
-     ScaleNnet(max_change_scale, &temp_nnet);  // undo the previous scaling.
-     AddNnet(temp_nnet, scale, nnet);
+       the global max-change times max_change_scale ]
+     AddNnet(temp_nnet, 1.0, nnet);
    \endcode
 
    @param [in] delta_nnet  The copy of '*nnet' neural network that contains
@@ -361,7 +361,8 @@ void ReadEditConfig(std::istream &config_file, Nnet *nnet);
                max-change, and 'max_change_scale * max_param_change' as the
                global max-change).
    @param [in] scale  This value, which will normally be 1.0, is a scaling
-               factor used when adding to 'nnet', applied after any max-changes.
+               factor used when adding to 'nnet', which is (conceptually)
+               applied before any max-changes.
                It is provided for backstitch-related purposes.
    @param [in,out] nnet  The nnet which we add to.
    @param [out] num_max_change_per_component_applied  We add to the elements of
