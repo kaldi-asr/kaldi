@@ -33,7 +33,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/select.h>
+#include <poll.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string>
@@ -49,7 +49,7 @@ class TcpServer {
   int32 Accept();  //accept a client and return its descriptor
 
   bool ReadChunk(size_t len); //get more data and return false if end-of-stream
-  Vector <BaseFloat> getChunk(); //get the data read by above method
+  Vector<BaseFloat> getChunk(); //get the data read by above method
 
   bool Write(std::string msg); //write to accepted client
 
@@ -60,15 +60,14 @@ class TcpServer {
   int32 server_desc_, client_desc_;
   int16 *samp_buf_;
   size_t buf_len_, has_read_;
-  fd_set client_set_;
-  struct timeval *client_timeout_;
-  struct timeval stimeval_;
+  pollfd client_set_[1];
+  int read_timeout_;
 };
 
 std::string LatticeToString(const Lattice &lat, fst::SymbolTable *word_syms) {
   LatticeWeight weight;
-  std::vector <int32> alignment;
-  std::vector <int32> words;
+  std::vector<int32> alignment;
+  std::vector<int32> words;
   GetLinearSymbolSequence(lat, &alignment, &words, &weight);
 
   std::string msg = "";
@@ -186,7 +185,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Loading FST...";
 
-    fst::Fst <fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
 
     fst::SymbolTable *word_syms = NULL;
     if (!word_syms_rxfilename.empty())
@@ -229,14 +228,14 @@ int main(int argc, char *argv[]) {
                                             decodable_info,
                                             *decode_fst, &feature_pipeline);
 
-        std::vector <std::pair<int32, BaseFloat>> delta_weights;
+        std::vector<std::pair<int32, BaseFloat>> delta_weights;
 
         while (true) {
 
           eos = !server.ReadChunk(chunk_len);
 
           if (!eos) {
-            Vector <BaseFloat> wave_part = server.getChunk();
+            Vector<BaseFloat> wave_part = server.getChunk();
             feature_pipeline.AcceptWaveform(samp_freq, wave_part);
             samp_count += chunk_len;
 
@@ -312,13 +311,7 @@ TcpServer::TcpServer(int read_timeout) {
   client_desc_ = -1;
   samp_buf_ = NULL;
   buf_len_ = 0;
-  if (read_timeout >= 0) {
-    stimeval_.tv_sec = read_timeout;
-    stimeval_.tv_usec = 0;
-    client_timeout_ = &stimeval_;
-  } else {
-    client_timeout_ = NULL;
-  }
+  read_timeout_ = 1000 * read_timeout;
 }
 
 bool TcpServer::Listen(int32 port) {
@@ -380,8 +373,8 @@ int32 TcpServer::Accept() {
   struct sockaddr_in *s = (struct sockaddr_in *) &addr;
   inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
 
-  FD_ZERO(&client_set_);
-  FD_SET(client_desc_, &client_set_);
+  client_set_[0].fd = client_desc_;
+  client_set_[0].events = POLLIN;
 
   KALDI_LOG << "Accepted connection from: " << ipstr << std::endl;
 
@@ -396,20 +389,24 @@ bool TcpServer::ReadChunk(size_t len) {
   }
 
   ssize_t ret;
-  int sel_ret;
+  int poll_ret;
   size_t to_read = len;
   has_read_ = 0;
   while (to_read > 0) {
-    sel_ret = select(client_desc_ + 1, &client_set_, NULL, NULL, client_timeout_);
-    if (sel_ret == 0) {
+    poll_ret = poll(client_set_, 1, read_timeout_);
+    if (poll_ret == 0) {
       KALDI_WARN << "Socket timeout! Disconnecting..." << std::endl;
       break;
     }
-    if (sel_ret < 0)
+    if (client_set_[0].revents != POLLIN) {
+      KALDI_WARN << "Socket error! Disconnecting..." << std::endl;
       break;
+    }
     ret = read(client_desc_, static_cast<void *>(samp_buf_ + has_read_), to_read * sizeof(int16));
-    if (ret <= 0)
+    if (ret <= 0) {
+      KALDI_WARN << "Stream over..." << std::endl;
       break;
+    }
     to_read -= ret / sizeof(int16);
     has_read_ += ret / sizeof(int16);
   }
@@ -417,8 +414,8 @@ bool TcpServer::ReadChunk(size_t len) {
   return has_read_ == len;
 }
 
-Vector <BaseFloat> TcpServer::getChunk() {
-  Vector <BaseFloat> buf;
+Vector<BaseFloat> TcpServer::getChunk() {
+  Vector<BaseFloat> buf;
 
   buf.Resize(static_cast<MatrixIndexT>(has_read_));
 
