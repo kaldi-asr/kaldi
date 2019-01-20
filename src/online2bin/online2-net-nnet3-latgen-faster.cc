@@ -33,21 +33,23 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string>
 
 namespace kaldi {
 
 class TcpServer {
  public:
-  TcpServer();
+  TcpServer(int read_timeout);
   ~TcpServer();
 
   bool Listen(int32 port);  //start listening on a given port
   int32 Accept();  //accept a client and return its descriptor
 
   bool ReadChunk(size_t len); //get more data and return false if end-of-stream
-  Vector<BaseFloat> getChunk(); //get the data read by above method
+  Vector <BaseFloat> getChunk(); //get the data read by above method
 
   bool Write(std::string msg); //write to accepted client
 
@@ -58,19 +60,40 @@ class TcpServer {
   int32 server_desc_, client_desc_;
   int16 *samp_buf_;
   size_t buf_len_, has_read_;
+  fd_set client_set_;
+  struct timeval *client_timeout_;
+  struct timeval stimeval_;
 };
 
 std::string LatticeToString(const Lattice &lat, fst::SymbolTable *word_syms) {
   LatticeWeight weight;
-  std::vector<int32> alignment;
-  std::vector<int32> words;
+  std::vector <int32> alignment;
+  std::vector <int32> words;
   GetLinearSymbolSequence(lat, &alignment, &words, &weight);
 
   std::string msg = "";
   for (size_t i = 0; i < words.size(); i++) {
-    msg += word_syms->Find(words[i]) + " ";
+    std::string s = word_syms->Find(words[i]);
+    if (s == "") {
+      KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
+      msg += "<#" + std::to_string(i) + "> ";
+    } else
+      msg += s + " ";
   }
   return msg;
+}
+
+std::string LatticeToString(const CompactLattice &clat, fst::SymbolTable *word_syms) {
+  if (clat.NumStates() == 0) {
+    KALDI_WARN << "Empty lattice.";
+    return "";
+  }
+  CompactLattice best_path_clat;
+  CompactLatticeShortestPath(clat, &best_path_clat);
+
+  Lattice best_path_lat;
+  ConvertLattice(best_path_clat, &best_path_lat);
+  return LatticeToString(best_path_lat, word_syms);
 }
 }
 
@@ -104,6 +127,8 @@ int main(int argc, char *argv[]) {
     BaseFloat chunk_length_secs = 0.18;
     BaseFloat output_freq = 1;
     BaseFloat samp_freq = 16000.0;
+    int read_timeout = 3;
+    bool adapt_speaker = false;
 
     po.Register("samp-freq", &samp_freq,
                 "Sampling frequency of the input signal (coded as 16-bit slinear).");
@@ -113,6 +138,10 @@ int main(int argc, char *argv[]) {
                 "How often in seconds, do we check for changes in output.");
     po.Register("num-threads-startup", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.");
+    po.Register("adapt-spk", &adapt_speaker,
+                "Adapt to a single speaker. Otherwise, treat each segment as a new speaker.");
+    po.Register("read-timeout", &read_timeout,
+                "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
 
     feature_opts.Register(&po);
     decodable_opts.Register(&po);
@@ -157,7 +186,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Loading FST...";
 
-    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
+    fst::Fst <fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
 
     fst::SymbolTable *word_syms = NULL;
     if (!word_syms_rxfilename.empty())
@@ -167,7 +196,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Loaded evertyhing. Waiting for data...";
 
-    TcpServer server;
+    TcpServer server(read_timeout);
 
     server.Listen(port_num);
 
@@ -200,14 +229,14 @@ int main(int argc, char *argv[]) {
                                             decodable_info,
                                             *decode_fst, &feature_pipeline);
 
-        std::vector<std::pair<int32, BaseFloat> > delta_weights;
+        std::vector <std::pair<int32, BaseFloat>> delta_weights;
 
         while (true) {
 
           eos = !server.ReadChunk(chunk_len);
 
           if (!eos) {
-            Vector<BaseFloat> wave_part = server.getChunk();
+            Vector <BaseFloat> wave_part = server.getChunk();
             feature_pipeline.AcceptWaveform(samp_freq, wave_part);
             samp_count += chunk_len;
 
@@ -240,13 +269,14 @@ int main(int argc, char *argv[]) {
             decoder.FinalizeDecoding();
 
             if (decoder.NumFramesDecoded() > 0) {
-              Lattice lat;
-              decoder.GetBestPath(true, &lat);
+              CompactLattice lat;
+              decoder.GetLattice(true, &lat);
 
               std::string msg = LatticeToString(lat, word_syms);
 
               server.Write(msg + "\n");
-            }
+            } else
+              server.Write("\n");
 
             server.disconnect();
             break;
@@ -254,8 +284,16 @@ int main(int argc, char *argv[]) {
           }
 
           if (decoder.EndpointDetected(endpoint_opts)) {
-            server.Write("\n");
-            feature_pipeline.GetAdaptationState(&adaptation_state);
+
+            decoder.FinalizeDecoding();
+
+            CompactLattice lat;
+            decoder.GetLattice(true, &lat);
+            std::string msg = LatticeToString(lat, word_syms);
+
+            server.Write(msg + "\n");
+            if (adapt_speaker)
+              feature_pipeline.GetAdaptationState(&adaptation_state);
             break;
           }
         }
@@ -269,11 +307,18 @@ int main(int argc, char *argv[]) {
 
 
 namespace kaldi {
-TcpServer::TcpServer() {
+TcpServer::TcpServer(int read_timeout) {
   server_desc_ = -1;
   client_desc_ = -1;
   samp_buf_ = NULL;
   buf_len_ = 0;
+  if (read_timeout >= 0) {
+    stimeval_.tv_sec = read_timeout;
+    stimeval_.tv_usec = 0;
+    client_timeout_ = &stimeval_;
+  } else {
+    client_timeout_ = NULL;
+  }
 }
 
 bool TcpServer::Listen(int32 port) {
@@ -335,6 +380,9 @@ int32 TcpServer::Accept() {
   struct sockaddr_in *s = (struct sockaddr_in *) &addr;
   inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
 
+  FD_ZERO(&client_set_);
+  FD_SET(client_desc_, &client_set_);
+
   KALDI_LOG << "Accepted connection from: " << ipstr << std::endl;
 
   return client_desc_;
@@ -347,10 +395,19 @@ bool TcpServer::ReadChunk(size_t len) {
     samp_buf_ = new int16[len];
   }
 
+  ssize_t ret;
+  int sel_ret;
   size_t to_read = len;
   has_read_ = 0;
   while (to_read > 0) {
-    ssize_t ret = read(client_desc_, static_cast<void *>(samp_buf_ + has_read_), to_read * sizeof(int16));
+    sel_ret = select(client_desc_ + 1, &client_set_, NULL, NULL, client_timeout_);
+    if (sel_ret == 0) {
+      KALDI_WARN << "Socket timeout! Disconnecting..." << std::endl;
+      break;
+    }
+    if (sel_ret < 0)
+      break;
+    ret = read(client_desc_, static_cast<void *>(samp_buf_ + has_read_), to_read * sizeof(int16));
     if (ret <= 0)
       break;
     to_read -= ret / sizeof(int16);
@@ -358,11 +415,10 @@ bool TcpServer::ReadChunk(size_t len) {
   }
 
   return has_read_ == len;
-
 }
 
-Vector<BaseFloat> TcpServer::getChunk() {
-  Vector<BaseFloat> buf;
+Vector <BaseFloat> TcpServer::getChunk() {
+  Vector <BaseFloat> buf;
 
   buf.Resize(static_cast<MatrixIndexT>(has_read_));
 
