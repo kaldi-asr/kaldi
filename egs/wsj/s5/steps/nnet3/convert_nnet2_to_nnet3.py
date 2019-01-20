@@ -6,6 +6,7 @@
 # It requires knowledge of valid components which
 # can be modified in the configuration section below.
 
+from __future__ import print_function
 import argparse, os, tempfile, logging, sys, shutil, fileinput, re
 from collections import defaultdict, namedtuple
 import numpy as np
@@ -51,7 +52,7 @@ NODE_NAMES = {
 SPLICE_COMPONENTS = [c for c in NODE_NAMES if "Splice" in c]
 AFFINE_COMPONENTS = [c for c in NODE_NAMES if "Affine" in c]
 
-KNOWN_COMPONENTS = NODE_NAMES.keys()
+KNOWN_COMPONENTS = list(NODE_NAMES.keys())
 # End configuration section
 
 logger = logging.getLogger(__name__)

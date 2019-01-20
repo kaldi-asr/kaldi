@@ -91,11 +91,11 @@ int main(int argc, char *argv[]) {
                    << "(no output)";
         n_err++;
       } else {
+        if (word_ins_penalty > 0.0) {
+          AddWordInsPenToCompactLattice(-word_ins_penalty, &best_path);
+        }
         fst::ScaleLattice(fst::LatticeScale(1.0 / lm_scale, 1.0/acoustic_scale),
                           &best_path);
-        if (word_ins_penalty > 0.0) {
-          AddWordInsPenToCompactLattice(word_ins_penalty, &clat);
-        }
         compact_1best_writer.Write(key, best_path);
         n_done++;
       }

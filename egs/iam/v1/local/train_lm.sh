@@ -58,9 +58,12 @@ if [ $stage -le 0 ]; then
   rm ${dir}/data/text/* 2>/dev/null || true
 
   # Using LOB and brown corpus.
-  cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt | \
-    local/remove_test_utterances_from_lob.py data/test/text data/val/text \
-                                             > ${dir}/data/text/lob.txt
+  if [ ! -f data/local/lob-train-only.txt ]; then
+    cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt | \
+      local/remove_test_utterances_from_lob.py data/test/text.old data/val/text.old \
+                                               > data/local/lob-train-only.txt
+  fi
+  cat data/local/lob-train-only.txt > ${dir}/data/text/lob.txt
   cat data/local/browncorpus/brown.txt > ${dir}/data/text/brown.txt
   if [ -d "data/local/wellingtoncorpus" ]; then
     cat data/local/wellingtoncorpus/Wellington_annotation_removed.txt > ${dir}/data/text/wellington.txt

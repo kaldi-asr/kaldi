@@ -17,6 +17,7 @@
 
 # Generated Nnet prototype, to be initialized by 'nnet-initialize'.
 
+from __future__ import print_function
 import sys
 
 ###
@@ -54,7 +55,7 @@ if len(args) != 2 :
   parser.print_help()
   sys.exit(1)
 
-(feat_dim, num_leaves) = map(int,args);
+(feat_dim, num_leaves) = [int(i) for i in args];
 
 # Original prototype from Jiayu,
 #<NnetProto>
@@ -77,18 +78,18 @@ if None != o.param_stddev:     softmax_affine_opts += "<ParamStddev> %f " % o.pa
 # The BLSTM layers,
 if o.num_layers == 1:
   # Single BLSTM,
-  print "<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (feat_dim, 2*o.proj_dim_last, o.cell_dim) + lstm_extra_opts
+  print("<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (feat_dim, 2*o.proj_dim_last, o.cell_dim) + lstm_extra_opts)
 else:
   # >1 BLSTM,
-  print "<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (feat_dim, 2*o.proj_dim, o.cell_dim) + lstm_extra_opts
+  print("<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (feat_dim, 2*o.proj_dim, o.cell_dim) + lstm_extra_opts)
   for l in range(o.num_layers - 2):
-    print "<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (2*o.proj_dim, 2*o.proj_dim, o.cell_dim) + lstm_extra_opts
-  print "<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (2*o.proj_dim, 2*o.proj_dim_last, o.cell_dim) + lstm_extra_opts
+    print("<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (2*o.proj_dim, 2*o.proj_dim, o.cell_dim) + lstm_extra_opts)
+  print("<BlstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (2*o.proj_dim, 2*o.proj_dim_last, o.cell_dim) + lstm_extra_opts)
 
 # Adding <Tanh> for more stability,
-print "<Tanh> <InputDim> %d <OutputDim> %d" % (2*o.proj_dim_last, 2*o.proj_dim_last)
+print("<Tanh> <InputDim> %d <OutputDim> %d" % (2*o.proj_dim_last, 2*o.proj_dim_last))
 
 # Softmax layer,
-print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0" % (2*o.proj_dim_last, num_leaves) + softmax_affine_opts
-print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+print("<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0" % (2*o.proj_dim_last, num_leaves) + softmax_affine_opts)
+print("<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves))
 

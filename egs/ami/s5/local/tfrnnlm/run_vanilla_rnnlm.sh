@@ -39,7 +39,7 @@ if [ $stage -le 3 ]; then
     decode_dir=${basedir}/decode_${decode_set}
 
     # Lattice rescoring
-    steps/lmrescore_rnnlm_lat.sh \
+    steps/tfrnnlm/lmrescore_rnnlm_lat.sh \
       --cmd "$tfrnnlm_cmd --mem 16G" \
       --rnnlm-ver tensorflow  --weight $weight --max-ngram-order $ngram_order \
       data/lang_$LM $dir \

@@ -4,17 +4,19 @@
 # script to generate multicondition training data / dev data / test data
 import argparse, glob, math, os, random, scipy.io.wavfile, sys
 
-class list_cyclic_iterator:
+class list_cyclic_iterator(object):
   def __init__(self, list, random_seed = 0):
     self.list_index = 0
     self.list = list
     random.seed(random_seed)
     random.shuffle(self.list)
 
-  def next(self):
+  def __next__(self):
     item = self.list[self.list_index]
     self.list_index = (self.list_index + 1) % len(self.list)
     return item
+
+  next = __next__  # for Python 2
 
 def return_nonempty_lines(lines):
   new_lines = []
@@ -71,15 +73,15 @@ if __name__ == "__main__":
   for i in range(len(wav_files)):
     wav_file = " ".join(wav_files[i].split()[1:])
     output_wav_file = wav_out_files[i]
-    impulse_file = impulses.next()
+    impulse_file = next(impulses)
     noise_file = ''
     snr = ''
     found_impulse = False
     if add_noise:
-      for i in xrange(len(impulse_noise_index)):
+      for i in range(len(impulse_noise_index)):
         if impulse_file in impulse_noise_index[i][0]:
-          noise_file = impulse_noise_index[i][1].next()
-          snr = snrs.next()
+          noise_file = next(impulse_noise_index[i][1])
+          snr = next(snrs)
           assert(len(wav_file.strip()) > 0)
           assert(len(impulse_file.strip()) > 0)
           assert(len(noise_file.strip()) > 0)
