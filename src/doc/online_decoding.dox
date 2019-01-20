@@ -454,28 +454,22 @@ online2-net-nnet3-latgen-faster model/final.mdl graph/HCLG.fst graph/words.txt 5
 \endverbatim
 
 The word symbol table is mandatory (unlike other nnet3 online decoding programs) because
-the server is designed to output word strings. Endpoining is mandatory to make it possible to complete segments
-in a reasonable time. Other, non-standard options include:
+the server outputs word strings. Endpoining is mandatory to make the operation of the
+program reasonable. Other, non-standard options include:
     - samp-freq - sampling frequency of audio (usually 8000 for telephony and 16000 for other uses)
     - chunk-length - length of signal being processed by decoder at each step
     - output-freq - how often we check for changes in the decoding (ie. output refresh rate, default 1s)
     - num-threads-startup - number of threads used when initializing iVector extractor
-    - adapt-spk - you can choose to adapt the system to the speaker or treat each segment as a new speaker
-    - read-timeout - socket timeout for read operations in seconds
-
-When it comes to adaptation, currently we don't have a reasonable setup for online speaker diarization. It is not possible
-to determine who speaks when. If you know that only one speaker will use the system, you can leave speaker adaptation on.
-Otherwise, it is a better idea to treat each segment as a potentially new speaker and simply perform adaptation from scratch.
 
 The TCP protocol simply takes RAW signal on input (16-bit signed integer
 encoding at chosen sampling frequency) and outputs simple text using the following
 logic:
     - each refresh period (output-freq argument) the current state of decoding is output
-    - each line is terminated by '\\r'
-    - once an utterance boundary is detected due to endpointing a '\\n' char is output
+    - each line is terminated by '\r'
+    - once an utterance boundary is detected due to endpointing a '\n' char is output
 
-Each output string (delimited by '\\r') should be treated as uncertain and can change
-entirely until the utterance delimiter ('\\n') is sent. The delimiter chars are chosen
+Each output string (delimited by '\r') should be treated as uncertain and can change
+entirely until the utterance delimiter ('\n') is sent. The delimiter chars are chosen
 specifically in order to make the output look neat in the terminal. It is possible to
 use it with other interfaces and a web demo (HTML/JS AudioAPI+WebSockets) exists.
 
@@ -495,8 +489,7 @@ sox audio.wav -t raw -c 1 -b 16 -r 8k -e signed-integer - | nc localhost 5050
 \endverbatim
 
 It is possible to play audio (almost) simultaneously as decoding. It may require installing the
-'pv' program (used to throttle the signal into Kaldi at the same speed as the playback, you should set
-read-timeout to -1 for this demo to work):
+'pv' program (used to throttle the signal into Kaldi at the same speed as the playback):
 
 \verbatim
 sox audio.wav -t raw -c 1 -b 16 -r 8k -e signed-integer - | \
