@@ -213,7 +213,7 @@ while [ $x -lt $num_iters ]; do
              --read-rnnlm="$src_rnnlm" --write-rnnlm=$dir/$dest_number.raw \
              --read-embedding=$dir/${embedding_type}_embedding.$x.mat \
              --write-embedding=$dir/${embedding_type}_embedding.$dest_number.mat \
-             "ark,bg:cat $repeated_data | rnnlm-get-egs --srand=$num_splits_processed $train_egs_args - ark:- |" || touch $dir/.train_error &
+             "ark,bg:cat $repeated_data | rnnlm-get-egs --chunk-length=$chunk_length --srand=$num_splits_processed $train_egs_args - ark:- |" || touch $dir/.train_error &
       done
       wait # wait for just the training jobs.
       [ -f $dir/.train_error ] && \

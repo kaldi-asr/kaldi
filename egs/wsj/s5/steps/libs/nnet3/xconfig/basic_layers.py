@@ -9,6 +9,7 @@ and some basic layer definitions.
 """
 
 from __future__ import print_function
+from __future__ import division
 import math
 import re
 import sys

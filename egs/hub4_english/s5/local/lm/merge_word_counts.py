@@ -7,6 +7,7 @@
 A min-count argument is required to only write counts that are above the
 specified minimum count.
 """
+from __future__ import print_function
 
 import sys
 
@@ -21,7 +22,7 @@ def main():
         parts = line.strip().split()
         words[parts[1]] = words.get(parts[1], 0) + int(parts[0])
 
-    for word, count in words.iteritems():
+    for word, count in words.items():
         if count >= int(sys.argv[1]):
             print ("{0} {1}".format(count, word))
 

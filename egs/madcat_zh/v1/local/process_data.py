@@ -23,11 +23,11 @@ parser = argparse.ArgumentParser(description="Creates text, utt2spk and images.s
                                  " data/LDC2013T09 data/LDC2013T15 data/madcat.train.raw.lineid "
                                  " data/train data/local/lines ",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('database_path1', type=str,
+parser.add_argument('database_path1',
                     help='Path to the downloaded (and extracted) madcat data')
-parser.add_argument('data_splits', type=str,
+parser.add_argument('data_splits',
                     help='Path to file that contains the train/test/dev split information')
-parser.add_argument('out_dir', type=str,
+parser.add_argument('out_dir',
                     help='directory location to write output files.')
 args = parser.parse_args()
 
@@ -185,12 +185,12 @@ with open(args.data_splits) as f:
                 base_name = os.path.basename(image_file_path)
                 base_name, b = base_name.split('.tif')
                 for lineID in sorted(text_line_word_dict):
-                    updated_base_name = base_name + '_' + str(lineID).zfill(4) +'.png'
+                    updated_base_name = "{}_{}.png".format(base_name, str(lineID).zfill(4))
                     location = image_loc_dict[updated_base_name]
                     image_file_path = os.path.join(location, updated_base_name)
                     line = text_line_word_dict[lineID]
                     text = ' '.join(''.join(line))
-                    utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(lineID).zfill(4)
+                    utt_id = "{}_{}_{}_{}".format(writer_id, str(image_num).zfill(6), base_name, str(lineID).zfill(4))
                     text_fh.write(utt_id + ' ' + text + '\n')
                     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                     image_fh.write(utt_id + ' ' + image_file_path + '\n')
