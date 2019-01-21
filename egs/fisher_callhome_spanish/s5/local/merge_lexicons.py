@@ -1,8 +1,10 @@
+# Copyright 2014  Gaurav Kumar.   Apache 2.0
+#    2018  Saikiran Valluri, GoVivace inc., Avaaya
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # Merges unique words from Spanish Fisher, Gigaword and the LDC spanish lexicon
-
+from __future__ import print_function
 import sys, re
 import json
 import codecs
