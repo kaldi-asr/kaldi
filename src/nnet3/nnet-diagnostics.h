@@ -61,7 +61,7 @@ struct NnetComputeProbOptions {
   // constructor of NnetComputeProb that takes a pointer to the nnet, and the
   // stats will be stored there.
   bool store_component_stats;
-  
+
   bool compute_per_dim_accuracy;
 
   NnetOptimizeOptions optimize_config;
@@ -186,18 +186,18 @@ class NnetComputeProb {
    @param [out] tot_weight  The sum of the values in the supervision matrix
    @param [out] tot_accuracy  The total accuracy, equal to the sum over all row
                      indexes r such that the maximum column index of row r of
-                     supervision and nnet_output is the same, of the sum of 
+                     supervision and nnet_output is the same, of the sum of
                      the r'th row of supervision (i.e. the row's weight).
    @param [out] tot_weight_vec  If non-NULL, we write to this location
                     the counts per-class in the supervision matrix.
-                    This is expected to have the same dimension as the 
-                    corresponding output in the network. 
-   @param [out] tot_accuracy_vec  If non-NULL, we write to this location 
-                    the accuracy per-class. For index j, 
-                    the value is equal to the sum 
-                    over all row indexes r such that the maximum column index 
+                    This is expected to have the same dimension as the
+                    corresponding output in the network.
+   @param [out] tot_accuracy_vec  If non-NULL, we write to this location
+                    the accuracy per-class. For index j,
+                    the value is equal to the sum
+                    over all row indexes r such that the maximum column index
                     of row r of supervision is j and nnet_output is also j,
-                    of the sum of the r'th row of supervision 
+                    of the sum of the r'th row of supervision
                     (i.e. the row's weight)
 
 */

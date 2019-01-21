@@ -160,7 +160,8 @@ while [ $x -lt $num_iters ]; do
     for name in train heldout; do
       $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.$x.log \
          nnet3-chaina-train --use-gpu=$use_gpu \
-            --bottom-model-test-mode=true --top-model-test-mode=true \
+            --bottom.train=false --bottom.dropout-test-mode=true \
+            --top.train=false --top.dropout-test-mode=true \
             --leaky-hmm-coefficient=$leaky_hmm_coefficient \
             --bottom-subsampling-factor=$bottom_subsampling_factor \
             --xent-regularize=$xent_regularize \
@@ -254,7 +255,8 @@ if [ $stage -le $num_iters ] && $train; then
     nnet3-chaina-train --job-id=JOB --use-gpu=$use_gpu \
       --bottom-subsampling-factor=$bottom_subsampling_factor \
       --print-interval=10 \
-      --bottom-model-test-mode=true --top-model-test-mode=true \
+      --bottom.train=false --bottom.dropout-test-mode=true --bottom.batchnorm-test-mode=true \
+      --top.train=false --top.dropout-test-mode=true --top.batchnorm-test-mode=true \
       --adaptation-model-accumulate=true \
          $dir/$num_iters $den_fst_dir $dir/transforms_unmapped \
         "ark:nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size scp:$egs_dir/train.JOB.scp ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
@@ -279,7 +281,8 @@ if [ $stage -le $[num_iters+1] ]; then
     $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.final.log \
          nnet3-chaina-train --use-gpu=$use_gpu \
          --bottom-subsampling-factor=$bottom_subsampling_factor \
-         --bottom-model-test-mode=true --top-model-test-mode=true \
+         --bottom.train=false --bottom.dropout-test-mode=true \
+         --top.train=false --top.dropout-test-mode=true \
          --adaptation-test-mode=true \
          --leaky-hmm-coefficient=$leaky_hmm_coefficient \
          --xent-regularize=$xent_regularize \

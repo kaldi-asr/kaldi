@@ -88,10 +88,7 @@ int main(int argc, char *argv[]) {
         egs_rspecifier = po.GetArg(4),
         model_out_dir = po.GetOptArg(5);
 
-    NnetChainaModels models(chaina_opts.nnet_config.zero_component_stats,
-                            chaina_opts.bottom_model_test_mode,
-                            chaina_opts.top_model_test_mode,
-                            chaina_opts.adaptation_model_accumulate,
+    NnetChainaModels models(chaina_opts,
                             model_in_dir, den_fst_dir, transform_dir);
 
     {

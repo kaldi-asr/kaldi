@@ -25,31 +25,29 @@ namespace kaldi {
 namespace nnet3 {
 
 NnetChainaModels::NnetChainaModels(
-    bool zero_component_stats,
-    bool bottom_model_test_mode,
-    bool top_model_test_mode,
-    bool adaptation_model_accumulate,
+    const NnetChainaTrainingOptions &opts,
     const std::string &model_dir,
     const std::string &den_fst_dir,
     const std::string &transform_dir):
-    zero_component_stats_(zero_component_stats),
-    bottom_model_test_mode_(bottom_model_test_mode),
-    top_model_test_mode_(top_model_test_mode),
-    adaptation_model_accumulate_(adaptation_model_accumulate),
+    opts_(opts),
     model_dir_(model_dir),
     den_fst_dir_(den_fst_dir),
     transform_dir_(transform_dir) {
   std::string bottom_nnet_name; // model_dir/bottom.raw
   GetPathname(model_dir, "bottom", "raw", &bottom_nnet_name);
   ReadKaldiObject(bottom_nnet_name, &bottom_nnet_);
-  if (zero_component_stats_ && !bottom_model_test_mode_)
+  // we could change that condition later if it turns out to be a problem.
+  if (opts_.nnet_config.zero_component_stats &&
+      !opts_.bottom.batchnorm_test_mode)
     ZeroComponentStats(&bottom_nnet_);
   ComputeSimpleNnetContext(bottom_nnet_,
                            &bottom_nnet_left_context_,
                            &bottom_nnet_right_context_);
-  if (bottom_model_test_mode_) {
+  if (opts_.bottom.batchnorm_test_mode)
     SetBatchnormTestMode(true, &bottom_nnet_);
+  if (opts_.bottom.dropout_test_mode)
     SetDropoutTestMode(true, &bottom_nnet_);
+  if (!opts_.bottom.train && opts_.bottom.batchnorm_test_mode) {
     // The following is for efficiency in evaluating the bottom nnet,
     // it may combine certain component types.
     CollapseModel(CollapseModelConfig(), &bottom_nnet_);
@@ -93,17 +91,18 @@ NnetChainaModels::LanguageInfo *NnetChainaModels::GetInfoForLang(
       Input ki(model_filename, &binary);
       info->trans_model.Read(ki.Stream(), binary);
       info->am_nnet.Read(ki.Stream(), binary);
-      if (zero_component_stats_ && !top_model_test_mode_) {
-        ZeroComponentStats(&(info->am_nnet.GetNnet()));
-      }
-      if (top_model_test_mode_) {
-        Nnet &nnet = info->am_nnet.GetNnet();
+      Nnet &nnet = info->am_nnet.GetNnet();
+      if (opts_.nnet_config.zero_component_stats &&
+          !opts_.top.batchnorm_test_mode)
+        ZeroComponentStats(&nnet);
+      if (opts_.top.batchnorm_test_mode)
         SetBatchnormTestMode(true, &nnet);
+      if (opts_.top.dropout_test_mode)
         SetDropoutTestMode(true, &nnet);
-        // The following is for efficiency in evaluating the top nnet,
-        // it may combine certain component types.
-        CollapseModel(CollapseModelConfig(), &bottom_nnet_);
-      }
+      // The following is for efficiency in evaluating the top nnet,
+      // it may combine certain component types.
+      if (!opts_.top.train && opts_.top.batchnorm_test_mode)
+        CollapseModel(CollapseModelConfig(), &nnet);
     }
     ReadFstKaldi(den_fst_filename, &(info->den_fst));
     ReadKaldiObject(transform_filename, &(info->transform));
@@ -153,13 +152,13 @@ NnetChainaModels::GetTransformForLang(
 void NnetChainaModels::Write(const std::string &model_out_dir,
                              bool binary, int32 job_id) {
   std::ostringstream ss;
-  if (!bottom_model_test_mode_) {
+  if (opts_.bottom.train) {
     ss << "bottom nnet and ";
     std::string bottom_model_name;
     GetPathname(model_out_dir, "bottom", job_id, "raw", &bottom_model_name);
     WriteKaldiObject(bottom_nnet_, bottom_model_name, binary);
   }
-  if (!top_model_test_mode_) {
+  if (opts_.top.train) {
     ss << "nnets for languages ";
     for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter) {
       const std::string &lang_name = iter->first;
@@ -175,7 +174,7 @@ void NnetChainaModels::Write(const std::string &model_out_dir,
       }
     }
   }
-  if (adaptation_model_accumulate_) {
+  if (opts_.adaptation_model_accumulate) {
     ss << "adaptation-model stats for languages ";
     for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter) {
       const std::string &lang_name = iter->first;
@@ -294,7 +293,9 @@ std::shared_ptr<const NnetComputation> NnetChainaTopTrainer::GetComputation(
 
   ComputationRequest request;
   request.need_model_derivative = s.train_model;
-  request.store_component_stats = !opts_.top_model_test_mode;
+  // It's probably harmless to store stats unless we have batchorm components in
+  // test mode.
+  request.store_component_stats = !opts_.top.batchnorm_test_mode;
   request.inputs.resize(1);
   request.inputs[0].name = "input";
   request.inputs[0].indexes.resize(frames_per_sequence_in * num_sequences);
@@ -315,7 +316,7 @@ std::shared_ptr<const NnetComputation> NnetChainaTopTrainer::GetComputation(
   // the second frame of all sequences; and so on.
   request.outputs.resize(2);
   request.outputs[0].name = (s.adapted ? "output" : "output-si");
-  request.outputs[0].has_deriv = !opts_.top_model_test_mode;
+  request.outputs[0].has_deriv = opts_.top.train;
   request.outputs[0].indexes.resize(frames_per_sequence_out * num_sequences);
   int32 t_stride_out = top_subsampling_factor;
   iter = request.outputs[0].indexes.begin();
@@ -327,7 +328,7 @@ std::shared_ptr<const NnetComputation> NnetChainaTopTrainer::GetComputation(
       iter->t = t;
     }
   }
-  request.outputs[1].has_deriv = !opts_.top_model_test_mode;
+  request.outputs[1].has_deriv = opts_.top.train;
   request.outputs[1].name = (s.adapted ? "output-xent" : "output-si-xent");
   request.outputs[1].indexes = request.outputs[0].indexes;
   std::shared_ptr<const NnetComputation> computation = compiler_.Compile(
@@ -528,7 +529,7 @@ bool NnetChainaTopTrainer::TrainAdapted(
     ApplyL2Regularization(
         *nnet_,
         supervision.num_sequences * opts_.nnet_config.l2_regularize_factor *
-        (1.0 + opts_.unadapted_top_weight),
+        (1.0 + opts_.top.unadapted_weight),
         delta_nnet_);
 
     // Update the parameters of nnet.
@@ -568,6 +569,8 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
                                  const chain::Supervision &supervision,
                                  BaseFloat model_training_scale,
                                  CuMatrix<BaseFloat> *input_deriv) {
+  // note: if opts_.top.train if false, model_training_scale will have been
+  // already set to zero.
   KALDI_ASSERT(input.NumRows() != 0 && input.NumRows() % num_sequences == 0);
   int32 frames_per_sequence_in = input.NumRows() / num_sequences,
       frames_per_sequence_out = supervision.frames_per_sequence;
@@ -588,7 +591,7 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
 
 
   bool need_unadapted_model_deriv =
-      (model_training_scale * opts_.unadapted_top_weight) != 0.0;
+      (model_training_scale * opts_.top.unadapted_weight) != 0.0;
 
   std::shared_ptr<const NnetComputation> computation_unadapted =
       GetComputation(structure);
@@ -603,14 +606,14 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
   }
 
   // Scale down the model derivatives from the unadapted pass.
-  if (need_unadapted_model_deriv && opts_.unadapted_top_weight != 1.0)
-    ScaleNnet(opts_.unadapted_top_weight, delta_nnet_);
+  if (need_unadapted_model_deriv && opts_.top.unadapted_weight != 1.0)
+    ScaleNnet(opts_.top.unadapted_weight, delta_nnet_);
 
-  if (input_deriv && opts_.unadapted_bottom_weight != 1.0) {
+  if (input_deriv && opts_.bottom.unadapted_weight != 1.0) {
     // Apply the scale from --unadapted-bottom-weight.  We'll supply the other
     // factor that comes from from the language-specific bottom_weight ("bw")
     // ito UpdateNnetWithMaxChange() later on when we train the bottom nnet.
-    input_deriv->Scale(opts_.unadapted_bottom_weight);
+    input_deriv->Scale(opts_.bottom.unadapted_weight);
   }
 
   Posterior post_padded(input.NumRows());
@@ -828,7 +831,7 @@ void NnetChainaBottomTrainer::Backward(BaseFloat model_training_scale,
   ApplyL2Regularization(
       *nnet_,
       num_sequences * opts_.nnet_config.l2_regularize_factor *
-      (1.0 + opts_.unadapted_bottom_weight),
+      (1.0 + opts_.bottom.unadapted_weight),
       delta_nnet_);
 
 
@@ -898,7 +901,7 @@ std::shared_ptr<const NnetComputation> NnetChainaBottomTrainer::GetComputation(
       return iter->second;
   }
 
-  if (opts_.bottom_model_test_mode) {
+  if (!opts_.bottom.train) {
     KALDI_ASSERT(!s.train_model);
   }
 
@@ -916,10 +919,9 @@ std::shared_ptr<const NnetComputation> NnetChainaBottomTrainer::GetComputation(
 
   ComputationRequest request;
   request.need_model_derivative = s.train_model;
-  // If the user supplied the option --train-bottom-model false, then we
-  // are using test-mode for the batch-norm on the bottom model, and we
-  // don't want to overwrite the batch-norm stats.
-  request.store_component_stats = !opts_.bottom_model_test_mode;
+  // It's probably safe to store component-level stats, unless the
+  // batchnorm is in test mode.
+  request.store_component_stats = !opts_.bottom.batchnorm_test_mode;
   request.inputs.resize(1);
   request.inputs[0].name = "input";
   request.inputs[0].indexes.resize(frames_per_sequence_in * num_sequences);
@@ -1028,9 +1030,9 @@ void NnetChainaTrainer::Train(const std::string &key,
   ParseFromQueryString(key, "bw", &bottom_weight);
   KALDI_ASSERT(top_weight >= 0.0 && bottom_weight >= 0.0);
 
-  if (opts_.bottom_model_test_mode)
+  if (!opts_.bottom.train)
     bottom_weight = 0.0;
-  if (opts_.top_model_test_mode)
+  if (!opts_.top.train)
     top_weight = 0.0;
 
   int32 num_sequences, chunks_per_group, first_input_t,
