@@ -65,8 +65,30 @@ Combined Results for Reports and Conversational WER:
 %WER 32.36 [ 22542 / 69668, 2156 ins, 4184 del, 16202 sub ] exp/tri2b_mmi/decode_it4/wer_11
 %WER 32.50 [ 22640 / 69668, 2393 ins, 3956 del, 16291 sub ] exp/tri2b_mmi/decode_it3/wer_11
 %WER 32.79 [ 22847 / 69668, 2407 ins, 4760 del, 15680 sub ] exp/tri2b_mpe/decode_it3/wer_13
+# WER with train_sat_basis
+%WER 33.35 [ 23233 / 69668, 2385 ins, 5274 del, 15574 sub ] exp/tri3b/decode/wer_16_0.5
+# WER with train_sat
 %WER 33.61 [ 23413 / 69668, 2817 ins, 4577 del, 16019 sub ] exp/tri3b/decode/wer_17
 %WER 35.73 [ 24894 / 69668, 2630 ins, 4944 del, 17320 sub ] exp/tri3b/decode.si/wer_15
 %WER 36.17 [ 25196 / 69668, 2429 ins, 5393 del, 17374 sub ] exp/tri2b/decode/wer_16
 %WER 39.42 [ 27462 / 69668, 2473 ins, 6051 del, 18938 sub ] exp/tri2a/decode/wer_14
 %WER 40.35 [ 28113 / 69668, 2713 ins, 5635 del, 19765 sub ] exp/tri1/decode/wer_13
+
+
+# Effect of GMM seed model (tri2b instead of tri3b).  Using tri3b give a slightly better result
+# as compared to using tri2b as seed.
+%WER 16.66 [ 11610 / 69668, 1233 ins, 2747 del, 7630 sub ] exp/chain/tdnn_1a_3b_sp/decode_test/wer_10_0.0
+%WER 16.71 [ 11642 / 69668, 1145 ins, 2908 del, 7589 sub ] exp/chain/tdnn_1a_2b_sp/decode_test/wer_9_0.0
+
+# Effect of Tree-size (3500, 4500, 7000, 11000)
+%WER 16.66 [ 11610 / 69668, 1233 ins, 2747 del, 7630 sub ] exp/chain/tdnn_1a_3500_sp/decode_test/wer_10_0.0
+%WER 16.59 [ 11557 / 69668, 1234 ins, 2646 del, 7677 sub ] exp/chain/tdnn_1a_4500_sp/decode_test/wer_10_0.0
+%WER 16.47 [ 11474 / 69668, 1421 ins, 2207 del, 7846 sub ] exp/chain/tdnn_1a_7000_sp/decode_test/wer_9_0.0
+%WER 16.62 [ 11580 / 69668, 1164 ins, 2789 del, 7627 sub ] exp/chain/tdnn_1a_11000_sp/decode_test/wer_10_0.0
+
+# Effect of l2-regularization on the output with tree-size=7000. l2 on the output (0.005,0.002)
+%WER 16.54 [ 11522 / 69668, 1123 ins, 2739 del, 7660 sub ] exp/chain/tdnn_1a_7000_005_sp/decode_test/wer_9_0.5
+%WER 16.47 [ 11474 / 69668, 1421 ins, 2207 del, 7846 sub ] exp/chain/tdnn_1a_7000_002_sp/decode_test/wer_9_0.0
+
+#current best 'chain' models  (see local/chain/tuning/run_tdnn_1a.sh)
+%WER 16.47 [ 11474 / 69668, 1421 ins, 2207 del, 7846 sub ] exp/chain/tdnn_1a_sp/decode_test/wer_9_0.0
