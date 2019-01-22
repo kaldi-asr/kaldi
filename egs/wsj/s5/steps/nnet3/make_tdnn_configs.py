@@ -98,21 +98,21 @@ num_hidden_layers = len(splice_array)
 input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
 
 f = open(args.config_dir + "/vars", "w")
-print('left_context=' + str(left_context), file=f)
-print('right_context=' + str(right_context), file=f)
+print('left_context={}'.format(left_context), file=f)
+print('right_context={}'.format(right_context), file=f)
 # the initial l/r contexts are actually not needed.
 # print('initial_left_context=' + str(splice_array[0][0]), file=f)
 # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
-print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+print('num_hidden_layers={}'.format(num_hidden_layers), file=f)
 f.close()
 
 f = open(args.config_dir + "/init.config", "w")
 print('# Config file for initializing neural network prior to', file=f)
 print('# preconditioning matrix computation', file=f)
-print('input-node name=input dim=' + str(args.feat_dim), file=f)
+print('input-node name=input dim={}'.format(args.feat_dim), file=f)
 list=[ ('Offset(input, {0})'.format(n) if n != 0 else 'input' ) for n in splice_array[0] ]
 if args.ivector_dim > 0:
-    print('input-node name=ivector dim=' + str(args.ivector_dim), file=f)
+    print('input-node name=ivector dim={}'.format(args.ivector_dim), file=f)
     list.append('ReplaceIndex(ivector, t, 0)')
 # example of next line:
 # output-node name=output input="Append(Offset(input, -3), Offset(input, -2), Offset(input, -1), ... , Offset(input, 3), ReplaceIndex(ivector, t, 0))"

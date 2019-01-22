@@ -21,7 +21,6 @@
 #define KALDI_HMM_HMM_TOPOLOGY_H_
 
 #include "base/kaldi-common.h"
-#include "tree/context-dep.h"
 #include "util/const-integer-set.h"
 
 

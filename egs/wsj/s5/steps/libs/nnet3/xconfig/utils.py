@@ -184,7 +184,7 @@ def convert_value_to_type(key, dest_type, string_value):
 # Also, in any place a raw input/layer/output name can appear, we accept things
 # like [-1] meaning the previous input/layer/output's name, or [-2] meaning the
 # last-but-one input/layer/output, and so on.
-class Descriptor:
+class Descriptor(object):
     def __init__(self,
                  descriptor_string = None,
                  prev_names = None):
@@ -595,7 +595,7 @@ def parse_config_line(orig_config_line):
 
     rest_of_line = ' '.join(fields)
     # rest of the line can be of the form 'a=1 b=" x=1 y=2 " c=Append( i1, i2)'
-    positions = list(map(lambda x: x.start(), re.finditer('"', rest_of_line)))
+    positions = [x.start() for x in re.finditer('"', rest_of_line)]
     if not len(positions) % 2 == 0:
         raise RuntimeError("Double-quotes should occur in pairs")
 

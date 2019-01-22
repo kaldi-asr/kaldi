@@ -9,6 +9,7 @@ raw neural network instead of an acoustic model.
 """
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import logging
 import pprint
@@ -321,8 +322,7 @@ def train(args, run_opts):
     num_archives_expanded = num_archives * args.frames_per_eg
     num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
-    num_iters = int((num_archives_to_process * 2)
-                 / (args.num_jobs_initial + args.num_jobs_final))
+    num_iters = int((num_archives_to_process * 2) / (args.num_jobs_initial + args.num_jobs_final))
 
     # If do_final_combination is True, compute the set of models_to_combine.
     # Otherwise, models_to_combine will be none.

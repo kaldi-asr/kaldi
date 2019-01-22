@@ -38,14 +38,14 @@ if __name__ == "__main__":
 
   sys.stderr.write(str(" ".join(sys.argv)))
   parser = argparse.ArgumentParser(usage)
-  parser.add_argument('input_ctm_file', type=str, help='ctm file for the recordings')
-  parser.add_argument('output_ctm_file', type=str, help='ctm file for the recordings')
-  parser.add_argument('recording_name_file', type=str, help='file with names of the recordings')
+  parser.add_argument('input_ctm_file', help='ctm file for the recordings')
+  parser.add_argument('output_ctm_file', help='ctm file for the recordings')
+  parser.add_argument('recording_name_file', help='file with names of the recordings')
 
   params = parser.parse_args()
 
   try:
-    file_names = map(lambda x: x.strip(), open("{0}".format(params.recording_name_file)).readlines())
+    file_names = [x.strip() for x in open("{0}".format(params.recording_name_file)).readlines()]
   except IOError:
     raise Exception("Expected to find {0}".format(params.recording_name_file))
 

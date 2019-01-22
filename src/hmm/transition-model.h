@@ -22,11 +22,12 @@
 #define KALDI_HMM_TRANSITION_MODEL_H_
 
 #include "base/kaldi-common.h"
-#include "tree/context-dep.h"
 #include "util/const-integer-set.h"
 #include "fst/fst-decl.h" // forward declarations.
 #include "hmm/hmm-topology.h"
 #include "itf/options-itf.h"
+#include "itf/context-dep-itf.h"
+#include "matrix/kaldi-vector.h"
 
 namespace kaldi {
 
