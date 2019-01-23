@@ -195,6 +195,23 @@ class NnetChainaModels {
                    const std::string &den_fst_dir,
                    const std::string &transform_dir);
 
+  // Copy constructor
+  NnetChainaModels(const NnetChainaModels &other);
+
+
+  /*
+    This interpolates the (top and bottom) models stored here with the one in
+    'model_dir', giving a weight 0 < new_model_weight < 1 to the new models.
+    All models currently loaded will be looked for (this depends what
+    languages were present in the egs), so you need to actually use this
+    object for training or objective evaluation before calling this function
+    on it.
+   */
+  void InterpolateWith(
+      BaseFloat new_model_weight,
+      const std::string &model_dir);
+
+
   Nnet* GetBottomNnet();
 
   /**
@@ -230,6 +247,15 @@ class NnetChainaModels {
              bool binary,
              int32 job_id);
 
+  // This is a version of Write() is specialized for use by the
+  // model-combination code; it differs from the Write() above in
+  // that it writes out all models we have (ignoring whether or not
+  // they were trained), and it writes out the 'top' models as
+  // .mdl files (including the transition models).
+  void WriteCombinedModels(const std::string &model_out_dir,
+                           bool binary);
+
+
   ~NnetChainaModels();
  private:
   // This function sets "pathname" to the string:
@@ -239,8 +265,11 @@ class NnetChainaModels {
                    const std::string &suffix,
                    std::string *pathname);
 
-  // This version of GetPathname() sets "pathname" to the string:
+  // If job_id is >= 0, then this version of GetPathname() sets "pathname" to
+  // the string:
   // <dir>/<name>.<job_id>.<suffix>
+  // otherwise (job_id < 0) it sets it to
+  // <dir>/<name>.<suffix>
   void GetPathname(const std::string &dir,
                    const std::string &name,
                    int32 job_id,
@@ -257,8 +286,14 @@ class NnetChainaModels {
     fst::StdVectorFst den_fst;
     // transform comes from <transform_dir>/<language_name>.ada
     differentiable_transform::DifferentiableTransformMapped transform;
+    LanguageInfo() { }
+    // Copy constructor
+    LanguageInfo(const LanguageInfo &other);
   };
 
+  // Depending on opts_, this function may zero the component stats, set test
+  // mode for batchnorm and/or dropout components, and do model-collapsing.
+  void InitializeNnet(bool is_top_nnet, Nnet *nnet) const;
 
   // get the LanguageInfo* for this language, creating it (and reading its
   // contents from disk) if it does not already exist.
@@ -278,7 +313,6 @@ class NnetChainaModels {
   // The left and right context of bottom_nnet_.
   int32 bottom_nnet_left_context_;
   int32 bottom_nnet_right_context_;
-
 
   std::unordered_map<std::string, LanguageInfo*, StringHasher> lang_info_;
 };
@@ -378,6 +412,15 @@ class NnetChainaTopTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
+
+
+  // Returns the total objective-function value for the adapted computation (if
+  // adapted == true), or the unadapted/speaker-independent computation
+  // otherwise, with the corresponding weight (which can be interpreted as a
+  // frame count) written to 'weight'.  The returned value would normally be
+  // divided by 'weight' before being displayed.
+  BaseFloat GetTotalObjf(bool adapted, BaseFloat *weight) const;
+
 
   // Calls kaldi::nnet3::ConsolidateMemory() on nnet_ and delta_nnet_; we do
   // this after the first minibatch of training, to reduce fragmentation.
@@ -818,6 +861,14 @@ class NnetChainaTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
+
+  // Returns the total objective-function value, summed over all languages
+  // present, for the adapted computation (if adapted == true), or the
+  // unadapted/speaker-independent computation otherwise, with the corresponding
+  // weight (which can be interpreted as a frame count) written to 'weight'.
+  // The returned value would normally be divided by 'weight' before being
+  // displayed.
+  BaseFloat GetTotalObjf(bool adapted, BaseFloat *weight) const;
 
   // Prints out the max-change stats (if nonzero): the percentage of time that
   // per-component max-change and global max-change were enforced.

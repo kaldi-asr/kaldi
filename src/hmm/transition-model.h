@@ -251,6 +251,7 @@ class TransitionModel {
   /// compare the transition probabilities.
   bool Compatible(const TransitionModel &other) const;
 
+  TransitionModel(const TransitionModel &other) = default;
  private:
   void MleUpdateShared(const Vector<double> &stats,
                        const MleTransitionUpdateConfig &cfg,
@@ -321,7 +322,8 @@ class TransitionModel {
   /// of pdfs).
   int32 num_pdfs_;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(TransitionModel);
+  // Disallow assignment by making it private; this won't be defined.
+  TransitionModel &operator=(const TransitionModel &other);
 };
 
 inline int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {

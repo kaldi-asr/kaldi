@@ -223,9 +223,33 @@ while [ $x -lt $num_iters ]; do
   x=$[x+1]
 done
 
-# TODO: later we'll have a model combination phase.
 
 if [ $stage -le $num_iters ] && $train; then
+  echo "$0: doing model combination"
+  if [ -d $dir/final ]; then
+    echo "$0: removing previous contents of $dir/final"
+    rm -r $dir/final
+  fi
+  mkdir -p $dir/final
+  den_fst_dir=$egs_dir/misc
+
+  [ $max_models_combine -gt $[num_iters/2] ] && max_models_combine=$[num_iters/2];
+  input_model_dirs=$(for x in $(seq $max_models_combine); do echo $dir/$[num_iters+1-x]; done)
+  output_model_dir=$dir/final
+  transform_dir=$dir/init
+
+   $cmd $gpu_cmd_opt $dir/log/combine.log \
+      nnet3-chaina-combine --use-gpu=$use_gpu \
+        --leaky-hmm-coefficient=$leaky_hmm_coefficient \
+        --bottom-subsampling-factor=$bottom_subsampling_factor \
+        --print-interval=10  \
+        $input_model_dirs $den_fst_dir $transform_dir \
+        "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/train_subset.scp ark:-|" \
+        $dir/final
+fi
+
+
+if [ $stage -le $[num_iters+1] ] && $train; then
   # Now accumulate the class-dependent mean (and variance) stats of the
   # adaptation model, which will be needed for decoding.  We remove the map that
   # had reduced the num-classes from several thousand to (e.g.) 200, because we
@@ -240,12 +264,8 @@ if [ $stage -le $num_iters ] && $train; then
     run.pl $dir/log/copy_transform_${lang}.log \
         nnet3-adapt copy $dir/init/${lang}.ada $dir/transforms_unmapped/${lang}.ada
   done
-  if [ -d $dir/final ]; then
-    echo "$0: removing previous contents of $dir/final"
-    rm -r $dir/final
-  fi
-  mkdir -p $dir/final
   den_fst_dir=$egs_dir/misc
+  transform_dir=$dir/init
 
   num_jobs=$num_scp_files
   [ $num_jobs -gt 4 ] && num_jobs=4   # there are so few params to estimate that
@@ -258,7 +278,7 @@ if [ $stage -le $num_iters ] && $train; then
       --bottom.train=false --bottom.dropout-test-mode=true --bottom.batchnorm-test-mode=true \
       --top.train=false --top.dropout-test-mode=true --top.batchnorm-test-mode=true \
       --adaptation-model-accumulate=true \
-         $dir/$num_iters $den_fst_dir $dir/transforms_unmapped \
+         $dir/final $den_fst_dir $dir/transforms_unmapped \
         "ark:nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size scp:$egs_dir/train.JOB.scp ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
         $dir/final
 
@@ -268,10 +288,9 @@ if [ $stage -le $num_iters ] && $train; then
            nnet3-adapt estimate $stats $dir/final/${lang}.ada
     rm $stats
   done
-  cp $dir/$num_iters/bottom.raw $dir/$num_iters/*.mdl $dir/final
 fi
 
-if [ $stage -le $[num_iters+1] ]; then
+if [ $stage -le $[num_iters+2] ]; then
   # Accumulate some final diagnostics.  The difference with the last iteration's
   # diagnostics is that we use test-mode for the adaptation model (i.e. a target
   # model computed from all the data, not just one minibatch).

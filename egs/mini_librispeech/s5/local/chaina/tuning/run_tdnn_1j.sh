@@ -11,11 +11,30 @@
 #%WER 16.56 [ 3334 / 20138, 289 ins, 470 del, 2575 sub ] exp/chaina/tdnn1j_sp/decode_dev_clean_2_tgsmall.si/wer_11_0.0
 #a09:s5: grep WER exp/chaina/tdnn1j_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
 #%WER 12.95 [ 2608 / 20138, 248 ins, 383 del, 1977 sub ] exp/chaina/tdnn1j_sp/decode_dev_clean_2_tgsmall/wer_12_0.0
+## And a rerun:
+# a09:s5:  grep WER exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall.si/wer_* | utils/best_wer.sh
+# %WER 16.08 [ 3239 / 20138, 272 ins, 484 del, 2483 sub ] exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall.si/wer_11_0.0
+# a09:s5:  grep WER exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
+# %WER 13.16 [ 2651 / 20138, 236 ins, 402 del, 2013 sub ] exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall/wer_12_0.0
 
+## Then after introducing model combination we got:
+# grep WER exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall.si/wer_* | utils/best_wer.sh
+#%WER 14.53 [ 2927 / 20138, 301 ins, 347 del, 2279 sub ] exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall.si/wer_11_0.0
+#b10:s5:  grep WER exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
+#%WER 11.34 [ 2283 / 20138, 234 ins, 303 del, 1746 sub ] exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tgsmall/wer_12_0.0
+# And after LM rescoring:
+# %WER 8.26 [ 1663 / 20138, 243 ins, 147 del, 1273 sub ] exp/chaina/tdnn1j2_sp/decode_dev_clean_2_tglarge/wer_10_0.5
+
+# the baseline 1i:
 #a09:s5: grep WER exp/chaina/tdnn1i_sp/decode_dev_clean_2_tgsmall.si/wer_* | utils/best_wer.sh
 #%WER 16.85 [ 3393 / 20138, 310 ins, 481 del, 2602 sub ] exp/chaina/tdnn1i_sp/decode_dev_clean_2_tgsmall.si/wer_11_0.0
 #a09:s5: grep WER exp/chaina/tdnn1i_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
 #%WER 13.37 [ 2693 / 20138, 243 ins, 398 del, 2052 sub ] exp/chaina/tdnn1i_sp/decode_dev_clean_2_tgsmall/wer_12_0.0
+# a rerun of the baseline 1i:
+#a09:s5: grep WER exp/chaina/tdnn1i2_sp/decode_dev_clean_2_tgsmall.si/wer_* | utils/best_wer.sh
+#%WER 16.71 [ 3365 / 20138, 255 ins, 567 del, 2543 sub ] exp/chaina/tdnn1i2_sp/decode_dev_clean_2_tgsmall.si/wer_12_0.0
+#a09:s5: grep WER exp/chaina/tdnn1i2_sp/decode_dev_clean_2_tgsmall/wer_* | utils/best_wer.sh
+#%WER 13.28 [ 2675 / 20138, 259 ins, 374 del, 2042 sub ] exp/chaina/tdnn1i2_sp/decode_dev_clean_2_tgsmall/wer_11_0.0
 
 
 # 1i is as 1h but replacing half the mean-transformed dims with fMLLR in blocks of 8.
@@ -424,136 +443,20 @@ if [ $stage -le 24 ]; then
 fi
 
 if [ $stage -le 25 ]; then
-  # Do the speaker-dependent decoding pass
+  # Do the speaker-dependent decoding pass and LM rescoring
   test_sets=dev_clean_2
   for data in $test_sets; do
     steps/chaina/decode.sh --cmd "$cmd" --num-threads 4 \
-        data/${data}_hires $tree_dir/graph_tgsmall\
-        $dir/final $dir/data/final/${data} \
-        $dir/decode_${data}_tgsmall.si $dir/decode_${data}_tgsmall
+      data/${data}_hires $tree_dir/graph_tgsmall\
+      $dir/final $dir/data/final/${data} \
+      $dir/decode_${data}_tgsmall.si $dir/decode_${data}_tgsmall
+
+    steps/lmrescore_const_arpa.sh --cmd "$cmd" \
+      data/lang_test_{tgsmall,tglarge} \
+      data/${data}_hires $dir/decode_${data}_{tgsmall,tglarge}
   done
 fi
 
-
-exit 0;
-
-
-  # Work out the model
-  # The following script is equivalent to doing something like the
-  # following:
-  # cat > $dir/init/info.txt <<EOF
-  # langs default
-  # frame_subsampling_factor 3
-  # bottom_subsampling_factor 3
-  # model_left_context 22
-  # model_right_context 22
-  # EOF
-  #
-  # note: $langs is "default"
-  steps/chaina/get_model_context.sh \
-        --frame-subsampling-factor=$frame_subsampling_factor \
-        --bottom-subsampling-factor=$bottom_subsampling_factor \
-       --langs="$langs" $dir/init/ > $dir/init/info.txt
-fi
-
-if [ $stage -le 14 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
-  fi
-
-  steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$decode_cmd" \
-    --feat.online-ivector-dir=$train_ivector_dir \
-    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize $xent_regularize \
-    --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.0 \
-    --chain.apply-deriv-weights=false \
-    --chain.lm-opts="--num-extra-lm-states=2000" \
-    --trainer.dropout-schedule $dropout_schedule \
-    --trainer.add-option="--optimization.memory-compression-level=2" \
-    --trainer.srand=$srand \
-    --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=20 \
-    --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=5 \
-    --trainer.optimization.initial-effective-lrate=0.002 \
-    --trainer.optimization.final-effective-lrate=0.0002 \
-    --trainer.num-chunk-per-minibatch=128,64 \
-    --egs.chunk-width=$chunk_width \
-    --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
-    --cleanup.remove-egs=$remove_egs \
-    --use-gpu=true \
-    --reporting.email="$reporting_email" \
-    --feat-dir=$train_data_dir \
-    --tree-dir=$tree_dir \
-    --lat-dir=$lat_dir \
-    --dir=$dir  || exit 1;
-fi
-
-if [ $stage -le 15 ]; then
-  # Note: it's not important to give mkgraph.sh the lang directory with the
-  # matched topology (since it gets the topology file from the model).
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgsmall \
-    $tree_dir $tree_dir/graph_tgsmall || exit 1;
-fi
-
-if [ $stage -le 16 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  rm $dir/.error 2>/dev/null || true
-
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      steps/nnet3/decode.sh \
-          --acwt 1.0 --post-decode-acwt 10.0 \
-          --frames-per-chunk $frames_per_chunk \
-          --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_{tgsmall,tglarge} \
-       data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
-    ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-fi
-
-# Not testing the 'looped' decoding separately, because for
-# TDNN systems it would give exactly the same results as the
-# normal decoding.
-
-if $test_online_decoding && [ $stage -le 17 ]; then
-  # note: if the features change (e.g. you add pitch features), you will have to
-  # change the options of the following command line.
-  steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf \
-    $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
-
-  rm $dir/.error 2>/dev/null || true
-
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      # note: we just give it "data/${data}" as it only uses the wav.scp, the
-      # feature type does not matter.
-      steps/online/nnet3/decode.sh \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --nj $nspk --cmd "$decode_cmd" \
-        $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_{tgsmall,tglarge} \
-       data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
-    ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-fi
 
 
 exit 0;

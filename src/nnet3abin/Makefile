@@ -6,7 +6,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = nnet3-adapt nnet3-chaina-train
+BINFILES = nnet3-adapt nnet3-chaina-train nnet3-chaina-combine
 
 OBJFILES =
 

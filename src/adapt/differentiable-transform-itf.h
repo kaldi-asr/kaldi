@@ -382,11 +382,11 @@ class DifferentiableTransform {
 
   DifferentiableTransform(): num_classes_(-1) { }
 
+  virtual ~DifferentiableTransform() { }
+ protected:
   DifferentiableTransform(const DifferentiableTransform &other):
       num_classes_(other.num_classes_) { }
 
-  virtual ~DifferentiableTransform() { }
- protected:
   int32 num_classes_;
 };
 
@@ -433,6 +433,8 @@ struct DifferentiableTransformMapped {
 
   ~DifferentiableTransformMapped() { delete transform; }
 
+  // Copy constructor
+  DifferentiableTransformMapped(const DifferentiableTransformMapped &other);
 };
 
 

@@ -36,23 +36,87 @@ NnetChainaModels::NnetChainaModels(
   std::string bottom_nnet_name; // model_dir/bottom.raw
   GetPathname(model_dir, "bottom", "raw", &bottom_nnet_name);
   ReadKaldiObject(bottom_nnet_name, &bottom_nnet_);
-  // we could change that condition later if it turns out to be a problem.
-  if (opts_.nnet_config.zero_component_stats &&
-      !opts_.bottom.batchnorm_test_mode)
-    ZeroComponentStats(&bottom_nnet_);
   ComputeSimpleNnetContext(bottom_nnet_,
                            &bottom_nnet_left_context_,
                            &bottom_nnet_right_context_);
-  if (opts_.bottom.batchnorm_test_mode)
-    SetBatchnormTestMode(true, &bottom_nnet_);
-  if (opts_.bottom.dropout_test_mode)
-    SetDropoutTestMode(true, &bottom_nnet_);
-  if (!opts_.bottom.train && opts_.bottom.batchnorm_test_mode) {
-    // The following is for efficiency in evaluating the bottom nnet,
+  bool is_top_nnet = false;
+  InitializeNnet(is_top_nnet, &bottom_nnet_);
+}
+
+void NnetChainaModels::InitializeNnet(
+    bool is_top_nnet, Nnet *nnet) const {
+  const NnetChainaTrainingPerModelOptions &bottom_or_top_opts =
+      (is_top_nnet ? opts_.top : opts_.bottom);
+
+  // we could change that condition later if it turns out to be a problem.
+  if (bottom_or_top_opts.batchnorm_test_mode)
+    SetBatchnormTestMode(true, nnet);
+  if (bottom_or_top_opts.dropout_test_mode)
+    SetDropoutTestMode(true, nnet);
+  if (!bottom_or_top_opts.train && bottom_or_top_opts.batchnorm_test_mode) {
+    // The following is for efficiency in evaluating the nnet;
     // it may combine certain component types.
-    CollapseModel(CollapseModelConfig(), &bottom_nnet_);
+    CollapseModel(CollapseModelConfig(), nnet);
   }
 }
+
+NnetChainaModels::LanguageInfo::LanguageInfo(
+    const NnetChainaModels::LanguageInfo &other):
+    trans_model(other.trans_model),
+    am_nnet(other.am_nnet),
+    den_fst(other.den_fst),
+    transform(other.transform) { }
+
+
+// This code is related to UpdateNnetMovingAverage() in nnet3-chain-combine.cc.
+void NnetChainaModels::InterpolateWith(
+      BaseFloat new_model_weight,
+      const std::string &model_dir) {
+  KALDI_ASSERT(new_model_weight > 0.0 && new_model_weight < 1.0);
+
+  std::string bottom_filename;
+  GetPathname(model_dir, "bottom", "raw", &bottom_filename);
+  Nnet bottom_nnet;  // we don't need the transition model, and the reading code
+                     // is capable of ignoring it.
+  ReadKaldiObject(bottom_filename, &bottom_nnet);
+  bool is_top_nnet = false;
+  InitializeNnet(is_top_nnet, &bottom_nnet);
+  ScaleNnet(1.0 - new_model_weight, &bottom_nnet_);
+  AddNnet(bottom_nnet, new_model_weight, &bottom_nnet_);
+  for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter) {
+    const std::string &lang = iter->first;
+    LanguageInfo *info = iter->second;
+    std::string model_filename;
+    GetPathname(model_dir, lang, "mdl", &model_filename);
+    Nnet top_nnet;  // we don't need the transition model, and the reading code
+                    // is capable of ignoring it.
+    ReadKaldiObject(model_filename, &top_nnet);
+    is_top_nnet = true;
+    InitializeNnet(is_top_nnet, &top_nnet);
+    Nnet &stored_nnet = info->am_nnet.GetNnet();
+    ScaleNnet(1.0 - new_model_weight, &stored_nnet);
+    AddNnet(top_nnet, new_model_weight, &stored_nnet);
+  }
+}
+
+
+NnetChainaModels::NnetChainaModels(const NnetChainaModels &other):
+    opts_(other.opts_),
+    model_dir_(other.model_dir_),
+    den_fst_dir_(other.den_fst_dir_),
+    transform_dir_(other.transform_dir_),
+    bottom_nnet_(other.bottom_nnet_),
+    bottom_nnet_left_context_(other.bottom_nnet_left_context_),
+    bottom_nnet_right_context_(other.bottom_nnet_right_context_) {
+  for (auto iter = other.lang_info_.begin();
+       iter != other.lang_info_.end(); ++iter) {
+    const std::string &lang = iter->first;
+    LanguageInfo *info = iter->second;
+    lang_info_[lang] = new LanguageInfo(*info);
+  }
+}
+
+
 
 void NnetChainaModels::GetPathname(const std::string &dir,
                                    const std::string &name,
@@ -92,17 +156,8 @@ NnetChainaModels::LanguageInfo *NnetChainaModels::GetInfoForLang(
       info->trans_model.Read(ki.Stream(), binary);
       info->am_nnet.Read(ki.Stream(), binary);
       Nnet &nnet = info->am_nnet.GetNnet();
-      if (opts_.nnet_config.zero_component_stats &&
-          !opts_.top.batchnorm_test_mode)
-        ZeroComponentStats(&nnet);
-      if (opts_.top.batchnorm_test_mode)
-        SetBatchnormTestMode(true, &nnet);
-      if (opts_.top.dropout_test_mode)
-        SetDropoutTestMode(true, &nnet);
-      // The following is for efficiency in evaluating the top nnet,
-      // it may combine certain component types.
-      if (!opts_.top.train && opts_.top.batchnorm_test_mode)
-        CollapseModel(CollapseModelConfig(), &nnet);
+      bool is_top_nnet = true;
+      InitializeNnet(is_top_nnet, &nnet);
     }
     ReadFstKaldi(den_fst_filename, &(info->den_fst));
     ReadKaldiObject(transform_filename, &(info->transform));
@@ -191,6 +246,29 @@ void NnetChainaModels::Write(const std::string &model_out_dir,
 }
 
 
+void NnetChainaModels::WriteCombinedModels(const std::string &model_out_dir,
+                                           bool binary) {
+
+  std::string bottom_model_name;
+  GetPathname(model_out_dir, "bottom", "raw", &bottom_model_name);
+  WriteKaldiObject(bottom_nnet_, bottom_model_name, binary);
+
+  std::ostringstream ss;
+  for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter) {
+    const std::string &lang_name = iter->first;
+    ss << lang_name << " ";
+    LanguageInfo *info = iter->second;
+    std::string top_model_name;
+    GetPathname(model_out_dir, lang_name, "mdl", &top_model_name);
+
+    Output ko(top_model_name, binary);
+    info->trans_model.Write(ko.Stream(), binary);
+    info->am_nnet.Write(ko.Stream(), binary);
+  }
+  KALDI_LOG << "Wrote bottom.raw and .mdl files for languages:"
+            << ss.str() << "to: " << model_out_dir;
+}
+
 NnetChainaModels::~NnetChainaModels() {
   for (auto iter = lang_info_.begin(); iter != lang_info_.end(); ++iter)
     delete iter->second;
@@ -215,7 +293,8 @@ NnetChainaTopTrainer::NnetChainaTopTrainer(
 
   config.Check();
 
-  if (opts_.nnet_config.zero_component_stats)
+  if (opts_.nnet_config.zero_component_stats &&
+      !opts_.top.batchnorm_test_mode)
     ZeroComponentStats(nnet);
 
   ScaleNnet(0.0, delta_nnet_);
@@ -749,6 +828,13 @@ void ConvertPosterior(
   }
 }
 
+BaseFloat NnetChainaTopTrainer::GetTotalObjf(bool adapted, BaseFloat *weight) const {
+  const ObjectiveFunctionInfo &objf =
+      (adapted ? output_objf_ : output_si_objf_);
+  *weight = objf.tot_weight;
+  return objf.tot_objf;
+}
+
 bool NnetChainaTopTrainer::PrintTotalStats() const {
   bool ans = false;
   if (output_si_objf_.PrintTotalStats(lang_name_ + ":output-si"))
@@ -879,7 +965,8 @@ NnetChainaBottomTrainer::NnetChainaBottomTrainer(
     compiler_(*nnet, opts_.nnet_config.optimize_config,
               opts_.nnet_config.compiler_config),
     max_change_stats_(*nnet) {
-  if (opts_.nnet_config.zero_component_stats)
+  if (opts_.nnet_config.zero_component_stats &&
+      !opts_.bottom.batchnorm_test_mode)
     ZeroComponentStats(nnet);
   ScaleNnet(0.0, delta_nnet_);
   if (opts_.nnet_config.read_cache != "") {
@@ -974,6 +1061,19 @@ void NnetChainaTrainer::GetContextInfo(
     int32 *top_left_context,
     int32 *top_right_context) {
 
+}
+
+BaseFloat NnetChainaTrainer::GetTotalObjf(
+    bool adapted, BaseFloat *weight) const {
+  *weight = 0.0;
+  BaseFloat tot_objf = 0.0;
+  for (auto iter = top_trainers_.begin(); iter != top_trainers_.end();
+       ++iter) {
+    BaseFloat this_weight;
+    tot_objf += iter->second->GetTotalObjf(adapted, &this_weight);
+    *weight += this_weight;
+  }
+  return tot_objf;
 }
 
 bool NnetChainaTrainer::PrintTotalStats() const {

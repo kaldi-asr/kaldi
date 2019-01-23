@@ -187,5 +187,12 @@ std::string DifferentiableTransformMapped::Info() const {
   return os.str();
 }
 
+DifferentiableTransformMapped::DifferentiableTransformMapped(
+    const DifferentiableTransformMapped &other): pdf_map(other.pdf_map) {
+  if (other.transform == NULL) transform = NULL;
+  else transform = other.transform->Copy();
+}
+
+
 }  // namespace differentiable_transform
 }  // namespace kaldi
