@@ -53,8 +53,8 @@ class TcpServer {
 
   Vector<BaseFloat> GetChunk(); //get the data read by above method
 
-  void SaveRemainder(int remainder);
-  bool HasReaminder();
+  void SaveRemainder(int remainder_size);
+  bool HasRemainder();
 
   Vector<BaseFloat> GetRemainder();
   void ResetRemainder();
@@ -241,12 +241,12 @@ int main(int argc, char *argv[]) {
 
         std::vector<std::pair<int32, BaseFloat>> delta_weights;
 
-        if (server.HasReaminder()) {
+        if (server.HasRemainder()) {
           feature_pipeline.AcceptWaveform(samp_freq, server.GetRemainder());
           server.ResetRemainder();
         }
 
-        int32 samp_pipeline = 0;//this is used to figure out the offet for the remainder
+        int32 samp_pipeline = 0;//this is used to figure out the offset for the remainder
 
         while (true) {
 
@@ -307,8 +307,9 @@ int main(int argc, char *argv[]) {
 
             decoder.FinalizeDecoding();
 
-            server.SaveRemainder(
-                samp_pipeline - feature_pipeline.NumFramesReady() * feature_pipeline.FrameShiftInSeconds() * samp_freq);
+            int32 processed = feature_pipeline.NumFramesReady() * feature_pipeline.FrameShiftInSeconds() * samp_freq;
+            if (processed < samp_pipeline)
+              server.SaveRemainder(samp_pipeline - processed);
 
             CompactLattice lat;
             decoder.GetLattice(true, &lat);
@@ -449,15 +450,15 @@ Vector<BaseFloat> TcpServer::GetChunk() {
   return buf;
 }
 
-void TcpServer::SaveRemainder(int remainder) {
-  rem_.Resize(static_cast<MatrixIndexT>(remainder));
+void TcpServer::SaveRemainder(int32 remainder_size) {
+  rem_.Resize(static_cast<MatrixIndexT>(remainder_size));
 
-  int32 offset = has_read_ - remainder;
+  int32 offset = has_read_ - remainder_size;
   for (size_t i = offset; i < has_read_; i++)
     rem_(i - offset) = static_cast<BaseFloat>(samp_buf_[i]);
 }
 
-bool TcpServer::HasReaminder() {
+bool TcpServer::HasRemainder() {
   return rem_.Dim() > 0;
 }
 
