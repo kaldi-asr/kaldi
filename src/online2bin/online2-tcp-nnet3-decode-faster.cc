@@ -34,6 +34,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <poll.h>
+#include <signal.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string>
@@ -49,11 +50,18 @@ class TcpServer {
   int32 Accept();  //accept a client and return its descriptor
 
   bool ReadChunk(size_t len); //get more data and return false if end-of-stream
-  Vector<BaseFloat> getChunk(); //get the data read by above method
+
+  Vector<BaseFloat> GetChunk(); //get the data read by above method
+
+  void SaveRemainder(int remainder);
+  bool HasReaminder();
+
+  Vector<BaseFloat> GetRemainder();
+  void ResetRemainder();
 
   bool Write(std::string msg); //write to accepted client
 
-  void disconnect();
+  void Disconnect();
 
  private:
   struct ::sockaddr_in h_addr_;
@@ -62,6 +70,7 @@ class TcpServer {
   size_t buf_len_, has_read_;
   pollfd client_set_[1];
   int read_timeout_;
+  Vector<BaseFloat> rem_;
 };
 
 std::string LatticeToString(const Lattice &lat, fst::SymbolTable *word_syms) {
@@ -195,6 +204,8 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Loaded evertyhing. Waiting for data...";
 
+    signal(SIGPIPE, SIG_IGN); //ignore SIGPIPE to avoid crashing when socket forecfully disconnected
+
     TcpServer server(read_timeout);
 
     server.Listen(port_num);
@@ -203,7 +214,7 @@ int main(int argc, char *argv[]) {
 
       server.Accept();
 
-      int32 samp_count = 0;
+      int32 samp_count = 0;//this is used for output refresh rate
       size_t chunk_len = static_cast<size_t>(chunk_length_secs * samp_freq);
 
       int32 check_update = static_cast<int32>(samp_freq * output_freq);
@@ -230,13 +241,21 @@ int main(int argc, char *argv[]) {
 
         std::vector<std::pair<int32, BaseFloat>> delta_weights;
 
+        if (server.HasReaminder()) {
+          feature_pipeline.AcceptWaveform(samp_freq, server.GetRemainder());
+          server.ResetRemainder();
+        }
+
+        int32 samp_pipeline = 0;//this is used to figure out the offet for the remainder
+
         while (true) {
 
           eos = !server.ReadChunk(chunk_len);
 
           if (!eos) {
-            Vector<BaseFloat> wave_part = server.getChunk();
+            Vector<BaseFloat> wave_part = server.GetChunk();
             feature_pipeline.AcceptWaveform(samp_freq, wave_part);
+            samp_pipeline += wave_part.Dim();
             samp_count += chunk_len;
 
             if (silence_weighting.Active() &&
@@ -265,6 +284,8 @@ int main(int argc, char *argv[]) {
           } else {
             feature_pipeline.InputFinished();
 
+            decoder.AdvanceDecoding();
+
             decoder.FinalizeDecoding();
 
             if (decoder.NumFramesDecoded() > 0) {
@@ -277,7 +298,7 @@ int main(int argc, char *argv[]) {
             } else
               server.Write("\n");
 
-            server.disconnect();
+            server.Disconnect();
             break;
 
           }
@@ -285,6 +306,9 @@ int main(int argc, char *argv[]) {
           if (decoder.EndpointDetected(endpoint_opts)) {
 
             decoder.FinalizeDecoding();
+
+            server.SaveRemainder(
+                samp_pipeline - feature_pipeline.NumFramesReady() * feature_pipeline.FrameShiftInSeconds() * samp_freq);
 
             CompactLattice lat;
             decoder.GetLattice(true, &lat);
@@ -350,7 +374,7 @@ bool TcpServer::Listen(int32 port) {
 }
 
 TcpServer::~TcpServer() {
-  disconnect();
+  Disconnect();
   if (server_desc_ != -1)
     close(server_desc_);
   delete[] samp_buf_;
@@ -414,7 +438,7 @@ bool TcpServer::ReadChunk(size_t len) {
   return has_read_ == len;
 }
 
-Vector<BaseFloat> TcpServer::getChunk() {
+Vector<BaseFloat> TcpServer::GetChunk() {
   Vector<BaseFloat> buf;
 
   buf.Resize(static_cast<MatrixIndexT>(has_read_));
@@ -423,6 +447,26 @@ Vector<BaseFloat> TcpServer::getChunk() {
     buf(i) = static_cast<BaseFloat>(samp_buf_[i]);
 
   return buf;
+}
+
+void TcpServer::SaveRemainder(int remainder) {
+  rem_.Resize(static_cast<MatrixIndexT>(remainder));
+
+  int32 offset = has_read_ - remainder;
+  for (size_t i = offset; i < has_read_; i++)
+    rem_(i - offset) = static_cast<BaseFloat>(samp_buf_[i]);
+}
+
+bool TcpServer::HasReaminder() {
+  return rem_.Dim() > 0;
+}
+
+Vector<BaseFloat> TcpServer::GetRemainder() {
+  return rem_;
+}
+
+void TcpServer::ResetRemainder() {
+  rem_.Resize(0);
 }
 
 bool TcpServer::Write(std::string msg) {
@@ -442,7 +486,7 @@ bool TcpServer::Write(std::string msg) {
   return true;
 }
 
-void TcpServer::disconnect() {
+void TcpServer::Disconnect() {
   if (client_desc_ != -1) {
     close(client_desc_);
     client_desc_ = -1;
