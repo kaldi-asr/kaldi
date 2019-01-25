@@ -10,6 +10,10 @@
 nj=96
 decode_nj=20
 stage=0
+num_data_reps=2
+snrs="20:10:15:5:0"
+foreground_snrs="20:10:15:5:0"
+background_snrs="20:10:15:5:0"
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and stage 4
 # End configuration section
@@ -28,8 +32,8 @@ json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
 
 # training and test data
-train_set=train_worn_u400k
-test_sets="dev_worn dev_${enhancement}_ref eval_${enhancement}_ref"
+train_set=train_worn_simu_u400k
+test_sets="dev_${enhancement}_dereverb_ref dev_wpe_${enhancement}_ref" #"dev_worn dev_addition_dereverb_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -73,10 +77,20 @@ if [ $stage -le 4 ]; then
   # Beamforming using reference arrays
   # enhanced WAV directory
   enhandir=enhan
+  dereverb_dir=${PWD}/wav/wpe/
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_wpe.sh --cmd "$train_cmd --mem 120G" \
+			      ${audio_dir}/${dset} \
+			      ${dereverb_dir}/${dset} \
+			      ${mictype}
+    done
+  done
+
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
-			      ${audio_dir}/${dset} \
+			      ${dereverb_dir}/${dset} \
 			      ${enhandir}/${dset}_${enhancement}_${mictype} \
 			      ${mictype}
     done
@@ -84,7 +98,7 @@ if [ $stage -le 4 ]; then
 
   for dset in dev eval; do
     local/prepare_data.sh --mictype ref "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-			  ${json_dir}/${dset} data/${dset}_${enhancement}_ref
+			  ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
   done
 fi
 
@@ -94,13 +108,47 @@ if [ $stage -le 5 ]; then
   utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
   grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
   utils/fix_data_dir.sh data/train_worn
+fi
 
+if [ $stage -le 6 ]; then
+  local/extract_noises.py $chime5_corpus/audio/train $chime5_corpus/transcriptions/train \
+    local/distant_audio_list distant_noises
+  local/make_noise_list.py distant_noises > distant_noise_list
+
+  noise_list=distant_noise_list
+  
+  if [ ! -d RIRS_NOISES/ ]; then
+    # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+    wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+    unzip rirs_noises.zip
+  fi
+
+  # This is the config for the system using simulated RIRs and point-source noises
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+  rvb_opts+=(--noise-set-parameters $noise_list)
+
+  python steps/data/reverberate_data_dir.py \
+    "${rvb_opts[@]}" \
+    --prefix "rev" \
+    --foreground-snrs $foreground_snrs \
+    --background-snrs $background_snrs \
+    --speech-rvb-probability 1 \
+    --pointsource-noise-addition-probability 1 \
+    --isotropic-noise-addition-probability 1 \
+    --num-replications $num_data_reps \
+    --max-noises-per-minute 1 \
+    --source-sampling-rate 16000 \
+    data/train_worn data/train_worn_rvb
+fi
+
+if [ $stage -le 7 ]; then
   # combine mix array and worn mics
   # randomly extract first 100k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u04 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
-  utils/combine_data.sh data/${train_set} data/train_worn data/train_u400k
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_worn_rvb data/train_u400k
 
   # only use left channel for worn mic recognition
   # you can use both left and right channels for training
@@ -111,7 +159,7 @@ if [ $stage -le 5 ]; then
   done
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 8 ]; then
   # fix speaker ID issue (thanks to Dr. Naoyuki Kanda)
   # add array ID to the speaker ID to avoid the use of other array information to meet regulations
   # Before this fix
@@ -122,7 +170,7 @@ if [ $stage -le 6 ]; then
   # $ head -n 2 data/eval_beamformit_ref_nosplit_fix/utt2spk
   # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01_U02
   # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01_U02
-  for dset in dev_${enhancement}_ref eval_${enhancement}_ref; do
+  for dset in dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref; do
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     mkdir -p data/${dset}_nosplit_fix
     cp data/${dset}_nosplit/{segments,text,wav.scp} data/${dset}_nosplit_fix/
@@ -136,12 +184,12 @@ if [ $stage -le 6 ]; then
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
   done
-  for dset in dev_${enhancement}_ref eval_${enhancement}_ref; do
+  for dset in dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref; do
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit_fix data/${dset}
   done
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
@@ -154,19 +202,19 @@ if [ $stage -le 7 ]; then
   done
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
 		      data/${train_set}_30kshort data/lang exp/mono
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/mono exp/mono_ali
 
@@ -174,7 +222,7 @@ if [ $stage -le 10 ]; then
 			2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri1 exp/tri1_ali
 
@@ -182,7 +230,7 @@ if [ $stage -le 11 ]; then
 			  4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
   for dset in ${test_sets}; do
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
@@ -190,32 +238,6 @@ if [ $stage -le 12 ]; then
   done
   wait
 fi
-
-#if [ $stage -le 13 ]; then
-#  steps/get_prons.sh --cmd "$train_cmd" data/train data/lang_nosp exp/tri2
-#  utils/dict_dir_add_pronprobs.sh --max-normalize true \
-#    data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
-#    exp/tri2/sil_counts_nowb.txt \
-#    exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
-#fi
-#
-#if [ $stage -le 14 ]; then
-#  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
-#  cp -rT data/lang data/lang_rescore
-#  cp data/lang_nosp/G.fst data/lang/
-#  cp data/lang_nosp_rescore/G.carpa data/lang_rescore/
-#
-#  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
-#
-#  for dset in dev test; do
-#    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-#      exp/tri2/graph data/${dset} exp/tri2/decode_${dset}
-#    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-#       data/${dset} exp/tri2/decode_${dset} exp/tri2/decode_${dset}_rescore
-#  done
-#fi
-
-
 
 if [ $stage -le 14 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
@@ -242,39 +264,18 @@ if [ $stage -le 16 ]; then
 fi
 
 if [ $stage -le 17 ]; then
-  rm -r data/train_worn_cleaned 2>/dev/null || true
-  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_worn_cleaned
-
-  awk '{print $1}' data/train_worn/wav.scp > data/train_worn_cleaned/recos.tmp
-  utils/filter_scp.pl data/train_worn_cleaned/recos.tmp \
-    data/${train_set}_cleaned/wav.scp > data/train_worn_cleaned/wav.scp
-
-  utils/fix_data_dir.sh data/train_worn_cleaned
-  
-  rm -r data/train_u400k_cleaned 2>/dev/null || true
-  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_u400k_cleaned
-
-  utils/filter_scp.pl --exclude data/train_worn_cleaned/recos.tmp \
-    data/${train_set}_cleaned/wav.scp > data/train_u400k_cleaned/wav.scp
-
-  utils/fix_data_dir.sh data/train_u400k_cleaned
-fi
-
-if [ $stage -le 18 ]; then
   # chain TDNN
-  local/chain/multi_condition/run_tdnn.sh --nj ${nj} \
-    --train-set-clean train_worn_cleaned \
-    --train-set-noisy train_u400k_cleaned \
-    --combined-train-set ${train_set}_cleaned \
+  local/chain/tuning/run_tdnn_1b.sh --nj ${nj} \
+    --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
 fi
 
-if [ $stage -le 19 ]; then
+if [ $stage -le 18 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
-      --dev exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_dev_${enhancement}_ref \
-      --eval exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_eval_${enhancement}_ref
+      --dev exp/chain_${train_set}_cleaned/tdnn1b_sp/decode_dev_${enhancement}_ref \
+      --eval exp/chain_${train_set}_cleaned/tdnn1b_sp/decode_eval_${enhancement}_ref
 fi

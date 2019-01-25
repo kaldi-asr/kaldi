@@ -38,16 +38,17 @@ lm_suffix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=1b   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 
+num_epochs=4
+common_egs_dir=
 # training options
 # training chunk-options
 chunk_width=140,100,160
-common_egs_dir=
 xent_regularize=0.1
 dropout_schedule='0,0@0.20,0.5@0.50,0'
 
@@ -78,7 +79,7 @@ fi
 # run those things.
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
-				  --test-sets "$test_sets" \
+                                  --test-sets "$test_sets" \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
@@ -135,7 +136,7 @@ if [ $stage -le 12 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
+  if [ -f $tree_dir/final.mdl ]; then
      echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
   fi
@@ -209,15 +210,15 @@ if [ $stage -le 14 ]; then
     --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.dropout-schedule "$dropout_schedule" \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
-    --egs.opts "--frames-overlap-per-eg 0 --constrained false" \
-    --egs.chunk-width $frames_per_eg \
+    --egs.opts "--frames-overlap-per-eg 0" \
+    --egs.chunk-width $chunk_width \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 6 \
+    --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.00025 \

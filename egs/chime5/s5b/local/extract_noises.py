@@ -69,10 +69,10 @@ def main():
             # Assuming close talk mic with name like S03_P09
             session, mic = audio.strip().split('_')
             base_name = session + "_" + mic
-        fs, sig = siw.read(args.audio_dir + base_name + '.wav')
+        fs, sig = siw.read(args.audio_dir + "/" + base_name + '.wav')
         tag = np.ones(len(sig))
         if i == 0 or session != session_p:
-            with open(args.trans_dir + session + '.json') as f:
+            with open(args.trans_dir + "/" + session + '.json') as f:
                 conf = json.load(f)
         tag = Get_time(conf, tag, mic, fs)
         cnt = write_noise(args.out_dir, args.segment_length, audio, sig, tag, fs, cnt)
