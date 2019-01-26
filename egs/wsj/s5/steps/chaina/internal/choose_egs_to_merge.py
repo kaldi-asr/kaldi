@@ -37,6 +37,8 @@ def get_args():
                                      epilog="E.g. " + sys.argv[0] + "*** TODO *** ",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+    parser.add_argument('--random-seed', type=int,
+                        default = 123, help='Random seed.')
     parser.add_argument("--chunks-per-group", type=int, default=4,
                         help="Number of chunks per speaker in the final egs (actually "
                         "means the number of chunks per group of chunks, and they are "
@@ -222,7 +224,8 @@ def write_egs(filename, group_indexes, all_groups):
 def choose_egs(args):
     """ The main part of the program.
     """
-
+    random.seed(args.random_seed)
+    logger.info('Set random seed to {}.'.format(args.random_seed))
     all_chunks = read_all_chunks(args.scp_in)
     logger.info('Loaded {} chunks.'.format(len(all_chunks)))
 
@@ -239,9 +242,10 @@ def choose_egs(args):
 
     assert(args.num_repeats == 1 or args.num_repeats == 2)
     groups = []  # All groups from all sub-lists
-    for sublist in chunk_to_sublist.values():
+    for context_structure in sorted(chunk_to_sublist.keys()):
+        sublist = chunk_to_sublist[context_structure]
         logger.info('Processing chunks with context '
-                    'structure: {}'.format(sublist[0].context_structure))
+                    'structure: {}'.format(context_structure))
         num_groups = (len(sublist) +
                       args.chunks_per_group - 1) // args.chunks_per_group
         for i in range(num_groups):
