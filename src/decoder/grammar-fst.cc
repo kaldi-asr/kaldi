@@ -448,23 +448,25 @@ void GrammarFst::Read(std::istream &is, bool binary) {
    'fst'.   (This input-determinizes while treating epsilon as a real symbol,
    although for the application we expect to use it, there won't be epsilons).
 
-   What this function does is: for any symbol s that appears as the ilabel of
+   What this function does is: for any symbol i that appears as the ilabel of
    more than one arc leaving state s of FST 'fst', it creates an additional
-   state, it creates a new arc with epsilon-input transitions leaving it for
+   state, it creates a new state t with epsilon-input transitions leaving it for
    each of those multiple arcs leaving state s; it deletes the original arcs
    leaving state s; and it creates a single arc leaving state s to the newly
-   created state with the ilabel on it.  It sets the weights as necessary to
+   created state with the ilabel i on it.  It sets the weights as necessary to
    preserve equivalence and also to ensure that if, prior to this modification,
    the FST was stochastic when cast to the log semiring (see
-   IsStochasticInLog()), it still will be.  I.e.  if things summed to one when
-   viewed as probabilities, they will still sum to one.
+   IsStochasticInLog()), it still will be.  I.e. when interpreted as
+   negative logprobs, the weight from state s to t would be the sum of
+   the weights on the original arcs leaving state s.
 
    This is used as a very cheap solution when preparing FSTs for the grammar
    decoder, to ensure that there is only one entry-state to the sub-FST for each
    phonetic left-context; this keeps the grammar-FST code (i.e. the code that
    stitches them together) simple.  Of course it will tend to introduce
    unnecessary epsilons, and if we were careful we might be able to remove
-   some of those.
+   some of those, but this wouldn't have a substantial impact on overall
+   decoder performance so we don't bother.
  */
 static void InputDeterminizeSingleState(StdArc::StateId s,
                                         VectorFst<StdArc> *fst) {
