@@ -111,9 +111,9 @@ EventMap
     } else {
       KALDI_ASSERT(numpdfs_per_phone == 2);
       int32 base_pdfid = current_pdfid;
-      std::vector<int32> pset = phone_sets[i];  // All these will have a shared
+      std::vector<int32> right_phoneset = phone_sets[i];  // All these will have a shared
                                                 // event-map child
-      for (size_t k = 0; k < pset.size(); k++) {
+      for (size_t k = 0; k < right_phoneset.size(); k++) {
         // Create an event map for level2:
         std::map<EventValueType, EventMap*> level2_map;  // key is 0
         {  // Handle CI phones
@@ -125,13 +125,13 @@ EventMap
             level2_map[ci_phones_list[i]] = new TableEventMap(kPdfClass, level3_map);
         }
         for (size_t j = 0; j < phone_sets.size(); j++) {
-          std::vector<int32> ipset = phone_sets[j];  // All these will have a
+          std::vector<int32> left_phoneset = phone_sets[j];  // All these will have a
                                                      // shared subtree with 2 pdfids
           std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
-          if (bi_counts && (*bi_counts)[ipset[0]][pset[0]] >= biphone_min_count) {
+          if (bi_counts && (*bi_counts)[left_phoneset[0]][right_phoneset[0]] >= biphone_min_count) {
             level3_map[0] = current_pdfid++;
             level3_map[1] = current_pdfid++;
-          } else if (mono_counts && (*mono_counts)[pset[0]] > mono_min_count) {
+          } else if (mono_counts && (*mono_counts)[right_phoneset[0]] > mono_min_count) {
             //  Revert to mono.
             if (monophone_pdf[i] == -1)
               monophone_pdf[i] = current_pdfid++;
@@ -145,12 +145,13 @@ EventMap
             level3_map[1] = zerophone_pdf;
           }
 
-          for (size_t ik = 0; ik < ipset.size(); ik++) {
-            level2_map[ipset[ik]] = new TableEventMap(kPdfClass, level3_map);
+          for (size_t ik = 0; ik < left_phoneset.size(); ik++) {
+            int32 left_phone = left_phoneset[ik];
+            level2_map[left_phone] = new TableEventMap(kPdfClass, level3_map);
           }
         }
-        level1_map[pset[k]] = new TableEventMap(0, level2_map);
-        if (k != pset.size() - 1)
+        level1_map[right_phoneset[k]] = new TableEventMap(0, level2_map);
+        if (k != right_phoneset.size() - 1)
           current_pdfid = base_pdfid;
       }
     }
@@ -196,10 +197,9 @@ BiphoneContextDependencyFull(std::vector<std::vector<int32> > phone_sets,
 
 } // end namespace kaldi
 
-//                           std::unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > *biphone_counts)
 /* This function reads the counts of biphones and monophones from a text file
    generated for chain flat-start training.
-   It's more efficient to load the biphone counts into a map becuase
+   It's more efficient to load the biphone counts into a map because
    most entries are zero, but since there are not many biphones, a 2-dim vector
    is OK. */
 static void ReadPhoneCounts(std::string &filename, int32 num_phones,
@@ -221,7 +221,7 @@ static void ReadPhoneCounts(std::string &filename, int32 num_phones,
       KALDI_ASSERT(c >= 0);
       (*bi_counts)[a][b] = c;
     } else if ((std::istringstream(line) >> b >> c)) {
-      // It's a monophone count
+      // It's a monophone count.
       KALDI_ASSERT(b > 0 && b <= num_phones);
       KALDI_ASSERT(c >= 0);
       (*mono_counts)[b] = c;
