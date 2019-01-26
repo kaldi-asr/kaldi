@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
             decoder.FinalizeDecoding();
 
             int32 processed = feature_pipeline.NumFramesReady() * feature_pipeline.FrameShiftInSeconds() * samp_freq;
-            if (processed < samp_pipeline)
+            if (processed < samp_pipeline && samp_pipeline - processed < chunk_len)
               server.SaveRemainder(samp_pipeline - processed);
 
             CompactLattice lat;
