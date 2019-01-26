@@ -53,10 +53,10 @@ EventMap
 *GetFullBiphoneStubMap(const std::vector<std::vector<int32> > &phone_sets,
                        const std::vector<int32> &phone2num_pdf_classes,
                        const std::vector<int32> &ci_phones_list,
-                       const std::vector<std::vector<int32> > *bi_counts = NULL,
-                       int32 biphone_min_count = 100,
-                       const std::vector<int32> *mono_counts = NULL,
-                       int32 mono_min_count = 20) {
+                       const std::vector<std::vector<int32> > &bi_counts,
+                       int32 biphone_min_count,
+                       const std::vector<int32> &mono_counts,
+                       int32 mono_min_count) {
 
   {  // Check the inputs
     KALDI_ASSERT(!phone_sets.empty());
@@ -128,10 +128,12 @@ EventMap
           std::vector<int32> left_phoneset = phone_sets[j];  // All these will have a
                                                      // shared subtree with 2 pdfids
           std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
-          if (bi_counts && (*bi_counts)[left_phoneset[0]][right_phoneset[0]] >= biphone_min_count) {
+          if (bi_counts.empty() ||
+              bi_counts[left_phoneset[0]][right_phoneset[0]] >= biphone_min_count) {
             level3_map[0] = current_pdfid++;
             level3_map[1] = current_pdfid++;
-          } else if (mono_counts && (*mono_counts)[right_phoneset[0]] > mono_min_count) {
+          } else if (mono_counts.empty() ||
+                     mono_counts[right_phoneset[0]] > mono_min_count) {
             //  Revert to mono.
             if (monophone_pdf[i] == -1)
               monophone_pdf[i] = current_pdfid++;
@@ -165,10 +167,10 @@ ContextDependency*
 BiphoneContextDependencyFull(std::vector<std::vector<int32> > phone_sets,
                              const std::vector<int32> phone2num_pdf_classes,
                              const std::vector<int32> &ci_phones_list,
-                             const std::vector<std::vector<int32> > *bi_counts = NULL,
-                             int32 biphone_min_count = 100,
-                             const std::vector<int32> *mono_counts = NULL,
-                             int32 mono_min_count = 20) {
+                             const std::vector<std::vector<int32> > &bi_counts,
+                             int32 biphone_min_count,
+                             const std::vector<int32> &mono_counts,
+                             int32 mono_min_count) {
   // Remove all the CI phones from the phone sets
   std::set<int32> ci_phones;
   for (size_t i = 0; i < ci_phones_list.size(); i++)
@@ -330,9 +332,9 @@ int main(int argc, char *argv[]) {
       // ReadSharedPhonesList crashes on error.
     }
     ctx_dep = BiphoneContextDependencyFull(shared_phones, phone2num_pdf_classes,
-                                           ci_phones, &bi_counts,
+                                           ci_phones, bi_counts,
                                            min_biphone_count,
-                                           &mono_counts, min_mono_count);
+                                           mono_counts, min_mono_count);
 
     int32 num_pdfs = ctx_dep->NumPdfs();
 
