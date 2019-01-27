@@ -26,34 +26,19 @@ KALDI_REPO="https://github.com/kaldi-asr/kaldi.git"
 KALDI="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ASR_LOG=$KALDI/log
 
-# Logging function
-log()
-{
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): $1" >> $log_file
-}
-
 # Create Log directory
 if [ ! -d "$ASR_LOG" ]
 then
     mkdir $ASR_LOG
 fi
 
-# Change system timezone to Europe/Amsterdam [May not be required]
-# sudo timedatectl set-timezone Europe/Amsterdam
-
 # Install the required packages and dependencies
 sudo apt-get update -qq > /dev/null 2>&1
 sudo apt-get upgrade --assume-yes -qq > /dev/null 2>&1
-sudo apt-get install --assume-yes build-essential git dphys-swapfile python python-scipy sox swig zip -qq > /dev/null 2>&1
+sudo apt-get install --assume-yes build-essential git python python-scipy sox swig zip -qq > /dev/null 2>&1
 
-# Install Postgresql only if required to
-# postgresql postgresql-contrib python3-psycopg2
-
-# Install festival for TTS
-# festival
-
-# Kaldi Build (Common to Installation and Update)
-_kaldi_build()
+# Kaldi install dependencies
+_kaldi_install_dependencies()
 {
     # Change exit to return to source check_dependencies and change back once done
     sed -i "s|exit|return|g" $KALDI/tools/extras/check_dependencies.sh
@@ -64,6 +49,12 @@ _kaldi_build()
     echo "Installing dependencies"
     sudo apt-get install libatlas3-base $debian_packages -qq > /dev/null 2>&1
     sudo ln -s -f bash /bin/sh
+}
+
+# Kaldi Build (Common to Installation and Update)
+_kaldi_build()
+{
+    _kaldi_install_dependencies
 
     # Build toolkit
     echo "Building toolkit"
