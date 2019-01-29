@@ -497,8 +497,8 @@ bool NnetChainaTopTrainer::TrainUnadapted(
   // matrices on this data because we'll next be running the same nnet on the
   // speaker-adapted version of the same data, and it would violate the
   // independence assumptions needed for NG to work if we updated them.
-  if (need_model_deriv)
-    FreezeNaturalGradient(true, delta_nnet_);
+  //if (need_model_deriv)
+  //  FreezeNaturalGradient(true, delta_nnet_);
 
   computer.AcceptInput("output-si", &output_deriv);
 
@@ -511,8 +511,8 @@ bool NnetChainaTopTrainer::TrainUnadapted(
   if (input_deriv != NULL)
     computer.GetOutputDestructive("input", input_deriv);
 
-  if (need_model_deriv)  // Un-freeze the natural gradient.
-    FreezeNaturalGradient(false, delta_nnet_);
+  //if (need_model_deriv)  // Un-freeze the natural gradient.
+  //  FreezeNaturalGradient(false, delta_nnet_);
 
   // We'll wait until after the adapted pass to call UpdateNnetWithMaxChange().
   // Training the model on these features in between the two passes would leave

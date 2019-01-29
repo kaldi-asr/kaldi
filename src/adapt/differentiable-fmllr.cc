@@ -283,7 +283,7 @@ void GaussianEstimator::Estimate(const FmllrEstimatorOptions &opts) {
   t_.Resize(num_classes, kUndefined);
   for (int32 i = 0; i < num_classes; i++) {
     BaseFloat gamma_i = gamma_(i);
-    if (gamma_i == 0.0) {
+    if (gamma_i < 1.0e-10) {
       // the i'th row of mu will already be zero.
       s_(i) = variance_floor_;
     } else {
@@ -304,6 +304,8 @@ void GaussianEstimator::Estimate(const FmllrEstimatorOptions &opts) {
   for (int32 i = 0; i < num_classes; i++) {
     t_(i) = (BaseFloat(1.0) - f) * s_(i) + f * s;
   }
+  { BaseFloat sum = mu_.Sum(); KALDI_ASSERT(sum - sum == 0); } // TEMP
+
   // Clear the stats, which won't be needed any longer.
   m_.Resize(0, 0);
   v_.Resize(0);
@@ -332,7 +334,7 @@ void GaussianEstimator::AddToOutputDerivs(
   for (int32 i = 0; i < num_classes; i++) {
     SubVector<BaseFloat> m_bar_i(m_bar_, i);
     BaseFloat gamma_i = gamma_(i);
-    if (gamma_i != 0.0) {
+    if (gamma_i > 1.0e-10) {
       if (s_(i) != variance_floor) {
         BaseFloat s_bar_i = (BaseFloat(1.0) - f) * t_bar(i) + s_bar * gamma_i / gamma;
         v_bar_(i) += s_bar_i / (gamma_i * dim);
