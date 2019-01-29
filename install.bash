@@ -65,7 +65,7 @@ _kaldi_build()
     fi
 
     # Build toolkit
-    echo "Building toolkit"
+    echo "Building toolkit..."
     # Build the tools directory
     cd $KALDI/tools
     make -j 8 &> $ASR_LOG/make_tools.log
@@ -76,19 +76,41 @@ _kaldi_build()
         echo -e "\e[34m\e[1m Make kaldi/tools failed \e[0m"
         return 1
     fi
+    echo "  - Built tools"
 
     # Install IRSTLM
     extras/install_irstlm.sh &> $ASR_LOG/install_irstlm.log
-    install_irstlm_status=$( grep "Installation of IRSTLM finished successfully" $ASR_LOG/install_irstlm.log )
+    install_irstlm_status=$(grep "Installation of IRSTLM finished successfully" $ASR_LOG/install_irstlm.log )
 
     if [ -z "$install_irstlm_status" ]
     then
         echo -e "\e[34m\e[1m Install kaldi/tools/extras/install_irstlm.sh failed \e[0m"
         return 1
     fi
+    echo "  - Built IRSTLM"
 
     # Install Sequitur
-    extras/install_sequitur.sh
+    extras/install_sequitur.sh &> $ASR_LOG/install_sequitur.log
+    install_sequitur_status=$(grep "Installation of SEQUITUR finished successfully" $ASR_LOG/install_sequitur.log)
+
+    if [ -z "$install_sequitur_status" ]
+    then
+        echo -e "\e[34m\e[1m Install kaldi/tools/extras/install_sequitur.sh failed \e[0m"
+        return 1
+    fi
+    echo "  - Built SEQUITUR"
+
+    # Install SRILM
+    wget https://github.com/tue-robotics/kaldi_srilm/blob/master/srilm.tgz?raw=true -O srilm.tgz
+    extras/install_srilm.sh &> $ASR_LOG/install_srilm.log
+    install_srilm_status=$(grep "Installation of SRILM finished successfully" $ASR_LOG/install_srilm.log)
+
+    if [ -z "$install_srilm_status" ]
+    then
+        echo -e "\e[34m\e[1m Install kaldi/tools/extras/install_srilm.sh failed \e[0m"
+        return 1
+    fi
+    echo "  - Built SRILM"
 
     # Build the src directory
     cd $KALDI/src
@@ -100,6 +122,7 @@ _kaldi_build()
         echo -e "\e[34m\e[1m Configure kaldi/src failed \e[0m"
         return 1
     fi
+    echo "  - Configured src for build"
 
     make depend -j 8 > /dev/null
     make -j 8 &> $ASR_LOG/make_src.log
@@ -110,6 +133,7 @@ _kaldi_build()
         echo -e "\e[34m\e[1m Make kaldi/src failed \e[0m"
         return 1
     fi
+    echo "  - Built src"
 
     # Create a STATUS file to monitor installation
     echo -e "\e[36m\e[1m Kaldi installation complete \e[0m"
@@ -149,7 +173,7 @@ kaldi_update()
     kaldi_install
     else
         # Read STATUS file. If "ALL OK" then update else remove directory $KALDI
-        # and re-install Kaldi 
+        # and re-install Kaldi
         kaldi_install_status="$(cat $KALDI/STATUS)"
 
         if [ "$kaldi_install_status" = "ALL OK" ]
