@@ -40,13 +40,13 @@ sudo apt-get install --assume-yes build-essential git python python-scipy sox sw
 # Kaldi install dependencies
 _kaldi_install_dependencies()
 {
+    echo "Checking and installing dependencies..."
     # Change exit to return to source check_dependencies and change back once done
     sed -i "s|exit|return|g" $KALDI/tools/extras/check_dependencies.sh
-    source $KALDI/tools/extras/check_dependencies.sh
+    source $KALDI/tools/extras/check_dependencies.sh > /dev/null 2>&1
     sed -i "s|return|exit|g" $KALDI/tools/extras/check_dependencies.sh
 
     # Install dependencies
-    echo "Installing dependencies"
     sudo apt-get install libatlas3-base $debian_packages -qq > /dev/null 2>&1
     sudo ln -s -f bash /bin/sh
 }
