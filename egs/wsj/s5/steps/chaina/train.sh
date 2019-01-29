@@ -20,8 +20,8 @@ use_gpu=yes   # can be "yes", "no", "optional", "wait"
 
 common_opts=           # Options passed through to nnet3-chaina-train and nnet3-chaina-combine
 
-unadapted_top_weight=0.5
-unadapted_bottom_weight=0.5
+top_unadapted_weight=0.5
+bottom_unadapted_weight=0.5
 
 num_epochs=4.0   #  Note: each epoch may actually contain multiple repetitions of
                  #  the data, for various reasons:
@@ -44,7 +44,6 @@ diagnostic_period=5    # Get diagnostics every this-many iterations
 
 shuffle_buffer_size=1000  # This "buffer_size" variable controls randomization of the groups
                           # on each iter.
-train=true            # use --train false to run only diagnostics.
 
 
 
@@ -172,59 +171,64 @@ while [ $x -lt $num_iters ]; do
     done
   fi
 
-  if $train; then
-    if [ -d $dir/$next_x ]; then
-      echo "$0: removing previous contents of $dir/$next_x"
-      rm -r $dir/$next_x
-    fi
-    mkdir -p $dir/$next_x
-
-    for j in $(seq $num_jobs); do
-      scp_index=${scp_indexes[$j]}
-      frame_shift=${frame_shifts[$j]}
-
-      $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
-           nnet3-chaina-train --job-id=$j --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
-           --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
-           --bottom-subsampling-factor=$bottom_subsampling_factor \
-           --print-interval=10 --max-param-change=$max_param_change \
-           --l2-regularize-factor=$inv_num_jobs --optimization.memory-compression-level=$memory_compression_level \
-           $model_in_dir $den_fst_dir $transform_dir \
-           "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
-           $model_out_dir || touch $dir/$next_x/.error &
-    done
-    wait
-    if [ -f $dir/$next_x/.error ]; then
-      echo "$0: error detected training on iteration $x"
-      exit 1
-    fi
-    # First average the bottom models
-    models=$(for j in $(seq $num_jobs); do echo $dir/$next_x/bottom.$j.raw; done)
-    run.pl $dir/log/average.$x.log \
-           nnet3-average $models - \| \
-           nnet3-copy --learning-rate=$lrate $dropout_opt - $dir/$next_x/bottom.raw
-    rm $models
-    for lang in $langs; do
-      models=$dir/$next_x/$lang.*.raw
-      run.pl $dir/log/average_${lang}.$x.log \
-             nnet3-average $models - \| \
-             nnet3-am-copy --set-raw-nnet=- --learning-rate=$lrate $dropout_opt $dir/$iter/$lang.mdl $dir/$next_x/$lang.mdl
-      rm $models
-    done
+  if [ -d $dir/$next_x ]; then
+    echo "$0: removing previous contents of $dir/$next_x"
+    rm -r $dir/$next_x
   fi
+  mkdir -p $dir/$next_x
 
+  for j in $(seq $num_jobs); do
+    scp_index=${scp_indexes[$j]}
+    frame_shift=${frame_shifts[$j]}
+
+    $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
+         nnet3-chaina-train --job-id=$j --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
+         --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
+         --bottom-subsampling-factor=$bottom_subsampling_factor \
+         --top.unadapted-weight=$top_unadapted_weight --bottom.unadapted-weight=$bottom_unadapted_weight \
+         --print-interval=10 --max-param-change=$max_param_change \
+         --l2-regularize-factor=$inv_num_jobs --optimization.memory-compression-level=$memory_compression_level \
+         $model_in_dir $den_fst_dir $transform_dir \
+         "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
+         $model_out_dir || touch $dir/$next_x/.error &
+  done
   wait
-  if [ -f $dir/$x/.error_diagnostic ]; then
-    echo "$0: error detected in diagnostics on iteration $x"
+  if [ -f $dir/$next_x/.error ]; then
+    echo "$0: error detected training on iteration $x"
     exit 1
   fi
+  # First average the bottom models
+  models=$(for j in $(seq $num_jobs); do echo $dir/$next_x/bottom.$j.raw; done)
+  run.pl $dir/log/average.$x.log \
+      nnet3-average $models - \| \
+      nnet3-copy --learning-rate=$lrate $dropout_opt - $dir/$next_x/bottom.raw
+  rm $models
+  for lang in $langs; do
+    models=$dir/$next_x/$lang.*.raw
+    run.pl $dir/log/average_${lang}.$x.log \
+           nnet3-average $models - \| \
+           nnet3-am-copy --set-raw-nnet=- --learning-rate=$lrate $dropout_opt $dir/$iter/$lang.mdl $dir/$next_x/$lang.mdl
+    rm $models
+  done
+  wait
+  [ -f $dir/$x/.error_diagnostic ] && echo "$0: error getting diagnostics on iter $x" && exit 1;
 
-  # TODO: diagnostics; cleanup
+  $cmd $dir/log/progress_bottom.$x.log \
+     nnet3-show-progress $dir/$x/bottom.raw $dir/$next_x/bottom.raw '&&' \
+     nnet3-info $dir/$next_x/bottom.raw || touch $dir/$next_x/.error &
+  for lang in $langs; do
+    $cmd $dir/log/progress_${lang}.$x.log \
+      nnet3-show-progress $dir/$x/$lang.mdl $dir/$next_x/$lang.mdl '&&' \
+      nnet3-am-info $dir/$next_x/$lang.mdl || touch $dir/$next_x/.error &
+  done
+  [ -f $dir/$next_x/.error ] && echo "$0: error getting progress logs" && exit 1;
+
+  # TODO: cleanup
   x=$[x+1]
 done
 
 
-if [ $stage -le $num_iters ] && $train; then
+if [ $stage -le $num_iters ]; then
   echo "$0: doing model combination"
   if [ -d $dir/final ]; then
     echo "$0: removing previous contents of $dir/final"
@@ -234,7 +238,7 @@ if [ $stage -le $num_iters ] && $train; then
   den_fst_dir=$egs_dir/misc
 
   [ $max_models_combine -gt $[num_iters/2] ] && max_models_combine=$[num_iters/2];
-  input_model_dirs=$(for x in $(seq $max_models_combine); do echo $dir/$[num_iters+1-x]; done)
+  input_model_dirs=$(for x in $(seq $[num_iters+1-max_models_combine] $num_iters); do echo $dir/$x; done)
   output_model_dir=$dir/final
   transform_dir=$dir/init
 
@@ -249,7 +253,7 @@ if [ $stage -le $num_iters ] && $train; then
 fi
 
 
-if [ $stage -le $[num_iters+1] ] && $train; then
+if [ $stage -le $[num_iters+1] ]; then
   # Now accumulate the class-dependent mean (and variance) stats of the
   # adaptation model, which will be needed for decoding.  We remove the map that
   # had reduced the num-classes from several thousand to (e.g.) 200, because we
