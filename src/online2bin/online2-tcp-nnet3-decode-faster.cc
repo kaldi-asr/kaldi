@@ -220,24 +220,28 @@ int main(int argc, char *argv[]) {
       int32 check_update = static_cast<int32>(samp_freq * output_freq);
       int32 next_check = check_update;
 
+      int32 frame_offset = 0;
+
       bool eos = false;
 
       OnlineIvectorExtractorAdaptationState adaptation_state(
           feature_info.ivector_extractor_info);
 
+      OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
+      SingleUtteranceNnet3Decoder decoder(decoder_opts, trans_model,
+                                          decodable_info,
+                                          *decode_fst, &feature_pipeline);
+
       while (!eos) {
 
-        OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
-        feature_pipeline.SetAdaptationState(adaptation_state);
+        decoder.InitDecoding(frame_offset);
+
+        //feature_pipeline.SetAdaptationState(adaptation_state);
 
         OnlineSilenceWeighting silence_weighting(
             trans_model,
             feature_info.silence_weighting_config,
             decodable_opts.frame_subsampling_factor);
-
-        SingleUtteranceNnet3Decoder decoder(decoder_opts, trans_model,
-                                            decodable_info,
-                                            *decode_fst, &feature_pipeline);
 
         std::vector<std::pair<int32, BaseFloat>> delta_weights;
 
@@ -258,12 +262,16 @@ int main(int argc, char *argv[]) {
             samp_pipeline += wave_part.Dim();
             samp_count += chunk_len;
 
+            KALDI_LOG << "Wave in: " << wave_part.Dim();
+
             if (silence_weighting.Active() &&
                 feature_pipeline.IvectorFeature() != NULL) {
               silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
               silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
                                                 &delta_weights);
               feature_pipeline.IvectorFeature()->UpdateFrameWeights(delta_weights);
+              feature_pipeline.UpdateFrameWeights(delta_weights,
+                                                  frame_offset * decodable_opts.frame_subsampling_factor);
             }
 
             decoder.AdvanceDecoding();
@@ -283,10 +291,11 @@ int main(int argc, char *argv[]) {
 
           } else {
             feature_pipeline.InputFinished();
-
             decoder.AdvanceDecoding();
 
             decoder.FinalizeDecoding();
+            KALDI_LOG << "frame_offset+= " << decoder.NumFramesDecoded();
+            frame_offset += decoder.NumFramesDecoded();
 
             if (decoder.NumFramesDecoded() > 0) {
               CompactLattice lat;
@@ -306,8 +315,12 @@ int main(int argc, char *argv[]) {
           if (decoder.EndpointDetected(endpoint_opts)) {
 
             decoder.FinalizeDecoding();
+            KALDI_LOG << "EPD frame_offset+= " << decoder.NumFramesDecoded();
+            frame_offset += decoder.NumFramesDecoded();
 
-            int32 processed = feature_pipeline.NumFramesReady() * feature_pipeline.FrameShiftInSeconds() * samp_freq;
+            int32 processed =
+                static_cast<int32>(
+                    feature_pipeline.NumFramesReady() * feature_pipeline.FrameShiftInSeconds() * samp_freq);
             if (processed < samp_pipeline && samp_pipeline - processed < chunk_len)
               server.SaveRemainder(samp_pipeline - processed);
 
