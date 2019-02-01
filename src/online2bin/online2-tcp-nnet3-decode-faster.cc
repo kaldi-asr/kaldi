@@ -53,12 +53,6 @@ class TcpServer {
 
   Vector<BaseFloat> GetChunk(); //get the data read by above method
 
-  void SaveRemainder(int remainder_size);
-  bool HasRemainder();
-
-  Vector<BaseFloat> GetRemainder();
-  void ResetRemainder();
-
   bool Write(std::string msg); //write to accepted client
 
   void Disconnect();
@@ -70,7 +64,6 @@ class TcpServer {
   size_t buf_len_, has_read_;
   pollfd client_set_[1];
   int read_timeout_;
-  Vector<BaseFloat> rem_;
 };
 
 std::string LatticeToString(const Lattice &lat, fst::SymbolTable *word_syms) {
@@ -236,7 +229,8 @@ int main(int argc, char *argv[]) {
 
         decoder.InitDecoding(frame_offset);
 
-        //feature_pipeline.SetAdaptationState(adaptation_state);
+//        if (!adapt_speaker)
+//          feature_pipeline.SetAdaptationState(adaptation_state); //reset adaptation state to intital one
 
         OnlineSilenceWeighting silence_weighting(
             trans_model,
@@ -244,11 +238,6 @@ int main(int argc, char *argv[]) {
             decodable_opts.frame_subsampling_factor);
 
         std::vector<std::pair<int32, BaseFloat>> delta_weights;
-
-        if (server.HasRemainder()) {
-          feature_pipeline.AcceptWaveform(samp_freq, server.GetRemainder());
-          server.ResetRemainder();
-        }
 
         int32 samp_pipeline = 0;//this is used to figure out the offset for the remainder
 
@@ -262,14 +251,8 @@ int main(int argc, char *argv[]) {
             samp_pipeline += wave_part.Dim();
             samp_count += chunk_len;
 
-            KALDI_LOG << "Wave in: " << wave_part.Dim();
-
             if (silence_weighting.Active() &&
                 feature_pipeline.IvectorFeature() != NULL) {
-              silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
-              silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
-                                                &delta_weights);
-              feature_pipeline.IvectorFeature()->UpdateFrameWeights(delta_weights);
               feature_pipeline.UpdateFrameWeights(delta_weights,
                                                   frame_offset * decodable_opts.frame_subsampling_factor);
             }
@@ -294,7 +277,6 @@ int main(int argc, char *argv[]) {
             decoder.AdvanceDecoding();
 
             decoder.FinalizeDecoding();
-            KALDI_LOG << "frame_offset+= " << decoder.NumFramesDecoded();
             frame_offset += decoder.NumFramesDecoded();
 
             if (decoder.NumFramesDecoded() > 0) {
@@ -315,22 +297,13 @@ int main(int argc, char *argv[]) {
           if (decoder.EndpointDetected(endpoint_opts)) {
 
             decoder.FinalizeDecoding();
-            KALDI_LOG << "EPD frame_offset+= " << decoder.NumFramesDecoded();
             frame_offset += decoder.NumFramesDecoded();
-
-            int32 processed =
-                static_cast<int32>(
-                    feature_pipeline.NumFramesReady() * feature_pipeline.FrameShiftInSeconds() * samp_freq);
-            if (processed < samp_pipeline && samp_pipeline - processed < chunk_len)
-              server.SaveRemainder(samp_pipeline - processed);
 
             CompactLattice lat;
             decoder.GetLattice(true, &lat);
             std::string msg = LatticeToString(lat, word_syms);
 
             server.Write(msg + "\n");
-            if (adapt_speaker)
-              feature_pipeline.GetAdaptationState(&adaptation_state);
             break;
           }
         }
@@ -461,26 +434,6 @@ Vector<BaseFloat> TcpServer::GetChunk() {
     buf(i) = static_cast<BaseFloat>(samp_buf_[i]);
 
   return buf;
-}
-
-void TcpServer::SaveRemainder(int32 remainder_size) {
-  rem_.Resize(static_cast<MatrixIndexT>(remainder_size));
-
-  int32 offset = has_read_ - remainder_size;
-  for (size_t i = offset; i < has_read_; i++)
-    rem_(i - offset) = static_cast<BaseFloat>(samp_buf_[i]);
-}
-
-bool TcpServer::HasRemainder() {
-  return rem_.Dim() > 0;
-}
-
-Vector<BaseFloat> TcpServer::GetRemainder() {
-  return rem_;
-}
-
-void TcpServer::ResetRemainder() {
-  rem_.Resize(0);
 }
 
 bool TcpServer::Write(std::string msg) {
