@@ -110,8 +110,8 @@ bool DecodableNnetLoopedOnlineBase::IsLastFrame(
 }
 
 void DecodableNnetLoopedOnlineBase::SetFrameOffset(int32 frame_offset) {
-  KALDI_LOG<<"frame_offset: "<<frame_offset<<" NFR "<<NumFramesReady();
-  KALDI_ASSERT(0 <= frame_offset && frame_offset <= NumFramesReady());
+  KALDI_ASSERT(0 <= frame_offset &&
+               frame_offset <= frame_offset_ + NumFramesReady());
   frame_offset_ = frame_offset;
 }
 
