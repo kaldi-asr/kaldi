@@ -221,7 +221,7 @@ FatalMessageLogger::FatalMessageLogger(LogMessageEnvelope::Severity severity,
   }
 }
 
-FatalMessageLogger::~FatalMessageLogger [[ noreturn ]] () noexcept(false) {
+[[ noreturn ]] FatalMessageLogger::~FatalMessageLogger() noexcept(false) {
   std::string str = GetMessage();
 
   // print the mesage (or send to logging handler),
