@@ -155,6 +155,34 @@ _kaldi_build()
     echo "ALL OK" > STATUS
 }
 
+# Kaldi Gstreamer plugin with online decoder build
+_kaldi_online_gst()
+{
+    echo "Building online decoder and gstreamer plugin..."
+    # Install PortAudio
+    cd $KALDI/tools
+    extras/install_portaudio.sh &> $ASR_LOG/install_portaudio.log
+    install_portaudio_status=$(grep "PortAudio was successfully installed" $ASR_LOG/install_portaudio.log)
+
+    if [ -z "$install_portaudio_status" ]
+    then
+        echo -e "\e[34m\e[1m Install kaldi/tools/extras/install_portaudio.sh failed \e[0m"
+        return 1
+    fi
+    echo "  - Installed PortAudio"
+
+    # Build online decoder
+    cd $KALDI/src/online
+    make -j 8 &> $ASR_LOG/make_online.log || echo -e "\e[34m\e[1m Make kaldi/src/online failed \e[0m"; return 1
+    echo "  - Built online decoder"
+
+    # Build Gstreamer plugin
+    cd $KALDI/src/gst-plugin
+    make depend -j 8 > /dev/null
+    make -j 8 &> $ASR_LOG/make_gst-plugin.log || echo -e "\e[34m\e[1m Make kaldi/src/gst-plugin failed \e[0m"; return 1
+    echo "  - Built gstreamer plugin"
+}
+
 # Kaldi Installation
 kaldi_install()
 {
