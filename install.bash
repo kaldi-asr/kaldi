@@ -14,9 +14,9 @@ usage()
     echo "Usage: sudo ./setup [options] <values>"
     echo -e "Options:\n \
         -h | --help\n \
-        --build\n \
-        --install\n \
-        --update\n \
+        --tue\n \
+        --install-kaldi\n \
+        --update-kaldi\n \
         --clean"
     echo
     echo "-----------------------------------------------------------------------------"
@@ -35,7 +35,7 @@ fi
 # Install the required packages and dependencies
 sudo apt-get update -qq > /dev/null 2>&1
 sudo apt-get upgrade --assume-yes -qq > /dev/null 2>&1
-sudo apt-get install --assume-yes build-essential git python python-scipy sox swig zip -qq > /dev/null 2>&1
+sudo apt-get install --assume-yes build-essential git python python-numpy sox swig zip -qq > /dev/null 2>&1
 
 # Kaldi install dependencies
 _kaldi_install_dependencies()
