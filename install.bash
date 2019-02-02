@@ -51,11 +51,19 @@ _kaldi_install_dependencies()
     sudo ln -s -f bash /bin/sh
 }
 
+# Kaldi check dependencies
+_kaldi_check_dependencies()
+{
+    echo "Checking dependencies..."
+    # Change exit to return to source check_dependencies and change back once done
+    sed -i "s|exit|return|g" $KALDI/tools/extras/check_dependencies.sh
+    $KALDI/tools/extras/check_dependencies.sh > /dev/null
+    sed -i "s|return|exit|g" $KALDI/tools/extras/check_dependencies.sh
+}
+
 # Kaldi Build (Common to Installation and Update)
 _kaldi_build()
 {
-    _kaldi_install_dependencies
-
     # if environment variable CXX is unset, set it
     if [ -z "$CXX" ]
     then
@@ -157,6 +165,7 @@ kaldi_install()
         # Clone repository into $KALDI
         echo -e "No existing installation found. Cloning from GitHub repository"
         git clone $KALDI_REPO $KALDI
+        _kaldi_install_dependencies
         _kaldi_build
     else
         # Read STATUS file. If not "ALL OK", remove directory $KALDI and re-install Kaldi
@@ -192,6 +201,7 @@ kaldi_update()
             # Clean existing make
             _kaldi_clean
             # Build toolkit
+            _kaldi_install_dependencies
             _kaldi_build
 
             echo -e "\e[36m\e[1m Kaldi-ASR update complete \e[0m"
@@ -235,6 +245,7 @@ else
                 _kaldi_clean ;;
 
             --build )
+                _kaldi_check_dependencies
                 _kaldi_build ;;
 
             -h | --help )
