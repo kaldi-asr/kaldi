@@ -7,6 +7,8 @@ import os
 
 parser = argparse.ArgumentParser(description="""Creates the list of characters and words in lexicon""")
 parser.add_argument('dir', type=str, help='output path')
+parser.add_argument("--build-bpe-based-dict", action="store_true",
+                   help="If true, build a bpe based lexicon")
 args = parser.parse_args()
 
 ### main ###
@@ -19,8 +21,11 @@ with open(text_path, 'r', encoding='utf-8') as f:
         line_vect = line.strip().split(' ')
         for i in range(1, len(line_vect)):
             characters = list(line_vect[i])
-            # Put SIL instead of "|". Because every "|" in the beginning of the words is for initial-space of that word
-            characters = " ".join(['SIL' if char == '|' else char for char in characters])
+            if args.build_bpe_based_dict:
+                # Put SIL instead of "|". Because every "|" in the beginning of the words is for initial-space of that word
+                characters = " ".join(['SIL' if char == '|' else char for char in characters])
+            else:
+                characters = " ".join(characters)
             lex[line_vect[i]] = characters
             if line_vect[i] == '#':
                 lex[line_vect[i]] = "<HASH>"

@@ -9,11 +9,14 @@ set -e
 . ./path.sh
 . ./utils/parse_options.sh
 
-decode_dir=$1
+data_dir=$1
+graph_dir=$2
+decode_dir=$3
+
 test_para=$decode_dir/scoring_kaldi/test_filt_para.txt
 test_para_char=$decode_dir/scoring_kaldi/test_filt_para.chars.txt
 
-cat $decode_dir/scoring_kaldi/test_filt.txt | \
+cat $data_dir/text | \
   local/combine_line_txt_to_paragraph.py > $test_para
 
 for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
