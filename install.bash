@@ -150,7 +150,6 @@ _kaldi_build()
     echo "  - Built src"
 
     # Create a STATUS file to monitor installation
-    echo -e "\e[36m\e[1m Kaldi installation complete \e[0m"
     cd $KALDI
     echo "ALL OK" > STATUS
 }
@@ -264,7 +263,8 @@ else
     do
         case $1 in
             --install-kaldi )
-                kaldi_install ;;
+                kaldi_install
+                echo -e "\e[36m\e[1m Kaldi installation complete \e[0m" ;;
 
             --update-kaldi )
                 kaldi_update ;;
@@ -272,9 +272,11 @@ else
             --clean )
                 _kaldi_clean ;;
 
-            --build )
+            --tue )
                 _kaldi_check_dependencies
-                _kaldi_build ;;
+                _kaldi_build
+                _kaldi_online_gst
+                echo -e "\e[36m\e[1m Kaldi installation complete \e[0m" ;;
 
             -h | --help )
                 usage
