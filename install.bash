@@ -43,7 +43,7 @@ _kaldi_install_dependencies()
     echo "Checking and installing dependencies..."
     # Change exit to return to source check_dependencies and change back once done
     sed -i "s|exit|return|g" $KALDI/tools/extras/check_dependencies.sh
-    source $KALDI/tools/extras/check_dependencies.sh > /dev/null 2>&1
+    source $KALDI/tools/extras/check_dependencies.sh > /dev/null
     sed -i "s|return|exit|g" $KALDI/tools/extras/check_dependencies.sh
 
     # Install dependencies
@@ -56,8 +56,14 @@ _kaldi_build()
 {
     _kaldi_install_dependencies
 
+    # if environment variable CXX is unset, set it
+    if [ -z "$CXX" ]
+    then
+        export CXX=g++
+    fi
+
     # Check g++ version before starting build
-    gpp_version_num=$(g++ --version | grep ^g++ | sed 's/^.* //g' | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+    gpp_version_num=$($CXX -dumpversion | sed 's/\./ /g' | xargs printf "%d%02d%02d")
     if [ $gpp_version_num -gt 70000 ]
     then
         echo -e "\e[34m\e[1m Unsupported g++ version. Use g++ < 7.0.* \e[0m"
