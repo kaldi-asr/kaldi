@@ -1,3 +1,7 @@
+# TechUnited begin
+/log/
+# TechUnited end
+
 # Compiled extensionless executable files in /src/*/
 # This stanza must precede wildcard patterns below!
 /src/*/*
