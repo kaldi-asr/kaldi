@@ -180,6 +180,11 @@ _kaldi_online_gst()
     make depend -j 8 > /dev/null
     make -j 8 &> $ASR_LOG/make_gst-plugin.log || echo -e "\e[34m\e[1m Make kaldi/src/gst-plugin failed \e[0m"; return 1
     echo "  - Built gstreamer plugin"
+
+    # Test Gstreamer plugin
+    export GST_PLUGIN_PATH=$KALDI/src/gst-plugin${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}
+    gst-inspect-1.0 onlinegmmdecodefaster > /dev/null || echo -e "\e[34m\e[1m gst-inspect of onlinegmmdecodefaster failed \e[0m"; return 1
+    echo "  - Gstreamer Plugin Test Successful"
 }
 
 # Kaldi Installation
