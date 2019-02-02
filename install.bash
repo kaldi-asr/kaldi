@@ -56,9 +56,7 @@ _kaldi_check_dependencies()
 {
     echo "Checking dependencies..."
     # Change exit to return to source check_dependencies and change back once done
-    sed -i "s|exit|return|g" $KALDI/tools/extras/check_dependencies.sh
     $KALDI/tools/extras/check_dependencies.sh > /dev/null
-    sed -i "s|return|exit|g" $KALDI/tools/extras/check_dependencies.sh
 }
 
 # Kaldi Build (Common to Installation and Update)
