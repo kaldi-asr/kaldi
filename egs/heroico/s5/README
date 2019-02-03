@@ -1,13 +1,29 @@
- Corpus Name: OpenSubtitles
-     Package: OpenSubtitles in Moses format
-     Website: http://opus.nlpl.eu/OpenSubtitles-v2018.php
-     Release: v2018
-Release date: Tue Apr  3 23:47:52 EEST 2018
+Heroico
+A Kaldi recipe for Spanish using the Heroico corpus.
 
-This corpus is part of OPUS - the open collection of parallel corpora
-OPUS Website: http://opus.nlpl.eu
+Description of the Heroico Corpus
+The Heroico corpus (LDC2006S37) was originally collected to train acoustic models for pronunciation modeling in Spanish language learning applications.
+The corpus consists of two main subcorpora:
+1. A subcorpus collected at Mexico's Military Academy called Heroico.
+2. A subcorpus collected at the United States Military Academy (USMA) in West Point New York.
 
-Please cite the following article if you use any part of the corpus in your own work: P. Lison and J. Tiedemann, 2016, OpenSubtitles2016: Extracting Large Parallel Corpora from Movie and TV Subtitles. In Proceedings of the 10th International Conference on Language Resources and Evaluation (LREC 2016)
+The Heroico corpus is further divided into recited  and prompted speech  subcorpora.
+In the LDC distribution, the  recited speech appears under the recordings directory and the prompted speech under the answers directory.
 
-This is a new collection of translated movie subtitles from http://www.opensubtitles.org/.IMPORTANT: If you use the OpenSubtitle corpus: Please, add a link to http://www.opensubtitles.org/ to your website and to your reports and publications produced with the data! I promised this when I got the data from the providers of that website!  This is a slightly cleaner version of the subtitle collection using improved sentence alignment and better language checking.
-We also provide sentence alignments between alternative subtitle uploads. This produces a lot of repeated material and, therefore, we do not provide data sets that are compiled into plain text or TMX format. Instead, you can download the standoff annotation of the sentence alignment from the form at the top-level website. There are links to [alt] in the other files column of the search result if they exist.OpenSubtitles also includes intra-lingual sentence alignments between alternative subtitle uploads in the same language. To access those files, search for resources with the same source and target language using the form on the top-level website. The intra-lingual links are divided into different categories (listed in the column other files in the search result):  insert: Sentence pairs that differ only by some inserted text on one side other: Other types of sentence pairs; probably paraphrases and/or stylistically different subtitles. pct: Sentence pairs that differ only in punctuation characters. spell: Sentence pairs that differ in a few characters only that looks suspiciously like misspellings.  For more information, please look at  J. Tiedemann, 2016, Finding Alternative Translations in a Large Corpus of Movie Subtitles. In Proceedings of the 10th International Conference on Language Resources and Evaluation (LREC 2016)(and, please, cite the paper as well).
+The USMA subcorpus includes   1.2 hours of speech from nonnative informants  and 1 hour of speech from native speakers.
+All the speech in the USMA corpus was recited.
+
+With the exception of one hour of speech, the Heroico subcorpus was used for training and the USMA subcorpus was used for testing.
+The Heroico  subcorpus has 11.8 hours of speech.
+In this recipe 10.8 hours were used as training data. 
+2.2 hours of speech from the USMA subcorpus were used as testing data.
+One hour segment   of speech in the Heroico corpus was recited from the same set of prompts that was used in the USMA collection.
+To avoid overlap of the training and testing sets, this one hour segment was separated out from the Heroico corpus into a devtest set.
+
+In summary the Heroico corpus was split into 5 parts for this recipe:
+1. Heroico answers train
+2. Heroico recited train
+3. Heroico Recited devtest
+4. USMA native test
+5. USMA nonnative test
+
