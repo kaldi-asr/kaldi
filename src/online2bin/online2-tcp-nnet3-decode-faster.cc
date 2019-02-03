@@ -43,7 +43,7 @@ namespace kaldi {
 
 class TcpServer {
  public:
-  TcpServer(int read_timeout);
+  explicit TcpServer(int read_timeout);
   ~TcpServer();
 
   bool Listen(int32 port);  //start listening on a given port
@@ -53,7 +53,7 @@ class TcpServer {
 
   Vector<BaseFloat> GetChunk(); //get the data read by above method
 
-  bool Write(std::string msg); //write to accepted client
+  bool Write(const std::string &msg); //write to accepted client
 
   void Disconnect();
 
@@ -72,10 +72,10 @@ std::string LatticeToString(const Lattice &lat, fst::SymbolTable *word_syms) {
   std::vector<int32> words;
   GetLinearSymbolSequence(lat, &alignment, &words, &weight);
 
-  std::string msg = "";
+  std::string msg;
   for (size_t i = 0; i < words.size(); i++) {
     std::string s = word_syms->Find(words[i]);
-    if (s == "") {
+    if (s.empty()) {
       KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
       msg += "<#" + std::to_string(i) + "> ";
     } else
@@ -232,9 +232,7 @@ int main(int argc, char *argv[]) {
             decodable_opts.frame_subsampling_factor);
 
         std::vector<std::pair<int32, BaseFloat>> delta_weights;
-
-        int32 samp_pipeline = 0;//this is used to figure out the offset for the remainder
-
+        
         while (true) {
 
           eos = !server.ReadChunk(chunk_len);
@@ -242,7 +240,6 @@ int main(int argc, char *argv[]) {
           if (!eos) {
             Vector<BaseFloat> wave_part = server.GetChunk();
             feature_pipeline.AcceptWaveform(samp_freq, wave_part);
-            samp_pipeline += wave_part.Dim();
             samp_count += chunk_len;
 
             if (silence_weighting.Active() &&
@@ -428,13 +425,13 @@ Vector<BaseFloat> TcpServer::GetChunk() {
 
   buf.Resize(static_cast<MatrixIndexT>(has_read_));
 
-  for (size_t i = 0; i < has_read_; i++)
+  for (int i = 0; i < has_read_; i++)
     buf(i) = static_cast<BaseFloat>(samp_buf_[i]);
 
   return buf;
 }
 
-bool TcpServer::Write(std::string msg) {
+bool TcpServer::Write(const std::string &msg) {
 
   const char *p = msg.c_str();
   size_t to_write = msg.size();
