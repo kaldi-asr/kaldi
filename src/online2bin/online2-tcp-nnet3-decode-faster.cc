@@ -129,7 +129,6 @@ int main(int argc, char *argv[]) {
     BaseFloat output_freq = 1;
     BaseFloat samp_freq = 16000.0;
     int read_timeout = 3;
-    bool adapt_speaker = false;
 
     po.Register("samp-freq", &samp_freq,
                 "Sampling frequency of the input signal (coded as 16-bit slinear).");
@@ -139,8 +138,6 @@ int main(int argc, char *argv[]) {
                 "How often in seconds, do we check for changes in output.");
     po.Register("num-threads-startup", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.");
-    po.Register("adapt-spk", &adapt_speaker,
-                "Adapt to a single speaker. Otherwise, treat each segment as a new speaker.");
     po.Register("read-timeout", &read_timeout,
                 "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
 
@@ -229,9 +226,6 @@ int main(int argc, char *argv[]) {
 
         decoder.InitDecoding(frame_offset);
 
-//        if (!adapt_speaker)
-//          feature_pipeline.SetAdaptationState(adaptation_state); //reset adaptation state to intital one
-
         OnlineSilenceWeighting silence_weighting(
             trans_model,
             feature_info.silence_weighting_config,
@@ -253,6 +247,9 @@ int main(int argc, char *argv[]) {
 
             if (silence_weighting.Active() &&
                 feature_pipeline.IvectorFeature() != NULL) {
+              silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+              silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                                &delta_weights);
               feature_pipeline.UpdateFrameWeights(delta_weights,
                                                   frame_offset * decodable_opts.frame_subsampling_factor);
             }
@@ -290,6 +287,7 @@ int main(int argc, char *argv[]) {
               server.Write("\n");
 
             server.Disconnect();
+            eos = true;
             break;
 
           }
