@@ -194,12 +194,12 @@ fi
 
 # nnet3 tdnn models
 # commented out by default, since the chain model is usually faster and better
-if [ $stage -le 6 ]; then
+#if [ $stage -le 6 ]; then
 
   # echo "$0: train nnet3 model"
   # local/nnet3/run_tdnn.sh
 
-fi
+#fi
 
 # chain model
 if [ $stage -le 7 ]; then
