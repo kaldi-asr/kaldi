@@ -54,6 +54,22 @@ DenominatorComputation::DenominatorComputation(
   // log-space.
   KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
+
+  if (RandInt(0, 99) == 0) {
+    // A check, that all values in nnet_output are in the range [-30, 30]..
+    // otherwise derivatives will be wrong (search below for 30).
+    BaseFloat max_val = nnet_output.Max(), min_val = nnet_output.Min();
+    if (max_val > 30.0 || min_val < -30.0) {
+      KALDI_WARN << "Nnet outputs outside the range [-30,30], derivs may be "
+          "inaccurate; suggest adding nonzero --l2-regularize option, e.g. "
+          "--l2-regularize=0.000025, or more l2 on output layer in config; "
+          "see --chain.l2-regularize option to train.py.  This warning may "
+          "indicate inaccurate transcripts.";
+    }
+  }
+
+
+
   // make sure the alpha sums and beta sums are zeroed.
   alpha_.ColRange(den_graph_.NumStates() * num_sequences_,
                   num_sequences_).SetZero();
