@@ -24,6 +24,7 @@
 namespace kaldi {
 namespace chain {
 
+
 DenominatorComputation::DenominatorComputation(
     const ChainTrainingOptions &opts,
     const DenominatorGraph &den_graph,
@@ -69,8 +70,6 @@ DenominatorComputation::DenominatorComputation(
           "indicate inaccurate transcripts.";
     }
   }
-
-
 
   // make sure the alpha sums and beta sums are zeroed.
   alpha_.ColRange(den_graph_.NumStates() * num_sequences_,
@@ -312,6 +311,7 @@ bool DenominatorComputation::Backward(
         transposed_deriv_part.SetZero();
     }
   }
+
   return ok_;
 }
 
