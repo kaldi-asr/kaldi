@@ -107,6 +107,10 @@ BaseFloat NumeratorComputation::Forward() {
   ComputeLookupIndexes();
   nnet_logprobs_.Resize(nnet_output_indexes_.Dim(), kUndefined);
   nnet_output_.Lookup(nnet_output_indexes_, nnet_logprobs_.Data());
+  // Apply the same limits as in the denominator computation, to avoid
+  // non-comparable derivatives.
+  nnet_logprobs_.ApplyFloor(-30.0);
+  nnet_logprobs_.ApplyCeiling(30.0);
   const fst::StdVectorFst &fst = supervision_.fst;
   KALDI_ASSERT(fst.Start() == 0);
   int32 num_states = fst.NumStates();
