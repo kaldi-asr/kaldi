@@ -10,7 +10,7 @@ stage=-2
 num_jobs=20
 
 # shell options
-set -e -o pipefail
+set -eo pipefail
 
 . ./cmd.sh
 . ./utils/parse_options.sh
@@ -192,17 +192,34 @@ if [ $stage -le 5 ]; then
 
 fi
 
+if [ $stage -le 6 ]; then
+
+  local/run_cleanup_segmentation.sh
+
+  # align tri5a_cleaned
+  steps/align_fmllr.sh --cmd "$train_cmd" --nj $num_jobs \
+    data/train_cleaned data/lang exp/tri5a_cleaned exp/tri5a_cleaned_ali || exit 1;
+
+  # decode tri5a_cleaned
+  (
+  utils/mkgraph.sh data/lang_test exp/tri5a_cleaned exp/tri5a_cleaned/graph || exit 1;
+  steps/decode_fmllr.sh --cmd "$decode_cmd" --nj $num_jobs --config conf/decode.config \
+     exp/tri5a_cleaned/graph data/test exp/tri5a_cleaned/decode_test || exit 1;
+  )&
+
+fi
+
 # nnet3 tdnn models
 # commented out by default, since the chain model is usually faster and better
-if [ $stage -le 6 ]; then
+#if [ $stage -le 7 ]; then
 
   # echo "$0: train nnet3 model"
   # local/nnet3/run_tdnn.sh
 
-fi
+#fi
 
 # chain model
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
 
   # The iVector-extraction and feature-dumping parts coulb be skipped by setting "--train_stage 7"
   echo "$0: train chain model"
@@ -214,8 +231,15 @@ fi
 if [ $stage -le 10 ]; then
 
   echo "$0: extract the results"
-  for x in exp/*/decode_test; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null
-  for x in exp/*/*/decode_test; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null
+  echo "WER: test"
+  for x in exp/*/decode_test*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+  for x in exp/*/*/decode_test*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+  echo
+
+  echo "CER: test"
+  for x in exp/*/decode_test*; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null
+  for x in exp/*/*/decode_test*; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null
+  echo
 
 fi
 

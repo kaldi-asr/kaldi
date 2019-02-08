@@ -5,11 +5,11 @@
 set -e
 
 # configs for 'chain'
-affix=
+affix=1a
 stage=0
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_1a  # Note: _sp will get added to this
+dir=exp/chain/tdnn  # Note: _sp will get added to this
 decode_iter=
 
 # training options
@@ -131,11 +131,6 @@ EOF
 fi
 
 if [ $stage -le 11 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/aishell-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
-  fi
-
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
@@ -187,7 +182,7 @@ fi
 if [ $stage -le 99 ]; then
 
   local/nnet3/run_eval_ivector_common.sh || exit 1;
-  
+
   for test_set in eval; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj 10 --cmd "$decode_cmd" \
