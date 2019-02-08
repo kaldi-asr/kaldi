@@ -47,6 +47,14 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
   if (nnet_output_deriv != NULL)
     nnet_output_deriv->SetZero();
 
+  if (nnet_output_deriv != NULL && RandInt(0, 1) == 0) {
+    // Only do this about every other frame, for efficiency; we'll multiply the
+    // scale by 2 to compensate.  See docs for the function, for its purpose.
+    PenalizeOutOfRange(nnet_output, 30.0,
+                       2.0 * opts.out_of_range_regularize,
+                       nnet_output_deriv);
+  }
+
   { // Doing the denominator first helps to reduce the maximum
     // memory use, as we can set 'xent_deriv' to nonempty after
     // we've freed the memory in this object.
