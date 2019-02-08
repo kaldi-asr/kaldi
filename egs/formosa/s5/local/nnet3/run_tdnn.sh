@@ -76,11 +76,6 @@ EOF
 fi
 
 if [ $stage -le 8 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/aishell-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
-  fi
-
   steps/nnet3/train_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
@@ -121,7 +116,7 @@ if [ $stage -le 99 ]; then
   # without carrying forward speaker information.
 
   local/nnet3/run_eval_ivector_common.sh || exit 1;
-  
+
   for decode_set in eval; do
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
     decode_dir=${dir}/decode_$decode_set
