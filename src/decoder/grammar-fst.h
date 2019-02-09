@@ -229,14 +229,15 @@ class GrammarFst {
     an arc-index leaving a particular state in an FST (i.e. an index
     that we could use to Seek() to the matching arc).
 
-      @param [in]  fst  The FST we are looking for state-indexes for
-      @param [in]  entry_state  The state in the FST-- must have arcs with
-                 ilabels decodable as (nonterminal_symbol, left_context_phone).
-                 Will either be the start state (if 'nonterminal_symbol'
-                 corresponds to #nonterm_begin), or an internal state
-                 (if 'nonterminal_symbol' corresponds to #nonterm_reenter).
-                 The arc-indexes of those arcs will be the values
-                 we set in 'phone_to_arc'
+      @param [in]  fst  The FST that is being entered (or reentered)
+      @param [in]  entry_state  The state in 'fst' which is being entered
+                 (or reentered); will be fst.Start() if it's being
+                 entered.  It must have arcs with ilabels decodable as
+                 (nonterminal_symbol, left_context_phone).  Will either be the
+                 start state (if 'nonterminal_symbol' corresponds to
+                 #nonterm_begin), or an internal state (if 'nonterminal_symbol'
+                 corresponds to #nonterm_reenter).  The arc-indexes of those
+                 arcs will be the values we set in 'phone_to_arc'
       @param [in]  nonterminal_symbol  The index in phones.txt of the
                  nonterminal symbol we expect to be encoded in the ilabels
                  of the arcs leaving 'entry_state'.  Will either correspond
