@@ -57,4 +57,9 @@ if [ $stage -le 3 ]; then
   steps/train_sat.sh --cmd "$train_cmd" \
     3500 100000 $cleaned_data $langdir ${srcdir}_ali_${cleanup_affix} ${cleaned_dir}
 fi
+
+ori_avg_dur=$(awk 'BEGIN{total=0}{total += $2}END{printf("%.2f", total/NR)}' ${data}/utt2dur)
+new_avg_dur=$(awk 'BEGIN{total=0}{total += $2}END{printf("%.2f", total/NR)}' ${cleaned_data}/utt2dur)
+echo "average duration was reduced from ${ori_avg_dur}s to ${new_avg_dur}s."
+# average duration was reduced from 21.68s to 10.97s.
 exit 0;
