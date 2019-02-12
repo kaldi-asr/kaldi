@@ -91,6 +91,11 @@ _kaldi_build()
     echo "  - Built tools"
 
     # Install IRSTLM
+    # Remove IRSTLM dir if it exists else the install script fails
+    if [ -d "irstlm" ]
+    then
+        rm -rf irstlm
+    fi
     extras/install_irstlm.sh &> $ASR_LOG/install_irstlm.log
     install_irstlm_status=$(grep "Installation of IRSTLM finished successfully" $ASR_LOG/install_irstlm.log )
 
@@ -113,7 +118,11 @@ _kaldi_build()
     echo "  - Built SEQUITUR"
 
     # Install SRILM
-    wget https://github.com/tue-robotics/kaldi_srilm/blob/master/srilm.tgz?raw=true -O srilm.tgz
+    # Download SRILM if .tgz does not exist
+    if [ ! -f "srilm.tgz" ]
+    then
+        wget https://github.com/tue-robotics/kaldi_srilm/blob/master/srilm.tgz?raw=true -O srilm.tgz
+    fi
     extras/install_srilm.sh &> $ASR_LOG/install_srilm.log
     install_srilm_status=$(grep "Installation of SRILM finished successfully" $ASR_LOG/install_srilm.log)
 
