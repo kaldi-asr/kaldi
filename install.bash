@@ -285,9 +285,9 @@ else
                 _kaldi_clean ;;
 
             --tue )
-                _kaldi_check_dependencies || return 1
-                _kaldi_build || return 1
-                _kaldi_online_gst || return 1
+                _kaldi_check_dependencies || exit 1
+                _kaldi_build || exit 1
+                _kaldi_online_gst || exit 1
                 echo -e "\e[36m\e[1m Kaldi installation complete \e[0m" ;;
 
             -h | --help )
