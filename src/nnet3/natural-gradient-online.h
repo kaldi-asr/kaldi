@@ -375,7 +375,7 @@ namespace nnet3 {
    * Initialization *
 
    Now, a note on what we do on time t = 0, i.e. for the first minibatch.  We
-   initialize X_0 to the top R eigenvectors of 1/N X_0 X_0^T, where N is the
+   initialize R_0 to the top R eigenvectors of 1/N X_0 X_0^T, where N is the
    minibatch size (num-rows of R0).  If L is the corresponding RxR diagonal
    matrix of eigenvalues, then we will set D_0 = L - \rho_0 I.  We set \rho_0
    to ensure that
