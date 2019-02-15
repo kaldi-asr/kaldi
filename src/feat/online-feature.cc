@@ -34,7 +34,9 @@ RecyclingVector::~RecyclingVector() {
 Vector<BaseFloat> *RecyclingVector::Retrieve(int index) const {
   if (index < first_available_index_) {
     KALDI_ERR << "Attempted to retrieve feature vector that was "
-                 "already removed by the RecyclingVector";
+                 "already removed by the RecyclingVector (index = " << index << "; "
+              << "first_available_index = " << first_available_index_ << "; "
+              << "size = " << Size() << ")";
   }
   // 'at' does size checking.
   return items_.at(index - first_available_index_);
