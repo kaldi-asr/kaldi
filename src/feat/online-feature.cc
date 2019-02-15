@@ -24,18 +24,50 @@
 
 namespace kaldi {
 
+RecyclingVector::RecyclingVector(int items_to_hold) : items_to_hold_(items_to_hold),
+                                                  first_available_index_(0) { }
+
+RecyclingVector::~RecyclingVector() {
+  DeletePointers(&items_);
+}
+
+Vector<BaseFloat> *RecyclingVector::Retrieve(int index) const {
+  if (index < first_available_index_) {
+    KALDI_ERR << "Attempted to retrieve feature vector that was "
+                 "already removed by the RecyclingVector";
+  }
+  // 'at' does size checking.
+  return items_.at(index - first_available_index_);
+}
+
+void RecyclingVector::Store(Vector<BaseFloat> *item) {
+  // Internally, we keep at most 2x requested items_to_hold_ and clean up
+  // when this number is reached
+  const int size_before_erase = items_.size();
+  if (size_before_erase == 2 * items_to_hold_) {
+    items_.erase(items_.begin(), items_.begin() + items_to_hold_);
+    first_available_index_ += (size_before_erase - items_.size());
+  }
+  items_.push_back(item);
+}
+
+int RecyclingVector::Size() const {
+  return first_available_index_ + items_.size();
+}
+
+
 template<class C>
 void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
                                            VectorBase<BaseFloat> *feat) {
-  // 'at' does size checking.
-  feat->CopyFromVec(*(features_.at(frame)));
+  feat->CopyFromVec(*(features_.Retrieve(frame)));
 };
 
 template<class C>
 OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
     computer_(opts), window_function_(computer_.GetFrameOptions()),
-    input_finished_(false), waveform_offset_(0) { }
+    input_finished_(false), waveform_offset_(0),
+    features_(opts.frame_opts.max_feature_vectors) { }
 
 template<class C>
 void OnlineGenericBaseFeature<C>::AcceptWaveform(BaseFloat sampling_rate,
@@ -63,11 +95,10 @@ template<class C>
 void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   const FrameExtractionOptions &frame_opts = computer_.GetFrameOptions();
   int64 num_samples_total = waveform_offset_ + waveform_remainder_.Dim();
-  int32 num_frames_old = features_.size(),
+  int32 num_frames_old = features_.Size(),
       num_frames_new = NumFrames(num_samples_total, frame_opts,
                                  input_finished_);
   KALDI_ASSERT(num_frames_new >= num_frames_old);
-  features_.resize(num_frames_new, NULL);
 
   Vector<BaseFloat> window;
   bool need_raw_log_energy = computer_.NeedRawLogEnergy();
@@ -81,7 +112,7 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
     // note: this online feature-extraction code does not support VTLN.
     BaseFloat vtln_warp = 1.0;
     computer_.Compute(raw_log_energy, vtln_warp, &window, this_feature);
-    features_[frame] = this_feature;
+    features_.Store(this_feature);
   }
   // OK, we will now discard any portion of the signal that will not be
   // necessary to compute frames in the future.

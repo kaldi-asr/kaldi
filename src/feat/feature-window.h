@@ -44,6 +44,7 @@ struct FrameExtractionOptions {
   BaseFloat blackman_coeff;
   bool snip_edges;
   bool allow_downsample;
+  int max_feature_vectors;
   // May be "hamming", "rectangular", "povey", "hanning", "blackman"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
@@ -59,7 +60,8 @@ struct FrameExtractionOptions {
       round_to_power_of_two(true),
       blackman_coeff(0.42),
       snip_edges(true),
-      allow_downsample(false) { }
+      allow_downsample(false),
+      max_feature_vectors(-1) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,
@@ -90,6 +92,10 @@ struct FrameExtractionOptions {
     opts->Register("allow-downsample", &allow_downsample,
                    "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
+    opts->Register("max-feature-vectors", &max_feature_vectors,
+                   "Memory optimization. If larger than 0, periodically remove feature "
+                   "vectors so that only this number of the latest feature vectors is "
+                   "retained.");
   }
   int32 WindowShift() const {
     return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);

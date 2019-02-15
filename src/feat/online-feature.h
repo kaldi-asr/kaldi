@@ -41,6 +41,31 @@ namespace kaldi {
 /// @{
 
 
+/// This class serves as a storage for feature vectors with an option to limit
+/// the memory usage by removing old elements. The deleted frames indices are
+/// "remembered" so that regardless of the MAX_ITEMS setting, the user always
+/// provides the indices as if no deletion was being performed.
+/// This is useful when processing very long recordings which would otherwise
+/// cause the memory to eventually blow up when the features are not being removed.
+class RecyclingVector {
+public:
+  RecyclingVector(int items_to_hold = -1);
+
+  Vector<BaseFloat> *Retrieve(int index) const;
+
+  void Store(Vector<BaseFloat> *item);
+
+  int Size() const;
+
+  ~RecyclingVector();
+
+private:
+  std::vector<Vector<BaseFloat>*> items_;
+  int items_to_hold_;
+  int first_available_index_;
+};
+
+
 /// This is a templated class for online feature extraction;
 /// it's templated on a class like MfccComputer or PlpComputer
 /// that does the basic feature extraction.
@@ -61,7 +86,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
     return computer_.GetFrameOptions().frame_shift_ms / 1000.0f;
   }
 
-  virtual int32 NumFramesReady() const { return features_.size(); }
+  virtual int32 NumFramesReady() const { return features_.Size(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
@@ -88,10 +113,6 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
     ComputeFeatures();
   }
 
-  ~OnlineGenericBaseFeature() {
-    DeletePointers(&features_);
-  }
-
  private:
   // This function computes any additional feature frames that it is possible to
   // compute from 'waveform_remainder_', which at this point may contain more
@@ -107,7 +128,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
 
-  std::vector<Vector<BaseFloat>*> features_;
+  RecyclingVector features_;
 
   // True if the user has called "InputFinished()"
   bool input_finished_;
