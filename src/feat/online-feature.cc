@@ -47,6 +47,9 @@ void RecyclingVector::Store(Vector<BaseFloat> *item) {
   // when this number is reached
   const int size_before_erase = items_.size();
   if (size_before_erase == 2 * items_to_hold_) {
+    for (int i = 0; i != items_to_hold_; ++i) {
+      delete items_[i];
+    }
     items_.erase(items_.begin(), items_.begin() + items_to_hold_);
     first_available_index_ += (size_before_erase - items_.size());
   }
