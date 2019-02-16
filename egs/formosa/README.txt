@@ -1,6 +1,6 @@
 ### Welcome to the demo recipe of the Formosa Speech in the Wild (FSW) Project ###
 
-The language habits of Taiwanese people are different from other Mandarin speakers (both accents and cultures) [1]. Especially Tainwaese use tranditional Chinese characters, i.e., 繁體中文). To address this issue, a Taiwanese speech corpus collection project "Formosa Speech in the Wild (FSW)" was initiated in order to improving the development of Taiwanese-specific speech recognition techniques.
+The language habits of Taiwanese people are different from other Mandarin speakers (both accents and cultures) [1]. Especially Tainwaese use tranditional Chinese characters, i.e., 繁體中文). To address this issue, a Taiwanese speech corpus collection project "Formosa Speech in the Wild (FSW)" was initiated in 2017 to improve the development of Taiwanese-specific speech recognition techniques.
 
 FSW corpus will be a large-scale database of real-Life/multi-gene Taiwanese Spontaneous speech collected and transcribed from various sources (radio, TV, open courses, etc.). To demostrate that this database is a reasonable data resource for Taiwanese spontaneous speech recognition research, a baseline recipe is provied here for everybody, especially students, to develop their own systems easily and quickly.
 
