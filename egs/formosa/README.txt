@@ -16,5 +16,5 @@ National Taipei University of Technology
 http://www.ntut.edu.tw/~yfliao
 yfliao@mail.ntut.edu.tw
 
-......
-#1 The languages of Taiwan consist of several varieties of languages under families of the Austronesian languages and the Sino-Tibetan languages. Taiwanese Mandarin, Hokkien, Hakka and Formosan languages are used by 83.5%, 81.9%, 6.6% and 1.4% of the population respectively (2010). Given the prevalent use of Taiwanese Hokkien, the Mandarin spoken in Taiwan has been to a great extent influenced by it.
+............
+[1] The languages of Taiwan consist of several varieties of languages under families of the Austronesian languages and the Sino-Tibetan languages. Taiwanese Mandarin, Hokkien, Hakka and Formosan languages are used by 83.5%, 81.9%, 6.6% and 1.4% of the population respectively (2010). Given the prevalent use of Taiwanese Hokkien, the Mandarin spoken in Taiwan has been to a great extent influenced by it.
