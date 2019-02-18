@@ -375,6 +375,43 @@ void TestOnlineAppendFeature() {
   }
 }
 
+void TestRecyclingVector() {
+  RecyclingVector full_vec;
+  RecyclingVector shrinking_vec(10);
+  for (int i = 0; i != 100; ++i) {
+    Vector <BaseFloat> data(1);
+    data.Set(i);
+    full_vec.Store(new Vector<BaseFloat>(data));
+    shrinking_vec.Store(new Vector<BaseFloat>(data));
+  }
+
+  // full_vec should contain everything
+  for (int i = 0; i != 100; ++i) {
+    Vector <BaseFloat> *data = full_vec.Retrieve(i);
+    KALDI_ASSERT(data != nullptr);
+    KALDI_ASSERT((*data)(0) == static_cast<BaseFloat>(i));
+  }
+
+  // shrinking_vec may throw an exception for the first 90 elements
+  int caught_exceptions = 0;
+  for (int i = 0; i != 90; ++i) {
+    try {
+      shrinking_vec.Retrieve(i);
+    } catch (const std::runtime_error &) {
+      ++caught_exceptions;
+    }
+  }
+  // it may actually store a bit more elements for performance efficiency considerations
+  KALDI_ASSERT(caught_exceptions >= 80);
+
+  // shrinking_vec should contain the last 10 elements
+  for (int i = 90; i != 100; ++i) {
+    Vector <BaseFloat> *data = shrinking_vec.Retrieve(i);
+    KALDI_ASSERT(data != nullptr);
+    KALDI_ASSERT((*data)(0) == static_cast<BaseFloat>(i));
+  }
+}
+
 }  // end namespace kaldi
 
 int main() {
@@ -387,6 +424,7 @@ int main() {
     TestOnlinePlp();
     TestOnlineTransform();
     TestOnlineAppendFeature();
+    TestRecyclingVector();
   }
   std::cout << "Test OK.\n";
 }

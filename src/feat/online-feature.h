@@ -49,6 +49,7 @@ namespace kaldi {
 /// cause the memory to eventually blow up when the features are not being removed.
 class RecyclingVector {
 public:
+  /// By default it does not remove any elements.
   RecyclingVector(int items_to_hold = -1);
 
   Vector<BaseFloat> *Retrieve(int index) const;
