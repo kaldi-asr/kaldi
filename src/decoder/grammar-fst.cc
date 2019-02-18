@@ -49,6 +49,15 @@ void GrammarFst::Init() {
   InitInstances();
 }
 
+void GrammarFst::MakeThreadSafe() {
+  KALDI_ASSERT(entry_arcs_.size() == ifsts_.size());
+  for (size_t i = 0; i < entry_arcs_.size(); i++) {
+    if (!entry_arcs_[i].empty()) {
+      InitEntryArcs(i);
+    }
+  }
+}
+
 GrammarFst::~GrammarFst() {
   Destroy();
 }

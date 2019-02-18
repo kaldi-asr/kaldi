@@ -88,8 +88,8 @@ template<> class ArcIterator<GrammarFst>;
    points whenever we invoke a nonterminal.  For more information
    see \ref grammar (i.e. ../doc/grammar.dox).
 
-   Caution: this class is not thread safe, i.e. you shouldn't access the same
-   GrammarFst from multiple threads.  We can fix this later if needed.
+   Caution: if you want to be able to use this class from multiple decoder
+   threads you need to call MakeThreadSafe() before using it.
  */
 class GrammarFst {
  public:
@@ -143,6 +143,12 @@ class GrammarFst {
       int32 nonterm_phones_offset,
       const ConstFst<StdArc> &top_fst,
       const std::vector<std::pair<int32, const ConstFst<StdArc> *> > &ifsts);
+
+  /// The user should call this after calling Read() or the non-trivial
+  /// constructor if this object is going to be used from multiple threads.  It
+  /// does a very small amount of pre-computation work, that's proportional to
+  /// the number of 'ifsts' times the number of phones.
+  void MakeThreadSafe();
 
   ///  This constructor should only be used prior to calling Read().
   GrammarFst(): top_fst_(NULL) { }
