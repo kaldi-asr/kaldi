@@ -60,7 +60,7 @@ DenominatorComputation::DenominatorComputation(
     // A check, that all values in nnet_output are in the range [-30, 30]..
     // otherwise derivatives will be wrong (search below for 30).
     BaseFloat max_val = nnet_output.Max(), min_val = nnet_output.Min();
-    if (max_val > 30.0 || min_val < -30.0) {
+    if (max_val > opts_.denominator_range || min_val < -1.0 * opts_.denominator_range) {
       KALDI_WARN << "Nnet outputs " << min_val << ", "
                  << max_val <<
           " outside the range [-30,30], derivs may be "

@@ -46,6 +46,10 @@ struct ChainTrainingOptions {
   BaseFloat l2_regularize;
 
 
+  // This is the range to limit the denominator. If the value is outside this
+  // range then apply out_of_range_regularize.
+  BaseFloat denominator_range;
+
   // This is similar to an l2 regularization constant (like l2-regularize) but
   // applied on the part of the nnet output matrix that exceeds the range
   // [-30,30]... this is necessary to avoid things regularly going out of the
@@ -70,7 +74,7 @@ struct ChainTrainingOptions {
   // should have a softmax as its final nonlinearity.
   BaseFloat xent_regularize;
 
-  ChainTrainingOptions(): l2_regularize(0.0), out_of_range_regularize(0.01),
+  ChainTrainingOptions(): l2_regularize(0.0), denominator_range(30), out_of_range_regularize(0.01),
                           leaky_hmm_coefficient(1.0e-05),
                           xent_regularize(0.0) { }
 
@@ -78,6 +82,9 @@ struct ChainTrainingOptions {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
                    "constant for 'chain' training, applied to the output "
                    "of the neural net.");
+    opts->Register("denominator-range", &denominator_range, "Limit the range "
+                   "for the denominator computation. If out of range apply"
+                   "the out-of-range-regularize");
     opts->Register("out-of-range-regularize", &out_of_range_regularize,
                    "Constant that controls how much we penalize the nnet output "
                    "leaving the range [-30,30]... this is needed because we "
