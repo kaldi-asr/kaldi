@@ -4,8 +4,10 @@ The language habits of Taiwanese people are different from other Mandarin speake
 
 FSW corpus will be a large-scale database of real-Life/multi-gene Taiwanese Spontaneous speech collected and transcribed from various sources (radio, TV, open courses, etc.). To demostrate that this database is a reasonable data resource for Taiwanese spontaneous speech recognition research, a baseline recipe is provied here for everybody, especially students, to develop their own systems easily and quickly.
 
-This recipe is based on the "NER-Trs-Vol1" corpus (about 150 hours broadcast radio speech selected from FSW. For more details, please visit: 
+This recipe is based on the "NER-Trs-Vol1" corpus (about 150 hours broadcast radio speech selected from FSW). For more details, please visit: 
 * Formosa Speech in the Wild (FSW) project (https://sites.google.com/speech.ntut.edu.tw/fsw)
+
+If you want to apply the NER-Trs-Vol1 corpus, please contact Yuan-Fu Liao (廖元甫) via yfliao@mail.ntut.edu.tw. The corpus will be distributed via our GitLab server in https://speech.nchc.org.tw
 
 Any bug, errors, comments or suggestions are very welcomed.
 
