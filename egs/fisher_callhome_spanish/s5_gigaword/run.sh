@@ -19,9 +19,8 @@ callhome_speech=/export/corpora/LDC/LDC96S35
 callhome_transcripts=/export/corpora/LDC/LDC96T17
 split_callhome=local/splits/split_callhome
 
-gigaword_datapath=/export/c03/svalluri/Spanish_gigaword/data # Path to the download of Gigaword data
-rnnlm_workdir=/export/c03/svalluri/workdir_rnnlm  # Work path for entire Gigaword LM and text processing, should be 
-                                                  # large free spae and easy IO access.
+gigaword_datapath=/export/c03/svalluri/Spanish_gigaword/data
+rnnlm_workdir=/export/c03/svalluri/workdir_rnnlm
 mfccdir=`pwd`/mfcc
 
 . ./cmd.sh
@@ -31,8 +30,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 set -eou pipefail
 
 if [ $stage -le -1 ]; then
-  local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
-  local/callhome_data_prep.sh $callhome_speech $callhome_transcripts
+#  local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
+
+#  local/callhome_data_prep.sh $callhome_speech $callhome_transcripts
 
   # The lexicon is created using the LDC spanish lexicon, the words from the
   # fisher spanish corpus. Additional (most frequent) words are added from the
@@ -72,29 +72,6 @@ if [ $stage -le -1 ]; then
 
   cp -r data/local/data/callhome_train_all data/callhome_train_all
 
-  # Creating data partitions for the pipeline
-  # We need datasets for both the ASR and SMT system
-  # We have 257455 utterances left, so the partitions are roughly as follows
-  # ASR Train : 100k utterances
-  # ASR Tune : 17455 utterances
-  # ASR Eval : 20k utterances
-  # MT Train : 100k utterances
-  # MT Tune : Same as the ASR eval set (Use the lattices from here)
-  # MT Eval : 20k utterances
-  # The dev and the test sets need to be carefully chosen so that there is no conversation/speaker
-  # overlap. This has been setup and the script local/fsp_ideal_data_partitions provides the numbers that are needed below.
-  # As noted above, the LM has not been trained on the dev and the test sets.
-  #utils/subset_data_dir.sh --first data/train_all 158126 data/dev_and_test
-  #utils/subset_data_dir.sh --first data/dev_and_test 37814 data/asr_dev_and_test
-  #utils/subset_data_dir.sh --last data/dev_and_test 120312 data/mt_train_and_test
-  #utils/subset_data_dir.sh --first data/asr_dev_and_test 17662 data/dev
-  #utils/subset_data_dir.sh --last data/asr_dev_and_test 20152 data/test
-  #utils/subset_data_dir.sh --first data/mt_train_and_test 100238 data/mt_train
-  #utils/subset_data_dir.sh --last data/mt_train_and_test 20074 data/mt_test
-  #rm -r data/dev_and_test
-  #rm -r data/asr_dev_and_test
-  #rm -r data/mt_train_and_test
-
   local/create_splits.sh $split
   local/callhome_create_splits.sh $split_callhome
 fi
@@ -115,11 +92,10 @@ fi
 if [ $stage -le 1 ]; then
     num_words_pocolm=110000
     local/train_pocolm.sh --stage $lmstage --num-words-pocolm 110000 "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
-    cat "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt > "$rnnlm_workdir"/rnnlm_wordlist.txt
-    cut -f 1 -d " " data/lang/words.txt >> "$rnnlm_workdir"/rnnlm_wordlist.txt
-    cat "$rnnlm_workdir"/rnnlm_wordlist.txt | sort | uniq > "$rnnlm_workdir"/rnnlm_wordlist.txt.uniq
-    local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/100000_3.pocolm \
-		   --wordslist "$rnnlm_workdir"/rnnlm_wordlist.txt.uniq  --text "$rnnlm_workdir"/text_lm --text-dir "$rnnlm_workdir"/text_lm
+    local/get_rnnlm_wordlist.py data/lang/words.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
+				"$rnnlm_workdir"/rnnlm_wordlist
+    local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm \
+		   --wordslist "$rnnlm_workdir"/rnnlm_wordlist --text-dir "$rnnlm_workdir"/text_lm
 fi
 
 if [ $stage -le 2 ]; then
