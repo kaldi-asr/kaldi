@@ -21,7 +21,6 @@ lstm_rpd=256
 lstm_nrpd=256
 stage=0
 train_stage=-30
-text=Spanish_gigawrd/text_lm
 text_dir=Spanish_gigawrd/text_lm
 
 . ./cmd.sh
@@ -30,7 +29,7 @@ text_dir=Spanish_gigawrd/text_lm
 mkdir -p $dir/config
 set -e
 
-for f in $text/dev.txt; do
+for f in $text_dir/dev.txt; do
     [ ! -f $f ] && \
 	echo "$0: expected file $f to exist;" && exit 1
 done
