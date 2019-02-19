@@ -118,8 +118,8 @@ if [ $stage -le 1 ]; then
     cat "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt > "$rnnlm_workdir"/rnnlm_wordlist.txt
     cut -f 1 -d " " data/lang/words.txt >> "$rnnlm_workdir"/rnnlm_wordlist.txt
     cat "$rnnlm_workdir"/rnnlm_wordlist.txt | sort | uniq > "$rnnlm_workdir"/rnnlm_wordlist.txt.uniq
-    local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/100000_3.pocolm \
-		   --wordslist "$rnnlm_workdir"/rnnlm_wordlist.txt.uniq  --text "$rnnlm_workdir"/text_lm --text-dir "$rnnlm_workdir"/text_lm
+    local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm \
+		   --wordslist "$rnnlm_workdir"/rnnlm_wordlist.txt.uniq  --text-dir "$rnnlm_workdir"/text_lm
 fi
 
 if [ $stage -le 2 ]; then
