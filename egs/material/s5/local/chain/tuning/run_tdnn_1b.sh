@@ -7,15 +7,19 @@
 
 # cat exp/chain/tdnn1b_sp/decode_dev/scoring_kaldi/best_wer
 # [for swahili]
-# %WER 37.51 [ 23309 / 62144, 3027 ins, 5917 del, 14365 sub ] exp/chain/tdnn1b_sp/decode_dev/wer_10_0.5
+# %WER 36.84 [ 22893 / 62144, 2988 ins, 5712 del, 14193 sub ] exp/chain/tdnn1b_sp/decode_dev/wer_10_0.0
 # [for tagalog]
-# %WER 46.53 [ 29955 / 64382, 3425 ins, 9485 del, 17045 sub ] exp/chain/tdnn1a_sp/decode_dev/wer_9_0.0
+# %WER 46.37 [ 29852 / 64382, 4163 ins, 7652 del, 18037 sub ] exp/chain/tdnn1b_sp/decode_dev/wer_10_0.0
+# [for somali]
+# %WER 57.44 [ 46889 / 81637, 5016 ins, 12015 del, 29858 sub ] exp/chain/tdnn1b_sp/decode_dev/wer_10_0.0
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn1b_sp
 # [for swahili]
-# exp/chain/tdnn1b_sp: num-iters=99 nj=2..12 num-params=17.2M dim=40+100->1800 combine=-0.129->-0.128 (over 3) xent:train/valid[65,98,final]=(-1.72,-1.42,-1.42/-1.91,-1.74,-1.72) logprob:train/valid[65,98,final]=(-0.163,-0.125,-0.124/-0.213,-0.205,-0.203)
+# exp/chain/tdnn1b_sp/: num-iters=99 nj=2..12 num-params=17.2M dim=40+100->1816 combine=-0.127->-0.127 (over 2) xent:train/valid[65,98,final]=(-1.74,-1.44,-1.43/-1.80,-1.62,-1.61) logprob:train/valid[65,98,final]=(-0.175,-0.136,-0.135/-0.194,-0.182,-0.180)
 # [for tagalog]
-# exp/chain/tdnn1a_sp: num-iters=96 nj=2..12 num-params=12.3M dim=40+100->1952 combine=-0.165->-0.165 (over 2) xent:train/valid[63,95,final]=(-1.89,-1.66,-1.65/-2.06,-1.89,-1.89) logprob:train/valid[63,95,final]=(-0.186,-0.158,-0.157/-0.231,-0.219,-0.218)
+# exp/chain/tdnn1b_sp/: num-iters=96 nj=2..12 num-params=17.2M dim=40+100->1928 combine=-0.124->-0.123 (over 2) xent:train/valid[63,95,final]=(-1.69,-1.43,-1.42/-1.75,-1.62,-1.60) logprob:train/valid[63,95,final]=(-0.168,-0.128,-0.127/-0.193,-0.187,-0.187)
+# [for somali]
+# exp/chain/tdnn1b_sp/: num-iters=84 nj=2..12 num-params=17.9M dim=40+100->3240 combine=-0.162->-0.160 (over 2) xent:train/valid[55,83,final]=(-2.31,-2.02,-2.00/-2.27,-2.13,-2.10) logprob:train/valid[55,83,final]=(-0.218,-0.157,-0.154/-0.268,-0.263,-0.263)
 
 set -e -o pipefail
 
