@@ -88,15 +88,11 @@ template<> class ArcIterator<GrammarFst>;
    points whenever we invoke a nonterminal.  For more information
    see \ref grammar (i.e. ../doc/grammar.dox).
 
-   Caution: you can't use this object from multiple threads; you should
+   THREAD SAFETY: you can't use this object from multiple threads; you should
    create lightweight copies of this object using the copy constructor,
-   e.g. `new GrammarFst(this_grammar_fst)`, if you want to decode from
-   multiple threads using the same GrammarFst.  Note: you shouldn't
-   delete the newly created Gramm
-
-   Copy() function, to create a (relativey) lightweight copy, if you want t
-   decode from multiple threads.
- */
+   e.g. `new GrammarFst(this_grammar_fst)`, if you want to decode from multiple
+   threads using the same GrammarFst.
+*/
 class GrammarFst {
  public:
   typedef GrammarFstArc Arc;
