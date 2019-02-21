@@ -52,10 +52,10 @@ for page in sorted(os.listdir(args.database_path)):
       # The dataset is randomly split train 95% and test 5%
       coin = random.randint(0, 20)
       if coin >= 1:
-        train_text_fh.write(utt_id + ' ' + text + '\n')
+        train_text_fh.write("{} {}\n".format(utt_id, text))
         train_utt2spk_fh.write("{} {}\n".format(utt_id, page_count))
-        train_image_fh.write("{} {}\n".format(utt_id, image_path)
+        train_image_fh.write("{} {}\n".format(utt_id, image_path))
       elif coin < 1:
         test_text_fh.write("{} {}\n".format(utt_id, text))
         test_utt2spk_fh.write("{} {}\n".format(utt_id, page_count))
-        train_image_fh.write("{} {}\n".format(utt_id, image_path)
+        train_image_fh.write("{} {}\n".format(utt_id, image_path))
