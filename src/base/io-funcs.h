@@ -31,7 +31,9 @@
 #include <cctype>
 #include <vector>
 #include <string>
+
 #include "base/kaldi-common.h"
+#include "base/io-funcs-inl.h"
 
 namespace kaldi {
 
@@ -235,7 +237,4 @@ inline void InitKaldiOutputStream(std::ostream &os, bool binary);
 inline bool InitKaldiInputStream(std::istream &is, bool *binary);
 
 }  // end namespace kaldi.
-
-#include "base/io-funcs-inl.h"
-
 #endif  // KALDI_BASE_IO_FUNCS_H_

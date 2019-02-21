@@ -31,14 +31,8 @@ include kaldi.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all:
-	$(MAKE) checkversion
-	$(MAKE) kaldi.mk
-	$(MAKE) mklibdir
-	$(MAKE) subdirs
+all: $(SUBDIRS) matrix/test
 	-echo Done
-
-subdirs: $(SUBDIRS)
 
 mklibdir:
 	test -d $(KALDILIBDIR) || mkdir $(KALDILIBDIR)
@@ -138,11 +132,11 @@ ext_depend: check_portaudio
 
 
 .PHONY: $(SUBDIRS)
-$(SUBDIRS) : mklibdir
+$(SUBDIRS) : checkversion kaldi.mk mklibdir
 	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
-$(EXT_SUBDIRS) : mklibdir ext_depend
+$(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
 	$(MAKE) -C $@
 
 

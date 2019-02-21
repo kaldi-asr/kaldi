@@ -5,6 +5,7 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import sys, os
 from collections import defaultdict

@@ -110,7 +110,7 @@ def bounding_area(index, hull):
     return {'area': len_p * len_o,
             'length_parallel': len_p,
             'length_orthogonal': len_o,
-            'rectangle_center': (min_p + len_p / 2, min_o + len_o / 2),
+            'rectangle_center': (min_p + float(len_p) / 2, min_o + float(len_o) / 2),
             'unit_vector': unit_vector_p,
             }
 
@@ -275,8 +275,8 @@ def get_center(im):
     -------
     (int, int): center of the image
     """
-    center_x = im.size[0] / 2
-    center_y = im.size[1] / 2
+    center_x = float(im.size[0]) / 2
+    center_y = float(im.size[1]) / 2
     return int(center_x), int(center_y)
 
 

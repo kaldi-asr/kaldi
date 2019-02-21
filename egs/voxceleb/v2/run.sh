@@ -27,7 +27,7 @@ stage=0
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
   local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
-  # This script reates data/voxceleb1_test and data/voxceleb1_train.
+  # This script creates data/voxceleb1_test and data/voxceleb1_train.
   # Our evaluation set is the test portion of VoxCeleb1.
   local/make_voxceleb1.pl $voxceleb1_root data
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
@@ -66,7 +66,7 @@ if [ $stage -le 2 ]; then
 
   # Make a reverberated version of the VoxCeleb2 list.  Note that we don't add any
   # additive noise here.
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --speech-rvb-probability 1 \
     --pointsource-noise-addition-probability 0 \
@@ -91,11 +91,11 @@ if [ $stage -le 2 ]; then
   done
 
   # Augment with musan_noise
-  python steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
+  steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
   # Augment with musan_music
-  python steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
+  steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
   # Augment with musan_speech
-  python steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
+  steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
 
   # Combine reverb, noise, music, and babble into one directory.
   utils/combine_data.sh data/train_aug data/train_reverb data/train_noise data/train_music data/train_babble
