@@ -17,22 +17,34 @@ textdir=$1
 pocolm_dir=$2
 
 
-if [ $stage -le -2 ];then
+if [ $stage -le -2 ]; then
+    echo "\n\n"
+    echo " POCOLM experiment : Runnning STAGE 1 : 2-gram Pocolm general closed vocabulary model"
+    echo " Will estimate the metaparams to be used as unigram weights for stage 2 ....."
+    echo "\n\n"
     if [ -e "$textdir"/unigram_weights ]; then
 	rm "$textdir"/unigram_weights
     fi
-
     if [ -e "$pocolm_dir" ]; then
 	rm -r "$pocolm_dir"
     fi
+    
+    bash local/pocolm_cust.sh  --num-word 0 --ngram-order 2 --pocolm-stage 1 --lm-dir "$pocolm_dir"/lm \
+	 --arpa-dir "$pocolm_dir"/arpa --textdir "$textdir"
 
-    bash local/pocolm_cust.sh  --num-word "$num_words_pocolm" --lm-dir "$pocolm_dir"/lm \
-	                       --arpa-dir "$pocolm_dir"/arpa --textdir "$textdir"
 fi
-
+    
 if [ $stage -le -1 ];then
-  prune_lm_dir.py --target-num-ngrams=${prune_size} --max-memory=8G "$pocolm_dir"/lm/"$num_words_pocolm"_3.pocolm "$pocolm_dir"/lm/"$num_words_pocolm"_3.pocolm_pruned
-  format_arpa_lm.py --max-memory=8G "$pocolm_dir"/lm/"$num_words_pocolm"_3.pocolm_pruned | gzip -c > "$pocolm_dir"/arpa/"$num_words_pocolm"_3.pocolm_pruned_${prune_size}.arpa.gz
+    echo "\n\n"
+    echo "POCOLM experiment : RUNNING STAGE 2 : 3gram POCOLM using unigram wts estimates in 1st stage....."
+    echo "\n\n"
+
+    echo " " > "$pocolm_dir"/lm/work/.unigram_weights.done
+    python local/get_unigramwts.py "$pocolm_dir"/lm/0_2.pocolm/ "$textdir"/unigram_weights
+    bash local/pocolm_cust.sh  --num-word "$num_words_pocolm"  --lm-dir "$pocolm_dir"/lm \
+	                       --arpa-dir "$pocolm_dir"/arpa --textdir "$textdir"
+    
+
 fi
 
 

@@ -20,7 +20,7 @@ callhome_transcripts=/export/corpora/LDC/LDC96T17
 split_callhome=local/splits/split_callhome
 
 gigaword_datapath=/export/c03/svalluri/Spanish_gigaword/data
-rnnlm_workdir=/export/c03/svalluri/workdir_rnnlm
+rnnlm_workdir=/export/c03/svalluri/workdir_pocolm_2stage
 mfccdir=`pwd`/mfcc
 
 . ./cmd.sh
@@ -94,6 +94,9 @@ if [ $stage -le 1 ]; then
     local/train_pocolm.sh --stage $lmstage --num-words-pocolm 110000 "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
     local/get_rnnlm_wordlist.py data/lang/words.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
 				"$rnnlm_workdir"/rnnlm_wordlist
+fi
+    
+if [ $stage -le 2 ]; then
     local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm \
 		   --wordslist "$rnnlm_workdir"/rnnlm_wordlist --text-dir "$rnnlm_workdir"/text_lm
 fi

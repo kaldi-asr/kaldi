@@ -13,6 +13,8 @@ export PATH=$PATH:$POCOLM_ROOT/scripts
 
 wordlist=None
 num_word=100000
+pocolm_stage=2
+ngram_order=3
 lm_dir=
 arpa_dir=
 textdir=
@@ -55,7 +57,7 @@ limit_unk_history_opt=
 # un-comment the following line
 #limit_unk_history_opt="--limit-unk-history=true"
 
-for order in 3; do
+for order in ${ngram_order}; do
   # decide on the vocabulary.
   # Note: you'd use --wordlist if you had a previously determined word-list
   # that you wanted to use.
@@ -72,6 +74,7 @@ for order in 3; do
               --keep-int-data=true ${fold_dev_opt} ${bypass_metaparam_optim_opt} \
               ${limit_unk_history_opt} ${textdir} ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
+  if [ $pocolm_stage -eq 2 ];then
   mkdir -p ${arpa_dir}
   format_arpa_lm.py ${max_memory} ${unpruned_lm_dir} | gzip -c > ${arpa_dir}/${lm_name}_${order}gram_unpruned.arpa.gz
 
@@ -93,7 +96,7 @@ for order in 3; do
   get_data_prob.py ${textdir}/dev.txt ${max_memory} ${pruned_lm_dir} 2>&1 | grep -F '[perplexity'
 
   format_arpa_lm.py ${max_memory} ${pruned_lm_dir} | gzip -c > ${arpa_dir}/${lm_name}_${order}gram_prune${size}.arpa.gz
-
+  fi
 done
 
 # (run local/srilm_baseline.sh ${num_word} to see the following result e.g. local/srilm_baseline.sh 40000 )
