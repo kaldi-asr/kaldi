@@ -4,7 +4,7 @@
 #           2016  Vimal Manohar
 # Apache 2.0
 
-# This script is similar to steps/cleanup/segment_long_utterances.sh, but 
+# This script is similar to steps/cleanup/segment_long_utterances.sh, but
 # uses nnet3 acoustic model instead of GMM acoustic model for decoding.
 # This script performs segmentation of the input data based on the transcription
 # and outputs segmented data along with the corresponding aligned transcription.
@@ -13,7 +13,7 @@
 # are of manageable length for further processing, along with the portion of the
 # transcript that seems to match (aligns with) each segment.
 # This the light-supervised training scenario where the input transcription is
-# not expected to be completely clean and may have significant errors. 
+# not expected to be completely clean and may have significant errors.
 # See "JHU Kaldi System for Arabic MGB-3 ASR Challenge using Diarization,
 # Audio-transcript Alignment and Transfer Learning": Vimal Manohar, Daniel
 # Povey, Sanjeev Khudanpur, ASRU 2017
@@ -49,14 +49,14 @@ post_decode_acwt=1.0  # can be used in 'chain' systems to scale acoustics by 10 
 
 # Contexts must ideally match training
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
-extra_right_context=0  
+extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
 frames_per_chunk=150
 
 # i-vector options
-extractor=    # i-Vector extractor. If provided, will extract i-vectors. 
-              # Required if the network was trained with i-vector extractor. 
+extractor=    # i-Vector extractor. If provided, will extract i-vectors.
+              # Required if the network was trained with i-vector extractor.
 use_vad=false # Use energy-based VAD for i-vector extraction
 
 # TF-IDF similarity search options
@@ -116,12 +116,12 @@ it and eliminate data where the transcript doesn't seem to match.
     --segmentation-extra-opts 'opts'  # Additional options to segment_ctm_edits_mild.py.
                                 # Please run steps/cleanup/internal/segment_ctm_edits_mild.py
                                 # without arguments to see allowed options.
-    --align-full-hyp <true|false>  # If true, align full hypothesis 
-                                   i.e. trackback from the end to get the alignment. 
-                                   This is different from the normal 
+    --align-full-hyp <true|false>  # If true, align full hypothesis
+                                   i.e. trackback from the end to get the alignment.
+                                   This is different from the normal
                                    Smith-Waterman alignment, where the
                                    traceback will be from the maximum score.
-    --extractor <extractor>     # i-vector extractor directory if i-vector is 
+    --extractor <extractor>     # i-vector extractor directory if i-vector is
                                 # to be used during decoding. Must match
                                 # the extractor used for training neural-network.
     --use-vad <true|false>      # If true, uses energy-based VAD to apply frame weights
@@ -221,6 +221,7 @@ if [ $stage -le 3 ]; then
 
   # Make graphs w.r.t. to the original text (usually recording-level)
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
+    --scale-opts "--self-loop-scale=1.0 --transition-scale=1.0" \
     --nj $nj --cmd "$cmd" $text \
     $lang $dir $dir/graphs
   if [ -z "$utt2text" ]; then
