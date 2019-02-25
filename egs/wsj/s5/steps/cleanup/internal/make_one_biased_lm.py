@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
@@ -142,14 +142,19 @@ class NgramCounts(object):
         hist_to_total_count = self.GetHistToTotalCount()
         for n in reversed(list(range(2, self.ngram_order))):
             this_order_counts = self.counts[n]
+            this_order_counts_new = {}
             for hist in this_order_counts.keys():
                 if hist_to_total_count[hist] < min_count:
                     # we need to completely back off this count.
                     word_to_count = this_order_counts[hist]
-                    del this_order_counts[hist] # delete the key from the dict.
+                    # set value to empty so we can delete the key later
+                    this_order_counts[hist] = {}
                     backoff_hist = hist[1:]  # this will be a tuple not a list.
                     for word, count in word_to_count.items():
                         self.AddCount(backoff_hist, word, count)
+                if len(this_order_counts[hist]) > 0:
+                    this_order_counts_new[hist] = this_order_counts[hist]
+            self.counts[n] = this_order_counts_new
 
 
 
@@ -200,7 +205,7 @@ class NgramCounts(object):
         word_to_count = self.counts[0][empty_history]
         total = sum(word_to_count.values())
         try:
-            f = open(top_words_file)
+            f = open(top_words_file, mode='r', encoding='utf-8')
         except:
             sys.exit("make_one_biased_lm.py: error opening top-words file: "
                      "--top-words=" + top_words_file)
