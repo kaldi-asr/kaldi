@@ -18,10 +18,10 @@ pocolm_dir=$2
 
 
 if [ $stage -le -2 ]; then
-    echo "\n\n"
-    echo " POCOLM experiment : Runnning STAGE 1 : 2-gram Pocolm general closed vocabulary model"
+    echo "****"
+    echo " POCOLM experiment : Running STAGE 1 : 2-gram Pocolm general closed vocabulary model"
     echo " Will estimate the metaparams to be used as unigram weights for stage 2 ....."
-    echo "\n\n"
+    echo "****"
     if [ -e "$textdir"/unigram_weights ]; then
 	rm "$textdir"/unigram_weights
     fi
@@ -35,12 +35,12 @@ if [ $stage -le -2 ]; then
 fi
     
 if [ $stage -le -1 ];then
-    echo "\n\n"
+    echo "********"
     echo "POCOLM experiment : RUNNING STAGE 2 : 3gram POCOLM using unigram wts estimates in 1st stage....."
-    echo "\n\n"
+    echo "********"
 
     echo " " > "$pocolm_dir"/lm/work/.unigram_weights.done
-    python local/get_unigramwts.py "$pocolm_dir"/lm/0_2.pocolm/ "$textdir"/unigram_weights
+    python local/get_unigram_weights_vocab.py "$pocolm_dir"/lm/0_2.pocolm/ "$textdir"/unigram_weights
     bash local/pocolm_cust.sh  --num-word "$num_words_pocolm"  --lm-dir "$pocolm_dir"/lm \
 	                       --arpa-dir "$pocolm_dir"/arpa --textdir "$textdir"
     
