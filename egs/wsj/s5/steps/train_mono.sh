@@ -108,7 +108,7 @@ if [ $stage -le 0 ]; then
   rm $dir/0.*.acc
 fi
 
-beam=$initial_beam # will change to 10 below after 1st pass
+beam=$initial_beam # will change to regular_beam below after 1st pass
 # note: using slightly wider beams for WSJ vs. RM.
 x=1
 while [ $x -lt $num_iters ]; do
