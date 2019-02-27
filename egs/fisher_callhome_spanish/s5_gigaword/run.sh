@@ -88,10 +88,9 @@ if [ $stage -le 0 ]; then
     cp "$rnnlm_workdir"/normalised_gigaword_corpus/text_normalized "$rnnlm_workdir"/text_lm/spanish_gigaword_normalised.txt
 fi
 
-
+num_words_pocolm=110000
 if [ $stage -le 1 ]; then
-    num_words_pocolm=110000
-    local/train_pocolm.sh --stage $lmstage --num-words-pocolm 110000 "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
+    local/train_pocolm.sh --stage $lmstage --num-words-pocolm $num_words_pocolm "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
     local/get_rnnlm_wordlist.py data/lang/words.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
 				"$rnnlm_workdir"/rnnlm_wordlist
 fi
