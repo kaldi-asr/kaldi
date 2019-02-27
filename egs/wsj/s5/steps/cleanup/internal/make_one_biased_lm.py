@@ -142,21 +142,18 @@ class NgramCounts(object):
         hist_to_total_count = self.GetHistToTotalCount()
         for n in reversed(list(range(2, self.ngram_order))):
             this_order_counts = self.counts[n]
-            this_order_counts_new = {}
+            to_delete = []
             for hist in this_order_counts.keys():
                 if hist_to_total_count[hist] < min_count:
                     # we need to completely back off this count.
                     word_to_count = this_order_counts[hist]
-                    # set value to empty so we can delete the key later
-                    this_order_counts[hist] = {}
+                    # mark this key for deleting
+                    to_delete.append(hist)
                     backoff_hist = hist[1:]  # this will be a tuple not a list.
                     for word, count in word_to_count.items():
                         self.AddCount(backoff_hist, word, count)
-                if len(this_order_counts[hist]) > 0:
-                    this_order_counts_new[hist] = this_order_counts[hist]
-            self.counts[n] = this_order_counts_new
-
-
+            for hist in to_delete:
+                del this_order_counts[hist]
 
     # This backs off the counts according to Kneser-Ney (unmodified,
     # with interpolation).
