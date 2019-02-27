@@ -7,6 +7,9 @@ FROM tueroboticsamigo/tue-env:master
 
 # Update the image and install basic packages
 RUN sudo apt-get update -qq && \
+    # Make tue-env available to the intermediate image
+    # This step needs to be executed at every RUN step
+    source ~/.bashrc && \
+    # Install kaldi
     tue-get install kaldi
-
 
