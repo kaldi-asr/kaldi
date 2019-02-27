@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#           2019  Xiaohui Zhang
 # Apache 2.0
 
 
