@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-. ./path_venv.sh
+. ./path.sh
 
 export POCOLM_ROOT=$(cd $KALDI_ROOT/tools/pocolm/; pwd -P)
 export PATH=$PATH:$POCOLM_ROOT/scripts
