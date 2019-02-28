@@ -6,7 +6,7 @@
 stage=0
 nj=500
 
-. ./path_venv.sh
+. ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
 
