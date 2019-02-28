@@ -31,6 +31,7 @@
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
 #include "decoder/grammar-fst.h"
+#include "decoder/lattice-faster-decoder.h"
 
 namespace kaldi {
 
@@ -88,7 +89,8 @@ struct LatticeFasterDecoderCombineConfig {
   }
 };
 
-namespace decoder {
+
+namespace decodercombine {
 // We will template the decoder on the token type as well as the FST type; this
 // is a mechanism so that we can use the same underlying decoder code for
 // versions of the decoder that support quickly getting the best path
@@ -231,14 +233,14 @@ struct BackpointerToken {
    will internally cast itself to one that is templated on those more specific
    types; this is an optimization for speed.
  */
-template <typename FST, typename Token = decoder::StdToken>
+template <typename FST, typename Token = decodercombine::StdToken>
 class LatticeFasterDecoderCombineTpl {
  public:
   using Arc = typename FST::Arc;
   using Label = typename Arc::Label;
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
-  using ForwardLinkT = decoder::ForwardLink<Token>;
+  using ForwardLinkT = decodercombine::ForwardLink<Token>;
 
   using StateIdToTokenMap = typename std::unordered_map<StateId, Token*>;
   using IterType = typename StateIdToTokenMap::const_iterator;
@@ -530,7 +532,7 @@ class LatticeFasterDecoderCombineTpl {
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoderCombineTpl);
 };
 
-typedef LatticeFasterDecoderCombineTpl<fst::StdFst, decoder::StdToken> LatticeFasterDecoderCombine;
+typedef LatticeFasterDecoderCombineTpl<fst::StdFst, decodercombine::StdToken> LatticeFasterDecoderCombine;
 
 
 

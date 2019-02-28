@@ -66,7 +66,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   active_toks_.resize(1);
   Token *start_tok = new Token(0.0, 0.0, NULL, NULL, NULL);
   active_toks_[0].toks = start_tok;
-  cur_toks_[start_state] = start_tok;  // initialize current tokens map
+  next_toks_[start_state] = start_tok;  // initialize current tokens map
   num_toks_++;
 
   recover_ = false;
@@ -910,7 +910,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(bool recover
   int32 frame = active_toks_.size() - 1;
   // Build the queue to process non-emitting arcs
   std::vector<StateId> cur_queue;
-  for (IterType iter = cur_toks_.begin(); iter != cur_toks_.end(); iter++) {
+  for (IterType iter = tmp_toks_.begin(); iter != tmp_toks_.end(); iter++) {
     if (fst_->NumInputEpsilons(iter->first) != 0) {
       cur_queue.push_back(iter->first);
       iter->second->in_current_queue = true;
@@ -919,7 +919,8 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(bool recover
 
   // "cur_cutoff" is used to constrain the epsilon emittion in current frame.
   // It will not be updated.
-  BaseFloat cur_cutoff = GetCutoff(tmp_toks_, NULL, NULL, NULL);
+  BaseFloat adaptive_beam;
+  BaseFloat cur_cutoff = GetCutoff(tmp_toks_, &adaptive_beam, NULL, NULL);
 
   while (!cur_queue.empty()) {
     StateId state = cur_queue.back();
@@ -1082,15 +1083,15 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::TopSortTokens(
 
 // Instantiate the template for the combination of token types and FST types
 // that we'll need.
-template class LatticeFasterDecoderCombineTpl<fst::Fst<fst::StdArc>, decoder::StdToken>;
-template class LatticeFasterDecoderCombineTpl<fst::VectorFst<fst::StdArc>, decoder::StdToken >;
-template class LatticeFasterDecoderCombineTpl<fst::ConstFst<fst::StdArc>, decoder::StdToken >;
-template class LatticeFasterDecoderCombineTpl<fst::GrammarFst, decoder::StdToken>;
+template class LatticeFasterDecoderCombineTpl<fst::Fst<fst::StdArc>, decodercombine::StdToken>;
+template class LatticeFasterDecoderCombineTpl<fst::VectorFst<fst::StdArc>, decodercombine::StdToken >;
+template class LatticeFasterDecoderCombineTpl<fst::ConstFst<fst::StdArc>, decodercombine::StdToken >;
+template class LatticeFasterDecoderCombineTpl<fst::GrammarFst, decodercombine::StdToken>;
 
-template class LatticeFasterDecoderCombineTpl<fst::Fst<fst::StdArc> , decoder::BackpointerToken>;
-template class LatticeFasterDecoderCombineTpl<fst::VectorFst<fst::StdArc>, decoder::BackpointerToken >;
-template class LatticeFasterDecoderCombineTpl<fst::ConstFst<fst::StdArc>, decoder::BackpointerToken >;
-template class LatticeFasterDecoderCombineTpl<fst::GrammarFst, decoder::BackpointerToken>;
+template class LatticeFasterDecoderCombineTpl<fst::Fst<fst::StdArc> , decodercombine::BackpointerToken>;
+template class LatticeFasterDecoderCombineTpl<fst::VectorFst<fst::StdArc>, decodercombine::BackpointerToken >;
+template class LatticeFasterDecoderCombineTpl<fst::ConstFst<fst::StdArc>, decodercombine::BackpointerToken >;
+template class LatticeFasterDecoderCombineTpl<fst::GrammarFst, decodercombine::BackpointerToken>;
 
 
 } // end namespace kaldi.
