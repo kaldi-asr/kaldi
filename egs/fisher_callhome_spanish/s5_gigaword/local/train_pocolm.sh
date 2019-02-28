@@ -4,7 +4,7 @@ stage=-2
 num_words_pocolm=110000
 prune_size=1000000
 
-. ./path_venv.sh
+. ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
 
