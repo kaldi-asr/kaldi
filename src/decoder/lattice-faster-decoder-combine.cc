@@ -1,9 +1,10 @@
-// decoder/lattice-faster-decoder.cc
+// decoder/lattice-faster-decoder-combine.cc
 
 // Copyright 2009-2012  Microsoft Corporation  Mirko Hannemann
-//           2013-2018  Johns Hopkins University (Author: Daniel Povey)
+//           2013-2019  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
 //                2018  Zhehuai Chen
+//                2019  Hang Lyu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -68,10 +69,6 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   active_toks_[0].toks = start_tok;
   next_toks_[start_state] = start_tok;  // initialize current tokens map
   num_toks_++;
-
-  recover_ = false;
-  frame_processed_.resize(1);
-  frame_processed_[0] = false;
 }
 
 // Returns true if any kind of traceback is available (not necessarily from
@@ -91,8 +88,7 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::Decode(DecodableInterface *deco
     ProcessForFrame(decodable);
   }
   // Procss non-emitting arcs for the last frame.
-  ProcessNonemitting(false);
-  frame_processed_[active_toks_.size() - 1] = true;  // the last frame is processed.
+  ProcessNonemitting(NULL);
 
   FinalizeDecoding();
 
@@ -123,16 +119,20 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
   typedef Arc::Label Label;
-  // Process the non-emitting arcs for the unfinished last frame.
-  if (!frame_processed_[active_toks_.size() - 1]) {
-    ProcessNonemitting(true);
-  }
   // Note: you can't use the old interface (Decode()) if you want to
   // get the lattice with use_final_probs = false.  You'd have to do
   // InitDecoding() and then AdvanceDecoding().
   if (decoding_finalized_ && !use_final_probs)
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";
+
+  std::unordered_map<Token*, BaseFloat> *recover_map = NULL;
+  if (!decoding_finalized_) {
+    recover_map = new std::unordered_map<Token*, BaseFloat>();
+    // Process the non-emitting arcs for the unfinished last frame.
+    ProcessNonemitting(recover_map);
+  }
+
 
   unordered_map<Token*, BaseFloat> final_costs_local;
 
@@ -201,9 +201,41 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
       }
     }
   }
+  
+  if (recover_map) {  // recover last token list
+    RecoverLastTokenList(recover_map);
+    delete recover_map;
+  }
   return (ofst->NumStates() > 0);
 }
 
+
+// When GetRawLattice() is called during decoding, the
+// active_toks_[last_frame] is changed. To keep the consistency of function
+// ProcessForFrame(), recover it.
+// Notice: as new token will be added to the head of TokenList, tok->next
+// will not be affacted.
+template<typename FST, typename Token>
+void LatticeFasterDecoderCombineTpl<FST, Token>::RecoverLastTokenList(
+    std::unordered_map<Token*, BaseFloat> *recover_map) {
+  if (recover_map) {
+    for (Token* tok = active_toks_[active_toks_.size() - 1].toks;
+         tok != NULL;) {
+      if (recover_map->find(tok) != recover_map->end()) {
+        DeleteForwardLinks(tok);
+        tok->tot_cost = (*recover_map)[tok];
+        tok->in_current_queue = false;
+        tok = tok->next;
+      } else {
+        DeleteForwardLinks(tok);
+        Token *next_tok = tok->next;
+        delete tok;
+        num_toks_--;
+        tok = next_tok;
+      }
+    }
+  }
+}
 
 // This function is now deprecated, since now we do determinization from outside
 // the LatticeFasterDecoder class.  Outputs an FST corresponding to the
@@ -258,19 +290,19 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetLattice(
   only do it every 'config_.prune_interval' frames).
  */
 
-// FindOrAddToken either locates a token in hash of toks_,
+// FindOrAddToken either locates a token in hash map "token_map"
 // or if necessary inserts a new, empty token (i.e. with no forward links)
 // for the current frame.  [note: it's inserted if necessary into hash toks_
 // and also into the singly linked list of tokens active on this frame
 // (whose head is at active_toks_[frame]).
 template <typename FST, typename Token>
 inline Token* LatticeFasterDecoderCombineTpl<FST, Token>::FindOrAddToken(
-    StateId state, int32 frame, BaseFloat tot_cost, Token *backpointer,
+    StateId state, int32 frame_plus_one, BaseFloat tot_cost, Token *backpointer,
     StateIdToTokenMap *token_map, bool *changed) {
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
   // if the token was newly created or the cost changed.
-  KALDI_ASSERT(frame < active_toks_.size());
-  Token *&toks = active_toks_[frame].toks;
+  KALDI_ASSERT(frame_plus_one < active_toks_.size());
+  Token *&toks = active_toks_[frame_plus_one].toks;
   typename StateIdToTokenMap::iterator e_found = token_map->find(state);
   if (e_found == token_map->end()) {  // no such token presently.
     const BaseFloat extra_cost = 0.0;
@@ -626,7 +658,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::AdvanceDecoding(
     }
     ProcessForFrame(decodable);
   }
-  ProcessNonemitting(false);
+  ProcessNonemitting(NULL);
 }
 
 // FinalizeDecoding() is a version of PruneActiveTokens that we call
@@ -732,38 +764,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   int32 frame = active_toks_.size() - 1; // frame is the frame-index
                                          // (zero-based) used to get likelihoods
                                          // from the decodable object.
-  if (!recover_ && frame_processed_[frame]) {
-    KALDI_ERR << "Maybe the whole utterance has been processed, you shouldn't"
-                << " call ProcessForFrame() again.";
-  } else if (recover_ && !frame_processed_[frame]) {
-    KALDI_ERR << "Should not happen.";
-  }
-  
-  // Maybe called GetRawLattice() in the middle of an utterance. The
-  // active_toks_[frame] is changed. Recover it.
-  // Notice: as new token will be added to the head of TokenList, tok->next
-  // will not be affacted.
-  if (recover_) {
-    frame_processed_[frame] = false;
-    for (Token* tok = active_toks_[frame].toks; tok != NULL;) {
-      if (recover_map_.find(tok) != recover_map_.end()) {
-        DeleteForwardLinks(tok);
-        tok->tot_cost = recover_map_[tok];
-        tok->in_current_queue = false;
-        tok = tok->next;     
-      } else {
-        DeleteForwardLinks(tok);
-        Token *next_tok = tok->next;
-        delete tok;
-        num_toks_--;
-        tok = next_tok;
-      }
-    }
-    recover_ = false;
-  }
-
   active_toks_.resize(active_toks_.size() + 1);
-  frame_processed_.resize(frame_processed_.size() + 1);
 
   cur_toks_.clear();
   cur_toks_.swap(next_toks_);
@@ -890,27 +891,24 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
     }  // for all arcs
     tok->in_current_queue = false;  // out of queue
   }  // end of while loop
-  frame_processed_[frame] = true;
-  frame_processed_[frame + 1] = false;
+  KALDI_VLOG(6) << "toks after: " << cur_toks_.size();
 }
 
 
 template <typename FST, typename Token>
-void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(bool recover) {
-  if (recover) {  // Build the elements which are used to recover
-    // Set the flag to true so that we will recover "next_toks_" map in
-    // ProcessForFrame() firstly.
-    recover_ = true;
+void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
+    std::unordered_map<Token*, BaseFloat> *recover_map) {
+  if (recover_map) {  // Build the elements which are used to recover
     for (IterType iter = next_toks_.begin(); iter != next_toks_.end(); iter++) {
-      recover_map_[iter->second] = iter->second->tot_cost;
+      (*recover_map)[iter->second] = iter->second->tot_cost;
     }
   }
 
-  StateIdToTokenMap tmp_toks_(next_toks_);
+  StateIdToTokenMap tmp_toks(next_toks_);
   int32 frame = active_toks_.size() - 1;
   // Build the queue to process non-emitting arcs
   std::vector<StateId> cur_queue;
-  for (IterType iter = tmp_toks_.begin(); iter != tmp_toks_.end(); iter++) {
+  for (IterType iter = tmp_toks.begin(); iter != tmp_toks.end(); iter++) {
     if (fst_->NumInputEpsilons(iter->first) != 0) {
       cur_queue.push_back(iter->first);
       iter->second->in_current_queue = true;
@@ -920,14 +918,14 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(bool recover
   // "cur_cutoff" is used to constrain the epsilon emittion in current frame.
   // It will not be updated.
   BaseFloat adaptive_beam;
-  BaseFloat cur_cutoff = GetCutoff(tmp_toks_, &adaptive_beam, NULL, NULL);
+  BaseFloat cur_cutoff = GetCutoff(tmp_toks, &adaptive_beam, NULL, NULL);
 
   while (!cur_queue.empty()) {
     StateId state = cur_queue.back();
     cur_queue.pop_back();
 
-    KALDI_ASSERT(tmp_toks_.find(state) != tmp_toks_.end());
-    Token *tok = tmp_toks_[state];
+    KALDI_ASSERT(tmp_toks.find(state) != tmp_toks.end());
+    Token *tok = tmp_toks[state];
     BaseFloat cur_cost = tok->tot_cost;
     if (cur_cost > cur_cutoff)  // Don't bother processing successors.
       continue;
@@ -946,7 +944,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(bool recover
         BaseFloat tot_cost = cur_cost + graph_cost;
         if (tot_cost < cur_cutoff) {
           Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                          tok, &tmp_toks_, &changed);
+                                          tok, &tmp_toks, &changed);
 
           // Add ForwardLink from tok to new_tok. Put it on the head of
           // tok->link list
@@ -964,9 +962,6 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(bool recover
     }  // end of for loop
     tok->in_current_queue = false;
   }  // end of while loop
-  frame_processed_[active_toks_.size() - 1] = true;  // in case someone call
-                                                     // GetRawLattice() twice
-                                                     // continuously.
 }
 
 

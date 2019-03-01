@@ -1,9 +1,10 @@
-// decoder/lattice-faster-decoder.h
+// decoder/lattice-faster-decoder-combine.h
 
 // Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
-//           2013-2014  Johns Hopkins University (Author: Daniel Povey)
+//           2013-2019  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
 //                2018  Zhehuai Chen
+//                2019  Hang Lyu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -294,6 +295,9 @@ class LatticeFasterDecoderCombineTpl {
   /// of the graph then it will include those as final-probs, else
   /// it will treat all final-probs as one.
   /// The raw lattice will be topologically sorted.
+  /// The function can be called during decoding, it will take "next_toks_" map
+  /// and generate the complete token list for the last frame. Then recover it
+  /// to ensure the consistency of ProcessForFrame().
   ///
   /// See also GetRawLatticePruned in lattice-faster-online-decoder.h,
   /// which also supports a pruning beam, in case for some reason
@@ -373,9 +377,9 @@ class LatticeFasterDecoderCombineTpl {
                  must_prune_tokens(true) { }
   };
 
-  // FindOrAddToken either locates a token in hash of toks_, or if necessary
+  // FindOrAddToken either locates a token in hash map "token_map", or if necessary
   // inserts a new, empty token (i.e. with no forward links) for the current
-  // frame.  [note: it's inserted if necessary into hash toks_ and also into the
+  // frame.  [note: it's inserted if necessary into hash map and also into the
   // singly linked list of tokens active on this frame (whose head is at
   // active_toks_[frame]).  The frame_plus_one argument is the acoustic frame
   // index plus one, which is used to index into the active_toks_ array.
@@ -383,7 +387,7 @@ class LatticeFasterDecoderCombineTpl {
   // token was newly created or the cost changed.
   // If Token == StdToken, the 'backpointer' argument has no purpose (and will
   // hopefully be optimized out).
-  inline Token *FindOrAddToken(StateId state, int32 frame,
+  inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
                                BaseFloat tot_cost, Token *backpointer,
                                StateIdToTokenMap *token_map,
                                bool *changed);
@@ -442,18 +446,28 @@ class LatticeFasterDecoderCombineTpl {
   // less far.
   void PruneActiveTokens(BaseFloat delta);
 
-  /// Processes nonemitting (epsilon) arcs and emitting arcs for one frame
-  /// together. Consider it as a combination of ProcessEmitting() and 
-  /// ProcessNonemitting().
+  /// Processes non-emitting (epsilon) arcs and emitting arcs for one frame
+  /// together. It takes the emittion tokens in "cur_toks_" from last frame.
+  /// Generates non-emitting tokens for current frame and emitting tokens for
+  /// next frame.
   void ProcessForFrame(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.
-  /// Called once when all frames were processed or in GetRawLattice().
-  /// Deal With the tokens in map "next_toks_" which would only contains
-  /// emittion tokens from previous frame.
-  /// If you call this function not in the end of an utterance, recover
-  /// should be true.
-  void ProcessNonemitting(bool recover);
+  /// Calls this function once when all frames were processed.
+  /// Or calls it in GetRawLattice() to generate the complete token list for
+  /// the last frame. [Deal With the tokens in map "next_toks_" which would 
+  /// only contains emittion tokens from previous frame.]
+  /// If "recover_map" isn't NULL, we build the recover_map which will be used
+  /// to recover "active_toks_[last_frame]" token list for the last frame. 
+  void ProcessNonemitting(std::unordered_map<Token*, BaseFloat> *recover_map);
+
+  /// When GetRawLattice() is called during decoding, the
+  /// active_toks_[last_frame] is changed. To keep the consistency of function
+  /// ProcessForFrame(), recover it.
+  /// Notice: as new token will be added to the head of TokenList, tok->next
+  /// will not be affacted.
+  void RecoverLastTokenList(std::unordered_map<Token*, BaseFloat> *recover_map);
+
 
   /// The "cur_toks_" and "next_toks_" actually allow us to maintain current
   /// and next frames. They are indexed by StateId. It is indexed by frame-index
@@ -463,14 +477,6 @@ class LatticeFasterDecoderCombineTpl {
   /// the graph.
   StateIdToTokenMap cur_toks_;
   StateIdToTokenMap next_toks_;
-
-  /// When we call GetRawLattice() in the middle of an utterance, we have to
-  /// process non-emitting arcs so that we need to recover it original status.
-  std::unordered_map<Token*, BaseFloat> recover_map_;  // Token pointer to tot_cost
-  bool recover_;
-  /// Indicate each frame is processed wholly or not. The size equals to
-  /// active_toks_.
-  std::vector<bool> frame_processed_;
 
   /// Gets the weight cutoff.
   /// Notice: In traiditional version, the histogram prunning method is applied
