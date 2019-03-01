@@ -82,7 +82,6 @@ class basic_pipebuf : public std::basic_filebuf<CharType, Traits> {
 };  // class basic_pipebuf
 #endif  // _MSC_VER
 
-};  // namespace kaldi
+}  // namespace kaldi
 
 #endif  // KALDI_UTIL_KALDI_PIPEBUF_H_
-
