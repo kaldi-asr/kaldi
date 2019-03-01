@@ -27,6 +27,7 @@ for line in inputfile:
       else:
         textout = textout + word + " "
     else:
+      textout = textout + word + " "
       if word.isalpha(): wordcnt = wordcnt + 1
   outputfile.write(textout.strip()+ '\n')
 
