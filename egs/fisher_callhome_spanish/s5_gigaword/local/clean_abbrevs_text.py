@@ -20,14 +20,14 @@ for line in inputfile:
   textout = ""
   wordcnt = 0
   for word in words:
-    if re.match(r"\b([A-ZÂÁÀÄÊÉÈËÏÍÎÖÓÔÖÚÙÛÑÇ])+[']?s?\b", word) and wordcnt>0:
-      print(word)
-      word = re.sub('\'?s', 's', word)
-      textout = textout + " ".join(word) + " "
+    if re.match(r"\b([A-ZÂÁÀÄÊÉÈËÏÍÎÖÓÔÖÚÙÛÑÇ])+[']?s?\b", word):
+      if wordcnt > 0:
+        word = re.sub('\'?s', 's', word)
+        textout = textout + " ".join(word) + " "
+      else:
+        textout = textout + word + " "
     else:
-      textout = textout + word + " "
-      if word.isalpha():
-        wordcnt = wordcnt + 1
+      if word.isalpha(): wordcnt = wordcnt + 1
   outputfile.write(textout.strip()+ '\n')
 
 inputfile.close()
