@@ -116,6 +116,7 @@ int main(int argc, char *argv[]) {
     }
 
 #if HAVE_CUDA==1
+    CuDevice::RegisterDeviceOptions(&po);
     CuDevice::Instantiate().AllowMultithreading();
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
