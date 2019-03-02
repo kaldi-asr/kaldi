@@ -12,7 +12,7 @@ sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
 
 # because this script splits inside words, we cannot use latin-1; we actually need to know what 
 # what the encoding is.  By default we make this utf-8; to handle encodings that are not compatible
-# with latin-1 (e.g. gbk), we'll eventually have to make the encoding an option to this script.
+# with utf-8 (e.g. gbk), we'll eventually have to make the encoding an option to this script.
 
 import re
 tab_or_space = re.compile('[ \t]+')
