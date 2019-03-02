@@ -322,7 +322,8 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
       MatrixIndexT src_pitch = src.Stride()*sizeof(Real);
       MatrixIndexT width = src.NumCols()*sizeof(Real);
       CU_SAFE_CALL(cudaMemcpy2DAsync(data_, dst_pitch, src.Data(), src_pitch,
-                                width, src.NumRows(), cudaMemcpyHostToDevice, cudaStreamPerThread));
+                                width, src.NumRows(), cudaMemcpyHostToDevice,
+                                cudaStreamPerThread));
       cudaStreamSynchronize(cudaStreamPerThread);
 
       CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from CPU)", tim);

@@ -1072,7 +1072,8 @@ void CuVectorBase<Real>::SetZero() {
     KALDI_ASSERT(dim_>=0);
     KALDI_ASSERT(data_!=NULL);
     CuTimer tim;
-    CU_SAFE_CALL(cudaMemsetAsync(data_, 0, dim_*sizeof(Real),cudaStreamPerThread));
+    CU_SAFE_CALL(cudaMemsetAsync(data_, 0, dim_*sizeof(Real),
+          cudaStreamPerThread));
     CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile("CuVector::SetZero", tim);
   } else
