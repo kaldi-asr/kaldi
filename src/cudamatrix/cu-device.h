@@ -195,16 +195,18 @@ class CuDevice {
   ~CuDevice();
  private:
 
-  struct CuDeviceOptions_t {
-    bool use_tensor_cores_; //Enable tensor cores
-    CuDeviceOptions_t () : use_tensor_cores_(false) {};
+  struct CuDeviceOptions {
+    bool use_tensor_cores_; // Enable tensor cores
+    CuDeviceOptions () : use_tensor_cores_(false) {};
     void Register(OptionsItf *po) {
-      po->Register("cuda-use-tensor-cores",&use_tensor_cores_, "Enable FP16 tensor math. "
-          "This is higher performance but less accuracy.");
+      po->Register("cuda-use-tensor-cores",&use_tensor_cores_, 
+          "Enable FP16 tensor math. "
+          "This is higher performance but less accuracy. "
+          "This is only recommended for inference.");
     }
   };
 
-  static CuDeviceOptions_t device_options_;
+  static CuDeviceOptions device_options_;
 
   // Default constructor used to initialize this_thread_device_
   CuDevice();
