@@ -39,6 +39,9 @@ if [ $stage -le -1 ]; then
   # ES gigaword corpus to bring the total to 64k words. The ES frequency sorted
   # wordlist is downloaded if it is not available.
   local/fsp_prepare_dict.sh $spanish_lexicon
+  (
+    steps/dict/train_g2p_seq2seq.sh data/local/dict/lexicon.txt exp/g2p || touch exp/g2p/.error
+  ) &
 
   # Added c,j, v to the non silences phones manually
   utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
@@ -74,6 +77,11 @@ if [ $stage -le -1 ]; then
 
   local/create_splits.sh $split
   local/callhome_create_splits.sh $split_callhome
+  wait # wait till G2P training finishes
+  if [ -f exp/g2p/.error ]; then
+     rm exp/g2p/.error || true
+     echo "Fail to train the G2P model." && exit 1;
+  fi
 fi
 
 if [ $stage -le 0 ]; then

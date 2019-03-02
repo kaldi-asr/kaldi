@@ -1,0 +1,1 @@
+extras/install_g2p_seq2seq.sh
