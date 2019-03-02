@@ -41,6 +41,8 @@ LatticeFasterDecoderCombineTpl<FST, Token>::LatticeFasterDecoderCombineTpl(
     const LatticeFasterDecoderCombineConfig &config, FST *fst):
     fst_(fst), delete_fst_(true), config_(config), num_toks_(0) {
   config.Check();
+  prev_toks_.reserve(1000);
+  cur_toks_.reserve(1000);
 }
 
 
@@ -53,8 +55,8 @@ LatticeFasterDecoderCombineTpl<FST, Token>::~LatticeFasterDecoderCombineTpl() {
 template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   // clean up from last time:
+  prev_toks_.clear();
   cur_toks_.clear();
-  next_toks_.clear();
   cost_offsets_.clear();
   ClearActiveTokens();
 
@@ -67,7 +69,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   active_toks_.resize(1);
   Token *start_tok = new Token(0.0, 0.0, NULL, NULL, NULL);
   active_toks_[0].toks = start_tok;
-  next_toks_[start_state] = start_tok;  // initialize current tokens map
+  cur_toks_[start_state] = start_tok;  // initialize current tokens map
   num_toks_++;
 }
 
@@ -87,9 +89,7 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::Decode(DecodableInterface *deco
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     ProcessForFrame(decodable);
   }
-  // Procss non-emitting arcs for the last frame.
-  ProcessNonemitting(NULL);
-
+  // A complete token list of the last frame will be generated in FinalizeDecoding()
   FinalizeDecoding();
 
   // Returns true if we have any kind of traceback available (not necessarily
@@ -126,11 +126,10 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";
 
-  std::unordered_map<Token*, BaseFloat> *recover_map = NULL;
+  std::unordered_map<Token*, BaseFloat> recover_map;
   if (!decoding_finalized_) {
-    recover_map = new std::unordered_map<Token*, BaseFloat>();
     // Process the non-emitting arcs for the unfinished last frame.
-    ProcessNonemitting(recover_map);
+    ProcessNonemitting(&recover_map);
   }
 
 
@@ -202,9 +201,8 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
     }
   }
   
-  if (recover_map) {  // recover last token list
+  if (!decoding_finalized_) {  // recover last token list
     RecoverLastTokenList(recover_map);
-    delete recover_map;
   }
   return (ofst->NumStates() > 0);
 }
@@ -217,13 +215,13 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
 // will not be affacted.
 template<typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::RecoverLastTokenList(
-    std::unordered_map<Token*, BaseFloat> *recover_map) {
-  if (recover_map) {
+    const std::unordered_map<Token*, BaseFloat> &recover_map) {
+  if (!recover_map.empty()) {
     for (Token* tok = active_toks_[active_toks_.size() - 1].toks;
          tok != NULL;) {
-      if (recover_map->find(tok) != recover_map->end()) {
+      if (recover_map.find(tok) != recover_map.end()) {
         DeleteForwardLinks(tok);
-        tok->tot_cost = (*recover_map)[tok];
+        tok->tot_cost = recover_map.find(tok)->second;
         tok->in_current_queue = false;
         tok = tok->next;
       } else {
@@ -588,8 +586,8 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ComputeFinalCosts(
   BaseFloat best_cost = infinity,
       best_cost_with_final = infinity;
 
-  // The final tokens are recorded in unordered_map "next_toks_".
-  for (IterType iter = next_toks_.begin(); iter != next_toks_.end(); iter++) {
+  // The final tokens are recorded in unordered_map "cur_toks_".
+  for (IterType iter = cur_toks_.begin(); iter != cur_toks_.end(); iter++) {
     StateId state = iter->first;
     Token *tok = iter->second;
     BaseFloat final_cost = fst_->Final(state).Value();
@@ -658,7 +656,6 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::AdvanceDecoding(
     }
     ProcessForFrame(decodable);
   }
-  ProcessNonemitting(NULL);
 }
 
 // FinalizeDecoding() is a version of PruneActiveTokens that we call
@@ -686,7 +683,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
 template <typename FST, typename Token>
 BaseFloat LatticeFasterDecoderCombineTpl<FST, Token>::GetCutoff(
     const StateIdToTokenMap &toks, BaseFloat *adaptive_beam,
-    StateId *best_elem_id, Token **best_elem) {
+    StateId *best_state_id, Token **best_token) {
   // positive == high cost == bad.
   // best_weight is the minimum value.
   BaseFloat best_weight = std::numeric_limits<BaseFloat>::infinity();
@@ -696,9 +693,9 @@ BaseFloat LatticeFasterDecoderCombineTpl<FST, Token>::GetCutoff(
       BaseFloat w = static_cast<BaseFloat>(iter->second->tot_cost);
       if (w < best_weight) {
         best_weight = w;
-        if (best_elem) {
-          *best_elem_id = iter->first;
-          *best_elem = iter->second;
+        if (best_token) {
+          *best_state_id = iter->first;
+          *best_token = iter->second;
         }
       }
     }
@@ -711,9 +708,9 @@ BaseFloat LatticeFasterDecoderCombineTpl<FST, Token>::GetCutoff(
       tmp_array_.push_back(w);
       if (w < best_weight) {
         best_weight = w;
-        if (best_elem) {
-          *best_elem_id = iter->first; 
-          *best_elem = iter->second;
+        if (best_token) {
+          *best_state_id = iter->first; 
+          *best_token = iter->second;
         }
       }
     }
@@ -722,8 +719,8 @@ BaseFloat LatticeFasterDecoderCombineTpl<FST, Token>::GetCutoff(
         min_active_cutoff = std::numeric_limits<BaseFloat>::infinity(),
         max_active_cutoff = std::numeric_limits<BaseFloat>::infinity();
 
-    KALDI_VLOG(6) << "Number of tokens active on frame " << NumFramesDecoded()
-                  << " is " << tmp_array_.size();
+    KALDI_VLOG(6) << "Number of emitting tokens on frame " 
+                  << NumFramesDecoded() - 1 << " is " << tmp_array_.size();
 
     if (tmp_array_.size() > static_cast<size_t>(config_.max_active)) {
       std::nth_element(tmp_array_.begin(),
@@ -766,9 +763,9 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
                                          // from the decodable object.
   active_toks_.resize(active_toks_.size() + 1);
 
+  prev_toks_.swap(cur_toks_);
   cur_toks_.clear();
-  cur_toks_.swap(next_toks_);
-  if (cur_toks_.empty()) {
+  if (prev_toks_.empty()) {
     if (!warned_) {
       KALDI_WARN << "Error, no surviving tokens on frame " << frame;
       warned_ = true;
@@ -780,7 +777,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   StateId best_tok_state_id;
   // "cur_cutoff" is used to constrain the epsilon emittion in current frame.
   // It will not be updated.
-  BaseFloat cur_cutoff = GetCutoff(cur_toks_, &adaptive_beam,
+  BaseFloat cur_cutoff = GetCutoff(prev_toks_, &adaptive_beam,
                                    &best_tok_state_id, &best_tok);
   KALDI_VLOG(6) << "Adaptive beam on frame " << NumFramesDecoded() << " is "
                 << adaptive_beam;
@@ -801,7 +798,8 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   // Notice: As the difference between the combine version and the traditional
   // version, this "best_tok" is choosen from emittion tokens. Normally, the
   // best token of one frame comes from an epsilon non-emittion. So the best
-  // token is a looser boundary. Use it to estimate a bound on the next cutoff.
+  // token is a looser boundary. We use it to estimate a bound on the next
+  // cutoff and we will update the "next_cutoff" once we have better tokens.
   // The "next_cutoff" will be updated in further processing.
   if (best_tok) {
     cost_offset = - best_tok->tot_cost;
@@ -827,7 +825,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
 
   // Build a queue which contains the emittion tokens from previous frame.
   std::vector<StateId> cur_queue;
-  for (IterType iter = cur_toks_.begin(); iter != cur_toks_.end(); iter++) {
+  for (IterType iter = prev_toks_.begin(); iter != prev_toks_.end(); iter++) {
     cur_queue.push_back(iter->first);
     iter->second->in_current_queue = true;
   }
@@ -837,9 +835,11 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
     StateId state = cur_queue.back();
     cur_queue.pop_back();
 
-    KALDI_ASSERT(cur_toks_.find(state) != cur_toks_.end());
-    Token *tok = cur_toks_[state];
+    KALDI_ASSERT(prev_toks_.find(state) != prev_toks_.end());
+    Token *tok = prev_toks_[state];
+
     BaseFloat cur_cost = tok->tot_cost;
+    tok->in_current_queue = false;  // out of queue
     if (cur_cost > cur_cutoff)  // Don't bother processing successors.
       continue;
     // If "tok" has any existing forward links, delete them,
@@ -857,7 +857,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
         BaseFloat tot_cost = cur_cost + graph_cost;
         if (tot_cost < cur_cutoff) {
           Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                          tok, &cur_toks_, &changed);
+                                          tok, &prev_toks_, &changed);
 
           // Add ForwardLink from tok to new_tok. Put it on the head of
           // tok->link list
@@ -882,16 +882,16 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
         
         // no change flag is needed
         Token *next_tok = FindOrAddToken(arc.nextstate, frame + 1, tot_cost,
-                                         tok, &next_toks_, NULL);
+                                         tok, &cur_toks_, NULL);
         // Add ForwardLink from tok to next_tok. Put it on the head of tok->link
         // list
         tok->links = new ForwardLinkT(next_tok, arc.ilabel, arc.olabel,
                                       graph_cost, ac_cost, tok->links);
       }
     }  // for all arcs
-    tok->in_current_queue = false;  // out of queue
   }  // end of while loop
-  KALDI_VLOG(6) << "toks after: " << cur_toks_.size();
+  KALDI_VLOG(6) << "Number of tokens active on frame " << NumFramesDecoded() - 1 
+                << " is " << prev_toks_.size();
 }
 
 
@@ -899,12 +899,12 @@ template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
     std::unordered_map<Token*, BaseFloat> *recover_map) {
   if (recover_map) {  // Build the elements which are used to recover
-    for (IterType iter = next_toks_.begin(); iter != next_toks_.end(); iter++) {
+    for (IterType iter = cur_toks_.begin(); iter != cur_toks_.end(); iter++) {
       (*recover_map)[iter->second] = iter->second->tot_cost;
     }
   }
 
-  StateIdToTokenMap tmp_toks(next_toks_);
+  StateIdToTokenMap tmp_toks(cur_toks_);
   int32 frame = active_toks_.size() - 1;
   // Build the queue to process non-emitting arcs
   std::vector<StateId> cur_queue;

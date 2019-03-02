@@ -243,7 +243,9 @@ class LatticeFasterDecoderCombineTpl {
   using Weight = typename Arc::Weight;
   using ForwardLinkT = decodercombine::ForwardLink<Token>;
 
-  using StateIdToTokenMap = typename std::unordered_map<StateId, Token*>;
+  using StateIdToTokenMap = typename std::unordered_map<StateId, Token*,
+        std::hash<StateId>, std::equal_to<StateId>,
+        fst::PoolAllocator<std::pair<const StateId, Token*> > >;
   using IterType = typename StateIdToTokenMap::const_iterator;
 
   // Instantiate this class once for each thing you have to decode.
@@ -295,9 +297,10 @@ class LatticeFasterDecoderCombineTpl {
   /// of the graph then it will include those as final-probs, else
   /// it will treat all final-probs as one.
   /// The raw lattice will be topologically sorted.
-  /// The function can be called during decoding, it will take "next_toks_" map
-  /// and generate the complete token list for the last frame. Then recover it
-  /// to ensure the consistency of ProcessForFrame().
+  /// The function can be called during decoding, it will process non-emitting
+  /// arcs from "cur_toks_" map to get tokens from both non-emitting and 
+  /// emitting arcs for getting raw lattice. Then recover it to ensure the
+  /// consistency of ProcessForFrame().
   ///
   /// See also GetRawLatticePruned in lattice-faster-online-decoder.h,
   /// which also supports a pruning beam, in case for some reason
@@ -447,15 +450,18 @@ class LatticeFasterDecoderCombineTpl {
   void PruneActiveTokens(BaseFloat delta);
 
   /// Processes non-emitting (epsilon) arcs and emitting arcs for one frame
-  /// together. It takes the emittion tokens in "cur_toks_" from last frame.
-  /// Generates non-emitting tokens for current frame and emitting tokens for
+  /// together. It takes the emittion tokens in "prev_toks_" from last frame.
+  /// Generates non-emitting tokens for previous frame and emitting tokens for
   /// next frame.
+  /// Notice: The emitting tokens for the current frame means the token take
+  /// acoustic scores of the current frame. (i.e. the destnations of emitting
+  /// arcs.)
   void ProcessForFrame(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.
   /// Calls this function once when all frames were processed.
   /// Or calls it in GetRawLattice() to generate the complete token list for
-  /// the last frame. [Deal With the tokens in map "next_toks_" which would 
+  /// the last frame. [Deal With the tokens in map "cur_toks_" which would 
   /// only contains emittion tokens from previous frame.]
   /// If "recover_map" isn't NULL, we build the recover_map which will be used
   /// to recover "active_toks_[last_frame]" token list for the last frame. 
@@ -466,17 +472,18 @@ class LatticeFasterDecoderCombineTpl {
   /// ProcessForFrame(), recover it.
   /// Notice: as new token will be added to the head of TokenList, tok->next
   /// will not be affacted.
-  void RecoverLastTokenList(std::unordered_map<Token*, BaseFloat> *recover_map);
+  void RecoverLastTokenList(
+      const std::unordered_map<Token*, BaseFloat> &recover_map);
 
 
-  /// The "cur_toks_" and "next_toks_" actually allow us to maintain current
+  /// The "prev_toks_" and "cur_toks_" actually allow us to maintain current
   /// and next frames. They are indexed by StateId. It is indexed by frame-index
   /// plus one, where the frame-index is zero-based, as used in decodable object.
   /// That is, the emitting probs of frame t are accounted for in tokens at
   /// toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
   /// the graph.
+  StateIdToTokenMap prev_toks_;
   StateIdToTokenMap cur_toks_;
-  StateIdToTokenMap next_toks_;
 
   /// Gets the weight cutoff.
   /// Notice: In traiditional version, the histogram prunning method is applied
@@ -485,7 +492,7 @@ class LatticeFasterDecoderCombineTpl {
   /// and min_active values might be narrowed.
   BaseFloat GetCutoff(const StateIdToTokenMap& toks,
                       BaseFloat *adaptive_beam, 
-                      StateId *best_elem_id, Token **best_elem);
+                      StateId *best_state_id, Token **best_token);
 
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
