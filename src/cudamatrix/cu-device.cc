@@ -111,7 +111,7 @@ void CuDevice::Initialize() {
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
     
-    if (device_options_.use_tensor_cores_) {
+    if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
       CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 

@@ -196,10 +196,10 @@ class CuDevice {
  private:
 
   struct CuDeviceOptions {
-    bool use_tensor_cores_; // Enable tensor cores
-    CuDeviceOptions () : use_tensor_cores_(false) {};
+    bool use_tensor_cores; // Enable tensor cores
+    CuDeviceOptions () : use_tensor_cores(false) {};
     void Register(OptionsItf *po) {
-      po->Register("cuda-use-tensor-cores", &use_tensor_cores_, 
+      po->Register("cuda-use-tensor-cores", &use_tensor_cores, 
           "Enable FP16 tensor math. "
           "This is higher performance but less accuracy. "
           "This is only recommended for inference.");
