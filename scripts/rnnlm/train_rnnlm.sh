@@ -41,7 +41,7 @@ use_gpu_for_diagnostics=false  # set true to use GPU for compute_prob_*.log
 # optional cleanup options
 cleanup=false  # add option --cleanup true to enable automatic cleanup of old models
 cleanup_strategy="keep_latest"  # determines cleanup strategy, use either "keep_latest" or "keep_best"
-cleanup_keep_iters=100  # number of iterations that will have their models retained
+cleanup_keep_iters=3  # number of iterations that will have their models retained
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 . utils/parse_options.sh
