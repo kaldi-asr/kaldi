@@ -126,10 +126,10 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";
 
-  std::unordered_map<Token*, BaseFloat> recover_map;
+  std::unordered_map<Token*, BaseFloat> token_orig_cost;
   if (!decoding_finalized_) {
     // Process the non-emitting arcs for the unfinished last frame.
-    ProcessNonemitting(&recover_map);
+    ProcessNonemitting(&token_orig_cost);
   }
 
 
@@ -202,7 +202,7 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
   }
   
   if (!decoding_finalized_) {  // recover last token list
-    RecoverLastTokenList(recover_map);
+    RecoverLastTokenList(token_orig_cost);
   }
   return (ofst->NumStates() > 0);
 }
@@ -215,13 +215,13 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
 // will not be affacted.
 template<typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::RecoverLastTokenList(
-    const std::unordered_map<Token*, BaseFloat> &recover_map) {
-  if (!recover_map.empty()) {
+    const std::unordered_map<Token*, BaseFloat> &token_orig_cost) {
+  if (!token_orig_cost.empty()) {
     for (Token* tok = active_toks_[active_toks_.size() - 1].toks;
          tok != NULL;) {
-      if (recover_map.find(tok) != recover_map.end()) {
+      if (token_orig_cost.find(tok) != token_orig_cost.end()) {
         DeleteForwardLinks(tok);
-        tok->tot_cost = recover_map.find(tok)->second;
+        tok->tot_cost = token_orig_cost.find(tok)->second;
         tok->in_current_queue = false;
         tok = tok->next;
       } else {
@@ -897,10 +897,10 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
 
 template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
-    std::unordered_map<Token*, BaseFloat> *recover_map) {
-  if (recover_map) {  // Build the elements which are used to recover
+    std::unordered_map<Token*, BaseFloat> *token_orig_cost) {
+  if (token_orig_cost) {  // Build the elements which are used to recover
     for (IterType iter = cur_toks_.begin(); iter != cur_toks_.end(); iter++) {
-      (*recover_map)[iter->second] = iter->second->tot_cost;
+      (*token_orig_cost)[iter->second] = iter->second->tot_cost;
     }
   }
 

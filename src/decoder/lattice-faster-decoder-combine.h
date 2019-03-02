@@ -463,17 +463,23 @@ class LatticeFasterDecoderCombineTpl {
   /// Or calls it in GetRawLattice() to generate the complete token list for
   /// the last frame. [Deal With the tokens in map "cur_toks_" which would 
   /// only contains emittion tokens from previous frame.]
-  /// If "recover_map" isn't NULL, we build the recover_map which will be used
-  /// to recover "active_toks_[last_frame]" token list for the last frame. 
-  void ProcessNonemitting(std::unordered_map<Token*, BaseFloat> *recover_map);
+  /// If the map, "token_orig_cost", isn't NULL, we build the map which will
+  /// be used to recover "active_toks_[last_frame]" token list for the last
+  /// frame. 
+  void ProcessNonemitting(std::unordered_map<Token*, BaseFloat> *token_orig_cost);
 
   /// When GetRawLattice() is called during decoding, the
   /// active_toks_[last_frame] is changed. To keep the consistency of function
   /// ProcessForFrame(), recover it.
   /// Notice: as new token will be added to the head of TokenList, tok->next
   /// will not be affacted.
+  /// "token_orig_cost" is a mapping from token pointer to the tot_cost of the
+  /// token before propagating non-emitting arcs. It is used to recover the
+  /// change of original tokens in the last frame and remove the new tokens
+  /// which come from propagating non-emitting arcs, so that we can guarantee
+  /// the consistency of function ProcessForFrame().
   void RecoverLastTokenList(
-      const std::unordered_map<Token*, BaseFloat> &recover_map);
+      const std::unordered_map<Token*, BaseFloat> &token_orig_cost);
 
 
   /// The "prev_toks_" and "cur_toks_" actually allow us to maintain current
