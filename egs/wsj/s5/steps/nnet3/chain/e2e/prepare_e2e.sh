@@ -86,7 +86,7 @@ if $tie && [[ "$type" = "biphone" ]]; then
                                                      --between-silprob 0 \
                                                      $lang | \
     cut -d' ' -f 2- | utils/sym2int.pl $lang/phones.txt | \
-    steps/chain/e2e/compute-biphone-stats.py $lang >$dir/phone-stats.txt
+    steps/chain/e2e/compute_biphone_stats.py $lang >$dir/phone-stats.txt
   tie_opts="--min-biphone-count=$min_biphone_count \
 --min-monophone-count=$min_monophone_count --phone-counts=$dir/phone-stats.txt"
 fi
