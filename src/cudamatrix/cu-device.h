@@ -184,8 +184,11 @@ class CuDevice {
   /// (i.e. from outside the class), call this only if Enabled() returns true.
   bool IsComputeExclusive();
 
-  //Register command line options for CUDA device.  
-  //This must be done before calling CuDevice::Initialize()
+  // Register command line options for CUDA device.  
+  // This must be done before calling CuDevice::Initialize()
+  // Example:
+  //  CuDevice::RegisterDeviceOptions(&po);
+  //  CuDevice::Initialize();
   static void RegisterDeviceOptions(OptionsItf *po) {
     CuDevice::device_options_.Register(po);  
   }
