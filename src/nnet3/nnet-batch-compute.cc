@@ -863,7 +863,7 @@ void MergeTaskOutput(
   }
   KALDI_ASSERT(cur_output_frame == num_output_frames);
 }
-void MergeTaskOutputGPU(
+void MergeTaskOutput(
     const std::vector<NnetInferenceTask> &tasks,
     CuMatrix<BaseFloat> *output) {
   int32 num_tasks = tasks.size(),

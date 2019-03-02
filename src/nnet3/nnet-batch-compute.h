@@ -193,7 +193,7 @@ struct NnetBatchComputerOptions: public NnetSimpleComputationOptions {
 void MergeTaskOutput(
     const std::vector<NnetInferenceTask> &tasks,
     Matrix<BaseFloat> *output);
-void MergeTaskOutputGPU(
+void MergeTaskOutput(
     const std::vector<NnetInferenceTask> &tasks,
     CuMatrix<BaseFloat> *output);
 
