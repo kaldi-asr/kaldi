@@ -212,7 +212,8 @@ void CuArrayBase<T>::SetZero() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    CU_SAFE_CALL(cudaMemset(this->data_, 0, this->dim_ * sizeof(T)));
+    CU_SAFE_CALL(cudaMemsetAsync(this->data_, 0, this->dim_ * sizeof(T),cudaStreamPerThread));
+    CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile("CuArray::SetZero", tim);
   } else
 #endif
