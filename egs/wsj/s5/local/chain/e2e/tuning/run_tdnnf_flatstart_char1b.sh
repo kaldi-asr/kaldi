@@ -15,16 +15,16 @@
 
 # local/chain/compare_wer.sh exp/chain/e2e_tdnnf_bichar1a exp/chain/e2e_tdnnf_bichar1b
 # System                e2e_tdnnf_bichar1a e2e_tdnnf_bichar1b
-#WER dev93 (tgpr)                8.89      8.70
-#WER dev93 (tg)                  8.20      8.25
-#WER dev93 (big-dict,tgpr)       6.96      6.78
-#WER dev93 (big-dict,fg)         6.01      5.91
-#WER eval92 (tgpr)               6.08      5.85
-#WER eval92 (tg)                 5.79      5.60
-#WER eval92 (big-dict,tgpr)      4.39      3.97
-#WER eval92 (big-dict,fg)        3.88      3.54
-# Final train prob        -0.0598   -0.0597
-# Final valid prob        -0.0854   -0.0866
+#WER dev93 (tgpr)                8.89      9.06
+#WER dev93 (tg)                  8.20      8.43
+#WER dev93 (big-dict,tgpr)       6.96      6.95
+#WER dev93 (big-dict,fg)         6.01      6.08
+#WER eval92 (tgpr)               6.08      5.98
+#WER eval92 (tg)                 5.79      5.94
+#WER eval92 (big-dict,tgpr)      4.39      4.29
+#WER eval92 (big-dict,fg)        3.88      3.69
+# Final train prob        -0.0598   -0.0601
+# Final valid prob        -0.0854   -0.0855
 # Final train prob (xent)
 # Final valid prob (xent)
 # Num-params                 7421044   7025973

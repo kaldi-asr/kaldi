@@ -110,55 +110,68 @@ EventMap
         level1_map[pset[k]] = new TableEventMap(0, level2_map);
     } else {
       KALDI_ASSERT(numpdfs_per_phone == 2);
-      int32 base_pdfid = current_pdfid;
       std::vector<int32> right_phoneset = phone_sets[i];  // All these will have a shared
                                                 // event-map child
-      for (size_t k = 0; k < right_phoneset.size(); k++) {
-        // Create an event map for level2:
-        std::map<EventValueType, EventMap*> level2_map;  // key is 0
-        {  // Handle CI phones
-          std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
+      // Create an event map for level2:
+      std::map<EventValueType, EventMap*> level2_map;  // key is 0
+      {  // Handle CI phones
+        std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
+        level3_map[0] = current_pdfid++;
+        level3_map[1] = current_pdfid++;
+        level2_map[0] = new TableEventMap(kPdfClass, level3_map);  // no-left-context case
+        for (size_t i = 0; i < ci_phones_list.size(); i++)  // ci-phone left-context cases
+          level2_map[ci_phones_list[i]] = new TableEventMap(kPdfClass, level3_map);
+      }
+      for (size_t j = 0; j < phone_sets.size(); j++) {
+        std::vector<int32> left_phoneset = phone_sets[j];  // All these will have a
+        // shared subtree with 2 pdfids
+        std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
+        if (bi_counts.empty() ||
+            bi_counts[left_phoneset[0]][right_phoneset[0]] >= biphone_min_count) {
           level3_map[0] = current_pdfid++;
           level3_map[1] = current_pdfid++;
-          level2_map[0] = new TableEventMap(kPdfClass, level3_map);  // no-left-context case
-          for (size_t i = 0; i < ci_phones_list.size(); i++)  // ci-phone left-context cases
-            level2_map[ci_phones_list[i]] = new TableEventMap(kPdfClass, level3_map);
-        }
-        for (size_t j = 0; j < phone_sets.size(); j++) {
-          std::vector<int32> left_phoneset = phone_sets[j];  // All these will have a
-                                                     // shared subtree with 2 pdfids
-          std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
-          if (bi_counts.empty() ||
-              bi_counts[left_phoneset[0]][right_phoneset[0]] >= biphone_min_count) {
-            level3_map[0] = current_pdfid++;
-            level3_map[1] = current_pdfid++;
-          } else if (mono_counts.empty() ||
-                     mono_counts[right_phoneset[0]] > mono_min_count) {
-            //  Revert to mono.
-            if (monophone_pdf[i] == -1)
-              monophone_pdf[i] = current_pdfid++;
-            level3_map[0] = monophone_pdf[i];
-            level3_map[1] = monophone_pdf[i];
-          } else {
-            // Revert to zerophone
-            if (zerophone_pdf == -1)
-              zerophone_pdf = current_pdfid++;
-            level3_map[0] = zerophone_pdf;
-            level3_map[1] = zerophone_pdf;
+        } else if (mono_counts.empty() ||
+                   mono_counts[right_phoneset[0]] > mono_min_count) {
+          //  Revert to mono.
+          KALDI_VLOG(2) << "Reverting to mono for biphone (" << left_phoneset[0]
+                        << "," << right_phoneset[0] << ")";
+          if (monophone_pdf[i] == -1) {
+            KALDI_VLOG(1) << "Reserving mono PDFs for phone-set " << i;
+            monophone_pdf[i] = current_pdfid++;
+            current_pdfid++; // num-pdfs-per-phone is 2
           }
+          level3_map[0] = monophone_pdf[i];
+          level3_map[1] = monophone_pdf[i] + 1;
+        } else {
+          KALDI_VLOG(2) << "Reverting to zerophone for biphone ("
+                        << left_phoneset[0]
+                        << "," << right_phoneset[0] << ")";
+          // Revert to zerophone
+          if (zerophone_pdf == -1) {
+            KALDI_VLOG(1) << "Reserving zero PDFs.";
+            zerophone_pdf = current_pdfid++;
+            current_pdfid++; // num-pdfs-per-phone is 2
+          }
+          level3_map[0] = zerophone_pdf;
+          level3_map[1] = zerophone_pdf + 1;
+        }
 
-          for (size_t ik = 0; ik < left_phoneset.size(); ik++) {
-            int32 left_phone = left_phoneset[ik];
-            level2_map[left_phone] = new TableEventMap(kPdfClass, level3_map);
-          }
+        for (size_t k = 0; k < left_phoneset.size(); k++) {
+          int32 left_phone = left_phoneset[k];
+          level2_map[left_phone] = new TableEventMap(kPdfClass, level3_map);
         }
-        level1_map[right_phoneset[k]] = new TableEventMap(0, level2_map);
-        if (k != right_phoneset.size() - 1)
-          current_pdfid = base_pdfid;
+      }
+      for (size_t k = 0; k < right_phoneset.size(); k++) {
+        std::map<EventValueType, EventMap*> level2_copy;
+        for (auto const& kv: level2_map)
+          level2_copy[kv.first] = kv.second->Copy(std::vector<EventMap*>());
+        int32 right_phone = right_phoneset[k];
+        level1_map[right_phone] = new TableEventMap(0, level2_copy);
       }
     }
 
   }
+  KALDI_LOG << "Num PDFs: " << current_pdfid;
   return new TableEventMap(1, level1_map);
 }
 
@@ -200,7 +213,12 @@ BiphoneContextDependencyFull(std::vector<std::vector<int32> > phone_sets,
 } // end namespace kaldi
 
 /* This function reads the counts of biphones and monophones from a text file
-   generated for chain flat-start training.
+   generated for chain flat-start training. On each line there is either a
+   biphone count or a monophone count:
+   <left-phone-id> <right-phone-id> <count>
+   <monophone-id> <count>
+   The phone-id's are according to phones.txt.
+
    It's more efficient to load the biphone counts into a map because
    most entries are zero, but since there are not many biphones, a 2-dim vector
    is OK. */
@@ -263,10 +281,10 @@ int main(int argc, char *argv[]) {
                 "rxfilename containing, on each line, a biphone/phone and "
                 "its count in the training data.");
     po.Register("min-biphone-count", &min_biphone_count, "Minimum number of "
-                "occurances of a biphone in training data to reserve a pdf "
+                "occurences of a biphone in training data to reserve pdfs "
                 "for it.");
     po.Register("min-monophone-count", &min_mono_count, "Minimum number of "
-                "occurances of a monophone in training data to reserve a pdf "
+                "occurences of a monophone in training data to reserve pdfs "
                 "for it.");
     po.Read(argc, argv);
 

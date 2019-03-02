@@ -14,14 +14,21 @@ cmd=run.pl
 nj=4
 stage=0
 shared_phones=true
-treedir=              # if specified, the tree and model will be copied from there
+treedir=              # If specified, the tree and model will be copied from there
                       # note that it may not be flat start anymore.
-type=mono             # can be either mono or biphone -- either way
+type=mono             # Can be either mono or biphone -- either way
                       # the resulting tree is full (i.e. it doesn't do any tying)
-ci_silence=false      # if true, silence phones will be treated as context independent
+ci_silence=false      # If true, silence phones will be treated as context independent
 
 scale_opts="--transition-scale=0.0 --self-loop-scale=0.0"
-tie=false
+tie=false             # If true, gmm-init-biphone will do some tying when
+                      # creating the full biphone tree (it won't be full anymore).
+                      # Specifically, it will revert to monophone if the data
+                      # counts for a biphone are smaller than min_biphone_count.
+                      # If the monophone count is also smaller than min_monophone_count,
+                      # it will revert to a shared global phone. Note that this
+                      # only affects biphone models (i.e., type=biphone) which
+                      # use the special chain topology.
 min_biphone_count=100
 min_monophone_count=20
 # End configuration section.
@@ -38,6 +45,7 @@ if [ $# != 3 ]; then
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --type <mono | biphone>                          # context dependency type"
+  echo "  --tie <true | false>                             # enable/disable count-based tying"
   exit 1;
 fi
 
@@ -73,7 +81,7 @@ if $ci_silence; then
 fi
 
 tie_opts=
-if [[ "$tie" = true ]] && [[ "$type" = "biphone" ]]; then
+if $tie && [[ "$type" = "biphone" ]]; then
   cat $data/text | steps/chain/e2e/text_to_phones.py --edge-silprob 0 \
                                                      --between-silprob 0 \
                                                      $lang | \
