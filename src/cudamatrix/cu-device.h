@@ -188,6 +188,7 @@ class CuDevice {
   // This must be done before calling CuDevice::Initialize()
   // Example:
   //  CuDevice::RegisterDeviceOptions(&po);
+  //  po.Read(argc, argv);
   //  CuDevice::Initialize();
   static void RegisterDeviceOptions(OptionsItf *po) {
     CuDevice::device_options_.Register(po);  

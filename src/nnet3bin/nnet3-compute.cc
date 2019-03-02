@@ -78,6 +78,10 @@ int main(int argc, char *argv[]) {
                 "priors stored with the model (in this case, "
                 "a .mdl file is expected as input).");
 
+#if HAVE_CUDA==1
+    CuDevice::RegisterDeviceOptions(&po);
+#endif
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -86,7 +90,6 @@ int main(int argc, char *argv[]) {
     }
 
 #if HAVE_CUDA==1
-    CuDevice::RegisterDeviceOptions(&po);
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
