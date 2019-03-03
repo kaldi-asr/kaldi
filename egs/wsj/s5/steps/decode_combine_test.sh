@@ -30,7 +30,7 @@ echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-if [ $# != 5 ]; then
+if [ $# != 3 ]; then
    echo "Usage: steps/decode_combine_test.sh [options] <graph-dir> <data-dir> <decode-dir>"
    echo "... where <decode-dir> is assumed to be a sub-directory of the directory"
    echo " where the model is."
@@ -62,8 +62,8 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
 
-for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $srcdir/final.mdl $graphdir/HCLG.fst $oldlm_fst $newlm_fst; do
-  [ ! -f $f ] && echo "decode_si.sh: no such file $f" && exit 1;
+for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $srcdir/final.mdl $graphdir/HCLG.fst; do
+  [ ! -f $f ] && echo "decode_combine_test.sh: no such file $f" && exit 1;
 done
 
 
@@ -113,7 +113,7 @@ if [ $stage -le 2 ]; then
     suffix="-combine"
   fi
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-  latgen-faster-mapped$suffix --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam
+  latgen-faster-mapped$suffix --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $srcdir/final.mdl $graphdir/HCLG.fst "$posteriors_scp" "$lat_wspecifier" || exit 1;
 fi
