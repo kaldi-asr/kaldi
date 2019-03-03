@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 
 # Set the base image to Ubuntu with tue-env
-FROM tueroboticsamigo/tue-env:master
+FROM tueroboticsamigo/tue-env:cleanup_docker-and-ci
 
 # Update the image and install basic packages
 RUN sudo apt-get update -qq && \
@@ -11,5 +11,6 @@ RUN sudo apt-get update -qq && \
     # This step needs to be executed at every RUN step
     source ~/.bashrc && \
     # Install kaldi
+    git -C $TUE_ENV_TARGETS_DIR checkout update/speech-recognition-dev-targets && \
     tue-get install kaldi
 
