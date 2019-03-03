@@ -56,9 +56,7 @@ _kaldi_check_dependencies()
 {
     echo "Checking dependencies..."
     # Change exit to return to source check_dependencies and change back once done
-    sed -i "s|exit|return|g" $KALDI/tools/extras/check_dependencies.sh
     $KALDI/tools/extras/check_dependencies.sh > /dev/null
-    sed -i "s|return|exit|g" $KALDI/tools/extras/check_dependencies.sh
 }
 
 # Kaldi Build (Common to Installation and Update)
@@ -93,6 +91,11 @@ _kaldi_build()
     echo "  - Built tools"
 
     # Install IRSTLM
+    # Remove IRSTLM dir if it exists else the install script fails
+    if [ -d "irstlm" ]
+    then
+        rm -rf irstlm
+    fi
     extras/install_irstlm.sh &> $ASR_LOG/install_irstlm.log
     install_irstlm_status=$(grep "Installation of IRSTLM finished successfully" $ASR_LOG/install_irstlm.log )
 
@@ -115,7 +118,11 @@ _kaldi_build()
     echo "  - Built SEQUITUR"
 
     # Install SRILM
-    wget https://github.com/tue-robotics/kaldi_srilm/blob/master/srilm.tgz?raw=true -O srilm.tgz
+    # Download SRILM if .tgz does not exist
+    if [ ! -f "srilm.tgz" ]
+    then
+        wget https://github.com/tue-robotics/kaldi_srilm/blob/master/srilm.tgz?raw=true -O srilm.tgz
+    fi
     extras/install_srilm.sh &> $ASR_LOG/install_srilm.log
     install_srilm_status=$(grep "Installation of SRILM finished successfully" $ASR_LOG/install_srilm.log)
 
@@ -278,9 +285,9 @@ else
                 _kaldi_clean ;;
 
             --tue )
-                _kaldi_check_dependencies
-                _kaldi_build
-                _kaldi_online_gst
+                _kaldi_check_dependencies || exit 1
+                _kaldi_build || exit 1
+                _kaldi_online_gst || exit 1
                 echo -e "\e[36m\e[1m Kaldi installation complete \e[0m" ;;
 
             -h | --help )
