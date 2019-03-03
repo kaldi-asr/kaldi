@@ -46,7 +46,7 @@ namespace kaldi {
   We also want to have control over whitespace in text mode without affecting
   the meaning of the file, for pretty-printing purposes.
 
-  Errors are handled by throwing an exception (std::runtime_error).
+  Errors are handled by throwing a KaldiFatalError exception.
 
   For integer and floating-point types (and boolean values):
 
