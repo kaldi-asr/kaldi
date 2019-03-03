@@ -34,12 +34,12 @@ fi
 
 # Install the required packages and dependencies
 sudo apt-get update -qq > /dev/null 2>&1
-sudo apt-get upgrade --assume-yes -qq > /dev/null 2>&1
-sudo apt-get install --assume-yes build-essential git python python-numpy sox swig zip -qq > /dev/null 2>&1
 
 # Kaldi install dependencies
 _kaldi_install_dependencies()
 {
+    # Install base packages
+    sudo apt-get install --assume-yes build-essential git python python-numpy sox swig zip -qq > /dev/null 2>&1
     echo "Checking and installing dependencies..."
     # Change exit to return to source check_dependencies and change back once done
     sed -i "s|exit|return|g" $KALDI/tools/extras/check_dependencies.sh
@@ -48,7 +48,6 @@ _kaldi_install_dependencies()
 
     # Install dependencies
     sudo apt-get install libatlas3-base $debian_packages -qq > /dev/null 2>&1
-    sudo ln -s -f bash /bin/sh
 }
 
 # Kaldi check dependencies
