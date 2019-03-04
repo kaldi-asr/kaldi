@@ -81,6 +81,7 @@ config_to_layer = {
         'linear-component': xlayers.XconfigLinearComponent,
         'affine-component': xlayers.XconfigAffineComponent,
         'scale-component':  xlayers.XconfigPerElementScaleComponent,
+        'dim-range-component': xlayers.XconfigDimRangeComponent,
         'offset-component':  xlayers.XconfigPerElementOffsetComponent,
         'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer
 }

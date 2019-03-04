@@ -74,6 +74,10 @@ sub validate_utf8_whitespaces {
   use feature 'unicode_strings';
   for (my $i = 0; $i < scalar @{$unicode_lines}; $i++) {
     my $current_line = $unicode_lines->[$i];
+    if ((substr $current_line, -1) ne "\n"){
+      print STDERR "$0: The current line (nr. $i) has invalid newline\n";
+      return 1;
+    }
     my @A = split(" ", $current_line);
     my $utt_id = $A[0];
     # we replace TAB, LF, CR, and SPACE

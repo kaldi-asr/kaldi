@@ -6,6 +6,7 @@ for Term-frequency and Inverse-document-frequency values.
 """
 
 from __future__ import print_function
+from __future__ import division
 import logging
 import math
 import re
@@ -51,8 +52,7 @@ class IDFStats(object):
         if weighting_scheme == "log-smoothed":
             return math.log(1.0 + float(self.num_docs) / (1.0 + n_t))
         if weighting_scheme == "probabilitic":
-            return math.log((self.num_docs - n_t - 1)
-                            / (1.0 + n_t))
+            return math.log((self.num_docs - n_t - 1) / (1.0 + n_t))
 
     def accumulate(self, term):
         """Adds one count to the number of docs containing the term "term".
@@ -66,7 +66,7 @@ class IDFStats(object):
         <term-1> <term-2> ... <term-N> <num-docs>
         for n-gram (<term-1>, ... <term-N>)
         """
-        for term, num in self.num_docs_for_term.iteritems():
+        for term, num in self.num_docs_for_term.items():
             if num == 0:
                 continue
             assert isinstance(term, tuple)
@@ -135,7 +135,7 @@ class TFStats(object):
         based on the stored raw counts."""
         if len(self.raw_counts) == 0:
             raise RuntimeError("No (term, doc) found in tf-stats.")
-        for tup, counts in self.raw_counts.iteritems():
+        for tup, counts in self.raw_counts.items():
             term = tup[0]
 
             if counts > self.max_counts_for_term.get(term, 0):
@@ -149,7 +149,7 @@ class TFStats(object):
         <n-gram order> <term-1> <term-2> ... <term-n> <document-id> <counts>
         """
         lines = []
-        for tup, counts in self.raw_counts.iteritems():
+        for tup, counts in self.raw_counts.items():
             term, doc = tup
             lines.append("{order} {term} {doc} {counts}".format(
                 order=len(term), term=" ".join(term),
@@ -225,7 +225,7 @@ class TFIDF(object):
         num_terms_per_doc = {}
         similarity_scores = {}
 
-        for tup, value in self.tf_idf.iteritems():
+        for tup, value in self.tf_idf.items():
             term, doc = tup
             num_terms_per_doc[doc] = num_terms_per_doc.get(doc, 0) + 1
 
@@ -253,19 +253,18 @@ class TFIDF(object):
                         similarity_scores.get((doc, src_doc), 0)
                         + src_value * value)
             else:
-                for src_tup, src_value in source_tfidf.tf_idf.iteritems():
+                for src_tup, src_value in source_tfidf.tf_idf.items():
                     similarity_scores[(doc, src_doc)] = (
                         similarity_scores.get((doc, src_doc), 0)
                         + src_value * value)
 
         if do_length_normalization:
-            for doc_pair, value in similarity_scores.iteritems():
+            for doc_pair, value in similarity_scores.items():
                 doc, src_doc = doc_pair
-                similarity_scores[(doc, src_doc)] = (value
-                                                     / num_terms_per_doc[doc])
+                similarity_scores[(doc, src_doc)] = value / num_terms_per_doc[doc]
 
         if logger.isEnabledFor(logging.DEBUG):
-            for doc, count in num_terms_per_doc.iteritems():
+            for doc, count in num_terms_per_doc.items():
                 logger.debug(
                     'Seen {0} terms in query document {1}'.format(count, doc))
 
@@ -329,7 +328,7 @@ class TFIDF(object):
         """Writes TFIDF object to file."""
 
         print ("<TFIDF>", file=tf_idf_file)
-        for tup, value in self.tf_idf.iteritems():
+        for tup, value in self.tf_idf.items():
             term, doc = tup
             print("{order} {term} {doc} {tfidf}".format(
                 order=len(term), term=" ".join(term),

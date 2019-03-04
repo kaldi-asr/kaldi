@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "tree/tree-renderer.h"
+#include "tree/context-dep.h"
 
 void MakeEvent(std::string &qry, fst::SymbolTable *phone_syms,
                kaldi::EventType **query)

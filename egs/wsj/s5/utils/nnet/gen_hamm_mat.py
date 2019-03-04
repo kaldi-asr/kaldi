@@ -18,11 +18,19 @@
 # ./gen_hamm_mat.py
 # script generates diagonal matrix with hamming window values
 
+from __future__ import division
+from __future__ import print_function
 from math import *
 import sys
 
 
 from optparse import OptionParser
+
+def print_on_same_line(text):
+    if (sys.version_info > (3,0)):
+        print(text, end=' ')
+    else:
+        print text,
 
 parser = OptionParser()
 parser.add_option('--fea-dim', dest='dim', help='feature dimension')
@@ -42,16 +50,16 @@ M_2PI = 6.283185307179586476925286766559005
 
 dim_mat=(2*splice+1)*dim
 timeContext=2*splice+1
-print '['
+print('[')
 for row in range(dim_mat):
     for col in range(dim_mat):
         if col!=row:
-            print '0',
+            print_on_same_line('0')
         else:
             i=int(row/dim)
-            print str(0.54 - 0.46*cos((M_2PI * i) / (timeContext-1))),
-    print
+            print_on_same_line(str(0.54 - 0.46*cos((M_2PI * i) / (timeContext-1))))
+    print()
 
-print ']'
+print(']')
 
 

@@ -6,6 +6,8 @@
 
 """ This script is based on steps/nnet3/chain/train.sh
 """
+from __future__ import division
+from __future__ import print_function
 
 import argparse
 import logging
