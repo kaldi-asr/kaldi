@@ -863,6 +863,40 @@ void MergeTaskOutput(
   }
   KALDI_ASSERT(cur_output_frame == num_output_frames);
 }
+void MergeTaskOutput(
+    const std::vector<NnetInferenceTask> &tasks,
+    CuMatrix<BaseFloat> *output) {
+  int32 num_tasks = tasks.size(),
+      num_output_frames = 0,
+      output_dim = -1;
+  for (int32 i = 0; i < num_tasks; i++) {
+    const NnetInferenceTask &task = tasks[i];
+    num_output_frames += task.num_used_output_frames;
+    if (i == 0) {
+      output_dim = (task.output_to_cpu ?
+                    task.output_cpu.NumCols() :
+                    task.output.NumCols());
+    }
+  }
+  KALDI_ASSERT(num_output_frames != 0 && output_dim != 0);
+  int32 cur_output_frame = 0;
+  output->Resize(num_output_frames, output_dim);
+  for (int32 i = 0; i < num_tasks; i++) {
+    const NnetInferenceTask &task = tasks[i];
+    int32 skip = task.num_initial_unused_output_frames,
+        num_used = task.num_used_output_frames;
+    KALDI_ASSERT(cur_output_frame == task.first_used_output_frame_index);
+    if (task.output_to_cpu) {
+      output->RowRange(cur_output_frame, num_used).CopyFromMat(
+          task.output_cpu.RowRange(skip, num_used));
+    } else {
+      output->RowRange(cur_output_frame, num_used).CopyFromMat(
+          task.output.RowRange(skip, num_used));
+    }
+    cur_output_frame += num_used;
+  }
+  KALDI_ASSERT(cur_output_frame == num_output_frames);
+}
 
 
 NnetBatchInference::NnetBatchInference(
