@@ -11,6 +11,5 @@ RUN sudo apt-get update -qq && \
     # This step needs to be executed at every RUN step
     source ~/.bashrc && \
     # Install kaldi
-    git -C $TUE_ENV_TARGETS_DIR checkout update/speech-recognition-dev-targets && \
     tue-get install kaldi
 
