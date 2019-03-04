@@ -17,6 +17,7 @@ usage()
         --tue\n \
         --install-kaldi\n \
         --update-kaldi\n \
+        --gst-plugin\n \
         --clean"
     echo
     echo "-----------------------------------------------------------------------------"
@@ -178,18 +179,18 @@ _kaldi_online_gst()
 
     # Build online decoder
     cd $KALDI/src/online
-    make -j 8 &> $ASR_LOG/make_online.log || echo -e "\e[34m\e[1m Make kaldi/src/online failed \e[0m"; return 1
+    make -j 8 &> $ASR_LOG/make_online.log || { echo -e "\e[34m\e[1m Make kaldi/src/online failed \e[0m"; return 1; }
     echo "  - Built online decoder"
 
     # Build Gstreamer plugin
     cd $KALDI/src/gst-plugin
     make depend -j 8 > /dev/null
-    make -j 8 &> $ASR_LOG/make_gst-plugin.log || echo -e "\e[34m\e[1m Make kaldi/src/gst-plugin failed \e[0m"; return 1
+    make -j 8 &> $ASR_LOG/make_gst-plugin.log || { echo -e "\e[34m\e[1m Make kaldi/src/gst-plugin failed \e[0m"; return 1; }
     echo "  - Built gstreamer plugin"
 
     # Test Gstreamer plugin
     export GST_PLUGIN_PATH=$KALDI/src/gst-plugin${GST_PLUGIN_PATH:+:${GST_PLUGIN_PATH}}
-    gst-inspect-1.0 onlinegmmdecodefaster > /dev/null || echo -e "\e[34m\e[1m gst-inspect of onlinegmmdecodefaster failed \e[0m"; return 1
+    gst-inspect-1.0 onlinegmmdecodefaster > /dev/null || { echo -e "\e[34m\e[1m gst-inspect of onlinegmmdecodefaster failed \e[0m"; return 1; }
     echo "  - Gstreamer Plugin Test Successful"
 }
 
@@ -282,6 +283,9 @@ else
 
             --clean )
                 _kaldi_clean ;;
+
+            --gst-plugin )
+                _kaldi_online_gst ;;
 
             --tue )
                 _kaldi_check_dependencies || exit 1
