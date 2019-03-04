@@ -663,6 +663,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::AdvanceDecoding(
 // tokens.  This function used to be called PruneActiveTokensFinal().
 template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
+  ProcessNonemitting(NULL);
   int32 final_frame_plus_one = NumFramesDecoded();
   int32 num_toks_begin = num_toks_;
   // PruneForwardLinksFinal() prunes final frame (with final-probs), and
