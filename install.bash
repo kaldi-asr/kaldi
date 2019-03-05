@@ -121,7 +121,7 @@ _kaldi_build()
     # Download SRILM if .tgz does not exist
     if [ ! -f "srilm.tgz" ]
     then
-        wget https://github.com/tue-robotics/kaldi_srilm/blob/master/srilm.tgz?raw=true -O srilm.tgz
+        wget -q https://github.com/tue-robotics/kaldi_srilm/blob/master/srilm.tgz?raw=true -O srilm.tgz
     fi
     extras/install_srilm.sh &> $ASR_LOG/install_srilm.log
     install_srilm_status=$(grep "Installation of SRILM finished successfully" $ASR_LOG/install_srilm.log)
