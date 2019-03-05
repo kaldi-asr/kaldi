@@ -21,6 +21,7 @@
 #include "base/kaldi-math.h"
 #ifndef _MSC_VER
 #include <stdlib.h>
+#include <unistd.h>
 #endif
 #include <string>
 #include <mutex>
@@ -42,7 +43,7 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
 static std::mutex _RandMutex;
 
 int Rand(struct RandomState* state) {
-#if defined(_MSC_VER) || defined(__CYGWIN__)
+#if !defined(_POSIX_THREAD_SAFE_FUNCTIONS)
   // On Windows and Cygwin, just call Rand()
   return rand();
 #else

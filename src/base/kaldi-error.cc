@@ -220,8 +220,12 @@ FatalMessageLogger::FatalMessageLogger(LogMessageEnvelope::Severity severity,
                              "severities kAssertFailed and kError");
   }
 }
-
-[[ noreturn ]] FatalMessageLogger::~FatalMessageLogger() noexcept(false) {
+#if defined(_MSC_VER)
+FatalMessageLogger::~FatalMessageLogger [[ noreturn ]] () noexcept(false)
+#else
+[[ noreturn ]] FatalMessageLogger::~FatalMessageLogger() noexcept(false)
+#endif
+{
   std::string str = GetMessage();
 
   // print the mesage (or send to logging handler),
