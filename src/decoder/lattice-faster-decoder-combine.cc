@@ -825,16 +825,15 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   cost_offsets_[frame] = cost_offset;
 
   // Build a queue which contains the emittion tokens from previous frame.
-  std::vector<StateId> cur_queue;
   for (IterType iter = prev_toks_.begin(); iter != prev_toks_.end(); iter++) {
-    cur_queue.push_back(iter->first);
+    cur_queue_.push(iter->first);
     iter->second->in_current_queue = true;
   }
 
-  // Iterator the "cur_queue" to process non-emittion and emittion arcs in fst.
-  while (!cur_queue.empty()) {
-    StateId state = cur_queue.back();
-    cur_queue.pop_back();
+  // Iterator the "cur_queue_" to process non-emittion and emittion arcs in fst.
+  while (!cur_queue_.empty()) {
+    StateId state = cur_queue_.front();
+    cur_queue_.pop();
 
     KALDI_ASSERT(prev_toks_.find(state) != prev_toks_.end());
     Token *tok = prev_toks_[state];
@@ -868,7 +867,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
           // "changed" tells us whether the new token has a different
           // cost from before, or is new.
           if (changed && !new_tok->in_current_queue) {
-            cur_queue.push_back(arc.nextstate);
+            cur_queue_.push(arc.nextstate);
             new_tok->in_current_queue = true;
           }
         }
@@ -905,13 +904,20 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
     }
   }
 
-  StateIdToTokenMap tmp_toks(cur_toks_);
+  StateIdToTokenMap *tmp_toks;
+  if (token_orig_cost) {  // "token_orig_cost" isn't NULL. It means we need to
+                          // recover active_toks_[last_frame] and "cur_toks_"
+                          // will be used in the future.
+    tmp_toks = new StateIdToTokenMap(cur_toks_);
+  } else {
+    tmp_toks = &cur_toks_;
+  }
+
   int32 frame = active_toks_.size() - 1;
-  // Build the queue to process non-emitting arcs
-  std::vector<StateId> cur_queue;
-  for (IterType iter = tmp_toks.begin(); iter != tmp_toks.end(); iter++) {
+  // Build the queue to process non-emitting arcs.
+  for (IterType iter = tmp_toks->begin(); iter != tmp_toks->end(); iter++) {
     if (fst_->NumInputEpsilons(iter->first) != 0) {
-      cur_queue.push_back(iter->first);
+      cur_queue_.push(iter->first);
       iter->second->in_current_queue = true;
     }
   }
@@ -919,14 +925,14 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
   // "cur_cutoff" is used to constrain the epsilon emittion in current frame.
   // It will not be updated.
   BaseFloat adaptive_beam;
-  BaseFloat cur_cutoff = GetCutoff(tmp_toks, &adaptive_beam, NULL, NULL);
+  BaseFloat cur_cutoff = GetCutoff(*tmp_toks, &adaptive_beam, NULL, NULL);
 
-  while (!cur_queue.empty()) {
-    StateId state = cur_queue.back();
-    cur_queue.pop_back();
+  while (!cur_queue_.empty()) {
+    StateId state = cur_queue_.front();
+    cur_queue_.pop();
 
-    KALDI_ASSERT(tmp_toks.find(state) != tmp_toks.end());
-    Token *tok = tmp_toks[state];
+    KALDI_ASSERT(tmp_toks->find(state) != tmp_toks->end());
+    Token *tok = (*tmp_toks)[state];
     BaseFloat cur_cost = tok->tot_cost;
     if (cur_cost > cur_cutoff)  // Don't bother processing successors.
       continue;
@@ -945,7 +951,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
         BaseFloat tot_cost = cur_cost + graph_cost;
         if (tot_cost < cur_cutoff) {
           Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                          tok, &tmp_toks, &changed);
+                                          tok, tmp_toks, &changed);
 
           // Add ForwardLink from tok to new_tok. Put it on the head of
           // tok->link list
@@ -955,7 +961,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
           // "changed" tells us whether the new token has a different
           // cost from before, or is new.
           if (changed && !new_tok->in_current_queue) {
-            cur_queue.push_back(arc.nextstate);
+            cur_queue_.push(arc.nextstate);
             new_tok->in_current_queue = true;
           }
         }
@@ -963,6 +969,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
     }  // end of for loop
     tok->in_current_queue = false;
   }  // end of while loop
+  if (token_orig_cost) delete tmp_toks;
 }
 
 

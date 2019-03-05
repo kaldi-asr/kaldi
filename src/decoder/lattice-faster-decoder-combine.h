@@ -503,8 +503,8 @@ class LatticeFasterDecoderCombineTpl {
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
-  std::vector<StateId> queue_;  // temp variable used in ProcessForFrame for
-  // epsilon arcs.
+  std::queue<StateId> cur_queue_;  // temp variable used in ProcessForFrame
+                                   // and ProcessNonemitting
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
 
   // fst_ is a pointer to the FST we are decoding from.
