@@ -23,8 +23,10 @@ if [ $stage -le 0 ]; then
     mkdir -p data/test/data/images
     local/process_data.py download/Train data/train
     local/process_data.py download/Test data/test
+    local/process_data.py download/Competition data/competition
     image/fix_data_dir.sh ${data_dir}/test
     image/fix_data_dir.sh ${data_dir}/train
+    image/fix_data_dir.sh ${data_dir}/competition
 fi
 
 mkdir -p $data_dir/{train,test}/data
@@ -34,7 +36,7 @@ if [ $stage -le 1 ]; then
     image/get_image2num_frames.py --feat-dim 60 $data_dir/train
     image/get_allowed_lengths.py --frame-subsampling-factor 4 10 $data_dir/train
 
-    for datasplit in train test; do
+    for datasplit in train test competition; do
         echo "$0: Extracting features and calling compute_cmvn_stats for dataset: $datasplit. "
         echo "Date: $(date)."
         local/extract_features.sh --nj $nj --cmd "$cmd" \
@@ -101,14 +103,4 @@ if [ $stage -le 7 ]; then
     echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
     echo "Date: $(date)."
     local/chain/run_cnn_e2eali_1b.sh --nj $nj --train-set train --data-dir $data_dir --exp-dir $exp_dir
-fi
-
-if [ $stage -le 8 ]; then
-    echo "$0: Estimating a language model for lattice rescoring...$(date)"
-    local/train_lm_lr.sh --data-dir $data_dir  --dir $data_dir/local/local_lm_lr --extra-lm $extra_lm --order 6
-
-    utils/build_const_arpa_lm.sh $data_dir/local/local_lm_lr/data/arpa/6gram_unpruned.arpa.gz \
-        $data_dir/lang_test $data_dir/lang_test_lr
-    steps/lmrescore_const_arpa.sh $data_dir/lang_test $data_dir/lang_test_lr \
-        $data_dir/test $exp_dir/chain/cnn_e2eali_1b/decode_test $exp_dir/chain/cnn_e2eali_1b/decode_test_lr
 fi

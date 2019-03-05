@@ -382,7 +382,7 @@ for filename in sorted(os.listdir(args.database_path)):
             for i in range(0, iLineNum):
                 iWordNum = struct.unpack('i', f.read(4))[0]
                 for j in range(0, iWordNum):
-                    pWordLabel = f.read(sCodeLen).decode('gb18030', errors='replace')
+                    pWordLabel = f.read(sCodeLen).decode('gb18030', errors='ignore')
                     sTop = struct.unpack('h', f.read(2))[0]
                     sLeft = struct.unpack('h', f.read(2))[0]
                     sHei = struct.unpack('h', f.read(2))[0]

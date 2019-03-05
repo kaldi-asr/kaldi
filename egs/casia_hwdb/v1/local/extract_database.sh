@@ -16,12 +16,12 @@ download_dir=download
 
 mkdir -p ${download_dir}/{Train,Test}
 for task in 0 1 2; do
-    for datasplit in Train; do
+    for datasplit in Train Test; do
         unzip -q -d ${download_dir}/${datasplit} ${database_train}/CASIA-HWDB2.${task}/${datasplit}_Dgr.zip
     done
 done
 
-unzip -q -d ${download_dir}/Test ${database_competition}/competition-dgr.zip 
+unzip -q -d ${download_dir}/Competition ${database_competition}/competition-dgr.zip 
 
 echo "Downloading table for CangJie."
 wget -P $download_dir/ $cangjie_url || exit 1;
