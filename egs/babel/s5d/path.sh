@@ -1,4 +1,4 @@
-export KALDI_ROOT=`pwd`/../../..
+export KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 
 [ ! -f /export/babel/data/software/env.sh ] && echo >&2 "The file /export/babel/data/software/env.sh is not present -> Exit!" && exit 1

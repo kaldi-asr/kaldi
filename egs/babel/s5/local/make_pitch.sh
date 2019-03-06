@@ -50,7 +50,7 @@ mkdir -p $expdir/log || exit 1;
 
 scp=$data/wav.scp
 
-[ ! -s $KALDI_ROOT ] && KALDI_ROOT=../../..
+[ ! -s $KALDI_ROOT ] && KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 
 ( # this is for back compatiblity:
  cd $KALDI_ROOT/tools

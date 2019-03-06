@@ -1,4 +1,4 @@
-export KALDI_ROOT=`pwd`/../../..
+export KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 #export KALDI_ROOT=/home/dpovey/kaldi-trunk-test
 export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH

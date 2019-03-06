@@ -8,7 +8,7 @@
 # ../online_demo, using the GStreamer plugin
 # 
 
-KALDI_ROOT=`pwd`/../../..
+KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 export PATH=$PWD/../s5/utils/:$KALDI_ROOT/src/bin:$PATH
 
 data_file="online-data"

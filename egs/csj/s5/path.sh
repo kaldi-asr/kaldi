@@ -1,5 +1,5 @@
 if [ -z $KALDI_ROOT ]; then
-    export KALDI_ROOT=`pwd`/../../..
+    export KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 fi
 
 export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH

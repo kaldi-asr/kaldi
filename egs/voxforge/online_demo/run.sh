@@ -6,7 +6,7 @@
 # Note: you have to do 'make ext' in ../../../src/ before running this.
 
 # Set the paths to the binaries and scripts needed
-KALDI_ROOT=`pwd`/../../..
+KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 export PATH=$PWD/../s5/utils/:$KALDI_ROOT/src/onlinebin:$KALDI_ROOT/src/bin:$PATH
 
 data_file="online-data"

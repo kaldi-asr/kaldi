@@ -3,7 +3,7 @@
 
 export LC_ALL=C  # For expected sorting and joining behaviour
 
-KALDI_ROOT=/homes/eva/q/qghoshal/src/kaldi/trunk
+export KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 
 KALDISRC=$KALDI_ROOT/src

@@ -61,7 +61,7 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 sdata=$data/split$nj
 
 if ! which pfile_create >/dev/null; then # pfile_create not on our path.
-  [ -z "$KALDI_ROOT" ] && KALDI_ROOT=`pwd`/../../.. # normal case.
+  [ -z "$KALDI_ROOT" ] && KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..) # normal case.
   try_path=$KALDI_ROOT/tools/pfile_utils-v0_51/bin/
   if [ -f $try_path/pfile_create ]; then
     PPATH=$try_path

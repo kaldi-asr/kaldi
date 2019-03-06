@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # path to Kaldi's root directory
-export KALDI_ROOT=`pwd`/../../..
+export KALDI_ROOT=$(readlink -f $(readlink -f $PWD)/../../..)
 
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 export LD_LIBRARY_PATH=/home/dpovey/libs:$KALDI_ROOT/src/chainbin:/usr/local/lib:$LD_LIBRARY_PATH
