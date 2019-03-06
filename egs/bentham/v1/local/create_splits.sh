@@ -27,10 +27,8 @@ function split {
         echo $name $lines_dir"/"$name".png" >> $split_dir/images.scp
         echo $name $spkid >> $split_dir/utt2spk 
 	done < "$line_file"
-    
-    grep -v -e '^\s*$' $split_dir/images.scp
-    grep -v -e '^\s*$' $split_dir/text
-    grep -v -e '^\s*$' $split_dir/utt2spk
+   
+    perl -i -ne 'print if /\S/' $split_dir/images.scp $split_dir/text $split_dir/utt2spk
     utils/utt2spk_to_spk2utt.pl $split_dir/utt2spk > $split_dir/spk2utt
 }
 
