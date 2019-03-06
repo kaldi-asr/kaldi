@@ -114,7 +114,7 @@ if [ $stage -le 14 ]; then
   echo "$0: Starting  triphone training in exp/tri1"
   steps/train_deltas.sh --cmd "$train_cmd" --boost-silence 1.25 \
     700 7720 \
-    data/train data/lang exp/mono_ali exp/tri1
+    data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 fi
 
 if [ $stage -le 13 ]; then
