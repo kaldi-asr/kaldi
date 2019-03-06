@@ -39,6 +39,28 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  dir=data/download/ticmini2_dataset_20180607
+  trans=$dir/garbage.txt
+  paste -d ' ' <(cat $trans | awk '{print $1}' | awk '{split($1,a,"."); print a[1]}') <(cat $trans | cut -d ' ' -f2-) > $dir/garbage_text || exit 1
+  cat $dir/garbage_text > data/garbage_text
+fi
+
+if [ $stage -le 4 ]; then
+  cat data/hixiaowen_text data/freetext_text data/garbage_text > data/text
+  cat data/hixiaowen_text data/freetext_text | awk '{print $1}' | awk '{split($1,a,"-"); print $1,a[1]}' > data/hixiaowen_freetext_utt2spk || exit 1
+  cat data/$folder/garbage_text | awk '{print $1}' | awk '{split($1,a,"_"); if(a[1]=="garbage") print $1,a[1] "_" a[2] "_" a[3]; else if(a[1]=="ticmini" || a[1]=="timini") print $1,a[1] "_" a[2] "_" a[3] "_" a[4] "_" a[5]; else print $1,$1}' cat data/hixiaowen_freetext_utt2spk - > data/utt2spk || exit 1
+  rm -f data/hixiaowen_freetext_utt2spk 2>/dev/null || true
+fi
+
+if [ $stage -le 5 ]; then
+  for folder in train dev eval; do
+    mkdir -p data/$folder
+    utils/filter_scp.pl local/${folder}_list data/text > data/$folder/text || exit 1
+    utils/filter_scp.pl local/${folder}_list data/utt2spk > data/$folder/utt2spk || exit 1
+  done
+fi
+
+if [ $stage -le 3 ] && false; then
   mkdir -p data/train
   python3 local/split_data_by_speakers.py data/hixiaowen_text data/freetext_text data/train/hixiaowen_freetext_text --train-proportion 0.8
   cat data/hixiaowen_text data/freetext_text | utils/filter_scp.pl --exclude data/train/hixiaowen_freetext_text | utils/shuffle_list.pl 2>/dev/null > data/dev_eval_hixiaowen_freetext_text || exit 1
@@ -53,7 +75,7 @@ if [ $stage -le 3 ]; then
   done
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 4 ] && false; then
   dir=data/download/ticmini2_dataset_20180607
   trans=$dir/garbage.txt
   paste -d ' ' <(cat $trans | awk '{print $1}' | awk '{split($1,a,"."); print a[1]}') <(cat $trans | cut -d ' ' -f2-) > $dir/garbage_text || exit 1
