@@ -10,7 +10,9 @@ set -euo pipefail
 
 stage=0
 train_set=train
-test_sets="dev eval"
+combined_train_set=train_combined
+test_sets="dev eval train"
+aug_affix="reverb noise music babble"
 nj=30
 gmm=mono
 
@@ -18,7 +20,7 @@ nnet3_affix=
 
 . ./cmd.sh
 . ./path.sh
-. utils/parse_options.sh
+. ./utils/parse_options.sh
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
@@ -146,4 +148,50 @@ if [ $stage -le 6 ]; then
   done
 fi
 
+if [ $stage -le 7 ]; then
+  eval utils/combine_data.sh data/${combined_train_set} data/${train_set}_sp \
+    data/${train_set}_{$(echo $aug_affix | sed 's/ /,/g')}
+fi
+
+if [ $stage -le 8 ]; then
+  for name in $aug_affix; do
+    echo "$0: creating high-resolution MFCC features for ${train_set}_${name}"
+    mfccdir=data/${train_set}_${name}_hires/data
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+      utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/mobvoi-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    fi
+    utils/copy_data_dir.sh data/${train_set}_${name} data/${train_set}_${name}_hires
+
+    utils/data/perturb_data_dir_volume.sh data/${train_set}_${name}_hires || exit 1;
+    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/${train_set}_${name}_hires || exit 1;
+    steps/compute_cmvn_stats.sh data/${train_set}_${name}_hires || exit 1;
+    utils/fix_data_dir.sh data/${train_set}_${name}_hires || exit 1;
+  done
+  eval utils/combine_data.sh data/${combined_train_set}_hires data/${train_set}_sp_hires \
+    data/${train_set}_{$(echo $aug_affix | sed 's/ /,/g')}_hires
+fi
+
+if [ $stage -le 9 ]; then
+  combined_ivectordir=exp/nnet3${nnet3_affix}/ivectors_${combined_train_set}_hires
+  steps/online/nnet2/copy_ivector_dir.sh exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires $combined_ivectordir
+  for name in $aug_affix; do
+    ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_${name}_hires
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
+      utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/mobvoi-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    fi
+
+    temp_data_root=${ivectordir}
+    utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
+      data/${train_set}_${name}_hires ${temp_data_root}/${train_set}_${name}_hires_max2
+
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
+      ${temp_data_root}/${train_set}_${name}_hires_max2 \
+      exp/nnet3${nnet3_affix}/extractor $ivectordir
+    cat $ivectordir/ivector_online.scp >>$combined_ivectordir/ivector_online.scp
+  done
+  sort -k1,1 $combined_ivectordir/ivector_online.scp >$combined_ivectordir/ivector_online.scp.tmp
+  rm -f $combined_ivectordir/ivector_online.scp 2>/dev/null
+  mv $combined_ivectordir/ivector_online.scp.tmp $combined_ivectordir/ivector_online.scp
+fi
 exit 0
