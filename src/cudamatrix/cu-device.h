@@ -184,8 +184,31 @@ class CuDevice {
   /// (i.e. from outside the class), call this only if Enabled() returns true.
   bool IsComputeExclusive();
 
+  // Register command line options for CUDA device.  
+  // This must be done before calling CuDevice::Initialize()
+  // Example:
+  //  CuDevice::RegisterDeviceOptions(&po);
+  //  po.Read(argc, argv);
+  //  CuDevice::Initialize();
+  static void RegisterDeviceOptions(OptionsItf *po) {
+    CuDevice::device_options_.Register(po);  
+  }
   ~CuDevice();
  private:
+
+  struct CuDeviceOptions {
+    bool use_tensor_cores; // Enable tensor cores
+    CuDeviceOptions () : use_tensor_cores(false) {};
+    void Register(OptionsItf *po) {
+      po->Register("cuda-use-tensor-cores", &use_tensor_cores, 
+          "Enable FP16 tensor math. "
+          "This is higher performance but less accuracy. "
+          "This is only recommended for inference.");
+    }
+  };
+
+  static CuDeviceOptions device_options_;
+
   // Default constructor used to initialize this_thread_device_
   CuDevice();
   CuDevice(CuDevice&); // Disallow.
