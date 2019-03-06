@@ -8,23 +8,16 @@ set -e
 . ./path.sh
 . $KALDI_ROOT/tools/env.sh
 stage=0
-nsegs=10000;  # limit the number of training segments
+nsegs=100000;  # limit the number of training segments
 
 . ./utils/parse_options.sh
 
 if [ ! -d data/local/lm ]; then
     mkdir -p data/local/lm
 fi
-
-corpus=$1
-
-if [ ! -f $corpus ]; then
-  echo "$0: input data $corpus not found."
-  exit 1
-fi
-
-perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < $corpus | \
-     head -n $nsegs > data/local/lm/train_small.txt
+dir=data/local/tmp/lm
+lex=data/local/dict/lexicon.txt
+cut -d " " -f 1 $lex > $dir/vocab.txt
 
 if ! command ngram-count >/dev/null; then
   if uname -a | grep darwin >/dev/null; then # For MACOSX...
@@ -46,13 +39,10 @@ if ! command ngram-count >/dev/null; then
 fi
 
 
-ngram-count -order 3 -interpolate -unk -map-unk "<UNK>" \
-    -limit-vocab -text data/local/lm/train_small.txt -lm data/local/lm/tgsmall.arpa || exit 1;
+ngram-count -order 3 -interpolate -unk -map-unk "<UNK>" -vocab $dir/vocab.txt \
+  -limit-vocab -text $dir/train.txt -lm data/local/lm/tg.arpa \
+  -prune 0.0000001 || exit 1;
 
-ngram-count -order 3 -interpolate -unk -map-unk "<UNK>" \
-  -limit-vocab -text data/local/lm/train_small.txt \
-  -prune 0.0000001 -lm data/local/lm/tgsmall.pruned.arpa || exit 1;
+gzip -f data/local/lm/tg.arpa
 
-gzip -f data/local/lm/tgsmall.arpa
-gzip -f data/local/lm/tgsmall.pruned.arpa
 
