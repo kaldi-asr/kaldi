@@ -101,7 +101,7 @@ if [ $stage -le 0 ]; then
         local/compute_metrics.py $dir/scoring_kaldi/test_filt.txt - --wake-word $wake_word \
         --duration $dur > $dir/scoring_kaldi/penalty_$wip/log/metrics.$lmwt.log
       done
-      export LC_ALL=
+      export LC_ALL=C
   done
 
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
@@ -135,7 +135,7 @@ if [ $stage -le 1 ]; then
   cat $dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt | \
     local/compute_metrics.py $dir/scoring_kaldi/test_filt.txt - --wake-word $wake_word \
     --duration $dur | tee $dir/scoring_kaldi/best_metrics
-  export LC_ALL=
+  export LC_ALL=C
 fi
 
 # If we got here, the scoring was successful.

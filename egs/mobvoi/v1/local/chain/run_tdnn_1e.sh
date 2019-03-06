@@ -32,7 +32,7 @@ frames_per_iter=3000000
 bs_scale=0.0
 train_set=train
 combined_train_set=train_combined
-test_sets="dev eval train"
+test_sets="dev eval"
 aug_affix="reverb noise music babble"
 aug_prefix="rev1 noise music babble"
 wake_word="嗨小问"
@@ -78,7 +78,7 @@ for f in $train_data_dir/feats.scp $combined_train_data_dir/feats.scp \
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-if [ $stage -le 10 ] && false; then
+if [ $stage -le 10 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -102,7 +102,7 @@ if [ $stage -le 10 ] && false; then
   fi
 fi
 
-if [ $stage -le 11 ] && false; then
+if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the chain training more freedom)
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -115,7 +115,7 @@ if [ $stage -le 12 ]; then
     $combined_train_data_dir $lat_dir $combined_lat_dir
 fi
 
-if [ $stage -le 13 ] && false; then
+if [ $stage -le 13 ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from

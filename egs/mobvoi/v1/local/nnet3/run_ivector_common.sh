@@ -11,7 +11,7 @@ set -euo pipefail
 stage=0
 train_set=train
 combined_train_set=train_combined
-test_sets="dev eval train"
+test_sets="dev eval"
 aug_affix="reverb noise music babble"
 nj=30
 gmm=mono

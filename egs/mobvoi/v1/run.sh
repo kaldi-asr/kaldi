@@ -79,11 +79,9 @@ fi
 # noise, music, and babble, and combined it with the clean data.
 if [ $stage -le 7 ]; then
   cp data/train/utt2dur data/train/reco2dur
-  if [ ! -d "RIRS_NOISES" ]; then
-    # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
-    wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
-    unzip rirs_noises.zip
-  fi
+  # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+  [ ! -f rirs_noises.zip ] && wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+  [ ! -d "RIRS_NOISES" ] && unzip rirs_noises.zip
 
   # Make a version with reverberated speech
   rvb_opts=()
@@ -191,7 +189,7 @@ else
     export LC_ALL=en_US.UTF-8
     utils/data/perturb_speed_to_allowed_lengths.py 12 data/${trainset} \
                                                    data/${trainset}_spe2e_hires
-    export LC_ALL=
+    export LC_ALL=C
     cat data/${trainset}_spe2e_hires/utt2dur | \
       awk '{print $1 " " substr($1,5)}' >data/${trainset}_spe2e_hires/utt2uniq
     utils/fix_data_dir.sh data/${trainset}_spe2e_hires

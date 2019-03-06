@@ -48,7 +48,7 @@ fi
 if [ $stage -le 4 ]; then
   cat data/hixiaowen_text data/freetext_text data/garbage_text > data/text
   cat data/hixiaowen_text data/freetext_text | awk '{print $1}' | awk '{split($1,a,"-"); print $1,a[1]}' > data/hixiaowen_freetext_utt2spk || exit 1
-  cat data/$folder/garbage_text | awk '{print $1}' | awk '{split($1,a,"_"); if(a[1]=="garbage") print $1,a[1] "_" a[2] "_" a[3]; else if(a[1]=="ticmini" || a[1]=="timini") print $1,a[1] "_" a[2] "_" a[3] "_" a[4] "_" a[5]; else print $1,$1}' cat data/hixiaowen_freetext_utt2spk - > data/utt2spk || exit 1
+  cat data/garbage_text | awk '{print $1}' | awk '{split($1,a,"_"); if(a[1]=="garbage") print $1,a[1] "_" a[2] "_" a[3]; else if(a[1]=="ticmini" || a[1]=="timini") print $1,a[1] "_" a[2] "_" a[3] "_" a[4] "_" a[5]; else print $1,$1}' | cat data/hixiaowen_freetext_utt2spk - > data/utt2spk || exit 1
   rm -f data/hixiaowen_freetext_utt2spk 2>/dev/null || true
 fi
 
