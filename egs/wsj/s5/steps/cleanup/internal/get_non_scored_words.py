@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016   Vimal Manohar
 #           2016   Johns Hopkins University (author: Daniel Povey)
@@ -90,7 +90,7 @@ def read_lang(lang_dir):
         raise
 
     try:
-        for line in open(lang_dir + '/words.txt').readlines():
+        for line in open(lang_dir + '/words.txt', encoding='utf-8').readlines():
             [ word, integer ] = line.split()
             if int(integer) in silence_word_ints:
                 non_scored_words.add(word)
