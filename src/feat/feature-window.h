@@ -62,7 +62,7 @@ struct FrameExtractionOptions {
       blackman_coeff(0.42),
       snip_edges(true),
       allow_downsample(false),
-      max_feature_vectors(-1) { }
+      max_feature_vectors(-1),
       allow_upsample(false) { }
 
   void Register(OptionsItf *opts) {
