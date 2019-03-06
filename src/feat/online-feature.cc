@@ -24,14 +24,18 @@
 
 namespace kaldi {
 
-RecyclingVector::RecyclingVector(int items_to_hold) : items_to_hold_(items_to_hold),
-                                                  first_available_index_(0) { }
-
-RecyclingVector::~RecyclingVector() {
-  DeletePointers(&items_);
+RecyclingVector::RecyclingVector(int items_to_hold) :
+  items_to_hold_(items_to_hold == 0 ? -1 : items_to_hold),
+  first_available_index_(0) {
 }
 
-Vector<BaseFloat> *RecyclingVector::Retrieve(int index) const {
+RecyclingVector::~RecyclingVector() {
+  for (auto *item : items_) {
+    delete item;
+  }
+}
+
+Vector<BaseFloat> *RecyclingVector::At(int index) const {
   if (index < first_available_index_) {
     KALDI_ERR << "Attempted to retrieve feature vector that was "
                  "already removed by the RecyclingVector (index = " << index << "; "
@@ -42,16 +46,11 @@ Vector<BaseFloat> *RecyclingVector::Retrieve(int index) const {
   return items_.at(index - first_available_index_);
 }
 
-void RecyclingVector::Store(Vector<BaseFloat> *item) {
-  // Internally, we keep at most 2x requested items_to_hold_ and clean up
-  // when this number is reached
-  const int size_before_erase = items_.size();
-  if (size_before_erase == 2 * items_to_hold_) {
-    for (int i = 0; i != items_to_hold_; ++i) {
-      delete items_[i];
-    }
-    items_.erase(items_.begin(), items_.begin() + items_to_hold_);
-    first_available_index_ += (size_before_erase - items_.size());
+void RecyclingVector::PushBack(Vector<BaseFloat> *item) {
+  if (items_.size() == items_to_hold_) {
+    delete items_.front();
+    items_.pop_front();
+    ++first_available_index_;
   }
   items_.push_back(item);
 }
@@ -64,7 +63,7 @@ int RecyclingVector::Size() const {
 template<class C>
 void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
                                            VectorBase<BaseFloat> *feat) {
-  feat->CopyFromVec(*(features_.Retrieve(frame)));
+  feat->CopyFromVec(*(features_.At(frame)));
 };
 
 template<class C>
@@ -117,7 +116,7 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
     // note: this online feature-extraction code does not support VTLN.
     BaseFloat vtln_warp = 1.0;
     computer_.Compute(raw_log_energy, vtln_warp, &window, this_feature);
-    features_.Store(this_feature);
+    features_.PushBack(this_feature);
   }
   // OK, we will now discard any portion of the signal that will not be
   // necessary to compute frames in the future.

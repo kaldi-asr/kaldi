@@ -52,16 +52,20 @@ public:
   /// By default it does not remove any elements.
   RecyclingVector(int items_to_hold = -1);
 
-  Vector<BaseFloat> *Retrieve(int index) const;
+  /// The ownership is being retained by this collection - do not delete the item.
+  Vector<BaseFloat> *At(int index) const;
 
-  void Store(Vector<BaseFloat> *item);
+  /// The ownership of the item is passed to this collection - do not delete the item.
+  void PushBack(Vector<BaseFloat> *item);
 
+  /// This method returns the size as if no "recycling" had happened,
+  /// i.e. equivalent to the number of times the PushBack method has been called.
   int Size() const;
 
   ~RecyclingVector();
 
 private:
-  std::vector<Vector<BaseFloat>*> items_;
+  std::deque<Vector<BaseFloat>*> items_;
   int items_to_hold_;
   int first_available_index_;
 };
