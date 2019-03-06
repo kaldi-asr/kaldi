@@ -49,6 +49,7 @@ struct FrameExtractionOptions {
   bool snip_edges;
   bool allow_downsample;
   bool allow_upsample;
+  int max_feature_vectors;
   FrameExtractionOptions():
       samp_freq(16000),
       frame_shift_ms(10.0),
@@ -61,6 +62,7 @@ struct FrameExtractionOptions {
       blackman_coeff(0.42),
       snip_edges(true),
       allow_downsample(false),
+      max_feature_vectors(-1),
       allow_upsample(false) { }
 
   void Register(OptionsItf *opts) {
@@ -92,6 +94,10 @@ struct FrameExtractionOptions {
     opts->Register("allow-downsample", &allow_downsample,
                    "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
+    opts->Register("max-feature-vectors", &max_feature_vectors,
+                   "Memory optimization. If larger than 0, periodically remove feature "
+                   "vectors so that only this number of the latest feature vectors is "
+                   "retained.");
     opts->Register("allow-upsample", &allow_upsample,
                    "If true, allow the input waveform to have a lower frequency than "
                    "the specified --sample-frequency (and we'll upsample).");
