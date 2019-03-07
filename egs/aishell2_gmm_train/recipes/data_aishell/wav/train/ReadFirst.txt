@@ -1,0 +1,4 @@
+wav文件夹中存放的是下载的aishell 15G免费的免费预料，此处仅放置几个作为参考
+预料下载地址： http://www.openslr.org/33/
+
+
