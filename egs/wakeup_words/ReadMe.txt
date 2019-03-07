@@ -11,3 +11,5 @@
 ./online2-wav-nnet3-latgen-faster --do-endpointing=false --online=false --frame-subsampling-factor=3 --config=./model/nnet3_conf/conf/online.conf --add-pitch=false --max-active=7000 --beam=15.0 --lattice-beam=6.0 --acoustic-scale=1.0 --word-symbol-table=./model/graph/words.txt ./model/nnet3_conf/final.mdl ./model/graph/HCLG.fst 'ark:echo utterance-id1 utterance-id1|' "scp:echo utterance-id1 test.wav|" 'ark:/dev/null'
 
 6. 具体详情参考CSDN: 基于kaldi训练唤醒词模型的一种方法 https://blog.csdn.net/cj1989111/article/details/88017908
+
+7. 嘈杂环境下误唤醒测试(待验证)

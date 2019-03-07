@@ -22,6 +22,7 @@ test_nj=$(wc -l data/test/spk2utt | awk '{print $1}' || exit 1;)
 if [ $stage -le 1 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
+  # 移除mfcc特征提取时的pitch参数，并且使用mfcc_hires配置文件
   for x in train dev test; do
     steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config conf/mfcc_hires.conf \
       data/$x exp/make_mfcc/$x mfcc || exit 1;
