@@ -14,6 +14,9 @@ exp_dir=exp
 . ./utils/parse_options.sh
 
 if [ $stage -le -1 ]; then
+    mkdir download/Train
+    mkdir download/Test
+    mkdir download/Competition
     local/extract_database.sh --database-train $database_train \
         --database-competition $database_competition
 fi
@@ -21,6 +24,7 @@ fi
 if [ $stage -le 0 ]; then
     mkdir -p data/train/data/images
     mkdir -p data/test/data/images
+    mkdir -p data/competition/data/images
     local/process_data.py download/Train data/train
     local/process_data.py download/Test data/test
     local/process_data.py download/Competition data/competition

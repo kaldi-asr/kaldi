@@ -375,7 +375,7 @@ for filename in sorted(os.listdir(args.database_path)):
             sBitApp = struct.unpack('h', f.read(2))[0]
             iImgHei = struct.unpack('i', f.read(4))[0]
             iImgWid = struct.unpack('i', f.read(4))[0]
-            pDocImg = Image.new('L', (iImgHei, iImgWid), (255))
+            pDocImg = Image.new('L', (iImgWid, iImgHei), (255))
             iLineNum = struct.unpack('i', f.read(4))[0]
             text_dict = {}
             image_dict = {}
