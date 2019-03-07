@@ -52,12 +52,14 @@ void ReadSharedPhonesList(std::string rxfilename, std::vector<std::vector<int32>
 EventMap
 *GetFullBiphoneStubMap(const std::vector<std::vector<int32> > &phone_sets,
                        const std::vector<int32> &phone2num_pdf_classes,
-                       const std::vector<bool> &share_roots,
-                       const std::vector<int32> &ci_phones_list) {
+                       const std::vector<int32> &ci_phones_list,
+                       const std::vector<std::vector<int32> > &bi_counts,
+                       int32 biphone_min_count,
+                       const std::vector<int32> &mono_counts,
+                       int32 mono_min_count) {
 
   {  // Check the inputs
-    KALDI_ASSERT(!phone_sets.empty() &&
-                 share_roots.size() == phone_sets.size());
+    KALDI_ASSERT(!phone_sets.empty());
     std::set<int32> all_phones;
     for (size_t i = 0; i < phone_sets.size(); i++) {
       KALDI_ASSERT(IsSortedAndUniq(phone_sets[i]));
@@ -81,6 +83,14 @@ EventMap
     level1_map[ci_phones_list[i]] = new TableEventMap(kPdfClass, level2_map);
   }
 
+  // If there is not enough data for a biphone, we will revert to monophone
+  // and if there is not enough data for the monophone either, we will revert
+  // to zerophone (which is like a global garbage pdf) after initializing it.
+  int32 zerophone_pdf = -1;
+  // If a monophone state is created for a phone-set, the corresponding pdf will
+  // be stored in this vector.
+  std::vector<int32> monophone_pdf(phone_sets.size(), -1);
+
   for (size_t i = 0; i < phone_sets.size(); i++) {
 
     if (numpdfs_per_phone == 1) {
@@ -100,38 +110,68 @@ EventMap
         level1_map[pset[k]] = new TableEventMap(0, level2_map);
     } else {
       KALDI_ASSERT(numpdfs_per_phone == 2);
-      int32 base_pdfid = current_pdfid;
-      std::vector<int32> pset = phone_sets[i];  // All these will have a shared
+      std::vector<int32> right_phoneset = phone_sets[i];  // All these will have a shared
                                                 // event-map child
-      for (size_t k = 0; k < pset.size(); k++) {
-        // Create an event map for level2:
-        std::map<EventValueType, EventMap*> level2_map;  // key is 0
-        {
-          std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
+      // Create an event map for level2:
+      std::map<EventValueType, EventMap*> level2_map;  // key is 0
+      {  // Handle CI phones
+        std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
+        level3_map[0] = current_pdfid++;
+        level3_map[1] = current_pdfid++;
+        level2_map[0] = new TableEventMap(kPdfClass, level3_map);  // no-left-context case
+        for (size_t i = 0; i < ci_phones_list.size(); i++)  // ci-phone left-context cases
+          level2_map[ci_phones_list[i]] = new TableEventMap(kPdfClass, level3_map);
+      }
+      for (size_t j = 0; j < phone_sets.size(); j++) {
+        std::vector<int32> left_phoneset = phone_sets[j];  // All these will have a
+        // shared subtree with 2 pdfids
+        std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
+        if (bi_counts.empty() ||
+            bi_counts[left_phoneset[0]][right_phoneset[0]] >= biphone_min_count) {
           level3_map[0] = current_pdfid++;
           level3_map[1] = current_pdfid++;
-          level2_map[0] = new TableEventMap(kPdfClass, level3_map);  // no-left-context case
-          for (size_t i = 0; i < ci_phones_list.size(); i++)  // ci-phone left-context cases
-            level2_map[ci_phones_list[i]] = new TableEventMap(kPdfClass, level3_map);
-        }
-        for (size_t j = 0; j < phone_sets.size(); j++) {
-          std::map<EventValueType, EventAnswerType> level3_map;  // key is kPdfClass
-          level3_map[0] = current_pdfid++;
-          level3_map[1] = current_pdfid++;
-
-          std::vector<int32> ipset = phone_sets[j];  // All these will have a
-                                                     // shared subtree with 2 pdfids
-          for (size_t ik = 0; ik < ipset.size(); ik++) {
-            level2_map[ipset[ik]] = new TableEventMap(kPdfClass, level3_map);
+        } else if (mono_counts.empty() ||
+                   mono_counts[right_phoneset[0]] > mono_min_count) {
+          //  Revert to mono.
+          KALDI_VLOG(2) << "Reverting to mono for biphone (" << left_phoneset[0]
+                        << "," << right_phoneset[0] << ")";
+          if (monophone_pdf[i] == -1) {
+            KALDI_VLOG(1) << "Reserving mono PDFs for phone-set " << i;
+            monophone_pdf[i] = current_pdfid++;
+            current_pdfid++; // num-pdfs-per-phone is 2
           }
+          level3_map[0] = monophone_pdf[i];
+          level3_map[1] = monophone_pdf[i] + 1;
+        } else {
+          KALDI_VLOG(2) << "Reverting to zerophone for biphone ("
+                        << left_phoneset[0]
+                        << "," << right_phoneset[0] << ")";
+          // Revert to zerophone
+          if (zerophone_pdf == -1) {
+            KALDI_VLOG(1) << "Reserving zero PDFs.";
+            zerophone_pdf = current_pdfid++;
+            current_pdfid++; // num-pdfs-per-phone is 2
+          }
+          level3_map[0] = zerophone_pdf;
+          level3_map[1] = zerophone_pdf + 1;
         }
-        level1_map[pset[k]] = new TableEventMap(0, level2_map);
-        if (k != pset.size() - 1)
-          current_pdfid = base_pdfid;
+
+        for (size_t k = 0; k < left_phoneset.size(); k++) {
+          int32 left_phone = left_phoneset[k];
+          level2_map[left_phone] = new TableEventMap(kPdfClass, level3_map);
+        }
+      }
+      for (size_t k = 0; k < right_phoneset.size(); k++) {
+        std::map<EventValueType, EventMap*> level2_copy;
+        for (auto const& kv: level2_map)
+          level2_copy[kv.first] = kv.second->Copy(std::vector<EventMap*>());
+        int32 right_phone = right_phoneset[k];
+        level1_map[right_phone] = new TableEventMap(0, level2_copy);
       }
     }
 
   }
+  KALDI_LOG << "Num PDFs: " << current_pdfid;
   return new TableEventMap(1, level1_map);
 }
 
@@ -139,7 +179,11 @@ EventMap
 ContextDependency*
 BiphoneContextDependencyFull(std::vector<std::vector<int32> > phone_sets,
                              const std::vector<int32> phone2num_pdf_classes,
-                             const std::vector<int32> &ci_phones_list) {
+                             const std::vector<int32> &ci_phones_list,
+                             const std::vector<std::vector<int32> > &bi_counts,
+                             int32 biphone_min_count,
+                             const std::vector<int32> &mono_counts,
+                             int32 mono_min_count) {
   // Remove all the CI phones from the phone sets
   std::set<int32> ci_phones;
   for (size_t i = 0; i < ci_phones_list.size(); i++)
@@ -159,12 +203,53 @@ BiphoneContextDependencyFull(std::vector<std::vector<int32> > phone_sets,
   int32 P = 1, N = 2;
   EventMap *pdf_map = GetFullBiphoneStubMap(phone_sets,
                                             phone2num_pdf_classes,
-                                            share_roots, ci_phones_list);
+                                            ci_phones_list, bi_counts,
+                                            biphone_min_count, mono_counts,
+                                            mono_min_count);
   return new ContextDependency(N, P, pdf_map);
 }
 
 
 } // end namespace kaldi
+
+/* This function reads the counts of biphones and monophones from a text file
+   generated for chain flat-start training. On each line there is either a
+   biphone count or a monophone count:
+   <left-phone-id> <right-phone-id> <count>
+   <monophone-id> <count>
+   The phone-id's are according to phones.txt.
+
+   It's more efficient to load the biphone counts into a map because
+   most entries are zero, but since there are not many biphones, a 2-dim vector
+   is OK. */
+static void ReadPhoneCounts(std::string &filename, int32 num_phones,
+                            std::vector<int32> *mono_counts,
+                            std::vector<std::vector<int32> > *bi_counts) {
+  // The actual phones start from id = 1 (so the last phone has id = num_phones).
+  mono_counts->resize(num_phones + 1, 0);
+  bi_counts->resize(num_phones + 1, std::vector<int>(num_phones + 1, 0));
+  std::ifstream infile(filename);
+  std::string line;
+  while (std::getline(infile, line)) {
+    std::istringstream iss(line);
+    int a, b;
+    long c;
+    if ((std::istringstream(line) >> a >> b >> c)) {
+      // It's a biphone count.
+      KALDI_ASSERT(a >= 0 && a <= num_phones);  // 0 means no-left-context
+      KALDI_ASSERT(b > 0 && b <= num_phones);
+      KALDI_ASSERT(c >= 0);
+      (*bi_counts)[a][b] = c;
+    } else if ((std::istringstream(line) >> b >> c)) {
+      // It's a monophone count.
+      KALDI_ASSERT(b > 0 && b <= num_phones);
+      KALDI_ASSERT(c >= 0);
+      (*mono_counts)[b] = c;
+    } else {
+      KALDI_ERR << "Bad line in phone stats file: " << line;
+    }
+  }
+}
 
 int main(int argc, char *argv[]) {
   try {
@@ -179,7 +264,8 @@ int main(int argc, char *argv[]) {
         " gmm-init-biphone topo 39 bi.mdl bi.tree\n";
 
     bool binary = true;
-    std::string shared_phones_rxfilename;
+    std::string shared_phones_rxfilename, phone_counts_rxfilename;
+    int32 min_biphone_count = 100, min_mono_count = 20;
     std::string ci_phones_str;
     std::vector<int32> ci_phones;  // Sorted, uniqe vector of
     // context-independent phones.
@@ -191,6 +277,15 @@ int main(int argc, char *argv[]) {
                 "whose pdfs should be shared.");
     po.Register("ci-phones", &ci_phones_str, "Colon-separated list of "
                 "integer indices of context-independent phones.");
+    po.Register("phone-counts", &phone_counts_rxfilename,
+                "rxfilename containing, on each line, a biphone/phone and "
+                "its count in the training data.");
+    po.Register("min-biphone-count", &min_biphone_count, "Minimum number of "
+                "occurences of a biphone in training data to reserve pdfs "
+                "for it.");
+    po.Register("min-monophone-count", &min_mono_count, "Minimum number of "
+                "occurences of a monophone in training data to reserve pdfs "
+                "for it.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -214,7 +309,6 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Invalid --ci-phones option: " << ci_phones_str;
     }
 
-
     Vector<BaseFloat> glob_inv_var(dim);
     glob_inv_var.Set(1.0);
     Vector<BaseFloat> glob_mean(dim);
@@ -235,6 +329,15 @@ int main(int argc, char *argv[]) {
                    phone2num_pdf_classes[phones[i]] == 2);
     }
 
+    std::vector<int32> mono_counts;
+    std::vector<std::vector<int32> > bi_counts;
+    if (!phone_counts_rxfilename.empty()) {
+      ReadPhoneCounts(phone_counts_rxfilename, phones.size(),
+                      &mono_counts, &bi_counts);
+      KALDI_LOG << "Loaded mono/bi phone counts.";
+    }
+
+
     // Now the tree:
     ContextDependency *ctx_dep = NULL;
     std::vector<std::vector<int32> > shared_phones;
@@ -247,7 +350,9 @@ int main(int argc, char *argv[]) {
       // ReadSharedPhonesList crashes on error.
     }
     ctx_dep = BiphoneContextDependencyFull(shared_phones, phone2num_pdf_classes,
-                                           ci_phones);
+                                           ci_phones, bi_counts,
+                                           min_biphone_count,
+                                           mono_counts, min_mono_count);
 
     int32 num_pdfs = ctx_dep->NumPdfs();
 
