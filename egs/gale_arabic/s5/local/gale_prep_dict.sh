@@ -25,8 +25,8 @@ echo SIL > $dir/optional_silence.txt
 cat $dir/lexicon.txt | cut -d ' ' -f2- | tr -s ' ' '\n' |\
 sort -u >  $dir/nonsilence_phones.txt || exit 1;
 
- ex -s -c '1i|<UNK> SIL' -c x $dir/lexicon.txt
- 
+perl -i -pe 'print "<UNK> SIL\n" if $.==1'  $dir/lexicon.txt
+
 echo Dictionary preparation succeeded
 
 exit 0

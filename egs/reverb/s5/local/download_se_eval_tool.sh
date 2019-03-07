@@ -23,9 +23,9 @@ git clone https://github.com/MuSAELab/SRMRToolbox.git
 perl -i -pe 's/wavread/audioread/g' SRMRToolbox/libs/preprocess.m
 perl -i -pe 's/SRMR_main/SRMR/g' prog/score_real.m
 perl -i -pe 's/SRMR_main/SRMR/g' prog/score_sim.m
-perl -i -pe 's/+wb\ //g' prog/calcpesq.m
+perl -i -pe 's/\+wb //g' prog/calcpesq.m
 perl -i -pe 's/pesq_/_pesq_/g' prog/calcpesq.m
-perl -n -i -e 'print if $. != 30 && $. != 31' prog/calcpesq.m  # Delete lines 30 and 31 from file
+perl -n -i -e 'print unless /*remove target file name/' prog/calcpesq.m
 patch score_RealData.m -i ../../../score_RealData.patch -o score_RealData_new.m
 mv score_RealData_new.m score_RealData.m
 patch score_SimData.m -i ../../../score_SimData.patch -o score_SimData_new.m
