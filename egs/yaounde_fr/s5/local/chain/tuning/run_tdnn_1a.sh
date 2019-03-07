@@ -2,21 +2,6 @@
 
 # a re-tuned model based on resnet-style TDNN-F layers with bypass connections.
 
-# ./local/chain/compare_wer.sh --online exp/chain/tdnn1a_sp
-# System                tdnn1a_sp
-#WER dev (tgsmall)      24.02
-#             [online:]         24.21
-#WER dev (tgmed)      22.30
-#             [online:]         22.26
-#WER dev (tglarge)      20.14
-#             [online:]         19.67
-# Final train prob        -0.0847
-# Final valid prob        -0.0853
-# Final train prob (xent)   -3.3073
-# Final valid prob (xent)   -3.3128
-# Num-params                 5270002
-
-
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
@@ -28,7 +13,7 @@ train_set=train
 test_sets="devtest dev test"
 gmm=tri3b
 nnet3_affix=
-larger_lms=0
+
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 affix=1a   # affix for the TDNN directory name
@@ -50,7 +35,7 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=true  # if true, it will run the last decoding stage.
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 
 # End configuration section.
@@ -233,18 +218,11 @@ fi
 if [ $stage -le 15 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgsmall \
-    $tree_dir $tree_dir/graph_tgsmall || exit 1;
+    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $tree_dir \
+      $tree_dir/graph || exit 1;
 fi
 
-if [[ $stage -le 16 && $larger_lms -eq 0 ]]; then
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgmed \
-    $tree_dir $tree_dir/graph_tgmed || exit 1;
-fi
-
-if [ $stage -le 17 ]; then
+if [ $stage -le 16 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
 
@@ -256,29 +234,8 @@ if [ $stage -le 17 ]; then
         --frames-per-chunk $frames_per_chunk \
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-        $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
+        $tree_dir/graph data/${data}_hires ${dir}/decode_${data} || exit 1
       ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-fi
-
-if $test_online_decoding && [[ $stage -le 18 && $larger_lms -eq 0 ]]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  rm $dir/.error 2>/dev/null || true
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      steps/nnet3/decode.sh \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --frames-per-chunk $frames_per_chunk \
-        --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-        $tree_dir/graph_tgmed data/${data}_hires ${dir}/decode_tgmed_${data} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_{tgsmall,tglarge} \
-        data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
-    ) || touch $dir/.error &
   done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
@@ -305,14 +262,14 @@ if $test_online_decoding && [ $stage -le 19 ]; then
       steps/online/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
-        $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
+        $tree_dir/graph data/${data} ${dir}_online/decode_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
-if $test_online_decoding && [[ $stage -le 20 && $larger_lms -eq 0 ]]; then
+if $test_online_decoding && [[ $stage -le 20 ]]; then
       frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
   for data in $test_sets; do
@@ -321,13 +278,7 @@ if $test_online_decoding && [[ $stage -le 20 && $larger_lms -eq 0 ]]; then
       steps/online/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
-        $tree_dir/graph_tgmed data/${data} ${dir}_online/decode_tgmed_${data} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_{tgsmall,tglarge} \
-        data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_{tgmed,tglarge} \
-        data/${data}_hires ${dir}_online/decode_{tgmed,tglarge}_${data} || exit 1
+        $tree_dir/graph data/${data} ${dir}_online/decode_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait
