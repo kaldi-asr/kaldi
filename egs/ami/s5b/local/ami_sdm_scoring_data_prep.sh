@@ -116,7 +116,11 @@ join $tmpdir/utt2spk_stm $tmpdir/segments | \
          spk_prev=spk; t_end_prev=t_end;
        }' > $tmpdir/segments_to_fix
 
-perl -i -pf $tmpdir/segments_to_fix $tmpdir/segments
+if [ -s $tmpdir/segments_to_fix ]; then
+  echo "$0. Applying following fixes to segments"
+  cat $tmpdir/segments_to_fix
+  perl -i -pf $tmpdir/segments_to_fix $tmpdir/segments
+fi
 
 # Copy stuff into its final locations [this has been moved from the format_data
 # script]

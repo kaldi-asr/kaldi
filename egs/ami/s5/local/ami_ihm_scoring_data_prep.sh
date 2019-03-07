@@ -92,7 +92,11 @@ join $dir/utt2spk $dir/segments | \
            $pu=$_[1]; $pt=$_[4];
          }' > $dir/segments_to_fix
 
-perl -i -pf $dir/segments_to_fix $dir/segments
+if [ -s $dir/segments_to_fix ]; then
+  echo "$0. Applying following fixes to segments"
+  cat $dir/segments_to_fix
+  perl -i -pf $dir/segments_to_fix $dir/segments
+fi
 
 # Copy stuff into its final locations
 fdir=data/ihm/$SET
