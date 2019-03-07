@@ -1,0 +1,38 @@
+<UNK> <UNK> spn
+<eps> <eps> sil
+SIL SIL sil
+减小 减小 j ian_2 x iao_3
+到达 到达 d ao_4 d a_2
+单打 单打 d an_1 d a_3
+发小 发小 f a_4 x iao_3
+台灯 台灯 t ai_2 d eng_1
+大小 大小 d a_4 x iao_3
+太小 太小 t ai_4 x iao_3
+小丑 小丑 x iao_3 ch ou_3
+小伙 小伙 x iao_3 h uo_3
+小宝 小宝 x iao_2 b ao_3
+小岛 小岛 x iao_3 d ao_3
+小朵 小朵 x iao_3 d uo_3
+小点 小点 x iao_3 d ian_3
+小狗 小狗 x iao_3 g ou_3
+小米 小米 x iao_3 m i_3
+小米小米 小米小米 x iao_3 m i_3 x iao_3 m i_3
+小草 小草 x iao_2 c ao_3
+小酒 小酒 x iao_2 j iu_3
+小马 小马 x iao_3 m a_3
+小鬼 小鬼 x iao_3 g ui_3
+弱小 弱小 r uo_4 x iao_3
+很小 很小 h en_2 x iao_3
+微小 微小 w ei_1 x iao_3
+您好 您好 n in_2 h ao_3
+打开 打开 d a_3 k ai_1
+抽打 抽打 ch ou_1 d a_3
+极小 极小 j i_2 x iao_3
+温度 温度 w en_1 d u_4
+渺小 渺小 m iao_2 x iao_3
+瘦小 瘦小 sh ou_4 x iao_3
+短小 短小 d uan_2 x iao_3
+空调 空调 k ong_1 t iao_2
+答应 答应 d a_1 y ing_0
+设置 设置 sh e_4 zh i_4
+较小 较小 j iao_4 x iao_3
