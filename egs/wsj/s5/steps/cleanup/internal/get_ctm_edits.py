@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016   Vimal Manohar
 #           2016   Johns Hopkins University (author: Daniel Povey)
@@ -116,17 +116,17 @@ args = parser.parse_args()
 def OpenFiles():
     global ctm_edits_out, edits_in, ctm_in, symbol_table, oov_word
     try:
-        ctm_edits_out = open(args.ctm_edits_out, 'w')
+        ctm_edits_out = open(args.ctm_edits_out, 'w', encoding='utf-8')
     except:
         sys.exit("get_ctm_edits.py: error opening ctm-edits file {0} for output".format(
                 args.ctm_edits_out))
     try:
-        edits_in = open(args.edits_in)
+        edits_in = open(args.edits_in, encoding='utf-8')
     except:
         sys.exit("get_ctm_edits.py: error opening edits file {0} for input".format(
                 args.edits_in))
     try:
-        ctm_in = open(args.ctm_in)
+        ctm_in = open(args.ctm_in, encoding='utf-8')
     except:
         sys.exit("get_ctm_edits.py: error opening ctm file {0} for input".format(
                 args.ctm_in))
@@ -138,7 +138,7 @@ def OpenFiles():
             print("get_ctm_edits.py: error: if you set the the --symbol-table option "
                   "you must also set the --oov option", file = sys.stderr)
         try:
-            f = open(args.symbol_table, 'r')
+            f = open(args.symbol_table, 'r', encoding='utf-8')
             for line in f.readlines():
                 [ word, integer ] = line.split()
                 if int(integer) == args.oov:

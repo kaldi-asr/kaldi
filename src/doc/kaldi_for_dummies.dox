@@ -87,14 +87,14 @@ If you do not have much idea about how to use GIT, please read about it:
 \ref tutorial_git.
 
 I installed Kaldi in this directory (called 'Kaldi root path'):
-\c /home/{user}/kaldi-trunk
+\c /home/{user}/kaldi
 
 \section kaldi_for_dummies_directories Kaldi directories structure
 
 Try to acknowledge where particular Kaldi components are placed. Also it would
 be nice if you read any \c README files you find.
 
-\c kaldi-trunk - main Kaldi directory which contains:
+\c kaldi - main Kaldi directory which contains:
  - \c egs – example scripts allowing you to quickly build ASR
 systems for over 30 popular speech corporas (documentation is attached for each
 project),
@@ -127,7 +127,7 @@ train it, test it and get some decoding results.
 
 <h2>Your first task</h2>
 Something to begin with - create a folder \c digits in
-\c kaldi-trunk/egs/ directory. This is a place where you will put all
+\c kaldi/egs/ directory. This is a place where you will put all
 the stuff related to your project.
 
 \section kaldi_for_dummies_data Data preparation
@@ -156,11 +156,11 @@ careful with big data sets and complex grammars - start with something simple.
 Sentences that contain only digits are perfect in this case.
 
 <h2>Task</h2>
-Go to \c kaldi-trunk/egs/digits directory and create
-\c digits_audio folder. In \c kaldi-trunk/egs/digits/digits_audio
+Go to \c kaldi/egs/digits directory and create
+\c digits_audio folder. In \c kaldi/egs/digits/digits_audio
 create two folders: \c train and \c test. Select one speaker
 of your choice to represent testing data set. Use this speaker's 'speakerID' as
-a name for an another new folder in \c kaldi-trunk/egs/digits/digits_audio/test
+a name for an another new folder in \c kaldi/egs/digits/digits_audio/test
 directory. Then put there all the audio files related to that person. Put the
 rest (9 speakers) into \c train folder - this will be your training
 data set. Also create subfolders for each speaker.
@@ -178,7 +178,7 @@ And for you information - \c utils directory will be attached to your project in
 \ref kaldi_for_dummies_tools "Tools attachment" section.
 
 <h2>Task</h2>
-In \c kaldi-trunk/egs/digits directory, create a folder \c data. Then create
+In \c kaldi/egs/digits directory, create a folder \c data. Then create
 \c test and \c train subfolders inside. Create in each subfolder following files
 (so you have files named in <b>the same way in \c test and \c train subfolders
 but they relate to two different data sets</b> that you created before):
@@ -207,9 +207,9 @@ for examples below).
 
 <b>Pattern:</b> <uterranceID> <full_path_to_audio_file>
 \verbatim
-dad_4_4_2 /home/{user}/kaldi-trunk/egs/digits/digits_audio/train/dad/4_4_2.wav
-july_1_2_5 /home/{user}/kaldi-trunk/egs/digits/digits_audio/train/july/1_2_5.wav
-july_6_8_3 /home/{user}/kaldi-trunk/egs/digits/digits_audio/train/july/6_8_3.wav
+dad_4_4_2 /home/{user}/kaldi/egs/digits/digits_audio/train/dad/4_4_2.wav
+july_1_2_5 /home/{user}/kaldi/egs/digits/digits_audio/train/july/1_2_5.wav
+july_6_8_3 /home/{user}/kaldi/egs/digits/digits_audio/train/july/6_8_3.wav
 # and so on...
 \endverbatim
 
@@ -236,8 +236,8 @@ july_6_8_3 july
 \endverbatim
 
 e.) \c corpus.txt <br>
-This file has a slightly different directory. In \c kaldi-trunk/egs/digits/data
-create another folder \c local. In \c kaldi-trunk/egs/digits/data/local create a
+This file has a slightly different directory. In \c kaldi/egs/digits/data
+create another folder \c local. In \c kaldi/egs/digits/data/local create a
 file \c corpus.txt which should contain every single utterance transcription
 that can occur in your ASR system (in our case it will be 100 lines from 100
 audio files).
@@ -258,8 +258,8 @@ is precisely described). Also feel free to read some examples in other \c egs
 scripts. Now is the perfect time.
 
 <h2>Task</h2>
-In \c kaldi-trunk/egs/digits/data/local directory, create a folder \c dict. In
-\c kaldi-trunk/egs/digits/data/local/dict create following files:
+In \c kaldi/egs/digits/data/local directory, create a folder \c dict. In
+\c kaldi/egs/digits/data/local/dict create following files:
 
 a.) \c lexicon.txt <br>
 This file contains every word from your dictionary with its 'phone
@@ -337,19 +337,19 @@ complete.
 You need to add necessary Kaldi tools that are widely used in exemplary scripts.
 
 <h2>Task</h2>
-From \c kaldi-trunk/egs/wsj/s5 copy two folders (with the whole content) -
+From \c kaldi/egs/wsj/s5 copy two folders (with the whole content) -
 \c utils and \c steps - and put them in your
-\c kaldi-trunk/egs/digits directory. You can also create links to these
+\c kaldi/egs/digits directory. You can also create links to these
 directories. You may find such links in, for example,
-\c kaldi-trunk/egs/voxforge/s5.
+\c kaldi/egs/voxforge/s5.
 
 \subsection kaldi_for_dummies_scoring Scoring script
 
 This script will help you to get decoding results.
 
 <h2>Task</h2>
-From \c kaldi-trunk/egs/voxforge/s5/local copy the script \c score.sh into
-similar location in your project (\c kaldi-trunk/egs/digits/local).
+From \c kaldi/egs/voxforge/s5/local copy the script \c score.sh into
+similar location in your project (\c kaldi/egs/digits/local).
 
 \subsection kaldi_for_dummies_srilm SRILM installation
 
@@ -358,7 +358,7 @@ example - SRI Language Modeling Toolkit (SRILM).
 
 <h2>Task</h2>
 For detailed installation instructions go to
-\c kaldi-trunk/tools/install_srilm.sh (read all comments inside).
+\c kaldi/tools/install_srilm.sh (read all comments inside).
 
 \subsection kaldi_for_dummies_configuration Configuration files
 
@@ -366,8 +366,8 @@ It is not necessary to create configuration files but it can be a good habit
 for future.
 
 <h2>Task</h2>
-In \c kaldi-trunk/egs/digits create a folder \c conf. Inside
-\c kaldi-trunk/egs/digits/conf create two files (for some configuration
+In \c kaldi/egs/digits create a folder \c conf. Inside
+\c kaldi/egs/digits/conf create two files (for some configuration
 modifications in decoding and mfcc feature extraction processes - taken from
 \c /egs/voxforge):
 
@@ -398,7 +398,7 @@ These two methods are enough to show noticable differences in decoding results
 using only digits lexicon and small training data set.
 
 <h2>Task</h2>
-In \c kaldi-trunk/egs/digits directory create 3 scripts:
+In \c kaldi/egs/digits directory create 3 scripts:
 
 a.) \c cmd.sh <br>
 \code{.sh}
@@ -416,7 +416,7 @@ export KALDI_ROOT=`pwd`/../..
 export PATH=$PWD/utils/:$KALDI_ROOT/src/bin:$KALDI_ROOT/tools/openfst/bin:$KALDI_ROOT/src/fstbin/:$KALDI_ROOT/src/gmmbin/:$KALDI_ROOT/src/featbin/:$KALDI_ROOT/src/lmbin/:$KALDI_ROOT/src/sgmm2bin/:$KALDI_ROOT/src/fgmmbin/:$KALDI_ROOT/src/latbin/:$PWD:$PATH
 
 # Defining audio data directory (modify it for your installation directory!)
-export DATA_ROOT="/home/{user}/kaldi-trunk/egs/digits/digits_audio"
+export DATA_ROOT="/home/{user}/kaldi/egs/digits/digits_audio"
 
 # Enable SRILM
 . $KALDI_ROOT/tools/env.sh
@@ -564,7 +564,7 @@ Now all you have to do is to run \c run.sh script. If I have made any mistakes
 in this tutorial, logs from the terminal should guide you how to deal with it.
 
 Besides the fact that you will notice some decoding results in the terminal
-window, go to newly made \c kaldi-trunk/egs/digits/exp. You may notice there
+window, go to newly made \c kaldi/egs/digits/exp. You may notice there
 folders with \c mono and \c tri1 results as well - directories structure are the
 same. Go to \c mono/decode directory. Here you may find result files (named in
 a <c>wer_{number}</c> way). Logs for decoding process may be found in \c log

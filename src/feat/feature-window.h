@@ -40,14 +40,16 @@ struct FrameExtractionOptions {
   BaseFloat preemph_coeff;  // Preemphasis coefficient.
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
-  bool round_to_power_of_two;
-  BaseFloat blackman_coeff;
-  bool snip_edges;
-  bool allow_downsample;
   // May be "hamming", "rectangular", "povey", "hanning", "blackman"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
   // I just don't think the Hamming window makes sense as a windowing function.
+  bool round_to_power_of_two;
+  BaseFloat blackman_coeff;
+  bool snip_edges;
+  bool allow_downsample;
+  bool allow_upsample;
+  int max_feature_vectors;
   FrameExtractionOptions():
       samp_freq(16000),
       frame_shift_ms(10.0),
@@ -59,7 +61,9 @@ struct FrameExtractionOptions {
       round_to_power_of_two(true),
       blackman_coeff(0.42),
       snip_edges(true),
-      allow_downsample(false) { }
+      allow_downsample(false),
+      max_feature_vectors(-1),
+      allow_upsample(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,
@@ -90,6 +94,13 @@ struct FrameExtractionOptions {
     opts->Register("allow-downsample", &allow_downsample,
                    "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
+    opts->Register("max-feature-vectors", &max_feature_vectors,
+                   "Memory optimization. If larger than 0, periodically remove feature "
+                   "vectors so that only this number of the latest feature vectors is "
+                   "retained.");
+    opts->Register("allow-upsample", &allow_upsample,
+                   "If true, allow the input waveform to have a lower frequency than "
+                   "the specified --sample-frequency (and we'll upsample).");
   }
   int32 WindowShift() const {
     return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);

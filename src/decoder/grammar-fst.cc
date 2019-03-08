@@ -25,10 +25,10 @@ namespace fst {
 
 GrammarFst::GrammarFst(
     int32 nonterm_phones_offset,
-    const ConstFst<StdArc> &top_fst,
-    const std::vector<std::pair<Label, const ConstFst<StdArc> *> > &ifsts):
+    std::shared_ptr<const ConstFst<StdArc> > top_fst,
+    const std::vector<std::pair<Label, std::shared_ptr<const ConstFst<StdArc> > > > &ifsts):
     nonterm_phones_offset_(nonterm_phones_offset),
-    top_fst_(&top_fst),
+    top_fst_(top_fst),
     ifsts_(ifsts) {
   Init();
 }
@@ -69,11 +69,6 @@ void GrammarFst::Destroy() {
   nonterminal_map_.clear();
   entry_arcs_.clear();
   instances_.clear();
-  // the following will only do something if we read this object from disk using
-  // its Read() function.
-  for (size_t i = 0; i < fsts_to_delete_.size(); i++)
-    delete fsts_to_delete_[i];
-  fsts_to_delete_.clear();
 }
 
 
@@ -127,7 +122,7 @@ void GrammarFst::InitInstances() {
   KALDI_ASSERT(instances_.empty());
   instances_.resize(1);
   instances_[0].ifst_index = -1;
-  instances_[0].fst = top_fst_;
+  instances_[0].fst = top_fst_.get();
   instances_[0].parent_instance = -1;
   instances_[0].parent_state = -1;
 }
@@ -314,7 +309,7 @@ int32 GrammarFst::GetChildInstanceId(int32 instance_id, int32 nonterminal,
   }
   int32 ifst_index = iter->second;
   child_instance.ifst_index = ifst_index;
-  child_instance.fst = ifsts_[ifst_index].second;
+  child_instance.fst = ifsts_[ifst_index].second.get();
   child_instance.parent_instance = instance_id;
   child_instance.parent_state = state;
   InitEntryOrReentryArcs(*(parent_instance.fst), state,
@@ -429,15 +424,14 @@ void GrammarFst::Read(std::istream &is, bool binary) {
         "update your code.";
   ReadBasicType(is, binary, &num_ifsts);
   ReadBasicType(is, binary, &nonterm_phones_offset_);
-  top_fst_ = ReadConstFstFromStream(is);
-  fsts_to_delete_.push_back(top_fst_);
+  top_fst_ = std::shared_ptr<const ConstFst<StdArc> >(ReadConstFstFromStream(is));
   for (int32 i = 0; i < num_ifsts; i++) {
     int32 nonterminal;
     ReadBasicType(is, binary, &nonterminal);
-    ConstFst<StdArc> *this_fst =  ReadConstFstFromStream(is);
-    fsts_to_delete_.push_back(this_fst);
-    ifsts_.push_back(std::pair<int32, const ConstFst<StdArc>* >(nonterminal,
-                                                                this_fst));
+    std::shared_ptr<const ConstFst<StdArc> >
+        this_fst(ReadConstFstFromStream(is));
+    ifsts_.push_back(std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > >(
+        nonterminal, this_fst));
   }
   Init();
 }
