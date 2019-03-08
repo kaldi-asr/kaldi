@@ -28,7 +28,7 @@
 #include <limits>
 #include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"
-
+#include <cub/block/block_reduce.cuh>
 
 
 /***********************************************************************
@@ -2577,6 +2577,8 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
   const int i = blockIdx.x;
   const int tid = threadIdx.x;
   const Real* x_row = x + i * x_d.stride;
+  typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
   __shared__ Real ssum[CU1DBLOCK];
 
   // Reduce x_j^2 to CU1DBLOCK elements per row
@@ -2584,34 +2586,14 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
   for (int j = tid; j < x_d.cols; j += CU1DBLOCK) {
     tsum += x_row[j] * x_row[j];
   }
-  ssum[tid] = tsum;
+  tsum = BlockReduceT(temp_storage).Sum(tsum);
   __syncthreads();
-
-  // Tree reduce to 2x warpSize elements per row
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift)
-      ssum[tid] += ssum[tid + shift];
-    __syncthreads();
-  }
-
-  // Reduce last warp to 1 element per row.
-  // Threads implicitly synchronized within a warp.
-  if (tid < warpSize) {
-#   pragma unroll
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      ssum[tid] += ssum[tid + shift];
-    }
-  }
+  
 
   const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
-  if (tid == 0) {
-    ssum[0] = sqrt(
-        fmax(ssum[0] / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
-  }
+  ssum[tid] = sqrt(
+    fmax(tsum / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
 
-  // Broadcast floored stddev to all threads.
-  __syncthreads();
   const Real stddev_div_target_rms = ssum[0];
   const Real scale = Real(1) / stddev_div_target_rms;
 
