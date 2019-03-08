@@ -6,6 +6,7 @@
 
 stage=-1
 lmstage=-2
+num_words_pocolm=110000
 train_sgmm2=false
 
 # call the next line with the directory where the Spanish Fisher data is
@@ -96,7 +97,6 @@ if [ $stage -le 0 ]; then
     cp "$rnnlm_workdir"/normalised_gigaword_corpus/text_normalized "$rnnlm_workdir"/text_lm/spanish_gigaword_normalised.txt
 fi
 
-num_words_pocolm=110000
 if [ $stage -le 1 ]; then
     local/train_pocolm.sh --stage $lmstage --num-words-pocolm $num_words_pocolm "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
     local/get_rnnlm_wordlist.py data/lang/words.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
