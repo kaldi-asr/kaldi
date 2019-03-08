@@ -110,10 +110,8 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {
       return min_val + ( (unsigned int)( (Rand(state)+RAND_MAX*Rand(state)))
                     % (unsigned int)(max_val+1-min_val));
     } else {
-      throw std::runtime_error(std::string()
-                               +"rand_int failed because we do not support "
-                               +"such large random numbers. "
-                               +"(Extend this function).");
+      KALDI_ERR << "rand_int failed because we do not support such large "
+          "random numbers. (Extend this function).";
     }
   }
 #else
