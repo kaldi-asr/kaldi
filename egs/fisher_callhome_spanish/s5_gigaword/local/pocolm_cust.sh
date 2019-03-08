@@ -13,7 +13,7 @@ export PATH=$PATH:$POCOLM_ROOT/scripts
 
 wordlist=None
 num_word=100000
-pocolm_stage=2
+pocolm_stage=1
 ngram_order=3
 lm_dir=
 arpa_dir=
