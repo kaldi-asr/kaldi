@@ -23,7 +23,7 @@
 
 namespace kaldi {
 
-TransitionModel *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
+Transitions *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
   std::vector<int32> phones;
   phones.push_back(1);
   for (int32 i = 2; i < 20; i++)
@@ -38,16 +38,16 @@ TransitionModel *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
       GenRandContextDependencyLarge(phones, N, P,
                                     true, &num_pdf_classes);
 
-  HmmTopology topo = GenRandTopology(phones, num_pdf_classes);
+  Topology topo = GenRandTopology(phones, num_pdf_classes);
 
-  TransitionModel *trans_model = new TransitionModel(*ctx_dep, topo);
+  Transitions *trans_model = new TransitionModel(*ctx_dep, topo);
 
   if (ctx_dep_out == NULL) delete ctx_dep;
   else *ctx_dep_out = ctx_dep;
   return trans_model;
 }
 
-HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
+Topology GetDefaultTopology(const std::vector<int32> &phones_in) {
   std::vector<int32> phones(phones_in);
   std::sort(phones.begin(), phones.end());
   KALDI_ASSERT(IsSortedAndUniq(phones) && !phones.empty());
@@ -76,7 +76,7 @@ HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
       " </TopologyEntry>\n"
       " </Topology>\n";
 
-  HmmTopology topo;
+  Topology topo;
   std::istringstream iss(topo_string.str());
   topo.Read(iss, false);
   return topo;
@@ -84,7 +84,7 @@ HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
 }
 
 
-HmmTopology GenRandTopology(const std::vector<int32> &phones_in,
+Topology GenRandTopology(const std::vector<int32> &phones_in,
                             const std::vector<int32> &num_pdf_classes) {
   std::vector<int32> phones(phones_in);
   std::sort(phones.begin(), phones.end());
@@ -165,13 +165,13 @@ HmmTopology GenRandTopology(const std::vector<int32> &phones_in,
   }
   topo_string << "</Topology>\n";
 
-  HmmTopology topo;
+  Topology topo;
   std::istringstream iss(topo_string.str());
   topo.Read(iss, false);
   return topo;
 }
 
-HmmTopology GenRandTopology() {
+Topology GenRandTopology() {
   std::vector<int32> phones;
   phones.push_back(1);
   for (int32 i = 2; i < 20; i++)
@@ -187,12 +187,12 @@ HmmTopology GenRandTopology() {
   }
 }
 
-void GeneratePathThroughHmm(const HmmTopology &topology,
+void GeneratePathThroughHmm(const Topology &topology,
                             bool reorder,
                             int32 phone,
                             std::vector<std::pair<int32, int32> > *path) {
   path->clear();
-  const HmmTopology::TopologyEntry &this_entry =
+  const Topology::TopologyEntry &this_entry =
       topology.TopologyForPhone(phone);
   int32 cur_state = 0;  // start-state is always state zero.
   int32 num_states = this_entry.size(), final_state = num_states - 1;
@@ -200,7 +200,7 @@ void GeneratePathThroughHmm(const HmmTopology &topology,
   // that's different from the start state.
   std::vector<std::pair<int32, int32> > pending_self_loops;
   while (cur_state != final_state) {
-    const HmmTopology::HmmState &cur_hmm_state = this_entry[cur_state];
+    const Topology::HmmState &cur_hmm_state = this_entry[cur_state];
     int32 num_transitions = cur_hmm_state.transitions.size(),
         transition_index = RandInt(0, num_transitions - 1);
     if (cur_hmm_state.forward_pdf_class != -1) {
@@ -230,7 +230,7 @@ void GeneratePathThroughHmm(const HmmTopology &topology,
 
 
 void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
-                             const TransitionModel &trans_model,
+                             const Transitions &trans_model,
                              bool reorder,
                              const std::vector<int32> &phone_sequence,
                              std::vector<int32> *alignment) {
@@ -253,7 +253,7 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
     int32 phone = phone_sequence[i];
     GeneratePathThroughHmm(trans_model.GetTopo(), reorder, phone, &path);
     for (size_t k = 0; k < path.size(); k++) {
-      const HmmTopology::TopologyEntry &entry =
+      const Topology::TopologyEntry &entry =
           trans_model.GetTopo().TopologyForPhone(phone);
       int32 hmm_state = path[k].first,
           transition_index = path[k].second,

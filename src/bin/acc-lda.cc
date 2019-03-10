@@ -21,7 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/posterior.h"
 #include "transform/lda-estimate.h"
 
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     std::string posteriors_rspecifier = po.GetArg(3);
     std::string acc_wxfilename = po.GetArg(4);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary_read;
       Input ki(model_rxfilename, &binary_read);

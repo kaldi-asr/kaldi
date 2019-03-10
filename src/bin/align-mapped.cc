@@ -20,7 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
 #include "decoder/training-graph-compiler.h"
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;
     ReadKaldiObject(tree_in_filename, &ctx_dep);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
     VectorFst<StdArc> *lex_fst = fst::ReadFstKaldi(lex_in_filename);

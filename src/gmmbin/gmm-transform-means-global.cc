@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/diag-gmm.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "transform/mllt.h"
 
 int main(int argc, char *argv[]) {

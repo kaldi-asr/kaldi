@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     std::string model_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2);
 
-    TransitionModel tmodel;
+    Transitions tmodel;
     AmNnetSimple am_nnet;
 
     {

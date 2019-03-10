@@ -115,8 +115,10 @@ class OfflineFeatureTpl {
   // Note: feature_window_function_ is the windowing function, which initialized
   // using the options class, that we cache at this level.
   OfflineFeatureTpl(const Options &opts):
-      computer_(opts),
-      feature_window_function_(computer_.GetFrameOptions()) { }
+      computer_(opts) {
+    InitFeatureWindowFunction(computer_.GetFrameOptions(),
+                              &feature_window_function_);
+  }
 
   // Internal (and back-compatibility) interface for computing features, which
   // requires that the user has already checked that the sampling frequency
@@ -164,7 +166,7 @@ class OfflineFeatureTpl {
   OfflineFeatureTpl<F> &operator =(const OfflineFeatureTpl<F> &other);
 
   F computer_;
-  FeatureWindowFunction feature_window_function_;
+  Vector<BaseFloat> feature_window_function_;
 };
 
 /// @} End of "addtogroup feat"

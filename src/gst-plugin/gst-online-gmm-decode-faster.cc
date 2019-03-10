@@ -389,7 +389,7 @@ gst_online_gmm_decode_faster_allocate(GstOnlineGmmDecodeFaster * filter) {
       Input ki(filter->lda_mat_rspecifier_, &binary_in);
       filter->lda_transform_->Read(ki.Stream(), binary_in);
     }
-    filter->trans_model_ = new TransitionModel();
+    filter->trans_model_ = new Transitions();
     filter->am_gmm_ = new AmDiagGmm();
     {
       bool binary;

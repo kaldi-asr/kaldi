@@ -22,7 +22,7 @@
 namespace kaldi {
 
 DecodableMatrixMapped::DecodableMatrixMapped(
-    const TransitionModel &tm,
+    const Transitions &tm,
     const MatrixBase<BaseFloat> &likes,
     int32 frame_offset):
     trans_model_(tm), likes_(&likes), likes_to_delete_(NULL),
@@ -32,12 +32,12 @@ DecodableMatrixMapped::DecodableMatrixMapped(
 
   if (likes.NumCols() != tm.NumPdfs())
     KALDI_ERR << "Mismatch, matrix has "
-              << likes.NumCols() << " rows but transition-model has "
+              << likes.NumCols() << " rows but transitions.has "
               << tm.NumPdfs() << " pdf-ids.";
 }
 
 DecodableMatrixMapped::DecodableMatrixMapped(
-    const TransitionModel &tm, const Matrix<BaseFloat> *likes,
+    const Transitions &tm, const Matrix<BaseFloat> *likes,
     int32 frame_offset):
     trans_model_(tm), likes_(likes), likes_to_delete_(likes),
     frame_offset_(frame_offset) {
@@ -45,7 +45,7 @@ DecodableMatrixMapped::DecodableMatrixMapped(
   raw_data_ = likes->Data() - (stride_ * frame_offset_);
   if (likes->NumCols() != tm.NumPdfs())
     KALDI_ERR << "Mismatch, matrix has "
-              << likes->NumCols() << " rows but transition-model has "
+              << likes->NumCols() << " rows but transitions.has "
               << tm.NumPdfs() << " pdf-ids.";
 }
 

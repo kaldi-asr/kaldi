@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         lats_rspecifier = po.GetArg(3),
         lats_wspecifier = po.GetArg(4);
 
-    TransitionModel tmodel;
+    Transitions tmodel;
     ReadKaldiObject(model_rxfilename, &tmodel);
     
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);

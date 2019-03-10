@@ -34,7 +34,7 @@ class ArcPosteriorComputer {
   ArcPosteriorComputer(const CompactLattice &clat,
                        BaseFloat min_post,
                        bool print_alignment,
-                       const TransitionModel *trans_model = NULL):
+                       const Transitions *trans_model = NULL):
       clat_(clat), min_post_(min_post), print_alignment_(print_alignment),
       trans_model_(trans_model) { }
 
@@ -103,7 +103,7 @@ class ArcPosteriorComputer {
 
   BaseFloat min_post_;
   bool print_alignment_;
-  const TransitionModel *trans_model_;
+  const Transitions *trans_model_;
 };
 
 }
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
 
-    kaldi::TransitionModel trans_model;
+    kaldi::Transitions trans_model;
 
     std::string lats_rspecifier, output_wxfilename;
     if (po.NumArgs() == 3) {

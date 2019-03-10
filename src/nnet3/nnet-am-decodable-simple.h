@@ -23,7 +23,7 @@
 #include <vector>
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "itf/decodable-itf.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-compute.h"
@@ -283,7 +283,7 @@ class DecodableAmNnetSimple: public DecodableInterface {
                         compiler(am_nnet.GetNnet(), opts.optimize_config).
   */
   DecodableAmNnetSimple(const NnetSimpleComputationOptions &opts,
-                        const TransitionModel &trans_model,
+                        const Transitions &trans_model,
                         const AmNnetSimple &am_nnet,
                         const MatrixBase<BaseFloat> &feats,
                         const VectorBase<BaseFloat> *ivector = NULL,
@@ -311,7 +311,7 @@ class DecodableAmNnetSimple: public DecodableInterface {
   // argument to the constructor is NULL.
   CachingOptimizingCompiler compiler_;
   DecodableNnetSimple decodable_nnet_;
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
 };
 
 
@@ -355,7 +355,7 @@ class DecodableAmNnetSimpleParallel: public DecodableInterface {
   */
   DecodableAmNnetSimpleParallel(
       const NnetSimpleComputationOptions &opts,
-      const TransitionModel &trans_model,
+      const Transitions &trans_model,
       const AmNnetSimple &am_nnet,
       const MatrixBase<BaseFloat> &feats,
       const VectorBase<BaseFloat> *ivector = NULL,
@@ -382,7 +382,7 @@ class DecodableAmNnetSimpleParallel: public DecodableInterface {
   void DeletePointers();
 
   CachingOptimizingCompiler compiler_;
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
 
   Matrix<BaseFloat> *feats_copy_;
   Vector<BaseFloat> *ivector_copy_;

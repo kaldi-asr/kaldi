@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "fstext/fstext-lib.h"
 #include "fstext/push-special.h"
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;  // the tree.
     ReadKaldiObject(tree_rxfilename, &ctx_dep);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_rxfilename, &trans_model);
 
     VectorFst<StdArc> *lex_fst = fst::ReadFstKaldi(lex_rxfilename),

@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
       chunk_length_secs = -1.0;
     }
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     nnet3::AmNnetSimple am_nnet;
     {
       bool binary;

@@ -34,7 +34,7 @@
 #include "online2/online-endpoint.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 #include "decoder/lattice-faster-online-decoder.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/posterior.h"
 
 namespace kaldi {
@@ -55,7 +55,7 @@ class SingleUtteranceNnet3DecoderTpl {
   // Constructor. The pointer 'features' is not being given to this class to own
   // and deallocate, it is owned externally.
   SingleUtteranceNnet3DecoderTpl(const LatticeFasterDecoderConfig &decoder_opts,
-                                 const TransitionModel &trans_model,
+                                 const Transitions &trans_model,
                                  const nnet3::DecodableNnetSimpleLoopedInfo &info,
                                  const FST &fst,
                                  OnlineNnet2FeaturePipeline *features);
@@ -103,7 +103,7 @@ class SingleUtteranceNnet3DecoderTpl {
 
   // we need to keep a reference to the transition model around only because
   // it's needed by the endpointing code.
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
 
   nnet3::DecodableAmNnetLoopedOnline decodable_;
 

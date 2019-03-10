@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "transform/mllt.h"
 #include "hmm/posterior.h"
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary;
       Input ki(model_filename, &binary);

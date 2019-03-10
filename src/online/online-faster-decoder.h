@@ -25,7 +25,7 @@
 
 #include "util/stl-utils.h"
 #include "decoder/faster-decoder.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 namespace kaldi {
 
@@ -79,7 +79,7 @@ class OnlineFasterDecoder : public FasterDecoder {
   OnlineFasterDecoder(const fst::Fst<fst::StdArc> &fst,
                       const OnlineFasterDecoderOpts &opts,
                       const std::vector<int32> &sil_phones,
-                      const TransitionModel &trans_model)
+                      const Transitions &trans_model)
       : FasterDecoder(fst, opts), opts_(opts),
         silence_set_(sil_phones), trans_model_(trans_model),
         max_beam_(opts.beam), effective_beam_(FasterDecoder::config_.beam),
@@ -118,7 +118,7 @@ class OnlineFasterDecoder : public FasterDecoder {
 
   const OnlineFasterDecoderOpts opts_;
   const ConstIntegerSet<int32> silence_set_; // silence phones IDs
-  const TransitionModel &trans_model_; // needed for trans-id -> phone conversion
+  const Transitions &trans_model_; // needed for trans-id -> phone conversion
   const BaseFloat max_beam_; // the maximum allowed beam
   BaseFloat &effective_beam_; // the currently used beam
   DecodeState state_; // the current state of the decoder

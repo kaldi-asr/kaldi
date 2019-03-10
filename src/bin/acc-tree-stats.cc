@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "tree/context-dep.h"
 #include "tree/build-tree-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/tree-accu.h"
 
 /** @brief Accumulate tree statistics for decision tree training. The
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 
     AccumulateTreeStatsInfo acc_tree_stats_info(opts);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary;
       Input ki(model_filename, &binary);

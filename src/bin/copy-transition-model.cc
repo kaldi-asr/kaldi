@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fst/fstlib.h"
 #include "util/common-utils.h"
 
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
         transition_model_wxfilename = po.GetArg(2);
 
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(transition_model_rxfilename, &trans_model);
 
     WriteKaldiObject(trans_model, transition_model_wxfilename, binary);

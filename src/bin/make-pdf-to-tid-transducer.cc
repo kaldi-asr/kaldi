@@ -16,7 +16,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "util/common-utils.h"
 #include "fst/fstlib.h"
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     std::string trans_model_filename = po.GetArg(1);
     std::string fst_out_filename = po.GetOptArg(2);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(trans_model_filename, &trans_model);
 
     fst::VectorFst<fst::StdArc> *fst = GetPdfToTransitionIdTransducer(trans_model);

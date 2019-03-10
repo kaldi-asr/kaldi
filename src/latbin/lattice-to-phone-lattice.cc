@@ -23,7 +23,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     
     int32 n_done = 0;
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     
     ReadKaldiObject(model_rxfilename, &trans_model);
     

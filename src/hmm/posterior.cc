@@ -299,8 +299,8 @@ void AlignmentToPosterior(const std::vector<int32> &ali,
 }
 
 struct ComparePosteriorByPdfs {
-  const TransitionModel *tmodel_;
-  ComparePosteriorByPdfs(const TransitionModel &tmodel): tmodel_(&tmodel) {}
+  const Transitions *tmodel_;
+  ComparePosteriorByPdfs(const Transitions &tmodel): tmodel_(&tmodel) {}
   bool operator() (const std::pair<int32, BaseFloat> &a,
                    const std::pair<int32, BaseFloat> &b) {
     if (tmodel_->TransitionIdToPdf(a.first)
@@ -311,7 +311,7 @@ struct ComparePosteriorByPdfs {
   }
 };
 
-void SortPosteriorByPdfs(const TransitionModel &tmodel,
+void SortPosteriorByPdfs(const Transitions &tmodel,
                          Posterior *post) {
   ComparePosteriorByPdfs compare(tmodel);
   for (size_t i = 0; i < post->size(); i++) {
@@ -319,7 +319,7 @@ void SortPosteriorByPdfs(const TransitionModel &tmodel,
   }
 }
 
-void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
+void ConvertPosteriorToPdfs(const Transitions &tmodel,
                             const Posterior &post_in,
                             Posterior *post_out) {
   post_out->clear();
@@ -345,7 +345,7 @@ void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
   }
 }
 
-void ConvertPosteriorToPhones(const TransitionModel &tmodel,
+void ConvertPosteriorToPhones(const Transitions &tmodel,
                               const Posterior &post_in,
                               Posterior *post_out) {
   post_out->clear();
@@ -372,7 +372,7 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
 }
 
 
-void WeightSilencePost(const TransitionModel &trans_model,
+void WeightSilencePost(const Transitions &trans_model,
                        const ConstIntegerSet<int32> &silence_set,
                        BaseFloat silence_scale,
                        Posterior *post) {
@@ -395,7 +395,7 @@ void WeightSilencePost(const TransitionModel &trans_model,
 }
 
 
-void WeightSilencePostDistributed(const TransitionModel &trans_model,
+void WeightSilencePostDistributed(const Transitions &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
                                   Posterior *post) {
@@ -537,7 +537,7 @@ template void PosteriorToMatrix<double>(const Posterior &post,
 
 template <typename Real>
 void PosteriorToPdfMatrix(const Posterior &post,
-                          const TransitionModel &model,
+                          const Transitions &model,
                           Matrix<Real> *mat) {
   // Allocate the matrix,
   int32 num_rows = post.size(),
@@ -557,10 +557,10 @@ void PosteriorToPdfMatrix(const Posterior &post,
 }
 // instantiate the template function,
 template void PosteriorToPdfMatrix<float>(const Posterior &post,
-                                          const TransitionModel &model,
+                                          const Transitions &model,
                                           Matrix<float> *mat);
 template void PosteriorToPdfMatrix<double>(const Posterior &post,
-                                           const TransitionModel &model,
+                                           const Transitions &model,
                                            Matrix<double> *mat);
 
 } // End namespace kaldi

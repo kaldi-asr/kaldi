@@ -25,18 +25,18 @@
 namespace kaldi {
 
 
-void MfccComputer::Compute(BaseFloat signal_log_energy,
-                           BaseFloat vtln_warp,
+void MfccComputer::Compute(BaseFloat vtln_warp,
                            VectorBase<BaseFloat> *signal_frame,
                            VectorBase<BaseFloat> *feature) {
   KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.PaddedWindowSize() &&
                feature->Dim() == this->Dim());
 
-  const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
-
-  if (opts_.use_energy && !opts_.raw_energy)
+  BaseFloat signal_log_energy;
+  if (opts_.use_energy)
     signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<float>::min()));
+                                                opts_.energy_floor));
+
+  const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
 
   if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -50,33 +50,15 @@ void MfccComputer::Compute(BaseFloat signal_log_energy,
 
   mel_banks.Compute(power_spectrum, &mel_energies_);
 
-  // avoid log of zero (which should be prevented anyway by dithering).
-  mel_energies_.ApplyFloor(std::numeric_limits<float>::epsilon());
-  mel_energies_.ApplyLog();  // take the log.
+  mel_energies_.ApplyFloor(opts_.energy_floor);
+  mel_energies_.ApplyLog();
 
   feature->SetZero();  // in case there were NaNs.
   // feature = dct_matrix_ * mel_energies [which now have log]
   feature->AddMatVec(1.0, dct_matrix_, kNoTrans, mel_energies_, 0.0);
 
-  if (opts_.cepstral_lifter != 0.0)
-    feature->MulElements(lifter_coeffs_);
-
-  if (opts_.use_energy) {
-    if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_)
-      signal_log_energy = log_energy_floor_;
+  if (opts_.use_energy)
     (*feature)(0) = signal_log_energy;
-  }
-
-  if (opts_.htk_compat) {
-    BaseFloat energy = (*feature)(0);
-    for (int32 i = 0; i < opts_.num_ceps - 1; i++)
-      (*feature)(i) = (*feature)(i+1);
-    if (!opts_.use_energy)
-      energy *= M_SQRT2;  // scale on C0 (actually removing a scale
-    // we previously added that's part of one common definition of
-    // the cosine transform.)
-    (*feature)(opts_.num_ceps - 1)  = energy;
-  }
 }
 
 MfccComputer::MfccComputer(const MfccOptions &opts):
@@ -98,12 +80,6 @@ MfccComputer::MfccComputer(const MfccOptions &opts):
   SubMatrix<BaseFloat> dct_rows(dct_matrix, 0, opts.num_ceps, 0, num_bins);
   dct_matrix_.Resize(opts.num_ceps, num_bins);
   dct_matrix_.CopyFromMat(dct_rows);  // subset of rows.
-  if (opts.cepstral_lifter != 0.0) {
-    lifter_coeffs_.Resize(opts.num_ceps);
-    ComputeLifterCoeffs(opts.cepstral_lifter, &lifter_coeffs_);
-  }
-  if (opts.energy_floor > 0.0)
-    log_energy_floor_ = Log(opts.energy_floor);
 
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
   if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
@@ -117,7 +93,6 @@ MfccComputer::MfccComputer(const MfccOptions &opts):
 MfccComputer::MfccComputer(const MfccComputer &other):
     opts_(other.opts_), lifter_coeffs_(other.lifter_coeffs_),
     dct_matrix_(other.dct_matrix_),
-    log_energy_floor_(other.log_energy_floor_),
     mel_banks_(other.mel_banks_),
     srfft_(NULL),
     mel_energies_(other.mel_energies_.Dim(), kUndefined) {

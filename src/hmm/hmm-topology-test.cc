@@ -18,13 +18,13 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hmm/hmm-topology.h"
+#include "hmm/topology.h"
 #include "hmm/hmm-test-utils.h"
 
 namespace kaldi {
 
 
-void TestHmmTopology() {
+void TestTopology() {
   bool binary = (Rand()%2 == 0);
 
   std::string input_str = "<Topology>\n"
@@ -69,7 +69,7 @@ void TestHmmTopology() {
       "</TopologyEntry>\n"
       "</Topology>\n";
 
-  HmmTopology topo;
+  Topology topo;
 
   if (RandInt(0, 1) == 0) {
     topo = GenRandTopology();
@@ -83,7 +83,7 @@ void TestHmmTopology() {
   std::ostringstream oss;
   topo.Write(oss, binary);
 
-  HmmTopology topo2;
+  Topology topo2;
   // std::cout << oss.str() << '\n' << std::flush;
   std::istringstream iss2(oss.str());
   topo2.Read(iss2, binary);
@@ -96,7 +96,7 @@ void TestHmmTopology() {
   }
 
   {  // test chain topology
-    HmmTopology chain_topo;
+    Topology chain_topo;
     std::istringstream chain_iss(chain_input_str);
     chain_topo.Read(chain_iss, false);
     KALDI_ASSERT(chain_topo.MinLength(3) == 1);
@@ -116,7 +116,7 @@ void TestHmmTopology() {
 int main() {
   // repeat the test ten times
   for (int i = 0; i < 10; i++) {
-    kaldi::TestHmmTopology();
+    kaldi::TestTopology();
   }
   std::cout << "Test OK.\n";
 }

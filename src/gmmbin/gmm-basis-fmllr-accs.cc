@@ -26,7 +26,7 @@ using std::vector;
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "transform/fmllr-diag-gmm.h"
 #include "transform/basis-fmllr-diag-gmm.h"
 #include "hmm/posterior.h"
@@ -34,7 +34,7 @@ using std::vector;
 namespace kaldi {
 void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
                             const Posterior &post,
-                            const TransitionModel &trans_model,
+                            const Transitions &trans_model,
                             const AmDiagGmm &am_gmm,
                             FmllrDiagGmmAccs *spk_stats) {
   Posterior pdf_post;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         post_rspecifier = po.GetArg(3),
         accs_wspecifier = po.GetArg(4);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;

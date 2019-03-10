@@ -21,14 +21,14 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/stl-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 
 namespace kaldi {
 
-void LatticeAcousticRescore(const TransitionModel &trans_model,
+void LatticeAcousticRescore(const Transitions &trans_model,
                             const Matrix<BaseFloat> &log_likes,
                             const std::vector<int32> &state_times,
                             Lattice *lat) {
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
         loglike_rspecifier = po.GetArg(3),
         lats_wspecifier = po.GetArg(4);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary;
       Input ki(model_filename, &binary);

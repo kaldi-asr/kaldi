@@ -23,7 +23,7 @@
 #include "base/kaldi-common.h"
 #include "decoder/decoder-wrappers.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "nnet3/nnet-am-decodable-simple.h"
 #include "nnet3/nnet-utils.h"
 #include "util/kaldi-thread.h"
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
         alignment_wspecifier = po.GetOptArg(6);
 
     TaskSequencer<DecodeUtteranceLatticeFasterClass> sequencer(sequencer_config);
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmNnetSimple am_nnet;
     {
       bool binary;

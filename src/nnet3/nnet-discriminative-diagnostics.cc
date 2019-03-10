@@ -28,7 +28,7 @@ namespace nnet3 {
 NnetDiscriminativeComputeObjf::NnetDiscriminativeComputeObjf(
     const NnetComputeProbOptions &nnet_config,
     const discriminative::DiscriminativeOptions &discriminative_config,
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     const VectorBase<BaseFloat> &priors,
     const Nnet &nnet):
     nnet_config_(nnet_config),

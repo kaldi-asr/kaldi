@@ -57,7 +57,7 @@ DecodableNnetSimple::DecodableNnetSimple(
 
 DecodableAmNnetSimple::DecodableAmNnetSimple(
     const NnetSimpleComputationOptions &opts,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const AmNnetSimple &am_nnet,
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> *ivector,
@@ -312,7 +312,7 @@ void DecodableNnetSimple::CheckAndFixConfigs() {
 
 DecodableAmNnetSimpleParallel::DecodableAmNnetSimpleParallel(
     const NnetSimpleComputationOptions &opts,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const AmNnetSimple &am_nnet,
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> *ivector,

@@ -151,7 +151,7 @@ int32 main(int argc, char *argv[]) {
 
     std::cout << "Reading acoustic model: " << model_rspecifier << "..."
         << std::endl;
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;

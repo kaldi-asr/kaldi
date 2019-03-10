@@ -25,8 +25,7 @@ namespace kaldi {
 
 FbankComputer::FbankComputer(const FbankOptions &opts):
     opts_(opts), srfft_(NULL) {
-  if (opts.energy_floor > 0.0)
-    log_energy_floor_ = Log(opts.energy_floor);
+  KALDI_ASSERT(opts.energy_floor > 0.0 && "Nonzero energy floor is required.");
 
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
   if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
@@ -38,7 +37,7 @@ FbankComputer::FbankComputer(const FbankOptions &opts):
 }
 
 FbankComputer::FbankComputer(const FbankComputer &other):
-    opts_(other.opts_), log_energy_floor_(other.log_energy_floor_),
+    opts_(other.opts_),
     mel_banks_(other.mel_banks_), srfft_(NULL) {
   for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
       iter != mel_banks_.end();
@@ -69,8 +68,7 @@ const MelBanks* FbankComputer::GetMelBanks(BaseFloat vtln_warp) {
   return this_mel_banks;
 }
 
-void FbankComputer::Compute(BaseFloat signal_log_energy,
-                            BaseFloat vtln_warp,
+void FbankComputer::Compute(BaseFloat vtln_warp,
                             VectorBase<BaseFloat> *signal_frame,
                             VectorBase<BaseFloat> *feature) {
 
@@ -80,10 +78,10 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
                feature->Dim() == this->Dim());
 
 
-  // Compute energy after window function (not the raw one).
-  if (opts_.use_energy && !opts_.raw_energy)
+  BaseFloat signal_log_energy;
+  if (opts_.use_energy)
     signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<float>::min()));
+                                                opts_.energy_floor));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -95,30 +93,20 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
   SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
                                       signal_frame->Dim() / 2 + 1);
 
-  // Use magnitude instead of power if requested.
-  if (!opts_.use_power)
-    power_spectrum.ApplyPow(0.5);
-
-  int32 mel_offset = ((opts_.use_energy && !opts_.htk_compat) ? 1 : 0);
+  int32 mel_offset = (opts_.use_energy ? 1 : 0);
   SubVector<BaseFloat> mel_energies(*feature,
                                     mel_offset,
                                     opts_.mel_opts.num_bins);
 
   // Sum with mel fiterbanks over the power spectrum
   mel_banks.Compute(power_spectrum, &mel_energies);
-  if (opts_.use_log_fbank) {
-    // Avoid log of zero (which should be prevented anyway by dithering).
-    mel_energies.ApplyFloor(std::numeric_limits<float>::epsilon());
-    mel_energies.ApplyLog();  // take the log.
-  }
 
-  // Copy energy as first value (or the last, if htk_compat == true).
+  mel_energies.ApplyFloor(opts_.energy_floor);
+  mel_energies.ApplyLog();  // take the log.
+
+  // Copy energy as first value
   if (opts_.use_energy) {
-    if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_) {
-      signal_log_energy = log_energy_floor_;
-    }
-    int32 energy_index = opts_.htk_compat ? opts_.mel_opts.num_bins : 0;
-    (*feature)(energy_index) = signal_log_energy;
+    (*feature)(0) = signal_log_energy;
   }
 }
 

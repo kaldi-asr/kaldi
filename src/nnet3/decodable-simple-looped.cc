@@ -244,7 +244,7 @@ void DecodableNnetSimpleLooped::GetCurrentIvector(int32 input_frame,
 
 DecodableAmNnetSimpleLooped::DecodableAmNnetSimpleLooped(
     const DecodableNnetSimpleLoopedInfo &info,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,

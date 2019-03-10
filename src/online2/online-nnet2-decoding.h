@@ -32,7 +32,7 @@
 #include "itf/online-feature-itf.h"
 #include "online2/online-endpoint.h"
 #include "decoder/lattice-faster-online-decoder.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/posterior.h"
 
 namespace kaldi {
@@ -69,7 +69,7 @@ class SingleUtteranceNnet2Decoder {
   // Constructor.  The feature_pipeline_ pointer is not owned in this
   // class, it's owned externally.
   SingleUtteranceNnet2Decoder(const OnlineNnet2DecodingConfig &config,
-                              const TransitionModel &tmodel,
+                              const Transitions &tmodel,
                               const nnet2::AmNnet &model,
                               const fst::Fst<fst::StdArc> &fst,
                               OnlineFeatureInterface *feature_pipeline);
@@ -113,7 +113,7 @@ class SingleUtteranceNnet2Decoder {
 
   OnlineFeatureInterface *feature_pipeline_;
 
-  const TransitionModel &tmodel_;
+  const Transitions &tmodel_;
   
   nnet2::DecodableNnet2Online decodable_;
   

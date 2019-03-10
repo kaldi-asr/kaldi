@@ -22,7 +22,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "hmm/posterior.h"
 #include "nnet3/nnet-example.h"
@@ -74,7 +74,7 @@ static int32 FindMinimumLengthPath(
 */
 
 static bool ProcessFile(const ExampleGenerationConfig &opts,
-                        const TransitionModel &trans_model,
+                        const Transitions &trans_model,
                         const fst::StdVectorFst &normalization_fst,
                         const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
@@ -285,7 +285,7 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(normalization_fst.NumStates() > 0);
     }
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(trans_model_rxfilename, &trans_model);
 
     RandomAccessBaseFloatMatrixReader feat_reader(feature_rspecifier);

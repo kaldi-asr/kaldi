@@ -27,7 +27,7 @@
 #include "matrix/matrix-lib.h"
 #include "itf/decodable-itf.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 namespace kaldi {
 
@@ -35,7 +35,7 @@ namespace kaldi {
 class DecodableDiagGmmScaledOnline : public DecodableInterface {
  public:
   DecodableDiagGmmScaledOnline(const AmDiagGmm &am,
-                               const TransitionModel &trans_model,
+                               const Transitions &trans_model,
                                const BaseFloat scale,
                                OnlineFeatureInterface *input_feats);
 
@@ -56,7 +56,7 @@ class DecodableDiagGmmScaledOnline : public DecodableInterface {
   OnlineFeatureInterface *features_;
   const AmDiagGmm &ac_model_;
   BaseFloat ac_scale_;
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
   const int32 feat_dim_;  // dimensionality of the input features
   Vector<BaseFloat> cur_feats_;
   int32 cur_frame_;

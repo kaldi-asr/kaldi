@@ -29,7 +29,7 @@
 #include "tree/context-dep.h"
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "nnet3/discriminative-supervision.h"
 #include "lat/lattice-functions.h"
 #include "cudamatrix/cu-matrix-lib.h"
@@ -235,7 +235,7 @@ struct DiscriminativeObjectiveInfo {
 */
 void ComputeDiscriminativeObjfAndDeriv(
     const DiscriminativeOptions &opts,
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     const CuVectorBase<BaseFloat> &log_priors,
     const DiscriminativeSupervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output,

@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
     if (silence_phones.empty())
         KALDI_ERR << "No silence phones given!";
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
         bool binary;

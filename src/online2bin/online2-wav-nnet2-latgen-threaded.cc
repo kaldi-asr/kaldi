@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
       feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
     }
     
-    TransitionModel trans_model;
+    Transitions trans_model;
     nnet2::AmNnet am_nnet;
     {
       bool binary;

@@ -1290,7 +1290,7 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
 
 template<class Weight>
 typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::Transitions &trans_model,
     MutableFst<ArcTpl<Weight> > *fst) {
   // Define some types.
   typedef ArcTpl<Weight> Arc;
@@ -1312,32 +1312,28 @@ typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
          !aiter.Done(); aiter.Next()) {
       Arc arc = aiter.Value();
 
-      // Note: the words are on the input symbol side and transition-id's are on
+      // Note: the words are on the input symbol side and transition-ids are on
       // the output symbol side.
-      if ((arc.olabel != 0)
-          && (trans_model.TransitionIdToHmmState(arc.olabel) == 0)
-          && (!trans_model.IsSelfLoop(arc.olabel))) {
-        Label phone =
-            static_cast<Label>(trans_model.TransitionIdToPhone(arc.olabel));
-
-        // Skips <eps>.
-        KALDI_ASSERT(phone != 0);
-
-        if (arc.ilabel == 0) {
-          // If there is no word on the arc, insert the phone directly.
-          arc.ilabel = first_phone_label + phone;
-        } else {
-          // Otherwise, add an additional arc.
-          StateId additional_state = fst->AddState();
-          StateId next_state = arc.nextstate;
-          arc.nextstate = additional_state;
-          fst->AddArc(additional_state,
-                      Arc(first_phone_label + phone, 0,
-                          Weight::One(), next_state));
+      if (arc.olabel != 0) {
+        auto info = trans_model.InfoForTransitionId(arc.olabel);
+        if (info.is_initial && !info.is_self_loop) {
+          Label phone = static_cast<Label>(info.phone);
+          KALDI_ASSERT(phone != 0);
+          if (arc.ilabel == 0) {
+            // If there is no word on the arc, insert the phone directly.
+            arc.ilabel = first_phone_label + phone;
+          } else {
+            // Otherwise, add an additional arc.
+            StateId additional_state = fst->AddState();
+            StateId next_state = arc.nextstate;
+            arc.nextstate = additional_state;
+            fst->AddArc(additional_state,
+                        Arc(first_phone_label + phone, 0,
+                            Weight::One(), next_state));
+          }
+          aiter.SetValue(arc);
         }
       }
-
-      aiter.SetValue(arc);
     }
   }
 
@@ -1387,7 +1383,7 @@ void DeterminizeLatticeDeletePhones(
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePrunedFirstPass(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::Transitions &trans_model,
     double beam,
     MutableFst<ArcTpl<Weight> > *fst,
     const DeterminizeLatticePrunedOptions &opts) {
@@ -1410,7 +1406,7 @@ bool DeterminizeLatticePhonePrunedFirstPass(
 // lattice might be modified.
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::Transitions &trans_model,
     MutableFst<ArcTpl<Weight> > *ifst,
     double beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -1471,7 +1467,7 @@ bool DeterminizeLatticePhonePruned(
 // will be kept as unchanged.
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::Transitions &trans_model,
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -1482,7 +1478,7 @@ bool DeterminizeLatticePhonePruned(
 }
 
 bool DeterminizeLatticePhonePrunedWrapper(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::Transitions &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double beam,
     MutableFst<kaldi::CompactLatticeArc> *ofst,
@@ -1524,7 +1520,7 @@ bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
 
 template
 bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::Transitions &trans_model,
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,
@@ -1532,7 +1528,7 @@ bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
 
 template
 bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::Transitions &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,

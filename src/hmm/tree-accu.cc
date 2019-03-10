@@ -33,7 +33,7 @@ static int32 MapPhone(const std::vector<int32> &phone_map,
 }
 
 
-void AccumulateTreeStats(const TransitionModel &trans_model,
+void AccumulateTreeStats(const Transitions &trans_model,
                          const AccumulateTreeStatsInfo &info,
                          const std::vector<int32> &alignment,
                          const Matrix<BaseFloat> &features,

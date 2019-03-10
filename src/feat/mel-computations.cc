@@ -32,8 +32,7 @@ namespace kaldi {
 
 MelBanks::MelBanks(const MelBanksOptions &opts,
                    const FrameExtractionOptions &frame_opts,
-                   BaseFloat vtln_warp_factor):
-    htk_mode_(opts.htk_mode) {
+                   BaseFloat vtln_warp_factor) {
   int32 num_bins = opts.num_bins;
   if (num_bins < 3) KALDI_ERR << "Must have at least 3 mel bins";
   BaseFloat sample_freq = frame_opts.samp_freq;
@@ -128,10 +127,6 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
     bins_[bin].second.Resize(size);
     bins_[bin].second.CopyFromVec(this_bin.Range(first_index, size));
 
-    // Replicate a bug in HTK, for testing purposes.
-    if (opts.htk_mode && bin == 0 && mel_low_freq != 0.0)
-      bins_[bin].second(0) = 0.0;
-
   }
   if (debug_) {
     for (size_t i = 0; i < bins_.size(); i++) {
@@ -144,8 +139,7 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
 MelBanks::MelBanks(const MelBanks &other):
     center_freqs_(other.center_freqs_),
     bins_(other.bins_),
-    debug_(other.debug_),
-    htk_mode_(other.htk_mode_) { }
+    debug_(other.debug_) { }
 
 BaseFloat MelBanks::VtlnWarpFreq(BaseFloat vtln_low_cutoff,  // upper+lower frequency cutoffs for VTLN.
                                  BaseFloat vtln_high_cutoff,
@@ -232,8 +226,6 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
     int32 offset = bins_[i].first;
     const Vector<BaseFloat> &v(bins_[i].second);
     BaseFloat energy = VecVec(v, power_spectrum.Range(offset, v.Dim()));
-    // HTK-like flooring- for testing purposes (we prefer dither)
-    if (htk_mode_ && energy < 1.0) energy = 1.0;
     (*mel_energies_out)(i) = energy;
 
     // The following assert was added due to a problem with OpenBlas that
@@ -250,91 +242,8 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
   }
 }
 
-void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs) {
-  // Compute liftering coefficients (scaling on cepstral coeffs)
-  // coeffs are numbered slightly differently from HTK: the zeroth
-  // index is C0, which is not affected.
-  for (int32 i = 0; i < coeffs->Dim(); i++)
-    (*coeffs)(i) = 1.0 + 0.5 * Q * sin (M_PI * i / Q);
-}
 
 
-// Durbin's recursion - converts autocorrelation coefficients to the LPC
-// pTmp - temporal place [n]
-// pAC - autocorrelation coefficients [n + 1]
-// pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
-//       F(z) = 1 / (1 - A(z)), 1 is not stored in the demoninator
-BaseFloat Durbin(int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp) {
-  BaseFloat ki;                // reflection coefficient
-  int i;
-  int j;
-
-  BaseFloat E = pAC[0];
-
-  for (i = 0; i < n; i++) {
-    // next reflection coefficient
-    ki = pAC[i + 1];
-    for (j = 0; j < i; j++)
-      ki += pLP[j] * pAC[i - j];
-    ki = ki / E;
-
-    // new error
-    BaseFloat c = 1 - ki * ki;
-    if (c < 1.0e-5) // remove NaNs for constan signal
-      c = 1.0e-5;
-    E *= c;
-
-    // new LP coefficients
-    pTmp[i] = -ki;
-    for (j = 0; j < i; j++)
-      pTmp[j] = pLP[j] - ki * pLP[i - j - 1];
-
-    for (j = 0; j <= i; j++)
-      pLP[j] = pTmp[j];
-  }
-
-  return E;
-}
-
-
-void Lpc2Cepstrum(int n, const BaseFloat *pLPC, BaseFloat *pCepst) {
-  for (int32 i = 0; i < n; i++) {
-    double sum = 0.0;
-    int j;
-    for (j = 0; j < i; j++) {
-      sum += static_cast<BaseFloat>(i - j) * pLPC[j] * pCepst[i - j - 1];
-    }
-    pCepst[i] = -pLPC[i] - sum / static_cast<BaseFloat>(i + 1);
-  }
-}
-
-void GetEqualLoudnessVector(const MelBanks &mel_banks,
-                            Vector<BaseFloat> *ans) {
-  int32 n = mel_banks.NumBins();
-  // Central frequency of each mel bin.
-  const Vector<BaseFloat> &f0 = mel_banks.GetCenterFreqs();
-  ans->Resize(n);
-  for (int32 i = 0; i < n; i++) {
-    BaseFloat fsq = f0(i) * f0(i);
-    BaseFloat fsub = fsq / (fsq + 1.6e5);
-    (*ans)(i) = fsub * fsub * ((fsq + 1.44e6) / (fsq + 9.61e6));
-  }
-}
-
-
-// Compute LP coefficients from autocorrelation coefficients.
-BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
-                     Vector<BaseFloat> *lpc_out) {
-  int32 n = autocorr_in.Dim() - 1;
-  KALDI_ASSERT(lpc_out->Dim() == n);
-  Vector<BaseFloat> tmp(n);
-  BaseFloat ans = Durbin(n, autocorr_in.Data(),
-                         lpc_out->Data(),
-                         tmp.Data());
-  if (ans <= 0.0)
-    KALDI_WARN << "Zero energy in LPC computation";
-  return -Log(1.0 / ans);  // forms the C0 value
-}
 
 
 }  // namespace kaldi

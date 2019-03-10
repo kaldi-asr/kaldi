@@ -21,7 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-example-utils.h"
 

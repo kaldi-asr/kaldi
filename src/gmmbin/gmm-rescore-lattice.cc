@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "util/stl-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         lats_wspecifier = po.GetArg(4);
 
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary;
       Input ki(model_filename, &binary);

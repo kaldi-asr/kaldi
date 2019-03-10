@@ -18,7 +18,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "tree/context-dep.h"
 #include "util/common-utils.h"
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
                       "standard input" : disambig_in_filename);
     }
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
 

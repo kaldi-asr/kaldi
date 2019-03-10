@@ -26,7 +26,7 @@ using std::vector;
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "transform/lvtln.h"
 #include "hmm/posterior.h"
 
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     {
       bool binary;
       Input ki(model_rxfilename, &binary);
-      TransitionModel trans_model;
+      Transitions trans_model;
       trans_model.Read(ki.Stream(), binary);
       am_gmm.Read(ki.Stream(), binary);
     }

@@ -28,7 +28,7 @@
 #include <condition_variable>
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "itf/decodable-itf.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-compute.h"
@@ -628,7 +628,7 @@ class NnetBatchDecoder {
    */
   NnetBatchDecoder(const fst::Fst<fst::StdArc> &fst,
                    const LatticeFasterDecoderConfig &decoder_config,
-                   const TransitionModel &trans_model,
+                   const Transitions &trans_model,
                    const fst::SymbolTable *word_syms,
                    bool allow_partial,
                    int32 num_threads,
@@ -768,7 +768,7 @@ class NnetBatchDecoder {
 
   const fst::Fst<fst::StdArc> &fst_;
   const LatticeFasterDecoderConfig &decoder_opts_;
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
   const fst::SymbolTable *word_syms_;  // May be NULL.  Owned here.
   bool allow_partial_;
   NnetBatchComputer *computer_;

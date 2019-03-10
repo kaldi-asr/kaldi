@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
       chunk_length_secs = -1.0;
     }
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmNnet am_nnet;
     {
       bool binary;

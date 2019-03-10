@@ -24,7 +24,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-biglm-faster-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
@@ -35,7 +35,7 @@ namespace kaldi {
 // Takes care of output.  Returns true on success.
 bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is really an input.
                      DecodableInterface &decodable, // not const but is really an input.
-                     const TransitionModel &trans_model,
+                     const Transitions &trans_model,
                      const fst::SymbolTable *word_syms,
                      std::string utt,
                      double acoustic_scale,
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
         words_wspecifier = po.GetOptArg(7),
         alignment_wspecifier = po.GetOptArg(8);
     
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;

@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
       lda_transform.Read(ki.Stream(), binary_in);
     }
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
         bool binary;

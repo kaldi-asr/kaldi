@@ -21,7 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
       bool binary_in;
       Input ki(model_rxfilename, &binary_in);
-      TransitionModel trans_model;
+      Transitions trans_model;
       trans_model.Read(ki.Stream(), binary_in);
       num_transition_ids = trans_model.NumTransitionIds();
 

@@ -51,7 +51,7 @@ namespace kaldi {
  *                 roots are shared together (prior to decision-tree splitting).
  * @param phone2num_pdf_classes [in] A map from phones to the number of
  *                 \ref pdf_class "pdf-classes"
- *                 in the phone (this info is derived from the HmmTopology object)
+ *                 in the phone (this info is derived from the Topology object)
  * @param share_roots [in] A vector the same size as phone_sets; says for each
  *                phone set whether the root should be shared among all the
  *                pdf-classes or not.
@@ -122,7 +122,7 @@ EventMap *BuildTree(Questions &qopts,
  *                 roots are shared together (prior to decision-tree splitting).
  * @param phone2num_pdf_classes [in] A map from phones to the number of
  *                 \ref pdf_class "pdf-classes"
- *                 in the phone (this info is derived from the HmmTopology object)
+ *                 in the phone (this info is derived from the Topology object)
  * @param share_roots [in] A vector the same size as phone_sets; says for each
  *                phone set whether the root should be shared among all the
  *                pdf-classes or not.

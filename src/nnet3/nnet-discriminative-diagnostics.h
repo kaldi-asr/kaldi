@@ -41,7 +41,7 @@ class NnetDiscriminativeComputeObjf {
   // does not store a reference to 'config' but does store one to 'nnet'.
   NnetDiscriminativeComputeObjf(const NnetComputeProbOptions &nnet_config,
       const discriminative::DiscriminativeOptions &discriminative_config,
-      const TransitionModel &tmodel,
+      const Transitions &tmodel,
       const VectorBase<BaseFloat> &priors,
       const Nnet &nnet);
 
@@ -71,7 +71,7 @@ class NnetDiscriminativeComputeObjf {
   NnetComputeProbOptions nnet_config_;
 
   discriminative::DiscriminativeOptions discriminative_config_;
-  const TransitionModel &tmodel_;
+  const Transitions &tmodel_;
   CuVector<BaseFloat> log_priors_;
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;

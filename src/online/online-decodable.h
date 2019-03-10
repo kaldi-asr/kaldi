@@ -35,7 +35,7 @@ namespace kaldi {
 class OnlineDecodableDiagGmmScaled : public DecodableInterface {
  public:
   OnlineDecodableDiagGmmScaled(const AmDiagGmm &am,
-                               const TransitionModel &trans_model,
+                               const Transitions &trans_model,
                                const BaseFloat scale,
                                OnlineFeatureMatrix *input_feats);
 
@@ -54,7 +54,7 @@ class OnlineDecodableDiagGmmScaled : public DecodableInterface {
   OnlineFeatureMatrix *features_;
   const AmDiagGmm &ac_model_;
   BaseFloat ac_scale_;
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
   const int32 feat_dim_; // dimensionality of the input features
   Vector<BaseFloat> cur_feats_;
   int32 cur_frame_;

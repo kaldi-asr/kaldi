@@ -1,7 +1,7 @@
 // feat/mel-computations.h
 
 // Copyright 2009-2011  Phonexia s.r.o.;  Microsoft Corporation
-//                2016  Johns Hopkins University (author: Daniel Povey)
+//           2016-2019  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -44,18 +44,14 @@ struct MelBanksOptions {
   int32 num_bins;  // e.g. 25; number of triangular bins
   BaseFloat low_freq;  // e.g. 20; lower frequency cutoff
   BaseFloat high_freq;  // an upper frequency cutoff; 0 -> no cutoff, negative
-  // ->added to the Nyquist frequency to get the cutoff.
+                        // ->added to the Nyquist frequency to get the cutoff.
   BaseFloat vtln_low;  // vtln lower cutoff of warping function.
   BaseFloat vtln_high;  // vtln upper cutoff of warping function: if negative, added
                         // to the Nyquist frequency to get the cutoff.
   bool debug_mel;
-  // htk_mode is a "hidden" config, it does not show up on command line.
-  // Enables more exact compatibibility with HTK, for testing purposes.  Affects
-  // mel-energy flooring and reproduces a bug in HTK.
-  bool htk_mode;
   explicit MelBanksOptions(int num_bins = 25)
       : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(100),
-        vtln_high(-500), debug_mel(false), htk_mode(false) {}
+        vtln_high(-500), debug_mel(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("num-mel-bins", &num_bins,
@@ -87,10 +83,9 @@ class MelBanks {
   }
 
   static BaseFloat VtlnWarpFreq(BaseFloat vtln_low_cutoff,
-                                BaseFloat vtln_high_cutoff,  // discontinuities in warp func
+                                BaseFloat vtln_high_cutoff,
                                 BaseFloat low_freq,
-                                BaseFloat high_freq,  // upper+lower frequency cutoffs in
-                                // the mel computation
+                                BaseFloat high_freq,
                                 BaseFloat vtln_warp_factor,
                                 BaseFloat freq);
 
@@ -106,7 +101,7 @@ class MelBanks {
            const FrameExtractionOptions &frame_opts,
            BaseFloat vtln_warp_factor);
 
-  /// Compute Mel energies (note: not log enerties).
+  /// Compute Mel energies (note: not log energies).
   /// At input, "fft_energies" contains the FFT energies (not log).
   void Compute(const VectorBase<BaseFloat> &fft_energies,
                VectorBase<BaseFloat> *mel_energies_out) const;
@@ -131,35 +126,9 @@ class MelBanks {
   std::vector<std::pair<int32, Vector<BaseFloat> > > bins_;
 
   bool debug_;
-  bool htk_mode_;
 };
 
 
-// Compute liftering coefficients (scaling on cepstral coeffs)
-// coeffs are numbered slightly differently from HTK: the zeroth
-// index is C0, which is not affected.
-void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs);
-
-
-// Durbin's recursion - converts autocorrelation coefficients to the LPC
-// pTmp - temporal place [n]
-// pAC - autocorrelation coefficients [n + 1]
-// pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
-//       F(z) = 1 / (1 - A(z)), 1 is not stored in the demoninator
-// Returns log energy of residual (I think)
-BaseFloat Durbin(int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp);
-
-// Compute LP coefficients from autocorrelation coefficients.
-// Returns log energy of residual (I think)
-BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
-                     Vector<BaseFloat> *lpc_out);
-
-void Lpc2Cepstrum(int n, const BaseFloat *pLPC, BaseFloat *pCepst);
-
-
-
-void GetEqualLoudnessVector(const MelBanks &mel_banks,
-                            Vector<BaseFloat> *ans);
 
 /// @} End of "addtogroup feat"
 }  // namespace kaldi

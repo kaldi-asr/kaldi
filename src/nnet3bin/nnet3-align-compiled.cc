@@ -23,7 +23,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 
 
     {
-      TransitionModel trans_model;
+      Transitions trans_model;
       AmNnetSimple am_nnet;
       {
         bool binary;

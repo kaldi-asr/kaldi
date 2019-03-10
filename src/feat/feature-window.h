@@ -36,8 +36,6 @@ struct FrameExtractionOptions {
   BaseFloat samp_freq;
   BaseFloat frame_shift_ms;  // in milliseconds.
   BaseFloat frame_length_ms;  // in milliseconds.
-  BaseFloat dither;  // Amount of dithering, 0.0 means no dither.
-  BaseFloat preemph_coeff;  // Preemphasis coefficient.
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
   // May be "hamming", "rectangular", "povey", "hanning", "blackman"
@@ -46,7 +44,6 @@ struct FrameExtractionOptions {
   // I just don't think the Hamming window makes sense as a windowing function.
   bool round_to_power_of_two;
   BaseFloat blackman_coeff;
-  bool snip_edges;
   bool allow_downsample;
   bool allow_upsample;
   int max_feature_vectors;
@@ -54,16 +51,14 @@ struct FrameExtractionOptions {
       samp_freq(16000),
       frame_shift_ms(10.0),
       frame_length_ms(25.0),
-      dither(1.0),
-      preemph_coeff(0.97),
       remove_dc_offset(true),
       window_type("povey"),
       round_to_power_of_two(true),
       blackman_coeff(0.42),
-      snip_edges(true),
       allow_downsample(false),
-      max_feature_vectors(-1),
-      allow_upsample(false) { }
+      allow_upsample(false),
+      max_feature_vectors(-1) { }
+
 
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,
@@ -71,13 +66,8 @@ struct FrameExtractionOptions {
                    "if specified there)");
     opts->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
     opts->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
-    opts->Register("preemphasis-coefficient", &preemph_coeff,
-                   "Coefficient for use in signal preemphasis");
     opts->Register("remove-dc-offset", &remove_dc_offset,
                    "Subtract mean from waveform on each frame");
-    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither). "
-                   "If you turn this off, you should set the --energy-floor "
-                   "option, e.g. to 1.0 or 0.1");
     opts->Register("window-type", &window_type, "Type of window "
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
                    "|\"blackmann\")");
@@ -86,11 +76,6 @@ struct FrameExtractionOptions {
     opts->Register("round-to-power-of-two", &round_to_power_of_two,
                    "If true, round window size to power of two by zero-padding "
                    "input to FFT.");
-    opts->Register("snip-edges", &snip_edges,
-                   "If true, end effects will be handled by outputting only frames that "
-                   "completely fit in the file, and the number of frames depends on the "
-                   "frame-length.  If false, the number of frames depends only on the "
-                   "frame-shift, and we reflect the data at the ends.");
     opts->Register("allow-downsample", &allow_downsample,
                    "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
@@ -115,13 +100,11 @@ struct FrameExtractionOptions {
 };
 
 
-struct FeatureWindowFunction {
-  FeatureWindowFunction() {}
-  explicit FeatureWindowFunction(const FrameExtractionOptions &opts);
-  FeatureWindowFunction(const FeatureWindowFunction &other):
-      window(other.window) { }
-  Vector<BaseFloat> window;
-};
+// Sets up the feature window function (e.g. Hamming) as specified by the
+// options.
+void InitFeatureWindowFunction(
+    const FrameExtractionOptions &opts,
+    Vector<BaseFloat> *window_function);
 
 
 /**
@@ -157,13 +140,12 @@ int64 FirstSampleOfFrame(int32 frame,
 
 void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value);
 
-void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff);
 
 /**
-  This function does all the windowing steps after actually
-  extracting the windowed signal: depeding on the
-  configuration, it does dithering, dc offset removal,
-  preemphasis, and multiplication by the windowing function.
+  This function does all the windowing steps after actually extracting the
+  windowed signal: depeding on the configuration, it dc offset removal and
+  multiplication by the windowing function.
+
    @param [in] opts  The options class to be used
    @param [in] window_function  The windowing function-- should have
                     been initialized using 'opts'.
@@ -172,14 +154,10 @@ void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff);
       opts.PaddedWindowSize(), with the remaining samples zero,
       as the FFT code is more efficient if it operates on data with
       power-of-two size.
-   @param [out]   log_energy_pre_window If non-NULL, then after dithering and
-      DC offset removal, this function will write to this pointer the log of
-      the total energy (i.e. sum-squared) of the frame.
  */
 void ProcessWindow(const FrameExtractionOptions &opts,
-                   const FeatureWindowFunction &window_function,
-                   VectorBase<BaseFloat> *window,
-                   BaseFloat *log_energy_pre_window = NULL);
+                   const VectorBase<BaseFloat> &window_function,
+                   VectorBase<BaseFloat> *window);
 
 
 /*
@@ -201,18 +179,15 @@ void ProcessWindow(const FrameExtractionOptions &opts,
   @param [in] window_function  The windowing function, as derived from the
                     options class.
   @param [out] window  The windowed, possibly-padded waveform to be
-                     extracted.  Will be resized as needed.
-  @param [out] log_energy_pre_window  If non-NULL, the log-energy of
-                   the signal prior to pre-emphasis and multiplying by
-                   the windowing function will be written to here.
+                    extracted.  Will be resized as needed.
 */
 void ExtractWindow(int64 sample_offset,
                    const VectorBase<BaseFloat> &wave,
                    int32 f,
                    const FrameExtractionOptions &opts,
-                   const FeatureWindowFunction &window_function,
-                   Vector<BaseFloat> *window,
-                   BaseFloat *log_energy_pre_window = NULL);
+                   const VectorBase<BaseFloat> &window_function,
+                   Vector<BaseFloat> *window);
+
 
 
 /// @} End of "addtogroup feat"

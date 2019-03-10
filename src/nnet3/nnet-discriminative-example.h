@@ -28,7 +28,7 @@
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-example-utils.h"
 #include "hmm/posterior.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 namespace kaldi {
 namespace nnet3 {

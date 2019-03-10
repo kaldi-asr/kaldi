@@ -20,8 +20,8 @@
 #ifndef KALDI_HMM_HMM_UTILS_H_
 #define KALDI_HMM_HMM_UTILS_H_
 
-#include "hmm/hmm-topology.h"
-#include "hmm/transition-model.h"
+#include "hmm/topology.h"
+#include "hmm/transitions.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -93,7 +93,7 @@ typedef unordered_map<std::pair<int32, std::vector<int32> >,
 fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
     std::vector<int32> context_window,
     const ContextDependencyInterface &ctx_dep,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const HTransducerConfig &config,
     HmmCacheType *cache = NULL);
 
@@ -104,7 +104,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
 fst::VectorFst<fst::StdArc>*
 GetHmmAsFsaSimple(std::vector<int32> context_window,
                   const ContextDependencyInterface &ctx_dep,
-                  const TransitionModel &trans_model,
+                  const Transitions &trans_model,
                   BaseFloat prob_scale);
 
 
@@ -126,7 +126,7 @@ GetHmmAsFsaSimple(std::vector<int32> context_window,
 fst::VectorFst<fst::StdArc>*
 GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
                const ContextDependencyInterface &ctx_dep,
-               const TransitionModel &trans_model,
+               const Transitions &trans_model,
                const HTransducerConfig &config,
                std::vector<int32> *disambig_syms_left);
 
@@ -148,7 +148,7 @@ GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
   */
 void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
                       const ContextDependencyInterface &ctx_dep,
-                      const TransitionModel &trans_model,
+                      const Transitions &trans_model,
                       std::vector<int32> *old2new_map);
 
 
@@ -182,7 +182,7 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   *                      which emulates the behavior of older code.
   * @param  fst [in, out] The FST to be modified.
   */
-void AddSelfLoops(const TransitionModel &trans_model,
+void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
                   BaseFloat self_loop_scale,
                   bool reorder,
@@ -206,7 +206,7 @@ void AddSelfLoops(const TransitionModel &trans_model,
   *                      see \ref hmm_scale.
   * @param  fst [in, out] The FST to be modified.
   */
-void AddTransitionProbs(const TransitionModel &trans_model,
+void AddTransitionProbs(const Transitions &trans_model,
                         const std::vector<int32> &disambig_syms,
                         BaseFloat transition_scale,
                         BaseFloat self_loop_scale,
@@ -216,7 +216,7 @@ void AddTransitionProbs(const TransitionModel &trans_model,
    This is as AddSelfLoops(), but operates on a Lattice, where
    it affects the graph part of the weight (the first element
    of the pair). */
-void AddTransitionProbs(const TransitionModel &trans_model,
+void AddTransitionProbs(const Transitions &trans_model,
                         BaseFloat transition_scale,
                         BaseFloat self_loop_scale,
                         Lattice *lat);
@@ -225,11 +225,11 @@ void AddTransitionProbs(const TransitionModel &trans_model,
 /// Returns a transducer from pdfs plus one (input) to  transition-ids (output).
 /// Currenly of use only for testing.
 fst::VectorFst<fst::StdArc>*
-GetPdfToTransitionIdTransducer(const TransitionModel &trans_model);
+GetPdfToTransitionIdTransducer(const Transitions &trans_model);
 
 /// Converts all transition-ids in the FST to pdfs plus one.
 /// Placeholder: not implemented yet!
-void ConvertTransitionIdsToPdfs(const TransitionModel &trans_model,
+void ConvertTransitionIdsToPdfs(const Transitions &trans_model,
                                 const std::vector<int32> &disambig_syms,
                                 fst::VectorFst<fst::StdArc> *fst);
 
@@ -248,7 +248,7 @@ void ConvertTransitionIdsToPdfs(const TransitionModel &trans_model,
 /// die or throw an exception.
 /// This function works out by itself whether the graph was created
 /// with "reordering", and just does the right thing.
-bool SplitToPhones(const TransitionModel &trans_model,
+bool SplitToPhones(const Transitions &trans_model,
                    const std::vector<int32> &alignment,
                    std::vector<std::vector<int32> > *split_alignment);
 
@@ -279,13 +279,13 @@ bool SplitToPhones(const TransitionModel &trans_model,
                                 the same as the input where possible.]
    @param reorder [in]          True if you want the pdf-ids on the new alignment to
                                 be 'reordered'. (vs. the way they appear in
-                                the HmmTopology object)
+                                the Topology object)
    @param phone_map [in]        If non-NULL, map from old to new phones.
    @param new_alignment [out]   The converted alignment.
 */
 
-bool ConvertAlignment(const TransitionModel &old_trans_model,
-                      const TransitionModel &new_trans_model,
+bool ConvertAlignment(const Transitions &old_trans_model,
+                      const Transitions &new_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,  // 1 in the normal case -> no subsampling.
@@ -319,14 +319,14 @@ bool ConvertPhnxToProns(const std::vector<int32> &phnx,
    The alignment will be without 'reordering'.
 */
 void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
-                                const TransitionModel &trans_model,
+                                const Transitions &trans_model,
                                 const std::vector<int32> &phone_window,
                                 std::vector<int32> *alignment);
 
 /*
   If the alignment was non-reordered makes it reordered, and vice versa.
 */
-void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
+void ChangeReorderingOfAlignment(const Transitions &trans_model,
                                  std::vector<int32> *alignment);
 
 /// @} end "addtogroup hmm_group"

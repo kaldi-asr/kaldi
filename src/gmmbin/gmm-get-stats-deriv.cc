@@ -21,7 +21,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "gmm/indirect-diff-diag-gmm.h"
 
 int main(int argc, char *argv[]) {
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
         deriv_wxfilename = po.GetArg(5);
         
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary_read;
       Input ki(model_rxfilename, &binary_read);

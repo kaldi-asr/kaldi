@@ -88,14 +88,10 @@ static void UnitTestSimple() {
   // the parametrization object
   MfccOptions op;
   // trying to have same opts as baseline.
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
   op.frame_opts.window_type = "rectangular";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
-  op.mel_opts.htk_mode = true;
-  op.htk_compat = true;
 
   Mfcc mfcc(op);
   // use default parameters
@@ -129,14 +125,10 @@ static void UnitTestHTKCompare1() {
 
   // use mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
-  op.mel_opts.htk_mode = true;
-  op.htk_compat = true;
   op.use_energy = false;  // C0 not energy.
 
   Mfcc mfcc(op);
@@ -188,7 +180,7 @@ static void UnitTestHTKCompare1() {
   }
 
   std::cout << "Test passed :)\n\n";
-  
+
   unlink("tmp.test.wav.fea_kaldi.1");
 }
 
@@ -213,14 +205,10 @@ static void UnitTestHTKCompare2() {
 
   // use mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
-  op.mel_opts.htk_mode = true;
-  op.htk_compat = true;
   op.use_energy = true;  // Use energy.
 
   Mfcc mfcc(op);
@@ -272,7 +260,7 @@ static void UnitTestHTKCompare2() {
   }
 
   std::cout << "Test passed :)\n\n";
-  
+
   unlink("tmp.test.wav.fea_kaldi.2");
 }
 
@@ -297,16 +285,11 @@ static void UnitTestHTKCompare3() {
 
   // use mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
-  op.htk_compat = true;
   op.use_energy = true;  // Use energy.
   op.mel_opts.low_freq = 20.0;
-  //op.mel_opts.debug_mel = true;
-  op.mel_opts.htk_mode = true;
 
   Mfcc mfcc(op);
 
@@ -357,7 +340,7 @@ static void UnitTestHTKCompare3() {
   }
 
   std::cout << "Test passed :)\n\n";
-  
+
   unlink("tmp.test.wav.fea_kaldi.3");
 }
 
@@ -382,14 +365,11 @@ static void UnitTestHTKCompare4() {
 
   // use mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
-  op.htk_compat = true;
   op.use_energy = true;  // Use energy.
-  op.mel_opts.htk_mode = true;
 
   Mfcc mfcc(op);
 
@@ -440,7 +420,7 @@ static void UnitTestHTKCompare4() {
   }
 
   std::cout << "Test passed :)\n\n";
-  
+
   unlink("tmp.test.wav.fea_kaldi.4");
 }
 
@@ -465,16 +445,13 @@ static void UnitTestHTKCompare5() {
 
   // use mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
-  op.htk_compat = true;
   op.use_energy = true;  // Use energy.
   op.mel_opts.low_freq = 0.0;
   op.mel_opts.vtln_low = 100.0;
   op.mel_opts.vtln_high = 7500.0;
-  op.mel_opts.htk_mode = true;
 
   BaseFloat vtln_warp = 1.1; // our approach identical to htk for warp factor >1,
   // differs slightly for higher mel bins if warp_factor <0.9
@@ -528,7 +505,7 @@ static void UnitTestHTKCompare5() {
   }
 
   std::cout << "Test passed :)\n\n";
-  
+
   unlink("tmp.test.wav.fea_kaldi.5");
 }
 
@@ -553,15 +530,12 @@ static void UnitTestHTKCompare6() {
 
   // use mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.97;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.num_bins = 24;
   op.mel_opts.low_freq = 125.0;
   op.mel_opts.high_freq = 7800.0;
-  op.htk_compat = true;
   op.use_energy = false;  // C0 not energy.
 
   Mfcc mfcc(op);
@@ -613,7 +587,7 @@ static void UnitTestHTKCompare6() {
   }
 
   std::cout << "Test passed :)\n\n";
-  
+
   unlink("tmp.test.wav.fea_kaldi.6");
 }
 
@@ -682,5 +656,3 @@ int main() {
     return 1;
   }
 }
-
-

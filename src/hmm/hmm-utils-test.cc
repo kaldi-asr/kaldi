@@ -202,7 +202,7 @@ void TestAccumulateTreeStatsOptions() {
 
 void TestSplitToPhones() {
   ContextDependency *ctx_dep = NULL;
-  TransitionModel *trans_model = GenRandTransitionModel(&ctx_dep);
+  Transitions *trans_model = GenRandTransitionModel(&ctx_dep);
   std::vector<int32> phone_seq;
   int32 num_phones = RandInt(0, 10);
   const std::vector<int32> &phone_list = trans_model->GetPhones();
@@ -273,11 +273,11 @@ void TestConvertAlignment() {
   }
 
 
-  HmmTopology topo_old = GenRandTopology(phones, num_pdf_classes_old),
+  Topology topo_old = GenRandTopology(phones, num_pdf_classes_old),
       topo_new =  (new_topology ?
                    GenRandTopology(phones, num_pdf_classes_new) : topo_old);
 
-  TransitionModel trans_model_old(*ctx_dep_old, topo_old),
+  Transitions trans_model_old(*ctx_dep_old, topo_old),
       trans_model_new(*ctx_dep_new, topo_new);
 
   std::vector<int32> phone_sequence;

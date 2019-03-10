@@ -25,7 +25,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -34,7 +34,7 @@ namespace kaldi {
 struct WordBoundaryInfoOpts {
   // Note: use of this structure
   // is deprecated, see WordBoundaryInfoNewOpts.
-  
+
   // Note: this structure (and the code in word-align-lattice.{h,cc}
   // makes stronger assumptions than the rest of the Kaldi toolkit:
   // that is, it assumes you have word-position-dependent phones,
@@ -51,14 +51,13 @@ struct WordBoundaryInfoOpts {
   std::string silence_phones;
   int32 silence_label;
   int32 partial_word_label;
-  bool reorder;
   bool silence_may_be_word_internal;
   bool silence_has_olabels;
-  
+
   WordBoundaryInfoOpts(): silence_label(0), partial_word_label(0),
-                          reorder(true), silence_may_be_word_internal(false),
+                          silence_may_be_word_internal(false),
                           silence_has_olabels(false) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("wbegin-phones", &wbegin_phones, "Colon-separated list of "
                    "numeric ids of phones that begin a word");
@@ -80,12 +79,9 @@ struct WordBoundaryInfoOpts {
                    "word symbol that is to be used for arcs in the word-aligned "
                    "lattice corresponding to partial words at the end of "
                    "\"forced-out\" utterances (zero is OK)");
-    opts->Register("reorder", &reorder, "True if the lattices were generated "
-                   "from graphs that had the --reorder option true, relating to "
-                   "reordering self-loops (typically true)");
     opts->Register("silence-may-be-word-internal", &silence_may_be_word_internal,
                    "If true, silence may appear inside words' prons (but not at begin/end!)\n");
-    opts->Register("silence-has-olabels", &silence_has_olabels, 
+    opts->Register("silence-has-olabels", &silence_has_olabels,
                    "If true, silence phones have output labels in the lattice, just\n"
                    "like regular words.  [This means you can't have un-labeled silences]");
   }
@@ -96,11 +92,9 @@ struct WordBoundaryInfoOpts {
 struct WordBoundaryInfoNewOpts {
   int32 silence_label;
   int32 partial_word_label;
-  bool reorder;
-  
-  WordBoundaryInfoNewOpts(): silence_label(0), partial_word_label(0),
-                             reorder(true) { }
-  
+
+  WordBoundaryInfoNewOpts(): silence_label(0), partial_word_label(0) { }
+
   void Register(OptionsItf *opts) {
     opts->Register("silence-label", &silence_label, "Numeric id of word symbol "
                    "that is to be used for silence arcs in the word-aligned "
@@ -109,9 +103,6 @@ struct WordBoundaryInfoNewOpts {
                    "word symbol that is to be used for arcs in the word-aligned "
                    "lattice corresponding to partial words at the end of "
                    "\"forced-out\" utterances (zero is OK)");
-    opts->Register("reorder", &reorder, "True if the lattices were generated "
-                   "from graphs that had the --reorder option true, relating to "
-                   "reordering self-loops (typically true)");
   }
 };
 
@@ -150,7 +141,7 @@ struct WordBoundaryInfo {
           "word-boundary file (or options)";
     return phone_to_type[p];
   }
-  
+
   std::vector<PhoneType> phone_to_type;
 
   int32 silence_label; // The integer label we give to silence words.
@@ -189,7 +180,7 @@ struct WordBoundaryInfo {
 /// abort the computation, return false and produce an empty
 /// lattice out.
 bool WordAlignLattice(const CompactLattice &lat,
-                      const TransitionModel &tmodel,
+                      const Transitions &tmodel,
                       const WordBoundaryInfo &info,
                       int32 max_states,
                       CompactLattice *lat_out);
@@ -203,7 +194,7 @@ bool WordAlignLattice(const CompactLattice &lat,
 ///   partial-word arcs, with the partial-word label.
 ///   silence arcs, with the silence label.
 void TestWordAlignedLattice(const CompactLattice &lat,
-                            const TransitionModel &tmodel,
+                            const Transitions &tmodel,
                             const WordBoundaryInfo &info,
                             const CompactLattice &aligned_lat);
 

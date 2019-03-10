@@ -57,7 +57,7 @@ void ComputeExamplePhoneLanguageModel(const std::vector<int32> &phones,
 
 
 void ComputeExampleDenFst(const ContextDependency &ctx_dep,
-                          const TransitionModel &trans_model,
+                          const Transitions &trans_model,
                           fst::StdVectorFst *den_graph) {
   using fst::StdVectorFst;
   using fst::StdArc;
@@ -151,7 +151,7 @@ void TestSupervisionNumerator(const Supervision &supervision) {
 
 }
 
-void TestSupervisionAppend(const TransitionModel &trans_model,
+void TestSupervisionAppend(const Transitions &trans_model,
                            const Supervision &supervision) {
   int32 num_append = RandInt(1,5);
   std::vector<const Supervision*> input(num_append);
@@ -180,7 +180,7 @@ void TestSupervisionAppend(const TransitionModel &trans_model,
   output.Check(trans_model);
 }
 
-void TestSupervisionReattached(const TransitionModel &trans_model,
+void TestSupervisionReattached(const Transitions &trans_model,
                                const Supervision &supervision,
                                const Supervision &reattached_supervision) {
   using namespace fst;
@@ -333,7 +333,7 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
 }
 
 void TestSupervisionSplitting(const ContextDependency &ctx_dep,
-                              const TransitionModel &trans_model,
+                              const Transitions &trans_model,
                               const Supervision &supervision) {
   fst::StdVectorFst den_fst, normalization_fst;
   ComputeExampleDenFst(ctx_dep, trans_model, &den_fst);
@@ -456,7 +456,7 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
 
 void ChainSupervisionTest() {
   ContextDependency *ctx_dep;
-  TransitionModel *trans_model = GenRandTransitionModel(&ctx_dep);
+  Transitions *trans_model = GenRandTransitionModel(&ctx_dep);
   const std::vector<int32> &phones = trans_model->GetPhones();
 
   int32 subsample_factor = RandInt(1, 3);

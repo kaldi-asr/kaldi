@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-utils.h"
 #include "decoder/decoder-wrappers.h"
 #include "decoder/training-graph-compiler.h"
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;
     ReadKaldiObject(tree_in_filename, &ctx_dep);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;

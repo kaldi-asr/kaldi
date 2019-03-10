@@ -29,7 +29,7 @@
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "fstext/deterministic-fst.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 namespace kaldi {
 namespace chain {
@@ -181,7 +181,7 @@ class TimeEnforcerFst:
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
 
-  TimeEnforcerFst(const TransitionModel &trans_model,
+  TimeEnforcerFst(const Transitions &trans_model,
                   bool convert_to_pdfs,
                   const std::vector<std::vector<int32> > &allowed_phones):
       trans_model_(trans_model),
@@ -204,7 +204,7 @@ class TimeEnforcerFst:
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
 
  private:
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
   // if convert_to_pdfs_ is true, this FST will map from transition-id (on the
   // input side) to pdf-id plus one (on the output side); if false, both sides'
   // labels will be transition-id.
@@ -234,10 +234,10 @@ struct Supervision {
 
   // the maximum possible value of the labels in 'fst' (which go from 1 to
   // label_dim).  For fully-processed examples this will equal the NumPdfs() in the
-  // TransitionModel object, but for newer-style "unconstrained" examples
+  // Transitions object, but for newer-style "unconstrained" examples
   // that have been output by chain-get-supervision but not yet processed
   // by nnet3-chain-get-egs, it will be the NumTransitionIds() of the
-  // TransitionModel object.
+  // Transitions object.
   int32 label_dim;
 
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
@@ -297,7 +297,7 @@ struct Supervision {
 
   // This function checks that this supervision object satifsies some
   // of the properties we expect of it, and calls KALDI_ERR if not.
-  void Check(const TransitionModel &trans_model) const;
+  void Check(const Transitions &trans_model) const;
 
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
@@ -317,7 +317,7 @@ struct Supervision {
 */
 bool ProtoSupervisionToSupervision(
     const ContextDependencyInterface &ctx_dep,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const ProtoSupervision &proto_supervision,
     bool convert_to_pdfs,
     Supervision *supervision);
@@ -333,7 +333,7 @@ bool ProtoSupervisionToSupervision(
  */
 bool TrainingGraphToSupervisionE2e(
     const fst::StdVectorFst& training_graph,
-    const TransitionModel& trans_model,
+    const Transitions& trans_model,
     int32 num_frames,
     Supervision *supervision);
 
@@ -484,7 +484,7 @@ void GetWeightsForRanges(int32 range_length,
 /// It returns true on success, and false if some kind of error happened
 /// (this is not expected).
 bool ConvertSupervisionToUnconstrained(
-    const TransitionModel &trans_mdl,
+    const Transitions &trans_mdl,
     Supervision *supervision);
 
 

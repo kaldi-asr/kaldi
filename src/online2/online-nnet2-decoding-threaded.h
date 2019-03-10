@@ -35,7 +35,7 @@
 #include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/online-endpoint.h"
 #include "decoder/lattice-faster-online-decoder.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "util/kaldi-semaphore.h"
 
 namespace kaldi {
@@ -196,7 +196,7 @@ class SingleUtteranceNnet2DecoderThreaded {
   // (locally owned) feature pipeline.
   SingleUtteranceNnet2DecoderThreaded(
       const OnlineNnet2DecodingThreadedConfig &config,
-      const TransitionModel &tmodel,
+      const Transitions &tmodel,
       const nnet2::AmNnet &am_nnet,
       const fst::Fst<fst::StdArc> &fst,
       const OnlineNnet2FeaturePipelineInfo &feature_info,
@@ -343,7 +343,7 @@ class SingleUtteranceNnet2DecoderThreaded {
 
   const nnet2::AmNnet &am_nnet_;
 
-  const TransitionModel &tmodel_;
+  const Transitions &tmodel_;
 
 
   // sampling_rate_ is set the first time AcceptWaveform is called.

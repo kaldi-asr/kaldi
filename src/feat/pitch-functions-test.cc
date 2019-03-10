@@ -25,7 +25,6 @@
 #include <iostream>
 
 #include "base/kaldi-math.h"
-#include "feat/feature-plp.h"
 #include "feat/pitch-functions.h"
 #include "feat/wave-reader.h"
 #include "sys/stat.h"

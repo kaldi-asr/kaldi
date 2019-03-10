@@ -42,41 +42,24 @@ struct FbankOptions {
   FrameExtractionOptions frame_opts;
   MelBanksOptions mel_opts;
   bool use_energy;  // append an extra dimension with energy to the filter banks
-  BaseFloat energy_floor;
-  bool raw_energy;  // If true, compute energy before preemphasis and windowing
-  bool htk_compat;  // If true, put energy last (if using energy)
-  bool use_log_fbank;  // if true (default), produce log-filterbank, else linear
-  bool use_power;  // if true (default), use power in filterbank analysis, else magnitude.
+  BaseFloat energy_floor;  // Floor on energy, to avoid log(0.0).  The floor of
+                           // 1e-10 may be interpreted as (approximately)
+                           // 0.1 * 2**-30.  The smallest nonzero value in a 16-bit
+                           // waveform would be 1^-15, and 1^-30 is its square.
 
   FbankOptions(): mel_opts(23),
-                 // defaults the #mel-banks to 23 for the FBANK computations.
-                 // this seems to be common for 16khz-sampled data,
-                 // but for 8khz-sampled data, 15 may be better.
-                 use_energy(false),
-                 energy_floor(0.0),
-                 raw_energy(true),
-                 htk_compat(false),
-                 use_log_fbank(true),
-                 use_power(true) {}
+                  use_energy(false),
+                  energy_floor(1.0e-10) { }
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
     mel_opts.Register(opts);
     opts->Register("use-energy", &use_energy,
-                   "Add an extra dimension with energy to the FBANK output.");
+                   "Add an extra dimension with energy to the filterbank "
+                   "output.");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in FBANK computation. "
-                   "Only makes a difference if --use-energy=true; only necessary if "
-                   "--dither=0.0.  Suggested values: 0.1 or 1.0");
-    opts->Register("raw-energy", &raw_energy,
-                   "If true, compute energy before preemphasis and windowing");
-    opts->Register("htk-compat", &htk_compat, "If true, put energy last.  "
-                   "Warning: not sufficient to get HTK compatible features (need "
-                   "to change other parameters).");
-    opts->Register("use-log-fbank", &use_log_fbank,
-                   "If true, produce log-filterbank, else produce linear.");
-    opts->Register("use-power", &use_power,
-                   "If true, use power, else use magnitude.");
+                   "Floor on energy (absolute, not relative) in filterbank "
+                   "computation.");
   }
 };
 
@@ -94,8 +77,6 @@ class FbankComputer {
     return opts_.mel_opts.num_bins + (opts_.use_energy ? 1 : 0);
   }
 
-  bool NeedRawLogEnergy() { return opts_.use_energy && opts_.raw_energy; }
-
   const FrameExtractionOptions &GetFrameOptions() const {
     return opts_.frame_opts;
   }
@@ -104,11 +85,6 @@ class FbankComputer {
      Function that computes one frame of features from
      one frame of signal.
 
-     @param [in] signal_raw_log_energy The log-energy of the frame of the signal
-         prior to windowing and pre-emphasis, or
-         log(numeric_limits<float>::min()), whichever is greater.  Must be
-         ignored by this function if this class returns false from
-         this->NeedsRawLogEnergy().
      @param [in] vtln_warp  The VTLN warping factor that the user wants
          to be applied when computing features for this utterance.  Will
          normally be 1.0, meaning no warping is to be done.  The value will
@@ -121,8 +97,7 @@ class FbankComputer {
      @param [out] feature  Pointer to a vector of size this->Dim(), to which
          the computed feature will be written.
   */
-  void Compute(BaseFloat signal_log_energy,
-               BaseFloat vtln_warp,
+  void Compute(BaseFloat vtln_warp,
                VectorBase<BaseFloat> *signal_frame,
                VectorBase<BaseFloat> *feature);
 
@@ -133,7 +108,6 @@ class FbankComputer {
 
 
   FbankOptions opts_;
-  BaseFloat log_energy_floor_;
   std::map<BaseFloat, MelBanks*> mel_banks_;  // BaseFloat is VTLN coefficient.
   SplitRadixRealFft<BaseFloat> *srfft_;
   // Disallow assignment.

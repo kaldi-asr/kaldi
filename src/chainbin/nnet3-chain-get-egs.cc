@@ -21,7 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/posterior.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-chain-example.h"
@@ -86,7 +86,7 @@ namespace nnet3 {
 
 **/
 
-static bool ProcessFile(const TransitionModel *trans_mdl,
+static bool ProcessFile(const Transitions *trans_mdl,
                         const fst::StdVectorFst &normalization_fst,
                         const GeneralMatrix &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
@@ -345,8 +345,8 @@ int main(int argc, char *argv[]) {
     UtteranceSplitter utt_splitter(eg_config);
 
 
-    const TransitionModel *trans_mdl_ptr = NULL;
-    TransitionModel trans_mdl;
+    const Transitions *trans_mdl_ptr = NULL;
+    Transitions trans_mdl;
     if (!trans_mdl_rxfilename.empty()) {
       ReadKaldiObject(trans_mdl_rxfilename,
                       &trans_mdl);

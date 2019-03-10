@@ -25,7 +25,7 @@ using std::vector;
 
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "util/common-utils.h"
 
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(3),
         pfile_wspecifier = po.GetArg(4);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;

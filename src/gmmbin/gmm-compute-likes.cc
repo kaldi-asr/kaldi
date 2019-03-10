@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "base/timer.h"
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     AmDiagGmm am_gmm;
     {
       bool binary;
-      TransitionModel trans_model;  // not needed.
+      Transitions trans_model;  // not needed.
       Input ki(model_in_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_gmm.Read(ki.Stream(), binary);

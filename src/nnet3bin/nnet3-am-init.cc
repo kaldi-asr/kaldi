@@ -19,7 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "tree/context-dep.h"
 #include "nnet3/am-nnet-simple.h"
 
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
     std::string raw_nnet_rxfilename,
         am_nnet_wxfilename;
-    TransitionModel *trans_model = NULL;
+    Transitions *trans_model = NULL;
     
     if (po.NumArgs() == 4) {
       std::string tree_rxfilename = po.GetArg(1),
@@ -67,17 +67,17 @@ int main(int argc, char *argv[]) {
       ContextDependency ctx_dep;
       ReadKaldiObject(tree_rxfilename, &ctx_dep);
     
-      HmmTopology topo;
+      Topology topo;
       ReadKaldiObject(topo_rxfilename, &topo);
       
       // Construct the transition model from the tree and the topology file.
-      trans_model = new TransitionModel(ctx_dep, topo);
+      trans_model = new Transitions(ctx_dep, topo);
     } else {
       std::string trans_model_rxfilename =  po.GetArg(1);
       raw_nnet_rxfilename = po.GetArg(2);
       am_nnet_wxfilename = po.GetArg(3);
       
-      trans_model = new TransitionModel();
+      trans_model = new Transitions();
       ReadKaldiObject(trans_model_rxfilename, trans_model);
     }
 

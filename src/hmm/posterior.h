@@ -26,7 +26,7 @@
 #include "base/kaldi-common.h"
 #include "util/const-integer-set.h"
 #include "util/kaldi-table.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "matrix/kaldi-matrix.h"
 
 
@@ -205,19 +205,19 @@ void AlignmentToPosterior(const std::vector<int32> &ali,
 
 /// Sorts posterior entries so that transition-ids with same pdf-id are next to
 /// each other.
-void SortPosteriorByPdfs(const TransitionModel &tmodel,
+void SortPosteriorByPdfs(const Transitions &tmodel,
                          Posterior *post);
 
 
 /// Converts a posterior over transition-ids to be a posterior
 /// over pdf-ids.
-void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
+void ConvertPosteriorToPdfs(const Transitions &tmodel,
                             const Posterior &post_in,
                             Posterior *post_out);
 
 /// Converts a posterior over transition-ids to be a posterior
 /// over phones.
-void ConvertPosteriorToPhones(const TransitionModel &tmodel,
+void ConvertPosteriorToPhones(const Transitions &tmodel,
                               const Posterior &post_in,
                               Posterior *post_out);
 
@@ -225,7 +225,7 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
 /// in the set "silence_set" by scale "silence_scale".
 /// The interface was changed in Feb 2014 to do the modification
 /// "in-place" rather than having separate input and output.
-void WeightSilencePost(const TransitionModel &trans_model,
+void WeightSilencePost(const Transitions &trans_model,
                        const ConstIntegerSet<int32> &silence_set,
                        BaseFloat silence_scale,
                        Posterior *post);
@@ -236,7 +236,7 @@ void WeightSilencePost(const TransitionModel &trans_model,
 /// has the effect that frames that are mostly silence get down-weighted.
 /// The interface was changed in Feb 2014 to do the modification
 /// "in-place" rather than having separate input and output.
-void WeightSilencePostDistributed(const TransitionModel &trans_model,
+void WeightSilencePostDistributed(const Transitions &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
                                   Posterior *post);
@@ -250,11 +250,11 @@ void PosteriorToMatrix(const Posterior &post,
 
 /// This converts a Posterior to a Matrix. The number of matrix-rows is the same
 /// as the 'post.size()', the number of matrix-columns is defined by 'NumPdfs'
-/// in the TransitionModel.
+/// in the Transitions.
 /// The elements which are not specified in 'Posterior' are equal to zero.
 template <typename Real>
 void PosteriorToPdfMatrix(const Posterior &post,
-                          const TransitionModel &model,
+                          const Transitions &model,
                           Matrix<Real> *mat);
 
 /// @} end "addtogroup posterior_group"

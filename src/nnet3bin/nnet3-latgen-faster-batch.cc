@@ -23,7 +23,7 @@
 #include "base/kaldi-common.h"
 #include "decoder/decoder-wrappers.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "nnet3/nnet-batch-compute.h"
 #include "nnet3/nnet-utils.h"
 #include "util/kaldi-thread.h"
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(3),
         lattice_wspecifier = po.GetArg(4);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmNnetSimple am_nnet;
     {
       bool binary;

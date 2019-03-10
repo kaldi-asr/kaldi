@@ -24,7 +24,7 @@
 namespace kaldi {
 
 DecodableDiagGmmScaledOnline::DecodableDiagGmmScaledOnline(
-    const AmDiagGmm &am, const TransitionModel &trans_model,
+    const AmDiagGmm &am, const Transitions &trans_model,
     const BaseFloat scale, OnlineFeatureInterface *input_feats):  
       features_(input_feats), ac_model_(am),
       ac_scale_(scale), trans_model_(trans_model),

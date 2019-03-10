@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "hmm/posterior.h"
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         posteriors_rspecifier = po.GetArg(2),
         posteriors_wspecifier = po.GetArg(3);
 
-    TransitionModel trans_model;    
+    Transitions trans_model;    
     {
       bool binary_in;
       Input ki(model_rxfilename, &binary_in);

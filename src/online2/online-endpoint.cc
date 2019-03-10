@@ -72,7 +72,7 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
 }
 
 template <typename FST>
-int32 TrailingSilenceLength(const TransitionModel &tmodel,
+int32 TrailingSilenceLength(const Transitions &tmodel,
                             const std::string &silence_phones_str,
                             const LatticeFasterOnlineDecoderTpl<FST> &decoder) {
   std::vector<int32> silence_phones;
@@ -109,7 +109,7 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
 template <typename FST>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<FST> &decoder) {
   if (decoder.NumFramesDecoded() == 0) return false;
@@ -131,7 +131,7 @@ bool EndpointDetected(
 template
 bool EndpointDetected<fst::Fst<fst::StdArc> >(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
 
@@ -139,7 +139,7 @@ bool EndpointDetected<fst::Fst<fst::StdArc> >(
 template
 bool EndpointDetected<fst::GrammarFst>(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<fst::GrammarFst> &decoder);
 

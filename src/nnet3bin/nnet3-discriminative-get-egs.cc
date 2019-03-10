@@ -22,7 +22,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/posterior.h"
 #include "nnet3/nnet-discriminative-example.h"
 #include "nnet3/discriminative-supervision.h"
@@ -37,7 +37,7 @@ namespace nnet3 {
 // returns true if we got as far as calling GetChunksForUtterance()
 // [in which case stats will be accumulated by class UtteranceSplitter]
 static bool ProcessFile(const discriminative::SplitDiscriminativeSupervisionOptions &config,
-                        const TransitionModel &tmodel,
+                        const Transitions &tmodel,
                         const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
         examples_wspecifier = po.GetArg(5);
 
 
-    TransitionModel tmodel;
+    Transitions tmodel;
     {
       bool binary;
       Input ki(model_wxfilename, &binary);

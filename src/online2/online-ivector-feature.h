@@ -459,7 +459,7 @@ class OnlineSilenceWeighting {
   // frame-rate of the input features.  E.g. you might set it to 3 for such
   // models.
 
-  OnlineSilenceWeighting(const TransitionModel &trans_model,
+  OnlineSilenceWeighting(const Transitions &trans_model,
                          const OnlineSilenceWeightingConfig &config,
 			 int32 frame_subsampling_factor = 1);
 
@@ -490,7 +490,7 @@ class OnlineSilenceWeighting {
       std::vector<std::pair<int32, BaseFloat> > *delta_weights);
 
  private:
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
   const OnlineSilenceWeightingConfig &config_;
 
   int32 frame_subsampling_factor_;

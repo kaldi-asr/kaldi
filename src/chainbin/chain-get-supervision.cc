@@ -30,7 +30,7 @@ namespace chain {
 
 // This wrapper function does all the job of processing the features and
 // lattice into ChainSupervision objects, and writing them out.
-static bool ProcessSupervision(const TransitionModel &trans_model,
+static bool ProcessSupervision(const Transitions &trans_model,
                                const ContextDependencyInterface &ctx_dep,
                                const ProtoSupervision &proto_sup,
                                const std::string &key,
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
         phone_durs_or_lat_rspecifier = po.GetArg(3),
         supervision_wspecifier = po.GetArg(4);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(trans_model_rxfilename, &trans_model);
 
     ContextDependency ctx_dep;

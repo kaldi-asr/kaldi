@@ -34,7 +34,7 @@
 #include "online2/online-gmm-decodable.h"
 #include "online2/online-endpoint.h"
 #include "decoder/lattice-faster-online-decoder.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/posterior.h"
 
@@ -167,7 +167,7 @@ class OnlineGmmDecodingModels {
  public:
   OnlineGmmDecodingModels(const OnlineGmmDecodingConfig &config);
 
-  const TransitionModel &GetTransitionModel() const;
+  const Transitions &GetTransitionModel() const;
 
   const AmDiagGmm &GetOnlineAlignmentModel() const;
 
@@ -181,7 +181,7 @@ class OnlineGmmDecodingModels {
   // The transition-model is only needed for its integer ids, and these need to
   // be identical for all 3 models, so we only store one (it doesn't matter
   // which one).
-  TransitionModel tmodel_; 
+  Transitions tmodel_; 
   // The model trained with online-CMVN features
   // (if supplied, otherwise use model_)
   AmDiagGmm online_alignment_model_;

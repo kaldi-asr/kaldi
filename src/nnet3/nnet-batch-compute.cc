@@ -1007,7 +1007,7 @@ void NnetBatchInference::Compute() {
 NnetBatchDecoder::NnetBatchDecoder(
     const fst::Fst<fst::StdArc> &fst,
     const LatticeFasterDecoderConfig &decoder_opts,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const fst::SymbolTable *word_syms,
     bool allow_partial,
     int32 num_threads,

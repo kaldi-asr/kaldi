@@ -25,7 +25,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -161,7 +161,7 @@ struct WordAlignLatticeLexiconOpts {
 /// error including when the the lattice seems to have been "forced out"
 /// (did not reach end state, resulting in partial word at end).
 bool WordAlignLatticeLexicon(const CompactLattice &lat,
-                             const TransitionModel &tmodel,
+                             const Transitions &tmodel,
                              const WordAlignLatticeLexiconInfo &lexicon_info,
                              const WordAlignLatticeLexiconOpts &opts,
                              CompactLattice *lat_out);
@@ -177,7 +177,7 @@ bool WordAlignLatticeLexicon(const CompactLattice &lat,
 ///   partial-word arcs, with the partial-word label.
 ///   silence arcs, with the silence label.
 void TestWordAlignedLatticeLexicon(const CompactLattice &lat,
-                                   const TransitionModel &tmodel,
+                                   const Transitions &tmodel,
                                    const std::vector<std::vector<int32> > &lexicon,
                                    const CompactLattice &aligned_lat,
                                    bool allow_duplicate_paths);

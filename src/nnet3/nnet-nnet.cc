@@ -24,7 +24,7 @@
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/am-nnet-simple.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -587,10 +587,10 @@ void Nnet::Read(std::istream &is, bool binary) {
   Destroy();
   int first_char = PeekToken(is, binary);
   if (first_char == 'T') {
-    // This branch is to allow '.mdl' files (containing a TransitionModel
+    // This branch is to allow '.mdl' files (containing a Transitions
     // and then an AmNnetSimple) to be read where .raw files (containing
     // just an Nnet) would be expected.  This is often convenient.
-    TransitionModel temp_trans_model;
+    Transitions temp_trans_model;
     temp_trans_model.Read(is, binary);
     AmNnetSimple temp_am_nnet;
     temp_am_nnet.Read(is, binary);

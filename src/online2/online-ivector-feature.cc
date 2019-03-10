@@ -445,7 +445,7 @@ BaseFloat OnlineIvectorFeature::ObjfImprPerFrame() const {
 
 
 OnlineSilenceWeighting::OnlineSilenceWeighting(
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const OnlineSilenceWeightingConfig &config,
     int32 frame_subsampling_factor):
     trans_model_(trans_model), config_(config),

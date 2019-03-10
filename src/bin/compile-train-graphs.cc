@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/training-graph-compiler.h"
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;  // the tree.
     ReadKaldiObject(tree_rxfilename, &ctx_dep);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_rxfilename, &trans_model);
 
     // need VectorFst because we will change it by adding subseq symbol.
