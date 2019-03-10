@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 mkdir -p data/lang_test_fsh
 

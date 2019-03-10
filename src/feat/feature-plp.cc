@@ -124,8 +124,8 @@ void PlpComputer::Compute(BaseFloat signal_log_energy,
 
 
   if (opts_.use_energy && !opts_.raw_energy)
-    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<BaseFloat>::min()));
+    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<float>::min()));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -159,8 +159,8 @@ void PlpComputer::Compute(BaseFloat signal_log_energy,
 
   BaseFloat residual_log_energy = ComputeLpc(autocorr_coeffs_, &lpc_coeffs_);
 
-  residual_log_energy = std::max(residual_log_energy,
-                                 std::numeric_limits<BaseFloat>::min());
+  residual_log_energy = std::max<BaseFloat>(residual_log_energy,
+                                 std::numeric_limits<float>::min());
 
   Lpc2Cepstrum(opts_.lpc_order, lpc_coeffs_.Data(), raw_cepstrum_.Data());
   feature->Range(1, opts_.num_ceps - 1).CopyFromVec(

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
-#	    2014  Pegah Ghahremani
+#      2014  Pegah Ghahremani
 # This script trains a fairly vanilla network with tanh nonlinearities to generate bottleneck features
 
 # Begin configuration section.

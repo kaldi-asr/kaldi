@@ -143,7 +143,7 @@ static bool UnitTestNnetOptimizeWithOptions(int32 srand_seed,
   KALDI_LOG << "Output sum (optimized) is " << output_opt.Sum();
   if (!ApproxEqual(output, output_opt)) {
     KALDI_WARN << "Non-optimized and optimized versions of the computation give "
-               << "different outputs.";
+               << "different outputs: " << output << " vs. " << output_opt;
     return false;
   }
 
@@ -308,7 +308,7 @@ static void UnitTestNnetOptimize() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  // SetVerboseLevel(3);
+  SetVerboseLevel(3);
 
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().SetDebugStrideMode(true);

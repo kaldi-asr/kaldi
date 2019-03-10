@@ -137,6 +137,9 @@ sub get_combine_info {
       if (m/Combining nnets, objective function changed from (\S+) to (\S+)/) {
         close(F);
         return sprintf(" combine=%.2f->%.2f", $1, $2);
+      } elsif (m/Combining (\S+) nnets, objective function changed from (\S+) to (\S+)/) {
+        close(F);
+        return sprintf(" combine=%.2f->%.2f (over %d)", $2, $3, $1); 
       }
     }
   }

@@ -78,9 +78,9 @@ for f in $required; do
 done
 
 if [ ! -z "$pitch_postprocess_config" ]; then
-	postprocess_config_opt="--config=$pitch_postprocess_config";
+  postprocess_config_opt="--config=$pitch_postprocess_config";
 else
-	postprocess_config_opt=
+  postprocess_config_opt=
 fi
 
 utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;

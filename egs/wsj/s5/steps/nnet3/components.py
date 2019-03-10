@@ -84,7 +84,7 @@ def AddBlockAffineLayer(config_lines, name, input, output_dim, num_blocks):
 def AddPermuteLayer(config_lines, name, input, column_map):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
-    permute_indexes = ",".join(map(lambda x: str(x), column_map))
+    permute_indexes = ",".join([str(x) for x in column_map])
     components.append('component name={0}_permute type=PermuteComponent column-map={1}'.format(name, permute_indexes))
     component_nodes.append('component-node name={0}_permute component={0}_permute input={1}'.format(name, input['descriptor']))
 
@@ -168,8 +168,8 @@ def AddConvolutionLayer(config_lines, name, input,
     components.append(conv_init_string)
     component_nodes.append("component-node name={0}_conv_t component={0}_conv input={1}".format(name, input['descriptor']))
 
-    num_x_steps = (1 + (input_x_dim - filt_x_dim) / filt_x_step)
-    num_y_steps = (1 + (input_y_dim - filt_y_dim) / filt_y_step)
+    num_x_steps = (1 + (input_x_dim - filt_x_dim) // filt_x_step)
+    num_y_steps = (1 + (input_y_dim - filt_y_dim) // filt_y_step)
     output_dim = num_x_steps * num_y_steps * num_filters;
     return {'descriptor':  '{0}_conv_t'.format(name),
             'dimension': output_dim,
@@ -204,9 +204,9 @@ def AddMaxpoolingLayer(config_lines, name, input,
 
     component_nodes.append('component-node name={0}_maxp_t component={0}_maxp input={1}'.format(name, input['descriptor']))
 
-    num_pools_x = 1 + (input_x_dim - pool_x_size) / pool_x_step;
-    num_pools_y = 1 + (input_y_dim - pool_y_size) / pool_y_step;
-    num_pools_z = 1 + (input_z_dim - pool_z_size) / pool_z_step;
+    num_pools_x = 1 + (input_x_dim - pool_x_size) // pool_x_step;
+    num_pools_y = 1 + (input_y_dim - pool_y_size) // pool_y_step;
+    num_pools_z = 1 + (input_z_dim - pool_z_size) // pool_z_step;
     output_dim = num_pools_x * num_pools_y * num_pools_z;
 
     return {'descriptor':  '{0}_maxp_t'.format(name),

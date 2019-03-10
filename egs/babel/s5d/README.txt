@@ -3,7 +3,9 @@ How to setup the BABEL database training environment
 a) Preparation: you need to make sure the BABEL data and the F4DE scoring software
    is set up as it is in JHU, or change this setup accordingly.  This will probably 
    be hard and will involve some trial and error.  Some relevant pathnames can be 
-   found in conf/lang/* and ./path.sh
+   found in conf/lang/* and ./path.sh. 
+   Also, you could use the scripts in local/nist_eval/create_new_language_configs.{FLP,LLP}.sh
+   which can generate (hopefully) the config for you.
 
    Link one of the config files in conf/languages to ./lang.conf.  E.g.:
     ln -s conf/languages/105-turkish-limitedLP.official.conf lang.conf

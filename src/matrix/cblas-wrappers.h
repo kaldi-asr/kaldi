@@ -26,6 +26,7 @@
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/matrix-functions.h"
+#include "matrix/kaldi-blas.h"
 
 // Do not include this file directly.  It is to be included
 // by .cc files in this directory.
@@ -334,7 +335,6 @@ inline void cblas_Xsbmv1(
   cblas_ssbmv(CblasRowMajor, CblasLower, dim, 0, alpha, A,
               1, x, 1, beta, y, 1);
 }
-
 
 /// This is not really a wrapper for CBLAS as CBLAS does not have this; in future we could
 /// extend this somehow.

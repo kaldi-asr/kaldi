@@ -29,10 +29,10 @@ echo ""
 mkdir -p $dir/log
 # collect scores
 for x in `find $dir/ -type d -name "*_it*" | awk -F "_it" '{print $NF}' | sort | uniq`; do
-    for y in `find $dir/*_${enhan}_it*/ | grep "\/wer_" | awk -F'[/]' '{print $NF}' | sort | uniq`; do
-	echo -n "${x}_$y "
-	cat $dir/decode_tgpr_5k_dt05_{real,simu}_${enhan}_it$x/$y | grep WER | awk '{err+=$4} {wrd+=$6} END{printf("%.2f\n",err/wrd*100)}'
-    done
+  for y in `find $dir/*_${enhan}_it*/ | grep "\/wer_" | awk -F'[/]' '{print $NF}' | sort | uniq`; do
+    echo -n "${x}_$y "
+    cat $dir/decode_tgpr_5k_dt05_{real,simu}_${enhan}_it$x/$y | grep WER | awk '{err+=$4} {wrd+=$6} END{printf("%.2f\n",err/wrd*100)}'
+  done
 done | sort -n -k 2 | head -n 1 > $dir/log/best_wer_$enhan
 
 lmw=`cut -f 1 -d" " $dir/log/best_wer_$enhan | awk -F'[_]' '{print $NF}'`
@@ -53,12 +53,12 @@ for e_d in $tasks; do
     rdir=$dir/decode_tgpr_5k_${e_d}_${task}_${enhan}_it$it
     for a in _BUS _CAF _PED _STR; do
       grep $a $rdir/scoring/test_filt.txt \
-	> $rdir/scoring/test_filt_$a.txt
+        > $rdir/scoring/test_filt_$a.txt
       cat $rdir/scoring/$lmw.tra \
-	| utils/int2sym.pl -f 2- $graph_dir/words.txt \
-	| sed s:\<UNK\>::g \
-	| compute-wer --text --mode=present ark:$rdir/scoring/test_filt_$a.txt ark,p:- \
-	1> $rdir/${a}_wer_$lmw 2> /dev/null
+        | utils/int2sym.pl -f 2- $graph_dir/words.txt \
+        | sed s:\<UNK\>::g \
+        | compute-wer --text --mode=present ark:$rdir/scoring/test_filt_$a.txt ark,p:- \
+        1> $rdir/${a}_wer_$lmw 2> /dev/null
     done
     echo -n "${e_d}_${task} WER: `grep WER $rdir/wer_$lmw | cut -f 2 -d" "`% (Average), "
     echo -n "`grep WER $rdir/_BUS_wer_$lmw | cut -f 2 -d" "`% (BUS), "

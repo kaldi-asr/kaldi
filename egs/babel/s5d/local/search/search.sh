@@ -196,7 +196,7 @@ if [ $stage -le 4 ]; then
     echo "$0: Not scoring, because the file local/kws_score.sh is not present"
   else
     echo "$0: Scoring KWS results"
-    local/search/score.sh --cmd "$decode_cmd" \
+    local/search/score.sh --cmd "$cmd" \
       --min-lmwt $min_lmwt --max-lmwt $max_lmwt $extraid_flags \
       $langdir $datadir ${kwsoutdir} || exit 1;
   fi

@@ -3,8 +3,9 @@
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 # Extracts one best output for a set of files
 # The list of files in the conversations for which 1 best output has to be extracted
-# words.txt 
+# words.txt
 
+from __future__ import print_function
 import os
 import sys
 import subprocess
@@ -44,7 +45,7 @@ def latticeConcatenate(lat1, lat2):
 def findLattice(timeDetail):
     '''
     Finds the lattice corresponding to a time segment
-    ''' 
+    '''
     if os.path.isfile(latticeLocation + timeDetail + '.lat'):
         return latticeLocation + timeDetail + '.lat'
     else:
@@ -67,7 +68,7 @@ for item in fileList:
     for line in timingFile:
         timeInfo = line.split()
 
-        # For utterances that are concatenated in the translation file, 
+        # For utterances that are concatenated in the translation file,
         # the corresponding FSTs have to be translated as well
         mergedTranslation = ""
         for timeDetail in timeInfo:
@@ -76,13 +77,13 @@ for item in fileList:
                 # Concatenate lattices
                 mergedTranslation = latticeConcatenate(mergedTranslation, tmp)
 
-        print mergedTranslation
+        print(mergedTranslation)
         if mergedTranslation != "":
-            
+
             # Sanjeev's Recipe : Remove epsilons and topo sort
             finalFST = tmpdir + "/final.fst"
             os.system("fstrmepsilon " + mergedTranslation + " | fsttopsort - " + finalFST)
-        
+
             # Now convert to PLF
             proc = subprocess.Popen('/export/a04/gkumar/corpora/fishcall/bin/fsm2plf.sh ' + symtable +  ' ' + finalFST, stdout=subprocess.PIPE, shell=True)
             PLFline = proc.stdout.readline()
@@ -91,20 +92,20 @@ for item in fileList:
             finalPLF.write(PLFline)
             finalPLF.close()
 
-            # now check if this is a valid PLF, if not write it's ID in a 
+            # now check if this is a valid PLF, if not write it's ID in a
             # file so it can be checked later
             proc = subprocess.Popen("/export/a04/gkumar/moses/mosesdecoder/checkplf < " + finalPLFFile + " 2>&1 | awk 'FNR == 2 {print}'", stdout=subprocess.PIPE, shell=True)
             line = proc.stdout.readline()
-            print line + " " + str(lineNo)
+            print("{} {}".format(line, lineNo))
             if line.strip() != "PLF format appears to be correct.":
                 os.system("cp " + finalFST + " " + invalidplfdir + "/" + timeInfo[0])
                 invalidPLF.write(invalidplfdir + "/" + timeInfo[0] + "\n")
-                rmLines.write(str(lineNo) + "\n")
+                rmLines.write("{}\n".format(lineNo))
             else:
                 provFile.write(PLFline)
         else:
             blankPLF.write(timeInfo[0] + "\n")
-            rmLines.write(str(lineNo) + "\n")
+            rmLines.write("{}\n".format(lineNo))
         # Now convert to PLF
         lineNo += 1
 

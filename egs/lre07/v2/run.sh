@@ -74,12 +74,6 @@ local/split_long_utts.sh --max-utt-len 120 data/train_unsplit data/train
 echo "**Language count in i-Vector extractor training (after splitting long utterances):**"
 awk '{print $2}' data/train/utt2lang | sort | uniq -c | sort -nr
 
-# This commented script is an alternative to the above utterance
-# splitting method. Here we split the utterance based on the number of
-# frames which are voiced, rather than the total number of frames.
-# max_voiced=3000
-# local/vad_split_utts.sh --max-voiced $max_voiced data/train_unsplit $mfccdir data/train
-
 use_vtln=true
 if $use_vtln; then
   for t in train lre07; do

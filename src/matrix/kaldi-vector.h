@@ -6,6 +6,7 @@
 //                       Karel Vesely;  Go Vivace Inc.;  Arnab Ghoshal
 //                       Wei Shi;
 //                2015   Guoguo Chen
+//                2017   Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -133,11 +134,13 @@ class VectorBase {
   /// Take absolute value of each of the elements
   void ApplyAbs();
 
-  /// Applies floor to all elements. Returns number of elements floored.
-  MatrixIndexT ApplyFloor(Real floor_val);
+  /// Applies floor to all elements. Returns number of elements
+  /// floored in floored_count if it is non-null.
+  void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = nullptr);
 
-  /// Applies ceiling to all elements. Returns number of elements changed.
-  MatrixIndexT ApplyCeiling(Real ceil_val);
+  /// Applies ceiling to all elements. Returns number of elements
+  /// changed in ceiled_count if it is non-null.
+  void ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count = nullptr);
 
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(const VectorBase<Real> &floor_vec);
@@ -511,8 +514,9 @@ class SubVector : public VectorBase<Real> {
 
   /// Constructor from a pointer to memory and a length.  Keeps a pointer
   /// to the data but does not take ownership (will never delete).
-  SubVector(Real *data, MatrixIndexT length) : VectorBase<Real> () {
-    VectorBase<Real>::data_ = data;
+  /// Caution: this constructor enables you to evade const constraints.
+  SubVector(const Real *data, MatrixIndexT length) : VectorBase<Real> () {
+    VectorBase<Real>::data_ = const_cast<Real*>(data);
     VectorBase<Real>::dim_   = length;
   }
 
@@ -591,4 +595,3 @@ Real VecMatVec(const VectorBase<Real> &v1, const MatrixBase<Real> &M,
 
 
 #endif  // KALDI_MATRIX_KALDI_VECTOR_H_
-

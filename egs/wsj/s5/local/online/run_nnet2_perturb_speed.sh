@@ -65,7 +65,7 @@ if [ $stage -le 1 ]; then
   # we'll use 256 Gaussians for speed.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
     data/train_si84 256 exp/tri3b $nnet_dir/diag_ubm
-fi	
+fi
 
 if [ $stage -le 2 ]; then
   # even though $nj is just 10, each job uses multiple processes and threads.
@@ -122,7 +122,7 @@ fi
 
 # Here are the results.
 
-# First, this is the baseline. 
+# First, this is the baseline.
 # This is obtained from running the offline decoding in run_nnet2.sh which calls steps/nnet2/train_pnorm_simple2.sh
 
 # %WER 7.91 [ 651 / 8234, 79 ins, 102 del, 470 sub ] exp/nnet2_online/nnet_a_gpu/decode_bd_tgpr_dev93/wer_11

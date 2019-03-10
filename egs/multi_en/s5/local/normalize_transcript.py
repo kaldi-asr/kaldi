@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 # Copyright 2016  Allen Guo
+#           2017  Xiaohui Zhang
 # Apache License 2.0
 
 # This script normalizes the given "text" (transcript) file. The normalized result
 # is printed to STDOUT. This normalization should be applied to all corpora.
 
+from __future__ import print_function
 import re
 import sys
 
@@ -14,6 +16,7 @@ def normalize(utt):
              .replace('[uh]', 'uh') \
              .replace('[um]', 'um') \
              .replace('<noise>', '[noise]') \
+             .replace('<spoken_noise>', '[vocalized-noise]') \
              .replace('.period', 'period') \
              .replace('.dot', 'dot') \
              .replace('-hyphen', 'hyphen') \
@@ -24,7 +27,7 @@ def normalize(utt):
 
 def main():
     if len(sys.argv) != 2:
-        print 'Usage: local/normalize_transcript.py [text_file]'
+        print('Usage: local/normalize_transcript.py [text_file]')
         sys.exit(1)
     with open(sys.argv[1], 'r') as f:
         for line in f.readlines():

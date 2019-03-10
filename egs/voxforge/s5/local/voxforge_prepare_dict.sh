@@ -3,7 +3,7 @@
 # Copyright 2012 Vassil Panayotov
 # Apache 2.0
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 locdata=data/local
 locdict=$locdata/dict
@@ -49,7 +49,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
   alias readlink=greadlink
 fi
 
-sequitur=$KALDI_ROOT/tools/sequitur
+sequitur=$KALDI_ROOT/tools/sequitur-g2p
 export PATH=$PATH:$sequitur/bin
 export PYTHONPATH=$PYTHONPATH:`utils/make_absolute.sh $sequitur/lib/python*/site-packages`
 

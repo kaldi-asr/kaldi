@@ -52,6 +52,7 @@ class ArpaLmCompiler : public ArpaFileParser {
   // this function removes states that only have a backoff arc coming
   // out of them.
   void RemoveRedundantStates();
+  void Check() const;
 
   int sub_eps_;
   ArpaLmCompilerImplInterface* impl_;  // Owned.

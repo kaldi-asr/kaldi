@@ -111,7 +111,7 @@ delta_opts=`cat $srcdir/delta_opts 2>/dev/null` || true
 
 silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
 
-utils/lang/check_phones_compatible.sh $graph_dir/phones.txt $srcdir/phones.txt
+utils/lang/check_phones_compatible.sh $graphdir/phones.txt $srcdir/phones.txt
 
 # Some checks.  Note: we don't need $srcdir/tree but we expect
 # it should exist, given the current structure of the scripts.

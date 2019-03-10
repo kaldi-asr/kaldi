@@ -179,7 +179,7 @@ fi
 if [ $stage -le 14 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/hub4_spanish-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
@@ -227,6 +227,16 @@ if [ $stage -le 15 ]; then
     $tree_dir $dir/graph || exit 1;
 fi
 
+if [ $stage -le 16 ]; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  nspk=$(wc -l <data/eval/spk2utt)
+  steps/nnet3/decode.sh \
+    --acwt 1.0 --post-decode-acwt 10.0 \
+    --frames-per-chunk $frames_per_chunk \
+    --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
+    --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_eval_hires \
+    $dir/graph data/eval_hires $dir/decode_test || exit 1
+fi
 
 if [ $stage -le 17 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to

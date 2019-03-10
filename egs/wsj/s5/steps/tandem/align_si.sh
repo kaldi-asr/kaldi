@@ -11,7 +11,7 @@
 # case the number of jobs must match with the source directory.
 
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=4
 cmd=run.pl
 use_graphs=false
@@ -66,14 +66,14 @@ normft2=`cat $srcdir/normft2 2>/dev/null` || exit 1;
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
-# for lda-type features, we need to copy both the lda (for baseft) and mllt 
+# for lda-type features, we need to copy both the lda (for baseft) and mllt
 # transformation (for the pasted features)
 case $feat_type in
-  delta) 
-  	echo "$0: feature type is $feat_type"
-	  ;;
-  lda) 
-  	echo "$0: feature type is $feat_type"
+  delta)
+    echo "$0: feature type is $feat_type"
+    ;;
+  lda)
+    echo "$0: feature type is $feat_type"
     cp $srcdir/{lda,final}.mat $dir/ || exit 1;
    ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
@@ -89,7 +89,7 @@ elif [ "$feat_type" == "lda" ]; then
   feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
@@ -112,7 +112,7 @@ echo "$0: aligning data in $data using model from $srcdir, putting alignments in
 
 mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/final.mdl - |"
 
-if $use_graphs; then 
+if $use_graphs; then
   [ $nj != "`cat $srcdir/num_jobs`" ] && echo "$0: mismatch in num-jobs" && exit 1;
   [ ! -f $srcdir/fsts.1.gz ] && echo "$0: no such file $srcdir/fsts.1.gz" && exit 1;
 

@@ -389,34 +389,7 @@ on the paths.
  You might notice in the current example scripts that we use iVectors.  We do so
  just because they generally help a bit, and because the baseline setup we were
  comparing with, uses them.  There is no inherent connection with 'chain'
- models, and no fundamental requirement to use them.  Actually we want to get rid
- of them (see below).
-
-
- \section chain_next_steps  Next steps (TODOs) with 'chain' models
-
-  (Note: this list is valid as of Dec 13 2015, but may become out of date).
-   Things we need to do (and that we'd like help with) are:
-     - Supply example scripts (and tune them) on a wide range of corpora
-       (It will be interesting to see whether there are scale-dependent effects
-       affecting how well this model works).
-     - Create and tune LSTM and BLSTM versions of the training script.  (This
-       may involve some playing around with learning rate schedules and
-       configurations).
-     - Figure out how to speed up the forward-backward part of the computation.
-       (E.g. using state-level pruning, or just by optimizing the current kernels or
-       data structures).
-
-  A longer-term TODO, which Dan should do, is to create an online decoding setup
-  for these models.  Actually this isn't really distinct from nnet3 online
-  decoding in general, since the models are no different from regular nnet3
-  acoustic models.  But we do have to decide whether to continue to support
-  iVectors-- getting rid of them would simplify the setup considerably, and
-  would hopefully make it more robust.  We are hoping that with LSTMs, since it
-  already sees quite a wide acoustic context, iVector adaptation will no longer
-  be as helpful and could be dropped.  We also have other ideas how to
-  incorporate adaptation as part of the neural network, without the use of
-  iVectors.  This will require some experimentation.
+ models, and no fundamental requirement to use them.
 
 
 */

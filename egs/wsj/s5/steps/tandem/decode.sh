@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 transform_dir=
 iter=
 model= # You can specify the model to use (e.g. if you want to use the .alimdl)
@@ -64,7 +64,7 @@ sdata2=$data2/split$nj;
 echo $nj > $dir/num_jobs
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
-  if [ -z $iter ]; then model=$srcdir/final.mdl; 
+  if [ -z $iter ]; then model=$srcdir/final.mdl;
   else model=$srcdir/$iter.mdl; fi
 fi
 
@@ -83,11 +83,11 @@ if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "decode.sh: feature type is $feat_type";
 
 case $feat_type in
-  delta) 
-	  echo "$0: feature type is $feat_type"
-  	;;
-  lda) 
-  	echo "$0: feature type is $feat_type"
+  delta)
+    echo "$0: feature type is $feat_type"
+    ;;
+  lda)
+    echo "$0: feature type is $feat_type"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -106,7 +106,7 @@ elif [ "$feat_type" == "lda" ]; then
   fi
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
@@ -141,7 +141,7 @@ if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
   local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data1 $graphdir $dir ||
-    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }   
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
 exit 0;

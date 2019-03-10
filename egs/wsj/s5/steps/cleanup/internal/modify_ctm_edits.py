@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016   Vimal Manohar
 #           2016   Johns Hopkins University (author: Daniel Povey)
@@ -105,7 +105,7 @@ args = parser.parse_args()
 def ReadNonScoredWords(non_scored_words_file):
     global non_scored_words
     try:
-        f = open(non_scored_words_file)
+        f = open(non_scored_words_file, encoding='utf-8')
     except:
         sys.exit("modify_ctm_edits.py: error opening file: "
                  "--non-scored-words=" + non_scored_words_file)
@@ -317,12 +317,12 @@ def ProcessUtterance(split_lines_of_utt):
 
 def ProcessData():
     try:
-        f_in = open(args.ctm_edits_in)
+        f_in = open(args.ctm_edits_in, encoding='utf-8')
     except:
         sys.exit("modify_ctm_edits.py: error opening ctm-edits input "
                  "file {0}".format(args.ctm_edits_in))
     try:
-        f_out = open(args.ctm_edits_out, 'w')
+        f_out = open(args.ctm_edits_out, 'w', encoding='utf-8')
     except:
         sys.exit("modify_ctm_edits.py: error opening ctm-edits output "
                  "file {0}".format(args.ctm_edits_out))
@@ -373,7 +373,11 @@ def PrintNonScoredStats():
     num_incorrect_lines = num_lines - num_correct_lines
     percent_lines_incorrect= '%.2f' % (num_incorrect_lines * 100.0 / num_lines)
     percent_modified = '%.2f' % (num_lines_modified * 100.0 / num_lines);
-    percent_of_incorrect_modified = '%.2f' % (num_lines_modified * 100.0 / num_incorrect_lines)
+    if num_incorrect_lines > 0:
+        percent_of_incorrect_modified = '%.2f' % (num_lines_modified * 100.0 /
+                                                  num_incorrect_lines)
+    else:
+        percent_of_incorrect_modified = float('nan')
     print("modify_ctm_edits.py: processed {0} lines of ctm ({1}% of which incorrect), "
           "of which {2} were changed fixing the reference for non-scored words "
           "({3}% of lines, or {4}% of incorrect lines)".format(
@@ -400,7 +404,11 @@ def PrintRepetitionStats():
     num_incorrect_lines = num_lines - num_correct_lines
     percent_lines_incorrect= '%.2f' % (num_incorrect_lines * 100.0 / num_lines)
     percent_modified = '%.2f' % (num_lines_modified * 100.0 / num_lines);
-    percent_of_incorrect_modified = '%.2f' % (num_lines_modified * 100.0 / num_incorrect_lines)
+    if num_incorrect_lines > 0:
+        percent_of_incorrect_modified = '%.2f' % (num_lines_modified * 100.0 /
+                                                  num_incorrect_lines)
+    else:
+        percent_of_incorrect_modified = float('nan')
     print("modify_ctm_edits.py: processed {0} lines of ctm ({1}% of which incorrect), "
           "of which {2} were changed fixing the reference for repetitions ({3}% of "
           "lines, or {4}% of incorrect lines)".format(

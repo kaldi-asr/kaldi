@@ -1,6 +1,6 @@
 // chain/chain-den-graph.cc
 
-// Copyright      2015   Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015-2018   Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -315,11 +315,18 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
     fst::Project(&phone_lm, fst::PROJECT_INPUT);
   }
   std::vector<int32> disambig_syms;  // empty list of diambiguation symbols.
-  fst::ContextFst<StdArc> cfst(subsequential_symbol, trans_model.GetPhones(),
-                               disambig_syms, ctx_dep.ContextWidth(),
-                               ctx_dep.CentralPosition());
-  StdVectorFst context_dep_lm;
-  fst::ComposeContextFst(cfst, phone_lm, &context_dep_lm);
+
+  // inv_cfst will be expanded on the fly, as needed.
+  fst::InverseContextFst inv_cfst(subsequential_symbol,
+                                  trans_model.GetPhones(),
+                                  disambig_syms,
+                                  ctx_dep.ContextWidth(),
+                                  ctx_dep.CentralPosition());
+
+  fst::StdVectorFst context_dep_lm;
+  fst::ComposeDeterministicOnDemandInverse(phone_lm, &inv_cfst,
+                                           &context_dep_lm);
+
   // at this point, context_dep_lm will have indexes into 'ilabels' as its
   // input symbol (representing context-dependent phones), and phones on its
   // output.  We don't need the phones, so we'll project.
@@ -335,7 +342,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   // we'll use the same value in test time.  Consistency is the key here.
   h_config.transition_scale = 1.0;
 
-  StdVectorFst *h_fst = GetHTransducer(cfst.ILabelInfo(),
+  StdVectorFst *h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
                                        ctx_dep,
                                        trans_model,
                                        h_config,
@@ -347,12 +354,15 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
 
   BaseFloat self_loop_scale = 1.0;  // We have to be careful to use the same
                                     // value in test time.
+  // 'reorder' must always be set to true for chain models.
   bool reorder = true;
+  bool check_no_self_loops = true;
+
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
-               &transition_id_fst);
+               check_no_self_loops, &transition_id_fst);
   // at this point transition_id_fst will have transition-ids as its ilabels and
-  // context-dependent phones (indexes into ILabelInfo()) as its olabels.
+  // context-dependent phones (indexes into IlabelInfo()) as its olabels.
   // Discard the context-dependent phones by projecting on the input, keeping
   // only the transition-ids.
   fst::Project(&transition_id_fst, fst::PROJECT_INPUT);

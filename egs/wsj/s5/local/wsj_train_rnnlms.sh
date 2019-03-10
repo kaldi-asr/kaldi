@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
 #           2015  Guoguo Chen
@@ -6,7 +6,7 @@
 # This script trains LMs on the WSJ LM-training data.
 # It requires that you have already run wsj_extend_dict.sh,
 # to get the larger-size dictionary including all of CMUdict
-# plus any OOVs and possible acronyms that we could easily 
+# plus any OOVs and possible acronyms that we could easily
 # derive pronunciations for.
 
 # This script takes no command-line arguments but takes the --cmd option.
@@ -14,7 +14,7 @@
 # Begin configuration section.
 rand_seed=0
 cmd=run.pl
-nwords=10000 # This is how many words we're putting in the vocab of the RNNLM. 
+nwords=10000 # This is how many words we're putting in the vocab of the RNNLM.
 hidden=30
 class=200 # Num-classes... should be somewhat larger than sqrt of nwords.
 direct=1000 # Number of weights that are used for "direct" connections, in millions.
@@ -52,7 +52,7 @@ fi
 cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $dir/wordlist.all
 
 # Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
-echo "Getting training data with OOV words replaced with <UNK> (train_nounk.gz)" 
+echo "Getting training data with OOV words replaced with <UNK> (train_nounk.gz)"
 gunzip -c $srcdir/cleaned.gz | awk -v w=$dir/wordlist.all \
   'BEGIN{while((getline<w)>0) v[$1]=1;}
   {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "<UNK> ";print ""}'|sed 's/ $//g' \
@@ -137,7 +137,7 @@ nw=`cat $dir/valid.with_ids | awk '{a+=NF}END{print a}'` # Note: valid.with_ids 
   # correct number to normalize buy.
   # we have noticed that "wc -w" might give wrong results for certain languages
 
-p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores` 
+p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores`
 echo Perplexity is $p | tee $dir/perplexity.log
 
 rm $dir/train $dir/all.gz

@@ -41,7 +41,7 @@ bool CheckStringsApproxEqual(const std::string &a,
                              int32 tolerance = 3) {
   if (!StringsApproxEqual(a, b, tolerance)) {
     KALDI_WARN << "Strings differ: " << a
-               << "\vs.\n" << b;
+               << "\nvs.\n" << b;
     return false;
   } else {
     return true;
@@ -166,23 +166,60 @@ void TestNnetComponentUpdatable(Component *c) {
   }
 }
 
+
+/*
+  This function gets the 'ComponentPrecomputedIndexes*' pointer from
+  a component, given the num-rows in the matrix of inputs we're testing it
+  with.  It uses a plausible arrangement of indexes.
+
+  Note: in this file we primarily test simple components, and simple
+  components don't return precomputed indexes; but we also test a
+  few non-simple components that operate with the same set of indexes
+  on the input and the output.  Simple components would return NULL.
+ */
+ComponentPrecomputedIndexes *GetPrecomputedIndexes(const Component &c,
+                                                   int32 num_rows) {
+  std::vector<Index> input_indexes(num_rows);
+  int32 num_t_values;
+  if (num_rows % 3 == 0) { num_t_values = 3; }
+  else if (num_rows % 2 == 0) { num_t_values = 2; }
+  else { num_t_values = 1; }
+
+  for (int32 i = 0; i < num_rows; i++) {
+    input_indexes[i].n = i % num_t_values;
+    input_indexes[i].x = 0;
+    input_indexes[i].t = i / num_t_values;
+  }
+  std::vector<Index> output_indexes(input_indexes);
+
+  if (c.Properties()&kReordersIndexes) {
+    c.ReorderIndexes(&input_indexes, &output_indexes);
+  }
+  MiscComputationInfo misc_info;
+  bool need_backprop = true;  // just in case.
+  ComponentPrecomputedIndexes *ans = c.PrecomputeIndexes(misc_info,
+                                                         input_indexes,
+                                                         output_indexes,
+                                                         need_backprop);
+  // ans will be NULL in most cases.
+  return ans;
+}
+
 // tests the properties kPropagateAdds, kBackpropAdds,
 // kBackpropNeedsInput, kBackpropNeedsOutput.
 void TestSimpleComponentPropagateProperties(const Component &c) {
   int32 properties = c.Properties();
-  Component *c_copy = NULL, *c_copy_scaled = NULL;
+  Component *c_copy = NULL;
   int32 rand_seed = Rand();
 
   if (RandInt(0, 1) == 0)
     c_copy = c.Copy();  // This will test backprop with an updatable component.
-  if (RandInt(0, 1) == 0 &&
-      (properties & kLinearInParameters)) {
-    c_copy_scaled = c.Copy();  // This will test backprop with an updatable component.
-    c_copy_scaled->Scale(0.5);
-  }
   MatrixStrideType input_stride_type = (c.Properties()&kInputContiguous) ?
       kStrideEqualNumCols : kDefaultStride;
   MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType both_stride_type =
+      (c.Properties()&(kInputContiguous|kOutputContiguous)) ?
       kStrideEqualNumCols : kDefaultStride;
 
   int32 input_dim = c.InputDim(),
@@ -191,32 +228,27 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   CuMatrix<BaseFloat> input_data(num_rows, input_dim, kUndefined,
                                  input_stride_type);
   input_data.SetRandn();
-  CuMatrix<BaseFloat> input_data_scaled(num_rows, input_dim, kUndefined,
-                                        input_stride_type),
-      output_data3(num_rows, input_dim, kSetZero,
-                   output_stride_type);
-  input_data_scaled.CopyFromMat(input_data);
+  CuMatrix<BaseFloat> output_data3(num_rows, input_dim, kSetZero,
+                                   output_stride_type);
   output_data3.CopyFromMat(input_data);
   CuMatrix<BaseFloat>
       output_data1(num_rows, output_dim, kSetZero, output_stride_type),
-      output_data2(num_rows, output_dim, kSetZero, output_stride_type),
-      output_data4(num_rows, output_dim, kSetZero, output_stride_type),
-      output_data5(num_rows, output_dim, kSetZero, output_stride_type);
+      output_data2(num_rows, output_dim, kSetZero, output_stride_type);
   output_data2.Add(1.0);
-  input_data_scaled.Scale(2.0);
 
   if ((properties & kPropagateAdds) && (properties & kPropagateInPlace)) {
     KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
   }
 
   ResetSeed(rand_seed, c);
-  void *memo = c.Propagate(NULL, input_data, &output_data1);
+  ComponentPrecomputedIndexes *indexes = GetPrecomputedIndexes(c, num_rows);
+  void *memo = c.Propagate(indexes, input_data, &output_data1);
 
   ResetSeed(rand_seed, c);
-  c.DeleteMemo(c.Propagate(NULL, input_data, &output_data2));
+  c.DeleteMemo(c.Propagate(indexes, input_data, &output_data2));
   if (properties & kPropagateInPlace) {
     ResetSeed(rand_seed, c);
-    c.DeleteMemo(c.Propagate(NULL, output_data3, &output_data3));
+    c.DeleteMemo(c.Propagate(indexes, output_data3, &output_data3));
     if (!output_data1.ApproxEqual(output_data3)) {
       KALDI_ERR << "Test of kPropagateInPlace flag for component of type "
                 << c.Type() << " failed.";
@@ -226,33 +258,19 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
     output_data2.Add(-1.0); // remove the offset
   AssertEqual(output_data1, output_data2);
 
-  if (c_copy_scaled) {
-    ResetSeed(rand_seed, *c_copy_scaled);
-    c_copy_scaled->Propagate(NULL, input_data, &output_data4);
-    output_data4.Scale(2.0);  // we scaled the parameters by 0.5 above, and the
-    // output is supposed to be linear in the parameter value.
-    AssertEqual(output_data1, output_data4);
-  }
-  if (properties & kLinearInInput) {
-    ResetSeed(rand_seed, c);
-    c.DeleteMemo(c.Propagate(NULL, input_data_scaled, &output_data5));
-    output_data5.Scale(0.5);
-    AssertEqual(output_data1, output_data5);
-  }
-
 
   CuMatrix<BaseFloat> output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   output_deriv.SetRandn();
   CuMatrix<BaseFloat> input_deriv1(num_rows, input_dim, kSetZero, input_stride_type),
       input_deriv2(num_rows, input_dim, kSetZero, input_stride_type);
-  CuMatrix<BaseFloat> input_deriv3(num_rows, output_dim, kSetZero, input_stride_type);
+  CuMatrix<BaseFloat> input_deriv3(num_rows, output_dim, kSetZero, both_stride_type);
   input_deriv3.CopyFromMat(output_deriv);
 
   input_deriv2.Add(1.0);
   CuMatrix<BaseFloat> empty_mat;
 
   // test with input_deriv1 that's zero
-  c.Backprop("foobar", NULL,
+  c.Backprop("foobar", indexes,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data1 : empty_mat),
              output_deriv,
@@ -260,7 +278,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
              c_copy,
              &input_deriv1);
   // test with input_deriv2 that's all ones.
-  c.Backprop("foobar", NULL,
+  c.Backprop("foobar", indexes,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data1 : empty_mat),
              output_deriv,
@@ -269,7 +287,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
              &input_deriv2);
   // test backprop in place, if supported.
   if (properties & kBackpropInPlace) {
-    c.Backprop("foobar", NULL,
+    c.Backprop("foobar", indexes,
                ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
                ((properties & kBackpropNeedsOutput) ? output_data1 : empty_mat),
                input_deriv3,
@@ -285,7 +303,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   if (properties & kBackpropInPlace)
     AssertEqual(input_deriv1, input_deriv3);
   delete c_copy;
-  delete c_copy_scaled;
+  delete indexes;
 }
 
 bool TestSimpleComponentDataDerivative(const Component &c,
@@ -307,11 +325,12 @@ bool TestSimpleComponentDataDerivative(const Component &c,
   output_deriv.SetRandn();
 
   ResetSeed(rand_seed, c);
-  void *memo = c.Propagate(NULL, input_data, &output_data);
+  ComponentPrecomputedIndexes *indexes = GetPrecomputedIndexes(c, num_rows);
+  void *memo = c.Propagate(indexes, input_data, &output_data);
 
   CuMatrix<BaseFloat> input_deriv(num_rows, input_dim, kSetZero, input_stride_type),
       empty_mat;
-  c.Backprop("foobar", NULL,
+  c.Backprop("foobar", indexes,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data : empty_mat),
              output_deriv, memo, NULL, &input_deriv);
@@ -334,7 +353,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
     perturbed_input_data.AddMat(1.0, input_data);
 
     ResetSeed(rand_seed, c);
-    c.DeleteMemo(c.Propagate(NULL, perturbed_input_data, &perturbed_output_data));
+    c.DeleteMemo(c.Propagate(indexes, perturbed_input_data, &perturbed_output_data));
     measured_objf_change(i) = TraceMatMat(output_deriv, perturbed_output_data,
                                           kTrans) - original_objf;
   }
@@ -359,6 +378,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
               << "it is ClipGradientComponent.";
     return true;
   }
+  delete indexes;
   return ans;
 }
 
@@ -389,7 +409,8 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   input_data.SetRandn();
   output_deriv.SetRandn();
 
-  void *memo = c.Propagate(NULL, input_data, &output_data);
+  ComponentPrecomputedIndexes *indexes = GetPrecomputedIndexes(c, num_rows);
+  void *memo = c.Propagate(indexes, input_data, &output_data);
 
   BaseFloat original_objf = TraceMatMat(output_deriv, output_data, kTrans);
 
@@ -406,7 +427,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   CuMatrix<BaseFloat> input_deriv(num_rows, input_dim,
                                   kSetZero, input_stride_type),
       empty_mat;
-  c.Backprop("foobar", NULL,
+  c.Backprop("foobar", indexes,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data : empty_mat),
              output_deriv, memo, c_copy,
@@ -416,7 +437,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   if (!test_derivative) { // Just testing that the model update is downhill.
     CuMatrix<BaseFloat> new_output_data(num_rows, output_dim,
                                         kSetZero, output_stride_type);
-    c.DeleteMemo(c_copy->Propagate(NULL, input_data, &new_output_data));
+    c.DeleteMemo(c_copy->Propagate(indexes, input_data, &new_output_data));
 
     BaseFloat new_objf = TraceMatMat(output_deriv, new_output_data, kTrans);
     bool ans = (new_objf > original_objf);
@@ -425,6 +446,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
                  << new_objf << " <= " << original_objf;
     }
     delete c_copy;
+    delete indexes;
     return ans;
   } else {
     // check that the model derivative is accurate.
@@ -443,7 +465,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
 
       predicted_objf_change(i) = uc_copy->DotProduct(*uc_perturbed) -
           uc_copy->DotProduct(*uc);
-      c_perturbed->Propagate(NULL, input_data, &perturbed_output_data);
+      c_perturbed->Propagate(indexes, input_data, &perturbed_output_data);
       measured_objf_change(i) = TraceMatMat(output_deriv, perturbed_output_data,
                                             kTrans) - original_objf;
       delete c_perturbed;
@@ -459,6 +481,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
                  << c.Type() << ", input-dim=" << input_dim
                  << ", output-dim=" << output_dim;
     delete c_copy;
+    delete indexes;
     return ans;
   }
 }

@@ -184,6 +184,19 @@ while ($line=<INLEX>) {
                         # It is a tag; save it for later
                         $is_original_tag{$phone} = 1;
                         $sylTag .= $phone;
+                    } elsif ($phone =~ /\_[FR]/) {
+                        # It is pitch accent marker -- convert it to tag
+                        # and save it for later
+
+                        $new_phone = $phone;
+                        $new_phone =~ s/\_[FR]//;
+                        $phone =~ s/.*(\_[FR]).*/$1/;
+
+                        $is_original_tag{$phone} = 1;
+                        $sylTag .= $phone;
+
+                        $new_phones .= " $new_phone";
+                        $is_original_phone{$new_phone} = "$new_phone";
                     } elsif ($phone =~ m:^[\"\%]$:) {
                         # It is a stress marker; save it like a tag
                         $phone = "_$phone";

@@ -9,6 +9,7 @@ segments into targets matrix for whole recording. The frames that are not
 in any of the segments are assigned the default targets vector, specified by
 the option --default-targets or [ 0 0 0 ] if unspecified.
 """
+from __future__ import division
 
 import argparse
 import logging
@@ -158,12 +159,14 @@ def run(args):
     num_reco = 0
 
     with common_lib.smart_open(args.out_targets_ark, 'w') as fh:
-        for reco, utts in reco2utt.iteritems():
+        for reco, utts in reco2utt.items():
             # Read a recording and the list of its utterances from the
             # reco2utt dictionary
             reco_mat = np.repeat(default_targets, reco2num_frames[reco],
                                  axis=0)
             utts.sort(key=lambda x: segments[x][1])   # sort on start time
+
+            end_frame_accounted = 0
 
             for i, utt in enumerate(utts):
                 if utt not in segments or utt not in targets:
@@ -208,45 +211,58 @@ def run(args):
                     num_utt_err += 1
                     continue
 
+                # Fix end_frame and num_frames if the segment goes beyond
+                # the length of the recording.
                 if end_frame > reco2num_frames[reco]:
                     end_frame = reco2num_frames[reco]
                     num_frames = end_frame - start_frame
 
-                if num_frames < 0:
+                # Fix "num_frames" and "end_frame" if "num_frames" is lower
+                # than the size of the targets matrix "mat"
+                num_frames = min(num_frames, mat.shape[0])
+                end_frame = start_frame + num_frames
+
+                if num_frames <= 0:
                     logger.warning("For utterance {utt}, start-frame {start} "
                                    "is outside the recording"
                                    "".format(utt=utt, start=start_frame))
                     num_utt_err += 1
                     continue
 
-                prev_utt_end_frame = (
-                    int(segments[utts[i-1]][2] / args.frame_shift + 0.5)
-                    if i > 0 else 0)
-                if start_frame < prev_utt_end_frame:
-                    # Segment overlaps with the previous utterance
+                if end_frame < end_frame_accounted:
+                    logger.warning("For utterance {utt}, end-frame {end} "
+                                   "is before the end of a previous segment. "
+                                   "i.e. this segment is completely within "
+                                   "another segment. Ignoring this segment."
+                                   "".format(utt=utt, end=end_frame))
+                    num_utt_err +=1
+                    continue
+
+                if start_frame < end_frame_accounted:
+                    # Segment overlaps with a previous utterance
                     # Combine targets using a weighted interpolation using a
                     # triangular window with a weight of 1 at the start/end of
                     # overlap and 0 at the end/start of the segment
-                    for n in range(0, prev_utt_end_frame - start_frame):
-                        w = float(n) / float(prev_utt_end_frame - start_frame)
+                    for n in range(0, end_frame_accounted - start_frame):
+                        w = float(n) / float(end_frame_accounted - start_frame)
                         reco_mat[n + start_frame, :] = (
                             reco_mat[n + start_frame, :] * (1.0 - w)
                             + mat[n, :] * w)
 
-                    num_frames = min(num_frames, mat.shape[0])
-                    end_frame = start_frame + num_frames
-                    reco_mat[prev_utt_end_frame:end_frame, :] = (
-                        mat[(prev_utt_end_frame-start_frame):
-                            (end_frame-start_frame), :])
+                    if end_frame > end_frame_accounted:
+                        reco_mat[end_frame_accounted:end_frame, :] = (
+                            mat[(end_frame_accounted-start_frame):
+                                (end_frame-start_frame), :])
                 else:
                     # No overlap with the previous utterances.
                     # So just add it to the output.
-                    num_frames = min(num_frames, mat.shape[0])
-                    reco_mat[start_frame:(start_frame + num_frames), :] = (
+                    reco_mat[start_frame:end_frame, :] = (
                         mat[0:num_frames, :])
                 logger.debug("reco_mat shape = %s, mat shape = %s, "
                              "start_frame = %d, end_frame = %d", reco_mat.shape,
                              mat.shape, start_frame, end_frame)
+
+                end_frame_accounted = end_frame
                 num_utt += 1
 
             if reco_mat.shape[0] > 0:
@@ -259,7 +275,7 @@ def run(args):
                 "".format(num_utt=num_utt, num_reco=num_reco,
                           num_utt_err=num_utt_err))
 
-    if num_utt == 0 or num_utt_err > num_utt / 2 or num_reco == 0:
+    if num_utt == 0 or num_utt_err > num_utt // 2 or num_reco == 0:
         raise RuntimeError
 
 

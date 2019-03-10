@@ -7,7 +7,7 @@
 
 """
 Script to combine ctms edits with overlapping segments obtained from
-smith-waterman alignment. This script is similar to resolve_ctm_edits.py,
+smith-waterman alignment. This script is similar to utils/ctm/resolve_ctm_edits.py,
 where the overlapping region is just split in two. The approach here is a
 little more advanced since we have access to the WER
 (w.r.t. the reference text). It finds the WER of the overlapped region
@@ -15,6 +15,7 @@ in the two overlapping segments, and chooses the better one.
 """
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import collections
 import logging
@@ -299,7 +300,7 @@ def run(args):
     segments, reco2utt = read_segments(args.segments)
     ctm_edits = read_ctm_edits(args.ctm_edits_in, segments)
 
-    for reco, utts in reco2utt.iteritems():
+    for reco, utts in reco2utt.items():
         ctm_edits_for_reco = []
         for utt in sorted(utts, key=lambda x: segments[x][1]):
             if (reco, utt) in ctm_edits:
@@ -308,7 +309,7 @@ def run(args):
             if len(ctm_edits_for_reco) == 0:
                 logger.warn('CTMs for recording %s is empty.',
                              reco)
-                break   # Go to the next recording
+                continue   # Go to the next recording
 
             # Process CTMs in the recordings
             ctm_edits_for_reco = resolve_overlaps(ctm_edits_for_reco, segments)

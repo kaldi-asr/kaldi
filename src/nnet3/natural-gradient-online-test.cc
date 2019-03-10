@@ -170,7 +170,8 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
   Z_t.Eig(&c_t, &U_t);
   SortSvd(&c_t, &U_t);
   double c_t_floor = pow(rho_t_ * (1.0 - eta), 2);
-  int32 nf = c_t.ApplyFloor(c_t_floor);
+  int32 nf;
+  c_t.ApplyFloor(c_t_floor, &nf);
   if (nf > 0) {
     KALDI_WARN << "Floored " << nf << " elements of c_t.";
   }
@@ -198,7 +199,7 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
     KALDI_WARN << "flooring rho_{t+1} to " << floor_val << ", was " << rho_t1;
     rho_t1 = floor_val;
   }
-  nf = d_t1.ApplyFloor(floor_val);
+  d_t1.ApplyFloor(floor_val, &nf);
   if (nf > 0) {
     KALDI_VLOG(3) << "d_t1 was " << d_t1;
     KALDI_WARN << "Floored " << nf << " elements of d_{t+1}.";
@@ -270,7 +271,7 @@ void UnitTestPreconditionDirectionsOnline() {
   if (Rand() % 3 == 0) zero = true;
   //else if (Rand() % 2 == 0) one = true;
 
-  CuVector<BaseFloat> row_prod1(N), row_prod2(N);
+  CuVector<BaseFloat> row_prod1(N);
   BaseFloat gamma1, gamma2;
   BaseFloat big_eig_factor = RandInt(1, 20);
   big_eig_factor = big_eig_factor * big_eig_factor;
@@ -300,14 +301,13 @@ void UnitTestPreconditionDirectionsOnline() {
 
     preconditioner1.PreconditionDirections(&Mcopy1, &row_prod1, &gamma1);
 
-    preconditioner2.PreconditionDirections(&Mcopy2, &row_prod2, &gamma2);
+    preconditioner2.PreconditionDirections(&Mcopy2, &gamma2);
 
     BaseFloat trace1 = TraceMatMat(M, M, kTrans),
         trace2 = TraceMatMat(Mcopy1, Mcopy1, kTrans);
     AssertEqual(trace1, trace2 * gamma2 * gamma2, 1.0e-02);
 
     AssertEqual(Mcopy1, Mcopy2);
-    AssertEqual<BaseFloat>(row_prod1, row_prod2, 1.0e-02);
     AssertEqual(gamma1, gamma2, 1.0e-02);
 
     // make sure positive definite

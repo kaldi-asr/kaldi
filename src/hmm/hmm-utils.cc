@@ -1,6 +1,7 @@
 // hmm/hmm-utils.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2018  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,12 +23,13 @@
 #include "hmm/hmm-utils.h"
 #include "fst/fstlib.h"
 #include "fstext/fstext-lib.h"
+#include "fstext/grammar-context-fst.h"
 
 namespace kaldi {
 
 
 
-fst::VectorFst<fst::StdArc> *GetHmmAsFst(
+fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
     std::vector<int32> phone_window,
     const ContextDependencyInterface &ctx_dep,
     const TransitionModel &trans_model,
@@ -59,7 +61,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
       std::ostringstream ctx_ss;
       for (size_t i = 0; i < phone_window.size(); i++)
         ctx_ss << phone_window[i] << ' ';
-      KALDI_ERR << "GetHmmAsFst: context-dependency object could not produce "
+      KALDI_ERR << "GetHmmAsFsa: context-dependency object could not produce "
                 << "an answer: pdf-class = " << pdf_class << " ctx-window = "
                 << ctx_ss.str() << ".  This probably points "
           "to either a coding error in some graph-building process, "
@@ -150,7 +152,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
 
 
 fst::VectorFst<fst::StdArc>*
-GetHmmAsFstSimple(std::vector<int32> phone_window,
+GetHmmAsFsaSimple(std::vector<int32> phone_window,
                   const ContextDependencyInterface &ctx_dep,
                   const TransitionModel &trans_model,
                   BaseFloat prob_scale) {
@@ -231,18 +233,32 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
 
 
 
+/// This utility function, used in GetHTransducer(), creates an FSA (finite
+/// state acceptor, i.e. an FST with ilabels equal to olabels) with a single
+/// successful path, with a single label on it.
+static inline fst::VectorFst<fst::StdArc> *MakeTrivialAcceptor(int32 label) {
+  typedef fst::StdArc Arc;
+  typedef Arc::Weight Weight;
+  fst::VectorFst<Arc> *ans = new fst::VectorFst<Arc>;
+  ans->AddState();
+  ans->AddState();
+  ans->SetStart(0);
+  ans->SetFinal(1, Weight::One());
+  ans->AddArc(0, Arc(label, label, Weight::One(), 1));
+  return ans;
+}
+
 
 
 // The H transducer has a separate outgoing arc for each of the symbols in ilabel_info.
-
-fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32> > &ilabel_info,
-                                             const ContextDependencyInterface &ctx_dep,
-                                             const TransitionModel &trans_model,
-                                             const HTransducerConfig &config,
-                                             std::vector<int32> *disambig_syms_left) {
+fst::VectorFst<fst::StdArc> *GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
+                                            const ContextDependencyInterface &ctx_dep,
+                                            const TransitionModel &trans_model,
+                                            const HTransducerConfig &config,
+                                            std::vector<int32> *disambig_syms_left) {
   KALDI_ASSERT(ilabel_info.size() >= 1 && ilabel_info[0].size() == 0);  // make sure that eps == eps.
   HmmCacheType cache;
-  // "cache" is an optimization that prevents GetHmmAsFst repeating work
+  // "cache" is an optimization that prevents GetHmmAsFsa repeating work
   // unnecessarily.
   using namespace fst;
   typedef StdArc Arc;
@@ -264,24 +280,42 @@ fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32
 
   for (int32 j = 1; j < static_cast<int32>(ilabel_info.size()); j++) {  // zero is eps.
     KALDI_ASSERT(!ilabel_info[j].empty());
-    if (ilabel_info[j].size() == 1 &&
-       ilabel_info[j][0] <= 0) {  // disambig symbol
-
-      // disambiguation symbol.
-      int32 disambig_sym_left = next_disambig_sym++;
-      disambig_syms_left->push_back(disambig_sym_left);
-      // get acceptor with one path with "disambig_sym" on it.
-      VectorFst<Arc> *fst = new VectorFst<Arc>;
-      fst->AddState();
-      fst->AddState();
-      fst->SetStart(0);
-      fst->SetFinal(1, Weight::One());
-      fst->AddArc(0, Arc(disambig_sym_left, disambig_sym_left, Weight::One(), 1));
-      fsts[j] = fst;
+    if (ilabel_info[j][0] < 0 ||
+        (ilabel_info[j][0] == 0 && ilabel_info[j].size() == 1)) {
+      // disambig symbol or special symbol for grammar FSTs.
+      if (ilabel_info[j].size() == 1) {
+        // disambiguation symbol.
+        int32 disambig_sym_left = next_disambig_sym++;
+        disambig_syms_left->push_back(disambig_sym_left);
+        fsts[j] = MakeTrivialAcceptor(disambig_sym_left);
+      } else if (ilabel_info[j].size() == 2) {
+        if (config.nonterm_phones_offset <= 0) {
+          KALDI_ERR << "ilabel-info seems to be for grammar-FST.  You need to "
+              "supply the --nonterm-phones-offset option.";
+        }
+        int32 nonterm_phones_offset = config.nonterm_phones_offset,
+            nonterminal = -ilabel_info[j][0],
+            left_context_phone = ilabel_info[j][1];
+        if (nonterminal <= nonterm_phones_offset ||
+            left_context_phone <= 0 ||
+            left_context_phone > nonterm_phones_offset) {
+          KALDI_ERR << "Could not interpret this ilabel-info with "
+              "--nonterm-phones-offset=" << nonterm_phones_offset
+                    << ": nonterminal,left-context-phone="
+                    << nonterminal << ',' << left_context_phone;
+        }
+        int32 big_number = static_cast<int32>(fst::kNontermBigNumber),
+            encoding_multiple = fst::GetEncodingMultiple(nonterm_phones_offset);
+        int32 encoded_symbol = big_number + nonterminal * encoding_multiple +
+            left_context_phone;
+        fsts[j] = MakeTrivialAcceptor(encoded_symbol);
+      } else {
+        KALDI_ERR << "Could not decode this ilabel_info entry.";
+      }
     } else {  // Real phone-in-context.
       std::vector<int32> phone_window = ilabel_info[j];
 
-      VectorFst<Arc> *fst = GetHmmAsFst(phone_window,
+      VectorFst<Arc> *fst = GetHmmAsFsa(phone_window,
                                         ctx_dep,
                                         trans_model,
                                         config,
@@ -388,40 +422,40 @@ fst::VectorFst<fst::StdArc> *GetPdfToTransitionIdTransducer(const TransitionMode
 
 
 
-
-// this is the code that expands an FST from transition-states to
-// transition-ids, in the case where "reorder == true",
-// i.e. non-optional transition is before the self-loop.
-
-
-
 class TidToTstateMapper {
 public:
   // Function object used in MakePrecedingInputSymbolsSameClass and
-  // MakeFollowingInputSymbolsSameClass (as called by AddSelfLoopsBefore
-  // and AddSelfLoopsAfter).  It maps transition-ids to transition-states
-  // (and -1 to -1, 0 to 0 and disambiguation symbols to 0).  It also
-  // checks that there are no self-loops in the graph (i.e. in the labels
-  // it is called with).  This is just a convenient place to put this check.
+  // MakeFollowingInputSymbolsSameClass (as called by AddSelfLoopsReorder and
+  // AddSelfLoopsNoReorder).  It maps transition-ids to transition-states (and
+  // -1 to -1, 0 to 0 and disambiguation symbols to 0).  If check_no_self_loops
+  // == true, it also checks that there are no self-loops in the graph (i.e. in
+  // the labels it is called with).  This is just a convenient place to put this
+  // check.
 
   // This maps valid transition-ids to transition states, maps kNoLabel to -1, and
-  // maps all other symbols (i.e. epsilon symbols and disambig symbols) to zero.
+  // maps all other symbols (i.e. epsilon symbols, disambig symbols, and symbols
+  // with values over 100000/kNontermBigNumber) to zero.
   // Its point is to provide an equivalence class on labels that's relevant to what
   // the self-loop will be on the following (or preceding) state.
   TidToTstateMapper(const TransitionModel &trans_model,
-                    const std::vector<int32> &disambig_syms):
+                    const std::vector<int32> &disambig_syms,
+                    bool check_no_self_loops):
       trans_model_(trans_model),
-      disambig_syms_(disambig_syms) { }
+      disambig_syms_(disambig_syms),
+      check_no_self_loops_(check_no_self_loops) { }
   typedef int32 Result;
   int32 operator() (int32 label) const {
     if (label == static_cast<int32>(fst::kNoLabel)) return -1;  // -1 -> -1
     else if (label >= 1 && label <= trans_model_.NumTransitionIds()) {
-      if (trans_model_.IsSelfLoop(label))
+      if (check_no_self_loops_ && trans_model_.IsSelfLoop(label))
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
       return trans_model_.TransitionIdToTransitionState(label);
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
-      if (label != 0)
-        KALDI_ASSERT(std::binary_search(disambig_syms_.begin(), disambig_syms_.end(), label));  // or invalid label
+      int32 big_number = fst::kNontermBigNumber;  // 1000000
+      if (label != 0 && label < big_number)
+        KALDI_ASSERT(std::binary_search(disambig_syms_.begin(),
+                                        disambig_syms_.end(),
+                                        label));  // or invalid label
       return 0;
     }
   }
@@ -429,21 +463,28 @@ public:
 private:
   const TransitionModel &trans_model_;
   const std::vector<int32> &disambig_syms_;  // sorted.
+  bool check_no_self_loops_;
 };
 
-static void AddSelfLoopsBefore(const TransitionModel &trans_model,
-                               const std::vector<int32> &disambig_syms,
-                               BaseFloat self_loop_scale,
-                               fst::VectorFst<fst::StdArc> *fst) {
+// This is the code that expands an FST from transition-states to
+// transition-ids, in the case where reorder == true, i.e. the non-optional
+// transition is before the self-loop.
+static void AddSelfLoopsReorder(const TransitionModel &trans_model,
+                                const std::vector<int32> &disambig_syms,
+                                BaseFloat self_loop_scale,
+                                bool check_no_self_loops,
+                                fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
 
-  TidToTstateMapper f(trans_model, disambig_syms);
-  // Duplicate states as necessary so that each state has at most one self-loop
-  // on it.
+  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
+  // Duplicate states as necessary so that each state will require at most one
+  // self-loop to be added to it.  Approximately this means that if a
+  // state has multiple different symbols on arcs entering it, it will be
+  // duplicated, with one copy per incoming symbol.
   MakePrecedingInputSymbolsSameClass(true, fst, f);
 
   int32 kNoTransState = f(kNoLabel);
@@ -484,7 +525,8 @@ static void AddSelfLoopsBefore(const TransitionModel &trans_model,
   // with the corresponding labels on them by this probability).
 
   for (StateId s = 0; s < static_cast<StateId>(state_in.size()); s++) {
-    if (state_in[s] > 0) {  // defined, and not eps or a disambiguation symbol...
+    if (state_in[s] > 0) {  // defined, and not eps or a disambiguation symbol or a
+                            // nonterminal-related sybol for grammar decoding...
       int32 trans_state = static_cast<int32>(state_in[s]);
       // First multiply all probabilities by "forward" probability.
       BaseFloat log_prob = trans_model.GetNonSelfLoopLogProb(trans_state);
@@ -508,13 +550,14 @@ static void AddSelfLoopsBefore(const TransitionModel &trans_model,
 
 
 // this is the code that expands an FST from transition-states to
-// transition-ids, in the case where "reorder == false", i.e. non-optional transition
-// is after the self-loop.
-
-static void AddSelfLoopsAfter(const TransitionModel &trans_model,
-                              const std::vector<int32> &disambig_syms,
-                              BaseFloat self_loop_scale,
-                              fst::VectorFst<fst::StdArc> *fst) {
+// transition-ids, in the case where reorder == false, i.e. non-optional
+// transition is after the self-loop.
+static void AddSelfLoopsNoReorder(
+    const TransitionModel &trans_model,
+    const std::vector<int32> &disambig_syms,
+    BaseFloat self_loop_scale,
+    bool check_no_self_loops,
+    fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
@@ -523,7 +566,7 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 
   // Duplicate states as necessary so that each state has at most one self-loop
   // on it.
-  TidToTstateMapper f(trans_model, disambig_syms);
+  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
   MakeFollowingInputSymbolsSameClass(true, fst, f);
 
   StateId num_states = fst->NumStates();
@@ -559,13 +602,16 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,
                   BaseFloat self_loop_scale,
-                  bool reorder,  // true->dan-style, false->lukas-style.
+                  bool reorder,
+                  bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst) {
   KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   if (reorder)
-    AddSelfLoopsBefore(trans_model, disambig_syms, self_loop_scale, fst);
+    AddSelfLoopsReorder(trans_model, disambig_syms, self_loop_scale,
+                        check_no_self_loops, fst);
   else
-    AddSelfLoopsAfter(trans_model, disambig_syms, self_loop_scale, fst);
+    AddSelfLoopsNoReorder(trans_model, disambig_syms, self_loop_scale,
+                          check_no_self_loops, fst);
 }
 
 // IsReordered returns true if the transitions were possibly reordered.  This reordering
@@ -1165,7 +1211,7 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
   typedef fst::StdArc Arc;
   int32 length = alignment->size();
   BaseFloat prob_scale = 0.0;
-  fst::VectorFst<Arc> *fst = GetHmmAsFstSimple(phone_window, ctx_dep,
+  fst::VectorFst<Arc> *fst = GetHmmAsFsaSimple(phone_window, ctx_dep,
                                                trans_model, prob_scale);
   fst::RmEpsilon(fst);
 

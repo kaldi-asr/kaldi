@@ -22,6 +22,7 @@ cmd=run.pl
 context_opts=  # e.g. set this to "--context-width 5 --central-position 2" for quinphone.
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 frame_subsampling_factor=1
+alignment_subsampling_factor=
 leftmost_questions_truncate=-1  # note: this option is deprecated and has no effect
 tree_stats_opts=
 cluster_phones_opts=
@@ -74,7 +75,6 @@ oov=`cat $lang/oov.int`
 nj=`cat $alidir/num_jobs` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl`
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
-sdata=$data/split$nj;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 delta_opts=`cat $alidir/delta_opts 2>/dev/null`
@@ -88,7 +88,13 @@ utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exi
 cp $lang/phones.txt $dir || exit 1;
 
 echo $nj >$dir/num_jobs
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+if [ -f $alidir/per_utt ]; then
+  sdata=$data/split${nj}utt
+  utils/split_data.sh --per-utt $data $nj
+else
+  sdata=$data/split$nj
+  utils/split_data.sh $data $nj
+fi
 
 # Set up features.
 
@@ -116,6 +122,10 @@ if [ $frame_subsampling_factor -gt 1 ]; then
   feats="$feats subsample-feats --n=$frame_subsampling_factor ark:- ark:- |"
 fi
 
+if [ -z $alignment_subsampling_factor ]; then
+  alignment_subsampling_factor=$frame_subsampling_factor
+fi
+
 if [ $stage -le -5 ]; then
   echo "$0: Initializing monophone model (for alignment conversion, in case topology changed)"
 
@@ -137,7 +147,7 @@ if [ $stage -le -4 ]; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
-     convert-ali --frame-subsampling-factor=$frame_subsampling_factor \
+     convert-ali --frame-subsampling-factor=$alignment_subsampling_factor \
          $alidir/final.mdl $dir/mono.mdl $dir/mono.tree "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       acc-tree-stats $context_opts $tree_stats_opts --ci-phones=$ciphonelist $dir/mono.mdl \
          "$feats" ark:- $dir/JOB.treeacc || exit 1;
@@ -175,12 +185,12 @@ fi
 
 if [ $stage -le -1 ]; then
   # Convert the alignments to the new tree.  Note: we likely will not use these
-  # converted alignments in the CTC system directly, but they could be useful
+  # converted alignments in the chain system directly, but they could be useful
   # for other purposes.
   echo "$0: Converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
     convert-ali --repeat-frames=$repeat_frames \
-      --frame-subsampling-factor=$frame_subsampling_factor \
+      --frame-subsampling-factor=$alignment_subsampling_factor \
       $alidir/final.mdl $dir/1.mdl $dir/tree \
       "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi

@@ -7,7 +7,7 @@
 # IMPORTANT: wav files must be in 16kHz, 16 bit little-endian format.
 #
 # This script tries to follow with what other scripts are doing in terms of directory structures and data handling.
-# 
+#
 # Use ./download-model.sh script to download asr model
 # See https://github.com/api-ai/api-ai-english-asr-model for details about a model and how to use it.
 
@@ -20,14 +20,14 @@ echo "// IMPORTANT: wav files must be in 16kHz, 16 bit little-endian format."
 echo "//////";
 
 for file in final.mdl HCLG.fst words.txt frame_subsampling_factor; do
-	if [ ! -f $MODEL_DIR/$file ]; then
-		echo "$MODEL_DIR/$file not found, use ./download-model.sh"
-		exit 1;
-	fi
+  if [ ! -f $MODEL_DIR/$file ]; then
+    echo "$MODEL_DIR/$file not found, use ./download-model.sh"
+    exit 1;
+  fi
 done;
 
 for app in nnet3-latgen-faster apply-cmvn lattice-scale; do
-	command -v $app >/dev/null 2>&1 || { echo >&2 "$app not found, is kaldi compiled?"; exit 1; }
+  command -v $app >/dev/null 2>&1 || { echo >&2 "$app not found, is kaldi compiled?"; exit 1; }
 done;
 
 local/create-corpus.sh $DATA_DIR $@ || exit 1;

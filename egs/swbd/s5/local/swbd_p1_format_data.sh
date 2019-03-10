@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 silprob=0.5
 mkdir -p data/lang_test data/train

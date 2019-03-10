@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2017  David Snyder
+#           2017  Ye Bai
 # Apache 2.0
 #
 # This script generates augmented data.  It is based on
@@ -83,8 +84,8 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
         num = random.choice(num_opts)
         for i in range(0, num):
             noise_utt = random.choice(bg_noise_utts)
-            noise = noise_wavs[noise_utt] + " wav-reverberate --duration=" \
-            + dur_str + " - - |"
+            noise = "wav-reverberate --duration=" \
+            + dur_str + " \"" + noise_wavs[noise_utt] + "\" - |"
             snr = random.choice(bg_snr_opts)
             snrs.append(snr)
             start_times.append(0)
@@ -102,17 +103,17 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
             tot_noise_dur += noise_dur + interval
             noises.append(noise)
 
-    start_times_str = "--start-times='" + ",".join(map(str,start_times)) + "'"
-    snrs_str = "--snrs='" + ",".join(map(str,snrs)) + "'"
-    noises_str = "--additive-signals='" + ",".join(noises) + "'"
+    start_times_str = "--start-times='" + ",".join([str(i) for i in start_times]) + "'"
+    snrs_str = "--snrs='" + ",".join([str(i) for i in snrs]) + "'"
+    noises_str = "--additive-signals='" + ",".join(noises).strip() + "'"
 
     # If the wav is just a file
-    if len(wav.split()) == 1:
+    if wav.strip()[-1] != "|":
         new_wav = "wav-reverberate --shift-output=true " + noises_str + " " \
             + start_times_str + " " + snrs_str + " " + wav + " - |"
     # Else if the wav is in a pipe
     else:
-        new_wav = wav + "wav-reverberate --shift-output=true " + noises_str + " " \
+        new_wav = wav + " wav-reverberate --shift-output=true " + noises_str + " " \
             + start_times_str + " " + snrs_str + " - - |"
     return new_wav
 
@@ -129,11 +130,11 @@ def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
 
 def main():
     args = GetArgs()
-    fg_snrs = map(int, args.fg_snr_str.split(":"))
-    bg_snrs = map(int, args.bg_snr_str.split(":"))
+    fg_snrs = [int(i) for i in args.fg_snr_str.split(":")]
+    bg_snrs = [int(i) for i in args.bg_snr_str.split(":")]
     input_dir = args.input_dir
     output_dir = args.output_dir
-    num_bg_noises = map(int, args.num_bg_noises.split(":"))
+    num_bg_noises = [int(i) for i in args.num_bg_noises.split(":")]
     reco2dur = ParseFileToDict(input_dir + "/reco2dur",
         value_processor = lambda x: float(x[0]))
     wav_scp_file = open(input_dir + "/wav.scp", 'r').readlines()
@@ -182,6 +183,8 @@ def main():
         os.makedirs(output_dir)
 
     WriteDictToFile(new_utt2wav, output_dir + "/wav.scp")
+    CopyFileIfExists(args.utt_suffix, "reco2dur", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2dur", input_dir, output_dir)
     CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
     CopyFileIfExists(args.utt_suffix, "utt2lang", input_dir, output_dir)
     CopyFileIfExists(args.utt_suffix, "text", input_dir, output_dir)

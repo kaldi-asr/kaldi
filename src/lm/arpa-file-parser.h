@@ -42,9 +42,9 @@ struct ArpaParseOptions {
     kSkipNGram       ///< Skip n-gram with OOV word and continue.
   };
 
-  ArpaParseOptions()
-      : bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
-        oov_handling(kRaiseError), max_warnings(30) { }
+  ArpaParseOptions():
+      bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
+      oov_handling(kRaiseError), max_warnings(30) { }
 
   void Register(OptionsItf *opts) {
     // Registering only the max_warnings count, since other options are
@@ -67,9 +67,10 @@ struct ArpaParseOptions {
 */
 struct NGram {
   NGram() : logprob(0.0), backoff(0.0) { }
-  std::vector<int32> words;  ///< Symbols in LTR order.
+  std::vector<int32> words;  ///< Symbols in left to right order.
   float logprob;             ///< Log-prob of the n-gram.
   float backoff;             ///< log-backoff weight of the n-gram.
+                             ///< Defaults to zero if not specified.
 };
 
 /**
@@ -91,9 +92,8 @@ class ArpaFileParser {
   ArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols);
   virtual ~ArpaFileParser();
 
-  /// Read ARPA LM file through Kaldi I/O functions. Only text mode is
-  /// supported.
-  void Read(std::istream &is, bool binary);
+  /// Read ARPA LM file from a stream.
+  void Read(std::istream &is);
 
   /// Parser options.
   const ArpaParseOptions& Options() const { return options_; }
@@ -129,12 +129,12 @@ class ArpaFileParser {
   /// printed or false if the count has exceeded the set maximum.
   bool ShouldWarn();
 
-  /// N-gram counts. Valid in and after a call to HeaderAvailable().
+  /// N-gram counts. Valid from the point when HeaderAvailable() is called.
   const std::vector<int32>& NgramCounts() const { return ngram_counts_; }
 
  private:
   ArpaParseOptions options_;
-  fst::SymbolTable* symbols_;  // Not owned.
+  fst::SymbolTable* symbols_;  // the pointer is not owned here.
   int32 line_number_;
   uint32 warning_count_;
   std::string current_line_;

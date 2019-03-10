@@ -116,9 +116,9 @@ affix=    # Will be set if doing input frame shift
 if [[ "$shift_feats" = true && $frame_subsampling_factor -ne 1 ]]; then
   if [ $stage -le 0 ]; then
     utils/data/shift_and_combine_feats.sh --write-utt2orig $dir/utt2orig \
-					  $frame_subsampling_factor $train_data_dir ${train_data_dir}_fs
+            $frame_subsampling_factor $train_data_dir ${train_data_dir}_fs
     steps/online/nnet2/copy_ivector_dir.sh --utt2orig $dir/utt2orig \
-					  $online_ivector_dir ${online_ivector_dir}_fs
+            $online_ivector_dir ${online_ivector_dir}_fs
     rm $dir/utt2orig
   fi
   online_ivector_dir=${online_ivector_dir}_fs

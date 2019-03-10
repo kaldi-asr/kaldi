@@ -45,9 +45,11 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Generate lattices using nnet3 neural net model.\n"
+        "Generate lattices using nnet3 neural net model.  This version supports\n"
+        "multiple decoding threads (using a shared decoding graph.)\n"
         "Usage: nnet3-latgen-faster-parallel [options] <nnet-in> <fst-in|fsts-rspecifier> <features-rspecifier>"
-        " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n";
+        " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n"
+        "See also: nnet3-latgen-faster-batch (which supports GPUs)\n";
     ParseOptions po(usage);
 
     Timer timer;
@@ -139,8 +141,6 @@ int main(int argc, char *argv[]) {
       timer.Reset();
 
       {
-        LatticeFasterDecoder decoder(*decode_fst, config);
-
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
           const Matrix<BaseFloat> &features (feature_reader.Value());

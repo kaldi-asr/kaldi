@@ -42,11 +42,7 @@ void TrimTrailingWhitespace(std::string *str) {
   str->erase(str->find_last_not_of(" \n\r\t") + 1);
 }
 
-void ArpaFileParser::Read(std::istream &is, bool binary) {
-  if (binary) {
-    KALDI_ERR << "binary-mode reading is not implemented for ArpaFileParser";
-  }
-
+void ArpaFileParser::Read(std::istream &is) {
   // Argument sanity checks.
   if (options_.bos_symbol <= 0 || options_.eos_symbol <= 0 ||
       options_.bos_symbol == options_.eos_symbol)
@@ -78,7 +74,7 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   warning_count_ = 0;
   current_line_.clear();
 
-#define PARSE_ERR (KALDI_ERR << LineReference() << ": ")
+#define PARSE_ERR KALDI_ERR << LineReference() << ": "
 
   // Give derived class an opportunity to prepare its state.
   ReadStarted();
@@ -213,7 +209,7 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
             word = symbols_->AddSymbol(col[1 + index]);
           } else {
             word = symbols_->Find(col[1 + index]);
-            if (word == fst::SymbolTable::kNoSymbol) {
+            if (word == -1) { // fst::kNoSymbol
               switch (options_.oov_handling) {
                 case ArpaParseOptions::kReplaceWithUnk:
                   word = options_.unk_symbol;

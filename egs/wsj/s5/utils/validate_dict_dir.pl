@@ -5,7 +5,7 @@
 #            2015 Daniel Povey
 #            2017 Johns Hopkins University (Jan "Yenda" Trmal <jtrmal@gmail.com>)
 #
-# Validation script for data/local/dict
+# Validation script for 'dict' directories (e.g. data/local/dict)
 
 # this function reads the opened file (supplied as a first
 # parameter) into an array of lines. For each
@@ -56,9 +56,17 @@ sub validate_utf8_whitespaces {
   use feature 'unicode_strings';
   for (my $i = 0; $i < scalar @{$unicode_lines}; $i++) {
     my $current_line = $unicode_lines->[$i];
+    if ((substr $current_line, -1) ne "\n"){
+      print STDERR "$0: The current line (nr. $i) has invalid newline\n";
+      return 1;
+    }
     # we replace TAB, LF, CR, and SPACE
     # this is to simplify the test
-    $current_line =~ s/[\x{0009}\x{000a}\x{000d}\x{0020}]/./g;
+    if ($current_line =~ /\x{000d}/) {
+      print STDERR "$0: The current line (nr. $i) contains CR (0x0D) character\n";
+      return 1;
+    }
+    $current_line =~ s/[\x{0009}\x{000a}\x{0020}]/./g;
     if ($current_line =~/\s/) {
       return 1;
     }
@@ -438,7 +446,7 @@ if (-s "$dict/extra_questions.txt") {
     }
     foreach (0 .. @col-1) {
       if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-        set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n";
+        set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence_phones.txt (line $idx, block ", $_+1, ")\n";
       }
       $idx ++;
     }
@@ -459,6 +467,22 @@ if (-s "$dict/extra_questions.txt") {
   close(EX);
   $success == 0 || print "--> $dict/extra_questions.txt is OK\n";
 } else { print "--> $dict/extra_questions.txt is empty (this is OK)\n";}
+
+if (-f "$dict/nonterminals.txt") {
+  open(NT, "<$dict/nonterminals.txt") || die "opening $dict/nonterminals.txt";
+  my %nonterminals = ();
+  my $line_number = 1;
+  while (<NT>) {
+    chop;
+    my @line = split(" ", $_);
+    if (@line != 1 || ! m/^#nonterm:/ || defined $nonterminals{$line[0]}) {
+      print "--> ERROR: bad (or duplicate) line $line_number: '$_' in $dict/nonterminals.txt\n"; exit 1;
+    }
+    $nonterminals{$line[0]} = 1;
+    $line_number++;
+  }
+  print "--> $dict/nonterminals.txt is OK\n";
+}
 
 
 # check nonsilence_phones.txt again for phone-pairs that are never

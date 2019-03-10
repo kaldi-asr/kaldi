@@ -32,13 +32,14 @@ exp/tri1: nj=10 align prob=-93.75 over 7.38h [retry=0.4%, fail=0.0%] states=1567
 %WER 19.40 [ 1597 / 8234, 247 ins, 199 del, 1151 sub ] exp/tri1/decode_nosp_tgpr_dev93/wer_14_0.5
 %WER 12.76 [ 720 / 5643, 110 ins, 89 del, 521 sub ] exp/tri1/decode_nosp_tgpr_eval92/wer_14_1.0
 
-# the above, rescored with full trigram model [not pruned.]  Note: the tg{1,2,3,4} are
+# the above, rescored with full trigram model [not pruned.]  Note: the tg{1,2,3,4,5} are
 # different rescoring methods.  They all give about the same results.  Note: 3 and 4 give
 # the "correct" LM scores.
 %WER 18.23 [ 1501 / 8234, 245 ins, 181 del, 1075 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg1/wer_15_0.5
 %WER 18.23 [ 1501 / 8234, 245 ins, 181 del, 1075 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg2/wer_15_0.5
 %WER 18.16 [ 1495 / 8234, 268 ins, 153 del, 1074 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg3/wer_16_0.0
 %WER 18.18 [ 1497 / 8234, 268 ins, 154 del, 1075 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg4/wer_16_0.0
+%WER 18.16 [ 1495 / 8234, 220 ins, 202 del, 1073 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg5/wer_15_1.0
 
 
 # tri2b is an LDA+MLLT system trained on SI-84

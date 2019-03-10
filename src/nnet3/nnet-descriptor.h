@@ -53,14 +53,15 @@ namespace nnet3 {
    is in general a bit like a parse tree, in that it can in general contain
    other ForwardingDescriptors.
 
-
-    The following gives an overview of the expressions that can appear in
-     descriptors.  Caution; this is a simplification that overgenerates
-     descriptors.
+   The following gives an overview of the expressions that can appear in
+   descriptors.  Caution; this is a simplification that overgenerates
+   descriptors: not all combinations are allowed.
 \verbatim
 <descriptor>  ::=   <node-name>      ;; node name of kInput or kComponent node.
 <descriptor>  ::=   Append(<descriptor>, <descriptor> [, <descriptor> ... ] )
 <descriptor>  ::=   Sum(<descriptor>, <descriptor>)
+<descriptor>  ::=   Const(<value>, <dimension>)    ;; e.g. Const(1.0, 512)
+<descriptor>  ::=   Scale(<scale>, <descriptor>)   ;; e.g. Scale(-1.0, tdnn2)
 ;; Failover or IfDefined might be useful for time t=-1 in a RNN, for instance.
 <descriptor>  ::=   Failover(<descriptor>, <descriptor>)   ;; 1st arg if computable, else 2nd
 <descriptor>  ::=   IfDefined(<descriptor>)     ;; the arg if defined, else zero.
@@ -83,18 +84,19 @@ namespace nnet3 {
 
 
 
-// A ForwardingDescriptor describes how we copy data from another NetworkNode,
-// or from multiple other NetworkNodes.  In the simplest case this can just be
-// equivalent to giving the name of another NetworkNode, but we also support
-// things like time-offsets, selecting depending on the index from multiple
-// different inputs, and things like that.
-//
-// note: nodes of type kOutput (i.e. output nodes of the network) cannot appear
-// as inputs in any descriptor.  This is to simplify compilation.
+/// A ForwardingDescriptor describes how we copy data from another NetworkNode,
+/// or from multiple other NetworkNodes, possibly with a scalar weight.  In the
+/// base case this can just be equivalent to giving the name of another
+/// NetworkNode, but we also support things like time-offsets, selecting
+/// depending on the index from multiple different inputs, and things like that.
+///
+/// Note: nodes of type kOutput (i.e. output nodes of the network) cannot appear
+/// as inputs in any descriptor.  This is to simplify compilation.
 class ForwardingDescriptor {
  public:
   // Given an Index that's requested at the output of this descriptor, maps it
   // to a (node_index, Index) pair that says where we are to get the data from.
+  //
   virtual Cindex MapToInput(const Index &output) const = 0;
 
   // Return the feature dimension.
@@ -119,19 +121,33 @@ class ForwardingDescriptor {
   // that this descriptor may access.
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const = 0;
 
+  /// This function returns the scale on the node-index 'node_index' when it
+  /// appears in expressions inside this descriptor, or +infinity if it does not
+  /// appear.  E.g. if the descriptor is just `Scale(tdnn2, 2.0)` and the node
+  /// index for `tdnn2` is 4, then GetScaleForNode(4) would return 2.0.  If a
+  /// particular node_index > 0 appears in different sub-expressions of the
+  /// descriptor with different scales it is an error (it's not supported) and
+  /// this function would crash.
+  virtual BaseFloat GetScaleForNode(int32 node_index) const = 0;
+
   virtual ~ForwardingDescriptor() { }
   ForwardingDescriptor() { }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(ForwardingDescriptor);
 };
 
-// SimpleForwardingDescriptor is the base-case of ForwardingDescriptor,
+/// SimpleForwardingDescriptor is the base-case of ForwardingDescriptor,
+/// consisting of a source node in the graph with a given scalar weight (which
+/// will in the normal case be 1.0).  The string representation in the
+/// normal (scale=1.0) case is just the node-name, like `tdnn2`; if
+/// the weight is not 1.0 it's something like `Scale(2.0, tdnn2)`
 class SimpleForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &index) const;
   virtual int32 Dim(const Nnet &nnet) const;
   virtual ForwardingDescriptor *Copy() const;
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
 
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
@@ -139,14 +155,23 @@ class SimpleForwardingDescriptor: public ForwardingDescriptor {
   virtual void WriteConfig(std::ostream &os,
                            const std::vector<std::string> &node_names) const;
 
-  SimpleForwardingDescriptor(int32 src_node): src_node_(src_node) {
+  SimpleForwardingDescriptor(int32 src_node,
+                             BaseFloat scale = 1.0):
+      src_node_(src_node), scale_(scale) {
     KALDI_ASSERT(src_node >= 0);
   }
   virtual ~SimpleForwardingDescriptor() { }
  private:
   int32 src_node_;  // index of the source NetworkNode.
+  BaseFloat scale_;  // Scale of the node in the expression; this will be 1.0
+                     // unless you used a Scale(...) expression in your
+                     // Descriptor.
 };
 
+/// Offsets in 't' and 'x' values of other ForwardingDescriptors.
+/// Written form is:
+///   `Offset(<descriptor>, <t-offset> [, <x-offset> ] )`
+/// e.g. `Offset(tdnn2, -2)`
 class OffsetForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &ind) const;
@@ -160,6 +185,7 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   virtual int32 Modulus() const { return src_->Modulus(); }
 
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
 
   // takes ownership of src.
   OffsetForwardingDescriptor(ForwardingDescriptor *src,
@@ -176,8 +202,11 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   Index offset_;  // The index-offset to be added to the index.
 };
 
-// Chooses from different inputs based on the the time index modulo
-// (the number of ForwardingDescriptors given as inputs).
+/// Chooses from different inputs based on the the time index modulo
+/// (the number of ForwardingDescriptors given as inputs).  This is rarely
+/// if ever used.  Written form is:
+///  `Switch(<descriptor>, <descriptor> [, <descriptor> ...])`
+/// e.g. `Switch(tdnn2a, tdnn2b, tdnn2c)`
 class SwitchingForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &ind) const;
@@ -192,6 +221,7 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
 
   // takes ownership of items in src.
   SwitchingForwardingDescriptor(std::vector<ForwardingDescriptor*> &src):
@@ -207,6 +237,8 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
 /// For use in clockwork RNNs and the like, this forwarding-descriptor
 /// rounds the time-index t down to the the closest t' <= t that is
 /// an exact multiple of t_modulus_.
+/// Written form is: `Round(<descriptor>, <t-modulus>)`
+/// e.g.: `Round(tdnn2, 3)`
 class RoundingForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &ind) const;
@@ -221,6 +253,7 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
 
   // takes ownership of src.
   RoundingForwardingDescriptor(ForwardingDescriptor *src,
@@ -235,6 +268,8 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
 
 /// This ForwardingDescriptor modifies the indexes (n, t, x) by replacing one
 /// of them (normally t) with a constant value and keeping the rest.
+/// Written form is: `ReplaceIndex(<descriptor>, <variable-name>, <value>)`
+/// e.g. `ReplaceIndex(ivector, t, 0)`
 class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
  public:
   enum VariableName { kN = 0, kT = 1, kX = 2};
@@ -250,6 +285,7 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
 
   // takes ownership of src.
   ReplaceIndexForwardingDescriptor(ForwardingDescriptor *src,
@@ -269,15 +305,15 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
 class CindexSet;
 
 /// This is an abstract base-class.  In the normal case a SumDescriptor is a sum
-/// over one or more terms, all each corresponding to a quantity of the same
-/// dimension, each of which is a ForwardingDescriptor.  However, it also allows
-/// for logic for dealing with cases where only some terms in the sum are
-/// present, and only some are included in the sum: for example, not just
-/// expressions like A + B but also A + (B if present), or (A if present; if not,
-// B).
+/// over one or more ForwardingDescriptors (all of which must be of the same
+/// dimension).  However, it also allows for logic for dealing with cases where
+/// only some terms in the sum are present, and only some are included in the
+/// sum: for example, not just expressions like A + B but also A + (B if
+/// present), or (A if present; if not, B).  It also handles
+/// expressions involving adding a constant, e.g.
+/// `Sum(Scale(tdnn2, -1.0), Const(1.0, 512))` (see ConstantSumDescriptor).
 class SumDescriptor {
  public:
-
   /// Given an Index at the output of this Descriptor, append to "dependencies"
   /// a list of Cindexes that describes what inputs we potentially depend on.
   /// The output list is not necessarily sorted, and this function doesn't make
@@ -314,9 +350,21 @@ class SumDescriptor {
 
   virtual ~SumDescriptor() { }
 
-  // This function appends to "node_indexes" a list (not necessarily sorted or
-  // unique) of all the node indexes that this descriptor may forward data from.
+  /// This function appends to "node_indexes" a list (not necessarily sorted or
+  /// unique) of all the node indexes that this descriptor may forward data from.
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const = 0;
+
+  /// This function returns the scale on the node-index 'node_index' when it
+  /// appears in expressions inside this descriptor.  E.g. if the descriptor is
+  /// just `Scale(tdnn2, 2.0)` and the node index for `tdnn2` is 4, then
+  /// GetScaleForNode(4) would return 2.0.  It will return +infinity if the node
+  /// is >= 0 and does not appear in this descriptor.  If node_index < 0, it
+  /// returns the constant offset value from this descriptor, which will equal
+  /// 0.0 if there is no expression like `Const(1.0, 512)` in this node.  If a
+  /// particular node_index > 0 appears in different sub-expressions of the
+  /// descriptor with different scales it is an error (it's not supported) and
+  /// this function would crash.
+  virtual BaseFloat GetScaleForNode(int32 node_index) const = 0;
 
   // see Modulus function of ForwardingDescriptor for explanation.
   virtual int32 Modulus() const = 0;
@@ -325,13 +373,13 @@ class SumDescriptor {
   /// supported.
   virtual void WriteConfig(std::ostream &os,
                            const std::vector<std::string> &node_names) const = 0;
-
-
 };
 
 /// This is the case of class SumDescriptor, in which we contain just one term,
 /// and that term is optional (an IfDefined() expression).  That term is a
 /// general SumDescriptor.
+///  The written form is: `IfDefined(<descriptor>)`, e.g.
+///   `IfDefined(Offset(lstm2.s, -3))`
 class OptionalSumDescriptor: public SumDescriptor {
  public:
   virtual void GetDependencies(const Index &ind,
@@ -347,6 +395,7 @@ class OptionalSumDescriptor: public SumDescriptor {
   // This function appends to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
   virtual int32 Modulus() const { return src_->Modulus(); }
   /// written form is: if required_ == true, "<written-form-of-src>"
   /// else "IfDefined(<written-form-of-src>)".
@@ -360,8 +409,10 @@ class OptionalSumDescriptor: public SumDescriptor {
   SumDescriptor *src_;
 };
 
-// This is the base-case of SumDescriptor which just wraps
-// a ForwardingDescriptor.
+/// This is the normal base-case of SumDescriptor which just wraps a
+/// ForwardingDescriptor.  The written form is any valid ForwardingDescriptor,
+/// e.g. in the simplest case just `tdnn3`.
+/// See also ConstantSumDescriptor().
 class SimpleSumDescriptor: public SumDescriptor {
  public:
   virtual void GetDependencies(const Index &ind,
@@ -370,6 +421,8 @@ class SimpleSumDescriptor: public SumDescriptor {
                             const CindexSet &cindex_set,
                             std::vector<Cindex> *used_inputs) const;
   virtual int32 Dim(const Nnet &nnet) const;
+
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
 
   // This function appends to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
@@ -392,6 +445,39 @@ class SimpleSumDescriptor: public SumDescriptor {
 };
 
 
+/// This is an alternative base-case of SumDescriptor (an alternative to
+/// SimpleSumDescriptor) which represents a constant term, e.g. `Const(1.0,
+/// 512)`.  Note that this is not allowed to appear inside conditionals
+/// such as IfDefined() or Failover(); this is enforced in the parsing
+/// code involving class GeneralDescriptor.
+/// The written form is: `Const(<value>, <dimension>)`, e.g.
+/// `Const(-1.0, 512)`
+class ConstantSumDescriptor: public SumDescriptor {
+ public:
+  virtual void GetDependencies(const Index &ind,
+                               std::vector<Cindex> *dependencies) const { }
+  virtual bool IsComputable(const Index &ind,
+                            const CindexSet &cindex_set,
+                            std::vector<Cindex> *used_inputs) const {
+    return true;
+  }
+  virtual int32 Dim(const Nnet &nnet) const { return dim_; }
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
+
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const { }
+  virtual int32 Modulus() const { return 1; }
+  /// The written form is: `Const(<value>, <dimension>)`, e.g.
+  /// `Const(-1.0, 512)`
+  virtual void WriteConfig(std::ostream &os,
+                           const std::vector<std::string> &node_names) const;
+  virtual SumDescriptor *Copy() const;
+
+  ConstantSumDescriptor(BaseFloat value, int32 dim);
+  virtual ~ConstantSumDescriptor() {}
+ private:
+  BaseFloat value_;
+  int32 dim_;
+};
 
 /// BinarySumDescriptor can represent either A + B, or (A if defined, else B).
 /// Other expressions such as A + (B if defined, else zero), (A if defined, else
@@ -401,8 +487,8 @@ class SimpleSumDescriptor: public SumDescriptor {
 class BinarySumDescriptor: public SumDescriptor {
  public:
   enum Operation {
-    kSum,  // A + B
-    kFailover, // A if defined, else B.
+    kSumOperation,  // A + B
+    kFailoverOperation, // A if defined, else B.
   };
   virtual void GetDependencies(const Index &ind,
                                std::vector<Cindex> *dependencies) const;
@@ -410,6 +496,7 @@ class BinarySumDescriptor: public SumDescriptor {
                             const CindexSet &cindex_set,
                             std::vector<Cindex> *used_inputs) const;
   virtual int32 Dim(const Nnet &nnet) const;
+  virtual BaseFloat GetScaleForNode(int32 node_index) const;
 
   // This function appends to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
@@ -508,7 +595,7 @@ class Descriptor {
   /// Destructor
   ~Descriptor() { Destroy(); }
  private:
-  void Destroy(); // empties parts_ after deleting its members.
+  void Destroy();
   // the elements of parts_ are owned here.
   std::vector<SumDescriptor*> parts_;
 };
@@ -521,7 +608,7 @@ class Descriptor {
  */
 struct GeneralDescriptor {
   enum DescriptorType { kAppend, kSum, kFailover, kIfDefined, kOffset, kSwitch,
-                        kRound, kReplaceIndex, kNodeName };
+                        kRound, kReplaceIndex, kScale, kConst, kNodeName };
 
   // The Parse method is used for reading a config-file-style represenation.
   // Assumes the input has already been tokenized into an array of strings, and
@@ -534,8 +621,10 @@ struct GeneralDescriptor {
                                   const std::string **next_token);
 
   explicit GeneralDescriptor(DescriptorType t, int32 value1 = -1,
-                             int32 value2 = -1):
-      descriptor_type_(t), value1_(value1), value2_(value2) { }
+                             int32 value2 = -1, BaseFloat alpha = 0.0):
+      descriptor_type_(t), value1_(value1), value2_(value2),
+      alpha_(alpha) { }
+
 
   ~GeneralDescriptor() { DeletePointers(&descriptors_); }
 
@@ -552,12 +641,24 @@ struct GeneralDescriptor {
 
   DescriptorType descriptor_type_;
 
-  // the following is only relevant if descriptor_type == kReplaceIndex [1 for t, 2 for ]
-  // or kNodeName (the index of the node), or kOffset [the t offset].
+  // value1_ is only relevant if:
+  //    (a) descriptor_type_ == kReplaceIndex (value1_ is 1 for t, 2 for x)
+  //    (b) descriptor_type_ == kNodeName (value1_ is the index of the node)
+  //    (c) descriptor_type_ == kOffset (value1_ is the t offset).
+  //    (d) descriptor_type_ == kConst (value1_ is the dimension and alpha_
+  //                                   is the value).
   int32 value1_;
-  // the following is only relevant if descriptor_type == kReplaceIndex [the value
-  // we replace the index with], or kOffset [the x offset]
+  // value2_ is only relevant if
+  //    (a) descriptor_type == kReplaceIndex (value2_ is the value
+  //                                          we replace the index with).
+  //    (b) descriptor_type_ == kOffset (value2_ is the x offset)
   int32 value2_;
+
+  // alpha is only relevant if
+  //  (a) descriptor_type == kScale, and this will be the scaling factor.
+  //  (b) descriptor_type == kConst; this is the value, and value1_ is set to the
+  //          dimension.
+  BaseFloat alpha_;
 
   // For any descriptor types that take args of type kDescriptor, a list of those
   // args.  Pointers owned here.
@@ -579,6 +680,10 @@ struct GeneralDescriptor {
   void ParseFailover(const std::vector<std::string> &node_names,
                      const std::string **next_token);
   void ParseRound(const std::vector<std::string> &node_names,
+                  const std::string **next_token);
+  void ParseScale(const std::vector<std::string> &node_names,
+                  const std::string **next_token);
+  void ParseConst(const std::vector<std::string> &node_names,
                   const std::string **next_token);
   void ParseReplaceIndex(const std::vector<std::string> &node_names,
                          const std::string **next_token);

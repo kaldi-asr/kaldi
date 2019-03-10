@@ -41,7 +41,11 @@ if [ -z "$kwseval" ] ; then
   exit 1
 fi
 
-bash -x $kwseval -c -r $rttm -e $ecf -t $kwlist -s $workdir/kwslist.xml -f $workdir/
+(
+  set -x
+  $kwseval -c -r $rttm -e $ecf -t $kwlist -s $workdir/kwslist.xml -f $workdir/
+)
+
 grep -E ",,MISS" $workdir/alignment.csv | \
   perl -e '
       binmode STDIN, ":utf8";

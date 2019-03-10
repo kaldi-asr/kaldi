@@ -70,7 +70,7 @@ void NnetDiscriminativeTrainer::Train(const NnetDiscriminativeExample &eg) {
                                       use_xent_regularization,
                                       need_model_derivative,
                                       &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   NnetComputer computer(nnet_config.compute_config, *computation,
                         *nnet_,

@@ -2,6 +2,7 @@
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 //           2015  Guoguo Chen
+//           2019  Dogan Can
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -83,10 +84,18 @@ class MinimumBayesRisk {
                    MinimumBayesRiskOptions opts = MinimumBayesRiskOptions());
 
   // Uses the provided <words> as <R_> instead of using the lattice best path.
+  // Note that the default value of opts.decode_mbr is true. If you provide 1-best
+  // hypothesis from MAP decoding, the output ctm from MBR decoding may be
+  // mismatched with the provided <words> (<words> would be used as the starting
+  // point of optimization).
   MinimumBayesRisk(const CompactLattice &clat,
                    const std::vector<int32> &words,
                    MinimumBayesRiskOptions opts = MinimumBayesRiskOptions());
   // Uses the provided <words> as <R_> and <times> of bins instead of using the lattice best path.
+  // Note that the default value of opts.decode_mbr is true. If you provide 1-best
+  // hypothesis from MAP decoding, the output ctm from MBR decoding may be
+  // mismatched with the provided <words> (<words> would be used as the starting
+  // point of optimization).
   MinimumBayesRisk(const CompactLattice &clat,
                    const std::vector<int32> &words,
                    const std::vector<std::pair<BaseFloat,BaseFloat> > &times,
@@ -96,17 +105,27 @@ class MinimumBayesRisk {
     return R_;
   }
 
+  const std::vector<std::vector<std::pair<BaseFloat, BaseFloat> > > GetTimes() const {
+    return times_; // returns average (start,end) times for each word in each
+    // bin. These are raw averages without any processing, i.e. time intervals
+    // from different bins can overlap.
+  }
+
   const std::vector<std::pair<BaseFloat, BaseFloat> > GetSausageTimes() const {
-    return times_; // returns average (start,end) times for each bin (each entry
-    // of GetSausageStats()).  Note: if you want the times for the one best,
-    // you can work out the one best yourself from the sausage stats and get the times
-    // at the same time.
+    return sausage_times_; // returns average (start,end) times for each bin.
+    // This is typically the weighted average of the times in GetTimes() but can
+    // be slightly different if the times for the bins overlap, in which case
+    // the times returned by this method do not overlap unlike the times
+    // returned by GetTimes().
   }
 
   const std::vector<std::pair<BaseFloat, BaseFloat> > &GetOneBestTimes() const {
-    return one_best_times_; // returns average (start,end) times for each bin corresponding
-    // to an entry in the one-best output.  This is just the appropriate
-    // subsequence of the times in SausageTimes().
+    return one_best_times_; // returns average (start,end) times for each word
+    // corresponding to an entry in the one-best output.  This is typically the
+    // appropriate subset of the times in GetTimes() but can be slightly
+    // different if the times for the one-best words overlap, in which case
+    // the times returned by this method do not overlap unlike the times
+    // returned by GetTimes().
   }
 
   /// Outputs the confidences for the one-best transcript.
@@ -114,8 +133,7 @@ class MinimumBayesRisk {
     return one_best_confidences_;
   }
 
-  /// Returns the expected WER over this sentence (assuming
-  /// model correctness.
+  /// Returns the expected WER over this sentence (assuming model correctness).
   BaseFloat GetBayesRisk() const { return L_; }
 
   const std::vector<std::vector<std::pair<int32, BaseFloat> > > &GetSausageStats() const {
@@ -128,8 +146,18 @@ class MinimumBayesRisk {
   /// Minimum-Bayes-Risk Decode. Top-level algorithm.  Figure 6 of the paper.
   void MbrDecode();
 
-  /// The basic edit-distance function l(a,b), as in the paper.
-  inline double l(int32 a, int32 b) { return (a == b ? 0.0 : 1.0); }
+  /// Without the 'penalize' argument this gives us the basic edit-distance
+  /// function l(a,b), as in the paper.
+  /// With the 'penalize' argument it can be interpreted as the edit distance
+  /// plus the 'delta' from the paper, except that we make a kind of conceptual
+  /// bug-fix and only apply the delta if the edit-distance was not already
+  /// zero.  This bug-fix was necessary in order to force all the stats to show
+  /// up, that should show up, and applying the bug-fix makes the sausage stats
+  /// significantly less sparse.
+  inline double l(int32 a, int32 b, bool penalize = false) {
+    if (a == b) return 0.0;
+    else return (penalize ? 1.0 + delta() : 1.0);
+  }
 
   /// returns r_q, in one-based indexing, as in the paper.
   inline int32 r(int32 q) { return R_[q-1]; }
@@ -151,8 +179,14 @@ class MinimumBayesRisk {
   // epsilon (0).  (But if no words in vec, just one epsilon)
   static void NormalizeEps(std::vector<int32> *vec);
 
-  static inline BaseFloat delta() { return 1.0e-05; } // A constant
-  // used in the algorithm.
+  // delta() is a constant used in the algorithm, which penalizes
+  // the use of certain epsilon transitions in the edit-distance which would cause
+  // words not to show up in the accumulated edit-distance statistics.
+  // There has been a conceptual bug-fix versus the way it was presented in
+  // the paper: we now add delta only if the edit-distance was not already
+  // zero.
+  static inline BaseFloat delta() { return 1.0e-05; }
+
 
   /// Function used to increment map.
   static inline void AddToMap(int32 i, double d, std::map<int32, double> *gamma) {
@@ -198,15 +232,20 @@ class MinimumBayesRisk {
   // paper.  We sort in reverse order on the second member (posterior), so more
   // likely word is first.
 
-  std::vector<std::pair<BaseFloat, BaseFloat> > times_;
+  std::vector<std::vector<std::pair<BaseFloat, BaseFloat> > > times_;
+  // The average start and end times for words in each confusion-network bin.
+  // This is like an average over arcs, of the tau_b and tau_e quantities in
+  // Appendix C of the paper.  Indexed from zero, like gamma_ and R_.
+
+  std::vector<std::pair<BaseFloat, BaseFloat> > sausage_times_;
   // The average start and end times for each confusion-network bin.  This
   // is like an average over words, of the tau_b and tau_e quantities in
   // Appendix C of the paper.  Indexed from zero, like gamma_ and R_.
 
   std::vector<std::pair<BaseFloat, BaseFloat> > one_best_times_;
-  // one_best_times_ is a subsequence of times_, corresponding to
-  // (start,end) times of words in the one best output.  Actually these
-  // times are averages over the bin that each word came from.
+  // The average start and end times for words in the one best output.  This
+  // is like an average over the arcs, of the tau_b and tau_e quantities in
+  // Appendix C of the paper. Indexed from zero, like gamma_ and R_.
 
   std::vector<BaseFloat> one_best_confidences_;
   // vector of confidences for the 1-best output (which could be

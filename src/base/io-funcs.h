@@ -31,7 +31,9 @@
 #include <cctype>
 #include <vector>
 #include <string>
+
 #include "base/kaldi-common.h"
+#include "base/io-funcs-inl.h"
 
 namespace kaldi {
 
@@ -44,7 +46,7 @@ namespace kaldi {
   We also want to have control over whitespace in text mode without affecting
   the meaning of the file, for pretty-printing purposes.
 
-  Errors are handled by throwing an exception (std::runtime_error).
+  Errors are handled by throwing a KaldiFatalError exception.
 
   For integer and floating-point types (and boolean values):
 
@@ -235,7 +237,4 @@ inline void InitKaldiOutputStream(std::ostream &os, bool binary);
 inline bool InitKaldiInputStream(std::istream &is, bool *binary);
 
 }  // end namespace kaldi.
-
-#include "base/io-funcs-inl.h"
-
 #endif  // KALDI_BASE_IO_FUNCS_H_

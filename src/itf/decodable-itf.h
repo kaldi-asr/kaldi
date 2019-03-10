@@ -72,19 +72,18 @@ namespace kaldi {
    always just return the number of frames in the file, and IsLastFrame() will
    return true for the last frame.
 
-   For truly online decoding, the "old" online decodable objects in ../online/ have a
-   "blocking" IsLastFrame() and will crash if you call NumFramesReady().
+   For truly online decoding, the "old" online decodable objects in ../online/
+   have a "blocking" IsLastFrame() and will crash if you call NumFramesReady().
    The "new" online decodable objects in ../online2/ return the number of frames
    currently accessible if you call NumFramesReady().  You will likely not need
    to call IsLastFrame(), but we implement it to only return true for the last
    frame of the file once we've decided to terminate decoding.
 */
-
 class DecodableInterface {
  public:
   /// Returns the log likelihood, which will be negated in the decoder.
-  /// The "frame" starts from zero.  You should verify that IsLastFrame(frame-1)
-  /// returns false before calling this.
+  /// The "frame" starts from zero.  You should verify that NumFramesReady() > frame
+  /// before calling this.
   virtual BaseFloat LogLikelihood(int32 frame, int32 index) = 0;
 
   /// Returns true if this is the last frame.  Frames are zero-based, so the

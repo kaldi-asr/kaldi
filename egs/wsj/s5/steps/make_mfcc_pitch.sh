@@ -30,7 +30,7 @@ if [ $# -lt 1 ] || [ $# -gt 3 ]; then
    echo "Options: "
    echo "  --mfcc-config              <mfcc-config-file>        # config passed to compute-mfcc-feats "
    echo "  --pitch-config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
-   echo "  --pitch-postprocess-config <postprocess-config-file>	# config passed to process-kaldi-pitch-feats "
+   echo "  --pitch-postprocess-config <postprocess-config-file>  # config passed to process-kaldi-pitch-feats "
    echo "  --paste-length-tolerance   <tolerance>               # length tolerance passed to paste-feats"
    echo "  --nj                       <nj>                      # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>)     # how to run jobs."
@@ -79,9 +79,9 @@ done
 utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 
 if [ ! -z "$pitch_postprocess_config" ]; then
-	postprocess_config_opt="--config=$pitch_postprocess_config";
+  postprocess_config_opt="--config=$pitch_postprocess_config";
 else
-	postprocess_config_opt=
+  postprocess_config_opt=
 fi
 
 if [ -f $data/spk2warp ]; then

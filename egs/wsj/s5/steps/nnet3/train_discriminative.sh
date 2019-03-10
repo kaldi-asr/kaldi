@@ -227,7 +227,7 @@ while [ $x -lt $num_iters ]; do
         --one-silence-class=$one_silence_class \
         --boost=$boost --acoustic-scale=$acoustic_scale \
         $dir/$x.mdl \
-        ark:$degs_dir/valid_diagnostic.degs &
+        "ark,bg:nnet3-discriminative-copy-egs ark:$degs_dir/valid_diagnostic.degs ark:- | nnet3-discriminative-merge-egs --minibatch-size=1:64 ark:- ark:- |" &
       $cmd $dir/log/compute_objf_train.$x.log \
         nnet3-discriminative-compute-objf  $regularization_opts \
         --silence-phones=$silphonelist \
@@ -235,7 +235,7 @@ while [ $x -lt $num_iters ]; do
         --one-silence-class=$one_silence_class \
         --boost=$boost --acoustic-scale=$acoustic_scale \
         $dir/$x.mdl \
-        ark:$degs_dir/train_diagnostic.degs &
+        "ark,bg:nnet3-discriminative-copy-egs ark:$degs_dir/train_diagnostic.degs ark:- | nnet3-discriminative-merge-egs --minibatch-size=1:64 ark:- ark:- |" &
     fi
 
     if [ $x -gt 0 ]; then

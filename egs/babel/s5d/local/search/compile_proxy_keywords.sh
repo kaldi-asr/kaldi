@@ -232,8 +232,9 @@ cat $workdir/phones.txt | \
   --osymbols=$workdir/phones.txt - $workdir/E.fst
 
 # Pre-composes L2 and E, for the sake of efficiency
-fstcompose $workdir/L2.fst $workdir/E.fst |\
-  fstarcsort --sort_type=ilabel > $workdir/L2xE.fst
+$cmd --mem 12G $workdir/log/fstcompose.log \
+  fstcompose $workdir/L2.fst $workdir/E.fst \|\
+  fstarcsort --sort_type=ilabel \> $workdir/L2xE.fst
 
 nof_keywords=`cat $workdir/keywords.txt |wc -l`
 if [ $nj -gt $nof_keywords ]; then

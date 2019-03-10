@@ -4,11 +4,11 @@
 #                2016  Vimal Manohar
 # Apache 2.0.
 
-# This script does forward propagation through a neural network. 
+# This script does forward propagation through a neural network.
 
 # Begin configuration section.
 stage=1
-nj=4 # number of jobs.  
+nj=4 # number of jobs.
 cmd=run.pl
 use_gpu=false
 frames_per_chunk=50
@@ -54,7 +54,7 @@ fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print
 
 model=$srcdir/$iter.raw
 if [ ! -f $srcdir/$iter.raw ]; then
-  echo "$0: WARNING: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl instead." && exit 1
+  echo "$0: WARNING: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl instead."
   model=$srcdir/$iter.mdl
 fi
 
@@ -77,15 +77,10 @@ cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 echo $nj > $dir/num_jobs
 
 ## Set up features.
-if [ -f $srcdir/final.mat ]; then 
+if [ -f $srcdir/final.mat ]; then
   echo "$0: ERROR: lda feature type is no longer supported." && exit 1
 fi
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-
-if grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
-  echo "$0: **WARNING**: you seem to be using a neural net system trained with transforms,"
-  echo "  but this is no longer supported."
-fi
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
@@ -109,12 +104,15 @@ gpu_queue_opt=
 
 if $use_gpu; then
   gpu_queue_opt="--gpu 1"
+  suffix="-batch"
   gpu_opt="--use-gpu=yes"
+else
+  gpu_opt="--use-gpu=no"
 fi
 
 if [ $stage -le 2 ]; then
   $cmd $gpu_queue_opt JOB=1:$nj $dir/log/compute_output.JOB.log \
-    nnet3-compute $gpu_opt $ivector_opts $frame_subsampling_opt \
+    nnet3-compute$suffix $gpu_opt $ivector_opts $frame_subsampling_opt \
      --frames-per-chunk=$frames_per_chunk \
      --extra-left-context=$extra_left_context \
      --extra-right-context=$extra_right_context \

@@ -3,10 +3,12 @@
 set -e -o pipefail
 
 # Begin configuration section.
-mode=4
+mode=4  # mode can be 1 through 5.  They should all give roughly similar results.
+        # See the comments in the case statement for more details.
 cmd=run.pl
 skip_scoring=false
-self_loop_scale=0.1
+self_loop_scale=0.1  # only matters for mode 4.
+acoustic_scale=0.1   # only matters for mode 5.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -16,7 +18,14 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 5 ]; then
    echo "Do language model rescoring of lattices (remove old LM, add new LM)"
    echo "Usage: steps/lmrescore.sh [options] <old-lang-dir> <new-lang-dir> <data-dir> <input-decode-dir> <output-decode-dir>"
-   echo "options: [--cmd (run.pl|queue.pl [queue opts])] [--mode (1|2|3|4)]"
+   echo "Ooptions:"
+   echo " --cmd   <cmd-string>       # How to run commands (e.g. run.pl, queue.pl)"
+   echo " --mode  (1|2|3|4|5)        # Mode of LM rescoring to use (default: 4)."
+   echo "                            # These should give very similar results."
+   echo " --self-loop-scale  <scale> # Self-loop-scale, only relevant in mode 4."
+   echo "                            # Default: 0.1."
+   echo " --acoustic-scale  <scale>  # Acoustic scale, only relevant in mode 5."
+   echo "                            # Default: 0.1."
    exit 1;
 fi
 
@@ -112,6 +121,18 @@ case "$mode" in
       lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=$self_loop_scale \
       $mdl ark:- ark:- \| \
       gzip -c \>$outdir/lat.JOB.gz  || exit 1;
+    ;;
+  5) # Mode 5 uses the binary lattice-lmrescore-pruned to do the LM rescoring
+    # within a single program.  There are options for pruning, but these won't
+    # normally need to be modified; the pruned aspect is more necessary for
+    # RNNLM rescoring or when the lattices are extremely deep.
+
+    [[ -f `dirname $indir`/frame_subsampling_factor && "$acoustic_scale" == 0.1 ]] && \
+      echo "$0: WARNING: chain models need '--acoustic-scale 1.0'";
+
+    $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
+      lattice-lmrescore-pruned --acoustic-scale=$acoustic_scale "$oldlm" "$newlm" \
+      "ark:gunzip -c $indir/lat.JOB.gz|" "ark:|gzip -c >$outdir/lat.JOB.gz" || exit 1;
     ;;
 esac
 

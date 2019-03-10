@@ -46,9 +46,9 @@ int main(int argc, char *argv[]) {
         "or:  shift-feats [options] <feats-rxfilename> <feats-wxfilename>\n"
         "e.g.: shift-feats --shift=-1 foo.scp bar.ark\n"
         "or: shift-feats --shift=1 foo.mat bar.mat\n"
-        "See also: copy-feats, copy-matrix, select-feats, extract-rows,\n"
-        "subset-feats, subsample-feats, splice-feats, paste-feats, "
-        "concat-feats\n";
+        "See also: copy-feats, copy-matrix, select-feats, subset-feats,\n"
+        "subsample-feats, splice-feats, paste-feats, concat-feats, "
+        "extract-feature-segments\n";
 
     ParseOptions po(usage);
     bool binary = true;

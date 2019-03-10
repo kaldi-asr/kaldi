@@ -127,7 +127,7 @@ def read_text(text_file):
                 "Did not get enough columns; line {0} in {1}"
                 "".format(line, text_file.name))
         elif len(parts) == 1:
-            logger.warn("Empty transcript for utterance %s in %s", 
+            logger.warn("Empty transcript for utterance %s in %s",
                         parts[0], text_file.name)
             yield parts[0], []
         else:
@@ -488,20 +488,24 @@ def ctm_line_to_string(ctm_line):
     return " ".join([str(x) for x in ctm_line])
 
 
-def test_alignment():
-    hyp = "ACACACTA"
+def test_alignment(align_full_hyp):
+    hyp = "GCCAT"
     ref = "AGCACACA"
+
+    verbose = 3
+    logger.info("REF: %s", ref)
+    logger.info("HYP: %s", hyp)
 
     output, score = smith_waterman_alignment(
         ref, hyp, similarity_score_function=lambda x, y: 2 if (x == y) else -1,
-        del_score=-1, ins_score=-1, eps_symbol="-", align_full_hyp=True)
+        del_score=-1, ins_score=-1, eps_symbol="-", align_full_hyp=align_full_hyp)
 
     print_alignment("Alignment", output, out_file_handle=sys.stderr)
 
 
 def run(args):
     if args.debug_only:
-        test_alignment()
+        test_alignment(args.align_full_hyp)
         raise SystemExit("Exiting since --debug-only was true")
 
     def similarity_score_function(x, y):

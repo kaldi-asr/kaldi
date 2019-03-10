@@ -92,22 +92,22 @@ then
 fi
 
 if [ $stage -le 0 ]; then
-	#Gather all the speech files together to create a file list
-	#TODO: Train and test split might be required
-	(
-			#find $speech_d1 -iname '*.sph';
-			#find $speech_d2 -iname '*.sph';
-	    find $speech -iname '*.sph';
-	)  > $tmpdir/train_sph.flist
+  #Gather all the speech files together to create a file list
+  #TODO: Train and test split might be required
+  (
+    #find $speech_d1 -iname '*.sph';
+    #find $speech_d2 -iname '*.sph';
+    find $speech -iname '*.sph';
+  ) > $tmpdir/train_sph.flist
 
-	#Get all the transcripts in one place
-	find $transcripts -iname '*.tdf' > $tmpdir/train_transcripts.flist
+  #Get all the transcripts in one place
+  find $transcripts -iname '*.tdf' > $tmpdir/train_transcripts.flist
 fi
 
 if [ $stage -le 1 ]; then
-	$local/fsp_make_trans.pl $tmpdir
-	mkdir -p $dir/train_all
-	mv $tmpdir/reco2file_and_channel $dir/train_all/
+  $local/fsp_make_trans.pl $tmpdir
+  mkdir -p $dir/train_all
+  mv $tmpdir/reco2file_and_channel $dir/train_all/
 fi
 
 if [ $stage -le 2 ]; then
@@ -136,8 +136,8 @@ if [ $stage -le 2 ]; then
   sed 's:>::g' | \
   #How do you handle numbers?
   grep -v '()' | \
-  #Now go after the non-printable characters
-  sed -r 's:¿::g' > $tmpdir/text.2
+  #Now go after the non-printable characters and multiple spaces
+  sed -r 's:¿::g'  | sed 's/^\s\s*|\s\s*$//g' | sed 's/\s\s*/ /g' > $tmpdir/text.2
   cp $tmpdir/text.2 $dir/train_all/text
 
   #Create segments file and utt2spk file
@@ -153,7 +153,7 @@ fi
 if [ $stage -le 3 ]; then
   for f in `cat $tmpdir/train_sph.flist`; do
     # convert to absolute path
-    utils/make_absolute.sh $f
+    make_absolute.sh $f
   done > $tmpdir/train_sph_abs.flist
 
   cat $tmpdir/train_sph_abs.flist | perl -ane 'm:/([^/]+)\.sph$: || die "bad line $_; ";  print "$1 $_"; ' > $tmpdir/sph.scp
@@ -166,6 +166,9 @@ if [ $stage -le 4 ]; then
   cd $cdir
   $local/fsp_make_spk2gender.sh > $dir/train_all/spk2gender
 fi
+
+fix_data_dir.sh $dir/train_all || exit 1
+validate_data_dir.sh --no-feats $dir/train_all || exit 1
 
 echo "Fisher Spanish Data preparation succeeded."
 

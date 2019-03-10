@@ -35,8 +35,8 @@ void MfccComputer::Compute(BaseFloat signal_log_energy,
   const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
 
   if (opts_.use_energy && !opts_.raw_energy)
-    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<BaseFloat>::min()));
+    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<float>::min()));
 
   if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -51,7 +51,7 @@ void MfccComputer::Compute(BaseFloat signal_log_energy,
   mel_banks.Compute(power_spectrum, &mel_energies_);
 
   // avoid log of zero (which should be prevented anyway by dithering).
-  mel_energies_.ApplyFloor(std::numeric_limits<BaseFloat>::epsilon());
+  mel_energies_.ApplyFloor(std::numeric_limits<float>::epsilon());
   mel_energies_.ApplyLog();  // take the log.
 
   feature->SetZero();  // in case there were NaNs.
@@ -82,7 +82,14 @@ void MfccComputer::Compute(BaseFloat signal_log_energy,
 MfccComputer::MfccComputer(const MfccOptions &opts):
     opts_(opts), srfft_(NULL),
     mel_energies_(opts.mel_opts.num_bins) {
+
   int32 num_bins = opts.mel_opts.num_bins;
+  if (opts.num_ceps > num_bins)
+    KALDI_ERR << "num-ceps cannot be larger than num-mel-bins."
+              << " It should be smaller or equal. You provided num-ceps: "
+              << opts.num_ceps << "  and num-mel-bins: "
+              << num_bins;
+
   Matrix<BaseFloat> dct_matrix(num_bins, num_bins);
   ComputeDctMatrix(&dct_matrix);
   // Note that we include zeroth dct in either case.  If using the
