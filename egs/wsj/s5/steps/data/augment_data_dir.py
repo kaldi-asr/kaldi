@@ -22,7 +22,7 @@ def GetArgs():
         "babble, for example.  Foreground noises are added sequentially, according to a specified "
         "interval.  See also steps/data/reverberate_data_dir.py "
         "Usage: augment_data_dir.py [options...] <in-data-dir> <out-data-dir> "
-        "E.g., steps/data/augment_data_dir.py --utt-suffix aug --fg-snrs 20:10:5:0 --bg-snrs 20:15:10 "
+        "E.g., steps/data/augment_data_dir.py --utt-suffix=-aug --fg-snrs 20:10:5:0 --bg-snrs 20:15:10 "
         "--num-bg-noise 1:2:3 --fg-interval 3 --fg-noise-dir data/musan_noise --bg-noise-dir "
         "data/musan_music data/train data/train_aug", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--fg-snrs', type=str, dest = "fg_snr_str", default = '20:10:0',
@@ -33,7 +33,7 @@ def GetArgs():
                         help='Number of overlapping background noises that we iterate over. For example, if the input is "1:2:3" then the output wavs will have either 1, 2, or 3 randomly chosen background noises overlapping the entire recording')
     parser.add_argument('--fg-interval', type=int, dest = "fg_interval", default = 0,
                         help='Number of seconds between the end of one foreground noise and the beginning of the next.')
-    parser.add_argument('--utt-suffix', type=str, dest = "utt_suffix", default = "aug", help='Suffix added to utterance IDs.')
+    parser.add_argument('--utt-suffix', type=str, dest = "utt_suffix", default = "-aug", help='Suffix added to utterance IDs.')
     parser.add_argument('--random-seed', type=int, dest = "random_seed", default = 123, help='Random seed.')
 
     parser.add_argument("--bg-noise-dir", type=str, dest="bg_noise_dir",
@@ -124,7 +124,7 @@ def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
         if len(utt_suffix) > 0:
             new_dict = {}
             for key in dict.keys():
-                new_dict[key + "-" + utt_suffix] = dict[key]
+                new_dict[key + utt_suffix] = dict[key]
             dict = new_dict
         WriteDictToFile(dict, output_dir + "/" + filename)
 
@@ -176,7 +176,7 @@ def main():
         new_wav = AugmentWav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
             bg_noise_utts, noise_wavs, noise_reco2dur, args.fg_interval,
             num_bg_noises)
-        new_utt = utt + "-" + args.utt_suffix
+        new_utt = utt + args.utt_suffix
         new_utt2wav[new_utt] = new_wav
 
     if not os.path.exists(output_dir):
