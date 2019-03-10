@@ -84,7 +84,7 @@ print("False")
 "` || exit 1
 
 volume_perturb_done1=$volume_perturb_done | tr '[:upper:]' '[:lower:]'
-if $volume_perturb_done; then
+if $volume_perturb_done1; then
   echo "$0: It looks like the data was already volume perturbed.  Not doing anything."
   exit 0
 fi
