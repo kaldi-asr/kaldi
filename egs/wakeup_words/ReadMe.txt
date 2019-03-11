@@ -13,4 +13,5 @@
 
 6. 具体详情参考CSDN: 基于kaldi训练唤醒词模型的一种方法 https://blog.csdn.net/cj1989111/article/details/88017908
 
-7. 嘈杂环境下误唤醒测试(待验证)
+7. 嘈杂环境下误唤醒测试
+  在嘈杂环境下挂机5天，误唤醒一次，且误唤醒词的置信度为0.617118，详细log参考 test_result/wakeup_test.log
