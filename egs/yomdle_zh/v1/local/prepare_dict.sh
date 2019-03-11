@@ -16,6 +16,10 @@ base_dir=$(echo "$DIRECTORY" | cut -d "/" -f2)
 
 mkdir -p $dir
 
+cut -d' ' -f1 download/cj5-cc.txt | ./utils/lang/bpe/learn_bpe.py -s 300 > $dir/bpe.out
+cut -d' ' -f1 download/cj5-cc.txt | ./utils/lang/bpe/apply_bpe.py -c $dir/bpe.out | sed 's/@@//g' > $dir/bpe_text
+cut -d' ' -f2- download/cj5-cc.txt | sed 's/ //g' > $dir/ids
+paste -d' ' $dir/bpe_text $dir/ids > $dir/cj5-cc.txt
 local/prepare_lexicon.py --data-dir $data_dir $dir
 
 cut -d' ' -f2- $dir/lexicon.txt | sed 's/SIL//g' | tr ' ' '\n' | sort -u | sed '/^$/d' >$dir/nonsilence_phones.txt || exit 1;

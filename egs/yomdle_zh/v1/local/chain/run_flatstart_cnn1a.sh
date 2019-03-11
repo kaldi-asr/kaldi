@@ -77,7 +77,7 @@ if [ $stage -le 1 ]; then
   cat $data_dir/$train_set/text \| \
     steps/nnet3/chain/e2e/text_to_phones.py $data_dir/lang \| \
     utils/sym2int.pl -f 2- $data_dir/lang/phones.txt \| \
-    chain-est-phone-lm --num-extra-lm-states=500 \
+    chain-est-phone-lm --num-extra-lm-states=1500 \
                        ark:- $treedir/phone_lm.fst
 fi
 
@@ -140,6 +140,7 @@ if [ $stage -le 3 ]; then
     --trainer.optimization.shrink-value 1.0 \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs true \
+    --use-gpu=wait \
     --feat-dir $data_dir/${train_set} \
     --tree-dir $treedir \
     --dir $dir  || exit 1;
