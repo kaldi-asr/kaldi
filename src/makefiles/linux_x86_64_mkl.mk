@@ -22,7 +22,7 @@ ifndef MKLROOT
 $(error MKLROOT not defined.)
 endif
 
-MKLLIB ?= $(MKLROOT)/lib/em64t
+MKLLIB ?= $(MKLROOT)/lib/intel64
 
 CXXFLAGS = -std=c++11 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
