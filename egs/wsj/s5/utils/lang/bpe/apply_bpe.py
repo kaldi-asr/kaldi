@@ -55,7 +55,7 @@ class BPE(object):
 
         self.vocab = vocab
 
-        self.glossaries = glossaries if glossaries else []
+        self.glossaries = " ".join(glossaries).split() if glossaries else []
 
         self.cache = {}
 
