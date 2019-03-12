@@ -57,6 +57,9 @@ sub validate_utf8_whitespaces {
   use feature 'unicode_strings';
   for (my $i = 0; $i < scalar @{$unicode_lines}; $i++) {
     my $current_line = $unicode_lines->[$i];
+    if ((substr $current_line, -1) ne "\n"){
+            print STDERR "$0: The current line (nr. $i) has invalid newline\n";
+                  return 1;
     # we replace TAB, LF, CR, and SPACE
     # this is to simplify the test
     if ($current_line =~ /\x{000d}/) {
@@ -831,7 +834,6 @@ if (-s "$lang/phones/$word_boundary.int") {
     $sid = 0;
     $wordseq_syms = "";
     $count = 0;
-    $temp = $wlen - 1;
     while ($count < $wlen) {
       $id = int(rand(scalar(keys %wint2sym)));
       # exclude disambiguation symbols, BOS and EOS, epsilon, and
