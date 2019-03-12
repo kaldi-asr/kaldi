@@ -63,7 +63,6 @@ for line in sys.stdin.readlines():
 print('false')
 "` || exit 1
 
-
 if $volume_perturb_done; then
   echo "$0: It looks like the data was already volume perturbed.  Not doing anything."
   exit 0
