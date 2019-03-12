@@ -52,19 +52,19 @@ for line in sys.stdin.readlines():
   parts = line.strip().split()
   if line.strip()[-1] == '|':
     if re.search('sox --vol', ' '.join(parts[-11:])):
-      print("True")
+      print('true')
       sys.exit(0)
   elif re.search(':[0-9]+$', line.strip()) is not None:
     continue
   else:
     if ' '.join(parts[1:3]) == 'sox --vol':
-      print("True")
+      print('true')
       sys.exit(0)
-print("False")
+print('false')
 "` || exit 1
 
-volume_perturb_done1=$volume_perturb_done | tr '[:upper:]' '[:lower:]'
-if $volume_perturb_done1; then
+
+if $volume_perturb_done; then
   echo "$0: It looks like the data was already volume perturbed.  Not doing anything."
   exit 0
 fi
