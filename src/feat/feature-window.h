@@ -62,8 +62,9 @@ struct FrameExtractionOptions {
       blackman_coeff(0.42),
       snip_edges(true),
       allow_downsample(false),
-      max_feature_vectors(-1),
-      allow_upsample(false) { }
+      allow_upsample(false),
+      max_feature_vectors(-1)
+      { }
 
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,

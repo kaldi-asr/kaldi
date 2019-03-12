@@ -70,8 +70,8 @@ template<class C>
 OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
     computer_(opts), window_function_(computer_.GetFrameOptions()),
-    input_finished_(false), waveform_offset_(0),
-    features_(opts.frame_opts.max_feature_vectors) { }
+    features_(opts.frame_opts.max_feature_vectors),
+    input_finished_(false), waveform_offset_(0) { }
 
 template<class C>
 void OnlineGenericBaseFeature<C>::AcceptWaveform(BaseFloat sampling_rate,
