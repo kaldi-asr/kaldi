@@ -257,7 +257,7 @@ void NnetTrainer::PrintMaxChangeStats() const {
                      (num_minibatches_processed_ *
                      (config_.backstitch_training_scale == 0.0 ? 1.0 :
                      1.0 + 1.0 / config_.backstitch_training_interval))
-                  << " \% of the time.";
+                  << " % of the time.";
       i++;
     }
   }
@@ -267,7 +267,7 @@ void NnetTrainer::PrintMaxChangeStats() const {
                  (num_minibatches_processed_ *
                  (config_.backstitch_training_scale == 0.0 ? 1.0 :
                  1.0 + 1.0 / config_.backstitch_training_interval))
-              << " \% of the time.";
+              << " % of the time.";
 }
 
 void ObjectiveFunctionInfo::UpdateStats(

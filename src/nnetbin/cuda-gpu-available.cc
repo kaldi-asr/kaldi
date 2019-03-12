@@ -46,8 +46,7 @@ int main(int argc, char *argv[]) try {
     KALDI_WARN << "Cannot get hostname, " << strerror(errno);
   }
 #endif
-  KALDI_LOG << std::endl << std::endl
-    << "### IS CUDA GPU AVAILABLE? '" << hostname << "' ###";
+  KALDI_LOG << "\n\n### IS CUDA GPU AVAILABLE? '" << hostname << "' ###";
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().SelectGpuId("yes");
   fprintf(stderr, "### HURRAY, WE GOT A CUDA GPU FOR COMPUTATION!!! ##\n\n");
@@ -76,9 +75,9 @@ int main(int argc, char *argv[]) try {
   return 0;
 #else
   std::cerr
-    << "### CUDA WAS NOT COMPILED IN! ###" << std::endl
+    << "### CUDA WAS NOT COMPILED IN! ###\n"
     << "To support CUDA, you must run 'configure' on a machine "
-    << "that has the CUDA compiler 'nvcc' available.";
+    << "that has the CUDA compiler 'nvcc' available.\n";
   return 1;
 #endif
 } catch (const std::exception &e) {
@@ -95,4 +94,3 @@ int main(int argc, char *argv[]) try {
     << "### - You should see your GPU (burnt GPUs may disappear from the list until reboot),";
   return -1;
 }
-

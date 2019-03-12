@@ -298,7 +298,7 @@ void NnetChainTrainer::PrintMaxChangeStats() const {
                      (num_minibatches_processed_ *
                      (nnet_config.backstitch_training_scale == 0.0 ? 1.0 :
                      1.0 + 1.0 / nnet_config.backstitch_training_interval))
-                  << " \% of the time.";
+                  << " % of the time.";
       i++;
     }
   }
@@ -308,7 +308,7 @@ void NnetChainTrainer::PrintMaxChangeStats() const {
                  (num_minibatches_processed_ *
                  (nnet_config.backstitch_training_scale == 0.0 ? 1.0 :
                  1.0 + 1.0 / nnet_config.backstitch_training_interval))
-              << " \% of the time.";
+              << " % of the time.";
 }
 
 NnetChainTrainer::~NnetChainTrainer() {
