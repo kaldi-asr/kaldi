@@ -3,9 +3,7 @@
 # -----------------------------------------------------------------------------
 
 # Set the base image to Ubuntu with tue-env
-# TODO: Change image tag to master after
-# https://github.com/tue-robotics/tue-env/pull/368 is merged
-FROM tueroboticsamigo/tue-env:cleanup_docker-and-ci
+FROM tuerobotics/tue-env:master
 
 # Update the image and install basic packages
 RUN sudo apt-get update -qq && \
