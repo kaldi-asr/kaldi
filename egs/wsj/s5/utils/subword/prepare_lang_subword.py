@@ -95,17 +95,7 @@ if [ $# -ne 4 ]; then
   echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
   echo "                                                     # all silence phones. "
   echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 <= silprob < 1]"
-#  echo "     --phone-symbol-table <filename>                 # default: \"\"; if not empty, use the provided "
-#  echo "                                                     # phones.txt as phone symbol table. This is useful "
-#  echo "                                                     # if you use a new dictionary for the existing setup."
-#  echo "     --unk-fst <text-fst>                            # default: none.  e.g. exp/make_unk_lm/unk_fst.txt."
-#  echo "                                                     # This is for if you want to model the unknown word"
-#  echo "                                                     # via a phone-level LM rather than a special phone"
-#  echo "                                                     # (this should be more useful for test-time than train-time)."
-#  echo "     --extra-word-disambig-syms <filename>           # default: \"\"; if not empty, add disambiguation symbols"
-#  echo "                                                     # from this file (one per line) to phones/disambig.txt,"
-#  echo "                                                     # phones/wdisambig.txt and words.txt"
-   echo "   --separator <separator>                           # default: @@"
+  echo "     --separator <separator>                         # default: @@"
   exit 1;
 fi
 
@@ -116,7 +106,7 @@ dir=$4
 mkdir -p $dir $tmpdir $dir/phones
 
 silprob=false
-[ -f $srcdir/lexiconp_silprob.txt ] && echo "Currently do not support word-dependent silence probability."
+[ -f $srcdir/lexiconp_silprob.txt ] && echo "$0: Currently we do not support word-dependent silence probability." && exit 1;
 
 [ -f path.sh ] && . ./path.sh
 
@@ -138,6 +128,8 @@ fi
 ! grep -q $separator $srcdir/lexiconp.txt && \
 echo "$0: Warning, this lexicon contains no separator \"$separator\" and may not be a subword lexicon." && exit 1;
 
+# Write the separator into file for future use.
+echo $separator > $dir/subword_separator.txt
 
 if ! utils/validate_dict_dir.pl $srcdir >&/dev/null; then
   utils/validate_dict_dir.pl $srcdir  # show the output.
@@ -152,7 +144,7 @@ if $position_dependent_phones; then
   # In this recipe, these markers apply to silence also.
   # Do this starting from lexiconp.txt only.
   if "$silprob"; then
-    echo "Currently do not support word-dependent silence probability"
+    echo "$0: Currently we do not support word-dependent silence probability" && exit 1;
   else
     utils/lang/make_position_dependent_subword_lexicon.py $srcdir/lexiconp.txt > $tmpdir/lexiconp.txt || exit 1;
   fi
@@ -176,7 +168,7 @@ if $position_dependent_phones; then
     > $tmpdir/phone_map.txt
 else
   if "$silprob"; then
-    echo "Currently do not support word-dependent silence probability"
+    echo "$0: Currently we do not support word-dependent silence probability" && exit 1;
   else
     cp $srcdir/lexiconp.txt $tmpdir/lexiconp.txt
   fi
@@ -251,7 +243,7 @@ fi
 unk_opt= # do not support 
 
 if "$silprob"; then
-  echo "Currently do not support word-dependent silence probability"
+  echo "$0: Currently we do not support word-dependent silence probability" && exit 1;
 else
   ndisambig=$(utils/add_lex_disambig.pl $unk_opt --pron-probs $tmpdir/lexiconp.txt $tmpdir/lexiconp_disambig.txt)
 fi
@@ -289,14 +281,7 @@ fi
 # L.fst.
 
 if "$silprob"; then
-  # remove the silprob
-#  cat $tmpdir/lexiconp_silprob.txt |\
-#    awk '{
-#      for(i=1; i<=NF; i++) {
-#        if(i!=3 && i!=4 && i!=5) printf("%s\t", $i); if(i==NF) print "";
-#      }
-#    }' > $tmpdir/lexiconp.txt
-  echo "Currently do not support word-dependent silence probability"
+  echo "$0: Currently we do not support word-dependent silence probability" && exit 1;
 fi
 
 
@@ -353,34 +338,8 @@ cat $tmpdir/align_lexicon.txt | \
   perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | sort | uniq > $dir/phones/align_lexicon.txt
 
 if [ -f $srcdir/nonterminals.txt ]; then
-#  utils/lang/grammar/augment_phones_txt.py $dir/phones.txt $srcdir/nonterminals.txt $dir/phones.txt
-#  utils/lang/grammar/augment_words_txt.py $dir/words.txt $srcdir/nonterminals.txt $dir/words.txt
-#  cp $srcdir/nonterminals.txt $dir/phones/nonterminals.txt
-#  utils/sym2int.pl $dir/phones.txt <$dir/phones/nonterminals.txt >$dir/phones/nonterminals.int
-#
-#  for w in "#nonterm_begin" "#nonterm_end" $(cat $srcdir/nonterminals.txt); do
-#    echo $w $w  # These are words without pronunciations, so leave those prons
-#                # empty.
-#  done >> $dir/phones/align_lexicon.txt
-#  nonterm_phones_offset=$(grep '#nonterm_bos' <$dir/phones.txt | awk '{print $2}')
-#  echo $nonterm_phones_offset > $dir/phones/nonterm_phones_offset.int
-#  echo '#nonterm_bos' > $dir/phones/nonterm_phones_offset.txt  # temporary.
-#
-#  if [ -f $dir/phones/word_boundary.txt ]; then
-#    # word-position-dependent system.  Only include the optional-silence phone,
-#    # and phones that can end a word, plus the special symbol #nonterm_bos, in the
-#    # left-context phones.
-#    awk '{if ($2 == "end" || $2 == "singleton") print $1; }' <$dir/phones/word_boundary.txt | \
-#        cat - $dir/phones/optional_silence.txt $dir/phones/nonterm_phones_offset.txt > $dir/phones/left_context_phones.txt
-#  else
-#    cat $dir/phones/{silence,nonsilence}.txt $dir/phones/nonterm_phones_offset.txt > $dir/phones/left_context_phones.txt
-#  fi
-#  utils/sym2int.pl $dir/phones.txt <$dir/phones/left_context_phones.txt >$dir/phones/left_context_phones.int
-#
-#  # we need to write utils/lang/make_lexicon_fst_silprob.py before this can work.
-#  grammar_opts="--left-context-phones=$dir/phones/left_context_phones.txt --nonterminals=$srcdir/nonterminals.txt"
-#else
-  echo "Currently do not support nonterminals"
+  echo "$0: Currently we do not support nonterminals" && exit 1;
+else
   grammar_opts=
 fi
 
@@ -395,12 +354,7 @@ if $silprob; then
 #  # Add silence probabilities (models the prob. of silence before and after each
 #  # word).  On some setups this helps a bit.  See utils/dict_dir_add_pronprobs.sh
 #  # and where it's called in the example scripts (run.sh).
-#  utils/lang/make_lexicon_fst_silprob.py $grammar_opts --sil-phone=$silphone \
-#         $tmpdir/lexiconp_silprob.txt $srcdir/silprob.txt | \
-#     fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-#       --keep_isymbols=false --keep_osymbols=false |   \
-#     fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
-  echo "Currently do not support word-dependnet silence probability"
+  echo "$0: Currently we do not support word-dependnet silence probability" && exit 1;
 else
   utils/lang/make_subword_lexicon_fst.py $grammar_opts --sil-prob=$sil_prob --sil-phone=$silphone --position-dependent\
             $tmpdir/lexiconp.txt | \
@@ -463,14 +417,7 @@ utils/gen_topo.pl $num_nonsil_states $num_sil_states $nonsilphonelist $silphonel
 # disambiguation symbols from G.fst.
 
 if $silprob; then
-#  utils/lang/make_lexicon_fst_silprob.py $grammar_opts \
-#     --sil-phone=$silphone --sil-disambig='#'$ndisambig \
-#     $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt | \
-#     fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-#       --keep_isymbols=false --keep_osymbols=false |   \
-#     fstaddselfloops  $dir/phones/wdisambig_phones.int $dir/phones/wdisambig_words.int | \
-#     fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
-  echo "Currently do not support word-dependnet silence probability"
+  echo "$0: Currently we do not support word-dependnet silence probability" && exit 1;
 else
   utils/lang/make_subword_lexicon_fst.py $grammar_opts \
        --sil-prob=$sil_prob --sil-phone=$silphone --sil-disambig='#'$ndisambig --position-dependent \
@@ -482,6 +429,6 @@ else
 fi
 
 echo "$(basename $0): validating output directory"
-! utils/validate_lang.pl --subword "$separator" $dir && echo "$(basename $0): error validating output" &&  exit 1;
+! utils/validate_lang.pl $dir && echo "$(basename $0): error validating output" &&  exit 1;
 
 exit 0;

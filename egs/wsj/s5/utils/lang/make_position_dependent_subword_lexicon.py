@@ -18,9 +18,6 @@ def get_args():
 def is_end(word, separator):
     return True if word[-2:] != separator else False
 
-#def is_single(phones_length):
-#    return True if phones_length == 1 else False
-
 def write_position_dependent_lexicon(lexiconp, separator):
     for (word, prob, phones) in lexiconp:
         phones_length = len(phones)

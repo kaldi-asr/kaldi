@@ -70,36 +70,17 @@ def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_
 
     def print_word(word, pron_cost, phones, position, next_state):
     
-#        if contain_disambig_symbol(phones):
-#            disambig_symbol = [phones[-1]]
-#            phones = phones[:-1]
-#        else:
-#            disambig_symbol = []
-#        phones_len = len(phones)
         assert(len(phones)) >= 0
-#        assert (position in ["begin", "middle", "end", "word"])
-    
-        #suffix_list = ["_I" for i in range(phones_len)] 
     
         from_state = prefix_state
         to_state = prefix_state
         if position == "begin":
-            #suffix_list[0] = "_B"
             from_state = loop_state
         if position == "end": 
-            #suffix_list[-1] = "_E"
             to_state = "sil_nonsil"
         if position == "word":
-            # if len(phones) == 1:
-            #    suffix_list[0] = "_S"
-            #else:
-            #    suffix_list[0] = "_B" 
-            #   suffix_list[-1] = "_E"
             from_state = loop_state
             to_state = "sil_nonsil"
-    
-#        phones_list = phones
-#        phones = phones_list + disambig_symbol
     
         current_state = from_state
         for i in range(len(phones) - 1):
@@ -130,9 +111,7 @@ def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_
     start_state = 0
     loop_state = 1
     sil_state = 2
-    #disambig_state = 3
     prefix_state = 3
-#    suffix_state = 4
     next_state = 4
 
     print_arc(start_state, loop_state, '<eps>', '<eps>', no_sil_cost)

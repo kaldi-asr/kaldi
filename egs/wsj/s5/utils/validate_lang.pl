@@ -104,13 +104,7 @@ $skip_disambig_check = 0;
 $skip_generate_words_check = 0;
 $subword_check = 0;
 
-for ($x=0; $x <= 5; $x++) {
-  if (@ARGV > 0 && $ARGV[0] eq "--subword") {
-    $subword_check = 1;
-    shift @ARGV;
-    $separator = $ARGV[0];
-    shift @ARGV;
-  }
+for ($x=0; $x <= 3; $x++) {
   if (@ARGV > 0 && $ARGV[0] eq "--skip-determinization-check") {
     $skip_det_check = 1;
     shift @ARGV;
@@ -129,7 +123,7 @@ if (@ARGV != 1) {
   print "Usage: $0 [options] <lang_directory>\n";
   print "e.g.:  $0 data/lang\n";
   print "Options:\n";
-  print " --subword <separator>                    (this flag indicate that the lang is for subword)";
+  print " --skip-det-check                         (this flag causes it to skip a deterministic fst check).\n";
   print " --skip-determinization-check             (this flag causes it to skip a time consuming check).\n";
   print " --skip-disambig-check                    (this flag causes it to skip a disambig check in phone bigram models).\n";
   exit(1);
@@ -140,6 +134,33 @@ print "$0 " . join(" ", @ARGV) . "\n";
 $lang = shift @ARGV;
 $exit = 0;
 $warning = 0;
+
+# Checking existence of separator file ------------------
+print "Checking existence of separator file\n";
+if (!-e "$lang/subword_separator.txt") {
+  print "separator file $lang/subword_separator.txt is empty does not exist, deal in word case.\n";
+} else {
+  if (!open(S, "<$lang/subword_separator.txt")) {
+    print "--> ERROR: fail to open $lang/subword_separator.txt\n"; exit 1;
+  } else {
+    $line_num = `wc -l <$lang/subword_separator.txt`;
+    if ($line_num != 1) {
+      print "--> ERROR, $lang/subword_separator.txt should only contain one line.\n"; exit 1;
+    } else {
+      while (<S>) {
+        chomp;
+        my @col = split(" ", $_);
+        if (@col != 1) {
+          print "--> ERROR, invalid separator.\n"; exit 1;
+        } else {
+         $separator = shift @col;
+         $separator_length = length $separator;
+         $subword_check = 1;
+        }
+      }
+    }
+  }
+}
 
 if (!$subword_check) {
   $word_boundary = "word_boundary";
@@ -830,42 +851,57 @@ if (-s "$lang/phones/$word_boundary.int") {
     }
     $wlen = int(rand(100)) + 1;
     $end_subword = 0;
-    print "--> generating a $wlen word sequence\n";
+    print "--> generating a $wlen word/subword sequence\n";
     $wordseq = "";
     $sid = 0;
     $wordseq_syms = "";
-    $count = 0;
-    while ($count < $wlen) {
+    # exclude disambiguation symbols, BOS and EOS, epsilon, and
+    # grammar-related symbols from the word sequence.
+    while ($sid < ($wlen - 1)) {
       $id = int(rand(scalar(keys %wint2sym)));
-      # exclude disambiguation symbols, BOS and EOS, epsilon, and
-      # grammar-related symbols from the word sequence.
-      $subword = $wint2sym{$id};
-      $suffix = substr($subword, -2, 2);
-      if ($count == ($wlen - 1)) {
-        while (defined $wdisambig_words_hash{$id} or
-             $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
-             $wint2sym{$id} =~ m/^#nonterm/ or $id == 0 or $suffix eq $separator) {
-          $id = int(rand(scalar(keys %wint2sym)));
-          $subword = $wint2sym{$id};
-          $suffix = substr($subword, -2, 2);
-        }
-      } else {
-       while (defined $wdisambig_words_hash{$id} or
-             $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
-             $wint2sym{$id} =~ m/^#nonterm/ or $id == 0) {
-         $id = int(rand(scalar(keys %wint2sym)));
-        }
-      }
-      $subword = $wint2sym{$id};
-      $suffix = substr($subword, -2, 2);
-      if ($suffix ne $separator) {
-        $end_subword ++;
+      while (defined $wdisambig_words_hash{$id} or
+           $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
+           $wint2sym{$id} =~ m/^#nonterm/ or $id == 0) {
+        $id = int(rand(scalar(keys %wint2sym)));
       }
       $wordseq_syms = $wordseq_syms . $wint2sym{$id} . " ";
       $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
       $sid ++;
-      $count ++;
+
+      if ($subword_check) {
+        $subword = $wint2sym{$id};
+        $suffix = substr($subword, -$separator_length, $separator_length);
+        if ($suffix ne $separator) {
+          $end_subword ++;
+        }
+      }
+    } 
+
+    # generate the last word (subword)
+    $id = int(rand(scalar(keys %wint2sym)));
+    if ($subword_check) {
+      $subword = $wint2sym{$id};
+      $suffix = substr($subword, -$separator_length, $separator_length);
+      # the last subword can not followed by separator  
+      while (defined $wdisambig_words_hash{$id} or
+           $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
+           $wint2sym{$id} =~ m/^#nonterm/ or $id == 0 or $suffix eq $separator) {
+        $id = int(rand(scalar(keys %wint2sym)));
+        $subword = $wint2sym{$id};
+        $suffix = substr($subword, -$separator_length, $separator_length);
+      }
+      $end_subword ++;
+    } else {
+      while (defined $wdisambig_words_hash{$id} or
+           $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
+           $wint2sym{$id} =~ m/^#nonterm/ or $id == 0) {
+       $id = int(rand(scalar(keys %wint2sym)));
+      }
     }
+    $wordseq_syms = $wordseq_syms . $wint2sym{$id} . " ";
+    $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
+    $sid ++;
+
     $wordseq = $wordseq . "$sid 0";
     $phoneseq = `. ./path.sh; echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if (NF > 2) {print \$3}}';`;
     $transition = { }; # empty assoc. array of allowed transitions between phone types.  1 means we count a word,
@@ -909,10 +945,7 @@ if (-s "$lang/phones/$word_boundary.int") {
     }
     if (!$exit) {
       if ($subword_check) { 
-#print("subword_check: $subword_check\n");
-#print("end_subword: $end_subword\n");
         $wlen = $end_subword;
-#print("wlen: $wlen\n");
       }
       if ($num_words != $wlen) {
         $phoneseq_syms = "";
