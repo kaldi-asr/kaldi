@@ -814,6 +814,14 @@ if (-s "$lang/phones/$word_boundary.txt") {
   }
 }
 
+# Check validity of L.fst, L_disambig.fst, and word_boundary.int.
+# First we generate a random word/subword sequence. We then compile it into fst and compose it with L.fst/L_disambig.fst.
+# For subword case the last subword of the sequence must be a end-subword 
+# (i.e. the subword can only be at the end of word or is a single word itself) 
+# to guarantee the composition would not fail.
+# We then get the corresponging phones sequence and apply a transition matrix on it to get the number of valid boundaries.
+# In word case, the number of valid boundaries should be equal to the number of words.
+# In subword case, the number of valid boundaries should be equanl to the number of end-subwords.
 if (-s "$lang/phones/$word_boundary.int") {
   print "Checking $word_boundary.int and disambig.int\n";
   if (!open (W, "<$lang/phones/$word_boundary.int")) {
