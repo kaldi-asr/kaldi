@@ -19,6 +19,8 @@ def get_args():
         to disambiguate silence, e.g. #5.""")
     parser.add_argument('--position-dependent', action="store_true", help="""Whether the input lexicon
         is position-dependent.""")
+    parser.add_argument("--separator", type=str, default="@@", help="""Separator indicates the
+        position of a subword in word.""")
     parser.add_argument('lexiconp', type=str, help="""Filename of lexicon with
         pronunciation probabilities (normally lexiconp.txt), with lines of the
         form 'word prob p1 p2...', e.g. 'a, 1.0 ay'""")
@@ -32,12 +34,12 @@ def contain_disambig_symbol(phones):
     return True if phones[-1][0] == "#" else False
 
 
-def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_dependent):
+def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_dependent, separator):
 
     def print_arc(src, dest, phone, word, cost):
         print('{}\t{}\t{}\t{}\t{}'.format(src, dest, phone, word, cost))
 
-    def is_end(word):
+    def is_end(word, separator):
         return False if word[-2:] == "@@" else True
 
     def get_suffix(phone):
@@ -76,9 +78,9 @@ def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_
         to_state = prefix_state
         if position == "begin":
             from_state = loop_state
-        if position == "end": 
+        elif position == "end": 
             to_state = "sil_nonsil"
-        if position == "word":
+        elif position == "word":
             from_state = loop_state
             to_state = "sil_nonsil"
     
@@ -127,7 +129,7 @@ def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_
     for (word, pron_prob, phones) in lexicon:
         cost = -math.log(pron_prob)
 
-        if is_end(word):
+        if is_end(word, separator):
             if position_dependent:
                 position = get_position(phones)
                 next_state = print_word(word, cost, phones, position, next_state)
@@ -151,7 +153,7 @@ def main():
     if args.sil_prob == 0.0:
         write_fst_no_silence(lexicon)
     else:
-        write_fst_with_silence(lexicon, args.sil_phone, args.sil_prob, args.sil_disambig, args.position_dependent)
+        write_fst_with_silence(lexicon, args.sil_phone, args.sil_prob, args.sil_disambig, args.position_dependent, args.separator)
 
 if __name__ == "__main__":
     main()

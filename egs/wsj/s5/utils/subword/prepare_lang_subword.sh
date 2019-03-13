@@ -59,13 +59,6 @@ position_dependent_phones=true
 share_silence_phones=false  # if true, then share pdfs of different silence
                             # phones together.
 sil_prob=0.5
-#unk_fst=        # if you want to model the unknown-word (<oov-dict-entry>)
-                # with a phone-level LM as created by make_unk_lm.sh,
-                # provide the text-form FST via this flag, e.g. <work-dir>/unk_fst.txt
-                # where <work-dir> was the 2nd argument of make_unk_lm.sh.
-#phone_symbol_table=              # if set, use a specified phones.txt file.
-#extra_word_disambig_syms=        # if set, add disambiguation symbols from this file (one per line)
-                                 # to phones/disambig.txt, phones/wdisambig.txt and words.txt
 num_extra_phone_disambig_syms=1 # Standard one phone disambiguation symbol is used for optional silence.
                                 # Increasing this number does not harm, but is only useful if you later
                                 # want to introduce this labels to L_disambig.fst
@@ -107,6 +100,12 @@ mkdir -p $dir $tmpdir $dir/phones
 
 silprob=false
 [ -f $srcdir/lexiconp_silprob.txt ] && echo "$0: Currently we do not support word-dependent silence probability." && exit 1;
+
+if [ -f $srcdir/nonterminals.txt ]; then
+  echo "$0: Currently we do not support nonterminals" && exit 1;
+else
+  grammar_opts=
+fi
 
 [ -f path.sh ] && . ./path.sh
 
@@ -240,7 +239,6 @@ fi
 # which an <unk> transition comes (instead of per end-state, which is more compact);
 # and adding the #3 prevents us from potentially having 2 copies of the unk-model
 # FST due to the optional-silence [the last phone of any word gets 2 arcs].
-unk_opt= # do not support 
 
 if "$silprob"; then
   echo "$0: Currently we do not support word-dependent silence probability" && exit 1;
@@ -283,8 +281,6 @@ fi
 if "$silprob"; then
   echo "$0: Currently we do not support word-dependent silence probability" && exit 1;
 fi
-
-
 
 cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
   BEGIN {
@@ -337,12 +333,6 @@ perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$tmpdir/lexiconp.txt >$tmpdir/align_lex
 cat $tmpdir/align_lexicon.txt | \
   perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | sort | uniq > $dir/phones/align_lexicon.txt
 
-if [ -f $srcdir/nonterminals.txt ]; then
-  echo "$0: Currently we do not support nonterminals" && exit 1;
-else
-  grammar_opts=
-fi
-
 # create phones/align_lexicon.int from phones/align_lexicon.txt
 cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
   utils/sym2int.pl -f 1-2 $dir/words.txt > $dir/phones/align_lexicon.int
@@ -357,7 +347,7 @@ if $silprob; then
   echo "$0: Currently we do not support word-dependnet silence probability" && exit 1;
 else
   utils/lang/make_subword_lexicon_fst.py $grammar_opts --sil-prob=$sil_prob --sil-phone=$silphone --position-dependent\
-            $tmpdir/lexiconp.txt | \
+            --separator=$separator $tmpdir/lexiconp.txt | \
     fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
       --keep_isymbols=false --keep_osymbols=false | \
     fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
@@ -368,7 +358,6 @@ fi
 echo "$oov_word" > $dir/oov.txt || exit 1;
 cat $dir/oov.txt | utils/sym2int.pl $dir/words.txt >$dir/oov.int || exit 1;
 # integer version of oov symbol, used in some scripts.
-
 
 # the file wdisambig.txt contains a (line-by-line) list of the text-form of the
 # disambiguation symbols that are used in the grammar and passed through by the
@@ -421,7 +410,7 @@ if $silprob; then
 else
   utils/lang/make_subword_lexicon_fst.py $grammar_opts \
        --sil-prob=$sil_prob --sil-phone=$silphone --sil-disambig='#'$ndisambig --position-dependent \
-         $tmpdir/lexiconp.txt | \
+       --separator=$separator $tmpdir/lexiconp.txt | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
        --keep_isymbols=false --keep_osymbols=false |   \
      fstaddselfloops  $dir/phones/wdisambig_phones.int $dir/phones/wdisambig_words.int | \
