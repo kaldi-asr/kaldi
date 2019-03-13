@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# 2019 Dongji Gao
+
 from make_lexicon_fst import read_lexiconp
 import argparse
 import math
@@ -16,7 +18,7 @@ def get_args():
     return args
 
 def is_end(word, separator):
-    return True if word[-2:] != separator else False
+    return (not word.endswith(separator))
 
 def write_position_dependent_lexicon(lexiconp, separator):
     for (word, prob, phones) in lexiconp:
@@ -44,6 +46,7 @@ def write_position_dependent_lexicon(lexiconp, separator):
                 suffix_list[0] = "_B"
                 phones_list = [phone + suffix for (phone, suffix) in zip (phones, suffix_list)]
                 print("{} {} {}".format(word, prob, ' '.join(phones_list)))
+
 def main():
     args = get_args()
     lexiconp = read_lexiconp(args.lexiconp)

@@ -40,7 +40,7 @@ def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_
         print('{}\t{}\t{}\t{}\t{}'.format(src, dest, phone, word, cost))
 
     def is_end(word, separator):
-        return False if word[-2:] == "@@" else True
+        return (not word.endswith(separator))
 
     def get_suffix(phone):
         return phone[-2:]
@@ -137,7 +137,7 @@ def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_
                 next_state = print_word(word, cost, phones, "end", next_state)
                 next_state = print_word(word, cost, phones, "word", next_state)
         else:
-            # the word end with "@@", meaning it should be followed by subword
+            # the word end with separator, meaning it should be followed by subword
             if position_dependent:
                 position = get_position(phones)
                 next_state = print_word(word, cost, phones, position, next_state)
