@@ -510,7 +510,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
         if (!CheckMemoryUsage()) return false;
       }
       return (determinized_ = true);
-    } catch (std::bad_alloc) {
+    } catch (const std::bad_alloc &) {
       int32 repo_size = repository_.MemSize(),
           arcs_size = num_arcs_ * sizeof(TempArc),
           elems_size = num_elems_ * sizeof(Element),
@@ -520,7 +520,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
           << " (repo,arcs,elems) = ("
           << repo_size << "," << arcs_size << "," << elems_size << ")";
       return (determinized_ = false);
-    } catch (std::runtime_error) {
+    } catch (const std::runtime_error &) {
       KALDI_WARN << "Caught exception doing lattice determinization";
       return (determinized_ = false);
     }
