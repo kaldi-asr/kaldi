@@ -5,7 +5,9 @@
 #           2017    Google Inc. (vpeddinti@google.com)
 # Apache 2.0.
 
-# we're using python 3.x style print but want it to work in python 2.x,
+# This is like xconfig_to_configs.py but with a simpler interface; it writes
+# to a single named file.
+
 
 import argparse
 import os
