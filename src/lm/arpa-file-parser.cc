@@ -74,7 +74,7 @@ void ArpaFileParser::Read(std::istream &is) {
   warning_count_ = 0;
   current_line_.clear();
 
-#define PARSE_ERR (KALDI_ERR << LineReference() << ": ")
+#define PARSE_ERR KALDI_ERR << LineReference() << ": "
 
   // Give derived class an opportunity to prepare its state.
   ReadStarted();

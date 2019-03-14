@@ -4068,13 +4068,13 @@ bool CompositeComponent::IsUpdatable() const {
 int32 CompositeComponent::InputDim() const {
   KALDI_ASSERT(!components_.empty());
   return components_.front()->InputDim();
-};
+}
 
 // virtual
 int32 CompositeComponent::OutputDim() const {
   KALDI_ASSERT(!components_.empty());
   return components_.back()->OutputDim();
-};
+}
 
 // virtual
 int32 CompositeComponent::Properties() const {
@@ -4096,7 +4096,7 @@ int32 CompositeComponent::Properties() const {
   if (last_component_properties & kStoresStats)
     ans |= kBackpropNeedsOutput;
   return ans;
-};
+}
 
 
 MatrixStrideType CompositeComponent::GetStrideType(int32 i) const {
@@ -4319,7 +4319,7 @@ void CompositeComponent::Backprop(const std::string &debug_info,
       // optimization; other propagates might also be skippable.
       int32 properties = components_[num_components - 2]->Properties(),
           next_properties = components_[num_components - 1]->Properties();
-      if (!(properties & (kBackpropNeedsOutput || kUsesMemo)) &&
+      if (!(properties & (kBackpropNeedsOutput | kUsesMemo)) &&
           !(next_properties & kBackpropNeedsInput)) {
         num_components_to_propagate--;
       }

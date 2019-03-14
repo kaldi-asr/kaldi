@@ -612,8 +612,8 @@ function linux_configure_redhat_fat {
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
-  echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
+  echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
 }
 
 function linux_configure_atlas_static {
