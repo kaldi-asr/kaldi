@@ -821,7 +821,7 @@ if (-s "$lang/phones/$word_boundary.txt") {
 # to guarantee the composition would not fail.
 # We then get the corresponging phones sequence and apply a transition matrix on it to get the number of valid boundaries.
 # In word case, the number of valid boundaries should be equal to the number of words.
-# In subword case, the number of valid boundaries should be equanl to the number of end-subwords.
+# In subword case, the number of valid boundaries should be equal to the number of end-subwords.
 if (-s "$lang/phones/$word_boundary.int") {
   print "Checking $word_boundary.int and disambig.int\n";
   if (!open (W, "<$lang/phones/$word_boundary.int")) {
