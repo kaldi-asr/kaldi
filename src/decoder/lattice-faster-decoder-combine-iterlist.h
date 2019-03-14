@@ -26,7 +26,6 @@
 
 
 #include "util/stl-utils.h"
-#include "util/hash-list.h"
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
 #include "fstext/fstext-lib.h"
@@ -121,10 +120,11 @@ struct ForwardLink {
       next(next) { }
 };
 
-
+template <typename Fst>
 struct StdToken {
   using ForwardLinkT = ForwardLink<StdToken>;
   using Token = StdToken;
+  using StateId = typename Fst::Arc::StateId;
 
   // Standard token type for LatticeFasterDecoder.  Each active HCLG
   // (decoding-graph) state on each frame has one token.
@@ -142,6 +142,9 @@ struct StdToken {
   // one by one and compute this difference, and then take the minimum).
   BaseFloat extra_cost;
 
+  // Record the state id of the token
+  StateId state_id;
+
   // 'links' is the head of singly-linked list of ForwardLinks, which is what we
   // use for lattice generation.
   ForwardLinkT *links;
@@ -153,6 +156,7 @@ struct StdToken {
   // function ProcessOneFrame().
   bool in_current_queue;
 
+
   // This function does nothing and should be optimized out; it's needed
   // so we can share the regular LatticeFasterDecoderTpl code and the code
   // for LatticeFasterOnlineDecoder that supports fast traceback.
@@ -162,15 +166,17 @@ struct StdToken {
   // needed so that we can use the same decoder code for LatticeFasterDecoderTpl
   // and LatticeFasterOnlineDecoderTpl (which needs backpointers to support a
   // fast way to obtain the best path).
-  inline StdToken(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLinkT *links,
-                  Token *next, Token *backpointer):
-      tot_cost(tot_cost), extra_cost(extra_cost), links(links), next(next),
-      in_current_queue(false) { }
+  inline StdToken(BaseFloat tot_cost, BaseFloat extra_cost, StateId state_id,
+                  ForwardLinkT *links, Token *next, Token *backpointer):
+      tot_cost(tot_cost), extra_cost(extra_cost), state_id(state_id), 
+      links(links), next(next), in_current_queue(false) { }
 };
 
+template <typename Fst>
 struct BackpointerToken {
   using ForwardLinkT = ForwardLink<BackpointerToken>;
   using Token = BackpointerToken;
+  using StateId = typename Fst::Arc::StateId;
 
   // BackpointerToken is like Token but also
   // Standard token type for LatticeFasterDecoder.  Each active HCLG
@@ -188,6 +194,9 @@ struct BackpointerToken {
   // eventually succeed (e.g. if you were to take the currently active states
   // one by one and compute this difference, and then take the minimum).
   BaseFloat extra_cost;
+
+  // Record the state id of the token
+  StateId state_id;
 
   // 'links' is the head of singly-linked list of ForwardLinks, which is what we
   // use for lattice generation.
@@ -211,10 +220,12 @@ struct BackpointerToken {
     this->backpointer = backpointer;
   }
 
-  inline BackpointerToken(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLinkT *links,
+  inline BackpointerToken(BaseFloat tot_cost, BaseFloat extra_cost,
+                          StateId state_id, ForwardLinkT *links,
                           Token *next, Token *backpointer):
-      tot_cost(tot_cost), extra_cost(extra_cost), links(links), next(next),
-      backpointer(backpointer), in_current_queue(false) { }
+      tot_cost(tot_cost), extra_cost(extra_cost), state_id(state_id), 
+      links(links), next(next), backpointer(backpointer),
+      in_current_queue(false) { }
 };
 
 }  // namespace decoder
@@ -235,7 +246,7 @@ struct BackpointerToken {
    will internally cast itself to one that is templated on those more specific
    types; this is an optimization for speed.
  */
-template <typename FST, typename Token = decodercombine::StdToken>
+template <typename FST, typename Token = decodercombine::StdToken<FST> >
 class LatticeFasterDecoderCombineTpl {
  public:
   using Arc = typename FST::Arc;
@@ -244,13 +255,11 @@ class LatticeFasterDecoderCombineTpl {
   using Weight = typename Arc::Weight;
   using ForwardLinkT = decodercombine::ForwardLink<Token>;
 
-  using StateIdToTokenMap = HashList<StateId, Token*>;
-  using Elem = typename HashList<StateId, Token*>::Elem;
-  //using StateIdToTokenMap = typename std::unordered_map<StateId, Token*>;
+  using StateIdToTokenMap = typename std::unordered_map<StateId, Token*>;
   //using StateIdToTokenMap = typename std::unordered_map<StateId, Token*,
   //      std::hash<StateId>, std::equal_to<StateId>,
   //      fst::PoolAllocator<std::pair<const StateId, Token*> > >;
-  //using IterType = typename StateIdToTokenMap::const_iterator;
+  using IterType = typename StateIdToTokenMap::const_iterator;
 
   // Instantiate this class once for each thing you have to decode.
   // This version of the constructor does not take ownership of
@@ -492,19 +501,17 @@ class LatticeFasterDecoderCombineTpl {
   /// That is, the emitting probs of frame t are accounted for in tokens at
   /// toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
   /// the graph.
-  StateIdToTokenMap *prev_toks_;
-  StateIdToTokenMap *cur_toks_;
-
-  void PossiblyResizeHash(size_t num_toks);
+  StateIdToTokenMap prev_toks_;
+  StateIdToTokenMap cur_toks_;
 
   /// Gets the weight cutoff.
   /// Notice: In traiditional version, the histogram prunning method is applied
   /// on a complete token list on one frame. But, in this version, it is used
   /// on a token list which only contains the emittion part. So the max_active
   /// and min_active values might be narrowed.
-  BaseFloat GetCutoff(const Elem *list_head, size_t *tok_count,
-                      BaseFloat *adaptive_beam, Elem **best_elem);
-
+  BaseFloat GetCutoff(const TokenList &token_list,
+                      BaseFloat *adaptive_beam, 
+                      StateId *best_state_id, Token **best_token);
 
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
@@ -552,13 +559,13 @@ class LatticeFasterDecoderCombineTpl {
   static void TopSortTokens(Token *tok_list,
                             std::vector<Token*> *topsorted_list);
 
-  void DeleteElems(Elem *list, HashList<StateId, Token*> *toks);
   void ClearActiveTokens();
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoderCombineTpl);
 };
 
-typedef LatticeFasterDecoderCombineTpl<fst::StdFst, decodercombine::StdToken> LatticeFasterDecoderCombine;
+typedef LatticeFasterDecoderCombineTpl<fst::StdFst,
+        decodercombine::StdToken<fst::StdFst> > LatticeFasterDecoderCombine;
 
 
 

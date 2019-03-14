@@ -315,12 +315,12 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetLattice(
 // (whose head is at active_toks_[frame]).
 template <typename FST, typename Token>
 inline Token* LatticeFasterDecoderCombineTpl<FST, Token>::FindOrAddToken(
-    StateId state, int32 frame_plus_one, BaseFloat tot_cost, Token *backpointer,
-    StateIdToTokenMap *token_map, bool *changed) {
+    StateId state, int32 token_list_index, BaseFloat tot_cost,
+    Token *backpointer, StateIdToTokenMap *token_map, bool *changed) {
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
   // if the token was newly created or the cost changed.
-  KALDI_ASSERT(frame_plus_one < active_toks_.size());
-  Token *&toks = active_toks_[frame_plus_one].toks;
+  KALDI_ASSERT(token_list_index < active_toks_.size());
+  Token *&toks = active_toks_[token_list_index].toks;
   Elem *e_found = token_map->Find(state);
   if (e_found == NULL) {  // no such token presently.
     const BaseFloat extra_cost = 0.0;
