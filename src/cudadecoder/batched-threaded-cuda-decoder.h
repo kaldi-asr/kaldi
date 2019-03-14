@@ -43,13 +43,16 @@ namespace CudaDecode {
 // BatchedThreadedCudaDecoder
 struct BatchedThreadedCudaDecoderConfig {
   BatchedThreadedCudaDecoderConfig()
-      : max_batch_size(10), batch_drain_size(5), num_control_threads(7),
-        num_worker_threads(4), determinize_lattice(true),
+      : max_batch_size(50),
+        batch_drain_size(10),
+        num_control_threads(2),
+        num_worker_threads(20),
+        determinize_lattice(true),
         max_pending_tasks(4000){};
   void Register(OptionsItf *po) {
-
     po->Register("max-batch-size", &max_batch_size,
-                 "The maximum batch size to be used by the decoder.");
+                 "The maximum batch size to be used by the decoder. "
+                 "Higher->Faster, more GPU memory used");
     po->Register("batch-drain-size", &batch_drain_size,
                  "How far to drain the batch before refilling work.  This "
                  "batches pre/post decode work.");
