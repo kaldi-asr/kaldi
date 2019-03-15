@@ -180,16 +180,17 @@ Real SpMatrix<Real>::Trace() const {
 // diagonal update, this <-- this + diag(v)
 template<typename Real>
 template<typename OtherReal>
-void  SpMatrix<Real>::AddDiagVec(const Real alpha, const VectorBase<OtherReal> &v) {
+void SpMatrix<Real>::AddDiagVec(const Real alpha, const VectorBase<OtherReal> &v) {
   int32 num_rows = this->num_rows_;
   KALDI_ASSERT(num_rows == v.Dim() && num_rows > 0);
   const OtherReal *src = v.Data();
   Real *dst = this->data_;
+  MatrixIndexT src_stride = v.Stride();
   if (alpha == 1.0)
-    for (int32 i = 1; i <= num_rows; i++, src++, dst += i)
+    for (int32 i = 1; i <= num_rows; i++, src += src_stride, dst += i)
       *dst += *src;
   else
-    for (int32 i = 1; i <= num_rows; i++, src++, dst += i)
+    for (int32 i = 1; i <= num_rows; i++, src += src_stride, dst += i)
       *dst += alpha * *src;
 }
 
