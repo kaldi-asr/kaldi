@@ -377,6 +377,17 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
                              num_max_change_per_component_applied,
                              int32 *num_max_change_global_applied);
 
+struct MaxChangeStats;
+
+// This overloaded version of UpdateNnetWithMaxChange() is a convenience
+// wrapper for when you have a MaxChangeStats object to keep track
+// of how many times the max-change was applied.  See documentation above.
+bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
+                             BaseFloat max_param_change,
+                             BaseFloat max_change_scale,
+                             BaseFloat scale, Nnet *nnet,
+                             MaxChangeStats *stats);
+
 
 /**
    This function is used as part of the regular training workflow, prior to
@@ -511,6 +522,24 @@ void ConsolidateMemory(Nnet *nnet);
  */
 int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
                     bool exhaustive);
+
+
+struct MaxChangeStats {
+  int32 num_max_change_global_applied;
+  int32 num_minibatches_processed;
+  std::vector<int32> num_max_change_per_component_applied;
+
+  MaxChangeStats(const Nnet &nnet):
+      num_max_change_global_applied(0),
+      num_minibatches_processed(0),
+      num_max_change_per_component_applied(NumUpdatableComponents(nnet), 0) { }
+
+  // Prints the max-change stats.  Usually will be called at the end
+  // of the program.  The nnet is only needed for structural information,
+  // to work out the component names.
+  void Print(const Nnet &nnet) const;
+};
+
 
 
 } // namespace nnet3
