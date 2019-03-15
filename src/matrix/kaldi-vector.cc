@@ -55,9 +55,10 @@ Real VecVec(const VectorBase<Real> &ra,
   KALDI_ASSERT(adim == rb.Dim());
   const Real *a_data = ra.Data();
   const OtherReal *b_data = rb.Data();
+  MatrixIndexT a_stride = a.Stride(), b_stride = b.Stride();
   Real sum = 0.0;
   for (MatrixIndexT i = 0; i < adim; i++)
-    sum += a_data[i]*b_data[i];
+    sum += a_data[i * a_stride] * b_data[i * b_stride];
   return sum;
 }
 
@@ -111,30 +112,8 @@ void VectorBase<Real>::AddMatSvec(const Real alpha,
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
   Xgemv_sparsevec(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
-                  v.Data(), 1, beta, data_, 1);
+                  v.Data(), v.Stride(), beta, data_, stride_);
   return;
-  /*
-  MatrixIndexT this_dim = this->dim_, v_dim = v.dim_,
-      M_stride = M.Stride();
-  Real *this_data = this->data_;
-  const Real *M_data = M.Data(), *v_data = v.data_;
-  if (beta != 1.0) this->Scale(beta);
-  if (trans == kNoTrans) {
-    for (MatrixIndexT i = 0; i < v_dim; i++) {
-      Real v_i = v_data[i];
-      if (v_i == 0.0) continue;
-      // Add to *this, the i'th column of the Matrix, times v_i.
-      cblas_Xaxpy(this_dim, v_i * alpha, M_data + i, M_stride, this_data, 1);
-    }
-  } else { // The transposed case is slightly more efficient, I guess.
-    for (MatrixIndexT i = 0; i < v_dim; i++) {
-      Real v_i = v.data_[i];
-      if (v_i == 0.0) continue;
-      // Add to *this, the i'th row of the Matrix, times v_i.
-      cblas_Xaxpy(this_dim, v_i * alpha,
-                  M_data + (i * M_stride), 1, this_data, 1);
-    }
-    }*/
 }
 
 template<typename Real>
@@ -144,7 +123,8 @@ void VectorBase<Real>::AddSpVec(const Real alpha,
                                  const Real beta) {
   KALDI_ASSERT(M.NumRows() == v.dim_ && dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_Xspmv(alpha, M.NumRows(), M.Data(), v.Data(), 1, beta, data_, 1);
+  cblas_Xspmv(alpha, M.NumRows(), M.Data(), v.Data(), v.Stride(), beta,
+              data_, stride_);
 }
 
 
@@ -672,14 +652,15 @@ void VectorBase<double>::CopyColFromMat(const MatrixBase<double> &mat, MatrixInd
 template<typename Real>
 void VectorBase<Real>::CopyDiagFromMat(const MatrixBase<Real> &M) {
   KALDI_ASSERT(dim_ == std::min(M.NumRows(), M.NumCols()));
-  cblas_Xcopy(dim_, M.Data(), M.Stride() + 1, data_, 1);
+  cblas_Xcopy(dim_, M.Data(), M.Stride() + 1, data_, stride_);
 }
 
 template<typename Real>
 void VectorBase<Real>::CopyDiagFromPacked(const PackedMatrix<Real> &M) {
   KALDI_ASSERT(dim_ == M.NumCols());
-  for (MatrixIndexT i = 0; i < dim_; i++)
-    data_[i] = M(i, i);
+  MatrixIndexT stride = stride_, dim = dim_;
+  for (MatrixIndexT i = 0; i < dim; i++)
+    data_[i * stride] = M(i, i);
   // could make this more efficient.
 }
 
@@ -689,15 +670,16 @@ Real VectorBase<Real>::Sum() const {
   // implement sum. This allows us to access SIMD operations in a
   // cross-platform way via your BLAS library.
   Real one(1);
-  return cblas_Xdot(dim_, data_, 1, &one, 0);
+  return cblas_Xdot(dim_, data_, stride_, &one, 0);
 }
 
 template<typename Real>
 Real VectorBase<Real>::SumLog() const {
   double sum_log = 0.0;
   double prod = 1.0;
+  MatrixIndexT dim = dim_, stride = stride_;
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    prod *= data_[i];
+    prod *= data_[i * stride];
     // Possible future work (arnab): change these magic values to pre-defined
     // constants
     if (prod < 1.0e-10 || prod > 1.0e+10) {
@@ -710,23 +692,14 @@ Real VectorBase<Real>::SumLog() const {
 }
 
 template<typename Real>
-void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
+void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M,
+                                    Real beta) {
   KALDI_ASSERT(dim_ == M.NumCols());
-  MatrixIndexT num_rows = M.NumRows(), stride = M.Stride(), dim = dim_;
-  Real *data = data_;
 
-  // implement the function according to a dimension cutoff for computation efficiency
-  if (num_rows <= 64) {
-    cblas_Xscal(dim, beta, data, 1);
-    const Real *m_data = M.Data();
-    for (MatrixIndexT i = 0; i < num_rows; i++, m_data += stride)
-      cblas_Xaxpy(dim, alpha, m_data, 1, data, 1);
-
-  } else {
-    Vector<Real> ones(M.NumRows());
-    ones.Set(1.0);
-    this->AddMatVec(alpha, M, kTrans, ones, beta);
-  }
+  // treat 'one' as a vector with stride zero.
+  Real one(1);
+  cblas_Xgemv(kTrans, M.NumRows(), M.NumCols(), alpha, M.Data(),
+              M.Stride(), &one, 0, data_, stride_, beta, data_, stride_);
 }
 
 template<typename Real>
