@@ -33,8 +33,11 @@ def GetArgs():
                         help='Number of overlapping background noises that we iterate over. For example, if the input is "1:2:3" then the output wavs will have either 1, 2, or 3 randomly chosen background noises overlapping the entire recording')
     parser.add_argument('--fg-interval', type=int, dest = "fg_interval", default = 0,
                         help='Number of seconds between the end of one foreground noise and the beginning of the next.')
-    parser.add_argument('--utt-suffix', type=str, dest = "utt_suffix", default = "aug", help='Suffix added to utterance IDs.')
+    parser.add_argument('--utt-suffix', type=str, dest = "utt_suffix", default = None, help='Suffix added to utterance IDs.')
+    parser.add_argument('--utt-prefix', type=str, dest = "utt_prefix", default = None, help='Prefix added to utterance IDs.')
     parser.add_argument('--random-seed', type=int, dest = "random_seed", default = 123, help='Random seed.')
+
+    parser.add_argument('--modify-spkr-id', type=str, default = "false", choices=["true", "false"], help='Utt prefix or suffix would be added to the speaker id also (Used in ASR), in speaker id it is left unmodifed' )
 
     parser.add_argument("--bg-noise-dir", type=str, dest="bg_noise_dir",
                         help="Background noise data directory")
@@ -49,6 +52,20 @@ def GetArgs():
     return args
 
 def CheckArgs(args):
+    if args.utt_suffix is None and args.utt_prefix is None:
+        args.utt_modifier_type = None
+        args.utt_modifier = ""
+    elif args.utt_suffix is None and args.utt_prefix is not None:
+        args.utt_modifier_type = "prefix"
+        args.utt_modifier = args.utt_prefix
+    elif args.utt_suffix is not None and args.utt_prefix is None:
+        args.utt_modifier_type = "suffix"
+        args.utt_modifier = args.utt_suffix
+    else:
+        raise Exception("Trying to add both prefix and suffix. Choose either of them")
+
+    args.modify_spkr_id = (True if args.modify_spkr_id == "true" else False)
+
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     if not args.fg_interval >= 0:
@@ -117,16 +134,35 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
             + start_times_str + " " + snrs_str + " - - |"
     return new_wav
 
-def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
-    if os.path.isfile(input_dir + "/" + filename):
-        dict = ParseFileToDict(input_dir + "/" + filename,
+# This function generates a new id from the input id
+# This is needed when we have to create multiple copies of the original data
+# E.g. GetNewId("swb0035", prefix="rvb", copy=1) returns a string "rvb1_swb0035"
+def GetNewId(utt, utt_modifier_type, utt_modifier):
+    if utt_modifier_type == "suffix" and len(utt_modifier) > 0:
+        new_utt = utt + "-" + utt_modifier
+    elif utt_modifier_type == "prefix" and len(utt_modifier) > 0:
+        new_utt = utt_modifier + "-" + utt
+    else:
+        new_utt = utt
+
+    return new_utt
+
+def CopyFileIfExists(input_file, output_file, utt_modifier_type, utt_modifier, fields=[0]):
+    if os.path.isfile(input_file):
+        clean_dict = ParseFileToDict(input_file,
             value_processor = lambda x: " ".join(x))
-        if len(utt_suffix) > 0:
-            new_dict = {}
-            for key in dict.keys():
-                new_dict[key + "-" + utt_suffix] = dict[key]
-            dict = new_dict
-        WriteDictToFile(dict, output_dir + "/" + filename)
+        new_dict = {}
+        for key in clean_dict.keys():
+            modified_key = GetNewId(key, utt_modifier_type, utt_modifier)
+            if len(fields) > 1:
+                values = clean_dict[key].split(" ")
+                modified_values = values
+                for idx in range(1, len(fields)):
+                    modified_values[idx-1] = GetNewId(values[idx-1], utt_modifier_type, utt_modifier)
+                new_dict[modified_key] = " ".join(modified_values)
+            else:
+                new_dict[modified_key] = clean_dict[key]
+        WriteDictToFile(new_dict, output_file)
 
 def main():
     args = GetArgs()
@@ -153,7 +189,7 @@ def main():
         noise_wavs.update(bg_noise_wavs)
         noise_reco2dur.update(bg_noise_reco2dur)
 
-    # Load background noises
+    # Load foreground noises
     if args.fg_noise_dir:
         fg_noise_wav_filename = args.fg_noise_dir + "/wav.scp"
         fg_noise_reco2dur_filename = args.fg_noise_dir + "/reco2dur"
@@ -176,21 +212,37 @@ def main():
         new_wav = AugmentWav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
             bg_noise_utts, noise_wavs, noise_reco2dur, args.fg_interval,
             num_bg_noises)
-        new_utt = utt + "-" + args.utt_suffix
+
+        new_utt = GetNewId(utt, args.utt_modifier_type, args.utt_modifier)
+
         new_utt2wav[new_utt] = new_wav
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     WriteDictToFile(new_utt2wav, output_dir + "/wav.scp")
-    CopyFileIfExists(args.utt_suffix, "reco2dur", input_dir, output_dir)
-    CopyFileIfExists(args.utt_suffix, "utt2dur", input_dir, output_dir)
-    CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
-    CopyFileIfExists(args.utt_suffix, "utt2lang", input_dir, output_dir)
-    CopyFileIfExists(args.utt_suffix, "text", input_dir, output_dir)
-    CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
-    CopyFileIfExists(args.utt_suffix, "vad.scp", input_dir, output_dir)
-    CopyFileIfExists("", "spk2gender", input_dir, output_dir)
+    CopyFileIfExists(input_dir + "/reco2dur", output_dir + "/reco2dur",
+                                args.utt_modifier_type, args.utt_modifier)
+    CopyFileIfExists(input_dir + "/utt2dur", output_dir + "/utt2dur", args.utt_modifier_type, args.utt_modifier)
+
+    # Check whether to modify the speaker id or not while creating utt2spk file
+    fields = ([0, 1] if args.modify_spkr_id else [0])
+    CopyFileIfExists(input_dir + "/utt2spk", output_dir + "/utt2spk", args.utt_modifier_type, args.utt_modifier, fields=fields)
+
+    CopyFileIfExists(input_dir + "/utt2lang", output_dir + "/utt2lang", args.utt_modifier_type, args.utt_modifier)
+    CopyFileIfExists(input_dir + "/utt2num_frames", output_dir + "/utt2num_frames", args.utt_modifier_type, args.utt_modifier)
+    CopyFileIfExists(input_dir + "/text", output_dir + "/text", args.utt_modifier_type, args.utt_modifier)
+    CopyFileIfExists(input_dir + "/segments", output_dir + "/segments", args.utt_modifier_type, args.utt_modifier, fields=[0, 1])
+    CopyFileIfExists(input_dir + "/vad.scp", output_dir + "/vad.scp", args.utt_modifier_type, args.utt_modifier)
+    CopyFileIfExists(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", args.utt_modifier_type, args.utt_modifier, fields=[0, 1])
+
+    if args.modify_spkr_id:
+        CopyFileIfExists(input_dir + "/spk2gender", output_dir + "/spk2gender", args.utt_modifier_type, args.utt_modifier)
+    else:
+        CopyFileIfExists(input_dir + "/spk2gender", output_dir + "/spk2gender", None, "")
+
+    data_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
+                    .format(output_dir = output_dir))
     data_lib.RunKaldiCommand("utils/fix_data_dir.sh {output_dir}".format(output_dir = output_dir))
 
 if __name__ == "__main__":
