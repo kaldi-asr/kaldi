@@ -502,11 +502,18 @@ class SubVector : public VectorBase<Real> {
             const MatrixIndexT begin,
             const MatrixIndexT num_elements,
             const MatrixIndexT step = 1) : VectorBase<Real>() {
-    KALDI_ASSERT(stride > 0 && static_cast<UnsignedMatrixIndexT>(src)+
-                 static_cast<UnsignedMatrixIndexT>((num_elements - 1) * step)
-                 < static_cast<UnsignedMatrixIndexT>(t.Dim()));
-    VectorBase<Real>::data_ = const_cast<Real*> (t.Data()+src);
-    VectorBase<Real>::dim_   = length;
+    // Casting to UnsignedMatrixIndexT is a mechanism to test something
+    // is >= 0 as well as < x (for positive x) in a single comparison.
+    typedef UnsignedMatrixIndexT U;
+    KALDI_ASSERT(
+        step != 0 &&
+        static_cast<U>(begin) < static_cast<U>(src.Dim()) &&
+        static_cast<U>(begin + step * (num_elements - 1)) <
+        static_cast<U>(src.Dim()));
+    VectorBase<Real>::data_ = const_cast<Real*> (src.Data() +
+                                                 begin * src.Stride());
+    VectorBase<Real>::dim_   = num_elements;
+    VectorBase<Real>::stride_ = step * src.Stride();
   }
 
   /// This constructor initializes the vector to point at the contents
@@ -514,6 +521,7 @@ class SubVector : public VectorBase<Real> {
   SubVector(const PackedMatrix<Real> &M) {
     VectorBase<Real>::data_ = const_cast<Real*> (M.Data());
     VectorBase<Real>::dim_   = (M.NumRows()*(M.NumRows()+1))/2;
+    VectorBase<Real>::stride_ = 1;
   }
 
   /// Copy constructor
@@ -521,21 +529,28 @@ class SubVector : public VectorBase<Real> {
     // this copy constructor needed for Range() to work in base class.
     VectorBase<Real>::data_ = other.data_;
     VectorBase<Real>::dim_ = other.dim_;
+    VectorBase<Real>::stride_ = other.stride_;
   }
 
-  /// Constructor from a pointer to memory and a length.  Keeps a pointer
-  /// to the data but does not take ownership (will never delete).
-  /// Caution: this constructor enables you to evade const constraints.
-  SubVector(const Real *data, MatrixIndexT length) : VectorBase<Real> () {
+  /// Constructor from a pointer to memory and a length, and an optional stride.
+  /// Keeps a pointer to the data but does not take ownership (will never
+  /// delete).  Caution: this constructor enables you to evade const
+  /// constraints.
+  SubVector(const Real *data, MatrixIndexT length, MatrixIndexT stride = 1):
+      VectorBase<Real> () {
     VectorBase<Real>::data_ = const_cast<Real*>(data);
     VectorBase<Real>::dim_   = length;
+    VectorBase<Real>::stride_ = stride;
   }
 
 
   /// This operation does not preserve const-ness, so be careful.
+  /// This function is somewhat deprecated, for being ambiguous
+  /// MatrixBase:Row() is probably preferred.
   SubVector(const MatrixBase<Real> &matrix, MatrixIndexT row) {
     VectorBase<Real>::data_ = const_cast<Real*>(matrix.RowData(row));
     VectorBase<Real>::dim_   = matrix.NumCols();
+    VectorBase<Real>::stride_ = 1;
   }
 
   ~SubVector() {}  ///< Destructor (does nothing; no pointers are owned here).

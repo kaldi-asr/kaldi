@@ -59,25 +59,20 @@ class MatrixBase {
   friend class SparseMatrix<float>;
   friend class SparseMatrix<double>;
 
-  /// Returns number of rows (or zero for emtpy matrix).
+  /// Returns number of rows (or zero for empty matrix).
   inline MatrixIndexT  NumRows() const { return num_rows_; }
 
   /// Returns number of columns (or zero for emtpy matrix).
   inline MatrixIndexT NumCols() const { return num_cols_; }
 
-  /// Stride() is deprecated
-  inline MatrixIndexT Stride() const {  return row_stride_; }
+  /// Stride (distance in memory between each row).  Must be >= NumCols().
+  inline MatrixIndexT Stride() const {  return stride_; }
 
-  /// The distance in memory between successive rows.  Not required to be
-  /// positive or even nonzero, as long you can't get to the same
-  /// memory location using different indexes.
-  inline MatrixIndexT RowStride() const {  return row_stride_; }
-
-  /// The distance in memory between successive columns; will normally
-  /// be 1 but it may be negative or even zero as long as you
-  /// can't get to the same memory location using differen indexes.
-  inline MatrixIndexT ColStride() const {  return col_stride_; }
-
+  /// Returns size in bytes of the data held by the matrix.
+  size_t  SizeInBytes() const {
+    return static_cast<size_t>(num_rows_) * static_cast<size_t>(stride_) *
+        sizeof(Real);
+  }
 
   /// Gives pointer to raw data (const).
   inline const Real* Data() const {
@@ -87,19 +82,18 @@ class MatrixBase {
   /// Gives pointer to raw data (non-const).
   inline Real* Data() { return data_; }
 
-  /// Returns pointer to data for one row (non-const).
-  /// Caution: don't assume ColumnStride() is 1.
+  /// Returns pointer to data for one row (non-const)
   inline  Real* RowData(MatrixIndexT i) {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return data_ + i * row_stride_;
+    return data_ + i * stride_;
   }
 
   /// Returns pointer to data for one row (const)
   inline const Real* RowData(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return data_ + i * row_stride_;
+    return data_ + i * stride_;
   }
 
   /// Indexing operator, non-const
@@ -109,7 +103,7 @@ class MatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
-    return *(data_ + r * row_stride_ + c * col_stride_);
+    return *(data_ + r * stride_ + c);
   }
   /// Indexing operator, provided for ease of debugging (gdb doesn't work
   /// with parenthesis operator).
@@ -122,7 +116,7 @@ class MatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
-    return *(data_ + r * row_stride_ + c * col_stride_);
+    return *(data_ + r * stride_ + c);
   }
 
   /*   Basic setting-to-special values functions. */
@@ -189,18 +183,20 @@ class MatrixBase {
 
   /* Accessing of sub-parts of the matrix. */
 
-  /// Return specific row of matrix [const].
-  inline const SubVector<Real> Row(MatrixIndexT i) const {
+  /// Return specific row of matrix.  Warning: this can get
+  /// around const constraints.
+  inline SubVector<Real> Row(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
+    return SubVector<Real>(data_ + (i * stride_), num_cols_);
   }
 
-  /// Return specific row of matrix.
-  inline SubVector<Real> Row(MatrixIndexT i) {
+  /// Return specific column of matrix.  Warning: this can get
+  /// around const constraints.
+  inline const SubVector<Real> Col(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
-                 static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
+                 static_cast<UnsignedMatrixIndexT>(num_cols_));
+    return SubVector<Real>(data_ + i, num_rows_, stride_);
   }
 
   /// Return a sub-part of matrix.
@@ -412,7 +408,9 @@ class MatrixBase {
      Null pointers for U and/or Vt at input mean we do not want that output.  We
      expect that S.Dim() == m, U is either NULL or m by n,
      and v is either NULL or n by n.
-     The singular values are not sorted (use SortSvd for that).  */
+     The singular values are not sorted (use SortSvd for that).
+     Requires that s->Stride() == 1.
+  */
   void DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
                       MatrixBase<Real> *Vt);  // Destroys calling matrix.
 
@@ -420,6 +418,7 @@ class MatrixBase {
   /// transposed; the normal formulation is U diag(s) V^T.
   /// Null pointers for U or V mean we don't want that output (this saves
   /// compute).  The singular values are not sorted (use SortSvd for that).
+  /// Requires that s->Stride() == 1.
   void Svd(VectorBase<Real> *s, MatrixBase<Real> *U,
            MatrixBase<Real> *Vt) const;
   /// Compute SVD but only retain the singular values.
@@ -537,6 +536,7 @@ class MatrixBase {
    * positive semi-definite (check_thresh controls how stringent the check is;
    * set it to 2 to ensure it won't ever complain, but it will zero out negative
    * dimensions in your matrix.
+   * Requires s->Stride() == 1.
   */
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real check_thresh = 0.001);
@@ -769,20 +769,13 @@ class MatrixBase {
   /// data memory area
   Real*   data_;
 
+  /// these atributes store the real matrix size as it is stored in memory
+  /// including memalignment
   MatrixIndexT    num_cols_;   /// < Number of columns
   MatrixIndexT    num_rows_;   /// < Number of rows
-  MatrixIndexT    row_stride_;  ///< Row stride (distance in memory between one
-                                ///< row and the next).  Expected to
-                                ///< satisfy abs(row_stride_) >= abs(col_stride_)
-                                ///< (although this won't lead to wrong operation
-                                ///< so we don't check this);
-                                ///< and the matrix must have the property
-                                ///< that no element can be accessed via
-                                ///< two different pairs of indexes.
-  MatrixIndexT    col_stride_;  ///< Column stride (distance in memory between
-                                ///< one column and the next).  Normally
-                                ///< expected to equal 1.
-
+  /** True number of columns for the internal matrix. This number may differ
+   * from num_cols_ as memory alignment might be used. */
+  MatrixIndexT    stride_;
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(MatrixBase);
 };
