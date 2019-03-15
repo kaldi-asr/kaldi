@@ -28,7 +28,7 @@
 #include "matrix/compressed-matrix.h"
 #include "matrix/sparse-matrix.h"
 
-static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans), 
+static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans),
     "kaldi::kNoTrans and kaldi::kTrans must be equal to the appropriate CBLAS library constants!");
 
 namespace kaldi {
@@ -538,7 +538,7 @@ void MatrixBase<Real>::AddMatSmat(Real alpha, const MatrixBase<Real> &A,
         // pass stride to write a column as matrices are stored in row major order.
         cblas_Xaxpy(this_num_rows, alpha_B_jk, a_col_k, A.stride_,
                     this_col_j, this->stride_);
-        //for (MatrixIndexT i = 0; i < this_num_rows; ++i) 
+        //for (MatrixIndexT i = 0; i < this_num_rows; ++i)
         // this_col_j[i*this->stride_] +=  alpha_B_jk * a_col_k[i*A.stride_];
       }
     }
@@ -786,12 +786,13 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     KALDI_ASSERT(rows == 0 && cols == 0);
     this->num_rows_ = 0;
     this->num_cols_ = 0;
-    this->stride_ = 0;
+    this->row_stride_ = 0;
+    this->col_stride_ = 0;
     this->data_ = NULL;
     return;
   }
   KALDI_ASSERT(rows > 0 && cols > 0);
-  MatrixIndexT skip, stride;
+  MatrixIndexT skip, row_stride;
   size_t size;
   void *data;  // aligned memory block
   void *temp;  // memory block to be really freed
@@ -799,8 +800,8 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
   // compute the size of skip and real cols
   skip = ((16 / sizeof(Real)) - cols % (16 / sizeof(Real)))
       % (16 / sizeof(Real));
-  stride = cols + skip;
-  size = static_cast<size_t>(rows) * static_cast<size_t>(stride)
+  row_stride = cols + skip;
+  size = static_cast<size_t>(rows) * static_cast<size_t>(row_stride)
       * sizeof(Real);
 
   // allocate the memory and set the right dimensions and parameters
@@ -808,7 +809,8 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     MatrixBase<Real>::data_        = static_cast<Real *> (data);
     MatrixBase<Real>::num_rows_      = rows;
     MatrixBase<Real>::num_cols_      = cols;
-    MatrixBase<Real>::stride_  = (stride_type == kDefaultStride ? stride : cols);
+    MatrixBase<Real>::row_stride_  = (stride_type == kDefaultStride ? stride : cols);
+    MatrixBase<Real>::col_stride_  = 1;
   } else {
     throw std::bad_alloc();
   }
@@ -824,7 +826,7 @@ void Matrix<Real>::Resize(const MatrixIndexT rows,
   if (resize_type == kCopyData) {
     if (this->data_ == NULL || rows == 0) resize_type = kSetZero;  // nothing to copy.
     else if (rows == this->num_rows_ && cols == this->num_cols_ &&
-	     (stride_type == kDefaultStride || this->stride_ == this->num_cols_)) { return; } // nothing to do.
+	     (stride_type == kDefaultStride || this->row_stride_ == this->num_cols_)) { return; } // nothing to do.
     else {
       // set tmp to a matrix of the desired size; if new matrix
       // is bigger in some dimension, zero it.
@@ -874,12 +876,14 @@ void MatrixBase<Real>::CopyFromMat(const MatrixBase<OtherReal> &M,
       (*this).Row(i).CopyFromVec(M.Row(i));
   } else {
     KALDI_ASSERT(num_cols_ == M.NumRows() && num_rows_ == M.NumCols());
-    int32 this_stride = stride_, other_stride = M.Stride();
+    int32 this_row_stride = row_stride_, this_col_stride = col_stride_,
+        other_row_stride = M.RowStride(), other_col_stride = M.ColStride();
     Real *this_data = data_;
     const OtherReal *other_data = M.Data();
     for (MatrixIndexT i = 0; i < num_rows_; i++)
       for (MatrixIndexT j = 0; j < num_cols_; j++)
-        this_data[i * this_stride + j] = other_data[j * other_stride + i];
+        this_data[i * this_row_stride + j * this_col_stride] =
+            other_data[j * other_row_stride + i * other_col_stride];
   }
 }
 
@@ -902,15 +906,17 @@ template<>
 template<>
 void MatrixBase<float>::CopyFromSp(const SpMatrix<float> & M) {
   KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
-  MatrixIndexT num_rows = num_rows_, stride = stride_;
+  MatrixIndexT num_rows = num_rows_,
+      row_stride = row_stride_,
+      col_stride = col_stride_;
   const float *Mdata = M.Data();
   float *row_data = data_, *col_data = data_;
   for (MatrixIndexT i = 0; i < num_rows; i++) {
-    cblas_scopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
-    cblas_scopy(i, Mdata, 1, col_data, stride); // copy to the column.
-    Mdata += i+1;
-    row_data += stride;
-    col_data += 1;
+    cblas_scopy(i + 1, Mdata, 1, row_data, col_stride); // copy to the row.
+    cblas_scopy(i, Mdata, 1, col_data, row_stride); // copy to the column.
+    Mdata += i + 1;
+    row_data += row_stride;
+    col_data += col_stride;
   }
 }
 
@@ -919,15 +925,17 @@ template<>
 template<>
 void MatrixBase<double>::CopyFromSp(const SpMatrix<double> & M) {
   KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
-  MatrixIndexT num_rows = num_rows_, stride = stride_;
+  MatrixIndexT num_rows = num_rows_,
+      row_stride = row_stride_,
+      col_stride = col_stride_;
   const double *Mdata = M.Data();
   double *row_data = data_, *col_data = data_;
   for (MatrixIndexT i = 0; i < num_rows; i++) {
-    cblas_dcopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
-    cblas_dcopy(i, Mdata, 1, col_data, stride); // copy to the column.
+    cblas_dcopy(i+1, Mdata, 1, row_data, col_stride); // copy to the row.
+    cblas_dcopy(i, Mdata, 1, col_data, row_stride); // copy to the column.
     Mdata += i+1;
-    row_data += stride;
-    col_data += 1;
+    row_data += row_stride;
+    col_data += col_stride;
   }
 }
 
@@ -956,24 +964,26 @@ template<typename Real>
 template<typename OtherReal>
 void MatrixBase<Real>::CopyFromTp(const TpMatrix<OtherReal> & M,
                                   MatrixTransposeType Trans) {
+  MatrixIndexT row_stride = row_stride_, col_stride = col_stride_;
   if (Trans == kNoTrans) {
     KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
     SetZero();
     Real *out_i = data_;
     const OtherReal *in_i = M.Data();
-    for (MatrixIndexT i = 0; i < num_rows_; i++, out_i += stride_, in_i += i) {
+    for (MatrixIndexT i = 0; i < num_rows_;
+         i++, out_i += row_stride_, in_i += i) {
       for (MatrixIndexT j = 0; j <= i; j++)
-        out_i[j] = in_i[j];
+        out_i[j * col_stride] = in_i[j];
     }
   } else {
     SetZero();
     KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
-    MatrixIndexT stride = stride_;
     Real *out_i = data_;
     const OtherReal *in_i = M.Data();
-    for (MatrixIndexT i = 0; i < num_rows_; i++, out_i ++, in_i += i) {
+    for (MatrixIndexT i = 0; i < num_rows_;
+         i++, out_i += col_stride, in_i += i) {
       for (MatrixIndexT j = 0; j <= i; j++)
-        out_i[j*stride] = in_i[j];
+        out_i[j * row_stride] = in_i[j];
     }
   }
 }
@@ -994,7 +1004,7 @@ void MatrixBase<double>::CopyFromTp(const TpMatrix<double> & M,
 
 template<typename Real>
 void MatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &rv) {
-  if (rv.Dim() == num_rows_*num_cols_) {
+  if (rv.Dim() == num_rows_ * num_cols_) {
     if (stride_ == num_cols_) {
       // one big copy operation.
       const Real *rv_data = rv.Data();

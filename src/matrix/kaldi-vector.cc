@@ -152,19 +152,20 @@ template<typename Real>
 void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,
                               const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_Xtpmv(trans,M.Data(),M.NumRows(),data_,1);
+  cblas_Xtpmv(trans, M.Data(), M.NumRows(), data_, stride_);
 }
 
 template<typename Real>
 void VectorBase<Real>::Solve(const TpMatrix<Real> &M,
                         const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_Xtpsv(trans, M.Data(), M.NumRows(), data_, 1);
+  cblas_Xtpsv(trans, M.Data(), M.NumRows(), data_, stride_);
 }
 
 
 template<typename Real>
 inline void Vector<Real>::Init(const MatrixIndexT dim) {
+  stride_ = 1;
   KALDI_ASSERT(dim >= 0);
   if (dim == 0) {
     this->dim_ = 0;
@@ -188,7 +189,6 @@ inline void Vector<Real>::Init(const MatrixIndexT dim) {
 
 template<typename Real>
 void Vector<Real>::Resize(const MatrixIndexT dim, MatrixResizeType resize_type) {
-
   // the next block uses recursion to handle what we have to do if
   // resize_type == kCopyData.
   if (resize_type == kCopyData) {
@@ -244,12 +244,6 @@ template void VectorBase<float>::CopyFromPacked(const PackedMatrix<float> &other
 template void VectorBase<double>::CopyFromPacked(const PackedMatrix<double> &other);
 template void VectorBase<double>::CopyFromPacked(const PackedMatrix<float> &other);
 
-/// Load data into the vector
-template<typename Real>
-void VectorBase<Real>::CopyFromPtr(const Real *data, MatrixIndexT sz) {
-  KALDI_ASSERT(dim_ == sz);
-  std::memcpy(this->data_, data, Dim() * sizeof(Real));
-}
 
 template<typename Real>
 template<typename OtherReal>
@@ -264,7 +258,7 @@ void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
 template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);
 template void VectorBase<double>::CopyFromVec(const VectorBase<float> &other);
 
-// Remove element from the vector. The vector is non reallocated
+// Remove element from the vector. The vector is not reallocated
 template<typename Real>
 void Vector<Real>::RemoveElement(MatrixIndexT i) {
   KALDI_ASSERT(i <  this->dim_ && "Access out of vector");
