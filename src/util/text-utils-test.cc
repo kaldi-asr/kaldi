@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011     Microsoft Corporation
 //                2017     Johns Hopkins University (author: Daniel Povey)
+//                2015  Vimal Manohar (Johns Hopkins University)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -324,6 +325,193 @@ void TestStringsApproxEqual() {
   KALDI_ASSERT(!StringsApproxEqual("x 1.0 y", "x 1.0001 y", 4));
 }
 
+void UnitTestConfigLineParse() {
+  std::string str;
+  {
+    ConfigLine cfl;
+    str = "a-b xx=yyy foo=bar  baz=123 ba=1:2";
+    bool status = cfl.ParseLine(str);
+    KALDI_ASSERT(status && cfl.FirstToken() == "a-b");
+
+    KALDI_ASSERT(cfl.HasUnusedValues());
+    std::string str_value;
+    KALDI_ASSERT(cfl.GetValue("xx", &str_value));
+    KALDI_ASSERT(str_value == "yyy");
+    KALDI_ASSERT(cfl.HasUnusedValues());
+    KALDI_ASSERT(cfl.GetValue("foo", &str_value));
+    KALDI_ASSERT(str_value == "bar");
+    KALDI_ASSERT(cfl.HasUnusedValues());
+    KALDI_ASSERT(!cfl.GetValue("xy", &str_value));
+    KALDI_ASSERT(cfl.GetValue("baz", &str_value));
+    KALDI_ASSERT(str_value == "123");
+
+    std::vector<int32> int_values;
+    KALDI_ASSERT(!cfl.GetValue("xx", &int_values));
+    KALDI_ASSERT(cfl.GetValue("baz", &int_values));
+    KALDI_ASSERT(cfl.HasUnusedValues());
+    KALDI_ASSERT(int_values.size() == 1 && int_values[0] == 123);
+    KALDI_ASSERT(cfl.GetValue("ba", &int_values));
+    KALDI_ASSERT(int_values.size() == 2 && int_values[0] == 1 && int_values[1] == 2);
+    KALDI_ASSERT(!cfl.HasUnusedValues());
+  }
+
+  {
+    ConfigLine cfl;
+    str = "a-b baz=x y z pp = qq ab =cd ac= bd";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "a-b baz=x y z pp = qq ab=cd ac=bd";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "foo-bar";
+    KALDI_ASSERT(cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "foo-bar a=b c d f=g";
+    std::string value;
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "foo-bar" &&
+                 cfl.GetValue("a", &value)  && value == "b c d" &&
+                 cfl.GetValue("f", &value) && value == "g" &&
+                 !cfl.HasUnusedValues());
+  }
+  {
+    ConfigLine cfl;
+    str = "zzz a=b baz";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "zzz" &&
+                 cfl.UnusedValues() == "a=b baz");
+  }
+  {
+    ConfigLine cfl;
+    str = "xxx a=b baz ";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.UnusedValues() == "a=b baz");
+  }
+  {
+    ConfigLine cfl;
+    str = "xxx a=b =c";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "xxx baz='x y z' pp=qq ab=cd ac=bd";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "xxx");
+    std::string str_value;
+    KALDI_ASSERT(cfl.GetValue("baz", &str_value));
+    KALDI_ASSERT(str_value == "x y z");
+    KALDI_ASSERT(cfl.GetValue("pp", &str_value));
+    KALDI_ASSERT(str_value == "qq");
+    KALDI_ASSERT(cfl.UnusedValues() == "ab=cd ac=bd");
+    KALDI_ASSERT(cfl.GetValue("ab", &str_value));
+    KALDI_ASSERT(str_value == "cd");
+    KALDI_ASSERT(cfl.UnusedValues() == "ac=bd");
+    KALDI_ASSERT(cfl.HasUnusedValues());
+    KALDI_ASSERT(cfl.GetValue("ac", &str_value));
+    KALDI_ASSERT(str_value == "bd");
+    KALDI_ASSERT(!cfl.HasUnusedValues());
+  }
+
+  {
+    ConfigLine cfl;
+    str = "x baz= pp = qq flag=t ";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = " x baz= pp=qq flag=t  ";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "x");
+
+    std::string str_value;
+    KALDI_ASSERT(cfl.GetValue("baz", &str_value));
+    KALDI_ASSERT(str_value == "");
+    KALDI_ASSERT(cfl.GetValue("pp", &str_value));
+    KALDI_ASSERT(str_value == "qq");
+    KALDI_ASSERT(cfl.HasUnusedValues());
+    KALDI_ASSERT(cfl.GetValue("flag", &str_value));
+    KALDI_ASSERT(str_value == "t");
+    KALDI_ASSERT(!cfl.HasUnusedValues());
+
+    bool bool_value = false;
+    KALDI_ASSERT(cfl.GetValue("flag", &bool_value));
+    KALDI_ASSERT(bool_value);
+  }
+
+  {
+    ConfigLine cfl;
+    str = "xx _baz=a -pp=qq";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "xx 0baz=a pp=qq";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "xx -baz=a pp=qq";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "xx _baz'=a pp=qq";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = " baz=g";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "");
+    bool flag;
+    KALDI_ASSERT(!cfl.GetValue("baz", &flag));
+  }
+  {
+    ConfigLine cfl;
+    str = "xx _baz1=a pp=qq";
+    KALDI_ASSERT(cfl.ParseLine(str));
+
+    std::string str_value;
+    KALDI_ASSERT(cfl.GetValue("_baz1", &str_value));
+  }
+}
+
+void UnitTestReadConfig() {
+  std::string str = "a-b alpha=aa beta=\"b b\"# String test\n"
+      "a-b beta2='b c' beta3=bd # \n"
+      "a-b gamma=1:2:3:4  # Int Vector test\n"
+      " a-b de1ta=f  # Bool + Integer in key Comment test delta=t  \n"
+      "a-b _epsilon=-1  # Int Vector test _epsilon=1 \n"
+      "a-b zet-_a=0.15   theta=1.1# Float, -, _ test\n"
+      "a-b quoted='a b c' # quoted string\n"
+      "a-b quoted2=\"d e 'a b=c' f\" # string quoted with double quotes";
+
+  std::istringstream is(str);
+  std::vector<std::string> lines;
+  ReadConfigLines(is, &lines);
+  KALDI_ASSERT(lines.size() == 8);
+
+  ConfigLine cfl;
+  for (size_t i = 0; i < lines.size(); i++) {
+    KALDI_ASSERT(cfl.ParseLine(lines[i]) && cfl.FirstToken() == "a-b");
+    if (i == 1) {
+        KALDI_ASSERT(cfl.GetValue("beta2", &str) && str == "b c");
+    }
+    if (i == 4) {
+      KALDI_ASSERT(cfl.GetValue("_epsilon", &str) && str == "-1");
+    }
+    if (i == 5) {
+      BaseFloat float_val = 0;
+      KALDI_ASSERT(cfl.GetValue("zet-_a", &float_val) && ApproxEqual(float_val, 0.15));
+    }
+    if (i == 6) {
+      KALDI_ASSERT(cfl.GetValue("quoted", &str) && str == "a b c");
+    }
+    if (i == 7) {
+      KALDI_ASSERT(cfl.GetValue("quoted2", &str) && str == "d e 'a b=c' f");
+    }
+  }
+}
 
 }  // end namespace kaldi
 
@@ -344,5 +532,7 @@ int main() {
   TestNan<double>();
   TestInf<float>();
   TestInf<double>();
+  UnitTestConfigLineParse();
+  UnitTestReadConfig();
   std::cout << "Test OK\n";
 }

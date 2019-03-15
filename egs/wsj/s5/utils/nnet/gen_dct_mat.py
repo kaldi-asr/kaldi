@@ -16,8 +16,8 @@
 # limitations under the License.
 
 # ./gen_dct_mat.py
-# script generates matrix with DCT transform, which is sparse 
-# and takes into account that data-layout is along frequency axis, 
+# script generates matrix with DCT transform, which is sparse
+# and takes into account that data-layout is along frequency axis,
 # while DCT is done along temporal axis.
 
 from __future__ import division
@@ -29,10 +29,7 @@ import sys
 from optparse import OptionParser
 
 def print_on_same_line(text):
-    if (sys.version_info > (3,0)):
-        print(text, end=' ')
-    else:
-        print text,
+    print(text, end=' ')
 
 parser = OptionParser()
 parser.add_option('--fea-dim', dest='dim', help='feature dimension')
@@ -69,7 +66,7 @@ for k in range(dct_basis):
           if(n==timeContext-1):
               print_on_same_line((dim-m-1)*'0 ')
         print()
-    print() 
+    print()
 
 print(']')
 
