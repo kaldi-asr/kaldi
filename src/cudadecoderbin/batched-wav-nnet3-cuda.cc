@@ -15,6 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cuda.h>
+#include <cuda_profiler_api.h>
+#include <nvToolsExt.h>
+#include <sstream>
 #include "cudadecoder/batched-threaded-cuda-decoder.h"
 #include "cudamatrix/cu-allocator.h"
 #include "fstext/fstext-lib.h"
@@ -22,9 +26,6 @@
 #include "nnet3/am-nnet-simple.h"
 #include "nnet3/nnet-utils.h"
 #include "util/kaldi-thread.h"
-#include <cuda.h>
-#include <cuda_profiler_api.h>
-#include <nvToolsExt.h>
 
 using namespace kaldi;
 using namespace CudaDecode;
@@ -58,14 +59,15 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
                 << " frames.";
 
   if (word_syms != NULL) {
-    std::cerr << utt << ' ';
+    std::ostringstream oss_warn;
+    oss_warn << utt << " ";
     for (size_t i = 0; i < words.size(); i++) {
       std::string s = word_syms->Find(words[i]);
       if (s == "")
-        KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
-      std::cerr << s << ' ';
+        oss_warn << "Word-id " << words[i] << " not in symbol table.";
+      oss_warn << s << " ";
     }
-    std::cerr << std::endl;
+    KALDI_WARN << oss_warn.str();
   }
 }
 
@@ -269,16 +271,16 @@ int main(int argc, char *argv[]) {
                       &num_frames, &output_iter, &tot_like);
     } // end while
 
-    KALDI_VLOG(2) << "Decoded " << num_done << " utterances, " << num_err
+    KALDI_LOG << "Decoded " << num_done << " utterances, " << num_err
               << " with errors.";
-    KALDI_VLOG(2) << "Overall likelihood per frame was " << (tot_like / num_frames)
+    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
               << " per frame over " << num_frames << " frames.";
 
     // number of seconds elapsed since the creation of timer
     double total_time = timer.Elapsed();
     nvtxRangePop();
 
-    KALDI_VLOG(2) << "Overall: "
+    KALDI_LOG << "Overall: "
               << " Aggregate Total Time: " << total_time
               << " Total Audio: " << total_audio * iterations
               << " RealTimeX: " << total_audio * iterations / total_time;
