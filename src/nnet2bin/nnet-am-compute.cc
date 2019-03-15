@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     int64 num_done = 0, num_frames = 0;
 
     Vector<BaseFloat> inv_priors(am_nnet.Priors());
-    KALDI_ASSERT(inv_priors.Dim() == am_nnet.NumPdfs() &&
+    KALDI_ASSERT((!divide_by_priors || inv_priors.Dim() == am_nnet.NumPdfs()) &&
                  "Priors in neural network not set up.");
     inv_priors.ApplyPow(-1.0);
 
@@ -159,5 +159,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

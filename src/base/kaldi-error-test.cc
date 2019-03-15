@@ -42,13 +42,12 @@ void UnitTestError() {
 }  // end namespace kaldi.
 
 int main() {
-  kaldi::g_program_name = "/foo/bar/kaldi-error-test";
+  kaldi::SetProgramName("/foo/bar/kaldi-error-test");
   try {
     kaldi::UnitTestError();
     KALDI_ASSERT(0);  // should not happen.
     exit(1);
-  } catch(std::runtime_error &r) {
-    std::cout << "UnitTestError: the error we generated was: " << r.what();
+  } catch(kaldi::KaldiFatalError &e) {
+    std::cout << "The error we generated was: '" << e.KaldiMessage() << "'\n";
   }
 }
-
