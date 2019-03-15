@@ -77,7 +77,7 @@ template<class C>
 void OnlineGenericBaseFeature<C>::AcceptWaveform(BaseFloat sampling_rate,
                                                  const VectorBase<BaseFloat> &waveform) {
   BaseFloat expected_sampling_rate = computer_.GetFrameOptions().samp_freq;
-  if (sampling_rate != expected_sampling_rate)
+  if (sampling_rate != expected_sampling_rate && !computer_.GetFrameOptions().allow_downsample)
     KALDI_ERR << "Sampling frequency mismatch, expected "
               << expected_sampling_rate << ", got " << sampling_rate;
   if (waveform.Dim() == 0)

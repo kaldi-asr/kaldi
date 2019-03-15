@@ -77,7 +77,8 @@ private:
 template<class C>
 class OnlineGenericBaseFeature: public OnlineBaseFeature {
  public:
-  //
+  std::unique_ptr<LinearResample> resampler_{nullptr}; 
+ //
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const { return computer_.Dim(); }
@@ -128,7 +129,6 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   void ComputeFeatures();
 
   C computer_;  // class that does the MFCC or PLP or filterbank computation
-
   FeatureWindowFunction window_function_;
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
