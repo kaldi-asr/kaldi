@@ -27,7 +27,7 @@
 #include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
-// comment it (and that function) out if it causes problems.  
+// comment it (and that function) out if it causes problems.
 #include <matrix/cblas-wrappers.h>
 
 namespace kaldi {
@@ -2448,7 +2448,7 @@ template<typename Real> static void  UnitTestSimple() {
     Vector<Real> V2(V), V3(dimM*dimN);
     V2.ApplyExp();
     AssertEqual(V.Sum(), V2.SumLog());
-    V3.ApplyLogAndCopy(V2);
+    V3.ApplyLog(V2);
     V2.ApplyLog();
     AssertEqual(V, V2);
     AssertEqual(V3, V2);
