@@ -40,6 +40,17 @@ void TestGpuComputation() {
 #endif
 
 int main(int argc, char *argv[]) try {
+
+  /* only for Doxygen documentation, never shown in command line */
+  const char *usage =
+        "Test if there is a GPU available, and if the GPU setup is correct.\n"
+        "A GPU is acquired and a small computation is done\n"
+        "(generating a random matrix and computing softmax for its rows).\n"
+        "\n"
+        "exit-code: 0 = success, 1 = compiled without GPU support, -1 = error\n"
+        "\n"
+        "Usage:  cuda-gpu-available\n";
+
   char hostname[100] = "UNKNOWN-HOSTNAME";
 #if !defined(_MSC_VER) && !defined(__CYGWIN__)
   if (gethostname(hostname, 100)) {
