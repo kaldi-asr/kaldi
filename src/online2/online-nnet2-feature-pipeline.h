@@ -228,18 +228,25 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   /// rescoring the lattices, this may not be much of an issue.
   void InputFinished();
 
-  // This function returns the ivector-extracting part of the feature pipeline
-  // (or NULL if iVectors are not being used); the pointer is owned here and not
-  // given to the caller.  This function is used in nnet3, and also in the
-  // silence-weighting code used to exclude silence from the iVector estimation.
+  // This function returns the iVector-extracting part of the feature pipeline
+  // (or NULL if iVectors are not being used); the pointer ownership is retained
+  // by this object and not transferred to the caller.  This function is used in
+  // nnet3, and also in the silence-weighting code used to exclude silence from
+  // the iVector estimation.
   OnlineIvectorFeature *IvectorFeature() {
+    return ivector_feature_;
+  }
+
+  // A const accessor for the iVector extractor. Returns NULL if iVectors are
+  // not being used.
+  const OnlineIvectorFeature *IvectorFeature() const {
     return ivector_feature_;
   }
 
   // This function returns the part of the feature pipeline that would be given
   // as the primary (non-iVector) input to the neural network in nnet3
   // applications.
- OnlineFeatureInterface *InputFeature() {
+  OnlineFeatureInterface *InputFeature() {
     return feature_plus_optional_pitch_;
   }
 

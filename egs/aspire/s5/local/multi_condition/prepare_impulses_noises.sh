@@ -114,7 +114,7 @@ cp ${output_dir}_non_normalized/info/* $output_dir/info
 
 # rename file location in the noise-rir pairing files 
 for file in `ls $output_dir/info/noise_impulse*`; do
-  sed -i "s/_non_normalized//g" $file
+  perl -i -pe "s/_non_normalized//g" $file
 done
 
 # generating the rir-list with probabilities alloted for each rir

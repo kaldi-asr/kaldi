@@ -42,7 +42,7 @@ class OnlineAudioSourceItf {
   // The function returns true if there may be more data, and false if it
   // knows we are at the end of the stream.
   // In case an unexpected and unrecoverable error occurs the function throws
-  // an exception of type std::runtime_error (e.g. by using KALDI_ERR macro).
+  // an exception of type KaldiFatalError (by using KALDI_ERR macro).
   //
   // NOTE: The older version of this interface had a second paramater - "timeout".
   //       We decided to remove it, because we don't envision usage scenarios,

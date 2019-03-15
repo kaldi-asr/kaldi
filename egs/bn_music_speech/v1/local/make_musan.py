@@ -45,7 +45,7 @@ def prepare_music(root_dir, use_vocals):
     else:
       print("Missing file {}".format(utt))
       num_bad_files += 1
-  print(("In music directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files))
+  print("In music directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files))
   return utt2spk_str, utt2wav_str
 
 def prepare_speech(root_dir):
@@ -71,7 +71,7 @@ def prepare_speech(root_dir):
     else:
       print("Missing file {}".format(utt))
       num_bad_files += 1
-  print(("In speech directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files))
+  print("In speech directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files))
   return utt2spk_str, utt2wav_str
 
 def prepare_noise(root_dir):
@@ -97,7 +97,7 @@ def prepare_noise(root_dir):
     else:
       print("Missing file {}".format(utt))
       num_bad_files += 1
-  print(("In noise directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files))
+  print("In noise directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files))
   return utt2spk_str, utt2wav_str
 
 def main():
