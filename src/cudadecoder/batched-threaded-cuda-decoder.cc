@@ -30,7 +30,9 @@ void BatchedThreadedCudaDecoder::Initialize(
     const fst::Fst<fst::StdArc> &decode_fst, const nnet3::AmNnetSimple &am_nnet,
     const TransitionModel &trans_model) {
   KALDI_LOG << "BatchedThreadedCudaDecoder Initialize with "
-            << config_.num_control_threads << " threads\n";
+            << config_.num_control_threads << " control threads, "
+            << config_.num_worker_threads << " worker threads"
+            << " and batch size " << config_.max_batch_size;
 
   am_nnet_ = &am_nnet;
   trans_model_ = &trans_model;
