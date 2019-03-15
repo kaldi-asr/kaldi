@@ -59,13 +59,13 @@ class MatrixBase {
   friend class SparseMatrix<float>;
   friend class SparseMatrix<double>;
 
-  /// Returns number of rows (or zero for emtpy matrix).
+  /// Returns number of rows (or zero for empty matrix).
   inline MatrixIndexT  NumRows() const { return num_rows_; }
 
   /// Returns number of columns (or zero for emtpy matrix).
   inline MatrixIndexT NumCols() const { return num_cols_; }
 
-  /// Stride (distance in memory between each row).  Will be >= NumCols.
+  /// Stride (distance in memory between each row).  Must be >= NumCols().
   inline MatrixIndexT Stride() const {  return stride_; }
 
   /// Returns size in bytes of the data held by the matrix.
@@ -183,18 +183,20 @@ class MatrixBase {
 
   /* Accessing of sub-parts of the matrix. */
 
-  /// Return specific row of matrix [const].
-  inline const SubVector<Real> Row(MatrixIndexT i) const {
+  /// Return specific row of matrix.  Warning: this can get
+  /// around const constraints.
+  inline SubVector<Real> Row(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
+    return SubVector<Real>(data_ + (i * stride_), num_cols_);
   }
 
-  /// Return specific row of matrix.
-  inline SubVector<Real> Row(MatrixIndexT i) {
+  /// Return specific column of matrix.  Warning: this can get
+  /// around const constraints.
+  inline const SubVector<Real> Col(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
-                 static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
+                 static_cast<UnsignedMatrixIndexT>(num_cols_));
+    return SubVector<Real>(data_ + i, num_rows_, stride_);
   }
 
   /// Return a sub-part of matrix.
@@ -406,7 +408,9 @@ class MatrixBase {
      Null pointers for U and/or Vt at input mean we do not want that output.  We
      expect that S.Dim() == m, U is either NULL or m by n,
      and v is either NULL or n by n.
-     The singular values are not sorted (use SortSvd for that).  */
+     The singular values are not sorted (use SortSvd for that).
+     Requires that s->Stride() == 1.
+  */
   void DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
                       MatrixBase<Real> *Vt);  // Destroys calling matrix.
 
@@ -414,6 +418,7 @@ class MatrixBase {
   /// transposed; the normal formulation is U diag(s) V^T.
   /// Null pointers for U or V mean we don't want that output (this saves
   /// compute).  The singular values are not sorted (use SortSvd for that).
+  /// Requires that s->Stride() == 1.
   void Svd(VectorBase<Real> *s, MatrixBase<Real> *U,
            MatrixBase<Real> *Vt) const;
   /// Compute SVD but only retain the singular values.
@@ -531,6 +536,7 @@ class MatrixBase {
    * positive semi-definite (check_thresh controls how stringent the check is;
    * set it to 2 to ensure it won't ever complain, but it will zero out negative
    * dimensions in your matrix.
+   * Requires s->Stride() == 1.
   */
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real check_thresh = 0.001);

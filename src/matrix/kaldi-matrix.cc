@@ -28,7 +28,7 @@
 #include "matrix/compressed-matrix.h"
 #include "matrix/sparse-matrix.h"
 
-static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans), 
+static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans),
     "kaldi::kNoTrans and kaldi::kTrans must be equal to the appropriate CBLAS library constants!");
 
 namespace kaldi {
@@ -117,10 +117,10 @@ template<>
 template<>
 void MatrixBase<float>::AddVecVec(const float alpha,
                                   const VectorBase<float> &a,
-                                  const VectorBase<float> &rb) {
-  KALDI_ASSERT(a.Dim() == num_rows_ && rb.Dim() == num_cols_);
-  cblas_Xger(a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
-             1, data_, stride_);
+                                  const VectorBase<float> &b) {
+  KALDI_ASSERT(a.Dim() == num_rows_ && b.Dim() == num_cols_);
+  cblas_Xger(a.Dim(), b.Dim(), alpha, a.Data(), a.Stride(),
+             b.Data(), b.Stride(), data_, stride_);
 }
 
 template<typename Real>
@@ -132,15 +132,18 @@ void MatrixBase<Real>::AddVecVec(const Real alpha,
   if (num_rows_ * num_cols_ > 100) { // It's probably worth it to allocate
     // temporary vectors of the right type and use BLAS.
     Vector<Real> temp_a(a), temp_b(b);
-    cblas_Xger(num_rows_, num_cols_, alpha, temp_a.Data(), 1,
-               temp_b.Data(), 1, data_, stride_);
+    cblas_Xger(num_rows_, num_cols_, alpha,
+               temp_a.Data(), temp_a.Stride(),
+               temp_b.Data(), temp_b.Stride(),
+               data_, stride_);
   } else {
     const OtherReal *a_data = a.Data(), *b_data = b.Data();
+    MatrixIndexT a_stride = a.Stride(), b_stride = b.Stride();
     Real *row_data = data_;
     for (MatrixIndexT i = 0; i < num_rows_; i++, row_data += stride_) {
-      BaseFloat alpha_ai = alpha * a_data[i];
+      BaseFloat alpha_ai = alpha * a_data[i * a_stride];
       for (MatrixIndexT j = 0; j < num_cols_; j++)
-        row_data[j] += alpha_ai * b_data[j];
+        row_data[j] += alpha_ai * b_data[j * b_stride];
     }
   }
 }
@@ -159,11 +162,11 @@ template<>
 template<>
 void MatrixBase<double>::AddVecVec(const double alpha,
                                    const VectorBase<double> &a,
-                                   const VectorBase<double> &rb) {
-  KALDI_ASSERT(a.Dim() == num_rows_ && rb.Dim() == num_cols_);
+                                   const VectorBase<double> &b) {
+  KALDI_ASSERT(a.Dim() == num_rows_ && b.Dim() == num_cols_);
   if (num_rows_ == 0) return;
-  cblas_Xger(a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
-             1, data_, stride_);
+  cblas_Xger(a.Dim(), b.Dim(), alpha, a.Data(), a.Stride(),
+             b.Data(), b.Stride(), data_, stride_);
 }
 
 template<typename Real>
@@ -538,7 +541,7 @@ void MatrixBase<Real>::AddMatSmat(Real alpha, const MatrixBase<Real> &A,
         // pass stride to write a column as matrices are stored in row major order.
         cblas_Xaxpy(this_num_rows, alpha_B_jk, a_col_k, A.stride_,
                     this_col_j, this->stride_);
-        //for (MatrixIndexT i = 0; i < this_num_rows; ++i) 
+        //for (MatrixIndexT i = 0; i < this_num_rows; ++i)
         // this_col_j[i*this->stride_] +=  alpha_B_jk * a_col_k[i*A.stride_];
       }
     }
@@ -591,8 +594,10 @@ void MatrixBase<Real>::AddDiagVecMat(
   if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
   Real *data = data_;
   const Real *Mdata = M.Data(), *vdata = v.Data();
+  MatrixIndexT v_stride = v.Stride();
   if (num_rows_ == 0) return;
-  for (MatrixIndexT i = 0; i < num_rows; i++, data += stride, Mdata += M_row_stride, vdata++)
+  for (MatrixIndexT i = 0; i < num_rows;
+       i++, data += stride, Mdata += M_row_stride, vdata += v_stride)
     cblas_Xaxpy(num_cols, alpha * *vdata, Mdata, M_col_stride, data, 1);
 }
 
@@ -623,10 +628,11 @@ void MatrixBase<Real>::AddMatDiagVec(
 
   Real *data = data_;
   const Real *Mdata = M.Data(), *vdata = v.Data();
+  MatrixIndexT v_stride = v.Stride();
   if (num_rows_ == 0) return;
   for (MatrixIndexT i = 0; i < num_rows; i++){
       for(MatrixIndexT j = 0; j < num_cols; j ++ ){
-          data[i*stride + j] += alpha * vdata[j] * Mdata[i*M_row_stride + j*M_col_stride];
+          data[i*stride + j] += alpha * vdata[j * v_stride] * Mdata[i*M_row_stride + j*M_col_stride];
       }
   }
 }
@@ -658,7 +664,8 @@ void MatrixBase<Real>::AddMatMatElements(const Real alpha,
 template<typename Real>
 void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
                                    MatrixBase<Real> *V_in) {
-  KALDI_ASSERT(s != NULL && U_in != this && V_in != this);
+  KALDI_ASSERT(s != NULL && U_in != this && V_in != this &&
+               s->Stride() == 1);
 
   Matrix<Real> tmpU, tmpV;
   if (U_in == NULL) tmpU.Resize(this->num_rows_, 1);  // work-space if U_in empty.
@@ -1786,7 +1793,7 @@ void MatrixBase<Real>::DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U, 
   // Throws exception on error.
 
   KALDI_ASSERT(num_rows_>=num_cols_ && "Svd requires that #rows by >= #cols.");  // For compatibility with JAMA code.
-  KALDI_ASSERT(s->Dim() == num_cols_);  // s should be the smaller dim.
+  KALDI_ASSERT(s->Dim() == num_cols_ && s->Stride() == 1);  // s should be the smaller dim.
   KALDI_ASSERT(U == NULL || (U->num_rows_ == num_rows_&&U->num_cols_ == num_cols_));
   KALDI_ASSERT(Vt == NULL || (Vt->num_rows_ == num_cols_&&Vt->num_cols_ == num_cols_));
 
@@ -1992,27 +1999,28 @@ void MatrixBase<Real>::OrthogonalizeRows() {
 // symmetric positive definite).
 
 template<typename Real>
-void MatrixBase<Real>::SymPosSemiDefEig(VectorBase<Real> *rs, MatrixBase<Real> *rU, Real check_thresh) // e.g. check_thresh = 0.001
+void MatrixBase<Real>::SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *U, Real check_thresh) // e.g. check_thresh = 0.001
 {
   const MatrixIndexT D = num_rows_;
 
   KALDI_ASSERT(num_rows_ == num_cols_);
   KALDI_ASSERT(IsSymmetric() && "SymPosSemiDefEig: expecting input to be symmetrical.");
-  KALDI_ASSERT(rU->num_rows_ == D && rU->num_cols_ == D && rs->Dim() == D);
+  KALDI_ASSERT(U->num_rows_ == D && U->num_cols_ == D && s->Dim() == D &&
+               s->Stride() == 1);
 
   Matrix<Real>  Vt(D, D);
-  Svd(rs, rU, &Vt);
+  Svd(s, U, &Vt);
 
   // First just zero any singular values if the column of U and V do not have +ve dot product--
   // this may mean we have small negative eigenvalues, and if we zero them the result will be closer to correct.
   for (MatrixIndexT i = 0;i < D;i++) {
     Real sum = 0.0;
-    for (MatrixIndexT j = 0;j < D;j++) sum += (*rU)(j, i) * Vt(i, j);
-    if (sum < 0.0) (*rs)(i) = 0.0;
+    for (MatrixIndexT j = 0;j < D;j++) sum += (*U)(j, i) * Vt(i, j);
+    if (sum < 0.0) (*s)(i) = 0.0;
   }
 
   {
-    Matrix<Real> tmpU(*rU); Vector<Real> tmps(*rs); tmps.ApplyPow(0.5);
+    Matrix<Real> tmpU(*U); Vector<Real> tmps(*s); tmps.ApplyPow(0.5);
     tmpU.MulColsVec(tmps);
     SpMatrix<Real> tmpThis(D);
     tmpThis.AddMat2(1.0, tmpU, kNoTrans, 0.0);
