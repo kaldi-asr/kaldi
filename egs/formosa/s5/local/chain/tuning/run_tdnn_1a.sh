@@ -169,27 +169,13 @@ fi
 
 graph_dir=$dir/graph
 if [ $stage -le 13 ]; then
-  for test_set in test; do
+  for test_set in test eval; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj 10 --cmd "$decode_cmd" \
       --online-ivector-dir exp/nnet3/ivectors_$test_set \
       $graph_dir data/${test_set}_hires $dir/decode_${test_set} || exit 1;
   done
   wait;
-  exit 0;
 fi
 
-if [ $stage -le 99 ]; then
-
-  local/nnet3/run_eval_ivector_common.sh || exit 1;
-
-  for test_set in eval; do
-    steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --nj 10 --cmd "$decode_cmd" \
-      --online-ivector-dir exp/nnet3/ivectors_$test_set \
-      $graph_dir data/${test_set}_hires $dir/decode_${test_set} || exit 1;
-  done
-fi
-
-wait;
 exit 0;

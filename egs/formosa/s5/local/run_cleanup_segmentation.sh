@@ -58,6 +58,7 @@ if [ $stage -le 3 ]; then
     3500 100000 $cleaned_data $langdir ${srcdir}_ali_${cleanup_affix} ${cleaned_dir}
 fi
 
+utils/data/get_utt2dur.sh data/train_cleaned
 ori_avg_dur=$(awk 'BEGIN{total=0}{total += $2}END{printf("%.2f", total/NR)}' ${data}/utt2dur)
 new_avg_dur=$(awk 'BEGIN{total=0}{total += $2}END{printf("%.2f", total/NR)}' ${cleaned_data}/utt2dur)
 echo "average duration was reduced from ${ori_avg_dur}s to ${new_avg_dur}s."

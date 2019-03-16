@@ -1,19 +1,16 @@
 #!/bin/bash
 
-# This script shows improvement arising from data cleaning.
-
 # CER:
-# %WER 16.83 [ 36305 / 215718, 4772 ins, 10810 del, 20723 sub ] exp/chain/tdnn_1a_sp/decode_test/cer_9_0.0
-# %WER 16.44 [ 35459 / 215718, 4216 ins, 11278 del, 19965 sub ] exp/chain/tdnn_1b_sp/decode_test/cer_10_0.0
+# 1a: %WER 16.83 [ 36305 / 215718, 4772 ins, 10810 del, 20723 sub ] exp/chain/tdnn_1a_sp/decode_test/cer_9_0.0
+# 1d: %WER 14.08 [ 30364 / 215718, 5182 ins, 7588 del, 17594 sub ] exp/chain/tdnn_1d_sp/decode_test/cer_9_0.0
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn_1b_sp
-# exp/chain/tdnn_1b_sp: num-iters=133 nj=2..12 num-params=12.5M dim=43+100->4528 combine=-0.073->-0.073 (over 2) xent:train/valid[87,132,final]=(-1.05,-0.964,-0.963/-1.10,-1.06,-1.05) logprob:train/valid[87,132,final]=(-0.079,-0.065,-0.065/-0.094,-0.092,-0.092)
+# steps/info/chain_dir_info.pl exp/chain/tdnn_1d_sp
+# exp/chain/tdnn_1d_sp: num-iters=157 nj=3..16 num-params=18.6M dim=43+100->5792 combine=-0.050->-0.050 (over 1) xent:train/valid[103,156,final]=(-0.977,-0.735,-0.725/-0.953,-0.772,-0.768) logprob:train/valid[103,156,final]=(-0.077,-0.052,-0.052/-0.079,-0.065,-0.066)
 
 set -e
 
 # configs for 'chain'
-affix=1b
-nnet3_affix=_1b
+affix=1d
 stage=0
 train_stage=-10
 get_egs_stage=-10
@@ -21,18 +18,19 @@ dir=exp/chain/tdnn  # Note: _sp will get added to this
 decode_iter=
 
 # training options
-num_epochs=4
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
+num_epochs=6
+initial_effective_lrate=0.00025
+final_effective_lrate=0.000025
 max_param_change=2.0
 final_layer_normalize_target=0.5
-num_jobs_initial=2
-num_jobs_final=12
-minibatch_size=128
+num_jobs_initial=3
+num_jobs_final=16
+minibatch_size=64
 frames_per_eg=150,110,90
 remove_egs=false
 common_egs_dir=
 xent_regularize=0.1
+dropout_schedule='0,0@0.20,0.5@0.50,0'
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -54,15 +52,15 @@ fi
 # run those things.
 
 dir=${dir}${affix:+_$affix}_sp
-train_set=train_cleaned_sp
-ali_dir=exp/tri5a_cleaned_sp_ali
-treedir=exp/chain/tri6a_cleaned_tree_sp
+train_set=train_sp
+ali_dir=exp/tri5a_sp_ali
+treedir=exp/chain/tri6a_tree_sp
 lang=data/lang_chain
 
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
-local/nnet3/run_ivector_common.sh --stage $stage --train-set train_cleaned --gmm tri5a_cleaned --nnet3-affix $nnet3_affix
+local/nnet3/run_ivector_common.sh --stage $stage --train-set train --gmm tri5a ${nnet3_affix:+ --nnet3-affix $nnet3_affix}
 
 if [ $stage -le 7 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
@@ -91,7 +89,7 @@ if [ $stage -le 9 ]; then
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 5000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 10 ]; then
@@ -99,6 +97,11 @@ if [ $stage -le 10 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  affine_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
+  tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -109,31 +112,27 @@ if [ $stage -le 10 ]; then
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=625
-  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
-  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
-  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
-
-  ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=625 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-
-  # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=625 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
-
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  linear-component name=prefinal-l dim=256 $linear_opts
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -141,16 +140,18 @@ fi
 if [ $stage -le 11 ]; then
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
-    --feat.online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${train_set} \
+    --feat.online-ivector-dir exp/nnet3$nnet3_affix/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
+    --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
-    --egs.opts "--frames-overlap-per-eg 0" \
+    --egs.opts "--frames-overlap-per-eg 0 --constrained false" \
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter 1500000 \
@@ -180,9 +181,10 @@ if [ $stage -le 13 ]; then
   for test_set in test eval; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj 10 --cmd "$decode_cmd" \
-      --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_$test_set \
+      --online-ivector-dir exp/nnet3${nnet3_affix:+_$nnet3_affix}/ivectors_$test_set \
       $graph_dir data/${test_set}_hires $dir/decode_${test_set} || exit 1;
   done
   wait;
 fi
+
 exit 0;

@@ -8,14 +8,18 @@
 
 set -e -o pipefail
 
-corpus=NER-Trs-Vol1/Train
+train_dir=NER-Trs-Vol1/Train
+eval_dir=NER-Trs-Vol1-Eval
+eval_key_dir=NER-Trs-Vol1-Eval-Key
 
 . ./path.sh
 . parse_options.sh
 
-if [ ! -d "$corpus" ] ; then
-    echo >&2 "The directory $corpus does not exist"
-fi
+for x in $train_dir $eval_dir; do
+  if [ ! -d "$x" ] ; then
+    echo >&2 "The directory $x does not exist"
+  fi
+done
 
 if [ -z "$(command -v dos2unix 2>/dev/null)" ]; then
     echo "dos2unix not found on PATH. Please install it manually."
@@ -23,14 +27,14 @@ if [ -z "$(command -v dos2unix 2>/dev/null)" ]; then
 fi
 
 # have to remvoe previous files to avoid filtering speakers according to cmvn.scp and feats.scp
-rm -rf   data/all data/train data/test data/local/train
-mkdir -p data/all data/train data/test data/local/train
+rm -rf   data/all data/train data/test data/eval data/local/train
+mkdir -p data/all data/train data/test data/eval data/local/train
 
 
 # make utt2spk, wav.scp and text
-find $corpus -name *.wav -exec sh -c 'x={}; y=${x%.wav}; printf "%s %s\n"     $y $y' \; | dos2unix > data/all/utt2spk
-find $corpus -name *.wav -exec sh -c 'x={}; y=${x%.wav}; printf "%s %s\n"     $y $x' \; | dos2unix > data/all/wav.scp
-find $corpus -name *.txt -exec sh -c 'x={}; y=${x%.txt}; printf "%s " $y; cat $x'    \; | dos2unix | sed 's:/Text/:/Wav/:g' > data/all/text
+find $train_dir -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $y' \; | dos2unix > data/all/utt2spk
+find $train_dir -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $x' \; | dos2unix > data/all/wav.scp
+find $train_dir -name *.txt -exec sh -c 'x={}; y=$(basename -s .txt $x); printf "%s " $y; cat $x'    \; | dos2unix > data/all/text
 
 # fix_data_dir.sh fixes common mistakes (unsorted entries in wav.scp,
 # duplicate entries and so on). Also, it regenerates the spk2utt from
@@ -39,12 +43,18 @@ utils/fix_data_dir.sh data/all
 
 echo "Preparing train and test data"
 # test set: JZ, GJ, KX, YX
-grep -E "Wav/(JZ|GJ|KX|YX)" data/all/utt2spk | awk '{print $1}' > data/all/cv.spk
+grep -E "(JZ|GJ|KX|YX)_" data/all/utt2spk | awk '{print $1}' > data/all/cv.spk
 utils/subset_data_dir_tr_cv.sh --cv-spk-list data/all/cv.spk data/all data/train data/test
 
 # for LM training
 echo "cp data/train/text data/local/train/text for language model training"
 cat data/train/text | awk '{$1=""}1;' | awk '{$1=$1}1;' > data/local/train/text
+
+# preparing EVAL set.
+find $eval_dir     -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $y' \; | dos2unix > data/eval/utt2spk
+find $eval_dir     -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $x' \; | dos2unix > data/eval/wav.scp
+find $eval_key_dir -name *.txt -exec sh -c 'x={}; y=$(basename -s .txt $x); printf "%s " $y; cat $x'    \; | dos2unix > data/eval/text
+utils/fix_data_dir.sh data/eval
 
 echo "Data preparation completed."
 exit 0;

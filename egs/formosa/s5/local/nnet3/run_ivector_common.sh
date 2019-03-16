@@ -12,7 +12,7 @@ set -euo pipefail
 
 stage=0
 train_set=train
-test_sets=test
+test_sets="test eval"
 gmm=tri5a
 
 nnet3_affix=
@@ -97,7 +97,6 @@ if [ $stage -le 4 ]; then
   # Use 512 Gaussians in the UBM.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
     --num-frames 700000 \
-    --num-threads 8 \
     ${temp_data_root}/${train_set}_sp_hires_nopitch_subset 512 \
     exp/nnet3${nnet3_affix}/pca_transform exp/nnet3${nnet3_affix}/diag_ubm
 fi
