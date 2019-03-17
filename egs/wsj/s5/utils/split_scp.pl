@@ -43,7 +43,7 @@ use warnings; #sed replacement for -w perl parameter
 
 my $num_jobs     = 0;
 my $job_id       = 0;
-my $utt2spk_file = "";
+my $utt2spk_file;
 
 for ( my $x = 1; $x <= 2 && @ARGV > 0; $x++ ) {
     if ( $ARGV[0] eq "-j" ) {
@@ -86,7 +86,7 @@ if ( $num_jobs == 0 ) { # without -j option
 }
 
 my ( %utt2spk, %spk_count, %spk_data, @scparray, @scpcount );
-if ( $utt2spk_file ne "" ) { # We have the --utt2spk option...
+if ( $utt2spk_file ) { # We have the --utt2spk option...
     open( my $utt_fh, "<", $utt2spk_file )
         || die "Failed to open utt2spk file $utt2spk_file";
     while (<$utt_fh>) {
