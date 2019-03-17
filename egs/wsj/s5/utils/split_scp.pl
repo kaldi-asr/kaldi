@@ -89,31 +89,40 @@ my ( %utt2spk, %spk_count, %spk_data, @scparray, @scpcount );
 if ( $utt2spk_file ) { # We have the --utt2spk option...
     open( my $utt_fh, "<", $utt2spk_file )
         || die "Failed to open utt2spk file $utt2spk_file";
+
     while (<$utt_fh>) {
         my @A = split;
         @A == 2 || die "Bad line $_ in utt2spk file $utt2spk_file";
         my ( $u, $s ) = @A;
         $utt2spk{$u} = $s;
     }
+
     close $utt_fh;
+
     open( my $in_fh, "<", $inscp ) || die "Opening input scp file $inscp";
+
     my @spkrs = ();
     while (<$in_fh>) {
         my @A = split;
         if ( @A == 0 ) { die "Empty or space-only line in scp file $inscp"; }
+
         my $u = $A[0];
         my $s = $utt2spk{$u};
+
         if ( !defined $s ) {
             die "No such utterance $u in utt2spk file $utt2spk_file";
         }
+
         if ( !defined $spk_count{$s} ) {
             push @spkrs, $s;
             $spk_count{$s} = 0;
             $spk_data{$s}  = []; # ref to new empty array.
         }
+
         $spk_count{$s}++;
         push @{ $spk_data{$s} }, $_;
     }
+
     close $in_fh;
 
     # Now split as equally as possible ..
@@ -126,9 +135,11 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
             "Refusing to split data because number of speakers $numspks is less "
             . "than the number of output .scp files $numscps";
     }
+
     for ( my $scpidx = 0; $scpidx < $numscps; $scpidx++ ) {
         $scparray[$scpidx] = []; # [] is array reference.
     }
+
     for ( my $spkidx = 0; $spkidx < $numspks; $spkidx++ ) {
         my $scpidx = int( ( $spkidx * $numscps ) / $numspks );
         my $spk = $spkrs[$spkidx];
@@ -152,11 +163,13 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
             # First try to reassign ending spk of this scp.
             if ( $scpidx < $numscps - 1 ) {
                 my $sz = @{ $scparray[$scpidx] };
+
                 if ( $sz > 0 ) {
                     my $spk   = $scparray[$scpidx]->[ $sz - 1 ];
                     my $count = $spk_count{$spk};
                     my $nutt1 = $scpcount[$scpidx];
                     my $nutt2 = $scpcount[ $scpidx + 1 ];
+
                     if (
                         abs( ( $nutt2 + $count ) - ( $nutt1 - $count ) )
                         < abs( $nutt2 - $nutt1 ) )
@@ -170,11 +183,13 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
                     }
                 }
             }
+
             if ( $scpidx > 0 && @{ $scparray[$scpidx] } > 0 ) {
                 my $spk   = $scparray[$scpidx]->[0];
                 my $count = $spk_count{$spk};
                 my $nutt1 = $scpcount[ $scpidx - 1 ];
                 my $nutt2 = $scpcount[$scpidx];
+
                 if (
                     abs( ( $nutt2 - $count ) - ( $nutt1 + $count ) )
                     < abs( $nutt2 - $nutt1 ) )
@@ -192,9 +207,11 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
 
     # Now print out the files...
     for ( my $scpidx = 0; $scpidx < $numscps; $scpidx++ ) {
+
         my $scpfn = $OUTPUTS[$scpidx];
         open( my $fh, ">", $scpfn )
             || die "Could not open scp file $scpfn for writing.";
+
         my $count = 0;
         if ( @{ $scparray[$scpidx] } == 0 ) {
             print STDERR
@@ -205,10 +222,12 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
                 print F @{ $spk_data{$spk} };
                 $count += $spk_count{$spk};
             }
+
             if ( $count != $scpcount[$scpidx] ) {
                 die "Count mismatch [code error]";
             }
         }
+
         close($fh);
     }
 } else {
@@ -229,9 +248,11 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
         print STDERR "split_scp.pl: error: empty input scp file $inscp , ";
         $error = 1;
     }
+
     my $linesperscp = int( $numlines / $numscps ); # the "whole part"..
     $linesperscp >= 1
         || die "You are splitting into too many pieces! [reduce \$nj]";
+
     my $remainder = $numlines - ( $linesperscp * $numscps );
     ( $remainder >= 0 && $remainder < $numlines )
         || die "bad remainder $remainder";
@@ -240,8 +261,10 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
     my $n = 0;
     for ( my $scpidx = 0; $scpidx < @OUTPUTS; $scpidx++ ) {
         my $scpfile = $OUTPUTS[$scpidx];
+
         open( my $output_fh, ">", $scpfile )
             || die "Opening output scp file $scpfile";
+
         for (
             my $k = 0;
             $k < $linesperscp + ( $scpidx < $remainder ? 1 : 0 );
@@ -250,8 +273,10 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
         {
             print $output_fh $F[ $n++ ];
         }
+
         close($output_fh) || die "Closing scp file $scpfile";
     }
+
     $n == $numlines || die "split_scp.pl: code error., $n != $numlines";
 }
 
