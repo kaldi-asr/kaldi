@@ -85,17 +85,17 @@ if ($num_jobs == 0) { # without -j option
 
 my ( %utt2spk, %spk_count, %spk_data, @scparray, @scpcount );
 if ($utt2spk_file ne "") {  # We have the --utt2spk option...
-    open(U, "<", $utt2spk_file) || die "Failed to open utt2spk file $utt2spk_file";
-    while(<U>) {
+    open( my $utt_fh, "<", $utt2spk_file) || die "Failed to open utt2spk file $utt2spk_file";
+    while(<$utt_fh>) {
         my @A = split;
         @A == 2 || die "Bad line $_ in utt2spk file $utt2spk_file";
         my ($u,$s) = @A;
         $utt2spk{$u} = $s;
     }
-    close U;
-    open(I, "<", $inscp) || die "Opening input scp file $inscp";
+    close $utt_fh;
+    open( my $in_fh, "<", $inscp) || die "Opening input scp file $inscp";
     my @spkrs = ();
-    while(<I>) {
+    while(<$in_fh>) {
         my @A = split;
         if(@A == 0) { die "Empty or space-only line in scp file $inscp"; }
         my $u = $A[0];
@@ -109,7 +109,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         $spk_count{$s}++;
         push @{$spk_data{$s}}, $_;
     }
-    close I;
+    close $in_fh;
     # Now split as equally as possible ..
     # First allocate spks to files by allocating an approximately
     # equal number of speakers.
@@ -180,7 +180,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     # Now print out the files...
     for(my $scpidx = 0; $scpidx < $numscps; $scpidx++) {
         my $scpfn = $OUTPUTS[$scpidx];
-        open(F, ">", $scpfn) || die "Could not open scp file $scpfn for writing.";
+        open(my $fh, ">", $scpfn) || die "Could not open scp file $scpfn for writing.";
         my $count = 0;
         if(@{$scparray[$scpidx]} == 0) {
             print STDERR "Error: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)\n";
@@ -192,20 +192,20 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
             }
             if($count != $scpcount[$scpidx]) { die "Count mismatch [code error]"; }
         }
-        close(F);
+        close($fh);
     }
 } else {
    # This block is the "normal" case where there is no --utt2spk
    # option and we just break into equal size chunks.
 
-    open(I, "<", $inscp) || die "Opening input scp file $inscp";
+    open( my $in_fh, "<", $inscp) || die "Opening input scp file $inscp";
 
     my $numscps = @OUTPUTS;  # size of array.
     my @F = ();
-    while(<I>) {
+    while(<$in_fh>) {
         push @F, $_;
     }
-    close I;
+    close $in_fh;
     my $numlines = @F;
     if($numlines == 0) {
         print STDERR "split_scp.pl: error: empty input scp file $inscp , ";
@@ -219,11 +219,11 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     my $n = 0;
     for(my $scpidx = 0; $scpidx < @OUTPUTS; $scpidx++) {
         my $scpfile = $OUTPUTS[$scpidx];
-        open(O, ">", $scpfile) || die "Opening output scp file $scpfile";
+        open(my $output_fh, ">", $scpfile) || die "Opening output scp file $scpfile";
         for(my $k = 0; $k < $linesperscp + ($scpidx < $remainder ? 1 : 0); $k++) {
-            print O $F[$n++];
+            print $output_fh $F[$n++];
         }
-        close(O) || die "Closing scp file $scpfile";
+        close($output_fh) || die "Closing scp file $scpfile";
     }
     $n == $numlines || die "split_scp.pl: code error., $n != $numlines";
 }
