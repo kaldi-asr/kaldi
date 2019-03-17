@@ -5,267 +5,6 @@
 namespace kaldi {
 namespace tensor {
 
-
-// Similar to llvm/PyTorch's ArrayRef, this is a lightweight way to store an
-// array (zero or more elements of type T).  The array is not owned here; it
-// will generally be unsafe to use an ArrayRef as other than a local variable.
-template <typename T>
-struct ArrayRef {
-  // Note:
-  uint64_t size;
-  int64_t *data;
-
-  // Lots to do here.
-
-  inline int64_t operator (uint64_t i) const {
-    KALDI_ASSERT(i < size);
-    return data[i];
-  }
-
-  // cast to std::vector; for cases where you might need to
-  // change the contents or keep it more permanently.
-  operator std::vector<int64_t> () const;
-};
-
-
-enum {
-  kCpuDevice = 0,
-  kCudaDevice = 1
-} DeviceType;
-
-// We may later add a device number (like which GPU we are using),
-// once we support multiple GPUs.
-struct Device {
-  DeviceType device_type;
-  // operator ==, probably, maybe constructors.
-};
-
-
-// 'Storage' contains a single allocated region (on CPU or GPU, according
-// to 'device').
-struct Storage {
-  void *data;
-  size_t num_bytes;
-  Device device;
-
-  // Note: will throw if allocation fails (for now).
-  Storage(Device device, size_t num_bytes);
-
-  // Destructor deallocates 'data'.  For now there is no
-  // concept of a custom allocator or an allocator object, we just use our CuDevice stuff for cuda
-  // allocation and posix_memalign for CPU allocation (obviously we need
-  // to make sure 'data' is aligned in most specific way we might need).
-  // in future we might choose
-  // to add that.
-  ~Storage();
-};
-
-
-enum DataType {
-  // We will of course later extend this with many more types, including
-  // integer types and half-precision floats.
-  kFloatDtype = 0,
-  kDoubleDtype = 1
-};
-
-enum StridePolicy {
-  kCstrides = 0,
-  kCopyStridesIfContiguous = 1
-};
-
-#define KALDI_TENSOR_MAX_DIM 5
-
-
-
-// This enum with one value is a trick to allow you to
-// emulate indexing schemes like, say, A[10:].
-// In C++ you'd do A(all,10).
-enum RangeEnum { all };
-
-/**
-   struct Range represents an integer or a range of integers (e.g. as used in
-   indexing).  It emulates Python's range().
-
-   There are various possibilities of what Range can contain, enumerated below.
-   Be careful: we use {a,b,c} to denote the actual class members, not the
-   arguments to constructors, which mimic the arguments of expressions with colons
-   in Python's indexing with ':'
-
-   For purposes of explanation I will assume we are indexing a 1-dimensional
-   array a, but this struct is also used for multi-dimensional indexing.
-
-   Examples are below (showing members {begin,end,step}, where inf means
-   std::numeric_limits<int64>::max()):
-
-
-   Literal contents     Python equivalent,     How obtained             Elements of array
-   of Range struct      indexing array a     using constructors           you would get
-
-    {0,inf,1}          a[:], a[0:]          Range(all), Range(0,all)    all of them
-
-    {0,10,2}           a[:10:2], a[0:10:2]   Range(0,10,2)             [0,2,4,8]
-
-    {0,-1,1}           a[:-1], a[0:-1]       Range(0,-1)                all but the last
-
-    {10,2,-1}          a[10:2:-1]           Range(10,2,-1)              [10,9,...3]
-
-    {inf,inf,1}        a[::-1]             Range(all,all,-1)            all, reversed order
-
-    {-3,-2,1}          a[-3:-2]            Range(-3,-2)             third-from-last element only
-
-    {10,0,inf}         a[10]              10 (implicit; RangeExt constructor)    the 10th element, removing axis
-
-
-*/
-struct Range {
-  int64_t begin;
-  int64_t end;
-  int64_t step;
-
-  static inline int64_t inf() { return std::numeric_limits<int64_t>::max(); }
-
-  // The default constructor leaves the range undefined.
-  Range() { }
-
-  Range(RangeEnum): begin(0), end(inf()), step(1) { }
-
-  explicit Range(int64_t end): begin(0), end(end), step(1) { }
-
-  Range(int64_t begin, int64_t end, int64_t step = 1):
-      begin(begin), end(end), step(1) { }
-
-  Range(int64_t begin, RangeEnum, int64_t step = 1):
-      begin(begin), end(inf()), step(step) { }
-
-  Range(RangeEnum, int64_t end, int64_t step = 1):
-      begin(inf), end(end), step(step) { }
-
-  Range(RangeEnum, RangeEnum, int64_t step = 1):
-      begin(inf()), end(inf()), step(step) { }
-};
-
-/**
-  struct RangeExt is used in situations, such as indexing, where what we have
-  might be a Range (like, in numpy, indexing with something that has a colon);
-  or it might simply be an integer.  There are no new members.  The reason we
-  don't just make this an additional constructor of Range is that we want it
-  so if someone does Range(10) it is interpreted as 0 through 9, but if
-  you do just 10 it means the index 10.  You can't have an explicit and
-  implicit constructor taking the same type: hence this child class.
-
-  Note that numpy's A[1] is not the same as A[1:2] because the former returns a
-  tensor with one fewer axes.
-*/
-struct RangeExt: public Range {
-  RangeExt(Range r): Range(r) { }
-
-  // implicit
-  RangeExt(int64_t index):
-      Range(index, 0, inf());
-};
-
-
-enum IndexingType{
-  kIndexingTypeRange,
-  kIndexingTypeNumber,
-  kIndexingTypeTensor
-};
-
-// This struct is used when indexing with mixed types. Ror
-// example:
-// Tensor a(...), b(...);
-// Tensor c = a(1, b, Range(0,-1), Range(all));
-
-struct IndexingArg {
-  IndexingArg(const Tensor &tensor);
-  IndexingArg(int64_t index);
-  IndexingArg(Range range);
-
-  IndexingType itype;
-  int64_t index;
-  std::shared_ptr<Tensor> tensor {nullptr};
-  Range range;
-};
-
-/**
-   This function, used in indexing operations, takes a Range that may have, say,
-   negative 'end' or end equal to Range::inf(), and turns it into actual
-   numbers with begin and end both in the range [0,dim].  So, for instance, if
-   the range had `end = -1`, it would be turned into `dim - 1`; or if `end` was
-   Range::inf(), it would be interpreted as `dim`.
-
-   Raises an exception the resulting range is empty.
- */
-void MakeRangeExplicit(Range *range, int64_t dim);
-
-
-
-/*
-  This struct stores the dimension and strides of a Tensor.  The following
-  describes the properties that a Tensor will always have (note: we
-  also use TensorDim inside implementation code in ways such that these
-  properties do not all hold).
-
-  These properties are stricter than some other frameworks, such as PyTorch,
-  which allow the users to manually add dimensions with stride 0 and dim > 1 so
-  that a lower-dimensional quantity can masquerade as one with a higher
-  dimension.  We require that it never be possible to access the same memory
-  location using two different tuples of indexes.  We also don't allow zero dims
-  (i.e. a tensor must not be empty); if you want an empty Tensor, just use a
-  null pointer.  In addition, require that the stride equal zero for any
-  axis that has dim = 1.
-
-  Our requirements on a TensorDim are:
-
-    0 <= num_axes <= 5
-    for 0 <= axis < num_axes:
-       dims[i] > 0
-       if dims[i] = 1, then strides[i] = 0.
-       if dims[i] != 1, then strides[i] != 0
-    ... plus the uniqueness property.
-
-  The uniqueness property means that we must not be able to access
-  the same memory location via two different tuples of indexes).
-  Recause testing this property exactly would be difficult in general
-  without bringing in number theory, we test a slightly stronger version
-  of it that covers all cases we are likely to encounter.
-*/
-
-struct TensorDim {
-  uint64_t num_axes;
-  int64_t dims[KALDI_TENSOR_MAX_DIM];
-  int64_t strides[KALDI_TENSOR_MAX_DIM];
-  // We may later add methods to this.
-
-  // Checks that the TensorDim is valid, assuming it is part of a Tensor.
-  // I.e. that it satifies all the properties mentioned above.
-  bool Check();
-};
-
-struct TensorDimProperties {
-  // Below are cached properties that are derived from the underlying data in
-  // struct TensorDim.
-
-  // The number of elements in the Tensor, which equals the product
-  // of dims[0] .. dims[num_axes - 1].  Must be >0.
-  int64_t num_elements;
-
-  // is_contiguous means that the data form a contiguous block in memory; it is
-  // not the same as PyTorch's is_contiguous which is a stronger condition,
-  // implying also that the strides are as for a `C-style` array.
-  bool is_contiguous;
-
-  // has_c_strides means that the strides are as if this was a "c"-style
-  // multidimensional array, meaning that (using Python wrap-around indexing
-  // conventions as if strides was an array of dimension 'num_axes'),
-  // strides[-1] == 1, strides[-1] == dims[-1], strides[-2] = dims[-1] *
-  // dims[-1], and so on.  This is the same as PyTorch's is_contiguous.
-  bool has_c_strides;
-
-  void UpdateProperties(const TensorDim &dim);
-};
-
-
 /**
    A Tensor is a multi-dimensional array (up to 5 dimensions) of types such as
    float or double (and eventually ints).  Multiple Tensors may point to data
@@ -284,27 +23,27 @@ class Tensor {
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
   // the terms 'number of axes' or 'axis' throughout.
-  inline int64_t NumAxes() const { return dim_.num_axes; }
+  inline int64_t NumAxes() const { return pattern_.num_axes; }
 
   // Return reference to the struct containing the dimension and
   // stride info.
-  const TensorDim &DimAndStrides() const { return dim_; }
+  const TensorPattern &DimAndStrides() const { return pattern_; }
 
   // Return an array containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
-  inline ArrayRef<int64_t> Dims() const { return ArrayRef{dim_.num_axes, dim_.dims}; }
+  inline ArrayRef<int64_t> Dims() const { return ArrayRef{pattern_.num_axes, pattern_.dims}; }
 
   // Returns the dimension on this axis, a number >= 1.  Result is
   // undefined if axis < 0 or axis >= NumAxes().
-  inline int64_t Dim(int64_t axis) const { return dim_.dims[axis]; }
+  inline int64_t Dim(int64_t axis) const { return pattern_.dims[axis]; }
 
   // Returns an array containing the strides of the tensor.
   // Strides().size() will equal NumAxes().
-  inline ArrayRef<int64_t> Strides() const { return ArrayRef{dim_.num_axes, dim_.strides}; }
+  inline ArrayRef<int64_t> Strides() const { return ArrayRef{pattern_.num_axes, pattern_.strides}; }
 
   // Returns the stride on this axis.  Will be zero if the corresponding
   // dimension is 1, and otherwise nonzero (but not necessarily positive).
-  inline int64_t Stride(int64_t axis) const { return dim_.strides[axis]; }
+  inline int64_t Stride(int64_t axis) const { return pattern_.strides[axis]; }
 
   // Returns the number of elements in the Tensor; must be > 0.
   inline int64_t NumElements() const { return derived_.num_elements; }
@@ -313,7 +52,6 @@ class Tensor {
   // (not the same as 'contiguous()' in PyTorch, which also requires
   // that the strides be 'C'-style.
   inline bool IsContiguous() const { return derived_.is_contiguous; }
-
 
   // Returns true if the strides for this array are what you would
   // expect if you were to construct a Tensor from this->Dims();
@@ -391,26 +129,65 @@ class Tensor {
   // Move assignment.  Does not copy the data.
   Tensor(Tensor &&other);
 
-  // Copy data from tensor 'other'.  Requires this Dims() and other.Dims()
-  // be compatible, meaning that they are the same, except it's OK for
-  // a dim of 'other' to be 1 and a dim of *this to be >1 (we will
-  // broadcast, i.e. copy).
-  void CopyData(const Tensor &other);
+  /**
+     Construct a new Tensor with freshly allocated underlying data with
+     the data type, device and dimension the same as `other`.
 
-  // Construct a Tensor with the supplied dimensions; and if set_zero is true,
-  // zero it.
-  Tensor(ArrayRef<int64_t> dims, bool set_zero = false);
+       @param [in]  other  The tensor that we are taking metadata from (we
+                    are not sharing its underlying data).
+       @param [in]  sp   The stride policy; if kCopyStrides then we use
+                       strides with the same sign and size-order as
+                       `other`, while filling in any gaps if `other`
+                       was not contiguous, if kCstrides then we use
+                       "C" style strides for any dimensions != 1.
+       @param [in]  ip   The data initialize policy
 
-  // Construct a Tensor with
-  Tensor(TensorDim &dim, StridePolicy policy, bool set_zero = false);
+     The strides will not be the same as 'other' if other.IsContiguous() ==
+     false, but the ordering of the strides (smaller vs. larger) and their
+     signs will remain the same.
+  */
+  Tensor(const Tensor &other, StridePolicy sp, InitializePolicy ip);
 
+
+
+  /** Construct a Tensor with freshly allocated data.
+       @param [in] dims    The dimensions of the tensor (zero to 5
+                    positive integers).
+       @param [in] dtype   The data type to use
+       @param [in] device  The device to put the data on
+       @param [in] set_zero   If true, set the tensor to zero.  If false,
+                        the contents will be undefined.
+   */
+  Tensor(ArrayRef<int64_t> dims, DataType dtype, Device device,
+         bool set_zero = false);
+
+  /**
+     Construct a Tensor with the dimensions and strides provided.  This differs
+     from the constructor taking `ArrayRef<int64_t> dims` in that it will use
+     the strides in `pattern` (except that if the data in `pattern` is not
+     contiguous, it will make it contiguous by filling in any gaps).  This means
+     that, for example, if you use this constructor on a 2-dimensional Tensor
+     that has been transposed and thus has a column-major layout, the resulting
+     Tensor will also have a column-major layout.
+
+       @param [in] pattern  The dimension and stride information that
+                  this tensor should match (although we will fill gaps
+                  to make it contiguous)
+       @param [in] dtype   The data type to use
+       @param [in] device  The device to put the data on
+       @param [in] set_zero   If true, set the data to zero.  If false,
+                        the contents will be undefined.
+
+  */
+  Tensor(TensorPattern &pattern, DataType dtype, Device device,
+         InitializePolicy p);
 
 
  private:
   // The tensor dim and strides.
-  TensorDim dim_;
-  // Cached properties that depend on dim_.
-  TensorDimProperties derived_;
+  TensorPattern pattern_;
+  // Cached properties that depend on pattern_.
+  TensorPatternProperties derived_;
   // The data-type of this tensor.
   DataType dtype_;
 
@@ -453,7 +230,7 @@ struct TensorGrad {
 
   // The dimension of the Tensor for which this is the gradient.  Used
   // to set up 'grad' when needed.
-  TensorDim dim;
+  TensorPattern dim;
 
   // 'offset' is only inspected if this is a view; it is the offset
   // (in elements) from the
@@ -468,16 +245,44 @@ struct TensorGrad {
 
 
 /**
-   class Variable is the same as class Tensor but augmented with autograd
-   machinery.  The overall design is quite similar to PyTorch, and the C++
-   is similar to flashlight.  If you are only familiar with PyTorch's
-   python frontend, class Variable is equivalent to af.tensor.
+   class Variable is somewhat like class Tensor but augmented with autograd
+   machinery.  Because autograd requires a rather 'functional' way of doing
+   things (i.e. is not super friendly to in-place operations), the functions
+   that operate on class Variable will tend to be ones that return something,
+   rather than in-place operations.
+
+   The overall design is quite similar to PyTorch, and the structure
+   of the the C++ code is similar to flashlight.  If you are only familiar with
+   PyTorch's python frontend, class Variable is rougtly equivalent to what they
+   expose as af.tensor.
  */
 class Variable {
   using GradFunc = std::function<
-    void(std::vector<Variable>& inputs, Variable &grad_output)>;
-  using GradHook = std::function<void(Variable *grad)>;
+    void(const std::vector<Variable>& inputs, TensorGrad *grad_output)>;
+  using GradHook = std::function<void(TensorGrad *grad)>;
 
+
+
+  /** Constructor from a Tensor.
+       @param [in] data  Pointer to the source Tensor
+       @param [in] requires_grad    If requires_grad argument is true,
+                the gradient w.r.t. this Variable will be computed if and when
+                you call Backward() on a Variable that depends on it.
+                The same as requires_grad in PyTorch.
+  */
+  Variable(const std::shared_ptr<Tensor> &data, bool requires_grad);
+
+
+
+  /**
+   * Creates a Variable which wraps the array and inputs specified
+   * @param[in] data array to the stored in the Variable
+   * @param[in] inputs a vector specifying inputs for this Variable
+   * @param[in] gradFunc function specifying how to calculate gradient of the
+   * input Variables
+   */
+  Variable(std::shared_ptr<Tensor> &data, std::vector<Variable> inputs,
+           GradFunc gradFunc);
 
 
 
