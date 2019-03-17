@@ -59,7 +59,6 @@ struct FrameExtractionOptions {
       allow_upsample(false),
       max_feature_vectors(-1) { }
 
-
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,
                    "Waveform data sample frequency (must match the waveform file, "
