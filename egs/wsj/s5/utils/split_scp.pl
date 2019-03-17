@@ -92,6 +92,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         my ($u,$s) = @A;
         $utt2spk{$u} = $s;
     }
+    close U;
     open(I, "<", $inscp) || die "Opening input scp file $inscp";
     my @spkrs = ();
     while(<I>) {
@@ -108,6 +109,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         $spk_count{$s}++;
         push @{$spk_data{$s}}, $_;
     }
+    close I;
     # Now split as equally as possible ..
     # First allocate spks to files by allocating an approximately
     # equal number of speakers.
@@ -203,6 +205,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     while(<I>) {
         push @F, $_;
     }
+    close I;
     my $numlines = @F;
     if($numlines == 0) {
         print STDERR "split_scp.pl: error: empty input scp file $inscp , ";
