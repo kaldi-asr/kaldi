@@ -21,7 +21,7 @@ args = parser.parse_args()
 
 num_iters = None
 try:
-    with open(args.rnnlm_dir + "/info.txt", encoding="latin-1") as f:
+    with open(args.rnnlm_dir + "/info.txt", encoding="utf-8") as f:
         for line in f:
             a = line.split("=")
             if a[0] == "num_iters":
@@ -40,7 +40,7 @@ best_iter = -1
 for i in range(1, num_iters):
     this_logfile = "{0}/log/compute_prob.{1}.log".format(args.rnnlm_dir, i)
     try:
-        f = open(this_logfile, 'r', encoding='latin-1')
+        f = open(this_logfile, 'r', encoding='utf-8')
     except:
         sys.exit(sys.argv[0] + ": could not open log-file {0}".format(this_logfile))
     this_objf = -1000

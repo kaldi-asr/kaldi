@@ -209,8 +209,7 @@ bool ThrowsExceptionTest(bool seps, const string &infile) {
     // Make memory cleanup easy in both cases of try-catch block.
     std::unique_ptr<ArpaLmCompiler> compiler(Compile(seps, infile));
     return false;
-  } catch (const std::runtime_error&) {
-    // Kaldi throws only std::runtime_error in kaldi-error.cc
+  } catch (const KaldiFatalError&) {
     return true;
   }
 }
