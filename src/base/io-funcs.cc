@@ -138,7 +138,7 @@ void WriteToken(std::ostream &os, bool binary, const char *token) {
   CheckToken(token);  // make sure it's valid (can be read back)
   os << token << " ";
   if (os.fail()) {
-    throw std::runtime_error("Write failure in WriteToken.");
+    KALDI_ERR << "Write failure in WriteToken.";
   }
 }
 

@@ -45,7 +45,7 @@ output_dim=-1
 left_context=0
 right_context=0
 for line in out_lines:
-    line = line.decode('latin-1')
+    line = line.decode('utf-8')
     m = re.search(r'input-node name=input dim=(\d+)', line)
     if m is not None:
         try:

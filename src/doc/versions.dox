@@ -28,7 +28,7 @@
 
    \section versions_scheme Versioning scheme
 
-     During its lifetime, Kaldi has has three different versioning methods.
+     During its lifetime, Kaldi has three different versioning methods.
      Originally Kaldi was a subversion (svn)-based project, and was hosted
      on Sourceforge.  Then Kaldi was moved to github, and for some time the
      only version-number available was the git hash of the commit.
@@ -121,7 +121,7 @@
       - Create a nnet3-based setup for RNN language models (i.e. recurrent and neural net based
         language models)
       - Some extentions to the core of the nnet3 framework to support constant values and
-        scalar multiplication without dedicated compoennts.
+        scalar multiplication without dedicated components.
 
    Below are commits corresponding to minor version numbers 5.3.x.
 
