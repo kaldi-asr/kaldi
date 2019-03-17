@@ -70,7 +70,7 @@ parser.add_argument("--min-split-point-duration", type=float, default=0.1,
                     help="""Minimum duration of silence or non-scored word
                     to be considered a viable split point when
                     truncating based on junk proportion.""")
-parser.add_argument("--max-deleted-words-kept-when-merging", type = str, default = 1,
+parser.add_argument("--max-deleted-words-kept-when-merging", type = int, default = 1,
                     help = "When merging segments that are found to be overlapping or "
                     "adjacent after all other processing, keep in the transcript the "
                     "reference words that were deleted between the segments [if any] "
