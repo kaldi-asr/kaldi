@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+use strict;
 use warnings; #sed replacement for -w perl parameter
 # Copyright 2010-2011 Microsoft Corporation
 
