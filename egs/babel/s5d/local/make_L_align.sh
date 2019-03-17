@@ -34,18 +34,24 @@ tmpdir=$1
 dir=$2
 outdir=$3
 
+for f in  $dir/phones/optional_silence.txt $dir/phones.txt $dir/words.txt ; do
+  [ ! -f $f ] &&  echo "$0: The file $f must exist!" exit 1
+fi
+
 silphone=`cat $dir/phones/optional_silence.txt` || exit 1;
+
+if [ ! -f $tmpdir/lexicon.txt ] && [ ! -f $tmpdir/lexiconp.txt ] ; then
+  echo "$0: At least one of the files $tmpdir/lexicon.txt or $tmpdir/lexiconp.txt must exist" >&2
+  exit 1
+fi
 
 # Create lexicon with alignment info
 if  [ -f $tmpdir/lexicon.txt ] ; then
   cat $tmpdir/lexicon.txt | \
     awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }'
-elif [ -f $tmpdir/lexiconp.txt ] ;  then
+else
   cat $tmpdir/lexiconp.txt | \
     awk '{printf("%s #1 ", $1); for (n=3; n <= NF; n++) { printf("%s ", $n); } print "#2"; }'
-else
-  echo "Neither $tmpdir/lexicon.txt nor $tmpdir/lexiconp.txt does not exist"
-  exit 1
 fi | utils/make_lexicon_fst.pl - 0.5 $silphone | \
 fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
   --keep_isymbols=false --keep_osymbols=false | \

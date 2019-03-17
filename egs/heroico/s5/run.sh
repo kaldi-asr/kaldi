@@ -9,11 +9,11 @@ stage=0
 datadir=/export/corpora5/LDC/LDC2006S37
 
 # The corpus and lexicon are on openslr.org
-speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
-lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
+#speech_url="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
+lexicon_url="http://www.openslr.org/resources/34/santiago.tar.gz"
 
 # Location of the Movie subtitles text corpus
-subs_src="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2018/en-es.txt.zip"
+subtitles_url="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2018/en-es.txt.zip"
 
 . utils/parse_options.sh
 
@@ -26,14 +26,22 @@ set -u
 tmpdir=data/local/tmp
 
 if [ $stage -le 0 ]; then
-  # download the corpus from openslr
-  local/heroico_download.sh $speech $lexicon
+  if [ ! -d $datadir ]; then
+    echo "$0: please download and un-tar http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
+    echo "  and set $datadir to the directory where it is located."
+    exit 1
+  fi
+  if [ ! -s santiago.txt ]; then
+    echo "$0: downloading the lexicon"
+    wget -c http://www.openslr.org/resources/34/santiago.tar.gz
+    tar -xvzf santiago.tar.gz
+  fi
   # Get data for lm training
-  local/subs_download.sh $subs_src
+  local/subs_download.sh $subtitles_url
 fi
 
 if [ $stage -le 1 ]; then
-  echo "Makin lists for building models."
+  echo "Making lists for building models."
   local/prepare_data.sh $datadir
 fi
 

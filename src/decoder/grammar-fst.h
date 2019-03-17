@@ -88,9 +88,11 @@ template<> class ArcIterator<GrammarFst>;
    points whenever we invoke a nonterminal.  For more information
    see \ref grammar (i.e. ../doc/grammar.dox).
 
-   Caution: this class is not thread safe, i.e. you shouldn't access the same
-   GrammarFst from multiple threads.  We can fix this later if needed.
- */
+   THREAD SAFETY: you can't use this object from multiple threads; you should
+   create lightweight copies of this object using the copy constructor,
+   e.g. `new GrammarFst(this_grammar_fst)`, if you want to decode from multiple
+   threads using the same GrammarFst.
+*/
 class GrammarFst {
  public:
   typedef GrammarFstArc Arc;
@@ -136,16 +138,20 @@ class GrammarFst {
               phones.txt, i.e. the things with names like "#nonterm:foo" and
               "#nonterm:bar" in phones.txt.  Also no nonterminal may appear more
               than once in 'fsts'.  ifsts may be empty, even though that doesn't
-              make much sense.  This function does not take ownership of
-              these pointers (i.e. it will not delete them when it is destroyed).
+              make much sense.
     */
   GrammarFst(
       int32 nonterm_phones_offset,
-      const ConstFst<StdArc> &top_fst,
-      const std::vector<std::pair<int32, const ConstFst<StdArc> *> > &ifsts);
+      std::shared_ptr<const ConstFst<StdArc> > top_fst,
+      const std::vector<std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > > > &ifsts);
+
+  /// Copy constructor.  Useful because this object is not thread safe so cannot
+  /// be used by multiple parallel decoder threads, but it is lightweight and
+  /// can copy it without causing the stored FSTs to be copied.
+  GrammarFst(const GrammarFst &other) = default;
 
   ///  This constructor should only be used prior to calling Read().
-  GrammarFst(): top_fst_(NULL) { }
+  GrammarFst() { }
 
   // This Write function allows you to dump a GrammarFst to disk as a single
   // object.  It only supports binary mode, but the option is allowed for
@@ -229,14 +235,15 @@ class GrammarFst {
     an arc-index leaving a particular state in an FST (i.e. an index
     that we could use to Seek() to the matching arc).
 
-      @param [in]  fst  The FST we are looking for state-indexes for
-      @param [in]  entry_state  The state in the FST-- must have arcs with
-                 ilabels decodable as (nonterminal_symbol, left_context_phone).
-                 Will either be the start state (if 'nonterminal_symbol'
-                 corresponds to #nonterm_begin), or an internal state
-                 (if 'nonterminal_symbol' corresponds to #nonterm_reenter).
-                 The arc-indexes of those arcs will be the values
-                 we set in 'phone_to_arc'
+      @param [in]  fst  The FST that is being entered (or reentered)
+      @param [in]  entry_state  The state in 'fst' which is being entered
+                 (or reentered); will be fst.Start() if it's being
+                 entered.  It must have arcs with ilabels decodable as
+                 (nonterminal_symbol, left_context_phone).  Will either be the
+                 start state (if 'nonterminal_symbol' corresponds to
+                 #nonterm_begin), or an internal state (if 'nonterminal_symbol'
+                 corresponds to #nonterm_reenter).  The arc-indexes of those
+                 arcs will be the values we set in 'phone_to_arc'
       @param [in]  nonterminal_symbol  The index in phones.txt of the
                  nonterminal symbol we expect to be encoded in the ilabels
                  of the arcs leaving 'entry_state'.  Will either correspond
@@ -448,12 +455,12 @@ class GrammarFst {
   // The top-level FST passed in by the user; contains the start state and
   // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
   // each other recursively).
-  const ConstFst<StdArc> *top_fst_;
+  std::shared_ptr<const ConstFst<StdArc> > top_fst_;
 
   // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
   // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
   // 'fst' is the corresponding FST.
-  std::vector<std::pair<int32, const ConstFst<StdArc> *> > ifsts_;
+  std::vector<std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > > > ifsts_;
 
   // Maps from the user-defined nonterminals like #nonterm:foo as numbered
   // in phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
@@ -473,11 +480,6 @@ class GrammarFst {
   // representing top_fst_, and it will be populated with more elements on
   // demand.  An instance_id refers to an index into this vector.
   std::vector<FstInstance> instances_;
-
-  // A list of FSTs that are to be deleted when this object is destroyed.  This
-  // will only be nonempty if we have read this object from the disk using
-  // Read().
-  std::vector<const ConstFst<StdArc> *> fsts_to_delete_;
 };
 
 

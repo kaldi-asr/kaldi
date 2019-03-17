@@ -82,7 +82,7 @@ if [ -z "$MACOS" ]; then
 fi
 
 ./configure --prefix=`pwd`/install --with-pic
-sed -i.bk '40s:src/common/pa_ringbuffer.o::g; 40s:$: src/common/pa_ringbuffer.o:' Makefile
+perl -i -pe 's:src/common/pa_ringbuffer.o:: if /^OTHER_OBJS\s*=/' Makefile
 
 if [ "$MACOS" != "" ]; then
     echo "detected MacOS operating system ... trying to fix Makefile"
