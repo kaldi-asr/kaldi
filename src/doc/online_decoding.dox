@@ -438,9 +438,9 @@ and downloadable models that can be used with online nnet3 decoding, please
 see http://kaldi-asr.org/models.html (the first model there, the ASPIRE model,
 includes instructions in a README file).
 
-\subsection online_decoding_nnet3_net TCP server for nnet3 online decoding
+\subsection online_decoding_nnet3_tcp TCP server for nnet3 online decoding
 
-The program to run the TCP sever is online2-net-nnet3-latgen-faster located in the
+The program to run the TCP sever is online2-tcp-nnet3-decode-faster located in the
 ~/src/online2bin folder. The usage is as follows:
 
 \verbatim
