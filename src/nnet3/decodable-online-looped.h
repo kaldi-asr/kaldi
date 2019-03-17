@@ -90,7 +90,7 @@ class DecodableNnetLoopedOnlineBase: public DecodableInterface {
   /// methods.
   void SetFrameOffset(int32 frame_offset);
 
-  /// Returns the frame offet value.
+  /// Returns the frame offset value.
   int32 GetFrameOffset() const { return frame_offset_; }
 
  protected:

@@ -444,21 +444,21 @@ The program to run the TCP sever is online2-net-nnet3-latgen-faster located in t
 ~/src/online2bin folder. The usage is as follows:
 
 \verbatim
-online2-net-nnet3-latgen-faster <nnet3-in> <fst-in> <word-symbol-table> <listen-port>
+online2-tcp-nnet3-decode-faster <nnet3-in> <fst-in> <word-symbol-table> <listen-port>
 \endverbatim
 
 For example:
 
 \verbatim
-online2-net-nnet3-latgen-faster model/final.mdl graph/HCLG.fst graph/words.txt 5050
+online2-tcp-nnet3-decode-faster model/final.mdl graph/HCLG.fst graph/words.txt 5050
 \endverbatim
 
 The word symbol table is mandatory (unlike other nnet3 online decoding programs) because
-the server outputs word strings. Endpoining is mandatory to make the operation of the
+the server outputs word strings. Endpointing is mandatory to make the operation of the
 program reasonable. Other, non-standard options include:
     - samp-freq - sampling frequency of audio (usually 8000 for telephony and 16000 for other uses)
     - chunk-length - length of signal being processed by decoder at each step
-    - output-freq - how often we check for changes in the decoding (ie. output refresh rate, default 1s)
+    - output-period - how often we check for changes in the decoding (ie. output refresh rate, default 1s)
     - num-threads-startup - number of threads used when initializing iVector extractor
 
 The TCP protocol simply takes RAW signal on input (16-bit signed integer
@@ -477,7 +477,7 @@ To run the program from the terminal you can use one of the following commands. 
 make sure the server is running and accepting connections. Using the Aspire models, the
 command should look like this:
 \verbatim
-online2-net-nnet3-latgen-faster --samp-freq=8000 --frames-per-chunk=20 --extra-left-context-initial=0
+online2-tcp-nnet3-decode-faster --samp-freq=8000 --frames-per-chunk=20 --extra-left-context-initial=0
     --frame-subsampling-factor=3 --config=model/conf/online.conf --min-active=200 --max-active=7000
     --beam=15.0 --lattice-beam=6.0 --acoustic-scale=1.0 model/final.mdl graph/HCLG.fst graph/words.txt 5050
 \endverbatim

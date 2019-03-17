@@ -1,4 +1,4 @@
-// online2bin/online2-wav-nnet3-latgen-faster.cc
+// online2bin/online2-tcp-nnet3-decode-faster.cc
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 //           2016  Api.ai (Author: Ilya Platonov)
@@ -46,14 +46,15 @@ class TcpServer {
   explicit TcpServer(int read_timeout);
   ~TcpServer();
 
-  bool Listen(int32 port);  //start listening on a given port
-  int32 Accept();  //accept a client and return its descriptor
+  bool Listen(int32 port);  // start listening on a given port
+  int32 Accept();  // accept a client and return its descriptor
 
-  bool ReadChunk(size_t len); //get more data and return false if end-of-stream
+  bool ReadChunk(size_t len); // get more data and return false if end-of-stream
 
-  Vector<BaseFloat> GetChunk(); //get the data read by above method
+  Vector<BaseFloat> GetChunk(); // get the data read by above method
 
-  bool Write(const std::string &msg); //write to accepted client
+  bool Write(const std::string &msg); // write to accepted client
+  bool WriteLn(const std::string &msg, const std::string &eol = "\n"); // write line to accepted client
 
   void Disconnect();
 
@@ -66,25 +67,25 @@ class TcpServer {
   int read_timeout_;
 };
 
-std::string LatticeToString(const Lattice &lat, fst::SymbolTable *word_syms) {
+std::string LatticeToString(const Lattice &lat, const fst::SymbolTable *word_syms) {
   LatticeWeight weight;
   std::vector<int32> alignment;
   std::vector<int32> words;
   GetLinearSymbolSequence(lat, &alignment, &words, &weight);
 
-  std::string msg;
+  std::ostringstream msg;
   for (size_t i = 0; i < words.size(); i++) {
     std::string s = word_syms->Find(words[i]);
     if (s.empty()) {
       KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
-      msg += "<#" + std::to_string(i) + "> ";
+      msg << "<#" << std::to_string(i) << "> ";
     } else
-      msg += s + " ";
+      msg << s << " ";
   }
-  return msg;
+  return msg.str();
 }
 
-std::string LatticeToString(const CompactLattice &clat, fst::SymbolTable *word_syms) {
+std::string LatticeToString(const CompactLattice &clat, const fst::SymbolTable *word_syms) {
   if (clat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice.";
     return "";
@@ -107,13 +108,14 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Reads in audio from a network socket and performs online decoding with neural nets\n"
-        "(nnet3 setup), with iVector-based speaker adaptation and\n"
-        "endpointing.  Note: some configuration values and inputs are\n"
-        "set via config files whose filenames are passed as options\n"
+        "Reads in audio from a network socket and performs online\n"
+        "decoding with neural nets (nnet3 setup), with iVector-based\n"
+        "speaker adaptation and endpointing.\n"
+        "Note: some configuration values and inputs are set via config\n"
+        "files whose filenames are passed as options\n"
         "\n"
-        "Usage: online2-net-nnet3-latgen-faster [options] <nnet3-in> <fst-in> "
-        "<word-symbol-table> <listen-port>\n";
+        "Usage: online2-tcp-nnet3-decode-faster [options] <nnet3-in> "
+        "<fst-in> <word-symbol-table>\n";
 
     ParseOptions po(usage);
 
@@ -126,20 +128,23 @@ int main(int argc, char *argv[]) {
     OnlineEndpointConfig endpoint_opts;
 
     BaseFloat chunk_length_secs = 0.18;
-    BaseFloat output_freq = 1;
+    BaseFloat output_period = 1;
     BaseFloat samp_freq = 16000.0;
+    int port_num = 5050;
     int read_timeout = 3;
 
     po.Register("samp-freq", &samp_freq,
                 "Sampling frequency of the input signal (coded as 16-bit slinear).");
     po.Register("chunk-length", &chunk_length_secs,
                 "Length of chunk size in seconds, that we process.");
-    po.Register("output-freq", &output_freq,
+    po.Register("output-period", &output_period,
                 "How often in seconds, do we check for changes in output.");
     po.Register("num-threads-startup", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.");
     po.Register("read-timeout", &read_timeout,
                 "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
+    po.Register("port-num", &port_num,
+                "Port number the server will listen on.");
 
     feature_opts.Register(&po);
     decodable_opts.Register(&po);
@@ -148,21 +153,18 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       return 1;
     }
 
     std::string nnet3_rxfilename = po.GetArg(1),
         fst_rxfilename = po.GetArg(2),
-        word_syms_rxfilename = po.GetArg(3),
-        port_rspecifier = po.GetArg(4);
-
-    int port_num = std::stoi(port_rspecifier);
+        word_syms_filename = po.GetArg(3);
 
     OnlineNnet2FeaturePipelineInfo feature_info(feature_opts);
 
-    KALDI_LOG << "Loading AM...";
+    KALDI_VLOG(1) << "Loading AM...";
 
     TransitionModel trans_model;
     nnet3::AmNnetSimple am_nnet;
@@ -182,19 +184,17 @@ int main(int argc, char *argv[]) {
     nnet3::DecodableNnetSimpleLoopedInfo decodable_info(decodable_opts,
                                                         &am_nnet);
 
-    KALDI_LOG << "Loading FST...";
+    KALDI_VLOG(1) << "Loading FST...";
 
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
 
     fst::SymbolTable *word_syms = NULL;
-    if (!word_syms_rxfilename.empty())
-      if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
+    if (!word_syms_filename.empty())
+      if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
-                  << word_syms_rxfilename;
+                  << word_syms_filename;
 
-    KALDI_LOG << "Loaded evertyhing. Waiting for data...";
-
-    signal(SIGPIPE, SIG_IGN); //ignore SIGPIPE to avoid crashing when socket forecfully disconnected
+    signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE to avoid crashing when socket forcefully disconnected
 
     TcpServer server(read_timeout);
 
@@ -204,18 +204,15 @@ int main(int argc, char *argv[]) {
 
       server.Accept();
 
-      int32 samp_count = 0;//this is used for output refresh rate
+      int32 samp_count = 0;// this is used for output refresh rate
       size_t chunk_len = static_cast<size_t>(chunk_length_secs * samp_freq);
 
-      int32 check_update = static_cast<int32>(samp_freq * output_freq);
-      int32 next_check = check_update;
+      int32 check_period = static_cast<int32>(samp_freq * output_period);
+      int32 check_count = check_period;
 
       int32 frame_offset = 0;
 
       bool eos = false;
-
-      OnlineIvectorExtractorAdaptationState adaptation_state(
-          feature_info.ivector_extractor_info);
 
       OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
       SingleUtteranceNnet3Decoder decoder(decoder_opts, trans_model,
@@ -232,41 +229,12 @@ int main(int argc, char *argv[]) {
             decodable_opts.frame_subsampling_factor);
 
         std::vector<std::pair<int32, BaseFloat>> delta_weights;
-        
+
         while (true) {
 
           eos = !server.ReadChunk(chunk_len);
 
-          if (!eos) {
-            Vector<BaseFloat> wave_part = server.GetChunk();
-            feature_pipeline.AcceptWaveform(samp_freq, wave_part);
-            samp_count += chunk_len;
-
-            if (silence_weighting.Active() &&
-                feature_pipeline.IvectorFeature() != NULL) {
-              silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
-              silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
-                                                &delta_weights);
-              feature_pipeline.UpdateFrameWeights(delta_weights,
-                                                  frame_offset * decodable_opts.frame_subsampling_factor);
-            }
-
-            decoder.AdvanceDecoding();
-
-            if (samp_count > next_check) {
-              if (decoder.NumFramesDecoded() > 0) {
-                Lattice lat;
-                decoder.GetBestPath(false, &lat);
-
-                std::string msg = LatticeToString(lat, word_syms);
-
-                server.Write(msg + '\r');
-              }
-
-              next_check += check_update;
-            }
-
-          } else {
+          if (eos) {
             feature_pipeline.InputFinished();
             decoder.AdvanceDecoding();
 
@@ -279,14 +247,41 @@ int main(int argc, char *argv[]) {
 
               std::string msg = LatticeToString(lat, word_syms);
 
-              server.Write(msg + "\n");
+              server.WriteLn(msg);
             } else
               server.Write("\n");
 
             server.Disconnect();
             eos = true;
             break;
+          }
 
+          Vector<BaseFloat> wave_part = server.GetChunk();
+          feature_pipeline.AcceptWaveform(samp_freq, wave_part);
+          samp_count += chunk_len;
+
+          if (silence_weighting.Active() &&
+              feature_pipeline.IvectorFeature() != NULL) {
+            silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+            silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                              &delta_weights);
+            feature_pipeline.UpdateFrameWeights(delta_weights,
+                                                frame_offset * decodable_opts.frame_subsampling_factor);
+          }
+
+          decoder.AdvanceDecoding();
+
+          if (samp_count > check_count) {
+            if (decoder.NumFramesDecoded() > 0) {
+              Lattice lat;
+              decoder.GetBestPath(false, &lat);
+
+              std::string msg = LatticeToString(lat, word_syms);
+
+              server.WriteLn(msg, "\r");
+            }
+
+            check_count += check_period;
           }
 
           if (decoder.EndpointDetected(endpoint_opts)) {
@@ -298,7 +293,7 @@ int main(int argc, char *argv[]) {
             decoder.GetLattice(true, &lat);
             std::string msg = LatticeToString(lat, word_syms);
 
-            server.Write(msg + "\n");
+            server.WriteLn(msg);
             break;
           }
         }
@@ -446,6 +441,12 @@ bool TcpServer::Write(const std::string &msg) {
   }
 
   return true;
+}
+
+bool TcpServer::WriteLn(const std::string &msg, const std::string &eol) {
+  if (Write(msg))
+    return Write(eol);
+  else return false;
 }
 
 void TcpServer::Disconnect() {
