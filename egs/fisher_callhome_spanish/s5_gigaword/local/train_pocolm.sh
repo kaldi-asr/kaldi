@@ -43,8 +43,11 @@ if [ $stage -le -1 ];then
     python local/get_unigram_weights_vocab.py "$pocolm_dir"/lm/0_2.pocolm/ "$textdir"/unigram_weights
     bash local/pocolm_cust.sh  --num-word "$num_words_pocolm"  --lm-dir "$pocolm_dir"/lm \
 	                       --arpa-dir "$pocolm_dir"/arpa --textdir "$textdir"
-    
-
+    prune_lm_dir.py --target-num-ngrams=$prune_size "$pocolm_dir"/lm/"$num_words_pocolm"_3.pocolm \
+                        "$pocolm_dir"/lm/"$num_words_pocolm"_3.pocolm_pruned_"$prune_size"
+    mkdir -p "$pocolm_dir"/arpa
+    format_arpa_lm.py "$pocolm_dir"/lm/"$num_words_pocolm"_3.pocolm_pruned_"$prune_size"  | \
+                                gzip -c > "$pocolm_dir"/arpa/"$num_words_pocolm"_3_pruned_"$prune_size".arpa.gz    
 fi
 
 

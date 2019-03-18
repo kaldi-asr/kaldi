@@ -6,6 +6,7 @@
 
 stage=-1
 lmstage=-2
+addtraintext=true
 num_words_pocolm=110000
 train_sgmm2=false
 
@@ -95,6 +96,9 @@ if [ $stage -le 0 ]; then
     cut -d " " -f 2- data/train/text > "$rnnlm_workdir"/text_lm/train.txt
     cut -d " " -f 2- data/dev2/text > "$rnnlm_workdir"/text_lm/dev.txt  # For RNNLM and POCOLM training we use dev2/text as dev file.
     cp "$rnnlm_workdir"/normalised_gigaword_corpus/text_normalized "$rnnlm_workdir"/text_lm/spanish_gigaword_normalised.txt
+    if $addtraintext; then
+        cat "$rnnlm_workdir"/text_lm/train.txt >> "$rnnlm_workdir"/text_lm/spanish_gigaword_normalised.txt
+    fi
 fi
 
 if [ $stage -le 1 ]; then
