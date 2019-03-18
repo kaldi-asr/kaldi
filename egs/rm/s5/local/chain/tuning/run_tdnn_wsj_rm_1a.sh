@@ -130,7 +130,7 @@ if [ $stage -le 7 ]; then
   echo " generating new layers, that are specific to rm. These layers ";
   echo " are added to the transferred part of the wsj network.";
   num_targets=$(tree-info --print-args=false $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   mkdir -p $dir
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
