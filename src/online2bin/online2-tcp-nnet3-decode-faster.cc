@@ -67,7 +67,7 @@ class TcpServer {
   int read_timeout_;
 };
 
-std::string LatticeToString(const Lattice &lat, const fst::SymbolTable *word_syms) {
+std::string LatticeToString(const Lattice &lat, const fst::SymbolTable &word_syms) {
   LatticeWeight weight;
   std::vector<int32> alignment;
   std::vector<int32> words;
@@ -75,7 +75,7 @@ std::string LatticeToString(const Lattice &lat, const fst::SymbolTable *word_sym
 
   std::ostringstream msg;
   for (size_t i = 0; i < words.size(); i++) {
-    std::string s = word_syms->Find(words[i]);
+    std::string s = word_syms.Find(words[i]);
     if (s.empty()) {
       KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
       msg << "<#" << std::to_string(i) << "> ";
@@ -85,7 +85,7 @@ std::string LatticeToString(const Lattice &lat, const fst::SymbolTable *word_sym
   return msg.str();
 }
 
-std::string LatticeToString(const CompactLattice &clat, const fst::SymbolTable *word_syms) {
+std::string LatticeToString(const CompactLattice &clat, const fst::SymbolTable &word_syms) {
   if (clat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice.";
     return "";
@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
               CompactLattice lat;
               decoder.GetLattice(true, &lat);
 
-              std::string msg = LatticeToString(lat, word_syms);
+              std::string msg = LatticeToString(lat, *word_syms);
 
               server.WriteLn(msg);
             } else
@@ -276,7 +276,7 @@ int main(int argc, char *argv[]) {
               Lattice lat;
               decoder.GetBestPath(false, &lat);
 
-              std::string msg = LatticeToString(lat, word_syms);
+              std::string msg = LatticeToString(lat, *word_syms);
 
               server.WriteLn(msg, "\r");
             }
@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
 
             CompactLattice lat;
             decoder.GetLattice(true, &lat);
-            std::string msg = LatticeToString(lat, word_syms);
+            std::string msg = LatticeToString(lat, *word_syms);
 
             server.WriteLn(msg);
             break;
@@ -344,7 +344,7 @@ bool TcpServer::Listen(int32 port) {
     return false;
   }
 
-  KALDI_LOG << "TcpServer: Listening on port: " << port << std::endl;
+  KALDI_LOG << "TcpServer: Listening on port: " << port << "\n";
 
   return true;
 
@@ -358,7 +358,7 @@ TcpServer::~TcpServer() {
 }
 
 int32 TcpServer::Accept() {
-  KALDI_LOG << "Waiting for client..." << std::endl;
+  KALDI_LOG << "Waiting for client...\n";
 
   socklen_t len;
 
@@ -377,7 +377,7 @@ int32 TcpServer::Accept() {
   client_set_[0].fd = client_desc_;
   client_set_[0].events = POLLIN;
 
-  KALDI_LOG << "Accepted connection from: " << ipstr << std::endl;
+  KALDI_LOG << "Accepted connection from: " << ipstr << "\n";
 
   return client_desc_;
 }
@@ -396,16 +396,16 @@ bool TcpServer::ReadChunk(size_t len) {
   while (to_read > 0) {
     poll_ret = poll(client_set_, 1, read_timeout_);
     if (poll_ret == 0) {
-      KALDI_WARN << "Socket timeout! Disconnecting..." << std::endl;
+      KALDI_WARN << "Socket timeout! Disconnecting..." << "\n";
       break;
     }
     if (client_set_[0].revents != POLLIN) {
-      KALDI_WARN << "Socket error! Disconnecting..." << std::endl;
+      KALDI_WARN << "Socket error! Disconnecting..." << "\n";
       break;
     }
     ret = read(client_desc_, static_cast<void *>(samp_buf_ + has_read_), to_read * sizeof(int16));
     if (ret <= 0) {
-      KALDI_WARN << "Stream over..." << std::endl;
+      KALDI_WARN << "Stream over..." << "\n";
       break;
     }
     to_read -= ret / sizeof(int16);
