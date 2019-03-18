@@ -58,7 +58,7 @@ class Tensor {
   // this means "C"-style strides, except that any axis with dimension=1
   // has its stride set to zero.  This is our equivalent of PyTorch's
   // contiguous().
-  inline bool HasNormalStrides() const { return derived_.has_c_strides; }
+  inline bool HasCStrides() const { return derived_.has_c_strides; }
 
   // Return the data type.
   DataType Dtype() const { return dtype_; }
