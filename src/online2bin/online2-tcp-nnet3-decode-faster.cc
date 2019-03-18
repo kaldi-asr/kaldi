@@ -330,7 +330,7 @@ bool TcpServer::Listen(int32 port) {
   int32 flag = 1;
   int32 len = sizeof(int32);
   if (setsockopt(server_desc_, SOL_SOCKET, SO_REUSEADDR, &flag, len) == -1) {
-    KALDI_ERR << "Cannot set socket options!\n";
+    KALDI_ERR << "Cannot set socket options!";
     return false;
   }
 
@@ -344,7 +344,7 @@ bool TcpServer::Listen(int32 port) {
     return false;
   }
 
-  KALDI_LOG << "TcpServer: Listening on port: " << port << "\n";
+  KALDI_LOG << "TcpServer: Listening on port: " << port;
 
   return true;
 
@@ -358,7 +358,7 @@ TcpServer::~TcpServer() {
 }
 
 int32 TcpServer::Accept() {
-  KALDI_LOG << "Waiting for client...\n";
+  KALDI_LOG << "Waiting for client...";
 
   socklen_t len;
 
@@ -377,7 +377,7 @@ int32 TcpServer::Accept() {
   client_set_[0].fd = client_desc_;
   client_set_[0].events = POLLIN;
 
-  KALDI_LOG << "Accepted connection from: " << ipstr << "\n";
+  KALDI_LOG << "Accepted connection from: " << ipstr;
 
   return client_desc_;
 }
@@ -396,16 +396,16 @@ bool TcpServer::ReadChunk(size_t len) {
   while (to_read > 0) {
     poll_ret = poll(client_set_, 1, read_timeout_);
     if (poll_ret == 0) {
-      KALDI_WARN << "Socket timeout! Disconnecting..." << "\n";
+      KALDI_WARN << "Socket timeout! Disconnecting...";
       break;
     }
     if (client_set_[0].revents != POLLIN) {
-      KALDI_WARN << "Socket error! Disconnecting..." << "\n";
+      KALDI_WARN << "Socket error! Disconnecting...";
       break;
     }
     ret = read(client_desc_, static_cast<void *>(samp_buf_ + has_read_), to_read * sizeof(int16));
     if (ret <= 0) {
-      KALDI_WARN << "Stream over..." << "\n";
+      KALDI_WARN << "Stream over...";
       break;
     }
     to_read -= ret / sizeof(int16);
