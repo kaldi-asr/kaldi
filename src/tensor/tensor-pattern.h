@@ -322,14 +322,14 @@ void CompressPatternC(const TensorPattern &src,
    dimensions, say (3, 3, 8) or (8, 9) or (1, 72); any sequence whose product
    matches the number of elements in "a".
 
-   Our semantics of "view" is the same as that of PyTorch/NumPy except
-   that we impose less constraints on what strides the input Tensor
-   can have.  Let the 'view' of the array 'a' be 'b'.
-   As long as it is possible to find a tensor pattern for 'b' that
-   would lead to the same relationship between the elements of 'a'
-   and 'b' as what you would get by asking for the same "view"
-   in PyTorch/NumPy (viewed in terms of indexed elements of and
-   b, without regard to the physical memory layout), we allow it.
+   Our semantics of "view" is the same as that of PyTorch/NumPy except that we
+   impose fewer constraints on what strides the input Tensor cmay have.  Let the
+   'view' of the array 'a' be 'b'.  As long as it is possible to find a tensor
+   pattern for 'b' that would lead to the same relationship between the elements
+   of 'a' and 'b' as what you would get by asking for the same "view" in
+   PyTorch/NumPy assuming 'a' had had "C"-style strides (viewed in terms of
+   indexed elements of and b, without regard to the physical memory layout), we
+   allow it.
 
 
    Notes on implementation (glossing over ones in 'dims' which are easy to

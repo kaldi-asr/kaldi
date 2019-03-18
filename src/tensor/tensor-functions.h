@@ -42,18 +42,38 @@ Tensor Transpose(const Tensor &tensor, int64_t axis1 = 0, int64_t axis2 = 1);
 void CopyData(const Tensor &src, const Tensor *dest);
 
 /**
-   Construct, if possible, a Tensor that is a view into 'src'.  Read this
-   carefully, as the semantics may differ from the 'view' functions in some
-   other toolkits.  'View' does not care how the underlying data of 'src'
-   is organized.  Its semantics can be explained as follows.
+  Construct, if possible, a Tensor that is a view into 'src' with the
+  requested dimensions.
 
-   Suppose `src` were a "C"-style array with dimension given by `src.Dims()`.
-   Then reinterpret that array as one with dimension `dims`, if possible, and
-   return a Tensor describing that array.  If
+  The semantics are based on those of PyTorch's "view" or NumPy's
+  "reshape", except we try to be more agnostic about the striding
+  of the input.
 
+  Consider a Tensor 'a' has "C"-style strides.  Then this function will return
+  Tensor (say, 'b') that interprets the raw data of 'a' as an array with
+  "C"-style strides but with dimensions 'dims'.  (The product of 'dims' must
+  equal src.NumElements()).
 
+  Now consider a Tensor 'a2' that does not have "C"-style strides but
+  has the same elements as 'a' in the sense that a(i,j,k) == a2(i,j,k).
+  Then, *if possible*, this function will return a matrix b2 with
+  the same elements as b, e.g. b2(i,j,k) == b(i,j,k).
 
-     @param
+  This function returns NULL if such a tensor could not be constructed.  In that
+  case, likely what you will want to do is to construct a temporary Tensor from
+  'src' with the same dimensions but "C"-style strides (see the constructor of
+  Tensor that accepts the 'dims' parameter).  You may then call View() on that
+  temporary Tensor, which is guaranteed to succeed.
+
+     @param   [in] src   The source Tensor, whose data is to be
+                         reinterpreted.
+     @param   [in] dims  The dimensions that we want for the returned
+                       Tensor; its product must equal src.NumElements().
+     @return   If the view could be constructed, this function returns
+               a shared_ptr to a new Tensor with the requestd dims,
+               that shares underlying data with 'src'; otherwise returns
+               NULL.  (If src.HasCStrides(), then this function is
+               guaranteed not to return nullptr).
 
  */
 std::shared_ptr<Tensor> View(const Tensor &src, ArrayRef<int64_t> dims);
