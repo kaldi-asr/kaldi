@@ -25,4 +25,8 @@ ExternalProject_Add(openfst
   )
 set(OPENFST_BIN_DIRS ${CMAKE_CURRENT_BINARY_DIR}/openfst-install/bin)
 set(OPENFST_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/openfst-install/include)
-set(OPENFST_LIBRARY_DIRS ${CMAKE_CURRENT_BINARY_DIR}/openfst-install/lib)
+# TODO(galv): Figure out how Find*.cmake files choose between .so and .a files.
+file(GLOB OPENFST_LIBRARIES ${openfst_PREFIX}/lib/lib*.so ${openfst_PREFIX}/lib/fst/lib*.so)
+
+
+# find_package(OpenBLAS REQUIRED)
