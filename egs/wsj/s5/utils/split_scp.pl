@@ -219,7 +219,7 @@ if ( $utt2spk_file ) { # We have the --utt2spk option...
             $error = 1;
         } else {
             foreach my $spk ( @{ $scparray[$scpidx] } ) {
-                print F @{ $spk_data{$spk} };
+                print $fh @{ $spk_data{$spk} };
                 $count += $spk_count{$spk};
             }
 
