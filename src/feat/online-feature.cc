@@ -24,7 +24,7 @@
 
 namespace kaldi {
 
-RecyclingVector::RecyclingVector(int items_to_hold) :
+RecyclingVector::RecyclingVector(int items_to_hold):
   items_to_hold_(items_to_hold == 0 ? -1 : items_to_hold),
   first_available_index_(0) {
 }
@@ -38,7 +38,8 @@ RecyclingVector::~RecyclingVector() {
 Vector<BaseFloat> *RecyclingVector::At(int index) const {
   if (index < first_available_index_) {
     KALDI_ERR << "Attempted to retrieve feature vector that was "
-                 "already removed by the RecyclingVector (index = " << index << "; "
+                 "already removed by the RecyclingVector (index = "
+              << index << "; "
               << "first_available_index = " << first_available_index_ << "; "
               << "size = " << Size() << ")";
   }
@@ -59,43 +60,93 @@ int RecyclingVector::Size() const {
   return first_available_index_ + items_.size();
 }
 
-
-template<class C>
+template <class C>
 void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
                                            VectorBase<BaseFloat> *feat) {
   feat->CopyFromVec(*(features_.At(frame)));
 };
 
-template<class C>
+template <class C>
 OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
     computer_(opts), window_function_(computer_.GetFrameOptions()),
     features_(opts.frame_opts.max_feature_vectors),
     input_finished_(false), waveform_offset_(0) { }
 
-template<class C>
-void OnlineGenericBaseFeature<C>::AcceptWaveform(BaseFloat sampling_rate,
-                                                 const VectorBase<BaseFloat> &waveform) {
+
+template <class C>
+void OnlineGenericBaseFeature<C>::MaybeCreateResampler(
+    BaseFloat sampling_rate) {
   BaseFloat expected_sampling_rate = computer_.GetFrameOptions().samp_freq;
-  if (sampling_rate != expected_sampling_rate)
+
+  if (resampler_ != nullptr) {
+    KALDI_ASSERT(resampler_->GetInputSamplingRate() == sampling_rate);
+    KALDI_ASSERT(resampler_->GetOutputSamplingRate() == expected_sampling_rate);
+  } else if (((sampling_rate > expected_sampling_rate) &&
+              !computer_.GetFrameOptions().allow_downsample) ||
+             ((sampling_rate > expected_sampling_rate) &&
+              !computer_.GetFrameOptions().allow_upsample)) {
+    resampler_.reset(new LinearResample(
+        sampling_rate, expected_sampling_rate,
+        std::min(sampling_rate / 2, expected_sampling_rate / 2), 6));
+  } else if (sampling_rate != expected_sampling_rate) {
     KALDI_ERR << "Sampling frequency mismatch, expected "
-              << expected_sampling_rate << ", got " << sampling_rate;
-  if (waveform.Dim() == 0)
+              << expected_sampling_rate << ", got " << sampling_rate
+              << "\nPerhaps you want to use the options "
+                 "--allow_{upsample,downsample}";
+  }
+}
+
+template <class C>
+void OnlineGenericBaseFeature<C>::InputFinished() {
+  if (resampler_ != nullptr) {
+    Vector<BaseFloat> appended_wave;
+    Vector<BaseFloat> resampled_wave;
+    resampler_->Resample(appended_wave, true, &resampled_wave);
+
+    if (waveform_remainder_.Dim() != 0)
+      appended_wave.Range(0, waveform_remainder_.Dim())
+          .CopyFromVec(waveform_remainder_);
+    appended_wave.Range(waveform_remainder_.Dim(), resampled_wave.Dim())
+        .CopyFromVec(resampled_wave);
+    waveform_remainder_.Swap(&appended_wave);
+  }
+  input_finished_ = true;
+  ComputeFeatures();
+}
+
+template <class C>
+void OnlineGenericBaseFeature<C>::AcceptWaveform(
+    BaseFloat sampling_rate, const VectorBase<BaseFloat> &original_waveform) {
+  if (original_waveform.Dim() == 0)
     return;  // Nothing to do.
   if (input_finished_)
     KALDI_ERR << "AcceptWaveform called after InputFinished() was called.";
-  // append 'waveform' to 'waveform_remainder_.'
-  Vector<BaseFloat> appended_wave(waveform_remainder_.Dim() + waveform.Dim());
+
+  Vector<BaseFloat> appended_wave;
+  Vector<BaseFloat> resampled_wave;
+
+  const VectorBase<BaseFloat> *waveform;
+
+  MaybeCreateResampler(sampling_rate);
+  if (resampler_ == nullptr) {
+    waveform = &original_waveform;
+  } else {
+    resampler_->Resample(original_waveform, false, &resampled_wave);
+    waveform = &resampled_wave;
+  }
+
+  appended_wave.Resize(waveform_remainder_.Dim() + waveform->Dim());
   if (waveform_remainder_.Dim() != 0)
-    appended_wave.Range(0, waveform_remainder_.Dim()).CopyFromVec(
-        waveform_remainder_);
-  appended_wave.Range(waveform_remainder_.Dim(), waveform.Dim()).CopyFromVec(
-      waveform);
+    appended_wave.Range(0, waveform_remainder_.Dim())
+        .CopyFromVec(waveform_remainder_);
+  appended_wave.Range(waveform_remainder_.Dim(), waveform->Dim())
+      .CopyFromVec(*waveform);
   waveform_remainder_.Swap(&appended_wave);
   ComputeFeatures();
 }
 
-template<class C>
+template <class C>
 void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   const FrameExtractionOptions &frame_opts = computer_.GetFrameOptions();
   int64 num_samples_total = waveform_offset_ + waveform_remainder_.Dim();
@@ -145,7 +196,6 @@ template class OnlineGenericBaseFeature<MfccComputer>;
 template class OnlineGenericBaseFeature<PlpComputer>;
 template class OnlineGenericBaseFeature<FbankComputer>;
 
-
 OnlineCmvnState::OnlineCmvnState(const OnlineCmvnState &other):
     speaker_cmvn_stats(other.speaker_cmvn_stats),
     global_cmvn_stats(other.global_cmvn_stats),
@@ -172,8 +222,6 @@ void OnlineCmvnState::Read(std::istream &is, bool binary) {
   frozen_state.Read(is, binary);
   ExpectToken(is, binary, "</OnlineCmvnState>");
 }
-
-
 
 OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
                        const OnlineCmvnState &cmvn_state,
@@ -328,7 +376,8 @@ void OnlineCmvn::SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
   // If count exceeded cmn_window it would be an error in how "window_stats"
   // was accumulated.
   KALDI_ASSERT(cur_count <= 1.001 * opts.cmn_window);
-  if (cur_count >= opts.cmn_window) return;
+  if (cur_count >= opts.cmn_window)
+    return;
   if (speaker_stats.NumRows() != 0) {  // if we have speaker stats..
     double count_from_speaker = opts.cmn_window - cur_count,
         speaker_count = speaker_stats(0, dim);
@@ -341,7 +390,8 @@ void OnlineCmvn::SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
                              speaker_stats);
     cur_count = (*stats)(0, dim);
   }
-  if (cur_count >= opts.cmn_window) return;
+  if (cur_count >= opts.cmn_window)
+    return;
   if (global_stats.NumRows() != 0) {
     double count_from_global = opts.cmn_window - cur_count,
         global_count = global_stats(0, dim);
@@ -433,7 +483,7 @@ void OnlineCmvn::SetState(const OnlineCmvnState &cmvn_state) {
 
 int32 OnlineSpliceFrames::NumFramesReady() const {
   int32 num_frames = src_->NumFramesReady();
-  if (num_frames > 0 && src_->IsLastFrame(num_frames-1))
+  if (num_frames > 0 && src_->IsLastFrame(num_frames - 1))
     return num_frames;
   else
     return std::max<int32>(0, num_frames - right_context_);
