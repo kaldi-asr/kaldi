@@ -77,7 +77,7 @@ std::string LatticeToString(const Lattice &lat, const fst::SymbolTable &word_sym
   for (size_t i = 0; i < words.size(); i++) {
     std::string s = word_syms.Find(words[i]);
     if (s.empty()) {
-      KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
+      KALDI_WARN << "Word-id " << words[i] << " not in symbol table.";
       msg << "<#" << std::to_string(i) << "> ";
     } else
       msg << s << " ";
@@ -227,38 +227,33 @@ int main(int argc, char *argv[]) {
             trans_model,
             feature_info.silence_weighting_config,
             decodable_opts.frame_subsampling_factor);
-
         std::vector<std::pair<int32, BaseFloat>> delta_weights;
 
         while (true) {
-
           eos = !server.ReadChunk(chunk_len);
+
+          Vector<BaseFloat> wave_part = server.GetChunk();
+          feature_pipeline.AcceptWaveform(samp_freq, wave_part);
+          samp_count += chunk_len;
 
           if (eos) {
             feature_pipeline.InputFinished();
             decoder.AdvanceDecoding();
-
             decoder.FinalizeDecoding();
             frame_offset += decoder.NumFramesDecoded();
-
             if (decoder.NumFramesDecoded() > 0) {
               CompactLattice lat;
               decoder.GetLattice(true, &lat);
-
               std::string msg = LatticeToString(lat, *word_syms);
-
               server.WriteLn(msg);
             } else
               server.Write("\n");
-
             server.Disconnect();
             eos = true;
             break;
           }
 
-          Vector<BaseFloat> wave_part = server.GetChunk();
-          feature_pipeline.AcceptWaveform(samp_freq, wave_part);
-          samp_count += chunk_len;
+
 
           if (silence_weighting.Active() &&
               feature_pipeline.IvectorFeature() != NULL) {
