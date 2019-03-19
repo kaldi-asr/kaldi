@@ -17,6 +17,11 @@ set(ENV{OpenBLAS_HOME} "/export/b02/ws15dgalvez/kaldi-workspace/kaldi/tools/Open
 #find_package(BLAS REQUIRED)
 #find_package(LAPACK REQUIRED)
 find_package(OpenBLAS REQUIRED)
+add_library(OpenBLAS SHARED IMPORTED)
+set_property(TARGET OpenBLAS PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${OpenBLAS_INCLUDE_DIR})
+set_property(TARGET OpenBLAS PROPERTY IMPORTED_LOCATION ${OpenBLAS_LIB})
+set_property(TARGET OpenBLAS PROPERTY INTERFACE_COMPILE_DEFINITIONS HAVE_OPENBLAS=1)
+
 find_package(Threads REQUIRED)
 include("${PROJECT_SOURCE_DIR}/tools/external.cmake")
 include_directories("${PROJECT_SOURCE_DIR}/src")
