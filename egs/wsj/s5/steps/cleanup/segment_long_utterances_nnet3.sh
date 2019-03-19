@@ -235,10 +235,17 @@ if [ $stage -le 3 ]; then
 
   mkdir -p $graph_dir
 
+  n_reco=$(cat $text | wc -l) || exit 1
+  nj_reco=$nj
+
+  if [ $nj -gt $n_reco ]; then
+    nj_reco=$n_reco
+  fi
+
   # Make graphs w.r.t. to the original text (usually recording-level)
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
     --scale-opts "$scale_opts" \
-    --nj $nj --cmd "$cmd" $text \
+    --nj $nj_reco --cmd "$cmd" $text \
     $lang $dir $dir/graphs
   if [ -z "$utt2text" ]; then
     # and then copy it to the sub-segments.
