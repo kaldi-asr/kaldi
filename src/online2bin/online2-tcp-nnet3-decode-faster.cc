@@ -206,7 +206,6 @@ int main(int argc, char *argv[]) {
 
       int32 samp_count = 0;// this is used for output refresh rate
       size_t chunk_len = static_cast<size_t>(chunk_length_secs * samp_freq);
-
       int32 check_period = static_cast<int32>(samp_freq * output_period);
       int32 check_count = check_period;
 
@@ -222,7 +221,6 @@ int main(int argc, char *argv[]) {
       while (!eos) {
 
         decoder.InitDecoding(frame_offset);
-
         OnlineSilenceWeighting silence_weighting(
             trans_model,
             feature_info.silence_weighting_config,
@@ -231,10 +229,6 @@ int main(int argc, char *argv[]) {
 
         while (true) {
           eos = !server.ReadChunk(chunk_len);
-
-          Vector<BaseFloat> wave_part = server.GetChunk();
-          feature_pipeline.AcceptWaveform(samp_freq, wave_part);
-          samp_count += chunk_len;
 
           if (eos) {
             feature_pipeline.InputFinished();
@@ -249,11 +243,12 @@ int main(int argc, char *argv[]) {
             } else
               server.Write("\n");
             server.Disconnect();
-            eos = true;
             break;
           }
 
-
+          Vector<BaseFloat> wave_part = server.GetChunk();
+          feature_pipeline.AcceptWaveform(samp_freq, wave_part);
+          samp_count += chunk_len;
 
           if (silence_weighting.Active() &&
               feature_pipeline.IvectorFeature() != NULL) {
@@ -270,24 +265,18 @@ int main(int argc, char *argv[]) {
             if (decoder.NumFramesDecoded() > 0) {
               Lattice lat;
               decoder.GetBestPath(false, &lat);
-
               std::string msg = LatticeToString(lat, *word_syms);
-
               server.WriteLn(msg, "\r");
             }
-
             check_count += check_period;
           }
 
           if (decoder.EndpointDetected(endpoint_opts)) {
-
             decoder.FinalizeDecoding();
             frame_offset += decoder.NumFramesDecoded();
-
             CompactLattice lat;
             decoder.GetLattice(true, &lat);
             std::string msg = LatticeToString(lat, *word_syms);
-
             server.WriteLn(msg);
             break;
           }
@@ -407,7 +396,7 @@ bool TcpServer::ReadChunk(size_t len) {
     has_read_ += ret / sizeof(int16);
   }
 
-  return has_read_ == len;
+  return has_read_ > 0;
 }
 
 Vector<BaseFloat> TcpServer::GetChunk() {
