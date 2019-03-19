@@ -157,8 +157,8 @@ if [ -f $data/utt2uniq ]; then
        "includes all perturbed versions of the same source utterance."
   utils/utt2spk_to_spk2utt.pl $data/utt2uniq 2>/dev/null |
     awk -v max_utt=$num_utts_subset '{
-        for(n=1;n<=NF;n++) print $n;
-        printed += NF;
+        for (n=2;n<=NF;n++) print $n;
+        printed += NF-1;
         if (printed >= max_utt) nextfile; }' |
     sort > $dir/valid_uttlist
 else
