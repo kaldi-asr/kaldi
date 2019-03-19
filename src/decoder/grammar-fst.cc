@@ -706,7 +706,7 @@ bool GrammarFstPreparer::IsEntryState(StateId s) const {
     // we check that at least one has label with nonterminal equal to #nonterm_begin...
     // in fact they will all have this value if at least one does, and this was checked
     // in NeedEpsilons().
-    if (nonterminal == kNontermBegin)
+    if (nonterminal == GetPhoneSymbolFor(kNontermBegin))
       return true;
   }
   return false;

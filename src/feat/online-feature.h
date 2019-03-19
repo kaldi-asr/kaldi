@@ -113,10 +113,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // more waveform.  This will help flush out the last frame or two
   // of features, in the case where snip-edges == false; it also
   // affects the return value of IsLastFrame().
-  virtual void InputFinished() {
-    input_finished_ = true;
-    ComputeFeatures();
-  }
+  virtual void InputFinished();
 
  private:
   // This function computes any additional feature frames that it is possible to
@@ -127,7 +124,13 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // waveform_remainder_ while incrementing waveform_offset_ by the same amount.
   void ComputeFeatures();
 
+  void MaybeCreateResampler(BaseFloat sampling_rate);
+
   C computer_;  // class that does the MFCC or PLP or filterbank computation
+
+  // resampler in cases when the input sampling frequency is not equal to
+  // the expected sampling rate
+  std::unique_ptr<LinearResample> resampler_;
 
   FeatureWindowFunction window_function_;
 

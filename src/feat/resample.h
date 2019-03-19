@@ -185,6 +185,10 @@ class LinearResample {
   /// Resample(x, y, true) for the last piece.  Call it unnecessarily between
   /// signals will not do any harm.
   void Reset();
+
+  //// Return the input and output sampling rates (for checks, for example)
+  inline int32 GetInputSamplingRate() { return samp_rate_in_; }
+  inline int32 GetOutputSamplingRate() { return samp_rate_out_; }
  private:
   /// This function outputs the number of output samples we will output
   /// for a signal with "input_num_samp" input samples.  If flush == true,
