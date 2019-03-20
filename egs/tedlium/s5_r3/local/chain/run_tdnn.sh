@@ -1,0 +1,1 @@
+run_tdnn_1c.sh
