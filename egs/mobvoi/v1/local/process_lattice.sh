@@ -53,16 +53,24 @@ EOF
   freetext_id=`cat $lang/words.txt | grep "FREETEXT" | awk '{print $2}'`
   sil_id=`cat $lang/words.txt | grep "<sil>" | awk '{print $2}'`
   cat <<EOF >$dir/wake_word_fst.txt
-0 1 $sil_id $sil_id
-1 2 $id $id
-0 2 $id $id
-2 3 $sil_id $sil_id
-2
-3
+0 0 $sil_id $sil_id
+0 0 $freetext_id $freetext_id
+0 0 $id $id
+0 1 $id $id
+1 1 $sil_id $sil_id
+1 1 $freetext_id $freetext_id
+1 1 $id $id
+1
 EOF
+#0 1 $sil_id $sil_id
+#1 2 $id $id
+#0 2 $id $id
+#2 3 $sil_id $sil_id
+#2
+#3
   fstcompile $dir/wake_word_fst.txt $dir/wake_word.fst
   $cmd JOB=1:$nj $dir/log/compute_cost_wake_word.JOB.log \
-    lattice-to-fst --lm-scale=1.0 --acoustic-scale=1.0 "ark:gunzip -c $dir/lat.JOB.gz |" ark:- \| fsttablecompose $dir/wake_word.fst ark:- ark:- \| fsts-clear-labels ark:- ark:- \| fsttablecomposelog $dir/empty_word.fst ark:- ark:- \| fstdeterminizestar --use-log="true" ark:- ark,t:$dir/scoring/cost_wake_word.JOB.txt || exit 1;
+    lattice-to-fst --lm-scale=1.0 --acoustic-scale=1.0 "ark:gunzip -c $dir/lat.JOB.gz |" ark:- \| fsttablecomposelog $dir/wake_word.fst ark:- ark:- \| fsts-clear-labels ark:- ark:- \| fsttablecomposelog $dir/empty_word.fst ark:- ark:- \| fstdeterminizestar --use-log="true" ark:- ark,t:$dir/scoring/cost_wake_word.JOB.txt || exit 1;
   for n in $(seq $nj); do
     cat $dir/scoring/cost_wake_word.$n.txt || exit 1;
   done > $dir/scoring/cost_wake_word.txt || exit 1
@@ -72,18 +80,19 @@ EOF
   rm -f $dir/wake_word_fst.txt $dir/wake_word.fst 2>/dev/null || true
 
   cat <<EOF >$dir/non_wake_word_fst.txt
-0 1 $sil_id $sil_id
-1 2 $freetext_id $freetext_id
-0 2 $freetext_id $freetext_id
-2 3 $sil_id $sil_id
-2
-3
+0 0 $sil_id $sil_id
+0 0 $freetext_id $freetext_id
+0
 EOF
 #0 1 $sil_id $sil_id
-#1
+#1 2 $freetext_id $freetext_id
+#0 2 $freetext_id $freetext_id
+#2 3 $sil_id $sil_id
+#2
+#3
   fstcompile $dir/non_wake_word_fst.txt $dir/non_wake_word.fst
   $cmd JOB=1:$nj $dir/log/compute_cost_non_wake_word.JOB.log \
-    lattice-to-fst --lm-scale=1.0 --acoustic-scale=1.0 "ark:gunzip -c $dir/lat.JOB.gz |" ark:- \| fsttablecompose $dir/non_wake_word.fst ark:- ark:- \| fsts-clear-labels ark:- ark:- \| fsttablecomposelog $dir/empty_word.fst ark:- ark:- \| fstdeterminizestar --use-log="true" ark:- ark,t:$dir/scoring/cost_non_wake_word.JOB.txt || exit 1;
+    lattice-to-fst --lm-scale=1.0 --acoustic-scale=1.0 "ark:gunzip -c $dir/lat.JOB.gz |" ark:- \| fsttablecomposelog $dir/non_wake_word.fst ark:- ark:- \| fsts-clear-labels ark:- ark:- \| fsttablecomposelog $dir/empty_word.fst ark:- ark:- \| fstdeterminizestar --use-log="true" ark:- ark,t:$dir/scoring/cost_non_wake_word.JOB.txt || exit 1;
   for n in $(seq $nj); do
     cat $dir/scoring/cost_non_wake_word.$n.txt || exit 1;
   done > $dir/scoring/cost_non_wake_word.txt || exit 1
@@ -96,7 +105,7 @@ fi
 if [ $stage -le 4 ]; then
   local/parse_cost.py $dir/scoring/cost_wake_word.txt $dir/scoring/cost_non_wake_word.txt > $dir/scoring/cost.txt
   dur=0
-  [ -f $data/utt2dur ] && dur=`awk '{a+=$2} END{print a}' $data/utt2dur`
+  [ -f $data/utt2dur ] && utils/filter_scp.pl <(grep -v $wake_word $data/text) $data/utt2dur > $data/utt2dur_negative && dur=`awk '{a+=$2} END{print a}' $data/utt2dur_negative`
   export LC_ALL=en_US.UTF-8
   python3 local/detect_from_cost.py --thres 0.0 --wake-word $wake_word $dir/scoring/cost.txt > $dir/scoring/detection.txt
   #cat $dir/scoring/cost.txt | awk '{if($2 == 0.0) print $1, ""; else if($3==0.0) print $1, "嗨小问";}' > $dir/scoring/detection.txt

@@ -271,22 +271,25 @@ if [ $stage -le 16 ]; then
 0 1 $sil_id $sil_id
 0 4 $freetext_id $freetext_id
 1 4 $freetext_id $freetext_id
-4 5 $sil_id $sil_id
+4 0 $sil_id $sil_id
 1 2 $id $id
 0 2 $id $id
-2 3 $sil_id $sil_id
+2 0 $sil_id $sil_id
+0 2.16
 2 1.9
-3 1.9
 4 0.7
-5 0.7
 EOF
 #0 1 $sil_id $sil_id
-#1 0.0
+#0 4 $freetext_id $freetext_id
+#1 4 $freetext_id $freetext_id
+#4 5 $sil_id $sil_id
 #1 2 $id $id
 #0 2 $id $id
-#2 2.0
-#2 3 $sil_id $sil_id 
-#3 2.0
+#2 3 $sil_id $sil_id
+#2 1.9
+#3 1.9
+#4 0.7
+#5 0.7
   fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
   set +e
   fstisstochastic $lang_decode/G.fst
