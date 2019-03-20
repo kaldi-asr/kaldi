@@ -5,7 +5,7 @@ project(Kaldi VERSION 6.0.0 LANGUAGES CXX C)
 include(CheckLanguage)
 check_language(CUDA)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/tools/cmake" ${CMAKE_MODULE_PATH})
 
 enable_testing()
@@ -22,8 +22,14 @@ set_property(TARGET OpenBLAS PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${OpenBLAS_I
 set_property(TARGET OpenBLAS PROPERTY IMPORTED_LOCATION ${OpenBLAS_LIB})
 set_property(TARGET OpenBLAS PROPERTY INTERFACE_COMPILE_DEFINITIONS HAVE_OPENBLAS=1)
 
+add_library(OpenFST SHARED IMPORTED)
+set_property(TARGET OpenFST PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/tools/openfst/include)
+set_property(TARGET OpenFST PROPERTY IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/tools/openfst/lib/libfst.so)
+file(GLOB OpenFST_LIBRARIES ${PROJECT_SOURCE_DIR}/tools/openfst/lib/lib*.so ${PROJECT_SOURCE_DIR}/tools/openfst/lib/fst/lib*.so)
+set_property(TARGET OpenFST PROPERTY INTERFACE_LINK_LIBRARIES ${OpenFST_LIBRARIES})
+
 find_package(Threads REQUIRED)
-include("${PROJECT_SOURCE_DIR}/tools/external.cmake")
+# include("${PROJECT_SOURCE_DIR}/tools/external.cmake")
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
 add_subdirectory(src)

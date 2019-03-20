@@ -1,9 +1,8 @@
 add_library(base kaldi-math.cc kaldi-error.cc io-funcs.cc kaldi-utils.cc timer.cc)
-target_include_directories(base PUBLIC ${OPENFST_INCLUDE_DIRS})
 # Used only for version.h
 target_include_directories(base PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/..")
-target_link_libraries(base PUBLIC ${OPENFST_LIBRARY_DIRS})
-add_dependencies(base openfst generate_version_h)
+target_link_libraries(base PUBLIC OpenFST)
+add_dependencies(base generate_version_h)
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/version.h"
   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/get_version.sh"
