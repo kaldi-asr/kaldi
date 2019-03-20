@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2019  Johns Hopkins University (author: Daniel Povey)
+//                2019  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -58,6 +59,7 @@ namespace kaldi {
        a self-loop on state 0 is not advised for decoding-graph-size
        reasons)
      - The start state must not be final.
+     - No phone (in the <ForPhones>...</ForPhones> block) may have the value 0.
 
 
  <Topology>
@@ -91,7 +93,7 @@ class Topology {
 
   /// Returns the topology entry for this phone;
   /// will throw exception if phone not covered by the topology.
-  const fst::StdFst &TopologyForPhone(int32 phone) const;
+  const fst::StdVectorFst &TopologyForPhone(int32 phone) const;
 
   /// Returns the number of \ref pdf_class "pdf-classes" for this phone;
   /// throws exception if phone not covered by this topology.
@@ -116,16 +118,15 @@ class Topology {
 
   bool operator == (const Topology &other) const;
 
-  // was:
-  //return phones_ == other.phones_ && phone2idx_ == other.phone2idx_
-  //&& entries_ == other.entries_;
-  // TODO: implement this; we probably need Equal() on fsts.
-
   // Allow default assignment operator and copy constructor.
  private:
+  using Arc     = typename fst::StdVectorFst::Arc;
+  using StateId = typename fst::StdVectorFst::StateId;
+  using Weight  = typename fst::StdVectorFst::Weight;
+
   std::vector<int32> phones_;  // list of all phones we have topology for.  Sorted, uniq.  no epsilon (zero) phone.
   std::vector<int32> phone2idx_;  // map from phones to indexes into the entries vector (or -1 for not present).
-  std::vector<fst::StdFst> entries_;
+  std::vector<fst::StdVectorFst> entries_;
 };
 
 
