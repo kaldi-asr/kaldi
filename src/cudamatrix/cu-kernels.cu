@@ -2552,9 +2552,12 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
   const int i = blockIdx.x;
   const int tid = threadIdx.x;
   const Real* x_row = x + i * x_d.stride;
+
   typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
   __shared__ typename BlockReduceT::TempStorage temp_storage;
-  __shared__ Real ssum[CU1DBLOCK];
+
+  __shared__ Real stddev_div_target_rms;
+  __shared__ Real scale;
 
   // Reduce x_j^2 to CU1DBLOCK elements per row
   Real tsum = Real(0);
@@ -2563,14 +2566,14 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
   }
   tsum = BlockReduceT(temp_storage).Sum(tsum);
   __syncthreads();
-  
 
-  const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
-  ssum[tid] = sqrt(
-    fmax(tsum / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
-
-  const Real stddev_div_target_rms = ssum[0];
-  const Real scale = Real(1) / stddev_div_target_rms;
+  if (tid == 0) {
+    const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
+    stddev_div_target_rms = sqrt(
+      fmax(tsum / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
+    scale = Real(1) / stddev_div_target_rms;
+  }
+  __syncthreads();
 
   // Store normalized input to output
   Real* y_row = y + i * y_stride;

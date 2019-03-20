@@ -545,6 +545,50 @@ static void UnitTestCuMathNormalizePerRow() {
   }
 }
 
+
+template<typename Real>
+static void UnitTestCuMathNormalizePerRow_v2() {
+
+  int row = 128;
+  int col = 1024;
+
+  Matrix<Real> Hi(row,col);
+  Matrix<Real> Ho(row,col);
+  Hi.SetRandn();
+  Hi.Scale(5.0);
+  Hi.ApplyFloor(0.0); // like ReLU,
+
+  CuMatrix<Real> Di(row, col);
+  CuMatrix<Real> Do(row, col);
+  Di.CopyFromMat(Hi);
+
+  Real target_rms = 0.3456;
+  bool add_log_stddev = false;
+  const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
+
+  //gpu
+  cu::NormalizePerRow(Di, target_rms, add_log_stddev, &Do);
+
+  //cpu
+  {
+    MatrixBase<Real>& in(Hi);
+    MatrixBase<Real>& out(Ho);
+    Real target_rms=0.3456;
+    Vector<Real> in_norm(in.NumRows());
+    Real d_scaled = in.NumCols() * target_rms * target_rms;
+    in_norm.AddDiagMat2(1.0 / d_scaled, in, kNoTrans, 0.0);
+    in_norm.ApplyFloor(kSquaredNormFloor);
+    in_norm.ApplyPow(-0.5);
+    out.CopyFromMat(in);
+    out.MulRowsVec(in_norm);
+  }
+
+  Matrix<Real> Ho2(Do);
+  // here the BUG was detected (by processing big-enough matrix),
+  AssertEqual(Ho,Ho2,0.00001);
+}
+
+
 template<typename Real>
 static void UnitTestCuDiffNormalizePerRow() {
   for (int32 i = 0; i < 2; i++) {
@@ -660,6 +704,7 @@ template<typename Real> void CudaMathUnitTest() {
   UnitTestEnsureNonzero<Real>();
   UnitTestBackpropLstmNonlinearity<Real>();
   UnitTestCuMathNormalizePerRow<Real>();
+  UnitTestCuMathNormalizePerRow_v2<Real>();
   UnitTestCuDiffNormalizePerRow<Real>();
 }
 
@@ -673,9 +718,9 @@ int main() {
   for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
-      CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
+      CuDevice::Instantiate().SelectGpuId("no"); // 0 means no GPU
     else
-      CuDevice::Instantiate().SelectGpuId("yes"); // -2 .. automatic selection
+      CuDevice::Instantiate().SelectGpuId("yes"); // 1 .. automatic selection
 #endif
     srand(time(NULL));
     kaldi::CudaMathUnitTest<float>();
