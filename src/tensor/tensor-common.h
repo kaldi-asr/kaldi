@@ -1,9 +1,39 @@
+// tensor/tensor-common.h
+
+// Copyright      2019  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef KALDI_TENSOR_TENSOR_COMMON_H_
+#define KALDI_TENSOR_TENSOR_COMMON_H_ 1
+
+#include <cstdint>
+#include <vector>
+
 /**
    This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
 */
 
 namespace kaldi {
 namespace tensor {
+
+typedef int64_t int64;
+typedef uint64_t uint64;
+typedef int32_t int32;
+typedef uint32_t uint32;
 
 
 
@@ -17,7 +47,12 @@ enum {
 // once we support multiple GPUs.
 struct Device {
   DeviceType device_type;
-  // operator ==, probably, maybe constructors.
+
+  Device(): device_type(kCpuDevice) { }
+  Device(DeviceType t): device_type(t) { }
+
+  // TODO: operator ==
+  // maybe in future we'll make a way to set the default device.
 };
 
 
@@ -48,7 +83,15 @@ enum InitializePolicy {
 };
 
 
-#define KALDI_TENSOR_MAX_DIM 5
+// In practice we don't expect user-owned tensors with dims greater than 5 to
+// exist, but there are certain manipulations we do when simplifying matrix
+// multiplications that temporarily add an extra dimension, and it's most
+// convenient to just increase the maximum.
+#define KALDI_TENSOR_MAX_DIM 6
 
 
-};
+}  // namespace tensor
+}  // namespace kaldi
+
+
+#endif  // KALDI_TENSOR_TENSOR_COMMON_H_

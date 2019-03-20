@@ -2786,7 +2786,7 @@ void MatrixBase<Real>::GroupMax(const MatrixBase<Real> &src) {
 
 template<typename Real>
 void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
-                                const MatrixIndexT *indices) {
+                                const int32 *indices) {
   KALDI_ASSERT(NumRows() == src.NumRows());
   MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
       this_stride = stride_, src_stride = src.stride_;
@@ -2801,7 +2801,7 @@ void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
   // For the sake of memory locality we do this row by row, rather
   // than doing it column-wise using cublas_Xcopy
   for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
-    const MatrixIndexT *index_ptr = &(indices[0]);
+    const int32 *index_ptr = &(indices[0]);
     for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++) {
       if (*index_ptr < 0) this_data[c] = 0;
       else this_data[c] = src_data[*index_ptr];
@@ -2812,7 +2812,7 @@ void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
 
 template<typename Real>
 void MatrixBase<Real>::AddCols(const MatrixBase<Real> &src,
-                               const MatrixIndexT *indices) {
+                               const int32 *indices) {
   KALDI_ASSERT(NumRows() == src.NumRows());
   MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
       this_stride = stride_, src_stride = src.stride_;
@@ -2826,8 +2826,9 @@ void MatrixBase<Real>::AddCols(const MatrixBase<Real> &src,
 
   // For the sake of memory locality we do this row by row, rather
   // than doing it column-wise using cublas_Xcopy
-  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
-    const MatrixIndexT *index_ptr = &(indices[0]);
+  for (MatrixIndexT r = 0; r < num_rows;
+       r++, this_data += this_stride, src_data += src_stride) {
+    const int32 *index_ptr = indices;
     for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++) {
       if (*index_ptr >= 0)
         this_data[c] += src_data[*index_ptr];
@@ -2837,7 +2838,7 @@ void MatrixBase<Real>::AddCols(const MatrixBase<Real> &src,
 
 template<typename Real>
 void MatrixBase<Real>::CopyRows(const MatrixBase<Real> &src,
-                                const MatrixIndexT *indices) {
+                                const int32 *indices) {
   KALDI_ASSERT(NumCols() == src.NumCols());
   MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
       this_stride = stride_;
@@ -2879,7 +2880,7 @@ void MatrixBase<Real>::CopyToRows(Real *const *dst) const {
 template<typename Real>
 void MatrixBase<Real>::AddRows(Real alpha,
                                const MatrixBase<Real> &src,
-                               const MatrixIndexT *indexes) {
+                               const int32 *indexes) {
   KALDI_ASSERT(NumCols() == src.NumCols());
   MatrixIndexT num_rows = num_rows_,
       num_cols = num_cols_, this_stride = stride_;
@@ -2908,7 +2909,7 @@ void MatrixBase<Real>::AddRows(Real alpha, const Real *const *src) {
 
 template<typename Real>
 void MatrixBase<Real>::AddToRows(Real alpha,
-                                 const MatrixIndexT *indexes,
+                                 const int32 *indexes,
                                  MatrixBase<Real> *dst) const {
   KALDI_ASSERT(NumCols() == dst->NumCols());
   MatrixIndexT num_rows = num_rows_,

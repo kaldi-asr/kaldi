@@ -68,22 +68,22 @@ class SparseVector {
   // If all the elements stored were negative and there underlying vector had
   // zero indexes not listed in the elements, or if no elements are stored, it
   // will return the first un-listed index, whose value (implicitly) is zero.
-  Real Max(int32 *index) const;
+  Real Max(MatrixIndexT *index) const;
 
   /// Returns the number of nonzero elements.
   MatrixIndexT NumElements() const { return pairs_.size(); }
 
   /// get an indexed element (0 <= i < NumElements()).
-  const std::pair<MatrixIndexT, Real> &GetElement(MatrixIndexT i) const {
+  const std::pair<int32, Real> &GetElement(MatrixIndexT i) const {
     return pairs_[i];
   }
 
   // returns pointer to element data, or NULL if empty (use with NumElements()).
-  std::pair<MatrixIndexT, Real> *Data();
+  std::pair<int32, Real> *Data();
 
   // returns pointer to element data, or NULL if empty (use with NumElements());
   // const version
-  const std::pair<MatrixIndexT, Real> *Data() const;
+  const std::pair<int32, Real> *Data() const;
 
   /// Sets elements to zero with probability zero_prob, else normally
   /// distributed.  Useful in testing.
@@ -95,7 +95,7 @@ class SparseVector {
 
   // constructor from pairs; does not assume input pairs are sorted and uniq
   SparseVector(MatrixIndexT dim,
-               const std::vector<std::pair<MatrixIndexT, Real> > &pairs);
+               const std::vector<std::pair<int32, Real> > &pairs);
 
   // constructor from a VectorBase that keeps only the nonzero elements of 'vec'.
   explicit SparseVector(const VectorBase<Real> &vec);
@@ -115,7 +115,7 @@ class SparseVector {
   MatrixIndexT dim_;
   // pairs of (row-index, value).  Stored in sorted order with no duplicates.
   // For now we use std::vector, but we could change this.
-  std::vector<std::pair<MatrixIndexT, Real> > pairs_;
+  std::vector<std::pair<int32, Real> > pairs_;
 };
 
 
@@ -181,8 +181,8 @@ class SparseMatrix {
   // Posterior. indexed first by row-index; the pairs are (column-index, value),
   // and the constructor does not require them to be sorted and uniq.
   SparseMatrix(
-      int32 dim,
-      const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs);
+      MatrixIndexT dim,
+      const std::vector<std::vector<std::pair<int32, Real> > > &pairs);
 
   /// Sets up to a pseudo-randomly initialized matrix, with each element zero
   /// with probability zero_prob and else normally distributed- mostly for
@@ -196,7 +196,7 @@ class SparseMatrix {
   const SparseVector<Real> &Row(MatrixIndexT r) const;
 
   /// Sets row r to "vec"; makes sure it has the correct dimension.
-  void SetRow(int32 r, const SparseVector<Real> &vec);
+  void SetRow(MatrixIndexT r, const SparseVector<Real> &vec);
 
   /// Select a subset of the rows of a SparseMatrix.
   /// Sets *this to only the rows of 'smat_other' that are listed

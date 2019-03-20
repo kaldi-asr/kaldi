@@ -208,7 +208,7 @@ class Transitions {
   /// Information about transition-ids, indexed by transition-id.
   /// the tuples are in sorted order which allows us to do the reverse mapping from
   /// tuple to transition state
-  std::vector<const TransitionIdInfo> info_;
+  std::vector<TransitionIdInfo> info_;
 
 
   /// Accessing pdf_ids_[i] allows us to look up info_[i].pdf_id in a way that

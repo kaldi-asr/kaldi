@@ -11,8 +11,7 @@ BINFILES = add-deltas add-deltas-sdc append-post-to-feats \
            concat-feats copy-feats \
            copy-feats-to-htk copy-feats-to-sphinx extend-transform-dim \
            extract-feature-segments extract-segments feat-to-dim \
-           feat-to-len fmpe-acc-stats fmpe-apply-transform fmpe-est \
-           fmpe-init fmpe-sum-accs get-full-lda-mat interpolate-pitch \
+           feat-to-len get-full-lda-mat interpolate-pitch \
            modify-cmvn-stats paste-feats post-to-feats \
            process-kaldi-pitch-feats process-pitch-feats \
            select-feats shift-feats splice-feats subsample-feats \

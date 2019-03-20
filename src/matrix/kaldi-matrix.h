@@ -283,14 +283,14 @@ class MatrixBase {
   /// all elements of "indices" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void CopyCols(const MatrixBase<Real> &src,
-                const MatrixIndexT *indices);
+                const int32 *indices);
 
   /// Copies row r from row indices[r] of src (does nothing
   /// As a special case, if indexes[i] == -1, sets row i to zero.
   /// all elements of "indices" must be in [-1, src.NumRows()-1],
   /// and src.NumCols() must equal this.NumCols()
   void CopyRows(const MatrixBase<Real> &src,
-                const MatrixIndexT *indices);
+                const int32 *indices);
 
   /// Add column indices[r] of src to column r.
   /// As a special case, if indexes[i] == -1, skip column i
@@ -298,7 +298,7 @@ class MatrixBase {
   /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void AddCols(const MatrixBase<Real> &src,
-               const MatrixIndexT *indices);
+               const int32 *indices);
 
   /// Copies row r of this matrix from an array of floats at the location given
   /// by src[r]. If any src[r] is NULL then this.Row(r) will be set to zero.
@@ -317,7 +317,7 @@ class MatrixBase {
   /// be in [-1, src.NumRows()-1], and src.NumCols() must equal this.NumCols().
   void AddRows(Real alpha,
                const MatrixBase<Real> &src,
-               const MatrixIndexT *indexes);
+               const int32 *indexes);
 
   /// Does for each row r, this.Row(r) += alpha * src[r], treating src[r] as the
   /// beginning of a region of memory representing a vector of floats, of the
@@ -336,7 +336,7 @@ class MatrixBase {
   /// Requires that all the indexes[i] that are >= 0
   /// be distinct, otherwise the behavior is undefined.
   void AddToRows(Real alpha,
-                 const MatrixIndexT *indexes,
+                 const int32 *indexes,
                  MatrixBase<Real> *dst) const;
 
   /// Applies floor to all matrix elements
