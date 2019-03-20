@@ -46,6 +46,7 @@ struct LatticeFasterDecoderCombineConfig {
                             // command-line program.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
+  BaseFloat cost_scale;
   BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
                            // it's not a very important parameter.  It affects the
                            // algorithm that prunes the tokens as we go.
@@ -62,6 +63,7 @@ struct LatticeFasterDecoderCombineConfig {
                                        determinize_lattice(true),
                                        beam_delta(0.5),
                                        hash_ratio(2.0),
+                                       cost_scale(1.0),
                                        prune_scale(0.1) { }
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
@@ -81,6 +83,10 @@ struct LatticeFasterDecoderCombineConfig {
                    "max-active constraint is applied.  Larger is more accurate.");
     opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
                    "control hash behavior");
+    opts->Register("cost-scale", &cost_scale, "A scale that we multiply the "
+                   "token costs by before intergerizing; a larger value means "
+                   "more buckets and precise.");
+
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
@@ -570,16 +576,11 @@ class LatticeFasterDecoderCombineTpl {
   /// on a complete token list on one frame. But, in this version, it is used
   /// on a token list which only contains the emittion part. So the max_active
   /// and min_active values might be narrowed.
-  BaseFloat GetCutoff(const TokenList &token_list, const Token* best_token,
-                      BaseFloat *adaptive_beam, 
-                      BucketQueue *queue);
-
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
   std::queue<StateId> cur_queue_;  // temp variable used in ProcessForFrame
                                    // and ProcessNonemitting
-  std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // Stores the best token in next frame. The tot_cost of it will be used to
   // initialize the BucketQueue.
   Token* best_token_in_next_frame_;
@@ -613,6 +614,8 @@ class LatticeFasterDecoderCombineTpl {
   unordered_map<Token*, BaseFloat> final_costs_;
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;
+
+  BaseFloat adaptive_beam_;  // will be set to beam_ when we start
 
   // This function takes a singly linked list of tokens for a single frame, and
   // outputs a list of them in topological order (it will crash if no such order

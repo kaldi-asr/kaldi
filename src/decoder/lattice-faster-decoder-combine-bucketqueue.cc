@@ -42,22 +42,28 @@ BucketQueue<Token>::BucketQueue(BaseFloat best_cost_estimate,
 template<typename Token>
 void BucketQueue<Token>::Push(Token *tok) {
   int32 bucket_index = std::floor(tok->tot_cost * cost_scale_);
-  int32 vec_index = bucket_index - bucket_storage_begin_;
+  size_t vec_index = static_cast<size_t>(bucket_index - bucket_storage_begin_);
 
-  if (vec_index < 0) {
+  if (vec_index >= buckets_.size()) {
     KALDI_WARN << "Have to reallocate the BucketQueue. Maybe need to reserve"
-               << " more elements in constructor. Push front.";
-    int32 increase_size = - vec_index;
-    std::vector<std::vector<Token*> > tmp(buckets_);
-    buckets_.resize(tmp.size() + increase_size);
-    std::copy(tmp.begin(), tmp.end(), buckets_.begin() + increase_size);
-    // Update start point
-    bucket_storage_begin_ = bucket_index;
-    vec_index = 0;
-  } else if (vec_index > buckets_.size() - 1) {
-    KALDI_WARN << "Have to reallocate the BucketQueue. Maybe need to reserve"
-               << " more elements in constructor. Push back.";
-    buckets_.resize(vec_index + 1);
+               << " more elements in constructor.";
+    int32 offset = static_cast<int32>(vec_index);
+    // a margin here (e.g. 10);
+    int32 increase_size = offset >= 0 ? offset + 1 - buckets_.size() + 10 :
+                                        - offset + 10;
+    buckets_.resize(buckets_.size() + increase_size);
+    
+    // Push front
+    if (offset < 0) {
+      std::vector<std::vector<Token*> > tmp(buckets_);
+      buckets_.clear();
+      for (int32 i = 10 - offset ; i < buckets_.size(); i++) {
+        buckets_[i].swap(tmp[i + offset - 10]);
+      }
+      // Update start point
+      bucket_storage_begin_ = bucket_index - 10;
+      vec_index = 10;
+    }
   }
 
   tok->in_queue = true;

@@ -42,22 +42,28 @@ BucketQueue<Token>::BucketQueue(BaseFloat best_cost_estimate,
 template<typename Token>
 void BucketQueue<Token>::Push(Token *tok) {
   int32 bucket_index = std::floor(tok->tot_cost * cost_scale_);
-  int32 vec_index = bucket_index - bucket_storage_begin_;
+  size_t vec_index = static_cast<size_t>(bucket_index - bucket_storage_begin_);
 
-  if (vec_index < 0) {
+  if (vec_index >= buckets_.size()) {
     KALDI_WARN << "Have to reallocate the BucketQueue. Maybe need to reserve"
-               << " more elements in constructor. Push front.";
-    int32 increase_size = - vec_index;
-    std::vector<std::vector<Token*> > tmp(buckets_);
-    buckets_.resize(tmp.size() + increase_size);
-    std::copy(tmp.begin(), tmp.end(), buckets_.begin() + increase_size);
-    // Update start point
-    bucket_storage_begin_ = bucket_index;
-    vec_index = 0;
-  } else if (vec_index > buckets_.size() - 1) {
-    KALDI_WARN << "Have to reallocate the BucketQueue. Maybe need to reserve"
-               << " more elements in constructor. Push back.";
-    buckets_.resize(vec_index + 1);
+               << " more elements in constructor.";
+    int32 offset = static_cast<int32>(vec_index);
+    // a margin here (e.g. 10);
+    int32 increase_size = offset >= 0 ? offset + 1 - buckets_.size() + 10 :
+                                        - offset + 10;
+    buckets_.resize(buckets_.size() + increase_size);
+    
+    // Push front
+    if (offset < 0) {
+      std::vector<std::vector<Token*> > tmp(buckets_);
+      buckets_.clear();
+      for (int32 i = 10 - offset ; i < buckets_.size(); i++) {
+        buckets_[i].swap(tmp[i + offset - 10]);
+      }
+      // Update start point
+      bucket_storage_begin_ = bucket_index - 10;
+      vec_index = 10;
+    }
   }
 
   tok->in_queue = true;
@@ -143,6 +149,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   cur_toks_[start_state] = start_tok;  // initialize current tokens map
   num_toks_++;
   best_token_in_next_frame_ = start_tok;
+  adaptive_beam_ = config_.beam;
 }
 
 // Returns true if any kind of traceback is available (not necessarily from
@@ -753,67 +760,6 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
                 << " to " << num_toks_;
 }
 
-/// Gets the weight cutoff.
-template <typename FST, typename Token>
-BaseFloat LatticeFasterDecoderCombineTpl<FST, Token>::GetCutoff(
-    const TokenList &token_list, const Token* best_token,
-    BaseFloat *adaptive_beam, BucketQueue *queue) {
-  BaseFloat best_weight = best_token->tot_cost;
-  // positive == high cost == bad.
-  // best_weight is the minimum value.
-  if (config_.max_active == std::numeric_limits<int32>::max() &&
-      config_.min_active == 0) {
-    for (Token* tok = token_list.toks; tok != NULL; tok = tok->next) {
-      queue->Push(tok);
-    }
-    if (adaptive_beam != NULL) *adaptive_beam = config_.beam;
-    return best_weight + config_.beam;
-  } else {
-    tmp_array_.clear();
-    for (Token* tok = token_list.toks; tok != NULL; tok = tok->next) {
-      BaseFloat w = static_cast<BaseFloat>(tok->tot_cost);
-      tmp_array_.push_back(w);
-      queue->Push(tok);
-    }
-
-    BaseFloat beam_cutoff = best_weight + config_.beam,
-        min_active_cutoff = std::numeric_limits<BaseFloat>::infinity(),
-        max_active_cutoff = std::numeric_limits<BaseFloat>::infinity();
-
-    KALDI_VLOG(6) << "Number of emitting tokens on frame " 
-                  << NumFramesDecoded() - 1 << " is " << tmp_array_.size();
-
-    if (tmp_array_.size() > static_cast<size_t>(config_.max_active)) {
-      std::nth_element(tmp_array_.begin(),
-                       tmp_array_.begin() + config_.max_active,
-                       tmp_array_.end());
-      max_active_cutoff = tmp_array_[config_.max_active];
-    }
-    if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
-      if (adaptive_beam)
-        *adaptive_beam = max_active_cutoff - best_weight + config_.beam_delta;
-      return max_active_cutoff;
-    }
-    if (tmp_array_.size() > static_cast<size_t>(config_.min_active)) {
-      if (config_.min_active == 0) min_active_cutoff = best_weight;
-      else {
-        std::nth_element(tmp_array_.begin(),
-                         tmp_array_.begin() + config_.min_active,
-                         tmp_array_.size() > static_cast<size_t>(config_.max_active) ?
-                         tmp_array_.begin() + config_.max_active : tmp_array_.end());
-        min_active_cutoff = tmp_array_[config_.min_active];
-      }
-    }
-    if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
-      if (adaptive_beam)
-        *adaptive_beam = min_active_cutoff - best_weight + config_.beam_delta;
-      return min_active_cutoff;
-    } else {
-      *adaptive_beam = config_.beam;
-      return beam_cutoff;
-    }
-  }
-}
 
 template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
@@ -834,51 +780,27 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   }
 
   KALDI_ASSERT(best_token_in_next_frame_); 
-  BucketQueue cur_queue(best_token_in_next_frame_->tot_cost);
-  BaseFloat adaptive_beam;
-  // "cur_cutoff" is used to constrain the epsilon emittion in current frame.
-  // It will not be updated.
-  BaseFloat cur_cutoff = GetCutoff(active_toks_[frame],
-                                   best_token_in_next_frame_,
-                                   &adaptive_beam, &cur_queue);
-  KALDI_VLOG(6) << "Adaptive beam on frame " << NumFramesDecoded() << " is "
-                << adaptive_beam;
+  BucketQueue cur_queue(best_token_in_next_frame_->tot_cost, config_.cost_scale);
+  // Add tokens to queue
+  for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+    cur_queue.Push(tok);
+  }
 
-  // pruning "online" before having seen all tokens
-
+  // Declare a local variable so the compiler can put it in a register, since
+  // C++ assumes other threads could be modifying class members.
+  BaseFloat adaptive_beam = adaptive_beam_;
+  // "cur_cutoff" will be kept to the best-seen-so-far token on this frame
+  // + adaptive_beam
+  BaseFloat cur_cutoff = std::numeric_limits<BaseFloat>::infinity();
   // "next_cutoff" is used to limit a new token in next frame should be handle
   // or not. It will be updated along with the further processing.
+  // this will be kept updated to the best-seen-so-far token "on next frame"
+  // + adaptive_beam
   BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
   // "cost_offset" contains the acoustic log-likelihoods on current frame in 
   // order to keep everything in a nice dynamic range. Reduce roundoff errors.
-  BaseFloat cost_offset = 0.0;
+  BaseFloat cost_offset = - best_token_in_next_frame_->tot_cost;
 
-  // First process the best token to get a hopefully
-  // reasonably tight bound on the next cutoff.  The only
-  // products of the next block are "next_cutoff" and "cost_offset".
-  // Notice: As the difference between the combine version and the traditional
-  // version, this "best_tok" is choosen from emittion tokens. Normally, the
-  // best token of one frame comes from an epsilon non-emittion. So the best
-  // token is a looser boundary. We use it to estimate a bound on the next
-  // cutoff and we will update the "next_cutoff" once we have better tokens.
-  // The "next_cutoff" will be updated in further processing.
-  Token *best_tok = best_token_in_next_frame_;
-  StateId best_tok_state_id = best_tok->state_id;
-  if (best_tok) {
-    cost_offset = - best_tok->tot_cost;
-    for (fst::ArcIterator<FST> aiter(*fst_, best_tok_state_id);
-         !aiter.Done();
-         aiter.Next()) {
-      const Arc &arc = aiter.Value();
-      if (arc.ilabel != 0) {  // propagate..
-        // ac_cost + graph_cost
-        BaseFloat new_weight = arc.weight.Value() + cost_offset -
-            decodable->LogLikelihood(frame, arc.ilabel) + best_tok->tot_cost;
-        if (new_weight + adaptive_beam < next_cutoff)
-          next_cutoff = new_weight + adaptive_beam;
-      }
-    }
-  }
   best_token_in_next_frame_ = NULL;
   // Store the offset on the acoustic likelihoods that we're applying.
   // Could just do cost_offsets_.push_back(cost_offset), but we
@@ -888,11 +810,17 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
 
   // Iterator the "cur_queue_" to process non-emittion and emittion arcs in fst.
   Token *tok = NULL;
-  while ((tok = cur_queue.Pop()) != NULL) {
+  int32 num_toks_processed = 0;
+  int32 max_active = config_.max_active;
+  for (; num_toks_processed < max_active && (tok = cur_queue.Pop()) != NULL;
+       num_toks_processed++) {
     BaseFloat cur_cost = tok->tot_cost;
     StateId state = tok->state_id;
-    if (cur_cost > cur_cutoff)  // Don't bother processing successors.
-      continue;
+    if (cur_cost > cur_cutoff) { // Don't bother processing successors.
+      break;  // This is a priority queue. The following tokens will be worse
+    } else if (cur_cost + adaptive_beam < cur_cutoff) {
+      cur_cutoff = cur_cost + adaptive_beam; // a tighter boundary
+    }
     // If "tok" has any existing forward links, delete them,
     // because we're about to regenerate them.  This is a kind
     // of non-optimality (remember, this is the simple decoder),
@@ -945,8 +873,32 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
       }
     }  // for all arcs
   }  // end of while loop
-  //KALDI_VLOG(6) << "Number of tokens active on frame " << NumFramesDecoded() - 1 
-  //              << " is " << prev_toks_.size();
+
+  {  // This block updates adaptive_beam_
+    BaseFloat beam_used_this_frame = adaptive_beam;
+    Token *tok = cur_queue.Pop();
+    if (tok != NULL) {
+      // The queue would only be nonempty if we hit the max-active constraint.
+      BaseFloat best_cost_this_frame = cur_cutoff - adaptive_beam;
+      beam_used_this_frame = tok->tot_cost - best_cost_this_frame;
+    }
+    if (num_toks_processed <= config_.min_active) {
+      // num-toks active is dangerously low, increase the beam even if it
+      // already exceeds the user-specified beam.
+      adaptive_beam_ = std::max<BaseFloat>(
+          config_.beam, beam_used_this_frame + 2.0 * config_.beam_delta);
+    } else {
+      // have adaptive_beam_ approach beam_ in intervals of config_.beam_delta
+      BaseFloat diff_from_beam = beam_used_this_frame - config_.beam;
+      if (std::abs(diff_from_beam) < config_.beam_delta) {
+        adaptive_beam_ = config_.beam;
+      } else {
+        // make it close to beam_
+        adaptive_beam_ = beam_used_this_frame -
+          config_.beam_delta * (diff_from_beam > 0 ? 1 : -1);
+      }
+    }
+  }
 }
 
 
@@ -969,20 +921,31 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
     tmp_toks = &cur_toks_;
   }
 
-  BucketQueue cur_queue(best_token_in_next_frame_->tot_cost);
-  // "cur_cutoff" is used to constrain the epsilon emittion in current frame.
-  // It will not be updated.
-  BaseFloat adaptive_beam;
-  BaseFloat cur_cutoff = GetCutoff(active_toks_[frame], 
-                                   best_token_in_next_frame_,
-                                   &adaptive_beam, &cur_queue);
+  BucketQueue cur_queue(best_token_in_next_frame_->tot_cost, config_.cost_scale);
+  for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+    cur_queue.Push(tok);
+  }
+
+  // Declare a local variable so the compiler can put it in a register, since
+  // C++ assumes other threads could be modifying class members.
+  BaseFloat adaptive_beam = adaptive_beam_;
+  // "cur_cutoff" will be kept to the best-seen-so-far token on this frame
+  // + adaptive_beam
+  BaseFloat cur_cutoff = std::numeric_limits<BaseFloat>::infinity();
 
   Token *tok = NULL;
-  while ((tok = cur_queue.Pop()) != NULL) {
+  int32 num_toks_processed = 0;
+  int32 max_active = config_.max_active;
+
+  for (; num_toks_processed < max_active && (tok = cur_queue.Pop()) != NULL;
+       num_toks_processed++) {
     BaseFloat cur_cost = tok->tot_cost;
     StateId state = tok->state_id;
-    if (cur_cost > cur_cutoff)  // Don't bother processing successors.
-      continue;
+    if (cur_cost > cur_cutoff) { // Don't bother processing successors.
+      break;  // This is a priority queue. The following tokens will be worse
+    } else if (cur_cost + adaptive_beam < cur_cutoff) {
+      cur_cutoff = cur_cost + adaptive_beam; // a tighter boundary
+    }
     // If "tok" has any existing forward links, delete them,
     // because we're about to regenerate them.  This is a kind
     // of non-optimality (remember, this is the simple decoder),
