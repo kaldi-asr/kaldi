@@ -2564,7 +2564,6 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
   for (int j = tid; j < x_d.cols; j += CU1DBLOCK) {
     tsum += x_row[j] * x_row[j];
   }
-  __syncthreads();
   tsum = BlockReduceT(temp_storage).Sum(tsum);
   __syncthreads();
 
