@@ -81,7 +81,8 @@ std::shared_ptr<Tensor> View(const Tensor &src, ArrayRef<int64_t> dims);
 
 /**
    Returns a Tensor with a new view of the data in 'src', in which the axes
-   numbered axis1 and axis1 + 1 are merged.
+   numbered axis1 and axis1 + 1 are merged.  This is just a special case
+   of View().
 
    For example, if 'src' is a Tensor with dims (3,4,5) and you call
    MergeAxes(src, 1), this funtion will merge axes 1 and 2 and return a Tensor
@@ -91,12 +92,12 @@ std::shared_ptr<Tensor> View(const Tensor &src, ArrayRef<int64_t> dims);
    is a common special case of what the function 'View' can give you.
 
    If the pattern of 'src' makes the requested merging impossible,
-   this function will return nullptr.  (This may be the case if, for
-   instance, the two axes in question were previously transposed).
-   In that case the caller will probably want to construct a temporary
-   Tensor 'temp' passing src.Dims() in the constructor, copy the data
-   in 'src' to 'temp', and then call MergeAxes on 'temp, which is
-   guaranteed to work.
+   this function will return NULL.  (This will happen if, in the
+   Tensor 'src', stride[axis1+1] != stride[axis1] * dim[axis1]).
+
+   If this function returns NULL then the caller will probably want to construct
+   a temporary Tensor 'temp' passing src.Dims() in the constructor, copy the
+   data in 'src' to 'temp', and then call MergeAxes on 'temp'.
 
        @param [in]  src   The Tensor which whose axes we will attempt to
                           merge
@@ -110,14 +111,17 @@ std::shared_ptr<Tensor> View(const Tensor &src, ArrayRef<int64_t> dims);
 std::shared_ptr<Tensor> MergeAxes(const Tensor &src, int64_t axis1);
 
 /**
+   Returns a Tensor with a new view of the data in 'src', in which the
+   specified axis is split into two axes.  This is just a special case
+   of View().
+
    Returns a Tensor in which the axis numbered 'axis' is split into
    two axes, with dimensions respectively 'dim1' and 'dim2'.  The
    interpretation will be as for a "C" array; so, for instance,
    if the dimensions of 'src' were (10,12) and you called
-   `SplitAxis(src, 1, 3, 4)`, the indexes along axis 1 would
-   be interpreted as 3 blocks of size 4.  This is a common
-   special case of what the function 'View' can do.
-
+   `SplitAxis(src, 1, 3, 4)` resulting in a Tensor of dimensions
+   (10,3,4), the indexes along the original axis of dimension 12 would be
+   interpreted as 3 blocks of size 4.
 
       @param [in] src  The Tensor whose axis is to be split.
       @param [in] axis  The index of the axis to be split; must
