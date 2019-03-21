@@ -30,6 +30,7 @@ DecodableNnetLoopedOnlineBase::DecodableNnetLoopedOnlineBase(
     num_chunks_computed_(0),
     current_log_post_subsampled_offset_(-1),
     info_(info),
+    frame_offset_(0),
     input_features_(input_features),
     ivector_features_(ivector_features),
     computer_(info_.opts.compute_config, info_.computation,
@@ -66,7 +67,7 @@ int32 DecodableNnetLoopedOnlineBase::NumFramesReady() const {
   if (input_finished) {
     // if the input has finished,... we'll pad with duplicates of the last frame
     // as needed to get the required right context.
-    return (features_ready + sf - 1) / sf;
+    return (features_ready + sf - 1) / sf - frame_offset_;
   } else {
     // note: info_.right_context_ includes both the model context and any
     // extra_right_context_ (but this
@@ -78,7 +79,7 @@ int32 DecodableNnetLoopedOnlineBase::NumFramesReady() const {
     // doesn't need any attention to rounding because info_.frames_per_chunk
     // is always a multiple of 'sf' (see 'frames_per_chunk = GetChunksize..."
     // in decodable-simple-looped.cc).
-    return num_chunks_ready * info_.frames_per_chunk / sf;
+    return num_chunks_ready * info_.frames_per_chunk / sf - frame_offset_;
   }
 }
 
@@ -105,9 +106,14 @@ bool DecodableNnetLoopedOnlineBase::IsLastFrame(
     return false;
   int32 sf = info_.opts.frame_subsampling_factor,
      num_subsampled_frames_ready = (features_ready + sf - 1) / sf;
-  return (subsampled_frame == num_subsampled_frames_ready - 1);
+  return (subsampled_frame + frame_offset_ == num_subsampled_frames_ready - 1);
 }
 
+void DecodableNnetLoopedOnlineBase::SetFrameOffset(int32 frame_offset) {
+  KALDI_ASSERT(0 <= frame_offset &&
+               frame_offset <= frame_offset_ + NumFramesReady());
+  frame_offset_ = frame_offset;
+}
 
 void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
   // Prepare the input data for the next chunk of features.
@@ -231,6 +237,7 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
 
 BaseFloat DecodableNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
                                                     int32 index) {
+  subsampled_frame += frame_offset_;
   EnsureFrameIsComputed(subsampled_frame);
   // note: we index by 'inde
   return current_log_post_(
@@ -241,6 +248,7 @@ BaseFloat DecodableNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
 
 BaseFloat DecodableAmNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
                                                     int32 index) {
+  subsampled_frame += frame_offset_;
   EnsureFrameIsComputed(subsampled_frame);
   return current_log_post_(
       subsampled_frame - current_log_post_subsampled_offset_,

@@ -112,10 +112,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // more waveform.  This will help flush out the last frame or two
   // of features, in the case where snip-edges == false; it also
   // affects the return value of IsLastFrame().
-  virtual void InputFinished() {
-    input_finished_ = true;
-    ComputeFeatures();
-  }
+  virtual void InputFinished();
 
  private:
   // This function computes any additional feature frames that it is possible to

@@ -42,7 +42,7 @@ done
 
 
 ###
-### No we process the command line options
+### Now we process the command line options
 ###
 while true; do
   [ -z "${1:-}" ] && break;  # break if there are no arguments

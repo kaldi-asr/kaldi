@@ -128,6 +128,21 @@ void OnlineNnet2FeaturePipeline::GetFrame(int32 frame,
   return final_feature_->GetFrame(frame, feat);
 }
 
+void OnlineNnet2FeaturePipeline::UpdateFrameWeights(
+    const std::vector<std::pair<int32, BaseFloat> > &delta_weights,
+    int32 frame_offset) {
+  if (frame_offset == 0) {
+    IvectorFeature()->UpdateFrameWeights(delta_weights);
+  } else {
+    std::vector<std::pair<int32, BaseFloat> > offset_delta_weights;
+    for (size_t i = 0; i < delta_weights.size(); i++) {
+      offset_delta_weights.push_back(std::make_pair(
+          delta_weights[i].first + frame_offset, delta_weights[i].second));
+    }
+    IvectorFeature()->UpdateFrameWeights(offset_delta_weights);
+  }
+}
+
 void OnlineNnet2FeaturePipeline::SetAdaptationState(
     const OnlineIvectorExtractorAdaptationState &adaptation_state) {
   if (info_.use_ivectors) {
