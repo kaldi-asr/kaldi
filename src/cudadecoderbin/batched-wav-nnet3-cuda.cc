@@ -144,16 +144,16 @@ int main(int argc, char *argv[]) {
                                 // decoder
 
     po.Register("write-lattice", &write_lattice,
-                "Output lattice to a file.  Setting to false is useful when "
-                "benchmarking.");
+                "Output lattice to a file. Setting to false is useful when "
+                "benchmarking");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("file-limit", &num_todo,
                 "Limits the number of files that are processed by this driver. "
-                " After N files are processed the remaing files are ignored.  "
-                "Useful for profiling.");
+                "After N files are processed the remaining files are ignored. "
+                "Useful for profiling");
     po.Register("iterations", &iterations,
-                "Number of times to decode the corpus.  Output will be written "
+                "Number of times to decode the corpus. Output will be written "
                 "only once.");
 
     // Multi-threaded CPU and batched GPU decoder

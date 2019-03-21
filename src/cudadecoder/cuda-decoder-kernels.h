@@ -50,7 +50,7 @@ struct DeviceParams {
   LaneMatrixView<InfoToken> d_main_q_extra_prev_tokens;
 
   int32 max_nlanes;
-  int32 q_capacity;
+  int32 main_q_capacity, aux_q_capacity;
   CostType *d_arc_weights;
   int32 *d_arc_nextstates;
   int32 *d_arc_pdf_ilabels;

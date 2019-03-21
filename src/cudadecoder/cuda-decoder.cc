@@ -15,6 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if HAVE_CUDA == 1
+
 #include "cuda-decoder.h"
 #include "cuda-decoder-kernels.h"
 
@@ -36,7 +38,8 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
       lattice_beam_(config.lattice_beam),
       ntokens_pre_allocated_(config.ntokens_pre_allocated),
       max_active_(config.max_active),
-      max_tokens_per_frame_(config.max_tokens_per_frame),
+      aux_q_capacity_(config.aux_q_capacity),
+      main_q_capacity_(config.main_q_capacity),
       extra_cost_min_delta_(0.0f) {
   // Static asserts on constants
   CheckStaticAsserts();
@@ -74,32 +77,30 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
 
 void CudaDecoder::AllocateDeviceData() {
   hashmap_capacity_ =
-      KALDI_CUDA_DECODER_HASHMAP_CAPACITY_FACTOR * max_tokens_per_frame_;
+      KALDI_CUDA_DECODER_HASHMAP_CAPACITY_FACTOR * main_q_capacity_;
   d_channels_counters_.Resize(nchannels_, 1);
   d_lanes_counters_.Resize(nlanes_, 1);
-  d_main_q_state_and_cost_.Resize(nchannels_, max_tokens_per_frame_);
-  d_main_q_info_.Resize(nlanes_, max_tokens_per_frame_);
-  d_aux_q_state_and_cost_.Resize(nlanes_, max_tokens_per_frame_);
-  d_aux_q_info_.Resize(nlanes_, max_tokens_per_frame_);
-  d_main_q_degrees_prefix_sum_.Resize(nchannels_, max_tokens_per_frame_);
+  d_main_q_state_and_cost_.Resize(nchannels_, main_q_capacity_);
+  d_main_q_info_.Resize(nlanes_, main_q_capacity_);
+  d_aux_q_state_and_cost_.Resize(nlanes_, aux_q_capacity_);
+  d_aux_q_info_.Resize(nlanes_, aux_q_capacity_);
+  d_main_q_degrees_prefix_sum_.Resize(nchannels_, main_q_capacity_);
   d_histograms_.Resize(nlanes_, KALDI_CUDA_DECODER_HISTO_NBINS);
-  d_main_q_extra_prev_tokens_prefix_sum_.Resize(nlanes_, max_tokens_per_frame_);
-  d_main_q_n_extra_prev_tokens_local_idx_.Resize(nlanes_,
-                                                 max_tokens_per_frame_);
+  d_main_q_extra_prev_tokens_prefix_sum_.Resize(nlanes_, main_q_capacity_);
+  d_main_q_n_extra_prev_tokens_local_idx_.Resize(nlanes_, main_q_capacity_);
 
-  d_main_q_state_hash_idx_.Resize(nlanes_, max_tokens_per_frame_);
-  d_main_q_extra_prev_tokens_.Resize(nlanes_, max_tokens_per_frame_);
-  d_main_q_extra_and_acoustic_cost_.Resize(nlanes_, max_tokens_per_frame_);
+  d_main_q_state_hash_idx_.Resize(nlanes_, main_q_capacity_);
+  d_main_q_extra_prev_tokens_.Resize(nlanes_, main_q_capacity_);
+  d_main_q_extra_and_acoustic_cost_.Resize(nlanes_, main_q_capacity_);
   d_main_q_block_sums_prefix_sum_.Resize(
-      nlanes_, KALDI_CUDA_DECODER_DIV_ROUND_UP(max_tokens_per_frame_,
+      nlanes_, KALDI_CUDA_DECODER_DIV_ROUND_UP(main_q_capacity_,
                                                KALDI_CUDA_DECODER_1D_BLOCK) +
                    1);
-  d_main_q_arc_offsets_.Resize(nchannels_, max_tokens_per_frame_);
+  d_main_q_arc_offsets_.Resize(nchannels_, main_q_capacity_);
   d_hashmap_values_.Resize(nlanes_, hashmap_capacity_);
-  d_main_q_acoustic_cost_.Resize(nlanes_, max_tokens_per_frame_);
-  d_aux_q_acoustic_cost_.Resize(nlanes_, max_tokens_per_frame_);
-  d_extra_and_acoustic_cost_concat_matrix.Resize(nlanes_,
-                                                 max_tokens_per_frame_);
+  d_main_q_acoustic_cost_.Resize(nlanes_, main_q_capacity_);
+  d_aux_q_acoustic_cost_.Resize(nlanes_, aux_q_capacity_);
+  d_extra_and_acoustic_cost_concat_matrix.Resize(nlanes_, main_q_capacity_);
   // Reusing data from aux_q. Those two are never used at the same time
   // d_list_final_tokens_in_main_q_ is used in GetBestPath.
   // the aux_q is used in AdvanceDecoding
@@ -113,24 +114,24 @@ void CudaDecoder::AllocateDeviceData() {
 void CudaDecoder::AllocateHostData() {
   KALDI_DECODER_CUDA_API_CHECK_ERROR(
       cudaMallocHost(&h_extra_and_acoustic_cost_concat__,
-                     nlanes_ * max_tokens_per_frame_ *
+                     nlanes_ * main_q_capacity_ *
                          sizeof(*h_extra_and_acoustic_cost_concat__)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
       &h_acoustic_cost_concat_,
-      nlanes_ * max_tokens_per_frame_ * sizeof(*h_acoustic_cost_concat_)));
+      nlanes_ * main_q_capacity_ * sizeof(*h_acoustic_cost_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
       &h_extra_prev_tokens_concat_,
-      nlanes_ * max_tokens_per_frame_ * sizeof(*h_extra_prev_tokens_concat_)));
+      nlanes_ * main_q_capacity_ * sizeof(*h_extra_prev_tokens_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
       &h_infotoken_concat_,
-      nlanes_ * max_tokens_per_frame_ * sizeof(*h_infotoken_concat_)));
+      nlanes_ * main_q_capacity_ * sizeof(*h_infotoken_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(
       cudaMallocHost(&h_lanes_counters_, nlanes_ * sizeof(*h_lanes_counters_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
       &h_channels_counters_, nchannels_ * sizeof(*h_channels_counters_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
       &h_list_final_tokens_in_main_q_,
-      max_tokens_per_frame_ * sizeof(*h_list_final_tokens_in_main_q_)));
+      main_q_capacity_ * sizeof(*h_list_final_tokens_in_main_q_)));
 
   h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_.resize(nchannels_);
   h_all_tokens_acoustic_cost_.resize(nchannels_);
@@ -225,7 +226,8 @@ void CudaDecoder::InitDeviceParams() {
   h_device_params_->d_fst_final_costs = fst_.d_final_;
   h_device_params_->default_beam = default_beam_;
   h_device_params_->lattice_beam = lattice_beam_;
-  h_device_params_->q_capacity = max_tokens_per_frame_;
+  h_device_params_->main_q_capacity = main_q_capacity_;
+  h_device_params_->aux_q_capacity = aux_q_capacity_;
   h_device_params_->init_channel_id = init_channel_id_;
   h_device_params_->max_nlanes = nlanes_;
   h_device_params_->nstates = fst_.num_states_;
@@ -237,12 +239,12 @@ void CudaDecoder::InitDeviceParams() {
   // For the first static_beam_q_length elements of the queue, we will keep the
   // beam static
   int32 static_beam_q_length =
-      max_tokens_per_frame_ / KALDI_CUDA_DECODER_ADAPTIVE_BEAM_STATIC_SEGMENT;
+      aux_q_capacity_ / KALDI_CUDA_DECODER_ADAPTIVE_BEAM_STATIC_SEGMENT;
   // For the last adaptive_beam_q_length elements of the queue, we will decrease
   // the beam, segment by segment
   // For more information, please refer to the definition of GetAdaptiveBeam in
   // cuda-decoder-kernels.cu
-  int32 adaptive_beam_q_length = (max_tokens_per_frame_ - static_beam_q_length);
+  int32 adaptive_beam_q_length = (aux_q_capacity_ - static_beam_q_length);
   int32 adaptive_beam_bin_width =
       adaptive_beam_q_length / KALDI_CUDA_DECODER_ADAPTIVE_BEAM_NSTEPS;
   h_device_params_->adaptive_beam_static_segment = static_beam_q_length;
@@ -319,7 +321,7 @@ void CudaDecoder::InitDecoding(const std::vector<ChannelId> &channels) {
   // Getting *h_kernel_params ready to use
   SetChannelsInKernelParams(channels);
 
-  // Size of the initial main_q_size
+  // Size of the initial main_q
   const int32 init_main_q_size =
       h_channels_counters_[init_channel_id_].prev_main_q_narcs_and_end.y;
 
@@ -840,28 +842,25 @@ void CudaDecoder::CheckOverflow() {
             << "Preventing overflow of main_q. Continuing "
             << "execution but the quality of the output may be decreased. "
             << "To prevent this from happening, please increase the parameter "
-               "--max-tokens-per-frame"
-            << " and/or decrease --beam";
+               "--main-q-capacity"
+            << " and/or decrease --max-active";
       }
       if ((q_overflow & OVERFLOW_AUX_Q) == OVERFLOW_AUX_Q) {
         // overflowed aux_q
         KALDI_WARN
             << "Preventing overflow of aux_q. Continuing "
             << "execution but the quality of the output may be decreased. "
-            << "execution but the quality of the output may be decreased. "
             << "To prevent this from happening, please increase the parameter "
-               "--max-tokens-per-frame"
+               "--aux-q-capacity"
             << " and/or decrease --beam";
       }
 
-      KALDI_ASSERT(lane_counters->main_q_narcs_and_end.y <
-                   max_tokens_per_frame_);
+      KALDI_ASSERT(lane_counters->main_q_narcs_and_end.y < main_q_capacity_);
       KALDI_ASSERT(lane_counters->main_q_narcs_and_end.x >= 0);
       KALDI_ASSERT(lane_counters->main_q_narcs_and_end.y >= 0);
-      KALDI_ASSERT(lane_counters->post_expand_aux_q_end <
-                   max_tokens_per_frame_);
+      KALDI_ASSERT(lane_counters->post_expand_aux_q_end < aux_q_capacity_);
       KALDI_ASSERT(lane_counters->post_expand_aux_q_end >= 0);
-      KALDI_ASSERT(lane_counters->aux_q_end < max_tokens_per_frame_);
+      KALDI_ASSERT(lane_counters->aux_q_end < aux_q_capacity_);
       KALDI_ASSERT(lane_counters->aux_q_end >= 0);
     }
   }
@@ -1593,4 +1592,6 @@ void CudaDecoder::CheckStaticAsserts() {
         }
 */
 }  // end namespace cuda_decoder
-}  // end namespace kaldi.
+}  // end namespace kaldi
+
+#endif  // HAVE_CUDA == 1

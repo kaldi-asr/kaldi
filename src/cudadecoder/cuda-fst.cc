@@ -15,6 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if HAVE_CUDA == 1
+
 #include "cudadecoder/cuda-fst.h"
 
 #include <cuda_runtime_api.h>
@@ -203,3 +205,5 @@ void CudaFst::Finalize() {
 
 }  // end namespace cuda_decoder
 }  // end namespace kaldi
+
+#endif  // HAVE_CUDA == 1

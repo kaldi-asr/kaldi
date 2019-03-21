@@ -34,7 +34,7 @@ struct CudaDecoderConfig {
   BaseFloat default_beam;
   BaseFloat lattice_beam;
   int32 ntokens_pre_allocated;
-  int32 max_tokens_per_frame;
+  int32 main_q_capacity, aux_q_capacity;
   int32 nlanes;
   int32 nchannels;
   int32 max_active;
@@ -43,36 +43,57 @@ struct CudaDecoderConfig {
       : default_beam(15.0),
         lattice_beam(10.0),
         ntokens_pre_allocated(2000000),
-        max_tokens_per_frame(1000000),
+        main_q_capacity(50000),
+        aux_q_capacity(500000),
         max_active(10000) {}
 
   void Register(OptionsItf *opts) {
-    opts->Register(
-        "beam", &default_beam,
-        "Decoding beam.  Larger->slower, more accurate. The beam may be"
-        "decreased if we are generating too many tokens compared to "
-        "what the queue can hold (max_tokens_per_frame). It will then be "
-        "restored "
-        "to default_beam.");
-    opts->Register(
-        "ntokens-pre-allocated", &ntokens_pre_allocated,
-        "Number of tokens pre-allocated in host buffers.  If"
-        "this size is exceeded the buffer will reallocate larger consuming more"
-        "resources");
-    opts->Register(
-        "max-tokens-per-frame", &max_tokens_per_frame,
-        "maximum tokens in GPU memory per frame.  If this"
-        "value is exceeded the beam will tighten and accuracy may decrease.");
+    opts->Register("beam", &default_beam,
+                   "Decoding beam. Larger->slower, more accurate. If "
+                   "aux-q-capacity is too small, we may decrease the beam "
+                   "dynamically to avoid overflow (adaptive beam, see "
+                   "aux-q-capacity parameter)");
     opts->Register("lattice-beam", &lattice_beam,
                    "The width of the lattice beam");
     opts->Register("max-active", &max_active,
                    "At the end of each frame computation, we keep only its "
-                   "best max-active tokens (arc instantiations)");
+                   "best max-active tokens. One token is the instantiation of "
+                   "a single arc. Typical values are within the 5k-10k range.");
+    opts->Register("ntokens-pre-allocated", &ntokens_pre_allocated,
+                   "Advanced - Number of tokens pre-allocated in host buffers. "
+                   "If this size is exceeded the buffer will reallocate, "
+                   "reducing performance.");
+    opts->Register("aux-q-capacity", &aux_q_capacity,
+                   "Advanced - Capacity of the auxiliary queue : Maximum "
+                   "number of raw tokens that can be stored *before* pruning "
+                   "for each frame. Lower -> less memory usage, Higher -> More "
+                   "accurate. During the tokens generation, if we detect that "
+                   "we are getting close to saturating that capacity, we will "
+                   "reduce the beam dynamically (adaptive beam) to keep only "
+                   "the best tokens in the remaining space. If the aux queue "
+                   "is still too small, we will print an overflow warning, but "
+                   "prevent the overflow. The computation can safely continue, "
+                   "but the quality of the output may decrease. We strongly "
+                   "recommend keeping aux-q-capacity large (>400k), to avoid "
+                   "triggering the adaptive beam and/or the overflow.");
+    opts->Register("main-q-capacity", &main_q_capacity,
+                   "Advanced - Capacity of the main queue : Maximum number of "
+                   "tokens that can be stored *after* pruning for each frame. "
+                   "Lower -> less memory usage, Higher -> More accurate. "
+                   "Tokens stored in the main queue were already selected "
+                   "through a max-active pre-selection. It means that for each "
+                   "emitting/non-emitting iteration, we can add at most "
+                   "~max-active tokens to the main queue. Typically only the "
+                   "emitting iteration creates a large number of tokens. Using "
+                   "main-q-capacity=k*max-active with k=4..10 should be safe. "
+                   "If main-q-capacity is too small, we will print a warning "
+                   "but prevent the overflow. The computation can safely "
+                   "continue, but the quality of the output may decrease.");
   }
   void Check() const {
     KALDI_ASSERT(default_beam > 0.0 && ntokens_pre_allocated >= 0 &&
-                 max_tokens_per_frame > 0 && lattice_beam >= 0.0f &&
-                 max_active > 1);
+                 main_q_capacity > 0 && aux_q_capacity >= main_q_capacity &&
+                 lattice_beam >= 0.0f && max_active > 1);
   }
 };
 
@@ -563,9 +584,10 @@ class CudaDecoder {
   CostType default_beam_;
   CostType lattice_beam_;
   int32 ntokens_pre_allocated_;
-  int32 max_active_;         // Target value for the params
-  int32 max_active_thresh_;  // target value + tolerance
-  int32 max_tokens_per_frame_;
+  int32 max_active_;         // Target value from the parameters
+  int32 max_active_thresh_;  // Target value + tolerance
+  int32 aux_q_capacity_;
+  int32 main_q_capacity_;
   // Hashmap capacity. Multiple of max_tokens_per_frame
   int32 hashmap_capacity_;
 

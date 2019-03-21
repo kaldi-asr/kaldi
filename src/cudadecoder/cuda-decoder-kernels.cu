@@ -301,7 +301,7 @@ __global__ void nonemitting_preprocess_and_contract_kernel(
             atomicAdd(&lane_counters->main_q_requested, block_sum.y);
 
         // Verify that we do not overflow
-        if (block_offset + block_sum.y < cst_dev_params.q_capacity) {
+        if (block_offset + block_sum.y < cst_dev_params.main_q_capacity) {
           // we don't overflow we can safely grab a spot in the main_q
           sh_main_q_global_block_offset =
               atomicAddI2(&lane_counters->main_q_narcs_and_end, block_sum);
@@ -309,8 +309,8 @@ __global__ void nonemitting_preprocess_and_contract_kernel(
           // our update would overflow
           lane_counters->q_overflow |= OVERFLOW_MAIN_Q;  // for the host
           sh_main_q_global_block_offset.y =
-              cst_dev_params.q_capacity;  // used as flag to broadcast the
-                                          // information in the CTA
+              cst_dev_params.main_q_capacity;  // used as flag to broadcast the
+                                               // information in the CTA
         }
       }
 
@@ -321,7 +321,7 @@ __global__ void nonemitting_preprocess_and_contract_kernel(
 
       // Checking if we are overflowing the main_q
       // All threads are executing the next line
-      if (sh_main_q_global_block_offset.y == cst_dev_params.q_capacity)
+      if (sh_main_q_global_block_offset.y == cst_dev_params.main_q_capacity)
         goto end_lane;  // done for this lane
 
       // If we are executing the following lines it means that we are not
@@ -637,7 +637,7 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
         // We try to prevent an overflow from happening using an adaptive beam
         // (cf GetAdaptiveBeam)
         if (aux_q_index_block_offset + total_successors_in_block <
-            cst_dev_params.q_capacity) {
+            cst_dev_params.aux_q_capacity) {
           // no overflow
 
           // grab the aux_q offset
@@ -673,7 +673,7 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
           // its value is currently invalid (overflow)
           // we set it to a special value and use it as a flag to broadcast
           // the fact that we have an overflow and that all threads should exit
-          sh_aux_q_index_block_offset = cst_dev_params.q_capacity;
+          sh_aux_q_index_block_offset = cst_dev_params.aux_q_capacity;
 
           // Setting the flag for the host. It will be used to print a warning
           // to stderr
@@ -691,7 +691,7 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
       __syncthreads();
       // The only case where we can have that condition met,
       // is if we detected an overflow if the previous lines
-      if (sh_aux_q_index_block_offset == cst_dev_params.q_capacity)
+      if (sh_aux_q_index_block_offset == cst_dev_params.aux_q_capacity)
         goto end_lane;  // done for this lane
       //
       // If we're executing the following lines it means everything
@@ -714,7 +714,7 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
         // we add cst_dev_params.main_q_global_offset
         const int32 prev_token =
             lane_counters->main_q_global_offset + main_q_idx;
-        assert(main_q_idx >= 0 && main_q_idx < cst_dev_params.q_capacity);
+        assert(main_q_idx >= 0 && main_q_idx < cst_dev_params.main_q_capacity);
         cst_dev_params.d_aux_q_info.lane(ilane)[aux_q_index] = {prev_token,
                                                                 arc_idx};
       }
@@ -870,7 +870,7 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
                           nsuccessors);  // aggregate
 
         // Checking if we are overflowing the aux_q
-        if ((aux_q_end + nsuccessors) >= cst_dev_params.q_capacity) {
+        if ((aux_q_end + nsuccessors) >= cst_dev_params.aux_q_capacity) {
           lane_counters->q_overflow |= OVERFLOW_AUX_Q;
           // nothing to revert in global memory
           goto finalize_lane;
@@ -922,7 +922,7 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
                            aggregate);
         // Checking if we are not overflowing the main_q
         const int32 total_ntokens = aggregate.y;
-        if ((main_q_end + total_ntokens) >= cst_dev_params.q_capacity) {
+        if ((main_q_end + total_ntokens) >= cst_dev_params.main_q_capacity) {
           lane_counters->q_overflow |= OVERFLOW_MAIN_Q;
           goto finalize_lane;
         }
@@ -1610,7 +1610,7 @@ __global__ void emitting_preprocess_and_list_extra_prev_tokens_step4_kernel(
         cst_dev_params.d_main_q_extra_and_acoustic_cost.lane(
             ilane)[list_idx] = {extra_cost, acoustic_cost};
         assert(inf_tok.prev_token >= (lane_counters->main_q_global_offset -
-                                      cst_dev_params.q_capacity) &&
+                                      cst_dev_params.main_q_capacity) &&
                inf_tok.prev_token <=
                    (lane_counters->main_q_global_offset + main_q_end));
       }

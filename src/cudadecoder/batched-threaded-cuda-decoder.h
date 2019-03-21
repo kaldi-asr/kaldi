@@ -42,7 +42,7 @@ namespace cuda_decoder {
 // BatchedThreadedCudaDecoder
 struct BatchedThreadedCudaDecoderConfig {
   BatchedThreadedCudaDecoderConfig()
-      : max_batch_size(50),
+      : max_batch_size(100),
         batch_drain_size(10),
         num_control_threads(2),
         num_worker_threads(20),
@@ -53,19 +53,21 @@ struct BatchedThreadedCudaDecoderConfig {
                  "The maximum batch size to be used by the decoder. "
                  "Higher->Faster, more GPU memory used");
     po->Register("batch-drain-size", &batch_drain_size,
-                 "How far to drain the batch before refilling work.  This "
-                 "batches pre/post decode work.");
+                 "How far to drain the batch before refilling work. This "
+                 "batches pre/post decode work");
     po->Register("cuda-control-threads", &num_control_threads,
-                 "The number of workpool threads to use in the cuda decoder");
+                 "The number of pipeline control threads for the CUDA work. "
+                 "e.g. 2 control threads -> 2 independent CUDA pipeline (nnet3 "
+                 "and decoder)");
     po->Register(
         "cuda-worker-threads", &num_worker_threads,
-        "The number of sub threads a worker can spawn to help with CPU tasks.");
+        "The total number of CPU threads launched to process CPU tasks");
     po->Register("determinize-lattice", &determinize_lattice,
-                 "Determinize the lattice before output.");
+                 "Determinize the lattice before output");
     po->Register("max-outstanding-queue-length", &max_pending_tasks,
-                 "Number of files to allow to be outstanding at a time.  When "
+                 "Number of files to allow to be outstanding at a time. When "
                  "the number of files is larger than this handles will be "
-                 "closed before opening new ones in FIFO order.");
+                 "closed before opening new ones in FIFO order");
 
     decoder_opts.nlanes = max_batch_size;
     decoder_opts.nchannels = max_batch_size;

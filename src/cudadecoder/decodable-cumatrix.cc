@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+#if HAVE_CUDA == 1
+
 #include "decodable-cumatrix.h"
 
 namespace kaldi {
@@ -55,4 +57,6 @@ DecodableCuMatrixMapped::GetLogLikelihoodsCudaPointer(int32 subsampled_frame) {
 };
 
 }  // end namespace cuda_decoder
-}  // end namespace kaldi.
+}  // end namespace kaldi
+
+#endif  // HAVE_CUDA == 1
