@@ -71,7 +71,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        alignment_subsampling_factor=3,
                        online_ivector_dir=None,
                        frames_per_iter=20000, frames_per_eg_str="20", srand=0,
-                       egs_opts=None, cmvn_opts=None):
+                       egs_opts=None, cmvn_opts=None, use_sliding_window_cmvn="false"):
     """Wrapper for steps/nnet3/chain/get_egs.sh
 
     See options in that script.
@@ -80,7 +80,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
     common_lib.execute_command(
         """steps/nnet3/chain/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
-                --cmvn-opts "{cmvn_opts}" \
+                --cmvn-opts "{cmvn_opts}" --use-sliding-window-cmvn {sliding_cmvn} \
                 --online-ivector-dir "{ivector_dir}" \
                 --left-context {left_context} \
                 --right-context {right_context} \
@@ -92,11 +92,12 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --alignment-subsampling-factor {alignment_subsampling_factor} \
                 --stage {stage} \
                 --frames-per-iter {frames_per_iter} \
-                --frames-per-eg {frames_per_eg_str} \
+                --frames-per-eg "{frames_per_eg_str}" \
                 --srand {srand} \
                 {data} {dir} {lat_dir} {egs_dir}""".format(
                     command=run_opts.egs_command,
                     cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
+                    sliding_cmvn=use_sliding_window_cmvn,
                     ivector_dir=(online_ivector_dir
                                  if online_ivector_dir is not None
                                  else ''),

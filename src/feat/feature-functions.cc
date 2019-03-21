@@ -241,9 +241,50 @@ void ReverseFrames(const MatrixBase<BaseFloat> &input_features,
 
 void SlidingWindowCmnOptions::Check() const {
   KALDI_ASSERT(cmn_window > 0);
-  if (center)
+  if (!center) {
     KALDI_ASSERT(min_window > 0 && min_window <= cmn_window);
+  }
   // else ignored so value doesn't matter.
+  if (exponential_normalization)
+    KALDI_ASSERT(!center && cmn_window > 1 && normalize_variance == false);
+}
+
+void ExponentialWindowCmnInternal(const SlidingWindowCmnOptions &opts,
+                                  const MatrixBase<double> &input,
+                                  MatrixBase<double> *output) {
+  opts.Check();
+  int32 num_frames = input.NumRows(), dim = input.NumCols(),
+        last_window_start = -1, last_window_end = -1;
+  Vector<double> cur_avg(dim);
+
+  for (int32 t = 0; t < num_frames; t++) {
+    // at start of decoding, get at least min_window frames
+    int32 window_end = std::max(t + 1, opts.min_window);
+    if (window_end > num_frames) {
+      // ensure it does not exceed the number of input frames
+      window_end = num_frames;
+    }
+    if (last_window_start == -1) {
+      // first time -- need to compute the average over a window
+      SubMatrix<double> input_part(input, 0, window_end,
+                                   0, dim);
+      cur_avg.AddRowSumMat(1.0 / window_end, input_part , 0.0);
+    } else if (window_end > last_window_end) {
+      KALDI_ASSERT(window_end == last_window_end + 1);
+      SubVector<double> frame_to_add(input, last_window_end);
+      BaseFloat alpha = 1.0  / opts.cmn_window;
+      cur_avg.Scale(1.0 - alpha);
+      cur_avg.AddVec(alpha, frame_to_add);
+    }
+    last_window_start = 0;
+    last_window_end = window_end;
+
+    SubVector<double> input_frame(input, t),
+        output_frame(*output, t);
+    output_frame.CopyFromVec(input_frame);
+
+    output_frame.AddVec(-1.0, cur_avg);
+  }
 }
 
 // Internal version of SlidingWindowCmn with double-precision arguments.
@@ -251,6 +292,11 @@ void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
                               const MatrixBase<double> &input,
                               MatrixBase<double> *output) {
   opts.Check();
+  if (opts.exponential_normalization) {
+    ExponentialWindowCmnInternal(opts, input, output);
+    return;
+  }
+
   int32 num_frames = input.NumRows(), dim = input.NumCols(),
         last_window_start = -1, last_window_end = -1,
         warning_count = 0;
@@ -271,7 +317,7 @@ void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
       window_start = 0; // or: window_start -= window_start
     }
     if (!opts.center) {
-      if (window_end > t)
+      if (window_end > t) // at start of decoding, get at least min_window frames
         window_end = std::max(t + 1, opts.min_window);
     }
     if (window_end > num_frames) {
@@ -281,8 +327,8 @@ void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
     }
     if (last_window_start == -1) {
       SubMatrix<double> input_part(input,
-                                      window_start, window_end - window_start,
-                                      0, dim);
+                                   window_start, window_end - window_start,
+                                   0, dim);
       cur_sum.AddRowSumMat(1.0, input_part , 0.0);
       if (opts.normalize_variance)
         cur_sumsq.AddDiagMat2(1.0, input_part, kTrans, 0.0);

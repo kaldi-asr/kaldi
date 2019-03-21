@@ -86,6 +86,10 @@ done
 
 sdata=$data/split$nj;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
+use_sliding_window_cmvn=false
+if [ -f $srcdir/sliding_window_cmvn ]; then
+  use_sliding_window_cmvn=`cat $srcdir/sliding_window_cmvn`
+fi
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
@@ -97,7 +101,11 @@ echo $nj > $dir/num_jobs
 ## Set up features.
 echo "$0: feature type is raw"
 
-feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+if $use_sliding_window_cmvn; then
+  feats="ark,s,cs:apply-cmvn-sliding $cmvn_opts scp:$sdata/JOB/feats.scp ark:- |"
+else
+  feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+fi
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;

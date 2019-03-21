@@ -161,13 +161,15 @@ struct SlidingWindowCmnOptions {
   int32 max_warnings;
   bool normalize_variance;
   bool center;
+  bool exponential_normalization;
 
   SlidingWindowCmnOptions():
       cmn_window(600),
       min_window(100),
       max_warnings(5),
       normalize_variance(false),
-      center(false) { }
+      center(false),
+      exponential_normalization(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("cmn-window", &cmn_window, "Window in frames for running "
@@ -182,6 +184,12 @@ struct SlidingWindowCmnOptions {
     opts->Register("center", &center, "If true, use a window centered on the "
                    "current frame (to the extent possible, modulo end effects). "
                    "If false, window is to the left.");
+    opts->Register("exponential-normalization", &exponential_normalization,
+                   "If true, use exponentially decaying weighted window with "
+                   "time-constant = cmn-window instead of the usual "
+                   "rectangular window averaging. "
+                   "Only valid if center == false and "
+                   "norm-vars == false.");
   }
   void Check() const;
 };

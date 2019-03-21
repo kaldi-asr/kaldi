@@ -1,39 +1,16 @@
 #!/bin/bash
 
 # This is a chain-training script with TDNN+LSTM neural networks.
-# This script is similar to local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh,
-# but updated to use new l2-regularize options and fast-lstmp with decay-time.
-# It uses the reverberated IHM data in the train set.
+# This script is based on local/chain/tuning/run_tdnn_lstm_1i.sh, but adding
+# the reverberated IHM data into the train set.
 # This script obtains better results on IHM, SDM and MDM tasks.
 
 # Please see RESULTS_* for examples of command lines invoking this script.
 
-# local/chain/multi_condition/tuning/run_tdnn_lstm_1b.sh --mic ihm --train-set train_cleaned --gmm tri3_cleaned &
-# local/chain/multi_condition/tuning/run_tdnn_lstm_1b.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
-# local/chain/multi_condition/tuning/run_tdnn_lstm_1b.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn_lstm.sh --mic ihm --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn_lstm.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn_lstm.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
 
-# steps/info/chain_dir_info.pl exp/ihm/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi
-# exp/ihm/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi: num-iters=176 nj=2..12 num-params=43.4M dim=40+100->3736 combine=-0.101->-0.100 (over 2) xent:train/valid[116,175,final]=(-2.47,-1.60,-1.55/-2.58,-1.73,-1.69) logprob:train/valid[116,175,final]=(-0.144,-0.101,-0.099/-0.163,-0.138,-0.136)
-# steps/info/chain_dir_info.pl exp/sdm1/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi_ihmali
-# exp/sdm1/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi_ihmali: num-iters=174 nj=2..12 num-params=43.4M dim=40+100->3728 combine=-0.129->-0.126 (over 4) xent:train/valid[115,173,final]=(-2.86,-1.97,-1.98/-2.96,-2.10,-2.10) logprob:train/valid[115,173,final]=(-0.184,-0.134,-0.134/-0.200,-0.164,-0.161)
-
-# local/chain/compare_wer_general.sh ihm chain_cleaned_rvb tdnn_lstm1{a,b}_sp_rvb_bi
-# System                tdnn_lstm1a_sp_rvb_bi tdnn_lstm1b_sp_rvb_bi
-# WER on dev        19.4      18.9
-# WER on eval        19.4      19.3
-# Final train prob     -0.0627414-0.0985175
-# Final valid prob      -0.141082 -0.136302
-# Final train prob (xent)     -0.847054  -1.55263
-# Final valid prob (xent)      -1.25849  -1.69064
-
-# local/chain/compare_wer_general.sh sdm1 chain_cleaned_rvb tdnn_lstm1{a,b}_sp_rvb_bi_ihmali
-# System                tdnn_lstm1a_sp_rvb_bi_ihmali tdnn_lstm1b_sp_rvb_bi_ihmali
-# WER on dev        34.6      33.9
-# WER on eval        37.6      37.4
-# Final train prob     -0.0861836 -0.133611
-# Final valid prob      -0.149669 -0.161014
-# Final train prob (xent)      -1.21927   -1.9774
-# Final valid prob (xent)      -1.53542  -2.09991
 
 set -e -o pipefail
 
@@ -49,6 +26,9 @@ ihm_gmm=tri3_cleaned  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 num_data_reps=1
 num_epochs=4
+decode_icsi=false
+decode_aspire=false
+decode_tedlium=false
 
 chunk_width=160,140,110,80
 chunk_left_context=40
@@ -62,8 +42,9 @@ xent_regularize=0.025
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tlstm_affix=1b  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+tlstm_affix=1c  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
+cmvn_opts="--norm-vars=false --cmn-window=300 --center=false"
 
 # decode options
 extra_left_context=50
@@ -136,13 +117,12 @@ local/nnet3/prepare_lores_feats.sh --stage $stage \
 
 
 train_data_dir=data/$mic/${train_set}_sp${rvb_affix}_hires
-train_ivector_dir=exp/$mic/nnet3${nnet3_affix}${rvb_affix}/ivectors_${train_set}_sp${rvb_affix}_hires
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
 
 for f in $gmm_dir/final.mdl $lores_train_data_dir/feats.scp \
-   $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp; do
+   $train_data_dir/feats.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -235,20 +215,19 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   tdnn_opts="l2-regularize=0.006"
   lstm_opts="l2-regularize=0.0025 decay-time=20 dropout-proportion=0.0"
   output_opts="l2-regularize=0.001"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=100 name=ivector
   input dim=40 name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 dim=1024 $tdnn_opts
@@ -293,8 +272,8 @@ if [ $stage -le 16 ]; then
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$train_cmd --mem 4G" \
-    --feat.online-ivector-dir $train_ivector_dir \
-    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts "$cmvn_opts" \
+    --feat.use-sliding-window-cmvn=true \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.0 \
@@ -346,7 +325,6 @@ if [ $stage -le 18 ]; then
           --frames-per-chunk "$frames_per_chunk" \
           --extra-left-context-initial 0 \
           --extra-right-context-final 0 \
-          --online-ivector-dir exp/$mic/nnet3${nnet3_affix}${rvb_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
       ) || touch $dir/.error &
@@ -357,4 +335,141 @@ if [ $stage -le 18 ]; then
     exit 1
   fi
 fi
+
+if $decode_aspire; then
+  if [ $stage -le 19 ]; then
+    for data in dev_aspire; do
+      steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires.conf data/${data}_hires
+      steps/compute_cmvn_stats.sh data/${data}_hires
+    done
+  fi
+
+  test_lang=data/lang_fisher_test
+  test_graph_affix=_fisher
+  graph_dir=$dir/graph${test_graph_affix}
+  if [ $stage -le 21 ]; then
+    # Note: it might appear that this $lang directory is mismatched, and it is as
+    # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
+    # the lang directory.
+    utils/mkgraph.sh --self-loop-scale 1.0 ${test_lang} $dir $graph_dir
+  fi
+
+  if [ $stage -le 22 ]; then
+    rm -f $dir/.error
+    for dset in dev_aspire; do
+      (
+      decode_dir=$dir/decode${test_graph_affix}_${dset}
+
+      steps/nnet3/decode.sh --nj 30 --cmd "$decode_cmd" \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context $extra_left_context \
+        --extra-right-context 0 \
+        --extra-left-context-initial 0 --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk" --skip-scoring true \
+        $graph_dir data/${dset}_hires $decode_dir || { echo "Failed decoding in $decode_dir"; touch $dir/.error; }
+      ) &
+    done
+    wait
+
+    if [ -f $dir/.error ]; then
+      echo "Failed decoding."
+      exit 1
+    fi
+  fi
+
+  if [ $stage -le 23 ]; then
+    for dset in dev_aspire; do
+      decode_dir=$dir/decode${test_graph_affix}_${dset}
+      local/score_aspire.sh --min-lmwt 8 --max-lmwt 12 \
+        --cmd "$decode_cmd" --resolve-overlaps false \
+        $graph_dir $decode_dir ${dset} ${dset} $decode_dir/ctm_out
+    done
+  fi
+fi
+
+if $decode_icsi; then
+  if [ $stage -le 19 ]; then
+    for data in dev_icsi; do
+      steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires.conf data/$mic/${data}_hires
+      steps/compute_cmvn_stats.sh data/$mic/${data}_hires
+    done
+  fi
+
+  if [ $stage -le 22 ]; then
+    rm -f $dir/.error
+    for dset in dev_icsi eval_icsi; do
+      (
+      decode_dir=$dir/decode${test_graph_affix}_${dset}
+
+      steps/nnet3/decode.sh --nj 30 --cmd "$decode_cmd" \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context $extra_left_context \
+        --extra-right-context 0 \
+        --extra-left-context-initial 0 --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk" \
+        $graph_dir data/$mic/${dset}_hires $decode_dir || { echo "Failed decoding in $decode_dir"; touch $dir/.error; }
+      ) &
+    done
+    wait
+
+    if [ -f $dir/.error ]; then
+      echo "Failed decoding."
+      exit 1
+    fi
+  fi
+fi
+
+if $decode_tedlium; then
+  if [ $stage -le 19 ]; then
+    for data in tedlium_dev tedlium_test; do
+      steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires.conf data/${data}_hires
+      steps/compute_cmvn_stats.sh data/${data}_hires
+      utils/fix_data_dir.sh data/${data}_hires
+    done
+  fi
+
+  test_lang=data/ted_lang_nosp
+  test_graph_affix=_ted
+  graph_dir=$dir/graph${test_graph_affix}
+  if [ $stage -le 21 ]; then
+    # Note: it might appear that this $lang directory is mismatched, and it is as
+    # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
+    # the lang directory.
+    utils/mkgraph.sh --self-loop-scale 1.0 ${test_lang} $dir $graph_dir
+  fi
+
+  if [ $stage -le 22 ]; then
+    rm -f $dir/.error
+    for dset in tedlium_dev tedlium_test; do
+      (
+      decode_dir=$dir/decode${test_graph_affix}_${dset}
+
+      steps/nnet3/decode.sh --nj 30 --cmd "$decode_cmd" \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context $extra_left_context \
+        --extra-right-context 0 \
+        --extra-left-context-initial 0 --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk" --skip-scoring true \
+        $graph_dir data/${dset}_hires $decode_dir || { echo "Failed decoding in $decode_dir"; touch $dir/.error; }
+      ) &
+    done
+    wait
+
+    if [ -f $dir/.error ]; then
+      echo "Failed decoding."
+      exit 1
+    fi
+  fi
+
+  if [ $stage -le 23 ]; then
+    for dset in tedlium_dev tedlium_test; do
+      decode_dir=$dir/decode${test_graph_affix}_${dset}
+      steps/scoring/score_kaldi_wer.sh --min-lmwt 8 --max-lmwt 12 \
+        --cmd "$decode_cmd" data/${dset}_hires \
+        $graph_dir $decode_dir
+    done
+  fi
+fi
+
+exit 0
 exit 0

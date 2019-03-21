@@ -381,6 +381,7 @@ def train(args, run_opts):
             frames_per_eg_str=args.chunk_width,
             srand=args.srand,
             egs_opts=args.egs_opts,
+            use_sliding_window_cmvn=args.use_sliding_window_cmvn,
             cmvn_opts=args.cmvn_opts,
             online_ivector_dir=args.online_ivector_dir,
             frames_per_iter=args.frames_per_iter,
