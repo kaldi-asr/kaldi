@@ -60,7 +60,13 @@ class SingleUtteranceNnet3DecoderTpl {
                                  const FST &fst,
                                  OnlineNnet2FeaturePipeline *features);
 
-  /// advance the decoding as far as we can.
+  /// Initializes the decoding and sets the frame offset of the underlying
+  /// decodable object. This method is called by the constructor. You can also
+  /// call this method when you want to reset the decoder state, but want to
+  /// keep using the same decodable object, e.g. in case of an endpoint.
+  void InitDecoding(int32 frame_offset = 0);
+
+  /// Advances the decoding as far as we can.
   void AdvanceDecoding();
 
   /// Finalizes the decoding. Cleans up and prunes remaining tokens, so the
