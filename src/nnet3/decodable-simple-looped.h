@@ -58,6 +58,14 @@ struct NnetSimpleLoopedComputationOptions {
       acoustic_scale(0.1),
       debug_computation(false) { }
 
+  NnetSimpleLoopedComputationOptions(BaseFloat am_scale, int32 frames_per_chunk,
+      int32 frame_subsample_factor, int32 extra_left_context_initial = 0,
+      bool debug_computation = false):
+      acoustic_scale(am_scale), frames_per_chunk(frames_per_chunk),
+      frame_subsampling_factor(frame_subsample_factor),
+      extra_left_context_initial(extra_left_context_initial),
+      debug_computation(debug_computation) { }
+
   void Check() const {
     KALDI_ASSERT(extra_left_context_initial >= 0 &&
                  frame_subsampling_factor > 0 && frames_per_chunk > 0 &&

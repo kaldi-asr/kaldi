@@ -423,6 +423,11 @@ struct OnlineSilenceWeightingConfig {
   OnlineSilenceWeightingConfig():
       silence_weight(1.0), max_state_duration(-1) { }
 
+  OnlineSilenceWeightingConfig(std::string sil_phones, BaseFloat sil_weight=1.0,
+      BaseFloat max_state_duration=-1):
+      silence_phones_str(sil_phones), silence_weight(sil_weight),
+      max_state_duration(max_state_duration) { }
+
   void Register(OptionsItf *opts) {
     opts->Register("silence-phones", &silence_phones_str, "(RE weighting in "
                    "iVector estimation for online decoding) List of integer ids of "

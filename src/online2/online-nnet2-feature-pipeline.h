@@ -91,6 +91,23 @@ struct OnlineNnet2FeaturePipelineConfig {
   OnlineNnet2FeaturePipelineConfig():
       feature_type("mfcc"), add_pitch(false) { }
 
+  OnlineNnet2FeaturePipelineConfig(
+      std::string feature_config, std::string feature_type, std::string ivector_config,
+      OnlineSilenceWeightingConfig& sil_config, std::string pitch_config = "",
+      bool add_pitch = false):
+      feature_type(feature_type), ivector_extraction_config(ivector_config),
+      silence_weighting_config(sil_config), online_pitch_config(pitch_config),
+      add_pitch(add_pitch) {
+    if (feature_type == "mfcc") {
+      mfcc_config = feature_config;
+    } else if (feature_type == "fbank") {
+      fbank_config = feature_config;
+    } else if (feature_type == "plp") {
+      plp_config = feature_config;
+    } else {
+      KALDI_ERR << "Unknown feature type " << feature_type;
+    }
+  }
 
   void Register(OptionsItf *opts) {
     opts->Register("feature-type", &feature_type,

@@ -62,6 +62,16 @@ struct LatticeFasterDecoderConfig {
                                 beam_delta(0.5),
                                 hash_ratio(2.0),
                                 prune_scale(0.1) { }
+
+  LatticeFasterDecoderConfig(BaseFloat beam, BaseFloat latbeam,
+      int32 max_active=std::numeric_limits<int32>::max(), int32 min_active=200,
+      int32 prune_interval=25, bool determinize_lattice=true, BaseFloat beam_delta=0.5,
+      BaseFloat hash_ratio=2.0, BaseFloat prune_scale=0.1):
+      beam(beam), lattice_beam(latbeam), max_active(max_active), min_active(min_active),
+      prune_interval(prune_interval), determinize_lattice(determinize_lattice),
+      beam_delta(beam_delta), hash_ratio(hash_ratio), prune_scale(prune_scale) { }
+
+
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
     opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
