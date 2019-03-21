@@ -1,0 +1,8 @@
+1. You should prepare the initial rttm file in the rttm folder. And an example is
+rttm/x_vector_rttm.  
+2. You don't need to extract the MFCC feature again, but you need to train the
+ubm again. The key thing is that apply cmn and add deltas will harm the
+performance of the system.
+3. When I convert the Kaldi model to numpy array. I used a command
+ivector-extractor-copy, which is not supported by current Kaldi. So please use
+my Kaldi. 
