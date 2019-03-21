@@ -216,7 +216,7 @@ struct BackpointerToken {
    will normally be StdToken, but also may be BackpointerToken which is to support
    quick lookup of the current best path (see lattice-faster-online-decoder.h)
 
-   The FST you invoke this decoder with is expected to equal
+   The FST you invoke this decoder which is expected to equal
    Fst::Fst<fst::StdArc>, a.k.a. StdFst, or GrammarFst.  If you invoke it with
    FST == StdFst and it notices that the actual FST type is
    fst::VectorFst<fst::StdArc> or fst::ConstFst<fst::StdArc>, the decoder object
@@ -495,7 +495,7 @@ class LatticeFasterDecoderTpl {
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;
 
-  // There are various cleanup tasks... the the toks_ structure contains
+  // There are various cleanup tasks... the toks_ structure contains
   // singly linked lists of Token pointers, where Elem is the list type.
   // It also indexes them in a hash, indexed by state (this hash is only
   // maintained for the most recent frame).  toks_.Clear()

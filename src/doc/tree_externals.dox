@@ -344,7 +344,7 @@ has value 0 (i.e. the leftmost HMM-state).  Assuming the answer is "yes", the ne
 is "SE 2 [ 220 221 222 223 ]", which is asking whether the phone to the right is one of various
 forms of the phone "M" (a rather unintuitive question to ask, since we're
 in the leftmost HMM-state); if yes, we ask "SE 0 [ 104 105 106 107... 286 287 ]" which is
-a question about the phone to the right; if yes, then the pdf-id is 5 ("CE 5") and if
+a question about the phone to the left; if yes, then the pdf-id is 5 ("CE 5") and if
 no, 696 ("CE 696").
 \verbatim
 s3# copy-tree --binary=false exp/tri1/tree - 2>/dev/null | head -100

@@ -50,7 +50,7 @@ namespace kaldi {
       // Process this frame
     }
     \endcode
-   and the the call to IsLastFrame would block if the features had not arrived yet.
+   and the call to IsLastFrame would block if the features had not arrived yet.
    The decodable object would have to know when to terminate the decoding.  This
    online-decoding mode is still supported, it is what happens when you call, for
    example, LatticeFasterDecoder::Decode().
