@@ -2,7 +2,7 @@
 
 # 2019 Dongji Gao
 
-# This script generate subword text form word text.
+# This script generates subword text form word text.
 
 # Begin configuration section
 separator="@@"
