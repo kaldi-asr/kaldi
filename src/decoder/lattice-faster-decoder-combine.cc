@@ -35,8 +35,8 @@ BucketQueue<Token>::BucketQueue(BaseFloat best_cost_estimate,
   // 5) * cost_scale.
   int32 bucket_size = 100;
   buckets_.resize(bucket_size);
-  bucket_storage_begin_ = std::floor((best_cost_estimate - 15) * cost_scale);
-  first_occupied_bucket_index_ = bucket_storage_begin_ + bucket_size;
+  bucket_storage_begin_ = std::floor((best_cost_estimate - 15) * cost_scale_);
+  first_occupied_vec_index_ = bucket_size;
 }
 
 template<typename Token>
@@ -45,60 +45,69 @@ void BucketQueue<Token>::Push(Token *tok) {
   size_t vec_index = static_cast<size_t>(bucket_index - bucket_storage_begin_);
 
   if (vec_index >= buckets_.size()) {
-    KALDI_WARN << "Have to reallocate the BucketQueue. Maybe need to reserve"
-               << " more elements in constructor.";
-    int32 offset = static_cast<int32>(vec_index);
-    // a margin here (e.g. 10);
-    int32 increase_size = offset >= 0 ? offset + 1 - buckets_.size() + 10 :
-                                        - offset + 10;
-    buckets_.resize(buckets_.size() + increase_size);
-    
-    // Push front
-    if (offset < 0) {
-      std::vector<std::vector<Token*> > tmp(buckets_);
-      buckets_.clear();
-      for (int32 i = 10 - offset ; i < buckets_.size(); i++) {
-        buckets_[i].swap(tmp[i + offset - 10]);
-      }
-      // Update start point
-      bucket_storage_begin_ = bucket_index - 10;
-      vec_index = 10;
+    int32 margin = 10;  // a margin which is used to reduce re-allocate
+                        // space frequently
+    // A cast from unsigned to signed type does not generate a machine-code
+    // instruction
+    if (static_cast<int32>(vec_index) > 0) {
+      KALDI_WARN << "Have to reallocate the BucketQueue. Maybe need to reserve"
+                 << " more elements in constructor. Push back.";
+      buckets_.resize(static_cast<int32>(vec_index) + margin);
+    } else {  // less than 0
+       KALDI_WARN << "Have to reallocate the BucketQueue. Maybe need to reserve"
+                 << " more elements in constructor. Push front.";
+       int32 increase_size = - static_cast<int32>(vec_index) + margin;
+       buckets_.resize(buckets_.size() + increase_size);
+       // translation
+       for (size_t i = buckets_.size() - 1; i >= increase_size; i--) {
+         buckets_[i].swap(buckets_[i - increase_size]);
+       }
+       bucket_storage_begin_ = bucket_storage_begin_ - increase_size;
+       vec_index = increase_size;
     }
   }
-
   tok->in_queue = true;
   buckets_[vec_index].push_back(tok);
-  if (vec_index < (first_occupied_bucket_index_ - bucket_storage_begin_))
-    first_occupied_bucket_index_ = vec_index + bucket_storage_begin_;
+  if (vec_index < first_occupied_vec_index_)
+    first_occupied_vec_index_ = vec_index;
 }
 
 template<typename Token>
 Token* BucketQueue<Token>::Pop() {
-  int32 vec_index = first_occupied_bucket_index_ - bucket_storage_begin_;
-  Token* best_tok = NULL;
-  while(vec_index < buckets_.size()) {
+  int32 vec_index = first_occupied_vec_index_;
+  while (vec_index < buckets_.size()) {
+    Token* tok = buckets_[vec_index].back();
     // Remove the best token
-    best_tok = buckets_[vec_index].back();
     buckets_[vec_index].pop_back();
 
-    if (buckets_[vec_index].empty()) {  // This bucket is empty. Update
-                                        // first_occupied_bucket_index_
+    if (buckets_[vec_index].empty()) { // This bucket is empty. Update vec_index
       int32 next_vec_index = vec_index + 1;
-      for(; next_vec_index < buckets_.size(); next_vec_index++) {
-        if(!buckets_[next_vec_index].empty()) break;
+      for (; next_vec_index < buckets_.size(); next_vec_index++) {
+        if (!buckets_[next_vec_index].empty()) break;
       }
-      first_occupied_bucket_index_ = bucket_storage_begin_ + next_vec_index;
       vec_index = next_vec_index;
     }
 
-    if (best_tok->in_queue) {  // This is a effective token
-      best_tok->in_queue = false;
-      break;
-    } else {
-      best_tok = NULL;
+    if (tok->in_queue) {  // This is a effective token
+      tok->in_queue = false;
+      first_occupied_vec_index_ = vec_index;
+      return tok;
     }
   }
-  return best_tok;
+  return NULL;
+}
+
+template<typename Token>
+void BucketQueue<Token>::Clear() {
+  for (size_t i = 0; i < buckets_.size(); i++) {
+    buckets_[i].clear();
+  }
+  first_occupied_vec_index_ = buckets_.size();
+}
+
+template<typename Token>
+void BucketQueue<Token>::SetBegin(BaseFloat best_cost_estimate) {
+  bucket_storage_begin_ = std::floor((best_cost_estimate - 15) * cost_scale_);
 }
 
 // instantiate this class once for each thing you have to decode.
@@ -106,15 +115,19 @@ template <typename FST, typename Token>
 LatticeFasterDecoderCombineTpl<FST, Token>::LatticeFasterDecoderCombineTpl(
     const FST &fst,
     const LatticeFasterDecoderCombineConfig &config):
-    fst_(&fst), delete_fst_(false), config_(config), num_toks_(0) {
+    fst_(&fst), delete_fst_(false), config_(config), num_toks_(0),
+    cur_queue_(0, config_.cost_scale) {
   config.Check();
+  prev_toks_.reserve(1000);
+  cur_toks_.reserve(1000);
 }
 
 
 template <typename FST, typename Token>
 LatticeFasterDecoderCombineTpl<FST, Token>::LatticeFasterDecoderCombineTpl(
     const LatticeFasterDecoderCombineConfig &config, FST *fst):
-    fst_(fst), delete_fst_(true), config_(config), num_toks_(0) {
+    fst_(fst), delete_fst_(true), config_(config), num_toks_(0),
+    cur_queue_(0, config_.cost_scale) {
   config.Check();
   prev_toks_.reserve(1000);
   cur_toks_.reserve(1000);
@@ -150,6 +163,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   num_toks_++;
   best_token_in_next_frame_ = start_tok;
   adaptive_beam_ = config_.beam;
+
 }
 
 // Returns true if any kind of traceback is available (not necessarily from
@@ -779,11 +793,12 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
     }
   }
 
-  KALDI_ASSERT(best_token_in_next_frame_); 
-  BucketQueue cur_queue(best_token_in_next_frame_->tot_cost, config_.cost_scale);
+  KALDI_ASSERT(best_token_in_next_frame_);
+  cur_queue_.Clear();
+  cur_queue_.SetBegin(best_token_in_next_frame_->tot_cost);
   // Add tokens to queue
   for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-    cur_queue.Push(tok);
+    cur_queue_.Push(tok);
   }
 
   // Declare a local variable so the compiler can put it in a register, since
@@ -812,7 +827,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   Token *tok = NULL;
   int32 num_toks_processed = 0;
   int32 max_active = config_.max_active;
-  for (; num_toks_processed < max_active && (tok = cur_queue.Pop()) != NULL;
+  for (; num_toks_processed < max_active && (tok = cur_queue_.Pop()) != NULL;
        num_toks_processed++) {
     BaseFloat cur_cost = tok->tot_cost;
     StateId state = tok->state_id;
@@ -846,7 +861,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
           // "changed" tells us whether the new token has a different
           // cost from before, or is new.
           if (changed && !new_tok->in_queue) {
-            cur_queue.Push(new_tok);
+            cur_queue_.Push(new_tok);
           }
         }
       } else {  // propagate emitting
@@ -876,7 +891,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
 
   {  // This block updates adaptive_beam_
     BaseFloat beam_used_this_frame = adaptive_beam;
-    Token *tok = cur_queue.Pop();
+    Token *tok = cur_queue_.Pop();
     if (tok != NULL) {
       // The queue would only be nonempty if we hit the max-active constraint.
       BaseFloat best_cost_this_frame = cur_cutoff - adaptive_beam;
@@ -921,9 +936,11 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
     tmp_toks = &cur_toks_;
   }
 
-  BucketQueue cur_queue(best_token_in_next_frame_->tot_cost, config_.cost_scale);
+  KALDI_ASSERT(best_token_in_next_frame_);
+  cur_queue_.Clear();
+  cur_queue_.SetBegin(best_token_in_next_frame_->tot_cost);
   for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-    cur_queue.Push(tok);
+    cur_queue_.Push(tok);
   }
 
   // Declare a local variable so the compiler can put it in a register, since
@@ -937,7 +954,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
   int32 num_toks_processed = 0;
   int32 max_active = config_.max_active;
 
-  for (; num_toks_processed < max_active && (tok = cur_queue.Pop()) != NULL;
+  for (; num_toks_processed < max_active && (tok = cur_queue_.Pop()) != NULL;
        num_toks_processed++) {
     BaseFloat cur_cost = tok->tot_cost;
     StateId state = tok->state_id;
@@ -971,7 +988,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
           // "changed" tells us whether the new token has a different
           // cost from before, or is new.
           if (changed && !new_tok->in_queue) {
-            cur_queue.Push(new_tok);
+            cur_queue_.Push(new_tok);
           }
         }
       }

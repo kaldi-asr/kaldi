@@ -265,6 +265,13 @@ class BucketQueue {
   // were no Tokens left. Sets tok->in_queue to false for the returned Token.
   Token* Pop();
 
+  // Clear all the individual buckets. Set 'first_occupied_vec_index_' to the
+  // value past the end of buckets_.
+  void Clear();
+
+  // Set 'bucket_storage_begin_'.
+  void SetBegin(BaseFloat best_cost_estimate);
+
  private:
   // Configuration value that is multiplied by tokens' costs before integerizing
   // them to determine the bucket index
@@ -279,11 +286,11 @@ class BucketQueue {
   // then access buckets_[vec_index].
   std::vector<std::vector<Token*> > buckets_;
 
-  // The lowest-numbered bucket_index that is occupied (i.e. the first one which
+  // The lowest-numbered vec_index that is occupied (i.e. the first one which
   // has any elements). Will be updated as we add or remove tokens.
   // If this corresponds to a value past the end of buckets_, we interpret it
   // as 'there are no buckets with entries'.
-  int32 first_occupied_bucket_index_;
+  int32 first_occupied_vec_index_;
 
   // An offset that determines how we index into the buckets_ vector;
   // may be interpreted as a 'bucket_index' that is better than any one that
@@ -579,8 +586,7 @@ class LatticeFasterDecoderCombineTpl {
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
-  std::queue<StateId> cur_queue_;  // temp variable used in ProcessForFrame
-                                   // and ProcessNonemitting
+
   // Stores the best token in next frame. The tot_cost of it will be used to
   // initialize the BucketQueue.
   Token* best_token_in_next_frame_;
@@ -616,6 +622,8 @@ class LatticeFasterDecoderCombineTpl {
   BaseFloat final_best_cost_;
 
   BaseFloat adaptive_beam_;  // will be set to beam_ when we start
+  BucketQueue cur_queue_;  // temp variable used in 
+                           // ProcessForFrame/ProcessNonemitting
 
   // This function takes a singly linked list of tokens for a single frame, and
   // outputs a list of them in topological order (it will crash if no such order

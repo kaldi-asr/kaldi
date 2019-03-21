@@ -46,6 +46,7 @@ struct LatticeFasterDecoderCombineConfig {
                             // command-line program.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
+  BaseFloat cost_scale;
   BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
                            // it's not a very important parameter.  It affects the
                            // algorithm that prunes the tokens as we go.
@@ -62,6 +63,7 @@ struct LatticeFasterDecoderCombineConfig {
                                        determinize_lattice(true),
                                        beam_delta(0.5),
                                        hash_ratio(2.0),
+                                       cost_scale(1.0),
                                        prune_scale(0.1) { }
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
@@ -81,6 +83,10 @@ struct LatticeFasterDecoderCombineConfig {
                    "max-active constraint is applied.  Larger is more accurate.");
     opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
                    "control hash behavior");
+    opts->Register("cost-scale", &cost_scale, "A scale that we multiply the "
+                   "token costs by before intergerizing; a larger value means "
+                   "more buckets and precise.");
+
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
@@ -259,6 +265,13 @@ class BucketQueue {
   // were no Tokens left. Sets tok->in_queue to false for the returned Token.
   Token* Pop();
 
+  // Clear all the individual buckets. Set 'first_occupied_vec_index_' to the
+  // value past the end of buckets_.
+  void Clear();
+
+  // Set 'bucket_storage_begin_'.
+  void SetBegin(BaseFloat best_cost_estimate);
+
  private:
   // Configuration value that is multiplied by tokens' costs before integerizing
   // them to determine the bucket index
@@ -273,11 +286,11 @@ class BucketQueue {
   // then access buckets_[vec_index].
   std::vector<std::vector<Token*> > buckets_;
 
-  // The lowest-numbered bucket_index that is occupied (i.e. the first one which
+  // The lowest-numbered vec_index that is occupied (i.e. the first one which
   // has any elements). Will be updated as we add or remove tokens.
   // If this corresponds to a value past the end of buckets_, we interpret it
   // as 'there are no buckets with entries'.
-  int32 first_occupied_bucket_index_;
+  int32 first_occupied_vec_index_;
 
   // An offset that determines how we index into the buckets_ vector;
   // may be interpreted as a 'bucket_index' that is better than any one that
@@ -570,16 +583,10 @@ class LatticeFasterDecoderCombineTpl {
   /// on a complete token list on one frame. But, in this version, it is used
   /// on a token list which only contains the emittion part. So the max_active
   /// and min_active values might be narrowed.
-  BaseFloat GetCutoff(const TokenList &token_list, const Token* best_token,
-                      BaseFloat *adaptive_beam, 
-                      BucketQueue *queue);
-
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
-  std::queue<StateId> cur_queue_;  // temp variable used in ProcessForFrame
-                                   // and ProcessNonemitting
-  std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
+
   // Stores the best token in next frame. The tot_cost of it will be used to
   // initialize the BucketQueue.
   Token* best_token_in_next_frame_;
@@ -613,6 +620,10 @@ class LatticeFasterDecoderCombineTpl {
   unordered_map<Token*, BaseFloat> final_costs_;
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;
+
+  BaseFloat adaptive_beam_;  // will be set to beam_ when we start
+  BucketQueue cur_queue_;  // temp variable used in 
+                           // ProcessForFrame/ProcessNonemitting
 
   // This function takes a singly linked list of tokens for a single frame, and
   // outputs a list of them in topological order (it will crash if no such order
