@@ -3226,6 +3226,19 @@ template<typename Real> static void UnitTestLbfgs() {
   g_kaldi_verbose_level = temp;
 }
 
+template<typename Real>  static void UnitTestVecStrideSimple() {
+  Vector<Real> v(20);
+  v.SetRandn();
+
+  Vector<Real> v2(20);
+  SubVector<Real> v_a(v.Data(), 10, 2);
+  SubVector<Real> v2_a(v2.Data(), 10, 2);
+  v2_a.CopyFromVec(v_a);
+  SubVector<Real> v_b(v.Data() + 1, 10, 2);
+  SubVector<Real> v2_b(v2.Data() + 1, 10, 2);
+  v2_b.CopyFromVec(v_b);
+  AssertEqual(v, v2);
+}
 
 template<typename Real> static void UnitTestLinearCgd() {
   for (int i = 0; i < 20 ; i++) {
@@ -4590,6 +4603,7 @@ template<typename Real> static void UnitTestTriVecSolver() {
 
 
 template<typename Real> static void MatrixUnitTest(bool full_test) {
+  UnitTestVecStrideSimple<Real>();
   UnitTestLinearCgd<Real>();
   UnitTestGeneralMatrix<BaseFloat>();
   UnitTestTridiagonalize<Real>();

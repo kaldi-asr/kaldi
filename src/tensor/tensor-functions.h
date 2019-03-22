@@ -69,14 +69,14 @@ void CopyData(const Tensor &src, const Tensor *dest);
                          reinterpreted.
      @param   [in] dims  The dimensions that we want for the returned
                        Tensor; its product must equal src.NumElements().
-     @return   If the view could be constructed, this function returns
-               a shared_ptr to a new Tensor with the requestd dims,
-               that shares underlying data with 'src'; otherwise returns
-               NULL.  (If src.HasCStrides(), then this function is
-               guaranteed not to return nullptr).
-
+     @param   [out] dest  If the view could be constructed, this function
+               make 'dest' a view of the data in 'src' with the requested dims;
+               otherwise 'dest' will be unchanged.
+     @return   Returns true if this view could be constructed. If
+               src.HasCStrides() is true, this function will never return
+               false.
  */
-std::shared_ptr<Tensor> View(const Tensor &src, ArrayRef<int64_t> dims);
+bool View(const Tensor &src, ArrayRef<int64_t> dims, Tensor *dest);
 
 
 /**
@@ -99,41 +99,100 @@ std::shared_ptr<Tensor> View(const Tensor &src, ArrayRef<int64_t> dims);
    a temporary Tensor 'temp' passing src.Dims() in the constructor, copy the
    data in 'src' to 'temp', and then call MergeAxes on 'temp'.
 
-       @param [in]  src   The Tensor which whose axes we will attempt to
+       @param [in]  src   The Tensor whose axes we will attempt to
                           merge
        @param [in] axis1  The index of the first of the two axes which
                           this function will attempt to merge.  Must
                           be less than src.NumAxes() - 1.
-       @return            Returns a pointer to a Tensor with the
-                          merged axes (if the pattern of 'src'
-                          allows it), or nullptr otherwise.
+       @param [out] dest  The Tensor which is written to; on success this
+                          will be a Tensor with axes merged as requested,
+                          sharing the data of 'src'.  On failure, it will
+                          not be changed.
+       @return            Returns true on success, false if the axes could
+                          not be merged (e.g., because of the strides not
+                          having the required relationship).
  */
-std::shared_ptr<Tensor> MergeAxes(const Tensor &src, int64_t axis1);
+bool MergeAxes(const Tensor &src, int64_t axis1, Tensor *dest);
 
 /**
-   Returns a Tensor with a new view of the data in 'src', in which the
-   specified axis is split into two axes.  This is just a special case
-   of View().
-
-   Returns a Tensor in which the axis numbered 'axis' is split into
+   Creates a Tensor in which the axis numbered 'axis' is split into
    two axes, with dimensions respectively 'dim1' and 'dim2'.  The
    interpretation will be as for a "C" array; so, for instance,
    if the dimensions of 'src' were (10,12) and you called
    `SplitAxis(src, 1, 3, 4)` resulting in a Tensor of dimensions
    (10,3,4), the indexes along the original axis of dimension 12 would be
-   interpreted as 3 blocks of size 4.
+   interpreted as 3 blocks of size 4.  (This is the normal semantics
+   of things like NumPy's reshape or PyTorch's view.)
 
       @param [in] src  The Tensor whose axis is to be split.
       @param [in] axis  The index of the axis to be split; must
                        satisfy `0 <= axis < src.Dims().`
-      @param [in] dim1, dim2   The two dimensions into which
-                       we will split the axis.  Must satisfy
-                       `dim1 * dim2 == src.Dim(axis)`.
-      @return     Returns a Tensor which shares the same
-                  underlying data as 'src'
+      @param [in] dim1  First dimension with which to split the axis.
+      @param [in] dim2  Second dimension with which to split the axis.
+                        Must satisfy `dim1 * dim2 == src.Dim(axis)`.
+      @param [out] dest Tensor to be created, with one more axis than 'src',
+                        sharing the same underlying data.
+*/
+void SplitAxis(const Tensor &src, int64_t axis,
+               int64_t dim1, int64_t dim2,
+               Tensor *dest);
+
+
+
+
+/**
+   Does:
+
+    `c := alpha (a * b)  +  beta c`
+
+   where '*' is elementwise multiplication subject to broadcasting
+   rules.  This does not support reducing operations (see AddProductReducing).
+
+   @param [in] alpha  Value that scales a * b
+   @param [in] beta   Value that scales the initial value of c
+   @param [in] a      First input tensor
+   @param [in] b      Second input tensor; require BroadcastCompatible(a, b)
+   @param [out] c     Tensor to be added to (must already be correctly sized,
+                      and either its data must be initialized to a known
+                      value (if beta != 0) or known to not contain NaN (if
+                      beta == 0).   We require BroadcastCompatible(a, b, c, true).
  */
-std::shared_ptr<Tensor> SplitAxis(const Tensor &src, int64_t axis,
-                                  int64_t dim1, int64_t dim2);
+void AddProduct(float alpha, float beta,
+                const Tensor &a, const Tensor &b, Tensor *c);
+
+
+
+/**
+   Does:
+
+    `c := alpha (a * b)  +  beta c`
+
+   where '*' is elementwise multiplication subject to broadcasting
+   rules.  This version supports reducing operations (i.e. it allows
+   'c' to have dim=1 on axes where a and/or b has dim!=1).
+
+   This function actually supports a strict superset of AddProduct(); we
+   separate the functions to make the implementation for AddProduct() simpler,
+   for speed.
+
+   The Tensors do not all have to have the same NumAxes(); they will
+   (internally) be made the same size by padding on the left with trivial axes
+   (dim=1;stride=0) to make them the same size.
+
+   The Tensors need to have the same Dtype() and Device*().
+
+   @param [in] alpha  Value that scales a * b
+   @param [in] beta   Value that scales the initial value of c
+   @param [in] a      First input tensor
+   @param [in] b      Second input tensor; require BroadcastCompatible(a, b)
+   @param [out] c     Tensor to be added to (must already be correctly sized,
+                      and either its data must be initialized to a known
+                      value (if beta != 0) or known to not contain NaN (if
+                      beta == 0).   We require BroadcastCompatible(a, b, c).
+ */
+void AddProductReducing(float alpha, float beta,
+                        const Tensor &a, const Tensor &b, Tensor *c);
+
 
 
 }

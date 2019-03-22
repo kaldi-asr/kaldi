@@ -219,7 +219,7 @@ template<typename Real>
 void VectorBase<Real>::CopyFromVec(const VectorBase<Real> &v) {
   KALDI_ASSERT(Dim() == v.Dim());
   if (data_ != v.data_) {
-    std::memcpy(this->data_, v.data_, dim_ * sizeof(Real));
+    cblas_Xcopy(dim_, v.data_, v.stride_, data_, stride_);
   }
 }
 
@@ -241,9 +241,10 @@ template<typename OtherReal>
 void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
   KALDI_ASSERT(dim_ == other.Dim());
   Real * __restrict__  ptr = data_;
+  MatrixIndexT stride = stride_, other_stride = other.stride_;
   const OtherReal * __restrict__ other_ptr = other.Data();
   for (MatrixIndexT i = 0; i < dim_; i++)
-    ptr[i] = other_ptr[i];
+    ptr[i * stride] = other_ptr[i * other_stride];
 }
 
 template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);

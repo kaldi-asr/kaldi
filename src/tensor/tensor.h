@@ -41,6 +41,9 @@ namespace tensor {
  */
 class Tensor {
  public:
+
+  inline bool Initialized() { return data_ != NULL; }
+
   /// Return the number of axes (a number in {0,1,2,3,4}).  In mathematical
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
@@ -49,7 +52,7 @@ class Tensor {
 
   // Return reference to the struct containing the dimension and
   // stride info.
-  const TensorPattern &DimAndStrides() const { return pattern_; }
+  const TensorPattern &Pattern() const { return pattern_; }
 
   // Return an array containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
@@ -126,7 +129,6 @@ class Tensor {
   // int32 (if it was not already int32); throws if NumAxes() > 0.
   explicit operator int32() const;
 
-
   // For a Tensor storing floats, returns the data pointer cast to float;
   // otherwise, throws.  (note: this is const only as it doesn't change the
   // Tensor meta-info, but you could change the data using the pointer).
@@ -136,16 +138,19 @@ class Tensor {
   // Tensor meta-info, but you could change the data using the pointer).
   explicit operator double* () const;
 
-
-
   // Assignment operation which sets all elements to a constant.  Valid
   // for Tensors of any floating point type.
   const Tensor & operator = (float f);
 
   // Transpose the two axes by swapping their dims and strides without changing
   // the underlying data in memory.  This modifies *this;
+  // Negative axes are allowed, and interpreted as NumAxes() - axis.
   void Transpose(int32 axis1 = 0, int32 axis2 = 1);
 
+
+  // Constructor which does not really initialize the Tensor.  pattern_,
+  // derived_ and dtype_ may contain nonsense.
+  Tensor(): data_(NULL) { }
 
   // Copy constructor that copies the metadata while sharing the underlying
   // data.
@@ -207,6 +212,12 @@ class Tensor {
   Tensor(TensorPattern &pattern, DataType dtype, Device device,
          InitializePolicy p);
 
+  /**
+     This constructor, which is intended for use primarily in internal
+     code and
+   */
+  Tensor(TensorPattern &pattern, DataType dtype, Device device,
+         void *data_);
 
  private:
   // The tensor dim and strides.
@@ -215,6 +226,8 @@ class Tensor {
   TensorPatternProperties derived_;
   // The data-type of this tensor.
   DataType dtype_;
+  // The device this Tensor lives on
+  Device device_;
 
   // The raw data pointer.  Will be cast to a pointer of the appropriate
   // type before indexing.
