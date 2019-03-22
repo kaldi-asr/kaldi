@@ -12,8 +12,8 @@ endif
 
 TESTFILES =
 
-OBJFILES += batched-threaded-cuda-decoder.o decodable-cumatrix.o \
-            cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o
+OBJFILES = batched-threaded-cuda-decoder.o decodable-cumatrix.o \
+           cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o
 
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
@@ -21,9 +21,9 @@ LDLIBS += $(CUDA_LDLIBS)
 LIBNAME = kaldi-cudadecoder
 
 ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../base/kaldi-base.a ../matrix/kaldi-matrix.a \
-	  ../lat/kaldi-lat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../gmm/kaldi-gmm.a \
-	  ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a ../gmm/kaldi-gmm.a ../transform/kaldi-transform.a \
-	  ../tree/kaldi-tree.a ../online2/kaldi-online2.a ../nnet3/kaldi-nnet3.a  \
+          ../lat/kaldi-lat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../gmm/kaldi-gmm.a \
+          ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a ../gmm/kaldi-gmm.a ../transform/kaldi-transform.a \
+          ../tree/kaldi-tree.a ../online2/kaldi-online2.a ../nnet3/kaldi-nnet3.a  \
 
 # Implicit rule for kernel compilation
 %.o : %.cu
