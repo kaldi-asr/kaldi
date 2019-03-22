@@ -82,6 +82,19 @@ enum InitializePolicy {
   kUninitialized
 };
 
+/// This enumeration with one value is used in the constructor of Tensor,
+/// so if you do:
+///  `Tensor a;  Tensor b(a, kUntrackedStorage);`
+/// it will not copy the 'storage' pointer like it normallly would.
+/// This is useful as an optimization that avoids atomics with
+/// std::shared_ptr, for temporary Tensors in situations where we
+/// know the Tensor we are copying from is not going out of scope
+/// for the lifetime of the temporary.
+enum TensorStorageEnum {
+  kUntrackedStorage
+};
+
+
 
 // In practice we don't expect user-owned tensors with dims greater than 5 to
 // exist, but there are certain manipulations we do when simplifying matrix
