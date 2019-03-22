@@ -67,7 +67,7 @@
 #define KALDI_CUDA_DECODER_ONE_THREAD_BLOCK 1
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
 
 // Returning the number of CTAs to launch for (N,M) elements to compute
 // M is usually the batch size
@@ -394,7 +394,7 @@ enum OVERFLOW_TYPE {
 
 enum QUEUE_ID { MAIN_Q = 0, AUX_Q = 1 };
 
-}  // end namespace CudaDecode
+}  // end namespace cuda_decoder
 }  // end namespace kaldi
 
 #endif  // KALDI_CUDA_DECODER_CUDA_DECODER_UTILS_H_

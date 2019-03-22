@@ -25,7 +25,8 @@
 #include "util/stl-utils.h"
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
+
 typedef fst::StdArc StdArc;
 typedef StdArc::Weight StdWeight;
 typedef StdArc::Label Label;
@@ -118,6 +119,7 @@ class CudaFst {
   // only populate during CSR generation, cleared after (not needed on host)
   std::vector<int32> h_arc_pdf_ilabels_;
 };
-}  // end namespace CudaDecode
+
+}  // end namespace cuda_decoder
 }  // end namespace kaldi
 #endif  // KALDI_CUDA_DECODER_CUDA_FST_H_

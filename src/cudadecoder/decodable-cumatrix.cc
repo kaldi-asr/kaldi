@@ -19,6 +19,8 @@
 #include "decodable-cumatrix.h"
 
 namespace kaldi {
+namespace cuda_decoder {
+
 DecodableCuMatrixMapped::DecodableCuMatrixMapped(
     const TransitionModel &tm, const CuMatrixBase<BaseFloat> &likes,
     int32 frame_offset)
@@ -51,4 +53,6 @@ DecodableCuMatrixMapped::GetLogLikelihoodsCudaPointer(int32 subsampled_frame) {
       (subsampled_frame - frame_offset_) * likes_->Stride();
   return frame_nnet3_out;
 };
-}
+
+}  // end namespace cuda_decoder
+}  // end namespace kaldi.

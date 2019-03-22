@@ -28,7 +28,7 @@
 #include "util/kaldi-thread.h"
 
 using namespace kaldi;
-using namespace CudaDecode;
+using namespace cuda_decoder;
 
 void GetDiagnosticsAndPrintOutput(const std::string &utt,
                                   const fst::SymbolTable *word_syms,

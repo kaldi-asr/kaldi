@@ -24,6 +24,8 @@
 #include "decoder/decodable-matrix.h"
 
 namespace kaldi {
+namespace cuda_decoder {
+
 /**
   Cuda Decodable matrix.  Takes transition model and posteriors and provides
   an interface similar to the Decodable Interface
@@ -61,6 +63,8 @@ private:
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableCuMatrixMapped);
 };
-}
+
+}  // end namespace cuda_decoder
+}  // end namespace kaldi.
 
 #endif  // KALDI_CUDA_DECODER_DECODABLE_CUMATRIX_H_

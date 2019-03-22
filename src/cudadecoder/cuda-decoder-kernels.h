@@ -21,7 +21,8 @@
 #include "cuda-decoder.h"
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
+
 __global__ void get_best_cost_kernel(DeviceParams cst_dev_params,
                                      KernelParams params, bool isfinal,
                                      CostType fst_zero);
@@ -129,7 +130,8 @@ struct KernelParams {
 };
 
 typedef unsigned char BinId;
+
 }  // namespace kaldi
-}  // namespace CudaDecode
+}  // namespace cuda_decoder
 
 #endif  // KALDI_CUDA_DECODER_CUDA_DECODER_KERNELS_H_

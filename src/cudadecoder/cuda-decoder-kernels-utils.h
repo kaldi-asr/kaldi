@@ -29,7 +29,7 @@
 #include "util/stl-utils.h"
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
 
 // MinPlus and PlusPlus
 // int2 operators used in Scan or Reduce operations
@@ -210,7 +210,7 @@ __device__ __inline__ void GetFSTStateHashIndex(FSTStateHashIndex &hash_idx,
   *raw_hash_idx = *is_representative ? (-(hash_idx + 1)) : hash_idx;
 }
 
-}  // end namespace CudaDecode
+}  // end namespace cuda_decoder
 }  // end namespace kaldi
 
 #endif  // KALDI_CUDA_DECODER_CUDA_DECODER_KERNELS_UTILS_H_

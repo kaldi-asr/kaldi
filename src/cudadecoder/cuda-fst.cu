@@ -21,7 +21,8 @@
 #include "cudadecoder/cuda-fst.h"
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
+
 void CudaFst::ComputeOffsets(const fst::Fst<StdArc> &fst) {
   // count states since Fst doesn't provide this functionality
   num_states_ = 0;
@@ -199,5 +200,6 @@ void CudaFst::Finalize() {
   CuDevice::Instantiate().Free(d_arc_pdf_ilabels_);
   nvtxRangePop();
 }
-}  // end namespace CudaDecode
+
+}  // end namespace cuda_decoder
 }  // end namespace kaldi

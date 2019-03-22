@@ -96,7 +96,8 @@
 #define KALDI_CUDA_DECODER_MAX_ACTIVE_TOLERANCE 0.2
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
+
 struct CudaDecoderConfig {
   BaseFloat default_beam;
   BaseFloat lattice_beam;
@@ -794,7 +795,7 @@ class CudaDecoder {
   KALDI_DISALLOW_COPY_AND_ASSIGN(CudaDecoder);
 };
 
-}  // end namespace CudaDecode
+}  // end namespace cuda_decoder
 }  // end namespace kaldi
 
 #endif  // KALDI_CUDA_DECODER_CUDA_DECODER_H_

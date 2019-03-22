@@ -27,7 +27,7 @@
 #include <tuple>
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
 CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
     : fst_(fst),
@@ -1620,5 +1620,5 @@ void CudaDecoder::CheckStaticAsserts() {
                 return NumFramesDecoded(0);
         }
 */
-}  // end namespace CudaDecode
+}  // end namespace cuda_decoder
 }  // end namespace kaldi.

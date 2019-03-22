@@ -20,7 +20,7 @@
 #include "cuda-decoder-kernels-utils.h"
 
 namespace kaldi {
-namespace CudaDecode {
+namespace cuda_decoder {
 
 // Initialize the hashmap with NO_VAL
 // Called in InitDeviceData, when building the CudaDecoder object
@@ -1670,6 +1670,6 @@ template __global__ void concatenate_lanes_data<float2>(
 template __global__ void concatenate_lanes_data<int32>(
     DeviceParams cst_dev_params, KernelParams params, LaneMatrixView<int32> src,
     int32 *concat);
-}  // end namespace CudaDecode
 
+}  // end namespace cuda_decoder
 }  // end namespace kaldi
