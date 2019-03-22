@@ -3,10 +3,11 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
+# Make sure we have CUDA_ARCH from kaldi.mk,
 ifeq ($(CUDA), true)
-	# Make sure we have CUDA_ARCH from kaldi.mk,
-	ifndef CUDA_ARCH
-	$(error CUDA_ARCH is undefined, run 'src/configure')
+  ifndef CUDA_ARCH
+    $(error CUDA_ARCH is undefined, run 'src/configure')
+  endif
 endif
 
 TESTFILES =
@@ -31,5 +32,3 @@ ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../base/kaldi-base.a ../matrix/kaldi-
 	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC)
 
 include ../makefiles/default_rules.mk
-
-endif
