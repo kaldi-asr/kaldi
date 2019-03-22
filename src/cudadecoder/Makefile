@@ -3,19 +3,17 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-# Make sure we have CUDA_ARCH from kaldi.mk,
 ifeq ($(CUDA), true)
-  ifndef CUDA_ARCH
-    $(error CUDA_ARCH is undefined, run 'src/configure')
-  endif
+
+# Make sure we have CUDA_ARCH from kaldi.mk,
+ifndef CUDA_ARCH
+  $(error CUDA_ARCH is undefined, run 'src/configure')
 endif
 
 TESTFILES =
 
-OBJFILES += batched-threaded-cuda-decoder.o decodable-cumatrix.o
-ifeq ($(CUDA), true)
-	OBJFILES += cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o
-endif
+OBJFILES += batched-threaded-cuda-decoder.o decodable-cumatrix.o \
+            cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o
 
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
@@ -23,12 +21,16 @@ LDLIBS += $(CUDA_LDLIBS)
 LIBNAME = kaldi-cudadecoder
 
 ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../base/kaldi-base.a ../matrix/kaldi-matrix.a \
-../lat/kaldi-lat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../gmm/kaldi-gmm.a \
-../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a ../gmm/kaldi-gmm.a ../transform/kaldi-transform.a \
-../tree/kaldi-tree.a ../online2/kaldi-online2.a ../nnet3/kaldi-nnet3.a  \
+	  ../lat/kaldi-lat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../gmm/kaldi-gmm.a \
+	  ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a ../gmm/kaldi-gmm.a ../transform/kaldi-transform.a \
+	  ../tree/kaldi-tree.a ../online2/kaldi-online2.a ../nnet3/kaldi-nnet3.a  \
 
-# Implicit rule for kernel compilation,
+# Implicit rule for kernel compilation
 %.o : %.cu
 	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC)
 
 include ../makefiles/default_rules.mk
+
+else # ifeq ($(CUDA), true)
+depend:
+endif
