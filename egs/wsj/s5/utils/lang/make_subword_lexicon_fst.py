@@ -8,7 +8,7 @@ import argparse
 import math
 import sys
 
-
+# see get_args() below for usage mesage
 def get_args():
     parser = argparse.ArgumentParser(description="""This script creates a 
         position depent subword lexicon FST from a origin lexicon""")
@@ -30,6 +30,7 @@ def get_args():
     return args
 
 def contain_disambig_symbol(phones):
+    """Disambig symbol is at the end of phones in the form of #1, #2..."""
     return True if phones[-1][0] == "#" else False
 
 def print_arc(src, dest, phone, word, cost):

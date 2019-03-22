@@ -3,6 +3,10 @@
 # 2019 Dongji Gao
 
 # This script generates subword text form word text.
+# For example, <noise> internatioal -> <noise> inter@@ nation@@ al
+# @@ here is the separator indicate the poisition of subword in word.
+# Subword directly followed by separator can only appear at he begining or middle of word.
+# "<noise>" here can be reserved if added to the option "--glossaries"
 
 # Begin configuration section
 separator="@@"

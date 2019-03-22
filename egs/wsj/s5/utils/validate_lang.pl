@@ -529,7 +529,7 @@ sub check_summation {
   my $ok = 1;
   foreach $p (keys %psymtab) {
     if (! defined $sum{$p} && $p !~ m/^#nonterm/) {
-      $exit = 1;  $ok = 0;  print("--> ERROR: phone $p is not in silence.txt, nonsilence.txt or disambig.txt...");
+      $exit = 1;  $ok = 0;  print("--> ERROR: phone $p is not in silence.txt, nonsilence.txt or disambig.txt...\n");
     }
   }
 
@@ -696,7 +696,7 @@ if (-s "$lang/phones/$word_boundary.txt") {
     if (m/^.*singleton$/) {
       s/ singleton$//g; @col = split(" ", $_); if (@col == 1) {$singleton .= "$col[0] ";}
     }
-    if (@col != 1){
+    if (@col != 1) {
       $exit = 1; print "--> ERROR: expect 1 column in $lang/phones/$word_boundary.txt (line $idx)\n";
     }
     $wb{shift @col} = 1;
@@ -787,11 +787,11 @@ if (-s "$lang/phones/$word_boundary.txt") {
     close(P);
     my $len = @wdisambig, $len2;
     if (($len2 = @wdisambig_words) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths";
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths\n";
       $exit = 1; return;
     }
     if (($len2 = @wdisambig_phones) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths";
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths\n";
       $exit = 1; return;
     }
     for (my $i = 0; $i < $len; $i++) {

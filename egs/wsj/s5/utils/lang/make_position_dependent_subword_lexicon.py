@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # 2019 Dongji Gao
+# Apache 2.0.
 
 from make_lexicon_fst import read_lexiconp
 import argparse
