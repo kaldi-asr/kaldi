@@ -92,7 +92,7 @@ fi
 
 if [ $stage -le 1 ]; then
     local/train_pocolm.sh --stage $lmstage --num-words-pocolm $num_words_pocolm "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
-    local/get_rnnlm_wordlist.py data/local/dict/lexicon.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
+    local/get_rnnlm_wordlist.py data/lang_orig/words.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
 				"$rnnlm_workdir"/rnnlm_wordlist "$rnnlm_workdir"/oov_pocolmwords
     if $train_rnnlm; then
         local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm \
