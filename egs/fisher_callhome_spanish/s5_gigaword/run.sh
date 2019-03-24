@@ -32,9 +32,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 set -eou pipefail
 
 if [ $stage -le -1 ]; then
-#  local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
+  local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
 
-#  local/callhome_data_prep.sh $callhome_speech $callhome_transcripts
+  local/callhome_data_prep.sh $callhome_speech $callhome_transcripts
 
   # The lexicon is created using the LDC spanish lexicon, the words from the
   # fisher spanish corpus. Additional (most frequent) words are added from the
