@@ -53,7 +53,17 @@ void MinimumBayesRisk::MbrDecode() {
       }
       // build the outputs (time, confidences),
       if (R_[q] != 0 || opts_.print_silence) {
-        one_best_times_.push_back(times_[q][0]);
+        // see which 'item' from the sausage-bin should we select,
+        // (not necessarily the 1st one when MBR decoding disabled)
+        int32 s = 0;
+        for (int32 j=0; j<gamma_[q].size(); j++) {
+          if (gamma_[q][j].first == R_[q]) {
+            s = j;
+            break;
+          }
+        }
+        one_best_times_.push_back(times_[q][s]);
+        // post-process the times,
         size_t i = one_best_times_.size();
         if (i > 1 && one_best_times_[i-2].second > one_best_times_[i-1].first) {
           // It's quite possible for this to happen, but it seems like it would
@@ -76,8 +86,12 @@ void MinimumBayesRisk::MbrDecode() {
           one_best_times_[i-1].second = right;
         }
         BaseFloat confidence = 0.0;
-        for (int32 j = 0; j < gamma_[q].size(); j++)
-          if (gamma_[q][j].first == R_[q]) confidence = gamma_[q][j].second;
+        for (int32 j = 0; j < gamma_[q].size(); j++) {
+          if (gamma_[q][j].first == R_[q]) {
+            confidence = gamma_[q][j].second;
+            break;
+          }
+        }
         one_best_confidences_.push_back(confidence);
       }
     }

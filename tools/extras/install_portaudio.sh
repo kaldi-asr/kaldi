@@ -14,10 +14,10 @@
 #See the Apache 2 License for the specific language governing permissions and
 #limitations under the License.
 #
-#This script attempts to install port audio, which is needed for the run-on 
-#decoding stuff. Portaudio enables the decoder to grab a live audio stream 
-#from the soundcard. I tested portaudio on Linux (RedHat and Suse Linux) and 
-#on MacOS 10.7. On Linux, it compiles out of the box. For MacOS 10.7, 
+#This script attempts to install port audio, which is needed for the run-on
+#decoding stuff. Portaudio enables the decoder to grab a live audio stream
+#from the soundcard. I tested portaudio on Linux (RedHat and Suse Linux) and
+#on MacOS 10.7. On Linux, it compiles out of the box. For MacOS 10.7,
 #it is necessary to edit the Makefile (this script tries to do that).
 #The script will remove all occurances of
 #
@@ -29,8 +29,8 @@
 #also, it seems that one has to uncomment the inclusion of AudioToolbox in
 #include/pa_mac_core.h
 #
-#All this should make it compile fine for x86_64 under MacOS 10.7 
-#(always assuming that you installed XCode, wget and 
+#All this should make it compile fine for x86_64 under MacOS 10.7
+#(always assuming that you installed XCode, wget and
 #the Linux environment stuff on MacOS)
 
 echo "****() Installing portaudio"
@@ -38,7 +38,7 @@ echo "****() Installing portaudio"
 if [ ! -e pa_stable_v19_20111121.tgz ]; then
     echo "Could not find portaudio tarball pa_stable_v19_20111121.tgz"
     echo "Trying to download it via wget!"
-    
+
     if ! which wget >&/dev/null; then
         echo "This script requires you to first install wget"
         echo "You can also just download pa_stable_v19_20111121.tgz from"
@@ -81,8 +81,10 @@ if [ -z "$MACOS" ]; then
     echo "${pa_patch}" | patch -p0 Makefile.in
 fi
 
+patch -p0  Makefile.in < ../extras/portaudio.patch
+autoconf
 ./configure --prefix=`pwd`/install --with-pic
-sed -i.bk '40s:src/common/pa_ringbuffer.o::g; 40s:$: src/common/pa_ringbuffer.o:' Makefile
+perl -i -pe 's:src/common/pa_ringbuffer.o:: if /^OTHER_OBJS\s*=/' Makefile
 
 if [ "$MACOS" != "" ]; then
     echo "detected MacOS operating system ... trying to fix Makefile"
@@ -93,7 +95,7 @@ if [ "$MACOS" != "" ]; then
     mv include/pa_mac_core.h include/pa_mac_core.h.bck
     cat include/pa_mac_core.h.bck \
       | sed 's/\/\/\#include \<AudioToolbox\/AudioToolbox.h\>/#include \<AudioToolbox\/AudioToolbox.h\>/g' \
-      > include/pa_mac_core.h 
+      > include/pa_mac_core.h
 fi
 
 make

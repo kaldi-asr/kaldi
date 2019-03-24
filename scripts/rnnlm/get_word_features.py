@@ -10,7 +10,7 @@ import math
 from collections import defaultdict
 
 import re
-tab_or_space = re.compile('[ \t]+')
+
 
 parser = argparse.ArgumentParser(description="This script turns the words into the sparse feature representation, "
                                              "using features from rnnlm/choose_features.py.",
@@ -43,7 +43,7 @@ def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = re.split(tab_or_space, line)
+            fields = line.split()
             assert len(fields) == 2
             if fields[0] in vocab:
                 sys.exit(sys.argv[0] + ": duplicated word({0}) in vocab: {1}"
@@ -64,7 +64,7 @@ def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
     with open(unigram_probs_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = re.split(tab_or_space, line)
+            fields = line.split()
             assert len(fields) == 2
             idx = int(fields[0])
             if idx >= len(unigram_probs):
@@ -105,7 +105,7 @@ def read_features(features_file):
 
     with open(features_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = re.split(tab_or_space, line)
+            fields = line.split()
             assert(len(fields) in [3, 4, 5])
 
             feat_id = int(fields[0])

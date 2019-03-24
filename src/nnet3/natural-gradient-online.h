@@ -375,8 +375,8 @@ namespace nnet3 {
    * Initialization *
 
    Now, a note on what we do on time t = 0, i.e. for the first minibatch.  We
-   initialize X_0 to the top R eigenvectors of 1/N X_0 X_0^T, where N is the
-   minibatch size (num-rows of R0).  If L is the corresponding RxR diagonal
+   initialize R_0 to the top R eigenvectors of 1/N X_0 X_0^T, where N is the
+   minibatch size (num-rows of X0).  If L is the corresponding RxR diagonal
    matrix of eigenvalues, then we will set D_0 = L - \rho_0 I.  We set \rho_0
    to ensure that
                       tr(F_0) = 1/N tr(X_0 X_0^T),
@@ -457,7 +457,7 @@ class OnlineNaturalGradient {
             not.
 
   */
-  void PreconditionDirections(CuMatrixBase<BaseFloat> *R,
+  void PreconditionDirections(CuMatrixBase<BaseFloat> *X,
                               BaseFloat *scale);
 
 
@@ -515,7 +515,7 @@ class OnlineNaturalGradient {
   // This function is called if C_t has high condition number; it makes sure
   // that R_{t+1} is orthogonal.  See the section in the extended comment above
   // on "keeping R_t orthogonal".
-  void ReorthogonalizeXt1(const VectorBase<BaseFloat> &d_t1,
+  void ReorthogonalizeRt1(const VectorBase<BaseFloat> &d_t1,
                           BaseFloat rho_t1,
                           CuMatrixBase<BaseFloat> *W_t1,
                           CuMatrixBase<BaseFloat> *temp_W,

@@ -1,0 +1,32 @@
+# This RESULTS file was obtained by running ./run.sh and then ./result.sh
+
+%WER 28.32 [ 5037 / 17783, 615 ins, 1171 del, 3251 sub ] exp/tri1/decode_nosp_dev/wer_10
+%WER 26.99 [ 4799 / 17783, 603 ins, 1169 del, 3027 sub ] exp/tri1/decode_nosp_dev_rescore/wer_10
+%WER 27.76 [ 7634 / 27500, 776 ins, 1689 del, 5169 sub ] exp/tri1/decode_nosp_test/wer_11
+%WER 26.52 [ 7292 / 27500, 766 ins, 1611 del, 4915 sub ] exp/tri1/decode_nosp_test_rescore/wer_11
+%WER 23.38 [ 4158 / 17783, 603 ins, 953 del, 2602 sub ] exp/tri2/decode_dev/wer_14
+%WER 21.98 [ 3909 / 17783, 597 ins, 910 del, 2402 sub ] exp/tri2/decode_dev_rescore/wer_14
+%WER 24.12 [ 4289 / 17783, 600 ins, 1014 del, 2675 sub ] exp/tri2/decode_nosp_dev/wer_12
+%WER 22.96 [ 4083 / 17783, 631 ins, 931 del, 2521 sub ] exp/tri2/decode_nosp_dev_rescore/wer_11
+%WER 23.30 [ 6408 / 27500, 727 ins, 1375 del, 4306 sub ] exp/tri2/decode_nosp_test/wer_13
+%WER 22.10 [ 6078 / 27500, 746 ins, 1281 del, 4051 sub ] exp/tri2/decode_nosp_test_rescore/wer_12
+%WER 22.31 [ 6134 / 27500, 794 ins, 1148 del, 4192 sub ] exp/tri2/decode_test/wer_13
+%WER 21.06 [ 5791 / 27500, 737 ins, 1147 del, 3907 sub ] exp/tri2/decode_test_rescore/wer_14
+%WER 19.99 [ 3554 / 17783, 570 ins, 816 del, 2168 sub ] exp/tri3_cleaned/decode_dev/wer_16
+%WER 18.92 [ 3364 / 17783, 588 ins, 791 del, 1985 sub ] exp/tri3_cleaned/decode_dev_rescore/wer_15
+%WER 23.85 [ 4241 / 17783, 686 ins, 874 del, 2681 sub ] exp/tri3_cleaned/decode_dev.si/wer_13
+%WER 17.73 [ 4876 / 27500, 700 ins, 935 del, 3241 sub ] exp/tri3_cleaned/decode_test/wer_16
+%WER 16.72 [ 4599 / 27500, 686 ins, 906 del, 3007 sub ] exp/tri3_cleaned/decode_test_rescore/wer_16
+%WER 22.10 [ 6077 / 27500, 864 ins, 1075 del, 4138 sub ] exp/tri3_cleaned/decode_test.si/wer_13
+%WER 19.63 [ 3490 / 17783, 585 ins, 809 del, 2096 sub ] exp/tri3/decode_dev/wer_15
+%WER 18.56 [ 3300 / 17783, 558 ins, 817 del, 1925 sub ] exp/tri3/decode_dev_rescore/wer_16
+%WER 23.75 [ 4224 / 17783, 661 ins, 917 del, 2646 sub ] exp/tri3/decode_dev.si/wer_14
+%WER 17.92 [ 4928 / 27500, 730 ins, 921 del, 3277 sub ] exp/tri3/decode_test/wer_14
+%WER 16.80 [ 4621 / 27500, 650 ins, 973 del, 2998 sub ] exp/tri3/decode_test_rescore/wer_17
+%WER 22.16 [ 6095 / 27500, 849 ins, 1070 del, 4176 sub ] exp/tri3/decode_test.si/wer_13
+%WER 8.17 [ 1453 / 17783, 242 ins, 310 del, 901 sub ] exp/chain_cleaned/tdnnf_1a/decode_dev/wer_9
+%WER 7.61 [ 1354 / 17783, 236 ins, 300 del, 818 sub ] exp/chain_cleaned/tdnnf_1a/decode_dev_rescore/wer_9
+%WER 6.17 [ 1097 / 17783, 207 ins, 292 del, 598 sub ] exp/chain_cleaned/tdnnf_1a/decode_dev_rnnlm_lstm_tdnn_a_averaged/wer_10
+%WER 8.16 [ 2245 / 27500, 288 ins, 605 del, 1352 sub ] exp/chain_cleaned/tdnnf_1a/decode_test/wer_9
+%WER 7.75 [ 2131 / 27500, 264 ins, 643 del, 1224 sub ] exp/chain_cleaned/tdnnf_1a/decode_test_rescore/wer_10
+%WER 6.84 [ 1880 / 27500, 283 ins, 533 del, 1064 sub ] exp/chain_cleaned/tdnnf_1a/decode_test_rnnlm_lstm_tdnn_a_averaged/wer_8

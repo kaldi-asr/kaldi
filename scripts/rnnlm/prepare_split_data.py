@@ -9,7 +9,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]+')
+
 
 parser = argparse.ArgumentParser(description="This script prepares files containing integerized text, "
                                  "for consumption by nnet3-get-egs.",
@@ -69,7 +69,7 @@ def read_data_weights(weights_file, data_sources):
     with open(weights_file, 'r', encoding="utf-8") as f:
         for line in f:
             try:
-                fields = re.split(tab_or_space, line)
+                fields = line.split()
                 assert len(fields) == 3
                 if fields[0] in data_weights:
                     raise Exception("duplicated data source({0}) specified in "

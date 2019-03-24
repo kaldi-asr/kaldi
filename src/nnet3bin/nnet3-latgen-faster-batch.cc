@@ -108,6 +108,10 @@ int main(int argc, char *argv[]) {
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
+#if HAVE_CUDA==1
+    CuDevice::RegisterDeviceOptions(&po);
+#endif
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {

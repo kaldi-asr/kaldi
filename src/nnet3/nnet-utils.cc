@@ -1655,7 +1655,6 @@ class ModelCollapser {
                                                   component_index2);
   }
 
-
   /**
      Tries to produce a component that's equivalent to running the component
      'component_index2' with input given by 'component_index1'.  This handles
@@ -2170,6 +2169,48 @@ void ApplyL2Regularization(const Nnet &nnet,
         dest_component->Add(scale, *src_component);
     }
   }
+}
+
+
+bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
+                             BaseFloat max_param_change,
+                             BaseFloat max_change_scale,
+                             BaseFloat scale, Nnet *nnet,
+                             MaxChangeStats *stats) {
+  bool ans = UpdateNnetWithMaxChange(
+      delta_nnet, max_param_change, max_change_scale,
+      scale, nnet,
+      &(stats->num_max_change_per_component_applied),
+      &(stats->num_max_change_global_applied));
+  stats->num_minibatches_processed++;
+  return ans;
+}
+
+
+void MaxChangeStats::Print(const Nnet &nnet) const {
+  int32 i = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(
+          comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_change_per_component_applied[i] > 0)
+        KALDI_LOG << "For " << nnet.GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << ((100.0 * num_max_change_per_component_applied[i]) /
+                      num_minibatches_processed)
+                  << " \% of the time.";
+      i++;
+    }
+  }
+  if (num_max_change_global_applied > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << ((100.0 * num_max_change_global_applied) /
+                  num_minibatches_processed)
+              << " \% of the time.";
 }
 
 
