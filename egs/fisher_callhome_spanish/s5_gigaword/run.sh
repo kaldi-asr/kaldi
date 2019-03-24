@@ -6,6 +6,7 @@
 
 stage=-1
 lmstage=-2
+train_rnnlm=true
 addtraintext=true
 num_words_pocolm=110000
 train_sgmm2=false
@@ -32,31 +33,23 @@ if [ -f path.sh ]; then . ./path.sh; fi
 set -eou pipefail
 
 if [ $stage -le -1 ]; then
-#  local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
+  local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
 
-#  local/callhome_data_prep.sh $callhome_speech $callhome_transcripts
+  local/callhome_data_prep.sh $callhome_speech $callhome_transcripts
 
   # The lexicon is created using the LDC spanish lexicon, the words from the
   # fisher spanish corpus. Additional (most frequent) words are added from the
   # ES gigaword corpus to bring the total to 64k words. The ES frequency sorted
   # wordlist is downloaded if it is not available.
   local/fsp_prepare_dict.sh $spanish_lexicon
+  # Let's keep the original dict copy for G2P training
+  cp -r data/local/dict data/local/dict_orig
   (
-    steps/dict/train_g2p_seq2seq.sh data/local/dict/lexicon.txt exp/g2p || touch exp/g2p/.error
+    steps/dict/train_g2p_seq2seq.sh data/local/dict_orig/lexicon.txt exp/g2p || touch exp/g2p/.error
   ) &
 
   # Added c,j, v to the non silences phones manually
-  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
-
-  # Make sure that you do not use your test and your dev sets to train the LM
-  # Some form of cross validation is possible where you decode your dev/set based on an
-  # LM that is trained on  everything but that that conversation
-  # When in doubt about what your data partitions should be use local/fsp_ideal_data_partitions.pl
-  # to get the numbers. Depending on your needs, you might have to change the size of
-  # the splits within that file. The default paritions are based on the Kaldi + Joshua
-  # requirements which means that I have very large dev and test sets
-  local/fsp_train_lms.sh $split
-  local/fsp_create_test_lang.sh
+  utils/prepare_lang.sh data/local/dict_orig "<unk>" data/local/lang_orig data/lang_orig
 
   utils/fix_data_dir.sh data/local/data/train_all
 
@@ -79,11 +72,7 @@ if [ $stage -le -1 ]; then
 
   local/create_splits.sh $split
   local/callhome_create_splits.sh $split_callhome
-  wait # wait till G2P training finishes
-  if [ -f exp/g2p/.error ]; then
-     rm exp/g2p/.error || true
-     echo "Fail to train the G2P model." && exit 1;
-  fi
+  
 fi
 
 if [ $stage -le 0 ]; then
@@ -103,16 +92,37 @@ fi
 
 if [ $stage -le 1 ]; then
     local/train_pocolm.sh --stage $lmstage --num-words-pocolm $num_words_pocolm "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
-    local/get_rnnlm_wordlist.py data/lang/words.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
-				"$rnnlm_workdir"/rnnlm_wordlist
-fi
-    
-if [ $stage -le 2 ]; then
-    local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm \
+    local/get_rnnlm_wordlist.py data/local/dict/lexicon.txt "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm/words.txt \
+				"$rnnlm_workdir"/rnnlm_wordlist "$rnnlm_workdir"/oov_pocolmwords
+    if $train_rnnlm; then
+        local/rnnlm.sh --stage $lmstage --dir "$rnnlm_workdir"/rnnlm --pocolm-dir "$rnnlm_workdir"/pocolm/lm/"$num_words_pocolm"_3.pocolm \
 		   --wordslist "$rnnlm_workdir"/rnnlm_wordlist --text-dir "$rnnlm_workdir"/text_lm
+    fi
 fi
 
+
 if [ $stage -le 2 ]; then
+  wait # wait till G2P training finishes
+  if [ -f exp/g2p/.error ]; then
+     rm exp/g2p/.error || true
+     echo "Fail to train the G2P model." && exit 1;
+  fi
+  steps/dict/apply_g2p_seq2seq.sh "$rnnlm_workdir"/oov_pocolmwords exp/g2p "$rnnlm_workdir"/oov_g2p.lex
+  cat "$rnnlm_workdir"/oov_g2p.lex data/local/dict/lexicon.txt | sort -u > "$rnnlm_workdir"/lexicon_extended.txt
+  cp "$rnnlm_workdir"/lexicon_extended.txt data/local/dict/lexicon.txt # Replacing original lexicon with extended version.
+ 
+  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
+
+  # Make sure that you do not use your test and your dev sets to train the LM
+  # Some form of cross validation is possible where you decode your dev/set based on an
+  # LM that is trained on  everything but that that conversation
+  # When in doubt about what your data partitions should be use local/fsp_ideal_data_partitions.pl
+  # to get the numbers. Depending on your needs, you might have to change the size of
+  # the splits within that file. The default paritions are based on the Kaldi + Joshua
+  # requirements which means that I have very large dev and test sets
+  local/fsp_train_lms.sh $split
+  local/fsp_create_test_lang.sh
+
   # Now compute CMVN stats for the train, dev and test subsets
   steps/compute_cmvn_stats.sh data/dev exp/make_mfcc/dev $mfccdir
   steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $mfccdir

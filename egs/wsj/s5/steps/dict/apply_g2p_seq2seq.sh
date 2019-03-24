@@ -17,10 +17,9 @@ set -u
 set -e
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 [options] <lexicon-in> <work-dir> <outdir>"
-  echo "    where <lexicon-in> is the training lexicon (one pronunciation per "
-  echo "    word per line, with lines like 'hello h uh l ow') and"
-  echo "    <work-dir> is directory where the models will be stored"
+  echo "Usage: $0 [options] <oovlist-in> <model-dir> <outdir>"
+  echo "    where <lexicon-in> is the OOV wordlist "
+  echo "    <model-dir> is directory where the models will be stored"
   exit 1;
 fi
 
