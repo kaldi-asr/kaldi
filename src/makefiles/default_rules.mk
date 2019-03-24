@@ -125,7 +125,7 @@ valgrind: .valgrind
 #buid up dependency commands
 CC_SRCS=$(wildcard *.cc)
 #check if files exist to run dependency commands on
-ifneq ($(CC_SRCS),)										
+ifneq ($(CC_SRCS),)
 CC_DEP_COMMAND=$(CXX) -M $(CXXFLAGS) $(CC_SRCS)
 endif
 

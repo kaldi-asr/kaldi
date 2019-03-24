@@ -193,6 +193,9 @@ struct NnetBatchComputerOptions: public NnetSimpleComputationOptions {
 void MergeTaskOutput(
     const std::vector<NnetInferenceTask> &tasks,
     Matrix<BaseFloat> *output);
+void MergeTaskOutput(
+    const std::vector<NnetInferenceTask> &tasks,
+    CuMatrix<BaseFloat> *output);
 
 /**
    This class does neural net inference in a way that is optimized for GPU use:

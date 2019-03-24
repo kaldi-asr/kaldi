@@ -113,7 +113,7 @@
     - CLAPACK, the linear algebra library (we download the headers).
       This is useful only on systems where you don't have ATLAS and are
       instead compiling with CLAPACK.
-    - OpenBLAS: this is an alernative to ATLAS or CLAPACK.  The scripts don't
+    - OpenBLAS: this is an alternative to ATLAS or CLAPACK.  The scripts don't
       use it by default but we provide installation scripts so you can install
       it if you want to compare it against ATLAS (it's more actively
       maintained than ATLAS).

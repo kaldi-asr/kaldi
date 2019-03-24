@@ -118,8 +118,7 @@ ln -s lex.syllabs2phones.disambig.fst $out/L_disambig.fst
 echo "Validating the output lang dir"
 utils/validate_lang.pl $out || exit 1
 
-sed -i'' 's/#1$//g' $lout/lexicon.txt
-sed -i'' 's/#1$//g' $lout/lexiconp.txt
+perl -i -pe 's/#1$//g' $lout/lexicon.txt $lout/lexiconp.txt
 
 echo "Done OK."
 exit 0

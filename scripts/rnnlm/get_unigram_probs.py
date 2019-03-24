@@ -8,7 +8,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]+')
+
 
 parser = argparse.ArgumentParser(description="This script gets the unigram probabilities of words.",
                                  epilog="E.g. " + sys.argv[0] + " --vocab-file=data/rnnlm/vocab/words.txt "
@@ -80,7 +80,7 @@ def read_data_weights(weights_file, data_sources):
     with open(weights_file, 'r', encoding="utf-8") as f:
         for line in f:
             try:
-                fields = re.split(tab_or_space, line)
+                fields = line.split()
                 assert len(fields) == 3
                 if fields[0] in data_weights:
                     raise Exception("duplicated data source({0}) specified in "
@@ -104,7 +104,7 @@ def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = re.split(tab_or_space, line)
+            fields = line.split()
             assert len(fields) == 2
             if fields[0] in vocab:
                 sys.exit(sys.argv[0] + ": duplicated word({0}) in vocab: {1}"
@@ -133,7 +133,7 @@ def get_counts(data_sources, data_weights, vocab):
 
         with open(counts_file, 'r', encoding="utf-8") as f:
             for line in f:
-                fields = re.split(tab_or_space, line)
+                fields = line.split()
                 if len(fields) != 2: print("Warning, should be 2 cols:", fields, line, file=sys.stderr);
                 assert(len(fields) == 2)
                 word = fields[0]

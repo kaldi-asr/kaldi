@@ -371,8 +371,8 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
 
 # This function replicate the entries in files like segments, utt2spk, text
 def AddPrefixToFields(input_file, output_file, num_replicas, include_original, prefix, field = [0]):
-    list = [x.strip() for x in open(input_file)]
-    f = open(output_file, "w")
+    list = [x.strip() for x in open(input_file, encoding='utf-8')]
+    f = open(output_file, "w" ,encoding='utf-8')
     if include_original:
         start_index = 0
     else:

@@ -8,7 +8,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]+')
+
 
 parser = argparse.ArgumentParser(description="Validates data directory containing text "
                                  "files from one or more data sources, including dev.txt.",
@@ -54,7 +54,7 @@ def check_text_file(text_file):
             lineno += 1
             if args.spot_check == 'true' and lineno > 10:
                 break
-            words = re.split(tab_or_space, line)
+            words = line.split()
             if len(words) != 0:
                 found_nonempty_line = True
                 for word in words:
@@ -78,7 +78,7 @@ def check_text_file(text_file):
     other_fields_set = set()
     with open(text_file, 'r', encoding="utf-8") as f:
         for line in f:
-            array = re.split(tab_or_space, line)
+            array = line.split()
             if len(array) > 0:
                 first_word = array[0]
                 if first_word in first_field_set or first_word in other_fields_set:

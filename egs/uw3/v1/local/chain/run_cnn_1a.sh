@@ -130,7 +130,7 @@ if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   common1="required-time-offsets=0 height-offsets=-2,-1,0,1,2 num-filters-out=12"
 
   mkdir -p $dir/configs
