@@ -43,7 +43,7 @@ use warnings; #sed replacement for -w perl parameter
 
 my $num_jobs = 0;
 my $job_id   = 0;
-my $utt2spk_file;
+my ( $utt2spk_file, $one_based );
 
 for (my $x = 1; $x <= 2 && @ARGV > 0; $x++) {
     if ($ARGV[0] eq "-j") {
@@ -56,6 +56,10 @@ for (my $x = 1; $x <= 2 && @ARGV > 0; $x++) {
     }
     if ($ARGV[0] =~ /--utt2spk=(.+)/) {
         $utt2spk_file = $1;
+        shift;
+    }
+    if ($ARGV[0] eq '--one-based') {
+        $one_based = 1;
         shift;
     }
 }
@@ -75,7 +79,8 @@ my @OUTPUTS;
 if ($num_jobs == 0) { # without -j option
     @OUTPUTS = @ARGV;
 } else {
-    for (my $j = 0; $j < $num_jobs; $j++) {
+    my $max = $one_based ? $num_jobs + 1 : $num_jobs;
+    for (my $j = 0; $j < $max; $j++) {
         if ( $j == $job_id ) {
             if   (@ARGV > 0) { push @OUTPUTS, $ARGV[0]; }
             else             { push @OUTPUTS, "-"; }
