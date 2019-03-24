@@ -48,8 +48,7 @@ struct MelBanksOptions {
   BaseFloat vtln_low;  // vtln lower cutoff of warping function.
   BaseFloat vtln_high;  // vtln upper cutoff of warping function: if negative, added
                         // to the Nyquist frequency to get the cutoff.
-  bool modified;       // If true, use 'modified' MFCC, which uses a breakpoint of
-                       // 900 instead of 700.
+  bool modified;       // If true, use 'modified' MFCC.
   bool debug_mel;
   // htk_mode is a "hidden" config, it does not show up on command line.
   // Enables more exact compatibibility with HTK, for testing purposes.  Affects
@@ -74,10 +73,12 @@ struct MelBanksOptions {
     opts->Register("modified", &modified,
                    "Modified MFCCs, based on paper 'An alternative to MFCCs for ASR' "
                    "(in progess for publication). This uses a cosine-type "
-                   "filters with a modified mel scale for ceneter frequency "
-                   "with more resolution around 1st and 2nd formant frequencies."
-                   "The new bandwidth is computed as a combination of linear bandwidth "
-                   "and the bandwidth computed based on filter overlap.");
+                   "filters with a modified mel scale with two breakpoints "
+                   ", which control filters's resolution in the frequency region."
+                   "Also, a filter bandwidth is computed as a norm of two "
+                   "bandwidths 1) a bandwidth value computed using linear "
+                   "equation, and 2) a bandwidth value computed based on filter "
+                   "overlap.");
     opts->Register("debug-mel", &debug_mel,
                    "Print out debugging information for mel bin computation");
   }
@@ -119,14 +120,14 @@ class MelBanks {
   // this application, the multiplicative factor doesn't matter.  Note:
   // breakpoint_ is 700 for normal mel, or 900 for modified.
   inline BaseFloat InverseMelScale(BaseFloat mel_freq) {
-    if (sec_breakpoint_ > 0.0)
-      return 3500.0 * (expf((expf(mel_freq) - breakpoint_) / 3500.0) - 1.0);
+    if (second_breakpoint_ > 0.0)
+      return second_breakpoint_ * (expf((expf(mel_freq) - breakpoint_) / second_breakpoint_) - 1.0);
     else
       return breakpoint_ * (expf(mel_freq) - 1.0);
   }
 
   inline BaseFloat MelScale(BaseFloat freq) {
-    if (sec_breakpoint_ > 0.0)
+    if (second_breakpoint_ > 0.0)
       return log (breakpoint_ + 3500.0 * log (1.0 + freq / 3500.0));
     else
       return log(1.0 + freq / breakpoint_);
@@ -154,7 +155,7 @@ class MelBanks {
   // and for other purposes.
   BaseFloat breakpoint_;  // The breakpoint in the mel scale: 700 normally;
                           // 500 if opts.modified is true.
-  BaseFloat sec_breakpoint_; // The second breakpoint used in the modified
+  BaseFloat second_breakpoint_; // The second breakpoint used in the modified
                              // mel scale;
                              // The range is [1500,3500]Hz and it corresponds to
                              // second breakpoint in the mel scale mainly and

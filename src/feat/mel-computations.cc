@@ -121,11 +121,11 @@ void MelBanks::ComputeBins(bool htk_mode) {
   first and last nonzero value (pi for the canonical function).  If there are
   a lot of bins, their diamter is defined by a formula and it's a function of
   the center frequency f of the bin:
-     diameter = 30 + 60 f / (f + 500).
-  so it increases from 30Hz to 90Hz with a knee around 500Hz.
+     diameter = alpha1 + alpha2 * f / (f + breakpoint_).
+  So, it increases from alpha1 Hz to (alpha1 + alpha2) Hz with a knee around breakpoint_ (Hz).
   However (and this matters if the number of bins is relatively small), we never
   let the diameter fall below the point where the crossing-point of this and
-  the next bin would be less than 0.1.  By this I mean is the y-value where the
+  the next bin would be less than 0.2.  By this I mean is the y-value where the
   raised-cosines cross.  This value ensures that there won't be too a 'dip'
   in the middle of the two bins.
  */
@@ -136,11 +136,11 @@ void MelBanks::ComputeModifiedBins() {
         next_center = (bin == num_bins - 1 ?
                        high_freq_ : center_freqs_(bin + 1));
 
-    // note: breakpoint_ is 500 (Hz).
-    BaseFloat diameter_floor = (next_center - center_freq) * 1.1,
-        diameter = 30.0 + 60.0 * (center_freq / (center_freq + breakpoint_));
+    // note: breakpoint_ is 900 (Hz).
+    BaseFloat diameter_floor = (next_center - center_freq) * 1.2,
+        diameter = 80.0 + 100.0 * (center_freq / (center_freq + breakpoint_));
 
-    diameter = pow(diameter * diameter + diameter_floor * diameter_floor, 0.5);
+    diameter = sqrt(diameter * diameter + diameter_floor * diameter_floor);
 
     // 'freq_scale' is the scaling factor on the frequencies that will ensure
     // that the diameter becomes equal to pi, like the canonical bin function
@@ -290,7 +290,7 @@ void MelBanks::SetConfigs(const MelBanksOptions &opts,
               << nyquist;
 
   breakpoint_ = (opts.modified ? 500.0 : 700.0);
-  sec_breakpoint_ = (opts.modified ? 3500 : -1);
+  second_breakpoint_ = (opts.modified ? 3500 : -1);
   vtln_low_ = opts.vtln_low;
   if (opts.vtln_high > 0.0)
     vtln_high_ = opts.vtln_high;
