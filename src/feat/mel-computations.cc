@@ -158,8 +158,8 @@ void MelBanks::ComputeModifiedBins() {
 
     // 'diameter' is in Hz; it represents the distance on the frequency axis
     // between the first and last nonzero points of the raised-cosine window
-    // function.  This formula applies our heuristic, described above, to choose
-    // it.
+    // function.  This formula applies our heuristic, described above,
+    // to choose the diameter.
     BaseFloat diameter = sqrt(d1 * d1 + d2 * d2);
 
     // 'freq_scale' is the scaling factor on the frequencies that will ensure
@@ -272,13 +272,6 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
     // we had at one point (it was a bug in that library).  Just to detect
     // it early.
     KALDI_ASSERT(!KALDI_ISNAN((*mel_energies_out)(i)));
-  }
-
-  if (debug_) {
-    fprintf(stderr, "MEL BANKS:\n");
-    for (int32 i = 0; i < num_bins; i++)
-      fprintf(stderr, " %f", (*mel_energies_out)(i));
-    fprintf(stderr, "\n");
   }
 }
 
