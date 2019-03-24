@@ -118,16 +118,33 @@ void MelBanks::ComputeBins(bool htk_mode) {
 
   They are shaped like a cosine function from -pi/2 to pi/2 (unlike the standard
   triangular bins).  We define their diameter as the distance between the
-  first and last nonzero value (pi for the canonical function).  If there are
-  a lot of bins, their diamter is defined by a formula and it's a function of
-  the center frequency f of the bin:
-     diameter = alpha1 + alpha2 * f / (f + breakpoint_).
-  So, it increases from alpha1 Hz to (alpha1 + alpha2) Hz with a knee around breakpoint_ (Hz).
-  However (and this matters if the number of bins is relatively small), we never
-  let the diameter fall below the point where the crossing-point of this and
-  the next bin would be less than 0.2.  By this I mean is the y-value where the
-  raised-cosines cross.  This value ensures that there won't be too a 'dip'
-  in the middle of the two bins.
+  first and last nonzero value (pi for the canonical function).  We choose
+  the diameter as:
+       d = sqrt(d1^2 + d2^2)
+  (this function may be viewed as a kind of soft-max), where d1 and d2 are
+  two different formulas for the diameter that we describe below.
+
+    d1 is a formula that ensures the bins overlap by at least a minimal amount.
+
+   Let bin_diff be the difference in Hz between this bin's center-frequency
+   and the next bin's center-frequency, or (if this is the last bin),
+   the user-specified `high-freq` which is the top of the range of frequencies
+   we cover.  Then:
+
+       d1 = 1.1 * bin_diff
+
+   The formula for d2 is designed to provide a reasonable floor so the bandwidth
+   don't get ridiculously narrow as we add more bins, and to approximate what we
+   observed the filter diameters to look like when learning filterbanks via DNNs.
+   The formula is:
+
+       d2 = 50 + 50 * f / (f + 700)
+
+   which roughly means: start with a diameter of 50Hz, increasing gradually to
+   100Hz for bins with center frequency more than about 700Hz.  There is no
+   rocket science behind this formula; it was obtained through a combination of
+   trying to match the DNN-learned filterbank bandwidths (cite: Pegah's thesis),
+   and manual tuning.
  */
 void MelBanks::ComputeModifiedBins() {
   int32 num_bins = center_freqs_.Dim();
@@ -136,11 +153,14 @@ void MelBanks::ComputeModifiedBins() {
         next_center = (bin == num_bins - 1 ?
                        high_freq_ : center_freqs_(bin + 1));
 
-    // note: breakpoint_ is 900 (Hz).
-    BaseFloat diameter_floor = (next_center - center_freq) * 1.2,
-        diameter = 80.0 + 100.0 * (center_freq / (center_freq + breakpoint_));
+    BaseFloat d1 = (next_center - center_freq) * 1.1,
+              d2 = 50.0 + 50.0 * (center_freq / (center_freq + 700.0));
 
-    diameter = sqrt(diameter * diameter + diameter_floor * diameter_floor);
+    // 'diameter' is in Hz; it represents the distance on the frequency axis
+    // between the first and last nonzero points of the raised-cosine window
+    // function.  This formula applies our heuristic, described above, to choose
+    // it.
+    BaseFloat diameter = sqrt(d1 * d1 + d2 * d2);
 
     // 'freq_scale' is the scaling factor on the frequencies that will ensure
     // that the diameter becomes equal to pi, like the canonical bin function
@@ -289,8 +309,8 @@ void MelBanks::SetConfigs(const MelBanksOptions &opts,
               << " and high-freq " << high_freq_ << " vs. nyquist "
               << nyquist;
 
-  breakpoint_ = (opts.modified ? 500.0 : 700.0);
-  second_breakpoint_ = (opts.modified ? 3500 : -1);
+  breakpoint_ = (opts.modified ? 300.0 : 700.0);
+  second_breakpoint_ = (opts.modified ? 2000.0 : -1);
   vtln_low_ = opts.vtln_low;
   if (opts.vtln_high > 0.0)
     vtln_high_ = opts.vtln_high;

@@ -116,21 +116,24 @@ class MelBanks {
                   const FrameExtractionOptions &frame_opts,
                   BaseFloat vtln_warp_factor);
 
-  // We use simplified formulas for the mel and inverse mel scale, since for
-  // this application, the multiplicative factor doesn't matter.  Note:
-  // breakpoint_ is 700 for normal mel, or 900 for modified.
   inline BaseFloat InverseMelScale(BaseFloat mel_freq) {
-    if (second_breakpoint_ > 0.0)
-      return second_breakpoint_ * (expf((expf(mel_freq) - breakpoint_) / second_breakpoint_) - 1.0);
+    BaseFloat b1 = breakpoint_, b2 = second_breakpoint_;
+    if (b2 > 0.0)
+      return b2 * (expf((expf(mel_freq) - b1) / b2) - 1.0);
     else
-      return breakpoint_ * (expf(mel_freq) - 1.0);
+      return b1 * (expf(mel_freq) - 1.0);
   }
 
   inline BaseFloat MelScale(BaseFloat freq) {
-    if (second_breakpoint_ > 0.0)
-      return log (breakpoint_ + 3500.0 * log (1.0 + freq / 3500.0));
-    else
+    BaseFloat b1 = breakpoint_, b2 = second_breakpoint_;
+    if (b2 > 0.0) {
+      // Modified Mel: linear, till ~b1, then log till ~b2, then log(log)
+      return log (b1 + b2 * log(1.0 + freq / b2));
+    } else {
+      // Mel: linear till ~b1 = 700, then logarithmic.  We ignore the scaling
+      // factor as it makes no difference to our application.
       return log(1.0 + freq / breakpoint_);
+    }
   }
 
   // This sets up the 'bins_' member, for the regular (not modified)
