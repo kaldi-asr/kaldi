@@ -17,6 +17,12 @@ if [ $# -ne 2 ]; then
     exit 1;
 fi
 
+if [ ! -s `which normalizer_main` ] ; then
+  echo "Sparrowhawk normalizer was not found installed !"
+  echo "Go to $KALDI_ROOT/tools and execute install_sparrowhawk.sh and try again!"
+  exit 1
+fi
+
 txtdir=$1
 textdir=$(realpath $txtdir)
 outdir=$(realpath $2)
@@ -38,7 +44,7 @@ if [ $stage -le 0 ]; then
   $train_cmd --max_jobs_run 100 JOB=1:$numsplits $outdir/sparrowhawk/log/JOB.log \
     local/run_norm.sh \
     sparrowhawk_configuration.ascii_proto \
-    $SPARROWHAWK_ROOT/language-resources/esp/sparrowhawk/ \
+    $SPARROWHAWK_ROOT/language-resources/en/sparrowhawk/ \
     $outdir/data \
     JOB \
     $outdir/sparrowhawk/
