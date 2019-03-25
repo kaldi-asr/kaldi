@@ -42,21 +42,24 @@ void Topology::Read(std::istream &is, bool binary) {
       if (token == "</Topology>") {
         break; // finished parsing.
       } else if (token != "<TopologyEntry>") {
-        KALDI_ERR << "Reading Topology object, expected </Topology> or <TopologyEntry>, got "<<token;
+        KALDI_ERR << "Reading Topology object, expected </Topology> or "
+            "<TopologyEntry>, got "<<token;
       } else {
         ExpectToken(is, binary, "<ForPhones>");
         std::vector<int32> phones;
         std::string s;
         while (1) {
           is >> s;
-          if (is.fail()) KALDI_ERR << "Reading Topology object, unexpected end of file while expecting phones.";
+          if (is.fail())
+            KALDI_ERR << "Reading Topology object, unexpected end of file "
+                "while expecting phones.";
           if (s == "</ForPhones>") break;
           else {
             int32 phone;
             if (!ConvertStringToInteger(s, &phone))
               KALDI_ERR << "Reading Topology object, expected "
                         << "integer, got instead " << s;
-            KALDI_ASSERT(phone > 0);          
+            KALDI_ASSERT(phone > 0);
             phones.push_back(phone);
           }
         }
@@ -69,11 +72,12 @@ void Topology::Read(std::istream &is, bool binary) {
         for (int32 phone : phones) {
           if (static_cast<int32>(phone2idx_.size()) <= phone)
             phone2idx_.resize(phone+1, -1);  // -1 is invalid index.
-                                               if (phone2idx_[phone] != -1) {
-            KALDI_ERR << "Phone "<< phone <<" appears in multiple topology entries.";
-}
-                                               phone2idx_[phone] = entry_index;
-                                               phones_.push_back(phone);
+          if (phone2idx_[phone] != -1) {
+            KALDI_ERR << "Phone "
+                      << phone << " appears in multiple topology entries.";
+          }
+          phone2idx_[phone] = entry_index;
+          phones_.push_back(phone);
         }
       }
     }
@@ -118,7 +122,8 @@ void Topology::Check() {
       KALDI_ERR << "Topology::Check(), phone has no valid index.";
     is_seen[phone2idx_[phone]] = true;
   }
-  if (!std::accumulate(is_seen.begin(), is_seen.end(), true, std::logical_and<bool>())) {
+  if (!std::accumulate(is_seen.begin(),
+                       is_seen.end(), true, std::logical_and<bool>())) {
     KALDI_ERR << "HmmTopoloy::Check(), entry with no corresponding phones.";
   }
   for (auto const& entry: entries_) {
@@ -128,21 +133,31 @@ void Topology::Check() {
                 << "final state and a start state).";
   }
 
-  bool has_final_state = false;
-  for (auto const& entry: entries_) {
+  for (auto& entry: entries_) {
+    bool has_final_state = false;
+    std::vector<int32> seen_pdf_classes;
     for (fst::StateIterator<fst::StdVectorFst> state_iter(entry);
          !state_iter.Done(); state_iter.Next()) {
-      StateId state_id = state_iter.Value();
-      if (entry.Final(state_id) != Weight::Zero()) {
+      StateId state = state_iter.Value();
+      if (entry.Final(state) != Weight::Zero())
         has_final_state = true;
 
-        // TODO(galv): Figure out whether this is really
-        // necessary. Dan seems to think it is unncessary.
-        if (entry.NumArcs(state_id) > 0)
-          KALDI_ERR << "Topology::Check(), final states must have no outward arcs.";
+      BaseFloat outward_prob_sum = 0.0;
+      for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state);
+           !aiter.Done(); aiter.Next()) {
+        const fst::StdArc &arc(aiter.Value());
+        KALDI_ASSERT(arc.ilabel == arc.olabel);
+        if (arc.ilabel == 0)
+          KALDI_ERR << "Epsilon arcs (pdf-class 0) are not allowed.";
+        if (arc.nextstate == entry.Start())
+          KALDI_ERR << "Start state cannot have any inward transitions.";
+        seen_pdf_classes.push_back(arc.ilabel);
+        outward_prob_sum += exp(-arc.weight.Value());
       }
+      if (!ApproxEqual(outward_prob_sum, 1.0))
+        KALDI_WARN << "Outward transition probabilities should sum to 1.0 "
+            "for each state";
     }
-
     if (!has_final_state) {
       KALDI_ERR << "Topology::Check(), must have a final state.";
     }
@@ -154,60 +169,22 @@ void Topology::Check() {
       KALDI_ERR << "Topology::Check(), start state must be 0.";
     }
 
-
-    // Still TODO:
-    // 1) Check for negative or zero transition probabilities.
-    // 2) Check that there are no pdf classes equal to 0 (this basically means
-    // that all of our transitions must be emitting. Is that okay?)
-    // 3) Inward arcs to each state should sum to 1 in probability. (Do we need
-    // this? Previously, we just warned about it.)
-    // 4) Every state should be reachable from start state (i.e., there should
-    // be one strongly connected component. Try using fst/state-reachable.h or
-    // fst/dfs-visit.h or fst/connect.h)
-    // 5) seen_pdf_classes should be contiguous and start from 1
-
-    // std::vector<bool> has_trans_in(num_states, false);
-    std::vector<int32> seen_pdf_classes;
-
-    // for (int32 j = 0; j < num_states; j++) {  // j is the state-id.
-    //   BaseFloat tot_prob = 0.0;
-    //   if (entries_[i][j].forward_pdf_class != kNoPdf) {
-    //     seen_pdf_classes.push_back(entries_[i][j].forward_pdf_class);
-    //     seen_pdf_classes.push_back(entries_[i][j].self_loop_pdf_class);
-    //   }
-    //   std::set<int32> seen_transition;
-    //   for (int32 k = 0;
-    //        static_cast<size_t>(k) < entries_[i][j].transitions.size();
-    //        k++) {
-    //     tot_prob += entries_[i][j].transitions[k].second;
-    //     if (entries_[i][j].transitions[k].second <= 0.0)
-    //       KALDI_ERR << "Topology::Check(), negative or zero transition prob.";
-    //     int32 dst_state = entries_[i][j].transitions[k].first;
-    //     // The commented code in the next few lines disallows a completely
-    //     // skippable phone, as this would cause to stop working some mechanisms
-    //     // that are being built, which enable the creation of phone-level lattices
-    //     // and rescoring these with a different lexicon and LM.
-    //     if (dst_state == num_states-1 // && j != 0
-    //         && entries_[i][j].forward_pdf_class == kNoPdf)
-    //       KALDI_ERR << "We do not allow any state to be "
-    //           "nonemitting and have a transition to the final-state (this would "
-    //           "stop the SplitToPhones function from identifying the last state "
-    //           "of a phone.";
-    //     seen_transition.insert(dst_state);
-    //     has_trans_in[dst_state] = true;
-    //   }
-    // }
     SortAndUniq(&seen_pdf_classes);
     if (seen_pdf_classes.front() != 1 ||
         seen_pdf_classes.back() != static_cast<int32>(seen_pdf_classes.size())) {
       KALDI_ERR << "Topology::Check(), pdf_classes are expected to be "
           "contiguous and start from 1.";
     }
+    fst::Connect(&entry);
+    if (entry.NumStates() == 0)
+      KALDI_ERR << "Some of the states in the topolgy are not reachable.";
   }
 }
 
-const fst::StdVectorFst& Topology::TopologyForPhone(int32 phone) const {  // Will throw if phone not covered.
-  if (static_cast<size_t>(phone) >= phone2idx_.size() || phone2idx_[phone] == -1) {
+// Will throw if phone not covered.
+const fst::StdVectorFst& Topology::TopologyForPhone(int32 phone) const {
+  if (static_cast<size_t>(phone) >= phone2idx_.size()
+      || phone2idx_[phone] == -1) {
     KALDI_ERR << "TopologyForPhone(), phone "<< phone <<" not covered.";
   }
   return entries_[phone2idx_[phone]];
@@ -218,7 +195,8 @@ int32 Topology::NumPdfClasses(int32 phone) const {
   const fst::StdVectorFst &entry = TopologyForPhone(phone);
 
   std::set<int32> pdfs;
-  for (fst::StateIterator<fst::StdVectorFst> siter(entry); !siter.Done(); siter.Next()) {
+  for (fst::StateIterator<fst::StdVectorFst> siter(entry);
+       !siter.Done(); siter.Next()) {
     StateId state_id = siter.Value();
     for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state_id);
          !aiter.Done(); aiter.Next()) {
@@ -228,7 +206,8 @@ int32 Topology::NumPdfClasses(int32 phone) const {
   return pdfs.size();
 }
 
-void Topology::GetPhoneToNumPdfClasses(std::vector<int32> *phone2num_pdf_classes) const {
+void Topology::GetPhoneToNumPdfClasses(
+    std::vector<int32> *phone2num_pdf_classes) const {
   KALDI_ASSERT(!phones_.empty());
   phone2num_pdf_classes->clear();
   phone2num_pdf_classes->resize(phones_.back() + 1, -1);
@@ -245,9 +224,10 @@ int32 Topology::MinLength(int32 phone) const {
   // Since we are using the Std
   // We need to use a VectorFst in order to mutate members
   std::unique_ptr<fst::StdVectorFst> topo_copy(this_topo.Copy());
-  
+
   std::vector<StateId> final_states;
-  for (fst::StateIterator<fst::StdVectorFst> siter(*topo_copy); !siter.Done(); siter.Next()) {
+  for (fst::StateIterator<fst::StdVectorFst> siter(*topo_copy);
+       !siter.Done(); siter.Next()) {
     StateId state_id = siter.Value();
 
     if (topo_copy->Final(state_id) != Weight::Zero()) {
