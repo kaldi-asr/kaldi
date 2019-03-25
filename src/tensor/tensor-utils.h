@@ -26,33 +26,55 @@ namespace kaldi {
 namespace tensor {
 
 
-/**
-   SubTensor is used in our implementation when we want to create temporaries
-   that are easier to manipulate outside the Tensor class, and that don't have
-   the overhead of managing the std::shared_ptr.  The idea is that a SubTensor
-   will be constructed temporarily from a longer-living underlying Tensor.
- */
-struct SubTensor {
-  TensorPattern pattern;
-  DataType dtype;
-  Device device;
-  void *data;
-
-  // Constructor from Tensor.
-  explicit SubTensor(const Tensor &tensor);
-};
 
 
 // Used in checking function arguments, this function will
 // crash and print a statck trace if Tensor a and b have different
 // Dtype() or different Device().
-void CheckDeviceAndDtype(const Tensor &a, const Tensor &b);
+void CheckDeviceAndDtype(const TensorImpl &a, const TensorImpl &b);
 
 // Used in checking function arguments, this function will
 // crash and print a statck trace if Tensor a, b and c have different
 // Dtype() or different Device().
-void CheckDeviceAndDtype(const Tensor &a, const Tensor &b, const Tensor &c);
+void CheckDeviceAndDtype(const TensorImpl &a, const TensorImpl &b, const TensorImpl &c);
 
+
+/**
+   This function allocates the appropriate storage for the Tensor described
+   in 'impl', and sets is 'data' pointer to the allocated memory address.
+   It returns the address a newly allocated Storage object which manages
+   the memory location; you will probably want to construct a
+   std::unique_ptr<Storage> from this so that when it goes out of scope,
+   the memory will be freed.
+
+      @param [in,out] impl   The TensorImpl object we are allocating for.
+                      Any previous value of impl->data is overwritten.
+                      It is required that that the product of dims in
+                      impl->pattern be nonzero (i.e. that the pattern
+                      is initialized to a valid value), and that its
+                      dtype and device values be set.
+      @return         Returns a newly allocated Storage object that
+                      manages this memory block.  When it is freed,
+                      the memory block will be deallocated using a
+                      method appropriate for the device.
+
+   This function throws on error.  See also AllocateTensorShared().  This
+   function is used by class Tensor, but also by various implementation
+   functions (called with TensorImpl) where we need to allocate temporaries.
+   We don't construct a full-fledged Tensor because we don't want the
+   overhead of managing any shared_ptr's.
+ */
+Storage *AllocateTensor(TensorImpl *impl);
+
+
+/**
+   This function is as AllocateTensor(), except that the Storage
+   object returned is allocated via std::make_shared (which involves
+   just one heap allocation, as opposed to two if you constructed
+   the shared_ptr from the Storage* pointer).  See the documentation
+   for AllocateTensor() for more details.
+ */
+std::shared_ptr<Storage> AllocateTensorShared(TensorImpl *impl);
 
 
 }  // namespace tensor

@@ -28,36 +28,28 @@ namespace kaldi {
 namespace tensor {
 
 
-
 /**
-   This function returns a code that compactly represents the number of axes in
-   'pattern' and whether the dimension for each axis is greater than 1.  This is
-   used in fast lookup of which algorithm to choose.
+   This function returns a code that compactly says whether each axis
+   has dim = 1 or dim != 1.  For purposes of the code generated, the number
+   of axes does not matter; imagine we left-padded with enough `dim=1`
+   axes to give KALDI_TENSOR_MAX_DIM axes.
 
-   The 3 least significant bits of 'pattern' represent the number of dims.
-   From there, in order from least to most significant, is a 1 for
-   each dimension that is >1, or a zero if that dimension is 1.
+   The rightmost (least significant) bit is the last axis (numbered
+   KALDI_TENSOR_MAX_DIM - 1 after padding).
+
+   Note that the `dims` vectors below are displayed after removing
+   any leading `dim=1` axes.
 
    The examples below will use c++14 binary literals, although
    the code doesn't use them.  In the notation below, in dims vectors,
-   x is a stand-in for 'any number greater than 1'.  Note that
-   the order of the numbers in the 'dims' vectors below and the
-   corresponding bit positions saying whether they are >1, are
-   in opposite directions (left to right vs. right to left).
+   x is a stand-in for 'any number greater than 1'.
 
     0b00000000  0x00  dims=(), a scalar
-    0b00000001  0x01  dims=(1)
-    0b00001001  0x09  dims=(x)
-    0b00000010  0x02  dims=(1,1)
-    0b00001010  0x0A  dims=(1,2)
-    0b00010010  0x01  dims=(x,1)
-    0b00011010  0x1A  dims=(x,x)
-    0b00000011  0x03  dims=(1,1,1)
-    0b00001011  0x0B  dims=(1,1,x)
-    0b00010011  0x13  dims=(1,x,1)
-    0b00100011  0x23  dims=(x,1,1)
-    0b00101011  0x2B  dims=(x,1,x)
-    0b00111011  0x3B  dims=(x,x,x)
+    0b00000001  0x01  dims=(x)
+    0b00000010  0x02  dims=(x,1)
+    0b00000011  0x03  dims=(x,x)
+
+    etc.
 
   See also GetPatternCode(), which includes the same information but
   also stride-related information.
@@ -66,108 +58,92 @@ int32 GetDimsCode(const TensorPattern &pattern);
 
 
 /**
-   This function returns a code that compactly represents:
-     - the num-axes in 'pattern'
-     - which dims in 'pattern' were >1
-     - which stride in 'pattern', if any, was equal to 1.  (It's not
-       possible for more than one stride to equal 1 in a valid Tensor).
+   This function returns a code that compactly represents the same information
+   as GetDimsCode() [i.e. which axes, counting from the last axis,
+   had dim != 1], and also which axis, if any,
+   had stride=1.  (No two axes can have stride=1, due to the uniqueness
+   rule; search in tensor-pattern.h).
 
-   The low-order 9 bits are as returned by GetDimsCode(), and are
-   explained in its documentation.
+   Let
+      n = 0 if no axis had stride=1, otherwise:
+      n = num_axes - (the axis that had stride=1).
 
-   The next 3 bits are a number that is: 0 if no dims had stride=1;
-   otherwise, one plus the axis that had stride=1.  The maximum
-   number of bits in the output is 12.
+   For example if the strides where (10,3,1) we would have
+   n = 1; i if the strides were (10,1,3) we would have n = 2.
+
+   The value 'n' occupies the bits starting from 8 in the returned code,
+   i.e. bits 8,9,10 (counting from the right, i.e. from the least to
+   most significant).
+
+   Bit 11 is 1 if any of the strides were negative, and zero otherwise.  (This
+   mostly serves to steer us towards code paths that do more careful checks if
+   any negative strides were detected, since some versions of BLAS will not
+   support negative strides.
+
+   The low-order KALDI_TENSOR_MAX_DIM bits are as returned by GetDimsCode().
 
    The explanation below will use c++14 binary literals, although the code
    doesn't use them.  In the notation below, in dims vectors, X or x is a
    stand-in for 'any number greater than 1', and upper-case x indicates that the
-   axis has stride=1.  Note that the order of the numbers in the 'dims' vectors
-   below and the corresponding bit positions saying whether they are >1, are in
-   opposite directions (left to right vs. right to left).
+   axis has stride=1.  In the example `dims` vectors below, we don't put any
+   leading `dim=1` axes, because they would not affect the code.
+
    The ' at the 8th bit is to make the bit-string easier to parse (but notice
    that the number representing the stride information starts from the 9th bit).
 
-    0b0000'00000000  0x000  dims=(), a scalar
-    0b0000'00000001  0x001  dims=(1)
-    0b0000'00001001  0x009  dims=(x)
-    0b0010'00001001  0x209  dims=(x)
-    0b0000'00000010  0x002  dims=(1,1)
-    0b0000'00001010  0x00A  dims=(1,x)
-    0b0010'00001010  0x20A  dims=(1,X)
-    0b0000'00010010  0x001  dims=(x,1)
-    0b0000'00010010  0x001  dims=(x,1)
-    0b0000'00011010  0x01A  dims=(x,x)
-    0b0010'00011010  0x21A  dims=(x,X)
-    0b0100'00011010  0x41A  dims=(X,x)
-    0b0000'00000011  0x003  dims=(1,1,1)
-    0b0000'00001011  0x00B  dims=(1,1,x)
-    0b0010'00001011  0x00B  dims=(1,1,X)
-
-    0b00010011  0x13  dims=(1,2,1)
-    0b00100011  0x23  dims=(2,1,1)
-    0b00101011  0x2B  dims=(2,1,2)
-    0b00111011  0x3B  dims=(2,2,2)
+    0b000'00000000  0x000  dims=(), a scalar
+    0b000'00000001  0x001  dims=(x), a vector with stride != 1
+    0b001'00000001  0x101  dims=(X), a vector with stride == 1
+    0b000'00000010  0x002  dims=(x,1)
+    0b010'00000010  0x202  dims=(X,1)
+    0b000'00000011  0x003  dims=(x,x)
+    0b001'00000011  0x103  dims=(x,X)
+    0b010'00000011  0x203  dims=(X,x)
+    0b000'00000100  0x208  dims=(x,1,1)
+    0b011'00000100  0x208  dims=(X,1,1)
 
 
+    ...
  */
 int32 GetPatternCode(const TensorPattern &pattern);
 
 
-/**
-   This function returns true if the two 'dims' vectors supplied are
-   broadcastable in the PyTorch sense.  (Note that they are required to be valid
-   'dims' vectors, which means that all elements are >0).
+inline int32 CombineCodes(int32 code1, int32 code2) {
+  return (code1 << 12) | code2;
+}
 
-   The rule as is as follows.  Firstly, if a and b are not the same length, then
-   insert 1's at the beginning of the shorter one to make them the same length
-   'num_axes'.  Then for each axis 0 <= i < num_axes, if a[i] != b[i]
-   and neither of them equals 1, a and b are not broadcast compatible.
-   If the test above did not fail for any axis i, a and b are broadcast
-   compatible.
-
-     @param [in] a  The dimensions of the first Tensor
-     @param [in] b  The dimensions of the second Tensor
-     @param [in] b_non_reducing   If you set this flag to true, then
-                    we impose a more stringent test for compatibility,
-                    namely: in the test above, after padding to
-                    the same length, we also fail if any
-                    a[i] > b[i], i.e. we don't allow b[i] to be 1
-                    and a[i] to be greater than 1.
-                    The reason for the name is that this is a
-                    condition we would need to impose for non-reducing
-                    operations on b (such as:  b += a).
-
-        @return  Returns true if a and b are broadcast-compatible
-                 AND `(!b_non_reducing || b >= a).`, interpreting >= as
-                 'all elements are >, after left-padding with ones`.
- */
-bool BroadcastCompatible(ArrayRef<int32> a, ArrayRef<int32> b,
-                         bool b_non_reducing = false);
+inline int64 CombineCodes(int32 code1, int32 code2, int32 code3) {
+  return (static_cast<int64>(code1) << 24) |
+      static_cast<int64>(code2 << 12) |
+      static_cast<int64>(code3);
+}
 
 
 /**  This function returns true if the dimensions of tensor patterns
-     a and b are broadcastable in the PyTorch sense; this is
-     a convenience wrapper that calls BroadcastCompatible on their
-     dims turned into ArrayRef<int32>.
+     a and b are broadcastable in the PyTorch sense.  What this means
+     for tensors with the same num-axes is that dims for axis i
+     must either be the same or one of them must be 1.  For tensors
+     with different num-axes we pad with leading (dim=1)'s; for
+     instance, dims (2,8,3) and (8,1) would be broadcastable because
+     the (8,1) becomes (1,8,1).
 
-     See the documentation for the other overloaded version of this
-     function, which is more detailed.  And see also Broadcastable()
+     If 'b_non_reducing' is true, then we do not allow any dim of
+     b to be 1 where the corresponding dim of a was not 1.
+
+     This check is simple to implement due to the way we store
+     the dims 'right-justified' so that the last-numbered dim
+     is always at dims[KALDI_TENSOR_MAX_DIM - 1].
  */
-bool BroadcastCompatible(const TensorPattern &a, const TensorPattern &b,
-                         bool b_non_reducing = false);
+bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
+                   bool b_non_reducing = false);
 
 
 /**  This function returns true if the dimensions of tensor patterns
      a, b and c are broadcastable in the PyTorch sense (meaning;
      after padding their dims on the left with ones to make them
      have the same num-axes, corresponding dimensions are either
-     identical or 1).
-
-     See the first version of BroadcastCompatible (accepting ArrayRef's)
-     for an explanation of its meaning.  Briefly: left-pad with ones;.
-     then all dims must be the same, except that 1's are allowed
-     even if different from dims greater than one.
+     identical or 1).  See the version of Broadcastable() above
+     for more information.
 
        @param [in] a  The dimensions of the first Tensor
        @param [in] b  The dimensions of the second Tensor
@@ -176,70 +152,8 @@ bool BroadcastCompatible(const TensorPattern &a, const TensorPattern &b,
                       c to be 1 while corresponding dims of a or b
                       are > 1.
  */
-bool BroadcastCompatible(const TensorPattern &a, const TensorPattern &b,
-                         const TensorPattern &c, bool c_non_reducing = false);
-
-
-/**
-   Pads the axes of a and b with leading axes with (dim=1, stride=0),
-   as required so that their NumAxes() is the same.  For instance,
-   if their respective dimensions were (10,5) and (8,10,5), after
-   padding they would be (1,10,5) and (8,10,5) respectively.
-
-      @param [in,out] a  First TensorPattern to be padded
-      @param [in,out] b  Second TensorPattern to be padded
- */
-void PadAxes(TensorPattern *a, TensorPattern *b);
-
-/**
-   Pads the axes of a and b with leading axes with (dim=1, stride=0),
-   as required so that their NumAxes() are all the same.
-
-      @param [in,out] a  First TensorPattern to be padded
-      @param [in,out] b  Second TensorPattern to be padded
-      @param [in,out] c  Second TensorPattern to be padded
- */
-void PadAxes(TensorPattern *a, TensorPattern *b, TensorPattern *c);
-
-
-/**
-   Broadcastable(a, b) returns true if a.num_axes == b.num_axes and
-   for each 0 <= i < a.num_axes, either a.dims[i]  == b.dims[i]
-   or one of the two dims equals 1.  This is a stricter condition
-   than BroadcastCompatible because it requires the same number of
-   axes.
- */
-bool Broadcastable(const TensorPattern &a, const TensorPattern &b);
-
-
-/**
-   Broadcastable(a, b, c) is equivalent to
-   Broadcastable(a, b) && Broadastable(b, c) && Broadcastable(a, c);
-   is provided for speed and convenience.
-
-   This condition is expected to be satisfied when you are doing, say, a binary
-   operation on a and b with the output in c.  Any axis i on which c.dims[i] ==
-   1 and one or both of a.dims[i] and b.dims[i] is not 1, would be interpreted
-   as some kind of reduction, depending on the context; probably summation.
-   Thus, with suitable dim=1 axes inserted, matrix multiplication can be
-   interpreted as elementwise multiplication with summation.
-
-   For instance, suppose we are multiplying a matrix with dims
-   (m, n) by a matrix with dims (n, k), producing an output
-   of dimension (m, k).  This could be interpreted as elementwise
-   multiplication with reduction, with dimensions:
-
-     a = (m, n, 1), b = (1, n, k), c = (m, 1, k).
-
-   (The extra dims are just used for our internal meta-manipulation, they would
-   never be exposed to the user).  Of course, we would eventually want to turn
-   this into a conventional invocation of something like BLAS matrix-multiply;
-   but viewing it in this way will, in more complex cases, allow us to spot
-   opportunities for combining some tensor dims that would otherwise
-   be hard to spot except on a case-by-case basis.
- */
 bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
-                   const TensorPattern &c)
+                   const TensorPattern &c, bool c_non_reducing = false);
 
 
 
@@ -372,6 +286,10 @@ void CompressTwoPatterns(const TensorPattern &src1,
                         as patterns, which on output will contain
                         offsets to be added to the data pointers.
 
+
+      @return  Returns true if it made any change to the patterns,
+               false if they were unchanged.
+
    Examples are below, where we write a TensorPattern as
     `{{dim1,dim2,..}, {stride1,stride2,..}}`.
 
@@ -388,7 +306,7 @@ void CompressTwoPatterns(const TensorPattern &src1,
  {{3,4},{4,1}}        {{1,1},{0,0}}      {{12},{1}}           {{1},{0}}    # combine
 \endverbatim
  */
-void CompressPatterns(ArrayRef<TensorPattern> patterns,
+bool CompressPatterns(ArrayRef<TensorPattern> patterns,
                       int64_t *data_offsets);
 
 /**

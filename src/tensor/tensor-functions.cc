@@ -23,6 +23,14 @@
 namespace kaldi {
 namespace tensor {
 
+inline static void SclalarMultiply(
+    float alpha, float beta,
+    const Tensor &a, const Tensor &b, Tensor *c) {
+
+}
+
+
+
 void AddProductReducing(float alpha, float beta,
                         const Tensor &a, const Tensor &b, Tensor *c){
   CheckDeviceAndDtype(a, b, *c);

@@ -27,6 +27,34 @@
 namespace kaldi {
 namespace tensor {
 
+
+/**
+   TensorImpl is basically a Tensor without the shared_ptr to Storage
+   (which is expensive to pass around, because of the cost of atomics).
+   The Tensor contains it as a member, rather than as a pointer.
+
+   Most of our internal functions use TensorImpl rather than Tensor because
+   it is easier to manipulate, but you need to know what you are doing.
+*/
+struct TensorImpl {
+  TensorPattern pattern;
+  DataType dtype;
+  Device device;
+  void *data{nullptr};
+};
+
+// Metadata for a Tensor.  It's occasionally convenient to have this
+// in a struct.
+struct TensorMeta {
+  TensorPattern pattern;
+  DataType dtype;
+  Device device;
+  // Note: the offset is only used in some situations,
+  // it's
+  // We may turn this into an offset measured in elements.
+  int32 offset;
+};
+
 /**
    A Tensor is a multi-dimensional array (up to 5 dimensions) of types such as
    float or double (and eventually ints).  Multiple Tensors may point to data
@@ -48,30 +76,33 @@ class Tensor {
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
   // the terms 'number of axes' or 'axis' throughout.
-  inline int32 NumAxes() const { return pattern_.num_axes; }
+  inline int32 NumAxes() const { return impl_.pattern.num_axes; }
+
+
+  const TensorImpl &Impl() { return impl_; }
 
   // Return reference to the struct containing the dimension and
   // stride info.
-  const TensorPattern &Pattern() const { return pattern_; }
+  const TensorPattern &Pattern() const { return impl_.pattern; }
 
   // Return an array containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
   // We limit each dimension to int32, because BLAS's interface uses int,
   // which on many common 64-bit platforms is configured with 32 bits.
   // However the product of dimensions may still be 64 bits.
-  inline ArrayRef<int32> Dims() const { return ArrayRef{pattern_.num_axes, pattern_.dims}; }
+  inline ArrayRef<int32> Dims() const { return ArrayRef{impl_.pattern.num_axes, impl_.pattern_.dims}; }
 
   // Returns the dimension on this axis, a number >= 1.  Result is
   // undefined if axis < 0 or axis >= NumAxes().
-  inline int32 Dim(int32 axis) const { return pattern_.dims[axis]; }
+  inline int32 Dim(int32 axis) const { return impl_.pattern.dims[axis]; }
 
   // Returns an array containing the strides of the tensor.
   // Strides().size() will equal NumAxes().
-  inline ArrayRef<int32> Strides() const { return ArrayRef{pattern_.num_axes, pattern_.strides}; }
+  inline ArrayRef<int32> Strides() const { return ArrayRef{impl_.pattern.num_axes, impl_.pattern.strides}; }
 
   // Returns the stride on this axis.  Will be zero if the corresponding
   // dimension is 1, and otherwise nonzero (but not necessarily positive).
-  inline int32 Stride(int32 axis) const { return pattern_.strides[axis]; }
+  inline int32 Stride(int32 axis) const { return impl_.pattern.strides[axis]; }
 
   // Returns the number of elements in the Tensor; must be > 0.
   inline int64 NumElements() const { return derived_.num_elements; }
@@ -148,7 +179,7 @@ class Tensor {
   void Transpose(int32 axis1 = 0, int32 axis2 = 1);
 
 
-  // Constructor which does not really initialize the Tensor.  pattern_,
+  // Constructor which does not really initialize the Tensor.  impl_.pattern,
   // derived_ and dtype_ may contain nonsense.
   Tensor(): data_(NULL) { }
 
@@ -170,11 +201,7 @@ class Tensor {
                        `other`, while filling in any gaps if `other`
                        was not contiguous, if kCstrides then we use
                        "C" style strides for any dimensions != 1.
-       @param [in]  ip   The data initialize policy
-
-     The strides will not be the same as 'other' if other.IsContiguous() ==
-     false, but the ordering of the strides (smaller vs. larger) and their
-     signs will remain the same.
+       @param [in]  ip   The data initialization policy
   */
   Tensor(const Tensor &other, StridePolicy sp, InitializePolicy ip);
 
@@ -213,6 +240,29 @@ class Tensor {
          InitializePolicy p);
 
   /**
+     Construct a Tensor from the metadata in 'meta'.  Requires
+     that meta.pattern be contiguous (meaning: literally contiguous,
+     not the PyTorch meaning which is a stronger condition).
+     ??Possibly we could make it similar to the constructor above
+       and have it just make it contiguous if it was not.??
+
+
+       @param [in] meta  Struct containing the metadata specifying
+                     the Tensor's pattern, data-type and device
+
+                     ;pattern  The dimension and stride information that
+                  this tensor should match (although we will fill gaps
+                  to make it contiguous)
+       @param [in] dtype   The data type to use
+       @param [in] device  The device to put the data on
+       @param [in] set_zero   If true, set the data to zero.  If false,
+                        the contents will be undefined.
+
+  */
+  Tensor(TensorMeta &meta, InitializePolicy p);
+
+
+  /**
      This constructor, which is intended for use primarily in internal
      code and
    */
@@ -221,13 +271,7 @@ class Tensor {
 
  private:
   // The tensor dim and strides.
-  TensorPattern pattern_;
-  // Cached properties that depend on pattern_.
-  TensorPatternProperties derived_;
-  // The data-type of this tensor.
-  DataType dtype_;
-  // The device this Tensor lives on
-  Device device_;
+  TensorImpl impl_;
 
   // The raw data pointer.  Will be cast to a pointer of the appropriate
   // type before indexing.

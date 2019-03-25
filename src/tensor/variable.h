@@ -38,31 +38,50 @@ namespace tensor {
   Users will rarely need to interact directly with this struct directly.
  */
 struct TensorGrad {
+  // The version of the underlying Tensor.  (this number in the TensorGrad
+  // mirrors that in the Variable; it's needed because TensorGrad's
+  // 'inputs' variable refers back to the TensorGrad and does not have
+  // access to the Variable).
+  int32 version;
+
+
+  struct InputInfo {
+    int32 version;  // the version of the input that we used.  Used so we can
+                    // check in the backprop that grad->version == version;
+                    // if not, the user did something we don't allow.
+    std::shared_ptr<TensorGrad> grad;
+  };
+
   // The gradients corresponding to the input variables, which
   // we may need to update.  Some subset of these may be nullptr,
   // corresponding to input Variables for which no gradient
   // was required.
-  std::vector<std::shared_ptr<TensorGrad> > inputs;
+  std::vector<InputInfo> inputs;
 
-  // is_view is
+  // is_view is true only if the Variable underlying this TensorGrad
+  // is the result of an expression like foo.transpose() that creates
+  // a view to another Tensor.  In that case
   bool is_view{false};
 
   // The device we
   Device device;
 
-  // The dimension of the Tensor for which this is the gradient.  Used
-  // to set up 'grad' when needed.
-  TensorPattern dim;
-
-  // 'offset' is only inspected if this is a view; it is the offset
-  // (in elements) from the
-  // 'inputs' will just contain one member, which is the gradient for the source
-  // Variable, and we use 'dim' and 'offset' to construct the sub-tensor).
-  int32 offset;
+  // This contains the meta-information of the Tensor for which this is the
+  // gradient (its 'data' pointer will be NULL).  Used to set up 'grad' with the
+  // correct dimension and strides when it is needed.
+  TensorMeta meta;
+  // Only if is_view == true, the offset (in elements) of the start of
+  // the Tensor described in 'meta' from the start of the source Tensor.
+  // Used in constructing 'grad'
+  int64 offset;
 
   // This stores the gradient (if we already have one), or nullptr if not.
   std::unique_ptr<Variable> grad{nullptr};
 
+  // The tail in a singly linked list of TensorGrads... used in case this
+  // Variable is a sum of several terms that were added using an
+  // in-place method such as '+='.  (Syntax etc. TBD at this point).
+  std::unique_ptr<TensorGrad> tail{nullptr};
 };
 
 
@@ -107,6 +126,19 @@ class Variable {
            GradFunc gradFunc);
 
 
+ private:
+
+  // The version of this Variable.  Generally will start at 0 when the Variable
+  // is assigned a size and will have 1 added to it for each operation that is
+  // done on it.  If grad_ != NULL, we mirror this value in grad_->version.  The
+  // version number is only used for checking purposes, to verify that people
+  // don't modify a Variable in ways that defeat the backprop.  If we wanted we
+  // could keep the old versions around and enable the backprop to work anyway,
+  // but that kind magic is not in the spirit of how this library operates.
+  int32 version_;
+
+  std::shared_ptr<Tensor> data_;
+  std::shared_ptr<TensorGrad> grad_;
 
 };
 
