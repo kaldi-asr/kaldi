@@ -133,6 +133,7 @@ if [ $stage -le 2 ]; then
   sed 's:</b::g' | \
   sed 's:<foreign langengullís>::g' | \
   sed 's:foreign>::g' | \
+  sed 's:\[noise\]:[noise] :g' | \
   sed 's:>::g' | \
   #How do you handle numbers?
   grep -v '()' | \

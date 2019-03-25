@@ -23,7 +23,7 @@ callhome_transcripts=/export/corpora/LDC/LDC96T17
 split_callhome=local/splits/split_callhome
 
 gigaword_datapath=/export/c03/svalluri/Spanish_gigaword/data
-rnnlm_workdir=/export/c03/svalluri/workdir_pocolm_2stage
+rnnlm_workdir=workdir_rnnlm_Spanish_08032019
 mfccdir=`pwd`/mfcc
 
 . ./cmd.sh
@@ -75,6 +75,7 @@ if [ $stage -le -1 ]; then
   
 fi
 
+
 if [ $stage -le 0 ]; then
     mkdir -p "$rnnlm_workdir"/gigaword_rawtext
     local/flatten_gigaword/flatten_all_gigaword.sh "$gigaword_datapath"  "$rnnlm_workdir"/flattened_gigaword_corpus 24
@@ -89,6 +90,7 @@ if [ $stage -le 0 ]; then
         cat "$rnnlm_workdir"/text_lm/train.txt >> "$rnnlm_workdir"/text_lm/spanish_gigaword_normalised.txt
     fi
 fi
+
 
 if [ $stage -le 1 ]; then
     local/train_pocolm.sh --stage $lmstage --num-words-pocolm $num_words_pocolm "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
@@ -108,7 +110,7 @@ if [ $stage -le 2 ]; then
      echo "Fail to train the G2P model." && exit 1;
   fi
   steps/dict/apply_g2p_seq2seq.sh "$rnnlm_workdir"/oov_pocolmwords exp/g2p "$rnnlm_workdir"/oov_g2p.lex
-  cat "$rnnlm_workdir"/oov_g2p.lex data/local/dict/lexicon.txt | sort -u > "$rnnlm_workdir"/lexicon_extended.txt
+  cat "$rnnlm_workdir"/oov_g2p.lex/lexicon.lex data/local/dict/lexicon.txt | sort | uniq | sed "/^$/d"  > "$rnnlm_workdir"/lexicon_extended.txt
   cp "$rnnlm_workdir"/lexicon_extended.txt data/local/dict/lexicon.txt # Replacing original lexicon with extended version.
  
   utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
@@ -294,6 +296,6 @@ fi
 wait;
 
 if [ $stage -le 6 ]; then
-  local/chain/run_tdnn_1g.sh || exit 1;
+  local/chain/run_tdnn_1g.sh --gigaword-workdir $rnnlm_workdir || exit 1;
 fi
 exit 0;

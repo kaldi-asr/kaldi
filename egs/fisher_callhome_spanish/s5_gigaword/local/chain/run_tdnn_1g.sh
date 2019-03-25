@@ -27,9 +27,10 @@ nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=1g   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
+gigaword_workdir=
 
 # LSTM/chain options
-train_stage=-10
+train_stage=-20
 xent_regularize=0.1
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 
@@ -277,6 +278,10 @@ if [ $stage -le 23 ]; then
           --online-ivector-dir exp/nnet3/ivectors_${data}_hires \
           $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data} || exit 1;
       done
+      if [ $gigaword_workdir ]; then
+        bash local/rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $gigaword_workdir/rnnlm data/${data}_hires/ \
+              ${dir}/decode_${lmtype}_${data} $dir/decode_gigaword_RNNLM_${lmtype}_${data} || exit 1;
+      fi
       bash local/rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $rnnlmdir data/${data}_hires/ \
 	      ${dir}/decode_${lmtype}_${data} $dir/decode_rnnLM_${lmtype}_${data} || exit 1;
     ) || touch $dir/.error &
