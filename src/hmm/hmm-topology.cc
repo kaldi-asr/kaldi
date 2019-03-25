@@ -69,7 +69,7 @@ void HmmTopology::Read(std::istream &is, bool binary) {
         ReadToken(is, binary, &token);
         while (token != "</TopologyEntry>") {
           if (token != "<State>")
-            KALDI_ERR << "Expected </TopologyEntry> or <State>, got instead "<<token;
+            KALDI_ERR << "Expected </TopologyEntry> or <State>, got instead " << token;
           int32 state;
           ReadBasicType(is, binary, &state);
           if (state != static_cast<int32>(this_entry.size()))
@@ -88,7 +88,8 @@ void HmmTopology::Read(std::istream &is, bool binary) {
             int32 self_loop_pdf_class = kNoPdf;
             ReadBasicType(is, binary, &forward_pdf_class);
             ReadToken(is, binary, &token);
-            KALDI_ASSERT(token == "<SelfLoopPdfClass>");
+            if (token != "<SelfLoopPdfClass>")
+              KALDI_ERR << "Expected <SelfLoopPdfClass>, got instead " << token;
             ReadBasicType(is, binary, &self_loop_pdf_class);
             this_entry.push_back(HmmState(forward_pdf_class, self_loop_pdf_class));
             ReadToken(is, binary, &token);
@@ -102,10 +103,10 @@ void HmmTopology::Read(std::istream &is, bool binary) {
             this_entry.back().transitions.push_back(std::make_pair(dst_state, trans_prob));
             ReadToken(is, binary, &token);
           }
-          if(token == "<Final>") // TODO: remove this clause after a while.
+          if (token == "<Final>")  // TODO: remove this clause after a while.
             KALDI_ERR << "You are trying to read old-format topology with new Kaldi.";
           if (token != "</State>")
-            KALDI_ERR << "Reading HmmTopology,  unexpected token "<<token;
+            KALDI_ERR << "Expected </State>, got instead " << token;
           ReadToken(is, binary, &token);
         }
         int32 my_index = entries_.size();

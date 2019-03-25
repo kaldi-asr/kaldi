@@ -1058,6 +1058,27 @@ void ConstrainOrthonormal(Nnet *nnet) {
   }
 }
 
+void ConsolidateMemory(Nnet *nnet) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    bool print_memory_info = (GetVerboseLevel() >= 1);
+    if (print_memory_info) {
+      KALDI_VLOG(1) << "Consolidating memory; will print memory usage before "
+          "and after consolidating:";
+      g_cuda_allocator.PrintMemoryUsage();
+    }
+    for (int32 c = 0; c < nnet->NumComponents(); c++) {
+      Component *comp = nnet->GetComponent(c);
+      comp->ConsolidateMemory();
+    }
+    if (print_memory_info) {
+      g_cuda_allocator.PrintMemoryUsage();
+    }
+  }
+#endif
+}
+
+
 
 // This code has been broken out of ReadEditConfig as it's quite long.
 // It implements the internals of the edit directive 'reduce-rank'.
@@ -1634,7 +1655,6 @@ class ModelCollapser {
                                                   component_index2);
   }
 
-
   /**
      Tries to produce a component that's equivalent to running the component
      'component_index2' with input given by 'component_index1'.  This handles
@@ -2065,7 +2085,7 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
       ostr << "Per-component max-change active on "
            << num_max_change_per_component_applied_per_minibatch
            << " / " << num_updatable << " Updatable Components."
-           << "(smallest factor=" << min_scale << " on "
+           << " (Smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
            << " with max-change=" << max_change_with_min_scale <<"). ";
     if (param_delta > max_param_change * max_change_scale)
@@ -2149,6 +2169,48 @@ void ApplyL2Regularization(const Nnet &nnet,
         dest_component->Add(scale, *src_component);
     }
   }
+}
+
+
+bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
+                             BaseFloat max_param_change,
+                             BaseFloat max_change_scale,
+                             BaseFloat scale, Nnet *nnet,
+                             MaxChangeStats *stats) {
+  bool ans = UpdateNnetWithMaxChange(
+      delta_nnet, max_param_change, max_change_scale,
+      scale, nnet,
+      &(stats->num_max_change_per_component_applied),
+      &(stats->num_max_change_global_applied));
+  stats->num_minibatches_processed++;
+  return ans;
+}
+
+
+void MaxChangeStats::Print(const Nnet &nnet) const {
+  int32 i = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(
+          comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_change_per_component_applied[i] > 0)
+        KALDI_LOG << "For " << nnet.GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << ((100.0 * num_max_change_per_component_applied[i]) /
+                      num_minibatches_processed)
+                  << " \% of the time.";
+      i++;
+    }
+  }
+  if (num_max_change_global_applied > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << ((100.0 * num_max_change_global_applied) /
+                  num_minibatches_processed)
+              << " \% of the time.";
 }
 
 

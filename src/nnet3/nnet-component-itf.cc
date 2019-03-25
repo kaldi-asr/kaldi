@@ -23,6 +23,7 @@
 #include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-combined-component.h"
 #include "nnet3/nnet-normalize-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
@@ -178,6 +179,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new RestrictedAttentionComponent();
   } else if (component_type == "SumBlockComponent") {
     ans = new SumBlockComponent();
+  } else if (component_type == "GruNonlinearityComponent") {
+    ans = new GruNonlinearityComponent();
+  } else if (component_type == "OutputGruNonlinearityComponent") {
+    ans = new OutputGruNonlinearityComponent();
   } else if (component_type == "ScaleAndOffsetComponent") {
     ans = new ScaleAndOffsetComponent();
   }
@@ -367,8 +372,10 @@ void NonlinearComponent::StoreStatsInternal(
 
 void NonlinearComponent::StoreBackpropStats(
     const CuMatrixBase<BaseFloat> &out_deriv) {
-  // only store these stats about every 4 minibatches.
-  if (RandInt(0, 3) == 0)
+  // Only store these stats about every 4 minibatches.  Make sure to always
+  // store the stats on the very first minibatch, or it would interact badly
+  // with the ConsolidateMemory() code.
+  if (RandInt(0, 3) == 0 && oderiv_count_ != 0)
     return;
 
   KALDI_ASSERT(out_deriv.NumCols() == dim_);
@@ -622,7 +629,11 @@ void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
               << Type() << ": \"" << cfl->WholeLine() << "\"";
 }
 
-
+void NonlinearComponent::ConsolidateMemory() {
+  { CuVector<double> temp(value_sum_); value_sum_.Swap(&temp); }
+  { CuVector<double> temp(deriv_sum_); deriv_sum_.Swap(&temp); }
+  { CuVector<double> temp(oderiv_sumsq_); oderiv_sumsq_.Swap(&temp); }
+}
 
 } // namespace nnet3
 } // namespace kaldi

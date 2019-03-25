@@ -10,6 +10,7 @@
 # designated length are created.
 #
 # This file is meant to be invoked from make_bn.sh.
+from __future__ import division
 import sys, os
 
 def seg_to_string(seg):
@@ -23,7 +24,7 @@ def seg_to_string(seg):
 def process_segs(raw_segs):
   segs = []
   for seg in raw_segs:
-    lower, upper = map(float, seg.rstrip().split(" "))
+    lower, upper = [float(i) for i in seg.rstrip().split(" ")]
     segs.append((lower, upper))
   return segs
 
@@ -60,8 +61,8 @@ def resegment(music, speech, other, frame_length, min_seg):
   start_frame = 0
   for i in range(1, len(frame2classes)):
     if curr_class != frame2classes[i]:
-      start = float(start_frame) / frame_length
-      end = float(i) / frame_length
+      start = float(start_frame)/frame_length
+      end = float(i)/frame_length
       if end - start > min_seg:
         if curr_class == "music":
           new_music.append((start, end))

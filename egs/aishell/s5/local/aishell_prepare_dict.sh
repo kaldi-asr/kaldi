@@ -15,21 +15,9 @@ mkdir -p $dict_dir
 cp $res_dir/lexicon.txt $dict_dir
 
 cat $dict_dir/lexicon.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}'| \
-  sort -u |\
-  perl -e '
-  my %ph_cl;
-  while (<STDIN>) {
-    $phone = $_;
-    chomp($phone);
-    chomp($_);
-    $phone = $_;
-    next if ($phone eq "sil");
-    if (exists $ph_cl{$phone}) { push(@{$ph_cl{$phone}}, $_)  }
-    else { $ph_cl{$phone} = [$_]; }
-  }
-  foreach $key ( keys %ph_cl ) {
-     print "@{ $ph_cl{$key} }\n"
-  }
+  perl -e 'while(<>){ chomp($_); $phone = $_; next if ($phone eq "sil");
+    m:^([^\d]+)(\d*)$: || die "Bad phone $_"; $q{$1} .= "$phone "; }
+    foreach $l (values %q) {print "$l\n";}
   ' | sort -k1 > $dict_dir/nonsilence_phones.txt  || exit 1;
 
 echo sil > $dict_dir/silence_phones.txt

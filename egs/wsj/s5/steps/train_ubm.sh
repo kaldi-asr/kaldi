@@ -7,7 +7,6 @@
 # We mostly use this for SGMM systems.
 
 # Begin configuration section.
-nj=4
 cmd=run.pl
 silence_weight=  # You can set it to e.g. 0.0, to weight down silence in training.
 stage=-2
@@ -42,7 +41,7 @@ lang=$3
 alidir=$4
 dir=$5
 
-for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl; do
+for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/num_jobs; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
@@ -75,7 +74,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -90,7 +89,7 @@ if [ -f $alidir/trans.1 ]; then
   fi
 elif [ -f $alidir/raw_trans.1 ]; then
   echo "$0: using raw-FMLLR transforms from $alidir"
-  feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"  
+  feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 fi
 ##
 
@@ -129,7 +128,7 @@ while [ $x -lt $num_iters ]; do
     fgmm-global-acc-stats $weights_opt --gselect=ark,s,cs:- $dir/$x.ubm "$feats" \
     $dir/$x.JOB.acc || exit 1;
   lowcount_opt="--remove-low-count-gaussians=false"
-  [ $[$x+1] -eq $num_iters ] && lowcount_opt=   # Only remove low-count Gaussians 
+  [ $[$x+1] -eq $num_iters ] && lowcount_opt=   # Only remove low-count Gaussians
   # on last iter-- we can't do it earlier, or the Gaussian-selection info would
   # be mismatched.
   $cmd $dir/log/update.$x.log \

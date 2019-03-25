@@ -82,8 +82,8 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
 
   // Compute energy after window function (not the raw one).
   if (opts_.use_energy && !opts_.raw_energy)
-    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<BaseFloat>::min()));
+    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<float>::min()));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -108,7 +108,7 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
   mel_banks.Compute(power_spectrum, &mel_energies);
   if (opts_.use_log_fbank) {
     // Avoid log of zero (which should be prevented anyway by dithering).
-    mel_energies.ApplyFloor(std::numeric_limits<BaseFloat>::epsilon());
+    mel_energies.ApplyFloor(std::numeric_limits<float>::epsilon());
     mel_energies.ApplyLog();  // take the log.
   }
 

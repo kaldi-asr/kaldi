@@ -22,6 +22,8 @@
 # ./configure --atlas-root=../tools/ATLAS/build
 # ./configure --use-cuda=no   # disable CUDA detection (will build cpu-only
 #                             # version of kaldi even on CUDA-enabled machine
+# ./configure --use-cuda --cudatk-dir=/usr/local/cuda/ --cuda-arch=-arch=sm_70
+#        # Use cuda in /usr/local/cuda and set the arch to sm_70
 # ./configure --static --fst-root=/opt/cross/armv8hf \
 # --atlas-root=/opt/cross/armv8hf --host=armv8-rpi3-linux-gnueabihf
 #        # Cross compile for armv8hf, this assumes that you have openfst built
@@ -42,7 +44,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=7
+CONFIGURE_VERSION=10
 
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
@@ -65,6 +67,7 @@ Configuration options:
   --shared              Build and link against shared libraries [default=no]
   --use-cuda            Build with CUDA [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
+  --cuda-arch=FLAGS     Override the default CUDA_ARCH flags.  See https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#nvcc-examples.
   --double-precision    Build with BaseFloat set to double if yes [default=no],
                         mostly useful for testing purposes.
   --static-fst          Build with static OpenFst libraries [default=no]
@@ -114,8 +117,13 @@ function rel2abs {
   fi
 }
 
+function read_value {
+  local val=`expr "X$1" : '[^=]*=\(.*\)'`;
+  echo $val
+}
+
 function read_dirname {
-  local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
+  local dir_name=`read_value $1`
   local retval=`rel2abs $dir_name`
   [ -z $retval ] && echo "Bad option '$1': no such directory" && exit 1;
   echo $retval
@@ -367,7 +375,7 @@ function linux_configure_mkl_threading {
 function configure_cuda {
   # Check for CUDA toolkit in the system
   if [ ! -d  "$CUDATKDIR" ]; then
-    for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
+    for base in /usr/local/share/cuda /usr/local/cuda /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
       fi
@@ -395,14 +403,6 @@ function configure_cuda {
       GCC_VER=$($COMPILER -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
-        5_5)
-          MIN_UNSUPPORTED_GCC_VER="5.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        ;;
-        6_*)
-          MIN_UNSUPPORTED_GCC_VER="5.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        ;;
         7_*)
           MIN_UNSUPPORTED_GCC_VER="5.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=50000;
@@ -415,7 +415,7 @@ function configure_cuda {
           MIN_UNSUPPORTED_GCC_VER="7.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=70000;
         ;;
-        9_2 | 9_*)
+        9_2 | 9_* | 10_*)
           MIN_UNSUPPORTED_GCC_VER="8.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=80000;
         ;;
@@ -429,14 +429,17 @@ function configure_cuda {
       fi
     fi
 
-    case $CUDA_VERSION in
-      5_5) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
-      6_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
-      7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
-      8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
-      9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70" ;;
-      *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
-    esac
+    if [ -z "$CUDA_ARCH" ]; then
+      case $CUDA_VERSION in
+        5_5) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
+        6_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
+        7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
+        8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
+        9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70" ;;
+        10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_72,code=sm_72 -gencode arch=compute_75,code=sm_75" ;;
+        *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
+      esac
+    fi
 
     echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
     echo >> kaldi.mk
@@ -459,7 +462,8 @@ function configure_cuda {
     elif [ "`uname -m`" == "ppc64le" ]; then
       cat makefiles/cuda_64bit.mk >> kaldi.mk
     else
-      cat makefiles/cuda_32bit.mk >> kaldi.mk
+      echo "CUDA will not be used! CUDA is not supported with 32-bit builds."
+      exit 1;
     fi
 
   else
@@ -555,66 +559,23 @@ function linux_check_static {
   fi
 }
 
-function linux_configure_debian_ubuntu {
-  m=$1
-  ATLASLIBS="/usr/lib$m/atlas-base/libatlas.so.3gf  /usr/lib$m/atlas-base/libf77blas.so.3gf /usr/lib$m/atlas-base/libcblas.so.3gf  /usr/lib$m/atlas-base/liblapack_atlas.so.3gf"
+function linux_configure_atlas_generic {
+  # You pass in a directory (e.g. /usr/lib/atlas-base) and a suffix (e.g. so.3.0)
+  # and it tries to find ATLAS libraries with that dir and suffix.  On success it
+  # returns 0; on failure, it returns 1.
+  dir=$1
+  suffix=$2
+  ATLASLIBS="$dir/libatlas.$suffix $dir/libf77blas.$suffix $dir/libcblas.$suffix $dir/liblapack_atlas.$suffix"
   for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
   if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
-    exit 1;
-  fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  echo >> kaldi.mk
-  if [[ "$TARGET_ARCH" == arm* ]]; then
-    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-   elif [[ "$TARGET_ARCH" == ppc64le ]]; then
-    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
-  else
-    cat makefiles/linux_atlas.mk >> kaldi.mk
-  fi
-  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  linux_configure_speex
-}
-
-function linux_configure_debian_ubuntu3 {
-  ATLASLIBS="/usr/lib/libatlas.so.3  /usr/lib/libf77blas.so.3 /usr/lib/libcblas.so.3  /usr/lib/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
-    exit 1;
-  fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  echo >> kaldi.mk
-  if [[ "$TARGET_ARCH" == arm* ]]; then
-    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
-    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
-  else
-    cat makefiles/linux_atlas.mk >> kaldi.mk
-  fi
-  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  linux_configure_speex
-}
-
-function linux_configure_debian7 {
-  ATLASLIBS="/usr/lib/atlas-base/libatlas.so.3.0 /usr/lib/atlas-base/libf77blas.so.3.0 /usr/lib/atlas-base/libcblas.so.3 /usr/lib/atlas-base/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
+    echo "configure: failed to find symbol ATL_cgetrf in library $lapacklib"
     exit 1;
   fi
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_atlas_generic: dir=$dir,suffix=$suffix" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo >> kaldi.mk
@@ -625,31 +586,9 @@ function linux_configure_debian7 {
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
-  echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  echo "Successfully configured ATLAS with ATLASLIBS=$ATLASLIBS"
   $use_cuda && configure_cuda
   linux_configure_speex
-}
-
-function linux_configure_redhat {
-  m=$1  # 64 or empty.
-  ATLASLIBS="/usr/lib$m/atlas/libatlas.so.3 /usr/lib$m/atlas/libf77blas.so.3 /usr/lib$m/atlas/libcblas.so.3 /usr/lib$m/atlas/libclapack.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat" && exit 1;
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo >> kaldi.mk
-  if [[ "$TARGET_ARCH" == arm* ]]; then
-    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
-    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
-  else
-    cat makefiles/linux_atlas.mk >> kaldi.mk
-  fi
-  echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
 }
 
 function linux_configure_redhat_fat {
@@ -673,11 +612,11 @@ function linux_configure_redhat_fat {
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
-  echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
+  echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
 }
 
-function linux_configure_static {
+function linux_configure_atlas_static {
   if $threaded_atlas; then pt=pt; else pt=""; fi
 
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
@@ -696,11 +635,11 @@ function linux_configure_static {
   echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
-  # should always have symbols like ATL_cgetrf defined, so we test for this,
-  # for all the names we have encountered.
+  # should always have symbols like ATL_cgetrf and clapack_cgetrf defined, so we test for this.
   for libname in liblapack liblapack_atlas  libclapack; do
     if [ -f $ATLASLIBDIR/${libname}.a -a "$ATLASLIBS" == "" ]; then
-      if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null; then
+      if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null && \
+	 nm  $ATLASLIBDIR/${libname}.a  | grep clapack_cgetrf >/dev/null; then
          ATLASLIBS=$ATLASLIBDIR/${libname}.a
          echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
       fi
@@ -779,11 +718,11 @@ function linux_configure_dynamic {
     echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
     ATLASLIBS=
     # The Lapack part of ATLAS seems to appear under various different names.. but it
-    # should always have symbols like ATL_cgetrf defined, so we test for this,
-    # for all the names we have encountered.
+    # should always have symbols like clapack_cgetrf and ATL_cgetrf defined, so we test for this.
     for libname in lapack lapack_atlas  clapack; do
       if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
-        if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
+        if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep clapack_cgetrf >/dev/null && \
+           nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
            ATLASLIBS="$ATLASLIBDIR/lib${libname}.so"
            echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
         fi
@@ -860,6 +799,7 @@ android=false
 MATHLIB='ATLAS'
 ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
 FSTROOT=`rel2abs ../tools/openfst`
+CUBROOT=`rel2abs ../tools/cub`
 
 # Save the command line to include in kaldi.mk
 cmd_line="$0 $@"
@@ -946,11 +886,14 @@ do
     mkl_threading=sequential;
     shift ;;
   --mkl-threading=*)
-    mkl_threading=`expr "X$1" : '[^=]*=\(.*\)'`;
+    mkl_threading=`read_value $1`;
     threaded_atlas=true;
     shift ;;
   --fst-root=*)
     FSTROOT=`read_dirname $1`;
+    shift ;;
+  --cub-root=*)
+    CUBROOT=`read_dirname $1`;
     shift ;;
   --clapack-root=*)
     CLAPACKROOT=`read_dirname $1`;
@@ -977,19 +920,22 @@ do
     OMPLIBDIR=`read_dirname $1`;
     shift ;;
   --mathlib=*)
-    MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`;
+    MATHLIB=`read_value $1`;
     shift ;;
   --cudatk-dir=*)
     CUDATKDIR=`read_dirname $1`;
     shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
+  --cuda-arch=*)
+    CUDA_ARCH=`read_value $1`;
+    shift;;
   --fst-version=*)
-    OPENFST_VER=`expr "X$1" : '[^=]*=\(.*\)'`;
+    OPENFST_VER=`read_value $1`;
     shift;;
   --host=*)
     # The type of system where built programs and libraries will run.
     # It should be in the format cpu-vendor-os. If specified, this script
     # will infer the target architecture from the specified host triple.
-    HOST=`expr "X$1" : '[^=]*=\(.*\)'`;
+    HOST=`read_value $1`;
     shift ;;
   --android-incdir=*)
     android=true;
@@ -1118,6 +1064,16 @@ echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
 echo "OPENFSTLDFLAGS = $OPENFSTLDFLAGS" >> kaldi.mk
 echo >> kaldi.mk
 
+$use_cuda && echo "Checking cub library in $CUBROOT ..."
+if [[ "$use_cuda" = true  && ! -f $CUBROOT/cub/cub.cuh ]]; then
+  failure "Could not find file $CUBROOT/cub/cub.cuh:
+  you may not have installed cub.  Go to ../tools/ and type
+  e.g. 'make cub'; cub is a new requirement."
+else
+  echo "CUBROOT = $CUBROOT" >> kaldi.mk
+fi
+
+
 # OS-specific steps given below append to kaldi.mk
 echo "Doing OS specific configurations ..."
 
@@ -1209,33 +1165,18 @@ elif [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two
     # libraries worked.
 
-    if $static_math; then
-      # Prefer static to dynamic math.
-      linux_configure_static || \
-        linux_configure_debian_ubuntu3 || \
-        linux_configure_dynamic || \
-        linux_configure_debian_ubuntu 64 || \
-        linux_configure_debian_ubuntu || \
-        linux_configure_debian7 || \
-        linux_configure_redhat 64 || \
-        linux_configure_redhat || \
-        linux_configure_redhat_fat 64 || \
-        linux_configure_redhat_fat || \
-        linux_atlas_failure "Failed to configure ATLAS libraries";
-    else
-      # Prefer dynamic to static math.
-      linux_configure_debian_ubuntu3 || \
-        linux_configure_dynamic || \
-        linux_configure_static || \
-        linux_configure_debian_ubuntu 64 || \
-        linux_configure_debian_ubuntu || \
-        linux_configure_debian7 || \
-        linux_configure_redhat 64 || \
-        linux_configure_redhat || \
-        linux_configure_redhat_fat 64 || \
-        linux_configure_redhat_fat || \
-        linux_atlas_failure "Failed to configure ATLAS libraries";
-    fi
+    ( $static_math && linux_configure_atlas_static ) || \
+      linux_configure_atlas_generic /usr/lib "so.3" || \
+      linux_configure_atlas_generic /usr/lib/atlas-base "so.3gf" || \
+      linux_configure_atlas_generic /usr/lib64/atlas-base "so.3gf" \
+      linux_configure_atlas_generic /usr/lib/atlas "so.3" || \
+      linux_configure_atlas_generic /usr/lib64/atlas "so.3" || \
+      linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so.3" || \
+      linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so" || \
+      linux_configure_redhat_fat 64 || \
+      linux_configure_redhat_fat || \
+      linux_configure_atlas_static || \
+      linux_atlas_failure "Failed to configure ATLAS libraries";
 
   elif [ "$MATHLIB" == "MKL" ]; then
     if [ "$TARGET_ARCH" != "x86_64" ]; then
@@ -1317,22 +1258,42 @@ elif [ "`uname`" == "Linux" ]; then
     if [ -z "$OPENBLASROOT" ]; then
       failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
     fi
-    if [ ! -f $OPENBLASROOT/lib/libopenblas.so ]; then
+    if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
+      OPENBLASLIBDIR=$OPENBLASROOT/lib
+    elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
+      # in REDHAT/CentOS package installs, the library is located here
+      OPENBLASLIBDIR=$OPENBLASROOT/lib64
+    else
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
+    fi
+    if [ -f $OPENBLASROOT/include/cblas.h ] ; then
+      OPENBLASINCDIR=$OPENBLASROOT/include
+    elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
+      # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
+      OPENBLASINCDIR=$OPENBLASROOT/include/openblas
+    else
+      echo "$0: ***** Using OpenBlas from $OPENBLASROOT but cblas.h is not found. "
+      echo " ****** Assuming openblas is aleady in a default include path, but"
+      echo " ***** if you get compilation messages about not finding files like cblas.h,"
+      echo " ***** you should look into this (e.g. make sure to install the 'openblas-dev' package,"
+      echo " ***** if it is a package-based install)."
+      OPENBLASINCDIR="/usr/include"
     fi
     echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
     if $static_math; then
       echo "Configuring static OpenBlas since --static-math=yes"
-      OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
+      OPENBLASLIBS="$OPENBLASLIBDIR/libopenblas.a -lgfortran"
     else
       echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
-      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
+      OPENBLASLIBS="-L$OPENBLASLIBDIR -lopenblas -lgfortran -Wl,-rpath=$OPENBLASLIBDIR"
     fi
-    echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
+    echo "OPENBLASINC = $OPENBLASINCDIR" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo >> kaldi.mk
     if [[ "$TARGET_ARCH" == arm* ]]; then
       cat makefiles/linux_openblas_arm.mk >> kaldi.mk
+    elif [[ "$TARGET_ARCH" == aarch64* ]]; then
+      cat makefiles/linux_openblas_aarch64.mk >> kaldi.mk
     elif [[ "$TARGET_ARCH" == ppc64le ]]; then
       cat makefiles/linux_openblas_ppc64le.mk >> kaldi.mk
     else

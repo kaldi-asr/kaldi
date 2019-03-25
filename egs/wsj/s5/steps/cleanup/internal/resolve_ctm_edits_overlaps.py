@@ -15,6 +15,7 @@ in the two overlapping segments, and chooses the better one.
 """
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import collections
 import logging
@@ -299,7 +300,7 @@ def run(args):
     segments, reco2utt = read_segments(args.segments)
     ctm_edits = read_ctm_edits(args.ctm_edits_in, segments)
 
-    for reco, utts in reco2utt.iteritems():
+    for reco, utts in reco2utt.items():
         ctm_edits_for_reco = []
         for utt in sorted(utts, key=lambda x: segments[x][1]):
             if (reco, utt) in ctm_edits:

@@ -79,6 +79,7 @@ trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 export LC_ALL=C
 
 function check_sorted_and_uniq {
+  ! perl -ne '((substr $_,-1) eq "\n") or die "file $ARGV has invalid newline";' $1 && exit 1;
   ! awk '{print $1}' $1 | sort | uniq | cmp -s - <(awk '{print $1}' $1) && \
     echo "$0: file $1 is not in sorted order or has duplicates" && exit 1;
 }

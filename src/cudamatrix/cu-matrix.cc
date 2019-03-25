@@ -229,8 +229,10 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
       MatrixIndexT dst_pitch = stride_ * sizeof(Real);
       MatrixIndexT src_pitch = M.Stride() * sizeof(Real);
       MatrixIndexT width = M.NumCols() * sizeof(Real);
-      CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, M.data_, src_pitch,
-                                width, M.num_rows_, cudaMemcpyDeviceToDevice));
+      CU_SAFE_CALL(
+        cudaMemcpy2DAsync(data_, dst_pitch, M.data_, src_pitch,
+                          width, M.num_rows_, cudaMemcpyDeviceToDevice,
+                          cudaStreamPerThread));
     } else {
       if (trans == kNoTrans) {
         dim3 dimGrid, dimBlock;
@@ -319,8 +321,10 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
       MatrixIndexT dst_pitch = stride_*sizeof(Real);
       MatrixIndexT src_pitch = src.Stride()*sizeof(Real);
       MatrixIndexT width = src.NumCols()*sizeof(Real);
-      CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
-                                width, src.NumRows(), cudaMemcpyHostToDevice));
+      CU_SAFE_CALL(cudaMemcpy2DAsync(data_, dst_pitch, src.Data(), src_pitch,
+                                width, src.NumRows(), cudaMemcpyHostToDevice,
+                                cudaStreamPerThread));
+      cudaStreamSynchronize(cudaStreamPerThread);
 
       CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from CPU)", tim);
     } else {
@@ -2286,14 +2290,15 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
     if (v.Dim() == num_rows_*num_cols_) {
       if (stride_ == num_cols_) {
         const Real* v_data = v.Data();
-        CU_SAFE_CALL(cudaMemcpy(data_, v_data,
-                                sizeof(Real)*num_rows_*num_cols_,
-                                cudaMemcpyDeviceToDevice));
+        CU_SAFE_CALL(
+          cudaMemcpyAsync(data_, v_data, sizeof(Real)*num_rows_*num_cols_,
+                          cudaMemcpyDeviceToDevice, cudaStreamPerThread));
       } else {
-        CU_SAFE_CALL(cudaMemcpy2D(data_, stride_ * sizeof(Real), v.Data(),
-                                  num_cols_*sizeof(Real), num_cols_*sizeof(Real),
-                                  num_rows_,
-                                  cudaMemcpyDeviceToDevice));
+        CU_SAFE_CALL(
+          cudaMemcpy2DAsync(data_, stride_ * sizeof(Real), v.Data(),
+                            num_cols_*sizeof(Real), num_cols_*sizeof(Real),
+                            num_rows_, cudaMemcpyDeviceToDevice,
+                            cudaStreamPerThread));
       }
     } else if (v.Dim() == num_cols_) {
       dim3 dimGrid, dimBlock;

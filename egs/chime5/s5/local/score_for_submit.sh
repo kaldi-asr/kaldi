@@ -43,7 +43,7 @@ for session in S02 S09; do
 	# get nerror
 	nerr=`grep "\#csid" $score_result | grep $room | grep $session | awk '{sum+=$4+$5+$6} END {print sum}'`
 	# get nwords from references (NF-2 means to exclude utterance id and " ref ")
-	nwrd=`grep " ref "  $score_result | grep $room | grep $session | sed -e "s/\*//g" | awk '{sum+=NF-2} END {print sum}'`
+	nwrd=`grep "\#csid" $score_result | grep $room | grep $session | awk '{sum+=$3+$4+$6} END {print sum}'`
 	# compute wer with scale=2
 	wer=`echo "scale=2; 100 * $nerr / $nwrd" | bc`
 	
@@ -59,7 +59,7 @@ echo -n "overall: "
 # get nerror
 nerr=`grep "\#csid" $score_result | awk '{sum+=$4+$5+$6} END {print sum}'`
 # get nwords from references (NF-2 means to exclude utterance id and " ref ")
-nwrd=`grep " ref "  $score_result | sed -e "s/\*//g" | awk '{sum+=NF-2} END {print sum}'`
+nwrd=`grep "\#csid" $score_result | awk '{sum+=$3+$4+$6} END {print sum}'`
 # compute wer with scale=2
 wer=`echo "scale=2; 100 * $nerr / $nwrd" | bc`
 echo -n "#words $nwrd, "
@@ -81,7 +81,7 @@ for session in S01 S21; do
 	    # get nerror
 	    nerr=`grep "\#csid" $score_result | grep $room | grep $session | awk '{sum+=$4+$5+$6} END {print sum}'`
 	    # get nwords from references (NF-2 means to exclude utterance id and " ref ")
-	    nwrd=`grep " ref "  $score_result | grep $room | grep $session | sed -e "s/\*//g" | awk '{sum+=NF-2} END {print sum}'`
+	    nwrd=`grep "\#csid" $score_result | grep $room | grep $session | awk '{sum+=$3+$4+$6} END {print sum}'`
 	    # compute wer with scale=2
 	    wer=`echo "scale=2; 100 * $nerr / $nwrd" | bc`
 	
@@ -98,7 +98,7 @@ if $do_eval; then
     # get nerror
     nerr=`grep "\#csid" $score_result | awk '{sum+=$4+$5+$6} END {print sum}'`
     # get nwords from references (NF-2 means to exclude utterance id and " ref ")
-    nwrd=`grep " ref "  $score_result | sed -e "s/\*//g" | awk '{sum+=NF-2} END {print sum}'`
+    nwrd=`grep "\#csid" $score_result | awk '{sum+=$3+$4+$6} END {print sum}'`
     # compute wer with scale=2
     wer=`echo "scale=2; 100 * $nerr / $nwrd" | bc`
     echo -n "overall: "

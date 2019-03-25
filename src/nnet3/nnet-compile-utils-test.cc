@@ -95,7 +95,7 @@ void UnitTestSplitLocationsBackward(bool verbose) {
         num_locations : max_generated_submat_list_size;
     submat_lists[i].reserve(num_locations);
     for (int32 j = 0; j < num_locations; j++) {
-      if (j <= min_num_kaddrows)
+      if (j <= min_num_kaddrows && j < num_submat_indexes)
         // since we need min_num_kaddrows in the split_lists we ensure that
         // we add a pair with the same first element in all the submat_lists
         submat_lists[i].push_back(std::make_pair(submat_indexes[j],

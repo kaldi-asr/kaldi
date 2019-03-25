@@ -52,7 +52,6 @@ DecodableNnetSimpleLoopedInfo::DecodableNnetSimpleLoopedInfo(
   Init(opts, &(am_nnet->GetNnet()));
 }
 
-
 void DecodableNnetSimpleLoopedInfo::Init(
     const NnetSimpleLoopedComputationOptions &opts,
     Nnet *nnet) {
@@ -86,10 +85,8 @@ void DecodableNnetSimpleLoopedInfo::Init(
   CompileLooped(*nnet, opts.optimize_config, request1, request2, request3,
                 &computation);
   computation.ComputeCudaIndexes();
-  if (GetVerboseLevel() >= 3) {
-    KALDI_VLOG(3) << "Computation is:";
-    computation.Print(std::cerr, *nnet);
-  }
+  KALDI_VLOG(3) << "Computation is:\n"
+                << NnetComputationPrintInserter{computation, *nnet};
 }
 
 
@@ -257,7 +254,7 @@ DecodableAmNnetSimpleLooped::DecodableAmNnetSimpleLooped(
 
 BaseFloat DecodableAmNnetSimpleLooped::LogLikelihood(int32 frame,
                                                      int32 transition_id) {
-  int32 pdf_id = trans_model_.TransitionIdToPdf(transition_id);
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
   return decodable_nnet_.GetOutput(frame, pdf_id);
 }
 

@@ -35,8 +35,8 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
   //  elements a_0 ... a_{M-1} and b_0 ... b_{N-1}.
   //  We are computing the recursion
   //     E(m, n) = min(  E(m-1, n-1) + (1-delta(a_{m-1}, b_{n-1})),
-  //                    E(m-1, n),
-  //                    E(m, n-1) ).
+  //                    E(m-1, n) + 1,
+  //                    E(m, n-1) + 1).
   //  where E(m, n) is defined for m = 0..M and n = 0..N and out-of-
   //  bounds quantities are considered to be infinity (i.e. the
   //  recursion does not visit them).

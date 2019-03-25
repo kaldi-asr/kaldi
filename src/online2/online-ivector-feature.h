@@ -79,12 +79,12 @@ struct OnlineIvectorExtractionConfig {
 
   int32 num_cg_iters;  // set to 15.  I don't believe this is very important, so it's
                        // not configurable from the command line for now.
-  
+
 
   // If use_most_recent_ivector is true, we always return the most recent
   // available iVector rather than the one for the current frame.  This means
   // that if audio is coming in faster than we can process it, we will return a
-  // more accurate iVector. 
+  // more accurate iVector.
   bool use_most_recent_ivector;
 
   // If true, always read ahead to NumFramesReady() when getting iVector stats.
@@ -98,14 +98,14 @@ struct OnlineIvectorExtractionConfig {
   // (assuming you provided info from a previous utterance of the same speaker
   // by calling SetAdaptationState()).
   BaseFloat max_remembered_frames;
-  
+
   OnlineIvectorExtractionConfig(): ivector_period(10), num_gselect(5),
                                    min_post(0.025), posterior_scale(0.1),
                                    max_count(0.0), num_cg_iters(15),
                                    use_most_recent_ivector(true),
                                    greedy_ivector_extractor(false),
                                    max_remembered_frames(1000) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("lda-matrix", &lda_mat_rxfilename, "Filename of LDA matrix, "
                    "e.g. final.mat; used for iVector extraction. ");
@@ -157,7 +157,7 @@ struct OnlineIvectorExtractionConfig {
 /// This struct contains various things that are needed (as const references)
 /// by class OnlineIvectorExtractor.
 struct OnlineIvectorExtractionInfo {
-  
+
   Matrix<BaseFloat> lda_mat;  // LDA+MLLT matrix.
   Matrix<double> global_cmvn_stats;  // Global CMVN stats.
 
@@ -202,7 +202,7 @@ struct OnlineIvectorExtractorAdaptationState {
   // instead the iVector is used.
 
   // Adaptation state for online CMVN (used for getting posteriors for iVector)
-  OnlineCmvnState cmvn_state;  
+  OnlineCmvnState cmvn_state;
 
   /// Stats for online iVector estimation.
   OnlineIvectorEstimationStats ivector_stats;
@@ -213,7 +213,7 @@ struct OnlineIvectorExtractorAdaptationState {
       ivector_stats(info.extractor.IvectorDim(),
                     info.extractor.PriorOffset(),
                     info.max_count) { }
-  
+
   /// Copy constructor
   OnlineIvectorExtractorAdaptationState(
       const OnlineIvectorExtractorAdaptationState &other);
@@ -259,7 +259,7 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   //     std::vector<BaseFloat> frame_weights,
   //OnlineFeatureInterface *base_feature);
 
-  
+
   // Member functions from OnlineFeatureInterface:
 
   /// Dim() will return the iVector dimension.
@@ -274,7 +274,7 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   /// constructing a new instance of this class.
   void SetAdaptationState(
       const OnlineIvectorExtractorAdaptationState &adaptation_state);
-  
+
 
   /// Get the adaptation state; you may want to call this before destroying this
   /// object, to get adaptation state that can be used to improve decoding of
@@ -309,11 +309,21 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   // lifetime of this object.
   void UpdateFrameWeights(
       const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
-  
+
  private:
-  // this function adds "weight" to the stats for frame "frame".
-  void UpdateStatsForFrame(int32 frame,
-                           BaseFloat weight);
+
+  // This accumulates i-vector stats for a set of frames, specified as pairs
+  // (t, weight).  The weights do not have to be positive.  (In the online
+  // silence-weighting that we do, negative weights can occur if we change our
+  // minds about the assignment of a frame as silence vs. non-silence).
+  void UpdateStatsForFrames(
+      const std::vector<std::pair<int32, BaseFloat> > &frame_weights);
+
+  // Returns a modified version of info_.min_post, which is opts_.min_post if
+  // weight is 1.0 or -1.0, but gets larger if fabs(weight) is small... but no
+  // larger than 0.99.  (This is an efficiency thing, to not bother processing
+  // very small counts).
+  BaseFloat GetMinPost(BaseFloat weight) const;
 
   // This is the original UpdateStatsUntilFrame that is called when there is
   // no data-weighting involved.
@@ -322,19 +332,21 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   // This is the new UpdateStatsUntilFrame that is called when there is
   // data-weighting (i.e. when the user has been calling UpdateFrameWeights()).
   void UpdateStatsUntilFrameWeighted(int32 frame);
-  
+
   void PrintDiagnostics() const;
-  
+
   const OnlineIvectorExtractionInfo &info_;
 
-  // base_ is the base feature; it is not owned here.
-  OnlineFeatureInterface *base_;
-  // the following online-feature-extractor pointers are owned here:
-  OnlineSpliceFrames *splice_; // splice on top of raw features.
-  OnlineTransform *lda_;  // LDA on top of raw+splice features.
-  OnlineCmvn *cmvn_;
-  OnlineSpliceFrames *splice_normalized_; // splice on top of CMVN feats.
-  OnlineTransform *lda_normalized_;  // LDA on top of CMVN+splice
+  OnlineFeatureInterface *base_;  // The feature this is built on top of
+                                  // (e.g. MFCC); not owned here
+
+  OnlineFeatureInterface *lda_;  // LDA on top of raw+splice features.
+  OnlineCmvn *cmvn_;  // the CMVN that we give to the lda_normalized_.
+  OnlineFeatureInterface *lda_normalized_;  // LDA on top of CMVN+splice
+
+  // the following is the pointers to OnlineFeatureInterface objects that are
+  // owned here and which we need to delete.
+  std::vector<OnlineFeatureInterface*> to_delete_;
 
   /// the iVector estimation stats
   OnlineIvectorEstimationStats ivector_stats_;
@@ -359,33 +371,33 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
 
   /// this is only used for validating that the frame-weighting code is not buggy.
   std::vector<BaseFloat> current_frame_weight_debug_;
-  
+
   /// delta_weights_provided_ is set to true if UpdateFrameWeights was ever called; it's
   /// used to detect wrong usage of this class.
   bool delta_weights_provided_;
   /// The following is also used to detect wrong usage of this class; it's set
   /// to true if UpdateStatsUntilFrame() was ever called.
   bool updated_with_no_delta_weights_;
-  
+
   /// if delta_weights_ was ever called, this keeps track of the most recent
   /// frame that ever had a weight.  It's mostly for detecting errors.
   int32 most_recent_frame_with_weight_;
-  
+
   /// The following is only needed for diagnostics.
   double tot_ubm_loglike_;
-  
+
   /// Most recently estimated iVector, will have been
   /// estimated at the greatest time t where t <= num_frames_stats_ and
   /// t % info_.ivector_period == 0.
   Vector<double> current_ivector_;
-  
+
   /// if info_.use_most_recent_ivector == false, we need to store
   /// the iVector we estimated each info_.ivector_period frames so that
   /// GetFrame() can return the iVector that was active on that frame.
   /// ivectors_history_[i] contains the iVector we estimated on
   /// frame t = i * info_.ivector_period.
   std::vector<Vector<BaseFloat>* > ivectors_history_;
- 
+
 };
 
 
@@ -399,7 +411,7 @@ struct OnlineSilenceWeightingConfig {
   // Transition-ids that get repeated at least this many times (if
   // max_state_duration > 0) are treated as silence.
   BaseFloat max_state_duration;
-  
+
   // This is the scale that we apply to data that we don't yet have a decoder
   // traceback for, in the online silence
   BaseFloat new_data_weight;
@@ -407,10 +419,10 @@ struct OnlineSilenceWeightingConfig {
   bool Active() const {
     return !silence_phones_str.empty() && silence_weight != 1.0;
   }
-  
+
   OnlineSilenceWeightingConfig():
       silence_weight(1.0), max_state_duration(-1) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("silence-phones", &silence_phones_str, "(RE weighting in "
                    "iVector estimation for online decoding) List of integer ids of "
@@ -450,14 +462,16 @@ class OnlineSilenceWeighting {
   OnlineSilenceWeighting(const TransitionModel &trans_model,
                          const OnlineSilenceWeightingConfig &config,
 			 int32 frame_subsampling_factor = 1);
-  
+
   bool Active() const { return config_.Active(); }
 
   // This should be called before GetDeltaWeights, so this class knows about the
   // traceback info from the decoder.  It records the traceback information from
   // the decoder using its BestPathEnd() and related functions.
-  void ComputeCurrentTraceback(const LatticeFasterOnlineDecoder &decoder);
-  
+  // It will be instantiated for FST == fst::Fst<fst::StdArc> and fst::GrammarFst.
+  template <typename FST>
+  void ComputeCurrentTraceback(const LatticeFasterOnlineDecoderTpl<FST> &decoder);
+
   // Calling this function gets the changes in weight that require us to modify
   // the stats... the output format is (frame-index, delta-weight).  The
   // num_frames_ready argument is the number of frames available at the input
@@ -474,15 +488,15 @@ class OnlineSilenceWeighting {
   void GetDeltaWeights(
       int32 num_frames_ready_in,
       std::vector<std::pair<int32, BaseFloat> > *delta_weights);
-  
+
  private:
   const TransitionModel &trans_model_;
   const OnlineSilenceWeightingConfig &config_;
-  
+
   int32 frame_subsampling_factor_;
 
   unordered_set<int32> silence_phones_;
-  
+
   struct FrameInfo {
     // The only reason we need the token pointer is to know far back we have to
     // trace before the traceback is the same as what we previously traced back.
@@ -525,4 +539,3 @@ class OnlineSilenceWeighting {
 }  // namespace kaldi
 
 #endif  // KALDI_ONLINE2_ONLINE_IVECTOR_FEATURE_H_
-

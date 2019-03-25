@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+
+# THIS SCRIPT IS DEPRECATED AND WILL BE REMOVED.  See
+# utils/lang/make_lexicon_fst_silprob.py which is the python-based replacement.
+
 use warnings; #sed replacement for -w perl parameter
 # Copyright 2010-2011  Microsoft Corporation
 #                2013  Johns Hopkins University (author: Daniel Povey)
@@ -19,8 +23,8 @@ use warnings; #sed replacement for -w perl parameter
 # limitations under the License.
 
 
-# makes lexicon FST, in text form, from lexicon which contains (optional) 
-# probabilities of pronuniations, and (mandatory) probabilities of silence 
+# makes lexicon FST, in text form, from lexicon which contains (optional)
+# probabilities of pronuniations, and (mandatory) probabilities of silence
 # before and after the pronunciation. This script is almost the same with
 # the make_lexicon_fst.pl script except for the word-dependent silprobs part
 
@@ -68,7 +72,7 @@ while (<SP>) {
   $w = shift @A;
   if ($w eq "<s>") {
     $silbeginprob = shift @A;
-  } 
+  }
   if ($w eq "</s>_s") {
     $silendcorrection = shift @A;
   }
@@ -142,6 +146,6 @@ while (<L>) {
   }
 }
 $cost = -log($silendcorrection);
-print "$silstart\t$cost\n";   
+print "$silstart\t$cost\n";
 $cost = -log($nonsilendcorrection);
 print "$nonsilstart\t$cost\n";

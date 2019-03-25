@@ -78,6 +78,19 @@ P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error 
 [[ -f $2/frame_subsampling_factor && "$loopscale" == "0.1" ]] && \
   echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
+if [ -f $lang/phones/nonterm_phones_offset.int ]; then
+  if [[ $N != 2  || $P != 1 ]]; then
+    echo "$0: when doing grammar decoding, you can only build graphs for left-biphone trees."
+    exit 1
+  fi
+  nonterm_phones_offset=$(cat $lang/phones/nonterm_phones_offset.int)
+  nonterm_opt="--nonterm-phones-offset=$nonterm_phones_offset"
+  prepare_grammar_command="make-grammar-fst --nonterm-phones-offset=$nonterm_phones_offset - -"
+else
+  prepare_grammar_command="cat"
+  nonterm_opt=
+fi
+
 mkdir -p $lang/tmp
 trap "rm -f $lang/tmp/LG.fst.$$" EXIT HUP INT PIPE TERM
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
@@ -85,8 +98,7 @@ trap "rm -f $lang/tmp/LG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
   fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
-    fstminimizeencoded | fstpushspecial | \
-    fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst.$$ || exit 1;
+    fstminimizeencoded | fstpushspecial > $lang/tmp/LG.fst.$$ || exit 1;
   mv $lang/tmp/LG.fst.$$ $lang/tmp/LG.fst
   fstisstochastic $lang/tmp/LG.fst || echo "[info]: LG not stochastic."
 fi
@@ -98,10 +110,10 @@ ilabels_tmp=$ilabels.$$
 trap "rm -f $clg_tmp $ilabels_tmp" EXIT HUP INT PIPE TERM
 if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst \
     || ! -s $ilabels || $ilabels -ot $lang/tmp/LG.fst ]]; then
-  fstcomposecontext --context-size=$N --central-position=$P \
+  fstcomposecontext $nonterm_opt --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/phones/disambig.int \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.int \
-    $ilabels_tmp < $lang/tmp/LG.fst |\
+    $ilabels_tmp $lang/tmp/LG.fst |\
     fstarcsort --sort_type=ilabel > $clg_tmp
   mv $clg_tmp $clg
   mv $ilabels_tmp $ilabels
@@ -111,7 +123,7 @@ fi
 trap "rm -f $dir/Ha.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
-  make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
+  make-h-transducer $nonterm_opt --disambig-syms-out=$dir/disambig_tid.int \
     --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
      > $dir/Ha.fst.$$  || exit 1;
   mv $dir/Ha.fst.$$ $dir/Ha.fst
@@ -134,8 +146,9 @@ fi
 
 trap "rm -f $dir/HCLG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
-  add-self-loops --self-loop-scale=$loopscale --reorder=true \
-    $model < $dir/HCLGa.fst | fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
+  add-self-loops --self-loop-scale=$loopscale --reorder=true $model $dir/HCLGa.fst | \
+    $prepare_grammar_command | \
+    fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
   mv $dir/HCLG.fst.$$ $dir/HCLG.fst
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
     # No point doing this test if transition-scale not 1, as it is bound to fail.
@@ -162,7 +175,8 @@ mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/optional_silence.* $dir/phones/ 2>/dev/null # might be needed for analyzing alignments.
-  # but ignore the error if it's not there.
+    # but ignore the error if it's not there.
+
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null
 cp $lang/phones/silence.csl $dir/phones/ || exit 1;

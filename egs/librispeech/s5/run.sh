@@ -9,6 +9,7 @@ data=/export/a15/vpanayotov/data
 # base url for downloads.
 data_url=www.openslr.org/resources/12
 lm_url=www.openslr.org/resources/11
+mfccdir=mfcc
 stage=1
 
 . ./cmd.sh
@@ -75,7 +76,6 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  mfccdir=mfcc
   # spread the mfccs over various machines, as this data-set is quite large.
   if [[  $(hostname -f) ==  *.clsp.jhu.edu ]]; then
     mfcc=$(basename mfccdir) # in case was absolute pathname (unlikely), get basename.
