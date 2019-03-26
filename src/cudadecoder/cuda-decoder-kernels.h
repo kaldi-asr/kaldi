@@ -18,65 +18,15 @@
 #ifndef KALDI_CUDA_DECODER_CUDA_DECODER_KERNELS_H_
 #define KALDI_CUDA_DECODER_CUDA_DECODER_KERNELS_H_
 
-#include "cuda-decoder.h"
+#include "cudadecoder/cuda-decoder-common.h"
+#include "util/stl-utils.h"
 
 namespace kaldi {
 namespace cuda_decoder {
 
-__global__ void get_best_cost_kernel(DeviceParams cst_dev_params,
-                                     KernelParams params, bool isfinal,
-                                     CostType fst_zero);
-__global__ void finalize_process_non_emitting_kernel(
-    DeviceParams cst_dev_params, KernelParams params);
-__global__ void save_channels_state_from_lanes_kernel(
-    DeviceParams cst_dev_params, KernelParams params);
-__global__ void load_channels_state_in_lanes_kernel(DeviceParams cst_dev_params,
-                                                    KernelParams params);
-__global__ void init_decoding_on_device_kernel(DeviceParams cst_dev_params,
-                                               KernelParams params);
-__global__ void initialize_initial_lane_kernel(DeviceParams cst_dev_params);
-template <bool IS_EMITTING>
-__global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
-                                   KernelParams params);
-template <bool IS_EMITTING>
-__global__ void post_expand_kernel(DeviceParams cst_dev_params,
-                                   KernelParams params);
-__global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
-                                                KernelParams params);
-__global__ void emitting_preprocess_and_list_extra_prev_tokens_step1_kernel(
-    DeviceParams cst_dev_params, KernelParams params);
-__global__ void emitting_preprocess_and_list_extra_prev_tokens_step2_kernel(
-    DeviceParams cst_dev_params, KernelParams params);
-__global__ void emitting_preprocess_and_list_extra_prev_tokens_step3_kernel(
-    DeviceParams cst_dev_params, KernelParams params);
-__global__ void emitting_preprocess_and_list_extra_prev_tokens_step4_kernel(
-    DeviceParams cst_dev_params, KernelParams params);
-__global__ void nonemitting_preprocess_and_contract_kernel(
-    DeviceParams cst_dev_params, KernelParams params);
-template <typename T>
-__global__ void concatenate_lanes_data(DeviceParams cst_dev_params,
-                                       KernelParams params,
-                                       LaneMatrixView<T> src, T *concat);
-
-__global__ void init_hashmap_kernel(DeviceParams cst_dev_params);
-__global__ void clear_hashmap_kernel(DeviceParams cst_dev_params,
-                                     KernelParams params);
-__global__ void compute_costs_histogram_kernel(DeviceParams cst_dev_params,
-                                               KernelParams params,
-                                               bool use_aux_q);
-__global__ void update_beam_using_histogram_kernel(DeviceParams cst_dev_params,
-                                                   KernelParams params,
-                                                   bool use_aux_q);
-
-__global__ void get_best_cost_kernel_step1(DeviceParams cst_dev_params,
-                                           KernelParams params,
-                                           bool use_final_probs,
-                                           CostType fst_zero);
-__global__ void get_best_cost_kernel_step2(DeviceParams cst_dev_params,
-                                           KernelParams params,
-                                           bool use_final_probs,
-                                           CostType fst_zero);
-
+// DeviceParams contains all top-level const data used by the kernels
+// i.e. the data that won't change between kernel calls (such as memory pointers
+// to the main_q)
 struct DeviceParams {
   ChannelMatrixView<ChannelCounters> d_channels_counters;
   LaneMatrixView<LaneCounters> d_lanes_counters;
@@ -119,6 +69,9 @@ struct DeviceParams {
   int32 adaptive_beam_bin_width;
 };
 
+// KernelParams contains all the kernels arguments that change between kernel
+// calls
+// For instance, a given lane does not always compute the same channel
 struct KernelParams {
   // In AdvanceDecoding,
   // the lane lane_id will compute the channel
@@ -128,6 +81,109 @@ struct KernelParams {
   BaseFloat *loglikelihoods_ptrs[KALDI_CUDA_DECODER_MAX_N_LANES];
   int32 nlanes_used;
 };
+
+// Kernel wrappers
+void SaveChannelsStateFromLanesKernel(const dim3 &grid, const dim3 &block,
+                                      const cudaStream_t &st,
+                                      const DeviceParams &cst_dev_params,
+                                      const KernelParams &kernel_params);
+
+void LoadChannelsStateInLanesKernel(const dim3 &grid, const dim3 &block,
+                                    const cudaStream_t &st,
+                                    const DeviceParams &cst_dev_params,
+                                    const KernelParams &kernel_params);
+
+void InitDecodingOnDeviceKernel(const dim3 &grid, const dim3 &block,
+                                const cudaStream_t &st,
+                                const DeviceParams &cst_dev_params,
+                                const KernelParams &kernel_params);
+
+void InitializeInitialLaneKernel(const dim3 &grid, const dim3 &block,
+                                 const cudaStream_t &st,
+                                 const DeviceParams &cst_dev_params);
+
+template <bool IS_EMITTING>
+void ExpandArcsKernel(const dim3 &grid, const dim3 &block,
+                      const cudaStream_t &st,
+                      const DeviceParams &cst_dev_params,
+                      const KernelParams &kernel_params);
+
+template <bool IS_EMITTING>
+void PostExpandKernel(const dim3 &grid, const dim3 &block,
+                      const cudaStream_t &st,
+                      const DeviceParams &cst_dev_params,
+                      const KernelParams &kernel_params);
+
+void NonEmittingPreprocessAndContractKernel(const dim3 &grid, const dim3 &block,
+                                            const cudaStream_t &st,
+                                            const DeviceParams &cst_dev_params,
+                                            const KernelParams &kernel_params);
+
+void FillHashmapWithMainQKernel(const dim3 &grid, const dim3 &block,
+                                const cudaStream_t &st,
+                                const DeviceParams &cst_dev_params,
+                                const KernelParams &kernel_params);
+
+void EmittingPreprocessAndListExtraPrevTokensStep1Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params);
+
+void EmittingPreprocessAndListExtraPrevTokensStep2Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params);
+
+void EmittingPreprocessAndListExtraPrevTokensStep3Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params);
+
+void EmittingPreprocessAndListExtraPrevTokensStep4Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params);
+
+template <typename T>
+void ConcatenateLanesDataKernel(const dim3 &grid, const dim3 &block,
+                                const cudaStream_t &st,
+                                const DeviceParams &cst_dev_params,
+                                const KernelParams &kernel_params,
+                                const LaneMatrixView<T> &src, T *concat);
+
+void InitHashmapKernel(const dim3 &grid, const dim3 &block,
+                       const cudaStream_t &st,
+                       const DeviceParams &cst_dev_params);
+
+void ClearHashmapKernel(const dim3 &grid, const dim3 &block,
+                        const cudaStream_t &st,
+                        const DeviceParams &cst_dev_params,
+                        const KernelParams &kernel_params);
+
+void ComputeCostsHistogramKernel(const dim3 &grid, const dim3 &block,
+                                 const cudaStream_t &st,
+                                 const DeviceParams &cst_dev_params,
+                                 const KernelParams &kernel_params,
+                                 bool use_aux_q);
+
+void UpdateBeamUsingHistogramKernel(const dim3 &grid, const dim3 &block,
+                                    const cudaStream_t &st,
+                                    const DeviceParams &cst_dev_params,
+                                    const KernelParams &kernel_params,
+                                    bool use_aux_q);
+
+void FinalizeProcessNonEmittingKernel(const dim3 &grid, const dim3 &block,
+                                      const cudaStream_t &st,
+                                      const DeviceParams &cst_dev_params,
+                                      const KernelParams &kernel_params);
+
+void GetBestCostStep1Kernel(const dim3 &grid, const dim3 &block,
+                            const cudaStream_t &st,
+                            const DeviceParams &cst_dev_params,
+                            const KernelParams &kernel_params, bool isfinal,
+                            CostType fst_zero);
+
+void GetBestCostStep2Kernel(const dim3 &grid, const dim3 &block,
+                            const cudaStream_t &st,
+                            const DeviceParams &cst_dev_params,
+                            const KernelParams &kernel_params, bool isfinal,
+                            CostType fst_zero);
 
 typedef unsigned char BinId;
 

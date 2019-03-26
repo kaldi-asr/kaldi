@@ -18,82 +18,14 @@
 #ifndef KALDI_CUDA_DECODER_CUDA_DECODER_H_
 #define KALDI_CUDA_DECODER_CUDA_DECODER_H_
 
+#include "cudadecoder/cuda-decodable-itf.h"
+#include "cudadecoder/cuda-decoder-common.h"
+#include "cudadecoder/cuda-fst.h"
+#include "nnet3/decodable-online-looped.h"
+
 #include <cuda_runtime_api.h>
 #include <tuple>
 #include <vector>
-
-#include "cudadecoder/cuda-decodable-itf.h"
-#include "cudadecoder/cuda-decoder-utils.h"
-#include "cudadecoder/cuda-fst.h"
-#include "nnet3/decodable-online-looped.h"
-#include "util/stl-utils.h"
-
-// A decoder channel is linked to one utterance. Frames
-// from the same must be sent to the same channel.
-//
-// A decoder lane is where the computation actually happens
-// a decoder lane is given a frame and its associated channel
-// and does the actual computation
-//
-// An analogy would be lane -> a core, channel -> a software thread
-
-// Number of GPU decoder lanes
-#define KALDI_CUDA_DECODER_MAX_N_LANES 200
-
-// If we're at risk of filling the tokens queue,
-// the beam is reduced to keep only the best candidates in the
-// remaining space
-// We then slowly put the beam back to its default value
-// beam_next_frame = min(default_beam, RECOVER_RATE * beam_previous_frame)
-#define KALDI_CUDA_DECODER_ADAPTIVE_BEAM_RECOVER_RATE 1.2f
-
-// Defines for the cuda decoder kernels
-// It shouldn't be necessary to change the DIMX of the kernels
-
-// Below that value, we launch the persistent kernel for NonEmitting
-#define KALDI_CUDA_DECODER_NONEM_LT_MAX_NARCS 4096
-
-// We know we will have at least X elements in the hashmap
-// We allocate space for X*KALDI_CUDA_DECODER_HASHMAP_CAPACITY_FACTOR elements
-// to avoid having too much collisions
-#define KALDI_CUDA_DECODER_HASHMAP_CAPACITY_FACTOR 1
-
-// Max size of the total kernel arguments
-// 4kb for compute capability >= 2.0
-#define KALDI_CUDA_DECODER_MAX_KERNEL_ARGUMENTS_BYTE_SIZE (4096)
-
-// When applying the max-active, we need to compute a topk
-// to perform that (soft) topk, we compute a histogram
-// here we define the number of bins in that histogram
-// it has to be less than the number of 1D threads
-#define KALDI_CUDA_DECODER_HISTO_NBINS 255
-
-// Adaptive beam parameters
-// We will decrease the beam when we detect that we are generating too many
-// tokens
-// for the first segment of the aux_q, we don't do anything (keep the original
-// beam)
-// the first segment is made of (aux_q
-// capacity)/KALDI_CUDA_DECODER_ADAPTIVE_BEAM_STATIC_SEGMENT
-// then we will decrease the beam step by step, until 0.
-// we will decrease the beam every m elements, with:
-// x = (aux_q capacity)/KALDI_CUDA_DECODER_ADAPTIVE_BEAM_STATIC_SEGMENT (static
-// segment
-// y = (aux_q capacity) - x
-// m = y / KALDI_CUDA_DECODER_ADAPTIVE_BEAM_NSTEPS
-// For more information, please refer to the definition of GetAdaptiveBeam in
-// cuda-decoder-kernels.cu
-#define KALDI_CUDA_DECODER_ADAPTIVE_BEAM_STATIC_SEGMENT 4
-#define KALDI_CUDA_DECODER_ADAPTIVE_BEAM_NSTEPS 8
-// When applying max_active we don't keep exactly max_active_ tokens,
-// but a bit more. And we can call ApplyMaxActiveAndReduceBeam multiple times
-// in the first frame (the first times as a pre-filter, the last time at the
-// very end of the frame)
-// Because keeping a bit more than max_active_ is expected, we add the tolerance
-// so that we can avoid triggering ApplyMaxActiveAndReduceBeam for just a few
-// tokens above the limit
-// at the end of the frame
-#define KALDI_CUDA_DECODER_MAX_ACTIVE_TOLERANCE 0.2
 
 namespace kaldi {
 namespace cuda_decoder {

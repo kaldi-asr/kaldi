@@ -189,9 +189,10 @@ __global__ void save_channels_state_from_lanes_kernel(
 // Used to prepare data for copy to Host. We want to avoid small Device2Host
 // copies.
 template <typename T>
-__global__ void concatenate_lanes_data(DeviceParams cst_dev_params,
-                                       KernelParams params,
-                                       LaneMatrixView<T> src, T *concat) {
+__global__ void concatenate_lanes_data_kernel(DeviceParams cst_dev_params,
+                                              KernelParams params,
+                                              LaneMatrixView<T> src,
+                                              T *concat) {
   const int nlanes = params.nlanes_used;
   KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
     int32 beg = params.main_q_end_lane_offsets[ilane];
@@ -979,7 +980,7 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
 // We set both channel_counters->min_int_cost_and_arg_without_final
 // and channel_counters->min_int_cost_and_arg_with_final
 // One add the final_cost[token.state] before looking for the min
-__global__ void get_best_cost_kernel_step1(DeviceParams cst_dev_params,
+__global__ void get_best_cost_step1_kernel(DeviceParams cst_dev_params,
                                            KernelParams params,
                                            bool use_final_probs,
                                            CostType fst_zero) {
@@ -1030,7 +1031,7 @@ __global__ void get_best_cost_kernel_step1(DeviceParams cst_dev_params,
 // exists in the token queue, AND if use_final_probs is true,
 // We can detect all tokens with a cost within [min_cost;min_cost+lattice_beam]
 // and list them into d_list_final_tokens_in_main_q
-__global__ void get_best_cost_kernel_step2(DeviceParams cst_dev_params,
+__global__ void get_best_cost_step2_kernel(DeviceParams cst_dev_params,
                                            KernelParams params,
                                            bool use_final_probs,
                                            CostType fst_zero) {
@@ -1650,26 +1651,227 @@ __global__ void clear_hashmap_kernel(DeviceParams cst_dev_params,
   }
 }
 
-template __global__ void expand_arcs_kernel<true>(DeviceParams cst_dev_params,
-                                                  KernelParams params);
-template __global__ void expand_arcs_kernel<false>(DeviceParams cst_dev_params,
-                                                   KernelParams params);
-template __global__ void post_expand_kernel<true>(DeviceParams cst_dev_params,
-                                                  KernelParams params);
-template __global__ void post_expand_kernel<false>(DeviceParams cst_dev_params,
-                                                   KernelParams params);
-template __global__ void concatenate_lanes_data<InfoToken>(
-    DeviceParams cst_dev_params, KernelParams params,
-    LaneMatrixView<InfoToken> src, InfoToken *concat);
-template __global__ void concatenate_lanes_data<CostType>(
-    DeviceParams cst_dev_params, KernelParams params,
-    LaneMatrixView<CostType> src, CostType *concat);
-template __global__ void concatenate_lanes_data<float2>(
-    DeviceParams cst_dev_params, KernelParams params,
-    LaneMatrixView<float2> src, float2 *concat);
-template __global__ void concatenate_lanes_data<int32>(
-    DeviceParams cst_dev_params, KernelParams params, LaneMatrixView<int32> src,
-    int32 *concat);
+// Kernels wrappers
+
+void SaveChannelsStateFromLanesKernel(const dim3 &grid, const dim3 &block,
+                                      const cudaStream_t &st,
+                                      const DeviceParams &cst_dev_params,
+                                      const KernelParams &kernel_params) {
+  save_channels_state_from_lanes_kernel<<<grid, block, 0, st>>>(cst_dev_params,
+                                                                kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void LoadChannelsStateInLanesKernel(const dim3 &grid, const dim3 &block,
+                                    const cudaStream_t &st,
+                                    const DeviceParams &cst_dev_params,
+                                    const KernelParams &kernel_params) {
+  load_channels_state_in_lanes_kernel<<<grid, block, 0, st>>>(cst_dev_params,
+                                                              kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void InitDecodingOnDeviceKernel(const dim3 &grid, const dim3 &block,
+                                const cudaStream_t &st,
+                                const DeviceParams &cst_dev_params,
+                                const KernelParams &kernel_params) {
+  init_decoding_on_device_kernel<<<grid, block, 0, st>>>(cst_dev_params,
+                                                         kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void InitializeInitialLaneKernel(const dim3 &grid, const dim3 &block,
+                                 const cudaStream_t &st,
+                                 const DeviceParams &cst_dev_params) {
+  initialize_initial_lane_kernel<<<grid, block, 0, st>>>(cst_dev_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+template <bool IS_EMITTING>
+void ExpandArcsKernel(const dim3 &grid, const dim3 &block,
+                      const cudaStream_t &st,
+                      const DeviceParams &cst_dev_params,
+                      const KernelParams &kernel_params) {
+  expand_arcs_kernel<IS_EMITTING><<<grid, block, 0, st>>>(cst_dev_params,
+                                                          kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+template <bool IS_EMITTING>
+void PostExpandKernel(const dim3 &grid, const dim3 &block,
+                      const cudaStream_t &st,
+                      const DeviceParams &cst_dev_params,
+                      const KernelParams &kernel_params) {
+  post_expand_kernel<IS_EMITTING><<<grid, block, 0, st>>>(cst_dev_params,
+                                                          kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void NonEmittingPreprocessAndContractKernel(const dim3 &grid, const dim3 &block,
+                                            const cudaStream_t &st,
+                                            const DeviceParams &cst_dev_params,
+                                            const KernelParams &kernel_params) {
+  nonemitting_preprocess_and_contract_kernel<<<grid, block, 0, st>>>(
+      cst_dev_params, kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void FillHashmapWithMainQKernel(const dim3 &grid, const dim3 &block,
+                                const cudaStream_t &st,
+                                const DeviceParams &cst_dev_params,
+                                const KernelParams &kernel_params) {
+  fill_hashmap_with_main_q_kernel<<<grid, block, 0, st>>>(cst_dev_params,
+                                                          kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void EmittingPreprocessAndListExtraPrevTokensStep1Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params) {
+  emitting_preprocess_and_list_extra_prev_tokens_step1_kernel<<<grid, block, 0,
+                                                                st>>>(
+      cst_dev_params, kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void EmittingPreprocessAndListExtraPrevTokensStep2Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params) {
+  emitting_preprocess_and_list_extra_prev_tokens_step2_kernel<<<grid, block, 0,
+                                                                st>>>(
+      cst_dev_params, kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void EmittingPreprocessAndListExtraPrevTokensStep3Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params) {
+  emitting_preprocess_and_list_extra_prev_tokens_step3_kernel<<<grid, block, 0,
+                                                                st>>>(
+      cst_dev_params, kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void EmittingPreprocessAndListExtraPrevTokensStep4Kernel(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &kernel_params) {
+  emitting_preprocess_and_list_extra_prev_tokens_step4_kernel<<<grid, block, 0,
+                                                                st>>>(
+      cst_dev_params, kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+template <typename T>
+void ConcatenateLanesDataKernel(const dim3 &grid, const dim3 &block,
+                                const cudaStream_t &st,
+                                const DeviceParams &cst_dev_params,
+                                const KernelParams &kernel_params,
+                                const LaneMatrixView<T> &src, T *concat) {
+  concatenate_lanes_data_kernel<<<grid, block, 0, st>>>(
+      cst_dev_params, kernel_params, src, concat);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void InitHashmapKernel(const dim3 &grid, const dim3 &block,
+                       const cudaStream_t &st,
+                       const DeviceParams &cst_dev_params) {
+  init_hashmap_kernel<<<grid, block, 0, st>>>(cst_dev_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void ClearHashmapKernel(const dim3 &grid, const dim3 &block,
+                        const cudaStream_t &st,
+                        const DeviceParams &cst_dev_params,
+                        const KernelParams &kernel_params) {
+  clear_hashmap_kernel<<<grid, block, 0, st>>>(cst_dev_params, kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void ComputeCostsHistogramKernel(const dim3 &grid, const dim3 &block,
+                                 const cudaStream_t &st,
+                                 const DeviceParams &cst_dev_params,
+                                 const KernelParams &kernel_params,
+                                 bool use_aux_q) {
+  compute_costs_histogram_kernel<<<grid, block, 0, st>>>(
+      cst_dev_params, kernel_params, use_aux_q);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void UpdateBeamUsingHistogramKernel(const dim3 &grid, const dim3 &block,
+                                    const cudaStream_t &st,
+                                    const DeviceParams &cst_dev_params,
+                                    const KernelParams &kernel_params,
+                                    bool use_aux_q) {
+  update_beam_using_histogram_kernel<<<grid, block, 0, st>>>(
+      cst_dev_params, kernel_params, use_aux_q);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void FinalizeProcessNonEmittingKernel(const dim3 &grid, const dim3 &block,
+                                      const cudaStream_t &st,
+                                      const DeviceParams &cst_dev_params,
+                                      const KernelParams &kernel_params) {
+  finalize_process_non_emitting_kernel<<<grid, block, 0, st>>>(cst_dev_params,
+                                                               kernel_params);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void GetBestCostStep1Kernel(const dim3 &grid, const dim3 &block,
+                            const cudaStream_t &st,
+                            const DeviceParams &cst_dev_params,
+                            const KernelParams &kernel_params, bool isfinal,
+                            CostType fst_zero) {
+  get_best_cost_step1_kernel<<<grid, block, 0, st>>>(
+      cst_dev_params, kernel_params, isfinal, fst_zero);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+void GetBestCostStep2Kernel(const dim3 &grid, const dim3 &block,
+                            const cudaStream_t &st,
+                            const DeviceParams &cst_dev_params,
+                            const KernelParams &kernel_params, bool isfinal,
+                            CostType fst_zero) {
+  get_best_cost_step2_kernel<<<grid, block, 0, st>>>(
+      cst_dev_params, kernel_params, isfinal, fst_zero);
+  KALDI_DECODER_CUDA_CHECK_ERROR();
+}
+
+template void ExpandArcsKernel<true>(const dim3 &grid, const dim3 &block,
+                                     const cudaStream_t &st,
+                                     const DeviceParams &cst_dev_params,
+                                     const KernelParams &params);
+template void ExpandArcsKernel<false>(const dim3 &grid, const dim3 &block,
+                                      const cudaStream_t &st,
+                                      const DeviceParams &cst_dev_params,
+                                      const KernelParams &params);
+template void PostExpandKernel<true>(const dim3 &grid, const dim3 &block,
+                                     const cudaStream_t &st,
+                                     const DeviceParams &cst_dev_params,
+                                     const KernelParams &params);
+template void PostExpandKernel<false>(const dim3 &grid, const dim3 &block,
+                                      const cudaStream_t &st,
+                                      const DeviceParams &cst_dev_params,
+                                      const KernelParams &params);
+
+template void ConcatenateLanesDataKernel<InfoToken>(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &params,
+    const LaneMatrixView<InfoToken> &src, InfoToken *concat);
+
+template void ConcatenateLanesDataKernel<CostType>(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &params,
+    const LaneMatrixView<CostType> &src, CostType *concat);
+
+template void ConcatenateLanesDataKernel<float2>(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &params,
+    const LaneMatrixView<float2> &src, float2 *concat);
+
+template void ConcatenateLanesDataKernel<int32>(
+    const dim3 &grid, const dim3 &block, const cudaStream_t &st,
+    const DeviceParams &cst_dev_params, const KernelParams &params,
+    const LaneMatrixView<int32> &src, int32 *concat);
 
 }  // end namespace cuda_decoder
 }  // end namespace kaldi

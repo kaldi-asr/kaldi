@@ -25,7 +25,6 @@
     KALDI_CUDA_DECODER_HASHMAP_NO_KEY, 0, { INT_MAX, -1 } \
   }
 
-#include "cudadecoder/cuda-decoder.h"
 #include "util/stl-utils.h"
 
 namespace kaldi {

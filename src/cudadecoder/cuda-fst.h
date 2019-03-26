@@ -17,12 +17,10 @@
 
 #ifndef KALDI_CUDA_DECODER_CUDA_FST_H_
 #define KALDI_CUDA_DECODER_CUDA_FST_H_
-#include "cudadecoder/cuda-decodable-itf.h"
-#include "cudadecoder/cuda-decoder-utils.h"
+#include "cudadecoder/cuda-decoder-common.h"
 #include "cudamatrix/cu-device.h"
 #include "lat/kaldi-lattice.h"
-#include "nnet3/decodable-online-looped.h"
-#include "util/stl-utils.h"
+#include "nnet3/decodable-online-looped.h"  // TransitionModel
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -30,7 +28,6 @@ namespace cuda_decoder {
 typedef fst::StdArc StdArc;
 typedef StdArc::Weight StdWeight;
 typedef StdArc::Label Label;
-typedef StdArc::StateId StateId;
 
 // FST in both device and host memory
 // Converting the OpenFst format to the CSR Compressed Sparse Row (CSR) Matrix

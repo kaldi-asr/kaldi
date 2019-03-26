@@ -1,4 +1,4 @@
-// cudadecoder/cuda-fst.cu
+// cudadecoder/cuda-fst.cc
 //
 // Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 // Hugo Braun, Justin Luitjens, Ryan Leary
@@ -15,10 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "cudadecoder/cuda-fst.h"
+
 #include <cuda_runtime_api.h>
 #include <nvToolsExt.h>
-#include "cudadecoder/cuda-decoder-utils.h"
-#include "cudadecoder/cuda-fst.h"
 
 namespace kaldi {
 namespace cuda_decoder {
