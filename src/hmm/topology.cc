@@ -3,6 +3,7 @@
 // Copyright 2009-2011  Microsoft Corporation
 //           2014-2019  Johns Hopkins University (author: Daniel Povey)
 //           2019       Daniel Galvez
+//           2019       Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,9 +24,11 @@
 
 #include "fst/script/compile.h"
 
+#include "util/common-utils.h"
 #include "hmm/topology.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
+#include "fstext/kaldi-fst-io.h"
 
 
 
@@ -64,14 +67,14 @@ void Topology::Read(std::istream &is, bool binary) {
           }
         }
 
-        fst::FstCompiler<Arc> compiler(is, "<unspecified>", nullptr, nullptr,
-                                       nullptr, true, false, false, false);
         int32 entry_index = entries_.size();
-        entries_.push_back(compiler.Fst());
+        fst::StdVectorFst fst;
+        ReadFsaKaldi(is, binary, &fst);
+        entries_.push_back(fst);
 
         for (int32 phone : phones) {
           if (static_cast<int32>(phone2idx_.size()) <= phone)
-            phone2idx_.resize(phone+1, -1);  // -1 is invalid index.
+            phone2idx_.resize(phone + 1, -1);  // -1 is invalid index.
           if (phone2idx_[phone] != -1) {
             KALDI_ERR << "Phone "
                       << phone << " appears in multiple topology entries.";
@@ -79,6 +82,7 @@ void Topology::Read(std::istream &is, bool binary) {
           phone2idx_[phone] = entry_index;
           phones_.push_back(phone);
         }
+        ExpectToken(is, binary, "</TopologyEntry>");
       }
     }
     std::sort(phones_.begin(), phones_.end());
@@ -88,25 +92,49 @@ void Topology::Read(std::istream &is, bool binary) {
     ReadIntegerVector(is, binary, &phone2idx_);
     int32 number_topology_entries;
     ReadBasicType(is, binary, &number_topology_entries);
-    entries_.resize(number_topology_entries);
-    entries_.push_back(*fst::StdVectorFst::Read(is, fst::FstReadOptions()));
+    for (size_t index = 0; index < number_topology_entries; ++index) {
+      fst::StdVectorFst fst;
+      ReadFsaKaldi(is, binary, &fst);
+      entries_.push_back(fst);
+    }
   }
   Check();
+}
+
+template <class Arc>
+static void WriteFsa(std::ostream &os, const fst::VectorFst<Arc> &fst) {
+  os << '\n';
+  bool acceptor = true, write_one = false;
+  fst::FstPrinter<Arc> printer(fst, fst.InputSymbols(), fst.OutputSymbols(),
+                               NULL, acceptor, write_one, "\t");
+  printer.Print(&os, "<unknown>");
+  if (os.fail())
+    KALDI_ERR << "Stream failure detected writing FST to stream.";
+  os << '\n';
+  if (!os.good())
+    KALDI_ERR << "Error writing FST to stream.";
 }
 
 void Topology::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Topology>");
   if (!binary) {
-    KALDI_ERR << "Topology::Write, writing is not supported for text mode\n"
-              << "We could add this, but it would be time-consuming.\n";
+    for (int index = 0; index < entries_.size(); ++index) {
+      WriteToken(os, binary, "<TopologyEntry>");
+      WriteToken(os, binary, "<ForPhones>");
+      for (auto phone: phones_)
+        if (phone2idx_[phone] == index)
+          os << phone << " ";
+      os << "</ForPhones>";
+      WriteFsa(os, entries_[index]);
+      os << "</TopologyEntry>\n";
+    }
   } else {
     WriteIntegerVector(os, binary, phones_);
     WriteIntegerVector(os, binary, phone2idx_);
-
-    auto const& write_opts = fst::FstWriteOptions();
-    for (auto const& fst : entries_) {
-      fst.Write(os, write_opts);
-    }
+    int32 number_topology_entries = entries_.size();
+    WriteBasicType(os, binary, number_topology_entries);
+    for (auto const& fst : entries_)
+      WriteFstKaldi(os, binary, fst);
   }
   WriteToken(os, binary, "</Topology>");
 }
@@ -123,9 +151,9 @@ void Topology::Check() {
     is_seen[phone2idx_[phone]] = true;
   }
   if (!std::accumulate(is_seen.begin(),
-                       is_seen.end(), true, std::logical_and<bool>())) {
+                       is_seen.end(), true, std::logical_and<bool>()))
     KALDI_ERR << "HmmTopoloy::Check(), entry with no corresponding phones.";
-  }
+
   for (auto const& entry: entries_) {
     int32 num_states = static_cast<int32>(entry.NumStates());
     if (num_states <= 1)
@@ -142,14 +170,15 @@ void Topology::Check() {
       if (entry.Final(state) != Weight::Zero())
         has_final_state = true;
 
-      BaseFloat outward_prob_sum = 0.0;
+      BaseFloat outward_prob_sum = exp(-entry.Final(state).Value());
       for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state);
            !aiter.Done(); aiter.Next()) {
         const fst::StdArc &arc(aiter.Value());
-        KALDI_ASSERT(arc.ilabel == arc.olabel);
+        if (arc.ilabel != arc.olabel)
+          KALDI_ERR << "ilabel != olabel. " << arc.ilabel << " " << arc.olabel;
         if (arc.ilabel == 0)
           KALDI_ERR << "Epsilon arcs (pdf-class 0) are not allowed.";
-        if (arc.nextstate == entry.Start())
+        if (state != entry.Start() && arc.nextstate == entry.Start())
           KALDI_ERR << "Start state cannot have any inward transitions.";
         seen_pdf_classes.push_back(arc.ilabel);
         outward_prob_sum += exp(-arc.weight.Value());
