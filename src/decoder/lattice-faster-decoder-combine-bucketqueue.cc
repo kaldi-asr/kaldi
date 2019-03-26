@@ -103,7 +103,6 @@ void BucketQueue<Token>::Clear() {
     buckets_[i].clear();
   }
   first_occupied_vec_index_ = buckets_.size();
-  bucket_storage_begin_ = -15 * cost_scale_;
 }
 
 // instantiate this class once for each thing you have to decode.
