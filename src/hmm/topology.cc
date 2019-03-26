@@ -27,7 +27,7 @@
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
 #include "fstext/kaldi-fst-io.h"
-
+#include "fstext/fstext-utils.h"
 
 
 namespace kaldi {
@@ -154,13 +154,9 @@ void Topology::Check() {
     KALDI_ERR << "Entry with no corresponding phones.";
 
   for (auto const& entry: entries_) {
-    int32 num_states = static_cast<int32>(entry.NumStates());
-    if (num_states <= 1)
+    if (entry.NumStates() <= 1)
       KALDI_ERR << "Cannot only have one state (must have a "
                 << "final state and a start state).";
-  }
-
-  for (auto& entry: entries_) {
     bool has_final_state = false;
     std::vector<int32> seen_pdf_classes;
     for (fst::StateIterator<fst::StdVectorFst> state_iter(entry);
@@ -203,9 +199,14 @@ void Topology::Check() {
       KALDI_ERR << "pdf_classes are expected to be "
           "contiguous and start from 1.";
 
-    fst::Connect(&entry);
+    int num_states = entry.NumStates();
+    int num_arcs = NumArcs(entry);
+    fst::StdVectorFst fst(entry);  // Call Connect on a copy.
+    fst::Connect(&fst);
     if (entry.NumStates() == 0)
       KALDI_ERR << "Some of the states in the topolgy are not reachable.";
+    if (fst.NumStates() != num_states || NumArcs(fst) != num_arcs)
+      KALDI_ERR << "Topology changed after calling Connect().";
   }
 }
 
