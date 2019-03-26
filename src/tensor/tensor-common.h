@@ -51,6 +51,8 @@ struct Device {
   Device(): device_type(kCpuDevice) { }
   Device(DeviceType t): device_type(t) { }
 
+  std::string ToString() const;
+
   // TODO: operator ==
   // maybe in future we'll make a way to set the default device.
 };

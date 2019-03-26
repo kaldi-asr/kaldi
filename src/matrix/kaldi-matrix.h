@@ -191,14 +191,6 @@ class MatrixBase {
     return SubVector<Real>(data_ + (i * stride_), num_cols_);
   }
 
-  /// Return specific column of matrix.  Warning: this can get
-  /// around const constraints.
-  inline const SubVector<Real> Col(MatrixIndexT i) const {
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
-                 static_cast<UnsignedMatrixIndexT>(num_cols_));
-    return SubVector<Real>(data_ + i, num_rows_, stride_);
-  }
-
   /// Return a sub-part of matrix.
   inline SubMatrix<Real> Range(const MatrixIndexT row_offset,
                                const MatrixIndexT num_rows,

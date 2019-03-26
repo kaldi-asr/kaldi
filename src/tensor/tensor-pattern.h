@@ -131,39 +131,58 @@ void MakeRangeExplicit(int32 dim, Range *range);
 
 
 /*
-  This struct stores the dimension and strides of a Tensor.  The following
-  describes the properties that a TensorPattern will always have.
+  This struct stores the dimension and strides of a Tensor.
+
+  The main thing to watch out for is that the dimensions of 'dims' and 'strides'
+  to look at is not 0 ... num_axes, but KALDI_TENSOR_MAX_DIM - num_axes
+  ... KALDI_TENSOR_MAX_DIM - 1.  The last dimension is always located at
+  KALDI_TENSOR_MAX_DIM - 1, i.e. the dims and strides are always
+  right-justified.  In addition, for unused axes, we always maintain dim=1 and
+  stride=0. This happens to be quite convenient due to the standard broadcasting
+  rules in things like PyTorch.
+
+  Below we describe the the properties that a TensorPattern is required to have.
 
   These properties are stricter than some other frameworks, such as PyTorch,
   which allow the users to manually add dimensions with stride 0 and dim > 1 so
   that a lower-dimensional quantity can masquerade as one with a higher
   dimension.  We require that it never be possible to access the same memory
   location using two different tuples of indexes.  We also don't allow zero dims
-  (i.e. a tensor must not be empty); if you want an empty Tensor, just use a
-  null pointer.  In addition, require that the stride equal zero for any
-  axis that has dim = 1.
+  (i.e. a Tensor that is initialized must not have num_elemnts==0).  If you want
+  an empty Tensor, just use a null pointer.  In addition, we require that the
+  stride equal zero for any axis that has dim = 1.
 
   Our requirements on a TensorPattern are:
 
-    0 <= num_axes <= KALDI_TENSOR_MAX_DIM
-    for 0 <= axis < num_axes:
+    0 <= num_axes <= KALDI_TENSOR_MAX_DIM.
+
+    for 0 <= i < KALDI_TENSOR_MAX_DIM
        dims[i] > 0
+       if i < KALDI_TENSOR_MAX_DIM - num_axes, then dims[i] = 1.
        if dims[i] = 1, then strides[i] = 0.
        if dims[i] != 1, then strides[i] != 0
+
     ... plus the uniqueness property.
 
-  The uniqueness property means that we must not be able to access
-  the same memory location via two different tuples of indexes).
-  Recause testing this property exactly would be difficult in general
-  without bringing in number theory, we test a slightly stronger version
-  of it that covers all cases we are likely to encounter.  This is
-  that, if we take all the axes with dim != 1 and sort them from greatest
-  to least stride, for each i, abs(strides[i]) >= dims[i+1] * abs(strides[i+1]).
+  Note: in the public interface of class Tensor, if you ask for
+  dim(i) it will return pattern.dims[KALDI_TENSOR_MAX_DIM - num_axes + i].
+
+
+  The uniqueness property requires that we must not be able to access the same
+  memory location via two different tuples of indexes).  Recause testing this
+  property exactly would be difficult in general without bringing in concepts
+  from number theory, we test a slightly stronger version of it that covers all
+  cases we are likely to encounter.  This is that, if we take all the axes with
+  dim != 1 and sort them from greatest to least stride, then for each i,
+  abs(strides[i]) >= dims[i+1] * abs(strides[i+1]).
 */
 struct TensorPattern {
   int32 num_axes;
   int32 dims[KALDI_TENSOR_MAX_DIM];
   int32 strides[KALDI_TENSOR_MAX_DIM];
+  int32 code;  // pattern code; see GetPatternCode() in tensor-pattern-utils.h
+               // for details.
+
   // We may later add methods to this.
 
   // Checks that the TensorPattern is valid, assuming it is part of a Tensor.
@@ -179,6 +198,11 @@ struct TensorPatternProperties {
   // The number of elements in the Tensor, which equals the product
   // of dims[0] .. dims[num_axes - 1].  Will always be >0.
   int64 num_elements;
+
+
+  // Binary code describing the pattern, see GetPatternCode() in
+  // tensor-pattern-utils.h.
+  int32 code;
 
   // is_contiguous means that the data form a contiguous block in memory; it is
   // not the same as PyTorch's is_contiguous which is a stronger condition,

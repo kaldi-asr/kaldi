@@ -33,7 +33,6 @@
 
 namespace kaldi {
 
-
 template<typename Real> inline const Real* Get64Ones() {
   // The C++ standard doesn't seem to provide a compact way to do this.
   static const Real ones[64] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -43,13 +42,12 @@ template<typename Real> inline const Real* Get64Ones() {
   return ones;
 }
 
-
 template<typename Real>
 Real VecVec(const VectorBase<Real> &a,
             const VectorBase<Real> &b) {
   MatrixIndexT adim = a.Dim();
   KALDI_ASSERT(adim == b.Dim());
-  return cblas_Xdot(adim, a.Data(), a.Stride(), b.Data(), b.Stride());
+  return cblas_Xdot(adim, a.Data(), 1, b.Data(), 1);
 }
 
 template
@@ -60,26 +58,25 @@ double VecVec<>(const VectorBase<double> &a,
                 const VectorBase<double> &b);
 
 template<typename Real, typename OtherReal>
-Real VecVec(const VectorBase<Real> &a,
-            const VectorBase<OtherReal> &b) {
-  MatrixIndexT adim = a.Dim();
-  KALDI_ASSERT(adim == b.Dim());
-  const Real *a_data = a.Data();
-  const OtherReal *b_data = b.Data();
-  MatrixIndexT a_stride = a.Stride(), b_stride = b.Stride();
+Real VecVec(const VectorBase<Real> &ra,
+            const VectorBase<OtherReal> &rb) {
+  MatrixIndexT adim = ra.Dim();
+  KALDI_ASSERT(adim == rb.Dim());
+  const Real *a_data = ra.Data();
+  const OtherReal *b_data = rb.Data();
   Real sum = 0.0;
   for (MatrixIndexT i = 0; i < adim; i++)
-    sum += a_data[i * a_stride] * b_data[i * b_stride];
+    sum += a_data[i]*b_data[i];
   return sum;
 }
 
 // instantiate the template above.
 template
-float VecVec<>(const VectorBase<float> &a,
-               const VectorBase<double> &b);
+float VecVec<>(const VectorBase<float> &ra,
+               const VectorBase<double> &rb);
 template
-double VecVec<>(const VectorBase<double> &a,
-                const VectorBase<float> &b);
+double VecVec<>(const VectorBase<double> &ra,
+                const VectorBase<float> &rb);
 
 
 template<>
@@ -88,7 +85,7 @@ void VectorBase<float>::AddVec(const float alpha,
                                const VectorBase<float> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_Xaxpy(dim_, alpha, v.Data(), v.stride_, data_, stride_);
+  cblas_Xaxpy(dim_, alpha, v.Data(), 1, data_, 1);
 }
 
 template<>
@@ -97,7 +94,7 @@ void VectorBase<double>::AddVec(const double alpha,
                                 const VectorBase<double> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_Xaxpy(dim_, alpha, v.Data(), v.stride_, data_, stride_);
+  cblas_Xaxpy(dim_, alpha, v.Data(), 1, data_, 1);
 }
 
 template<typename Real>
@@ -110,7 +107,7 @@ void VectorBase<Real>::AddMatVec(const Real alpha,
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
   cblas_Xgemv(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
-              v.Data(), v.stride_, beta, data_, stride_);
+              v.Data(), 1, beta, data_, 1);
 }
 
 template<typename Real>
@@ -123,8 +120,30 @@ void VectorBase<Real>::AddMatSvec(const Real alpha,
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
   Xgemv_sparsevec(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
-                  v.Data(), v.stride_, beta, data_, stride_);
+                  v.Data(), 1, beta, data_, 1);
   return;
+  /*
+  MatrixIndexT this_dim = this->dim_, v_dim = v.dim_,
+      M_stride = M.Stride();
+  Real *this_data = this->data_;
+  const Real *M_data = M.Data(), *v_data = v.data_;
+  if (beta != 1.0) this->Scale(beta);
+  if (trans == kNoTrans) {
+    for (MatrixIndexT i = 0; i < v_dim; i++) {
+      Real v_i = v_data[i];
+      if (v_i == 0.0) continue;
+      // Add to *this, the i'th column of the Matrix, times v_i.
+      cblas_Xaxpy(this_dim, v_i * alpha, M_data + i, M_stride, this_data, 1);
+    }
+  } else { // The transposed case is slightly more efficient, I guess.
+    for (MatrixIndexT i = 0; i < v_dim; i++) {
+      Real v_i = v.data_[i];
+      if (v_i == 0.0) continue;
+      // Add to *this, the i'th row of the Matrix, times v_i.
+      cblas_Xaxpy(this_dim, v_i * alpha,
+                  M_data + (i * M_stride), 1, this_data, 1);
+    }
+    }*/
 }
 
 template<typename Real>
@@ -134,8 +153,7 @@ void VectorBase<Real>::AddSpVec(const Real alpha,
                                 const Real beta) {
   KALDI_ASSERT(M.NumRows() == v.dim_ && dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_Xspmv(M.NumRows(), alpha, M.Data(), v.Data(), v.stride_,
-              beta, data_, stride_);
+  cblas_Xspmv(M.NumRows(), alpha, M.Data(), v.Data(), 1, beta, data_, 1);
 }
 
 
@@ -143,20 +161,19 @@ template<typename Real>
 void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,
                               const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_Xtpmv(trans, M.Data(), M.NumRows(), data_, stride_);
+  cblas_Xtpmv(trans, M.Data(), M.NumRows(), data_, 1);
 }
 
 template<typename Real>
 void VectorBase<Real>::Solve(const TpMatrix<Real> &M,
                         const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_Xtpsv(trans, M.Data(), M.NumRows(), data_, stride_);
+  cblas_Xtpsv(trans, M.Data(), M.NumRows(), data_, 1);
 }
 
 
 template<typename Real>
 inline void Vector<Real>::Init(const MatrixIndexT dim) {
-  this->stride_ = 1;
   KALDI_ASSERT(dim >= 0);
   if (dim == 0) {
     this->dim_ = 0;
@@ -180,6 +197,7 @@ inline void Vector<Real>::Init(const MatrixIndexT dim) {
 
 template<typename Real>
 void Vector<Real>::Resize(const MatrixIndexT dim, MatrixResizeType resize_type) {
+
   // the next block uses recursion to handle what we have to do if
   // resize_type == kCopyData.
   if (resize_type == kCopyData) {
@@ -219,7 +237,7 @@ template<typename Real>
 void VectorBase<Real>::CopyFromVec(const VectorBase<Real> &v) {
   KALDI_ASSERT(Dim() == v.Dim());
   if (data_ != v.data_) {
-    cblas_Xcopy(dim_, v.data_, v.stride_, data_, stride_);
+    std::memcpy(this->data_, v.data_, dim_ * sizeof(Real));
   }
 }
 
@@ -235,22 +253,27 @@ template void VectorBase<float>::CopyFromPacked(const PackedMatrix<float> &other
 template void VectorBase<double>::CopyFromPacked(const PackedMatrix<double> &other);
 template void VectorBase<double>::CopyFromPacked(const PackedMatrix<float> &other);
 
+/// Load data into the vector
+template<typename Real>
+void VectorBase<Real>::CopyFromPtr(const Real *data, MatrixIndexT sz) {
+  KALDI_ASSERT(dim_ == sz);
+  std::memcpy(this->data_, data, Dim() * sizeof(Real));
+}
 
 template<typename Real>
 template<typename OtherReal>
 void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
   KALDI_ASSERT(dim_ == other.Dim());
   Real * __restrict__  ptr = data_;
-  MatrixIndexT stride = stride_, other_stride = other.stride_;
   const OtherReal * __restrict__ other_ptr = other.Data();
   for (MatrixIndexT i = 0; i < dim_; i++)
-    ptr[i * stride] = other_ptr[i * other_stride];
+    ptr[i] = other_ptr[i];
 }
 
 template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);
 template void VectorBase<double>::CopyFromVec(const VectorBase<float> &other);
 
-// Remove element from the vector. The vector is not reallocated
+// Remove element from the vector. The vector is non reallocated
 template<typename Real>
 void Vector<Real>::RemoveElement(MatrixIndexT i) {
   KALDI_ASSERT(i <  this->dim_ && "Access out of vector");
@@ -664,15 +687,14 @@ void VectorBase<double>::CopyColFromMat(const MatrixBase<double> &mat, MatrixInd
 template<typename Real>
 void VectorBase<Real>::CopyDiagFromMat(const MatrixBase<Real> &M) {
   KALDI_ASSERT(dim_ == std::min(M.NumRows(), M.NumCols()));
-  cblas_Xcopy(dim_, M.Data(), M.Stride() + 1, data_, stride_);
+  cblas_Xcopy(dim_, M.Data(), M.Stride() + 1, data_, 1);
 }
 
 template<typename Real>
 void VectorBase<Real>::CopyDiagFromPacked(const PackedMatrix<Real> &M) {
   KALDI_ASSERT(dim_ == M.NumCols());
-  MatrixIndexT stride = stride_, dim = dim_;
-  for (MatrixIndexT i = 0; i < dim; i++)
-    data_[i * stride] = M(i, i);
+  for (MatrixIndexT i = 0; i < dim_; i++)
+    data_[i] = M(i, i);
   // could make this more efficient.
 }
 
@@ -682,16 +704,15 @@ Real VectorBase<Real>::Sum() const {
   // implement sum. This allows us to access SIMD operations in a
   // cross-platform way via your BLAS library.
   Real one(1);
-  return cblas_Xdot(dim_, data_, stride_, &one, 0);
+  return cblas_Xdot(dim_, data_, 1, &one, 0);
 }
 
 template<typename Real>
 Real VectorBase<Real>::SumLog() const {
   double sum_log = 0.0;
   double prod = 1.0;
-  MatrixIndexT dim = dim_, stride = stride_;
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    prod *= data_[i * stride];
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    prod *= data_[i];
     // Possible future work (arnab): change these magic values to pre-defined
     // constants
     if (prod < 1.0e-10 || prod > 1.0e+10) {
@@ -704,8 +725,7 @@ Real VectorBase<Real>::SumLog() const {
 }
 
 template<typename Real>
-void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M,
-                                    Real beta) {
+void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
   KALDI_ASSERT(dim_ == M.NumCols());
   // the BLAS standard does not support vectors with stride zero, even though
   // some implementations (such as Mac's accelerate framework and I believe
@@ -719,29 +739,27 @@ void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M,
         std::min<MatrixIndexT>(64, num_rows - row_offset);
     cblas_Xgemv(kTrans, this_num_rows, M.NumCols(), alpha,
                 M.RowData(row_offset), M.Stride(), ones, 1,
-                beta, data_, stride_);
+                beta, data_, 1);
     beta = 1.0;
   }
 }
 
-
 template<typename Real>
-void VectorBase<Real>::AddColSumMat(Real alpha, const MatrixBase<Real> &M,
-                                    Real beta) {
+void VectorBase<Real>::AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
   KALDI_ASSERT(dim_ == M.NumRows());
   // the BLAS standard does not support vectors with stride zero, even though
   // some implementations (such as Mac's accelerate framework and I believe
   // CUBLAS) seem to allow it.  We compile a fixed-size (64) vector of ones
   // into the program.
   const Real *ones = Get64Ones<Real>();
-
   MatrixIndexT num_cols = M.NumCols();
   for (MatrixIndexT col_offset = 0; col_offset < num_cols; col_offset += 64) {
     MatrixIndexT this_num_cols =
         std::min<MatrixIndexT>(64, num_cols - col_offset);
     cblas_Xgemv(kNoTrans, M.NumRows(), this_num_cols, alpha,
-                M.Data() + col_offset, M.Stride(), ones, 1,
-                beta, data_, stride_);
+                M.Data() + col_offset, M.Stride(),
+                ones, 1,
+                beta, data_, 1);
     beta = 1.0;
   }
 }
@@ -759,11 +777,8 @@ Real VectorBase<Real>::LogSumExp(Real prune) const {
 
   double sum_relto_max_elem = 0.0;
 
-  const Real *data = data_;
-  MatrixIndexT dim = dim_, stride = stride_;
-
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    BaseFloat f = data[i * stride];
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    BaseFloat f = data_[i];
     if (f >= cutoff)
       sum_relto_max_elem += Exp(f - max_elem);
   }
@@ -772,50 +787,38 @@ Real VectorBase<Real>::LogSumExp(Real prune) const {
 
 template<typename Real>
 void VectorBase<Real>::InvertElements() {
-  MatrixIndexT dim = dim_, stride = stride_;
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    data_[i * stride] = static_cast<Real>(1) / data_[i * stride];
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    data_[i] = static_cast<Real>(1 / data_[i]);
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::ApplyLog() {
-  MatrixIndexT dim = dim_, stride = stride_;
-  Real *data = data_;
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    if (data[i * stride] < 0.0)
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    if (data_[i] < 0.0)
       KALDI_ERR << "Trying to take log of a negative number.";
-    data[i * stride] = Log(data[i * stride]);
+    data_[i] = Log(data_[i]);
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::ApplyLog(const VectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.Dim());
-  MatrixIndexT dim = dim_, stride = stride_, v_stride = v.stride_;
-  Real *data = data_;
-  const Real *v_data = v.data_;
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    data[i * stride] = Log(v_data[i * v_stride]);
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    data_[i] = Log(v(i));
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::ApplyExp() {
-  Real *data = data_;
-  MatrixIndexT dim = dim_, stride = stride_;
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    data[i * stride] = Exp(data[i * stride]);
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    data_[i] = Exp(data_[i]);
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::ApplyAbs() {
-  Real *data = data_;
-  MatrixIndexT dim = dim_, stride = stride_;
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    data[i * stride] = std::abs(data[i * stride]);
-  }
+  for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = std::abs(data_[i]); }
 }
 
 template<typename Real>
@@ -828,8 +831,8 @@ void VectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
     MatrixIndexT num_floored = 0;
     for (MatrixIndexT i = 0; i < dim_; i++) {
       if (data_[i] < floor_val) {
-        data_[i] = floor_val;
-        num_floored++;
+	data_[i] = floor_val;
+	num_floored++;
       }
     }
     *floored_count = num_floored;
@@ -838,18 +841,16 @@ void VectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
 
 template<typename Real>
 void VectorBase<Real>::ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count) {
-  MatrixIndexT dim = dim_, stride = stride_;
-  Real *data = data_;
   if (ceiled_count == nullptr) {
-    for (MatrixIndexT i = 0; i < dim; i++) {
-      data[i * stride] = std::min(data[i * stride], ceil_val);
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = std::min(data_[i], ceil_val);
     }
   } else {
     MatrixIndexT num_changed = 0;
-    for (MatrixIndexT i = 0; i < dim; i++) {
-      if (data[i * stride] > ceil_val) {
-        data_[i * stride] = ceil_val;
-        num_changed++;
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      if (data_[i] > ceil_val) {
+	data_[i] = ceil_val;
+	num_changed++;
       }
     }
     *ceiled_count = num_changed;
@@ -858,15 +859,11 @@ void VectorBase<Real>::ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count) {
 
 template<typename Real>
 MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {
-  MatrixIndexT dim = dim_, stride = stride_,
-      floor_stride = floor_vec.stride_;
-  Real *data = data_;
-  const Real *floor_data = floor_vec.data_;
-  KALDI_ASSERT(floor_vec.dim_ == dim);
+  KALDI_ASSERT(floor_vec.Dim() == dim_);
   MatrixIndexT num_floored = 0;
-  for (MatrixIndexT i = 0; i < dim; i++) {
-    if (data[i * stride] < floor_data[i * floor_stride]) {
-      data_[i * stride] = floor_data[i * floor_stride];
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    if (data_[i] < floor_vec(i)) {
+      data_[i] = floor_vec(i);
       num_floored++;
     }
   }
@@ -971,7 +968,7 @@ void VectorBase<Real>::Add(Real c) {
 
 template<typename Real>
 void VectorBase<Real>::Scale(Real alpha) {
-  cblas_Xscal(dim_, alpha, data_, stride_);
+  cblas_Xscal(dim_, alpha, data_, 1);
 }
 
 template<typename Real>
@@ -1012,8 +1009,8 @@ void VectorBase<Real>::AddVecVec(Real alpha, const VectorBase<Real> &v,
   KALDI_ASSERT(v.data_ != this->data_ && r.data_ != this->data_);
   // We pretend that v is a band-diagonal matrix.
   KALDI_ASSERT(dim_ == v.dim_ && dim_ == r.dim_);
-  cblas_Xgbmv(kNoTrans, dim_, dim_, 0, 0, alpha, v.data_, v.stride_,
-              r.data_, r.stride_, beta, this->data_, stride_);
+  cblas_Xgbmv(kNoTrans, dim_, dim_, 0, 0, alpha, v.data_, 1,
+              r.data_, 1, beta, this->data_, 1);
 }
 
 
@@ -1321,8 +1318,7 @@ void VectorBase<Real>::AddDiagMat2(
     Real *data = this->data_;
     const Real *mat_data = M.Data();
     for (MatrixIndexT i = 0; i < rows; i++, mat_data += mat_stride, data++)
-      *data = beta * *data + alpha * cblas_Xdot(cols, mat_data, 1,
-                                                mat_data, 1);
+      *data = beta * *data + alpha * cblas_Xdot(cols,mat_data,1,mat_data,1);
   } else {
     KALDI_ASSERT(this->dim_ == M.NumCols());
     MatrixIndexT rows = M.NumRows(), cols = this->dim_,
