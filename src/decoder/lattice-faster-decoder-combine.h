@@ -269,9 +269,6 @@ class BucketQueue {
   // value past the end of buckets_.
   void Clear();
 
-  // Set 'bucket_storage_begin_'.
-  void SetBegin(BaseFloat best_cost_estimate);
-
  private:
   // Configuration value that is multiplied by tokens' costs before integerizing
   // them to determine the bucket index
@@ -586,10 +583,6 @@ class LatticeFasterDecoderCombineTpl {
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
-
-  // Stores the best token in next frame. The tot_cost of it will be used to
-  // initialize the BucketQueue.
-  Token* best_token_in_next_frame_;
 
   // fst_ is a pointer to the FST we are decoding from.
   const FST *fst_;

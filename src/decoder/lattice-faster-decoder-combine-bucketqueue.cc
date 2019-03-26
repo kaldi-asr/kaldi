@@ -86,11 +86,11 @@ Token* BucketQueue<Token>::Pop() {
         if (!buckets_[next_vec_index].empty()) break;
       }
       vec_index = next_vec_index;
+      first_occupied_vec_index_ = vec_index;
     }
 
     if (tok->in_queue) {  // This is a effective token
       tok->in_queue = false;
-      first_occupied_vec_index_ = vec_index;
       return tok;
     }
   }
@@ -103,11 +103,7 @@ void BucketQueue<Token>::Clear() {
     buckets_[i].clear();
   }
   first_occupied_vec_index_ = buckets_.size();
-}
-
-template<typename Token>
-void BucketQueue<Token>::SetBegin(BaseFloat best_cost_estimate) {
-  bucket_storage_begin_ = std::floor((best_cost_estimate - 15) * cost_scale_);
+  bucket_storage_begin_ = -15 * cost_scale_;
 }
 
 // instantiate this class once for each thing you have to decode.
@@ -161,8 +157,9 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   active_toks_[0].toks = start_tok;
   cur_toks_[start_state] = start_tok;  // initialize current tokens map
   num_toks_++;
-  best_token_in_next_frame_ = start_tok;
   adaptive_beam_ = config_.beam;
+  cost_offsets_.resize(1);
+  cost_offsets_[0] = 0.0;
 
 }
 
@@ -793,9 +790,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
     }
   }
 
-  KALDI_ASSERT(best_token_in_next_frame_);
   cur_queue_.Clear();
-  cur_queue_.SetBegin(best_token_in_next_frame_->tot_cost);
   // Add tokens to queue
   for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     cur_queue_.Push(tok);
@@ -814,14 +809,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
   // "cost_offset" contains the acoustic log-likelihoods on current frame in 
   // order to keep everything in a nice dynamic range. Reduce roundoff errors.
-  BaseFloat cost_offset = - best_token_in_next_frame_->tot_cost;
-
-  best_token_in_next_frame_ = NULL;
-  // Store the offset on the acoustic likelihoods that we're applying.
-  // Could just do cost_offsets_.push_back(cost_offset), but we
-  // do it this way as it's more robust to future code changes.
-  cost_offsets_.resize(frame + 1, 0.0);
-  cost_offsets_[frame] = cost_offset;
+  BaseFloat cost_offset = cost_offsets_[frame];
 
   // Iterator the "cur_queue_" to process non-emittion and emittion arcs in fst.
   Token *tok = NULL;
@@ -831,7 +819,9 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
        num_toks_processed++) {
     BaseFloat cur_cost = tok->tot_cost;
     StateId state = tok->state_id;
-    if (cur_cost > cur_cutoff) { // Don't bother processing successors.
+    if (cur_cost > cur_cutoff &&
+        num_toks_processed < config_.min_active) { // Don't bother processing
+                                                     // successors.
       break;  // This is a priority queue. The following tokens will be worse
     } else if (cur_cost + adaptive_beam < cur_cutoff) {
       cur_cutoff = cur_cost + adaptive_beam; // a tighter boundary
@@ -840,7 +830,6 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
     // because we're about to regenerate them.  This is a kind
     // of non-optimality (remember, this is the simple decoder),
     DeleteForwardLinks(tok);  // necessary when re-visiting
-    tok->links = NULL;
     for (fst::ArcIterator<FST> aiter(*fst_, state);
          !aiter.Done();
          aiter.Next()) {
@@ -881,13 +870,16 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
         // list
         tok->links = new ForwardLinkT(next_tok, arc.ilabel, arc.olabel,
                                       graph_cost, ac_cost, tok->links);
-        if (best_token_in_next_frame_ == NULL ||
-            next_tok->tot_cost < best_token_in_next_frame_->tot_cost) {
-          best_token_in_next_frame_ = next_tok;
-        }
       }
     }  // for all arcs
   }  // end of while loop
+
+  // Store the offset on the acoustic likelihoods that we're applying.
+  // Could just do cost_offsets_.push_back(cost_offset), but we
+  // do it this way as it's more robust to future code changes.
+  // Set the cost_offset_ for next frame, it equals "- best_cost_on_next_frame".
+  cost_offsets_.resize(frame + 2, 0.0);
+  cost_offsets_[frame + 1] = adaptive_beam - next_cutoff;
 
   {  // This block updates adaptive_beam_
     BaseFloat beam_used_this_frame = adaptive_beam;
@@ -936,9 +928,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
     tmp_toks = &cur_toks_;
   }
 
-  KALDI_ASSERT(best_token_in_next_frame_);
   cur_queue_.Clear();
-  cur_queue_.SetBegin(best_token_in_next_frame_->tot_cost);
   for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     cur_queue_.Push(tok);
   }
@@ -958,7 +948,9 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
        num_toks_processed++) {
     BaseFloat cur_cost = tok->tot_cost;
     StateId state = tok->state_id;
-    if (cur_cost > cur_cutoff) { // Don't bother processing successors.
+    if (cur_cost > cur_cutoff &&
+        num_toks_processed < config_.min_active) { // Don't bother processing
+                                                     // successors.
       break;  // This is a priority queue. The following tokens will be worse
     } else if (cur_cost + adaptive_beam < cur_cutoff) {
       cur_cutoff = cur_cost + adaptive_beam; // a tighter boundary
@@ -967,7 +959,6 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
     // because we're about to regenerate them.  This is a kind
     // of non-optimality (remember, this is the simple decoder),
     DeleteForwardLinks(tok);  // necessary when re-visiting
-    tok->links = NULL;
     for (fst::ArcIterator<FST> aiter(*fst_, state);
          !aiter.Done();
          aiter.Next()) {
