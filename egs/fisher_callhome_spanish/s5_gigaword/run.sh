@@ -6,7 +6,8 @@
 
 stage=-1
 lmstage=-2
-train_rnnlm=true
+train_rnnlm=false
+start_textcleanup=false
 addtraintext=true
 num_words_pocolm=110000
 train_sgmm2=false
@@ -14,7 +15,7 @@ train_sgmm2=false
 # call the next line with the directory where the Spanish Fisher data is
 # (the values below are just an example).
 sfisher_speech=/export/corpora/LDC/LDC2010S01
-sfisher_transcripts=/export/corpora/LDC/LDC2010T04
+sfisher_transcripts=/export/c03/svalluri//LDC2010T04
 spanish_lexicon=/export/corpora/LDC/LDC96L16
 split=local/splits/split_fisher
 
@@ -44,9 +45,9 @@ if [ $stage -le -1 ]; then
   local/fsp_prepare_dict.sh $spanish_lexicon
   # Let's keep the original dict copy for G2P training
   cp -r data/local/dict data/local/dict_orig
-  (
-    steps/dict/train_g2p_seq2seq.sh data/local/dict_orig/lexicon.txt exp/g2p || touch exp/g2p/.error
-  ) &
+#  (
+#    steps/dict/train_g2p_seq2seq.sh data/local/dict_orig/lexicon.txt exp/g2p || touch exp/g2p/.error
+#  ) &
 
   # Added c,j, v to the non silences phones manually
   utils/prepare_lang.sh data/local/dict_orig "<unk>" data/local/lang_orig data/lang_orig
@@ -75,8 +76,12 @@ if [ $stage -le -1 ]; then
   
 fi
 
+if $start_textcleanup; then
+  echo "WARNING : Starting from cleaning up and normalizing the Gigword text"
+  echo "          This might take few days........... You can opt out this stage "
+  echo "          by setting start_textcleanup=false, and having text_lm ready inside rnnlm_workdir."
 
-if [ $stage -le 0 ]; then
+  if [ $stage -le 0 ]; then
     mkdir -p "$rnnlm_workdir"/gigaword_rawtext
     local/flatten_gigaword/flatten_all_gigaword.sh "$gigaword_datapath"  "$rnnlm_workdir"/flattened_gigaword_corpus 24
     cat "$rnnlm_workdir"/flattened_gigaword_corpus/*.flat > "$rnnlm_workdir"/gigaword_rawtext/in.txt
@@ -89,8 +94,8 @@ if [ $stage -le 0 ]; then
     if $addtraintext; then
         cat "$rnnlm_workdir"/text_lm/train.txt >> "$rnnlm_workdir"/text_lm/spanish_gigaword_normalised.txt
     fi
+  fi
 fi
-
 
 if [ $stage -le 1 ]; then
     local/train_pocolm.sh --stage $lmstage --num-words-pocolm $num_words_pocolm "$rnnlm_workdir"/text_lm/ "$rnnlm_workdir"/pocolm
@@ -110,7 +115,7 @@ if [ $stage -le 2 ]; then
      echo "Fail to train the G2P model." && exit 1;
   fi
   steps/dict/apply_g2p_seq2seq.sh "$rnnlm_workdir"/oov_pocolmwords exp/g2p "$rnnlm_workdir"/oov_g2p.lex
-  cat "$rnnlm_workdir"/oov_g2p.lex/lexicon.lex data/local/dict/lexicon.txt | sort | uniq | sed "/^$/d"  > "$rnnlm_workdir"/lexicon_extended.txt
+  cat "$rnnlm_workdir"/oov_g2p.lex/lexicon.lex data/local/dict/lexicon.txt | sed "/^$/d" |sort | uniq  > "$rnnlm_workdir"/lexicon_extended.txt
   cp "$rnnlm_workdir"/lexicon_extended.txt data/local/dict/lexicon.txt # Replacing original lexicon with extended version.
  
   utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
@@ -296,6 +301,6 @@ fi
 wait;
 
 if [ $stage -le 6 ]; then
-  local/chain/run_tdnn_1g.sh --gigaword-workdir $rnnlm_workdir || exit 1;
+  local/chain/run_tdnn_1g.sh --stage 9 --gigaword-workdir $rnnlm_workdir || exit 1;
 fi
 exit 0;
