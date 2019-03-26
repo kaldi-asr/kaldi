@@ -1,4 +1,4 @@
-// tensor/tensor-impl-functions.cc
+// tensor/tensor-impl-linear.cc
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,9 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tensor/tensor-pattern.h"
-#include "tensor/cpu-impl-linear.h"
-
+#include "tensor/tensor-impl-linear.h"
+#include "tensor/tensor-impl-wrappers.h"
 
 namespace kaldi {
 namespace tensor {
@@ -45,8 +44,16 @@ inline static void AddProductScalar3(
 
 void AddProduct(float alpha, float beta,
                 const TensorImpl &a, const TensorImpl &b, const TensorImpl *c){
+
+  if (a.pattern.code < b.pattern.code) {
+    // Ensure, via a recursion that a.pattern.code >= b.pattern.code.
+    // This avoids us having to test for the swapped versions of the patterns.
+    AddProduct(alpha, beta, b, a, c);
+    return;
+  }
+
   CheckDeviceAndDtype(a, b, *c);
-  KALDI_PARANOID_ASSERT(a.pattern.code <= b.pattern.code);
+
 
   int64 combined_code = CombineCodes(a.pattern.code, b.pattern.code,
                                      c->pattern.code);
@@ -56,21 +63,41 @@ void AddProduct(float alpha, float beta,
     interpreted in groups of 3 hex characters, are 0xAAABBBCCC,
     pertaining to Tensors a, b and c respectively.  See
     GetPatternCode() in tensor-pattern-utils.h for documentation on
-    the meanings of the values:
+    the meanings of the values and our notation with X,x,1.
    */
   switch(combined_code) {
     case 0x000000000:
+      // () * () -> ()
       // scalar * scalar -> scalar
       AddProductScalar3(a, b, c);
       return;
-    case 0x000101101:
-      // scalar * vector -> vector
-      AddProductScalarVector2(a, b, c);
+    case 0x101000101:
+      //  (X) * ()-> (X)
+      // vector * scalar -> vector
+      AddProductVecScalarVec(a, b, c);
       return;
     case 0x101101101:
+      // (X) * (X) -> (X)
       // vector .* vector -> vector
-      AddProductVector3(a, b, c);
+      AddProductVec3(a, b, c);
       return;
+    case 0x103101202:
+      // (x,X) * (X)  -> (X,1)
+      // vector * matrix -> vector.unsqueeze(-1)
+      AddProductMatVecVec(a, b, c);
+      return;
+    case 0x203101202:
+      // (X,x) * (X) -> (X,1)
+      // transposed-matrix * vector -> vector.unsqueeze(-1)
+      AddProductTmatVecVec(a, b, c);
+      return;
+    case 0x202101103:
+      // (X,1) * (X) -> (x,X)
+      // vector * vector -> matrix (outer product)
+      AddProductVec2Mat(a, b, c);
+      return;
+
+
     default:
       break;
 

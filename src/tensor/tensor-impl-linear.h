@@ -1,4 +1,4 @@
-// tensor/tensor-impl-functions.h
+// tensor/tensor-impl-linear.h
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,12 +17,16 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR_IMPL_FUNCTIONS_H_
-#define KALDI_TENSOR_IMPL_FUNCTIONS_H_ 1
+#ifndef KALDI_TENSOR_IMPL_LINEAR_H_
+#define KALDI_TENSOR_IMPL_LINEAR_H_ 1
 
 #include "tensor/tensor.h"
 
 
+/**
+   This header contains basic linear-algebra and copying types of operations
+   on TensorImpl objects.  See also tensor-impl-nonlinearly
+ */
 
 namespace kaldi {
 namespace tensor {
@@ -130,11 +134,10 @@ void Add(float alpha, float beta,
 
    The implementation is just:
 
-     Tensor a_tmp(a), b_tmp(b), c_tmp(c);
+     Tensor a_tmp(a), c_tmp(c);
      a_tmp.Unsqueeze(-1);
-     b_tmp.Unsqueeze(-3);
      c_tmp.Unsqueeze(-2);
-     AddProduct(alpha, beta, a_tmp, b_tmp, c_tmp);
+     AddProduct(alpha, beta, a_tmp, b, c_tmp);
 
  */
 void Matmul(float alpha, float beta,
@@ -147,4 +150,4 @@ void Matmul(float alpha, float beta,
 }  // namespace kaldi
 
 
-#endif  // KALDI_TENSOR_IMPL_FUNCTIONS_H_
+#endif  // KALDI_TENSOR_IMPL_LINEAR_H_

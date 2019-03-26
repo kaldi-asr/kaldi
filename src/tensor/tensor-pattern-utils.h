@@ -75,37 +75,51 @@ int32 GetDimsCode(const TensorPattern &pattern);
    i.e. bits 8,9,10 (counting from the right, i.e. from the least to
    most significant).
 
-   Bit 11 is 1 if any of the strides were negative, and zero otherwise.  (This
-   mostly serves to steer us towards code paths that do more careful checks if
-   any negative strides were detected, since some versions of BLAS will not
-   support negative strides.
+   Bit 11 is 1 if any of the strides were negative, and zero otherwise.
+   None of the example bit-patterns below have this bit set.  The
+   underlying BLAS in most cases does not support negative strides so
+   we deal with it by copying the data to a temporary with positive
+   strides.
 
    The low-order KALDI_TENSOR_MAX_DIM bits are as returned by GetDimsCode().
 
-   The explanation below will use c++14 binary literals, although the code
-   doesn't use them.  In the notation below, in dims vectors, X or x is a
-   stand-in for 'any number greater than 1', and upper-case x indicates that the
-   axis has stride=1.  In the example `dims` vectors below, we don't put any
-   leading `dim=1` axes, because they would not affect the code.
+   The explanation below will use c++14 binary literals (like 0b010101), although the code
+   doesn't use them as we compile as c++11; we show the corresponding hex codes which
+   are used in the code (and anyway easier to parse).
 
-   The ' at the 8th bit is to make the bit-string easier to parse (but notice
-   that the number representing the stride information starts from the 9th bit).
+   In the notation below, in dims vectors, x or X is a stand-in for 'any number
+   not equal to 1', and upper-case X indicates that the axis has stride=1.  In
+   the example `dims` vectors below, we don't put any leading `dim=1` axes,
+   because they would not affect the code generated.  The list of numbers
+   in parentheses below may be interpreted as the sequence of dims for the
+   Tensor.
+
+   The ' at the 8th bit is to make the bit-string easier to parse.
+
 
     0b000'00000000  0x000  dims=(), a scalar
-    0b000'00000001  0x001  dims=(x), a vector with stride != 1
-    0b001'00000001  0x101  dims=(X), a vector with stride == 1
-    0b000'00000010  0x002  dims=(x,1)
-    0b010'00000010  0x202  dims=(X,1)
-    0b000'00000011  0x003  dims=(x,x)
-    0b001'00000011  0x103  dims=(x,X)
-    0b010'00000011  0x203  dims=(X,x)
-    0b000'00000100  0x208  dims=(x,1,1)
-    0b011'00000100  0x208  dims=(X,1,1)
+    0b000'00000001  0x001  dims=(x), a vector with a stride
+    0b001'00000001  0x101  dims=(X), a vector
+    0b000'00000010  0x002  dims=(x,1),  a vector.unsqueeze(-1) with a stride
+    0b010'00000010  0x202  dims=(X,1),  a vector.unsqueeze(-1)
+    0b000'00000011  0x003  dims=(x,x), a matrix with a stride
+    0b001'00000011  0x103  dims=(x,X), a matrix
+    0b010'00000011  0x203  dims=(X,x), a transposed matrix
+    0b000'00000100  0x008  dims=(x,1,1)
+    0b011'00000100  0x308  dims=(X,1,1)
+    0b010'00000110  0x20B  dims=(x,X,1), a matrix.unsqueeze(-1)
+    0b011'00000110  0x30B  dims=(X,x,1), a transposed matrix.unsqueeze(-1)
+    0b000'00000110  0x10B  dims=(x,x,1), a matrix.unsqueeze(-1) with column stride
+    0b001'00000101  0x109  dims=(x,1,X), a matrix.unsqueeze(-2)
+    0b011'00000101  0x309  dims=(X,1,x), a transposed matrix.unsqueeze(-2)
+    0b000'00000101  0x009  dims=(x,1,x), a matrix.unsqueeze(-2) with column stride
 
 
     ...
  */
 int32 GetPatternCode(const TensorPattern &pattern);
+
+
 
 
 inline int32 CombineCodes(int32 code1, int32 code2) {
