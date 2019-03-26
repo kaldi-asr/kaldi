@@ -82,9 +82,9 @@ nj=$(cat $ali_dir/num_jobs) || exit 1
 
 $cmd JOB=1:$nj $dir/log/get_arc_info.JOB.log \
   ali-to-phones --ctm-output --frame-shift=1 \
-    $srcdir/final.mdl "ark:gunzip -c $ali_dir/lat.JOB.gz |" - \| \
+    $srcdir/final.mdl "ark:gunzip -c $ali_dir/ali.JOB.gz |" - \| \
   utils/int2sym.pl -f 5 $lang/phones.txt \| \
-  awk '{print $1" "int($3)" "int($4)" 1.0 "$5}' \| \
+  awk '{print $1" "int($3)" "int($4)" 1.0 "$5}' \> \
   $dir/arc_info_sym.JOB.txt || exit 1
 
 # make $dir an absolute pathname.
