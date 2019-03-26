@@ -82,10 +82,10 @@ void ReadFstKaldi(std::istream &is, bool binary,
                   VectorFst<Arc> *fst);
 
 // A generic Kaldi-type-IO mechanism of reading FSAs from streams,
-// supporting binary or text-mode reading/writing.
+// supporting text-mode reading.
+// Note that this assumes the input is an acceptor.
 template <class Arc>
-void ReadFsaKaldi(std::istream &is, bool binary,
-                  VectorFst<Arc> *fst);
+void ReadFsaKaldi(std::istream &is, VectorFst<Arc> *fst);
 
 // Read an FST file for LM (G.fst) and make it an acceptor,
 // and make sure it is sorted on labels
