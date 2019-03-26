@@ -43,7 +43,6 @@ template<typename Token>
 void BucketQueue<Token>::Push(Token *tok) {
   int32 bucket_index = std::floor(tok->tot_cost * cost_scale_);
   size_t vec_index = static_cast<size_t>(bucket_index - bucket_storage_begin_);
-
   if (vec_index >= buckets_.size()) {
     int32 margin = 10;  // a margin which is used to reduce re-allocate
                         // space frequently
@@ -63,7 +62,8 @@ void BucketQueue<Token>::Push(Token *tok) {
          buckets_[i].swap(buckets_[i - increase_size]);
        }
        bucket_storage_begin_ = bucket_storage_begin_ - increase_size;
-       vec_index = increase_size;
+       vec_index = static_cast<int32>(vec_index) + increase_size;
+       first_occupied_vec_index_ = vec_index;
     }
   }
   tok->in_queue = true;
