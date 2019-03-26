@@ -163,7 +163,84 @@ void ReadFstKaldi(std::istream &is, bool binary,
   }
 }
 
+template <class Arc>
+void ReadFsaKaldi(std::istream &is, VectorFst<Arc> *fst) {
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::StateId StateId;
+  // Consume the \r on Windows, the \n that the text-form FSA format starts
+  // with, and any extra spaces that might have got in there somehow.
+  while (std::isspace(is.peek()) && is.peek() != '\n') is.get();
+  if (is.peek() == '\n') is.get(); // consume the newline.
+  else { // saw spaces but no newline.. this is not expected.
+    KALDI_ERR << "Reading FSA: unexpected sequence of spaces "
+              << " at file position " << is.tellg();
+  }
+  using std::string;
+  using std::vector;
+  using kaldi::SplitStringToIntegers;
+  using kaldi::ConvertStringToInteger;
+  fst->DeleteStates();
+  string line;
+  size_t nline = 0;
+  string separator = FLAGS_fst_field_separator + "\r\n";
+  while (std::getline(is, line)) {
+    nline++;
+    vector<string> col;
+    // on Windows we'll write in text and read in binary mode.
+    kaldi::SplitStringToVector(line, separator.c_str(), true, &col);
+    if (col.size() == 0) break; // Empty line is a signal to stop, in our
+    // archive format.
+    if (col.size() > 4) {
+      KALDI_ERR << "Bad line in FSA: " << line;
+    }
+    StateId s;
+    if (!ConvertStringToInteger(col[0], &s)) {
+      KALDI_ERR << "Bad line in FSA: " << line;
+    }
+    while (s >= fst->NumStates())
+      fst->AddState();
+    if (nline == 1) fst->SetStart(s);
 
+    bool ok = true;
+    Arc arc;
+    Weight w;
+    StateId d = s;
+    switch (col.size()) {
+      case 1:
+        fst->SetFinal(s, Weight::One());
+        break;
+      case 2:
+        if (!StrToWeight(col[1], true, &w)) ok = false;
+        else fst->SetFinal(s, w);
+        break;
+      case 3:
+        ok = ConvertStringToInteger(col[1], &arc.nextstate) &&
+            ConvertStringToInteger(col[2], &arc.ilabel);
+        arc.olabel = arc.ilabel;
+        if (ok) {
+          d = arc.nextstate;
+          arc.weight = Weight::One();
+          fst->AddArc(s, arc);
+        }
+        break;
+      case 4:
+        ok = ConvertStringToInteger(col[1], &arc.nextstate) &&
+            ConvertStringToInteger(col[2], &arc.ilabel) &&
+            StrToWeight(col[3], false, &arc.weight);
+        arc.olabel = arc.ilabel;
+        if (ok) {
+          d = arc.nextstate;
+          fst->AddArc(s, arc);
+        }
+        break;
+      default:
+        ok = false;
+    }
+    while (d >= fst->NumStates()) fst->AddState();
+    if (!ok)
+      KALDI_ERR << "Bad line in FSA: " << line;
+  }
+}
 
 
 template<class Arc> // static

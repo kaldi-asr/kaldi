@@ -22,14 +22,12 @@
 
 #include <vector>
 
-#include "fst/script/compile.h"
-
 #include "util/common-utils.h"
 #include "hmm/topology.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
 #include "fstext/kaldi-fst-io.h"
-
+#include "fstext/fstext-utils.h"
 
 
 namespace kaldi {
@@ -69,7 +67,7 @@ void Topology::Read(std::istream &is, bool binary) {
 
         int32 entry_index = entries_.size();
         fst::StdVectorFst fst;
-        ReadFsaKaldi(is, binary, &fst);
+        ReadFsaKaldi(is, &fst);
         entries_.push_back(fst);
 
         for (int32 phone : phones) {
@@ -94,13 +92,14 @@ void Topology::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &number_topology_entries);
     for (size_t index = 0; index < number_topology_entries; ++index) {
       fst::StdVectorFst fst;
-      ReadFsaKaldi(is, binary, &fst);
+      ReadFstKaldi(is, binary, &fst);
       entries_.push_back(fst);
     }
   }
   Check();
 }
 
+// This function writes an FSA in text mode to an output stream.
 template <class Arc>
 static void WriteFsa(std::ostream &os, const fst::VectorFst<Arc> &fst) {
   os << '\n';
@@ -141,27 +140,23 @@ void Topology::Write(std::ostream &os, bool binary) const {
 
 void Topology::Check() {
   if (entries_.empty() || phones_.empty() || phone2idx_.empty())
-    KALDI_ERR << "Topology::Check(), empty object.";
+    KALDI_ERR << "Empty object.";
   std::vector<bool> is_seen(entries_.size(), false);
   for (size_t i = 0; i < phones_.size(); i++) {
     int32 phone = phones_[i];
     if (static_cast<size_t>(phone) >= phone2idx_.size() ||
         static_cast<size_t>(phone2idx_[phone]) >= entries_.size())
-      KALDI_ERR << "Topology::Check(), phone has no valid index.";
+      KALDI_ERR << "Phone " << phone << " has no valid index.";
     is_seen[phone2idx_[phone]] = true;
   }
   if (!std::accumulate(is_seen.begin(),
                        is_seen.end(), true, std::logical_and<bool>()))
-    KALDI_ERR << "HmmTopoloy::Check(), entry with no corresponding phones.";
+    KALDI_ERR << "Entry with no corresponding phones.";
 
   for (auto const& entry: entries_) {
-    int32 num_states = static_cast<int32>(entry.NumStates());
-    if (num_states <= 1)
-      KALDI_ERR << "Topology::Check(), cannot only have one state (must have a "
+    if (entry.NumStates() <= 1)
+      KALDI_ERR << "Cannot only have one state (must have a "
                 << "final state and a start state).";
-  }
-
-  for (auto& entry: entries_) {
     bool has_final_state = false;
     std::vector<int32> seen_pdf_classes;
     for (fst::StateIterator<fst::StdVectorFst> state_iter(entry);
@@ -175,7 +170,7 @@ void Topology::Check() {
            !aiter.Done(); aiter.Next()) {
         const fst::StdArc &arc(aiter.Value());
         if (arc.ilabel != arc.olabel)
-          KALDI_ERR << "ilabel != olabel. " << arc.ilabel << " " << arc.olabel;
+          KALDI_ERR << "The topology must be an acceptor but ilabel != olabel.";
         if (arc.ilabel == 0)
           KALDI_ERR << "Epsilon arcs (pdf-class 0) are not allowed.";
         if (state != entry.Start() && arc.nextstate == entry.Start())
@@ -188,11 +183,11 @@ void Topology::Check() {
             "for each state";
     }
     if (!has_final_state) {
-      KALDI_ERR << "Topology::Check(), must have a final state.";
+      KALDI_ERR << "Must have a final state.";
     }
 
     if (entry.Final(entry.Start()) != Weight::Zero())
-      KALDI_ERR << "Topology::Check(), start state must not be a final state.";
+      KALDI_ERR << "Start state must not be a final state.";
 
     if (entry.Start() != 0) {
       KALDI_ERR << "Topology::Check(), start state must be 0.";
@@ -200,13 +195,18 @@ void Topology::Check() {
 
     SortAndUniq(&seen_pdf_classes);
     if (seen_pdf_classes.front() != 1 ||
-        seen_pdf_classes.back() != static_cast<int32>(seen_pdf_classes.size())) {
-      KALDI_ERR << "Topology::Check(), pdf_classes are expected to be "
+        seen_pdf_classes.back() != static_cast<int32>(seen_pdf_classes.size()))
+      KALDI_ERR << "pdf_classes are expected to be "
           "contiguous and start from 1.";
-    }
-    fst::Connect(&entry);
+
+    int num_states = entry.NumStates();
+    int num_arcs = NumArcs(entry);
+    fst::StdVectorFst fst(entry);  // Call Connect on a copy.
+    fst::Connect(&fst);
     if (entry.NumStates() == 0)
       KALDI_ERR << "Some of the states in the topolgy are not reachable.";
+    if (fst.NumStates() != num_states || NumArcs(fst) != num_arcs)
+      KALDI_ERR << "Topology changed after calling Connect().";
   }
 }
 
