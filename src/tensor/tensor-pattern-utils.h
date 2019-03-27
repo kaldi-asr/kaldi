@@ -57,6 +57,28 @@ namespace tensor {
 int32 GetDimsCode(const TensorPattern &pattern);
 
 
+enum PatternEnum {
+  kPatternContainsNegativeStride = 2048;
+  // e.g.:
+  // bool contains_negative_stride =
+  //     (pattern.code | kPatternContainsNegativeStride) != 0;
+};
+
+// Returns true if the pattern code indicates that the pattern contains a
+// negative stride.
+inline bool ContainsNegativeStride(int32 pattern_code) {
+  return (pattern.code | kPatternContainsNegativeStride) != 0;
+}
+
+// Returns true if the pattern code indicates that the axis
+// numbered axis is 'trivial' (meaning: dim=1, stride=0).
+// Note that the axis numbering is 'shifted to the right',
+// so the last-numbered axis is at KALDI_TENSOR_MAX_DIM - 1.
+inline bool AxisIsTrivial(int32 pattern_code, int32 iaxis) {
+  return (pattern_code | 1 << ((KALDI_TENSOR_MAX_DIM - 1) - iaxis)) == 0;
+}
+
+
 /**
    This function returns a code that compactly represents the same information
    as GetDimsCode() [i.e. which axes, counting from the last axis,
@@ -117,8 +139,7 @@ int32 GetDimsCode(const TensorPattern &pattern);
 
     ...
  */
-int32 GetPatternCode(const TensorPattern &pattern);
-
+int32 ComputePatternCode(const TensorPattern &pattern);
 
 
 
@@ -133,13 +154,52 @@ inline int64 CombineCodes(int32 code1, int32 code2, int32 code3) {
 }
 
 
+/**
+   Modifies 'p' in-place by inserting an axis with (dim=1,stride=0) at the
+   specified position.  Updates the code.
+
+   A negative axis-index i is interpreted (like PyTorch) as inserting
+   an element at position (num_axes + 1 - i).
+
+   Showing just the dims in the tensor for some examples:
+
+\verbatim
+    Unsqueeze({3,4}, 0)  -> {1,3,4}
+    Unsqueeze({3,4}, 1)  -> {3,1,4}
+    Unsqueeze({3,4}, 2)  -> {3,4,1}
+    Unsqueeze({3,4}, -1)  -> {3,4,1}
+    Unsqueeze({3,4}, -2)  -> {3,1,4}
+\endverbatim
+ */
+void Unsqueeze(TensorPattern *p, int32 axis)
+
+/**
+   Modifies 'p' in-place by removing an axis with (dim=1,stride=0) from the
+   specified position.  It is an error if 't' did not initially contain
+   such an axis.  This function updates the code.
+
+   Negative numbers are interepreted relative to the end of the array,
+   e.g. -1 means remove the last element.
+
+   Showing just the dims in the tensor for an example:
+
+\verbatim
+    Squeeze({1,3,4}, 0)  -> {3,4}
+    Squeeze({3,1,4}, 1)  -> {3,4}
+    Squeeze({3,1,4}, 2)  -> [error]
+\endverbatim
+ */
+void Squeeze(TensorPattern *p, int32 axis);
+
+
 /**  This function returns true if the dimensions of tensor patterns
      a and b are broadcastable in the PyTorch sense.  What this means
      for tensors with the same num-axes is that dims for axis i
      must either be the same or one of them must be 1.  For tensors
-     with different num-axes we pad with leading (dim=1)'s; for
-     instance, dims (2,8,3) and (8,1) would be broadcastable because
-     the (8,1) becomes (1,8,1).
+     with different num-axes we (conceptually) check this after
+     padding with leading (dim=1)'s; for
+     instance, dims=(2,8,3) and dims=(8,1) would be broadcastable because
+     the (8,1) would be interpreted as (1,8,1).
 
      If 'b_non_reducing' is true, then we do not allow any dim of
      b to be 1 where the corresponding dim of a was not 1.
@@ -181,9 +241,6 @@ bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
    greatest to least stride (note: all output strides will be positive).
 
       @param [in]  src   The pattern to be compressed
-      @param [in]  src_properties  Properties of 'src'; required to
-                          be accurate (behavior is undefined otherwise,
-                          e.g. if you provide some other pattern's properties).
       @param [out] dest   A simplified-as-much-as-possible pattern that
                           covers the same set of memory locations as 'src' (when
                           combined with the offset below).  'dest' will
@@ -249,12 +306,10 @@ void CompressOnePattern(TensorPattern *pattern,
 
 
  */
-void CompressTwoPatterns(const TensorPattern &src1,
-                         const TensorPattern &src2,
-                         TensorPattern *dest1,
-                         int64 *data_offset1,
-                         TensorPattern *dest2,
-                         int64 *data_offset2);
+void CompressTwoPatterns(TensorPattern *a,
+                         TensorPattern *b,
+                         int64 *data_offset_a,
+                         int64 *data_offset_b);
 
 
 /**
@@ -265,7 +320,7 @@ void CompressTwoPatterns(const TensorPattern &src1,
    which covers the same set of memory locations as the original Tensor.
 
    The difference with just calling CompressOnePattern() several times is
-   that this preserves the relationships between the tensors.
+   that CompressPatterns() preserves the relationships between the tensors.
 
    Firstly, we require that all pairs of TensorPattern in 'patterns' be
    broadcastable: that is, Broadcastable(p1, p2) would hold for any
@@ -274,38 +329,37 @@ void CompressTwoPatterns(const TensorPattern &src1,
    with dim,stride (0, 1), we allow it to be indexed by any value
    (not just zero), so that all the tensors represented can accept the
    same set of index tuples.  Suppose for example that there are three
-   patterns, p1, p2, p3, in 'patterns', with 4 axes.  Let max_dim
-   be the 'combined' dimension, which contains the max of the dims
-   of the corresponding axes of p1,p2,p3, and let
+   patterns, p1, p2, p3, in 'patterns', with 4 axes.  Let max_axes
+   larger of the num-axes of p1, p2 or p3, and let
    x = (i, j, k, l) be an index tuple that would be valid for a tensor
-   of dim max_dim.  Each such x, when used as an index into p1, p2
+   with that many axes.  Each such x, when used as an index into p1, p2
    and p3 with 'permissive indexing' as mentioned above, will
-   will give us a tuple of memory-offsets (o1, o2, o3) (indexes
-   into the respective data pointers).  Ranging over the set of such
+   give us a tuple of memory-offsets (o1, o2, o3); o1, o2 and o3 are indexes
+   into the respective data pointers.  Ranging over the set of index-tuples
    x, we get a set of memory-offset tuples; call this set S_in,
    and call the set that we would get if doing the same procedure
    on the output tensors (with their possibly changed num-axes), be
    S_out.  Let us represent the 'data_offset' output of this function
    as (in this case) a 3-tuple o.  Then the invariant that this
    function needs to satisfy is that:
+
         `S_in = S_out + o`
-   where we interpret the '+ o' as adding to each element of the set.
-   Interpret the above as: one set of 3-tuples == another set of 3-tuples.
 
-   Of course, the 3 tensors and 4 axes mentioned here is just an example.
+   (this equates two sets of 3-tuples, in our example) where we interpret the '+
+   o' as adding to each element of the set.  The '+ o' above would only be
+   necessary if any strides were negated; it is a tuple containing offsets, in
+   elements, to be added to the data pointers of the respective output tensors.
 
-      @param [in,out] patterns   An array of 1 <= size <= 4 of the patterns
+
+      @param [in,out] patterns   An nonempty array of the patterns
                          to be jointly compressed.
       @param [out]  data_offsets  Pointer to an array of the same size
-                        as patterns, which on output will contain
+                        as 'patterns', which on output will contain
                         offsets to be added to the data pointers.
 
-
       @return  Returns true if it made any change to the patterns,
-               false if they were unchanged.
-
-   Examples are below, where we write a TensorPattern as
-    `{{dim1,dim2,..}, {stride1,stride2,..}}`.
+               false if they were unchanged.  If false, the
+               data_offsets will be set to zero.
 
  Examples are below, where we write a TensorPattern as
  `{{dim1,dim2,..}, {stride1,stride2,..}}`.
@@ -320,8 +374,8 @@ void CompressTwoPatterns(const TensorPattern &src1,
  {{3,4},{4,1}}        {{1,1},{0,0}}      {{12},{1}}           {{1},{0}}    # combine
 \endverbatim
  */
-bool CompressPatterns(ArrayRef<TensorPattern> patterns,
-                      int64_t *data_offsets);
+bool CompressPatterns(ArrayRef<TensorPattern*> patterns,
+                      int64 *data_offsets);
 
 /**
    Compresses a TensorPattern by removing or combining as many axes as possible,
@@ -355,7 +409,6 @@ bool CompressPatterns(ArrayRef<TensorPattern> patterns,
 \endverbatim
  */
 void CompressPatternC(const TensorPattern &src,
-                      const TensorPatternProperties &src_properties,
                       TensorPattern *dest);
 
 

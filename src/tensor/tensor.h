@@ -22,38 +22,13 @@
 
 #include "tensor/tensor-common.h"
 #include "tensor/tensor-pattern.h"
+#include "tensor/tensor-impl.h"
 #include "tensor/storage.h"
 
 namespace kaldi {
 namespace tensor {
 
 
-/**
-   TensorImpl is basically a Tensor without the shared_ptr to Storage
-   (which is expensive to pass around, because of the cost of atomics).
-   The Tensor contains it as a member, rather than as a pointer.
-
-   Most of our internal functions use TensorImpl rather than Tensor because
-   it is easier to manipulate, but you need to know what you are doing.
-*/
-struct TensorImpl {
-  TensorPattern pattern;
-  DataType dtype;
-  Device device;
-  void *data{nullptr};
-};
-
-// Metadata for a Tensor.  It's occasionally convenient to have this
-// in a struct.
-struct TensorMeta {
-  TensorPattern pattern;
-  DataType dtype;
-  Device device;
-  // Note: the offset is only used in some situations,
-  // it's
-  // We may turn this into an offset measured in elements.
-  int32 offset;
-};
 
 /**
    A Tensor is a multi-dimensional array (up to 5 dimensions) of types such as
@@ -76,8 +51,11 @@ class Tensor {
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
   // the terms 'number of axes' or 'axis' throughout.
+  // Caution: the numbering of axes in the Tensor interface is different
+  // than in TensorImpl::pattern.  Here they are numbered from zero;
+  // in TensorImpl::pattern they are shifted to the right so
+  // the last axis is KALDI_TENSOR_MAX_DIM - 1.
   inline int32 NumAxes() const { return impl_.pattern.num_axes; }
-
 
   const TensorImpl &Impl() { return impl_; }
 
@@ -90,26 +68,37 @@ class Tensor {
   // We limit each dimension to int32, because BLAS's interface uses int,
   // which on many common 64-bit platforms is configured with 32 bits.
   // However the product of dimensions may still be 64 bits.
-  inline ArrayRef<int32> Dims() const { return ArrayRef{impl_.pattern.num_axes, impl_.pattern_.dims}; }
+  inline ArrayRef<int32> Dims() const {
+    return ArrayRef{impl_.pattern.num_axes,
+          impl_.pattern.DimData();}
+  }
 
   // Returns the dimension on this axis, a number >= 1.  Result is
   // undefined if axis < 0 or axis >= NumAxes().
-  inline int32 Dim(int32 axis) const { return impl_.pattern.dims[axis]; }
+  inline int32 Dim(int32 axis) const {
+    return impl_.pattern.DimData()[axis];
+  }
 
   // Returns an array containing the strides of the tensor.
   // Strides().size() will equal NumAxes().
-  inline ArrayRef<int32> Strides() const { return ArrayRef{impl_.pattern.num_axes, impl_.pattern.strides}; }
+  inline ArrayRef<int32> Strides() const {
+    return ArrayRef{impl_.pattern.num_axes, impl_.pattern.StrideData()};
+  }
 
   // Returns the stride on this axis.  Will be zero if the corresponding
   // dimension is 1, and otherwise nonzero (but not necessarily positive).
-  inline int32 Stride(int32 axis) const { return impl_.pattern.strides[axis]; }
+  inline int32 Stride(int32 axis) const {
+    return impl_.pattern.StrideData()[axis];
+  }
 
   // Returns the number of elements in the Tensor; must be > 0.
+  // TODO: maybe just compute this instead?
   inline int64 NumElements() const { return derived_.num_elements; }
 
   // Returns true if the data forms a contiguous block in memory.
   // (not the same as 'contiguous()' in PyTorch, which also requires
   // that the strides be 'C'-style.
+  // IS THIS REALLY NEEDED?
   inline bool IsContiguous() const { return derived_.is_contiguous; }
 
   // Returns true if the strides for this array are what you would

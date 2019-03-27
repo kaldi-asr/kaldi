@@ -24,9 +24,19 @@ namespace kaldi {
 namespace tensor {
 
 bool TensorPattern::Check() {
-  if (num_axes < 0 || num_axes >= KALDI_TENSOR_MAX_DIM)
+  if (num_axes < 0 || num_axes > KALDI_TENSOR_MAX_DIM)
     return false;
-  for (int32 axis = 0; axis < num_axes; axis++) {
+
+  int32 axis;
+  for (axis = 0; axis < KALDI_TENSOR_MAX_DIM - num_axes; axis++) {
+    // Check that all unused axes have dim=1, stride=0.
+    // Keeping them this way makes checks for broadcastability easier.
+    // We may later remove this requirement.
+    if (dims[axis] != 1 || strides[axis] != 0)
+      return false;
+  }
+
+  for (; axis < KALDI_TENSOR_MAX_DIM; axis++) {
     int32 dim = dims[axis], stride = strides[axis];
     // All dims must be positive.  (We have no concept of
     // an empty tensor, you would use NULL, or None, to represent
@@ -47,10 +57,14 @@ bool TensorPattern::Check() {
     // abs(strides[i]) >= dims[i+1] * abs(strides[i+1]).
     std::pair<int32, int32> dims_abs_strides [KALDI_TENSOR_MAX_DIM];
     int32 num_nontrivial_axes = 0;
+    // The dims and strides are shifted to the right of the arrays 'dims' and
+    // 'strides', to make the broadcasting rules of toolkits like PyTorch (which
+    // left-pad to make the arrays have the same num-axes) easier to enforce.
+    int32 offset = KALDI_TENSOR_MAX_DIM - num_axes;
     for (int32 i = 0; i < num_axes; i++) {
       if(dims[i] != 1) {
-        dims_abs_strides[num_nontrivial_axes].first = dims[i];
-        dims_abs_strides[num_nontrivial_axes].second = std::abs(strides[i]);
+        dims_abs_strides[num_nontrivial_axes].first = dims[i + offset];
+        dims_abs_strides[num_nontrivial_axes].second = std::abs(strides[i + offset]);
         num_nontrivial_axes++;
       }
     }

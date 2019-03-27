@@ -33,7 +33,7 @@ namespace tensor {
 
 /**
    Modifies 't' in-place by inserting an axis with (dim=1,stride=0) at the
-a   specified position.
+   specified position.  Updates the code.
 
    A negative axis-index i is interpreted (like PyTorch) as (num_axes + 1 - i).
 

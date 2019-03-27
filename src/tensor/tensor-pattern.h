@@ -133,13 +133,16 @@ void MakeRangeExplicit(int32 dim, Range *range);
 /*
   This struct stores the dimension and strides of a Tensor.
 
+   *SHIFTING TO THE RIGHT*
+
   The main thing to watch out for is that the dimensions of 'dims' and 'strides'
   to look at is not 0 ... num_axes, but KALDI_TENSOR_MAX_DIM - num_axes
   ... KALDI_TENSOR_MAX_DIM - 1.  The last dimension is always located at
   KALDI_TENSOR_MAX_DIM - 1, i.e. the dims and strides are always
   right-justified.  In addition, for unused axes, we always maintain dim=1 and
-  stride=0. This happens to be quite convenient due to the standard broadcasting
-  rules in things like PyTorch.
+  stride=0. This happens to be quite convenient for implementation if we adopt
+  the standard broadcasting rules in things like PyTorch, whereby the
+  highest-numbered axes always line up.
 
   Below we describe the the properties that a TensorPattern is required to have.
 
@@ -167,6 +170,13 @@ void MakeRangeExplicit(int32 dim, Range *range);
   Note: in the public interface of class Tensor, if you ask for
   dim(i) it will return pattern.dims[KALDI_TENSOR_MAX_DIM - num_axes + i].
 
+  It would have been much more convenient, for implementation purposes, to
+  number the axes in a reversed way, so that axis 0 is, say, the column axis of
+  a matrix and axis 1 is the row axis; or at least, changing the broadcasting
+  rules to pad on the right rather than the left.  But this would have involved
+  either using totally different conventions than standard toolkits in
+  user-facing code, or reversing the axes in the API, which would have been even
+  more confusing than the shift that we actually do.
 
   The uniqueness property requires that we must not be able to access the same
   memory location via two different tuples of indexes).  Recause testing this
@@ -180,10 +190,27 @@ struct TensorPattern {
   int32 num_axes;
   int32 dims[KALDI_TENSOR_MAX_DIM];
   int32 strides[KALDI_TENSOR_MAX_DIM];
-  int32 code;  // pattern code; see GetPatternCode() in tensor-pattern-utils.h
-               // for details.
+  int32 code;  // pattern code; see ComputePatternCode() in tensor-pattern-utils.h
+               // for details.  It is the responsibility of the user to keep
+               // this updated (i.e. don't change dims or strides without updating
+               // 'code').
 
-  // We may later add methods to this.
+  // returns an offset that's sometimes required when indexing dims and axes.
+  inline int32 Offset() { return KALDI_TENSOR_MAX_DIM - num_axes; }
+
+
+  // returns the address of the 'real' start of the dims array,
+  // in terms of the way we index it publicly.  (We store them padded
+  // on the left with 1's as if they were of dimension KALDI_TENSOR_MAX_DIM).
+  inline int32* DimData() { return dims + KALDI_TENSOR_MAX_DIM - num_axes; }
+  // returns the address of the 'real' start of the the strides array,
+  // in terms of the way we index it publicly.
+  // (We store them padded
+  // on the left with 0's as if they were of dimension KALDI_TENSOR_MAX_DIM).
+  inline int32* StrideData() { return dims + KALDI_TENSOR_MAX_DIM - num_axes; }
+
+  inline int32 &dim(int32 axis) { returns dim
+
 
   // Checks that the TensorPattern is valid, assuming it is part of a Tensor.
   // I.e. that it satifies all the properties mentioned above.
@@ -191,6 +218,9 @@ struct TensorPattern {
   bool Check();
 };
 
+
+// We may later get rid of this struct and just have functions to get
+// these properties.
 struct TensorPatternProperties {
   // Below are cached properties that are derived from the underlying data in
   // struct TensorPattern.
