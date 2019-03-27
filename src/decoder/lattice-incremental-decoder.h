@@ -171,13 +171,7 @@ class LatticeIncrementalDecoderTpl {
   /// you want it pruned tighter than the regular lattice beam.
   /// We could put that here in future needed.
   bool GetRawLattice(Lattice *ofst, bool use_final_probs = true) const;
-
-  bool GetRawLattice(Lattice *ofst, bool use_final_probs, 
-    int32 frame_begin,
-    int32 frame_end,
-    bool create_initial_state,
-    bool create_final_state);
-
+  bool GetCompactLattice(CompactLattice *ofst) const;
 
 
   /// InitDecoding initializes the decoding, and should only be used if you
@@ -430,6 +424,13 @@ class LatticeIncrementalDecoderTpl {
   std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
   // TODO use 2 vector since state_label is continuous in each frame, and we need 2 frames
   unordered_map<int32, BaseFloat> state_label_forward_prob_; // alpha for each state_label (Token)
+  bool GetRawLattice(Lattice *ofst, bool use_final_probs, 
+    int32 frame_begin,
+    int32 frame_end,
+    bool create_initial_state,
+    bool create_final_state);
+
+
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };

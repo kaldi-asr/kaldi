@@ -241,6 +241,7 @@ bool DecodeUtteranceLatticeIncremental(
     std::vector<int32> words;
     GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
     num_frames = alignment.size();
+    KALDI_ASSERT(num_frames == decoder.NumFramesDecoded());
     if (words_writer->IsOpen())
       words_writer->Write(utt, words);
     if (alignment_writer->IsOpen())
@@ -259,26 +260,18 @@ bool DecodeUtteranceLatticeIncremental(
   }
 
   // Get lattice, and do determinization if requested.
-  Lattice lat;
-  decoder.GetRawLattice(&lat);
-  if (lat.NumStates() == 0)
+  CompactLattice clat;
+  decoder.GetCompactLattice(&clat);
+  if (clat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
-  fst::Connect(&lat);
   if (determinize) {
-    CompactLattice clat;
-    if (!DeterminizeLatticePhonePrunedWrapper(
-            trans_model,
-            &lat,
-            decoder.GetOptions().lattice_beam,
-            &clat,
-            decoder.GetOptions().det_opts))
-      KALDI_WARN << "Determinization finished earlier than the beam for "
-                 << "utterance " << utt;
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
     compact_lattice_writer->Write(utt, clat);
   } else {
+    Lattice lat;
+    decoder.GetRawLattice(&lat);
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
