@@ -27,10 +27,7 @@ import sys
 from optparse import OptionParser
 
 def print_on_same_line(text):
-    if (sys.version_info > (3,0)):
-        print(text, end=' ')
-    else:
-        print text,
+    print(text, end=' ')
 
 parser = OptionParser()
 parser.add_option('--fea-dim', dest='dim', help='feature dimension')
