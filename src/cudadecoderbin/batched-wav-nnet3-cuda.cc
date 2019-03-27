@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
         "are\n"
         "set via config files whose filenames are passed as options\n"
         "\n"
-        "Usage: online2-wav-nnet3-latgen-faster [options] <nnet3-in> <fst-in> "
+        "Usage: batched-wav-nnet3-cuda [options] <nnet3-in> <fst-in> "
         "<wav-rspecifier> <lattice-wspecifier>\n";
 
     std::string word_syms_rxfilename;
