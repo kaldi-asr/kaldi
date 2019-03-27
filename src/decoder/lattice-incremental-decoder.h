@@ -23,7 +23,6 @@
 #ifndef KALDI_DECODER_LATTICE_INCREMENTAL_DECODER_H_
 #define KALDI_DECODER_LATTICE_INCREMENTAL_DECODER_H_
 
-
 #include "util/stl-utils.h"
 #include "util/hash-list.h"
 #include "fst/fstlib.h"
@@ -44,51 +43,59 @@ struct LatticeIncrementalDecoderConfig {
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
                             // command-line program.
-  BaseFloat beam_delta; // has nothing to do with beam_ratio
+  BaseFloat beam_delta;     // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
-  BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
-                           // it's not a very important parameter.  It affects the
-                           // algorithm that prunes the tokens as we go.
+  BaseFloat
+      prune_scale; // Note: we don't make this configurable on the command line,
+                   // it's not a very important parameter.  It affects the
+                   // algorithm that prunes the tokens as we go.
   // Most of the options inside det_opts are not actually queried by the
   // LatticeIncrementalDecoder class itself, but by the code that calls it, for
   // example in the function DecodeUtteranceLatticeIncremental.
   int32 max_word_id; // for GetLattice
   fst::DeterminizeLatticePhonePrunedOptions det_opts;
 
-  LatticeIncrementalDecoderConfig(): beam(16.0),
-                                max_active(std::numeric_limits<int32>::max()),
-                                min_active(200),
-                                lattice_beam(10.0),
-                                prune_interval(25),
-                                determinize_lattice(true),
-                                beam_delta(0.5),
-                                hash_ratio(2.0),
-                                prune_scale(0.1),
-                                max_word_id(1e7) { }
+  LatticeIncrementalDecoderConfig()
+      : beam(16.0),
+        max_active(std::numeric_limits<int32>::max()),
+        min_active(200),
+        lattice_beam(10.0),
+        prune_interval(25),
+        determinize_lattice(true),
+        beam_delta(0.5),
+        hash_ratio(2.0),
+        prune_scale(0.1),
+        max_word_id(1e7) {}
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
     opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
-    opts->Register("max-active", &max_active, "Decoder max active states.  Larger->slower; "
+    opts->Register("max-active", &max_active,
+                   "Decoder max active states.  Larger->slower; "
                    "more accurate");
     opts->Register("min-active", &min_active, "Decoder minimum #active states.");
-    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam.  Larger->slower, "
+    opts->Register("lattice-beam", &lattice_beam,
+                   "Lattice generation beam.  Larger->slower, "
                    "and deeper lattices");
-    opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
+    opts->Register("prune-interval", &prune_interval,
+                   "Interval (in frames) at "
                    "which to prune tokens");
-    opts->Register("determinize-lattice", &determinize_lattice, "If true, "
+    opts->Register("determinize-lattice", &determinize_lattice,
+                   "If true, "
                    "determinize the lattice (lattice-determinization, keeping only "
                    "best pdf-sequence for each word-sequence).");
-    opts->Register("beam-delta", &beam_delta, "Increment used in decoding-- this "
+    opts->Register("beam-delta", &beam_delta,
+                   "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "
                    "max-active constraint is applied.  Larger is more accurate.");
-    opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
+    opts->Register("hash-ratio", &hash_ratio,
+                   "Setting used in decoder to "
                    "control hash behavior");
   }
   void Check() const {
-    KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
-                 && min_active <= max_active
-                 && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0
-                 && prune_scale > 0.0 && prune_scale < 1.0);
+    KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 &&
+                 min_active <= max_active && prune_interval > 0 &&
+                 beam_delta > 0.0 && hash_ratio >= 1.0 && prune_scale > 0.0 &&
+                 prune_scale < 1.0);
   }
 };
 
@@ -119,21 +126,19 @@ class LatticeIncrementalDecoderTpl {
   // Instantiate this class once for each thing you have to decode.
   // This version of the constructor does not take ownership of
   // 'fst'.
-  LatticeIncrementalDecoderTpl(const FST &fst, const TransitionModel& trans_model,
-                          const LatticeIncrementalDecoderConfig &config);
+  LatticeIncrementalDecoderTpl(const FST &fst, const TransitionModel &trans_model,
+                               const LatticeIncrementalDecoderConfig &config);
 
   // This version of the constructor takes ownership of the fst, and will delete
   // it when this object is destroyed.
   LatticeIncrementalDecoderTpl(const LatticeIncrementalDecoderConfig &config,
-                          FST *fst, const TransitionModel& trans_model);
+                               FST *fst, const TransitionModel &trans_model);
 
   void SetOptions(const LatticeIncrementalDecoderConfig &config) {
     config_ = config;
   }
 
-  const LatticeIncrementalDecoderConfig &GetOptions() const {
-    return config_;
-  }
+  const LatticeIncrementalDecoderConfig &GetOptions() const { return config_; }
 
   ~LatticeIncrementalDecoderTpl();
 
@@ -142,7 +147,6 @@ class LatticeIncrementalDecoderTpl {
   /// Returns true if any kind of traceback is available (not necessarily from a
   /// final state).
   bool Decode(DecodableInterface *decodable);
-
 
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
@@ -156,8 +160,7 @@ class LatticeIncrementalDecoderTpl {
   /// final-state of the graph then it will include those as final-probs, else
   /// it will treat all final-probs as one.  Note: this just calls GetRawLattice()
   /// and figures out the shortest path.
-  bool GetBestPath(Lattice *ofst,
-                   bool use_final_probs = true) const;
+  bool GetBestPath(Lattice *ofst, bool use_final_probs = true) const;
 
   /// Outputs an FST corresponding to the raw, state-level
   /// tracebacks.  Returns true if result is nonempty.
@@ -173,7 +176,6 @@ class LatticeIncrementalDecoderTpl {
   bool GetRawLattice(Lattice *ofst, bool use_final_probs = true) const;
   bool GetCompactLattice(CompactLattice *ofst) const;
 
-
   /// InitDecoding initializes the decoding, and should only be used if you
   /// intend to call AdvanceDecoding().  If you call Decode(), you don't need to
   /// call this.  You can also call InitDecoding if you have already decoded an
@@ -184,8 +186,7 @@ class LatticeIncrementalDecoderTpl {
   /// object.  You can keep calling it each time more frames become available.
   /// If max_num_frames is specified, it specifies the maximum number of frames
   /// the function will decode before returning.
-  void AdvanceDecoding(DecodableInterface *decodable,
-                       int32 max_num_frames = -1);
+  void AdvanceDecoding(DecodableInterface *decodable, int32 max_num_frames = -1);
 
   /// This function may be optionally called after AdvanceDecoding(), when you
   /// do not plan to decode any further.  It does an extra pruning step that
@@ -211,7 +212,6 @@ class LatticeIncrementalDecoderTpl {
   /// reasonable likelihood.
   BaseFloat FinalRelativeCost() const;
 
-
   // Returns the number of frames decoded so far.  The value returned changes
   // whenever we call ProcessEmitting().
   inline int32 NumFramesDecoded() const { return active_toks_.size() - 1; }
@@ -230,11 +230,11 @@ class LatticeIncrementalDecoderTpl {
     Token *toks;
     bool must_prune_forward_links;
     bool must_prune_tokens;
-    TokenList(): toks(NULL), must_prune_forward_links(true),
-                 must_prune_tokens(true) { }
+    TokenList()
+        : toks(NULL), must_prune_forward_links(true), must_prune_tokens(true) {}
   };
 
-  using Elem = typename HashList<StateId, Token*>::Elem;
+  using Elem = typename HashList<StateId, Token *>::Elem;
   // Equivalent to:
   //  struct Elem {
   //    StateId key;
@@ -268,8 +268,7 @@ class LatticeIncrementalDecoderTpl {
   // extra_costs_changed is set to true if extra_cost was changed for any token
   // links_pruned is set to true if any link in any token was pruned
   void PruneForwardLinks(int32 frame_plus_one, bool *extra_costs_changed,
-                         bool *links_pruned,
-                         BaseFloat delta);
+                         bool *links_pruned, BaseFloat delta);
 
   // This function computes the final-costs for tokens active on the final
   // frame.  It outputs to final-costs, if non-NULL, a map from the Token*
@@ -287,7 +286,7 @@ class LatticeIncrementalDecoderTpl {
   // forward-cost[t] if there were no final-probs active on the final frame.
   // You cannot call this after FinalizeDecoding() has been called; in that
   // case you should get the answer from class-member variables.
-  void ComputeFinalCosts(unordered_map<Token*, BaseFloat> *final_costs,
+  void ComputeFinalCosts(unordered_map<Token *, BaseFloat> *final_costs,
                          BaseFloat *final_relative_cost,
                          BaseFloat *final_best_cost) const;
 
@@ -302,7 +301,6 @@ class LatticeIncrementalDecoderTpl {
   // It's called by PruneActiveTokens if any forward links have been pruned
   void PruneTokensForFrame(int32 frame_plus_one);
 
-
   // Go backwards through still-alive tokens, pruning them if the
   // forward+backward cost is more than lat_beam away from the best path.  It's
   // possible to prove that this is "correct" in the sense that we won't lose
@@ -313,8 +311,8 @@ class LatticeIncrementalDecoderTpl {
   void PruneActiveTokens(BaseFloat delta);
 
   /// Gets the weight cutoff.  Also counts the active tokens.
-  BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
-                      BaseFloat *adaptive_beam, Elem **best_elem);
+  BaseFloat GetCutoff(Elem *list_head, size_t *tok_count, BaseFloat *adaptive_beam,
+                      Elem **best_elem);
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to
   /// cur_toks_.  Returns the cost cutoff for subsequent ProcessNonemitting() to
@@ -333,13 +331,13 @@ class LatticeIncrementalDecoderTpl {
   // That is, the emitting probs of frame t are accounted for in tokens at
   // toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
   // the graph.
-  HashList<StateId, Token*> toks_;
+  HashList<StateId, Token *> toks_;
 
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
-  std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
-  std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
+  std::vector<StateId> queue_;       // temp variable used in ProcessNonemitting,
+  std::vector<BaseFloat> tmp_array_; // used in GetCutoff.
 
   // fst_ is a pointer to the FST we are decoding from.
   const FST *fst_;
@@ -365,7 +363,7 @@ class LatticeIncrementalDecoderTpl {
   bool decoding_finalized_;
   /// For the meaning of the next 3 variables, see the comment for
   /// decoding_finalized_ above., and ComputeFinalCosts().
-  unordered_map<Token*, BaseFloat> final_costs_;
+  unordered_map<Token *, BaseFloat> final_costs_;
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;
 
@@ -388,56 +386,62 @@ class LatticeIncrementalDecoderTpl {
   // cycles, which are not allowed).  Note: the output list may contain NULLs,
   // which the caller should pass over; it just happens to be more efficient for
   // the algorithm to output a list that contains NULLs.
-  static void TopSortTokens(Token *tok_list,
-                            std::vector<Token*> *topsorted_list);
+  static void TopSortTokens(Token *tok_list, std::vector<Token *> *topsorted_list);
 
   void ClearActiveTokens();
 
   /// Obtains a CompactLattice for the part of this utterance that has been
-  /// decoded so far.  If you call this multiple times (calling it on every frame would not make 
-  /// sense, but every, say, 10, to 40 frames might make sense) it will spread out the 
-  /// work of determinization over time,which might be useful for online applications.  
+  /// decoded so far.  If you call this multiple times (calling it on every frame
+  /// would not make
+  /// sense, but every, say, 10, to 40 frames might make sense) it will spread out
+  /// the
+  /// work of determinization over time,which might be useful for online
+  /// applications.
   ///
   ///   @param [in]  use_final_probs  If true *and* at least one final-state in HCLG
-  ///                         was active on the final frame, include final-probs from HCLG
-  ///                         in the lattice.  Otherwise treat all final-costs of states active
+  ///                         was active on the final frame, include final-probs from
+  ///                         HCLG
+  ///                         in the lattice.  Otherwise treat all final-costs of
+  ///                         states active
   ///                         on the most recent frame as zero (i.e.  Weight::One()).
   ///   @param [in]  redeterminize    If true, re-determinize the CompactLattice
-  ///                         after appending the most recently decoded chunk to it, to
+  ///                         after appending the most recently decoded chunk to it,
+  ///                         to
   ///                         ensure that the output is fully deterministic.
-  ///                         This does extra work, but not nearly as much as determinizing
+  ///                         This does extra work, but not nearly as much as
+  ///                         determinizing
   ///                          a RawLattice from scratch.
   ///  @param [out] lat   The CompactLattice representing what has been decoded
   ///                          so far.
-  ///   @return reached_final    This function will returns true if a state that was final in 
-  ///                         HCLG was active on the most recent frame, and false otherwise.  
-  ///                         CAUTION: this is not the same meaning as the return value of
+  ///   @return reached_final    This function will returns true if a state that was
+  ///   final in
+  ///                         HCLG was active on the most recent frame, and false
+  ///                         otherwise.
+  ///                         CAUTION: this is not the same meaning as the return
+  ///                         value of
   ///                         LatticeFasterDecoder::GetLattice().
-  bool  GetLattice(bool use_final_probs,
-                             bool redeterminize, CompactLattice *olat);
-  CompactLattice lat_;
-  int32 last_get_lattice_frame_;
-  unordered_map<Token*, int32> state_label_map_;
-  int32 state_label_avilable_idx_;
-  const TransitionModel& trans_model_;
-  std::vector<std::pair<StateId, size_t>> final_arc_list_;
+  bool GetLattice(bool use_final_probs, bool redeterminize, CompactLattice *olat);
+  CompactLattice lat_;                            // the compact lattice we obtain
+  int32 last_get_lattice_frame_;                  // the last time we call GetLattice
+  unordered_map<Token *, int32> state_label_map_; // between Token and state_label
+  int32 state_label_avilable_idx_;     // we allocate a unique id for each Token
+  const TransitionModel &trans_model_; // keep it for determinization
+  std::vector<std::pair<StateId, size_t>> final_arc_list_; // keep final_arc
   std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
-  // TODO use 2 vector since state_label is continuous in each frame, and we need 2 frames
-  unordered_map<int32, BaseFloat> state_label_forward_prob_; // alpha for each state_label (Token)
-  bool GetRawLattice(Lattice *ofst, bool use_final_probs, 
-    int32 frame_begin,
-    int32 frame_end,
-    bool create_initial_state,
-    bool create_final_state);
-
-
+  // TODO use 2 vector to replace this map, since state_label is continuous
+  // in each frame, and we need 2 frames of them
+  unordered_map<int32, BaseFloat>
+      state_label_forward_prob_; // alpha for each state_label (Token)
+  // specific design for incremental GetLattice
+  bool GetRawLattice(Lattice *ofst, bool use_final_probs, int32 frame_begin,
+                     int32 frame_end, bool create_initial_state,
+                     bool create_final_state);
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };
 
-typedef LatticeIncrementalDecoderTpl<fst::StdFst, decoder::StdToken> LatticeIncrementalDecoder;
-
-
+typedef LatticeIncrementalDecoderTpl<fst::StdFst, decoder::StdToken>
+    LatticeIncrementalDecoder;
 
 } // end namespace kaldi.
 
