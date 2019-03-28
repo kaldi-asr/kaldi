@@ -540,28 +540,8 @@ class LatticeFasterDecoderCombineTpl {
   /// Processes nonemitting (epsilon) arcs for one frame.
   /// This function is called from FinalizeDecoding(), and also from
   /// GetRawLattice() if GetRawLattice() is called before FinalizeDecoding() is
-  /// called. In the latter case, RecoverLastTokenList() is called later by
-  /// GetRawLattice() to restore the state prior to ProcessNonemitting() being
-  /// called, since ProcessForFrame() does not expect nonemitting arcs to
-  /// already have been propagagted. ["token_orig_cost" isn't NULL in the
-  /// latter case, we build the map which will be used to recover
-  /// "active_toks_[last_frame]" token list for the last frame.]
-  void ProcessNonemitting(
-      std::unordered_map<Token*, BaseFloat> *token_orig_cost);
-
-  /// When GetRawLattice() is called during decoding, the
-  /// active_toks_[last_frame] is changed. To keep the consistency of function
-  /// ProcessForFrame(), recover it.
-  /// Notice: as new token will be added to the head of TokenList, tok->next
-  /// will not be affacted.
-  /// "token_orig_cost" is a mapping from token pointer to the tot_cost of the
-  /// token before propagating non-emitting arcs. It is used to recover the
-  /// change of original tokens in the last frame and remove the new tokens
-  /// which come from propagating non-emitting arcs, so that we can guarantee
-  /// the consistency of function ProcessForFrame().
-  void RecoverLastTokenList(
-      const std::unordered_map<Token*, BaseFloat> &token_orig_cost);
-
+  /// called.
+  void ProcessNonemitting();
 
   /// The "prev_toks_" and "cur_toks_" actually allow us to maintain current
   /// and next frames. They are indexed by StateId. It is indexed by frame-index

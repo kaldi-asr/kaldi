@@ -218,10 +218,9 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";
 
-  std::unordered_map<Token*, BaseFloat> token_orig_cost;
   if (!decoding_finalized_) {
     // Process the non-emitting arcs for the unfinished last frame.
-    ProcessNonemitting(&token_orig_cost);
+    ProcessNonemitting();
   }
 
 
@@ -293,38 +292,7 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
     }
   }
   
-  if (!decoding_finalized_) {  // recover last token list
-    RecoverLastTokenList(token_orig_cost);
-  }
   return (ofst->NumStates() > 0);
-}
-
-
-// When GetRawLattice() is called during decoding, the
-// active_toks_[last_frame] is changed. To keep the consistency of function
-// ProcessForFrame(), recover it.
-// Notice: as new token will be added to the head of TokenList, tok->next
-// will not be affacted.
-template<typename FST, typename Token>
-void LatticeFasterDecoderCombineTpl<FST, Token>::RecoverLastTokenList(
-    const std::unordered_map<Token*, BaseFloat> &token_orig_cost) {
-  if (!token_orig_cost.empty()) {
-    for (Token* tok = active_toks_[active_toks_.size() - 1].toks;
-         tok != NULL;) {
-      if (token_orig_cost.find(tok) != token_orig_cost.end()) {
-        DeleteForwardLinks(tok);
-        tok->tot_cost = token_orig_cost.find(tok)->second;
-        tok->in_queue = false;
-        tok = tok->next;
-      } else {
-        DeleteForwardLinks(tok);
-        Token *next_tok = tok->next;
-        delete tok;
-        num_toks_--;
-        tok = next_tok;
-      }
-    }
-  }
 }
 
 // This function is now deprecated, since now we do determinization from outside
@@ -756,7 +724,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::AdvanceDecoding(
 // tokens.  This function used to be called PruneActiveTokensFinal().
 template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
-  ProcessNonemitting(NULL);
+  ProcessNonemitting();
   int32 final_frame_plus_one = NumFramesDecoded();
   int32 num_toks_begin = num_toks_;
   // PruneForwardLinksFinal() prunes final frame (with final-probs), and
@@ -912,23 +880,8 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
 
 
 template <typename FST, typename Token>
-void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
-    std::unordered_map<Token*, BaseFloat> *token_orig_cost) {
+void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting() {
   int32 frame = active_toks_.size() - 1;
-  if (token_orig_cost) {  // Build the elements which are used to recover
-    for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-      (*token_orig_cost)[tok] = tok->tot_cost;
-    }
-  }
-
-  StateIdToTokenMap *tmp_toks;
-  if (token_orig_cost) {  // "token_orig_cost" isn't NULL. It means we need to
-                          // recover active_toks_[last_frame] and "cur_toks_"
-                          // will be used in the future.
-    tmp_toks = new StateIdToTokenMap(cur_toks_);
-  } else {
-    tmp_toks = &cur_toks_;
-  }
 
   cur_queue_.Clear();
   for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
@@ -971,7 +924,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
         BaseFloat tot_cost = cur_cost + graph_cost;
         if (tot_cost < cur_cutoff) {
           Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                          tok, tmp_toks, &changed);
+                                          tok, &cur_toks_, &changed);
 
           // Add ForwardLink from tok to new_tok. Put it on the head of
           // tok->link list
@@ -987,7 +940,12 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting(
       }
     }  // end of for loop
   }  // end of while loop
-  if (token_orig_cost) delete tmp_toks;
+  if (!decoding_finalized_) {
+    // Update cost_offsets_, it equals "- best_cost".
+    cost_offsets_[frame] = adaptive_beam - cur_cutoff;
+    // Needn't to update adaptive_beam_, since we still process this frame in
+    // ProcessForFrame.
+  }
 }
 
 
