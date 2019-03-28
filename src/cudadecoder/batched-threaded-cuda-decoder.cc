@@ -352,6 +352,12 @@ void BatchedThreadedCudaDecoder::ComputeOneFeature(TaskState *task_) {
   // All frames should be ready here
   int32 numFrames = feature.NumFramesReady();
 
+  // If we don't have anything to do, we must return now
+  if (numFrames == 0) {
+    task_->finished = true;
+    return;
+  }
+
   int32 ivector_dim = feature.IvectorFeature()->Dim();
   int32 input_dim = feature.InputFeature()->Dim();
 
