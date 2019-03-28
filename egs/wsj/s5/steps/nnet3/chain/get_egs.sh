@@ -155,7 +155,8 @@ if [ -f $data/utt2uniq ]; then
   # Must hold out all augmented versions of the same utterance.
   echo "$0: File $data/utt2uniq exists, so ensuring the hold-out set" \
        "includes all perturbed versions of the same source utterance."
-  utils/utt2spk_to_spk2utt.pl $data/utt2uniq 2>/dev/null |
+  utils/utt2spk_to_spk2utt.pl $data/utt2uniq 2>/dev/null | \
+      utils/shuffle_list.pl 2>/dev/null | \
     awk -v max_utt=$num_utts_subset '{
         for (n=2;n<=NF;n++) print $n;
         printed += NF-1;
