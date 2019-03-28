@@ -390,10 +390,12 @@ class LatticeIncrementalDecoderTpl {
 
   void ClearActiveTokens();
 
-  /// Obtains a CompactLattice for the part of this utterance that has been
-  /// decoded so far.  If you call this multiple times (calling it on every frame
-  /// would not make
-  /// sense, but every, say, 10, to 40 frames might make sense) it will spread out
+  /// The following part is specifically designed for incremental determinization
+  ///
+  /// The function obtains a CompactLattice for the part of this utterance that has
+  /// been decoded so far.  If you call this multiple times (calling it on 
+  /// every frame would not make sense, 
+  /// but every, say, 10, to 40 frames might make sense) it will spread out
   /// the
   /// work of determinization over time,which might be useful for online
   /// applications.
@@ -424,21 +426,49 @@ class LatticeIncrementalDecoderTpl {
   CompactLattice lat_;                            // the compact lattice we obtain
   int32 last_get_lattice_frame_;                  // the last time we call GetLattice
   unordered_map<Token *, int32> state_label_map_; // between Token and state_label
-  int32 state_label_avilable_idx_;     // we allocate a unique id for each Token
+  int32 state_label_available_idx_;    // we allocate a unique id for each Token
   const TransitionModel &trans_model_; // keep it for determinization
   std::vector<std::pair<StateId, size_t>> final_arc_list_; // keep final_arc
   std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
+  // We keep alpha for each state_label (Token). We need them before determinization
+  // We cancel them after determinization
   // TODO use 2 vector to replace this map, since state_label is continuous
   // in each frame, and we need 2 frames of them
-  unordered_map<int32, BaseFloat>
-      state_label_forward_prob_; // alpha for each state_label (Token)
-  // specific design for incremental GetLattice
+  unordered_map<int32, BaseFloat> state_label_forward_cost_;
+
+  /// This function is modified from LatticeFasterDecoderTpl::GetRawLattice()
+  /// and specific design for incremental GetLattice
+  /// It does the same thing as GetRawLattice in lattice-faster-decoder.cc except:
+  ///
+  /// i) it creates a initial state, and connect
+  /// all the tokens in the first frame of this chunk to the initial state
+  /// by an arc with a per-token state-label as its olabel
+  /// ii) it creates a final state, and connect
+  /// all the tokens in the last frame of this chunk to the final state
+  /// by an arc with a per-token state-label as its olabel
+  /// the state-label for a token in both i) and ii) should be the same
+  /// frame_begin and frame_end are the first and last frame of this chunk
+  /// if create_initial_state == false, we will not create initial state and
+  /// the corresponding state-label arcs. Similar for create_final_state
+  /// In incremental GetLattice, we do not create the initial state in
+  /// the first chunk, and we do not create the final state in the last chunk
   bool GetRawLattice(Lattice *ofst, bool use_final_probs, int32 frame_begin,
                      int32 frame_end, bool create_initial_state,
                      bool create_final_state);
-  BaseFloat best_cost_in_chunk_;
-  unordered_set<int32> initial_state_in_chunk_;
 
+  // Take care of the step 3 in GetLattice, which is to
+  // appending the new chunk in clat to the old one in olat
+  // If not_first_chunk == false, we do not need to append and just copy
+  // clat into olat
+  // Otherwise, we need to connect the last frame state of
+  // last chunk to the first frame state of this chunk.
+  // These begin and final states are corresponding to the same Token,
+  // guaranteed by unique state labels.
+  void AppendLatticeChunks(CompactLattice clat, bool not_first_chunk,
+                           CompactLattice *olat);
+
+  BaseFloat best_cost_in_chunk_;                // for sanity check
+  unordered_set<int32> initial_state_in_chunk_; // for sanity check
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };
 
