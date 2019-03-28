@@ -436,6 +436,8 @@ class LatticeIncrementalDecoderTpl {
   bool GetRawLattice(Lattice *ofst, bool use_final_probs, int32 frame_begin,
                      int32 frame_end, bool create_initial_state,
                      bool create_final_state);
+  BaseFloat best_cost_in_chunk_;
+  unordered_set<int32> initial_state_in_chunk_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };

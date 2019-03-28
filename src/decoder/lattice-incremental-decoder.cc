@@ -933,9 +933,14 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
                                !decoding_finalized_));
     // step 2: Determinize the chunk
     CompactLattice clat;
+#if 0
     if (!DeterminizeLatticePhonePrunedWrapper(
             trans_model_, &raw_fst, config_.lattice_beam, &clat, config_.det_opts))
       KALDI_WARN << "Determinization finished earlier than the beam";
+#else
+    ConvertLattice(raw_fst, &clat);
+    Connect(&clat);
+#endif
 
     final_arc_list_.swap(final_arc_list_prev_);
     final_arc_list_.clear();
@@ -969,6 +974,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
         if (arc.olabel > config_.max_word_id) {
           if (s == 0) { // initial_arc
             initial_arc_map[arc.olabel] = aiter.Position();
+            if (last_get_lattice_frame_ != 0) initial_state_in_chunk_.erase(arc.olabel);
           } else { // final_arc
             KALDI_ASSERT(clat.Final(arc.nextstate) != CompactLatticeWeight::Zero());
             final_arc_list_.push_back(
@@ -977,6 +983,8 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
         }
       }
     }
+    // sanity check
+    KALDI_ASSERT(initial_state_in_chunk_.size() == 0);
 
     // step 3.2: connect the states between two chunks
     if (last_get_lattice_frame_ != 0) {
@@ -1029,6 +1037,20 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
     KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
                   << " states of chunk: " << clat.NumStates()
                   << " states of the lattice: " << olat->NumStates();
+    // sanity check
+    CompactLattice cdecoded;
+    Lattice decoded;
+    ShortestPath(*olat, &cdecoded);
+    ConvertLattice(cdecoded, &decoded);
+    LatticeWeight weight;
+    std::vector<int32> alignment;
+    std::vector<int32> words;
+    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
+    BaseFloat offset_sum=0;
+    for (auto& i:cost_offsets_) offset_sum+=i;
+    KALDI_ASSERT(alignment.size() == NumFramesDecoded());
+    KALDI_ASSERT(ApproxEqual(best_cost_in_chunk_, weight.Value1() + weight.Value2()+offset_sum, 1e-2));
+
   } // TODO: check in the case the last frame is det twice
 
   last_get_lattice_frame_ = NumFramesDecoded();
@@ -1108,26 +1130,33 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
                 << " max:" << tok_map.max_load_factor();
   // Create initial_arc for later appending with the previous chunk
   if (create_initial_state) {
+    initial_state_in_chunk_.clear();
     for (Token *tok = active_toks_[frame_begin].toks; tok != NULL; tok = tok->next) {
       StateId cur_state = tok_map[tok];
       // state_label_map_ is construct during create_final_state
       int32 id = state_label_map_.find(tok)->second; // it should exist
+      initial_state_in_chunk_.insert(id);
       // TODO: calculate alpha but not use tot_cost
       BaseFloat cost_offset = tok->tot_cost;
       state_label_forward_prob_[id] = tok->tot_cost;
       Arc arc(0, id, Weight(0, cost_offset), cur_state);
       ofst->AddArc(begin_state, arc);
     }
+    KALDI_VLOG(6) << initial_state_in_chunk_.size();
   }
   // Now create all arcs.
+  best_cost_in_chunk_ = std::numeric_limits<BaseFloat>::infinity();
   for (int32 f = frame_begin; f <= frame_end; f++) {
     for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next) {
       StateId cur_state = tok_map[tok];
       for (ForwardLinkT *l = tok->links; l != NULL; l = l->next) {
+        // TODO
+        /*
         if (f == frame_begin && create_initial_state && l->ilabel == 0)
           continue; // has existed in the last chunk
         if (f == frame_end && create_final_state && l->ilabel != 0)
           continue; // will exist in the next chunk
+          */
         typename unordered_map<Token *, StateId>::const_iterator iter =
             tok_map.find(l->next_tok);
         StateId nextstate = iter->second;
@@ -1142,14 +1171,18 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
         ofst->AddArc(cur_state, arc);
       }
       if (f == frame_end) {
+        LatticeWeight weight = LatticeWeight::One();
         if (use_final_probs && !final_costs.empty()) {
           typename unordered_map<Token *, BaseFloat>::const_iterator iter =
               final_costs.find(tok);
           if (iter != final_costs.end())
-            ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
-        } else {
-          ofst->SetFinal(cur_state, LatticeWeight::One());
-        }
+            weight = LatticeWeight(iter->second, 0);
+          else
+            weight = LatticeWeight::Zero();
+        } 
+        ofst->SetFinal(cur_state, weight);
+        // for sanity check
+        best_cost_in_chunk_ = std::min(best_cost_in_chunk_, tok->tot_cost + weight.Value1() + weight.Value2());
       }
     }
   }
@@ -1164,10 +1197,8 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       StateId cur_state = tok_map[tok];
       int32 id = state_label_avilable_idx_++;
       state_label_map_[tok] = id;
-      Weight final_weight =
-          (!decoding_finalized_ && ofst->Final(cur_state) == Weight::Zero())
-              ? Weight::One()
-              : ofst->Final(cur_state);
+      KALDI_ASSERT(ofst->Final(cur_state) != Weight::Zero());
+      Weight final_weight = ofst->Final(cur_state);
 
       Arc arc(0, id, final_weight, end_state);
       ofst->AddArc(cur_state, arc);
