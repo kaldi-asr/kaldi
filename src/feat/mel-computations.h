@@ -71,14 +71,9 @@ struct MelBanksOptions {
                    "High inflection point in piecewise linear VTLN warping function"
                    " (if negative, offset from high-mel-freq");
     opts->Register("modified", &modified,
-                   "Modified MFCCs, based on paper 'An alternative to MFCCs for ASR' "
-                   "(in progess for publication). This uses a cosine-type "
-                   "filters with a modified mel scale with two breakpoints "
-                   ", which control filters's resolution in the frequency region."
-                   "Also, a filter bandwidth is computed as a norm of two "
-                   "bandwidths 1) a bandwidth value computed using linear "
-                   "equation, and 2) a bandwidth value computed based on filter "
-                   "overlap.");
+                   "If true, use a modified form of the Mel scale that gives "
+                   "more emphasis to lower frequencies, and use differently "
+                   "tuned bin shapes and widths than normal.");
     opts->Register("debug-mel", &debug_mel,
                    "Print out debugging information for mel bin computation");
   }
@@ -118,7 +113,7 @@ class MelBanks {
 
   inline BaseFloat InverseMelScale(BaseFloat mel_freq) {
     BaseFloat b1 = breakpoint_, b2 = second_breakpoint_;
-    if (b2 > 0.0)
+    if (b2 > 0.0)  // modified Mel scale
       return b2 * (expf((expf(mel_freq) - b1) / b2) - 1.0);
     else
       return b1 * (expf(mel_freq) - 1.0);
@@ -132,7 +127,7 @@ class MelBanks {
     } else {
       // Mel: linear till ~b1 = 700, then logarithmic.  We ignore the scaling
       // factor as it makes no difference to our application.
-      return log(1.0 + freq / breakpoint_);
+      return log(1.0 + freq / b1);
     }
   }
 
@@ -153,18 +148,18 @@ class MelBanks {
   MelBanks &operator = (const MelBanks &other);
 
 
+
   // The following few variables are derived from the configuration
   // options passed in; they are used in converting to and from Mel frequencies,
   // and for other purposes.
-  BaseFloat breakpoint_;  // The breakpoint in the mel scale: 700 normally;
-                          // 500 if opts.modified is true.
+  BaseFloat breakpoint_;        // The breakpoint of the Mel scale (700) if we
+                                // are using mel scale; otherwise the first
+                                // breakpoint in the modified-mel scale,
+                                // e.g. 300.  Only relevant if --modified=true
   BaseFloat second_breakpoint_; // The second breakpoint used in the modified
-                             // mel scale;
-                             // The range is [1500,3500]Hz and it corresponds to
-                             // second breakpoint in the mel scale mainly and
-                             // results in higher center frequency concentration
-                             // around this frequency
-                             // (e.g. avg. freq for second formant)
+                                // mel scale, e.g. 2000.
+                                // Only relevant if --modified=true
+
   BaseFloat low_freq_;  // opts.low_freq
   BaseFloat high_freq_;  // The same as opts.high_freq if it's >= 0, or
                          // otherwise the Nyquist plus opts.high_freq.
