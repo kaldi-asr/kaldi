@@ -240,33 +240,29 @@ struct BackpointerToken {
 template<typename Token>
 class BucketQueue {
  public:
-  /** Constructor. 'cost_scale' is a scale that we multiply the token costs by
-   *  before intergerizing; a larger value means more buckets.
-   *  'best_cost_estimate' is an estimate of the best (lowest) cost  that
-   *  we are likely to encounter (e.g. the best cost that we have seen so far).
-   *  It is used to initialize 'bucket_storage_begin_'.
-   */
-  BucketQueue(BaseFloat best_cost_estimate, BaseFloat cost_scale = 1.0);
+  // Constructor. 'cost_scale' is a scale that we multiply the token costs by
+  // before intergerizing; a larger value means more buckets.
+  // 'bucket_offset_' is initialized to "15 * cost_scale_". It is an empirical
+  // value in case we trigger the re-allocation in normal case, since we do in
+  // fact normalize costs to be not far from zero on each frame. 
+  BucketQueue(BaseFloat cost_scale = 1.0);
 
-  // Add a Token to the queue; sets the field tok->in_queue to true (it is not
+  // Adds Token to the queue; sets the field tok->in_queue to true (it is not
   // an error if it was already true).
   // If a Token was already in the queue but its cost improves, you should
   // just Push it again. It will be added to (possibly) a different bucket, but
-  // the old entry will remain. The old entry in the queue will be considered as
-  // nonexistent when we try to pop it and notice that the recorded cost
-  // does not match the cost in the Token. (Actually, we use in_queue to decide
-  // an entry is nonexistent or This strategy means that you may not
-  // delete Tokens as long as pointers to them might exist in this queue (hence,
-  // it is probably best to only ever have this queue as a local variable inside
-  // a function).
+  // the old entry will remain. We use "tok->in_queue" to decide
+  // an entry is nonexistent or not. When pop a Token off, the field
+  // 'tok->in_queue' is set to false. So the old entry in the queue will be
+  // considered as nonexistent when we try to pop it.
   void Push(Token *tok);
 
   // Removes and returns the next Token 'tok' in the queue, or NULL if there
   // were no Tokens left. Sets tok->in_queue to false for the returned Token.
   Token* Pop();
 
-  // Clear all the individual buckets. Set 'first_occupied_vec_index_' to the
-  // value past the end of buckets_.
+  // Clears all the individual buckets. Sets 'first_nonempty_bucket_index_' to
+  // the end of buckets_.
   void Clear();
 
  private:
@@ -283,21 +279,20 @@ class BucketQueue {
   // then access buckets_[vec_index].
   std::vector<std::vector<Token*> > buckets_;
 
-  // The lowest-numbered vec_index that is occupied (i.e. the first one which
-  // has any elements). Will be updated as we add or remove tokens.
-  // If this corresponds to a value past the end of buckets_, we interpret it
-  // as 'there are no buckets with entries'.
-  int32 first_occupied_vec_index_;
-
   // An offset that determines how we index into the buckets_ vector;
-  // may be interpreted as a 'bucket_index' that is better than any one that
-  // we are likely to see.
   // In the constructor this will be initialized to something like
-  // bucket_storage_begin_ = std::floor((best_cost_estimate - 15) * cost_scale)
-  // which will make it unlikely that we have to change this value in future if
-  // we get a much better Token (this is expensive because it involves
-  // reallocating 'buckets_').
-  int32 bucket_storage_begin_;
+  // "15 * cost_scale_" which will make it unlikely that we have to change this
+  // value in future if we get a much better Token (this is expensive because it
+  // involves reallocating 'buckets_').
+  int32 bucket_offset_;
+
+  // first_nonempty_bucket_index_ is an integer in the range [0,
+  // buckets_.size() - 1] which is not larger than the index of the first
+  // nonempty element of buckets_.
+  int32 first_nonempty_bucket_index_;
+
+  // Synchronizes with first_nonempty_bucket_index_.
+  std::vector<Token*> *first_nonempty_bucket_;
 };
 
 /** This is the "normal" lattice-generating decoder.
@@ -543,14 +538,16 @@ class LatticeFasterDecoderCombineTpl {
   void ProcessForFrame(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.
-  /// Calls this function once when all frames were processed.
-  /// Or calls it in GetRawLattice() to generate the complete token list for
-  /// the last frame. [Deal With the tokens in map "cur_toks_" which would 
-  /// only contains emittion tokens from previous frame.]
-  /// If the map, "token_orig_cost", isn't NULL, we build the map which will
-  /// be used to recover "active_toks_[last_frame]" token list for the last
-  /// frame. 
-  void ProcessNonemitting(std::unordered_map<Token*, BaseFloat> *token_orig_cost);
+  /// This function is called from FinalizeDecoding(), and also from
+  /// GetRawLattice() if GetRawLattice() is called before FinalizeDecoding() is
+  /// called. In the latter case, RecoverLastTokenList() is called later by
+  /// GetRawLattice() to restore the state prior to ProcessNonemitting() being
+  /// called, since ProcessForFrame() does not expect nonemitting arcs to
+  /// already have been propagagted. ["token_orig_cost" isn't NULL in the
+  /// latter case, we build the map which will be used to recover
+  /// "active_toks_[last_frame]" token list for the last frame.]
+  void ProcessNonemitting(
+      std::unordered_map<Token*, BaseFloat> *token_orig_cost);
 
   /// When GetRawLattice() is called during decoding, the
   /// active_toks_[last_frame] is changed. To keep the consistency of function
