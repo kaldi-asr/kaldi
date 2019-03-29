@@ -218,7 +218,7 @@ bool LatticeFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";
 
-  if (!decoding_finalized_) {
+  if (!decoding_finalized_ && use_final_probs) {
     // Process the non-emitting arcs for the unfinished last frame.
     ProcessNonemitting();
   }
