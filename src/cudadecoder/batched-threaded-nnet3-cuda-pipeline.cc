@@ -494,7 +494,7 @@ void BatchedThreadedNnet3CudaPipeline::PostDecodeProcessing(
   completed_channels.resize(0);
 }
 void BatchedThreadedNnet3CudaPipeline::DeterminizeOneLattice(TaskState *task) {
-  nvtxRangePush("DeterminizeOneLattice");
+  nvtxRangePushA("DeterminizeOneLattice");
   // Note this destroys the original raw lattice
   DeterminizeLatticePhonePrunedWrapper(*trans_model_, &task->lat,
                                        config_.decoder_opts.lattice_beam,

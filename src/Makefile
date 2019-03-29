@@ -4,13 +4,12 @@
 
 SHELL := /bin/bash
 
-
 SUBDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat kws cudamatrix nnet \
           bin fstbin gmmbin fgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 rnnlm chain nnet3bin nnet2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
-          $(CUDA_SUBDIRS)
+	  cudadecoder cudadecoderbin
 
 MEMTESTDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat nnet kws chain \
@@ -29,10 +28,6 @@ EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
 EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
 include kaldi.mk
-
-ifeq ($(CUDA), true)
-CUDA_SUBDIRS = cudadecoder cudadecoderbin
-endif
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=

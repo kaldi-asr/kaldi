@@ -24,4 +24,6 @@ ADDLIBS = ../cudadecoder/kaldi-cudadecoder.a  \
 
 include ../makefiles/default_rules.mk
 
+else # ifeq($(CUDA), true)
+depend: #blank depend target for non-cuda build
 endif
