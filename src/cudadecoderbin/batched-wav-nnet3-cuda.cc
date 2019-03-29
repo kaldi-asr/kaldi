@@ -19,7 +19,7 @@
 #include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
 #include <sstream>
-#include "cudadecoder/batched-threaded-cuda-decoder.h"
+#include "cudadecoder/batched-threaded-nnet3-cuda-pipeline.h"
 #include "cudamatrix/cu-allocator.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
@@ -74,10 +74,10 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
 // using a macro here to avoid a ton of parameters in a function
 // while also being able to reuse this in two spots
 void FinishOneDecode(
-    const BatchedThreadedCudaDecoderConfig &batched_decoder_config,
+    const BatchedThreadedNnet3CudaPipelineConfig &batched_decoder_config,
     const fst::SymbolTable *word_syms, const bool write_lattice,
     const int32 total_audio, const int32 count_per_iteration,
-    BatchedThreadedCudaDecoder *cuda_decoder,
+    BatchedThreadedNnet3CudaPipeline *cuda_pipeline,
     std::queue<std::pair<std::string, std::string>> *processed,
     CompactLatticeWriter *clat_writer, Timer *timer, int32 *current_count,
     int64 *num_frames, int32 *output_iter, double *tot_like) {
@@ -87,10 +87,10 @@ void FinishOneDecode(
   bool valid;
 
   if (batched_decoder_config.determinize_lattice) {
-    valid = cuda_decoder->GetLattice(key, &clat);
+    valid = cuda_pipeline->GetLattice(key, &clat);
   } else {
     Lattice lat;
-    valid = cuda_decoder->GetRawLattice(key, &lat);
+    valid = cuda_pipeline->GetRawLattice(key, &lat);
     ConvertLattice(lat, &clat);
   }
   if (valid) {
@@ -101,7 +101,7 @@ void FinishOneDecode(
       nvtxRangePop();
     }
   }
-  cuda_decoder->CloseDecodeHandle(key);
+  cuda_pipeline->CloseDecodeHandle(key);
   processed->pop();
   if (++(*current_count) ==
       count_per_iteration) { /*this utt is the last in an iter*/
@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
                 "only once.");
 
     // Multi-threaded CPU and batched GPU decoder
-    BatchedThreadedCudaDecoderConfig batched_decoder_config;
+    BatchedThreadedNnet3CudaPipelineConfig batched_decoder_config;
 
     CuDevice::RegisterDeviceOptions(&po);
     RegisterCuAllocatorOptions(&po);
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
     CuDevice::Instantiate().SelectGpuId("yes");
     CuDevice::Instantiate().AllowMultithreading();
 
-    BatchedThreadedCudaDecoder cuda_decoder(batched_decoder_config);
+    BatchedThreadedNnet3CudaPipeline cuda_pipeline(batched_decoder_config);
 
     std::string nnet3_rxfilename = po.GetArg(1), fst_rxfilename = po.GetArg(2),
                 wav_rspecifier = po.GetArg(3), clat_wspecifier = po.GetArg(4);
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
     fst::Fst<fst::StdArc> *decode_fst =
         fst::ReadFstKaldiGeneric(fst_rxfilename);
 
-    cuda_decoder.Initialize(*decode_fst, am_nnet, trans_model);
+    cuda_pipeline.Initialize(*decode_fst, am_nnet, trans_model);
 
     delete decode_fst;
 
@@ -246,13 +246,13 @@ int main(int argc, char *argv[]) {
           total_audio += wave_data.Duration();
         }
 
-        cuda_decoder.OpenDecodeHandle(key, wave_data);
+        cuda_pipeline.OpenDecodeHandle(key, wave_data);
         processed.push(pair<string, string>(utt, key));
         num_done++;
 
         while (processed.size() >= pipeline_length) {
           FinishOneDecode(batched_decoder_config, word_syms, write_lattice,
-                          total_audio, count_per_iteration, &cuda_decoder,
+                          total_audio, count_per_iteration, &cuda_pipeline,
                           &processed, &clat_writer, &timer, &current_count,
                           &num_frames, &output_iter, &tot_like);
         }  // end while
@@ -266,7 +266,7 @@ int main(int argc, char *argv[]) {
 
     while (processed.size() > 0) {
       FinishOneDecode(batched_decoder_config, word_syms, write_lattice,
-                      total_audio, count_per_iteration, &cuda_decoder,
+                      total_audio, count_per_iteration, &cuda_pipeline,
                       &processed, &clat_writer, &timer, &current_count,
                       &num_frames, &output_iter, &tot_like);
     } // end while
@@ -289,7 +289,7 @@ int main(int argc, char *argv[]) {
 
     clat_writer.Close();
 
-    cuda_decoder.Finalize();
+    cuda_pipeline.Finalize();
     cudaDeviceSynchronize();
 
     return 0;

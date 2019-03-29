@@ -1,4 +1,4 @@
-// cudadecoder/batched-threaded-cuda-decoder.h
+// cudadecoder/batched-threaded-nnet3-cuda-pipeline.h
 //
 // Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 // Hugo Braun, Justin Luitjens, Ryan Leary
@@ -32,16 +32,16 @@
 namespace kaldi {
 namespace cuda_decoder {
 
-/* BatchedThreadedCudaDecoderConfig
+/* BatchedThreadedNnet3CudaPipelineConfig
  * This class is a common configuration class for the various components
  * of a batched cuda multi-threaded pipeline.  It defines a single place
  * to control all operations and ensures that the various componets
  * match configurations
  */
-// configuration options common to the BatchedThreadedCudaDecoder and
-// BatchedThreadedCudaDecoder
-struct BatchedThreadedCudaDecoderConfig {
-  BatchedThreadedCudaDecoderConfig()
+// configuration options common to the BatchedThreadedNnet3CudaPipeline and
+// BatchedThreadedNnet3CudaPipeline
+struct BatchedThreadedNnet3CudaPipelineConfig {
+  BatchedThreadedNnet3CudaPipelineConfig()
       : max_batch_size(100),
         batch_drain_size(10),
         num_control_threads(2),
@@ -91,14 +91,14 @@ struct BatchedThreadedCudaDecoderConfig {
 };
 
 /*
- * BatchedThreadedCudaDecoder uses multiple levels of parallelism in order to
+ * BatchedThreadedNnet3CudaPipeline uses multiple levels of parallelism in order to
  * decode quickly on CUDA GPUs. This is the primary interface for cuda decoding.
  * For examples of how to use this decoder see cudadecoder/README and
  * cudadecoderbin/batched-wav-nnet3-cuda.cc
  */
-class BatchedThreadedCudaDecoder {
+class BatchedThreadedNnet3CudaPipeline {
 public:
-  BatchedThreadedCudaDecoder(const BatchedThreadedCudaDecoderConfig &config)
+  BatchedThreadedNnet3CudaPipeline(const BatchedThreadedNnet3CudaPipelineConfig &config)
       : config_(config){};
 
   // TODO should this take an nnet instead of a string?
@@ -240,7 +240,7 @@ private:
   // input.
   void ExecuteWorker(int threadId);
 
-  const BatchedThreadedCudaDecoderConfig &config_;
+  const BatchedThreadedNnet3CudaPipelineConfig &config_;
 
   CudaFst cuda_fst_;
   const TransitionModel *trans_model_;
