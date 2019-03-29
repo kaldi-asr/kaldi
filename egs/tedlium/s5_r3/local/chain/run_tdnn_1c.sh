@@ -1,29 +1,23 @@
 #!/bin/bash
 
-# 1g is as 1f but moving to a factorized TDNN (TDNN-F) model, re-tuning it, and
-#  switching to unconstrained egs (the last of which gives around 0.1%
-#  improvement).  (Note: I don't believe the Tedlium TDNN models were,
-#  previously, very well-tuned).
+# This is copied from 1g script of tedlium/s5_r2 and replaces the current run_tdnn_1b.sh
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnnf_1a exp/chain_cleaned/tdnnf_1c
+# System                 tdnnf_1a  tdnnf_1c
+# WER on dev(orig)           8.15      8.03
+# WER on dev(rescored)       7.69      7.44
+# WER on test(orig)          8.19      8.30
+# WER on test(rescored)      7.77      7.85
+# Final train prob        -0.0692   -0.0669
+# Final valid prob        -0.0954   -0.0838
+# Final train prob (xent)   -0.9369   -0.9596
+# Final valid prob (xent)   -1.0730   -1.0780
+# Num-params                25741728   9463968
 
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f_sp_bi exp/chain_cleaned/tdnn1g_sp
-# System                tdnn1f_sp_bi tdnn1g_sp
-# WER on dev(orig)            8.9       7.9
-# WER on dev(rescored)        8.1       7.3
-# WER on test(orig)           9.1       8.0
-# WER on test(rescored)       8.6       7.6
-# Final train prob        -0.1026   -0.0637
-# Final valid prob        -0.1031   -0.0750
-# Final train prob (xent)   -1.4370   -0.9792
-# Final valid prob (xent)   -1.4670   -0.9951
-# Num-params                 6994800   9431072
 
-# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn1g_sp
-# exp/chain_cleaned/tdnn1g_sp: num-iters=108 nj=3..12 num-params=9.4M dim=40+100->3600 combine=-0.060->-0.060 (over 2) xent:train/valid[71,107,final]=(-1.30,-0.985,-0.979/-1.29,-1.00,-0.995) logprob:train/valid[71,107,final]=(-0.098,-0.065,-0.064/-0.100,-0.075,-0.075)
-
-## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
-## otherwise call it directly in its location).
-# by default, with cleanup:
-# local/chain/run_tdnn.sh
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnnf_1a/
+# exp/chain_cleaned/tdnnf_1a/: num-iters=945 nj=2..6 num-params=25.7M dim=40+100->3664 combine=-0.074->-0.071 (over 6) xent:train/valid[628,944,final]=(-1.07,-0.959,-0.937/-1.20,-1.10,-1.07) logprob:train/valid[628,944,final]=(-0.088,-0.070,-0.069/-0.111,-0.098,-0.095)
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnnf_1c
+# exp/chain_cleaned/tdnn1c/: num-iters=228 nj=3..12 num-params=9.5M dim=40+100->3664 combine=-0.068->-0.068 (over 4) xent:train/valid[151,227,final]=(-1.15,-0.967,-0.960/-1.25,-1.09,-1.08) logprob:train/valid[151,227,final]=(-0.090,-0.068,-0.067/-0.102,-0.085,-0.084)
 
 # without cleanup:
 # local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
@@ -47,7 +41,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1g  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1c  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 remove_egs=true
 
@@ -67,12 +61,12 @@ where "nvcc" is installed.
 EOF
 fi
 
-#local/nnet3/run_ivector_common.sh --stage $stage \
-#                                  --nj $nj \
-#                                  --train-set $train_set \
-#                                  --gmm $gmm \
-#                                  --num-threads-ubm $num_threads_ubm \
-#                                  --nnet3-affix "$nnet3_affix"
+local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --nj $nj \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --num-threads-ubm $num_threads_ubm \
+                                  --nnet3-affix "$nnet3_affix"
 
 
 gmm_dir=exp/$gmm
