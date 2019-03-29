@@ -22,8 +22,6 @@ ADDLIBS = ../cudadecoder/kaldi-cudadecoder.a  \
 ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
 ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
-include ../makefiles/default_rules.mk
-
-else # ifeq($(CUDA), true)
-depend: #blank depend target for non-cuda build
 endif
+
+include ../makefiles/default_rules.mk
