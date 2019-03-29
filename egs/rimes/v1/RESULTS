@@ -1,0 +1,45 @@
+Run_end2end.sh Word-based system WER using lang_unk and lang. WER at line-level and paragraph level
+flat_start:
+Line-level:
+  • %WER 13.97 [ 788 / 5639, 136 ins, 62 del, 590 sub ] exp/chain/e2e_cnn_1a/decode_test/wer_10_1.0
+  • %WER 16.56 [ 934 / 5639, 158 ins, 75 del, 701 sub ] exp/chain/e2e_cnn_1a/decode_test/wer_13_1.0
+
+Paragraph-level:
+  • %WER 12.89 [ 727 / 5639, 116 ins, 42 del, 569 sub ] exp/chain/e2e_cnn_1a/decode_test/para/wer_10_1.0
+  • %WER 15.50 [ 874 / 5639, 133 ins, 50 del, 691 sub ] exp/chain/e2e_cnn_1a/decode_test/para/wer_13_1.0
+
+cnn_e2eali_1a:
+Line-level:
+  • %WER 10.43 [ 588 / 5639, 115 ins, 57 del, 416 sub ] exp/chain/cnn_e2eali_1a/decode_test/wer_7_1.0
+  • %WER 13.78 [ 777 / 5639, 153 ins, 58 del, 566 sub ] exp/chain/cnn_e2eali_1a/decode_test/wer_10_1.0
+
+Paragraph-level:
+  • %WER 9.35 [ 527 / 5639, 89 ins, 31 del, 407 sub ] exp/chain/cnn_e2eali_1a/decode_test//para/wer_7_1.0
+  • %WER 12.70 [ 716 / 5639, 134 ins, 39 del, 543 sub ] exp/chain/cnn_e2eali_1a/decode_test/para/wer_10_1.0
+
+
+Run_end2end.sh BPE-based system WER using lang. WER at line-level and paragraph level
+flat_start:
+Line-level:
+  • %WER 11.58 [ 653 / 5639, 72 ins, 67 del, 514 sub ] exp/chain/e2e_cnn_1a/decode_test/wer_8_1.0
+
+Paragraph-level:
+  • %WER 10.50 [ 592 / 5639, 54 ins, 49 del, 489 sub ] exp/chain/e2e_cnn_1a/decode_test/para/wer_8_1.0
+
+cnn_e2eali_1a:
+Line-level:
+  • %WER 8.48 [ 478 / 5639, 56 ins, 54 del, 368 sub ] exp/chain/cnn_e2eali_1a/decode_test/wer_9_0.5
+
+Paragraph-level:
+  • %WER 7.41 [ 418 / 5639, 38 ins, 36 del, 344 sub ] exp/chain/cnn_e2eali_1a/decode_test/para/wer_9_0.5
+
+
+Run_end2end.sh BPE-based system WER using lang with optional open-source extra corpus text. 
+WER at line-level and paragraph level.
+
+cnn_e2eali_1a:
+Line-level:
+  • %WER 7.66 [ 432 / 5639, 50 ins, 38 del, 344 sub ] exp/chain/cnn_e2eali_1a/decode_test/para/wer_7_0.5
+
+Paragraph-level:
+  • %WER 6.85 [ 386 / 5639, 35 ins, 36 del, 315 sub ] exp/chain/cnn_e2eali_1a/decode_test/para/wer_8_1.0
