@@ -506,6 +506,14 @@ void cudaD_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
                      int src_stride);
 void cudaF_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                      int src_stride);
+void cudaD_exp(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
+	       int src_stride);
+void cudaF_exp(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
+	       int src_stride);
+void cudaD_pow(dim3 Gr, dim3 Bl, double *y, const double *x, double power, MatrixDim d,
+	       int src_stride);
+void cudaF_pow(dim3 Gr, dim3 Bl, float *y, const float *x, float power, MatrixDim d,
+	       int src_stride);
 void cuda_int32_add(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value,
                     MatrixDim d);
 void cuda_int32_set_const(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value,

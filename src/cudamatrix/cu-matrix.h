@@ -283,6 +283,10 @@ class CuMatrixBase {
   /// in general, there are different ways to deal with the situation when x==0.]
   void Heaviside(const CuMatrixBase<Real> &src);
 
+  void Exp(const CuMatrixBase<Real> &src);
+
+  void Pow(const CuMatrixBase<Real> &src, Real power);
+  
   /// Apply the function y = log(1 + exp(x)), to each element.
   /// Note: the derivative of this function is the sigmoid function.
   /// This is like a soft ReLU.

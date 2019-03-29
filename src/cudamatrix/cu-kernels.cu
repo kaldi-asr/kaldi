@@ -2528,6 +2528,42 @@ static void _heaviside(Real*y, const Real*x, MatrixDim d, int src_stride) {
 
 template<typename Real>
 __global__
+static void _exp(Real*y, const Real*x, MatrixDim d, int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_index = i + j * d.stride, src_index = i + j * src_stride;
+  if (i < d.cols && j < d.rows) {
+    Real res = exp(x[src_index]);
+    y[dst_index] = res;
+  }
+}
+
+template<typename Real>
+__global__
+static void _pow(Real*y, const Real*x, Real power, MatrixDim d, int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_index = i + j * d.stride, src_index = i + j * src_stride;
+  if (i < d.cols && j < d.rows) {
+    Real res;
+    if (power == 1.0)
+      res = x[src_index];
+    if (power == 2.0) {
+      res = x[src_index] * x[src_index];
+    } else if (power == 0.5) {
+      if (!x[src_index] >= 0.0)
+	res = x[src_index];
+      else
+	res = sqrt(x[src_index]);
+    } else {
+      res = pow(x[src_index], power);
+    }
+    y[dst_index] = res;
+  }
+}
+
+template<typename Real>
+__global__
 static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   __shared__ Real smem;
   typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
@@ -4257,6 +4293,16 @@ void cudaF_heaviside(dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d,
   _heaviside<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
+void cudaF_exp(dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d,
+	       int src_stride) {
+  _exp<<<Gr,Bl>>>(y, x, d, src_stride);
+}
+
+void cudaF_pow(dim3 Gr, dim3 Bl, float* y, const float* x, float power, MatrixDim d,
+	       int src_stride) {
+  _pow<<<Gr,Bl>>>(y, x, power, d, src_stride);
+}
+
 void cudaF_softmax_reduce(size_t Gr, size_t Bl, float* y, const float* x,
                           MatrixDim d, int src_stride) {
   _softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
@@ -4958,6 +5004,16 @@ void cudaD_diff_parametric_relu(dim3 Gr, dim3 Bl, double* eout, const double* e,
 void cudaD_heaviside(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
                      int src_stride) {
   _heaviside<<<Gr,Bl>>>(y, x, d, src_stride);
+}
+
+void cudaD_exp(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
+	       int src_stride) {
+  _exp<<<Gr,Bl>>>(y, x, d, src_stride);
+}
+
+void cudaD_pow(dim3 Gr, dim3 Bl, double* y, const double* x, double power, MatrixDim d,
+	    int src_stride) {
+  _pow<<<Gr,Bl>>>(y, x, power, d, src_stride);
 }
 
 void cudaD_softmax_reduce(size_t Gr, size_t Bl, double* y, const double* x,

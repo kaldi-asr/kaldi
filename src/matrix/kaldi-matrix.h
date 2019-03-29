@@ -483,6 +483,10 @@ class MatrixBase {
   /// because it affects the RectifiedLinearComponent in the neural net code.
   void Heaviside(const MatrixBase<Real> &src);
 
+  void Exp(const MatrixBase<Real> &src);
+
+  void Pow(const MatrixBase<Real> &src, Real power);
+
   /// Set each element to y = log(1 + exp(x))
   void SoftHinge(const MatrixBase<Real> &src);
 

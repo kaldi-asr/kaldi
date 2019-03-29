@@ -2139,7 +2139,7 @@ void MatrixBase<Real>::ApplyExpSpecial() {
   for (MatrixIndexT i = 0; i < num_rows; ++i) {
     for (MatrixIndexT j = 0; j < num_cols; ++j) {
       Real &x = *(data + j + stride * i);
-      x = x < Real(0) ? Exp(x) : x + Real(1);
+      x = x < Real(0) ? kaldi::Exp(x) : x + Real(1);
     }
   }
 }
@@ -2178,6 +2178,44 @@ void MatrixBase<Real>::Heaviside(const MatrixBase<Real> &src) {
        row++,row_data += stride_, src_row_data += src.stride_) {
     for (MatrixIndexT col = 0; col < num_cols; col++)
       row_data[col] = (src_row_data[col] > 0 ? 1.0 : 0.0);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::Exp(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++)
+      row_data[col] = kaldi::Exp(src_row_data[col]);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::Pow(const MatrixBase<Real> &src, Real power) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++) {
+      if (power == 1.0)
+	row_data[col] = src_row_data[col];
+      if (power == 2.0)
+	row_data[col] = src_row_data[col] * src_row_data[col];
+      else if (power == 0.5) {
+	if (!(src_row_data[col] >= 0.0))
+	  KALDI_ERR << "Cannot take square root of negative value "
+                  << src_row_data[col];
+	row_data[col] = std::sqrt(src_row_data[col]);
+      } else {
+      row_data[col] = pow(src_row_data[col], power);
+      }
+    }
   }
 }
 
@@ -2695,7 +2733,7 @@ Real MatrixBase<Real>::LogSumExp(Real prune) const {
     for (MatrixIndexT j = 0; j < num_cols_; j++) {
       BaseFloat f = (*this)(i, j);
       if (f >= cutoff)
-        sum_relto_max_elem += Exp(f - max_elem);
+        sum_relto_max_elem += kaldi::Exp(f - max_elem);
     }
   }
   return max_elem + Log(sum_relto_max_elem);
@@ -2707,7 +2745,7 @@ Real MatrixBase<Real>::ApplySoftMax() {
   // the 'max' helps to get in good numeric range.
   for (MatrixIndexT i = 0; i < num_rows_; i++)
     for (MatrixIndexT j = 0; j < num_cols_; j++)
-      sum += ((*this)(i, j) = Exp((*this)(i, j) - max));
+      sum += ((*this)(i, j) = kaldi::Exp((*this)(i, j) - max));
   this->Scale(1.0 / sum);
   return max + Log(sum);
 }
@@ -2739,7 +2777,7 @@ void MatrixBase<Real>::SoftHinge(const MatrixBase<Real> &src) {
       Real x = src_row_data[c], y;
       if (x > 10.0) y = x; // avoid exponentiating large numbers; function
       // approaches y=x.
-      else y = Log1p(Exp(x)); // these defined in kaldi-math.h
+      else y = Log1p(kaldi::Exp(x)); // these defined in kaldi-math.h
       row_data[c] = y;
     }
   }

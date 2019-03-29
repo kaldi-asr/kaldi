@@ -2500,6 +2500,49 @@ void CuMatrixBase<Real>::Heaviside(const CuMatrixBase<Real> &src) {
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::Exp(const CuMatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_exp(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+	     src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+  #endif
+  {
+    Mat().Exp(src.Mat());
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::Pow(const CuMatrixBase<Real> &src, Real power) {
+  KALDI_ASSERT(SameDim(*this, src));
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_pow(dimGrid, dimBlock, this->data_, src.data_, power, this->Dim(),
+	     src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+  #endif
+  {
+    Mat().Pow(src.Mat(), power);
+  }
+}
+
+  
+template<typename Real>
 void CuMatrixBase<Real>::ApplyExp() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2541,7 +2584,7 @@ void CuMatrixBase<Real>::ApplyExpLimited(Real lower_limit, Real upper_limit) {
           x = lower_limit;
         if (x > upper_limit)
           x = upper_limit;
-        row_data[c] = Exp(x);
+        row_data[c] = kaldi::Exp(x);
       }
     }
   }

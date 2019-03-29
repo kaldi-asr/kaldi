@@ -424,7 +424,7 @@ template<typename Real> void TestCuMatrixSigmoid(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
-template<typename Real> void TestCuMatrixHeaviside(int32 dim) {
+template<typename Real> void TestCuMatrixApplyHeaviside(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim), N(dim, dim);
   M.SetRandn();
@@ -437,10 +437,94 @@ template<typename Real> void TestCuMatrixHeaviside(int32 dim) {
 
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::ApplyHeaviside" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixHeaviside(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.Heaviside(N);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::Heaviside" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixApplyExp(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.ApplyExp();
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::ApplyExp" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixExp(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.Exp(N);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::Exp" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixApplyPow(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.ApplyPow(0.9);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::ApplyPow" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixPow(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.Pow(N, 0.9);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::Pow" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
 
 template<typename Real> void TestCuMatrixMulRowsGroupMat(int32 dim) {
   BaseFloat time_in_secs = 0.025;
@@ -1042,7 +1126,17 @@ template<typename Real> void CudaMatrixSpeedTest() {
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSigmoid<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
+    TestCuMatrixApplyHeaviside<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
     TestCuMatrixHeaviside<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixApplyExp<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixExp<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixApplyPow<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixPow<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuFindRowMaxId<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)

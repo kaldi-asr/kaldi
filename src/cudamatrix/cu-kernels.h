@@ -952,6 +952,22 @@ inline void cuda_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x,
                            MatrixDim d, int src_stride) {
   cudaF_heaviside(Gr, Bl, y, x, d, src_stride);
 }
+inline void cuda_exp(dim3 Gr, dim3 Bl, double *y, const double *x,
+		     MatrixDim d, int src_stride) {
+  cudaD_exp(Gr, Bl, y, x, d, src_stride);
+}
+inline void cuda_exp(dim3 Gr, dim3 Bl, float *y, const float *x,
+		     MatrixDim d, int src_stride) {
+  cudaF_exp(Gr, Bl, y, x, d, src_stride);
+}
+inline void cuda_pow(dim3 Gr, dim3 Bl, double *y, const double *x, double power,
+		     MatrixDim d, int src_stride) {
+  cudaD_exp(Gr, Bl, y, x, d, src_stride);
+}
+inline void cuda_pow(dim3 Gr, dim3 Bl, float *y, const float *x, float power,
+		     MatrixDim d, int src_stride) {
+  cudaF_exp(Gr, Bl, y, x, d, src_stride);
+}
 inline void cuda_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d) {
   cudaD_invert_elements(Gr, Bl, data, d);
 }
