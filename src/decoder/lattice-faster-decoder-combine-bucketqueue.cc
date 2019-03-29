@@ -48,10 +48,10 @@ void BucketQueue<Token>::Push(Token *tok) {
                         // space frequently
     if (static_cast<int32>(bucket_index) > 0) {
       buckets_.resize(bucket_index + margin);
+      first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
     } else {  // less than 0
       int32 increase_size = - static_cast<int32>(bucket_index) + margin;
       buckets_.resize(buckets_.size() + increase_size);
-      first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
       // translation
       for (size_t i = buckets_.size() - 1; i >= increase_size; i--) {
         buckets_[i].swap(buckets_[i - increase_size]);
