@@ -41,6 +41,7 @@ struct LatticeIncrementalDecoderConfig {
   int32 min_active;
   BaseFloat lattice_beam;
   int32 prune_interval;
+  int32 determinize_delay;
   bool determinize_lattice; // not inspected by this class... used in
                             // command-line program.
   BaseFloat beam_delta;     // has nothing to do with beam_ratio
@@ -61,6 +62,7 @@ struct LatticeIncrementalDecoderConfig {
         min_active(200),
         lattice_beam(10.0),
         prune_interval(25),
+        determinize_delay(25),
         determinize_lattice(true),
         beam_delta(0.5),
         hash_ratio(2.0),
@@ -79,6 +81,9 @@ struct LatticeIncrementalDecoderConfig {
     opts->Register("prune-interval", &prune_interval,
                    "Interval (in frames) at "
                    "which to prune tokens");
+    opts->Register("determinize-delay", &determinize_delay,
+                   "delay (in frames) at "
+                   "which to incrementally determinize lattices");
     opts->Register("determinize-lattice", &determinize_lattice,
                    "If true, "
                    "determinize the lattice (lattice-determinization, keeping only "
@@ -393,8 +398,8 @@ class LatticeIncrementalDecoderTpl {
   /// The following part is specifically designed for incremental determinization
   ///
   /// The function obtains a CompactLattice for the part of this utterance that has
-  /// been decoded so far.  If you call this multiple times (calling it on 
-  /// every frame would not make sense, 
+  /// been decoded so far.  If you call this multiple times (calling it on
+  /// every frame would not make sense,
   /// but every, say, 10, to 40 frames might make sense) it will spread out
   /// the
   /// work of determinization over time,which might be useful for online
@@ -422,7 +427,8 @@ class LatticeIncrementalDecoderTpl {
   ///                         CAUTION: this is not the same meaning as the return
   ///                         value of
   ///                         LatticeFasterDecoder::GetLattice().
-  bool GetLattice(bool use_final_probs, bool redeterminize, CompactLattice *olat);
+  bool GetLattice(bool use_final_probs, bool redeterminize,
+                  int32 last_frame_of_chunk, CompactLattice *olat);
   CompactLattice lat_;                            // the compact lattice we obtain
   int32 last_get_lattice_frame_;                  // the last time we call GetLattice
   unordered_map<Token *, int32> state_label_map_; // between Token and state_label
@@ -430,11 +436,13 @@ class LatticeIncrementalDecoderTpl {
   const TransitionModel &trans_model_; // keep it for determinization
   std::vector<std::pair<StateId, size_t>> final_arc_list_; // keep final_arc
   std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
-  // We keep alpha for each state_label (Token). We need them before determinization
+  // We keep tot_cost or extra_cost for each state_label (Token) in final and
+  // initial arcs. We need them before determinization
   // We cancel them after determinization
   // TODO use 2 vector to replace this map, since state_label is continuous
   // in each frame, and we need 2 frames of them
-  unordered_map<int32, BaseFloat> state_label_forward_cost_;
+  unordered_map<int32, BaseFloat> state_label_initial_cost_;
+  unordered_map<int32, BaseFloat> state_label_final_cost_;
 
   /// This function is modified from LatticeFasterDecoderTpl::GetRawLattice()
   /// and specific design for incremental GetLattice
@@ -465,7 +473,7 @@ class LatticeIncrementalDecoderTpl {
   // These begin and final states are corresponding to the same Token,
   // guaranteed by unique state labels.
   void AppendLatticeChunks(CompactLattice clat, bool not_first_chunk,
-                           CompactLattice *olat);
+                           int32 last_frame_of_chunk, CompactLattice *olat);
 
   BaseFloat best_cost_in_chunk_;                // for sanity check
   unordered_set<int32> initial_state_in_chunk_; // for sanity check
