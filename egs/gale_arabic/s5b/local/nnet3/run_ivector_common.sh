@@ -138,7 +138,6 @@ if [ $stage -le 5 ]; then
   # Also extract iVectors for the test data, but in this case we don't need the speed
   # perturbation (sp).
   for data in ${test_sets}; do
-    nspk=$(wc -l <data/${data}_hires/spk2utt)
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
       data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
       exp/nnet3${nnet3_affix}/ivectors_${data}_hires
