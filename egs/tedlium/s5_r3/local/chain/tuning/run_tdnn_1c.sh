@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# This is copied from 1g script of tedlium/s5_r2 and replaces the current run_tdnn_1b.sh
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnnf_1a exp/chain_cleaned/tdnnf_1c
-# System                 tdnnf_1a  tdnnf_1c
+# This is copied from tedlium/s5_r2/local/chain/tuning/run_tdnn_1g.sh setup, and it replaces the current run_tdnn_1b.sh script. 
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnnf_1b exp/chain_cleaned/tdnnf_1c
+# System                 tdnnf_1b  tdnnf_1c
 # WER on dev(orig)           8.15      8.03
 # WER on dev(rescored)       7.69      7.44
 # WER on test(orig)          8.19      8.30
@@ -14,10 +15,15 @@
 # Num-params                25741728   9463968
 
 
-# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnnf_1a/
-# exp/chain_cleaned/tdnnf_1a/: num-iters=945 nj=2..6 num-params=25.7M dim=40+100->3664 combine=-0.074->-0.071 (over 6) xent:train/valid[628,944,final]=(-1.07,-0.959,-0.937/-1.20,-1.10,-1.07) logprob:train/valid[628,944,final]=(-0.088,-0.070,-0.069/-0.111,-0.098,-0.095)
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnnf_1b/
+# exp/chain_cleaned/tdnnf_1b/: num-iters=945 nj=2..6 num-params=25.7M dim=40+100->3664 combine=-0.074->-0.071 (over 6) xent:train/valid[628,944,final]=(-1.07,-0.959,-0.937/-1.20,-1.10,-1.07) logprob:train/valid[628,944,final]=(-0.088,-0.070,-0.069/-0.111,-0.098,-0.095)
 # steps/info/chain_dir_info.pl exp/chain_cleaned/tdnnf_1c
-# exp/chain_cleaned/tdnn1c/: num-iters=228 nj=3..12 num-params=9.5M dim=40+100->3664 combine=-0.068->-0.068 (over 4) xent:train/valid[151,227,final]=(-1.15,-0.967,-0.960/-1.25,-1.09,-1.08) logprob:train/valid[151,227,final]=(-0.090,-0.068,-0.067/-0.102,-0.085,-0.084)
+# exp/chain_cleaned/tdnn1c/: num-iters=228 nj=3..12 num-params=9.5M dim=40+100->3664 combine=-0.068->-0.068 (over 4) xent:train/valid[151,227,final]=(-1.15,-0.967,-0.960/-1.25,-1.09,-1.08) logprob:train/valid[151,227,final]=(-0.090,-0.068,-0.067/-0.102,-0.05,-0.084)
+
+## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
+## otherwise call it directly in its location).
+# by default, with cleanup:
+# local/chain/run_tdnn.sh
 
 # without cleanup:
 # local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
