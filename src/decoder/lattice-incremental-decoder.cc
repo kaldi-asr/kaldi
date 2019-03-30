@@ -970,11 +970,11 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
     std::vector<int32> words;
     GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
     BaseFloat offset_sum = 0;
-    for (auto &i : cost_offsets_) offset_sum += i;
+    for (int32 i = 1; i < last_frame_of_chunk; i++) offset_sum += cost_offsets_[i];
     KALDI_ASSERT(alignment.size() == last_frame_of_chunk);
-    // TODO: the following KALDI_ASSERT will fail some time, which is unexpected
-    // KALDI_ASSERT(ApproxEqual(best_cost_in_chunk_, weight.Value1() +
-    // weight.Value2()+offset_sum, 1e-2));
+    // the following KALDI_ASSERT will fail some time, which is unexpected
+    KALDI_ASSERT(ApproxEqual(best_cost_in_chunk_, weight.Value1() +
+      weight.Value2()+offset_sum, 1e-2));
   }
 
   last_get_lattice_frame_ = last_frame_of_chunk;
@@ -1066,7 +1066,6 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       // For now, we use alpha (tot_cost) from the decoding stage as
       // the initial weights of arcs connecting to the states in the begin
       // of this chunk
-      // TODO: calculate alpha but not use tot_cost
       BaseFloat cost_offset = tok->tot_cost;
       // We record these cost_offset, and after we appending two chunks
       // we will cancel them out
@@ -1119,14 +1118,16 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
         }
         ofst->SetFinal(cur_state, weight);
         // for sanity check
+        // we will use extra_cost in step 1.3 (see the following code)
         best_cost_in_chunk_ = std::min(
-            best_cost_in_chunk_, tok->tot_cost + weight.Value1() + weight.Value2());
+            best_cost_in_chunk_, tok->tot_cost + tok->extra_cost + weight.Value1() + weight.Value2());
       }
     }
   }
   // step 1.3 create final_arc for later appending with the next chunk (in
   // GetLattice)
   if (create_final_state) {
+    final_state_in_chunk_.clear();
     StateId end_state = ofst->AddState(); // final-state for the chunk
     ofst->SetFinal(end_state, Weight::One());
 
@@ -1137,6 +1138,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       // We assign an unique state label for each of the token in the last frame
       // of this chunk
       int32 id = state_label_available_idx_++;
+      final_state_in_chunk_.insert(id);
       state_label_map_[tok] = id;
       // The final weight has been worked out in the previous for loop and
       // store in the states
@@ -1157,6 +1159,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       ofst->AddArc(cur_state, arc);
       ofst->SetFinal(cur_state, Weight::Zero());
     }
+    KALDI_VLOG(6) << final_state_in_chunk_.size();
   }
   return (ofst->NumStates() > 0);
 }
@@ -1198,13 +1201,16 @@ void LatticeIncrementalDecoderTpl<FST, Token>::AppendLatticeChunks(
       }
       // Process state labels, which will be used in step 3.2
       if (arc.olabel > config_.max_word_id) { // initial_arc
-        if (s == 0) { // record initial_arc in this chunk, we will use it right now
+        // In first chunk, there could be a final arc starting from state 0
+        // In the last chunk, there could be a initial arc ending in final state
+        if (not_first_chunk && s == 0) { // record initial_arc in this chunk, we will use it right now
           initial_arc_map[arc.olabel] = aiter.Position();
           if (last_get_lattice_frame_ != 0) // Erase since we are not interested
             initial_state_in_chunk_.erase(arc.olabel);
         } else { // final_arc
           // record final_arc in this chunk for the step 3.2 in the next call
           KALDI_ASSERT(clat.Final(arc.nextstate) != CompactLatticeWeight::Zero());
+          final_state_in_chunk_.erase(arc.olabel);
           final_arc_list_.push_back(
               pair<int32, size_t>(state_appended, aiter.Position()));
         }
@@ -1213,6 +1219,7 @@ void LatticeIncrementalDecoderTpl<FST, Token>::AppendLatticeChunks(
   }
   // sanity check, remove it later
   // KALDI_ASSERT(initial_state_in_chunk_.size() == 0);
+  // KALDI_ASSERT(final_state_in_chunk_.size() == 0);
 
   // step 3.2: connect the states between two chunks
   if (last_get_lattice_frame_ != 0) {
@@ -1259,8 +1266,6 @@ void LatticeIncrementalDecoderTpl<FST, Token>::AppendLatticeChunks(
         arc_appended_mod.ilabel = 0;
         aiter.SetValue(arc_appended_mod);
       } // otherwise, it has been pruned
-      state_label_initial_cost_.erase(arc_appended.olabel);
-      state_label_final_cost_.erase(arc_appended.olabel);
     }
     KALDI_ASSERT(prev_final_state != -1); // at least one arc should be appended
     // making all unmodified remaining arcs of final_arc_list_prev_ be connected to

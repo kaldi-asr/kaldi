@@ -477,6 +477,7 @@ class LatticeIncrementalDecoderTpl {
 
   BaseFloat best_cost_in_chunk_;                // for sanity check
   unordered_set<int32> initial_state_in_chunk_; // for sanity check
+  unordered_set<int32> final_state_in_chunk_; // for sanity check
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };
 
