@@ -54,7 +54,9 @@ class CuValue {
   inline Real operator = (Real r) { // assignment from Real
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {
-      CU_SAFE_CALL(cudaMemcpy(data_, &r, sizeof(Real), cudaMemcpyHostToDevice));
+      CU_SAFE_CALL(cudaMemcpyAsync(data_, &r, sizeof(Real), 
+            cudaMemcpyHostToDevice, cudaStreamPerThread));
+      CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
       return r;
     } else
 #endif
@@ -71,8 +73,9 @@ class CuValue {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Real value;
-    CU_SAFE_CALL(cudaMemcpy(&value, data_,
-                            sizeof(Real), cudaMemcpyDeviceToHost));
+    CU_SAFE_CALL(cudaMemcpyAsync(&value, data_, sizeof(Real), 
+                 cudaMemcpyDeviceToHost, cudaStreamPerThread));
+    CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     return value;
   } else
 #endif
