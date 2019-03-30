@@ -939,42 +939,28 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
     // step 1: Get lattice chunk with initial state
     // In this function, we do not create the initial state in
     // the first chunk, and we do not create the final state in the last chunk
-    KALDI_ASSERT(GetRawLattice(&raw_fst, use_final_probs, last_get_lattice_frame_,
-                               last_frame_of_chunk, not_first_chunk,
-                               !decoding_finalized_));
+    if (!GetRawLattice(&raw_fst, use_final_probs, last_get_lattice_frame_,
+                       last_frame_of_chunk, not_first_chunk, !decoding_finalized_))
+      KALDI_ERR << "Unexpected problem when getting lattice";
     // step 2: Determinize the chunk
     CompactLattice clat;
-#if 1
-    if (!DeterminizeLatticePhonePrunedWrapper(
-            trans_model_, &raw_fst, config_.beam, &clat, config_.det_opts))
+    // We do determinization with beam pruning here
+    // Only if we use a beam larger than (config_.beam+config_.lattice_beam) here, we
+    // can guarantee no final or initial arcs in clat are pruned by this function.
+    // These pruned final arcs can hurt oracle WER performance in the final lattice
+    // (also result in less lattice density) but they seldom hurt 1-best WER.
+    // Moreover, if we use (config_.beam) as the beam here, the oracle WER
+    // performance can be similar to that in lattice-faster-decoder (also similar
+    // lattice density). Hence we decide to use config_.beam here.
+    if (!DeterminizeLatticePhonePrunedWrapper(trans_model_, &raw_fst, config_.beam,
+                                              &clat, config_.det_opts))
       KALDI_WARN << "Determinization finished earlier than the beam";
-#else
-    // sanity check, remove it later
-    ConvertLattice(raw_fst, &clat);
-    Connect(&clat);
-#endif
 
     final_arc_list_.swap(final_arc_list_prev_);
     final_arc_list_.clear();
 
     // step 3: Appending the new chunk in clat to the old one in olat
     AppendLatticeChunks(clat, not_first_chunk, last_frame_of_chunk, olat);
-
-    // sanity check, remove them later
-    CompactLattice cdecoded;
-    Lattice decoded;
-    ShortestPath(*olat, &cdecoded);
-    ConvertLattice(cdecoded, &decoded);
-    LatticeWeight weight;
-    std::vector<int32> alignment;
-    std::vector<int32> words;
-    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-    BaseFloat offset_sum = 0;
-    for (int32 i = 1; i < last_frame_of_chunk; i++) offset_sum += cost_offsets_[i];
-    KALDI_ASSERT(alignment.size() == last_frame_of_chunk);
-    // TODO: the following KALDI_ASSERT will fail some time, which is unexpected
-    //KALDI_ASSERT(ApproxEqual(best_cost_in_chunk_, weight.Value1() +
-    //  weight.Value2()+offset_sum, 1e-2));
   }
 
   last_get_lattice_frame_ = last_frame_of_chunk;
@@ -1053,14 +1039,12 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
                 << " max:" << tok_map.max_load_factor();
   // step 1.1: create initial_arc for later appending with the previous chunk
   if (create_initial_state) {
-    initial_state_in_chunk_.clear();
     for (Token *tok = active_toks_[frame_begin].toks; tok != NULL; tok = tok->next) {
       StateId cur_state = tok_map[tok];
       // state_label_map_ is construct during create_final_state
       auto r = state_label_map_.find(tok);
       KALDI_ASSERT(r != state_label_map_.end()); // it should exist
       int32 id = r->second;
-      initial_state_in_chunk_.insert(id);
       // Use cost_offsets to guide DeterminizeLatticePruned()
       // later in GetLattice()
       // For now, we use alpha (tot_cost) from the decoding stage as
@@ -1073,10 +1057,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       Arc arc(0, id, Weight(0, cost_offset), cur_state);
       ofst->AddArc(begin_state, arc);
     }
-    KALDI_VLOG(6) << initial_state_in_chunk_.size();
   }
-  // for sanity check
-  best_cost_in_chunk_ = std::numeric_limits<BaseFloat>::infinity();
   // step 1.2: create all arcs as GetRawLattice()
   for (int32 f = frame_begin; f <= frame_end; f++) {
     for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next) {
@@ -1117,17 +1098,12 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
             weight = LatticeWeight::Zero();
         }
         ofst->SetFinal(cur_state, weight);
-        // for sanity check
-        // we will use extra_cost in step 1.3 (see the following code)
-        best_cost_in_chunk_ = std::min(
-            best_cost_in_chunk_, tok->tot_cost + tok->extra_cost + weight.Value1() + weight.Value2());
       }
     }
   }
   // step 1.3 create final_arc for later appending with the next chunk (in
   // GetLattice)
   if (create_final_state) {
-    final_state_in_chunk_.clear();
     StateId end_state = ofst->AddState(); // final-state for the chunk
     ofst->SetFinal(end_state, Weight::One());
 
@@ -1138,7 +1114,6 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       // We assign an unique state label for each of the token in the last frame
       // of this chunk
       int32 id = state_label_available_idx_++;
-      final_state_in_chunk_.insert(id);
       state_label_map_[tok] = id;
       // The final weight has been worked out in the previous for loop and
       // store in the states
@@ -1159,7 +1134,6 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       ofst->AddArc(cur_state, arc);
       ofst->SetFinal(cur_state, Weight::Zero());
     }
-    KALDI_VLOG(6) << final_state_in_chunk_.size();
   }
   return (ofst->NumStates() > 0);
 }
@@ -1174,7 +1148,7 @@ void LatticeIncrementalDecoderTpl<FST, Token>::AppendLatticeChunks(
   if (not_first_chunk)
     state_offset--; // since we do not append initial state in the first chunk
 
-  // A map between state label and the arc position (index)
+  // A map from state label to the arc position (index)
   // the incoming states of these arcs are initial states of the chunk
   // and the olabel of these arcs are the key of this map (state label)
   // The arc position are obtained from ArcIterator corresponding to the state
@@ -1203,76 +1177,77 @@ void LatticeIncrementalDecoderTpl<FST, Token>::AppendLatticeChunks(
       if (arc.olabel > config_.max_word_id) { // initial_arc
         // In first chunk, there could be a final arc starting from state 0
         // In the last chunk, there could be a initial arc ending in final state
-        if (not_first_chunk && s == 0) { // record initial_arc in this chunk, we will use it right now
+        if (not_first_chunk &&
+            s == 0) { // record initial_arc in this chunk, we will use it right now
           initial_arc_map[arc.olabel] = aiter.Position();
           if (last_get_lattice_frame_ != 0) // Erase since we are not interested
-            initial_state_in_chunk_.erase(arc.olabel);
         } else { // final_arc
           // record final_arc in this chunk for the step 3.2 in the next call
           KALDI_ASSERT(clat.Final(arc.nextstate) != CompactLatticeWeight::Zero());
-          final_state_in_chunk_.erase(arc.olabel);
           final_arc_list_.push_back(
               pair<int32, size_t>(state_appended, aiter.Position()));
         }
       }
     }
   }
-  // sanity check, remove it later
-  // KALDI_ASSERT(initial_state_in_chunk_.size() == 0);
-  // KALDI_ASSERT(final_state_in_chunk_.size() == 0);
 
-  // step 3.2: connect the states between two chunks
+  // step 3.2: connect the states between two chunks, i.e. chunk1 in olat and chunk2
+  // in clat in the following
+  // Notably, most states and arcs of clat has been copied to olat in step 3.1
+  // This step is mainly to process the boundary of these two chunks
   if (last_get_lattice_frame_ != 0) {
     KALDI_ASSERT(final_arc_list_prev_.size());
-    StateId prev_final_state = -1;
+    vector<StateId> prev_final_states;
     for (auto &i : final_arc_list_prev_) {
-      MutableArcIterator<CompactLattice> aiter(olat, i.first);
-      aiter.Seek(i.second);
-      // Obtain the appended final arcs in the last chunk
-      auto &arc_appended = aiter.Value();
+      MutableArcIterator<CompactLattice> aiter_chunk1(olat, i.first);
+      aiter_chunk1.Seek(i.second);
+      // Obtain the appended final arcs in the previous chunk
+      auto &arc_chunk1 = aiter_chunk1.Value();
       // Find out whether its corresponding Token still exists in the begin
       // of this chunk. If not, it is pruned by PruneActiveTokens()
-      auto r = initial_arc_map.find(arc_appended.olabel);
+      auto r = initial_arc_map.find(arc_chunk1.olabel);
       if (r != initial_arc_map.end()) {
-        ArcIterator<CompactLattice> aiter_unappended(clat, 0); // initial state
-        aiter_unappended.Seek(r->second);
-        const auto &arc_unappended = aiter_unappended.Value();
-        KALDI_ASSERT(arc_unappended.olabel == arc_appended.olabel);
-        StateId state_appended = arc_unappended.nextstate + state_offset;
-        if (prev_final_state == -1)
-          prev_final_state = arc_appended.nextstate;
-        else
-          KALDI_ASSERT(arc_appended.nextstate == prev_final_state);
-        // For the later code in this loop, we try to modify the arc_appended
+        ArcIterator<CompactLattice> aiter_chunk2(clat, 0); // initial state
+        aiter_chunk2.Seek(r->second);
+        const auto &arc_chunk2 = aiter_chunk2.Value();
+        KALDI_ASSERT(arc_chunk2.olabel == arc_chunk1.olabel);
+        StateId state_chunk1 = arc_chunk2.nextstate + state_offset;
+        StateId prev_final_state = arc_chunk1.nextstate;
+        prev_final_states.push_back(prev_final_state);
+        // For the later code in this loop, we try to modify the arc_chunk1
         // to connect the last frame state of last chunk to the first frame
         // state of this chunk. These begin and final states are
         // corresponding to the same Token, guaranteed by unique state labels.
-        CompactLatticeArc arc_appended_mod(arc_appended);
-        arc_appended_mod.nextstate = state_appended;
-
-        CompactLatticeWeight weight_offset, weight_offset_final;
-        weight_offset.SetWeight(
-            LatticeWeight(0, -state_label_initial_cost_[arc_appended.olabel]));
-        weight_offset_final.SetWeight(
-            LatticeWeight(0, -state_label_final_cost_[arc_appended.olabel]));
-        arc_appended_mod.weight =
-            Times(arc_appended_mod.weight, arc_unappended.weight);
-        arc_appended_mod.weight =
-            Times(arc_appended_mod.weight, olat->Final(prev_final_state));
-        arc_appended_mod.weight = Times(arc_appended_mod.weight, weight_offset);
-        arc_appended_mod.weight =
-            Times(arc_appended_mod.weight, weight_offset_final);
-        arc_appended_mod.olabel = 0;
-        arc_appended_mod.ilabel = 0;
-        aiter.SetValue(arc_appended_mod);
+        CompactLatticeArc arc_chunk1_mod(arc_chunk1);
+        arc_chunk1_mod.nextstate = state_chunk1;
+        { // Update arc weight in this section
+          CompactLatticeWeight weight_offset, weight_offset_final;
+          auto r1 = state_label_initial_cost_.find(arc_chunk1.olabel);
+          KALDI_ASSERT(r1 != state_label_initial_cost_.end());
+          weight_offset.SetWeight(LatticeWeight(0, -r->second));
+          auto r2 = state_label_final_cost_.find(arc_chunk1.olabel);
+          KALDI_ASSERT(r2 != state_label_final_cost_.end());
+          weight_offset_final.SetWeight(LatticeWeight(0, -r->second));
+          arc_chunk1_mod.weight = Times(
+              Times(Times(Times(arc_chunk2.weight, olat->Final(prev_final_state)),
+                          weight_offset),
+                    weight_offset_final),
+              arc_chunk1_mod.weight);
+        }
+        // After appending, state labels are of no use and we remove them
+        arc_chunk1_mod.olabel = 0;
+        arc_chunk1_mod.ilabel = 0;
+        aiter_chunk1.SetValue(arc_chunk1_mod);
       } // otherwise, it has been pruned
     }
-    KALDI_ASSERT(prev_final_state != -1); // at least one arc should be appended
-    // making all unmodified remaining arcs of final_arc_list_prev_ be connected to
-    // a dead state
-    olat->SetFinal(prev_final_state, CompactLatticeWeight::Zero());
+    KALDI_ASSERT(prev_final_states.size()); // at least one arc should be appended
+    // Making all unmodified remaining arcs of final_arc_list_prev_ be connected to
+    // a dead state. The following prev_final_states can be the same or different states
+    for (auto i:prev_final_states) 
+      olat->SetFinal(i, CompactLatticeWeight::Zero());
   } else
-    olat->SetStart(0);
+    olat->SetStart(0); // Initialize the first chunk for olat
+
   KALDI_VLOG(2) << "Frame: " << last_frame_of_chunk
                 << " states of chunk: " << clat.NumStates()
                 << " states of the lattice: " << olat->NumStates();

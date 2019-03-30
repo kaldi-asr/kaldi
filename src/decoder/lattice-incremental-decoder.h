@@ -418,6 +418,10 @@ class LatticeIncrementalDecoderTpl {
   ///                         This does extra work, but not nearly as much as
   ///                         determinizing
   ///                          a RawLattice from scratch.
+  ///   @param [in]  last_frame_of_chunk  Pass the last frame of this chunk to
+  ///                       the function. We make it not always equal to
+  ///                         NumFramesDecoded() to have a delay on the
+  ///                       deteriminization
   ///  @param [out] lat   The CompactLattice representing what has been decoded
   ///                          so far.
   ///   @return reached_final    This function will returns true if a state that was
@@ -429,21 +433,6 @@ class LatticeIncrementalDecoderTpl {
   ///                         LatticeFasterDecoder::GetLattice().
   bool GetLattice(bool use_final_probs, bool redeterminize,
                   int32 last_frame_of_chunk, CompactLattice *olat);
-  CompactLattice lat_;                            // the compact lattice we obtain
-  int32 last_get_lattice_frame_;                  // the last time we call GetLattice
-  unordered_map<Token *, int32> state_label_map_; // between Token and state_label
-  int32 state_label_available_idx_;    // we allocate a unique id for each Token
-  const TransitionModel &trans_model_; // keep it for determinization
-  std::vector<std::pair<StateId, size_t>> final_arc_list_; // keep final_arc
-  std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
-  // We keep tot_cost or extra_cost for each state_label (Token) in final and
-  // initial arcs. We need them before determinization
-  // We cancel them after determinization
-  // TODO use 2 vector to replace this map, since state_label is continuous
-  // in each frame, and we need 2 frames of them
-  unordered_map<int32, BaseFloat> state_label_initial_cost_;
-  unordered_map<int32, BaseFloat> state_label_final_cost_;
-
   /// This function is modified from LatticeFasterDecoderTpl::GetRawLattice()
   /// and specific design for incremental GetLattice
   /// It does the same thing as GetRawLattice in lattice-faster-decoder.cc except:
@@ -464,6 +453,20 @@ class LatticeIncrementalDecoderTpl {
                      int32 frame_end, bool create_initial_state,
                      bool create_final_state);
 
+  CompactLattice lat_;                            // the compact lattice we obtain
+  int32 last_get_lattice_frame_;                  // the last time we call GetLattice
+  unordered_map<Token *, int32> state_label_map_; // between Token and state_label
+  int32 state_label_available_idx_;    // we allocate a unique id for each Token
+  // We keep tot_cost or extra_cost for each state_label (Token) in final and
+  // initial arcs. We need them before determinization
+  // We cancel them after determinization
+  unordered_map<int32, BaseFloat> state_label_initial_cost_;
+  unordered_map<int32, BaseFloat> state_label_final_cost_;
+
+  const TransitionModel &trans_model_; // keep it for determinization
+  std::vector<std::pair<StateId, size_t>> final_arc_list_; // keep final_arc
+  std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
+
   // Take care of the step 3 in GetLattice, which is to
   // appending the new chunk in clat to the old one in olat
   // If not_first_chunk == false, we do not need to append and just copy
@@ -475,9 +478,6 @@ class LatticeIncrementalDecoderTpl {
   void AppendLatticeChunks(CompactLattice clat, bool not_first_chunk,
                            int32 last_frame_of_chunk, CompactLattice *olat);
 
-  BaseFloat best_cost_in_chunk_;                // for sanity check
-  unordered_set<int32> initial_state_in_chunk_; // for sanity check
-  unordered_set<int32> final_state_in_chunk_; // for sanity check
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };
 
