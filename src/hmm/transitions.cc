@@ -208,17 +208,88 @@ void Transitions::Check() const {
 void Transitions::Print(std::ostream &os,
                             const std::vector<std::string> &phone_names,
                             const Vector<double> *occs) {
+  if (occs != NULL)
+    KALDI_ASSERT(occs->Dim() == NumPdfs());
+  for (int32 tid = 1; tid <= NumTransitionIds(); tid++) {
+    auto const &transition = info_[tid];
+    KALDI_ASSERT(static_cast<size_t>(transition.phone) < phone_names.size());
+    std::string phone_name = phone_names[transition.phone];
+
+    os << "Transition-id " << tid << ": phone = " << phone_name
+       << " topo-state = " << transition.topo_state
+       << " arc-index = " << transition.arc_index
+       << " forward-pdf = " << transition.pdf_id << " self-loop-pdf = "
+       << transition.self_loop_pdf_id
+       << " p = " << transition.transition_cost;
+    if (occs != NULL) {
+      if (transition.is_self_loop)
+        os << " count of pdf = " << (*occs)(transition.self_loop_pdf_id);
+      else
+        os << " count of pdf = " << (*occs)(transition.pdf_id);
+    }
+    if (transition.is_self_loop) os << " [self-loop]\n";
+    else {
+      auto const &entry = topo_.TopologyForPhone(transition.phone);  // an FST
+      fst::ArcIterator<fst::StdVectorFst> aiter(entry, transition.topo_state);
+      aiter.Seek(transition.arc_index);
+      auto const &arc(aiter.Value());
+      os << " [" << transition.topo_state << " -> " << arc.nextstate << "]\n";
+    }
+  }
 }
 
 bool GetPdfsForPhones(const Transitions &trans_model,
                       const std::vector<int32> &phones,
                       std::vector<int32> *pdfs) {
+  KALDI_ASSERT(IsSortedAndUniq(phones));
+  KALDI_ASSERT(pdfs != NULL);
+  pdfs->clear();
+  for (int32 tid = 1; tid <= trans_model.NumTransitionIds(); tid++) {
+    auto const &transition = trans_model.InfoForTransitionId(tid);
+    if (std::binary_search(phones.begin(), phones.end(), transition.phone)) {
+      pdfs->push_back(transition.pdf_id);
+      pdfs->push_back(transition.self_loop_pdf_id);
+    }
+  }
+  SortAndUniq(pdfs);
+
+  for (int32 tid = 1; tid <= trans_model.NumTransitionIds(); tid++) {
+    auto const &transition = trans_model.InfoForTransitionId(tid);
+    if ((std::binary_search(pdfs->begin(), pdfs->end(),
+                            transition.pdf_id) ||
+         std::binary_search(pdfs->begin(), pdfs->end(),
+                            transition.self_loop_pdf_id))
+        && !std::binary_search(phones.begin(), phones.end(),
+                               transition.phone))
+      return false;
+  }
   return true;
 }
 
 bool GetPhonesForPdfs(const Transitions &trans_model,
                      const std::vector<int32> &pdfs,
                      std::vector<int32> *phones) {
+  KALDI_ASSERT(IsSortedAndUniq(pdfs));
+  KALDI_ASSERT(phones != NULL);
+  phones->clear();
+  for (int32 tid = 1; tid <= trans_model.NumTransitionIds(); tid++) {
+    auto const &transition = trans_model.InfoForTransitionId(tid);
+    if (std::binary_search(pdfs.begin(), pdfs.end(), transition.pdf_id) ||
+        std::binary_search(pdfs.begin(), pdfs.end(), transition.self_loop_pdf_id))
+      phones->push_back(transition.phone);
+  }
+  SortAndUniq(phones);
+
+  for (int32 tid = 1; tid <= trans_model.NumTransitionIds(); tid++) {
+    auto const &transition = trans_model.InfoForTransitionId(tid);
+    if (std::binary_search(phones->begin(), phones->end(),
+                           transition.phone)
+        && !(std::binary_search(pdfs.begin(), pdfs.end(),
+                                transition.pdf_id) &&
+             std::binary_search(pdfs.begin(), pdfs.end(),
+                                transition.self_loop_pdf_id)))
+      return false;
+  }
   return true;
 }
 
