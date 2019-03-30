@@ -40,27 +40,118 @@ namespace tensor {
 // Sets all elements of the tensor to zero.
 void SetZero(const Tensor *tensor);
 
-// Sets all elements of the tensor to value f (cast to whatever type
-// this Tensor has).
-void SetZero(float f, const Tensor *tensor);
+// Sets all elements of the tensor to value f (cast to whatever type this Tensor
+// has).
+void Set(float f, const Tensor *tensor);
 
 
 // Return a transposed version of this Tensor that shares the underlying memory.
 Tensor Transpose(const Tensor &tensor, int64_t axis1 = 0, int64_t axis2 = 1);
 
 /**
-   Copy the data from tensor 'src' to tensor 'dest'.  Does not change the tensor
-   metadata, but does change the data underlying the Tensor 'dest'.
+   Copy the data from tensor 'src' to tensor 'dest', allowing broadcasting
+   (so a dim of src can be 1 while the corresponding dim of 'dest' is >1).
+   Requires Broadcastable(src, *dest, true).
 
-   Requires that src.Dims() an dest->Dims() be compatible, meaning that they are
-   the same, except it's OK for a dim of 'dest' to be 1 and a dim of 'src' to be
-   >1; in such cases, we will broadcast the element from 'src' across the larger
-   dimension of 'dest'.
-
-   Does not require that the Dtype() or Device() of src and dest be the
-   same.
+   Does not require that the Dtype() or Device() of src and dest be the same
+   (i.e. does not require Compatible(src, *dest)).  This is the only way in
+   which Copy() is more general than Add(); otherwise, what Copy() does is a
+   strict subset of what Add(1.0, 0.0, ...)  can do.
 */
-void CopyData(const Tensor &src, const Tensor *dest);
+void Copy(const Tensor &src, const Tensor *dest);
+
+
+
+/**
+   Template used to implement unary functions such as Log, Relu, and
+   so on (this avoids boilerplate).
+
+   Implements dest = F(src), where the F is applied elementwise.
+
+     @param [in] src  Source Tensor
+     @param [out] dest  Destination Tensor.  We require
+                       SameDim(src, *dest).  May be the same
+                       Tensor as 'src' (but must not partially
+                       overlap in memory with 'src').
+
+ */
+template <UnaryFunctionEnum F>
+void UnaryFunctionTpl(const Tensor &src, const Tensor *dest);
+
+
+/*
+   Implements *dest = exp(src), applied elementwise.
+
+     @param [in] src  Source Tensor
+     @param [out] dest  Destination Tensor.  We require
+                       SameDim(src, *dest).  May be the same
+                       Tensor as 'src' (but must not partially
+                       overlap in memory with 'src').
+ */
+inline void Exp(const Tensor &src, const Tensor *dest) {
+  UnaryFunctionTpl<kUnaryFunctionExp>(src, dest);
+}
+
+// TODO: other unary function wrappers.
+
+
+
+/**
+   Template used to implement binary functions such as division,
+   taking to a power, max.
+
+   Implements c = F(a, b), where F is some function of two scalars
+   that returns a scalar.
+
+     @param [in] a  First source Tensor
+     @param [in] b  Second source Tensor
+     @param [out] c   Destination Tensor.  We require SameDim(a, b, c).
+                     'c' does not have to be initialized on entry and
+                     is allowed to be the same Tensor as one of a or b.
+ */
+template <BinaryFunctionEnum F>
+void BinaryFunctionTpl(const Tensor &a, Tensor &b, const Tensor *c);
+
+
+
+
+/*
+   Implements c = a / b, applied elementwise.
+
+     @param [in] a  First source Tensor
+     @param [in] b  Second source Tensor
+     @param [out] c   Destination Tensor.  We require SameDim(a, b, c).
+                    'c' does not have to be initialized on entry and
+                    is allowed to be the same Tensor as one of a or b.
+ */
+inline void Div(const Tensor &a, Tensor &b, const Tensor *c) {
+  BinaryFunctionTpl<kBinaryFunctionDivide>(a, b, c);
+}
+
+// TODO: more binary functions.
+
+
+
+
+
+
+
+
+/**
+   Does
+
+      dest := alpha * src  +  beta * dest
+
+   while supporting broadcasting and summation, as dictated by the shapes
+   of src and dest.  If beta == 0, guarantees that NaN's or inf's will
+   not be propagated from the original data in 'dest' (so it works with
+   uninitialized 'dest' if beta == 0).
+
+   Requires Broadcastable(src, *dest) and Compatible(src, *dest).
+   If src and dest have an integer Dtype, alpha and beta will
+   be cast to integers before the operation.
+*/
+void Add(float alpha, float beta, const Tensor &src, const Tensor *dest);
 
 /**
   Construct, if possible, a Tensor that is a view into 'src' with the

@@ -25,45 +25,11 @@
 
 /**
    This header contains basic linear-algebra and copying types of operations
-   on TensorImpl objects.  See also tensor-impl-nonlinearly
- */
+   on TensorImpl objects.  See also tensor-impl-nonlinear.h
+*/
 
 namespace kaldi {
 namespace tensor {
-
-/**
-   Modifies 't' in-place by inserting an axis with (dim=1,stride=0) at the
-   specified position.  Updates the code.
-
-   A negative axis-index i is interpreted (like PyTorch) as (num_axes + 1 - i).
-
-   Showing just the dims in the tensor for some examples:
-
-\verbatim
-    Unsqueeze({3,4}, 0)  -> {1,3,4}
-    Unsqueeze({3,4}, 1)  -> {3,1,4}
-    Unsqueeze({3,4}, 2)  -> {3,4,1}
-    Unsqueeze({3,4}, -1)  -> {3,4,1}
-    Unsqueeze({3,4}, -2)  -> {3,1,4}
-\endverbatim
- */
-void Unsqueeze(TensorImpl *t, int32 axis)
-
-
-/**
-   Modifies 't' in-place by removing an axis with (dim=1,stride=0) from the
-   specified position.  It is an error if 't' did not initially contain
-   such an axis.
-
-   Showing just the dims in the tensor for an example:
-
-\verbatim
-    Unsqueeze({1,3,4}, 0)  -> {3,4}
-    Unsqueeze({3,1,4}, 1)  -> {3,4}
-    Unsqueeze({3,1,4}, 2)  -> [error]
-\endverbatim
- */
-void Squeeze(TensorImpl *t, int32 axis);
 
 
 
@@ -78,7 +44,8 @@ void Squeeze(TensorImpl *t, int32 axis);
 
    The Tensors do not all have to have the same NumAxes(); they will
    (conceptually) be made the same size by padding on the left with trivial axes
-   (dim=1;stride=0) to make them the same size.
+   (dim=1;stride=0) to make them the same size.  (Physically, we'd pad
+   on the right, since the axes are stored in reversed order).
 
    The Tensors need to have the same Dtype() and Device().
 
@@ -135,8 +102,11 @@ void Add(float alpha, float beta,
    The implementation is just:
 
      Tensor a_tmp(a), c_tmp(c);
-     a_tmp.Unsqueeze(-1);
-     c_tmp.Unsqueeze(-2);
+     Unsqueeze(0, &a_tmp);  // the 0 is in reversed numbering;
+                            // means introduce final dim=1 axis
+     Unsqueeze(1, &c_tmp);   // the 1 is in reversed numbering;
+                            // means introduce penultimate dim=1 axis.
+     Unsqueeze(2, &b_tmp);
      AddProduct(alpha, beta, a_tmp, b, c_tmp);
 
  */

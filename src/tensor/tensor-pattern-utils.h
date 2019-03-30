@@ -19,6 +19,7 @@
 
 
 #include "tensor/tensor-common.h"
+#include "tensor/array-ref.h"
 
 /**
    This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
@@ -31,14 +32,14 @@ namespace tensor {
 /**
    This function returns a code that compactly says whether each axis
    has dim = 1 or dim != 1.  For purposes of the code generated, the number
-   of axes does not matter; imagine we left-padded with enough `dim=1`
-   axes to give KALDI_TENSOR_MAX_DIM axes.
+   of axes does not matter.  The lower-order KALDI_TENSOR_MAX_DIM bits
+   of the code might potentially be set; the rest will be zero.
 
-   The rightmost (least significant) bit is the last axis (numbered
-   KALDI_TENSOR_MAX_DIM - 1 after padding).
+   The rightmost (least significant) bit corresponds to the last-numbered axis,
+   equivalent to raxis (reversed axis-index) == 0.
 
-   Note that the `dims` vectors below are displayed after removing
-   any leading `dim=1` axes.
+   Note that non of the example `dims` vectors below have any leading
+   (dim=1) axes, because they wouldn't affect the code.
 
    The examples below will use c++14 binary literals, although
    the code doesn't use them.  In the notation below, in dims vectors,
@@ -58,7 +59,7 @@ int32 GetDimsCode(const TensorPattern &pattern);
 
 
 enum PatternEnum {
-  kPatternContainsNegativeStride = 2048;
+  kPatternContainsNegativeStride = 2048
   // e.g.:
   // bool contains_negative_stride =
   //     (pattern.code | kPatternContainsNegativeStride) != 0;
@@ -67,31 +68,37 @@ enum PatternEnum {
 // Returns true if the pattern code indicates that the pattern contains a
 // negative stride.
 inline bool ContainsNegativeStride(int32 pattern_code) {
-  return (pattern.code | kPatternContainsNegativeStride) != 0;
+  return (pattern_code | kPatternContainsNegativeStride) != 0;
 }
 
-// Returns true if the pattern code indicates that the axis
-// numbered axis is 'trivial' (meaning: dim=1, stride=0).
-// Note that the axis numbering is 'shifted to the right',
-// so the last-numbered axis is at KALDI_TENSOR_MAX_DIM - 1.
-inline bool AxisIsTrivial(int32 pattern_code, int32 iaxis) {
-  return (pattern_code | 1 << ((KALDI_TENSOR_MAX_DIM - 1) - iaxis)) == 0;
+// Returns true if the pattern code indicates that the raxis
+// numbered 'raxis' (the r refers to the backwards numbering used
+// in 'pattern') is 'trivial' (meaning: dim=1, stride=0).
+inline bool AxisIsTrivial(int32 pattern_code, int32 raxis) {
+  return (pattern_code | 1 << raxis) == 0;
 }
 
 
 /**
    This function returns a code that compactly represents the same information
-   as GetDimsCode() [i.e. which axes, counting from the last axis,
-   had dim != 1], and also which axis, if any,
-   had stride=1.  (No two axes can have stride=1, due to the uniqueness
-   rule; search in tensor-pattern.h).
+   as GetDimsCode() [i.e. which axes had dim != 1], but also encodes which axis,
+   if any, had stride=1, and has a bit that says whether any axis had negative
+   stride.  (No two axes can have stride=1, due to the uniqueness rule; search
+   in tensor-pattern.h).
 
    Let
       n = 0 if no axis had stride=1, otherwise:
-      n = num_axes - (the axis that had stride=1).
+      n = 1 + the raxis index which had stride=1.
 
-   For example if the strides where (10,3,1) we would have
-   n = 1; i if the strides were (10,1,3) we would have n = 2.
+    (raxis is the axis index when accessing the axes in reversed order, as
+     stored in pattern.dims and pattern.strides).
+
+   For example if the strides were [10,3,1] we would have
+   n = 1; i if the strides were [10,1,3] we would have n = 2.
+
+   IMPORTANT NOTE ON ORDERING: lists of dims or strides in square
+   brackets, like [1,2], are in the non-reversed ordering as exposed
+   by the Tensor API.
 
    The value 'n' occupies the bits starting from 8 in the returned code,
    i.e. bits 8,9,10 (counting from the right, i.e. from the least to
@@ -113,34 +120,31 @@ inline bool AxisIsTrivial(int32 pattern_code, int32 iaxis) {
    not equal to 1', and upper-case X indicates that the axis has stride=1.  In
    the example `dims` vectors below, we don't put any leading `dim=1` axes,
    because they would not affect the code generated.  The list of numbers
-   in parentheses below may be interpreted as the sequence of dims for the
-   Tensor.
+   in square brackets [] below may be interpreted as the sequence of dims for the
+   Tensor, in the non-reversed ordering that the Tensor API exposes.
 
    The ' at the 8th bit is to make the bit-string easier to parse.
 
-
-    0b000'00000000  0x000  dims=(), a scalar
-    0b000'00000001  0x001  dims=(x), a vector with a stride
-    0b001'00000001  0x101  dims=(X), a vector
-    0b000'00000010  0x002  dims=(x,1),  a vector.unsqueeze(-1) with a stride
-    0b010'00000010  0x202  dims=(X,1),  a vector.unsqueeze(-1)
-    0b000'00000011  0x003  dims=(x,x), a matrix with a stride
-    0b001'00000011  0x103  dims=(x,X), a matrix
-    0b010'00000011  0x203  dims=(X,x), a transposed matrix
-    0b000'00000100  0x008  dims=(x,1,1)
-    0b011'00000100  0x308  dims=(X,1,1)
-    0b010'00000110  0x20B  dims=(x,X,1), a matrix.unsqueeze(-1)
-    0b011'00000110  0x30B  dims=(X,x,1), a transposed matrix.unsqueeze(-1)
-    0b000'00000110  0x10B  dims=(x,x,1), a matrix.unsqueeze(-1) with column stride
-    0b001'00000101  0x109  dims=(x,1,X), a matrix.unsqueeze(-2)
-    0b011'00000101  0x309  dims=(X,1,x), a transposed matrix.unsqueeze(-2)
-    0b000'00000101  0x009  dims=(x,1,x), a matrix.unsqueeze(-2) with column stride
-
+    0b000'00000000  0x000  dims=[], a scalar
+    0b000'00000001  0x001  dims=[x], a vector with a stride
+    0b001'00000001  0x101  dims=[X], a vector
+    0b000'00000010  0x002  dims=[x,1], a vector with a stride
+    0b010'00000010  0x202  dims=[X,1], a vector
+    0b000'00000011  0x003  dims=[x,x], a matrix with a stride
+    0b001'00000011  0x103  dims=[x,X], a matrix
+    0b010'00000011  0x203  dims=[X,x], a transposed matrix
+    0b000'00000100  0x008  dims=[x,1,1], a vector with a stride
+    0b011'00000100  0x308  dims=[X,1,1], a vector
+    0b010'00000110  0x20B  dims=[x,X,1], a matrix
+    0b011'00000110  0x30B  dims=[X,x,1], a transposed matrix
+    0b000'00000110  0x10B  dims=[x,x,1], a matrix with column stride
+    0b001'00000101  0x109  dims=[x,1,X], a matrix
+    0b011'00000101  0x309  dims=[X,1,x], a transposed matrix
+    0b000'00000101  0x009  dims=[x,1,x], a matrix with column stride
 
     ...
  */
 int32 ComputePatternCode(const TensorPattern &pattern);
-
 
 
 inline int32 CombineCodes(int32 code1, int32 code2) {
@@ -156,59 +160,126 @@ inline int64 CombineCodes(int32 code1, int32 code2, int32 code3) {
 
 /**
    Modifies 'p' in-place by inserting an axis with (dim=1,stride=0) at the
-   specified position.  Updates the code.
+   specified position specified in the reversed numbering physically used
+   in the pattern.  Updates p->code.
 
-   A negative axis-index i is interpreted (like PyTorch) as inserting
-   an element at position (num_axes + 1 - i).
-
-   Showing just the dims in the tensor for some examples:
+   Showing just the dims in the pattern (in the order physically present in the
+   dims array), for some examples:
 
 \verbatim
-    Unsqueeze({3,4}, 0)  -> {1,3,4}
-    Unsqueeze({3,4}, 1)  -> {3,1,4}
-    Unsqueeze({3,4}, 2)  -> {3,4,1}
-    Unsqueeze({3,4}, -1)  -> {3,4,1}
-    Unsqueeze({3,4}, -2)  -> {3,1,4}
+    UnsqueezeR({3,4}, 0)  -> {1,3,4}
+    UnsqueezeR({3,4}, 1)  -> {3,1,4}
+    UnsqueezeR({3,4}, 2)  -> {3,4,1}
 \endverbatim
+
+     @param [in]    raxis   The index at which the extra axis is to appear.
+                            We require 0 <= raxis <= p->num_axes.
+     @param [in,out] p      The pattern to which we are adding an axis.
+                            Will have its num_axes increased by 1
+                            at exit, possibly its dims and strides
+                            arrays changed, and its code updated.
  */
-void Unsqueeze(TensorPattern *p, int32 axis)
+void UnsqueezeR(int32 raxis, TensorPattern *p);
+
 
 /**
-   Modifies 'p' in-place by removing an axis with (dim=1,stride=0) from the
-   specified position.  It is an error if 't' did not initially contain
-   such an axis.  This function updates the code.
+   Modifies 'p' in-place by inserting an axis with (dim=1,stride=0) at the
+   specified axis-index (numbered in the public numbering).
+   Equivalent to PyTorch's unsqueeze(), including its behavior with
+   negative axis indexes (axis < 0 is interpreted as to num_axes + 1 - axis).
 
-   Negative numbers are interepreted relative to the end of the array,
-   e.g. -1 means remove the last element.
-
-   Showing just the dims in the tensor for an example:
+   Showing just the dims in the pattern, in the non-reversed order as
+   exported by the API, some examples are:
 
 \verbatim
-    Squeeze({1,3,4}, 0)  -> {3,4}
-    Squeeze({3,1,4}, 1)  -> {3,4}
-    Squeeze({3,1,4}, 2)  -> [error]
+    Unsqueeze([6,5], 0) -> [1,6,5]
+    Unsqueeze([3,4], 1) -> [3,1,4]
+    Unsqueeze([9,10], 2) -> [9,10,1]
+    Unsqueeze([9,10], -1) -> [9,10,1]
 \endverbatim
+
+     @param [in]    axis   The index at which the extra axis is to appear.
+                           We require -p->num_axes - 1 <= raxis <= p->num_axes
+                           The large allowable range is because negative
+                           axes are permitted, e.g. -1 means insert a new
+                           axis after the last existing axis.
+     @param [in,out] p      The pattern to which we are adding an axis.
+                            Will have its num_axes increased by 1
+                            at exit, possibly its dims and strides
+                            arrays changed, and its code updated.
  */
-void Squeeze(TensorPattern *p, int32 axis);
+inline void Unsqueeze(int32 axis, TensorPattern *p) {
+  if (axis < 0) UnsqueezeR(1 - axis, p);
+  else UnsqueezeR(p->num_axes - axis, p);
+}
+
+/**
+   Modifies 'p' in-place by removing an axis with dim=1 from the specified
+   position (in the reversed numbering physically used in the pattern).  Updates
+   p->code.  It is an error if 'p' did not, on entry, contain an axis with dim=1
+   as position 'raxis' in the array.
 
 
-/**  This function returns true if the dimensions of tensor patterns
-     a and b are broadcastable in the PyTorch sense.  What this means
-     for tensors with the same num-axes is that dims for axis i
-     must either be the same or one of them must be 1.  For tensors
-     with different num-axes we (conceptually) check this after
-     padding with leading (dim=1)'s; for
-     instance, dims=(2,8,3) and dims=(8,1) would be broadcastable because
-     the (8,1) would be interpreted as (1,8,1).
+   Modifies 'p' in-place by removing an axis with dim=1 from the
+   specified position specified in the reversed numbering physically used in the
+   pattern.  Updates p->code.  It is an error if 'p' did not initially contain
+   an axis with dim=1 at position 'raxis' in the array.
 
-     If 'b_non_reducing' is true, then we do not allow any dim of
-     b to be 1 where the corresponding dim of a was not 1.
+   This function updates p->code.
 
-     This check is simple to implement due to the way we store
-     the dims 'right-justified' so that the last-numbered dim
-     is always at dims[KALDI_TENSOR_MAX_DIM - 1].
+   In the example below we show the dims in the order they appear in the
+   physical array:
+\verbatim
+   SqueezeR(0, {1,3,4})  -> {3,4}
+   SqueezeR(1, {5,1,7})  -> {5,7}
+   SqueezeR(2, {8,1,9})  -> [error]
+\endverbatim
+     @param [in]    raxis   The reversed-order axis to be squeezed.
+                            We require 0 <= raxis < p->num_axes and
+                            p->dims[raxis] == 1.
+     @param [in,out] p      The pattern from which we are removing an
+                            axis.  Will have its num_axes reduced by 1
+                            at exit, possibly its dims and strides
+                            arrays changed, and its 'code' updated.
+*/
+void SqueezeR(int32 raxis, TensorPattern *p);
+
+
+/**
+   Modifies 'p' in-place by removing an axis with dim=1 (hence stride=0)
+   located at the specified axis (as numbered in the public numbering).
+   Equivalent to PyTorch's squeeze(), including its behavior with
+   negative axis indexes; axis < 0 is interpreted as to num_axes - axis,
+   i.e. the last axis.  It is an error if 'p' did not, on entry,
+   contain an axis with dim=1 at position 'axis' (in the public numbering).
+
+   Showing just the dims in the pattern, in the non-reversed order as
+   exported by the API, some examples are:
+\verbatim
+    Squeeze([1,6,5], 0) -> [6,5]
+    Squeeze([3,1,4], 1) -> [3,4]
+    Squeeze([9,1,10], 2) -> error
+    Squeeze([7,1], -1) -> [7]
+\endverbatim
+
+     @param [in]    axis    The index at which the extra axis is to appear.
+                            We require -p->num_axes <= axis < p->num_axes
+                            (negative axes are permitted, interpreted
+                            as an offset from p->num_axes).
+                            We require that the specified axis have
+                            dim=1.
+     @param [in,out] p      The pattern from which we are removing an
+                            axis.  Will have its num_axes reduced by 1
+                            at exit, possibly its dims and strides
+                            arrays changed, and its 'code' updated.
  */
-bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
+inline void Squeeze(int32 axis, TensorPattern *p) {
+  if (axis < 0) SqueezeR(1 - axis, p);
+  else SqueezeR(p->num_axes - 1 - axis, p);
+}
+
+
+ybool Broadcastable(const TensorPattern &a, const TensorPattern &b,
                    bool b_non_reducing = false);
 
 
@@ -232,6 +303,31 @@ bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
 
 
 /**
+   Returns true if the 'dims' vectors of a and b are the same.
+   Does not require the number of axes to be the same, so effectively
+   it's testing that the dims are the same after padding on the left
+   with dim=1 (here referring to the public, non-reversed numbering
+   of the dims).
+
+   This is a stronger condition than Broadcastable(a, b).
+ */
+bool SameDim(const TensorPattern &a, const TensorPattern &b);
+
+
+/**
+   Returns true if the 'dims' vectors of a, b and c are all the same.
+   Does not require the number of axes to be the same, so effectively
+   it's testing that the dims are the same after padding on the left
+   with dim=1 (here referring to the public, non-reversed numbering
+   of the dims).
+
+   This is a stronger condition than Broadcastable(a, b, c).
+ */
+bool SameDim(const TensorPattern &a, const TensorPattern &b,
+             const TensorPattern &c);
+
+
+/**
    Compresses a TensorPattern by removing or combining as many axes as possible.
    This version is suitable for operations that do not rely on any kind
    of structure, such as zeroing or nonlinearities; the only equivalence
@@ -240,18 +336,20 @@ bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
    output.  The output (dim,stride) pairs will be ordered from
    greatest to least stride (note: all output strides will be positive).
 
-      @param [in]  src   The pattern to be compressed
-      @param [out] dest   A simplified-as-much-as-possible pattern that
-                          covers the same set of memory locations as 'src' (when
-                          combined with the offset below).  'dest' will
-                          contain only nonnegative strides.
+      @param [in,out]  pattern   The pattern to be compressed
+
       @param [out] data_offset  A number that we would have to add to
                           the data pointer of the source Tensor so
                           that 'dest' would cover the same set of
                           elements.  It will always be zero if 'src'
                           was free of negative strides.
    Examples are below, where we write a TensorPattern as
-    `{{dim1,dim2,..}, {stride1,stride2,..}}`.
+
+   `{{dim1,dim2,..}, {stride1,stride2,..}}`.
+
+   (the curly braces in our notation imply that we are referring to the reversed
+   ordering physically used in 'pattern', but actually this doesn't affect
+   anything as the order of axes does not matter here as long as it is constent.
 
 \verbatim
    Input pattern             Output pattern            Output offset
@@ -264,6 +362,28 @@ bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
  */
 void CompressOnePattern(TensorPattern *pattern,
                         int64 *data_offset);
+
+/**
+   Sorts the axes in 'pattern' from smallest to largest stride
+   (in the reversed numbering physically present in 'pattern'; would
+   be largest to smallest in the public API).  Useful in testing
+   equivalence of patterns, as CompressOnePattern() followed
+   by SortAxes() leads to a normalized form.
+
+   This function requires that for 0 <= i < pattern->num_axes,
+   pattern->strides[i] > 0.  This condition is satisfied by
+   a pattern that has previously been compressed by CompressOnePattern().
+   If in future we need to relax this constraint, we will do so.
+   (The assumption of positive strides simplifies implementation
+   because to normalize the form we'd have to make all strides
+   positive, which would require outputting an offset).
+
+     @param [in,out]  The pattern whose axes are to be sorted
+                   from least to greatest stride (in the physical
+                   ordering).
+ */
+void SortAxes(TensorPattern *pattern);
+
 
 /*
   Compress two TensorPatterns by combining axes (and possibly
@@ -385,14 +505,29 @@ bool CompressPatterns(ArrayRef<TensorPattern*> patterns,
 
     This function removes axes with dim=1.
 
-    This function combines successive axes if the relationship of their
-    dims and strides is what you would expect in a "C"-style array.
-    Suppose that in 'src' we had two successive axes with dims and
-    strides (dim_a, dim_b) and (stride_a, stride_b), with dim_a > 1 and
-    dim_b > 1.  If stride_a == stride_b * dim_b, then this function
-    will merge them into a single axis with dimension (dim_a * dim_b)
-    and stride stride_b.   (However, they won't be merged if it would
-    result in a dimension exceeding the range of int32).
+   This function combines successive axes if the relationship of their
+   dims and strides is what you would expect in a "C"-style array
+   when the axes are listed in their non-reversed ordering (i.e.
+   as exposed by class Tensor).
+
+
+   Suppose that in pattern 'p' we had two successive axes physically numbered
+   raxis, raxis+1, with p->dims[raxis] > 1 and p->dims[raxis+1] > 1
+   and p->strides[raxis + 1] == p->strides[raxis] * p->dims[raxis],
+   then this function will merge them into a single axis with dimension
+   the product of the two dimensions..
+
+    TODO...
+
+   finish this if it turns out to be needed for something.
+
+
+   with dims and
+   strides (dim_a, dim_b) and (stride_a, stride_b), with dim_a > 1 and
+   dim_b > 1.  If stride_a == stride_b * dim_b, then this function
+   will merge them into a single axis with dimension (dim_a * dim_b)
+   and stride stride_b.   (However, they won't be merged if it would
+   result in a dimension exceeding the range of int32).
 
    The output pattern 'dest' is what you get if you keep applying the
    rules above until no further change is made.
@@ -408,8 +543,8 @@ bool CompressPatterns(ArrayRef<TensorPattern*> patterns,
    {2,3,4},{100,-4,-1}        {{2,12},{100,-1}}
 \endverbatim
  */
-void CompressPatternC(const TensorPattern &src,
-                      TensorPattern *dest);
+void CompressPatternC(TensorPattern *p);
+
 
 
 /**
@@ -463,9 +598,5 @@ bool CreateViewPattern(const TensorPattern &pattern_in,
 
 
 
-
-};
-
-
-}
-}
+}  // namespace tensor
+}  // namespace kaldi

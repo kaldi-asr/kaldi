@@ -65,48 +65,46 @@ class Tensor {
 
   // Return an array containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
-  // We limit each dimension to int32, because BLAS's interface uses int,
-  // which on many common 64-bit platforms is configured with 32 bits.
-  // However the product of dimensions may still be 64 bits.
-  inline ArrayRef<int32> Dims() const {
-    return ArrayRef{impl_.pattern.num_axes,
-          impl_.pattern.DimData();}
-  }
+  // This cannot return some kind of const reference because the
+  // dims are stored internally in reversed order.
+  std::vector<int32> Dims() const;
 
-  // Returns the dimension on this axis, a number >= 1.  Result is
-  // undefined if axis < 0 or axis >= NumAxes().
+  // Return an array containing dimensions of the tensor; equivalent to
+  // .shape in PyTorch.  Strides().size() will equal NumAxes().
+  std::vector<int32> Strides() const;
+
+
+  // Returns the dimension on this axis (which will be >= 1).
+  // Requires 0 <= axis < NumAxes().
   inline int32 Dim(int32 axis) const {
-    return impl_.pattern.DimData()[axis];
+    KALDI_ASSERT(static_cast<uint32>(axis) <
+                 static_cast<uint32>(impl_.pattern->num_axes));
+    return impl_.pattern.dims[impl_.pattern->num_axes - 1 - axis];
   }
 
-  // Returns an array containing the strides of the tensor.
-  // Strides().size() will equal NumAxes().
-  inline ArrayRef<int32> Strides() const {
-    return ArrayRef{impl_.pattern.num_axes, impl_.pattern.StrideData()};
-  }
-
-  // Returns the stride on this axis.  Will be zero if the corresponding
-  // dimension is 1, and otherwise nonzero (but not necessarily positive).
+  // Returns the stride on this axis (which will be >= 1).
+  // Requires 0 <= axis < NumAxes().
   inline int32 Stride(int32 axis) const {
-    return impl_.pattern.StrideData()[axis];
+    KALDI_ASSERT(static_cast<uint32>(axis) <
+                 static_cast<uint32>(impl_.pattern->num_axes));
+    return impl_.pattern.strides[impl_.pattern->num_axes - 1 - axis];
   }
 
-  // Returns the number of elements in the Tensor; must be > 0.
-  // TODO: maybe just compute this instead?
-  inline int64 NumElements() const { return derived_.num_elements; }
+  // Returns the number of elements in the Tensor; will be > 0,
+  // and will equal the product of Dims().
+  int64 NumElements() const;
 
   // Returns true if the data forms a contiguous block in memory.
   // (not the same as 'contiguous()' in PyTorch, which also requires
-  // that the strides be 'C'-style.
-  // IS THIS REALLY NEEDED?
-  inline bool IsContiguous() const { return derived_.is_contiguous; }
+  // that the strides be 'C'-style; for that, see HasCStrides().
+  bool IsContiguous() const;
 
   // Returns true if the strides for this array are what you would
   // expect if you were to construct a Tensor from this->Dims();
   // this means "C"-style strides, except that any axis with dimension=1
   // has its stride set to zero.  This is our equivalent of PyTorch's
   // contiguous().
-  inline bool HasCStrides() const { return derived_.has_c_strides; }
+  bool HasCStrides() const;
 
   // Return the data type.
   DataType Dtype() const { return dtype_; }
@@ -139,14 +137,11 @@ class Tensor {
                       RangeExt s3, RangeExt s4) const;
 
 
-  // For a scalar Tensor (NumAxes() == 0) returns the item, cast to
-  // float (if it was not already float); throws if NumAxes() > 0.
+  // For a Tensor with NumElements() == 1, returns the element, cast to float
   explicit operator float() const;
-  // For a scalar Tensor (NumAxes() == 0) returns the item, cast to
-  // double (if it was not already double); throws if NumAxes() > 0.
+  // For a Tensor with NumElements() == 1, returns the element, cast to double
   explicit operator double() const;
-  // For a scalar Tensor (NumAxes() == 0) returns the item, cast to
-  // int32 (if it was not already int32); throws if NumAxes() > 0.
+  // For a Tensor with NumElements() == 1, returns the element, cast to int32
   explicit operator int32() const;
 
   // For a Tensor storing floats, returns the data pointer cast to float;

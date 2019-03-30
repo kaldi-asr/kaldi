@@ -21,6 +21,7 @@
 #define KALDI_TENSOR_TENSOR_PATTERN_H_ 1
 
 #include "tensor/tensor-common.h"
+#include <limits>
 
 /**
    This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
@@ -114,7 +115,7 @@ struct RangeExt: public Range {
 
   // implicit
   RangeExt(int32 index):
-      Range(index, 0, inf());
+      Range(index, 0, inf()) { }
 };
 
 
@@ -159,24 +160,19 @@ void MakeRangeExplicit(int32 dim, Range *range);
 
     0 <= num_axes <= KALDI_TENSOR_MAX_DIM.
 
-    for 0 <= i < KALDI_TENSOR_MAX_DIM
+    for 0 <= i < num_axes:
        dims[i] > 0
-       if i < KALDI_TENSOR_MAX_DIM - num_axes, then dims[i] = 1.
-       if dims[i] = 1, then strides[i] = 0.
+       if dims[i] == 1, then strides[i] = 0.
        if dims[i] != 1, then strides[i] != 0
+
+    for num_axes <= i < KALDI_TENSOR_MAX_DIM:
+       dims[i] == 1
+       strides[i] == 0
 
     ... plus the uniqueness property.
 
   Note: in the public interface of class Tensor, if you ask for
-  dim(i) it will return pattern.dims[KALDI_TENSOR_MAX_DIM - num_axes + i].
-
-  It would have been much more convenient, for implementation purposes, to
-  number the axes in a reversed way, so that axis 0 is, say, the column axis of
-  a matrix and axis 1 is the row axis; or at least, changing the broadcasting
-  rules to pad on the right rather than the left.  But this would have involved
-  either using totally different conventions than standard toolkits in
-  user-facing code, or reversing the axes in the API, which would have been even
-  more confusing than the shift that we actually do.
+  dim(i) it will return pattern.dims[num_axes - i].
 
   The uniqueness property requires that we must not be able to access the same
   memory location via two different tuples of indexes).  Recause testing this
@@ -188,34 +184,22 @@ void MakeRangeExplicit(int32 dim, Range *range);
 */
 struct TensorPattern {
   int32 num_axes;
-  int32 dims[KALDI_TENSOR_MAX_DIM];
-  int32 strides[KALDI_TENSOR_MAX_DIM];
+  int32 dims[KALDI_TENSOR_MAX_DIM];     // the dims in reversed order, indexed
+                                        // by 'raxis' (reversed axis)
+  int32 strides[KALDI_TENSOR_MAX_DIM];  // the strides in reversed order,
+                                        // indexed by 'raxis' (reversed axis)
   int32 code;  // pattern code; see ComputePatternCode() in tensor-pattern-utils.h
                // for details.  It is the responsibility of the user to keep
                // this updated (i.e. don't change dims or strides without updating
                // 'code').
 
-  // returns an offset that's sometimes required when indexing dims and axes.
-  inline int32 Offset() { return KALDI_TENSOR_MAX_DIM - num_axes; }
-
-
-  // returns the address of the 'real' start of the dims array,
-  // in terms of the way we index it publicly.  (We store them padded
-  // on the left with 1's as if they were of dimension KALDI_TENSOR_MAX_DIM).
-  inline int32* DimData() { return dims + KALDI_TENSOR_MAX_DIM - num_axes; }
-  // returns the address of the 'real' start of the the strides array,
-  // in terms of the way we index it publicly.
-  // (We store them padded
-  // on the left with 0's as if they were of dimension KALDI_TENSOR_MAX_DIM).
-  inline int32* StrideData() { return dims + KALDI_TENSOR_MAX_DIM - num_axes; }
-
-  inline int32 &dim(int32 axis) { returns dim
-
-
-  // Checks that the TensorPattern is valid, assuming it is part of a Tensor.
-  // I.e. that it satifies all the properties mentioned above.
-  // Returns true if valid, false if not valid.
-  bool Check();
+  // Returns true if the TensorPattern is valid, I.e. that it satifies all the
+  // properties mentioned above.
+  //
+  //  @param [in] check_code   If true, the check includes verifying that the
+  //                        'code' has the value it should (c.f. GetPatternCode()).
+  //  @return     Returns true if valid, false if not valid.
+  bool IsValid(bool check_code = true);
 };
 
 

@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 
 /**
    This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
@@ -37,10 +38,10 @@ typedef uint32_t uint32;
 
 
 
-enum {
+enum DeviceType {
   kCpuDevice = 0,
   kCudaDevice = 1
-} DeviceType;
+};
 
 
 // We may later add a device number (like which GPU we are using),
@@ -92,8 +93,44 @@ enum InitializePolicy {
 /// std::shared_ptr, for temporary Tensors in situations where we
 /// know the Tensor we are copying from is not going out of scope
 /// for the lifetime of the temporary.
+/// TODO: possibly remove this?  We might just use TensorImpl for
+/// such things.
 enum TensorStorageEnum {
   kUntrackedStorage
+};
+
+
+/// This enumeration value lists the unary functions that we might
+/// want to apply to Tensors; it exists so that much of the glue
+/// code can be templated.
+enum UnaryFunctionEnum {
+  kUnaryFunctionExp,
+  kUnaryFunctionLog,
+  kUnaryFunctionRelu,
+  kUnaryFunctionInvert,
+  kUnaryFunctionSquare
+  // TODO: add more.
+};
+
+
+/// This enumeration value lists the unary function taking a single scalar arg
+/// that we might want to apply to Tensors; it exists so that much of the glue
+/// code can be templated.
+enum UnaryFunction1ScalarArgEnum {
+  kUnaryFunctionFloor,
+  kUnaryFunctionCeiling
+};
+
+
+/// This enumeration value lists the binary functions that we might
+/// want to apply to Tensors; it exists so that much of the glue
+/// code can be templated.  (Note: multiplication is not counted
+/// here; that is a special case as it will genearlly go to BLAS).
+enum BinaryFunctionEnum {
+  kBinaryFunctionAdd,
+  kBinaryFunctionDivide,
+  kBinaryFunctionMax,
+  kBinaryFunctionMin
 };
 
 

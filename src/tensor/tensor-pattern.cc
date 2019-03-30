@@ -17,29 +17,22 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include "tensor/tensor-pattern.h"
 
 
 namespace kaldi {
 namespace tensor {
 
-bool TensorPattern::Check() {
+bool TensorPattern::Check(bool check_code) {
   if (num_axes < 0 || num_axes > KALDI_TENSOR_MAX_DIM)
     return false;
 
-  int32 axis;
-  for (axis = 0; axis < KALDI_TENSOR_MAX_DIM - num_axes; axis++) {
-    // Check that all unused axes have dim=1, stride=0.
-    // Keeping them this way makes checks for broadcastability easier.
-    // We may later remove this requirement.
-    if (dims[axis] != 1 || strides[axis] != 0)
-      return false;
-  }
-
-  for (; axis < KALDI_TENSOR_MAX_DIM; axis++) {
-    int32 dim = dims[axis], stride = strides[axis];
+  int32 raxis;
+  for (raxis = 0; raxis < num_axes; raxis++) {
+    int32 dim = dims[raxis], stride = strides[raxis];
     // All dims must be positive.  (We have no concept of
-    // an empty tensor, you would use NULL, or None, to represent
+    // an empty tensor; you would use NULL, or None, to represent
     // that.
     if (dim <= 0)
       return false;
@@ -49,42 +42,50 @@ bool TensorPattern::Check() {
     } else {
       if (stride == 0) return false;
     }
+
+  }
+  for (; raxis < KALDI_TENSOR_MAX_DIM; raxis++) {
+    // Check that all unused axes have dim=1, stride=0.
+    // Keeping them this way makes checks for broadcastability easier.
+    // We may later remove this requirement.
+    if (dims[raxis] != 1 || strides[raxis] != 0)
+      return false;
   }
 
   {
     // Now check for potential overlap.  We take all the axes with dim != 1 and
-    // sort them from greatest to least stride, and check that for each i,
-    // abs(strides[i]) >= dims[i+1] * abs(strides[i+1]).
-    std::pair<int32, int32> dims_abs_strides [KALDI_TENSOR_MAX_DIM];
+    // sort them from least to greatest stride, and check that for each i>0,
+    // abs(strides[i]) >= dims[i-1] * abs(strides[i-1]).
+    std::pair<int32, int32> abs_strides_and_dims[KALDI_TENSOR_MAX_DIM];
     int32 num_nontrivial_axes = 0;
     // The dims and strides are shifted to the right of the arrays 'dims' and
     // 'strides', to make the broadcasting rules of toolkits like PyTorch (which
     // left-pad to make the arrays have the same num-axes) easier to enforce.
-    int32 offset = KALDI_TENSOR_MAX_DIM - num_axes;
     for (int32 i = 0; i < num_axes; i++) {
-      if(dims[i] != 1) {
-        dims_abs_strides[num_nontrivial_axes].first = dims[i + offset];
-        dims_abs_strides[num_nontrivial_axes].second = std::abs(strides[i + offset]);
+      if (dims[i] != 1) {
+        abs_strides_and_dims[num_nontrivial_axes].first = dims[i];
+        abs_strides_and_dims[num_nontrivial_axes].second = std::abs(strides[i]);
         num_nontrivial_axes++;
       }
     }
-    // We want to sort on strides from greatest to least, so use '>' not
-    // '<' as the comparator.
-    std::sort(dims_abs_strides, dims_abs_strides + num_nontrivial_axes,
-              [](const std::pair<int32, int32> &a, const std::pair<int32, int32> &b) {
-                return a.second > b.second
-                    });
-    for (int32 i = 0; i < num_nontrivial_axes; i++) {
-      // if (abs(strides[i]) < dims[i+1] * abs(strides[i+1])) return false;
-      if (dims_abs_strides[i].second <
-          dims_abs_strides[i+1).first * dims_abs_strides[i+1).second)
+    // Sort on strides from least to greatest.
+    std::sort(abs_strides_and_dims, abs_strides_and_dims + num_nontrivial_axes);
+    for (int32 i = 1; i < num_nontrivial_axes; i++) {
+      // if (abs(strides[i]) < dims[i-1] * abs(strides[i-1])) return false;
+      if (abs_strides_and_dims[i].first <
+          abs_strides_and_dims[i-1].second * abs_strides_and_dims[i-1].first)
         return false;
     }
   }
-  return true;
+
+  if (check_code)
+    return code == ComputePatternCode(*this);
+  else
+    return true;
 }
 
 
+// MAY DELETE THIS.  It's not up to date anyway.
 void TensorPatternProperties::UpdateProperties(const TensorPattern &pattern) {
   KALDI_PARANOID_ASSERT(pattern.Check());
   int32 num_axes = pattern.num_axes;
