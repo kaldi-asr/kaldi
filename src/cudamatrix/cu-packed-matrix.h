@@ -122,8 +122,10 @@ class CuPackedMatrix {
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {    
       Real value;
-      CU_SAFE_CALL(cudaMemcpy(&value, this->data_ + (r * (r+1)) / 2 + c,
-                              sizeof(Real), cudaMemcpyDeviceToHost));
+      CU_SAFE_CALL(cudaMemcpyAsync(&value, this->data_ + (r * (r+1)) / 2 + c,
+                                   sizeof(Real), cudaMemcpyDeviceToHost,
+                                   cudaStreamPerThread));
+      CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
       return value;
     } else
 #endif
