@@ -1,4 +1,4 @@
-// tensor/cpu-impl.cc
+// tensor/cpu-impl-linear.cc
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tensor/cpu-impl.h"
+#include "tensor/cpu-impl-linear.h"
 
 
 namespace kaldi {

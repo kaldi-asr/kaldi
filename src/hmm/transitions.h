@@ -70,7 +70,7 @@ namespace kaldi {
 //                   the neural net output.
 // (*)self-loop-pdf-id:  The pdf-id associated with the self-loop of this state,
 //                   if there is one (we do not allow >1), or -1 if there is no
-//                   self-loop.  This will be the same as pdf-id' if this transition
+//                   self-loop.  This will be the same as 'pdf-id' if this transition
 //                   *is* the self-loop.  It might seem odd that we require this
 //                   to get the transition-id for a non-self-loop arc; the reason
 //                   why it's necessary is that we initially create the graph

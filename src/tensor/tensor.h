@@ -22,38 +22,11 @@
 
 #include "tensor/tensor-common.h"
 #include "tensor/tensor-pattern.h"
+#include "tensor/tensor-impl.h"
 #include "tensor/storage.h"
 
 namespace kaldi {
 namespace tensor {
-
-
-/**
-   TensorImpl is basically a Tensor without the shared_ptr to Storage
-   (which is expensive to pass around, because of the cost of atomics).
-   The Tensor contains it as a member, rather than as a pointer.
-
-   Most of our internal functions use TensorImpl rather than Tensor because
-   it is easier to manipulate, but you need to know what you are doing.
-*/
-struct TensorImpl {
-  TensorPattern pattern;
-  DataType dtype;
-  Device device;
-  void *data{nullptr};
-};
-
-// Metadata for a Tensor.  It's occasionally convenient to have this
-// in a struct.
-struct TensorMeta {
-  TensorPattern pattern;
-  DataType dtype;
-  Device device;
-  // Note: the offset is only used in some situations,
-  // it's
-  // We may turn this into an offset measured in elements.
-  int32 offset;
-};
 
 /**
    A Tensor is a multi-dimensional array (up to 5 dimensions) of types such as
@@ -76,10 +49,15 @@ class Tensor {
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
   // the terms 'number of axes' or 'axis' throughout.
+  // Caution: the numbering of axes in the Tensor interface is different
+  // than in TensorImpl::pattern.  Here they are numbered from zero;
+  // in TensorImpl::pattern they are shifted to the right so
+  // the last axis is KALDI_TENSOR_MAX_DIM - 1.
   inline int32 NumAxes() const { return impl_.pattern.num_axes; }
 
-
   const TensorImpl &Impl() { return impl_; }
+
+  const TensorMeta &Meta() { return reinterpret_cast<TensorMeta&>(impl_); }
 
   // Return reference to the struct containing the dimension and
   // stride info.
@@ -87,57 +65,67 @@ class Tensor {
 
   // Return an array containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
-  // We limit each dimension to int32, because BLAS's interface uses int,
-  // which on many common 64-bit platforms is configured with 32 bits.
-  // However the product of dimensions may still be 64 bits.
-  inline ArrayRef<int32> Dims() const { return ArrayRef{impl_.pattern.num_axes, impl_.pattern_.dims}; }
+  // This cannot return some kind of const reference because the
+  // dims are stored internally in reversed order.
+  std::vector<int32> Dims() const;
 
-  // Returns the dimension on this axis, a number >= 1.  Result is
-  // undefined if axis < 0 or axis >= NumAxes().
-  inline int32 Dim(int32 axis) const { return impl_.pattern.dims[axis]; }
+  // Return an array containing dimensions of the tensor; equivalent to
+  // .shape in PyTorch.  Strides().size() will equal NumAxes().
+  std::vector<int32> Strides() const;
 
-  // Returns an array containing the strides of the tensor.
-  // Strides().size() will equal NumAxes().
-  inline ArrayRef<int32> Strides() const { return ArrayRef{impl_.pattern.num_axes, impl_.pattern.strides}; }
 
-  // Returns the stride on this axis.  Will be zero if the corresponding
-  // dimension is 1, and otherwise nonzero (but not necessarily positive).
-  inline int32 Stride(int32 axis) const { return impl_.pattern.strides[axis]; }
+  // Returns the dimension on this axis (which will be >= 1).
+  // Requires 0 <= axis < NumAxes().
+  inline int32 Dim(int32 axis) const {
+    KALDI_ASSERT(static_cast<uint32>(axis) <
+                 static_cast<uint32>(impl_.pattern->num_axes));
+    return impl_.pattern.dims[impl_.pattern->num_axes - 1 - axis];
+  }
 
-  // Returns the number of elements in the Tensor; must be > 0.
-  inline int64 NumElements() const { return derived_.num_elements; }
+  // Returns the stride on this axis (which will be >= 1).
+  // Requires 0 <= axis < NumAxes().
+  inline int32 Stride(int32 axis) const {
+    KALDI_ASSERT(static_cast<uint32>(axis) <
+                 static_cast<uint32>(impl_.pattern->num_axes));
+    return impl_.pattern.strides[impl_.pattern->num_axes - 1 - axis];
+  }
+
+  // Returns the number of elements in the Tensor; will be > 0,
+  // and will equal the product of Dims().
+  int64 NumElements() const;
 
   // Returns true if the data forms a contiguous block in memory.
   // (not the same as 'contiguous()' in PyTorch, which also requires
-  // that the strides be 'C'-style.
-  inline bool IsContiguous() const { return derived_.is_contiguous; }
+  // that the strides be 'C'-style; for that, see HasCStrides().
+  bool IsContiguous() const;
 
   // Returns true if the strides for this array are what you would
   // expect if you were to construct a Tensor from this->Dims();
   // this means "C"-style strides, except that any axis with dimension=1
   // has its stride set to zero.  This is our equivalent of PyTorch's
   // contiguous().
-  inline bool HasCStrides() const { return derived_.has_c_strides; }
+  bool HasCStrides() const;
 
   // Return the data type.
   DataType Dtype() const { return dtype_; }
 
-  // Indexing operators.  All of these return Tensors which reference the same
-  // underlying data as the original Tensor.  We could have done this with just
-  // a single indexing operator taking 5 args of type RangeExt defaulting to
-  // `all`, but we provide separate versions for each num-args for efficiency.
-  // You can provide an int32 where RangeExt is expected; it will be
-  // converted to a special struct of type Range. See the documentation for type
-  // Range, and the table which it contains.  If a is a Tensor with 1 axis, a(0)
-  // will return a scalar Tensor (0 axes
-  //
-  // Any of these indexing operators can operate on Tensors with more axes;
-  // trailing axes will be left alone.
+  /**
+     Indexing operator taking one arg.  Returns a Tensor referencing
+     the same underlying data as this Tensor.
+
+
+     You can provide an int32 where RangeExt is expected; it will be
+     converted to a special struct of type Range. See the documentation for type
+     Range, and the table which it contains.
+     will return a scalar Tensor (0 axes
+
+     Any of these indexing operators can operate on Tensors with more axes;
+     trailing axes will be left alone.
 
   // this operator () taking int32 is only provided in the one-arg case as a
   // convenience; in any case, RangeExt can be constructed from int32 with the
   // same effect.
-  Tensor operator () (int32 i0) const;
+
   Tensor operator () (RangeExt s0) const;
   Tensor operator () (RangeExt s0, RangeExt s1) const;
   Tensor operator () (RangeExt s0, RangeExt s1, RangeExt s2) const;
@@ -150,14 +138,11 @@ class Tensor {
                       RangeExt s3, RangeExt s4) const;
 
 
-  // For a scalar Tensor (NumAxes() == 0) returns the item, cast to
-  // float (if it was not already float); throws if NumAxes() > 0.
+  // For a Tensor with NumElements() == 1, returns the element, cast to float
   explicit operator float() const;
-  // For a scalar Tensor (NumAxes() == 0) returns the item, cast to
-  // double (if it was not already double); throws if NumAxes() > 0.
+  // For a Tensor with NumElements() == 1, returns the element, cast to double
   explicit operator double() const;
-  // For a scalar Tensor (NumAxes() == 0) returns the item, cast to
-  // int32 (if it was not already int32); throws if NumAxes() > 0.
+  // For a Tensor with NumElements() == 1, returns the element, cast to int32
   explicit operator int32() const;
 
   // For a Tensor storing floats, returns the data pointer cast to float;
@@ -187,24 +172,28 @@ class Tensor {
   // data.
   Tensor (const Tensor &other) = default;
 
-  // Move assignment.  Does not copy the data.
-  Tensor(Tensor &&other);
+  // Move assignment.
+  Tensor(Tensor &&other): impl_(other.impl_) { storage.swap(other.storage_); }
 
   /**
      Construct a new Tensor with freshly allocated underlying data with
-     the data type, device and dimension the same as `other`.
+     the data type, device and dimensions the same as `other`.  The strides
+     will be the same order as 'other' if sp == kCopyStrides.
 
-       @param [in]  other  The tensor that we are taking metadata from (we
-                    are not sharing its underlying data).
-       @param [in]  sp   The stride policy; if kCopyStrides then we use
+       @param [in]  meta  The metadata we are copying the dims, device,
+                       dtype and possibly strides from
+       @param [in]  sp   The stride policy; if kCopyStrideOrder then we use
                        strides with the same sign and size-order as
                        `other`, while filling in any gaps if `other`
                        was not contiguous, if kCstrides then we use
-                       "C" style strides for any dimensions != 1.
+                       "C" style strides, i.e. we ignore the stride
+                       order of the source.  (Of course, we set strides
+                       to zero for any axes with `dim=1`, as required by our
+                       framework).
        @param [in]  ip   The data initialization policy
   */
-  Tensor(const Tensor &other, StridePolicy sp, InitializePolicy ip);
-
+  Tensor(const Meta &meta,
+         StridePolicy sp);
 
 
   /** Construct a Tensor with freshly allocated data.
@@ -212,11 +201,46 @@ class Tensor {
                     positive integers).
        @param [in] dtype   The data type to use
        @param [in] device  The device to put the data on
-       @param [in] set_zero   If true, set the tensor to zero.  If false,
-                        the contents will be undefined.
+
+       Example:  `Tensor a({3,4,5}, kDoubleDtype, kCpuDevice);`
    */
-  Tensor(ArrayRef<int32> dims, DataType dtype, Device device,
-         bool set_zero = false);
+  Tensor(ArrayRef<int32> dims, DataType dtype, Device device);
+
+  /** Construct a Tensor with freshly allocated data, and device ==
+      `GetDefaultDevice().`.
+
+       @param [in] dims    The dimensions of the tensor (zero to 5
+                    positive integers).
+       @param [in] dtype   The data type to use
+
+       Example:  `Tensor a({3,4,5}, kDoubleDtype);`
+   */
+  Tensor(ArrayRef<int32> dims, DataType dtype);
+
+  /** Construct a Tensor with freshly allocated data, data type ==
+      `GetDefaultDtype()`,
+
+       @param [in] dims    The dimensions of the tensor (zero to 5
+                    positive integers).
+       @param [in] device  The device to put the data on
+
+       Example:  `Tensor a({3,4,5}, kCpuDevice);`
+   */
+  Tensor(ArrayRef<int32> dims, Device device);
+
+
+  /** Construct a Tensor with freshly allocated data, data type ==
+      `GetDefaultDtype()`, and device == GetDefaultDevice().
+
+       @param [in] dims    The dimensions of the tensor (zero to 5
+                    positive integers).
+       @param [in] device  The device to put the data on
+
+       Example:  `Tensor a({3,4,5}, kCpuDevice);`
+   */
+  Tensor(ArrayRef<int32> dims);
+
+
 
   /**
      Construct a Tensor with the dimensions and strides provided.  This differs
@@ -263,19 +287,17 @@ class Tensor {
 
 
   /**
-     This constructor, which is intended for use primarily in internal
-     code and
+     This constructor takes the 'impl' and 'storage' provided and returns
+     a Tensor containing them.  Intended for special-purpose code such
+     as when we wrap arrays from external frameworks.
    */
-  Tensor(TensorPattern &pattern, DataType dtype, Device device,
-         void *data_);
+  Tensor(const TensorImpl &impl, std::shared_ptr<Storage> storage);
 
  private:
-  // The tensor dim and strides.
+  // This object contains the num-axes, dims, strides and data pointer, plus
+  // cached properties.
   TensorImpl impl_;
 
-  // The raw data pointer.  Will be cast to a pointer of the appropriate
-  // type before indexing.
-  void *data_;
 
   // The storage region where the data resides.  data_ does not necessarily
   // equal storage_->data; it may be more than that, e.g. if this is a view

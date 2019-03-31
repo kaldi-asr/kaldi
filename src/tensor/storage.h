@@ -20,7 +20,9 @@
 #ifndef KALDI_TENSOR_STORAGE_H_
 #define KALDI_TENSOR_STORAGE_H_ 1
 
+#include <functional>
 #include "tensor/tensor-common.h"
+
 
 namespace kaldi {
 namespace tensor {

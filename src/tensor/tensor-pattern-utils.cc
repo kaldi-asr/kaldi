@@ -7,23 +7,37 @@
 namespace kaldi {
 namespace tensor {
 
-/**
-   This function returns true if any of the tensor patterns in 'patterns'
-   contains a negative stride.  All patterns are assumed to have the same
-   num-axes.
- */
-static inline bool NegativeStrideExists(ArrayRef<TensorPattern> patterns) {
-  bool ans = false;
-  int32 num_axes = patterns[0]->num_axes;  // required
-  for (size_t p = 0; p < patterns.size; p++) {
-    const TensorPattern &pattern = patterns[p];
-    for (int32 i = 0; i < num_axes; i++) {
-      if (pattern->strides[i] < 0)
-        return true;
+int32 ComputePatternCode(const TensorPattern &pattern) {
+  int32 ans = 0;
+
+  int32 n = 0;
+  // n is going to be:
+  // n = 0 if no axis had stride=1, otherwise:
+  // n = 1 + the raxis index that had stride=1.
+
+  bool found_negative_dim = false;
+
+  // caution: this axis index is a shifted-to-the-right index,
+  // not the one that the public interface of Tensor exposes.
+  for (int32 raxis = 0; raxis < pattern.num_axes; raxis++) {
+    int32 dim = pattern.dims[raxis],
+        stride = pattern.strides[raxis];
+    if (dim != 1) {
+      ans |= 1;  // set least significant bit of 'ans' to 1.
+      if (dim < 0)
+        found_negative_dim = true;
+      if (stride == 1)
+        n = raxis + 1;  // Can happen only once, if pattern.Check() == true,
+                        // i.e. if pattern is valid.
     }
+    ans <<= 1;  // shift left by one.
   }
-  return false;
+
+  // add in the value 'n' shifted 8 bits to the left,
+  // and set the 11th bit if we found a negative dim.
+  ans |= (n << 8) |  (found_negative_dim ? 1 << 11 : 0);
 }
+
 
 
 /**
@@ -31,54 +45,67 @@ static inline bool NegativeStrideExists(ArrayRef<TensorPattern> patterns) {
    strides in all the dimensions, prior to any merging of axes, and sets the
    'data_offsets' variables.
 
-   Consider an axis-index 0 <= i < num_axes.  We say that the strides for axis i
-   are normalized if the the lowest-numbered pattern which has nonzero stride on
-   axis i (if such a pattern exists) is positive.  If, on the other hand, all
-   the strides are zero, we also say that it is normalized (since flipping the
-   sign would make no difference).
+   Consider an axis-index i (i.e. an index into the patterns' dims or strides
+   vector).  We say that the strides for axis i
+   are normalized if either all patterns have zero stride for that axis
+   or the lowest-numbered pattern which has nonzero stride for that axis
+   has positive stride for that axis.
 
    This type of normalization is done to increase the chance that we can combine
    axes, because the rule we use for combining axes only applies if any nonzero
    strides present have the same sign between the two axes.  In terms of being
-   able to combine axes this rule is optimal, because any two axes where the
-   pattern-index of the first pattern with a nonzero stride for those axes is
-   different, would *not* be combinable.  So for any pair of axes that are
-   potentially combinable according to that criterion and which have any nonzero
-   strides, our normalization rule ensures that at least one pair of nonzero
-   strides has the same sign.  If there were another pattern for which the sign
-   was opposite after applying our rule, those two axes would not be combinable
-   whatever the sign normalization.
+   able to combine the maximum number of axes this rule is optimal, because any
+   two axes where the pattern-index of the first pattern with a nonzero stride
+   for those axes is different, would *not* be combinable.  So for any pair of
+   axes that are potentially combinable according to that criterion and which
+   have any nonzero strides, our normalization rule ensures that at least one
+   pair of nonzero strides has the same sign.  If there were another pattern for
+   which the sign was opposite after applying our rule, those two axes would not
+   be combinable whatever the sign normalization.
 
      @param [in,out] patterns  The patterns to have their strides normalized
+     @param [in]    max_num_axes  The maximum of any of the patterns'
+                          num_axes (provided so we don't have to work it
+                          out from 'patterns').
      @param [in,out] data_offsets  Data offsets, an array of dimension
-                          patterns.size, which will be *added to* by this
-                          function, by the amount required to ensure that
+                          patterns.size, which will be *added to* as needed by
+                          this function, by the amount required to ensure that
                           the memory locations visited by the set of possible
-                          indexes into these patterns is the same before
-                          and after any change of sign.
+                          indexes into these patterns is the same before and
+                          after any change of sign.
+     @return   Returns true if it made a change, else false.
+
+   CAUTION!  Does not update the pattern code (the code for that is commented).
+   If this were moved to a header we would have to make it update the pattern
+   code.
  */
-static inline void NormalizeSigns(ArrayRef<TensorPattern> patterns,
+static inline bool NormalizeSigns(ArrayRef<TensorPattern*> patterns,
+                                  int32 max_num_axes,
                                   int64 *data_offsets) {
+  bool changed = false;
   size_t num_patterns = patterns.size;
-  int32 num_axes = patterns[0].num_axes;
-  for (int32 a = 0; a < num_axes; a++) {
+
+  for (int32 a = 0; a < max_num_axes; a++) {
     for (size_t p = 0; p < size; p++) {
-      if (patterns[p].strides[a] != 0) {
+      if (patterns[p]->strides[a] != 0) {
         // We have identified the first pattern-index with nonzero
         // stride for this axis
-        if (patterns[p].strides[a] < 0) {
-          // The stride is negative, so we have to flip it
-          // for this axis.  (Note: we flip it for all patterns,
-          // for this dim, but we can ignore q < p because
-          // we know all those strides are zero.
+        if (patterns[p]->strides[a] < 0) {
+          changed = true;
+          // The stride is negative, so we have to flip it for this axis.
+          // (Note: we flip it for all patterns, but we can ignore
+          // pattern-indexes q < p because we know all those strides are zero.
           for (size_t q = p; q < size; q++) {
             // cast to int64 before muiltiplication to avoid potential
             // overflow
-            int64 this_offset =
-                static_cast<int64>(patterns[q].dims[a] - 1) *
-                static_cast<int64>(patterns[q].strides[a]);
-            data_offsets[q] += this_offset;
-            patterns[q].strides[a] *= -1;
+            if (patterns[q]->strides[a] != 0) {
+              int64 this_offset =
+                  static_cast<int64>(patterns[q]->dims[a] - 1) *
+                  static_cast<int64>(patterns[q]->strides[a]);
+              data_offsets[q] += this_offset;
+              patterns[q]->strides[a] *= -1;
+              // patterns[q]->code = -1;  // A signal to recompute the code.
+            }
           }
         }
         // break from loop over patterns; we identified the first pattern-index
@@ -88,6 +115,11 @@ static inline void NormalizeSigns(ArrayRef<TensorPattern> patterns,
       }
     }
   }
+  //if(changed)
+  //  for (size_t p = 0; p < size; p++)
+  //    if (patterns[p]->code == -1)
+  //      patterns[p]->code == GetDimsCode(*(patterns[p]));
+  return changed;
 }
 
 
@@ -99,12 +131,17 @@ static inline void NormalizeSigns(ArrayRef<TensorPattern> patterns,
    We can only ever combine pairs of axes that were combinable for *all* patterns
    passed to CompressPatterns().
 
-   When we combine axes we'll set dims[j] := dims[i] * dims[j], and make axis i
-   a no-op by setting dims[i] = 1, strides[i] = 0.
+   Two axes are combinable if stride2 == stride1 * dim1.  Here, raxis1 is
+   required to be the axis with the smaller stride, which is the asymmetry
+   between them.
+
+   (We also require that the new dimension must not overflow an int32.)
  */
-static inline bool Combinable(const TensorPattern &pattern,
-                              int32 axis1, int32 axis2) {
-  return pattern.strides[axis1] == pattern.strides[axis2] * pattern.dims[axis2];
+static inline bool Combinable(const TensorPattern &p,
+                              int32 raxis1, int32 raxis2) {
+  return pattern.strides[raxis2] == p.strides[raxis1] * p.dims[raxis1] &&
+      static_cast<int64>(p.dims[raxis1])*static_cast<int64>(p.dims[raxis2]) <
+    std::numeric_limits<int32>::max();
 }
 
 
@@ -112,138 +149,237 @@ static inline bool Combinable(const TensorPattern &pattern,
 // for all the supplied patterns.  An axis like this can be removed without
 // affecting the result.
 static inline bool AxisIsTrivial(ArrayRef<TensorPattern> patterns,
-                                 int32 axis) {
+                                 int32 raxis) {
   for (size_t p = 0; p < patterns.size; p++)
-    if (patterns[p].strides[axis] != 0)
+    if (patterns[p].strides[raxis] != 0)
       return false;
   return true;
 }
 
-// Combine the two axes axis1 and axis2 in all the patterns (which
-// the user asserts is possible); at exit, the lower numbered of the
-// two axes is guaranteed to have dim=1, stride=0 in all patterns.
-// (we will later get rid of that trivial axis).
-// axis2 is the one with the smaller stride (for patterns where the
-// stride is nonzero), and is the one whose stride we keep in the
-// combined axis; that is the asymmetry.
-static inline void CombineAxes(ArrayRef<TensorPattern> patterns,
-                               int32 axis1, int32 axis2) {
+// Combine the two axes raxis1 and raxis2 in all the patterns (which the user
+// asserts is possible); at exit, the higher numbered of the two raxes is
+// guaranteed to have dim=1, stride=0 in all patterns.  (we will later get rid
+// of that trivial axis).  axis1 is the one with the smaller stride, and is the
+// one whose stride we keep in the combined axis; that is the asymmetry
+// between axis1 and axis2.
+static inline void CombineAxes(ArrayRef<TensorPattern*> patterns,
+                               int32 raxis1, int32 raxis2) {
   size_t num_patterns = patterns.size;
 #ifdef KALDI_PARANOID
   for (size_t p = 0; p < num_patterns; p++) {
-    KALDI_PARANOID_ASSERT(Combinable(patterns[p], axis1, axis2));
+    KALDI_ASSERT(Combinable(*(patterns[p]), raxis1, raxis2));
   }
 #endif
-  if (axis1 < axis2) {
-    // the if-statement is because we want the 'trivial' axis (the one with
-    // dim=1, stride=0 for all patterns) to be the lower-numbered axis; this is
-    // more convenient for our algorithm because we might later want to do
-    // further combination on the nontrivial axis (if the lower-numbered one
-    // were changed, we might repeat the search for an axis to combine with it.
+  if (raxis1 > raxis2) {
+    // keep raxis2, remove raxis1.
+    // We want the 'trivial' axis (the one with dim=1, stride=0 for all
+    // patterns) to be the higher-numbered axis (this helps reduce
+    // the chance of having to move dims/strides around when removing
+    // trivial axes later on.
     for (size_t p = 0; p < num_patterns; p++) {
-      TensorPattern &pattern = patterns[p];
-      pattern.dims[axis2] *= pattern.dims[axis1];
-      pattern.dims[axis1] = 1;
-      pattern.strides[axis1] = 0;
+      TensorPattern *pattern = patterns[p];
+      pattern->dims[raxis2] *= pattern->dims[raxis1];
+      pattern->strides[raxis2] *= pattern->strides[raxis1];
+      pattern->dims[raxis1] = 1;
+      pattern->strides[raxis1] = 0;
     }
   } else {
+    // keep raxis1, remove raxis2.
     for (size_t p = 0; p < num_patterns; p++) {
-      TensorPattern &pattern = patterns[p];
-      pattern.dims[axis2] *= pattern.dims[axis1];
-      pattern.strides[axis2] = pattern.strides[axis1];
-      pattern.dims[axis1] = 1;
-      pattern.strides[axis1] = 0;
+      TensorPattern *pattern = patterns[p];
+      pattern->dims[raxis1] *= pattern->dims[raxis1];
+      pattern->dims[raxis2] = 1;
+      pattern->strides[raxis2] = 0;
     }
   }
 }
 
 /**
-   Removes trivial axes, defined as axes for which, for all patterns,
-   dim=1 and stride=0.  Assumes the user has already which axes
-   are trivial and passes in as the array 'trivial_axis'.
+   Removes trivial axes, defined as axes for which, for all patterns, dim=1 and
+   stride=0.  Assumes the user has already found out which axes are trivial and
+   is passing in this information as the array 'trivial_raxis' (we include the r
+   to emphasize that we use the same reversed numbering as in
+   pattern.{dims,strides}).
+
+
+   This function removes those axes, shifts the dims and strides arrays to
+   the left as needed, and decreases the 'num_axes' of the patterns
+   appropriately (note: this is not as simple as just subtracting the number
+   of axes removed, because removing an raxis that was >= the num_axes
+   of a given pattern needs to be a no-op).
+
+   @param [in]  trivial_raxis    An array which identifies the axes to
+                       be removed.  At least one element must be true.
+                       Indexed by 'raxis'.
+   @param [in,out]  patterns    The patterns to be modified.
+
+   CAUTION: this function does not update the codes of 'patterns'.
  */
-inline static bool RemoveTrivialAxes(int32 num_axes,
-                                     bool trivial_axis[],
-                                     ArrayRef<TensorPattern> patterns) {
-  for (size_t p = 0; p < patterns.size; p++) {
-    const TensorPattern &pattern = patterns[p];
-    // we do the loop over axes inside the loop over p for memory locality.
-    int32 axis_out = 0;
-    for (int32 axis_in = 0; axis_in < num_axes; axis_in++) {
-      if (axis_out != axis_in && !trivial_axis[axis_in]) {
-        pattern.dims[axis_out] = pattern.dims[axis_in];
-        pattern.dims[axis_out] = pattern.dims[axis_in];
-      }
-      if (!trivial_axis[axis_in])
-        axis_out++;
+static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_DIM],
+                              ArrayRef<TensorPattern*> patterns) {
+  int32 first_trivial_raxis = -1;
+  for (int32 raxis = 0; raxis < KALDI_TENSOR_MAX_DIM; raxis++) {
+    if (is_trivial_axis[raxis]) {
+      first_trivial_raxis = raxis;
+      break;
     }
-    pattern.num_axes = axis_out;  // will be the same for all p.
+  }
+  KALDI_PARANOID_ASSERT(first_trivial_raxis >= 0);
+
+  for (size_t p = 0; p < patterns.size; p++) {
+    TensorPattern *pattern = patterns[p];
+    // Keep the axes right-justified.  We work from the right to the left.
+
+    // We do the loop over axes inside the loop over p for memory locality.
+    // We keep the axes shifted to the right so the loop goes backwards.
+    int32 raxis_out = first_trivial_raxis,
+        num_axes = pattern->num_axes;
+    for (int32 raxis_in = raxis_out; raxis_in < num_axes; raxis_in++) {
+      if (is_trivial_axis[raxis_in]) {
+        KALDI_PARANOID_ASSERT(pattern->dims[raxis_in] == 1);
+      } else {
+        if (raxis_out != raxis_in) {
+          pattern->dims[raxis_out] = pattern->dims[raxis_in];
+          pattern->strides[raxis_out] = pattern->strides[raxis_in];
+        }
+        raxis_out++;
+      }
+    }
+    pattern->num_axes = raxis_out;
+    // Make sure the axes we removed are set to dim=1, stride=0.
+    for (; raxis_out < num_axes; raxis_out++) {
+      pattern->dims[raxis_out] = 1;
+      pattern->strides[raxis_out] = 0;
+    }
+    KALDI_PARANOID_ASSERT(pattern->Check(false));
   }
 }
 
-void CompressPatterns(ArrayRef<TensorPattern> patterns,
+void CompressPatterns(ArrayRef<TensorPattern*> patterns,
                       int64_t *data_offsets) {
   size_t num_patterns = patterns.size;
-  for (size_t p = 0; p < num_patterns; p++)
-    data_offsets[p] = 0;
 #ifdef KALDI_PARANOID
-  // check the input
-  KALDI_ASSERT(num_patterns > 0 && num_patterns < 6);
+  KALDI_ASSERT(num_patterns > 0);
   for (size_t p = 0; p < num_patterns; p++) {
+    KALDI_ASSERT(patterns[p]->Check());
     for (size_t q = p + 1; q < num_patterns; q++) {
-      KALDI_ASSERT(Broadcastable(patterns[p], patterns[q]));
+      KALDI_ASSERT(Broadcastable(*(patterns[p]), *(patterns[q])));
     }
   }
 #endif
-  if (NegativeStrideExists(patterns))
-    NormalizeSigns(patterns, data_offsets);
-  bool is_trivial_axis[6] = { false, false, false, false, false, false }
+  for (size_t p = 0; p < num_patterns; p++)
+    data_offsets[p] = 0;
+
+  int32 max_num_axes = patterns[0]->num_axes,
+      combined_code = patterns[0]->code;
+  // combined_code is the '|' of the patterns' codes; it's
+  // not the same as what CombineCodes() would return.
+
+  for (size_t p = 1; p < num_patterns; p++) {
+    max_num_axes = std::max<int32>(max_num_axes, patterns[p]->num-axes);
+    combined_code |= patterns[p]->code;
+  }
+  bool changed = false;
+  if (ContainsNegativeStride(combined_code))
+    changed = NormalizeSigns(patterns, data_offsets);
+
+  // note: the codes won't be fully up to date at this point.
+
   bool exists_trivial_axis = false;
-  int32 num_axes = patterns[0].num_axes;
-  for (int32 i = 0; i < num_axes; i++) {
-    if (AxisIsTrivial(patterns, i)) {
-      is_trivial_axis[i] = true;
+  // The = {} ensures (I believe) that they are all set to 0, meaning false.
+  bool is_trivial_raxis[KALDI_TENSOR_MAX_DIM] = {};
+  for (int32 raxis = 0, mask = 1; raxis < max_num_axes; raxis++, mask <<= 1) {
+    if ((combined_code | mask) == 0) {
+      is_trivial_raxis[raxis] = true;
       exists_trivial_axis = true;
-      continue;
     }
-    // see if axis i can be combined (in either direction with any later-numbered axis.
-    for (int32 j = i + 1; j < num_axes; j++) {
-      bool combinable_ij = true, combinable_ji = true;
+  }
+
+  // The reason we go in reverse order is a small optimization; it
+  // means it's more straightforward, when combining, to 'make trivial'
+  // the higher-numbered raxis, which reduces the chances of having to
+  // copy axes to different positions later on to remove trivial axes.
+  // (If we went forward and did this, we'd have to repeat processing
+  // the current axis each time we combined, which would be a hassle).
+  for (int32 raxis1 = max_num_axes - 1; raxis1 >= 0; raxis1--) {
+    if (is_trivial_raxis[raxis1])
+      continue;
+
+    // see if axis i can be combined (in either direction) with any
+    // earlier-numbered axis.
+    for (int32 raxis2 = raxis1 - 1; raxis2 >= 0; raxis2--) {
+      if (is_trivial_raxis[raxis2])
+        continue;
+      bool combinable_12 = true;
       for (size_t p = 0; p < num_patterns; p++) {
-        if (!Combinable(patterns[p], i, j))
-          combinable_ij = false;
-        if (!Combinable(patterns[p], j, i))
-          combinable_ji = false;
+        if (!Combinable(patterns[p], raxis1, raxis2)) {
+          combinable_12 = false;
+          break;
+        }
       }
-      if (combinable_ij) {
-        CombineAxes(patterns, i, j);
-        is_trivial_axis[i] = true;
+      if (combinable_12) {
+        CombineAxes(patterns, raxis1, raxis2);
+        is_trivial_raxis[raxis1] = true;  // higher numbered raxis is removed.
         exists_trivial_axis = true;
-        // Break from the loop on j and continue over the loop on i, meaning
-        // we are done combining with the i'th axis.  At this point all the
-        // (strides,dims) for axis i are just
+        // Break from the loop over raxis2 and continue over the loop over
+        // raxis1, meaning we are done combining with axis 'raxis1' (it's
+        // trivial now).
         break;
-      } else if (combinable_ji) {
-        CombineAxes(patterns, j, i);
-        is_trivial_axis[i] = true;   // not a typo.  Lower-numbered axis gets
-        // dim=1,stride=0.
+      }
+      bool combinable_21 = true;
+      for (size_t p = 0; p < num_patterns; p++) {
+        if (!Combinable(patterns[p], raxis2, raxis1)) {
+          combinable_21 = false;
+          break;
+        }
+      }
+      if (combinable_21) {
+        CombineAxes(patterns, raxis2, raxis1);
+        is_trivial_raxis[raxis1] = true;  // higher numbered raxis is removed.
         exists_trivial_axis = true;
         break;
       }
     }
   }
-  if (exists_trivial_axis)
-    RemoveTrivialAxes(num_axes, trivial_axis, patterns);
+  if (exists_trivial_axis) {
+    RemoveTrivialAxes(max_num_axes, is_trivial_raxis, patterns);
+    changed = true;
+  }
+  if (changed)
+    for (size_t p = 0; p < num_patterns; p++)
+      patterns[p]->code = ComputePatternCode(*(patterns[p]));
+  return changed;
 }
 
 
 void CompressOnePattern(TensorPattern *pattern,
                         int64 *data_offset) {
+  // We may at some point implement this specially; doing this would be more efficient.
+  CompressPatterns({pattern}, data_offset);
 }
 
 
-  int32 GetDimsCode(const TensorPattern &pattern) {
+void SortAxes(TensorPattern *pattern) {
+  int32 num_axes = pattern->num_axes;
+  std::pair<int32,int32> strides_dims[KALDI_TENSOR_MAX_DIM];
+  for (int32 raxis = 0; raxis < num_axes; raxis++) {
+    int32 stride = pattern->strides[raxis],
+        dim = pattern->dims[raxis];
+    KALDI_ASSERT(stride > 0);  // see documentation in header for reasons.
+    strides_dims[raxis].first = stride;
+    strides_dims[raxis].second = dim;
   }
+  std::sort(strides_dims, strides_dims + num_axes);
+  for (int32 raxis = 0; raxis < num_axes; raxis++) {
+    pattern->strides[raxis] = strides_dims[raxis].first;
+    pattern->dims[raxis] = strides_dims[raxis].second;
+  }
+}
+
+
+int32 GetDimsCode(const TensorPattern &pattern) {
+  // we may not need this after all.
+}
 
 
 }  // namespace kaldi

@@ -1,4 +1,4 @@
-// tensor/cpu-impl-linear.h
+// tensor/gpu-impl-linear.h
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR_CPU_IMPL_LINEAR_H_
-#define KALDI_TENSOR_CPU_IMPL_LINEAR_H_ 1
+#ifndef KALDI_TENSOR_GPU_IMPL_LINEAR_H_
+#define KALDI_TENSOR_GPU_IMPL_LINEAR_H_ 1
 
 #include "tensor/tensor.h"
 
@@ -33,9 +33,10 @@ namespace tensor {
 
 
 template <typename Real>
-inline static void AddProductScalar3CPU(
+inline static void AddProductScalar3GPU(
     float alpha, float beta,
     const TensorImpl &a, const TensorImpl &b, const TensorImpl *c) {
+  // TODO: make this actually work on GPU, probably by calling the 1-d vector version.
   Real *a_data = static_cast<Real*>(a->data),
       *b_data = static_cast<Real*>(b->data),
       *c_data = static_cast<Real*>(c->data);
@@ -47,25 +48,14 @@ inline static void AddProductScalar3CPU(
 }
 
 
-void AddProductScalar3CPU(
-    float alpha, float beta,
-    const TensorImpl &a, const TensorImpl &b, const TensorImpl *c) {
-  if (c.dtype == kFloatDtype) {
 
-  } else {
-    KALDI_ASSERT(c.dtype == kDoubleDtype &&
-                 "Data type not supported for this operation");
-
-  }
 
 }
 
-
-AddProductScalar3Cpu(alpha, beta, a, b, c);
 
 
 }  // namespace tensor
 }  // namespace kaldi
 
 
-#endif  // KALDI_TENSOR_CPU_IMPL_LINEAR_H_
+#endif  // KALDI_TENSOR_GPU_IMPL_LINEAR_H_
