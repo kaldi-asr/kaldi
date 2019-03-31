@@ -261,7 +261,7 @@ bool DecodeUtteranceLatticeIncremental(
 
   // Get lattice, and do determinization if requested.
   CompactLattice clat;
-  decoder.GetCompactLattice(&clat);
+  decoder.GetLattice(&clat);
   if (clat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
   if (determinize) {
