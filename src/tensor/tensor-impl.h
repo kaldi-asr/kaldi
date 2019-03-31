@@ -50,6 +50,10 @@ struct TensorImpl {
 
 // Metadata for a Tensor.  It's occasionally convenient to have this
 // in a struct (it's the same as a Tensor without the 'data' pointer.
+// The members must stay in sync with the corresponding members of
+// TensorImpl, as we have code that does reinterpret_cast on
+// these types.  (We don't use base-classing as it would make the code
+// harder to read).
 struct TensorMeta {
   TensorPattern pattern;
   DataType dtype;

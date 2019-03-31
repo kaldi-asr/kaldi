@@ -28,8 +28,6 @@
 namespace kaldi {
 namespace tensor {
 
-
-
 /**
    A Tensor is a multi-dimensional array (up to 5 dimensions) of types such as
    float or double (and eventually ints).  Multiple Tensors may point to data
@@ -58,6 +56,8 @@ class Tensor {
   inline int32 NumAxes() const { return impl_.pattern.num_axes; }
 
   const TensorImpl &Impl() { return impl_; }
+
+  const TensorMeta &Meta() { return reinterpret_cast<TensorMeta&>(impl_); }
 
   // Return reference to the struct containing the dimension and
   // stride info.
@@ -109,22 +109,23 @@ class Tensor {
   // Return the data type.
   DataType Dtype() const { return dtype_; }
 
-  // Indexing operators.  All of these return Tensors which reference the same
-  // underlying data as the original Tensor.  We could have done this with just
-  // a single indexing operator taking 5 args of type RangeExt defaulting to
-  // `all`, but we provide separate versions for each num-args for efficiency.
-  // You can provide an int32 where RangeExt is expected; it will be
-  // converted to a special struct of type Range. See the documentation for type
-  // Range, and the table which it contains.  If a is a Tensor with 1 axis, a(0)
-  // will return a scalar Tensor (0 axes
-  //
-  // Any of these indexing operators can operate on Tensors with more axes;
-  // trailing axes will be left alone.
+  /**
+     Indexing operator taking one arg.  Returns a Tensor referencing
+     the same underlying data as this Tensor.
+
+
+     You can provide an int32 where RangeExt is expected; it will be
+     converted to a special struct of type Range. See the documentation for type
+     Range, and the table which it contains.
+     will return a scalar Tensor (0 axes
+
+     Any of these indexing operators can operate on Tensors with more axes;
+     trailing axes will be left alone.
 
   // this operator () taking int32 is only provided in the one-arg case as a
   // convenience; in any case, RangeExt can be constructed from int32 with the
   // same effect.
-  Tensor operator () (int32 i0) const;
+
   Tensor operator () (RangeExt s0) const;
   Tensor operator () (RangeExt s0, RangeExt s1) const;
   Tensor operator () (RangeExt s0, RangeExt s1, RangeExt s2) const;
@@ -171,24 +172,28 @@ class Tensor {
   // data.
   Tensor (const Tensor &other) = default;
 
-  // Move assignment.  Does not copy the data.
-  Tensor(Tensor &&other);
+  // Move assignment.
+  Tensor(Tensor &&other): impl_(other.impl_) { storage.swap(other.storage_); }
 
   /**
      Construct a new Tensor with freshly allocated underlying data with
-     the data type, device and dimension the same as `other`.
+     the data type, device and dimensions the same as `other`.  The strides
+     will be the same order as 'other' if sp == kCopyStrides.
 
-       @param [in]  other  The tensor that we are taking metadata from (we
-                    are not sharing its underlying data).
-       @param [in]  sp   The stride policy; if kCopyStrides then we use
+       @param [in]  meta  The metadata we are copying the dims, device,
+                       dtype and possibly strides from
+       @param [in]  sp   The stride policy; if kCopyStrideOrder then we use
                        strides with the same sign and size-order as
                        `other`, while filling in any gaps if `other`
                        was not contiguous, if kCstrides then we use
-                       "C" style strides for any dimensions != 1.
+                       "C" style strides, i.e. we ignore the stride
+                       order of the source.  (Of course, we set strides
+                       to zero for any axes with `dim=1`, as required by our
+                       framework).
        @param [in]  ip   The data initialization policy
   */
-  Tensor(const Tensor &other, StridePolicy sp, InitializePolicy ip);
-
+  Tensor(const Meta &meta,
+         StridePolicy sp);
 
 
   /** Construct a Tensor with freshly allocated data.
@@ -196,11 +201,46 @@ class Tensor {
                     positive integers).
        @param [in] dtype   The data type to use
        @param [in] device  The device to put the data on
-       @param [in] set_zero   If true, set the tensor to zero.  If false,
-                        the contents will be undefined.
+
+       Example:  `Tensor a({3,4,5}, kDoubleDtype, kCpuDevice);`
    */
-  Tensor(ArrayRef<int32> dims, DataType dtype, Device device,
-         bool set_zero = false);
+  Tensor(ArrayRef<int32> dims, DataType dtype, Device device);
+
+  /** Construct a Tensor with freshly allocated data, and device ==
+      `GetDefaultDevice().`.
+
+       @param [in] dims    The dimensions of the tensor (zero to 5
+                    positive integers).
+       @param [in] dtype   The data type to use
+
+       Example:  `Tensor a({3,4,5}, kDoubleDtype);`
+   */
+  Tensor(ArrayRef<int32> dims, DataType dtype);
+
+  /** Construct a Tensor with freshly allocated data, data type ==
+      `GetDefaultDtype()`,
+
+       @param [in] dims    The dimensions of the tensor (zero to 5
+                    positive integers).
+       @param [in] device  The device to put the data on
+
+       Example:  `Tensor a({3,4,5}, kCpuDevice);`
+   */
+  Tensor(ArrayRef<int32> dims, Device device);
+
+
+  /** Construct a Tensor with freshly allocated data, data type ==
+      `GetDefaultDtype()`, and device == GetDefaultDevice().
+
+       @param [in] dims    The dimensions of the tensor (zero to 5
+                    positive integers).
+       @param [in] device  The device to put the data on
+
+       Example:  `Tensor a({3,4,5}, kCpuDevice);`
+   */
+  Tensor(ArrayRef<int32> dims);
+
+
 
   /**
      Construct a Tensor with the dimensions and strides provided.  This differs
@@ -247,19 +287,17 @@ class Tensor {
 
 
   /**
-     This constructor, which is intended for use primarily in internal
-     code and
+     This constructor takes the 'impl' and 'storage' provided and returns
+     a Tensor containing them.  Intended for special-purpose code such
+     as when we wrap arrays from external frameworks.
    */
-  Tensor(TensorPattern &pattern, DataType dtype, Device device,
-         void *data_);
+  Tensor(const TensorImpl &impl, std::shared_ptr<Storage> storage);
 
  private:
-  // The tensor dim and strides.
+  // This object contains the num-axes, dims, strides and data pointer, plus
+  // cached properties.
   TensorImpl impl_;
 
-  // The raw data pointer.  Will be cast to a pointer of the appropriate
-  // type before indexing.
-  void *data_;
 
   // The storage region where the data resides.  data_ does not necessarily
   // equal storage_->data; it may be more than that, e.g. if this is a view

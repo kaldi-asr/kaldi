@@ -135,8 +135,6 @@ inline void Div(const Tensor &a, Tensor &b, const Tensor *c) {
 
 
 
-
-
 /**
    Does
 
@@ -154,12 +152,12 @@ inline void Div(const Tensor &a, Tensor &b, const Tensor *c) {
 void Add(float alpha, float beta, const Tensor &src, const Tensor *dest);
 
 /**
-  Construct, if possible, a Tensor that is a view into 'src' with the
-  requested dimensions.
+  If possible, modifies the Tensor metadata to have the requested
+  dimensions.
 
   The semantics are based on those of PyTorch's "view" or NumPy's
-  "reshape", except we try to be more agnostic about the striding
-  of the input.
+  "reshape", except we try to be more accepting regarding the
+  acceptable striding of the input (see below).
 
   Consider a Tensor 'a' has "C"-style strides.  Then this function will return
   Tensor (say, 'b') that interprets the raw data of 'a' as an array with
@@ -169,85 +167,91 @@ void Add(float alpha, float beta, const Tensor &src, const Tensor *dest);
   Now consider a Tensor 'a2' that does not have "C"-style strides but
   has the same elements as 'a' in the sense that a(i,j,k) == a2(i,j,k).
   Then, *if possible*, this function will return a matrix b2 with
-  the same elements as b, e.g. b2(i,j,k) == b(i,j,k).
+  the same elements as b, e.g. b2(i,j,k) == b(i,j,k).  Of course, whether
+  this is possible depends on the details of the strides involved.
 
   This function returns NULL if such a tensor could not be constructed.  In that
-  case, likely what you will want to do is to construct a temporary Tensor from
-  'src' with the same dimensions but "C"-style strides (see the constructor of
-  Tensor that accepts the 'dims' parameter).  You may then call View() on that
-  temporary Tensor, which is guaranteed to succeed.
+  case,
 
-     @param   [in] src   The source Tensor, whose data is to be
-                         reinterpreted.
-     @param   [in] dims  The dimensions that we want for the returned
-                       Tensor; its product must equal src.NumElements().
-     @param   [out] dest  If the view could be constructed, this function
-               make 'dest' a view of the data in 'src' with the requested dims;
-               otherwise 'dest' will be unchanged.
-     @return   Returns true if this view could be constructed. If
-               src.HasCStrides() is true, this function will never return
-               false.
+     @param   [in] dims  The dimensions that we want The tensor to have at
+                       exit; its product must equal t->NumElements().
+     @param   [in,out] t   The Tensor whose metadata is to be changed
+
+     @return  Returns true if it was possible to construct such a view, and
+              false otherwise.  If t->HasCStrides() is true at entry,
+              this function will never return false.  If this function returns
+              false, you will likely want to construct a temporary Tensor from t
+              with the same dimensions but "C"-style strides (see the
+              constructor of Tensor that accepts the 'dims' parameter), and copy
+              the data from t to that new Tensor.  You may then call View() on
+              the temporary Tensor, which is guaranteed to succeed.
+
+     Example:
+<code>
+    Tensor a({90}, kFloatDtype, kCpuDevice);
+    Tensor b(a);
+    bool ans = View({9,5,2}, &b);
+    KALDI_ASSERT(ans);
+</code>
  */
-bool View(const Tensor &src, ArrayRef<int64_t> dims, Tensor *dest);
+bool View(ArrayRef<int32> dims, Tensor *t);
 
 
 /**
-   Returns a Tensor with a new view of the data in 'src', in which the axes
-   numbered axis1 and axis1 + 1 are merged.  This is just a special case
-   of View().
+   Attempts to modify a Tensor to contain a new view of its data, in which the
+   axes numbered axis1 and axis1 + 1 are merged.  This is just a special case of
+   View().
 
-   For example, if 'src' is a Tensor with dims (3,4,5) and you call
-   MergeAxes(src, 1), this funtion will merge axes 1 and 2 and return a Tensor
-   with shape (3,20).  The order of the elements in the second axis of the
-   result is required to be what you would expect if the layout as as a
-   "C" array (so: 4 blocks of 5 elements, and not vice versa).  This
-   is a common special case of what the function 'View' can give you.
+   For example, if 't' is a Tensor with dims (3,4,5) and you call
+   MergeAxes(1, &t), this funtion will merge axes 1 and 2 and t will, at
+   exit, have shape (3 20), with elements arranged in 4 blocks of 5
+   elements each (i.e. axis 1 having the higher stride).
 
-   If the pattern of 'src' makes the requested merging impossible,
-   this function will return NULL.  (This will happen if, in the
-   Tensor 'src', stride[axis1+1] != stride[axis1] * dim[axis1]).
-
-   If this function returns NULL then the caller will probably want to construct
-   a temporary Tensor 'temp' passing src.Dims() in the constructor, copy the
-   data in 'src' to 'temp', and then call MergeAxes on 'temp'.
-
-       @param [in]  src   The Tensor whose axes we will attempt to
-                          merge
        @param [in] axis1  The index of the first of the two axes which
                           this function will attempt to merge.  Must
-                          be less than src.NumAxes() - 1.
-       @param [out] dest  The Tensor which is written to; on success this
+                          be less than t->NumAxes() - 1.
+       @param [out] t     The Tensor to be modified; on success this
                           will be a Tensor with axes merged as requested,
                           sharing the data of 'src'.  On failure, it will
                           not be changed.
        @return            Returns true on success, false if the axes could
-                          not be merged (e.g., because of the strides not
-                          having the required relationship).
+                          not be merged.  It returns true if and only if
+                        `t->Stride(axis1 + 1)==t->Stride(axis1)*t->Dim(axis1)`
+
+     Example:
+<code>
+    Tensor a({3,4,5}, kFloatDtype, kCpuDevice);
+    MergeAxes(0, &a);  // a now has dims {12,5}.
+</code>
  */
-bool MergeAxes(const Tensor &src, int64_t axis1, Tensor *dest);
+bool MergeAxes(int32 axis1, Tensor *t);
 
 /**
-   Creates a Tensor in which the axis numbered 'axis' is split into
-   two axes, with dimensions respectively 'dim1' and 'dim2'.  The
-   interpretation will be as for a "C" array; so, for instance,
+   Modifies a Tensor by splitting the axis numbered 'axis' into
+   multiple axes as supplied in the 'dims' array.
+   The interpretation will be as for a "C" array; so, for instance,
    if the dimensions of 'src' were (10,12) and you called
    `SplitAxis(src, 1, 3, 4)` resulting in a Tensor of dimensions
    (10,3,4), the indexes along the original axis of dimension 12 would be
    interpreted as 3 blocks of size 4.  (This is the normal semantics
    of things like NumPy's reshape or PyTorch's view.)
 
-      @param [in] src  The Tensor whose axis is to be split.
       @param [in] axis  The index of the axis to be split; must
                        satisfy `0 <= axis < src.Dims().`
-      @param [in] dim1  First dimension with which to split the axis.
-      @param [in] dim2  Second dimension with which to split the axis.
-                        Must satisfy `dim1 * dim2 == src.Dim(axis)`.
-      @param [out] dest Tensor to be created, with one more axis than 'src',
-                        sharing the same underlying data.
+      @param [in] dims  The dimensions desired in the axes to
+                        replace axis 'axis'.  Their product must
+                        equal the value of `t->Dim(axis)` at
+                        entry.
+      param [in,out] t   Tensor whose metadata is to be modified
+   Example:
+<code>
+  Tensor a({10,3}, kFloatDtype, kCpuDevice);
+  SplitAxis(0, {2,5}, &a);  // a now has dims {2,5,3}.
+</code>
 */
-void SplitAxis(const Tensor &src, int64_t axis,
-               int64_t dim1, int64_t dim2,
-               Tensor *dest);
+void SplitAxis(int32 axis, ArrayRef<int32> dims, Tensor *t);
+
+
 
 
 
@@ -257,54 +261,25 @@ void SplitAxis(const Tensor &src, int64_t axis,
 
     `c := alpha (a * b)  +  beta c`
 
-   where '*' is elementwise multiplication subject to broadcasting
-   rules.  This does not support reducing operations (see AddProductReducing).
+   where '*' is elementwise multiplication subject to broadcasting rules.  This
+   supports reducing operations, and is the underlying implementation used in
+   things like matrix-matrix or matrix-vector product.
 
    @param [in] alpha  Value that scales a * b
    @param [in] beta   Value that scales the initial value of c
    @param [in] a      First input tensor
-   @param [in] b      Second input tensor; require BroadcastCompatible(a, b)
-   @param [out] c     Tensor to be added to (must already be correctly sized,
-                      and either its data must be initialized to a known
-                      value (if beta != 0) or known to not contain NaN (if
+   @param [in] b      Second input tensor
+   @param [out] c     Tensor to be added to.  We require Broadcastable(a, b, c).
+                      Either its data must be initialized to a known
+                      value (if beta != 0) or it must be known to not contain NaN (if
                       beta == 0).   We require BroadcastCompatible(a, b, c, true).
+                      'c' is const because its metadata is not changed; it is
+                      a pointer as a hint to the user that its data is changed.
  */
 void AddProduct(float alpha, float beta,
-                const Tensor &a, const Tensor &b, Tensor *c);
+                const Tensor &a, const Tensor &b, const Tensor *c);
 
 
-
-/**
-   Does:
-
-    `c := alpha (a * b)  +  beta c`
-
-   where '*' is elementwise multiplication subject to broadcasting
-   rules.  This version supports reducing operations (i.e. it allows
-   'c' to have dim=1 on axes where a and/or b has dim!=1).
-
-   This function actually supports a strict superset of AddProduct(); we
-   separate the functions to make the implementation for AddProduct() simpler,
-   for speed.
-
-   The Tensors do not all have to have the same NumAxes(); they will
-   (internally) be made the same size by padding on the left with trivial axes
-   (dim=1;stride=0) to make them the same size.
-
-   The Tensors need to have the same Dtype() and Device*().
-
-   @param [in] alpha  Value that scales a * b
-   @param [in] beta   Value that scales the initial value of c
-   @param [in] a      First input tensor
-   @param [in] b      Second input tensor; require BroadcastCompatible(a, b)
-   @param [out] c     Tensor to be added to (must already be correctly sized,
-                      and either its data must be initialized to a known
-                      value (if beta != 0) or known to not contain NaN (if
-                      beta == 0).   We require BroadcastCompatible(a, b, c).
- */
-void AddProductReducing(float alpha, float beta,
-                        const SubTensor &a, const SubTensor &b,
-                        SubTensor *c);
 
 
 
