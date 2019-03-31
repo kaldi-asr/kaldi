@@ -146,7 +146,9 @@ lm: base util matrix fstext
 decoder: base util matrix gmm hmm tree transform lat
 lat: base util hmm tree matrix
 cudamatrix: base util matrix
-nnet3: base util matrix lat gmm hmm tree transform cudamatrix chain fstext
+nnet: base util hmm tree matrix cudamatrix
+nnet2: base util matrix lat gmm hmm tree transform cudamatrix
+nnet3: base util matrix decoder lat gmm hmm tree transform cudamatrix chain fstext
 rnnlm: base util matrix cudamatrix nnet3 lm hmm
 chain: lat hmm tree fstext matrix cudamatrix util base
 ivector: base util matrix transform tree gmm
