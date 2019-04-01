@@ -45,6 +45,7 @@ public:
 
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
     KALDI_ASSERT(false);
+    return 0.0f;  // never executed, compiler requests a return
   };
 
   // Note: these indices are 1-based.
