@@ -22,6 +22,7 @@
 
 #include "decoder/lattice-incremental-decoder.h"
 #include "lat/lattice-functions.h"
+#include "base/timer.h"
 
 namespace kaldi {
 
@@ -107,7 +108,10 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
       // PruneActiveTokens()
       // We have a delay on GetLattice to do determinization on more skinny lattices
       int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
-      int32 frame_det_least = config_.prune_interval + last_get_lattice_frame_;
+      // The minimum length of chunk is config_.prune_interval. We make it
+      // identical to PruneActiveTokens since we need extra_cost as the weights
+      // of final arcs to denote the "future" information of final states (Tokens)
+      int32 frame_det_least = last_get_lattice_frame_ + config_.prune_interval;
       if (frame_det_most > 0) {
         // To adaptively decide the length of chunk, we further compare the number of
         // tokens in each frame and a pre-defined threshold.
@@ -120,6 +124,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
             KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
                           << " incremental determinization up to " << f;
             GetLattice(false, false, f);
+            break;
           }
         }
       }
@@ -127,8 +132,10 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(cost_cutoff);
   }
+  Timer timer;
   FinalizeDecoding();
   GetLattice(true, config_.redeterminize, NumFramesDecoded());
+  KALDI_VLOG(2) << "Delay time after decoding finalized (secs): " << timer.Elapsed();
 
   // Returns true if we have any kind of traceback available (not necessarily
   // to the end state; query ReachedFinal() for that).
@@ -958,6 +965,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
     if (!GetRawLattice(&raw_fst, use_final_probs, last_get_lattice_frame_,
                        last_frame_of_chunk, not_first_chunk, !decoding_finalized_))
       KALDI_ERR << "Unexpected problem when getting lattice";
+    // step 2-3
     ret = determinizer_.ProcessChunk(raw_fst, last_get_lattice_frame_,
                                      last_frame_of_chunk, state_label_initial_cost_,
                                      state_label_final_cost_);
@@ -967,10 +975,20 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
                << " while the determinizer_ has already done up to frame: "
                << last_get_lattice_frame_;
 
+  // step 4
   if (decoding_finalized_) ret &= determinizer_.Finalize(redeterminize);
   if (olat) {
     *olat = determinizer_.GetDeterminizedLattice();
     ret &= (olat->NumStates() > 0);
+  }
+  if (!ret) {
+    KALDI_WARN << "Last chunk processing failed."
+               << " We will retry from frame 0.";
+    // Reset determinizer_ and re-determinize from
+    // frame 0 to last_frame_of_chunk
+    last_get_lattice_frame_ = 0;
+    determinizer_.Init();
+    ret = GetLattice(use_final_probs, redeterminize, last_frame_of_chunk, olat);
   }
 
   return ret;
@@ -1150,6 +1168,7 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
     const unordered_map<int32, BaseFloat> &state_label_initial_cost,
     const unordered_map<int32, BaseFloat> &state_label_final_cost) {
   bool not_first_chunk = first_frame != 0;
+  bool ret = true;
   // step 2: Determinize the chunk
   CompactLattice clat;
   // We do determinization with beam pruning here
@@ -1157,25 +1176,25 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
   // can guarantee no final or initial arcs in clat are pruned by this function.
   // These pruned final arcs can hurt oracle WER performance in the final lattice
   // (also result in less lattice density) but they seldom hurt 1-best WER.
-  if (!DeterminizeLatticePhonePrunedWrapper(
-          trans_model_, &raw_fst, config_.lattice_beam, &clat, config_.det_opts))
-    KALDI_WARN << "Determinization finished earlier than the beam";
+  ret &= DeterminizeLatticePhonePrunedWrapper(
+      trans_model_, &raw_fst, config_.lattice_beam, &clat, config_.det_opts);
 
   final_arc_list_.swap(final_arc_list_prev_);
   final_arc_list_.clear();
 
   // step 3: Appending the new chunk in clat to the old one in lat_
-  AppendLatticeChunks(clat, not_first_chunk, state_label_initial_cost,
-                      state_label_final_cost);
+  ret &= AppendLatticeChunks(clat, not_first_chunk, state_label_initial_cost,
+                             state_label_final_cost);
+
+  ret &= (lat_.NumStates() > 0);
   KALDI_VLOG(2) << "Frame: ( " << first_frame << " , " << last_frame << " )"
                 << " states of the chunk: " << clat.NumStates()
                 << " states of the lattice: " << lat_.NumStates();
-
-  return (lat_.NumStates() > 0);
+  return ret;
 }
 
 template <typename FST>
-void LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(
+bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(
     CompactLattice clat, bool not_first_chunk,
     const unordered_map<int32, BaseFloat> &state_label_initial_cost,
     const unordered_map<int32, BaseFloat> &state_label_final_cost) {
@@ -1277,13 +1296,20 @@ void LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(
         aiter_chunk1.SetValue(arc_chunk1_mod);
       } // otherwise, it has been pruned
     }
-    KALDI_ASSERT(prev_final_states.size()); // at least one arc should be appended
+    // If at least one arc connects two chunks, the function will return true
+    // Otherwise, return false
+    // It is possible to fail in connecting two chunks since the old chunk is pruned
+    // by DeterminizeLatticePhonePrunedWrapper while the new chunk is pruned by
+    // PruneActiveTokens. Their pruning behaviors are not totally the same
+    // If returning false in this function, we will later re-determinize from frame 0
+    if (!prev_final_states.size()) return false;
     // Making all unmodified remaining arcs of final_arc_list_prev_ be connected to
     // a dead state. The following prev_final_states can be the same or different
     // states
     for (auto i : prev_final_states) olat->SetFinal(i, CompactLatticeWeight::Zero());
   } else
     olat->SetStart(0); // Initialize the first chunk for olat
+  return true;
 }
 
 template <typename FST>

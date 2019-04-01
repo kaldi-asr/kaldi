@@ -1,4 +1,4 @@
-// decoder/lattice-incremental-decoder.h
+// decoder/lattice-incremental-decoder.h
 
 // Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
@@ -246,11 +246,11 @@ class LatticeIncrementalDecoderTpl {
   ///                       the function. We make it not always equal to
   ///                         NumFramesDecoded() to have a delay on the
   ///                       deteriminization
-  ///  @param [out] olat   The CompactLattice representing what has been decoded
+  ///   @param [out] olat   The CompactLattice representing what has been decoded
   ///                          so far.
-  //                  If lat == NULL, the CompactLattice won't be outputed.
-  ///   @return ret This function will returns true if the chunk is processed
-  ///   successfully
+  //                       If lat == NULL, the CompactLattice won't be outputed.
+  ///   @return ret   This function will returns true if the chunk is processed
+  ///                       successfully
   bool GetLattice(bool use_final_probs, bool redeterminize,
                   int32 last_frame_of_chunk, CompactLattice *olat = NULL);
   /// Specifically design when decoding_finalized_==true
@@ -544,7 +544,7 @@ class LatticeIncrementalDeterminizer {
   // last chunk to the first frame state of this chunk.
   // These begin and final states are corresponding to the same Token,
   // guaranteed by unique state labels.
-  void AppendLatticeChunks(
+  bool AppendLatticeChunks(
       CompactLattice clat, bool not_first_chunk,
       const unordered_map<int32, BaseFloat> &state_label_initial_cost,
       const unordered_map<int32, BaseFloat> &state_label_final_cost);
