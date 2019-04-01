@@ -27,9 +27,10 @@ nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=1g   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
+gigaword_workdir=
 
 # LSTM/chain options
-train_stage=-10
+train_stage=-20
 xent_regularize=0.1
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 
@@ -156,7 +157,7 @@ if [ $stage -le 19 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   tdnn_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim-continuous=true"
   tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
   linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
@@ -201,7 +202,7 @@ fi
 
 
 if [ $stage -le 20 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+  if [[ $(hostname -f) == *.clsp.joujhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
@@ -254,9 +255,10 @@ if [ $stage -le 21 ]; then
 
 fi
 
+# Let's train first a small RNNLM on Fisher train set
 rnnlmdir=exp/rnnlm_lstm_tdnn_1b
 if [ $stage -le 22 ]; then
-  local/rnnlm/train_rnnlm.sh --dir $rnnlmdir || exit 1;
+  rnnlm/train_rnnlm.sh --dir $rnnlmdir || exit 1;
 fi
 
 if [ $stage -le 23 ]; then
@@ -277,7 +279,11 @@ if [ $stage -le 23 ]; then
           --online-ivector-dir exp/nnet3/ivectors_${data}_hires \
           $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data} || exit 1;
       done
-      bash local/rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $rnnlmdir data/${data}_hires/ \
+      if [ $gigaword_workdir ]; then
+        bash rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $gigaword_workdir/rnnlm data/${data}_hires/ \
+              ${dir}/decode_${lmtype}_${data} $dir/decode_gigaword_RNNLM_${lmtype}_${data} || exit 1;
+      fi
+      bash rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $rnnlmdir data/${data}_hires/ \
 	      ${dir}/decode_${lmtype}_${data} $dir/decode_rnnLM_${lmtype}_${data} || exit 1;
     ) || touch $dir/.error &
   done
