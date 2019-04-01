@@ -202,7 +202,7 @@ fi
 
 
 if [ $stage -le 20 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+  if [[ $(hostname -f) == *.clsp.joujhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
@@ -255,9 +255,10 @@ if [ $stage -le 21 ]; then
 
 fi
 
+# Let's train first a small RNNLM on Fisher train set
 rnnlmdir=exp/rnnlm_lstm_tdnn_1b
 if [ $stage -le 22 ]; then
-  local/rnnlm/train_rnnlm.sh --dir $rnnlmdir || exit 1;
+  rnnlm/train_rnnlm.sh --dir $rnnlmdir || exit 1;
 fi
 
 if [ $stage -le 23 ]; then
@@ -279,10 +280,10 @@ if [ $stage -le 23 ]; then
           $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data} || exit 1;
       done
       if [ $gigaword_workdir ]; then
-        bash local/rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $gigaword_workdir/rnnlm data/${data}_hires/ \
+        bash rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $gigaword_workdir/rnnlm data/${data}_hires/ \
               ${dir}/decode_${lmtype}_${data} $dir/decode_gigaword_RNNLM_${lmtype}_${data} || exit 1;
       fi
-      bash local/rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $rnnlmdir data/${data}_hires/ \
+      bash rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $rnnlmdir data/${data}_hires/ \
 	      ${dir}/decode_${lmtype}_${data} $dir/decode_rnnLM_${lmtype}_${data} || exit 1;
     ) || touch $dir/.error &
   done

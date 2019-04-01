@@ -7,8 +7,12 @@
 stage=-1
 lmstage=-2
 train_rnnlm=false
-start_textcleanup=false
-addtraintext=true
+start_textcleanup=false # WARNING : IT starts from flattening gigaword corpus to preparing text folder.
+                        # If you already have the normalised gigword text somewhere, you can bypass the
+			# time consuming text cleanup (~1 week) by setting this option false.
+addtraintext=true # If true, this option appends the Fisher train text to the Gigaword corpus textfile, to 
+                  # perform the A, A + G, Dev type POCOLM training configuration.
+		  # A=fsp train, G=gigword text, 
 num_words_pocolm=110000
 train_sgmm2=false
 
@@ -45,9 +49,9 @@ if [ $stage -le -1 ]; then
   local/fsp_prepare_dict.sh $spanish_lexicon
   # Let's keep the original dict copy for G2P training
   cp -r data/local/dict data/local/dict_orig
-#  (
-#    steps/dict/train_g2p_seq2seq.sh data/local/dict_orig/lexicon.txt exp/g2p || touch exp/g2p/.error
-#  ) &
+  (
+    steps/dict/train_g2p_seq2seq.sh data/local/dict_orig/lexicon.txt exp/g2p || touch exp/g2p/.error
+  ) &
 
   # Added c,j, v to the non silences phones manually
   utils/prepare_lang.sh data/local/dict_orig "<unk>" data/local/lang_orig data/lang_orig
@@ -301,6 +305,6 @@ fi
 wait;
 
 if [ $stage -le 6 ]; then
-  local/chain/run_tdnn_1g.sh --stage 9 --gigaword-workdir $rnnlm_workdir || exit 1;
+  local/chain/run_tdnn_1g.sh --stage 0 --gigaword-workdir $rnnlm_workdir || exit 1;
 fi
 exit 0;
