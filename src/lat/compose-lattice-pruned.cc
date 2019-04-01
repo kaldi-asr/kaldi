@@ -772,14 +772,13 @@ void PrunedCompactLatticeComposer::ProcessTransition(int32 src_composed_state,
   // may not be so if we extend this to work with Lattice.
   fst::StdArc lm_arc;
 
-  // the input input lattice might nave epsilons
+  // the input lattice might have epsilons
   if (olabel == 0) {
     lm_arc.ilabel = 0;
     lm_arc.olabel = 0;
     lm_arc.nextstate = src_info->lm_state;
     lm_arc.weight = fst::StdArc::Weight(0.0);
-  }
-  else if (!det_fst_->GetArc(src_info->lm_state, olabel, &lm_arc)) {
+  } else if (!det_fst_->GetArc(src_info->lm_state, olabel, &lm_arc)) {
     // for normal language models we don't expect this to happen, but the
     // appropriate behavior is to do nothing; the composed arc does not exist,
     // so there is no arc to add and no new state to create.
