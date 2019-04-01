@@ -103,10 +103,26 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
     if (NumFramesDecoded() % config_.prune_interval == 0) {
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-      // The chunk length of determinization is equal to prune_interval
+      // We always incrementally determinize the lattice after lattice pruning in
+      // PruneActiveTokens()
       // We have a delay on GetLattice to do determinization on more skinny lattices
-      if (NumFramesDecoded() - config_.determinize_delay > 0)
-        GetLattice(false, false, NumFramesDecoded() - config_.determinize_delay);
+      int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
+      int32 frame_det_least = config_.prune_interval + last_get_lattice_frame_;
+      if (frame_det_most > 0) {
+        // To adaptively decide the length of chunk, we further compare the number of
+        // tokens in each frame and a pre-defined threshold.
+        // If the number of tokens in a certain frame is less than
+        // config_.determinize_max_active, the lattice can be determinized up to this
+        // frame. And we try to determinize as most frames as possible so we check
+        // numbers from frame_det_most_ up to last_get_lattice_frame_
+        for (int32 f = frame_det_most; f >= frame_det_least; f--) {
+          if (GetNumToksForFrame(f) < config_.determinize_max_active) {
+            KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
+                          << " incremental determinization up to " << f;
+            GetLattice(false, false, f);
+          }
+        }
+      }
     }
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(cost_cutoff);
@@ -1107,6 +1123,13 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
   return (ofst->NumStates() > 0);
 }
 
+template <typename FST, typename Token>
+int32 LatticeIncrementalDecoderTpl<FST, Token>::GetNumToksForFrame(int32 frame) {
+  int32 r = 0;
+  for (Token *tok = active_toks_[frame].toks; tok; tok = tok->next) r++;
+  return r;
+}
+
 template <typename FST>
 LatticeIncrementalDeterminizer<FST>::LatticeIncrementalDeterminizer(
     const LatticeIncrementalDecoderConfig &config,
@@ -1134,8 +1157,8 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
   // can guarantee no final or initial arcs in clat are pruned by this function.
   // These pruned final arcs can hurt oracle WER performance in the final lattice
   // (also result in less lattice density) but they seldom hurt 1-best WER.
-  if (!DeterminizeLatticePhonePrunedWrapper(trans_model_, &raw_fst, config_.beam,
-                                            &clat, config_.det_opts))
+  if (!DeterminizeLatticePhonePrunedWrapper(
+          trans_model_, &raw_fst, config_.lattice_beam, &clat, config_.det_opts))
     KALDI_WARN << "Determinization finished earlier than the beam";
 
   final_arc_list_.swap(final_arc_list_prev_);

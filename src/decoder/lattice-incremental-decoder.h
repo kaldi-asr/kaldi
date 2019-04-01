@@ -42,6 +42,7 @@ struct LatticeIncrementalDecoderConfig {
   BaseFloat lattice_beam;
   int32 prune_interval;
   int32 determinize_delay;
+  int32 determinize_max_active;
   bool redeterminize;
   bool determinize_lattice; // not inspected by this class... used in
                             // command-line program.
@@ -63,8 +64,9 @@ struct LatticeIncrementalDecoderConfig {
         min_active(200),
         lattice_beam(10.0),
         prune_interval(25),
-        determinize_delay(25),
-        redeterminize(true),
+        determinize_delay(0),
+        determinize_max_active(50),
+        redeterminize(false),
         determinize_lattice(true),
         beam_delta(0.5),
         hash_ratio(2.0),
@@ -86,6 +88,11 @@ struct LatticeIncrementalDecoderConfig {
     opts->Register("determinize-delay", &determinize_delay,
                    "delay (in frames) at "
                    "which to incrementally determinize lattices");
+    opts->Register("determinize-max-active", &determinize_max_active,
+                   "This option is to adaptively decide --determinize-delay. "
+                   "If the number of active tokens(in a certain frame) is less "
+                   "than this number, we will start to incrementally "
+                   "determinize lattices up to this frame.");
     opts->Register("redeterminize", &redeterminize,
                    "whether to re-determinize the lattice after incremental "
                    "determinization.");
@@ -484,7 +491,9 @@ class LatticeIncrementalDecoderTpl {
   bool GetRawLattice(Lattice *ofst, bool use_final_probs, int32 frame_begin,
                      int32 frame_end, bool create_initial_state,
                      bool create_final_state);
-
+  // Get the number of tokens in each frame
+  // It is useful, e.g. in using config_.determinize_max_active
+  int32 GetNumToksForFrame(int32 frame);
   LatticeIncrementalDeterminizer<FST> determinizer_;
   int32 last_get_lattice_frame_; // the last time we call GetLattice
   // a map from Token to its state_label
