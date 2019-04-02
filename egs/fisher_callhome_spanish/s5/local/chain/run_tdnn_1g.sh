@@ -30,7 +30,7 @@ reporting_email=
 gigaword_workdir=
 
 # LSTM/chain options
-train_stage=-20
+train_stage=-10
 xent_regularize=0.1
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 
@@ -157,7 +157,7 @@ if [ $stage -le 19 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   tdnn_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim-continuous=true"
   tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
   linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
@@ -202,7 +202,7 @@ fi
 
 
 if [ $stage -le 20 ]; then
-  if [[ $(hostname -f) == *.clsp.joujhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
