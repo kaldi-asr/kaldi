@@ -145,6 +145,8 @@ _kaldi_build()
     fi
     echo "  - Configured src for build"
 
+    # Make Kaldi without checks (ensures faster compilation)
+    sed -i '/-g # -O0 -DKALDI_PARANOID/c\-O3 -DNDEBUG' kaldi.mk
     make depend -j 8 > /dev/null
     make -j 8 &> $ASR_LOG/make_src.log
     make_src_status=$( grep "Done" $ASR_LOG/make_src.log )
