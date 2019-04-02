@@ -218,7 +218,7 @@ void ContextDependency::EnumeratePairs(
     // Choose 'position' as a phone position in 'context' that's currently
     // -1, and that is as close as possible to the central position P.
     int32 position = 0;
-    int32 min_dist = N_ - 1;
+    int32 min_dist = N_;
     for (int32 i = 0; i < N_; i++) {
       int32 dist = (P_ - i > 0) ? (P_ - i) : (i - P_);
       if (phone_window[i] == -1 && dist < min_dist) {
