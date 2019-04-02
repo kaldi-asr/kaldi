@@ -62,20 +62,6 @@ _kaldi_check_dependencies()
 # Kaldi Build (Common to Installation and Update)
 _kaldi_build()
 {
-    # if environment variable CXX is unset, set it
-    if [ -z "$CXX" ]
-    then
-        export CXX=g++
-    fi
-
-    # Check g++ version before starting build
-    gpp_version_num=$($CXX -dumpversion | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-    if [ $gpp_version_num -gt 70000 ]
-    then
-        echo -e "\e[34m\e[1m Unsupported g++ version. Use g++ < 7.0.* \e[0m"
-        return 1
-    fi
-
     # Build toolkit
     echo "Building toolkit..."
     # Build the tools directory
