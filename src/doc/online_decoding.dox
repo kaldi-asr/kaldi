@@ -444,22 +444,25 @@ The program to run the TCP sever is online2-tcp-nnet3-decode-faster located in t
 ~/src/online2bin folder. The usage is as follows:
 
 \verbatim
-online2-tcp-nnet3-decode-faster <nnet3-in> <fst-in> <word-symbol-table> <listen-port>
+online2-tcp-nnet3-decode-faster <nnet3-in> <fst-in> <word-symbol-table>
 \endverbatim
 
 For example:
 
 \verbatim
-online2-tcp-nnet3-decode-faster model/final.mdl graph/HCLG.fst graph/words.txt 5050
+online2-tcp-nnet3-decode-faster model/final.mdl graph/HCLG.fst graph/words.txt
 \endverbatim
 
 The word symbol table is mandatory (unlike other nnet3 online decoding programs) because
 the server outputs word strings. Endpointing is mandatory to make the operation of the
 program reasonable. Other, non-standard options include:
+    - port-num - the port the server listens on (by default 5050)
     - samp-freq - sampling frequency of audio (usually 8000 for telephony and 16000 for other uses)
     - chunk-length - length of signal being processed by decoder at each step
     - output-period - how often we check for changes in the decoding (ie. output refresh rate, default 1s)
     - num-threads-startup - number of threads used when initializing iVector extractor
+    - read-timeout - it the program doesn't receive data during this timeout, the server terminates the connection.
+		Use -1 to disable this feature.
 
 The TCP protocol simply takes RAW signal on input (16-bit signed integer
 encoding at chosen sampling frequency) and outputs simple text using the following
@@ -479,8 +482,24 @@ command should look like this:
 \verbatim
 online2-tcp-nnet3-decode-faster --samp-freq=8000 --frames-per-chunk=20 --extra-left-context-initial=0
     --frame-subsampling-factor=3 --config=model/conf/online.conf --min-active=200 --max-active=7000
-    --beam=15.0 --lattice-beam=6.0 --acoustic-scale=1.0 model/final.mdl graph/HCLG.fst graph/words.txt 5050
+    --beam=15.0 --lattice-beam=6.0 --acoustic-scale=1.0 --port-num=5050 model/final.mdl graph/HCLG.fst graph/words.txt
 \endverbatim
+
+Note in order to make the communication as simple as possible, the server has to accept
+any data on input and cannot figure out when the stream is over. It will therefore not
+be able to terminate the connection and it is the client's resposibility to disconnect
+when it is ready to do so. As a fallback for certain situations, the read-timeout option
+was added, which will automatically disconnect if a chosen amount of seconds has passed.
+Keep in mind, that this is not an ideal solution and it's a better idea to design your
+client to properly disconnect the connection when neccessary.
+
+For testing purposes, we will use the netcat program. We will also use sox to reeoncode the
+files properly from any source. Netcat has an issue that, similarly to what was stated above 
+about the server, it cannot always interpret the data and usually it won't automatically
+disconnect the TCP connection. To get around this, we will use the '-N' switch, which kills
+the connection once streaming of the file is complete, but this can have a small sideffect of
+not reading the whole output from the Kaldi server if the discconect comes too fast. Just
+keep this in mind if you intend to implement any of these programs into a production environment.
 
 To send a WAV file into the server, it first needs to be decoded into raw audio, then it can be
 sent to the socket:

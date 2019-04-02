@@ -221,18 +221,18 @@ void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {
     if (dim_ == 0) return;
     CuTimer tim;
     if (mat.Stride() == mat.NumCols()) {
-      CU_SAFE_CALL(cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_,
-                              cudaMemcpyHostToDevice));
+      CU_SAFE_CALL(cudaMemcpyAsync(data_, mat.Data(), sizeof(Real)*dim_,
+                              cudaMemcpyHostToDevice, cudaStreamPerThread));
     } else {
       Real* vec_data = data_;
       for (MatrixIndexT r = 0; r < mat.NumRows(); r++) {
-        CU_SAFE_CALL(cudaMemcpy(vec_data, mat.RowData(r),
+        CU_SAFE_CALL(cudaMemcpyAsync(vec_data, mat.RowData(r),
                                 sizeof(Real) * mat.NumCols(),
-                                cudaMemcpyHostToDevice));
+                                cudaMemcpyHostToDevice, cudaStreamPerThread));
         vec_data += mat.NumCols();
       }
     }
-    CU_SAFE_CALL(cudaGetLastError());
+    CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
@@ -249,18 +249,21 @@ void MatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
     if (num_rows_ == 0) return;
     CuTimer tim;
     if (Stride() == NumCols()) {
-      CU_SAFE_CALL(cudaMemcpy(data_, v.Data(),
+      CU_SAFE_CALL(cudaMemcpyAsync(data_, v.Data(),
                               sizeof(Real)*v.Dim(),
-                              cudaMemcpyDeviceToHost));
+                              cudaMemcpyDeviceToHost,
+                              cudaStreamPerThread));
     } else {
       const Real* vec_data = v.Data();
       for (MatrixIndexT r = 0; r < NumRows(); r++) {
-        CU_SAFE_CALL(cudaMemcpy(RowData(r), vec_data,
+        CU_SAFE_CALL(cudaMemcpyAsync(RowData(r), vec_data,
                                 sizeof(Real) * NumCols(),
-                                cudaMemcpyDeviceToHost));
+                                cudaMemcpyDeviceToHost,
+                                cudaStreamPerThread));
         vec_data += NumCols();
       }
     }
+    CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
@@ -886,7 +889,9 @@ void CuVectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &src) {
       KALDI_ASSERT(src.Dim() == dim_);
       if (dim_ == 0) return;
       CuTimer tim;
-      CU_SAFE_CALL(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(Real), cudaMemcpyHostToDevice));
+      CU_SAFE_CALL(cudaMemcpyAsync(data_, src.Data(), src.Dim()*sizeof(Real), 
+                                   cudaMemcpyHostToDevice, cudaStreamPerThread));
+      CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
       CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecH2D", tim);
     }
   } else
@@ -917,8 +922,10 @@ void CuVectorBase<Real>::CopyToVec(VectorBase<OtherReal> *dst) const {
     } else {
       if (dim_ == 0) return;
       CuTimer tim;
-      CU_SAFE_CALL(cudaMemcpy(dst->Data(), this->data_,
-                              sizeof(Real) * dim_, cudaMemcpyDeviceToHost));
+      CU_SAFE_CALL(cudaMemcpyAsync(dst->Data(), this->data_,
+                              sizeof(Real) * dim_, cudaMemcpyDeviceToHost,
+                              cudaStreamPerThread));
+      CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
       CuDevice::Instantiate().AccuProfile(__func__, tim);
     }
   } else
