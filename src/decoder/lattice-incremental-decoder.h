@@ -65,9 +65,9 @@ struct LatticeIncrementalDecoderConfig {
         min_active(200),
         lattice_beam(10.0),
         prune_interval(25),
-        determinize_delay(0),
-        determinize_max_active(50),
-        determinize_beam_offset(0),
+        determinize_delay(25),
+        determinize_max_active(std::numeric_limits<int32>::max()),
+        determinize_beam_offset(1),
         redeterminize(false),
         determinize_lattice(true),
         beam_delta(0.5),
@@ -187,21 +187,6 @@ class LatticeIncrementalDecoderTpl {
   /// and figures out the shortest path.
   bool GetBestPath(Lattice *ofst, bool use_final_probs = true);
 
-  /// Outputs an FST corresponding to the raw, state-level
-  /// tracebacks.  Returns true if result is nonempty.
-  /// If "use_final_probs" is true AND we reached the final-state
-  /// of the graph then it will include those as final-probs, else
-  /// it will treat all final-probs as one.
-  /// The raw lattice will be topologically sorted.
-  /// Notably, the raw lattice from this incremental determinization decoder
-  /// has already been partially determinized
-  ///
-  /// See also GetRawLatticePruned in lattice-faster-online-decoder.h,
-  /// which also supports a pruning beam, in case for some reason
-  /// you want it pruned tighter than the regular lattice beam.
-  /// We could put that here in future needed.
-  bool GetRawLattice(Lattice *ofst, bool use_final_probs = true);
-
   /// The following function is specifically designed for incremental
   /// determinization. The function obtains a CompactLattice for
   /// the part of this utterance up to the frame last_frame_of_chunk.
@@ -260,6 +245,16 @@ class LatticeIncrementalDecoderTpl {
                   int32 last_frame_of_chunk, CompactLattice *olat = NULL);
   /// Specifically design when decoding_finalized_==true
   bool GetLattice(CompactLattice *olat);
+
+  /// This function is to keep forwards compatibility.
+  /// It outputs an FST corresponding to the raw, state-level
+  /// tracebacks.  Returns true if result is nonempty.
+  /// If "use_final_probs" is true AND we reached the final-state
+  /// of the graph then it will include those as final-probs, else
+  /// it will treat all final-probs as one.
+  /// Notably, the raw lattice from this incremental determinization decoder
+  /// has already been partially determinized
+  bool GetRawLattice(Lattice *ofst, bool use_final_probs = true);
 
   /// InitDecoding initializes the decoding, and should only be used if you
   /// intend to call AdvanceDecoding().  If you call Decode(), you don't need to
@@ -475,7 +470,7 @@ class LatticeIncrementalDecoderTpl {
 
   void ClearActiveTokens();
 
-  // The following part is specifically designed for incremental
+  // The following part is specifically designed for incremental determinization
   // This function is modified from LatticeFasterDecoderTpl::GetRawLattice()
   // and specific design for step 1 of incremental determinization
   // introduced before above GetLattice()
@@ -493,9 +488,9 @@ class LatticeIncrementalDecoderTpl {
   // the corresponding state-label arcs. Similar for create_final_state
   // In incremental GetLattice, we do not create the initial state in
   // the first chunk, and we do not create the final state in the last chunk
-  bool GetRawLattice(Lattice *ofst, bool use_final_probs, int32 frame_begin,
-                     int32 frame_end, bool create_initial_state,
-                     bool create_final_state);
+  bool GetIncrementalRawLattice(Lattice *ofst, bool use_final_probs, 
+                     int32 frame_begin, int32 frame_end, 
+                     bool create_initial_state, bool create_final_state);
   // Get the number of tokens in each frame
   // It is useful, e.g. in using config_.determinize_max_active
   int32 GetNumToksForFrame(int32 frame);

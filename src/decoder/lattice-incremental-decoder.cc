@@ -118,9 +118,10 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
         // If the number of tokens in a certain frame is less than
         // config_.determinize_max_active, the lattice can be determinized up to this
         // frame. And we try to determinize as most frames as possible so we check
-        // numbers from frame_det_most_ up to last_get_lattice_frame_
+        // numbers from frame_det_most to frame_det_least 
         for (int32 f = frame_det_most; f >= frame_det_least; f--) {
-          if (GetNumToksForFrame(f) < config_.determinize_max_active) {
+          if (config_.determinize_max_active == std::numeric_limits<int32>::max()
+              || GetNumToksForFrame(f) < config_.determinize_max_active) {
             KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
                           << " incremental determinization up to " << f;
             GetLattice(false, false, f);
@@ -962,7 +963,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
     // step 1: Get lattice chunk with initial and final states
     // In this function, we do not create the initial state in
     // the first chunk, and we do not create the final state in the last chunk
-    if (!GetRawLattice(&raw_fst, use_final_probs, last_get_lattice_frame_,
+    if (!GetIncrementalRawLattice(&raw_fst, use_final_probs, last_get_lattice_frame_,
                        last_frame_of_chunk, not_first_chunk, !decoding_finalized_))
       KALDI_ERR << "Unexpected problem when getting lattice";
     // step 2-3
@@ -995,7 +996,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
 }
 
 template <typename FST, typename Token>
-bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
+bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
     Lattice *ofst, bool use_final_probs, int32 frame_begin, int32 frame_end,
     bool create_initial_state, bool create_final_state) {
   typedef LatticeArc Arc;
@@ -1005,7 +1006,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
 
   if (decoding_finalized_ && !use_final_probs)
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
-              << "GetRawLattice() with use_final_probs == false";
+              << "GetIncrementalRawLattice() with use_final_probs == false";
 
   unordered_map<Token *, BaseFloat> final_costs_local;
 
@@ -1025,7 +1026,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
   std::vector<Token *> token_list;
   for (int32 f = frame_begin; f <= frame_end; f++) {
     if (active_toks_[f].toks == NULL) {
-      KALDI_WARN << "GetRawLattice: no tokens active on frame " << f
+      KALDI_WARN << "GetIncrementalRawLattice: no tokens active on frame " << f
                  << ": not producing lattice.\n";
       return false;
     }
@@ -1063,7 +1064,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(
       ofst->AddArc(begin_state, arc);
     }
   }
-  // step 1.2: create all arcs as GetRawLattice()
+  // step 1.2: create all arcs as GetRawLattice() of LatticeFasterDecoder
   for (int32 f = frame_begin; f <= frame_end; f++) {
     for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next) {
       StateId cur_state = tok_map[tok];
@@ -1176,6 +1177,11 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
   // can guarantee no final or initial arcs in clat are pruned by this function.
   // These pruned final arcs can hurt oracle WER performance in the final lattice
   // (also result in less lattice density) but they seldom hurt 1-best WER.
+  // Since pruning behaviors in DeterminizeLatticePhonePrunedWrapper and
+  // PruneActiveTokens are not the same, to get similar lattice density as 
+  // LatticeFasterDecoder, we need to use a slightly larger beam here
+  // than the lattice_beam used PruneActiveTokens. Hence the beam we use is
+  // (config_.determinize_beam_offset + config_.lattice_beam)
   ret &= DeterminizeLatticePhonePrunedWrapper(
       trans_model_, &raw_fst, config_.determinize_beam_offset + 
       config_.lattice_beam, &clat, config_.det_opts);
