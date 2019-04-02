@@ -135,8 +135,14 @@ printed=false
 # it if installed in an alternative location (this is unlikely).
 if [ ! -f /opt/intel/mkl/include/mkl.h ] &&
    ! echo '#include <mkl.h>' | $CXX -I /opt/intel/mkl/include -E - >&/dev/null; then
-  echo "$0: Intel MKL is not installed. Run extras/install_mkl.sh to intall it.
- ... You can also use other matrix algebra libraries; for information, see
+  if [[ $(uname) == Linux ]]; then
+    echo "$0: Intel MKL is not installed. Run extras/install_mkl.sh to install it."
+  else
+    echo "$0: Intel MKL is not installed. Download the installer package for your
+ ... system from: https://software.intel.com/mkl/choose-download."
+  fi
+ echo "\
+ ... You can also use other matrix algebra libraries. For information, see:
  ... http://kaldi-asr.org/doc/matrixwrap.html"
   printed=true
 fi
@@ -147,12 +153,13 @@ if [ -n "$debian_packages" ]; then
     # Guess package manager from user's distribution type. Use a subshell
     # because we are potentially importing a lot of dirt here.
     eval $(grep 2>/dev/null ^ID /etc/os-release) 2>/dev/null
-    for rune in $ID $ID_LIKE; do
+    for rune in ${ID-} ${ID_LIKE-}; do
+      # The case '(pattern)' syntax is necessary in subshell for bash 3.x.
       case $rune in
-        rhel|centos|redhat) echo "yum install $redhat_packages"; break;;
-        fedora) echo "dnx install $redhat_packages"; break;;
-        suse) echo "zypper install $opensuse_packages"; break;;
-        debian) echo "apt-get install $debian_packages"; break;;
+        (rhel|centos|redhat) echo "yum install $redhat_packages"; break;;
+        (fedora) echo "dnx install $redhat_packages"; break;;
+        (suse) echo "zypper install $opensuse_packages"; break;;
+        (debian) echo "apt-get install $debian_packages"; break;;
       esac
     done
   )
