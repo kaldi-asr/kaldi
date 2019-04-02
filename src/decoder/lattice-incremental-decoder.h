@@ -43,6 +43,7 @@ struct LatticeIncrementalDecoderConfig {
   int32 prune_interval;
   int32 determinize_delay;
   int32 determinize_max_active;
+  BaseFloat determinize_beam_offset;
   bool redeterminize;
   bool determinize_lattice; // not inspected by this class... used in
                             // command-line program.
@@ -66,6 +67,7 @@ struct LatticeIncrementalDecoderConfig {
         prune_interval(25),
         determinize_delay(0),
         determinize_max_active(50),
+        determinize_beam_offset(0),
         redeterminize(false),
         determinize_lattice(true),
         beam_delta(0.5),
@@ -93,6 +95,9 @@ struct LatticeIncrementalDecoderConfig {
                    "If the number of active tokens(in a certain frame) is less "
                    "than this number, we will start to incrementally "
                    "determinize lattices up to this frame.");
+    opts->Register("determinize-beam-offset", &determinize_beam_offset,
+                   "the beam used in lattice determinization is "
+                   "(determinize_beam_offset + lattice_beam) .");
     opts->Register("redeterminize", &redeterminize,
                    "whether to re-determinize the lattice after incremental "
                    "determinization.");

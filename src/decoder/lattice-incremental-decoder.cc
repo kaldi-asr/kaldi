@@ -1177,7 +1177,8 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
   // These pruned final arcs can hurt oracle WER performance in the final lattice
   // (also result in less lattice density) but they seldom hurt 1-best WER.
   ret &= DeterminizeLatticePhonePrunedWrapper(
-      trans_model_, &raw_fst, config_.lattice_beam, &clat, config_.det_opts);
+      trans_model_, &raw_fst, config_.determinize_beam_offset + 
+      config_.lattice_beam, &clat, config_.det_opts);
 
   final_arc_list_.swap(final_arc_list_prev_);
   final_arc_list_.clear();

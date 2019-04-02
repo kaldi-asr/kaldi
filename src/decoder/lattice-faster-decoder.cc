@@ -89,7 +89,9 @@ bool LatticeFasterDecoderTpl<FST, Token>::Decode(DecodableInterface *decodable) 
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(cost_cutoff);
   }
+  Timer timer;
   FinalizeDecoding();
+  KALDI_VLOG(2) << "Delay0 time after decoding finalized (secs): " << timer.Elapsed();
 
   // Returns true if we have any kind of traceback available (not necessarily
   // to the end state; query ReachedFinal() for that).
