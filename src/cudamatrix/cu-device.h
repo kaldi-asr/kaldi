@@ -85,10 +85,12 @@ class CuDevice {
   inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
 
   inline void SeedGpu() {
-		// To get same random sequence, call srand() before the method is invoked,
-		CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(
-          curand_handle_, RandInt(128, RAND_MAX)));
-		CURAND_SAFE_CALL(curandSetGeneratorOffset(curand_handle_, 0));
+    if(CuDevice::Instantiate().Enabled()) {
+      // To get same random sequence, call srand() before the method is invoked,
+      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(
+            curand_handle_, RandInt(128, RAND_MAX)));
+      CURAND_SAFE_CALL(curandSetGeneratorOffset(curand_handle_, 0));
+    }
   }
   // We provide functions Malloc(), MallocPitch() and Free() which replace
   // cudaMalloc(), cudaMallocPitch() and cudaFree().  Their function is to cache
