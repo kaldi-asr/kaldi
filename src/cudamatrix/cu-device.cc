@@ -427,7 +427,7 @@ void CuDevice::AccuProfile(const char *function_name,
     // per-thread default stream.  Since we compile with
     // -DCUDA_API_PER_THREAD_DEFAULT_STREAM, this equates to a per-thread
     // stream.
-    cudaStreamSynchronize(0);
+    CU_SAFE_CALL(cudaStreamSynchronize(0));
     double elapsed = timer.Elapsed();
     if (profile_map_.find(key) == profile_map_.end())
       profile_map_[key] = elapsed;
