@@ -85,7 +85,7 @@ class CuDevice {
   inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
 
   inline void SeedGpu() {
-    if(CuDevice::Instantiate().Enabled()) {
+    if (CuDevice::Instantiate().Enabled()) {
       // To get same random sequence, call srand() before the method is invoked,
       CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(
             curand_handle_, RandInt(128, RAND_MAX)));
