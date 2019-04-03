@@ -46,8 +46,7 @@ if [ $missing -gt 0 ]; then
   echo "$0: Missing $missing out of $count recordings"
 fi
 
-cp $tmp_dir/sre2000-key/segments $data_dir/callhome/
-awk '{print $1, $2}' $data_dir/callhome/segments > $data_dir/callhome/utt2spk
+awk '{print $1, $1}' $data_dir/callhome/wav.scp > $data_dir/callhome/utt2spk
 utils/utt2spk_to_spk2utt.pl $data_dir/callhome/utt2spk > $data_dir/callhome/spk2utt
 cp $tmp_dir/sre2000-key/reco2num $data_dir/callhome/reco2num_spk
 cp $tmp_dir/sre2000-key/fullref.rttm $data_dir/callhome/

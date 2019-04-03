@@ -8,8 +8,14 @@
 # The scripts are based on the recipe in ../v1/run.sh, but clusters x-vectors
 # instead of i-vectors.  It is similar to the x-vector-based diarization system
 # described in "Diarization is Hard: Some Experiences and Lessons Learned for
-# the JHU Team in the Inaugural DIHARD Challenge" by Sell et al.  The main
-# difference is that we haven't implemented the VB resegmentation yet.
+# the JHU Team in the Inaugural DIHARD Challenge" by Sell et al.  
+# 
+# We download and use the VB resegmentation code of Speech@fit team, Brno University of Technology,
+# for the VB resegmentation part which can be optionally executed
+# on the output rttm of the x-vector based diarization
+#
+# extras/install_diarization_VBHMM.sh in tools/ installs all the required
+# dependencies for VB resegmentation scripts.
 
 . ./cmd.sh
 . ./path.sh
@@ -19,6 +25,12 @@ vaddir=`pwd`/mfcc
 data_root=/export/corpora5/LDC
 stage=0
 nnet_dir=exp/xvector_nnet_1a/
+
+#Variational Bayes resegmentation options
+VB_resegmentation=true
+num_gauss=1024
+ivec_dim=400
+
 
 # Prepare datasets
 if [ $stage -le 0 ]; then
@@ -355,4 +367,84 @@ if [ $stage -le 11 ]; then
   # Using the oracle number of speakers, DER: 7.12%
   # Compare to 8.69% in ../v1/run.sh
   echo "Using the oracle number of speakers, DER: $der%"
+fi
+
+if [ $VB_resegmentation ]; then
+# Variational Bayes method for smoothing the Speaker segments at frame-level
+output_dir=exp/xvec_init_gauss_${num_gauss}_ivec_${ivec_dim}
+
+if [ $stage -le 12 ]; then
+    # Apply cmn and adding deltas will harm the performance on the callhome dataset. So we just use the 20-dim raw MFCC feature.
+    sid/train_diag_ubm.sh --cmd "$train_cmd --mem 20G --max-jobs-run 6" \
+			  --nj 10 --num-threads 4  --subsample 1 --delta-order 0 --apply-cmn false \
+			  data/swbd_sre_32k $num_gauss \
+			  exp/diag_ubm_gauss_${num_gauss}_delta_0_cmn_0
+fi
+
+if [ $stage -le 13 ]; then
+    # Train the i-vector extractor. The UBM is assumed to be diagonal.
+    local/train_ivector_extractor_diag.sh --cmd "$train_cmd --mem 45G --max-jobs-run 20" \
+					  --ivector-dim ${ivec_dim} \
+					  --num-iters 5 \
+					  --apply-cmn false \
+					  --num-threads 1 --num-processes 1 --nj 10 \
+					  exp/diag_ubm_gauss_${num_gauss}_delta_0_cmn_0/final.dubm data/swbd_sre \
+					  exp/extractor_gauss_${num_gauss}_delta_0_cmn_0_ivec_${ivec_dim}
+fi
+
+if [ $stage -le 14 ]; then
+    # Convert the Kaldi UBM and T-matrix model to numpy array.
+    mkdir -p $output_dir
+    mkdir -p $output_dir/tmp
+    mkdir -p $output_dir/log
+    mkdir -p $output_dir/model
+
+    # Dump the diagonal UBM model into text format.
+    "$train_cmd" $output_dir/log/convert_diag_ubm.log \
+		 gmm-global-copy --binary=false \
+		 exp/diag_ubm_gauss_${num_gauss}_delta_0_cmn_0/final.dubm \
+		 $output_dir/tmp/dubm.tmp || exit 1;
+
+    # Dump the ivector extractor model into text format.
+    # This method is not currently supported by Kaldi,
+    # so please use my kaldi.
+    "$train_cmd" $output_dir/log/convert_ie.log \
+		 ivector-extractor-copy --binary=false \
+		 exp/extractor_gauss_${num_gauss}_delta_0_cmn_0_ivec_${ivec_dim}/final.ie \
+		 $output_dir/tmp/ie.tmp || exit 1;
+
+    local/dump_model.py $output_dir/tmp/dubm.tmp $output_dir/model
+    local/dump_model.py $output_dir/tmp/ie.tmp $output_dir/model
+fi
+
+
+if [ $stage -le 15 ]; then
+    mkdir -p $output_dir/results
+    init_rttm_file=callhome_rttm_output_xvec
+    label_rttm_file=data/callhome/fullref.rttm
+    cat $nnet_dir/xvectors_callhome1/plda_scores_num_spk/rttm \
+	  $nnet_dir/xvectors_callhome2/plda_scores_num_spk/rttm > $init_rttm_file
+
+    # Compute the DER before VB resegmentation
+    md-eval.pl -1 -c 0.25 -r $label_rttm_file -s $init_rttm_file 2> $output_dir/log/DER_init.log \
+	       > $output_dir/results/DER_init.txt
+    der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
+	       $output_dir/results/DER_init.txt)
+
+    # VB resegmentation. In this script, I use the x-vector result to
+    # initialize the VB system. You can also use i-vector result or random
+    # initize the VB system.
+    local/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 10G" \
+			       --true_rttm_filename "None" --initialize 1 \
+			       data/callhome $init_rttm_file $output_dir $output_dir/model/diag_ubm.pkl $output_dir/model/ie.pkl || exit 1;
+
+    # Compute the DER after VB resegmentation
+    cat $output_dir/rttm/* > $output_dir/predict.rttm
+    md-eval.pl -1 -c 0.25 -r $label_rttm_file -s $output_dir/predict.rttm 2> $output_dir/log/DER.log \
+	       > $output_dir/results/DER.txt
+    der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
+	       $output_dir/results/DER.txt)
+    # After VB resegmentation, DER: 6.15%
+    echo "After VB resegmentation, DER: $der%"
+fi
 fi
