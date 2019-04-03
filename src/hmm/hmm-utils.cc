@@ -751,8 +751,8 @@ static inline void ConvertAlignmentForPhone(
   int32 alignment_size = old_phone_alignment.size();
   static bool warned_topology = false;
   int32 P = new_ctx_dep.CentralPosition(),
-      old_central_phone = old_trans_model.TransitionIdToPhone(
-          old_phone_alignment[0]),
+      old_central_phone = old_trans_model.InfoForTransitionId(
+          old_phone_alignment[0]).phone,
       new_central_phone = new_phone_window[P];
   const Topology &old_topo = old_trans_model.GetTopo(),
       &new_topo = new_trans_model.GetTopo();
@@ -944,7 +944,7 @@ static bool ConvertAlignmentInternal(const Transitions &old_trans_model,
   std::vector<int32> mapped_phones(phone_sequence_length);
   for (size_t i = 0; i < phone_sequence_length; i++) {
     KALDI_ASSERT(!old_split[i].empty());
-    mapped_phones[i] = old_trans_model.TransitionIdToPhone(old_split[i][0]);
+    mapped_phones[i] = old_trans_model.InfoForTransitionId(old_split[i][0]).phone;
     if (phone_map != NULL) {  // Map the phone sequence.
       int32 sz = phone_map->size();
       if (mapped_phones[i] < 0 || mapped_phones[i] >= sz ||

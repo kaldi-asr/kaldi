@@ -354,7 +354,7 @@ void ConvertPosteriorToPhones(const Transitions &tmodel,
     std::map<int32, BaseFloat> phone_to_post;
     for (size_t j = 0; j < post_in[i].size(); j++) {
       int32 tid = post_in[i][j].first,
-          phone_id = tmodel.TransitionIdToPhone(tid);
+          phone_id = tmodel.InfoForTransitionId(tid).phone;
       BaseFloat post = post_in[i][j].second;
       if (phone_to_post.count(phone_id) == 0)
         phone_to_post[phone_id] = post;
@@ -381,7 +381,7 @@ void WeightSilencePost(const Transitions &trans_model,
     this_post.reserve((*post)[i].size());
     for (size_t j = 0; j < (*post)[i].size(); j++) {
       int32 tid = (*post)[i][j].first,
-          phone = trans_model.TransitionIdToPhone(tid);
+          phone = trans_model.InfoForTransitionId(tid).phone;
       BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) {  // is a silence.
         if (silence_scale != 0.0)
@@ -405,7 +405,7 @@ void WeightSilencePostDistributed(const Transitions &trans_model,
     BaseFloat sil_weight = 0.0, nonsil_weight = 0.0;
     for (size_t j = 0; j < (*post)[i].size(); j++) {
       int32 tid = (*post)[i][j].first,
-          phone = trans_model.TransitionIdToPhone(tid);
+          phone = trans_model.InfoForTransitionId(tid).phone;
       BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) sil_weight += weight;
       else nonsil_weight += weight;

@@ -85,7 +85,7 @@ class ArcPosteriorComputer {
             if (trans_model_->IsFinal(ali[frame])) {
               if (first_phone) first_phone = false;
               else os << ' ';
-              os << trans_model_->TransitionIdToPhone(ali[frame]);
+              os << trans_model_->InfoForTransitionId(ali[frame]).phone;
             }
           }
         }

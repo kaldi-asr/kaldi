@@ -229,7 +229,7 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
 
 bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   // the following call will do the range-check on 'ilabel'.
-  int32 phone = trans_model_.TransitionIdToPhone(ilabel);
+  int32 phone = trans_model_.InfoForTransitionId(ilabel).phone;
   KALDI_ASSERT(static_cast<size_t>(s) <= allowed_phones_.size());
   if (static_cast<size_t>(s) == allowed_phones_.size()) {
     // No arcs come from the final state.a

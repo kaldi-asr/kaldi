@@ -219,7 +219,7 @@ bool OnlineFasterDecoder::EndOfUtterance() {
   SplitToPhones(trans_model_, isymbols, &split);
   for (size_t i = 0; i < split.size(); i++) {
     int32 tid = split[i][0];
-    int32 phone = trans_model_.TransitionIdToPhone(tid);
+    int32 phone = trans_model_.InfoForTransitionId(tid).phone;
     if (silence_set_.count(phone) == 0)
       return false;
   }

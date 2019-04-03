@@ -164,10 +164,6 @@ Transitions::Transitions(const ContextDependencyInterface &ctx_dep,
   Check();
 }
 
-int32 Transitions::TransitionIdToPhone(int32 trans_id) const {
-  return info_[trans_id].phone;
-}
-
 int32 Transitions::TupleToTransitionId(int32 phone, int32 topo_state,
                                        int32 arc_index, int32 pdf_id,
                                        int32 self_loop_pdf_id) const {

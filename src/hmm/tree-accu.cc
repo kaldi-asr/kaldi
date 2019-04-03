@@ -54,8 +54,8 @@ void AccumulateTreeStats(const Transitions &trans_model,
         i + info.central_position < static_cast<int32>(split_alignment.size())) {
       int32 central_phone =
           MapPhone(info.phone_map,
-                   trans_model.TransitionIdToPhone(
-                       split_alignment[i+info.central_position][0]));
+                   trans_model.InfoForTransitionId(
+                       split_alignment[i+info.central_position][0]).phone);
       bool is_ctx_dep = !std::binary_search(info.ci_phones.begin(),
                                             info.ci_phones.end(),
                                             central_phone);
@@ -65,7 +65,7 @@ void AccumulateTreeStats(const Transitions &trans_model,
         if (i + j >= 0 && i + j < static_cast<int32>(split_alignment.size()))
           phone =
               MapPhone(info.phone_map,
-                       trans_model.TransitionIdToPhone(split_alignment[i+j][0]));
+                       trans_model.InfoForTransitionId(split_alignment[i+j][0]).phone);
         else
           phone = 0;  // ContextDependency class uses 0 to mean "out of window";
         // we also set the phone arbitrarily to 0
