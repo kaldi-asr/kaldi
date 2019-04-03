@@ -5,8 +5,11 @@
 # Apache 2.0.
 
 """This script converts a segments and labels file to a NIST RTTM
-file. It handles overlapping segments (e.g. the output of a sliding-
-window diarization system).
+file. It creates flat segmentation (i.e. no overlapping regions)
+from overlapping segments, e.g. the output of a sliding-window
+diarization system. The speaker boundary between two overlapping
+segments by different speakers is placed at the midpoint between
+the end of the first segment and the start of the second segment.
 
 The segments file format is:
 <segment-id> <recording-id> <start-time> <end-time>
@@ -48,6 +51,9 @@ def get_args():
                       help="Input labels file")
   parser.add_argument("rttm_file", type=str,
                       help="Output RTTM file")
+  parser.add_argument("--rttm-channel", type=int, default=0,
+                      help="The value passed into the RTTM channel field. \
+                      Only affects the format of the RTTM file.")
 
   args = parser.parse_args()
   return args
@@ -77,7 +83,7 @@ def main():
 
   # Cut up overlapping segments so they are contiguous
   contiguous_segs = []
-  for reco in reco2segs:
+  for reco in sorted(reco2segs):
     segs = reco2segs[reco].strip().split()
     new_segs = ""
     for i in range(1, len(segs)-1):
@@ -117,8 +123,8 @@ def main():
       reco = segs[0]
       for i in range(1, len(segs)):
         start, end, label = segs[i].strip().split(',')
-        print("SPEAKER {0} 0 {1:7.3f} {2:7.3f} <NA> <NA> {3} <NA> <NA>".format(
-          reco, float(start), float(end)-float(start), label), file=rttm_writer)
+        print("SPEAKER {0} {1} {2:7.3f} {3:7.3f} <NA> <NA> {4} <NA> <NA>".format(
+          reco, args.rttm_channel, float(start), float(end)-float(start), label), file=rttm_writer)
 
 if __name__ == '__main__':
   main()

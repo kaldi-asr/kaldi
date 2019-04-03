@@ -15,7 +15,7 @@ TESTFILES = natural-gradient-online-test nnet-graph-test \
   nnet-common-test convolution-test attention-test
 
 OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
-  nnet-simple-component.o nnet-normalize-component.o \
+  nnet-simple-component.o nnet-combined-component.o nnet-normalize-component.o \
   nnet-general-component.o nnet-parse.o natural-gradient-online.o \
   nnet-descriptor.o nnet-optimize.o nnet-computation.o \
   nnet-computation-graph.o nnet-graph.o am-nnet-simple.o \
@@ -31,15 +31,16 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-compile-looped.o decodable-simple-looped.o \
   decodable-online-looped.o convolution.o \
   nnet-convolutional-component.o attention.o \
-  nnet-attention-component.o
+  nnet-attention-component.o nnet-tdnn-component.o nnet-batch-compute.o
 
 
 LIBNAME = kaldi-nnet3
 
 ADDLIBS = ../chain/kaldi-chain.a ../cudamatrix/kaldi-cudamatrix.a \
-          ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
+          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
+          ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

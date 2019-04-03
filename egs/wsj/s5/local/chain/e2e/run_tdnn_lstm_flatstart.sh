@@ -6,31 +6,32 @@
 # a full trivial biphone context-dependency tree. This is because this recipe is
 # meant for character-based (i.e. lexicon-free) modeling where context helps
 # significantly.
-# It does not use ivecors or other forms of speaker adaptation
-# except simple mean and variance normalization.
+# It does not use ivecors or other forms of speaker adaptation.
 # It is called from run_e2e_char.sh
 
 # Note: this script is configured to run as character-based, if you want
 # to run it in phoneme mode, you'll need to change _char
-# to _nosp everywhere and also copy phone_lm.fst instead
-# of char_lm.fst (in stage 1 below)
+# to _nosp everywhere.
 
 
+# local/chain/compare_wer.sh exp/chain/e2e_tdnn_lstm_bichar_1a
 # System                e2e_tdnn_lstm_bichar_1a
-# WER dev93 (tgpr)                9.42
-# WER dev93 (tg)                  8.85
-# WER dev93 (big-dict,tgpr)       7.70
-# WER dev93 (big-dict,fg)         6.79
-# WER eval92 (tgpr)               6.42
-# WER eval92 (tg)                 6.11
-# WER eval92 (big-dict,tgpr)      4.50
-# WER eval92 (big-dict,fg)        4.09
-# Final train prob        -0.7535
-# Final valid prob        -0.7786
+#WER dev93 (tgpr)                9.85
+#WER dev93 (tg)                  9.32
+#WER dev93 (big-dict,tgpr)       8.19
+#WER dev93 (big-dict,fg)         7.27
+#WER eval92 (tgpr)               6.89
+#WER eval92 (tg)                 6.70
+#WER eval92 (big-dict,tgpr)      5.14
+#WER eval92 (big-dict,fg)        4.29
+# Final train prob        -0.0610
+# Final valid prob        -0.0836
+# Final train prob (xent)
+# Final valid prob (xent)
+# Num-params                 9219188
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_lstm_bichar_1a/
-# exp/chain/e2e_tdnn_lstm_bichar_1a/: num-iters=138 nj=2..5 num-params=9.2M dim=40->3444 combine=-6.480->-6.478 logprob:train/valid[91,137,final]=(-0.766,-0.754,-0.754/-0.784,-0.779,-0.779)
-
+# exp/chain/e2e_tdnn_lstm_bichar_1a_nocmvn: num-iters=138 nj=2..5 num-params=9.2M dim=40->3444 combine=-1.211->-1.211 (over 3) logprob:train/valid[91,137,final]=(-0.079,-0.062,-0.061/-0.093,-0.084,-0.084)
 
 set -e
 
@@ -50,7 +51,7 @@ common_egs_dir=
 l2_regularize=0.00001
 dim=512
 frames_per_iter=2500000
-cmvn_opts="--norm-means=true --norm-vars=true"
+cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train_si284_spe2e_hires
 test_sets="test_dev93 test_eval92"
 
@@ -92,11 +93,19 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
+  echo "$0: Estimating a phone language model for the denominator graph..."
+  mkdir -p $treedir/log
+  $train_cmd $treedir/log/make_phone_lm.log \
+             cat data/$train_set/text \| \
+             steps/nnet3/chain/e2e/text_to_phones.py --between-silprob 0.1 \
+             data/lang_char \| \
+             utils/sym2int.pl -f 2- data/lang_char/phones.txt \| \
+             chain-est-phone-lm --num-extra-lm-states=2000 \
+             ark:- $treedir/phone_lm.fst
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
                                        --type biphone \
                                        --shared-phones true \
                                        data/$train_set $lang $treedir
-  cp exp/chain/e2e_base/char_lm.fst $treedir/phone_lm.fst
 fi
 
 if [ $stage -le 2 ]; then

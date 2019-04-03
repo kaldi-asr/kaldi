@@ -1,18 +1,23 @@
 #!/bin/bash
-# Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
-# Copyright 2017  Vimal Manohar
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#           2017  Vimal Manohar
+#           2018  Xiaohui Zhang
+#           2018  Music Technology Group, Universitat Pompeu Fabra.
+# Apache 2.0
 
 # This script produces CTM files from a decoding directory that has lattices
-# present.
+# present. It does this for one LM weight and also supports 
+# the word insertion penalty.
 # This is similar to get_ctm.sh, but gets the CTM at the utterance-level.
 # It can be faster than steps/get_ctm.sh --use-segments false as it splits
-# the process across many jobs.
+# the process across many jobs. 
 
 # begin configuration section.
 cmd=run.pl
 stage=0
 frame_shift=0.01
 lmwt=10
+wip=0.0
 print_silence=false
 #end configuration section.
 
@@ -30,7 +35,7 @@ if [ $# -ne 4 ]; then
   echo "                                    # not equal to 0.01 seconds"
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri4a/decode/"
-  echo "See also: steps/get_ctm.sh"
+  echo "See also: steps/get_ctm.sh, steps/get_ctm_conf.sh"
   exit 1;
 fi
 
@@ -57,7 +62,7 @@ echo $nj > $dir/num_jobs
 if [ -f $lang/phones/word_boundary.int ]; then
   $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
     set -o pipefail '&&' \
-    lattice-1best --lm-scale=$lmwt "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
+    lattice-1best --lm-scale=$lmwt --word-ins-penalty=$wip "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
     lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
     nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt \
@@ -65,7 +70,7 @@ if [ -f $lang/phones/word_boundary.int ]; then
 elif [ -f $lang/phones/align_lexicon.int ]; then
   $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
     set -o pipefail '&&' \
-    lattice-1best --lm-scale=$lmwt "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
+    lattice-1best --lm-scale=$lmwt --word-ins-penalty=$wip "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
     lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
     lattice-1best ark:- ark:- \| \
     nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \

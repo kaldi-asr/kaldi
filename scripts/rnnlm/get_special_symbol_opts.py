@@ -8,6 +8,9 @@ import os
 import argparse
 import sys
 
+import re
+
+
 parser = argparse.ArgumentParser(description="This script checks whether the special symbols "
                                  "appear in words.txt with expected values, if not, it will "
                                  "print out the options with correct value to stdout, which may look like "
@@ -28,6 +31,7 @@ upper_ids = {}
 input_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 for line in input_stream:
     fields = line.split()
+    assert(len(fields) == 2)
     sym = fields[0]
     if sym in special_symbols:
         assert sym not in lower_ids

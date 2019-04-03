@@ -73,15 +73,17 @@ GSYMS
 /src/kaldi.mk.bak
 
 # /egs/
-/egs/*/s*/mfcc
-/egs/*/s*/plp
-/egs/*/s*/exp
-/egs/*/s*/data
+/egs/*/*/mfcc
+/egs/*/*/plp
+/egs/*/*/exp
+/egs/*/*/data
 
 # /tools/
+/tools/pocolm/
 /tools/ATLAS/
 /tools/atlas3.8.3.tar.gz
 /tools/irstlm/
+/tools/mitlm/
 /tools/openfst
 /tools/openfst-1.3.2.tar.gz
 /tools/openfst-1.3.2/
@@ -101,6 +103,8 @@ GSYMS
 /tools/openfst-1.6.2/
 /tools/openfst-1.6.5.tar.gz
 /tools/openfst-1.6.5/
+/tools/openfst-1.6.7.tar.gz
+/tools/openfst-1.6.7/
 /tools/BeamformIt/
 /tools/libsndfile-1.0.25.tar.gz
 /tools/libsndfile-1.0.25/
@@ -141,3 +145,6 @@ GSYMS
 /tools/mmseg-1.3.0.tar.gz
 /tools/mmseg-1.3.0/
 /kaldiwin_vs*
+/tools/cub-1.8.0.zip
+/tools/cub-1.8.0/
+/tools/cub

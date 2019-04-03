@@ -1,13 +1,13 @@
 function Generate_mcTrainData_cut(WSJ_dir_name, save_dir)
 %
 % Input variables:
-%    WSJ_dir_name: string name of user's clean wsjcam0 corpus directory 
-%                  (*Directory structure for wsjcam0 corpushas to be kept as it is after obtaining it from LDC. 
+%    WSJ_dir_name: string name of WAV file directory converted from original wsjcam0 SPHERE files
+%                  (*Directory structure for wsjcam0 corpus to be kept as it is after obtaining it from LDC. 
 %                    Otherwise this script does not work.)
 %
 % This function generates multi-condition traiing data
 % based on the following items:
-%  1. wsjcam0 corpus (distributed from the LDC)
+%  1. wsjcam0 corpus (WAV files)
 %  2. room impulse responses (ones under ./RIR/)
 %  3. noise (ones under ./NOISE/).
 % Generated data has the same directory structure as original wsjcam0 corpus. 
@@ -26,8 +26,6 @@ end
 
 display(['Name of directory for original wsjcam0: ',WSJ_dir_name])
 display(['Name of directory to save generated multi-condition training data: ',save_dir])
-unix(['chmod u+x sphere_to_wave.csh']);
-unix(['chmod u+x bin/*']);
 
 % Parameters related to acoustic conditions
 SNRdB=20;
@@ -89,7 +87,6 @@ else
     save_dir_tr=[save_dir,'/data/mc_train/'];
 end
 mkdir([save_dir_tr]);
-%mkdir([save_dir,'/taskfiles/'])
 
 mic_idx=['A';'B';'C';'D';'E';'F';'G';'H'];
 prev_fname='dummy';
@@ -114,13 +111,12 @@ for nlist=1:1
         end
         prev_fname=fname(1:idx1(end));
        
-        % load (sphere format) speech signal 
-        x=read_sphere([WSJ_dir_name,'/data/', fname]);
-        x=x/(2^15);  % conversion from short-int to float
+        % load speech signal
+        x=audioread([WSJ_dir_name, '/data/', fname, '.wav'])';
         
         % load RIR and noise for "THIS" utterance
-        eval(['RIR=wavread(RIR_sim',num2str(rcount),');']);
-        eval(['NOISE=wavread([noise_sim',num2str(ceil(rcount/4)),',''_',num2str(ncount),'.wav'']);']);
+        eval(['RIR=audioread(RIR_sim',num2str(rcount),');']);
+        eval(['NOISE=audioread([noise_sim',num2str(ceil(rcount/4)),',''_',num2str(ncount),'.wav'']);']);
 
         % Generate 8ch noisy reverberant data        
         y=gen_obs(x,RIR,NOISE,SNRdB);
@@ -138,8 +134,9 @@ for nlist=1:1
         y=y/4; % common normalization to all the data to prevent clipping
                % denominator was decided experimentally
 
-        for ch=1:8 
-            eval(['wavwrite(y(:,',num2str(ch),'),16000,''',save_dir_tr fname,'_ch',num2str(ch),'.wav'');']);
+        for ch=1:8
+	    outfilename = [save_dir_tr, fname, '_ch', num2str(ch), '.wav'];
+            eval(['audiowrite(outfilename, y(:,',num2str(ch),'), 16000);']);
         end
            
         display(['sentence ',num2str(fcount),' (out of 7861) finished! (Multi-condition training data)'])

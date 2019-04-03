@@ -679,6 +679,8 @@ class ConstantComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  virtual void ConsolidateMemory();
  private:
 
   // the output value-- a vector.
@@ -907,8 +909,6 @@ class GeneralDropoutComponent: public RandomComponent {
   BaseFloat dropout_proportion_;
 
   bool continuous_;
-
-  bool test_mode_;
 
   const GeneralDropoutComponent &operator
   = (const GeneralDropoutComponent &other); // Disallow.

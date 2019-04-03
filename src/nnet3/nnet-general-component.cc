@@ -1385,7 +1385,10 @@ void ConstantComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   output_.CopyFromVec(params);
 }
 
-
+void ConstantComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp(preconditioner_);
+  preconditioner_.Swap(&temp);
+}
 
 std::string DropoutMaskComponent::Info() const {
   std::ostringstream stream;
@@ -1693,7 +1696,7 @@ CuMatrix<BaseFloat>* GeneralDropoutComponent::GetMemo(
     // function (x>0?1:0), a proportion "dropout_proportion" will be zero and (1 -
     // dropout_proportion) will be 1.0.
     ans->ApplyHeaviside();
-    ans->Scale(1.0 / dropout_proportion);
+    ans->Scale(1.0 / (1.0 - dropout_proportion));
   } else {
     ans->Scale(dropout_proportion * 4.0);
     // make the expected value 1.0.

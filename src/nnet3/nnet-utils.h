@@ -377,6 +377,17 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
                              num_max_change_per_component_applied,
                              int32 *num_max_change_global_applied);
 
+struct MaxChangeStats;
+
+// This overloaded version of UpdateNnetWithMaxChange() is a convenience
+// wrapper for when you have a MaxChangeStats object to keep track
+// of how many times the max-change was applied.  See documentation above.
+bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
+                             BaseFloat max_param_change,
+                             BaseFloat max_change_scale,
+                             BaseFloat scale, Nnet *nnet,
+                             MaxChangeStats *stats);
+
 
 /**
    This function is used as part of the regular training workflow, prior to
@@ -471,8 +482,23 @@ void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
    In order to make it efficient on GPU, it doesn't make it completely orthonormal,
    it just makes it closer to being orthonormal (times the 'orthonormal_constraint'
    value).  Over multiple iterations this rapidly makes it almost exactly orthonormal.
+
+   See http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
  */
 void ConstrainOrthonormal(Nnet *nnet);
+
+
+/**
+   This just calls ConsolidateMemory() on all the components of the nnet.  This
+   is called by the training code after processing the first minibatch.  On some
+   components this will do nothing; on some components it will reallocate
+   certain quantities that have been allocated during training (mostly the
+   contents of NaturalGradientOnline objects, and stats for NonlinearComponents)
+   so that they can be put into low memory.  This will tend to minimize
+   memory fragmentation.  Read comments in ../cudamatrix/cu-allocator.h for
+   more explanation.
+ */
+void ConsolidateMemory(Nnet *nnet);
 
 /** This utility function can be used to obtain the number of distinct 'n'
     values in a training example.  This is the number of examples
@@ -496,6 +522,24 @@ void ConstrainOrthonormal(Nnet *nnet);
  */
 int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
                     bool exhaustive);
+
+
+struct MaxChangeStats {
+  int32 num_max_change_global_applied;
+  int32 num_minibatches_processed;
+  std::vector<int32> num_max_change_per_component_applied;
+
+  MaxChangeStats(const Nnet &nnet):
+      num_max_change_global_applied(0),
+      num_minibatches_processed(0),
+      num_max_change_per_component_applied(NumUpdatableComponents(nnet), 0) { }
+
+  // Prints the max-change stats.  Usually will be called at the end
+  // of the program.  The nnet is only needed for structural information,
+  // to work out the component names.
+  void Print(const Nnet &nnet) const;
+};
+
 
 
 } // namespace nnet3

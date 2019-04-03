@@ -6,7 +6,11 @@
 import os
 import argparse
 import sys
+
 sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
+
+import re
+
 
 parser = argparse.ArgumentParser(description="This script turns the word features to a human readable format.",
                                  epilog="E.g. " + sys.argv[0] + "exp/rnnlm/word_feats.txt exp/rnnlm/features.txt "

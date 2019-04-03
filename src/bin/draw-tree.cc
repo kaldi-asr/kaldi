@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "tree/tree-renderer.h"
+#include "tree/context-dep.h"
 
 void MakeEvent(std::string &qry, fst::SymbolTable *phone_syms,
                kaldi::EventType **query)
@@ -33,25 +34,23 @@ void MakeEvent(std::string &qry, fst::SymbolTable *phone_syms,
     if (key == kPdfClass) {
       value = static_cast<EventValueType>(atoi(valstr.c_str()));
       if (value < 0) { // not valid pdf-class
-        KALDI_ERR << "Bad query: invalid pdf-class ("
-                  << valstr << ')' << std::endl << std::endl;
+        KALDI_ERR << "Bad query: invalid pdf-class (" << valstr << ')';
       }
     }
     else {
       value = static_cast<EventValueType>(phone_syms->Find(valstr.c_str()));
-      if (value == fst::SymbolTable::kNoSymbol) {
-        KALDI_ERR << "Bad query: invalid symbol ("
-                  << valstr << ')' << std::endl << std::endl;
+      if (value == -1) { // fst::kNoSymbol
+        KALDI_ERR << "Bad query: invalid symbol (" << valstr << ')';
       }
     }
     query_event->push_back(std::make_pair(key++, value));
     old_found = found + 1;
   }
   std::string valstr = qry.substr(old_found);
-  EventValueType value = static_cast<EventValueType>(phone_syms->Find(valstr.c_str()));
-  if (value == fst::SymbolTable::kNoSymbol) {
-    KALDI_ERR << "Bad query: invalid symbol ("
-              << valstr << ')' << std::endl << std::endl;
+  EventValueType value =
+      static_cast<EventValueType>(phone_syms->Find(valstr.c_str()));
+  if (value == -1) { // fst::kNoSymbol
+    KALDI_ERR << "Bad query: invalid symbol (" << valstr << ')';
   }
   query_event->push_back(std::make_pair(key, value));
 
@@ -69,7 +68,7 @@ int main(int argc, char **argv) {
         "Outputs a decision tree description in GraphViz format\n"
         "Usage: draw-tree [options] <phone-symbols> <tree>\n"
         "e.g.: draw-tree phones.txt tree | dot -Gsize=8,10.5 -Tps | ps2pdf - tree.pdf\n";
-    
+
     ParseOptions po(usage);
     po.Register("query", &qry,
                 "a query to trace through the tree"

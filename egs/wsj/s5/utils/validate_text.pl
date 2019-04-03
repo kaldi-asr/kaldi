@@ -74,10 +74,21 @@ sub validate_utf8_whitespaces {
   use feature 'unicode_strings';
   for (my $i = 0; $i < scalar @{$unicode_lines}; $i++) {
     my $current_line = $unicode_lines->[$i];
+    if ((substr $current_line, -1) ne "\n"){
+      print STDERR "$0: The current line (nr. $i) has invalid newline\n";
+      return 1;
+    }
+    my @A = split(" ", $current_line);
+    my $utt_id = $A[0];
     # we replace TAB, LF, CR, and SPACE
     # this is to simplify the test
-    $current_line =~ s/[\x{0009}\x{000a}\x{000d}\x{0020}]/./g;
+    if ($current_line =~ /\x{000d}/) {
+      print STDERR "$0: The line for utterance $utt_id contains CR (0x0D) character\n";
+      return 1;
+    }
+    $current_line =~ s/[\x{0009}\x{000a}\x{0020}]/./g;
     if ($current_line =~/\s/) {
+      print STDERR "$0: The line for utterance $utt_id contains disallowed Unicode whitespaces\n";
       return 1;
     }
   }

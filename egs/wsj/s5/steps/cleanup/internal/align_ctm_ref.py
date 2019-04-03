@@ -127,7 +127,7 @@ def read_text(text_file):
                 "Did not get enough columns; line {0} in {1}"
                 "".format(line, text_file.name))
         elif len(parts) == 1:
-            logger.warn("Empty transcript for utterance %s in %s", 
+            logger.warn("Empty transcript for utterance %s in %s",
                         parts[0], text_file.name)
             yield parts[0], []
         else:

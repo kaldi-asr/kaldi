@@ -28,9 +28,11 @@ if [ ! -d "$data" ]; then
   exit 1;
 fi
 
+data=$(readlink -f $data)
+
 part_ok=false
 list="dev-clean-2 train-clean-5"
-for x in $list; do 
+for x in $list; do
   if [ "$part" == $x ]; then part_ok=true; fi
 done
 if ! $part_ok; then
@@ -49,7 +51,8 @@ if [ -f $data/LibriSpeech/$part/.complete ]; then
 fi
 
 
-sizes="126046265 332747356"
+#sizes="126046265 332747356"
+sizes="126046265 332954390"
 
 if [ -f $data/$part.tar.gz ]; then
   size=$(/bin/ls -l $data/$part.tar.gz | awk '{print $5}')
@@ -77,6 +80,7 @@ if [ ! -f $data/$part.tar.gz ]; then
     echo "$0: error executing wget $full_url"
     exit 1;
   fi
+  cd -
 fi
 
 cd $data

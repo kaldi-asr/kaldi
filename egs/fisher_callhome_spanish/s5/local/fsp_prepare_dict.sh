@@ -105,9 +105,8 @@ if [ $stage -le 4 ]; then
   cp "$tmpdir/lexicon.1" "$tmpdir/lexicon.2"
 
   # Add prons for laughter, noise, oov
-  for w in `grep -v sil $dir/silence_phones.txt`; do
-    sed -i "/\[$w\]/d" $tmpdir/lexicon.2
-  done
+  w=$(grep -v sil $dir/silence_phones.txt | tr '\n' '|')
+  perl -i -ne "print unless /\[(${w%?})\]/"  $tmpdir/lexicon.2
 
   for w in `grep -v sil $dir/silence_phones.txt`; do
     echo "[$w] $w"

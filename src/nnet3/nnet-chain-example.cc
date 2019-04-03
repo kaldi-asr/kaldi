@@ -207,8 +207,8 @@ static void MergeSupervision(
   for (int32 n = 0; n < num_inputs; n++)
     input_supervision.push_back(&(inputs[n]->supervision));
   chain::Supervision output_supervision;
-  AppendSupervision(input_supervision,
-                    &output_supervision);
+  MergeSupervision(input_supervision,
+                   &output_supervision);
   output->supervision.Swap(&output_supervision);
 
   output->indexes.clear();

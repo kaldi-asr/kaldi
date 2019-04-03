@@ -6,6 +6,7 @@
 """
 
 from __future__ import print_function
+from __future__ import division
 import math
 import re
 import sys
@@ -21,6 +22,7 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #                               train faster or slower].
 #   Documentation for the rest of the parameters (related to the
 #   attention component) can be found in nnet-attention-component.h
+
 
 class XconfigAttentionLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
@@ -146,7 +148,6 @@ class XconfigAttentionLayer(XconfigLayerBase):
                               if learning_rate_factor != 1.0 else '')
         l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
                                 if l2_regularize != 0.0 else '')
-
         configs = []
         # First the affine node.
         line = ('component name={0}.affine'
@@ -154,7 +155,7 @@ class XconfigAttentionLayer(XconfigLayerBase):
                 ' input-dim={1}'
                 ' output-dim={2}'
                 ' max-change={3}'
-                ' {4} {5} {6} '
+                ' {4} {5} {6}'
                 ''.format(self.name, input_dim, dim,
                           max_change, ng_affine_options,
                           learning_rate_option, l2_regularize_option))

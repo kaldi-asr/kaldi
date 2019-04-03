@@ -148,8 +148,6 @@ if [ $stage -le 2 ]; then
   fi
 fi
 
-exit 0 ## TEMP
-
 if [ $stage -le 3 ]; then
   # tri2b.  there is no special meaning in the "b"-- it's historical.
   if $train; then
@@ -322,41 +320,48 @@ if [ $stage -le 6 ]; then
   fi
 fi
 
+if [ $stage -le 7 ]; then
+  # Caution: this part needs a GPU.
+  local/chain/run_tdnn.sh
+fi
 
 exit 0;
 
-### Caution: the parts of the script below this statement are not run by default.
-###
-
+# Below are some commented-out commands that demonstrate how to run various other things--
+# mainly outdated methods.
 
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
 # all the data).  Use 30 jobs.
-steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
-local/run_mmi_tri4b.sh
+# Note: there isn't much use for this these days.
+#steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
+#  data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
+#local/run_mmi_tri4b.sh
 
-# These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
-# (see local/run_nnet2.sh for other, non-online nnet2 setups).
-local/online/run_nnet2.sh
-local/online/run_nnet2_baseline.sh
-local/online/run_nnet2_discriminative.sh
+# The following are the old nnet2 recipes.
+#local/online/run_nnet2.sh
+#local/online/run_nnet2_baseline.sh
+#local/online/run_nnet2_discriminative.sh
 
-# Demonstration of RNNLM rescoring on TDNN models. We comment this out by
-# default.
+# The following is the
+
+
+# Demonstration of RNNLM rescoring on nnet2 TDNN models.  This is
+# outdated now.
 # local/run_rnnlms.sh
 
 
 #local/run_nnet2.sh
 
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
-local/run_sgmm2.sh
+# The SGMM2 recipe.  This is better than GMMs but you probably just want the neural net.
+# local/run_sgmm2.sh
 
 # We demonstrate MAP adaptation of GMMs to gender-dependent systems here.  This also serves
 # as a generic way to demonstrate MAP adaptation to different domains.
 # local/run_gender_dep.sh
 
-# You probably want to run the hybrid recipe as it is complementary:
-local/nnet/run_dnn.sh
+# This is the old "nnet1" neural net.
+#local/nnet/run_dnn.sh
 
 # The following demonstrate how to re-segment long audios.
 # local/run_segmentation_long_utts.sh

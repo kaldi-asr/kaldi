@@ -10,6 +10,8 @@ import math
 from collections import defaultdict
 sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
 
+import re
+
 
 parser = argparse.ArgumentParser(description="This script chooses the sparse feature representation of words. "
                                              "To be more specific, it chooses the set of features-- you compute "

@@ -21,7 +21,7 @@ set -e # exit on error
 case "$csjv" in
     "merl" ) SDB=sdb/ ; WAV=WAV/ ; disc=CSJ2004 ;; # Set SDB directory and WAV directory respectively.
     "usb" ) SDB=MORPH/SDB/ ; WAV=WAV/ ; disc="core noncore" ;; # Set SDB directory and WAV directory respectively.
-    "dvd" ) num=dvd        ; SDB=           ; WAV=     ; disc=$num`seq -s " "$num 3 17` ;; # Set preserved format name to $num.
+    "dvd" ) num=dvd        ; SDB=           ; WAV=     ; disc=$num`seq -s " "$num 3 17| sed "s/ $num$//"` ;; # Set preserved format name to $num.
     *) echo "Input variable is usb or dvd only. $csjv is UNAVAILABLE VERSION." && exit 1;
 esac
 
@@ -61,7 +61,7 @@ if [ ! -e $outd/.done_make_trans ];then
                 mkdir -p $outd/$vol/$id
 
                 case "$csjv" in
-                    "usb" ) TPATH="$resource/${SDB}$vol" ; WPATH="$resource/$WAV" ;;
+                    "usb" ) TPATH="$resource/${SDB}$vol" ; WPATH="$resource/${WAV}$vol" ;;
                     "dvd" ) TPATH="$resource/$vol/$id"   ; WPATH="$resource/$vol/$id" ;;
                     "merl" ) TPATH="$resource/$vol/$SDB" ; WPATH="$resource/$vol/$WAV" ;;
                 esac

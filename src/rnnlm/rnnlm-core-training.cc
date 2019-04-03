@@ -302,7 +302,7 @@ void RnnlmCoreTrainer::PrintMaxChangeStats() const {
                   << ", per-component max-change was enforced "
                   << ((100.0 * num_max_change_per_component_applied_[i]) /
                       num_minibatches_processed_)
-                  << "\% of the time.";
+                  << "% of the time.";
       i++;
     }
   }
@@ -312,7 +312,7 @@ void RnnlmCoreTrainer::PrintMaxChangeStats() const {
                  (num_minibatches_processed_ *
                  (config_.backstitch_training_scale == 0.0 ? 1.0 :
                  1.0 + 1.0 / config_.backstitch_training_interval))
-              << "\% of the time.";
+              << "% of the time.";
 }
 
 void RnnlmCoreTrainer::ProcessOutput(
@@ -341,6 +341,11 @@ void RnnlmCoreTrainer::ProcessOutput(
   if (is_backstitch_step1)
     objf_info_.AddStats(weight, objf_num, objf_den, objf_den_exact);
   computer->AcceptInput("output", &output_deriv);
+}
+
+void RnnlmCoreTrainer::ConsolidateMemory() {
+  kaldi::nnet3::ConsolidateMemory(nnet_);
+  kaldi::nnet3::ConsolidateMemory(delta_nnet_);
 }
 
 RnnlmCoreTrainer::~RnnlmCoreTrainer() {

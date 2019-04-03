@@ -8,6 +8,9 @@
 
 set -e
 dir=data/local/dict
+vocab_size=50000
+. ./utils/parse_options.sh
+
 mkdir -p $dir
 
 # First get the set of all letters that occur in data/train/text
@@ -22,7 +25,7 @@ cat data/train/text | \
 
 export letters=$(cat $dir/nonsilence_phones.txt | tr -d "\n")
 
-cat data/local/local_lm/data/wordlist | \
+head -n $vocab_size data/local/local_lm/data/word_count | awk '{print $2}' | \
   perl -e '$letters=$ENV{letters};
 while(<>){
     chop;
@@ -35,7 +38,7 @@ while(<>){
 }' | sort -u > $dir/lexicon.txt
 
 
-sed -i "s/#/<HASH>/" $dir/nonsilence_phones.txt
+perl -i -pe "s/#/<HASH>/" $dir/nonsilence_phones.txt
 
 echo '<sil> SIL' >> $dir/lexicon.txt
 echo '<unk> SIL' >> $dir/lexicon.txt

@@ -115,7 +115,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
           '# See also ./xconfig.expanded.2\n', file=xconfig_file_out)
 
     for layer in all_layers:
-        print(str(layer), file=xconfig_file_out)
+        print('{}'.format(layer), file=xconfig_file_out)
     xconfig_file_out.close()
 
     try:
@@ -135,7 +135,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
 
     for layer in all_layers:
         layer.normalize_descriptors()
-        print(str(layer), file=xconfig_file_out)
+        print('{}'.format(layer), file=xconfig_file_out)
     xconfig_file_out.close()
 
 
@@ -296,10 +296,10 @@ def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
                 if key in ['left-context', 'right-context']:
                     contexts[file_name][key] = value
 
-    if contexts.has_key('init'):
-        assert(contexts.has_key('ref'))
-        if (contexts['init'].has_key('left-context') and
-            contexts['ref'].has_key('left-context')):
+    if 'init' in contexts:
+        assert('ref' in contexts)
+        if ('left-context' in contexts['init'] and
+            'left-context' in contexts['ref']):
             if ((contexts['init']['left-context']
                  > contexts['ref']['left-context'])
                 or (contexts['init']['right-context']

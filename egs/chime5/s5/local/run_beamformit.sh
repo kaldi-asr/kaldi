@@ -45,7 +45,7 @@ echo "the number of channels: $numch"
 
 # wavfiles.list can be used as the name of the output files
 output_wavfiles=$expdir/wavfiles.list
-find ${sdir} | grep -i ${array} | awk -F "/" '{print $NF}' | sed -e "s/\.CH.\.wav//" | sort | uniq > $expdir/wavfiles.list
+find -L ${sdir} | grep -i ${array} | awk -F "/" '{print $NF}' | sed -e "s/\.CH.\.wav//" | sort | uniq > $expdir/wavfiles.list
 
 # this is an input file list of the microphones
 # format: 1st_wav 2nd_wav ... nth_wav

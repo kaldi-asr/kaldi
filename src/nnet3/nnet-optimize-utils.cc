@@ -696,18 +696,15 @@ void RenumberComputation(NnetComputation *computation) {
 }
 
 
+static bool IsNoop(const NnetComputation::Command &command) {
+  return command.command_type == kNoOperation;
+}
+
 void RemoveNoOps(NnetComputation *computation) {
-  std::vector<NnetComputation::Command>::iterator
-      input_iter = computation->commands.begin(),
-      input_end = computation->commands.end(),
-      output_iter = computation->commands.begin();
-  for (; input_iter != input_end; ++input_iter) {
-    if (input_iter->command_type != kNoOperation) {
-      *output_iter = *input_iter;
-      ++output_iter;
-    }
-  }
-  computation->commands.resize(output_iter - computation->commands.begin());
+  computation->commands.erase(
+      std::remove_if(computation->commands.begin(),
+                     computation->commands.end(),
+                     IsNoop), computation->commands.end());
 }
 
 
@@ -2948,7 +2945,7 @@ static int32 FindNStride(const std::vector<Index> &indexes,
   int32 size = indexes.size();
   KALDI_ASSERT(size > 0);
   int32 N = indexes[size-1].n + 1,
-      n_stride;
+        n_stride = -1;
   if (N <= 1) {
     // we wouldn't be able to determine the stride if N <= 1.
     return 0;
@@ -2977,7 +2974,7 @@ static int32 FindNStride(const std::vector<Index> &indexes,
         break;
       }
     }
-    if (stride == size / N) {
+    if (n_stride == -1) {
       // if we fell off the loop then we found no candidates, which is strange
       // and means we did not find the expected structure; we'll return 0 as we
       // failed.
@@ -3038,7 +3035,7 @@ static int32 FindNStride(const std::vector<Cindex> &cindexes,
   int32 size = cindexes.size();
   KALDI_ASSERT(size > 0);
   int32 N = cindexes[size-1].second.n + 1,
-      n_stride;
+      n_stride = 0;
   if (N <= 1)
     return 0;
   Cindex cindex(cindexes[0]);
@@ -4695,7 +4692,7 @@ class MemoryCompressionOptimizer {
 
   /** @param [in] nnet         The neural net the computation is for.
       @param [in] memory_compression_level.  The level of compression:
-         0 = no compression (the constructor should not be calle with this value).
+         0 = no compression (the constructor should not be called with this value).
          1 = compression that doesn't affect the results (but still takes time).
          2 = compression that affects the results only very slightly
          3 = compression that affects the results a little more.
@@ -4931,14 +4928,15 @@ void OptimizeMemoryCompression(const Nnet &nnet,
   }
   if (memory_compression_level >= 1) {
     int64 bytes_used_initial, bytes_used_final;
-    if (GetVerboseLevel() >= 2)
+    bool verbose_ge_2 = GetVerboseLevel() >= 2;
+    if (verbose_ge_2)
       bytes_used_initial = GetMaxMemoryUse(*computation);
 
     MemoryCompressionOptimizer opt(nnet, memory_compression_level,
                                    middle_command, computation);
     opt.Optimize();
 
-    if (GetVerboseLevel() >= 2) {
+    if (verbose_ge_2) {
       bytes_used_final = GetMaxMemoryUse(*computation);
       if (bytes_used_final != bytes_used_initial) {
         KALDI_VLOG(2) << "Memory compression reduced  memory use from "

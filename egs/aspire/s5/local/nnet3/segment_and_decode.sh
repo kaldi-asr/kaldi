@@ -109,9 +109,9 @@ fi
 
 if [ $stage -le 4 ]; then
   utils/copy_data_dir.sh $sad_work_dir/${segmented_data_set}_seg \
-    data/${segmented_data_set}_hires
-  steps/compute_cmvn_stats.sh data/${segmented_data_set}_hires
-  utils/fix_data_dir.sh data/${segmented_data_set}_hires
+    data/${segmented_data_set}_seg_hires
+  steps/compute_cmvn_stats.sh data/${segmented_data_set}_seg_hires
+  utils/fix_data_dir.sh data/${segmented_data_set}_seg_hires
 fi
 
 if [ $stage -le 5 ]; then
@@ -122,11 +122,11 @@ if [ $stage -le 5 ]; then
   # acoustic conditions drift over time within the speaker's data.
   steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj $decode_num_jobs \
     --sub-speaker-frames $sub_speaker_frames --max-count $max_count \
-    data/${segmented_data_set}_hires $lang $ivector_root_dir/extractor \
-    $ivector_root_dir/ivectors_${segmented_data_set}
+    data/${segmented_data_set}_seg_hires $lang $ivector_root_dir/extractor \
+    $ivector_root_dir/ivectors_${segmented_data_set}_seg
 fi
 
-decode_dir=$dir/decode_${segmented_data_set}${affix}_pp
+decode_dir=$dir/decode_${segmented_data_set}_seg${affix}_pp
 if [ $stage -le 6 ]; then
   echo "Generating lattices"
   rm -f ${decode_dir}_tg/.error
@@ -138,8 +138,8 @@ if [ $stage -le 6 ]; then
       --extra-right-context-final $extra_right_context_final \
       --frames-per-chunk "$frames_per_chunk" \
       --skip-scoring true ${iter:+--iter $iter} --lattice-beam $lattice_beam \
-      --online-ivector-dir $ivector_root_dir/ivectors_${segmented_data_set} \
-     $graph data/${segmented_data_set}_hires ${decode_dir}_tg || \
+      --online-ivector-dir $ivector_root_dir/ivectors_${segmented_data_set}_seg \
+     $graph data/${segmented_data_set}_seg_hires ${decode_dir}_tg || \
      { echo "$0: Error decoding" && exit 1; }
 fi
 
@@ -147,7 +147,7 @@ if [ $stage -le 7 ]; then
   echo "Rescoring lattices"
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     --skip-scoring true \
-    ${lang}_pp_test{,_fg} data/${segmented_data_set}_hires \
+    ${lang}_pp_test{,_fg} data/${segmented_data_set}_seg_hires \
     ${decode_dir}_{tg,fg};
 fi
 
@@ -161,5 +161,5 @@ if [ $stage -le 8 ]; then
     ${iter:+--iter $iter} \
     --decode-mbr true \
     --tune-hyper true \
-    $lang $decode_dir $act_data_set $segmented_data_set $out_file
+    $lang $decode_dir $act_data_set ${segmented_data_set}_seg $out_file
 fi

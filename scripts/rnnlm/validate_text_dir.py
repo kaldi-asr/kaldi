@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+
+
 parser = argparse.ArgumentParser(description="Validates data directory containing text "
                                  "files from one or more data sources, including dev.txt.",
                                  epilog="E.g. " + sys.argv[0] + " data/rnnlm/data",

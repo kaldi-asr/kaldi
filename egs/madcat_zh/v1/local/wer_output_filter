@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+# Copyright      2017  Hossein Hadian
+
+# This is a filter used in scoring. It separates all
+# punctuations from words. For e.g. this sentence:
+
+# "They have come!" he said reverently, gripping his
+# hands. "Isn't it a glorious thing! Long awaited."
+
+# is converted to this:
+
+# " They have come ! " he said reverently , gripping his
+# hands . " Isn ' t it a glorious thing ! Long awaited . "
+
+import sys
+import io
+import re
+from collections import OrderedDict
+
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf8");
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf8");
+
+re_dict = OrderedDict([("“","\""), ("”","\"")])
+pattern = re.compile("|".join(re.escape(key) for key in re_dict.keys()))
+
+for line in sys.stdin:
+  words = line.strip().split()
+  uttid = words[0]
+  transcript = ' '.join(words[1:])
+  transcript_fixed = pattern.sub(lambda x: re_dict[x.group()], transcript)
+  sys.stdout.write(uttid + " " + transcript_fixed + "\n")

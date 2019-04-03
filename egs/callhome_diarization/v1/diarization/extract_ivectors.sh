@@ -29,6 +29,10 @@ min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
 posterior_scale=1.0 # This scale helps to control for successve features being highly
                     # correlated.  E.g. try 0.1 or 0.3.
 apply_cmn=true # If true, apply sliding window cepstral mean normalization
+apply_deltas=true # If true, copy the delta options from the i-vector extractor directory.
+                  # If false, we won't add deltas in this step. For speaker diarization,
+		  # we sometimes need to write features to disk that already have various
+		  # post-processing applied so adding deltas is no longer needed in this stage.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -45,6 +49,8 @@ if [ $# != 3 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --window <window|1.5>                            # Sliding window length in seconds"
   echo "  --period <period|0.75>                           # Period of sliding windows in seconds"
+  echo "  --pca-dim <n|-1>                                 # If provided, the whitening transform also"
+  echo "                                                   # performs dimension reduction."
   echo "  --min-segment <min|0.5>                          # Minimum segment length in seconds per ivector"
   echo "  --hard-min <bool|false>                          # Removes segments less than min-segment if true."
   echo "                                                   # Useful for extracting training ivectors."
@@ -55,6 +61,12 @@ if [ $# != 3 ]; then
   echo "  --min-post <min-post|0.025>                      # Pruning threshold for posteriors"
   echo "  --apply-cmn <true,false|true>                    # if true, apply sliding window cepstral mean"
   echo "                                                   # normalization to features"
+  echo "  --apply-deltas <true,false|true>                 # If true, copy the delta options from the i-vector"
+  echo "                                                   # extractor directory. If false, we won't add deltas"
+  echo "                                                   # in this step. For speaker diarization, we sometimes"
+  echo "                                                   # need to write features to disk that already have"
+  echo "                                                   # various post-processing applied so adding deltas is"
+  echo "                                                   # no longer needed in this stage."
   exit 1;
 fi
 
@@ -65,7 +77,6 @@ dir=$3
 for f in $srcdir/final.ie $srcdir/final.ubm $data/feats.scp ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
-
 
 sub_data=$dir/subsegments_data
 mkdir -p $sub_data
@@ -81,7 +92,7 @@ if [ $stage -le 0 ]; then
   fi
   utils/data/get_uniform_subsegments.py \
       --max-segment-duration=$window \
-      --overlap-duration=$(echo "$window-$period" | bc) \
+      --overlap-duration=$(perl -e "print $window-$period") \
       --max-remaining-duration=$min_segment \
       --constant-duration=True \
       $segments > $dir/subsegments
@@ -94,7 +105,11 @@ mkdir -p $dir/log
 sub_sdata=$sub_data/split$nj;
 utils/split_data.sh $sub_data $nj || exit 1;
 
-delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
+if $apply_deltas; then
+  delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
+else
+  delta_opts="--delta-order=0"
+fi
 
 ## Set up features.
 if $apply_cmn; then
@@ -102,7 +117,6 @@ if $apply_cmn; then
 else
   feats="ark,s,cs:add-deltas $delta_opts scp:$sub_sdata/JOB/feats.scp ark:- |"
 fi
-
 
 if [ $stage -le 1 ]; then
   echo "$0: extracting iVectors"

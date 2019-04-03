@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+
+
 parser = argparse.ArgumentParser(description="Validates word features file, produced by rnnlm/get_word_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " --features-file=exp/rnnlm/features.txt "
                                         "exp/rnnlm/word_feats.txt",

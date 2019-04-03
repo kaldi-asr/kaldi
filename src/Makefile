@@ -31,14 +31,8 @@ include kaldi.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all:
-	$(MAKE) checkversion
-	$(MAKE) kaldi.mk
-	$(MAKE) mklibdir
-	$(MAKE) subdirs
+all: $(SUBDIRS) matrix/test
 	-echo Done
-
-subdirs: $(SUBDIRS)
 
 mklibdir:
 	test -d $(KALDILIBDIR) || mkdir $(KALDILIBDIR)
@@ -138,11 +132,11 @@ ext_depend: check_portaudio
 
 
 .PHONY: $(SUBDIRS)
-$(SUBDIRS) : mklibdir
+$(SUBDIRS) : checkversion kaldi.mk mklibdir
 	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
-$(EXT_SUBDIRS) : mklibdir ext_depend
+$(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
 	$(MAKE) -C $@
 
 
@@ -170,7 +164,7 @@ lat: base util hmm tree matrix
 cudamatrix: base util matrix
 nnet: base util hmm tree matrix cudamatrix
 nnet2: base util matrix lat gmm hmm tree transform cudamatrix
-nnet3: base util matrix lat gmm hmm tree transform cudamatrix chain fstext
+nnet3: base util matrix decoder lat gmm hmm tree transform cudamatrix chain fstext
 rnnlm: base util matrix cudamatrix nnet3 lm hmm
 chain: lat hmm tree fstext matrix cudamatrix util base
 ivector: base util matrix transform tree gmm

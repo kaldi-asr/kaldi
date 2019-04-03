@@ -8,11 +8,12 @@
 # Results (mostly EERs) are inline in comments below.
 #
 # This example demonstrates a "bare bones" NIST SRE 2016 recipe using xvectors.
-# In the future, we will add score-normalization and a more effective form of
-# PLDA domain adaptation.
+# It is closely based on "X-vectors: Robust DNN Embeddings for Speaker
+# Recognition" by Snyder et al.  In the future, we will add score-normalization
+# and a more effective form of PLDA domain adaptation.
 #
-# Pretrained models are available for this recipe.
-# See http://kaldi-asr.org/models.html and
+# Pretrained models are available for this recipe.  See
+# http://kaldi-asr.org/models.html and
 # https://david-ryan-snyder.github.io/2017/10/04/model_sre16_v2.html
 # for details.
 
@@ -81,7 +82,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # Make filterbanks and compute the energy-based VAD for each dataset
+  # Make MFCCs and compute the energy-based VAD for each dataset
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     utils/create_split_dir.pl \
       /export/b{14,15,16,17}/$USER/kaldi-data/egs/sre16/v2/xvector-$(date +'%m_%d_%H_%M')/mfccs/storage $mfccdir/storage
@@ -119,7 +120,7 @@ if [ $stage -le 2 ]; then
 
   # Make a reverberated version of the SWBD+SRE list.  Note that we don't add any
   # additive noise here.
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --speech-rvb-probability 1 \
     --pointsource-noise-addition-probability 0 \
@@ -144,11 +145,11 @@ if [ $stage -le 2 ]; then
   done
 
   # Augment with musan_noise
-  python steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/swbd_sre data/swbd_sre_noise
+  steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/swbd_sre data/swbd_sre_noise
   # Augment with musan_music
-  python steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/swbd_sre data/swbd_sre_music
+  steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/swbd_sre data/swbd_sre_music
   # Augment with musan_speech
-  python steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/swbd_sre data/swbd_sre_babble
+  steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/swbd_sre data/swbd_sre_babble
 
   # Combine reverb, noise, music, and babble into one directory.
   utils/combine_data.sh data/swbd_sre_aug data/swbd_sre_reverb data/swbd_sre_noise data/swbd_sre_music data/swbd_sre_babble
@@ -158,7 +159,7 @@ if [ $stage -le 2 ]; then
   utils/subset_data_dir.sh data/swbd_sre_aug 128000 data/swbd_sre_aug_128k
   utils/fix_data_dir.sh data/swbd_sre_aug_128k
 
-  # Make filterbanks for the augmented data.  Note that we do not compute a new
+  # Make MFCCs for the augmented data.  Note that we do not compute a new
   # vad.scp file here.  Instead, we use the vad.scp from the clean version of
   # the list.
   steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \

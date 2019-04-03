@@ -9,6 +9,9 @@ import sys
 import math
 from collections import defaultdict
 
+import re
+
+
 parser = argparse.ArgumentParser(description="This script turns the words into the sparse feature representation, "
                                              "using features from rnnlm/choose_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " --unigram-probs=exp/rnnlm/unigram_probs.txt "

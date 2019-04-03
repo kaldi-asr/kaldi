@@ -23,6 +23,8 @@
 #ifndef KALDI_MATRIX_KALDI_MATRIX_H_
 #define KALDI_MATRIX_KALDI_MATRIX_H_ 1
 
+#include <algorithm>
+
 #include "matrix/matrix-common.h"
 
 namespace kaldi {
@@ -529,6 +531,10 @@ class MatrixBase {
    * positive semi-definite (check_thresh controls how stringent the check is;
    * set it to 2 to ensure it won't ever complain, but it will zero out negative
    * dimensions in your matrix.
+   *
+   * Caution: if you want the eigenvalues, it may make more sense to convert to
+   * SpMatrix and use Eig() function there, which uses eigenvalue decomposition
+   * directly rather than SVD.
   */
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real check_thresh = 0.001);

@@ -16,8 +16,8 @@
 
 # this script trains a vanilla RNNLM with TensorFlow. 
 # to call the script, do
-# python steps/tfrnnlm/lstm.py --data-path=$datadir \
-#        --save-path=$savepath --vocab-path=$rnn.wordlist [--hidden-size=$size]
+# python steps/tfrnnlm/lstm.py --data_path=$datadir \
+#        --save_path=$savepath --vocab_path=$rnn.wordlist [--hidden-size=$size]
 #
 # One example recipe is at egs/ami/s5/local/tfrnnlm/run_lstm.sh
 
@@ -38,15 +38,15 @@ import reader
 flags = tf.flags
 logging = tf.logging
 
-flags.DEFINE_integer("hidden-size", 200, "hidden dim of RNN")
+flags.DEFINE_integer("hidden_size", 200, "hidden dim of RNN")
 
-flags.DEFINE_string("data-path", None,
+flags.DEFINE_string("data_path", None,
                     "Where the training/test data is stored.")
-flags.DEFINE_string("vocab-path", None,
+flags.DEFINE_string("vocab_path", None,
                     "Where the wordlist file is stored.")
-flags.DEFINE_string("save-path", None,
+flags.DEFINE_string("save_path", None,
                     "Model output directory.")
-flags.DEFINE_bool("use-fp16", False,
+flags.DEFINE_bool("use_fp16", False,
                   "Train using 16-bit floats instead of 32bit floats")
 
 FLAGS = flags.FLAGS
@@ -203,7 +203,7 @@ class RnnlmModel(object):
                                       config.max_grad_norm)
     optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(
-        zip(grads, tvars),
+        list(zip(grads, tvars)),
         global_step=tf.contrib.framework.get_or_create_global_step())
 
     self._new_lr = tf.placeholder(

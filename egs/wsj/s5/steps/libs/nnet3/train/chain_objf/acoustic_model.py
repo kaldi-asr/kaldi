@@ -7,6 +7,8 @@
 """ This is a module with methods which will be used by scripts for training of
 deep neural network acoustic model with chain objective.
 """
+from __future__ import division
+from __future__ import print_function
 
 import logging
 import math
@@ -69,7 +71,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        alignment_subsampling_factor=3,
                        online_ivector_dir=None,
                        frames_per_iter=20000, frames_per_eg_str="20", srand=0,
-                       egs_opts=None, cmvn_opts=None, transform_dir=None):
+                       egs_opts=None, cmvn_opts=None):
     """Wrapper for steps/nnet3/chain/get_egs.sh
 
     See options in that script.
@@ -79,7 +81,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
         """steps/nnet3/chain/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
-                --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
                 --left-context {left_context} \
                 --right-context {right_context} \
@@ -96,9 +97,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 {data} {dir} {lat_dir} {egs_dir}""".format(
                     command=run_opts.egs_command,
                     cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
-                    transform_dir=(transform_dir
-                                   if transform_dir is not None
-                                   else ''),
                     ivector_dir=(online_ivector_dir
                                  if online_ivector_dir is not None
                                  else ''),
@@ -171,7 +169,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         # work out the 1-based archive index.
         archive_index = (k % num_archives) + 1
         # previous : frame_shift = (k/num_archives) % frame_subsampling_factor
-        frame_shift = ((archive_index + k/num_archives)
+        frame_shift = ((archive_index + k//num_archives)
                        % frame_subsampling_factor)
 
         multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
@@ -417,8 +415,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
-    lda_stat_files = list(map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
-                              range(1, num_lda_jobs + 1)))
+    lda_stat_files = ['{0}/{1}.lda_stats'.format(dir, x) for x in range(1, num_lda_jobs + 1)]
 
     common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \
@@ -490,7 +487,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
-                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/valid_diagnostic{egs_suffix} \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
@@ -509,7 +506,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
-                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/train_diagnostic{egs_suffix} \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,

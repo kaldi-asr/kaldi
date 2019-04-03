@@ -21,6 +21,7 @@ addons:
       - gfortran-4.9
       - liblapack-dev
       - clang-3.8
+      - sox
 
 branches:
   only:
@@ -47,8 +48,8 @@ script:
   # http://peter.eisentraut.org/blog/2014/12/01/ccache-and-clang-part-3/
   # for the explanation why extra switches needed for clang with ccache.
   - CXX="ccache clang++-3.8 -Qunused-arguments -fcolor-diagnostics -Wno-tautological-compare"
-    CFLAGS="-march=native"
-    LDFLAGS="-llapack"
+    CFLAGS=""
+    LDFLAGS="-llapack -Wl,-fuse-ld=gold"
     INCDIRS="$XROOT/usr/include"
     LIBDIRS="$XROOT/usr/lib"
       tools/extras/travis_script.sh

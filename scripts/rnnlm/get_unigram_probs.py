@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+
+
 parser = argparse.ArgumentParser(description="This script gets the unigram probabilities of words.",
                                  epilog="E.g. " + sys.argv[0] + " --vocab-file=data/rnnlm/vocab/words.txt "
                                         "--data-weights-file=exp/rnnlm/data_weights.txt data/rnnlm/data "
@@ -131,7 +134,8 @@ def get_counts(data_sources, data_weights, vocab):
         with open(counts_file, 'r', encoding="utf-8") as f:
             for line in f:
                 fields = line.split()
-                assert len(fields) == 2
+                if len(fields) != 2: print("Warning, should be 2 cols:", fields, line, file=sys.stderr);
+                assert(len(fields) == 2)
                 word = fields[0]
                 count = fields[1]
                 if word not in vocab:

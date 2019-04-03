@@ -3,33 +3,31 @@
 
 # This script performs chain training in a flat-start manner
 # and without building or using any context-dependency tree.
-# It does not use ivecors or other forms of speaker adaptation
-# except simple mean and variance normalization.
+# It does not use ivecors or other forms of speaker adaptation.
 # It is called from run_e2e_phone.sh
 
 # Note: this script is configured as phone-based, if you want
 # to run it in character mode, you'll need to change _nosp
-# to _char everywhere and also copy char_lm.fst instead
-# of phone_lm.fst (in stage 1 below)
+# to _char everywhere.
 
-# local/chain/compare_wer.sh exp/chain/e2e_tdnn_1a
-# System                e2e_tdnn_1a
-#WER dev93 (tgpr)                9.70
-#WER dev93 (tg)                  9.05
-#WER dev93 (big-dict,tgpr)       7.20
-#WER dev93 (big-dict,fg)         6.36
-#WER eval92 (tgpr)               5.88
-#WER eval92 (tg)                 5.32
-#WER eval92 (big-dict,tgpr)      3.67
-#WER eval92 (big-dict,fg)        3.05
-# Final train prob        -0.0741
-# Final valid prob        -0.0951
+# local/chain/compare_wer.sh exp/chain/e2e_tdnnf_1a
+# System                e2e_tdnnf_1a
+#WER dev93 (tgpr)                8.77
+#WER dev93 (tg)                  8.11
+#WER dev93 (big-dict,tgpr)       6.17
+#WER dev93 (big-dict,fg)         5.66
+#WER eval92 (tgpr)               5.62
+#WER eval92 (tg)                 5.19
+#WER eval92 (big-dict,tgpr)      3.23
+#WER eval92 (big-dict,fg)        2.80
+# Final train prob        -0.0618
+# Final valid prob        -0.0825
 # Final train prob (xent)
 # Final valid prob (xent)
-# Num-params                 5562234
+# Num-params                 6772564
 
-# steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_1a
-# exp/chain/e2e_tdnn_1a: num-iters=68 nj=2..5 num-params=5.6M dim=40->84 combine=-0.094->-0.094 logprob:train/valid[44,67,final]=(-0.083,-0.073,-0.072/-0.097,-0.095,-0.095)
+# steps/info/chain_dir_info.pl exp/chain/e2e_tdnnf_1a
+# exp/chain/e2e_tdnnf_1a: num-iters=180 nj=2..8 num-params=6.8M dim=40->84 combine=-0.060->-0.060 (over 3) logprob:train/valid[119,179,final]=(-0.080,-0.062,-0.062/-0.089,-0.083,-0.083)
 
 set -e
 
@@ -37,18 +35,18 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a_dim450
+affix=1a
 
 # training options
-num_epochs=4
+dropout_schedule='0,0@0.20,0.5@0.50,0'
+num_epochs=10
 num_jobs_initial=2
-num_jobs_final=5
-minibatch_size=150=128,64/300=100,64,32/600=50,32,16/1200=16,8
+num_jobs_final=8
+minibatch_size=150=128,64/300=64,32/600=32,16/1200=8
 common_egs_dir=
 l2_regularize=0.00005
-dim=450
 frames_per_iter=3000000
-cmvn_opts="--norm-means=true --norm-vars=true"
+cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train_si284_spe2e_hires
 test_sets="test_dev93 test_eval92"
 
@@ -69,7 +67,7 @@ fi
 
 lang=data/lang_e2e
 treedir=exp/chain/e2e_tree  # it's actually just a trivial tree (no tree building)
-dir=exp/chain/e2e_tdnn_${affix}
+dir=exp/chain/e2e_tdnnf_${affix}
 
 if [ $stage -le 0 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
@@ -85,34 +83,52 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
+  echo "$0: Estimating a phone language model for the denominator graph..."
+  mkdir -p $treedir/log
+  $train_cmd $treedir/log/make_phone_lm.log \
+             cat data/$train_set/text \| \
+             steps/nnet3/chain/e2e/text_to_phones.py --between-silprob 0.1 \
+             data/lang_nosp \| \
+             utils/sym2int.pl -f 2- data/lang_nosp/phones.txt \| \
+             chain-est-phone-lm --num-extra-lm-states=2000 \
+             ark:- $treedir/phone_lm.fst
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
                                        --shared-phones true \
                                        data/$train_set $lang $treedir
-  cp exp/chain/e2e_base/phone_lm.fst $treedir/
 fi
 
 if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
-  opts="l2-regularize=0.01"
-  output_opts="l2-regularize=0.0025"
+  tdnn_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim-continuous=true"
+  tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.005"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
 
   input dim=40 name=input
 
-  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=$dim
-  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=$dim $opts
-  relu-batchnorm-layer name=tdnn3 dim=$dim $opts
-  relu-batchnorm-layer name=tdnn4 input=Append(-1,0,1) dim=$dim $opts
-  relu-batchnorm-layer name=tdnn5 dim=$dim $opts
-  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=$dim $opts
-  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=$dim $opts
-  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=$dim $opts
+  relu-batchnorm-dropout-layer name=tdnn1 input=Append(-1,0,1) $tdnn_opts dim=1024
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  linear-component name=prefinal-l dim=192 $linear_opts
 
-  relu-batchnorm-layer name=prefinal-chain dim=$dim target-rms=0.5 $opts
-  output-layer name=output include-log-softmax=true dim=$num_targets $output_opts
+
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1024 small-dim=192
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
@@ -131,14 +147,15 @@ if [ $stage -le 3 ]; then
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
     --egs.opts "" \
+    --trainer.dropout-schedule $dropout_schedule \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate 0.001 \
-    --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.optimization.initial-effective-lrate 0.0005 \
+    --trainer.optimization.final-effective-lrate 0.00005 \
     --trainer.optimization.shrink-value 1.0 \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs true \

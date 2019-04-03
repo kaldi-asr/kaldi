@@ -8,6 +8,9 @@ import argparse
 import sys
 sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
 
+import re
+
+
 parser = argparse.ArgumentParser(description="This script get a vocab from unigram counts "
                                  "of words produced by get_unigram_counts.sh",
                                  epilog="E.g. " + sys.argv[0] + " data/rnnlm/data > data/rnnlm/vocab/words.txt",
@@ -27,7 +30,7 @@ special_symbols = ['<s>', '<brk>', '<eps>']
 def add_counts(word_counts, counts_file):
     with open(counts_file, 'r', encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
+            line = line.strip(" \t\r\n")
             word_and_count = line.split()
             assert len(word_and_count) == 2
             if word_and_count[0] in word_counts:

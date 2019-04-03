@@ -1,0 +1,49 @@
+#!/usr/bin/env perl
+# Copyright 2012-2014  Johns Hopkins University (Author: Yenda Trmal)
+# Apache 2.0
+
+# This script converts a BPE-encoded text to normal text and performs normalization.
+# It is used in scoring.
+
+use utf8;
+
+use open qw(:encoding(utf8));
+binmode STDIN, ":utf8";
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
+# Arabic-specific normalization
+while (<>) {
+  @F = split " ";
+  print $F[0];
+  foreach $s (@F[1..$#F]) {
+    $s =~ s/\x{0623}/\x{0627}/g;
+    $s =~ s/\x{0625}/\x{0627}/g;
+    $s =~ s/\x{0622}/\x{0627}/g;
+    $s =~ s/\x{0624}/\x{0648}/g;
+    $s =~ s/\x{0626}/\x{064A}/g;
+    $s =~ s/\x{0649}/\x{064A}/g;
+    $s =~ s/\x{0629}/\x{0647}/g;
+    $s =~ s/\x{0660}/0/g;
+    $s =~ s/\x{0661}/1/g;
+    $s =~ s/\x{0662}/2/g;
+    $s =~ s/\x{0663}/3/g;
+    $s =~ s/\x{0664}/4/g;
+    $s =~ s/\x{0665}/5/g;
+    $s =~ s/\x{0666}/6/g;
+    $s =~ s/\x{0667}/7/g;
+    $s =~ s/\x{0668}/8/g;
+    $s =~ s/\x{0669}/9/g;
+    $s =~ s/\x{0621}//g;
+    $s =~ s/[\x{064b}-\x{0655}]//g;
+    $s =~ s/\x{0640}//g;
+    $s =~ s/\|/ /g;
+    if ($s ne "") {
+      print "$s";
+    } else {
+      print "";
+    }
+  }
+  print "\n";
+}
+
