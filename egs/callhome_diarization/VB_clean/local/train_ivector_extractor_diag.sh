@@ -30,7 +30,7 @@ nj=10   # this is the number of separate queue jobs we run, but each one
         # separate pieces of data is nj * num_processes.
 num_threads=4
 num_processes=4 # each job runs this many processes, each with --num-threads threads
-cmd="run.pl"
+cmd="queue.pl"
 stage=-4
 num_gselect=20 # Gaussian-selection using diagonal model: number of Gaussians to select
 ivector_dim=400 # dimension of the extracted i-vector

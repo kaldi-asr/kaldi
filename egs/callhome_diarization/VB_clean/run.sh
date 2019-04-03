@@ -14,6 +14,9 @@ init_rttm_file=rttm/x_vector_rttm
 output_dir=exp/xvec_init_gauss_${num_gauss}_ivec_${ivec_dim}
 
 stage=0
+
+. utils/parse_options.sh
+
 if [ $stage -le 0 ]; then
   # Path to some, but not all of the training corpora
   data_root=/export/corpora/LDC
@@ -90,11 +93,11 @@ fi
 
 if [ $stage -le 3 ]; then
   # Train the i-vector extractor. The UBM is assumed to be diagonal.
-  local/train_ivector_extractor_diag.sh --cmd "$train_cmd --mem 35G --max-jobs-run 20" \
+  local/train_ivector_extractor_diag.sh --cmd "$train_cmd --mem 45G --max-jobs-run 20" \
     --ivector-dim ${ivec_dim} \
     --num-iters 5 \
     --apply-cmn false \
-    --num-threads 1 --num-processes 1 --nj 40 \
+    --num-threads 1 --num-processes 1 --nj 10 \
     exp/diag_ubm_gauss_${num_gauss}_delta_0_cmn_0/final.dubm data/swbd_sre \
     exp/extractor_gauss_${num_gauss}_delta_0_cmn_0_ivec_${ivec_dim}
 fi
