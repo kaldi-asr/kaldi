@@ -221,7 +221,7 @@ void TestSplitToPhones() {
     KALDI_ASSERT(!split_alignment[i].empty());
     for (size_t j = 0; j < split_alignment[i].size(); j++) {
       int32 transition_id = split_alignment[i][j];
-      KALDI_ASSERT(trans_model->TransitionIdToPhone(transition_id) ==
+      KALDI_ASSERT(trans_model->InfoForTransitionId(transition_id).phone ==
                    phone_seq[i]);
     }
   }
@@ -305,8 +305,8 @@ void TestConvertAlignment() {
     KALDI_ASSERT(b1 && b2);
     KALDI_ASSERT(old_split.size() == new_split.size());
     for (size_t i = 0; i < new_split.size(); i++)
-      KALDI_ASSERT(trans_model_old.TransitionIdToPhone(old_split[i].front()) ==
-                   trans_model_new.TransitionIdToPhone(new_split[i].front()));
+      KALDI_ASSERT(trans_model_old.InfoForTransitionId(old_split[i].front()).phone ==
+                   trans_model_new.InfoForTransitionId(new_split[i].front()).phone);
     if (!new_topology && subsample_factor == 1) {
       // we should be able to convert back and it'll be the same.
       std::vector<int32> old_alignment_copy;
