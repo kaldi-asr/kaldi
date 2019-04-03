@@ -170,6 +170,8 @@ class Transitions {
 
   inline int32 TransitionIdToPdfFast(int32 trans_id) const;
 
+  int32 TransitionIdToPhone(int32 trans_id) const;
+
   /// This allows you to look up a transition-id.  It returns 0 if nothing
   /// was found.
   int32 TupleToTransitionId(int32 phone, int32 topo_state, int32 arc_index,
