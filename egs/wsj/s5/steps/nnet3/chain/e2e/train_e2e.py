@@ -202,11 +202,10 @@ def process_args(args):
             "--trainer.deriv-truncate-margin.".format(
                 args.deriv_truncate_margin))
 
-    if (not os.path.exists(args.dir)
-            or not os.path.exists(args.dir+"/configs")):
-        raise Exception("This scripts expects {0} to exist and have a configs "
-                        "directory which is the output of "
-                        "make_configs.py script")
+    if (not os.path.exists(args.dir + "/configs")):
+        raise Exception("This scripts expects the directory specified with "
+                        "--dir={0} to exist and have a configs/ directory which "
+                        "is the output of make_configs.py script".format(args.dir))
 
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
@@ -423,9 +422,10 @@ def train(args, run_opts):
         if (args.exit_stage is not None) and (iter == args.exit_stage):
             logger.info("Exiting early due to --exit-stage {0}".format(iter))
             return
-        current_num_jobs = int(0.5 + args.num_jobs_initial
-                               + (args.num_jobs_final - args.num_jobs_initial)
-                               * float(iter) / num_iters)
+
+        current_num_jobs = common_train_lib.get_current_num_jobs(
+            iter, num_iters,
+            args.num_jobs_initial, args.num_jobs_step, args.num_jobs_final)
 
         if args.stage <= iter:
             model_file = "{dir}/{iter}.mdl".format(dir=args.dir, iter=iter)
@@ -451,12 +451,13 @@ def train(args, run_opts):
             shrink_info_str = ''
             if shrinkage_value != 1.0:
                 shrink_info_str = 'shrink: {0:0.5f}'.format(shrinkage_value)
-            logger.info("Iter: {0}/{1}    "
-                        "Epoch: {2:0.2f}/{3:0.1f} ({4:0.1f}% complete)    "
-                        "lr: {5:0.6f}    {6}".format(iter, num_iters - 1,
-                                                     epoch, args.num_epochs,
-                                                     percent,
-                                                     lrate, shrink_info_str))
+            logger.info("Iter: {0}/{1}   Jobs: {2}   "
+                        "Epoch: {3:0.2f}/{4:0.1f} ({5:0.1f}% complete)   "
+                        "lr: {6:0.6f}   {7}".format(iter, num_iters - 1,
+                                                    current_num_jobs,
+                                                    epoch, args.num_epochs,
+                                                    percent,
+                                                    lrate, shrink_info_str))
 
             chain_lib.train_one_iteration(
                 dir=args.dir,
