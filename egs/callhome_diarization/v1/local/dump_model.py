@@ -1,4 +1,4 @@
-#!/home/hzili1/tools/anaconda3/envs/py27/bin/python
+#!/usr/bin/env python
 
 import numpy as np
 import pickle
