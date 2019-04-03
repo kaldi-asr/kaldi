@@ -123,7 +123,13 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // waveform_remainder_ while incrementing waveform_offset_ by the same amount.
   void ComputeFeatures();
 
+  void MaybeCreateResampler(BaseFloat sampling_rate);
+
   C computer_;  // class that does the MFCC or filterbank computation
+
+  // resampler in cases when the input sampling frequency is not equal to
+  // the expected sampling rate
+  std::unique_ptr<LinearResample> resampler_;
 
   Vector<BaseFloat> window_function_;
 
