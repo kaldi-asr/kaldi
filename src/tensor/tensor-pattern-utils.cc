@@ -381,7 +381,25 @@ int32 GetDimsCode(const TensorPattern &pattern) {
   // we may not need this after all.
 }
 
+void Transpose(int32 axis1_in, int32 axis2_in, TensorPattern *p) {
+  int32 num_axes = p->num_axes;
+  // interpret negative axes as offsets from num_axes.
+  int32 axis1 = (axis1_in < 0 ? axis1_in + num_axes : axis1_in),
+      axis2 = (axis2_in < 0 ? axis2_in + num_axes : axis2_in);
+  // Work out the reversed axis indexes that we physically use
+  // in the arrays.
+  int32 raxis1 = num_axes - axis1,
+      raxis2 = num_axes - axis2;
+  if (!(static_cast<uint32>(raxis1) < static_cast<uint32>(num_axes) &&
+        static_cast<uint32>(raxis2) < static_cast<uint32>(num_axes)))
+    KALDI_ERR << "Invalid indexes " << axis1_in << ", " << axis2_in
+              << " provided to Transpose() on Tensor with num_axes = "
+              << num_axes;
+  std::swap(p->strides[raxis1], p->strides[raxis2]);
+  std::swap(p->dims[raxis1], p->dims[raxis2]);
+  p->code = ComputePatternCode(*p);
+}
+
 
 }  // namespace kaldi
 }  // namespace tensor
-x

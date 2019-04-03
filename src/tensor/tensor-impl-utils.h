@@ -27,8 +27,7 @@
 /**
    This header contains basic linear-algebra and copying types of operations
    on TensorImpl objects.  See also tensor-impl-nonlinearly
- */
-
+*/
 namespace kaldi {
 namespace tensor {
 
@@ -42,6 +41,26 @@ inline bool Compatible(const TensorImpl &a, const TensorImpl &b);
 // and device; equivalent to Compatible(a, b) && Compatible(b, c).
 inline bool Compatible(const TensorImpl &a, const TensorImpl &b,
                        const TensorImpl &c);
+
+
+
+
+//  This function moves the 'data' pointer stored in 't' by adding
+//  a number of elements equal to 'offset'.  It casts it to the
+// type specified in t->dtype so the memory address changes by
+// the right amount.
+inline void AddToPointer(int64 offset, TensorImpl *t) {
+  switch(t->dtype) {
+    case kFloatDtype:
+      t->data = static_cast<void*>(static_cast<float>(t->data) + offset);
+      return;
+    case kDoubleDtype:
+      t->data = static_cast<void*>(static_cast<double>(t->data) + offset);
+      return;
+    default:
+      KALDI_ERR << "Unknown data type";
+  }
+}
 
 
 /**
@@ -112,16 +131,87 @@ inline void Unsqueeze(TensorImpl *t, int32 axis) {
    Showing just the dims in the tensor for an example:
 
 \verbatim
-    Squeeze({1,3,4}, 0)  -> {3,4}
-    Squeeze({3,1,4}, 1)  -> {3,4}
-    Squeeze({3,1,4}, 2)  -> [error]
+    Squeeze(0, {1,3,4})  -> {3,4}
+    Squeeze(1, {3,1,4})  -> {3,4}
+    Squeeze(2, {3,1,4})  -> [error]
 \endverbatim
  */
-inline void Squeeze(TensorImpl *t, int32 axis) {
+void Squeeze(int32 axis, TensorImpl *t);
   Squeeze(&(t->pattern), axis));
 }
 
 
+/** Transpose the two specified axes of a TensorImpl
+
+    @param [in] axis1  First axis to be transposed; must be in range
+                       `[-t->NumAxes(), t->NumAxes() - 1]`,
+                       with negative axis being interpreted as an offset
+                       from t->NumAxes().
+    @param [in] axis2  Second axis to be transposed; must be in range
+                       `[-t->NumAxes(), t->NumAxes() - 1]`.
+                       If identical to axis1, nothing will be done.
+    @param [in,out] t    TensorImpl whose axes are to be transposed.
+ */
+inline void Transpose(int32 axis1, int32 axis2, TensorImpl *t) {
+  Transpose(axis1, axis2, &(tensor->pattern));
+}
+
+
+
+/**
+   This is like PyTorch's slice() / narrow() functions.
+   It selects a range of dimensions on one of the axes.  It is similar to
+   indexing with a range in Python, like A[10:20].
+
+      @param [in] axis   Axis on which to possibly reduce the dimensionality;
+                         require -t->NumAxes() <= axis < t->NumAxes(), with
+                         negative axis interpreted as an offset from t->NumAxes().
+      @param [in] start  Starting index; must be in range [0, t->Dim(axis) - 1]
+      @param [in] end    Ending index; must be in the range [start + 1, t->Dim(axis)]
+      @param [in,out] t  TensorImpl whose metadata is to be modified.  Its num_axes
+                         is not changed by this function (unlike Select()).
+
+   See also: the other overloaded version of Slice() which accepts the 'step'
+   parameter; and Select(), which also reduces the num-axes.
+ */
+void Slice(int32 axis, int32 start, int32 end, TensorImpl *t);
+
+
+/**
+   This is a version of Slice() which also takes a 'step' argument to support
+   things like taking every other element.  See the documentation for the other
+   Slice() for more context.   This is related to indexing with a range
+   in Python: for example, A[0:6:2], selecting elements [0, 2, 4] of A.
+
+      @param [in] axis   Axis on which to possibly reduce the dimensionality;
+                         require -t->NumAxes() <= axis < t->NumAxes(), with
+                         negative axis interpreted as an offset from t->NumAxes().
+      @param [in] start  Starting index; must be in range [0, t->Dim(axis) - 1]
+      @param [in] end    Ending index.  If `step > 0` must be in the range
+                         [start + 1, t->Dim(axis)]; if step  < 0, must be
+                         in the range [start - 1, -1].
+      @param [in] step   Nonzero number that indicates the subsampling of elements
+                         (and possible axis flipping).
+      @param [in,out] t  TensorImpl whose metadata is to be modified.  Its num_axes
+                         is not changed by this function (unlike Select()).
+
+   See the other version of Slice(), and Select().
+ */
+void Slice(int32 axis, int32 start, int32 end, int32 step, TensorImpl *t);
+
+
+/**
+   Select one element from an axis of TensorImpl 't', reducing t->NumAxes() by
+   one.
+
+       @param [in] axis Axis from which to select an element; require
+                         -t->NumAxes() <= axis < t->NumAxes(), with negative
+                         axis interpreted as an offset from t->NumAxes().
+       @param [in] index  Index in t to select; must be in range
+                          [0, t->Dim(axis) - 1].
+       @param [in,out]  t   TensorImpl whose metadata is to be modified.
+ */
+void Select(int32 axis, int32 index, TensorImpl *t);
 
 
 

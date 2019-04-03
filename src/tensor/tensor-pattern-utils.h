@@ -83,8 +83,9 @@ inline bool AxisIsTrivial(int32 pattern_code, int32 raxis) {
    This function returns a code that compactly represents the same information
    as GetDimsCode() [i.e. which axes had dim != 1], but also encodes which axis,
    if any, had stride=1, and has a bit that says whether any axis had negative
-   stride.  (No two axes can have stride=1, due to the uniqueness rule; search
-   in tensor-pattern.h).
+   stride.  (No two axes can have stride=1, due to a combination of the fact
+   that dim=1 implies stride=0, and the the uniqueness rule; search in
+   tensor-pattern.h).
 
    Let
       n = 0 if no axis had stride=1, otherwise:
@@ -279,7 +280,62 @@ inline void Squeeze(int32 axis, TensorPattern *p) {
 }
 
 
-ybool Broadcastable(const TensorPattern &a, const TensorPattern &b,
+
+/** Transpose the two specified axes of a TensorPattern
+
+    @param [in] axis1  First axis to be transposed; must be in range
+                       `[-p->num_axes, p->num_axes - 1]`,
+                       with negative axis being interpreted as an offset
+                       from p->num_axes.  This axis-index is in the
+                       public numbering, not the reversed numbering
+                       physically used in 'pattern'.
+    @param [in] axis2  Second axis to be transposed; must be in range
+                       `[-p->num_axes, t->num_axes - 1]`.
+                       If identical to axis1, nothing will be done.
+    @param [in,out] p  TensorPattern whose axes are to be transposed.
+                       p->code is updated.
+ */
+void Transpose(int32 axis1, int32 axis2, TensorPattern *p) {
+  Transpose(axis1, axis2, &(tensor->pattern));
+}
+
+
+
+
+/**
+   Modifies 'p' in-place by removing an axis with dim=1 (hence stride=0)
+   located at the specified axis (as numbered in the public numbering).
+   Equivalent to PyTorch's squeeze(), including its behavior with
+   negative axis indexes; axis < 0 is interpreted as to num_axes - axis,
+   i.e. the last axis.  It is an error if 'p' did not, on entry,
+   contain an axis with dim=1 at position 'axis' (in the public numbering).
+
+   Showing just the dims in the pattern, in the non-reversed order as
+   exported by the API, some examples are:
+\verbatim
+    Squeeze([1,6,5], 0) -> [6,5]
+    Squeeze([3,1,4], 1) -> [3,4]
+    Squeeze([9,1,10], 2) -> error
+    Squeeze([7,1], -1) -> [7]
+\endverbatim
+
+     @param [in]    axis    The index at which the extra axis is to appear.
+                            We require -p->num_axes <= axis < p->num_axes
+                            (negative axes are permitted, interpreted
+                            as an offset from p->num_axes).
+                            We require that the specified axis have
+                            dim=1.
+     @param [in,out] p      The pattern from which we are removing an
+                            axis.  Will have its num_axes reduced by 1
+                            at exit, possibly its dims and strides
+                            arrays changed, and its 'code' updated.
+ */
+inline void Squeeze(int32 axis, TensorPattern *p) {
+  if (axis < 0) SqueezeR(1 - axis, p);
+  else SqueezeR(p->num_axes - 1 - axis, p);
+}
+
+bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
                    bool b_non_reducing = false);
 
 

@@ -45,8 +45,20 @@ void SetZero(const Tensor *tensor);
 void Set(float f, const Tensor *tensor);
 
 
-// Return a transposed version of this Tensor that shares the underlying memory.
-Tensor Transpose(const Tensor &tensor, int64_t axis1 = 0, int64_t axis2 = 1);
+/** Transpose the two specified axes of a Tensor
+
+    @param [in] axis1  First axis to be transposed; must be in range
+                       `[-t->NumAxes(), t->NumAxes() - 1]`,
+                       with negative axis being interpreted as an offset
+                       from t->NumAxes().
+    @param [in] axis2  Second axis to be transposed; must be in range
+                       `[-t->NumAxes(), t->NumAxes() - 1]`.
+                       If identical to axis1, nothing will be done.
+    @param [in,out] t     Tensor whose axes are to be transposed.
+ */
+inline void Transpose(int32 axis1, int32 axis2, Tensor *t) {
+  Transpose(axis1, axis2, &(t->impl_));
+}
 
 /**
    Copy the data from tensor 'src' to tensor 'dest', allowing broadcasting
@@ -98,20 +110,18 @@ inline void Exp(const Tensor &src, const Tensor *dest) {
 
 /**
    Template used to implement binary functions such as division,
-   taking to a power, max.
+   taking to a power, max, min.
 
    Implements c = F(a, b), where F is some function of two scalars
    that returns a scalar.
 
-     @param [in] a  First source Tensor
-     @param [in] b  Second source Tensor
-     @param [out] c   Destination Tensor.  We require SameDim(a, b, c).
-                     'c' does not have to be initialized on entry and
-                     is allowed to be the same Tensor as one of a or b.
- */
+     @param [in]  a  First source Tensor
+     @param [in]  b  Second source Tensor
+     @param [out] c  Destination Tensor.
+                   We require Broadcastable(a, b, c, true).
+*/
 template <BinaryFunctionEnum F>
 void BinaryFunctionTpl(const Tensor &a, Tensor &b, const Tensor *c);
-
 
 
 
@@ -120,16 +130,76 @@ void BinaryFunctionTpl(const Tensor &a, Tensor &b, const Tensor *c);
 
      @param [in] a  First source Tensor
      @param [in] b  Second source Tensor
-     @param [out] c   Destination Tensor.  We require SameDim(a, b, c).
-                    'c' does not have to be initialized on entry and
-                    is allowed to be the same Tensor as one of a or b.
+     @param [out] c   Destination Tensor.  We require Broadcastable(a, b, c, true).
+                    'c' does not have to be initialized on entry and is allowed
+                    to be the same Tensor as one of a or b.
  */
 inline void Div(const Tensor &a, Tensor &b, const Tensor *c) {
   BinaryFunctionTpl<kBinaryFunctionDivide>(a, b, c);
 }
 
-// TODO: more binary functions.
 
+
+/**
+   This is like PyTorch's slice() / narrow() functions.
+   It selects a range of dimensions on one of the axes.  It is similar to
+   indexing with a range in Python, like A[10:20].
+
+      @param [in] axis   Axis on which to possibly reduce the dimensionality;
+                         require -t->NumAxes() <= axis < t->NumAxes(), with
+                         negative axis interpreted as an offset from t->NumAxes().
+      @param [in] start  Starting index; must be in range [0, t->Dim(axis) - 1]
+      @param [in] end    Ending index; must be in the range [start + 1, t->Dim(axis)]
+      @param [in,out] t  Tensor whose metadata is to be modified.  Its NumAxes()
+                         is not changed by this function (unlike Select()).
+
+   See also: the other overloaded version of Slice() which accepts the 'step'
+   parameter; and Select(), which also reduces the num-axes.
+ */
+inline void Slice(int32 axis, int32 start, int32 end, Tensor *t) {
+  Slice(axis, start, end, &(t->impl_));
+}
+
+
+/**
+   This is a version of Slice() which also takes a 'step' argument to support
+   things like taking every other element.  See the documentation for the other
+   Slice() for more context.   This is related to indexing with a range
+   in Python: for example, A[0:6:2], selecting elements [0, 2, 4] of A.
+
+      @param [in] axis   Axis on which to possibly reduce the dimensionality;
+                         require -t->NumAxes() <= axis < t->NumAxes(), with
+                         negative axis interpreted as an offset from t->NumAxes().
+      @param [in] start  Starting index; must be in range [0, t->Dim(axis) - 1]
+      @param [in] end    Ending index.  If `step > 0` must be in the range
+                         [start + 1, t->Dim(axis)]; if step  < 0, must be
+                         in the range [start - 1, -1].
+      @param [in] step   Nonzero number that indicates the subsampling of elements
+                         (and possible axis flipping).
+      @param [in,out] t  Tensor whose metadata is to be modified.  Its NumAxes()
+                         is not changed by this function (unlike Select()).
+
+   See the other version of Slice(), and Select().
+ */
+inline void Slice(int32 axis, int32 start, int32 end, int32 step, Tensor *t) {
+  Slice(axis, start, end, stride, &(t->impl_));
+}
+
+
+/**
+   Select one element from an axis of Tensor 't', reducing t->NumAxes() by
+   one.
+
+       @param [in] axis Axis from which to select an element; require
+                         -t->NumAxes() <= axis < t->NumAxes(), with negative
+                         axis interpreted as an offset from t->NumAxes().
+       @param [in] index  Index in t to select; must be in range
+                         [0, t->Dim(axis) - 1].
+       @param [in,out]  t   Tensor whose metadata is to be modified.
+ */
+inline void Select(int32 axis, int32 index, Tensor *t) {
+  Select(axis, index, &(t->impl_));
+}
 
 
 
