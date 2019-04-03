@@ -7,7 +7,7 @@ TESTFILES = lda-estimate-test fmllr-diag-gmm-test
 OBJFILES = lda-estimate.o \
     cmvn.o transform-common.o fmllr-diag-gmm.o \
     lvtln.o mllt.o basis-fmllr-diag-gmm.o \
-    compressed-transform-stats.o fmllr-raw.o
+    compressed-transform-stats.o
 
 
 LIBNAME = kaldi-transform

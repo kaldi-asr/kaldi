@@ -96,7 +96,7 @@ void InitFeatureWindowFunction(const FrameExtractionOptions &opts,
 }
 
 void ProcessWindow(const FrameExtractionOptions &opts,
-                   const VectorBase<BaseFloat> *window_function,
+                   const VectorBase<BaseFloat> &window_function,
                    VectorBase<BaseFloat> *window) {
   int32 frame_length = opts.WindowSize();
   KALDI_ASSERT(window->Dim() == frame_length);
@@ -104,7 +104,7 @@ void ProcessWindow(const FrameExtractionOptions &opts,
   if (opts.remove_dc_offset)
     window->Add(-window->Sum() / frame_length);
 
-  window->MulElements(*window_function);
+  window->MulElements(window_function);
 }
 
 
@@ -114,7 +114,7 @@ void ExtractWindow(int64 sample_offset,
                    const VectorBase<BaseFloat> &wave,
                    int32 f,  // with 0 <= f < NumFrames(feats, opts)
                    const FrameExtractionOptions &opts,
-                   const Vector<BaseFloat> &window_function,
+                   const VectorBase<BaseFloat> &window_function,
                    Vector<BaseFloat> *window) {
   KALDI_ASSERT(sample_offset >= 0 && wave.Dim() != 0);
   int32 frame_length = opts.WindowSize(),
