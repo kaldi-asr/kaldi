@@ -48,7 +48,6 @@ void BucketQueue<Token>::Push(Token *tok) {
                         // space frequently
     if (static_cast<int32>(bucket_index) > 0) {
       buckets_.resize(bucket_index + margin);
-      first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
     } else {  // less than 0
       int32 increase_size = - static_cast<int32>(bucket_index) + margin;
       buckets_.resize(buckets_.size() + increase_size);
@@ -56,11 +55,11 @@ void BucketQueue<Token>::Push(Token *tok) {
       for (size_t i = buckets_.size() - 1; i >= increase_size; i--) {
         buckets_[i].swap(buckets_[i - increase_size]);
       }
-      bucket_offset_ = bucket_offset_ + increase_size * cost_scale_;
+      bucket_offset_ = bucket_offset_ + increase_size;
       bucket_index += increase_size;
       first_nonempty_bucket_index_ = bucket_index;
-      first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
     }
+    first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
   }
   tok->in_queue = true;
   buckets_[bucket_index].push_back(tok);
@@ -76,28 +75,22 @@ Token* BucketQueue<Token>::Pop() {
     if (!first_nonempty_bucket_->empty()) {
       Token *ans = first_nonempty_bucket_->back();
       first_nonempty_bucket_->pop_back();
-      if (ans->in_queue) {
+      if (ans->in_queue) {  // If ans->in_queue is false, this means it is a
+                            // duplicate instance of this Token that was left
+                            // over when a Token's best_cost changed, and the
+                            // Token has already been processed(so conceptually,
+                            // it is not in the queue).
         ans->in_queue = false;
         return ans;
       }
     }
     if (first_nonempty_bucket_->empty()) {
-      // In case, pop an empty BucketQueue
-      if (first_nonempty_bucket_index_ == buckets_.size() - 1) {
-        return NULL;
-      }
-
-      first_nonempty_bucket_index_++;
-      for (; first_nonempty_bucket_index_ < buckets_.size() - 1;
+      for (; first_nonempty_bucket_index_ + 1 < buckets_.size();
            first_nonempty_bucket_index_++) {
-        if (!buckets_[first_nonempty_bucket_index_].empty())
-          break;
+        if (!buckets_[first_nonempty_bucket_index_].empty()) break;
       }
       first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
-      if (first_nonempty_bucket_index_ == buckets_.size() - 1 &&
-          first_nonempty_bucket_->empty()) {
-        return NULL;
-      }
+      if (first_nonempty_bucket_->empty()) return NULL;
     }
   }
 }
@@ -119,8 +112,8 @@ LatticeFasterDecoderCombineTpl<FST, Token>::LatticeFasterDecoderCombineTpl(
     fst_(&fst), delete_fst_(false), config_(config), num_toks_(0),
     cur_queue_(config_.cost_scale) {
   config.Check();
-  prev_toks_.reserve(1000);
   cur_toks_.reserve(1000);
+  next_toks_.reserve(1000);
 }
 
 
@@ -130,8 +123,8 @@ LatticeFasterDecoderCombineTpl<FST, Token>::LatticeFasterDecoderCombineTpl(
     fst_(fst), delete_fst_(true), config_(config), num_toks_(0),
     cur_queue_(config_.cost_scale) {
   config.Check();
-  prev_toks_.reserve(1000);
   cur_toks_.reserve(1000);
+  next_toks_.reserve(1000);
 }
 
 
@@ -144,8 +137,8 @@ LatticeFasterDecoderCombineTpl<FST, Token>::~LatticeFasterDecoderCombineTpl() {
 template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   // clean up from last time:
-  prev_toks_.clear();
   cur_toks_.clear();
+  next_toks_.clear();
   cost_offsets_.clear();
   ClearActiveTokens();
 
@@ -158,7 +151,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   active_toks_.resize(1);
   Token *start_tok = new Token(0.0, 0.0, start_state, NULL, NULL, NULL);
   active_toks_[0].toks = start_tok;
-  cur_toks_[start_state] = start_tok;  // initialize current tokens map
+  next_toks_[start_state] = start_tok;  // initialize current tokens map
   num_toks_++;
   adaptive_beam_ = config_.beam;
   cost_offsets_.resize(1);
@@ -747,25 +740,26 @@ template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
     DecodableInterface *decodable) {
   KALDI_ASSERT(active_toks_.size() > 0);
-  int32 frame = active_toks_.size() - 1; // frame is the frame-index
-                                         // (zero-based) used to get likelihoods
-                                         // from the decodable object.
+  int32 cur_frame = active_toks_.size() - 1, // frame is the frame-index (zero-
+                                             // based) used to get likelihoods
+                                             // from the decodable object.
+        next_frame = cur_frame + 1;
+
   active_toks_.resize(active_toks_.size() + 1);
 
-  prev_toks_.swap(cur_toks_);
-  cur_toks_.clear();
-  if (prev_toks_.empty()) {
+  cur_toks_.swap(next_toks_);
+  next_toks_.clear();
+  if (cur_toks_.empty()) {
     if (!warned_) {
-      KALDI_WARN << "Error, no surviving tokens on frame " << frame;
+      KALDI_WARN << "Error, no surviving tokens on frame " << cur_frame;
       warned_ = true;
     }
   }
 
   cur_queue_.Clear();
   // Add tokens to queue
-  for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+  for (Token* tok = active_toks_[cur_frame].toks; tok != NULL; tok = tok->next)
     cur_queue_.Push(tok);
-  }
 
   // Declare a local variable so the compiler can put it in a register, since
   // C++ assumes other threads could be modifying class members.
@@ -780,7 +774,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
   // "cost_offset" contains the acoustic log-likelihoods on current frame in 
   // order to keep everything in a nice dynamic range. Reduce roundoff errors.
-  BaseFloat cost_offset = cost_offsets_[frame];
+  BaseFloat cost_offset = cost_offsets_[cur_frame];
 
   // Iterator the "cur_queue_" to process non-emittion and emittion arcs in fst.
   Token *tok = NULL;
@@ -810,8 +804,8 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
         BaseFloat graph_cost = arc.weight.Value();
         BaseFloat tot_cost = cur_cost + graph_cost;
         if (tot_cost < cur_cutoff) {
-          Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                          tok, &prev_toks_, &changed);
+          Token *new_tok = FindOrAddToken(arc.nextstate, cur_frame, tot_cost,
+                                          tok, &cur_toks_, &changed);
 
           // Add ForwardLink from tok to new_tok. Put it on the head of
           // tok->link list
@@ -826,17 +820,19 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
         }
       } else {  // propagate emitting
         BaseFloat graph_cost = arc.weight.Value(),
-                  ac_cost = cost_offset - decodable->LogLikelihood(frame, arc.ilabel),
+                  ac_cost = cost_offset - decodable->LogLikelihood(cur_frame,
+                                                                   arc.ilabel),
                   cur_cost = tok->tot_cost,
                   tot_cost = cur_cost + ac_cost + graph_cost;
         if (tot_cost > next_cutoff) continue;
         else if (tot_cost + adaptive_beam < next_cutoff) {
-          next_cutoff = tot_cost + adaptive_beam;  // a tighter boundary for emitting
+          next_cutoff = tot_cost + adaptive_beam;  // a tighter boundary for
+                                                   // emitting
         }
 
         // no change flag is needed
-        Token *next_tok = FindOrAddToken(arc.nextstate, frame + 1, tot_cost,
-                                         tok, &cur_toks_, NULL);
+        Token *next_tok = FindOrAddToken(arc.nextstate, next_frame, tot_cost,
+                                         tok, &next_toks_, NULL);
         // Add ForwardLink from tok to next_tok. Put it on the head of tok->link
         // list
         tok->links = new ForwardLinkT(next_tok, arc.ilabel, arc.olabel,
@@ -849,14 +845,16 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
   // Could just do cost_offsets_.push_back(cost_offset), but we
   // do it this way as it's more robust to future code changes.
   // Set the cost_offset_ for next frame, it equals "- best_cost_on_next_frame".
-  cost_offsets_.resize(frame + 2, 0.0);
-  cost_offsets_[frame + 1] = adaptive_beam - next_cutoff;
+  cost_offsets_.resize(cur_frame + 2, 0.0);
+  cost_offsets_[next_frame] = adaptive_beam - next_cutoff;
 
   {  // This block updates adaptive_beam_
     BaseFloat beam_used_this_frame = adaptive_beam;
     Token *tok = cur_queue_.Pop();
     if (tok != NULL) {
-      // The queue would only be nonempty if we hit the max-active constraint.
+      // We hit the max-active contraint, meaning we effectively pruned to a
+      // beam tighter than 'beam'. Work out what this was, it will be used to
+      // update 'adaptive_beam'.
       BaseFloat best_cost_this_frame = cur_cutoff - adaptive_beam;
       beam_used_this_frame = tok->tot_cost - best_cost_this_frame;
     }
@@ -882,12 +880,12 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
 
 template <typename FST, typename Token>
 void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting() {
-  int32 frame = active_toks_.size() - 1;
+  int32 cur_frame = active_toks_.size() - 1;
+  StateIdToTokenMap &cur_toks = next_toks_;
 
   cur_queue_.Clear();
-  for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+  for (Token* tok = active_toks_[cur_frame].toks; tok != NULL; tok = tok->next)
     cur_queue_.Push(tok);
-  }
 
   // Declare a local variable so the compiler can put it in a register, since
   // C++ assumes other threads could be modifying class members.
@@ -924,8 +922,8 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting() {
         BaseFloat graph_cost = arc.weight.Value();
         BaseFloat tot_cost = cur_cost + graph_cost;
         if (tot_cost < cur_cutoff) {
-          Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                          tok, &cur_toks_, &changed);
+          Token *new_tok = FindOrAddToken(arc.nextstate, cur_frame, tot_cost,
+                                          tok, &cur_toks, &changed);
 
           // Add ForwardLink from tok to new_tok. Put it on the head of
           // tok->link list
@@ -943,7 +941,7 @@ void LatticeFasterDecoderCombineTpl<FST, Token>::ProcessNonemitting() {
   }  // end of while loop
   if (!decoding_finalized_) {
     // Update cost_offsets_, it equals "- best_cost".
-    cost_offsets_[frame] = adaptive_beam - cur_cutoff;
+    cost_offsets_[cur_frame] = adaptive_beam - cur_cutoff;
     // Needn't to update adaptive_beam_, since we still process this frame in
     // ProcessForFrame.
   }

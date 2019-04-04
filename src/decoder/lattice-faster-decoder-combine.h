@@ -377,9 +377,8 @@ class LatticeFasterDecoderCombineTpl {
   /// it will treat all final-probs as one.
   /// The raw lattice will be topologically sorted.
   /// The function can be called during decoding, it will process non-emitting
-  /// arcs from "cur_toks_" map to get tokens from both non-emitting and 
-  /// emitting arcs for getting raw lattice. Then recover it to ensure the
-  /// consistency of ProcessForFrame().
+  /// arcs from "next_toks_" map to get tokens from both non-emitting and 
+  /// emitting arcs for getting raw lattice.
   ///
   /// See also GetRawLatticePruned in lattice-faster-online-decoder.h,
   /// which also supports a pruning beam, in case for some reason
@@ -529,7 +528,7 @@ class LatticeFasterDecoderCombineTpl {
   void PruneActiveTokens(BaseFloat delta);
 
   /// Processes non-emitting (epsilon) arcs and emitting arcs for one frame
-  /// together. It takes the emittion tokens in "prev_toks_" from last frame.
+  /// together. It takes the emittion tokens in "cur_toks_" from last frame.
   /// Generates non-emitting tokens for previous frame and emitting tokens for
   /// next frame.
   /// Notice: The emitting tokens for the current frame means the token take
@@ -543,14 +542,14 @@ class LatticeFasterDecoderCombineTpl {
   /// called.
   void ProcessNonemitting();
 
-  /// The "prev_toks_" and "cur_toks_" actually allow us to maintain current
+  /// The "cur_toks_" and "next_toks_" actually allow us to maintain current
   /// and next frames. They are indexed by StateId. It is indexed by frame-index
   /// plus one, where the frame-index is zero-based, as used in decodable object.
   /// That is, the emitting probs of frame t are accounted for in tokens at
   /// toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
   /// the graph.
-  StateIdToTokenMap prev_toks_;
   StateIdToTokenMap cur_toks_;
+  StateIdToTokenMap next_toks_;
 
   /// Gets the weight cutoff.
   /// Notice: In traiditional version, the histogram prunning method is applied
