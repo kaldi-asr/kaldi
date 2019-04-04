@@ -293,6 +293,12 @@ class BucketQueue {
 
   // Synchronizes with first_nonempty_bucket_index_.
   std::vector<Token*> *first_nonempty_bucket_;
+
+  // If the size of the BucketQueue is larger than "bucket_size_tolerance_", we
+  // will resize it to "bucket_size_tolerance_" in Clear. A weird long
+  // BucketQueue might be caused when the min-active was activated and an
+  // unusually large loglikelihood range was encountered.
+  size_t bucket_size_tolerance_;
 };
 
 /** This is the "normal" lattice-generating decoder.

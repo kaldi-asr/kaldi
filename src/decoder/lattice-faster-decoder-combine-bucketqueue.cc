@@ -32,11 +32,12 @@ BucketQueue<Token>::BucketQueue(BaseFloat cost_scale) :
   // NOTE: we reserve plenty of elements to avoid expensive reallocations
   // later on. Normally, the size is a little bigger than (adaptive_beam +
   // 15) * cost_scale.
-  int32 bucket_size = 100;
+  int32 bucket_size = (15 + 20) * cost_scale_;
   buckets_.resize(bucket_size);
   bucket_offset_ = 15 * cost_scale_;
   first_nonempty_bucket_index_ = bucket_size - 1;
   first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
+  bucket_size_tolerance_ = bucket_size;
 }
 
 template<typename Token>
@@ -100,6 +101,8 @@ void BucketQueue<Token>::Clear() {
   for (size_t i = first_nonempty_bucket_index_; i < buckets_.size(); i++) {
     buckets_[i].clear();
   }
+  if (buckets_.size() > bucket_size_tolerance_)
+    buckets_.resize(bucket_size_tolerance_);
   first_nonempty_bucket_index_ = buckets_.size() - 1;
   first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
 }
