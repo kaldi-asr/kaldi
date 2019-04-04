@@ -101,8 +101,10 @@ void BucketQueue<Token>::Clear() {
   for (size_t i = first_nonempty_bucket_index_; i < buckets_.size(); i++) {
     buckets_[i].clear();
   }
-  if (buckets_.size() > bucket_size_tolerance_)
+  if (buckets_.size() > bucket_size_tolerance_) {
     buckets_.resize(bucket_size_tolerance_);
+    bucket_offset_ = 15 * cost_scale_;
+  }
   first_nonempty_bucket_index_ = buckets_.size() - 1;
   first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
 }
