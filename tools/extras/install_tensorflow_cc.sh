@@ -35,10 +35,11 @@ cd ../
 # now bazel is built
 [ ! -d tensorflow ] && git clone https://github.com/tensorflow/tensorflow
 cd tensorflow
+git fetch --tags
 git checkout r1.12
 ./configure
 
-tensorflow/contrib/makefile/download_dependencies.sh 
+tensorflow/contrib/makefile/download_dependencies.sh
 bazel build -c opt //tensorflow:libtensorflow.so
 bazel build -c opt //tensorflow:libtensorflow_cc.so
 
