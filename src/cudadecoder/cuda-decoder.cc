@@ -289,8 +289,7 @@ void CudaDecoder::ComputeInitialChannel() {
 
   h_lanes_counters_[ilane].post_expand_aux_q_end = 1;
 
-  bool all_aux_q_empty;
-  PruneAndPreprocess(&all_aux_q_empty);
+  PruneAndPreprocess();
   FinalizeProcessNonEmittingKernel(
       KaldiCudaDecoderNumBlocks(1, 1), KALDI_CUDA_DECODER_LARGEST_1D_BLOCK,
       compute_st_, *h_device_params_, *h_kernel_params_);
@@ -571,20 +570,20 @@ void CudaDecoder::ExpandArcsNonEmitting(bool *should_iterate) {
                           *h_device_params_, *h_kernel_params_);
 }
 
-void CudaDecoder::PruneAndPreprocess(bool *all_aux_queues_empty) {
+void CudaDecoder::PruneAndPreprocess() {
   auto func_aux_q_end = [](const LaneCounters &c) {
     return c.post_expand_aux_q_end;
   };
   int32 max_aux_q_end = GetMaxForAllLanes(func_aux_q_end);
 
-  // aux_q_end == 0, not likely, but possible
-  *all_aux_queues_empty = (max_aux_q_end == 0);
-  if (*all_aux_queues_empty) return;
-
-  NonEmittingPreprocessAndContractKernel(
-      KaldiCudaDecoderNumBlocks(max_aux_q_end, nlanes_used_),
-      KALDI_CUDA_DECODER_1D_BLOCK, compute_st_, *h_device_params_,
-      *h_kernel_params_);
+  // having all aux_q_end == 0 is not likely, but possible
+  // in a valid workflow
+  if (max_aux_q_end > 0) {
+    NonEmittingPreprocessAndContractKernel(
+        KaldiCudaDecoderNumBlocks(max_aux_q_end, nlanes_used_),
+        KALDI_CUDA_DECODER_1D_BLOCK, compute_st_, *h_device_params_,
+        *h_kernel_params_);
+  }
 }
 
 void CudaDecoder::StartCopyAcousticCostsToHostAsync() {
@@ -739,13 +738,11 @@ void CudaDecoder::AdvanceDecoding(
       // If one of the aux_q contains more than max_active_ tokens,
       // we'll reduce the beam to only keep max_active_ tokens
       ApplyMaxActiveAndReduceBeam(AUX_Q);
-      bool all_aux_queues_empty;
       // Prune the aux_q. Apply the latest beam (using the one from
       // ApplyMaxActiveAndReduceBeam if triggered)
       // move the survival tokens to the main queue
       // and do the preprocessing necessary for the next ExpandArcs
-      PruneAndPreprocess(&all_aux_queues_empty);
-      if (all_aux_queues_empty) break;
+      PruneAndPreprocess();
 
       // We want to know how many tokens were not pruned, and ended up in the
       // main queue
