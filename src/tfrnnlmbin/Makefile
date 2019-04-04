@@ -37,6 +37,6 @@ ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../fstext/kaldi-fstext.a \
 LDLIBS +=  -lz -ldl -fPIC -lrt
 LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc -ltensorflow_framework
 
-LDFLAGS += -Wl,-rpath,$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
+LDFLAGS += -Wl,-rpath,$(TENSORFLOW)/bazel-bin/tensorflow/
 
 include ../makefiles/default_rules.mk
