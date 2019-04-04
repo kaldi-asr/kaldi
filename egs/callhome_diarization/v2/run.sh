@@ -11,18 +11,21 @@
 # the JHU Team in the Inaugural DIHARD Challenge" by Sell et al.  
 # 
 # We download and use the VB resegmentation code of Speech@fit team, Brno University of Technology,
-# for the VB resegmentation part which can be optionally executed
-# on the output rttm of the x-vector based diarization
+# for the VB resegmentation part which is optionally executed
+# on the output rttm of the x-vector based diarization to improve precision of speaker segments.
 #
 # extras/install_diarization_VBHMM.sh in tools/ installs all the required
 # dependencies for VB resegmentation scripts.
 
+
 . ./cmd.sh
 . ./path.sh
+
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 data_root=/export/corpora5/LDC
+sre_root=/export/corpora5/SRE
 stage=0
 nnet_dir=exp/xvector_nnet_1a/
 
@@ -31,11 +34,13 @@ VB_resegmentation=true
 num_gauss=1024
 ivec_dim=400
 
+. utils/parse_options.sh
 
 # Prepare datasets
 if [ $stage -le 0 ]; then
   # Prepare a collection of NIST SRE data. This will be used to train,
-  # x-vector DNN and PLDA model.
+    # x-vector DNN and PLDA model.
+    # This data doesn't include sre2010.
   local/make_sre.sh $data_root data
 
   # Prepare SWB for x-vector DNN training.
@@ -104,7 +109,29 @@ if [ $stage -le 1 ]; then
   # detection (SAD) system, but this is not necessary.  You can replace
   # this with segments computed from your favorite SAD.
   diarization/vad_to_segments.sh --nj 40 --cmd "$train_cmd" \
-    data/sre_cmn data/sre_cmn_segmented
+				 data/sre_cmn data/sre_cmn_segmented
+
+  if [ $VB_resegmentation ]; then
+      # Prepare telephone and microphone speech from Mixer6.
+      local/make_mx6.sh $data_root/LDC2013S03 data/
+
+      # Prepare SRE10 test and enroll. Includes microphone interview speech.
+      # NOTE: This corpus is now available through the LDC as LDC2017S06.
+      local/make_sre10.pl $sre_root/SRE2010/eval/ data/
+
+      # Preparing features for ivector extractor model training.
+      for name in mx6 sre10; do
+	  steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+			     data/${name} exp/make_mfcc $mfccdir
+	  utils/fix_data_dir.sh data/${name}
+	  sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
+				      data/${name} exp/make_vad $vaddir
+	  utils/fix_data_dir.sh data/${name}
+      done
+      utils/combine_data.sh data/swbd_sre data/train data/mx6 data/sre10
+      # data/train already includes sre and swbd data.
+      utils/subset_data_dir.sh data/swbd_sre 32000 data/swbd_sre_32k
+  fi
 fi
 
 # In this section, we augment the training data with reverberation,
@@ -371,17 +398,17 @@ fi
 
 if [ $VB_resegmentation ]; then
 # Variational Bayes method for smoothing the Speaker segments at frame-level
-output_dir=exp/xvec_init_gauss_${num_gauss}_ivec_${ivec_dim}
+  output_dir=exp/xvec_init_gauss_${num_gauss}_ivec_${ivec_dim}
 
-if [ $stage -le 12 ]; then
+  if [ $stage -le 12 ]; then
     # Apply cmn and adding deltas will harm the performance on the callhome dataset. So we just use the 20-dim raw MFCC feature.
     sid/train_diag_ubm.sh --cmd "$train_cmd --mem 20G --max-jobs-run 6" \
 			  --nj 10 --num-threads 4  --subsample 1 --delta-order 0 --apply-cmn false \
 			  data/swbd_sre_32k $num_gauss \
 			  exp/diag_ubm_gauss_${num_gauss}_delta_0_cmn_0
-fi
+  fi
 
-if [ $stage -le 13 ]; then
+  if [ $stage -le 13 ]; then
     # Train the i-vector extractor. The UBM is assumed to be diagonal.
     local/train_ivector_extractor_diag.sh --cmd "$train_cmd --mem 45G --max-jobs-run 20" \
 					  --ivector-dim ${ivec_dim} \
@@ -390,9 +417,9 @@ if [ $stage -le 13 ]; then
 					  --num-threads 1 --num-processes 1 --nj 10 \
 					  exp/diag_ubm_gauss_${num_gauss}_delta_0_cmn_0/final.dubm data/swbd_sre \
 					  exp/extractor_gauss_${num_gauss}_delta_0_cmn_0_ivec_${ivec_dim}
-fi
+  fi
 
-if [ $stage -le 14 ]; then
+  if [ $stage -le 14 ]; then
     # Convert the Kaldi UBM and T-matrix model to numpy array.
     mkdir -p $output_dir
     mkdir -p $output_dir/tmp
@@ -415,10 +442,9 @@ if [ $stage -le 14 ]; then
 
     local/dump_model.py $output_dir/tmp/dubm.tmp $output_dir/model
     local/dump_model.py $output_dir/tmp/ie.tmp $output_dir/model
-fi
+  fi
 
-
-if [ $stage -le 15 ]; then
+  if [ $stage -le 15 ]; then
     mkdir -p $output_dir/results
     init_rttm_file=callhome_rttm_output_xvec
     label_rttm_file=data/callhome/fullref.rttm
@@ -434,7 +460,7 @@ if [ $stage -le 15 ]; then
     # VB resegmentation. In this script, I use the x-vector result to
     # initialize the VB system. You can also use i-vector result or random
     # initize the VB system.
-    local/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 10G" \
+    local/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 20G" \
 			       --true_rttm_filename "None" --initialize 1 \
 			       data/callhome $init_rttm_file $output_dir $output_dir/model/diag_ubm.pkl $output_dir/model/ie.pkl || exit 1;
 
@@ -446,5 +472,5 @@ if [ $stage -le 15 ]; then
 	       $output_dir/results/DER.txt)
     # After VB resegmentation, DER: 6.15%
     echo "After VB resegmentation, DER: $der%"
-fi
+  fi # VB resegmentation part ends here.
 fi
