@@ -153,6 +153,7 @@ __global__ void load_channels_state_in_lanes_kernel(DeviceParams cst_dev_params,
     lane_counters->q_overflow = OVERFLOW_NONE;
     lane_counters->aux_q_requested = 0;
     lane_counters->main_q_requested = 0;
+    lane_counters->main_q_local_offset = 0;
   }
 }
 

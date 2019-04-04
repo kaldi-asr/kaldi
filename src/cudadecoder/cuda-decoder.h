@@ -280,7 +280,7 @@ class CudaDecoder {
   // move the survival tokens to the main_q, do the preprocessing at the same
   // time
   // We don't need it after the last ExpandArcsNonEmitting.
-  void PruneAndPreprocess(bool *all_aux_queues_empty);
+  void PruneAndPreprocess();
   // Moving the acoustic_costs of emitting tokens to host in two stage.
   // StartCopyAcousticCostsToHostAsync concatenate the data on device and start
   // the device2host copy
