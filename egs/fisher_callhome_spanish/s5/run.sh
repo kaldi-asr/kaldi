@@ -80,17 +80,18 @@ if [ $stage -le -1 ]; then
   
 fi
 
-if $start_textcleanup; then
-  echo "WARNING : Starting from cleaning up and normalizing the Gigword text"
-  echo "          This might take few days........... You can opt out this stage "
-  echo "          by setting start_textcleanup=false, and having text_lm ready inside rnnlm_workdir."
-
-  if [ $stage -le 0 ]; then
+if [ $stage -le 0 ]; then
+  if $start_textcleanup; then
+    echo "WARNING : Starting from cleaning up and normalizing the Gigword text"
+    echo "          This might take few days........... You can skip out this stage "
+    echo "          by setting start_textcleanup=false, and having normalised_gigaword_corpus/text_normalized ready inside $rnnlm_workdir."
+    	
     mkdir -p "$rnnlm_workdir"/gigaword_rawtext
     local/flatten_gigaword/flatten_all_gigaword.sh "$gigaword_datapath"  "$rnnlm_workdir"/flattened_gigaword_corpus 24
     cat "$rnnlm_workdir"/flattened_gigaword_corpus/*.flat > "$rnnlm_workdir"/gigaword_rawtext/in.txt
     local/clean_txt_dir.sh "$rnnlm_workdir"/gigaword_rawtext/  \
 			   "$rnnlm_workdir"/normalised_gigaword_corpus/
+  fi
     mkdir -p "$rnnlm_workdir"/text_lm
     cut -d " " -f 2- data/train/text > "$rnnlm_workdir"/text_lm/train.txt
     cut -d " " -f 2- data/dev2/text > "$rnnlm_workdir"/text_lm/dev.txt  # For RNNLM and POCOLM training we use dev2/text as dev file.
@@ -98,7 +99,6 @@ if $start_textcleanup; then
     if $addtraintext; then
         cat "$rnnlm_workdir"/text_lm/train.txt >> "$rnnlm_workdir"/text_lm/spanish_gigaword_normalised.txt
     fi
-  fi
 fi
 
 if [ $stage -le 1 ]; then
