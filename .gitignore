@@ -1,7 +1,3 @@
-# TechUnited begin
-/log/
-# TechUnited end
-
 # Compiled extensionless executable files in /src/*/
 # This stanza must precede wildcard patterns below!
 /src/*/*
@@ -10,6 +6,12 @@
 !/src/doc/*
 !/src/*/Makefile
 !/src/*/README
+
+# TechUnited begin
+/log/
+/src/gst-plugin/kaldimarshal.cc
+/src/gst-plugin/kaldimarshal.h
+# TechUnited end
 
 # Compiled Object files and python ciles
 *.slo
