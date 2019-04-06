@@ -284,6 +284,7 @@ gst_online_gmm_decode_faster_init(GstOnlineGmmDecodeFaster * filter) {
   // init properties from various Kaldi Opts
   GstElementClass * klass = GST_ELEMENT_GET_CLASS(filter);
 
+  std::set<std::string> seen_options;
   std::vector<std::pair<std::string, SimpleOptions::OptionInfo> > option_info_list;
   option_info_list = filter->simple_options_->GetOptionInfoList();
   int32 i = 0;
@@ -293,6 +294,13 @@ gst_online_gmm_decode_faster_init(GstOnlineGmmDecodeFaster * filter) {
     std::pair<std::string, SimpleOptions::OptionInfo> result = (*dx);
     SimpleOptions::OptionInfo option_info = result.second;
     std::string name = result.first;
+
+    // GetOptionInfoList returns duplicate options
+    if (seen_options.find(name) != seen_options.end())
+      continue;
+
+    seen_options.insert(name);
+
     switch (option_info.type) {
       case SimpleOptions::kBool:
         filter->simple_options_->GetOption(name, &tmp_bool);
