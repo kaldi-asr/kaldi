@@ -37,7 +37,7 @@ BucketQueue<Token>::BucketQueue(BaseFloat cost_scale) :
   bucket_offset_ = 15 * cost_scale_;
   first_nonempty_bucket_index_ = bucket_size - 1;
   first_nonempty_bucket_ = &buckets_[first_nonempty_bucket_index_];
-  bucket_size_tolerance_ = bucket_size;
+  bucket_size_tolerance_ = 1.2 * bucket_size;
 }
 
 template<typename Token>
