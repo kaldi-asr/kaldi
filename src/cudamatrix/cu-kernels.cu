@@ -2487,7 +2487,7 @@ static void _heaviside(Real*y, const Real*x, MatrixDim d, int src_stride) {
 template<typename Real>
 __global__
 static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
-  __shared__ Real smem[CU1DBLOCK];
+  __shared__ Real smem;
   typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
   __shared__ typename BlockReduceT::TempStorage temp_storage;
   const int i = blockIdx.x;
@@ -2502,13 +2502,13 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
     tmax = fmax(tmax, x[x_start + j]);
   }
   tmax = BlockReduceT(temp_storage).Reduce(tmax, cub::Max());
-  if (tid == 0) {
-    smem[0] = tmax;
-  }
 
   // broadcast max to all threads
+  if (tid == 0) {
+    smem = tmax;
+  }
   __syncthreads();
-  Real max = smem[0];
+  Real max = smem;
 
   // sum_j(exp(x(i,j)-max))
   // reduce to CU1DBLOCK elements per row.
@@ -2517,13 +2517,13 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
     tsum += exp(x[x_start + j] - max);
   }
   tsum = BlockReduceT(temp_storage).Sum(tsum);
-  if (tid == 0) {
-    smem[0] = tsum;
-  }
 
   // broadcast sum to all threads
+  if (tid == 0) {
+    smem = tsum;
+  }
   __syncthreads();
-  Real inv_sum = Real(1) / smem[0];
+  Real inv_sum = Real(1) / smem;
 
   // normalize the row
   for (int j = tid; j < d.cols; j += CU1DBLOCK) {
@@ -2565,7 +2565,6 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
     tsum += x_row[j] * x_row[j];
   }
   tsum = BlockReduceT(temp_storage).Sum(tsum);
-  __syncthreads();
 
   if (tid == 0) {
     const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
@@ -2680,7 +2679,7 @@ template<typename Real>
 __global__
 static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
                                 int x_stride) {
-  __shared__ Real smem[CU1DBLOCK];
+  __shared__ Real smem;
   typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
   __shared__ typename BlockReduceT::TempStorage temp_storage;
   const int i = blockIdx.x;
@@ -2695,13 +2694,13 @@ static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
     tmax = fmax(tmax, x[x_start + j]);
   }
   tmax = BlockReduceT(temp_storage).Reduce(tmax, cub::Max());
-  if (tid == 0) {
-    smem[0] = tmax;
-  }
 
   // broadcast max to all threads
+  if (tid == 0) {
+    smem = tmax;
+  }
   __syncthreads();
-  Real max = smem[0];
+  Real max = smem;
 
   // sum_j(exp(x(i,j)-max))
   // reduce to CU1DBLOCK elements per row.
@@ -2710,13 +2709,13 @@ static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
     tsum += exp(x[x_start + j] - max);
   }
   tsum = BlockReduceT(temp_storage).Sum(tsum);
-  if (tid == 0) {
-    smem[0] = tsum;
-  }
 
   // broadcast sum to all threads
+  if (tid == 0) {
+    smem = tsum;
+  }
   __syncthreads();
-  Real log_sum = log(smem[0]);
+  Real log_sum = log(smem);
 
   // normalize the row
   for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
@@ -2956,7 +2955,7 @@ __global__
 static void _diff_softmax(Real* x, const MatrixDim dim, const Real* value,
                           const int value_stride, const Real* diff,
                           const int diff_stride) {
-  __shared__ Real ssum[CU1DBLOCK];
+  __shared__ Real ssum;
   typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
   __shared__ typename BlockReduceT::TempStorage temp_storage;
 
@@ -2972,13 +2971,13 @@ static void _diff_softmax(Real* x, const MatrixDim dim, const Real* value,
     tsum += value[value_start + j] * diff[diff_start + j];
   }
   tsum = BlockReduceT(temp_storage).Sum(tsum);
-  if (tid == 0) {
-    ssum[0] = tsum;
-  }
 
   // Broadcast result to all threads
+  if (tid == 0) {
+    ssum = tsum;
+  }
   __syncthreads();
-  const Real pe = ssum[0];
+  const Real pe = ssum;
 
   // Apply element-wise x = value * (diff - pe)
   for (int j = tid; j < dim.cols; j += CU1DBLOCK) {
@@ -2998,7 +2997,7 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
                               const Real* out_deriv, const int out_deriv_stride,
                               Real* in_deriv) {
 
-  __shared__ Real ssum[CU1DBLOCK];
+  __shared__ Real ssum;
   typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
   __shared__ typename BlockReduceT::TempStorage temp_storage;
   const int tid = threadIdx.x;
@@ -3013,13 +3012,13 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
     tsum += out_deriv[out_deriv_start + j];
   }
   tsum = BlockReduceT(temp_storage).Sum(tsum);
-  if (tid == 0) {
-    ssum[0] = tsum;
-  }
 
   // Broadcast result to all threads
+  if (tid == 0) {
+    ssum = tsum;
+  }
   __syncthreads();
-  const Real sum_e = ssum[0];
+  const Real sum_e = ssum;
 
   // Apply element-wise x = out_deriv - exp(value) * sum_e
   for (int j = tid; j < in_deriv_dim.cols; j += CU1DBLOCK) {
