@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
       for (; !wav_reader.Done(); wav_reader.Next()) {
         std::string key = wav_reader.Key();
         const WaveInfo &wave_info = wav_reader.Value();
-        BaseFloat duration = 0.0
+        BaseFloat duration = 0.0;
         if (wave_info.IsStreamed()) {
           const WaveData &wave_data = wav_reader.Value();
           duration = wave_data.Duration();
