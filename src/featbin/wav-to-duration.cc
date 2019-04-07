@@ -76,12 +76,15 @@ int main(int argc, char *argv[]) {
       for (; !wav_reader.Done(); wav_reader.Next()) {
         std::string key = wav_reader.Key();
         const WaveInfo &wave_info = wav_reader.Value();
-        if (wave_info.IsStreamed())
-          KALDI_ERR << "Error: member " << key << " has no duration in header. "
-                    << "Check the source, and/or try --read-entire-file.";
-        BaseFloat duration = wave_info.Duration();
+        BaseFloat duration = 0.0
+        if (wave_info.IsStreamed()) {
+          const WaveData &wave_data = wav_reader.Value();
+          duration = wave_data.Duration();
+        } else {
+          duration = wave_info.Duration();
+        }
         duration_writer.Write(key, duration);
-
+        
         sum_duration += duration;
         min_duration = std::min<double>(min_duration, duration);
         max_duration = std::max<double>(max_duration, duration);
