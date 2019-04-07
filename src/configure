@@ -809,8 +809,8 @@ threaded_atlas=false
 mkl_threading=sequential
 android=false
 
-MATHLIB='ATLAS'
-ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
+MATHLIB=MKL
+MKLROOT=/opt/intel/mkl
 FSTROOT=`rel2abs ../tools/openfst`
 CUBROOT=`rel2abs ../tools/cub`
 
