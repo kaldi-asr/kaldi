@@ -1010,11 +1010,14 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
     __syncthreads();
   }
 
-  // Warp reduce. Implicitly synchronized within a warp.
+  // Warp reduce
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      smem.sum[tid] += smem.sum[tid + shift];
+      Real buf = smem.sum[tid + shift];
+      __syncwarp();
+      smem.sum[tid] += buf;
+      __syncwarp();
     }
   }
 
@@ -1058,11 +1061,14 @@ static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA,
     __syncthreads();
   }
 
-  // Warp reduce. Implicitly synchronized within a warp.
+  // Warp reduce.
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      ssum[tid] += ssum[tid + shift];
+      Real buf = ssum[tid + shift];
+      __syncwarp();
+      ssum[tid] += buf;
+      __syncwarp();
     }
   }
 
@@ -1101,11 +1107,14 @@ static void _add_diag_mat_mat_MNT(const Real alpha, const Real* M,
     __syncthreads();
   }
 
-  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+  // Warp reduce to 1 element.
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      ssum[tid] += ssum[tid + shift];
+      Real buf = ssum[tid + shift];
+      __syncwarp();
+      ssum[tid] += buf;
+      __syncwarp();
     }
   }
 
@@ -1152,11 +1161,13 @@ static void _add_diag_mat_mat_MTN(const Real alpha, const Real* M,
   }
 
   // Warp reduce to 1 element per column.
-  // Threads implicitly synchronized within a warp.
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift >= TileDim; shift >>= 1) {
-      ssum[tid] += ssum[tid + shift];
+      Real buf = ssum[tid + shift];
+      __syncwarp();
+      ssum[tid] += buf;
+      __syncwarp();
     }
   }
 
@@ -1235,11 +1246,13 @@ static void _add_diag_mat_mat_MN(const Real alpha, const Real* M,
   }
 
   // Warp reduce to 1 element per column.
-  // Threads implicitly synchronized within a warp.
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift >= TileDim; shift >>= 1) {
-      smem.sum[tid] += smem.sum[tid + shift];
+      Real buf = smem.sum[tid + shift];
+      __syncwarp();
+      smem.sum[tid] += buf;
+      __syncwarp();
     }
   }
 
@@ -1688,10 +1701,14 @@ static void _vec_transform_reduce(
     __syncthreads();
   }
 
-  // Reduce last warp. Threads implicitly synchronized within a warp.
+  // Reduce last warp.
   if (tid < warpSize) {
+# pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+      Real buf = op.Reduce(sdata[tid], sdata[tid + shift]);
+      __syncwarp();
+      sdata[tid] = buf;
+      __syncwarp();
     }
   }
 
@@ -1727,10 +1744,15 @@ static void _transform_reduce_mat_cols(
     __syncthreads();
   }
 
-  // Reduce last warp. Threads implicitly synchronized within a warp.
+  // Reduce last warp.
   if (tid < warpSize) {
-    for (int shift = warpSize; shift > 0; shift >>= 1)
-      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+# pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      Real buf = op.Reduce(sdata[tid], sdata[tid + shift]);
+      __syncwarp();
+      sdata[tid] = buf;
+      __syncwarp();
+    }
   }
 
   // Output to vector result.
@@ -1784,13 +1806,15 @@ static void _group_transform_reduce(
     }
 
     // Warp-reduce to 1 element per group.
-    // Threads implicitly synchronized within the warp.
     const int warp_reduce_size =
         threads_per_group / 2 < warpSize ? threads_per_group / 2 : warpSize;
     if (threadIdx.x < warp_reduce_size) {
 #     pragma unroll
       for (int shift = warp_reduce_size; shift > 0; shift >>= 1) {
-        sreduction[tid] = op.Reduce(sreduction[tid], sreduction[tid + shift]);
+        Real buf = op.Reduce(sreduction[tid], sreduction[tid + shift]);
+        __syncwarp();
+        sreduction[tid] = buf;
+        __syncwarp();
       }
     }
 
@@ -2628,8 +2652,12 @@ static void _diff_normalize_per_row(Real *id, int id_stride, const Real *iv,
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      sprod[tid] += sprod[tid + shift];
-      snorm[tid] += snorm[tid + shift];
+      Real buf_prod = sprod[tid + shift];
+      Real buf_norm = snorm[tid + shift];
+      __syncwarp();
+      sprod[tid] += buf_prod;
+      snorm[tid] += buf_norm;
+      __syncwarp();
     }
   }
 
@@ -2899,6 +2927,7 @@ static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
   sidx[tid] = tidx;
 
   // Parallel reduce
+  // Reduce to warpSize elements per row
 #pragma unroll
   for (int32_cuda num_working_threads = CU1DBLOCK / 2;
       num_working_threads >= warpSize; num_working_threads >>= 1) {
@@ -2910,16 +2939,21 @@ static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
       }
     }
   }
-  // Warp reduce without __syncthreads()
-  // (note.: synchronizes implicitly within a warp at the multiprocessor)
+
+  // Warp reduce to 1 element per row
   if (tid < warpSize / 2) {
 #pragma unroll
     for (int32_cuda num_working_threads = warpSize / 2; num_working_threads > 0;
         num_working_threads >>= 1) {
-      if (smax[tid + num_working_threads] > smax[tid]) {
-        smax[tid] = smax[tid + num_working_threads];
-        sidx[tid] = sidx[tid + num_working_threads];
+      Real max_tid = smax[tid];
+      Real max_tid_nwt = smax[tid + num_working_threads];
+      int32_cuda idx_tid_nwt = sidx[tid + num_working_threads];
+      __syncwarp();
+      if (max_tid_nwt > max_tid) {
+        smax[tid] = max_tid_nwt;
+        sidx[tid] = idx_tid_nwt;
       }
+      __syncwarp();
     }
   }
 
