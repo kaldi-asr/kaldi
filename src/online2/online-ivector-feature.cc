@@ -501,7 +501,7 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback(
     if (num_frames_output_and_correct_ > frame)
       num_frames_output_and_correct_ = frame;
 
-    frame_info_[frame].token = iter.tok;
+    frame_info_[frame].token = const_cast<void *>(iter.tok);
     frame_info_[frame].transition_id = arc.ilabel;
     frame--;
     // leave frame_info_.current_weight at zero for now (as set in the
