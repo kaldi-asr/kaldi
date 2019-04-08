@@ -14,6 +14,8 @@ stage=0
 nj=10
 cleanup=true
 threshold=0.5
+max_spk_fraction=1.0
+first_pass_max_utterances=32767
 rttm_channel=0
 read_costs=false
 reco2num_spk=
@@ -36,6 +38,15 @@ if [ $# != 2 ]; then
   echo "  --threshold <threshold|0>                        # Cluster stopping criterion. Clusters with scores greater"
   echo "                                                   # than this value will be merged until all clusters"
   echo "                                                   # exceed this value."
+  echo "  --max-spk-fraction <max-spk-fraction|1.0>        # Clusters with total fraction of utterances greater than"
+  echo "                                                   # this value will not be merged. This is active only when"
+  echo "                                                   # reco2num-spk is supplied and"
+  echo "                                                   # 1.0 / num-spk <= max-spk-fraction <= 1.0."
+  echo "  --first-pass-max-utterances <max-utts|32767>     # If the number of utterances is larger than first-pass-max-utterances,"
+  echo "                                                   # then clustering is done in two passes. In the first pass, input points"
+  echo "                                                   # are divided into contiguous subsets of size first-pass-max-utterances"
+  echo "                                                   # and each subset is clustered separately. In the second pass, the first"
+  echo "                                                   # pass clusters are merged into the final set of clusters."
   echo "  --rttm-channel <rttm-channel|0>                  # The value passed into the RTTM channel field. Only affects"
   echo "                                                   # the format of the RTTM file."
   echo "  --read-costs <read-costs|false>                  # If true, interpret input scores as costs, i.e. similarity"
@@ -78,8 +89,10 @@ if [ $stage -le 0 ]; then
   echo "$0: clustering scores"
   $cmd JOB=1:$nj $dir/log/agglomerative_cluster.JOB.log \
     agglomerative-cluster --threshold=$threshold --read-costs=$read_costs \
-      --reco2num-spk-rspecifier=$reco2num_spk scp:"$feats" \
-      ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
+      --reco2num-spk-rspecifier=$reco2num_spk \
+      --max-spk-fraction=$max_spk_fraction \
+      --first-pass-max-utterances=$first_pass_max_utterances \
+      scp:"$feats" ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 
 if [ $stage -le 1 ]; then

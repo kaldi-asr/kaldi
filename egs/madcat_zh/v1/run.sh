@@ -16,16 +16,36 @@ decode_gmm=true
 # The datasplits can be found on http://www.openslr.org/51/
 madcat_database=/export/corpora/LDC/LDC2014T13
 data_split_dir=data/download/datasplits
+overwrite=false
+corpus_dir=/export/corpora5/handwriting_ocr/corpus_data/zh/
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
+./local/check_tools.sh
+
+# Start from stage=-1 for using extra corpus text
+if [ $stage -le -1 ]; then
+  echo "$(date): getting corpus text for language modelling..."
+  mkdir -p data/local/text/cleaned
+  cat $corpus_dir/* > data/local/text/zh.txt
+  head -20000 data/local/text/zh.txt > data/local/text/cleaned/val.txt
+  tail -n +20000 data/local/text/zh.txt > data/local/text/cleaned/corpus.txt
+fi
 
 mkdir -p data/{train,test,dev}/lines
 if [ $stage -le 0 ]; then
-  local/download_data.sh --download-dir1 $madcat_database/data --data-split-dir $data_split_dir
+
+  if [ -f data/train/text ] && ! $overwrite; then
+    echo "$0: Not processing, probably script have run from wrong stage"
+    echo "Exiting with status 1 to avoid data corruption"
+    exit 1;
+  fi
+
+   echo "$0: Preparing data..."
+  local/prepare_data.sh --download-dir1 $madcat_database/data --data-split-dir $data_split_dir
 
   for dataset in train test dev; do
     local/extract_lines.sh --nj $nj --cmd $cmd \
@@ -34,20 +54,18 @@ if [ $stage -le 0 ]; then
       data/${dataset}/lines
   done
 
-  echo "$0: Preparing data..."
-  local/prepare_data.sh --download-dir $madcat_database
+  echo "$0: Processing data..."
+  for set in dev train test; do
+    local/process_data.py $madcat_database $data_split_dir/madcat.$set.raw.lineid data/$set
+    image/fix_data_dir.sh data/$set
+  done
 fi
 
-# This script uses feat-dim of 60 while the end2end version uses a feat-dim of 80
-mkdir -p data/{train_60,test_60,dev_60}/data
+mkdir -p data/{train,test,dev}/data
 if [ $stage -le 1 ]; then
   for dataset in train test dev; do
-    for prepared in utt2spk text images.scp spk2utt; do
-      cp data/$dataset/$prepared data/${dataset}_60/$prepared
-    done
-
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 60 data/${dataset}_60
-    steps/compute_cmvn_stats.sh data/${dataset}_60
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 60 data/$dataset
+    steps/compute_cmvn_stats.sh data/$dataset
   done
 fi
 
@@ -67,56 +85,56 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  steps/train_mono.sh --nj $nj --cmd $cmd --totgauss 10000 data/train_60 \
+  steps/train_mono.sh --nj $nj --cmd $cmd --totgauss 10000 data/train \
     data/lang exp/mono
 fi
 
 if [ $stage -le 5 ] && $decode_gmm; then
   utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
 
-  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test_60 \
+  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
     exp/mono/decode_test
 fi
 
 if [ $stage -le 6 ]; then
-  steps/align_si.sh --nj $nj --cmd $cmd data/train_60 data/lang \
+  steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
     exp/mono exp/mono_ali
 
   steps/train_deltas.sh --cmd $cmd --context-opts "--context-width=2 --central-position=1" \
-    50000 20000 data/train_60 data/lang \
+    50000 20000 data/train data/lang \
     exp/mono_ali exp/tri
 fi
 
 if [ $stage -le 7 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
 
-  steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test_60 \
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
     exp/tri/decode_test
 fi
 
 if [ $stage -le 8 ]; then
-  steps/align_si.sh --nj $nj --cmd $cmd data/train_60 data/lang \
+  steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
     exp/tri exp/tri_ali
 
   steps/train_lda_mllt.sh --cmd $cmd \
     --splice-opts "--left-context=3 --right-context=3" \
     --context-opts "--context-width=2 --central-position=1" 50000 20000 \
-    data/train_60 data/lang exp/tri_ali exp/tri2
+    data/train data/lang exp/tri_ali exp/tri2
 fi
 
 if [ $stage -le 9 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
-    data/test_60 exp/tri2/decode_test
+    data/test exp/tri2/decode_test
 fi
 
 if [ $stage -le 10 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
-    data/train_60 data/lang exp/tri2 exp/tri2_ali
+    data/train data/lang exp/tri2 exp/tri2_ali
 
   steps/train_sat.sh --cmd $cmd --context-opts "--context-width=2 --central-position=1" \
-    50000 20000 data/train_60 data/lang \
+    50000 20000 data/train data/lang \
     exp/tri2_ali exp/tri3
 fi
 
@@ -124,12 +142,12 @@ if [ $stage -le 11 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
 
   steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
-    data/test_60 exp/tri3/decode_test
+    data/test exp/tri3/decode_test
 fi
 
 if [ $stage -le 12 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
-    data/train_60 data/lang exp/tri3 exp/tri3_ali
+    data/train data/lang exp/tri3 exp/tri3_ali
 fi
 
 if [ $stage -le 13 ]; then

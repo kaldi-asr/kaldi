@@ -26,6 +26,7 @@
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
 #include <cusparse.h>
+#include <curand.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -34,6 +35,7 @@
 #include "base/kaldi-common.h"
 #include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
+#include "cudamatrix/cu-common.h"
 
 namespace kaldi {
 
@@ -80,7 +82,16 @@ class CuDevice {
 
   inline cublasHandle_t GetCublasHandle() { return cublas_handle_; }
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
+  inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
 
+  inline void SeedGpu() {
+    if (CuDevice::Instantiate().Enabled()) {
+      // To get same random sequence, call srand() before the method is invoked,
+      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(
+            curand_handle_, RandInt(128, RAND_MAX)));
+      CURAND_SAFE_CALL(curandSetGeneratorOffset(curand_handle_, 0));
+    }
+  }
   // We provide functions Malloc(), MallocPitch() and Free() which replace
   // cudaMalloc(), cudaMallocPitch() and cudaFree().  Their function is to cache
   // the results of previous allocations to avoid the very large overhead that
@@ -184,8 +195,31 @@ class CuDevice {
   /// (i.e. from outside the class), call this only if Enabled() returns true.
   bool IsComputeExclusive();
 
+  // Register command line options for CUDA device.  
+  // This must be done before calling CuDevice::Initialize()
+  // Example:
+  //  CuDevice::RegisterDeviceOptions(&po);
+  //  po.Read(argc, argv);
+  //  CuDevice::Initialize();
+  static void RegisterDeviceOptions(OptionsItf *po) {
+    CuDevice::device_options_.Register(po);  
+  }
   ~CuDevice();
  private:
+
+  struct CuDeviceOptions {
+    bool use_tensor_cores; // Enable tensor cores
+    CuDeviceOptions () : use_tensor_cores(false) {};
+    void Register(OptionsItf *po) {
+      po->Register("cuda-use-tensor-cores", &use_tensor_cores, 
+          "Enable FP16 tensor math. "
+          "This is higher performance but less accuracy. "
+          "This is only recommended for inference.");
+    }
+  };
+
+  static CuDeviceOptions device_options_;
+
   // Default constructor used to initialize this_thread_device_
   CuDevice();
   CuDevice(CuDevice&); // Disallow.
@@ -268,9 +302,8 @@ class CuDevice {
   int32 device_id_copy_;
 
   cublasHandle_t cublas_handle_;
-
   cusparseHandle_t cusparse_handle_;
-
+  curandGenerator_t curand_handle_;
 }; // class CuDevice
 
 
@@ -285,9 +318,17 @@ class CuTimer: public Timer {
 
 // This function is declared as a more convenient way to get the CUDA device handle for use
 // in the CUBLAS v2 API, since we so frequently need to access it.
-inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetCublasHandle(); }
+inline cublasHandle_t GetCublasHandle() { 
+  return CuDevice::Instantiate().GetCublasHandle(); 
+}
 // A more convenient way to get the handle to use cuSPARSE APIs.
-inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
+inline cusparseHandle_t GetCusparseHandle() { 
+  return CuDevice::Instantiate().GetCusparseHandle(); 
+}
+
+inline curandGenerator_t GetCurandHandle() { 
+  return CuDevice::Instantiate().GetCurandHandle(); 
+}
 
 
 }  // namespace kaldi

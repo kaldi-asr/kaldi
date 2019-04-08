@@ -32,12 +32,12 @@
 
  The build process for Windows is separate from the build process for
  UNIX-like systems, and is described in windows/INSTALL (tested some time ago with
- Windows 7 and Microsoft Visual Studio 10.0).  We use scripts to
+ Windows 7 and Microsoft Visual Studio 2013).  We use scripts to
  create the Visual Studio 10.0 solution file.  There are two options for
- the math library on Windows: either you can use Cygwin to compile ATLAS, or you
- can use the Intel MKL library.  Detailed instructions are provided.  However, note
+ the math library on Windows: either Intel MKL, or use Cygwin to compile ATLAS.
+ Detailed instructions are provided.  However, note
  that the Windows setup is becoming out of date and is not regularly tested,
- and not all the code currently compiles on it.
+ and not all the may compile.
 
  \section build_setup_configure How our configure script works (for UNIX variants)
 
@@ -143,6 +143,6 @@ preprocessor variables, setting compile options, linking with libraries, and so 
 
 We have compiled Kaldi on Windows, Cygwin, various flavors of Linux (including
 Ubuntu, CentOS, Debian, Red Hat and SUSE), and Darwin. We recommend you use g++ version
-4.4 or above, although other compilers such as llvm and Intel's icc are also known to work.
+4.7 or above, although other compilers such as llvm and Intel's icc are also known to work.
 
 */

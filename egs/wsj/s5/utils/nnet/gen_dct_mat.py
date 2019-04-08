@@ -16,15 +16,20 @@
 # limitations under the License.
 
 # ./gen_dct_mat.py
-# script generates matrix with DCT transform, which is sparse 
-# and takes into account that data-layout is along frequency axis, 
+# script generates matrix with DCT transform, which is sparse
+# and takes into account that data-layout is along frequency axis,
 # while DCT is done along temporal axis.
 
+from __future__ import division
+from __future__ import print_function
 from math import *
 import sys
 
 
 from optparse import OptionParser
+
+def print_on_same_line(text):
+    print(text, end=' ')
 
 parser = OptionParser()
 parser.add_option('--fea-dim', dest='dim', help='feature dimension')
@@ -49,19 +54,19 @@ M_SQRT2 = 1.4142135623730950488016887
 
 
 #generate sparse DCT matrix
-print '['
+print('[')
 for k in range(dct_basis):
     for m in range(dim):
         for n in range(timeContext):
-          if(n==0): 
-              print m*'0 ',
-          else: 
-              print (dim-1)*'0 ',
-          print str(sqrt(2.0/timeContext)*cos(M_PI/timeContext*k*(n+0.5))),
+          if(n==0):
+              print_on_same_line(m*'0 ')
+          else:
+              print_on_same_line((dim-1)*'0 ')
+          print_on_same_line(str(sqrt(2.0/timeContext)*cos(M_PI/timeContext*k*(n+0.5))))
           if(n==timeContext-1):
-              print (dim-m-1)*'0 ',
-        print
-    print 
+              print_on_same_line((dim-m-1)*'0 ')
+        print()
+    print()
 
-print ']'
+print(']')
 

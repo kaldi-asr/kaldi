@@ -25,8 +25,8 @@ def hms_to_seconds(hms):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('json', type=str, help='JSON transcription file')
-    parser.add_argument('--mictype', type=str,
+    parser.add_argument('json', help='JSON transcription file')
+    parser.add_argument('--mictype',
                         choices=['ref', 'worn', 'u01', 'u02', 'u03', 'u04', 'u05', 'u06'],
                         help='Type of microphones')
     args = parser.parse_args()

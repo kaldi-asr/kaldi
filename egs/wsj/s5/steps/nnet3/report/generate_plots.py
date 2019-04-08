@@ -4,6 +4,7 @@
 #           2016    Vimal Manohar
 # Apache 2.0.
 
+from __future__ import division
 import argparse
 import errno
 import logging
@@ -97,7 +98,7 @@ def get_args():
 
 g_plot_colors = ['red', 'blue', 'green', 'black', 'magenta', 'yellow', 'cyan']
 
-class LatexReport:
+class LatexReport(object):
     """Class for writing a Latex report"""
 
     def __init__(self, pdf_file):
@@ -422,7 +423,7 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
             f.write("\n".join(iter_stat_report))
             f.close()
     if plot:
-        main_component_names = main_stat_tables.keys()
+        main_component_names = list(main_stat_tables.keys())
         main_component_names.sort()
 
         plot_component_names = set(main_component_names)
@@ -528,13 +529,13 @@ def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
     file = open("{dir}/clipped_proportion.log".format(dir=output_dir), "w")
     iter_stat_report = ""
     for row in main_cp_stats:
-        iter_stat_report += "\t".join(map(lambda x: str(x), row)) + "\n"
+        iter_stat_report += "\t".join([str(x) for x in row]) + "\n"
     file.write(iter_stat_report)
     file.close()
 
     if plot:
         main_component_names = (
-            stats_per_dir[exp_dir]['cp_per_iter_per_component'].keys())
+            list(stats_per_dir[exp_dir]['cp_per_iter_per_component'].keys()))
         main_component_names.sort()
         plot_component_names = set(main_component_names)
         for dir in dirs:
@@ -635,22 +636,21 @@ def generate_parameter_diff_plots(exp_dir, output_dir, plot,
                     except KeyError:
                         total_missing_iterations += 1
                         iter_data.append("NA")
-                if (total_missing_iterations/len(component_names) > 20
+                if (float(total_missing_iterations)/len(component_names) > 20
                         and not gave_user_warning):
                     logger.warning("There are more than {0} missing "
                                    "iterations per component. "
                                    "Something might be wrong.".format(
-                                       total_missing_iterations
-                                       / len(component_names)))
+                                       float(total_missing_iterations)/ len(component_names)))
                     gave_user_warning = True
 
                 f.write(" ".join(iter_data)+"\n")
 
     if plot:
         # get the component names
-        diff_type = key_file.keys()[0]
-        main_component_names = stats_per_dir[exp_dir][diff_type][
-            'progress_per_component'].keys()
+        diff_type = list(key_file.keys())[0]
+        main_component_names = list(stats_per_dir[exp_dir][diff_type][
+            'progress_per_component'].keys())
         main_component_names.sort()
         plot_component_names = set(main_component_names)
 
