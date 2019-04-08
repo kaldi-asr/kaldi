@@ -308,7 +308,7 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   // (ideally just after calling AcceptWaveform), or never call it for the
   // lifetime of this object.
   void UpdateFrameWeights(
-      const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
+      const std::vector<std::pair<int32, BaseFloat>> &delta_weights);
 
  private:
 
@@ -317,7 +317,7 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   // silence-weighting that we do, negative weights can occur if we change our
   // minds about the assignment of a frame as silence vs. non-silence).
   void UpdateStatsForFrames(
-      const std::vector<std::pair<int32, BaseFloat> > &frame_weights);
+      const std::vector<std::pair<int32, BaseFloat>> &frame_weights);
 
   // Returns a modified version of info_.min_post, which is opts_.min_post if
   // weight is 1.0 or -1.0, but gets larger if fabs(weight) is small... but no
@@ -366,8 +366,8 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   /// (default is std::less) so that the lowest-numbered frame, not the highest-numbered
   /// one, will be returned by top().
   std::priority_queue<std::pair<int32, BaseFloat>,
-                      std::vector<std::pair<int32, BaseFloat> >,
-                      std::greater<std::pair<int32, BaseFloat> > > delta_weights_;
+                      std::vector<std::pair<int32, BaseFloat>>,
+                      std::greater<std::pair<int32, BaseFloat>>> delta_weights_;
 
   /// this is only used for validating that the frame-weighting code is not buggy.
   std::vector<BaseFloat> current_frame_weight_debug_;
@@ -487,7 +487,7 @@ class OnlineSilenceWeighting {
   // UpdateFrameWeights with the output.
   void GetDeltaWeights(
       int32 num_frames_ready_in,
-      std::vector<std::pair<int32, BaseFloat> > *delta_weights);
+      std::vector<std::pair<int32, BaseFloat>> *delta_weights);
 
  private:
   const TransitionModel &trans_model_;
@@ -533,7 +533,6 @@ class OnlineSilenceWeighting {
   // in GetDeltaWeights() before outputting the delta weights.
   int32 num_frames_output_and_correct_;
 };
-
 
 /// @} End of "addtogroup onlinefeat"
 }  // namespace kaldi
