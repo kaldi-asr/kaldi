@@ -37,9 +37,6 @@
 #include "decoder/lattice-faster-decoder.h"
 
 namespace kaldi {
-
-
-
 /** LatticeFasterOnlineDecoderTpl is as LatticeFasterDecoderTpl but also
     supports an efficient way to get the best path (see the function
     BestPathEnd()), which is useful in endpointing and in situations where you
@@ -50,40 +47,42 @@ namespace kaldi {
     LatticeFasterDecoderTpl with Token == BackpointerToken if you do so indirectly via
     this child class.
  */
-template <typename FST>
-class LatticeFasterOnlineDecoderTpl:
-      public LatticeFasterDecoderTpl<FST, decoder::BackpointerToken> {
+template<typename FST>
+class LatticeFasterOnlineDecoderTpl :
+    public LatticeFasterDecoderTpl<FST, decoder::BackpointerToken> {
  public:
   using Arc = typename FST::Arc;
   using Label = typename Arc::Label;
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
   using Token = decoder::BackpointerToken;
-  using ForwardLinkT = decoder::ForwardLink<Token>;
 
   // Instantiate this class once for each thing you have to decode.
   // This version of the constructor does not take ownership of
   // 'fst'.
   LatticeFasterOnlineDecoderTpl(const FST &fst,
-                                const LatticeFasterDecoderConfig &config):
-      LatticeFasterDecoderTpl<FST, Token>(fst, config) { }
+                                const LatticeFasterDecoderConfig &config) :
+      LatticeFasterDecoderTpl<FST, Token>(fst, config) {}
 
   // This version of the initializer takes ownership of 'fst', and will delete
   // it when this object is destroyed.
   LatticeFasterOnlineDecoderTpl(const LatticeFasterDecoderConfig &config,
-                                FST *fst):
-      LatticeFasterDecoderTpl<FST, Token>(config, fst) { }
+                                FST *fst) :
+      LatticeFasterDecoderTpl<FST, Token>(config, fst) {}
 
 
   struct BestPathIterator {
-    void *tok;
-    int32 frame;
+    const void *tok;
+
     // note, "frame" is the frame-index of the frame you'll get the
     // transition-id for next time, if you call TraceBackBestPath on this
     // iterator (assuming it's not an epsilon transition).  Note that this
     // is one less than you might reasonably expect, e.g. it's -1 for
     // the nonemitting transitions before the first frame.
-    BestPathIterator(void *t, int32 f): tok(t), frame(f) { }
+    int32 frame;
+
+    BestPathIterator(const void *t, int32 f) : tok(t), frame(f) {}
+
     bool Done() { return tok == NULL; }
   };
 
@@ -96,8 +95,7 @@ class LatticeFasterOnlineDecoderTpl:
   /// it will become void).  If "use_final_probs" is true AND we reached the
   /// final-state of the graph then it will include those as final-probs, else
   /// it will treat all final-probs as one.
-  bool GetBestPath(Lattice *ofst,
-                   bool use_final_probs = true) const;
+  bool GetBestPath(Lattice *ofst, bool use_final_probs = true) const;
 
 
   /// This function does a self-test of GetBestPath().  Returns true on

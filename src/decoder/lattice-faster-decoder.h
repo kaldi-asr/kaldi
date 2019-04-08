@@ -42,45 +42,52 @@ struct LatticeFasterDecoderConfig {
   BaseFloat lattice_beam;
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
-                            // command-line program.
+  // command-line program.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
   BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
-                           // it's not a very important parameter.  It affects the
-                           // algorithm that prunes the tokens as we go.
+  // it's not a very important parameter.  It affects the
+  // algorithm that prunes the tokens as we go.
   // Most of the options inside det_opts are not actually queried by the
   // LatticeFasterDecoder class itself, but by the code that calls it, for
   // example in the function DecodeUtteranceLatticeFaster.
   fst::DeterminizeLatticePhonePrunedOptions det_opts;
 
-  LatticeFasterDecoderConfig(): beam(16.0),
-                                max_active(std::numeric_limits<int32>::max()),
-                                min_active(200),
-                                lattice_beam(10.0),
-                                prune_interval(25),
-                                determinize_lattice(true),
-                                beam_delta(0.5),
-                                hash_ratio(2.0),
-                                prune_scale(0.1) { }
+  LatticeFasterDecoderConfig() : beam(16.0),
+                                 max_active(std::numeric_limits<int32>::max()),
+                                 min_active(200),
+                                 lattice_beam(10.0),
+                                 prune_interval(25),
+                                 determinize_lattice(true),
+                                 beam_delta(0.5),
+                                 hash_ratio(2.0),
+                                 prune_scale(0.1) {}
+
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
-    opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
-    opts->Register("max-active", &max_active, "Decoder max active states.  Larger->slower; "
+    opts->Register("beam", &beam,
+                   "Decoding beam.  Larger->slower, more accurate.");
+    opts->Register("max-active", &max_active,
+                   "Decoder max active states.  Larger->slower; "
                    "more accurate");
-    opts->Register("min-active", &min_active, "Decoder minimum #active states.");
-    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam.  Larger->slower, "
+    opts->Register("min-active", &min_active,
+                   "Decoder minimum #active states.");
+    opts->Register("lattice-beam", &lattice_beam,
+                   "Lattice generation beam.  Larger->slower, "
                    "and deeper lattices");
     opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
-                   "which to prune tokens");
+                                                      "which to prune tokens");
     opts->Register("determinize-lattice", &determinize_lattice, "If true, "
-                   "determinize the lattice (lattice-determinization, keeping only "
-                   "best pdf-sequence for each word-sequence).");
-    opts->Register("beam-delta", &beam_delta, "Increment used in decoding-- this "
+                                                                "determinize the lattice (lattice-determinization, keeping only "
+                                                                "best pdf-sequence for each word-sequence).");
+    opts->Register("beam-delta", &beam_delta,
+                   "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "
                    "max-active constraint is applied.  Larger is more accurate.");
     opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
-                   "control hash behavior");
+                                              "control hash behavior");
   }
+
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
                  && min_active <= max_active
@@ -95,32 +102,31 @@ namespace decoder {
 // versions of the decoder that support quickly getting the best path
 // (LatticeFasterOnlineDecoder, see lattice-faster-online-decoder.h) and also
 // those that do not (LatticeFasterDecoder).
-
-
-// ForwardLinks are the links from a token to a token on the next frame.
-// or sometimes on the current frame (for input-epsilon links).
-template <typename Token>
-struct ForwardLink {
-  using Label = fst::StdArc::Label;
-
+template<typename Token>
+struct Link {
   Token *next_tok;  // the next token [or NULL if represents final-state]
-  Label ilabel;  // ilabel on arc
-  Label olabel;  // olabel on arc
-  BaseFloat graph_cost;  // graph cost of traversing arc (contains LM, etc.)
-  BaseFloat acoustic_cost;  // acoustic cost (pre-scaled) of traversing arc
-  ForwardLink *next;  // next in singly-linked list of forward arcs (arcs
-                      // in the state-level lattice) from a token.
-  inline ForwardLink(Token *next_tok, Label ilabel, Label olabel,
-                     BaseFloat graph_cost, BaseFloat acoustic_cost,
-                     ForwardLink *next):
-      next_tok(next_tok), ilabel(ilabel), olabel(olabel),
-      graph_cost(graph_cost), acoustic_cost(acoustic_cost),
-      next(next) { }
+  fst::StdArc::Label i_label;
+  fst::StdArc::Label o_label;
+  BaseFloat graph_cost;
+  BaseFloat acoustic_cost;
+
+  /**
+   * constructor
+   * @param next_tok
+   * @param i_label input label in FST arc.
+   * @param o_label output label in FST arc.
+   * @param graph_cost
+   * @param acoustic_cost
+   */
+  explicit Link(Token *next_tok, fst::StdArc::Label i_label,
+                fst::StdArc::Label o_label, BaseFloat graph_cost,
+                BaseFloat acoustic_cost)
+      : next_tok(next_tok), i_label(i_label), o_label(o_label),
+        graph_cost(graph_cost), acoustic_cost(acoustic_cost) {}
 };
 
 
 struct StdToken {
-  using ForwardLinkT = ForwardLink<StdToken>;
   using Token = StdToken;
 
   // Standard token type for LatticeFasterDecoder.  Each active HCLG
@@ -139,34 +145,28 @@ struct StdToken {
   // and compute this difference, and then take the minimum).
   BaseFloat extra_cost;
 
-  // 'links' is the head of singly-linked list of ForwardLinks, which is what we
-  // use for lattice generation.
-  ForwardLinkT *links;
-
-  //'next' is the next in the singly-linked list of tokens for this frame.
-  Token *next;
+  std::forward_list<Link<StdToken>> links;
 
   // This function does nothing and should be optimized out; it's needed
   // so we can share the regular LatticeFasterDecoderTpl code and the code
   // for LatticeFasterOnlineDecoder that supports fast traceback.
-  inline void SetBackpointer (Token *backpointer) { }
+  void SetBackpointer(Token *backpointer) {}
 
   // This constructor just ignores the 'backpointer' argument.  That argument is
   // needed so that we can use the same decoder code for LatticeFasterDecoderTpl
   // and LatticeFasterOnlineDecoderTpl (which needs backpointers to support a
   // fast way to obtain the best path).
-  inline StdToken(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLinkT *links,
-                  Token *next, Token *backpointer):
-      tot_cost(tot_cost), extra_cost(extra_cost), links(links), next(next) { }
+  StdToken(BaseFloat tot_cost, BaseFloat extra_cost, Token *backpointer)
+      : tot_cost(tot_cost), extra_cost(extra_cost) {}
 };
 
+/**
+ * BackpointerToken is like Token but also Standard token type for
+ * LatticeFasterDecoder. Each active HCLG(decoding-graph) state on each frame
+ * has one token.
+ */
 struct BackpointerToken {
-  using ForwardLinkT = ForwardLink<BackpointerToken>;
   using Token = BackpointerToken;
-
-  // BackpointerToken is like Token but also
-  // Standard token type for LatticeFasterDecoder.  Each active HCLG
-  // (decoding-graph) state on each frame has one token.
 
   // tot_cost is the total (LM + acoustic) cost from the beginning of the
   // utterance up to this point.  (but see cost_offset_, which is subtracted
@@ -181,12 +181,7 @@ struct BackpointerToken {
   // one by one and compute this difference, and then take the minimum).
   BaseFloat extra_cost;
 
-  // 'links' is the head of singly-linked list of ForwardLinks, which is what we
-  // use for lattice generation.
-  ForwardLinkT *links;
-
-  //'next' is the next in the singly-linked list of tokens for this frame.
-  BackpointerToken *next;
+  std::forward_list<Link<BackpointerToken>> links;
 
   // Best preceding BackpointerToken (could be a on this frame, connected to
   // this via an epsilon transition, or on a previous frame).  This is only
@@ -195,14 +190,13 @@ struct BackpointerToken {
   // (the "links" list is what stores the forward links, for that).
   Token *backpointer;
 
-  inline void SetBackpointer (Token *backpointer) {
+  void SetBackpointer(Token *backpointer) {
     this->backpointer = backpointer;
   }
 
-  inline BackpointerToken(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLinkT *links,
-                          Token *next, Token *backpointer):
-      tot_cost(tot_cost), extra_cost(extra_cost), links(links), next(next),
-      backpointer(backpointer) { }
+  BackpointerToken(BaseFloat tot_cost, BaseFloat extra_cost,
+                   Token *backpointer) :
+      tot_cost(tot_cost), extra_cost(extra_cost), backpointer(backpointer) {}
 };
 
 }  // namespace decoder
@@ -223,14 +217,13 @@ struct BackpointerToken {
    will internally cast itself to one that is templated on those more specific
    types; this is an optimization for speed.
  */
-template <typename FST, typename Token = decoder::StdToken>
+template<typename FST, typename Token = decoder::StdToken>
 class LatticeFasterDecoderTpl {
  public:
   using Arc = typename FST::Arc;
   using Label = typename Arc::Label;
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
-  using ForwardLinkT = decoder::ForwardLink<Token>;
 
   // Instantiate this class once for each thing you have to decode.
   // This version of the constructor does not take ownership of
@@ -240,8 +233,7 @@ class LatticeFasterDecoderTpl {
 
   // This version of the constructor takes ownership of the fst, and will delete
   // it when this object is destroyed.
-  LatticeFasterDecoderTpl(const LatticeFasterDecoderConfig &config,
-                          FST *fst);
+  LatticeFasterDecoderTpl(const LatticeFasterDecoderConfig &config, FST *fst);
 
   void SetOptions(const LatticeFasterDecoderConfig &config) {
     config_ = config;
@@ -251,7 +243,7 @@ class LatticeFasterDecoderTpl {
     return config_;
   }
 
-  ~LatticeFasterDecoderTpl();
+  virtual ~LatticeFasterDecoderTpl();
 
   /// Decodes until there are no more frames left in the "decodable" object..
   /// note, this may block waiting for input if the "decodable" object blocks.
@@ -272,8 +264,7 @@ class LatticeFasterDecoderTpl {
   /// final-state of the graph then it will include those as final-probs, else
   /// it will treat all final-probs as one.  Note: this just calls GetRawLattice()
   /// and figures out the shortest path.
-  bool GetBestPath(Lattice *ofst,
-                   bool use_final_probs = true) const;
+  bool GetBestPath(Lattice *ofst, bool use_final_probs = true) const;
 
   /// Outputs an FST corresponding to the raw, state-level
   /// tracebacks.  Returns true if result is nonempty.
@@ -289,7 +280,6 @@ class LatticeFasterDecoderTpl {
   bool GetRawLattice(Lattice *ofst, bool use_final_probs = true) const;
 
 
-
   /// [Deprecated, users should now use GetRawLattice and determinize it
   /// themselves, e.g. using DeterminizeLatticePhonePrunedWrapper].
   /// Outputs an FST corresponding to the lattice-determinized
@@ -297,8 +287,7 @@ class LatticeFasterDecoderTpl {
   /// If "use_final_probs" is true AND we reached the final-state of the graph
   /// then it will include those as final-probs, else it will treat all
   /// final-probs as one.
-  bool GetLattice(CompactLattice *ofst,
-                  bool use_final_probs = true) const;
+  bool GetLattice(CompactLattice *ofst, bool use_final_probs = true) const;
 
   /// InitDecoding initializes the decoding, and should only be used if you
   /// intend to call AdvanceDecoding().  If you call Decode(), you don't need to
@@ -340,62 +329,24 @@ class LatticeFasterDecoderTpl {
 
   // Returns the number of frames decoded so far.  The value returned changes
   // whenever we call ProcessEmitting().
-  inline int32 NumFramesDecoded() const { return active_toks_.size() - 1; }
+  int32 NumFramesDecoded() const noexcept {
+    return static_cast<int32>(active_toks_.size()) - 1;
+  }
 
  protected:
   // we make things protected instead of private, as code in
   // LatticeFasterOnlineDecoderTpl, which inherits from this, also uses the
   // internals.
 
-  // Deletes the elements of the singly linked list tok->links.
-  inline static void DeleteForwardLinks(Token *tok);
-
-  // head of per-frame list of Tokens (list is in topological order),
+  // list of Tokens of per-frame (list is in topological order),
   // and something saying whether we ever pruned it using PruneForwardLinks.
   struct TokenList {
-    Token *toks;
-    bool must_prune_forward_links;
-    bool must_prune_tokens;
-    TokenList(): toks(NULL), must_prune_forward_links(true),
-                 must_prune_tokens(true) { }
+    std::list<Token> toks;
+    bool must_prune_forward_links = true;
+    bool must_prune_tokens = true;
   };
 
-  using Elem = typename HashList<StateId, Token*>::Elem;
-  // Equivalent to:
-  //  struct Elem {
-  //    StateId key;
-  //    Token *val;
-  //    Elem *tail;
-  //  };
-
-  void PossiblyResizeHash(size_t num_toks);
-
-  // FindOrAddToken either locates a token in hash of toks_, or if necessary
-  // inserts a new, empty token (i.e. with no forward links) for the current
-  // frame.  [note: it's inserted if necessary into hash toks_ and also into the
-  // singly linked list of tokens active on this frame (whose head is at
-  // active_toks_[frame]).  The frame_plus_one argument is the acoustic frame
-  // index plus one, which is used to index into the active_toks_ array.
-  // Returns the Token pointer.  Sets "changed" (if non-NULL) to true if the
-  // token was newly created or the cost changed.
-  // If Token == StdToken, the 'backpointer' argument has no purpose (and will
-  // hopefully be optimized out).
-  inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
-                               BaseFloat tot_cost, Token *backpointer,
-                               bool *changed);
-
-  // prunes outgoing links for all tokens in active_toks_[frame]
-  // it's called by PruneActiveTokens
-  // all links, that have link_extra_cost > lattice_beam are pruned
-  // delta is the amount by which the extra_costs must change
-  // before we set *extra_costs_changed = true.
-  // If delta is larger,  we'll tend to go back less far
-  //    toward the beginning of the file.
-  // extra_costs_changed is set to true if extra_cost was changed for any token
-  // links_pruned is set to true if any link in any token was pruned
-  void PruneForwardLinks(int32 frame_plus_one, bool *extra_costs_changed,
-                         bool *links_pruned,
-                         BaseFloat delta);
+  using Elem = typename HashList<StateId, Token *>::Elem;
 
   // This function computes the final-costs for tokens active on the final
   // frame.  It outputs to final-costs, if non-NULL, a map from the Token*
@@ -413,21 +364,52 @@ class LatticeFasterDecoderTpl {
   // forward-cost[t] if there were no final-probs active on the final frame.
   // You cannot call this after FinalizeDecoding() has been called; in that
   // case you should get the answer from class-member variables.
-  void ComputeFinalCosts(unordered_map<Token*, BaseFloat> *final_costs,
+  void ComputeFinalCosts(unordered_map<const Token *, BaseFloat> *final_costs,
                          BaseFloat *final_relative_cost,
                          BaseFloat *final_best_cost) const;
+
+  // Lists of tokens, indexed by frame (members of TokenList are toks,
+  // must_prune_forward_links, must_prune_tokens).
+  std::vector<TokenList> active_toks_;
+
+  // This contains, for each frame, an offset that was added to the acoustic
+  // log-likelihoods on that frame in order to keep everything in a nice dynamic
+  // range i.e.  close to zero, to reduce roundoff errors.
+  std::vector<BaseFloat> cost_offsets_;
+
+  // decoding_finalized_ is true if someone called FinalizeDecoding().  [note,
+  // calling this is optional].  If true, it's forbidden to decode more.  Also,
+  // if this is set, then the output of ComputeFinalCosts() is in the next
+  // three variables.  The reason we need to do this is that after
+  // FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
+  // of the tokens on the last frame are freed, so we free the list from toks_
+  // to avoid having dangling pointers hanging around.
+  bool decoding_finalized_;
+
+  unordered_map<const Token *, BaseFloat> final_costs_;
+
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoderTpl);
+
+ private:
+  /// Processes nonemitting (epsilon) arcs for one frame.  Called after
+  /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
+  /// preceding ProcessEmitting().
+  void ProcessNonemitting(BaseFloat cost_cutoff);
+
+  /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to
+  /// cur_toks_.  Returns the cost cutoff for subsequent ProcessNonemitting() to
+  /// use.
+  BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   // PruneForwardLinksFinal is a version of PruneForwardLinks that we call
   // on the final frame.  If there are final tokens active, it uses
   // the final-probs for pruning, otherwise it treats all tokens as final.
   void PruneForwardLinksFinal();
 
-  // Prune away any tokens on this frame that have no forward links.
-  // [we don't do this in PruneForwardLinks because it would give us
-  // a problem with dangling pointers].
-  // It's called by PruneActiveTokens if any forward links have been pruned
-  void PruneTokensForFrame(int32 frame_plus_one);
-
+  /// Gets the weight cutoff.  Also counts the active tokens.
+  BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
+                      BaseFloat *adaptive_beam,
+                      Elem **best_elem) const noexcept;
 
   // Go backwards through still-alive tokens, pruning them if the
   // forward+backward cost is more than lat_beam away from the best path.  It's
@@ -436,21 +418,80 @@ class LatticeFasterDecoderTpl {
   // delta controls when it considers a cost to have changed enough to continue
   // going backward and propagating the change.  larger delta -> will recurse
   // less far.
-  void PruneActiveTokens(BaseFloat delta);
+  void PruneActiveTokens(BaseFloat delta) noexcept;
 
-  /// Gets the weight cutoff.  Also counts the active tokens.
-  BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
-                      BaseFloat *adaptive_beam, Elem **best_elem);
+  // Prune away any tokens on this frame that have no forward links.
+  // [we don't do this in PruneForwardLinks because it would give us
+  // a problem with dangling pointers].
+  // It's called by PruneActiveTokens if any forward links have been pruned
+  void PruneTokensForFrame(int32 frame_plus_one) noexcept;
 
-  /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to
-  /// cur_toks_.  Returns the cost cutoff for subsequent ProcessNonemitting() to
-  /// use.
-  BaseFloat ProcessEmitting(DecodableInterface *decodable);
+  // prunes outgoing links for all tokens in active_toks_[frame]
+  // it's called by PruneActiveTokens
+  // all links, that have link_extra_cost > lattice_beam are pruned
+  // delta is the amount by which the extra_costs must change
+  // before we set *extra_costs_changed = true.
+  // If delta is larger,  we'll tend to go back less far
+  //    toward the beginning of the file.
+  // extra_costs_changed is set to true if extra_cost was changed for any token
+  // links_pruned is set to true if any link in any token was pruned
+  void PruneForwardLinks(int32 frame_plus_one, bool *extra_costs_changed,
+                         bool *links_pruned, BaseFloat delta) noexcept;
 
-  /// Processes nonemitting (epsilon) arcs for one frame.  Called after
-  /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
-  /// preceding ProcessEmitting().
-  void ProcessNonemitting(BaseFloat cost_cutoff);
+  // FindOrAddToken either locates a token in hash of toks_, or if necessary
+  // inserts a new, empty token (i.e. with no forward links) for the current
+  // frame.  [note: it's inserted if necessary into hash toks_ and also into the
+  // singly linked list of tokens active on this frame (whose head is at
+  // active_toks_[frame]).  The frame_plus_one argument is the acoustic frame
+  // index plus one, which is used to index into the active_toks_ array.
+  // Returns the Token pointer.  Sets "changed" (if non-NULL) to true if the
+  // token was newly created or the cost changed.
+  // If Token == StdToken, the 'backpointer' argument has no purpose (and will
+  // hopefully be optimized out).
+  inline Token *FindOrAddToken(StateId state,
+                               decltype(active_toks_.size()) frame_plus_one,
+                               BaseFloat tot_cost, Token *backpointer,
+                               bool *changed) noexcept;
+
+  void PossiblyResizeHash(size_t num_toks) noexcept;
+
+  // There are various cleanup tasks... the toks_ structure contains singly
+  // linked lists of Token pointers, where Elem is the list type. It also
+  // indexes them in a hash, indexed by state (this hash is only maintained for
+  // the most recent frame).  toks_.Clear()
+  // deletes them from the hash and returns the list of Elems.  The function
+  // DeleteElems calls toks_.Delete(elem) for each elem in the list, which
+  // returns ownership of the Elem to the toks_ structure for reuse, but does
+  // not delete the Token pointer.  The Token pointers are reference-counted
+  // and are ultimately deleted in PruneTokensForFrame, but are also linked
+  // together on each frame by their own linked-list, using the "next" pointer.
+  // We delete them manually.
+  void DeleteElems(Elem *list) noexcept;
+
+  /**
+   * A cleanup routine, at utt end/begin
+   */
+  void ClearActiveTokens() noexcept;
+
+  /** This function takes a singly linked list of tokens for a single frame, and
+   * outputs a list of them in topological order (it will crash if no such order
+   * can be found, which will typically be due to decoding graphs with epsilon
+   * cycles, which are not allowed).  Note: the output list may contain NULLs,
+   * which the caller should pass over; it just happens to be more efficient for
+   * the algorithm to output a list that contains NULLs.
+   */
+  static std::vector<const Token *>
+  TopSortTokens(const std::list<Token> &toks) noexcept;
+
+  /**
+   * update token set and a token to position map.
+   * Only be called by TopSortTokens.
+   */
+  static void
+  UpdateTokSetAndTok2Pos(const std::forward_list<decoder::Link<Token>> &links,
+                         int32 pos, unordered_set<const Token *> *process,
+                         unordered_map<const Token *, int32> *token2pos,
+                         int32 *cur_pos) noexcept;
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
@@ -459,73 +500,19 @@ class LatticeFasterDecoderTpl {
   // That is, the emitting probs of frame t are accounted for in tokens at
   // toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
   // the graph.
-  HashList<StateId, Token*> toks_;
+  HashList<StateId, Token *> toks_;
+  LatticeFasterDecoderConfig config_;
+  unsigned num_toks_; // current total #toks allocated.
+  bool warned_;
+  BaseFloat final_relative_cost_;
+  const FST *fst_;  // fst_ is a pointer to the FST we are decoding from.
 
-  std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
-  // frame (members of TokenList are toks, must_prune_forward_links,
-  // must_prune_tokens).
-  std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
-  std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
-
-  // fst_ is a pointer to the FST we are decoding from.
-  const FST *fst_;
   // delete_fst_ is true if the pointer fst_ needs to be deleted when this
   // object is destroyed.
-  bool delete_fst_;
-
-  std::vector<BaseFloat> cost_offsets_; // This contains, for each
-  // frame, an offset that was added to the acoustic log-likelihoods on that
-  // frame in order to keep everything in a nice dynamic range i.e.  close to
-  // zero, to reduce roundoff errors.
-  LatticeFasterDecoderConfig config_;
-  int32 num_toks_; // current total #toks allocated...
-  bool warned_;
-
-  /// decoding_finalized_ is true if someone called FinalizeDecoding().  [note,
-  /// calling this is optional].  If true, it's forbidden to decode more.  Also,
-  /// if this is set, then the output of ComputeFinalCosts() is in the next
-  /// three variables.  The reason we need to do this is that after
-  /// FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
-  /// of the tokens on the last frame are freed, so we free the list from toks_
-  /// to avoid having dangling pointers hanging around.
-  bool decoding_finalized_;
-  /// For the meaning of the next 3 variables, see the comment for
-  /// decoding_finalized_ above., and ComputeFinalCosts().
-  unordered_map<Token*, BaseFloat> final_costs_;
-  BaseFloat final_relative_cost_;
-  BaseFloat final_best_cost_;
-
-  // There are various cleanup tasks... the the toks_ structure contains
-  // singly linked lists of Token pointers, where Elem is the list type.
-  // It also indexes them in a hash, indexed by state (this hash is only
-  // maintained for the most recent frame).  toks_.Clear()
-  // deletes them from the hash and returns the list of Elems.  The
-  // function DeleteElems calls toks_.Delete(elem) for each elem in
-  // the list, which returns ownership of the Elem to the toks_ structure
-  // for reuse, but does not delete the Token pointer.  The Token pointers
-  // are reference-counted and are ultimately deleted in PruneTokensForFrame,
-  // but are also linked together on each frame by their own linked-list,
-  // using the "next" pointer.  We delete them manually.
-  void DeleteElems(Elem *list);
-
-  // This function takes a singly linked list of tokens for a single frame, and
-  // outputs a list of them in topological order (it will crash if no such order
-  // can be found, which will typically be due to decoding graphs with epsilon
-  // cycles, which are not allowed).  Note: the output list may contain NULLs,
-  // which the caller should pass over; it just happens to be more efficient for
-  // the algorithm to output a list that contains NULLs.
-  static void TopSortTokens(Token *tok_list,
-                            std::vector<Token*> *topsorted_list);
-
-  void ClearActiveTokens();
-
-  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoderTpl);
+  const bool delete_fst_;
 };
 
 typedef LatticeFasterDecoderTpl<fst::StdFst, decoder::StdToken> LatticeFasterDecoder;
-
-
-
 } // end namespace kaldi.
 
 #endif
