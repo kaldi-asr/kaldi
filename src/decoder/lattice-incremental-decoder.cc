@@ -989,7 +989,6 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
     // frame 0 to last_frame_of_chunk
     last_get_lattice_frame_ = 0;
     determinizer_.Init();
-    ret = GetLattice(use_final_probs, redeterminize, last_frame_of_chunk, olat);
   }
 
   return ret;
@@ -1130,7 +1129,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
       // For now, we use extra_cost from the decoding stage , which has some
       // "future information", as
       // the final weights of this chunk
-      BaseFloat cost_offset = tok->extra_cost;
+      BaseFloat cost_offset = tok->extra_cost-tok->tot_cost;
       // We record these cost_offset, and after we appending two chunks
       // we will cancel them out
       state_label_final_cost_[id] = cost_offset;
@@ -1184,7 +1183,7 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
   // (config_.determinize_beam_offset + config_.lattice_beam)
   ret &= DeterminizeLatticePhonePrunedWrapper(
       trans_model_, &raw_fst, config_.determinize_beam_offset + 
-      config_.lattice_beam, &clat, config_.det_opts);
+      config_.lattice_beam + 0.1, &clat, config_.det_opts);
 
   final_arc_list_.swap(final_arc_list_prev_);
   final_arc_list_.clear();
