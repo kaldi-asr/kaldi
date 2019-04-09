@@ -46,6 +46,15 @@
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
 CONFIGURE_VERSION=10
 
+# We support bash version 3.2 (Macs still ship with this version as of 2019)
+# and above.
+[[ $BASH_VERSION < '3.2' ]] && {
+  echo >&2 "bash version ${BASH_VERSION} is too old, cannot continue." \
+           "You won't be able to run Kaldi recipes with it anyway." \
+           "Please upgrade. bash version 3.2 or higher is required."
+  exit 1;
+}
+
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
   exit 1
@@ -129,6 +138,8 @@ function read_dirname {
   echo $retval
 }
 
+# TODO(kkm): Kill this. `[[ ${var-} ]]' is the idiomatic equivalent in bash.
+#   Even better, do not rely on uninitialized variables.
 function is_set {
   local myvar=${1:-notset}
   if [ "$myvar" == "notset" ]; then
@@ -137,6 +148,11 @@ function is_set {
     return 0
   fi
 }
+
+# Lowercase/uppercase argument. Only bash 4.2+ has internal faclilties for this,
+# and we support versions down to 3.2.
+lcase () { awk '{print tolower($0)}' <<<"$1" ; }
+ucase () { awk '{print toupper($0)}' <<<"$1" ; }
 
 function failure {
   echo "***configure failed: $* ***" >&2
@@ -475,14 +491,17 @@ function configure_cuda {
     elif [ "`uname -m`" == "ppc64le" ]; then
       cat makefiles/cuda_64bit.mk >> kaldi.mk
     else
-      echo "CUDA will not be used! CUDA is not supported with 32-bit builds."
+      echo "\
+WARNING: CUDA will not be used!
+         CUDA is not supported with 32-bit builds."
       exit 1;
     fi
 
   else
-    echo "CUDA will not be used! If you have already installed cuda drivers "
-    echo "and cuda toolkit, try using --cudatk-dir=... option.  Note: this is"
-    echo "only relevant for neural net experiments"
+    echo "\
+WARNING: CUDA will not be used! If you have already installed cuda drivers
+         and CUDA toolkit, try using the --cudatk-dir= option. A GPU and CUDA
+         are required to run neural net experiments in a realistic time."
   fi
 }
 
@@ -776,14 +795,17 @@ function linux_configure_dynamic {
 
 # If configuration sets any of these variables, we will switch the external
 # math library. Here we unset them so that we can check later.
-unset MKLROOT
-unset CLAPACKROOT
-unset OPENBLASROOT
-unset MKLLIBDIR
+#TODO(kkm): Maybe allow env vars to provide defaults?
+ATLASROOT=
+CLAPACKROOT=
+MATHLIB=
+MKLLIBDIR=
+MKLROOT=
+OPENBLASROOT=
 
 # This variable identifies the type of system where built programs and
 # libraries will run. It is set by the configure script when cross compiling.
-unset HOST
+HOST=
 
 # These environment variables can be used to override the default toolchain.
 CXX=${CXX:-g++}
@@ -809,8 +831,6 @@ threaded_atlas=false
 mkl_threading=sequential
 android=false
 
-MATHLIB=MKL
-MKLROOT=/opt/intel/mkl
 FSTROOT=`rel2abs ../tools/openfst`
 CUBROOT=`rel2abs ../tools/cub`
 
@@ -1002,13 +1022,63 @@ else
   TARGET_ARCH="`uname -m`"
 fi
 
-# If one of these variables is set, we switch the external math library.
-is_set $MKLLIBDIR && echo "Configuring KALDI to use MKL" && export MATHLIB="MKL"
-is_set $MKLROOT && echo "Configuring KALDI to use MKL"&& export MATHLIB="MKL"
-is_set $CLAPACKROOT && echo "Configuring KALDI to use CLAPACK"&& export MATHLIB="CLAPACK"
-is_set $OPENBLASROOT && echo "Configuring KALDI to use OPENBLAS"&& export MATHLIB="OPENBLAS"
+#------------------------------------------------------------------------------
+# Matrix algebra library selection and validation.
+#--------------
 
-echo "Configuring ..."
+declare -a mathlibs   # Contains e. g. 'atlas', 'mkl'
+declare -a incompat   # Contains mutually-inconsistent switches, if any.
+auto_lib=             # Deduced lib name, used when $MATHLIB is not set.
+
+# Validate the (optionally) provided MATHLIB value.
+case $MATHLIB in
+  ''|ATLAS|CLAPACK|MKL|OPENBLAS) : ;;
+  *) failure "Unknown --mathlib='${MATHLIB}'. Supported libs: ATLAS CLAPACK MKL OPENBLAS" ;;
+esac
+
+# See which library-root switches are set, what mathlib they imply, and whether
+# there are any conflicts betweeh the switches.
+[[ $MKLLIBDIR || $MKLROOT ]] && { mathlibs+=(mkl); auto_lib=MKL; }
+[[ $CLAPACKROOT  ]] && { mathlibs+=(clapack); auto_lib=CLAPACK; }
+[[ $OPENBLASROOT ]] && { mathlibs+=(openblas); auto_lib=OPENBLAS; }
+[[ $ATLASROOT    ]] && { mathlibs+=(atlas); auto_lib=ATLAS; }
+
+# When --mathlib= is explicitly provided, and some mathlib(s) deduced, but
+# MATHLIB is not among them, record a conflict for the --mathlib= value.
+shopt -s nocasematch
+[[ $MATHLIB && $mathlibs && ! " ${mathlibs[@]} " =~ " $MATHLIB " ]] &&
+  incompat+=(--mathlib=$MATHLIB)
+shopt -u nocasematch
+
+# If more than one library specified, or a conflict has been recorded above
+# already, then add all deduced libraries as conflicting options (not all may
+# be conflicting sensu stricto, but let the user deal with it).
+if [[ ${#mathlibs[@]} -gt 1 || $incompat ]]; then
+  for libpfx in "${mathlibs[@]}"; do
+    # Handle --mkl-libdir out of common pattern.
+    [[ $libpfx == mkl && $MKLLIBDIR ]] && incompat+=(--mkl-libdir=)
+    # All other switches follow the pattern --$libpfx-root.
+    incompat+=(--$(lcase $libpfx)-root=)
+  done
+  failure "Incompatible configuration switches: ${incompat[@]}"
+fi
+
+# When no library roots were provided, so that auto_lib is not deduced, and
+# MATHLIB is also not explicitly provided by the user, then default to MKL.
+[[ ! $auto_lib && ! $MATHLIB ]] && auto_lib=MKL
+: ${MATHLIB:=$auto_lib}
+export MATHLIB  #TODO(kkm): Likely not needed. Briefly tested without,
+                #    but left in the hotfix. Remove when doing the #3192.
+
+# Define default library roots where known (others may be found by probing).
+case $MATHLIB in
+  MKL) [[ ! $MKLLIBDIR && ! $MKLROOT ]] && MKLROOT=/opt/intel/mkl ;;
+  ATLAS) : ${ATLASROOT:=$(rel2abs ../tools/ATLAS_headers/)} ;;
+esac
+
+unset auto_lib incompat libpfx mathlibs
+
+echo "Configuring KALDI to use ${MATHLIB}."
 
 # Back up the old kaldi.mk in case we modified it
 if [ -f kaldi.mk ]; then
