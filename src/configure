@@ -809,8 +809,8 @@ threaded_atlas=false
 mkl_threading=sequential
 android=false
 
-MATHLIB='ATLAS'
-ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
+MATHLIB=MKL
+MKLROOT=/opt/intel/mkl
 FSTROOT=`rel2abs ../tools/openfst`
 CUBROOT=`rel2abs ../tools/cub`
 
@@ -991,7 +991,8 @@ if is_set $HOST; then
   IFS='-' read -ra PARTS <<< "$HOST"
   # The first field in the PARTS list is the target architecture.
   TARGET_ARCH="$PARTS"
-  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
+  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
+        "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
     # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
     # If TARGET_ARCH was read from the HOST variable, it must be one of these.
     failure "$TARGET_ARCH is not a supported architecture.
