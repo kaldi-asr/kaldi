@@ -297,10 +297,9 @@ class Tensor {
   // cached properties.
   TensorImpl impl_;
 
-
-  // The storage region where the data resides.  data_ does not necessarily
-  // equal storage_->data; it may be more than that, e.g. if this is a view
-  // to part of another Tensor.
+  // The storage region where the data resides storage_->data will equal
+  // impl_.data (we duplicate it in impl_ for convenence and to avoid an extra
+  // pointer dereference).
   std::shared_ptr<Storage> storage_;
 };
 

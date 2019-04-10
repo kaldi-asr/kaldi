@@ -19,11 +19,12 @@
 
 
 #include "tensor/tensor-common.h"
+#include "tensor/tensor-pattern.h"
 #include "tensor/array-ref.h"
 
-/**
-   This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
-*/
+// This header includes various functions operating on Patterns.
+// See also tensor-pattern-extra-utils.h which contains the
+// more obscure and less user-facing functions.
 
 namespace kaldi {
 namespace tensor {
@@ -394,98 +395,89 @@ bool SameDim(const TensorPattern &a, const TensorPattern &b,
 
       @param [in,out]  pattern   The pattern to be compressed
 
-      @param [out] data_offset  A number that we would have to add to
-                          the data pointer of the source Tensor so
-                          that 'dest' would cover the same set of
-                          elements.  It will always be zero if 'src'
-                          was free of negative strides.
    Examples are below, where we write a TensorPattern as
 
-   `{{dim1,dim2,..}, {stride1,stride2,..}}`.
+   `{{dim1,dim2,..}, {stride1,stride2,..} [,offset] }`
+
+   (the offset is written only if nonzero).
 
    (the curly braces in our notation imply that we are referring to the reversed
    ordering physically used in 'pattern', but actually this doesn't affect
-   anything as the order of axes does not matter here as long as it is constent.
+   anything since the order of axes does not matter here as long as it is constent.
 
 \verbatim
-   Input pattern             Output pattern            Output offset
-     {{10},{1}}               {{10},{1}}                  0
-    {{3,4},{4,1}}             {{12},{1}}                  0
-    {{4,3},{1,4}}             {{12},{1}}                  0
-    {{9},{-1}}                {{9},{1}}                  -8
-   {2,3,4},{100,4,1}        {{2,12},{100,1}}              0
+   Input pattern             Output pattern
+     {{10},{1}}               {{10},{1}}
+    {{3,4},{4,1}}             {{12},{1}}
+    {{4,3},{1,4}}             {{12},{1}}
+    {{9},{-1},8}                {{9},{1}}    // offset reduced by 8.
+   {{2,3,4},{100,4,1}}        {{2,12},{100,1}}
 \endverbatim
  */
-void CompressOnePattern(TensorPattern *pattern,
-                        int64 *data_offset);
+void CompressOnePattern(TensorPattern *pattern);
+
 
 /**
-   Sorts the axes in 'pattern' from smallest to largest stride
-   (in the reversed numbering physically present in 'pattern'; would
-   be largest to smallest in the public API).  Useful in testing
-   equivalence of patterns, as CompressOnePattern() followed
-   by SortAxes() leads to a normalized form.
-
-   This function requires that for 0 <= i < pattern->num_axes,
-   pattern->strides[i] > 0.  This condition is satisfied by
-   a pattern that has previously been compressed by CompressOnePattern().
-   If in future we need to relax this constraint, we will do so.
-   (The assumption of positive strides simplifies implementation
-   because to normalize the form we'd have to make all strides
-   positive, which would require outputting an offset).
+   Sorts the axes in 'pattern' from most negative to most positive
+   stride value
+   (negative to positive in the reversed numbering physically present in
+   'pattern'; would be positive to negative in the public API).  Useful in
+   testing equivalence of patterns, as CompressOnePattern() followed by
+   SortAxes() leads to a normalized form.
 
      @param [in,out]  The pattern whose axes are to be sorted
-                   from least to greatest stride (in the physical
-                   ordering).
+                   from most negative to most positive stride (in the
+                   physical ordering).
  */
 void SortAxes(TensorPattern *pattern);
 
 
+/**
+   This version of SortAxes() sorts the axes in 'patterns' (which must be
+   nonempty and all have the same number of axes), by ordering them from the
+   most negative stride value in patterns[0] to the most positive stride value
+   in patterns[0] (using the other patterns to disambiguate the order only in case
+   of ties, which could only happen if some strides were zero).
+
+     @param [in,out]  The patterns whose axes are to be sorted.  All
+                    will have their axes subject to the same permutation.
+                    The ordering is based on the strides of patterns[0],
+                    but using the strides of later numbered patterns in
+                    case of ties.
+ */
+void SortAxes(ArrayRef<TensorPattern*> patterns);
+
+/**
+  Multiplies all strides and the offset in 'pattern' by 'scale', which must be >
+  0.  For now, will just crash if this causes integer overflow.
+
+  This function is used in the memory-locking code if the same storage
+  location is accessed using different dtypes (unlikely).
+ */
+void ScaleStridesAndOffset(int32 scale, TensorPattern *pattern);
+
+
+// Used when we need an unordered_map containing TensorPattern.
+class PatternHasher {
+  size_t operator () (const TensorPattern &pattern) const;
+};
+
+
+/**
+   Canonicalizes the pattern 'pattern' by calling CompressOnePattern() and
+   then SortAxes().  The modified pattern will cover the same set of
+   memory locations as the original one.
+ */
+void CanonicalizePattern(TensorPattern *pattern);
+
+
 /*
-  Compress two TensorPatterns by combining axes (and possibly
-  flipping the sign of their strides and changing the data offset)
-  The type of compression involved is the same as for CompressOnePattern
-  (meaning we are doing some kind of operation that doesn't care about
-  the structure, such as an element-by-element nonlinearity).
-
-  The difference from calling CompressOnePattern() twice is that this function
-  needs to preserve the relationship between the tensors whose pattern is src1
-  and src2.  Suppose that a tensor with pattern src3 was the result of this
-  elementwise operation satisfying Broadcastable(src1, src2, src3); there is
-  only one such pattern.  Let x be a tuple which would be a valid index for the
-  tensor with pattern src3.  Let us use an extended indexing convention
-  whereby if an axis of src1 or src2 has dimension 1, we allow that axis to be
-  indexed by any value, which would not affect the memory location because the
-  stride is zero.  Then each such tuple x leads to a different pair of memory
-  locations (p1, p2) in the tensors corresponding to patterns src1, src2.  The
-  invariance that this function must preserve is that the set of memory-location
-  pairs (p1, p2) must be the same in the output tensors (with their
-  appropriately moved data pointers), as in the input tensors.
-
-  What this means in practice is that we need to do the same operations on src1
-  and src2.  For example, if flipping the sign of an axis of src1 we would have
-  to flip that of src2, and if merging two axes of src1 we would have to merge
-  the same two axes of src2.
-
-    @param [in] src1  The first source pattern.
-    @param [in] src2  The second source pattern.
-                      We require Broadcastable(src1,src2) == true.
-    @param [out] dest1  Compressed pattern out corresponding to src1.  Will
-                     be free of negative strides (but dest2 might not be).
-    @param [out] dest_offset1  Data offset that we'd need to add to src1's
-                     data pointer before using the pattern 'dest1'
-    @param [out] dest1  Compressed pattern out corresponding to src2.
-                     Might not be free of negative strides if some dimensions
-                     of src1/src2 had strides of opposite sign.
-    @param [out] dest_offset1  Data offset that we'd need to add to src1's
-                     data pointer before using the pattern 'dest1'
-
-
+  CompressTwoPatterns() is a special case of CompressPatterns() where there
+  are exactly two patterns to be jointly compressed.  See documentation of
+  CompressPatterns() for explanation.
  */
 void CompressTwoPatterns(TensorPattern *a,
-                         TensorPattern *b,
-                         int64 *data_offset_a,
-                         int64 *data_offset_b);
+                         TensorPattern *b);
 
 
 /**
@@ -529,9 +521,6 @@ void CompressTwoPatterns(TensorPattern *a,
 
       @param [in,out] patterns   An nonempty array of the patterns
                          to be jointly compressed.
-      @param [out]  data_offsets  Pointer to an array of the same size
-                        as 'patterns', which on output will contain
-                        offsets to be added to the data pointers.
 
       @return  Returns true if it made any change to the patterns,
                false if they were unchanged.  If false, the
@@ -550,8 +539,7 @@ void CompressTwoPatterns(TensorPattern *a,
  {{3,4},{4,1}}        {{1,1},{0,0}}      {{12},{1}}           {{1},{0}}    # combine
 \endverbatim
  */
-bool CompressPatterns(ArrayRef<TensorPattern*> patterns,
-                      int64 *data_offsets);
+bool CompressPatterns(ArrayRef<TensorPattern*> patterns);
 
 /**
    Compresses a TensorPattern by removing or combining as many axes as possible,
@@ -652,6 +640,194 @@ bool CreateViewPattern(const TensorPattern &pattern_in,
                        ArrayRef<int32> dims,
                        TensorPattern *pattern_out);
 
+/**
+   Returns true if there is overlap between pattern1 and pattern2,
+   meaning that pattern1's memory-index-set and pattern2's
+   memory-index-set have nonempty intersection.
+ */
+bool PatternsOverlap(const TensorPattern &pattern1,
+                     const TensorPattern &pattern2);
+
+/**
+   Returns true if pattern2's memory-index-set is a subset of pattern1's
+   memory-index-set.  See glossary in tensor-pattern.h for explanation of
+   memory-index-set.
+ */
+bool PatternIncludes(const TensorPattern &pattern1,
+                     const TensorPattern &pattern2);
+
+
+/**
+   Returns true if the two patterns are equivalent in the sense that their
+   memory-index-sets are the same.  See glossary in tensor-pattern.h for
+   explanation.
+ */
+bool PatternsEquivalent(const TensorPattern &pattern1,
+                        const TensorPattern &pattern2);
+
+
+/**
+   Outputs the memory-index-set corresponding to the pattern
+   'pattern' to 's'.   See glossary in tensor-pattern.h for
+   definitions.  This is strictly to be used in debugging
+   code, as it is extremely inefficient.
+
+      @param [in] pattern  The input pattern
+      @param [out] s   The memory-index-set
+ */
+bool ToMemoryIndexSet(const TensorPattern &pattern,
+                      std::unordered_set<int64> *s);
+
+
+
+/**
+   Outputs the memory-index-tuple-set corresponding to the pattern 'pattern' to
+   's' (see tensor-pattern.h for definition).  For storage in 's', each tuple is
+   converted into a single integer by a hashing function that should keep
+   distinct tuples separate as long as the memory-indexes were not huge.  (We
+   may output the actual tuples at some point in the future if they are ever
+   needed).  This function is strictly to be used in debugging code, as it is
+   extremely inefficient.
+
+      @param [in] pattern  The input pattern
+      @param [out] s   The memory-index-set
+ */
+bool ToMemoryIndexTupleSet(const ArrayRef<TensorPattern*>  patterns,
+                           std::unordered_set<int64> *s);
+
+
+/**
+   Returns true if the two pattern-tuples are equivalent in the sense
+   that their memory-index-tuple-sets are the same.  See glossary
+   in tensor-pattern.h for explanation.
+ */
+bool PatternTuplesEquivalent(const ArrayRef<const TensorPattern*> &patterns1,
+                             const ArrayRef<const TensorPattern*> &patterns2);
+
+
+/**
+   Class TensorPatternRebaser is an object that converts TensorPattern
+   when memory layouts change.  The main use-case is when a base Variable
+   (c.f. variable.h for definition) has a TensorPattern that is not
+   contiguous (see tensor-pattern.h for definition of 'contiguous'), and
+   its gradient Tensor is allocated contiguously.  This class is
+   needed to convert patterns for Variables into patterns for their
+   corresponding gradients.
+
+   We make it an object rather than a function in order to avoid repetition when
+   multiple patterns need to be rebased.
+ */
+class TensorPatternRebaser {
+
+  /*
+    Constructor.
+       @param [in] src_pattern  The pattern that we are converting *from*,
+                              e.g. the pattern of a Variable whose gradient
+                              has a different layout from itself.
+       @param [in] dest_pattern  The pattern that we are converting *to*.
+                              Must have the same num_axes and the same dims
+                              as 'src_pattern'.
+
+    Let t be a valid index-tuple for src_pattern/dest_pattern, determined
+    by their 'dims' and 'num_axes'.  Using t to index src_pattern and
+    dest_pattern gives memory-indexes:
+       m_src = src_pattern[t]
+       m_dest = dest_pattern[t]
+    View this object as a function from memory-indexes to memory-indexes
+    (m_src -> m_dest), whose domain is the memory-index-set of src_pattern
+    and whose range is the memory-index-set of dest_pattern.
+
+    The purpose of this object is to modify patterns in a way that maps
+    their memory-indexes with the same function.
+  */
+  TensorPatternRebaser(const TensorPattern &src_pattern,
+                       const TensorPattern &dest_pattern);
+
+
+  /**
+     This function attempts to modify pattern->offset and pattern->strides in a
+     way that does the mapping of memory-indexes m_src -> m_dest that is implied
+     by the src_pattern and dest_pattern passed to the constructor.  That is,
+     for any index-tuple t valid for 'pattern', the memory-index `pattern[t]`
+     evaluated before and after calling this function gets mapped according
+     to the function (m_src -> m_dest) mentioned in our documentation for
+     the constructor.
+
+     @param [in,out]  pattern  The pattern to be rebased.  Must, at entry,
+                          satisfy `PatternIncludes(src_pattern, *pattern)`,
+                          where `src_pattern` was the pattern passed to the
+                          constructor.  On success (i.e. if this function
+                          returns true), the condition
+                          `PatternIncludes(dest_pattern, *pattern)` will
+                          be satisfied.  On failure, the contents of
+                          'pattern' is undefined.
+
+     @return  Returns true if the conversion was possible.
+   */
+  bool Rebase(TensorPattern *pattern);
+
+  private:
+
+  // TODO: remove src_pattern_ and dest_pattern_ once everything
+  // is debugged.  They are copies of the src_pattern and dest_pattern
+  // passed to the constructor.
+  TensorPattern src_pattern_;
+  TensorPattern dest_pattern_;
+
+  // If needs_conversion_ is false, it means the patterns don't need any conversion
+  // at all (this is an optimization).
+  bool needs_conversion_;
+
+  // The 'offset' value of src_pattern_compressed (i.e. the src_pattern passed
+  // to the constructor, which has been jointly compressed and normalized with
+  // dest_pattern (to make all src_strides positive).
+  int64 src_offset_;
+  // The 'offset' value of dest_pattern_compressed
+  int64 dest_offset_;
+
+  // num_axes_ is the number of axes, not in the original src_pattern /
+  // dest_pattern but after the two patterns have been jointly compressed and
+  // then sorted from smallest to greatest stride in src_pattern.
+  // src_strides_ are the resulting strides from src_pattern_compressed, and
+  // dest_strides_ are the resulting strides from dest_pattern_compressed.
+
+  // dest_pattern_ are the strides of the thus-modified src_pattern and
+  // dest_pattern.  As an optimization, if src_strides and dest_strides end up
+  // being the same, we set num_axes to zero and skip modifying the strides when
+  // CompressPattern() is called.
+
+  // Note: all of src_strides_[0] .. src_strides_[num_axes_ - 1] will be greater
+  // than zero.  We can guarantee this because src_pattern and dest_pattern as
+  // passed to the constructor had the same dims, so any axes with dim=1 would
+  // have had dim=1 for both src and dest, hence they would have been removed by
+  // CompressPatterns(), hence no strides would be zero after
+  // CompressPatterns(); and CompressPatterns() normalizes the signs of the
+  // strides so the first one (i.e. src_pattern) has positive strides.
+  int32 num_axes_;
+  int32 src_strides_[KALDI_TENSOR_MAX_DIM];
+  int32 dest_strides_[KALDI_TENSOR_MAX_DIM];
+
+  // The basic algorithm in Convert() is:
+  //  First, add offset_ to its offset.
+  //   Then:
+  //     For each nontrivial axis of 'pattern', we are going to modify
+  //     its stride as needed.
+  //     Let that stride be `stride`, and the corresponding dim `dim`.
+  //     Let `pstride = abs(stride)` be the absolute value of the stride
+  //     (we'll modify that, and then restore the sign.
+  //     positive.
+  //
+
+
+
+  // Converts a memory-index from the src to dest pattern.  This is applying,
+  // to a single arbitrary memory-index m_src, the mapping (m_src -> m_dest);
+  // see the comments above for explanation of this notation.
+  // It is required that m >= 0 (otherwise it would not have been inside
+  // the source pattern).
+  int64 ConvertMemoryIndex(int64 m);
+
+};
 
 
 }  // namespace tensor

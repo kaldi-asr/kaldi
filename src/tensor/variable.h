@@ -25,26 +25,37 @@
 namespace kaldi {
 namespace tensor {
 
+
 /**
-   Note on overall structure
 
-     Variable
-        --> holds Tensor via shared_ptr as data_
-        --> holds TensorGrad as grad_
-           --> holds Variable via unique_ptr, as data (this contains the actual
-               gradient, allocated when it is needed).
-        --> holds TensorGraphOp
+   Definitions:
 
-        via shared_ptr
+     tracked:   a variable v is tracked if v.Grad() returns non-NULL.  By "tracked" we mean:
+                we are keeping autograd history.
+    debug mode:  debug mode is a global bool, accessible via GetDebugMode().  When it is
+                true, we check for invalidated data
+   base variable:  variables all have base variables (if a Variable's base_ pointer si
+                NULL, its base variable is itself).  A base variable is created when
+                a Variable is initialized from a Tensor or when we call .detach().
+                It is the unit at which we make the decision "is this being tracked?".
+                As soon as a Variable becomes tracked, all Variables sharing the
+                same base Variable become tracked.
+      tick:   a tick is the value of a global 64-bit time counter that we increment every
+              time we mutate a Tensor.  When we create Ops for backpropagation of
+              derivatives, we record the tick at which the Op was created.
+    invalidated:  if some data used in backprop needs to have been unchanged since
+              a particular tick (as recorded in an Op), but it has been changed
+              since then, we say that it has been invalided.  This is an error, but
+              it will only be detected in debug mode.  In effect we store a
+              record of what time (in ticks) data last changed at the individual-element
+              level, via the ChangeTracker object that is attached to the Storage
+              object (it's done in a structured way, not via a huge array).
+              This means that the change-tracking mechanism is not defeated by
+              doing .detach() or by constructing multiple Variables from the same
+              Tensor.
 
-           via shared_ptr (this contains most
-               importantly, a Variable for the gradient, which
-               is held via unique_ptr and only allocated while
-               needed.
-        -->
 
- */
-
+*/
 
 
 void Add(const Variable &a, const Variable &b, Variable *c) {
@@ -181,6 +192,18 @@ typedef std::function<void(const Variable &grad, const std::vector<Variable> *in
 typedef std::function<void(TensorGrad *grad)> GradHook;
 
 
+// This is an enum but will be used as if it were an int32,
+// as a bit pattern.
+// TODO: figure out proper way to do that.
+// It's used as an arg to the constructor of Variable
+class enum VariableInit {
+  CopyData = 1,
+  CopyGrad = 2,
+  CopyGraph = 4
+};
+
+
+
 /**
    class Variable is somewhat like class Tensor but augmented with autograd
    machinery.  Because autograd requires a rather 'functional' way of doing
@@ -229,6 +252,9 @@ class Variable {
            GradFunc grad_func);
 
 
+  // Returns true
+  bool Tracked() const;
+
  private:
 
   // The version of this Variable.  Generally will start at 0 when the Variable
@@ -244,12 +270,24 @@ class Variable {
   // has been called.
   std::shared_ptr<Tensor> data_;
 
+  // base_ is the base Variable which is non-NULL only if this Variable is a
+  // view of an underlying Variable.  This needs to be tracked even if
+  // we are not yet tracking gradients, because if any Variable with a
+  // particular base becomes tracked, all such Variables do.
+  // If base_ is NULL, then this Variable is its own base variable.
+  std::shared_ptr<Variable> base_;
+
   // grad_ is a pointer to the struct containing gradient information (for
   // Variables that require a gradient; else NULL).  It may also be
   // NULL because someone called this->RemoveGrad().
   std::shared_ptr<TensorGrad> grad_;
 
-  // ops_ is the first in singly list of Ops (there will be just one element,
+  // ops_ is the first in singly list of Ops for this Variable.  If this
+  // Variable is not its own base variable (i.e. if base_ != NULL), this will be
+  // NULL since the Ops are only stored in the base Variables.
+
+
+  (there will be just one element,
   // unless in-place operations were done).
   // Will be NULL if this Variable does not require a gradient or if someone
   // called this->RemoveGraph().

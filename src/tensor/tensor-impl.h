@@ -39,8 +39,10 @@ struct TensorImpl {
   TensorPattern pattern;
   DataType dtype;
   Device device;
-  void *data{nullptr};
-
+  std::shared_ptr<Storage> data;  // 'data' points to a shared Storage object
+                                  // that contains (or eventually will contain,
+                                  // due to lazy allocation) the actual data
+                                  // pointer.
 
   inline int32 NumAxes() { return pattern.num_axes; }
 
@@ -58,6 +60,11 @@ struct TensorImpl {
   //  @return          Returns the stride on this axis, which will be 0 if
   //                   Dim(axis) == 1, and otherwise nonzero.
   inline int32 Stride(int32 axis);
+
+
+  // Returns the data pointer corresponding to the element whose index
+  // is all zeros.
+  inline void* GetData() const;
 
 
   // Returns true if this TensorImpl is valid, false otherwise.  It is an
@@ -82,7 +89,8 @@ struct TensorMeta {
 
 inline int32 TensorImpl::Dim(int32 axis) {
   if (axis < 0) {
-    // this will usually be known at compile time, since it's inlined.
+    // it will usually be known whether axis < 0 at compile time, since it's
+    // inlined.
     KALDI_ASSERT(axis >= -pattern.num_axes);
     // num_axes - 1 - (axis + num_axes) = - 1 - axis
     int32 raxis = -1 - axis;
