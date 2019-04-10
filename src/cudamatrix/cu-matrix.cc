@@ -482,8 +482,9 @@ void CuMatrixBase<Real>::SetZero() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    CU_SAFE_CALL(cudaMemset2D(data_, stride_ * sizeof(Real), 0,
-                              num_cols_ * sizeof(Real), num_rows_ ));
+    CU_SAFE_CALL(cudaMemset2DAsync(data_, stride_ * sizeof(Real), 0,
+                              num_cols_ * sizeof(Real), num_rows_ , 
+                              cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile("CuMatrix::SetZero", tim);
   } else
 #endif
@@ -2094,6 +2095,7 @@ void CuMatrixBase<Real>::Cholesky(CuMatrixBase<Real> *inv_cholesky) {
   // (5)(d) zero L12 and M12.
   this_12.SetZero();
   inv_12.SetZero();
+
 }
 
 

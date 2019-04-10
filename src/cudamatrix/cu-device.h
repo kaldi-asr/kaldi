@@ -27,6 +27,7 @@
 #include <cublas_v2.h>
 #include <cusparse.h>
 #include <curand.h>
+#include <cusolverDn.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -83,6 +84,7 @@ class CuDevice {
   inline cublasHandle_t GetCublasHandle() { return cublas_handle_; }
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
   inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
+  inline cusolverDnHandle_t GetCusolverDnHandle() { return cusolverdn_handle_; }
 
   inline void SeedGpu() {
     if (CuDevice::Instantiate().Enabled()) {
@@ -304,6 +306,7 @@ class CuDevice {
   cublasHandle_t cublas_handle_;
   cusparseHandle_t cusparse_handle_;
   curandGenerator_t curand_handle_;
+  cusolverDnHandle_t cusolverdn_handle_;
 }; // class CuDevice
 
 
@@ -320,6 +323,10 @@ class CuTimer: public Timer {
 // in the CUBLAS v2 API, since we so frequently need to access it.
 inline cublasHandle_t GetCublasHandle() { 
   return CuDevice::Instantiate().GetCublasHandle(); 
+}
+
+inline cusolverDnHandle_t GetCusolverDnHandle() { 
+  return CuDevice::Instantiate().GetCusolverDnHandle(); 
 }
 // A more convenient way to get the handle to use cuSPARSE APIs.
 inline cusparseHandle_t GetCusparseHandle() { 
