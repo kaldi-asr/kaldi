@@ -251,7 +251,7 @@ class LatticeFasterDecoderTpl {
     return config_;
   }
 
-  ~LatticeFasterDecoderTpl();
+  virtual ~LatticeFasterDecoderTpl();
 
   /// Decodes until there are no more frames left in the "decodable" object..
   /// note, this may block waiting for input if the "decodable" object blocks.
@@ -347,9 +347,6 @@ class LatticeFasterDecoderTpl {
   // LatticeFasterOnlineDecoderTpl, which inherits from this, also uses the
   // internals.
 
-  // Deletes the elements of the singly linked list tok->links.
-  inline static void DeleteForwardLinks(Token *tok);
-
   // head of per-frame list of Tokens (list is in topological order),
   // and something saying whether we ever pruned it using PruneForwardLinks.
   struct TokenList {
@@ -360,6 +357,48 @@ class LatticeFasterDecoderTpl {
                  must_prune_tokens(true) { }
   };
 
+  // This function computes the final-costs for tokens active on the final
+  // frame.  It outputs to final-costs, if non-NULL, a map from the Token*
+  // pointer to the final-prob of the corresponding state, for all Tokens
+  // that correspond to states that have final-probs.  This map will be
+  // empty if there were no final-probs.  It outputs to
+  // final_relative_cost, if non-NULL, the difference between the best
+  // forward-cost including the final-prob cost, and the best forward-cost
+  // without including the final-prob cost (this will usually be positive), or
+  // infinity if there were no final-probs.  [c.f. FinalRelativeCost(), which
+  // outputs this quanitity].  It outputs to final_best_cost, if
+  // non-NULL, the lowest for any token t active on the final frame, of
+  // forward-cost[t] + final-cost[t], where final-cost[t] is the final-cost in
+  // the graph of the state corresponding to token t, or the best of
+  // forward-cost[t] if there were no final-probs active on the final frame.
+  // You cannot call this after FinalizeDecoding() has been called; in that
+  // case you should get the answer from class-member variables.
+  void ComputeFinalCosts(unordered_map<Token*, BaseFloat> *final_costs,
+                         BaseFloat *final_relative_cost,
+                         BaseFloat *final_best_cost) const;
+
+  std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
+  // frame (members of TokenList are toks, must_prune_forward_links,
+  // must_prune_tokens).
+
+  std::vector<BaseFloat> cost_offsets_; // This contains, for each
+  // frame, an offset that was added to the acoustic log-likelihoods on that
+  // frame in order to keep everything in a nice dynamic range i.e.  close to
+  // zero, to reduce roundoff errors.
+
+  /// decoding_finalized_ is true if someone called FinalizeDecoding().  [note,
+  /// calling this is optional].  If true, it's forbidden to decode more.  Also,
+  /// if this is set, then the output of ComputeFinalCosts() is in the next
+  /// three variables.  The reason we need to do this is that after
+  /// FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
+  /// of the tokens on the last frame are freed, so we free the list from toks_
+  /// to avoid having dangling pointers hanging around.
+  bool decoding_finalized_;
+
+  /// For the meaning of the next 3 variables, see the comment for
+  /// decoding_finalized_ above., and ComputeFinalCosts().
+  unordered_map<Token*, BaseFloat> final_costs_;
+ private:
   using Elem = typename HashList<StateId, Token*>::Elem;
   // Equivalent to:
   //  struct Elem {
@@ -367,6 +406,9 @@ class LatticeFasterDecoderTpl {
   //    Token *val;
   //    Elem *tail;
   //  };
+
+  // Deletes the elements of the singly linked list tok->links.
+  inline static void DeleteForwardLinks(Token *tok);
 
   void PossiblyResizeHash(size_t num_toks);
 
@@ -397,26 +439,6 @@ class LatticeFasterDecoderTpl {
                          bool *links_pruned,
                          BaseFloat delta);
 
-  // This function computes the final-costs for tokens active on the final
-  // frame.  It outputs to final-costs, if non-NULL, a map from the Token*
-  // pointer to the final-prob of the corresponding state, for all Tokens
-  // that correspond to states that have final-probs.  This map will be
-  // empty if there were no final-probs.  It outputs to
-  // final_relative_cost, if non-NULL, the difference between the best
-  // forward-cost including the final-prob cost, and the best forward-cost
-  // without including the final-prob cost (this will usually be positive), or
-  // infinity if there were no final-probs.  [c.f. FinalRelativeCost(), which
-  // outputs this quanitity].  It outputs to final_best_cost, if
-  // non-NULL, the lowest for any token t active on the final frame, of
-  // forward-cost[t] + final-cost[t], where final-cost[t] is the final-cost in
-  // the graph of the state corresponding to token t, or the best of
-  // forward-cost[t] if there were no final-probs active on the final frame.
-  // You cannot call this after FinalizeDecoding() has been called; in that
-  // case you should get the answer from class-member variables.
-  void ComputeFinalCosts(unordered_map<Token*, BaseFloat> *final_costs,
-                         BaseFloat *final_relative_cost,
-                         BaseFloat *final_best_cost) const;
-
   // PruneForwardLinksFinal is a version of PruneForwardLinks that we call
   // on the final frame.  If there are final tokens active, it uses
   // the final-probs for pruning, otherwise it treats all tokens as final.
@@ -427,7 +449,6 @@ class LatticeFasterDecoderTpl {
   // a problem with dangling pointers].
   // It's called by PruneActiveTokens if any forward links have been pruned
   void PruneTokensForFrame(int32 frame_plus_one);
-
 
   // Go backwards through still-alive tokens, pruning them if the
   // forward+backward cost is more than lat_beam away from the best path.  It's
@@ -451,49 +472,6 @@ class LatticeFasterDecoderTpl {
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
   void ProcessNonemitting(BaseFloat cost_cutoff);
-
-  // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
-  // more than one list (e.g. for current and previous frames), but only one of
-  // them at a time can be indexed by StateId.  It is indexed by frame-index
-  // plus one, where the frame-index is zero-based, as used in decodable object.
-  // That is, the emitting probs of frame t are accounted for in tokens at
-  // toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
-  // the graph.
-  HashList<StateId, Token*> toks_;
-
-  std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
-  // frame (members of TokenList are toks, must_prune_forward_links,
-  // must_prune_tokens).
-  std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
-  std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
-
-  // fst_ is a pointer to the FST we are decoding from.
-  const FST *fst_;
-  // delete_fst_ is true if the pointer fst_ needs to be deleted when this
-  // object is destroyed.
-  bool delete_fst_;
-
-  std::vector<BaseFloat> cost_offsets_; // This contains, for each
-  // frame, an offset that was added to the acoustic log-likelihoods on that
-  // frame in order to keep everything in a nice dynamic range i.e.  close to
-  // zero, to reduce roundoff errors.
-  LatticeFasterDecoderConfig config_;
-  int32 num_toks_; // current total #toks allocated...
-  bool warned_;
-
-  /// decoding_finalized_ is true if someone called FinalizeDecoding().  [note,
-  /// calling this is optional].  If true, it's forbidden to decode more.  Also,
-  /// if this is set, then the output of ComputeFinalCosts() is in the next
-  /// three variables.  The reason we need to do this is that after
-  /// FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
-  /// of the tokens on the last frame are freed, so we free the list from toks_
-  /// to avoid having dangling pointers hanging around.
-  bool decoding_finalized_;
-  /// For the meaning of the next 3 variables, see the comment for
-  /// decoding_finalized_ above., and ComputeFinalCosts().
-  unordered_map<Token*, BaseFloat> final_costs_;
-  BaseFloat final_relative_cost_;
-  BaseFloat final_best_cost_;
 
   // There are various cleanup tasks... the the toks_ structure contains
   // singly linked lists of Token pointers, where Elem is the list type.
@@ -520,6 +498,31 @@ class LatticeFasterDecoderTpl {
   void ClearActiveTokens();
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoderTpl);
+
+  // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
+  // more than one list (e.g. for current and previous frames), but only one of
+  // them at a time can be indexed by StateId.  It is indexed by frame-index
+  // plus one, where the frame-index is zero-based, as used in decodable object.
+  // That is, the emitting probs of frame t are accounted for in tokens at
+  // toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
+  // the graph.
+  HashList<StateId, Token*> toks_;
+
+  std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
+  std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
+
+  // fst_ is a pointer to the FST we are decoding from.
+  const FST *fst_;
+
+  // delete_fst_ is true if the pointer fst_ needs to be deleted when this
+  // object is destroyed.
+  bool delete_fst_;
+
+  LatticeFasterDecoderConfig config_;
+  int32 num_toks_; // current total #toks allocated...
+  bool warned_;
+  BaseFloat final_relative_cost_;
+  BaseFloat final_best_cost_;
 };
 
 typedef LatticeFasterDecoderTpl<fst::StdFst, decoder::StdToken> LatticeFasterDecoder;
