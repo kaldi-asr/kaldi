@@ -1125,7 +1125,11 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
         ofst->SetFinal(cur_state, weight);
         // for sanity check
         // we will use extra_cost in step 1.3 (see the following code)
-        best_cost_in_chunk_ = std::min(
+        if (create_final_state)
+          best_cost_in_chunk_ = std::min(
+            best_cost_in_chunk_, tok->tot_cost + (tok->extra_cost-tok->tot_cost) + weight.Value1() + weight.Value2());
+        else
+          best_cost_in_chunk_ = std::min(
             best_cost_in_chunk_, tok->tot_cost + weight.Value1() + weight.Value2());
       }
     }
@@ -1153,7 +1157,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
       // For now, we use extra_cost from the decoding stage , which has some
       // "future information", as
       // the final weights of this chunk
-      BaseFloat cost_offset = 0; // TODO tok->extra_cost-tok->tot_cost;
+      BaseFloat cost_offset = tok->extra_cost-tok->tot_cost;
       // We record these cost_offset, and after we appending two chunks
       // we will cancel them out
       state_label_final_cost_[id] = cost_offset;
@@ -1206,7 +1210,7 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
   // LatticeFasterDecoder, we need to use a slightly larger beam here
   // than the lattice_beam used PruneActiveTokens. Hence the beam we use is
   // (config_.determinize_beam_offset + config_.lattice_beam)
-#if 0
+#if 1
   ret &= DeterminizeLatticePhonePrunedWrapper(
       trans_model_, &raw_fst, config_.determinize_beam_offset + 
       config_.lattice_beam + 0.1, &clat, config_.det_opts);
@@ -1223,7 +1227,8 @@ bool LatticeIncrementalDeterminizer<FST>::ProcessChunk(
     std::vector<int32> alignment;
     std::vector<int32> words;
     GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-    KALDI_ASSERT(alignment.size() == last_frame-first_frame);
+    // remove the following because the chunk starts from the last final arc, and we cannot decide which frame it is in
+    //KALDI_ASSERT(alignment.size() == last_frame-first_frame);
     // TODO: the following KALDI_ASSERT will fail some time, which is unexpected
         // for sanity check
     KALDI_ASSERT(std::abs(best_cost_in_chunk_ - (weight.Value1() +
@@ -1272,8 +1277,6 @@ void LatticeIncrementalDeterminizer<FST>::GetInitialRawLattice(
 
   auto start_state = olat->AddState();
   olat->SetStart(start_state);
-  // sanity check
-  BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
   for (auto &i : final_arc_list_prev_) {
     ArcIterator<CompactLattice> aiter_chunk1(lat_, i.first);
     aiter_chunk1.Seek(i.second);
@@ -1309,11 +1312,7 @@ void LatticeIncrementalDeterminizer<FST>::GetInitialRawLattice(
         std::pair<int, StateId>(arc_chunk1.olabel, last_state));
     // sanity check
     g_last2first_state[last_state]=initial_weight.Weight().Value1()+initial_weight.Weight().Value2();
-    best_cost=std::min(best_cost,initial_weight.Weight().Value1()+initial_weight.Weight().Value2());
   }
-  // sanity check
-  KALDI_ASSERT(std::abs(best_cost_in_chunk_ - best_cost) < 1e-1);
-
 }
 
 template <typename FST>
