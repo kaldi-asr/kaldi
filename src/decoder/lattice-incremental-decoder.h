@@ -503,8 +503,8 @@ class LatticeIncrementalDecoderTpl {
   // We keep tot_cost or extra_cost for each state_label (Token) in final and
   // initial arcs. We need them before determinization
   // We cancel them after determinization
-  unordered_map<int32, BaseFloat> state_label_initial_cost_;
-  unordered_map<int32, BaseFloat> state_label_final_cost_;
+  unordered_map<int32, BaseFloat> state_label_initial_cost_; // TODO remove it
+  unordered_map<int32, BaseFloat> state_label_final_cost_; // TODO remove it
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };
 
@@ -533,8 +533,7 @@ class LatticeIncrementalDeterminizer {
   // It does step 2-4 and outputs the resultant CompactLattice if
   // needed. Otherwise, it keeps the resultant lattice in lat_
   bool ProcessChunk(Lattice &raw_fst, int32 first_frame, int32 last_frame,
-                    const unordered_map<int32, BaseFloat> &state_label_initial_cost,
-                    const unordered_map<int32, BaseFloat> &state_label_final_cost);
+                    const unordered_map<int32, BaseFloat> &state_label_initial_cost);
 
   // Step 3 of incremental determinization,
   // which is to append the new chunk in clat to the old one in lat_
@@ -546,13 +545,18 @@ class LatticeIncrementalDeterminizer {
   // guaranteed by unique state labels.
   bool AppendLatticeChunks(
       CompactLattice clat, bool not_first_chunk,
-      const unordered_map<int32, BaseFloat> &state_label_initial_cost,
-      const unordered_map<int32, BaseFloat> &state_label_final_cost);
+      const unordered_map<int32, BaseFloat> &state_label_initial_cost);
 
   // Step 4 of incremental determinization,
   // which either re-determinize above lat_, or simply remove the dead
   // states of lat_
   bool Finalize(bool redeterminize);
+  std::vector<BaseFloat>& GetForwardCosts() {
+    return forward_costs_;
+  }
+  void GetInitialRawLattice(Lattice *olat,
+    unordered_multimap<int, LatticeArc::StateId> *state_label2state_map,
+                    const unordered_map<int32, BaseFloat> &state_label_final_cost);
 
  private:
   const LatticeIncrementalDecoderConfig config_;
@@ -564,6 +568,11 @@ class LatticeIncrementalDeterminizer {
   // keep final_arc for appending later
   std::vector<std::pair<StateId, size_t>> final_arc_list_;
   std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
+  // alpha of each state in lat_
+  std::vector<BaseFloat> forward_costs_;
+  // we allocate a unique id for each source-state of the last arc of a series of initial arcs in GetInitialRawLattice
+  int32 state_last_initial_offset_;
+
   // The compact lattice we obtain. It should be reseted before processing a
   // new utterance
   CompactLattice lat_;
