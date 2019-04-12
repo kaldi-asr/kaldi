@@ -1,29 +1,24 @@
 #!/bin/bash
 
-# run_tdnn_1b.sh is the script which results are presented in the corpus release paper.
-# It uses 2 to 6 jobs and add proportional-shrink 10.
+# This is copied from tedlium/s5_r2/local/chain/tuning/run_tdnn_1g.sh setup, and it replaces the current run_tdnn_1b.sh script. 
 
-# WARNING
-# This script is flawed and misses key elements to optimize the tdnnf setup.
-# You can run it as is to reproduce results from the corpus release paper,
-# but a more up-to-date version should be looked at in other egs until another
-# setup is added here.
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnnf_1b exp/chain_cleaned/tdnnf_1c
+# System                 tdnnf_1b  tdnnf_1c
+# WER on dev(orig)           8.15      8.03
+# WER on dev(rescored)       7.69      7.44
+# WER on test(orig)          8.19      8.30
+# WER on test(rescored)      7.77      7.85
+# Final train prob        -0.0692   -0.0669
+# Final valid prob        -0.0954   -0.0838
+# Final train prob (xent)   -0.9369   -0.9596
+# Final valid prob (xent)   -1.0730   -1.0780
+# Num-params                25741728   9463968
 
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_1a exp/chain_cleaned/tdnn_1b
-# System                      tdnn_1a   tdnn_1b   tdnn_1b
-# Scoring script	            sclite    sclite   score_basic
-# WER on dev(orig)              8.2       7.9         7.9
-# WER on dev(rescored ngram)    7.6       7.4         7.5
-# WER on dev(rescored rnnlm)    6.3       6.2         6.2
-# WER on test(orig)             8.1       8.0         8.2
-# WER on test(rescored ngram)   7.7       7.7         7.9
-# WER on test(rescored rnnlm)   6.7       6.7         6.8
-# Final train prob            -0.0802   -0.0899
-# Final valid prob            -0.0980   -0.0974
-# Final train prob (xent)     -1.1450   -0.9449
-# Final valid prob (xent)     -1.2498   -1.0002
-# Num-params                  26651840  25782720
 
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnnf_1b/
+# exp/chain_cleaned/tdnnf_1b/: num-iters=945 nj=2..6 num-params=25.7M dim=40+100->3664 combine=-0.074->-0.071 (over 6) xent:train/valid[628,944,final]=(-1.07,-0.959,-0.937/-1.20,-1.10,-1.07) logprob:train/valid[628,944,final]=(-0.088,-0.070,-0.069/-0.111,-0.098,-0.095)
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnnf_1c
+# exp/chain_cleaned/tdnn1c/: num-iters=228 nj=3..12 num-params=9.5M dim=40+100->3664 combine=-0.068->-0.068 (over 4) xent:train/valid[151,227,final]=(-1.15,-0.967,-0.960/-1.25,-1.09,-1.08) logprob:train/valid[151,227,final]=(-0.090,-0.068,-0.067/-0.102,-0.05,-0.084)
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
 ## otherwise call it directly in its location).
@@ -33,30 +28,28 @@
 # without cleanup:
 # local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
 
-# note, if you have already run the corresponding non-chain nnet3 system
-# (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
-
-
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0
-nj=30
-decode_nj=30
-min_seg_len=1.55
+nj=15
+decode_nj=15
 xent_regularize=0.1
+dropout_schedule='0,0@0.20,0.5@0.50,0'
+
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
-num_threads_ubm=32
+num_threads_ubm=1
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnnf_affix=_1b  #affix for TDNNF directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1c  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
+remove_egs=true
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -74,7 +67,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
                                   --train-set $train_set \
@@ -85,9 +77,9 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
+tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnnf${tdnnf_affix}
+dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
@@ -148,7 +140,12 @@ if [ $stage -le 17 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  affine_opts="l2-regularize=0.008 dropout-proportion=0.0 dropout-per-dim-continuous=true"
+  tdnnf_opts="l2-regularize=0.008 dropout-proportion=0.0 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.008 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.008"
+  output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -161,33 +158,26 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=1280
-  linear-component name=tdnn2l dim=256 input=Append(-1,0)
-  relu-batchnorm-layer name=tdnn2 input=Append(0,1) dim=1280
-  linear-component name=tdnn3l dim=256
-  relu-batchnorm-layer name=tdnn3 dim=1280
-  linear-component name=tdnn4l dim=256 input=Append(-1,0)
-  relu-batchnorm-layer name=tdnn4 input=Append(0,1) dim=1280
-  linear-component name=tdnn5l dim=256
-  relu-batchnorm-layer name=tdnn5 dim=1280 input=Append(tdnn5l, tdnn3l)
-  linear-component name=tdnn6l dim=256 input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn6 input=Append(0,3) dim=1280
-  linear-component name=tdnn7l dim=256 input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn7 input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
-  linear-component name=tdnn8l dim=256 input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn8 input=Append(0,3) dim=1280
-  linear-component name=tdnn9l dim=256 input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn9 input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
-  linear-component name=tdnn10l dim=256 input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn10 input=Append(0,3) dim=1280
-  linear-component name=tdnn11l dim=256 input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn11 input=Append(0,3,tdnn10l,tdnn8l,tdnn6l) dim=1280
-  linear-component name=prefinal-l dim=256
-  relu-batchnorm-layer name=prefinal-chain input=prefinal-l dim=1280
-  output-layer name=output include-log-softmax=false dim=$num_targets
-  relu-batchnorm-layer name=prefinal-xent input=prefinal-l dim=1280
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1024
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  linear-component name=prefinal-l dim=256 $linear_opts
 
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1024 small-dim=256
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
+
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1024 small-dim=256
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 
@@ -203,29 +193,32 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0 \
+    --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.dir "$common_egs_dir" \
-    --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch 128 \
-    --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 4 \
-    --trainer.optimization.proportional-shrink 10 \
-    --trainer.optimization.num-jobs-initial 2 \
-    --trainer.optimization.num-jobs-final 6 \
-    --trainer.optimization.initial-effective-lrate 0.001 \
-    --trainer.optimization.final-effective-lrate 0.0001 \
+    --egs.opts "--frames-overlap-per-eg 0 --constrained false" \
+    --egs.chunk-width 150,110,100 \
+    --trainer.num-chunk-per-minibatch 64 \
+    --trainer.frames-per-iter 5000000 \
+    --trainer.num-epochs 6 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.initial-effective-lrate 0.00025 \
+    --trainer.optimization.final-effective-lrate 0.000025 \
     --trainer.max-param-change 2.0 \
-    --cleanup.remove-egs false \
+    --cleanup.remove-egs $remove_egs \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \
     --dir $dir
 fi
+
+
 
 if [ $stage -le 19 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
