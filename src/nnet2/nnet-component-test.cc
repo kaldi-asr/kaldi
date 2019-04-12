@@ -605,7 +605,7 @@ void UnitTestSumGroupComponent() {
 
 
 void UnitTestDctComponent() {
-  int32 m = 1 + Rand() % 4, n = 1 + Rand() % 4,
+  int32 m = 3 + Rand() % 4, n = 3 + Rand() % 4,
   dct_dim = m, dim = m * n;
   bool reorder = (Rand() % 2 == 0);
   {
