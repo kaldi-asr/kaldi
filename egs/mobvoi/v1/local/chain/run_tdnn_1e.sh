@@ -141,9 +141,7 @@ if [ $stage -le 13 ]; then
 1 4 $id_freetext $id_freetext
 0 4 $id_freetext $id_freetext
 4 5 $id_sil $id_sil
-2 1.9
 3 1.9
-4 0.7
 5 0.7
 EOF
 #0 1 $id_sil $id_sil
@@ -269,15 +267,11 @@ if [ $stage -le 16 ]; then
   mkdir -p $lang_decode/lm
   cat <<EOF > $lang_decode/lm/fst.txt
 0 1 $sil_id $sil_id
-0 4 $freetext_id $freetext_id
-1 4 $freetext_id $freetext_id
+1 4 $freetext_id $freetext_id 0.6
 4 0 $sil_id $sil_id
-1 2 $id $id
-0 2 $id $id
+1 2 $id $id 2.5
 2 0 $sil_id $sil_id
-0 2.16
-2 1.9
-4 0.7
+0
 EOF
 #0 1 $sil_id $sil_id
 #0 4 $freetext_id $freetext_id
@@ -336,11 +330,12 @@ fi
 
 if [ $stage -le 19 ]; then
   for data in $test_sets; do
+    python3 local/plot_roc.py $dir/decode_${data}/scoring_kaldi/all_results
     nspk=$(wc -l <data/${data}_hires/spk2utt)
     local/process_lattice.sh --nj $nspk --wake-word $wake_word ${dir}/decode_${data} data/${data}_hires $lang || exit 1
   done
+  echo "Done. Date: $(date). Results:"
+  local/chain/compare_wer.sh $dir
 fi
 
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
 

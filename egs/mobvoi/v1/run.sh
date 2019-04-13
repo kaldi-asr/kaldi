@@ -151,7 +151,7 @@ if [ $stage -le 9 ]; then
   )&
 
   steps/align_si.sh --nj 50 --cmd "$train_cmd" \
-    data/train_combined data/lang exp/mono exp/mono_ali
+    data/train data/lang exp/mono exp/mono_ali
 fi
 
 exit 0

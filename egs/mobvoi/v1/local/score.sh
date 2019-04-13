@@ -12,9 +12,9 @@ stage=0
 decode_mbr=false
 stats=true
 beam=6
-word_ins_penalty=0.0,0.5,1.0,1.5,2.0
+word_ins_penalty=0.0
 min_lmwt=1
-max_lmwt=17
+max_lmwt=80
 wake_word="嗨小问"
 iter=final
 #end configuration section.
@@ -46,8 +46,8 @@ done
 
 
 utils/data/get_utt2dur.sh $data
-dur=`awk '{a+=$2} END{print a}' $data/utt2dur`
-echo "total duration (in seconds) of $data: $dur"
+utils/filter_scp.pl <(grep -v $wake_word $data/text) $data/utt2dur > $data/utt2dur_negative && dur=`awk '{a+=$2} END{print a}' $data/utt2dur_negative`
+echo "total duration (in seconds) of negative examples in $data: $dur"
 
 ref_filtering_cmd="cat"
 [ -x local/wer_output_filter ] && ref_filtering_cmd="local/wer_output_filter"

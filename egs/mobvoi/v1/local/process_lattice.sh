@@ -107,9 +107,9 @@ if [ $stage -le 4 ]; then
   dur=0
   [ -f $data/utt2dur ] && utils/filter_scp.pl <(grep -v $wake_word $data/text) $data/utt2dur > $data/utt2dur_negative && dur=`awk '{a+=$2} END{print a}' $data/utt2dur_negative`
   export LC_ALL=en_US.UTF-8
-  python3 local/detect_from_cost.py --thres 0.0 --wake-word $wake_word $dir/scoring/cost.txt > $dir/scoring/detection.txt
+  #python3 local/detect_from_cost.py --thres 0.0 --wake-word $wake_word $dir/scoring/cost.txt > $dir/scoring/detection.txt
   #cat $dir/scoring/cost.txt | awk '{if($2 == 0.0) print $1, ""; else if($3==0.0) print $1, "嗨小问";}' > $dir/scoring/detection.txt
-  python3 local/compute_metrics.py --wake-word $wake_word --duration $dur $data/text $dir/scoring/detection.txt 2>/dev/null | tee $dir/scoring/results
+  #python3 local/compute_metrics.py --wake-word $wake_word --duration $dur $data/text $dir/scoring/detection.txt 2>/dev/null | tee $dir/scoring/results
   cat $dir/scoring/cost.txt | awk '{a=$3-$2;print $1,a}' > $dir/scoring/score.txt
   python3 local/compute_min_dcf.py --wake-word $wake_word --duration $dur $data/text $dir/scoring/score.txt
   export LC_ALL=C

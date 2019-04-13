@@ -47,12 +47,12 @@ def main():
             print("reference {} does not exist in hypothesis.".format(ref[i][0]), file=sys.stderr)
             continue
         if ref[i][1] == args.wake_word:
-            if hyp[ref[i][0]] == args.wake_word:
+            if args.wake_word in hyp[ref[i][0]]:
                 TP += 1.
             else:
                 FN += 1.
         else:
-            if hyp[ref[i][0]] == args.wake_word:
+            if args.wake_word in hyp[ref[i][0]]:
                 FP += 1.
             else:
                 TN += 1.
