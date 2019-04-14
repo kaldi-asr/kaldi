@@ -23,12 +23,12 @@ cleanup=true  # remove temporary directories and files
 nj=4
 # Decode options
 graph_opts=
+scale_opts=
 beam=15.0
 lattice_beam=1.0
 
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
-post_decode_acwt=1.0  # can be used in 'chain' systems to scale acoustics by 10 so the
-                      # regular scoring script works.
+lmwt=10
 
 # Contexts must ideally match training
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
@@ -109,6 +109,22 @@ cp $srcdir/cmvn_opts $dir
 cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
 cp $srcdir/frame_subsampling_factor $dir 2>/dev/null || true
 
+if [ -f $srcdir/frame_subsampling_factor ]; then
+  echo "$0: guessing that this is a chain system, checking parameters."
+  if [ -z $scale_opts ]; then
+    echo "$0: setting scale_opts"
+    scale_opts="--self-loop-scale=1.0 --transition-scale=1.0"
+  fi
+  if [ $acwt == 0.1 ]; then
+    echo "$0: setting acwt=1.0"
+    acwt=1.0
+  fi
+  if [ $lmwt == 10 ]; then
+    echo "$0: setting lmwt=1.0"
+    lmwt=1
+  fi
+fi
+
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
 cp $lang/phones.txt $dir
 
@@ -142,7 +158,7 @@ if [ $stage -le 3 ]; then
   echo "$0: Decoding with biased language models..."
 
   steps/cleanup/decode_segmentation_nnet3.sh \
-    --acwt $acwt --post-decode-acwt $post_decode_acwt \
+    --acwt $acwt  \
     --beam $beam --lattice-beam $lattice_beam --nj $nj --cmd "$cmd --mem 4G" \
     --skip-scoring true --allow-partial false \
     --extra-left-context $extra_left_context \
