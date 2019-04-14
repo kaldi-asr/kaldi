@@ -23,11 +23,12 @@ cleanup=true  # remove temporary directories and files
 nj=4
 # Decode options
 graph_opts=
+scale_opts=
 beam=15.0
 lattice_beam=1.0
 
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
-
+lmwt=10
 
 # Contexts must ideally match training
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
