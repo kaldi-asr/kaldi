@@ -69,6 +69,7 @@ static const int kNoPdf = -1;
 //                   indexes pdf's, either forward or self-loop).  Zero-based.
 //                   In DNN-based systems this would be the column index of
 //                   the neural net output.
+//                   Here, it's "this state". Presumably the source?
 // (*)self-loop-pdf-id:  The pdf-id associated with the self-loop of this state,
 //                   if there is one (we do not allow >1), or -1 if there is no
 //                   self-loop.  This will be the same as 'pdf-id' if this transition
@@ -77,7 +78,7 @@ static const int kNoPdf = -1;
 //                   why it's necessary is that we initially create the graph
 //                   without self-loops (for efficiency) and we need to be able
 //                   to look up the corresponding self-loop transition-id to
-//                   add self-loops to the graph.
+//                   add self-loops to the graph. Duh! That makes complete sense!
 //
 //   transition-id:  The numbers that we put on the decoding-graph arcs.
 //                   Each transition-id is associated with a 4-tuple
@@ -158,8 +159,22 @@ class Transitions {
     }
     // TODO.  operator == can compare all members. Also compare derived members?
     bool operator == (const TransitionIdInfo &other) const {
-      return phone == other.phone && topo_state == other.topo_state &&
-          pdf_id == other.pdf_id && self_loop_pdf_id == other.self_loop_pdf_id;
+      if (phone == other.phone && topo_state == other.topo_state &&
+          pdf_id == other.pdf_id) {
+        // This assertion is no longer true. Two states can have
+        // different arc_index fields. This equality operator is just
+        // bizarre. Should a TransitionIdInfo really be the same as
+        // another one if they don't have the same arc_index? I don't
+        // think so...  Should probably make a TransitionState class
+        // exposing a different operator== based on this class.
+        KALDI_ASSERT(self_loop_pdf_id == other.self_loop_pdf_id);
+        return true;
+      } else {
+        return false;
+      }
+    }
+    bool operator != (const TransitionIdInfo &other) const {
+      return !(*this == other);
     }
   };
 
@@ -195,12 +210,13 @@ class Transitions {
              const Vector<double> *occs = NULL);
 
   /// returns true if this is identical to 'other'
-  bool operator == (const Transitions &other);
+  bool operator == (const Transitions &other) const;
 
  private:
 
-  // Called from constructor.  initializes info_ (at least, the first 5
-  // fields); you then have to call ComputeDerived() to initalize teh rest.
+  // Called from constructor.  initializes info_ (at least, the first
+  // 5 fields); the implementation then has to call ComputeDerived()
+  // to initalize the rest.
   void ComputeInfo(const ContextDependencyInterface &ctx_dep);
 
   void ComputeDerived();  // Called from constructor and Read function.
@@ -211,8 +227,8 @@ class Transitions {
   Topology topo_;
 
   /// Information about transition-ids, indexed by transition-id.
-  /// the tuples are in sorted order which allows us to do the reverse mapping from
-  /// tuple to transition id.
+  /// the tuples are in lexicographic sorted order which allows us to do the
+  /// reverse mapping from tuple to transition id.
   std::vector<TransitionIdInfo> info_;
 
 

@@ -55,9 +55,7 @@ namespace kaldi {
        different arcs with the same pdf-class are allowed.  (We avoid 0
        because it is "special" in OpenFST, it is used for epsilon).
      - The start state must be state 0 and there must be no
-       transitions entering it except (possibly) a self-loop (although
-       a self-loop on state 0 is not advised for decoding-graph-size
-       reasons)
+       transitions entering it.
      - The start state must not be final.
      - No phone (in the <ForPhones>...</ForPhones> block) may have the value 0.
 

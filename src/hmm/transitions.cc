@@ -29,7 +29,7 @@
 
 namespace kaldi {
 
-bool Transitions::operator == (const Transitions &other) {
+bool Transitions::operator == (const Transitions &other) const {
   return topo_ == other.topo_ && info_ == other.info_ &&
       num_pdfs_ == other.num_pdfs_;
 }

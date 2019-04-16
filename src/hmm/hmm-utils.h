@@ -20,6 +20,8 @@
 #ifndef KALDI_HMM_HMM_UTILS_H_
 #define KALDI_HMM_HMM_UTILS_H_
 
+#include <memory>
+
 #include "hmm/topology.h"
 #include "hmm/transitions.h"
 #include "lat/kaldi-lattice.h"
@@ -66,7 +68,7 @@ struct HmmCacheHash {
 /// HmmCacheType is a map from (central-phone, sequence of pdf-ids) to FST, used
 /// as cache in GetHmmAsFsa, as an optimization.
 typedef unordered_map<std::pair<int32, std::vector<int32> >,
-                      fst::VectorFst<fst::StdArc>*,
+                      std::shared_ptr<fst::ExpandedFst<fst::StdArc>>,
                       HmmCacheHash> HmmCacheType;
 
 
@@ -76,6 +78,7 @@ typedef unordered_map<std::pair<int32, std::vector<int32> >,
 /// "Fst".  This acceptor does not include self-loops; you have to call
 /// AddSelfLoops() for that.  (We do that at a later graph compilation phase,
 /// for efficiency).  The labels on the FSA correspond to transition-ids.
+/// But now we already have self-loops... Problematic?
 ///
 /// as the symbols.
 /// For documentation in context, see \ref hmm_graph_get_hmm_as_fst
@@ -88,9 +91,9 @@ typedef unordered_map<std::pair<int32, std::vector<int32> >,
 ///   @param config Configuration object, see \ref HTransducerConfig.
 ///   @param cache Object used as a lookaside buffer to save computation;
 ///       if it finds that the object it needs is already there, it will
-///       just return a pointer value from "cache"-- not that this means
+///       just return a pointer value from "cache"-- note that this means
 ///       you have to be careful not to delete things twice.
-fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
+std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
     std::vector<int32> context_window,
     const ContextDependencyInterface &ctx_dep,
     const Transitions &trans_model,
@@ -101,7 +104,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
 /// Included mainly as a form of documentation, not used in any other code
 /// currently.  Creates the acceptor FST with self-loops, and with fewer
 /// options.
-fst::VectorFst<fst::StdArc>*
+const fst::StdVectorFst&
 GetHmmAsFsaSimple(std::vector<int32> context_window,
                   const ContextDependencyInterface &ctx_dep,
                   const Transitions &trans_model,
@@ -123,7 +126,7 @@ GetHmmAsFsaSimple(std::vector<int32> context_window,
   * the input of the transducer (i.e. same symbol type as whatever is on the
   * input of the transducer
   */
-fst::VectorFst<fst::StdArc>*
+std::unique_ptr<fst::VectorFst<fst::StdArc>>
 GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
                const ContextDependencyInterface &ctx_dep,
                const Transitions &trans_model,
@@ -186,6 +189,7 @@ void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
                   BaseFloat self_loop_scale,
                   bool reorder,
+                  // Use arcfilter.h for this.
                   bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
 
@@ -224,7 +228,7 @@ void AddTransitionProbs(const Transitions &trans_model,
 
 /// Returns a transducer from pdfs plus one (input) to  transition-ids (output).
 /// Currenly of use only for testing.
-fst::VectorFst<fst::StdArc>*
+std::unique_ptr<fst::VectorFst<fst::StdArc>>
 GetPdfToTransitionIdTransducer(const Transitions &trans_model);
 
 /// Converts all transition-ids in the FST to pdfs plus one.
