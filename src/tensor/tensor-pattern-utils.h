@@ -81,6 +81,22 @@ inline bool AxisIsTrivial(int32 pattern_code, int32 raxis) {
 
 
 /**
+   This function removes trivial axes (i.e. axes with dim=1) from 'pattern'.
+   Although in a valid pattern axes with dim=1 must have stride=0
+   and vice versa, this function does not check that property; it simply
+   removes axes with dim=1, reducing num_axes appropriately.
+
+     @param [in,out] pattern   Pattern to be modified.  Any axes with dim=1
+                         will be removed and the num_axes reduced.  Will be
+                         valid at output if it was valid at input, or even if
+                         it was valid at input in all but property (iv),
+                         that strides must be zero for axes with dim=1.
+                         CAUTION: the code of 'pattern' is *not* updated.
+ */
+void RemoveTrivialAxes(TensorPattern *pattern);
+
+
+/**
    This function returns a code that compactly represents the same information
    as GetDimsCode() [i.e. which axes had dim != 1], but also encodes which axis,
    if any, had stride=1, and has a bit that says whether any axis had negative

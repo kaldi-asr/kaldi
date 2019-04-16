@@ -35,12 +35,24 @@ namespace tensor {
 /*
   GLOSSARY
 
-    Axis:             An axis is an index into the `dims` or `strides` of a
-                      Tensor.  For example, if we had a Tensor with dims=[5 6 7],
-                      axis 0 would have dim=5 and axis 2 would have dim=7.
-                      Some other toolkits use the word 'dimension' for this concept,
-                      but we avoid that usage because it is ambiguous; we consistently
-                      use the word 'axis' for this concept.
+    Axis:             An axis is one of the (dim, stride) pairs that form part
+                      of a TensorPattern, and we often use the word "axis"
+                      to refer to the index of the axis, as in, for example,
+                      in a Tensor with dims=[5 6 7], axis 0 has dim=5 and
+                      axis 2 has dim=7.  See also axis-index and raxis-index,
+                      which are more precise terms for the index of the axis
+                      and clearly disambiguate the numbering used (public
+                      numbering, or reversed private numbering).
+                      Caution: some other toolkits use the word 'dimension' where
+                      we use 'axis', but we avoid that usage because it is
+                      ambiguous.
+
+    Axis-index:       An axis-index of a Pattern or Tensor (sometimes just "axis" for short,
+                      especially in code) is an index in the range [0, num_axes - 1]
+                      that identifies an axis in the public numbering (see "Public numbering").
+                      See also: Raxis-index.
+
+    Axis-sorting property: search below for [Valid Pattern], point (vi).
 
     Broadcasting:     A convention whereby for an operation on Tensors that would
                       normally be required to have the same dimension, it's
@@ -158,18 +170,16 @@ namespace tensor {
                       index would be outside that region.
 
     Pattern:          An object representing the dims, strides and offset of a Tensor.
-                      (see struct TensorPattern).  Mathematically the Pattern
-                      has a number of axes, its `num_axes`, and for each axis
-                      from 0 <= axis < num_axes, it has a dimension and stride.
+                      (see struct TensorPattern).  The Pattern has
+                      an 'offset' which is the memory-index of the element of the Tensor
+                      whose index-tuple is all zeros; the Pattern also
+                      has a number of axes, `0 <= num_axes < KALDI_TENSOR_MAX_DIM`,
+                      and for each axis from 0 <= axis < num_axes, it has a dimension
+                      dim(axis) and stride(axis).
 
+                      Search below for 'Valid Pattern' for properties a Pattern must
+                      (in most circumstances) satisfy.
 
-                      write these as dim[axis] and
-
-
-                        Mathematical
-
-                      We ensure this by requiring a slightly stronger property,
-                      namely:
 
     Pattern-tuple:    A pattern-tuple of a tuple of Patterns, say:  (pattern1, pattern2);
                       we require the patterns in the tuple to be broadcastable, meaning,
@@ -183,6 +193,7 @@ namespace tensor {
                       Tensor.  We use the index `axis` when in the public numbering.
                       We use square brackets when describing dims or strides ordered
                       in the public numbering, e.g. dims=[3 4].
+                      See also: axis-index
 
     Private numbering:  The reversed numbering of axes in struct TensorPattern.
                       For an axis numbered `axis` in the public numbering, its
@@ -191,11 +202,20 @@ namespace tensor {
                       We use curly brackets when describing dims or strides
                       ordered in the private numbering, e.g. dims={4,3}; this
                       is supposed to call to mind a C++ brace-initializer.
+                      See also: raxis-index
 
     PyTorch-style broadcasting:  We use this name to refer to the fact that in
                       PyTorch, if an operation is done on two Tensors with
                       dims=[5 6] and dims=[6], the second one would be interpreted
                       as having dims=[1 6].  That is: we pad with 1's on the left.
+
+    Raxis-index:      We use the term "raxis-index", often just "raxis" for short,
+                      to mean the index of an axis in the reversed, private numbering.
+                      This would usually be in the range [0, num_axes - 1] for
+                      a Pattern with `num_axes` axes, but for broadcasting purposes,
+                      if we are doing an operation between Tensors of different
+                      numbers of axes we may often use larger raxis values for the Tensor
+                      of smaller num_axes (see PyTorch-style broadcasting).
 
     Trivial axis:     An axis of a Pattern for which dim=1 and stride=0.
 
@@ -224,17 +244,37 @@ namespace tensor {
                       necessary (since most BLAS implementations do not support
                       negative stride).
 
-   Valid pattern:    A pattern is valid if it satisfies the following properties.
 
-                      0 <= num_axe
+    Valid Pattern:
+                     A valid Pattern must be as follows.  Think of this as the mathematical definition;
+                     see the declaration of struct TensorPattern for additional details about how
+                     it is stored.
 
-   Uniqueness property:  A property that we require of Patterns (and hence of
-                      Tensors), that ensures that no two distinct index-tuples in the
-                      index-tuple-set of a Pattern may map to the same memory-index.
-                      The property is: that if the axes are sorted in increasing order
-                      of abs(stride), for each `0 <= axis < num_axes - 1` we have
-                      `abs(strides[axis+1]) >= abs(strides[axis]) * dims[axis]`.
+                          (i) The num_axes must satisfy 0 <= num_axes < KALDI_TENSOR_MAX_DIM
+                          (ii) The offset must be >= 0.
+                          (iii) the dims must all be >0.
+                          (iv) the strides must be zero for axes with dim=1
+                          (v) the strides must be nonzero (but not necessarily positive) for axes with
+                                dim != 1.
+                          (vi) the axis-sorting property.   This property assures that no memory-index
+                              can be accessed via two different index-tuples, and is sufficient
+                              but not necessary toensure the Uniqueness Property (see its own entry).
+                              This property requires that if the axes are sorted from least to greatest
+                              value of abs(stride),
+                              for each axis i < num_axes - 1:
+                                    dim(i) * stride(i) <= stride(i+1).
 
+   Valid+ Pattern:  a Pattern which is valid and also has its code set.  See declaration for
+                    struct TensorPattern.  This is not a mathematical type of definition, more
+                    of a code-level definition, but since we frequently need this notion,
+                    we give it its own name.
+
+   Uniqueness property:  A property of a Pattern that no two different index-tuples,
+                      when used to index the Pattern, generate the same memory-index.
+                      The axis-sorting property is sufficient, but not necessary,
+                      to ensure the uniqueness property.  (The uniqueness property
+                      is probably not so easy to test for efficiently in the general
+                      case; at least, we have not found a way).
  */
 
 
@@ -292,20 +332,20 @@ struct TensorPattern {
   int32 strides[KALDI_TENSOR_MAX_DIM];  // the strides in reversed order,
                                         // indexed by 'raxis' (reversed axis)
   int32 code;  // pattern code; see ComputePatternCode() in tensor-pattern-utils.h
-               // for details.  It is the responsibility of the user to keep
-               // this updated (i.e. don't change dims or strides without updating
-               // 'code').
+               // for details.  If this is negative then it means it has not been
+               // computed.  In a valid TensorPattern the code will always be either
+               // negative or up-to-date.
   int64 offset;  // Offset of the element with all-zero indexes
                  // from the start of the originally allocated memory
                  // region
 
-  // Returns true if the TensorPattern is valid, I.e. that it satifies all the
-  // properties mentioned above.
-  //
-  //  @param [in] check_code   If true, the check includes verifying that the
-  //                        'code' has the value it should (c.f. GetPatternCode()).
-  //  @return     Returns true if valid, false if not valid.
-  bool IsValid(bool check_code = true);
+  // Returns true if the TensorPattern is valid.  This includes all the
+  // mathematical conditions on a valid Pattern (search above for "Valid
+  // Pattern"), plus extra conditions related to struct TensorPattern,
+  // namely: dims and strides with index >= num_axes should be
+  // 1 and 0 respectively; and the code should either be -1 or or
+  // be the same as ComputePatternCode() returns on this pattern.
+  bool IsValid();
 
   // This comparator induces a total ordering on valid TensorPatterns.
   // It is a lexical comparison on the offset, num_axes, dims and strides.

@@ -28,100 +28,199 @@ class IntersectionComputer {
  public:
   IntersectionComputer(const TensorPattern &pattern1,
                        const TensorPattern &pattern2):
-      pattern1_(pattern1), pattern2_(pattern2) {
+      pattern1_(pattern1), pattern2_(pattern2);
+
+  /**
+     Computes the intersection between the pattern1 and pattern2 given to the
+     constructor (must be called only once); if it could be computed, the
+     intersection is represented as the union between all the (disjoint)
+     patterns in patterns_out.
+
+        @param [in] patterns_out  A list of patterns (in arbitrary order)
+                         is written to here.  The union of this list of patterns
+                         will, if this function returns true,
+                         represent the intersection between the pattern1 and
+                         pattern2 passed to the constructor.  These patterns
+                         will be valid without a code, but won't be
+                         in canonical form (the user can do that themselves;
+                         we don't it here because in most cases the caller will
+                         only care whether the union is empty or not).
+  */
+  bool ComputeIntersection(std::vector<TensorPattern> *patterns_out) {
     CanonicalizePattern(&pattern1_);
     CanonicalizePattern(&pattern2_);
+    std::vector<int32> axes;
+    if (!FindCommonStrides(&axes))
+      return false;
+    std::vector<TensorPattern> patterns1, patterns2;
+    patterns1.reserve(8);
+    patterns2.reserve(8);
+    ConvertToCommonStrides(pattern1_, &patterns1);
+    ConvertToCommonStrides(pattern2_, &patterns2);
+    patterns_out->clear();
+    ComputeIntersection(patterns1, patterns2, patterns_out);
+    return true;
   }
 
  private:
 
   // Attempts to find a common list of strides which can be used for the
   // combined patterns.  Returns false if this cannot be done.  This is done by
-  // taking the union of {1} and the strides in pattern1_ and pattern2_, sorting
-  // them, and then checking that each stride in the sequence divides the next
-  // (it returns true if this is the case, false otherwise).
+  // taking the union of the strides in pattern1_ and pattern2_, sorting them,
+  // and then checking that each stride in the sequence divides the next (it
+  // returns true if this is the case, false otherwise).
+  // These strides must all be positive because pattern1_ and pattern2_ have
+  // both been canonicalized.
   bool FindCommonStrides(std::vector<int32> *axes);
 
 
-  // This function converts a pattern in canonical form to a list of Patterns
-  // that are equivalent (after taking their union, viewed as memory-index-sets)
-  // to the original Pattern, where the strides of the output patterns are equal
-  // to the provided 'common_strides' vector.  This function requires that the
-  // actual strides in 'pattern' all be present in the list 'common_strides',
-  // that the elements of 'common_strides' be positive and that each element in
-  // 'common_strides' divide the next element exactly.
-  // The codes of 'patterns' are not set.
+  /**
+    This function converts a pattern 'pattern' in canonical form to a list of Patterns
+    whose union (viewed as memory-index-sets) is equivalent to 'pattern'
+    where the strides of the output patterns are equal to the provided 'common_strides'
+    vector.
+
+    This function requires that the actual strides in 'pattern' all be present in
+    the list 'common_strides'; that the elements of 'common_strides' be positive
+    and sorted from smallest to greatest; and that each element in
+    'common_strides' divide the next element exactly.
+
+
+       @param [in] pattern  Input pattern in canonical form, valid except for
+                         code.
+       @param [in] common_strides   A sorted list of integers >0, with the
+                         property that each element must divide the next
+                         element exactly, and also that each stride in
+                         'pattern' must be present in 'common_strides'.
+       @param [out] patterns   This will be set to a nonempty list of patterns
+                         whose union (viewed as a memory-index-set) equals
+                         'pattern', and whose strides are equal to
+                         'common_strides'.  The patterns in `*patterns` at
+                         output will be valid except for the code and for
+                         property (iv) (search Valid Pattern in
+                         tensor-pattern.h): that is, it will have nonzero
+                         strides for axes with dim != 1.
+  */
   static void ConvertToCommonStrides(const TensorPattern &pattern,
                                      const std::vector<int32> &common_strides,
-                                     std::vector<TensorPattern*> patterns);
+                                     std::vector<TensorPattern> *patterns);
 
   /**
-     Computes the intersection between pattern1 and pattern2, which must
-     have identical axes and strides, and must be valid *except* that
-     it's not required that axes with dim=1 must have stride=0, and the
+     Computes the intersection between pattern1 and pattern2, which must have
+     identical axes and strides, and must be valid *except* for property (iv),
+     i.e.  it's not required that axes with dim=1 must have stride=0, and the
      code does not have to be set.
 
-     If the intersection was nonempty, it returns true and outputs it to
-     'pattern_out'; otherwise it returns false.  If this function
-     returns true, 'pattern_out' will be valid and will have trivial
-     axes removed (but will not have its code set).
+
+        @param [in] pattern1   The first input pattern.  Must be valid
+                               except for property (iv), and must have positive
+                               strides.
+        @param [in] pattern2   The second input pattern.  Must be valid
+                               except for property (iv), and must have
+                               the same strides (in the same order)
+                               as pattern1.
+        @param [out] patterns_out  The output patterns; this function will write
+                               to this location a vector of disjoint patterns
+                               whose union (viewed as a memory-index-set) is
+                               identical to the intersection of pattern1
+                               and pattern2.  The patterns in this vector will
+                               be valid except for property (iv) [i.e. they
+                               won't have zero strides for axes with dim=1], and
+                               they will not have their code set.
+  */
+  static ComputeIntersection(const TensorPattern &pattern1,
+                             const TensorPattern &pattern2,
+                             std::vector<TensorPattern> *patterns_out) {
+    patterns_out->clear();
+    ComputeIntersection(pattern1, pattern2, pattern1.num_axes,
+                        patterns_out);
+  }
+
+  /**
+     In this recursive implementation of ComputeIntersection() [see version
+     above for more information on pattern1, pattern2 and patterns_out], the
+     user guarantees that for all axes with raxis-index `raxis >=
+     identical_raxis`, pattern1 and pattern2 have the same dimension, and
+     it may be assumed that we are only interested in the part of the
+     intersection where the indexes are the same for pattern1 and pattern2,
+     for all raxis >= identical_raxis.
+
+     In this recursion, when we get to 'identical_raxis == 0', it means pattern1
+     and pattern2 have identical dims and strides; and if they also have the
+     same offset, all we need to do is append one of them to 'patterns_out'
+     (otherwise this part of the intersection is empty; but note that this
+     function may in general fork into two branches each time it recurses).
+     This is all part of a process of trying to make the 'offset' identical
+     between the two patterns by discarding some leading dimensions on one of
+     the two patterns.  On raxis-indexes that we have processed, we also make
+     the 'dim' the same by lopping off trailing dimensions.
   */
   static bool ComputeIntersection(const TensorPattern &pattern1,
                                   const TensorPattern &pattern2,
-                                  TensorPattern *pattern_out);
+                                  int32 identical_raxis,
+                                  std::vector<TensorPattern> *patterns_out);
 
-  // This function converts a pattern in canonical form to a possibly-invalid
-  // Pattern whose strides are equal to the provided 'common_strides' vector.
-  // It is required that the actual strides in 'pattern' all be present
-  // in the list 'common_strides', that the elements of 'common_strides' be
-  // positive and that each element in 'common_strides' divide the next element
-  // exactly.
-  //
-  // By 'possibly-invalid' what we mean is that the output pattern might
-  // not satisfy the property that, for a TensorPattern with axes sorted
-  // by increasing stride,
-  //  for 0 <= raxis < num_axes - 1,
-  //   stride[raxis+1] >= stride[raxis] * dim[raxis].
-  //
-  // That is because we ensure that pattern_out has the strides from
-  // 'common_strides' by simply inserting trivial dims with any missing strides,
-  // while keeping the strides in increasing order.
-  // The code of pattern_out is not set.
+
+  /**
+     This function, called by ConvertToCommonStrides() converts a pattern in
+     canonical form to a Pattern whose strides are equal to the
+     provided 'common_strides' vector, and which is valid *except for*
+     the axis-sorting (property (vi) of a valid Pattern) and
+     for property (iv), that strides must be nonzero for axes
+     with dim != 1.
+
+         @param [in] pattern_in  The input pattern; must be valid and
+                                 in canonical form.
+         @param [in] common_strides  The list of strides.  Must be sorted,
+                                 have the property that each element
+                                 divides the next element, and all
+                                 strides in pattern_in must be present
+                                 in this list.
+         @param [out] pattern_out   The output pattern.  Will be equivalent
+                                 to pattern_in in terms of memory-index-set,
+                                 its strides will be equal to 'common_strides'
+                                 (including the order), and it will be valid
+                                 except for properties (iv) and (vi), as
+                                 mentioned above.
+  */
   static void ConvertLazilyToCommonStrides(const TensorPattern &pattern_in,
                                            const std::vector<int32> &common_strides,
                                            TensorPattern* pattern_out);
 
   /**
-     This function makes sure that the pattern 'pattern' has the property that
+     This function makes sure that the axis-sorting property in 'pattern'
+     holds for the axis numbered 'raxis' (in the private numbering, of
+     course).  I.e. it ensures that:
 
        `pattern->strides[raxis+1] >= pattern->strides[raxis] * pattern->dims[raxis]`
 
      If it does not already have this property, this function ensures that it
-     does have it by modifying its dims for raxis and raxis+1, and if necessary,
-     'forking' the pattern to 'extra_pattern'.  This will be necessary if the
+     does have it by modifying its dims for raxis and raxis + 1, and if necessary,
+     moving part of the pattern to 'extra_pattern'.  This will be necessary if the
      value of `pattern->dims[raxis]` at entry is not a multiple of
      `pattern->strides[raxis+1] / pattern->strides[raxis]`.
 
          @param [in]      raxis    The axis on which we are doing the check
-         @param [in,out]  pattern  The input pattern (possibly invalid, as
-                                explained in the docs for ConvertLazilyToCommonStrides()).
-                                Its strides must be in increasing order and each must
-                                divide the next.
+         @param [in,out]  pattern  The input pattern, valid except for properties
+                                (iv) and (vi).  Its strides must be in
+                                increasing order (in the private numbering) and
+                                each must divide the next.
          @param [out]     extra_pattern   This function writes to 'extra_pattern' if
-                                and only if it returns true.  See below.
+                                and only if it returns true.  See documentation of
+                                return status.
          @return  Returns true if it wrote to extra_pattern.  If it returns true,
                   then it guarantees that the union of the memory-index-sets of
                   'pattern' and 'extra_pattern' at exit are equal to the memory-index-set
                   of 'pattern' at entry.  If it returns false, then it guarantees
                   that the memory-index-set of 'pattern' has been unchanged.
-                  In either case it guarantees that the property mentioned above
-                  holds for pattern and, if it returns true, to 'extra_pattern'
-                  as well.
-                  The codes of pattern and extra_patter are not set.
+                  In either case it guarantees that property (vi), the axis-sorting
+                  property, holds for axis 'raxis', in 'pattern' and (if applicable)
+                  in `extra_pattern`.
+                  The codes of pattern and extra_pattern are not set.
   */
-  static bool EnsurePropertyHolds(int32 raxis,
-                                  TensorPattern *pattern,
-                                  TensorPattern *extra_pattern);
+  static bool EnsureAxisSortingPropertyHolds(int32 raxis,
+                                             TensorPattern *pattern,
+                                             TensorPattern *extra_pattern);
 
 
 
@@ -143,8 +242,28 @@ class IntersectionComputer {
 };
 
 
+bool IntersectionComputer::FindCommonStrides(std::vector<int32> *axes) {
+  axes->clear();
+  axes->reserve(pattern1_.num_axes + pattern2_.num_axes);
+  for (int32 raxis = 0; raxis < pattern1_.num_axes; raxis++)
+    axes->push_back(pattern1_.strides[raxis]);
+  for (int32 raxis = 0; raxis < pattern2_.num_axes; raxis++)
+    axes->push_back(pattern2_.strides[raxis]);
+  SortAndUniq(axes);  // sort from least to greatest, remove duplicates.
+  int32 prev_stride = (*axes)[0];
+  size_t num_axes = axes->size();
+  for (size_t i = 1; i < num_axes; i++) {
+    int32 cur_stride = (*axes)[i];
+    if (cur_stride % prev_stride != 0)
+      return false;  // prev_stride does not divide cur_stride; our algorithm
+                     // for detecting overlap cannot be used.  This shouldn't
+                     // really happen in "reasonable" uses of Tensors.
+    prev_stride = cur_stride;
+  }
+  return true;
+}
 
-bool IntersectionComputer::EnsurePropertyHolds(
+bool IntersectionComputer::EnsureAxisSortingPropertyHolds(
     int32 raxis, TensorPattern *pattern,
     TensorPattern *extra_pattern) {
   KALDI_PARANOID_ASSERT(raxis + 1 < pattern->num_axes);
@@ -220,18 +339,87 @@ void IntersectionComputer::ConvertToCommonStrides(
     TensorPattern extra_pattern;
     int32 num_patterns = patterns->size();
     for (int32 p = 0; p < num_patterns; p++) {
-      if (EnsurePropertyHolds(raxis, &((*patterns)[p]), &extra_pattern))
+      if (EnsureAxisSortingPropertyHolds(raxis, &((*patterns)[p]),
+                                         &extra_pattern))
         patterns->push_back(extra_pattern);
     }
   }
 }
 
 
-// intersection between patterns with identical strides.
+// see declaration for documentation.
+void IntersectionComputer::ComputeIntersection(
+    const TensorPattern &pattern1,
+    const TensorPattern &pattern2,
+    int32 identical_raxis,
+    std::vector<TensorPattern> *patterns_out) {
+  if (identical_raxis == 0) {
+    if (pattern1.offset == pattern2.offset) {
+      patterns_out->push_back(pattern1);
+      RemoveTrivialAxes(&(patterns_out->back()));
+    }
+    return;
+  }
+  // we'll be modifying the dims and strides on axis 'raxis'.
+  int32 raxis = identical_raxis - 1,
+      stride = pattern1.strides[raxis]; // will be the same in pattern2, and positive.
+
+  // By the '?..:' statements below we possibly switch pattern2 and
+  // pattern1, thereby ensuring that pattern2_mod.offset >= pattern1_mod.offset
+  TensorPattern pattern1_mod(pattern2.offset >= pattern1.offset ? pattern1 : pattern2),
+      pattern2_mod(pattern2.offset >= pattern1.offset ? pattern2 : pattern1);
+
+
+  // pattern2_mod's offset is larger (or the same), so we may need to discard
+  // some leading indexes of pattern1_mod (on axis 'raxis'), increasing the
+  // offset and reducing the dim, to get the offsets closer to being the same,
+  // and then take the min of the dims on that axis.
+
+  // 'dim_discarded' below will be rounded down in the division, and we will
+  // also need to also consider the value that's one larger than that.  We don't
+  // need to consider any other values of 'dim_discarded' other than these two,
+  // because it's possible to prove that if we recurse with the remaining offset
+  // being greater than 'stride', we would never be able to get to offset=0
+  // without discarding all dims of at least one axis numbered less than raxis.
+  // The proof requires the axis-sorting property.
+  int32 offset_diff = pattern2_mod.offset - pattern1_mod.offset,
+      min_dim1_discarded = offset_diff / stride,
+      max_dim1_discarded = ((offset_diff == min_dim1_discarded * stride) ?
+                            min_dim1_discarded : min_dim1_discarded + 1);
+
+  // Make a copy of the relevant dims, and pattern1's offset, because the
+  // versions in the patterns may get modified in the loop.
+  int32 pattern1_dim = pattern1_mod.dims[raxis],
+      pattern2_dim = pattern2_mod.dims[raxis],
+      pattern1_offset = pattern1.offset;
+  for (int32 dim1_discarded = min_dim1_discarded;
+       dim1_discarded <= max_dim1_discarded; dim1_discarded++) {
+    pattern1_mod.offset = pattern1_offset + dim1_discarded * stride;
+    int32 new_pattern1_dim = pattern1_dim - dim1_discarded;
+    if (new_pattern1_dim <= 0)
+      continue;
+    pattern1_mod.dims[raxis] = new_pattern1_dim;
+    // set both dims of pattern1_mod and pattern2_mod to the minimum
+    // of the two dims.
+    if (pattern2_dim > new_pattern1_dim) {
+      pattern1_mod.dims[raxis] = new_pattern1_dim;
+      pattern2_mod.dims[raxis] = new_pattern1_dim;
+    } else {
+      pattern1_mod.dims[raxis] = pattern2_dim;
+      pattern2_mod.dims[raxis] = pattern2_dim;
+    }
+    // Recurse.  We would have continued above if we discarded all dims on this
+    // axis.
+    ComputeIntersection(pattern1, pattern2, raxis, patterns_out);
+  }
+}
+
+
+
 bool IntersectionComputer::ComputeIntersection(
     const TensorPattern &pattern1,
     const TensorPattern &pattern2,
-    TensorPattern *pattern_out) {
+    std::vector<TensorPattern> *patterns_out) {
   // First ensure that pattern1.offset <= pattern2.offset.
   if (pattern1.offset > pattern2.offset)
     return ComputeIntersection(pattern2, pattern1, pattern_out);

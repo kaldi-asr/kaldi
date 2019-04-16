@@ -415,7 +415,28 @@ void Transpose(int32 axis1_in, int32 axis2_in, TensorPattern *p) {
   p->code = ComputePatternCode(*p);
 }
 
+void RemoveTrivialAxes(TensorPattern *pattern) {
+  int32 num_axes = pattern->num_axes,
+      num_axes_out = 0;
+  for (int32 raxis = 0; raxis < num_axes; raxis++) {
+    int32 this_dim = pattern->dims[raxis];
+    if (this_dim != 0) {
+      if (num_axes_out != raxis) {
+        pattern->dims[num_axes_out] = this_dim;
+        pattern->strides[num_axes_out] = pattern->strides[raxis];
+      }
+    }
+  }
+  // It is a requirement of struct TensorPattern that dims and
+  // strides for raxis > num_axes be 1 and 0 respectively.
+  for (int32 raxis = num_axes_out; raxis < num_axes; raxis++) {
+    pattern->dims[raxis] = 1;
+    pattern->strides[raxis] = 0;
+  }
+  pattern->num_axes = num_axes;
+  // Caution: we are not updating the code.
 
+}
 
 
 }  // namespace kaldi
