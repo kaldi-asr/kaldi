@@ -12,7 +12,7 @@ stage=8
 train_stage=-10
 get_egs_stage=-10
 xent_regularize=0.1
-dir=exp/chain/tdnn_5n
+dir=exp/chain/tdnn_5o
 
 # training options
 num_epochs=12
@@ -47,8 +47,8 @@ fi
 # run those things.
 
 ali_dir=exp/tri3b_ali
-treedir=exp/chain/tri4_5n_tree
-lang=data/lang_chain_5n
+treedir=exp/chain/tri4_5o_tree
+lang=data/lang_chain_5o
 
 local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
