@@ -170,8 +170,6 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   * @param trans_model [in] Transition model
   * @param disambig_syms [in] Sorted, uniq list of disambiguation symbols, required
   *       if the graph contains disambiguation symbols but only needed for sanity checks.
-  * @param self_loop_scale [in] Transition-probability scale for self-loops; c.f.
-  *                    \ref hmm_scale
   * @param reorder [in] If true, reorders the transitions (see \ref hmm_reorder).
   *                     You'll normally want this to be true.
   * @param check_no_self_loops [in]  If true, it will check that there are no
@@ -187,47 +185,14 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   */
 void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
-                  BaseFloat self_loop_scale,
                   bool reorder,
                   // Use arcfilter.h for this.
                   bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
 
-/**
-  * Adds transition-probs, with the supplied
-  * scales (see \ref hmm_scale), to the graph.
-  * Useful if you want to create a graph without transition probs, then possibly
-  * train the model (including the transition probs) but keep the graph fixed,
-  * and add back in the transition probs.  It assumes the fst has transition-ids
-  * on it.  It is not an error if the FST has no states (nothing will be done).
-  * @param trans_model [in] The transition model
-  * @param disambig_syms [in] A list of disambiguation symbols, required if the
-  *                       graph has disambiguation symbols on its input but only
-  *                       used for checks.
-  * @param transition_scale [in] A scale on transition-probabilities apart from
-  *                      those involving self-loops; see \ref hmm_scale.
-  * @param self_loop_scale [in] A scale on self-loop transition probabilities;
-  *                      see \ref hmm_scale.
-  * @param  fst [in, out] The FST to be modified.
-  */
-void AddTransitionProbs(const Transitions &trans_model,
-                        const std::vector<int32> &disambig_syms,
-                        BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
-                        fst::VectorFst<fst::StdArc> *fst);
-
-/**
-   This is as AddSelfLoops(), but operates on a Lattice, where
-   it affects the graph part of the weight (the first element
-   of the pair). */
-void AddTransitionProbs(const Transitions &trans_model,
-                        BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
-                        Lattice *lat);
-
 
 /// Returns a transducer from pdfs plus one (input) to  transition-ids (output).
-/// Currenly of use only for testing.
+/// Currently of use only for testing.
 std::unique_ptr<fst::VectorFst<fst::StdArc>>
 GetPdfToTransitionIdTransducer(const Transitions &trans_model);
 

@@ -394,13 +394,12 @@ private:
 };
 
 // This is the code that expands an FST from transition-states to
-// transition-ids, in the case where reorder == true, i.e. the non-optional
-// transition is before the self-loop.
-static void AddSelfLoopsReorder(const Transitions &trans_model,
-                                const std::vector<int32> &disambig_syms,
-                                BaseFloat self_loop_scale,
-                                bool check_no_self_loops,
-                                fst::VectorFst<fst::StdArc> *fst) {
+// transition-ids, in the case where the non-optional transition is before
+// the self-loop.
+static void AddSelfLoopsInternal(const Transitions &trans_model,
+                                 const std::vector<int32> &disambig_syms,
+                                 bool check_no_self_loops,
+                                 fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
@@ -461,12 +460,12 @@ static void AddSelfLoopsReorder(const Transitions &trans_model,
       // WARNING: This is no longer the forward probability that this code was originally using!
       // It is difficult to get the self-loop probability just given the 
       BaseFloat log_prob = trans_state.transition_cost;
-      fst->SetFinal(s, Times(fst->Final(s), Weight(-log_prob*self_loop_scale)));
+      fst->SetFinal(s, Times(fst->Final(s), Weight(-log_prob)));
       for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
           !aiter.Done();
           aiter.Next()) {
         Arc arc = aiter.Value();
-        arc.weight = Times(arc.weight, Weight(-log_prob*self_loop_scale));
+        arc.weight = Times(arc.weight, Weight(-log_prob));
         aiter.SetValue(arc);
       }
       // Now add self-loop, if needed.
@@ -475,60 +474,10 @@ static void AddSelfLoopsReorder(const Transitions &trans_model,
       // itself, right? How are we supposed to get the current state's
       // self-loop? Ugh. And make sure I don't repeat it...
       if (trans_id != 0) {  // has self-loop.
-        BaseFloat log_prob = trans_model.GetTransitionLogProb(trans_id);
-        fst->AddArc(s, Arc(trans_id, 0, Weight(-log_prob*self_loop_scale), s));
-      }
-    }
-  }
-}
-
-
-// this is the code that expands an FST from transition-states to
-// transition-ids, in the case where reorder == false, i.e. non-optional
-// transition is after the self-loop.
-static void AddSelfLoopsNoReorder(
-    const Transitions &trans_model,
-    const std::vector<int32> &disambig_syms,
-    BaseFloat self_loop_scale,
-    bool check_no_self_loops,
-    fst::VectorFst<fst::StdArc> *fst) {
-  using namespace fst;
-  typedef StdArc Arc;
-  typedef Arc::Label Label;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
-
-  // Duplicate states as necessary so that each state has at most one self-loop
-  // on it.
-  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
-  MakeFollowingInputSymbolsSameClass(true, fst, f);
-
-  StateId num_states = fst->NumStates();
-  for (StateId s = 0; s < num_states; s++) {
-    int32 my_trans_state = f(kNoLabel);
-    KALDI_ASSERT(my_trans_state == -1);
-    for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
-         !aiter.Done();
-         aiter.Next()) {
-      Arc arc = aiter.Value();
-      if (my_trans_state == -1) my_trans_state = f(arc.ilabel);
-      else KALDI_ASSERT(my_trans_state == f(arc.ilabel));  // or MakeFollowingInputSymbolsSameClass failed.
-      if (my_trans_state > 0) {  // transition-id; multiply weight...
-        BaseFloat log_prob = trans_model.GetNonSelfLoopLogProb(my_trans_state);
-        arc.weight = Times(arc.weight, Weight(-log_prob*self_loop_scale));
-        aiter.SetValue(arc);
-      }
-    }
-    if (fst->Final(s) != Weight::Zero()) {
-      KALDI_ASSERT(my_trans_state == kNoLabel || my_trans_state == 0);  // or MakeFollowingInputSymbolsSameClass failed.
-    }
-    if (my_trans_state != kNoLabel && my_trans_state != 0) {
-      // a transition-state;  add self-loop, if it has one.
-      int32 trans_id = trans_model.SelfLoopOf(my_trans_state);
-      if (trans_id != 0) {  // has self-loop.
-        BaseFloat neg_log_prob = \
-          trans_model.InfoForTransitionId(trans_id).transition_cost;
-        fst->AddArc(s, Arc(trans_id, 0, Weight(neg_log_prob*self_loop_scale), s));
+        auto&& trans_info = trans_model.InfoForTransitionId(trans_id).transition_cost;
+        StateId next_state = TODO;
+        BaseFloat log_prob = trans_model.InfoForTransitionId(trans_id).transition_cost;
+        fst->AddArc(next_state, Arc(trans_id, 0, Weight(-log_prob), next_state));
       }
     }
   }
@@ -536,51 +485,10 @@ static void AddSelfLoopsNoReorder(
 
 void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,
-                  BaseFloat self_loop_scale,
-                  bool reorder,
                   bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst) {
   KALDI_ASSERT(fst->Start() != fst::kNoStateId);
-  if (reorder)
-    AddSelfLoopsReorder(trans_model, disambig_syms, self_loop_scale,
-                        check_no_self_loops, fst);
-  else
-    AddSelfLoopsNoReorder(trans_model, disambig_syms, self_loop_scale,
-                          check_no_self_loops, fst);
-}
-
-// IsReordered returns true if the transitions were possibly reordered.  This reordering
-// can happen in AddSelfLoops, if the "reorder" option was true.
-// This makes the out-transition occur before the self-loop transition.
-// The function returns false (no reordering) if there is not enough information in
-// the alignment to tell (i.e. no self-loop were taken), and in this case the calling
-// code doesn't care what the answer is.
-// The "alignment" vector contains a sequence of TransitionIds.
-
-static bool IsReordered(const Transitions &trans_model,
-                        const std::vector<int32> &alignment) {
-  for (size_t i = 0; i + 1 < alignment.size(); i++) {
-    const TransitionIdInfo& tstate1 = trans_model.InfoForTransitionId(alignment[i]),
-      tstate2 = trans_model.InfoForTransitionId(alignment[i+1]);
-    if (tstate1 != tstate2) {
-      bool is_loop_1 = trans_model.IsSelfLoop(alignment[i]),
-          is_loop_2 = trans_model.IsSelfLoop(alignment[i+1]);
-      KALDI_ASSERT(!(is_loop_1 && is_loop_2));  // Invalid.
-      if (is_loop_1) return true;  // Reordered. self-loop is last.
-      if (is_loop_2) return false;  // Not reordered.  self-loop is first.
-    }
-  }
-
-  // Just one trans-state in whole sequence.
-  if (alignment.empty()) return false;
-  else {
-    bool is_loop_front = trans_model.IsSelfLoop(alignment.front()),
-        is_loop_back = trans_model.IsSelfLoop(alignment.back());
-    if (is_loop_front) return false;  // Not reordered.  Self-loop is first.
-    if (is_loop_back) return true;  // Reordered.  Self-loop is last.
-    return false;  // We really don't know in this case but calling code should
-    // not care.
-  }
+  AddSelfLoopsInternal(trans_model, disambig_syms, check_no_self_loops, fst);
 }
 
 // SplitToPhonesInternal takes as input the "alignment" vector containing
@@ -593,7 +501,6 @@ static bool IsReordered(const Transitions &trans_model,
 
 static bool SplitToPhonesInternal(const Transitions &trans_model,
                                   const std::vector<int32> &alignment,
-                                  bool reordered,
                                   std::vector<std::vector<int32> > *split_output) {
   if (alignment.empty()) return true;  // nothing to split.
   std::vector<size_t> end_points;  // points at which phones end [in an
@@ -604,25 +511,24 @@ static bool SplitToPhonesInternal(const Transitions &trans_model,
   for (size_t i = 0; i < alignment.size(); i++) {
     int32 trans_id = alignment[i];
     if (trans_model.InfoForTransitionId(trans_id).is_final) {
-      if (!reordered) end_points.push_back(i+1);
-      else {  // reordered.
-        while (i+1 < alignment.size() &&
-              trans_model.IsSelfLoop(alignment[i+1])) {
-          KALDI_ASSERT(trans_model.InfoForTransitionId(alignment[i]) ==
-                       trans_model.InfoForTransitionId(alignment[i+1]));
-          i++;
-        }
-        end_points.push_back(i+1);
+      while (i+1 < alignment.size() &&
+             trans_model.InfoForTransitionId(alignment[i+1]).is_self_loop) {
+        KALDI_ASSERT(trans_model.InfoForTransitionId(alignment[i]) ==
+                     trans_model.InfoForTransitionId(alignment[i+1]));
+        i++;
       }
+      end_points.push_back(i+1);
     } else if (i+1 == alignment.size()) {
       // need to have an end-point at the actual end.
       // but this is an error- should have been detected already.
       was_ok = false;
       end_points.push_back(i+1);
     } else {
-      int32 this_phone = trans_model.InfoForTransitionId(this_state).phone,
-          next_phone = trans_model.InfoForTransitionId(next_state).phone;
-      if (this_phone != next_phone) {
+      int32 this_phone = trans_model.InfoForTransitionId(trans_id).phone;
+      int32 next_trans_id = alignment[i+1];
+      int32 next_phone = trans_model.InfoForTransitionId(next_trans_id).phone;
+
+      if (this_phone != next_phone){
         // The phone changed, but this is an error-- we should have detected this via the
         // is_final check.
         was_ok = false;
@@ -632,17 +538,17 @@ static bool SplitToPhonesInternal(const Transitions &trans_model,
   }
 
   size_t cur_point = 0;
-  for (size_t i = 0; i < end_points.size(); i++) {
+  for (int32 end_point: end_points) {
     split_output->push_back(std::vector<int32>());
     // The next if-statement checks if the initial trans-id at the
     // current end point is the initial-state of the current phone (a
     // cursory check that the alignment is plausible).
-    int32 topo_state = trans_model.InfoForTransitionId(InfoForTransitionId).topo_state;
+    int32 topo_state = trans_model.InfoForTransitionId(end_point).topo_state;
     if (topo_state != 0)
       was_ok = false;
-    for (size_t j = cur_point; j < end_points[i]; j++)
+    for (size_t j = cur_point; j < end_point; j++)
       split_output->back().push_back(alignment[j]);
-    cur_point = end_points[i];
+    cur_point = end_point;
   }
   return was_ok;
 }
@@ -654,9 +560,7 @@ bool SplitToPhones(const Transitions &trans_model,
   KALDI_ASSERT(split_alignment != NULL);
   split_alignment->clear();
 
-  bool is_reordered = IsReordered(trans_model, alignment);
-  return SplitToPhonesInternal(trans_model, alignment,
-                               is_reordered, split_alignment);
+  return SplitToPhonesInternal(trans_model, alignment, split_alignment);
 }
 
 
@@ -861,7 +765,7 @@ static bool ConvertAlignmentInternal(const Transitions &old_trans_model,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
   KALDI_ASSERT(0 <= conversion_shift && conversion_shift < subsample_factor);
-  bool old_is_reordered = IsReordered(old_trans_model, old_alignment);
+  bool old_is_reordered = true;
   KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
   new_alignment->reserve(old_alignment.size());
@@ -997,34 +901,9 @@ bool ConvertAlignment(const Transitions &old_trans_model,
   return true;
 }
 
-// Returns the scaled, but not negated, log-prob, with the given scaling factors.
-static BaseFloat GetScaledTransitionLogProb(const Transitions &trans_model,
-                                            int32 trans_id,
-                                            BaseFloat transition_scale,
-                                            BaseFloat self_loop_scale) {
-  if (transition_scale == self_loop_scale) {
-    return trans_model.GetTransitionLogProb(trans_id) * transition_scale;
-  } else {
-    if (trans_model.IsSelfLoop(trans_id)) {
-      return self_loop_scale * trans_model.GetTransitionLogProb(trans_id);
-    } else {
-      int32 trans_state = trans_model.TransitionIdToTransitionState(trans_id);
-      return self_loop_scale * trans_model.GetNonSelfLoopLogProb(trans_state)
-          + transition_scale * trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
-      // This could be simplified to
-      // (self_loop_scale - transition_scale) * trans_model.GetNonSelfLoopLogProb(trans_state)
-      // + trans_model.GetTransitionLogProb(trans_id);
-      // this simplifies if self_loop_scale == 0.0
-    }
-  }
-}
-
-
-
 void AddTransitionProbs(const Transitions &trans_model,
                         const std::vector<int32> &disambig_syms,  // may be empty
                         BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
                         fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   KALDI_ASSERT(IsSortedAndUniq(disambig_syms));
@@ -1038,16 +917,13 @@ void AddTransitionProbs(const Transitions &trans_model,
       StdArc arc = aiter.Value();
       StdArc::Label l = arc.ilabel;
       if (l >= 1 && l <= num_tids) {  // a transition-id.
-        BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
-                                                               l,
-                                                               transition_scale,
-                                                               self_loop_scale);
+        BaseFloat scaled_log_prob =
+          trans_model.InfoForTransitionId(l).transition_cost * transition_scale;
         arc.weight = Times(arc.weight, TropicalWeight(-scaled_log_prob));
-      } else if (l != 0) {
-        if (!std::binary_search(disambig_syms.begin(), disambig_syms.end(),
-                               arc.ilabel))
-          KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
-                    << " on graph input side.";
+      } else if (l != 0 && !std::binary_search(disambig_syms.begin(),
+                                               disambig_syms.end(),l)) {
+        KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
+                  << " on graph input side.";
       }
       aiter.SetValue(arc);
     }
@@ -1056,7 +932,6 @@ void AddTransitionProbs(const Transitions &trans_model,
 
 void AddTransitionProbs(const Transitions &trans_model,
                         BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
                         Lattice *lat) {
   using namespace fst;
   int num_tids = trans_model.NumTransitionIds();
@@ -1069,10 +944,8 @@ void AddTransitionProbs(const Transitions &trans_model,
       LatticeArc arc = aiter.Value();
       LatticeArc::Label l = arc.ilabel;
       if (l >= 1 && l <= num_tids) {  // a transition-id.
-        BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
-                                                               l,
-                                                               transition_scale,
-                                                               self_loop_scale);
+        BaseFloat scaled_log_prob =
+          trans_model.InfoForTransitionId(l).transition_cost * transition_scale;
         // cost is negated log prob.
         arc.weight.SetValue1(arc.weight.Value1() - scaled_log_prob);
       } else if (l != 0) {
@@ -1156,7 +1029,7 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
     std::vector<int32> symbols;
     bool include_epsilon = false;
     // note: 'fst' is an acceptor so ilabels == olabels.
-    GetInputSymbols(*fst, include_epsilon, &symbols);
+    GetInputSymbols(fst, include_epsilon, &symbols);
     int32 cur_state = length_constraint_fst.AddState();
     length_constraint_fst.SetStart(cur_state);
     for (int32 i = 0; i < length; i++) {
@@ -1190,7 +1063,6 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
       single_path_fst, &symbol_sequence, NULL, NULL);
   KALDI_ASSERT(ans && symbol_sequence.size() == length);
   symbol_sequence.swap(*alignment);
-  delete fst;
 }
 
 void ChangeReorderingOfAlignment(const Transitions &trans_model,

@@ -50,17 +50,11 @@ int main(int argc, char *argv[]) {
     AlignConfig align_config;
     bool binary = true;
     BaseFloat acoustic_scale = 1.0;
-    BaseFloat transition_scale = 1.0;
-    BaseFloat self_loop_scale = 1.0;
 
     align_config.Register(&po);
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("transition-scale", &transition_scale,
-                "Transition-probability scale [relative to acoustics]");
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
-    po.Register("self-loop-scale", &self_loop_scale,
-                "Scale of self-loop versus non-self-loop log probs [relative to acoustics]");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 5) {
@@ -108,13 +102,6 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "Empty decoding graph for " << utt;
         num_err++;
         continue;
-      }
-
-      {  // Add transition-probs to the FST.
-        std::vector<int32> disambig_syms;  // empty.
-        AddTransitionProbs(trans_model, disambig_syms,
-                           transition_scale, self_loop_scale,
-                           &decode_fst);
       }
 
       DecodableMatrixScaledMapped decodable(trans_model, loglikes, acoustic_scale);
