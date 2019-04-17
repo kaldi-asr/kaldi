@@ -8,7 +8,7 @@
 set -e
 
 # configs for 'chain'
-stage=8
+stage=0
 train_stage=-10
 get_egs_stage=-10
 xent_regularize=0.1
