@@ -179,11 +179,8 @@ int PeekToken(std::istream &is, bool binary) {
   int ans = is.peek();
   if (read_bracket) {
     if (!is.unget()) {
-      KALDI_WARN << "Error ungetting '<' in PeekToken";
-      // Clear the bad bit.  It seems to be possible for this code to be
-      // reached, and the C++ standard is very vague on whether even a single
-      // call to unget() should succeed; see
-      // http://www.cplusplus.com/reference/istream/istream/unget/
+      // Clear the bad bit. This code can be (and is in fact) reached, since the
+      // C++ standard does not guarantee that a call to unget() must succeed.
       is.clear();
     }
   }

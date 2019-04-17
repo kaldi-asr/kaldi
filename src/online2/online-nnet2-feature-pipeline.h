@@ -196,6 +196,20 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   virtual int32 NumFramesReady() const;
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
+  /// If you are downweighting silence, you can call
+  /// OnlineSilenceWeighting::GetDeltaWeights and supply the output to this
+  /// class using UpdateFrameWeights().  The reason why this call happens
+  /// outside this class, rather than this class pulling in the data weights,
+  /// relates to multi-threaded operation and also from not wanting this class
+  /// to have excessive dependencies.
+  ///
+  /// You must either always call this as soon as new data becomes available,
+  /// ideally just after calling AcceptWaveform(), or never call it for the
+  /// lifetime of this object.
+  void UpdateFrameWeights(
+      const std::vector<std::pair<int32, BaseFloat> > &delta_weights,
+      int32 frame_offset = 0);
+
   /// Set the adaptation state to a particular value, e.g. reflecting previous
   /// utterances of the same speaker; this will generally be called after
   /// Copy().
