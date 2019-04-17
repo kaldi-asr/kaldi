@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# this script is a modified version of run_tdnn_5g.sh. It uses
-# the new transition model and the python version of training scripts.
+# this script is a modified version of run_tdnn_5n.sh. It uses
+# a new configs convention for chain model after kaldi 5.2.
 
 
 
