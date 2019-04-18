@@ -209,6 +209,8 @@ class Transitions {
              const std::vector<std::string> &phone_names,
              const Vector<double> *occs = NULL);
 
+  int32 PdfClassForTid(int32 tid) const;
+
   /// returns true if this is identical to 'other'
   bool operator == (const Transitions &other) const;
 

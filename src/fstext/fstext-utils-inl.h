@@ -678,7 +678,7 @@ MakeLoopFst(const vector<std::unique_ptr<const ExpandedFst<Arc>>> &fsts) {
 
   for (Label i = 0; i < static_cast<Label>(fsts.size()); i++) {
     // TODO(galv): I feel like this won't work with my unique_ptr usage. Call .get()?
-    const ExpandedFst<Arc> *fst = fsts[i];
+    const ExpandedFst<Arc> *fst = fsts[i].get();
     if (fst == NULL) continue;
     { // optimization with cache: helpful if some members of "fsts" may
       // contain the same pointer value (e.g. in GetHTransducer).

@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2018  Johns Hopkins University (author: Daniel Povey)
+//                2019  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -85,25 +86,28 @@ std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
        !siter.Done(); siter.Next()) {
     StateId state = siter.Value();
     std::vector<Arc> non_self_loops;
+    BaseFloat non_self_loop_prob = 1.0;
     for (fst::ArcIterator<MyEditFst> aiter(*loopless_entry, state);
          !aiter.Done(); aiter.Next()) {
       const Arc& arc = aiter.Value();
       if (arc.nextstate != state) {
         non_self_loops.push_back(arc);
+      } else {
+        non_self_loop_prob -= exp(-arc.weight.Value());
       }
     }
+    KALDI_ASSERT(non_self_loop_prob >= BaseFloat(0));
     if (non_self_loops.size() != loopless_entry->NumArcs(state)) {
       loopless_entry->DeleteArcs(state);
-      for (const Arc& arc: non_self_loops) {
+      for (Arc& arc: non_self_loops) {
+        // Renormalize the remaining arcs to have an outgoing weight
+        // of 1.0, so we maintain stochasticity
+        arc.weight = Arc::Weight(-log(exp(-arc.weight.Value()) / non_self_loop_prob));
         loopless_entry->AddArc(state, arc);
       }
     }
   }
 
-  // Now apply probability scale.
-  // We waited till after the possible weight-pushing steps,
-  // because weight-pushing needs "real" weights in order to work.
-  ApplyProbabilityScale(config.transition_scale, loopless_entry.get());
   if (cache != NULL)
     (*cache)[cache_index] = loopless_entry;
   return loopless_entry;
@@ -168,7 +172,14 @@ GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
   typedef Arc::StateId StateId;
   typedef Arc::Label Label;
 
-  std::vector<std::unique_ptr<const ExpandedFst<Arc>>> fsts(ilabel_info.size(), NULL);
+  // I would prefer to do this:
+  // std::vector<std::unique_ptr<const ExpandedFst<Arc>>> fsts(ilabel_info.size(), std::unique_ptr(nullptr));
+  // But the second arg of constructor (2) at https://en.cppreference.com/w/cpp/container/vector/vector
+  // must be able to be turned into a const-reference, which std::unique_ptr cannot be.
+  std::vector<std::unique_ptr<const ExpandedFst<Arc>>> fsts;
+  for(std::size_t i = 0; i < ilabel_info.size(); ++i) {
+    fsts.emplace_back(std::unique_ptr<const ExpandedFst<Arc>>(nullptr));
+  }
   std::vector<int32> phones = trans_model.GetPhones();
 
   KALDI_ASSERT(disambig_syms_left != 0);
@@ -415,7 +426,10 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
   // duplicated, with one copy per incoming symbol.
   MakePrecedingInputSymbolsSameClass(fst, f);
 
-  // use the following to keep track of the transition-state for each state.
+  // use the following to keep track of the transition-state incoming
+  // into each state. This works because each state now has only one
+  // transition state coming into (because of
+  // MakePrecedingInputSymbolsSameClass).
   std::vector<Class> state_in(fst->NumStates(), f.NoLabelClass());
 
   // This first loop just works out the label into each state,
@@ -429,17 +443,18 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
     for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
          !aiter.Done();
          aiter.Next()) {
-      Arc arc = aiter.Value();
+      const Arc& arc = aiter.Value();
       Class trans_state = f(arc.ilabel);
-      if (state_in[arc.nextstate] == f.NoLabelClass())
+      if (state_in[arc.nextstate] == f.NoLabelClass()) {
         state_in[arc.nextstate] = trans_state;
-      else {
+      } else {
         KALDI_ASSERT(state_in[arc.nextstate] == trans_state);
         // or probably an error in MakePrecedingInputSymbolsSame.
       }
     }
   }
 
+  // state_in maps each state in the fst to its TransitionState
   KALDI_ASSERT(state_in[fst->Start()] == f.NoLabelClass() ||
                state_in[fst->Start()] == f.ZeroClass());
   // or MakePrecedingInputSymbolsSame failed.
@@ -459,6 +474,7 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
       
       // WARNING: This is no longer the forward probability that this code was originally using!
       // It is difficult to get the self-loop probability just given the 
+      trans_model.InfoForTransitionId(trans_state.self_loop_pdf_id).transition_cost;
       BaseFloat log_prob = trans_state.transition_cost;
       fst->SetFinal(s, Times(fst->Final(s), Weight(-log_prob)));
       for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
@@ -577,9 +593,8 @@ static inline void ConvertAlignmentForPhone(
     const ContextDependencyInterface &new_ctx_dep,
     const std::vector<int32> &old_phone_alignment,
     const std::vector<int32> &new_phone_window,
-    bool old_is_reordered,
-    bool new_is_reordered,
     std::vector<int32> *new_phone_alignment) {
+  KALDI_ASSERT(!old_phone_alignment.empty());
   int32 alignment_size = old_phone_alignment.size();
   static bool warned_topology = false;
   int32 P = new_ctx_dep.CentralPosition(),
@@ -589,14 +604,16 @@ static inline void ConvertAlignmentForPhone(
   const Topology &old_topo = old_trans_model.GetTopo(),
       &new_topo = new_trans_model.GetTopo();
 
-  bool topology_mismatch = !(old_topo.TopologyForPhone(old_central_phone) ==
-                             new_topo.TopologyForPhone(new_central_phone));
-  if (topology_mismatch) {
-    if (!warned_topology) {
-      warned_topology = true;
-      KALDI_WARN << "Topology mismatch detected; automatically converting. "
-                 << "Won't warn again.";
-    }
+  // TODO(galv): Do we need the transition costs to be the same? Right
+  // now, I am assuming that we do, but it is unclear to me that we
+  // really need this.
+  bool topology_mismatch = !fst::Equal(old_topo.TopologyForPhone(old_central_phone),
+                                       new_topo.TopologyForPhone(new_central_phone),
+                                       0.0);
+  if (topology_mismatch && !warned_topology) {
+    warned_topology = true;
+    KALDI_WARN << "Topology mismatch detected; automatically converting. "
+               << "Won't warn again.";
   }
   bool length_mismatch =
       (new_phone_alignment->size() != old_phone_alignment.size());
@@ -605,12 +622,8 @@ static inline void ConvertAlignmentForPhone(
     // old alignment.
     GetRandomAlignmentForPhone(new_ctx_dep, new_trans_model,
                                new_phone_window, new_phone_alignment);
-    if (new_is_reordered)
-      ChangeReorderingOfAlignment(new_trans_model, new_phone_alignment);
     return;
   }
-
-  KALDI_ASSERT(!old_phone_alignment.empty());
 
   int32 new_num_pdf_classes = new_topo.NumPdfClasses(new_central_phone);
   std::vector<int32> pdf_ids(new_num_pdf_classes);  // Indexed by pdf-class
@@ -627,26 +640,18 @@ static inline void ConvertAlignmentForPhone(
   // the topologies and lengths match -> we can directly transfer
   // the alignment.
   for (int32 j = 0; j < alignment_size; j++) {
-    int32 old_tid = old_phone_alignment[j],
-        old_tstate = old_trans_model.TransitionIdToTransitionState(old_tid);
-    int32 forward_pdf_class =
-        old_trans_model.TransitionStateToForwardPdfClass(old_tstate),
-        self_loop_pdf_class =
-        old_trans_model.TransitionStateToSelfLoopPdfClass(old_tstate);
-    int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
-    int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
-    int32 new_forward_pdf = pdf_ids[forward_pdf_class];
-    int32 new_self_loop_pdf = pdf_ids[self_loop_pdf_class];
-    int32 new_trans_state =
-        new_trans_model.TupleToTransitionState(new_central_phone, hmm_state,
-                                               new_forward_pdf, new_self_loop_pdf);
+    int32 old_tid = old_phone_alignment[j];
+    auto&& info = old_trans_model.InfoForTransitionId(old_tid);
+    int32 old_forward_pdf_class = old_trans_model.PdfClassForTid(old_tid);
+    int32 old_self_loop_pdf_class = old_trans_model.PdfClassForTid(info.self_loop_pdf_id);
+    int32 new_forward_pdf_id = pdf_ids[old_forward_pdf_class];
+    int32 new_self_loop_pdf_id = pdf_ids[old_self_loop_pdf_class];
     int32 new_tid =
-        new_trans_model.PairToTransitionId(new_trans_state, trans_idx);
+      new_trans_model.TupleToTransitionId(new_central_phone, info.topo_state,
+                                          info.arc_index, new_forward_pdf_id,
+                                          new_self_loop_pdf_id);
     (*new_phone_alignment)[j] = new_tid;
   }
-
-  if (new_is_reordered != old_is_reordered)
-    ChangeReorderingOfAlignment(new_trans_model, new_phone_alignment);
 }
 
 
@@ -761,11 +766,9 @@ static bool ConvertAlignmentInternal(const Transitions &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       int32 conversion_shift,
                       int32 subsample_factor,
-                      bool new_is_reordered,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
   KALDI_ASSERT(0 <= conversion_shift && conversion_shift < subsample_factor);
-  bool old_is_reordered = true;
   KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
   new_alignment->reserve(old_alignment.size());
@@ -830,7 +833,6 @@ static bool ConvertAlignmentInternal(const Transitions &old_trans_model,
 
       ConvertAlignmentForPhone(old_trans_model, new_trans_model, new_ctx_dep,
                                old_alignment_for_phone, new_phone_window,
-                               old_is_reordered, new_is_reordered,
                                &new_alignment_for_phone);
       new_alignment->insert(new_alignment->end(),
                             new_alignment_for_phone.begin(),
@@ -848,7 +850,6 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,
                       bool repeat_frames,
-                      bool new_is_reordered,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
   if (subsample_factor == 1) {
@@ -862,7 +863,6 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                                     old_alignment,
                                     subsample_factor - 1, // == 0
                                     subsample_factor,
-                                    new_is_reordered,
                                     phone_map,
                                     new_alignment);
    // The value "subsample_factor - 1" for conversion_shift above ensures the
@@ -881,7 +881,6 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                                     old_alignment,
                                     conversion_shift, // conversion_shift
                                     subsample_factor,
-                                    new_is_reordered,
                                     phone_map,
                                     &shifted_alignments[conversion_shift]))
         return false;
@@ -1064,38 +1063,5 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
   KALDI_ASSERT(ans && symbol_sequence.size() == length);
   symbol_sequence.swap(*alignment);
 }
-
-void ChangeReorderingOfAlignment(const Transitions &trans_model,
-                                 std::vector<int32> *alignment) {
-  int32 start_pos = 0, size = alignment->size();
-  while (start_pos != size) {
-    int32 start_tid = (*alignment)[start_pos];
-    int32 cur_tstate = trans_model.TransitionIdToTransitionState(start_tid);
-    bool start_is_self_loop = trans_model.IsSelfLoop(start_tid) ? 0 : 1;
-    int32 end_pos = start_pos + 1;
-    // If the first instance of this transition-state was a self-loop, then eat
-    // only non-self-loops of this state; if it was a non-self-loop, then eat
-    // only self-loops of this state.  Imposing this condition on self-loops
-    // would only actually matter in the rare circumstances that phones can
-    // have length 1.
-    while (end_pos != size &&
-           trans_model.TransitionIdToTransitionState((*alignment)[end_pos]) ==
-           cur_tstate) {
-      bool this_is_self_loop = trans_model.IsSelfLoop((*alignment)[end_pos]);
-      if (!this_is_self_loop) {
-        if (start_is_self_loop) {
-          break;  // stop before including this transition-id.
-        } else {
-          end_pos++;
-          break;  // stop after including this transition-id.
-        }
-      }
-      end_pos++;
-    }
-    std::swap((*alignment)[start_pos], (*alignment)[end_pos - 1]);
-    start_pos = end_pos;
-  }
-}
-
 
 } // namespace kaldi

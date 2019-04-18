@@ -1,6 +1,7 @@
 // hmm/hmm-utils.h
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2019  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -36,19 +37,12 @@ namespace kaldi {
 /// Configuration class for the GetHTransducer() function; see
 /// \ref hmm_graph_config for context.
 struct HTransducerConfig {
-  /// Transition log-prob scale, see \ref hmm_scale.
-  /// Note this doesn't apply to self-loops; GetHTransducer() does
-  /// not include self-loops.
-  BaseFloat transition_scale;
   int32 nonterm_phones_offset;
 
   HTransducerConfig():
-      transition_scale(1.0),
       nonterm_phones_offset(-1) { }
 
   void Register (OptionsItf *opts) {
-    opts->Register("transition-scale", &transition_scale,
-                   "Scale of transition probs (relative to LM)");
     opts->Register("nonterm-phones-offset", &nonterm_phones_offset,
                    "The integer id of #nonterm_bos in phones.txt, if present. "
                    "Only needs to be set if you are doing grammar decoding, "
@@ -181,12 +175,13 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   *                      chain examples.  WARNING: this was added in 2018;
   *                      if you get a compilation error, add this as 'true',
   *                      which emulates the behavior of older code.
-  * @param  fst [in, out] The FST to be modified.
+  * @param  fst [in, out] The FST to be modified. This should normally be HCLG
+  *                       or any other FST with transition ids as its input
+  *                       labels.
   */
 void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
                   bool reorder,
-                  // Use arcfilter.h for this.
                   bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
 
@@ -246,9 +241,6 @@ bool SplitToPhones(const Transitions &trans_model,
                                 'subsample_factor' separately generated
                                 alignments, to keep the phone boundaries
                                 the same as the input where possible.]
-   @param reorder [in]          True if you want the pdf-ids on the new alignment to
-                                be 'reordered'. (vs. the way they appear in
-                                the Topology object)
    @param phone_map [in]        If non-NULL, map from old to new phones.
    @param new_alignment [out]   The converted alignment.
 */
@@ -259,7 +251,6 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,  // 1 in the normal case -> no subsampling.
                       bool repeat_frames,
-                      bool reorder,
                       const std::vector<int32> *phone_map,  // may be NULL
                       std::vector<int32> *new_alignment);
 
@@ -291,12 +282,6 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
                                 const Transitions &trans_model,
                                 const std::vector<int32> &phone_window,
                                 std::vector<int32> *alignment);
-
-/*
-  If the alignment was non-reordered makes it reordered, and vice versa.
-*/
-void ChangeReorderingOfAlignment(const Transitions &trans_model,
-                                 std::vector<int32> *alignment);
 
 /// @} end "addtogroup hmm_group"
 

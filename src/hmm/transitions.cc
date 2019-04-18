@@ -261,6 +261,15 @@ void Transitions::Print(std::ostream &os,
   }
 }
 
+int32 Transitions::PdfClassForTid(int32 tid) const {
+  auto&& info = InfoForTransitionId(tid);
+  auto&& fst = GetTopo().TopologyForPhone(info.phone);
+  fst::ArcIterator<fst::VectorFst<fst::StdArc> > aiter(fst, info.topo_state);
+  aiter.Seek(info.arc_index);
+  int32 pdf_class = aiter.Value().ilabel;
+  return pdf_class;
+}
+
 bool GetPdfsForPhones(const Transitions &trans_model,
                       const std::vector<int32> &phones,
                       std::vector<int32> *pdfs) {
