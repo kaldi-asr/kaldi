@@ -9,5 +9,3 @@ export SPARROWHAWK_ROOT=$KALDI_ROOT/tools/sparrowhawk
 export PATH=$SPARROWHAWK_ROOT/bin:$PATH
 export LC_ALL=C
 export LANG=C
-
-source ~/anaconda/bin/activate py36
