@@ -75,7 +75,7 @@ cat $train_dir/transcripts.txt |\
   sed -e 's/<noise>\(.\+\)<\/noise>/\1/g' |\
   sed -e 's/((\([^)]\{0,\}\)))/\1/g' |\
   local/hkust_normalize.pl |\
-  python local/hkust_segment.py |\
+  local/hkust_segment.py |\
   awk '{if (NF > 1) print $0;}' > $train_dir/text || exit 1;
 
 cat $dev_dir/transcripts.txt |\
@@ -84,7 +84,7 @@ cat $dev_dir/transcripts.txt |\
   sed -e 's/<noise>\(.\+\)<\/noise>/\1/g' |\
   sed -e 's/((\([^)]\{0,\}\)))/\1/g' |\
   local/hkust_normalize.pl |\
-  python local/hkust_segment.py |\
+  local/hkust_segment.py |\
   awk '{if (NF > 1) print $0;}' > $dev_dir/text || exit 1;
 
 # some data is corrupted. Delete them
