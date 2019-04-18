@@ -79,14 +79,33 @@ void Copy(const TensorImpl &a, const TensorImpl *b);
 /**
    Add elements from Tensor a to Tensor b, broadcasting or summing
    as dictated by the dimensions involved; does
+
       \f$  b := \alpha a + \beta b.  \f$
 
       @param [in]  a    The source Tensor.
       @param [out] b   The destination Tensor.  We require
-                       Broadcastable(a, b).
+                       Broadcastable(a, b).  It's OK for b's data to
+                       be uninitialized at entry if beta == 0.
  */
-void Add(float alpha, float beta,
-         const TensorImpl &a, const TensorImpl *b);
+void AddTo(float alpha, float beta,
+           const TensorImpl &a,
+           const TensorImpl *b);
+
+
+/**
+   Version of Add that does a simple sum of two Tensors and writes to the
+   product to a third location i.e. does:
+
+        *c = alpha a  +  beta b
+
+   Requires Broadcastable(a, b, c).
+ */
+void Add(float alpha,
+         const TensorImpl &a,
+         float beta,
+         const TensorImpl &b,
+         const TensorImpl *c);
+
 
 
 /**

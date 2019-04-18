@@ -147,14 +147,6 @@ enum UnaryFunctionEnum {
 };
 
 
-/// This enumeration value lists the unary function taking a single scalar arg
-/// that we might want to apply to Tensors; it exists so that much of the glue
-/// code can be templated.
-enum UnaryFunction1ScalarArgEnum {
-  kUnaryFunctionFloor,
-  kUnaryFunctionCeiling
-};
-
 
 /// This enumeration value lists the binary functions that we might
 /// want to apply to Tensors; it exists so that much of the glue

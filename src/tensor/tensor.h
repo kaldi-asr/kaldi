@@ -43,7 +43,7 @@ namespace tensor {
 class Tensor {
  public:
 
-  inline bool Initialized() { return data_ != NULL; }
+  inline bool Initialized() { return storage_->data_ != NULL; }
 
   /// Return the number of axes (a number in {0,1,2,3,4}).  In mathematical
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
@@ -63,32 +63,31 @@ class Tensor {
   // stride info.
   const TensorPattern &Pattern() const { return impl_.pattern; }
 
-  // Return an array containing dimensions of the tensor; equivalent to
+  // Return a vector containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
-  // This cannot return some kind of const reference because the
+  // This cannot return a const reference because the
   // dims are stored internally in reversed order.
   std::vector<int32> Dims() const;
 
-  // Return an array containing dimensions of the tensor; equivalent to
-  // .shape in PyTorch.  Strides().size() will equal NumAxes().
+  // Return a vector containing the strides of the tensor.
+  // Strides().size() will equal NumAxes().
   std::vector<int32> Strides() const;
 
 
-  // Returns the dimension on this axis (which will be >= 1).
-  // Requires 0 <= axis < NumAxes().
-  inline int32 Dim(int32 axis) const {
-    KALDI_ASSERT(static_cast<uint32>(axis) <
-                 static_cast<uint32>(impl_.pattern->num_axes));
-    return impl_.pattern.dims[impl_.pattern->num_axes - 1 - axis];
-  }
+  // Returns the dimension on the supplied axis
+  //  @param [in] axis  Axis on which dimension is required, with
+  //                    -NumAxes() <= axis < NumAxes(); negative axis
+  //                    is interpreted as an offset from NumAxes().
+  //  @return        Returns the dimension on this axis, a number >= 1.
+  inline int32 Dim(int32 axis) const { return impl_.Dim(axis); }
 
-  // Returns the stride on this axis (which will be >= 1).
-  // Requires 0 <= axis < NumAxes().
-  inline int32 Stride(int32 axis) const {
-    KALDI_ASSERT(static_cast<uint32>(axis) <
-                 static_cast<uint32>(impl_.pattern->num_axes));
-    return impl_.pattern.strides[impl_.pattern->num_axes - 1 - axis];
-  }
+  // Returns the stride on the supplied axis (using the public axis numbering)
+  //  @param [in] axis  Axis on which stride is required, with
+  //                    -NumAxes() <= axis < NumAxes(); negative axis
+  //                    is interpreted as an offset from NumAxes().
+  //  @return          Returns the stride on this axis, which will be 0 if
+  //                   Dim(axis) == 1, and otherwise nonzero.
+  inline int32 Stride(int32 axis) const { return impl_.Stride(axis); }
 
   // Returns the number of elements in the Tensor; will be > 0,
   // and will equal the product of Dims().
@@ -298,10 +297,9 @@ class Tensor {
   // cached properties.
   TensorImpl impl_;
 
-
-  // The storage region where the data resides.  data_ does not necessarily
-  // equal storage_->data; it may be more than that, e.g. if this is a view
-  // to part of another Tensor.
+  // The storage region where the data resides storage_->data will equal
+  // impl_.data (we duplicate it in impl_ for convenence and to avoid an extra
+  // pointer dereference).
   std::shared_ptr<Storage> storage_;
 };
 

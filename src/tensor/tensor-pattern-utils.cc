@@ -1,8 +1,23 @@
-#include "tensor/tensor-pattern-utils.h"
+// tensor/tensor-pattern-utils.cc
 
-/**
-   This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
-*/
+// Copyright      2019  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+#include "tensor/tensor-pattern-utils.h"
 
 namespace kaldi {
 namespace tensor {
@@ -361,27 +376,97 @@ void CompressOnePattern(TensorPattern *pattern,
 
 void SortAxes(TensorPattern *pattern) {
   int32 num_axes = pattern->num_axes;
-  std::pair<int32,int32> strides_dims[KALDI_TENSOR_MAX_DIM];
-  for (int32 raxis = 0; raxis < num_axes; raxis++) {
-    int32 stride = pattern->strides[raxis],
-        dim = pattern->dims[raxis];
-    KALDI_ASSERT(stride > 0);  // see documentation in header for reasons.
-    strides_dims[raxis].first = stride;
-    strides_dims[raxis].second = dim;
-  }
-  std::sort(strides_dims, strides_dims + num_axes);
-  for (int32 raxis = 0; raxis < num_axes; raxis++) {
-    pattern->strides[raxis] = strides_dims[raxis].first;
-    pattern->dims[raxis] = strides_dims[raxis].second;
+  switch(num_axes) {
+    case 0: case 1:
+      return;
+    case 2:
+      if (pattern->strides[0] > pattern->strides[1]) {
+        std::swap(pattern->strides[0], pattern->strides[1]);
+        std::swap(pattern->dims[0], pattern->dims[1]);
+        pattern->code = -1;
+      }
+      return;
+    default: {
+      // This is bubble sort, which might seem super inefficient, but it avoids
+      // the need to create a temporary of pairs (or implement an appropriate
+      // in-place sort); and since num_axes will rarely be more than about 3,
+      // and never more than 6, I don't think the speed will be a problem.
+      while (true) {
+        bool changed = false;
+        for (int32 i = 0; i < num_axes - 1; i++) {
+          if (pattern->strides[i] > pattern->strides[i + 1]) {
+            std::swap(pattern->strides[i], pattern->strides[i + 1]);
+            std::swap(pattern->dims[i], pattern->dims[i + 1]);
+            changed = true;
+          }
+        }
+        if (changed)
+          pattern->code = -1;
+        else
+          return;
+      }
+    }
   }
 }
 
+}
 
-int32 GetDimsCode(const TensorPattern &pattern) {
-  // we may not need this after all.
+void Transpose(int32 raxis1, int32 raxis2, TensorPattern *p) {
+  if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
+      static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {
+    KALDI_ERR << "Invalid axes to transpose: raxis1="
+              << raxis1 << ", raxis2=" << raxis2
+              << ", num-axes = " << p->num_axes;
+  }
+  std::swap(p->strides[raxis1], p->strides[raxis2]);
+  std::swap(p->dims[raxis1], p->dims[raxis2]);
+  p->code = -1;
+}
+
+void Transpose(int32 axis1, int32 axis2, TensorPattern *p) {
+  int32 num_axes = p->num_axes;
+  // interpret negative axes as offsets from num_axes.
+
+  // Work out the reversed / private axis indexes that we physically use
+  // in the arrays.  This includes interpreting negative axis
+  // indexes as being relative to the number of axes.
+  int32 raxis1 = (axis1 < 0 ? axis1 + 1 : num_axes - 1 - axis1),
+      raxis2 = (axis2 < 0 ? axis2 + 1 : num_axes - 1 - axis2);
+  if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
+      static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {
+    KALDI_ERR << "Invalid axes to transpose: axis1="
+              << axis1 << ", axis2=" << axis2 << ", num-axes = " << p->num_axes;
+  }
+  std::swap(p->strides[raxis1], p->strides[raxis2]);
+  std::swap(p->dims[raxis1], p->dims[raxis2]);
+  p->code = -1;
+}
+
+
+
+void RemoveTrivialAxes(TensorPattern *pattern) {
+  int32 num_axes = pattern->num_axes,
+      num_axes_out = 0;
+  for (int32 raxis = 0; raxis < num_axes; raxis++) {
+    int32 this_dim = pattern->dims[raxis];
+    if (this_dim != 0) {
+      if (num_axes_out != raxis) {
+        pattern->dims[num_axes_out] = this_dim;
+        pattern->strides[num_axes_out] = pattern->strides[raxis];
+      }
+    }
+  }
+  // It is a requirement of struct TensorPattern that dims and
+  // strides for raxis > num_axes be 1 and 0 respectively.
+  for (int32 raxis = num_axes_out; raxis < num_axes; raxis++) {
+    pattern->dims[raxis] = 1;
+    pattern->strides[raxis] = 0;
+  }
+  pattern->num_axes = num_axes;
+  // Caution: we are not updating the code.
+
 }
 
 
 }  // namespace kaldi
 }  // namespace tensor
-x
