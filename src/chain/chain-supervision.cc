@@ -240,7 +240,7 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
     oarc->ilabel = ilabel;
     if (convert_to_pdfs_) {
       // the olabel will be a pdf-id plus one, not a transition-id.
-      int32 pdf_id = trans_model_.TransitionIdToPdf(ilabel);
+      int32 pdf_id = trans_model_.TransitionIdToPdfFast(ilabel);
       oarc->olabel = pdf_id + 1;
     } else {
       oarc->olabel = ilabel;
@@ -276,7 +276,7 @@ bool TrainingGraphToSupervisionE2e(
       }
       KALDI_ASSERT(arc.ilabel != 0);
       StdArc arc2(arc);
-      arc2.ilabel = arc2.olabel = trans_model.TransitionIdToPdf(arc.ilabel) + 1;
+      arc2.ilabel = arc2.olabel = trans_model.TransitionIdToPdfFast(arc.ilabel) + 1;
       aiter.SetValue(arc2);
     }
   }
@@ -337,11 +337,11 @@ bool ProtoSupervisionToSupervision(
   // when we compose with the denominator graph.
   h_cfg.transition_scale = 0.0;
 
-  VectorFst<StdArc> *h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
-                                            ctx_dep,
-                                            trans_model,
-                                            h_cfg,
-                                            &disambig_syms_h);
+  std::unique_ptr<VectorFst<StdArc>> h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
+                                                            ctx_dep,
+                                                            trans_model,
+                                                            h_cfg,
+                                                            &disambig_syms_h);
   KALDI_ASSERT(disambig_syms_h.empty());
 
   VectorFst<StdArc> transition_id_fst;
@@ -352,10 +352,7 @@ bool ProtoSupervisionToSupervision(
   // when we compose with the denominator graph.
   BaseFloat self_loop_scale = 0.0;
 
-  // You should always set reorder to true; for the current chain-model
-  // topologies, it will affect results if you are inconsistent about this.
-  bool reorder = true,
-      check_no_self_loops = true;
+  bool check_no_self_loops = true;
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
                check_no_self_loops, &transition_id_fst);

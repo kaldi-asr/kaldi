@@ -159,6 +159,9 @@ class Transitions {
     }
     // TODO.  operator == can compare all members. Also compare derived members?
     bool operator == (const TransitionIdInfo &other) const {
+      // I don't think this is being used right now. For now, just abort
+      // whenever it is used, so I can see where it is used.
+      KALDI_ASSERT(false);
       if (phone == other.phone && topo_state == other.topo_state &&
           pdf_id == other.pdf_id) {
         // This assertion is no longer true. Two states can have
@@ -173,9 +176,11 @@ class Transitions {
         return false;
       }
     }
-    bool operator != (const TransitionIdInfo &other) const {
-      return !(*this == other);
-    }
+
+    // TransitionIdInfo& operator=(const TransitionIdInfo& other) {
+    //   is_final = other.is_final;
+    //   return *this;
+    // }
   };
 
 

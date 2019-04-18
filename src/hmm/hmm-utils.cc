@@ -332,7 +332,42 @@ GetPdfToTransitionIdTransducer(const Transitions &trans_model) {
   return ans;
 }
 
+struct TransitionState {
+public:
+  TransitionState(const Transitions::TransitionIdInfo& info):
+    info(info) { }
 
+  bool operator==(const TransitionState& other) const {
+    return info.phone == other.info.phone &&
+      info.topo_state == other.info.topo_state &&
+      info.pdf_id == other.info.pdf_id;
+  }
+
+  bool operator!=(const TransitionState& other) const {
+    return !(*this == other);
+  }
+
+  TransitionState& operator=(TransitionState other) {
+// TODO: Fix this bizarre error when I uncomment this:
+    // this->info = other.info;
+    KALDI_ASSERT(false);
+// hmm-utils.cc: In member function ‘kaldi::TransitionState& kaldi::TransitionState::operator=(kaldi::TransitionState)’:
+// hmm-utils.cc:351:24: error: passing ‘const kaldi::Transitions::TransitionIdInfo’ as ‘this’ argument discards qualifiers [-fpermissive]
+//      this->info = other.info;
+//                         ^~~~
+// In file included from ../hmm/hmm-utils.h:27:0,
+//                  from hmm-utils.cc:25:
+// ../hmm/transitions.h:107:10: note:   in call to ‘kaldi::Transitions::TransitionIdInfo& kaldi::Transitions::TransitionIdInfo::operator=(const kaldi::Transitions::TransitionIdInfo&)’
+
+    return *this;
+  }
+
+  bool operator<(const TransitionState& other) const {
+    return info < other.info;
+  }
+
+  const Transitions::TransitionIdInfo& info;
+};
 
 class TidToTstateMapper {
 public:
@@ -358,9 +393,12 @@ public:
                     bool check_no_self_loops):
       trans_model_(trans_model),
       disambig_syms_(disambig_syms),
-      check_no_self_loops_(check_no_self_loops) { }
+      check_no_self_loops_(check_no_self_loops) {
+    KALDI_ASSERT((*this)(fst::kNoLabel) == NoLabelClass());
+    KALDI_ASSERT((*this)(0) == ZeroClass());
+}
 
-  typedef Transitions::TransitionIdInfo Result;
+  typedef TransitionState Result;
   static const Result& NoLabelClass() {
     // Take advantage of the fact that phone must be greater than or
     // equal to 1 to create a TransitionIdInfo which in practice will
@@ -370,24 +408,27 @@ public:
     // whether we are using one of these invalid TransitionIdInfo
     // classes.
     static auto *no_label =
-      new Transitions::TransitionIdInfo{.phone = -1, .topo_state = -1, .arc_index = -1,
-                                        .pdf_id = -1, .self_loop_pdf_id = -1};
-    return *no_label;
+      new Transitions::TransitionIdInfo{.phone = -1, .topo_state = -1,
+                                        .arc_index = -1, .pdf_id = -1,
+                                        .self_loop_pdf_id = -1};
+    static auto *no_label_state = new TransitionState(*no_label);
+    return *no_label_state;
   }
 
   static const Result& ZeroClass() {
     static auto *zero_label =
       new Transitions::TransitionIdInfo{.phone = 0, .topo_state = -1, .arc_index = -1,
                                         .pdf_id = -1, .self_loop_pdf_id = -1};
-    return *zero_label;
+    static auto *zero_label_state = new TransitionState(*zero_label);
+    return *zero_label_state;
   }
 
-  const Result& operator() (int32 tid) const {
+  Result operator() (int32 tid) const {
     if (tid == static_cast<int32>(fst::kNoLabel)) return NoLabelClass();  // -1 -> -1
     else if (tid >= 1 && tid <= trans_model_.NumTransitionIds()) {
       if (check_no_self_loops_ && trans_model_.InfoForTransitionId(tid).is_self_loop)
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
-      return trans_model_.InfoForTransitionId(tid);
+      return TransitionState(trans_model_.InfoForTransitionId(tid));
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       int32 big_number = fst::kNontermBigNumber;  // 1000000
       if (tid != 0 && tid < big_number)
@@ -404,6 +445,21 @@ private:
   bool check_no_self_loops_;
 };
 
+// Returns true if the outgoing arcs of the state s sum to 1.0
+template<typename FST>
+static bool StateIsStochastic(FST fst, typename FST::StateId s) {
+  using namespace fst;
+  using Arc = typename FST::Arc;
+  using Weight = typename Arc::Weight;
+  Weight total_prob = Weight::Zero();
+  for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
+       !aiter.Done();
+       aiter.Next()) {
+    total_prob = Plus(total_prob, aiter.Value());
+  }
+  return ApproxEqual(total_prob.Value(), Weight::One());
+}
+
 // This is the code that expands an FST from transition-states to
 // transition-ids, in the case where the non-optional transition is before
 // the self-loop.
@@ -417,8 +473,6 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
 
-  typedef TidToTstateMapper::Result Class;
-
   TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
   // Duplicate states as necessary so that each state will require at most one
   // self-loop to be added to it.  Approximately this means that if a
@@ -430,11 +484,12 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
   // into each state. This works because each state now has only one
   // transition state coming into (because of
   // MakePrecedingInputSymbolsSameClass).
-  std::vector<Class> state_in(fst->NumStates(), f.NoLabelClass());
+  std::vector<TransitionState> state_in(fst->NumStates(), f.NoLabelClass());
 
   // This first loop just works out the label into each state,
   // and converts the transitions in the graph from transition-states
   // to transition-ids.
+  // state_in maps each state in the fst to its TransitionState
 
   for (StateIterator<VectorFst<Arc> > siter(*fst);
        !siter.Done();
@@ -444,7 +499,7 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
          !aiter.Done();
          aiter.Next()) {
       const Arc& arc = aiter.Value();
-      Class trans_state = f(arc.ilabel);
+      TransitionState trans_state = f(arc.ilabel);
       if (state_in[arc.nextstate] == f.NoLabelClass()) {
         state_in[arc.nextstate] = trans_state;
       } else {
@@ -454,10 +509,8 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
     }
   }
 
-  // state_in maps each state in the fst to its TransitionState
-  KALDI_ASSERT(state_in[fst->Start()] == f.NoLabelClass() ||
-               state_in[fst->Start()] == f.ZeroClass());
-  // or MakePrecedingInputSymbolsSame failed.
+  // The start state should have no incoming arcs (invariant of Topology)
+  KALDI_ASSERT(state_in[fst->Start()] == f.ZeroClass());
 
   // The next loop looks at each graph state, adds the self-loop [if needed] and
   // multiples all the out-transitions' probs (and final-prob) by the
@@ -466,36 +519,32 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
   // with the corresponding labels on them by this probability).
 
   for (StateId s = 0; s < static_cast<StateId>(state_in.size()); s++) {
-    if (state_in[s] != f.NoLabelClass() && state_in[s] != f.ZeroClass()) {
+    const TransitionState& trans_state = state_in[s];
+    if (trans_state != f.NoLabelClass() && trans_state != f.ZeroClass() &&
+        trans_state.info.self_loop_pdf_id != -1) {
       // defined, and not eps or a disambiguation symbol or a
-      // nonterminal-related sybol for grammar decoding...
-      const Class& trans_state = state_in[s];
-      // First multiply all probabilities by "forward" probability.
-      
-      // WARNING: This is no longer the forward probability that this code was originally using!
-      // It is difficult to get the self-loop probability just given the 
-      trans_model.InfoForTransitionId(trans_state.self_loop_pdf_id).transition_cost;
-      BaseFloat log_prob = trans_state.transition_cost;
-      fst->SetFinal(s, Times(fst->Final(s), Weight(-log_prob)));
+      // nonterminal-related symbol for grammar decoding, and has a
+      // self-loop which needs to be added, while maintaining
+      int32 self_loop_tid = trans_state.info.self_loop_transition_id;
+      KALDI_ASSERT(self_loop_tid != 0 &&
+                   "Can't have a self_loop_pdf_id without a self_loop_transition_id");
+      // 1) Multiply all probabilities by "forward" probability.
+      BaseFloat self_loop_log_prob =
+        -trans_model.InfoForTransitionId(self_loop_tid).transition_cost;
+      BaseFloat log_forward_prob = log(1.0 - exp(self_loop_log_prob));
+      fst->SetFinal(s, Times(fst->Final(s), Weight(-log_forward_prob)));
       for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
           !aiter.Done();
           aiter.Next()) {
         Arc arc = aiter.Value();
-        arc.weight = Times(arc.weight, Weight(-log_prob));
+        arc.weight = Times(arc.weight, Weight(-log_forward_prob));
         aiter.SetValue(arc);
       }
-      // Now add self-loop, if needed.
-      int32 trans_id = trans_state.self_loop_transition_id;
-      // TODO: This is adding an arc for the current state into
-      // itself, right? How are we supposed to get the current state's
-      // self-loop? Ugh. And make sure I don't repeat it...
-      if (trans_id != 0) {  // has self-loop.
-        auto&& trans_info = trans_model.InfoForTransitionId(trans_id).transition_cost;
-        StateId next_state = TODO;
-        BaseFloat log_prob = trans_model.InfoForTransitionId(trans_id).transition_cost;
-        fst->AddArc(next_state, Arc(trans_id, 0, Weight(-log_prob), next_state));
-      }
+      // 2) Add self-loop
+      fst->AddArc(s, Arc(self_loop_tid, 0, Weight(-self_loop_log_prob), s));
+
     }
+    KALDI_PARANOID_ASSERT(StateIsStochastic(fst, s));
   }
 }
 

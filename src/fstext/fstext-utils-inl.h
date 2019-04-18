@@ -539,7 +539,6 @@ void MakePrecedingInputSymbolsSameClass(MutableFst<Arc> *fst, const F &f) {
   typedef typename Arc::Weight Weight;
   vector<ClassType> classes;
   ClassType noClass = f(kNoLabel);
-  ClassType epsClass = f(0);
 
   // Find bad states (states with multiple input-symbols into them).
   std::set<StateId> bad_states;  // states that we need to change.
