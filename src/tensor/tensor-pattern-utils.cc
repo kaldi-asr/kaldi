@@ -376,44 +376,73 @@ void CompressOnePattern(TensorPattern *pattern,
 
 void SortAxes(TensorPattern *pattern) {
   int32 num_axes = pattern->num_axes;
-  std::pair<int32,int32> strides_dims[KALDI_TENSOR_MAX_DIM];
-  for (int32 raxis = 0; raxis < num_axes; raxis++) {
-    int32 stride = pattern->strides[raxis],
-        dim = pattern->dims[raxis];
-    KALDI_ASSERT(stride > 0);  // see documentation in header for reasons.
-    strides_dims[raxis].first = stride;
-    strides_dims[raxis].second = dim;
-  }
-  std::sort(strides_dims, strides_dims + num_axes);
-  for (int32 raxis = 0; raxis < num_axes; raxis++) {
-    pattern->strides[raxis] = strides_dims[raxis].first;
-    pattern->dims[raxis] = strides_dims[raxis].second;
+  switch(num_axes) {
+    case 0: case 1:
+      return;
+    case 2:
+      if (pattern->strides[0] > pattern->strides[1]) {
+        std::swap(pattern->strides[0], pattern->strides[1]);
+        std::swap(pattern->dims[0], pattern->dims[1]);
+        pattern->code = -1;
+      }
+      return;
+    default: {
+      // This is bubble sort, which might seem super inefficient, but it avoids
+      // the need to create a temporary of pairs (or implement an appropriate
+      // in-place sort); and since num_axes will rarely be more than about 3,
+      // and never more than 6, I don't think the speed will be a problem.
+      while (true) {
+        bool changed = false;
+        for (int32 i = 0; i < num_axes - 1; i++) {
+          if (pattern->strides[i] > pattern->strides[i + 1]) {
+            std::swap(pattern->strides[i], pattern->strides[i + 1]);
+            std::swap(pattern->dims[i], pattern->dims[i + 1]);
+            changed = true;
+          }
+        }
+        if (changed)
+          pattern->code = -1;
+        else
+          return;
+      }
+    }
   }
 }
 
-
-int32 GetDimsCode(const TensorPattern &pattern) {
-  // we may not need this after all.
 }
 
-void Transpose(int32 axis1_in, int32 axis2_in, TensorPattern *p) {
-  int32 num_axes = p->num_axes;
-  // interpret negative axes as offsets from num_axes.
-  int32 axis1 = (axis1_in < 0 ? axis1_in + num_axes : axis1_in),
-      axis2 = (axis2_in < 0 ? axis2_in + num_axes : axis2_in);
-  // Work out the reversed axis indexes that we physically use
-  // in the arrays.
-  int32 raxis1 = num_axes - axis1,
-      raxis2 = num_axes - axis2;
-  if (!(static_cast<uint32>(raxis1) < static_cast<uint32>(num_axes) &&
-        static_cast<uint32>(raxis2) < static_cast<uint32>(num_axes)))
-    KALDI_ERR << "Invalid indexes " << axis1_in << ", " << axis2_in
-              << " provided to Transpose() on Tensor with num_axes = "
-              << num_axes;
+void Transpose(int32 raxis1, int32 raxis2, TensorPattern *p) {
+  if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
+      static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {
+    KALDI_ERR << "Invalid axes to transpose: raxis1="
+              << raxis1 << ", raxis2=" << raxis2
+              << ", num-axes = " << p->num_axes;
+  }
   std::swap(p->strides[raxis1], p->strides[raxis2]);
   std::swap(p->dims[raxis1], p->dims[raxis2]);
-  p->code = ComputePatternCode(*p);
+  p->code = -1;
 }
+
+void Transpose(int32 axis1, int32 axis2, TensorPattern *p) {
+  int32 num_axes = p->num_axes;
+  // interpret negative axes as offsets from num_axes.
+
+  // Work out the reversed / private axis indexes that we physically use
+  // in the arrays.  This includes interpreting negative axis
+  // indexes as being relative to the number of axes.
+  int32 raxis1 = (axis1 < 0 ? axis1 + 1 : num_axes - 1 - axis1),
+      raxis2 = (axis2 < 0 ? axis2 + 1 : num_axes - 1 - axis2);
+  if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
+      static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {
+    KALDI_ERR << "Invalid axes to transpose: axis1="
+              << axis1 << ", axis2=" << axis2 << ", num-axes = " << p->num_axes;
+  }
+  std::swap(p->strides[raxis1], p->strides[raxis2]);
+  std::swap(p->dims[raxis1], p->dims[raxis2]);
+  p->code = -1;
+}
+
+
 
 void RemoveTrivialAxes(TensorPattern *pattern) {
   int32 num_axes = pattern->num_axes,

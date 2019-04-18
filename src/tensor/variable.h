@@ -30,16 +30,22 @@ namespace tensor {
 
    Definitions:
 
-     tracked:   a variable v is tracked if v.Grad() returns non-NULL.  By "tracked" we mean:
-                we are keeping autograd history.
-    debug mode:  debug mode is a global bool, accessible via GetDebugMode().  When it is
-                true, we check for invalidated data
-   base variable:  variables all have base variables (if a Variable's base_ pointer si
-                NULL, its base variable is itself).  A base variable is created when
-                a Variable is initialized from a Tensor or when we call .detach().
-                It is the unit at which we make the decision "is this being tracked?".
-                As soon as a Variable becomes tracked, all Variables sharing the
-                same base Variable become tracked.
+     Tracked:   A variable v is tracked if v.Grad() returns non-NULL.  By "tracked" we mean:
+                we are keeping autograd history.  Being tracked or not is actually a
+                property of the base variable (see "Base variable").
+    Debug mode:  Debug mode is a global bool, accessible via GetDebugMode().  When it is
+                true, we check for invalidated data in the backprop phase.  (This,
+                which performs the same function as version numbering in, say, PyTorch,
+                is quite a slow operation so we only enable it occasionally.
+   Base variable: A base Variable is a Variable that is not a sub-part (e.g. row or
+                column range) of another Variable.  Every Variable has a base Variable;
+                a base Variable is its own base Variable.  A base variable is
+                created when a Variable is initialized from a Tensor or when we
+                call .detach().  The base Variable is the unit at which we make
+                the decision "is this being tracked?".  As soon as a Variable
+                becomes tracked, all Variables sharing the same base Variable
+                become tracked.
+
       tick:   a tick is the value of a global 64-bit time counter that we increment every
               time we mutate a Tensor.  When we create Ops for backpropagation of
               derivatives, we record the tick at which the Op was created.
@@ -88,7 +94,7 @@ void Add(const Variable &a, const Variable &b, Variable *c) {
   will store any pointers to the original Variable that it may have
   needed.
 
-  Users will rarely need to interact directly with this struct directly.
+  Users will rarely need to interact directly with this struct.
  */
 struct TensorGrad {
   // The version of the underlying Tensor.  (this number in the TensorGrad
@@ -203,21 +209,29 @@ class enum VariableInit {
 };
 
 
+// Shared data of a base Variable.  Each base Variable gets one of these; but
+// non-base Variables (views into other variables) share the Node of their base
+// Variable.
+struct Node {
+  // The gradient.
+  Tensor grad_;
+
+
+  // op_list_ (may be NULL) is the head of a list of Ops
+  // that wrote to this Node (most recent at the head).
+  // TODO: make it unique_ptr?
+  std::shared_ptr<Op> op_list_;
+};
+
+
+class Variable;
+
 
 /**
    class Variable is somewhat like class Tensor but augmented with autograd
-   machinery.  Because autograd requires a rather 'functional' way of doing
-   things (i.e. is not super friendly to in-place operations), the functions
-   that operate on class Variable will tend to be ones that return something,
-   rather than in-place operations.
-
-   The overall design is quite similar to PyTorch, and the structure
-   of the the C++ code is similar to flashlight.  If you are only familiar with
-   PyTorch's python frontend, class Variable is rougtly equivalent to what they
-   expose as af.tensor.
- */
+   machinery.
+*/
 class Variable {
-
 
 
   /** Constructor from a Tensor.
@@ -232,6 +246,31 @@ class Variable {
   Variable(const std::shared_ptr<Tensor> &data, bool requires_grad);
 
 
+
+  /**  Returns shared pointer to the Tensor storing the data. */
+  std::shared_ptr<Tensor> Data();
+
+
+  /**  Returns pointer to the Tensor storing the derivative w.r.t.  this
+       data.  Obtaining this Tensor won't allocate the memory, thanks to lazy
+       initialization.  It is an error to call this if this Variable is
+       not tracked (search for "Tracked:" above for definition).
+       See also GradDataIfPresent().
+  */
+  std::shared_ptr<Tensor> GradData();
+
+  /**  Returns pointer to the Tensor storing the derivative w.r.t.  this
+       data, or NULL if not present..  Obtaining this Tensor won't allocate the
+       memory, thanks to lazy initialization.  See also GradData().
+  */
+  std::shared_ptr<Tensor> GradDataIfPresent();
+
+
+  /**
+     Returns pointer to the base Variable (which may or may not be
+     identical to 'this'.
+   */
+  std::shared_ptr<Variable> GetBaseVariable();
 
   /**
      Constructor that will be used by functions implementing mathematical
@@ -255,19 +294,11 @@ class Variable {
   // Returns true
   bool Tracked() const;
 
+
+
  private:
 
-  // The version of this Variable.  Generally will start at 0 when the Variable
-  // is assigned a size and will have 1 added to it for each operation that is
-  // done on it.  If grad_ != NULL, we mirror this value in grad_->version.  The
-  // version number is only used for checking purposes, to verify that people
-  // don't modify a Variable in ways that defeat the backprop.  If we wanted we
-  // could keep the old versions around and enable the backprop to work anyway,
-  // but that kind of magic is not in the spirit of how this library operates.
-  int32 version_;
-
-  // data_ is the Tensor underlying this Variable, or NULL if this->RemoveData()
-  // has been called.
+  // data_ is the Tensor underlying this Variable.
   std::shared_ptr<Tensor> data_;
 
   // base_ is the base Variable which is non-NULL only if this Variable is a

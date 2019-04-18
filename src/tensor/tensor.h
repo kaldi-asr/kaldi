@@ -43,7 +43,7 @@ namespace tensor {
 class Tensor {
  public:
 
-  inline bool Initialized() { return data_ != NULL; }
+  inline bool Initialized() { return storage_->data_ != NULL; }
 
   /// Return the number of axes (a number in {0,1,2,3,4}).  In mathematical
   // contexts, this is sometimes known as the rank of the tensor, or sometimes

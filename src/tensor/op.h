@@ -35,17 +35,14 @@ class Variable;
    computation graph.  An op may in general have multiple input Variables
    and multiple output Variables.
 
-   Each Variable that has gradient tracking and that is not an input Variable
-   (i.e. a leaf node) keeps an Op that created it.  Variables that had in-place
-   operations done may have more than one Op; these form a singly linked list
-   with an ordering (c.f. Op::Tail()).
+   Every base Variable (see variable.h for definition) that is tracked
+   has a singly linked list of Ops that changed that base Variable,
+   ordered from most recent to least recent.
 
    When a user calls Backprop() on a Variable, the backprop code works out a
    topological order of Ops and calls the Ops in (essentially) the reverse order
    in which they were created.  The backprop code also frees gradients of
    Variables when it knows they will no longer be needed.
-
-
  */
 class Op {
  public:
@@ -54,22 +51,23 @@ class Op {
 
   /// InputIteratorBegin() and InputIteratorEnd() form the begin and
   /// end points of a list of Variables that were inputs of this Op
-  /// but not outputs.  This is used by the backprop code when finding
+  /// but were not outputs.  This is used by the backprop code when finding
   /// the topological order of ops.  (Note: output variables themselves
   /// refer to Ops, so if we included them in the input list we'd
   /// get a cycle in the graph).  These Variables are expected to
-  /// still have their graph information (i.e. sub-classes of this
+  /// still have their graph information (i.e. sub-classes of class Op
   /// class must not call RemoveGraph() on the members of this list).
   virtual Variable *InputIteratorBegin() = 0;
   virtual Variable *InputIteratorEnd() = 0;
 
 
 
-  Op *GetTail() final;  // returns the tail (in a singly linked list of Ops for this
-                  // variable); this list will only have >1 element if in-place
-                  // operations were done.  (If, later, we need the shared_ptr
-                  // to be returned from here, we can change this code to return
-                  // that; we just return the raw pointer for efficiency.)
+  Op *GetTail() final;  // returns the tail (in a singly linked list of Ops for
+                        // this variable); this list will only have >1 element
+                        // only if in-place operations were done.  (If, later,
+                        // we need the shared_ptr to be returned from here, we
+                        // can change this code to return that; we just return
+                        // the raw pointer for efficiency.)
 
 
   // Connect this Op to Variable 'v', which is expected to be an output of this
@@ -89,13 +87,49 @@ class Op {
 
   virtual void Backward();
 
+ protected:
+  // Constructor, to be used from child classes.  This base-class takes care
+  // of storing the list of input Variables for purposes of tracing dependencies;
+  //
+  //  @param [in] input_vars  The list of input Variables (meaning: Variables
+  //                   that are inputs to, but not outputs of, i.e. not modified
+  //                   by, this Op).
+  //  @param [in] output_var  The output Variable of this Op, i.e. the Variable
+  //                   which is modified or set by it.  We will provide another
+  //                   constructor taking ArrayRef<Variable> in this position,
+  //                   as and when we need to support Ops that take multiple
+  //                   output Variables.
+  void Op(const ArrayRef<Variable> &input_vars,
+          const Variable &output_var);
+
+
+  // TODO: maybe have a constructor of Op that takes an ArrayRef of the inputs
+  // that are not also outputs?  Could use that for graph traversal.
+
  private:
   static int64 counter_{0};
-  static int64 GetCount() { return counter_++; }
-  int64 n_;
-  std::shared_ptr<Op> tail_{nullptr};
 
+  // num_inputs_ is the number of base Variables that are the base Variables of
+  // inputs of this Op (but not of outputs).  These are stored in the
+  // array 'inputs_'.
 
+  // inputs_ is a pointer to an array of shared_ptr<Variable> of size num_inputs_, which
+  // will be be allocated by new [] in the constructor and deleted by delete []
+  // in the destructor.
+  // This is a list of the unique Nodes that are the Nodes of inputs (but not outputs)
+  // of this
+  std::shared_ptr<Node> *inputs_;
+
+  int32 num_inputs_;
+  void *inputs_;
+
+  int64 n_;  // initialized from the counter when this object is created.
+  std::shared_ptr<Op> tail_;
+ protected:
+  // Return true if this is not the last Op in the list of Ops attached to this
+  // base Variable (can be useful to know whether we need bother to scale the
+  // derivative in a scaling operation, for instance).
+  bool HasTail() const { return tail_ != nullptr; }
 };
 
 
@@ -108,39 +142,45 @@ class AddToOp: public Op {
   // involved.  Obviously alpha and beta are constants,
   // and differentiation w.r.t. them is not supported.
   //
-  // The Op is only constructed if a_.HasGrad() || b_.HasGrad().
+  // The Op is only constructed if b_.HasGrad() (which it
+  // would normally if a_.HasGrad()).
   AddToOp(float alpha, float beta,
-          const Variable &a, const Variable *b):
+          const Variable &a, const Variable &b):
+      Op({a}),
       alpha_(alpha),
       beta_(beta),
-      a_(a, kCopyVarGrad|kCopyVarGraph),
-      b_(b, kCopyVarGrad),
-      must_scale_b_grad_(beta != 1.0 && b->HasGrad()) {
-    AddTo(alpha, beta, a, b);
-    this->ConnectToOutput(b);
+      a_data_(a.GetData()),
+      a_grad_(a.GetGradIfPresent()),
+      b_data_(b.GetData()),
+      b_grad_(b.GetGrad()) {
+
+    Add(alpha, beta, *a_data_, b_data_.get());
   }
 
 
   void Backward() {
-    const Tensor &a_grad = a_->GetGrad(),
-        &b_grad = b_->GetGrad();
-    // Do: a_grad += alpha * b_grad
-    AddTo(alpha_, 0.0, b_grad, &a_grad);
-    if (must_scale_b_grad_)
-      Scale(beta_, &b_grad);
+    // Do: a_grad += alpha * b_grad.
+    if (a_grad_ != nullptr)
+      AddTo(alpha_, 1.0, b_grad, &a_grad);
+
+    if (beta_ != 1.0)
+      Scale(beta_, b_grad.get());
   }
-
-
-  // There is only one input that is not also an output: a_.
-  Variable *InputIteratorBegin() override { return &a_; }
-  Variable *InputIteratorEnd() override { return (&a_) + 1; }
 
  private:
 
   float alpha_;
   float beta_;
 
+  // We hold onto all inputs that are not also outputs
+  // (here just a_) for dependency tracking.
   Variable a_;
+
+  std::shared_ptr<Tensor> a_data_;
+  std::shared_ptr<Tensor> a_grad_;
+  std::shared_ptr<Tensor> b_data_;
+  std::shared_ptr<Tensor> b_grad_;
+
   Variable b_;
   bool must_scale_b_grad_;
 

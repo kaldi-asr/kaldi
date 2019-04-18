@@ -37,6 +37,8 @@ class Storage {
   // non-NULL; otherwise it allocates one and returns that.
   ChangeTracker &GetChangeTracker();
 
+  inline bool Allocated() {  return (data != NULL);  }
+
   // TODO: we may need a mechanism to automatically zero data when it is
   // allocated, we have to figure out the right level to do this at.
   inline void *Data() {

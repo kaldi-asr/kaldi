@@ -88,13 +88,13 @@ namespace tensor {
                      range of integers (no gaps).  This is different from the PyTorch
                      definition of 'contiguous', which also requires C-style strides.
 
-    Dims vector of a Pattern: The vector of dimension of a Pattern: e.g. [] for
+    Dims-vector of a Pattern: The vector of dimension of a Pattern: e.g. [] for
                     a Pattern with num_axes = 1 or [2 3] for a Pattern with
                     num-axes = 2.  Note: whenever we display dims vectors in
                     square brackets as opposed to curly, it implies we are
                     displaying them in the public numbering.
 
-    Dims vector of a Pattern-tuple:  The dims vector of a Pattern-tuple is
+    Dims-vector of a Pattern-tuple:  The dims vector of a Pattern-tuple is
                     formed by taking the dims-vectors of each Pattern in the
                     tuple, extending them on the left with 1's as necessary
                     to make the the same size, then taking the largest
@@ -106,12 +106,13 @@ namespace tensor {
     Extended indexing:  A convention whereby if we have a Tensor with, say,
                       `dims = [5 1]`, we can index that Tensor with an index-tuple
                       that:
-                       (1) may have nonzero index values in any axis
+                       (1) may have nonzero index values in any axis for which
                           with dim=1, so `index_tuple = [4 100]` would be a valid
                           index for this Tensor in extended indexing.
                        (2) may have more elements than the Tensor's num-axes; the
                          Tensor is implicitly extended with extra axes on the left
-                         with dim=1.  This is related to PyTorch-style broadcasting.
+                         (in the public numbering) / the right (in the private
+                         numbering) with dim=1.  See also: PyTorch-style broadcasting.
 
     Index-tuple:      A tuple of integers used as an index into a Tensor.  Must
                       have at least as many elements as the Tensor's num_axes
@@ -282,17 +283,21 @@ namespace tensor {
   This struct stores the dimension and strides of a Tensor.
 
   Below we describe the the properties that a TensorPattern is required to have.
+  Most of them are described in the glossary in the entry for "Valid Pattern",
+  but there are a couple more that have to do with the specifics of how we
+  store things in this struct.
 
   These properties are stricter than some other frameworks, such as PyTorch,
   which allow the users to manually add dimensions with stride 0 and dim > 1 so
   that a lower-dimensional quantity can masquerade as one with a higher
-  dimension.  We require that it never be possible to access the same memory
-  location using two different tuples of indexes.  We also don't allow zero dims
-  (i.e. a Tensor that is initialized must not have num_elemnts==0).  If you want
-  an empty Tensor, just use a null pointer.  In addition, we require that the
-  stride equal zero for any axis that has dim = 1.
+  dimension.  (This framework allows the same kinds of operations, they are just
+  not done by the same mechanism).   We
+  also don't allow zero dims (i.e. a Tensor that is initialized must not have
+  num_elemnts==0).  If you want an empty Tensor, just use a null pointer.  In
+  addition, we require that the stride equal zero for any axis that has dim = 1.
+  There is also the "axis-sorting" property (see its glossary entry for more info).
 
-  Our requirements on a TensorPattern are:
+  Our requirements of a TensorPattern are:
 
     0 <= num_axes <= KALDI_TENSOR_MAX_DIM.
 
@@ -307,23 +312,14 @@ namespace tensor {
 
     offset >= 0
 
-    ... plus the uniqueness property.
+    The axis-sorting property (see property (vi) in "Valid Pattern" above)
 
   Note: in the public interface of class Tensor, if you ask for Dim(i) it will
-  return pattern.dims[pattern.num_axes - i], i.e.  the order is reversed.  In
-  the "public numbering" we use the variable name 'axis' to describe the axis
-  index, and in the "private numbering" we use the variable name 'raxis' (the
-  'r' means reversed).  This reversal makes it much easier to implement
+  return pattern.dims[pattern.num_axes - i], i.e. the interface uses the public
+  numbering, while the axes are physically stored using the reversed "private
+  numbering".   This reversal makes it much easier to implement
   PyTorch-style broadcasting where in an operation on Tensors of dims,
   say, (3,4) and (4), the (4) is interpreted as (1,4).
-
-  The uniqueness property requires that we must not be able to access the same
-  memory location via two different tuples of indexes).  Recause testing this
-  property exactly would be difficult in general without bringing in concepts
-  from number theory, we test a slightly stronger version of it that covers all
-  cases we are likely to encounter.  This is that, if we take all the axes with
-  dim != 1 and sort them from greatest to least stride, then for each i,
-  abs(strides[i]) >= dims[i+1] * abs(strides[i+1]).
 */
 struct TensorPattern {
   int32 num_axes;
@@ -347,10 +343,10 @@ struct TensorPattern {
   // be the same as ComputePatternCode() returns on this pattern.
   bool IsValid();
 
-  // This comparator induces a total ordering on valid TensorPatterns.
-  // It is a lexical comparison on the offset, num_axes, dims and strides.
-  // (The code does not need to be compared because it is a function of the dims
-  // and strides).
+  // This comparator induces a total ordering on valid TensorPatterns.  It is a
+  // lexical comparison on the offset, num_axes, dims and strides.  (The code
+  // does not need to be compared because, if not -1, it is a function of the
+  // dims and strides).
   bool operator < (const TensorPattern &other) const;
 };
 
@@ -373,6 +369,7 @@ struct TensorPatternProperties {
   // is_contiguous means that the data form a contiguous block in memory; it is
   // not the same as PyTorch's is_contiguous which is a stronger condition,
   // implying also that the strides are as for a `C-style` array.
+  // TODO: see if this is even needed; it may not be.
   bool is_contiguous;
 
   // has_c_strides means that the strides of all axes i with dim[i] != 1,
@@ -382,6 +379,7 @@ struct TensorPatternProperties {
   // have stride=0.
   // has_c_strides is the equivalent of PyTorch's is_contiguous.
   // this->has_c_strides implies this->is_contiguous.
+  // TODO: see if this is even needed; it may not be.
   bool has_c_strides;
 
   // Sets the members of *this to be the properties of pattern 'pattern'.

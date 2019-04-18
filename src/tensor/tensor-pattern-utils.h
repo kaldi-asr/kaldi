@@ -30,34 +30,6 @@ namespace kaldi {
 namespace tensor {
 
 
-/**
-   This function returns a code that compactly says whether each axis
-   has dim = 1 or dim != 1.  For purposes of the code generated, the number
-   of axes does not matter.  The lower-order KALDI_TENSOR_MAX_DIM bits
-   of the code might potentially be set; the rest will be zero.
-
-   The rightmost (least significant) bit corresponds to the last-numbered axis,
-   equivalent to raxis (reversed axis-index) == 0.
-
-   Note that non of the example `dims` vectors below have any leading
-   (dim=1) axes, because they wouldn't affect the code.
-
-   The examples below will use c++14 binary literals, although
-   the code doesn't use them.  In the notation below, in dims vectors,
-   x is a stand-in for 'any number greater than 1'.
-
-    0b00000000  0x00  dims=(), a scalar
-    0b00000001  0x01  dims=(x)
-    0b00000010  0x02  dims=(x,1)
-    0b00000011  0x03  dims=(x,x)
-
-    etc.
-
-  See also GetPatternCode(), which includes the same information but
-  also stride-related information.
- */
-int32 GetDimsCode(const TensorPattern &pattern);
-
 
 enum PatternEnum {
   kPatternContainsNegativeStride = 2048
@@ -97,12 +69,9 @@ void RemoveTrivialAxes(TensorPattern *pattern);
 
 
 /**
-   This function returns a code that compactly represents the same information
-   as GetDimsCode() [i.e. which axes had dim != 1], but also encodes which axis,
-   if any, had stride=1, and has a bit that says whether any axis had negative
-   stride.  (No two axes can have stride=1, due to a combination of the fact
-   that dim=1 implies stride=0, and the the uniqueness rule; search in
-   tensor-pattern.h).
+   This function returns a code that compactly represents information about
+   which axes had dim != 1; which axis, if any, had stride == 1; and
+   whether any axis had stride < 0.
 
    Let
       n = 0 if no axis had stride=1, otherwise:
@@ -123,12 +92,15 @@ void RemoveTrivialAxes(TensorPattern *pattern);
    most significant).
 
    Bit 11 is 1 if any of the strides were negative, and zero otherwise.
-   None of the example bit-patterns below have this bit set.  The
+   (None of the example bit-patterns below have this bit set.)  The
    underlying BLAS in most cases does not support negative strides so
    we deal with it by copying the data to a temporary with positive
    strides.
 
-   The low-order KALDI_TENSOR_MAX_DIM bits are as returned by GetDimsCode().
+   The low-order KALDI_TENSOR_MAX_DIM bits have a 1 corresponding to
+   axes where dim != 1, and a 0 if dim == 1 for that axis.  Axis zero
+   in the private numbering (equal to the highest-numbered axis in the
+   public numbering) is the rightmost/lowest-order of these bits.
 
    The explanation below will use c++14 binary literals (like 0b010101), although the code
    doesn't use them as we compile as c++11; we show the corresponding hex codes which
@@ -298,7 +270,21 @@ inline void Squeeze(int32 axis, TensorPattern *p) {
 
 
 
-/** Transpose the two specified axes of a TensorPattern
+/** Transpose the two specified axes (specified in the private/reversed
+    numbering) of a TensorPattern.
+
+    @param [in] raxis1  First axis to be transposed; must be in range
+                        `[0, p->num_axes - 1]`
+    @param [in] raxis2  Second axis to be transposed; must be in range
+                        `[0, p->num_axes - 1]`
+                        If identical to axis1, nothing will be done.
+    @param [in,out] p  TensorPattern whose axes are to be transposed.
+ */
+void TransposeR(int32 raxis1, int32 raxis2, TensorPattern *p);
+
+
+/** Transpose the two specified axes (specified in the private/reversed
+    numbering) of a TensorPattern.
 
     @param [in] axis1  First axis to be transposed; must be in range
                        `[-p->num_axes, p->num_axes - 1]`,
@@ -312,10 +298,7 @@ inline void Squeeze(int32 axis, TensorPattern *p) {
     @param [in,out] p  TensorPattern whose axes are to be transposed.
                        p->code is updated.
  */
-void Transpose(int32 axis1, int32 axis2, TensorPattern *p) {
-  Transpose(axis1, axis2, &(tensor->pattern));
-}
-
+void TransposeR(int32 raxis1, int32 raxis2, TensorPattern *p);
 
 
 
@@ -346,29 +329,50 @@ void Transpose(int32 axis1, int32 axis2, TensorPattern *p) {
                             axis.  Will have its num_axes reduced by 1
                             at exit, possibly its dims and strides
                             arrays changed, and its 'code' updated.
- */
+*/
 inline void Squeeze(int32 axis, TensorPattern *p) {
   if (axis < 0) SqueezeR(1 - axis, p);
   else SqueezeR(p->num_axes - 1 - axis, p);
 }
 
+/**  This function returns true if the dimensions of tensor patterns
+     a, b and c are broadcastable in the PyTorch sense (meaning;
+     after padding their dims on the left with ones to make them
+     have the same num-axes, corresponding dimensions are either
+     identical or 1).  The previous sentence is written in terms
+     of the public numbering; in the private numbering it just means
+     for each index `raxis` into the dims vector,
+     either `a.dims[raxis] == b.dims[raxis]`, or one of them si 1.
+
+       @param [in] a  The pattern of the first Tensor
+       @param [in] b  The pattern of the second Tensor
+       @param [in] b_non_reducing   If true, then we do not allow a dim of
+                      b to be 1 while corresponding dim of a is >1.
+       @return  Returns true if a and b are broadcastable (with
+                an additional constraint that `a.dims[i] <= b.dims[i]` if
+                `b_non_reducing == true`.
+ */
 bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
                    bool b_non_reducing = false);
 
 
 /**  This function returns true if the dimensions of tensor patterns
-     a, b and c are broadcastable in the PyTorch sense (meaning;
-     after padding their dims on the left with ones to make them
-     have the same num-axes, corresponding dimensions are either
-     identical or 1).  See the version of Broadcastable() above
-     for more information.
+     a, b and c are broadcastable in the PyTorch sense, which is
+     the same as
+     `Broadcastable(a, b) && Broadcastable(b, c) && Broadcastable(a, c)`.
+     See the 2-argument version of Broadcastable for more information.
 
-       @param [in] a  The dimensions of the first Tensor
-       @param [in] b  The dimensions of the second Tensor
-       @param [in] c  The dimensions of the third Tensor
+       @param [in] a  The pattern of the first Tensor
+       @param [in] b  The pattern of the second Tensor
+       @param [in] c  The pattern of the third Tensor
        @param [in] c_non_reducing   If true, then we do not allow a dim of
                       c to be 1 while corresponding dims of a or b
                       are > 1.
+       @return  Returns true if a, b and c are broadcastable (with
+                an additional constraint that
+                `max(a.dims[i], b.dims[i]) <= c.dims[i]` if
+                `c_non_reducing == true`).
+
  */
 bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
                    const TensorPattern &c, bool c_non_reducing = false);
@@ -402,9 +406,9 @@ bool SameDim(const TensorPattern &a, const TensorPattern &b,
 
 /**
    Compresses a TensorPattern by removing or combining as many axes as possible.
-   This version is suitable for operations that do not rely on any kind
-   of structure, such as zeroing or nonlinearities; the only equivalence
-   maintained is equivalence of the set of memory locations covered.
+   This version is suitable for operations that do not rely on any kind of
+   structure, such as zeroing or nonlinearities; the only equivalence maintained
+   is equivalence of the set of memory locations covered (the memory-index-set).
    The order of the (dim,stride) pairs in the input does not affect the
    output.  The output (dim,stride) pairs will be ordered from
    greatest to least stride (note: all output strides will be positive).
@@ -433,13 +437,15 @@ bool SameDim(const TensorPattern &a, const TensorPattern &b,
 void CompressOnePattern(TensorPattern *pattern);
 
 
+
 /**
-   Sorts the axes in 'pattern' from most negative to most positive
-   stride value
-   (negative to positive in the reversed numbering physically present in
-   'pattern'; would be positive to negative in the public API).  Useful in
-   testing equivalence of patterns, as CompressOnePattern() followed by
-   SortAxes() leads to a normalized form.
+   Sorts the axes in 'pattern' from most negative to most positive stride
+   in private numbering, equivalent to sorting from most positive to
+   most negative stride in public numbering.
+
+   TODO: decide whether to change this to sort on abs(stride), or
+   maybe create another version that does sort on abs(stride), if there
+   are situations where this turns out to be useful.
 
      @param [in,out]  The pattern whose axes are to be sorted
                    from most negative to most positive stride (in the
@@ -448,12 +454,23 @@ void CompressOnePattern(TensorPattern *pattern);
 void SortAxes(TensorPattern *pattern);
 
 
+// TODO: document this?
+inline void CanonicalizePattern(TensorPattern *pattern) {
+  CompressOnePattern(pattern);
+  SortAxes(pattern);
+}
+
+
 /**
    This version of SortAxes() sorts the axes in 'patterns' (which must be
    nonempty and all have the same number of axes), by ordering them from the
    most negative stride value in patterns[0] to the most positive stride value
-   in patterns[0] (using the other patterns to disambiguate the order only in case
-   of ties, which could only happen if some strides were zero).
+   in patterns[0], using the strides in the other patterns to disambiguate the
+   order only in case of ties, which could only happen if some strides were
+   zero.  I.e. it's a lexical ordero the strides of the patterns.  Note: the
+   most-negative-to-most-positive ordering is in terms of the private, `raxis`
+   numbering; it would be most-positive-to-most-negative in the public
+   numbering.
 
      @param [in,out]  The patterns whose axes are to be sorted.  All
                     will have their axes subject to the same permutation.
@@ -467,24 +484,17 @@ void SortAxes(ArrayRef<TensorPattern*> patterns);
   Multiplies all strides and the offset in 'pattern' by 'scale', which must be >
   0.  For now, will just crash if this causes integer overflow.
 
-  This function is used in the memory-locking code if the same storage
-  location is accessed using different dtypes (unlikely).
+  This function is used in the memory-locking code if the same storage location
+  is accessed using different dtypes (which is unlikely).
  */
 void ScaleStridesAndOffset(int32 scale, TensorPattern *pattern);
 
 
-// Used when we need an unordered_map containing TensorPattern.
+
+/// Hashing object, used when we need an unordered_map containing TensorPattern.
 class PatternHasher {
   size_t operator () (const TensorPattern &pattern) const;
 };
-
-
-/**
-   Canonicalizes the pattern 'pattern' by calling CompressOnePattern() and
-   then SortAxes().  The modified pattern will cover the same set of
-   memory locations as the original one.
- */
-void CanonicalizePattern(TensorPattern *pattern);
 
 
 /*
@@ -506,41 +516,20 @@ void CompressTwoPatterns(TensorPattern *a,
    The difference with just calling CompressOnePattern() several times is
    that CompressPatterns() preserves the relationships between the tensors.
 
-   Firstly, we require that all pairs of TensorPattern in 'patterns' be
-   broadcastable: that is, Broadcastable(p1, p2) would hold for any
-   p1, p2 in 'patterns'.  In the explanation below we will use a
-   'permissive indexing' convention whereby if a Tensor has an axis
-   with dim,stride (0, 1), we allow it to be indexed by any value
-   (not just zero), so that all the tensors represented can accept the
-   same set of index tuples.  Suppose for example that there are three
-   patterns, p1, p2, p3, in 'patterns', with 4 axes.  Let max_axes
-   larger of the num-axes of p1, p2 or p3, and let
-   x = (i, j, k, l) be an index tuple that would be valid for a tensor
-   with that many axes.  Each such x, when used as an index into p1, p2
-   and p3 with 'permissive indexing' as mentioned above, will
-   give us a tuple of memory-offsets (o1, o2, o3); o1, o2 and o3 are indexes
-   into the respective data pointers.  Ranging over the set of index-tuples
-   x, we get a set of memory-offset tuples; call this set S_in,
-   and call the set that we would get if doing the same procedure
-   on the output tensors (with their possibly changed num-axes), be
-   S_out.  Let us represent the 'data_offset' output of this function
-   as (in this case) a 3-tuple o.  Then the invariant that this
-   function needs to satisfy is that:
+   In technical terms (and you will have to follow definitions several deep
+   in the glossary to find all the definitions), this operation
+   preserves the memory-index-tuple-set of the Pattern-tuple, and
+   also the memory-index-set of each of the Patterns (we have to specify
+   the part after "and" to disallow swapping the Patterns).
 
-        `S_in = S_out + o`
-
-   (this equates two sets of 3-tuples, in our example) where we interpret the '+
-   o' as adding to each element of the set.  The '+ o' above would only be
-   necessary if any strides were negated; it is a tuple containing offsets, in
-   elements, to be added to the data pointers of the respective output tensors.
-
+   Note: while the first Pattern will have no negative strides at output,
+   the others may.
 
       @param [in,out] patterns   An nonempty array of the patterns
                          to be jointly compressed.
 
       @return  Returns true if it made any change to the patterns,
-               false if they were unchanged.  If false, the
-               data_offsets will be set to zero.
+               false if they were unchanged.
 
  Examples are below, where we write a TensorPattern as
  `{{dim1,dim2,..}, {stride1,stride2,..}}`.
@@ -559,35 +548,31 @@ bool CompressPatterns(ArrayRef<TensorPattern*> patterns);
 
 /**
    Compresses a TensorPattern by removing or combining as many axes as possible,
-   while respecting certain invariances that are relevant when constructing
-   'views' ('view' is PyTorch terminology; the NumPy equivalent is 'reshape').
-   The "C" in the function name refers to C-style arrays.
+   while preserving the memory-index-set of the pattern (see glossary for
+   explanation), and also while respecting certain invariances that are relevant
+   when constructing 'views' ('view' is PyTorch terminology; the NumPy
+   equivalent is 'reshape').  The "C" in the function name refers to C-style
+   arrays.  Basically what this function does is a highly restricted subset
+   of what CompressOnePattern() does.
 
-    This function removes axes with dim=1.
+   This function removes axes with dim=1.
 
    This function combines successive axes if the relationship of their
    dims and strides is what you would expect in a "C"-style array
    when the axes are listed in their non-reversed ordering (i.e.
    as exposed by class Tensor).
 
-
    Suppose that in pattern 'p' we had two successive axes physically numbered
    raxis, raxis+1, with p->dims[raxis] > 1 and p->dims[raxis+1] > 1
    and p->strides[raxis + 1] == p->strides[raxis] * p->dims[raxis],
-   then this function will merge them into a single axis with dimension
-   the product of the two dimensions..
-
-    TODO...
-
-   finish this if it turns out to be needed for something.
-
-
-   with dims and
-   strides (dim_a, dim_b) and (stride_a, stride_b), with dim_a > 1 and
-   dim_b > 1.  If stride_a == stride_b * dim_b, then this function
-   will merge them into a single axis with dimension (dim_a * dim_b)
-   and stride stride_b.   (However, they won't be merged if it would
+   then this function will merge them into a single axis whose dimension
+   is the product of the dimensions of the two original axes.
+   (However, they won't be merged if it would
    result in a dimension exceeding the range of int32).
+
+   TODO...  finish this if it turns out to be needed for something.
+   I'm not sure if it will be.
+
 
    The output pattern 'dest' is what you get if you keep applying the
    rules above until no further change is made.
@@ -646,15 +631,37 @@ void CompressPatternC(TensorPattern *p);
    @param [out] pattern_out  The output pattern, if we were
                       successful (otherwise undefined).  Its 'dims'
                       will be the same as 'dims'.
-   @return           Returns true on success (i.e. such a view existed),
-                     and false otherwise.  This function will never return
-                     false if 'pattern_in' had strides as for a "C" array
-                     (i.e., if its properties' has_c_strides was true).
+   @return           Returns true on success (i.e. such a view could be
+                     created), and false otherwise.  This function will
+                     never return false if 'pattern_in' had strides as
+                     for a "C" array (i.e., if HasCStrides(pettern_in)
+                     returns true).
 
  */
 bool CreateViewPattern(const TensorPattern &pattern_in,
                        ArrayRef<int32> dims,
                        TensorPattern *pattern_out);
+
+/**
+   This function returns true if 'pattern' has the same strides
+   as 'C' array with the same dimensions would have.  (Note:
+   we are referring here to the public numbering of the axes).
+   For example, an array of dims [3, 4, 5], if it were
+   a "C" array, would have strides of [20, 5, 1].  As a special
+   case, since our Patterns use stride=0 for axes with dim=1,
+   we treat that zero as a wildcard; that is, if there
+   is a stride value for which the array would have "C" strides
+   then we'll return true.
+
+     @param [in] pattern  The pattern we are checking.  It is expected
+                     to satisfy Valid(pattern), but this function does not
+                     check this.
+
+     @return  Returns true if this pattern has 'C' strides, and
+              false otherwise.   (See note above about axes
+              with dim=1).
+*/
+void HasCStrides(const TensorPattern &pattern);
 
 /**
    Returns true if there is overlap between pattern1 and pattern2,
@@ -750,11 +757,11 @@ class TensorPatternRebaser {
        m_src = src_pattern[t]
        m_dest = dest_pattern[t]
     View this object as a function from memory-indexes to memory-indexes
-    (m_src -> m_dest), whose domain is the memory-index-set of src_pattern
+    f: (m_src -> m_dest), whose domain is the memory-index-set of src_pattern
     and whose range is the memory-index-set of dest_pattern.
 
     The purpose of this object is to modify patterns in a way that maps
-    their memory-indexes with the same function.
+    their memory-indexes with the same function f.
   */
   TensorPatternRebaser(const TensorPattern &src_pattern,
                        const TensorPattern &dest_pattern);
