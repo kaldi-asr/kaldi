@@ -18,5 +18,9 @@ exit 0
 %WER 18.10 [ 3645 / 20138, 332 ins, 603 del, 2710 sub ] exp/tri3b/decode_nosp_tgsmall_dev_clean_2/wer_16_0.0
 
 
+
 %WER 18.58 [ 3742 / 20138, 366 ins, 763 del, 2613 sub ] exp/chain/tdnn1a_sp/decode_tgsmall_dev_clean_2/wer_10_0.0
 %WER 13.35 [ 2689 / 20138, 318 ins, 491 del, 1880 sub ] exp/chain/tdnn1a_sp/decode_tglarge_dev_clean_2/wer_9_0.5
+
+%WER 12.00 [ 2416 / 20138, 198 ins, 329 del, 1889 sub ] exp/chain/tdnn1h_wsj_sp/decode_tgsmall_dev_clean_2/wer_11_0.5
+%WER 8.60 [ 1731 / 20138, 159 ins, 236 del, 1336 sub ] exp/chain/tdnn1h_wsj_sp/decode_tglarge_dev_clean_2/wer_12_1.0
