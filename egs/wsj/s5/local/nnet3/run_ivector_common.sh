@@ -16,6 +16,12 @@ gmm=tri4b                # This specifies a GMM-dir from the features of the typ
                          # it should contain alignments for 'train_set'.
 
 num_threads_ubm=32
+
+nj_extractor=10
+# It runs a JOB with '-pe smp N', where N=$[threads*processes]
+num_processes_extractor=4
+num_threads_extractor=4
+
 nnet3_affix=             # affix for exp/nnet3 directory to put iVector stuff in (e.g.
                          # in the tedlium recip it's _cleaned).
 
@@ -110,7 +116,8 @@ if [ $stage -le 4 ]; then
   # can be sensitive to the amount of data.  The script defaults to an iVector dimension of
   # 100.
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" \
+    --nj $nj_extractor --num-threads $num_threads_extractor --num-processes $num_processes_extractor \
     data/${train_set}_sp_hires exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
