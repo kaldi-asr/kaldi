@@ -4,7 +4,11 @@
 #           2018  David Snyder
 #           2019  Soonshin Seo
 #
-# Usage: make_voxceleb1.pl /export/voxceleb1 data/
+# Usage: make_voxceleb1_v2.pl /export/voxceleb1 dev data/dev
+#
+# The VoxCeleb1 corpus underwent several updates that changed the directory and speaker ID format.
+# The script 'make_voxceleb1.pl' works for the oldest version of the corpus. 
+# This script should be used if you've downloaded the corpus recently.
 
 if (@ARGV != 3) {
   print STDERR "Usage: $0 <path-to-voxceleb1> <dataset> <path-to-data-dir>\n";
