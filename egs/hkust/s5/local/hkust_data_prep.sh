@@ -36,7 +36,7 @@ n=`cat $train_dir/sph.flist $dev_dir/sph.flist | wc -l`
 
 #collect all trans, convert encodings to utf-8,
 find $hkust_text_dir -iname "*.txt" | grep -i "trans/train" | xargs cat |\
-  iconv -f GBK -t utf-8 - | perl -e '
+  iconv -f GBK -t UTF-8 | perl -e '
     while (<STDIN>) {
       @A = split(" ", $_);
       if (@A <= 1) { next; }
@@ -51,7 +51,7 @@ find $hkust_text_dir -iname "*.txt" | grep -i "trans/train" | xargs cat |\
   ' | sort -k1 > $train_dir/transcripts.txt || exit 1;
 
 find $hkust_text_dir -iname "*.txt" | grep -i "trans/dev" | xargs cat |\
-  iconv -f GBK -t utf-8 - | perl -e '
+  iconv -f GBK -t UTF-8 | perl -e '
     while (<STDIN>) {
       @A = split(" ", $_);
       if (@A <= 1) { next; }
@@ -76,7 +76,7 @@ cat $train_dir/transcripts.txt |\
   sed -e 's/<noise>\(.\+\)<\/noise>/\1/g' |\
   sed -e 's/((\([^)]\{0,\}\)))/\1/g' |\
   local/hkust_normalize.pl |\
-  python local/hkust_segment.py |\
+  local/hkust_segment.py |\
   awk '{if (NF > 1) print $0;}' > $train_dir/text || exit 1;
 
 cat $dev_dir/transcripts.txt |\
@@ -85,7 +85,7 @@ cat $dev_dir/transcripts.txt |\
   sed -e 's/<noise>\(.\+\)<\/noise>/\1/g' |\
   sed -e 's/((\([^)]\{0,\}\)))/\1/g' |\
   local/hkust_normalize.pl |\
-  python local/hkust_segment.py |\
+  local/hkust_segment.py |\
   awk '{if (NF > 1) print $0;}' > $dev_dir/text || exit 1;
 
 # some data is corrupted. Delete them
