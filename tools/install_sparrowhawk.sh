@@ -4,6 +4,7 @@ export CXXFLAGS="-I`pwd`/openfst/include"
 stage=0
 
 if [ $stage -le 0 ] ; then
+    rm -rf re2 protobuf sparrowhawk*
     git clone -b feature/Spanish_normalizer https://github.com/spokencloud/sparrowhawk-resources.git || exit 1;
     patch -p0 < sparrowhawk-resources/local/Makefile.patch || exit 1;
     make openfst || exit 1;
@@ -57,15 +58,14 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then 
-    source ~/anaconda/bin/activate py27 || exit 1;
     cp -r sparrowhawk-resources/language-resources sparrowhawk/ || exit 1;
     cd sparrowhawk/language-resources/en/textnorm/classifier || exit 1;
     . ./path.sh || exit 1;
-    python create_far.py ascii.syms  universal_depot_ascii universal_depot universal_depot.far 
+    python2 create_far.py ascii.syms  universal_depot_ascii universal_depot universal_depot.far 
     thraxmakedep tokenize_and_classify.grm || exit 1;
     make || exit 1;
     cd ../verbalizer
-    python create_far.py ascii.syms  number_names_depot_ascii number_names_depot number_names_depot.far
+    python2 create_far.py ascii.syms  number_names_depot_ascii number_names_depot number_names_depot.far
     cp -r ../classifier/universal_depot.far .
     thraxmakedep  verbalize.grm || exit 1;
     make || exit 1;
