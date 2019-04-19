@@ -2,6 +2,7 @@
 #
 # Copyright 2018  Ewald Enzinger
 #           2018  David Snyder
+#           2019  Soonshin Seo
 #
 # Usage: make_voxceleb1.pl /export/voxceleb1 data/
 

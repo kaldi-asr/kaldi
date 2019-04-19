@@ -24,7 +24,7 @@ stage=0
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
   local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
-  # This script reates data/voxceleb1_test and data/voxceleb1_train for latest version of VoxCeleb1.
+  # This script creates data/voxceleb1_test and data/voxceleb1_train for latest version of VoxCeleb1.
   # Our evaluation set is the test portion of VoxCeleb1.
   local/make_voxceleb1_v2.pl $voxceleb1_root dev data/voxceleb1_train
   local/make_voxceleb1_v2.pl $voxceleb1_root test data/voxceleb1_test
