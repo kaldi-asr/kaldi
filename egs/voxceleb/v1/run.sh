@@ -16,7 +16,7 @@ vaddir=`pwd`/mfcc
 
 # The trials file is downloaded by local/make_voxceleb1_v2.pl.
 voxceleb1_trials=data/voxceleb1_test/trials
-voxceleb1_root=/export/corpora/VoxCelebi1
+voxceleb1_root=/export/corpora/VoxCeleb1
 voxceleb2_root=/export/corpora/VoxCeleb2
 
 stage=0
