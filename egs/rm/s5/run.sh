@@ -11,6 +11,7 @@ set -e # exit on error
 
 #local/rm_data_prep.sh /mnt/matylda2/data/RM
 
+
 local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp
 
 #local/rm_data_prep.sh /home/dpovey/data/LDC93S3A/rm_comp
@@ -251,4 +252,4 @@ local/run_sgmm2.sh
 # local/nnet/run_cnn2d.sh
 
 # chain recipe
-# local/chain/run_tdnn_5f.sh
+# local/chain/run_tdnn.sh
