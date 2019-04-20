@@ -59,7 +59,7 @@ fi
 
 if [ $stage -le 2 ]; then 
     cp -r sparrowhawk-resources/language-resources sparrowhawk/ || exit 1;
-    cd sparrowhawk/language-resources/en/textnorm/classifier || exit 1;
+    cd sparrowhawk/language-resources/esp/textnorm/classifier || exit 1;
     . ./path.sh || exit 1;
     python2 create_far.py ascii.syms  universal_depot_ascii universal_depot universal_depot.far 
     thraxmakedep tokenize_and_classify.grm || exit 1;
