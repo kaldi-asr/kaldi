@@ -2,7 +2,6 @@
 
 # this script is a modified version of run_tdnn_5n.sh. It uses
 # a new configs convention for chain model after kaldi 5.2.
-# 
 
 
 
