@@ -70,7 +70,7 @@ if [ $stage -le 1 ]; then
   # callhome1 and callhome2.  Each partition is treated like a held-out
   # dataset, and used to estimate various quantities needed to perform
   # diarization on the other part (and vice versa).
-  for name in train callhome1 callhome2; do
+  for name in train callhome callhome1 callhome2; do
     steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 \
       --cmd "$train_cmd" --write-utt2num-frames true \
       data/$name exp/make_mfcc $mfccdir
