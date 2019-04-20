@@ -460,6 +460,13 @@ inline void CanonicalizePattern(TensorPattern *pattern) {
   SortAxes(pattern);
 }
 
+/**
+   This pattern checks that 'pattern' is valid and in canonical form (see
+   glossary for the meaning).  CanonicalizePattern() will modify a valid pattern
+   to put it in canonical form.
+ */
+bool IsCanonical(const TensorPattern &pattern);
+
 
 /**
    This version of SortAxes() sorts the axes in 'patterns' (which must be
@@ -808,9 +815,9 @@ class TensorPatternRebaser {
   // The 'offset' value of dest_pattern_compressed
   int64 dest_offset_;
 
-  // num_axes_ is the number of axes, not in the original src_pattern /
-  // dest_pattern but after the two patterns have been jointly compressed and
-  // then sorted from smallest to greatest stride in src_pattern.
+  // num_axes_ is the number of axes, not in the original src_pattern and
+  // dest_pattern, but after the two patterns have been jointly compressed and
+  // then sorted from the smallest to greatest stride in src_pattern.
   // src_strides_ are the resulting strides from src_pattern_compressed, and
   // dest_strides_ are the resulting strides from dest_pattern_compressed.
 
@@ -830,7 +837,13 @@ class TensorPatternRebaser {
   int32 src_strides_[KALDI_TENSOR_MAX_DIM];
   int32 dest_strides_[KALDI_TENSOR_MAX_DIM];
 
+
+
   // The basic algorithm in Convert() is:
+  //
+
+  //
+  //
   //  First, add offset_ to its offset.
   //   Then:
   //     For each nontrivial axis of 'pattern', we are going to modify

@@ -52,7 +52,16 @@ namespace tensor {
                       that identifies an axis in the public numbering (see "Public numbering").
                       See also: Raxis-index.
 
-    Axis-sorting property: search below for [Valid Pattern], point (vi).
+    Axis-sorting property: search below for [Valid Pattern], point (vi), for the main
+                      definition.
+          [Axis-sorting property of an axis-index]:
+                      There is another sense in which we use the term
+                      'axis-sorting property': for a Pattern whose axes are sorted
+                      from least to greatest abs(stride) [in the private numbering],
+                      we say that "the axis-sorting property holds for axis-index i
+                      of that Pattern" if:
+                                 dim(i) * abs(stride(i)) <= abs(stride(i+1)).
+
 
     Broadcasting:     A convention whereby for an operation on Tensors that would
                       normally be required to have the same dimension, it's
@@ -76,13 +85,14 @@ namespace tensor {
                      are broadcastable because 4 == 4 and in the remaining axis,
                      one of the dimensions is 1.
 
-    Canonical form:  A TensorPattern is in canonical form if all axes that could be combined
-                     (without affecting its memory-index-set, obviously) have been
-                     combined, there are no trivial axes, all strides are positive,
-                     and the axes are sorted in increasing order of stride.
-                     (Note: this is in the private numbering; in the public numbering
-                     this means decreasing order of stride, which is consistent
-                     with "C" strides).  See CanonicalizePattern().
+    Canonical form:  A TensorPattern is in canonical form if all pairs of axes that
+                     could be combined (without affecting its memory-index-set)
+                     have been combined, where there are no trivial axes, all
+                     strides are positive, and the axes are sorted in increasing
+                     order of stride.  (Note: this is in the private numbering;
+                     in the public numbering this means decreasing order of
+                     stride, which is consistent with "C" strides).  See
+                     CanonicalizePattern().
 
     Contiguous:      A Pattern is contiguous if its memory-index-set forms a contiguous
                      range of integers (no gaps).  This is different from the PyTorch
@@ -174,7 +184,7 @@ namespace tensor {
                       (see struct TensorPattern).  The Pattern has
                       an 'offset' which is the memory-index of the element of the Tensor
                       whose index-tuple is all zeros; the Pattern also
-                      has a number of axes, `0 <= num_axes < KALDI_TENSOR_MAX_DIM`,
+                      has a number of axes, `0 <= num_axes < KALDI_TENSOR_MAX_AXES`,
                       and for each axis from 0 <= axis < num_axes, it has a dimension
                       dim(axis) and stride(axis).
 
@@ -218,6 +228,9 @@ namespace tensor {
                       numbers of axes we may often use larger raxis values for the Tensor
                       of smaller num_axes (see PyTorch-style broadcasting).
 
+    Set-equivalent:   Two Patterns are set-equivalent if their memory-index-sets
+                      are identical.
+
     Trivial axis:     An axis of a Pattern for which dim=1 and stride=0.
 
     Memory-index-set of a Pattern:
@@ -232,6 +245,52 @@ namespace tensor {
                       index-tuple-set of the Pattern-tuple.  See "memory-index-tuple"
                       and "index-tuple-set of a Pattern-tuple" for more information.
 
+    Linear property:
+                      Consider Patterns P and Q with the property that the
+                      memory-index-set of P is a subset of the memory-index-set of
+                      Q.  If i is an index-tuple, let P(i) be the map from
+                      i to a memory-index, and let
+                            \f$   Q^{-1}(m)   \f$
+                      be the function that maps a memory-index m in the memory-index-set
+                      of Q to the index-tuple i in the index-tuple-set of Q such
+                      that Q(i) = m.  Then we say that P is linear in Q if
+                      for all index-tuples i and j such that i, j and i + j are
+                      in the index-tuple-set of P,
+                      \f$  Q^{-1}(P(i)) + Q^{-1}(P(j)) = Q^{-1}(P(i+j)) \f$.
+                      [Transitivity]
+                      It is easy to show that the linear property is transitive;
+                      that is if P is linear in Q and Q is linear in R, then
+                      P is linear in R.
+
+    Regularity property:   This is a property of Patterns that is relevant when reducing
+                      Patterns to a common set of strides.
+
+                      We formulate the regularity property to only apply for
+                      Patterns which are valid-- and which have positive strides in increasing order; these
+                      the stipulation on having postive, sorted strides
+                      is for convenience, since we happen to need it only for
+                      that case and it's easier to formulate in that case.
+
+                      For the regularity property to apply, a Pattern must also
+                      be valid-- (see its own glossary entry).
+
+                      A Pattern is regular if, in addition to satisfying the
+                      properties mentioned above, for each axis-index
+                      0 <= i < num_axes - 1,
+                      there is an integer k with i < k <= num_axes, such that:
+                        (i) Either k == num_axes, or dim(i) * stride(i) <= stride(k),
+                      and
+                        (ii) For all j with i < j < k, stride(i) divides stride(j)
+                            exactly and dim(j) = 1.
+                      [Note: the condition that dim(j) == 1 will anyway be true if
+                      the Pattern has the uniqueness property.]
+
+                      The reader may notice that if we were to restrict
+                      k to equal i + 1, then
+                      this would be equivalent to the axis-sorting property
+                      (property (v)) plus the requirement that the strides be
+                      positive and sorted.
+
     Stride:           A stride is the distance, in elements, between successive
                       elements of a Tensor along a particular dimension.
                       For example, a Tensor with one axis having dim=3 and
@@ -245,6 +304,12 @@ namespace tensor {
                       necessary (since most BLAS implementations do not support
                       negative stride).
 
+   Uniqueness property:  A property of a Pattern that no two different index-tuples,
+                      when used to index the Pattern, generate the same memory-index.
+                      The axis-sorting property is sufficient, but not necessary,
+                      to ensure the uniqueness property.  (The uniqueness property
+                      is probably not so easy to test for efficiently in the general
+                      case; at least, we have not found a way).
 
     Valid Pattern:
                      A valid Pattern must be as follows.  Think of this as the mathematical definition;
@@ -254,28 +319,25 @@ namespace tensor {
                           (i) The num_axes must satisfy 0 <= num_axes < KALDI_TENSOR_MAX_DIM
                           (ii) The offset must be >= 0.
                           (iii) the dims must all be >0.
-                          (iv) the strides must be zero for axes with dim=1
-                          (v) the strides must be nonzero (but not necessarily positive) for axes with
+                          (iv) the strides must be nonzero (but not necessarily positive) for axes with
                                 dim != 1.
-                          (vi) the axis-sorting property.   This property assures that no memory-index
-                              can be accessed via two different index-tuples, and is sufficient
-                              but not necessary toensure the Uniqueness Property (see its own entry).
-                              This property requires that if the axes are sorted from least to greatest
-                              value of abs(stride),
-                              for each axis i < num_axes - 1:
-                                    dim(i) * stride(i) <= stride(i+1).
+                          (v) the axis-sorting property.   This property is sufficient, but not
+                              necessary, to ensure the uniqueness property.  It requires that
+                              when the axes are sorted from least to greatest value of abs(stride),
+                              for each axis-index 0 <= i < num_axes - 1:
+                                    dim(i) * abs(stride(i)) <= abs(stride(i+1)).
+                              (Note: this property doesn't require that the axes be sorted that
+                              way; if you need that, search for "Canonical form").
+                          (vi) the strides must be zero for axes with dim=1.
 
-   Valid+ Pattern:  a Pattern which is valid and also has its code set.  See declaration for
-                    struct TensorPattern.  This is not a mathematical type of definition, more
-                    of a code-level definition, but since we frequently need this notion,
-                    we give it its own name.
 
-   Uniqueness property:  A property of a Pattern that no two different index-tuples,
-                      when used to index the Pattern, generate the same memory-index.
-                      The axis-sorting property is sufficient, but not necessary,
-                      to ensure the uniqueness property.  (The uniqueness property
-                      is probably not so easy to test for efficiently in the general
-                      case; at least, we have not found a way).
+     Valid- Pattern:
+                      A Pattern is valid- if it satisfies properties (i) through (v) of
+                      a valid Pattern (i.e. it may have nonzero strides for axes with dim=1).
+                      A valid pattern is also valid-.
+     Valid-- Pattern:
+                      A Pattern is valid-- if it satisfies properties (i) through (iv) of
+                      a valid Pattern.  A pattern that is valid or valid- is also valid--.
  */
 
 
@@ -312,7 +374,7 @@ namespace tensor {
 
     offset >= 0
 
-    The axis-sorting property (see property (vi) in "Valid Pattern" above)
+    The axis-sorting property (see property (v) in "Valid Pattern" above)
 
   Note: in the public interface of class Tensor, if you ask for Dim(i) it will
   return pattern.dims[pattern.num_axes - i], i.e. the interface uses the public
@@ -341,6 +403,7 @@ struct TensorPattern {
   // namely: dims and strides with index >= num_axes should be
   // 1 and 0 respectively; and the code should either be -1 or or
   // be the same as ComputePatternCode() returns on this pattern.
+  // See also IsCanonical() in tensor-pattern-utils.h.
   bool IsValid();
 
   // This comparator induces a total ordering on valid TensorPatterns.  It is a
@@ -349,6 +412,21 @@ struct TensorPattern {
   // dims and strides).
   bool operator < (const TensorPattern &other) const;
 };
+
+
+/// Returns a string representing a Pattern, of the form:
+/// "offset=a dims=[b c d] strides=[e f g]"; this is for debugging
+/// purposes.
+std::string PatternAsString(const TensorPattern &pattern);
+
+/// Returns a string representing the dims of a Pattern, something like
+/// "[10 20 100]"
+std::string DimsAsString(const TensorPattern &pattern);
+
+/// Returns a string representing the strides of a Pattern, something like
+/// "[1 10 200]"
+std::string StridesAsString(const TensorPattern &pattern);
+
 
 
 // We may later get rid of this struct and just have functions to get

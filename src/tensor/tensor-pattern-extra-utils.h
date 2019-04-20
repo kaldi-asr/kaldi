@@ -139,8 +139,74 @@ bool ToMemoryIndexTupleSet(const ArrayRef<TensorPattern*>  patterns,
    that their memory-index-tuple-sets are the same.  See glossary
    in tensor-pattern.h for explanation.
  */
-bool PatternTuplesEquivalent(const ArrayRef<const TensorPattern*> &patterns1,
-                             const ArrayRef<const TensorPattern*> &patterns2);
+bool PatternTuplesEquivalent(const ArrayRef<const TensorPattern*> patterns1,
+                             const ArrayRef<const TensorPattern*> patterns2);
+
+/**
+   This function returns true if a Pattern is regular (see Regularity property
+   in the glossary in tensor-pattern.h) and false otherwise.  'pattern' must
+   have all positive strides, the strides must be in increasing order (in the
+   private numbering), and it must be valid-- (see glossary).
+ */
+bool IsRegular(const TensorPattern &pattern);
+
+
+/**
+   This function returns true if a Pattern is valid- (see definition in
+   glossary); see also TensorPattern::Valid() and IsValidMM().
+ */
+bool IsValidM(const TensorPattern &pattern);
+
+/**
+   This function returns true if a Pattern is valid-- (see definition in
+   glossary); see also TensorPattern::Valid() and IsValidM().
+ */
+bool IsValidMM(const TensorPattern &pattern);
+
+
+/**
+   This function attempts to convert a pattern 'pattern' in canonical form
+   (c.f. "Canonical form" in glossary, and CanonicalizePattern()) to a list of
+   Patterns (see documentation of `patterns` below for note on their possible
+   non-validity), whose strides (in the private numbering) are equal to the
+   provided 'strides' vector, the union of whose memory-index-sets (which will
+   all be disjoint) is equal to the memory-index-set of the input Pattern, and
+   which are all linear in `pattern` (c.f. documentation of "Linear Property).
+
+   This function is not guaranteed to always succeed (return true) but it will
+   always succeed when people are doing "reasonable" things with Tensors.  It
+   will always succeed if each element in 'strides' divides the next element
+   exactly, although this is not a necessary condition for success.
+
+       @param [in] pattern  A valid Pattern in canonical form
+       @param [in] strides   A list of positive integers, sorted from
+                        smallest to greatest; it must contain all strides in
+                        `pattern`.
+       @param [out] patterns  On success (see documentation of return status)
+                        'patterns' will be set to a nonempty list of patterns,
+                        the union of whose memory-index-sets equals
+                        the memory-index-set of `pattern`, all of whose strides are
+                        equal to `strides`, and each of which is valid- and linear
+                        in `pattern` (see "Linear property").
+
+                        except for property (iv) (search for "Valid
+                        Pattern" in tensor-pattern.h): that is, they may have
+                        nonzero strides for axes with dim == 1.  Each elements
+                        of 'strides' dividing the next is a sufficient but not
+                        necessary condition for this function to always return
+                        true.
+                          On failure, `patterns->empty()` will be true.
+
+        @return         Returns true if pattern strides could be converted using
+                        our algorithm, false if not.  This algorithm will work
+                        for any 'reasonable' request; it doesn't attempt to
+                        cover the types of cases where, to solve them, we would
+                        have to output a number of patterns that couldn't be
+                        bounded given the number of axes.
+  */
+bool ConvertPatternStrides(const TensorPattern &pattern,
+                           const ArrayRef<int32> strides,
+                           std::vector<TensorPattern> *patterns);
 
 
 /**

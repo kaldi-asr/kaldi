@@ -72,6 +72,10 @@ struct ArrayRef final {
   // We will add iterators later if they are needed.
 };
 
+// Converts an ArrayRef<int32> to a string, e.g. "[1 4 300]"; can implicitly
+// print std::vector as well.
+std::string ArrayAsString(const ArrayRef<int32> a);
+
 
 }  // namespace tensor
 }  // namespace kaldi

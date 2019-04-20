@@ -124,7 +124,7 @@ class Op {
   void *inputs_;
 
   int64 n_;  // initialized from the counter when this object is created.
-  std::shared_ptr<Op> tail_;
+  std::shared_ptr<Op> tail_;  // TODO: make it unique_ptr?
  protected:
   // Return true if this is not the last Op in the list of Ops attached to this
   // base Variable (can be useful to know whether we need bother to scale the

@@ -161,11 +161,11 @@ enum BinaryFunctionEnum {
 
 
 
-// In practice we don't expect user-owned tensors with dims greater than 5 to
-// exist, but there are certain manipulations we do when simplifying matrix
+// In practice we don't expect user-owned tensors with num-axes greater than 5
+// to exist, but there are certain manipulations we do when simplifying matrix
 // multiplications that temporarily add an extra dimension, and it's most
 // convenient to just increase the maximum.
-#define KALDI_TENSOR_MAX_DIM 6
+#define KALDI_TENSOR_MAX_AXES 6
 
 
 }  // namespace tensor

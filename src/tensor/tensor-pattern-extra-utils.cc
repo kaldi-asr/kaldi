@@ -41,10 +41,10 @@ class IntersectionComputer {
                          will, if this function returns true,
                          represent the intersection between the pattern1 and
                          pattern2 passed to the constructor.  These patterns
-                         will be valid without a code, but won't be
-                         in canonical form (the user can do that themselves;
-                         we don't it here because in most cases the caller will
-                         only care whether the union is empty or not).
+                         will be valid, but won't be in canonical form (the user
+                         can do that themselves; we don't it here because in
+                         most cases the caller will only care whether the union
+                         is empty or not).
   */
   bool ComputeIntersection(std::vector<TensorPattern> *patterns_out) {
     CanonicalizePattern(&pattern1_);
@@ -73,37 +73,6 @@ class IntersectionComputer {
   // both been canonicalized.
   bool FindCommonStrides(std::vector<int32> *axes);
 
-
-  /**
-    This function converts a pattern 'pattern' in canonical form to a list of Patterns
-    whose union (viewed as memory-index-sets) is equivalent to 'pattern'
-    where the strides of the output patterns are equal to the provided 'common_strides'
-    vector.
-
-    This function requires that the actual strides in 'pattern' all be present in
-    the list 'common_strides'; that the elements of 'common_strides' be positive
-    and sorted from smallest to greatest; and that each element in
-    'common_strides' divide the next element exactly.
-
-
-       @param [in] pattern  Input pattern in canonical form, valid except for
-                         code.
-       @param [in] common_strides   A sorted list of integers >0, with the
-                         property that each element must divide the next
-                         element exactly, and also that each stride in
-                         'pattern' must be present in 'common_strides'.
-       @param [out] patterns   This will be set to a nonempty list of patterns
-                         whose union (viewed as a memory-index-set) equals
-                         'pattern', and whose strides are equal to
-                         'common_strides'.  The patterns in `*patterns` at
-                         output will be valid except for the code and for
-                         property (iv) (search Valid Pattern in
-                         tensor-pattern.h): that is, it will have nonzero
-                         strides for axes with dim != 1.
-  */
-  static void ConvertToCommonStrides(const TensorPattern &pattern,
-                                     const std::vector<int32> &common_strides,
-                                     std::vector<TensorPattern> *patterns);
 
   /**
      Computes the intersection between pattern1 and pattern2, which must have
@@ -159,68 +128,6 @@ class IntersectionComputer {
                                   const TensorPattern &pattern2,
                                   int32 identical_raxis,
                                   std::vector<TensorPattern> *patterns_out);
-
-
-  /**
-     This function, called by ConvertToCommonStrides() converts a pattern in
-     canonical form to a Pattern whose strides are equal to the
-     provided 'common_strides' vector, and which is valid *except for*
-     the axis-sorting (property (vi) of a valid Pattern) and
-     for property (iv), that strides must be nonzero for axes
-     with dim != 1.
-
-         @param [in] pattern_in  The input pattern; must be valid and
-                                 in canonical form.
-         @param [in] common_strides  The list of strides.  Must be sorted,
-                                 have the property that each element
-                                 divides the next element, and all
-                                 strides in pattern_in must be present
-                                 in this list.
-         @param [out] pattern_out   The output pattern.  Will be equivalent
-                                 to pattern_in in terms of memory-index-set,
-                                 its strides will be equal to 'common_strides'
-                                 (including the order), and it will be valid
-                                 except for properties (iv) and (vi), as
-                                 mentioned above.
-  */
-  static void ConvertLazilyToCommonStrides(const TensorPattern &pattern_in,
-                                           const std::vector<int32> &common_strides,
-                                           TensorPattern* pattern_out);
-
-  /**
-     This function makes sure that the axis-sorting property in 'pattern'
-     holds for the axis numbered 'raxis' (in the private numbering, of
-     course).  I.e. it ensures that:
-
-       `pattern->strides[raxis+1] >= pattern->strides[raxis] * pattern->dims[raxis]`
-
-     If it does not already have this property, this function ensures that it
-     does have it by modifying its dims for raxis and raxis + 1, and if necessary,
-     moving part of the pattern to 'extra_pattern'.  This will be necessary if the
-     value of `pattern->dims[raxis]` at entry is not a multiple of
-     `pattern->strides[raxis+1] / pattern->strides[raxis]`.
-
-         @param [in]      raxis    The axis on which we are doing the check
-         @param [in,out]  pattern  The input pattern, valid except for properties
-                                (iv) and (vi).  Its strides must be in
-                                increasing order (in the private numbering) and
-                                each must divide the next.
-         @param [out]     extra_pattern   This function writes to 'extra_pattern' if
-                                and only if it returns true.  See documentation of
-                                return status.
-         @return  Returns true if it wrote to extra_pattern.  If it returns true,
-                  then it guarantees that the union of the memory-index-sets of
-                  'pattern' and 'extra_pattern' at exit are equal to the memory-index-set
-                  of 'pattern' at entry.  If it returns false, then it guarantees
-                  that the memory-index-set of 'pattern' has been unchanged.
-                  In either case it guarantees that property (vi), the axis-sorting
-                  property, holds for axis 'raxis', in 'pattern' and (if applicable)
-                  in `extra_pattern`.
-                  The codes of pattern and extra_pattern are not set.
-  */
-  static bool EnsureAxisSortingPropertyHolds(int32 raxis,
-                                             TensorPattern *pattern,
-                                             TensorPattern *extra_pattern);
 
 
 
@@ -302,17 +209,67 @@ bool IntersectionComputer::EnsureAxisSortingPropertyHolds(
 }
 
 
-void IntersectionComputer::ConvertLazilyToCommonStrides(
+// See declaration in header.
+bool IsRegular(const TensorPattern &pattern) {
+  int32 num_axes = pattern.num_axes;
+
+  for (int32 i = 0; i + 1 < num_axes; i++) {
+    int32 this_stride = pattern.strides[i],
+        this_dim = pattern.dims[i],
+        this_prod = this_stride * this_dim;
+    for (int32 j = i + 1; j < num_axes; j++) {
+      if (pattern.strides[j] >= this_prod) {
+        // in this case, 'j' would be the 'k' value used in the proof.  If we
+        // fall off this loop, it would correspond to k == num_axes, which is
+        // also OK.
+        break;
+      } else if (pattern.dims[j] != 1 ||
+                 pattern.strides[j] % this_stride != 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+
+/**
+   This function, called by ConvertPatternStrides(), is not declared in the
+   header.  It converts a pattern in canonical form to a Pattern whose strides
+   are equal to the provided 'strides' vector, which is valid--,
+   satisfieds the uniqueness property, and has positive and increasing strides.
+
+       @param [in] pattern_in  The input pattern; must be valid and
+                               in canonical form.
+       @param [in] strides     The list of strides which we want
+                               'pattern_out' to have.  Must be a list of
+                               positive integers sorted from least to
+                               greatest with size <= KALDI_TENSOR_MAX_AXES,
+                               and all strides in pattern_in must
+                               be present in this list.
+       @param [out] pattern_out  The output pattern (must not point to
+                               pattern_in).  On exit its memory-index-set will
+                               equal that of pattern_in; its strides will be
+                               equal to 'strides' (including the order, when
+                               numbered in the private numbering); and it will
+                               be valid-- and satisfy the uniqueness property.
+*/
+static void ConvertPatternStridesLazily(
     const TensorPattern &pattern_in,
-    const std::vector<int32> &common_strides,
+    const std::vector<int32> &strides,
     TensorPattern* pattern_out) {
+  KALDI_PARANOID_ASSERT(IsCanonical(pattern_in));
   int32 num_axes_in = pattern_in.num_axes,
-      num_axes_out = common_strides.size();
+      num_axes_out = strides.size();
   pattern_out->num_axes = num_axes_out;
+  pattern_out->code = -1;
   int32 raxis_in = 0;
   pattern_out->offset = pattern_in->offset;
+  // The following code relies on pattern_in being in canonical form
+  // (so its strides are in sorted order), and all of its strides being
+  // present in the list 'strides'.
   for (int32 raxis_out = 0; raxis_out < num_axes_out; raxis_out++) {
-    int32 stride = common_strides[raxis_out];
+    int32 stride = strides[raxis_out];
     pattern_out->strides[raxis_out] = stride;
     if (pattern_in.strides[raxis_in] == stride) {
       pattern_out->dims[raxis_out] = pattern_in.dims[raxis_in];
@@ -322,28 +279,135 @@ void IntersectionComputer::ConvertLazilyToCommonStrides(
     }
   }
   if (raxis_in != num_axes_in) {
-    KALDI_ERR << "Something went wrong converting strides (likely code error)";
+    KALDI_ERR << "Something went wrong converting strides; trying to "
+        "convert pattern with strides = " << StridesAsString(pattern_in)
+              << " to strides " << ArrayAsString(strides);
   }
 }
 
 
-void IntersectionComputer::ConvertToCommonStrides(
+
+/**
+   This function, not declared in the header, attempts to ensure that the axis-sorting
+   property in a provided Pattern holds for the axis-index 'raxis' (in the private
+   numbering, of course).  I.e. it ensures (for the pattern we are to modify) that:
+
+      `pattern->strides[raxis+1] >= pattern->strides[raxis] * pattern->dims[raxis]`.
+
+   This function expects that the pattern will also satisfy that property for
+   all axis-indexes `0 <= i < raxis`, and will be valid--.  This function will
+   always succeed if the pattern is regular (see IsRegular(), and "Regularity
+   property" in the glossary).
+
+   Ensuring this property exists may sometimes require splitting this Pattern up
+   (i.e. adding extra Patterns); the union of their memory-index-sets together
+   with that of the modified pattern will equal the memory-index-set of the
+   original pattern at input (these sets being unioned will be disjoint).  Any
+   newly created Patterns will be appended to the vector 'patterns'.
+
+    @param [in]      raxis    The axis for which we are ensuring that the
+                             axis-sorting property holds.
+    @param [in]      pattern_index  The index in the vector 'patterns'
+                             of the pattern for which we are ensuring that
+                             the axis-sorting property holds.
+    @param [in,out]  patterns  The vector of patterns in which to look for the
+                             pattern to operate on; we may also append
+                             Patterns to this vector if needed, as mentioned
+                             above.  Note: the newly added patterns may not satisfy
+                             the axis-sorting property for 'raxis', but they will
+                             still satisfy it for all axes numbered less than
+                             'raxis', assuming the pattern at 'pattern_index'
+                             did at entry.
+
+    @return                  Returns true on success, false on failure.
+                             Will always return true if `(*patterns)[pattern_index]`,
+                             satisfied the 'regularity property' at entry;
+                             see IsRegular().
+ */
+static bool EnsureAxisSortingPropertyHolds(
+    int32 raxis,
+    int32 pattern_index,
+    std::vector<TensorPattern> *patterns) {
+  TensorPattern *pattern = (*patterns)[pattern_index];
+  // We use 'i' as the internal name for 'raxis', because we want to mirror the
+  // notation used for the regularity property in the glossary, and in the
+  // function IsRegular() that checks for it.  There is an index k with `i < k
+  // <= num_axes`, that appears in the definition of the regularity property.
+  // The algorithm used here iteratively decreases the value of k until it
+  // equals i + 1, adding new patterns as needed, at which point the
+  // axis-sorting property will hold for index i.
+  int32 i = raxis, num_axes = pattern->num_axes;
+  int32 this_stride = pattern->strides[i],
+      this_dim = pattern->dims[i],
+      this_prod = this_stride * this_dim;
+  if (this_dim == 1)  // This is a small optimization for a common case.
+    return true;
+  KALDI_PARANOID_ASSERT(raxis + 1 < num_axes && this_stride > 0 &&
+                        ValidMM(*pattern));
+  int32 j, k = num_axes;
+  for (j = i + 1; j < num_axes; j++) {
+    if (pattern->strides[j] >= this_prod) {
+      k = j;
+      break;  // regularity property is OK as far as this 'i' is concerned.
+    } else if (pattern->dims[k] != 1 ||
+               pattern->strides[k] % this_stride != 0) {
+      return false;  // Pattern was not regular.
+    }
+  }
+  for (; j = k - 1; j > i; j--) {
+    int32 j_stride = pattern->strides[j],
+        stride_ratio = j_stride / this_stride;  // will divide exactly; we
+                                                     // checked above.
+    KALDI_PARANOID_ASSERT(j_stride % this_stride == 0);
+
+    // We can prove that j_dim will always be at least 1; if this is the
+    // first time round the loop this is easy to show (else k would be smaller);
+    // otherwise we can use the fact that the strides for axes i, i+1 .. k-1 are
+    // strictly increasing and all multiples of this_stride (hence stride_ratio
+    // strictly increases from one j to the next).
+    int32 j_dim = this_dim / stride_ratio,
+        remainder = this_dim % stride_ratio;
+
+    if (remainder != 0) {
+      patterns->resize(patterns->size() + 1);
+      pattern = (*patterns)[i];  // in case it was reallocated.
+      TensorPattern *remainder_pattern = &(patterns->back());
+      *remainder_pattern = *pattern;
+      remainder_pattern->dims[i] = remainder;
+      remainder_pattern->offset += j_stride * j_dim;
+    }
+
+    pattern->dims[j] = j_dim;
+    pattern->dims[i] = stride_ratio;
+    this_prod = j_stride;
+  }
+  return true;
+}
+
+
+void ConvertPatternStrides(
     const TensorPattern &pattern,
-    const std::vector<int32> &common_strides,
+    const ArrayRef<int32> &strides,
     std::vector<TensorPattern*> *patterns) {
 
   patterns->resize(1);
-  ConvertLazilyToCommonStrides(pattern, &((*patterns)[0]));
-  int32 num_axes = common_strides.size();
+  ConvertPatternStridesLazily(pattern, &((*patterns)[0]));
+  int32 num_axes = strides.size();
   for (int32 raxis = 0; raxis + 1 < num_axes; raxis++) {
-    TensorPattern extra_pattern;
-    int32 num_patterns = patterns->size();
-    for (int32 p = 0; p < num_patterns; p++) {
-      if (EnsureAxisSortingPropertyHolds(raxis, &((*patterns)[p]),
-                                         &extra_pattern))
-        patterns->push_back(extra_pattern);
+    for (int32 p = 0; p < static_cast<int32>(patterns->size()); p++) {
+      if (!EnsureAxisSortingPropertyHolds(raxis, p, patterns)){
+        patterns->clear();
+        return false;  // Couldn't be converted, because 'pattern' was not
+                       // regular.
+      }
     }
   }
+#ifdef KALDI_PARANOID
+  for (int32 p = 0; p < static_cast<int32>(patterns->size()); p++) {
+    KALDI_PARANOID_ASSERT(IsValidM(*patterns)[p]);
+  }
+#endif
+  return true;
 }
 
 
