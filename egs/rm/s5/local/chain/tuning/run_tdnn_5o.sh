@@ -15,7 +15,7 @@ xent_regularize=0.1
 dir=exp/chain/tdnn_5o
 
 # training options
-num_epochs=12
+num_epochs=13
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
 max_param_change=2.0
@@ -96,28 +96,34 @@ if [ $stage -le 7 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=50 name=ivector
   input dim=13 name=input
+
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=1024
-  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
-  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
-  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
-  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=0
-  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
+  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=768
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
   linear-component name=prefinal-l dim=192 $linear_opts
-  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1024 small-dim=192
+
+  ## adding the layers for chain branch
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
-  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1024 small-dim=192
+
+  # adding the layers for xent branch
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -145,7 +151,7 @@ if [ $stage -le 8 ]; then
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.max-param-change $max_param_change \
     --cleanup.remove-egs $remove_egs \
-    --feat-dir data/train \
+    --feat-dir data/train_hires \
     --tree-dir $treedir \
     --lat-dir exp/tri3b_lats \
     --dir $dir
@@ -153,7 +159,7 @@ fi
 
 if [ $stage -le 9 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/test exp/nnet2_online/extractor exp/nnet2_online/ivectors_test || exit 1;
+    data/test_hires exp/nnet2_online/extractor exp/nnet2_online/ivectors_test || exit 1;
 fi
 
 if [ $stage -le 10 ]; then
@@ -165,7 +171,7 @@ if [ $stage -le 10 ]; then
     --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
-    $dir/graph data/test $dir/decode || exit 1;
+    $dir/graph data/test_hires $dir/decode || exit 1;
 fi
 
 if [ $stage -le 11 ]; then
@@ -173,7 +179,7 @@ if [ $stage -le 11 ]; then
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
-    $dir/graph_ug data/test $dir/decode_ug || exit 1;
+    $dir/graph_ug data/test_hires $dir/decode_ug || exit 1;
 fi
 wait;
 exit 0;
