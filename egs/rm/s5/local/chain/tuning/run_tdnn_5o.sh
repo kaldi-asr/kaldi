@@ -8,15 +8,14 @@
 set -e
 
 # configs for 'chain'
-# This script starts from stage 1 because it does not use high resolution MFCCs. 
-stage=1
+stage=0
 train_stage=-10
 get_egs_stage=-10
 xent_regularize=0.1
 dir=exp/chain/tdnn_5o
 
 # training options
-num_epochs=15
+num_epochs=14
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
 max_param_change=2.0
@@ -51,9 +50,7 @@ ali_dir=exp/tri3b_ali
 treedir=exp/chain/tri4_5o_tree
 lang=data/lang_chain_5o
 
-local/online/run_nnet2_common.sh --stage $stage \
-				 --mfcc_config "conf/mfcc.conf" \
-				 || exit 1;
+local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 4 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
@@ -154,7 +151,7 @@ if [ $stage -le 8 ]; then
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.max-param-change $max_param_change \
     --cleanup.remove-egs $remove_egs \
-    --feat-dir data/train \
+    --feat-dir data/train_hires \
     --tree-dir $treedir \
     --lat-dir exp/tri3b_lats \
     --dir $dir
@@ -162,7 +159,7 @@ fi
 
 if [ $stage -le 9 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/test exp/nnet2_online/extractor exp/nnet2_online/ivectors_test || exit 1;
+    data/test_hires exp/nnet2_online/extractor exp/nnet2_online/ivectors_test || exit 1;
 fi
 
 if [ $stage -le 10 ]; then
@@ -174,7 +171,7 @@ if [ $stage -le 10 ]; then
     --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
-    $dir/graph data/test $dir/decode || exit 1;
+    $dir/graph data/test_hires $dir/decode || exit 1;
 fi
 
 if [ $stage -le 11 ]; then
@@ -182,7 +179,7 @@ if [ $stage -le 11 ]; then
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
-    $dir/graph_ug data/test $dir/decode_ug || exit 1;
+    $dir/graph_ug data/test_hires $dir/decode_ug || exit 1;
 fi
 wait;
 exit 0;

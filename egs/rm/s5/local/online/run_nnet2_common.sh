@@ -8,7 +8,7 @@ stage=1
 nnet_affix=_online
 extractor=exp/nnet2${nnet_affix}/extractor
 ivector_dim=50
-mfcc_config=conf/mfcc.conf
+mfcc_config=conf/mfcc_hires.conf
 use_ivector=true # If false, it skips training ivector extractor and
                  # ivector extraction stages.
 . ./cmd.sh
