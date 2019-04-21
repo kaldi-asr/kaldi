@@ -15,7 +15,7 @@ xent_regularize=0.1
 dir=exp/chain/tdnn_5o
 
 # training options
-num_epochs=14
+num_epochs=13
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
 max_param_change=2.0
