@@ -84,9 +84,6 @@ def GetArgs():
     return args
 
 def CheckArgs(args):
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
-
     ## Check arguments
     if args.prefix is None:
         if args.num_replicas > 1 or args.include_original_data == "true":
@@ -299,7 +296,7 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
 # E.g. GetNewId("swb0035", prefix="rvb", copy=1) returns a string "rvb1_swb0035"
 def GetNewId(id, prefix=None, copy=0):
     if prefix is not None:
-        new_id = prefix + str(copy) + "_" + id
+        new_id = prefix + str(copy) + "-" + id
     else:
         new_id = id
 
@@ -408,6 +405,7 @@ def CreateReverberatedCopy(input_dir,
                            max_noises_per_minute  # maximum number of point-source noises that can be added to a recording according to its duration
                            ):
 
+    os.makedirs(output_dir)
     wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
@@ -514,12 +512,18 @@ def ParseRirList(rir_set_para_array, smoothing_weight, sampling_rate = None):
     rir_parser.add_argument('--probability', type=float, default=None, help='probability of the impulse response.')
     rir_parser.add_argument('rir_rspecifier', type=str, help="""rir rspecifier, it can be either a filename or a piped command.
                             E.g. data/impulses/Room001-00001.wav or "sox data/impulses/Room001-00001.wav -t wav - |" """)
+    #print(rir_parser.parse_args())
+    #print(rir_set_para_array)
+    #print('\n')
 
     set_list = ParseSetParameterStrings(rir_set_para_array)
+    #print(set_list)
 
     rir_list = []
     for rir_set in set_list:
         current_rir_list = [rir_parser.parse_args(shlex.split(x.strip())) for x in open(rir_set.filename)]
+        #print(current_rir_list)
+        #sys.exit()
         for rir in current_rir_list:
             if sampling_rate is not None:
                 # check if the rspecifier is a pipe or not
@@ -621,23 +625,24 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
 
 def Main():
     args = GetArgs()
-    random.seed(args.random_seed)
-    rir_list = ParseRirList(args.rir_set_para_array, args.rir_smoothing_weight, args.source_sampling_rate)
-    print("Number of RIRs is {0}".format(len(rir_list)))
-    pointsource_noise_list = []
-    iso_noise_dict = {}
-    if args.noise_set_para_array is not None:
-        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_set_para_array, args.noise_smoothing_weight, args.source_sampling_rate)
-        print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
-        print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
-    room_dict = MakeRoomDict(rir_list)
 
-    if args.include_original_data == "true":
-        include_original = True
-    else:
-        include_original = False
+    if not os.path.exists(args.output_dir):
+        random.seed(args.random_seed)
+        rir_list = ParseRirList(args.rir_set_para_array, args.rir_smoothing_weight, args.source_sampling_rate)
+        print("Number of RIRs is {0}".format(len(rir_list)))
+        pointsource_noise_list = []
+        iso_noise_dict = {}
+        if args.noise_set_para_array is not None:
+            pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_set_para_array, args.noise_smoothing_weight, args.source_sampling_rate)
+            print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
+            print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
+        room_dict = MakeRoomDict(rir_list)
 
-    CreateReverberatedCopy(input_dir = args.input_dir,
+        if args.include_original_data == "true":
+            include_original = True
+        else:
+            include_original = False
+        CreateReverberatedCopy(input_dir = args.input_dir,
                            output_dir = args.output_dir,
                            room_dict = room_dict,
                            pointsource_noise_list = pointsource_noise_list,
@@ -652,6 +657,12 @@ def Main():
                            isotropic_noise_addition_probability = args.isotropic_noise_addition_probability,
                            pointsource_noise_addition_probability = args.pointsource_noise_addition_probability,
                            max_noises_per_minute = args.max_noises_per_minute)
+
+    else:
+        print("Directory {0} already exists, not creating it again".format(args.output_dir))
+
+    data_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats --no-text {output_dir}"
+                    .format(output_dir = args.output_dir))
 
 if __name__ == "__main__":
     Main()
