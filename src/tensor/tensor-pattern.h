@@ -52,13 +52,13 @@ namespace tensor {
                       that identifies an axis in the public numbering (see "Public numbering").
                       See also: Raxis-index.
 
-    Axis-sorting property: search below for [Valid Pattern], point (vi), for the main
+    axis-dominance property: search below for [Valid Pattern], point (vi), for the main
                       definition.
-          [Axis-sorting property of an axis-index]:
+          [axis-dominance property of an axis-index]:
                       There is another sense in which we use the term
-                      'axis-sorting property': for a Pattern whose axes are sorted
+                      'axis-dominance property': for a Pattern whose axes are sorted
                       from least to greatest abs(stride) [in the private numbering],
-                      we say that "the axis-sorting property holds for axis-index i
+                      we say that "the axis-dominance property holds for axis-index i
                       of that Pattern" if:
                                  dim(i) * abs(stride(i)) <= abs(stride(i+1)).
 
@@ -113,6 +113,9 @@ namespace tensor {
                     of Patterns whose dims-vectors were ([4 1 5], [6 1], [5]),
                     the dims-vector of the tuple would be [4 6 5].
 
+    Disjoint Patterns:  When we speak of disjoint Patterns we mean that
+                    their memory-index-sets are disjoint; see memory-index-set.
+
     Extended indexing:  A convention whereby if we have a Tensor with, say,
                       `dims = [5 1]`, we can index that Tensor with an index-tuple
                       that:
@@ -124,19 +127,32 @@ namespace tensor {
                          (in the public numbering) / the right (in the private
                          numbering) with dim=1.  See also: PyTorch-style broadcasting.
 
+    Index:            If this word is used unqualified in the context of a Pattern
+                      or tensor it will generally mean an integer that's part of an
+                      index-tuple, and is being used to index a particular axis of
+                      a Pattern.  For example, on an axis where the Pattern's dimension
+                      is `dim`, a valid index i would be in the range 0 <= i < dim.
+
     Index-tuple:      A tuple of integers used as an index into a Tensor.  Must
                       have at least as many elements as the Tensor's num_axes
                       (see Extended indexing).  Elements of such tuples may
-                      not be negative.
+                      not be negative.  The elements of an index-tuple are in
+                      the same order as the axes, and in some cases it may
+                      be necessary to disambiguate whether we are referring
+                      to the public numbering or the private numbering of the
+                      axes.
 
-    (valid Index-tuple) An index-tuple is *valid for a pattern* if it may be
+    [Valid Index-tuple]: An index-tuple is *valid for a pattern* if it may be
                       used to index that Pattern, allowing extended indexing.
-                      This is true if, after padding the index-tuple with 0's
-                      on the left and padding the Pattern's dims-vector with
-                      1's on the left as needed to make them the same size,
-                      for each axis, if the element of the index-tuple is
-                      i and the element of the dims-vector is d, i >= 0
-                      and either i < d or d == 1.
+                      (see "Extended indexing" for details).
+
+    Indexing a Pattern:  For a pattern `p` and an index-tuple `i` that is valid
+                       for the pattern (see: "Valid Index-tuple"), we write
+                      `p[i] = m` meaning that when indexing a pattern `p`
+                      with index-tuple `i` we get memory-index `m`.
+                      `m` is of coure the sum of the pattern's offset plus
+                      the sum over all axis-indexes, of the element of the index-tuple
+                      multiplied by the Pattern's stride for that axis.
 
     Index-tuple-set of a Pattern: The index-tuple-set of a Pattern is the set
                       of valid index-tuples assuming we are not allowing extended
@@ -158,17 +174,15 @@ namespace tensor {
 
     Memory-pointer:   A void* pointer to the start of a memory region.
 
-    Memory-index:     A scalar (int64) index into a memory region viewed as a
+    Memory-index/mindex:  An integer (int64) index into a memory region viewed as a
                       linear array.  For example, for a Tensor of floats, we'd cast
                       the address of the memory-pointer to `float*` and then use
-                      the memory-index as an index into that array.  For a
-                      Pattern p and an index-tuple i that is valid for p, we have
-                      a memory-index m = p[i], which is equal to the
-                      pattern's offset plus the sum over all axes of the product of the
-                      element of the index-tuple times the corresponding axis's
-                      stride.  (Note: this becomes much easier to compute and
-                      explain in the private numbering, because no left-padding
-                      has to be done explicitly).
+                      the memory-index as an index into that array.  In code,
+                      this may be called 'mindex.'  For a Pattern p and an
+                      index-tuple i that is valid for p, we have a memory-index
+                      m = p[i], which is equal to the pattern's offset plus the
+                      sum over all axes of the product of the element of the
+                      index-tuple times the corresponding axis's stride.
 
     Memory-index-tuple:  A tuple of Memory-indexes.  This concept is used in connection
                       with Pattern-tuples.  For a pattern-tuple q = (p1, p2, p3)
@@ -231,7 +245,8 @@ namespace tensor {
     Set-equivalent:   Two Patterns are set-equivalent if their memory-index-sets
                       are identical.
 
-    Trivial axis:     An axis of a Pattern for which dim=1 and stride=0.
+    Trivial axis:     An axis of a Pattern for which dim=1.  Such axes will have
+                      stride=0 if the Pattern is valid.
 
     Memory-index-set of a Pattern:
                       The set of all memory-indexes obtained by indexing
@@ -244,6 +259,11 @@ namespace tensor {
                       the Patterns in the tuple with all members of the
                       index-tuple-set of the Pattern-tuple.  See "memory-index-tuple"
                       and "index-tuple-set of a Pattern-tuple" for more information.
+
+    Normalized strides:  We say that a Pattern has normalized strides if the
+                      strides are all positive and are strictly increasing
+                      in the private numbering (which implies strictly decreasing
+                      in the public numbering).
 
     Linear property:
                       Consider Patterns P and Q with the property that the
@@ -287,7 +307,7 @@ namespace tensor {
 
                       The reader may notice that if we were to restrict
                       k to equal i + 1, then
-                      this would be equivalent to the axis-sorting property
+                      this would be equivalent to the axis-dominance property
                       (property (v)) plus the requirement that the strides be
                       positive and sorted.
 
@@ -306,10 +326,10 @@ namespace tensor {
 
    Uniqueness property:  A property of a Pattern that no two different index-tuples,
                       when used to index the Pattern, generate the same memory-index.
-                      The axis-sorting property is sufficient, but not necessary,
+                      The axis-dominance property is sufficient, but not necessary,
                       to ensure the uniqueness property.  (The uniqueness property
                       is probably not so easy to test for efficiently in the general
-                      case; at least, we have not found a way).
+                      case).
 
     Valid Pattern:
                      A valid Pattern must be as follows.  Think of this as the mathematical definition;
@@ -321,7 +341,7 @@ namespace tensor {
                           (iii) the dims must all be >0.
                           (iv) the strides must be nonzero (but not necessarily positive) for axes with
                                 dim != 1.
-                          (v) the axis-sorting property.   This property is sufficient, but not
+                          (v) the axis-dominance property.   This property is sufficient, but not
                               necessary, to ensure the uniqueness property.  It requires that
                               when the axes are sorted from least to greatest value of abs(stride),
                               for each axis-index 0 <= i < num_axes - 1:
@@ -331,13 +351,15 @@ namespace tensor {
                           (vi) the strides must be zero for axes with dim=1.
 
 
-     Valid- Pattern:
-                      A Pattern is valid- if it satisfies properties (i) through (v) of
-                      a valid Pattern (i.e. it may have nonzero strides for axes with dim=1).
-                      A valid pattern is also valid-.
-     Valid-- Pattern:
-                      A Pattern is valid-- if it satisfies properties (i) through (iv) of
-                      a valid Pattern.  A pattern that is valid or valid- is also valid--.
+     Valid-1 Pattern:
+                      A Pattern is valid-1 (read as: valid minus one) if it
+                      satisfies properties (i) through (v) of a valid Pattern
+                      (i.e. it may have nonzero strides for axes with dim=1).  A
+                      valid pattern is also valid-1.
+     Valid-2 Pattern:
+                      A Pattern is valid-2 (read as valid minus two) if it
+                      satisfies properties (i) through (iv) of a valid Pattern.
+                      A pattern that is valid or valid-1 is also valid-2.
  */
 
 
@@ -357,7 +379,7 @@ namespace tensor {
   also don't allow zero dims (i.e. a Tensor that is initialized must not have
   num_elemnts==0).  If you want an empty Tensor, just use a null pointer.  In
   addition, we require that the stride equal zero for any axis that has dim = 1.
-  There is also the "axis-sorting" property (see its glossary entry for more info).
+  There is also the "axis-dominance" property (see its glossary entry for more info).
 
   Our requirements of a TensorPattern are:
 
@@ -374,7 +396,7 @@ namespace tensor {
 
     offset >= 0
 
-    The axis-sorting property (see property (v) in "Valid Pattern" above)
+    The axis-dominance property (see property (v) in "Valid Pattern" above)
 
   Note: in the public interface of class Tensor, if you ask for Dim(i) it will
   return pattern.dims[pattern.num_axes - i], i.e. the interface uses the public

@@ -17,6 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_
+#define KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_ 1
 
 #include "tensor/tensor-common.h"
 #include "tensor/tensor-pattern.h"
@@ -36,9 +38,24 @@ namespace tensor {
    Returns true if there is overlap between pattern1 and pattern2,
    meaning that pattern1's memory-index-set and pattern2's
    memory-index-set have nonempty intersection.
+
+         @param [in] First pattern.  Must be valid.
+         @param [in] Second pattern.  Must be valid.
+         @return  Return if the two patterns' memory-index-sets'
+                  intersection is nonempty.
  */
-bool PatternsOverlap(const TensorPattern &pattern1,
-                     const TensorPattern &pattern2);
+bool PatternsIntersect(const TensorPattern &pattern1,
+                       const TensorPattern &pattern2);
+
+
+/**
+   This is a slow but simple version of PatternsIntersect(), with the same
+   interface.  it should not be called by users as it is slow.  It is exposed
+   here for testing purposes.
+*/
+bool PatternsIntersectSlow(const TensorPattern &pattern1,
+                           const TensorPattern &pattern2);
+
 
 /**
    Returns true if pattern2's memory-index-set is a subset of pattern1's
@@ -76,43 +93,112 @@ bool PatternsEquivalent(const TensorPattern &pattern1,
    documentation of return status).
 
       @param [in] pattern1  The first of the two patterns of which
-                        we want the intersection.
+                        we want the intersection; must be valid.
       @param [in] pattern2  The first of the two patterns of which
-                        we want the intersection.
+                        we want the intersection; must be valid.
       @param [out] intersection  On success, this function outputs
-                       a vector of patterns (in arbitrary order), where the
-                       memory-index-set it (conceptually) outputs is the union
-                       of all the memory-index-sets of the patterns output
-                       (which this function guarantees will be disjoint).
-                       If this vector is empty and this function returns true,
-                       it means the intersection was the empty set.
+                       a possibly-empty vector of patterns (in arbitrary
+                       order), the union of whose memory-index-sets (which
+                       will all be disjoint) equals the intersection fo the
+                       memory-index-sets of `pattern1` and `pattern2`.
+                       (However, see `keep_all_patterns`).
+      @param [in]  keep_all_patterns   If this parameter is set to false,
+                       the algorithm will stop as soon as the
+                       `intersection` vector has one element.  This
+                       is used for a fast test whether an intersection
+                       is empty or ont.
 
       @return  Returns true if the intersection could be computed, and
                false otherwise.  This function will always return true if,
                when the strides of pattern1 and pattern2 are sorted and
                duplicates removed and listed in increasing order, each
-               stride divides the next on in the list exactly.  (This should
-               cover all the immediately forseeable cases we might need to
-               compute).
+               stride divides the next one in the list exactly; but this is
+               not a necessary condition.   (The necessary condition
+               is that both patterns, when compressed and converted
+               to common strides, are "Regular" (c.f. "Regularity
+               property" in glossary).
 */
 bool ComputeIntersection(const TensorPattern &pattern1,
                          const TensorPattern &pattern2,
-                         std::vector<TensorPattern> *intersection);
+                         std::vector<TensorPattern> *intersection,
+                         bool keep_all_patterns = true);
+
+
+/**
+   This function returns true if the memory-index-sets of pattern1 and pattern2
+   have nonempty intersection, and false otherwise.  Requires that
+   pattern1 and pattern2 be valid.
+
+      @param [in] pattern1  First pattern to compare; must be valid.
+      @param [in] pattern2  Second pattern to compare; must be valid.
+      @return               Returns true if the memory-index-set of
+                            pattern1 and pattern2 have nonempty intersection.
+ */
+bool PatternsIntersect(const TensorPattern &pattern1,
+                       const TensorPattern &pattern2);
+
+/**
+      @param [in] pattern   The pattern about whose memory-index-set
+                            we are asking.  Must be valid-1, or
+                            return status is undefined.
+      @param [in] mindex    The memory-index we are asking about
+      @return               Return true if the memory-index-set of `pattern`
+                            contains `mindex` (i.e. if there is an
+                            index-tuple i such that `pattern[i] == mindex`;
+                            see "Indexing a pattern" in the glossary.
+*/
+bool PatternContains(const TensorPattern &pattern,
+                     int64 mindex);
+
+/**
+   Compute the minimum and maximum memory-indexs present in
+   a pattern's memory-index-set (i.e. the minimum and maximum
+   indexes into the underlying array).
+
+   This is inlined for speed; see tensor-pattern-extra-utils-inl.h.
+
+      @param [in] pattern  The pattern whose minimum and maximum
+                           memory-index we are computing
+      @param [out] min_mindex  The minimum memory-index in the
+                           memory-index-set of the pattern.  Will
+                           be zero in Patterns with non-negative
+                           strides (e.g. Patterns in canonical form,
+                           or other Patterns with normalized
+                           strides).  Should always be >= 0 in
+                           Patterns created by a valid program.
+      @param [out] max_mindex  The maximum memory-index in the
+                           memory-index-set of the pattern.
+                           Will always be >= min_mindex.
+*/
+inline void ComputeMinAndMaxMindex(const TensorPattern &pattern,
+                                   int64 *min_mindex,
+                                   int64 *max_mindex);
 
 
 /**
    Outputs the memory-index-set corresponding to the pattern 'pattern' to 's'.
    See glossary in tensor-pattern.h for definitions.
 
-
    This is strictly to be used in debugging code, as it is extremely
    inefficient.
 
-      @param [in] pattern  The input pattern
-      @param [out] s   The memory-index-set
+      @param [in] pattern  The input pattern; must be valid
+      @param [out] s   The memory-index-set, represented as a vector
+                       of bool, actually stored as char.  This will be set to a
+                       vector at least as large as the maximum memory-index in
+                       `pattern`, containing 1 for memory-indexse in the set and 0 for
+                       those out of the set.
  */
 bool ToMemoryIndexSet(const TensorPattern &pattern,
-                      std::unordered_set<int64> *s);
+                      std::vector<char> *s);
+
+/**
+   This function returns a memory-index randomly chosen
+   from the memory-index-set of `pattern`.
+     @param [in] pattern   Pattern; must be valid-1.
+     @return  Returns randomly chosen memory-index.
+ */
+int64 RandomMemoryIndex(const TensorPattern &pattern);
 
 
 
@@ -146,19 +232,19 @@ bool PatternTuplesEquivalent(const ArrayRef<const TensorPattern*> patterns1,
    This function returns true if a Pattern is regular (see Regularity property
    in the glossary in tensor-pattern.h) and false otherwise.  'pattern' must
    have all positive strides, the strides must be in increasing order (in the
-   private numbering), and it must be valid-- (see glossary).
+   private numbering), and it must be valid-2 (see glossary).
  */
 bool IsRegular(const TensorPattern &pattern);
 
 
 /**
-   This function returns true if a Pattern is valid- (see definition in
+   This function returns true if a Pattern is valid-1 (see definition in
    glossary); see also TensorPattern::Valid() and IsValidMM().
  */
 bool IsValidM(const TensorPattern &pattern);
 
 /**
-   This function returns true if a Pattern is valid-- (see definition in
+   This function returns true if a Pattern is valid-2 (see definition in
    glossary); see also TensorPattern::Valid() and IsValidM().
  */
 bool IsValidMM(const TensorPattern &pattern);
@@ -184,10 +270,10 @@ bool IsValidMM(const TensorPattern &pattern);
                         `pattern`.
        @param [out] patterns  On success (see documentation of return status)
                         'patterns' will be set to a nonempty list of patterns,
-                        the union of whose memory-index-sets equals
-                        the memory-index-set of `pattern`, all of whose strides are
-                        equal to `strides`, and each of which is valid- and linear
-                        in `pattern` (see "Linear property").
+                        the union of whose memory-index-sets equals the
+                        memory-index-set of `pattern`; all of whose strides are
+                        equal to `strides`; and each of which is valid-1 and
+                        linear in `pattern` (see "Linear property").
 
                         except for property (iv) (search for "Valid
                         Pattern" in tensor-pattern.h): that is, they may have
@@ -195,11 +281,11 @@ bool IsValidMM(const TensorPattern &pattern);
                         of 'strides' dividing the next is a sufficient but not
                         necessary condition for this function to always return
                         true.
-                          On failure, `patterns->empty()` will be true.
+                          On failure, `patterns->empty()` will be empty.
 
         @return         Returns true if pattern strides could be converted using
                         our algorithm, false if not.  This algorithm will work
-                        for any 'reasonable' request; it doesn't attempt to
+                        for any 'reasonable' request, but it doesn't attempt to
                         cover the types of cases where, to solve them, we would
                         have to output a number of patterns that couldn't be
                         bounded given the number of axes.
@@ -336,3 +422,8 @@ class TensorPatternRebaser {
 
 }  // namespace tensor
 }  // namespace kaldi
+
+// Include implementation of inline functions.
+#include "tensor/tensor-pattern-extra-utils-inl.h"
+
+#endif  // KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_

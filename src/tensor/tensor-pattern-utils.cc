@@ -230,10 +230,10 @@ static inline void CombineAxes(ArrayRef<TensorPattern*> patterns,
 
    CAUTION: this function does not update the codes of 'patterns'.
  */
-static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_DIM],
+static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_AXES],
                               ArrayRef<TensorPattern*> patterns) {
   int32 first_trivial_raxis = -1;
-  for (int32 raxis = 0; raxis < KALDI_TENSOR_MAX_DIM; raxis++) {
+  for (int32 raxis = 0; raxis < KALDI_TENSOR_MAX_AXES; raxis++) {
     if (is_trivial_axis[raxis]) {
       first_trivial_raxis = raxis;
       break;
@@ -302,7 +302,7 @@ void CompressPatterns(ArrayRef<TensorPattern*> patterns,
 
   bool exists_trivial_axis = false;
   // The = {} ensures (I believe) that they are all set to 0, meaning false.
-  bool is_trivial_raxis[KALDI_TENSOR_MAX_DIM] = {};
+  bool is_trivial_raxis[KALDI_TENSOR_MAX_AXES] = {};
   for (int32 raxis = 0, mask = 1; raxis < max_num_axes; raxis++, mask <<= 1) {
     if ((combined_code | mask) == 0) {
       is_trivial_raxis[raxis] = true;
@@ -449,7 +449,7 @@ void RemoveTrivialAxes(TensorPattern *pattern) {
       num_axes_out = 0;
   for (int32 raxis = 0; raxis < num_axes; raxis++) {
     int32 this_dim = pattern->dims[raxis];
-    if (this_dim != 0) {
+    if (this_dim != 1) {
       if (num_axes_out != raxis) {
         pattern->dims[num_axes_out] = this_dim;
         pattern->strides[num_axes_out] = pattern->strides[raxis];
@@ -457,16 +457,46 @@ void RemoveTrivialAxes(TensorPattern *pattern) {
     }
   }
   // It is a requirement of struct TensorPattern that dims and
-  // strides for raxis > num_axes be 1 and 0 respectively.
+  // strides for raxis >= num_axes be 1 and 0 respectively.
   for (int32 raxis = num_axes_out; raxis < num_axes; raxis++) {
     pattern->dims[raxis] = 1;
     pattern->strides[raxis] = 0;
   }
   pattern->num_axes = num_axes;
-  // Caution: we are not updating the code.
-
+  pattern->code = -1;
 }
 
+
+void RemoveTrivialAxes(const TensorPattern &pattern_in,
+                       TensorPattern *pattern_out) {
+  KALDI_PARANOID_ASSERT(pattern_out != &pattern_in);
+  int32 num_axes = pattern->num_axes,
+      num_axes_out = 0;
+  for (int32 raxis = 0; raxis < num_axes; raxis++) {
+    int32 this_dim = pattern_in.dims[raxis];
+    if (this_dim != 1) {
+      pattern_out->dims[num_axes_out] = this_dim;
+      pattern_out->axes[num_axes_out] = pattern_in.strides[raxis];
+    }
+  }
+  // It is a requirement of struct TensorPattern that dims and
+  // strides for raxis >= num_axes be 1 and 0 respectively.
+  for (int32 raxis = num_axes_out;
+       raxis < KALDI_TENSOR_MAX_AXES; raxis++) {
+    pattern_out->dims[raxis] = 1;
+    pattern_out->strides[raxis] = 0;
+  }
+  pattern_out->num_axes = num_axes_out;
+  pattern_out->code = -1;
+}
+
+int64 NumElements(const TensorPattern &pattern) {
+  int32 num_axes = pattern.num_axes;
+  int64 ans = 1;
+  for (int32 raxis = 0; raxis < num_axes; raxis++)
+    ans *= pattern.dims[raxis];
+  return ans;
+}
 
 }  // namespace kaldi
 }  // namespace tensor
