@@ -1700,6 +1700,48 @@ static void _vec_transform_reduce(
     result[blockIdx.x] = op.PostReduce(sdata[0], result[blockIdx.x]);
 }
 
+// Reduce a matrix 'mat' to a row vector 'result'
+template<EnumTransformReduce TransReduceType, typename Real>
+__global__
+static void _transform_reduce_mat_rows(
+    Real *result, const Real *mat, const MatrixDim d,
+    const TransReduceOp<TransReduceType, Real> op) {
+
+  __shared__ Real sdata[CU1DBLOCK];
+  const int tid = threadIdx.x;
+  const int j = blockIdx.x;
+
+  Real tdata = op.InitValue();
+  for (int i = tid; i < d.rows; i += CU1DBLOCK) {
+    //Note the loads of mat are uncoalesced.  We could eliminate these
+    //with shared memory but at the matrix sizes we are currently looking 
+    //at it probably would not help much and would add a lot of complexity.
+    //Alternatively we could look at something like trov to help loads.
+    tdata = op.Reduce(tdata, op.Transform(mat[i * d.stride + j]));
+  }
+  sdata[tid] = tdata;
+  __syncthreads();
+
+  // Tree reduce
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift)
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+    __syncthreads();
+  }
+
+  // Reduce last warp. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+    for (int shift = warpSize; shift > 0; shift >>= 1)
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+  }
+
+  // Output to vector result.
+  if (tid == 0) {
+    result[j] = op.PostReduce(sdata[0], result[j]);
+  }
+}
+
 // Reduce a matrix 'mat' to a column vector 'result'
 template<EnumTransformReduce TransReduceType, typename Real>
 __global__
@@ -3937,12 +3979,19 @@ void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,float>());
 }
+void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
+                           const MatrixDim d, const float alpha,
+                           const float beta) {
+  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, float>(alpha, beta));
+}
 void cudaF_add_col_sum_mat(int Gr, int Bl, float* result, const float* mat,
                            const MatrixDim d, const float alpha,
                            const float beta) {
   _transform_reduce_mat_cols<<<Gr, Bl>>>(result, mat, d,
       TransReduceOp<SUMAB, float>(alpha, beta));
 }
+
 
 void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig,
                          float changed) {
@@ -4644,6 +4693,12 @@ void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
                         const MatrixDim d) {
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,double>());
+}
+void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
+                           const MatrixDim d, const double alpha,
+                           const double beta) {
+  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, double>(alpha, beta));
 }
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,

@@ -252,7 +252,6 @@ void CuPackedMatrix<Real>::SetZero() {
 
     CU_SAFE_CALL(cudaMemsetAsync(reinterpret_cast<void*>(this->data_), 0, 
           num_bytes, cudaStreamPerThread));
-    CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::SetZero", tim);
   } else
   #endif
