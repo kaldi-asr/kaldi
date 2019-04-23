@@ -52,10 +52,10 @@ bypass_metaparam_optim_opt=
 #for order in 3; do
 #rm -f ${lm_dir}/${num_word}_${order}.pocolm/.done
 
-limit_unk_history_opt=
+#limit_unk_history_opt=
 # If you want to limit the left of <unk> in the history of a n-gram
 # un-comment the following line
-#limit_unk_history_opt="--limit-unk-history=true"
+limit_unk_history_opt="--limit-unk-history=true"
 
 for order in ${ngram_order}; do
   # decide on the vocabulary.
