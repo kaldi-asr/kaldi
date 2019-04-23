@@ -40,7 +40,7 @@ get_egs_stage=-10
 # training options
 srand=0
 remove_egs=true
-run_ivector_common=true
+run_ivector_common=false
 run_chain_common=true
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging

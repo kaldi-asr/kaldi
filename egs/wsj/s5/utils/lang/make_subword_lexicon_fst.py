@@ -56,12 +56,16 @@ def print_arc(src, dest, phone, word, cost):
     print('{}\t{}\t{}\t{}\t{}'.format(src, dest, phone, word, cost))
 
 def is_end(word, separator):
-    """Return ture if the subword can appear at the end of a word (i.e., the subword
+    """Return true if the subword can appear at the end of a word (i.e., the subword
     does not end with separator). Return false otherwise."""
     return not word.endswith(separator)
 
 def get_suffix(phone):
     """Return the suffix of a phone. The suffix is in the form of '_B', '_I'..."""
+    if len(phone) < 3:
+        print("{}: invalid phone {} (please check if the phone is position-dependent)".format(
+              sys.argv[0], phone), file=sys.stderr)
+        sys.exit(1)
     return phone[-2:]
 
 def write_fst_no_silence(lexicon, position_dependent, separator):

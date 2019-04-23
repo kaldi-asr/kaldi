@@ -2,6 +2,7 @@
 
 # Copyright 2012  Vassil Panayotov
 #           2017  Ewald Enzinger
+#           2019  Dongji Gao
 # Apache 2.0
 
 . ./path.sh || exit 1
@@ -12,7 +13,7 @@ dir=data/local/lm/
 text=data/train/text
 lexicon=data/local/dict/lexicon.txt
 # Language model order
-order=3
+order=6
 
 . utils/parse_options.sh
 
@@ -42,10 +43,11 @@ if [ -z $loc ]; then
 fi
 
 cat data/train/text | cut -d " " -f 2- >  $dir/text.txt
+cat data/test/text | cut -d ' ' -f2- > $dir/dev.txt
 cut -d' ' -f1 $lexicon > $dir/wordlist
 
-ngram-count -text $dir/text.txt -order $order -limit-vocab -vocab $dir/wordlist \
-  -unk -map-unk "<UNK>" -kndiscount -interpolate -lm $dir/lm.gz
+ngram-count -text $dir/text.txt -order $order -vocab $dir/wordlist \
+  -unk -map-unk "<UNK>" -wbdiscount1 -kndiscount2 -kndiscount3 -kndiscount4 -kndiscount5 -kndiscount6 -interpolate -lm $dir/lm.gz
 
-#ngram -lm $dir/lm.gz -ppl $dir/dev.txt
+ngram -order $order -lm $dir/lm.gz -ppl $dir/dev.txt
 echo "*** Finished building the LM model!"

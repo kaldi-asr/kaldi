@@ -43,7 +43,7 @@ def is_end(subword, separator):
 
 def write_position_dependent_lexicon(lexiconp, separator):
     """Print a position-dependent lexicon for each subword from the input lexiconp by adding
-    appropriate suffixed ("_B", "_I", "_E", "_S") to the phone sequence related to the subword.
+    appropriate suffixes ("_B", "_I", "_E", "_S") to the phone sequence related to the subword.
     There are 4 types of position-dependent subword:
     1) Beginning subword. It can only appear at the beginning of a word.
        The first phone suffix should be "_B" and other suffixes should be "_I"s:

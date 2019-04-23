@@ -410,7 +410,7 @@ if $silprob; then
 else
   utils/lang/make_subword_lexicon_fst.py $grammar_opts \
        --sil-prob=$sil_prob --sil-phone=$silphone --sil-disambig='#'$ndisambig --position-dependent \
-       --separator=$separator $tmpdir/lexiconp.txt | \
+       --separator=$separator $tmpdir/lexiconp_disambig.txt | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
        --keep_isymbols=false --keep_osymbols=false |   \
      fstaddselfloops  $dir/phones/wdisambig_phones.int $dir/phones/wdisambig_words.int | \
