@@ -53,7 +53,7 @@ xent_regularize=0.1
 dropout_schedule='0,0@0.20,0.5@0.50,0'
 
 # training chunk-options
-chunk_width=140,100,60
+chunk_width=140,100,160
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
