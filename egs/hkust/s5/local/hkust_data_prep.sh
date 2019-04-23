@@ -1,5 +1,5 @@
 #!/bin/bash
-
+ 
 . ./path.sh || exit 1;
 
 if [ $# != 2 ]; then
@@ -14,6 +14,11 @@ hkust_text_dir=$2
 train_dir=data/local/train
 dev_dir=data/local/dev
 
+# transcripts normalization and segmentation
+# needs external tools
+python2 -c "import mmseg" 2>/dev/null || {
+    echo "Python module mmseg is not found. To install it, run tools/extra/install_mmseg.sh"; exit 1; }
+    
 mkdir -p $train_dir
 mkdir -p $dev_dir
 
@@ -65,10 +70,6 @@ find $hkust_text_dir -iname "*.txt" | grep -i "trans/dev" | xargs cat |\
   ' | sort -k1  > $dev_dir/transcripts.txt || exit 1;
 
 #transcripts normalization and segmentation
-#(this needs external tools),
-python -c "import mmseg" 2>/dev/null || \
-  (echo "mmseg is not found. Checkout tools/extra/install_mmseg.sh" && exit 1;)
-
 cat $train_dir/transcripts.txt |\
   sed -e 's/<foreign language=\"[a-zA-Z]\+\">/ /g' |\
   sed -e 's/<\/foreign>/ /g' |\
