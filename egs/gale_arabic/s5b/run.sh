@@ -46,7 +46,6 @@ if [ $stage -le 0 ]; then
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
-
 mfccdir=mfcc
 if [ $stage -le 1 ]; then
   echo "$0: Preparing the test and train feature files..."
@@ -114,7 +113,6 @@ if [ $stage -le 8 ] && $decode_gmm; then
   steps/decode_fmllr.sh --nj $num_decode_jobs --cmd \
     "$decode_cmd" exp/tri3b/graph data/test exp/tri3b/decode
 fi
-echo "finish tri3b and exit" && exit 1;
 
 if [ $stage -le 9 ]; then
   echo "$0: Training a regular chain model using the e2e alignments..."
