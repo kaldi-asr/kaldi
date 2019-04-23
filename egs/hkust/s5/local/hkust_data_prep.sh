@@ -16,7 +16,7 @@ dev_dir=data/local/dev
 
 # transcripts normalization and segmentation
 # needs external tools
-python -c "import mmseg" 2>/dev/null || {
+python2 -c "import mmseg" 2>/dev/null || {
     echo "Python module mmseg is not found. To install it, run tools/extra/install_mmseg.sh"; exit 1; }
     
 mkdir -p $train_dir
