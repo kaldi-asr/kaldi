@@ -1,44 +1,21 @@
 #!/bin/bash
 
-# 7q is as 7p but a modified topology with resnet-style skip connections, more layers,
-#  skinnier bottlenecks, removing the 3-way splicing and skip-layer splicing,
-#  and re-tuning the learning rate and l2 regularize.  The configs are
-#  standardized and substantially simplified.  There isn't any advantage in WER
-#  on this setup; the advantage of this style of config is that it also works
-#  well on smaller datasets, and we adopt this style here also for consistency.
-
-# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7q_sp
-# System                tdnn7p_sp tdnn7q_sp
-# WER on train_dev(tg)      11.80     11.79
-# WER on train_dev(fg)      10.77     10.84
-# WER on eval2000(tg)        14.4      14.3
-# WER on eval2000(fg)        13.0      12.9
-# WER on rt03(tg)            17.5      17.6
-# WER on rt03(fg)            15.3      15.2
-# Final train prob         -0.057    -0.058
-# Final valid prob         -0.069    -0.073
-# Final train prob (xent)        -0.886    -0.894
-# Final valid prob (xent)       -0.9005   -0.9106
-# Num-parameters               22865188  18702628
-
-
-# steps/info/chain_dir_info.pl exp/chain/tdnn7q_sp
-# exp/chain/tdnn7q_sp: num-iters=394 nj=3..16 num-params=18.7M dim=40+100->6034 combine=-0.058->-0.057 (over 8) xent:train/valid[261,393,final]=(-1.20,-0.897,-0.894/-1.20,-0.919,-0.911) logprob:train/valid[261,393,final]=(-0.090,-0.059,-0.058/-0.098,-0.073,-0.073)
+# This recipe does multi-style training of TDNN model
 
 set -e
 
 # configs for 'chain'
-stage=3
+stage=0
 train_stage=-10
 get_egs_stage=-10
-num_epochs=1
+num_epochs=3
 
 # Augmentation options
-noise_list="reverb:babble:music:noise:clean"
+augmentation_list="reverb:babble:music:noise:clean"
+use_ivectors=true
 
 affix=1a
-suffix=_ms
-
+suffix="_ms"
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 
 decode_iter=
@@ -60,7 +37,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
-dir=exp/chain/tdnn${affix}${suffix}_ep_${num_epochs}
+dir=exp/chain/tdnn${affix}${suffix}
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -85,10 +62,11 @@ lang=data/lang_chain_2y
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
 local/nnet3/prepare_multistyle_data.sh --stage $stage \
-  --noise-list $noise_list \
+  --augmentation-list "$augmentation_list" \
+  --use-ivectors "$use_ivectors" \
   --train-set $clean_set --clean-ali $clean_ali || exit 1;
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
@@ -99,7 +77,7 @@ if [ $stage -le 9 ]; then
     data/${train_set} exp/tri4_lats_nodup${suffix}_clean exp/tri4_lats_nodup${suffix} || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 12 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
@@ -112,15 +90,15 @@ if [ $stage -le 10 ]; then
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 13 ]; then
   # Build a tree using our new topology. This is the critically different
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd" 7000 data/$train_set $lang exp/$ali_dir $treedir
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 14 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
@@ -169,14 +147,11 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 15 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
-
-#    --cmd "queue.pl --config /home/dpovey/queue_conly.conf" \
-
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$train_cmd" \
@@ -209,7 +184,7 @@ if [ $stage -le 13 ]; then
 
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -222,7 +197,7 @@ iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
 fi
-if [ $stage -le 15 ]; then
+if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in train_dev eval2000 $maybe_rt03; do
       (

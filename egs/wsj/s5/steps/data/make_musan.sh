@@ -8,6 +8,15 @@
 # Used to create augmented data
 # The required dataset is freely available at http://www.openslr.org/17/
 
+# The corpus can be cited as follows:
+# @misc{musan2015,
+#  author = {David Snyder and Guoguo Chen and Daniel Povey},
+#  title = {{MUSAN}: {A} {M}usic, {S}peech, and {N}oise {C}orpus},
+#  year = {2015},
+#  eprint = {1510.08484},
+#  note = {arXiv:1510.08484v1}
+# }
+
 set -e
 use_vocals=true
 sampling_rate=16000
@@ -20,7 +29,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# -ne 2 ]; then
     echo USAGE: $0 input_dir output_dir
-    echo input_dir is the path where the original musal corpus is located
+    echo input_dir is the path where the MUSAN corpus is located
     echo e.g: $0 /export/corpora/JHU/musan data
     exit 1;
 fi
