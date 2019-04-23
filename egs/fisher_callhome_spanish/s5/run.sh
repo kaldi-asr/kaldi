@@ -119,7 +119,7 @@ if [ $stage -le 2 ]; then
      echo "Fail to train the G2P model." && exit 1;
   fi
   steps/dict/apply_g2p_seq2seq.sh "$rnnlm_workdir"/oov_pocolmwords exp/g2p "$rnnlm_workdir"/oov_g2p.lex
-  cat "$rnnlm_workdir"/oov_g2p.lex/lexicon.lex data/local/dict/lexicon.txt | sed "/^$/d" |sort | uniq  > "$rnnlm_workdir"/lexicon_extended.txt
+  cat "$rnnlm_workdir"/oov_g2p.lex/lexicon.lex data/local/dict/lexicon.txt | sed "/^[[:space:]]*$/d" | sort | uniq  > "$rnnlm_workdir"/lexicon_extended.txt
   cp "$rnnlm_workdir"/lexicon_extended.txt data/local/dict/lexicon.txt # Replacing original lexicon with extended version.
  
   utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
