@@ -7,13 +7,44 @@ mkdir -p "data/train" "data/test" "data/local"
 
 source ./path.sh
 
+# Dimex100 unziped corpus root directory
 CORPUS_DIR="$1"
 
+# Corpus data
+#
+#   Number of Different speakers:   100
+#   Speakers common utterances:     10
+#   Speakers individual utterances: 50
+#
+# Training/testing split
+#
+#   Common utterances for training:     10 (100%)
+#   Individual utterances for training: 40 (80%)
+#   Individual utterances for testing:  10 (20%)
 N_SPEAKERS=100
 N_COMMON_UTTERANCES=10
 N_INDIVIDUAL_UTTERANCES=50
 N_INDIVIDUAL_UTTERANCES_TRAINING=40
 N_INDIVIDUAL_UTTERANCES_TESTING=10
+
+# speakerId-utteranceId-[c|i]
+#   c = speaker common utterances (10)
+#   i = speaker individual utterances (50)
+#
+#   e.g.:
+#       s001-01-c
+#       ...
+#       s001-10-c
+#       ...
+#       s001-01-i
+#       ...
+#       s001-50-i
+
+## 80-20 train-test split
+## Only individual utterances are used in testing
+#    10/10 common utterances go into training
+#    40/50 individual utterances go into training
+#    10/50 individual utterances go into testing
 
 function make_speaker_id
 {
