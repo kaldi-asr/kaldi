@@ -82,7 +82,7 @@ Configuration options:
   --static-fst          Build with static OpenFst libraries [default=no]
   --fst-root=DIR        OpenFst root directory [default=../tools/openfst/]
   --fst-version=STR     OpenFst version string
-  --mathlib=LIB         Math library [default=ATLAS]
+  --mathlib=LIB         Math library [default=MKL]
                         Supported libraries: ATLAS, MKL, CLAPACK, OPENBLAS.
   --static-math         Build with static math libraries [default=no]
   --threaded-math       Build with multi-threaded math libraries [default=no]
