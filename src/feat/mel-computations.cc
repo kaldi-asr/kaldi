@@ -154,7 +154,7 @@ void MelBanks::ComputeModifiedBins() {
                        high_freq_ : center_freqs_(bin + 1));
 
     BaseFloat d1 = (next_center - center_freq) * 1.1,
-              d2 = 50.0 + 50.0 * (center_freq / (center_freq + 700.0));
+              d2 = 60.0 + 50.0 * (center_freq / (center_freq + 700.0));
 
     // 'diameter' is in Hz; it represents the distance on the frequency axis
     // between the first and last nonzero points of the raised-cosine window
