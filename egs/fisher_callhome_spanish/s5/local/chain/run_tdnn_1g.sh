@@ -255,12 +255,6 @@ if [ $stage -le 21 ]; then
 
 fi
 
-# Let's train first a small RNNLM on Fisher train set
-rnnlmdir=exp/rnnlm_lstm_tdnn_1b
-if [ $stage -le 22 ]; then
-  rnnlm/train_rnnlm.sh --dir $rnnlmdir || exit 1;
-fi
-
 if [ $stage -le 23 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
@@ -283,8 +277,6 @@ if [ $stage -le 23 ]; then
         bash rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $gigaword_workdir/rnnlm data/${data}_hires/ \
               ${dir}/decode_${lmtype}_${data} $dir/decode_gigaword_RNNLM_${lmtype}_${data} || exit 1;
       fi
-      bash rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $rnnlmdir data/${data}_hires/ \
-	      ${dir}/decode_${lmtype}_${data} $dir/decode_rnnLM_${lmtype}_${data} || exit 1;
     ) || touch $dir/.error &
   done
   wait
