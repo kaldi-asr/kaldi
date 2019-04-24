@@ -516,7 +516,7 @@ class LatticeFasterDecoderTpl {
 
   // delete_fst_ is true if the pointer fst_ needs to be deleted when this
   // object is destroyed.
-  bool delete_fst_;
+  const bool delete_fst_;
 
   LatticeFasterDecoderConfig config_;
   int32 num_toks_; // current total #toks allocated...
