@@ -46,14 +46,15 @@ struct TensorImpl {
 
   inline int32 NumAxes() { return pattern.num_axes; }
 
-  // Returns the dimension on the supplied axis (using the public axis numbering)
+  // Returns the dimension on the supplied axis (using the *public* axis
+  //                    numbering)
   //  @param [in] axis  Axis on which dimension is required, with
   //                    -NumAxes() <= axis < NumAxes(); negative axis
   //                    is interpreted as an offset from NumAxes().
   //  @return        Returns the dimension on this axis, a number >= 1.
   inline int32 Dim(int32 axis);
 
-  // Returns the stride on the supplied axis (using the public axis numbering)
+  // Returns the stride on the supplied axis (using the *public* axis numbering)
   //  @param [in] axis  Axis on which stride is required, with
   //                    -NumAxes() <= axis < NumAxes(); negative axis
   //                    is interpreted as an offset from NumAxes().
@@ -63,7 +64,9 @@ struct TensorImpl {
 
 
   // Returns the data pointer corresponding to the element whose index
-  // is all zeros.
+  // is all zeros.  [TODO: maybe have overloads of this for different types.]
+  // CAUTION: this function may allocate the data if it has not yet been
+  // allocated.
   inline void* GetData() const;
 
 

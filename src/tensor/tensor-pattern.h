@@ -23,9 +23,6 @@
 #include "tensor/tensor-common.h"
 #include <limits>
 
-/**
-   This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
-*/
 
 namespace kaldi {
 namespace tensor {
@@ -33,24 +30,23 @@ namespace tensor {
 
 
 /*
-  GLOSSARY
+  PATTERN GLOSSARY   (note: see also TENSOR GLOSSARY in tensor.h)
 
     Axis:             An axis is one of the (dim, stride) pairs that form part
-                      of a TensorPattern, and we often use the word "axis"
-                      to refer to the index of the axis, as in, for example,
+                      of a TensorPattern.  We will sometimes use the word "axis"
+                      to refer to the integer index of the axis, as in, for example,
                       in a Tensor with dims=[5 6 7], axis 0 has dim=5 and
-                      axis 2 has dim=7.  See also axis-index and raxis-index,
-                      which are more precise terms for the index of the axis
-                      and clearly disambiguate the numbering used (public
-                      numbering, or reversed private numbering).
-                      Caution: some other toolkits use the word 'dimension' where
-                      we use 'axis', but we avoid that usage because it is
-                      ambiguous.
+                      axis 2 has dim=7; but this should more precisely
+                      be called axis-index or raxis-index (see their own
+                      glossary entries; they respectively use the public
+                      numbering, or reversed private numbering).  To describe
+                      the number of axes of a Tensor, we use the term "num-axes" /
+                      "number of axes".
 
     Axis-index:       An axis-index of a Pattern or Tensor (sometimes just "axis" for short,
                       especially in code) is an index in the range [0, num_axes - 1]
                       that identifies an axis in the public numbering (see "Public numbering").
-                      See also: Raxis-index.
+                      For the index in the private numbering, see: Raxis-index.
 
     axis-dominance property: search below for [Valid Pattern], point (vi), for the main
                       definition.
@@ -188,6 +184,9 @@ namespace tensor {
                       with Pattern-tuples.  For a pattern-tuple q = (p1, p2, p3)
                       and an index-tuple i, we may write q[i] = (p1[i], p2[i] p3[i]),
                       where expressions like p1[i] evaluate to a memory-index.
+
+    Num-axes:         The number of axes that a Tensor has.  This is a number in the
+                      range [0, KALDI_TENSOR_MAX_DIM], i.e. 0 through 6.
 
     Offset:           The memory-index of the element with index-tuple = (all zeros)
                       of a Tensor.  Offsets will always be >= 0 because they are to

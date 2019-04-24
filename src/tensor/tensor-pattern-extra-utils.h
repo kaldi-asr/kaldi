@@ -58,12 +58,19 @@ bool PatternsIntersectSlow(const TensorPattern &pattern1,
 
 
 /**
-   Returns true if pattern2's memory-index-set is a subset of pattern1's
-   memory-index-set.  See glossary in tensor-pattern.h for explanation of
-   memory-index-set.
+   Returns information about whether pattern2's memory-index-set is a subset of
+   pattern1's memory-index-set.  See glossary in tensor-pattern.h for
+   explanation of memory-index-set.
+        @param [in] pattern1  First input pattern; must be valid.
+        @param [in] pattern2  First input pattern; must be valid.
+        @return   Returns:
+            0 if we determined that pattern1 does not include pattern2
+            1 if we determined that pattern1 includes pattern2
+           -1 if we could not compute the intersection (so our
+              algorithm could not determine whether one included the other).
  */
-bool PatternIncludes(const TensorPattern &pattern1,
-                     const TensorPattern &pattern2);
+int32 PatternIncludes(const TensorPattern &pattern1,
+                      const TensorPattern &pattern2);
 
 
 /**

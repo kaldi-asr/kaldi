@@ -109,8 +109,11 @@ class WithDtypeAs {
   DataType prev_default_;
 };
 
+// Global variable, initialized from zero, that is used in GetTick().
+// This is defined in tensor-common.cc.
+extern int64 g_tick_counter;
 
-
+inline int64 GetTick() { return g_tick_counter++; }
 
 /// Enumeration that says what strides we should choose when allocating
 /// A Tensor.

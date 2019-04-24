@@ -670,6 +670,24 @@ int64 TensorPatternRebaser::ConvertMemoryIndex(int64 m) {
 }
 
 
+// Note on implementation: likely the most common case we'll call this
+// is when -DKALDI_PARANOID has been set and we are checking that
+// tensors we are rebasing are strictly inside the source tensor.
+// So in the common case, pattern1 *will* include pattern2.
+bool PatternIncludes(const TensorPattern &pattern1,
+                     const TensorPattern &pattern2) {
+
+  std::vector<TensorPattern> intersection;
+  if (!ComputeIntersection(pattern1, pattern2, &intersection))
+    return -1;  // Could not determine whether the patterns intersect.
+  int64 num_elements = 0;
+  for (auto pattern : intersection)
+    num_elements += NumElements(pattern);
+  if (num_elements == NumElements(pattern1))
+    return 1;  // pattern1 includes pattern2;
+  else
+    return 0;  // pattern1 does not include pattern2
+}
 
 
 }  // namespace kaldi

@@ -25,6 +25,97 @@
 #include "tensor/tensor-impl.h"
 #include "tensor/storage.h"
 
+
+/*
+   TENSOR GLOSSARY
+
+    Base Variable:  A Variable that is not a view into another Variable,
+             but has been created directly from a Tensor (or via Detach()).
+             Each Variable has a base Variable; a base Variable's
+             base Variable is itself.  See also: "View Variable".
+
+    Invalidated:  if some data used in backprop needs to have been unchanged since
+              a particular tick (as recorded in an Op), but it has been changed
+              since then, we say that it has been invalided.  This is an error,
+              but it will only be detected in debug mode.  In effect we store a
+              record of what time (in ticks) data last changed at the
+              individual-element level (e.g. per float), via the ChangeTracker
+              object that is attached to the Storage object.  It's done in a
+              structured way, not via a huge boolean array.  This means that the
+              change-tracking mechanism is not defeated by doing Detach() or by
+              constructing multiple Variables from the same Tensor.
+
+    In-place operation: An operation that modifies a Variable, such as adding
+              to it after it has been created.  This notion is not particularly
+              meaningful in this framework, since in a sense all operations
+              are in-place operations; conceptually, the creation of a Variable
+              is seen as separate from an operation that sets it to some value,
+              and in-place operations are thus not "special".
+
+    Lazy allocation:  We do not allocate memory as soon as a Tensor is created,
+              but wait until an operation is done on it.  This makes it easier
+              to implement backprop with views of Tensors, because we can
+              construct views of Tensors whose memory has not been allocated yet.
+              The code for this happens in class Storage (see storage.h).  We
+              can also repeat this trick: on a base Variable, you can call
+              ZeroDeallocating(), which conceptually zeroes the Variable, but
+              does it by freeing the underlying data.  This enables the autograd
+              graph to be re-used without leaving too many things allocated.
+
+     Leaf Variable:  A leaf Variable is a Variable that you create directly
+             by wrapping a Tensor (or by calling .Detach()).  A leaf
+             Variable is always a base Variable.
+
+     Node:   A node in the autograd graph (Ops correspond-- roughly-- to the
+             edges in that graph).  There is a node for each tracked base variable.
+             [See also: Tracked; Base Variable].
+
+     Op:     (see op.h)  An operation on a Tensor (e.g. addition, multiplication, etc.),
+             including in-place operations.  Each Node in the autograd graph stores
+             a list of Ops that operated on that base Variable or some sub-part of
+             it.  However, if an Op modified two Nodes we need to call its Backprop()
+             only once; after figuring out which Ops need to be done, we call their
+             Backprop() in reverse order of their ticks (see: Tick).
+
+    Op-input-node:  Relative to a particular Op, a Node is an Op-input-node if
+            it is attached to at least one Variable that is an input of that Op,
+            but is not attached to any Variable that is an output of that Op.
+            An Op-input-node may not also be an Op-output-node (they are disjoint
+            sets).
+
+    Op-output-node: Relative to a particular Op, a Node is an Op-output-node
+            if it is attached to any Variable that is an output of that Op
+            (i.e. that is modified by that Op).
+
+
+    Tick:   a tick is the value of a global 64-bit time counter that we increment
+            every time we mutate a Tensor; see GetTick(), and
+            Op::GetTimestamp().  When we create Ops for backpropagation of
+            derivatives, we record the tick at which the Op was created, for
+            purposes of checking for invalidation (see: "Invalidated"), and
+            also of ordering Ops during backprop.
+
+   Tracked:  We say a Variable is tracked if gradient-tracking is
+             enabled for it.  This will be the case if it is
+             a leaf Variable constructed with requires_grad = true,
+             or a non-leaf Variable that has been created or changed
+             by an operation that depended on a tracked Variable.
+             A non-tracked Variable can become tracked but not vice
+             versa.  The granularity of being tracked is at the
+            "base variable" level.
+
+   View Variable:  A View Variable is any variable that is not a base
+            variable.  Such variables will be views of base Variables that have
+            been created from them by some operation such as slicing
+            (e.g. taking row or column ranges).
+
+
+
+
+ */
+
+
+
 namespace kaldi {
 namespace tensor {
 
@@ -286,21 +377,14 @@ class Tensor {
 
 
   /**
-     This constructor takes the 'impl' and 'storage' provided and returns
-     a Tensor containing them.  Intended for special-purpose code such
+     This constructor takes the 'impl' provided and returns
+     a Tensor containing it.  Intended for special-purpose code such
      as when we wrap arrays from external frameworks.
    */
-  Tensor(const TensorImpl &impl, std::shared_ptr<Storage> storage);
+  Tensor(const TensorImpl &impl);
 
  private:
-  // This object contains the num-axes, dims, strides and data pointer, plus
-  // cached properties.
   TensorImpl impl_;
-
-  // The storage region where the data resides storage_->data will equal
-  // impl_.data (we duplicate it in impl_ for convenence and to avoid an extra
-  // pointer dereference).
-  std::shared_ptr<Storage> storage_;
 };
 
 
