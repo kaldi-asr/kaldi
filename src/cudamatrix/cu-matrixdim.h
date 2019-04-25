@@ -79,6 +79,14 @@ extern "C" {
     int32_cuda first;
     int32_cuda second;
   } Int32Pair;
+
+  inline bool operator<(const Int32Pair &a, const Int32Pair &b) {
+    if (a.first < b.first)
+      return true;
+    if (a.first > b.first)
+      return false;
+    return a.second < b.second;
+  }
 }
 
 #endif
