@@ -785,7 +785,9 @@ class SvdReversal {
       int32 c = node.u.component_index;  // 'c' will only be meaningful if the
                                          // node is a component-node.
       std::string node_name = node_names_modified[nodes_retained[n]];
-      KALDI_VLOG(3) << "c: " << c << " node name : " << node_name << " remove_component : " << modify_component_[c];
+      KALDI_VLOG(3) << "c: " << c << " node name : " 
+			<< node_name << " remove_component : "
+			<< modify_component_[c];
       if (node.node_type == kComponent &&  modify_component_[c] > 0 ) {
         ModifiedComponentInfo &info = modified_component_info_[modification_index_[c]];
         // we print two component-nodes, the "a" an "b".  The original
@@ -878,6 +880,27 @@ class SvdReversal {
   std::string component_name_pattern_;
 };
 
+
+// Parameters used in applying SVD:
+// 1. Energy threshold : For each Affine weights layer in the original baseline nnet3 model,
+//  we perform SVD based factoring of the weights matrix of the layer,
+//  into a singular values (left diagonal) matrix, and two Eigen matrices.
+//
+// SVD : Wx = UEV, U,V are Eigen matrices, and E is the singularity matrix)
+//
+// We take the center matrix E, and consider only the Singular values which contribute
+//  to (Energy-threshold) times the total Energy of Singularity parameters.
+//   These Singularity parameters are actually sorted in descending order and lower
+//    values are pruned out until the Total energy (Sum of squares) of the pruned set
+//     of parameters is just above (Energy-threshold * Total init energy). The values which
+//      are pruned away are replaced with 0 in the Singularity matrix
+//      and the Weights matrix after SVD is derived with shrinked dimensions.
+//
+// 2. Shrinkage-threshold : If the Shrinkage ratio of the SVD refactored Weights matrix
+//       is higher than Shrinkage-threshold for any of the Tdnn layers,
+//        the SVD process is aborted for that particular Affine weights layer.
+//
+
 // this class implements the internals of the edit directive 'apply-svd'.
 class SvdApplier {
  public:
@@ -926,7 +949,7 @@ class SvdApplier {
           continue;
         }
         Component *component_a = NULL, *component_b = NULL;
-	if(DecomposeComponent(component_name, *affine, &component_a, &component_b)) {
+	if (DecomposeComponent(component_name, *affine, &component_a, &component_b)) {
 	  size_t n = modified_component_info_.size();
 	  modification_index_[c] = n;
 	  modified_component_info_.resize(n + 1);
@@ -952,6 +975,13 @@ class SvdApplier {
               << " components to FixedAffineComponent.";
   }
 
+  // This function returns the maximum eligible index of 
+  // the descending order sorted set of Singular value parameters (input_vector), 
+  // for a given energy_threshold value (min_val).
+  // All the Singular value elements of input_vector,
+  //  which are above this index (lower magnitudes), are pruned away
+  //   to obtain the SVD refactored weight matrices with
+  //    reduced number of parameters.
   int32 BinarySearch(const Vector<BaseFloat> &input_vector,
 		     int32 lower,
 		     int32 upper,
@@ -988,6 +1018,8 @@ class SvdApplier {
     Vector<BaseFloat> s2(s.Dim());
     s2.AddVec2(1.0, s);
     s_sum_orig = s2.Sum();
+    KALDI_ASSERT(energy_threshold_ < 1);
+    KALDI_ASSERT(shrinkage_threshold_ < 1);
     if (energy_threshold_ > 0) {
       BaseFloat min_singular_sum = energy_threshold_ * s2.Sum();
       bottleneck_dim_ = BinarySearch(s2, 0, s2.Dim()-1, min_singular_sum);
@@ -1615,7 +1647,10 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
         KALDI_ERR << "Either Bottleneck-dim or energy-threshold "
 	  "must be set in apply-svd command. "
 	  "Range of possible values is (0 1]";
-      SvdApplier applier(name_pattern, bottleneck_dim, energy_threshold, shrinkage_threshold, nnet);
+      SvdApplier applier(name_pattern, bottleneck_dim,
+			 energy_threshold,
+			 shrinkage_threshold,
+			 nnet);
       applier.ApplySvd();
     } else if (directive == "reverse-svd") {
       std::string name_pattern;
