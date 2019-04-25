@@ -2941,9 +2941,11 @@ static void UnitTestCuMatrixEqualElementMask() {
 }
 
 template<typename Real> void CudaMatrixUnitTest() {
+#if HAVE_CUDA == 1
   // Instantiate CuDevice here again in case we are running multi-threaded
   // This is necessary to set streams for cuda libraries.
   CuDevice::Instantiate();
+#endif
   UnitTestCuMatrixApplyExpSpecial<Real>();
   UnitTestCuMatrixApplyExpLimited<Real>();
   UnitTextCuMatrixAddSmatMat<Real>();
