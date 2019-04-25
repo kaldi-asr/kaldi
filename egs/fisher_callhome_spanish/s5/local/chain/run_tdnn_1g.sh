@@ -274,6 +274,7 @@ if [ $stage -le 23 ]; then
           $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data} || exit 1;
       done
       if [ $gigaword_workdir ]; then
+	lmtype=fsp_train
         bash rnnlm/lmrescore_nbest.sh 1.0 data/lang_test $gigaword_workdir/rnnlm data/${data}_hires/ \
               ${dir}/decode_${lmtype}_${data} $dir/decode_gigaword_RNNLM_${lmtype}_${data} || exit 1;
       fi
