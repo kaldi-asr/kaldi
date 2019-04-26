@@ -13,7 +13,7 @@ start_textcleanup=false # WARNING : IT starts from flattening gigaword corpus to
 addtraintext=true # If true, this option appends the Fisher train text to the Gigaword corpus textfile, to 
                   # perform the A, A + G, Dev type POCOLM training configuration.
 		  # A=fsp train, G=gigword text, 
-num_words_pocolm=110000
+num_words_pocolm=100000
 train_sgmm2=false
 
 # call the next line with the directory where the Spanish Fisher data is
