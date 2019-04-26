@@ -4,12 +4,13 @@
 
 SHELL := /bin/bash
 
-
 SUBDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat kws cudamatrix \
           bin fstbin gmmbin fgmmbin featbin \
-          latbin nnet3 rnnlm chain nnet3bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin
+          latbin sgmm2 sgmm2bin nnet3 rnnlm chain nnet3bin kwsbin \
+          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
+          cudadecoder cudadecoderbin
+
 
 MEMTESTDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat kws chain \
@@ -127,7 +128,7 @@ $(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-bin fstbin gmmbin fgmmbin sgmm2bin featbin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin: \
+bin fstbin gmmbin fgmmbin sgmm2bin featbin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin cudadecoderbin: \
  base matrix util feat tree gmm transform sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet3 ivector chain kws online2 rnnlm
 
@@ -146,8 +147,6 @@ lm: base util matrix fstext
 decoder: base util matrix gmm hmm tree transform lat
 lat: base util hmm tree matrix
 cudamatrix: base util matrix
-nnet: base util hmm tree matrix cudamatrix
-nnet2: base util matrix lat gmm hmm tree transform cudamatrix
 nnet3: base util matrix decoder lat gmm hmm tree transform cudamatrix chain fstext
 rnnlm: base util matrix cudamatrix nnet3 lm hmm
 chain: lat hmm tree fstext matrix cudamatrix util base
@@ -158,3 +157,5 @@ onlinebin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder 
 online: decoder gmm transform feat matrix util base lat hmm tree
 online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet3 chain
 kws: base util hmm tree matrix lat
+cudadecoder:  cudamatrix online2 nnet3 ivector feat fstext lat chain transform
+cudadecoderbin: cudadecoder cudamatrix online2 nnet3 ivector feat fstext lat chain transform
