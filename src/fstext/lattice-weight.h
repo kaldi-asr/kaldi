@@ -179,8 +179,7 @@ class LatticeWeightTpl {
     } else if (s == "-Infinity") {
       f = -numeric_limits<T>::infinity();
     } else if (s == "BadNumber") {
-      f = numeric_limits<T>::infinity();
-      f -= f; // get NaN
+      f = numeric_limits<T>::quiet_NaN();
     } else {
       char *p;
       f = strtod(s.c_str(), &p);

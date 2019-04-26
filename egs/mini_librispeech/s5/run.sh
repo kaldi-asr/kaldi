@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Change this location to somewhere where you want to put the data.
-data=/export/a05/dgalvez/
+data=./corpus/
 
 data_url=www.openslr.org/resources/31
 lm_url=www.openslr.org/resources/11
@@ -21,7 +21,7 @@ for part in dev-clean-2 train-clean-5; do
 done
 
 if [ $stage -le 0 ]; then
-  local/download_lm.sh $lm_url data/local/lm
+  local/download_lm.sh $lm_url $data data/local/lm
 fi
 
 if [ $stage -le 1 ]; then

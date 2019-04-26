@@ -189,7 +189,7 @@ def ProcessSumDescriptor(segment, parent_node_name, affix, edge_attributes = Non
         sub_segment = segment['sub_segments'][i]
         part_name = "{0}{1}{2}".format(desc_name, sub_segment['name'], i)
         names.append("<{0}> part {1}".format(GetDotNodeName(part_name)['node'], i))
-        dot_graph += DescriptorSegmentToDot(sub_segment, "{0}:{1}".format(desc_name, part_name), desc_name+"_"+str(i))
+        dot_graph += DescriptorSegmentToDot(sub_segment, "{0}:{1}".format(desc_name, part_name), "{0}_{1}".format(desc_name, i))
 
     # link the sum node parts to corresponding segments
     part_index = len(segment['sub_segments'])
@@ -321,7 +321,7 @@ def Nnet3ComponentToDot(component_config, component_attributes = None):
     label = ''
     if component_attributes is None:
         component_attributes = component_config.keys()
-    attributes_to_print = set(component_attributes).intersection(component_config.keys())
+    attributes_to_print = set(component_attributes).intersection(list(component_config.keys()))
     # process the known fields
     for key in attributes_to_print:
         if key in component_config:

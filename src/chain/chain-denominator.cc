@@ -61,10 +61,11 @@ DenominatorComputation::DenominatorComputation(
                  num_sequences_).SetZero();
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
-  // the kStrideEqualNumCols argument means we'll allocate a contiguous block of
-  // memory for this; it is added to ensure that the same block of memory
-  // (cached in the allocator) can be used for xent_output_deriv when allocated
-  // from chain-training.cc.
+  // the kStrideEqualNumCols argument is so that we can share the same
+  // memory block with xent_output_deriv (see chain-training.cc, search for
+  // kStrideEqualNumCols).  This depends on how the allocator works, and
+  // actually might not happen, but anyway, the impact on speed would
+  // likely be un-measurably small.
   exp_nnet_output_transposed_.Resize(nnet_output.NumCols(),
                                      nnet_output.NumRows(),
                                      kUndefined, kStrideEqualNumCols);

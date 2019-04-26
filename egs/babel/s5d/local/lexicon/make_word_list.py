@@ -85,7 +85,7 @@ def main():
     # Print the word list
     with codecs.open(args.word_list, "w", encoding="utf-8") as f:
         for word, count in words:
-            f.write("%d %s\n" % (count, unicode(word)))
+            f.write("%d %s\n" % (count, word))
 
     if args.misprons is not None:
         with codecs.open(args.misprons, "w", encoding="utf-8") as f:

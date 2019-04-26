@@ -17,6 +17,7 @@ nj=30
 min_seg_len=1.55  # min length in seconds... we do this because chain training
                   # will discard segments shorter than 1.5 seconds.  Must remain in
                   # sync with the same option given to run_ivector_common.sh.
+                  # Set it to empty string to skip combining segments.
 use_ihm_ali=false # If true, we use alignments from the IHM data (which is better..
                   # don't set this to true if $mic is set to ihm.)
 train_set=train   # you might set this to e.g. train_cleaned.
@@ -69,15 +70,17 @@ if [ $stage -le 9 ]; then
   utils/fix_data_dir.sh data/${mic}/${train_set}${ihm_suffix}_sp
 fi
 
-if [ $stage -le 10 ]; then
-  echo "$0: combining short segments of 13-dimensional speed-perturbed ${maybe_ihm}MFCC data"
-  src=data/${mic}/${train_set}${ihm_suffix}_sp
-  dest=data/${mic}/${train_set}${ihm_suffix}_sp_comb
-  utils/data/combine_short_segments.sh $src $min_seg_len $dest
-  # re-use the CMVN stats from the source directory, since it seems to be slow to
-  # re-compute them after concatenating short segments.
-  cp $src/cmvn.scp $dest/
-  utils/fix_data_dir.sh $dest
+if [ ! -z "$min_seg_len" ]; then
+  if [ $stage -le 10 ]; then
+    echo "$0: combining short segments of 13-dimensional speed-perturbed ${maybe_ihm}MFCC data"
+    src=data/${mic}/${train_set}${ihm_suffix}_sp
+    dest=data/${mic}/${train_set}${ihm_suffix}_sp_comb
+    utils/data/combine_short_segments.sh $src $min_seg_len $dest
+    # re-use the CMVN stats from the source directory, since it seems to be slow to
+    # re-compute them after concatenating short segments.
+    cp $src/cmvn.scp $dest/
+    utils/fix_data_dir.sh $dest
+  fi
 fi
 
 

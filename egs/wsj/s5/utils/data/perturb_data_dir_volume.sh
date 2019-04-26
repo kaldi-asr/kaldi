@@ -52,15 +52,15 @@ for line in sys.stdin.readlines():
   parts = line.strip().split()
   if line.strip()[-1] == '|':
     if re.search('sox --vol', ' '.join(parts[-11:])):
-      print 'true'
+      print('true')
       sys.exit(0)
   elif re.search(':[0-9]+$', line.strip()) is not None:
     continue
   else:
     if ' '.join(parts[1:3]) == 'sox --vol':
-      print 'true'
+      print('true')
       sys.exit(0)
-print 'false'
+print('false')
 "` || exit 1
 
 if $volume_perturb_done; then

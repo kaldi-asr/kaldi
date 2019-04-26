@@ -16,28 +16,33 @@
 #      images.scp file: 000_a01-000u-00 data/local/lines/a01/a01-000u/a01-000u-00.png
 #      spk2utt file: 000 000_a01-000u-00 000_a01-000u-01 000_a01-000u-02 000_a01-000u-03
 
-stage=0
-download_dir=/export/corpora/LDC/LDC2014T13
+download_dir1=/export/corpora/LDC/LDC2014T13/data
+train_split_url=http://www.openslr.org/resources/50/madcat.train.raw.lineid
+test_split_url=http://www.openslr.org/resources/50/madcat.test.raw.lineid
+dev_split_url=http://www.openslr.org/resources/50/madcat.dev.raw.lineid
 data_split_dir=data/download/datasplits
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh || exit 1;
 
-if [[ ! -d $download_dir ]]; then
-  echo "$0: Warning: Couldn't find $download_dir."
-  echo ""
+if [ -d $data_split_dir ]; then
+  echo "$0: Not downloading the data splits as it is already there."
+else
+  if [ ! -f $data_split_dir/madcat.train.raw.lineid ]; then
+    mkdir -p $data_split_dir
+    echo "$0: Downloading the data splits..."
+    wget -P $data_split_dir $train_split_url || exit 1;
+    wget -P $data_split_dir $test_split_url || exit 1;
+    wget -P $data_split_dir $dev_split_url || exit 1;
+  fi
+  echo "$0: Done downloading the data splits"
 fi
 
-mkdir -p data/{train,test,dev}/lines
-if [ $stage -le 1 ]; then
-  local/process_data.py $download_dir $data_split_dir/madcat.train.raw.lineid data/train || exit 1
-  local/process_data.py $download_dir $data_split_dir/madcat.test.raw.lineid data/test || exit 1
-  local/process_data.py $download_dir $data_split_dir/madcat.dev.raw.lineid data/dev || exit 1
-
-  for dataset in train test dev; do
-    echo "$0: Fixing data directory for dataset: $dataset"
-    echo "Date: $(date)."
-    image/fix_data_dir.sh data/$dataset
-  done
+if [ -d $download_dir1 ]; then
+  echo "$0: madcat chinese data directory is present."
+else
+  if [ ! -f $download_dir1/madcat/*.madcat.xml ]; then
+    echo "$0: please download madcat data..."
+  fi
 fi
