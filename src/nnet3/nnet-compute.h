@@ -119,7 +119,7 @@ class NnetComputer {
 
   // Version of GetOutput that calls Swap(), destroying the output stored inside
   // this object.  You should probably not use this if you plan to call
-  // Backward() on the same NnetComputer object, or it's a recurret
+  // Backward() on the same NnetComputer object, or it's a recurrent
   // computation-- it may lead to a crash.
   void GetOutputDestructive(const std::string &output_name,
                             CuMatrix<BaseFloat> *output);

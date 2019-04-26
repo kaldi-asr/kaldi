@@ -52,7 +52,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
   alias readlink=greadlink
 fi
 
-sequitur=$KALDI_ROOT/tools/sequitur
+sequitur=$KALDI_ROOT/tools/sequitur-g2p
 export PATH=$PATH:$sequitur/bin
 export PYTHONPATH=$PYTHONPATH:`utils/make_absolute.sh $sequitur/lib/python*/site-packages`
 

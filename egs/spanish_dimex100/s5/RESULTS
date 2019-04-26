@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+# Result on decode_test (tri2b_mmi_b0.05)
+%WER 7.58 [ 72 / 950, 50 ins, 0 del, 22 sub ] exp/tri2b_mmi_b0.05/decode_test/wer_15:2

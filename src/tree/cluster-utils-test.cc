@@ -97,10 +97,11 @@ static void TestObjfPlus() {
   AssertEqual(a.Objf(), (BaseFloat)0.0);
   AssertEqual(b.Objf(), (BaseFloat)0.0);
   AssertEqual( a.ObjfPlus(b), -0.5 * (1.0-2.5)*(1.0-2.5));  // 0.5 because half-distance, squared = 1/4, times two points...
-  KALDI_LOG << "Non-binary Output: "<<'\n';
-  a.Write(KALDI_LOG, false);
-  KALDI_LOG << "Binary Output: "<<'\n';
-  a.Write(KALDI_LOG, true);
+  KALDI_LOG << "Non-binary Output:";
+  a.Write(std::cerr, false);
+  std::cerr << "\nBinary Output:\n";
+  a.Write(std::cerr, true);
+  std::cerr << "\n";
 }
 
 static void TestObjfMinus() {
@@ -395,7 +396,7 @@ static void TestClusterKMeansVector() {
     std::vector<Clusterable*> points;
     for (size_t j = 0; j < n_clust; j++) {
       size_t n_points = 1 + Rand() % 5;
-      
+
       Vector<BaseFloat> clust_center(dim);
       clust_center.SetRandn();
       for (size_t k = 0; k < n_points; k++) {
@@ -573,5 +574,3 @@ int main() {
   TestClusterBottomUp();
   TestRefineClusters();
 }
-
-

@@ -665,8 +665,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
         continue;
       if (opts_.max_loop > 0 && counter++ > opts_.max_loop) {
         KALDI_ERR << "Lattice determinization aborted since looped more than "
-                  << opts_.max_loop << " times during epsilon closure.\n";
-        throw std::runtime_error("looped more than max-arcs times in lattice determinization");
+                  << opts_.max_loop << " times during epsilon closure.";
       }
       for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();

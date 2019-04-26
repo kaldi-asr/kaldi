@@ -51,6 +51,15 @@
   } \
 }
 
+#define CUSOLVER_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cusolverStatus_t " << ret << " : \"" << ret << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
+
 #define CUSPARSE_SAFE_CALL(fun) \
 { \
   int32 ret; \

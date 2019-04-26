@@ -2,6 +2,9 @@
 # Copyright 2012-2014  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0
 
+# This script converts a BPE-encoded text to normal text and performs normalization.
+# It is used in scoring.
+
 use utf8;
 
 use open qw(:encoding(utf8));

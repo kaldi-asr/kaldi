@@ -166,7 +166,7 @@ void TransitionModel::ComputeDerived() {
 
   id2state_.resize(cur_transition_id);   // cur_transition_id is #transition-ids+1.
   id2pdf_id_.resize(cur_transition_id);
-  for (int32 tstate = 1; tstate <= static_cast<int32>(tuples_.size()); tstate++)
+  for (int32 tstate = 1; tstate <= static_cast<int32>(tuples_.size()); tstate++) {
     for (int32 tid = state2id_[tstate]; tid < state2id_[tstate+1]; tid++) {
       id2state_[tid] = tstate;
       if (IsSelfLoop(tid))
@@ -174,6 +174,17 @@ void TransitionModel::ComputeDerived() {
       else
         id2pdf_id_[tid] = tuples_[tstate-1].forward_pdf;
     }
+  }
+
+  // The following statements put copies a large number in the region of memory
+  // past the end of the id2pdf_id_ array, while leaving the aray as it was
+  // before.  The goal of this is to speed up decoding by disabling a check
+  // inside TransitionIdToPdf() that the transition-id was within the correct
+  // range.
+  int32 num_big_numbers = std::min<int32>(2000, cur_transition_id);
+  id2pdf_id_.resize(cur_transition_id + num_big_numbers,
+                    std::numeric_limits<int32>::max());
+  id2pdf_id_.resize(cur_transition_id);
 }
 
 void TransitionModel::InitializeProbs() {
