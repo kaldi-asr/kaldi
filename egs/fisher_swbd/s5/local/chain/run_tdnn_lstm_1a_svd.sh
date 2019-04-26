@@ -53,8 +53,8 @@
 set -e
 
 # configs for 'chain'
-stage=12
-train_stage=-10
+stage=0
+train_stage=-20
 get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_lstm_1a # Note: _sp will get added to this if $speed_perturb == true.
