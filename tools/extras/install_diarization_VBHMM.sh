@@ -14,8 +14,8 @@ fi
 # We download the original VB HMM scripts of the Brno University of Technology.
 # numexpr is a required dependency for speeding up the VB_diarization.
 if [ ! -d VB_diarization ]; then
-  wget  http://www.fit.vutbr.cz/~burget/VB_diarization.zip
-  unzip VB_diarization.zip
+  git clone https://github.com/GoVivaceInc/VB_diarization  
+  cp VB_diarization/VB_diarization.py ../egs/callhome_diarization/v1/local/
 fi
 
 pip install numexpr

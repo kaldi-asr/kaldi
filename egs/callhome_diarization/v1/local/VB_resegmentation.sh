@@ -32,9 +32,6 @@ else
     exit 1;
 fi
 
-export VB_HMM_ROOT=$(cd $KALDI_ROOT/tools/VB_diarization/; pwd -P)
-export PYTHONPATH=$VB_HMM_ROOT
-echo $PYTHONPATH
 
 if [ $# != 5 ]; then
   echo "Usage: local/VB_resegmentation.sh <data_dir> <init_rttm_filename> <output_dir> <dubm_model> <ie_model>"
