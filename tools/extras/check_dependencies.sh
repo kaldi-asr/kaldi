@@ -128,24 +128,40 @@ if $pythonok && have python && [[ ! -f $PWD/python/.use_default_python ]]; then
 fi
 )
 
-printed=false
-
-# MKL. We do not know if compiler exists at this point, so double-check
-# the well-known mkl.h file location. The compiler test would still find
-# it if installed in an alternative location (this is unlikely).
-if [ ! -f /opt/intel/mkl/include/mkl.h ] &&
-   ! echo '#include <mkl.h>' | $CXX -I /opt/intel/mkl/include -E - >&/dev/null; then
-  if [[ $(uname) == Linux ]]; then
-    echo "$0: Intel MKL is not installed. Run extras/install_mkl.sh to install it."
-  else
-    echo "$0: Intel MKL is not installed. Download the installer package for your
+mathlib_missing=false
+case $(uname -m) in
+  x86_64)  # Suggest MKL on an Intel64 system (configure does not like i?86 hosts).
+    # We do not know if compiler exists at this point, so double-check the
+    # well-known mkl.h file location. The compiler test would still find it if
+    # installed in an alternative location (this is unlikely).
+    if [ ! -f /opt/intel/mkl/include/mkl.h ] &&
+         ! echo '#include <mkl.h>' | $CXX -I /opt/intel/mkl/include -E - >&/dev/null; then
+      if [[ $(uname) == Linux ]]; then
+        echo "$0: Intel MKL is not installed. Run extras/install_mkl.sh to install it."
+      else
+        echo "$0: Intel MKL is not installed. Download the installer package for your
  ... system from: https://software.intel.com/mkl/choose-download."
-  fi
- echo "\
+      fi
+      mathlib_missing=true
+    fi
+      ;;
+  *)  # Suggest OpenBLAS on other hardware.
+    if [ ! -f $(pwd)/OpenBLAS/install/include/openblas_config.h ] &&
+         ! echo '#include <openblas_config.h>' |
+            $CXX -I $(pwd)/OpenBLAS/install/include -E - >&/dev/null; then
+      echo "$0: OpenBLAS not detected. Run extras/install_openblas.sh
+ ... to compile it for your platform, or configure with --openblas-root= if you
+ ... have it installed in a location we could not guess. Note that packaged
+ ... library may be significantly slower and/or older than the one the above
+ ... would build."
+      mathlib_missing=true
+    fi
+      ;;
+esac
+$mathlib_missing &&
+  echo "\
  ... You can also use other matrix algebra libraries. For information, see:
- ... http://kaldi-asr.org/doc/matrixwrap.html"
-  printed=true
-fi
+ ...   http://kaldi-asr.org/doc/matrixwrap.html"
 
 # Report missing programs and libraries.
 if [ -n "$debian_packages" ]; then
@@ -187,7 +203,7 @@ if pwd | grep -E 'JOB|LMWT' >/dev/null; then
   status=1
 fi
 
-if ! $printed && [ $status -eq 0 ]; then
+if ! $mathlib_missing && [ $status -eq 0 ]; then
   echo "$0: all OK."
 fi
 
