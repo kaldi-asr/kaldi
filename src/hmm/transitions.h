@@ -32,6 +32,7 @@
 
 namespace kaldi {
 
+static const int kNoPdf = -1;
 
 // The class Transitions handles various integer mappings.
 // It used to be the home for the trainable transitions, but these

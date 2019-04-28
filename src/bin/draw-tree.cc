@@ -33,7 +33,7 @@ void MakeEvent(std::string &qry, fst::SymbolTable *phone_syms,
     EventValueType value;
     if (key == kPdfClass) {
       value = static_cast<EventValueType>(atoi(valstr.c_str()));
-      if (value < 0) { // not valid pdf-class
+      if (value < 1) { // not valid pdf-class
         KALDI_ERR << "Bad query: invalid pdf-class (" << valstr << ')';
       }
     }

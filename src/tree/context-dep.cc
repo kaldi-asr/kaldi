@@ -292,7 +292,8 @@ void ContextDependency::GetPdfInfo(
     KALDI_ASSERT(static_cast<size_t>(phone) < num_pdf_classes.size());
     EventAnswerType len = num_pdf_classes[phone];
 
-    for (int32 pos = 0; pos < len; pos++) {
+    // Pdf-classes are 1-based.
+    for (int32 pos = 1; pos <= len; pos++) {
       vec.resize(2);
       vec[0] = std::make_pair(static_cast<EventKeyType>(P_),
                               static_cast<EventValueType>(phone));

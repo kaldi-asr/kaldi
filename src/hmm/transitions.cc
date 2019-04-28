@@ -61,12 +61,12 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
     auto const &entry = topo_.TopologyForPhone(phone);  // an FST
     int num_states = entry.NumStates();
 
-    std::vector<StateId> state_to_self_loop_pdf_class(num_states, -1);  // TODO(hhadian): Define and use kNoPdf
+    std::vector<StateId> state_to_self_loop_pdf_class(num_states, kNoPdf);
     for (StateId state = 0; state < num_states; ++state)
       for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state); !aiter.Done(); aiter.Next()) {
         const fst::StdArc &arc(aiter.Value());
         if (arc.nextstate == state) {
-          KALDI_ASSERT(state_to_self_loop_pdf_class[state] == -1);  //kNoPdf Only 1 self-loop allowed.
+          KALDI_ASSERT(state_to_self_loop_pdf_class[state] == kNoPdf);  // Only 1 self-loop allowed.
           state_to_self_loop_pdf_class[state] = arc.ilabel;
         }
       }
@@ -76,10 +76,8 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
       for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state);
            !aiter.Done(); aiter.Next()) {
         const fst::StdArc &arc(aiter.Value());
-        int32 forward_pdf_class = arc.ilabel - 1,  // context-dep assumes classes are zero-based.
+        int32 forward_pdf_class = arc.ilabel,
             self_loop_pdf_class = state_to_self_loop_pdf_class[arc.nextstate];
-        if (self_loop_pdf_class != -1)
-          self_loop_pdf_class--;
         auto state_arc_pair = std::make_pair(state, aiter.Position());
         auto pdf_class_pair = std::make_pair(forward_pdf_class, self_loop_pdf_class);
         phone_to_arc_list[pdf_class_pair].push_back(state_arc_pair);

@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     // bool binary = true;
     int32 P = 1, N = 3; // Note: N does not matter.
-    std::string pdf_class_list_str = "1";  // 1 is just the central position of 3.
+    std::string pdf_class_list_str = "2";  // 2 is just the central position of 3.
     std::string mode = "questions";
     int32 num_classes = -1;
 
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     // po.Register("binary", &binary, "Write output in binary mode");
     po.Register("central-position", &P, "Central position in context window [must match acc-tree-stats]");
     po.Register("context-width", &N, "Does not have any effect-- included for scripting convenience.");
-    po.Register("pdf-class-list", &pdf_class_list_str, "Colon-separated list of HMM positions to consider [Default = 1: just central position for 3-state models].");
+    po.Register("pdf-class-list", &pdf_class_list_str, "Colon-separated list of HMM positions to consider [Default = 2: just central position for 3-state models].");
     po.Register("mode", &mode, "Mode of operation: \"questions\"->sets suitable for decision trees; \"k-means\"->k-means algorithm, output k classes (set num-classes options)\n");
     po.Register("num-classes", &num_classes, "For k-means mode, number of classes.");
 
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     std::vector<int32> pdf_class_list;
     if (!SplitStringToIntegers(pdf_class_list_str, ":", false, &pdf_class_list)
        || pdf_class_list.empty()) {
-      KALDI_ERR << "Invalid pdf-class-list string [expecting colon-separated list of integers]: " 
+      KALDI_ERR << "Invalid pdf-class-list string [expecting colon-separated list of integers]: "
                  << pdf_class_list_str;
     }
 
