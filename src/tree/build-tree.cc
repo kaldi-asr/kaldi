@@ -76,7 +76,8 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
     for (int32 j = 0; j < hmm_length; j++) {
       // create event vector.
       EventType event_vec;
-      event_vec.push_back(std::make_pair(kPdfClass, (EventValueType)j));  // record the position.
+      // Use j+1 in next line becuase pdf-classes are 1-based.
+      event_vec.push_back(std::make_pair(kPdfClass, (EventValueType)(j + 1)));  // record the position.
       for (size_t pos = 0; pos < (size_t)N; pos++) {
         if (pos == (size_t)(P) || is_ctx_dep[phone_vec[P]])
           event_vec.push_back(std::make_pair((EventKeyType)pos, (EventValueType)phone_vec[pos]));
@@ -652,7 +653,7 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
                << "stats disappeared: the size changed from " << stats.size()
                << " to " << retained_stats.size() << ".  You might be using "
                << "a nonstandard topology but forgot to modify the "
-               << "--pdf-class-list option (it defaults to { 1 } which is "
+               << "--pdf-class-list option (it defaults to { 2 } which is "
                << "the central state in a 3-state left-to-right topology)."
                << " E.g. a 1-state HMM topology would require the option "
                << "--pdf-class-list=0.";
