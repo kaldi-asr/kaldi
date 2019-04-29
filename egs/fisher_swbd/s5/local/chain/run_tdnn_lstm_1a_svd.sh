@@ -7,14 +7,8 @@
 # as determined by the bottleneck dim value or Energy and Shrinkage threshold values.
 # Then, we finetune the weight parameters of the refactored model using entire multien data for single epoch.
 
-# Commands used for performing  WER decoding on a testset (like rt03) :
-# steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-#          $ivector_opts --extra-left-context 50 \
-#          --extra-right-context 0 --extra-left-context-initial 0 \
-#          --extra-right-context-final 0 --frames-per-chunk 140 \
-#         exp/chain/tdnn_lstm_1a_svd_sp/graph_multi_a_fsh_sw1_tg \
-#         ${testset}_hires exp/chain/tdnn_lstm_1a_svd_sp
-#  ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_svd_sp
+# Command used for comparing  WER decoding on testsets :
+#  ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp
 
 
 # System                tdnn_lstm_1a_sp
@@ -24,8 +18,10 @@
 #           [looped:]        12.1
 # WER on eval2000(fg)
 #  [SVD retrained + looped]  12.1
-# WER on rt03(tg)            12
-#           [looped:]        12
+# WER on rt03(tg)            11.6
+#           [looped:]        11.6
+# WER on rt03(tg)
+#  [SVD retrained]           12
 # WER on rt03(fg)            11.3
 #           [looped:]        11.3
 # Final train prob         -0.074
@@ -43,7 +39,7 @@
 
 # ./show_chain_wer_rt03.sh tdnn_lstm_1b_sp
 # %WER 9.6 | 3970 36721 | 91.5 5.5 3.0 1.1 9.6 41.2 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 12 | 8420 76157 | 89.7 6.8 3.4 1.4 11.6 43.0 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.filt.sys
+# %WER 11.6 | 8420 76157 | 89.7 6.8 3.4 1.4 11.6 43.0 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.filt.sys
 # %WER 13.3 | 4450 39436 | 88.0 7.4 4.6 1.3 13.3 44.5 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
 # %WER 9.4 | 3970 36721 | 91.8 5.3 2.9 1.1 9.4 40.3 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
 # %WER 11.3 | 8420 76157 | 89.9 6.4 3.7 1.2 11.3 42.4 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys

@@ -975,27 +975,21 @@ class SvdApplier {
               << " components to FixedAffineComponent.";
   }
 
-  // This function returns the maximum eligible index of 
-  // the descending order sorted set of Singular value parameters (input_vector), 
-  // for a given energy_threshold value (min_val).
-  // All the Singular value elements of input_vector,
-  //  which are above this index (lower magnitudes), are pruned away
-  //   to obtain the SVD refactored weight matrices with
-  //    reduced number of parameters.
-  int32 BinarySearch(const Vector<BaseFloat> &input_vector,
-		     int32 lower,
-		     int32 upper,
-		     BaseFloat min_val) {
-    int32 mid = (lower + upper) / 2;
-    if (lower < upper - 1) {
-      SubVector<BaseFloat> subset(input_vector, 0, mid);
-      if (subset.Sum() < min_val) {
-	return BinarySearch(input_vector, mid, upper, min_val);
-      } else {
-	return BinarySearch(input_vector, lower, mid, min_val);
-      }
+  // This function returns the minimum index of 
+  // the descending order sorted subvector of input_vector, 
+  // for which the sum of elements upto the index is greater
+  // than min_val.
+  int32 get_compression_index(const Vector<BaseFloat> &input_vector,
+			     int32 lower,
+			     int32 upper,
+			     BaseFloat min_val) {
+    BaseFloat sum = 0;
+    int32 i = 0;
+    for (i=lower, i<=upper; i++) {
+	sum = sum + input_vector(i);
+	if (sum >= min_val) break;
     }
-    return upper;
+    return i;
   }
   
   bool DecomposeComponent(const std::string &component_name,
@@ -1022,7 +1016,7 @@ class SvdApplier {
     KALDI_ASSERT(shrinkage_threshold_ < 1);
     if (energy_threshold_ > 0) {
       BaseFloat min_singular_sum = energy_threshold_ * s2.Sum();
-      bottleneck_dim_ = BinarySearch(s2, 0, s2.Dim()-1, min_singular_sum);
+      bottleneck_dim_ = get_compression_index(s2, 0, s2.Dim()-1, min_singular_sum);
     } 
     SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
     BaseFloat s_sum_reduced = this_part.Sum();
