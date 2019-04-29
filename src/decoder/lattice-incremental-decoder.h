@@ -539,8 +539,9 @@ class LatticeIncrementalDeterminizer {
   const CompactLattice &GetDeterminizedLattice() const { return lat_; }
 
   // Part of step 1 of incremental determinization,
-  // where the initial states are constructed corresponding to pre-final states in
-  // the determinized and appended lattice before this chunk
+  // where the initial states are constructed corresponding to redeterminized 
+  // states (see the description in redeterminized_states_) in the 
+  // determinized and appended lattice before this chunk.
   // We give each determinized and appended state an olabel id, called `state_label`
   // We maintain a map (`token_label2last_state_map`) from token label (obtained from
   // final arcs) to the destination state of the last of the sequence of initial arcs
@@ -576,6 +577,21 @@ class LatticeIncrementalDeterminizer {
   std::vector<BaseFloat> &GetForwardCosts() { return forward_costs_; }
 
  private:
+  // This function either locates a redeterminized state w.r.t nextstate previously
+  // added, or if necessary inserts a new one.
+  // The new one is inserted in olat and kept by the map (redeterminized_states_)
+  // which is from the state in the appended compact lattice to the state_copy in the
+  // raw lattice. The function returns whether a new one is inserted
+  // The StateId of the redeterminized state will be outputed by nextstate_copy
+  bool AddRedeterminizedState(Lattice::StateId nextstate, Lattice *olat,
+                              Lattice::StateId *nextstate_copy = NULL);
+  // Sub function of GetInitialRawLattice(). Refer to description there
+  void GetRawLatticeForRedeterminizedStates(
+      StateId start_state, StateId state,
+      const unordered_map<int32, BaseFloat> &token_label_final_cost,
+      unordered_multimap<int, LatticeArc::StateId> *token_label2last_state_map,
+      Lattice *olat);
+
   const LatticeIncrementalDecoderConfig config_;
   const TransitionModel &trans_model_; // keep it for determinization
 
@@ -587,9 +603,18 @@ class LatticeIncrementalDeterminizer {
   std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
   // alpha of each state in lat_
   std::vector<BaseFloat> forward_costs_;
+  std::vector<BaseFloat> forward_costs_for_redet_;
   // we allocate a unique id for each source-state of the last arc of a series of
   // initial arcs in GetInitialRawLattice
   int32 state_last_initial_offset_;
+  // We define a state in the appended lattice as a 'redeterminized-state' (meaning:
+  // one that will be redeterminized), if it is: prefinal, or there exists an arc
+  // from a redeterminized state to this state. We keep reapplying this rule until
+  // there are no more redeterminized states. The final state is not included.
+  // These redeterminized states will be stored in this map
+  // which is a map from the state in the appended compact lattice to the
+  // state_copy in the newly-created raw lattice.
+  std::unordered_map<StateId, StateId> redeterminized_states_;
 
   // The compact lattice we obtain. It should be reseted before processing a
   // new utterance
