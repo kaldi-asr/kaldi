@@ -15,7 +15,7 @@ fi
 # numexpr is a required dependency for speeding up the VB_diarization.
 if [ ! -d VB_diarization ]; then
   git clone https://github.com/GoVivaceInc/VB_diarization  
-  cp VB_diarization/VB_diarization.py ../egs/callhome_diarization/v1/local/
+  cp VB_diarization/VB_diarization.py ../egs/callhome_diarization/v1/diarization/
 fi
 
 pip install numexpr

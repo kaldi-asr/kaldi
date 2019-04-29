@@ -71,7 +71,7 @@ utils/filter_scp.pl $data_dir/callhome2/wav.scp $data_dir/callhome/reco2num_spk 
   > $data_dir/callhome2/reco2num_spk
 
 # Here we tweak somethings to make VB resegmentation work for original data/callhome
-rm $$data_dir/callhome/segments
+rm $data_dir/callhome/segments
 awk '{print $1, $1}' $data_dir/callhome/wav.scp > $data_dir/callhome/utt2spk
 utils/utt2spk_to_spk2utt.pl $data_dir/callhome/utt2spk > $data_dir/callhome/spk2utt
 utils/data/get_utt2num_frames.sh $data_dir/callhome

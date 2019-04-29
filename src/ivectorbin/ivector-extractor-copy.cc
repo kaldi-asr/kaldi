@@ -1,6 +1,10 @@
-// ivectorbin/ivector-extractor-init.cc
 
-// Copyright 2013  Daniel Povey
+// Copyright 2019  Valluri Saikiran, Nagendra Goel, Govivace.inc
+
+
+// This file copies ivector extractor into text format
+// which is to be loaded by dump_model.py, to parse the model parameters,
+// before VB resegmentation.
 
 // See ../../COPYING for clarification regarding multiple authors
 //

@@ -127,9 +127,6 @@ def main():
     parser.add_argument('output_dir', type=str, help='Output directory')
     parser.add_argument('dubm_model', type=str, help='Path of the diagonal UBM model')
     parser.add_argument('ie_model', type=str, help='Path of the ivector extractor model')
-
-    parser.add_argument('--true-rttm-filename', type=str, default="None",
-                        help='The true rttm label file')
     parser.add_argument('--max-speakers', type=int, default=10,
                         help='Maximum number of speakers expected in the utterance (default: 10)')
     parser.add_argument('--max-iters', type=int, default=10,
@@ -218,10 +215,6 @@ def main():
         # label starts from 2.
         init_ref = create_ref_file(utt, utt2num_frames, init_rttm_filename, temp_dir, "{}.rttm".format(utt))
         # Ground truth of the diarization.
-        if args.true_rttm_filename != "None":
-            true_ref = create_ref_file(utt, utt2num_frames, args.true_rttm_filename, temp_dir, "{}_true.rttm".format(utt))
-        else:
-            true_ref = None
 
         X = feats_dict[utt]
         X = X.astype(np.float64)
@@ -234,11 +227,6 @@ def main():
         X_voiced = X[mask]
         init_ref_voiced = init_ref[mask] - 2
 
-        if args.true_rttm_filename != "None": 
-            true_ref_voiced = true_ref[mask] - 2
-            if np.sum(true_ref) == 0:
-                print("Warning: {} has no voiced frames in the label file".format(utt))
-                continue
         if X_voiced.shape[0] == 0:
             print("Warning: {} has no voiced frames in the initialization file".format(utt))
             continue
@@ -246,13 +234,6 @@ def main():
         # Initialize the posterior of each speaker based on the clustering result.
         if args.initialize:
             q = VB_diarization.frame_labels2posterior_mx(init_ref_voiced, args.max_speakers)
-            if args.true_rttm_filename != "None": 
-                cmd = "md-eval.pl -1 -c 0.25 -r {}/{}_true.rttm -s {}/{}.rttm 2".format(temp_dir, utt, temp_dir, utt)
-                status, output = commands.getstatusoutput(cmd) 
-                assert status == 0
-                DER_info = match_DER(output)
-                print("BEFORE RUNNING VB RESEGMENTATION")
-                print(DER_info + "\n")
         else:
             q = None
             print("RANDOM INITIALIZATION\n")
@@ -290,14 +271,6 @@ def main():
 
         # Create the output rttm file and compute the DER after re-segmentation
         create_rttm_output(utt, predicted_label, rttm_dir, args.channel)
-        if args.true_rttm_filename != "None":
-            cmd = "md-eval.pl -1 -c 0.25 -r {}/{}_true.rttm -s {}/{}_predict.rttm 2".format(temp_dir, utt, rttm_dir, utt)
-            status, output = commands.getstatusoutput(cmd) 
-            assert status == 0
-            DER_info = match_DER(output)
-            print("")
-            print("AFTER RUNNING VB RESEGMENTATION")
-            print(DER_info)
         print("")
         print("------------------------------------------------------------------------")
         print("")

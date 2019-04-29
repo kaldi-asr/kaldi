@@ -410,7 +410,7 @@ if [ $VB_resegmentation ]; then
 
   if [ $stage -le 13 ]; then
     # Train the i-vector extractor. The UBM is assumed to be diagonal.
-    local/train_ivector_extractor_diag.sh --cmd "$train_cmd --mem 45G --max-jobs-run 20" \
+    diarization/train_ivector_extractor_diag.sh --cmd "$train_cmd --mem 45G --max-jobs-run 20" \
 					  --ivector-dim ${ivec_dim} \
 					  --num-iters 5 \
 					  --apply-cmn false \
@@ -440,16 +440,16 @@ if [ $VB_resegmentation ]; then
 		 exp/extractor_gauss_${num_gauss}_delta_0_cmn_0_ivec_${ivec_dim}/final.ie \
 		 $output_dir/tmp/ie.tmp || exit 1;
 
-    local/dump_model.py $output_dir/tmp/dubm.tmp $output_dir/model
-    local/dump_model.py $output_dir/tmp/ie.tmp $output_dir/model
+    diarization/dump_model.py $output_dir/tmp/dubm.tmp $output_dir/model
+    diarization/dump_model.py $output_dir/tmp/ie.tmp $output_dir/model
   fi
 
   if [ $stage -le 15 ]; then
     mkdir -p $output_dir/results
     init_rttm_file=callhome_rttm_output_xvec
     label_rttm_file=data/callhome/fullref.rttm
-    cat $nnet_dir/xvectors_callhome1/plda_scores_num_spk/rttm \
-	  $nnet_dir/xvectors_callhome2/plda_scores_num_spk/rttm > $init_rttm_file
+    cat $nnet_dir/xvectors_callhome1/plda_scores/rttm \
+	  $nnet_dir/xvectors_callhome2/plda_scores/rttm > $init_rttm_file
 
     # Compute the DER before VB resegmentation
     md-eval.pl -1 -c 0.25 -r $label_rttm_file -s $init_rttm_file 2> $output_dir/log/DER_init.log \
@@ -460,8 +460,8 @@ if [ $VB_resegmentation ]; then
     # VB resegmentation. In this script, I use the x-vector result to
     # initialize the VB system. You can also use i-vector result or random
     # initize the VB system.
-    local/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 20G" \
-			       --true_rttm_filename "None" --initialize 1 \
+    diarization/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 20G" \
+			             --initialize 1 \
 			       data/callhome $init_rttm_file $output_dir $output_dir/model/diag_ubm.pkl $output_dir/model/ie.pkl || exit 1;
 
     # Compute the DER after VB resegmentation

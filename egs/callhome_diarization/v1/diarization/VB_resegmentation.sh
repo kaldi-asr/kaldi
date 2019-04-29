@@ -94,7 +94,7 @@ utils/split_data.sh $data_dir $nj || exit 1;
 
 if [ $stage -le 0 ]; then
     $cmd JOB=1:$nj $output_dir/log/VB_resegmentation.JOB.log \
-      local/VB_resegmentation.py --true-rttm-filename $true_rttm_filename --max-speakers $max_speakers \
+      diarization/VB_resegmentation.py --true-rttm-filename $true_rttm_filename --max-speakers $max_speakers \
         --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
 	--sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
 	--loopProb $loopProb --statScale $statScale --llScale $llScale \
