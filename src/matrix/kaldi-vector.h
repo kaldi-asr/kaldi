@@ -7,6 +7,7 @@
 //                       Wei Shi;
 //                2015   Guoguo Chen
 //                2017   Daniel Galvez
+//                2019   Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -119,6 +120,15 @@ class VectorBase {
   template<typename OtherReal>
   void CopyFromVec(const CuVectorBase<OtherReal> &v);
 
+  /// Applies floor to all elements. Returns number of elements
+  /// floored in floored_count if it is non-null.
+  void Floor(const VectorBase<Real> &v, Real floor_val, MatrixIndexT *floored_count = nullptr);
+
+  /// Applies ceiling to all elements. Returns number of elements
+  /// changed in ceiled_count if it is non-null.
+  void Ceiling(const VectorBase<Real> &v, Real ceil_val, MatrixIndexT *ceiled_count = nullptr);
+
+  void Pow(const VectorBase<Real> &v, Real power);
 
   /// Apply natural log to all elements.  Throw if any element of
   /// the vector is negative (but doesn't complain about zero; the
@@ -136,11 +146,15 @@ class VectorBase {
 
   /// Applies floor to all elements. Returns number of elements
   /// floored in floored_count if it is non-null.
-  void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = nullptr);
+  inline void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = nullptr) {
+    this->Floor(*this, floor_val, floored_count);
+  };
 
   /// Applies ceiling to all elements. Returns number of elements
   /// changed in ceiled_count if it is non-null.
-  void ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count = nullptr);
+  inline void ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count = nullptr) {
+    this->Ceiling(*this, ceil_val, ceiled_count);
+  };
 
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(const VectorBase<Real> &floor_vec);
@@ -162,7 +176,9 @@ class VectorBase {
   void Sigmoid(const VectorBase<Real> &src);
 
   /// Take all  elements of vector to a power.
-  void ApplyPow(Real power);
+  inline void ApplyPow(Real power) {
+    this->Pow(*this, power);
+  };
 
   /// Take the absolute value of all elements of a vector to a power.
   /// Include the sign of the input element if include_sign == true.

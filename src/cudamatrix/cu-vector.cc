@@ -4,6 +4,7 @@
 //           2012-2014  Johns Hopkins University (author: Daniel Povey)
 //                2017  Daniel Galvez
 //           2016-2018  Shiyin Kang
+//                2019  Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -349,7 +350,7 @@ void CuVectorBase<Real>::ApplySoftMax() {
 }
 
 template<typename Real>
-void CuVectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
+void CuVectorBase<Real>::Floor(const CuVectorBase<Real> &src, Real floor_val, MatrixIndexT *floored_count) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     int dimBlock(CU1DBLOCK);
@@ -360,8 +361,8 @@ void CuVectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count)
       // We are calling a function meant for matrices, by viewing the
       // vector as a matrix with a single row.
       ::MatrixDim dim = {1, Dim(), 1};
-      cuda_apply_floor(dimGrid, dimBlock, data_, floor_val, dim);
-      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloorNoCount", tim);
+      cuda_floor(dimGrid, dimBlock, this->data_, src.Data(), floor_val, dim, 1);
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::FloorNoCount", tim);
     } else {
       if (dim_ == 0) { *floored_count = 0; return; }
       CuTimer tim;
@@ -371,17 +372,18 @@ void CuVectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count)
       cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, count_vec.Data(), dim_);
       CU_SAFE_CALL(cudaGetLastError());
       *floored_count = count_vec.Sum();
-      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim);
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::Floor", tim);
     }
   } else
 #endif
   {
-    Vec().ApplyFloor(floor_val, floored_count);
+    Vec().Floor(src.Vec(), floor_val, floored_count);
   }
 }
 
 template<typename Real>
-void CuVectorBase<Real>::ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count) {
+void CuVectorBase<Real>::Ceiling(const CuVectorBase<Real> &src, Real ceiling_val,
+				 MatrixIndexT *ceiled_count) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     int dimBlock(CU1DBLOCK);
@@ -392,9 +394,9 @@ void CuVectorBase<Real>::ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_cou
       // We are calling a function meant for matrices, by viewing the
       // vector as a matrix with a single row.
       ::MatrixDim dim = {1, Dim(), 1};
-      cuda_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, dim);
+      cuda_ceiling(dimGrid, dimBlock, this->data_, src.Data(), ceiling_val, dim, 1);
 
-      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeilingNoCount", tim);
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::CeilingNoCount", tim);
     } else {
       if (dim_ == 0) { *ceiled_count = 0; return; }
       CuTimer tim;
@@ -404,17 +406,17 @@ void CuVectorBase<Real>::ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_cou
       cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
       CU_SAFE_CALL(cudaGetLastError());
       *ceiled_count = count_vec.Sum();
-      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim);
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::Ceiling", tim);
     }
   } else
 #endif
   {
-    Vec().ApplyCeiling(ceiling_val, ceiled_count);
+    Vec().Ceiling(src.Vec(), ceiling_val, ceiled_count);
   }
 }
 
 template<typename Real>
-void CuVectorBase<Real>::ApplyPow(Real power) {
+void CuVectorBase<Real>::Pow(const CuVectorBase<Real> &src, Real power) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
@@ -425,13 +427,13 @@ void CuVectorBase<Real>::ApplyPow(Real power) {
     dim3 dimGrid(n_blocks(Dim(), CU1DBLOCK), 1);
     ::MatrixDim fake_matrix_dim = { 1, Dim(), 1 };
     // num_cols is Dim(), num_rows is 1, stride is 1 (it's a don't-care).
-    cuda_apply_pow(dimGrid, dimBlock, data_, power, fake_matrix_dim);
+    cuda_pow(dimGrid, dimBlock, this->data_, src.Data(), power, fake_matrix_dim, 1);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyPow", tim);
   } else
 #endif
   {
-    Vec().ApplyPow(power);
+    Vec().Pow(src.Vec(), power);
   }
 }
 

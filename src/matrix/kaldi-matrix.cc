@@ -5,6 +5,7 @@
 //                       Yanmin Qian;  Petr Schwarz;  Jan Silovsky;
 //                       Haihua Xu
 //           2017        Shiyin Kang
+//           2019        Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -93,7 +94,7 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
       prod *= (*this)(i, i);
       if (i == num_rows_ - 1 || std::fabs(prod) < 1.0e-10 ||
           std::fabs(prod) > 1.0e+10) {
-        if (log_det != NULL) *log_det += Log(std::fabs(prod));
+        if (log_det != NULL) *log_det += kaldi::Log(std::fabs(prod));
         if (det_sign != NULL) *det_sign *= (prod > 0 ? 1.0 : -1.0);
         prod = 1.0;
       }
@@ -2098,77 +2099,6 @@ void Matrix<Real>::Transpose() {
 }
 
 template<typename Real>
-void MatrixBase<Real>::ApplyFloor(Real floor_val) {
-  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
-  for (MatrixIndexT i = 0; i < num_rows; i++) {
-    Real *data = this->RowData(i);
-    for (MatrixIndexT j = 0; j < num_cols; j++)
-      data[j] = (data[j] < floor_val ? floor_val : data[j]);
-  }
-}
-
-template<typename Real>
-void MatrixBase<Real>::ApplyCeiling(Real ceiling_val) {
-  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
-  for (MatrixIndexT i = 0; i < num_rows; i++) {
-    Real *data = this->RowData(i);
-    for (MatrixIndexT j = 0; j < num_cols; j++)
-      data[j] = (data[j] > ceiling_val ? ceiling_val : data[j]);
-  }
-}
-
-template<typename Real>
-void MatrixBase<Real>::ApplyLog() {
-  for (MatrixIndexT i = 0; i < num_rows_; i++) {
-    Row(i).ApplyLog();
-  }
-}
-
-template<typename Real>
-void MatrixBase<Real>::ApplyExp() {
-  for (MatrixIndexT i = 0; i < num_rows_; i++) {
-    Row(i).ApplyExp();
-  }
-}
-
-template<typename Real>
-void MatrixBase<Real>::ApplyExpSpecial() {
-  int32 num_rows = num_rows_, num_cols = num_cols_,
-      stride = stride_;
-  Real *data = data_;
-  for (MatrixIndexT i = 0; i < num_rows; ++i) {
-    for (MatrixIndexT j = 0; j < num_cols; ++j) {
-      Real &x = *(data + j + stride * i);
-      x = x < Real(0) ? kaldi::Exp(x) : x + Real(1);
-    }
-  }
-}
-
-template<typename Real>
-void MatrixBase<Real>::ApplyPow(Real power) {
-  for (MatrixIndexT i = 0; i < num_rows_; i++) {
-    Row(i).ApplyPow(power);
-  }
-}
-
-template<typename Real>
-void MatrixBase<Real>::ApplyPowAbs(Real power, bool include_sign) {
-  for (MatrixIndexT i = 0; i < num_rows_; i++) {
-    Row(i).ApplyPowAbs(power, include_sign);
-  }
-}
-
-template<typename Real>
-void MatrixBase<Real>::ApplyHeaviside() {
-  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
-  for (MatrixIndexT i = 0; i < num_rows; i++) {
-    Real *data = this->RowData(i);
-    for (MatrixIndexT j = 0; j < num_cols; j++)
-      data[j] = (data[j] > 0 ? 1.0 : 0.0);
-  }
-}
-
-template<typename Real>
 void MatrixBase<Real>::Heaviside(const MatrixBase<Real> &src) {
   KALDI_ASSERT(SameDim(*this, src));
   MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
@@ -2203,22 +2133,100 @@ void MatrixBase<Real>::Pow(const MatrixBase<Real> &src, Real power) {
   for (MatrixIndexT row = 0; row < num_rows;
        row++,row_data += stride_, src_row_data += src.stride_) {
     for (MatrixIndexT col = 0; col < num_cols; col++) {
-      if (power == 1.0)
-	row_data[col] = src_row_data[col];
-      if (power == 2.0)
-	row_data[col] = src_row_data[col] * src_row_data[col];
-      else if (power == 0.5) {
-	if (!(src_row_data[col] >= 0.0))
-	  KALDI_ERR << "Cannot take square root of negative value "
-                  << src_row_data[col];
-	row_data[col] = std::sqrt(src_row_data[col]);
-      } else {
       row_data[col] = pow(src_row_data[col], power);
+    }
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::PowAbs(const MatrixBase<Real> &src, Real power, bool include_sign) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col ++) {
+      if (include_sign == true && src_row_data[col] < 0) {
+	row_data[col] = -pow(std::abs(src_row_data[col]), power);
+      } else {
+	row_data[col] = pow(std::abs(src_row_data[col]), power);
       }
     }
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::Floor(const MatrixBase<Real> &src, Real floor_val) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++)
+      row_data[col] = (src_row_data[col] < floor_val ? floor_val : src_row_data[col]);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::Ceiling(const MatrixBase<Real> &src, Real ceiling_val) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++)
+      row_data[col] = (src_row_data[col] > ceiling_val ? ceiling_val : src_row_data[col]);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::Log(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++)
+      row_data[col] = kaldi::Log(src_row_data[col]);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::ExpSpecial(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++)
+      row_data[col] = (src_row_data[col] < Real(0) ? kaldi::Exp(src_row_data[col]) : (src_row_data[col] + Real(1)));
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::ExpLimited(const MatrixBase<Real> &src, Real lower_limit, Real upper_limit) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++) {
+      const Real x = src_row_data[col];
+      if (!(x >= lower_limit))
+	row_data[col] = kaldi::Exp(lower_limit);
+      else if (x > upper_limit)
+	row_data[col] = kaldi::Exp(upper_limit);
+      else
+	row_data[col] = kaldi::Exp(x);
+    }
+  }
+}
 
 template<typename Real>
 bool MatrixBase<Real>::Power(Real power) {
@@ -2736,7 +2744,7 @@ Real MatrixBase<Real>::LogSumExp(Real prune) const {
         sum_relto_max_elem += kaldi::Exp(f - max_elem);
     }
   }
-  return max_elem + Log(sum_relto_max_elem);
+  return max_elem + kaldi::Log(sum_relto_max_elem);
 }
 
 template<typename Real>
@@ -2747,7 +2755,7 @@ Real MatrixBase<Real>::ApplySoftMax() {
     for (MatrixIndexT j = 0; j < num_cols_; j++)
       sum += ((*this)(i, j) = kaldi::Exp((*this)(i, j) - max));
   this->Scale(1.0 / sum);
-  return max + Log(sum);
+  return max + kaldi::Log(sum);
 }
 
 template<typename Real>
