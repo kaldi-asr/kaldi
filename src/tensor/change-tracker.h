@@ -32,14 +32,13 @@ namespace tensor {
 
 /**
    class ChangeTracker is something we only use in 'debug mode'.  Its purpose is
-   to keep track of when data was last changed
-
-   to make sure people don't mutate data via in-place operations in a way that
-   will invalidate the backprop.  This is a replacement for the 'version
-   numbering' of Variables used in PyTorch, i.e. it's a different way of solving
-   the same problem.  The mechanism is (I think) more exact than version
-   numbering, and less hassle for the calling code; but since it's slower, we
-   will only activate it occasionally.  c.f. SetDebugMode(), GetDebugMode().
+   to keep track of when data was last changed, to make sure people don't mutate
+   data via in-place operations in a way that will invalidate the backprop.
+   This is a replacement for the 'version numbering' of Variables used in
+   PyTorch, i.e. it's a different way of solving the same problem.  The
+   mechanism is (I think) more exact than version numbering, and less hassle for
+   the calling code; but since it's slower, we will only activate it
+   occasionally.  c.f. SetDebugMode(), GetDebugMode().
 
    When a computation requiring derivatives creates a graph that will (when
    Backprop()'d) require a certain Tensor's data to remain unchanged until
@@ -55,14 +54,9 @@ namespace tensor {
    Attempts to mutate that memory (assuming the code calls Mutate()) will cause a
    crash.  The solution would be to remove the offending in-place operation from
    your code.
-
  */
 class ChangeTracker {
  public:
-
-  // Increments the global counter and returns that value.
-  static uint64 GetTick();
-
 
   /** Constructor.  A Storage object is created for each allocated block of
       memory, and each Storage object has at most one ChangeTracker object.
@@ -77,7 +71,7 @@ class ChangeTracker {
   /**
      Record a change to this storage region at the current time (obtained by
      GetTick()).  Just appends it to the vector of changes after canonicalizing
-     the pattern.
+     the pattern.  Inlined since it's only called from Storage::ChangedSince().
 
      @param [in] element_size  The size in bytes of the data type being stored
                              here: for example, 4 for float.
@@ -85,21 +79,21 @@ class ChangeTracker {
                             to canonical form (c.f. CanonicalizePattern())
                             before being stored.
    */
-
-  void RecordChange(int32 element_size,
-                    const TensorPattern &pattern);
+  inline void RecordChange(int32 element_size,
+                           const TensorPattern &pattern);
 
 
   /**
      Returns true if any element covered by this pattern has been
-     changed since the time given by 'tick'.
+     changed since the time given by 'tick'.  Inlined since it's only
+     called from Storage::ChangedSince().
 
       @param [in] tick  The time (obtained by GetTick()) since when
                      we want to know about changes
       @param [in] pattern  The pattern that we are checking
    */
-  bool ChangedSince(int64 tick,
-                    const TensorPattern &pattern);
+  inline bool ChangedSince(int64 tick,
+                           const TensorPattern &pattern);
 
  private:
 
@@ -115,19 +109,42 @@ class ChangeTracker {
   // to increase the risk of overflowing int32 storage).
   int64 element_size_;
 
+
   struct ChangeRecord {
     TensorPattern pattern;  // The pattern (offset, dims, strides) that was
                             // changed within this storage region.  This pattern
-                            // will have been reduced to canonical form.
-    int64 tick;             // The time, in ticks (c.f. tick_counter_) at which
-                            // this set of elements was changed.
+                            // will have been reduced to canonical form.  View
+                            // it as a memory-index-set (c.f. glossary in
+                            // pattern.h).
+
+    int64 tick;             // The time, in ticks (c.f. NextTick()) at which
+                            // this set of memory-indexes was changed.
+
+    // Next in a singly linked list of ChangeRecord.
+    std::unique_ptr<ChangeRecord> tail;
   };
 
 
-  // changes_ is a sequences of changes.
-  std::vector<ChangeRecord> changes_;
+  // Head of a singly linked list of changes.  When RecordChange() is called, we
+  // will add to the head of this (and then de-dupe; see doc for change_map)).
+  // When ChangedSince() is called, we will traverse it element by element until
+  // we get to the tick passed to ChangedSince, and if there is any overlap with
+  // the passed-in pattern, we'll return true.
+  std::unique_ptr<ChangeRecord> changes_;
 
-  static int64 tick_counter_{0};
+
+  // This is a map from a pointer to the TensorPattern in ChangeRecord::pattern
+  // (hashing the pattern itself, not the pointer value), to the ChangeRecord
+  // that holds it.  We actually map to the address of the std::unique_ptr
+  // pointing to that ChangeRecord, which might be the address of this->changes_
+  // or ChangeRecord::tail, because we need to be able to write to that to
+  // remove a ChangeRecord from the singly linked list.  This map is used
+  // in de-duping the list of changes, so that if someone provides the
+  // exact same pattern twice, we only keep the most recent tick; this
+  // keeps memory usage under control.
+  std::unordered_map<TensorPattern*, std::unique_ptr<ChangeRecord>*,
+                     TensorPatternPtrHasher, TensorPatternPtrEqual> change_map_;
+
 
 };
 

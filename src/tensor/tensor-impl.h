@@ -26,6 +26,17 @@
 namespace kaldi {
 namespace tensor {
 
+// Metadata for a Tensor.  It's occasionally convenient to have this
+// in a struct (it's the same as a Tensor without the 'data' pointer.
+// The members must stay in sync with the corresponding members of
+// TensorImpl, as we have code that does reinterpret_cast on
+// these types.  (We don't use base-classing as it would make the code
+// harder to read).
+struct TensorMeta {
+  TensorPattern pattern;
+  DataType dtype;
+  Device device;
+};
 
 /**
    TensorImpl is the core part of a Tensor, without the wrapping code and
@@ -39,10 +50,10 @@ struct TensorImpl {
   TensorPattern pattern;
   DataType dtype;
   Device device;
-  std::shared_ptr<Storage> data;  // 'data' points to a shared Storage object
-                                  // that contains (or eventually will contain,
-                                  // due to lazy allocation) the actual data
-                                  // pointer.
+  std::shared_ptr<Storage> storage;  // 'storage' points to a shared Storage object
+                                     // that contains (or eventually will contain,
+                                     // due to lazy allocation) the actual data
+                                     // pointer.
 
   inline int32 NumAxes() { return pattern.num_axes; }
 
@@ -70,24 +81,41 @@ struct TensorImpl {
   inline void* GetData() const;
 
 
-  // Returns true if this TensorImpl is valid, false otherwise.  It is an
-  // implied requirement of functions operating on TensorImpl's, that all
-  // TensorImpl's that are provided input or input+output arguments to functions
-  // must have IsValid() == true.
-  bool IsValid() { return pattern.IsValid(true) && data != nullptr; }
+  // Returns true if this TensorImpl is valid, false otherwise.  A Tensor is
+  // valid if its TensorPattern is valid, its dtype and device are valid
+  // (e.g. enums in the correct range), and (if check_storage) that the storage
+  // object is non-NULL and the memory range covered by the pattern is within
+  // the num_bytes of the storage.
+  bool IsValid(bool check_storage = true);
+
+
+  const TensorMeta &Meta() const {
+    return reinterpret_cast<const TensorMeta&>(*this);
+  }
+
+  // Constructor that is used when taking the meta-info from one source
+  // but the storage from another.
+  TensorImpl(const TensorMeta &meta,
+             const std::shared_ptr<Storage> &storage);
+
+  // Constructor that copies the meta-info provided; if create_storage
+  // == true it creates the storage reason, else leaves it NULL.
+  TensorImpl(const TensorMeta &meta,
+             bool create_storage = true);
+
+
+
+  // Constructor that is used when taking the meta-info from one source
+  // but the storage from another; this version does move-construction
+  // on 'storage'.
+  TensorImpl(const TensorMeta &meta,
+             std::shared_ptr<Storage> &&storage);
+
+  // Default constructor
+  TensorImpl() { }
+
 };
 
-// Metadata for a Tensor.  It's occasionally convenient to have this
-// in a struct (it's the same as a Tensor without the 'data' pointer.
-// The members must stay in sync with the corresponding members of
-// TensorImpl, as we have code that does reinterpret_cast on
-// these types.  (We don't use base-classing as it would make the code
-// harder to read).
-struct TensorMeta {
-  TensorPattern pattern;
-  DataType dtype;
-  Device device;
-};
 
 
 inline int32 TensorImpl::Dim(int32 axis) {

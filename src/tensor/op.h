@@ -68,6 +68,32 @@ class Op {
   int64 GetTimestamp() const final { return tick_; }
 
   virtual void Backprop();
+
+ protected:
+  // The time (`GetTick()`) at which this Op was created.
+  int64 tick_;
+
+
+  inline void RegisterTensorChange(const Tensor &tensor) {
+    if (DebugMode()) {
+    }
+  }
+
+  /*
+    This function intended to be called from the Backprop() routines
+    of child classes, for example:
+       ` if (DebugMode()) {  CheckTensorTime(*a_);  } `
+    This will die if the memory underlying the Tensor being checked has been
+    modified more recently than tick_.
+  */
+  inline void CheckTensorTime(const Tensor &tensor) {
+    if (DebugMode()) {
+    }
+  }
+
+
+
+
 };
 
 

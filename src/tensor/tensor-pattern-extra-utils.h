@@ -162,8 +162,6 @@ bool PatternContains(const TensorPattern &pattern,
    a pattern's memory-index-set (i.e. the minimum and maximum
    indexes into the underlying array).
 
-   This is inlined for speed; see tensor-pattern-extra-utils-inl.h.
-
       @param [in] pattern  The pattern whose minimum and maximum
                            memory-index we are computing
       @param [out] min_mindex  The minimum memory-index in the
@@ -177,9 +175,9 @@ bool PatternContains(const TensorPattern &pattern,
                            memory-index-set of the pattern.
                            Will always be >= min_mindex.
 */
-inline void ComputeMinAndMaxMindex(const TensorPattern &pattern,
-                                   int64 *min_mindex,
-                                   int64 *max_mindex);
+void ComputeMinAndMaxMindex(const TensorPattern &pattern,
+                            int64 *min_mindex,
+                            int64 *max_mindex);
 
 
 /**
@@ -300,6 +298,32 @@ bool IsValidMM(const TensorPattern &pattern);
 bool ConvertPatternStrides(const TensorPattern &pattern,
                            const ArrayRef<int32> strides,
                            std::vector<TensorPattern> *patterns);
+
+/**
+   This function fills in any 'gaps' in the memory-indexes in 'src' and
+   shifts so the lowest memory-index is 0, copying the resulting pattern
+   to 'dest'.  It is used when constructing gradient Tensors for
+   base Variables whose data Tensor is not contiguous and justified.
+
+   The more mathematical description is as follows:
+   Let m be the memory-index-set of `src`, and let f
+   be the function that maps m to the set  \f$ [0, |m|-1] \f$ while
+   preserving the ordering of the elements.  Then the relationship
+   between 'src' and 'dest' is that 'dest' has the same num_axes and
+   dims and 'src', and the strides are such as to satisfy
+   \f$  dest[i] = f(src[i]) \f$,
+   where i is a valid Index-tuple for `src`.  See "Indexing a Pattern"
+   in the glossary in tensor-pattern.h for explanation of this notation.
+
+         @param [in] src  The source pattern.  Must be valid.
+         @param [out] dest  The destination pattern.  Will be identical
+                        to `src` if `ContiguousAndJustified(src)`, else
+                        will have the relationship explained above.
+                        Will satisfy `ContiguousAndJustified(*dest)`,
+                        and also `IsValid(*dest)`, assuming `IsValid(src)`.
+ */
+void MakeContiguousAndJustified(const TensorPattern &src,
+                                TensorPattern *dest);
 
 
 /**
@@ -425,6 +449,46 @@ class TensorPatternRebaser {
   int64 ConvertMemoryIndex(int64 m);
 
 };
+
+/**
+   This object is to be instantiated when you want to know what permutation
+   you'd get if you were to change the ordering of axes so that the abs(stride)
+   were strictly increasing.  (Note: this is not a total order if there are >1
+   axes with stride=0, so the ordering may be somewhat arbitrary).
+
+   See the documentation for its GetIndex() function.
+ */
+class OutOfPlaceAxisSorter {
+ public:
+  // Constructor.
+  inline OutOfPlaceAxisSorter(const TensorPattern &src) {
+    int32 num_axes = src.num_axes;
+    for (int32 raxis = 0; raxis < src.num_axes; raxis++)
+      orig_raxis_[raxis] = raxis;
+    std::sort(orig_raxis_, orig_raxis_ + src.num_axes,
+              // a comparator (less-than) operator implemented as a lambda is
+              // below.  Sort from least to greatest abs(stride), disambiguating
+              // based on dim.
+              [src] (int32 raxis1, int32 raxis2) {
+                int32 abs_stride1 = std::abs(src.strides[raxis1]),
+                    abs_stride1 =  std::abs(src.strides[raxis2]);
+                if (abs_stride1 < abs_stride2) return true;
+                else if (abs_stride1 > abs_stride2) return false;
+                else return (src.dims[raxis1] < src.dims[raxis2]);
+              });
+  }
+  // Returns the 'source' raxis-index for a particular destination
+  // raxis-index, e.g..:  `src_raxis = GetIndex(dest_raxis)`.
+  // Copying as e.g. `dest.strides[dest_raxis] = src.strides[src_raxis]`,
+  // and the same for the dims, would give you a `dest` with axes
+  // sorted from smallest to greatest absolute value.
+  inline int32 GetIndex(int32 raxis) { return orig_raxis_[raxis]; }
+
+ private:
+  int32 orig_raxis_[KALDI_TENSOR_MAX_DIM];
+};
+
+
 
 
 }  // namespace tensor

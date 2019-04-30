@@ -44,9 +44,15 @@ namespace tensor {
                       "number of axes".
 
     Axis-index:       An axis-index of a Pattern or Tensor (sometimes just "axis" for short,
-                      especially in code) is an index in the range [0, num_axes - 1]
-                      that identifies an axis in the public numbering (see "Public numbering").
-                      For the index in the private numbering, see: Raxis-index.
+                      especially in code) is an index that identifies an axis in the
+                      public (see "Public numbering").  A valid axis-index for a Pattern
+                      with `num_axes` axes is in the range [0, num_axes - 1].
+
+                      For an axis-index i, the corresponding raxis-index (c.f. "Raxis-index:"
+                      or "Private numbering:") would be num_axes - 1 - i.
+
+                      See also "Eaxis-index" for where we allow negative axis-indexes
+                      as offsets from the end.
 
     axis-dominance property: search below for [Valid Pattern], point (vi), for the main
                       definition.
@@ -59,18 +65,18 @@ namespace tensor {
                                  dim(i) * abs(stride(i)) <= abs(stride(i+1)).
 
 
-    Broadcasting:     A convention whereby for an operation on Tensors that would
-                      normally be required to have the same dimension, it's
-                      acceptable for, on some axis, one Tensor to have `dim = n`
-                      with `n != 1` and the other to have `dim = 1`.  I.e., two dims can be
-                      different as long as one of them is 1.  Most operations will
-                      take place as if the Tensor with `dim = 1` had been extended
-                      to `dim = n` by making identical copies.  However, if it is
-                      the output Tensor that has `dim = 1`, there would be summation
-                      or possibly some other appropriate reduction instead of making
-                      copies.  This is different from other toolkits (the fact that
-                      we extend the concept of broadcasting to encompass summation).
-                      See also: PyTorch-style broadcasting, extended indexing.
+    Broadcasting:    A convention whereby for an operation on Tensors that would
+                     normally be required to have the same dimension, it's
+                     acceptable for, on some axis, one Tensor to have `dim = n`
+                     with `n != 1` and the other to have `dim = 1`.  I.e., two dims can be
+                     different as long as one of them is 1.  Most operations will
+                     take place as if the Tensor with `dim = 1` had been extended
+                     to `dim = n` by making identical copies.  However, if it is
+                     the output Tensor that has `dim = 1`, there would be summation
+                     or possibly some other appropriate reduction instead of making
+                     copies.  This is different from other toolkits (the fact that
+                     we extend the concept of broadcasting to encompass summation).
+                     See also: PyTorch-style broadcasting, extended indexing.
 
     Broadcastable:   See documentation for function Broadcastable() in pattern-utils.h.
                      Briefly, two Patterns are broadcastable if their dims (padded
@@ -94,6 +100,12 @@ namespace tensor {
                      range of integers (no gaps).  This is different from the PyTorch
                      definition of 'contiguous', which also requires C-style strides.
 
+    Dereferencing a memory-index:
+                     Sometimes in formal explanations of algorithms we will use notation
+                     `*m` meaning, for a memory-index `m`, the location that it points to
+                     in the relevant storage region; we will assume that it is obvious
+                     from the context which storage region.   See also: "Storage region"
+
     Dims-vector of a Pattern: The vector of dimension of a Pattern: e.g. [] for
                     a Pattern with num_axes = 1 or [2 3] for a Pattern with
                     num-axes = 2.  Note: whenever we display dims vectors in
@@ -111,6 +123,15 @@ namespace tensor {
 
     Disjoint Patterns:  When we speak of disjoint Patterns we mean that
                     their memory-index-sets are disjoint; see memory-index-set.
+
+    Eaxis-index:      We use the term Eaxis-index (meaning: extended axis-index), or,
+                      in code, eaxis_index, to mean an axis-index in the public
+                      numbering (c.f.: Axis-index) but where negative values are
+                      allowed, as in Python.  Negative values are interpreted as
+                      offsets from the num_axes of the Pattern in question, so for
+                      instance -1 would correspond to num_axes - 1.
+                      Valid eaxis-indexes would be in the range [-num_axes, num_axes - 1].
+                      See also: Axis-index, Raxis-index.
 
     Extended indexing:  A convention whereby if we have a Tensor with, say,
                       `dims = [5 1]`, we can index that Tensor with an index-tuple
@@ -150,18 +171,24 @@ namespace tensor {
                       the sum over all axis-indexes, of the element of the index-tuple
                       multiplied by the Pattern's stride for that axis.
 
-    Index-tuple-set of a Pattern: The index-tuple-set of a Pattern is the set
-                      of valid index-tuples assuming we are not allowing extended
+    Index-tuple-set of a Pattern: The index-tuple-set I(p) of a Pattern p is the
+                      set of valid index-tuples assuming we are not allowing extended
                       indexing.  For example, for a Tensor with `dims = [2]`, the
                       set of valid index-tuples would be `{ (0), (1) }`; for
                       a Tensor with `dims = [2 2]` the set of valid index-tuples
                       is `{ (0,0), (0,1), (1,0), (1,1) }`.
 
-    Index-tuple-set of a Pattern-tuple:  The index-tuple-set of a Pattern-tuple is
-                      the index-tuple-set that you would obtain for a Pattern whose
-                      dims equal the dims-vector of that Pattern-tuple.
-                      See "dims-vector of a Pattern-tuple" for explanation of what
-                      that is.
+    Index-tuple-set of a Pattern-tuple:  The index-tuple-set I(P, Q) of a Pattern-tuple
+                      (P, Q) is the index-tuple-set that you would obtain for a
+                      Pattern whose dims equal the dims-vector of that
+                      Pattern-tuple.  See "dims-vector of a Pattern-tuple" for
+                      explanation of what that is.  View I(P, Q) as simply
+                      shorthand for I((P, Q)).
+
+    Justified:        We say that a Pattern is justified if least (i.e. most
+                      negative) memory-index in its memory-index-set is zero.  For
+                      Patterns with nonnegative strides, this is equivalent to
+                      its offset being zero.
 
     Memory region:    A region of memory that will have been allocated with malloc()
                       or some equivalent (or obtained from some memory-management
@@ -170,11 +197,12 @@ namespace tensor {
 
     Memory-pointer:   A void* pointer to the start of a memory region.
 
-    Memory-index/mindex:  An integer (int64) index into a memory region viewed as a
-                      linear array.  For example, for a Tensor of floats, we'd cast
-                      the address of the memory-pointer to `float*` and then use
-                      the memory-index as an index into that array.  In code,
-                      this may be called 'mindex.'  For a Pattern p and an
+    Memory-index: (abbr: mindex)
+                      An integer (int64) index into a memory region viewed as a
+                      linear array.  For example, for a Tensor of floats, we'd
+                      cast the address of the memory-pointer to `float*` and
+                      then use the memory-index as an index into that array.  In
+                      code, this may be called 'mindex.'  For a Pattern p and an
                       index-tuple i that is valid for p, we have a memory-index
                       m = p[i], which is equal to the pattern's offset plus the
                       sum over all axes of the product of the element of the
@@ -185,8 +213,24 @@ namespace tensor {
                       and an index-tuple i, we may write q[i] = (p1[i], p2[i] p3[i]),
                       where expressions like p1[i] evaluate to a memory-index.
 
-    Num-axes:         The number of axes that a Tensor has.  This is a number in the
-                      range [0, KALDI_TENSOR_MAX_DIM], i.e. 0 through 6.
+    Natural order of index-tuples: Suppose we have a set of index-tuples, all with
+                    the same num-axes / length of tuple.  What we call the
+                    "natural order" (this is just a convenient name, it does not
+                    imply any objective naturalnesss) is a total order on
+                    index-tuples that corresponds to interpreting the
+                    index-tuples as indexes into a "C"-style array (in the
+                    public numbering of axes) or a Fortran-style one (in the
+                    private one) and comparing the memory addresses.  In
+                    the public numbering this order is the same as lexical
+                    order, e.g. ([0 0], [0 1], [1 0], [1 1]); in the private
+                    numbering it is lexical order but starting from the right,
+                    not the left.
+       [list:]      Given a set S of index-tuples, we will sometimes write
+                    list(S) to mean a list of index-tuples with the same
+                    elements as S, ordered in the natural order.
+
+    Num-axes:        The number of axes that a Tensor has.  This is a number in the
+                     range [0, KALDI_TENSOR_MAX_DIM], i.e. 0 through 6.
 
     Offset:           The memory-index of the element with index-tuple = (all zeros)
                       of a Tensor.  Offsets will always be >= 0 because they are to
@@ -205,9 +249,9 @@ namespace tensor {
                       (in most circumstances) satisfy.
 
 
-    Pattern-tuple:    A pattern-tuple of a tuple of Patterns, say:  (pattern1, pattern2);
-                      we require the patterns in the tuple to be broadcastable, meaning,
-                      for example: Broadcastable(pattern1, pattern2).
+    Pattern-tuple:    A pattern-tuple of a tuple of Patterns, say:  (P, Q),
+                      where the patterns in the tuple are broadcastable, meaning,
+                      for example: Broadcastable(P, Q).
 
 
     An object of type TensorPattern, representing the dims, strides
@@ -248,21 +292,27 @@ namespace tensor {
                       stride=0 if the Pattern is valid.
 
     Memory-index-set of a Pattern:
-                      The set of all memory-indexes obtained by indexing
+                      The memory-index-set M(p) of a Pattern p is
+                      the set of all memory-indexes obtained by indexing
                       the pattern with all index-tuples in the index-tuple-set
-                      of the Pattern.  The size of this set is the same as the
-                      size of the index-tuple-set (by the uniqueness property).
+                      I(p) of the Pattern.  By extending the notion of indexing
+                      a Pattern (c.f. "Indexing a Pattern") to take set
+                      arguments, this could be written as M(p) = p[I(p)].  Note:
+                      by the uniqueness property, we always have |M(p)| = |I(p)|
+                      for a valid Pattern, i.e. the sizes of the sets are the
+                      same.
 
     Memory-index-tuple-set of a Pattern-tuple:
-                      The set of all memory-index-tuples obtained by indexing
-                      the Patterns in the tuple with all members of the
+                      The set of all memory-index-tuples M(P, Q) obtained by indexing
+                      the Patterns in the tuple (P, Q) with all members of the
                       index-tuple-set of the Pattern-tuple.  See "memory-index-tuple"
                       and "index-tuple-set of a Pattern-tuple" for more information.
+                      View the notation M(P, Q) as shorthand for M((P, Q)).
 
     Normalized strides:  We say that a Pattern has normalized strides if the
                       strides are all positive and are strictly increasing
                       in the private numbering (which implies strictly decreasing
-                      in the public numbering).
+                      in the public numbering).  TODO: remove this?
 
     Linear property:
                       Consider Patterns P and Q with the property that the
@@ -309,6 +359,12 @@ namespace tensor {
                       this would be equivalent to the axis-dominance property
                       (property (v)) plus the requirement that the strides be
                       positive and sorted.
+
+    Storage region:   A Tensor, in addition to a Pattern, has a storage region
+                      that can be though of as a pointer (say, to float) which
+                      we index with a memory-index: say, p[m], if s is the
+                      pointer and m is the memory-index.  See storage.h.
+                      See also "Dereferencing a memory-index".
 
     Stride:           A stride is the distance, in elements, between successive
                       elements of a Tensor along a particular dimension.
@@ -410,13 +466,20 @@ struct TensorPattern {
                                         // by 'raxis' (reversed axis)
   int32 strides[KALDI_TENSOR_MAX_DIM];  // the strides in reversed order,
                                         // indexed by 'raxis' (reversed axis)
+  int64 offset;  // Offset of the element with all-zero indexes
+                 // from the start of the originally allocated memory
+                 // region
+
   int32 code;  // pattern code; see ComputePatternCode() in tensor-pattern-utils.h
                // for details.  If this is negative then it means it has not been
                // computed.  In a valid TensorPattern the code will always be either
                // negative or up-to-date.
-  int64 offset;  // Offset of the element with all-zero indexes
-                 // from the start of the originally allocated memory
-                 // region
+
+  int32 properties;  // More occasionally-needed properties.  This is similar to
+                     // OpenFst's notion of properties, where we compute them
+                     // only on demand.  In a valid TensorPattern the properties
+                     // will always be accurate, but see "Accurate properties"
+                     // in glossary above for definition (it can be zero).
 
   // Returns true if the TensorPattern is valid.  This includes all the
   // mathematical conditions on a valid Pattern (search above for "Valid
@@ -432,6 +495,16 @@ struct TensorPattern {
   // does not need to be compared because, if not -1, it is a function of the
   // dims and strides).
   bool operator < (const TensorPattern &other) const;
+
+
+  // Equality operator on TensorPattern.  Compares the num_axes, offset, and
+  // dims and strides indexed [0... num_axes-1].  (In patterns that satisfy IsValid(),
+  // the remaining dims and strides would be 1 and 0 respectively, so checking
+  // the is pointless).
+  bool operator == (const TensorPattern &other) const;
+
+  // Assignment operator (copies all members).
+  bool operator = (const TensorPattern &other) const;
 };
 
 
@@ -484,6 +557,33 @@ struct TensorPatternProperties {
   // Sets the members of *this to be the properties of pattern 'pattern'.
   // Ignores the previously existing values of *this.
   void UpdateProperties(const TensorPattern &pattern);
+};
+
+
+
+/**
+   Returns a hash value for hashing TensorPattern.  Depends on num_axes,
+   offset, and dims and strides indexed [0... num_axes-1].  pattern does
+   not have to be valid.
+ */
+size_t GetHash(const TensorPattern &pattern);
+
+// C++ hashing object for TensorPattern
+struct TensorPatternHasher {
+  size_t operator (const TensorPattern &pattern) { return GetHash(pattern); }
+};
+
+// C++ hashing object for TensorPattern*; requires the pointer
+// be non-NULL and to point to a TensorPattern.
+struct TensorPatternPtrHasher {
+  size_t operator (TensorPattern *pattern) { return GetHash(*pattern); }
+};
+
+struct TensorPatternPtrEqual {
+  size_t operator (TensorPattern *pattern1,
+                   TensorPattern *pattern2) {
+    *pattern1 == *pattern2;
+  }
 };
 
 

@@ -89,6 +89,16 @@ enum DataType {
 };
 
 
+
+inline int32 SizeOf(DataType dtype) {
+  switch(dtype) {
+    case 0: return 4;
+    case 1: return 8;
+    case 2: KALDI_ERR << "Invalid data-type " << int32(dtype); return 0;
+  }
+}
+
+
 aDataType GetDefaultDtype();
 void SetDefaultDtype(DataType dtype);
 
@@ -113,7 +123,19 @@ class WithDtypeAs {
 // This is defined in tensor-common.cc.
 extern int64 g_tick_counter;
 
-inline int64 GetTick() { return g_tick_counter++; }
+inline int64 NextTick() { return ++g_tick_counter; }
+
+// ? Remove this?  To be used when you don't want to increment
+// the counter.
+inline int64 CurrentTick() { return g_tick_counter; }
+
+
+// debug_mode activates code that checks for invalidated data in the backprop
+// pass; see "Invalidated:" in glossary in tensor.h.
+extern bool debug_mode;
+inline bool DebugMode() { return debug_mode; }
+inline void SetDebugMode(bool b) { debug_mode = b; }
+
 
 /// Enumeration that says what strides we should choose when allocating
 /// A Tensor.

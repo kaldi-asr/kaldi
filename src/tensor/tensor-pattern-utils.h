@@ -41,6 +41,18 @@ inline bool ContainsNegativeStride(int32 pattern_code) {
   return (pattern_code | 2048) != 0;
 }
 
+
+/**
+   This function converts an eaxis-index into an raxis-index, with no error
+   checking (you would normally check afterward that the raxis-index is in the
+   correct range).  Find "Eaxis-index:" and "Raxis-index:" in tensor-pattern.h,
+   but basically and eaxis-index is an axis-index in the public numbering where
+   we allow negative values to mean offsets from the end.
+ */
+inline int32 EaxisToRaxis(int32 eaxis, int32 num_axes) {
+  return (eaxis < 0 ? 1 - eaxis : num_axes - 1 - eaxis);
+}
+
 /**
    Returns true if the pattern code indicates that the pattern contains a
    negative stride.  Caution: will return true if pattern_code was -1, so if you
@@ -53,7 +65,7 @@ inline bool ContainsNegativeStride(int32 pattern_code) {
                      -1 (meaning: not known), or if the code
                      indicates that a negative stride was present.
 */
-inline bool PattenMightContainNegativeStride(
+inline bool PatternMightContainNegativeStride(
     const TensorPattern &pattern) {
   // 2048 is 1 << 11; 11th bit in code is set if code indicates negative stride.
   return (pattern.code | 2048) != 0;
@@ -191,27 +203,20 @@ inline int64 CombineCodes(int32 code1, int32 code2, int32 code3) {
 
 
 /**
-   Modifies 'p' in-place by inserting an axis with (dim=1,stride=0) at the
-   specified position specified in the reversed numbering physically used
-   in the pattern.  Updates p->code.
-
-   Showing just the dims in the pattern (in the order physically present in the
-   dims array), for some examples:
-
-\verbatim
-    UnsqueezeR({3,4}, 0)  -> {1,3,4}
-    UnsqueezeR({3,4}, 1)  -> {3,1,4}
-    UnsqueezeR({3,4}, 2)  -> {3,4,1}
-\endverbatim
+   Copies a TensorPattern from `src` to `dest` while modifying it by inserting
+   an axis with (dim=1,stride=0) at position `raxis` (specified in the
+   private numbering).
 
      @param [in]    raxis   The index at which the extra axis is to appear.
                             We require 0 <= raxis <= p->num_axes.
-     @param [in,out] p      The pattern to which we are adding an axis.
-                            Will have its num_axes increased by 1
-                            at exit, possibly its dims and strides
-                            arrays changed, and its code updated.
+     @param [in]    src    The source pattern.  Must be valid and have
+                           NumAxes() < KALDI_TENSOR_MAX_DIM.
+     @param [out]   dest   The destination pattern.  Is allowed to be the same
+                           object as `src`.  Will be valid at exit if src
+                           was valid at entry (which this function may not
+                           check).
  */
-void UnsqueezeR(int32 raxis, TensorPattern *p);
+void UnsqueezeR(int32 raxis, const TensorPattern &src, TensorPattern *dest);
 
 
 /**
@@ -230,19 +235,16 @@ void UnsqueezeR(int32 raxis, TensorPattern *p);
     Unsqueeze([9,10], -1) -> [9,10,1]
 \endverbatim
 
-     @param [in]    axis   The index at which the extra axis is to appear.
-                           We require -p->num_axes - 1 <= raxis <= p->num_axes
-                           The large allowable range is because negative
-                           axes are permitted, e.g. -1 means insert a new
-                           axis after the last existing axis.
+     @param [in]    eaxis   The axis-index at which the extra axis is to appear,
+                           with negatives allowed (see: "Eaxis-index" in glossary
+                           in tensor-pattern.h).
      @param [in,out] p      The pattern to which we are adding an axis.
                             Will have its num_axes increased by 1
                             at exit, possibly its dims and strides
                             arrays changed, and its code updated.
  */
-inline void Unsqueeze(int32 axis, TensorPattern *p) {
-  if (axis < 0) UnsqueezeR(1 - axis, p);
-  else UnsqueezeR(p->num_axes - axis, p);
+inline void Unsqueeze(int32 eaxis, TensorPattern *p) {
+  UnsqueezeR(EaxisToRaxis(eaxis, p->num_axes));
 }
 
 /**
@@ -532,11 +534,19 @@ int64 NumElements(const TensorPattern &pattern);
    nonempty and all have the same number of axes), by ordering them from the
    most negative stride value in patterns[0] to the most positive stride value
    in patterns[0], using the strides in the other patterns to disambiguate the
-   order only in case of ties, which could only happen if some strides were
-   zero.  I.e. it's a lexical ordero the strides of the patterns.  Note: the
-   most-negative-to-most-positive ordering is in terms of the private, `raxis`
-   numbering; it would be most-positive-to-most-negative in the public
-   numbering.
+   order only in case of ties (which could only happen if some strides were
+   zero), and then the dims in the same order if the strides are all the same
+   (the strides would only be the same if they were zero, if the patterns were
+   valid).  Roughly, it's a lexical order on the (strides, then dims) of the
+   patterns.  Note: the most-negative-to-most-positive ordering is in terms of
+   the private, `raxis` numbering; it would be most-positive-to-most-negative in
+   the public numbering.
+
+   TODO: work out what the ordering should be; should it really be negative-to-
+   positive, or based on abs(stride), and do we need disambiguation with the
+   dims?
+
+   TODO: do we even need this??
 
      @param [in,out]  The patterns whose axes are to be sorted.  All
                     will have their axes subject to the same permutation.
@@ -708,6 +718,45 @@ bool CreateViewPattern(const TensorPattern &pattern_in,
                        ArrayRef<int32> dims,
                        TensorPattern *pattern_out);
 
+
+/**
+   This is like PyTorch's slice() / narrow() functions.
+   It selects a range of dimensions on one of the axes.  It is similar to
+   indexing with a range in Python, like A[10:20].
+
+      @param [in] eaxis  Eaxis-index (see glossary in tensor-pattern.h) on which
+                         to possibly reduce the dimensionality.
+      @param [in] start  Starting index; must be in range [0, t->Dim(eaxis) - 1]
+      @param [in] end    Ending index; must be in the range [start + 1, t->Dim(eaxis)]
+      @param [in,out] pattern  TensorPattern to be modified.  Will be valid at
+                         exit if it was valid at entry.
+
+   See also: the other overloaded version of Slice() which accepts the 'step'
+   parameter; and Select(), which is similar but also reduces the num-axes.
+ */
+void Slice(int32 eaxis, int32 start, int32 end, TensorPattern *pattern);
+
+
+
+/**
+   Copy one Pattern to another while modifying it by by selecting one index from
+   a specified axis (specified in the public numbering), of a TensorImpl `t`,
+   reducing the num_axes by one.
+
+       @param [in] eaxis Eaxis-index (see glossary in tensor-pattern.h) on which
+                         to possibly reduce the dimensionality.
+       @param [in] index Index to select; must be in range
+                         [0, t->Dim(eaxis) - 1].
+       @param [in,out] src   TensorPattern which is to be copied; must be valid,
+                         but we don't guarantee to check this.
+       @param [out] dest TensorPattern which we are copying to and modifying.
+                         It is allowed to be the same object as 'src'.
+                         Will be valid if src was valid.
+*/
+void Select(int32 eaxis, int32 index,
+            const TensorPattern &src, TensorPattern *dest);
+
+
 /**
    This function returns true if 'pattern' has the same strides
    as 'C' array with the same dimensions would have.  (Note:
@@ -736,6 +785,31 @@ void HasCStrides(const TensorPattern &pattern);
  */
 bool PatternsOverlap(const TensorPattern &pattern1,
                      const TensorPattern &pattern2);
+
+/**
+   Returns true if the memory-index-set of this pattern forms a contiguous
+   range, otherwise false.  (Note: this is not the same as PyTorch's notion of
+   contiguous; see HasCStrides()).  Caution: the interface may later be changed
+   to allow caching of this property in the 'properties' field.
+*/
+bool IsContiguous(const TensorPattern &pattern);
+
+
+/**
+   Returns true if the lowest memory-index of 'pattern' is zero (see
+   "Justified" in glossary in pattern.h.
+   (see also: ComputeMinAndMaxMindex()).
+*/
+bool IsJustified(const TensorPattern &pattern);
+
+
+/**
+   This is the same is IsContiguous(pattern) &&
+   StartsFromZero(pattern).
+*/
+bool IsContiguousAndJustified(const TensorPattern &pattern);
+
+
 
 
 }  // namespace tensor

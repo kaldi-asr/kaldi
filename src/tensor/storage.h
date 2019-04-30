@@ -27,15 +27,21 @@
 namespace kaldi {
 namespace tensor {
 
-struct StorageExtras;
+struct StorageAux;
 
 // 'Storage' contains a single allocated region (on CPU or GPU, according
 // to 'device').
 class Storage {
  public:
-  // This returns a reference to the object held in this->locker if it is
-  // non-NULL; otherwise it allocates one and returns that.
-  ChangeTracker &GetChangeTracker();
+
+
+  void RecordChange(int32 element_size,
+                    const TensorPattern &pattern);
+
+
+  // This initializes a ChangeTracker object in this->tracker if it
+  // does not already exist, and returns its address.
+  ChangeTracker *GetChangeTracker();
 
   inline bool Allocated() {  return (data != NULL);  }
 
@@ -119,17 +125,17 @@ class Storage {
   Device device;
 
   // contains some extra, less-often-used fields
-  std::unique_ptr<StorageExtras> extras;
+  std::unique_ptr<StorageAux> extras;
 
 };
 
 
 
-// struct StorageExtras contains what (conceptually) are some rarely-needed
-// extra fields of class Storage; we store them separately, holding a
-// possibly-NULL pointer to struct StorageExtras, to reduce the size of struct
+// struct StorageAux contains some rarely-needed extra fields that we didn't
+// want to keep in class Storage; we store them separately, holding a
+// possibly-NULL pointer to struct StorageAux, to reduce the size of struct
 // Storage in the normal case.
-struct StorageExtras {
+struct StorageAux {
   using DeallocatorFunc = std::function<void()>;
 
   // 'tracker' is used in debug mode to detect when data that might be
@@ -141,6 +147,8 @@ struct StorageExtras {
   // If non-NULL, it will be invoked when we want to deallocate the
   // storage object.
   DeallocatorFunc deallocator;
+
+  // TODO: allow for some kind of name here, reflecting where it came from?
 };
 
 

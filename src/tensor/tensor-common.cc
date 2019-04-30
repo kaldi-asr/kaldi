@@ -1,6 +1,6 @@
-// tensor/tensor-pattern-extra-utils-inl.h
+// tensor/tensor-common.cc
 
-//  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,21 +17,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_INL_H_
-#define KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_INL_H_ 1
-
-// This file is only to be included by tensor-pattern-extra-utils.h; do not include it
-// directly.
-
+#include "tensor/tensor-common.h"
 
 
 namespace kaldi {
 namespace tensor {
 
-
-
 }  // namespace tensor
 }  // namespace kaldi
-
-
-#endif  // KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_INL_H_

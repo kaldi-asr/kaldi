@@ -87,6 +87,11 @@
             if it is attached to any Variable that is an output of that Op
             (i.e. that is modified by that Op).
 
+    Optional Tensor:  In situations where we might have a Tensor and might
+            not, we use a raw std::shared_ptr<TensorImpl>.  (A Tensor wraps
+            a std::shared_ptr<TensorImpl> that is known not to be NULL).
+            Note: we don't allow a Tensor to have zero dim, so we can't
+            use that representation when the Tensor isn't really there.
 
     Tick:   a tick is the value of a global 64-bit time counter that we increment
             every time we mutate a Tensor; see GetTick(), and
@@ -119,6 +124,7 @@
 namespace kaldi {
 namespace tensor {
 
+
 /**
    A Tensor is a multi-dimensional array (up to 5 dimensions) of types such as
    float or double (and eventually ints).  Multiple Tensors may point to data
@@ -130,13 +136,13 @@ namespace tensor {
 
    Most of the operations that you would do on a Tensor (like addition,
    multiplication and so on) are declared out-of-line in tensor-functions.h.
+
+
  */
 class Tensor {
  public:
 
-  inline bool Initialized() { return storage_->data_ != NULL; }
-
-  /// Return the number of axes (a number in {0,1,2,3,4}).  In mathematical
+  /// Return the number of axes (a number in {0,1,2,3,4,5,6}).  In mathematical
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
   // the terms 'number of axes' or 'axis' throughout.
@@ -146,9 +152,9 @@ class Tensor {
   // the last axis is KALDI_TENSOR_MAX_DIM - 1.
   inline int32 NumAxes() const { return impl_.pattern.num_axes; }
 
-  const TensorImpl &Impl() { return impl_; }
+  const TensorImpl &Impl() const { return impl_; }
 
-  const TensorMeta &Meta() { return reinterpret_cast<TensorMeta&>(impl_); }
+  const TensorMeta &Meta() const { return reinterpret_cast<TensorMeta&>(impl_); }
 
   // Return reference to the struct containing the dimension and
   // stride info.
@@ -156,14 +162,13 @@ class Tensor {
 
   // Return a vector containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
-  // This cannot return a const reference because the
+  // This cannot return some kind of reference because the
   // dims are stored internally in reversed order.
   std::vector<int32> Dims() const;
 
   // Return a vector containing the strides of the tensor.
   // Strides().size() will equal NumAxes().
   std::vector<int32> Strides() const;
-
 
   // Returns the dimension on the supplied axis
   //  @param [in] axis  Axis on which dimension is required, with
@@ -187,6 +192,7 @@ class Tensor {
   // Returns true if the data forms a contiguous block in memory.
   // (not the same as 'contiguous()' in PyTorch, which also requires
   // that the strides be 'C'-style; for that, see HasCStrides().
+  // TODO: see if this needs to be cached.
   bool IsContiguous() const;
 
   // Returns true if the strides for this array are what you would
@@ -376,16 +382,57 @@ class Tensor {
   Tensor(TensorMeta &meta, InitializePolicy p);
 
 
+  // Move assignment.  TODO: check whether this really does move on the
+  // shared_ptr.
+  Tensor(Tensor &&other): impl_(other.impl_) { }
+
   /**
-     This constructor takes the 'impl' provided and returns
-     a Tensor containing it.  Intended for special-purpose code such
-     as when we wrap arrays from external frameworks.
+     Constructor from TensorImpl.  Will often be used by framework code; not
+     intended for use by users.
    */
-  Tensor(const TensorImpl &impl);
+  Tensor(const std::shared_ptr<const TensorImpl> &impl);
+
+  /**
+     Move-constructor version of constructor from TensorImpl.  Will often be
+     used by framework code; not intended for use by users.  TODO: check that
+     this really does move.
+  */
+  Tensor(const std::shared_ptr<const TensorImpl> &&impl): impl_(impl) { }
+
 
  private:
-  TensorImpl impl_;
+
+  // It might seem odd that we contain a shared_ptr to *const* TensorImpl.
+  // What is const here is the meta-information, not the underlying data
+  // (e.g. the floats).  The reason for this decision is mostly so that class
+  // Variable can store Tensors and shared_ptr's to TensorImpl and not
+  // worry about the meta-information pointed to by those pointers being
+  // unexpectedly changed.  The idea is, whenever you need to change this
+  // meta-info, you reallocate;  things that need to manipulate meta-info
+  // and don't want to reallocate can work directly with TensorImpl which
+  // is a lower-level, less safe interface intended for the developers of
+  // this toolkit.
+  //
+  // Note: the difference between a Tensor and a simple std::shared_ptr<const
+  // TensorImpl> is that in the Tensor the pointer is guaranteed to be non-NULL.
+  // We use the shared_ptr where it could be NULL, e.g. in Variables for the
+  // grad (since it might not have been set up).
+  std::shared_ptr<const TensorImpl> impl_;
 };
+
+
+
+/**
+   This is to be used when you know that 'impl' is non-NULL and you want to
+   treat it as a Tensor.  You should view the type `std::shared_ptr<const
+   TensorImpl>` as "might be Tensor, might be NULL".
+*/
+inline Tensor &AsTensor(std::shared_ptr<const TensorImpl> &impl) {
+  return reinterpret_cast<Tensor&>(impl);
+}
+
+
+
 
 
 

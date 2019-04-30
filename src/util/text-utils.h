@@ -272,7 +272,7 @@ void ParseConfigLines(const std::vector<std::string> &lines,
 
 
 /// Returns true if 'name' would be a valid name for a component or node in a
-/// nnet3Nnet.  This is a nonempty string beginning with A-Za-z_, and containing only
+/// nnet3::Nnet.  This is a nonempty string beginning with A-Za-z_, and containing only
 /// '-', '_', '.', A-Z, a-z, or 0-9.
 bool IsValidName(const std::string &name);
 
