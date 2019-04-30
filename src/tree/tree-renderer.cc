@@ -19,6 +19,8 @@
 
 #include "tree/tree-renderer.h"
 
+#include "tree/context-dep.h"
+
 namespace kaldi {
 const int32 TreeRenderer::kEdgeWidth = 1;
 const int32 TreeRenderer::kEdgeWidthQuery = 3;

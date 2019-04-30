@@ -185,6 +185,19 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
   // region was sufficiently large.  We don't check this; if it segfaults, we'll
   // debug.
 
+  // search for a block that we don't have to synchronize on
+  int max_iters = 20;
+  auto search_iter = iter;
+  for (int32 i = 0;
+       search_iter != subregion->free_blocks.end() && i < max_iters;
+       ++i, ++search_iter) {
+    if (search_iter->second->thread_id == std::this_thread::get_id() ||
+        search_iter->second->t <= synchronize_gpu_t_) {
+      iter = search_iter;
+      break;
+    }
+  }
+
   MemoryBlock *block = iter->second;
   // Erase 'block' from its subregion's free blocks list... the next lines are
   // similar to RemoveFromFreeBlocks(), but we code it directly as we have the

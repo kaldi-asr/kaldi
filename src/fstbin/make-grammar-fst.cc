@@ -114,8 +114,9 @@ int main(int argc, char *argv[]) {
     std::string top_fst_str = po.GetArg(1),
         fst_out_str = po.GetArg(po.NumArgs());
 
-    ConstFst<StdArc> *top_fst = ReadAsConstFst(top_fst_str);
-    std::vector<std::pair<int32, const ConstFst<StdArc>* > > pairs;
+    std::shared_ptr<const ConstFst<StdArc> > top_fst(
+        ReadAsConstFst(top_fst_str));
+    std::vector<std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > > > pairs;
 
     int32 num_pairs = (po.NumArgs() - 2) / 2;
     for (int32 i = 1; i <= num_pairs; i++) {
@@ -126,12 +127,13 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Expected positive integer as nonterminal, got: "
                   << nonterm_str;
       std::string fst_str = po.GetArg(2*i + 1);
-      ConstFst<StdArc> *fst = ReadAsConstFst(fst_str);
-      pairs.push_back(std::pair<int32, const ConstFst<StdArc>* >(nonterminal, fst));
+      std::shared_ptr<const ConstFst<StdArc> > this_fst(ReadAsConstFst(fst_str));
+      pairs.push_back(std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > >(
+          nonterminal, this_fst));
     }
 
     GrammarFst *grammar_fst = new GrammarFst(nonterm_phones_offset,
-                                             *top_fst,
+                                             top_fst,
                                              pairs);
 
     if (write_as_grammar) {
@@ -150,10 +152,6 @@ int main(int argc, char *argv[]) {
       FstWriteOptions wopts(kaldi::PrintableWxfilename(fst_out_str));
       cfst.Write(ko.Stream(), wopts);
     }
-
-    delete top_fst;
-    for (size_t i = 0; i < pairs.size(); i++)
-      delete pairs[i].second;
 
     KALDI_LOG << "Created grammar FST and wrote it to "
               << fst_out_str;

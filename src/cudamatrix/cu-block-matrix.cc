@@ -140,7 +140,9 @@ void CuBlockMatrix<Real>::SetCudaData() {
     size_t size = NumBlocks() * sizeof(CuBlockMatrixData);
     cu_data_ = static_cast<CuBlockMatrixData*>(
         CuDevice::Instantiate().Malloc(size));
-    CU_SAFE_CALL(cudaMemcpy(cu_data_, &(tmp_cu_data[0]), size, cudaMemcpyHostToDevice));
+    CU_SAFE_CALL(cudaMemcpyAsync(cu_data_, &(tmp_cu_data[0]), size, 
+                                 cudaMemcpyHostToDevice, cudaStreamPerThread));
+    CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile(__func__, tim);    
   }
 #endif

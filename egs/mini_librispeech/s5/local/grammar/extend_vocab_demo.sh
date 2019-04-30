@@ -96,7 +96,7 @@ if [ $stage -le 4 ]; then
   if $run_g2p; then
     steps/dict/apply_g2p.sh $tree_dir/extvocab_nosp_lexicon/words $tree_dir/extvocab_nosp_g2p  $tree_dir/extvocab_nosp_lexicon
   else
-    cat <<EOF >$tree_dir/extvocab_nosp_lexicon//lexicon.lex
+    cat <<EOF >$tree_dir/extvocab_nosp_lexicon/lexicon.lex
 HARDWIGG	0.962436	HH AA1 R D W IH1 G
 SUDVESTR	0.162048	S AH1 D V EY1 S T R
 SUDVESTR	0.133349	S AH1 D V EH1 S T R

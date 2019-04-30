@@ -36,6 +36,7 @@ else
 fi
 
 train_set=train
+test_set=test
 if [ $stage -le 0 ]; then
   echo "$0: creating high-resolution MFCC features."
   mfccdir=data/${train_set}_hires/data
@@ -48,9 +49,10 @@ if [ $stage -le 0 ]; then
     steps/compute_cmvn_stats.sh data/${datadir}_hires
     utils/fix_data_dir.sh data/${datadir}_hires
   done
+  train_set=${train_set}_hires
+  test_set=${test_set}_hires
 fi
 
-train_set=${train_set}_hires
 if [ ! -f $extractor/final.ie ] && [ $ivector_dim -gt 0 ]; then
   if [ $stage -le 1 ]; then
     mkdir -p exp/nnet2${nnet_affix}
@@ -61,7 +63,7 @@ if [ ! -f $extractor/final.ie ] && [ $ivector_dim -gt 0 ]; then
   if [ $stage -le 2 ]; then
     # use a smaller iVector dim (50) than the default (100) because RM has a very
     # small amount of data.
-    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 40 \
+    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
       --ivector-dim $ivector_dim \
      data/${train_set} exp/nnet2${nnet_affix}/diag_ubm $extractor || exit 1;
   fi
@@ -76,5 +78,5 @@ if [ $stage -le 3 ] && [ $ivector_dim -gt 0 ]; then
     data/${train_set}_max2 $extractor exp/nnet2${nnet_affix}/ivectors || exit 1;
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 10 \
-    data/test_hires $extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
+    data/${test_set} $extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
 fi

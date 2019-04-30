@@ -10,7 +10,7 @@ import sys
 def GetArgs():
     parser = argparse.ArgumentParser(description = "Apply an lexicon edits file (output from steps/dict/select_prons_bayesian.py)to an input lexicon"
                                      "to produce a learned lexicon.",
-                                     epilog = "See steps/dict/learn_lexicon.sh for example")
+                                     epilog = "See steps/dict/learn_lexicon_greedy.sh for example")
 
     parser.add_argument("in_lexicon", metavar='<in-lexicon>', type = str,
                         help = "Input lexicon. Each line must be <word> <phones>.")

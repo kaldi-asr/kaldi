@@ -514,17 +514,22 @@ struct NnetComputation {
   NnetComputation(): need_model_derivative(false) { }
 };
 
-
-
-
-// This operator is to print out the NnetComputation in a human-readable way, for
-// debugging purposes.
-// We don't give Read and Write functions to struct NnetComputation, because we
-// don't anticipate needing to write it to disk.
-std::ostream &operator << (std::ostream &os,
-                           NnetComputation &computation);
-
-
+// A helper class equipped with the stream insertion operator<< to print out
+// the NnetComputation in a human-readable way, with NnetComputation::Print(),
+// for debugging purposes, e.g.:
+//    KALDI_VLOG(3) << NnetComputationPrintInserter{mycomputation, mynet};
+struct NnetComputationPrintInserter {
+  const NnetComputation& computation;
+  const Nnet& nnet;
+  void Print(std::ostream& os) const {
+    computation.Print(os, nnet);
+  }
+  friend inline std::ostream &operator <<(std::ostream &os,
+                                          NnetComputationPrintInserter xhis) {
+    xhis.Print(os);
+    return os;
+  }
+};
 
 } // namespace nnet3
 } // namespace kaldi

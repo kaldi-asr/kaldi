@@ -70,7 +70,7 @@ for x in train dev test; do
   find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.WAV' \
     | grep -f $tmpdir/${x}_spk > ${x}_sph.flist
 
-  sed -e 's:.*/\(.*\)/\(.*\).WAV$:\1_\2:i' ${x}_sph.flist \
+  sed -e 's:.*/\(.*\)/\(.*\).\(WAV\|wav\)$:\1_\2:' ${x}_sph.flist \
     > $tmpdir/${x}_sph.uttids
   paste $tmpdir/${x}_sph.uttids ${x}_sph.flist \
     | sort -k1,1 > ${x}_sph.scp
@@ -82,7 +82,7 @@ for x in train dev test; do
   # ID followed by the transcript.
   find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.PHN' \
     | grep -f $tmpdir/${x}_spk > $tmpdir/${x}_phn.flist
-  sed -e 's:.*/\(.*\)/\(.*\).PHN$:\1_\2:i' $tmpdir/${x}_phn.flist \
+  sed -e 's:.*/\(.*\)/\(.*\).\(PHN\|phn\)$:\1_\2:' $tmpdir/${x}_phn.flist \
     > $tmpdir/${x}_phn.uttids
   while read line; do
     [ -f $line ] || error_exit "Cannot find transcription file '$line'";

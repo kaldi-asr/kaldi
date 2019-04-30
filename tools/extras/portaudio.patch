@@ -1,0 +1,21 @@
+diff --git a/Makefile.in b/Makefile.in
+index 24129a3..61a3952 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -44,7 +44,7 @@ PALIB = libportaudio.la
+ PAINC = include/portaudio.h
+ 
+ PA_LDFLAGS = $(LDFLAGS) $(SHARED_FLAGS) -rpath $(libdir) -no-undefined \
+-	     -export-symbols-regex "(Pa|PaMacCore|PaJack|PaAlsa|PaAsio|PaOSS)_.*" \
++	     -export-symbols-regex "(Pa|PaUtil|PaMacCore|PaJack|PaAlsa|PaAsio|PaOSS)_.*" \
+ 	     -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)
+ 
+ COMMON_OBJS = \
+@@ -57,6 +57,7 @@ COMMON_OBJS = \
+ 	src/common/pa_process.o \
+ 	src/common/pa_stream.o \
+ 	src/common/pa_trace.o \
++	src/common/pa_ringbuffer.o \
+ 	src/hostapi/skeleton/pa_hostapi_skeleton.o
+ 
+ LOOPBACK_OBJS = \

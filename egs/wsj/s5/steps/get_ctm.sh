@@ -2,9 +2,10 @@
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 
 # This script produces CTM files from a decoding directory that has lattices                                                                         
-# present.  It does this for a range of language model weights; see also 
+# present. It does this for a range of language model weights; see also 
 # get_ctm_fast.sh which does it for just one LM weight and also supports
-# the word insertion penalty.
+# the word insertion penalty, and get_ctm_conf.sh which outputs CTM files
+# with confidence scores.
 
 
 # begin configuration section.
@@ -36,7 +37,7 @@ if [ $# -ne 3 ]; then
   echo "                                    # not equal to 0.01 seconds"
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri4a/decode/"
-  echo "See also: steps/get_train_ctm.sh, steps/get_ctm_fast.sh"
+  echo "See also: steps/get_train_ctm.sh, steps/get_ctm_fast.sh, steps/get_ctm_conf.sh"
 
   exit 1;
 fi
