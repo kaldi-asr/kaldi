@@ -90,14 +90,14 @@ if ($num_jobs == 0) { # without -j option
 }
 
 if ($utt2spk_file ne "") {  # We have the --utt2spk option...
-    open(U, "<$utt2spk_file") || die "Failed to open utt2spk file $utt2spk_file";
+    open(U, '<', $utt2spk_file) || die "Failed to open utt2spk file $utt2spk_file";
     while(<U>) {
         @A = split;
         @A == 2 || die "Bad line $_ in utt2spk file $utt2spk_file";
         ($u,$s) = @A;
         $utt2spk{$u} = $s;
     }
-    open(I, "<$inscp") || die "Opening input scp file $inscp";
+    open(I, '<', $inscp) || die "Opening input scp file $inscp";
     @spkrs = ();
     while(<I>) {
         @A = split;
@@ -183,7 +183,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     # Now print out the files...
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scpfn = $OUTPUTS[$scpidx];
-        open(F, ">$scpfn") || die "Could not open scp file $scpfn for writing.";
+        open(F, '>', $scpfn) || die "Could not open scp file $scpfn for writing.";
         $count = 0;
         if(@{$scparray[$scpidx]} == 0) {
             print STDERR "Error: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)\n";
@@ -201,7 +201,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
    # This block is the "normal" case where there is no --utt2spk
    # option and we just break into equal size chunks.
 
-    open(I, "<$inscp") || die "Opening input scp file $inscp";
+    open(I, '<', $inscp) || die "Opening input scp file $inscp";
 
     $numscps = @OUTPUTS;  # size of array.
     @F = ();
@@ -221,7 +221,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     $n = 0;
     for($scpidx = 0; $scpidx < @OUTPUTS; $scpidx++) {
         $scpfile = $OUTPUTS[$scpidx];
-        open(O, ">$scpfile") || die "Opening output scp file $scpfile";
+        open(O, '>', $scpfile) || die "Opening output scp file $scpfile";
         for($k = 0; $k < $linesperscp + ($scpidx < $remainder ? 1 : 0); $k++) {
             print O $F[$n++];
         }
