@@ -1,4 +1,5 @@
 #!/bin/bash
+# Saikiran Valluri, 2019, Govivace.Inc
 
 # The script is organized as below.
 # First we train the baseline LSTMP-TDNN config chain model for few epochs on the multien data,
@@ -8,7 +9,7 @@
 # Then, we finetune the weight parameters of the refactored model using entire multien data for single epoch.
 
 # Command used for comparing  WER decoding on testsets :
-#  ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp
+#  ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp tdnn_lstm_1a_svd_sp
 
 
 # System                tdnn_lstm_1a_sp
