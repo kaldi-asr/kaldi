@@ -20,10 +20,10 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
-#include "util/parse-options.h"
 #include "tree/context-dep.h"
+#include "util/common-utils.h"
 #include "util/edit-distance.h"
+#include "util/parse-options.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
                 "  \"present\" means score those we have transcriptions for\n"
                 "  \"all\" means treat absent transcriptions as empty\n"
                 "  \"strict\" means die if all in ref not also in hyp");
-    
+
     bool dummy = false;
     po.Register("text", &dummy, "Deprecated option! Keeping for compatibility reasons.");
 
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     // Both text and integers are loaded as vector of strings,
     SequentialTokenVectorReader ref_reader(ref_rspecifier);
     RandomAccessTokenVectorReader hyp_reader(hyp_rspecifier);
-    
+
     // Main loop, accumulate WER stats,
     for (; !ref_reader.Done(); ref_reader.Next()) {
       std::string key = ref_reader.Key();
@@ -92,6 +92,11 @@ int main(int argc, char *argv[]) {
       num_words += ref_sent.size();
       int32 ins, del, sub;
       word_errs += LevenshteinEditDistance(ref_sent, hyp_sent, &ins, &del, &sub);
+      // Logging edit distance metrics per utterance in a format which is easy
+      // to extract from logs with e.g. awk.
+      KALDI_VLOG(2) << "WerDistance[Utt,Len,Dist,I,D,S]: " << key << " "
+                    << ref_sent.size() << " " << (ins + del + sub) << " "
+                    << ins << " " << del << " " << sub;
       num_ins += ins;
       num_del += del;
       num_sub += sub;
