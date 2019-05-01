@@ -44,8 +44,9 @@ use warnings; #sed replacement for -w perl parameter
 $num_jobs = 0;
 $job_id = 0;
 $utt2spk_file = "";
+$one_based = 0;
 
-for ($x = 1; $x <= 2 && @ARGV > 0; $x++) {
+for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
     if ($ARGV[0] eq "-j") {
         shift @ARGV;
         $num_jobs = shift @ARGV;
@@ -58,11 +59,18 @@ for ($x = 1; $x <= 2 && @ARGV > 0; $x++) {
         $utt2spk_file=$1;
         shift;
     }
+    if ($ARGV[0] eq '--one-based') {
+        $one_based = 1;
+        shift @ARGV;
+    }
 }
+
+$one_based
+    and $job_id--;
 
 if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2))) {
     die "Usage: split_scp.pl [--utt2spk=<utt2spk_file>] in.scp out1.scp out2.scp ... \n" .
-        " or: split_scp.pl -j num-jobs job-id [--utt2spk=<utt2spk_file>] in.scp [out.scp]\n" .
+        " or: split_scp.pl -j num-jobs job-id [--one-based] [--utt2spk=<utt2spk_file>] in.scp [out.scp]\n" .
         " ... where 0 <= job-id < num-jobs.";
 }
 
