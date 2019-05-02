@@ -100,16 +100,22 @@ void OnlineGenericBaseFeature<C>::MaybeCreateResampler(
 template <class C>
 void OnlineGenericBaseFeature<C>::InputFinished() {
   if (resampler_ != nullptr) {
+    // There may be a few samples left once we flush the resampler_ object, telling it
+    // that the file has finished.  This should rarely make any difference.
     Vector<BaseFloat> appended_wave;
     Vector<BaseFloat> resampled_wave;
     resampler_->Resample(appended_wave, true, &resampled_wave);
 
-    if (waveform_remainder_.Dim() != 0)
-      appended_wave.Range(0, waveform_remainder_.Dim())
-          .CopyFromVec(waveform_remainder_);
-    appended_wave.Range(waveform_remainder_.Dim(), resampled_wave.Dim())
-        .CopyFromVec(resampled_wave);
-    waveform_remainder_.Swap(&appended_wave);
+    if (resampled_wave.Dim() != 0) {
+      appended_wave.Resize(waveform_remainder_.Dim() +
+                           resampled_wave.Dim());
+      if (waveform_remainder_.Dim() != 0)
+        appended_wave.Range(0, waveform_remainder_.Dim())
+            .CopyFromVec(waveform_remainder_);
+      appended_wave.Range(waveform_remainder_.Dim(), resampled_wave.Dim())
+          .CopyFromVec(resampled_wave);
+      waveform_remainder_.Swap(&appended_wave);
+    }
   }
   input_finished_ = true;
   ComputeFeatures();
