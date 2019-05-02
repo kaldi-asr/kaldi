@@ -1471,6 +1471,7 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
           final_arc_list_.push_back(
               pair<int32, size_t>(state_appended, aiter.Position()));
         }
+        olat->AddArc(source_state, arc_appended);
       } else { // process initial arcs
         // a special olabel in the arc that corresponds to the identity of the
         // source-state of the last arc, we use its StateId and a offset here, called
@@ -1485,9 +1486,28 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
         // remove alpha in weight
         weight_offset.SetWeight(LatticeWeight(0, -forward_costs_[source_state]));
         arc_appended.weight = Times(arc_appended.weight, weight_offset);
+
+        if (!config_.epsilon_removal ||
+            clat.Final(arc.nextstate) != CompactLatticeWeight::Zero()) {
+          // it should be the last chunk
+          olat->AddArc(source_state, arc_appended);
+        } else {
+          // append lattice chunk and remove Epsilon together
+          for (ArcIterator<CompactLattice> aiter_postinitial(clat, arc.nextstate);
+               !aiter_postinitial.Done(); aiter_postinitial.Next()) {
+            auto arc_postinitial(aiter_postinitial.Value());
+            arc_postinitial.weight =
+                Times(arc_postinitial.weight, arc_appended.weight);
+            arc_postinitial.nextstate += state_offset;
+            olat->AddArc(source_state, arc_postinitial);
+            if (arc_postinitial.olabel > config_.max_word_id) {
+              KALDI_ASSERT(arc_postinitial.olabel < state_last_initial_offset_);
+              final_arc_list_.push_back(
+                  pair<int32, size_t>(source_state, aiter_postinitial.Position()));
+            }
+          }
+        }
       }
-      KALDI_ASSERT(source_state != kNoStateId);
-      olat->AddArc(source_state, arc_appended);
       // update forward_costs_ (alpha)
       KALDI_ASSERT(arc_appended.nextstate < forward_costs_.size());
       auto &alpha_nextstate = forward_costs_[arc_appended.nextstate];

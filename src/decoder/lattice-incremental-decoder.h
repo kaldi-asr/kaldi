@@ -45,6 +45,7 @@ struct LatticeIncrementalDecoderConfig {
   int32 determinize_max_active;
   bool redeterminize;
   int32 redeterminize_max_frames;
+  bool epsilon_removal;
   bool determinize_lattice; // not inspected by this class... used in
                             // command-line program.
   BaseFloat beam_delta;     // has nothing to do with beam_ratio
@@ -69,6 +70,7 @@ struct LatticeIncrementalDecoderConfig {
         determinize_max_active(std::numeric_limits<int32>::max()),
         redeterminize(false),
         redeterminize_max_frames(std::numeric_limits<int32>::max()),
+        epsilon_removal(false),
         determinize_lattice(true),
         beam_delta(0.5),
         hash_ratio(2.0),
@@ -103,6 +105,8 @@ struct LatticeIncrementalDecoderConfig {
                    "redeterminize states.  This is mainly intended to avoid "
                    "pathological cases. You could set it infinite to get a fully "
                    "determinized lattice.");
+    opts->Register("epsilon-removal", &epsilon_removal,
+                   "whether to remove epsilon when appending two adjacent chunks.");
     opts->Register("determinize-lattice", &determinize_lattice,
                    "If true, "
                    "determinize the lattice (lattice-determinization, keeping only "
