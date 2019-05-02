@@ -55,7 +55,7 @@ for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
             die "Invalid num-jobs and job-id: $num_jobs and $job_id";
         }
     }
-    if ($ARGV[0] =~ "--utt2spk=(.+)") {
+    if ($ARGV[0] =~ /--utt2spk=(.+)/) {
         $utt2spk_file=$1;
         shift;
     }
