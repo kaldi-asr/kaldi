@@ -20,10 +20,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_RAND_H_
 #define KALDI_CUDAMATRIX_CU_RAND_H_
 
-#if HAVE_CUDA == 1
-  #include <curand.h>
-#endif
-
+#include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "base/kaldi-math.h"
@@ -33,36 +30,10 @@ namespace kaldi {
 template<typename Real>
 class CuRand {
  public:
-  CuRand() {
-  #if HAVE_CUDA == 1
-    if (CuDevice::Instantiate().Enabled()) {
-      // Initialize the generator,
-      CURAND_SAFE_CALL(curandCreateGenerator(&gen_, CURAND_RNG_PSEUDO_DEFAULT));
-      // To get same random sequence, call srand() before the constructor is invoked,
-      CURAND_SAFE_CALL(curandSetGeneratorOrdering(gen_, CURAND_ORDERING_PSEUDO_DEFAULT));
-      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
-      CURAND_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
-    }
-  #endif
-  }
 
-  ~CuRand() {
+   void SeedGpu() {
   #if HAVE_CUDA == 1
-    if (CuDevice::Instantiate().Enabled()) {
-      // Release the generator,
-      CURAND_SAFE_CALL(curandDestroyGenerator(gen_));
-    }
-  #endif
-  }
-
-  /// Generate new seed for the GPU,
-  void SeedGpu() {
-  #if HAVE_CUDA == 1
-    if (CuDevice::Instantiate().Enabled()) {
-      // To get same random sequence, call srand() before the method is invoked,
-      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
-      CURAND_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
-    }
+		CuDevice::Instantiate().SeedGpu();
   #endif
   }
 
@@ -88,11 +59,6 @@ class CuRand {
   void BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states);
   /// add gaussian noise to each element,
   void AddGaussNoise(CuMatrix<Real> *tgt, Real gscale = 1.0);
-
- private:
-  #if HAVE_CUDA == 1
-  curandGenerator_t gen_;
-  #endif
 };
 
 }  // namsepace
