@@ -98,8 +98,8 @@ def ReadLexiconp(lexiconp_handle):
         if len(splits) < 3:
             raise Exception('Invalid format of line ' + line
                                 + ' in lexicon file.')
-        word = splits[1]
-        prob = float(splits[0])
+        word = splits[0]
+        prob = float(splits[1])
         phones = ' '.join(splits[2:])
         pron_probs[(word, phones)] = prob
         lexicon[word].add(phones)
