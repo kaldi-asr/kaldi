@@ -67,8 +67,6 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
     AccumAmDiagGmm gmm_accs;
     gmm_accs.Init(am_gmm, StringToGmmFlags(update_flags_str));
 
@@ -110,13 +108,6 @@ int main(int argc, char *argv[]) {
                 * weight;
             tot_weight += weight;
           }
-
-          // Accumulates for transitions.
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 tid = posterior[i][j].first;
-            BaseFloat weight = posterior[i][j].second;
-            trans_model.Accumulate(weight, tid, &transition_accs);
-          }
         }
         if (num_done % 50 == 0) {
           KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
@@ -136,7 +127,6 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(accs_wxfilename, binary);
-      transition_accs.Write(ko.Stream(), binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";

@@ -55,7 +55,7 @@ void LatticeAcousticRescore(const Transitions &trans_model,
         LatticeArc arc = aiter.Value();
         int32 trans_id = arc.ilabel;
         if (trans_id != 0) {  // Non-epsilon input label on arc
-          int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
+          int32 pdf_id = trans_model.TransitionIdToPdfFast(trans_id);
           if (pdf_id > log_likes.NumCols())
             KALDI_ERR << "Pdf-id " << pdf_id << " is out of the range of "
                       << "input log-likelihoods " << log_likes.NumCols()

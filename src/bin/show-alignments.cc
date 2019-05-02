@@ -80,8 +80,7 @@ int main(int argc, char *argv[]) {
         split_str[i] = ss.str();
 
         int32 tid = split[i][0],
-            tstate = trans_model.TransitionIdToTransitionState(tid),
-            phone = trans_model.TransitionStateToPhone(tstate);
+            phone = trans_model.InfoForTransitionId(tid).phone;
         split_str_phones[i] =
             phones_symtab->Find(phone) + " ";
         std::string space;

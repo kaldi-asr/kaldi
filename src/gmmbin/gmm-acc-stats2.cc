@@ -70,9 +70,6 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
     
-    Vector<double> num_trans_accs, den_trans_accs;
-    trans_model.InitStats(&num_trans_accs);
-    trans_model.InitStats(&den_trans_accs);
     AccumAmDiagGmm num_gmm_accs, den_gmm_accs;
     num_gmm_accs.Init(am_gmm, StringToGmmFlags(update_flags_str));
     den_gmm_accs.Init(am_gmm, StringToGmmFlags(update_flags_str));
@@ -110,11 +107,8 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < posterior.size(); i++) {
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first,
-                pdf_id = trans_model.TransitionIdToPdf(tid);
+                pdf_id = trans_model.TransitionIdToPdfFast(tid);
             BaseFloat weight = posterior[i][j].second;
-            trans_model.Accumulate(fabs(weight), tid,
-                                   (weight > 0.0 ?
-                                    &num_trans_accs : &den_trans_accs));
             tot_like_this_file +=
                 (weight > 0.0 ? &num_gmm_accs : &den_gmm_accs) ->
                 AccumulateForGmm(am_gmm, mat.Row(i), pdf_id, fabs(weight)) * weight;
@@ -136,12 +130,10 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(num_accs_wxfilename, binary);
-      num_trans_accs.Write(ko.Stream(), binary);
       num_gmm_accs.Write(ko.Stream(), binary);
     }
     {
       Output ko(den_accs_wxfilename, binary);
-      den_trans_accs.Write(ko.Stream(), binary);
       den_gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";

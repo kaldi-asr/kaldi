@@ -25,25 +25,18 @@ namespace kaldi {
 OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
     const OnlineNnet2FeaturePipelineConfig &config):
     silence_weighting_config(config.silence_weighting_config) {
-  if (config.feature_type == "mfcc" || config.feature_type == "plp" ||
+  if (config.feature_type == "mfcc" ||
       config.feature_type == "fbank") {
     feature_type = config.feature_type;
   } else {
     KALDI_ERR << "Invalid feature type: " << config.feature_type << ". "
-              << "Supported feature types: mfcc, plp.";
+              << "Supported feature types: mfcc, fbank.";
   }
 
   if (config.mfcc_config != "") {
     ReadConfigFromFile(config.mfcc_config, &mfcc_opts);
     if (feature_type != "mfcc")
       KALDI_WARN << "--mfcc-config option has no effect "
-                 << "since feature type is set to " << feature_type << ".";
-  }  // else use the defaults.
-
-  if (config.plp_config != "") {
-    ReadConfigFromFile(config.plp_config, &plp_opts);
-    if (feature_type != "plp")
-      KALDI_WARN << "--plp-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
 
@@ -81,8 +74,6 @@ OnlineNnet2FeaturePipeline::OnlineNnet2FeaturePipeline(
     info_(info) {
   if (info_.feature_type == "mfcc") {
     base_feature_ = new OnlineMfcc(info_.mfcc_opts);
-  } else if (info_.feature_type == "plp") {
-    base_feature_ = new OnlinePlp(info_.plp_opts);
   } else if (info_.feature_type == "fbank") {
     base_feature_ = new OnlineFbank(info_.fbank_opts);
   } else {
@@ -194,8 +185,6 @@ BaseFloat OnlineNnet2FeaturePipelineInfo::FrameShiftInSeconds() const {
     return mfcc_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else if (feature_type == "fbank") {
     return fbank_opts.frame_opts.frame_shift_ms / 1000.0f;
-  } else if (feature_type == "plp") {
-    return plp_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else {
     KALDI_ERR << "Unknown feature type " << feature_type;
     return 0.0;

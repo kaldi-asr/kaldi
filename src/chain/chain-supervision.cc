@@ -346,7 +346,6 @@ bool ProtoSupervisionToSupervision(
 
   VectorFst<StdArc> transition_id_fst;
   TableCompose(*h_fst, context_dep_fst, &transition_id_fst);
-  delete h_fst;
 
   // We don't want to add any transition probabilities as they will be added
   // when we compose with the denominator graph.
@@ -354,7 +353,7 @@ bool ProtoSupervisionToSupervision(
 
   bool check_no_self_loops = true;
   // add self-loops to the FST with transition-ids as its labels.
-  AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
+  AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale,
                check_no_self_loops, &transition_id_fst);
 
   // at this point transition_id_fst will have transition-ids as its ilabels and
@@ -997,7 +996,7 @@ bool ConvertSupervisionToUnconstrained(
     }
     for (int32 i = 0; i < supervision->frames_per_sequence; i++) {
       supervision->alignment_pdfs[i] =
-          trans_mdl.TransitionIdToPdf(supervision->alignment_pdfs[i]);
+          trans_mdl.TransitionIdToPdfFast(supervision->alignment_pdfs[i]);
     }
   }
 
@@ -1024,7 +1023,7 @@ bool ConvertSupervisionToUnconstrained(
         // because these graphs are always built with reorder == true; if it was
         // built with reorder == false, we'd have to treat the last, not first,
         // frame specially.)
-        if (trans_mdl.IsSelfLoop(transition_id) && s != start_state)
+        if (trans_mdl.InfoForTransitionId(transition_id).is_self_loop && s != start_state)
           arc.ilabel = 0;
         aiter.SetValue(arc);
       }
@@ -1063,15 +1062,13 @@ bool ConvertSupervisionToUnconstrained(
     // normalization FST for that.  (note: all transition probabilities are just
     // 0.5 anyway, for the typical chain topology).
     BaseFloat self_loop_scale = 0.0;
-    // 'reorder' must always be true for chain models.
-    bool reorder = true;
     // The FST we're about to call AddSelfLoops() on will have self-loops, on
     // the first frame, so disable the check that the FST was originally
     // self-loop-free.
     bool check_no_self_loops = false;
     supervision->e2e_fsts.resize(1);
     AddSelfLoops(trans_mdl, disambig_syms, self_loop_scale,
-                 reorder, check_no_self_loops, &(supervision->e2e_fsts[0]));
+                 check_no_self_loops, &(supervision->e2e_fsts[0]));
   }
 
   { // Convert transition-ids to pdf-ids+1 on the FST labels,
@@ -1086,7 +1083,7 @@ bool ConvertSupervisionToUnconstrained(
         // AddSelfLoops() works (it calls MakePrecedingInputSymbolsSame(), which
         // adds epsilons).  zero olabels.
         if (arc.ilabel != 0) {
-          int32 pdf_id_plus_one = trans_mdl.TransitionIdToPdf(arc.ilabel) + 1;
+          int32 pdf_id_plus_one = trans_mdl.TransitionIdToPdfFast(arc.ilabel) + 1;
           arc.ilabel = pdf_id_plus_one;
           arc.olabel = pdf_id_plus_one;
           aiter.SetValue(arc);

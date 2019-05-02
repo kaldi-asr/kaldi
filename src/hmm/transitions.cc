@@ -34,6 +34,11 @@ bool Transitions::operator == (const Transitions &other) const {
       num_pdfs_ == other.num_pdfs_;
 }
 
+bool Transitions::Compatible(const Transitions& other) const {
+  KALDI_ASSERT(false);
+  return false;
+}
+
 void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
   using StateId = typename fst::StdFst::StateId;
   const std::vector<int32> &phones = topo_.GetPhones();

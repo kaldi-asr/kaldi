@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
       std::vector<int32> alignment = reader.Value();
 
       for (size_t i = 0; i < alignment.size(); i++)
-        alignment[i] = trans_model.TransitionIdToPdf(alignment[i]);
+        alignment[i] = trans_model.TransitionIdToPdfFast(alignment[i]);
 
       writer.Write(key, alignment);
       num_done++;

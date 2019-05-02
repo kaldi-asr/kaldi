@@ -82,7 +82,7 @@ class ArcPosteriorComputer {
           const std::vector<int32> &ali = arc.weight.String();
           bool first_phone = true;
           for (int32 frame = 0; frame < num_frames; frame++) {
-            if (trans_model_->IsFinal(ali[frame])) {
+            if (trans_model_->InfoForTransitionId(ali[frame]).is_final) {
               if (first_phone) first_phone = false;
               else os << ' ';
               os << trans_model_->InfoForTransitionId(ali[frame]).phone;

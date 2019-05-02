@@ -30,7 +30,6 @@
 #include "base/kaldi-error.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-mfcc.h"
-#include "feat/feature-plp.h"
 #include "itf/online-feature-itf.h"
 #include "lat/kaldi-lattice.h"
 #include "hmm/transitions.h"

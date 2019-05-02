@@ -67,8 +67,6 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
     int32 new_dim = 0;
     AccumAmDiagGmm gmm_accs;
     // will initialize once we know new_dim.
@@ -129,13 +127,6 @@ int main(int argc, char *argv[]) {
                                                   weight);
             tot_weight_this_file += weight;
           }
-
-          // Accumulates for transitions.
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 tid = posterior[i][j].first;
-            BaseFloat weight = posterior[i][j].second;
-            trans_model.Accumulate(weight, tid, &transition_accs);
-          }
         }
         KALDI_LOG << "Average like for this file is "
                   << (tot_like_this_file/tot_weight_this_file) << " over "
@@ -157,7 +148,6 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(accs_wxfilename, binary);
-      transition_accs.Write(ko.Stream(), binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";

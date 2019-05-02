@@ -37,12 +37,19 @@ namespace kaldi {
 /// Configuration class for the GetHTransducer() function; see
 /// \ref hmm_graph_config for context.
 struct HTransducerConfig {
+  /// Transition log-prob scale, see \ref hmm_scale.
+  /// Note this doesn't apply to self-loops; GetHTransducer() does
+  /// not include self-loops.
+  BaseFloat transition_scale;
   int32 nonterm_phones_offset;
 
   HTransducerConfig():
+      transition_scale(1.0),
       nonterm_phones_offset(-1) { }
 
   void Register (OptionsItf *opts) {
+    opts->Register("transition-scale", &transition_scale,
+                   "Scale of transition probs (relative to LM)");
     opts->Register("nonterm-phones-offset", &nonterm_phones_offset,
                    "The integer id of #nonterm_bos in phones.txt, if present. "
                    "Only needs to be set if you are doing grammar decoding, "
@@ -181,7 +188,7 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   */
 void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
-                  bool reorder,
+                  BaseFloat self_loop_scale,
                   bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
 

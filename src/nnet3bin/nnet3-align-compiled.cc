@@ -55,8 +55,6 @@ int main(int argc, char *argv[]) {
     AlignConfig align_config;
     NnetSimpleComputationOptions decodable_opts;
     std::string use_gpu = "yes";
-    BaseFloat transition_scale = 1.0;
-    BaseFloat self_loop_scale = 1.0;
     std::string per_frame_acwt_wspecifier;
 
     std::string ivector_rspecifier,
@@ -68,11 +66,6 @@ int main(int argc, char *argv[]) {
 
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
-    po.Register("transition-scale", &transition_scale,
-                "Transition-probability scale [relative to acoustics]");
-    po.Register("self-loop-scale", &self_loop_scale,
-                "Scale of self-loop versus non-self-loop "
-                "log probs [relative to acoustics]");
     po.Register("write-per-frame-acoustic-loglikes", &per_frame_acwt_wspecifier,
                 "Wspecifier for table of vectors containing the acoustic log-likelihoods "
                 "per frame for each utterance. E.g. ark:foo/per_frame_logprobs.1.ark");
@@ -174,13 +167,6 @@ int main(int argc, char *argv[]) {
           } else {
             online_ivectors = &online_ivector_reader.Value(utt);
           }
-        }
-
-        {  // Add transition-probs to the FST.
-          std::vector<int32> disambig_syms;  // empty.
-          AddTransitionProbs(trans_model, disambig_syms,
-                             transition_scale, self_loop_scale,
-                             &decode_fst);
         }
 
         DecodableAmNnetSimple nnet_decodable(

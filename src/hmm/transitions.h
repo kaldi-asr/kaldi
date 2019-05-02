@@ -219,6 +219,8 @@ class Transitions {
   /// returns true if this is identical to 'other'
   bool operator == (const Transitions &other) const;
 
+  bool Compatible(const Transitions& other) const;
+
  private:
 
   // Called from constructor.  initializes info_ (at least, the first

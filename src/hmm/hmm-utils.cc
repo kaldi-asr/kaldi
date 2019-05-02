@@ -108,6 +108,7 @@ std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
     }
   }
 
+  ApplyProbabilityScale(config.transition_scale, loopless_entry.get());
   if (cache != NULL)
     (*cache)[cache_index] = loopless_entry;
   return loopless_entry;
@@ -460,13 +461,12 @@ static bool StateIsStochastic(FST fst, typename FST::StateId s) {
   return ApproxEqual(total_prob.Value(), Weight::One());
 }
 
-// This is the code that expands an FST from transition-states to
-// transition-ids, in the case where the non-optional transition is before
-// the self-loop.
-static void AddSelfLoopsInternal(const Transitions &trans_model,
-                                 const std::vector<int32> &disambig_syms,
-                                 bool check_no_self_loops,
-                                 fst::VectorFst<fst::StdArc> *fst) {
+void AddSelfLoops(const Transitions &trans_model,
+                  const std::vector<int32> &disambig_syms,
+                  BaseFloat self_loop_scale,
+                  bool check_no_self_loops,
+                  fst::VectorFst<fst::StdArc> *fst) {
+  KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
@@ -546,14 +546,6 @@ static void AddSelfLoopsInternal(const Transitions &trans_model,
     }
     KALDI_PARANOID_ASSERT(StateIsStochastic(fst, s));
   }
-}
-
-void AddSelfLoops(const Transitions &trans_model,
-                  const std::vector<int32> &disambig_syms,
-                  bool check_no_self_loops,
-                  fst::VectorFst<fst::StdArc> *fst) {
-  KALDI_ASSERT(fst->Start() != fst::kNoStateId);
-  AddSelfLoopsInternal(trans_model, disambig_syms, check_no_self_loops, fst);
 }
 
 // SplitToPhonesInternal takes as input the "alignment" vector containing
