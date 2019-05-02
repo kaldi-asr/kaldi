@@ -80,9 +80,9 @@ struct ChainTrainingOptions {
                    "of the neural net.");
     opts->Register("out-of-range-regularize", &out_of_range_regularize,
                    "Constant that controls how much we penalize the nnet output "
-                   "leaving the range [-30,30]... this is needed because we "
-                   "limit it to that range in the denominator computation, to avoid "
-                   "NaNs because it is not done in log space.");
+                   "being outside the range [-30,30].  This is needed because we "
+                   "limit it to that range in the denominator computation (which "
+                   "is to avoid NaNs because it is not done in log space.");
     opts->Register("leaky-hmm-coefficient", &leaky_hmm_coefficient, "Coefficient "
                    "that allows transitions from each HMM state to each other "
                    "HMM state, to ensure gradual forgetting of context (can "
