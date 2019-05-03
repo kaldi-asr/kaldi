@@ -18,6 +18,10 @@
 // limitations under the License.
 
 
+#ifndef KALDI_TENSOR_TENSOR_PATTERN_UTILS_H_
+#define KALDI_TENSOR_TENSOR_PATTERN_UTILS_H_ 1
+
+
 #include "tensor/tensor-common.h"
 #include "tensor/tensor-pattern.h"
 #include "tensor/array-ref.h"
@@ -30,19 +34,58 @@ namespace kaldi {
 namespace tensor {
 
 
-
-enum PatternEnum {
-  kPatternContainsNegativeStride = 2048
-  // e.g.:
-  // bool contains_negative_stride =
-  //     (pattern.code | kPatternContainsNegativeStride) != 0;
-};
-
 // Returns true if the pattern code indicates that the pattern contains a
 // negative stride.
 inline bool ContainsNegativeStride(int32 pattern_code) {
-  return (pattern_code | kPatternContainsNegativeStride) != 0;
+  // 2048 is 1 << 11; 11th bit in code is set if code indicates negative stride.
+  return (pattern_code | 2048) != 0;
 }
+
+
+/**
+   This function converts an eaxis-index into an raxis-index, with no error
+   checking (you would normally check afterward that the raxis-index is in the
+   correct range).  Find "Eaxis-index:" and "Raxis-index:" in tensor-pattern.h,
+   but basically and eaxis-index is an axis-index in the public numbering where
+   we allow negative values to mean offsets from the end.
+ */
+inline int32 EaxisToRaxis(int32 eaxis, int32 num_axes) {
+  return (eaxis < 0 ? 1 - eaxis : num_axes - 1 - eaxis);
+}
+
+/**
+   Returns true if the pattern code indicates that the pattern contains a
+   negative stride.  Caution: will return true if pattern_code was -1, so if you
+   call this on a code on a valid Pattern where the code might be -1, all it
+   means is that the Pattern "might" contain a negative stride.
+
+     @param [in] pattern  The input pattern.  Must be valid;
+                          return status is undefined otherwise.
+     @return         Returns true if either the pattern's code was
+                     -1 (meaning: not known), or if the code
+                     indicates that a negative stride was present.
+*/
+inline bool PatternMightContainNegativeStride(
+    const TensorPattern &pattern) {
+  // 2048 is 1 << 11; 11th bit in code is set if code indicates negative stride.
+  return (pattern.code | 2048) != 0;
+}
+
+
+/**
+   Returns true if the pattern contains a negative stride.
+   See tensor-pattern-utils-inl.h for implementation.
+
+      @param [in] pattern   Input pattern.  Must be valid;
+                            return status is undefined otherwise.
+                            TODO: if we need this to work for, e.g.
+                            valid- or valid-- patterns, find
+                            the exact conditions.
+      @return     Returns true if the pattern contained at
+                  least one negative stride, false otherwise.
+ */
+inline bool ContainsNegativeStride(const Pattern &pattern);
+
 
 // Returns true if the pattern code indicates that the raxis
 // numbered 'raxis' (the r refers to the backwards numbering used
@@ -52,18 +95,29 @@ inline bool AxisIsTrivial(int32 pattern_code, int32 raxis) {
 }
 
 
+
+/**
+   This function copies pattern_in to pattern_out while removing
+   trivial axes (i.e. axes with dim=1), reducing num_axes appropriately.
+
+     @param [in] pattern_in   Input pattern.
+     @param [out] pattern_out Output pattern; may not point to pattern_in.
+                        At exit it will be the same as pattern_in except any
+                        axes with dim=1 will have been removed and the num_axes
+                        reduced.  Will be valid at output if pattern_in was
+                        valid-1 at input.
+*/
+void RemoveTrivialAxes(const TensorPattern &pattern_in,
+                       TensorPattern *pattern_out);
+
+
 /**
    This function removes trivial axes (i.e. axes with dim=1) from 'pattern'.
-   Although in a valid pattern axes with dim=1 must have stride=0
-   and vice versa, this function does not check that property; it simply
-   removes axes with dim=1, reducing num_axes appropriately.
+   This version works in-place.
 
      @param [in,out] pattern   Pattern to be modified.  Any axes with dim=1
                          will be removed and the num_axes reduced.  Will be
-                         valid at output if it was valid at input, or even if
-                         it was valid at input in all but property (iv),
-                         that strides must be zero for axes with dim=1.
-                         CAUTION: the code of 'pattern' is *not* updated.
+                         valid at output if it was valid-1 at input.
  */
 void RemoveTrivialAxes(TensorPattern *pattern);
 
@@ -149,27 +203,20 @@ inline int64 CombineCodes(int32 code1, int32 code2, int32 code3) {
 
 
 /**
-   Modifies 'p' in-place by inserting an axis with (dim=1,stride=0) at the
-   specified position specified in the reversed numbering physically used
-   in the pattern.  Updates p->code.
-
-   Showing just the dims in the pattern (in the order physically present in the
-   dims array), for some examples:
-
-\verbatim
-    UnsqueezeR({3,4}, 0)  -> {1,3,4}
-    UnsqueezeR({3,4}, 1)  -> {3,1,4}
-    UnsqueezeR({3,4}, 2)  -> {3,4,1}
-\endverbatim
+   Copies a TensorPattern from `src` to `dest` while modifying it by inserting
+   an axis with (dim=1,stride=0) at position `raxis` (specified in the
+   private numbering).
 
      @param [in]    raxis   The index at which the extra axis is to appear.
                             We require 0 <= raxis <= p->num_axes.
-     @param [in,out] p      The pattern to which we are adding an axis.
-                            Will have its num_axes increased by 1
-                            at exit, possibly its dims and strides
-                            arrays changed, and its code updated.
+     @param [in]    src    The source pattern.  Must be valid and have
+                           NumAxes() < KALDI_TENSOR_MAX_DIM.
+     @param [out]   dest   The destination pattern.  Is allowed to be the same
+                           object as `src`.  Will be valid at exit if src
+                           was valid at entry (which this function may not
+                           check).
  */
-void UnsqueezeR(int32 raxis, TensorPattern *p);
+void UnsqueezeR(int32 raxis, const TensorPattern &src, TensorPattern *dest);
 
 
 /**
@@ -188,19 +235,16 @@ void UnsqueezeR(int32 raxis, TensorPattern *p);
     Unsqueeze([9,10], -1) -> [9,10,1]
 \endverbatim
 
-     @param [in]    axis   The index at which the extra axis is to appear.
-                           We require -p->num_axes - 1 <= raxis <= p->num_axes
-                           The large allowable range is because negative
-                           axes are permitted, e.g. -1 means insert a new
-                           axis after the last existing axis.
+     @param [in]    eaxis   The axis-index at which the extra axis is to appear,
+                           with negatives allowed (see: "Eaxis-index" in glossary
+                           in tensor-pattern.h).
      @param [in,out] p      The pattern to which we are adding an axis.
                             Will have its num_axes increased by 1
                             at exit, possibly its dims and strides
                             arrays changed, and its code updated.
  */
-inline void Unsqueeze(int32 axis, TensorPattern *p) {
-  if (axis < 0) UnsqueezeR(1 - axis, p);
-  else UnsqueezeR(p->num_axes - axis, p);
+inline void Unsqueeze(int32 eaxis, TensorPattern *p) {
+  UnsqueezeR(EaxisToRaxis(eaxis, p->num_axes));
 }
 
 /**
@@ -340,9 +384,9 @@ inline void Squeeze(int32 axis, TensorPattern *p) {
      after padding their dims on the left with ones to make them
      have the same num-axes, corresponding dimensions are either
      identical or 1).  The previous sentence is written in terms
-     of the public numbering; in the private numbering it just means
+     of the public numbering; in the private numbering it just means:
      for each index `raxis` into the dims vector,
-     either `a.dims[raxis] == b.dims[raxis]`, or one of them si 1.
+     either `a.dims[raxis] == b.dims[raxis]`, or one of them is 1.
 
        @param [in] a  The pattern of the first Tensor
        @param [in] b  The pattern of the second Tensor
@@ -380,28 +424,48 @@ bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
 
 
 /**
-   Returns true if the 'dims' vectors of a and b are the same.
-   Does not require the number of axes to be the same, so effectively
-   it's testing that the dims are the same after padding on the left
-   with dim=1 (here referring to the public, non-reversed numbering
-   of the dims).
+   Returns true if the dims-vectors of a and b are the same after padding as for
+   broadcasting.  See definition of "Dims-vector of a Pattern" in
+   tensor-pattern.h, and the entry for "PyTorch-style broadcasting".  What this
+   means in terms of the physical storage of the patterns is that a->dims and
+   b->dims contain the same elements, without requiring the num_axes to be the
+   same.
 
    This is a stronger condition than Broadcastable(a, b).
- */
-bool SameDim(const TensorPattern &a, const TensorPattern &b);
+         @param [in] a  The first pattern.  Must be valid.
+         @param [in] b  The second pattern.  Must be valid.
+         @return      Return true if the dims-vectors vectors of
+                      a and b are the same after padding as for broadcasting.
+   See also the 3-arg version of SamePaddedDims(), and SameDims().
+*/
+bool SamePaddedDims(const TensorPattern &a, const TensorPattern &b);
 
 
 /**
-   Returns true if the 'dims' vectors of a, b and c are all the same.
-   Does not require the number of axes to be the same, so effectively
-   it's testing that the dims are the same after padding on the left
-   with dim=1 (here referring to the public, non-reversed numbering
-   of the dims).
+   Returns true if the 'dims' vectors of a, b and c are all the same
+   after padding with 1's on the left (in the public numbering) to
+   make the dims the same.  Equivalent to
+   SamePaddedDims(a, b) && SamePaddedDims(b, c).
 
    This is a stronger condition than Broadcastable(a, b, c).
  */
-bool SameDim(const TensorPattern &a, const TensorPattern &b,
-             const TensorPattern &c);
+bool SamePaddedDims(const TensorPattern &a, const TensorPattern &b,
+                    const TensorPattern &c);
+
+/**
+   Return true if the two provided patterns have the same dims-vectors
+   (meaning, effectively the same num_axes and the same dim for each
+   axis; see "Dims-vector" in tensor-pattern.h).
+
+      @param [in] a  The first pattern.  Must be valid.
+      @param [in] b  The second pattern.  Must be valid.
+      @return        Returns true if a.num_axes == b.num_axes and
+                     the elements of their 'dims' members are the same.
+   See also: SamePaddedDims().
+*/
+bool SameDims(const TensorPattern &a, const TensorPattern &b);
+
+
 
 
 /**
@@ -454,11 +518,35 @@ void CompressOnePattern(TensorPattern *pattern);
 void SortAxes(TensorPattern *pattern);
 
 
-// TODO: document this?
+// TODO: document this.
 inline void CanonicalizePattern(TensorPattern *pattern) {
   CompressOnePattern(pattern);
   SortAxes(pattern);
 }
+
+// TODO: document this.  This will later be replaced with
+// a more efficient version.
+inline void CanonicalizePattern(contst TensorPattern &pattern_in,
+                                TensorPattern *pattern_out) {
+  *pattern_out = pattern_in;
+  CanonicalizePattern(pattern_out);
+}
+
+/**
+   This pattern checks that 'pattern' is valid and in canonical form (see
+   glossary for the meaning).  CanonicalizePattern() will modify a valid pattern
+   to put it in canonical form.
+ */
+bool IsCanonical(const TensorPattern &pattern);
+
+
+/**
+   Returns the number of elements in the pattern, computed as the
+   product of the dims.  ('pattern' is expected to either be valid or
+   to at least satisfy the uniqueness property for this to actually give
+   the number of elements, but this is not checked).
+*/
+int64 NumElements(const TensorPattern &pattern);
 
 
 /**
@@ -466,11 +554,19 @@ inline void CanonicalizePattern(TensorPattern *pattern) {
    nonempty and all have the same number of axes), by ordering them from the
    most negative stride value in patterns[0] to the most positive stride value
    in patterns[0], using the strides in the other patterns to disambiguate the
-   order only in case of ties, which could only happen if some strides were
-   zero.  I.e. it's a lexical ordero the strides of the patterns.  Note: the
-   most-negative-to-most-positive ordering is in terms of the private, `raxis`
-   numbering; it would be most-positive-to-most-negative in the public
-   numbering.
+   order only in case of ties (which could only happen if some strides were
+   zero), and then the dims in the same order if the strides are all the same
+   (the strides would only be the same if they were zero, if the patterns were
+   valid).  Roughly, it's a lexical order on the (strides, then dims) of the
+   patterns.  Note: the most-negative-to-most-positive ordering is in terms of
+   the private, `raxis` numbering; it would be most-positive-to-most-negative in
+   the public numbering.
+
+   TODO: work out what the ordering should be; should it really be negative-to-
+   positive, or based on abs(stride), and do we need disambiguation with the
+   dims?
+
+   TODO: do we even need this??
 
      @param [in,out]  The patterns whose axes are to be sorted.  All
                     will have their axes subject to the same permutation.
@@ -642,6 +738,45 @@ bool CreateViewPattern(const TensorPattern &pattern_in,
                        ArrayRef<int32> dims,
                        TensorPattern *pattern_out);
 
+
+/**
+   This is like PyTorch's slice() / narrow() functions.
+   It selects a range of dimensions on one of the axes.  It is similar to
+   indexing with a range in Python, like A[10:20].
+
+      @param [in] eaxis  Eaxis-index (see glossary in tensor-pattern.h) on which
+                         to possibly reduce the dimensionality.
+      @param [in] start  Starting index; must be in range [0, t->Dim(eaxis) - 1]
+      @param [in] end    Ending index; must be in the range [start + 1, t->Dim(eaxis)]
+      @param [in,out] pattern  TensorPattern to be modified.  Will be valid at
+                         exit if it was valid at entry.
+
+   See also: the other overloaded version of Slice() which accepts the 'step'
+   parameter; and Select(), which is similar but also reduces the num-axes.
+ */
+void Slice(int32 eaxis, int32 start, int32 end, TensorPattern *pattern);
+
+
+
+/**
+   Copy one Pattern to another while modifying it by by selecting one index from
+   a specified axis (specified in the public numbering), of a TensorImpl `t`,
+   reducing the num_axes by one.
+
+       @param [in] eaxis Eaxis-index (see glossary in tensor-pattern.h) on which
+                         to possibly reduce the dimensionality.
+       @param [in] index Index to select; must be in range
+                         [0, t->Dim(eaxis) - 1].
+       @param [in,out] src   TensorPattern which is to be copied; must be valid,
+                         but we don't guarantee to check this.
+       @param [out] dest TensorPattern which we are copying to and modifying.
+                         It is allowed to be the same object as 'src'.
+                         Will be valid if src was valid.
+*/
+void Select(int32 eaxis, int32 index,
+            const TensorPattern &src, TensorPattern *dest);
+
+
 /**
    This function returns true if 'pattern' has the same strides
    as 'C' array with the same dimensions would have.  (Note:
@@ -671,187 +806,51 @@ void HasCStrides(const TensorPattern &pattern);
 bool PatternsOverlap(const TensorPattern &pattern1,
                      const TensorPattern &pattern2);
 
-/**
-   Returns true if pattern2's memory-index-set is a subset of pattern1's
-   memory-index-set.  See glossary in tensor-pattern.h for explanation of
-   memory-index-set.
- */
-bool PatternIncludes(const TensorPattern &pattern1,
-                     const TensorPattern &pattern2);
 
 
 /**
-   Returns true if the two patterns are equivalent in the sense that their
-   memory-index-sets are the same.  See glossary in tensor-pattern.h for
-   explanation.
- */
-bool PatternsEquivalent(const TensorPattern &pattern1,
-                        const TensorPattern &pattern2);
+   Returns true if the memory-index-set of this pattern forms a contiguous
+   range, otherwise false.  (Note: this is not the same as PyTorch's notion of
+   contiguous; see HasCStrides()).  Caution: the interface may later be changed
+   to allow caching of this property in the 'properties' field.
+*/
+bool IsCompact(const TensorPattern &pattern);
 
 
 /**
-   Outputs the memory-index-set corresponding to the pattern
-   'pattern' to 's'.   See glossary in tensor-pattern.h for
-   definitions.  This is strictly to be used in debugging
-   code, as it is extremely inefficient.
-
-      @param [in] pattern  The input pattern
-      @param [out] s   The memory-index-set
- */
-bool ToMemoryIndexSet(const TensorPattern &pattern,
-                      std::unordered_set<int64> *s);
-
+   Returns true if the lowest memory-index of 'pattern' is zero (see
+   "Justified" in glossary in pattern.h.
+   (see also: ComputeMinAndMaxMindex()).
+*/
+bool IsJustified(const TensorPattern &pattern);
 
 
 /**
-   Outputs the memory-index-tuple-set corresponding to the pattern 'pattern' to
-   's' (see tensor-pattern.h for definition).  For storage in 's', each tuple is
-   converted into a single integer by a hashing function that should keep
-   distinct tuples separate as long as the memory-indexes were not huge.  (We
-   may output the actual tuples at some point in the future if they are ever
-   needed).  This function is strictly to be used in debugging code, as it is
-   extremely inefficient.
-
-      @param [in] pattern  The input pattern
-      @param [out] s   The memory-index-set
- */
-bool ToMemoryIndexTupleSet(const ArrayRef<TensorPattern*>  patterns,
-                           std::unordered_set<int64> *s);
-
+   This is the same is IsCompact(pattern) &&
+   IsJustified(pattern).
+*/
+bool IsCompactAndJustified(const TensorPattern &pattern);
 
 /**
-   Returns true if the two pattern-tuples are equivalent in the sense
-   that their memory-index-tuple-sets are the same.  See glossary
-   in tensor-pattern.h for explanation.
- */
-bool PatternTuplesEquivalent(const ArrayRef<const TensorPattern*> &patterns1,
-                             const ArrayRef<const TensorPattern*> &patterns2);
-
+   Returns true if 'pattern' has normalized strides as defined
+   in tensor-pattern.h (i.e.: strides are nonnegative and
+   the nonzero ones are in strictly increasing order in the
+   private numbering / decreasing in the public).
+*/
+bool HasNormalizedStrides(const TensorPattern &pattern);
 
 /**
-   Class TensorPatternRebaser is an object that converts TensorPattern
-   when memory layouts change.  The main use-case is when a base Variable
-   (c.f. variable.h for definition) has a TensorPattern that is not
-   contiguous (see tensor-pattern.h for definition of 'contiguous'), and
-   its gradient Tensor is allocated contiguously.  This class is
-   needed to convert patterns for Variables into patterns for their
-   corresponding gradients.
-
-   We make it an object rather than a function in order to avoid repetition when
-   multiple patterns need to be rebased.
- */
-class TensorPatternRebaser {
-
-  /*
-    Constructor.
-       @param [in] src_pattern  The pattern that we are converting *from*,
-                              e.g. the pattern of a Variable whose gradient
-                              has a different layout from itself.
-       @param [in] dest_pattern  The pattern that we are converting *to*.
-                              Must have the same num_axes and the same dims
-                              as 'src_pattern'.
-
-    Let t be a valid index-tuple for src_pattern/dest_pattern, determined
-    by their 'dims' and 'num_axes'.  Using t to index src_pattern and
-    dest_pattern gives memory-indexes:
-       m_src = src_pattern[t]
-       m_dest = dest_pattern[t]
-    View this object as a function from memory-indexes to memory-indexes
-    f: (m_src -> m_dest), whose domain is the memory-index-set of src_pattern
-    and whose range is the memory-index-set of dest_pattern.
-
-    The purpose of this object is to modify patterns in a way that maps
-    their memory-indexes with the same function f.
-  */
-  TensorPatternRebaser(const TensorPattern &src_pattern,
-                       const TensorPattern &dest_pattern);
+   Returns true if all the stides in 'pattern' are nonnegative.
+*/
+bool HasNonnegativeStrides(const TensorPattern &pattern);
 
 
-  /**
-     This function attempts to modify pattern->offset and pattern->strides in a
-     way that does the mapping of memory-indexes m_src -> m_dest that is implied
-     by the src_pattern and dest_pattern passed to the constructor.  That is,
-     for any index-tuple t valid for 'pattern', the memory-index `pattern[t]`
-     evaluated before and after calling this function gets mapped according
-     to the function (m_src -> m_dest) mentioned in our documentation for
-     the constructor.
-
-     @param [in,out]  pattern  The pattern to be rebased.  Must, at entry,
-                          satisfy `PatternIncludes(src_pattern, *pattern)`,
-                          where `src_pattern` was the pattern passed to the
-                          constructor.  On success (i.e. if this function
-                          returns true), the condition
-                          `PatternIncludes(dest_pattern, *pattern)` will
-                          be satisfied.  On failure, the contents of
-                          'pattern' is undefined.
-
-     @return  Returns true if the conversion was possible.
-   */
-  bool Rebase(TensorPattern *pattern);
-
-  private:
-
-  // TODO: remove src_pattern_ and dest_pattern_ once everything
-  // is debugged.  They are copies of the src_pattern and dest_pattern
-  // passed to the constructor.
-  TensorPattern src_pattern_;
-  TensorPattern dest_pattern_;
-
-  // If needs_conversion_ is false, it means the patterns don't need any conversion
-  // at all (this is an optimization).
-  bool needs_conversion_;
-
-  // The 'offset' value of src_pattern_compressed (i.e. the src_pattern passed
-  // to the constructor, which has been jointly compressed and normalized with
-  // dest_pattern (to make all src_strides positive).
-  int64 src_offset_;
-  // The 'offset' value of dest_pattern_compressed
-  int64 dest_offset_;
-
-  // num_axes_ is the number of axes, not in the original src_pattern /
-  // dest_pattern but after the two patterns have been jointly compressed and
-  // then sorted from smallest to greatest stride in src_pattern.
-  // src_strides_ are the resulting strides from src_pattern_compressed, and
-  // dest_strides_ are the resulting strides from dest_pattern_compressed.
-
-  // dest_pattern_ are the strides of the thus-modified src_pattern and
-  // dest_pattern.  As an optimization, if src_strides and dest_strides end up
-  // being the same, we set num_axes to zero and skip modifying the strides when
-  // CompressPattern() is called.
-
-  // Note: all of src_strides_[0] .. src_strides_[num_axes_ - 1] will be greater
-  // than zero.  We can guarantee this because src_pattern and dest_pattern as
-  // passed to the constructor had the same dims, so any axes with dim=1 would
-  // have had dim=1 for both src and dest, hence they would have been removed by
-  // CompressPatterns(), hence no strides would be zero after
-  // CompressPatterns(); and CompressPatterns() normalizes the signs of the
-  // strides so the first one (i.e. src_pattern) has positive strides.
-  int32 num_axes_;
-  int32 src_strides_[KALDI_TENSOR_MAX_DIM];
-  int32 dest_strides_[KALDI_TENSOR_MAX_DIM];
-
-  // The basic algorithm in Convert() is:
-  //  First, add offset_ to its offset.
-  //   Then:
-  //     For each nontrivial axis of 'pattern', we are going to modify
-  //     its stride as needed.
-  //     Let that stride be `stride`, and the corresponding dim `dim`.
-  //     Let `pstride = abs(stride)` be the absolute value of the stride
-  //     (we'll modify that, and then restore the sign.
-  //     positive.
-  //
-
-
-
-  // Converts a memory-index from the src to dest pattern.  This is applying,
-  // to a single arbitrary memory-index m_src, the mapping (m_src -> m_dest);
-  // see the comments above for explanation of this notation.
-  // It is required that m >= 0 (otherwise it would not have been inside
-  // the source pattern).
-  int64 ConvertMemoryIndex(int64 m);
-
-};
 
 
 }  // namespace tensor
 }  // namespace kaldi
+
+
+#include "tensor/tensor-pattern-utils-inl.h"
+
+#endif KALDI_TENSOR_TENSOR_PATTERN_UTILS_H_

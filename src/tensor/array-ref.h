@@ -69,8 +69,39 @@ struct ArrayRef final {
   constexpr ArrayRef(const std::initializer_list<T> &vec):
       data(vec.data()), size(vec.size()) { }
 
+
+  T *begin() { return data; }
+  T *end() { return data + size; }
+
+
+
   // We will add iterators later if they are needed.
 };
+
+// Converts an ArrayRef<int32> to a string, e.g. "[1 4 300]"; can implicitly
+// print std::vector as well.
+std::string ArrayAsString(const ArrayRef<int32> a);
+
+
+
+/**
+   This template is a mechanism of keeping a collection of shared pointers, in
+   no particular order, with a mechanism to iterate over the list (typically
+   for purposes of dependency tracking, from Ops to Nodes and vice versa).
+
+ */
+template <class T, int BlockSize>
+class SharedPointerCollection {
+ public:
+
+
+
+ private:
+  std::shared_ptr<T> data[BlockSize];
+  std::unique_ptr<SmallSharedPointerCollection<T,BlockSize> > next;
+};
+
+
 
 
 }  // namespace tensor

@@ -22,20 +22,27 @@
 
 #include <functional>
 #include "tensor/tensor-common.h"
+#include "tensor/memory-checker.h"
 
 
 namespace kaldi {
 namespace tensor {
 
-struct StorageExtras;
+struct StorageAux;
 
 // 'Storage' contains a single allocated region (on CPU or GPU, according
 // to 'device').
 class Storage {
  public:
-  // This returns a reference to the object held in this->locker if it is
-  // non-NULL; otherwise it allocates one and returns that.
-  ChangeTracker &GetChangeTracker();
+
+
+  void RecordChange(int32 element_size,
+                    const TensorPattern &pattern);
+
+
+  // This initializes a ChangeTracker object in this->tracker if it
+  // does not already exist, and returns its address.
+  ChangeTracker *GetChangeTracker();
 
   inline bool Allocated() {  return (data != NULL);  }
 
@@ -119,28 +126,41 @@ class Storage {
   Device device;
 
   // contains some extra, less-often-used fields
-  std::unique_ptr<StorageExtras> extras;
+  std::unique_ptr<StorageAux> extras;
 
 };
 
 
 
-// struct StorageExtras contains what (conceptually) are some rarely-needed
-// extra fields of class Storage; we store them separately, holding a
-// possibly-NULL pointer to struct StorageExtras, to reduce the size of struct
+// struct StorageAux contains some rarely-needed extra fields that we didn't
+// want to keep in class Storage; we store them separately, holding a
+// possibly-NULL pointer to struct StorageAux, to reduce the size of struct
 // Storage in the normal case.
-struct StorageExtras {
+struct StorageAux {
   using DeallocatorFunc = std::function<void()>;
 
-  // 'tracker' is used in debug mode to detect when data that might be
-  // required in the backprop phase is invalidated.
-  std::unique_ptr<ChangeTracker> tracker;
+  // 'change_tracker' is used in debug mode to detect when data that might be
+  // required in the backprop phase has changed before we read it.
+  std::unique_ptr<ChangeTracker> change_tracker;
+
+  // 'uninitialized_checker' is used in debug mode to detect when data
+  // that has been allocated but never written to is read.
+  // required in the backprop phase has changed before we read it.
+  std::unique_ptr<UninitializedDataChecker> uninitialized_checker;
+
+  // 'invaliated_checker' is used in debug mode to detect when parts of
+  // derivatives that have been invalidated are read; read the
+  // comment for that class, in memory-checker.h, for complete
+  // info.
+  dstd::unique_ptr<InvalidatedDataChecker> invalidated_checker;
 
   // 'deallocator' is to be used with external toolkits, for example, to
   // decrease the refcount.  In normal cases it will be nullptr.
   // If non-NULL, it will be invoked when we want to deallocate the
   // storage object.
   DeallocatorFunc deallocator;
+
+  // TODO: allow for some kind of name here, reflecting where it came from?
 };
 
 

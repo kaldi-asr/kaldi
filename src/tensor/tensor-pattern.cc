@@ -87,7 +87,7 @@ bool TensorPattern::Check(bool check_code) {
 
 // MAY DELETE THIS.  It's not up to date anyway.
 void TensorPatternProperties::UpdateProperties(const TensorPattern &pattern) {
-  KALDI_PARANOID_ASSERT(pattern.Check());
+  KALDI_PARANOID_ASSERT(pattern.IsValid());
   int32 num_axes = pattern.num_axes;
   int64 dim_prod = 1;
   bool c_strides = true;

@@ -28,6 +28,42 @@
 namespace kaldi {
 namespace tensor {
 
+
+/**
+  This function returns true if a and b have the same dtype
+  and device.  See also Broadcastable().
+*/
+inline bool Compatible(const Tensor &a, const Tensor &b) {
+  return Compatible(*a.impl_, *b.impl_);
+}
+
+/**
+  This function returns true if a and b have the same dtype
+  and device and are broadcastable; equivalent to
+  `Broadcastable(a, b) && Compatible(a, b)`.
+*/
+inline bool BroadcastableAndCompatible(const Tensor &a, const Tensor &b,
+                                       b_non_reducing = false) {
+  return Compatible(*a.impl_, *b.impl_) &&
+      Broadcastable(*a.impl_, *b.impl_, b_non_reducing);
+}
+
+
+inline bool Overlap(const Tensor &a, const Tensor &b) {
+  return Compatible(*a.impl_, *b.impl_);
+}
+
+
+/*
+  This function returns true if a, b and c have the same dtype
+  and device; equivalent to Compatible(a, b) && Compatible(b, c).
+*/
+inline bool Compatible(const TensorImpl &a, const TensorImpl &b,
+                       const TensorImpl &c) {
+  return Compatible(*a.impl_, *b.impl_, *c.impl_);
+}
+
+
 /**  This function returns true if the dimensions of tensor patterns
      a and b are broadcastable in the PyTorch sense.  What this means
      for tensors with the same num-axes is that dims for axis i
@@ -36,7 +72,7 @@ namespace tensor {
      padding with leading (dim=1)'s; for
      instance, dims=[2,8,3] and dims=[8,1] would be broadcastable because
      the [8,1] would be interpreted as [1,8,1].  (The examples above
-     are in the public ordering, not the reversed ordering.)
+     are in the public ordering, not the reversed private ordering.)
 
      If 'b_non_reducing' is true, then we do not allow any dim of
      b to be 1 where the corresponding dim of a was not 1.
@@ -94,7 +130,30 @@ inline bool SameDim(const Tensor &a, const Tensor &b,
   return SameDim(a.impl_.pattern, b.impl_.pattern);
 }
 
+inline void CheckUnchangedSince(int64 tick, const Tensor &a) {
+  // TODO.  Access its storage and check not changed since then.
+}
 
+
+/**
+   This is to be called from any routine that writes to the memory underlying a
+   Tensor; in debug mode it registers that the Tensor has been changed, which
+   will later be used to check that the preconditions of the autograd framework
+   (in terms of in-place operations) are satisfied.
+ */
+inline void RegisterTensorChange(const Tensor &a) {
+  RegisterTensorChange(*a.impl_);
+}
+
+
+/**
+   Returns the number of elements in the Tensor, which equals the product of its
+   dimensions, i.e. the product from `axis = 0 ... a.NumAxes() - 1`, of
+   `a.Dim(axis)`.
+ */
+inline int64 NumElements(const Tensor &a) {
+  return NumElements(*a.impl_);
+}
 
 
 }  // namespace tensor

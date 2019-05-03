@@ -25,59 +25,54 @@
 
 
 /**
-   This header contains basic linear-algebra and copying types of operations
-   on TensorImpl objects.  See also tensor-impl-nonlinearly
+   This header contains mostly functions for usage by other code in the
+   framework, that operate on Tensors; see tensor-functions.h for more
+   user-facing functions.
 */
 namespace kaldi {
 namespace tensor {
 
 
-// This function returns true if a and b have the same dtype
-// and device.  See also Broadcastable().
+/**
+  This function returns true if a and b have the same dtype
+  and device.  See also Broadcastable().
+*/
 inline bool Compatible(const TensorImpl &a, const TensorImpl &b);
 
 
-// This function returns true if a and b have the same dtype
-// and device; equivalent to Compatible(a, b) && Compatible(b, c).
+/*
+  This function returns true if a, b and c have the same dtype
+  and device; equivalent to Compatible(a, b) && Compatible(b, c).
+*/
 inline bool Compatible(const TensorImpl &a, const TensorImpl &b,
                        const TensorImpl &c);
 
 
 
+/**
+  This function returns true if the patterns of a and b are broadcastable.
+  See similar function in tensor-pattern-utils.h for more information.
+*/
+inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
+                          bool b_non_reducing = false);
 
-//  This function moves the 'data' pointer stored in 't' by adding
-//  a number of elements equal to 'offset'.  It casts it to the
-// type specified in t->dtype so the memory address changes by
-// the right amount.
-inline void AddToPointer(int64 offset, TensorImpl *t) {
-  switch(t->dtype) {
-    case kFloatDtype:
-      t->data = static_cast<void*>(static_cast<float>(t->data) + offset);
-      return;
-    case kDoubleDtype:
-      t->data = static_cast<void*>(static_cast<double>(t->data) + offset);
-      return;
-    default:
-      KALDI_ERR << "Unknown data type";
-  }
-}
+/**
+  This function returns true if the patterns of a, b and c are broadcastable.
+  See similar function in tensor-pattern-utils.h for more information.
+*/
+inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
+                          const TensorImpl &c, bool c_non_reducing = false);
 
 
 /**
-   This function allocates the appropriate storage for the Tensor described
-   in 'impl', and sets is 'data' pointer to the allocated memory address.
-   It returns the address a newly allocated Storage object which manages
-   the memory location; you will probably want to construct a
-   std::unique_ptr<Storage> from this so that when it goes out of scope,
-   the memory will be freed.
+   This function creates the appropriate storage object for the Tensor described
+   in 'impl', and sets impl->storage to that value.  Due to lazy allocation (see
+   "Lazy allocation" in glossary in tensor.h) the underlying memory won't be
+   allocated, but the meta-information is set up.
 
       @param [in,out] impl   The TensorImpl object we are allocating for.
-                      Any previous value of impl->data is ignored and
-                      overwritten.
-                      It is required that that the product of dims in
-                      impl->pattern be nonzero (i.e. that the pattern
-                      is initialized to a valid value), and that its
-                      dtype and device values be set.
+                      Any previous value of impl->storage is ignored and
+                      overwritten.  Must satisfy impl->IsValid(false).
       @return         Returns a newly allocated Storage object that
                       manages this memory block.  When this object is deleted,
                       the memory block will be deallocated using a
@@ -87,17 +82,8 @@ inline void AddToPointer(int64 offset, TensorImpl *t) {
 
    See also AllocateTensorDataShared().
  */
-Storage *AllocateTensorData(TensorImpl *impl);
+void CreateTensorStorage(TensorImpl *impl);
 
-
-/**
-   This function is as AllocateTensor(), except that the Storage
-   object returned is allocated via std::make_shared (which involves
-   just one heap allocation, as opposed to two if you constructed
-   the shared_ptr from the Storage* pointer).  See the documentation
-   for AllocateTensor() for more details.
- */
-std::shared_ptr<Storage> AllocateTensorDataShared(TensorImpl *impl);
 
 
 
@@ -157,7 +143,6 @@ inline void Transpose(int32 axis1, int32 axis2, TensorImpl *t) {
 }
 
 
-
 /**
    This is like PyTorch's slice() / narrow() functions.
    It selects a range of dimensions on one of the axes.  It is similar to
@@ -174,7 +159,8 @@ inline void Transpose(int32 axis1, int32 axis2, TensorImpl *t) {
    See also: the other overloaded version of Slice() which accepts the 'step'
    parameter; and Select(), which also reduces the num-axes.
  */
-void Slice(int32 axis, int32 start, int32 end, TensorImpl *t);
+void Slice(int32 axis, int32 start, int32 end, const TensorImpl &src,
+           TensorImpl *dest);
 
 
 /**
@@ -197,22 +183,42 @@ void Slice(int32 axis, int32 start, int32 end, TensorImpl *t);
 
    See the other version of Slice(), and Select().
  */
-void Slice(int32 axis, int32 start, int32 end, int32 step, TensorImpl *t);
+void Slice(int32 axis, int32 start, int32 end, int32 step,
+           const TensorImpl &src, TensorImpl *dest);
 
 
 /**
-   Select one element from an axis of TensorImpl 't', reducing t->NumAxes() by
-   one.
+   Copy metadata from one TensorImpl to another, while modifying it
+   by selecting one index from a specified axis of a TensorImpl `t`, reducing
+   the num_axes by one.
 
        @param [in] axis Axis from which to select an element; require
-                         -t->NumAxes() <= axis < t->NumAxes(), with negative
+                         `-t->NumAxes() <= axis < t->NumAxes()`, with negative
                          axis interpreted as an offset from t->NumAxes().
        @param [in] index  Index in t to select; must be in range
                           [0, t->Dim(axis) - 1].
-       @param [in,out]  t   TensorImpl whose metadata is to be modified.
- */
-void Select(int32 axis, int32 index, TensorImpl *t);
+       @param [in] src    TensorImpl which is to be copied
+       @param [out] dest  TensorImpl which we are copying to.  It is allowed
+                          to be the same object as 'src'.
+*/
+void Select(int32 axis, int32 index, const TensorImpl &src,
+            TensorImpl *dest);
 
+
+/**
+
+
+ */
+inline void RegisterTensorChange(const TensorImpl &impl) {
+  if (DebugMode()) {
+    impl.storage_->GetChangeTracker()->RecordChange(
+        SizeOf(impl.dtype), impl.pattern);
+  }
+}
+
+inline int64 NumElements(const TensorImpl &a) {
+  return NumElements(a.pattern);
+}
 
 
 

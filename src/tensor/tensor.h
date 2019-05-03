@@ -25,8 +25,109 @@
 #include "tensor/tensor-impl.h"
 #include "tensor/storage.h"
 
+
+/*
+   TENSOR GLOSSARY
+
+    Base Variable:  A Variable that is not a view into another Variable,
+             but has been created directly from a Tensor (or via Detach()).
+             Each Variable has a base Variable; a base Variable's
+             base Variable is itself.  See also: "View Variable".
+
+    Invalidated:  if some data used in backprop needs to have been unchanged since
+              a particular tick (as recorded in an Op), but it has been changed
+              since then, we say that it has been invalided.  This is an error,
+              but it will only be detected in debug mode.  In effect we store a
+              record of what time (in ticks) data last changed at the
+              individual-element level (e.g. per float), via the ChangeTracker
+              object that is attached to the Storage object.  It's done in a
+              structured way, not via a huge boolean array.  This means that the
+              change-tracking mechanism is not defeated by doing Detach() or by
+              constructing multiple Variables from the same Tensor.
+
+    In-place operation: An operation that modifies a Variable, such as adding
+              to it after it has been created.  This notion is not particularly
+              meaningful in this framework, since in a sense all operations
+              are in-place operations; conceptually, the creation of a Variable
+              is seen as separate from an operation that sets it to some value,
+              and in-place operations are thus not "special".
+
+    Lazy allocation:  We do not allocate memory as soon as a Tensor is created,
+              but wait until an operation is done on it.  This makes it easier
+              to implement backprop with views of Tensors, because we can
+              construct views of Tensors whose memory has not been allocated yet.
+              The code for this happens in class Storage (see storage.h).  We
+              can also repeat this trick: on a base Variable, you can call
+              ZeroDeallocating(), which conceptually zeroes the Variable, but
+              does it by freeing the underlying data.  This enables the autograd
+              graph to be re-used without leaving too many things allocated.
+
+     Leaf Variable:  A leaf Variable is a Variable that you create directly
+             by wrapping a Tensor (or by calling .Detach()).  A leaf
+             Variable is always a base Variable.
+
+     Node:   A node in the autograd graph (Ops correspond-- roughly-- to the
+             edges in that graph).  There is a node for each tracked base variable.
+             [See also: Tracked; Base Variable].
+
+     Op:     (see op.h)  An operation on a Tensor (e.g. addition, multiplication, etc.),
+             including in-place operations.  Each Node in the autograd graph stores
+             a list of Ops that operated on that base Variable or some sub-part of
+             it.  However, if an Op modified two Nodes we need to call its Backprop()
+             only once; after figuring out which Ops need to be done, we call their
+             Backprop() in reverse order of their ticks (see: Tick).
+
+    Op-input-node:  Relative to a particular Op, a Node is an Op-input-node if
+            it is attached to at least one Variable that is an input of that Op,
+            but is not attached to any Variable that is an output of that Op.
+            An Op-input-node may not also be an Op-output-node (they are disjoint
+            sets).
+
+    Op-output-node: Relative to a particular Op, a Node is an Op-output-node
+            if it is attached to any Variable that is an output of that Op
+            (i.e. that is modified by that Op).
+
+    Optional Tensor:  In situations where we might have a Tensor and might
+            not, we use a raw std::shared_ptr<TensorImpl>.  (A Tensor wraps
+            a std::shared_ptr<TensorImpl> that is known not to be NULL).
+            Note: we don't allow a Tensor to have zero dim, so we can't
+            use that representation when the Tensor isn't really there.
+
+    Tick:   a tick is the value of a global 64-bit time counter that we increment
+            every time we mutate a Tensor; see GetTick(), and
+            Op::GetTimestamp().  When we create Ops for backpropagation of
+            derivatives, we record the tick at which the Op was created, for
+            purposes of checking for invalidation (see: "Invalidated"), and
+            also of ordering Ops during backprop.
+
+   Tracked:  We say a Variable is tracked if gradient-tracking is
+             enabled for it.  This will be the case if it is
+             a leaf Variable constructed with requires_grad = true,
+             or a non-leaf Variable that has been created or changed
+             by an operation that depended on a tracked Variable.
+             A non-tracked Variable can become tracked but not vice
+             versa.  The granularity of being tracked is at the
+            "base variable" level.
+
+   Underlying / memory underlying: For a Tensor or Variable a, the "memory
+             underlying a" means the part of computer memory, accessible through
+             the storage object, that is covered by the pattern of a.
+
+   View Variable:  A View Variable is any variable that is not a base
+            variable.  Such variables will be views of base Variables that have
+            been created from them by some operation such as slicing
+            (e.g. taking row or column ranges).
+
+
+
+
+ */
+
+
+
 namespace kaldi {
 namespace tensor {
+
 
 /**
    A Tensor is a multi-dimensional array (up to 5 dimensions) of types such as
@@ -39,13 +140,13 @@ namespace tensor {
 
    Most of the operations that you would do on a Tensor (like addition,
    multiplication and so on) are declared out-of-line in tensor-functions.h.
+
+
  */
 class Tensor {
  public:
 
-  inline bool Initialized() { return storage_->data_ != NULL; }
-
-  /// Return the number of axes (a number in {0,1,2,3,4}).  In mathematical
+  /// Return the number of axes (a number in {0,1,2,3,4,5,6}).  In mathematical
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
   // the terms 'number of axes' or 'axis' throughout.
@@ -55,9 +156,9 @@ class Tensor {
   // the last axis is KALDI_TENSOR_MAX_DIM - 1.
   inline int32 NumAxes() const { return impl_.pattern.num_axes; }
 
-  const TensorImpl &Impl() { return impl_; }
+  const TensorImpl &Impl() const { return impl_; }
 
-  const TensorMeta &Meta() { return reinterpret_cast<TensorMeta&>(impl_); }
+  const TensorMeta &Meta() const { return reinterpret_cast<TensorMeta&>(impl_); }
 
   // Return reference to the struct containing the dimension and
   // stride info.
@@ -65,14 +166,13 @@ class Tensor {
 
   // Return a vector containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().
-  // This cannot return a const reference because the
+  // This cannot return some kind of reference because the
   // dims are stored internally in reversed order.
   std::vector<int32> Dims() const;
 
   // Return a vector containing the strides of the tensor.
   // Strides().size() will equal NumAxes().
   std::vector<int32> Strides() const;
-
 
   // Returns the dimension on the supplied axis
   //  @param [in] axis  Axis on which dimension is required, with
@@ -96,6 +196,7 @@ class Tensor {
   // Returns true if the data forms a contiguous block in memory.
   // (not the same as 'contiguous()' in PyTorch, which also requires
   // that the strides be 'C'-style; for that, see HasCStrides().
+  // TODO: see if this needs to be cached.
   bool IsContiguous() const;
 
   // Returns true if the strides for this array are what you would
@@ -177,7 +278,7 @@ class Tensor {
   /**
      Construct a new Tensor with freshly allocated underlying data with
      the data type, device and dimensions the same as `other`.  The strides
-     will be the same order as 'other' if sp == kCopyStrides.
+     will be the same order as 'other' if sp == kCopyStrideOrder.
 
        @param [in]  meta  The metadata we are copying the dims, device,
                        dtype and possibly strides from
@@ -192,83 +293,33 @@ class Tensor {
        @param [in]  ip   The data initialization policy
   */
   Tensor(const Meta &meta,
-         StridePolicy sp);
+         StridePolicy sp): impl_(new TensorImpl(meta, sp)) { }
 
 
-  /** Construct a Tensor with freshly allocated data.
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] dtype   The data type to use
-       @param [in] device  The device to put the data on
+  /** Construct a Tensor with freshly allocated, uninitialized data.
 
-       Example:  `Tensor a({3,4,5}, kDoubleDtype, kCpuDevice);`
-   */
-  Tensor(ArrayRef<int32> dims, DataType dtype, Device device);
-
-  /** Construct a Tensor with freshly allocated data, and device ==
-      `GetDefaultDevice().`.
-
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] dtype   The data type to use
-
-       Example:  `Tensor a({3,4,5}, kDoubleDtype);`
-   */
-  Tensor(ArrayRef<int32> dims, DataType dtype);
-
-  /** Construct a Tensor with freshly allocated data, data type ==
-      `GetDefaultDtype()`,
-
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] device  The device to put the data on
-
-       Example:  `Tensor a({3,4,5}, kCpuDevice);`
-   */
-  Tensor(ArrayRef<int32> dims, Device device);
-
-
-  /** Construct a Tensor with freshly allocated data, data type ==
-      `GetDefaultDtype()`, and device == GetDefaultDevice().
-
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] device  The device to put the data on
-
-       Example:  `Tensor a({3,4,5}, kCpuDevice);`
-   */
-  Tensor(ArrayRef<int32> dims);
-
-
-
-  /**
-     Construct a Tensor with the dimensions and strides provided.  This differs
-     from the constructor taking `ArrayRef<int32> dims` in that it will use
-     the strides in `pattern` (except that if the data in `pattern` is not
-     contiguous, it will make it contiguous by filling in any gaps).  This means
-     that, for example, if you use this constructor on a 2-dimensional Tensor
-     that has been transposed and thus has a column-major layout, the resulting
-     Tensor will also have a column-major layout.
-
-       @param [in] pattern  The dimension and stride information that
-                  this tensor should match (although we will fill gaps
-                  to make it contiguous)
-       @param [in] dtype   The data type to use
-       @param [in] device  The device to put the data on
-       @param [in] set_zero   If true, set the data to zero.  If false,
-                        the contents will be undefined.
-
+       @param [in] dims    The dimensions of the tensor, up to
+                     KALDI_TENSOR_MAX_DIM positive integers.
+       @param [in] opts    Options regarding data-type and device;
+                           see examples below.
+    Example (note: the braces are braced-initializer-lists)
+<code>
+   Tensor a({3,4});
+   Tensor b({}, kDoubleDtype);
+   Tensor c({5,6,7}, kCpuDevice);
+   Tensor d({1,2}, {kDoubleDtype, kCpuDevice});
+</code>
   */
-  Tensor(TensorPattern &pattern, DataType dtype, Device device,
-         InitializePolicy p);
+  inline Tensor(ArrayRef<int32> dims,
+                TensorOptions opts = TensorOptions()):
+      impl_(new TensorImpl(meta, opts)) { }
+
+
 
   /**
      Construct a Tensor from the metadata in 'meta'.  Requires
      that meta.pattern be contiguous (meaning: literally contiguous,
      not the PyTorch meaning which is a stronger condition).
-     ??Possibly we could make it similar to the constructor above
-       and have it just make it contiguous if it was not.??
-
 
        @param [in] meta  Struct containing the metadata specifying
                      the Tensor's pattern, data-type and device
@@ -285,23 +336,57 @@ class Tensor {
   Tensor(TensorMeta &meta, InitializePolicy p);
 
 
+  // Move assignment.  TODO: check whether this really does move on the
+  // shared_ptr.
+  Tensor(Tensor &&other): impl_(other.impl_) { }
+
   /**
-     This constructor takes the 'impl' and 'storage' provided and returns
-     a Tensor containing them.  Intended for special-purpose code such
-     as when we wrap arrays from external frameworks.
+     Constructor from TensorImpl.  Will often be used by framework code; not
+     intended for use by users.
    */
-  Tensor(const TensorImpl &impl, std::shared_ptr<Storage> storage);
+  Tensor(const std::shared_ptr<const TensorImpl> &impl);
+
+  /**
+     Move-constructor version of constructor from TensorImpl.  Will often be
+     used by framework code; not intended for use by users.  TODO: check that
+     this really does move.
+  */
+  Tensor(const std::shared_ptr<const TensorImpl> &&impl): impl_(impl) { }
+
 
  private:
-  // This object contains the num-axes, dims, strides and data pointer, plus
-  // cached properties.
-  TensorImpl impl_;
 
-  // The storage region where the data resides storage_->data will equal
-  // impl_.data (we duplicate it in impl_ for convenence and to avoid an extra
-  // pointer dereference).
-  std::shared_ptr<Storage> storage_;
+  // It might seem odd that we contain a shared_ptr to *const* TensorImpl.
+  // What is const here is the meta-information, not the underlying data
+  // (e.g. the floats).  The reason for this decision is mostly so that class
+  // Variable can store Tensors and shared_ptr's to TensorImpl and not
+  // worry about the meta-information pointed to by those pointers being
+  // unexpectedly changed.  The idea is, whenever you need to change this
+  // meta-info, you reallocate;  things that need to manipulate meta-info
+  // and don't want to reallocate can work directly with TensorImpl which
+  // is a lower-level, less safe interface intended for the developers of
+  // this toolkit.
+  //
+  // Note: the difference between a Tensor and a simple std::shared_ptr<const
+  // TensorImpl> is that in the Tensor the pointer is guaranteed to be non-NULL.
+  // We use the shared_ptr where it could be NULL, e.g. in Variables for the
+  // grad (since it might not have been set up).
+  std::shared_ptr<const TensorImpl> impl_;
 };
+
+
+
+/**
+   This is to be used when you know that 'impl' is non-NULL and you want to
+   treat it as a Tensor.  You should view the type `std::shared_ptr<const
+   TensorImpl>` as "might be Tensor, might be NULL".
+*/
+inline Tensor &AsTensor(std::shared_ptr<const TensorImpl> &impl) {
+  return reinterpret_cast<Tensor&>(impl);
+}
+
+
+
 
 
 

@@ -54,6 +54,37 @@ int32 ComputePatternCode(const TensorPattern &pattern) {
 }
 
 
+void ComputeMinAndMaxMindex(const TensorPattern *pattern,
+                            int64 *min_mindex,
+                            int64 *max_mindex) {
+  KALDI_PARANOID_ASSERT(IsValid(pattern));
+  int32 num_axes = pattern.num_axes;
+  if (ContainsNegativeStride(pattern.code)) {
+    // The if-statement above may be read as "if either pattern.code is -1 or it
+    // indicates that `pattern` contains a negative stride.  That is, at this
+    // point all we know is that `pattern` *might* contain a negative stride.
+    int64 min_mindex_sum = 0, max_mindex_sum = 0;
+    for (int32 raxis = 0; raxis < num_axes; raxis++) {
+      int64 prod (pattern.dims[raxis] - 1) *
+          static_cast<int64>(pattern.strides[raxis]);
+      if (pattern.strides[raxis] > 0) max_mindex_sum += prod;
+      else min_mindex_sum += prod;
+    }
+    *min_mindex = min_mindex_sum;
+    *max_mindex = max_mindex_sum;
+  } else {
+    // This is a faster branch of the code where we know that all strides are
+    // nonnegative.
+    *min_mindex = 0;
+    int64 max_mindex_sum = 0;
+    for (int32 raxis = 0; raxis < num_axes; raxis++)
+      max_mindex_sum += (pattern.dims[raxis] - 1) *
+          static_cast<int64>(pattern.strides[raxis]);
+    *max_mindex = max_mindex_sum;
+  }
+}
+
+
 
 /**
    This utility function used in CompressPatterns() normalizes the signs of the
@@ -230,10 +261,10 @@ static inline void CombineAxes(ArrayRef<TensorPattern*> patterns,
 
    CAUTION: this function does not update the codes of 'patterns'.
  */
-static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_DIM],
+static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_AXES],
                               ArrayRef<TensorPattern*> patterns) {
   int32 first_trivial_raxis = -1;
-  for (int32 raxis = 0; raxis < KALDI_TENSOR_MAX_DIM; raxis++) {
+  for (int32 raxis = 0; raxis < KALDI_TENSOR_MAX_AXES; raxis++) {
     if (is_trivial_axis[raxis]) {
       first_trivial_raxis = raxis;
       break;
@@ -302,7 +333,7 @@ void CompressPatterns(ArrayRef<TensorPattern*> patterns,
 
   bool exists_trivial_axis = false;
   // The = {} ensures (I believe) that they are all set to 0, meaning false.
-  bool is_trivial_raxis[KALDI_TENSOR_MAX_DIM] = {};
+  bool is_trivial_raxis[KALDI_TENSOR_MAX_AXES] = {};
   for (int32 raxis = 0, mask = 1; raxis < max_num_axes; raxis++, mask <<= 1) {
     if ((combined_code | mask) == 0) {
       is_trivial_raxis[raxis] = true;
@@ -380,35 +411,42 @@ void SortAxes(TensorPattern *pattern) {
     case 0: case 1:
       return;
     case 2:
-      if (pattern->strides[0] > pattern->strides[1]) {
+      // Implement this as a special case, avoiding a temporary
+      if (pattern->strides[0] > pattern->strides[1] ||
+          (pattern->strides[0] == pattern->strides[1] &&
+           pattern->dims[0] > pattern->dims[1])) {
         std::swap(pattern->strides[0], pattern->strides[1]);
         std::swap(pattern->dims[0], pattern->dims[1]);
-        pattern->code = -1;
       }
+      pattern->code = -1;
       return;
     default: {
-      // This is bubble sort, which might seem super inefficient, but it avoids
-      // the need to create a temporary of pairs (or implement an appropriate
-      // in-place sort); and since num_axes will rarely be more than about 3,
-      // and never more than 6, I don't think the speed will be a problem.
-      while (true) {
-        bool changed = false;
-        for (int32 i = 0; i < num_axes - 1; i++) {
-          if (pattern->strides[i] > pattern->strides[i + 1]) {
-            std::swap(pattern->strides[i], pattern->strides[i + 1]);
-            std::swap(pattern->dims[i], pattern->dims[i + 1]);
-            changed = true;
-          }
-        }
-        if (changed)
-          pattern->code = -1;
-        else
-          return;
+      std::pair<int32,int32> dims_strides[KALDI_TENSOR_MAX_DIM];
+      for (int32 i = 0; i < num_axes; i++) {
+        dims_strides[i].first = pattern->dims[i];
+        dims_strides[i].second = pattern->strides[i];
       }
+      std::sort(dims_strides, dims_strides + num_axes,
+                // below is a C++11 lambda used as a comparator function, like
+                // the operator a < b.
+                [] (const std::pair<int32,int32> &a,
+                    const std::pair<int32,int32> &b) {
+                  int32 abs_stride_a = std::abs(a.second),
+                      abs_stride_b = std::abs(b.second);
+                  if (abs_stride_a < abs_stride_b) return true;  // a < b; sort on abs(stride) first.
+                  else if (abs_stride_a > abs_stride_b) return false;  // a > b
+                  else return (a.first < b.first);
+                  // sort on dim if strides are the same
+                  // (which should only be for stride=0 for any valid Pattern.
+                });
+      for (int32 i = 0; i < num_axes; i++) {
+        pattern->dims[i] = dims_strides[i].first;
+        pattern->strides[i] = dims_strides[i].second;
+      }
+      pattern->code = -1;
+      return;
     }
   }
-}
-
 }
 
 void Transpose(int32 raxis1, int32 raxis2, TensorPattern *p) {
@@ -449,7 +487,7 @@ void RemoveTrivialAxes(TensorPattern *pattern) {
       num_axes_out = 0;
   for (int32 raxis = 0; raxis < num_axes; raxis++) {
     int32 this_dim = pattern->dims[raxis];
-    if (this_dim != 0) {
+    if (this_dim != 1) {
       if (num_axes_out != raxis) {
         pattern->dims[num_axes_out] = this_dim;
         pattern->strides[num_axes_out] = pattern->strides[raxis];
@@ -457,16 +495,150 @@ void RemoveTrivialAxes(TensorPattern *pattern) {
     }
   }
   // It is a requirement of struct TensorPattern that dims and
-  // strides for raxis > num_axes be 1 and 0 respectively.
+  // strides for raxis >= num_axes be 1 and 0 respectively.
   for (int32 raxis = num_axes_out; raxis < num_axes; raxis++) {
     pattern->dims[raxis] = 1;
     pattern->strides[raxis] = 0;
   }
   pattern->num_axes = num_axes;
-  // Caution: we are not updating the code.
-
+  pattern->code = -1;
 }
 
+
+void RemoveTrivialAxes(const TensorPattern &pattern_in,
+                       TensorPattern *pattern_out) {
+  KALDI_PARANOID_ASSERT(pattern_out != &pattern_in);
+  int32 num_axes = pattern->num_axes,
+      num_axes_out = 0;
+  for (int32 raxis = 0; raxis < num_axes; raxis++) {
+    int32 this_dim = pattern_in.dims[raxis];
+    if (this_dim != 1) {
+      pattern_out->dims[num_axes_out] = this_dim;
+      pattern_out->axes[num_axes_out] = pattern_in.strides[raxis];
+    }
+  }
+  // It is a requirement of struct TensorPattern that dims and
+  // strides for raxis >= num_axes be 1 and 0 respectively.
+  for (int32 raxis = num_axes_out;
+       raxis < KALDI_TENSOR_MAX_AXES; raxis++) {
+    pattern_out->dims[raxis] = 1;
+    pattern_out->strides[raxis] = 0;
+  }
+  pattern_out->num_axes = num_axes_out;
+  pattern_out->code = -1;
+}
+
+int64 NumElements(const TensorPattern &pattern) {
+  int32 num_axes = pattern.num_axes;
+  int64 ans = 1;
+  for (int32 raxis = 0; raxis < num_axes; raxis++)
+    ans *= pattern.dims[raxis];
+  return ans;
+}
+
+void Select(int32 eaxis, int32 index,
+            const TensorPattern &src, TensorPattern *dest) {
+  KALDI_PARANOID_ASSERT(src.IsValid());
+  int32 num_axes = src.num_axes,
+      raxis = EaxisToRaxis(eaxis);
+  if (static_cast<uint32>(raxis) >= static_cast<uint32>(num_axes) ||
+      static_cast<uint32>(index) >= static_cast<uint32>(src.dims[axis])) {
+    // If raxis is not in the range [0, num_axes - 1] or the index
+    // is not in the range [0, src.dims[axis] - 1]...
+    KALDI_ERR << "Invalid args to Select(): axis=" << eaxis
+              << " index=" << index << " vs. pattern dims="
+              << DimsAsString(src);
+  }
+  dest->num_axes = src.num_axes - 1
+  for (int32 r = 0; r < raxis; r++) {
+    dest->dims[r] = src.dims[r];
+    dest->strides[r] = src.strides[r];
+  }
+  dest->offset = src.offset + index * src.strides[raxis];
+  for (int32 r = raxis + 1; r < num_axes; r++) {
+    dest->dims[r - 1] = src.dims[r];
+    dest->strides[r - 1] = src.strides[r];
+  }
+  for (int32 r = num_axes - 1; r < KALDI_TENSOR_MAX_DIM; r++) {
+    dest->dims[r] = 1;
+    dest->strides[r] = 0;
+  }
+  dest->code = -1;
+  dest->properties = 0;
+}
+
+void Slice(int32 axis, int32 start, int32 end, TensorPattern *pattern) {
+  int32 num_axes = pattern->num_axes,
+      raxis = EaxisToRaxis(eaxis);
+  KALDI_PARANOID_ASSERT(pattern->IsValid());
+  if (static_cast<uint32>(raxis) >= static_cast<uint32>(num_axes) ||
+      end <= start ||
+      static_cast<uint32>(end) >= static_cast<uint32>(src.dims[axis])) {
+    // If raxis is not in the range [0, num_axes - 1] or (end <= start)
+    // or end is not in the range [0, src.dims[axis] - 1]...
+    KALDI_ERR << "Invalid args to Slice(): axis=" << eaxis
+              << " start=" << start << " end=" << end << " vs. pattern dims="
+              << DimsAsString(*pattern);
+  }
+  int32 old_stride = pattern->strides[raxis];
+  pattern->offset += pattern->strides[raxis] * start;
+  int32 new_dim = end - start;
+  pattern->dims[raxis] = new_dim;
+  if (new_dim == 1) {
+    pattern->strides[raxis] == 0;
+    if (pattern->code >= 0) {
+      // If the code was set, the following keeps it up to date (it's faster
+      // then recomputing the whole thing.
+
+      // Make the bit in the code that says the dim was != 1, is not set.
+      pattern->code &= ~(1 << (raxis - 1));
+      if (old_stride == 1) {
+        // If the stride was 1 then the code would have had at least one of bits
+        // 8,9,10 set to indicate the value of 'raxis'.  Zero this out, since
+        // the stride is no longer 1.
+        pattern->code &= ~(0x700);
+      }
+    }
+  }
+  KALDI_PARANOID_ASSERT(pattern->IsValid());
+}
+
+
+void UnsqueezeR(int32 raxis, const TensorPattern &src, TensorPattern *dest) {
+  int32 num_axes_in = src.num_axes;
+  KALDI_ASSERT(static_cast<uint32>(raxis) <= num_axes_in &&
+               num_axes_in < KALDI_TENSOR_MAX_DIM);
+  KALDI_PARANOID_ASSERT(IsValid(src));
+  if (&src != dest) {
+    // Copy some things over
+    for (int32 r = 0; r < raxis; r++) {
+      dest->dims[r] = src.dims[r];
+      dest->strides[r] = src.strides[r];
+    }
+    for (int32 r = num_axes_in + 1; r < KALDI_TENSOR_MAX_DIM; r++) {
+      dest->dims[r] = 1;
+      dest->strides[r] = 0;
+    }
+  }
+  dest->num_axes = num_axes_in + 1;
+  for (int32 r = num_axes_in + 1; r > raxis; r--) {
+    // go in reverse order in case (&src == dest)
+    dest->dims[r] = src.dims[r - 1];
+    dest->strides[r] = src.strides[r - 1];
+  }
+  // The unsqueezed axis.
+  dest->dims[raxis] = 1;
+  dest->strides[raxis] = 0;
+  if (raxis != num_axes_in) {
+    dest->code = -1;
+    dest->properties = 0;
+  } else if (&src != dest) {
+    // code would be unaffected if raxis == num_axes_in.
+    dest->code = src.code;
+    dest->properties = src.properties;
+  }
+  KALDI_PARANOID_ASSERT(dest->IsValid());
+}
 
 }  // namespace kaldi
 }  // namespace tensor

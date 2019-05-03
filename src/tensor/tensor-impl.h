@@ -26,6 +26,17 @@
 namespace kaldi {
 namespace tensor {
 
+// Metadata for a Tensor.  It's occasionally convenient to have this
+// in a struct (it's the same as a Tensor without the 'data' pointer.
+// The members must stay in sync with the corresponding members of
+// TensorImpl, as we have code that does reinterpret_cast on
+// these types.  (We don't use base-classing as it would make the code
+// harder to read).
+struct TensorMeta {
+  TensorPattern pattern;
+  DataType dtype;
+  Device device;
+};
 
 /**
    TensorImpl is the core part of a Tensor, without the wrapping code and
@@ -39,67 +50,131 @@ struct TensorImpl {
   TensorPattern pattern;
   DataType dtype;
   Device device;
-  std::shared_ptr<Storage> data;  // 'data' points to a shared Storage object
-                                  // that contains (or eventually will contain,
-                                  // due to lazy allocation) the actual data
-                                  // pointer.
+  std::shared_ptr<Storage> storage;  // 'storage' points to a shared Storage object
+                                     // that contains (or eventually will contain,
+                                     // due to lazy allocation) the actual data
+                                     // pointer.
 
   inline int32 NumAxes() { return pattern.num_axes; }
 
-  // Returns the dimension on the supplied axis (using the public axis numbering)
-  //  @param [in] axis  Axis on which dimension is required, with
-  //                    -NumAxes() <= axis < NumAxes(); negative axis
-  //                    is interpreted as an offset from NumAxes().
+  // Returns the dimension on the supplied axis, using the public axis
+  // numbering, with negative index interpreted as an offset from the end.
+  //
+  //  @param [in] eaxis  Eaxis-index (see definition in tensor-pattern.h)
+  //                    Require -NumAxes() <= eaxis < NumAxes().
   //  @return        Returns the dimension on this axis, a number >= 1.
-  inline int32 Dim(int32 axis);
+  inline int32 Dim(int32 eaxis);
 
-  // Returns the stride on the supplied axis (using the public axis numbering)
-  //  @param [in] axis  Axis on which stride is required, with
-  //                    -NumAxes() <= axis < NumAxes(); negative axis
-  //                    is interpreted as an offset from NumAxes().
+  // Returns the stride (== distance between successive elements) on the
+  // supplied axis, using the public axis numbering, with negative index
+  // interpreted as an offset from the end.
+  //
+  //  @param [in] eaxis  Eaxis-index (see definition in tensor-pattern.h)
+  //                    Require -NumAxes() <= eaxis < NumAxes().
   //  @return          Returns the stride on this axis, which will be 0 if
   //                   Dim(axis) == 1, and otherwise nonzero.
   inline int32 Stride(int32 axis);
 
 
   // Returns the data pointer corresponding to the element whose index
-  // is all zeros.
+  // is all zeros.  [TODO: maybe have overloads of this for different types.]
+  // CAUTION: this function may allocate the data if it has not yet been
+  // allocated.
   inline void* GetData() const;
 
 
-  // Returns true if this TensorImpl is valid, false otherwise.  It is an
-  // implied requirement of functions operating on TensorImpl's, that all
-  // TensorImpl's that are provided input or input+output arguments to functions
-  // must have IsValid() == true.
-  bool IsValid() { return pattern.IsValid(true) && data != nullptr; }
-};
+  /**
+    Returns true if this TensorImpl is valid, false otherwise.
 
-// Metadata for a Tensor.  It's occasionally convenient to have this
-// in a struct (it's the same as a Tensor without the 'data' pointer.
-// The members must stay in sync with the corresponding members of
-// TensorImpl, as we have code that does reinterpret_cast on
-// these types.  (We don't use base-classing as it would make the code
-// harder to read).
-struct TensorMeta {
-  TensorPattern pattern;
-  DataType dtype;
-  Device device;
-};
+       @param [in] check_storage   You can set this to false to disable
+                     checks related to the `storage` element (that
+                     it's non-NULL and covers the memory range used
+                     by the pattern.
+       @return   Return true if the TensorImpl is valid (requires
+                pattern.Valid(), plus checks on dtype and device,
+                plus checks on the storage object if check_storage == true.
+  */
+  bool IsValid(bool check_storage = true);
 
 
-inline int32 TensorImpl::Dim(int32 axis) {
-  if (axis < 0) {
-    // it will usually be known whether axis < 0 at compile time, since it's
-    // inlined.
-    KALDI_ASSERT(axis >= -pattern.num_axes);
-    // num_axes - 1 - (axis + num_axes) = - 1 - axis
-    int32 raxis = -1 - axis;
-    return pattern.dims[raxis];
-  } else {
-    KALDI_ASSERT(axis < pattern.num_axes);
-    int32 raxis = pattern.num_axes - 1 - axis;
-    return pattern.dims[raxis];
+  const TensorMeta &Meta() const {
+    return reinterpret_cast<const TensorMeta&>(*this);
   }
+
+  // Note: a copy constructor for TensorImpl might not be needed as we store
+  // shared_ptrs to it and just reuse the same object.
+
+  // Constructor that is used when copying the meta-info from one source
+  // but the storage from another; this version does move-construction
+  // on 'storage'.
+  TensorImpl(const TensorMeta &meta,
+             const std::shared_ptr<Storage> &storage);
+
+  // Constructor that is used when copying the meta-info from one source
+  // but the storage from another; this version does move-construction
+  // on 'storage'.
+  TensorImpl(const TensorMeta &meta,
+             std::shared_ptr<Storage> &&storage);
+
+  // Constructor that copies the meta-info provided; if create_storage
+  // == true it creates the storage reason, else leaves it NULL.
+  TensorImpl(const TensorMeta &meta,
+             bool create_storage = true);
+
+  /**
+     Initializes a TensorImpl with the provided dimensions, creating a new
+     storage object for it.  The strides will be as for a "C" array; see
+     "Default strides:" in tensor-pattern.h.
+
+        @param [in] dims  The dimensions for each axis (in the public
+                       numbering).  All elements must be nonnegative,
+                       and we require `0 <= dims.size < KALDI_TENSOR_MAX_DIM`.
+        @param [in] opts  Options class to set device and dtype;
+                          see examples below
+<code>
+   TensorImpl *t = new TensorImpl({10,20}),
+       *u = new TensorImpl({9}, {kGpuDevice});
+       *v = new TensorImpl({9}, {kDoubleDtype, kGpuDevice});
+</code>
+  */
+  TensorImpl(ArrayRef<int32> dims,
+             TensorOptions opts = TensorOptions());
+
+  /**
+    This constructor initializes a TensorImpl with dtype, device and dims taken
+    from an existing TensorImpl, but a new storage object, and strides
+    determined by the StridePolicy provided.
+
+       @param [in] meta  Meta-info of another TensorImpl; the num_axes,
+                        dims, dtype and device will be taken from here
+                        and the strides may be inspected, depending
+                        on `sp`.
+       @param [in] sp   Stride policy (briefly as follows; see more by
+                      declaration of StridePolicy in tensor-common.h).
+                      kKeepStrideOrder -> use the same order of abs(stride) as
+                                          in 'meta'
+                      kNormalized -> use normalized strides (see definition
+                       in tensor-pattern.h); basically, the normal order we'd use
+                       for a new Tensor.
+                      kCopyStrides -> use the exact strides from the source
+                       pattern.
+  */
+  TensorImpl(const TensorMeta &meta,
+             StridePolicy sp);
+
+  // Default constructor
+  TensorImpl() { }
+
+};
+
+
+inline int32 TensorImpl::Dim(int32 eaxis) {
+  int32 raxis = EaxisToRaxis(eaxis);
+  if (raxis >= pattern.num_axes)
+    KALDI_ERR << "Invalid axis given to Dim(): "
+              << eaxis << ", num_axes = "
+              << pattern.num_axes;
+  return pattern.dims[num_axes];
 }
 
 

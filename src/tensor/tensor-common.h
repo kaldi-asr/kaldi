@@ -84,12 +84,25 @@ class WithDeviceAs {
 enum DataType {
   // We will of course later extend this with many more types, including
   // integer types and half-precision floats.
-  kFloatDtype = 0,
-  kDoubleDtype = 1
+  kDefaultDtype = 0,
+  // kDefaultDtype means the type used when not specified; it's user definable
+  // via SetDefaultDtype.
+  kFloatDtype = 1,
+  kDoubleDtype = 2,
 };
 
 
-aDataType GetDefaultDtype();
+
+inline int32 SizeOf(DataType dtype) {
+  switch(dtype) {
+    case 0: return 4;
+    case 1: return 8;
+    case 2: KALDI_ERR << "Invalid data-type " << int32(dtype); return 0;
+  }
+}
+
+
+DataType GetDefaultDtype();
 void SetDefaultDtype(DataType dtype);
 
 class WithDtypeAs {
@@ -111,19 +124,62 @@ class WithDtypeAs {
 
 
 
+// struct TensorOptions is used as an arg for some constructors
+// when creating Tensors and Variables; it allows flexibility
+// in specifying the device and/or dtype.  See the examples
+// shown where constructors of Tensor or Variable are declared.
+struct TensorOptions {
+  DataType dtype;
+  Device device;
+
+  TensorOptions(): dtype(GetDefaultDtype()),
+                   device(GetDefaultDevice()) { }
+  TensorOptions(DataType dtype):
+      dtype(dtype), device(GetDefaultDevice()) { }
+  TensorOptions(Device device):
+      dtype(GetDefaultDtype()), device(device) { }
+  TensorOptions(DeviceType device_type):
+      dtype(GetDefaultDtype()), device(device_type) { }
+  TensorOptions(DataType dtype, Device device):
+      dtype(dtype), device(device) { }
+  TensorOptions(DataType dtype, Device device_type):
+      dtype(dtype), device(device_type) { }
+  TensorOptions(const TensorOptions &other):
+      dtype(other.dtype), device(other.device) { }
+};
+
+
+// Global variable, initialized from zero, that is used in GetTick().
+// This is defined in tensor-common.cc.
+extern int64 g_tick_counter;
+
+inline int64 NextTick() { return ++g_tick_counter; }
+
+// ? Remove this?  To be used when you don't want to increment
+// the counter.
+inline int64 CurrentTick() { return g_tick_counter; }
+
+
+// debug_mode activates code that checks for invalidated data in the backprop
+// pass; see "Invalidated:" in glossary in tensor.h.
+extern bool debug_mode;
+inline bool DebugMode() { return debug_mode; }
+inline void SetDebugMode(bool b) { debug_mode = b; }
+
 
 /// Enumeration that says what strides we should choose when allocating
 /// A Tensor.
 enum StridePolicy {
-  kCopyStrideOrder,  // means: copy the size-ordering of the strides from the
-                     // source Tensor (they will all be positive even of some of
-                     // the source Tensor's strides were negative).
-  kCstrides      // means: strides for dimensions that are != 1 are ordered from
-                 // greatest to smallest as in a "C" array.  Per our policy,
-                 // any dimension that is 1 will have a zero stride.
-
-  // We may later add options for Fortran-style striding and for the sign of the
-  // source Tensor's strides, as well as their order, to be copied.
+  kKeepStrideOrder,  // Means: keep the size-ordering of the strides from the
+                     // source Tensor (but the chosen strides will all be
+                     // positive even of some of the source Tensor's strides
+                     // were negative).
+  kNormalized    // Means: strides for dimensions that are != 1 are ordered from
+                 // greatest to smallest as in a "C" array in the public
+                 // numbering, or smallest to greatest in the private numbering.
+                 // Per our policy, any dimension that is 1 will be given a zero stride.
+                 // C.f. "Normalized strides" in tensor-pattern.h
+  kCopyStrides   // Means: use the exact strides provided.
 };
 
 /// Enumeration that says whether to zero a freshly initialized Tensor.
@@ -161,11 +217,11 @@ enum BinaryFunctionEnum {
 
 
 
-// In practice we don't expect user-owned tensors with dims greater than 5 to
-// exist, but there are certain manipulations we do when simplifying matrix
+// In practice we don't expect user-owned tensors with num-axes greater than 5
+// to exist, but there are certain manipulations we do when simplifying matrix
 // multiplications that temporarily add an extra dimension, and it's most
 // convenient to just increase the maximum.
-#define KALDI_TENSOR_MAX_DIM 6
+#define KALDI_TENSOR_MAX_AXES 6
 
 
 }  // namespace tensor

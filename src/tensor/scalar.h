@@ -1,4 +1,4 @@
-// tensor/variable.cc
+// tensor/scalar.h
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,18 +17,43 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tensor/variable.h"
+#ifndef KALDI_TENSOR_TENSOR_H_
+#define KALDI_TENSOR_TENSOR_H_ 1
+
+#include "tensor/tensor-common.h"
+#include "tensor/tensor-pattern.h"
+#include "tensor/tensor-impl.h"
+#include "tensor/storage.h"
+
+
 
 
 namespace kaldi {
 namespace tensor {
 
 
-void TensorGrad::EnsureGradAllocated() {
+/**
+   Scalar is how we wrap user-supplied constant scalar value.  Right now this
+   basically wraps a double, but for future extensibility to ints, complex
+   numbers and so on, we make it a class.
+*/
+class Scalar {
+ public:
+  Scalar(float f): value_(f) { }
+  Scalar(double d): value_(d) { }
 
-}
+
+  float operator float() const (return value_);
+  float operator double() const (return value_);
+  // DataType Dtype() { return dtype_; }
+ private:
+  double value_;
+  // DataType dtype_;
+};
 
 
-
-}  // namespace kaldi
 }  // namespace tensor
+}  // namespace kaldi
+
+
+#endif  // KALDI_TENSOR_TENSOR_H_
