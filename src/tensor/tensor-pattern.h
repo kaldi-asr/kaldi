@@ -96,9 +96,22 @@ namespace tensor {
                      stride, which is consistent with "C" strides).  See
                      CanonicalizePattern().
 
-    Contiguous:      A Pattern is contiguous if its memory-index-set forms a contiguous
-                     range of integers (no gaps).  This is different from the PyTorch
-                     definition of 'contiguous', which also requires C-style strides.
+    Compact:         A Pattern is compact if its memory-index-set forms a contiguous
+                     range of integers (no gaps).  (We don't call this "contiguous"
+                     because PyTorch uses the same word with a different meaning).
+
+    Default strides:  The default strides for a pattern with provided dimensions are:
+                     of course, zero for any axis with dim=1; and otherwise (describing
+                     it in the public numbering of axes), each axis's stride is
+                     the product of the later-numbered axes' dims.  It corresponds
+                     to the strides of a "C" array.
+                     This is the policy that we will use when constructing new
+                     Tensors if only the dims are provided, which is why we call these
+                     the default strides.
+                     A Pattern having default strides is equivalent to its having
+                     normalized strides and also being compact.
+
+                     See also: Normalized strides, Compact.
 
     Dereferencing a memory-index:
                      Sometimes in formal explanations of algorithms we will use notation
@@ -124,14 +137,15 @@ namespace tensor {
     Disjoint Patterns:  When we speak of disjoint Patterns we mean that
                     their memory-index-sets are disjoint; see memory-index-set.
 
-    Eaxis-index:      We use the term Eaxis-index (meaning: extended axis-index), or,
-                      in code, eaxis_index, to mean an axis-index in the public
-                      numbering (c.f.: Axis-index) but where negative values are
-                      allowed, as in Python.  Negative values are interpreted as
-                      offsets from the num_axes of the Pattern in question, so for
-                      instance -1 would correspond to num_axes - 1.
-                      Valid eaxis-indexes would be in the range [-num_axes, num_axes - 1].
-                      See also: Axis-index, Raxis-index.
+    Eaxis-index / extended axis-index:
+                      We use the term Eaxis-index, or in code, eaxis_index, to
+                      mean an axis-index in the public numbering (c.f.:
+                      Axis-index) but where negative values are allowed, as in
+                      Python.  Negative values are interpreted as offsets from
+                      the num_axes of the Pattern in question, so for instance
+                      -1 would correspond to num_axes - 1.  Valid eaxis-indexes
+                      would be in the range [-num_axes, num_axes - 1].  See
+                      also: Axis-index, Raxis-index.
 
     Extended indexing:  A convention whereby if we have a Tensor with, say,
                       `dims = [5 1]`, we can index that Tensor with an index-tuple
@@ -276,6 +290,9 @@ namespace tensor {
                       PyTorch, if an operation is done on two Tensors with
                       dims=[5 6] and dims=[6], the second one would be interpreted
                       as having dims=[1 6].  That is: we pad with 1's on the left.
+                      Note: whenever we refer to broadcasting we include this feature;
+                      this glossary entry exists just to explain it, not to claim
+                      that we have two different versions of broadcasting.
 
     Raxis-index:      We use the term "raxis-index", often just "raxis" for short,
                       to mean the index of an axis in the reversed, private numbering.
@@ -310,12 +327,16 @@ namespace tensor {
                       View the notation M(P, Q) as shorthand for M((P, Q)).
 
     Normalized strides:  We say that a Pattern has normalized strides if the
-                      strides are all positive and are strictly increasing
-                      in the private numbering (which implies strictly decreasing
-                      in the public numbering).  TODO: remove this?
+                      strides are all nonnegative and the nonzero strides
+                      are in strictly increasing order in the private numbering
+                      (hence strictly decreasing in the public numbering).
+
+                      See also: Default strides (which is a stronger property).
 
     Linear property:
-                      Consider Patterns P and Q with the property that the
+                      This is a slightly technical property used in certain
+                      proofs involving patterns.
+                      Consider patterns P and Q with the property that the
                       memory-index-set of P is a subset of the memory-index-set of
                       Q.  If i is an index-tuple, let P(i) be the map from
                       i to a memory-index, and let

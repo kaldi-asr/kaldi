@@ -690,11 +690,9 @@ bool PatternIncludes(const TensorPattern &pattern1,
 }
 
 
-void MakeContiguousAndJustified(const TensorPattern &src,
-                                TensorPattern *dest) {
+void MakeCompactAndJustified(const TensorPattern &src,
+                             TensorPattern *dest) {
   KALDI_PARANOID_ASSERT(src.IsValid());
-
-
   int32 num_axes = src.num_axes;
 
   // The sorter object provides an order in which we can visit the axes of 'src'
@@ -702,8 +700,7 @@ void MakeContiguousAndJustified(const TensorPattern &src,
   OutOfPlaceAxisSorter sorter(src);
 
   int64 offset = 0;  // 'offset' will be the offset that ensures 'dest' is
-                     // justified (see glossary in tensor-pattern.h for
-                     // definition).
+                     // justified (means lowest memory-index is 0).
   int32 next_abs_stride = 1;
   for (int32 i = 0; i < num_axes; i++) {
     int32 raxis = sorter.GetIndex(i);
@@ -722,17 +719,88 @@ void MakeContiguousAndJustified(const TensorPattern &src,
                             "Input pattern was not valid.");
       if (this_stride < 0) {
         offset += next_stride * (this_dim - 1);
-        dest->strides[raxis] = -next_stride;
+        dest->strides[raxis] = -next_abs_stride;
       } else {
-        dest->strides[raxis] = next_stride;
+        dest->strides[raxis] = next_abs_stride;
       }
       next_abs_stride *= this_dim;
     }
   }
+  SetUnusedDimsAndStrides(num_axes, dest);
+  dest->num_axes = num_axes;
   dest->offset = offset;
-  KALDI_PARANOID_ASSERT(IsContiguousAndJustified(*dest) &&
-                        IsValid(*dest));
+  SetDefaultCodeAndProperties(dest);
+
+  KALDI_PARANOID_ASSERT(IsCompactAndJustified(*dest) &&
+                        IsValid(*dest) && SameDims(src, *dest));
 }
+
+
+void MakeCompactNonnegativeAndJustified(const TensorPattern &src,
+                                        TensorPattern *dest) {
+  KALDI_PARANOID_ASSERT(src.IsValid());
+  int32 num_axes = src.num_axes;
+
+  // The sorter object provides an order in which we can visit the axes of 'src'
+  // that is from least to greatest abs(stride).
+  OutOfPlaceAxisSorter sorter(src);
+
+  int32 next_stride = 1;
+  for (int32 i = 0; i < num_axes; i++) {
+    int32 raxis = sorter.GetIndex(i);
+    // We are going through the raxis-indexes in increasing order of stride.
+    // We'll set each stride to the product of the preceding dims.
+    int32 this_stride = src.strides[raxis],
+        this_dim = src.dims[raxis];
+    dest->dims[raxis] = this_dim;
+    if (this_stride == 0) {
+      dest->strides[raxis] = 0;
+      // Note: if 'src' is valid, this implies the dim is 1,
+      // so no need to multiply 'next_stride'
+    } else {
+      dest->strides[raxis] = next_stride;
+      next_abs_stride *= this_dim;
+    }
+  }
+  SetUnusedDimsAndStrides(num_axes, dest);
+  dest->num_axes = num_axes;
+  dest->offset = 0;
+  SetDefaultCodeAndProperties(dest);
+  KALDI_PARANOID_ASSERT(IsCompactAndJustified(*dest) &&
+                        HasNonnegativeStrides(*dest) &&
+                        IsValid(*dest) && SameDims(src, *dest));
+}
+
+
+
+void MakeCompactNormalizedAndJustified(const TensorPattern &src,
+                                       TensorPattern *dest) {
+  KALDI_PARANOID_ASSERT(src.IsValid());
+  int32 num_axes = src.num_axes;
+
+  int32 next_stride = 1;
+  for (int32 raxis = 0; raxis < num_axes; raxis++) {
+    int32 this_dim = src.dims[raxis],
+        this_stride = src.strides[raxis];
+    dest->dims[raxis] = this_dim;
+    if (this_stride == 0) {
+      dest->strides[raxis] = 0;
+      // no need to multiply next_stride by dim, since it must be 1.
+    } else {
+      dest->strides[raxis] = next_stride;
+      next_stride *= this_dim;
+    }
+  }
+  SetUnusedDimsAndStrides(num_axes, dest);
+  dest->num_axes = num_axes;
+  dest->offset = 0;
+  SetDefaultCodeAndProperties(dest);
+  KALDI_PARANOID_ASSERT(IsCompactAndJustified(*dest) &&
+                        HasNormalizedStrides(*dest) &&
+                        IsValid(*dest) && SameDims(src, *dest));
+}
+
+
 
 
 

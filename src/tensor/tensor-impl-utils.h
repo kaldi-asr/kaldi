@@ -25,8 +25,9 @@
 
 
 /**
-   This header contains basic linear-algebra and copying types of operations
-   on TensorImpl objects.  See also tensor-impl-nonlinearly
+   This header contains mostly functions for usage by other code in the
+   framework, that operate on Tensors; see tensor-functions.h for more
+   user-facing functions.
 */
 namespace kaldi {
 namespace tensor {
@@ -46,6 +47,21 @@ inline bool Compatible(const TensorImpl &a, const TensorImpl &b);
 inline bool Compatible(const TensorImpl &a, const TensorImpl &b,
                        const TensorImpl &c);
 
+
+
+/**
+  This function returns true if the patterns of a and b are broadcastable.
+  See similar function in tensor-pattern-utils.h for more information.
+*/
+inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
+                          bool b_non_reducing = false);
+
+/**
+  This function returns true if the patterns of a, b and c are broadcastable.
+  See similar function in tensor-pattern-utils.h for more information.
+*/
+inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
+                          const TensorImpl &c, bool c_non_reducing = false);
 
 
 /**

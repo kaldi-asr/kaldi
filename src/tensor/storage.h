@@ -22,6 +22,7 @@
 
 #include <functional>
 #include "tensor/tensor-common.h"
+#include "tensor/memory-checker.h"
 
 
 namespace kaldi {
@@ -138,9 +139,20 @@ class Storage {
 struct StorageAux {
   using DeallocatorFunc = std::function<void()>;
 
-  // 'tracker' is used in debug mode to detect when data that might be
-  // required in the backprop phase is invalidated.
-  std::unique_ptr<ChangeTracker> tracker;
+  // 'change_tracker' is used in debug mode to detect when data that might be
+  // required in the backprop phase has changed before we read it.
+  std::unique_ptr<ChangeTracker> change_tracker;
+
+  // 'uninitialized_checker' is used in debug mode to detect when data
+  // that has been allocated but never written to is read.
+  // required in the backprop phase has changed before we read it.
+  std::unique_ptr<UninitializedDataChecker> uninitialized_checker;
+
+  // 'invaliated_checker' is used in debug mode to detect when parts of
+  // derivatives that have been invalidated are read; read the
+  // comment for that class, in memory-checker.h, for complete
+  // info.
+  dstd::unique_ptr<InvalidatedDataChecker> invalidated_checker;
 
   // 'deallocator' is to be used with external toolkits, for example, to
   // decrease the refcount.  In normal cases it will be nullptr.

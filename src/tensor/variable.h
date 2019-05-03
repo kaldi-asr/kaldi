@@ -195,6 +195,31 @@ class VariableImpl {
   // Variables, its value is undefined.
   bool rebase_grad_;
 
+  // overwrite_ is part of a mechanism that avoids unnecessary zeroing of
+  // parts of derivatives during the backprop phase.  By default we
+  // assume that if we write to a Variable in a way that doesn't
+  // depend on the previous value (e.g. we set it, rather than
+  // add to it or multiply in-place), then the previous memory underlying
+  // that Variable has not previously participated in any operations
+  // requiring derivatives.
+  //
+  // If you are about
+  // to modify a Variable c that *has* previously participated in
+  // operations requiring derivatives, then, instead of, say:
+  //  DoSomethingWith(a, b, &c);
+  // (and let's suppose this operation ignores the previous value of `c`),
+  // you could do:
+  //  DoSomethingWith(a, b, &c.Overwrite());
+  // whereby you assert that the memory underlying this variable may have
+  // previously participated in operations requiring derivative tracking
+  // (and hence we need to an extra zeroing after the backprop).
+  // The call to Overwrite() sets the `overwrite_` bool, and then
+  // the DoSomethingWith() call should unset it.
+  //
+  // Look at the comment for class InvalidatedDataChecker in change-tracker.h
+  // for more information.
+  bool overwrite_;
+
   // aux_ is basically a collection of less-often-used fields of class VariableImpl;
   // it helps keep the main class uncluttered.
   std::unique_ptr<VariableImplAux> aux_;

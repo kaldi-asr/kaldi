@@ -109,6 +109,10 @@
              versa.  The granularity of being tracked is at the
             "base variable" level.
 
+   Underlying / memory underlying: For a Tensor or Variable a, the "memory
+             underlying a" means the part of computer memory, accessible through
+             the storage object, that is covered by the pattern of a.
+
    View Variable:  A View Variable is any variable that is not a base
             variable.  Such variables will be views of base Variables that have
             been created from them by some operation such as slicing
@@ -274,7 +278,7 @@ class Tensor {
   /**
      Construct a new Tensor with freshly allocated underlying data with
      the data type, device and dimensions the same as `other`.  The strides
-     will be the same order as 'other' if sp == kCopyStrides.
+     will be the same order as 'other' if sp == kCopyStrideOrder.
 
        @param [in]  meta  The metadata we are copying the dims, device,
                        dtype and possibly strides from
@@ -289,83 +293,33 @@ class Tensor {
        @param [in]  ip   The data initialization policy
   */
   Tensor(const Meta &meta,
-         StridePolicy sp);
+         StridePolicy sp): impl_(new TensorImpl(meta, sp)) { }
 
 
-  /** Construct a Tensor with freshly allocated data.
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] dtype   The data type to use
-       @param [in] device  The device to put the data on
+  /** Construct a Tensor with freshly allocated, uninitialized data.
 
-       Example:  `Tensor a({3,4,5}, kDoubleDtype, kCpuDevice);`
-   */
-  Tensor(ArrayRef<int32> dims, DataType dtype, Device device);
-
-  /** Construct a Tensor with freshly allocated data, and device ==
-      `GetDefaultDevice().`.
-
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] dtype   The data type to use
-
-       Example:  `Tensor a({3,4,5}, kDoubleDtype);`
-   */
-  Tensor(ArrayRef<int32> dims, DataType dtype);
-
-  /** Construct a Tensor with freshly allocated data, data type ==
-      `GetDefaultDtype()`,
-
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] device  The device to put the data on
-
-       Example:  `Tensor a({3,4,5}, kCpuDevice);`
-   */
-  Tensor(ArrayRef<int32> dims, Device device);
-
-
-  /** Construct a Tensor with freshly allocated data, data type ==
-      `GetDefaultDtype()`, and device == GetDefaultDevice().
-
-       @param [in] dims    The dimensions of the tensor (zero to 5
-                    positive integers).
-       @param [in] device  The device to put the data on
-
-       Example:  `Tensor a({3,4,5}, kCpuDevice);`
-   */
-  Tensor(ArrayRef<int32> dims);
-
-
-
-  /**
-     Construct a Tensor with the dimensions and strides provided.  This differs
-     from the constructor taking `ArrayRef<int32> dims` in that it will use
-     the strides in `pattern` (except that if the data in `pattern` is not
-     contiguous, it will make it contiguous by filling in any gaps).  This means
-     that, for example, if you use this constructor on a 2-dimensional Tensor
-     that has been transposed and thus has a column-major layout, the resulting
-     Tensor will also have a column-major layout.
-
-       @param [in] pattern  The dimension and stride information that
-                  this tensor should match (although we will fill gaps
-                  to make it contiguous)
-       @param [in] dtype   The data type to use
-       @param [in] device  The device to put the data on
-       @param [in] set_zero   If true, set the data to zero.  If false,
-                        the contents will be undefined.
-
+       @param [in] dims    The dimensions of the tensor, up to
+                     KALDI_TENSOR_MAX_DIM positive integers.
+       @param [in] opts    Options regarding data-type and device;
+                           see examples below.
+    Example (note: the braces are braced-initializer-lists)
+<code>
+   Tensor a({3,4});
+   Tensor b({}, kDoubleDtype);
+   Tensor c({5,6,7}, kCpuDevice);
+   Tensor d({1,2}, {kDoubleDtype, kCpuDevice});
+</code>
   */
-  Tensor(TensorPattern &pattern, DataType dtype, Device device,
-         InitializePolicy p);
+  inline Tensor(ArrayRef<int32> dims,
+                TensorOptions opts = TensorOptions()):
+      impl_(new TensorImpl(meta, opts)) { }
+
+
 
   /**
      Construct a Tensor from the metadata in 'meta'.  Requires
      that meta.pattern be contiguous (meaning: literally contiguous,
      not the PyTorch meaning which is a stronger condition).
-     ??Possibly we could make it similar to the constructor above
-       and have it just make it contiguous if it was not.??
-
 
        @param [in] meta  Struct containing the metadata specifying
                      the Tensor's pattern, data-type and device

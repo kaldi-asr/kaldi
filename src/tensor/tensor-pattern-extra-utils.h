@@ -72,6 +72,28 @@ bool PatternsIntersectSlow(const TensorPattern &pattern1,
 int32 PatternIncludes(const TensorPattern &pattern1,
                       const TensorPattern &pattern2);
 
+/**
+   Inline function that sets dim=1, stride=0 for all axes with
+   num_axes <= raxis < KALDI_TENSOR_MAX_DIM.  Often useful.
+ */
+inline void SetUnusedDimsAndStrides(int32 num_axes,
+                                    TensorPattern *dest) {
+#pragma unroll(2)
+  for (int32 raxis = num_axes; raxis < KALDI_TENSOR_MAX_DIM; raxis++) {
+    dest->dims[raxis] = 1;
+    dest->strides[raxis] = 0;
+  }
+}
+
+/**
+   Inline function that sets dest->code = -1 and dest->properties = 0;
+   often saves coding in functions that create or modify patterns.
+ */
+inline void SetDefaultCodeAndProperties(TensorPattern *dest) {
+  dest->code = -1;
+  dest->properties = 0;
+}
+
 
 /**
    Returns true if the two patterns are equivalent in the sense that their
@@ -157,6 +179,21 @@ bool PatternsIntersect(const TensorPattern &pattern1,
 bool PatternContains(const TensorPattern &pattern,
                      int64 mindex);
 
+
+/**
+   Returns true if the memory-index-set of pattern p is a subset
+   of the memory-index-set of pattern q.
+
+      @param [in] p   First pattern; must be valid.
+      @param [in] q   Second pattern; must be valid.
+      @return   Returns true if memory-index-set of p is a subset of
+                the memory-index-set of q (see tensor-pattern.h for definition;
+                of memory-index-set).
+ */
+bool PatternIsSubsetOf(const TensorPattern &p,
+                       const TensorPattern &q);
+
+
 /**
    Compute the minimum and maximum memory-indexs present in
    a pattern's memory-index-set (i.e. the minimum and maximum
@@ -234,6 +271,17 @@ bool PatternTuplesEquivalent(const ArrayRef<const TensorPattern*> patterns1,
                              const ArrayRef<const TensorPattern*> patterns2);
 
 /**
+   Returns true if TensorPattern p is linear in TensorPattern q.  (Note:
+   this is a rather technical property, see tensor-pattern.h for definition).
+
+      @param [in] p  The first pattern.  Must be valid
+      @param [in] q  The second pattern.  Must be valid and must satisfy
+                     `PatternIsSubsetOf(p, q);`
+ */
+bool IsLinearIn(const TensorPattern &p,
+                const TensorPattern &q);
+
+/**
    This function returns true if a Pattern is regular (see Regularity property
    in the glossary in tensor-pattern.h) and false otherwise.  'pattern' must
    have all positive strides, the strides must be in increasing order (in the
@@ -244,15 +292,15 @@ bool IsRegular(const TensorPattern &pattern);
 
 /**
    This function returns true if a Pattern is valid-1 (see definition in
-   glossary); see also TensorPattern::Valid() and IsValidMM().
+   glossary); see also TensorPattern::Valid() and IsValid2().
  */
-bool IsValidM(const TensorPattern &pattern);
+bool IsValid1(const TensorPattern &pattern);
 
 /**
    This function returns true if a Pattern is valid-2 (see definition in
-   glossary); see also TensorPattern::Valid() and IsValidM().
+   glossary); see also TensorPattern::Valid() and IsValid1().
  */
-bool IsValidMM(const TensorPattern &pattern);
+bool IsValid2(const TensorPattern &pattern);
 
 
 /**
@@ -317,13 +365,62 @@ bool ConvertPatternStrides(const TensorPattern &pattern,
 
          @param [in] src  The source pattern.  Must be valid.
          @param [out] dest  The destination pattern.  Will be identical
-                        to `src` if `ContiguousAndJustified(src)`, else
+                        to `src` if `CompactAndJustified(src)`, else
                         will have the relationship explained above.
-                        Will satisfy `ContiguousAndJustified(*dest)`,
+                        Will satisfy `CompactAndJustified(*dest)`,
                         and also `IsValid(*dest)`, assuming `IsValid(src)`.
  */
-void MakeContiguousAndJustified(const TensorPattern &src,
-                                TensorPattern *dest);
+void MakeCompactAndJustified(const TensorPattern &src,
+                             TensorPattern *dest);
+
+
+/**
+   This function possibly modifies the offset of the pattern `p`
+   so that it will be justified (meaning: lowest-numbered
+   memory-index equals zero).
+
+     @param [in,out] p    A Pattern, must be valid at entry
+                         (`p->IsValid()`).  At exit, will be
+                         valid and also justified (`IsJustified(p)`).
+ */
+void MakeJustified(TensorPattern *p);
+
+
+/**
+   This function copies the TensorPattern 'src' from 'dest', preserving the
+   num_axes and dims while possibly modifying the strides and offset.  The
+   strides of 'dest' will be normalized (i.e. nonnegative with positive strides
+   strictly increasing in the private axis-numbering), the pattern will be
+   compact (no gaps) and the offset will be set to zero (making the pattern
+   justified, since strides are nonnegative).
+
+       @param [in] src  The source pattern.  Must be valid.
+       @param [out] dest  The destination pattern.  Will share
+                      num_axes and dims with src, but the strides
+                      will be normalized, the pattern will be compact
+                      (no gaps between memory-indexes) and offset will be 0.
+ */
+void MakeCompactNormalizedAndJustified(const TensorPattern &src,
+                                       TensorPattern *dest);
+
+
+/**
+   This function copies the TensorPattern 'src' from 'dest', preserving the
+   num_axes and dims while possibly modifying the strides and offset.  The
+   strides of 'dest' will be nonnegative but the ordering from least to greatest
+   of the nonzero strides will be the same as the ordering of the absolute
+   values of the strides in 'src'.  The output pattern will be compact (no gaps)
+   and justified (meaning offset == 0, since the strides will be nonnegative).
+
+       @param [in] src  The source pattern.  Must be valid.
+       @param [out] dest  The destination pattern.  Will share
+                  num_axes and dims with src, but the strides and
+                  offset may be different.
+*/
+void MakeCompactNonnegativeAndJustified(const TensorPattern &src,
+                                        TensorPattern *dest);
+
+
 
 
 /**

@@ -73,7 +73,6 @@ inline void Transpose(int32 axis1, int32 axis2, Tensor *t) {
 void Copy(const Tensor &src, const Tensor *dest);
 
 
-
 /**
    Template used to implement unary functions such as Log, Relu, and
    so on (this avoids boilerplate).

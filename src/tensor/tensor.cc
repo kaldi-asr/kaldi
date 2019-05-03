@@ -1,4 +1,4 @@
-// tensor/variable.cc
+// tensor/tensor.cc
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,16 +17,12 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tensor/variable.h"
+#include "tensor/tensor.h"
 
 
 namespace kaldi {
 namespace tensor {
 
-
-void TensorGrad::EnsureGradAllocated() {
-
-}
 
 
 

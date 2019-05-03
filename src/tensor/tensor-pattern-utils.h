@@ -384,9 +384,9 @@ inline void Squeeze(int32 axis, TensorPattern *p) {
      after padding their dims on the left with ones to make them
      have the same num-axes, corresponding dimensions are either
      identical or 1).  The previous sentence is written in terms
-     of the public numbering; in the private numbering it just means
+     of the public numbering; in the private numbering it just means:
      for each index `raxis` into the dims vector,
-     either `a.dims[raxis] == b.dims[raxis]`, or one of them si 1.
+     either `a.dims[raxis] == b.dims[raxis]`, or one of them is 1.
 
        @param [in] a  The pattern of the first Tensor
        @param [in] b  The pattern of the second Tensor
@@ -424,28 +424,48 @@ bool Broadcastable(const TensorPattern &a, const TensorPattern &b,
 
 
 /**
-   Returns true if the 'dims' vectors of a and b are the same.
-   Does not require the number of axes to be the same, so effectively
-   it's testing that the dims are the same after padding on the left
-   with dim=1 (here referring to the public, non-reversed numbering
-   of the dims).
+   Returns true if the dims-vectors of a and b are the same after padding as for
+   broadcasting.  See definition of "Dims-vector of a Pattern" in
+   tensor-pattern.h, and the entry for "PyTorch-style broadcasting".  What this
+   means in terms of the physical storage of the patterns is that a->dims and
+   b->dims contain the same elements, without requiring the num_axes to be the
+   same.
 
    This is a stronger condition than Broadcastable(a, b).
- */
-bool SameDim(const TensorPattern &a, const TensorPattern &b);
+         @param [in] a  The first pattern.  Must be valid.
+         @param [in] b  The second pattern.  Must be valid.
+         @return      Return true if the dims-vectors vectors of
+                      a and b are the same after padding as for broadcasting.
+   See also the 3-arg version of SamePaddedDims(), and SameDims().
+*/
+bool SamePaddedDims(const TensorPattern &a, const TensorPattern &b);
 
 
 /**
-   Returns true if the 'dims' vectors of a, b and c are all the same.
-   Does not require the number of axes to be the same, so effectively
-   it's testing that the dims are the same after padding on the left
-   with dim=1 (here referring to the public, non-reversed numbering
-   of the dims).
+   Returns true if the 'dims' vectors of a, b and c are all the same
+   after padding with 1's on the left (in the public numbering) to
+   make the dims the same.  Equivalent to
+   SamePaddedDims(a, b) && SamePaddedDims(b, c).
 
    This is a stronger condition than Broadcastable(a, b, c).
  */
-bool SameDim(const TensorPattern &a, const TensorPattern &b,
-             const TensorPattern &c);
+bool SamePaddedDims(const TensorPattern &a, const TensorPattern &b,
+                    const TensorPattern &c);
+
+/**
+   Return true if the two provided patterns have the same dims-vectors
+   (meaning, effectively the same num_axes and the same dim for each
+   axis; see "Dims-vector" in tensor-pattern.h).
+
+      @param [in] a  The first pattern.  Must be valid.
+      @param [in] b  The second pattern.  Must be valid.
+      @return        Returns true if a.num_axes == b.num_axes and
+                     the elements of their 'dims' members are the same.
+   See also: SamePaddedDims().
+*/
+bool SameDims(const TensorPattern &a, const TensorPattern &b);
+
+
 
 
 /**
@@ -786,13 +806,15 @@ void HasCStrides(const TensorPattern &pattern);
 bool PatternsOverlap(const TensorPattern &pattern1,
                      const TensorPattern &pattern2);
 
+
+
 /**
    Returns true if the memory-index-set of this pattern forms a contiguous
    range, otherwise false.  (Note: this is not the same as PyTorch's notion of
    contiguous; see HasCStrides()).  Caution: the interface may later be changed
    to allow caching of this property in the 'properties' field.
 */
-bool IsContiguous(const TensorPattern &pattern);
+bool IsCompact(const TensorPattern &pattern);
 
 
 /**
@@ -804,10 +826,23 @@ bool IsJustified(const TensorPattern &pattern);
 
 
 /**
-   This is the same is IsContiguous(pattern) &&
-   StartsFromZero(pattern).
+   This is the same is IsCompact(pattern) &&
+   IsJustified(pattern).
 */
-bool IsContiguousAndJustified(const TensorPattern &pattern);
+bool IsCompactAndJustified(const TensorPattern &pattern);
+
+/**
+   Returns true if 'pattern' has normalized strides as defined
+   in tensor-pattern.h (i.e.: strides are nonnegative and
+   the nonzero ones are in strictly increasing order in the
+   private numbering / decreasing in the public).
+*/
+bool HasNormalizedStrides(const TensorPattern &pattern);
+
+/**
+   Returns true if all the stides in 'pattern' are nonnegative.
+*/
+bool HasNonnegativeStrides(const TensorPattern &pattern);
 
 
 
