@@ -138,7 +138,7 @@ $warning = 0;
 # Checking existence of separator file ------------------
 print "Checking existence of separator file\n";
 if (!-e "$lang/subword_separator.txt") {
-  print "separator file $lang/subword_separator.txt is empty does not exist, deal in word case.\n";
+  print "separator file $lang/subword_separator.txt is empty or does not exist, deal in word case.\n";
 } else {
   if (!open(S, "<$lang/subword_separator.txt")) {
     print "--> ERROR: fail to open $lang/subword_separator.txt\n"; exit 1;

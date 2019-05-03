@@ -307,11 +307,11 @@ cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
 # need to be added to words.txt
 
 # format of $dir/words.txt:
-#<eps> 0
-#a 1
-#aa 2
-#aarvark 3
-#...
+# <eps> 0
+# a 1
+# aa 2
+# aarvark 3
+# ...
 
 silphone=`cat $srcdir/optional_silence.txt` || exit 1;
 [ -z "$silphone" ] && \

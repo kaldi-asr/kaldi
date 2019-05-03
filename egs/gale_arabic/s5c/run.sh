@@ -11,7 +11,7 @@ num_decode_jobs=40
 decode_gmm=true
 stage=0
 overwrite=false
-num_merge=1000
+num_merges=1000
 
 dir1=/export/corpora/LDC/LDC2013S02/
 dir2=/export/corpora/LDC/LDC2013S07/
@@ -40,7 +40,7 @@ if [ $stage -le 0 ]; then
                         --text1 $text1 --text2 $text2 --text3 $text3
 
   echo "$0: Preparing lexicon and LM..." 
-  local/subword/prepare_dict_subword.sh --num_merge $num_merge
+  local/prepare_dict_subword.sh --num_merges $num_merges
 
   utils/subword/prepare_lang_subword.sh data/local/dict "<UNK>" data/local/lang data/lang
 
@@ -48,7 +48,7 @@ if [ $stage -le 0 ]; then
     utils/subword/prepare_subword_text.sh data/$set/text data/local/pair_code.txt data/$set/text
   done
 
-  local/subword/prepare_lm.sh
+  local/prepare_lm_subword.sh
 
   utils/format_lm.sh data/lang data/local/lm/lm.gz \
                      data/local/dict/lexicon.txt data/lang_test

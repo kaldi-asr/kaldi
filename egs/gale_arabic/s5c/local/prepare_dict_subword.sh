@@ -9,7 +9,7 @@ set -e
 dir=data/local/dict
 lexicon_url1="http://alt.qcri.org//resources/speech/dictionary/ar-ar_grapheme_lexicon_2016-02-09.bz2";
 lexicon_url2="http://alt.qcri.org//resources/speech/dictionary/ar-ar_lexicon_2014-03-17.txt.bz2";
-num_merge=700
+num_merges=1000
 stage=0
 . ./cmd.sh
 . ./path.sh
@@ -48,7 +48,7 @@ glossaries="<UNK> <sil>"
 if [ $stage -le 0 ]; then
   echo "$0: making subword lexicon... $(date)."
   # get pair_code file
-  cut -d ' ' -f2- data/train/text | sed 's/<[^>]*>//g' | utils/lang/bpe/learn_bpe.py -s $num_merge > data/local/pair_code.txt
+  cut -d ' ' -f2- data/train/text | sed 's/<[^>]*>//g' | utils/lang/bpe/learn_bpe.py -s $num_merges > data/local/pair_code.txt
   mv $dir/lexicon.txt $dir/lexicon_word.txt
   # get words
   cut -d ' ' -f1 $dir/lexicon_word.txt > $dir/words.txt
