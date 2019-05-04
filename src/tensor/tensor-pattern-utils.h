@@ -465,6 +465,17 @@ bool SamePaddedDims(const TensorPattern &a, const TensorPattern &b,
 */
 bool SameDims(const TensorPattern &a, const TensorPattern &b);
 
+/**
+   Returns true if pattern1 and pattern2 have the same num_axes and strides.
+   (i.e. the strides, viewed as a vector of dim num_axes, are identical).
+
+      @param [in] a  The first pattern.  Must be valid-2
+      @param [in] b  The second pattern.  Must be valid-2
+      @return        Returns true if a.num_axes == b.num_axes and
+                     the elements of their 'strides' members are the same.
+ */
+bool SameStrides(const TensorPattern &a,
+                 const TensorPattern &b);
 
 
 

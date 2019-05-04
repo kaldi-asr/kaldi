@@ -83,6 +83,8 @@ struct TensorImpl {
   inline void* GetData() const;
 
 
+
+
   /**
     Returns true if this TensorImpl is valid, false otherwise.
 
@@ -94,8 +96,22 @@ struct TensorImpl {
                 pattern.Valid(), plus checks on dtype and device,
                 plus checks on the storage object if check_storage == true.
   */
-  bool IsValid(bool check_storage = true);
+  bool IsValid(bool check_storage = true) const;
 
+
+  /**
+     This is to be called by users if they are about to do an operation on this
+     Tensor which writes to its underlying memory but does not read from it.
+     It gives the framework a free pass to not zero the part of memory covered
+     by this Tensor, even if it was instructed to zero the entire storage
+     region upon allocation.  Note: calling this will cause the storage region
+     to be allocated if it was not already allocated, so only call this
+     if you are about to actually use the data for something.
+
+     This function is const, like most operations on TensorImpl, because it doesn't
+     change the metadata, only (possibly) the Storage object.
+  */
+  inline void AllowUndefined() const { storage->AllowUndefined(*this); }
 
   const TensorMeta &Meta() const {
     return reinterpret_cast<const TensorMeta&>(*this);
