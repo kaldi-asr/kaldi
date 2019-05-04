@@ -59,28 +59,6 @@ struct Device {
 };
 
 
-Device GetDefaultDevice();
-void SetDefaultDevice(Device device);
-
-class WithDeviceAs {
-  // Example:
-  // {
-  //   WithDeviceAs(kCudaDevice);
-  //   // code in this block uses this default.
-  // }
- public:
-  inline WithDeviceAs(Device device):
-      prev_default_(GetDefaultDevice()) {
-    SetDefaultDevice(device);
-  }
-  ~WithDeviceAs() { SetDefaultDevice(prev_default_); }
-
- private:
-  Device prev_default_;
-};
-
-
-
 enum DataType {
   // We will of course later extend this with many more types, including
   // integer types and half-precision floats.
@@ -100,71 +78,6 @@ inline int32 SizeOf(DataType dtype) {
     case 2: KALDI_ERR << "Invalid data-type " << int32(dtype); return 0;
   }
 }
-
-
-DataType GetDefaultDtype();
-void SetDefaultDtype(DataType dtype);
-
-class WithDtypeAs {
-  // Example:
-  // {
-  //   WithDtypeAs(kDoubleDtype);
-  //   // code in this block uses this default.
-  // }
- public:
-  inline WithDtypeAs(DataType dtype):
-      prev_default_(GetDefaultDtype()) {
-    SetDefaultDtype(dtype);
-  }
-  ~WithDtypeAs() { SetDefaultDtype(prev_default_); }
-
- private:
-  DataType prev_default_;
-};
-
-
-
-// struct TensorOptions is used as an arg for some constructors
-// when creating Tensors and Variables; it allows flexibility
-// in specifying the device and/or dtype.  See the examples
-// shown where constructors of Tensor or Variable are declared.
-struct TensorOptions {
-  DataType dtype;
-  Device device;
-
-  TensorOptions(): dtype(GetDefaultDtype()),
-                   device(GetDefaultDevice()) { }
-  TensorOptions(DataType dtype):
-      dtype(dtype), device(GetDefaultDevice()) { }
-  TensorOptions(Device device):
-      dtype(GetDefaultDtype()), device(device) { }
-  TensorOptions(DeviceType device_type):
-      dtype(GetDefaultDtype()), device(device_type) { }
-  TensorOptions(DataType dtype, Device device):
-      dtype(dtype), device(device) { }
-  TensorOptions(DataType dtype, Device device_type):
-      dtype(dtype), device(device_type) { }
-  TensorOptions(const TensorOptions &other):
-      dtype(other.dtype), device(other.device) { }
-};
-
-
-// Global variable, initialized from zero, that is used in GetTick().
-// This is defined in tensor-common.cc.
-extern int64 g_tick_counter;
-
-inline int64 NextTick() { return ++g_tick_counter; }
-
-// ? Remove this?  To be used when you don't want to increment
-// the counter.
-inline int64 CurrentTick() { return g_tick_counter; }
-
-
-// debug_mode activates code that checks for invalidated data in the backprop
-// pass; see "Invalidated:" in glossary in tensor.h.
-extern bool debug_mode;
-inline bool DebugMode() { return debug_mode; }
-inline void SetDebugMode(bool b) { debug_mode = b; }
 
 
 /// Enumeration that says what strides we should choose when allocating

@@ -236,22 +236,27 @@ class Variable {
 
   /** Constructor from a Tensor.
        @param [in] data  The source Tensor.  (This Variable will copy it; this
-                      is to avoid errors if you change the original Tensor).
+                 is to avoid errors if you change the original Tensor).
 
-       @param [in] requires_grad    If requires_grad argument is true,
+       @param [in] tracked    If `tracked` is true,
                 the gradient w.r.t. this Variable will be computed if and when
                 you call Backward() on a Variable that depends on it.
                 The same as requires_grad in PyTorch.
   */
-  Variable(const Tensor &data, bool requires_grad);
+  Variable(const Tensor &data, bool tracked);
 
 
 
-  /**  Returns shared pointer to the Tensor storing the data. */
-  const Tensor &Data() const;
+  /**
+     Returns true if this Variable is tracked (meaning: gradient tracking is
+     happening), see glossary in tensor.h for definition.
+  */
+  bool Tracked() const;
 
 
-  Tensor &Data();
+
+  /**  Returns ref to the Tensor storing the data. */
+  Tensor &Data() const;
 
 
   /**  Returns pointer to the Tensor storing the derivative w.r.t.  this
@@ -292,26 +297,6 @@ class Variable {
      Variable.
   */
   void SetOp(const std::shared_ptr<Op> &op);
-
-  /**
-     Constructor that will be used by functions implementing mathematical
-     operations on Variables.
-
-
-     @param [in] data    Data to be stored in the Variable
-     @param [in] inputs  A vector containing Variables which this Variable
-                         depends on (for backpropagation purposes; will
-                         be stored in the TensorGrad object).
-     @param [in]
-
-     a vector specifying inputs for this Variable
-   * @param[in] gradFunc function specifying how to calculate gradient of the
-   * input Variables
-   */
-  Variable(std::shared_ptr<Tensor> &data, std::vector<Variable> inputs,
-           GradFunc grad_func);
-
-
 
 
  private:

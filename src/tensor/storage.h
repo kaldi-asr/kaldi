@@ -30,8 +30,8 @@ namespace tensor {
 
 struct StorageAux;
 
-// 'Storage' contains a single allocated region (on CPU or GPU, according
-// to 'device').
+// 'Storage' contains a single allocated region (on CPU or GPU, according to
+// 'device').
 class Storage {
  public:
 
@@ -46,17 +46,31 @@ class Storage {
 
   inline bool Allocated() {  return (data != NULL);  }
 
-  // TODO: we may need a mechanism to automatically zero data when it is
-  // allocated, we have to figure out the right level to do this at.
+
+  // Returns the raw data pointer.
   inline void *Data() {
     if (data) {
       return data;
     } else {
       Allocate();
+      if (zero_upon_allocation_)
+        Zero();
       return data;
     }
   }
 
+  /**
+     This is called from TensorImpl when we call AllowUndefined() on it.
+     It gives the framework a free pass to not do zero-upon-allocation
+     on the part of memory underlying this particular TensorImpl.  It
+     will also cause data_ to be allocated if it was not already allocated.
+  */
+  inline void AllowUndefined(const TensorImpl &impl) {
+    if (data_ == nullptr && zero_upon_allocation_) {
+      Allocate();
+      ZeroEverythingElse(impl);
+    }
+  }
 
   /**
      Creates a Storage object for device 'device' with size 'num_bytes'.
@@ -81,7 +95,6 @@ class Storage {
           @param [in] deallocator A std::function, which, if not nullptr,
                               will be invoked in
    */
-
   Storage(Device device,
           void *data,
           size_t num_bytes,
@@ -93,6 +106,18 @@ class Storage {
   // Returns true if the data has already been allocated.  I am hoping that it
   // will never be necessary to call this.
   bool IsAllocated();
+
+
+  /**
+     The user can call this as a low-cost mechanism to (conceptually) zero the
+     data in a storage region.  Rather than physically zeroing the data, it
+     records the intention to zero it as soon as it is allocated (see "Lazy
+     allocation" in tensor.h).  Later on, when the data is allocated, it may
+     actually not have to be zeroed if the AllowUndefined() is called.
+  */
+  inline void ZeroUponAllocation() { zero_upon_allocation_ = true; }
+
+
 
   // Deallocates the data.  This is user-callable because our autograd mechanism
   // deletes the underlying data of gradients that are no longer needed, while
@@ -112,11 +137,24 @@ class Storage {
   // Allocate the data.  It is an error to call this if data_ != NULL.
   void Allocate();
 
+  // Zero all the data held here, which is required to have already been
+  // allocated.
+  void Zero();
+
+  // Zero all the data held here *except* possibly the memory region
+  // underlying `impl` (although if it's more convenient, this function is
+  // allowed to zero it; at exit its contents will be undefined).
+  // data_ is required to have already been allocated.
+  void ZeroEverythingElse(const TensorImpl &impl);
+
+
   // 'data_' is either 'nullptr' or the actual data pointer.  Due to lazy allocation,
   // the 'data' pointer will remain NULL until it is actually needed.  Lazy
   // allocation makes it much easier to set up the autograd graph without
   // allocating the memory for the gradients.
   void *data_;
+
+  bool zero_upon_allocation_;
 
   // num_bytes is the number of bytes in the region we have allocated
   // (or are going to allocate).
@@ -152,7 +190,7 @@ struct StorageAux {
   // derivatives that have been invalidated are read; read the
   // comment for that class, in memory-checker.h, for complete
   // info.
-  dstd::unique_ptr<InvalidatedDataChecker> invalidated_checker;
+  std::unique_ptr<InvalidatedDataChecker> invalidated_checker;
 
   // 'deallocator' is to be used with external toolkits, for example, to
   // decrease the refcount.  In normal cases it will be nullptr.

@@ -58,6 +58,46 @@ bool PatternsIntersectSlow(const TensorPattern &pattern1,
 
 
 /**
+   If i is an index-tuple (in the private numbering) valid for `pattern`,
+   returns the memory-index
+     `m = pattern[i] = pattern.offset + \sum_r i[r] * pattern.strides[r]`.
+   If `check_valid == true` this will crash for i not in the index-tuple-set
+   of `pattern`; if false it will just return the above expression computedn
+   for i and not check.
+ */
+int64 IndexPattern(const TensorPattern &pattern,
+                   const std::vector<int32> &i,
+                   bool check_valid = true);
+
+
+/**
+   FindOffsets() is a utility function used in computing pattern intersections
+   and set differences.  We will be using the notation described "Indexing a
+   Pattern" in tensor-pattern.h.  Let pattern1 and pattern2 be patterns satisfying
+   SameStrides(pattern1, pattern2).  Let n be the num-axes of the patterns.
+   Let Offsets(pattern1, pattern2) be the set of n-tuples o such that there
+   exists an i with pattern1[i + o] = pattern2[i], with of course i + o in the
+   index-tuple-set of pattern1 and i in the index-tuple-set of pattern2.
+   This function outputs the set of such offsets o.
+
+       @param [in] pattern1   First input pattern.  Must be valid-1.
+       @param [in] pattern2   Second input pattern.  Must be valid-1.
+       @param [in] find_all_offsets  True if the user wants all of the
+                          offsets.  If false, this function may save
+                          computation by stopping after one or more
+                          offsets.  (Useful in testing if patterns intersect).
+       @param [out] offsets   The offsets will be written to here in
+                         arbitrary order.  Each offset will be a vector with
+                         size() equal to the num_axes of the patterns; the
+                         elements may be positive or negative.
+ */
+bool FindOffsets(const TensorPattern &pattern1,
+                 const TensorPattern &pattern2,
+                 bool find_all_offsets,
+                 std::vector<std::vector<int32> > *offsets);
+
+
+/**
    Returns information about whether pattern2's memory-index-set is a subset of
    pattern1's memory-index-set.  See glossary in tensor-pattern.h for
    explanation of memory-index-set.
@@ -118,8 +158,8 @@ bool PatternsEquivalent(const TensorPattern &pattern1,
    outputs a vector of patterns rather than a single pattern, because this
    intersection may be empty or may not be expressible as a single pattern but
    only as a union of patterns (i.e. a union of the patterns this function
-   outputs).  This function may fail to compute the intersection (see
-   documentation of return status).
+   outputs).  This function may fail to compute the intersection in certain
+   very pathological cases (see documentation of return status).
 
       @param [in] pattern1  The first of the two patterns of which
                         we want the intersection; must be valid.
@@ -151,6 +191,20 @@ bool ComputeIntersection(const TensorPattern &pattern1,
                          const TensorPattern &pattern2,
                          std::vector<TensorPattern> *intersection,
                          bool keep_all_patterns = true);
+
+
+/**
+   This function tries to compute the set-wise difference pattern1 - pattern2:
+   viewed as memory-index-sets, it is trying to compute the set of
+   memory-indexes in pattern1 but not in pattern2.  This is computed as a list
+   of TensorPatterns.  This function may fail to compute the set difference in
+   certain very pathological cases (see documentation of return status).
+*/
+bool ComputeDifference(const TensorPattern &pattern1,
+                       const TensorPattern &pattern2,
+                       std::vector<TensorPattern> *difference);
+
+
 
 
 /**
@@ -217,6 +271,7 @@ void ComputeMinAndMaxMindex(const TensorPattern &pattern,
                             int64 *max_mindex);
 
 
+
 /**
    Outputs the memory-index-set corresponding to the pattern 'pattern' to 's'.
    See glossary in tensor-pattern.h for definitions.
@@ -246,20 +301,16 @@ int64 RandomMemoryIndex(const TensorPattern &pattern);
 
 /**
    Outputs the memory-index-tuple-set corresponding to the pattern 'pattern' to
-   's' (see tensor-pattern.h for definition).  For storage in 's', each tuple is
-   converted into a single integer by a hashing function that should keep
-   distinct tuples separate as long as the memory-indexes were not huge.  (We
-   may output the actual tuples at some point in the future if they are ever
-   needed).
+   's' (see tensor-pattern.h for definition).
 
    This function is strictly to be used in debugging code, as it is
    extremely inefficient.
 
       @param [in] pattern  The input pattern
-      @param [out] s   The memory-index-set
+      @param [out] s   The memory-index-tuple-set
  */
 bool ToMemoryIndexTupleSet(const ArrayRef<TensorPattern*>  patterns,
-                           std::unordered_set<int64> *s);
+                           std::unordered_set<std::vector<int32>, VectorHasher> *s);
 
 
 /**

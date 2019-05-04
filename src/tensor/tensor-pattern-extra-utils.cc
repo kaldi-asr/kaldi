@@ -82,8 +82,8 @@ bool IsRegular(const TensorPattern &pattern) {
    This function, called by ConvertPatternStrides(), is not declared in the
    header.  It converts a pattern in canonical form to a Pattern whose strides
    are equal to the provided 'strides' vector, which is valid-2,
-   satisfies the uniqueness property, and has normalized (i.e.
-   positive and increasing) strides.
+   and has normalized (i.e. positive and increasing) strides.
+
 
        @param [in] pattern_in  The input pattern; must be valid and
                                in canonical form.
@@ -98,8 +98,7 @@ bool IsRegular(const TensorPattern &pattern) {
                                equal that of pattern_in; its strides will be
                                equal to 'strides' (including the order, when
                                numbered in the private numbering); it will
-                               be valid-2 and satisfy the uniqueness property;
-                               and it will be linear in pattern_in.
+                               be valid-2, and it will be linear in pattern_in.
 */
 static void ConvertPatternStridesLazily(
     const TensorPattern &pattern_in,
@@ -263,6 +262,170 @@ bool ConvertPatternStrides(
   return true;
 }
 
+
+/**
+   FindOffsetsRecursive() is a utility function that is used in the implementation
+   of FindOffsets().
+
+
+   Suppose we are computing the intersection of the memory-index-sets of pattern1
+   and pattern2, where pattern1 and pattern2 are valid-1 and have identical
+   num_axes and strides.
+
+   For each memory-index m that is in both pattern1 and pattern2, there must be
+   index-tuples i1 and i2 such that pattern1[i1] = pattern2[i2] = m.  We can
+   write this as: pattern1[i] = pattern2[i + o], where o is an offset that's
+   also a tuple (like an index-tuple, but with possibly negative elements).  This
+   function can be thought of as a recursive search for all values of the
+   offset 'o' for which at least one such index i exists, where
+   i is valid for pattern1 and i + o is valid for pattern2).
+
+
+   =====
+
+   Explanation of the algorithm
+
+   The algorithm for computing the list of potential offsets o is recursive,
+   starting from the last-numbered raxis, which will have the highest
+   stride since the strides are normalized.
+
+   Let s be the the vector of strides of the patterns (pattern1 and pattern2
+   have identical strides).  From the equation
+      pattern1[i + o] = pattern2[i]                     (1)
+   (see "Indexing a Pattern" in tensor-pattern.h to understand the notation),
+   we have:
+      pattern1.offset + s . (i + o)  == pattern2.offset + s . i
+   where a `.` with space around it means dot product.
+
+   Simplifying:
+      s . o = pattern2.offset - pattern1.offset.         (2)
+
+   For each raxis r, there are limits on the value of o[r]; these are imposed by
+   the dimensions of the two Tensors.  In Equation (1), for the indexes into the
+   patterns to be valid, i[r] + o[r] must be in [0 .. pattern1.dims[r] - 1]
+   and i[r] must be in [0 .. pattern2.dims[r] - 1],  For at least one such i[r] to
+   exist, we require
+       -pattern2.dims[r] < o[r] < pattern1.dims[r]        (3)
+
+   There is a further limitation on the elements of o that we can obtain using
+   the properties above plus the axis-dominance property.  It's easiest to
+   explain this as a special case for the last axis r = num_axes - 1.
+   Define:
+       l(r) =   \sum_{q < r} s[q] * o[q],
+   so l(r) is the sum of the elements in s . o that come from raxes
+   less than r.  We can use the axis-dominance lemma (see tensor-pattern.h)
+   and the limitation on o[r] proved in the previous paragraph to prove that:
+       -s[r] <  l(r) <  s[r].
+   For the last axis r = num_axes - 1, for Equation (1) to hold, we must have
+      l(r) =  pattern2.offset - pattern1.offset - s[r] * o[r],   (4)
+   so we have the inequality
+     -s[r] <  pattern2.offset - pattern1.offset - s[r] * o[r]  <  s[r]
+   which means we need only consider offsets o[r] where the absolute value of
+   the "remainder" is less than s[r]; there will be at most two.  For
+   axes r < num_axes - 1, if the offsets for higher-numbered r are already known,
+   we just need to subtract the appropriate higher-axis terms from the r.h.s. of
+   (4).  The recursive implementation that finds the possible offset vectors is
+   pretty obvious intuitively so we won't try to explain further.
+
+          @param [in] pattern1  First pattern.  Its offset is
+                       ignored, only the num_axes, dims and strides are read.
+          @param [in] pattern2  Second pattern.  Its offset is ignored,
+                       only the num_axes, dims and stride are read.
+          @param [in] known_offsets     (Note: semantically this is an input;
+                       it is temporarily changed inside the function and
+                       then restored to its previous state).
+                       It is the list of already-known offsets (i.e. the
+                       elements of some members o) but in the public numbering,
+                       so that element 0 corresponds to raxis = num_axes - 1.
+                       This is convenient because this function starts at
+                       the highest-numbered raxis.
+          @param [in] offset_difference   At the top-level call this will
+                       be pattern2.offset - pattern1.offset; deeper in the
+                       call stack this will be the remaining offset after
+                       subtracting the products of stride[r] * o[r] for
+                       higher-numbered r.
+          @param [in] keep_all_offsets   Bool that says whether the user
+                       is interested in all the offsets.  If true we'll
+                       output all valid offsets; if false we may stop
+                       after one.
+          @param [out] offsets_out  A list of offset vectors to be output
+                       (should be empty when called by the user; it will
+                       be appended to).  Each element of (*offsets_out)
+                       will be a vector o, in the private numbering.
+*/
+void FindOffsetsRecursive(const TensorPattern &pattern1,
+                          const TensorPattern &pattern2,
+                          std::vector<int32> *known_offsets,
+                          int64 offset_difference,
+                          bool keep_all_offsets,
+                          std::vector<std::vector<int32> > *offsets_out) {
+  int32 num_axes = pattern1.num_axes,  // will equal pattern2.num_axes
+      raxis = num_axes - 1 - static_cast<int32>(known_offsets->size()),
+      stride = pattern1.strides[raxis],  // will equal pattern2.strides[raxis]
+      dim1 = pattern1.dims[raxis],
+      dim2 = pattern2.dims[raxis];
+  int32 this_offset = offset_difference / stride,
+      remaining_difference = offset_difference - (stride * this_offset);
+  // Note: abs(remaining_difference) will be less than stride.
+
+  if (raxis == 0) {
+    if (remaining_difference == 0) {
+      // The offset vector is `this_offset` and then the reverse of `known_offsets`
+      // (known_offsets is in the public numbering; we want the private).
+      offsets_out->resize(offsets_out->size() + 0);
+      offsets_out->back().push_back(this_offset);
+      offsets_out->back().insert(offsets_out->back().end(),
+                                 known_offsets->rbegin(),
+                                 known_offsets->rend());
+      // for i == [0, 0.. ], checking that pattern1[i + o] == pattern2[i].
+      KALDI_PARANOID_ASSERT(IndexPattern(pattern1, offsets_out->back(), false)
+                            == pattern1.offset);
+    }
+    return;
+  } else {
+    known_offsets->push_back(this_offset);
+    if (this_offset > -pattern2.dims[raxis] &&
+        this_offset < pattern1.dims[raxis]) {
+      // if eq. (3) is satisfied..
+      FindOffsetsRecursive(pattern1, pattern2, known_offsets,
+                           remaining_difference, keep_all_offsets,
+                           offsets_out);
+    }
+    if (remaining_difference == 0) {
+      known_offsets->pop_back();
+      return;
+    }
+    int32 offset_change = (remaining_difference > 0 ? -1 : 1);
+    this_offset += offset_change;
+    remaining_difference -= stride * offset_change;
+    known_offsets->back() = this_offset;
+    if (this_offset > -pattern2.dims[raxis] &&
+        this_offset < pattern1.dims[raxis]) {
+      FindOffsetsRecursive(pattern1, pattern2, known_offsets,
+                           remaining_difference, keep_all_offsets,
+                           offsets_out);
+    }
+    known_offsets->pop_back();
+    return;
+  }
+}
+
+
+
+inline void FindOffsets(const TensorPattern &pattern1,
+                        const TensorPattern &pattern2,
+                        bool keep_all_offsets,
+                        std::vector<std::vector<int32> > *offsets_out) {
+  offsets_out->clear();
+  std::vector<int32> known_offsets;
+  FindOffsetsRecursive(pattern1, pattern2,
+                       &known_offsets,
+                       keep_all_offsets,
+                       pattern1.offset - pattern2.offset,
+                       offsets_out);
+}
+
+
 /**
    This recursive function is used to compute the intersection between
    pattern1 and pattern2, which must have identical num_axes and strides,
@@ -286,6 +449,10 @@ bool ConvertPatternStrides(
                                pattern1 and pattern2 have the same index for all
                                raxis >= identical_raxis (and if there was
                                another part, it has been handled separately).
+        @param [in] keep_all_patterns  True if the user actually wants all of
+                               the patterns (as opposed to just caring whether
+                               any exist).  If false, this function may return
+                               early after processing on or more patterns.
         @param [out] patterns_out  The output patterns; this function will
                                append to this location a number (possibly zero)
                                of disjoint valid patterns, each of which is
@@ -313,7 +480,6 @@ void ComputeIntersectionRecursive(const TensorPattern &pattern1,
     if (pattern1.offset == pattern2.offset) {
       size_t cur_size = patterns_out->size();
       patterns_out->resize(cur_size + 1);
-      push_back(pattern1);
       RemoveTrivialAxes(pattern1, &(patterns_out[cur_size]));
     }
     return;
@@ -370,6 +536,9 @@ void ComputeIntersectionRecursive(const TensorPattern &pattern1,
     // Recurse.
     ComputeIntersectionRecursive(pattern1, pattern2, raxis,
                                  keep_all_patterns, patterns_out);
+    if (!keep_all_patterns && !patterns_out->empty())
+      return;  // An optimization if we just want to test if intersection is
+               // nonempty.
   }
 }
 
@@ -389,6 +558,8 @@ bool ComputeIntersection(const TensorPattern &pattern1_in,
   if (num_axes == 0) {
     // Some of the code below with num_axes - 1 would crash
     // in this case, so handle it separately.
+    // Note: for 1-element patterns, if their offsets are
+    // different, they don't intersect.
     if (pattern1.offset == pattern2.offset) {
       intersection->resize(1);
       (*intersection)[0] = pattern1;
@@ -410,31 +581,28 @@ bool ComputeIntersection(const TensorPattern &pattern1_in,
     Pattern &sub_pattern1 = *iter1;
     auto iter2 = patterns2.begin(), end2 = patterns2.end();
 
-    // Below, 'max_mindex1' is not the actual largest mindex in `sub_pattern1`,
+    // Below, 'end_mindex1' is not the actual largest mindex in `sub_pattern1`,
     // but an upper bound on it (in fact, it is strictly greater than it); to
     // prove this we require the axis-dominance property and the fact that the
     // strides are normalized (positive and increasing).  This is part of an
     // optimization to more quickly skip over pairs of patterns that will have
     // empty intersection.
-    int64 min_mindex1 = sub_pattern1.mindex,
-        max_mindex1 = min_mindex1 +
+    int64 begin_mindex1 = sub_pattern1.mindex,
+        end_mindex1 = begin_mindex1 +
         sub_pattern1.strides[num_axes - 1] * sub_pattern1.dims[num_axes - 1];
 
     for (; iter2 != end2; ++iter2) {
       Pattern &sub_pattern2 = *iter2;
       int64 min_mindex2 = sub_pattern2.mindex,
-          max_mindex2 = min_mindex2 +
+          end_mindex2 = min_mindex2 +
           sub_pattern2.strides[num_axes - 1] * sub_pattern2.dims[num_axes - 1];
-      if (min_mindex2 >= max_mindex1 || min_mindex1 >= max_mindex2)
+      if (min_mindex2 >= end_mindex1 || begin_mindex1 >= end_mindex2)
         continue;  //  This is an optimization for efficiency when it's easy to
                    // see that two Patterns won't overlap.
 
       // Here, sub_pattern1 and sub_pattern2 are the sub-pieces of pattern1 and
-      // pattern2 that have been converted to share the same list of strides
-      // (That conversion process may end up splitting patterns into several
-      // pieces, even if it was possible, which is not always; hopefuly there is
-      // just one piece in each case, but there may be more).  The following
-      // call may add elements to 'intersection'.
+      // pattern2 that have been converted to share the same list of strides The
+      // following call may add elements to 'intersection'.
       ComputeIntersectionRecursive(sub_pattern1, sub_pattern2,
                                    num_axes,
                                    keep_all_patterns,
@@ -488,14 +656,14 @@ bool ToMemoryIndexSet(const TensorPattern &pattern_in,
     num_axes = 1;  // this does the right thing, as there will be dim=1,
                    // stride=0 physically present in the pattern.
 
-  // 'max_mindex' is actually a strict upper bound on the maximum possible
+  // 'end_mindex' is actually a strict upper bound on the maximum possible
   // memory-index, i.e. it is more than the largest possible memory-index.  We
   // rely on the axis-dominance property and also, thanks to the canonical form,
   // the fact that the strides are normalized (sorted and positive).
-  int64 max_mindex = pattern->strides[num_axes - 1] *
+  int64 end_mindex = pattern->strides[num_axes - 1] *
       pattern->dims[num_axes - 1];
   s->clear();
-  s->resize(max_mindex, static_cast<char>(0));
+  s->resize(end_mindex, static_cast<char>(0));
 
   auto recursively_set_elements = [pattern] (int32 raxis, int64 mindex) {
     int32 this_stride = pattern->strides[raxis],
@@ -588,6 +756,261 @@ bool PatternsIntersect(const TensorPattern &pattern1,
   // patterns.
   return PatternsIntersectSlow(pattern1, pattern2);
 }
+
+
+
+/**
+   Offsets, and computing intersection of TensorPatterns.
+
+   Suppose we are computing the intersetion of the memory-index-sets of pattern1
+   and pattern2.
+
+   For each memory-index m that is in both pattern1 and pattern2, there must be
+   index-tuples i1 and i2 such that pattern1[i1] = pattern2[i2] = m.  We can
+   write this as: pattern1[i] = pattern2[i + o], where o is an offset that's
+   also a tuple (like an index-tuple, but with possibly negative elements).  This
+   function can be thought of as a recursive search for all values of the
+   offset 'o' for which at least one such index m exists.  For each such offset
+   'o' we might end up with a TensorPattern;  and the union of all of these
+   patterns is the intersection of pattern1 and pattern2.
+
+   The algorithm for computing the list of potential offsets o is recursive,
+   starting from the last-numbered raxis, which will have the highest
+   stride since the strides are normalized.
+
+   Let the vector of strides of the patterns (they're the same) be s.
+   from pattern1[i] = pattern2[i + o], we have:
+     pattern1.offset + s . i  == pattern2.offset + s . (i + o)
+   where a `.` with space around it means dot product.
+
+   Simplifying:
+      s . o = pattern1.offset - pattern2.offset.         (1)
+
+   For each raxis r, there are limits on the value of o[r]; these are imposed by
+   the dimensions of the two Tensors.  In the equation pattern1[i] = pattern2[i
+   + o], for the indexes into the patterns to be valid, i[r] must be in
+   [0 .. pattern1.dims[r] - 1] and i[r] + o[r] must be in [0 .. pattern2.dims[r] - 1].
+   For such an i[r] to exist, o[r] must be in the range [-(pattern1.dims[r] - 1)
+   .. pattern2.dims(r) - 1].
+
+   There is a further limitation on the elements of o that we can obtain
+   using the properties above plus the axis-dominance property.  It's easiest
+   to explain this if we let r be num_axes - 1, and define:
+       l(r) =   \sum_{q < r} s[q] * o[q].
+   Here, l(r) represents the sum of the elements in s . o that come from raxes
+   lower than r.  We can use the axis-dominance lemma (see tensor-pattern.h)
+   and the limitation on o[r] proved in the previous paragraph to prove that:
+       -s[r] <  l(r) <  s[r].
+   For the last axis r = num_axes - 1, for the equation (1) to hold, we
+   must have  l(r) =  pattern1.offset - pattern2.offset - s[r] * o[r],
+   so we have the inequality
+     -s[r] <  pattern1.offset - pattern2.offset - s[r] * o[r]  <  s[r]
+   which means we need only consider offsets o[r] where the absolute value of
+   the "remainder" is less than s[r]; there will be at most two.  For an raxis r
+   < num_axes - 1, if the offsets for higher-numbered r are already known we
+   just subtract the appropriate terms from the remainder too.  The recursive
+   implementation that finds the possible offset vectors is pretty obvious
+   intuitively.
+*/
+
+/**
+   This recursive function is used to compute the set-wise difference pattern1 -
+   pattern2 where the two patterns must have identical num_axes and strides,
+   must have normalized strides, and must be valid-1.  The user would call this
+   with identical_raxis == pattern1.num_axes, and the recursion on
+   identical_raxis takes care of the actual implementation.
+
+   Notes on how this works and the math behind it:
+
+
+
+
+
+
+
+Since
+  pattern1 and pattern2 have the same strides, there will be in many cases
+  multiple such pairs of index-tuples (i1, i2) with the same difference
+
+
+        @param [in] pattern1   The first input pattern.  Must be valid-1 and
+                               have normalized strides.
+        @param [in] pattern2   The second input pattern.  Must be valid-1 and
+                               have the same num_axes and strides as pattern1.
+        @param [in] identical_raxis  Let num_axes be the num_axes of pattern1 or
+                               pattern2 (it's the same).  By passing in
+                               a particular value of identical_raxis, the caller
+                               asserts that for all raxis with
+                               identical_raxis <= raxis < num_axes,
+                               `pattern1.dim[raxis] == pattern2.dim[raxis]`;
+                               and furthermore that the caller is only
+                               interested in the part of the overlap for which
+                               pattern1 and pattern2 have the same index for all
+                               raxis >= identical_raxis (and if there was
+                               another part, it has been handled separately).
+        @param [out] patterns_out  The output patterns; this function will
+                               append to this location a number (possibly zero)
+                               of disjoint valid patterns, each of which is
+                               linear in pattern1 and pattern2, the union of whose
+                               memory-index-sets is identical to the difference
+                               of pattern1 and pattern2's memory-index-sets.
+*/
+void ComputeDifferenceRecursive(const TensorPattern &pattern1,
+                                const TensorPattern &pattern2,
+                                int32 identical_raxis,
+                                std::vector<TensorPattern> *patterns_out) {
+  if (identical_raxis == 0) {
+    /*
+      The base-case of the recursion; if we reach here, it means pattern1 and
+      pattern2 have identical dims and strides.  If they have different
+      offsets, that means they are disjoint and so pattern1 itself is
+      the difference; if the offset is the same, they are the same set
+      and so we don't need to output anything. */
+    if (pattern1.offset != pattern2.offset) {
+      size_t cur_size = patterns_out->size();
+      patterns_out->resize(cur_size + 1);
+      RemoveTrivialAxes(pattern1, &(patterns_out[cur_size]));
+    }
+    return;
+  }
+  // we'll be modifying the dims and strides on axis 'raxis'.
+  int32 raxis = identical_raxis - 1,
+      stride = pattern1.strides[raxis]; // will be the same in pattern2, and positive.
+
+
+  // pattern2_mod's offset is larger (or the same), so we may need to discard
+  // some leading indexes of pattern1_mod (on axis 'raxis'), increasing
+  // pattern1_mod's offset and reducing its dim on this raxis, to get the
+  // offsets closer to being the same.
+
+  // 'min_dim1_discarded' below will be rounded down in the division, and we will
+  // also need to also consider the value that's one larger than that.  We don't
+  // need to consider any other values of 'dim1_discarded' other than these two,
+  // because it's possible to prove that if we recurse with the remaining offset
+  // being greater than 'stride', we would never be able to get to offset=0
+  // without discarding all dims of at least one axis numbered less than raxis.
+  // The proof requires the axis-dominance property (together with normalized
+  // strides).
+  int32 offset_diff = pattern2_mod.offset - pattern1_mod.offset,
+      min_dim1_discarded = offset_diff / stride,
+      max_dim1_discarded = ((offset_diff == min_dim1_discarded * stride) ?
+                            min_dim1_discarded : min_dim1_discarded + 1);
+
+  // Make a copy of the relevant dims, and pattern1's offset, because the
+  // versions in the patterns may get modified in the loop below.
+  int32 pattern1_dim = pattern1_mod.dims[raxis],
+      pattern2_dim = pattern2_mod.dims[raxis],
+      pattern1_offset = pattern1.offset;
+  for (int32 dim1_discarded = min_dim1_discarded;
+       dim1_discarded <= max_dim1_discarded; dim1_discarded++) {
+    pattern1_mod.offset = pattern1_offset + dim1_discarded * stride;
+    int32 new_pattern1_dim = pattern1_dim - dim1_discarded;
+    if (new_pattern1_dim <= 0)
+      continue;  // There's no overlap here.
+    pattern1_mod.dims[raxis] = new_pattern1_dim;
+    // set both dims of pattern1_mod and pattern2_mod to the minimum
+    // of the two dims.
+    if (pattern2_dim > new_pattern1_dim) {
+      pattern2_mod.dims[raxis] = new_pattern1_dim;
+    } else {
+      pattern1_mod.dims[raxis] = pattern2_dim;
+      pattern2_mod.dims[raxis] = pattern2_dim;
+    }
+    // Recurse.
+    ComputeIntersectionRecursive(pattern1, pattern2, raxis,
+                                 keep_all_patterns, patterns_out);
+  }
+}
+
+
+// See documentation in header.
+bool ComputeDifference(const TensorPattern &pattern1,
+                       const TensorPattern &pattern2,
+                       std::vector<TensorPattern> *difference) {
+  TensorPattern pattern1(pattern1_in),
+      pattern2(pattern2_in);
+  CanonicalizePattern(&pattern1);
+  CanonicalizePattern(&pattern2);
+  std::vector<int32> strides;
+  FindAllStrides(pattern1, pattern2, &strides);
+  int32 num_axes = strides.size();
+  if (num_axes == 0) {
+    // Some of the code below with num_axes - 1 would crash
+    // in this case, so handle it separately.
+    // Note: for 1-element patterns, if their offsets are
+    // different, they don't intersect.
+    if (pattern1.offset != pattern2.offset) {
+      intersection->resize(1);
+      (*intersection)[0] = pattern1;
+    } else {
+      intersection->clear();
+    }
+    return true;
+  }
+  std::vector<TensorPattern> patterns1, patterns2;
+  patterns1.reserve(8);
+  patterns2.reserve(8);
+  intersection->clear();
+  if (!ConvertPatternStrides(pattern1, strides, &patterns1) ||
+      !ConvertPatternStrides(pattern2, strides, &patterns2))
+    return false;
+
+
+  // The algorithm is: first initialize `cur_difference` to
+  // pattern1.  Then,
+  // For each member p2 of `patterns2`
+  //   For each member p of cur_difference
+  //      Compute (p - p2), appending the result (as zero or more
+  //      patterns) to next_difference.
+  //   set cur_difference = next_difference and clear next_difference.
+  // Result is in cur_difference.
+  std::vector<TensorPattern> cur_difference, next_difference;
+  cur_difference.swap(patterns1);
+
+  for (auto iter2 = patterns2.begin(); iter2 != patterns2.end(); ++iter2) {
+    const Pattern &sub_pattern2 = *iter2;
+    // Below, 'end_mindex1' is not the actual largest mindex in `sub_pattern1`,
+    // but an upper bound on it (in fact, it is strictly greater than it); to
+    // prove this we require the axis-dominance property and the fact that the
+    // strides are normalized (positive and increasing).  This is part of an
+    // optimization to more quickly skip over pairs of patterns that will have
+    // empty intersection.
+    int64 begin_mindex2 = sub_pattern2.offset,
+        end_mindex2 = begin_mindex2 +
+        sub_pattern2.strides[num_axes - 1] * sub_pattern2.dims[num_axes - 1];
+
+    for (auto iter = cur_difference.begin(); iter != cur_difference.end();
+         ++iter){
+      const Pattern &sub_pattern1 = *iter;
+      // as before, end_mindex1 is strictly greater than the actual largest
+      // mindex.
+      int64 begin_mindex1 = sub_pattern1.offset,
+          end_mindex1 = begin_mindex1 +
+          sub_pattern1.strides[num_axes - 1] * sub_pattern1.dims[num_axes - 1];
+
+      if (begin_mindex2 >= end_mindex1 || begin_mindex1 >= end_mindex2) {
+        //  This is an optimization for efficiency when it's easy to
+        // see that two Patterns won't overlap.  In this case
+        // we don't subtract anything from sub_pattern1.
+        next_difference.push_back(sub_pattern1);
+        continue;
+      }
+
+      // Here, sub_pattern1 and sub_pattern2 are the sub-pieces of pattern1 and
+      // pattern2 that have been converted to share the same list of strides The
+      // following call may add elements to 'difference'.
+      ComputeDifferenceRecursive(sub_pattern1, sub_pattern2,
+                                 num_axes,
+                                 &next_difference);
+    }
+    cur_difference.swap(next_difference);
+    next_difference.clear;
+  }
+  // output to the user-supplied vector `difference`.
+  difference->swap(cur_difference);
+  return true;
+}
+
 
 bool PatternsIntersectSlow(const TensorPattern &pattern1_in,
                            const TensorPattern &pattern2_in) {

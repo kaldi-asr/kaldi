@@ -54,6 +54,14 @@ inline bool Overlap(const Tensor &a, const Tensor &b) {
 }
 
 
+/**
+   Returns true if the Tensor t covers its entire allocated storage region,
+   meaning every byte of the storage region is accessible through t.
+*/
+inline bool IsWhole(const Tensor &t) {
+  return IsWhole(*t.impl_);
+}
+
 /*
   This function returns true if a, b and c have the same dtype
   and device; equivalent to Compatible(a, b) && Compatible(b, c).

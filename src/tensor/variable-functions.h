@@ -29,6 +29,31 @@ namespace tensor {
 // return other Variables.
 
 
+
+/**
+   Return a Variable wrapping a newly-allocated Tensor with undefined
+   values, with the specified dimensions.
+
+       @param [in] dims   Dimensions (in public ordering) of the requested
+                      Tensor.  Must all be positive, with the length of
+                      the list not exceeding KALDI_TENSOR_MAX_DIM = 6
+
+  An example is below.
+<code>
+   Variable scalar = Undefined({});
+   Variable a = Undefined({3,4}, {kDoubleDtype});
+   Variable b = Undefined({1,100}, {kDoubleDtype, kGpuDevice});
+</code>
+  Note on C++: reading the code above may require getting used to C++
+  braced-initializer-lists.  The {3,4} is interpreted as a
+  std::inititializer_list<int32> passed to to the constructor of ArrayRef; the
+  {kDoubleDtype} is an arg to the constructor of TensorOptions.
+ */
+Variable Undefined(ArrayRef<int32> dims,
+                   TensorOptions opts = TensorOptions());
+
+
+
 /**
    Return a Variable with all-zero values, with the specified dimensions
 
@@ -86,6 +111,13 @@ Variable Sum(const Variable &v);
 Variable Sum(const Variable &v, ArrayRef<int32> eaxes);
 
 
+
+/**
+   Return a Variable that shares the same underlying Tensor as `v` but is
+   separate in terms of the autograd graph.  The returned Variable
+   will be a base Variable (see
+ */
+Variable Detach(const Variable &v);
 
 
 

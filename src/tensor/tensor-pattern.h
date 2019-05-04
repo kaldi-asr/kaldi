@@ -45,8 +45,9 @@ namespace tensor {
 
     Axis-index:       An axis-index of a Pattern or Tensor (sometimes just "axis" for short,
                       especially in code) is an index that identifies an axis in the
-                      public (see "Public numbering").  A valid axis-index for a Pattern
-                      with `num_axes` axes is in the range [0, num_axes - 1].
+                      public numbering (see "Public numbering").  A valid
+                      axis-index for a Pattern with `num_axes` axes is in the
+                      range [0, num_axes - 1].
 
                       For an axis-index i, the corresponding raxis-index (c.f. "Raxis-index:"
                       or "Private numbering:") would be num_axes - 1 - i.
@@ -54,15 +55,23 @@ namespace tensor {
                       See also "Eaxis-index" for where we allow negative axis-indexes
                       as offsets from the end.
 
-    axis-dominance property: search below for [Valid Pattern], point (vi), for the main
+    axis-dominance property: search below for [Valid Pattern], point (v), for the main
                       definition.
           [axis-dominance property of an axis-index]:
                       There is another sense in which we use the term
                       'axis-dominance property': for a Pattern whose axes are sorted
                       from least to greatest abs(stride) [in the private numbering],
-                      we say that "the axis-dominance property holds for axis-index i
+                      we say that "the axis-dominance property holds for axis-index r
                       of that Pattern" if:
-                                 dim(i) * abs(stride(i)) <= abs(stride(i+1)).
+                                 dim(r) * abs(stride(r)) <= abs(stride(r+1)).
+          [axis-dominance lemma]
+                      The axis-dominance lemma, of which we won't provide a proof
+                      of here as it's pretty obvious, is something you would need
+                      when showing that axis-dominance implies uniqueness.  It
+                      states that, given the axis-dominance property, for
+                      any 0 <= r < num_axes,
+                          (\sum_{q < r} (dim(q) - 1) * stride(q))  <  stride(r).
+
 
 
     Broadcasting:    A convention whereby for an operation on Tensors that would
@@ -76,25 +85,26 @@ namespace tensor {
                      or possibly some other appropriate reduction instead of making
                      copies.  This is different from other toolkits (the fact that
                      we extend the concept of broadcasting to encompass summation).
-                     See also: PyTorch-style broadcasting, extended indexing.
+                     See also: Broadcastable (which has a more precise definition);
+                     PyTorch-style broadcasting, extended indexing.
 
     Broadcastable:   See documentation for function Broadcastable() in pattern-utils.h.
-                     Briefly, two Patterns are broadcastable if their dims (padded
-                     as necessary on the left by 1's to make them the same size)
+                     Explaining it in terms of the public numbering: two
+                     Patterns are broadcastable if their dims (padded as
+                     necessary on the left by 1's to make them the same size)
                      are, for each axis, either the same or one of them is 1.
-                     So for example, comparing ([ 3 4 ], [4]), we first
-                     pad on the left to get ([3 4], [1 4]); then we say they
-                     are broadcastable because 4 == 4 and in the remaining axis,
-                     one of the dimensions is 1.
+                     So for example, comparing ([ 3 4 ], [4]), we first pad on
+                     the left to get ([3 4], [1 4]); then we say they are
+                     broadcastable because 4 == 4 and in the remaining axis, one
+                     of the dimensions is 1.
 
     Canonical form:  A TensorPattern is in canonical form if all pairs of axes that
                      could be combined (without affecting its memory-index-set)
-                     have been combined, where there are no trivial axes, all
-                     strides are positive, and the axes are sorted in increasing
-                     order of stride.  (Note: this is in the private numbering;
-                     in the public numbering this means decreasing order of
-                     stride, which is consistent with "C" strides).  See
-                     CanonicalizePattern().
+                     have been combined; where there are no trivial axes; all
+                     strides are positive; and the axes are sorted in an order
+                     of stride that's increasing in the private numbering /
+                     increasing in the public numbering.
+                     See CanonicalizePattern().
 
     Compact:         A Pattern is compact if its memory-index-set forms a contiguous
                      range of integers (no gaps).  (We don't call this "contiguous"
@@ -420,8 +430,9 @@ namespace tensor {
                           (v) the axis-dominance property.   This property is sufficient, but not
                               necessary, to ensure the uniqueness property.  It requires that
                               when the axes are sorted from least to greatest value of abs(stride),
-                              for each axis-index 0 <= i < num_axes - 1:
-                                    dim(i) * abs(stride(i)) <= abs(stride(i+1)).
+                              for each axis-index 0 <= r < num_axes - 1 (using the private numbering
+                              of axis-indexes),
+                                    dim(r) * abs(stride(r)) <= abs(stride(r+1)).
                               (Note: this property doesn't require that the axes be sorted that
                               way; if you need that, search for "Canonical form").
                           (vi) the strides must be zero for axes with dim=1.
@@ -430,11 +441,21 @@ namespace tensor {
      Valid-1 Pattern:
                       A Pattern is valid-1 (read as: valid minus one) if it
                       satisfies properties (i) through (v) of a valid Pattern
-                      (i.e. it may have nonzero strides for axes with dim=1).  A
-                      valid pattern is also valid-1.
+                      (i.e. it may have nonzero strides for axes with dim=1, but
+                      must otherwise be valid).  A valid pattern is also valid-1.
+
      Valid-2 Pattern:
                       A Pattern is valid-2 (read as valid minus two) if it
-                      satisfies properties (i) through (iv) of a valid Pattern.
+                      satisfies properties (i) through (iv) of a valid Pattern
+                      and satisfies the uniqueness property.  That is, it must
+                      be a valid Pattern, except:
+                      it may have nonzero strides for axes with dim=1, since
+                      we don't require property (v); and it does not have to
+                      satisfy the axis-dominance property (property (vi)).
+                      However, it must still satisfy the uniqueness property
+                      (see its glossary entry); we don't normally explicitly
+                      require the uniqueness property because it is implied by
+                      the axis-dominance property.
                       A pattern that is valid or valid-1 is also valid-2.
  */
 

@@ -118,7 +118,14 @@
             been created from them by some operation such as slicing
             (e.g. taking row or column ranges).
 
-
+    Whole Tensor:  A whole Tensor is a Tensor through which one can
+            access every byte of the storage region underlying it.
+            W.r.t. the notation in tensor-pattern.h (and using words
+            that describe Patterns to describe Tensors having those patterns),
+            this is equivalent to saying that Tensor is compact and
+            justified, and the size of its memory-index-set times the
+            bytes per element for its data-type equals the number of bytes
+            allocated in the storage region.
 
 
  */
