@@ -169,7 +169,7 @@ class Tensor {
 
   // Return reference to the struct containing the dimension and
   // stride info.
-  const TensorPattern &Pattern() const { return impl_.pattern; }
+  const Pattern &Pattern() const { return impl_.pattern; }
 
   // Return a vector containing dimensions of the tensor; equivalent to
   // .shape in PyTorch.  Dims().size() will equal NumAxes().

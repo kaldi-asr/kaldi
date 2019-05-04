@@ -44,8 +44,8 @@ namespace tensor {
          @return  Return if the two patterns' memory-index-sets'
                   intersection is nonempty.
  */
-bool PatternsIntersect(const TensorPattern &pattern1,
-                       const TensorPattern &pattern2);
+bool PatternsIntersect(const Pattern &pattern1,
+                       const Pattern &pattern2);
 
 
 /**
@@ -53,8 +53,8 @@ bool PatternsIntersect(const TensorPattern &pattern1,
    interface.  it should not be called by users as it is slow.  It is exposed
    here for testing purposes.
 */
-bool PatternsIntersectSlow(const TensorPattern &pattern1,
-                           const TensorPattern &pattern2);
+bool PatternsIntersectSlow(const Pattern &pattern1,
+                           const Pattern &pattern2);
 
 
 /**
@@ -65,7 +65,7 @@ bool PatternsIntersectSlow(const TensorPattern &pattern1,
    of `pattern`; if false it will just return the above expression computedn
    for i and not check.
  */
-int64 IndexPattern(const TensorPattern &pattern,
+int64 IndexPattern(const Pattern &pattern,
                    const std::vector<int32> &i,
                    bool check_valid = true);
 
@@ -78,23 +78,30 @@ int64 IndexPattern(const TensorPattern &pattern,
    Let Offsets(pattern1, pattern2) be the set of n-tuples o such that there
    exists an i with pattern1[i + o] = pattern2[i], with of course i + o in the
    index-tuple-set of pattern1 and i in the index-tuple-set of pattern2.
-   This function outputs the set of such offsets o.
+   This function outputs the set of such offsets o.  The algorithm is a little
+   complicated so we describe it with the implementation.
 
-       @param [in] pattern1   First input pattern.  Must be valid-1.
-       @param [in] pattern2   Second input pattern.  Must be valid-1.
+       @param [in] pattern1   First input pattern.  Must be valid-1 and
+                        normalized+ (i.e. HasNormalizedPositiveStrides(pattern1)).
+       @param [in] pattern2   Second input pattern.  Must be valid-1 and
+                        satisfy SameStrides(pattern1, pattern2).
        @param [in] find_all_offsets  True if the user wants all of the
-                          offsets.  If false, this function may save
-                          computation by stopping after one or more
-                          offsets.  (Useful in testing if patterns intersect).
+                        offsets.  If false, this function may save computation
+                        by stopping after one or more offsets.  (Useful in
+                        testing whether patterns intersect).
        @param [out] offsets   The offsets will be written to here in
                          arbitrary order.  Each offset will be a vector with
                          size() equal to the num_axes of the patterns; the
                          elements may be positive or negative.
+
+   See also (not all of these are declared in headers), OffsetToPattern(),
+   OffsetToHyperrectangle()).
  */
-bool FindOffsets(const TensorPattern &pattern1,
-                 const TensorPattern &pattern2,
+bool FindOffsets(const Pattern &pattern1,
+                 const Pattern &pattern2,
                  bool find_all_offsets,
                  std::vector<std::vector<int32> > *offsets);
+
 
 
 /**
@@ -109,15 +116,15 @@ bool FindOffsets(const TensorPattern &pattern1,
            -1 if we could not compute the intersection (so our
               algorithm could not determine whether one included the other).
  */
-int32 PatternIncludes(const TensorPattern &pattern1,
-                      const TensorPattern &pattern2);
+int32 PatternIncludes(const Pattern &pattern1,
+                      const Pattern &pattern2);
 
 /**
    Inline function that sets dim=1, stride=0 for all axes with
    num_axes <= raxis < KALDI_TENSOR_MAX_DIM.  Often useful.
  */
 inline void SetUnusedDimsAndStrides(int32 num_axes,
-                                    TensorPattern *dest) {
+                                    Pattern *dest) {
 #pragma unroll(2)
   for (int32 raxis = num_axes; raxis < KALDI_TENSOR_MAX_DIM; raxis++) {
     dest->dims[raxis] = 1;
@@ -129,7 +136,7 @@ inline void SetUnusedDimsAndStrides(int32 num_axes,
    Inline function that sets dest->code = -1 and dest->properties = 0;
    often saves coding in functions that create or modify patterns.
  */
-inline void SetDefaultCodeAndProperties(TensorPattern *dest) {
+inline void SetDefaultCodeAndProperties(Pattern *dest) {
   dest->code = -1;
   dest->properties = 0;
 }
@@ -148,8 +155,8 @@ inline void SetDefaultCodeAndProperties(TensorPattern *dest) {
        @return  Returns true if the patterns are equivalent, otherwise
                 false.
  */
-bool PatternsEquivalent(const TensorPattern &pattern1,
-                        const TensorPattern &pattern2);
+bool PatternsEquivalent(const Pattern &pattern1,
+                        const Pattern &pattern2);
 
 
 /**
@@ -165,18 +172,17 @@ bool PatternsEquivalent(const TensorPattern &pattern1,
                         we want the intersection; must be valid.
       @param [in] pattern2  The first of the two patterns of which
                         we want the intersection; must be valid.
-      @param [out] intersection  On success, this function outputs
-                       a possibly-empty vector of patterns (in arbitrary
-                       order), the union of whose memory-index-sets (which
-                       will all be disjoint) equals the intersection fo the
-                       memory-index-sets of `pattern1` and `pattern2`.
-                       (However, see `keep_all_patterns`).
-      @param [in]  keep_all_patterns   If this parameter is set to false,
+      @param [in]  keep_all_patterns   If this parameter is false,
                        the algorithm will stop as soon as the
                        `intersection` vector has one element.  This
                        is used for a fast test whether an intersection
-                       is empty or ont.
-
+                       is empty or not.
+      @param [out] intersection  On success, this function outputs
+                       a possibly-empty vector of patterns (in arbitrary
+                       order), the union of whose memory-index-sets (which
+                       will all be disjoint) equals the intersection of the
+                       memory-index-sets of `pattern1` and `pattern2`.
+                       (However, see `keep_all_patterns`).
       @return  Returns true if the intersection could be computed, and
                false otherwise.  This function will always return true if,
                when the strides of pattern1 and pattern2 are sorted and
@@ -187,22 +193,44 @@ bool PatternsEquivalent(const TensorPattern &pattern1,
                to common strides, are "Regular" (c.f. "Regularity
                property" in glossary).
 */
-bool ComputeIntersection(const TensorPattern &pattern1,
-                         const TensorPattern &pattern2,
-                         std::vector<TensorPattern> *intersection,
-                         bool keep_all_patterns = true);
+bool ComputeIntersection(const Pattern &pattern1,
+                         const Pattern &pattern2,
+                         bool keep_all_patterns,
+                         std::vector<Pattern> *intersection);
+
 
 
 /**
-   This function tries to compute the set-wise difference pattern1 - pattern2:
-   viewed as memory-index-sets, it is trying to compute the set of
+   This function tries to compute the set-wise difference pattern1 - pattern2.
+   Viewed as memory-index-sets, it is trying to compute the set of
    memory-indexes in pattern1 but not in pattern2.  This is computed as a list
-   of TensorPatterns.  This function may fail to compute the set difference in
+   of Patterns.  This function may fail to compute the set difference in
    certain very pathological cases (see documentation of return status).
+
+      @param [in] pattern1  The pattern we are subtracting from;
+                       if it does not intersect with pattern2, the
+                       result will be identical to pattern1.
+                       Must be valid.
+      @param [in] pattern2  The pattern we are subtracting; must be valid.
+      @param [out] difference  On success, this function outputs
+                     a possibly-empty vector of patterns (in arbitrary
+                     order), the union of whose memory-index-sets (which
+                     will all be disjoint) equals the set-wise difference
+                     M(pattern1) - M(pattern2) of the memory-index-sets of
+                     `pattern1` and `pattern2`.
+      @return  Returns true if the intersection could be computed, and
+               false otherwise.  This function will always return true if,
+               when the strides of pattern1 and pattern2 are sorted and
+               duplicates removed and listed in increasing order, each
+               stride divides the next one in the list exactly; but this is
+               not a necessary condition.   (The necessary condition
+               is that both patterns, when compressed and converted
+               to common strides, are "Regular" (c.f. "Regularity
+               property" in glossary).
 */
-bool ComputeDifference(const TensorPattern &pattern1,
-                       const TensorPattern &pattern2,
-                       std::vector<TensorPattern> *difference);
+bool ComputeDifference(const Pattern &pattern1,
+                       const Pattern &pattern2,
+                       std::vector<Pattern> *difference);
 
 
 
@@ -217,8 +245,8 @@ bool ComputeDifference(const TensorPattern &pattern1,
       @return               Returns true if the memory-index-set of
                             pattern1 and pattern2 have nonempty intersection.
  */
-bool PatternsIntersect(const TensorPattern &pattern1,
-                       const TensorPattern &pattern2);
+bool PatternsIntersect(const Pattern &pattern1,
+                       const Pattern &pattern2);
 
 /**
       @param [in] pattern   The pattern about whose memory-index-set
@@ -230,7 +258,7 @@ bool PatternsIntersect(const TensorPattern &pattern1,
                             index-tuple i such that `pattern[i] == mindex`;
                             see "Indexing a pattern" in the glossary.
 */
-bool PatternContains(const TensorPattern &pattern,
+bool PatternContains(const Pattern &pattern,
                      int64 mindex);
 
 
@@ -244,29 +272,27 @@ bool PatternContains(const TensorPattern &pattern,
                 the memory-index-set of q (see tensor-pattern.h for definition;
                 of memory-index-set).
  */
-bool PatternIsSubsetOf(const TensorPattern &p,
-                       const TensorPattern &q);
+bool PatternIsSubsetOf(const Pattern &p,
+                       const Pattern &q);
 
 
 /**
-   Compute the minimum and maximum memory-indexs present in
+   Compute the minimum and maximum memory-indexes present in
    a pattern's memory-index-set (i.e. the minimum and maximum
    indexes into the underlying array).
 
       @param [in] pattern  The pattern whose minimum and maximum
                            memory-index we are computing
       @param [out] min_mindex  The minimum memory-index in the
-                           memory-index-set of the pattern.  Will
-                           be zero in Patterns with non-negative
-                           strides (e.g. Patterns in canonical form,
-                           or other Patterns with normalized
-                           strides).  Should always be >= 0 in
-                           Patterns created by a valid program.
+                           memory-index-set of the pattern.  Will be zero in
+                           Patterns with non-negative strides.  Will always be
+                           >= 0 in Patterns created by a program that's
+                           doing something that makes sense.
       @param [out] max_mindex  The maximum memory-index in the
-                           memory-index-set of the pattern.
-                           Will always be >= min_mindex.
+                           memory-index-set of the pattern.  Will always be >=
+                           min_mindex.
 */
-void ComputeMinAndMaxMindex(const TensorPattern &pattern,
+void ComputeMinAndMaxMindex(const Pattern &pattern,
                             int64 *min_mindex,
                             int64 *max_mindex);
 
@@ -286,7 +312,7 @@ void ComputeMinAndMaxMindex(const TensorPattern &pattern,
                        `pattern`, containing 1 for memory-indexse in the set and 0 for
                        those out of the set.
  */
-bool ToMemoryIndexSet(const TensorPattern &pattern,
+bool ToMemoryIndexSet(const Pattern &pattern,
                       std::vector<char> *s);
 
 /**
@@ -295,7 +321,7 @@ bool ToMemoryIndexSet(const TensorPattern &pattern,
      @param [in] pattern   Pattern; must be valid-1.
      @return  Returns randomly chosen memory-index.
  */
-int64 RandomMemoryIndex(const TensorPattern &pattern);
+int64 RandomMemoryIndex(const Pattern &pattern);
 
 
 
@@ -309,7 +335,7 @@ int64 RandomMemoryIndex(const TensorPattern &pattern);
       @param [in] pattern  The input pattern
       @param [out] s   The memory-index-tuple-set
  */
-bool ToMemoryIndexTupleSet(const ArrayRef<TensorPattern*>  patterns,
+bool ToMemoryIndexTupleSet(const ArrayRef<Pattern*>  patterns,
                            std::unordered_set<std::vector<int32>, VectorHasher> *s);
 
 
@@ -318,19 +344,19 @@ bool ToMemoryIndexTupleSet(const ArrayRef<TensorPattern*>  patterns,
    that their memory-index-tuple-sets are the same.  See glossary
    in tensor-pattern.h for explanation.
  */
-bool PatternTuplesEquivalent(const ArrayRef<const TensorPattern*> patterns1,
-                             const ArrayRef<const TensorPattern*> patterns2);
+bool PatternTuplesEquivalent(const ArrayRef<const Pattern*> patterns1,
+                             const ArrayRef<const Pattern*> patterns2);
 
 /**
-   Returns true if TensorPattern p is linear in TensorPattern q.  (Note:
+   Returns true if Pattern p is linear in Pattern q.  (Note:
    this is a rather technical property, see tensor-pattern.h for definition).
 
       @param [in] p  The first pattern.  Must be valid
       @param [in] q  The second pattern.  Must be valid and must satisfy
                      `PatternIsSubsetOf(p, q);`
  */
-bool IsLinearIn(const TensorPattern &p,
-                const TensorPattern &q);
+bool IsLinearIn(const Pattern &p,
+                const Pattern &q);
 
 /**
    This function returns true if a Pattern is regular (see Regularity property
@@ -338,20 +364,20 @@ bool IsLinearIn(const TensorPattern &p,
    have all positive strides, the strides must be in increasing order (in the
    private numbering), and it must be valid-2 (see glossary).
  */
-bool IsRegular(const TensorPattern &pattern);
+bool IsRegular(const Pattern &pattern);
 
 
 /**
    This function returns true if a Pattern is valid-1 (see definition in
-   glossary); see also TensorPattern::Valid() and IsValid2().
+   glossary); see also Pattern::Valid() and IsValid2().
  */
-bool IsValid1(const TensorPattern &pattern);
+bool IsValid1(const Pattern &pattern);
 
 /**
    This function returns true if a Pattern is valid-2 (see definition in
-   glossary); see also TensorPattern::Valid() and IsValid1().
+   glossary); see also Pattern::Valid() and IsValid1().
  */
-bool IsValid2(const TensorPattern &pattern);
+bool IsValid2(const Pattern &pattern);
 
 
 /**
@@ -394,9 +420,9 @@ bool IsValid2(const TensorPattern &pattern);
                         have to output a number of patterns that couldn't be
                         bounded given the number of axes.
   */
-bool ConvertPatternStrides(const TensorPattern &pattern,
+bool ConvertPatternStrides(const Pattern &pattern,
                            const ArrayRef<int32> strides,
-                           std::vector<TensorPattern> *patterns);
+                           std::vector<Pattern> *patterns);
 
 /**
    This function fills in any 'gaps' in the memory-indexes in 'src' and
@@ -421,8 +447,8 @@ bool ConvertPatternStrides(const TensorPattern &pattern,
                         Will satisfy `CompactAndJustified(*dest)`,
                         and also `IsValid(*dest)`, assuming `IsValid(src)`.
  */
-void MakeCompactAndJustified(const TensorPattern &src,
-                             TensorPattern *dest);
+void MakeCompactAndJustified(const Pattern &src,
+                             Pattern *dest);
 
 
 /**
@@ -434,11 +460,11 @@ void MakeCompactAndJustified(const TensorPattern &src,
                          (`p->IsValid()`).  At exit, will be
                          valid and also justified (`IsJustified(p)`).
  */
-void MakeJustified(TensorPattern *p);
+void MakeJustified(Pattern *p);
 
 
 /**
-   This function copies the TensorPattern 'src' from 'dest', preserving the
+   This function copies the Pattern 'src' from 'dest', preserving the
    num_axes and dims while possibly modifying the strides and offset.  The
    strides of 'dest' will be normalized (i.e. nonnegative with positive strides
    strictly increasing in the private axis-numbering), the pattern will be
@@ -451,12 +477,12 @@ void MakeJustified(TensorPattern *p);
                       will be normalized, the pattern will be compact
                       (no gaps between memory-indexes) and offset will be 0.
  */
-void MakeCompactNormalizedAndJustified(const TensorPattern &src,
-                                       TensorPattern *dest);
+void MakeCompactNormalizedAndJustified(const Pattern &src,
+                                       Pattern *dest);
 
 
 /**
-   This function copies the TensorPattern 'src' from 'dest', preserving the
+   This function copies the Pattern 'src' from 'dest', preserving the
    num_axes and dims while possibly modifying the strides and offset.  The
    strides of 'dest' will be nonnegative but the ordering from least to greatest
    of the nonzero strides will be the same as the ordering of the absolute
@@ -468,16 +494,16 @@ void MakeCompactNormalizedAndJustified(const TensorPattern &src,
                   num_axes and dims with src, but the strides and
                   offset may be different.
 */
-void MakeCompactNonnegativeAndJustified(const TensorPattern &src,
-                                        TensorPattern *dest);
+void MakeCompactNonnegativeAndJustified(const Pattern &src,
+                                        Pattern *dest);
 
 
 
 
 /**
-   Class TensorPatternRebaser is an object that converts TensorPattern
+   Class PatternRebaser is an object that converts Pattern
    when memory layouts change.  The main use-case is when a base Variable
-   (c.f. variable.h for definition) has a TensorPattern that is not
+   (c.f. variable.h for definition) has a Pattern that is not
    contiguous (see tensor-pattern.h for definition of 'contiguous'), and
    its gradient Tensor is allocated contiguously.  This class is
    needed to convert patterns for Variables into patterns for their
@@ -486,7 +512,7 @@ void MakeCompactNonnegativeAndJustified(const TensorPattern &src,
    We make it an object rather than a function in order to avoid repetition when
    multiple patterns need to be rebased.
  */
-class TensorPatternRebaser {
+class PatternRebaser {
 
   /*
     Constructor.
@@ -509,8 +535,8 @@ class TensorPatternRebaser {
     The purpose of this object is to modify patterns in a way that maps
     their memory-indexes with the same function.
   */
-  TensorPatternRebaser(const TensorPattern &src_pattern,
-                       const TensorPattern &dest_pattern);
+  PatternRebaser(const Pattern &src_pattern,
+                       const Pattern &dest_pattern);
 
 
   /**
@@ -533,15 +559,15 @@ class TensorPatternRebaser {
 
      @return  Returns true if the conversion was possible.
    */
-  bool Rebase(TensorPattern *pattern);
+  bool Rebase(Pattern *pattern);
 
   private:
 
   // TODO: remove src_pattern_ and dest_pattern_ once everything
   // is debugged.  They are copies of the src_pattern and dest_pattern
   // passed to the constructor.
-  TensorPattern src_pattern_;
-  TensorPattern dest_pattern_;
+  Pattern src_pattern_;
+  Pattern dest_pattern_;
 
   // If needs_conversion_ is false, it means the patterns don't need any conversion
   // at all (this is an optimization).
@@ -609,7 +635,7 @@ class TensorPatternRebaser {
 class OutOfPlaceAxisSorter {
  public:
   // Constructor.
-  inline OutOfPlaceAxisSorter(const TensorPattern &src) {
+  inline OutOfPlaceAxisSorter(const Pattern &src) {
     int32 num_axes = src.num_axes;
     for (int32 raxis = 0; raxis < src.num_axes; raxis++)
       orig_raxis_[raxis] = raxis;

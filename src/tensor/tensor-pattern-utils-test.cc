@@ -26,7 +26,7 @@ namespace kaldi {
 namespace tensor {
 
 // We may later move this function to somewhere more permanent.
-void GenerateRandomPattern(TensorPattern *pattern) {
+void GenerateRandomPattern(Pattern *pattern) {
 
   int32 num_axes = RandInt(0, KALDI_TENSOR_MAX_DIM);
 
@@ -68,7 +68,7 @@ void GenerateRandomPattern(TensorPattern *pattern) {
 
 
 void UnitTestGenRandomPattern() {
-  TensorPattern p;
+  Pattern p;
   for (int32 i = 0; i < 100; i++) {
     GenerateRandomPattern(&p);
   }

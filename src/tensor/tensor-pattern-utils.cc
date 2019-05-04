@@ -22,7 +22,7 @@
 namespace kaldi {
 namespace tensor {
 
-int32 ComputePatternCode(const TensorPattern &pattern) {
+int32 ComputePatternCode(const Pattern &pattern) {
   int32 ans = 0;
 
   int32 n = 0;
@@ -54,7 +54,7 @@ int32 ComputePatternCode(const TensorPattern &pattern) {
 }
 
 
-void ComputeMinAndMaxMindex(const TensorPattern *pattern,
+void ComputeMinAndMaxMindex(const Pattern *pattern,
                             int64 *min_mindex,
                             int64 *max_mindex) {
   KALDI_PARANOID_ASSERT(IsValid(pattern));
@@ -125,7 +125,7 @@ void ComputeMinAndMaxMindex(const TensorPattern *pattern,
    If this were moved to a header we would have to make it update the pattern
    code.
  */
-static inline bool NormalizeSigns(ArrayRef<TensorPattern*> patterns,
+static inline bool NormalizeSigns(ArrayRef<Pattern*> patterns,
                                   int32 max_num_axes,
                                   int64 *data_offsets) {
   bool changed = false;
@@ -183,7 +183,7 @@ static inline bool NormalizeSigns(ArrayRef<TensorPattern*> patterns,
 
    (We also require that the new dimension must not overflow an int32.)
  */
-static inline bool Combinable(const TensorPattern &p,
+static inline bool Combinable(const Pattern &p,
                               int32 raxis1, int32 raxis2) {
   return pattern.strides[raxis2] == p.strides[raxis1] * p.dims[raxis1] &&
       static_cast<int64>(p.dims[raxis1])*static_cast<int64>(p.dims[raxis2]) <
@@ -194,7 +194,7 @@ static inline bool Combinable(const TensorPattern &p,
 // Returns true iff the axis 'axis' has zero stride (and hence dim=1)
 // for all the supplied patterns.  An axis like this can be removed without
 // affecting the result.
-static inline bool AxisIsTrivial(ArrayRef<TensorPattern> patterns,
+static inline bool AxisIsTrivial(ArrayRef<Pattern> patterns,
                                  int32 raxis) {
   for (size_t p = 0; p < patterns.size; p++)
     if (patterns[p].strides[raxis] != 0)
@@ -208,7 +208,7 @@ static inline bool AxisIsTrivial(ArrayRef<TensorPattern> patterns,
 // of that trivial axis).  axis1 is the one with the smaller stride, and is the
 // one whose stride we keep in the combined axis; that is the asymmetry
 // between axis1 and axis2.
-static inline void CombineAxes(ArrayRef<TensorPattern*> patterns,
+static inline void CombineAxes(ArrayRef<Pattern*> patterns,
                                int32 raxis1, int32 raxis2) {
   size_t num_patterns = patterns.size;
 #ifdef KALDI_PARANOID
@@ -223,7 +223,7 @@ static inline void CombineAxes(ArrayRef<TensorPattern*> patterns,
     // the chance of having to move dims/strides around when removing
     // trivial axes later on.
     for (size_t p = 0; p < num_patterns; p++) {
-      TensorPattern *pattern = patterns[p];
+      Pattern *pattern = patterns[p];
       pattern->dims[raxis2] *= pattern->dims[raxis1];
       pattern->strides[raxis2] *= pattern->strides[raxis1];
       pattern->dims[raxis1] = 1;
@@ -232,7 +232,7 @@ static inline void CombineAxes(ArrayRef<TensorPattern*> patterns,
   } else {
     // keep raxis1, remove raxis2.
     for (size_t p = 0; p < num_patterns; p++) {
-      TensorPattern *pattern = patterns[p];
+      Pattern *pattern = patterns[p];
       pattern->dims[raxis1] *= pattern->dims[raxis1];
       pattern->dims[raxis2] = 1;
       pattern->strides[raxis2] = 0;
@@ -262,7 +262,7 @@ static inline void CombineAxes(ArrayRef<TensorPattern*> patterns,
    CAUTION: this function does not update the codes of 'patterns'.
  */
 static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_AXES],
-                              ArrayRef<TensorPattern*> patterns) {
+                              ArrayRef<Pattern*> patterns) {
   int32 first_trivial_raxis = -1;
   for (int32 raxis = 0; raxis < KALDI_TENSOR_MAX_AXES; raxis++) {
     if (is_trivial_axis[raxis]) {
@@ -273,7 +273,7 @@ static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_AXES],
   KALDI_PARANOID_ASSERT(first_trivial_raxis >= 0);
 
   for (size_t p = 0; p < patterns.size; p++) {
-    TensorPattern *pattern = patterns[p];
+    Pattern *pattern = patterns[p];
     // Keep the axes right-justified.  We work from the right to the left.
 
     // We do the loop over axes inside the loop over p for memory locality.
@@ -301,7 +301,7 @@ static void RemoveTrivialAxes(bool is_trivial_raxis[KALDI_TENSOR_MAX_AXES],
   }
 }
 
-void CompressPatterns(ArrayRef<TensorPattern*> patterns,
+void CompressPatterns(ArrayRef<Pattern*> patterns,
                       int64_t *data_offsets) {
   size_t num_patterns = patterns.size;
 #ifdef KALDI_PARANOID
@@ -398,14 +398,14 @@ void CompressPatterns(ArrayRef<TensorPattern*> patterns,
 }
 
 
-void CompressOnePattern(TensorPattern *pattern,
+void CompressOnePattern(Pattern *pattern,
                         int64 *data_offset) {
   // We may at some point implement this specially; doing this would be more efficient.
   CompressPatterns({pattern}, data_offset);
 }
 
 
-void SortAxes(TensorPattern *pattern) {
+void SortAxes(Pattern *pattern) {
   int32 num_axes = pattern->num_axes;
   switch(num_axes) {
     case 0: case 1:
@@ -449,7 +449,7 @@ void SortAxes(TensorPattern *pattern) {
   }
 }
 
-void Transpose(int32 raxis1, int32 raxis2, TensorPattern *p) {
+void Transpose(int32 raxis1, int32 raxis2, Pattern *p) {
   if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
       static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {
     KALDI_ERR << "Invalid axes to transpose: raxis1="
@@ -461,7 +461,7 @@ void Transpose(int32 raxis1, int32 raxis2, TensorPattern *p) {
   p->code = -1;
 }
 
-void Transpose(int32 axis1, int32 axis2, TensorPattern *p) {
+void Transpose(int32 axis1, int32 axis2, Pattern *p) {
   int32 num_axes = p->num_axes;
   // interpret negative axes as offsets from num_axes.
 
@@ -482,7 +482,7 @@ void Transpose(int32 axis1, int32 axis2, TensorPattern *p) {
 
 
 
-void RemoveTrivialAxes(TensorPattern *pattern) {
+void RemoveTrivialAxes(Pattern *pattern) {
   int32 num_axes = pattern->num_axes,
       num_axes_out = 0;
   for (int32 raxis = 0; raxis < num_axes; raxis++) {
@@ -494,7 +494,7 @@ void RemoveTrivialAxes(TensorPattern *pattern) {
       }
     }
   }
-  // It is a requirement of struct TensorPattern that dims and
+  // It is a requirement of struct Pattern that dims and
   // strides for raxis >= num_axes be 1 and 0 respectively.
   for (int32 raxis = num_axes_out; raxis < num_axes; raxis++) {
     pattern->dims[raxis] = 1;
@@ -505,8 +505,8 @@ void RemoveTrivialAxes(TensorPattern *pattern) {
 }
 
 
-void RemoveTrivialAxes(const TensorPattern &pattern_in,
-                       TensorPattern *pattern_out) {
+void RemoveTrivialAxes(const Pattern &pattern_in,
+                       Pattern *pattern_out) {
   KALDI_PARANOID_ASSERT(pattern_out != &pattern_in);
   int32 num_axes = pattern->num_axes,
       num_axes_out = 0;
@@ -517,7 +517,7 @@ void RemoveTrivialAxes(const TensorPattern &pattern_in,
       pattern_out->axes[num_axes_out] = pattern_in.strides[raxis];
     }
   }
-  // It is a requirement of struct TensorPattern that dims and
+  // It is a requirement of struct Pattern that dims and
   // strides for raxis >= num_axes be 1 and 0 respectively.
   for (int32 raxis = num_axes_out;
        raxis < KALDI_TENSOR_MAX_AXES; raxis++) {
@@ -528,7 +528,7 @@ void RemoveTrivialAxes(const TensorPattern &pattern_in,
   pattern_out->code = -1;
 }
 
-int64 NumElements(const TensorPattern &pattern) {
+int64 NumElements(const Pattern &pattern) {
   int32 num_axes = pattern.num_axes;
   int64 ans = 1;
   for (int32 raxis = 0; raxis < num_axes; raxis++)
@@ -537,7 +537,7 @@ int64 NumElements(const TensorPattern &pattern) {
 }
 
 void Select(int32 eaxis, int32 index,
-            const TensorPattern &src, TensorPattern *dest) {
+            const Pattern &src, Pattern *dest) {
   KALDI_PARANOID_ASSERT(src.IsValid());
   int32 num_axes = src.num_axes,
       raxis = EaxisToRaxis(eaxis);
@@ -567,7 +567,7 @@ void Select(int32 eaxis, int32 index,
   dest->properties = 0;
 }
 
-void Slice(int32 axis, int32 start, int32 end, TensorPattern *pattern) {
+void Slice(int32 axis, int32 start, int32 end, Pattern *pattern) {
   int32 num_axes = pattern->num_axes,
       raxis = EaxisToRaxis(eaxis);
   KALDI_PARANOID_ASSERT(pattern->IsValid());
@@ -604,7 +604,7 @@ void Slice(int32 axis, int32 start, int32 end, TensorPattern *pattern) {
 }
 
 
-void UnsqueezeR(int32 raxis, const TensorPattern &src, TensorPattern *dest) {
+void UnsqueezeR(int32 raxis, const Pattern &src, Pattern *dest) {
   int32 num_axes_in = src.num_axes;
   KALDI_ASSERT(static_cast<uint32>(raxis) <= num_axes_in &&
                num_axes_in < KALDI_TENSOR_MAX_DIM);

@@ -118,7 +118,7 @@ inline void Unsqueeze(TensorImpl *t, int32 axis) {
    Modifies 't' in-place by removing an axis with (dim=1,stride=0) from the
    specified position.  It is an error if 't' did not initially contain
    such an axis.  This function updates the code.  See also the same-named
-   function that operates on TensorPattern.
+   function that operates on Pattern.
 
    Showing just the dims in the tensor for an example:
 

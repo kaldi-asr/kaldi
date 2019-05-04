@@ -33,7 +33,7 @@ namespace tensor {
 // these types.  (We don't use base-classing as it would make the code
 // harder to read).
 struct TensorMeta {
-  TensorPattern pattern;
+  Pattern pattern;
   DataType dtype;
   Device device;
 };
@@ -47,7 +47,7 @@ struct TensorMeta {
    internals, and not for users of this library.
 */
 struct TensorImpl {
-  TensorPattern pattern;
+  Pattern pattern;
   DataType dtype;
   Device device;
   std::shared_ptr<Storage> storage;  // 'storage' points to a shared Storage object

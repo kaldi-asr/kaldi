@@ -37,7 +37,7 @@ class Storage {
 
 
   void RecordChange(int32 element_size,
-                    const TensorPattern &pattern);
+                    const Pattern &pattern);
 
 
   // This initializes a ChangeTracker object in this->tracker if it

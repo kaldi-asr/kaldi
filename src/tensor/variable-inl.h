@@ -56,9 +56,9 @@ Tensor VariableImpl::GetGradForView(const Tensor &data) {
     if (!aux_)
       aux_ = new VariableImplAux;
     if (!aux_->rebaser)
-      aux_->rebaser = new TensorPatternRebaser(pattern_,
+      aux_->rebaser = new PatternRebaser(pattern_,
                                                grad_->pattern_);
-    const TensorPatternRebaser &rebaser = *(aux_->rebaser);
+    const PatternRebaser &rebaser = *(aux_->rebaser);
     if (!rebaser->Rebase(&(ans->pattern))) {
       // die.
       KALDI_ERR << "Rebasing failed.  Likely you are using views "
