@@ -80,7 +80,7 @@ if [ $stage -le 4 ]; then
   dereverb_dir=${PWD}/wav/wpe/
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_wpe.sh --cmd "$train_cmd --mem 120G" \
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 120G" \
 			      ${audio_dir}/${dset} \
 			      ${dereverb_dir}/${dset} \
 			      ${mictype}
@@ -128,7 +128,7 @@ if [ $stage -le 6 ]; then
   rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
   rvb_opts+=(--noise-set-parameters $noise_list)
 
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --prefix "rev" \
     --foreground-snrs $foreground_snrs \

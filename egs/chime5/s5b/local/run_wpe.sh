@@ -6,7 +6,7 @@
 . ./path.sh
 
 # Config:
-nj=8
+nj=4
 cmd=run.pl
 
 . utils/parse_options.sh || exit 1;
