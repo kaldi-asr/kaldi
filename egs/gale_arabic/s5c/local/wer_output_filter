@@ -1,0 +1,4 @@
+#!/bin/sed -f
+s/@@ //g
+s/<sil>//g
+s/<UNK>//g
