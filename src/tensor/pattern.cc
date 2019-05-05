@@ -1,4 +1,4 @@
-// tensor/tensor-pattern.cc
+// tensor/pattern.cc
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -18,13 +18,13 @@
 // limitations under the License.
 
 #include <algorithm>
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 
 
 namespace kaldi {
 namespace tensor {
 
-bool TensorPattern::Check(bool check_code) {
+bool Pattern::Check(bool check_code) {
   if (num_axes < 0 || num_axes > KALDI_TENSOR_MAX_DIM)
     return false;
 
@@ -86,7 +86,7 @@ bool TensorPattern::Check(bool check_code) {
 
 
 // MAY DELETE THIS.  It's not up to date anyway.
-void TensorPatternProperties::UpdateProperties(const TensorPattern &pattern) {
+void PatternProperties::UpdateProperties(const Pattern &pattern) {
   KALDI_PARANOID_ASSERT(pattern.IsValid());
   int32 num_axes = pattern.num_axes;
   int64 dim_prod = 1;

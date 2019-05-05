@@ -21,7 +21,7 @@
 #define KALDI_TENSOR_IMPL_UTILS_H_ 1
 
 #include "tensor/tensor-impl.h"
-#include "tensor/tensor-patterns-utils.h"
+#include "tensor/patterns-utils.h"
 
 
 /**
@@ -51,14 +51,14 @@ inline bool Compatible(const TensorImpl &a, const TensorImpl &b,
 
 /**
   This function returns true if the patterns of a and b are broadcastable.
-  See similar function in tensor-pattern-utils.h for more information.
+  See similar function in pattern-utils.h for more information.
 */
 inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
                           bool b_non_reducing = false);
 
 /**
   This function returns true if the patterns of a, b and c are broadcastable.
-  See similar function in tensor-pattern-utils.h for more information.
+  See similar function in pattern-utils.h for more information.
 */
 inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
                           const TensorImpl &c, bool c_non_reducing = false);
@@ -118,7 +118,7 @@ inline void Unsqueeze(TensorImpl *t, int32 axis) {
    Modifies 't' in-place by removing an axis with (dim=1,stride=0) from the
    specified position.  It is an error if 't' did not initially contain
    such an axis.  This function updates the code.  See also the same-named
-   function that operates on TensorPattern.
+   function that operates on Pattern.
 
    Showing just the dims in the tensor for an example:
 
@@ -221,6 +221,20 @@ inline void RegisterTensorChange(const TensorImpl &impl) {
         SizeOf(impl.dtype), impl.pattern);
   }
 }
+
+/**
+   read
+   read and write
+   read and invalidation
+   invalidation
+ */
+inline void RegisterOp(const TensorImpl &impl) {
+  if (DebugMode()) {
+    impl.storage_->GetChangeTracker()->RecordChange(
+        SizeOf(impl.dtype), impl.pattern);
+  }
+}
+
 
 inline int64 NumElements(const TensorImpl &a) {
   return NumElements(a.pattern);

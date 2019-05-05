@@ -21,7 +21,7 @@
 #define KALDI_TENSOR_TENSOR_IMPL_H_ 1
 
 #include "tensor/tensor-common.h"
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 
 namespace kaldi {
 namespace tensor {
@@ -33,7 +33,7 @@ namespace tensor {
 // these types.  (We don't use base-classing as it would make the code
 // harder to read).
 struct TensorMeta {
-  TensorPattern pattern;
+  Pattern pattern;
   DataType dtype;
   Device device;
 };
@@ -47,7 +47,7 @@ struct TensorMeta {
    internals, and not for users of this library.
 */
 struct TensorImpl {
-  TensorPattern pattern;
+  Pattern pattern;
   DataType dtype;
   Device device;
   std::shared_ptr<Storage> storage;  // 'storage' points to a shared Storage object
@@ -60,7 +60,7 @@ struct TensorImpl {
   // Returns the dimension on the supplied axis, using the public axis
   // numbering, with negative index interpreted as an offset from the end.
   //
-  //  @param [in] eaxis  Eaxis-index (see definition in tensor-pattern.h)
+  //  @param [in] eaxis  Eaxis-index (see definition in pattern.h)
   //                    Require -NumAxes() <= eaxis < NumAxes().
   //  @return        Returns the dimension on this axis, a number >= 1.
   inline int32 Dim(int32 eaxis);
@@ -69,7 +69,7 @@ struct TensorImpl {
   // supplied axis, using the public axis numbering, with negative index
   // interpreted as an offset from the end.
   //
-  //  @param [in] eaxis  Eaxis-index (see definition in tensor-pattern.h)
+  //  @param [in] eaxis  Eaxis-index (see definition in pattern.h)
   //                    Require -NumAxes() <= eaxis < NumAxes().
   //  @return          Returns the stride on this axis, which will be 0 if
   //                   Dim(axis) == 1, and otherwise nonzero.
@@ -140,7 +140,7 @@ struct TensorImpl {
   /**
      Initializes a TensorImpl with the provided dimensions, creating a new
      storage object for it.  The strides will be as for a "C" array; see
-     "Default strides:" in tensor-pattern.h.
+     "Default strides:" in pattern.h.
 
         @param [in] dims  The dimensions for each axis (in the public
                        numbering).  All elements must be nonnegative,
@@ -170,7 +170,7 @@ struct TensorImpl {
                       kKeepStrideOrder -> use the same order of abs(stride) as
                                           in 'meta'
                       kNormalized -> use normalized strides (see definition
-                       in tensor-pattern.h); basically, the normal order we'd use
+                       in pattern.h); basically, the normal order we'd use
                        for a new Tensor.
                       kCopyStrides -> use the exact strides from the source
                        pattern.

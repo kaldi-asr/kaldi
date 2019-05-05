@@ -75,7 +75,7 @@ class Node {
   // tensor to gradients (used for views).  Will be NULL in the usual
   // case where the Tensor for this base Variable has the same strides
   // and offset as the grad.
-  std::unique_ptr<TensorPatternRebaser> rebaser;
+  std::unique_ptr<PatternRebaser> rebaser;
 
   // latest_op is the most recent of the Ops that modified the base Variable
   // this is attached to, or any view into it.
@@ -104,7 +104,7 @@ struct VariableImplAux {
   // Variables where data_ and grad_ have different offset and/or
   // strides, it is an object capable of converting patterns from
   // tensors to gradients (used when constructing views).
-  std::unique_ptr<TensorPatternRebaser> rebaser;
+  std::unique_ptr<PatternRebaser> rebaser;
 
   // config_ is NULL if no config values have been stored; otherwise,
   // a pointer to class Config.

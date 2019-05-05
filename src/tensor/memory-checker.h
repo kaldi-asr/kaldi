@@ -22,7 +22,7 @@
 
 #include <functional>
 #include "tensor/tensor-common.h"
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 
 
 namespace kaldi {
@@ -81,7 +81,7 @@ class ChangeTracker {
                             before being stored.
    */
   inline void RecordChange(int32 element_size,
-                           const TensorPattern &pattern);
+                           const Pattern &pattern);
 
 
   /**
@@ -94,7 +94,7 @@ class ChangeTracker {
       @param [in] pattern  The pattern that we are checking
    */
   inline bool ChangedSince(int64 tick,
-                           const TensorPattern &pattern);
+                           const Pattern &pattern);
 
  private:
 
@@ -112,7 +112,7 @@ class ChangeTracker {
 
 
   struct ChangeRecord {
-    TensorPattern pattern;  // The pattern (offset, dims, strides) that was
+    Pattern pattern;  // The pattern (offset, dims, strides) that was
                             // changed within this storage region.  This pattern
                             // will have been reduced to canonical form.  View
                             // it as a memory-index-set (c.f. glossary in
@@ -134,7 +134,7 @@ class ChangeTracker {
   std::unique_ptr<ChangeRecord> changes_;
 
 
-  // This is a map from a pointer to the TensorPattern in ChangeRecord::pattern
+  // This is a map from a pointer to the Pattern in ChangeRecord::pattern
   // (hashing the pattern itself, not the pointer value), to the ChangeRecord
   // that holds it.  We actually map to the address of the std::unique_ptr
   // pointing to that ChangeRecord, which might be the address of this->changes_
@@ -143,8 +143,8 @@ class ChangeTracker {
   // in de-duping the list of changes, so that if someone provides the
   // exact same pattern twice, we only keep the most recent tick; this
   // keeps memory usage under control.
-  std::unordered_map<TensorPattern*, std::unique_ptr<ChangeRecord>*,
-                     TensorPatternPtrHasher, TensorPatternPtrEqual> change_map_;
+  std::unordered_map<Pattern*, std::unique_ptr<ChangeRecord>*,
+                     PatternPtrHasher, PatternPtrEqual> change_map_;
 };
 
 
@@ -171,7 +171,7 @@ class DataCheckerBase {
                           must be within [0, k-1] where k = num_bytes_ / element_size.
    */
 a  void RecordEvent(int32 element_size,
-                   const TensorPattern &pattern);
+                   const Pattern &pattern);
 
   /**
      This function is intended to return true if the memory-index-set of
@@ -211,7 +211,7 @@ a  void RecordEvent(int32 element_size,
                 the less-than-complete coverage.  False otherwise.
    */
   bool FullyCovered(int32 element_size,
-                    const TensorPattern &pattern);
+                    const Pattern &pattern);
 
   /**
      This function is intended to return true if the memory-index-set of
@@ -226,13 +226,13 @@ a  void RecordEvent(int32 element_size,
        - If we can find a pattern identical to `pattern` in `map_`, return true
          (this is a common special case).
        - Otherwise:
-          - For some or all of the TensorPatterns provided to `RecordEvent()`:
+          - For some or all of the Patterns provided to `RecordEvent()`:
             - If `pattern` has nonempty intersection with that pattern:
                return true
           - return false
    */
   bool PartlyCovered(int32 element_size,
-                     const TensorPattern &pattern);
+                     const Pattern &pattern);
 
  private:
 
@@ -249,19 +249,19 @@ a  void RecordEvent(int32 element_size,
   int32 element_size_;
 
 
-  // `map` can actually be thought of as a set of TensorPatterns, but it's
-  // actually stored as a map from TensorPattern* to the std::unique_ptr holding
-  // that same TensorPattern.  This may seem an odd thing to do; it's just
-  // a convenient way to manage the memory.  Thanks to TensorPatternPtrHasher,
+  // `map` can actually be thought of as a set of Patterns, but it's
+  // actually stored as a map from Pattern* to the std::unique_ptr holding
+  // that same Pattern.  This may seem an odd thing to do; it's just
+  // a convenient way to manage the memory.  Thanks to PatternPtrHasher,
   // we can avoid storing duplicate records for the same Pattern.
-  std::unordered_map<TensorPattern*, std::unique_ptr<TensorPattern*>,
-                     TensorPatternPtrHasher, TensorPatternPtrEqual> map_;
+  std::unordered_map<Pattern*, std::unique_ptr<Pattern*>,
+                     PatternPtrHasher, PatternPtrEqual> map_;
 
 
-  // This is another way of storing the TensorPatterns that have been recorded,
+  // This is another way of storing the Patterns that have been recorded,
   // ordered by NumElements(); this enables us to check the larger patterns
   // first, which may be more efficient.
-  std::multimap<int64, TensorPattern*> by_size_;
+  std::multimap<int64, Pattern*> by_size_;
 };
 
 /**
@@ -299,7 +299,7 @@ class UninitializedDataChecker: public DataCheckerBase {
                   function records the write.
    */
   inline void RecordWrite(int32 element_size,
-                   const TensorPattern &pattern) {
+                   const Pattern &pattern) {
     RecordEvent(element_size, pattern);
   }
 
@@ -315,7 +315,7 @@ class UninitializedDataChecker: public DataCheckerBase {
                   RecordWrite, this call will (usually) crash.
    */
   void RecordRead(int32 element_size,
-                  const TensorPattern &pattern);
+                  const Pattern &pattern);
 };
 
 
@@ -391,7 +391,7 @@ class InvalidatedDataChecker: public DataCheckerBase {
      memory region won't be read from in future.
    */
   inline void RecordInvalidation(int32 element_size,
-                                 const TensorPattern &pattern) {
+                                 const Pattern &pattern) {
     RecordEvent(element_size, pattern);
   }
 
@@ -408,7 +408,7 @@ class InvalidatedDataChecker: public DataCheckerBase {
                   (usually) crash.
   */
   void RecordRead(int32 element_size,
-                  const TensorPattern &pattern);
+                  const Pattern &pattern);
 
 
 };

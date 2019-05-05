@@ -1,4 +1,4 @@
-// util/tensor-pattern-utils-test.cc
+// util/pattern-utils-test.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 
@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tensor/tensor-pattern.h"
-#include "tensor/tensor-pattern-utils.h"
+#include "tensor/pattern.h"
+#include "tensor/pattern-utils.h"
 #include "base/kaldi-math.h"
 
 
@@ -26,7 +26,7 @@ namespace kaldi {
 namespace tensor {
 
 // We may later move this function to somewhere more permanent.
-void GenerateRandomPattern(TensorPattern *pattern) {
+void GenerateRandomPattern(Pattern *pattern) {
 
   int32 num_axes = RandInt(0, KALDI_TENSOR_MAX_DIM);
 
@@ -68,7 +68,7 @@ void GenerateRandomPattern(TensorPattern *pattern) {
 
 
 void UnitTestGenRandomPattern() {
-  TensorPattern p;
+  Pattern p;
   for (int32 i = 0; i < 100; i++) {
     GenerateRandomPattern(&p);
   }

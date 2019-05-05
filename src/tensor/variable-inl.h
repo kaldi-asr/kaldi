@@ -50,15 +50,15 @@ Tensor VariableImpl::GetGradForView(const Tensor &data) {
     // The grad will have exactly the same offset, dims and strides as the data.
     // This is the normal case, which we encounter when the Variable was
     // constructed from a Tensor that is justified and contiguous (see glossary
-    // in tensor-pattern.h for meanings).
+    // in pattern.h for meanings).
     return Tensor(ans);
   } else {
     if (!aux_)
       aux_ = new VariableImplAux;
     if (!aux_->rebaser)
-      aux_->rebaser = new TensorPatternRebaser(pattern_,
+      aux_->rebaser = new PatternRebaser(pattern_,
                                                grad_->pattern_);
-    const TensorPatternRebaser &rebaser = *(aux_->rebaser);
+    const PatternRebaser &rebaser = *(aux_->rebaser);
     if (!rebaser->Rebase(&(ans->pattern))) {
       // die.
       KALDI_ERR << "Rebasing failed.  Likely you are using views "

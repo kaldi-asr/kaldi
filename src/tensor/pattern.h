@@ -1,4 +1,4 @@
-// tensor/tensor-pattern.h
+// tensor/pattern.h
 
 //  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -32,8 +32,16 @@ namespace tensor {
 /*
   PATTERN GLOSSARY   (note: see also TENSOR GLOSSARY in tensor.h)
 
+
+
+    Adjacent:         Two Patterns are said to be adjacent if their memory-index-sets
+                      are disjoint and a Pattern exists whose memory-index-set is
+                      their union.
+                      [TODO: come up with algorithm for testing adjacency and
+                      merging the adjacent Patterns.]
+
     Axis:             An axis is one of the (dim, stride) pairs that form part
-                      of a TensorPattern.  We will sometimes use the word "axis"
+                      of a Pattern.  We will sometimes use the word "axis"
                       to refer to the integer index of the axis, as in, for example,
                       in a Tensor with dims=[5 6 7], axis 0 has dim=5 and
                       axis 2 has dim=7; but this should more precisely
@@ -68,10 +76,9 @@ namespace tensor {
                       The axis-dominance lemma, of which we won't provide a proof
                       of here as it's pretty obvious, is something you would need
                       when showing that axis-dominance implies uniqueness.  It
-                      states that, given the axis-dominance property, for
+                      states that, for a pattern which is valid-1, for any
                       any 0 <= r < num_axes,
                           (\sum_{q < r} (dim(q) - 1) * stride(q))  <  stride(r).
-
 
 
     Broadcasting:    A convention whereby for an operation on Tensors that would
@@ -98,7 +105,7 @@ namespace tensor {
                      broadcastable because 4 == 4 and in the remaining axis, one
                      of the dimensions is 1.
 
-    Canonical form:  A TensorPattern is in canonical form if all pairs of axes that
+    Canonical form:  A Pattern is in canonical form if all pairs of axes that
                      could be combined (without affecting its memory-index-set)
                      have been combined; where there are no trivial axes; all
                      strides are positive; and the axes are sorted in an order
@@ -262,7 +269,7 @@ namespace tensor {
                       index would be outside that region.
 
     Pattern:          An object representing the dims, strides and offset of a Tensor.
-                      (see struct TensorPattern).  The Pattern has
+                      (see struct Pattern).  The Pattern has
                       an 'offset' which is the memory-index of the element of the Tensor
                       whose index-tuple is all zeros; the Pattern also
                       has a number of axes, `0 <= num_axes < KALDI_TENSOR_MAX_AXES`,
@@ -278,7 +285,7 @@ namespace tensor {
                       for example: Broadcastable(P, Q).
 
 
-    An object of type TensorPattern, representing the dims, strides
+    An object of type Pattern, representing the dims, strides
                       and offset of a Tensor.
 
     Public numbering: The numbering of axes used in the public interface of class
@@ -287,7 +294,7 @@ namespace tensor {
                       in the public numbering, e.g. dims=[3 4].
                       See also: axis-index
 
-    Private numbering:  The reversed numbering of axes in struct TensorPattern.
+    Private numbering:  The reversed numbering of axes in struct Pattern.
                       For an axis numbered `axis` in the public numbering, its
                       reversed axis index is `raxis = num_axes - 1 - axis`.
                       This reversal makes PyTorch-style broadcasting easier.
@@ -340,8 +347,12 @@ namespace tensor {
                       strides are all nonnegative and the nonzero strides
                       are in strictly increasing order in the private numbering
                       (hence strictly decreasing in the public numbering).
-
                       See also: Default strides (which is a stronger property).
+
+    Normalized+ strides:  Normalized+ strides are strides that are normalized
+                      but also positive.  I.e. the strides are positive, and
+                      increasing in the private numbering / decreasing in
+                      the public.
 
     Linear property:
                       This is a slightly technical property used in certain
@@ -362,34 +373,31 @@ namespace tensor {
                       that is if P is linear in Q and Q is linear in R, then
                       P is linear in R.
 
-    Regularity property:   This is a property of Patterns that is relevant when reducing
-                      Patterns to a common set of strides.
+    Regularity property:   This is a property of Patterns that is relevant when
+                      reducing Patterns to a common set of strides.  It can
+                      be thought of as a relaxed version of the axis-dominance
+                      property.
 
                       We formulate the regularity property to only apply for
-                      Patterns which are valid-- and which have positive strides in increasing order; these
-                      the stipulation on having postive, sorted strides
-                      is for convenience, since we happen to need it only for
-                      that case and it's easier to formulate in that case.
-
-                      For the regularity property to apply, a Pattern must also
-                      be valid-- (see its own glossary entry).
+                      Patterns which are valid-2 and which have positive strides
+                      in increasing order.  The stipulation on having postive,
+                      sorted strides is just for convenience, since we happen to
+                      need this property only in that case and it's easier to
+                      formulate in that case.
 
                       A Pattern is regular if, in addition to satisfying the
                       properties mentioned above, for each axis-index
-                      0 <= i < num_axes - 1,
+                        0 <= i < num_axes - 1,
                       there is an integer k with i < k <= num_axes, such that:
-                        (i) Either k == num_axes, or dim(i) * stride(i) <= stride(k),
-                      and
-                        (ii) For all j with i < j < k, stride(i) divides stride(j)
+                        (i) For all j with i < j < k, stride(i) divides stride(j)
                             exactly and dim(j) = 1.
-                      [Note: the condition that dim(j) == 1 will anyway be true if
-                      the Pattern has the uniqueness property.]
+                        (ii) Either k == num_axes, or dim(i) * stride(i) <= stride(k),
 
-                      The reader may notice that if we were to restrict
-                      k to equal i + 1, then
-                      this would be equivalent to the axis-dominance property
-                      (property (v)) plus the requirement that the strides be
-                      positive and sorted.
+                      The reader may notice that if we were to restrict k to
+                      equal i + 1, then this would be equivalent to the
+                      axis-dominance property (property (v)) plus the
+                      requirement that the strides be positive and sorted (which
+                      we only added for convenience).
 
     Storage region:   A Tensor, in addition to a Pattern, has a storage region
                       that can be though of as a pointer (say, to float) which
@@ -419,7 +427,7 @@ namespace tensor {
 
     Valid Pattern:
                      A valid Pattern must be as follows.  Think of this as the mathematical definition;
-                     see the declaration of struct TensorPattern for additional details about how
+                     see the declaration of struct Pattern for additional details about how
                      it is stored.
 
                           (i) The num_axes must satisfy 0 <= num_axes < KALDI_TENSOR_MAX_DIM
@@ -463,7 +471,7 @@ namespace tensor {
 /*
   This struct stores the dimension and strides of a Tensor.
 
-  Below we describe the the properties that a TensorPattern is required to have.
+  Below we describe the the properties that a Pattern is required to have.
   Most of them are described in the glossary in the entry for "Valid Pattern",
   but there are a couple more that have to do with the specifics of how we
   store things in this struct.
@@ -478,7 +486,7 @@ namespace tensor {
   addition, we require that the stride equal zero for any axis that has dim = 1.
   There is also the "axis-dominance" property (see its glossary entry for more info).
 
-  Our requirements of a TensorPattern are:
+  Our requirements of a Pattern are:
 
     0 <= num_axes <= KALDI_TENSOR_MAX_DIM.
 
@@ -502,7 +510,7 @@ namespace tensor {
   PyTorch-style broadcasting where in an operation on Tensors of dims,
   say, (3,4) and (4), the (4) is interpreted as (1,4).
 */
-struct TensorPattern {
+struct Pattern {
   int32 num_axes;
   int32 dims[KALDI_TENSOR_MAX_DIM];     // the dims in reversed order, indexed
                                         // by 'raxis' (reversed axis)
@@ -512,64 +520,64 @@ struct TensorPattern {
                  // from the start of the originally allocated memory
                  // region
 
-  int32 code;  // pattern code; see ComputePatternCode() in tensor-pattern-utils.h
+  int32 code;  // pattern code; see ComputePatternCode() in pattern-utils.h
                // for details.  If this is negative then it means it has not been
-               // computed.  In a valid TensorPattern the code will always be either
+               // computed.  In a valid Pattern the code will always be either
                // negative or up-to-date.
 
   int32 properties;  // More occasionally-needed properties.  This is similar to
                      // OpenFst's notion of properties, where we compute them
-                     // only on demand.  In a valid TensorPattern the properties
+                     // only on demand.  In a valid Pattern the properties
                      // will always be accurate, but see "Accurate properties"
                      // in glossary above for definition (it can be zero).
 
-  // Returns true if the TensorPattern is valid.  This includes all the
+  // Returns true if the Pattern is valid.  This includes all the
   // mathematical conditions on a valid Pattern (search above for "Valid
-  // Pattern"), plus extra conditions related to struct TensorPattern,
+  // Pattern"), plus extra conditions related to struct Pattern,
   // namely: dims and strides with index >= num_axes should be
   // 1 and 0 respectively; and the code should either be -1 or or
   // be the same as ComputePatternCode() returns on this pattern.
-  // See also IsCanonical() in tensor-pattern-utils.h.
+  // See also IsCanonical() in pattern-utils.h.
   bool IsValid();
 
-  // This comparator induces a total ordering on valid TensorPatterns.  It is a
+  // This comparator induces a total ordering on valid Patterns.  It is a
   // lexical comparison on the offset, num_axes, dims and strides.  (The code
   // does not need to be compared because, if not -1, it is a function of the
   // dims and strides).
-  bool operator < (const TensorPattern &other) const;
+  bool operator < (const Pattern &other) const;
 
 
-  // Equality operator on TensorPattern.  Compares the num_axes, offset, and
+  // Equality operator on Pattern.  Compares the num_axes, offset, and
   // dims and strides indexed [0... num_axes-1].  (In patterns that satisfy IsValid(),
   // the remaining dims and strides would be 1 and 0 respectively, so checking
   // the is pointless).
-  bool operator == (const TensorPattern &other) const;
+  bool operator == (const Pattern &other) const;
 
   // Assignment operator (copies all members).
-  bool operator = (const TensorPattern &other) const;
+  bool operator = (const Pattern &other) const;
 };
 
 
 /// Returns a string representing a Pattern, of the form:
 /// "offset=a dims=[b c d] strides=[e f g]"; this is for debugging
 /// purposes.
-std::string PatternAsString(const TensorPattern &pattern);
+std::string PatternAsString(const Pattern &pattern);
 
 /// Returns a string representing the dims of a Pattern, something like
 /// "[10 20 100]"
-std::string DimsAsString(const TensorPattern &pattern);
+std::string DimsAsString(const Pattern &pattern);
 
 /// Returns a string representing the strides of a Pattern, something like
 /// "[1 10 200]"
-std::string StridesAsString(const TensorPattern &pattern);
+std::string StridesAsString(const Pattern &pattern);
 
 
 
 // We may later get rid of this struct and just have functions to get
 // these properties.
-struct TensorPatternProperties {
+struct PatternProperties {
   // Below are cached properties that are derived from the underlying data in
-  // struct TensorPattern.
+  // struct Pattern.
 
   // The number of elements in the Tensor, which equals the product
   // of dims[0] .. dims[num_axes - 1].  Will always be >0.
@@ -577,7 +585,7 @@ struct TensorPatternProperties {
 
 
   // Binary code describing the pattern, see GetPatternCode() in
-  // tensor-pattern-utils.h.
+  // pattern-utils.h.
   int32 code;
 
   // is_contiguous means that the data form a contiguous block in memory; it is
@@ -598,32 +606,32 @@ struct TensorPatternProperties {
 
   // Sets the members of *this to be the properties of pattern 'pattern'.
   // Ignores the previously existing values of *this.
-  void UpdateProperties(const TensorPattern &pattern);
+  void UpdateProperties(const Pattern &pattern);
 };
 
 
 
 /**
-   Returns a hash value for hashing TensorPattern.  Depends on num_axes,
+   Returns a hash value for hashing Pattern.  Depends on num_axes,
    offset, and dims and strides indexed [0... num_axes-1].  pattern does
    not have to be valid.
  */
-size_t GetHash(const TensorPattern &pattern);
+size_t GetHash(const Pattern &pattern);
 
-// C++ hashing object for TensorPattern
-struct TensorPatternHasher {
-  size_t operator (const TensorPattern &pattern) { return GetHash(pattern); }
+// C++ hashing object for Pattern
+struct PatternHasher {
+  size_t operator (const Pattern &pattern) { return GetHash(pattern); }
 };
 
-// C++ hashing object for TensorPattern*; requires the pointer
-// be non-NULL and to point to a TensorPattern.
-struct TensorPatternPtrHasher {
-  size_t operator (TensorPattern *pattern) { return GetHash(*pattern); }
+// C++ hashing object for Pattern*; requires the pointer
+// be non-NULL and to point to a Pattern.
+struct PatternPtrHasher {
+  size_t operator (Pattern *pattern) { return GetHash(*pattern); }
 };
 
-struct TensorPatternPtrEqual {
-  size_t operator (TensorPattern *pattern1,
-                   TensorPattern *pattern2) {
+struct PatternPtrEqual {
+  size_t operator (Pattern *pattern1,
+                   Pattern *pattern2) {
     *pattern1 == *pattern2;
   }
 };
