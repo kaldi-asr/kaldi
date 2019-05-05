@@ -1,4 +1,4 @@
-// tensor/tensor-pattern-extra-utils.h
+// tensor/pattern-extra-utils.h
 
 //  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -21,7 +21,7 @@
 #define KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_ 1
 
 #include "tensor/tensor-common.h"
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 #include "tensor/array-ref.h"
 
 
@@ -73,7 +73,7 @@ int64 IndexPattern(const Pattern &pattern,
 /**
    FindOffsets() is a utility function used in computing pattern intersections
    and set differences.  We will be using the notation described "Indexing a
-   Pattern" in tensor-pattern.h.  Let pattern1 and pattern2 be patterns satisfying
+   Pattern" in pattern.h.  Let pattern1 and pattern2 be patterns satisfying
    SameStrides(pattern1, pattern2).  Let n be the num-axes of the patterns.
    Let Offsets(pattern1, pattern2) be the set of n-tuples o such that there
    exists an i with pattern1[i + o] = pattern2[i], with of course i + o in the
@@ -106,7 +106,7 @@ bool FindOffsets(const Pattern &pattern1,
 
 /**
    Returns information about whether pattern2's memory-index-set is a subset of
-   pattern1's memory-index-set.  See glossary in tensor-pattern.h for
+   pattern1's memory-index-set.  See glossary in pattern.h for
    explanation of memory-index-set.
         @param [in] pattern1  First input pattern; must be valid.
         @param [in] pattern2  First input pattern; must be valid.
@@ -144,7 +144,7 @@ inline void SetDefaultCodeAndProperties(Pattern *dest) {
 
 /**
    Returns true if the two patterns are equivalent in the sense that their
-   memory-index-sets are the same.  See glossary in tensor-pattern.h for
+   memory-index-sets are the same.  See glossary in pattern.h for
    explanation.
 
    This function works by reducing both patterns to canonical form
@@ -263,13 +263,15 @@ bool PatternContains(const Pattern &pattern,
 
 
 /**
-   Returns true if the memory-index-set of pattern p is a subset
-   of the memory-index-set of pattern q.
-
+   Returns true if the memory-index-set of pattern p is a subset of the
+   memory-index-set of pattern q.  Note: the algorithm is not super trivial or
+   fast (although the tiem taken doesn't grow with the dims or strides, only
+   with the number of axes).
+   
       @param [in] p   First pattern; must be valid.
       @param [in] q   Second pattern; must be valid.
       @return   Returns true if memory-index-set of p is a subset of
-                the memory-index-set of q (see tensor-pattern.h for definition;
+                the memory-index-set of q (see pattern.h for definition;
                 of memory-index-set).
  */
 bool PatternIsSubsetOf(const Pattern &p,
@@ -300,7 +302,7 @@ void ComputeMinAndMaxMindex(const Pattern &pattern,
 
 /**
    Outputs the memory-index-set corresponding to the pattern 'pattern' to 's'.
-   See glossary in tensor-pattern.h for definitions.
+   See glossary in pattern.h for definitions.
 
    This is strictly to be used in debugging code, as it is extremely
    inefficient.
@@ -327,7 +329,7 @@ int64 RandomMemoryIndex(const Pattern &pattern);
 
 /**
    Outputs the memory-index-tuple-set corresponding to the pattern 'pattern' to
-   's' (see tensor-pattern.h for definition).
+   's' (see pattern.h for definition).
 
    This function is strictly to be used in debugging code, as it is
    extremely inefficient.
@@ -342,14 +344,14 @@ bool ToMemoryIndexTupleSet(const ArrayRef<Pattern*>  patterns,
 /**
    Returns true if the two pattern-tuples are equivalent in the sense
    that their memory-index-tuple-sets are the same.  See glossary
-   in tensor-pattern.h for explanation.
+   in pattern.h for explanation.
  */
 bool PatternTuplesEquivalent(const ArrayRef<const Pattern*> patterns1,
                              const ArrayRef<const Pattern*> patterns2);
 
 /**
    Returns true if Pattern p is linear in Pattern q.  (Note:
-   this is a rather technical property, see tensor-pattern.h for definition).
+   this is a rather technical property, see pattern.h for definition).
 
       @param [in] p  The first pattern.  Must be valid
       @param [in] q  The second pattern.  Must be valid and must satisfy
@@ -360,7 +362,7 @@ bool IsLinearIn(const Pattern &p,
 
 /**
    This function returns true if a Pattern is regular (see Regularity property
-   in the glossary in tensor-pattern.h) and false otherwise.  'pattern' must
+   in the glossary in pattern.h) and false otherwise.  'pattern' must
    have all positive strides, the strides must be in increasing order (in the
    private numbering), and it must be valid-2 (see glossary).
  */
@@ -383,13 +385,12 @@ bool IsValid2(const Pattern &pattern);
 /**
    This function attempts to convert a pattern 'pattern' in canonical form
    (c.f. "Canonical form" in glossary, and CanonicalizePattern()) to a list of
-   Patterns (see documentation of `patterns` below for note on their possible
-   non-validity), whose strides (in the private numbering) are equal to the
+   valid-1 Patterns whose strides (in the private numbering) are equal to the
    provided 'strides' vector, the union of whose memory-index-sets (which will
    all be disjoint) is equal to the memory-index-set of the input Pattern, and
    which are all linear in `pattern` (c.f. documentation of "Linear Property).
 
-   This function is not guaranteed to always succeed (return true) but it will
+   This function is not guaranteed to always succeed (return true), but it will
    always succeed when people are doing "reasonable" things with Tensors.  It
    will always succeed if each element in 'strides' divides the next element
    exactly, although this is not a necessary condition for success.
@@ -399,26 +400,18 @@ bool IsValid2(const Pattern &pattern);
                         smallest to greatest; it must contain all strides in
                         `pattern`.
        @param [out] patterns  On success (see documentation of return status)
-                        'patterns' will be set to a nonempty list of patterns,
-                        the union of whose memory-index-sets equals the
-                        memory-index-set of `pattern`; all of whose strides are
-                        equal to `strides`; and each of which is valid-1 and
-                        linear in `pattern` (see "Linear property").
-
-                        except for property (iv) (search for "Valid
-                        Pattern" in tensor-pattern.h): that is, they may have
-                        nonzero strides for axes with dim == 1.  Each elements
-                        of 'strides' dividing the next is a sufficient but not
-                        necessary condition for this function to always return
-                        true.
-                          On failure, `patterns->empty()` will be empty.
-
-        @return         Returns true if pattern strides could be converted using
+                        'patterns' will be set to a nonempty list of valid-1
+                        patterns, the union of whose memory-index-sets equals
+                        the memory-index-set of `pattern`; all of whose strides
+                        are equal to `strides`; and each of which is linear in
+                        `pattern` (see "Linear property").
+                           On failure, 'patterns' will be empty.
+       @return          Returns true if pattern strides could be converted using
                         our algorithm, false if not.  This algorithm will work
                         for any 'reasonable' request, but it doesn't attempt to
                         cover the types of cases where, to solve them, we would
                         have to output a number of patterns that couldn't be
-                        bounded given the number of axes.
+                        bounded given only the number of axes.
   */
 bool ConvertPatternStrides(const Pattern &pattern,
                            const ArrayRef<int32> strides,
@@ -438,7 +431,7 @@ bool ConvertPatternStrides(const Pattern &pattern,
    dims and 'src', and the strides are such as to satisfy
    \f$  dest[i] = f(src[i]) \f$,
    where i is a valid Index-tuple for `src`.  See "Indexing a Pattern"
-   in the glossary in tensor-pattern.h for explanation of this notation.
+   in the glossary in pattern.h for explanation of this notation.
 
          @param [in] src  The source pattern.  Must be valid.
          @param [out] dest  The destination pattern.  Will be identical
@@ -504,7 +497,7 @@ void MakeCompactNonnegativeAndJustified(const Pattern &src,
    Class PatternRebaser is an object that converts Pattern
    when memory layouts change.  The main use-case is when a base Variable
    (c.f. variable.h for definition) has a Pattern that is not
-   contiguous (see tensor-pattern.h for definition of 'contiguous'), and
+   contiguous (see pattern.h for definition of 'contiguous'), and
    its gradient Tensor is allocated contiguously.  This class is
    needed to convert patterns for Variables into patterns for their
    corresponding gradients.
@@ -669,6 +662,6 @@ class OutOfPlaceAxisSorter {
 }  // namespace kaldi
 
 // Include implementation of inline functions.
-#include "tensor/tensor-pattern-extra-utils-inl.h"
+#include "tensor/pattern-extra-utils-inl.h"
 
 #endif  // KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_

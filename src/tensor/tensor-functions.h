@@ -215,7 +215,7 @@ void Scale(Scalar alpha, const Tensor *dest);
    `beta == 0.0.`
 
    Formally equivalent to the following; for the notation, the most relevant
-   glossary entries in tensor-pattern.h are "Dereferencing a memory-index" and
+   glossary entries in pattern.h are "Dereferencing a memory-index" and
    "Memory-index-tuple-set of a Pattern-tuple".
        (1)  For each memory-index `m` in `dest`, do: `*m = 0.0`
        (2)  For each memory-index-tuple `(m_src, m_dest)` in the memory-index-tuple-set
@@ -234,7 +234,7 @@ void Copy(const Tensor &src, const Tensor *dest);
    Equivalent to a special case of Add() with `beta == 1.0`.
 
    Formally equivalent to the following; for the notation, the most relevant
-   glossary entries in tensor-pattern.h are "Dereferencing a memory-index" and
+   glossary entries in pattern.h are "Dereferencing a memory-index" and
    "Memory-index-tuple-set of a Pattern-tuple".
        (1)  For each memory-index `m` in `dest`, do: `*m = 0.0`
        (2)  For each memory-index-tuple `(m_src, m_dest)` in the memory-index-tuple-set
@@ -256,7 +256,7 @@ void CopyScaled(Scalar alpha, const Tensor &src, const Tensor *dest);
    Equivalent to a special case of Add() with `beta == 1.0`.
 
    Formally equivalent to the following; for the notation, the most relevant
-   glossary entries in tensor-pattern.h are "Dereferencing a memory-index" and
+   glossary entries in pattern.h are "Dereferencing a memory-index" and
    "Memory-index-tuple-set of a Pattern-tuple".
        (1)  For each memory-index `m` in `dest`, do: `*m = 0.0`
        (2)  For each memory-index-tuple `(m_src, m_dest)` in the memory-index-tuple-set
@@ -389,14 +389,14 @@ std::shared_ptr<TensorImpl> View(const Tensor &src, ArrayRef<int32> dims);
    More formally, we can express the relationship as follows.  Suppose this
    function returns a Tensor called `dest`; and write d = src.Dim(axis1).
    For an index-tuple i in I(src) [c.f.: "Index-tuple-set of a Pattern" in
-   tensor-pattern.h], split up its indexes as:
+   pattern.h], split up its indexes as:
       i = j + k + l
    where '+' in this context means appending the tuples, and 'k' corresponds
    to the range of axes (axis1, axis1+1, ... axis1+num_axes_to_merge-1).
    Let K be the set of such k values encountered from splitting up each
    i in I(src) this way, and let f be a function from tuples to integers
    that maps list(K) to a sequence of consecutive integers starting from
-   zero (search for "list:" in tensor-pattern.h for explanation).
+   zero (search for "list:" in pattern.h for explanation).
    Let g be a function from tuples to possibly-shorter tuples that
    maps j + k + l to j + (f(k),) + l, here using Python-like notation to
    interpret (x,) as a tuple with a single element x and "+" meaning appending.
@@ -440,7 +440,7 @@ std::shared_ptr<TensorImpl> MergeAxes(const Tensor &src, int32 axis1,
    this).  Let `dims` be the vector of dims supplied; let I(dims) be the
    memory-index-set of a Pattern with dimensions equal to `dims`; let
    list(I(dims)) be that set ordered as in the natural ordering (c.f. "Natural
-   order of index-tuples" in tensor-pattern.h), and let f(i) be the function
+   order of index-tuples" in pattern.h), and let f(i) be the function
    from index-tuple to integers that when applied to list(I(dims)), produces a
    sequence of consecutive integers starting from zero.  Let g be the
    function from index-tuples to index-tuples that when applied on an
@@ -449,7 +449,7 @@ std::shared_ptr<TensorImpl> MergeAxes(const Tensor &src, int32 axis1,
    function of f.  Then this function returns a Tensor `dest` sharing the same
    storage as `src`, such that dest[g(i)] = src[i] for i in I(src) and
    I(dest) = g(I(src))
-   (Relevant glossary entries in tensor-pattern.h to understand the notation
+   (Relevant glossary entries in pattern.h to understand the notation
    include "Index-tuple-set of a Pattern" and "Indexing a Pattern").
 
       @param [in] src   The source Tensor whose axis is to be split

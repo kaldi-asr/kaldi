@@ -21,7 +21,7 @@
 #define KALDI_TENSOR_TENSOR_H_ 1
 
 #include "tensor/tensor-common.h"
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 #include "tensor/tensor-impl.h"
 #include "tensor/storage.h"
 

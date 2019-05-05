@@ -91,7 +91,7 @@ enum StridePolicy {
                  // greatest to smallest as in a "C" array in the public
                  // numbering, or smallest to greatest in the private numbering.
                  // Per our policy, any dimension that is 1 will be given a zero stride.
-                 // C.f. "Normalized strides" in tensor-pattern.h
+                 // C.f. "Normalized strides" in pattern.h
   kCopyStrides   // Means: use the exact strides provided.
 };
 

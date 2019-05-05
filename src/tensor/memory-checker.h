@@ -22,7 +22,7 @@
 
 #include <functional>
 #include "tensor/tensor-common.h"
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 
 
 namespace kaldi {

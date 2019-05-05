@@ -1,4 +1,4 @@
-// tensor/tensor-pattern-utils-inl.h
+// tensor/pattern-utils-inl.h
 
 //  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -18,7 +18,7 @@
 // limitations under the License.
 
 
-// Do not include this header directly; it is only to be included by tensor-pattern-utils.h.
+// Do not include this header directly; it is only to be included by pattern-utils.h.
 
 #ifndef KALDI_TENSOR_TENSOR_PATTERN_UTILS_INL_H_
 #define KALDI_TENSOR_TENSOR_PATTERN_UTILS_INL_H_ 1
@@ -27,7 +27,7 @@
 namespace kaldi {
 namespace tensor {
 
-// See tensor-pattern-utils.h for documentation.
+// See pattern-utils.h for documentation.
 inline bool ContainsNegativeStride(const Pattern &pattern) {
   // 2048 is 1 << 11; 11th bit in code is set if code indicates negative stride.
   if (pattern.code >= 0 && (pattern.code | 2048) != 0)

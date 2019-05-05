@@ -1,4 +1,4 @@
-// tensor/tensor-pattern-extra-utils-inl.h
+// tensor/pattern-extra-utils-inl.h
 
 //  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -20,7 +20,7 @@
 #ifndef KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_INL_H_
 #define KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_INL_H_ 1
 
-// This file is only to be included by tensor-pattern-extra-utils.h; do not include it
+// This file is only to be included by pattern-extra-utils.h; do not include it
 // directly.
 
 

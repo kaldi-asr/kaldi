@@ -21,7 +21,7 @@
 #define KALDI_TENSOR_TENSOR_H_ 1
 
 #include "tensor/tensor-common.h"
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 #include "tensor/tensor-impl.h"
 #include "tensor/storage.h"
 
@@ -120,7 +120,7 @@
 
     Whole Tensor:  A whole Tensor is a Tensor through which one can
             access every byte of the storage region underlying it.
-            W.r.t. the notation in tensor-pattern.h (and using words
+            W.r.t. the notation in pattern.h (and using words
             that describe Patterns to describe Tensors having those patterns),
             this is equivalent to saying that Tensor is compact and
             justified, and the size of its memory-index-set times the

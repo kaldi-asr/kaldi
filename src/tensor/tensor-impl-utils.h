@@ -21,7 +21,7 @@
 #define KALDI_TENSOR_IMPL_UTILS_H_ 1
 
 #include "tensor/tensor-impl.h"
-#include "tensor/tensor-patterns-utils.h"
+#include "tensor/patterns-utils.h"
 
 
 /**
@@ -51,14 +51,14 @@ inline bool Compatible(const TensorImpl &a, const TensorImpl &b,
 
 /**
   This function returns true if the patterns of a and b are broadcastable.
-  See similar function in tensor-pattern-utils.h for more information.
+  See similar function in pattern-utils.h for more information.
 */
 inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
                           bool b_non_reducing = false);
 
 /**
   This function returns true if the patterns of a, b and c are broadcastable.
-  See similar function in tensor-pattern-utils.h for more information.
+  See similar function in pattern-utils.h for more information.
 */
 inline bool Broadcastable(const TensorImpl &a, const TensorImpl &b,
                           const TensorImpl &c, bool c_non_reducing = false);

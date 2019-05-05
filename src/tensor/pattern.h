@@ -1,4 +1,4 @@
-// tensor/tensor-pattern.h
+// tensor/pattern.h
 
 //  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -513,7 +513,7 @@ struct Pattern {
                  // from the start of the originally allocated memory
                  // region
 
-  int32 code;  // pattern code; see ComputePatternCode() in tensor-pattern-utils.h
+  int32 code;  // pattern code; see ComputePatternCode() in pattern-utils.h
                // for details.  If this is negative then it means it has not been
                // computed.  In a valid Pattern the code will always be either
                // negative or up-to-date.
@@ -530,7 +530,7 @@ struct Pattern {
   // namely: dims and strides with index >= num_axes should be
   // 1 and 0 respectively; and the code should either be -1 or or
   // be the same as ComputePatternCode() returns on this pattern.
-  // See also IsCanonical() in tensor-pattern-utils.h.
+  // See also IsCanonical() in pattern-utils.h.
   bool IsValid();
 
   // This comparator induces a total ordering on valid Patterns.  It is a
@@ -578,7 +578,7 @@ struct PatternProperties {
 
 
   // Binary code describing the pattern, see GetPatternCode() in
-  // tensor-pattern-utils.h.
+  // pattern-utils.h.
   int32 code;
 
   // is_contiguous means that the data form a contiguous block in memory; it is

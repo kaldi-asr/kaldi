@@ -50,7 +50,7 @@ Tensor VariableImpl::GetGradForView(const Tensor &data) {
     // The grad will have exactly the same offset, dims and strides as the data.
     // This is the normal case, which we encounter when the Variable was
     // constructed from a Tensor that is justified and contiguous (see glossary
-    // in tensor-pattern.h for meanings).
+    // in pattern.h for meanings).
     return Tensor(ans);
   } else {
     if (!aux_)

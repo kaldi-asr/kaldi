@@ -1,4 +1,4 @@
-// tensor/tensor-pattern.cc
+// tensor/pattern.cc
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -18,7 +18,7 @@
 // limitations under the License.
 
 #include <algorithm>
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 
 
 namespace kaldi {

@@ -1,4 +1,4 @@
-// util/tensor-pattern-utils-test.cc
+// util/pattern-utils-test.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 
@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tensor/tensor-pattern.h"
-#include "tensor/tensor-pattern-utils.h"
+#include "tensor/pattern.h"
+#include "tensor/pattern-utils.h"
 #include "base/kaldi-math.h"
 
 

@@ -1,4 +1,4 @@
-// tensor/tensor-pattern-utils.h
+// tensor/pattern-utils.h
 
 //  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -23,11 +23,11 @@
 
 
 #include "tensor/tensor-common.h"
-#include "tensor/tensor-pattern.h"
+#include "tensor/pattern.h"
 #include "tensor/array-ref.h"
 
 // This header includes various functions operating on Patterns.
-// See also tensor-pattern-extra-utils.h which contains the
+// See also pattern-extra-utils.h which contains the
 // more obscure and less user-facing functions.
 
 namespace kaldi {
@@ -45,7 +45,7 @@ inline bool ContainsNegativeStride(int32 pattern_code) {
 /**
    This function converts an eaxis-index into an raxis-index, with no error
    checking (you would normally check afterward that the raxis-index is in the
-   correct range).  Find "Eaxis-index:" and "Raxis-index:" in tensor-pattern.h,
+   correct range).  Find "Eaxis-index:" and "Raxis-index:" in pattern.h,
    but basically and eaxis-index is an axis-index in the public numbering where
    we allow negative values to mean offsets from the end.
  */
@@ -74,7 +74,7 @@ inline bool PatternMightContainNegativeStride(
 
 /**
    Returns true if the pattern contains a negative stride.
-   See tensor-pattern-utils-inl.h for implementation.
+   See pattern-utils-inl.h for implementation.
 
       @param [in] pattern   Input pattern.  Must be valid;
                             return status is undefined otherwise.
@@ -237,7 +237,7 @@ void UnsqueezeR(int32 raxis, const Pattern &src, Pattern *dest);
 
      @param [in]    eaxis   The axis-index at which the extra axis is to appear,
                            with negatives allowed (see: "Eaxis-index" in glossary
-                           in tensor-pattern.h).
+                           in pattern.h).
      @param [in,out] p      The pattern to which we are adding an axis.
                             Will have its num_axes increased by 1
                             at exit, possibly its dims and strides
@@ -426,7 +426,7 @@ bool Broadcastable(const Pattern &a, const Pattern &b,
 /**
    Returns true if the dims-vectors of a and b are the same after padding as for
    broadcasting.  See definition of "Dims-vector of a Pattern" in
-   tensor-pattern.h, and the entry for "PyTorch-style broadcasting".  What this
+   pattern.h, and the entry for "PyTorch-style broadcasting".  What this
    means in terms of the physical storage of the patterns is that a->dims and
    b->dims contain the same elements, without requiring the num_axes to be the
    same.
@@ -455,7 +455,7 @@ bool SamePaddedDims(const Pattern &a, const Pattern &b,
 /**
    Return true if the two provided patterns have the same dims-vectors
    (meaning, effectively the same num_axes and the same dim for each
-   axis; see "Dims-vector" in tensor-pattern.h).
+   axis; see "Dims-vector" in pattern.h).
 
       @param [in] a  The first pattern.  Must be valid.
       @param [in] b  The second pattern.  Must be valid.
@@ -755,7 +755,7 @@ bool CreateViewPattern(const Pattern &pattern_in,
    It selects a range of dimensions on one of the axes.  It is similar to
    indexing with a range in Python, like A[10:20].
 
-      @param [in] eaxis  Eaxis-index (see glossary in tensor-pattern.h) on which
+      @param [in] eaxis  Eaxis-index (see glossary in pattern.h) on which
                          to possibly reduce the dimensionality.
       @param [in] start  Starting index; must be in range [0, t->Dim(eaxis) - 1]
       @param [in] end    Ending index; must be in the range [start + 1, t->Dim(eaxis)]
@@ -774,7 +774,7 @@ void Slice(int32 eaxis, int32 start, int32 end, Pattern *pattern);
    a specified axis (specified in the public numbering), of a TensorImpl `t`,
    reducing the num_axes by one.
 
-       @param [in] eaxis Eaxis-index (see glossary in tensor-pattern.h) on which
+       @param [in] eaxis Eaxis-index (see glossary in pattern.h) on which
                          to possibly reduce the dimensionality.
        @param [in] index Index to select; must be in range
                          [0, t->Dim(eaxis) - 1].
@@ -844,7 +844,7 @@ bool IsCompactAndJustified(const Pattern &pattern);
 
 /**
    Returns true if 'pattern' has normalized strides as defined in
-   tensor-pattern.h (i.e.: strides are nonnegative and the nonzero ones are in
+   pattern.h (i.e.: strides are nonnegative and the nonzero ones are in
    strictly increasing order in the private numbering / decreasing in the
    public).
 */
@@ -868,6 +868,6 @@ bool HasNonnegativeStrides(const Pattern &pattern);
 }  // namespace kaldi
 
 
-#include "tensor/tensor-pattern-utils-inl.h"
+#include "tensor/pattern-utils-inl.h"
 
 #endif KALDI_TENSOR_TENSOR_PATTERN_UTILS_H_
