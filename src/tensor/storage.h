@@ -35,11 +35,7 @@ struct StorageAux;
 class Storage {
  public:
 
-
-  void RecordChange(int32 element_size,
-                    const Pattern &pattern);
-
-
+  
   // This initializes a ChangeTracker object in this->tracker if it
   // does not already exist, and returns its address.
   ChangeTracker *GetChangeTracker();

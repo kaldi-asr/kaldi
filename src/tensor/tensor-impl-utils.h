@@ -222,6 +222,20 @@ inline void RegisterTensorChange(const TensorImpl &impl) {
   }
 }
 
+/**
+   read
+   read and write
+   read and invalidation
+   invalidation
+ */
+inline void RegisterOp(const TensorImpl &impl) {
+  if (DebugMode()) {
+    impl.storage_->GetChangeTracker()->RecordChange(
+        SizeOf(impl.dtype), impl.pattern);
+  }
+}
+
+
 inline int64 NumElements(const TensorImpl &a) {
   return NumElements(a.pattern);
 }
