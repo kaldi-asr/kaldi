@@ -32,6 +32,14 @@ namespace tensor {
 /*
   PATTERN GLOSSARY   (note: see also TENSOR GLOSSARY in tensor.h)
 
+
+
+    Adjacent:         Two Patterns are said to be adjacent if their memory-index-sets
+                      are disjoint and a Pattern exists whose memory-index-set is
+                      their union.
+                      [TODO: come up with algorithm for testing adjacency and
+                      merging the adjacent Patterns.]
+
     Axis:             An axis is one of the (dim, stride) pairs that form part
                       of a Pattern.  We will sometimes use the word "axis"
                       to refer to the integer index of the axis, as in, for example,
@@ -384,7 +392,6 @@ namespace tensor {
                         (i) For all j with i < j < k, stride(i) divides stride(j)
                             exactly and dim(j) = 1.
                         (ii) Either k == num_axes, or dim(i) * stride(i) <= stride(k),
-
 
                       The reader may notice that if we were to restrict k to
                       equal i + 1, then this would be equivalent to the
