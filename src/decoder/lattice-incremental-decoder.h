@@ -1,9 +1,6 @@
 // decoder/lattice-incremental-decoder.h
 
-// Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
-//           2013-2014  Johns Hopkins University (Author: Daniel Povey)
-//                2014  Guoguo Chen
-//                2018  Zhehuai Chen
+// Copyright      2019  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -46,9 +43,7 @@ struct LatticeIncrementalDecoderConfig {
   bool redeterminize;
   int32 redeterminize_max_frames;
   bool epsilon_removal;
-  bool determinize_lattice; // not inspected by this class... used in
-                            // command-line program.
-  BaseFloat beam_delta;     // has nothing to do with beam_ratio
+  BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
   BaseFloat
       prune_scale; // Note: we don't make this configurable on the command line,
@@ -71,7 +66,6 @@ struct LatticeIncrementalDecoderConfig {
         redeterminize(false),
         redeterminize_max_frames(std::numeric_limits<int32>::max()),
         epsilon_removal(false),
-        determinize_lattice(true),
         beam_delta(0.5),
         hash_ratio(2.0),
         prune_scale(0.1),
@@ -90,13 +84,17 @@ struct LatticeIncrementalDecoderConfig {
                    "Interval (in frames) at "
                    "which to prune tokens");
     opts->Register("determinize-delay", &determinize_delay,
-                   "delay (in frames) at "
-                   "which to incrementally determinize lattices");
+                   "delay (in frames, typically larger than --prune-interval) "
+                   "at which to incrementally determinize lattices.");
     opts->Register("determinize-max-active", &determinize_max_active,
-                   "This option is to adaptively decide --determinize-delay. "
+                   "This option is to adaptively decide the size of the chunk "
+                   "to be determinized. "
                    "If the number of active tokens(in a certain frame) is less "
-                   "than this number, we will start to incrementally "
-                   "determinize lattices up to this frame.");
+                   "than this number (typically 50), we will start to "
+                   "incrementally determinize lattices from the last frame we "
+                   "determinized up to this frame. It can work with "
+                   "--determinize-delay to further reduce the computation "
+                   "introduced by incremental determinization. ");
     opts->Register("redeterminize", &redeterminize,
                    "whether to re-determinize the lattice after incremental "
                    "determinization.");
@@ -107,10 +105,6 @@ struct LatticeIncrementalDecoderConfig {
                    "determinized lattice.");
     opts->Register("epsilon-removal", &epsilon_removal,
                    "whether to remove epsilon when appending two adjacent chunks.");
-    opts->Register("determinize-lattice", &determinize_lattice,
-                   "If true, "
-                   "determinize the lattice (lattice-determinization, keeping only "
-                   "best pdf-sequence for each word-sequence).");
     opts->Register("beam-delta", &beam_delta,
                    "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "
@@ -122,17 +116,21 @@ struct LatticeIncrementalDecoderConfig {
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 &&
                  min_active <= max_active && prune_interval > 0 &&
-                 beam_delta > 0.0 && hash_ratio >= 1.0 && prune_scale > 0.0 &&
-                 prune_scale < 1.0);
+                 determinize_delay >= 0 && determinize_max_active >= 0 &&
+                 redeterminize_max_frames >= 0 && beam_delta > 0.0 &&
+                 hash_ratio >= 1.0 && prune_scale > 0.0 && prune_scale < 1.0);
   }
 };
 
 template <typename FST>
 class LatticeIncrementalDeterminizer;
 
-/** This is the "normal" lattice-generating decoder.
-    See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
-     for more information.
+/* This is an extention to the "normal" lattice-generating decoder.
+   See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
+    for more information.
+
+   The main difference is the incremental determinization which will be
+   discussed in the function GetLattice().
 
    The decoder is templated on the FST type and the token type.  The token type
    will normally be StdToken, but also may be BackpointerToken which is to support
@@ -209,10 +207,10 @@ class LatticeIncrementalDecoderTpl {
   // of it as a `pre-final state`
   // Similarly, we define a `initial arc` as an arc from a initial-state, and the
   // destination state of it as a `post-initial state`
-  // The initial states are constructed corresponding to pre-final states in the
-  // determinized and appended lattice before this chunk
-  // The final states are constructed correponding to tokens in the last frames of
-  // this chunk
+  // The post-initial states are constructed corresponding to pre-final states
+  // in the determinized and appended lattice before this chunk
+  // The pre-final states are constructed correponding to tokens in the last frames
+  // of this chunk.
   // Since the StateId can change during determinization, we need to give permanent
   // unique labels (as olabel) to these
   // raw-lattice states for latter appending.
@@ -550,8 +548,8 @@ class LatticeIncrementalDeterminizer {
   const CompactLattice &GetDeterminizedLattice() const { return lat_; }
 
   // Part of step 1 of incremental determinization,
-  // where the initial states are constructed corresponding to redeterminized
-  // states (see the description in redeterminized_states_) in the
+  // where the post-initial states are constructed corresponding to
+  // redeterminized states (see the description in redeterminized_states_) in the
   // determinized and appended lattice before this chunk.
   // We give each determinized and appended state an olabel id, called `state_label`
   // We maintain a map (`token_label2last_state_map`) from token label (obtained from
@@ -577,7 +575,7 @@ class LatticeIncrementalDeterminizer {
   // clat into olat
   // Otherwise, we need to connect states of the last frame of
   // the last chunk to states of the first frame of this chunk.
-  // These begin and final states are corresponding to the same Token,
+  // These post-initial and pre-final states are corresponding to the same Token,
   // guaranteed by unique state labels.
   bool AppendLatticeChunks(CompactLattice clat, bool not_first_chunk);
 
@@ -604,13 +602,13 @@ class LatticeIncrementalDeterminizer {
       Lattice *olat);
   // This function is to preprocess the appended compact lattice before
   // generating raw lattices for the next chunk.
-  // After identifying prefinal-states, for any such state that is separated by
+  // After identifying pre-final states, for any such state that is separated by
   // more than config_.redeterminize_max_frames from the end of the current
   // appended lattice, we create an extra state for it; we add an epsilon arc
-  // from that prefinal state to the extra state; we copy any final arcs from
-  // the prefinal state to its extra state and we remove those final arcs from
-  // the original prefinal-state.  Now this extra state is the prefinal state to
-  // redeterminize and the original prefinal state does not need to redeterminize
+  // from that pre-final state to the extra state; we copy any final arcs from
+  // the pre-final state to its extra state and we remove those final arcs from
+  // the original pre-final state.  Now this extra state is the pre-final state to
+  // redeterminize and the original pre-final state does not need to redeterminize
   // The epsilon would be removed later on in AppendLatticeChunks, while
   // splicing the compact lattices together
   void GetRedeterminizedStates();
@@ -630,16 +628,16 @@ class LatticeIncrementalDeterminizer {
   // initial arcs in GetInitialRawLattice
   int32 state_last_initial_offset_;
   // We define a state in the appended lattice as a 'redeterminized-state' (meaning:
-  // one that will be redeterminized), if it is: prefinal, or there exists an arc
-  // from a redeterminized state to this state. We keep reapplying this rule until
-  // there are no more redeterminized states. The final state is not included.
-  // These redeterminized states will be stored in this map
+  // one that will be redeterminized), if it is: a pre-final state, or there
+  // exists an arc from a redeterminized state to this state. We keep reapplying
+  // this rule until there are no more redeterminized states. The final state
+  // is not included. These redeterminized states will be stored in this map
   // which is a map from the state in the appended compact lattice to the
   // state_copy in the newly-created raw lattice.
   unordered_map<StateId, StateId> redeterminized_states_;
   // It is a map used in GetRedeterminizedStates (see the description there)
-  // A map from the original prefinal state to the prefinal states (i.e. the
-  // original prefinal state or an extra state generated by
+  // A map from the original pre-final state to the pre-final states (i.e. the
+  // original pre-final state or an extra state generated by
   // GetRedeterminizedStates) used for generating raw lattices of the next chunk.
   unordered_map<StateId, StateId> processed_prefinal_states_;
 

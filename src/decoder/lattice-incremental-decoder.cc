@@ -1,9 +1,6 @@
 // decoder/lattice-incremental-decoder.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Mirko Hannemann
-//           2013-2018  Johns Hopkins University (Author: Daniel Povey)
-//                2014  Guoguo Chen
-//                2018  Zhehuai Chen
+// Copyright      2019  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -103,29 +100,30 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
     if (NumFramesDecoded() % config_.prune_interval == 0) {
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-      // We always incrementally determinize the lattice after lattice pruning in
-      // PruneActiveTokens()
-      // We have a delay on GetLattice to do determinization on more skinny lattices
-      int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
-      // The minimum length of chunk is config_.prune_interval. We make it
-      // identical to PruneActiveTokens since we need extra_cost as the weights
-      // of final arcs to denote the "future" information of final states (Tokens)
+    }
+
+    // We always incrementally determinize the lattice after lattice pruning in
+    // PruneActiveTokens()
+    // We have a delay on GetLattice to do determinization on more skinny lattices
+    int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
+    // The minimum length of chunk is config_.prune_interval. We make it
+    // identical to PruneActiveTokens since we need extra_cost as the weights
+    // of final arcs to denote the "future" information of final states (Tokens)
+    if (frame_det_most % config_.prune_interval == 0) {
       int32 frame_det_least = last_get_lattice_frame_ + config_.prune_interval;
-      if (config_.determinize_lattice && frame_det_most > 0) {
-        // To adaptively decide the length of chunk, we further compare the number of
-        // tokens in each frame and a pre-defined threshold.
-        // If the number of tokens in a certain frame is less than
-        // config_.determinize_max_active, the lattice can be determinized up to this
-        // frame. And we try to determinize as most frames as possible so we check
-        // numbers from frame_det_most to frame_det_least
-        for (int32 f = frame_det_most; f >= frame_det_least; f--) {
-          if (config_.determinize_max_active == std::numeric_limits<int32>::max() ||
-              GetNumToksForFrame(f) < config_.determinize_max_active) {
-            KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
-                          << " incremental determinization up to " << f;
-            GetLattice(false, false, f);
-            break;
-          }
+      // To adaptively decide the length of chunk, we further compare the number of
+      // tokens in each frame and a pre-defined threshold.
+      // If the number of tokens in a certain frame is less than
+      // config_.determinize_max_active, the lattice can be determinized up to this
+      // frame. And we try to determinize as most frames as possible so we check
+      // numbers from frame_det_most to frame_det_least
+      for (int32 f = frame_det_most; f >= frame_det_least; f--) {
+        if (config_.determinize_max_active == std::numeric_limits<int32>::max() ||
+            GetNumToksForFrame(f) < config_.determinize_max_active) {
+          KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
+                        << " incremental determinization up to " << f;
+          GetLattice(false, false, f);
+          break;
         }
       }
     }
@@ -134,8 +132,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
   }
   Timer timer;
   FinalizeDecoding();
-  if (config_.determinize_lattice)
-    GetLattice(true, config_.redeterminize, NumFramesDecoded());
+  GetLattice(true, config_.redeterminize, NumFramesDecoded());
   KALDI_VLOG(2) << "Delay time during and after decoding finalization (secs): "
                 << timer.Elapsed();
 
@@ -1340,7 +1337,8 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
         } else
           arcs_remained.push_back(arc);
       }
-      CompactLatticeArc arc_to_new(0, 0, CompactLatticeWeight::One(), new_prefinal_state);
+      CompactLatticeArc arc_to_new(0, 0, CompactLatticeWeight::One(),
+                                   new_prefinal_state);
       arcs_remained.push_back(arc_to_new);
 
       lat_.DeleteArcs(prefinal_state);
@@ -1348,7 +1346,8 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
       processed_prefinal_states_[prefinal_state] = new_prefinal_state;
     }
   }
-  KALDI_VLOG(8) << "states of the lattice after GetRedeterminizedStates: " << lat_.NumStates();
+  KALDI_VLOG(8) << "states of the lattice after GetRedeterminizedStates: "
+                << lat_.NumStates();
 }
 
 // This function is specifically designed to obtain the initial arcs for a chunk
@@ -1438,11 +1437,12 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
   forward_costs_.resize(state_offset + clat.NumStates(),
                         std::numeric_limits<BaseFloat>::infinity());
 
-  // Here we construct a map from the original prefinal state to the prefinal states for later use 
+  // Here we construct a map from the original prefinal state to the prefinal states
+  // for later use
   unordered_map<StateId, StateId> invert_processed_prefinal_states;
   invert_processed_prefinal_states.reserve(processed_prefinal_states_.size());
-  for (auto i:processed_prefinal_states_)
-    invert_processed_prefinal_states[i.second]=i.first;
+  for (auto i : processed_prefinal_states_)
+    invert_processed_prefinal_states[i.second] = i.first;
   for (StateIterator<CompactLattice> siter(clat); !siter.Done(); siter.Next()) {
     auto s = siter.Value();
     StateId state_appended = kNoStateId;
@@ -1496,7 +1496,8 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
         weight_offset.SetWeight(LatticeWeight(0, -forward_costs_[source_state]));
         arc_appended.weight = Times(arc_appended.weight, weight_offset);
 
-        // if it is an extra prefinal state, we should use its original prefinal state
+        // if it is an extra prefinal state, we should use its original prefinal
+        // state
         int arc_offset = 0;
         auto r = invert_processed_prefinal_states.find(source_state);
         if (r != invert_processed_prefinal_states.end() && r->second != r->first) {
@@ -1509,7 +1510,6 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
           // it should be the last chunk
           olat->AddArc(source_state, arc_appended);
         } else {
-
           // append lattice chunk and remove Epsilon together
           for (ArcIterator<CompactLattice> aiter_postinitial(clat, arc.nextstate);
                !aiter_postinitial.Done(); aiter_postinitial.Next()) {
@@ -1520,8 +1520,8 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
             olat->AddArc(source_state, arc_postinitial);
             if (arc_postinitial.olabel > config_.max_word_id) {
               KALDI_ASSERT(arc_postinitial.olabel < state_last_initial_offset_);
-              final_arc_list_.push_back(
-                  pair<int32, size_t>(source_state, aiter_postinitial.Position() + arc_offset));
+              final_arc_list_.push_back(pair<int32, size_t>(
+                  source_state, aiter_postinitial.Position() + arc_offset));
             }
           }
         }
@@ -1551,7 +1551,7 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
       if (prefinal_state == new_prefinal_state) continue;
       for (ArcIterator<CompactLattice> aiter(*olat, new_prefinal_state);
            !aiter.Done(); aiter.Next())
-        olat->AddArc(prefinal_state, aiter.Value()); 
+        olat->AddArc(prefinal_state, aiter.Value());
       olat->DeleteArcs(new_prefinal_state);
       olat->SetFinal(new_prefinal_state, CompactLatticeWeight::Zero());
     }

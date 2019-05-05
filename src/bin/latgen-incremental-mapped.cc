@@ -1,8 +1,6 @@
 // bin/latgen-incremental-mapped.cc
 
-// Copyright 2009-2012  Microsoft Corporation, Karel Vesely
-//                2013  Johns Hopkins University (author: Daniel Povey)
-//                2014  Guoguo Chen
+// Copyright      2019  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //

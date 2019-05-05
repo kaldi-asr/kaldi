@@ -22,7 +22,6 @@
 #include "decoder/lattice-faster-decoder.h"
 #include "decoder/grammar-fst.h"
 #include "lat/lattice-functions.h"
-#include "base/timer.h"
 
 namespace kaldi {
 
@@ -354,7 +353,6 @@ bool DecodeUtteranceLatticeFaster(
 
   // Get lattice, and do determinization if requested.
   Lattice lat;
-  Timer timer;
   decoder.GetRawLattice(&lat);
   if (lat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
@@ -379,7 +377,6 @@ bool DecodeUtteranceLatticeFaster(
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
     lattice_writer->Write(utt, lat);
   }
-  KALDI_VLOG(2) << "Delay time after decoding finalized (secs): " << timer.Elapsed();
   KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
             << (likelihood / num_frames) << " over "
             << num_frames << " frames.";
