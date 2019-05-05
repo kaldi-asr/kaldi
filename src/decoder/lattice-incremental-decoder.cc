@@ -1172,6 +1172,7 @@ void LatticeIncrementalDeterminizer<FST>::Init() {
   forward_costs_.clear();
   state_last_initial_offset_ = 2 * config_.max_word_id;
   redeterminized_states_.clear();
+  processed_prefinal_states_.clear();
 }
 template <typename FST>
 bool LatticeIncrementalDeterminizer<FST>::AddRedeterminizedState(
@@ -1312,6 +1313,7 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
         processed_prefinal_states_.end())
       continue;
     ArcIterator<CompactLattice> aiter(lat_, prefinal_state);
+    KALDI_ASSERT(lat_.NumArcs(prefinal_state) > i.second);
     aiter.Seek(i.second);
     auto final_arc = aiter.Value();
     auto final_weight = lat_.Final(final_arc.nextstate);
@@ -1338,8 +1340,7 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
         } else
           arcs_remained.push_back(arc);
       }
-      CompactLatticeArc arc_to_new;
-      arc_to_new.nextstate = new_prefinal_state;
+      CompactLatticeArc arc_to_new(0, 0, CompactLatticeWeight::One(), new_prefinal_state);
       arcs_remained.push_back(arc_to_new);
 
       lat_.DeleteArcs(prefinal_state);
@@ -1347,6 +1348,7 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
       processed_prefinal_states_[prefinal_state] = new_prefinal_state;
     }
   }
+  KALDI_VLOG(8) << "states of the lattice after GetRedeterminizedStates: " << lat_.NumStates();
 }
 
 // This function is specifically designed to obtain the initial arcs for a chunk
@@ -1436,6 +1438,11 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
   forward_costs_.resize(state_offset + clat.NumStates(),
                         std::numeric_limits<BaseFloat>::infinity());
 
+  // Here we construct a map from the original prefinal state to the prefinal states for later use 
+  unordered_map<StateId, StateId> invert_processed_prefinal_states;
+  invert_processed_prefinal_states.reserve(processed_prefinal_states_.size());
+  for (auto i:processed_prefinal_states_)
+    invert_processed_prefinal_states[i.second]=i.first;
   for (StateIterator<CompactLattice> siter(clat); !siter.Done(); siter.Next()) {
     auto s = siter.Value();
     StateId state_appended = kNoStateId;
@@ -1468,6 +1475,8 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
           // record final_arc in this chunk for the step 3.2 in the next call
           KALDI_ASSERT(arc.olabel < state_last_initial_offset_);
           KALDI_ASSERT(clat.Final(arc.nextstate) != CompactLatticeWeight::Zero());
+          // state_appended shouldn't be in invert_processed_prefinal_states
+          // So we do not need to map it
           final_arc_list_.push_back(
               pair<int32, size_t>(state_appended, aiter.Position()));
         }
@@ -1487,11 +1496,20 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
         weight_offset.SetWeight(LatticeWeight(0, -forward_costs_[source_state]));
         arc_appended.weight = Times(arc_appended.weight, weight_offset);
 
+        // if it is an extra prefinal state, we should use its original prefinal state
+        int arc_offset = 0;
+        auto r = invert_processed_prefinal_states.find(source_state);
+        if (r != invert_processed_prefinal_states.end() && r->second != r->first) {
+          source_state = r->second;
+          arc_offset = olat->NumArcs(source_state);
+        }
+
         if (!config_.epsilon_removal ||
             clat.Final(arc.nextstate) != CompactLatticeWeight::Zero()) {
           // it should be the last chunk
           olat->AddArc(source_state, arc_appended);
         } else {
+
           // append lattice chunk and remove Epsilon together
           for (ArcIterator<CompactLattice> aiter_postinitial(clat, arc.nextstate);
                !aiter_postinitial.Done(); aiter_postinitial.Next()) {
@@ -1503,7 +1521,7 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
             if (arc_postinitial.olabel > config_.max_word_id) {
               KALDI_ASSERT(arc_postinitial.olabel < state_last_initial_offset_);
               final_arc_list_.push_back(
-                  pair<int32, size_t>(source_state, aiter_postinitial.Position()));
+                  pair<int32, size_t>(source_state, aiter_postinitial.Position() + arc_offset));
             }
           }
         }
@@ -1517,6 +1535,8 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
                    forward_costs_[source_state] + weight.Value1() + weight.Value2());
     }
   }
+  KALDI_ASSERT(olat->NumStates() == clat.NumStates() + state_offset);
+  KALDI_VLOG(8) << "states of the lattice: " << olat->NumStates();
 
   if (!not_first_chunk) {
     olat->SetStart(0); // Initialize the first chunk for olat
@@ -1529,11 +1549,11 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
       auto new_prefinal_state = i.second;
       // It is without an extra prefinal state, hence do not need to process
       if (prefinal_state == new_prefinal_state) continue;
-      for (ArcIterator<CompactLattice> aiter(lat_, new_prefinal_state);
+      for (ArcIterator<CompactLattice> aiter(*olat, new_prefinal_state);
            !aiter.Done(); aiter.Next())
-        lat_.AddArc(prefinal_state, aiter.Value());
-      lat_.DeleteArcs(new_prefinal_state);
-      lat_.SetFinal(new_prefinal_state, CompactLatticeWeight::Zero());
+        olat->AddArc(prefinal_state, aiter.Value()); 
+      olat->DeleteArcs(new_prefinal_state);
+      olat->SetFinal(new_prefinal_state, CompactLatticeWeight::Zero());
     }
   }
 
