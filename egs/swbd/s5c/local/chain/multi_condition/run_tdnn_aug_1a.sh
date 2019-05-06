@@ -3,7 +3,7 @@
 # This recipe does multi-style training of TDNN model
 
 # local/chain/compare_wer_general.sh --rt03 tdnn7q_sp tdnn1a_aug
-# System                tdnn7q_sp tdnn1a_aug_ep_3
+# System                tdnn7q_sp tdnn1a_aug
 # WER on train_dev(tg)      11.91     12.06
 # WER on train_dev(fg)      10.99     10.92
 # WER on eval2000(tg)        14.3      14.4
