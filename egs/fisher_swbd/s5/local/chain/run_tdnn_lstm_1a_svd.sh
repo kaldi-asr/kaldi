@@ -50,6 +50,11 @@
 # %WER 11.3 | 8420 76157 | 89.9 6.4 3.7 1.2 11.3 42.4 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
 # %WER 13.1 | 4450 39436 | 88.3 7.5 4.2 1.4 13.1 44.0 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
 
+# ./show_chain_wer_rt03.sh tdnn_lstm_1a_svd_sp
+# %WER 9.7 | 3970 36721 | 91.3 5.9 2.8 1.0 9.7 40.0 | exp/chain/tdnn_lstm_1a_svd_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 12  | 8420 76157 | 89.3 7.3 3.4 1.3 12.0 42.0 | exp/chain/tdnn_lstm_1a_svd_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 14.1 | 4450 39436 | 87.4 8.2 4.3 1.5 14.1 44.6 | exp/chain/tdnn_lstm_1a_svd_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys      
+
 
 set -e
 
