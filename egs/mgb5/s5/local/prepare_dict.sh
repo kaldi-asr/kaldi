@@ -16,8 +16,14 @@ mkdir -p $dir data/local/lexicon_data
 
 if [ $stage -le 0 ]; then
   echo "$0: Downloading text for lexicon... $(date)."
-  wget -P data/local/lexicon_data $lexicon_url1
-  wget -P data/local/lexicon_data $lexicon_url2
+  if [ ! -f data/local/lexicon_data/grapheme_lexicon/ar-ar_grapheme_lexicon_20160209.bz2 ]; then
+    wget -P data/local/lexicon_data $lexicon_url1
+  fi 
+  
+  if [ ! -f data/local/lexicon_data/grapheme_lexicon/ ar-ar_phoneme_lexicon_20140317.bz2 ]; then
+    wget -P data/local/lexicon_data $lexicon_url2
+  fi 
+  
   rm -fr data/local/lexicon_data/grapheme_lexicon
   for dict in ar-ar_grapheme_lexicon_20160209.bz2 ar-ar_phoneme_lexicon_20140317.bz2; do
     bzcat data/local/lexicon_data/$x | sed '1,3d' | \

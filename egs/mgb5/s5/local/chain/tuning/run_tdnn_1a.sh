@@ -1,14 +1,16 @@
 #!/bin/bash
 
+
 # Copyright 2017-2018  Johns Hopkins University (author: Daniel Povey)
 #           2017-2018  Yiming Wang
+#           2019-202   QCRI (Ahmed Ali) 
 
+# The script is copied from egs/iban
 # 1a is trying an architecture with factored parameter matrices with dropout.
 
-# cat exp/chain/tdnn_1a/decode_dev/scoring_kaldi/best_wer
-# %WER 18.29 [ 2013 / 11006, 243 ins, 378 del, 1392 sub ] exp/chain/tdnn_1a/decode_dev/wer_10_0.0
-# cat exp/chain/tdnn_1a/decode_dev.rescored/scoring_kaldi/best_wer
-# %WER 16.40 [ 1805 / 11006, 218 ins, 347 del, 1240 sub ] exp/chain/tdnn_1a/decode_dev.rescored/wer_10_0.0
+# grep WER exp/chain/tdnn_1a/decode_dev/wer_10_0.0
+# %WER 75.59 [ 51973 / 68755, 1993 ins, 19098 del, 30882 sub ] 
+
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn_1a
 # exp/chain/tdnn_1a: num-iters=38 nj=2..5 num-params=12.6M dim=40+50->1592 combine=-0.069->-0.067 (over 2) xent:train/valid[24,37,final]=(-1.41,-1.18,-1.12/-1.68,-1.54,-1.47) logprob:train/valid[24,37,final]=(-0.071,-0.057,-0.053/-0.124,-0.122,-0.121)

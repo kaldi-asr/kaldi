@@ -10,6 +10,14 @@ set -e -o pipefail
 # DB/{dev.tar.gz,train.tar.gz}
 ###
 echo "Preparing train and dev data"
+
+if [ ! -d DB ]; then
+  echo "You need to download the MGB-5 first and copy dev.tar.gz and train.tar.gz to DB folder"
+  echo "check: https://arabicspeech.org/mgb5"
+  exit 1
+fi
+
+# We will extract data again even if you did this before.
 (cd DB; rm -fr train dev;for x in *; do tar -xvf $x; done)
 
 mkdir -p data/local data/train data/dev
