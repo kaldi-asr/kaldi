@@ -1029,7 +1029,7 @@ class SvdApplier {
       bottleneck_dim_ = GetReducedDimension(s2, 0, s2.Dim()-1, min_singular_sum);
     } 
     SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
-    BaseFloat s_sum_reduced = this_part.Sum();
+    BaseFloat s2_sum_reduced = this_part.Sum();
     BaseFloat shrinkage_ratio =
       static_cast<BaseFloat>(bottleneck_dim_ * (input_dim+output_dim))
       / static_cast<BaseFloat>(input_dim * output_dim);
@@ -1045,8 +1045,8 @@ class SvdApplier {
     B.Resize(output_dim, bottleneck_dim_, kCopyData);
     KALDI_LOG << "For component " << component_name
               << " singular value squared sum changed by "
-              << (s2_sum_orig - s_sum_reduced)
-              << " (from " << s2_sum_orig << " to " << s_sum_reduced << ")";
+              << (s2_sum_orig - s2_sum_reduced)
+              << " (from " << s2_sum_orig << " to " << s2_sum_reduced << ")";
     KALDI_LOG << "For component " << component_name
 	      << " dimension reduced from "
               << " (" << input_dim << "," << output_dim << ")"

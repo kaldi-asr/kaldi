@@ -4,11 +4,11 @@
 #            Saikiran Valluri, Govivace.Inc -  Apache 2.0
 
 # The script is organized as below.
-# First we train the baseline LSTMP-TDNN config chain model for few epochs on the multi-english data,
+# First we train the baseline LSTMP-TDNN config chain model for few epochs on the (Fisher+swbd)-english data,
 # Then, we perform SVD based refactoring of all the Affine components in this baseline final.mdl,
 # in order to reduce the overall model parameters size,
 # as determined by the bottleneck dim value or Energy and Shrinkage threshold values.
-# Then, we finetune the weight parameters of the refactored model using entire multien data for single epoch.
+# Then, we finetune the weight parameters of the refactored model using entire Fisher + switchboard data for single epoch.
 
 # Command used for comparing  WER decoding on testsets :
 #  ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp tdnn_lstm_1a_svd_sp
@@ -309,10 +309,6 @@ fi
 
 decode_suff=fsh_sw1_tg
 graph_dir=$dir/graph_fsh_sw1_tg
-if $apply_svd; then
-  # Decoding the svd retrained model.
-  dir=$svd_dir
-fi
 
 if [ $stage -le 16 ]; then
   [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
@@ -345,6 +341,72 @@ fi
 test_online_decoding=true
 lang=data/lang_fsh_sw1_tg
 if $test_online_decoding && [ $stage -le 17 ]; then
+  # note: if the features change (e.g. you add pitch features), you will have to
+  # change the options of the following command line.
+  steps/online/nnet3/prepare_online_decoding.sh \
+       --mfcc-config conf/mfcc_hires.conf \
+       $lang exp/nnet3/extractor $dir ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in rt03 eval2000; do
+    (
+      # note: we just give it "$decode_set" as it only uses the wav.scp, the
+      # feature type does not matter.
+
+      steps/online/nnet3/decode.sh --nj 50 --cmd "$decode_cmd" $iter_opts \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+         $graph_dir data/${decode_set}_hires \
+         ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
+      if $has_fisher; then
+              steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+                      data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
+                      ${dir}_online/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
+      fi
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in online decoding"
+    exit 1
+  fi
+fi
+
+if $apply_svd; then
+  # Decoding the svd retrained model.
+  dir=$svd_dir
+fi
+
+if [ $stage -le 18 ]; then
+  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
+  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
+  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
+  if [ ! -z $decode_iter ]; then
+    iter_opts=" --iter $decode_iter "
+  fi
+  for decode_set in rt03 eval2000; do
+      (
+      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+          --nj 50 --cmd "$decode_cmd" $iter_opts \
+          --extra-left-context $extra_left_context  \
+          --extra-right-context $extra_right_context  \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
+          --frames-per-chunk "$frames_per_chunk" \
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+         $graph_dir data/${decode_set}_hires \
+         $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_${decode_suff} || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
+      fi
+      ) &
+  done
+fi
+
+test_online_decoding=true
+lang=data/lang_fsh_sw1_tg
+if $test_online_decoding && [ $stage -le 19 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
