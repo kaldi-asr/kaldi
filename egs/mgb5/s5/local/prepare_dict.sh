@@ -20,7 +20,7 @@ if [ $stage -le 0 ]; then
     wget -P data/local/lexicon_data $lexicon_url1
   fi 
   
-  if [ ! -f data/local/lexicon_data/grapheme_lexicon/ ar-ar_phoneme_lexicon_20140317.bz2 ]; then
+  if [ ! -f data/local/lexicon_data/grapheme_lexicon/ar-ar_phoneme_lexicon_20140317.bz2 ]; then
     wget -P data/local/lexicon_data $lexicon_url2
   fi 
   

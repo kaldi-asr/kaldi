@@ -11,7 +11,7 @@ set -e -o pipefail
 ###
 echo "Preparing train and dev data"
 
-if [ ! -d DB ]; then
+if [[ ! -e "DB/train.tar.gz" || ! -e "DB/dev.tar.gz" ]]; then
   echo "You need to download the MGB-5 first and copy dev.tar.gz and train.tar.gz to DB folder"
   echo "check: https://arabicspeech.org/mgb5"
   exit 1
