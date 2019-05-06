@@ -31,41 +31,40 @@ if [ $# -ne 2 ]; then
     echo USAGE: $0 input_dir output_dir
     echo input_dir is the path where the MUSAN corpus is located
     echo e.g: $0 /export/corpora/JHU/musan data
+    echo "main options (for others, see top of script file)"
+    echo "  --sampling-rate <sampling frequency>        # Sampling frequency of source dir"
+    echo "  --use-vocals <true/false>        # Use vocals from music portion of MUSAN corpus"
     exit 1;
 fi
 
 in_dir=$1
 data_dir=$2
 
-if [ -d $data_dir/musan_music ] && [ -d $data_dir/musan_noise ] && [ -d $data_dir/musan_speech ]; then
-    echo "Required musan directories already exists, not making them again"
-else
-    mkdir -p local/musan.tmp
+mkdir -p local/musan.tmp
 
-    # The below script will create the musan corpus
-    steps/data/make_musan.py --use-vocals ${use_vocals} \
-            --sampling-rate ${sampling_rate} \
-            ${in_dir} ${data_dir}/musan || exit 1;
+# The below script will create the musan corpus
+steps/data/make_musan.py --use-vocals ${use_vocals} \
+                        --sampling-rate ${sampling_rate} \
+                        ${in_dir} ${data_dir}/musan || exit 1;
 
-    utils/fix_data_dir.sh ${data_dir}/musan
+utils/fix_data_dir.sh ${data_dir}/musan
 
-    grep "music" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_music
-    grep "speech" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_speech
-    grep "noise" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_noise
+grep "music" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_music
+grep "speech" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_speech
+grep "noise" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_noise
 
-    utils/subset_data_dir.sh --utt-list local/musan.tmp/utt2spk_music \
+utils/subset_data_dir.sh --utt-list local/musan.tmp/utt2spk_music \
         ${data_dir}/musan ${data_dir}/musan_music
-    utils/subset_data_dir.sh --utt-list local/musan.tmp/utt2spk_speech \
+utils/subset_data_dir.sh --utt-list local/musan.tmp/utt2spk_speech \
         ${data_dir}/musan ${data_dir}/musan_speech
-    utils/subset_data_dir.sh --utt-list local/musan.tmp/utt2spk_noise \
+utils/subset_data_dir.sh --utt-list local/musan.tmp/utt2spk_noise \
         ${data_dir}/musan ${data_dir}/musan_noise
 
-    utils/fix_data_dir.sh ${data_dir}/musan_music
-    utils/fix_data_dir.sh ${data_dir}/musan_speech
-    utils/fix_data_dir.sh ${data_dir}/musan_noise
+utils/fix_data_dir.sh ${data_dir}/musan_music
+utils/fix_data_dir.sh ${data_dir}/musan_speech
+utils/fix_data_dir.sh ${data_dir}/musan_noise
 
-    rm -rf local/musan.tmp
-fi
+rm -rf local/musan.tmp
 
 for name in speech noise music; do
     utils/data/get_reco2dur.sh ${data_dir}/musan_${name}
