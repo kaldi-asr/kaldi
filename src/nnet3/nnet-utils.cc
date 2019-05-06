@@ -709,7 +709,7 @@ class SvdReversal {
 
     // note: 'linear_params' is of dimension output_dim by input_dim.
     Matrix<BaseFloat> linear_params(output_dim_n, input_dim_c);
-    linear_params.AddMatMat(1.0,linear_params_n, kNoTrans, linear_params_c, kNoTrans, 1.0);
+    linear_params.AddMatMat(1.0, linear_params_n, kNoTrans, linear_params_c, kNoTrans, 1.0);
     CuMatrix<BaseFloat> linear_params_cuda(linear_params);
     CuVector<BaseFloat> bias_params_cuda(bias_params);
 
@@ -754,19 +754,17 @@ class SvdReversal {
 	  KALDI_VLOG(3) << "Modifying " << node_name;
 	  size_t  node_name_first_index = node_name.find_first_of(".");
 	  node_name = node_name.substr(0, node_name_first_index) + ".affine";
-	  // continue;
 	}
       }
       node_names_modified[n] = node_name;
       
       if (node_names_unique.find(node_name) == node_names_unique.end()) {
 	node_names_unique.insert(node_name);
-	//	node_names_modified.push_back(node_name);
 	KALDI_LOG << "Keeping " << node_name << " Component " ;
 	nodes_retained.push_back(n);
       } 
     }
-    //nnet_->RemoveSomeNodes(nodes_to_modify);
+    
     std::ostringstream config_os;
     // The following loop writes to 'config_os'. The the code is modified from
     // the private function Nnet::GetAsConfigLine(), and from
@@ -774,7 +772,8 @@ class SvdReversal {
     //    for (int32 n = 0; n < nnet_->NumNodes(); n++) {
     for (int32 n = 0; n < nodes_retained.size(); n++) {
       KALDI_VLOG(3) << n << " " << nodes_retained[n];
-      if (nnet_->IsComponentInputNode(nodes_retained[n]) || nnet_->IsInputNode(nodes_retained[n])) {
+      if (nnet_->IsComponentInputNode(nodes_retained[n]) ||
+                             nnet_->IsInputNode(nodes_retained[n])) {
         // component-input descriptor nodes aren't handled separately from their
         // associated components (we deal with them along with their
         // component-node); and input-nodes won't be affected so we don't have
@@ -797,14 +796,15 @@ class SvdReversal {
 	if (modify_component_[c] == 0) {
 	  config_os << "component-node name=" << node_name << " component="
 		    << info.component_name << " input=";
-	  nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os, node_names_modified);
+	  nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os,
+                                                             node_names_modified);
 	  config_os << "\n";
-	  //	  continue;
 	} else {
 	  // This is the modified node
 	  config_os << "component-node name=" << node_name << " component="
 		    << info.component_name << " input=";
-	  nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os, node_names_modified);
+	  nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os,
+                                                            node_names_modified);
 	  config_os << "\n";
 	}
 	
@@ -829,7 +829,6 @@ class SvdReversal {
 			<< " input=";
 	      nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os,
 							 node_names_modified);
-	      //  continue;
 	    } else {
 	      KALDI_LOG << "Skipping " << node_name;
 	    }
@@ -906,12 +905,12 @@ class SvdApplier {
  public:
   SvdApplier(const std::string component_name_pattern,
              int32 bottleneck_dim,
-	     BaseFloat energy_threshold,
-	     BaseFloat shrinkage_threshold,
+             BaseFloat energy_threshold,
+             BaseFloat shrinkage_threshold,
              Nnet *nnet): nnet_(nnet),
                           bottleneck_dim_(bottleneck_dim),
-			  energy_threshold_(energy_threshold),
-			  shrinkage_threshold_(shrinkage_threshold),
+        		  energy_threshold_(energy_threshold),
+          		  shrinkage_threshold_(shrinkage_threshold),
                           component_name_pattern_(component_name_pattern) { }
   void ApplySvd() {
     DecomposeComponents();
@@ -994,14 +993,23 @@ class SvdApplier {
     }
     return (i+1);
   }
-  
+ 
+// Here we perform SVD based refactorig of an input Affine component.
+// After applying SVD , we sort the Singularity values in descending order,
+// and take the subset of values which contribute to energy_threshold times
+// total original sum of squared singular values, and then refactor the Affine
+// component using only these selected singular values, thus making the bottleneck
+// dim of the refactored Affine layer equal to the no. of Singular values selected.
+// This function returs false if the shrinkage ratio of the total no. of parameters,
+// after the above SVD based refactoring, is greater than shrinkage threshold.
+//
   bool DecomposeComponent(const std::string &component_name,
                           const AffineComponent &affine,
                           Component **component_a_out,
                           Component **component_b_out) {
     int32 input_dim = affine.InputDim(), output_dim = affine.OutputDim();
-    Matrix<BaseFloat> linear_params(affine.LinearParams()); //input_dim
-    Vector<BaseFloat> bias_params(affine.BiasParams()); //output_dim
+    Matrix<BaseFloat> linear_params(affine.LinearParams());
+    Vector<BaseFloat> bias_params(affine.BiasParams());
     int32 middle_dim = std::min<int32>(input_dim, output_dim);
 
     // note: 'linear_params' is of dimension output_dim by input_dim.
@@ -1011,14 +1019,13 @@ class SvdApplier {
     linear_params.Svd(&s, &B, &A);
     // make sure the singular values are sorted from greatest to least value.
     SortSvd(&s, &B, &A);
-    BaseFloat s_sum_orig = s.Sum();
     Vector<BaseFloat> s2(s.Dim());
     s2.AddVec2(1.0, s);
-    s_sum_orig = s2.Sum();
+    BaseFloat s2_sum_orig = s2.Sum();
     KALDI_ASSERT(energy_threshold_ < 1);
     KALDI_ASSERT(shrinkage_threshold_ < 1);
     if (energy_threshold_ > 0) {
-      BaseFloat min_singular_sum = energy_threshold_ * s2.Sum();
+      BaseFloat min_singular_sum = energy_threshold_ * s2_sum_orig;
       bottleneck_dim_ = GetReducedDimension(s2, 0, s2.Dim()-1, min_singular_sum);
     } 
     SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
@@ -1037,9 +1044,9 @@ class SvdApplier {
     A.Resize(bottleneck_dim_, input_dim, kCopyData);
     B.Resize(output_dim, bottleneck_dim_, kCopyData);
     KALDI_LOG << "For component " << component_name
-              << " singular value sum changed by "
-              << (s_sum_orig - s_sum_reduced)
-              << " (from " << s_sum_orig << " to " << s_sum_reduced << ")";
+              << " singular value squared sum changed by "
+              << (s2_sum_orig - s_sum_reduced)
+              << " (from " << s2_sum_orig << " to " << s_sum_reduced << ")";
     KALDI_LOG << "For component " << component_name
 	      << " dimension reduced from "
               << " (" << input_dim << "," << output_dim << ")"
@@ -1071,7 +1078,7 @@ class SvdApplier {
   // up the components we're modifying into two parts.
   // Suppose we have something like:
   //  component-node name=some_node component=some_component input=
-  // nodes_to_split will be a list of component-node indexes that we
+  // nodes_to_modify will be a list of component-node indexes that we
   // need to split into two.  These will be nodes like
   // component-node name=component_node_name component=component_name input=xxx
   // where 'component_name' is one of the components that we're splitting.

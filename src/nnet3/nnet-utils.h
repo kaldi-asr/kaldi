@@ -307,6 +307,11 @@ void CollapseModel(const CollapseModelConfig &config,
        it does SVD on the components' parameters, retaining only the largest
        <dim> singular values, replacing these components with sequences of two
        components, of types LinearComponent and NaturalGradientAffineComponent.
+       Instead we can set the filtering criterion for the Singular values as energy-threshold,
+       and retain those values which contribute to energy-threshold times the total energy of
+       the original singular values. A particular SVD factored component is left unshrinked,
+       if the shrinkage ratio of the total no. of its parameters,
+       after the SVD based refactoring, is greater than shrinkage threshold.
        See also 'reduce-rank'.
 
     reduce-rank name=<name-pattern> rank=<dim>
@@ -317,6 +322,8 @@ void CollapseModel(const CollapseModelConfig &config,
        'apply-svd', which structurally breaks the component into two pieces.
 
     reverse-svd name=<name-pattern>
+        This reverses the SVD on a factored Affine component,
+        and obtains an unfactored Affine component without any bottleneck dim.
 
    \endverbatim
 */

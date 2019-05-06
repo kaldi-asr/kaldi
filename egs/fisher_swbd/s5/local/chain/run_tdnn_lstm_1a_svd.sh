@@ -1,8 +1,10 @@
 #!/bin/bash
-# Saikiran Valluri, 2019, Govivace.Inc
+#
+# Copyright 2018  Nagendra Kumar Goel,
+#            Saikiran Valluri, Govivace.Inc -  Apache 2.0
 
 # The script is organized as below.
-# First we train the baseline LSTMP-TDNN config chain model for few epochs on the multien data,
+# First we train the baseline LSTMP-TDNN config chain model for few epochs on the multi-english data,
 # Then, we perform SVD based refactoring of all the Affine components in this baseline final.mdl,
 # in order to reduce the overall model parameters size,
 # as determined by the bottleneck dim value or Energy and Shrinkage threshold values.
