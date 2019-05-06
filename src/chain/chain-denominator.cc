@@ -24,6 +24,7 @@
 namespace kaldi {
 namespace chain {
 
+
 DenominatorComputation::DenominatorComputation(
     const ChainTrainingOptions &opts,
     const DenominatorGraph &den_graph,
@@ -54,6 +55,18 @@ DenominatorComputation::DenominatorComputation(
   // log-space.
   KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
+
+  if (RandInt(0, 99) == 0) {
+    // A check, that all values in nnet_output are in the range [-30, 30]..
+    // otherwise derivatives will be wrong (search below for 30).
+    BaseFloat max_val = nnet_output.Max(), min_val = nnet_output.Min();
+    if (max_val > 30.0 || min_val < -30.0) {
+      KALDI_WARN << "Nnet outputs " << min_val << ", "
+                 << max_val <<
+          " outside the range [-30,30], derivs may be inaccurate.";
+    }
+  }
+
   // make sure the alpha sums and beta sums are zeroed.
   alpha_.ColRange(den_graph_.NumStates() * num_sequences_,
                   num_sequences_).SetZero();
@@ -294,6 +307,7 @@ bool DenominatorComputation::Backward(
         transposed_deriv_part.SetZero();
     }
   }
+
   return ok_;
 }
 
