@@ -1,4 +1,7 @@
 #!/bin/bash
+
+#      2019 QCRI (Ahmed Ali)
+
 export LC_ALL=C
 
 words_file=
