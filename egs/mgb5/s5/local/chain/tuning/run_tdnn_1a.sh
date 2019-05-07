@@ -3,7 +3,6 @@
 
 # Copyright 2017-2018  Johns Hopkins University (author: Daniel Povey)
 #           2017-2018  Yiming Wang
-#           2019-202   QCRI (Ahmed Ali) 
 
 # The script is copied from egs/iban
 # 1a is trying an architecture with factored parameter matrices with dropout.

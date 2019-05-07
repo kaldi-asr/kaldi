@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 # Copyright      2018  Ashish Arora
-#                2019 QCRI (Ahmed Ali)
 # Apache 2.0
 
 # This script prepares lexicon.
