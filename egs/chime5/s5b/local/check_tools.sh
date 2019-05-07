@@ -48,6 +48,24 @@ command -v phonetisaurus-align &>/dev/null \
 command -v BeamformIt &>/dev/null \
   || { echo  >&2 "BeamformIt not found on PATH. Please use the script $KALDI_ROOT/tools/extras/install_beamformit.sh to install it"; exit 1; }
 
+miniconda_dir=$HOME/miniconda3/
+if [ ! -d $miniconda_dir ]; then
+    echo "$miniconda_dir does not exist. Please run '../../../tools/extras/install_miniconda.sh'"
+fi
+
+# check if WPE is installed
+result=`$miniconda_dir/bin/python -c "\
+try:
+    import nara_wpe
+    print('1')
+except ImportError:
+    print('0')"`
+
+if [ "$result" == "1" ]; then
+    echo "WPE is installed"
+else
+    echo "WPE is not installed. Please run ../../../tools/extras/install_wpe.sh"
+    exit 1
+fi
+
 exit  0
-
-

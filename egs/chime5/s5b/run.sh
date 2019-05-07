@@ -79,7 +79,7 @@ if [ $stage -le 4 ]; then
   enhandir=enhan
   dereverb_dir=${PWD}/wav/wpe/
   for dset in dev eval; do
-    for mictype in u01 u02 u03 u04 u05 u06; do
+    for mictype in u01 u02 u03 u04 u06; do
       local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 120G" \
 			      ${audio_dir}/${dset} \
 			      ${dereverb_dir}/${dset} \
@@ -88,7 +88,7 @@ if [ $stage -le 4 ]; then
   done
 
   for dset in dev eval; do
-    for mictype in u01 u02 u03 u04 u05 u06; do
+    for mictype in u01 u02 u03 u04 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
 			      ${dereverb_dir}/${dset} \
 			      ${enhandir}/${dset}_${enhancement}_${mictype} \
