@@ -24,23 +24,23 @@ parser = argparse.ArgumentParser(description="Creates text, utt2spk and images.s
                                  " data/LDC2013T09 data/LDC2013T15 data/madcat.train.raw.lineid "
                                  " data/train data/local/lines ",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('database_path1', type=str,
+parser.add_argument('database_path1',
                     help='Path to the downloaded (and extracted) madcat data')
-parser.add_argument('database_path2', type=str,
+parser.add_argument('database_path2',
                     help='Path to the downloaded (and extracted) madcat data')
-parser.add_argument('database_path3', type=str,
+parser.add_argument('database_path3',
                     help='Path to the downloaded (and extracted) madcat data')
-parser.add_argument('data_splits', type=str,
+parser.add_argument('data_splits',
                     help='Path to file that contains the train/test/dev split information')
-parser.add_argument('out_dir', type=str,
+parser.add_argument('out_dir',
                     help='directory location to write output files.')
-parser.add_argument('images_scp_path', type=str,
+parser.add_argument('images_scp_path',
                     help='Path of input images.scp file(maps line image and location)')
-parser.add_argument('writing_condition1', type=str,
+parser.add_argument('writing_condition1',
                     help='Path to the downloaded (and extracted) writing conditions file 1')
-parser.add_argument('writing_condition2', type=str,
+parser.add_argument('writing_condition2',
                     help='Path to the downloaded (and extracted) writing conditions file 2')
-parser.add_argument('writing_condition3', type=str,
+parser.add_argument('writing_condition3',
                     help='Path to the downloaded (and extracted) writing conditions file 3')
 parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
                    help="performs image augmentation")
@@ -192,25 +192,25 @@ with open(args.data_splits) as f:
                 if args.augment:
                     key = (line_id + '.')[:-1]
                     for i in range(0, 3):
-                        location_id = '_' + line_id + '_scale' + str(i)
+                        location_id = "_{}_scale{}".format(line_id, i)
                         line_image_file_name = base_name + location_id + '.png'
                         location = image_loc_dict[line_image_file_name]
                         image_file_path = os.path.join(location, line_image_file_name)
                         line = text_line_word_dict[key]
                         text = ' '.join(line)
                         base_line_image_file_name = line_image_file_name.split('.png')[0]
-                        utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_line_image_file_name
+                        utt_id = "{}_{}_{}".format(writer_id, str(image_num).zfill(6), base_line_image_file_name)
                         text_fh.write(utt_id + ' ' + text + '\n')
                         utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                         image_fh.write(utt_id + ' ' + image_file_path + '\n')
                         image_num += 1
                 else:
-                    updated_base_name = base_name + '_' + str(line_id).zfill(4) +'.png'
+                    updated_base_name = "{}_{}.png".format(base_name, str(line_id).zfill(4))
                     location = image_loc_dict[updated_base_name]
                     image_file_path = os.path.join(location, updated_base_name)
                     line = text_line_word_dict[line_id]
                     text = ' '.join(line)
-                    utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(line_id).zfill(4)
+                    utt_id = "{}_{}_{}_{}".format(writer_id, str(image_num).zfill(6), base_name, str(line_id).zfill(4))
                     text_fh.write(utt_id + ' ' + text + '\n')
                     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                     image_fh.write(utt_id + ' ' + image_file_path + '\n')

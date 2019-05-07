@@ -4,6 +4,7 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
 import sys
 import argparse
 import math
@@ -65,7 +66,7 @@ if args.verbose >= 1:
 
 
 
-class CountsForHistory:
+class CountsForHistory(object):
     ## This class (which is more like a struct) stores the counts seen in a
     ## particular history-state.  It is used inside class NgramCounts.
     ## It really does the job of a dict from int to float, but it also
@@ -77,7 +78,7 @@ class CountsForHistory:
         self.total_count = 0
 
     def Words(self):
-        return self.word_to_count.keys()
+        return list(self.word_to_count.keys())
 
     def __str__(self):
         # e.g. returns ' total=12 3->4 4->6 -1->2'
@@ -109,7 +110,7 @@ class CountsForHistory:
         else:
             self.word_to_count[predicted_word] = new_count
 
-class NgramCounts:
+class NgramCounts(object):
     ## A note on data-structure.  Firstly, all words are represented as
     ## integers.  We store n-gram counts as an array, indexed by (history-length
     ## == n-gram order minus one) (note: python calls arrays "lists") of dicts
@@ -187,7 +188,7 @@ class NgramCounts:
         # there will be no unigram.
         if args.verbose >= 1:
             initial_num_ngrams = self.GetNumNgrams()
-        for n in reversed(range(args.no_backoff_ngram_order, args.ngram_order)):
+        for n in reversed(list(range(args.no_backoff_ngram_order, args.ngram_order))):
             this_order_counts = self.counts[n]
             for hist, counts_for_hist in this_order_counts.items():
                 backoff_hist = hist[1:]
@@ -276,8 +277,8 @@ class NgramCounts:
 
         states_removed_per_hist_len = [ 0 ] * args.ngram_order
 
-        for n in reversed(range(args.no_backoff_ngram_order,
-                                args.ngram_order)):
+        for n in reversed(list(range(args.no_backoff_ngram_order,
+                                args.ngram_order))):
             num_states_removed = 0
             for hist, counts_for_hist in self.counts[n].items():
                 l = len(counts_for_hist.word_to_count)
@@ -304,14 +305,14 @@ class NgramCounts:
         # we have a unigram state].
         if args.verbose >= 1:
             num_ngrams_initial = self.GetNumNgrams()
-        for n in reversed(range(args.no_backoff_ngram_order,
-                                args.ngram_order)):
+        for n in reversed(list(range(args.no_backoff_ngram_order,
+                                args.ngram_order))):
 
             for hist, counts_for_hist in self.counts[n].items():
                 # This loop ensures that if we have an n-gram like (6, 7, 8) -> 9,
                 # then, say, (7, 8) -> 9 and (8) -> 9 exist.
                 reduced_hist = hist
-                for m in reversed(range(args.no_backoff_ngram_order, n)):
+                for m in reversed(list(range(args.no_backoff_ngram_order, n))):
                     reduced_hist = reduced_hist[1:]  # shift an element off
                                                      # the history.
                     counts_for_backoff_hist = self.counts[m][reduced_hist]
@@ -321,7 +322,7 @@ class NgramCounts:
                 # then, say, (6, 7) -> 8 and (6) -> 7 exist.  This will be needed
                 # for FST representations of the ARPA LM.
                 reduced_hist = hist
-                for m in reversed(range(args.no_backoff_ngram_order, n)):
+                for m in reversed(list(range(args.no_backoff_ngram_order, n))):
                     this_word = reduced_hist[-1]
                     reduced_hist = reduced_hist[:-1]  # pop an element off the
                                                       # history
@@ -346,7 +347,7 @@ class NgramCounts:
         # History will map from history (as a tuple) to integer FST-state.
         hist_to_state = self.GetHistToStateMap()
 
-        for n in [ 1, 0 ] + range(2, args.ngram_order):
+        for n in [ 1, 0 ] + list(range(2, args.ngram_order)):
             this_order_counts = self.counts[n]
             # For order 1, make sure the keys are sorted.
             keys = this_order_counts.keys() if n != 1 else sorted(this_order_counts.keys())
@@ -388,7 +389,7 @@ class NgramCounts:
                 # add the backed-off n-grams (7, 8) -> 9 and (8) -> 9 to
                 # 'protected-ngrams'.
                 reduced_hist = hist
-                for m in reversed(range(args.no_backoff_ngram_order, n)):
+                for m in reversed(list(range(args.no_backoff_ngram_order, n))):
                     reduced_hist = reduced_hist[1:]  # shift an element off
                                                      # the history.
 
@@ -399,7 +400,7 @@ class NgramCounts:
                 # history-state (6, 7, 8), then n-grams (6, 7, 8) and (6, 7) are
                 # protected.  This assures that the FST states are accessible.
                 reduced_hist = hist
-                for m in reversed(range(args.no_backoff_ngram_order, n)):
+                for m in reversed(list(range(args.no_backoff_ngram_order, n))):
                     ans.add(reduced_hist)
                     reduced_hist = reduced_hist[:-1]  # pop an element off the
                                                       # history
@@ -499,7 +500,7 @@ class NgramCounts:
         # and the 'count' term is zero in the numerator part of the log expression,
         # because symbol 'a' is completely backed off in 'this' state.
         this_a_change = augmented_count * \
-            math.log((new_discount * new_backoff_count / new_backoff_total) / \
+            math.log((new_discount * new_backoff_count / new_backoff_total)/ \
                          augmented_count)
 
         # other_a_change is the log-like change of symbol 'a' coming from all
@@ -511,7 +512,7 @@ class NgramCounts:
         # doing so gives us an upper bound on the divergence.
         other_a_change = \
             a_other_count * math.log((new_backoff_count / new_backoff_total) / \
-                                         (backoff_count / backoff_total))
+                                         (backoff_count / backoff_total)) 
 
         # b_change is the log-like change of phantom symbol 'b' coming from
         # 'this' state (and note: it only comes from this state, that's how we

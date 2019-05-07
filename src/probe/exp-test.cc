@@ -17,35 +17,52 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+// Read Makefile.slow_expf. This test must be compiled with -O0.
+
 #include <iostream>
 #include <cmath>
 #include "base/timer.h"
 
-#define SAMPLE 100000
+int main() {
+  int test_iter = 300000;
 
-int main() { 
-  float dummy = 0.0;
+  // Make sure that the CPU bumps its clock to full speed: run the first loop
+  // without timing. Then increase the sample iteration count exponentially
+  // until the loop takes at least 10ms. We run this loop 1/4 of the number of
+  // actual test iterations and call both exp() and expf(), so that the overall
+  // test run will take 20 to 60 ms, to ensure a sensibly measurable result.
+  for (bool first = true; ; first=false) {
+    kaldi::Timer timer;
+    for(int i = 0; i < test_iter; i += 4) {
+      (void)exp((double)(i & 0x0F));
+      (void)expf((double)(i & 0x0F));
+    }
+    double time = timer.Elapsed();
+    if (first) continue;
+    if (time > 0.01) break;
+    test_iter *= 3;
+  }
+
   kaldi::Timer exp_timer;
-  for(int i = 0; i < SAMPLE; ++i) {
-    dummy += exp((double)(i % 10));
+  for(int i = 0; i < test_iter; ++i) {
+    (void)exp((double)(i & 0x0F));
   }
   double exp_time = exp_timer.Elapsed();
 
   kaldi::Timer expf_timer;
-  for(int i = 0; i < SAMPLE; ++i) {
-    dummy += expf((double)(i % 10));
+  for(int i = 0; i < test_iter; ++i) {
+    (void)expf((double)(i & 0x0F));
   }
   double expf_time = expf_timer.Elapsed();
-  
-  // Often exp() and expf() perform very similarly, 
-  // so we will replace expf() by exp() only if there is at least 10% difference 
-  if (expf_time < exp_time * 1.1) { 
+
+  double ratio = expf_time / exp_time;
+  if (ratio < 1.1) {
+    // Often exp() and expf() perform very similarly, so we will replace expf()
+    // by exp() only if there is at least 10% difference.
     return 0;
-  } else {
-    std::cerr << "exp() time: " << exp_time << std::endl;
-    std::cerr << "expf() time: " << expf_time << std::endl;
-    return 1;
   }
-  
-  std::cerr << dummy << std::endl; // No complaint about the unused variable
+
+  std::cerr << ("WARNING: slow expf() detected. expf() is slower than exp() "
+                "by the factor of ") << ratio << "\n";
+  return 1;
 }

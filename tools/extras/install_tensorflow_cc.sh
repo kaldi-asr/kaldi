@@ -25,7 +25,7 @@ else
 fi
 
 
-[ ! -f bazel.zip ] && wget https://github.com/bazelbuild/bazel/releases/download/0.5.4/bazel-0.5.4-dist.zip -O bazel.zip
+[ ! -f bazel.zip ] && wget https://github.com/bazelbuild/bazel/releases/download/0.15.0/bazel-0.15.0-dist.zip -O bazel.zip
 mkdir -p bazel
 cd bazel
 unzip ../bazel.zip
@@ -33,12 +33,13 @@ unzip ../bazel.zip
 cd ../
 
 # now bazel is built
-git clone https://github.com/tensorflow/tensorflow
+[ ! -d tensorflow ] && git clone https://github.com/tensorflow/tensorflow
 cd tensorflow
-git checkout r1.4
+git fetch --tags
+git checkout r1.12
 ./configure
 
-tensorflow/contrib/makefile/download_dependencies.sh 
+tensorflow/contrib/makefile/download_dependencies.sh
 bazel build -c opt //tensorflow:libtensorflow.so
 bazel build -c opt //tensorflow:libtensorflow_cc.so
 

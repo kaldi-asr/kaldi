@@ -56,6 +56,7 @@ if [ $stage -le 1 ]; then
   local/wsj_train_lms.sh --dict-suffix "_char"
   local/wsj_format_local_lms.sh --lang-suffix "_char"
   echo "$0: Done extending the vocabulary."
+  exit 0;
 fi
 
 if [ $stage -le 2 ]; then
@@ -102,5 +103,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/e2e/run_tdnn_lstm_flatstart.sh
+  local/chain/e2e/run_tdnnf_flatstart_char.sh
 fi

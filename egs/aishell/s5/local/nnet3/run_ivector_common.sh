@@ -14,7 +14,7 @@ stage=0
 train_set=train
 test_sets="dev test"
 gmm=tri5a
-
+online=false
 nnet3_affix=
 
 . ./cmd.sh
@@ -30,6 +30,11 @@ for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
     exit 1
   fi
 done
+
+online_affix=
+if [ $online = true ]; then
+  online_affix=_online
+fi
 
 if [ $stage -le 1 ]; then
   # Although the nnet will be trained by high resolution data, we still have to
@@ -54,26 +59,26 @@ if [ $stage -le 3 ]; then
   # Create high-resolution MFCC features (with 40 cepstra instead of 13).
   # this shows how you can split across multiple file-systems.
   echo "$0: creating high-resolution MFCC features"
-  mfccdir=mfcc_perturbed_hires
+  mfccdir=mfcc_perturbed_hires$online_affix
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/mfcc/aishell-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in ${train_set}_sp ${test_sets}; do
-    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires$online_affix
   done
 
   # do volume-perturbation on the training data prior to extracting hires
   # features; this helps make trained nnets more invariant to test data volume.
-  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires || exit 1;
+  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires$online_affix || exit 1;
 
   for datadir in ${train_set}_sp ${test_sets}; do
-    steps/make_mfcc_pitch.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;
-    steps/compute_cmvn_stats.sh data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;
-    utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
+    steps/make_mfcc_pitch$online_affix.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/${datadir}_hires$online_affix exp/make_hires/$datadir $mfccdir || exit 1;
+    steps/compute_cmvn_stats.sh data/${datadir}_hires$online_affix exp/make_hires/$datadir $mfccdir || exit 1;
+    utils/fix_data_dir.sh data/${datadir}_hires$online_affix || exit 1;
     # create MFCC data dir without pitch to extract iVector
-    utils/data/limit_feature_dim.sh 0:39 data/${datadir}_hires data/${datadir}_hires_nopitch || exit 1;
+    utils/data/limit_feature_dim.sh 0:39 data/${datadir}_hires$online_affix data/${datadir}_hires_nopitch || exit 1;
     steps/compute_cmvn_stats.sh data/${datadir}_hires_nopitch exp/make_hires/$datadir $mfccdir || exit 1;
   done
 fi

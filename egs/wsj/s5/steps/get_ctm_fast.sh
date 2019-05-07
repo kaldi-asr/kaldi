@@ -1,7 +1,9 @@
 #!/bin/bash
-# Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
-# Copyright 2017  Vimal Manohar
-#           Music Technology Group, Universitat Pompeu Fabra, 2018. Apache 2.0
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#           2017  Vimal Manohar
+#           2018  Xiaohui Zhang
+#           2018  Music Technology Group, Universitat Pompeu Fabra.
+# Apache 2.0
 
 # This script produces CTM files from a decoding directory that has lattices
 # present. It does this for one LM weight and also supports 
@@ -33,7 +35,7 @@ if [ $# -ne 4 ]; then
   echo "                                    # not equal to 0.01 seconds"
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri4a/decode/"
-  echo "See also: steps/get_ctm.sh"
+  echo "See also: steps/get_ctm.sh, steps/get_ctm_conf.sh"
   exit 1;
 fi
 
