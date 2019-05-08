@@ -16,17 +16,21 @@ mkdir -p $dir data/local/lexicon_data
 
 if [ $stage -le 0 ]; then
   echo "$0: Downloading text for lexicon... $(date)."
-  if [ ! -f data/local/lexicon_data/grapheme_lexicon/ar-ar_grapheme_lexicon_20160209.bz2 ]; then
+  if [ ! -f data/local/lexicon_data/ar-ar_grapheme_lexicon_20160209.bz2 ]; then
     wget -P data/local/lexicon_data $lexicon_url1
+  else
+    echo "data/local/lexicon_data/ar-ar_grapheme_lexicon_20160209.bz2 already exist on disk"
   fi 
   
-  if [ ! -f data/local/lexicon_data/grapheme_lexicon/ar-ar_phoneme_lexicon_20140317.bz2 ]; then
+  if [ ! -f data/local/lexicon_data/ar-ar_phoneme_lexicon_20140317.bz2 ]; then
     wget -P data/local/lexicon_data $lexicon_url2
+  else
+    echo "data/local/lexicon_data/ar-ar_phoneme_lexicon_20140317.bz2 already exist on disk"
   fi 
   
   rm -fr data/local/lexicon_data/grapheme_lexicon
   for dict in ar-ar_grapheme_lexicon_20160209.bz2 ar-ar_phoneme_lexicon_20140317.bz2; do
-    bzcat data/local/lexicon_data/$x | sed '1,3d' | \
+    bzcat data/local/lexicon_data/$dict | sed '1,3d' | \
     awk '{print $1}'  >>  data/local/lexicon_data/grapheme_lexicon
   done
   cat data/train/text | cut -d ' ' -f 2- | tr -s " " "\n" | grep -v UNK |  sort -u >> data/local/lexicon_data/grapheme_lexicon

@@ -15,8 +15,8 @@ stage=0
 set -e -o pipefail
 
 
-nj=100
-dev_nj=100
+nj=16
+dev_nj=16
 
 if [ $stage -le 1 ]; then
   echo "Preparing data and training language models"
