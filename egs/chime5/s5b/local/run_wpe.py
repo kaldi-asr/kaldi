@@ -2,6 +2,11 @@
 # Copyright 2018 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
 # Apache 2.0
 # Works with both python2 and python3
+# This script assumes that WPE (nara_wpe) is installed locally using miniconda.
+# ../../../tools/extras/install_miniconda.sh and ../../../tools/extras/install_wpe.sh
+# needs to be run and this script needs to be launched run with that version of
+# python.
+# See local/run_wpe.sh for example.
 
 import numpy as np
 import soundfile as sf
@@ -11,7 +16,7 @@ from tqdm import tqdm
 import argparse
 
 from nara_wpe.wpe import wpe
-from nara_wpe.utils import stft, istft 
+from nara_wpe.utils import stft, istft
 from nara_wpe import project_root
 
 parser = argparse.ArgumentParser()
@@ -21,7 +26,7 @@ args = parser.parse_args()
 input_files = args.files[:len(args.files)//2]
 output_files = args.files[len(args.files)//2:]
 out_dir = os.path.dirname(output_files[0])
-try: 
+try:
     os.makedirs(out_dir)
 except OSError as e:
     if e.errno != errno.EEXIST:

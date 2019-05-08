@@ -136,7 +136,9 @@ if [ $stage -le 6 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj ${nj} \
     ${temp_data_root}/${train_set}_sp_hires_max2 \
     exp/nnet3${nnet3_affix}/extractor $ivectordir
+fi
 
+if [ $stage -le 7 ]; then
   # Also extract iVectors for the test data, but in this case we don't need the speed
   # perturbation (sp).
   for data in $test_sets; do
