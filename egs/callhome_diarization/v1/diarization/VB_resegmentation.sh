@@ -10,7 +10,6 @@
 nj=20
 cmd=run.pl
 stage=0
-true_rttm_filename=None
 max_speakers=10
 max_iters=10
 downsample=25
@@ -36,7 +35,6 @@ if [ $# != 5 ]; then
   echo "Options: "
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # How to run jobs."
   echo "  --nj <num-jobs|20>                               # Number of parallel jobs to run."
-  echo "  --true-rttm-filename <string|None>               # The true rttm label file"
   echo "  --max-speakers <n|10>                            # Maximum number of speakers" 
   echo "                                                   # expected in the utterance" 
   echo "					           # (default: 10)"
@@ -91,7 +89,7 @@ utils/split_data.sh $data_dir $nj || exit 1;
 
 if [ $stage -le 0 ]; then
     $cmd JOB=1:$nj $output_dir/log/VB_resegmentation.JOB.log \
-      python diarization/VB_resegmentation.py --true-rttm-filename $true_rttm_filename --max-speakers $max_speakers \
+      python diarization/VB_resegmentation.py --max-speakers $max_speakers \
         --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
 	--sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
 	--loopProb $loopProb --statScale $statScale --llScale $llScale \

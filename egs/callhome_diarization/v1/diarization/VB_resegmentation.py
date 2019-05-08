@@ -105,8 +105,6 @@ def main():
     parser.add_argument('dubm_model', type=str, help='Path of the diagonal UBM model')
     parser.add_argument('ie_model', type=str, help='Path of the ivector extractor model')
 
-    parser.add_argument('--true-rttm-filename', type=str, default="None",
-                        help='The true rttm label file')
     parser.add_argument('--max-speakers', type=int, default=10,
                         help='Maximum number of speakers expected in the utterance (default: 10)')
     parser.add_argument('--max-iters', type=int, default=10,
@@ -170,14 +168,10 @@ def main():
         # 1 denotes the overlapping speech frames, the speaker
         # label starts from 2.
         init_ref = create_ref(utt, utt2num_frames, init_rttm_filename)
-        # Ground truth of the diarization.
-        if args.true_rttm_filename != "None":
-            true_ref = create_ref(utt, utt2num_frames, args.true_rttm_filename)
-        else:
-            true_ref = None
 
-        X = feats_dict[utt]
-        X = X.astype(np.float64)
+        # load MFCC features
+        X = (feats_dict[utt]).astype(np.float64)
+        assert len(init_ref) == len(X)
 
         # Keep only the voiced frames (0 denotes the silence 
         # frames, 1 denotes the overlapping speech frames).
@@ -185,11 +179,6 @@ def main():
         X_voiced = X[mask]
         init_ref_voiced = init_ref[mask] - 2
 
-        if args.true_rttm_filename != "None": 
-            true_ref_voiced = true_ref[mask] - 2
-            if np.sum(true_ref) == 0:
-                print("Warning: {} has no voiced frames in the label file".format(utt))
-                continue
         if X_voiced.shape[0] == 0:
             print("Warning: {} has no voiced frames in the initialization file".format(utt))
             continue

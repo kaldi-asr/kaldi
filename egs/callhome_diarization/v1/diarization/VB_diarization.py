@@ -203,19 +203,12 @@ def VB_diarization(X, m, iE, w, V, sp=None, q=None,
       Li[-1] += [DER(downsampler.T.dot(q), ref), DER(downsampler.T.dot(q), ref, xentropy=True)]
 
       if plot:
-        #import matplotlib.pyplot
-        #if ii == 0: matplotlib.pyplot.clf()
-        #matplotlib.pyplot.subplot(maxIters, 1, ii+1)
-        #matplotlib.pyplot.plot(downsampler.T.dot(q), lw=2)
-        #matplotlib.pyplot.imshow(np.atleast_2d(ref), interpolation='none', aspect='auto',
-        #                         cmap=matplotlib.pyplot.cm.Pastel1, extent=(0, len(ref), -0.05, 1.05))
-        import matplotlib.pyplot as plt
-        if ii == 0: plt.clf()
-        plt.subplot(maxIters, 1, ii+1)
-        plt.plot(downsampler.T.dot(q), lw=2)
-        #matplotlib.pyplot.imshow(np.atleast_2d(ref), interpolation='none', aspect='auto',
-        #                         cmap=matplotlib.pyplot.cm.Pastel1, extent=(0, len(ref), -0.05, 1.05))
-        plt.savefig("result.pdf")
+        import matplotlib.pyplot
+        if ii == 0: matplotlib.pyplot.clf()
+        matplotlib.pyplot.subplot(maxIters, 1, ii+1)
+        matplotlib.pyplot.plot(downsampler.T.dot(q), lw=2)
+        matplotlib.pyplot.imshow(np.atleast_2d(ref), interpolation='none', aspect='auto',
+                                 cmap=matplotlib.pyplot.cm.Pastel1, extent=(0, len(ref), -0.05, 1.05))
         
       print ii, Li[-2]
 

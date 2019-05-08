@@ -393,7 +393,7 @@ if [ $stage -le 13 ]; then
   # initialize the VB system. You can also use i-vector result or random 
   # initize the VB system.
   diarization/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 10G" \
-    --true_rttm_filename "None" --initialize 1 \
+    --initialize 1 \
     data/callhome $init_rttm_file exp/VB exp/VB/diag_ubm.pkl exp/VB/ie.pkl || exit 1; 
 
   # Compute the DER after VB resegmentation
