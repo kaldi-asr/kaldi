@@ -89,7 +89,7 @@ utils/split_data.sh $data_dir $nj || exit 1;
 
 if [ $stage -le 0 ]; then
     $cmd JOB=1:$nj $output_dir/log/VB_resegmentation.JOB.log \
-      python diarization/VB_resegmentation.py --max-speakers $max_speakers \
+      python2 diarization/VB_resegmentation.py --max-speakers $max_speakers \
         --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
 	--sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
 	--loopProb $loopProb --statScale $statScale --llScale $llScale \

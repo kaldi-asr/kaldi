@@ -23,8 +23,8 @@
 import numpy as np
 from scipy.sparse import coo_matrix
 import scipy.linalg as spl
-import numexpr as ne # the dependency on this modul can be avoided by replacing
-                       # logsumexp_ne and exp_ne with logsumexp and np.exp
+#import numexpr as ne # the dependency on this modul can be avoided by replacing
+#                       # logsumexp_ne and exp_ne with logsumexp and np.exp
 
 #[q sp Li] =
 def VB_diarization(X, m, iE, w, V, sp=None, q=None,
@@ -115,8 +115,8 @@ def VB_diarization(X, m, iE, w, V, sp=None, q=None,
   # calculate UBM mixture frame posteriors (i.e. per-frame zero order statistics)
   ll = (X**2).dot(-0.5*iE.T) + X.dot(iE.T*m.T)-0.5*((iE * m**2 - np.log(iE)).sum(1) - 2*np.log(w) + D*np.log(2*np.pi))
   ll *= llScale
-  G = logsumexp_ne(ll, axis=1)
-  NN =  exp_ne(ll - G[:,np.newaxis]) * statScale
+  G = logsumexp(ll, axis=1)
+  NN =  np.exp(ll - G[:,np.newaxis]) * statScale
   NN[NN<sparsityThr] = 0.0
 
   #Kx = np.sum(NN * (np.log(w) - np.log(NN)), 1)
