@@ -106,11 +106,12 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
     // PruneActiveTokens()
     // We have a delay on GetLattice to do determinization on more skinny lattices
     int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
-    // The minimum length of chunk is config_.prune_interval. We make it
+    // The minimum length of chunk is config_.determinize_chunk_size. We make it
     // identical to PruneActiveTokens since we need extra_cost as the weights
     // of final arcs to denote the "future" information of final states (Tokens)
-    if (frame_det_most % config_.prune_interval == 0) {
-      int32 frame_det_least = last_get_lattice_frame_ + config_.prune_interval;
+    if (frame_det_most % config_.determinize_chunk_size == 0) {
+      int32 frame_det_least = last_get_lattice_frame_ + 
+                              config_.determinize_chunk_size;
       // To adaptively decide the length of chunk, we further compare the number of
       // tokens in each frame and a pre-defined threshold.
       // If the number of tokens in a certain frame is less than
@@ -1054,7 +1055,13 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
       KALDI_ASSERT(r != token_label_map_.end()); // it should exist
       int32 token_label = r->second;
       auto range = token_label2last_state_map.equal_range(token_label);
-      KALDI_ASSERT(range.first != range.second);
+      if (range.first == range.second) {
+        KALDI_WARN << "The token in the first frame of this chunk does not "
+          "exist in the last frame of previous chunk. It should be seldom"
+          " happen and probably caused by over-pruning in determinization,"
+          "e.g. the lattice reaches --max-mem constrain.";
+        continue;
+      }
       std::vector<BaseFloat> tmp_vec;
       for (auto it = range.first; it != range.second; ++it) {
         // the destination state of the last of the sequence of arcs w.r.t the token

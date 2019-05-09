@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
-    bool determinize = config.determinize_lattice;
+    bool determinize = true;
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
     if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)

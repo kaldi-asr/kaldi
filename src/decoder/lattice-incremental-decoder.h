@@ -39,6 +39,7 @@ struct LatticeIncrementalDecoderConfig {
   BaseFloat lattice_beam;
   int32 prune_interval;
   int32 determinize_delay;
+  int32 determinize_chunk_size;
   int32 determinize_max_active;
   bool redeterminize;
   int32 redeterminize_max_frames;
@@ -62,6 +63,7 @@ struct LatticeIncrementalDecoderConfig {
         lattice_beam(10.0),
         prune_interval(25),
         determinize_delay(25),
+        determinize_chunk_size(20),
         determinize_max_active(std::numeric_limits<int32>::max()),
         redeterminize(false),
         redeterminize_max_frames(std::numeric_limits<int32>::max()),
@@ -86,6 +88,10 @@ struct LatticeIncrementalDecoderConfig {
     opts->Register("determinize-delay", &determinize_delay,
                    "delay (in frames, typically larger than --prune-interval) "
                    "at which to incrementally determinize lattices.");
+    opts->Register("determinize-chunk-size", &determinize_chunk_size,
+                   "the size (in frames) of chunk to do incrementally "
+                   "determinization. If working with --determinize-max-active,"
+                   "it will become a lower bound of the size of chunk.");
     opts->Register("determinize-max-active", &determinize_max_active,
                    "This option is to adaptively decide the size of the chunk "
                    "to be determinized. "
@@ -117,6 +123,7 @@ struct LatticeIncrementalDecoderConfig {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 &&
                  min_active <= max_active && prune_interval > 0 &&
                  determinize_delay >= 0 && determinize_max_active >= 0 &&
+                 determinize_chunk_size >= 0 &&
                  redeterminize_max_frames >= 0 && beam_delta > 0.0 &&
                  hash_ratio >= 1.0 && prune_scale > 0.0 && prune_scale < 1.0);
   }
