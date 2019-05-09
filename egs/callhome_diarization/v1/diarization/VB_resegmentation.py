@@ -2,9 +2,11 @@
 
 # Copyright 2019  Zili Huang
 
-# This script is evoked by diarization/VB_resegmentation.sh. It is a wrapper 
-# for Variational Bayes resegmentation. It shows how to use the code from 
-# Brno University of Technology to do resegmentation.
+# This script is evoked by diarization/VB_resegmentation.sh. It prepares the necessary
+# inputs for the VB system and creates the output RTTM file. The inputs include data directory
+# (data_dir), the rttm file to initialize the VB system(init_rttm_filename), the directory to
+# output the rttm prediction(output_dir), path to diagonal UBM model(dubm_model) and path to 
+# i-vector extractor model(ie_model).
 
 import numpy as np
 import VB_diarization

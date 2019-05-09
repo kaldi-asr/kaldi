@@ -5,8 +5,8 @@
 #             2019  Zili Huang
 # Apache 2.0.
 
-# This script trains the i-vector extractor for VB resegmentation. This script is very similar to 
-# sid/train_ivector_extractor.sh. The only difference is that the UBM is assumed to be diagonal.
+# This script trains the i-vector extractor for VB resegmentation. It is very similar to 
+# sid/train_ivector_extractor.sh except that the UBM is assumed to be diagonal in this script.
 
 # Begin configuration section.
 nj=10   # this is the number of separate queue jobs we run, but each one

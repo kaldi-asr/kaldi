@@ -1,4 +1,4 @@
-// ivectorbin/ivector-extractor-init.cc
+// ivectorbin/ivector-extractor-copy.cc
 
 // Copyright 2019  Zili Huang
 
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     using kaldi::int32;
 
     const char *usage =
-        "Copy an ivector-extractor\n"
+        "Copy the i-vector extractor to a text file\n"
         "Usage:  ivector-extractor-copy [options] <ivector-extractor-in> <ivector-extractor-out>\n"
         "e.g.:\n"
         " ivector-extractor-copy --binary=false 0.ie 0_txt.ie\n";
