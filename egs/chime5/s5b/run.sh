@@ -10,7 +10,8 @@
 nj=96
 decode_nj=20
 stage=0
-num_data_reps=2
+nnet_stage=-10
+num_data_reps=4
 snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
@@ -33,7 +34,8 @@ audio_dir=${chime5_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}_dereverb_ref dev_wpe_${enhancement}_ref" #"dev_worn dev_addition_dereverb_ref"
+test_sets="dev_${enhancement}_dereverb_ref" #"dev_worn dev_addition_dereverb_ref"
+#test_sets="dev_${enhancement}_ref" #"dev_worn dev_addition_dereverb_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -266,16 +268,30 @@ fi
 if [ $stage -le 17 ]; then
   # chain TDNN
   local/chain/tuning/run_tdnn_1b.sh --nj ${nj} \
+    --stage $nnet_stage \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
 fi
 
 if [ $stage -le 18 ]; then
+  # 2-stage decoding
+  for test_set in $test_sets; do
+    local/nnet3/decode.sh --affix 2stage --pass2-decode-opts "--min-active 1000" \
+      --acwt 1.0 --post-decode-acwt 10.0 \
+      --frames-per-chunk 150 --nj $decode_nj \
+      --ivector-dir exp/nnet3_${train_set}_cleaned_rvb \
+      data/${test_set} data/lang_chain \
+      exp/chain_${train_set}_cleaned_rvb/tree_sp/graph \
+      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp 
+  done
+fi
+
+if [ $stage -le 19 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
-      --dev exp/chain_${train_set}_cleaned/tdnn1b_sp/decode_dev_${enhancement}_ref \
-      --eval exp/chain_${train_set}_cleaned/tdnn1b_sp/decode_eval_${enhancement}_ref
+      --dev exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_${enhancement}_dereverb_ref \
+      --eval exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_${enhancement}_dereverb_ref
 fi

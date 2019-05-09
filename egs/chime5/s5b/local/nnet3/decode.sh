@@ -118,7 +118,7 @@ if [ $stage -le 4 ]; then
     else
       echo "$0 : Generating vad weights file"
       ivector_extractor_weights=${decode_dir}_stage1/weights${affix}.gz
-      local/extract_vad_weights.sh --silence-weights $silence_weight \
+      local/extract_vad_weights.sh --silence-weight $silence_weight \
         --cmd "$decode_cmd" ${iter:+--iter $iter} \
         ${data}_hires $lang \
         ${decode_dir}_stage1 $ivector_extractor_weights

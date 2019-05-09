@@ -1,39 +1,27 @@
 #!/bin/bash
 
-# 7q is as 7p but a modified topology with resnet-style skip connections, more layers,
-#  skinnier bottlenecks, removing the 3-way splicing and skip-layer splicing,
-#  and re-tuning the learning rate and l2 regularize.  The configs are
-#  standardized and substantially simplified.  There isn't any advantage in WER
-#  on this setup; the advantage of this style of config is that it also works
-#  well on smaller datasets, and we adopt this style here also for consistency.
+# This factorized TDNN (TDNN-F) script is adapted from SWBD recipe 7q.
+# It uses resnet-style skip connections.
+# For details, refer to the paper:
+# "Semi-Orthogonal Low-Rank Matrix Factorization for Deep Neural Networks", Daniel Povey, Gaofeng Cheng, Yiming Wang, Ke Li, Hainan Xu, Mahsa Yarmohamadi, Sanjeev Khudanpur, Interspeech 2018
 
-# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7q_sp
-# System                tdnn7p_sp tdnn7q_sp
-# WER on train_dev(tg)      11.80     11.79
-# WER on train_dev(fg)      10.77     10.84
-# WER on eval2000(tg)        14.4      14.3
-# WER on eval2000(fg)        13.0      12.9
-# WER on rt03(tg)            17.5      17.6
-# WER on rt03(fg)            15.3      15.2
-# Final train prob         -0.057    -0.058
-# Final valid prob         -0.069    -0.073
-# Final train prob (xent)        -0.886    -0.894
-# Final valid prob (xent)       -0.9005   -0.9106
-# Num-parameters               22865188  18702628
+# %WER 70.27 [ 41375 / 58881, 3487 ins, 22831 del, 15057 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_ref_2stage/wer_12_0.0
+# %WER 70.28 [ 41383 / 58881, 4486 ins, 19616 del, 17281 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_ref_2stage/wer_11_0.0
+# %WER 72.62 [ 42761 / 58881, 4545 ins, 21618 del, 16598 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_ref/wer_11_0.0
+# %WER 72.64 [ 42772 / 58881, 4556 ins, 21618 del, 16598 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_ref/wer_11_0.0
 
-
-# steps/info/chain_dir_info.pl exp/chain/tdnn7q_sp
-# exp/chain/tdnn7q_sp: num-iters=394 nj=3..16 num-params=18.7M dim=40+100->6034 combine=-0.058->-0.057 (over 8) xent:train/valid[261,393,final]=(-1.20,-0.897,-0.894/-1.20,-0.919,-0.911) logprob:train/valid[261,393,final]=(-0.090,-0.059,-0.058/-0.098,-0.073,-0.073)
+# steps/info/chain_dir_info.pl exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn_1b_sp
+# exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/: num-iters=317 nj=3..16 num-params=17.0M dim=40+100->2792 combine=-0.149->-0.149 (over 2) xent:train/valid[210,316,final]=(-2.50,-1.99,-2.00/-2.36,-1.95,-1.95) logprob:train/valid[210,316,final]=(-0.228,-0.136,-0.136/-0.223,-0.156,-0.155)
 
 set -e
 
 # configs for 'chain'
 stage=0
 nj=96
-train_set=train_worn_u100k
+train_set=train_worn_u400k
 test_sets="dev_worn dev_beamformit_ref"
 gmm=tri3
-nnet3_affix=_train_worn_u100k
+nnet3_affix=_train_worn_u400k
 lm_suffix=
 
 # The rest are configs specific to this script.  Most of the parameters
@@ -257,34 +245,5 @@ if [ $stage -le 16 ]; then
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
-
-# Not testing the 'looped' decoding separately, because for
-# TDNN systems it would give exactly the same results as the
-# normal decoding.
-
-if $test_online_decoding && [ $stage -le 17 ]; then
-  # note: if the features change (e.g. you add pitch features), you will have to
-  # change the options of the following command line.
-  steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf \
-    $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
-
-  rm $dir/.error 2>/dev/null || true
-
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      # note: we just give it "data/${data}" as it only uses the wav.scp, the
-      # feature type does not matter.
-      steps/online/nnet3/decode.sh \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --nj 8 --cmd "$decode_cmd" \
-        $tree_dir/graph${lm_suffix} data/${data} ${dir}_online/decode${lm_suffix}_${data} || exit 1
-    ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-fi
-
 
 exit 0;
