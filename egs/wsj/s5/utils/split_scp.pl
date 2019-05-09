@@ -205,7 +205,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
             }
             $count == $scpcount[$scpidx] || die "Count mismatch [code error]";
         }
-        close(F);
+        close($f_fh);
     }
 } else {
    # This block is the "normal" case where there is no --utt2spk
