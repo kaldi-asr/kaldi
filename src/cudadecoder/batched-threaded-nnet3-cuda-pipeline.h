@@ -43,46 +43,56 @@ namespace cuda_decoder {
 struct BatchedThreadedNnet3CudaPipelineConfig {
   BatchedThreadedNnet3CudaPipelineConfig()
       : max_batch_size(100),
+        num_channels(200),
         batch_drain_size(10),
         num_control_threads(2),
         num_worker_threads(20),
         determinize_lattice(true),
-        max_pending_tasks(4000){};
+        max_pending_tasks(4000),
+        num_decoder_cpu_workers(2){};
   void Register(OptionsItf *po) {
     po->Register("max-batch-size", &max_batch_size,
                  "The maximum batch size to be used by the decoder. "
-                 "Higher->Faster, more GPU memory used");
+                 "This is also the number of lanes in the CudaDecoder. "
+                 "Larger = Faster and more GPU memory used.");
+    po->Register("num-channels", &num_channels, "The number of channels "
+                 "allocated to the cuda decoder.  This should be larger "
+                 "than max_batch_size.  Each channel consumes a small "
+                 "amount of memory but also allows us to better overlap "
+                 "computation.");
     po->Register("batch-drain-size", &batch_drain_size,
                  "How far to drain the batch before refilling work. This "
-                 "batches pre/post decode work");
+                 "batches pre/post decode work.");
     po->Register("cuda-control-threads", &num_control_threads,
                  "The number of pipeline control threads for the CUDA work. "
                  "e.g. 2 control threads -> 2 independent CUDA pipeline (nnet3 "
-                 "and decoder)");
+                 "and decoder).");
     po->Register(
         "cuda-worker-threads", &num_worker_threads,
-        "The total number of CPU threads launched to process CPU tasks");
+        "The total number of CPU threads launched to process CPU tasks.");
     po->Register("determinize-lattice", &determinize_lattice,
-                 "Determinize the lattice before output");
+                 "Determinize the lattice before output.");
     po->Register("max-outstanding-queue-length", &max_pending_tasks,
                  "Number of files to allow to be outstanding at a time. When "
                  "the number of files is larger than this handles will be "
-                 "closed before opening new ones in FIFO order");
-
-    decoder_opts.nlanes = max_batch_size;
-    decoder_opts.nchannels = max_batch_size;
-
+                 "closed before opening new ones in FIFO order.");
+    po->Register("cuda-decoder-copy-threads", &num_decoder_cpu_workers,
+                 "Advanced - Number of worker threads used in the decoder for "
+                 "the host to host copies. Must be strictly greater than "
+                 "cuda-worker-threads");
     feature_opts.Register(po);
     decoder_opts.Register(po);
     det_opts.Register(po);
     compute_opts.Register(po);
   }
   int max_batch_size;
+  int num_channels;
   int batch_drain_size;
   int num_control_threads;
   int num_worker_threads;
   bool determinize_lattice;
   int max_pending_tasks;
+  int num_decoder_cpu_workers;
 
   OnlineNnet2FeaturePipelineConfig feature_opts;      // constant readonly
   CudaDecoderConfig decoder_opts;                     // constant readonly
@@ -117,18 +127,39 @@ public:
   void CloseDecodeHandle(const std::string &key);
 
   // Adds a decoding task to the decoder
-  void OpenDecodeHandle(const std::string &key, const WaveData &wave_data);
   // When passing in a vector of data, the caller must ensure the data exists
-  // until the CloseDecodeHandle is called
-  void OpenDecodeHandle(const std::string &key,
-                        const VectorBase<BaseFloat> &wave_data,
-                        float sample_rate);
+  // until the CloseDecodeHandle/WaitForAllTasks is called
+  // callback is called once task is done and we pass it the final lattice
+  // callback can be used to compute lattice rescoring, find best path in
+  // lattice, writing lattice to disk, etc.
+  // Important: callback is launched in the threadpool. It must be threadsafe.
+  // For instance, if writing to disk, or to stdout,
+  // use a lock:
+  // e.g. :
+  // {
+  // 	std::lock_guard<std::mutex> lock(global_mutex);
+  // 	// write lattice to disk
+  //    // lock is released in the destructor of lock_guard<>
+  // }
+  void OpenDecodeHandle(
+      const std::string &key, const WaveData &wave_data,
+      const std::function<void(CompactLattice &clat)> &callback =
+          std::function<void(CompactLattice &clat)>());
+
+  // version with sample rate
+  void OpenDecodeHandle(
+      const std::string &key, const VectorBase<BaseFloat> &wave_data,
+      float sample_rate,
+      const std::function<void(CompactLattice &clat)> &callback);
 
   // Copies the raw lattice for decoded handle "key" into lat
   bool GetRawLattice(const std::string &key, Lattice *lat);
   // Determinizes raw lattice and returns a compact lattice
   bool GetLattice(const std::string &key, CompactLattice *lat);
 
+  int32 GetNumberOfTasksPending();
+
+  void WaitForAllTasks();
   inline int NumPendingTasks() {
     return (tasks_back_ - tasks_front_ + config_.max_pending_tasks + 1) %
            (config_.max_pending_tasks + 1);
@@ -147,6 +178,7 @@ private:
     bool error;
     std::string error_string;
 
+    int32 ichannel;             // associated CudaDecoder channel
     Lattice lat;                // Raw Lattice output
     CompactLattice dlat;        // Determinized lattice output.  Only set if
                                 // determinize-lattice=true
@@ -154,6 +186,12 @@ private:
                                 // execution
 
     bool determinized;
+
+    // (optional) callback is called task is finished and we have a lattice
+    // ready
+    // that way we can compute all CPU tasks in the threadpool (lattice
+    // rescoring, find best path in lattice, etc.)
+    std::function<void(CompactLattice &clat)> callback;
 
     Vector<BaseFloat> ivector_features;
     Matrix<BaseFloat> input_features;
@@ -197,6 +235,7 @@ private:
     std::vector<ChannelId> channels;
     std::vector<ChannelId> free_channels;
     std::vector<ChannelId> completed_channels;
+    std::mutex free_channels_mutex;
   };
 
   // Adds task to the PendingTaskQueue
@@ -234,8 +273,13 @@ private:
                             std::vector<CudaDecodableInterface *> &decodables,
                             std::vector<TaskState *> &tasks);
 
-  void DeterminizeOneLattice(TaskState *state);
+  // Calls ConcurrentGetRawLatticeSingleChannel and Determinize
+  // on a dedicated CPU worker thread at the end of the decode
+  void CompleteTask(CudaDecoder *cuda_decoder, ChannelState *channel_state,
+                    TaskState *state);
 
+  // Determinize one lattice
+  void DeterminizeOneLattice(TaskState *task);
   // Thread execution function.  This is a single worker thread which processes
   // input.
   void ExecuteWorker(int threadId);
@@ -253,6 +297,7 @@ private:
   std::mutex tasks_add_mutex_; // protect OpenDecodeHandle if multiple threads
                                // access
   std::mutex tasks_lookup_mutex_; // protext tasks_lookup map
+  std::condition_variable tasks_lookup_cv_;
   std::atomic<int> tasks_front_, tasks_back_;
   TaskState **pending_task_queue_;
 

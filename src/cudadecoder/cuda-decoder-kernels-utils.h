@@ -49,6 +49,17 @@ struct PlusPlus {
   }
 };
 
+struct PlusPlusPlusPlus {
+  __device__ int4 operator()(const int4 &a, const int4 &b) const {
+    int4 c;
+    c.x = a.x + b.x;
+    c.y = a.y + b.y;
+    c.z = a.z + b.z;
+    c.w = a.w + b.w;
+    return c;
+  }
+};
+
 // 1:1 Conversion float <---> sortable int
 // We convert floats to sortable ints in order
 // to use native atomics operation, which are

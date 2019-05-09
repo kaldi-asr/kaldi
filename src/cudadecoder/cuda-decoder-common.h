@@ -29,9 +29,6 @@
 //
 // An analogy would be lane -> a core, channel -> a software thread
 
-// Number of GPU decoder lanes
-#define KALDI_CUDA_DECODER_MAX_N_LANES 200
-
 // If we're at risk of filling the tokens queue,
 // the beam is reduced to keep only the best candidates in the
 // remaining space
@@ -132,6 +129,7 @@
 #define KALDI_CUDA_DECODER_1D_BLOCK 256
 #define KALDI_CUDA_DECODER_LARGEST_1D_BLOCK 1024
 #define KALDI_CUDA_DECODER_ONE_THREAD_BLOCK 1
+#define KALDI_CUDA_DECODER_MAX_CTA_COUNT 4096
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -140,8 +138,10 @@ namespace cuda_decoder {
 // M is usually the batch size
 inline dim3 KaldiCudaDecoderNumBlocks(int N, int M) {
   dim3 grid;
-  // TODO MAX_NUM_BLOCKS.
   grid.x = KALDI_CUDA_DECODER_DIV_ROUND_UP(N, KALDI_CUDA_DECODER_1D_BLOCK);
+  unsigned int max_CTA_per_lane =
+      std::max(KALDI_CUDA_DECODER_MAX_CTA_COUNT / M, 1);
+  grid.x = std::min(grid.x, max_CTA_per_lane);
   grid.y = M;
   return grid;
 }
@@ -214,6 +214,49 @@ class DeviceMatrix {
   // abstract getInterface...
 };
 
+template <typename T>
+// if necessary, make a version that always use ncols_ as the next power of 2
+class HostMatrix {
+  T *data_;
+  void Allocate() {
+    KALDI_ASSERT(nrows_ > 0);
+    KALDI_ASSERT(ncols_ > 0);
+    KALDI_ASSERT(!data_);
+    cudaMallocHost((void **)&data_, (size_t)nrows_ * ncols_ * sizeof(*data_));
+    KALDI_ASSERT(data_);
+  }
+  void Free() {
+    KALDI_ASSERT(data_);
+    cudaFreeHost(data_);
+  }
+
+ protected:
+  int32 ncols_;
+  int32 nrows_;
+
+ public:
+  HostMatrix() : data_(NULL), ncols_(0), nrows_(0) {}
+
+  virtual ~HostMatrix() {
+    if (data_) Free();
+  }
+
+  void Resize(int32 nrows, int32 ncols) {
+    if (data_) Free();
+    KALDI_ASSERT(nrows > 0);
+    KALDI_ASSERT(ncols > 0);
+    nrows_ = nrows;
+    ncols_ = ncols;
+    Allocate();
+  }
+
+  T *MutableData() {
+    KALDI_ASSERT(data_);
+    return data_;
+  }
+  // abstract getInterface...
+};
+
 // Views of DeviceMatrix
 // Those views are created by either DeviceChannelMatrix or
 // DeviceLaneMatrix
@@ -255,6 +298,16 @@ class DeviceLaneMatrix : public DeviceMatrix<T> {
 };
 
 template <typename T>
+class HostLaneMatrix : public HostMatrix<T> {
+ public:
+  LaneMatrixView<T> GetView() { return {this->MutableData(), this->ncols_}; }
+
+  T *lane(const int32 ilane) {
+    return &this->MutableData()[ilane * this->ncols_];
+  }
+};
+
+template <typename T>
 class DeviceChannelMatrix : public DeviceMatrix<T> {
  public:
   ChannelMatrixView<T> GetView() { return {this->MutableData(), this->ncols_}; }
@@ -269,6 +322,10 @@ class DeviceChannelMatrix : public DeviceMatrix<T> {
 // queue
 // LaneCounters are used during computation
 struct LaneCounters {
+  // hannel that this lane will compute for the current frame
+  ChannelId channel_to_compute;
+  // Pointer to the loglikelihoods array for this channel and current frame
+  BaseFloat *loglikelihoods;
   // Contains both main_q_end and narcs
   // End index of the main queue
   // only tokens at index i with i < main_q_end
@@ -289,6 +346,8 @@ struct LaneCounters {
   // Some tokens in the same frame share the same token.next_state
   // main_q_n_extra_prev_tokens is the count of those tokens
   int32 main_q_n_extra_prev_tokens;
+  // Number of tokens created during the emitting stage
+  int32 main_q_n_emitting_tokens;
   // Depending on the value of the parameter "max_tokens_per_frame"
   // we can end up with an overflow when generating the tokens for a frame
   // We try to prevent this from happening using an adaptive beam
@@ -312,7 +371,6 @@ struct LaneCounters {
   // Same thing, but for main_q_n_extra_prev_tokens (those are also transfered
   // back to host)
   int32 main_q_extra_prev_tokens_global_offset;
-
   // Minimum token for that frame
   IntegerCostType min_int_cost;
   // Current beam. Can be different from default_beam,
@@ -323,9 +381,12 @@ struct LaneCounters {
   // valid.
   // After that index, we need to lower the adaptive beam
   int2 adaptive_int_beam_with_validity_index;
-
   // min_cost + beam
   IntegerCostType int_cutoff;
+  // offsets used by concatenate_lanes_data_kernel
+  int32 main_q_end_lane_offset;
+  int32 main_q_n_emitting_tokens_lane_offset;
+  int32 main_q_n_extra_prev_tokens_lane_offset;
 
   // --- Only valid after calling GetBestCost
   // min_cost and its arg. Can be different than min_cost, because we may
@@ -334,6 +395,7 @@ struct LaneCounters {
   // Number of final tokens with cost < best + lattice_beam
   int32 n_within_lattice_beam;
   int32 has_reached_final;  // if there's at least one final token in the queue
+  int32 prev_arg_min_int_cost;
 };
 
 // Channel counters
@@ -353,7 +415,6 @@ struct ChannelCounters {
   // different than min_int_cost : we include the "final" cost
   int2 min_int_cost_and_arg_with_final;
   int2 min_int_cost_and_arg_without_final;
-  //
 };
 
 class CudaDecoderException : public std::exception {

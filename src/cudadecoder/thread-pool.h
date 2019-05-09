@@ -44,17 +44,24 @@ public:
   template <class F, class... Args>
   auto enqueue(F &&f, Args &&... args)
       -> std::future<typename std::result_of<F(Args...)>::type>;
+  template <class F, class... Args>
+  auto enqueue_high_priority(F &&f, Args &&... args)
+      -> std::future<typename std::result_of<F(Args...)>::type>;
   ~ThreadPool();
 
-private:
+ private:
+  template <class F, class... Args>
+  auto enqueue(bool insert_front, F &&f, Args &&... args)
+      -> std::future<typename std::result_of<F(Args...)>::type>;
   // need to keep track of threads so we can join them
   std::vector<std::thread> workers;
   // the task queue
-  std::queue<std::function<void()>> tasks;
+  std::deque<std::function<void()>> tasks;
 
   // synchronization
   std::mutex queue_mutex;
   std::condition_variable condition;
+
   bool stop;
 };
 
@@ -65,24 +72,41 @@ inline ThreadPool::ThreadPool(size_t threads) : stop(false) {
       for (;;) {
         std::function<void()> task;
 
-        {
-          std::unique_lock<std::mutex> lock(this->queue_mutex);
-          this->condition.wait(
-              lock, [this] { return this->stop || !this->tasks.empty(); });
-          if (this->stop && this->tasks.empty())
-            return;
+	{
+	std::unique_lock<std::mutex> lock(this->queue_mutex);
+        this->condition.wait(
+            lock, [this] { return this->stop || !this->tasks.empty(); });
+        if (this->stop && this->tasks.empty()) return;
+        if (!tasks.empty()) {
           task = std::move(this->tasks.front());
-          this->tasks.pop();
+          this->tasks.pop_front();
         }
+	}
 
         task();
       }
     });
 }
 
-// add new work item to the pool
+// add new work item to the pool : normal priority
+// executed in FIFO order
 template <class F, class... Args>
 auto ThreadPool::enqueue(F &&f, Args &&... args)
+    -> std::future<typename std::result_of<F(Args...)>::type> {
+  return enqueue(false, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+// add new work item to the pool : high priority
+// this task will be put directly at the front of the task queue
+template <class F, class... Args>
+auto ThreadPool::enqueue_high_priority(F &&f, Args &&... args)
+    -> std::future<typename std::result_of<F(Args...)>::type> {
+  return enqueue(true, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+// add new work item to the pool
+template <class F, class... Args>
+auto ThreadPool::enqueue(bool insert_front, F &&f, Args &&... args)
     -> std::future<typename std::result_of<F(Args...)>::type> {
   using return_type = typename std::result_of<F(Args...)>::type;
 
@@ -97,7 +121,10 @@ auto ThreadPool::enqueue(F &&f, Args &&... args)
     if (stop)
       throw std::runtime_error("enqueue on stopped ThreadPool");
 
-    tasks.emplace([task]() { (*task)(); });
+    if (insert_front)
+      tasks.emplace_front([task]() { (*task)(); });
+    else
+      tasks.emplace_back([task]() { (*task)(); });
   }
   condition.notify_one();
   return res;
