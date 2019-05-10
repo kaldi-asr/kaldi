@@ -65,7 +65,8 @@ for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
     }
 }
 
-if ($num_jobs <= 0 || $job_id - $one_based < 0 || $job_id - $one_based >= $num_jobs) {
+if ($num_jobs != 0 && ($num_jobs < 0 || $job_id - $one_based < 0 ||
+                       $job_id - $one_based >= $num_jobs)) {
   die "$0: Invalid job number/index values for '-j $num_jobs $job_id" .
       ($one_based ? " --one-based" : "") . "'\n"
 }
