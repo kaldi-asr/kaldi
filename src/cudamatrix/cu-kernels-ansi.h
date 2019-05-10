@@ -796,6 +796,20 @@ void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
                           MatrixDim dim, const uint8_t *src,
                           int src_stride, float scale);
 
+//copies the sub matrix in src[range_start, range_end] to the matrix in dst
+//if src row is outside of the clamped range it will clamp to the specified
+//rows. src and dst cannot overlap.
+void cudaF_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const float *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   float *dst, int32_t ldd);
+void cudaD_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const double *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   double *dst, int32_t ldd);
+
 // Launches a kernel that does nothing, explicitly using the legacy default stream;
 // this will synchronize all CUDA streams (except for non-blocking streams) on the
 // device.
