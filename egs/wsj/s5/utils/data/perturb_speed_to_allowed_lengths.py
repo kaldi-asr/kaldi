@@ -60,7 +60,7 @@ def get_args():
     args.speed_perturb = True if args.speed_perturb == 'true' else False
     return args
 
-class Utterance:
+class Utterance(object):
     """ This class represents a Kaldi utterance
         in a data directory like data/train
     """
@@ -321,7 +321,7 @@ def main():
                 "Coverage rate: {}%".format(start_dur, end_dur,
                                       100.0 - args.coverage_factor * 2))
     logger.info("There will be {} unique allowed lengths "
-                "for the utterances.".format(int(math.log(end_dur / start_dur) /
+                "for the utterances.".format(int(math.log(end_dur / start_dur)/
                                                  math.log(args.factor))))
 
     allowed_durations = find_allowed_durations(start_dur, end_dur, args)

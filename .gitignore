@@ -83,6 +83,7 @@ GSYMS
 /tools/ATLAS/
 /tools/atlas3.8.3.tar.gz
 /tools/irstlm/
+/tools/mitlm/
 /tools/openfst
 /tools/openfst-1.3.2.tar.gz
 /tools/openfst-1.3.2/
@@ -147,3 +148,4 @@ GSYMS
 /tools/cub-1.8.0.zip
 /tools/cub-1.8.0/
 /tools/cub
+/tools/python/

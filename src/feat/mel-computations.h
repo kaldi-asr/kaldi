@@ -63,7 +63,7 @@ struct MelBanksOptions {
     opts->Register("low-freq", &low_freq,
                    "Low cutoff frequency for mel bins");
     opts->Register("high-freq", &high_freq,
-                   "High cutoff frequency for mel bins (if < 0, offset from Nyquist)");
+                   "High cutoff frequency for mel bins (if <= 0, offset from Nyquist)");
     opts->Register("vtln-low", &vtln_low,
                    "Low inflection point in piecewise linear VTLN warping function");
     opts->Register("vtln-high", &vtln_high,

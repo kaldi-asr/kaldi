@@ -75,6 +75,8 @@ if [ -f $data/spk2warp ]; then
 elif [ -f $data/utt2warp ]; then
   echo "$0 [info]: using VTLN warp factors from $data/utt2warp"
   vtln_opts="--vtln-map=ark:$data/utt2warp"
+else
+  vtln_opts=""
 fi
 
 for n in $(seq $nj); do

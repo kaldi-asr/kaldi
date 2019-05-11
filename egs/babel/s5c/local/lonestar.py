@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 from pylauncher import *
 import pylauncher
 import sys
@@ -39,7 +40,7 @@ def KaldiLauncher(lo, **kwargs):
 
 	logfiles = list()
 	commands = list()
-	for q in xrange(lo.jobstart, lo.jobend+1):
+	for q in range(lo.jobstart, lo.jobend+1):
 		s = "bash " + lo.queue_scriptfile + " " + str(q) 
 		commands.append(s)
 
@@ -74,7 +75,7 @@ def KaldiLauncher(lo, **kwargs):
 			time.sleep(delay);
 			
 			lines=tail(10, logfile)
-			with_status=filter(lambda x:re.search(r'with status (\d+)', x), lines)
+			with_status=[x for x in lines if re.search(r'with status (\d+)', x)]
 		
 			if len(with_status) == 0:
 				sys.stderr.write("The last line(s) of the log-file " + logfile + " does not seem"
@@ -98,7 +99,7 @@ def KaldiLauncher(lo, **kwargs):
 		sys.exit(-1);
 
 	#Remove service files. Be careful not to remove something that might be needed in problem diagnostics	
-	for i in xrange(len(commands)):
+	for i in range(len(commands)):
 		out_file=os.path.join(qdir, ce.outstring+str(i))
 
 		#First, let's wait on files missing (it might be that those are missing
@@ -149,7 +150,7 @@ def KaldiLauncher(lo, **kwargs):
 	
 	#print job.final_report()
 
-class LauncherOpts:
+class LauncherOpts(object):
 	def __init__(self):
 		self.sync=0
 		self.nof_threads = 1
@@ -199,7 +200,7 @@ def CmdLineParser(argv):
 		jobend=int(m.group(2))
 		argv.pop(0)
 	elif re.match("^.+=.*:.*$", argv[0]):
-		print >> sys.stderr, "warning: suspicious JOB argument " + argv[0];
+		print("warning: suspicious JOB argument " + argv[0], file=sys.stderr);
 
 	if jobstart > jobend:
 		sys.stderr.write("lonestar.py: JOBSTART("+ str(jobstart) + ") must be lower than JOBEND(" + str(jobend) + ")\n")
@@ -238,8 +239,8 @@ def setup_paths_and_vars(opts):
 	cwd = os.getcwd()
 
 	if opts.varname and (opts.varname not in opts.logfile ) and (opts.jobstart != opts.jobend):
-		print >>sys.stderr, "lonestar.py: you are trying to run a parallel job" \
-			"but you are putting the output into just one log file (" + opts.logfile + ")";
+		print("lonestar.py: you are trying to run a parallel job" \
+			"but you are putting the output into just one log file (" + opts.logfile + ")", file=sys.stderr);
 		sys.exit(1)
 
 	if not os.path.isabs(opts.logfile):
@@ -261,8 +262,8 @@ def setup_paths_and_vars(opts):
 	taskname=os.path.basename(queue_logfile)
 	taskname = taskname.replace(".log", "");
 	if taskname == "":
-		print >> sys.stderr, "lonestar.py: you specified the log file name in such form " \
-			"that leads to an empty task name ("+logfile + ")";
+		print("lonestar.py: you specified the log file name in such form " \
+			"that leads to an empty task name ("+logfile + ")", file=sys.stderr);
 		sys.exit(1)
 
 	if not os.path.isabs(queue_logfile):

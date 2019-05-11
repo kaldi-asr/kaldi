@@ -28,7 +28,7 @@
 #include <limits>
 #include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"
-
+#include <cub/block/block_reduce.cuh>
 
 
 /***********************************************************************
@@ -958,6 +958,7 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
     Real trans[TileDim][TileDim + 1];
     Real sum[CU1DBLOCK];
   } smem;
+
   // linear thread id;
   const int32_cuda tid = threadIdx.y * blockDim.x + threadIdx.x;
   const int32_cuda grid_height = gridDim.y * TileDim;
@@ -1021,6 +1022,7 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
   if (tid == 0) {
     value[blockIdx.y * gridDim.x + blockIdx.x] = smem.sum[0];
   }
+
 }
 
 // _trace_mat_mat_trans reduce the partial sum to
@@ -1030,6 +1032,7 @@ __global__
 static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA,
                                  int B_stride, Real* value) {
   __shared__ Real ssum[CU1DBLOCK];
+
   // linear thread id;
   const int32_cuda tid = threadIdx.y * blockDim.x + threadIdx.x;
   const int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1046,7 +1049,7 @@ static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA,
   }
   ssum[tid] = tsum;
   __syncthreads();
-
+  
   // Block reduce
 # pragma unroll
   for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
@@ -1695,6 +1698,48 @@ static void _vec_transform_reduce(
   // Output to vector result.
   if (tid == 0)
     result[blockIdx.x] = op.PostReduce(sdata[0], result[blockIdx.x]);
+}
+
+// Reduce a matrix 'mat' to a row vector 'result'
+template<EnumTransformReduce TransReduceType, typename Real>
+__global__
+static void _transform_reduce_mat_rows(
+    Real *result, const Real *mat, const MatrixDim d,
+    const TransReduceOp<TransReduceType, Real> op) {
+
+  __shared__ Real sdata[CU1DBLOCK];
+  const int tid = threadIdx.x;
+  const int j = blockIdx.x;
+
+  Real tdata = op.InitValue();
+  for (int i = tid; i < d.rows; i += CU1DBLOCK) {
+    //Note the loads of mat are uncoalesced.  We could eliminate these
+    //with shared memory but at the matrix sizes we are currently looking 
+    //at it probably would not help much and would add a lot of complexity.
+    //Alternatively we could look at something like trov to help loads.
+    tdata = op.Reduce(tdata, op.Transform(mat[i * d.stride + j]));
+  }
+  sdata[tid] = tdata;
+  __syncthreads();
+
+  // Tree reduce
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift)
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+    __syncthreads();
+  }
+
+  // Reduce last warp. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+    for (int shift = warpSize; shift > 0; shift >>= 1)
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+  }
+
+  // Output to vector result.
+  if (tid == 0) {
+    result[j] = op.PostReduce(sdata[0], result[j]);
+  }
 }
 
 // Reduce a matrix 'mat' to a column vector 'result'
@@ -2484,7 +2529,9 @@ static void _heaviside(Real*y, const Real*x, MatrixDim d, int src_stride) {
 template<typename Real>
 __global__
 static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
-  __shared__ Real smem[CU1DBLOCK];
+  __shared__ Real smem;
+  typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
   const int i = blockIdx.x;
   const int x_start = i * src_stride;
   const int y_start = i * d.stride;
@@ -2496,29 +2543,14 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   for (int j = tid; j < d.cols; j += CU1DBLOCK) {
     tmax = fmax(tmax, x[x_start + j]);
   }
-  smem[tid] = tmax;
-  __syncthreads();
-
-  // reduce to 2x warpSize elements per row
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift) {
-      smem[tid] = fmax(smem[tid], smem[tid + shift]);
-    }
-    __syncthreads();
-  }
-
-  // reduce to 1 element per row
-  if (tid < warpSize) {
-#   pragma unroll
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      smem[tid] = fmax(smem[tid], smem[tid + shift]);
-    }
-  }
+  tmax = BlockReduceT(temp_storage).Reduce(tmax, cub::Max());
 
   // broadcast max to all threads
+  if (tid == 0) {
+    smem = tmax;
+  }
   __syncthreads();
-  Real max = smem[0];
+  Real max = smem;
 
   // sum_j(exp(x(i,j)-max))
   // reduce to CU1DBLOCK elements per row.
@@ -2526,29 +2558,14 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   for (int j = tid; j < d.cols; j += CU1DBLOCK) {
     tsum += exp(x[x_start + j] - max);
   }
-  smem[tid] = tsum;
-  __syncthreads();
-
-  // reduce to 2x warpSize elements per row
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift) {
-      smem[tid] += smem[tid + shift];
-    }
-    __syncthreads();
-  }
-
-  // reduce to 1 element per row
-  if (tid < warpSize) {
-#   pragma unroll
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      smem[tid] += smem[tid + shift];
-    }
-  }
+  tsum = BlockReduceT(temp_storage).Sum(tsum);
 
   // broadcast sum to all threads
+  if (tid == 0) {
+    smem = tsum;
+  }
   __syncthreads();
-  Real inv_sum = Real(1) / smem[0];
+  Real inv_sum = Real(1) / smem;
 
   // normalize the row
   for (int j = tid; j < d.cols; j += CU1DBLOCK) {
@@ -2577,43 +2594,27 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
   const int i = blockIdx.x;
   const int tid = threadIdx.x;
   const Real* x_row = x + i * x_d.stride;
-  __shared__ Real ssum[CU1DBLOCK];
+
+  typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
+
+  __shared__ Real stddev_div_target_rms;
+  __shared__ Real scale;
 
   // Reduce x_j^2 to CU1DBLOCK elements per row
   Real tsum = Real(0);
   for (int j = tid; j < x_d.cols; j += CU1DBLOCK) {
     tsum += x_row[j] * x_row[j];
   }
-  ssum[tid] = tsum;
-  __syncthreads();
+  tsum = BlockReduceT(temp_storage).Sum(tsum);
 
-  // Tree reduce to 2x warpSize elements per row
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift)
-      ssum[tid] += ssum[tid + shift];
-    __syncthreads();
-  }
-
-  // Reduce last warp to 1 element per row.
-  // Threads implicitly synchronized within a warp.
-  if (tid < warpSize) {
-#   pragma unroll
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      ssum[tid] += ssum[tid + shift];
-    }
-  }
-
-  const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
   if (tid == 0) {
-    ssum[0] = sqrt(
-        fmax(ssum[0] / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
+    const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
+    stddev_div_target_rms = sqrt(
+      fmax(tsum / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
+    scale = Real(1) / stddev_div_target_rms;
   }
-
-  // Broadcast floored stddev to all threads.
   __syncthreads();
-  const Real stddev_div_target_rms = ssum[0];
-  const Real scale = Real(1) / stddev_div_target_rms;
 
   // Store normalized input to output
   Real* y_row = y + i * y_stride;
@@ -2625,7 +2626,6 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
     y_row[x_d.cols] = log(stddev_div_target_rms * target_rms);
   }
 }
-
 
 template<typename Real>
 __global__
@@ -2721,7 +2721,9 @@ template<typename Real>
 __global__
 static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
                                 int x_stride) {
-  __shared__ Real smem[CU1DBLOCK];
+  __shared__ Real smem;
+  typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
   const int i = blockIdx.x;
   const int x_start = i * x_stride;
   const int y_start = i * y_dim.stride;
@@ -2733,28 +2735,14 @@ static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
   for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
     tmax = fmax(tmax, x[x_start + j]);
   }
-  smem[tid] = tmax;
-  __syncthreads();
-
-  // reduce to 2x warpSize elements per row
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift) {
-      smem[tid] = fmax(smem[tid], smem[tid + shift]);
-    }
-    __syncthreads();
-  }
-
-  // reduce to 1 element per row
-  if (tid < warpSize) {
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      smem[tid] = fmax(smem[tid], smem[tid + shift]);
-    }
-  }
+  tmax = BlockReduceT(temp_storage).Reduce(tmax, cub::Max());
 
   // broadcast max to all threads
+  if (tid == 0) {
+    smem = tmax;
+  }
   __syncthreads();
-  Real max = smem[0];
+  Real max = smem;
 
   // sum_j(exp(x(i,j)-max))
   // reduce to CU1DBLOCK elements per row.
@@ -2762,28 +2750,14 @@ static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
   for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
     tsum += exp(x[x_start + j] - max);
   }
-  smem[tid] = tsum;
-  __syncthreads();
-
-  // reduce to 2x warpSize elements per row
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift) {
-      smem[tid] += smem[tid + shift];
-    }
-    __syncthreads();
-  }
-
-  // reduce to 1 element per row
-  if (tid < warpSize) {
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      smem[tid] += smem[tid + shift];
-    }
-  }
+  tsum = BlockReduceT(temp_storage).Sum(tsum);
 
   // broadcast sum to all threads
+  if (tid == 0) {
+    smem = tsum;
+  }
   __syncthreads();
-  Real log_sum = log(smem[0]);
+  Real log_sum = log(smem);
 
   // normalize the row
   for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
@@ -3023,7 +2997,10 @@ __global__
 static void _diff_softmax(Real* x, const MatrixDim dim, const Real* value,
                           const int value_stride, const Real* diff,
                           const int diff_stride) {
-  __shared__ Real ssum[CU1DBLOCK];
+  __shared__ Real ssum;
+  typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
+
   const int tid = threadIdx.x;
   const int i = blockIdx.x;
   const int value_start = i * value_stride;
@@ -3035,29 +3012,14 @@ static void _diff_softmax(Real* x, const MatrixDim dim, const Real* value,
   for (int j = tid; j < dim.cols; j += CU1DBLOCK) {
     tsum += value[value_start + j] * diff[diff_start + j];
   }
-  ssum[tid] = tsum;
-  __syncthreads();
-
-  // Tree reduce to 2x warpSize elements.
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift) {
-      ssum[tid] += ssum[tid + shift];
-    }
-    __syncthreads();
-  }
-
-  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
-  if (tid < warpSize) {
-#   pragma unroll
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      ssum[tid] += ssum[tid + shift];
-    }
-  }
+  tsum = BlockReduceT(temp_storage).Sum(tsum);
 
   // Broadcast result to all threads
+  if (tid == 0) {
+    ssum = tsum;
+  }
   __syncthreads();
-  const Real pe = ssum[0];
+  const Real pe = ssum;
 
   // Apply element-wise x = value * (diff - pe)
   for (int j = tid; j < dim.cols; j += CU1DBLOCK) {
@@ -3077,7 +3039,9 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
                               const Real* out_deriv, const int out_deriv_stride,
                               Real* in_deriv) {
 
-  __shared__ Real ssum[CU1DBLOCK];
+  __shared__ Real ssum;
+  typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
   const int tid = threadIdx.x;
   const int i = blockIdx.x;
   const int out_value_start = i * out_value_stride;
@@ -3089,29 +3053,14 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
   for (int j = tid; j < in_deriv_dim.cols; j += CU1DBLOCK) {
     tsum += out_deriv[out_deriv_start + j];
   }
-  ssum[tid] = tsum;
-  __syncthreads();
-
-  // Tree reduce to 2x warpSize elements.
-# pragma unroll
-  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
-    if (tid < shift) {
-      ssum[tid] += ssum[tid + shift];
-    }
-    __syncthreads();
-  }
-
-  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
-  if (tid < warpSize) {
-#   pragma unroll
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      ssum[tid] += ssum[tid + shift];
-    }
-  }
+  tsum = BlockReduceT(temp_storage).Sum(tsum);
 
   // Broadcast result to all threads
+  if (tid == 0) {
+    ssum = tsum;
+  }
   __syncthreads();
-  const Real sum_e = ssum[0];
+  const Real sum_e = ssum;
 
   // Apply element-wise x = out_deriv - exp(value) * sum_e
   for (int j = tid; j < in_deriv_dim.cols; j += CU1DBLOCK) {
@@ -4030,12 +3979,19 @@ void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,float>());
 }
+void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
+                           const MatrixDim d, const float alpha,
+                           const float beta) {
+  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, float>(alpha, beta));
+}
 void cudaF_add_col_sum_mat(int Gr, int Bl, float* result, const float* mat,
                            const MatrixDim d, const float alpha,
                            const float beta) {
   _transform_reduce_mat_cols<<<Gr, Bl>>>(result, mat, d,
       TransReduceOp<SUMAB, float>(alpha, beta));
 }
+
 
 void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig,
                          float changed) {
@@ -4737,6 +4693,12 @@ void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
                         const MatrixDim d) {
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,double>());
+}
+void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
+                           const MatrixDim d, const double alpha,
+                           const double beta) {
+  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, double>(alpha, beta));
 }
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,

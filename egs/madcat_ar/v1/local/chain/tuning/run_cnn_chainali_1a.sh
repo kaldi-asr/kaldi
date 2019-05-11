@@ -18,23 +18,18 @@ lats_affix=
 # chain options
 train_stage=-10
 xent_regularize=0.1
-# training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500
 tdnn_dim=450
-# training options
-srand=0
 remove_egs=false
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -106,19 +101,18 @@ if [ $stage -le 3 ]; then
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor $frame_subsampling_factor \
+    --frame-subsampling-factor 4 \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$cmd" $num_leaves ${train_data_dir} \
+    --cmd "$cmd" $num_leaves $train_data_dir \
     $lang $ali_dir $tree_dir
 fi
-
 
 if [ $stage -le 4 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
   common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
@@ -170,7 +164,7 @@ if [ $stage -le 5 ]; then
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --chain.frame-subsampling-factor=4 \
     --chain.alignment-subsampling-factor=1 \
-    --trainer.srand=$srand \
+    --trainer.srand=0 \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=2000000 \
@@ -180,7 +174,6 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=64,32 \
-    --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
@@ -200,7 +193,6 @@ if [ $stage -le 6 ]; then
   # topology file from the model).  So you could give it a different
   # lang directory, one that contained a wordlist and LM of your choice,
   # as long as phones.txt was compatible.
-
   utils/mkgraph.sh \
     --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
@@ -217,5 +209,5 @@ if [ $stage -le 7 ]; then
                                 data/test $dir/decode_test{,_rescored} || exit 1
 fi
 
-echo "Done. Date: $(date). Results:"
+echo "$0 Done. Date: $(date). Results:"
 local/chain/compare_wer.sh $dir

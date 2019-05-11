@@ -21,10 +21,10 @@ def parse_args():
     parser.add_argument('--abort-long-sent', type=bool, default=False,
                         help='If True and a sentence longer than "max-sent-len" detected' +\
                              'exit with error code 1. If False, just split the long sentences.')
-    parser.add_argument('--sent-end-marker', type=str, default="DOTDOTDOT")
-    parser.add_argument("in_text", type=str, help="Input text")
-    parser.add_argument("out_text", type=str, help="Output text")
-    parser.add_argument("sent_bounds", type=str,
+    parser.add_argument('--sent-end-marker', default="DOTDOTDOT")
+    parser.add_argument("in_text", help="Input text")
+    parser.add_argument("out_text", help="Output text")
+    parser.add_argument("sent_bounds",
                         help="A file that will contain a comma separated list of numbers, s.t. if" +
                              "i is in this list, then there is a sententence break after token i")
     return parser.parse_args()
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                 n_tokens += 1
                 start_scan = 4
                 current_line.append('SUN')
-            for i in xrange(start_scan, len(opl_tokens)):
+            for i in range(start_scan, len(opl_tokens)):
                 m = re.match("^[A-Z]+\'?[A-Z\']*$", opl_tokens[i])
                 if m is not None:
                     n_tokens += 1

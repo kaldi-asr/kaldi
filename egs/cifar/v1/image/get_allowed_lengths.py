@@ -10,6 +10,7 @@
     file is later used by make_features.py to pad each image sufficiently so that
     they all have an allowed length. This is intended for end2end chain training.
 """
+from __future__ import division
 
 import argparse
 import os
@@ -124,7 +125,7 @@ def find_allowed_durations(start_len, end_len, args):
 
 def main():
     args = get_args()
-    args.factor = 1.0 + args.factor / 100.0
+    args.factor = 1.0 + args.factor/100.0
 
     image2length = read_kaldi_mapfile(os.path.join(args.srcdir, 'image2num_frames'))
 
@@ -133,7 +134,7 @@ def main():
                 "Coverage rate: {}%".format(start_dur, end_dur,
                                       100.0 - args.coverage_factor * 2))
     logger.info("There will be {} unique allowed lengths "
-                "for the images.".format(int(math.log(end_dur / start_dur) /
+                "for the images.".format(int((math.log(float(end_dur)/start_dur))/
                                              math.log(args.factor))))
 
     allowed_durations = find_allowed_durations(start_dur, end_dur, args)

@@ -209,7 +209,7 @@ def write_fst_no_silence(lexicon, nonterminals=None, left_context_phones=None):
 
     if nonterminals is not None:
         next_state = write_nonterminal_arcs(
-            start_state, loop_state, next_state,
+            loop_state, loop_state, next_state,
             nonterminals, left_context_phones)
 
     print("{state}\t{final_cost}".format(

@@ -10,6 +10,7 @@
 # en_4156 B 414.58 0.16 l
 # en_4156 B 414.74 0.17 a
 
+from __future__ import division
 import argparse,re
 __author__ = 'Minhua Wu'
  
