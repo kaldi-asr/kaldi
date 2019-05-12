@@ -211,26 +211,19 @@ void Select(int32 axis, int32 index, const TensorImpl &src,
             TensorImpl *dest);
 
 
-/**
-
-
- */
-inline void RegisterTensorChange(const TensorImpl &impl) {
-  if (DebugMode()) {
-    impl.storage_->GetChangeTracker()->RecordChange(
-        SizeOf(impl.dtype), impl.pattern);
-  }
-}
 
 /**
-   read
-   read and write
-   read and invalidation
-   invalidation
- */
-inline void RegisterOp(const TensorImpl &impl) {
+   This is to be called when any operation makes use of the memory underlying a
+   Tensor.
+      kRead
+      kReadWrite
+      kReadInvalidate
+      kInvalidate
+*/
+inline void RecordUse(const TensorImpl &impl,
+                      TensorUseEnum use_type) {
   if (DebugMode()) {
-    impl.storage_->GetChangeTracker()->RecordChange(
+    impl.storage_->GetMemoryChecker()->RecordUse(
         SizeOf(impl.dtype), impl.pattern);
   }
 }

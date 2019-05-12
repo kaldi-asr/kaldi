@@ -123,9 +123,25 @@ inline int64 NextTick() { return ++g_tick_counter; }
 // debug_mode activates code that checks for invalidated data in the backprop
 // pass; see "Invalidated:" in glossary in tensor.h.
 // Don't access this variable directly,
-extern thread_local bool debug_mode;
-inline bool DebugMode() { return debug_mode; }
-inline void SetDebugMode(bool b) { debug_mode = b; }
+extern bool debug_mode;     // Do not access directly!
+extern int64 debug_start_tick;   // Do not access directly!
+
+inline bool DebugMode() {
+  return debug_mode;
+}
+inline void SetDebugMode(bool b) {
+  if (!debug_mode)
+    debug_start_tick = NextTick();
+  debug_mode = b;
+}
+/**
+   Returns the tick at which debug mode most recently changed from false to
+   true.
+ */
+inline int64 DebugTick() {
+  KALDI_PARANOID_ASSERT(debug_mode);
+  return debug_start_tick;
+}
 
 class WithDebugModeAs {
  public:

@@ -129,6 +129,12 @@ enum BinaryFunctionEnum {
 };
 
 
+enum TensorUseEnum {
+  kRead,
+  kReadWrite,
+  kWrite
+};
+
 
 // In practice we don't expect user-owned tensors with num-axes greater than 5
 // to exist, but there are certain manipulations we do when simplifying matrix

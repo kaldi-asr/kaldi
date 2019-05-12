@@ -70,14 +70,17 @@ class Op {
   virtual void Backprop();
 
  protected:
-  // The time (`GetTick()`) at which this Op was created.
+
+  /**
+     The time (`GetTick()`) at which this Op was created; should be set
+     in child classes by doing:
+      `tick_ = GetTick()`
+     as the last statement of the constructor.   (This ensures the
+     tick is later-numbered than any ticks stored in the ChangeTracker
+     code by operations called from the constructor.)
+  */
   int64 tick_;
 
-
-  inline void RegisterTensorChange(const Tensor &tensor) {
-    if (DebugMode()) {
-    }
-  }
 
   /*
     This function intended to be called from the Backprop() routines
@@ -225,6 +228,116 @@ class GenericOp: public Op {
 
 
 class AddToOp: public Op {
+ public:
+
+  // This Op corresponds to the computation:
+  //   \f$  b  :=  alpha a  +   beta b.  \f$
+  // with broadcasting or summation depending on the dimensions
+  // involved.  Alpha and beta are constants, and differentiation w.r.t. them is
+  // not supported (you wouldn't reach this code if a or b were actual
+  // variables.)
+  //
+  // The Op is only constructed if b.Tracked() (which it would normally if
+  // a.Tracked()).
+  AddToOp(float alpha, float beta,
+          const Variable &a, const Variable &b):
+      Op({a}),
+      alpha_(alpha),
+      beta_(beta),
+      a_data_(a.GetData()),
+      a_grad_(a.GetGradIfPresent()),
+      b_data_(b.GetData()),
+      b_grad_(b.GetGrad()) {
+
+    Add(alpha, beta, *a_data_, b_data_.get());
+  }
+
+
+  void Backward() {
+    // Do: a_grad += alpha * b_grad.
+    if (a_grad_ != nullptr)
+      AddTo(alpha_, 1.0, b_grad, &a_grad);
+
+    if (beta_ != 1.0)
+      Scale(beta_, b_grad.get());
+  }
+
+ private:
+
+  float alpha_;
+  float beta_;
+
+  // We hold onto all inputs that are not also outputs
+  // (here just a_) for dependency tracking.
+  Variable a_;
+
+  std::shared_ptr<Node> a_node_;
+
+  std::shared_ptr<Tensor> a_data_;
+  // a_grad_ will be NULL if a was not tracked.
+  std::shared_ptr<Tensor> a_grad_;
+  std::shared_ptr<Tensor> b_data_;
+  std::shared_ptr<Tensor> b_grad_;
+
+  Variable b_;
+  bool must_scale_b_grad_;
+
+};
+
+
+class CopyOp: public Op {
+ public:
+
+  // This Op corresponds to the computation:
+  //   \f$  b := a  \f$
+  // with broadcasting or summation depending on the dimensions.
+  //
+  // Constructing this Op will make b tracked if it was already.
+  CopyOp(const Variable &a, const Variable &b):
+      Op({a}),
+      a_data_(a.GetData()),
+      a_grad_(a.GetGradIfPresent()),
+      b_data_(b.GetData()),
+      b_grad_(b.GetGrad()) {
+    Copy(a_data_, b_data_);
+
+      `tick_ = GetTick()`
+  }
+
+
+  void Backward() {
+    // Do: a_grad += alpha * b_grad.
+    if (a_grad_ != nullptr)
+      AddTo(alpha_, 1.0, b_grad, &a_grad);
+
+    if (beta_ != 1.0)
+      Scale(beta_, b_grad.get());
+  }
+
+ private:
+
+  float alpha_;
+  float beta_;
+
+  // We hold onto all inputs that are not also outputs
+  // (here just a_) for dependency tracking.
+  Variable a_;
+
+  std::shared_ptr<Node> a_node_;
+
+  std::shared_ptr<Tensor> a_data_;
+  // a_grad_ will be NULL if a was not tracked.
+  std::shared_ptr<Tensor> a_grad_;
+  std::shared_ptr<Tensor> b_data_;
+  std::shared_ptr<Tensor> b_grad_;
+
+  Variable b_;
+  bool must_scale_b_grad_;
+
+};
+
+
+class CopyOp: public Op {
  public:
 
   // This Op corresponds to the computation:
