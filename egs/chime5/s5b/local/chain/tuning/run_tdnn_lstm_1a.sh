@@ -7,25 +7,38 @@ set -euo pipefail
 # (some of which are also used in this script directly).
 stage=0
 nj=96
-train_set=train_worn_u100k
+train_set=train_worn_u400k_cleaned
 test_sets="dev_worn dev_beamformit_ref"
-gmm=tri3
-nnet3_affix=_train_worn_u100k
+gmm=tri3_cleaned
+nnet3_affix=_train_worn_u400k_cleaned
 lm_suffix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=_1a   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 
-# training options
-# training chunk-options
-chunk_width=140,100,160
 common_egs_dir=
-xent_regularize=0.1
+
+hidden_dim=1024
+cell_dim=1024
+projection_dim=256
+
+# training options
+num_epochs=2  # 2 works better than 4
+chunk_width=140,100,160
+chunk_left_context=40
+chunk_right_context=0
+dropout_schedule='0,0@0.20,0.3@0.50,0'
+xent_regularize=0.025
+label_delay=5
+
+# decode options
+extra_left_context=50
+extra_right_context=0
 
 # training options
 srand=0
@@ -33,6 +46,7 @@ remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
+
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -65,7 +79,7 @@ ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
+dir=exp/chain${nnet3_affix}/tdnn_lstm${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
@@ -122,15 +136,14 @@ if [ $stage -le 12 ]; then
     $lang $ali_dir $tree_dir
 fi
 
-
 if [ $stage -le 13 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
-  opts="l2-regularize=0.05"
-  output_opts="l2-regularize=0.01 bottleneck-dim=320"
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+
+  lstm_opts="decay-time=40"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -143,18 +156,23 @@ if [ $stage -le 13 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=512
-  relu-batchnorm-layer name=tdnn2 $opts dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 $opts dim=512
-  relu-batchnorm-layer name=tdnn4 $opts dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 $opts dim=512
-  relu-batchnorm-layer name=tdnn6 $opts dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 $opts dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 $opts dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=$hidden_dim
+
+  fast-lstmp-layer name=lstm1 cell-dim=$cell_dim recurrent-projection-dim=$projection_dim non-recurrent-projection-dim=$projection_dim delay=-3 dropout-proportion=0.0 $lstm_opts
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=$hidden_dim
+  fast-lstmp-layer name=lstm2 cell-dim=$cell_dim recurrent-projection-dim=$projection_dim non-recurrent-projection-dim=$projection_dim delay=-3 dropout-proportion=0.0 $lstm_opts
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=$hidden_dim
+  fast-lstmp-layer name=lstm3 cell-dim=$cell_dim recurrent-projection-dim=$projection_dim non-recurrent-projection-dim=$projection_dim delay=-3 dropout-proportion=0.0 $lstm_opts
+  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=$hidden_dim
+  fast-lstmp-layer name=lstm4 cell-dim=$cell_dim recurrent-projection-dim=$projection_dim non-recurrent-projection-dim=$projection_dim delay=-3 dropout-proportion=0.0 $lstm_opts
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain $opts dim=512 target-rms=0.5
-  output-layer name=output include-log-softmax=false $output_opts dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm4 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -165,8 +183,8 @@ if [ $stage -le 13 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 $opts dim=512 target-rms=0.5
-  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=lstm4 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -177,8 +195,11 @@ if [ $stage -le 14 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime5-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
+  mkdir -p $dir/egs
+  touch $dir/egs/.nodelete # keep egs around when that run dies.
+
   steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$decode_cmd" \
+    --cmd="$train_cmd --mem 4G" \
     --feat.online-ivector-dir=$train_ivector_dir \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -186,22 +207,28 @@ if [ $stage -le 14 ]; then
     --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.num-chunk-per-minibatch 64,32 \
+    --trainer.frames-per-iter 1500000 \
+    --trainer.max-param-change 2.0 \
+    --trainer.num-epochs $num_epochs \
     --trainer.srand=$srand \
-    --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=10 \
-    --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.shrink-value 0.99 \
+    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
-    --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
-    --egs.chunk-width=$chunk_width \
-    --egs.dir="$common_egs_dir" \
+    --trainer.deriv-truncate-margin 8 \
+    --egs.stage $get_egs_stage \
     --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.chunk-width=$chunk_width \
+    --egs.chunk-left-context=$chunk_left_context \
+    --egs.chunk-right-context=$chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
+    --egs.dir="$common_egs_dir" \
     --cleanup.remove-egs=$remove_egs \
-    --use-gpu=true \
     --feat-dir=$train_data_dir \
     --tree-dir=$tree_dir \
     --lat-dir=$lat_dir \
@@ -224,6 +251,10 @@ if [ $stage -le 16 ]; then
     (
       steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context $chunk_left_context \
+          --extra-right-context $chunk_right_context \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --frames-per-chunk $frames_per_chunk \
           --nj 8 --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
