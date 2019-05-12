@@ -123,6 +123,8 @@ function do_filtering {
      [ -f $srcdir/wav.scp ] && utils/filter_scp.pl $destdir/reco <$srcdir/wav.scp >$destdir/wav.scp
      [ -f $srcdir/reco2file_and_channel ] && \
        utils/filter_scp.pl $destdir/reco <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
+     [ -f $srcdir/reco2dur ] && \
+       utils/filter_scp.pl $destdir/reco <$srcdir/reco2dur >$destdir/reco2dur
 
      # Filter the STM file for proper sclite scoring
      # Copy over the comments from STM file
@@ -134,6 +136,8 @@ function do_filtering {
      awk '{print $1;}' $destdir/wav.scp | sort | uniq > $destdir/reco
      [ -f $srcdir/reco2file_and_channel ] && \
        utils/filter_scp.pl $destdir/reco <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
+     [ -f $srcdir/reco2dur ] && \
+       utils/filter_scp.pl $destdir/reco <$srcdir/reco2dur >$destdir/reco2dur
      
      rm $destdir/reco
   fi

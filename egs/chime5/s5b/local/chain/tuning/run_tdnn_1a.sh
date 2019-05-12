@@ -128,7 +128,7 @@ if [ $stage -le 13 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   opts="l2-regularize=0.05"
   output_opts="l2-regularize=0.01 bottleneck-dim=320"
 
@@ -198,6 +198,10 @@ if [ $stage -le 14 ]; then
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
+    --egs.chunk-left-context=$chunk_left_context \
+    --egs.chunk-right-context=$chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
     --cleanup.remove-egs=$remove_egs \
