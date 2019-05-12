@@ -34,6 +34,9 @@
              Each Variable has a base Variable; a base Variable's
              base Variable is itself.  See also: "View Variable".
 
+    Debug mode:  A global bool that says whether we are debugging
+             (activates checks on computation correctness that are slow).
+
     Invalidated:  if some data used in backprop needs to have been unchanged since
               a particular tick (as recorded in an Op), but it has been changed
               since then, we say that it has been invalided.  This is an error,

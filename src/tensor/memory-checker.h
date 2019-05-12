@@ -70,9 +70,9 @@ class ChangeTracker {
 
 
   /**
-     Record a change to this storage region at the current time (obtained by
-     GetTick()).  Just appends it to the vector of changes after canonicalizing
-     the pattern.  Inlined since it's only called from Storage::ChangedSince().
+     Record a write to this storage region at the current time (obtained by
+     GetTick()).  Just appends it to the vector of writes after canonicalizing
+     the pattern.  Inlined since it's only called from Storage::WrittenSince().
 
      @param [in] element_size  The size in bytes of the data type being stored
                              here: for example, 4 for float.
@@ -80,21 +80,25 @@ class ChangeTracker {
                             to canonical form (c.f. CanonicalizePattern())
                             before being stored.
    */
-  inline void RecordChange(int32 element_size,
-                           const Pattern &pattern);
+  inline void RecordWrite(int32 element_size,
+                          const Pattern &pattern);
 
 
   /**
      Returns true if any element covered by this pattern has been
      changed since the time given by 'tick'.  Inlined since it's only
-     called from Storage::ChangedSince().
+     called from Storage::WrittenSince().
 
-      @param [in] tick  The time (obtained by GetTick()) since when
-                     we want to know about changes
+      @param [in] element_size  The size in bytes of the data type being stored
+                       here: for example, 4 for float.
       @param [in] pattern  The pattern that we are checking
+      @param [in] tick  The time (obtained by GetTick()) since when
+                       we want to know about changes
+
    */
-  inline bool ChangedSince(int64 tick,
-                           const Pattern &pattern);
+  inline bool WrittenSince(int32 element_size,
+                           const Pattern &pattern,
+                           int64 tick);
 
  private:
 
@@ -111,7 +115,7 @@ class ChangeTracker {
   int32 element_size_;
 
 
-  struct ChangeRecord {
+  struct WriteRecord {
     Pattern pattern;  // The pattern (offset, dims, strides) that was
                             // changed within this storage region.  This pattern
                             // will have been reduced to canonical form.  View
@@ -121,36 +125,36 @@ class ChangeTracker {
     int64 tick;             // The time, in ticks (c.f. NextTick()) at which
                             // this set of memory-indexes was changed.
 
-    // Next in a singly linked list of ChangeRecord.
-    std::unique_ptr<ChangeRecord> tail;
+    // Next in a singly linked list of WriteRecord.
+    std::unique_ptr<WriteRecord> tail;
   };
 
 
   // Head of a singly linked list of changes.  When RecordChange() is called, we
   // will add to the head of this (and then de-dupe; see doc for change_map)).
-  // When ChangedSince() is called, we will traverse it element by element until
-  // we get to the tick passed to ChangedSince, and if there is any overlap with
+  // When WrittenSince() is called, we will traverse it element by element until
+  // we get to the tick passed to WrittenSince, and if there is any overlap with
   // the passed-in pattern, we'll return true.
-  std::unique_ptr<ChangeRecord> changes_;
+  std::unique_ptr<WriteRecord> changes_;
 
 
-  // This is a map from a pointer to the Pattern in ChangeRecord::pattern
-  // (hashing the pattern itself, not the pointer value), to the ChangeRecord
+  // This is a map from a pointer to the Pattern in WriteRecord::pattern
+  // (hashing the pattern itself, not the pointer value), to the WriteRecord
   // that holds it.  We actually map to the address of the std::unique_ptr
-  // pointing to that ChangeRecord, which might be the address of this->changes_
-  // or ChangeRecord::tail, because we need to be able to write to that to
-  // remove a ChangeRecord from the singly linked list.  This map is used
+  // pointing to that WriteRecord, which might be the address of this->changes_
+  // or WriteRecord::tail, because we need to be able to write to that to
+  // remove a WriteRecord from the singly linked list.  This map is used
   // in de-duping the list of changes, so that if someone provides the
   // exact same pattern twice, we only keep the most recent tick; this
   // keeps memory usage under control.
-  std::unordered_map<Pattern*, std::unique_ptr<ChangeRecord>*,
+  std::unordered_map<Pattern*, std::unique_ptr<WriteRecord>*,
                      PatternPtrHasher, PatternPtrEqual> change_map_;
 };
 
 
 
 // This class is a common base-class for UninitializedDataChecker and
-// InvalidDataChecker.
+// InvalidatedDataChecker.
 class DataCheckerBase {
  protected:
   DataCheckerBase(int64 num_bytes);
@@ -299,7 +303,7 @@ class UninitializedDataChecker: public DataCheckerBase {
                   function records the write.
    */
   inline void RecordWrite(int32 element_size,
-                   const Pattern &pattern) {
+                          const Pattern &pattern) {
     RecordEvent(element_size, pattern);
   }
 
@@ -350,20 +354,22 @@ class UninitializedDataChecker: public DataCheckerBase {
 
    The way we handle this is: we assume by default that any time we do an
    operation that sets a Variable but does not depend on its previously existing
-   value, the memory underlying it was not previously written to in an operation
-   that required derivative-tracking.  But if that is not the case (i.e.
-   if you do something that does require overwriting previously-written data
-   that required derivative tracking, like the above), you can inform the
-   framework by doing
+   value, the memory underlying it has not been previously written to in an
+   operation that required derivative-tracking.  That is, the framework assumes
+   by default that you DO NOT REUSE MEMORY, except for in-place operations.  If
+   you do want to re-use memory (specifically:a if you do something that does
+   require overwriting previously-written data that required derivative
+   tracking, like the above), you can inform the framework that you plan to do
+   this as follows:
      DoSomethingWith(a, b, &c.Overwrite());
    instead of
      DoSomethingWith(a, b, &c);
    (here a, b and c are Variables; and let's suppose this operation
    DoSomethingWith() ignores the previous value of `c`).
 
-   This purpose of this class is to detect cases where someone should have
-   invoked Overwrite() because tracked data was overwritten, but failed to
-   do so.
+   This purpose of class InvalidatedDataChecker is to detect cases where someone
+   should have invoked Overwrite() because tracked data was overwritten, but
+   failed to do so.
 
    See also the comment for the overwrite_ member of class VariableImpl, and
    the Untouched() member of Variable.
@@ -409,9 +415,136 @@ class InvalidatedDataChecker: public DataCheckerBase {
   */
   void RecordRead(int32 element_size,
                   const Pattern &pattern);
+};
+
+
+class MemoryChecker {
+ public:
+
+  /**
+     Constructor: constructs a MemoryChecker object for a storage region
+
+        @param [in] num_bytes   Number of bytes in the storage region
+        @param [in] new_region  True if this object is being allocated at
+                     the same time as we are allocating this region.
+                     (may be false if debug mode was not active when
+                     the region was first allocated).
+  */
+  MemoryChecker(int64 num_bytes,
+                bool new_region): num_bytes_(num_bytes) {
+    Initialize(new_region);
+  }
+
+  /**
+     This is called by functions that implement low-level functions on tensors,
+     before or after actually accessing the memory.  The options are:
+         kRead
+         kReadWrite
+         kWrite
+     From a user's perspective the only thing this function might do is crash--
+     which it is designed to do if it detects various "disallowed" things.
+  */
+  void RecordUse(int32 element_size,
+                 const Pattern &pattern,
+                 TensorUseEnum use_type) {
+    KALDI_PARANOID_ASSERT(DebugMode());
+    if (debug_tick_ != DebugTick())
+        Initialise(false);  // false means: not a new region.
+    if (use_type == kRead || use_type == kReadWrite) {
+      invalidated_checker_->RecordRead(element_size, pattern);
+      if (uninitialized_checker_)
+        uninitialized_checker_->RecordRead(element_size, pattern);
+    }
+    if (use_type == kWrite || use_type == kReadWrite) {
+      // Important that this happens after checking the reads above.
+      // uninitialized_checker_ would never find an error in RecordRead() if it
+      // was done after the RecordWrite().
+      if (uninitialized_checker_)
+        uninitialized_checker_->RecordWrite(element_size, pattern);
+      change_tracker_->RecordWrite(element_size,  pattern);
+    }
+  }
+
+  /**
+     Record the invalidation of data.  This occurs in certain backprop
+     operations as a way to avoid unnecessary zeroing operations.  See
+     the documentation for class InvalidatedDatChecker for a longer
+     explanation.
+   */
+  void RecordInvalidation(int32 element_size,
+                          const Pattern &pattern) {
+    if (!invalidated_checker_)
+      invalidated_checker_ = new InvalidatedDataChecker(num_bytes_);
+    invalidated_checker_->RecordInvalidation(element_size, pattern);
+  }
+
+  /**
+     Record that the entire storage region has been zeroed.
+     (This avoids the need to use uninitialized_checker_, so we delete it
+      if it was set).
+   */
+  inline void RecordZeroing() { uninitialized_checker_ = NULL; }
+
+
+  /**
+     This function is called by the backprop code in Ops when it wants to
+     make sure that certain data stored from the forward pass has not
+     been written to since the specified tick.
+   */
+  void CheckUnchangedSince(
+      int32 element_size,
+      const Pattern &pattern,
+      int64 tick) {
+    if (change_tracker_ &&
+        change_tracker_->WrittenSince(element_size, pattern, tick)) {
+      KALDI_ERR << "Quantity needed during backprop has changed since "
+          "the value used in the forward pass.  You have likely used "
+          "an in-place or overwriting operation in a way that's not "
+          "allowed.  Solution: don't overwrite data if you want "
+          "to do backprop.";
+    }
+  }
+
+ private:
+  /**
+     Initialize all members of this object except for num_bytes_ (which is set
+     in the constructor).  This is called from the constructor, but also whenever
+     we detect that debug mode has been turned off and then on again.
+   */
+  void Initialize(bool new_region);
+
+  // the number of bytes in the region, set only in the constructor.
+  int64 num_bytes_;
+
+  // debug_tick_ is the value of DebugTick() at the time when Initialize() was
+  // most recently called.  I.e. it's the start of the current debug cycle.
+  // It's used to detect when debug mode has been turned off and then on, which
+  // requires us to re-initialize this object.
+  int64 debug_tick_;
+
+  // Checker object for uninitialized data.  This is only non-NULL if
+  // the following two conditions hold:
+  //   (a) `new_region` as passed to Initialize() was true (because if we
+  //      started debugging after this region was already created, we
+  //      wouldn't know whether any data in it was uninitialized, so
+  //      this check is meaningless.
+  //   (b) No-one has called RecordZeroing() since Initialize() was
+  //      last called.  (This records that the entire region was
+  //      zeroed, which means there would be no uninitialized data.
+  std::unique_ptr<UninitializedDataChecker> uninitialized_checker_;
+
+  // Checker object for invalidated data.  Will only be allocated if
+  // RecordInvalidation() has been called since Initialize().  See docs for
+  // InvalidatedDataChecker for explanation of what this means.
+  std::unique_ptr<InvalidatedDataChecker> invalidated_checker_;
+
+  // Checker object that checks that we don't overwrite quantities
+  // that will be needed in the backward pass.
+  std::unique_ptr<ChangeTracker> change_tracker_;
 
 
 };
+
 
 
 }  // namespace tensor

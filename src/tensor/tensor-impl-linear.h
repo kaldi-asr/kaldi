@@ -67,6 +67,8 @@ void AddProduct(float alpha, float beta,
 
 /**
    Copy elements from Tensor a to Tensor b, possibly broadcasting
+   or summing
+
       @param [in]  a    The source Tensor.
       @param [out] b   The destination Tensor.  We require
                        Broadcastable(a, b, true).

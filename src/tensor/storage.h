@@ -35,13 +35,12 @@ struct StorageAux;
 class Storage {
  public:
 
-  
+
   // This initializes a ChangeTracker object in this->tracker if it
   // does not already exist, and returns its address.
   ChangeTracker *GetChangeTracker();
 
-  inline bool Allocated() {  return (data != NULL);  }
-
+  inline bool Allocated() { return (data != NULL); }
 
   // Returns the raw data pointer.
   inline void *Data() {
