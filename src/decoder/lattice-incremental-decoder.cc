@@ -89,8 +89,7 @@ void LatticeIncrementalDecoderTpl<FST, Token>::InitDecoding() {
 // a final state).  It should only very rarely return false; this indicates
 // an unusual search error.
 template <typename FST, typename Token>
-bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
-    DecodableInterface *decodable) {
+bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(DecodableInterface *decodable) {
   InitDecoding();
 
   // We use 1-based indexing for frames in this decoder (if you view it in
@@ -103,15 +102,15 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
     }
 
     // We always incrementally determinize the lattice after lattice pruning in
-    // PruneActiveTokens()
-    // We have a delay on GetLattice to do determinization on more skinny lattices
-    int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
-    // The minimum length of chunk is config_.determinize_chunk_size. We make it
-    // identical to PruneActiveTokens since we need extra_cost as the weights
+    // PruneActiveTokens() since we need extra_cost as the weights
     // of final arcs to denote the "future" information of final states (Tokens)
+    // Moreover, the delay on GetLattice to do determinization
+    // make it process more skinny lattices which reduces the computation overheads.
+    int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
+    // The minimum length of chunk is config_.determinize_chunk_size.
     if (frame_det_most % config_.determinize_chunk_size == 0) {
-      int32 frame_det_least = last_get_lattice_frame_ + 
-                              config_.determinize_chunk_size;
+      int32 frame_det_least =
+          last_get_lattice_frame_ + config_.determinize_chunk_size;
       // To adaptively decide the length of chunk, we further compare the number of
       // tokens in each frame and a pre-defined threshold.
       // If the number of tokens in a certain frame is less than
@@ -123,7 +122,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
             GetNumToksForFrame(f) < config_.determinize_max_active) {
           KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
                         << " incremental determinization up to " << f;
-          GetLattice(false, false, f);
+          GetLattice(false, f);
           break;
         }
       }
@@ -133,9 +132,9 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(
   }
   Timer timer;
   FinalizeDecoding();
-  GetLattice(true, config_.redeterminize, NumFramesDecoded());
-  KALDI_VLOG(2) << "Delay time during and after decoding finalization (secs): "
-                << timer.Elapsed();
+  GetLattice(true, NumFramesDecoded());
+  KALDI_VLOG(2) << "Delay time during and after FinalizeDecoding()"
+                << "(secs): " << timer.Elapsed();
 
   // Returns true if we have any kind of traceback available (not necessarily
   // to the end state; query ReachedFinal() for that).
@@ -147,21 +146,10 @@ template <typename FST, typename Token>
 bool LatticeIncrementalDecoderTpl<FST, Token>::GetBestPath(Lattice *olat,
                                                            bool use_final_probs) {
   CompactLattice lat, slat;
-  GetLattice(use_final_probs, config_.redeterminize, NumFramesDecoded(), &lat);
+  GetLattice(use_final_probs, NumFramesDecoded(), &lat);
   ShortestPath(lat, &slat);
   ConvertLattice(slat, olat);
   return (olat->NumStates() != 0);
-}
-
-// Outputs an FST corresponding to the raw, state-level lattice
-template <typename FST, typename Token>
-bool LatticeIncrementalDecoderTpl<FST, Token>::GetRawLattice(Lattice *ofst,
-                                                             bool use_final_probs) {
-  CompactLattice lat;
-  GetLattice(use_final_probs, config_.redeterminize, NumFramesDecoded(), &lat);
-  ConvertLattice(lat, ofst);
-  Connect(ofst);
-  return (ofst->NumStates() != 0);
 }
 
 template <typename FST, typename Token>
@@ -941,12 +929,11 @@ void LatticeIncrementalDecoderTpl<FST, Token>::TopSortTokens(
 
 template <typename FST, typename Token>
 bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(CompactLattice *olat) {
-  return GetLattice(true, config_.redeterminize, NumFramesDecoded(), olat);
+  return GetLattice(true, NumFramesDecoded(), olat);
 }
 
 template <typename FST, typename Token>
 bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
-                                                          bool redeterminize,
                                                           int32 last_frame_of_chunk,
                                                           CompactLattice *olat) {
   using namespace fst;
@@ -976,7 +963,7 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
                << last_get_lattice_frame_;
 
   // step 4
-  if (decoding_finalized_) ret &= determinizer_.Finalize(redeterminize);
+  if (decoding_finalized_) ret &= determinizer_.Finalize();
   if (olat) {
     *olat = determinizer_.GetDeterminizedLattice();
     ret &= (olat->NumStates() > 0);
@@ -1056,10 +1043,11 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
       int32 token_label = r->second;
       auto range = token_label2last_state_map.equal_range(token_label);
       if (range.first == range.second) {
-        KALDI_WARN << "The token in the first frame of this chunk does not "
-          "exist in the last frame of previous chunk. It should be seldom"
-          " happen and probably caused by over-pruning in determinization,"
-          "e.g. the lattice reaches --max-mem constrain.";
+        KALDI_WARN
+            << "The token in the first frame of this chunk does not "
+               "exist in the last frame of previous chunk. It should be seldom"
+               " happen and probably caused by over-pruning in determinization,"
+               "e.g. the lattice reaches --max-mem constrain.";
         continue;
       }
       std::vector<BaseFloat> tmp_vec;
@@ -1163,8 +1151,7 @@ int32 LatticeIncrementalDecoderTpl<FST, Token>::GetNumToksForFrame(int32 frame) 
 
 template <typename FST>
 LatticeIncrementalDeterminizer<FST>::LatticeIncrementalDeterminizer(
-    const LatticeIncrementalDecoderConfig &config,
-    const TransitionModel &trans_model)
+    const LatticeIncrementalDecoderConfig &config, const TransitionModel &trans_model)
     : config_(config), trans_model_(trans_model) {}
 
 template <typename FST>
@@ -1256,8 +1243,7 @@ void LatticeIncrementalDeterminizer<FST>::GetRawLatticeForRedeterminizedStates(
       weight_offset.SetWeight(LatticeWeight(0, -cost_offset));
       // The arc weight is a combination of original arc weight, above cost_offset
       // and the weights on the final state
-      arc_weight =
-          Times(Times(arc_weight, lat_.Final(arc.nextstate)), weight_offset);
+      arc_weight = Times(Times(arc_weight, lat_.Final(arc.nextstate)), weight_offset);
 
       // We create a respective destination state for each final arc
       // later we will connect it to the state correponding to the token w.r.t
@@ -1456,7 +1442,8 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
     // We do not copy initial state, which exists except the first chunk
     if (!not_first_chunk || s != 0) {
       state_appended = s + state_offset;
-      KALDI_ASSERT(state_appended == olat->AddState());
+      auto r = olat->AddState();
+      KALDI_ASSERT(state_appended == r);
       olat->SetFinal(state_appended, clat.Final(s));
     }
 
@@ -1512,8 +1499,7 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
           arc_offset = olat->NumArcs(source_state);
         }
 
-        if (!config_.epsilon_removal ||
-            clat.Final(arc.nextstate) != CompactLatticeWeight::Zero()) {
+        if (clat.Final(arc.nextstate) != CompactLatticeWeight::Zero()) {
           // it should be the last chunk
           olat->AddArc(source_state, arc_appended);
         } else {
@@ -1571,31 +1557,12 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
 }
 
 template <typename FST>
-bool LatticeIncrementalDeterminizer<FST>::Finalize(bool redeterminize) {
+bool LatticeIncrementalDeterminizer<FST>::Finalize() {
   using namespace fst;
   auto *olat = &lat_;
   // The lattice determinization only needs to be finalized once
   if (determinization_finalized_) return true;
-  // step 4: re-determinize the final lattice
-  if (redeterminize) {
-    Connect(olat); // Remove unreachable states... there might be
-    DeterminizeLatticePrunedOptions det_opts;
-    det_opts.delta = config_.det_opts.delta;
-    det_opts.max_mem = config_.det_opts.max_mem;
-    Lattice lat;
-    ConvertLattice(*olat, &lat);
-    Invert(&lat);
-    if (lat.Properties(fst::kTopSorted, true) == 0) {
-      if (!TopSort(&lat)) {
-        // Cannot topologically sort the lattice -- determinization will fail.
-        KALDI_ERR << "Topological sorting of state-level lattice failed (probably"
-                  << " your lexicon has empty words or your LM has epsilon cycles"
-                  << ").";
-      }
-    }
-    if (!DeterminizeLatticePruned(lat, config_.lattice_beam, olat, det_opts))
-      KALDI_WARN << "Determinization finished earlier than the beam";
-  }
+  // step 4: remove dead states
   Connect(olat); // Remove unreachable states... there might be
   KALDI_VLOG(2) << "states of the lattice: " << olat->NumStates();
   determinization_finalized_ = true;
@@ -1605,8 +1572,7 @@ bool LatticeIncrementalDeterminizer<FST>::Finalize(bool redeterminize) {
 
 // Instantiate the template for the combination of token types and FST types
 // that we'll need.
-template class LatticeIncrementalDecoderTpl<fst::Fst<fst::StdArc>,
-                                            decoder::StdToken>;
+template class LatticeIncrementalDecoderTpl<fst::Fst<fst::StdArc>, decoder::StdToken>;
 template class LatticeIncrementalDecoderTpl<fst::VectorFst<fst::StdArc>,
                                             decoder::StdToken>;
 template class LatticeIncrementalDecoderTpl<fst::ConstFst<fst::StdArc>,

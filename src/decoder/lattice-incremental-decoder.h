@@ -41,15 +41,12 @@ struct LatticeIncrementalDecoderConfig {
   int32 determinize_delay;
   int32 determinize_chunk_size;
   int32 determinize_max_active;
-  bool redeterminize;
   int32 redeterminize_max_frames;
-  bool epsilon_removal;
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
-  BaseFloat
-      prune_scale; // Note: we don't make this configurable on the command line,
-                   // it's not a very important parameter.  It affects the
-                   // algorithm that prunes the tokens as we go.
+  BaseFloat prune_scale; // Note: we don't make this configurable on the command line,
+                         // it's not a very important parameter.  It affects the
+                         // algorithm that prunes the tokens as we go.
   // Most of the options inside det_opts are not actually queried by the
   // LatticeIncrementalDecoder class itself, but by the code that calls it, for
   // example in the function DecodeUtteranceLatticeIncremental.
@@ -65,9 +62,7 @@ struct LatticeIncrementalDecoderConfig {
         determinize_delay(25),
         determinize_chunk_size(20),
         determinize_max_active(std::numeric_limits<int32>::max()),
-        redeterminize(false),
         redeterminize_max_frames(std::numeric_limits<int32>::max()),
-        epsilon_removal(false),
         beam_delta(0.5),
         hash_ratio(2.0),
         prune_scale(0.1),
@@ -86,10 +81,12 @@ struct LatticeIncrementalDecoderConfig {
                    "Interval (in frames) at "
                    "which to prune tokens");
     opts->Register("determinize-delay", &determinize_delay,
-                   "delay (in frames, typically larger than --prune-interval) "
-                   "at which to incrementally determinize lattices.");
+                   "Delay (in frames) at which to incrementally determinize "
+                   "lattices. A larger delay reduces the computational "
+                   "overheads of incremental deteriminization while increasing"
+                   "the length of the last chunk which may increase latencies.");
     opts->Register("determinize-chunk-size", &determinize_chunk_size,
-                   "the size (in frames) of chunk to do incrementally "
+                   "The size (in frames) of chunk to do incrementally "
                    "determinization. If working with --determinize-max-active,"
                    "it will become a lower bound of the size of chunk.");
     opts->Register("determinize-max-active", &determinize_max_active,
@@ -101,16 +98,13 @@ struct LatticeIncrementalDecoderConfig {
                    "determinized up to this frame. It can work with "
                    "--determinize-delay to further reduce the computation "
                    "introduced by incremental determinization. ");
-    opts->Register("redeterminize", &redeterminize,
-                   "whether to re-determinize the lattice after incremental "
-                   "determinization.");
     opts->Register("redeterminize_max_frames", &redeterminize_max_frames,
                    "To impose a limit on how far back in time we will "
                    "redeterminize states.  This is mainly intended to avoid "
-                   "pathological cases. You could set it infinite to get a fully "
+                   "pathological cases. Smaller value leads to less "
+                   "deterministic but less likely to blow up the processing"
+                   "time in bad cases. You could set it infinite to get a fully "
                    "determinized lattice.");
-    opts->Register("epsilon-removal", &epsilon_removal,
-                   "whether to remove epsilon when appending two adjacent chunks.");
     opts->Register("beam-delta", &beam_delta,
                    "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "
@@ -123,9 +117,9 @@ struct LatticeIncrementalDecoderConfig {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 &&
                  min_active <= max_active && prune_interval > 0 &&
                  determinize_delay >= 0 && determinize_max_active >= 0 &&
-                 determinize_chunk_size >= 0 &&
-                 redeterminize_max_frames >= 0 && beam_delta > 0.0 &&
-                 hash_ratio >= 1.0 && prune_scale > 0.0 && prune_scale < 1.0);
+                 determinize_chunk_size >= 0 && redeterminize_max_frames >= 0 &&
+                 beam_delta > 0.0 && hash_ratio >= 1.0 && prune_scale > 0.0 &&
+                 prune_scale < 1.0);
   }
 };
 
@@ -170,18 +164,24 @@ class LatticeIncrementalDecoderTpl {
   LatticeIncrementalDecoderTpl(const LatticeIncrementalDecoderConfig &config,
                                FST *fst, const TransitionModel &trans_model);
 
-  void SetOptions(const LatticeIncrementalDecoderConfig &config) {
-    config_ = config;
-  }
+  void SetOptions(const LatticeIncrementalDecoderConfig &config) { config_ = config; }
 
   const LatticeIncrementalDecoderConfig &GetOptions() const { return config_; }
 
   ~LatticeIncrementalDecoderTpl();
 
-  /// Decodes until there are no more frames left in the "decodable" object..
-  /// note, this may block waiting for input if the "decodable" object blocks.
-  /// Returns true if any kind of traceback is available (not necessarily from a
-  /// final state).
+  /// An example of how to do decoding together with incremental
+  /// determinization. It decodes until there are no more frames left in the
+  /// "decodable" object. Note, this may block waiting for input
+  /// if the "decodable" object blocks.
+  /// In this example, config_.determinize_delay, config_.determinize_chunk_size
+  /// and config_.determinize_max_active are used to determine the time to
+  /// call GetLattice().
+  /// Users may do it in their own ways by calling
+  /// AdvanceDecoding() and GetLattice(). So the logic for deciding
+  /// when we get the lattice would be driven by the user.
+  /// The function returns true if any kind
+  /// of traceback is available (not necessarily from a final state).
   bool Decode(DecodableInterface *decodable);
 
   /// says whether a final-state was active on the last frame.  If it was not, the
@@ -194,91 +194,77 @@ class LatticeIncrementalDecoderTpl {
   /// Returns true if result is nonempty (using the return status is deprecated,
   /// it will become void).  If "use_final_probs" is true AND we reached the
   /// final-state of the graph then it will include those as final-probs, else
-  /// it will treat all final-probs as one.  Note: this just calls GetRawLattice()
-  /// and figures out the shortest path.
+  /// it will treat all final-probs as one.
   bool GetBestPath(Lattice *ofst, bool use_final_probs = true);
 
-  // The following function is specifically designed for incremental
-  // determinization. The function obtains a CompactLattice for
-  // the part of this utterance up to the frame last_frame_of_chunk.
-  // If you call this multiple times
-  // (calling it on every frame would not make sense,
-  // but every, say, 10 to 40 frames might make sense) it will spread out the
-  // work of determinization over time, which might be useful for online
-  // applications.
-  //
-  // The procedure of incremental determinization is as follow:
-  // step 1: Get lattice chunk with initial and final states and arcs, called `raw
-  // lattice`.
-  // Here, we define a `final arc` as an arc to a final-state, and the source state
-  // of it as a `pre-final state`
-  // Similarly, we define a `initial arc` as an arc from a initial-state, and the
-  // destination state of it as a `post-initial state`
-  // The post-initial states are constructed corresponding to pre-final states
-  // in the determinized and appended lattice before this chunk
-  // The pre-final states are constructed correponding to tokens in the last frames
-  // of this chunk.
-  // Since the StateId can change during determinization, we need to give permanent
-  // unique labels (as olabel) to these
-  // raw-lattice states for latter appending.
-  // We give each token an olabel id, called `token_label`, and each determinized and
-  // appended state an olabel id, called `state_label`
-  // step 2: Determinize the chunk of above raw lattice using determinization
-  // algorithm the same as LatticeFasterDecoder. Benefit from above `state_label` and
-  // `token_label` in initial and final arcs, each pre-final state in the last chunk
-  // w.r.t the initial arc of this chunk can be treated uniquely and each token in
-  // the last frame of this chunk can also be treated uniquely. We call the
-  // determinized new
-  // chunk `compact lattice (clat)`
-  // step 3: Appending the new chunk `clat` to the determinized lattice
-  // before this chunk. First, for each StateId in clat except its
-  // initial state, allocate a new StateId in the appended
-  // compact lattice. Copy the arcs except whose incoming state is initial
-  // state. Secondly, for each initial arcs, change its source state to the state
-  // corresponding to its `state_label`, which is a determinized and appended state
-  // Finally, we make the previous final arcs point to a "dead state"
-  // step 4 (optional): We re-determinize the appended lattice if needed.
-  //
-  // In our implementation, step 1 is done in GetIncrementalRawLattice(),
-  // step 2-4 is taken care by the class
-  // LatticeIncrementalDeterminizer
-  //
-  //   @param [in]  use_final_probs  If true *and* at least one final-state in HCLG
-  //                         was active on the final frame, include final-probs from
-  //                         HCLG
-  //                         in the lattice.  Otherwise treat all final-costs of
-  //                         states active
-  //                         on the most recent frame as zero (i.e.  Weight::One()).
-  //   @param [in]  redeterminize    If true, re-determinize the CompactLattice
-  //                         after appending the most recently decoded chunk to it,
-  //                         to
-  //                         ensure that the output is fully deterministic.
-  //                         This does extra work, but not nearly as much as
-  //                         determinizing
-  //                          a RawLattice from scratch.
-  //   @param [in]  last_frame_of_chunk  Pass the last frame of this chunk to
-  //                       the function. We make it not always equal to
-  //                         NumFramesDecoded() to have a delay on the
-  //                       deteriminization
-  //   @param [out] olat   The CompactLattice representing what has been decoded
-  //                          so far.
-  //                       If lat == NULL, the CompactLattice won't be outputed.
-  //   @return ret   This function will returns true if the chunk is processed
-  //                       successfully
-  bool GetLattice(bool use_final_probs, bool redeterminize,
-                  int32 last_frame_of_chunk, CompactLattice *olat = NULL);
+  /**
+    The following function is specifically designed for incremental
+    determinization. The function obtains a CompactLattice for
+    the part of this utterance up to the frame last_frame_of_chunk.
+    If you call this multiple times
+    (calling it on every frame would not make sense, but every, say,
+     10 to 40 frames might make sense) it will spread out the work of
+    determinization over time, which might be useful for online applications.
+    config_.determinize_delay, config_.determinize_chunk_size
+    and config_.determinize_max_active can be used to determine the time to
+    call this function. We show an example in Decode().
+
+    The procedure of incremental determinization is as follow:
+    step 1: Get lattice chunk with initial and final states and arcs, called `raw
+    lattice`.
+    Here, we define a `final arc` as an arc to a final-state, and the source state
+    of it as a `pre-final state`
+    Similarly, we define a `initial arc` as an arc from a initial-state, and the
+    destination state of it as a `post-initial state`
+    The post-initial states are constructed corresponding to pre-final states
+    in the determinized and appended lattice before this chunk
+    The pre-final states are constructed correponding to tokens in the last frames
+    of this chunk.
+    Since the StateId can change during determinization, we need to give permanent
+    unique labels (as olabel) to these
+    raw-lattice states for latter appending.
+    We give each token an olabel id, called `token_label`, and each determinized and
+    appended state an olabel id, called `state_label`
+    step 2: Determinize the chunk of above raw lattice using determinization
+    algorithm the same as LatticeFasterDecoder. Benefit from above `state_label` and
+    `token_label` in initial and final arcs, each pre-final state in the last chunk
+    w.r.t the initial arc of this chunk can be treated uniquely and each token in
+    the last frame of this chunk can also be treated uniquely. We call the
+    determinized new
+    chunk `compact lattice (clat)`
+    step 3: Appending the new chunk `clat` to the determinized lattice
+    before this chunk. First, for each StateId in clat except its
+    initial state, allocate a new StateId in the appended
+    compact lattice. Copy the arcs except whose incoming state is initial
+    state. Secondly, for each initial arcs, change its source state to the state
+    corresponding to its `state_label`, which is a determinized and appended state
+    Finally, we make the previous final arcs point to a "dead state"
+    step 4: We remove dead states in the very end.
+
+    In our implementation, step 1 is done in GetIncrementalRawLattice(),
+    step 2-4 is taken care by the class
+    LatticeIncrementalDeterminizer
+
+      @param [in]  use_final_probs  If true *and* at least one final-state in HCLG
+                            was active on the final frame, include final-probs from
+                            HCLG
+                            in the lattice.  Otherwise treat all final-costs of
+                            states active
+                            on the most recent frame as zero (i.e.  Weight::One()).
+      @param [in]  last_frame_of_chunk  Pass the last frame of this chunk to
+                          the function. We make it not always equal to
+                            NumFramesDecoded() to have a delay on the
+                          deteriminization
+      @param [out] olat   The CompactLattice representing what has been decoded
+                             so far.
+                          If lat == NULL, the CompactLattice won't be outputed.
+      @return ret   This function will returns true if the chunk is processed
+                          successfully
+  */
+  bool GetLattice(bool use_final_probs, int32 last_frame_of_chunk,
+                  CompactLattice *olat = NULL);
   /// Specifically design when decoding_finalized_==true
   bool GetLattice(CompactLattice *olat);
-
-  /// This function is to keep forwards compatibility.
-  /// It outputs an FST corresponding to the raw, state-level
-  /// tracebacks.  Returns true if result is nonempty.
-  /// If "use_final_probs" is true AND we reached the final-state
-  /// of the graph then it will include those as final-probs, else
-  /// it will treat all final-probs as one.
-  /// Notably, the raw lattice from this incremental determinization decoder
-  /// has already been partially determinized
-  bool GetRawLattice(Lattice *ofst, bool use_final_probs = true);
 
   /// InitDecoding initializes the decoding, and should only be used if you
   /// intend to call AdvanceDecoding().  If you call Decode(), you don't need to
@@ -294,9 +280,9 @@ class LatticeIncrementalDecoderTpl {
 
   /// This function may be optionally called after AdvanceDecoding(), when you
   /// do not plan to decode any further.  It does an extra pruning step that
-  /// will help to prune the lattices output by GetLattice and (particularly)
-  /// GetRawLattice more accurately, particularly toward the end of the
-  /// utterance.  It does this by using the final-probs in pruning (if any
+  /// will help to prune the lattices output by GetLattice more accurately,
+  /// particularly toward the end of the utterance.
+  /// It does this by using the final-probs in pruning (if any
   /// final-state survived); it also does a final pruning step that visits all
   /// states (the pruning that is done during decoding may fail to prune states
   /// that are within kPruningScale = 0.1 outside of the beam).  If you call
@@ -359,8 +345,7 @@ class LatticeIncrementalDecoderTpl {
   // If Token == StdToken, the 'backpointer' argument has no purpose (and will
   // hopefully be optimized out).
   inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
-                               BaseFloat tot_cost, Token *backpointer,
-                               bool *changed);
+                               BaseFloat tot_cost, Token *backpointer, bool *changed);
 
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens
@@ -589,7 +574,7 @@ class LatticeIncrementalDeterminizer {
   // Step 4 of incremental determinization,
   // which either re-determinize above lat_, or simply remove the dead
   // states of lat_
-  bool Finalize(bool redeterminize);
+  bool Finalize();
   std::vector<BaseFloat> &GetForwardCosts() { return forward_costs_; }
 
  private:

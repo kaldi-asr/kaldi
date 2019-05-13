@@ -211,7 +211,6 @@ bool DecodeUtteranceLatticeIncremental(
     LatticeWriter *lattice_writer,
     double *like_ptr) { // puts utterance's like in like_ptr on success.
   using fst::VectorFst;
-
   if (!decoder.Decode(&decodable)) {
     KALDI_WARN << "Failed to decode file " << utt;
     return false;
@@ -264,19 +263,10 @@ bool DecodeUtteranceLatticeIncremental(
   decoder.GetLattice(&clat);
   if (clat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
-  if (determinize) {
     // We'll write the lattice without acoustic scaling.
-    if (acoustic_scale != 0.0)
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
-    compact_lattice_writer->Write(utt, clat);
-  } else {
-    Lattice lat;
-    decoder.GetRawLattice(&lat);
-    // We'll write the lattice without acoustic scaling.
-    if (acoustic_scale != 0.0)
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
-    lattice_writer->Write(utt, lat);
-  }
+  if (acoustic_scale != 0.0)
+    fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+  compact_lattice_writer->Write(utt, clat);
   KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
             << (likelihood / num_frames) << " over "
             << num_frames << " frames.";
