@@ -4,7 +4,8 @@
 # Apache 2.0.
 #
 # Modified version of egs/sre16/v1/local/make_musan.py (commit e3fb7c4a0da4167f8c94b80f4d3cc5ab4d0e22e8).
-# This version uses the raw MUSAN audio files (16 kHz) and does not use sox to resample at 8 kHz.
+# In this version, the desired sample rate can be specified as the fourth input argument. By default it uses 
+# the raw MUSAN audio files (16 kHz) and does not use sox to resample.
 #
 # This file is meant to be invoked by make_musan.sh.
 
@@ -21,7 +22,7 @@ def process_music_annotations(path):
     utt2vocals[utt] = vocals == "Y"
   return utt2spk, utt2vocals
 
-def prepare_music(root_dir, use_vocals):
+def prepare_music(root_dir, use_vocals, sample_rate):
   utt2vocals = {}
   utt2spk = {}
   utt2wav = {}
@@ -44,7 +45,10 @@ def prepare_music(root_dir, use_vocals):
     if utt in utt2wav:
       if use_vocals or not utt2vocals[utt]:
         utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-        utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
+        if sample_rate != 16000:
+          utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+        else:
+          utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
       num_good_files += 1
     else:
       print("Missing file {}".format(utt))
@@ -52,7 +56,7 @@ def prepare_music(root_dir, use_vocals):
   print("In music directory, processed {} files; {} had missing wav data".format(num_good_files, num_bad_files))
   return utt2spk_str, utt2wav_str
 
-def prepare_speech(root_dir):
+def prepare_speech(root_dir, sample_rate):
   utt2spk = {}
   utt2wav = {}
   num_good_files = 0
@@ -70,7 +74,10 @@ def prepare_speech(root_dir):
   for utt in utt2spk:
     if utt in utt2wav:
       utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-      utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
+      if sample_rate != 16000:
+        utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+      else:
+        utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
       num_good_files += 1
     else:
       print("Missing file {}".format(utt))
@@ -78,7 +85,7 @@ def prepare_speech(root_dir):
   print("In speech directory, processed {} files; {} had missing wav data".format(num_good_files, num_bad_files))
   return utt2spk_str, utt2wav_str
 
-def prepare_noise(root_dir):
+def prepare_noise(root_dir, sample_rate):
   utt2spk = {}
   utt2wav = {}
   num_good_files = 0
@@ -96,7 +103,10 @@ def prepare_noise(root_dir):
   for utt in utt2spk:
     if utt in utt2wav:
       utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-      utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
+      if sample_rate != 16000:
+        utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+      else:
+        utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
       num_good_files += 1
     else:
       print("Missing file {}".format(utt))
@@ -108,9 +118,13 @@ def main():
   in_dir = sys.argv[1]
   out_dir = sys.argv[2]
   use_vocals = sys.argv[3] == "Y"
-  utt2spk_music, utt2wav_music = prepare_music(in_dir, use_vocals)
-  utt2spk_speech, utt2wav_speech = prepare_speech(in_dir)
-  utt2spk_noise, utt2wav_noise = prepare_noise(in_dir)
+  if len(sys.argv) > 4:
+    sample_rate = sys.argv[4]
+  else:
+    sample_rate = 16000
+  utt2spk_music, utt2wav_music = prepare_music(in_dir, use_vocals, sample_rate)
+  utt2spk_speech, utt2wav_speech = prepare_speech(in_dir, sample_rate)
+  utt2spk_noise, utt2wav_noise = prepare_noise(in_dir, sample_rate)
   utt2spk = utt2spk_speech + utt2spk_music + utt2spk_noise
   utt2wav = utt2wav_speech + utt2wav_music + utt2wav_noise
   wav_fi = open(os.path.join(out_dir, "wav.scp"), 'w')
@@ -121,3 +135,4 @@ def main():
 
 if __name__=="__main__":
   main()
+  
