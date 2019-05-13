@@ -145,7 +145,7 @@ if [ $stage -le 4 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh /export/corpora/JHU/musan data
+  steps/data/make_musan.sh --sampling-rate 8000 /export/corpora/JHU/musan data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.

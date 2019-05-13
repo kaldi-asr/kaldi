@@ -18,10 +18,10 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
                         help='use vocals from the music corpus')
-    parser.add_argument('--sampling-rate', type=int, default=None,
+    parser.add_argument('--sampling-rate', type=int, default=16000,
                         help="Sampling rate of the source data. If a positive integer is specified with this option, "
                         "the MUSAN corpus will be resampled to the rate of the source data."
-                        "Original MUSAN corpus is sampled at 16KHz")
+                        "Original MUSAN corpus is sampled at 16KHz. Defaults to 16000 Hz")
     parser.add_argument("in_dir", help="Input data directory")
     parser.add_argument("out_dir", help="Output data directory")
 
@@ -75,11 +75,11 @@ def prepare_music(root_dir, use_vocals, sampling_rate):
         if utt in utt2wav:
             if use_vocals or not utt2vocals[utt]:
                 utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-                if sampling_rate is not None or sampling_rate != 16000:
+                if sampling_rate == 16000:
+                    utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
+                else:
                     utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r" \
                                     " {fs} -t wav - |\n".format(fs=sampling_rate)
-                else:
-                    utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
             num_good_files += 1
         else:
             print("Missing file {}".format(utt))
@@ -108,11 +108,11 @@ def prepare_speech(root_dir, sampling_rate):
     for utt in utt2spk:
         if utt in utt2wav:
             utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-            if sampling_rate is not None or sampling_rate != 16000:
-                utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r" \
-                        " {fs} -t wav - |\n".format(fs=sampling_rate)
-            else:
+            if sampling_rate == 16000:
                 utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
+            else:
+                utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r" \
+                                    " {fs} -t wav - |\n".format(fs=sampling_rate)
             num_good_files += 1
         else:
             print("Missing file {}".format(utt))
@@ -141,11 +141,11 @@ def prepare_noise(root_dir, sampling_rate):
     for utt in utt2spk:
         if utt in utt2wav:
             utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-            if sampling_rate is not None or sampling_rate != 16000:
-                utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r " \
-                                    "{fs} -t wav - |\n".format(fs=sampling_rate)
-            else:
+            if sampling_rate == 16000:
                 utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
+            else:
+                utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r" \
+                                    " {fs} -t wav - |\n".format(fs=sampling_rate)
             num_good_files += 1
         else:
             print("Missing file {}".format(utt))
