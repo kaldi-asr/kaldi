@@ -703,7 +703,7 @@ class SvdReversal {
 		      Component **component_out) {
     int32 input_dim_c = affine_c.InputDim(), output_dim_c = affine_c.OutputDim();
     int32 input_dim_n = affine_n.InputDim(), output_dim_n = affine_n.OutputDim();
-    Matrix<BaseFloat> linear_params_c(affine_c.LinearParams()); //output_dim * input_dim
+    Matrix<BaseFloat> linear_params_c(affine_c.Params()); //output_dim * input_dim
     Matrix<BaseFloat> linear_params_n(affine_n.LinearParams());
     Vector<BaseFloat> bias_params(affine_n.BiasParams()); //output_dim
 
