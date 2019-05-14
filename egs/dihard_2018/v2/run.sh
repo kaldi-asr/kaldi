@@ -118,7 +118,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh $musan_root data
+  steps/data/make_musan.sh --sampling-rate 16000 $musan_root data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
@@ -251,7 +251,7 @@ if [ $stage -le 12 ]; then
 
   # The threshold is in terms of the log likelihood ratio provided by the
   # PLDA scores.  In a perfectly calibrated system, the threshold is 0.
-  # In the following loop, we evaluate DER performance on DIHARD 2018 development 
+  # In the following loop, we evaluate DER performance on DIHARD 2018 development
   # set using some reasonable thresholds for a well-calibrated system.
   for threshold in -0.5 -0.4 -0.3 -0.2 -0.1 -0.05 0 0.05 0.1 0.2 0.3 0.4 0.5; do
     diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
@@ -276,16 +276,16 @@ if [ $stage -le 12 ]; then
     --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) --rttm-channel 1 \
     $nnet_dir/xvectors_dihard_2018_dev/plda_scores $nnet_dir/xvectors_dihard_2018_dev/plda_scores
 
-  # Cluster DIHARD 2018 evaluation set using the best threshold found for the DIHARD 
-  # 2018 development set. The DIHARD 2018 development set is used as the validation 
-  # set to tune the parameters. 
+  # Cluster DIHARD 2018 evaluation set using the best threshold found for the DIHARD
+  # 2018 development set. The DIHARD 2018 development set is used as the validation
+  # set to tune the parameters.
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
     --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) --rttm-channel 1 \
     $nnet_dir/xvectors_dihard_2018_eval/plda_scores $nnet_dir/xvectors_dihard_2018_eval/plda_scores
 
   mkdir -p $nnet_dir/results
-  # Compute the DER on the DIHARD 2018 evaluation set. We use the official metrics of   
-  # the DIHARD challenge. The DER is calculated with no unscored collars and including  
+  # Compute the DER on the DIHARD 2018 evaluation set. We use the official metrics of
+  # the DIHARD challenge. The DER is calculated with no unscored collars and including
   # overlapping speech.
   md-eval.pl -r data/dihard_2018_eval/rttm \
     -s $nnet_dir/xvectors_dihard_2018_eval/plda_scores/rttm 2> $nnet_dir/results/threshold.log \
