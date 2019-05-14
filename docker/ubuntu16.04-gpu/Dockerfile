@@ -25,7 +25,6 @@ RUN apt-get update && \
 
 RUN ln -s /usr/bin/python2.7 /usr/bin/python 
 
-
 RUN git clone https://github.com/kaldi-asr/kaldi.git /opt/kaldi && \
     cd /opt/kaldi && \
     cd /opt/kaldi/tools && \
@@ -37,4 +36,3 @@ RUN git clone https://github.com/kaldi-asr/kaldi.git /opt/kaldi && \
     make -j $(nproc)
 
 WORKDIR /opt/kaldi/
-
