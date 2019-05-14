@@ -30,7 +30,7 @@ if [ $stage -le 0 ]; then
   # This script creates data/voxceleb1_test and data/voxceleb1_train for latest version of VoxCeleb1.
   # Our evaluation set is the test portion of VoxCeleb1.
   local/make_voxceleb1_v2.pl $voxceleb1_root dev data/voxceleb1_train
-  local/make_voxceleb1_v2.pl $voxceleb1_root test data/voxceleb1_test 
+  local/make_voxceleb1_v2.pl $voxceleb1_root test data/voxceleb1_test
   # if you downloaded the dataset soon after it was released, you will want to use the make_voxceleb1.pl script instead.
   # local/make_voxceleb1.pl $voxceleb1_root data
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
@@ -84,7 +84,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh $musan_root data
+  steps/data/make_musan.sh --sampling-rate 16000 $musan_root data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.

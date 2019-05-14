@@ -2659,10 +2659,13 @@ static void UnitTestCuMatrixSetRandn() {
       // see http://en.wikipedia.org/wiki/Normal_distribution#Moments,
       // note that mu = 0 and sigma = 1.
       Real expected_moment = (pow % 2 == 1 ? 0 : DoubleFactorial(pow - 1));
+      Real expected_twice_moment = DoubleFactorial(2 * pow - 1);
       Real k = 10.0; // This is just a constant we use to give us some wiggle
                      // room before rejecting the distribution... e.g. 20 sigma,
                      // quite approximately.
-      Real allowed_deviation = k * pow / sqrt(static_cast<Real>(rows * cols));
+      // VAR(X) = E(X^2) - (E(X))^2
+      Real deviation = sqrt(expected_twice_moment - expected_moment * expected_moment);
+      Real allowed_deviation = k * deviation / sqrt(static_cast<Real>(rows * cols));
       // give it a bit more wiggle room for higher powers.. this is quite
       // unscientific, it would be better to involve the absolute moments or
       // something like that, and use one of those statistical inequalities,

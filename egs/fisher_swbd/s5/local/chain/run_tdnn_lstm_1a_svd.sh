@@ -1,15 +1,19 @@
 #!/bin/bash
-# Saikiran Valluri, 2019, Govivace.Inc
+#
+# Copyright 2018  Nagendra Kumar Goel,
+#            Saikiran Valluri, Govivace.Inc -  Apache 2.0
 
 # The script is organized as below.
-# First we train the baseline LSTMP-TDNN config chain model for few epochs on the multien data,
+# First we train the baseline LSTMP-TDNN config chain model for few epochs on the (Fisher+swbd)-english data,
 # Then, we perform SVD based refactoring of all the Affine components in this baseline final.mdl,
 # in order to reduce the overall model parameters size,
 # as determined by the bottleneck dim value or Energy and Shrinkage threshold values.
-# Then, we finetune the weight parameters of the refactored model using entire multien data for single epoch.
+# Then, we finetune the weight parameters of the refactored model using entire Fisher + switchboard data for single epoch.
 
-# Command used for comparing  WER decoding on testsets :
+# Command used for comparing  WERs of decoding on different testsets using pre-SVD and SVD models:
 #  ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp tdnn_lstm_1a_svd_sp
+#
+# Please run this entire script till the end before running the above WER compare command...
 
 
 # System                tdnn_lstm_1a_sp
@@ -30,7 +34,8 @@
 # Final train prob (xent)        -0.882
 # Final valid prob (xent)       -0.9393
 
-# ./show_chain_wer.sh tdnn_lstm_1b_sp
+# WER stats for eval2000 using tdnn_lstm_1a_sp
+#           | #Snt #Wrd  | Corr Sub Del Ins Err  S.Err |
 # %WER 16.0 | 2628 21594 | 86.3 9.0 4.7 2.3 16.0 54.4 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
 # %WER 12.3 | 4459 42989 | 89.4 7.1 3.5 1.7 12.3 49.8 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
 # %WER 8.4 | 1831 21395 | 92.7 5.1 2.2 1.1 8.4 42.3 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
@@ -38,13 +43,18 @@
 # %WER 12.1 | 4459 42989 | 89.6 6.9 3.5 1.7 12.1 49.2 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
 # %WER 8.2 | 1831 21395 | 93.1 5.1 1.8 1.3 8.2 41.7 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.swbd.filt.sys
 
-# ./show_chain_wer_rt03.sh tdnn_lstm_1b_sp
+# WER stats for rt03 using tdnn_lstm_1a_sp
 # %WER 9.6 | 3970 36721 | 91.5 5.5 3.0 1.1 9.6 41.2 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
 # %WER 11.6 | 8420 76157 | 89.7 6.8 3.4 1.4 11.6 43.0 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.filt.sys
 # %WER 13.3 | 4450 39436 | 88.0 7.4 4.6 1.3 13.3 44.5 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
 # %WER 9.4 | 3970 36721 | 91.8 5.3 2.9 1.1 9.4 40.3 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
 # %WER 11.3 | 8420 76157 | 89.9 6.4 3.7 1.2 11.3 42.4 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
 # %WER 13.1 | 4450 39436 | 88.3 7.5 4.2 1.4 13.1 44.0 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+
+# WER stats for rt03 using tdnn_lstm_1a_svd_sp
+# %WER 9.7 | 3970 36721 | 91.3 5.9 2.8 1.0 9.7 40.0 | exp/chain/tdnn_lstm_1a_svd_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 12  | 8420 76157 | 89.3 7.3 3.4 1.3 12.0 42.0 | exp/chain/tdnn_lstm_1a_svd_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 14.1 | 4450 39436 | 87.4 8.2 4.3 1.5 14.1 44.6 | exp/chain/tdnn_lstm_1a_svd_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys      
 
 
 set -e
@@ -307,10 +317,6 @@ fi
 
 decode_suff=fsh_sw1_tg
 graph_dir=$dir/graph_fsh_sw1_tg
-if $apply_svd; then
-  # Decoding the svd retrained model.
-  dir=$svd_dir
-fi
 
 if [ $stage -le 16 ]; then
   [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
@@ -343,6 +349,72 @@ fi
 test_online_decoding=true
 lang=data/lang_fsh_sw1_tg
 if $test_online_decoding && [ $stage -le 17 ]; then
+  # note: if the features change (e.g. you add pitch features), you will have to
+  # change the options of the following command line.
+  steps/online/nnet3/prepare_online_decoding.sh \
+       --mfcc-config conf/mfcc_hires.conf \
+       $lang exp/nnet3/extractor $dir ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in rt03 eval2000; do
+    (
+      # note: we just give it "$decode_set" as it only uses the wav.scp, the
+      # feature type does not matter.
+
+      steps/online/nnet3/decode.sh --nj 50 --cmd "$decode_cmd" $iter_opts \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+         $graph_dir data/${decode_set}_hires \
+         ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
+      if $has_fisher; then
+              steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+                      data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
+                      ${dir}_online/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
+      fi
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in online decoding"
+    exit 1
+  fi
+fi
+
+if $apply_svd; then
+  # Decoding the svd retrained model.
+  dir=$svd_dir
+fi
+
+if [ $stage -le 18 ]; then
+  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
+  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
+  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
+  if [ ! -z $decode_iter ]; then
+    iter_opts=" --iter $decode_iter "
+  fi
+  for decode_set in rt03 eval2000; do
+      (
+      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+          --nj 50 --cmd "$decode_cmd" $iter_opts \
+          --extra-left-context $extra_left_context  \
+          --extra-right-context $extra_right_context  \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
+          --frames-per-chunk "$frames_per_chunk" \
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+         $graph_dir data/${decode_set}_hires \
+         $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_${decode_suff} || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
+      fi
+      ) &
+  done
+fi
+
+test_online_decoding=true
+lang=data/lang_fsh_sw1_tg
+if $test_online_decoding && [ $stage -le 19 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
