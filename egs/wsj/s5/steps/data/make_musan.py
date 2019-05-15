@@ -36,7 +36,7 @@ def check_args(args):
         raise Exception('input dir {0} does not exist'.format(args.in_dir))
     if not os.path.exists(args.out_dir):
         print("Preparing {0}/musan...".format(args.out_dir))
-        os.makedirs(args.output_dir)
+        os.makedirs(args.out_dir)
 
     return args
 
