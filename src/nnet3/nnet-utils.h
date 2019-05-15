@@ -321,10 +321,6 @@ void CollapseModel(const CollapseModelConfig &config,
        and writes the reconstructed matrix back to the component.  See also
        'apply-svd', which structurally breaks the component into two pieces.
 
-    reverse-svd name=<name-pattern>
-        This reverses the SVD on a factored Affine component,
-        and obtains an unfactored Affine component without any bottleneck dim.
-
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);
