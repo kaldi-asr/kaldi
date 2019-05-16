@@ -1,1 +1,0 @@
-ctm/fix_ctm.sh

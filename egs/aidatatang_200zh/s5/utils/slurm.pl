@@ -1,1 +1,0 @@
-parallel/slurm.pl

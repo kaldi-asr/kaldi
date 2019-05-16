@@ -1,1 +1,0 @@
-../validate_lang.pl
