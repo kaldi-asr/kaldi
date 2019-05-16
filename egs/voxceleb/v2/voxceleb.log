@@ -1,0 +1,325 @@
+STAGE 2
+steps/data/reverberate_data_dir.py --rir-set-parameters 0.5, /home/feit/Data/RIRS_NOISES/simulated_rirs/smallroom/rir_list --rir-set-parameters 0.5, /home/feit/Data/RIRS_NOISES/simulated_rirs/mediumroom/rir_list --speech-rvb-probability 1 --pointsource-noise-addition-probability 0 --isotropic-noise-addition-probability 0 --num-replications 1 --source-sampling-rate 16000 data/train data/train_reverb
+Number of RIRs is 40000
+utils/copy_data_dir.sh: copied data from data/train_reverb to data/train_reverb.new
+utils/validate_data_dir.sh: Successfully validated data-directory data/train_reverb.new
+Preparing data/musan...
+In music directory, processed 645 files; 0 had missing wav data
+In speech directory, processed 426 files; 0 had missing wav data
+In noise directory, processed 930 files; 0 had missing wav data
+utils/fix_data_dir.sh: file data/musan/utt2spk is not in sorted order or not unique, sorting it
+utils/fix_data_dir.sh: file data/musan/wav.scp is not in sorted order or not unique, sorting it
+fix_data_dir.sh: kept all 2001 utterances.
+fix_data_dir.sh: old files are kept in data/musan/.backup
+utils/subset_data_dir.sh: reducing #utt from 2001 to 645
+utils/subset_data_dir.sh: reducing #utt from 2001 to 426
+utils/subset_data_dir.sh: reducing #utt from 2001 to 930
+fix_data_dir.sh: kept all 645 utterances.
+fix_data_dir.sh: old files are kept in data/musan_music/.backup
+fix_data_dir.sh: kept all 426 utterances.
+fix_data_dir.sh: old files are kept in data/musan_speech/.backup
+fix_data_dir.sh: kept all 930 utterances.
+fix_data_dir.sh: old files are kept in data/musan_noise/.backup
+utils/data/get_utt2dur.sh: segments file does not exist so getting durations from wave files
+utils/data/get_utt2dur.sh: could not get utterance lengths from sphere-file headers, using wav-to-duration
+utils/data/get_utt2dur.sh: computed data/musan_speech/utt2dur
+utils/data/get_utt2dur.sh: segments file does not exist so getting durations from wave files
+utils/data/get_utt2dur.sh: could not get utterance lengths from sphere-file headers, using wav-to-duration
+utils/data/get_utt2dur.sh: computed data/musan_noise/utt2dur
+utils/data/get_utt2dur.sh: segments file does not exist so getting durations from wave files
+utils/data/get_utt2dur.sh: could not get utterance lengths from sphere-file headers, using wav-to-duration
+utils/data/get_utt2dur.sh: computed data/musan_music/utt2dur
+steps/data/augment_data_dir.py --utt-suffix noise --fg-interval 1 --fg-snrs 15:10:5:0 --fg-noise-dir data/musan_noise data/train data/train_noise
+steps/data/augment_data_dir.py --utt-suffix music --bg-snrs 15:10:8:5 --num-bg-noises 1 --bg-noise-dir data/musan_music data/train data/train_music
+steps/data/augment_data_dir.py --utt-suffix babble --bg-snrs 20:17:15:13 --num-bg-noises 3:4:5:6:7 --bg-noise-dir data/musan_speech data/train data/train_babble
+utils/combine_data.sh data/train_aug data/train_reverb data/train_noise data/train_music data/train_babble
+utils/combine_data.sh: combined utt2uniq
+utils/combine_data.sh [info]: not combining segments as it does not exist
+utils/combine_data.sh: combined utt2spk
+utils/combine_data.sh [info]: not combining utt2lang as it does not exist
+utils/combine_data.sh [info]: not combining utt2dur as it does not exist
+utils/combine_data.sh [info]: **not combining reco2dur as it does not exist everywhere**
+utils/combine_data.sh [info]: not combining feats.scp as it does not exist
+utils/combine_data.sh [info]: not combining text as it does not exist
+utils/combine_data.sh [info]: not combining cmvn.scp as it does not exist
+utils/combine_data.sh: combined vad.scp
+utils/combine_data.sh [info]: not combining reco2file_and_channel as it does not exist
+utils/combine_data.sh: combined wav.scp
+utils/combine_data.sh [info]: not combining spk2gender as it does not exist
+fix_data_dir.sh: kept all 5107552 utterances.
+fix_data_dir.sh: old files are kept in data/train_aug/.backup
+***
+
+STAGE 3
+utils/subset_data_dir.sh: reducing #utt from 5107552 to 1000000
+fix_data_dir.sh: kept all 1000000 utterances.
+fix_data_dir.sh: old files are kept in data/train_aug_1m/.backup
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd run.pl data/train_aug_1m exp/make_mfcc /home/feit/Tool/kaldi/egs/voxceleb/v2/mfcc
+utils/validate_data_dir.sh: Successfully validated data-directory data/train_aug_1m
+steps/make_mfcc.sh: [info]: no segments file exists: assuming wav.scp indexed by utterance.
+Succeeded creating MFCC features for train_aug_1m
+utils/combine_data.sh data/train_combined data/train_aug_1m data/train
+utils/combine_data.sh: combined utt2uniq
+utils/combine_data.sh [info]: not combining segments as it does not exist
+utils/combine_data.sh: combined utt2spk
+utils/combine_data.sh [info]: not combining utt2lang as it does not exist
+utils/combine_data.sh [info]: not combining utt2dur as it does not exist
+utils/combine_data.sh [info]: **not combining reco2dur as it does not exist everywhere**
+utils/combine_data.sh: combined feats.scp
+utils/combine_data.sh [info]: not combining text as it does not exist
+utils/combine_data.sh [info]: not combining cmvn.scp as it does not exist
+utils/combine_data.sh: combined vad.scp
+utils/combine_data.sh [info]: not combining reco2file_and_channel as it does not exist
+utils/combine_data.sh: combined wav.scp
+utils/combine_data.sh [info]: not combining spk2gender as it does not exist
+fix_data_dir.sh: kept all 2276888 utterances.
+fix_data_dir.sh: old files are kept in data/train_combined/.backup
+***
+
+STAGE 4
+local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd run.pl data/train_combined data/train_combined_no_sil exp/train_combined_no_sil
+local/nnet3/xvector/prepare_feats_for_egs.sh: Succeeded creating xvector features for train_combined
+fix_data_dir.sh: kept all 2276888 utterances.
+fix_data_dir.sh: old files are kept in data/train_combined_no_sil/.backup
+***
+
+STAGE 5
+fix_data_dir.sh: kept all 2139807 utterances.
+fix_data_dir.sh: old files are kept in data/train_combined_no_sil/.backup
+fix_data_dir.sh: kept all 2139807 utterances.
+fix_data_dir.sh: old files are kept in data/train_combined_no_sil/.backup
+***
+
+STAGE 6-8
+STAGE 6
+local/nnet3/xvector/run_xvector.sh: Getting neural network training egs
+sid/nnet3/xvector/get_egs.sh --cmd run.pl --nj 8 --stage 0 --frames-per-iter 1000000000 --frames-per-iter-diagnostic 100000 --min-frames-per-chunk 200 --max-frames-per-chunk 400 --num-diagnostic-archives 3 --num-repeats 50 data/train_combined_no_sil exp/xvector_nnet_1a/egs
+feat-to-dim scp:data/train_combined_no_sil/feats.scp - 
+sid/nnet3/xvector/get_egs.sh: Preparing train and validation lists
+sid/nnet3/xvector/get_egs.sh: Producing 84 archives for training
+sid/nnet3/xvector/get_egs.sh: Allocating training examples
+sid/nnet3/xvector/get_egs.sh: Allocating training subset examples
+sid/nnet3/xvector/get_egs.sh: Allocating validation examples
+sid/nnet3/xvector/get_egs.sh: Generating training examples on disk
+sid/nnet3/xvector/get_egs.sh: Generating training subset examples on disk
+sid/nnet3/xvector/get_egs.sh: Generating validation examples on disk
+sid/nnet3/xvector/get_egs.sh: Shuffling order of archives on disk
+sid/nnet3/xvector/get_egs.sh: Finished preparing training examples
+STAGE 7
+local/nnet3/xvector/run_xvector.sh: creating neural net configs using the xconfig parser
+steps/nnet3/xconfig_to_configs.py --xconfig-file exp/xvector_nnet_1a/configs/network.xconfig --config-dir exp/xvector_nnet_1a/configs/
+nnet3-init exp/xvector_nnet_1a/configs//ref.config exp/xvector_nnet_1a/configs//ref.raw 
+LOG (nnet3-init[5.5.99~2-5b23a]:main():nnet3-init.cc:80) Initialized raw neural net and wrote it to exp/xvector_nnet_1a/configs//ref.raw
+nnet3-info exp/xvector_nnet_1a/configs//ref.raw 
+nnet3-init exp/xvector_nnet_1a/configs//ref.config exp/xvector_nnet_1a/configs//ref.raw 
+LOG (nnet3-init[5.5.99~2-5b23a]:main():nnet3-init.cc:80) Initialized raw neural net and wrote it to exp/xvector_nnet_1a/configs//ref.raw
+nnet3-info exp/xvector_nnet_1a/configs//ref.raw
+ 
+STAGE 6-8
+STAGE 8
+2019-03-09 21:23:44,598 [steps/nnet3/train_raw_dnn.py:34 - <module> - INFO ] Starting raw DNN trainer (train_raw_dnn.py)
+2019-03-09 21:23:44,608 [steps/nnet3/train_raw_dnn.py:194 - train - INFO ] Arguments for the experiment
+{'backstitch_training_interval': 1,
+ 'backstitch_training_scale': 0.0,
+ 'cleanup': True,
+ 'cmvn_opts': None,
+ 'combine_sum_to_one_penalty': 0.0,
+ 'command': 'run.pl',
+ 'compute_average_posteriors': False,
+ 'compute_per_dim_accuracy': False,
+ 'dir': 'exp/xvector_nnet_1a',
+ 'do_final_combination': True,
+ 'dropout_schedule': '0,0@0.20,0.1@0.50,0',
+ 'egs_command': None,
+ 'egs_dir': 'exp/xvector_nnet_1a/egs',
+ 'egs_opts': None,
+ 'egs_stage': 0,
+ 'email': None,
+ 'exit_stage': None,
+ 'feat_dir': None,
+ 'final_effective_lrate': 0.0001,
+ 'frames_per_eg': 1,
+ 'image_augmentation_opts': None,
+ 'initial_effective_lrate': 0.001,
+ 'input_model': None,
+ 'max_lda_jobs': 10,
+ 'max_models_combine': 20,
+ 'max_objective_evaluations': 30,
+ 'max_param_change': 2.0,
+ 'minibatch_size': '64',
+ 'momentum': 0.5,
+ 'nj': 1,
+ 'num_epochs': 3.0,
+ 'num_jobs_compute_prior': 10,
+ 'num_jobs_final': 8,
+ 'num_jobs_initial': 1,
+ 'online_ivector_dir': None,
+ 'preserve_model_interval': 10,
+ 'presoftmax_prior_scale_power': -0.25,
+ 'prior_subset_size': 20000,
+ 'proportional_shrink': 10.0,
+ 'rand_prune': 4.0,
+ 'remove_egs': False,
+ 'reporting_interval': 0.1,
+ 'samples_per_iter': 400000,
+ 'shuffle_buffer_size': 1000,
+ 'srand': 123,
+ 'stage': -1,
+ 'targets_scp': None,
+ 'train_opts': [],
+ 'use_dense_targets': True,
+ 'use_gpu': 'wait'}
+2019-03-09 21:23:44,609 [steps/nnet3/train_raw_dnn.py:314 - train - INFO ] Preparing the initial network.
+2019-03-09 21:23:44,962 [steps/nnet3/train_raw_dnn.py:353 - train - INFO ] Training will run for 3.0 epochs = 56 iterations
+2019-03-09 21:23:44,962 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 0/55    Epoch: 0.00/3.0 (0.0% complete)    lr: 0.001000    shrink: 0.99000
+2019-03-09 21:34:04,725 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 1/55    Epoch: 0.01/3.0 (0.4% complete)    lr: 0.000991    shrink: 0.99009
+2019-03-09 21:46:09,905 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 2/55    Epoch: 0.02/3.0 (0.8% complete)    lr: 0.000982    shrink: 0.99018
+2019-03-09 21:57:18,661 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 3/55    Epoch: 0.04/3.0 (1.2% complete)    lr: 0.000973    shrink: 0.99027
+2019-03-09 22:06:40,286 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 4/55    Epoch: 0.05/3.0 (1.6% complete)    lr: 0.001928    shrink: 0.98072
+2019-03-09 22:36:03,115 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 5/55    Epoch: 0.07/3.0 (2.4% complete)    lr: 0.001893    shrink: 0.98107
+2019-03-09 23:03:18,506 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 6/55    Epoch: 0.10/3.0 (3.2% complete)    lr: 0.001859    shrink: 0.98141
+2019-03-09 23:21:40,316 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 7/55    Epoch: 0.12/3.0 (4.0% complete)    lr: 0.001825    shrink: 0.98175
+2019-03-09 23:40:42,323 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 8/55    Epoch: 0.14/3.0 (4.8% complete)    lr: 0.001792    shrink: 0.98208
+2019-03-10 00:11:47,115 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 9/55    Epoch: 0.17/3.0 (5.6% complete)    lr: 0.001760    shrink: 0.98240
+2019-03-10 00:36:15,751 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 10/55    Epoch: 0.19/3.0 (6.3% complete)    lr: 0.001728    shrink: 0.98272
+2019-03-10 01:02:05,507 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 11/55    Epoch: 0.21/3.0 (7.1% complete)    lr: 0.001697    shrink: 0.98303
+2019-03-10 01:29:33,637 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 12/55    Epoch: 0.24/3.0 (7.9% complete)    lr: 0.002499    shrink: 0.97501
+2019-03-10 03:08:36,269 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 13/55    Epoch: 0.27/3.0 (9.1% complete)    lr: 0.002431    shrink: 0.97569
+2019-03-10 03:44:56,448 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 14/55    Epoch: 0.31/3.0 (10.3% complete)    lr: 0.002366    shrink: 0.97634
+2019-03-10 04:19:04,194 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 15/55    Epoch: 0.35/3.0 (11.5% complete)    lr: 0.002302    shrink: 0.97698
+2019-03-10 05:00:22,115 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 16/55    Epoch: 0.38/3.0 (12.7% complete)    lr: 0.002239    shrink: 0.97761
+2019-03-10 05:46:24,164 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 17/55    Epoch: 0.42/3.0 (13.9% complete)    lr: 0.002179    shrink: 0.97821
+2019-03-10 06:32:12,328 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 18/55    Epoch: 0.45/3.0 (15.1% complete)    lr: 0.002120    shrink: 0.97880
+2019-03-10 07:21:16,356 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 19/55    Epoch: 0.49/3.0 (16.3% complete)    lr: 0.002063    shrink: 0.97937
+2019-03-10 08:07:04,273 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 20/55    Epoch: 0.52/3.0 (17.5% complete)    lr: 0.002676    shrink: 0.97324
+2019-03-10 09:11:06,518 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 21/55    Epoch: 0.57/3.0 (19.0% complete)    lr: 0.002580    shrink: 0.97420
+2019-03-10 10:08:08,941 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 22/55    Epoch: 0.62/3.0 (20.6% complete)    lr: 0.002487    shrink: 0.97513
+2019-03-10 11:07:31,818 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 23/55    Epoch: 0.67/3.0 (22.2% complete)    lr: 0.002398    shrink: 0.97602
+2019-03-10 12:02:48,704 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 24/55    Epoch: 0.71/3.0 (23.8% complete)    lr: 0.002312    shrink: 0.97688
+2019-03-10 12:57:04,601 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 25/55    Epoch: 0.76/3.0 (25.4% complete)    lr: 0.002229    shrink: 0.97771
+2019-03-10 13:46:09,637 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 26/55    Epoch: 0.81/3.0 (27.0% complete)    lr: 0.002149    shrink: 0.97851
+2019-03-10 14:41:54,748 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 27/55    Epoch: 0.86/3.0 (28.6% complete)    lr: 0.002072    shrink: 0.97928
+2019-03-10 15:40:08,810 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 28/55    Epoch: 0.90/3.0 (30.2% complete)    lr: 0.002497    shrink: 0.97503
+2019-03-10 16:45:32,340 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 29/55    Epoch: 0.96/3.0 (32.1% complete)    lr: 0.002385    shrink: 0.97615
+2019-03-10 17:41:33,529 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 30/55    Epoch: 1.02/3.0 (34.1% complete)    lr: 0.002279    shrink: 0.97721
+2019-03-10 18:41:27,071 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 31/55    Epoch: 1.08/3.0 (36.1% complete)    lr: 0.002177    shrink: 0.97823
+2019-03-10 19:36:17,529 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 32/55    Epoch: 1.14/3.0 (38.1% complete)    lr: 0.002080    shrink: 0.97920
+2019-03-10 20:43:52,401 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 33/55    Epoch: 1.20/3.0 (40.1% complete)    lr: 0.001987    shrink: 0.98013
+2019-03-10 21:55:01,744 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 34/55    Epoch: 1.26/3.0 (42.1% complete)    lr: 0.001898    shrink: 0.98102
+2019-03-10 22:50:52,446 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 35/55    Epoch: 1.32/3.0 (44.0% complete)    lr: 0.001813    shrink: 0.98187
+2019-03-10 23:55:49,865 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 36/55    Epoch: 1.38/3.0 (46.0% complete)    lr: 0.002079    shrink: 0.97921
+2019-03-11 01:26:35,297 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 37/55    Epoch: 1.45/3.0 (48.4% complete)    lr: 0.001968    shrink: 0.98032
+2019-03-11 02:55:16,199 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 38/55    Epoch: 1.52/3.0 (50.8% complete)    lr: 0.001863    shrink: 0.98137
+2019-03-11 04:18:58,999 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 39/55    Epoch: 1.60/3.0 (53.2% complete)    lr: 0.001764    shrink: 0.98236
+2019-03-11 05:43:12,892 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 40/55    Epoch: 1.67/3.0 (55.6% complete)    lr: 0.001670    shrink: 0.98330
+2019-03-11 07:04:06,992 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 41/55    Epoch: 1.74/3.0 (57.9% complete)    lr: 0.001580    shrink: 0.98420
+2019-03-11 08:18:28,180 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 42/55    Epoch: 1.81/3.0 (60.3% complete)    lr: 0.001496    shrink: 0.98504
+2019-03-11 09:38:49,404 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 43/55    Epoch: 1.88/3.0 (62.7% complete)    lr: 0.001416    shrink: 0.98584
+2019-03-11 10:56:49,753 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 44/55    Epoch: 1.95/3.0 (65.1% complete)    lr: 0.001564    shrink: 0.98436
+2019-03-11 12:18:45,511 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 45/55    Epoch: 2.04/3.0 (67.9% complete)    lr: 0.001467    shrink: 0.98533
+2019-03-11 13:43:34,952 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 46/55    Epoch: 2.12/3.0 (70.6% complete)    lr: 0.001376    shrink: 0.98624
+2019-03-11 15:10:36,794 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 47/55    Epoch: 2.20/3.0 (73.4% complete)    lr: 0.001291    shrink: 0.98709
+2019-03-11 16:46:21,707 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 48/55    Epoch: 2.29/3.0 (76.2% complete)    lr: 0.001211    shrink: 0.98789
+2019-03-11 18:12:02,860 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 49/55    Epoch: 2.37/3.0 (79.0% complete)    lr: 0.001136    shrink: 0.98864
+2019-03-11 19:55:30,237 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 50/55    Epoch: 2.45/3.0 (81.7% complete)    lr: 0.001066    shrink: 0.98934
+2019-03-11 22:43:22,756 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 51/55    Epoch: 2.54/3.0 (84.5% complete)    lr: 0.001000    shrink: 0.99000
+2019-03-12 00:25:28,112 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 52/55    Epoch: 2.62/3.0 (87.3% complete)    lr: 0.001072    shrink: 0.98928
+2019-03-12 02:21:42,896 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 53/55    Epoch: 2.71/3.0 (90.5% complete)    lr: 0.000996    shrink: 0.99004
+2019-03-12 04:11:56,866 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 54/55    Epoch: 2.81/3.0 (93.7% complete)    lr: 0.000926    shrink: 0.99074
+
+STAGE 8
+2019-03-13 01:01:30,385 [steps/nnet3/train_raw_dnn.py:34 - <module> - INFO ] Starting raw DNN trainer (train_raw_dnn.py)
+2019-03-13 01:01:30,396 [steps/nnet3/train_raw_dnn.py:194 - train - INFO ] Arguments for the experiment
+{'backstitch_training_interval': 1,
+ 'backstitch_training_scale': 0.0,
+ 'cleanup': True,
+ 'cmvn_opts': None,
+ 'combine_sum_to_one_penalty': 0.0,
+ 'command': 'run.pl',
+ 'compute_average_posteriors': False,
+ 'compute_per_dim_accuracy': False,
+ 'dir': 'exp/xvector_nnet_1a',
+ 'do_final_combination': True,
+ 'dropout_schedule': '0,0@0.20,0.1@0.50,0',
+ 'egs_command': None,
+ 'egs_dir': 'exp/xvector_nnet_1a/egs',
+ 'egs_opts': None,
+ 'egs_stage': 0,
+ 'email': None,
+ 'exit_stage': None,
+ 'feat_dir': None,
+ 'final_effective_lrate': 0.0001,
+ 'frames_per_eg': 1,
+ 'image_augmentation_opts': None,
+ 'initial_effective_lrate': 0.001,
+ 'input_model': None,
+ 'max_lda_jobs': 10,
+ 'max_models_combine': 20,
+ 'max_objective_evaluations': 30,
+ 'max_param_change': 2.0,
+ 'minibatch_size': '64',
+ 'momentum': 0.5,
+ 'nj': 1,
+ 'num_epochs': 3.0,
+ 'num_jobs_compute_prior': 10,
+ 'num_jobs_final': 8,
+ 'num_jobs_initial': 1,
+ 'online_ivector_dir': None,
+ 'preserve_model_interval': 10,
+ 'presoftmax_prior_scale_power': -0.25,
+ 'prior_subset_size': 20000,
+ 'proportional_shrink': 10.0,
+ 'rand_prune': 4.0,
+ 'remove_egs': False,
+ 'reporting_interval': 0.1,
+ 'samples_per_iter': 400000,
+ 'shuffle_buffer_size': 1000,
+ 'srand': 123,
+ 'stage': 53,
+ 'targets_scp': None,
+ 'train_opts': [],
+ 'use_dense_targets': True,
+ 'use_gpu': 'wait'}
+2019-03-13 01:01:30,397 [steps/nnet3/train_raw_dnn.py:353 - train - INFO ] Training will run for 3.0 epochs = 56 iterations
+2019-03-13 01:01:30,397 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 53/55    Epoch: 2.71/3.0 (90.5% complete)    lr: 0.000996    shrink: 0.99004
+2019-03-13 02:43:09,301 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 54/55    Epoch: 2.81/3.0 (93.7% complete)    lr: 0.000926    shrink: 0.99074
+2019-03-13 04:30:38,264 [steps/nnet3/train_raw_dnn.py:388 - train - INFO ] Iter: 55/55    Epoch: 2.90/3.0 (96.8% complete)    lr: 0.000800    shrink: 0.99200
+2019-03-13 06:10:09,244 [steps/nnet3/train_raw_dnn.py:440 - train - INFO ] Doing final combination to produce final.raw
+2019-03-13 06:10:09,245 [steps/libs/nnet3/train/frame_level_objf/common.py:492 - combine_models - INFO ] Combining set([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56]) models.
+2019-03-13 06:11:19,108 [steps/nnet3/train_raw_dnn.py:462 - train - INFO ] Cleaning up the experiment directory exp/xvector_nnet_1a
+exp/xvector_nnet_1a: num-iters=56 nj=1..8 num-params=8.2M dim=30->7323 combine=-0.27->-0.27 (over 1) loglike:train/valid[36,55]=(-0.29,-0.20/-0.57,-0.49) accuracy:train/valid[36,55]=(0.943,0.9764/0.909,0.919)
+steps/nnet3/train_raw_dnn.py --stage=53 --cmd=run.pl --trainer.optimization.proportional-shrink 10 --trainer.optimization.momentum=0.5 --trainer.optimization.num-jobs-initial=1 --trainer.optimization.num-jobs-final=8 --trainer.optimization.initial-effective-lrate=0.001 --trainer.optimization.final-effective-lrate=0.0001 --trainer.optimization.minibatch-size=64 --trainer.srand=123 --trainer.max-param-change=2 --trainer.num-epochs=3 --trainer.dropout-schedule=0,0@0.20,0.1@0.50,0 --trainer.shuffle-buffer-size=1000 --egs.frames-per-eg=1 --egs.dir=exp/xvector_nnet_1a/egs --cleanup.remove-egs false --cleanup.preserve-model-interval=10 --use-gpu=wait --dir=exp/xvector_nnet_1a
+['steps/nnet3/train_raw_dnn.py', '--stage=53', '--cmd=run.pl', '--trainer.optimization.proportional-shrink', '10', '--trainer.optimization.momentum=0.5', '--trainer.optimization.num-jobs-initial=1', '--trainer.optimization.num-jobs-final=8', '--trainer.optimization.initial-effective-lrate=0.001', '--trainer.optimization.final-effective-lrate=0.0001', '--trainer.optimization.minibatch-size=64', '--trainer.srand=123', '--trainer.max-param-change=2', '--trainer.num-epochs=3', '--trainer.dropout-schedule=0,0@0.20,0.1@0.50,0', '--trainer.shuffle-buffer-size=1000', '--egs.frames-per-eg=1', '--egs.dir=exp/xvector_nnet_1a/egs', '--cleanup.remove-egs', 'false', '--cleanup.preserve-model-interval=10', '--use-gpu=wait', '--dir=exp/xvector_nnet_1a']
+***
+
+***
+
+STAGE 9
+sid/nnet3/xvector/extract_xvectors.sh --cmd run.pl --mem 1G --nj 40 exp/xvector_nnet_1a data/train exp/xvector_nnet_1a/xvectors_train
+sid/nnet3/xvector/extract_xvectors.sh: using exp/xvector_nnet_1a/extract.config to extract xvectors
+sid/nnet3/xvector/extract_xvectors.sh: extracting xvectors for data/train
+sid/nnet3/xvector/extract_xvectors.sh: extracting xvectors from nnet
+sid/nnet3/xvector/extract_xvectors.sh: combining xvectors across jobs
+sid/nnet3/xvector/extract_xvectors.sh: computing mean of xvectors for each speaker
+sid/nnet3/xvector/extract_xvectors.sh --cmd run.pl --mem 1G --nj 40 exp/xvector_nnet_1a data/voxceleb1_test exp/xvector_nnet_1a/xvectors_voxceleb1_test
+sid/nnet3/xvector/extract_xvectors.sh: using exp/xvector_nnet_1a/extract.config to extract xvectors
+sid/nnet3/xvector/extract_xvectors.sh: extracting xvectors for data/voxceleb1_test
+sid/nnet3/xvector/extract_xvectors.sh: extracting xvectors from nnet
+sid/nnet3/xvector/extract_xvectors.sh: combining xvectors across jobs
+sid/nnet3/xvector/extract_xvectors.sh: computing mean of xvectors for each speaker
+***
+
+STAGE 10
+***
+
+***
+
+STAGE 11
+***
+
+STAGE 12
+EER: 3.128%
+minDCF(p-target=0.01): 0.3510
+minDCF(p-target=0.001): 0.5606
+***
+
