@@ -194,7 +194,7 @@ if [ "$use_ivectors" == "true" ]; then
     utils/filter_scp.pl data/${ivector_trainset}_aug/utt2spk data/${train_set}_aug/feats.scp > data/${ivector_trainset}_aug/feats.scp
     utils/fix_data_dir.sh data/${ivector_trainset}_aug
     echo "$0: Creating alignments of aug data by copying alignments of clean data"
-    local/copy_ali_dir.sh --nj 40 --cmd "$train_cmd" \
+    steps/copy_ali_dir.sh --nj 40 --cmd "$train_cmd" \
         data/${ivector_trainset}_aug exp/${lda_mllt_ali} exp/${lda_mllt_ali}_aug
 
     # We need to build a small system just because we need the LDA+MLLT transform
