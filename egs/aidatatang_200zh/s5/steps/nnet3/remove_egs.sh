@@ -1,1 +1,0 @@
-../nnet2/remove_egs.sh

@@ -1,1 +1,0 @@
-conf/get_ctm_conf.sh
