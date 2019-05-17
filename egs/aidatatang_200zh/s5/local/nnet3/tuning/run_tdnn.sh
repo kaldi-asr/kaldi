@@ -13,6 +13,14 @@
 # Final train prob        -0.6475
 # Final valid prob        -0.9461
 
+# local/nnet3/compare_wer.sh --online exp/nnet3/tdnn_sp
+# Model                  tdnn_sp
+# WER(%)                     7.21
+# WER(%)[online]             7.44
+# WER(%)[per-utt]            7.79
+# Final train prob        -0.6475
+# Final valid prob        -0.9461
+
 set -e
 
 stage=0

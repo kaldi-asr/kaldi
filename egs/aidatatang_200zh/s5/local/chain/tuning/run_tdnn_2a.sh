@@ -5,7 +5,7 @@
 # It requires a online_pitch.conf in the conf dir.
 
 # results
-# local/chain/compare_wer.sh exp/chain/tdnn_2a_sp/
+# local/chain/compare_wer.sh exp/chain/tdnn_2a_sp
 # Model                tdnn_2a_sp
 # WER(%)                     5.61
 # Final train prob        -0.0502
@@ -13,6 +13,23 @@
 # Final train prob (xent)   -0.8047
 # Final valid prob (xent)   -1.0292
 
+# local/chain/compare_wer.sh --online exp/chain/tdnn_2a_sp
+# Model                tdnn_2a_sp
+# WER(%)                     5.61
+# WER(%)[online]             5.69
+# WER(%)[per-utt]            5.98
+# Final train prob        -0.0502
+# Final valid prob        -0.0913
+# Final train prob (xent)   -0.8047
+# Final valid prob (xent)   -1.0292
+
+# local/chain/compare_wer.sh exp/chain/tdnn_1a_sp exp/chain/tdnn_2a_sp
+# Model                tdnn_1a_sp tdnn_2a_sp
+# WER(%)                     5.59      5.61
+# Final train prob        -0.0488   -0.0502
+# Final valid prob        -0.0925   -0.0913
+# Final train prob (xent)   -0.8001   -0.8047
+# Final valid prob (xent)   -1.0398   -1.0292
 
 set -e
 

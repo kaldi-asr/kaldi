@@ -1,25 +1,32 @@
 #!/bin/bash
-
-# Copyright 2018  Emotech LTD (Author: Xuechen LIU)
-# Apache 2.0
+# Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
 # compare wer between diff. models in aidatatang_200zh chain directory
+# exemplar usage: local/chain/compare_wer.sh --online exp/chain/tdnn_2a_sp
+# note: this script is made quite general since we kinda wanna give more flexibility to
+#       users on adding affix for their own use when training models.
 
 set -e
 . ./cmd.sh
 . ./path.sh
 
 if [ $# == 0 ]; then
-  echo "Usage: $0: <dir1> [<dir2> ... ]"
-  echo "e.g.: $0 exp/chain/tdnn_7h_sp"
+  echo "Usage: $0: [--online] <dir1> [<dir2> ... ]"
+  echo "e.g.: $0 --online exp/chain/tdnn_2a_sp"
   exit 1
 fi
 
 echo "# $0 $*"
 
+include_online=false
+if [ "$1" == "--online" ]; then
+  include_online=true
+  shift
+fi
+
 set_names() {
   if [ $# != 1 ]; then
-    echo "compare_wer_general.sh: internal error"
+    echo "compare_wer.sh: internal error"
     exit 1  # exit the program
   fi
   dirname=$(echo $1 | cut -d: -f1)
@@ -32,14 +39,6 @@ for x in $*; do
 done
 echo
 
-# print number of parameters
-echo -n "# Num. of params        "
-for x in $*; do
-  set_names $x
-  params=$(steps/info/chain_dir_info.pl "$x" | grep -o 'num-params=[0-9]*\.[0-9]*M' | cut -d'=' -f2-)
-  printf "% 10s\n" $params
-done
-
 # print decode WER results
 echo -n "# WER(%)               "
 for x in $*; do
@@ -48,6 +47,24 @@ for x in $*; do
   printf "% 10s" $wer
 done
 echo
+
+# so how about online WER?
+if $include_online; then
+  echo -n "# WER(%)[online]       "
+  for x in $*; do
+    set_names $x
+    wer=$(cat ${x}_online/decode_test/cer_* | utils/best_wer.sh | awk '{print $2}')
+    printf "% 10s" $wer
+  done
+  echo
+  echo -n "# WER(%)[per-utt]      "
+  for x in $*; do
+    set_names $x
+    wer_per_utt=$(cat ${x}_online/decode_test_per_utt/cer_* | utils/best_wer.sh | awk '{print $2}')
+    printf "% 10s" $wer_per_utt
+  done
+  echo
+fi
 
 # print final log prob for train & validation
 echo -n "# Final train prob     "
