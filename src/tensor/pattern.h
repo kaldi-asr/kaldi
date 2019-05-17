@@ -285,9 +285,6 @@ namespace tensor {
                       for example: Broadcastable(P, Q).
 
 
-    An object of type Pattern, representing the dims, strides
-                      and offset of a Tensor.
-
     Public numbering: The numbering of axes used in the public interface of class
                       Tensor.  We use the index `axis` when in the public numbering.
                       We use square brackets when describing dims or strides ordered
