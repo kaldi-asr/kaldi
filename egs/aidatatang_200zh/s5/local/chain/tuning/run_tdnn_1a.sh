@@ -2,6 +2,15 @@
 
 # This script is based on run_tdnn_7h.sh in swbd chain recipe.
 
+# results
+# local/chain/compare_wer.sh exp/chain/tdnn_1a_sp/
+# Model                tdnn_1a_sp
+# WER(%)                     5.59
+# Final train prob        -0.0488
+# Final valid prob        -0.0925
+# Final train prob (xent)   -0.8001
+# Final valid prob (xent)   -1.0398
+
 set -e
 
 # configs for 'chain'
