@@ -737,7 +737,7 @@ class SvdApplier {
 			     BaseFloat min_val) {
     BaseFloat sum = 0;
     int32 i = 0;
-    for (i=lower; i<=upper; i++) {
+    for (i = lower; i <= upper; i++) {
 	sum = sum + input_vector(i);
 	if (sum >= min_val) break;
     }
