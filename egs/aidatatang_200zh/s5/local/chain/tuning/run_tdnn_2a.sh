@@ -4,6 +4,16 @@
 # This setup used online pitch to train the neural network.
 # It requires a online_pitch.conf in the conf dir.
 
+# results
+# local/chain/compare_wer.sh exp/chain/tdnn_2a_sp/
+# Model                tdnn_2a_sp
+# WER(%)                     5.61
+# Final train prob        -0.0502
+# Final valid prob        -0.0913
+# Final train prob (xent)   -0.8047
+# Final valid prob (xent)   -1.0292
+
+
 set -e
 
 # configs for 'chain'
