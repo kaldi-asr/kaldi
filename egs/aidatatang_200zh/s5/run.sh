@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# Copyright 2019 Beijing DataTang Tech. Co. Ltd. (Authors: Liyuan Wang)
-
+# Copyright 2019 Beijing DataTang Tech. Co. Ltd. (Author: Liyuan Wang)
+#           2017 Hui Bu
+#           2017 Jiayu Du
+#           2017 Xingyu Na
+#           2017 Bengu Wu
+#           2017 Hao Zheng
+# Apache 2.0
 
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
@@ -23,20 +28,20 @@ data_url=www.openslr.org/resources/62
 local/download_and_untar.sh $data $data_url aidatatang_200zh || exit 1;
 
 # Data Preparation: generate text, wav.scp, utt2spk, spk2utt
-local/aidatatang_data_prep.sh $data/corpus $data/transcript || exit 1;
+local/data_prep.sh $data/corpus $data/transcript || exit 1;
 
 # Lexicon Preparation: build a large lexicon that invovles words in both the training and decoding
-local/aidatatang_prepare_dict.sh || exit 1;
+local/prepare_dict.sh || exit 1;
 
 # Prepare Language Stuff
 # Phone Sets, questions, L compilation
 utils/prepare_lang.sh --position-dependent-phones false data/local/dict "<UNK>" data/local/lang data/lang || exit 1;
 
 # LM training
-local/aidatatang_train_lms2.sh || exit 1;
+local/train_lms.sh || exit 1;
 
 # G compilation, check LG composition
-local/aidatatang_format_data.sh
+local/format_data.sh
 
 # Now make MFCC plus pitch features.
 # mfccdir should be some place with a largish disk where you want to store MFCC features.

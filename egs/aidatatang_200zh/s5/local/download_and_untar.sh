@@ -1,6 +1,8 @@
 #!/bin/bash
 
-
+# Copyright   2014  Johns Hopkins University (author: Daniel Povey)
+#             2017  Xingyu Na
+# Apache 2.0
 
 remove_archive=false
 

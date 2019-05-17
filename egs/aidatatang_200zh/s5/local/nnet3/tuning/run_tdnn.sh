@@ -1,13 +1,18 @@
 #!/bin/bash
 
-# This script is based on swbd/s5c/local/nnet3/run_tdnn.sh
+# This script is based on aishell/s5/local/nnet3/tuning/run_tdnn_1a.sh
 
-# this is the standard "tdnn" system, built in nnet3; it's what we use to
-# call multi-splice.
+# In this script, the neural network in trained based on hires mfcc and online pitch.
+# The online pitch setup requires a online_pitch.conf in the conf dir for both training
+# and testing.
 
-# At this script level we don't support not running on GPU, as it would be painfully slow.
-# If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
-# --num-threads 16 and --minibatch-size 128.
+# results
+# local/nnet3/compare_wer.sh exp/nnet3/tdnn_sp
+# Model                  tdnn_sp
+# WER(%)                     7.21
+# Final train prob        -0.6475
+# Final valid prob        -0.9461
+
 set -e
 
 stage=0
@@ -46,13 +51,13 @@ train_set=train_sp
 ali_dir=${gmm_dir}_sp_ali
 graph_dir=$gmm_dir/graph
 
-local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage --online true || exit 1;
 
 if [ $stage -le 7 ]; then
   echo "$0: creating neural net configs";
- 
+
   ivector_dim=$(feat-to-dim scp:exp/nnet3/ivectors_${train_set}/ivector_online.scp - || exit 1;)
-  feat_dim=$(feat-to-dim scp:data/${train_set}_hires/feats.scp - || exit 1;)
+  feat_dim=$(feat-to-dim scp:data/${train_set}_hires_online/feats.scp - || exit 1;)
   num_targets=$(tree-info $ali_dir/tree |grep num-pdfs|awk '{print $2}')
 
   mkdir -p $dir/configs
@@ -95,7 +100,7 @@ if [ $stage -le 8 ]; then
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --cleanup.preserve-model-interval 500 \
-    --feat-dir=data/${train_set}_hires \
+    --feat-dir=data/${train_set}_hires_online \
     --ali-dir $ali_dir \
     --lang data/lang \
     --reporting.email="$reporting_email" \
@@ -106,11 +111,41 @@ if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for decode_set in dev test; do
-    num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+    num_jobs=`cat data/${decode_set}_hires_online/utt2spk|cut -d' ' -f2|sort -u|wc -l`
     decode_dir=${dir}/decode_$decode_set
     steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
        --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-       $graph_dir data/${decode_set}_hires $decode_dir || exit 1;
+       $graph_dir data/${decode_set}_hires_online $decode_dir || exit 1;
+  done
+fi
+
+if [ $stage -le 10 ]; then
+  steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
+    --add-pitch true \
+    data/lang exp/nnet3/extractor "$dir" ${dir}_online || exit 1;
+fi
+
+if [ $stage -le 11 ]; then
+  # do the actual online decoding with iVectors, carrying info forward from
+  # previous utterances of the same speaker.
+  for decode_set in dev test; do
+    num_jobs=`cat data/${decode_set}_hires_online/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+    decode_dir=${dir}_online/decode_$decode_set
+    steps/online/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+       --config conf/decode.config \
+       $graph_dir data/${decode_set}_hires_online $decode_dir || exit 1;
+  done
+fi
+
+if [ $stage -le 12 ]; then
+  # this version of the decoding treats each utterance separately
+  # without carrying forward speaker information.
+  for decode_set in dev test; do
+    num_jobs=`cat data/${decode_set}_hires_online/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+    decode_dir=${dir}_online/decode_${decode_set}_per_utt
+    steps/online/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+       --config conf/decode.config --per-utt true \
+       $graph_dir data/${decode_set}_hires_online $decode_dir || exit 1;
   done
 fi
 
