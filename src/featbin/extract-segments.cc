@@ -180,7 +180,10 @@ int main(int argc, char *argv[]) {
       // conversion requires a proper rounding.
       int32 start_samp = static_cast<int32>(start * samp_freq + 0.5f),
           end_samp = static_cast<int32>(end * samp_freq + 0.5f);
-
+    
+      if (end_samp > num_samp) 
+        end_samp = num_samp;
+     
       // Get the range of data from the orignial wave_data matrix.
       SubMatrix<BaseFloat> segment_matrix(wave_data, channel, 1,
                                           start_samp, end_samp - start_samp);
