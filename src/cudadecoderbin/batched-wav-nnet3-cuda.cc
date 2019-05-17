@@ -101,7 +101,6 @@ void FinishOneDecode(
     clat_writer->Write(utt, clat);
   }
 
-  cuda_pipeline->CloseDecodeHandle(key);
   nvtxRangePop();
   }
 
@@ -210,8 +209,9 @@ int main(int argc, char *argv[]) {
     // overheads
     // using kaldi timer, which starts counting in the constructor
     Timer timer;
-
+    std::vector<double> iteration_timer;
     for (int iter = 0; iter < iterations; iter++) {
+      std::string task_group = std::to_string(iter);
       num_task_submitted = 0;
       SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
       if (iter > 0)
@@ -268,26 +268,49 @@ int main(int argc, char *argv[]) {
         // Important : finish_one_decode_lamba is called in the threadpool. We
         // need it to be threadsafe
         // (use locks around relevant parts, like writing to I/O)
-        cuda_pipeline.OpenDecodeHandle(key, wave_data, finish_one_decode_lamba);
+        cuda_pipeline.OpenDecodeHandle(key, wave_data, task_group,
+                                       finish_one_decode_lamba);
         num_task_submitted++;
+        std::string group_done;
+        // Non-blocking way to check if a group is done
+        // returns false if zero groups are ready
+        if (cuda_pipeline.IsAnyGroupCompleted(&group_done)) {
+          cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
+          double total_time = timer.Elapsed();
+          int32 iter = std::atoi(group_done.c_str());
+          KALDI_LOG << "~Group " << group_done << " completed"
+                    << " Aggregate Total Time: " << total_time
+                    << " Audio: " << total_audio * (iter + 1)
+                    << " RealTimeX: " << total_audio * (iter + 1) / total_time;
+        }
 
         nvtxRangePop();
         if (num_todo != -1 && num_task_submitted >= num_todo) break;
       } // end utterance loop
-
     } // end iterations loop
 
     // We've submitted all tasks. Now waiting for them to complete
-    cuda_pipeline.WaitForAllTasks();
-
-    KALDI_LOG << "Decoded " << num_task_submitted*iterations << " utterances, " << num_err
-              << " with errors.";
-    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
-              << " per frame over " << num_frames << " frames.";
+    // We could also have called WaitForAllTasks and CloseAllDecodeHandles
+    while (cuda_pipeline.GetNumberOfTasksPending()) {
+      // WaitForAnyGroup is blocking. It will hold until one group is ready
+      std::string group_done = cuda_pipeline.WaitForAnyGroup();
+      cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
+      double total_time = timer.Elapsed();
+      int32 iter = std::atoi(group_done.c_str());
+      KALDI_LOG << "~Group " << group_done << " completed"
+                << " Aggregate Total Time: " << total_time
+                << " Audio: " << total_audio * (iter + 1)
+                << " RealTimeX: " << total_audio * (iter + 1) / total_time;
+    }
 
     // number of seconds elapsed since the creation of timer
     double total_time = timer.Elapsed();
     nvtxRangePop();
+
+    KALDI_LOG << "Decoded " << num_task_submitted << " utterances, " << num_err
+              << " with errors.";
+    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
+              << " per frame over " << num_frames << " frames.";
 
     KALDI_LOG << "Overall: "
               << " Aggregate Total Time: " << total_time

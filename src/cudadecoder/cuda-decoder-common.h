@@ -29,6 +29,13 @@
 //
 // An analogy would be lane -> a core, channel -> a software thread
 
+// Some config parameters can be computed using other parameters
+// (e.g. we can set main_q_capacity using max-active)
+// Those values are the different factors between parameters that we know
+// and parameters we want to set
+#define KALDI_CUDA_DECODER_MAX_ACTIVE_MAIN_Q_CAPACITY_FACTOR 4
+#define KALDI_CUDA_DECODER_AUX_Q_MAIN_Q_CAPACITIES_FACTOR 3
+
 // If we're at risk of filling the tokens queue,
 // the beam is reduced to keep only the best candidates in the
 // remaining space
@@ -82,7 +89,6 @@
 // so that we can avoid triggering ApplyMaxActiveAndReduceBeam for just a few
 // tokens above the limit
 // at the end of the frame
-#define KALDI_CUDA_DECODER_MAX_ACTIVE_TOLERANCE 0.2
 
 #define KALDI_CUDA_DECODER_DIV_ROUND_UP(a, b) ((a + b - 1) / b)
 
@@ -94,6 +100,9 @@
     }                                                                   \
   }
 // Macro for checking cuda errors following a cuda launch or api call
+#ifdef NDEBUG
+#define KALDI_DECODER_CUDA_CHECK_ERROR()
+#else
 #define KALDI_DECODER_CUDA_CHECK_ERROR()                                  \
   {                                                                       \
     cudaError_t e = cudaGetLastError();                                   \
@@ -102,6 +111,7 @@
                                  false);                                  \
     }                                                                     \
   }
+#endif
 
 #define KALDI_DECODER_CUDA_API_CHECK_ERROR(e)                             \
   {                                                                       \
@@ -129,8 +139,8 @@
 #define KALDI_CUDA_DECODER_1D_BLOCK 256
 #define KALDI_CUDA_DECODER_LARGEST_1D_BLOCK 1024
 #define KALDI_CUDA_DECODER_ONE_THREAD_BLOCK 1
-#define KALDI_CUDA_DECODER_MAX_CTA_COUNT 4096
-
+#define KALDI_CUDA_DECODER_MAX_CTA_COUNT 4096u
+#define KALDI_CUDA_DECODER_MAX_CTA_PER_LANE 512u
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -140,9 +150,23 @@ inline dim3 KaldiCudaDecoderNumBlocks(int N, int M) {
   dim3 grid;
   grid.x = KALDI_CUDA_DECODER_DIV_ROUND_UP(N, KALDI_CUDA_DECODER_1D_BLOCK);
   unsigned int max_CTA_per_lane =
-      std::max(KALDI_CUDA_DECODER_MAX_CTA_COUNT / M, 1);
+      std::max(KALDI_CUDA_DECODER_MAX_CTA_COUNT / M, 1u);
   grid.x = std::min(grid.x, max_CTA_per_lane);
   grid.y = M;
+  return grid;
+}
+
+// Use a fixed number of blocks for nlanes
+// Using the max number of CTAs possible for each lane,
+// according to KALDI_CUDA_DECODER_MAX_CTA_COUNT
+// and KALDI_CUDA_DECODER_MAX_CTA_PER_LANE
+inline dim3 KaldiCudaDecoderNumBlocks(int nlanes) {
+  dim3 grid;
+  unsigned int n_CTA_per_lane =
+      std::max(KALDI_CUDA_DECODER_MAX_CTA_COUNT / nlanes, 1u);
+  if (n_CTA_per_lane == 0) n_CTA_per_lane = 1;
+  grid.x = std::min(KALDI_CUDA_DECODER_MAX_CTA_PER_LANE, n_CTA_per_lane);
+  grid.y = nlanes;
   return grid;
 }
 
@@ -383,6 +407,12 @@ struct LaneCounters {
   int2 adaptive_int_beam_with_validity_index;
   // min_cost + beam
   IntegerCostType int_cutoff;
+  // The histogram for max_active will be computed between min_histo_cost
+  // and max_histo_cost. Set for each frame after emitting stage
+  CostType min_histo_cost;
+  CostType max_histo_cost; 
+  CostType histo_bin_width;
+  bool compute_max_active;
   // offsets used by concatenate_lanes_data_kernel
   int32 main_q_end_lane_offset;
   int32 main_q_n_emitting_tokens_lane_offset;
@@ -512,7 +542,7 @@ struct __align__(16) HashmapValueT {
   // Number of tokens associated to that state
   int32 count;
   // minimum cost for that state + argmin
-  int2 min_and_argmin_int_cost;
+  unsigned long long min_and_argmin_int_cost_u64;
 };
 
 enum OVERFLOW_TYPE {

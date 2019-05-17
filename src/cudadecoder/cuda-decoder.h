@@ -43,8 +43,8 @@ struct CudaDecoderConfig {
       : default_beam(15.0),
         lattice_beam(10.0),
         ntokens_pre_allocated(2000000),
-        main_q_capacity(50000),
-        aux_q_capacity(500000),
+        main_q_capacity(-1),
+        aux_q_capacity(-1),
         max_active(10000) {}
 
   void Register(OptionsItf *opts) {
@@ -63,37 +63,58 @@ struct CudaDecoderConfig {
                    "Advanced - Number of tokens pre-allocated in host buffers. "
                    "If this size is exceeded the buffer will reallocate, "
                    "reducing performance.");
-    opts->Register("aux-q-capacity", &aux_q_capacity,
-                   "Advanced - Capacity of the auxiliary queue : Maximum "
-                   "number of raw tokens that can be stored *before* pruning "
-                   "for each frame. Lower -> less memory usage, Higher -> More "
-                   "accurate. During the tokens generation, if we detect that "
-                   "we are getting close to saturating that capacity, we will "
-                   "reduce the beam dynamically (adaptive beam) to keep only "
-                   "the best tokens in the remaining space. If the aux queue "
-                   "is still too small, we will print an overflow warning, but "
-                   "prevent the overflow. The computation can safely continue, "
-                   "but the quality of the output may decrease. We strongly "
-                   "recommend keeping aux-q-capacity large (>400k), to avoid "
-                   "triggering the adaptive beam and/or the overflow.");
+    std::ostringstream main_q_capacity_desc;
+    main_q_capacity_desc
+        << "Advanced - Capacity of the main queue : Maximum number of "
+           "tokens that can be stored *after* pruning for each frame. "
+           "Lower -> less memory usage, Higher -> More accurate. "
+           "Tokens stored in the main queue were already selected "
+           "through a max-active pre-selection. It means that for each "
+           "emitting/non-emitting iteration, we can add at most "
+           "~max-active tokens to the main queue. Typically only the "
+           "emitting iteration creates a large number of tokens. Using "
+           "main-q-capacity=k*max-active with k=4..10 should be safe. "
+           "If main-q-capacity is too small, we will print a warning "
+           "but prevent the overflow. The computation can safely "
+           "continue, but the quality of the output may decrease "
+           "(-1 = set to "
+        << KALDI_CUDA_DECODER_MAX_ACTIVE_MAIN_Q_CAPACITY_FACTOR
+        << "*max-active).";
     opts->Register("main-q-capacity", &main_q_capacity,
-                   "Advanced - Capacity of the main queue : Maximum number of "
-                   "tokens that can be stored *after* pruning for each frame. "
-                   "Lower -> less memory usage, Higher -> More accurate. "
-                   "Tokens stored in the main queue were already selected "
-                   "through a max-active pre-selection. It means that for each "
-                   "emitting/non-emitting iteration, we can add at most "
-                   "~max-active tokens to the main queue. Typically only the "
-                   "emitting iteration creates a large number of tokens. Using "
-                   "main-q-capacity=k*max-active with k=4..10 should be safe. "
-                   "If main-q-capacity is too small, we will print a warning "
-                   "but prevent the overflow. The computation can safely "
-                   "continue, but the quality of the output may decrease.");
+                   main_q_capacity_desc.str());
+    std::ostringstream aux_q_capacity_desc;
+    aux_q_capacity_desc
+        << "Advanced - Capacity of the auxiliary queue : Maximum "
+           "number of raw tokens that can be stored *before* pruning "
+           "for each frame. Lower -> less memory usage, Higher -> More "
+           "accurate. During the tokens generation, if we detect that "
+           "we are getting close to saturating that capacity, we will "
+           "reduce the beam dynamically (adaptive beam) to keep only "
+           "the best tokens in the remaining space. If the aux queue "
+           "is still too small, we will print an overflow warning, but "
+           "prevent the overflow. The computation can safely continue, "
+           "but the quality of the output may decrease. We strongly "
+           "recommend keeping aux-q-capacity large (>400k), to avoid "
+           "triggering the adaptive beam and/or the overflow "
+           "(-1 = set to "
+        << KALDI_CUDA_DECODER_AUX_Q_MAIN_Q_CAPACITIES_FACTOR
+        << "*main-q-capacity).";
+    opts->Register("aux-q-capacity", &aux_q_capacity,
+                   aux_q_capacity_desc.str());
   }
+
   void Check() const {
     KALDI_ASSERT(default_beam > 0.0 && ntokens_pre_allocated >= 0 &&
-                 main_q_capacity > 0 && aux_q_capacity >= main_q_capacity &&
-                 lattice_beam >= 0.0f && max_active > 1);
+                 lattice_beam >= 0.0f && max_active > 0);
+  }
+
+  void ComputeConfig() {
+    if (main_q_capacity == -1)
+      main_q_capacity =
+          max_active * KALDI_CUDA_DECODER_MAX_ACTIVE_MAIN_Q_CAPACITY_FACTOR;
+    if (aux_q_capacity == -1)
+      aux_q_capacity =
+          main_q_capacity * KALDI_CUDA_DECODER_AUX_Q_MAIN_Q_CAPACITIES_FACTOR;
   }
 };
 
@@ -152,9 +173,11 @@ class CudaDecoder {
   // Increasing the number of lanes is only useful if it increases performance.
   // If the GPU is saturated at nlanes=200,
   // you should not increase that number
-  unsigned long long avg_aux_q, aux_cnt;
   CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config, int32 nlanes,
               int32 nchannels);
+
+  // Reads the config from config
+  void ReadConfig(const CudaDecoderConfig &config);
   // Special constructor for nlanes = nchannels. Here for the non-advanced user
   // Here we can consider nchannels = batch size. If we want to decode 10
   // utterances at a time,
@@ -167,6 +190,8 @@ class CudaDecoder {
   // InitDecoding initializes the decoding, and should only be used if you
   // intend to call AdvanceDecoding() on the channels listed in channels
   void InitDecoding(const std::vector<ChannelId> &channels);
+  // Computes the heavy H2H copies of InitDecoding. Usually launched on the
+  // threadpool
   void InitDecodingH2HCopies(ChannelId ichannel);
   // AdvanceDecoding on a given batch
   // a batch is defined by the channels vector
@@ -243,11 +268,13 @@ class CudaDecoder {
       std::vector<std::pair<int32, CostType>> *argmins,
       std::vector<std::vector<std::pair<int, float>>> *list_lattice_tokens,
       std::vector<bool> *has_reached_final);
-  // (optional) giving the decoder access to the cpu thread pool
-  // We will use it to launch ntasks tasks dedicate to the H2H copies
-  // (ComputeH2HCopies). Those copies take time and it is better to do them in
-  // the background
-  void SetThreadPool(ThreadPool *thread_pool, int32 ntasks);
+  // (optional) Giving the decoder access to the cpu thread pool
+  // We will use it to compute specific CPU work, such as InitDecodingH2HCopies
+  // For recurrent CPU work, such as ComputeH2HCopies, we will use dedicated CPU
+  // threads
+  // We will launch nworkers of those threads
+  void SetThreadPoolAndStartCPUWorkers(ThreadPool *thread_pool, int32 nworkers);
+
  private:
   // Data allocation. Called in constructor
   void AllocateDeviceData();
@@ -306,9 +333,6 @@ class CudaDecoder {
   // time
   // We don't need it after the last ExpandArcsNonEmitting.
   void PruneAndPreprocess();
-  // Saving the size of the main_q after the emitting stage.
-  // Used to remember how many acoustic_costs to copy back to host
-  void SaveEmittingTokensOffsets();
   // Once the non-emitting is done, the main_q is final for that frame.
   // We now generate all the data associated with that main_q, such as listing
   // the different tokens sharing the same token.next_state
@@ -401,6 +425,7 @@ class CudaDecoder {
                                     T *h_concat,
                                     std::vector<std::vector<T>> *vecvec);
   void WaitForH2HCopies();
+  void WaitForInitDecodingH2HCopies();
   // Computes a set of static asserts on the static values
   // In theory we should do them at compile time
   void CheckStaticAsserts();
@@ -588,7 +613,6 @@ class CudaDecoder {
   // Defining the aux_q. Filled by ExpandArcs.
   // The tokens are moved to the main_q by PruneAndPreprocess
   DeviceLaneMatrix<int2> d_aux_q_state_and_cost_;
-  DeviceLaneMatrix<CostType> d_aux_q_acoustic_cost_;
   DeviceLaneMatrix<InfoToken> d_aux_q_info_;
   // Dedicated space for the concat of extra_cost. We should reuse memory
   DeviceLaneMatrix<float2> d_extra_and_acoustic_cost_concat_matrix_;
@@ -624,7 +648,6 @@ class CudaDecoder {
   CostType lattice_beam_;
   int32 ntokens_pre_allocated_;
   int32 max_active_;         // Target value from the parameters
-  int32 max_active_thresh_;  // Target value + tolerance
   int32 aux_q_capacity_;
   int32 main_q_capacity_;
   // Hashmap capacity. Multiple of max_tokens_per_frame
@@ -664,6 +687,11 @@ class CudaDecoder {
   InfoToken *h_infotoken_concat_, *d_infotoken_concat_;
   CostType *h_acoustic_cost_concat_, *d_acoustic_cost_concat_;
   InfoToken *h_extra_prev_tokens_concat_, *d_extra_prev_tokens_concat_;
+  // second memory space used for double buffering
+  float2 *h_extra_and_acoustic_cost_concat_tmp_;
+  InfoToken *h_infotoken_concat_tmp_;
+  CostType *h_acoustic_cost_concat_tmp_;
+  InfoToken *h_extra_prev_tokens_concat_tmp_;
   // Offsets used in MoveConcatenatedCopyToVector
   std::vector<int32> h_main_q_end_lane_offsets_;
   std::vector<int32> h_emitting_main_q_end_lane_offsets_;
@@ -673,6 +701,8 @@ class CudaDecoder {
   std::vector<bool> has_reached_final_;
   std::vector<std::vector<std::pair<int32, CostType>>>
       list_finals_token_idx_and_cost_;
+  bool compute_max_active_;
+  cudaEvent_t nnet3_done_evt_;
   cudaEvent_t d2h_copy_acoustic_evt_;
   cudaEvent_t d2h_copy_infotoken_evt_;
   cudaEvent_t d2h_copy_extra_prev_tokens_evt_;
@@ -732,6 +762,7 @@ class CudaDecoder {
   // does
   CostType extra_cost_min_delta_;
   ThreadPool *thread_pool_;
+  std::vector<std::thread> cpu_dedicated_threads_;
   int32 n_threads_used_;
   std::vector<ChannelId> lanes2channels_todo_;
   std::atomic<int> n_acoustic_h2h_copies_todo_;
@@ -739,11 +770,15 @@ class CudaDecoder {
   std::atomic<int> n_d2h_copies_ready_;
   std::atomic<int> n_infotoken_h2h_copies_todo_;
   int32 n_h2h_task_not_done_;
-  int32 n_h2h_main_task_todo_;
+  int32 n_init_decoding_h2h_task_not_done_;
+  std::atomic<int> n_h2h_main_task_todo_;
   std::mutex n_h2h_task_not_done_mutex_;
+  std::mutex n_init_decoding_h2h_task_not_done_mutex_;
   std::mutex n_h2h_main_task_todo_mutex_;
   std::condition_variable n_h2h_main_task_todo_cv_;
   std::condition_variable h2h_done_;
+  std::condition_variable init_decoding_h2h_done_;
+  std::atomic<bool> active_wait_;
   bool h2h_threads_running_;
   // Using the output from GetBestPath, we add the best tokens (as selected in
   // GetBestCost)

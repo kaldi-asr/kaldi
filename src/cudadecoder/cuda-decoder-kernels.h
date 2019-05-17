@@ -37,7 +37,6 @@ struct DeviceParams {
   LaneMatrixView<CostType> d_main_q_acoustic_cost;
   LaneMatrixView<InfoToken> d_main_q_info;
   LaneMatrixView<int2> d_aux_q_state_and_cost;
-  LaneMatrixView<CostType> d_aux_q_acoustic_cost;
   LaneMatrixView<InfoToken> d_aux_q_info;
   LaneMatrixView<HashmapValueT> d_hashmap_values;
   LaneMatrixView<int2> h_list_final_tokens_in_main_q;

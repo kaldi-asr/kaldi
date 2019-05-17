@@ -386,16 +386,24 @@ __global__ void nonemitting_preprocess_and_contract_kernel(
       // overflowing the queue
       // We then continue what we were doing
       if (!is_pruned) {
+        bool moving_emitting_tokens = (lane_counters->main_q_local_offset == 0);
         // we will move our unpruned token to the main_q, at index main_q_idx
+        InfoToken tok_info = cst_dev_params.d_aux_q_info.lane(ilane)[aux_q_idx];
         const int32 main_q_idx =
             sh_main_q_global_block_offset.y + block_prefix_sum_narcs_and_end.y;
+        CostType acoustic_cost = 0.0f;
+        if (moving_emitting_tokens && tok_info.arc_idx != -1) {
+          const int32 arc_ilabel =
+              cst_dev_params.d_arc_pdf_ilabels[tok_info.arc_idx];
+          acoustic_cost = -lane_counters->loglikelihoods[arc_ilabel];
+        }
+        cst_dev_params.d_main_q_info.lane(ilane)[main_q_idx] = tok_info;
+
         // Moving the token to the main q
         cst_dev_params.d_main_q_state_and_cost.channel(ichannel)[main_q_idx] = {
             token_state, token_int_cost};
-        cst_dev_params.d_main_q_info.lane(ilane)[main_q_idx] =
-            cst_dev_params.d_aux_q_info.lane(ilane)[aux_q_idx];
         cst_dev_params.d_main_q_acoustic_cost.lane(ilane)[main_q_idx] =
-            cst_dev_params.d_aux_q_acoustic_cost.lane(ilane)[aux_q_idx];
+            acoustic_cost;
         // Saving the global prefix sum
         const int32 prefix_sum_narcs =
             sh_main_q_global_block_offset.x + block_prefix_sum_narcs_and_end.x;
@@ -500,6 +508,8 @@ __global__ void reset_for_frame_and_estimate_cutoff_kernel(
       lane_counters->aux_q_requested = 0;
       lane_counters->main_q_requested = 0;
       lane_counters->main_q_local_offset = 0;
+      lane_counters->compute_max_active =
+          false;  // will be set to true if necessary
       channel_counters->min_int_cost_and_arg_with_final.x =
           INT_MAX;  // it will be set with atomicMins
       const CostType new_beam =
@@ -527,6 +537,11 @@ __global__ void reset_for_frame_and_estimate_cutoff_kernel(
       total_cost = previous_cost + arc_fixed_cost +
                    acoustic_cost;  // +0.0f, best prev cost is normalized to 0
     }
+
+    KALDI_CUDA_DECODER_1D_KERNEL_LOOP(bin_id, KALDI_CUDA_DECODER_HISTO_NBINS) { 
+      cst_dev_params.d_histograms.lane(ilane)[bin_id] = 0; // reset for this frame
+    }
+
     CostType min = BlockReduce(temp_storage).Reduce(total_cost, cub::Min());
     if (narcs > 0 && threadIdx.x == 0) {
       // narcs > 0 to have at least one valid element in the reduce
@@ -621,7 +636,6 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
       int32 arc_idx;
       StateId arc_next_state;
       IntegerCostType int_total_cost = INT_MAX;
-      CostType acoustic_cost = 0.0f;
       if (main_q_arc_index < total_narcs) {
         // Current thread must take care of main_q_arc_index-th arc
         // we need to now what's the source of that arc
@@ -709,7 +723,7 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
                 .x;
         if (IS_EMITTING) {
           const int32 arc_ilabel = cst_dev_params.d_arc_pdf_ilabels[arc_idx];
-          acoustic_cost = -lane_counters->loglikelihoods[arc_ilabel];
+          CostType acoustic_cost = -lane_counters->loglikelihoods[arc_ilabel];
           total_cost += acoustic_cost;
         }
         int_total_cost = floatToOrderedInt(total_cost);
@@ -763,8 +777,6 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
               atomicAdd(&lane_counters->aux_q_end, total_successors_in_block);
 
           // We are not overflowing the queue, updating the global values
-          if (IS_EMITTING) {
-            // We can find a lower global_min_cost only in the emitting stage
             IntegerCostType global_min_int_cost = lane_counters->min_int_cost;
             IntegerCostType local_min_int_cost = int_cost_and_index.x;
             // if we found a lower min_cost, update the global value
@@ -785,7 +797,6 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
                   cst_dev_params, aux_q_index_block_offset, global_min_int_cost,
                   &adaptive_int_beam_with_validity_index, lane_counters);
             }
-          }
         } else {
           // sh_aux_q_index_block_offset is in shared memory
           // its value is currently invalid (overflow)
@@ -822,8 +833,6 @@ __global__ void expand_arcs_kernel(DeviceParams cst_dev_params,
         // We save the new token to the aux_q
         cst_dev_params.d_aux_q_state_and_cost.lane(ilane)[aux_q_index] = {
             arc_next_state, int_total_cost};
-        cst_dev_params.d_aux_q_acoustic_cost.lane(ilane)[aux_q_index] =
-            acoustic_cost;
         // Index of the parent token
         // the parent is the token used as input (source of arc)
         // that parent is at index main_q_idx in the GPU memory
@@ -861,7 +870,6 @@ __global__ void post_expand_kernel(DeviceParams cst_dev_params,
     const int prev_n_extra_prev_tokens =
         lane_counters->main_q_n_extra_prev_tokens;
     const int aux_q_end = lane_counters->aux_q_end;
-    CostType beam = orderedIntToFloat(lane_counters->int_beam);
     CostType min_cost = orderedIntToFloat(lane_counters->min_int_cost);
     // The next step is the contracting step from aux_q to main_q
     // It will need the aux_q_end value. But it will also empty the aux_q
@@ -879,6 +887,8 @@ __global__ void post_expand_kernel(DeviceParams cst_dev_params,
         lane_counters->int_beam;
     lane_counters->adaptive_int_beam_with_validity_index.y =
         cst_dev_params.adaptive_beam_static_segment;
+    CostType beam = orderedIntToFloat(lane_counters->int_beam);
+    lane_counters->int_cutoff = floatToOrderedInt(min_cost + beam);
     // If the adaptive beam kicked in, we want to reset the beam
     // the max-active process will take care of selecting the right beam
     if (IS_EMITTING) {
@@ -895,8 +905,11 @@ __global__ void post_expand_kernel(DeviceParams cst_dev_params,
       // Moving local offset. Tokens created by last expand
       // will be pruned, and survivals will be moved at the end
       // of the main q. Those tokens will be placed after local_offset
-      lane_counters->int_cutoff = floatToOrderedInt(min_cost + beam);
       lane_counters->main_q_requested = 0;
+      CostType min_cost = orderedIntToFloat(lane_counters->min_int_cost);
+      lane_counters->min_histo_cost = min_cost;
+      lane_counters->max_histo_cost = min_cost + beam;
+      lane_counters->histo_bin_width = beam / (KALDI_CUDA_DECODER_HISTO_NBINS-1);
     } else {
       lane_counters->main_q_local_offset = prev_main_q_end;
       // reset requested to end of queue
@@ -992,6 +1005,8 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
                                     .channel(ichannel)[main_q_idx]
                                     .y);
           total_int_cost = floatToOrderedInt(arc_weight + prev_token_cost);
+	  if(total_int_cost < lane_counters->min_int_cost)
+            atomicMin(&lane_counters->min_int_cost, total_int_cost);
           if (total_int_cost >= int_cutoff) {
             total_int_cost = INT_MAX;  // above cutoff
           }
@@ -1018,8 +1033,6 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
               arc_next_state, total_int_cost};
           cst_dev_params.d_aux_q_info.lane(ilane)[aux_q_idx] = {prev_token_idx,
                                                                 arc_idx};
-          cst_dev_params.d_aux_q_acoustic_cost.lane(ilane)[aux_q_idx] =
-              0.0f;  // we are always non-emitting in this kernel
         }
         aux_q_end += nsuccessors;
         // sync: reusing sh_temp_storage_scan_int
@@ -1078,7 +1091,7 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
           cst_dev_params.d_main_q_info.lane(ilane)[main_q_idx] =
               cst_dev_params.d_aux_q_info.lane(ilane)[aux_q_idx];
           cst_dev_params.d_main_q_acoustic_cost.lane(ilane)[main_q_idx] =
-              cst_dev_params.d_aux_q_acoustic_cost.lane(ilane)[aux_q_idx];
+              0.0f;  // we are always nonemitting in this kernel
         }
         main_q_end += total_ntokens;
         __syncthreads();
@@ -1090,7 +1103,6 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
     if (threadIdx.x == 0) {
       // This main_q is now final for that frame
       lane_counters->main_q_narcs_and_end = {0, main_q_end};
-
       cst_dev_params.h_lanes_counters.lane(ilane)->main_q_narcs_and_end = {
           0, main_q_end};  // pinned memory
     }
@@ -1120,8 +1132,6 @@ __global__ void get_best_cost_step1_kernel(DeviceParams cst_dev_params,
         cst_dev_params.d_channels_counters.channel(ichannel);
     const int32 main_q_end = channel_counters->prev_main_q_narcs_and_end.y;
     const int32 global_offset = channel_counters->prev_main_q_global_offset;
-    const int32 min_int_cost =
-        channel_counters->min_int_cost_and_arg_without_final.x;
     KALDI_CUDA_DECODER_1D_KERNEL_LOOP(idx, main_q_end) {
       if (idx == 0)
         lane_counters->n_within_lattice_beam =
@@ -1135,8 +1145,6 @@ __global__ void get_best_cost_step1_kernel(DeviceParams cst_dev_params,
       int32 global_idx = global_offset + idx;
       // We know what is the min cost (without final costs)
       // we just need to have the index of one token with that min cost
-      if (int_cost == min_int_cost)
-        channel_counters->min_int_cost_and_arg_without_final.y = global_idx;
 
       if (use_final_probs) {
         const CostType final_cost =
@@ -1253,18 +1261,22 @@ __global__ void compute_costs_histogram_kernel(DeviceParams cst_dev_params,
   __shared__ unsigned int smem_histogram[KALDI_CUDA_DECODER_HISTO_NBINS + 1];
 
   KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
-    const LaneCounters *lane_counters =
-        cst_dev_params.d_lanes_counters.lane(ilane);
+    LaneCounters *lane_counters = cst_dev_params.d_lanes_counters.lane(ilane);
     const int32 ichannel = lane_counters->channel_to_compute;
     const int32 q_end = use_aux_q ? lane_counters->post_expand_aux_q_end
                                   : lane_counters->main_q_narcs_and_end.y;
-    if (q_end <= cst_dev_params.max_active) continue;  // nothing to do
+    bool compute_max_active = lane_counters->compute_max_active;
+    if (!compute_max_active) {
+      if (q_end <= cst_dev_params.max_active) continue;  // nothing to do
+      // Otherwise let's turn max active on for this frame and lane
+      lane_counters->compute_max_active = true;
+    }
 
     // Reset local histogram for this lane
     BlockHistogram(temp_storage).InitHistogram(smem_histogram);
-    CostType beam = orderedIntToFloat(lane_counters->int_beam);
-    CostType min_cost = orderedIntToFloat(lane_counters->min_int_cost);
-    CostType bin_width = beam / KALDI_CUDA_DECODER_HISTO_NBINS;
+    CostType min_histo_cost = lane_counters->min_histo_cost;
+    CostType max_histo_cost = lane_counters->max_histo_cost;
+    CostType bin_width = lane_counters->histo_bin_width;
 
     // We have a sync inside the loop, keeping all threads alive
     KALDI_CUDA_DECODER_1D_BLOCK_OFFSET_KERNEL_LOOP(block_offset, thread_idx,
@@ -1283,10 +1295,11 @@ __global__ void compute_costs_histogram_kernel(DeviceParams cst_dev_params,
                       .channel(ichannel)[q_idx]
                       .y;
         CostType cost = orderedIntToFloat(int_cost);
-        CostType extra = cost - min_cost;
-        // We only count valid tokens with a cost < (min_cost + beam)
-        if (extra < beam) {
-          bin_id[0] = (BinId)__fdiv_rd(extra, bin_width);
+        CostType extra = cost - min_histo_cost;
+	if(extra <= 0.0f) 
+		bin_id[0] = 0;
+  	else if (extra < max_histo_cost) {
+          bin_id[0] = (BinId)__fdiv_rd(extra, bin_width)+1; // +1 because first bin is cost < min_histo_cost
         }
       }
       BlockHistogram(temp_storage).Composite(bin_id, smem_histogram);  // sync
@@ -1323,11 +1336,11 @@ __global__ void update_beam_using_histogram_kernel(DeviceParams cst_dev_params,
   const int max_active = cst_dev_params.max_active;
   KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
     LaneCounters *lane_counters = cst_dev_params.d_lanes_counters.lane(ilane);
-    const int32 q_end = use_aux_q ? lane_counters->post_expand_aux_q_end
-                                  : lane_counters->main_q_narcs_and_end.y;
-    if (q_end <= max_active) continue;  // nothing to do
+    bool compute_max_active = lane_counters->compute_max_active;
+    if (!compute_max_active) continue;  // nothing to do
     CostType beam = orderedIntToFloat(lane_counters->int_beam);
-    CostType min_cost = orderedIntToFloat(lane_counters->min_int_cost);
+    CostType min_histo_cost = lane_counters->min_histo_cost;
+    CostType bin_width = lane_counters->histo_bin_width;
     // We now have our histogram of the token costs (computed in the previous
     // kernel)
     // Each thread i is responsible for a bin i, with that bin containing ni
@@ -1343,23 +1356,24 @@ __global__ void update_beam_using_histogram_kernel(DeviceParams cst_dev_params,
     assert(KALDI_CUDA_DECODER_HISTO_NBINS < KALDI_CUDA_DECODER_1D_BLOCK);
     int bin_id = threadIdx.x;
     int val = 0;
-    if (bin_id < KALDI_CUDA_DECODER_HISTO_NBINS) {
+    if (bin_id < KALDI_CUDA_DECODER_HISTO_NBINS) 
       val = cst_dev_params.d_histograms.lane(ilane)[bin_id];
-      cst_dev_params.d_histograms.lane(ilane)[bin_id] =
-          0;  // reset for next time
-    }
+    
     int prefix_sum;
     BlockScan(temp_storage).ExclusiveSum(val, prefix_sum);
 
     if (prefix_sum < max_active && (prefix_sum + val) >= max_active) {
-      // We found our new beam
-      CostType new_beam =
-          (beam / KALDI_CUDA_DECODER_HISTO_NBINS) * (bin_id + 1);
+      // We found our new beam regarding min_histo_cost
+      // Howevever, the current min_cost could be lower than min_histo_cost
+      // we need to add that diff to the new beam
+      CostType new_beam_for_histo_min_cost = bin_width * bin_id;
+      CostType current_min_cost = orderedIntToFloat(lane_counters->min_int_cost);
+      CostType new_beam = (min_histo_cost - current_min_cost) + new_beam_for_histo_min_cost;
       IntegerCostType new_int_beam = floatToOrderedInt(new_beam);
       // Saving our new beam for this lane
       lane_counters->int_beam = new_int_beam;
       lane_counters->adaptive_int_beam_with_validity_index.x = new_int_beam;
-      lane_counters->int_cutoff = floatToOrderedInt(min_cost + new_beam);
+      lane_counters->int_cutoff = floatToOrderedInt(current_min_cost + new_beam);
     }
   }
 }
@@ -1386,6 +1400,8 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
 
     const int32 main_q_end = lane_counters->main_q_narcs_and_end.y;
     int32 min_int_cost = lane_counters->min_int_cost;
+    CostType min_cost = orderedIntToFloat(min_int_cost);
+    const int32 global_offset = channel_counters->prev_main_q_global_offset;
     KALDI_CUDA_DECODER_1D_KERNEL_LOOP(main_q_idx, main_q_end) {
       // Position of considered token in the main_q
       if (main_q_idx < main_q_end) {
@@ -1393,6 +1409,17 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
             ichannel)[main_q_idx];
         StateId token_state = both.x;
         IntegerCostType token_int_cost = both.y;
+        if (min_int_cost == token_int_cost) {
+          // remove offset = min_cost, set it to 0 explicitely
+          token_int_cost = floatToOrderedInt(0.0f);
+          channel_counters->min_int_cost_and_arg_without_final = {
+              token_int_cost, global_offset + main_q_idx};
+          lane_counters->prev_arg_min_int_cost = main_q_idx;
+        } else {
+          // remove offset = min_cost
+          CostType token_cost = orderedIntToFloat(token_int_cost) - min_cost;
+          token_int_cost = floatToOrderedInt(token_cost);
+        }
         int local_idx, hash_idx;
         hashmap_insert_or_aggregate(cst_dev_params.d_hashmap_values.lane(ilane),
                                     token_state, token_int_cost, main_q_idx,
@@ -1400,13 +1427,11 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
                                     &hash_idx);
         cst_dev_params.d_main_q_n_extra_prev_tokens_local_idx.lane(
             ilane)[main_q_idx] = local_idx;
+        cst_dev_params.d_main_q_state_and_cost.channel(ichannel)[main_q_idx].y =
+            token_int_cost;
         // If we have the min, saving its index for get best cost and the min
         // cost estimate of the next frame
-        if (min_int_cost == token_int_cost) {
-          channel_counters->min_int_cost_and_arg_without_final = {min_int_cost,
-                                                                  main_q_idx};
-          lane_counters->prev_arg_min_int_cost = main_q_idx;
-        }
+
         // Saving where that token.state ended up in the hashmap
         // false = this token is not the representative of this state
         // We will update representing_state once we know more (in the next
@@ -1417,6 +1442,11 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
         SetFSTStateHashIndex(
             hash_idx, false,
             &cst_dev_params.d_main_q_state_hash_idx.lane(ilane)[main_q_idx]);
+      }
+
+      if (main_q_idx == 0) {
+        lane_counters->int_cutoff = floatToOrderedInt(
+            orderedIntToFloat(lane_counters->int_cutoff) - min_cost);
       }
     }
   }
@@ -1508,8 +1538,9 @@ __global__ void emitting_preprocess_and_list_extra_prev_tokens_step1_kernel(
             cst_dev_params.d_hashmap_values.lane(ilane)[hash_idx];
         // Token index of one of the token which the lowest token.cost for that
         // state
-        const int32 state_best_int_cost_argmin =
-            h_val.min_and_argmin_int_cost.y;
+        uint32_t state_best_int_cost_argmin;
+	GetArgFromPackedArgminUInt64(h_val.min_and_argmin_int_cost_u64, &state_best_int_cost_argmin);
+
         // Checking if we're the representative of that state
         representing_state = (main_q_idx == state_best_int_cost_argmin);
         // Saving the hash_idx of that fst state + if we're responsible for that
@@ -1638,39 +1669,46 @@ __global__ void emitting_preprocess_and_list_extra_prev_tokens_step2_kernel(
 // in d_main_q_extra_prev_tokens. That way each extra tokens will know where to
 // write itself in the next kernel.
 __global__ void emitting_preprocess_and_list_extra_prev_tokens_step3_kernel(
-    DeviceParams cst_dev_params, KernelParams params) {
-  const int nlanes = params.nlanes_used;
-  KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
-    const LaneCounters *lane_counters =
-        cst_dev_params.d_lanes_counters.lane(ilane);
-    const int32 ichannel = lane_counters->channel_to_compute;
-    const int main_q_end = lane_counters->main_q_narcs_and_end.y;
-    KALDI_CUDA_DECODER_1D_KERNEL_LOOP(main_q_idx, main_q_end) {
-      const int32 local_sum_idx = main_q_idx / KALDI_CUDA_DECODER_1D_BLOCK;
-      const int2 local_sum_offset =
-          cst_dev_params.d_main_q_block_sums_prefix_sum.lane(
-              ilane)[local_sum_idx];
-      cst_dev_params.d_main_q_degrees_prefix_sum.channel(
-          ichannel)[main_q_idx] += local_sum_offset.x;
-      int extra_prev_tokens_offset =
-          cst_dev_params.d_main_q_extra_prev_tokens_prefix_sum.lane(
-              ilane)[main_q_idx] +
-          local_sum_offset.y;
-      // Loading the hash index associate with token.state
-      // If representative, store the location of the extra prev tokens list for
-      // that state in the hashmap
-      bool is_representative;
-      int32 hash_idx;
-      GetFSTStateHashIndex(
-          cst_dev_params.d_main_q_state_hash_idx.lane(ilane)[main_q_idx],
-          &hash_idx, &is_representative);
-      if (is_representative) {
-        HashmapValueT &val =
-            cst_dev_params.d_hashmap_values.lane(ilane)[hash_idx];
-        val.min_and_argmin_int_cost.y = extra_prev_tokens_offset;
-      }
-    }
-  }
+		DeviceParams cst_dev_params, KernelParams params) {
+	const int nlanes = params.nlanes_used;
+	KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
+		const LaneCounters *lane_counters =
+			cst_dev_params.d_lanes_counters.lane(ilane);
+		const int32 ichannel = lane_counters->channel_to_compute;
+		const int main_q_end = lane_counters->main_q_narcs_and_end.y;
+		KALDI_CUDA_DECODER_1D_KERNEL_LOOP(main_q_idx, main_q_end) {
+			const int32 local_sum_idx = main_q_idx / KALDI_CUDA_DECODER_1D_BLOCK;
+			const int2 local_sum_offset =
+				cst_dev_params.d_main_q_block_sums_prefix_sum.lane(
+						ilane)[local_sum_idx];
+			cst_dev_params.d_main_q_degrees_prefix_sum.channel(
+					ichannel)[main_q_idx] += local_sum_offset.x;
+			int extra_prev_tokens_offset =
+				cst_dev_params.d_main_q_extra_prev_tokens_prefix_sum.lane(
+						ilane)[main_q_idx] +
+				local_sum_offset.y;
+			// Loading the hash index associate with token.state
+			// If representative, store the location of the extra prev tokens list for
+			// that state in the hashmap
+			bool is_representative;
+			int32 hash_idx;
+			GetFSTStateHashIndex(
+					cst_dev_params.d_main_q_state_hash_idx.lane(ilane)[main_q_idx],
+					&hash_idx, &is_representative);
+                        if (is_representative) {
+                          HashmapValueT &val =
+                              cst_dev_params.d_hashmap_values.lane(
+                                  ilane)[hash_idx];
+                          uint32_t min;
+                          GetMinFromPackedArgminUInt64(
+                              val.min_and_argmin_int_cost_u64, &min);
+                          unsigned long long new_pack;
+                          PackArgminInUInt64(min, extra_prev_tokens_offset,
+                                             &new_pack);
+                          val.min_and_argmin_int_cost_u64 = new_pack;
+                        }
+		}
+	}
 }
 
 // Step4: We now know where to store our extra prev tokens in
@@ -1722,15 +1760,20 @@ __global__ void emitting_preprocess_and_list_extra_prev_tokens_step4_kernel(
         CostType token_cost = orderedIntToFloat(
             cst_dev_params.d_main_q_state_and_cost.channel(ichannel)[main_q_idx]
                 .y);
-        CostType best_cost = orderedIntToFloat(val.min_and_argmin_int_cost.x);
+	uint32_t best_int_cost;
+        // Where to write this state list in d_main_q_extra_prev_tokens
+	uint32_t extra_prev_tokens_offset;
+	unsigned long long pack = val.min_and_argmin_int_cost_u64;
+	GetMinFromPackedArgminUInt64(pack, &best_int_cost);
+	GetArgFromPackedArgminUInt64(pack, &extra_prev_tokens_offset);
+        CostType best_cost = orderedIntToFloat((int)best_int_cost);
         CostType extra_cost = token_cost - best_cost;
+	assert(!is_representative || extra_cost == 0.0f);
         // Loading the token to be moved
         InfoToken inf_tok =
             cst_dev_params.d_main_q_info.lane(ilane)[main_q_idx];
         CostType acoustic_cost =
             cst_dev_params.d_main_q_acoustic_cost.lane(ilane)[main_q_idx];
-        // Where to write this state list in d_main_q_extra_prev_tokens
-        int32 extra_prev_tokens_offset = val.min_and_argmin_int_cost.y;
         // Place of that specific token in the extra_prev_tokens sublist of that
         // specific FST state
         int32 local_idx =
