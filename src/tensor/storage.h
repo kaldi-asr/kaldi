@@ -108,7 +108,12 @@ class Storage {
      data in a storage region.  Rather than physically zeroing the data, it
      records the intention to zero it as soon as it is allocated (see "Lazy
      allocation" in tensor.h).  Later on, when the data is allocated, it may
-     actually not have to be zeroed if the AllowUndefined() is called.
+     actually not have to be zeroed if AllowUndefined() is called by the
+     operation that acts on it.
+
+     This is anticipated to be used mostly in backprop code, for deriv_
+     matrices, since conceptually the main operation we do on deriv_ matrices is
+     to add to them.
   */
   inline void ZeroUponAllocation() { zero_upon_allocation_ = true; }
 

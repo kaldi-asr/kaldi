@@ -468,7 +468,7 @@ class MemoryChecker {
   /**
      Record the invalidation of data.  This occurs in certain backprop
      operations as a way to avoid unnecessary zeroing operations.  See
-     the documentation for class InvalidatedDatChecker for a longer
+     the documentation for class InvalidatedDataChecker for a longer
      explanation.
    */
   void RecordInvalidation(int32 element_size,
@@ -479,9 +479,8 @@ class MemoryChecker {
   }
 
   /**
-     Record that the entire storage region has been zeroed.
-     (This avoids the need to use uninitialized_checker_, so we delete it
-      if it was set).
+     Record that the entire storage region is being zeroed.  (This avoids the
+     need to use uninitialized_checker_, so we delete it if it was set).
    */
   inline void RecordZeroing() { uninitialized_checker_ = NULL; }
 
