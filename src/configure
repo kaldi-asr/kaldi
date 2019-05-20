@@ -1179,7 +1179,7 @@ elif [ "`uname`" == "Linux" ]; then
       echo -n "Configuring MKL library directory: "
       MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
       if [ $? -ne 0 ]; then
-        failure "MKL libraries could not be found. Please use the switch --mkl-libdir "
+        failure "MKL libraries could not be found. Please use the switch --mkl-libdir or try another math library, e.g. --mathlib=ATLAS (would be slower)"
       else
         echo "Found: $MKLLIBDIR"
       fi
