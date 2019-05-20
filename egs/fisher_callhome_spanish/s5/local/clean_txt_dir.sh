@@ -44,7 +44,7 @@ if [ $stage -le 0 ]; then
   $train_cmd --max_jobs_run 100 JOB=1:$numsplits $outdir/sparrowhawk/log/JOB.log \
     local/run_norm.sh \
     sparrowhawk_configuration.ascii_proto \
-    $SPARROWHAWK_ROOT/language-resources/en/sparrowhawk/ \
+    $SPARROWHAWK_ROOT/language-resources/esp/sparrowhawk/ \
     $outdir/data \
     JOB \
     $outdir/sparrowhawk/
