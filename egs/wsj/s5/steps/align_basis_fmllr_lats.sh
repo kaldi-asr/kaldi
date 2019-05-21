@@ -51,7 +51,11 @@ lang=$2
 srcdir=$3
 dir=$4
 
-for f in $data/feats.scp $lang/phones.txt $srcdir/final.mdl $srcdir/fmllr.basis; do
+if [ ! -f $srcdir/fmllr.basis ]; then
+  echo "$0: expected $srcdir/fmllr.basis to exist.   Run get_fmllr_basis.sh on $srcdir."
+fi
+
+for f in $data/feats.scp $lang/phones.txt $srcdir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 

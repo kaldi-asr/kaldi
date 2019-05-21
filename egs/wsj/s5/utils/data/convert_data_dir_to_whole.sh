@@ -35,9 +35,15 @@ if [ -f $data/reco2file_and_channel ]; then
 fi
 
 mkdir -p $dir/.backup
-mv $dir/feats.scp $dir/cmvn.scp $dir/.backup
-
-rm $dir/utt2spk || true
+if [ -f $dir/feats.scp ]; then
+  mv $dir/feats.scp $dir/.backup
+fi
+if [ -f $dir/cmvn.scp ]; then
+  mv $dir/cmvn.scp $dir/.backup
+fi
+if [ -f $dir/utt2spk ]; then
+  mv $dir/utt2spk $dir/.backup
+fi
 
 [ -f $data/stm ] && cp $data/stm $dir
 [ -f $data/glm ] && cp $data/glm $dir

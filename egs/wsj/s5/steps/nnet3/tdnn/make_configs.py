@@ -4,6 +4,7 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
+from __future__ import division
 import os
 import argparse
 import shlex
@@ -519,10 +520,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context), file=f)
-    print('model_right_context=' + str(right_context), file=f)
-    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
-    print('num_targets=' + str(num_targets), file=f)
+    print('model_left_context={}'.format(left_context), file=f)
+    print('model_right_context={}'.format(right_context), file=f)
+    print('num_hidden_layers={}'.format(num_hidden_layers), file=f)
+    print('num_targets={}'.format(num_targets), file=f)
     print('add_lda=' + ('true' if add_lda else 'false'), file=f)
     print('include_log_softmax=' + ('true' if include_log_softmax else 'false'), file=f)
     print('objective_type=' + objective_type, file=f)

@@ -5,6 +5,7 @@
 # Apache 2.0
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import copy
 import logging
@@ -869,8 +870,7 @@ class Segment(object):
         #        a * (length_with_truncation - length_with_relaxed_boundaries)
         # -> a = (length_cutoff - length_with_relaxed_boundaries)
         #        / (length_with_truncation - length_with_relaxed_boundaries)
-        a = ((length_cutoff - length_with_relaxed_boundaries)
-             / (length_with_truncation - length_with_relaxed_boundaries))
+        a = (length_cutoff - length_with_relaxed_boundaries) / (length_with_truncation - length_with_relaxed_boundaries)
         if a < 0.0 or a > 1.0:
             # TODO(vimal): Should this be an error?
             _global_logger.warn("bad 'a' value = %.4f", a)
@@ -1756,7 +1756,7 @@ def time_to_string(time, frame_length):
     """ Gives time in string form as an exact multiple of the frame-length,
     e.g. 0.01 (after rounding).
     """
-    n = round(time / frame_length)
+    n = round(time /frame_length)
     assert n >= 0
     # The next function call will remove trailing zeros while printing it, so
     # that e.g. 0.01 will be printed as 0.01 and not 0.0099999999999999.  It

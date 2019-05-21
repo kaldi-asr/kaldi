@@ -31,7 +31,7 @@ def _read_words(filename):
 
 def _build_vocab(filename):
   words = _read_words(filename)
-  word_to_id = dict(zip(words, range(len(words))))
+  word_to_id = dict(list(zip(words, list(range(len(words))))))
   return word_to_id
 
 

@@ -26,6 +26,7 @@
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-example-utils.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -187,10 +188,6 @@ class NnetTrainer {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
-  // Prints out the max-change stats (if nonzero): the percentage of time that
-  // per-component max-change and global max-change were enforced.
-  void PrintMaxChangeStats() const;
-
   ~NnetTrainer();
  private:
   // The internal function for doing one step of conventional SGD training.
@@ -220,8 +217,7 @@ class NnetTrainer {
   int32 num_minibatches_processed_;
 
   // stats for max-change.
-  std::vector<int32> num_max_change_per_component_applied_;
-  int32 num_max_change_global_applied_;
+  MaxChangeStats max_change_stats_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 

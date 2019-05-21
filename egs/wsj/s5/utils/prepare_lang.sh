@@ -67,6 +67,8 @@ extra_word_disambig_syms=        # if set, add disambiguation symbols from this 
 num_extra_phone_disambig_syms=1 # Standard one phone disambiguation symbol is used for optional silence.
                                 # Increasing this number does not harm, but is only useful if you later
                                 # want to introduce this labels to L_disambig.fst
+
+
 # end configuration sections
 
 echo "$0 $@"  # Print the command line for logging
@@ -74,12 +76,14 @@ echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh
 
 if [ $# -ne 4 ]; then
-  echo "usage: utils/prepare_lang.sh <dict-src-dir> <oov-dict-entry> <tmp-dir> <lang-dir>"
+  echo "Usage: utils/prepare_lang.sh <dict-src-dir> <oov-dict-entry> <tmp-dir> <lang-dir>"
   echo "e.g.: utils/prepare_lang.sh data/local/dict <SPOKEN_NOISE> data/local/lang data/lang"
   echo "<dict-src-dir> should contain the following files:"
   echo " extra_questions.txt  lexicon.txt nonsilence_phones.txt  optional_silence.txt  silence_phones.txt"
   echo "See http://kaldi-asr.org/doc/data_prep.html#data_prep_lang_creating for more info."
   echo "options: "
+  echo "<dict-src-dir> may also, for the grammar-decoding case (see http://kaldi-asr.org/doc/grammar.html)"
+  echo "contain a file nonterminals.txt containing symbols like #nonterm:contact_list, one per line."
   echo "     --num-sil-states <number of states>             # default: 5, #states in silence models."
   echo "     --num-nonsil-states <number of states>          # default: 3, #states in non-silence models."
   echo "     --position-dependent-phones (true|false)        # default: true; if true, use _B, _E, _S & _I"
@@ -104,6 +108,11 @@ srcdir=$1
 oov_word=$2
 tmpdir=$3
 dir=$4
+
+
+if [ -d $dir/phones ]; then
+  rm -r $dir/phones
+fi
 mkdir -p $dir $tmpdir $dir/phones
 
 silprob=false
@@ -209,7 +218,6 @@ else
   paste -d' ' $tmpdir/phones $tmpdir/phones > $tmpdir/phone_map.txt
 fi
 
-mkdir -p $dir/phones  # various sets of phones...
 
 # Sets of phones for use in clustering, and making monophone systems.
 
@@ -380,9 +388,9 @@ fi
 
 # format of $dir/words.txt:
 #<eps> 0
-#!EXCLAMATION-POINT 1
-#!SIL 2
-#"CLOSE-QUOTE 3
+#a 1
+#aa 2
+#aarvark 3
 #...
 
 silphone=`cat $srcdir/optional_silence.txt` || exit 1;
@@ -403,9 +411,40 @@ perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$tmpdir/lexiconp.txt >$tmpdir/align_lex
 [ ! -z "$silphone" ] && echo "<eps> $silphone" >> $tmpdir/align_lexicon.txt
 
 cat $tmpdir/align_lexicon.txt | \
- perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | sort | uniq > $dir/phones/align_lexicon.txt
+  perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | sort | uniq > $dir/phones/align_lexicon.txt
 
-# create phones/align_lexicon.int
+if [ -f $srcdir/nonterminals.txt ]; then
+  utils/lang/grammar/augment_phones_txt.py $dir/phones.txt $srcdir/nonterminals.txt $dir/phones.txt
+  utils/lang/grammar/augment_words_txt.py $dir/words.txt $srcdir/nonterminals.txt $dir/words.txt
+  cp $srcdir/nonterminals.txt $dir/phones/nonterminals.txt
+  utils/sym2int.pl $dir/phones.txt <$dir/phones/nonterminals.txt >$dir/phones/nonterminals.int
+
+  for w in "#nonterm_begin" "#nonterm_end" $(cat $srcdir/nonterminals.txt); do
+    echo $w $w  # These are words without pronunciations, so leave those prons
+                # empty.
+  done >> $dir/phones/align_lexicon.txt
+  nonterm_phones_offset=$(grep '#nonterm_bos' <$dir/phones.txt | awk '{print $2}')
+  echo $nonterm_phones_offset > $dir/phones/nonterm_phones_offset.int
+  echo '#nonterm_bos' > $dir/phones/nonterm_phones_offset.txt  # temporary.
+
+  if [ -f $dir/phones/word_boundary.txt ]; then
+    # word-position-dependent system.  Only include the optional-silence phone,
+    # and phones that can end a word, plus the special symbol #nonterm_bos, in the
+    # left-context phones.
+    awk '{if ($2 == "end" || $2 == "singleton") print $1; }' <$dir/phones/word_boundary.txt | \
+        cat - $dir/phones/optional_silence.txt $dir/phones/nonterm_phones_offset.txt > $dir/phones/left_context_phones.txt
+  else
+    cat $dir/phones/{silence,nonsilence}.txt $dir/phones/nonterm_phones_offset.txt > $dir/phones/left_context_phones.txt
+  fi
+  utils/sym2int.pl $dir/phones.txt <$dir/phones/left_context_phones.txt >$dir/phones/left_context_phones.int
+
+  # we need to write utils/lang/make_lexicon_fst_silprob.py before this can work.
+  grammar_opts="--left-context-phones=$dir/phones/left_context_phones.txt --nonterminals=$srcdir/nonterminals.txt"
+else
+  grammar_opts=
+fi
+
+# create phones/align_lexicon.int from phones/align_lexicon.txt
 cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
   utils/sym2int.pl -f 1-2 $dir/words.txt > $dir/phones/align_lexicon.int
 
@@ -413,18 +452,20 @@ cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
 # in training.
 
 if $silprob; then
-  # Add silence probabilities (modlels the prob. of silence before and after each
+  # Add silence probabilities (models the prob. of silence before and after each
   # word).  On some setups this helps a bit.  See utils/dict_dir_add_pronprobs.sh
   # and where it's called in the example scripts (run.sh).
-  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob.txt $srcdir/silprob.txt $silphone "<eps>" | \
+  utils/lang/make_lexicon_fst_silprob.py $grammar_opts --sil-phone=$silphone \
+         $tmpdir/lexiconp_silprob.txt $srcdir/silprob.txt | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-     --keep_isymbols=false --keep_osymbols=false |   \
+       --keep_isymbols=false --keep_osymbols=false |   \
      fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
 else
-  utils/make_lexicon_fst.pl --pron-probs $tmpdir/lexiconp.txt $sil_prob $silphone | \
+  utils/lang/make_lexicon_fst.py $grammar_opts --sil-prob=$sil_prob --sil-phone=$silphone \
+            $tmpdir/lexiconp.txt | \
     fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-    --keep_isymbols=false --keep_osymbols=false | \
-     fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
+      --keep_isymbols=false --keep_osymbols=false | \
+    fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
 fi
 
 # The file oov.txt contains a word that we will map any OOVs to during
@@ -490,15 +531,19 @@ utils/gen_topo.pl $num_nonsil_states $num_sil_states $nonsilphonelist $silphonel
 # disambiguation symbols from G.fst.
 
 if $silprob; then
-  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt $silphone '#'$ndisambig | \
+  utils/lang/make_lexicon_fst_silprob.py $grammar_opts \
+     --sil-phone=$silphone --sil-disambig='#'$ndisambig \
+     $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-     --keep_isymbols=false --keep_osymbols=false |   \
+       --keep_isymbols=false --keep_osymbols=false |   \
      fstaddselfloops  $dir/phones/wdisambig_phones.int $dir/phones/wdisambig_words.int | \
      fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
 else
-  utils/make_lexicon_fst.pl --pron-probs $tmpdir/lexiconp_disambig.txt $sil_prob $silphone '#'$ndisambig | \
+  utils/lang/make_lexicon_fst.py $grammar_opts \
+       --sil-prob=$sil_prob --sil-phone=$silphone --sil-disambig='#'$ndisambig \
+         $tmpdir/lexiconp_disambig.txt | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-     --keep_isymbols=false --keep_osymbols=false |   \
+       --keep_isymbols=false --keep_osymbols=false |   \
      fstaddselfloops  $dir/phones/wdisambig_phones.int $dir/phones/wdisambig_words.int | \
      fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
 fi

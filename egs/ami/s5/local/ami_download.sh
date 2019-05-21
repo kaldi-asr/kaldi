@@ -53,12 +53,12 @@ cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $wdir/am
 wgetfile=$wdir/wget_$mic.sh
 
 # TODO fix this with Pawel, files don't exist anymore,
-manifest="wget --continue -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
-license="wget --continue -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
+manifest="wget --continue -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-0153-Tue-Oct-2-2018.manifest.txt"
+
 
 echo "#!/bin/bash" > $wgetfile
 echo $manifest >> $wgetfile
-echo $license >> $wgetfile
+
 while read line; do
    if [ "$mic" == "ihm" ]; then
      extra_headset= #some meetings have 5 sepakers (headsets)
@@ -100,8 +100,7 @@ else
   fi
 fi
 
-echo "Downloads of AMI corpus completed succesfully. License can be found under $adir/LICENCE.TXT"
+echo "Downloads of AMI corpus completed succesfully."
 exit 0;
-
 
 

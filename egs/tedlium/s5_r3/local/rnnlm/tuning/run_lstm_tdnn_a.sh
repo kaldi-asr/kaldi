@@ -30,7 +30,6 @@ epochs=20
 [ -z "$cmd" ] && cmd=$train_cmd
 
 text_from_audio=data/train/text
-text=data/LM/train.txt
 wordlist=data/lang_chain/words.txt
 dev_sents=10000
 text_dir=data/rnnlm/text
@@ -44,8 +43,9 @@ done
 
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
+  gunzip -c db/TEDLIUM_release-3/LM/*.en.gz | sed 's/ <\/s>//g' > $text_dir/train.txt
   # shuffle text from audio and lm
-  cat $text_from_audio | cut -d ' ' -f2- | cat $text |\
+  cat $text_from_audio | cut -d ' ' -f2- | cat $text_dir/train.txt |\
     shuf > data/rnnlm/full_lm_data.shuffled
   # create dev and train sets based on audio and LM data
   cat data/rnnlm/full_lm_data.shuffled | head -n $dev_sents> $text_dir/dev.txt

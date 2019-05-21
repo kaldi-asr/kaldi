@@ -1,0 +1,18 @@
+
+Subset - Dev: 852, Train: 23564, Test: 923
+
+BPE:  (subset) (run_end2end.sh)
+  • %WER 19.34 [ 932 / 4819, 71 ins, 75 del, 786 sub ] exp/chain/e2e_cnn_1a/decode_test/wer_7_0.0
+  • %WER 13.70 [ 660 / 4819, 52 ins, 65 del, 543 sub ] exp/chain/cnn_e2eali_1b/decode_test/wer_8_1.0
+
+word-based: (subset) (run_end2end.sh.word)
+  • %WER 27.39 [ 1320 / 4819, 209 ins, 50 del, 1061 sub ] exp/chain/e2e_cnn_1a/decode_test/wer_10_1.0
+  • %WER 24.26 [ 1169 / 4819, 123 ins, 80 del, 966 sub ] exp/chain/cnn_e2eali_1b/decode_test/wer_13_1.0
+
+BPE:  (subset) (run.sh)
+  • %WER 15.98 [ 770 / 4819, 64 ins, 48 del, 658 sub ] exp/chain/cnn_1a/decode_test/wer_8_0.5
+  
+  
+word-based: (subset) (run.sh.word)
+  • %WER 24.20 [ 1166 / 4819, 121 ins, 69 del, 976 sub ] exp/chain/cnn_1a/decode_test/wer_11_1.0
+    %WER 24.28 [ 1170 / 4819, 126 ins, 104 del, 940 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_10_1.0
