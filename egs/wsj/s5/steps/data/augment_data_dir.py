@@ -51,7 +51,7 @@ def get_args():
     parser.add_argument('--random-seed', type=int, dest = "random_seed",
                         default = 123, help='Random seed.')
     parser.add_argument("--modify-spk-id", type=str,
-                        dest='modify_spk_id', default=True,
+                        dest='modify_spk_id', default=False,
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
                         help='Utt prefix or suffix would be added to the spk id '
