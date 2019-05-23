@@ -237,6 +237,7 @@ class CuMatrixBase {
   void CopyFromMat(const MatrixBase<OtherReal> &src,
                    MatrixTransposeType trans = kNoTrans);
 
+
   void CopyFromGeneralMat(const GeneralMatrix &src,
                           MatrixTransposeType trans = kNoTrans);
 
@@ -248,6 +249,13 @@ class CuMatrixBase {
   template<typename OtherReal>
   void CopyFromTp(const CuTpMatrix<OtherReal> &M,
                   MatrixTransposeType trans = kNoTrans);
+  
+  // This function will copy from source rows (start_range, end_range]
+  // if the range is outside of the clamped region then the clamped
+  // row will be replicated across the out of range areas
+  void CopyRangeFromMatClamped(const CuMatrixBase<Real> & src,
+      int32_t start_range, int32_t end_range,
+      int32_t clamp_low, int32_t clamp_high);
 
   template<typename OtherReal>
   void CopyFromMat(const CuMatrixBase<OtherReal> &M,

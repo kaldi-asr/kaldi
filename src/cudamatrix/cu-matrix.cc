@@ -414,6 +414,33 @@ template
 CuMatrix<double>::CuMatrix(const MatrixBase<double> &other, MatrixTransposeType trans);
 
 
+template <typename Real>
+void CuMatrixBase<Real>:: CopyRangeFromMatClamped(const CuMatrixBase<Real> & src,
+      int32_t start_range, int32_t end_range,
+      int32_t clamp_low, int32_t clamp_high) {
+
+  KALDI_ASSERT(NumCols() == this->NumCols());
+  KALDI_ASSERT(NumRows() == end_range-start_range);
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    cuda_mat_copy_range_clamped(start_range, end_range, NumCols(),
+      src.Data(), src.Stride(), clamp_low, clamp_high,
+      Data(), Stride());
+  } else 
+#endif
+  {
+    for (int32 t = start_range; t < end_range; t++) {
+      int32 t_clamped = t;
+      if (t_clamped < clamp_low) t_clamped = clamp_low;
+      if (t_clamped >= clamp_high) t_clamped = clamp_high;
+      CuSubVector<Real> dest_row=this->Row(t - start_range);
+      const CuSubVector<Real> src_row=src.Row(t_clamped);
+      dest_row.CopyFromVec(src_row);
+    }
+  }
+}
+
 template<typename Real>
 template<typename OtherReal>
 void CuMatrixBase<Real>::CopyToMat(MatrixBase<OtherReal> *dst,
