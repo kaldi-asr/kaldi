@@ -300,13 +300,18 @@ void CollapseModel(const CollapseModelConfig &config,
        DropoutMaskComponent or GeneralDropoutComponent whose
        names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
 
-    apply-svd name=<name-pattern> bottleneck-dim=<dim>
+    apply-svd name=<name-pattern> bottleneck-dim=<dim> energy-threshold=<threshold> shrinkage-threshold=<s>
        Locates all components with names matching <name-pattern>, which are
        type AffineComponent or child classes thereof.  If <dim> is
        less than the minimum of the (input or output) dimension of the component,
-       it does SVD on the components' parameters, retaining only the alrgest
+       it does SVD on the components' parameters, retaining only the largest
        <dim> singular values, replacing these components with sequences of two
        components, of types LinearComponent and NaturalGradientAffineComponent.
+       Instead we can set the filtering criterion for the Singular values as energy-threshold,
+       and retain those values which contribute to energy-threshold times the total energy of
+       the original singular values. A particular SVD factored component is left unshrinked,
+       if the shrinkage ratio of the total no. of its parameters,
+       after the SVD based refactoring, is greater than shrinkage threshold.
        See also 'reduce-rank'.
 
     reduce-rank name=<name-pattern> rank=<dim>
