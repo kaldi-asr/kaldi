@@ -1561,6 +1561,24 @@ inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
   cuda_uncompress_uint16(Gr, Bl, dest, dim, src, src_stride, scale);
 }
 
+inline void cuda_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const double *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   double *dst, int32_t ldd) {
+  cudaD_mat_copy_range_clamped(row_start, row_end, num_cols,
+      src, lds, clamp_low, clamp_high, dst, ldd);
+}
+
+inline void cuda_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const float *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   float *dst, int32_t ldd) {
+  cudaF_mat_copy_range_clamped(row_start, row_end, num_cols,
+      src, lds, clamp_low, clamp_high, dst, ldd);
+}
+    
 
 } // namespace kaldi
 

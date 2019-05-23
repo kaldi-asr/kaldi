@@ -393,23 +393,17 @@ void NnetBatchComputer::FormatInputs(
       ivector_dim = tasks[0]->ivector.Dim(),
       num_tasks = tasks.size();
   KALDI_ASSERT(num_tasks > 0 && num_tasks <= minibatch_size);
-
-  // We first aggregate the input frames and i-vectors in matrices on the CPU,
-  // and then transfer them to the GPU.  Later on we'll change this code to
-  // used pinned memory.
-  Matrix<BaseFloat> input_cpu(num_tasks * num_input_frames, input_dim,
-                              kUndefined);
-
+  
+  input->Resize(minibatch_size * num_input_frames, input_dim,
+                kUndefined);
 
   for (int32 n = 0; n < num_tasks; n++) {
-    SubMatrix<BaseFloat> input_part(input_cpu,
+    CuSubMatrix<BaseFloat> input_part(*input,
                                     n * num_input_frames, num_input_frames,
                                     0, input_dim);
     input_part.CopyFromMat(tasks[n]->input);
   }
-  input->Resize(minibatch_size * num_input_frames, input_dim,
-                kUndefined);
-  input->RowRange(0, num_tasks * num_input_frames).CopyFromMat(input_cpu);
+  
   if (num_tasks < minibatch_size) {
     // The following will make things easier to debug if something fails, but
     // shouldn't be strictly necessary.
@@ -419,12 +413,11 @@ void NnetBatchComputer::FormatInputs(
   }
 
   if (ivector_dim != 0) {
-    Matrix<BaseFloat> ivectors_cpu(num_tasks, ivector_dim, kUndefined);
-    for (int32 n = 0; n < num_tasks; n++)
-      ivectors_cpu.Row(n).CopyFromVec(tasks[n]->ivector);
-
+    
     ivector->Resize(minibatch_size, ivector_dim, kUndefined);
-    ivector->RowRange(0, num_tasks).CopyFromMat(ivectors_cpu);
+    for (int32 n = 0; n < num_tasks; n++) {
+      ivector->Row(n).CopyFromVec(tasks[n]->ivector);
+    }
 
     if (num_tasks < minibatch_size) {
       // The following will make things easier to debug if something fails, but
@@ -550,7 +543,6 @@ bool NnetBatchComputer::Compute(bool allow_partial_minibatch) {
   minfo->tot_num_tasks += static_cast<int64>(tasks.size());
   minfo->seconds_taken += tim.Elapsed();
 
-
   SynchronizeGpu();
 
   for (size_t i = 0; i < tasks.size(); i++)
@@ -653,7 +645,7 @@ void GetOutputFrameInfoForTasks(
 
 void AddOnlineIvectorsToTasks(
     const NnetBatchComputerOptions &opts,
-    const Matrix<BaseFloat> &online_ivectors,
+    const CuMatrix<BaseFloat> &online_ivectors,
     int32 online_ivector_period,
     std::vector<NnetInferenceTask> *tasks) {
   int32 f = opts.frame_subsampling_factor,
@@ -704,7 +696,7 @@ void AddOnlineIvectorsToTasks(
 static void SplitInputToTasks(const NnetBatchComputerOptions &opts,
                               int32 nnet_left_context,
                               int32 nnet_right_context,
-                              const Matrix<BaseFloat> &input,
+                              const CuMatrix<BaseFloat> &input,
                               std::vector<NnetInferenceTask> *tasks) {
   int32 num_input_frames = input.NumRows(),
       f = opts.frame_subsampling_factor,
@@ -755,27 +747,50 @@ static void SplitInputToTasks(const NnetBatchComputerOptions &opts,
 
     task.input.Resize(end_input_t_padded - begin_input_t_padded,
                       input.NumCols(), kUndefined);
-    // the 't' value below is in the numbering of 'input'.
-    for (int32 t = begin_input_t_padded; t < end_input_t_padded; t++) {
-      int32 t_clipped = t;
-      if (t_clipped < 0) t_clipped = 0;
-      if (t_clipped >= num_input_frames) t_clipped = num_input_frames - 1;
-      SubVector<BaseFloat> dest(task.input,
-                                t - begin_input_t_padded),
-          src(input, t_clipped);
-      dest.CopyFromVec(src);
-    }
+
+    // Copy from intput into task input with clamping
+    task.input.CopyRangeFromMatClamped(input, begin_input_t_padded, 
+        end_input_t_padded, 0, num_input_frames-1);
   }
 }
 
 } // namespace utterance_splitting
 
-
 void NnetBatchComputer::SplitUtteranceIntoTasks(
     bool output_to_cpu,
     const Matrix<BaseFloat> &input,
-    const Vector<BaseFloat> *ivector,
-    const Matrix<BaseFloat> *online_ivectors,
+    const Vector<BaseFloat> *h_ivector,
+    const Matrix<BaseFloat> *h_online_ivectors,
+    int32 online_ivector_period,
+    std::vector<NnetInferenceTask> *tasks) {
+
+  // Inputs are expected to be in device memory. 
+  // create temporary device arrays and copy
+  // inputs into them
+  CuMatrix<BaseFloat> cu_input(input);
+  CuVector<BaseFloat> cu_ivector, *ivector = NULL;
+  CuMatrix<BaseFloat> cu_online_ivectors, *online_ivectors = NULL;
+
+  if (h_ivector!=NULL) {
+    cu_ivector.Resize(h_ivector->Dim(), kUndefined);
+    cu_ivector.CopyFromVec(*h_ivector);
+    ivector = &cu_ivector;
+  }
+  if (h_online_ivectors!=NULL) {
+    cu_online_ivectors.Resize(h_online_ivectors->NumRows(), h_online_ivectors->NumCols(), kUndefined);
+    cu_online_ivectors.CopyFromMat(*h_online_ivectors);
+    online_ivectors = &cu_online_ivectors;
+  }
+
+  SplitUtteranceIntoTasks(output_to_cpu, cu_input, ivector,
+      online_ivectors, online_ivector_period, tasks);
+}
+
+void NnetBatchComputer::SplitUtteranceIntoTasks(
+    bool output_to_cpu,
+    const CuMatrix<BaseFloat> &input,
+    const CuVector<BaseFloat> *ivector,
+    const CuMatrix<BaseFloat> *online_ivectors,
     int32 online_ivector_period,
     std::vector<NnetInferenceTask> *tasks) {
   using namespace utterance_splitting;
@@ -880,7 +895,7 @@ void MergeTaskOutput(
   }
   KALDI_ASSERT(num_output_frames != 0 && output_dim != 0);
   int32 cur_output_frame = 0;
-  output->Resize(num_output_frames, output_dim);
+  output->Resize(num_output_frames, output_dim, kUndefined);
   for (int32 i = 0; i < num_tasks; i++) {
     const NnetInferenceTask &task = tasks[i];
     int32 skip = task.num_initial_unused_output_frames,

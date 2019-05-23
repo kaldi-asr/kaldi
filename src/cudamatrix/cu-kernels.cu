@@ -3648,6 +3648,33 @@ static void _cuda_uncompress(BaseFloat *dest, MatrixDim dim,
   }
 }
 
+template <typename Real>
+__global__
+void _cuda_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const Real * __restrict__ src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   Real * __restrict__ dst, int32_t ldd) {
+  int32_t rid = blockIdx.y*blockDim.y+threadIdx.y;
+  int32_t cid = blockIdx.x*blockDim.x+threadIdx.x;
+
+  int32_t num_rows = row_end - row_start;
+  // for each row in parallel
+  for (int32_t r = rid; r < num_rows; r += blockDim.y * gridDim.y) {
+    // for each column in parallel
+    for (int32_t c = cid; c < num_cols; c += blockDim.x * gridDim.x) {
+      // compute offset row
+      int32_t r_in = r + row_start;
+      // clamp if necessary
+      if (r_in < clamp_low) r_in = clamp_low;
+      if (r_in > clamp_high) r_in = clamp_high;
+
+      // copy data
+      dst[r * ldd + c] = src[r_in * lds + c];
+    }
+  }
+}
+
 __global__
 static void _noop_kernel() {
 }
@@ -5429,4 +5456,32 @@ void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
 // this will synchronize all threads without blocking.
 void cuda_legacy_noop() {
   _noop_kernel<<<1, 1, 0, cudaStreamLegacy>>>();
+}
+
+void cudaF_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const float *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   float *dst, int32_t ldd) {
+
+  int32_t num_rows =  row_end - row_start;
+  dim3 threads(32,32);
+  dim3 blocks((num_cols+31)/32,(num_rows+31)/32);
+
+  _cuda_mat_copy_range_clamped<float><<<blocks,threads>>>(row_start, row_end, num_cols,
+      src, lds, clamp_low, clamp_high, dst, ldd);
+}
+
+void cudaD_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const double *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   double *dst, int32_t ldd) {
+
+  int32_t num_rows =  row_end - row_start;
+  dim3 threads(32,32);
+  dim3 blocks((num_cols+31)/32,(num_rows+31)/32);
+
+  _cuda_mat_copy_range_clamped<double><<<blocks,threads>>>(row_start, row_end, num_cols,
+      src, lds, clamp_low, clamp_high, dst, ldd);
 }
