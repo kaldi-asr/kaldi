@@ -136,21 +136,6 @@ namespace tensor {
                      in the relevant storage region; we will assume that it is obvious
                      from the context which storage region.   See also: "Storage region"
 
-    Dims-vector of a Pattern: The vector of dimension of a Pattern: e.g. [] for
-                    a Pattern with num_axes = 1 or [2 3] for a Pattern with
-                    num-axes = 2.  Note: whenever we display dims vectors in
-                    square brackets as opposed to curly, it implies we are
-                    displaying them in the public numbering.
-
-    Dims-vector of a Pattern-tuple:  The dims vector of a Pattern-tuple is
-                    formed by taking the dims-vectors of each Pattern in the
-                    tuple, extending them on the left with 1's as necessary
-                    to make the the same size, then taking the largest
-                    dim on each axis (i.e. the one that is not equal to 1,
-                    if they are different).  For example, for a Pattern-tuple
-                    of Patterns whose dims-vectors were ([4 1 5], [6 1], [5]),
-                    the dims-vector of the tuple would be [4 6 5].
-
     Disjoint Patterns:  When we speak of disjoint Patterns we mean that
                     their memory-index-sets are disjoint; see memory-index-set.
 
@@ -211,10 +196,8 @@ namespace tensor {
 
     Index-tuple-set of a Pattern-tuple:  The index-tuple-set I(P, Q) of a Pattern-tuple
                       (P, Q) is the index-tuple-set that you would obtain for a
-                      Pattern whose dims equal the dims-vector of that
-                      Pattern-tuple.  See "dims-vector of a Pattern-tuple" for
-                      explanation of what that is.  View I(P, Q) as simply
-                      shorthand for I((P, Q)).
+                      Pattern whose dims equal the shape of that Pattern-tuple
+                      (See "Shape of a Pattern-tuple").
 
     Justified:        We say that a Pattern is justified if least (i.e. most
                       negative) memory-index in its memory-index-set is zero.  For
@@ -263,21 +246,28 @@ namespace tensor {
     Num-axes:        The number of axes that a Tensor has.  This is a number in the
                      range [0, KALDI_TENSOR_MAX_DIM], i.e. 0 through 6.
 
-    Offset:           The memory-index of the element with index-tuple = (all zeros)
-                      of a Tensor.  Offsets will always be >= 0 because they are to
-                      be used as an index into a memory-region, and negative
-                      index would be outside that region.
+    Offset:          The memory-index of the element with index-tuple = (all zeros)
+                     of a Tensor.  Offsets will always be >= 0 because they are to
+                     be used as an index into a memory-region, and negative
+                     index would be outside that region.
 
-    Pattern:          An object representing the dims, strides and offset of a Tensor.
-                      (see struct Pattern).  The Pattern has
-                      an 'offset' which is the memory-index of the element of the Tensor
-                      whose index-tuple is all zeros; the Pattern also
-                      has a number of axes, `0 <= num_axes < KALDI_TENSOR_MAX_AXES`,
-                      and for each axis from 0 <= axis < num_axes, it has a dimension
-                      dim(axis) and stride(axis).
+    Padding:         This refers to the fact that when testing whether Patterns
+                     are broadcastable, if their num-axes are different we
+                     pad the shorter one by adding "1" on the left (in the public
+                     numbering).  So if we are doing an operation on Tensors
+                     with shapes [7 3 2]  and [3 2], we treat the second one
+                     as having shape [1 3 2].
 
-                      Search below for 'Valid Pattern' for properties a Pattern must
-                      (in most circumstances) satisfy.
+    Pattern:         An object representing the dims, strides and offset of a Tensor.
+                     (see struct Pattern).  The Pattern has
+                     an 'offset' which is the memory-index of the element of the Tensor
+                     whose index-tuple is all zeros; the Pattern also
+                     has a number of axes, `0 <= num_axes < KALDI_TENSOR_MAX_AXES`,
+                     and for each axis from 0 <= axis < num_axes, it has a dimension
+                     dim(axis) and stride(axis).
+
+                     Search below for 'Valid Pattern' for properties a Pattern must
+                     (in most circumstances) satisfy.
 
 
     Pattern-tuple:    A pattern-tuple of a tuple of Patterns, say:  (P, Q),
@@ -303,10 +293,11 @@ namespace tensor {
     PyTorch-style broadcasting:  We use this name to refer to the fact that in
                       PyTorch, if an operation is done on two Tensors with
                       dims=[5 6] and dims=[6], the second one would be interpreted
-                      as having dims=[1 6].  That is: we pad with 1's on the left.
-                      Note: whenever we refer to broadcasting we include this feature;
-                      this glossary entry exists just to explain it, not to claim
-                      that we have two different versions of broadcasting.
+                      as having dims=[1 6].  That is: we pad with 1's on the left
+                      (See "Padding").  Note: whenever we refer to broadcasting
+                      we include this feature; this glossary entry exists just
+                      to explain it, not to imply that we have two different
+                      versions of broadcasting.
 
     Raxis-index:      We use the term "raxis-index", often just "raxis" for short,
                       to mean the index of an axis in the reversed, private numbering.
@@ -318,6 +309,28 @@ namespace tensor {
 
     Set-equivalent:   Two Patterns are set-equivalent if their memory-index-sets
                       are identical.
+
+
+    Shape of a Pattern: The vector of the dimensions of a Pattern: e.g. [] for
+                    a Pattern with num_axes = 1 or [2 3] for a Pattern with
+                    num-axes = 2.  Note: whenever we display dims vectors in
+                    square brackets or use "shape" without qualification, it
+                    implies we are displaying them in the public numbering.
+                    The "private shape" of a Pattern are be the same in the
+                    private numbering, which is in the reverse order to
+                    the public numbering and which we'd display in curly
+                    braces, like {3, 2}.
+
+    Shape of a Pattern-tuple:  The shape of a Pattern-tuple is
+                    formed by taking the shapes of each Pattern in the tuple,
+                    extending them on the left with 1's as necessary to make
+                    them the same size, then taking the largest dim on each axis
+                    (i.e. the one that is not equal to 1, if they are
+                    different).  For example, for a Pattern-tuple of Patterns
+                    whose shapes were ([4 1 5], [6 1], [5]), the shape of the
+                    tuple would be [4 6 5].  (Note: the Patterns in a
+                    Pattern-tuple must be broadcastable, so if the dims are
+                    different, one of them must be 1.)
 
     Trivial axis:     An axis of a Pattern for which dim=1.  Such axes will have
                       stride=0 if the Pattern is valid.

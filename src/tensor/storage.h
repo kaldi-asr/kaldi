@@ -132,6 +132,8 @@ class Storage {
   // Destructor that frees any data held.
   ~Storage();
 
+  inline int64 Id() { return id_; }
+
  private:
 
   // Allocate the data.  It is an error to call this if data_ != NULL.
@@ -153,6 +155,10 @@ class Storage {
   // allocation makes it much easier to set up the autograd graph without
   // allocating the memory for the gradients.
   void *data_;
+
+  // The tick (see GetTick()) at which this Storage region was created; serves
+  // as a unique identifier.
+  int64 id_;
 
   bool zero_upon_allocation_;
 

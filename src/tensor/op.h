@@ -29,23 +29,93 @@ class Variable;
 
 
 /**
-   class Op is a base-class for objects that are created when we compute
-   functions of Variables; they exist as long as we retain the computation
-   graph.  In fact, the Ops (together with the Variables) *are* the
-   computation graph.  An op may in general have multiple input Variables
-   and multiple output Variables.
+   class Op is a base-class for objects that are created when we do operations
+   on Variables.  The important thing to know here is that the Variables in
+   question will always have been allocated with particular dimensions,
+   and possibly even contain defined values, before we get to the Op.
+   Examples of Ops include,
+      a := b * c
+      a += b
+      a *= b
+   where the interpretation of the commands above will depend on the
+   dimensions of the Tensors involved.
 
-   Every base Variable (see variable.h for definition) that is tracked
-   has a singly linked list of Ops that changed that base Variable,
-   ordered from most recent to least recent.
-
-   When a user calls Backprop() on a Variable, the backprop code works out a
-   topological order of Ops and calls the Ops in (essentially) the reverse order
-   in which they were created.  The backprop code also frees gradients of
-   Variables when it knows they will no longer be needed.
+   Notice that all the member functions of class Op are `const`, i.e. they
+   shouldn't change this class (although of course they may change the
+   underlying Tensor data).  This is to remind users that Ops are supposed
+   to be reusable, and calls to this object shouldn't affect the behavior
+   of subsequent calls, except to the extent that the underlying Tensor
+   data has been changed.
  */
 class Op {
  public:
+
+  /**
+     Do whatever it is that this Op does (e.g. execute the command `a += b`,
+     if that was what this Op did)
+   */
+  virtual void Do() const;
+
+  /**
+     Return a copy of this object.  (This won't be needed very often but might
+     possibly be needed in the context of computing higher-order derivatives).
+  */
+  virtual Op *Copy() const;
+
+  /**
+     This is for forward-mode automatic differentiation (a rarely-used thing).
+     It appends to 'ops' the commands corresponding to the forward-mode
+     automatic differentiation w.r.t. this Op.
+
+       @param [in,out] 'map' is the map that maps from tensors to the
+             corresponding derivative values.  May be modified by adding
+             new key/value pairs.
+       @param [out] ops  This funtion will *append* to `ops` the
+             commands for computing the derivatives associated with
+             this Op in forward-mode automatic differentiation.  If none
+             of the inputs to the Op were tracked w.r.t. `map`,
+             nothing will be done.
+
+     Example: if the command was "a += b", the derivative operation would
+     be: deriv(a) += deriv(b).  In most cases these Ops would be executed
+     immediately and then deleted.
+   */
+  virtual void GetForwardDerivOps(DerivMap *map,
+                                  std::vector<std::unique_ptr<Op> > *ops) const;
+
+
+
+  /**
+     This is for reverse-mode automatic differentiation (the normal type of
+     autograd).
+
+       @param [in,out] map   This object maps from tensors to the
+                       corresponding derivative values.  It may be changed by
+                       adding new elements to the map, if its Deriv() function
+                       is called.
+       @param [out]    ops  This function may *append* to 'ops' the commands
+                       used in the reverse-mode automatic differentiation.
+                       (Note: nothing will be appended if none of the inputs
+                       to the Op were already tracked w.r.t. 'map'.)
+
+     Example: if the command was "a += b * c", the operations added to
+     'ops' would correspond to `deriv(b) += deriv(a) * c` and
+     `deriv(c) += deriv(a) * b`.
+  */
+  virtual void GetBackwardDerivOps(DerivMap *map,
+                                   std::vector<std::unique_ptr<Op> > *ops) const;
+
+
+  /** Destructor.  It's important for efficiency of memory use to destroy Ops as
+      soon as you won't need them any more, because it may trigger the freeing
+      of Tensors and hence Storage regions.
+  */
+  virtual ~Op();
+};
+
+
+
+class Op {
 
   Op(): tick_(GetTick()) { }
 

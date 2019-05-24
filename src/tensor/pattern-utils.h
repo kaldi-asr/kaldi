@@ -424,19 +424,20 @@ bool Broadcastable(const Pattern &a, const Pattern &b,
 
 
 /**
-   Returns true if the dims-vectors of a and b are the same after padding as for
-   broadcasting.  See definition of "Dims-vector of a Pattern" in
-   pattern.h, and the entry for "PyTorch-style broadcasting".  What this
-   means in terms of the physical storage of the patterns is that a->dims and
-   b->dims contain the same elements, without requiring the num_axes to be the
-   same.
+   Returns true if the shapes of a and b (see "Shape of a Pattern" in pattern.h)
+   are the same after adding 1's on the left (padding) as for broadcasting.  See
+   definition of "Dims-vector of a Pattern" in pattern.h, and the entry for
+   "Padding".  What this means in terms of the physical storage of the patterns
+   is that a->dims and b->dims contain the same elements, without requiring the
+   num_axes to be the same.
 
    This is a stronger condition than Broadcastable(a, b).
          @param [in] a  The first pattern.  Must be valid.
          @param [in] b  The second pattern.  Must be valid.
-         @return      Return true if the dims-vectors vectors of
-                      a and b are the same after padding as for broadcasting.
+         @return      Return true if the shapes of
+                      a and b are the same after padding.
    See also the 3-arg version of SamePaddedDims(), and SameDims().
+   This is a stronger condition than Broadcastable(a, b).
 */
 bool SamePaddedDims(const Pattern &a, const Pattern &b);
 
