@@ -1309,7 +1309,11 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
     auto final_weight = lat_.Final(final_arc.nextstate);
     KALDI_ASSERT(final_weight != CompactLatticeWeight::Zero());
     auto num_frames = Times(final_arc.weight, final_weight).String().size();
-    if (num_frames <= config_.redeterminize_max_frames)
+    // If the state is too far from the end of the current appended lattice,
+    // we leave the non-final arcs unchanged and only redeterminize the final
+    // arcs by the following procedure.
+    // We also do above things once we prepare to redeterminize the start state.
+    if (num_frames <= config_.redeterminize_max_frames && prefinal_state != 0)
       processed_prefinal_states_[prefinal_state] = prefinal_state;
     else {
       KALDI_VLOG(7) << "Impose a limit of " << config_.redeterminize_max_frames
