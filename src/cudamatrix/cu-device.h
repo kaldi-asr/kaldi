@@ -321,6 +321,7 @@ class CuTimer: public Timer {
 inline cublasHandle_t GetCublasHandle() { 
   return CuDevice::Instantiate().GetCublasHandle(); 
 }
+
 // A more convenient way to get the handle to use cuSPARSE APIs.
 inline cusparseHandle_t GetCusparseHandle() { 
   return CuDevice::Instantiate().GetCusparseHandle(); 

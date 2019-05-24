@@ -72,13 +72,13 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
     $jobname = $1;
     $jobstart = $2;
     $jobend = $3;
-    shift;
     if ($jobstart > $jobend) {
       die "run.pl: invalid job range $ARGV[0]";
     }
     if ($jobstart <= 0) {
       die "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is required for GridEngine compatibility).";
     }
+    shift;
   } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $jobname = $1;
     $jobstart = $2;
@@ -181,7 +181,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
         delete $active_pids{$r};
         # print STDERR "Finished: $r/$jid " .  Dumper(\%active_pids) . "\n";
     } else {
-        die "run.pl: Cannot find the PID of the chold process that just finished.";
+        die "run.pl: Cannot find the PID of the child process that just finished.";
     }
 
     # In theory we could do a non-blocking waitpid over all jobs running just
@@ -243,7 +243,7 @@ foreach $child (keys %active_pids) {
 # Some sanity checks:
 # The $fail array should not contain undefined codes
 # The number of non-zeros in that array  should be equal to $numfail
-# We cannot do foreach() here, as the JOB ids do not necessarily start by zero
+# We cannot do foreach() here, as the JOB ids do not start at zero
 $failed_jids=0;
 for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
   $job_return = $fail[$jobid];
