@@ -8,11 +8,15 @@ set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 echo "$0 " "$@"
 
+language=swahili
+
+. ./utils/parse_options.sh
+
 if [ $# -ne 1 ] ; then
   echo "Invalid number of script parameters. "
-  echo "  $0 <path-to-material-corpus>"
+  echo "  $0 [options] <path-to-material-corpus>"
   echo "e.g."
-  echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
+  echo "  $0 --language swahili /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
   exit
 fi
 data=$1
@@ -23,11 +27,15 @@ mkdir -p data/local
 cat $lexicon | awk '{print $1}' > data/local/lexicon_words
 cat $lexicon | cut -f2-  > data/local/lexicon_phns
 
-language=swahili
-language_affix=sw
-if [ "$language" == "tagalog" ]; then language_affix="tl"; fi
+if [ "$language" == "swahili" ]; then
+  language_affix="sw"
+elif [ "$language" == "tagalog" ]; then
+  language_affix="tl"
+elif [ "$language" == "somali" ]; then
+  language_affix="so"
+fi
 MOSES=/home/pkoehn/moses
-SOURCE_TC_MODEL=/home/pkoehn/experiment/material-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
+SOURCE_TC_MODEL=/home/pkoehn/experiment/material-asr-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
   $MOSES/scripts/recaser/truecase.perl -model $SOURCE_TC_MODEL \
     < data/local/lexicon_words > data/local/lexicon_words_tc
 

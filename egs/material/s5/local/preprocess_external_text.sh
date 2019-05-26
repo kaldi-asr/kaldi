@@ -17,10 +17,14 @@ output=$1
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
-language_affix=sw
-if [ "$language" == "tagalog" ]; then language_affix="tl"; fi
+if [ "$language" == "swahili" ]; then
+  language_affix="sw"
+elif [ "$language" == "tagalog" ]; then
+  language_affix="tl"
+elif [ "$language" == "somali" ]; then
+  language_affix="so"
+fi
 MOSES=/home/pkoehn/moses
-SOURCE_TC_MODEL=/home/pkoehn/experiment/material-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
 
 # Normalize punctuation and tokenize input
 $MOSES/scripts/tokenizer/normalize-punctuation.perl ${language_affix} < ${srctext_bitext} \

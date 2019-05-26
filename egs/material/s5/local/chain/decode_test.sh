@@ -168,7 +168,6 @@ if [ $stage -le 5 ]; then
         $tree_dir/graph${graph_affix} ${datadir}_segmented_reseg_hires ${decode_dir} || exit 1
 
       # resolve ctm overlaping regions, and compute wer
-      cp ${datadir}/reftext ${datadir}_segmented_reseg_hires
       local/postprocess_test.sh ${data}_segmented_reseg $tree_dir/graph${graph_affix} \
         ${decode_dir}
     ) || touch $dir/.error &

@@ -8,11 +8,15 @@ set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 echo "$0 " "$@"
 
+language=swahili
+
+. ./utils/parse_options.sh
+
 if [ $# -ne 1 ] ; then
   echo "Invalid number of script parameters. "
-  echo "  $0 <path-to-material-corpus>"
+  echo "  $0 [options] <path-to-material-corpus>"
   echo "e.g."
-  echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
+  echo "  $0 --language swahili /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
   exit
 fi
 data=$1;
@@ -38,11 +42,15 @@ cat data/dev/transcripts.txt | \
   local/cleanup_transcripts.pl | \
   local/create_datafiles.pl data/dev/
 
-language=swahili
-language_affix=sw
-if [ "$language" == "tagalog" ]; then language_affix="tl"; fi
+if [ "$language" == "swahili" ]; then
+  language_affix="sw"
+elif [ "$language" == "tagalog" ]; then
+  language_affix="tl"
+elif [ "$language" == "somali" ]; then
+  language_affix="so"
+fi
 MOSES=/home/pkoehn/moses
-SOURCE_TC_MODEL=/home/pkoehn/experiment/material-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
+SOURCE_TC_MODEL=/home/pkoehn/experiment/material-asr-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
 
 for i in train dev; do
   cat data/$i/text | cut -d " " -f2- > data/$i/text.notruecase
