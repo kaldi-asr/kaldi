@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Converts swahili numbers to their text representations
+# Converts numbers to their text representations
 # Reads from stdin
 
 import os
@@ -16,7 +16,7 @@ with open(sys.argv[1]) as s_f:
 
 # Read input line by line and translate integers
 # Will only work for positive integers
-# TODO: Will not handle numbers which have a comma in them
+# Will not handle numbers which have a comma in them
 for line in sys.stdin:
   words = line.strip().split()
   for i in range(len(words)):

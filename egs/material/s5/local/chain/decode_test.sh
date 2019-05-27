@@ -30,14 +30,14 @@ weights_file=
 silence_weight=0.00001
 nj=30
 
-# End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
-[ ! -f ./conf/lang/${language}.conf ] && echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
+[ ! -f ./conf/lang/${language}.conf ] && \
+  echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
 ln -sf ./conf/lang/${language}.conf lang.conf                                   
 . ./lang.conf
 
@@ -48,13 +48,6 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
-
-#if [ $stage -le 0 ]; then
-#  # audio segmentation: uniformly
-#  for datadir in $datadev; do
-#    local/preprocess_test.sh $datadir
-#  done
-#fi
 
 if [ $stage -le 1 ]; then
   # extract hires mfcc features from uniformly segmented data
@@ -109,7 +102,6 @@ if [ $stage -le 3 ]; then
   done
 fi
 wait
-# [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 
 if [ $stage -le 4 ]; then
   # re-segement data based on 1st-pass decoding
@@ -168,7 +160,6 @@ if [ $stage -le 5 ]; then
         $tree_dir/graph${graph_affix} ${datadir}_segmented_reseg_hires ${decode_dir} || exit 1
 
       # resolve ctm overlaping regions, and compute wer
-      cp ${datadir}/reftext ${datadir}_segmented_reseg_hires
       local/postprocess_test.sh ${data}_segmented_reseg $tree_dir/graph${graph_affix} \
         ${decode_dir}
     ) || touch $dir/.error &

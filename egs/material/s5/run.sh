@@ -3,10 +3,9 @@
 # Copyright 2017-2018  Johns Hopkins University (Jan "Yenda" Trmal<jtrmal@gmail.com>)
 #           2017-2018  Johns Hopkins University (author: Daniel Povey)
 #                2018  Yiming Wang
+#                2019  Mahsa Yarmohammadi
 # License: Apache 2.0
 
-# Begin configuration section.
-# End configuration section
 . ./path.sh
 . ./cmd.sh
 
@@ -18,7 +17,8 @@ language=swahili
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
-[ ! -f ./conf/lang/${language}.conf ] && echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
+[ ! -f ./conf/lang/${language}.conf ] && \
+  echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
 ln -sf ./conf/lang/${language}.conf lang.conf
 . ./lang.conf
 
@@ -164,8 +164,7 @@ srctext_bitext=data/bitext/text
 srctext_mono=data/mono/text
 
 if [ $stage -le 12 ]; then
-  # Read the Swahili/Tagalog part of the bitext as $srctext_bitext and
-  # preprocess the text
+  # Read the foreign part of the bitext as $srctext_bitext and preprocess the text
   if [ "$number_mapping" != "" ]; then
     echo Number mapping file Found. Converting numbers...
     cat $bitext | awk -F"\t" '{print $2;}' | local/normalize_numbers.py $number_mapping > $srctext_bitext
