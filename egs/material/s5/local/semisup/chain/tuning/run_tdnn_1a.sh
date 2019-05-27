@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Copyright 2017  Vimal Manohar
+# Copyright 2017-2019  Johns Hopkins University (author: Daniel Povey)
+#                2017  Vimal Manohar
+#           2018-2019  Yiming Wang
 # Apache 2.0
 
 set -e
@@ -19,7 +21,7 @@ nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 exp_root=exp/semisup
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1a   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1a   #affix for TDNN directory e.g. "1a" or "1b", in case we change the configuration.
 tree_affix=
 common_egs_dir=
 reporting_email=
@@ -45,7 +47,7 @@ remove_egs=true
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
-if [ -f ./path.sh ]; then . ./path.sh; fi
+. ./path.sh
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
@@ -85,18 +87,18 @@ if [ $stage -le 7 ]; then
     if [ $lang_combined/L.fst -nt data/lang_combined_test/L.fst ]; then
       echo "$0: $lang_combined already exists, not overwriting it; continuing"
     else
-      echo "$0: $lang_combined already exists and seems to be older than data/lang_combined_test..."
+      echo "$0: $lang_combined already exists and seems to be older than data/lang_combined_test ..."
       echo " ... not sure what to do.  Exiting."
       exit 1;
     fi
   else
     rm -rf ${lang_combined} 2>/dev/null || true
     cp -r data/lang_combined_test $lang_combined
-    silphonelist=$(cat ${lang_combined}/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat ${lang_combined}/phones/nonsilence.csl) || exit 1;
+    silphonelist=$(cat $lang_combined/phones/silence.csl) || exit 1;
+    nonsilphonelist=$(cat $lang_combined/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
     # topology.
-    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >${lang_combined}/topo
+    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang_combined/topo
   fi
 fi
 
@@ -241,9 +243,8 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  # Note: it might appear that this $lang directory is mismatched, and it is as
-  # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
-  # the lang directory.
+  # Note: it's not important to give mkgraph.sh the lang directory with the
+  # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
     --self-loop-scale 1.0 data/lang_combined_test \
     $tree_dir ${tree_dir}/graph_combined || exit 1;
@@ -254,7 +255,7 @@ if [ $stage -le 13 ]; then
   rm $dir/.error 2>/dev/null || true
 
   for data in $test_sets; do
-      (
+    (
       nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
@@ -265,7 +266,7 @@ if [ $stage -le 13 ]; then
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
           $tree_dir/graph_combined data/${data}_hires ${dir}/decode_${data} || exit 1
-      ) &
+    ) &
   done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1

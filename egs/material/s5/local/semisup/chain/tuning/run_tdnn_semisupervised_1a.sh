@@ -1,30 +1,28 @@
 #!/bin/bash
 
 # Copyright 2017  Vimal Manohar
+#           2019  Yiming Wang
 # Apache 2.0
 
-# This script is semi-supervised recipe with 100 hours of supervised data
-# and 250 hours unsupervised data with naive splitting.
+# This script is semi-supervised recipe with ~40 hours of supervised data
+# and ~320 hours unsupervised data with naive splitting.
 # Based on "Semi-Supervised Training of Acoustic Models using Lattice-Free MMI",
 # Vimal Manohar, Hossein Hadian, Daniel Povey, Sanjeev Khudanpur, ICASSP 2018
 # http://www.danielpovey.com/files/2018_icassp_semisupervised_mmi.pdf
 # local/semisup/run_100k.sh shows how to call this.
 
 # This version of script uses only supervised data for i-vector extractor
-# training as against using the combined data as in run_tdnn_50k_semisupervised.sh.
-# We use 3-gram LM trained on 100 hours of supervised data. We do not have
-# enough data to do 4-gram LM rescoring as in run_tdnn_50k_semisupervised.sh.
+# training as against using the combined data.
 
-# This script uses phone LM to model UNK.
 # This script uses the same tree as that for the seed model.
 # See the comments in the script about how to change these.
 
-# Unsupervised set: train_unsup100k_250k (250 hour subset of Fisher excluding 100 hours for supervised)
+# Unsupervised set: eval1_2_3_segmented (320 hours)
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervised): 3,2
-# LM for decoding unsupervised data: 4gram
+# LM for decoding unsupervised data: ngram
 # Supervision: Naive split lattices
 
 # output-0 and output-1 are for superivsed and unsupervised data respectively.
@@ -67,7 +65,7 @@ remove_egs=true
 # Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be
 # present
 supervised_set=train
-unsupervised_set=eval1_2_segmented_reseg
+unsupervised_set=eval1_2_3_segmented
 
 # Input seed system
 sup_chain_dir=exp/semisup/chain/tdnn_1a_sp  # supervised chain system

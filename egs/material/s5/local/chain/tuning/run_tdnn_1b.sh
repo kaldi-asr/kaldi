@@ -43,7 +43,7 @@ gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1b   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1b   #affix for TDNN directory e.g. "1a" or "1b", in case we change the configuration.
 tree_affix=
 common_egs_dir=
 reporting_email=
@@ -141,9 +141,9 @@ if [ $stage -le 9 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
-     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-     exit 1;
+  if [ -f $tree_dir/final.mdl ]; then
+    echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+    exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor 3 \
@@ -278,7 +278,7 @@ if [ $stage -le 13 ]; then
 
   for data in $test_sets; do
     (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)  
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --extra-left-context 0 --extra-right-context 0 \

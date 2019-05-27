@@ -1,18 +1,11 @@
 #!/bin/bash
 
 # Copyright 2017  Vimal Manohar
+#           2019  Yiming Wang
 # Apache 2.0
 
-# This script demonstrates semi-supervised training using 100 hours of 
-# supervised data and 250 hours of unsupervised data.
-# We assume the supervised data is in data/train_sup and unsupervised data
-# is in data/train_unsup100k_250k. 
-# For LM training, we only use the supervised set corresponding to 100 hours as 
-# opposed to the case in run_50k.sh, where we included part of the 
-# transcripts in data/train/text.
-# This uses only 100 hours supervised set for i-vector extractor training, 
-# which is different from run_50k.sh, which uses combined supervised + 
-# unsupervised set.
+# This script demonstrates semi-supervised training using ~40 hours of
+# supervised data and ~320 hours of unsupervised data.
 
 . ./cmd.sh
 . ./path.sh 
@@ -24,74 +17,46 @@ stage=0
 
 . ./utils/parse_options.sh
 
-
 ###############################################################################
-# Prepare lang directories with UNK modeled using phone LM
-###############################################################################
-
-if [ $stage -le 1 ]; then
-  local/run_unk_model.sh || exit 1
-
-  for lang_dir in data/lang_combined_test; do
-    rm -r ${lang_dir}_unk 2>/dev/null || true
-    cp -rT data/lang_combined_unk ${lang_dir}_unk
-    cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst
-  done
-fi
-
-exit 0
-
-###############################################################################
-# Train seed chain system using 100 hours supervised data.
+# Train seed chain system using ~40 hours supervised data.
 # Here we train i-vector extractor on only the supervised set.
 ###############################################################################
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 1 ]; then
   local/semisup/chain/run_tdnn.sh \
     --train-set train \
     --nnet3-affix "" \
     --affix 1a --tree-affix "" \
     --gmm tri3 --exp-root $exp_root || exit 1
-
-  # WER on dev                19.23
-  # WER on test               19.01
-  # Final train prob          -0.1224
-  # Final valid prob          -0.1503
-  # Final train prob (xent)   -1.6454
-  # Final valid prob (xent)   -1.7107
 fi
 
-if [ $stage -le 3 ]; then
-    utils/combine_data.sh data/eval1_2_segmented_reseg data/eval1_segmented_reseg data/eval2_segmented_reseg || exit 1
+if [ $stage -le 2 ]; then
+    utils/combine_data.sh data/eval1_2_3_segmented data/eval1_segmented data/eval2_segmented data/eval3_segmented || exit 1
 fi
-exit 0
 
 ###############################################################################
-# Semi-supervised training using 100 hours supervised data and 
-# 250 hours unsupervised data. We use i-vector extractor, tree, lattices 
+# Semi-supervised training using ~40 hours supervised data and
+# 320 hours unsupervised data. We use i-vector extractor, tree, lattices
 # and seed chain system from the previous stage.
 ###############################################################################
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   local/semisup/chain/run_tdnn_semisupervised.sh \
     --supervised-set train \
-    --unsupervised-set eval1_2 \
+    --unsupervised-set eval1_2_3_segmented \
     --sup-chain-dir $exp_root/chain/tdnn_1a_sp \
-    --sup-lat-dir $exp_root/chain/tri3_train_sp_unk_lats \
+    --sup-lat-dir $exp_root/chain/tri3_train_sp_lats \
     --sup-tree-dir $exp_root/chain/tree_sp \
-    --ivector-root-dir $exp_root/nnet3 \
+    --ivector-root-dir exp/nnet3 \
     --affix 1a \
     --exp-root $exp_root || exit 1
 
-  # WER on dev                          18.70
-  # WER on test                         18.18
-  # Final output-0 train prob           -0.1345
-  # Final output-0 valid prob           -0.1547
-  # Final output-0 train prob (xent)    -1.3683
-  # Final output-0 valid prob (xent)    -1.4077
-  # Final output-1 train prob           -0.6856
-  # Final output-1 valid prob           -0.6815
-  # Final output-1 train prob (xent)    -1.1224
-  # Final output-1 valid prob (xent)    -1.2218
+  # [for swahili]
+  # %WER 35.2 | 9906 59164 | 67.8 18.4 13.8 3.0 35.2 47.1 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis1_segmented/score_10_0.0/analysis1_segmented_hires.ctm.sys
+  # %WER 30.8 | 5322 37120 | 71.9 16.4 11.8 2.7 30.8 47.8 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis2_segmented/score_10_0.0/analysis2_segmented_hires.ctm.sys
+
+  # [for tagalog]
+  # %WER 40.8 | 10551 87329 | 64.0 21.4 14.6 4.8 40.8 63.9 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis1_segmented/score_10_0.0/analysis1_segmented_hires.ctm.sys
+  # %WER 41.1 | 5933 56887 | 63.8 20.4 15.9 4.9 41.1 71.9 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis2_segmented/score_10_0.0/analysis2_segmented_hires.ctm.sys
 fi
 
