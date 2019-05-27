@@ -3,6 +3,8 @@
 
 # normalizes the wave files provided in input file list with a common scaling factor
 # the common scaling factor is computed to 1/\sqrt(1/(total_samples) * \sum_i{\sum_j x_i(j)^2}) where total_samples is sum of all samples of all wavefiles. If the data is multi-channel then each channel is treated as a seperate wave files
+from __future__ import division
+from __future__ import print_function
 import argparse, scipy.io.wavfile, warnings, numpy as np, math
 
 def get_normalization_coefficient(file_list, is_rir, additional_scaling):
@@ -29,7 +31,7 @@ def get_normalization_coefficient(file_list, is_rir, additional_scaling):
         assert(rate == sampling_rate)
       else:
         sampling_rate = rate
-      data = data / dtype_max_value
+      data = data/dtype_max_value
       if is_rir:
         # just count the energy of the direct impulse response
         # this is treated as energy of signal from 0.001 seconds before impulse
@@ -55,8 +57,8 @@ def get_normalization_coefficient(file_list, is_rir, additional_scaling):
     except IOError:
       warnings.warn("Did not find the file {0}.".format(file))
   assert(total_samples > 0)
-  scaling_coefficient = np.sqrt(total_samples / total_energy)
-  print "Scaling coefficient is {0}.".format(scaling_coefficient)
+  scaling_coefficient = np.sqrt(total_samples/total_energy)
+  print("Scaling coefficient is {0}.".format(scaling_coefficient))
   if math.isnan(scaling_coefficient):
     raise Exception(" Nan encountered while computing scaling coefficient. This is mostly due to numerical overflow")
   return scaling_coefficient

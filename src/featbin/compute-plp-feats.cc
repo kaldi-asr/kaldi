@@ -19,9 +19,9 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
 #include "feat/feature-plp.h"
 #include "feat/wave-reader.h"
+#include "util/common-utils.h"
 
 
 int main(int argc, char *argv[]) {
@@ -29,21 +29,23 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     const char *usage =
         "Create PLP feature files.\n"
-        "Usage:  compute-plp-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";
+        "Usage:  compute-plp-feats [options...] <wav-rspecifier> "
+        "<feats-wspecifier>\n";
 
-    // construct all the global objects
+    // Construct all the global objects.
     ParseOptions po(usage);
     PlpOptions plp_opts;
+    // Define defaults for global options.
     bool subtract_mean = false;
     BaseFloat vtln_warp = 1.0;
     std::string vtln_map_rspecifier;
     std::string utt2spk_rspecifier;
     int32 channel = -1;
     BaseFloat min_duration = 0.0;
-    // Define defaults for gobal options
     std::string output_format = "kaldi";
+    std::string utt2dur_wspecifier;
 
-    // Register the options
+    // Register the options.
     po.Register("output-format", &output_format, "Format of the output "
                 "files [kaldi, htk]");
     po.Register("subtract-mean", &subtract_mean, "Subtract mean of each "
@@ -58,11 +60,13 @@ int main(int argc, char *argv[]) {
                 "0 -> left, 1 -> right)");
     po.Register("min-duration", &min_duration, "Minimum duration of segments "
                 "to process (in seconds).");
+    po.Register("write-utt2dur", &utt2dur_wspecifier, "Wspecifier to write "
+                "duration of each utterance in seconds, e.g. 'ark,t:utt2dur'.");
 
     plp_opts.Register(&po);
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -74,16 +78,16 @@ int main(int argc, char *argv[]) {
 
     Plp plp(plp_opts);
 
+    if (utt2spk_rspecifier != "" && vtln_map_rspecifier != "")
+      KALDI_ERR << ("The --utt2spk option is only needed if "
+                    "the --vtln-map option is used.");
+    RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
+                                                      utt2spk_rspecifier);
+
     SequentialTableReader<WaveHolder> reader(wav_rspecifier);
     BaseFloatMatrixWriter kaldi_writer;  // typedef to TableWriter<something>.
     TableWriter<HtkMatrixHolder> htk_writer;
 
-    if (utt2spk_rspecifier != "")
-      KALDI_ASSERT(vtln_map_rspecifier != "" && "the utt2spk option is only "
-                   "needed if the vtln-map option is used.");
-    RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
-                                                      utt2spk_rspecifier);
-    
     if (output_format == "kaldi") {
       if (!kaldi_writer.Open(output_wspecifier))
         KALDI_ERR << "Could not initialize output with wspecifier "
@@ -96,6 +100,8 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Invalid output_format string " << output_format;
     }
 
+    DoubleWriter utt2dur_writer(utt2dur_wspecifier);
+
     int32 num_utts = 0, num_success = 0;
     for (; !reader.Done(); reader.Next()) {
       num_utts++;
@@ -107,8 +113,8 @@ int main(int argc, char *argv[]) {
         continue;
       }
       int32 num_chan = wave_data.Data().NumRows(), this_chan = channel;
-      {  // This block works out the channel (0=left, 1=right...)
-        KALDI_ASSERT(num_chan > 0);  // should have been caught in
+      {  // This block works out the channel (0=left, 1=right...).
+        KALDI_ASSERT(num_chan > 0);  // This should have been caught in
         // reading code if no channels.
         if (channel == -1) {
           this_chan = 0;
@@ -139,10 +145,10 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        plp.ComputeFeatures(waveform, wave_data.SampFreq(), vtln_warp_local, &features);
+        plp.ComputeFeatures(waveform, wave_data.SampFreq(),
+                            vtln_warp_local, &features);
       } catch (...) {
-        KALDI_WARN << "Failed to compute features for utterance "
-                   << utt;
+        KALDI_WARN << "Failed to compute features for utterance " << utt;
         continue;
       }
       if (subtract_mean) {
@@ -168,6 +174,9 @@ int main(int argc, char *argv[]) {
         p.second = header;
         htk_writer.Write(utt, p);
       }
+      if (utt2dur_writer.IsOpen()) {
+        utt2dur_writer.Write(utt, wave_data.Duration());
+      }
       if (num_utts % 10 == 0)
         KALDI_LOG << "Processed " << num_utts << " utterances";
       KALDI_VLOG(2) << "Processed features for key " << utt;
@@ -181,4 +190,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

@@ -229,8 +229,10 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
       MatrixIndexT dst_pitch = stride_ * sizeof(Real);
       MatrixIndexT src_pitch = M.Stride() * sizeof(Real);
       MatrixIndexT width = M.NumCols() * sizeof(Real);
-      CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, M.data_, src_pitch,
-                                width, M.num_rows_, cudaMemcpyDeviceToDevice));
+      CU_SAFE_CALL(
+        cudaMemcpy2DAsync(data_, dst_pitch, M.data_, src_pitch,
+                          width, M.num_rows_, cudaMemcpyDeviceToDevice,
+                          cudaStreamPerThread));
     } else {
       if (trans == kNoTrans) {
         dim3 dimGrid, dimBlock;
@@ -319,8 +321,10 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
       MatrixIndexT dst_pitch = stride_*sizeof(Real);
       MatrixIndexT src_pitch = src.Stride()*sizeof(Real);
       MatrixIndexT width = src.NumCols()*sizeof(Real);
-      CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
-                                width, src.NumRows(), cudaMemcpyHostToDevice));
+      CU_SAFE_CALL(cudaMemcpy2DAsync(data_, dst_pitch, src.Data(), src_pitch,
+                                width, src.NumRows(), cudaMemcpyHostToDevice,
+                                cudaStreamPerThread));
+      CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
 
       CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from CPU)", tim);
     } else {
@@ -410,6 +414,33 @@ template
 CuMatrix<double>::CuMatrix(const MatrixBase<double> &other, MatrixTransposeType trans);
 
 
+template <typename Real>
+void CuMatrixBase<Real>:: CopyRangeFromMatClamped(const CuMatrixBase<Real> & src,
+      int32_t start_range, int32_t end_range,
+      int32_t clamp_low, int32_t clamp_high) {
+
+  KALDI_ASSERT(NumCols() == this->NumCols());
+  KALDI_ASSERT(NumRows() == end_range-start_range);
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    cuda_mat_copy_range_clamped(start_range, end_range, NumCols(),
+      src.Data(), src.Stride(), clamp_low, clamp_high,
+      Data(), Stride());
+  } else 
+#endif
+  {
+    for (int32 t = start_range; t < end_range; t++) {
+      int32 t_clamped = t;
+      if (t_clamped < clamp_low) t_clamped = clamp_low;
+      if (t_clamped >= clamp_high) t_clamped = clamp_high;
+      CuSubVector<Real> dest_row=this->Row(t - start_range);
+      const CuSubVector<Real> src_row=src.Row(t_clamped);
+      dest_row.CopyFromVec(src_row);
+    }
+  }
+}
+
 template<typename Real>
 template<typename OtherReal>
 void CuMatrixBase<Real>::CopyToMat(MatrixBase<OtherReal> *dst,
@@ -427,9 +458,10 @@ void CuMatrixBase<Real>::CopyToMat(MatrixBase<OtherReal> *dst,
       MatrixIndexT src_pitch = stride_*sizeof(Real);
       MatrixIndexT dst_pitch = dst->Stride()*sizeof(Real);
       MatrixIndexT width = NumCols()*sizeof(Real);
-      CU_SAFE_CALL(cudaMemcpy2D(dst->Data(), dst_pitch, this->data_, src_pitch,
-                                width, this->num_rows_, cudaMemcpyDeviceToHost));
-
+      CU_SAFE_CALL(cudaMemcpy2DAsync(dst->Data(), dst_pitch, this->data_, 
+                                     src_pitch, width, this->num_rows_, 
+                                     cudaMemcpyDeviceToHost, cudaStreamPerThread));
+      CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
       CuDevice::Instantiate().AccuProfile("CuMatrix::CopyToMatD2H", tim);
     }
   } else
@@ -477,8 +509,9 @@ void CuMatrixBase<Real>::SetZero() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    CU_SAFE_CALL(cudaMemset2D(data_, stride_ * sizeof(Real), 0,
-                              num_cols_ * sizeof(Real), num_rows_ ));
+    CU_SAFE_CALL(cudaMemset2DAsync(data_, stride_ * sizeof(Real), 0,
+                              num_cols_ * sizeof(Real), num_rows_ , 
+                              cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile("CuMatrix::SetZero", tim);
   } else
 #endif
@@ -1666,7 +1699,10 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
       return;
     }
     void *addr = CuDevice::Instantiate().Malloc(sv_labels.size() * sizeof(MatrixElement<Real>));
-    CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
+    CU_SAFE_CALL(cudaMemcpyAsync(addr, sv_labels.data(), sv_labels.size() * 
+                                 sizeof(MatrixElement<Real>), 
+                                 cudaMemcpyHostToDevice, 
+                                 cudaStreamPerThread));
     CuTimer tim;
     CuVector<Real> tmp(2, kUndefined);
     int dimBlock(CU1DBLOCK);
@@ -2086,6 +2122,7 @@ void CuMatrixBase<Real>::Cholesky(CuMatrixBase<Real> *inv_cholesky) {
   // (5)(d) zero L12 and M12.
   this_12.SetZero();
   inv_12.SetZero();
+
 }
 
 
@@ -2241,7 +2278,9 @@ void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
       host_c_array[i] = C[i]->data_;
     }
 
-    CU_SAFE_CALL(cudaMemcpy(device_abc_array, host_abc_array, 3*size*sizeof(Real*), cudaMemcpyHostToDevice));
+    CU_SAFE_CALL(cudaMemcpyAsync(device_abc_array, host_abc_array, 
+                                 3*size*sizeof(Real*), cudaMemcpyHostToDevice,
+                                 cudaStreamPerThread));
 
     CUBLAS_SAFE_CALL(cublas_gemmBatched(GetCublasHandle(),
                                         (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
@@ -2286,14 +2325,15 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
     if (v.Dim() == num_rows_*num_cols_) {
       if (stride_ == num_cols_) {
         const Real* v_data = v.Data();
-        CU_SAFE_CALL(cudaMemcpy(data_, v_data,
-                                sizeof(Real)*num_rows_*num_cols_,
-                                cudaMemcpyDeviceToDevice));
+        CU_SAFE_CALL(
+          cudaMemcpyAsync(data_, v_data, sizeof(Real)*num_rows_*num_cols_,
+                          cudaMemcpyDeviceToDevice, cudaStreamPerThread));
       } else {
-        CU_SAFE_CALL(cudaMemcpy2D(data_, stride_ * sizeof(Real), v.Data(),
-                                  num_cols_*sizeof(Real), num_cols_*sizeof(Real),
-                                  num_rows_,
-                                  cudaMemcpyDeviceToDevice));
+        CU_SAFE_CALL(
+          cudaMemcpy2DAsync(data_, stride_ * sizeof(Real), v.Data(),
+                            num_cols_*sizeof(Real), num_cols_*sizeof(Real),
+                            num_rows_, cudaMemcpyDeviceToDevice,
+                            cudaStreamPerThread));
       }
     } else if (v.Dim() == num_cols_) {
       dim3 dimGrid, dimBlock;
@@ -2320,15 +2360,21 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &v) {
     if (v.Dim() == num_rows_*num_cols_) {
       if (stride_ == num_cols_) {
         const Real* v_data = v.Data();
-        cudaMemcpy(data_, v_data, sizeof(Real)*num_rows_*num_cols_, cudaMemcpyHostToDevice);
+        CU_SAFE_CALL(cudaMemcpyAsync(data_, v_data, 
+                                     sizeof(Real)*num_rows_*num_cols_, 
+                                     cudaMemcpyHostToDevice, 
+                                     cudaStreamPerThread));
       } else {
         const Real *v_data = v.Data();
         for (MatrixIndexT r = 0; r < num_rows_; r++) {
           Real *row_data = RowData(r);
-          cudaMemcpy(row_data, v_data, sizeof(Real)*num_cols_, cudaMemcpyHostToDevice);
+          CU_SAFE_CALL(cudaMemcpyAsync(row_data, v_data, sizeof(Real)*num_cols_, 
+                                       cudaMemcpyHostToDevice, 
+                                       cudaStreamPerThread));
           v_data += num_cols_;
         }
       }
+      CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     } else if (v.Dim() == num_cols_) {
       dim3 dimGrid, dimBlock;
       GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
@@ -2594,16 +2640,19 @@ void VectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
     if (mat.Stride() == mat.NumCols()) {
-      cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_, cudaMemcpyDeviceToHost);
+      CU_SAFE_CALL(cudaMemcpyAsync(data_, mat.Data(), sizeof(Real)*dim_, 
+                   cudaMemcpyDeviceToHost, cudaStreamPerThread));
     } else {
       // we could definitely do better than the following.
       Real* vec_data = data_;
       for (MatrixIndexT r = 0; r < mat.NumRows(); r++) {
-        cudaMemcpy(vec_data, mat.RowData(r), sizeof(Real) * mat.NumCols(),
-                   cudaMemcpyDeviceToHost);
+        CU_SAFE_CALL(cudaMemcpyAsync(vec_data, mat.RowData(r), 
+                     sizeof(Real) * mat.NumCols(), cudaMemcpyDeviceToHost, 
+                     cudaStreamPerThread));
         vec_data += mat.NumCols();
       }
     }
+    CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyRowsFromMat", tim);
   } else
 #endif
@@ -3252,9 +3301,9 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     void *addr = CuDevice::Instantiate().Malloc(input.size() * sizeof(MatrixElement<Real>));
-    CU_SAFE_CALL(cudaMemcpy(addr, input.data(),
-                        input.size() * sizeof(MatrixElement<Real>),
-                            cudaMemcpyHostToDevice));
+    CU_SAFE_CALL(cudaMemcpyAsync(addr, input.data(),
+                                 input.size() * sizeof(MatrixElement<Real>),
+                                 cudaMemcpyHostToDevice, cudaStreamPerThread));
 
     CuTimer tim;
     int dimBlock(CU1DBLOCK);
@@ -3284,8 +3333,9 @@ void CuMatrixBase<Real>::AddElements(Real alpha, const CuArrayBase<Int32Pair> &i
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
     CuVector<Real> tmp_vec(indexes.Dim(), kUndefined);
-    CU_SAFE_CALL(cudaMemcpy(tmp_vec.Data(), input, indexes.Dim() * sizeof(Real),
-                            cudaMemcpyHostToDevice));
+    CU_SAFE_CALL(cudaMemcpyAsync(tmp_vec.Data(), input, 
+                                 indexes.Dim() * sizeof(Real),
+                                 cudaMemcpyHostToDevice, cudaStreamPerThread));
 
     int dimBlock(CU1DBLOCK);
     int dimGrid = n_blocks(indexes.Dim(), CU1DBLOCK);

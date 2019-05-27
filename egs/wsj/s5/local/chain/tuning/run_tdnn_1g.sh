@@ -32,7 +32,14 @@ train_set=train_si284
 test_sets="test_dev93 test_eval92"
 gmm=tri4b        # this is the source gmm-dir that we'll use for alignments; it
                  # should have alignments for the specified training data.
+
 num_threads_ubm=32
+
+nj_extractor=10
+# It runs a JOB with '-pe smp N', where N=$[threads*processes]
+num_threads_extractor=4
+num_processes_extractor=4
+
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
@@ -79,6 +86,9 @@ local/nnet3/run_ivector_common.sh \
   --stage $stage --nj $nj \
   --train-set $train_set --gmm $gmm \
   --num-threads-ubm $num_threads_ubm \
+  --nj-extractor $nj_extractor \
+  --num-processes-extractor $num_processes_extractor \
+  --num-threads-extractor $num_threads_extractor \
   --nnet3-affix "$nnet3_affix"
 
 
@@ -160,7 +170,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print(0.5/$xent_regularize)" | python)
   tdnn_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim-continuous=true"
   tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
   linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
@@ -220,6 +230,7 @@ if [ $stage -le 16 ]; then
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=10 \

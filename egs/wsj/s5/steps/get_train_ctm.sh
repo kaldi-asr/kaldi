@@ -20,8 +20,9 @@ echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
-if [ $# -ne 3 ]; then
-  echo "Usage: $0 [options] <data-dir> <lang-dir> <ali-dir|model-dir>"
+if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+  echo "Usage: $0 [options] <data-dir> <lang-dir> <ali-dir|model-dir> [<output-dir>]"
+  echo "(<output-dir> defaults to  <ali-dir|model-dir>.)"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
@@ -39,27 +40,31 @@ fi
 
 data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
-dir=$3
+ali_dir=$3
+dir=$4
+if [ -z $dir ]; then
+  dir=$ali_dir
+fi
 
 
-model=$dir/final.mdl # assume model one level up from decoding dir.
+model=$ali_dir/final.mdl # assume model one level up from decoding dir.
 
 
-for f in $lang/words.txt $model $dir/ali.1.gz $lang/oov.int; do
+for f in $lang/words.txt $model $ali_dir/ali.1.gz $lang/oov.int; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
 oov=`cat $lang/oov.int` || exit 1;
-nj=`cat $dir/num_jobs` || exit 1;
+nj=`cat $ali_dir/num_jobs` || exit 1;
 split_data.sh $data $nj || exit 1;
 sdata=$data/split$nj
 
-mkdir -p $dir/log
+mkdir -p $dir/log || exit 1;
 
 if [ $stage -le 0 ]; then
   if [ -f $lang/phones/word_boundary.int ]; then
     $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
-      set -o pipefail '&&' linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
+      set -o pipefail '&&' linear-to-nbest "ark:gunzip -c $ali_dir/ali.JOB.gz|" \
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
@@ -72,7 +77,7 @@ if [ $stage -le 0 ]; then
       exit 1;
     fi
     $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
-      set -o pipefail '&&' linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
+      set -o pipefail '&&' linear-to-nbest "ark:gunzip -c $ali_dir/ali.JOB.gz|" \
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
@@ -94,4 +99,3 @@ if [ $stage -le 1 ]; then
   fi
   rm $dir/ctm.*.gz
 fi
-

@@ -42,6 +42,12 @@ SingleUtteranceNnet3DecoderTpl<FST>::SingleUtteranceNnet3DecoderTpl(
 }
 
 template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::InitDecoding(int32 frame_offset) {
+  decoder_.InitDecoding();
+  decodable_.SetFrameOffset(frame_offset);
+}
+
+template <typename FST>
 void SingleUtteranceNnet3DecoderTpl<FST>::AdvanceDecoding() {
   decoder_.AdvanceDecoding(&decodable_);
 }
@@ -55,7 +61,6 @@ template <typename FST>
 int32 SingleUtteranceNnet3DecoderTpl<FST>::NumFramesDecoded() const {
   return decoder_.NumFramesDecoded();
 }
-
 
 template <typename FST>
 void SingleUtteranceNnet3DecoderTpl<FST>::GetLattice(bool end_of_utterance,

@@ -284,7 +284,7 @@ def CombineSegments(input_dir, output_dir, minimum_duration):
                 assert(cur_utt_dur == combined_duration)
 
                 # now modify the utts list
-                combined_indices = range(left_index, right_index + 1)
+                combined_indices = list(range(left_index, right_index + 1))
                 # start popping from the largest index so that the lower
                 # indexes are valid
                 for i in combined_indices[::-1]:
