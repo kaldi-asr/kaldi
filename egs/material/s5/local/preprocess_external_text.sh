@@ -24,7 +24,7 @@ elif [ "$language" == "tagalog" ]; then
 elif [ "$language" == "somali" ]; then
   language_affix="so"
 fi
-MOSES=/home/pkoehn/moses
+MOSES= #/path/to/moses
 
 # Normalize punctuation and tokenize input
 $MOSES/scripts/tokenizer/normalize-punctuation.perl ${language_affix} < ${srctext_bitext} \

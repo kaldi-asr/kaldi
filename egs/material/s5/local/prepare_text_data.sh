@@ -49,8 +49,8 @@ elif [ "$language" == "tagalog" ]; then
 elif [ "$language" == "somali" ]; then
   language_affix="so"
 fi
-MOSES=/home/pkoehn/moses
-SOURCE_TC_MODEL=/home/pkoehn/experiment/material-asr-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
+MOSES= #/path/to/moses
+SOURCE_TC_MODEL= #/path/to/truecase/model
 
 for i in train dev; do
   cat data/$i/text | cut -d " " -f2- > data/$i/text.notruecase

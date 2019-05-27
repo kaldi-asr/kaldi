@@ -15,6 +15,7 @@ dir=exp/semisup/chain/tdnn_semisup_1a
 lang=data/lang_combined_chain
 tree_dir=exp/semisup/chain/tree_sp
 cmd=queue.pl
+graph_affix=_combined
 
 # training options
 chunk_width=140,100,160
@@ -36,7 +37,8 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
-[ ! -f ./conf/lang/${language}.conf ] && echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
+[ ! -f ./conf/lang/${language}.conf ] && \
+  echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
 ln -sf ./conf/lang/${language}.conf lang.conf                                   
 . ./lang.conf
 
@@ -92,10 +94,10 @@ if [ $stage -le 3 ]; then
         --skip-scoring true \
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3/ivectors_${data}_segmented_hires \
-        $tree_dir/graph_combined ${datadir}_segmented_hires ${decode_dir} || exit 1
+        $tree_dir/graph${graph_affix} ${datadir}_segmented_hires ${decode_dir} || exit 1
 
       # resolve ctm overlaping regions, and compute wer
-      local/postprocess_test.sh ${data}_segmented ${tree_dir}/graph_combined \
+      local/postprocess_test.sh ${data}_segmented ${tree_dir}/graph${graph_affix} \
         ${decode_dir}
     ) || touch $dir/.error &
   done
