@@ -116,6 +116,10 @@ class MelBanks {
   // returns vector of central freq of each bin; needed by plp code.
   const Vector<BaseFloat> &GetCenterFreqs() const { return center_freqs_; }
 
+  const std::vector<std::pair<int32, Vector<BaseFloat> > >& GetBins() const {
+    return bins_;
+  }
+
   // Copy constructor
   MelBanks(const MelBanks &other);
  private:
