@@ -10,6 +10,11 @@ import argparse
 import math
 from collections import defaultdict
 
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding="utf8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer,encoding="utf8")
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer,encoding="utf8")
+
 parser = argparse.ArgumentParser(description="""
 This script creates a biased language model suitable for alignment and
 data-cleanup purposes.   It reads (possibly multiple) lines of integerized text
