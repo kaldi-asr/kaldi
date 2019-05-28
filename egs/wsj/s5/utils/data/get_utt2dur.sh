@@ -23,7 +23,8 @@ if [ $# != 1 ]; then
   echo " $0 data/train"
   echo " Options:"
   echo " --frame-shift      # frame shift in seconds. Only relevant when we are"
-  echo "                    # getting duration from feats.scp (default: 0.01). "
+  echo "                    # getting duration from feats.scp, and only if the "
+  echo "                    # file frame_shift does not exist (default: 0.01). "
   exit 1
 fi
 
@@ -40,12 +41,17 @@ fi
 if [ -s $data/segments ]; then
   echo "$0: working out $data/utt2dur from $data/segments"
   awk '{len=$4-$3; print $1, len;}' < $data/segments  > $data/utt2dur
+elif [[ -s $data/frame_shift && -f $data/utt2num_frames ]]; then
+  echo "$0: computing $data/utt2dur from $data/{frame_shift,utt2num_frames}."
+  frame_shift=$(cat $data/frame_shift) || exit 1
+  # The 1.5 correction is the typical value of (frame_length-frame_shift)/frame_shift.
+  awk -v fs=$frame_shift '{ $2=($2+1.5)*fs; print }' <$data/utt2num_frames  >$data/utt2dur
 elif [ -f $data/wav.scp ]; then
   echo "$0: segments file does not exist so getting durations from wave files"
 
   # if the wav.scp contains only lines of the form
   # utt1  /foo/bar/sph2pipe -f wav /baz/foo.sph |
-  if cat $data/wav.scp | perl -e '
+  if perl <$data/wav.scp -e '
      while (<>) { s/\|\s*$/ |/;  # make sure final | is preceded by space.
              @A = split; if (!($#A == 5 && $A[1] =~ m/sph2pipe$/ &&
                                $A[2] eq "-f" && $A[3] eq "wav" && $A[5] eq "|")) { exit(1); }
@@ -102,7 +108,13 @@ elif [ -f $data/wav.scp ]; then
   fi
 elif [ -f $data/feats.scp ]; then
   echo "$0: wave file does not exist so getting durations from feats files"
-  feat-to-len scp:$data/feats.scp ark,t:- | awk -v frame_shift=$frame_shift '{print $1, $2*frame_shift;}' >$data/utt2dur
+  if [[ -s $data/frame_shift ]]; then
+    frame_shift=$(cat $data/frame_shift) || exit 1
+    echo "$0: using frame_shift=$frame_shift from file $data/frame_shift"
+  fi
+  # The 1.5 correction is the typical value of (frame_length-frame_shift)/frame_shift.
+  feat-to-len scp:$data/feats.scp ark,t:- |
+    awk -v frame_shift=$frame_shift '{print $1, ($2+1.5)*frame_shift}' >$data/utt2dur
 else
   echo "$0: Expected $data/wav.scp, $data/segments or $data/feats.scp to exist"
   exit 1

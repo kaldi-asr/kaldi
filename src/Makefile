@@ -4,17 +4,17 @@
 
 SHELL := /bin/bash
 
-
 SUBDIRS = base matrix util feat tree gmm transform \
-          fstext hmm lm decoder lat kws cudamatrix \
+          fstext hmm lm decoder lat kws cudamatrix nnet \
           bin fstbin gmmbin fgmmbin featbin \
-          latbin nnet3 rnnlm chain nnet3bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin
+          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 rnnlm chain nnet3bin nnet2bin kwsbin \
+          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
+	  cudadecoder cudadecoderbin
 
 MEMTESTDIRS = base matrix util feat tree gmm transform \
-          fstext hmm lm decoder lat kws chain \
+          fstext hmm lm decoder lat nnet kws chain \
           bin fstbin gmmbin fgmmbin featbin \
-          latbin nnet3 rnnlm nnet3bin kwsbin \
+          nnetbin latbin sgmm2 nnet2 nnet3 rnnlm nnet2bin nnet3bin sgmm2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin
 
 CUDAMEMTESTDIR = cudamatrix
@@ -23,6 +23,9 @@ SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
 KALDI_SONAME ?= libkaldi.so
 
+# Optional subdirectories
+EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
+EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
 include kaldi.mk
 
@@ -69,6 +72,19 @@ endif
 endif
 endif
 
+biglibext: $(EXT_SUBDIRS_LIB)
+ifeq ($(KALDI_FLAVOR), dynamic)
+ifeq ($(shell uname), Darwin)
+	$(CXX) -dynamiclib -o $(KALDILIBDIR)/libkaldi_ext.dylib -install_name @rpath/libkaldi_ext.dylib -framework Accelerate $(LDFLAGS) $(EXT_SUBDIRS_LIB:=/*.dylib)
+else
+ifeq ($(shell uname), Linux)
+	#$(warning The following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all.)
+	$(CXX) -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+else
+	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
+endif
+endif
+endif
 
 kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
@@ -127,9 +143,9 @@ $(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-bin fstbin gmmbin fgmmbin sgmm2bin featbin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin: \
+bin fstbin gmmbin fgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin cudadecoderbin: \
  base matrix util feat tree gmm transform sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet3 ivector chain kws online2 rnnlm
+ lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 rnnlm
 
 #2)The libraries have inter-dependencies
 base: base/.depend.mk
@@ -146,13 +162,17 @@ lm: base util matrix fstext
 decoder: base util matrix gmm hmm tree transform lat
 lat: base util hmm tree matrix
 cudamatrix: base util matrix
-nnet3: base util matrix lat gmm hmm tree transform cudamatrix chain fstext
+nnet: base util hmm tree matrix cudamatrix
+nnet2: base util matrix lat gmm hmm tree transform cudamatrix
+nnet3: base util matrix decoder lat gmm hmm tree transform cudamatrix chain fstext
 rnnlm: base util matrix cudamatrix nnet3 lm hmm
 chain: lat hmm tree fstext matrix cudamatrix util base
 ivector: base util matrix transform tree gmm
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix online
+onlinebin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online
 # python-kaldi-decoding: base matrix util feat tree gmm transform sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm tree
-online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet3 chain
+online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util hmm tree matrix lat
+cudadecoder:  cudamatrix online2 nnet3 ivector feat fstext lat chain transform
+cudadecoderbin: cudadecoder cudamatrix online2 nnet3 ivector feat fstext lat chain transform

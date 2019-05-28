@@ -23,76 +23,61 @@ try:
     import matplotlib.pyplot as plt
     import numpy as np
     from matplotlib.patches import Rectangle
+    # matplotlib issue https://github.com/matplotlib/matplotlib/issues/12513
+    # plt.subplot() generates a false-positive warninig, suppress it for now.
+    from matplotlib.cbook import MatplotlibDeprecationWarning
+    warnings.filterwarnings('ignore', category=MatplotlibDeprecationWarning,
+                            message='Adding an axes using the same arguments')
     g_plot = True
 except ImportError:
-    warnings.warn(
-        """This script requires matplotlib and numpy.
-        Please install them to generate plots.
-        Proceeding with generation of tables.
-        If you are on a cluster where you do not have admin rights you could
-        try using virtualenv.""")
     g_plot = False
 
 
-logger = logging.getLogger('libs')
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
-                              "%(funcName)s - %(levelname)s ] %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.info('Generating plots')
+logging.basicConfig(format="%(filename)s:%(lineno)s:%(levelname)s:%(message)s",
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="""Parses the training logs and generates a variety of
-        plots.
-        e.g. (deprecated): steps/nnet3/report/generate_plots.py
-        --comparison-dir exp/nnet3/tdnn1 --comparison-dir exp/nnet3/tdnn2
-        exp/nnet3/tdnn exp/nnet3/tdnn/report
-        or (current): steps/nnet3/report/generate_plots.py
-        exp/nnet3/tdnn exp/nnet3/tdnn1 exp/nnet3/tdnn2 exp/nnet3/tdnn/report.
-        Look for the report.pdf in the output (report) directory.""")
+        prog=sys.argv[0],  # By default, prog is set this to filename only.
+        formatter_class=type('', (argparse.RawDescriptionHelpFormatter,
+                                  argparse.ArgumentDefaultsHelpFormatter), {}),
+        description="Parses the training logs and generates a variety of plots.\n"
+        "e.g.: %(prog)s \\\n"
+        "  exp/nnet3/tdnn exp/nnet3/tdnn1 exp/nnet3/tdnn2 exp/nnet3/tdnn/report.\n"
+        "The report file 'report.pdf' will be generated in the <output_dir> directory.")
 
-    parser.add_argument("--comparison-dir", type=str, action='append',
-                        help="other experiment directories for comparison. "
-                        "These will only be used for plots, not tables"
-                        "Note: this option is deprecated.")
-    parser.add_argument("--start-iter", type=int,
-                        help="Iteration from which plotting will start",
-                        default=1)
-    parser.add_argument("--is-chain", type=str, default=False,
-                        action=common_lib.StrToBoolAction,
-                        help="True if directory contains chain models")
-    parser.add_argument("--is-rnnlm", type=str, default=False,
-                        action=common_lib.StrToBoolAction,
-                        help="True if directory contains RNNLM.")
-    parser.add_argument("--output-nodes", type=str, default=None,
+    parser.add_argument("--start-iter", type=int, metavar='N', default=1,
+                        help="Iteration from which plotting will start.")
+    parser.add_argument("--is-chain", type=common_lib.str_to_bool, default='false', metavar='BOOL',
+                        help="Set to 'true' if <exp_dir>s contain chain models.")
+    parser.add_argument("--is-rnnlm", type=common_lib.str_to_bool, default='false', metavar='BOOL',
+                        help="Set to 'true' if <exp_dir>s contain RNNLM.")
+    parser.add_argument("--output-nodes", type=str, metavar='NODES',
                         action=common_lib.NullstrToNoneAction,
-                        help="""List of space separated
-                        <output-node>:<objective-type> entities,
-                        one for each output node""")
+                        help="List of space separated <output-node>:<objective-type> entries, "
+                        "one for each output node")
+    parser.add_argument("--comparison-dir", type=str, metavar='DIR', action='append',
+                        help="[DEPRECATED] Experiment directories for comparison. "
+                        "These will only be used for plots, not tables.")
     parser.add_argument("exp_dir", nargs='+',
-                        help="the first dir is the experiment directory, "
-                        "e.g. exp/nnet3/tdnn, the rest dirs (if exist) "
-                        "are other experiment directories for comparison.")
+                        help="The first <exp_dir> is the current experiment directory, e.g. "
+                        "'exp/nnet3/tdnn'; the rest are up to 6 optional directories of other "
+                        "experiments to be graphed on same plots for comparison.")
     parser.add_argument("output_dir",
-                        help="experiment directory, "
-                        "e.g. exp/nnet3/tdnn/report")
+                        help="output directory for reports, e.g. 'exp/nnet3/tdnn/report'")
 
     args = parser.parse_args()
-    if (args.comparison_dir is not None and len(args.comparison_dir) > 6) or \
-    (args.exp_dir is not None and len(args.exp_dir) > 7):
+    if ((args.comparison_dir is not None and len(args.comparison_dir) > 6) or
+        (args.exp_dir is not None and len(args.exp_dir) > 7)):
         raise Exception(
-            """max 6 comparison directories can be specified.
-            If you want to compare with more comparison_dir, you would have to
-            carefully tune the plot_colors variable which specified colors used
-            for plotting.""")
+            "Up to 6 comparison directories may be specified. "
+            "If you want to compare with more experiments, you would have to carefully tune "
+            "the plot_colors variable which specified colors used for plotting.")
     assert args.start_iter >= 1
     if args.is_chain and args.is_rnnlm:
-        raise Exception("""is_chain and is_rnnlm is not compatible.""")
+        raise Exception("Options --is-chain and --is-rnnlm cannot be both true.")
     return args
 
 
@@ -104,23 +89,24 @@ class LatexReport(object):
     def __init__(self, pdf_file):
         self.pdf_file = pdf_file
         self.document = []
-        self.document.append("""
+        self.document.append(r"""
 \documentclass[prl,10pt,twocolumn]{revtex4}
 \usepackage{graphicx}    % Used to import the graphics
-\\begin{document}
+\begin{document}
 """)
 
     def add_figure(self, figure_pdf, title):
         """we will have keep extending this replacement list based on errors
         during compilation escaping underscores in the title"""
-        title = "\\texttt{"+re.sub("_", "\_", title)+"}"
-        fig_latex = """
+
+        title = r"\texttt{"+re.sub("_", "\_", title)+"}"
+        fig_latex = r"""
 %...
-\\newpage
-\\begin{figure}[h]
-  \\begin{center}
-    \caption{""" + title + """}
-    \includegraphics[width=\\textwidth]{""" + figure_pdf + """}
+\newpage
+\begin{figure}[h]
+  \begin{center}
+    \caption{""" + title + r"""}
+    \includegraphics[width=\textwidth]{""" + figure_pdf + r"""}
   \end{center}
 \end{figure}
 \clearpage
@@ -129,7 +115,7 @@ class LatexReport(object):
         self.document.append(fig_latex)
 
     def close(self):
-        self.document.append("\end{document}")
+        self.document.append(r"\end{document}")
         return self.compile()
 
     def compile(self):
@@ -139,14 +125,15 @@ class LatexReport(object):
         lat_file = open(latex_file, "w")
         lat_file.write("\n".join(self.document))
         lat_file.close()
-        logger.info("Compiling the latex report.")
+        logger.info("Compiling the LaTeX report.")
         try:
             common_lib.execute_command(
                 "pdflatex -interaction=batchmode "
                 "-output-directory={0} {1}".format(dir_name, latex_file))
         except Exception as e:
-            logger.warning("There was an error compiling the latex file {0}, "
-                           "please do it manually: {1}".format(latex_file, e))
+            logger.warning("There was an error compiling LaTeX file %s. "
+                           "Check report.log generated by pdflatex in the same directory. %s",
+                           latex_file, e)
             return False
         return True
 
@@ -222,10 +209,11 @@ def generate_acc_logprob_plots(exp_dir, output_dir, plot, key='accuracy',
 # The name of five gates of lstmp
 g_lstm_gate = ['i_t_sigmoid', 'f_t_sigmoid', 'c_t_tanh', 'o_t_sigmoid', 'm_t_tanh']
 
-# The "extra" item looks like a placeholder. As each unit in python plot is
+# The "extra" item is a placeholder. As each unit in python plot is
 # composed by a legend_handle(linestyle) and a legend_label(description).
 # For the unit which doesn't have linestyle, we use the "extra" placeholder.
-extra = Rectangle((0, 0), 1, 1, facecolor="w", fill=False, edgecolor='none', linewidth=0)
+if g_plot:
+    extra = Rectangle((0, 0), 1, 1, facecolor="w", fill=False, edgecolor='none', linewidth=0)
 
 # This function is used to insert a column to the legend, the column_index is 1-based
 def insert_a_column_legend(legend_handle, legend_label, lp, mp, hp,
@@ -390,8 +378,7 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
             comp_data = stats_per_component_per_iter[component_name]
             comp_type = comp_data['type']
             comp_stats = comp_data['stats']
-            iters = comp_stats.keys()
-            iters.sort()
+            iters = sorted(comp_stats)
             iter_stats = []
             for iter in iters:
                 iter_stats.append([iter] + comp_stats[iter])
@@ -407,15 +394,16 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
                     dir=output_dir, comp_name=component_name), "w") as f:
             if with_oderiv:
                 # with oderiv-rms
-                f.write("Iteration\tValueMean\tValueStddev\tDerivMean\tDerivStddev\tOderivMean\tOderivStddev\t"
-                               "Value_5th\tValue_50th\tValue_95th\t"
-                               "Deriv_5th\tDeriv_50th\tDeriv_95th\t"
-                               "Oderiv_5th\tOderiv_50th\tOderiv_95th\n")
+                f.write("Iteration\tValueMean\tValueStddev\tDerivMean\tDerivStddev\t"
+                        "OderivMean\tOderivStddev\t"
+                        "Value_5th\tValue_50th\tValue_95th\t"
+                        "Deriv_5th\tDeriv_50th\tDeriv_95th\t"
+                        "Oderiv_5th\tOderiv_50th\tOderiv_95th\n")
             else:
                 # without oderiv-rms
                 f.write("Iteration\tValueMean\tValueStddev\tDerivMean\tDerivStddev\t"
-                               "Value_5th\tValue_50th\tValue_95th\t"
-                               "Deriv_5th\tDeriv_50th\tDeriv_95th\n")
+                        "Value_5th\tValue_50th\tValue_95th\t"
+                        "Deriv_5th\tDeriv_50th\tDeriv_95th\n")
             iter_stat_report = []
             iter_stats = main_stat_tables[component_name]
             for row in iter_stats:
@@ -423,21 +411,18 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
             f.write("\n".join(iter_stat_report))
             f.close()
     if plot:
-        main_component_names = list(main_stat_tables.keys())
-        main_component_names.sort()
-
+        main_component_names = sorted(main_stat_tables)
         plot_component_names = set(main_component_names)
         for dir in dirs:
             component_names = set(stats_per_dir[dir].keys())
             plot_component_names = plot_component_names.intersection(
                 component_names)
-        plot_component_names = list(plot_component_names)
-        plot_component_names.sort()
+        plot_component_names = sorted(plot_component_names)
         if plot_component_names != main_component_names:
-            logger.warning("""The components in all the neural networks in the
-            given experiment dirs are not the same, so comparison plots are
-            provided only for common component names. Make sure that these are
-            comparable experiments before analyzing these plots.""")
+            logger.warning("The components in all the neural networks in the "
+                           "given experiment dirs are not the same, so comparison plots are "
+                           "provided only for common component names. Make sure that these are "
+                           "comparable experiments before analyzing these plots.")
 
         fig = plt.figure()
 
@@ -510,9 +495,8 @@ def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
         except log_parse.MalformedClippedProportionLineException as e:
             raise e
         except common_lib.KaldiCommandException as e:
-            warnings.warn("Could not extract the clipped proportions for {0},"
-                          " this might be because there are no "
-                          "ClipGradientComponents.".format(dir))
+            logger.warning("Could not extract the clipped proportions for %s, "
+                           "this might be because there are no ClipGradientComponents.", dir)
             continue
         if len(stats_per_dir[dir]) == 0:
             logger.warning("Couldn't find any rows for the"
@@ -520,9 +504,8 @@ def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
     try:
         main_cp_stats = stats_per_dir[exp_dir]['table']
     except KeyError:
-        warnings.warn("The main experiment directory {0} does not have "
-                      "clipped proportions. So not generating clipped "
-                      "proportion plots.".format(exp_dir))
+        logger.warning("The main experiment directory %s does not have clipped proportions. "
+                       "Not generating clipped proportion plots.", exp_dir)
         return
 
     # this is the main experiment directory
@@ -534,26 +517,22 @@ def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
     file.close()
 
     if plot:
-        main_component_names = (
-            list(stats_per_dir[exp_dir]['cp_per_iter_per_component'].keys()))
-        main_component_names.sort()
+        main_component_names = sorted(stats_per_dir[exp_dir]['cp_per_iter_per_component'])
         plot_component_names = set(main_component_names)
         for dir in dirs:
             try:
-                component_names = set(
-                    stats_per_dir[dir]['cp_per_iter_per_component'].keys())
+                component_names = set(stats_per_dir[dir]['cp_per_iter_per_component'])
                 plot_component_names = (
                     plot_component_names.intersection(component_names))
             except KeyError:
                 continue
-        plot_component_names = list(plot_component_names)
-        plot_component_names.sort()
+        plot_component_names = sorted(plot_component_names)
         if plot_component_names != main_component_names:
             logger.warning(
-                """The components in all the neural networks in the given
-                experiment dirs are not the same, so comparison plots are
-                provided only for common component names. Make sure that these
-                are comparable experiments before analyzing these plots.""")
+                "The components in all the neural networks in the given "
+                "experiment dirs are not the same, so comparison plots are "
+                "provided only for common component names. Make sure that these "
+                "are comparable experiments before analyzing these plots.")
 
         fig = plt.figure()
         for component_name in main_component_names:
@@ -638,32 +617,25 @@ def generate_parameter_diff_plots(exp_dir, output_dir, plot,
                         iter_data.append("NA")
                 if (float(total_missing_iterations)/len(component_names) > 20
                         and not gave_user_warning):
-                    logger.warning("There are more than {0} missing "
-                                   "iterations per component. "
-                                   "Something might be wrong.".format(
-                                       float(total_missing_iterations)/ len(component_names)))
+                    logger.warning("There are more than %.0f missing iterations per component. "
+                                   "Something might be wrong.",
+                                   float(total_missing_iterations)/ len(component_names))
                     gave_user_warning = True
 
-                f.write(" ".join(iter_data)+"\n")
+                f.write(" ".join(iter_data) + "\n")
 
     if plot:
         # get the component names
         diff_type = list(key_file.keys())[0]
-        main_component_names = list(stats_per_dir[exp_dir][diff_type][
-            'progress_per_component'].keys())
-        main_component_names.sort()
+        main_component_names = sorted(stats_per_dir[exp_dir][diff_type]['progress_per_component'])
         plot_component_names = set(main_component_names)
-
         for dir in dirs:
             try:
-                component_names = set(stats_per_dir[dir][diff_type][
-                    'progress_per_component'].keys())
-                plot_component_names = plot_component_names.intersection(
-                    component_names)
+                component_names = set(stats_per_dir[dir][diff_type]['progress_per_component'])
+                plot_component_names = plot_component_names.intersection(component_names)
             except KeyError:
                 continue
-        plot_component_names = list(plot_component_names)
-        plot_component_names.sort()
+        plot_component_names = sorted(plot_component_names)
         if plot_component_names != main_component_names:
             logger.warning("The components in all the neural networks in the "
                            "given experiment dirs are not the same, "
@@ -675,9 +647,8 @@ def generate_parameter_diff_plots(exp_dir, output_dir, plot,
         assert main_component_names
 
         fig = plt.figure()
-        logger.info("Generating parameter-difference plots for the "
-                    "following components:{0}".format(
-                        ', '.join(main_component_names)))
+        logger.info("Plotting parameter differences for components: " +
+                    ", ".join(main_component_names))
 
         for component_name in main_component_names:
             fig.clf()
@@ -698,12 +669,9 @@ def generate_parameter_diff_plots(exp_dir, output_dir, plot,
                     # this component is not available in this network so lets
                     # not just plot it
                     if dir == exp_dir:
-                        raise Exception("No parameter differences were "
-                                        "available even in the main "
-                                        "experiment dir for the component "
-                                        "{0}. Something went wrong: "
-                                        "{1}.".format(
-                                            component_name, str(e)))
+                        raise Exception("No parameter differences were available even in the main "
+                                        "experiment dir for the component {0}. Something went "
+                                        "wrong: {1}.".format(component_name, e))
                     continue
                 ax = plt.subplot(211)
                 mp, = ax.plot(iter_stats[0][:, 0], iter_stats[0][:, 1],
@@ -755,35 +723,35 @@ def generate_plots(exp_dir, output_dir, output_names, comparison_dir=None,
 
     for (output_name, objective_type) in output_names:
         if objective_type == "linear":
-            logger.info("Generating accuracy plots")
+            logger.info("Generating accuracy plots for '%s'", output_name)
             generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot, key='accuracy',
                 file_basename='accuracy', comparison_dir=comparison_dir,
                 start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
 
-            logger.info("Generating log-likelihood plots")
+            logger.info("Generating log-likelihood plots for '%s'", output_name)
             generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot, key='log-likelihood',
                 file_basename='loglikelihood', comparison_dir=comparison_dir,
                 start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
         elif objective_type == "chain":
-            logger.info("Generating log-probability plots")
+            logger.info("Generating log-probability plots for '%s'", output_name)
             generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot,
                 key='log-probability', file_basename='log_probability',
                 comparison_dir=comparison_dir, start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
         elif objective_type == "rnnlm_objective":
-            logger.info("Generating RNNLM objective plots")
+            logger.info("Generating RNNLM objective plots for '%s'", output_name)
             generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot, key='rnnlm_objective',
                 file_basename='objective', comparison_dir=comparison_dir,
                 start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
         else:
-            logger.info("Generating " + objective_type + " objective plots")
+            logger.info("Generating %s objective plots for '%s'", objective_type, output_name)
             generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot, key='objective',
                 file_basename='objective', comparison_dir=comparison_dir,
@@ -808,13 +776,18 @@ def generate_plots(exp_dir, output_dir, output_names, comparison_dir=None,
     if g_plot and latex_report is not None:
         has_compiled = latex_report.close()
         if has_compiled:
-            logger.info("Report has been generated. "
-                        "You can find it at the location "
-                        "{0}".format("{0}/report.pdf".format(output_dir)))
+            logger.info("Report file %s/report.pdf has been generated successfully.", output_dir)
 
 
 def main():
     args = get_args()
+
+    if not g_plot:
+        logger.warning(
+            "This script requires matplotlib and numpy.\n"
+            "... Install these packages to generate plots.\n"
+            "... If you are on a cluster where you do not have admin rights, use venv.\n"
+            "... Generating text data table files only.")
 
     output_nodes = []
 

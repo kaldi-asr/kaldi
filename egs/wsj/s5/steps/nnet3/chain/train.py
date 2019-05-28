@@ -219,8 +219,9 @@ def process_args(args):
                 args.deriv_truncate_margin))
 
     if (not os.path.exists(args.dir)):
-        raise Exception("This script expects --dir={0} to exist.")
-    if (not os.path.exists(args.dir+"/configs") and
+        raise Exception("Directory specified with --dir={0} "
+                        "does not exist.".format(args.dir))
+    if (not os.path.exists(args.dir + "/configs") and
         (args.input_model is None or not os.path.exists(args.input_model))):
         raise Exception("Either --trainer.input-model option should be supplied, "
                         "and exist; or the {0}/configs directory should exist."
@@ -357,6 +358,13 @@ def train(args, run_opts):
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
+
+    if (args.egs_dir is not None) and (args.cmvn_opts != "--norm-means=false --norm-vars=false"):
+        logger.warning("the --feat.cmvn-opts option has no effect because we are not dumping egs")
+
+    if (args.egs_dir is not None) and (args.frames_per_iter != 800000):
+        logger.warning("the --trainer.frames-per-iter option has no effect because we are not dumping egs")
+
     if ((args.stage <= -3) and args.egs_dir is None):
         logger.info("Generating egs")
         if (not os.path.exists("{0}/den.fst".format(args.dir)) or
@@ -470,9 +478,10 @@ def train(args, run_opts):
         if (args.exit_stage is not None) and (iter == args.exit_stage):
             logger.info("Exiting early due to --exit-stage {0}".format(iter))
             return
-        current_num_jobs = int(0.5 + args.num_jobs_initial
-                               + (args.num_jobs_final - args.num_jobs_initial)
-                               * float(iter) / num_iters)
+
+        current_num_jobs = common_train_lib.get_current_num_jobs(
+            iter, num_iters,
+            args.num_jobs_initial, args.num_jobs_step, args.num_jobs_final)
 
         if args.stage <= iter:
             model_file = "{dir}/{iter}.mdl".format(dir=args.dir, iter=iter)
@@ -501,12 +510,13 @@ def train(args, run_opts):
             shrink_info_str = ''
             if shrinkage_value != 1.0:
                 shrink_info_str = 'shrink: {0:0.5f}'.format(shrinkage_value)
-            logger.info("Iter: {0}/{1}    "
-                        "Epoch: {2:0.2f}/{3:0.1f} ({4:0.1f}% complete)    "
-                        "lr: {5:0.6f}    {6}".format(iter, num_iters - 1,
-                                                     epoch, args.num_epochs,
-                                                     percent,
-                                                     lrate, shrink_info_str))
+            logger.info("Iter: {0}/{1}   Jobs: {2}   "
+                        "Epoch: {3:0.2f}/{4:0.1f} ({5:0.1f}% complete)   "
+                        "lr: {6:0.6f}   {7}".format(iter, num_iters - 1,
+                                                    current_num_jobs,
+                                                    epoch, args.num_epochs,
+                                                    percent,
+                                                    lrate, shrink_info_str))
 
             chain_lib.train_one_iteration(
                 dir=args.dir,
