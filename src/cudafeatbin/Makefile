@@ -6,7 +6,11 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = compute-mfcc-feats-cuda
+BINFILES = 
+
+ifeq ($(CUDA), true)
+  BINFILES += compute-mfcc-feats-cuda
+endif
 
 OBJFILES =
 
