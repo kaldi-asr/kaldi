@@ -132,6 +132,7 @@ class CuVectorBase {
                     const CuArrayBase<int32> &elements);
 
   void ApplySoftMax();
+  void ApplyLogSoftMax();
   void ApplyExp();
   void ApplyLog();
   void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = NULL);

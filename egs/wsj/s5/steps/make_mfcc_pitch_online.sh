@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Copyright 2013 The Shenzhen Key Laboratory of Intelligent Media and Speech,
-#                PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)
+# Copyright 2013  The Shenzhen Key Laboratory of Intelligent Media and Speech,
+#                 PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)
 #           2014-2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 # Combine MFCC and online-pitch features together
@@ -14,25 +14,30 @@ mfcc_config=conf/mfcc.conf
 online_pitch_config=conf/online_pitch.conf
 paste_length_tolerance=2
 compress=true
+write_utt2num_frames=true  # If true writes utt2num_frames.
+write_utt2dur=true
 # End configuration section.
 
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $@"  # Print the command line for logging.
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# -lt 1 ] || [ $# -gt 3 ]; then
-   echo "Usage: $0 [options] <data-dir> [<log-dir> [<mfcc-dir>] ]";
-   echo "e.g.: $0 data/train exp/make_mfcc/train mfcc"
-   echo "Note: <log-dir> defaults to <data-dir>/log, and <mfcc-dir> defaults to <data-dir>/data"
-   echo "Options: "
-   echo "  --mfcc-config              <mfcc-config-file>        # config passed to compute-mfcc-feats, default "
-   echo "                                                       # is conf/mfcc.conf"
-   echo "  --online-pitch-config <online-pitch-config-file>     # config passed to compute-and-process-kaldi-pitch-feats, "
-   echo "                                                       # default is conf/online_pitch.conf"
-   echo "  --paste-length-tolerance   <tolerance>               # length tolerance passed to paste-feats"
-   echo "  --nj                       <nj>                      # number of parallel jobs"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>)     # how to run jobs."
+  cat >&2 <<EOF
+Usage: $0 [options] <data-dir> [<log-dir> [<mfcc-dir>] ]
+ e.g.: $0 data/train
+Note: <log-dir> defaults to <data-dir>/log, and
+      <mfcc-dir> defaults to <data-dir>/data
+Options:
+  --mfcc-config <mfcc-config-file>     # config passed to compute-mfcc-feats [conf/mfcc.conf]
+  --online-pitch-config <online-pitch-config-file> # config passed to compute-and-process-kaldi-pitch-feats [conf/online_pitch.conf]
+  --paste-length-tolerance <tolerance> # length tolerance passed to paste-feats.
+  --nj <nj>                            # number of parallel jobs.
+  --cmd <run.pl|queue.pl <queue opts>> # how to run jobs.
+  --write-utt2num-frames <true|false>  # If true, write utt2num_frames file.
+  --write-utt2dur <true|false>         # If true, write utt2dur file.
+EOF
    exit 1;
 fi
 
@@ -90,9 +95,21 @@ for n in $(seq $nj); do
   utils/create_data_link.pl $mfcc_pitch_dir/raw_mfcc_online_pitch_$name.$n.ark
 done
 
+if $write_utt2num_frames; then
+  write_num_frames_opt="--write-num-frames=ark,t:$logdir/utt2num_frames.JOB"
+else
+  write_num_frames_opt=
+fi
+
+if $write_utt2dur; then
+  write_utt2dur_opt="--write-utt2dur=ark,t:$logdir/utt2dur.JOB"
+else
+  write_utt2dur_opt=
+fi
+
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
-  split_segments=""
+  split_segments=
   for n in $(seq $nj); do
     split_segments="$split_segments $logdir/segments.$n"
   done
@@ -100,58 +117,88 @@ if [ -f $data/segments ]; then
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
 
-  mfcc_feats="ark:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- |"
-  pitch_feats="ark,s,cs:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-and-process-kaldi-pitch-feats --verbose=2 --config=$online_pitch_config ark:- ark:- |"
+  mfcc_feats="ark:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | \
+    compute-mfcc-feats $vtln_opts $write_utt2dur_opt --verbose=2 \
+      --config=$mfcc_config ark:- ark:- |"
+  pitch_feats="ark,s,cs:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | \
+    compute-and-process-kaldi-pitch-feats --verbose=2 \
+      --config=$online_pitch_config ark:- ark:- |"
 
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
-    paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    paste-feats --length-tolerance=$paste_length_tolerance \
+      "$mfcc_feats" "$pitch_feats" ark:- \| \
+    copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.scp \
      || exit 1;
 
 else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
-  split_scps=""
+  split_scps=
   for n in $(seq $nj); do
     split_scps="$split_scps $logdir/wav_${name}.$n.scp"
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
 
-  mfcc_feats="ark:compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
-  pitch_feats="ark,s,cs:compute-and-process-kaldi-pitch-feats --verbose=2 --config=$online_pitch_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
+  mfcc_feats="ark:compute-mfcc-feats $vtln_opts $write_utt2dur_opt --verbose=2 \
+    --config=$mfcc_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
+  pitch_feats="ark,s,cs:compute-and-process-kaldi-pitch-feats --verbose=2 \
+    --config=$online_pitch_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
 
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
-    paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    paste-feats --length-tolerance=$paste_length_tolerance \
+      "$mfcc_feats" "$pitch_feats" ark:- \| \
+    copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.scp \
       || exit 1;
 fi
 
 
 if [ -f $logdir/.error.$name ]; then
-  echo "Error producing mfcc & pitch features for $name:"
+  echo "$0: Error producing MFCC and online-pitch features for $name:"
   tail $logdir/make_mfcc_pitch_${name}.1.log
   exit 1;
 fi
 
-# concatenate the .scp files together.
+# Concatenate the .scp files together.
 for n in $(seq $nj); do
-  cat $mfcc_pitch_dir/raw_mfcc_online_pitch_$name.$n.scp || exit 1;
-done > $data/feats.scp
+  cat $mfcc_pitch_dir/raw_mfcc_online_pitch_$name.$n.scp || exit 1
+done > $data/feats.scp || exit 1
 
-rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
+if $write_utt2num_frames; then
+  for n in $(seq $nj); do
+    cat $logdir/utt2num_frames.$n || exit 1
+  done > $data/utt2num_frames || exit 1
+fi
 
-nf=`cat $data/feats.scp | wc -l`
-nu=`cat $data/utt2spk | wc -l`
+if $write_utt2dur; then
+  for n in $(seq $nj); do
+    cat $logdir/utt2dur.$n || exit 1
+  done > $data/utt2dur || exit 1
+fi
+
+# Store frame_shift, mfcc_config and pitch_config_online along with features.
+frame_shift=$(perl -ne 'if (/^--frame-shift=(\d+)/) {
+                          printf "%.3f", 0.001 * $1; exit; }' $mfcc_config)
+echo ${frame_shift:-'0.01'} > $data/frame_shift
+mkdir -p $data/conf &&
+  cp $mfcc_config $data/conf/mfcc.conf &&
+  cp $online_pitch_config $data/conf/online_pitch.conf || exit 1
+
+rm $logdir/wav_${name}.*.scp  $logdir/segments.* \
+   $logdir/utt2num_frames.* $logdir/utt2dur.* 2>/dev/null
+
+nf=$(wc -l < $data/feats.scp)
+nu=$(wc -l < $data/utt2spk)
 if [ $nf -ne $nu ]; then
-  echo "It seems not all of the feature files were successfully processed ($nf != $nu);"
-  echo "consider using utils/fix_data_dir.sh $data"
+  echo "$0: It seems not all of the feature files were successfully procesed" \
+       "($nf != $nu); consider using utils/fix_data_dir.sh $data"
 fi
 
-if [ $nf -lt $[$nu - ($nu/20)] ]; then
-  echo "Less than 95% the features were successfully generated.  Probably a serious error."
-  exit 1;
+if (( nf < nu - nu/20 )); then
+  echo "$0: Less than 95% the features were successfully generated."\
+       "Probably a serious error."
+  exit 1
 fi
 
-echo "Succeeded creating MFCC & online-pitch features for $name"
+echo "$0: Succeeded creating MFCC and online-pitch features for $name"

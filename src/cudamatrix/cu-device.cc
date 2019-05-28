@@ -123,6 +123,14 @@ void CuDevice::Initialize() {
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
+
+    // Initialize the generator,
+    CURAND_SAFE_CALL(curandCreateGenerator(
+          &curand_handle_, CURAND_RNG_PSEUDO_DEFAULT));
+    // To get same random sequence, call srand() before the constructor is invoked,
+    CURAND_SAFE_CALL(curandSetGeneratorOrdering(
+          curand_handle_, CURAND_ORDERING_PSEUDO_DEFAULT));
+    SeedGpu();
   }
 }
 
@@ -258,6 +266,14 @@ void CuDevice::FinalizeActiveGpu() {
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
+    
+    // Initialize the generator,
+    CURAND_SAFE_CALL(curandCreateGenerator(
+          &curand_handle_, CURAND_RNG_PSEUDO_DEFAULT));
+    // To get same random sequence, call srand() before the constructor is invoked,
+    CURAND_SAFE_CALL(curandSetGeneratorOrdering(
+          curand_handle_, CURAND_ORDERING_PSEUDO_DEFAULT));
+    SeedGpu();
 
     // Notify the user which GPU is being userd.
     char name[128];
@@ -427,7 +443,7 @@ void CuDevice::AccuProfile(const char *function_name,
     // per-thread default stream.  Since we compile with
     // -DCUDA_API_PER_THREAD_DEFAULT_STREAM, this equates to a per-thread
     // stream.
-    cudaStreamSynchronize(0);
+    CU_SAFE_CALL(cudaStreamSynchronize(0));
     double elapsed = timer.Elapsed();
     if (profile_map_.find(key) == profile_map_.end())
       profile_map_[key] = elapsed;
@@ -529,6 +545,9 @@ CuDevice::~CuDevice() {
     CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle_));
   if (cusparse_handle_)
     CUSPARSE_SAFE_CALL(cusparseDestroy(cusparse_handle_));
+  if (curand_handle_) {
+    CURAND_SAFE_CALL(curandDestroyGenerator(curand_handle_));
+  }
 }
 
 

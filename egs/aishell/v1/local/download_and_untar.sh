@@ -15,7 +15,7 @@ if [ $# -ne 3 ]; then
   echo "Usage: $0 [--remove-archive] <data-base> <url-base> <corpus-part>"
   echo "e.g.: $0 /export/a05/xna/data www.openslr.org/resources/33 data_aishell"
   echo "With --remove-archive it will remove the archive after successfully un-tarring it."
-  echo "<corpus-part> can be one of: data_aishell, resource."
+  echo "<corpus-part> can be one of: data_aishell, resource_aishell."
 fi
 
 data=$1
@@ -28,7 +28,7 @@ if [ ! -d "$data" ]; then
 fi
 
 part_ok=false
-list="data_aishell resource"
+list="data_aishell resource_aishell"
 for x in $list; do
   if [ "$part" == $x ]; then part_ok=true; fi
 done
