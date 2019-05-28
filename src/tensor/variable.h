@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR_TENSOR_H_
-#define KALDI_TENSOR_TENSOR_H_ 1
+#ifndef KALDI_TENSOR_VARIABLE_H_
+#define KALDI_TENSOR_VARIABLE_H_ 1
 
 #include "tensor/variable.h"
 
@@ -26,123 +26,297 @@ namespace kaldi {
 namespace tensor {
 
 
-/*
-  This is the 'gradient information' that class Variable stores for a Tensor
-  when it is initialized with requires_grad = true (or is a result of
-  an operation on Variables one of which had requires_grad = true).
-  This does not give you access to the underlying Variables; doing it
-  like this makes reference counting easier (no loops).  The GradFunc
-  will store any pointers to the original Variable that it may have
-  needed.
-
-  Users will rarely need to interact directly with this struct directly.
- */
-struct TensorGrad {
-  // The version of the underlying Tensor.  (this number in the TensorGrad
-  // mirrors that in the Variable; it's needed because TensorGrad's
-  // 'inputs' variable refers back to the TensorGrad and does not have
-  // access to the Variable).
-  int32 version;
 
 
-  struct InputInfo {
-    int32 version;  // the version of the input that we used.  Used so we can
-                    // check in the backprop that grad->version == version;
-                    // if not, the user did something we don't allow.
-    std::shared_ptr<TensorGrad> grad;
-  };
-
-  // The gradients corresponding to the input variables, which
-  // we may need to update.  Some subset of these may be nullptr,
-  // corresponding to input Variables for which no gradient
-  // was required.
-  std::vector<InputInfo> inputs;
-
-  // is_view is true only if the Variable underlying this TensorGrad
-  // is the result of an expression like foo.transpose() that creates
-  // a view to another Tensor.  In that case
-  bool is_view{false};
-
-  // The device we
-  Device device;
-
-  // This contains the meta-information of the Tensor for which this is the
-  // gradient (its 'data' pointer will be NULL).  Used to set up 'grad' with the
-  // correct dimension and strides when it is needed.
-  TensorMeta meta;
-  // Only if is_view == true, the offset (in elements) of the start of
-  // the Tensor described in 'meta' from the start of the source Tensor.
-  // Used in constructing 'grad'
-  int64 offset;
-
-  // This stores the gradient (if we already have one), or nullptr if not.
-  std::unique_ptr<Variable> grad{nullptr};
-
-  // The tail in a singly linked list of TensorGrads... used in case this
-  // Variable is a sum of several terms that were added using an
-  // in-place method such as '+='.  (Syntax etc. TBD at this point).
-  std::unique_ptr<TensorGrad> tail{nullptr};
-};
+// Shared data of a base Variable.  Each tracked base Variable gets one of
+// these; non-base Variables (views into other variables) share the Node of
+// their base Variable.
+class Node {
 
 
-/**
-   class Variable is somewhat like class Tensor but augmented with autograd
-   machinery.  Because autograd requires a rather 'functional' way of doing
-   things (i.e. is not super friendly to in-place operations), the functions
-   that operate on class Variable will tend to be ones that return something,
-   rather than in-place operations.
-
-   The overall design is quite similar to PyTorch, and the structure
-   of the the C++ code is similar to flashlight.  If you are only familiar with
-   PyTorch's python frontend, class Variable is rougtly equivalent to what they
-   expose as af.tensor.
- */
-class Variable {
-  using GradFunc = std::function<
-    void(const std::vector<Variable>& inputs, TensorGrad *grad_output)>;
-  using GradHook = std::function<void(TensorGrad *grad)>;
-
-
-
-  /** Constructor from a Tensor.
-       @param [in] data  Pointer to the source Tensor
-       @param [in] requires_grad    If requires_grad argument is true,
-                the gradient w.r.t. this Variable will be computed if and when
-                you call Backward() on a Variable that depends on it.
-                The same as requires_grad in PyTorch.
+  /**
+     Construct a Node.
+          @param [in] tensor   The data_ of the base Variable to which
+                     this node is to be attached.  The created 'grad' will
+                     have the same dims but different Storage and possibly
+                     different strides;
   */
-  Variable(const std::shared_ptr<Tensor> &data, bool requires_grad);
+  explicit Node(const Tensor &tensor);
 
 
 
   /**
-   * Creates a Variable which wraps the array and inputs specified
-   * @param[in] data array to the stored in the Variable
-   * @param[in] inputs a vector specifying inputs for this Variable
-   * @param[in] gradFunc function specifying how to calculate gradient of the
-   * input Variables
-   */
-  Variable(std::shared_ptr<Tensor> &data, std::vector<Variable> inputs,
-           GradFunc gradFunc);
+     This is to be used when setting the grad_ member of view variables.  it
+     constructs a new Tensor with the appropriate pattern for the view, but
+     pointing to the storage of 'grad'.
+          @param [in] tensor  The data_ of the view Variable for which
+                      we are requesting the gradient Tensor.
+          @return     Returns a Tensor that is a view into 'grad', with
+                      the same relationship to it as 'tensor' had to
+                      its underlying Variable.
+  */
+  std::shared_ptr<Tensor> GetGradFor(const Tensor &tensor);
 
+
+  /**
+     Sets the most recent Op held here (op_).  This is called whenever
+     an Op is created that changed a Variable attached to this Node.  The
+     Op itself should have a shared_ptr to the previous Op that was attached
+     to this Node.
+   */
+  inline void SetOp(const std::shared_ptr<Op> &op) { op_ = op; }
+
+  // The gradient.  This is set up when the Node is created, but the data in its
+  // Storage object won't necessarily have been allocated (see "Lazy Allocation"
+  // in tensor.h)
+  std::shared_ptr<Tensor> grad;
+
+  // Either NULL, or an object capable of converting patterns from
+  // tensor to gradients (used for views).  Will be NULL in the usual
+  // case where the Tensor for this base Variable has the same strides
+  // and offset as the grad.
+  std::unique_ptr<PatternRebaser> rebaser;
+
+  // latest_op is the most recent of the Ops that modified the base Variable
+  // this is attached to, or any view into it.
+
+  // op_list (will usually be NULL) is the head of a list of Ops that wrote to
+  // this Node (the most recent first).  In the backward pass we call Backprop()
+  // on each of these Ops in turn.  TODO: make it unique_ptr?
+  std::shared_ptr<Op> latest_op;
 
  private:
+  Node(const Node &other);  // Disallow copy construction
+  Node & operator = (const Node &other);  // Disallow assignment
+};
 
-  // The version of this Variable.  Generally will start at 0 when the Variable
-  // is assigned a size and will have 1 added to it for each operation that is
-  // done on it.  If grad_ != NULL, we mirror this value in grad_->version.  The
-  // version number is only used for checking purposes, to verify that people
-  // don't modify a Variable in ways that defeat the backprop.  If we wanted we
-  // could keep the old versions around and enable the backprop to work anyway,
-  // but that kind magic is not in the spirit of how this library operates.
-  int32 version_;
 
-  std::shared_ptr<Tensor> data_;
-  std::shared_ptr<TensorGrad> grad_;
+/**
+   This is an overflow from class VariableImpl of various rarely-used fields; we
+   instantiate it only when they are used.  This avoids bulking up the
+   implementation of VariableImpl with them.
+
+
+ */
+struct VariableImplAux {
+
+  // rebaser_ is always NULL for view Variables.   For tracked base
+  // Variables where data_ and grad_ have different offset and/or
+  // strides, it is an object capable of converting patterns from
+  // tensors to gradients (used when constructing views).
+  std::unique_ptr<PatternRebaser> rebaser;
+
+  // config_ is NULL if no config values have been stored; otherwise,
+  // a pointer to class Config.
+  std::unique_ptr<Config> config;
+
 
 };
 
-typedef std::unique_ptr<Storage>
+
+/**
+   Implementation class for Variable.  Variable just holds a shared_ptr to this.
+ */
+class VariableImpl {
+ public:
+
+  inline const Tensor &GetData() const { return data_; }
+
+  // Returns true if this Variable is tracked (see "Tracked" in the
+  // glossary in tensor.h).
+  inline bool Tracked() const;
+
+  // Returns the most recent Op in the autograd graph (will return the same
+  // value for all Variables sharing the same base Variable).  Will be
+  // NULL if this Variable was not tracked.
+  inline const std::shared_ptr<const Op> &GetOp() const;
+
+  // Returns the Tensor corresponding to the gradient; this will make the
+  // Variable (and any other Variable sharing the same base Variable) tracked if
+  // it was not tracked before (see "Tracked" in glossary in tensor.h)
+  inline const Tensor& GetGrad();
+
+
+  // Returns the Tensor corresponding to the gradient if this variable is
+  // tracked; else returns NULL; Differs from GetGrad() in its behavior for
+  // non-tracked Variables.
+  inline const std::shared_ptr<const TensorImpl>& GetGradIfTracked();
+
+
+  // Sets the most recent Op for the base Variable of this Variable;
+  // this is called by Ops to register themselves with Variables that
+  // they modify.
+  inline void SetOp(std::shared_ptr<const Op> &op);
+
+
+  // This function must only be called on tracked base Variables (see glossary
+  // in tensor.h; it requires grad_ != NULL and base_ == NULL).  It gets the
+  // grad Tensor corresponding to the data in 'data', which is assumed to
+  // be a view into this->data_.  This grad Tensor will be a view into
+  // this->grad_.  This function is called from view Variables when setting
+  // up their grad_ variables.
+  inline Tensor GetGradForView(const Tensor &data);
+
+ private:
+
+  // This function, which must only be called on a non-tracked base Variable,
+  // creates the 'grad_' tensor.
+  void CreateGrad();
+
+  // The Tensor that this Variable wraps.  (Note: it just holds a non-NULL
+  // shared_ptr<const TensorImpl>.  The const is to ensure the meta-info
+  // isn't changed unexpectedly).
+  Tensor data_;
+
+  // The gradient corresponding to `data_`, or NULL if this is:
+  //  (a) a base Variable that is not tracked, or
+  //  (b) a view Variable that is either not tracked, or we have
+  //      not yet cached the gradient.  (we might need to follow
+  //      the base_ pointer to get the gradient).
+  // Note: the data underlying this gradient is not necessarily allocated; see
+  // "Lazy Allocation" in the glossary in tensor.h.
+  // The type differs from Tensor only because it might be NULL.
+  std::shared_ptr<const TensorImpl> grad_;
+
+  // 'base_' is NULL if this is a base Variable (i.e. not a view of another
+  // Variable); otherwise it points to the base Variable.
+  std::shared_ptr<VariableImpl> base_;
+
+  // op_ is always NULL for view Variables.  For tracked base Variables,
+  // it is the most recent Op that modified this Variable.  (The autograd
+  // graph is solely between Ops; this latest_ is our entry point to that
+  // graph and is also used in its construction).
+  std::shared_ptr<const Op> op_;
+
+  // For tracked base Variables, this will be set to true if the pattern of
+  // grad_ is different from the pattern of data_ (because data_ was not
+  // contiguous and justified), and false otherwise.  If this is true, we need
+  // to rebase any views of this variable.  For non-tracked or non-base
+  // Variables, its value is undefined.
+  bool rebase_grad_;
+
+  // overwrite_ is part of a mechanism that avoids unnecessary zeroing of parts
+  // of derivatives during the backprop phase.  By default we assume that if we
+  // write to a Variable in a way that doesn't depend on the previous value
+  // (e.g. we set it, rather than add to it or multiply in-place), then the
+  // previous memory underlying that Variable has not previously participated in
+  // any operations requiring derivatives.
+  //
+  // If you are about to modify a Variable c that *has* previously participated
+  // in operations requiring derivatives, then, instead of, say:
+  //  DoSomethingWith(a, b, &c);
+  // (and let's suppose this operation ignores the previous value of `c`),
+  // you could do:
+  //  DoSomethingWith(a, b, &c.Overwrite());
+  // whereby you assert that the memory underlying this variable may have
+  // previously participated in operations requiring derivative tracking
+  // (and hence we need to an extra zeroing after the backprop).
+  // The call to Overwrite() sets the `overwrite_` bool, and then the
+  // DoSomethingWith() call should unset it.  (Note: even if that operation for
+  // some reason doesn't unset it, it doesn't really matter, as it would be safe
+  // to set it always).  The overwrite_ variable is intended to be read,
+  // and reset to false, within sub-classes of class Op.
+  //
+  // Look at the comment for class InvalidatedDataChecker in change-tracker.h
+  // for more information.
+  bool overwrite_;
+
+  // aux_ is basically a collection of less-often-used fields of class VariableImpl;
+  // it helps keep the main class uncluttered.
+  std::unique_ptr<VariableImplAux> aux_;
+};
+
+
+class Variable;
+
+
+/**
+   class Variable is like class Tensor but augmented with autograd machinery.
+*/
+class Variable {
+
+  /** Constructor from a Tensor.
+       @param [in] data  The source Tensor.  (This Variable will copy it; this
+                 is to avoid errors if you change the original Tensor).
+
+       @param [in] tracked    If `tracked` is true,
+                the gradient w.r.t. this Variable will be computed if and when
+                you call Backward() on a Variable that depends on it.
+                The same as requires_grad in PyTorch.
+  */
+  Variable(const Tensor &data, bool tracked);
+
+
+
+  /**
+     Returns true if this Variable is tracked (meaning: gradient tracking is
+     happening), see glossary in tensor.h for definition.
+  */
+  bool Tracked() const;
+
+
+
+  /**  Returns ref to the Tensor storing the data. */
+  Tensor &Data() const;
+
+
+  /**  Returns pointer to the Tensor storing the derivative w.r.t.  this
+       data.  Obtaining this Tensor won't allocate the memory, thanks to lazy
+       initialization.  Calling this will make this Variable tracked.
+  */
+  Tensor &GradData();
+
+
+  /**  Returns pointer to the Tensor storing the derivative w.r.t.  this data if
+       this Variable is already tracked, or NULL if not.  This is for framework
+       use, not for users.  Note: shared_ptr<TensorImpl> means "maybe a Tensor,
+       maybe NULL".
+  */
+  std::shared_ptr<const TensorImpl> GradDataIfPresent();
+
+
+  /**
+     Returns pointer to the base Variable (which may or may not be
+     identical to 'this'.
+   */
+  Variable GetBaseVariable();
+
+
+  /**
+     Returns the most recent Op that modified the base Variable of this
+     Variable.  This will be called so the dependency can be recorded in other
+     Ops, and also if called Backprop() and we want to create the list
+     of Ops to do backprop on.
+   */
+  std::shared_ptr<Op> GetOp();
+
+
+  /**
+     Sets the most recent Op held in the Node underlying this Variable
+     to the Op held in this shared_ptr (which must not be NULL).  This
+     is done whenever we create an Op that modifies a particular
+     Variable.
+  */
+  void SetOp(const std::shared_ptr<Op> &op);
+
+
+ private:
+  // You may ask: Variable is just a shared_ptr<VariableImpl>, so why not just
+  // get rid of it, rename VariableImpl to Variable, and give people the choice
+  // of what memory management approach to use?  The issue is, we *require* the
+  // use of shared_ptr because the `base_` pointer in VariableImpl is also a
+  // shared_ptr to VariableImpl.  Forcing the users to always supply a
+  // shared_ptr<Variable> seems like a bad pattern, so we use this `impl_`
+  // approach where the shared_ptr is hidden.  This is similar to class Tensor,
+  // although the VariableImpl is not const because (for instance) we may
+  // need to make it tracked if it isn't currently.
+  //
+  // The difference between a Variable and std::shared_ptr<VariableImpl> is that
+  // the latter may be NULL, but a Variable never has a NULL impl_.
+  std::shared_ptr<VariableImpl> impl_;
+};
+
+
 
 
 
@@ -152,6 +326,10 @@ typedef std::unique_ptr<Storage>
 
 }  // namespace tensor
 }  // namespace kaldi
+
+
+// Include implementation of inline functions.
+#include "tensor/variable-inl.h"
 
 
 #endif  // KALDI_TENSOR_VARIABLE_H_

@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 
 /**
    This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
@@ -37,10 +38,10 @@ typedef uint32_t uint32;
 
 
 
-enum {
+enum DeviceType {
   kCpuDevice = 0,
   kCudaDevice = 1
-} DeviceType;
+};
 
 
 // We may later add a device number (like which GPU we are using),
@@ -61,21 +62,37 @@ struct Device {
 enum DataType {
   // We will of course later extend this with many more types, including
   // integer types and half-precision floats.
-  kFloatDtype = 0,
-  kDoubleDtype = 1
+  kDefaultDtype = 0,
+  // kDefaultDtype means the type used when not specified; it's user definable
+  // via SetDefaultDtype.
+  kFloatDtype = 1,
+  kDoubleDtype = 2,
 };
 
+
+
+inline int32 SizeOf(DataType dtype) {
+  switch(dtype) {
+    case 0: return 4;
+    case 1: return 8;
+    case 2: KALDI_ERR << "Invalid data-type " << int32(dtype); return 0;
+  }
+}
 
 
 /// Enumeration that says what strides we should choose when allocating
 /// A Tensor.
 enum StridePolicy {
-  kCopyStrides,  // means: copy the strides from the source Tensor, preserving
-                 //  their signs and relative ordering (but filling in gaps if
-                 //  the source Tensor's data was not contiguous.
-  kCstrides      // means: strides for dimensions that are != 1 are ordered from
-                 // greatest to smallest as in a "C" array.  Per our policy,
-                 // any dimension that is 1 will have a zero stride.
+  kKeepStrideOrder,  // Means: keep the size-ordering of the strides from the
+                     // source Tensor (but the chosen strides will all be
+                     // positive even of some of the source Tensor's strides
+                     // were negative).
+  kNormalized    // Means: strides for dimensions that are != 1 are ordered from
+                 // greatest to smallest as in a "C" array in the public
+                 // numbering, or smallest to greatest in the private numbering.
+                 // Per our policy, any dimension that is 1 will be given a zero stride.
+                 // C.f. "Normalized strides" in pattern.h
+  kCopyStrides   // Means: use the exact strides provided.
 };
 
 /// Enumeration that says whether to zero a freshly initialized Tensor.
@@ -84,25 +101,46 @@ enum InitializePolicy {
   kUninitialized
 };
 
-/// This enumeration with one value is used in the constructor of Tensor,
-/// so if you do:
-///  `Tensor a;  Tensor b(a, kUntrackedStorage);`
-/// it will not copy the 'storage' pointer like it normallly would.
-/// This is useful as an optimization that avoids atomics with
-/// std::shared_ptr, for temporary Tensors in situations where we
-/// know the Tensor we are copying from is not going out of scope
-/// for the lifetime of the temporary.
-enum TensorStorageEnum {
-  kUntrackedStorage
+
+
+/// This enumeration value lists the unary functions that we might
+/// want to apply to Tensors; it exists so that much of the glue
+/// code can be templated.
+enum UnaryFunctionEnum {
+  kUnaryFunctionExp,
+  kUnaryFunctionLog,
+  kUnaryFunctionRelu,
+  kUnaryFunctionInvert,
+  kUnaryFunctionSquare
+  // TODO: add more.
 };
 
 
 
-// In practice we don't expect user-owned tensors with dims greater than 5 to
-// exist, but there are certain manipulations we do when simplifying matrix
+/// This enumeration value lists the binary functions that we might
+/// want to apply to Tensors; it exists so that much of the glue
+/// code can be templated.  (Note: multiplication is not counted
+/// here; that is a special case as it will genearlly go to BLAS).
+enum BinaryFunctionEnum {
+  kBinaryFunctionAdd,
+  kBinaryFunctionDivide,
+  kBinaryFunctionMax,
+  kBinaryFunctionMin
+};
+
+
+enum TensorUseEnum {
+  kRead,
+  kReadWrite,
+  kWrite
+};
+
+
+// In practice we don't expect user-owned tensors with num-axes greater than 5
+// to exist, but there are certain manipulations we do when simplifying matrix
 // multiplications that temporarily add an extra dimension, and it's most
 // convenient to just increase the maximum.
-#define KALDI_TENSOR_MAX_DIM 6
+#define KALDI_TENSOR_MAX_AXES 6
 
 
 }  // namespace tensor

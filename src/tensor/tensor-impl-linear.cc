@@ -62,7 +62,7 @@ void AddProduct(float alpha, float beta,
     The case-statement values in the switch statement below may be
     interpreted in groups of 3 hex characters, are 0xAAABBBCCC,
     pertaining to Tensors a, b and c respectively.  See
-    GetPatternCode() in tensor-pattern-utils.h for documentation on
+    GetPatternCode() in pattern-utils.h for documentation on
     the meanings of the values and our notation with X,x,1.
    */
   switch(combined_code) {

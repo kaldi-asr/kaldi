@@ -19,8 +19,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_HMM_TRANSITION_MODEL_H_
-#define KALDI_HMM_TRANSITION_MODEL_H_
+#ifndef KALDI_HMM_TRANSITIONS_H_
+#define KALDI_HMM_TRANSITIONS_H_
 
 #include "base/kaldi-common.h"
 #include "util/const-integer-set.h"
@@ -32,6 +32,7 @@
 
 namespace kaldi {
 
+static const int kNoPdf = -1;
 
 // The class Transitions handles various integer mappings.
 // It used to be the home for the trainable transitions, but these
@@ -70,7 +71,7 @@ namespace kaldi {
 //                   the neural net output.
 // (*)self-loop-pdf-id:  The pdf-id associated with the self-loop of this state,
 //                   if there is one (we do not allow >1), or -1 if there is no
-//                   self-loop.  This will be the same as pdf-id' if this transition
+//                   self-loop.  This will be the same as 'pdf-id' if this transition
 //                   *is* the self-loop.  It might seem odd that we require this
 //                   to get the transition-id for a non-self-loop arc; the reason
 //                   why it's necessary is that we initially create the graph
@@ -92,7 +93,7 @@ class Transitions {
   /// The class keeps a copy of the Topology object, but not
   /// the ContextDependency object.
   Transitions(const ContextDependencyInterface &ctx_dep,
-                  const Topology &topo);
+              const Topology &topo);
 
 
   /// Constructor that takes no arguments: typically used prior to calling Read.
@@ -111,8 +112,8 @@ class Transitions {
                       // tree and phonetic-context information, etc.)
 
     int32 self_loop_pdf_id;  // The pdf-id associated with the self-loop
-                             // transition (if any) leaving the *destiation*
-                             // state of this arc, or zero if that state has no
+                             // transition (if any) leaving the *destination*
+                             // state of this arc, or -1 if that state has no
                              // self-loop.  Search for (*) above for
                              // explanation.
 
@@ -145,6 +146,7 @@ class Transitions {
     // this arc, if there is one, or 0 if there is no such self-loop.
     int32 self_loop_transition_id;
 
+
     bool operator < (const TransitionIdInfo &other) const {
       if (phone < other.phone) return true;
       else if (phone > other.phone) return false;
@@ -154,8 +156,11 @@ class Transitions {
       else if (pdf_id > other.pdf_id) return false;
       else return (self_loop_pdf_id < other.self_loop_pdf_id);
     }
-    // TODO.  operator == can compare all members.
-    bool operator == (const TransitionIdInfo &other) const;
+    // TODO.  operator == can compare all members. Also compare derived members?
+    bool operator == (const TransitionIdInfo &other) const {
+      return phone == other.phone && topo_state == other.topo_state &&
+          pdf_id == other.pdf_id && self_loop_pdf_id == other.self_loop_pdf_id;
+    }
   };
 
 
@@ -173,7 +178,7 @@ class Transitions {
 
 
   /// Returns the total number of transition-ids (note, these are one-based).
-  inline int32 NumTransitionIds() const { return info_.size()-1; }
+  inline int32 NumTransitionIds() const { return info_.size() - 1; }
 
   // NumPdfs() returns the number of pdfs (pdf-ids) in the tree,
   // as returned by ctx_dep.NumPdfs() for the tree passed to the constructor.
@@ -198,7 +203,7 @@ class Transitions {
   // fields); you then have to call ComputeDerived() to initalize teh rest.
   void ComputeInfo(const ContextDependencyInterface &ctx_dep);
 
-  void ComputeDerived();  // called from constructor and Read function: computes state2id_ and id2state_.
+  void ComputeDerived();  // Called from constructor and Read function.
 
   void Check() const;
 
@@ -207,7 +212,7 @@ class Transitions {
 
   /// Information about transition-ids, indexed by transition-id.
   /// the tuples are in sorted order which allows us to do the reverse mapping from
-  /// tuple to transition state
+  /// tuple to transition id.
   std::vector<TransitionIdInfo> info_;
 
 

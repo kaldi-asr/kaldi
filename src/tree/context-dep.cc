@@ -218,7 +218,7 @@ void ContextDependency::EnumeratePairs(
     // Choose 'position' as a phone position in 'context' that's currently
     // -1, and that is as close as possible to the central position P.
     int32 position = 0;
-    int32 min_dist = N_ - 1;
+    int32 min_dist = N_;
     for (int32 i = 0; i < N_; i++) {
       int32 dist = (P_ - i > 0) ? (P_ - i) : (i - P_);
       if (phone_window[i] == -1 && dist < min_dist) {
@@ -292,7 +292,8 @@ void ContextDependency::GetPdfInfo(
     KALDI_ASSERT(static_cast<size_t>(phone) < num_pdf_classes.size());
     EventAnswerType len = num_pdf_classes[phone];
 
-    for (int32 pos = 0; pos < len; pos++) {
+    // Pdf-classes are 1-based.
+    for (int32 pos = 1; pos <= len; pos++) {
       vec.resize(2);
       vec[0] = std::make_pair(static_cast<EventKeyType>(P_),
                               static_cast<EventValueType>(phone));

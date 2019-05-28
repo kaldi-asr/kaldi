@@ -95,6 +95,7 @@ void Topology::Read(std::istream &is, bool binary) {
       ReadFstKaldi(is, binary, &fst);
       entries_.push_back(fst);
     }
+    ExpectToken(is, binary, "</Topology>");
   }
   Check();
 }

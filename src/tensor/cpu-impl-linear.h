@@ -1,4 +1,4 @@
-// tensor/cpu-impl.h
+// tensor/cpu-impl-linear.h
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,10 +17,15 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR_CPU_IMPL_H_
-#define KALDI_TENSOR_CPU_IMPL_H_ 1
+#ifndef KALDI_TENSOR_CPU_IMPL_LINEAR_H_
+#define KALDI_TENSOR_CPU_IMPL_LINEAR_H_ 1
 
 #include "tensor/tensor.h"
+
+
+// This header actually contains implementations of functions that are required
+// by tensor-impl-linear.cc.  It should not be included by users of this
+// library.
 
 
 namespace kaldi {
@@ -63,4 +68,4 @@ AddProductScalar3Cpu(alpha, beta, a, b, c);
 }  // namespace kaldi
 
 
-#endif  // KALDI_TENSOR_CPU_IMPL_H_
+#endif  // KALDI_TENSOR_CPU_IMPL_LINEAR_H_

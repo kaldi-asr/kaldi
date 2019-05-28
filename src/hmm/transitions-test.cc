@@ -24,9 +24,7 @@ namespace kaldi {
 
 
 void TestTransitions() {
-
   Transitions *trans_model = GenRandTransitionModel(NULL);
-
   bool binary = (rand() % 2 == 0);
 
   std::ostringstream os;
@@ -41,7 +39,7 @@ void TestTransitions() {
     trans_model->Write(os1, false);
     trans_model2.Write(os2, false);
     KALDI_ASSERT(os1.str() == os2.str());
-    KALDI_ASSERT(trans_model->Compatible(trans_model2));
+    KALDI_ASSERT(*trans_model == trans_model2);
   }
   delete trans_model;
 }
@@ -53,4 +51,3 @@ int main() {
     kaldi::TestTransitions();
   KALDI_LOG << "Test OK.\n";
 }
-

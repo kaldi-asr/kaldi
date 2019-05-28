@@ -139,8 +139,6 @@ int main() {
 
   // mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;

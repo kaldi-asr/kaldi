@@ -152,17 +152,12 @@ void TestOnlineMfcc() {
 
   // the parametrization object
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.frame_opts.samp_freq = wave.SampFreq();
   op.mel_opts.low_freq = 0.0;
-  op.htk_compat = false;
   op.use_energy = false;  // C0 not energy.
-  if (RandInt(0, 1) == 0)
-    op.frame_opts.snip_edges = false;
   Mfcc mfcc(op);
 
   // compute mfcc offline
@@ -204,14 +199,11 @@ void TestOnlineTransform() {
 
   // build online feature interface, take OnlineMfcc as an example
   MfccOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.frame_opts.samp_freq = wave.SampFreq();
   op.mel_opts.low_freq = 0.0;
-  op.htk_compat = false;
   op.use_energy = false;  // C0 not energy.
   OnlineMfcc online_mfcc(op);
 
@@ -247,37 +239,17 @@ void TestOnlineAppendFeature() {
 
   // the parametrization object for 1st stream mfcc feature
   MfccOptions mfcc_op;
-  mfcc_op.frame_opts.dither = 0.0;
-  mfcc_op.frame_opts.preemph_coeff = 0.0;
   mfcc_op.frame_opts.window_type = "hamming";
   mfcc_op.frame_opts.remove_dc_offset = false;
   mfcc_op.frame_opts.round_to_power_of_two = true;
   mfcc_op.frame_opts.samp_freq = wave.SampFreq();
   mfcc_op.mel_opts.low_freq = 0.0;
-  mfcc_op.htk_compat = false;
   mfcc_op.use_energy = false;  // C0 not energy.
   Mfcc mfcc(mfcc_op);
 
   // compute mfcc offline
   Matrix<BaseFloat> mfcc_feats;
   mfcc.Compute(waveform, 1.0, &mfcc_feats);  // vtln not supported
-
-  // the parametrization object for 2nd stream plp feature
-  PlpOptions plp_op;
-  plp_op.frame_opts.dither = 0.0;
-  plp_op.frame_opts.preemph_coeff = 0.0;
-  plp_op.frame_opts.window_type = "hamming";
-  plp_op.frame_opts.remove_dc_offset = false;
-  plp_op.frame_opts.round_to_power_of_two = true;
-  plp_op.frame_opts.samp_freq = wave.SampFreq();
-  plp_op.mel_opts.low_freq = 0.0;
-  plp_op.htk_compat = false;
-  plp_op.use_energy = false;  // C0 not energy.
-  Plp plp(plp_op);
-
-  // compute plp offline
-  Matrix<BaseFloat> plp_feats;
-  plp.Compute(waveform, 1.0, &plp_feats);  // vtln not supported
 
   // compare
   // The test waveform is about 1.44s long, so
@@ -305,22 +277,17 @@ void TestOnlineAppendFeature() {
     GetOutput(&online_mfcc_doubled, &online_mfcc_doubled_feats);
 
     // compare mfcc_feats & plp_features with online_mfcc_doubled_feats
-    KALDI_ASSERT(mfcc_feats.NumRows() == online_mfcc_doubled_feats.NumRows()
-      && plp_feats.NumRows() == online_mfcc_doubled_feats.NumRows()
-      && mfcc_feats.NumCols() + plp_feats.NumCols()
-         == online_mfcc_doubled_feats.NumCols());
+    KALDI_ASSERT(mfcc_feats.NumRows() == online_mfcc_doubled_feats.NumRows() &&
+                 online_mfcc_doubled_feats.NumCols() == 2 * mfcc_feats.NumCols());
     for (MatrixIndexT i = 0; i < online_mfcc_doubled_feats.NumRows(); i++) {
       for (MatrixIndexT j = 0; j < mfcc_feats.NumCols(); j++) {
-        KALDI_ASSERT(std::abs(mfcc_feats(i, j) - online_mfcc_doubled_feats(i, j))
-          < 0.0001*std::max(1.0, static_cast<double>(std::abs(mfcc_feats(i, j))
-                                    + std::abs(online_mfcc_doubled_feats(i, j)))));
-      }
-      for (MatrixIndexT k = 0; k < plp_feats.NumCols(); k++) {
-        KALDI_ASSERT(
-          std::abs(plp_feats(i, k) -
-            online_mfcc_doubled_feats(i, mfcc_feats.NumCols() + k))
-          < 0.0001*std::max(1.0, static_cast<double>(std::abs(plp_feats(i, k))
-            +std::abs(online_mfcc_doubled_feats(i, mfcc_feats.NumCols() + k)))));
+        MatrixIndexT jj = j;
+        for (int count = 0; count < 2; count++) {
+          KALDI_ASSERT(std::abs(mfcc_feats(i, j) - online_mfcc_doubled_feats(i, jj))
+                       < 0.0001*std::max(1.0, static_cast<double>(std::abs(mfcc_feats(i, j))
+                                                                  + std::abs(online_mfcc_doubled_feats(i, jj)))));
+          jj += mfcc_feats.NumCols();
+        }
       }
     }
   }
@@ -374,7 +341,6 @@ int main() {
     TestOnlineDeltaFeature();
     TestOnlineSpliceFrames();
     TestOnlineMfcc();
-    TestOnlinePlp();
     TestOnlineTransform();
     TestOnlineAppendFeature();
     TestRecyclingVector();

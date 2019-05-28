@@ -1,4 +1,4 @@
-// tensor/tensor.h
+// tensor/tensor-utils.h
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -20,61 +20,148 @@
 #ifndef KALDI_TENSOR_TENSOR_UTILS_H_
 #define KALDI_TENSOR_TENSOR_UTILS_H_ 1
 
+
+#include "tensor/tensor-impl.h"
+#include "tensor/pattern-utils.h"
 #include "tensor/tensor.h"
 
 namespace kaldi {
 namespace tensor {
 
 
+/**
+  This function returns true if a and b have the same dtype
+  and device.  See also Broadcastable().
+*/
+inline bool Compatible(const Tensor &a, const Tensor &b) {
+  return Compatible(*a.impl_, *b.impl_);
+}
+
+/**
+  This function returns true if a and b have the same dtype
+  and device and are broadcastable; equivalent to
+  `Broadcastable(a, b) && Compatible(a, b)`.
+*/
+inline bool BroadcastableAndCompatible(const Tensor &a, const Tensor &b,
+                                       b_non_reducing = false) {
+  return Compatible(*a.impl_, *b.impl_) &&
+      Broadcastable(*a.impl_, *b.impl_, b_non_reducing);
+}
 
 
-// Used in checking function arguments, this function will
-// crash and print a statck trace if Tensor a and b have different
-// Dtype() or different Device().
-void CheckDeviceAndDtype(const TensorImpl &a, const TensorImpl &b);
-
-// Used in checking function arguments, this function will
-// crash and print a statck trace if Tensor a, b and c have different
-// Dtype() or different Device().
-void CheckDeviceAndDtype(const TensorImpl &a, const TensorImpl &b, const TensorImpl &c);
+inline bool Overlap(const Tensor &a, const Tensor &b) {
+  return Compatible(*a.impl_, *b.impl_);
+}
 
 
 /**
-   This function allocates the appropriate storage for the Tensor described
-   in 'impl', and sets is 'data' pointer to the allocated memory address.
-   It returns the address a newly allocated Storage object which manages
-   the memory location; you will probably want to construct a
-   std::unique_ptr<Storage> from this so that when it goes out of scope,
-   the memory will be freed.
+   Returns true if the Tensor t covers its entire allocated storage region,
+   meaning every byte of the storage region is accessible through t.
+*/
+inline bool IsWhole(const Tensor &t) {
+  return IsWhole(*t.impl_);
+}
 
-      @param [in,out] impl   The TensorImpl object we are allocating for.
-                      Any previous value of impl->data is overwritten.
-                      It is required that that the product of dims in
-                      impl->pattern be nonzero (i.e. that the pattern
-                      is initialized to a valid value), and that its
-                      dtype and device values be set.
-      @return         Returns a newly allocated Storage object that
-                      manages this memory block.  When it is freed,
-                      the memory block will be deallocated using a
-                      method appropriate for the device.
+/*
+  This function returns true if a, b and c have the same dtype
+  and device; equivalent to Compatible(a, b) && Compatible(b, c).
+*/
+inline bool Compatible(const TensorImpl &a, const TensorImpl &b,
+                       const TensorImpl &c) {
+  return Compatible(*a.impl_, *b.impl_, *c.impl_);
+}
 
-   This function throws on error.  See also AllocateTensorShared().  This
-   function is used by class Tensor, but also by various implementation
-   functions (called with TensorImpl) where we need to allocate temporaries.
-   We don't construct a full-fledged Tensor because we don't want the
-   overhead of managing any shared_ptr's.
+
+/**  This function returns true if the dimensions of tensor patterns
+     a and b are broadcastable in the PyTorch sense.  What this means
+     for tensors with the same num-axes is that dims for axis i
+     must either be the same or one of them must be 1.  For tensors
+     with different num-axes we (conceptually) check this after
+     padding with leading (dim=1)'s; for
+     instance, dims=[2,8,3] and dims=[8,1] would be broadcastable because
+     the [8,1] would be interpreted as [1,8,1].  (The examples above
+     are in the public ordering, not the reversed private ordering.)
+
+     If 'b_non_reducing' is true, then we do not allow any dim of
+     b to be 1 where the corresponding dim of a was not 1.
  */
-Storage *AllocateTensor(TensorImpl *impl);
+inline bool Broadcastable(const Tensor &a, const Tensor &b,
+                          bool b_non_reducing = false) {
+  return Broadcastable(a.impl_.pattern, b.impl_.pattern,
+                       b_non_reducing);
+}
+
+/**  This function returns true if the dimensions of Tensors
+     a, b and c are broadcastable in the PyTorch sense (meaning;
+     after padding their dims on the left with ones to make them
+     have the same num-axes, corresponding dimensions are either
+     identical or 1).  See the version of Broadcastable() above
+     for more information.
+
+       @param [in] a  The first Tensor
+       @param [in] b  The second Tensor
+       @param [in] c  The third Tensor
+       @param [in] c_non_reducing   If true, then we do not allow a dim of
+                      c to be 1 while corresponding dims of a or b
+                      are > 1.
+ */
+inline bool Broadcastable(const Tensor &a, const Tensor &b,
+                          const Tensor &c, bool c_non_reducing = false) {
+  return Broadcastable(a.impl_.pattern, b.impl_.pattern,
+                       c.impl_.pattern, c_non_reducing);
+}
+
+/**
+   Returns true if the 'dims' vectors of a and b are the same.
+   Does not require the number of axes to be the same, so effectively
+   it's testing that the dims are the same after padding on the left
+   with dim=1 (here referring to the public, non-reversed numbering
+   of the dims).
+
+   This is a stronger condition than Broadcastable(a, b).
+ */
+inline bool SameDim(const Tensor &a, const Tensor &b) {
+  return SameDim(a.impl_.pattern, b.impl_.pattern);
+}
+
+/**
+   Returns true if the 'dims' vectors of a, b and c are all the same.
+   Does not require the number of axes to be the same, so effectively
+   it's testing that the dims are the same after padding on the left
+   with dim=1 (here referring to the public, non-reversed numbering
+   of the dims).
+
+   This is a stronger condition than Broadcastable(a, b, c).
+ */
+inline bool SameDim(const Tensor &a, const Tensor &b,
+                    const Tensor &c) {
+  return SameDim(a.impl_.pattern, b.impl_.pattern);
+}
+
+inline void CheckUnchangedSince(int64 tick, const Tensor &a) {
+  // TODO.  Access its storage and check not changed since then.
+}
 
 
 /**
-   This function is as AllocateTensor(), except that the Storage
-   object returned is allocated via std::make_shared (which involves
-   just one heap allocation, as opposed to two if you constructed
-   the shared_ptr from the Storage* pointer).  See the documentation
-   for AllocateTensor() for more details.
+   This is to be called from any routine that writes to the memory underlying a
+   Tensor; in debug mode it registers that the Tensor has been changed, which
+   will later be used to check that the preconditions of the autograd framework
+   (in terms of in-place operations) are satisfied.
  */
-std::shared_ptr<Storage> AllocateTensorShared(TensorImpl *impl);
+inline void RegisterTensorChange(const Tensor &a) {
+  RegisterTensorChange(*a.impl_);
+}
+
+
+/**
+   Returns the number of elements in the Tensor, which equals the product of its
+   dimensions, i.e. the product from `axis = 0 ... a.NumAxes() - 1`, of
+   `a.Dim(axis)`.
+ */
+inline int64 NumElements(const Tensor &a) {
+  return NumElements(*a.impl_);
+}
 
 
 }  // namespace tensor
