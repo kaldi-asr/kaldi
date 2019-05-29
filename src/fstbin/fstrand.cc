@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
     po.Register("allow-empty", &opts.allow_empty,
                 "If true, we may generate an empty FST.");
 
+    po.Read(argc, argv);
+
     if (po.NumArgs() > 1) {
       po.PrintUsage();
       exit(1);

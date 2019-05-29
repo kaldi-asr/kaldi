@@ -233,10 +233,12 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 # current best chain result with TDNN (check local/chain/run_tdnn_5g.sh)
 %WER 2.86 [ 358 / 12533, 46 ins, 61 del, 251 sub ] exp/chain/tdnn_5g/decode/wer_5_0.0
 %WER 2.71 [ 340 / 12533, 58 ins, 59 del, 223 sub ] exp/chain/tdnn_5n/decode/wer_4_0.0
-
+# Its topology of chain model is from mini_librispeech's.
+# It uses a new configs convention for chain model after kaldi 5.2.
+%WER 1.32 [ 166 / 12533, 19 ins, 31 del, 116 sub ] exp/chain/tdnn_5o/decode/wer_4_0.0
 ### WSJ->RM Transfer learning using chain model ###
 %WER 1.68 [ 210 / 12533, 25 ins, 33 del, 152 sub ] exp/chain/tdnn_wsj_rm_1a/decode/wer_2_0.0
-
+ 
 ### nnet1 results ###
 
 # dnn4b, MFCC,LDA,fMLLR feaures, (Karel - 30.7.2015)

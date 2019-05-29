@@ -42,6 +42,20 @@ for dir in $*; do
   fi
 done
 
+# Check that frame_shift are compatible, where present together with features.
+dir_with_frame_shift=
+for dir in $*; do
+  if [[ -f $dir/feats.scp && -f $dir/frame_shift ]]; then
+    if [[ $dir_with_frame_shift ]] &&
+       ! cmp -s $dir_with_frame_shift/frame_shift $dir/frame_shift; then
+      echo "$0:error: different frame_shift in directories $dir and " \
+           "$dir_with_frame_shift. Cannot combine features."
+      exit 1;
+    fi
+    dir_with_frame_shift=$dir
+  fi
+done
+
 # W.r.t. utt2uniq file the script has different behavior compared to other files
 # it is not compulsary for it to exist in src directories, but if it exists in
 # even one it should exist in all. We will create the files where necessary
@@ -94,7 +108,7 @@ else
   echo "$0 [info]: not combining segments as it does not exist"
 fi
 
-for file in utt2spk utt2lang utt2dur reco2dur feats.scp text cmvn.scp vad.scp reco2file_and_channel wav.scp spk2gender $extra_files; do
+for file in utt2spk utt2lang utt2dur utt2num_frames reco2dur feats.scp text cmvn.scp vad.scp reco2file_and_channel wav.scp spk2gender $extra_files; do
   exists_somewhere=false
   absent_somewhere=false
   for d in $*; do
@@ -120,6 +134,10 @@ for file in utt2spk utt2lang utt2dur reco2dur feats.scp text cmvn.scp vad.scp re
 done
 
 utils/utt2spk_to_spk2utt.pl <$dest/utt2spk >$dest/spk2utt
+
+if [[ $dir_with_frame_shift ]]; then
+  cp $dir_with_frame_shift/frame_shift $dest
+fi
 
 if ! $skip_fix ; then
   utils/fix_data_dir.sh $dest || exit 1;

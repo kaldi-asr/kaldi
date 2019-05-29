@@ -20,7 +20,7 @@
 #define KALDI_BASE_TIMER_H_
 
 #include "base/kaldi-utils.h"
-// Note: Sleep(float secs) is included in base/kaldi-utils.h.
+#include "base/kaldi-error.h"
 
 
 #if defined(_MSC_VER) || defined(MINGW)
@@ -53,7 +53,7 @@ class Timer {
  private:
   LARGE_INTEGER time_start_;
 };
-}
+
 
 #else
 #include <sys/time.h>
@@ -87,9 +87,29 @@ class Timer {
   struct timeval time_start_;
   struct timezone time_zone_;
 };
-}
 
 #endif
+
+class Profiler {
+ public:
+  // Caution: the 'const char' should always be a string constant; for speed,
+  // internally the profiling code uses the address of it as a lookup key.
+  Profiler(const char *function_name): name_(function_name) { }
+  ~Profiler();
+ private:
+  Timer tim_;
+  const char *name_;
+};
+
+//  To add timing info for a function, you just put
+//  KALDI_PROFILE;
+//  at the beginning of the function.  Caution: this doesn't
+//  include the class name.
+#define KALDI_PROFILE Profiler _profiler(__func__)
+
+
+
+}  // namespace kaldi
 
 
 #endif  // KALDI_BASE_TIMER_H_

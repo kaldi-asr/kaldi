@@ -23,6 +23,7 @@
 #include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-combined-component.h"
 #include "nnet3/nnet-normalize-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
@@ -178,6 +179,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new RestrictedAttentionComponent();
   } else if (component_type == "SumBlockComponent") {
     ans = new SumBlockComponent();
+  } else if (component_type == "GruNonlinearityComponent") {
+    ans = new GruNonlinearityComponent();
+  } else if (component_type == "OutputGruNonlinearityComponent") {
+    ans = new OutputGruNonlinearityComponent();
   } else if (component_type == "ScaleAndOffsetComponent") {
     ans = new ScaleAndOffsetComponent();
   }

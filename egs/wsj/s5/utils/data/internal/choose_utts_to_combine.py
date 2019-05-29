@@ -89,7 +89,7 @@ def CombineList(min_duration, durations):
     # for each utterance-index i, group_start[i] gives us the
     # start-index of the group of utterances of which it's currently
     # a member.
-    group_start = range(num_utts)
+    group_start = list(range(num_utts))
     # if utterance-index i currently corresponds to the start of a group
     # of utterances, then group_durations[i] is the total duration of
     # that utterance-group, otherwise undefined.
@@ -327,7 +327,7 @@ while True:
 utt_groups = GetUtteranceGroups(args.min_duration, spk2utt, utt2dur)
 
 # set utt_group names to an array like [ 'utt1', 'utt2-comb2', 'utt4', ... ]
-utt_group_names = [ group[0] if len(group)==1 else group[0] + "-comb" + str(len(group))
+utt_group_names = [ group[0] if len(group)==1 else "{0}-comb{1}".format(group[0], len(group))
                     for group in utt_groups ]
 
 

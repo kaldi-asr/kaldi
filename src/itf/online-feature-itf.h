@@ -45,11 +45,11 @@ namespace kaldi {
    implementing a child class you must not make assumptions about the
    order in which the user makes these calls.
 */
-   
+
 class OnlineFeatureInterface {
  public:
   virtual int32 Dim() const = 0; /// returns the feature dimension.
-  
+
   /// Returns the total number of frames, since the start of the utterance, that
   /// are now available.  In an online-decoding context, this will likely
   /// increase with time as more data becomes available.
@@ -65,7 +65,7 @@ class OnlineFeatureInterface {
   /// many frames are in the decodable object (as it used to be, and for backward
   /// compatibility, still is, in the Decodable interface).
   virtual bool IsLastFrame(int32 frame) const = 0;
-  
+
   /// Gets the feature vector for this frame.  Before calling this for a given
   /// frame, it is assumed that you called NumFramesReady() and it returned a
   /// number greater than "frame".  Otherwise this call will likely crash with
@@ -74,6 +74,21 @@ class OnlineFeatureInterface {
   /// the class.
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) = 0;
 
+
+  /// This is like GetFrame() but for a collection of frames.  There is a
+  /// default implementation that just gets the frames one by one, but it
+  /// may be overridden for efficiency by child classes (since sometimes
+  /// it's more efficient to do things in a batch).
+  virtual void GetFrames(const std::vector<int32> &frames,
+                         MatrixBase<BaseFloat> *feats) {
+    KALDI_ASSERT(static_cast<int32>(frames.size()) == feats->NumRows());
+    for (size_t i = 0; i < frames.size(); i++) {
+      SubVector<BaseFloat> feat(*feats, i);
+      GetFrame(frames[i], &feat);
+    }
+  }
+
+
   // Returns frame shift in seconds.  Helps to estimate duration from frame
   // counts.
   virtual BaseFloat FrameShiftInSeconds() const = 0;
@@ -81,8 +96,8 @@ class OnlineFeatureInterface {
   /// Virtual destructor.  Note: constructors that take another member of
   /// type OnlineFeatureInterface are not expected to take ownership of
   /// that pointer; the caller needs to keep track of that manually.
-  virtual ~OnlineFeatureInterface() { }  
-  
+  virtual ~OnlineFeatureInterface() { }
+
 };
 
 

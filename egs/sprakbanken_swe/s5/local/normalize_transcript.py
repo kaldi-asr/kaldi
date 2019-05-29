@@ -18,8 +18,8 @@ normdict = {".": "",
             }
 #removes all the above signs
 
-from_chars = ''.join(normdict.keys())
-to_chars = ''.join(normdict.values())
+from_chars = ''.join(list(normdict.keys()))
+to_chars = ''.join(list(normdict.values()))
 
 t_table = str.maketrans(normdict)
 

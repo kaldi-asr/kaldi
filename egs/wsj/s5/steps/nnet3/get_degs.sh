@@ -471,7 +471,6 @@ if [ $stage -le 10 ] && $cleanup; then
 fi
 
 
-exit 0
-
-
 echo "$0: Finished decoding and preparing training examples"
+
+exit 0

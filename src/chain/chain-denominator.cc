@@ -24,6 +24,7 @@
 namespace kaldi {
 namespace chain {
 
+
 DenominatorComputation::DenominatorComputation(
     const ChainTrainingOptions &opts,
     const DenominatorGraph &den_graph,
@@ -54,6 +55,18 @@ DenominatorComputation::DenominatorComputation(
   // log-space.
   KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
+
+  if (RandInt(0, 99) == 0) {
+    // A check, that all values in nnet_output are in the range [-30, 30]..
+    // otherwise derivatives will be wrong (search below for 30).
+    BaseFloat max_val = nnet_output.Max(), min_val = nnet_output.Min();
+    if (max_val > 30.0 || min_val < -30.0) {
+      KALDI_WARN << "Nnet outputs " << min_val << ", "
+                 << max_val <<
+          " outside the range [-30,30], derivs may be inaccurate.";
+    }
+  }
+
   // make sure the alpha sums and beta sums are zeroed.
   alpha_.ColRange(den_graph_.NumStates() * num_sequences_,
                   num_sequences_).SetZero();
@@ -61,10 +74,11 @@ DenominatorComputation::DenominatorComputation(
                  num_sequences_).SetZero();
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
-  // the kStrideEqualNumCols argument means we'll allocate a contiguous block of
-  // memory for this; it is added to ensure that the same block of memory
-  // (cached in the allocator) can be used for xent_output_deriv when allocated
-  // from chain-training.cc.
+  // the kStrideEqualNumCols argument is so that we can share the same
+  // memory block with xent_output_deriv (see chain-training.cc, search for
+  // kStrideEqualNumCols).  This depends on how the allocator works, and
+  // actually might not happen, but anyway, the impact on speed would
+  // likely be un-measurably small.
   exp_nnet_output_transposed_.Resize(nnet_output.NumCols(),
                                      nnet_output.NumRows(),
                                      kUndefined, kStrideEqualNumCols);
@@ -293,6 +307,7 @@ bool DenominatorComputation::Backward(
         transposed_deriv_part.SetZero();
     }
   }
+
   return ok_;
 }
 

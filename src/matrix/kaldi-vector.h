@@ -514,8 +514,9 @@ class SubVector : public VectorBase<Real> {
 
   /// Constructor from a pointer to memory and a length.  Keeps a pointer
   /// to the data but does not take ownership (will never delete).
-  SubVector(Real *data, MatrixIndexT length) : VectorBase<Real> () {
-    VectorBase<Real>::data_ = data;
+  /// Caution: this constructor enables you to evade const constraints.
+  SubVector(const Real *data, MatrixIndexT length) : VectorBase<Real> () {
+    VectorBase<Real>::data_ = const_cast<Real*>(data);
     VectorBase<Real>::dim_   = length;
   }
 
@@ -594,4 +595,3 @@ Real VecMatVec(const VectorBase<Real> &v1, const MatrixBase<Real> &M,
 
 
 #endif  // KALDI_MATRIX_KALDI_VECTOR_H_
-

@@ -27,9 +27,23 @@ for x in $*; do
 done
 echo
 
+echo -n "# WER (rescored)             "
+for x in $*; do
+  wer=$(cat $x/decode_test_rescored/scoring_kaldi/best_wer | awk '{print $2}')
+  printf "% 10s" $wer
+done
+echo
+
 echo -n "# CER                        "
 for x in $*; do
   cer=$(cat $x/decode_test/scoring_kaldi/best_cer | awk '{print $2}')
+  printf "% 10s" $cer
+done
+echo
+
+echo -n "# CER (rescored)             "
+for x in $*; do
+  cer=$(cat $x/decode_test_rescored/scoring_kaldi/best_cer | awk '{print $2}')
   printf "% 10s" $cer
 done
 echo

@@ -113,6 +113,10 @@ int main(int argc, char *argv[]) {
     po.Register("pad-input", &pad_input, "If true, duplicate the first and "
       "last frames of the input features as required to equal min-chunk-size.");
 
+#if HAVE_CUDA==1
+    CuDevice::RegisterDeviceOptions(&po);
+#endif
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {

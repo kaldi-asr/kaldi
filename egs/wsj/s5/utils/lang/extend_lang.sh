@@ -131,9 +131,14 @@ for n in $(seq 0 $ndisambig); do
   sym='#'$n; if ! grep -w -q "$sym" $dir/phones/disambig.txt; then echo "$sym"; fi
 done > $tmpdir/extra_disambig.txt
 highest_number=$(tail -n 1 $srcdir/phones.txt | awk '{print $2}')
-awk -v start=$highest_number '{print $1, NR+start}' <$tmpdir/extra_disambig.txt >>$dir/words.txt
+awk -v start=$highest_number '{print $1, NR+start}' <$tmpdir/extra_disambig.txt >>$dir/phones.txt
 echo "$0: added $(wc -l <$tmpdir/extra_disambig.txt) extra disambiguation symbols to phones.txt"
 
+# add extra_disambig symbols into disambig.txt
+cat $tmpdir/extra_disambig.txt >> $dir/phones/disambig.txt
+utils/sym2int.pl $dir/phones.txt <$dir/phones/disambig.txt >$dir/phones/disambig.int
+utils/sym2int.pl $dir/phones.txt <$dir/phones/disambig.txt | \
+  awk '{printf(":%d", $1);} END{printf "\n"}' | sed s/:// > $dir/phones/disambig.csl
 
 silphone=`cat $srcdir/phones/optional_silence.txt` || exit 1;
 [ -z "$silphone" ] && \
