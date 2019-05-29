@@ -13,6 +13,10 @@
 # %WER 40.1 | 10551 87329 | 63.9 19.4 16.6 4.0 40.1 63.6 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis1_segmented_rnnlm_rescore/score_10_0.0/analysis1_segmented_hires.ctm.sys
 # %WER 40.6 | 5933 56887 | 63.5 18.6 17.9 4.1 40.6 71.7 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis2_segmented_rnnlm_rescore/score_10_0.0/analysis2_segmented_hires.ctm.sys
 
+# [for somali]
+# %WER 48.8 | 9852 90609 | 59.1 28.6 12.3 7.8 48.8 73.4 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis1_segmented_rnnlm_rescore/score_10_0.0/analysis1_segmented_hires.ctm.sys
+# %WER 48.2 | 8275 67640 | 60.0 28.3 11.6 8.2 48.2 68.3 | exp/semisup/chain/tdnn_semisup_1a/decode_analysis2_segmented_rnnlm_rescore/score_10_0.0/analysis2_segmented_hires.ctm.sys
+
 # Begin configuration section.
 
 embedding_dim=512

@@ -34,8 +34,8 @@ elif [ "$language" == "tagalog" ]; then
 elif [ "$language" == "somali" ]; then
   language_affix="so"
 fi
-MOSES= # /path/to/moses
-SOURCE_TC_MODEL= #/path/to/truecase/model
+MOSES=/home/pkoehn/moses
+SOURCE_TC_MODEL=/home/pkoehn/experiment/material-asr-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
   $MOSES/scripts/recaser/truecase.perl -model $SOURCE_TC_MODEL \
     < data/local/lexicon_words > data/local/lexicon_words_tc
 
