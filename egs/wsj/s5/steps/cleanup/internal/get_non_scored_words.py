@@ -12,6 +12,10 @@ import os
 import sys
 from collections import defaultdict
 
+import io
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf8")
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf8")
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
