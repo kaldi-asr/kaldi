@@ -66,7 +66,7 @@ struct LatticeIncrementalDecoderConfig {
         beam_delta(0.5),
         hash_ratio(2.0),
         prune_scale(0.1),
-        max_word_id(1e7) {}
+        max_word_id(1e8) {}
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
     opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
@@ -137,7 +137,7 @@ class LatticeIncrementalDeterminizer;
    will normally be StdToken, but also may be BackpointerToken which is to support
    quick lookup of the current best path (see lattice-faster-online-decoder.h)
 
-   The FST you invoke this decoder with is expected to equal
+   The FST you invoke this decoder with is expected to be of type
    Fst::Fst<fst::StdArc>, a.k.a. StdFst, or GrammarFst.  If you invoke it with
    FST == StdFst and it notices that the actual FST type is
    fst::VectorFst<fst::StdArc> or fst::ConstFst<fst::StdArc>, the decoder object

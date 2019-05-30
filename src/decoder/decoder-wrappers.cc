@@ -68,7 +68,7 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
   success_ = true;
   using fst::VectorFst;
   if (!decoder_->Decode(decodable_)) {
-    KALDI_WARN << "Failed to decode file " << utt_;
+    KALDI_WARN << "Failed to decode utterance with id " << utt_;
     success_ = false;
   }
   if (!decoder_->ReachedFinal()) {
@@ -212,7 +212,7 @@ bool DecodeUtteranceLatticeIncremental(
     double *like_ptr) { // puts utterance's like in like_ptr on success.
   using fst::VectorFst;
   if (!decoder.Decode(&decodable)) {
-    KALDI_WARN << "Failed to decode file " << utt;
+    KALDI_WARN << "Failed to decode utterance with id " << utt;
     return false;
   }
   if (!decoder.ReachedFinal()) {
@@ -296,7 +296,7 @@ bool DecodeUtteranceLatticeFaster(
   using fst::VectorFst;
 
   if (!decoder.Decode(&decodable)) {
-    KALDI_WARN << "Failed to decode file " << utt;
+    KALDI_WARN << "Failed to decode utterance with id " << utt;
     return false;
   }
   if (!decoder.ReachedFinal()) {
@@ -457,7 +457,7 @@ bool DecodeUtteranceLatticeSimple(
   using fst::VectorFst;
 
   if (!decoder.Decode(&decodable)) {
-    KALDI_WARN << "Failed to decode file " << utt;
+    KALDI_WARN << "Failed to decode utterance with id " << utt;
     return false;
   }
   if (!decoder.ReachedFinal()) {
