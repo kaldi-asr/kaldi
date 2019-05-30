@@ -87,15 +87,16 @@ fi
 
 touch $data/$part/.complete
 
+dev_dir=$data/$part/corpus/dev
+test_dir=$data/$part/corpus/test
+train_dir=$data/$part/corpus/train
 if [ $part == "aidatatang_200zh" ]; then
-  cd $data/$part/corpus
-  for set in {dev test train};do
+  for set in $dev_dir $test_dir $train_dir;do
     cd $set
     for wav in ./*.tar.gz; do
       echo "Extracting wav from $wav"
       tar -zxf $wav && rm $wav
     done
-    cd ../
   done
 fi
 
