@@ -442,9 +442,13 @@ function configure_cuda {
           MIN_UNSUPPORTED_GCC_VER="7.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=70000;
         ;;
-        9_2 | 9_* | 10_*)
+        9_2 | 9_* | 10_0)
           MIN_UNSUPPORTED_GCC_VER="8.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=80000;
+        ;;
+        10_1 | 10_*)
+          MIN_UNSUPPORTED_GCC_VER="9.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=90000;
         ;;
         *)
           echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1;
