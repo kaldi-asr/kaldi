@@ -1297,11 +1297,10 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
   processed_prefinal_states_.clear();
   // go over all prefinal state
   KALDI_ASSERT(final_arc_list_prev_.size());
+  unordered_set<StateId> prefinal_states;
+
   for (auto &i : final_arc_list_prev_) {
     auto prefinal_state = i.first;
-    if (processed_prefinal_states_.find(prefinal_state) !=
-        processed_prefinal_states_.end())
-      continue;
     ArcIterator<CompactLattice> aiter(lat_, prefinal_state);
     KALDI_ASSERT(lat_.NumArcs(prefinal_state) > i.second);
     aiter.Seek(i.second);
@@ -1327,12 +1326,35 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
       std::vector<CompactLatticeArc> arcs_remained;
       for (aiter.Reset(); !aiter.Done(); aiter.Next()) {
         auto arc = aiter.Value();
+        bool remain_the_arc = true; // If we remain the arc, the state will not be
+                                    // re-determinized, vice versa.
         if (arc.olabel > config_.max_word_id) { // final arc
           KALDI_ASSERT(arc.olabel < state_last_initial_offset_);
           KALDI_ASSERT(lat_.Final(arc.nextstate) != CompactLatticeWeight::Zero());
-          lat_.AddArc(new_prefinal_state, arc);
-        } else
+          remain_the_arc = false;
+        } else {
+          int num_frames_exclude_arc = num_frames - arc.weight.String().size();
+          // destination-state of the arc is further than redeterminize_max_frames
+          // from the most recent frame we are determinizing
+          if (num_frames_exclude_arc > config_.redeterminize_max_frames)
+            remain_the_arc = true;
+          else {
+            // destination-state of the arc is no further than
+            // redeterminize_max_frames from the most recent frame we are
+            // determinizing
+            auto r = final_arc_list_prev_.find(arc.nextstate);
+            // destination-state of the arc is not prefinal state
+            if (r == final_arc_list_prev_.end()) remain_the_arc = true;
+            // destination-state of the arc is prefinal state
+            else
+              remain_the_arc = false;
+          }
+        }
+
+        if (remain_the_arc)
           arcs_remained.push_back(arc);
+        else
+          lat_.AddArc(new_prefinal_state, arc);
       }
       CompactLatticeArc arc_to_new(0, 0, CompactLatticeWeight::One(),
                                    new_prefinal_state);
@@ -1475,7 +1497,7 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
           KALDI_ASSERT(clat.Final(arc.nextstate) != CompactLatticeWeight::Zero());
           // state_appended shouldn't be in invert_processed_prefinal_states
           // So we do not need to map it
-          final_arc_list_.push_back(
+          final_arc_list_.insert(
               pair<int32, size_t>(state_appended, aiter.Position()));
         }
         olat->AddArc(source_state, arc_appended);
@@ -1517,7 +1539,7 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
             olat->AddArc(source_state, arc_postinitial);
             if (arc_postinitial.olabel > config_.max_word_id) {
               KALDI_ASSERT(arc_postinitial.olabel < state_last_initial_offset_);
-              final_arc_list_.push_back(pair<int32, size_t>(
+              final_arc_list_.insert(pair<int32, size_t>(
                   source_state, aiter_postinitial.Position() + arc_offset));
             }
           }

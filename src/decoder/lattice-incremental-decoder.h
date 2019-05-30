@@ -599,7 +599,11 @@ class LatticeIncrementalDeterminizer {
   // appended lattice, we create an extra state for it; we add an epsilon arc
   // from that pre-final state to the extra state; we copy any final arcs from
   // the pre-final state to its extra state and we remove those final arcs from
-  // the original pre-final state.  Now this extra state is the pre-final state to
+  // the original pre-final state.
+  // We also copy arcs meet the following requirements: i) destination-state of the
+  // arc is prefinal state. ii) destination-state of the arc is no further than than
+  // redeterminize_max_frames from the most recent frame we are determinizing.
+  // Now this extra state is the pre-final state to
   // redeterminize and the original pre-final state does not need to redeterminize
   // The epsilon would be removed later on in AppendLatticeChunks, while
   // splicing the compact lattices together
@@ -611,9 +615,11 @@ class LatticeIncrementalDeterminizer {
   // Record whether we have finished determinized the whole utterance
   // (including re-determinize)
   bool determinization_finalized_;
-  // keep final_arc for appending later
-  std::vector<std::pair<StateId, size_t>> final_arc_list_;
-  std::vector<std::pair<StateId, size_t>> final_arc_list_prev_;
+  // A map from the prefinal state to its correponding first final arc (there could be
+  // multiple final arcs). We keep final arc information for GetRedeterminizedStates()
+  // later. It can also be used to identify whether a state is a prefinal state.
+  unordered_map<StateId, size_t> final_arc_list_;
+  unordered_map<StateId, size_t> final_arc_list_prev_;
   // alpha of each state in lat_
   std::vector<BaseFloat> forward_costs_;
   // we allocate a unique id for each source-state of the last arc of a series of
