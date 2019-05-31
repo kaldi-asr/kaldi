@@ -1,7 +1,9 @@
 #!/bin/bash
 
-#started from tedlium recipe with few edits
+# Adapted from gale_arabic s5b.
 
+# %WER 16.4 | 5002 60169 | 84.8 10.6 4.6 1.3 16.4 64.9 | exp/chain_mer80//tdnn_lstm_1a_sp_bi/decode_dev_non_overlap_fg/score_7/dev_non_overlap_hires.ctm.updated.utf8.sys
+# %WER 17.3 | 5002 60169 | 84.0 11.3 4.7 1.3 17.3 67.1 | exp/chain_mer80//tdnn_lstm_1a_sp_bi/decode_dev_non_overlap/score_7/dev_non_overlap_hires.ctm.updated.utf8.sys
 
 set -e -o pipefail
 
@@ -50,11 +52,14 @@ fi
 
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --num-threads-ubm $num_threads_ubm \
                                   --nnet3-affix "$nnet3_affix" \
                                   --extractor "$extractor"
+
+if [ -z "$extractor" ]; then
+  extractor=exp/nnet3${nnet3_affix}/extractor
+fi
 
 gmm_dir=exp/$gmm
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
@@ -167,11 +172,11 @@ fi
 if [ $stage -le 18 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b{05,06,11,12}/$USER/kaldi-data/egs/mgb2_arabic-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
  steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$decode_cmd" \
+    --cmd "$train_cmd --mem 4G" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize 0.1 \
@@ -203,8 +208,6 @@ if [ $stage -le 18 ]; then
     --dir $dir
 fi
 
-
-
 if [ $stage -le 19 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
@@ -213,7 +216,7 @@ if [ $stage -le 19 ]; then
 fi
 
 for dev in dev_non_overlap; do
-  ivectors_dir=`dirname $extractor`
+  ivectors_dir=exp/nnet3${nnet3_affix}
   if [ $stage -le 20 ]; then
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 40 \
       data/${dev}_hires $extractor $ivectors_dir/ivectors_$dev

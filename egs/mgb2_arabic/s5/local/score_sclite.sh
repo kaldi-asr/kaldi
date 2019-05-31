@@ -54,6 +54,9 @@ elif [ -f $dir/../frame_subsampling_factor ]; then
   echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
 fi
 
+sclite=$KALDI_ROOT/tools/sctk/bin/sclite
+[ ! -f $sclite ] && echo "Cannot find scoring program at $sclite" && exit 1
+
 #cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/test_filt.txt
 if [ $stage -le 0 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
@@ -83,6 +86,6 @@ if [ $stage -le 2 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
     local/toutf8.py $dir/score_LMWT/${name}.ctm.updated $dir/score_LMWT/${name}.ctm.updated.utf8 '&&' \
     local/toutf8.py $data/stm $dir/score_LMWT/stm '&&' \
-    sclite -O $dir/score_LMWT -o all spk -h $dir/score_LMWT/${name}.ctm.updated.utf8 ctm -r $dir/score_LMWT/stm stm || exit 1;  
+    $sclite -O $dir/score_LMWT -o all spk -h $dir/score_LMWT/${name}.ctm.updated.utf8 ctm -r $dir/score_LMWT/stm stm || exit 1;  
 fi 
 

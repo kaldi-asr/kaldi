@@ -80,11 +80,15 @@ cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]
   || exit 1;
 
 train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
+# Perplexity over 214056.000000 words is 799.163165
+# Perplexity over 212800.000000 words (excluding 1256.000000 OOVs) is 818.385022
+
 train_lm.sh --arpa --lmtype 4gram-mincount $dir || exit 1;
+# Perplexity over 214056.000000 words is 791.753136
+# Perplexity over 212800.000000 words (excluding 1256.000000 OOVs) is 810.825952
 
 # From here is some commands to do a baseline with SRILM (assuming
 # you have it installed).
-
 if $sri_installed; then 
 
  heldout_sent=10000 # Don't change this if you want result to be comparable with
@@ -102,12 +106,10 @@ if $sri_installed; then
  ngram-count -text $sdir/train -order 3 -limit-vocab -vocab $sdir/wordlist -unk \
    -map-unk "<UNK>" -kndiscount -interpolate -lm $sdir/srilm.o3g.kn.gz
  ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/heldout 
-# 0 zeroprobs, logprob= -250954 ppl= 90.5091 ppl1= 132.482
 
 # Note: perplexity SRILM gives to Kaldi-LM model is same as kaldi-lm reports above.
 # Difference in WSJ must have been due to different treatment of <UNK>.
  ngram -lm $dir/3gram-mincount/lm_unpruned.gz  -ppl $sdir/heldout 
-# 0 zeroprobs, logprob= -250913 ppl= 90.4439 ppl1= 132.379
 fi
 
 

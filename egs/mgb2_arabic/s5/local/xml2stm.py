@@ -2,7 +2,7 @@
 
 # this script is to be used to convert MGB challenge xmls to SCLITE stm
 # format so it can be used as reference for evaluation.
-# 
+#
 # Copyright (C) 2016, Qatar Computing Research Institute, HBKU (author: Yifan Zhang)
 #
 
@@ -57,7 +57,7 @@ def loadXml(xmlFileName, opts):
 def stm(data):
   out = codecs.getwriter('utf-8')(sys.stdout)
   for e in data['turn']:
-    out.write("{} 0 UNKNOWN {:.02f} {:.02f} ".format(data['id'], e.startTime, e.endTime)) 
+    out.write("{} 1 UNKNOWN {:.02f} {:.02f} ".format(data['id'], e.startTime, e.endTime))
     out.write(e.text)
     out.write("\n")
 
@@ -71,7 +71,7 @@ def ctm(data):
     interval = duration / len(tokens)
     startTime = e.startTime
     for token in tokens:
-      out.write("{} 0 {:.02f} {:.02f} ".format(data['id'], startTime, interval))
+      out.write("{} 1 {:.02f} {:.02f} ".format(data['id'], startTime, interval))
       out.write(token)
       out.write("\n")
 

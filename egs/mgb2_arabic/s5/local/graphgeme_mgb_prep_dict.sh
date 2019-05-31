@@ -7,7 +7,7 @@
 # run this from ../
 dir=data/local/dict
 mkdir -p $dir
-lexdir=$1
+lexicon=$1
 
 #(2) Dictionary preparation:
 
@@ -15,7 +15,6 @@ lexdir=$1
 echo SIL > $dir/silence_phones.txt
 echo SIL > $dir/optional_silence.txt
 
-lexicon=$lexdir/ar-ar_grapheme_lexicon
 if [ ! -f $lexicon ]; then
   echo "$0: no such file $lexicon"
   exit 1;

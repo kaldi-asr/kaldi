@@ -103,7 +103,7 @@ if [ $stage -le 3 ]; then
 
   $cmd ${unpruned_lm_dir}/log/train.log \
     train_lm.py  --wordlist=$wordlist --num-splits=10 --warm-start-ratio=20  \
-                 --limit-unk-history=true --vocab-opts="--unk-symbol='<UNK>'" \
+                 --limit-unk-history=true \
                  --fold-dev-into=train_mer$mer \
                  --min-counts="${min_counts}" \
                  ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}

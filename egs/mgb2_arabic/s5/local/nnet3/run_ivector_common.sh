@@ -46,7 +46,7 @@ if [ $stage -le 2 ]; then
   # them overwrite each other.
   mfccdir=data/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b{05,06,10,11}/$USER/kaldi-data/egs/mgb2_arabic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in ${train_set}_sp dev; do
@@ -85,7 +85,7 @@ if [ -z "$extractor" ]; then
       echo "$0: warning: number of feats $n1 != $n2, if these are very different it could be bad."
     fi
 
-    echo "$0: training a system on the hires data for its LDA+MLLT transform, in order to produce the diagonal GMM."
+    echo "$0: training a system on the hires data for its PCA transform, in order to produce the diagonal GMM."
     if [ -e exp/nnet3${nnet3_affix}/pca_transform/final.mat ]; then
       # we don't want to overwrite old stuff, ask the user to delete it.
       echo "$0: exp/nnet3${nnet3_affix}/pca_transform/final.mat already exists: "
@@ -94,7 +94,7 @@ if [ -z "$extractor" ]; then
     fi
     steps/online/nnet2/get_pca_transform.sh \
       --cmd "$train_cmd" --splice-opts "--left-context=3 --right-context=3" \
-       3000 10000 $temp_data_root/${lda_train_set}_hires \
+       $temp_data_root/${train_set}_hires \
         exp/nnet3${nnet3_affix}/pca_transform
   fi
 
@@ -138,7 +138,7 @@ if [ $stage -le 7 ]; then
   # valid for the non-'max2' data, the utterance list is the same.
   ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b{05,06,10,11}/$USER/kaldi-data/egs/mgb2_arabic-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
   # With --utts-per-spk-max 2, the script pairs the utterances into twos, and treats
   # each of these pairs as one speaker; this gives more diversity in iVectors..
@@ -153,6 +153,13 @@ if [ $stage -le 7 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
     ${temp_data_root}/${train_set}_sp_hires_max2 \
     $extractor $ivectordir
+  
+  for suffix in overlap non_overlap; do
+    # Create hires version of the dev dirs
+    utils/subset_data_dir.sh --utt-list data/dev_${suffix}/utt2spk \
+      data/dev_hires data/dev_${suffix}_hires
+    cp data/dev_${suffix}/stm data/dev_${suffix}_hires
+  done
 
   # Also extract iVectors for the test data
   for data in dev dev_non_overlap; do

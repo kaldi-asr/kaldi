@@ -24,6 +24,12 @@ for x in $trainDir $devDir; do
   fi
 done
 
+if [ -z $(which xml) ]; then
+  echo "$0: Could not find tool xml"
+  echo "$0: Download and install it from xmlstar.sourceforge.net"
+  exit 1
+fi
+
 #Creating the train program lists
 cut -d '/' local/train -f2 | head -500 > train.short
 
@@ -31,24 +37,29 @@ set -e -o pipefail
 
 cut -d '/' -f2 local/train | while read basename; do     
     [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
-    $XMLSTARLET/xml sel -t -m '//segments[@annotation_id="transcript_align"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $trainDir $mer
+    xml sel -t -m '//segments[@annotation_id="transcript_align"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $trainDir $mer
     echo $basename $wavDir/$basename.wav >> $trainDir/wav.scp
 done 
 
 cut -d '/' -f2 local/dev | while read basename; do
     [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
-    $XMLSTARLET/xml sel -t -m '//segments[@annotation_id="transcript_manual"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $devDir
+    xml sel -t -m '//segments[@annotation_id="transcript_manual"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $devDir
     echo $basename $wavDir/$basename.wav >> $devDir/wav.scp
 done
 
 #Creating a file reco2file_and_channel which is used by convert_ctm.pl in local/score.sh script
-awk '{print $1" "$1" 0"}' $devDir/wav.scp > $devDir/reco2file_and_channel
+awk '{print $1" "$1" 1"}' $devDir/wav.scp > $devDir/reco2file_and_channel
 
 #stm reference file for scoring
-cat local/dev | while read basename; do
+cut -d '/' -f2 local/dev | while read basename; do
     [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
     local/xml2stm.py $xmldir/$basename.xml 
 done > $devDir/stm
+
+if [ ! -s $devDir/stm ]; then
+  echo "$0: Empty $devDir/stm! Something went wrong!"
+  exit 1
+fi
 
 for list in overlap non_overlap; do
   rm -rf ${devDir}_$list || true
@@ -70,14 +81,14 @@ for dir in ${devDir} ${devDir}_overlap ${devDir}_non_overlap; do
  ($f1,$f2)= split /\s+/, $ARGV[0];
  open(FNAME, "$f1");
  while (<FNAME>){chomp $_;@arr=split /\s+/,$_;shift @arr;$scal = "@arr";$hashExist{$scal}=1;}close (FNAME);
- open(FTR, "$f2"); while (<FTR>){$line=$_;s/ 0 UNKNOWN / /;@arr=split /\s+/,$_;if (defined $hashExist{"$arr[0] $arr[1] $arr[2]"}) {print "$line";}}close (FTR);
+ open(FTR, "$f2"); while (<FTR>){$line=$_;s/ 1 UNKNOWN / /;@arr=split /\s+/,$_;if (defined $hashExist{"$arr[0] $arr[1] $arr[2]"}) {print "$line";}}close (FTR);
  ' "$dir/segments $dir/stm" > $dir/stm_
  mv $dir/stm_ $dir/stm
 done
 
-rm -rf ${trainDir}_subset500 || true
-utils/copy_data_dir.sh ${trainDir} ${trainDir}_subset500
+mkdir -p ${trainDir}_subset500
 utils/filter_scp.pl train.short ${trainDir}/wav.scp > ${trainDir}_subset500/wav.scp
-utils/fix_data_dir.sh ${trainDir}
+cp ${trainDir}/{utt2spk,segments,spk2utt} ${trainDir}_subset500
+utils/fix_data_dir.sh ${trainDir}_subset500
 
 echo "Training and Test data preparation succeeded"

@@ -4,8 +4,11 @@
 #               2017-19 Vimal Manohar
 # Apache 2.0
 
+stage=-1
+
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
+. utils/parse_options.sh
 
 set -e -o pipefail -u
 ##########################################################
@@ -16,7 +19,9 @@ set -e -o pipefail -u
 
 # To this recipe you'll need
 # 1) An installation of Kaldi
-# 2) xmlstarlet http://xmlstar.sourceforge.net/
+# 2) xmlstarlet 
+#    xml should be in the PATH. Most new linux distros will already have this.
+#    Otherwise, this should be obtained from http://xmlstar.sourceforge.net/ 
 
 
 # This script assumes that you are already familiar with Kaldi recipes.
@@ -28,15 +33,12 @@ set -e -o pipefail -u
 #
 ##########################################################
 
+# This script assumes that the data for training (audio, transcripts and LM text) 
+# is already downloaded. 
+# For details, see http://www.mgb-challenge.org/arabic_download.html
+
 # TO DO: You will need to place the lists of training and dev data
-# (train and dev) in this working directory, link to the
-# usual steps/ and utils/ directories, and create your copies path.sh
-# and cmd.sh in this directory.
-
-# TO DO: specify the directories containing the binaries for
-# xmlstarlet
-
-XMLSTARLET=$KALDI_ROOT/tools/xmlstarlet/bin
+# (train and dev) in local directory.
 
 # TO DO: you will need to choose the size of training set you want.
 # Here we select according to an upper threshhold on Matching Error
@@ -52,17 +54,18 @@ mer=80
 # TO DO: set the location of downloaded WAV files, XML, LM text and the LEXICON
 
 # Location of downloaded WAV files
-WAV_DIR=/export/a15/vmanoha1/MGB/audio/
+WAV_DIR=/export/a15/vmanoha1/MGB/MGB-2/audio/
 
 # Location of downloaded XML files
-XML_DIR=/export/a15/vmanoha1/MGB/xml_2016_05_29_bw/
+XML_DIR=/export/a15/vmanoha1/MGB/MGB-2/xml_2016_05_29_bw/
 
 # Using the training data transcript for building the language model
 # Location of downloaded LM text
-LM_DIR=/export/a15/vmanoha1/MGB/mgb.arabic.lm.text.14.02.2016
+LM_DIR=/export/a15/vmanoha1/MGB/MGB-2/mgb.arabic.lm.text.14.02.2016
 
 # Location of lexicon
-LEX_DIR=lexicon/
+# Download from https://github.com/qcri/ArabicASRChallenge2016/blob/master/lexicon/ar-ar_grapheme_lexicon
+LEXICON=ar-ar_grapheme_lexicon
 
 nj=100  # split training into how many jobs?
 nDecodeJobs=80
@@ -76,141 +79,166 @@ nDecodeJobs=80
 
 #1) Data preparation
 
-export XMLSTARLET SRILM IRSTLM LM_DIR
+export SRILM LM_DIR
 
-#DATA PREPARATION
-echo "Preparing training data"
-local/mgb_data_prep.sh $WAV_DIR $XML_DIR $mer
-
-#LEXICON PREPARATION: The lexicon is also provided
-echo "Preparing dictionary"
-local/graphgeme_mgb_prep_dict.sh $LEX_DIR
-
-#LM TRAINING: Using the training set transcript text for language modelling
-echo "Training n-gram language model"
-local/mgb_train_lms.sh $mer
-local/mgb_train_lms_extra.sh $mer
-local/mgb_train_lms_extra_pocolm.sh $mer
-
-#L Compilation
-echo "Preparing lang dir"
-utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
-
-#G compilation
-local/mgb_format_data.sh --lang-test data/lang_test --arpa-lm data/local/lm_mer80/3gram-mincount/lm_unpruned.gz
-utils/build_const_arpa_lm.sh data/local/lm_large_mer80/4gram-mincount/lm_unpruned.gz \
-  data/lang_test data/lang_test_fg
-
-local/mgb_format_data.sh --lang-test data/lang_poco_test --arpa-lm data/local/pocolm/data/arpa/4gram_small.arpa.gz
-utils/build_const_arpa_lm.sh data/local/pocolm/data/arpa/4gram_big.arpa.gz \
-  data/lang_poco_test data/lang_poco_test_fg
-
-#Calculating mfcc features
-mfccdir=mfcc
-if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir ]; then
-  utils/create_split_dir.pl \
-    /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mgb2_arabic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+if [ $stage -le 1 ]; then
+  #DATA PREPARATION
+  echo "Preparing training data"
+  local/mgb_data_prep.sh $WAV_DIR $XML_DIR $mer
 fi
 
-echo "Computing features"
-for x in train_mer$mer train_mer${mer}_subset500 dev_non_overlap dev_overlap ; do
-  steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" data/$x \
-    exp/mer$mer/make_mfcc/$x/log $mfccdir
-  steps/compute_cmvn_stats.sh data/$x \
-    exp/mer$mer/make_mfcc/$x/log $mfccdir
-  utils/fix_data_dir.sh data/$x
-done
+if [ $stage -le 2 ]; then
+  #LEXICON PREPARATION: The lexicon is also provided
+  echo "Preparing dictionary"
+  local/graphgeme_mgb_prep_dict.sh $LEXICON
+fi
 
+if [ $stage -le 3 ]; then
+  #LM TRAINING: Using the training set transcript text for language modelling
+  echo "Training n-gram language model"
+  local/mgb_train_lms.sh $mer
+  local/mgb_train_lms_extra.sh $mer
+  local/mgb_train_lms_extra_pocolm.sh $mer
+fi
 
-#Taking 10k segments for faster training
-utils/subset_data_dir.sh data/train_mer${mer}_subset500 10000 data/train_mer${mer}_subset500_10k 
+if [ $stage -le 4 ]; then
+  #L Compilation
+  echo "Preparing lang dir"
+  utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
+fi
 
-#Monophone training
-steps/train_mono.sh --nj 80 --cmd "$train_cmd" \
-  data/train_mer${mer}_subset500_10k data/lang exp/mer$mer/mono 
+if [ $stage -le 5 ]; then
+  #G compilation
+  local/mgb_format_data.sh --lang-test data/lang_test --arpa-lm data/local/lm_mer80/3gram-mincount/lm_unpruned.gz
+  utils/build_const_arpa_lm.sh data/local/lm_large_mer80/4gram-mincount/lm_unpruned.gz \
+    data/lang_test data/lang_test_fg
+fi
 
-#Monophone alignment
-steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-  data/train_mer${mer}_subset500 data/lang exp/mer$mer/mono exp/mer$mer/mono_ali 
+if [ $stage -le 6 ]; then
+  local/mgb_format_data.sh --lang-test data/lang_poco_test --arpa-lm data/local/pocolm/data/arpa/4gram_small.arpa.gz
+  utils/build_const_arpa_lm.sh data/local/pocolm/data/arpa/4gram_big.arpa.gz \
+    data/lang_poco_test data/lang_poco_test_fg
+fi
 
-#tri1 [First triphone pass]
-steps/train_deltas.sh --cmd "$train_cmd" \
-  2500 30000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/mono_ali exp/mer$mer/tri1 
+if [ $stage -le 7 ]; then
+  #Calculating mfcc features
+  mfccdir=mfcc
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir ]; then
+    utils/create_split_dir.pl \
+      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mgb2_arabic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+  fi
 
-#tri1 decoding
-utils/mkgraph.sh data/lang_test exp/mer$mer/tri1 exp/mer$mer/tri1/graph
+  echo "Computing features"
+  for x in train_mer$mer train_mer${mer}_subset500 dev_non_overlap dev_overlap ; do
+    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" data/$x \
+      exp/mer$mer/make_mfcc/$x/log $mfccdir
+    steps/compute_cmvn_stats.sh data/$x \
+      exp/mer$mer/make_mfcc/$x/log $mfccdir
+    utils/fix_data_dir.sh data/$x
+  done
+fi
 
-for dev in dev_overlap dev_non_overlap; do
-  steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
-    exp/mer$mer/tri1/graph data/$dev exp/mer$mer/tri1/decode_$dev &
-done
+if [ $stage -le 8 ]; then
+  #Taking 10k segments for faster training
+  utils/subset_data_dir.sh data/train_mer${mer}_subset500 10000 data/train_mer${mer}_subset500_10k 
+fi
 
-#tri1 alignment
-steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-  data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri1 exp/mer$mer/tri1_ali 
+if [ $stage -le 9 ]; then
+  #Monophone training
+  steps/train_mono.sh --nj 80 --cmd "$train_cmd" \
+    data/train_mer${mer}_subset500_10k data/lang exp/mer$mer/mono 
+fi
 
-#tri2 [a larger model than tri1]
-steps/train_deltas.sh --cmd "$train_cmd" \
-  3000 40000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri1_ali exp/mer$mer/tri2
+if [ $stage -le 10 ]; then
+  #Monophone alignment
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train_mer${mer}_subset500 data/lang exp/mer$mer/mono exp/mer$mer/mono_ali 
 
-#tri2 decoding
-utils/mkgraph.sh data/lang_test exp/mer$mer/tri2 exp/mer$mer/tri2/graph
+  #tri1 [First triphone pass]
+  steps/train_deltas.sh --cmd "$train_cmd" \
+    2500 30000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/mono_ali exp/mer$mer/tri1 
 
-for dev in dev_overlap dev_non_overlap; do
- steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
- exp/mer$mer/tri2/graph data/$dev exp/mer$mer/tri2/decode_$dev
-done
+  #tri1 decoding
+  utils/mkgraph.sh data/lang_test exp/mer$mer/tri1 exp/mer$mer/tri1/graph
 
-#tri2 alignment
-steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-  data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri2 exp/mer$mer/tri2_ali
+  for dev in dev_overlap dev_non_overlap; do
+    steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
+      exp/mer$mer/tri1/graph data/$dev exp/mer$mer/tri1/decode_$dev &
+  done
+fi
 
-# tri3 training [LDA+MLLT]
-steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  4000 50000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri1_ali exp/mer$mer/tri3
+if [ $stage -le 11 ]; then
+  #tri1 alignment
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri1 exp/mer$mer/tri1_ali 
 
-#tri3 decoding
-utils/mkgraph.sh data/lang_test exp/mer$mer/tri3 exp/mer$mer/tri3/graph
+  #tri2 [a larger model than tri1]
+  steps/train_deltas.sh --cmd "$train_cmd" \
+    3000 40000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri1_ali exp/mer$mer/tri2
 
-for dev in dev_overlap dev_non_overlap; do
- steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
- exp/mer$mer/tri3/graph data/$dev exp/mer$mer/tri3/decode_$dev
-done
+  #tri2 decoding
+  utils/mkgraph.sh data/lang_test exp/mer$mer/tri2 exp/mer$mer/tri2/graph
 
+  for dev in dev_overlap dev_non_overlap; do
+   steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
+   exp/mer$mer/tri2/graph data/$dev exp/mer$mer/tri2/decode_$dev &
+  done
+fi
 
-#tri3 alignment
-steps/align_si.sh --nj $nj --cmd "$train_cmd" --use-graphs true data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri3 exp/mer$mer/tri3_ali
+if [ $stage -le 12 ]; then
+  #tri2 alignment
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri2 exp/mer$mer/tri2_ali
 
+  # tri3 training [LDA+MLLT]
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+    4000 50000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri1_ali exp/mer$mer/tri3
 
-#now we start building model with speaker adaptation SAT [fmllr]
-steps/train_sat.sh  --cmd "$train_cmd" \
-  5000 100000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri3_ali exp/mer$mer/tri4
+  #tri3 decoding
+  utils/mkgraph.sh data/lang_test exp/mer$mer/tri3 exp/mer$mer/tri3/graph
 
-#sat decoding
-utils/mkgraph.sh data/lang_test exp/mer$mer/tri4 exp/mer$mer/tri4/graph
+  for dev in dev_overlap dev_non_overlap; do
+   steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
+   exp/mer$mer/tri3/graph data/$dev exp/mer$mer/tri3/decode_$dev & 
+  done
+fi
 
-for dev in dev_overlap dev_non_overlap; do
-  steps/decode_fmllr.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
-    exp/mer$mer/tri4/graph data/$dev exp/mer$mer/tri4/decode_$dev
-done
+if [ $stage -le 13 ]; then
+  #tri3 alignment
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" --use-graphs true data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri3 exp/mer$mer/tri3_ali
 
-#sat alignment
-steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" data/train_mer$mer data/lang exp/mer$mer/tri4 exp/mer$mer/tri4_ali
+  #now we start building model with speaker adaptation SAT [fmllr]
+  steps/train_sat.sh  --cmd "$train_cmd" \
+    5000 100000 data/train_mer${mer}_subset500 data/lang exp/mer$mer/tri3_ali exp/mer$mer/tri4
 
-steps/train_sat.sh --cmd "$train_cmd" \
-  10000 150000 data/train_mer$mer data/lang \
-  exp/mer$mer/tri4_ali \
-  exp/mer$mer/tri5
+  #sat decoding
+  utils/mkgraph.sh data/lang_test exp/mer$mer/tri4 exp/mer$mer/tri4/graph
 
-utils/mkgraph.sh data/lang_test exp/mer$mer/tri5{,/graph}
+  for dev in dev_overlap dev_non_overlap; do
+    steps/decode_fmllr.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
+      exp/mer$mer/tri4/graph data/$dev exp/mer$mer/tri4/decode_$dev &
+  done
+fi
 
-for dev in dev_overlap dev_non_overlap; do
-  steps/decode_fmllr.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
-    exp/mer$mer/tri5/graph data/$dev exp/mer$mer/tri5/decode_$dev
-  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --config conf/decode.config \
-    data/lang_test data/lang_test_fg data/$dev \
-    exp/mer$mer/tri5/decode_${dev}{,_fg}
-done
+if [ $stage -le 14 ]; then
+  #sat alignment
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" data/train_mer$mer data/lang exp/mer$mer/tri4 exp/mer$mer/tri4_ali
+
+  steps/train_sat.sh --cmd "$train_cmd" \
+    10000 150000 data/train_mer$mer data/lang \
+    exp/mer$mer/tri4_ali \
+    exp/mer$mer/tri5
+
+  utils/mkgraph.sh data/lang_test exp/mer$mer/tri5{,/graph}
+
+  for dev in dev_overlap dev_non_overlap; do
+    steps/decode_fmllr.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode.config \
+      exp/mer$mer/tri5/graph data/$dev exp/mer$mer/tri5/decode_$dev
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --config conf/decode.config \
+      data/lang_test data/lang_test_fg data/$dev \
+      exp/mer$mer/tri5/decode_${dev}{,_fg}
+  done
+fi
 
 exit 0 
 
