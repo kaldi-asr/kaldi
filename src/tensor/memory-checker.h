@@ -441,6 +441,7 @@ class MemoryChecker {
          kRead
          kReadWrite
          kWrite
+         kCheckUninitialized
      From a user's perspective the only thing this function might do is crash--
      which it is designed to do if it detects various "disallowed" things.
   */

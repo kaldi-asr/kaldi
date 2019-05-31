@@ -1,4 +1,4 @@
-// tensor/pattern-extra-utils.h
+// tensor/pattern-tuple-utils.h
 
 //  Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_
-#define KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_ 1
+#ifndef KALDI_TENSOR_TENSOR_PATTERN_TUPLE_UTILS_H_
+#define KALDI_TENSOR_TENSOR_PATTERN_TUPLE_UTILS_H_ 1
 
 #include "tensor/tensor-common.h"
 #include "tensor/pattern.h"
@@ -267,7 +267,7 @@ bool PatternContains(const Pattern &pattern,
    memory-index-set of pattern q.  Note: the algorithm is not super trivial or
    fast (although the tiem taken doesn't grow with the dims or strides, only
    with the number of axes).
-   
+
       @param [in] p   First pattern; must be valid.
       @param [in] q   Second pattern; must be valid.
       @return   Returns true if memory-index-set of p is a subset of
@@ -630,9 +630,9 @@ class OutOfPlaceAxisSorter {
   // Constructor.
   inline OutOfPlaceAxisSorter(const Pattern &src) {
     int32 num_axes = src.num_axes;
-    for (int32 raxis = 0; raxis < src.num_axes; raxis++)
+    for (int32 raxis = 0; raxis < num_axes; raxis++)
       orig_raxis_[raxis] = raxis;
-    std::sort(orig_raxis_, orig_raxis_ + src.num_axes,
+    std::sort(orig_raxis_, orig_raxis_ + num_axes,
               // a comparator (less-than) operator implemented as a lambda is
               // below.  Sort from least to greatest abs(stride), disambiguating
               // based on dim.
@@ -657,11 +657,79 @@ class OutOfPlaceAxisSorter {
 
 
 
+/**
+   This function sorts the axes in 'patterns' (which must be a valid
+   pattern-tuple, see pattern.h for explanation) using TupleAxisComparator.  See
+   its documentation in pattern-tuple-utils.cc for description of what this
+   order is.
+
+     @param [in,out]  The patterns whose axes are to be sorted.  The same
+                     permutation will be applied to all the patterns.
+ */
+void SortTupleAxes(ArrayRef<Pattern*> patterns);
+
+/**
+   Compresses a Pattern-tuple by removing or combining as many axes as possible.
+   See the documentation for CompressOnePattern() in pattern-utils.h basic
+   concept of compressing a single Pattern to a pattern with possibly fewer axes
+   (and maybe with negative strides converted to positive), which covers the
+   same set of memory locations as the original Tensor.
+
+   The difference with just calling CompressOnePattern() several times is
+   that CompressPatterns() preserves the relationships between the tensors.
+   In the language developed in pattern.h, this means the memory-index-tuple-set
+   is preserved.
+
+   Note: while the first Pattern will have no negative strides at output,
+   the others may.
+
+     @param [in,out] patterns   An nonempty array of the patterns
+                         to be jointly compressed.
+
+      @return  Returns true if it made any change to the patterns,
+               false if they were unchanged.
+
+ Examples are below, where we write a Pattern as
+ `{{dim1,dim2,..}, {stride1,stride2,..}}`.
+
+\verbatim
+    src1                src2              dest1,offset1       dest2,offset2
+  {{10},{1}}           {{10},{1}}        {{10},{1}},0        {{10},{1}},0  # no-op
+  {{8},{1}}            {{1},{0}}         {{8},{1}},0         {{1},{0}},0   # no-op
+  {{7},{-1}}           {{7},{1}}         {{7},{1}},-6         {{7},{-1}},6 # flip sign
+ {{3,4},{4,1}}        {{3,4},{4,1}}      {{12},{1}},0         {{12},{1}},0 # combine dims
+ {{3,4},{4,1}}        {{3,1},{4,0}}      {{3,4},{4,1}}        {{3,1},{4,0}} # can't combine, would be incompatible
+ {{3,4},{4,1}}        {{1,1},{0,0}}      {{12},{1}}           {{1},{0}}    # combine
+\endverbatim
+
+   See also SortTupleAxes() and NormalizePatternTuple().
+ */
+bool CompressPatternTuple(ArrayRef<Pattern*> patterns);
+
+
+/**
+   Reduces a pattern-tuple to a normalized form.  (Caution: this may not be 100%
+   deterministic, i.e. there may be two pattern-tuples in normalized form,
+   i.e. the form produced by this function, which share the same
+   memory-index-tuple-set but are not equal).
+
+   This just calls CompressPatternTuple() and then SortPatternTupleAxes().
+
+     @param [in,out] patterns.
+
+*/
+inline bool NormalizePatternTuple(ArrayRef<Pattern*> patterns) {
+  CompressPatternTuple(patterns);
+  NormalizePatternTupleAxes(patterns);
+}
+
+
+
 
 }  // namespace tensor
 }  // namespace kaldi
 
 // Include implementation of inline functions.
-#include "tensor/pattern-extra-utils-inl.h"
+#include "tensor/pattern-tuple-utils-inl.h"
 
-#endif  // KALDI_TENSOR_TENSOR_PATTERN_EXTRA_UTILS_H_
+#endif  // KALDI_TENSOR_TENSOR_PATTERN_TUPLE_UTILS_H_

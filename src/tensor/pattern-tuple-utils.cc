@@ -481,7 +481,7 @@ std::vector<int32>  RandomIndexFromHyperrectangle(const Hyperrectangle &a) {
   auto a_iter = a.begin();
   for (; ans_iter != ans_end; ++ans_iter, ++a_iter)
     *ans_iter = RandInt(a_iter->first, a_iter->second - 1);
-  
+
 
 }
 
@@ -974,7 +974,7 @@ bool ComputeDifference(const Pattern &pattern1,
     // Some of the code below with num_axes - 1 would crash in this case, so
     // handle it separately.  Note: for 1-element patterns, if their offsets are
     // different, they don't intersect.
-    if (pattern1.offset != pattern2.offset) 
+    if (pattern1.offset != pattern2.offset)
       difference->push_back(pattern1);
     return true;
   }
@@ -1010,7 +1010,7 @@ bool ComputeDifference(const Pattern &pattern1,
     int64 begin_mindex2 = sub_pattern2.offset,
       end_mindex2 = begin_mindex2 +
       sub_pattern2.strides[num_axes - 1] * sub_pattern2.dims[num_axes - 1];
-    
+
     for (auto iter = cur_difference.begin(); iter != cur_difference.end(); ++iter){
       const Pattern &sub_pattern1 = *iter;
       // as before, end_mindex1 is strictly greater than the actual largest
@@ -1026,11 +1026,11 @@ bool ComputeDifference(const Pattern &pattern1,
         continue;
       }
 
-      std::vector<Hyperrectangle> cur_rects(1); 
+      std::vector<Hyperrectangle> cur_rects(1);
       // Get a hyperrectangle that represents all index-tuples into
       // sub_pattern1.
       GetFullHyperrectangleOfPattern(sub_pattern1, &cur_rects.back());
-      
+
       // each member of `offsets` represents one part of the intersection
       // between sub_pattern1 and sub_pattern2.  Each of these will be converted
       // to a hyperrectangle representing the set of indexes it covers within
@@ -1040,7 +1040,7 @@ bool ComputeDifference(const Pattern &pattern1,
       // after subracting  previous things.
       std::vector<std::vector<int32> > offsets;
       FindOffsets(sub_pattern1, sub_pattern2, true, &offsets);
-      
+
       std::vector<Hyperrectangle> next_rects;
       for (const std::vector<int32> &offset: offsets) {
         Hyperrectangle h;
@@ -1056,7 +1056,7 @@ bool ComputeDifference(const Pattern &pattern1,
         cur_rects.swap(next_rects);
         next_rects.clear();
       }
-      for (auto hiter = cur_rects.begin(); 
+      for (auto hiter = cur_rects.begin();
            hiter !=  cur_rects.end(); ++hiter) {
         // *hiter represents one piece of the difference sub_pattern1 -
         // sub_pattern2, expressed as indexes into sub_pattern1.  We turn
@@ -1078,7 +1078,7 @@ bool PatternIsSubsetOf(const Pattern &p,
   std::vector<Pattern> intersection;
   ComputeIntersection(p, q, true, &intersection);
   int64 total_size = 0;
-  for (Pattern &r : intersection) 
+  for (Pattern &r : intersection)
     total_size += NumElements(r);
   return (total_size == NumEements(p));
 }
@@ -1298,6 +1298,124 @@ void MakeCompactNormalizedAndJustified(const Pattern &src,
 
 
 
+
+
+/**
+   Class TupleAxisComparator is used when we want to sort the axes of a tuple
+   of Patterns.  It helps to reduce the possible number of axis orderings that
+   we have to handle in implementation code.  (I.e. it reduces the number
+   of case statements that we have to handle in certain Ops).
+
+   Each stride is first converted to a number 0, 1 or 2, where 0 and 1
+   correspond to strides of 0 and 1 respectively and 2 means "any other value".
+   Call this number a stride-code.  The first comparion we do is on the first
+   pattern; we produce an order such that the stride-codes of the first pattern
+   are ordered from least to greatest value in the private mumbering.
+
+   In case of ties on the stride-codes of the first pattern, we then sort on the
+   sum of squares of the stride-codes of the other patterns.  (Using the
+   sum of squares rather than the simple sum reduces the chance of ties,
+   i.e. we don't get cases where 1 + 1 == 2 introduces a tie, because the
+   2's become 4's.
+
+   Note: the ordering this induces on the axes is not a total order for every
+   Pattern-tuple, so this comparator cannot be used as part of a
+   "canonicalization" process for Pattern-tuples.
+ */
+class TupleAxisComparator {
+
+  /**
+     Comparator function.  Returns true if raxis1 should appear before raxis2 in
+     the sorted ordering.
+        @param [in] raxis1  Axis in the private numbering, must be
+                            in range [0, num_axes - 1] where num_axes
+                            is the num_axes of the Patterns.
+        @param [in] raxis2  Axis in the private numbering, satisfying
+                            the same conditions as raxis1
+        @return             Returns true if the raxis numbered raxis1
+                            should come before raxis2 in the new axis
+                            ordering.  Like a less-than operator.
+  */
+  bool operator () (int32 raxis1, int32 raxis2) const {
+    KALDI_PARANOID_ASSERT(static_cast<uint32>(raxis1) <
+                          static_cast<uint32>(patterns_[0].num_axes));
+    uint32 stride_code1 = std::min<uint32>(patterns_[0].strides[raxis1], 2),
+        stride_code2 = std::min<uint32>(patterns_[0].strides[raxis2], 2);
+    if (stride_code1 < stride_code2) return true;
+    else if (stride_code1 > stride_code2) return false;
+    uint32 stride_code1_sumsq = 0,
+        stride_code2_sumsq = 0;
+    for (size_t i = 1; i < patterns_.size; i++) {
+      stride_code1 = std::min<uint32>(patterns_[i].strides[raxis1], 2);
+      stride_code2 = std::min<uint32>(patterns_[i].strides[raxis2], 2);
+      stride_code1_sumsq += stride_code1 * stride_code1;
+      stride_code2_sumsq += stride_code2 * stride_code2;
+    }
+    return stride_code1_sumsq < stride_code2_sumsq;
+  };
+
+  /**
+     Constructor
+            @param [in] patterns   The tuple of Patterns.  Must be
+                          a valid Pattern-tuple; search for
+                          "Valid Pattern-tuple" in pattern.h.
+  */
+  TupleAxisComparator(ArrayRef<Pattern*> patterns): patterns_(patterns) {
+    KALDI_PARANOID_ASSERT(IsValidPatternTuple(patterns_));
+  }
+
+private:
+  ArrayRef<Pattern*> patterns_;
+};
+
+
+/**
+   This object is to be instantiated when you want to know what permutation
+   you'd get if you were to sort the axes of this tuple of Patterns using
+   TupleAxisComparator.  Note: this is not a total order for all pattern-tuples,
+   so its behavior may not be completely deterministic, especially across
+   different versions of the stl library.
+ */
+class OutOfPlaceTupleAxisSorter {
+ public:
+  // Constructor.
+  inline OutOfPlaceTupleAxisSorter(ArrayRef<Pattern*> src) {
+    KALDI_PARANOID_ASSERT(IsValidPatternTuple(src));
+    int32 num_axes = src[0]->num_axes;
+    for (int32 raxis = 0; raxis < num_axes; raxis++)
+      orig_raxis_[raxis] = raxis;
+    TupleAxisComparator c(src);
+    std::sort(orig_raxis_, orig_raxis_ + num_axes, c);
+  }
+  // Returns the 'source' raxis-index for a particular destination
+  // raxis-index, e.g..:  `src_raxis = GetIndex(dest_raxis)`.
+  // Copying as e.g. `dest.strides[dest_raxis] = src.strides[src_raxis]`,
+  // and the same for the dims, would give you a `dest` with axes
+  // sorted from smallest to greatest absolute value.
+  inline int32 GetIndex(int32 raxis) { return orig_raxis_[raxis]; }
+
+ private:
+  int32 orig_raxis_[KALDI_TENSOR_MAX_DIM];
+};
+
+
+void SortTupleAxes(ArrayRef<Pattern*> patterns) {
+  OutOfPlaceAxisSorter sorter(src);
+  int32 num_axes = patterns[0]->num_axes;
+  Pattern temp_pattern;
+  for (size_t i = 0; i < patterns->size(); i++) {
+    Pattern &this_pattern = *(patterns[i]);
+    for (int32 i = 0; i < num_axes; i++) {
+      int32 src_raxis = sorter.GetIndex(i);
+      temp_pattern.strides[i] = this_pattern.strides[src_raxis];
+      temp_pattern.dims[i] = this_pattern.dims[src_raxis];
+    }
+    for (int32 i = 0; i < num_axes; i++) {
+      this_pattern.strides[i] = temp_pattern.strides[i];
+      this_pattern.dims[i] = temp_pattern.dims[i];
+    }
+  }
+}
 
 
 }  // namespace kaldi

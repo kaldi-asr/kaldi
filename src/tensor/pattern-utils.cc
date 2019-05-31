@@ -449,6 +449,10 @@ void SortAxes(Pattern *pattern) {
   }
 }
 
+void SortTupleAxes(ArrayRef<Pattern*> patterns) {
+
+}
+
 void Transpose(int32 raxis1, int32 raxis2, Pattern *p) {
   if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
       static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {

@@ -86,9 +86,9 @@ void CreateTensorStorage(TensorImpl *impl);
 
 
 /**
-   Returns true if the provided TensorImpl covers the whole of the
-   allocated storage region, i.e. if every byte of the storage region
-   is accessible through `impl`.
+   Returns true if the provided TensorImpl covers the whole of the allocated
+   storage region, i.e. if every byte of the storage region is accessible
+   through `impl`.
  */
 bool IsWhole(const TensorImpl &impl);
 

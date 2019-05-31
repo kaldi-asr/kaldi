@@ -390,14 +390,14 @@ inline void Squeeze(int32 axis, Pattern *p) {
 
        @param [in] a  The pattern of the first Tensor
        @param [in] b  The pattern of the second Tensor
-       @param [in] b_non_reducing   If true, then we do not allow a dim of
+       @param [in] b_not_smaller   If true, then we do not allow a dim of
                       b to be 1 while corresponding dim of a is >1.
        @return  Returns true if a and b are broadcastable (with
                 an additional constraint that `a.dims[i] <= b.dims[i]` if
-                `b_non_reducing == true`.
+                `b_not_smaller == true`.
  */
 bool Broadcastable(const Pattern &a, const Pattern &b,
-                   bool b_non_reducing = false);
+                   bool b_not_smaller = false);
 
 
 /**  This function returns true if the dimensions of tensor patterns
@@ -409,17 +409,17 @@ bool Broadcastable(const Pattern &a, const Pattern &b,
        @param [in] a  The pattern of the first Tensor
        @param [in] b  The pattern of the second Tensor
        @param [in] c  The pattern of the third Tensor
-       @param [in] c_non_reducing   If true, then we do not allow a dim of
+       @param [in] c_not_smaller   If true, then we do not allow a dim of
                       c to be 1 while corresponding dims of a or b
                       are > 1.
        @return  Returns true if a, b and c are broadcastable (with
                 an additional constraint that
                 `max(a.dims[i], b.dims[i]) <= c.dims[i]` if
-                `c_non_reducing == true`).
+                `c_not_smaller == true`).
 
  */
 bool Broadcastable(const Pattern &a, const Pattern &b,
-                   const Pattern &c, bool c_non_reducing = false);
+                   const Pattern &c, bool c_not_smaller = false);
 
 
 
@@ -561,32 +561,6 @@ bool IsCanonical(const Pattern &pattern);
 int64 NumElements(const Pattern &pattern);
 
 
-/**
-   This version of SortAxes() sorts the axes in 'patterns' (which must be
-   nonempty and all have the same number of axes), by ordering them from the
-   most negative stride value in patterns[0] to the most positive stride value
-   in patterns[0], using the strides in the other patterns to disambiguate the
-   order only in case of ties (which could only happen if some strides were
-   zero), and then the dims in the same order if the strides are all the same
-   (the strides would only be the same if they were zero, if the patterns were
-   valid).  Roughly, it's a lexical order on the (strides, then dims) of the
-   patterns.  Note: the most-negative-to-most-positive ordering is in terms of
-   the private, `raxis` numbering; it would be most-positive-to-most-negative in
-   the public numbering.
-
-   TODO: work out what the ordering should be; should it really be negative-to-
-   positive, or based on abs(stride), and do we need disambiguation with the
-   dims?
-
-   TODO: do we even need this??
-
-     @param [in,out]  The patterns whose axes are to be sorted.  All
-                    will have their axes subject to the same permutation.
-                    The ordering is based on the strides of patterns[0],
-                    but using the strides of later numbered patterns in
-                    case of ties.
- */
-void SortAxes(ArrayRef<Pattern*> patterns);
 
 /**
   Multiplies all strides and the offset in 'pattern' by 'scale', which must be >
@@ -596,6 +570,8 @@ void SortAxes(ArrayRef<Pattern*> patterns);
   is accessed using different dtypes (which is unlikely).
  */
 void ScaleStridesAndOffset(int32 scale, Pattern *pattern);
+
+
 
 
 
@@ -609,50 +585,10 @@ class PatternHasher {
   CompressTwoPatterns() is a special case of CompressPatterns() where there
   are exactly two patterns to be jointly compressed.  See documentation of
   CompressPatterns() for explanation.
- */
+*/
 void CompressTwoPatterns(Pattern *a,
                          Pattern *b);
 
-
-/**
-   Compresses one or more Pattern by removing or combining as many axes as
-   possible.  See the documentation for CompressOnePattern() to understand the
-   basic concept of compressing a single Pattern to a pattern with possibly
-   fewer axes (and maybe with negative strides converted to positive),
-   which covers the same set of memory locations as the original Tensor.
-
-   The difference with just calling CompressOnePattern() several times is
-   that CompressPatterns() preserves the relationships between the tensors.
-
-   In technical terms (and you will have to follow definitions several deep
-   in the glossary to find all the definitions), this operation
-   preserves the memory-index-tuple-set of the Pattern-tuple, and
-   also the memory-index-set of each of the Patterns (we have to specify
-   the part after "and" to disallow swapping the Patterns).
-
-   Note: while the first Pattern will have no negative strides at output,
-   the others may.
-
-      @param [in,out] patterns   An nonempty array of the patterns
-                         to be jointly compressed.
-
-      @return  Returns true if it made any change to the patterns,
-               false if they were unchanged.
-
- Examples are below, where we write a Pattern as
- `{{dim1,dim2,..}, {stride1,stride2,..}}`.
-
-\verbatim
-    src1                src2              dest1,offset1       dest2,offset2
-  {{10},{1}}           {{10},{1}}        {{10},{1}},0        {{10},{1}},0  # no-op
-  {{8},{1}}            {{1},{0}}         {{8},{1}},0         {{1},{0}},0   # no-op
-  {{7},{-1}}           {{7},{1}}         {{7},{1}},-6         {{7},{-1}},6 # flip sign
- {{3,4},{4,1}}        {{3,4},{4,1}}      {{12},{1}},0         {{12},{1}},0 # combine dims
- {{3,4},{4,1}}        {{3,1},{4,0}}      {{3,4},{4,1}}        {{3,1},{4,0}} # can't combine, would be incompatible
- {{3,4},{4,1}}        {{1,1},{0,0}}      {{12},{1}}           {{1},{0}}    # combine
-\endverbatim
- */
-bool CompressPatterns(ArrayRef<Pattern*> patterns);
 
 /**
    Compresses a Pattern by removing or combining as many axes as possible,
@@ -817,6 +753,12 @@ void HasCStrides(const Pattern &pattern);
  */
 bool PatternsOverlap(const Pattern &pattern1,
                      const Pattern &pattern2);
+
+/**
+   Returns true if this is a valid pattern-tuple (see "Valid pattern-tuple"
+   in pattern.h)
+ */
+bool IsValidPatternTuple(ArrayRef<Pattern*> patterns);
 
 
 

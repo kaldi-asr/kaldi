@@ -132,7 +132,8 @@ enum BinaryFunctionEnum {
 enum TensorUseEnum {
   kRead,
   kReadWrite,
-  kWrite
+  kWrite,
+  kCheckUninitialized
 };
 
 

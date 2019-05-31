@@ -54,9 +54,9 @@ class Context {
 // object into functions that might want to execute Ops.
 class ExecutionContext: public Context {
 
-  // This function takes ownership of the Op in 'op', and then does something
-  // with it (e.g. does op->Do() for simple execution).
-  virtual void DoOp(Op *op);
+  /// This function executes the Op (op.Do()) and/or does something else
+  /// relating to taking derivatives.
+  virtual void Execute(const Op &op);
 
   virtual ~ExecutionContext() {}
 };
@@ -69,7 +69,7 @@ class ExecutionContext: public Context {
 // it easier to switch between autograd and no-autograd.
 class SimpleExecutionContext: public ExecutionContext {
 
-  virtual void DoOp(Op *op) {  op->Do();  delete op;  }
+  virtual void Execute(const Op &op) {  op.Do();  }
   virtual ~SimpleExecutionContext() {}
 };
 
@@ -79,17 +79,13 @@ class SimpleExecutionContext: public ExecutionContext {
 /**
    Execution context that you use while doing a forward computation, that
    executes the forward commands and stores the things required to later do the
-   backprop.  This is a simple version that does the 'normal case'; also
-   see GeneralBackpropExecutionContext.
+   backprop.  See its Backprop() function for how to execute the backprop.
 */
 class BackpropExecutionContext: public ExecutionContext {
 
   /**
      Constructor of BackpropExecutionContext from an existing DerivMap, which
-     might map, for instance, parameters to their derivatives.  Its contents are
-     *copied* (so that we have a base set of things that we know need
-     derivatives); we don't want to add entries to that 'deriv_map' because it
-     has a longer lifetime than we need, and would waste memory.
+     might map, for instance, parameters to their derivatives.
 
       @param [in] deriv_map   An existing DerivMap, to which the user will
                       likely have added the model parameters and anything
@@ -100,35 +96,15 @@ class BackpropExecutionContext: public ExecutionContext {
       @param [in] base_context  The base execution context, which would
                       normally be SimpleExecutionContext; it is used to
                       execute both the forward and backward commands.
-
-
+                      This class will store the pointer but will not take
+                      ownership; it is the user's responsibility to
+                      make sure it stays alive as long as this object is
+                      alive.
    */
   BackpropExecutionContext(const DerivMap &deriv_map,
                            ExecutionContext *base_context);
 
 
-
-
-  /**
-     Constructor taking just a Context (for default dtype and device).  You
-     shouldn't very often have to use this; the constructor taking a DerivMap
-     as well is more useful.
-  */
-  BackpropExecutionContext(const Context &context);
-
-
-  // Returns pointer to this deriv_map_ (still owned by this class.  This may be
-  // used, for instance, to do
-  // backprop_context.GetDerivMap()->Deriv(some_tensor) if we want to ensure
-  // that 'some_tensor' gets a derivative.  This shouldn't very often be
-  // necessary as the usually more correct way would be to to supply a DerivMap
-  // containing all the things whose derivatives you need, to the constructor.
-  // The pointer returned is still owned by this class-- don't delete it.
-  // Also, a subsequent call to FreeDerivMap() might free it, so you
-  // should probably use it immediately and not keep it around unless you
-  // know that FreeDerivMap() will not be called
-  // (note: FreeDerivMap is implicitly called by Backprop()).
-  DerivMap *GetDerivMap() { return deriv_map_.get(); }
 
 
   /**
@@ -141,21 +117,48 @@ class BackpropExecutionContext: public ExecutionContext {
 
      If retain_info is false, it will delete deriv_map_ and clear backward_ops_.
      This is recommended in most cases; it's more memory efficient.
+
+        @param [in] t    The Tensor that we are taking the derivative with
+                        respect to.
+        @param [in] deriv  The derivative w.r.t. t of the function we
+                        are taking the derivative of.  Might be just
+                        1.0.  Must satsify Broadcastable(deriv, t).
+                        Note: deriv may have more axes than t, in which
+                        case the extra leading axes are required to
+                        have dimensions equal to deriv_map_->ExtraDims().
+                        If deriv_map_->ExtraDims() is nonempty,
+                        the num-axes of 'deriv' is required to equal
+                        `t.NumAxes() + deriv_map_->ExtraDims().size()`.
    */
   void Backprop(const Tensor &t,
-                bool retain_info = false);
+                const Tensor &deriv) {
+    if (deriv_map_ == nullptr)
+      KALDI_ERR << "You cannot call Backprop twice on the same "
+          "BackpropExecutionContext";
+
+    // Delete deriv_map_.  This will help ensure that derivative
+    // quantities are deleted as soon as they are no longer needed
+    // (since once we delete the deriv_map_ and the ops referring
+    // to those derivative matrices, they will be garbage collected).
+    deriv_map_ = nullptr;
+
+    for (auto iter = backward_ops_.rbegin();
+         iter != backward_ops_.rend(); ++iter){
+      base_context_->Execute(**iter);
+      // Delete this op.  Deleting the ops also deletes the associated
+      // derivative matrices, via shared_ptr garbage collection.
+      *iter = nullptr;
+    }
+    backward_ops_.clear();
+  }
 
 
-  void Backprop(const Tensor &t,
-                bool retain_info = false);
-
-
-  virtual void DoOp(Op *op) {
-    // TODO.
+  virtual void Execute(const Op &op) {
+    base_context_->Execute(op);
+    op.GetBackwardDerivOps(&deriv_map_, &backward_ops_);
   }
 
   virtual ~BackpropExecutionContext() { }
-
 
 
  private:
@@ -166,82 +169,57 @@ class BackpropExecutionContext: public ExecutionContext {
 };
 
 
-
-
-class AutogradContext: public Context {
- public:
-
+/**
+   Execution context that you use while doing a forward computation, that
+   executes the forward commands and also computes forward derivatives
+   w.r.t. something.
+*/
+class ForwardPropExecutionContext: public ExecutionContext {
 
   /**
+     Constructor of ForwardPropExecutionContext from an existing DerivMap, which
+     might map, for instance, some input x to dx/da, where a is the thing
+     we're taking the derivative of.
 
+      @param [in] deriv_map   An existing DerivMap, to which the user will
+                      likely have added the thing we are taking the derivative
+                      w.r.t. (e.g. some input where we want to see its
+                      effect on the computation).  deriv_map is *copied*,
+                      not held as a reference, by this object, to avoid
+                      a kind of memory leakage.
+      @param [in] base_context  The base execution context, which would
+                      normally be SimpleExecutionContext; it is used to
+                      execute both the forward and backward commands.
+                      This class will store the pointer but will not take
+                      ownership; it is the user's responsibility to
+                      make sure it stays alive as long as this object is
+                      alive.
    */
-  inline void DoSomething(std::unique_ptr<Op> op) {
+  ForwardPropExecutionContext(const DerivMap &deriv_map,
+                              ExecutionContext *base_context);
 
+
+  virtual void Execute(const Op &op) {
+    base_context_->Execute(op);
+    std::vector<std::unique_ptr<Op> > ops;
+    op.GetForwardDerivOps(&deriv_map_, &ops);
+    for (auto iter = ops.begin(); iter != ops.end(); ++iter)
+      base_context_->Execute(*iter);
+    // and let the ops in 'ops' go out of scope and get deleted.
   }
 
 
- private:
-  // The default DataType for newly created Tensors
-  DataType default_dtype_;
-  // The default Device for newly created Tensors
-  Device default_device_;
-
-
-  // If true, all Tensors will be tracked, even ones that are functions
-  // of Tensors that are not tracked.  (Note: the notion of 'tracked'
-  // is only meaningful in the context of a specific AutogradContext).
-  bool all_tracked_;
-
-
-  // If this is non-NULL, whenever we execute commands we will store
-  // the Ops needed for the backprop here.
-  std::shared_ptr<std::vector<std::unique_ptr<Op> > > backward_deriv_commands_;
-
-  // If this is non-NULL, whenever we execute commands we will store the
-  // corresponding Ops in this vector.  This would allow us to do backprop
-  // later, but it's not the normal pattern.  Note: these Ops will refer
-  // to variables used in the forward pass, so
-  std::shared_ptr<std::vector<std::unique_ptr<Op> > > forward_deriv_commands_;
-
-
-  // If this is non-NULL, whenever we execute commands we will store the
-  // corresponding Ops in this vector.  This would allow us to do backprop
-  // later, but it's not the normal pattern.  Note: these Ops will refer
-  // to variables used in the forward pass, so
-  std::shared_ptr<std::vector<Op> > forward_commands_;
-
-
-  bool store_backprop_;
-
-  // if deriv_mapper_ is non-NULL
-  std::shared_ptr<DerivMap> deriv_mapper_;
-
-
+  // Returns pointer to this deriv_map_ (still owned by this class).
+  // May be used to query the derivative of some Tensor w.r.t. the
+  // input, e.g. forward_context.GetDerivMap()->DerivIfPresent(some_tensor).
+  DerivMap *GetDerivMap() { return deriv_map_.get(); }
 
 
 };
 
-// Once create a new Op, do something as in
-// std::function<void(Op*)>
-// my_func (op).
-// Could be a closure.
-//
-//
-// Examples:
-//   ExecuteOp().
-//   ExecuteAndStoreOp()  [closure with vector<Op>]
-//   StoreOp()
-//   ExecuteAndStoreBackwardOp()  [ closure with vector<Op> to store
-//                                  backward pass, if tracked. ]
-//   ExecuteAndForwardOp()   [Executes the forward function and also,
-//                            if this op is tracked, the forward autodiff;
-//                            that has its own AutogradContext.
-//
-//
-/
 
-Device GetDefaultDevice();
-void SetDefaultDevice(Device device);
+
+
 
 // Mechanism to set the default device within a scope by constructing a variable
 // that exists only within that scope.
