@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2019  Zili Huang
 
@@ -10,10 +10,9 @@
 
 import numpy as np
 import VB_diarization
-import pickle
 import kaldi_io
-import sys
 import argparse
+from convert_VB_model import load_dubm, load_ivector_extractor 
 
 def get_utt_list(utt2spk_filename):
     with open(utt2spk_filename, 'r') as fh:
@@ -105,7 +104,7 @@ def main():
                         help='The rttm file to initialize the VB system, usually the AHC cluster result')
     parser.add_argument('output_dir', type=str, help='Output directory')
     parser.add_argument('dubm_model', type=str, help='Path of the diagonal UBM model')
-    parser.add_argument('ie_model', type=str, help='Path of the ivector extractor model')
+    parser.add_argument('ie_model', type=str, help='Path of the i-vector extractor model')
 
     parser.add_argument('--max-speakers', type=int, default=10,
                         help='Maximum number of speakers expected in the utterance (default: 10)')
@@ -138,17 +137,15 @@ def main():
 
     args = parser.parse_args()
     print(args)
-    init_rttm_filename = args.init_rttm_filename
 
     utt_list = get_utt_list("{}/utt2spk".format(args.data_dir))
     utt2num_frames = get_utt2num_frames("{}/utt2num_frames".format(args.data_dir))
     
     # Load the diagonal UBM and i-vector extractor
-    with open(args.dubm_model, 'rb') as fh:
-        dubm_para = pickle.load(fh)
-    with open(args.ie_model, 'rb') as fh:
-        ie_para = pickle.load(fh)
+    dubm_para = load_dubm(args.dubm_model)
+    ie_para = load_ivector_extractor(args.ie_model)
 
+    # Check the diagonal UBM and i-vector extractor model
     assert '<WEIGHTS>' in dubm_para and '<MEANS_INVVARS>' in dubm_para and '<INV_VARS>' in dubm_para
     DUBM_WEIGHTS, DUBM_MEANS_INVVARS, DUBM_INV_VARS = dubm_para['<WEIGHTS>'], dubm_para['<MEANS_INVVARS>'], dubm_para['<INV_VARS>']
     assert 'M' in ie_para
@@ -169,7 +166,7 @@ def main():
         # In init_ref, 0 denotes the silence silence frames
         # 1 denotes the overlapping speech frames, the speaker
         # label starts from 2.
-        init_ref = create_ref(utt, utt2num_frames, init_rttm_filename)
+        init_ref = create_ref(utt, utt2num_frames, args.init_rttm_filename)
 
         # load MFCC features
         X = (feats_dict[utt]).astype(np.float64)

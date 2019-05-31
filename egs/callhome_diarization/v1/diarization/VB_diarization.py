@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2013-2017 Lukas Burget (burget@fit.vutbr.cz)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -121,7 +122,7 @@ def VB_diarization(X, m, iE, w, V, sp=None, q=None,
 
   #Kx = np.sum(NN * (np.log(w) - np.log(NN)), 1)
   NN = coo_matrix(NN) # represent zero-order stats using sparse matrix
-  print 'Sparsity: ', len(NN.row), float(len(NN.row))/np.prod(NN.shape)
+  print('Sparsity: ', len(NN.row), float(len(NN.row))/np.prod(NN.shape))
   LL = np.sum(G) # total log-likelihod as calculated using UBM
 
   mixture_sum = coo_matrix((np.ones(C*D), (np.repeat(range(C),D), range(C*D))), shape=(C, C*D))
@@ -141,7 +142,7 @@ def VB_diarization(X, m, iE, w, V, sp=None, q=None,
   if downsample is not None:
     # Downsample NN, VtiEF, G and q by summing the statistic over 'downsample' frames
     # This speeds-up diarization for the price of lowering its frame resolution
-    downsampler = coo_matrix((np.ones(nframes, dtype=np.int64), ((np.ceil(np.arange(nframes)/downsample)).astype(int), np.arange(nframes))), shape=(int(np.ceil(1.0 * nframes / downsample)), nframes))
+    downsampler = coo_matrix((np.ones(nframes, dtype=np.int64), ((np.ceil(np.arange(nframes)/downsample)).astype(int), np.arange(nframes))), shape=(int(np.ceil((nframes - 1.0) / downsample)) + 1, nframes))
     NN    = downsampler.dot(NN)
     VtiEF = downsampler.dot(VtiEF)
     G     = downsampler.dot(G)
@@ -210,7 +211,7 @@ def VB_diarization(X, m, iE, w, V, sp=None, q=None,
         matplotlib.pyplot.imshow(np.atleast_2d(ref), interpolation='none', aspect='auto',
                                  cmap=matplotlib.pyplot.cm.Pastel1, extent=(0, len(ref), -0.05, 1.05))
         
-      print ii, Li[-2]
+      print(ii, Li[-2])
 
 
     if ii > 0 and L - Li[-2][0] < epsilon:
@@ -341,10 +342,10 @@ def forward_backward(lls, tr, ip):
     lfw[0] = lls[0] + np.log(ip)
     lbw[-1] = 0.0
 
-    for ii in  xrange(1,len(lls)):
+    for ii in range(1,len(lls)):
         lfw[ii] =  lls[ii] + logsumexp(lfw[ii-1] + ltr.T, axis=1)
 
-    for ii in reversed(xrange(len(lls)-1)):
+    for ii in reversed(range(len(lls)-1)):
         lbw[ii] = logsumexp(ltr + lls[ii+1] + lbw[ii+1], axis=1)
 
     tll = logsumexp(lfw[-1])

@@ -88,13 +88,28 @@ sdata=$data_dir/split$nj;
 utils/split_data.sh $data_dir $nj || exit 1;
 
 if [ $stage -le 0 ]; then
+  # Dump the diagonal UBM model into txt format.
+  "$train_cmd" $output_dir/log/convert_diag_ubm.log \
+    gmm-global-copy --binary=false \
+      $dubm_model \
+      $output_dir/tmp/dubm.tmp || exit 1;
+
+  # Dump the ivector extractor model into txt format.
+  "$train_cmd" $output_dir/log/convert_ie.log \
+    ivector-extractor-copy --binary=false \
+      $ie_model \
+      $output_dir/tmp/ie.tmp || exit 1;
+fi
+
+if [ $stage -le 1 ]; then
+    # VB resegmentation
     $cmd JOB=1:$nj $output_dir/log/VB_resegmentation.JOB.log \
-      python2 diarization/VB_resegmentation.py --max-speakers $max_speakers \
+      python3 diarization/VB_resegmentation.py --max-speakers $max_speakers \
         --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
 	--sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
 	--loopProb $loopProb --statScale $statScale --llScale $llScale \
 	--channel $channel --initialize $initialize \
-        $sdata/JOB $init_rttm_filename $output_dir/tmp $dubm_model $ie_model || exit 1;
+        $sdata/JOB $init_rttm_filename $output_dir/tmp $output_dir/tmp/dubm.tmp $output_dir/tmp/ie.tmp || exit 1;
 
-    cat $output_dir/tmp/* > $output_dir/rttm/VB_rttm
+    cat $output_dir/tmp/*.rttm > $output_dir/rttm/VB_rttm
 fi

@@ -19,8 +19,8 @@ vaddir=`pwd`/mfcc
 data_root=/export/corpora5/LDC
 stage=0
 nnet_dir=exp/xvector_nnet_1a/
-num_components=1024
-ivector_dim=400
+num_components=1024 # the number of UBM components (used for VB resegmentation)
+ivector_dim=400 # the dimension of i-vector (used for VB resegmentation)
 
 # Prepare datasets
 if [ $stage -le 0 ]; then
@@ -376,10 +376,6 @@ if [ $stage -le 12 ]; then
     --num-threads 1 --num-processes 1 --nj 40 \
     exp/diag_ubm_$num_components/final.dubm data/train \
     exp/extractor_diag_c${num_components}_i${ivector_dim}
-
-  # Converts diagonal UBM and ivector extractor to numpy array format
-  diarization/convert_VB_model.sh --cmd "$train_cmd" exp/diag_ubm_$num_components/final.dubm \
-    exp/extractor_diag_c${num_components}_i${ivector_dim}/final.ie exp/VB 
 fi
 
 if [ $stage -le 13 ]; then
@@ -391,10 +387,11 @@ if [ $stage -le 13 ]; then
 
   # VB resegmentation. In this script, I use the x-vector result to 
   # initialize the VB system. You can also use i-vector result or random 
-  # initize the VB system.
+  # initize the VB system. The following script uses kaldi_io. 
+  # You could use `sh ../../../tools/extras/install_kaldi_io.sh` to install it
   diarization/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 10G" \
-    --initialize 1 \
-    data/callhome $init_rttm_file exp/VB exp/VB/diag_ubm.pkl exp/VB/ie.pkl || exit 1; 
+    --initialize 1 data/callhome $init_rttm_file exp/VB \
+    exp/diag_ubm_$num_components/final.dubm exp/extractor_diag_c${num_components}_i${ivector_dim}/final.ie || exit 1; 
 
   # Compute the DER after VB resegmentation
   mkdir -p exp/VB/results || exit 1;
