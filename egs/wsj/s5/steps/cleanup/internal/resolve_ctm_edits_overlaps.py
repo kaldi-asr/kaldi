@@ -136,8 +136,8 @@ def wer(ctm_edit_lines):
         return float('inf')
     if num_words == 0 and num_incorrect_words == 0:
         return 0
-    return (float(num_incorrect_words) / num_words, -num_words)
-
+    #return (float(num_incorrect_words) / num_words, -num_words)
+    return (float(num_incorrect_words) / num_words)
 
 def choose_best_ctm_lines(first_lines, second_lines,
                           window_length, overlap_length):
