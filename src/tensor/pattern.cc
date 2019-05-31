@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include "tensor/pattern.h"
+#include "tensor/pattern-utils.h"
 
 
 namespace kaldi {
@@ -84,6 +85,12 @@ bool Pattern::Check(bool check_code) {
     return true;
 }
 
+
+int32 Pattern::GetCode() {
+  if (code < 0)
+    code = ComputePatternCode(*this);
+  return code;
+}
 
 // MAY DELETE THIS.  It's not up to date anyway.
 void PatternProperties::UpdateProperties(const Pattern &pattern) {

@@ -50,7 +50,8 @@ inline bool BroadcastableAndCompatible(const Tensor &a, const Tensor &b,
 
 
 inline bool Overlap(const Tensor &a, const Tensor &b) {
-  return Compatible(*a.impl_, *b.impl_);
+  return a.impl_->storage.get() == b.impl.storage.get() &&
+      PatternsOverlap(a.impl_->pattern, b.impl_->pattern);
 }
 
 
@@ -162,6 +163,29 @@ inline void RegisterTensorChange(const Tensor &a) {
 inline int64 NumElements(const Tensor &a) {
   return NumElements(*a.impl_);
 }
+
+/**
+   This is the Tensor-level version of CanonicalizePattern() from
+   pattern-utils.h.  It ensures that the Tensor's pattern is canonical.
+   If this changes the Pattern, this will involve allocating a new
+   TensorImpl (since we always assume that TensorImpl's may be shared
+   by other Tensors).
+*/
+void CanonicalizeTensor(Tensor *tensor);
+
+/**
+   This is the Tensor-level version of CompressPatterns() from pattern-utils.h.
+   It ensures that the Tensors
+ */
+void CompressTensors(ArrayRef<Tensor*> tensors);
+
+
+/**
+   Returns a Tensor referencing a new TensorImpl; it will be as t except the
+   pattern will be the one provided.
+ */
+Tensor WithPattern(const Tensor &t, const Pattern &pattern);
+
 
 
 }  // namespace tensor

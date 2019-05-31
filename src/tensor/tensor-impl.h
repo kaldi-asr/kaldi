@@ -82,8 +82,7 @@ struct TensorImpl {
   // allocated.
   inline void* GetData() const;
 
-
-
+  inline int32 GetCode() { return pattern.GetCode(); }
 
   /**
     Returns true if this TensorImpl is valid, false otherwise.

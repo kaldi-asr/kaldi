@@ -156,7 +156,7 @@ namespace tensor {
 class Tensor {
  public:
 
-  /// Return the number of axes (a number in {0,1,2,3,4,5,6}).  In mathematical
+  // Return the number of axes (a number in {0,1,2,3,4,5,6}).  In mathematical
   // contexts, this is sometimes known as the rank of the tensor, or sometimes
   // even its dimension, but these terms are ambiguous so we avoid them, and use
   // the terms 'number of axes' or 'axis' throughout.
@@ -364,6 +364,36 @@ class Tensor {
   Tensor(const std::shared_ptr<const TensorImpl> &&impl): impl_(impl) { }
 
 
+  /**
+     Shallow copy: just makes this point to the TensorImpl in `other`.
+   */
+  Tensor operator =(const Tensor &other) { impl_ = other.impl_; }
+
+
+  /**
+     Return a copy of the TensorImpl underlying this Tensor;
+     this would normally be done when you want to change
+     something in the TensorImpl but don't want to invalidate
+     this Tensor or others sharing the same TensorImpl object.
+
+   */
+  TensorImpl *CopyImpl();
+
+
+  /**
+     Returns the data pointer cast to type T, with the offset from
+     the pattern included.  Calling this will force allocation of
+     the storage region if it was not already allocated.
+   */
+  template <class T> T* GetData() const;
+
+  /**
+     Returns the data pointer cast to type T, but without the offset from the
+     pattern.
+   */
+  template <class T> T* GetRawData() const;
+
+
  private:
 
   // It might seem odd that we contain a shared_ptr to *const* TensorImpl.
@@ -391,8 +421,8 @@ class Tensor {
    treat it as a Tensor.  You should view the type `std::shared_ptr<const
    TensorImpl>` as "might be Tensor, might be NULL".
 */
-inline Tensor &AsTensor(std::shared_ptr<const TensorImpl> &impl) {
-  return reinterpret_cast<Tensor&>(impl);
+inline const Tensor &AsTensor(std::shared_ptr<const TensorImpl> &impl) {
+  return reinterpret_cast<const Tensor&>(impl);
 }
 
 

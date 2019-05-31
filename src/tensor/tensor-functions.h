@@ -62,8 +62,7 @@ inline void Transpose(int32 axis1, int32 axis2, Tensor *t) {
 
 /**
    Copy the data from tensor 'src' to tensor 'dest', allowing broadcasting
-   (so a dim of src can be 1 while the corresponding dim of 'dest' is >1).
-   Requires Broadcastable(src, *dest, true).
+   or summation.  Requires Broadcastable(src, *dest).
 
    Does not require that the Dtype() or Device() of src and dest be the same
    (i.e. does not require Compatible(src, *dest)).  This is the only way in
@@ -321,8 +320,22 @@ void AddTo(Scalar alpha, Scalar beta, const Tensor &src, const Tensor *dest);
                      `BroadcastableAndCompatible(src, *dest) &&
                      !Overlap(src, *dest) || Identical(src, *dest))`,
 */
-void AddTo(const Tensor &alpha, const Tensor &beta,
+void AddTo(const Scalar &alpha, const Scalar &beta,
            const Tensor &src, const Tensor *dest);
+
+/**
+   Does
+       dest += src
+   (note: this may involve broadcasting or summation depending on
+   the dimensions of dest and src.  Viewing dest and src
+   as patterns, the technical definition, with respect to the
+   notation in pattern.h, is: for each index-tuple i in the
+   index-tuple-set of (src, *dest), do: dest[i] += src[i].
+
+   Requires BroadcastableAndCompatible(src, *dest) && !Overlap(src, *dest).
+
+ */
+void AddTo(const Tensor &src, const Tensor *dest);
 
 
 

@@ -21,20 +21,19 @@
 #include <tensor/tensor-common.h>
 
 
-/**
-   This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
-*/
-
 namespace kaldi {
 namespace tensor {
 
 
-// Similar to llvm/PyTorch's ArrayRef, this is a lightweight way to store an
-// array (zero or more elements of type T).  The array is not owned here; it
-// will generally be unsafe to use an ArrayRef as other than a local variable.
-//
-// ArrayRef has only two members and it will probably make sense to pass it by
-// value most of the time.
+/**
+ Similar to llvm/PyTorch's ArrayRef, this is a lightweight way to store a const
+ array.  The data in array is not owned here; it will generally be unsafe to use
+ an ArrayRef as other than a local variable.
+
+ ArrayRef has only two members and it will probably make sense to pass it by
+ value most of the time.  Its constructors via std::vector<T> and
+ std::initializer_list<T> will be the usual way of creating it;
+*/
 template <typename T>
 struct ArrayRef final {
   const T *data;

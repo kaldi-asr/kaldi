@@ -270,9 +270,18 @@ namespace tensor {
                      (in most circumstances) satisfy.
 
 
-    Pattern-tuple:    A pattern-tuple of a tuple of Patterns, say:  (P, Q),
+    Pattern-tuple:    A pattern-tuple is tuple of Patterns, say:  (P, Q),
                       where the patterns in the tuple are broadcastable, meaning,
-                      for example: Broadcastable(P, Q).
+                      for example: Broadcastable(P, Q).  The order of the tuple
+                      must be at least one (i.e. at least one Pattern).
+
+           [Valid Pattern-tuple:]
+                     This describes the properties that Pattern-tuples are expected
+                     to satisfy in most situations where we might pass them into
+                     functions (this will usually be as ArrayRef<Pattern*>).
+                     The tuple most contain at least one pattern; each pattern must
+                     be valid; and they must be broadcastable, i.e.
+                     Broadcastable(p1, p2) for each pair of Patterns.
 
 
     Public numbering: The numbering of axes used in the public interface of class
@@ -530,10 +539,13 @@ struct Pattern {
                  // from the start of the originally allocated memory
                  // region
 
-  int32 code;  // pattern code; see ComputePatternCode() in pattern-utils.h
-               // for details.  If this is negative then it means it has not been
-               // computed.  In a valid Pattern the code will always be either
-               // negative or up-to-date.
+  int32 code;  // pattern code; from user-level code it should be accessed via
+               // GetCode(), which ensures it is set.  See documentation for
+               // ComputePatternCode() in pattern-utils.h for details of what
+               // this represents.  If this is negative then it means it has not
+               // been computed.  In a valid Pattern the code will always be
+               // either negative or up-to-date; GetCode(), which assumes the
+               // Pattern was valid, computes the code if it was negative.
 
   int32 properties;  // More occasionally-needed properties.  This is similar to
                      // OpenFst's notion of properties, where we compute them
@@ -550,6 +562,11 @@ struct Pattern {
   // See also IsCanonical() in pattern-utils.h.
   bool IsValid();
 
+  // Returns the pattern's code (the correct code, not -1).  Requires
+  // the Pattern to be valid (and in a valid Pattern, the code must be -1
+  // or the correct code, so we may assume a code >= 0 is the correct one.
+  int32 GetCode();
+
   // This comparator induces a total ordering on valid Patterns.  It is a
   // lexical comparison on the offset, num_axes, dims and strides.  (The code
   // does not need to be compared because, if not -1, it is a function of the
@@ -557,11 +574,15 @@ struct Pattern {
   bool operator < (const Pattern &other) const;
 
 
-  // Equality operator on Pattern.  Compares the num_axes, offset, and
-  // dims and strides indexed [0... num_axes-1].  (In patterns that satisfy IsValid(),
+  // Equality operator on Pattern.  Compares the num_axes, offset, and dims and
+  // strides indexed [0... num_axes-1].  (In patterns that satisfy IsValid(),
   // the remaining dims and strides would be 1 and 0 respectively, so checking
-  // the is pointless).
+  // them is pointless).
   bool operator == (const Pattern &other) const;
+
+  inline bool operator != (const Pattern &other) const {
+    return !(*this == other);
+  }
 
   // Assignment operator (copies all members).
   bool operator = (const Pattern &other) const;
