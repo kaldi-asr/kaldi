@@ -28,7 +28,7 @@ data_url=www.openslr.org/resources/62
 local/download_and_untar.sh $data $data_url aidatatang_200zh || exit 1;
 
 # Data Preparation: generate text, wav.scp, utt2spk, spk2utt
-local/data_prep.sh $data/corpus $data/transcript || exit 1;
+local/data_prep.sh $data/aidatatang_200zh/corpus $data/aidatatang_200zh/transcript || exit 1;
 
 # Lexicon Preparation: build a large lexicon that invovles words in both the training and decoding
 local/prepare_dict.sh || exit 1;
@@ -47,7 +47,7 @@ local/format_data.sh
 # mfccdir should be some place with a largish disk where you want to store MFCC features.
 mfccdir=mfcc
 for x in train dev test; do
-  steps/make_mfcc_pitch.sh --cmd "$train_cmd" --nj 10 data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+  steps/make_mfcc_pitch.sh --write_utt2dur false --write_utt2num_frames false --cmd "$train_cmd" --nj 10 data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   utils/fix_data_dir.sh data/$x || exit 1;
 done
