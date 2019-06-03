@@ -23,10 +23,11 @@ namespace kaldi {
 namespace tensor {
 
 void AddOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
-
   Pattern a_pattern = a_.Impl().pattern,
       b_pattern = b_.Impl().pattern;
   NormalizePatterns({a_pattern, b_pattern});
+
+  KALDI_ASSERT(Compatible(a_, b_));  // dtype and device, check they match.
 
   Tensor a(a_), b(b_);
 
@@ -46,10 +47,22 @@ void AddOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
   int64 combined_code = CombineCodes(a_pattern.GetCode(),
                                      b_pattern.GetCode());
 
+  Op *new_op;
+
+  /*
+    The case-statement values in the switch statement below may be interpreted
+    in groups of 3 hex characters, are 0xAAABBB, pertaining to Tensors a and b.
+    See GetPatternCode() in pattern-utils.h for documentation on the meanings of
+    the values and our notation with X,x,1.
+   */
+
   // We are doing a += b.
   switch(combined_code) {
     // A scalar plus a scalar
     case 0x000000000:
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), ScalarPlusEqScalar, a, b);
+      break;
+
 
 
 

@@ -217,7 +217,10 @@ class Tensor {
   bool HasCStrides() const;
 
   // Return the data type.
-  DataType Dtype() const { return dtype_; }
+  DataType Dtype() const { return impl_->dtype; }
+
+  // Return the device type.
+  DeviceType DeviceType() const { return impl_->device.device_type; }
 
   /**
      Indexing operator taking one arg.  Returns a Tensor referencing

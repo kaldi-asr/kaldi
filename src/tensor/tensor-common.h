@@ -67,6 +67,7 @@ enum DataType {
   // via SetDefaultDtype.
   kFloatDtype = 1,
   kDoubleDtype = 2,
+  kInt32Dtype = 3,
 };
 
 

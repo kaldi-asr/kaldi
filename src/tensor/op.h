@@ -163,6 +163,64 @@ class Op {
 
 };
 
+
+// the following macro is primarily for use inside other macros defined below.
+#define SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, T, ...) \
+   {                                                                      \
+   switch (device_type) {                                                 \
+    case kCpuDevice:                                                      \
+      pointer_name = new OpName<T, kCpuDevice>(__VA_ARGS__); break;       \
+    case kGpuDevice:                                                      \
+      pointer_name = new OpName<T, kGpuDevice>(__VA_ARGS__); break;       \
+    default:                                                              \
+    KALDI_ERR << "Invalid device type " << int32(device_type);            \
+  }  while (0)
+// the while(0) is to allow a semicolon after the invocation.
+
+
+// the following macro is to be used to dispatch device and dtype-specific
+// implementations.  The idea is that you have defined a template like
+// template <class Dtype, class DeviceType> class OpName
+// and have specialized that template for the various combinations.
+// This executes commands like:
+//    pointer_name = new OpName<float, kCpu>(a, b, c);
+// See also SET_TO_TEMPLATED_OP_REAL for ops where integers are not
+// supported
+#define SET_TO_TEMPLATED_OP_ALL(pointer_name, dtype, device_type, OpName, ...) \
+    switch (dtype) {                                \
+     case kFloatDtype:                              \
+     SET_TO_TEMPLATE_OP_DEVICE(pointer_name, device_type, OpName, float, __VA_ARGS__); \
+      break;                                        \
+     case kDoubleDtype:                             \
+     SET_TO_TEMPLATE_OP_DEVICE(pointer_name, device_type, OpName, double, __VA_ARGS__); \
+      break;                                        \
+     case kInt32Dtype:                             \
+     SET_TO_TEMPLATE_OP_DEVICE(pointer_name, device_type, OpName, int32, __VA_ARGS__); \
+      break;                                        \
+    default:                                        \
+      KALDI_ERR << "Invalid dtype (this op only allows float or double): " \
+      << int32(dtype);                              \
+  } while(0)
+// the while(0) is to allow a semicolon after the invocation.
+
+#define SET_TO_TEMPLATED_OP_REAL(pointer_name, dtype, device_type, OpName, ...) \
+    switch (dtype) {                                \
+     case kFloatDtype:                              \
+       SET_TO_TEMPLATE_OP_DEVICE(pointer_name, device_type, OpName, float, __VA_ARGS__); \
+      break;                                        \
+     case kDoubleDtype:                             \
+       SET_TO_TEMPLATE_OP_DEVICE(pointer_name, device_type, OpName, double, __VA_ARGS__); \
+      break;                                        \
+    default:                                        \
+      KALDI_ERR << "Invalid dtype (this op only allows float or double): " \
+                << int32(dtype);                              \
+  } while(0)
+// the while(0) is to allow a semicolon after the invocation.
+
+
+
+
+
 // See linear-ops.h and nonlinear-ops.h for concrete examples of Ops.
 
 }  // namespace tensor
