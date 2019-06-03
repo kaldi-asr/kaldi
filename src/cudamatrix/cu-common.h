@@ -43,6 +43,14 @@
   } \
 }
 
+#define CUFFT_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != CUFFT_SUCCESS) { \
+    KALDI_ERR << "cublasResult " << ret << " returned from '" << #fun << "'"; \
+  } \
+}
+
 #define CUBLAS_SAFE_CALL(fun) \
 { \
   int32 ret; \
