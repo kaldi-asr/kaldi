@@ -5,7 +5,6 @@
 # Apache 2.0
 # script to generate reverberated data
 
-# we're using python 3.x style print but want it to work in python 2.x,
 import argparse, shlex, glob, math, os, random, sys, warnings, copy, imp, ast
 
 data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')
