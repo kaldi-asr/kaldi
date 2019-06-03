@@ -227,6 +227,36 @@ class ComposeDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
 };
 
 template<class Arc>
+class PreinitDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
+ public:
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::Label Label;
+  typedef std::pair<StateId, StateId> index_type;
+
+  /// We don't take ownership of this pointer.  The argument is "really" const.
+  PreinitDeterministicOnDemandFst(DeterministicOnDemandFst<Arc> *fst,
+                                StateId num_layer = 1, int init_mode=0, Fst<Arc>* pat_fst=NULL);
+
+  virtual StateId Start() { return fst_->Start(); }
+
+  /// We don't bother caching the final-probs, just the arcs.
+  virtual Weight Final(StateId s) { return fst_->Final(s); }
+
+  virtual bool GetArc(StateId s, Label ilabel, Arc *oarc);
+
+ private:
+  // Get index for cached arc.
+  inline size_t GetIndex(StateId src_state, Label ilabel);
+
+  DeterministicOnDemandFst<Arc> *fst_;
+  StateId num_cached_arcs_;
+  std::unordered_map<index_type, Arc, kaldi::PairHasher<StateId>> cached_arcs_;
+  StateId num_cached_arcs_used_;
+};
+
+
+template<class Arc>
 class CacheDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
  public:
   typedef typename Arc::StateId StateId;
@@ -235,7 +265,7 @@ class CacheDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
 
   /// We don't take ownership of this pointer.  The argument is "really" const.
   CacheDeterministicOnDemandFst(DeterministicOnDemandFst<Arc> *fst,
-                                StateId num_cached_arcs = 100000);
+                                StateId num_cached_arcs = 100000, bool overwrite = true);
 
   virtual StateId Start() { return fst_->Start(); }
 
@@ -251,6 +281,7 @@ class CacheDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
   DeterministicOnDemandFst<Arc> *fst_;
   StateId num_cached_arcs_;
   std::vector<std::pair<StateId, Arc> > cached_arcs_;
+  bool overwrite_;
 };
 
 

@@ -1,4 +1,4 @@
-// decoder/lattice-biglm-faster-decoder.h
+// decoder/lattice-otfres-biglm-faster-decoder.h
 
 // Copyright 2009-2011  Microsoft Corporation, Mirko Hannemann,
 //              Gilles Boulianne
@@ -64,11 +64,12 @@ class LatticeBiglmFasterDecoder {
     KALDI_ASSERT(fst.Start() != fst::kNoStateId &&
                  lm_diff_fst->Start() != fst::kNoStateId);
     toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
+    toks_g1.SetSize(1000);  // just so on the first frame we do something reasonable.
   }
   void SetOptions(const LatticeBiglmFasterDecoderConfig &config) { config_ = config; } 
-  LatticeBiglmFasterDecoderConfig& GetOptions() { return config_; } 
+  LatticeBiglmFasterDecoderConfig GetOptions() { return config_; } 
   ~LatticeBiglmFasterDecoder() {
-    DeleteElems(toks_.Clear());    
+    DeleteElems(toks_.Clear());   
     ClearActiveTokens();
   }
 
@@ -87,6 +88,7 @@ class LatticeBiglmFasterDecoder {
     Token *start_tok = new Token(0.0, 0.0, NULL, NULL);
     active_toks_[0].toks = start_tok;
     toks_.Insert(start_pair, start_tok);
+    toks_g1.Insert(PairToState(start_pair), start_pair);
     num_toks_++;
     ProcessNonemitting(0);
     
@@ -298,12 +300,16 @@ class LatticeBiglmFasterDecoder {
   };
 
   typedef HashList<PairId, Token*>::Elem Elem;
+  typedef HashList<StateId, BaseFloat>::Elem Elem_g1;
   
   void PossiblyResizeHash(size_t num_toks) {
     size_t new_sz = static_cast<size_t>(static_cast<BaseFloat>(num_toks)
                                         * config_.hash_ratio);
     if (new_sz > toks_.Size()) {
       toks_.SetSize(new_sz);
+    }
+    if (new_sz > toks_g1.Size()) {
+      toks_g1.SetSize(new_sz);
     }
   }
 
@@ -312,7 +318,7 @@ class LatticeBiglmFasterDecoder {
   // for the current frame.  [note: it's inserted if necessary into hash toks_
   // and also into the singly linked list of tokens active on this frame
   // (whose head is at active_toks_[frame]).
-  inline Token *FindOrAddToken(PairId state_pair, int32 frame, BaseFloat tot_cost,
+  inline Token *FindOrAddToken_2(PairId state_pair, int32 frame, BaseFloat tot_cost,
                                bool emitting, bool *changed) {
     // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
     // if the token was newly created or the cost changed.
@@ -349,7 +355,31 @@ class LatticeBiglmFasterDecoder {
       return tok;
     }
   }
-  
+#define res_beam 0.5
+   inline bool FindOrAddToken(StateId state_id, int32 frame, BaseFloat tot_cost,
+                               bool emitting, bool *changed, bool pp) {
+    // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
+    // if the token was newly created or the cost changed.
+    KALDI_ASSERT(frame < active_toks_.size());
+    Elem_g1 *e_found = toks_g1.Find(state_id);
+    if (e_found == NULL) { // no such token presently.
+      toks_g1.Insert(state_id, tot_cost);
+      return true;
+    } else {
+      if (tot_cost < e_found->val + res_beam) {// There is an existing Token for this state.
+        if (tot_cost < e_found->val)
+          e_found->val = tot_cost;
+        return true;
+      }
+      else if (pp) {
+        return false;
+      }
+      else {
+        return true;
+      }
+    }
+   }
+ 
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens
   // all links, that have link_extra_cost > lattice_beam are pruned
@@ -441,6 +471,7 @@ class LatticeBiglmFasterDecoder {
         best_cost_nofinal = infinity;
     unordered_map<Token*, BaseFloat> tok_to_final_cost;
     Elem *cur_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
+    DeleteElems_1(toks_g1.Clear());
     for (Elem *e = cur_toks, *e_tail; e != NULL;  e = e_tail) {
       PairId state_pair = e->key;
       StateId state = PairToState(state_pair),
@@ -683,10 +714,12 @@ class LatticeBiglmFasterDecoder {
   }
 
   inline StateId PropagateLm(StateId lm_state,
-                             Arc *arc) { // returns new LM state.
+                             Arc *arc, bool *pp=NULL) { // returns new LM state.
     if (arc->olabel == 0) {
+      if (pp) *pp=false;
       return lm_state; // no change in LM state if no word crossed.
     } else { // Propagate in the LM-diff FST.
+      if (pp) *pp=false;
       Arc lm_arc;
       bool ans = lm_diff_fst_->GetArc(lm_state, arc->olabel, &lm_arc);
       if (!ans) { // this case is unexpected for statistical LMs.
@@ -709,6 +742,7 @@ class LatticeBiglmFasterDecoder {
   void ProcessEmitting(DecodableInterface *decodable, int32 frame) {
     // Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
     Elem *last_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
+    DeleteElems_1(toks_g1.Clear());
     Elem *best_elem = NULL;
     BaseFloat adaptive_beam;
     size_t tok_cnt;
@@ -760,16 +794,18 @@ class LatticeBiglmFasterDecoder {
           const Arc &arc_ref = aiter.Value();
           if (arc_ref.ilabel != 0) {  // propagate..
             Arc arc(arc_ref);
-            StateId next_lm_state = PropagateLm(lm_state, &arc);
-            BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel),
-                graph_cost = arc.weight.Value(),
+            bool pp=arc.olabel>0;
+            BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel);
+            if (!FindOrAddToken(arc.nextstate, frame, tok->tot_cost + ac_cost+ arc.weight.Value(), true, NULL, pp)) continue;
+            StateId next_lm_state = PropagateLm(lm_state, &arc, &pp);
+            BaseFloat graph_cost = arc.weight.Value(),
                 cur_cost = tok->tot_cost,
                 tot_cost = cur_cost + ac_cost + graph_cost;
             if (tot_cost > next_cutoff) continue;
             else if (tot_cost + config_.beam < next_cutoff)
               next_cutoff = tot_cost + config_.beam; // prune by best current token
             PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
-            Token *next_tok = FindOrAddToken(next_pair, frame, tot_cost, true, NULL);
+            Token *next_tok = FindOrAddToken_2(next_pair, frame, tot_cost, true, NULL);
             // true: emitting, NULL: no change indicator needed
           
             // Add ForwardLink from tok to next_tok (put on head of list tok->links)
@@ -831,13 +867,15 @@ class LatticeBiglmFasterDecoder {
         const Arc &arc_ref = aiter.Value();
         if (arc_ref.ilabel == 0) {  // propagate nonemitting only...
           Arc arc(arc_ref);
-          StateId next_lm_state = PropagateLm(lm_state, &arc);          
+          bool pp=arc.olabel>0;
+          if (!FindOrAddToken(arc.nextstate, frame, tok->tot_cost + arc.weight.Value(), true, NULL, pp)) continue;
+          StateId next_lm_state = PropagateLm(lm_state, &arc, &pp);          
           BaseFloat graph_cost = arc.weight.Value(),
               tot_cost = cur_cost + graph_cost;
           if (tot_cost < cutoff) {
             bool changed;
             PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
-            Token *new_tok = FindOrAddToken(next_pair, frame, tot_cost,
+            Token *new_tok = FindOrAddToken_2(next_pair, frame, tot_cost,
                                             false, &changed); // false: non-emit
             
             tok->links = new ForwardLink(new_tok, 0, arc.olabel,
@@ -857,6 +895,7 @@ class LatticeBiglmFasterDecoder {
   // more than one list (e.g. for current and previous frames), but only one of
   // them at a time can be indexed by StateId.
   HashList<PairId, Token*> toks_;
+  HashList<StateId, BaseFloat> toks_g1;
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
@@ -886,6 +925,14 @@ class LatticeBiglmFasterDecoder {
       toks_.Delete(e);
     }
     toks_.Clear();
+    DeleteElems_1(toks_g1.Clear());
+  }
+  void DeleteElems_1(Elem_g1 *list) {
+    for (Elem_g1 *e = list, *e_tail; e != NULL; e = e_tail) {
+      e_tail = e->tail;
+      toks_g1.Delete(e);
+    }
+    toks_g1.Clear();
   }
   
   void ClearActiveTokens() { // a cleanup routine, at utt end/begin

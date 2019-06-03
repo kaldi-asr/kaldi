@@ -24,6 +24,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         transform-vec align-text matrix-dim post-to-smat compile-graph \
         compare-int-vector
 
+BINFILES += latgen-biglm-faster-mapped latgen-constlm-faster-mapped latgen-cfasterlm-faster-mapped llatgen-fasterlm-faster-mapped latgen-otfres-fasterlm-faster-mapped latgen-fasterlm-faster-mapped-parallel
 
 OBJFILES =
 

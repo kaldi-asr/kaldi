@@ -207,6 +207,89 @@ bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
 }
 
 template<class Arc>
+inline size_t  PreinitDeterministicOnDemandFst<Arc>::GetIndex(
+    StateId src_state, Label ilabel) {
+  const StateId p1 = 26597, p2 = 50329; // these are two
+  // values that I drew at random from a table of primes.
+  // note: num_cached_arcs_ > 0.
+
+  // We cast to size_t before the modulus, to ensure the
+  // result is positive.
+  return static_cast<size_t>(src_state * p1 + ilabel * p2) %
+      static_cast<size_t>(num_cached_arcs_);
+}
+
+template<class Arc>
+ PreinitDeterministicOnDemandFst<Arc>::PreinitDeterministicOnDemandFst(
+    DeterministicOnDemandFst<Arc> *fst,
+    StateId num_cached_arcs, int32 init_mode, Fst<Arc>* pat_fst): fst_(fst),
+                              num_cached_arcs_(num_cached_arcs), num_cached_arcs_used_(0) {
+  KALDI_ASSERT(num_cached_arcs > 0);
+  cached_arcs_.reserve(num_cached_arcs_);
+
+  if (init_mode == 1) {
+#define MAX_LEV 20
+      std::unordered_map<StateId, std::pair<StateId, int32>> lev_map;
+      std::queue<StateId> q;
+      int cache_arcs = 0;
+      q.push(pat_fst->Start());
+      lev_map[pat_fst->Start()]=std::pair<StateId, int32>(fst_->Start(), 0);
+      while(!q.empty()) {
+        StateId st = q.front();
+        q.pop();
+        int32 level = lev_map[st].second;
+        StateId st_det = lev_map[st].first;
+        // TODO: rewrite this for
+        for (fst::ArcIterator<fst::Fst<Arc> > aiter(*pat_fst, st);
+            !aiter.Done();
+            aiter.Next()) {
+          const Arc &arc = aiter.Value();
+          if (arc.ilabel == 0) {
+            lev_map[arc.nextstate] = std::pair<StateId, int32>(st_det, level);
+            q.push(arc.nextstate);
+            continue;
+          }
+          Arc oarc;
+          KALDI_VLOG(8)<<st_det << " " << arc.ilabel << oarc.nextstate;
+          if (!GetArc(st_det, arc.ilabel, &oarc)) continue;
+          cache_arcs++;
+          auto ret = lev_map.find(arc.nextstate);
+          if (ret == lev_map.end() && level < MAX_LEV) {
+            lev_map[arc.nextstate] = std::pair<StateId, int32>(oarc.nextstate, level + 1);
+            q.push(arc.nextstate);
+          }
+        }
+      }
+     KALDI_VLOG(0) << "preInit state num: " << lev_map.size() << " " << MAX_LEV << " cache: "<< 1.0*num_cached_arcs_used_/num_cached_arcs_ << "% " << 1.0*cache_arcs / num_cached_arcs_used_;
+  }
+}
+
+template<class Arc>
+bool  PreinitDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
+                                                Arc *oarc) {
+  KALDI_ASSERT(s >= 0 && ilabel != 0);
+  index_type idx(s, ilabel);
+  auto ret = cached_arcs_.find(idx);
+  if (ret == cached_arcs_.end()) {
+    Arc arc;
+    if (fst_->GetArc(s, ilabel, &arc)) {
+      if (num_cached_arcs_used_<num_cached_arcs_) {
+        cached_arcs_[idx]=arc; 
+        num_cached_arcs_used_++;
+      }
+      *oarc = arc;
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    *oarc = ret->second;
+    return true;
+  }
+}
+
+
+template<class Arc>
 inline size_t CacheDeterministicOnDemandFst<Arc>::GetIndex(
     StateId src_state, Label ilabel) {
   const StateId p1 = 26597, p2 = 50329; // these are two
@@ -222,9 +305,9 @@ inline size_t CacheDeterministicOnDemandFst<Arc>::GetIndex(
 template<class Arc>
 CacheDeterministicOnDemandFst<Arc>::CacheDeterministicOnDemandFst(
     DeterministicOnDemandFst<Arc> *fst,
-    StateId num_cached_arcs): fst_(fst),
+    StateId num_cached_arcs, bool overwrite): fst_(fst),
                               num_cached_arcs_(num_cached_arcs),
-                              cached_arcs_(num_cached_arcs) {
+                              cached_arcs_(num_cached_arcs), overwrite_(overwrite) {
   KALDI_ASSERT(num_cached_arcs > 0);
   for (StateId i = 0; i < num_cached_arcs; i++)
     cached_arcs_[i].first = kNoStateId; // Invalidate all elements of the cache.
@@ -245,8 +328,10 @@ bool CacheDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
   } else {
     Arc arc;
     if (fst_->GetArc(s, ilabel, &arc)) {
-      cached_arcs_[index].first = s;
-      cached_arcs_[index].second = arc;
+      if (overwrite_ || cached_arcs_[index].first == kNoStateId) {
+        cached_arcs_[index].first = s;
+        cached_arcs_[index].second = arc;
+      }
       *oarc = arc;
       return true;
     } else {
