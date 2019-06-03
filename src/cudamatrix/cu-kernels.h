@@ -1578,6 +1578,20 @@ inline void cuda_mat_copy_range_clamped(
   cudaF_mat_copy_range_clamped(row_start, row_end, num_cols,
       src, lds, clamp_low, clamp_high, dst, ldd);
 }
+
+inline void cuda_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, float **inputs, int32_t *ldi, float **outputs,
+    int32_t *ldo) {
+  cudaF_batched_copy_mats(num_mats, num_rows, num_cols, inputs, ldi,
+      outputs, ldo);
+}
+
+inline void cuda_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, double **inputs, int32_t *ldi, double **outputs,
+    int32_t *ldo) {
+  cudaD_batched_copy_mats(num_mats, num_rows, num_cols, inputs, ldi,
+      outputs, ldo);
+}
     
 
 } // namespace kaldi

@@ -3675,6 +3675,49 @@ void _cuda_mat_copy_range_clamped(
   }
 }
 
+template <typename Real> 
+struct MatrixCopyDesc {
+  Real *input, *output;
+  int32_t ldi, ldo;
+  int32_t num_rows, num_cols;
+};
+
+template <typename Real>
+struct  BatchedMatrixCopyDesc {
+  //maximum size allowed in formal parameter list
+  static const int32_t MAX_BATCH_SIZE=128; 
+  MatrixCopyDesc<Real> batch[MAX_BATCH_SIZE];
+};
+
+// launched with a block size of 32x32 (32 rows, 32 cols per CTA)
+// grid dim x,y expands to fill out average in x/y across batches
+// grid dim.z is batch
+template<typename Real>
+__global__ 
+void _cuda_batch_copy_mats(BatchedMatrixCopyDesc<Real> batch_desc) {
+
+  int32_t rid = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_t cid = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_t bid = blockIdx.z;  // batch id 
+
+  // read copy parameters
+  MatrixCopyDesc<Real> desc = batch_desc.batch[bid];
+  int32_t num_rows = desc.num_rows;
+  int32_t num_cols = desc.num_cols;
+  Real *input = desc.input;
+  Real *output = desc.output;
+  int32_t ldi = desc.ldi;
+  int32_t ldo = desc.ldo;
+
+  // for each row of output in parallel
+  for (int32_t r = rid; r < num_rows; r += blockDim.y * gridDim.y) {
+    // for each of column of output in parallel
+    for (int32_t c = cid; c < num_cols; c+= blockDim.x * gridDim.x) {
+      output[r * ldo + c] = input[r * ldi + c];
+    }
+  }
+}
+
 __global__
 static void _noop_kernel() {
 }
@@ -5484,4 +5527,134 @@ void cudaD_mat_copy_range_clamped(
 
   _cuda_mat_copy_range_clamped<double><<<blocks,threads>>>(row_start, row_end, num_cols,
       src, lds, clamp_low, clamp_high, dst, ldd);
+}
+
+void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, float **inputs, int32_t *ldi, float **outputs,
+    int32_t *ldo) {
+
+  dim3 threads(32,32);
+  int32_t total_rows=0, total_cols=0;
+  
+  BatchedMatrixCopyDesc<float> batch_desc; 
+  const int32_t MAX_BATCH_SIZE=batch_desc.MAX_BATCH_SIZE;
+
+  int i;
+  for (i = 0; i < num_mats; i++) {
+    int b = i%MAX_BATCH_SIZE;
+    
+    // fill in desc
+    MatrixCopyDesc<float> &desc = batch_desc.batch[b];
+    desc.num_rows = num_rows[i];
+    desc.num_cols = num_cols[i];
+    desc.input = inputs[i];
+    desc.output = outputs[i];
+    desc.ldi = ldi[i];
+    desc.ldo = ldo[i];
+
+    total_rows+=desc.num_rows;
+    total_cols+=desc.num_cols;
+
+    if (b==MAX_BATCH_SIZE-1) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
+      int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  MAX_BATCH_SIZE);
+
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+      
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+
+       // reset total counters
+       total_rows=0;
+       total_cols=0;
+    }
+  }
+
+  int32_t remaining = i%MAX_BATCH_SIZE;
+
+  if (remaining > 0) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)remaining);
+      int32_t cols = ceilf(total_cols / (float)remaining);
+      
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  remaining);
+
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+  }
+}
+
+void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, double **inputs, int32_t *ldi, double **outputs,
+    int32_t *ldo) {
+
+  dim3 threads(32,32);
+  int32_t total_rows=0, total_cols=0;
+  
+  BatchedMatrixCopyDesc<double> batch_desc; 
+  const int32_t MAX_BATCH_SIZE=batch_desc.MAX_BATCH_SIZE;
+
+  int i;
+  for (i = 0; i < num_mats; i++) {
+    int b = i%MAX_BATCH_SIZE;
+    
+    // fill in desc
+    MatrixCopyDesc<double> &desc = batch_desc.batch[b];
+    desc.num_rows = num_rows[i];
+    desc.num_cols = num_cols[i];
+    desc.input = inputs[i];
+    desc.output = outputs[i];
+    desc.ldi = ldi[i];
+    desc.ldo = ldo[i];
+
+    total_rows+=desc.num_rows;
+    total_cols+=desc.num_cols;
+
+    if (b==MAX_BATCH_SIZE-1) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
+      int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  MAX_BATCH_SIZE);
+
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+      
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+
+       // reset total counters
+       total_rows=0;
+       total_cols=0;
+    }
+  }
+
+  int32_t remaining = i%MAX_BATCH_SIZE;
+
+  if (remaining > 0) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)remaining);
+      int32_t cols = ceilf(total_cols / (float)remaining);
+
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  remaining);
+      
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+  }
 }
