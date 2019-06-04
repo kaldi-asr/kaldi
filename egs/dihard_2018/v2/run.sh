@@ -75,6 +75,8 @@ if [ $stage -le 1 ]; then
     utils/fix_data_dir.sh data/${name}_cmn
   done
 
+  echo "0.01" > data/dihard_2018_dev_cmn/frame_shift
+  echo "0.01" > data/dihard_2018_eval_cmn/frame_shift
   echo "0.01" > data/train_cmn/frame_shift
   # Create segments to extract x-vectors from for PLDA training data.
   # The segments are created using an energy-based speech activity
@@ -292,7 +294,7 @@ if [ $stage -le 12 ]; then
     > $nnet_dir/results/DER_threshold.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     $nnet_dir/results/DER_threshold.txt)
-  # Using supervised calibration, DER: 26.47%
+  # Using supervised calibration, DER: 26.30%
   echo "Using supervised calibration, DER: $der%"
 fi
 
@@ -309,6 +311,6 @@ if [ $stage -le 13 ]; then
     > $nnet_dir/results/DER_num_spk.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     $nnet_dir/results/DER_num_spk.txt)
-  # Using the oracle number of speakers, DER: 23.90%
+  # Using the oracle number of speakers, DER: 23.42%
   echo "Using the oracle number of speakers, DER: $der%"
 fi
