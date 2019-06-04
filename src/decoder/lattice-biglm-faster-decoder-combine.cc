@@ -608,6 +608,42 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinksFinal() {
   } // while changed
 }
 
+
+template <typename FST, typename Token>
+void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinksWithoutRecompute(
+    int32 token_list_index) {
+  KALDI_ASSERT(token_list_index >= 0 && token_list_index < active_toks_.size());
+  if (active_toks_[token_list_index].toks == NULL) {  // empty list
+                                                      // should not happen.
+    if (!warned_) {
+      KALDI_WARN << "No tokens alive [doing pruning].. warning first "
+          "time only for each utterance\n";
+      warned_ = true;
+    }
+  }
+
+  for (Token *tok = active_toks_[token_list_index].toks; tok != NULL;
+      tok = tok->next) {
+    ForwardLinkT *link, *prev_link = NULL;
+    for (link = tok->links; link != NULL; ) {
+      // See if we need to excise this link...
+      Token *next_tok = link->next_tok;
+      if (next_tok->backward_cost ==
+          std::numeric_limits<BaseFloat>::infinity()) {  // excise link
+        ForwardLinkT *next_link = link->next;
+        if (prev_link != NULL) prev_link->next = next_link;
+        else tok->links = next_link;
+        delete link;
+        link = next_link;  // advance link but leave prev_link the same.
+      } else {   // keep the link
+        prev_link = link;  // move to next link
+        link = link->next;
+      }
+    }
+  }
+}
+
+
 template <typename FST, typename Token>
 BaseFloat LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FinalRelativeCost() const {
   if (!decoding_finalized_) {
@@ -648,6 +684,46 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneTokensForFrame(
     }
   }
 }
+
+
+template <typename FST, typename Token>
+void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneTokensForFrameFromMap(
+    int32 token_list_index) {
+  KALDI_ASSERT(token_list_index >= 0 && token_list_index < active_toks_.size());
+  Token *&toks = active_toks_[token_list_index].toks;
+  if (toks == NULL)
+    KALDI_WARN << "No tokens alive [doing pruning]";
+  if (token_map_[token_list_index]->size() == 0 ||
+      best_token_map_[token_list_index]->size() == 0) {
+    KALDI_WARN << "No maps alive [doing pruning]";
+    return;
+  }
+  PairIdToTokenMap* &token_map = token_map_[token_list_index];
+  StateIdToTokenMap* &best_token_map = best_token_map_[token_list_index];
+
+  Token *tok, *next_tok, *prev_tok = NULL;
+  for (tok = toks; tok != NULL; tok = next_tok) {
+    next_tok = tok->next;
+    if (tok->backward_cost == std::numeric_limits<BaseFloat>::infinity()) {
+      // token is unreachable from end of graph; (no forward links survived)
+      // excise tok from list and delete tok.
+      if (prev_tok != NULL) prev_tok->next = tok->next;
+      else toks = tok->next;
+      StateId base_state = tok->base_state;
+      PairId state = ConstructPair(tok->base_state, tok->lm_state);
+      if (best_token_map->find(base_state) != best_token_map->end() &&
+          (*best_token_map)[base_state] == tok) {
+        best_token_map->erase(base_state);
+      }
+      token_map->erase(state);
+      delete tok;
+      num_toks_--;
+    } else {  // fetch next Token
+      prev_tok = tok;
+    }
+  }
+}
+
 
 // Go backwards through still-alive tokens, pruning them, starting not from
 // the current frame (where we want to keep all tokens) but from the frame before
@@ -1164,13 +1240,17 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::InitBeta(int32 frame) {
 template <typename FST, typename Token>
 int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::DoBackfill() {
   // Update Beta
-  int32 beta_end = std::max(complete_frame_, 
-                            NumFramesDecoded() - config_.beta_interval);
   InitBeta(NumFramesDecoded());
-  for (int32 frame = NumFramesDecoded() - 1; frame > beta_end; frame--) {
+  for (int32 frame = NumFramesDecoded() - 1; frame > complete_frame_; frame--) {
     ComputeBetas(frame, config_.lattice_beam * config_.prune_scale);
+  }
+  // Prune
+  PruneForwardLinksWithoutRecompute(complete_frame_);
+  for (int32 frame = complete_frame_ + 1; frame < NumFramesDecoded(); frame++) {
+    PruneForwardLinksWithoutRecompute(frame);
     PruneTokensForFrame(frame);
   }
+
   int32 expand_best_only_start =
     NumFramesDecoded() - config_.expand_best_interval;
   for (int32 frame = complete_frame_ + 1; frame < expand_best_only_start;
@@ -1181,7 +1261,7 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::DoBackfill() {
       frame++) {
     ExpandForward(frame, false);
   }
-  return expand_best_only_start - 1;
+  return std::max(expand_best_only_start - 1, -1);
 }
 
 

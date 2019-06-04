@@ -596,11 +596,25 @@ class LatticeBiglmFasterDecoderCombineTpl {
   // the final-probs for pruning, otherwise it treats all tokens as final.
   void PruneForwardLinksFinal();
 
+  // PruneForwardLinksWithoutRecompute is a version of PruneForwardLinks that
+  // we call in DoBackfill function. It will use the current cost rather than
+  // re-compute it.
+  // Actually, in DoBackfill, we will update the beta for each token firstly,
+  // and then we use this function to prune the forwardlink whose next_token
+  // will be pruned in case the dangling pointers to the Token on the following
+  // frame.
+  void PruneForwardLinksWithoutRecompute(int32 token_list_index);
+
   // Prune away any tokens on this frame that have no forward links.
   // [we don't do this in PruneForwardLinks because it would give us
   // a problem with dangling pointers].
   // It's called by PruneActiveTokens if any forward links have been pruned
   void PruneTokensForFrame(int32 frame_plus_one);
+
+  // Prune away any tokens on this frame that have no forward links (for
+  // expanded tokens) or will not be expanded (for un-expanded tokens) from the
+  // token list and corresponding maps (token_map_ and best_token_map_)
+  void PruneTokensForFrameFromMap(int32 token_list_index);
 
 
   // Go backwards through still-alive tokens, pruning them if the
@@ -642,7 +656,7 @@ class LatticeBiglmFasterDecoderCombineTpl {
   // Note: t is the frame that we will expand tokens from. It can be regarded
   // as the index of token list.
   // t = NumFramesDecoded() = active_toks_.size() - 1
-  // Form active_toks_[t - beta_interval] to active_toks_[t] (e.g. [0,15]),
+  // Form active_toks_[complete_frame_ + 1] to active_toks_[t] (e.g. [0,15]),
   // update the beta, frame-level best token and best_token_map by
   // ComputeBeta. Actually, the beta of current frame (t) is set to -alpha.
   // Form active_toks_[complete_frame_ + 1] to 
