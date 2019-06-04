@@ -641,15 +641,15 @@ class LatticeBiglmFasterDecoderCombineTpl {
   // expanded).
   // Note: t is the frame that we will expand tokens from. It can be regarded
   // as the index of token list.
-  // t = NumFramesDecoded() - 1 = active_toks_.size() - 2
-  // Form active_toks_[t - beta_interval] to active_toks_[t] (e.g. [0,14],
-  // 15 frames), update the beta, frame-level best token and best_token_map by
+  // t = NumFramesDecoded() = active_toks_.size() - 1
+  // Form active_toks_[t - beta_interval] to active_toks_[t] (e.g. [0,15]),
+  // update the beta, frame-level best token and best_token_map by
   // ComputeBeta. Actually, the beta of current frame (t) is set to -alpha.
-  // Form active_toks_[t - beta_interval] to 
-  // active_toks_[t - expand_best_interval] (e.g. [0, 4], 5 frames) will be
+  // Form active_toks_[complete_frame_ + 1] to 
+  // active_toks_[t - expand_best_interval - 1] (e.g. [0, 4]) will be
   // expanded completely.
-  // From active_toks_[t - expand_best_interval + 1] to active_toks_[t] (e.g.
-  // [5, 14], 10 frames), only the best-in-class tokens will be expanded.
+  // From active_toks_[t - expand_best_interval] to active_toks_[t - 1] (e.g.
+  // [5, 14]), only the best-in-class tokens will be expanded.
   int32 DoBackfill();
 
   // Set the beta[tok] for all the currently active tokens to -alpha[tok]
@@ -731,6 +731,7 @@ class LatticeBiglmFasterDecoderCombineTpl {
   /// on a complete token list on one frame. But, in this version, it is used
   /// on a token list which only contains the emittion part. So the max_active
   /// and min_active values might be narrowed.
+
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).

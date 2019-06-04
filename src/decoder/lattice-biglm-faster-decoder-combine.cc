@@ -116,8 +116,8 @@ LatticeBiglmFasterDecoderCombineTpl<FST, Token>::LatticeBiglmFasterDecoderCombin
     fst_(&fst), delete_fst_(false), lm_diff_fst_(lm_diff_fst), config_(config),
     num_toks_(0), cur_queue_(config_.cost_scale) {
   config.Check();
-  cur_toks_.reserve(1000);
-  next_toks_.reserve(1000);
+  KALDI_ASSERT(fst_->Start() != fst::kNoStateId &&
+               lm_diff_fst_->Start() != fst::kNoStateId);
 }
 
 
@@ -128,8 +128,8 @@ LatticeBiglmFasterDecoderCombineTpl<FST, Token>::LatticeBiglmFasterDecoderCombin
     fst_(fst), delete_fst_(true), lm_diff_fst_(lm_diff_fst), config_(config),
     num_toks_(0), cur_queue_(config_.cost_scale) {
   config.Check();
-  cur_toks_.reserve(1000);
-  next_toks_.reserve(1000);
+  KALDI_ASSERT(fst_->Start() != fst::kNoStateId &&
+               lm_diff_fst_->Start() != fst::kNoStateId);
 }
 
 
@@ -143,9 +143,8 @@ template <typename FST, typename Token>
 void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   // clean up from last time:
   cost_offsets_.clear();
-  ClearActiveTokens();
+  ClearActiveTokens();  // num_toks_ is set to 0
 
-  num_toks_ = 0;
   warned_ = false;
   warned_noarc_ = false;
   decoding_finalized_ = false;
@@ -154,9 +153,11 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   final_costs_.clear();
   adaptive_beam_ = config_.beam;
 
-  for (size_t i = 0; i < token_map_.size(); ++i) {
+  for (size_t i = token_map_.size(); i >= 0; i--) {
     token_map_[i]->clear();
+    delete token_map_[i];
     best_token_map_[i]->clear();
+    delete best_token_map_[i];
   }
   token_map_.resize(1);
   best_token_map_.resize(1);
@@ -166,14 +167,19 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   token_map_[0] = new PairIdToTokenMap();
   best_token_map_[0] = new StateIdToTokenMap();
 
-  StateId start_state = fst_->Start();
-  KALDI_ASSERT(start_state != fst::kNoStateId);
+  StateId base_start_state = fst_->Start();
+  StateId lm_start_state = lm_diff_fst->Start();
+  PairId start_state = ConstructPair(base_start_state, lm_start_state);
+  Token *start_tok = new Token(0.0, std::numeric_limits<BaseFloat>::infinity(),
+      base_start_state, lm_start_state, NULL, NULL, NULL);
+
   active_toks_.resize(1);
-  Token *start_tok = new Token(0.0, 0.0, start_state, 0, NULL, NULL, NULL);
   active_toks_[0].toks = start_tok;
+
   (*token_map_[0])[start_state] = start_tok;  // initialize current tokens map
-  (*best_token_map_[0])[start_state] = start_tok;
+  (*best_token_map_[0])[base_start_state] = start_tok;
   best_token_[0] = start_tok;
+
   num_toks_++;
   cost_offsets_.resize(1);
   cost_offsets_[0] = 0.0;
@@ -196,7 +202,7 @@ bool LatticeBiglmFasterDecoderCombineTpl<FST, Token>::Decode(
       complete_frame_ = DoBackfill();
     // Only the tokens and forwardlinks of the complete expanded frames will
     // be processed for saving memory.
-    if (complete_frame_ % config_.prune_interval == 0)
+    if (NumFramesDecoded() % config_.prune_interval == 0)
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
   }
   // A complete token list of the last frame will be generated in FinalizeDecoding()
@@ -1158,18 +1164,20 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::InitBeta(int32 frame) {
 template <typename FST, typename Token>
 int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::DoBackfill() {
   // Update Beta
-  int32 beta_end = std::max(0, NumFramesDecoded() - config_.beta_interval);
-  InitBeta(NumFramesDecoded() - 1);
-  for (int32 frame = NumFramesDecoded() - 2; frame >= beta_end; frame--) {
+  int32 beta_end = std::max(complete_frame_, 
+                            NumFramesDecoded() - config_.beta_interval);
+  InitBeta(NumFramesDecoded());
+  for (int32 frame = NumFramesDecoded() - 1; frame > beta_end; frame--) {
     ComputeBetas(frame, config_.lattice_beam * config_.prune_scale);
     PruneTokensForFrame(frame);
   }
   int32 expand_best_only_start =
     NumFramesDecoded() - config_.expand_best_interval;
-  for (int32 frame = beta_end; frame < expand_best_only_start; frame++) {
+  for (int32 frame = complete_frame_ + 1; frame < expand_best_only_start;
+      frame++) {
     ExpandForward(frame, true);
   }
-  for (int32 frame = expand_best_only_start; frame < NumFramesDecode() - 1;
+  for (int32 frame = expand_best_only_start; frame < NumFramesDecode();
       frame++) {
     ExpandForward(frame, false);
   }
