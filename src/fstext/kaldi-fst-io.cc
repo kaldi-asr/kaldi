@@ -76,8 +76,6 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
     fst = ConstFst<StdArc>::Read(ki.Stream(), ropts);
   } else if (hdr.FstType() == "vector") {
     fst = VectorFst<StdArc>::Read(ki.Stream(), ropts);
-  } else {
-    fst = Fst<StdArc>::Read(ki.Stream(), ropts);
   }
   if (!fst) {
     if(throw_on_err) {
