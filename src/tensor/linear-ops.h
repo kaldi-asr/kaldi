@@ -35,22 +35,22 @@ namespace tensor {
 
    May not be used if a and b overlap.
 */
-class AddOp {
+class PlusEqOp: public Op {
  public:
 
-  AddOp(const Tensor &a, Tensor &b):
+  PlusEqOp(const Tensor &a, Tensor &b):
       a_(a), b_(b) {
     KALDI_ASSERT(!Overlap(a, b) &&
                  BroadcastableAndCompatible(a, b));
   }
-  AddOp(const AddOp &other):
+  PlusEqOp(const PlusEqOp &other):
       a_(other.a_), b_(other.b_) { }
 
 
   int32 Properties() { return 0 ; }  // Not concrete.
 
   Op *Copy() const override {
-    return new AddOp(*this);
+    return new PlusEqOp(*this);
   }
 
   // Defined in linear-ops.cc; this function works out the more concrete
@@ -66,7 +66,7 @@ class AddOp {
       return;
     // else return the Op corresponding to:
     // b_deriv_ += a_deriv_.
-    ops->push_back(std::unique_ptr<Op>(new AddOp(AsTensor(b_deriv),
+    ops->push_back(std::unique_ptr<Op>(new PlusEqOp(AsTensor(b_deriv),
                                                  map->Deriv(a_))));
 
   }
@@ -78,7 +78,7 @@ class AddOp {
       return;
     // else return the Op corresponding to:
     // a_deriv_ += b_deriv_.
-    ops->push_back(std::unique_ptr<Op>(new AddOp(AsTensor(a_deriv),
+    ops->push_back(std::unique_ptr<Op>(new PlusEqOp(AsTensor(a_deriv),
                                                  map->Deriv(b_))));
   }
 
@@ -136,7 +136,7 @@ class AssignOp {
       return;
     // Return the Op corresponding to:
     // a_deriv_ += b_deriv_.
-    ops->push_back(std::unique_ptr<Op>(new AddOp(map->Deriv(b_),
+    ops->push_back(std::unique_ptr<Op>(new PlusEqOp(map->Deriv(b_),
                                                  AsTensor(a_deriv))));
   }
 

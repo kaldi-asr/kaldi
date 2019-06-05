@@ -22,7 +22,7 @@
 namespace kaldi {
 namespace tensor {
 
-void AddOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
+void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
   Pattern a_pattern = a_.Impl().pattern,
       b_pattern = b_.Impl().pattern;
   NormalizePatterns({a_pattern, b_pattern});
@@ -62,6 +62,12 @@ void AddOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
     case 0x000000000:
       SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), ScalarPlusEqScalar, a, b);
       break;
+
+    default:
+      // Later we can add a more generic implementation that handles arbitrary
+      // patterns.
+      KALDI_ERR << "Unhandled code: " << std::hex << combined_code;
+  }
 
 
 
