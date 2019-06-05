@@ -395,8 +395,7 @@ inline Token* LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FindOrAddToken(
     token_best_map->find(base_state);
   
   if (e_found == token_map->end()) {  // no such token presently.
-    const BaseFloat extra_cost = 0.0;
-    cosnt BaseFloat backward_cost = std::numeric_limits<BaseFloat>::infinity();
+    const BaseFloat backward_cost = std::numeric_limits<BaseFloat>::infinity();
     // tokens on the currently final frame have zero extra_cost
     // as any of them could end up
     // on the winning path.
@@ -707,6 +706,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneTokensForFrameFromMap
     if (tok->backward_cost == std::numeric_limits<BaseFloat>::infinity()) {
       // token is unreachable from end of graph; (no forward links survived)
       // excise tok from list and delete tok.
+      DeleteForwardLinks(tok);
       if (prev_tok != NULL) prev_tok->next = tok->next;
       else toks = tok->next;
       StateId base_state = tok->base_state;
@@ -861,7 +861,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
   int32 beta_end = std::max(0, active_toks_.size() - config_.beta_interval);
   InitBeta(NumFramesDecoded());
   for (int32 frame = NumFramesDecoded() - 1; frame >= beta_end; frame--) {
-    ComputeBetas(frame, config_.lattice_beam * config_.prune_scale);
+    ComputeBeta(frame, config_.lattice_beam * config_.prune_scale);
     PruneTokensForFrame(frame);
   }
   for (int32 frame = complete_frame_; frame <= NumFramesDecoded(); frame++) {
@@ -1008,6 +1008,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
                                       tok->links);
       }
     }  // for all arcs
+    tok->expanded = true;  // This token is expanded
   }  // end of while loop
 
   // Store the offset on the acoustic likelihoods that we're applying.
@@ -1242,13 +1243,13 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::DoBackfill() {
   // Update Beta
   InitBeta(NumFramesDecoded());
   for (int32 frame = NumFramesDecoded() - 1; frame > complete_frame_; frame--) {
-    ComputeBetas(frame, config_.lattice_beam * config_.prune_scale);
+    ComputeBeta(frame, config_.lattice_beam * config_.prune_scale);
   }
   // Prune
   PruneForwardLinksWithoutRecompute(complete_frame_);
   for (int32 frame = complete_frame_ + 1; frame < NumFramesDecoded(); frame++) {
     PruneForwardLinksWithoutRecompute(frame);
-    PruneTokensForFrame(frame);
+    PruneTokensForFrameFromMap(frame);
   }
 
   int32 expand_best_only_start =
@@ -1271,7 +1272,7 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
   // a. Update the expanded token's beta
   // We have to iterate until there is no more change, because the links
   // are not guaranteed to be in topological order.
-  bool changed = true; // difference new minus old extra cost >= delta ?
+  bool changed = true; // difference new minus old beta cost >= delta ?
   while (changed) {
     changed = false;
     for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
@@ -1283,10 +1284,8 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
       // outgoing links
       for (link = tok->links; link != NULL; link = link->next) {
         Token *next_tok = link->next_tok;
-        BaseFloat link_backward_cost = 
-          std::numeric_limits<BaseFloat>::infinity();
-        link_backward_cost = next_tok->backward_cost + link->acoustic_cost +
-                             link->graph_cost;
+        BaseFloat link_backward_cost = next_tok->backward_cost +
+          link->acoustic_cost + link->graph_cost;
         KALDI_ASSERT(link_backward_cost == link_backward_cost); // check for NaN
         tok_backward_cost = std::min(tok_backward_cost, link_backward_cost);
       }
@@ -1296,27 +1295,26 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
     } // for all expanded token
   }
 
-  // b. find the best token for the particular frame
-  Token* &best_tok = best_token_[frame];
+  // b. find the best token (alpha+beta) for the particular frame
+  Token* &best_tok = best_token_[frame];  // the space is opened in ProcessForFrame
+  best_tok = active_toks_[frame].toks;
   for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-    if (tok->expanded) {  // Get the best token from expanded tokens
-      if (best_tok == NULL || *tok < *best_tok) {
-        best_tok = tok;
-      }
-    }   
+    // Get the best token from expanded tokens
+    if (tok->expanded && (*tok < *best_tok) ) best_tok = tok;
   }
 
   // c. Build best_token_map with alpha + beta and prune tokens that fall below
   // the config_.beam
-  best_token_map_[frame]->clear();
+  best_token_map_[frame]->clear();  // the space is opened in ProcessForFrame
   StateIdToTokenMap* &best_token_map = best_token_map_[frame];
   for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     if (tok->expanded) {
       // Prune useless expanded token with beam
-      if ((tok->tot_cost + tok->backward_cost) < (best_tok->tot_cost +
-            best_tok->backward_cost) + config_.beam) {
+      if (tok->tot_cost + tok->backward_cost <
+          best_tok->tot_cost + best_tok->backward_cost + config_.beam) {
         *best_token_map[tok->hclg_state] = tok;
       } else {  // the expanded token should be pruned.
+        // The token will be pruned so prune its forwardlinks
         DeleteForwardLinks(tok);
         tok->backward_cost = std::numeric_limits<BaseFloat>::infinity();
       }
@@ -1326,16 +1324,16 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
   // d. Update un-expanded tokens
   for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     if (!tok->expanded) {
-      if (best_token_map.find(tok->hclg) != best_token_map.end()) {
+      if (best_token_map->find(tok->hclg) != best_token_map->end()) {
         tok->backward_cost = best_token_map[tok->hclg];
         // Prune the worse unexpanded token
-        if ((tok->tot_cost + tok->backward_cost) >=
-            (best_tok->tot_cost + best_tok->backward_cost) + config_.beam) {
+        if (tok->tot_cost + tok->backward_cost >=
+            best_tok->tot_cost + best_tok->backward_cost + config_.beam) {
           DeleteForwardLinks(tok);
           tok->backward_cost = std::numeric_limits<BaseFloat>::infinity();
         }
       } else {
-        // Prune the token whose shadowing token has been pruned.
+        // Prune the token whose corresponding best-in-class token has been pruned.
         DeleteForwardLinks(tok);
         tok->backward_cost = std::numeric_limits<BaseFloat>::infinity();
       }
