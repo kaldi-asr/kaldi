@@ -895,12 +895,9 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
         next_frame = cur_frame + 1;
 
   active_toks_.resize(active_toks_.size() + 1);
-  token_map_.resize(active_toks_.size());
-  best_token_map_.resize(active_toks_.size());
+  token_map_.push_back(new PairIdToTokenMap());
+  best_token_map_.resize(new StateIdToTokenMap());
   best_token_.resize(active_toks_.size());
-
-  token_map_[next_frame] = new PairIdTokenMap();
-  best_token_map_[next_frame] = new StateIdTokenMap();
 
   PairIdToTokenMap* &cur_toks = token_map_[cur_frame];
   PairIdToTokenMap* &next_toks = token_map_[next_frame];
@@ -1344,34 +1341,37 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
 template <typename FST, typename Token>
 void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandForward(int32 frame,
     bool expand_not_best) {
-  std::queue<Token*> queue;
-  // Add the token which should be processed into "queue".
+  // Use "cur_queue_" to reduce the memory re-allocate and expand the promising
+  // token in first.
+  KALDI_ASSERT(active_toks_[frame]);
+  StateIdToTokenMap* &best_token_map = best_token_map_[frame];
+  Token* &best_token = best_token_[frame];
+
+  // Add the token which should be processed into "cur_queue_".
   // a. Process expanded tokens
   for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     if (tok->expanded) {
       if (tok->update_alpha) {
-        KALDI_ASSERT(*best_token_map_[frame].find(tok->hclg_state) !=
-                     *best_token_map_[frame].end());
-        KALDI_ASSERT(*tok < *(*best_token_map_[frame])[tok->hclg_state]);
+        KALDI_ASSERT(best_token_map->find(tok->hclg_state) !=
+                     best_token_map->end());
         // Check the expanded token whose alpha is updated so that the alphas of
         // its successor tokens may need to be updated.
-        queue.push(tok);
+        cur_queue_.Push(tok);
       }
     } else {  // For unexpanded token 
       if (expand_not_best) {  // expand all survived un-expanded tokens
-        queue.push(tok);
+        cur_queue_.Push(tok);
       } else {  // only the better hclg token
-        KALDI_ASSERT(best_token_map.find(tok->hclg_state) !=
-                     best_token_map.end());
-        if (*tok < *(*best_token_map[frame])[tok->hclg_state]) queue.push(tok);
+        KALDI_ASSERT(best_token_map->find(tok->hclg_state) !=
+                     best_token_map->end());
+        if (*tok < *(*best_token_map)[tok->hclg_state]) cur_queue_.Push(tok);
       }
     }
   }
 
-  while (!queue.empty()) {
-    Token* tok = queue.front();
-    queue.pop();
-    if (tok->expanded) {
+  Token *tok;
+  while ((tok = cur_queue_.Pop()) != NULL) {
+    if (tok->expanded) {  // Update the alphas of the successors.
       tok->update_alpha = false;  // Set update_alpha flag
       for (ForwardLink* link = tok->links; link != NULL; link = link->next) {
         Token* next_tok = link->next_tok;
@@ -1384,21 +1384,19 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandForward(int32 frame,
             // it doesn't have successor tokens.
             if (next_tok->expanded) {
               next_tok->update_alpha = true;
-              queue.push(next_tok);
+              cur_queue_.Push(next_tok);
               // next_tok is an expanded token. So, when its alpha is updated,
               // it may become the best-in-class token
-              if (*next_tok <
-                  *(*best_token_map_[frame])[next_tok->hclg_state]) {
-                (*best_token_map_[frame])[next_tok->hclg_state] = next_tok;
+              if (*next_tok < *(*best_token_map)[next_tok->hclg_state]) {
+                (*best_token_map)[next_tok->hclg_state] = next_tok;
                 // may become the best token in this frame
-                if (*next_tok < *best_token_[frame]) {
-                  best_token_[frame] = next_tok;
+                if (*next_tok < *best_token) {
+                  best_token = next_tok;
                 }
               }
             }
           }
-        } else {  // non-epsilon. Take care of cost_offset_
-          KALDI_ASSERT(active_toks_[frame + 1]);
+        } else {  // non-epsilon
           BaseFloat link_tot_cost = tok->tot_cost + link->graph_cost +
                                     link->acoustic_cost;
           if (link_tot_cost < next_tok->tot_cost) {  // update successor token's
@@ -1410,11 +1408,11 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandForward(int32 frame,
               // next_tok is an expanded token. So, when its alpha is updated,
               // it may become the best-in-class token
               if (*next_tok <
-                  *(*best_token_map_[frame])[next_tok->hclg_state]) {
-                (*best_token_map_[frame])[next_tok->hclg_state] = next_tok;
+                  *(*best_token_map_[frame + 1])[next_tok->hclg_state]) {
+                (*best_token_map_[frame + 1])[next_tok->hclg_state] = next_tok;
                 // may become the best token in this frame
-                if (*next_tok < *best_token_[frame]) {
-                  best_token_[frame] = next_tok;
+                if (*next_tok < *best_token_[frame + 1]) {
+                  best_token_[frame + 1] = next_tok;
                 }
               }
             }       
