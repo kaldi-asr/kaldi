@@ -448,23 +448,20 @@ void VectorBase<double>::CopyRowFromSp(const SpMatrix<double> &mat, MatrixIndexT
 
 #ifdef HAVE_MKL
 template<>
-void VectorBase<float>::ApplyPow(const VectorBase<Real> &v, float power) {
+void VectorBase<float>::Pow(const VectorBase<float> &v, float power) {
   vsPowx(dim_, data_, power, v.data_);
 }
 template<>
-void VectorBase<double>::ApplyPow(const VectorBase<Real> &v, double power) {
+void VectorBase<double>::Pow(const VectorBase<double> &v, double power) {
   vdPowx(dim_, data_, power, v.data_);
 }
 #else
-// takes elements to a power.  Throws exception if could not (but only for power != 1 and power != 2).
+
+// takes elements to a power.  Does not check output.
 template<typename Real>
 void VectorBase<Real>::Pow(const VectorBase<Real> &v, Real power) {
   for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] = pow(v.data_[i], power);
-    if (data_[i] == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
-      KALDI_ERR << "Could not raise element "  << i << " to power "
-		<< power << ": returned value = " << data_[i];
-    }
   }
 }
 #endif
