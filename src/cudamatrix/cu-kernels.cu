@@ -3677,7 +3677,8 @@ void _cuda_mat_copy_range_clamped(
 
 template <typename Real> 
 struct MatrixCopyDesc {
-  Real *input, *output;
+  const Real *input;
+  Real *output;
   int32_t ldi, ldo;
   int32_t num_rows, num_cols;
 };
@@ -3704,7 +3705,7 @@ void _cuda_batch_copy_mats(BatchedMatrixCopyDesc<Real> batch_desc) {
   MatrixCopyDesc<Real> desc = batch_desc.batch[bid];
   int32_t num_rows = desc.num_rows;
   int32_t num_cols = desc.num_cols;
-  Real *input = desc.input;
+  const Real *input = desc.input;
   Real *output = desc.output;
   int32_t ldi = desc.ldi;
   int32_t ldo = desc.ldo;
@@ -5530,7 +5531,7 @@ void cudaD_mat_copy_range_clamped(
 }
 
 void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
-    int32_t *num_cols, float **inputs, int32_t *ldi, float **outputs,
+    int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
     int32_t *ldo) {
 
   dim3 threads(32,32);
@@ -5595,7 +5596,7 @@ void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
 }
 
 void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
-    int32_t *num_cols, double **inputs, int32_t *ldi, double **outputs,
+    int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
     int32_t *ldo) {
 
   dim3 threads(32,32);
