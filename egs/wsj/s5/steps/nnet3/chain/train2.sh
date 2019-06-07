@@ -91,7 +91,7 @@ fi
 
 num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$egs_dir/info.txt)
 
-steps/chaina/internal/get_train_schedule.py \
+steps/chain/internal/get_train_schedule.py \
   --frame-subsampling-factor=$frame_subsampling_factor \
   --num-jobs-initial=$num_jobs_initial \
   --num-jobs-final=$num_jobs_final \
@@ -104,8 +104,8 @@ steps/chaina/internal/get_train_schedule.py \
   --schedule-out=$dir/schedule.txt
 
 
-
-if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
+# won't work at Idiap
+#if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
 
 num_iters=$(wc -l <$dir/schedule.txt)
 
