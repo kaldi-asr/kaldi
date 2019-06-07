@@ -5,7 +5,6 @@
 # Apache 2.0
 # script to generate reverberated data
 
-# we're using python 3.x style print but want it to work in python 2.x,
 import argparse, shlex, glob, math, os, random, sys, warnings, copy, imp, ast
 
 data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')
@@ -157,7 +156,7 @@ def parse_file_to_dict(file, assert2fields = False, value_processor = None):
     if value_processor is None:
         value_processor = lambda x: x[0]
     dict = {}
-    for line in open(file, 'r'):
+    for line in open(file, 'r', encoding='utf-8'):
         parts = line.split()
         if assert2fields:
             assert(len(parts) == 2)
@@ -168,7 +167,7 @@ def parse_file_to_dict(file, assert2fields = False, value_processor = None):
 def write_dict_to_file(dict, file_name):
     """ This function creates a file and write the content of a dictionary into it
     """
-    file = open(file_name, 'w')
+    file = open(file_name, 'w', encoding='utf-8')
     keys = sorted(dict.keys())
     for key in keys:
         value = dict[key]

@@ -46,6 +46,7 @@ bool ReadData(SequentialBaseFloatMatrixReader& feature_reader,
   for ( ; !feature_reader.Done(); feature_reader.Next()) {
     // Do we have targets?
     const std::string& utt = feature_reader.Key();
+    KALDI_VLOG(3) << "Reading: " << utt;
     if (!target_reader.HasKey(utt)) {
       KALDI_WARN << utt << ", missing targets";
       (*num_no_tgt_mat)++;
@@ -272,12 +273,19 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      // end the training after processing all the frames,
-      size_t frames_to_go = 0;
+      // End the training when 1st stream is empty
+      // (this avoids over-adaptation to last utterances),
+      size_t inactive_streams = 0;
       for (int32 s = 0; s < num_streams; s++) {
-        frames_to_go += std::max(0, feats_utt[s].NumRows() - cursor_utt[s]);
+        if (feats_utt[s].NumRows() - cursor_utt[s] <= 0) {
+          inactive_streams += 1;
+        }
       }
-      if (frames_to_go == 0) break;
+      if (inactive_streams >= 1) {
+        KALDI_LOG << "No more data to re-fill one of the streams, end of the training!";
+        KALDI_LOG << "(remaining stubs of data are discarded, don't overtrain on them)";
+        break;
+      }
 
       // number of frames we'll pack as the streams,
       std::vector<int32> frame_num_utt;
@@ -340,7 +348,7 @@ int main(int argc, char *argv[]) {
       nnet.SetSeqLengths(frame_num_utt);
 
       // Show debug info,
-      if (GetVerboseLevel() >= 2) {
+      if (GetVerboseLevel() >= 4) {
         // cursors in the feature_matrices,
         {
           std::ostringstream os;

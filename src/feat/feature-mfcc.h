@@ -129,6 +129,7 @@ class MfccComputer {
   // disallow assignment.
   MfccComputer &operator = (const MfccComputer &in);
 
+ protected:
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
 
   MfccOptions opts_;

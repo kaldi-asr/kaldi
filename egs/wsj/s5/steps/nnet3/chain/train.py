@@ -358,6 +358,13 @@ def train(args, run_opts):
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
+
+    if (args.egs_dir is not None) and (args.cmvn_opts != "--norm-means=false --norm-vars=false"):
+        logger.warning("the --feat.cmvn-opts option has no effect because we are not dumping egs")
+
+    if (args.egs_dir is not None) and (args.frames_per_iter != 800000):
+        logger.warning("the --trainer.frames-per-iter option has no effect because we are not dumping egs")
+
     if ((args.stage <= -3) and args.egs_dir is None):
         logger.info("Generating egs")
         if (not os.path.exists("{0}/den.fst".format(args.dir)) or
