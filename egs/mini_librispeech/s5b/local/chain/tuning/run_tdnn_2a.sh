@@ -122,8 +122,7 @@ if [ $stage -le 12 ]; then
      echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
   fi
-   steps/nnet3/chain/build_tree.sh \
-     --num-clusters 200 \
+   steps/nnet3/chain/build_tree.sh \     
      --frame-subsampling-factor ${frame_subsampling_factor} \
      --context-opts "--context-width=2 --central-position=1" \
      --cmd "$train_cmd" 3500 ${lores_train_data_dir} \
