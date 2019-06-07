@@ -3,14 +3,12 @@
 all:
 
 include ../kaldi.mk
+ifeq ($(CUDA), true)
 
 TESTFILES = 
 
-OBJFILES =  
 
-ifeq ($(CUDA), true)
-  OBJFILES +=  feature-window-cuda.o feature-mfcc-cuda.o
-endif
+OBJFILES +=  feature-window-cuda.o feature-mfcc-cuda.o
 
 
 LIBNAME = kaldi-cudafeat
@@ -25,5 +23,6 @@ LDLIBS += $(CUDA_LDLIBS)
 
 %.o : %.cu
 	$(CUDATKDIR)/bin/nvcc -c -g $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC)
+endif
 
 include ../makefiles/default_rules.mk
