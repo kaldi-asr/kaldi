@@ -201,6 +201,7 @@ std::string LatticeToJson(const Lattice &lat,
   json_t *result_json_object = json_object();
   json_object_set_new(root, "status", json_integer(0));
   json_object_set_new(root, "result", result_json_object);
+
   if (final)
     json_object_set_new(result_json_object, "final", json_true());
   else
@@ -212,8 +213,8 @@ std::string LatticeToJson(const Lattice &lat,
   json_object_set_new(root, "segment-start",  json_real((frame_offset - num_frames) * frame_shift));
   json_object_set_new(root, "segment-length",  json_real(num_frames * frame_shift));
   json_object_set_new(root, "total-length",  json_real(frame_offset * frame_shift));
-  json_t *nbest_json_arr = json_array();
 
+  json_t *nbest_json_arr = json_array();
   json_t *nbest_result_json_object = json_object();
   json_object_set_new(nbest_result_json_object, "transcript", json_string(transcript.c_str()));
   json_object_set_new(nbest_result_json_object, "likelihood",  json_real(likelihood));
