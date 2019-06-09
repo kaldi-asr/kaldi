@@ -407,7 +407,6 @@ int main(int argc, char *argv[]) {
             if (decoder.NumFramesDecoded() > 0) {
               CompactLattice lat;
               decoder.GetLattice(true, &lat);
-              //std::string msg = LatticeToString(lat, *word_syms);
               std::string msg = LatticeToJson(lat, *word_syms, *word_boundary, trans_model,
                                               feature_info, decodable_opts, frame_offset, true);
               if (msg.size() > 0)
@@ -437,7 +436,6 @@ int main(int argc, char *argv[]) {
             if (decoder.NumFramesDecoded() > 0) {
               Lattice lat;
               decoder.GetBestPath(false, &lat);
-              //std::string msg = LatticeToString(lat, *word_syms);
               std::string msg = LatticeToJson(lat, *word_syms, *word_boundary, trans_model,
                                               feature_info, decodable_opts, 
                                               frame_offset + decoder.NumFramesDecoded(), false);
@@ -452,7 +450,6 @@ int main(int argc, char *argv[]) {
             frame_offset += decoder.NumFramesDecoded();
             CompactLattice lat;
             decoder.GetLattice(true, &lat);
-            //std::string msg = LatticeToString(lat, *word_syms);
             std::string msg = LatticeToJson(lat, *word_syms, *word_boundary, trans_model,
                                               feature_info, decodable_opts, frame_offset, true);
             if (msg.size() > 0)
