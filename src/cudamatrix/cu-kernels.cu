@@ -949,18 +949,14 @@ static void _copy_cols_from_vec(Real* m_out, MatrixDim d, const Real* v_in) {
 // _trace_mat_mat reduce the partial sum to
 // value[blockIdx.y * gridDim.x + blockIdx.x]
 // It use shared mem to transpose matrix B to ensure coalesced memory access
-// 2D block (8x32) is used
 template<int TileDim, typename Real>
 __global__
 static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
                            int B_stride, Real* value) {
   // Reuse shared mem and make indexing easier. "+1" to avoid bank conflict
-  const int kWarpSize = 32;
-  typedef cub::BlockReduce<Real, kWarpSize, cub::BLOCK_REDUCE_WARP_REDUCTIONS,
-      CU1DBLOCK / kWarpSize> BlockReduceT;
   __shared__ union {
     Real trans[TileDim][TileDim + 1];
-    typename BlockReduceT::TempStorage sum;
+    Real sum[CU1DBLOCK];
   } smem;
 
   // linear thread id;
@@ -1003,27 +999,39 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
     jb += grid_height;
   }
 
+  smem.sum[tid] = tsum;
+  __syncthreads();
+
   // Block reduce
-  tsum = BlockReduceT(smem.sum).Sum(tsum);
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift)
+      smem.sum[tid] += smem.sum[tid + shift];
+    __syncthreads();
+  }
+
+  // Warp reduce. Implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      smem.sum[tid] += smem.sum[tid + shift];
+    }
+  }
 
   // output 1 sum per thread block
   if (tid == 0) {
-    value[blockIdx.y * gridDim.x + blockIdx.x] = tsum;
+    value[blockIdx.y * gridDim.x + blockIdx.x] = smem.sum[0];
   }
 
 }
 
 // _trace_mat_mat_trans reduce the partial sum to
 // value[blockIdx.y * gridDim.x + blockIdx.x]
-// 2D block (8x32) is used
 template<typename Real>
 __global__
 static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA,
                                  int B_stride, Real* value) {
-  const int kWarpSize = 32;
-  typedef cub::BlockReduce<Real, kWarpSize, cub::BLOCK_REDUCE_WARP_REDUCTIONS,
-      CU1DBLOCK / kWarpSize> BlockReduceT;
-  __shared__ typename BlockReduceT::TempStorage smem;
+  __shared__ Real ssum[CU1DBLOCK];
 
   // linear thread id;
   const int32_cuda tid = threadIdx.y * blockDim.x + threadIdx.x;
@@ -1039,13 +1047,28 @@ static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA,
       i += grid_height;
     }
   }
-
+  ssum[tid] = tsum;
+  __syncthreads();
+  
   // Block reduce
-  tsum = BlockReduceT(smem).Sum(tsum);
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift)
+      ssum[tid] += ssum[tid + shift];
+    __syncthreads();
+  }
+
+  // Warp reduce. Implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
 
   // output 1 sum per thread block
   if (tid == 0) {
-    value[blockIdx.y * gridDim.x + blockIdx.x] = tsum;
+    value[blockIdx.y * gridDim.x + blockIdx.x] = ssum[0];
   }
 }
 
@@ -1056,8 +1079,7 @@ static void _add_diag_mat_mat_MNT(const Real alpha, const Real* M,
                                   const MatrixDim dim_M, const Real* N,
                                   const int stride_N, const Real beta,
                                   Real* v) {
-  typedef cub::BlockReduce<Real, CU1DBLOCK> BlockReduceT;
-  __shared__ typename BlockReduceT::TempStorage smem;
+  __shared__ Real ssum[CU1DBLOCK];
   const int tid = threadIdx.x;
   const int i = blockIdx.x;
   const int m_start = i * dim_M.stride;
@@ -1068,13 +1090,28 @@ static void _add_diag_mat_mat_MNT(const Real alpha, const Real* M,
   for (int j = tid; j < dim_M.cols; j += CU1DBLOCK) {
     tsum += M[m_start + j] * N[n_start + j];
   }
+  ssum[tid] = tsum;
+  __syncthreads();
 
-  // Block reduce
-  tsum = BlockReduceT(smem).Sum(tsum);
+  // Tree reduce to 2x warpSize elements.
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift)
+      ssum[tid] += ssum[tid + shift];
+    __syncthreads();
+  }
+
+  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
 
   // output 1 sum per thread block
   if (tid == 0) {
-    v[i] = alpha * tsum + beta * v[i];
+    v[i] = alpha * ssum[0] + beta * v[i];
   }
 }
 
@@ -1115,13 +1152,11 @@ static void _add_diag_mat_mat_MTN(const Real alpha, const Real* M,
   }
 
   // Warp reduce to 1 element per column.
+  // Threads implicitly synchronized within a warp.
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift >= TileDim; shift >>= 1) {
-      Real buf = ssum[tid + shift];
-      __syncwarp();
-      ssum[tid] += buf;
-      __syncwarp();
+      ssum[tid] += ssum[tid + shift];
     }
   }
 
@@ -1200,13 +1235,11 @@ static void _add_diag_mat_mat_MN(const Real alpha, const Real* M,
   }
 
   // Warp reduce to 1 element per column.
+  // Threads implicitly synchronized within a warp.
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift >= TileDim; shift >>= 1) {
-      Real buf = smem.sum[tid + shift];
-      __syncwarp();
-      smem.sum[tid] += buf;
-      __syncwarp();
+      smem.sum[tid] += smem.sum[tid + shift];
     }
   }
 
@@ -1655,20 +1688,58 @@ static void _vec_transform_reduce(
     __syncthreads();
   }
 
-  // Reduce last warp.
+  // Reduce last warp. Threads implicitly synchronized within a warp.
   if (tid < warpSize) {
-# pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      Real buf = op.Reduce(sdata[tid], sdata[tid + shift]);
-      __syncwarp();
-      sdata[tid] = buf;
-      __syncwarp();
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
     }
   }
 
   // Output to vector result.
   if (tid == 0)
     result[blockIdx.x] = op.PostReduce(sdata[0], result[blockIdx.x]);
+}
+
+// Reduce a matrix 'mat' to a row vector 'result'
+template<EnumTransformReduce TransReduceType, typename Real>
+__global__
+static void _transform_reduce_mat_rows(
+    Real *result, const Real *mat, const MatrixDim d,
+    const TransReduceOp<TransReduceType, Real> op) {
+
+  __shared__ Real sdata[CU1DBLOCK];
+  const int tid = threadIdx.x;
+  const int j = blockIdx.x;
+
+  Real tdata = op.InitValue();
+  for (int i = tid; i < d.rows; i += CU1DBLOCK) {
+    //Note the loads of mat are uncoalesced.  We could eliminate these
+    //with shared memory but at the matrix sizes we are currently looking 
+    //at it probably would not help much and would add a lot of complexity.
+    //Alternatively we could look at something like trov to help loads.
+    tdata = op.Reduce(tdata, op.Transform(mat[i * d.stride + j]));
+  }
+  sdata[tid] = tdata;
+  __syncthreads();
+
+  // Tree reduce
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift)
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+    __syncthreads();
+  }
+
+  // Reduce last warp. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+    for (int shift = warpSize; shift > 0; shift >>= 1)
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
+  }
+
+  // Output to vector result.
+  if (tid == 0) {
+    result[j] = op.PostReduce(sdata[0], result[j]);
+  }
 }
 
 // Reduce a matrix 'mat' to a column vector 'result'
@@ -1698,15 +1769,10 @@ static void _transform_reduce_mat_cols(
     __syncthreads();
   }
 
-  // Reduce last warp.
+  // Reduce last warp. Threads implicitly synchronized within a warp.
   if (tid < warpSize) {
-# pragma unroll
-    for (int shift = warpSize; shift > 0; shift >>= 1) {
-      Real buf = op.Reduce(sdata[tid], sdata[tid + shift]);
-      __syncwarp();
-      sdata[tid] = buf;
-      __syncwarp();
-    }
+    for (int shift = warpSize; shift > 0; shift >>= 1)
+      sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
   }
 
   // Output to vector result.
@@ -1760,15 +1826,13 @@ static void _group_transform_reduce(
     }
 
     // Warp-reduce to 1 element per group.
+    // Threads implicitly synchronized within the warp.
     const int warp_reduce_size =
         threads_per_group / 2 < warpSize ? threads_per_group / 2 : warpSize;
     if (threadIdx.x < warp_reduce_size) {
 #     pragma unroll
       for (int shift = warp_reduce_size; shift > 0; shift >>= 1) {
-        Real buf = op.Reduce(sreduction[tid], sreduction[tid + shift]);
-        __syncwarp();
-        sreduction[tid] = buf;
-        __syncwarp();
+        sreduction[tid] = op.Reduce(sreduction[tid], sreduction[tid + shift]);
       }
     }
 
@@ -2606,12 +2670,8 @@ static void _diff_normalize_per_row(Real *id, int id_stride, const Real *iv,
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      Real buf_prod = sprod[tid + shift];
-      Real buf_norm = snorm[tid + shift];
-      __syncwarp();
-      sprod[tid] += buf_prod;
-      snorm[tid] += buf_norm;
-      __syncwarp();
+      sprod[tid] += sprod[tid + shift];
+      snorm[tid] += snorm[tid + shift];
     }
   }
 
@@ -2881,7 +2941,6 @@ static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
   sidx[tid] = tidx;
 
   // Parallel reduce
-  // Reduce to warpSize elements per row
 #pragma unroll
   for (int32_cuda num_working_threads = CU1DBLOCK / 2;
       num_working_threads >= warpSize; num_working_threads >>= 1) {
@@ -2893,21 +2952,16 @@ static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
       }
     }
   }
-
-  // Warp reduce to 1 element per row
+  // Warp reduce without __syncthreads()
+  // (note.: synchronizes implicitly within a warp at the multiprocessor)
   if (tid < warpSize / 2) {
 #pragma unroll
     for (int32_cuda num_working_threads = warpSize / 2; num_working_threads > 0;
         num_working_threads >>= 1) {
-      Real max_tid = smax[tid];
-      Real max_tid_nwt = smax[tid + num_working_threads];
-      int32_cuda idx_tid_nwt = sidx[tid + num_working_threads];
-      __syncwarp();
-      if (max_tid_nwt > max_tid) {
-        smax[tid] = max_tid_nwt;
-        sidx[tid] = idx_tid_nwt;
+      if (smax[tid + num_working_threads] > smax[tid]) {
+        smax[tid] = smax[tid + num_working_threads];
+        sidx[tid] = sidx[tid + num_working_threads];
       }
-      __syncwarp();
     }
   }
 
@@ -3594,6 +3648,77 @@ static void _cuda_uncompress(BaseFloat *dest, MatrixDim dim,
   }
 }
 
+template <typename Real>
+__global__
+void _cuda_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const Real * __restrict__ src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   Real * __restrict__ dst, int32_t ldd) {
+  int32_t rid = blockIdx.y*blockDim.y+threadIdx.y;
+  int32_t cid = blockIdx.x*blockDim.x+threadIdx.x;
+
+  int32_t num_rows = row_end - row_start;
+  // for each row in parallel
+  for (int32_t r = rid; r < num_rows; r += blockDim.y * gridDim.y) {
+    // for each column in parallel
+    for (int32_t c = cid; c < num_cols; c += blockDim.x * gridDim.x) {
+      // compute offset row
+      int32_t r_in = r + row_start;
+      // clamp if necessary
+      if (r_in < clamp_low) r_in = clamp_low;
+      if (r_in > clamp_high) r_in = clamp_high;
+
+      // copy data
+      dst[r * ldd + c] = src[r_in * lds + c];
+    }
+  }
+}
+
+template <typename Real> 
+struct MatrixCopyDesc {
+  const Real *input;
+  Real *output;
+  int32_t ldi, ldo;
+  int32_t num_rows, num_cols;
+};
+
+template <typename Real>
+struct  BatchedMatrixCopyDesc {
+  //maximum size allowed in formal parameter list
+  static const int32_t MAX_BATCH_SIZE=128; 
+  MatrixCopyDesc<Real> batch[MAX_BATCH_SIZE];
+};
+
+// launched with a block size of 32x32 (32 rows, 32 cols per CTA)
+// grid dim x,y expands to fill out average in x/y across batches
+// grid dim.z is batch
+template<typename Real>
+__global__ 
+void _cuda_batch_copy_mats(BatchedMatrixCopyDesc<Real> batch_desc) {
+
+  int32_t rid = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_t cid = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_t bid = blockIdx.z;  // batch id 
+
+  // read copy parameters
+  MatrixCopyDesc<Real> desc = batch_desc.batch[bid];
+  int32_t num_rows = desc.num_rows;
+  int32_t num_cols = desc.num_cols;
+  const Real *input = desc.input;
+  Real *output = desc.output;
+  int32_t ldi = desc.ldi;
+  int32_t ldo = desc.ldo;
+
+  // for each row of output in parallel
+  for (int32_t r = rid; r < num_rows; r += blockDim.y * gridDim.y) {
+    // for each of column of output in parallel
+    for (int32_t c = cid; c < num_cols; c+= blockDim.x * gridDim.x) {
+      output[r * ldo + c] = input[r * ldi + c];
+    }
+  }
+}
+
 __global__
 static void _noop_kernel() {
 }
@@ -3925,12 +4050,19 @@ void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,float>());
 }
+void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
+                           const MatrixDim d, const float alpha,
+                           const float beta) {
+  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, float>(alpha, beta));
+}
 void cudaF_add_col_sum_mat(int Gr, int Bl, float* result, const float* mat,
                            const MatrixDim d, const float alpha,
                            const float beta) {
   _transform_reduce_mat_cols<<<Gr, Bl>>>(result, mat, d,
       TransReduceOp<SUMAB, float>(alpha, beta));
 }
+
 
 void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig,
                          float changed) {
@@ -4632,6 +4764,12 @@ void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
                         const MatrixDim d) {
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,double>());
+}
+void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
+                           const MatrixDim d, const double alpha,
+                           const double beta) {
+  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, double>(alpha, beta));
 }
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,
@@ -5362,4 +5500,162 @@ void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
 // this will synchronize all threads without blocking.
 void cuda_legacy_noop() {
   _noop_kernel<<<1, 1, 0, cudaStreamLegacy>>>();
+}
+
+void cudaF_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const float *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   float *dst, int32_t ldd) {
+
+  int32_t num_rows =  row_end - row_start;
+  dim3 threads(32,32);
+  dim3 blocks((num_cols+31)/32,(num_rows+31)/32);
+
+  _cuda_mat_copy_range_clamped<float><<<blocks,threads>>>(row_start, row_end, num_cols,
+      src, lds, clamp_low, clamp_high, dst, ldd);
+}
+
+void cudaD_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const double *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   double *dst, int32_t ldd) {
+
+  int32_t num_rows =  row_end - row_start;
+  dim3 threads(32,32);
+  dim3 blocks((num_cols+31)/32,(num_rows+31)/32);
+
+  _cuda_mat_copy_range_clamped<double><<<blocks,threads>>>(row_start, row_end, num_cols,
+      src, lds, clamp_low, clamp_high, dst, ldd);
+}
+
+void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
+    int32_t *ldo) {
+
+  dim3 threads(32,32);
+  int32_t total_rows=0, total_cols=0;
+  
+  BatchedMatrixCopyDesc<float> batch_desc; 
+  const int32_t MAX_BATCH_SIZE=batch_desc.MAX_BATCH_SIZE;
+
+  int i;
+  for (i = 0; i < num_mats; i++) {
+    int b = i%MAX_BATCH_SIZE;
+    
+    // fill in desc
+    MatrixCopyDesc<float> &desc = batch_desc.batch[b];
+    desc.num_rows = num_rows[i];
+    desc.num_cols = num_cols[i];
+    desc.input = inputs[i];
+    desc.output = outputs[i];
+    desc.ldi = ldi[i];
+    desc.ldo = ldo[i];
+
+    total_rows+=desc.num_rows;
+    total_cols+=desc.num_cols;
+
+    if (b==MAX_BATCH_SIZE-1) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
+      int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  MAX_BATCH_SIZE);
+
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+      
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+
+       // reset total counters
+       total_rows=0;
+       total_cols=0;
+    }
+  }
+
+  int32_t remaining = i%MAX_BATCH_SIZE;
+
+  if (remaining > 0) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)remaining);
+      int32_t cols = ceilf(total_cols / (float)remaining);
+      
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  remaining);
+
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+  }
+}
+
+void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
+    int32_t *ldo) {
+
+  dim3 threads(32,32);
+  int32_t total_rows=0, total_cols=0;
+  
+  BatchedMatrixCopyDesc<double> batch_desc; 
+  const int32_t MAX_BATCH_SIZE=batch_desc.MAX_BATCH_SIZE;
+
+  int i;
+  for (i = 0; i < num_mats; i++) {
+    int b = i%MAX_BATCH_SIZE;
+    
+    // fill in desc
+    MatrixCopyDesc<double> &desc = batch_desc.batch[b];
+    desc.num_rows = num_rows[i];
+    desc.num_cols = num_cols[i];
+    desc.input = inputs[i];
+    desc.output = outputs[i];
+    desc.ldi = ldi[i];
+    desc.ldo = ldo[i];
+
+    total_rows+=desc.num_rows;
+    total_cols+=desc.num_cols;
+
+    if (b==MAX_BATCH_SIZE-1) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
+      int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  MAX_BATCH_SIZE);
+
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+      
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+
+       // reset total counters
+       total_rows=0;
+       total_cols=0;
+    }
+  }
+
+  int32_t remaining = i%MAX_BATCH_SIZE;
+
+  if (remaining > 0) {
+      // compute average number of rows/cols across batch
+      int32_t rows = ceilf(total_rows / (float)remaining);
+      int32_t cols = ceilf(total_cols / (float)remaining);
+
+      dim3 blocks((cols + 31) / 32,
+                  (rows + 31) / 32, 
+                  remaining);
+      
+      // no memcpy needed here.  Memory will be passed down directly
+      // through paramter passing and live in constant memory
+
+      // launch batch
+       _cuda_batch_copy_mats<<<blocks,threads>>>(batch_desc);
+  }
 }

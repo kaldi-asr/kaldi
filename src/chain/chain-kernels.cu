@@ -1,6 +1,6 @@
 // chain/chain-kernels.cu
 
-// Copyright  2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright  2015-2019  Johns Hopkins University (author: Daniel Povey)
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -286,4 +286,33 @@ void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                                       this_alpha, next_beta,
                                       this_beta, log_prob_deriv,
                                       log_prob_deriv_stride);
+}
+
+
+// See documentation for PenalizeOutOfRange() in chain-training.cc to see what
+// this is about.
+__global__
+static void _penalize_out_of_range(
+    BaseFloat limit, BaseFloat scale, const BaseFloat *in_data, MatrixDim dim,
+    int out_stride, BaseFloat *out_deriv) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int in_index = i + j * dim.stride,
+      out_index = i + j * out_stride;
+  if (i < dim.cols && j < dim.rows) {
+    BaseFloat val = in_data[in_index];
+    if (val < -limit) {
+      out_deriv[out_index] -= scale * (val + limit);
+    } else if (val > limit) {
+      out_deriv[out_index] -= scale * (val - limit);
+    }
+  }
+}
+
+void cuda_penalize_out_of_range(dim3 Gr, dim3 Bl, BaseFloat limit,
+                                BaseFloat scale, const BaseFloat *in_data,
+                                MatrixDim dim, int out_stride,
+                                BaseFloat *out_deriv) {
+  _penalize_out_of_range<<<Gr,Bl>>>(limit, scale, in_data,
+                                    dim, out_stride, out_deriv);
 }

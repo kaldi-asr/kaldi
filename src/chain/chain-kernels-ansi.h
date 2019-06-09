@@ -48,6 +48,12 @@ extern "C" {
                               const BaseFloat *prev_alpha,
                               BaseFloat *this_alpha);
 
+  void cuda_penalize_out_of_range(dim3 Gr, dim3 Bl, BaseFloat limit,
+                                  BaseFloat scale, const BaseFloat *in_data,
+                                  MatrixDim dim, int out_stride,
+                                  BaseFloat *out_deriv);
+
+
 } // extern "C"
 
 #endif  // HAVE_CUDA
