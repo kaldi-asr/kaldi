@@ -27,8 +27,8 @@ callhome_speech=/export/corpora/LDC/LDC96S35
 callhome_transcripts=/export/corpora/LDC/LDC96T17
 split_callhome=local/splits/split_callhome
 
-gigaword_datapath=/export/c03/svalluri/Spanish_gigaword/data
-rnnlm_workdir=workdir_rnnlm_Spanish_08032019
+gigaword_datapath=/export/c03/svalluri/Spanish_gigaword_rawcorpus/data
+rnnlm_workdir=workdir_rnnlm_Spanish_gigaword
 mfccdir=`pwd`/mfcc
 
 . ./cmd.sh
