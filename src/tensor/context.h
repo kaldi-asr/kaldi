@@ -38,13 +38,12 @@ namespace tensor {
 
 
 // class Context contains various configurations that we will sometimes need
-// when we do operations on Tensors.  Things like the default data type, the
-// debug mode, and so on.  This will be passed around
-class Context {
+// when we do operations on Tensors.
+struct Context {
   // The default DataType for newly created Tensors
-  DataType default_dtype_;
+  DataType default_dtype;
   // The default Device for newly created Tensors
-  Device default_device_;
+  Device default_device;
 };
 
 
@@ -213,60 +212,8 @@ class ForwardPropExecutionContext: public ExecutionContext {
   // May be used to query the derivative of some Tensor w.r.t. the
   // input, e.g. forward_context.GetDerivMap()->DerivIfPresent(some_tensor).
   DerivMap *GetDerivMap() { return deriv_map_.get(); }
-
-
 };
 
-
-
-
-
-// Mechanism to set the default device within a scope by constructing a variable
-// that exists only within that scope.
-class WithDeviceAs {
- public:
-  // Example:
-  // {
-  //   WithDeviceAs _(kCudaDevice);
-  //   // code in this block uses this default.  the variable
-  //   // name is _ because we don't need to access it.
-  // }
-  inline WithDeviceAs(DeviceType device_type):
-      prev_default_(GetDefaultDevice()) {
-    SetDefaultDevice(Device(device_type));
-  }
-  inline WithDeviceAs(Device device):
-      prev_default_(GetDefaultDevice()) {
-    SetDefaultDevice(device);
-  }
-  ~WithDeviceAs() { SetDefaultDevice(prev_default_); }
-
- private:
-  Device prev_default_;
-};
-
-
-
-DataType GetDefaultDtype();
-void SetDefaultDtype(DataType dtype);
-
-class WithDtypeAs {
- public:
-  // Example:
-  // {
-  //   WithDtypeAs _(kDoubleDtype);
-  //   // code in this block uses this default.  the variable
-  //   // name is _ because we don't need to access it.
-  // }
-  inline WithDtypeAs(DataType dtype):
-      prev_default_(GetDefaultDtype()) {
-    SetDefaultDtype(dtype);
-  }
-  ~WithDtypeAs() { SetDefaultDtype(prev_default_); }
-
- private:
-  DataType prev_default_;
-};
 
 
 
@@ -278,19 +225,28 @@ struct TensorOptions {
   DataType dtype;
   Device device;
 
-  TensorOptions(): dtype(GetDefaultDtype()),
-                   device(GetDefaultDevice()) { }
-  TensorOptions(DataType dtype):
-      dtype(dtype), device(GetDefaultDevice()) { }
-  TensorOptions(Device device):
-      dtype(GetDefaultDtype()), device(device) { }
-  TensorOptions(DeviceType device_type):
-      dtype(GetDefaultDtype()), device(device_type) { }
-  TensorOptions(DataType dtype, Device device):
+  explicit TensorOptions(const Context &context):
+      dtype(context.default_dtype),
+      device(context.default_device) { }
+  explicit TensorOptions(const Context &context,
+                         DataType dtype):
+      dtype(dtype), device(context.default_device) { }
+  explicit TensorOptions(const Context &context, Device device):
+      dtype(context.default_dtype), device(device) { }
+  explicit TensorOptions(const Context &context, DeviceType device_type):
+      dtype(context.default_dtype), device(device_type) { }
+  // Here the context is not used; we could create a new version
+  // that doesn't take the context object, but of course that would
+  // make it harder if we add more options later.
+  TensorOptions(const Context &context, DataType dtype,
+                Device device):
       dtype(dtype), device(device) { }
+  TensorOptions(const Context &context, DataType dtype,
+                Device device_type):
+      dtype(dtype), device(device_type) { }
   TensorOptions(DataType dtype, Device device_type):
       dtype(dtype), device(device_type) { }
-  TensorOptions(const TensorOptions &other):
+  explicit TensorOptions(const TensorOptions &other):
       dtype(other.dtype), device(other.device) { }
 };
 
@@ -315,6 +271,7 @@ inline void SetDebugMode(bool b) {
     debug_start_tick = NextTick();
   debug_mode = b;
 }
+
 /**
    Returns the tick at which debug mode most recently changed from false to
    true.
@@ -324,54 +281,7 @@ inline int64 DebugTick() {
   return debug_start_tick;
 }
 
-class WithDebugModeAs {
- public:
-  // Example:
-  // {
-  //   WithDebugModeAs _(true);
-  //   // code in this block uses debug mode.
-  //   // variable name is _ because we won't use it.
-  // }
-  inline WithDebugModeAs(bool b):
-      prev_default_(DebugMode()) {
-    SetDebugMode(b);
-  }
-  ~WithDebugModeAs() { SetDebugMode(prev_default_); }
 
- private:
-  bool prev_default_;
-};
-
-
-
-// allow_grad means that gradient tracking is allowed; allow_grad = true
-// is the normal case, and means that if gradient tracking is required
-// (e.g. if the user created a Variable with requires_grad = true, and we do
-// operations that depend on it), then we'll track gradients.
-// It is our way to implement an equivalent of PyTorch's `with torch.no_grad()`.
-// Do not access this variable directly; use AllowGrad() and
-extern thread_local bool allow_grad;
-inline bool AllowGrad() { return allow_grad; }
-inline void SetAllowGrad(bool b) { allow_grad = b; }
-
-
-class WithNoGrad {
- public:
-  // Example:
-  // {
-  //   WithNoGrad _;
-  //   // code in this block has gradient tracking disabled.
-  //   // variable name is _ because we won't use it.
-  //
-  // }
-  inline WithNoGrad():
-      prev_default_(AllowGrad()) {
-    SetAllowGrad(false);
-  }
-  ~WithNoGrad() { SetAllowGrad(prev_default_); }
- private:
-  bool prev_default_;
-};
 
 
 }  // namespace tensor

@@ -43,14 +43,11 @@ class PlusEqOp: public Op {
     KALDI_ASSERT(!Overlap(a, b) &&
                  BroadcastableAndCompatible(a, b));
   }
-  PlusEqOp(const PlusEqOp &other):
-      a_(other.a_), b_(other.b_) { }
 
-
-  int32 Properties() { return 0 ; }  // Not concrete.
+  int32 Properties() { return kConcreteOp; }
 
   Op *Copy() const override {
-    return new PlusEqOp(*this);
+    return new PlusEqOp(a_, b_);
   }
 
   // Defined in linear-ops.cc; this function works out the more concrete

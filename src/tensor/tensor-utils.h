@@ -38,6 +38,15 @@ inline bool Compatible(const Tensor &a, const Tensor &b) {
 }
 
 /**
+  This function returns true if the Patterns of a and b are
+  broadastable.
+*/
+inline bool Broadcastable(const Tensor &a, const Tensor &b) {
+  return Broadcastable(*a.impl_, *b.impl_);
+}
+
+
+/**
   This function returns true if a and b have the same dtype
   and device and are broadcastable; equivalent to
   `Broadcastable(a, b) && Compatible(a, b)`.
@@ -185,6 +194,113 @@ void CompressTensors(ArrayRef<Tensor*> tensors);
    pattern will be the one provided.
  */
 Tensor WithPattern(const Tensor &t, const Pattern &pattern);
+
+
+/**
+   This is to be called when any operation makes use of the memory underlying a
+   Tensor.
+      kRead
+      kWrite
+      kReadWrite
+      kReadInvalidate
+      kInvalidate
+*/
+inline void RecordUse(const Tensor &tensor,
+                      TensorUseEnum use_type) {
+  if (DebugMode()) {
+    tensor.impl_->storage_->GetMemoryChecker()->RecordUse(
+        SizeOf(impl.dtype), impl.pattern);
+  }
+}
+
+
+
+// Implementation for 2-Tensor DebugNormalOp (see declaration below); called in
+// debug mode only.
+void DebugNormalOpInternal(const Tensor &a, TensorUseEnum a_use,
+                           const Tensor &b, TensorUseEnum b_use);
+// Implementation for 3-Tensor DebugNormalOp (see declaration below); called in
+// debug mode only.
+void DebugNormalOpInternal(const Tensor &a, TensorUseEnum a_use,
+                           const Tensor &b, TensorUseEnum b_use,
+                           const Tensor &c, TensorUseEnum c_use);
+
+
+
+/**
+   This convenience function is to be used in the implementation of
+   Tensors (inside the Do() function).  In debug mode, it makes various
+   checks.  This is for use in "normal" ops, i.e. ops that operate on
+   the same data-types and on the same device.
+   This version is for use in Ops that operate on two tensors.
+
+      @param [in] a     The first Tensor the Op works on.
+      @param [in] a_use The use-type of Tensor a,
+                        saying what kind of operation we are
+                        doing on it: one of
+                         - kRead
+                         - kWrite
+                         - kReadWrite
+                         - kReadInvalidate
+                         - kInvalidate
+                        (the ones with Invalidate may be relatively
+                        rare; they are for Ops where we are avoiding
+                        some operation in the expectation that the data
+                        won't be used afterward).
+      @param [in] b     The second Tensor the Op works on
+      @param [in] b_use The use-type of Tensor b
+
+
+*/
+inline void DebugNormalOp(const Tensor &a, TensorUseEnum a_use,
+                          const Tensor &b, TensorUseEnum b_use) {
+  if (DebugMode())
+    DebugNormalOpInternal(a, a_use, b, b_use);
+}
+
+
+
+/**
+   This convenience function is to be used in the implementation of
+   Tensors (inside the Do() function).  In debug mode, it makes various
+   checks.  This is for use in "normal" ops, i.e. ops that operate on
+   the same data-types and on the same device.
+   This version is for use in Ops that operate on two tensors.
+
+      @param [in] a     The first Tensor the Op works on.
+      @param [in] a_use The use-type of Tensor a,
+                        saying what kind of operation we are
+                        doing on it: one of
+                         - kRead
+                         - kReadWrite
+                         - kReadInvalidate
+                         - kInvalidate
+                        (the ones with Invalidate may be relatively
+                        rare; they are for Ops where we are avoiding
+                        some operation in the expectation that the data
+                        won't be used afterward).
+      @param [in] b     The second Tensor the Op works on
+      @param [in] b_use The use-type of Tensor b
+      @param [in] c     The second Tensor the Op works on
+      @param [in] c_use The use-type of Tensor c
+*/
+inline void DebugNormalOp(const Tensor &a, TensorUseEnum a_use,
+                          const Tensor &b, TensorUseEnum b_use,
+                          const Tensor &c, TensorUseEnum c_use) {
+  if (DebugMode())
+    DebugNormalOpInternal(a, a_use, b, b_use, c, c_use);
+}
+
+/**
+   Calling this ensures that when (in future) a Tensor's storage region is
+   allocated, it will be zeroed.  This won't have any effect if the storage
+   region was already allocated.  Note: storage regions are not allocated
+   until they are actually used (e.g. by calling GetData()), so if Tensor
+   'a' is freshly created, this will have an effect.
+ */
+inline void ZeroOnAllocation(const Tensor &a) {
+  a.impl_->storage->ZeroOnAllocation();
+}
 
 
 

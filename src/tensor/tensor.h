@@ -313,19 +313,21 @@ class Tensor {
 
        @param [in] dims    The dimensions of the tensor, up to
                      KALDI_TENSOR_MAX_DIM positive integers.
-       @param [in] opts    Options regarding data-type and device;
-                           see examples below.
-    Example (note: the braces are braced-initializer-lists)
+       @param [in] opts  Options regarding data-type and device.
+
+    Example (note: the braces are braced-initializer-lists for
+    the object of type TensorOptions.
 <code>
-   Tensor a({3,4});
-   Tensor b({}, kDoubleDtype);
-   Tensor c({5,6,7}, kCpuDevice);
+   Tensor a({3,4}, {context});
+   Tensor b({}, {context, kDoubleDtype);
+   Tensor c({5,6,7}, {context, kCpuDevice);
+   Tensor d({1,2}, {context, kDoubleDtype, kCpuDevice});
    Tensor d({1,2}, {kDoubleDtype, kCpuDevice});
 </code>
   */
   inline Tensor(ArrayRef<int32> dims,
-                TensorOptions opts = TensorOptions()):
-      impl_(new TensorImpl(meta, opts)) { }
+                const TensorOptions &opts):
+      impl_(new TensorImpl(context, opts)) { }
 
 
 
@@ -336,15 +338,6 @@ class Tensor {
 
        @param [in] meta  Struct containing the metadata specifying
                      the Tensor's pattern, data-type and device
-
-                     ;pattern  The dimension and stride information that
-                  this tensor should match (although we will fill gaps
-                  to make it contiguous)
-       @param [in] dtype   The data type to use
-       @param [in] device  The device to put the data on
-       @param [in] set_zero   If true, set the data to zero.  If false,
-                        the contents will be undefined.
-
   */
   Tensor(TensorMeta &meta, InitializePolicy p);
 

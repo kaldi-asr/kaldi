@@ -23,6 +23,15 @@ namespace kaldi {
 namespace tensor {
 
 void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
+
+  if (ReferenceMode() && a_.DeviceType() == kCpuDevice) {
+    // In reference mode, always use the reference implementation.
+    Op *ans;
+    SET_TO_TEMPLATED_CPU_OP_ALL(ans, a_.Dtype(), a_, b_);
+    return ans;
+  }
+
+  // The generic implementation requires us to first normalize the patterns.
   Pattern a_pattern = a_.Impl().pattern,
       b_pattern = b_.Impl().pattern;
   NormalizePatterns({a_pattern, b_pattern});
@@ -37,10 +46,9 @@ void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
     b = WithPattern(b, b_pattern);
 
   /*
-    The case-statement values in the switch statement below may be
-    interpreted in groups of 3 hex characters, are 0xAAABBBCCC,
-    pertaining to Tensors a, b and c respectively.  See
-    GetPatternCode() in pattern-utils.h for documentation on
+    The case-statement values in the switch statement below may be interpreted
+    in groups of 3 hex characters, are 0xAAABBB, pertaining to Tensors a and b
+    respectively.  See GetPatternCode() in pattern-utils.h for documentation on
     the meanings of the values and our notation with X,x,1.
 
   */
@@ -52,26 +60,69 @@ void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
   /*
     The case-statement values in the switch statement below may be interpreted
     in groups of 3 hex characters, are 0xAAABBB, pertaining to Tensors a and b.
-    See GetPatternCode() in pattern-utils.h for documentation on the meanings of
+    See ComputePatternCode() in pattern-utils.h for documentation on the meanings of
     the values and our notation with X,x,1.
+       Quick legend:
+             X means dim >1, stride = 1
+             x means dim >1, stride != 1
+             1 means dim == 1, stride = 0.
+                 (Note: the numbers in case-statements below exclude negative
+                 strides because bit 11 of the 12-bit chunks would be set if
+                 there were a negative stride).
    */
 
   // We are doing a += b.
   switch(combined_code) {
-    // A scalar plus a scalar
-    case 0x000000000:
-      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), ScalarPlusEqScalar, a, b);
+    // A scalar += scalar,
+    case 0x000000:   // () +=  ()
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), ScalarPlusEqScalarOp, a, b);
       break;
+    // We may split apart some of the following cases in future.
+    // They all represent, vector += vector.
+    case 0x101101:  //  (X) += (X)
+    case 0x001001:  //  (x) += (x)
+    case 0x101001:  //  (X) += (x)
+    case 0x001101:  //  (X) += (x)
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), StvectorPlusEqStvectorOp, a, b);
+      break;
+    // Scalar += (sum of) vector or strided vector
+    case 0x000101:  //  () += (X)
+    case 0x000001:  //  () += (X)
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), ScalarPlusEqStvectorOp, a, b);
+      break;
+    // vector or strided vector += scalar.
+    // We could later split apart the strided and non-strided cases.
+    case 0x101000:  //  (x) += ()
+    case 0x001000:  //  (X) += ()
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), StvectorPlusEqScalarOp, a, b);
+      break;
+    // scalar += matrix
+    case 0x000103: { // () += (xX)
+      int32 num_rows = b.Pattern().dims[1];
+      // Create a temporary- a column vector, which is what we call
+      // a vector whose nontrivial axis is raxis 1 instead of raxis 0.
+      Tensor temp({num_rows, 1}, {a.Dtype(), a.Device()});
+      Op *temp_op;
+      // Below we do temp += b.  We could use PlusEqOp for this and also for the
+      // following reduction, but doing it this way avoids an unnecessary layer
+      // of expansion.
+      SET_TO_TEMPLATED_OP_REAL(temp_op, a.Dtype(), a.DeviceType(),
+                               ColVectorEqMatrixOp, temp, b);
+      ops->push_back(temp_op);
+      // Normalize the temporary vector so its nontrivial axis is raxis 0, by
+      // removing the current raxis 0 and having current raxis 1 shift down.
+      Tensor temp_normalized = Squeeze(temp, 0);
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(),
+                               ScalarPlusEqStvectorOp, a, temp_normalized);
+    }
+
 
     default:
       // Later we can add a more generic implementation that handles arbitrary
       // patterns.
       KALDI_ERR << "Unhandled code: " << std::hex << combined_code;
   }
-
-
-
-
+  ops->push_back(new_op);
 }
 
 

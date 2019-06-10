@@ -450,7 +450,7 @@ void SortAxes(Pattern *pattern) {
 }
 
 void SortTupleAxes(ArrayRef<Pattern*> patterns) {
-
+  // TODO.
 }
 
 void Transpose(int32 raxis1, int32 raxis2, Pattern *p) {

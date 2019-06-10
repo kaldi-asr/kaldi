@@ -35,7 +35,6 @@ struct StorageAux;
 class Storage {
  public:
 
-
   // This initializes a ChangeTracker object in this->tracker if it
   // does not already exist, and returns its address.
   ChangeTracker *GetChangeTracker();
@@ -48,7 +47,7 @@ class Storage {
       return data;
     } else {
       Allocate();
-      if (zero_upon_allocation_)
+      if (zero_on_allocation_)
         Zero();
       return data;
     }
@@ -56,12 +55,12 @@ class Storage {
 
   /**
      This is called from TensorImpl when we call AllowUndefined() on it.
-     It gives the framework a free pass to not do zero-upon-allocation
+     It gives the framework a free pass to not do zero-on-allocation
      on the part of memory underlying this particular TensorImpl.  It
      will also cause data_ to be allocated if it was not already allocated.
   */
   inline void AllowUndefined(const TensorImpl &impl) {
-    if (data_ == nullptr && zero_upon_allocation_) {
+    if (data_ == nullptr && zero_on_allocation_) {
       Allocate();
       ZeroEverythingElse(impl);
     }
@@ -115,7 +114,7 @@ class Storage {
      matrices, since conceptually the main operation we do on deriv_ matrices is
      to add to them.
   */
-  inline void ZeroUponAllocation() { zero_upon_allocation_ = true; }
+  inline void ZeroOnAllocation() { zero_on_allocation_ = true; }
 
 
 
@@ -160,7 +159,7 @@ class Storage {
   // as a unique identifier.
   int64 id_;
 
-  bool zero_upon_allocation_;
+  bool zero_on_allocation_;
 
   // num_bytes is the number of bytes in the region we have allocated
   // (or are going to allocate).

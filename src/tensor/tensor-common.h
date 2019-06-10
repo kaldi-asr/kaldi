@@ -96,12 +96,13 @@ enum StridePolicy {
   kCopyStrides   // Means: use the exact strides provided.
 };
 
-/// Enumeration that says whether to zero a freshly initialized Tensor.
+/// Enumeration that says whether to zero a freshly initialized Tensor.  Note:
+/// the Tensor won't actually be zeroed when you construct it, it will be zeroed
+/// whenever it's actually needed (delayed allocation).
 enum InitializePolicy {
   kZeroData,
   kUninitialized
 };
-
 
 
 /// This enumeration value lists the unary functions that we might
