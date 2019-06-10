@@ -148,8 +148,8 @@ struct TensorImpl {
                           see examples below
 <code>
    TensorImpl *t = new TensorImpl({10,20}),
-       *u = new TensorImpl({9}, {kGpuDevice});
-       *v = new TensorImpl({9}, {kDoubleDtype, kGpuDevice});
+       *u = new TensorImpl({9}, {kCudaDevice});
+       *v = new TensorImpl({9}, {kDoubleDtype, kCudaDevice});
 </code>
   */
   TensorImpl(ArrayRef<int32> dims,

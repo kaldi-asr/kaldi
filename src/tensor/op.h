@@ -182,8 +182,8 @@ class Op {
    switch (device_type) {                                                 \
     case kCpuDevice:                                                      \
       pointer_name = new OpName<T, kCpuDevice>(__VA_ARGS__); break;       \
-    case kGpuDevice:                                                      \
-      pointer_name = new OpName<T, kGpuDevice>(__VA_ARGS__); break;       \
+    case kCudaDevice:                                                      \
+      pointer_name = new OpName<T, kCudaDevice>(__VA_ARGS__); break;       \
     default:                                                              \
     KALDI_ERR << "Invalid device type " << int32(device_type);            \
   }  while (0)
@@ -196,7 +196,7 @@ class Op {
    switch (device_type) {                                                 \
     case kCpuDevice:                                                      \
       pointer_name = new OpName<T, kCpuDevice>(__VA_ARGS__); break;       \
-    case kGpuDevice:                                                      \
+    case kCudaDevice:                                                      \
     KALDI_ERR << "You did not compile for CUDA, reconfigure with "        \
                  "CUDA support.";                                         \
     default:                                                              \

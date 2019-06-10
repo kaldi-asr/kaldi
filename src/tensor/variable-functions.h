@@ -42,7 +42,7 @@ namespace tensor {
 <code>
    Variable scalar = Undefined({});
    Variable a = Undefined({3,4}, {kDoubleDtype});
-   Variable b = Undefined({1,100}, {kDoubleDtype, kGpuDevice});
+   Variable b = Undefined({1,100}, {kDoubleDtype, kCudaDevice});
 </code>
   Note on C++: reading the code above may require getting used to C++
   braced-initializer-lists.  The {3,4} is interpreted as a
@@ -65,7 +65,7 @@ Variable Undefined(ArrayRef<int32> dims,
 <code>
    Variable scalar = Zeros({});
    Variable a = Zeros({3,4}, {kDoubleDtype});
-   Variable b = Zeros({1,100}, {kDoubleDtype, kGpuDevice});
+   Variable b = Zeros({1,100}, {kDoubleDtype, kCudaDevice});
 </code>
   Note on C++: reading the code above may require getting used to C++
   braced-initializer-lists.  The {3,4} is interpreted as a

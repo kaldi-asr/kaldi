@@ -37,7 +37,7 @@ namespace tensor {
    a and b may not point to the same data.
 
    Template parameter T is the datatype concerned (say, T = float)
-   D is the DeviceType enum, kCpuDevice or kGpuDevice.
+   D is the DeviceType enum, kCpuDevice or kCudaDevice.
 
    Will be specialized for CPU and GPU in linear-cpu-ops.h and linear-gpu-ops.h
 */
@@ -51,7 +51,7 @@ class ScalarPlusEqScalarOp;
    a and b may not overlap.
 
    Template parameter T is the datatype concerned (say, T = float)
-   D is the DeviceType enum, kCpuDevice or kGpuDevice.
+   D is the DeviceType enum, kCpuDevice or kCudaDevice.
 
    Will be specialized for CPU and GPU in linear-cpu-ops.h and linear-gpu-ops.h
 */
@@ -66,7 +66,7 @@ class StvectorPlusEqStvectorOp;
    May not be used if a and b overlap.
 
    Template parameter T is the datatype concerned (say, T = float)
-   D is the DeviceType enum, kCpuDevice or kGpuDevice.
+   D is the DeviceType enum, kCpuDevice or kCudaDevice.
 
    Will be specialized for CPU and GPU in linear-cpu-ops.h and linear-gpu-ops.h
 */
