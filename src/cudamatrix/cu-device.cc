@@ -111,20 +111,20 @@ void CuDevice::Initialize() {
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
 
-    #if CUDA_VERSION >= 9100
+#if CUDA_VERSION >= 9100
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
     CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_, 
             cudaStreamPerThread));
-    #endif
+#endif
     
-    #if CUDA_VERSION >= 9000 
+#if CUDA_VERSION >= 9000 
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
       CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
             CUBLAS_TENSOR_OP_MATH));
     }
-    #endif
+#endif
 
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
@@ -271,20 +271,20 @@ void CuDevice::FinalizeActiveGpu() {
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
     
-    #if CUDA_VERSION >= 9100 
+#if CUDA_VERSION >= 9100 
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
     CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
             cudaStreamPerThread));
-    #endif
+#endif
 
-    #if CUDA_VERSION >= 9000 
+#if CUDA_VERSION >= 9000 
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
       CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
             CUBLAS_TENSOR_OP_MATH));
     }
-    #endif
+#endif
 
     
     // Initialize the cuSPARSE library
