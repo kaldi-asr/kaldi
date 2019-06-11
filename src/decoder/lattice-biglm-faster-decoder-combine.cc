@@ -858,15 +858,26 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
   ProcessNonemitting();
 
   // Do backfill for the last few frames
-  int32 beta_end = std::max(0, active_toks_.size() - config_.beta_interval);
   InitBeta(NumFramesDecoded());
-  for (int32 frame = NumFramesDecoded() - 1; frame >= beta_end; frame--) {
+  for (int32 frame = NumFramesDecoded() - 1; frame > complete_frame_; frame--) {
     ComputeBeta(frame, config_.lattice_beam * config_.prune_scale);
-    PruneTokensForFrame(frame);
+  }
+  PruneForwardLinksWithoutRecompute(complete_frame_);
+  for (int32 frame = complete_frame_ + 1; frame < NumFramesDecoded(); frame++) {
+    PruneForwardLinksWithoutRecompute(frame);
+    PruneTokensForFrameFromMap(frame);
   }
   for (int32 frame = complete_frame_; frame <= NumFramesDecoded(); frame++) {
     ExpandForward(frame, true);
+    // Clear map for save space
+    token_map_[frame]->clear();
+    delete token_map_[frame];
+    token_map_[frame] = NULL;
+    best_token_map_[frame]->clear();
+    delete best_token_map_[frame];
+    best_token_map_[frame] = NULL;
   }
+  // For here, all the frames have been processed completely.
 
   int32 final_frame_plus_one = NumFramesDecoded();
   int32 num_toks_begin = num_toks_;
@@ -1254,11 +1265,19 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::DoBackfill() {
   for (int32 frame = complete_frame_ + 1; frame < expand_best_only_start;
       frame++) {
     ExpandForward(frame, true);
+    // Clear map for save space
+    token_map_[frame]->clear();
+    delete token_map_[frame];
+    token_map_[frame] = NULL;
+    best_token_map_[frame]->clear();
+    delete best_token_map_[frame];
+    best_token_map_[frame] = NULL;
   }
   for (int32 frame = expand_best_only_start; frame < NumFramesDecode();
       frame++) {
     ExpandForward(frame, false);
   }
+
   return std::max(expand_best_only_start - 1, -1);
 }
 
