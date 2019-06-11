@@ -39,7 +39,7 @@ struct LatticeIncrementalDecoderConfig {
   BaseFloat lattice_beam;
   int32 prune_interval;
   int32 determinize_delay;
-  int32 determinize_chunk_size;
+  int32 determinize_period;
   int32 determinize_max_active;
   int32 redeterminize_max_frames;
   BaseFloat beam_delta; // has nothing to do with beam_ratio
@@ -60,7 +60,7 @@ struct LatticeIncrementalDecoderConfig {
         lattice_beam(10.0),
         prune_interval(25),
         determinize_delay(25),
-        determinize_chunk_size(20),
+        determinize_period(20),
         determinize_max_active(std::numeric_limits<int32>::max()),
         redeterminize_max_frames(std::numeric_limits<int32>::max()),
         beam_delta(0.5),
@@ -85,7 +85,7 @@ struct LatticeIncrementalDecoderConfig {
                    "lattices. A larger delay reduces the computational "
                    "overheads of incremental deteriminization while increasing"
                    "the length of the last chunk which may increase latencies.");
-    opts->Register("determinize-chunk-size", &determinize_chunk_size,
+    opts->Register("determinize-period", &determinize_period,
                    "The size (in frames) of chunk to do incrementally "
                    "determinization. If working with --determinize-max-active,"
                    "it will become a lower bound of the size of chunk.");
@@ -117,7 +117,7 @@ struct LatticeIncrementalDecoderConfig {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 &&
                  min_active <= max_active && prune_interval > 0 &&
                  determinize_delay >= 0 && determinize_max_active >= 0 &&
-                 determinize_chunk_size >= 0 && redeterminize_max_frames >= 0 &&
+                 determinize_period >= 0 && redeterminize_max_frames >= 0 &&
                  beam_delta > 0.0 && hash_ratio >= 1.0 && prune_scale > 0.0 &&
                  prune_scale < 1.0);
   }
@@ -174,7 +174,7 @@ class LatticeIncrementalDecoderTpl {
   /// determinization. It decodes until there are no more frames left in the
   /// "decodable" object. Note, this may block waiting for input
   /// if the "decodable" object blocks.
-  /// In this example, config_.determinize_delay, config_.determinize_chunk_size
+  /// In this example, config_.determinize_delay, config_.determinize_period
   /// and config_.determinize_max_active are used to determine the time to
   /// call GetLattice().
   /// Users may do it in their own ways by calling
@@ -205,7 +205,7 @@ class LatticeIncrementalDecoderTpl {
     (calling it on every frame would not make sense, but every, say,
      10 to 40 frames might make sense) it will spread out the work of
     determinization over time, which might be useful for online applications.
-    config_.determinize_delay, config_.determinize_chunk_size
+    config_.determinize_delay, config_.determinize_period
     and config_.determinize_max_active can be used to determine the time to
     call this function. We show an example in Decode().
 
@@ -224,7 +224,8 @@ class LatticeIncrementalDecoderTpl {
     unique labels (as olabel) to these
     raw-lattice states for latter appending.
     We give each token an olabel id, called `token_label`, and each determinized and
-    appended state an olabel id, called `state_label`
+    appended state an olabel id, called `state_label`. Notably, in our
+    paper, we call both of them ``state labels'' for simplicity.
     step 2: Determinize the chunk of above raw lattice using determinization
     algorithm the same as LatticeFasterDecoder. Benefit from above `state_label` and
     `token_label` in initial and final arcs, each pre-final state in the last chunk

@@ -107,10 +107,10 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(DecodableInterface *decoda
     // Moreover, the delay on GetLattice to do determinization
     // make it process more skinny lattices which reduces the computation overheads.
     int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
-    // The minimum length of chunk is config_.determinize_chunk_size.
-    if (frame_det_most % config_.determinize_chunk_size == 0) {
+    // The minimum length of chunk is config_.determinize_period.
+    if (frame_det_most % config_.determinize_period == 0) {
       int32 frame_det_least =
-          last_get_lattice_frame_ + config_.determinize_chunk_size;
+          last_get_lattice_frame_ + config_.determinize_period;
       // To adaptively decide the length of chunk, we further compare the number of
       // tokens in each frame and a pre-defined threshold.
       // If the number of tokens in a certain frame is less than
