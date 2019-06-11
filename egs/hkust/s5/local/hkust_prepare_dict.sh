@@ -176,7 +176,7 @@ wc -l $dict_dir/lexicon-ch/lexicon-ch-iv.txt
 # dictionary in order to get OOV pronunciations
 cat $dict_dir/cedict/ch-dict.txt |\
   perl -e '
-  use encoding utf8;
+  use utf8;
   while (<STDIN>) {
     @A = split(" ", $_);
     $word_len = length($A[0]);
@@ -188,7 +188,7 @@ cat $dict_dir/cedict/ch-dict.txt |\
 # extract chars
 cat $dict_dir/cedict/ch-dict-1.txt | awk '{print $1}' |\
   perl -e '
-  use encoding utf8;
+  use utf8;
   while (<STDIN>) {
     @A = split(" ", $_);
     @chars = split("", $A[0]);

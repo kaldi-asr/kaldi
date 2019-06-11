@@ -222,8 +222,11 @@ fi
 if [ -f $srcdir/glm ]; then
   cp $srcdir/glm $dir
 fi
+if [ -f $srcdir/stm ]; then
+  cp $srcdir/stm $dir
+fi
 
-for f in stm ctm; do
+for f in ctm; do
   if [ -f $srcdir/$f ]; then
     echo "$0: not copying $srcdir/$f to $dir because sub-segmenting it is "
     echo " ... not implemented yet (and probably it's not needed.)"

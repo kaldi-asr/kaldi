@@ -18,7 +18,10 @@
 #ifndef KALDI_CUDAFEAT_FEATURE_MFCC_CUDA_H_
 #define KALDI_CUDAFEAT_FEATURE_MFCC_CUDA_H_
 
+#if HAVE_CUDA == 1
 #include <cufft.h>
+#endif
+
 #include "cudafeat/feature-window-cuda.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"

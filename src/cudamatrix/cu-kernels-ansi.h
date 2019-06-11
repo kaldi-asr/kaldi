@@ -814,10 +814,10 @@ void cudaD_mat_copy_range_clamped(
 // the matrices are of size num_rows[i] x num_cols[i] and have a leading
 // dimension of ldo[i] for the output and ldi[i] for the input.
 void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
-    int32_t *num_cols, float **inputs, int32_t *ldi, float **outputs,
+    int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
     int32_t *ldo);
 void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
-    int32_t *num_cols, double **inputs, int32_t *ldi, double **outputs,
+    int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
     int32_t *ldo);
 
 // Launches a kernel that does nothing, explicitly using the legacy default stream;
