@@ -124,13 +124,9 @@ struct ForwardLink {
   Token *next_tok;  // the next token [or NULL if represents final-state]
   Label ilabel;  // ilabel on arc
   Label olabel;  // olabel on arc
+  Label olabel_ori;  // olabel on base fst arc
   BaseFloat graph_cost;  // graph cost of traversing arc (contains LM, etc.)
   BaseFloat acoustic_cost;  // acoustic cost (pre-scaled) of traversing arc
-
-  // Record the graph cost from HCLG.fst so that we needn't revisit HCLG.fst
-  // when expanding
-  BaseFloat graph_cost_ori;
-
   ForwardLink *next;  // next in singly-linked list of forward arcs (arcs
                       // in the state-level lattice) from a token.
   inline ForwardLink(Token *next_tok, Label ilabel, Label olabel,
@@ -697,7 +693,7 @@ class LatticeBiglmFasterDecoderCombineTpl {
   
   // The funciton is to expand an un-expanded token using the acoustic scores
   // from the best-in-class expanded tokens.
-  void ExpandTokenBackfill(int32 frame, Token* tok);
+  void ExpandTokenBackfill(int32 frame, Token* tok, bool expand_not_best);
 
 
   // Update the graph cost according to lm_state and olabel

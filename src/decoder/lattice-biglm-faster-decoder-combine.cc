@@ -1420,78 +1420,101 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandForward(int32 frame,
         }
       }  // all links
     } else {  // un-expanded token
-      ExpandTokenBackfill(frame, tok);
+      ExpandTokenBackfill(frame, tok, expand_not_best);
     }
   }  // while loop
 }
 
 template <typename FST, typename Token>
 void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandTokenBackfill(
-    int32 frame, Token* tok) {
-  StateIdToTokenMap* &best_token_map = best_token_map_[frame];
-  if (best_token_map->find(tok->hclg_state) == best_token_map->end()) {
+    int32 frame, Token* tok, bool expand_not_best) {
+  StateIdToTokenMap* &cur_best_token_map = best_token_map_[frame];
+
+  if (cur_best_token_map->find(tok->base_state) == cur_best_token_map->end()) {
     KALDI_WARN << "The token (" << tok->hclg_state << "," << tok->lm_state
                << ") doesn't have reference token. It's highly unexpected."
                << " Set the token's beta to infinity and prune later."
     tok->backward_cost = std::numeric_limits<BaseFloat>::infinity();
     return;
   }
-  Token* &ref_tok = *best_token_map[tok->hclg_state];
+
+  Token* &ref_tok = (*cur_best_token_map)[tok->base_state];
   for (ForwardLink *ref_link = ref_tok->links; ref_link != NULL;
       ref_link = ref_link->next) {
     Token* &ref_next_tok = ref_link->next_tok;
 
-    StateId new_hclg_state = ref_next_tok->hclg_state;
-    Arc arc(ref_link->ilabel, ref_link->olabel, ref_link->graph_cost_ori, 0);
+    StateId new_base_state = ref_next_tok->base_state;
+    Arc arc(ref_link->ilabel, ref_link->olabel_ori, ref_link->graph_cost_ori, 0);
     StateId new_lm_state = PropagateLm(tok->lm_state, &arc);
-    PairId new_pair_id = ConstructPair(new_hclg_state, new_lm_state);
+    PairId new_pair_id = ConstructPair(new_base_state, new_lm_state);
     BaseFloat ac_cost = ref_link->acoustic_cost,
               graph_cost = arc.weight.Value(),
               cur_cost = tok->tot_cost,
-              tot_cost = cur_cost + ac_cost + graph_cost,
-              backward_cost = ref_next_tok->backward_cost,
-    int32 new_frame_index = link->ilabel ? frame + 1 : frame;
-    Token* &toks = link->ilabel ? active_toks_[frame + 1].toks :
-                                  active_toks_[frame].toks;
+              tot_cost = cur_cost + ac_cost + graph_cost;
+
+    int32 new_frame_index = ref_link->ilabel ? frame + 1 : frame;
+    Token* &toks = ref_link->ilabel ? active_toks_[frame + 1].toks :
+                                      active_toks_[frame].toks;
     
-    KALDI_ASSERT(token_map_.size() >= new_frame_index + 1);
-    KALDI_ASSERT(best_token_map_.size() == token_map_.size() ==
-        best_token_.size());
+    // references to maps
+    PairIdToTokenMap* &token_map = token_map_[new_frame_index];
+    StateIdToTokenMap* &best_token_map = best_token_map_[new_frame_index];
+    Token* &best_token = best_token_[new_frame_index];
+    // If the dest token is a new one, lookup in the best_token_map to determine
+    // the beta
+    BaseFloat backward_cost =
+      best_token_map->find(new_base_state)->second->backward_cost;
 
     // Process the new token
-    PairIdToTokenMap* &token_map = token_map_[new_frame_index];
     Token* new_tok;
     if (token_map->find(new_pair_id) == token_map->end()) {  // a new token
       // check its alpha_beta is within the beam
-      Token* &best_token = best_token_[new_frame_index];
-      if (tot_cost + backward_cost >
+      if (tot_cost + backward_cost >=
           best_token->tot_cost + best_token->backward_cost + config_.beam)
         continue;
       // create a new token
       new_tok = new Token(tot_cost, backward_cost, new_hclg_state,
-          new_lm_state, NULL, toks);
-      (*token_map_[new_frame_index])[new_pair_id] = new_tok;
-      if (ref_link->ilabel == 0)
-        queue.push(new_tok);  // TODO
+          new_lm_state, NULL, toks, tok);
+      // Add to map
+      (*token_map)[new_pair_id] = new_tok;
+      
+      // Add to cur_queue_
+      if (ref_link->ilabel == 0 && (expand_not_best ||
+          tot_cost < best_token_map->find(new_base_state)->second->tot_cost)) {
+        cur_queue_.Push(new_tok);
+      }
     } else {  // an existing token
-      new_tok = token_map[new_pair_id];
+      new_tok = (*token_map)[new_pair_id];
       tok->links = new ForwardLink(new_tok, arc.ilabel, arc.olabel,
                                    graph_cost, ac_cost, tok->links,
                                    ref_link->graph_cost_ori);
       // For an existing token, the beta (backward cost) is generated from its 
       // successors. Use the beta directly. So compare the alpha (forward cost)
       // only.
-      if (tot_cost < new_tok->tot_cost) {  // update
+      if (tot_cost < new_tok->tot_cost) {
         new_tok->tot_cost = tot_cost;
-        new_tok->update_alpha = true;  // indicate the token's tot_cost is
-                                       // updated, update the successors.
-        if (new_tok->expanded) {
-          if (*new_tok <
-              *(*best_token_map_[new_frame_index])[new_tok->hclg_state]) {
-            (*best_token_map_[new_frame_index])[new_tok->hclg_state] = new_tok;
-            if (*new_tok < *best_token_[new_frame_index]) {
-              best_token_[new_frame_index] = new_tok;
+        new_tok->update_alpha = true;
+        if (ref_link->ilabel == 0) {  // current frame
+          if (new_tok->expanded) {
+            cur_queue_.Push(new_tok);
+            if (*new_tok < *best_token_map->find(new_tok->base_state)->second) {
+              (*best_token_map)[new_tok->base_state] = new_tok;
+              if (*new_tok < *best_token) best_token = new_tok;
             }
+          } else {
+            if (expand_not_best ||
+                *new_tok < *best_token_map->find(new_tok->base_state)->second)
+              cur_queue_.Push(new_tok);
+          }
+        } else {  // next frame
+          // For any un-expected token, it will be processed in next call of
+          // ExpandForward
+          // For expected token, as the alpha has been updated, it may become
+          // the "best-in-class" token
+          if (new_tok->expanded && (*new_tok <
+              *best_token_map->find(new_tok->base_state)->second)) {
+            (*best_token_map)[new_tok->base_state] = new_tok;
+            if (*new_tok < *best_token) best_token = new_tok;
           }
         }
       }
@@ -1513,10 +1536,9 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandTokenBackfill(
   tok->backward_cost = tok_backward_cost;
 
   // Check best_token_map_ and best_token_
-  if (*tok < *(*best_token_map_[frame])[tok->hclg_state]) {
-    (*best_token_map_[frame])[tok->hclg_state] = tok;
-    if (*tok < *(best_token_[frame]))
-      best_token_[frame] = tok;
+  if (*tok < *cur_best_token_map->find(tok->base_state)->second) {
+    (*cur_best_token_map)[tok->base_state] = tok;
+    if (*tok < *best_token_[frame]) best_token_[frame] = tok;
   }
 }
 
