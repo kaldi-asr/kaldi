@@ -199,6 +199,17 @@ if [ $stage -le 9 ]; then
   local/chain/run_tdnn.sh --stage 0
 fi
 
+if [ $stage -le 10 ]; then
+  for test in dev_clean_2; do
+    steps/decode_biglm_fast.sh --stage 1 --nj 38 --cmd "$decode_cmd" \
+    --online-ivector-dir exp/nnet3/ivectors_${test}_hires \
+    --beam 15.0 --lattice-beam 8.0
+    exp/chain/tree_sp/graph_tgsmall \
+    data/lang_test_tgsmall/G.fst data/lang_test_tglarge/G.fst \
+    data/${test}_hires \
+    exp/chain/tdnn1h_sp/decode_biglm2_${test}_diff_15_8_15_cutoff
+  done
+fi
 # local/grammar/simple_demo.sh
 
 # Don't finish until all background decoding jobs are finished.
