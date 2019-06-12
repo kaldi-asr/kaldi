@@ -127,6 +127,7 @@ struct ForwardLink {
   Label olabel_ori;  // olabel on base fst arc
   BaseFloat graph_cost;  // graph cost of traversing arc (contains LM, etc.)
   BaseFloat acoustic_cost;  // acoustic cost (pre-scaled) of traversing arc
+  BaseFloat graph_cost_ori;  // graph cost of base HCLG graph
   ForwardLink *next;  // next in singly-linked list of forward arcs (arcs
                       // in the state-level lattice) from a token.
   inline ForwardLink(Token *next_tok, Label ilabel, Label olabel,
@@ -387,8 +388,7 @@ class LatticeBiglmFasterDecoderCombineTpl {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
   using ForwardLinkT = biglmdecodercombine::ForwardLink<Token>;
-  using uint64 = typename PairId;  // Will be (StateId in fst) +
-                                   // (StateId in lm_diff_fst) << 32
+  using PairId = uint64;  // (StateId in fst) + (StateId in lm_diff_fst) << 32
 
   using StateIdToTokenMap = typename std::unordered_map<StateId, Token*>;
   //using StateIdToTokenMap = typename std::unordered_map<StateId, Token*,
@@ -410,13 +410,13 @@ class LatticeBiglmFasterDecoderCombineTpl {
   // 'fst'.
   LatticeBiglmFasterDecoderCombineTpl(const FST &fst,
       const LatticeBiglmFasterDecoderCombineConfig &config,
-      fst::DeterministicOnDemandFst<FST::Arc> *lm_diff_fst);
+      fst::DeterministicOnDemandFst<Arc> *lm_diff_fst);
 
   // This version of the constructor takes ownership of the fst, and will delete
   // it when this object is destroyed.
   LatticeBiglmFasterDecoderCombineTpl(
       const LatticeBiglmFasterDecoderCombineConfig &config, FST *fst,
-      fst::DeterministicOnDemandFst<FST::Arc> *lm_diff_fst);
+      fst::DeterministicOnDemandFst<Arc> *lm_diff_fst);
 
   void SetOptions(const LatticeBiglmFasterDecoderCombineConfig &config) {
     config_ = config;
@@ -751,7 +751,7 @@ class LatticeBiglmFasterDecoderCombineTpl {
   // delete_fst_ is true if the pointer fst_ needs to be deleted when this
   // object is destroyed.
   bool delete_fst_;
-  fst::DeterministicOnDemandFst<fst::StdArc> *lm_diff_fst_;
+  fst::DeterministicOnDemandFst<Arc> *lm_diff_fst_;
   LatticeBiglmFasterDecoderCombineConfig config_;
 
   std::vector<BaseFloat> cost_offsets_; // This contains, for each
