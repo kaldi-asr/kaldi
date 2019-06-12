@@ -803,7 +803,7 @@ class LatticeBiglmFasterDecoderCombineTpl {
 };
 
 typedef LatticeBiglmFasterDecoderCombineTpl<fst::StdFst,
-        biglmdecodercombine::StdToken<fst::StdFst> > LatticeFasterDecoderCombine;
+        biglmdecodercombine::StdToken<fst::StdFst> > LatticeBiglmFasterDecoderCombine;
 
 
 
