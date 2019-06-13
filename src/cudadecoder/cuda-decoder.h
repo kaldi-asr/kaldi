@@ -28,7 +28,6 @@
 #include <mutex>
 #include <tuple>
 #include <vector>
-
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -647,7 +646,7 @@ class CudaDecoder {
   CostType default_beam_;
   CostType lattice_beam_;
   int32 ntokens_pre_allocated_;
-  int32 max_active_;         // Target value from the parameters
+  int32 max_active_;  // Target value from the parameters
   int32 aux_q_capacity_;
   int32 main_q_capacity_;
   // Hashmap capacity. Multiple of max_tokens_per_frame
