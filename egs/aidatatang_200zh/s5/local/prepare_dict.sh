@@ -79,7 +79,7 @@ cat $dict_dir/lexicon-en/lexicon-en-oov.txt $dict_dir/lexicon-en/lexicon-en-iv.t
   sort > $dict_dir/lexicon-en/lexicon-en-phn.txt || exit 1;
 
 # convert cmu phoneme to pinyin phonenme
-mkdir $dict_dir/map
+mkdir -p $dict_dir/map
 cat conf/cmu2pinyin | awk '{print $1;}' | sort -u > $dict_dir/map/cmu || exit 1;
 cat conf/pinyin2cmu | awk -v cmu=$dict_dir/map/cmu \
   'BEGIN{while((getline<cmu)) dict[$1] = 1;}
