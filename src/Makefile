@@ -171,9 +171,10 @@ ivector: base util matrix transform tree gmm
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online
 # python-kaldi-decoding: base matrix util feat tree gmm transform sgmm2 fstext hmm decoder lat online
-cudafeat: base matrix util gmm transform tree feat cudamatrix
+cudafeat: base matrix util gmm transform tree feat cudamatrix online2
+cudafeatbin: base matrix util gmm transform tree feat cudamatrix cudafeat online2
 online: decoder gmm transform feat matrix util base lat hmm tree
 online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util hmm tree matrix lat
-cudadecoder:  cudamatrix online2 nnet3 ivector feat fstext lat chain transform
-cudadecoderbin: cudadecoder cudamatrix online2 nnet3 ivector feat fstext lat chain transform
+cudadecoder:  cudamatrix cudafeat online2 nnet3 ivector feat fstext lat chain transform
+cudadecoderbin: cudadecoder cudafeat cudamatrix online2 nnet3 ivector feat fstext lat chain transform
