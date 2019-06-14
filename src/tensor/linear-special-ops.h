@@ -73,6 +73,21 @@ class StvectorPlusEqStvectorOp;
 template <class T, DeviceType D>
 class StvectorPlusEqScalarOp;
 
+
+/**
+   Operation doing a += b with a and b possibly-strided vectors.
+
+   a and b may not overlap.
+
+   Template parameter T is the datatype concerned (say, T = float)
+   D is the DeviceType enum, kCpuDevice or kCudaDevice.
+
+   Will be specialized for CPU and GPU in linear-cpu-ref-ops.h and linear-gpu-ref-ops.h
+*/
+template <class T, DeviceType D>
+class PlusEqRefOp;
+
+
 }  // namespace tensor
 }  // namespace kaldi
 

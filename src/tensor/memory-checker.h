@@ -308,6 +308,18 @@ class UninitializedDataChecker: public DataCheckerBase {
   }
 
   /**
+     This function checks that this memory area is currently uninitialized;
+     if any part of it was previously initialized, it will crash.
+
+        @param [in] element_size  The size of the element stored in the
+                  Tensor, e.g. 4 for float, 8 for double.
+        @param [in] pattern  The pattern which we are checking
+   */
+  inline void CheckUninitialized(int32 element_size,
+                                 const Pattern &pattern);
+
+
+  /**
      This function is called when this memory area is being read from.
      It will (usually) crash if an element of this memory area has not been
      written to.  The algorithm is randomized so a problem won't be
@@ -442,6 +454,8 @@ class MemoryChecker {
          kReadWrite
          kWrite
          kCheckUninitialized
+         kReadAndInvalidate
+         kInvalidate
      From a user's perspective the only thing this function might do is crash--
      which it is designed to do if it detects various "disallowed" things.
   */
@@ -451,18 +465,28 @@ class MemoryChecker {
     KALDI_PARANOID_ASSERT(DebugMode());
     if (debug_tick_ != DebugTick())
         Initialise(false);  // false means: not a new region.
-    if (use_type == kRead || use_type == kReadWrite) {
+
+    if (use_type == kInitialize || use_type == kCheckUninitialized) {
+      if (uninitialized_checker_)
+        uninitialized_checker_->CheckUninitialized(element_size, pattern);
+    }
+    if (use_type == kRead || use_type == kReadWrite ||
+        use_type == kReadInvalidate) {
       invalidated_checker_->RecordRead(element_size, pattern);
       if (uninitialized_checker_)
         uninitialized_checker_->RecordRead(element_size, pattern);
     }
-    if (use_type == kWrite || use_type == kReadWrite) {
+    if (use_type == kWrite || use_type == kReadWrite ||
+        use_type == kInitialize) {
       // Important that this happens after checking the reads above.
       // uninitialized_checker_ would never find an error in RecordRead() if it
       // was done after the RecordWrite().
       if (uninitialized_checker_)
         uninitialized_checker_->RecordWrite(element_size, pattern);
       change_tracker_->RecordWrite(element_size,  pattern);
+    }
+    if (use_type == kInvalidate || use_type == kReadInvalidate) {
+      RecordInvalidation(element_size, pattern);
     }
   }
 

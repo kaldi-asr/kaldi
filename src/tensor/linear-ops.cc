@@ -23,12 +23,14 @@ namespace kaldi {
 namespace tensor {
 
 void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
-
+  Op *new_op;
   if (ReferenceMode() && a_.DeviceType() == kCpuDevice) {
-    // In reference mode, always use the reference implementation.
-    Op *ans;
-    SET_TO_TEMPLATED_CPU_OP_ALL(ans, a_.Dtype(), a_, b_);
-    return ans;
+    // In reference mode on CPU always use the reference implementation.
+    // Reference mode is only supported on CPU so we use the normal Ops
+    // on GPU.
+    SET_TO_TEMPLATED_CPU_OP_ALL(new_op, a_.Dtype(), PlusEqRefOp, a_, b_);
+    ops->push_back(new_op);
+    return;
   }
 
   // The generic implementation requires us to first normalize the patterns.
@@ -54,8 +56,6 @@ void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
   */
   int64 combined_code = CombineCodes(a_pattern.GetCode(),
                                      b_pattern.GetCode());
-
-  Op *new_op;
 
   /*
     The case-statement values in the switch statement below may be interpreted
@@ -102,13 +102,12 @@ void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
       // Create a temporary- a column vector, which is what we call
       // a vector whose nontrivial axis is raxis 1 instead of raxis 0.
       Tensor temp({num_rows, 1}, {a.Dtype(), a.Device()});
-      Op *temp_op;
       // Below we do temp += b.  We could use PlusEqOp for this and also for the
       // following reduction, but doing it this way avoids an unnecessary layer
       // of expansion.
-      SET_TO_TEMPLATED_OP_REAL(temp_op, a.Dtype(), a.DeviceType(),
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(),
                                ColVectorEqMatrixOp, temp, b);
-      ops->push_back(temp_op);
+      ops->push_back(new_op);
       // Normalize the temporary vector so its nontrivial axis is raxis 0, by
       // removing the current raxis 0 and having current raxis 1 shift down.
       Tensor temp_normalized = Squeeze(temp, 0);
@@ -126,23 +125,124 @@ void PlusEqOp::Expand(std::vector<std::unique_ptr<Op> > *ops) const {
 }
 
 
+void AssignOp::Expand() const {
+  Op *new_op;
 
-inline static void AddProductScalar3(
-    float alpha, float beta,
-    const TensorImpl &a, const TensorImpl &b, const TensorImpl *c) {
-  switch (a.device.device_type) {
-    case kCpuDevice:
-      AddProductScalar3Cpu(alpha, beta, a, b, c);
-      return;
-#ifdef HAVE_CUDA
-    case kCudaDevice:
-      AddProductScalar3Gpu(alpha, beta, a, b, c);
-      return;
-#endif
-    default:
-      KALDI_ERR << "Unsupported device type " << a.ToString();
+  if (a.Dtype() != b.Dtype()) {
+    if (a.Device() != b.Device()) {
+      KALDI_ERR << "Cross-device copying combined with type convesion not "
+          "supported yet.";
+      // Actually it would be easy to support just by creating a temporary
+      // (search above for `temp` for an example).
+    }
+
+
   }
+  if (a.Device() != b.Device()) {
+    KALDI_ERR << "Cross-device copying not supported yet.";
+  }
+
+  if (ReferenceMode() && a_.DeviceType() == kCpuDevice) {
+    // In reference mode on CPU always use the reference implementation.
+    // Reference mode is only supported on CPU so we use the normal Ops
+    // on GPU.
+    SET_TO_TEMPLATED_CPU_OP_ALLPAIRS(new_op, a_.Dtype(), b.Dtype(),
+                                     AssignRefOp, a_, b_);
+    ops->push_back(new_op);
+    return;
+  }
+
+  // The generic implementation requires us to first normalize the patterns.
+  Pattern a_pattern = a_.Impl().pattern,
+      b_pattern = b_.Impl().pattern;
+  NormalizePatterns({a_pattern, b_pattern});
+
+  KALDI_ASSERT(Compatible(a_, b_));  // dtype and device, check they match.
+
+  Tensor a(a_), b(b_);
+
+  if (a_pattern != a_.Impl().pattern)
+    a = WithPattern(a, a_pattern);
+  if (b_pattern != b_.Impl().pattern)
+    b = WithPattern(b, b_pattern);
+
+  /*
+    The case-statement values in the switch statement below may be interpreted
+    in groups of 3 hex characters, are 0xAAABBB, pertaining to Tensors a and b
+    respectively.  See GetPatternCode() in pattern-utils.h for documentation on
+    the meanings of the values and our notation with X,x,1.
+
+  */
+  int64 combined_code = CombineCodes(a_pattern.GetCode(),
+                                     b_pattern.GetCode());
+
+  /*
+    The case-statement values in the switch statement below may be interpreted
+    in groups of 3 hex characters, are 0xAAABBB, pertaining to Tensors a and b.
+    See ComputePatternCode() in pattern-utils.h for documentation on the meanings of
+    the values and our notation with X,x,1.
+       Quick legend:
+             X means dim >1, stride = 1
+             x means dim >1, stride != 1
+             1 means dim == 1, stride = 0.
+                 (Note: the numbers in case-statements below exclude negative
+                 strides because bit 11 of the 12-bit chunks would be set if
+                 there were a negative stride).
+   */
+
+  // We are doing a += b.
+  switch(combined_code) {
+    // A scalar += scalar,
+    case 0x000000:   // () +=  ()
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), ScalarPlusEqScalarOp, a, b);
+      break;
+    // We may split apart some of the following cases in future.
+    // They all represent, vector += vector.
+    case 0x101101:  //  (X) += (X)
+    case 0x001001:  //  (x) += (x)
+    case 0x101001:  //  (X) += (x)
+    case 0x001101:  //  (X) += (x)
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), StvectorPlusEqStvectorOp, a, b);
+      break;
+    // Scalar += (sum of) vector or strided vector
+    case 0x000101:  //  () += (X)
+    case 0x000001:  //  () += (X)
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), ScalarPlusEqStvectorOp, a, b);
+      break;
+    // vector or strided vector += scalar.
+    // We could later split apart the strided and non-strided cases.
+    case 0x101000:  //  (x) += ()
+    case 0x001000:  //  (X) += ()
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(), StvectorPlusEqScalarOp, a, b);
+      break;
+    // scalar += matrix
+    case 0x000103: { // () += (xX)
+      int32 num_rows = b.Pattern().dims[1];
+      // Create a temporary- a column vector, which is what we call
+      // a vector whose nontrivial axis is raxis 1 instead of raxis 0.
+      Tensor temp({num_rows, 1}, {a.Dtype(), a.Device()});
+      // Below we do temp += b.  We could use PlusEqOp for this and also for the
+      // following reduction, but doing it this way avoids an unnecessary layer
+      // of expansion.
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(),
+                               ColVectorEqMatrixOp, temp, b);
+      ops->push_back(new_op);
+      // Normalize the temporary vector so its nontrivial axis is raxis 0, by
+      // removing the current raxis 0 and having current raxis 1 shift down.
+      Tensor temp_normalized = Squeeze(temp, 0);
+      SET_TO_TEMPLATED_OP_REAL(new_op, a.Dtype(), a.DeviceType(),
+                               ScalarPlusEqStvectorOp, a, temp_normalized);
+    }
+
+
+    default:
+      // Later we can add a more generic implementation that handles arbitrary
+      // patterns.
+      KALDI_ERR << "Unhandled code: " << std::hex << combined_code;
+  }
+  ops->push_back(new_op);
 }
+
 
 
 void AddProduct(float alpha, float beta,

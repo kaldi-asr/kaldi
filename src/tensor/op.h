@@ -259,19 +259,59 @@ class Op {
   } while(0)
 // the while(0) is to allow a semicolon after the invocation.
 
+// The following is used when you know that you are only using CPU, particularly
+// for "reference implementations"
 #define SET_TO_TEMPLATED_CPU_OP_ALL(pointer_name, dtype, OpName, ...) \
     switch (dtype) {                                \
      case kFloatDtype:                              \
-       pointer_name = new OpName<float, kCpuDevice>(__VA_ARGS__); break;       \
+       pointer_name = new OpName<float>(__VA_ARGS__); break;       \
       break;                                        \
      case kDoubleDtype:                             \
-       pointer_name = new OpName<double, kCpuDevice>(__VA_ARGS__); break;       \
+       pointer_name = new OpName<double>(__VA_ARGS__); break;       \
       break;                                        \
     default:                                        \
       KALDI_ERR << "Invalid dtype (this op only allows float or double): " \
                 << int32(dtype);                              \
   } while(0)
 // the while(0) is to allow a semicolon after the invocation.
+
+// The following is used when you know that you are only using CPU, particularly
+// for "reference implementations"; this version accepts two dtype arguments,
+// for SimpleAssignOp which supports type conversion and possibly broadcasting,
+// transpose etc., but not summation.
+#define SET_TO_TEMPLATED_CPU_OP_ALLPAIRS(pointer_name, dtype1, dtype2, OpName, ...) \
+  switch (static_cast<DataType>(int32(dtype1) + (int32(dtype2) << 4))) { \
+     case kFloatFloatDtype:                               \
+       pointer_name = new OpName<float, float>(__VA_ARGS__); break; \
+      break;                                         \
+     case kFloatDoubleDtype:                               \
+       pointer_name = new OpName<float, double>(__VA_ARGS__); break; \
+      break;                                         \
+     case kFloatInt32Dtype:                               \
+       pointer_name = new OpName<float, int32>(__VA_ARGS__); break; \
+      break;                                         \
+     case kDoubleFloatDtype:                               \
+       pointer_name = new OpName<double, float>(__VA_ARGS__); break; \
+      break;                                         \
+     case kDoubleDoubleDtype:                               \
+       pointer_name = new OpName<double, double>(__VA_ARGS__); break; \
+      break;                                         \
+     case kDoubleInt32Dtype:                               \
+       pointer_name = new OpName<double, int32>(__VA_ARGS__); break; \
+      break;                                         \
+     case kInt32FloatDtype:                               \
+       pointer_name = new OpName<int32, float>(__VA_ARGS__); break; \
+      break;                                         \
+     case kInt32DoubleDtype:                               \
+       pointer_name = new OpName<int32, double>(__VA_ARGS__); break; \
+      break;                                         \
+     case kInt32Int32Dtype:                               \
+       pointer_name = new OpName<int32, int32>(__VA_ARGS__); break; \
+      break;                                         \
+    default:                                        \
+      KALDI_ERR << "Invalid pair of dtypes in Assign Op: "       \
+             << int32(dtype1) << ", " << int32(dtype2);   \
+  } while(0)
 
 
 

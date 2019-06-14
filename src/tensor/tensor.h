@@ -377,6 +377,14 @@ class Tensor {
 
 
   /**
+     Returns the data pointer cast to type T, with the offset from the pattern
+     included.  Calling this will force allocation of the storage region if it
+     was not already allocated.
+     If the
+  */
+  template <class T> T* GetData(bool *was_uninitialized) const;
+
+  /**
      Returns the data pointer cast to type T, with the offset from
      the pattern included.  Calling this will force allocation of
      the storage region if it was not already allocated.

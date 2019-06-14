@@ -392,12 +392,8 @@ inline void Squeeze(int32 axis, Pattern *p) {
        @param [in] b  The pattern of the second Tensor
        @param [in] b_not_smaller   If true, then we do not allow a dim of
                       b to be 1 while corresponding dim of a is >1.
-       @return  Returns true if a and b are broadcastable (with
-                an additional constraint that `a.dims[i] <= b.dims[i]` if
-                `b_not_smaller == true`.
  */
-bool Broadcastable(const Pattern &a, const Pattern &b,
-                   bool b_not_smaller = false);
+bool Broadcastable(const Pattern &a, const Pattern &b);
 
 
 /**  This function returns true if the dimensions of tensor patterns
@@ -409,18 +405,16 @@ bool Broadcastable(const Pattern &a, const Pattern &b,
        @param [in] a  The pattern of the first Tensor
        @param [in] b  The pattern of the second Tensor
        @param [in] c  The pattern of the third Tensor
-       @param [in] c_not_smaller   If true, then we do not allow a dim of
-                      c to be 1 while corresponding dims of a or b
-                      are > 1.
-       @return  Returns true if a, b and c are broadcastable (with
-                an additional constraint that
-                `max(a.dims[i], b.dims[i]) <= c.dims[i]` if
-                `c_not_smaller == true`).
-
+       @return  Returns true if a, b and c are broadcastable
  */
 bool Broadcastable(const Pattern &a, const Pattern &b,
-                   const Pattern &c, bool c_not_smaller = false);
+                   const Pattern &c);
 
+
+/**
+   Returns true if for each raxis, a.dims[raxis] >= b.dims[raxis].
+ */
+bool DimsGeq(const Pattern &a, const Pattern &b);
 
 
 /**
@@ -529,6 +523,13 @@ void CompressOnePattern(Pattern *pattern);
  */
 void SortAxes(Pattern *pattern);
 
+
+/**
+   Returns the raxis with the smallest value of abs(stride[raxis]),
+   taking the lowest-numbered raxis in case of ties (which could only
+   happen in the case of stride == 0).  Requires Valid(pattern).
+ */
+int32 RaxisWithSmallestAbsStride(const Pattern &pattern);
 
 // TODO: document this.
 inline void CanonicalizePattern(Pattern *pattern) {

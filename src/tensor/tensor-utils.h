@@ -51,10 +51,9 @@ inline bool Broadcastable(const Tensor &a, const Tensor &b) {
   and device and are broadcastable; equivalent to
   `Broadcastable(a, b) && Compatible(a, b)`.
 */
-inline bool BroadcastableAndCompatible(const Tensor &a, const Tensor &b,
-                                       b_non_reducing = false) {
+inline bool BroadcastablAendCompatible(const Tensor &a, const Tensor &b) {
   return Compatible(*a.impl_, *b.impl_) &&
-      Broadcastable(*a.impl_, *b.impl_, b_non_reducing);
+      Broadcastable(*a.impl_, *b.impl_);
 }
 
 
