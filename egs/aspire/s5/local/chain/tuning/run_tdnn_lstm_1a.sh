@@ -26,7 +26,6 @@ cell_dim=1024
 projection_dim=256
 
 # training options
-num_epochs=2
 minibatch_size=64,32
 chunk_left_context=40
 chunk_right_context=0
