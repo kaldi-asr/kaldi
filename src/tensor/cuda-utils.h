@@ -247,96 +247,10 @@ struct StandardTwoArgKernelSizes {
 };
 
 
-
-
-struct StandardTwoArgKernel {
-  dim3 block_dim;
-  dim3 grid_dim;
-  StandardTwoArgKernelSizes sizes;  // passed into kernel.
-};
-
-
-/**
-   This function returns the dimensions/sizes for one or more "standard kernels"
-   to execute a "standard operation" on patterns a and b.  We define a
-   standard operation as an elementwise operation possibly with broadcasting,
-   of the form:
-       a[i] = f(b[i])
-
-   for some scalar function f, where i is an index-tuple.  a and b must be
-   broadcastable, and the dims of a must be >= the corresponding dims of b
-   (i.e.: no reduction).  We also require a.num_axes >= b.num_axes.
-   The standard kernel is as follows:
-<code>
-  void _standard_kernel(StandardTwoArgKernelSizes f, float *a, float *b) {
-    int a_offset_x = f.thread_stride_a.x * threadIdx.x + block_stride_a.x * blockIdx.x,
-      a_offset_y = f.thread_stride_a.y * threadIdx.y + block_stride_a.y * blockIdx.y,
-      a_offset_z = f.thread_stride_a.z * threadIdx.z + block_stride_a.z * blockIdx.z;
-    int b_offset = f.thread_stride_b.x * threadIdx.x + block_stride_b.x * blockIdx.x +
-                   f.thread_stride_b.y * threadIdx.y + block_stride_b.y * blockIdx.y +
-                   f.thread_stride_b.z * threadIdx.z + block_stride_b.z * blockIdx.z
-
-     if (a_offset_x < f.max_offset_a.x && a_offset_y < f.max_offset_a.y)
-       a[a_offset_x + a_offset_y + a_offset_z] = some_func(b[b_offset]);
-  }
-</code>
-  }
-
-      @param [in] a   First pattern for which we want the kernel (or kernels)
-      @param [in] b   Second pattern for which we want the kernel (or kernels)
-      @param [out] kernels  The kernels are *appended to* this vector (this
-                      allows for recursive operation in this function).  Normally,
-                      we'll have `kernels->size() == 1` at exit.  The user is expected
-                      to call all of them (the order doesn't matter, and they
-                      don't have to be called in sequence).
- */
-void GetStandardKernel(const Pattern &a, const Pattern &b,
-                       std::vector<StandardKernel> *kernels);
-
-
-
-/**
-   First: we define type 1 kernel as a non-reducing (but possibly broadcasting)
-   operation between two Tensors, e.g. a = b or a = sigmoid(b).  This is
-   a rather general type of kernel that can be used as the generic case
-   (applicable to arbitrary tensors).
-
-   The KernelInfo is the part that needs to be passed into the
-   kernel itself.  There are also two other things needed to launch the
-   kernel:
-<code>
-      dim3 grid_dim, block_dim;
-</code>
-
-   The basic operation we'll do in the kernel is something like this;
-   let 'a' and 'b' be pointers to float or something like that.  Let
-<code>
-    Type1KernelInfo f;  // passed in.
-    int x_offset_a = f.thread_stride_a.x * threadIdx.x + f.block_stride_a.x * blockIdx.x;
-       y_offset_a = f.thread_stride_a.y * threadIdx.y + f.block_stride_a.y * blockIdx.y;
-       z_offset_a = f.thread_stride_a.z * threadIdx.z + f.block_stride_a.z * blockIdx.z;
-    // and similar statements to set x_offset_b, y_offset_b, z_offset_b.
-
-    if (x_offset_a < f.max_offset_a.x &&
-        y_offset_a < f.max_offset_a.y)
-      a[x_offset_a + y_offset_a + z_offset_a] =
-          b[x_offset_b + y_offset_b + z_offset_b];
-    // clock speed e.g. 3 gHz.  Say 100 instructions.
-</code>
- */
-
-class StandardKernelSizes {
-  dim3 thread_stride_a;
-  dim3 thread_stride_b;
-  dim3 block_stride_a;
-  dim3 block_stride_b;
-  dim3 max_offset_a;
-};
-
-class StandardKernel {
+class StandardTwoArgKernel {
   dim3 dim_block;
   dim3 dim_grid;
-  StandardKernelSizes sizes;
+  StandardTwoArgKernelSizes sizes;
   // offset_a and offset_b are offsets that we have to add to the data-pointers
   // of a and b before we call the kernel; these will normally be zero, but may
   // be nonzero if we have to generate multiple kernels due to, say, size
@@ -344,6 +258,147 @@ class StandardKernel {
   int64 base_offset_a{0};
   int64 base_offset_b{0};
 };
+
+
+/**
+   This function returns the dimensions/sizes for one or more "standard two arg
+   kernels" to execute a "standard two arg operation" on Tensors a and b, of
+   which only the patterns are provided.  We define a standard two-arg operation
+   as an elementwise operation possibly with broadcasting, of the form:
+
+       a[i] = f(b[i])
+   where i is an index-tuple in the index-tuple-set of the pattern-tuple (a,b);
+   search in pattern.h for the meaning of this notation.
+
+   a and b must be broadcastable, and the dims of a must be >= the corresponding
+   dims of b (i.e.: no reduction).  We also require a.num_axes >= b.num_axes,
+   which results from the tuple (a,b) having been reduced (see ReducePatternTuple()
+   in pattern-tuple-utils.h).
+   The standard two-arg kernel is as follows, exemplifying it with the
+   function "some_func".
+<code>
+template <typename T>
+  void _standard_two_arg_kernel(StandardTwoArgKernelSizes f, T *a, const T *b) {
+    int a_offset_x = f.thread_stride_a.x * threadIdx.x + block_stride_a.x * blockIdx.x,
+      a_offset_y = f.thread_stride_a.y * threadIdx.y + block_stride_a.y * blockIdx.y,
+      a_offset_z = f.thread_stride_a.z * threadIdx.z + block_stride_a.z * blockIdx.z;
+    int b_offset = f.thread_stride_b.x * threadIdx.x + block_stride_b.x * blockIdx.x +
+                   f.thread_stride_b.y * threadIdx.y + block_stride_b.y * blockIdx.y +
+                   f.thread_stride_b.z * threadIdx.z + block_stride_b.z * blockIdx.z;
+
+     if (a_offset_x < f.max_offset_a.x && a_offset_y < f.max_offset_a.y)
+       a[a_offset_x + a_offset_y + a_offset_z] = some_func(b[b_offset]);
+  }
+
+  // which would be invoked as follows:
+  template <typename T>
+  void standard_two_arg_kernel(const Tensor &a, const Tensor &b,
+                               const StandardTwoArgKernel &k) {
+    _standard_two_arg_kernel<<<k.grid_dim, k.block_dim>>>(
+         a.GetData<T>() + k.base_offset_a,
+         b.GetData<T>() + k.base_offset_b);
+  }
+
+</code>
+  }
+
+      @param [in] a   First pattern for which we want the kernel (or kernels)
+      @param [in] b   Second pattern for which we want the kernel (or kernels)
+      @param [out] kernels  The kernels are output this vector.  Normally,
+                      we'll have `kernels->size() == 1` at exit.  The user is expected
+                      to call all of them (the order doesn't matter).
+ */
+void GetStandardTwoArgKernel(const Pattern &a, const Pattern &b,
+                             std::vector<StandardTwoArgKernel> *kernels);
+
+
+
+
+class StandardThreeArgKernelSizes {
+  dim3 thread_stride_a;
+  dim3 thread_stride_b;
+  dim3 thread_stride_c;
+
+  dim3 block_stride_a;
+  dim3 block_stride_b;
+  dim3 block_stride_c;
+
+  dim3 max_offset_a;
+};
+
+class StandardThreeArgKernel {
+  dim3 dim_block;
+  dim3 dim_grid;
+  StandardTwoArgKernelSizes sizes;
+  // base_offset_{a,b,c} are offsets that we have to add to the data-pointers of
+  // a, b and c before we call the kernel; these will normally be zero, but may
+  // be nonzero if we have to generate multiple kernels due to, say, size
+  // constraints.
+  int64 base_offset_a{0};
+  int64 base_offset_b{0};
+  int64 base_offset_c{0};
+};
+
+
+/**
+   This function returns the dimensions/sizes for one or more "standard three arg
+   kernels" to execute a "standard three arg operation" on Tensors a and b, of
+   which only the patterns are provided.  We define a standard three-arg operation
+   as an elementwise operation possibly with broadcasting, of the form:
+
+       a[i] = f(b[i], c[i])
+   where i is an index-tuple in the index-tuple-set of the pattern-tuple (a,b,c);
+   search in pattern.h for the meaning of this notation.
+
+   a, b and c must be broadcastable, and the dims of a must be >= the
+   corresponding dims of b and of c (i.e.: no reduction).  We also require
+   a.num_axes >= b.num_axes and a.num_aces >= c.num_axes, which results from the
+   tuple (a,b,c) having been reduced (see ReducePatternTuple() in
+   pattern-tuple-utils.h).
+
+   The standard three-arg kernel is as follows, exemplifying it with the
+   function "some_func".
+<code>
+template <typename T>
+  void _standard_three_arg_kernel(StandardThreeArgKernelSizes f,
+                                  T *a, const T *b, const T *c) {
+    int a_offset_x = f.thread_stride_a.x * threadIdx.x + block_stride_a.x * blockIdx.x,
+      a_offset_y = f.thread_stride_a.y * threadIdx.y + block_stride_a.y * blockIdx.y,
+      a_offset_z = f.thread_stride_a.z * threadIdx.z + block_stride_a.z * blockIdx.z;
+    int b_offset = f.thread_stride_b.x * threadIdx.x + block_stride_b.x * blockIdx.x +
+                   f.thread_stride_b.y * threadIdx.y + block_stride_b.y * blockIdx.y +
+                   f.thread_stride_b.z * threadIdx.z + block_stride_b.z * blockIdx.z,
+        c_offset = f.thread_stride_c.x * threadIdx.x + block_stride_c.x * blockIdx.x +
+                   f.thread_stride_c.y * threadIdx.y + block_stride_c.y * blockIdx.y +
+                   f.thread_stride_c.z * threadIdx.z + block_stride_c.z * blockIdx.z;
+
+     if (a_offset_x < f.max_offset_a.x && a_offset_y < f.max_offset_a.y)
+       a[a_offset_x + a_offset_y + a_offset_z] = some_func(b[b_offset], c[c_offset]);
+  }
+
+  // which would be invoked as follows:
+  template <typename T>
+  void standard_three_arg_kernel(const Tensor &a, const Tensor &b,
+                                 const Tensor &c,
+                                 const StandardThreeArgKernel &k) {
+    _standard_three_arg_kernel<<<k.grid_dim, k.block_dim>>>(
+         a.GetData<T>() + k.base_offset_a,
+         b.GetData<T>() + k.base_offset_b,
+         c.GetData<T>() + k.base_offset_c);
+  }
+</code>
+  }
+
+      @param [in] a   First pattern for which we want the kernel (or kernels)
+      @param [in] b   Second pattern for which we want the kernel (or kernels)
+      @param [in] c   Second pattern for which we want the kernel (or kernels)
+      @param [out] kernels  The kernels are output this vector.  Normally,
+                      we'll have `kernels->size() == 1` at exit.  The user is expected
+                      to call all of them (the order doesn't matter).
+ */
+void GetStandardThreeArgKernel(const Pattern &a, const Pattern &b,
+                               std::vector<StandardThreeArgKernel> *kernels);
+
 
 
 

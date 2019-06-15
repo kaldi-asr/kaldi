@@ -317,14 +317,22 @@ inline void Squeeze(int32 axis, Pattern *p) {
 /** Transpose the two specified axes (specified in the private/reversed
     numbering) of a Pattern.
 
-    @param [in] raxis1  First axis to be transposed; must be in range
-                        `[0, p->num_axes - 1]`
-    @param [in] raxis2  Second axis to be transposed; must be in range
-                        `[0, p->num_axes - 1]`
+    @param [in] raxis1  First axis to be transposed; must be >=0,
+                        and if increase_num_axes is false, must be
+                        less than p->num_axes.
+    @param [in] raxis2  Second axis to be transposed; must be >=0,
+                        and if increase_num_axes is false, must be
+                        less than p->num_axes.
                         If identical to axis1, nothing will be done.
     @param [in,out] p  Pattern whose axes are to be transposed.
+    @param [in] increase_num_axes   If this is true, we allow
+                        raxis1 and/or raxis2 to be >= p->num_axes;
+                        we will increase p->num_axes as necessary
+                        if this operation results in any
+                        raxis >= p->num_axes becoming non-trivial.
  */
-void TransposeR(int32 raxis1, int32 raxis2, Pattern *p);
+void TransposeR(int32 raxis1, int32 raxis2, Pattern *p,
+                bool increase_num_axes = false);
 
 
 /** Transpose the two specified axes (specified in the private/reversed

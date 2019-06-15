@@ -453,16 +453,40 @@ void SortTupleAxes(ArrayRef<Pattern*> patterns) {
   // TODO.
 }
 
-void Transpose(int32 raxis1, int32 raxis2, Pattern *p) {
-  if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
-      static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {
-    KALDI_ERR << "Invalid axes to transpose: raxis1="
-              << raxis1 << ", raxis2=" << raxis2
-              << ", num-axes = " << p->num_axes;
+void TransposeR(int32 raxis1, int32 raxis2, Pattern *p,
+                bool increase_num_axes) {
+  if (!increase_num_axes) {
+    if (static_cast<uint32>(raxis1) >= static_cast<uint32>(p->num_axes) ||
+        static_cast<uint32>(raxis2) >= static_cast<uint32>(p->num_axes)) {
+      KALDI_ERR << "Invalid axes to transpose: raxis1="
+                << raxis1 << ", raxis2=" << raxis2
+                << ", num-axes = " << p->num_axes;
+    }
+  } else {
+    if (static_cast<uint32>(raxis1) >= KALDI_TENSOR_MAX_DIM ||
+        static_cast<uint32>(raxis2) >= KALDI_TENSOR_MAX_DIM) {
+      KALDI_ERR << "Invalid axes to transpose: raxis1="
+                << raxis1 << ", raxis2=" << raxis2
+                << ", num-axes = " << p->num_axes;
+    }
   }
   std::swap(p->strides[raxis1], p->strides[raxis2]);
   std::swap(p->dims[raxis1], p->dims[raxis2]);
   p->code = -1;
+  if (increase_num_axes) {
+    if (raxis1 >= p->num_axes) {
+      // checking both the conditionsbelow is redundant if the pattern is valid,
+      // but we don't assume that.
+      if (p->dims[raxis1] != 1 || p->strides[raxis1] != 0)
+        p->num_axes = raxis1 + 1;
+    }
+    if (raxis2 >= p->num_axes) {
+      // checking both the conditionsbelow is redundant if the pattern is valid,
+      // but we don't assume that.
+      if (p->dims[raxis2] != 1 || p->strides[raxis2] != 0)
+        p->num_axes = raxis2 + 1;
+    }
+  }
 }
 
 void Transpose(int32 axis1, int32 axis2, Pattern *p) {
