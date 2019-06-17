@@ -14,4 +14,4 @@ CUDA_FLAGS = --machine 64 -DHAVE_CUDA \
              --verbose -Xcompiler "$(CXXFLAGS)"
 
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
-CUDA_LDLIBS += -lcublas -lcusparse -lcudart -lcurand -lnvToolsExt #LDLIBS : The .so libs are loaded later than static libs in implicit rule
+CUDA_LDLIBS += -lcublas -lcusparse -lcudart -lcurand -lcufft -lnvToolsExt #LDLIBS : The .so libs are loaded later than static libs in implicit rule
