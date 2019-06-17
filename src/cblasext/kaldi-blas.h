@@ -122,10 +122,8 @@ typedef integer KaldiBlasInt;
 #ifdef HAVE_MKL
 typedef MKL_INT KaldiBlasInt;
 #endif
-
 #ifdef HAVE_ATLAS
-// in this case there is no need for KaldiBlasInt-- this typedef is only needed
-// for Svd code which is not included in ATLAS (we re-implement it).
+typedef int KaldiBlasInt;
 #endif
 
 

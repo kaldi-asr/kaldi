@@ -21,7 +21,7 @@
 #include "matrix/tp-matrix.h"
 #include "matrix/sp-matrix.h"
 #include "matrix/kaldi-matrix.h"
-#include "matrix/cblas-wrappers.h"
+#include "cblasext/cblas-wrappers.h"
 
 
 namespace kaldi {

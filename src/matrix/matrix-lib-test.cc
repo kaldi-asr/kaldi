@@ -28,7 +28,7 @@
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
 // comment it (and that function) out if it causes problems.
-#include <matrix/cblas-wrappers.h>
+#include <cblasext/cblas-wrappers.h>
 
 namespace kaldi {
 

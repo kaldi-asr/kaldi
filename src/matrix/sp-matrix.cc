@@ -25,7 +25,8 @@
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/matrix-functions.h"
-#include "matrix/cblas-wrappers.h"
+#include "cblasext/cblas-wrappers.h"
+#include "cblasext/cblas-extensions.h"
 
 namespace kaldi {
 
@@ -1010,13 +1011,15 @@ void SpMatrix<Real>::AddMat2Sp(
   if (transM == kNoTrans) {
     for (MatrixIndexT r = 0; r < dim; r++, p_row_data += r) {
       cblas_Xspmv(A.NumRows(), 1.0, p_A_data, M.RowData(r), 1, 0.0, tmp_vec_data, 1);
-      cblas_Xgemv(transM, r+1, M_other_dim, alpha, M_data, M_stride,
+      cblas_Xgemv(static_cast<CBLAS_TRANSPOSE>(transM),
+                  r+1, M_other_dim, alpha, M_data, M_stride,
                   tmp_vec_data, 1, beta, p_row_data, 1);
     }
   } else {
     for (MatrixIndexT r = 0; r < dim; r++, p_row_data += r) {
       cblas_Xspmv(A.NumRows(), 1.0, p_A_data, M.Data() + r, M.Stride(), 0.0, tmp_vec_data, 1);
-      cblas_Xgemv(transM, M_other_dim, r+1, alpha, M_data, M_stride,
+      cblas_Xgemv(static_cast<CBLAS_TRANSPOSE>(transM),
+                  M_other_dim, r+1, alpha, M_data, M_stride,
                   tmp_vec_data, 1, beta, p_row_data, 1);
     }
   }
@@ -1064,15 +1067,17 @@ void SpMatrix<Real>::AddSmat2Sp(
     // The column of M^T corresponds to the rows of the supplied matrix.
     for (MatrixIndexT i = 0; i < dim; i++, data += i) {
       MatrixIndexT num_rows = i + 1, num_cols = Adim;
-      Xgemv_sparsevec(kNoTrans, num_rows, num_cols, alpha, MAdata,
-                      temp_MA_stride, Mdata + (i * Mstride), 1, beta, data, 1);
+      cblasext_Xgemv_sparsevec(CblasNoTrans, num_rows, num_cols, alpha, MAdata,
+                               temp_MA_stride, Mdata + (i * Mstride),
+                               1, beta, data, 1);
     }
   } else {
     // The column of M^T corresponds to the columns of the supplied matrix.
     for (MatrixIndexT i = 0; i < dim; i++, data += i) {
       MatrixIndexT num_rows = i + 1, num_cols = Adim;
-      Xgemv_sparsevec(kNoTrans, num_rows, num_cols, alpha, MAdata,
-                      temp_MA_stride, Mdata + i, Mstride, beta, data, 1);
+      cblasext_Xgemv_sparsevec(CblasNoTrans, num_rows, num_cols, alpha, MAdata,
+                               temp_MA_stride, Mdata + i, Mstride,
+                               beta, data, 1);
     }
   }
 }
@@ -1129,7 +1134,8 @@ void SpMatrix<Real>::AddMat2(const Real alpha, const MatrixBase<Real> &M,
   // doesn't dominate O(N) time.
 
   // This function call is hard-coded to update the lower triangle.
-  cblas_Xsyrk(transM, this_dim, m_other_dim, alpha, M.Data(),
+  cblas_Xsyrk(static_cast<CBLAS_TRANSPOSE>(transM),
+              this_dim, m_other_dim, alpha, M.Data(),
               M.Stride(), beta, temp_mat.Data(), temp_mat.Stride());
 
   this->CopyFromMat(temp_mat, kTakeLower);

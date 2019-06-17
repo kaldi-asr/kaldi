@@ -25,11 +25,13 @@
 
 #include <algorithm>
 #include <string>
-#include "matrix/cblas-wrappers.h"
+#include "cblasext/cblas-wrappers.h"
+#include "cblasext/cblas-extensions.h"
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/sp-matrix.h"
 #include "matrix/sparse-matrix.h"
+
 
 namespace kaldi {
 
@@ -106,7 +108,8 @@ void VectorBase<Real>::AddMatVec(const Real alpha,
   KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_)
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
-  cblas_Xgemv(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
+  cblas_Xgemv(static_cast<CBLAS_TRANSPOSE>(trans),
+              M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
               v.Data(), 1, beta, data_, 1);
 }
 
@@ -119,8 +122,9 @@ void VectorBase<Real>::AddMatSvec(const Real alpha,
   KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_)
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
-  Xgemv_sparsevec(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
-                  v.Data(), 1, beta, data_, 1);
+  cblasext_Xgemv_sparsevec(static_cast<CBLAS_TRANSPOSE>(trans),
+                           M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
+                           v.Data(), 1, beta, data_, 1);
   return;
   /*
   MatrixIndexT this_dim = this->dim_, v_dim = v.dim_,
@@ -161,14 +165,16 @@ template<typename Real>
 void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,
                               const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_Xtpmv(trans, M.Data(), M.NumRows(), data_, 1);
+  cblas_Xtpmv(static_cast<CBLAS_TRANSPOSE>(trans),
+              M.Data(), M.NumRows(), data_, 1);
 }
 
 template<typename Real>
 void VectorBase<Real>::Solve(const TpMatrix<Real> &M,
                         const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_Xtpsv(trans, M.Data(), M.NumRows(), data_, 1);
+  cblas_Xtpsv(static_cast<CBLAS_TRANSPOSE>(trans),
+              M.Data(), M.NumRows(), data_, 1);
 }
 
 
@@ -737,7 +743,7 @@ void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real 
   for (MatrixIndexT row_offset = 0; row_offset < num_rows; row_offset += 64) {
     MatrixIndexT this_num_rows =
         std::min<MatrixIndexT>(64, num_rows - row_offset);
-    cblas_Xgemv(kTrans, this_num_rows, M.NumCols(), alpha,
+    cblas_Xgemv(CblasTrans, this_num_rows, M.NumCols(), alpha,
                 M.RowData(row_offset), M.Stride(), ones, 1,
                 beta, data_, 1);
     beta = 1.0;
@@ -756,7 +762,7 @@ void VectorBase<Real>::AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real 
   for (MatrixIndexT col_offset = 0; col_offset < num_cols; col_offset += 64) {
     MatrixIndexT this_num_cols =
         std::min<MatrixIndexT>(64, num_cols - col_offset);
-    cblas_Xgemv(kNoTrans, M.NumRows(), this_num_cols, alpha,
+    cblas_Xgemv(CblasNoTrans, M.NumRows(), this_num_cols, alpha,
                 M.Data() + col_offset, M.Stride(),
                 ones, 1,
                 beta, data_, 1);
@@ -1009,7 +1015,7 @@ void VectorBase<Real>::AddVecVec(Real alpha, const VectorBase<Real> &v,
   KALDI_ASSERT(v.data_ != this->data_ && r.data_ != this->data_);
   // We pretend that v is a band-diagonal matrix.
   KALDI_ASSERT(dim_ == v.dim_ && dim_ == r.dim_);
-  cblas_Xgbmv(kNoTrans, dim_, dim_, 0, 0, alpha, v.data_, 1,
+  cblas_Xgbmv(CblasNoTrans, dim_, dim_, 0, 0, alpha, v.data_, 1,
               r.data_, 1, beta, this->data_, 1);
 }
 

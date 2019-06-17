@@ -23,7 +23,7 @@
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/matrix-functions.h"
-#include "matrix/cblas-wrappers.h"
+#include "cblasext/cblas-wrappers.h"
 
 // This file contains an implementation of the Symmetric QR Algorithm
 // for the symmetric eigenvalue problem.  See Golub and Van Loan,
@@ -201,7 +201,7 @@ void SpMatrix<Real>::Tridiagonalize(MatrixBase<Real> *Q) {
       // We do (in Matlab notation):
       // Q(0:k-1,:) = (I - beta v v') * Q, i.e.:
       // Q(:,0:i-1) += -beta v (v' Q(:,0:k-1)v .. let x = -beta Q(0:k-1,:)^T v.
-      cblas_Xgemv(kTrans, k, n, -beta, qdata, qstride, v, 1, 0.0, x, 1);
+      cblas_Xgemv(CblasTrans, k, n, -beta, qdata, qstride, v, 1, 0.0, x, 1);
       // now x = -beta Q(:,0:k-1) v.
       // The next line does: Q(:,0:k-1) += v x'.
       cblas_Xger(k, n, 1.0, v, 1, x, 1, qdata, qstride);

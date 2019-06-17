@@ -22,11 +22,14 @@
 // limitations under the License.
 
 #include "matrix/kaldi-matrix.h"
+#include "matrix/kaldi-vector.h"
 #include "matrix/sp-matrix.h"
 #include "matrix/jama-svd.h"
 #include "matrix/jama-eig.h"
 #include "matrix/compressed-matrix.h"
 #include "matrix/sparse-matrix.h"
+#include "cblasext/cblas-wrappers.h"
+#include "cblasext/cblas-extensions.h"
 
 static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans),
     "kaldi::kNoTrans and kaldi::kTrans must be equal to the appropriate CBLAS library constants!");
@@ -181,8 +184,10 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
                || (transA == kTrans && transB == kTrans && A.num_rows_ == B.num_cols_ && A.num_cols_ == num_rows_ && B.num_rows_ == num_cols_));
   KALDI_ASSERT(&A !=  this && &B != this);
   if (num_rows_ == 0) return;
-  cblas_Xgemm(alpha, transA, A.data_, A.num_rows_, A.num_cols_, A.stride_,
-              transB, B.data_, B.stride_, beta, data_, num_rows_, num_cols_, stride_);
+  cblas_Xgemm(alpha, static_cast<CBLAS_TRANSPOSE>(transA),
+              A.data_, A.num_rows_, A.num_cols_, A.stride_,
+              static_cast<CBLAS_TRANSPOSE>(transB),
+              B.data_, B.stride_, beta, data_, num_rows_, num_cols_, stride_);
 
 }
 
@@ -259,7 +264,8 @@ void MatrixBase<Real>::SymAddMat2(const Real alpha,
   MatrixIndexT A_other_dim = (transA == kNoTrans ? A.num_cols_ : A.num_rows_);
 
   // This function call is hard-coded to update the lower triangle.
-  cblas_Xsyrk(transA, num_rows_, A_other_dim, alpha, A.Data(),
+  cblas_Xsyrk(static_cast<CBLAS_TRANSPOSE>(transA),
+              num_rows_, A_other_dim, alpha, A.Data(),
               A.Stride(), beta, this->data_, this->stride_);
 }
 
@@ -288,16 +294,18 @@ void MatrixBase<Real>::AddMatSmat(const Real alpha,
     for (MatrixIndexT c = 0; c < num_cols; c++) {
       // for each column of *this, do
       // [this column] = [alpha * A * this column of B] + [beta * this column]
-      Xgemv_sparsevec(transA, Arows, Acols, alpha, Adata, Astride,
-                      Bdata + c, Bstride, beta, data + c, stride);
+      cblasext_Xgemv_sparsevec(static_cast<CBLAS_TRANSPOSE>(transA),
+                               Arows, Acols, alpha, Adata, Astride,
+                               Bdata + c, Bstride, beta, data + c, stride);
     }
   } else {
     // Iterate over the columns of *this and the rows of B.
     for (MatrixIndexT c = 0; c < num_cols; c++) {
       // for each column of *this, do
       // [this column] = [alpha * A * this row of B] + [beta * this column]
-      Xgemv_sparsevec(transA, Arows, Acols, alpha, Adata, Astride,
-                      Bdata + (c * Bstride), 1, beta, data + c, stride);
+      cblasext_Xgemv_sparsevec(static_cast<CBLAS_TRANSPOSE>(transA),
+                               Arows, Acols, alpha, Adata, Astride,
+                               Bdata + (c * Bstride), 1, beta, data + c, stride);
     }
   }
 }
@@ -325,16 +333,18 @@ void MatrixBase<Real>::AddSmatMat(const Real alpha,
     for (MatrixIndexT r = 0; r < num_rows; r++) {
       // for each row of *this, do
       // [this row] = [alpha * (this row of A) * B^T] + [beta * this row]
-      Xgemv_sparsevec(invTransB, Brows, Bcols, alpha, Bdata, Bstride,
-                      Adata + (r * Astride), 1, beta, data + (r * stride), 1);
+      cblasext_Xgemv_sparsevec(static_cast<CBLAS_TRANSPOSE>(invTransB),
+                               Brows, Bcols, alpha, Bdata, Bstride,
+                               Adata + (r * Astride), 1, beta, data + (r * stride), 1);
     }
   } else {
     // Iterate over the rows of *this and the columns of A.
     for (MatrixIndexT r = 0; r < num_rows; r++) {
       // for each row of *this, do
       // [this row] = [alpha * (this column of A) * B^T] + [beta * this row]
-      Xgemv_sparsevec(invTransB, Brows, Bcols, alpha, Bdata, Bstride,
-                      Adata + r, Astride, beta, data + (r * stride), 1);
+      cblasext_Xgemv_sparsevec(static_cast<CBLAS_TRANSPOSE>(invTransB),
+                               Brows, Bcols, alpha, Bdata, Bstride,
+                               Adata + r, Astride, beta, data + (r * stride), 1);
     }
   }
 }
@@ -661,8 +671,7 @@ void MatrixBase<Real>::AddMatMatElements(const Real alpha,
 template<typename Real>
 void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
                                    MatrixBase<Real> *V_in) {
-  KALDI_ASSERT(s != NULL && U_in != this && V_in != this &&
-               s->Stride() == 1);
+  KALDI_ASSERT(s != NULL && U_in != this && V_in != this);
 
   Matrix<Real> tmpU, tmpV;
   if (U_in == NULL) tmpU.Resize(this->num_rows_, 1);  // work-space if U_in empty.

@@ -24,11 +24,19 @@
 // files in this directory.
 
 #include "base/kaldi-common.h"
+#include "cblasext/kaldi-blas.h"
+#include "cblasext/cblas-wrappers.h"
 
 namespace kaldi {
-// this enums equal to CblasTrans and CblasNoTrans constants from CBLAS library
-// we are writing them as literals because we don't want to include here matrix/kaldi-blas.h,
-// which puts many symbols into global scope (like "real") via the header f2c.h
+
+
+// Define Kaldi's MatrixTransposeType (which is basically equivalent to enum
+// CBLAS_TRANSPOSE) in case we're including this in a context where it was not
+// already defined.  This is part of a kludge to be able to use this enum while
+// not including the cblas headers in our headers; cblas headers can cause
+// problems because they can bring in a lot of junk (types in the global
+// namespace; preprocessor macros), and there are different flavors of cblas
+// which might put different *kinds* of junk there.
 typedef enum {
   kTrans    = 112, // = CblasTrans
   kNoTrans  = 111  // = CblasNoTrans
