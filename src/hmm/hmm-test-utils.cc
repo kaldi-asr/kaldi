@@ -23,7 +23,7 @@
 
 namespace kaldi {
 
-TransitionModel *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
+Transitions *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
   std::vector<int32> phones;
   phones.push_back(1);
   for (int32 i = 2; i < 20; i++)
@@ -38,16 +38,16 @@ TransitionModel *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
       GenRandContextDependencyLarge(phones, N, P,
                                     true, &num_pdf_classes);
 
-  HmmTopology topo = GenRandTopology(phones, num_pdf_classes);
+  Topology topo = GenRandTopology(phones, num_pdf_classes);
 
-  TransitionModel *trans_model = new TransitionModel(*ctx_dep, topo);
+  Transitions *trans_model = new Transitions(*ctx_dep, topo);
 
   if (ctx_dep_out == NULL) delete ctx_dep;
   else *ctx_dep_out = ctx_dep;
   return trans_model;
 }
 
-HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
+Topology GetDefaultTopology(const std::vector<int32> &phones_in) {
   std::vector<int32> phones(phones_in);
   std::sort(phones.begin(), phones.end());
   KALDI_ASSERT(IsSortedAndUniq(phones) && !phones.empty());
@@ -59,24 +59,19 @@ HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
   for (size_t i = 0; i < phones.size(); i++)
     topo_string << phones[i] << " ";
 
-  topo_string << "</ForPhones>\n"
-      "<State> 0 <PdfClass> 0\n"
-      "<Transition> 0 0.5\n"
-      "<Transition> 1 0.5\n"
-      "</State> \n"
-      "<State> 1 <PdfClass> 1 \n"
-      "<Transition> 1 0.5\n"
-      "<Transition> 2 0.5\n"
-      "</State>  \n"
-      " <State> 2 <PdfClass> 2\n"
-      " <Transition> 2 0.5\n"
-      " <Transition> 3 0.5\n"
-      " </State>   \n"
-      " <State> 3 </State>\n"
-      " </TopologyEntry>\n"
-      " </Topology>\n";
+  topo_string <<
+      "</ForPhones>\n"
+      "0  1  1  0.0\n"
+      "1  1  1  0.693\n"
+      "1  2  2  0.693\n"
+      "2  2  2  0.693\n"
+      "2  3  3  0.693\n"
+      "3  3  3  0.693\n"
+      "3  0.693\n\n"
+      "</TopologyEntry>\n"
+      "</Topology>\n";
 
-  HmmTopology topo;
+  Topology topo;
   std::istringstream iss(topo_string.str());
   topo.Read(iss, false);
   return topo;
@@ -84,7 +79,7 @@ HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
 }
 
 
-HmmTopology GenRandTopology(const std::vector<int32> &phones_in,
+Topology GenRandTopology(const std::vector<int32> &phones_in,
                             const std::vector<int32> &num_pdf_classes) {
   std::vector<int32> phones(phones_in);
   std::sort(phones.begin(), phones.end());
@@ -112,7 +107,7 @@ HmmTopology GenRandTopology(const std::vector<int32> &phones_in,
     const std::vector<int32> &phones = iter->second;
     for (size_t i = 0; i < phones.size(); i++)
       topo_string << phones[i] << " ";
-    topo_string << "</ForPhones> ";
+    topo_string << "</ForPhones>\n";
     bool ergodic = (RandInt(0, 1) == 0);
     if (ergodic) {
       // Note, this type of topology is not something we ever use in practice- it
@@ -120,7 +115,7 @@ HmmTopology GenRandTopology(const std::vector<int32> &phones_in,
       // supported so we're testing it.
       std::vector<int32> state_to_pdf_class;
       state_to_pdf_class.push_back(-1);  // state zero, nonemitting.
-      for (int32 i = 0; i < this_num_pdf_classes; i++) {
+      for (int32 i = 1; i <= this_num_pdf_classes; i++) {
         int32 num_states = RandInt(1, 2);
         for (int32 j = 0; j < num_states; j++)
           state_to_pdf_class.push_back(i);
@@ -128,50 +123,44 @@ HmmTopology GenRandTopology(const std::vector<int32> &phones_in,
       state_to_pdf_class.push_back(-1);  // final non-emitting state.
       { // state zero is nonemitting.  This is not something used in any current
         // example script.
-        topo_string << "<State> 0\n";
         BaseFloat prob = 1.0 / (state_to_pdf_class.size() - 2);
-        for (size_t i = 1; i + 1 < state_to_pdf_class.size(); i++) {
-          topo_string << "<Transition> " << i << ' ' << prob << '\n';
-        }
-        topo_string << "</State>\n";
+        for (size_t i = 1; i + 1 < state_to_pdf_class.size(); i++)
+          topo_string << "0 " << i << ' ' << state_to_pdf_class[i]
+                      << ' ' << -Log(prob) << '\n';
       }
       // ergodic part.
       for (size_t i = 1; i + 1 < state_to_pdf_class.size(); i++) {
         BaseFloat prob = 1.0 / (state_to_pdf_class.size() - 1);
-        topo_string << "<State> " << i << " <PdfClass> "
-                    << state_to_pdf_class[i] << '\n';
         for (size_t j = 1; j < state_to_pdf_class.size(); j++)
-          topo_string << "<Transition> " << j << ' ' << prob << '\n';
-        topo_string << "</State>\n";
+          topo_string << i << ' ' << j << ' '
+                      << state_to_pdf_class[i] << ' ' << -Log(prob) << '\n';
       }
       // final, nonemitting state.  No pdf-class, no transitions.
-      topo_string << "<State> " << (state_to_pdf_class.size() - 1) << " </State>\n";
+      topo_string << (state_to_pdf_class.size() - 1) << "\n\n";
     } else {
       // feedforward topology.
       int32 cur_state = 0;
-      for (int32 pdf_class = 0; pdf_class < this_num_pdf_classes; pdf_class++) {
+      for (int32 pdf_class = 1; pdf_class <= this_num_pdf_classes; pdf_class++) {
         int32 this_num_states = RandInt(1, 2);
         for (int32 s = 0; s < this_num_states; s++) {
-          topo_string << "<State> " << cur_state << " <PdfClass> " << pdf_class
-                      << "\n<Transition> " << cur_state << " 0.5\n<Transition> "
-                      << (cur_state + 1) << " 0.5\n</State>\n";
+          topo_string << cur_state << " " << (cur_state + 1) << " " << pdf_class << "\n";
           cur_state++;
         }
       }
       // final, non-emitting state.
-      topo_string << "<State> " << cur_state << " </State>\n";
+      topo_string << cur_state << "\n\n";
     }
     topo_string << "</TopologyEntry>\n";
   }
   topo_string << "</Topology>\n";
 
-  HmmTopology topo;
+  Topology topo;
   std::istringstream iss(topo_string.str());
   topo.Read(iss, false);
   return topo;
 }
 
-HmmTopology GenRandTopology() {
+Topology GenRandTopology() {
   std::vector<int32> phones;
   phones.push_back(1);
   for (int32 i = 2; i < 20; i++)
@@ -187,29 +176,29 @@ HmmTopology GenRandTopology() {
   }
 }
 
-void GeneratePathThroughHmm(const HmmTopology &topology,
+void GeneratePathThroughHmm(const Topology &topology,
                             bool reorder,
                             int32 phone,
                             std::vector<std::pair<int32, int32> > *path) {
   path->clear();
-  const HmmTopology::TopologyEntry &this_entry =
-      topology.TopologyForPhone(phone);
+  auto const &this_entry = topology.TopologyForPhone(phone); // an FST
   int32 cur_state = 0;  // start-state is always state zero.
-  int32 num_states = this_entry.size(), final_state = num_states - 1;
+  int32 num_states = this_entry.NumStates(), final_state = num_states - 1;
   KALDI_ASSERT(num_states > 1);  // there has to be a final nonemitting state
   // that's different from the start state.
   std::vector<std::pair<int32, int32> > pending_self_loops;
   while (cur_state != final_state) {
-    const HmmTopology::HmmState &cur_hmm_state = this_entry[cur_state];
-    int32 num_transitions = cur_hmm_state.transitions.size(),
-        transition_index = RandInt(0, num_transitions - 1);
-    if (cur_hmm_state.forward_pdf_class != -1) {
-      std::pair<int32, int32> pr(cur_state, transition_index);
+    int32 num_transitions = this_entry.NumArcs(cur_state),
+        arc_index = RandInt(0, num_transitions - 1);
+    fst::ArcIterator<fst::StdVectorFst> aiter(this_entry, cur_state);
+    aiter.Seek(arc_index);
+    auto const &arc(aiter.Value());
+    if (arc.ilabel != -1) {
+      std::pair<int32, int32> pr(cur_state, arc_index);
       if (!reorder) {
         path->push_back(pr);
       } else {
-        bool is_self_loop = (cur_state ==
-                             cur_hmm_state.transitions[transition_index].first);
+        bool is_self_loop = (cur_state == arc.nextstate);
         if (is_self_loop) { // save these up, we'll put them after the forward
                             // transition.
           pending_self_loops.push_back(pr);
@@ -223,14 +212,14 @@ void GeneratePathThroughHmm(const HmmTopology &topology,
         }
       }
     }
-    cur_state = cur_hmm_state.transitions[transition_index].first;
+    cur_state = arc.nextstate;
   }
   KALDI_ASSERT(pending_self_loops.empty());
 }
 
 
 void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
-                             const TransitionModel &trans_model,
+                             const Transitions &trans_model,
                              bool reorder,
                              const std::vector<int32> &phone_sequence,
                              std::vector<int32> *alignment) {
@@ -253,21 +242,26 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
     int32 phone = phone_sequence[i];
     GeneratePathThroughHmm(trans_model.GetTopo(), reorder, phone, &path);
     for (size_t k = 0; k < path.size(); k++) {
-      const HmmTopology::TopologyEntry &entry =
-          trans_model.GetTopo().TopologyForPhone(phone);
+      auto const &entry = trans_model.GetTopo().TopologyForPhone(phone);
       int32 hmm_state = path[k].first,
-          transition_index = path[k].second,
-          forward_pdf_class = entry[hmm_state].forward_pdf_class,
-          self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class,
+          arc_index = path[k].second,
           forward_pdf_id, self_loop_pdf_id;
+      fst::ArcIterator<fst::StdVectorFst> aiter(entry, hmm_state);
+      aiter.Seek(arc_index);
+      auto const &arc(aiter.Value());
+      int32 forward_pdf_class = arc.ilabel,
+          self_loop_pdf_class = -1;
+      for (fst::ArcIterator<fst::StdVectorFst> aiter_next(entry, arc.nextstate);
+           !aiter_next.Done(); aiter_next.Next())
+        if (aiter_next.Value().nextstate == arc.nextstate)
+          self_loop_pdf_class = aiter_next.Value().ilabel;
+
       bool ans = ctx_dep.Compute(context_window, forward_pdf_class, &forward_pdf_id);
       KALDI_ASSERT(ans && "context-dependency computation failed.");
       ans = ctx_dep.Compute(context_window, self_loop_pdf_class, &self_loop_pdf_id);
       KALDI_ASSERT(ans && "context-dependency computation failed.");
-      int32 transition_state = trans_model.TupleToTransitionState(
-                               phone, hmm_state, forward_pdf_id, self_loop_pdf_id),
-          transition_id = trans_model.PairToTransitionId(transition_state,
-                                                         transition_index);
+      int32 transition_id = trans_model.TupleToTransitionId(phone, hmm_state, arc_index,
+                                                            forward_pdf_id, self_loop_pdf_id);
       alignment->push_back(transition_id);
     }
   }

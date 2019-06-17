@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "gmm/mle-am-diag-gmm.h"
 
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
         accs_wxfilename = po.GetArg(4);
 
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary;
       Input ki(model_filename, &binary);

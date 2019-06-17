@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     kaldi::RandomAccessInt32VectorReader alignment_reader(ali_rspecifier);
     kaldi::CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
-    kaldi::TransitionModel trans;
+    kaldi::Transitions trans;
     {
       bool binary_in;
       kaldi::Input ki(model_rxfilename, &binary_in);

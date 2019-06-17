@@ -32,7 +32,6 @@
 #include "base/kaldi-error.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-mfcc.h"
-#include "feat/feature-plp.h"
 #include "feat/feature-fbank.h"
 #include "itf/online-feature-itf.h"
 
@@ -72,7 +71,7 @@ private:
 
 
 /// This is a templated class for online feature extraction;
-/// it's templated on a class like MfccComputer or PlpComputer
+/// it's templated on a class like MfccComputer
 /// that does the basic feature extraction.
 template<class C>
 class OnlineGenericBaseFeature: public OnlineBaseFeature {
@@ -126,15 +125,15 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
 
   void MaybeCreateResampler(BaseFloat sampling_rate);
 
-  C computer_;  // class that does the MFCC or PLP or filterbank computation
+  C computer_;  // class that does the MFCC or filterbank computation
 
   // resampler in cases when the input sampling frequency is not equal to
   // the expected sampling rate
   std::unique_ptr<LinearResample> resampler_;
 
-  FeatureWindowFunction window_function_;
+  Vector<BaseFloat> window_function_;
 
-  // features_ is the Mfcc or Plp or Fbank features that we have already computed.
+  // features_ is the Mfcc or Fbank features that we have already computed.
 
   RecyclingVector features_;
 
@@ -156,7 +155,6 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
 };
 
 typedef OnlineGenericBaseFeature<MfccComputer> OnlineMfcc;
-typedef OnlineGenericBaseFeature<PlpComputer> OnlinePlp;
 typedef OnlineGenericBaseFeature<FbankComputer> OnlineFbank;
 
 
@@ -597,7 +595,7 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
 
 
 /// This online-feature class implements combination of two feature
-/// streams (such as pitch, plp) into one stream.
+/// streams (such as pitch) into one stream.
 class OnlineAppendFeature: public OnlineFeatureInterface {
  public:
   virtual int32 Dim() const { return src1_->Dim() + src2_->Dim(); }

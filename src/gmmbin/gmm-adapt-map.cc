@@ -25,7 +25,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "gmm/mle-am-diag-gmm.h"
 #include "hmm/posterior.h"
 
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     MapAmDiagGmmWriter map_am_writer(map_am_wspecifier);
 
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary;
       Input is(model_filename, &binary);

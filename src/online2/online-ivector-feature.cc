@@ -448,7 +448,7 @@ BaseFloat OnlineIvectorFeature::ObjfImprPerFrame() const {
 
 
 OnlineSilenceWeighting::OnlineSilenceWeighting(
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const OnlineSilenceWeightingConfig &config,
     int32 frame_subsampling_factor):
     trans_model_(trans_model), config_(config),
@@ -627,7 +627,7 @@ void OnlineSilenceWeighting::GetDeltaWeights(
         // frame we have a traceback for (probably a reasonable guess).
         frame_weight[offset] = frame_weight[offset - 1];
       } else {
-        int32 phone = trans_model_.TransitionIdToPhone(transition_id);
+        int32 phone = trans_model_.InfoForTransitionId(transition_id).phone;
         bool is_silence = (silence_phones_.count(phone) != 0);
         if (is_silence)
           frame_weight[offset] = silence_weight;

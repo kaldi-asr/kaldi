@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     std::string model_in_filename = po.GetArg(1);
 
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary_read;
       Input ki(model_in_filename, &binary_read);

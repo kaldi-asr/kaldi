@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    TransitionModel tmodel;
+    Transitions tmodel;
     ReadKaldiObject(model_rxfilename, &tmodel);
     
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);

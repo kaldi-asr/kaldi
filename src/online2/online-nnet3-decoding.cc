@@ -28,7 +28,7 @@ namespace kaldi {
 template <typename FST>
 SingleUtteranceNnet3DecoderTpl<FST>::SingleUtteranceNnet3DecoderTpl(
     const LatticeFasterDecoderConfig &decoder_opts,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const nnet3::DecodableNnetSimpleLoopedInfo &info,
     const FST &fst,
     OnlineNnet2FeaturePipeline *features):

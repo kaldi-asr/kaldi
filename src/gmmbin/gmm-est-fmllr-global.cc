@@ -27,7 +27,7 @@ using std::vector;
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "transform/fmllr-diag-gmm.h"
 #include "hmm/posterior.h"
 

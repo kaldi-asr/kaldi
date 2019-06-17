@@ -32,7 +32,7 @@
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
 #include "chain/chain-datastruct.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-array.h"
@@ -149,7 +149,7 @@ void MinimizeAcceptorNoPush(fst::StdVectorFst *fst);
 // transition-ids to pdf-ids plus one.  Assumes 'fst'
 // is an acceptor, but does not check this (only looks at its
 // ilabels).
-void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
+void MapFstToPdfIdsPlusOne(const Transitions &trans_model,
                            fst::StdVectorFst *fst);
 
 // Starting from an acceptor on phones that represents some kind of compiled
@@ -157,7 +157,7 @@ void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
 // denominator-graph.  Note: there is similar code in chain-supervision.cc, when
 // creating the supervision graph.
 void CreateDenominatorFst(const ContextDependency &ctx_dep,
-                          const TransitionModel &trans_model,
+                          const Transitions &trans_model,
                           const fst::StdVectorFst &phone_lm,
                           fst::StdVectorFst *den_graph);
 

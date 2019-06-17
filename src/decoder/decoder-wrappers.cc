@@ -32,7 +32,7 @@ namespace kaldi {
 DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     LatticeFasterDecoder *decoder,
     DecodableInterface *decodable,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     BaseFloat acoustic_scale,
@@ -201,7 +201,7 @@ template <typename FST>
 bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -299,7 +299,7 @@ bool DecodeUtteranceLatticeFaster(
 template bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoderTpl<fst::Fst<fst::StdArc> > &decoder,
     DecodableInterface &decodable,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -314,7 +314,7 @@ template bool DecodeUtteranceLatticeFaster(
 template bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoderTpl<fst::GrammarFst> &decoder,
     DecodableInterface &decodable,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -331,7 +331,7 @@ template bool DecodeUtteranceLatticeFaster(
 bool DecodeUtteranceLatticeSimple(
     LatticeSimpleDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,

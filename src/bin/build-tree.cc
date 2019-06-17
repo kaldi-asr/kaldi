@@ -20,7 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/hmm-topology.h"
+#include "hmm/topology.h"
 #include "tree/context-dep.h"
 #include "tree/build-tree.h"
 #include "tree/build-tree-utils.h"
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
       ReadRootsFile(ki.Stream(), &phone_sets, &is_shared_root, &is_split_root);
     }
 
-    HmmTopology topo;
+    Topology topo;
     ReadKaldiObject(topo_filename, &topo);
 
     BuildTreeStatsType stats;

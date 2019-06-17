@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         wxfilename = po.GetArg(3);
 
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_rxfilename, &trans_model);
 
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);

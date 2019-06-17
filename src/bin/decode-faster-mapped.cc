@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
 #include "decoder/decodable-matrix.h"
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         words_wspecifier = po.GetArg(4),
         alignment_wspecifier = po.GetOptArg(5);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
     Int32VectorWriter words_writer(words_wspecifier);

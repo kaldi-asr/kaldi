@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-nnet.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "tree/context-dep.h"
 
 int main(int argc, char *argv[]) {

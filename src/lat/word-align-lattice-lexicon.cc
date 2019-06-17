@@ -21,7 +21,7 @@
 #include "lat/phone-align-lattice.h"
 #include "lat/word-align-lattice-lexicon.h"
 #include "lat/lattice-functions.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "util/stl-utils.h"
 
@@ -71,7 +71,7 @@ class LatticeLexiconWordAligner {
     /// previously did PhoneAlignLattice, we can assume this arc corresponds to
     /// exactly one or zero phones.
     void Advance(const CompactLatticeArc &arc,
-                 const TransitionModel &tmodel,
+                 const Transitions &tmodel,
                  LatticeWeight *leftover_weight);
 
     /// Returns true if, assuming we were to add one or more phones by calling
@@ -283,7 +283,7 @@ class LatticeLexiconWordAligner {
   }
 
   LatticeLexiconWordAligner(const CompactLattice &lat,
-                            const TransitionModel &tmodel,
+                            const Transitions &tmodel,
                             const WordAlignLatticeLexiconInfo &lexicon_info,
                             int32 max_states,
                             int32 partial_word_label,
@@ -343,7 +343,7 @@ class LatticeLexiconWordAligner {
   }
 
   CompactLattice lat_in_;
-  const TransitionModel &tmodel_;
+  const Transitions &tmodel_;
   const WordAlignLatticeLexiconInfo &lexicon_info_;
   int32 max_states_;
   CompactLattice *lat_out_;
@@ -571,14 +571,18 @@ void LatticeLexiconWordAligner::ProcessFinalForceOut() {
 }
 
 void LatticeLexiconWordAligner::ComputationState::Advance(
-    const CompactLatticeArc &arc, const TransitionModel &tmodel, LatticeWeight *weight) {
+    const CompactLatticeArc &arc, const Transitions &tmodel, LatticeWeight *weight) {
   const std::vector<int32> &tids = arc.weight.String();
   int32 phone;
   if (tids.empty()) phone = 0;
   else {
-    phone = tmodel.TransitionIdToPhone(tids.front());
-    KALDI_ASSERT(phone == tmodel.TransitionIdToPhone(tids.back()) &&
-                 "Error: lattice is not phone-aligned.");
+    const Transitions::TransitionIdInfo
+        &start_info = tmodel.InfoForTransitionId(tids.front()),
+        &end_info = tmodel.InfoForTransitionId(tids.back());
+    if (!start_info.is_initial || !end_info.is_final ||
+        start_info.phone != end_info.phone)
+      KALDI_ERR << "Error: lattice is not phone-aligned.";
+    phone = start_info.phone;
   }
   if (arc.ilabel != 0) { // note: arc.ilabel==arc.olabel (acceptor)
     words_.push_back(arc.ilabel);
@@ -743,7 +747,7 @@ bool LatticeLexiconWordAligner::ComputationState::TakeTransition(
 // has the same input-word and output-word.  The other case is complex
 // to test.
 static bool IsPlausibleWord(const WordAlignLatticeLexiconInfo &lexicon_info,
-                            const TransitionModel &tmodel,
+                            const Transitions &tmodel,
                             int32 word_id,
                             const std::vector<int32> &transition_ids) {
 
@@ -754,7 +758,7 @@ static bool IsPlausibleWord(const WordAlignLatticeLexiconInfo &lexicon_info,
   std::vector<int32> phones(split_alignment.size());
   for (size_t i = 0; i < split_alignment.size(); i++) {
     KALDI_ASSERT(!split_alignment[i].empty());
-    phones[i] = tmodel.TransitionIdToPhone(split_alignment[i][0]);
+    phones[i] = tmodel.InfoForTransitionId(split_alignment[i][0]).phone;
   }
   std::vector<int32> lexicon_entry;
   lexicon_entry.push_back(word_id);
@@ -925,7 +929,7 @@ static void MapSymbols(const WordAlignLatticeLexiconInfo &lexicon_info,
 }
 
 static bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_info,
-                                   const TransitionModel &tmodel,
+                                   const Transitions &tmodel,
                                    CompactLattice clat,
                                    CompactLattice aligned_clat,
                                    bool allow_duplicate_paths) {
@@ -999,7 +1003,7 @@ static bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_in
 
 // This is the wrapper function for users to call.
 bool WordAlignLatticeLexicon(const CompactLattice &lat,
-                             const TransitionModel &tmodel,
+                             const Transitions &tmodel,
                              const WordAlignLatticeLexiconInfo &lexicon_info,
                              const WordAlignLatticeLexiconOpts &opts,
                              CompactLattice *lat_out) {
@@ -1065,4 +1069,3 @@ bool ReadLexiconForWordAlign (std::istream &is,
 }
 
 }  // namespace kaldi
-

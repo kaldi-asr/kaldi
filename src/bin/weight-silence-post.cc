@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "hmm/posterior.h"
 
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
       KALDI_WARN <<"No silence phones, this will have no effect";
     ConstIntegerSet<int32> silence_set(silence_phones);  // faster lookup.
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_rxfilename, &trans_model);
 
     int32 num_posteriors = 0;

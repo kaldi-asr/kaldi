@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 int main(int argc, char *argv[]) {
   try {

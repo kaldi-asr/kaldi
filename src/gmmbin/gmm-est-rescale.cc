@@ -21,7 +21,7 @@
 #include "util/common-utils.h"
 #include "gmm/indirect-diff-diag-gmm.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
         model_wxfilename = po.GetArg(4);
 
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary_read;
       Input ki(model_rxfilename, &binary_read);

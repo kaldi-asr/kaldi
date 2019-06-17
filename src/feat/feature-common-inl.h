@@ -70,15 +70,12 @@ void OfflineFeatureTpl<F>::Compute(
   }
   output->Resize(rows_out, cols_out);
   Vector<BaseFloat> window;  // windowed waveform.
-  bool use_raw_log_energy = computer_.NeedRawLogEnergy();
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
-    BaseFloat raw_log_energy = 0.0;
     ExtractWindow(0, wave, r, computer_.GetFrameOptions(),
-                  feature_window_function_, &window,
-                  (use_raw_log_energy ? &raw_log_energy : NULL));
+                  feature_window_function_, &window);
 
     SubVector<BaseFloat> output_row(*output, r);
-    computer_.Compute(raw_log_energy, vtln_warp, &window, &output_row);
+    computer_.Compute(vtln_warp, &window, &output_row);
   }
 }
 

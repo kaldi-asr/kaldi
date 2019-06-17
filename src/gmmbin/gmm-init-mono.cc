@@ -21,8 +21,8 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/hmm-topology.h"
-#include "hmm/transition-model.h"
+#include "hmm/topology.h"
+#include "hmm/transitions.h"
 #include "tree/context-dep.h"
 
 namespace kaldi {
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
       glob_mean.CopyFromVec(mean_stats);
     }
 
-    HmmTopology topo;
+    Topology topo;
     bool binary_in;
     Input ki(topo_filename, &binary_in);
     topo.Read(ki.Stream(), binary_in);
@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Now the transition model:
-    TransitionModel trans_model(*ctx_dep, topo);
+    Transitions trans_model(*ctx_dep, topo);
 
     {
       Output ko(model_filename, binary);

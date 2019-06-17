@@ -33,6 +33,15 @@
 
 namespace kaldi {
 
+template<typename Real> inline const Real* Get64Ones() {
+  // The C++ standard doesn't seem to provide a compact way to do this.
+  static const Real ones[64] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+  return ones;
+}
+
 template<typename Real>
 Real VecVec(const VectorBase<Real> &a,
             const VectorBase<Real> &b) {
@@ -139,12 +148,12 @@ void VectorBase<Real>::AddMatSvec(const Real alpha,
 
 template<typename Real>
 void VectorBase<Real>::AddSpVec(const Real alpha,
-                                 const SpMatrix<Real> &M,
-                                 const VectorBase<Real> &v,
-                                 const Real beta) {
+                                const SpMatrix<Real> &M,
+                                const VectorBase<Real> &v,
+                                const Real beta) {
   KALDI_ASSERT(M.NumRows() == v.dim_ && dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_Xspmv(alpha, M.NumRows(), M.Data(), v.Data(), 1, beta, data_, 1);
+  cblas_Xspmv(M.NumRows(), alpha, M.Data(), v.Data(), 1, beta, data_, 1);
 }
 
 
@@ -152,7 +161,7 @@ template<typename Real>
 void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,
                               const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_Xtpmv(trans,M.Data(),M.NumRows(),data_,1);
+  cblas_Xtpmv(trans, M.Data(), M.NumRows(), data_, 1);
 }
 
 template<typename Real>
@@ -718,41 +727,40 @@ Real VectorBase<Real>::SumLog() const {
 template<typename Real>
 void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
   KALDI_ASSERT(dim_ == M.NumCols());
-  MatrixIndexT num_rows = M.NumRows(), stride = M.Stride(), dim = dim_;
-  Real *data = data_;
+  // the BLAS standard does not support vectors with stride zero, even though
+  // some implementations (such as Mac's accelerate framework and I believe
+  // CUBLAS) seem to allow it.  We compile a fixed-size (64) vector of ones
+  // into the program.
+  const Real *ones = Get64Ones<Real>();
 
-  // implement the function according to a dimension cutoff for computation efficiency
-  if (num_rows <= 64) {
-    cblas_Xscal(dim, beta, data, 1);
-    const Real *m_data = M.Data();
-    for (MatrixIndexT i = 0; i < num_rows; i++, m_data += stride)
-      cblas_Xaxpy(dim, alpha, m_data, 1, data, 1);
-
-  } else {
-    Vector<Real> ones(M.NumRows());
-    ones.Set(1.0);
-    this->AddMatVec(alpha, M, kTrans, ones, beta);
+  MatrixIndexT num_rows = M.NumRows();
+  for (MatrixIndexT row_offset = 0; row_offset < num_rows; row_offset += 64) {
+    MatrixIndexT this_num_rows =
+        std::min<MatrixIndexT>(64, num_rows - row_offset);
+    cblas_Xgemv(kTrans, this_num_rows, M.NumCols(), alpha,
+                M.RowData(row_offset), M.Stride(), ones, 1,
+                beta, data_, 1);
+    beta = 1.0;
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
   KALDI_ASSERT(dim_ == M.NumRows());
+  // the BLAS standard does not support vectors with stride zero, even though
+  // some implementations (such as Mac's accelerate framework and I believe
+  // CUBLAS) seem to allow it.  We compile a fixed-size (64) vector of ones
+  // into the program.
+  const Real *ones = Get64Ones<Real>();
   MatrixIndexT num_cols = M.NumCols();
-
-  // implement the function according to a dimension cutoff for computation efficiency
-  if (num_cols <= 64) {
-    for (MatrixIndexT i = 0; i < dim_; i++) {
-      double sum = 0.0;
-      const Real *src = M.RowData(i);
-      for (MatrixIndexT j = 0; j < num_cols; j++)
-        sum += src[j];
-      data_[i] = alpha * sum + beta * data_[i];
-    }
-  } else {
-    Vector<Real> ones(M.NumCols());
-    ones.Set(1.0);
-    this->AddMatVec(alpha, M, kNoTrans, ones, beta);
+  for (MatrixIndexT col_offset = 0; col_offset < num_cols; col_offset += 64) {
+    MatrixIndexT this_num_cols =
+        std::min<MatrixIndexT>(64, num_cols - col_offset);
+    cblas_Xgemv(kNoTrans, M.NumRows(), this_num_cols, alpha,
+                M.Data() + col_offset, M.Stride(),
+                ones, 1,
+                beta, data_, 1);
+    beta = 1.0;
   }
 }
 
@@ -794,7 +802,7 @@ void VectorBase<Real>::ApplyLog() {
 }
 
 template<typename Real>
-void VectorBase<Real>::ApplyLogAndCopy(const VectorBase<Real> &v) {
+void VectorBase<Real>::ApplyLog(const VectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.Dim());
   for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] = Log(v(i));

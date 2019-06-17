@@ -1,7 +1,7 @@
 // feat/feature-mfcc.h
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek;  Saarland University
-//           2014-2016  Johns Hopkins University (author: Daniel Povey)
+//           2014-2019  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -39,25 +39,14 @@ struct MfccOptions {
   FrameExtractionOptions frame_opts;
   MelBanksOptions mel_opts;
   int32 num_ceps;  // e.g. 13: num cepstral coeffs, counting zero.
-  bool use_energy;  // use energy; else C0
-  BaseFloat energy_floor;  // 0 by default; set to a value like 1.0 or 0.1 if
-                           // you disable dithering.
-  bool raw_energy;  // If true, compute energy before preemphasis and windowing
-  BaseFloat cepstral_lifter;  // Scaling factor on cepstra for HTK compatibility.
-                              // if 0.0, no liftering is done.
-  bool htk_compat;  // if true, put energy/C0 last and introduce a factor of
-                    // sqrt(2) on C0 to be the same as HTK.
+  bool use_energy;  // if true, use energy; else C0
+  BaseFloat energy_floor;
 
   MfccOptions() : mel_opts(23),
-                  // defaults the #mel-banks to 23 for the MFCC computations.
-                  // this seems to be common for 16khz-sampled data,
-                  // but for 8khz-sampled data, 15 may be better.
                   num_ceps(13),
                   use_energy(true),
-                  energy_floor(0.0),
-                  raw_energy(true),
-                  cepstral_lifter(22.0),
-                  htk_compat(false) {}
+                  energy_floor(1.0e-10) { }
+
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
@@ -67,17 +56,8 @@ struct MfccOptions {
     opts->Register("use-energy", &use_energy,
                    "Use energy (not C0) in MFCC computation");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in MFCC computation. "
-                   "Only makes a difference if --use-energy=true; only necessary if "
-                   "--dither=0.0.  Suggested values: 0.1 or 1.0");
-    opts->Register("raw-energy", &raw_energy,
-                   "If true, compute energy before preemphasis and windowing");
-    opts->Register("cepstral-lifter", &cepstral_lifter,
-                   "Constant that controls scaling of MFCCs");
-    opts->Register("htk-compat", &htk_compat,
-                   "If true, put energy or C0 last and use a factor of sqrt(2) on "
-                   "C0.  Warning: not sufficient to get HTK compatible features "
-                   "(need to change other parameters).");
+                   "Floor on energy (absolute, not relative) of mel bins etc. "
+                   "in MFCC computation. ");
   }
 };
 
@@ -96,17 +76,10 @@ class MfccComputer {
 
   int32 Dim() const { return opts_.num_ceps; }
 
-  bool NeedRawLogEnergy() { return opts_.use_energy && opts_.raw_energy; }
-
   /**
      Function that computes one frame of features from
      one frame of signal.
 
-     @param [in] signal_raw_log_energy The log-energy of the frame of the signal
-         prior to windowing and pre-emphasis, or
-         log(numeric_limits<float>::min()), whichever is greater.  Must be
-         ignored by this function if this class returns false from
-         this->NeedsRawLogEnergy().
      @param [in] vtln_warp  The VTLN warping factor that the user wants
          to be applied when computing features for this utterance.  Will
          normally be 1.0, meaning no warping is to be done.  The value will
@@ -119,8 +92,7 @@ class MfccComputer {
      @param [out] feature  Pointer to a vector of size this->Dim(), to which
          the computed feature will be written.
   */
-  void Compute(BaseFloat signal_log_energy,
-               BaseFloat vtln_warp,
+  void Compute(BaseFloat vtln_warp,
                VectorBase<BaseFloat> *signal_frame,
                VectorBase<BaseFloat> *feature);
 
@@ -135,7 +107,6 @@ class MfccComputer {
   MfccOptions opts_;
   Vector<BaseFloat> lifter_coeffs_;
   Matrix<BaseFloat> dct_matrix_;  // matrix we left-multiply by to perform DCT.
-  BaseFloat log_energy_floor_;
   std::map<BaseFloat, MelBanks*> mel_banks_;  // BaseFloat is VTLN coefficient.
   SplitRadixRealFft<BaseFloat> *srfft_;
 

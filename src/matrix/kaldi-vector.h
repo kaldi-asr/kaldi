@@ -126,7 +126,7 @@ class VectorBase {
   void ApplyLog();
 
   /// Apply natural log to another vector and put result in *this.
-  void ApplyLogAndCopy(const VectorBase<Real> &v);
+  void ApplyLog(const VectorBase<Real> &v);
 
   /// Apply exponential to each value in vector.
   void ApplyExp();

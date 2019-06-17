@@ -65,7 +65,7 @@ struct _GstOnlineGmmDecodeFaster {
 
   OnlineFasterDecoder *decoder_;
   Matrix<BaseFloat> *lda_transform_;
-  TransitionModel *trans_model_;
+  Transitions *trans_model_;
   AmDiagGmm *am_gmm_;
   fst::Fst<fst::StdArc> *decode_fst_;
   fst::SymbolTable *word_syms_;

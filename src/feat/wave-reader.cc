@@ -308,7 +308,11 @@ void WaveData::Read(std::istream &is) {
 
   uint16 *data_ptr = reinterpret_cast<uint16*>(&buffer[0]);
 
-  // The matrix is arranged row per channel, column per sample.
+  // Scale the wave data to the range [-1, 1].  Prior to kaldi-10,
+  // it was in the range [-327680.0, 32768.0].
+  const BaseFloat scale = 1.0 / 32768.0;
+
+  // The row-indexes are channels; column-indexes are samples.
   data_.Resize(header.NumChannels(),
                buffer.size() / header.BlockAlign());
   for (uint32 i = 0; i < data_.NumCols(); ++i) {
@@ -316,7 +320,7 @@ void WaveData::Read(std::istream &is) {
       int16 k = *data_ptr++;
       if (header.ReverseBytes())
         KALDI_SWAP2(k);
-      data_(j, i) =  k;
+      data_(j, i) =  k * scale;
     }
   }
 }
@@ -358,9 +362,13 @@ void WaveData::Write(std::ostream &os) const {
   int32 stride = data_.Stride();
 
   int num_clipped = 0;
+
+  // This scaling factor is because we are writing 16-bit data.
+  const BaseFloat scale = 32768.0;
+
   for (int32 i = 0; i < num_samp; i++) {
     for (int32 j = 0; j < num_chan; j++) {
-      int32 elem = static_cast<int32>(trunc(data_ptr[j * stride + i]));
+      int32 elem = static_cast<int32>(trunc(data_ptr[j * stride + i] * scale));
       int16 elem_16 = static_cast<int16>(elem);
       if (elem < std::numeric_limits<int16>::min()) {
         elem_16 = std::numeric_limits<int16>::min();

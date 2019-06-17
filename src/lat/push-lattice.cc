@@ -22,7 +22,7 @@
 
 
 #include "lat/push-lattice.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "util/stl-utils.h"
 
 namespace fst {

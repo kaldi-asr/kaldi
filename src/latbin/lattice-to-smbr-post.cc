@@ -24,7 +24,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     }
     RandomAccessInt32VectorReader alignments_reader(alignments_rspecifier);
     
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary;
       Input ki(model_filename, &binary);

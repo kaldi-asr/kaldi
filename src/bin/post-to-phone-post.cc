@@ -20,7 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     kaldi::SequentialPosteriorReader posterior_reader(post_rspecifier);
     kaldi::PosteriorWriter posterior_writer(phone_post_wspecifier);
 
-    TransitionModel trans_model;    
+    Transitions trans_model;    
     {
       bool binary_in;
       Input ki(model_rxfilename, &binary_in);

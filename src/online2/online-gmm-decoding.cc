@@ -75,7 +75,7 @@ void SingleUtteranceGmmDecoder::AdvanceDecoding() {
   // from constructing it each time we want to decode more of the
   // input.
   DecodableDiagGmmScaledOnline decodable(am_gmm,
-                                         models_.GetTransitionModel(),
+                                         models_.GetTransitions(),
                                          config_.acoustic_scale,
                                          feature_pipeline_);
 
@@ -169,7 +169,7 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
                 << " frames.";
 
   ConstIntegerSet<int32> silence_set(silence_phones_);  // faster lookup
-  const TransitionModel &trans_model = models_.GetTransitionModel();
+  const Transitions &trans_model = models_.GetTransitionModel();
   WeightSilencePost(trans_model, silence_set,
                     config_.silence_weight, &post);  
   
@@ -309,7 +309,7 @@ SingleUtteranceGmmDecoder::~SingleUtteranceGmmDecoder() {
 
 bool SingleUtteranceGmmDecoder::EndpointDetected(
     const OnlineEndpointConfig &config) {
-  const TransitionModel &tmodel = models_.GetTransitionModel();
+  const Transitions &tmodel = models_.GetTransitionModel();
   return kaldi::EndpointDetected(config, tmodel,
                                  feature_pipeline_->FrameShiftInSeconds(),
                                  decoder_);
@@ -323,7 +323,7 @@ void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,
   decoder_.GetRawLattice(&lat, end_of_utterance);
   if (rescore_if_needed && RescoringIsNeeded()) {
     DecodableDiagGmmScaledOnline decodable(models_.GetFinalModel(),
-                                           models_.GetTransitionModel(),
+                                           models_.GetTransitions(),
                                            config_.acoustic_scale,
                                            feature_pipeline_);
 
@@ -332,7 +332,7 @@ void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,
   }
   PruneLattice(lat_beam, &lat);
 
-  DeterminizeLatticePhonePrunedWrapper(models_.GetTransitionModel(),
+  DeterminizeLatticePhonePrunedWrapper(models_.GetTransitions(),
                                        &lat, lat_beam, clat,
                                        config_.faster_decoder_opts.det_opts);
   
@@ -358,7 +358,7 @@ OnlineGmmDecodingModels::OnlineGmmDecodingModels(
   if (!config.online_alimdl_rxfilename.empty()) {
     bool binary;
     Input ki(config.online_alimdl_rxfilename, &binary);
-    TransitionModel tmodel;
+    Transitions tmodel;
     tmodel.Read(ki.Stream(), binary);
     if (!tmodel.Compatible(tmodel_))
       KALDI_ERR << "Incompatible models given to the --model and "
@@ -369,7 +369,7 @@ OnlineGmmDecodingModels::OnlineGmmDecodingModels(
   if (!config.rescore_model_rxfilename.empty()) {
     bool binary;
     Input ki(config.rescore_model_rxfilename, &binary);
-    TransitionModel tmodel;
+    Transitions tmodel;
     tmodel.Read(ki.Stream(), binary);
     if (!tmodel.Compatible(tmodel_))
       KALDI_ERR << "Incompatible models given to the --model and "
@@ -386,7 +386,7 @@ OnlineGmmDecodingModels::OnlineGmmDecodingModels(
 }
 
 
-const TransitionModel &OnlineGmmDecodingModels::GetTransitionModel() const {
+const Transitions &OnlineGmmDecodingModels::GetTransitionModel() const {
   return tmodel_;
 }
 

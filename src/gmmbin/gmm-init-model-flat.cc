@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "gmm/mle-am-diag-gmm.h"
 #include "tree/build-tree-utils.h"
 #include "tree/context-dep.h"
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;
     ReadKaldiObject(tree_filename, &ctx_dep);
 
-    HmmTopology topo; 
+    Topology topo; 
     ReadKaldiObject(topo_filename, &topo);
 
     Vector<BaseFloat> global_inverse_var, global_mean;
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_pdfs; i++)
       am_gmm.AddPdf(gmm);
     
-    TransitionModel trans_model(ctx_dep, topo);
+    Transitions trans_model(ctx_dep, topo);
 
     {
       Output ko(model_out_filename, binary);

@@ -1024,7 +1024,8 @@ EventMap *GetStubMap(int32 P,
         }
       }
       std::map<EventValueType, EventAnswerType> m;
-      for (EventAnswerType p = 0; p < max_len; p++)
+      // Note: pdf-classes are 1-based.
+      for (EventAnswerType p = 1; p <= max_len; p++)
         m[p] = (*num_leaves_out)++;
       return new TableEventMap(kPdfClass,  // split on hmm-position
                                m);

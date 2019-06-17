@@ -23,7 +23,7 @@
 #include <cctype>  // For isspace.
 #include <limits>
 #include "base/kaldi-common.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "tree/clusterable-classes.h"
 #include "tree/build-tree-questions.h" // needed for this typedef:
 // typedef std::vector<std::pair<EventVector, Clusterable*> > BuildTreeStatsType;
@@ -74,7 +74,7 @@ struct AccumulateTreeStatsInfo {
 /// "normal" way).  It adds to 'stats' the stats obtained from this file.  Any
 /// new GaussClusterable* pointers in "stats" will be allocated with "new".
 
-void AccumulateTreeStats(const TransitionModel &trans_model,
+void AccumulateTreeStats(const Transitions &trans_model,
                          const AccumulateTreeStatsInfo &info,
                          const std::vector<int32> &alignment,
                          const Matrix<BaseFloat> &features,

@@ -21,7 +21,7 @@
 #define KALDI_DECODER_TRAINING_GRAPH_COMPILER_H_
 
 #include "base/kaldi-common.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fst/fstlib.h"
 #include "fstext/fstext-lib.h"
 #include "tree/context-dep.h"
@@ -58,7 +58,7 @@ struct TrainingGraphCompilerOptions {
 
 class TrainingGraphCompiler {
  public:
-  TrainingGraphCompiler(const TransitionModel &trans_model,  // Maintains reference to this object.
+  TrainingGraphCompiler(const Transitions &trans_model,  // Maintains reference to this object.
                         const ContextDependency &ctx_dep,  // And this.
                         fst::VectorFst<fst::StdArc> *lex_fst,  // Takes ownership of this object.
                         // It should not contain disambiguation symbols or subsequential symbol,
@@ -93,7 +93,7 @@ class TrainingGraphCompiler {
 
   ~TrainingGraphCompiler() { delete lex_fst_; }
  private:
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
   const ContextDependency &ctx_dep_;
   fst::VectorFst<fst::StdArc> *lex_fst_; // lexicon FST (an input; we take
   // ownership as we need to modify it).

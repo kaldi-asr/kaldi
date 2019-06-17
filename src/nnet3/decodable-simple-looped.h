@@ -23,7 +23,7 @@
 #include <vector>
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "itf/decodable-itf.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-compute.h"
@@ -295,7 +295,7 @@ class DecodableAmNnetSimpleLooped: public DecodableInterface {
                         (in frames) with which the iVectors are estimated.
   */
   DecodableAmNnetSimpleLooped(const DecodableNnetSimpleLoopedInfo &info,
-                              const TransitionModel &trans_model,
+                              const Transitions &trans_model,
                               const MatrixBase<BaseFloat> &feats,
                               const VectorBase<BaseFloat> *ivector = NULL,
                               const MatrixBase<BaseFloat> *online_ivectors = NULL,
@@ -318,7 +318,7 @@ class DecodableAmNnetSimpleLooped: public DecodableInterface {
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetSimpleLooped);
   DecodableNnetSimpleLooped decodable_nnet_;
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
 };
 
 

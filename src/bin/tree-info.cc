@@ -20,7 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/hmm-topology.h"
+#include "hmm/topology.h"
 #include "tree/context-dep.h"
 
 int main(int argc, char *argv[]) {

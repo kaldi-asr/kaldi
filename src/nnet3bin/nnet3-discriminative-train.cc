@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         examples_rspecifier = po.GetArg(2),
         model_wxfilename = po.GetArg(3);
 
-    TransitionModel tmodel;
+    Transitions tmodel;
     AmNnetSimple am_nnet;
 
     bool binary;

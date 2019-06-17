@@ -8,7 +8,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet3-init nnet3-info nnet3-get-egs nnet3-copy-egs nnet3-subset-egs \
    nnet3-shuffle-egs nnet3-acc-lda-stats nnet3-merge-egs \
-   nnet3-compute-from-egs nnet3-train nnet3-am-init nnet3-am-train-transitions \
+   nnet3-compute-from-egs nnet3-train nnet3-am-init \
    nnet3-am-adjust-priors nnet3-am-copy nnet3-compute-prob \
    nnet3-average nnet3-am-info nnet3-combine nnet3-latgen-faster \
    nnet3-latgen-faster-parallel nnet3-show-progress nnet3-align-compiled \
@@ -33,6 +33,6 @@ ADDLIBS = ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

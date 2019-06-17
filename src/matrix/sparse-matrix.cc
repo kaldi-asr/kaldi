@@ -29,7 +29,7 @@
 namespace kaldi {
 
 template <typename Real>
-std::pair<MatrixIndexT, Real>* SparseVector<Real>::Data() {
+std::pair<int32, Real>* SparseVector<Real>::Data() {
   if (pairs_.empty())
     return NULL;
   else
@@ -37,7 +37,7 @@ std::pair<MatrixIndexT, Real>* SparseVector<Real>::Data() {
 }
 
 template <typename Real>
-const std::pair<MatrixIndexT, Real>* SparseVector<Real>::Data() const {
+const std::pair<int32, Real>* SparseVector<Real>::Data() const {
   if (pairs_.empty())
     return NULL;
   else
@@ -65,7 +65,7 @@ void SparseVector<Real>::CopyElementsToVec(VectorBase<OtherReal> *vec) const {
   KALDI_ASSERT(vec->Dim() == this->dim_);
   vec->SetZero();
   OtherReal *other_data = vec->Data();
-  typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
+  typename std::vector<std::pair<int32, Real> >::const_iterator
       iter = pairs_.begin(), end = pairs_.end();
   for (; iter != end; ++iter)
     other_data[iter->first] = iter->second;
@@ -85,7 +85,7 @@ void SparseVector<Real>::AddToVec(Real alpha,
                                   VectorBase<OtherReal> *vec) const {
   KALDI_ASSERT(vec->Dim() == dim_);
   OtherReal *other_data = vec->Data();
-  typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
+  typename std::vector<std::pair<int32, Real> >::const_iterator
       iter = pairs_.begin(), end = pairs_.end();
   if (alpha == 1.0) {  // treat alpha==1.0 case specially.
     for (; iter != end; ++iter)
@@ -147,10 +147,11 @@ template <typename Real>
 void SparseVector<Real>::Write(std::ostream &os, bool binary) const {
   if (binary) {
     WriteToken(os, binary, "SV");
-    WriteBasicType(os, binary, dim_);
-    MatrixIndexT num_elems = pairs_.size();
+    int32 dim = dim_;
+    WriteBasicType(os, binary, dim);
+    int32 num_elems = pairs_.size();
     WriteBasicType(os, binary, num_elems);
-    typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
+    typename std::vector<std::pair<int32, Real> >::const_iterator
         iter = pairs_.begin(), end = pairs_.end();
     for (; iter != end; ++iter) {
       WriteBasicType(os, binary, iter->first);
@@ -160,7 +161,7 @@ void SparseVector<Real>::Write(std::ostream &os, bool binary) const {
     // In text-mode, use a human-friendly, script-friendly format;
     // format is "dim=5 [ 0 0.2 3 0.9 ] "
     os << "dim=" << dim_ << " [ ";
-    typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
+    typename std::vector<std::pair<int32, Real> >::const_iterator
         iter = pairs_.begin(), end = pairs_.end();
     for (; iter != end; ++iter)
       os << iter->first << ' ' << iter->second << ' ';
@@ -173,13 +174,14 @@ template <typename Real>
 void SparseVector<Real>::Read(std::istream &is, bool binary) {
   if (binary) {
     ExpectToken(is, binary, "SV");
-    ReadBasicType(is, binary, &dim_);
-    KALDI_ASSERT(dim_ >= 0);
-    int32 num_elems;
+    int32 dim, num_elems;
+    ReadBasicType(is, binary, &dim);
+    KALDI_ASSERT(dim >= 0);
+    dim_ = dim;
     ReadBasicType(is, binary, &num_elems);
     KALDI_ASSERT(num_elems >= 0 && num_elems <= dim_);
     pairs_.resize(num_elems);
-    typename std::vector<std::pair<MatrixIndexT, Real> >::iterator
+    typename std::vector<std::pair<int32, Real> >::iterator
         iter = pairs_.begin(), end = pairs_.end();
     for (; iter != end; ++iter) {
       ReadBasicType(is, binary, &(iter->first));
@@ -217,7 +219,7 @@ void SparseVector<Real>::Read(std::istream &is, bool binary) {
         KALDI_ERR << "Error reading sparse vector, expecting numbers.";
       KALDI_ASSERT(i >= 0 && i < dim
                    && (pairs_.empty() || i > pairs_.back().first));
-      pairs_.push_back(std::pair<MatrixIndexT, BaseFloat>(i, p));
+      pairs_.push_back(std::pair<int32, BaseFloat>(i, p));
     }
   }
 }
@@ -226,8 +228,8 @@ void SparseVector<Real>::Read(std::istream &is, bool binary) {
 namespace sparse_vector_utils {
 template <typename Real>
 struct CompareFirst {
-  inline bool operator() (const std::pair<MatrixIndexT, Real> &p1,
-                           const std::pair<MatrixIndexT, Real> &p2) const {
+  inline bool operator() (const std::pair<int32, Real> &p1,
+                           const std::pair<int32, Real> &p2) const {
     return p1.first < p2.first;
   }
 };
@@ -235,12 +237,12 @@ struct CompareFirst {
 
 template <typename Real>
 SparseVector<Real>::SparseVector(
-    MatrixIndexT dim, const std::vector<std::pair<MatrixIndexT, Real> > &pairs):
+    MatrixIndexT dim, const std::vector<std::pair<int32, Real> > &pairs):
     dim_(dim),
     pairs_(pairs) {
   std::sort(pairs_.begin(), pairs_.end(),
             sparse_vector_utils::CompareFirst<Real>());
-  typename std::vector<std::pair<MatrixIndexT, Real> >::iterator
+  typename std::vector<std::pair<int32, Real> >::iterator
       out = pairs_.begin(), in = out,  end = pairs_.end();
   // special case: while there is nothing to be changed, skip over
   // initial input (avoids unnecessary copying).
@@ -273,7 +275,7 @@ void SparseVector<Real>::SetRandn(BaseFloat zero_prob) {
   KALDI_ASSERT(zero_prob >= 0 && zero_prob <= 1.0);
   for (MatrixIndexT i = 0; i < dim_; i++)
     if (WithProb(1.0 - zero_prob))
-      pairs_.push_back(std::pair<MatrixIndexT, Real>(i, RandGauss()));
+      pairs_.push_back(std::pair<int32, Real>(i, RandGauss()));
 }
 
 template <typename Real>
@@ -339,7 +341,7 @@ template<typename Real>
 Real SparseMatrix<Real>::FrobeniusNorm() const {
   Real squared_sum = 0;
   for (int32 i = 0; i < rows_.size(); ++i) {
-    const std::pair<MatrixIndexT, Real> *row_data = rows_[i].Data();
+    const std::pair<int32, Real> *row_data = rows_[i].Data();
     for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
       squared_sum += row_data[j].second * row_data[j].second;
     }
@@ -367,7 +369,7 @@ void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,
     for (MatrixIndexT row = 0; row < num_rows; row++, other_col_data++) {
       const SparseVector<Real> &svec = rows_[row];
       MatrixIndexT num_elems = svec.NumElements();
-      const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
+      const std::pair<int32, Real> *sdata = svec.Data();
       for (MatrixIndexT e = 0; e < num_elems; e++)
         other_col_data[sdata[e].first * other_stride] = sdata[e].second;
     }
@@ -413,7 +415,7 @@ void SparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &other,
       rows_[r].CopyFromSvec(other.Row(r));
     }
   } else {
-    std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pairs(
+    std::vector<std::vector<std::pair<int32, Real> > > pairs(
         other.NumCols());
     for (MatrixIndexT i = 0; i < other.NumRows(); ++i) {
       for (int id = 0; id < other.Row(i).NumElements(); ++id) {
@@ -511,7 +513,7 @@ void SparseMatrix<Real>::AddToMat(BaseFloat alpha,
     for (MatrixIndexT row = 0; row < num_rows; row++, other_col_data++) {
       const SparseVector<Real> &svec = rows_[row];
       MatrixIndexT num_elems = svec.NumElements();
-      const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
+      const std::pair<int32, Real> *sdata = svec.Data();
       for (MatrixIndexT e = 0; e < num_elems; e++)
         other_col_data[sdata[e].first * other_stride] +=
             alpha * sdata[e].second;
@@ -524,7 +526,7 @@ Real VecSvec(const VectorBase<Real> &vec,
              const SparseVector<Real> &svec) {
   KALDI_ASSERT(vec.Dim() == svec.Dim());
   MatrixIndexT n = svec.NumElements();
-  const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
+  const std::pair<int32, Real> *sdata = svec.Data();
   const Real *data = vec.Data();
   Real ans = 0.0;
   for (MatrixIndexT i = 0; i < n; i++)
@@ -546,7 +548,7 @@ const SparseVector<Real> &SparseMatrix<Real>::Row(MatrixIndexT r) const {
 }
 
 template <typename Real>
-void SparseMatrix<Real>::SetRow(int32 r, const SparseVector<Real> &vec) {
+void SparseMatrix<Real>::SetRow(MatrixIndexT r, const SparseVector<Real> &vec) {
   KALDI_ASSERT(static_cast<size_t>(r) < rows_.size() &&
                vec.Dim() == rows_[0].Dim());
   rows_[r] = vec;
@@ -566,7 +568,7 @@ template<typename Real>
 SparseMatrix<Real>::SparseMatrix(const std::vector<int32> &indexes, int32 dim,
                                  MatrixTransposeType trans) {
   const std::vector<int32>& idx = indexes;
-  std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pair(idx.size());
+  std::vector<std::vector<std::pair<int32, Real> > > pair(idx.size());
   for (int i = 0; i < idx.size(); ++i) {
     if (idx[i] >= 0) {
       pair[i].push_back( { idx[i], Real(1) });
@@ -587,7 +589,7 @@ SparseMatrix<Real>::SparseMatrix(const std::vector<int32> &indexes,
                                  MatrixTransposeType trans) {
   const std::vector<int32>& idx = indexes;
   const VectorBase<Real>& w = weights;
-  std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pair(idx.size());
+  std::vector<std::vector<std::pair<int32, Real> > > pair(idx.size());
   for (int i = 0; i < idx.size(); ++i) {
     if (idx[i] >= 0) {
       pair[i].push_back( { idx[i], w(i) });
@@ -617,7 +619,7 @@ void SparseMatrix<Real>::Swap(SparseMatrix<Real> *other) {
 template<typename Real>
 SparseMatrix<Real>::SparseMatrix(
     MatrixIndexT dim,
-    const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs):
+    const std::vector<std::vector<std::pair<int32, Real> > > &pairs):
     rows_(pairs.size()) {
   MatrixIndexT num_rows = pairs.size();
   for (MatrixIndexT row = 0; row < num_rows; row++) {
@@ -719,7 +721,7 @@ Real TraceMatSmat(const MatrixBase<Real> &A,
       Real col_sum = 0.0;
       const SparseVector<Real> &svec = B.Row(i);
       MatrixIndexT num_elems = svec.NumElements();
-      const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
+      const std::pair<int32, Real> *sdata = svec.Data();
       for (MatrixIndexT e = 0; e < num_elems; e++)
         col_sum += A_col_data[Astride * sdata[e].first] * sdata[e].second;
       sum += col_sum;
@@ -1164,11 +1166,11 @@ void GeneralMatrix::AddToMat(BaseFloat alpha, MatrixBase<BaseFloat> *mat,
 }
 
 template <class Real>
-Real SparseVector<Real>::Max(int32 *index_out) const {
+Real SparseVector<Real>::Max(MatrixIndexT *index_out) const {
   KALDI_ASSERT(dim_ > 0 && pairs_.size() <= static_cast<size_t>(dim_));
   Real ans = -std::numeric_limits<Real>::infinity();
   int32 index = 0;
-  typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
+  typename std::vector<std::pair<int32, Real> >::const_iterator
       iter = pairs_.begin(), end = pairs_.end();
   for (; iter != end; ++iter) {
     if (iter->second > ans) {
@@ -1219,7 +1221,7 @@ SparseVector<Real>::SparseVector(const VectorBase<Real> &vec) {
   for (MatrixIndexT i = 0; i < dim; i++) {
     Real val = ptr[i];
     if (val != 0.0)
-      pairs_.push_back(std::pair<MatrixIndexT,Real>(i,val));
+      pairs_.push_back(std::pair<int32,Real>(i,val));
   }
 }
 

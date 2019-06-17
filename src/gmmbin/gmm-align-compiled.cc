@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
         alignment_wspecifier = po.GetArg(4),
         scores_wspecifier = po.GetOptArg(5);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;

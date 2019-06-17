@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     AmNnetSimple am_nnet;
     if (use_priors) {
       bool binary;
-      TransitionModel trans_model;
+      Transitions trans_model;
       Input ki(nnet_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);

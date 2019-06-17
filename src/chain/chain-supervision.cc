@@ -229,7 +229,7 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
 
 bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   // the following call will do the range-check on 'ilabel'.
-  int32 phone = trans_model_.TransitionIdToPhone(ilabel);
+  int32 phone = trans_model_.InfoForTransitionId(ilabel).phone;
   KALDI_ASSERT(static_cast<size_t>(s) <= allowed_phones_.size());
   if (static_cast<size_t>(s) == allowed_phones_.size()) {
     // No arcs come from the final state.a
@@ -255,7 +255,7 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
 
 bool TrainingGraphToSupervisionE2e(
     const fst::StdVectorFst &training_graph,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     int32 num_frames,
     Supervision *supervision) {
   using fst::VectorFst;
@@ -292,7 +292,7 @@ bool TrainingGraphToSupervisionE2e(
 
 bool ProtoSupervisionToSupervision(
     const ContextDependencyInterface &ctx_dep,
-    const TransitionModel &trans_model,
+    const Transitions &trans_model,
     const ProtoSupervision &proto_supervision,
     bool convert_to_pdfs,
     Supervision *supervision) {
@@ -906,7 +906,7 @@ bool Supervision::operator == (const Supervision &other) const {
       label_dim == other.label_dim && fst::Equal(fst, other.fst);
 }
 
-void Supervision::Check(const TransitionModel &trans_mdl) const {
+void Supervision::Check(const Transitions &trans_mdl) const {
   if (weight <= 0.0)
     KALDI_ERR << "Weight should be positive.";
   if (frames_per_sequence <= 0)
@@ -970,7 +970,7 @@ void GetWeightsForRanges(int32 range_length,
 }
 
 bool ConvertSupervisionToUnconstrained(
-    const TransitionModel &trans_mdl,
+    const Transitions &trans_mdl,
     Supervision *supervision) {
   KALDI_ASSERT(supervision->label_dim == trans_mdl.NumTransitionIds() &&
                supervision->fst.NumStates() > 0 &&

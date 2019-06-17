@@ -26,7 +26,7 @@ namespace nnet3 {
 
 NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
                                    const NnetDiscriminativeOptions &opts,
-                                   const TransitionModel &tmodel,
+                                   const Transitions &tmodel,
                                    const VectorBase<BaseFloat> &priors,
                                    Nnet *nnet):
     opts_(opts), tmodel_(tmodel), log_priors_(priors),

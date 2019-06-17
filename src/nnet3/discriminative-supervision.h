@@ -23,7 +23,7 @@
 
 #include "util/table-types.h"
 #include "hmm/posterior.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -144,7 +144,7 @@ class DiscriminativeSupervisionSplitter {
 
   DiscriminativeSupervisionSplitter(
       const SplitDiscriminativeSupervisionOptions &config,
-      const TransitionModel &tmodel,
+      const Transitions &tmodel,
       const DiscriminativeSupervision &supervision);
 
   // A structure used to store the forward and backward scores
@@ -185,7 +185,7 @@ class DiscriminativeSupervisionSplitter {
 
   // Transition model is used by the function
   // CollapseTransitionIds()
-  const TransitionModel &tmodel_;
+  const Transitions &tmodel_;
 
   // A reference to the supervision object that we will be splitting
   const DiscriminativeSupervision &supervision_;

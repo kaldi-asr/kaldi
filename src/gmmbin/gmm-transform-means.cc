@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "transform/mllt.h"
 
 int main(int argc, char *argv[]) {
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(mat_rxfilename, &mat);
 
     AmDiagGmm am_gmm;
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary_read;
       Input ki(model_in_rxfilename, &binary_read);

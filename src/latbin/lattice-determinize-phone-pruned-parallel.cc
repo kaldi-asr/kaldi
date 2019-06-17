@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 #include "base/kaldi-common.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/lattice-functions.h"
@@ -31,7 +31,7 @@ class DeterminizeLatticeTask {
  public:
   // Initializer takes ownership of "lat".
   DeterminizeLatticeTask(
-      const TransitionModel &trans_model,
+      const Transitions &trans_model,
       fst::DeterminizeLatticePhonePrunedOptions &opts,
       std::string key,
       BaseFloat acoustic_scale,
@@ -69,7 +69,7 @@ class DeterminizeLatticeTask {
     clat_writer_->Write(key_, det_clat_);
   }
  private:
-  const TransitionModel *trans_model_;
+  const Transitions *trans_model_;
   const fst::DeterminizeLatticePhonePrunedOptions &opts_;
   std::string key_;
   BaseFloat acoustic_scale_;
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
         lats_rspecifier = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_rxfilename, &trans_model);
 
     // Reads as regular lattice-- this is the form the determinization code

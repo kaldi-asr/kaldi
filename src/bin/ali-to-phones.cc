@@ -20,7 +20,7 @@
 
 
 #include "base/kaldi-common.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "util/common-utils.h"
 #include "fst/fstlib.h"
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     std::string model_filename = po.GetArg(1),
         alignments_rspecifier = po.GetArg(2);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_filename, &trans_model);
 
     SequentialInt32VectorReader reader(alignments_rspecifier);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         BaseFloat phone_start = 0.0;
         for (size_t i = 0; i < split.size(); i++) {
           KALDI_ASSERT(!split[i].empty());
-          int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
+          int32 phone = trans_model.InfoForTransitionId(split[i][0]).phone;
           int32 num_repeats = split[i].size();
           ctm_writer.Stream() << key << " 1 " << phone_start << " "
                       << (frame_shift * num_repeats) << " " << phone << std::endl;
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
         std::vector<int32> phones;
         for (size_t i = 0; i < split.size(); i++) {
           KALDI_ASSERT(!split[i].empty());
-          int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
+          int32 phone = trans_model.InfoForTransitionId(split[i][0]).phone;
           int32 num_repeats = split[i].size();
           //KALDI_ASSERT(num_repeats!=0);
           if (per_frame)
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
         std::vector<std::pair<int32, int32> > pairs;
         for (size_t i = 0; i < split.size(); i++) {
           KALDI_ASSERT(split[i].size() > 0);
-          int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
+          int32 phone = trans_model.InfoForTransitionId(split[i][0]).phone;
           int32 num_repeats = split[i].size();
           //KALDI_ASSERT(num_repeats!=0);
           pairs.push_back(std::make_pair(phone, num_repeats));

@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/am-nnet-simple.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "tree/context-dep.h"
 
 namespace kaldi {
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
         posterior_vec_rxfilename = po.GetArg(2),
         nnet_wxfilename = po.GetArg(3);
     
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmNnetSimple am_nnet;
     {
       bool binary_read;

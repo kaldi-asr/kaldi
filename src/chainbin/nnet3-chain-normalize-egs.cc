@@ -19,7 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "nnet3/nnet-chain-example.h"
 #include "chain/chain-supervision.h"
 

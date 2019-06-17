@@ -59,13 +59,13 @@ class MatrixBase {
   friend class SparseMatrix<float>;
   friend class SparseMatrix<double>;
 
-  /// Returns number of rows (or zero for emtpy matrix).
+  /// Returns number of rows (or zero for empty matrix).
   inline MatrixIndexT  NumRows() const { return num_rows_; }
 
   /// Returns number of columns (or zero for emtpy matrix).
   inline MatrixIndexT NumCols() const { return num_cols_; }
 
-  /// Stride (distance in memory between each row).  Will be >= NumCols.
+  /// Stride (distance in memory between each row).  Must be >= NumCols().
   inline MatrixIndexT Stride() const {  return stride_; }
 
   /// Returns size in bytes of the data held by the matrix.
@@ -183,18 +183,12 @@ class MatrixBase {
 
   /* Accessing of sub-parts of the matrix. */
 
-  /// Return specific row of matrix [const].
-  inline const SubVector<Real> Row(MatrixIndexT i) const {
+  /// Return specific row of matrix.  Warning: this can get
+  /// around const constraints.
+  inline SubVector<Real> Row(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
-  }
-
-  /// Return specific row of matrix.
-  inline SubVector<Real> Row(MatrixIndexT i) {
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
-                 static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
+    return SubVector<Real>(data_ + (i * stride_), num_cols_);
   }
 
   /// Return a sub-part of matrix.
@@ -281,14 +275,14 @@ class MatrixBase {
   /// all elements of "indices" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void CopyCols(const MatrixBase<Real> &src,
-                const MatrixIndexT *indices);
+                const int32 *indices);
 
   /// Copies row r from row indices[r] of src (does nothing
   /// As a special case, if indexes[i] == -1, sets row i to zero.
   /// all elements of "indices" must be in [-1, src.NumRows()-1],
   /// and src.NumCols() must equal this.NumCols()
   void CopyRows(const MatrixBase<Real> &src,
-                const MatrixIndexT *indices);
+                const int32 *indices);
 
   /// Add column indices[r] of src to column r.
   /// As a special case, if indexes[i] == -1, skip column i
@@ -296,7 +290,7 @@ class MatrixBase {
   /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void AddCols(const MatrixBase<Real> &src,
-               const MatrixIndexT *indices);
+               const int32 *indices);
 
   /// Copies row r of this matrix from an array of floats at the location given
   /// by src[r]. If any src[r] is NULL then this.Row(r) will be set to zero.
@@ -315,7 +309,7 @@ class MatrixBase {
   /// be in [-1, src.NumRows()-1], and src.NumCols() must equal this.NumCols().
   void AddRows(Real alpha,
                const MatrixBase<Real> &src,
-               const MatrixIndexT *indexes);
+               const int32 *indexes);
 
   /// Does for each row r, this.Row(r) += alpha * src[r], treating src[r] as the
   /// beginning of a region of memory representing a vector of floats, of the
@@ -334,7 +328,7 @@ class MatrixBase {
   /// Requires that all the indexes[i] that are >= 0
   /// be distinct, otherwise the behavior is undefined.
   void AddToRows(Real alpha,
-                 const MatrixIndexT *indexes,
+                 const int32 *indexes,
                  MatrixBase<Real> *dst) const;
 
   /// Applies floor to all matrix elements
@@ -406,7 +400,9 @@ class MatrixBase {
      Null pointers for U and/or Vt at input mean we do not want that output.  We
      expect that S.Dim() == m, U is either NULL or m by n,
      and v is either NULL or n by n.
-     The singular values are not sorted (use SortSvd for that).  */
+     The singular values are not sorted (use SortSvd for that).
+     Requires that s->Stride() == 1.
+  */
   void DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
                       MatrixBase<Real> *Vt);  // Destroys calling matrix.
 
@@ -414,6 +410,7 @@ class MatrixBase {
   /// transposed; the normal formulation is U diag(s) V^T.
   /// Null pointers for U or V mean we don't want that output (this saves
   /// compute).  The singular values are not sorted (use SortSvd for that).
+  /// Requires that s->Stride() == 1.
   void Svd(VectorBase<Real> *s, MatrixBase<Real> *U,
            MatrixBase<Real> *Vt) const;
   /// Compute SVD but only retain the singular values.
@@ -531,10 +528,7 @@ class MatrixBase {
    * positive semi-definite (check_thresh controls how stringent the check is;
    * set it to 2 to ensure it won't ever complain, but it will zero out negative
    * dimensions in your matrix.
-   *
-   * Caution: if you want the eigenvalues, it may make more sense to convert to
-   * SpMatrix and use Eig() function there, which uses eigenvalue decomposition
-   * directly rather than SVD.
+   * Requires s->Stride() == 1.
   */
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real check_thresh = 0.001);

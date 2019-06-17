@@ -72,6 +72,10 @@ static void UnitTestStereo8K() {
   std::istringstream ies(expect_mat, std::ios::in);
   Matrix<BaseFloat> expected;
   expected.Read(ies, false /* text */);
+  // WaveData scales data to the range [-1, 1], so do the same. Don't
+  // put the scaled values in the string expect_mat, since
+  // representing floating point as text losslessly is tricky.
+  expected.Scale(BaseFloat(1.0 / 32768.0));
 
   AssertEqual(wave.SampFreq(), hz, 0);
   AssertEqual(wave.Duration(), 3.0 /* samples */ / hz /* Hz */, 1E-6);
@@ -118,6 +122,7 @@ static void UnitTestMono22K() {
   std::istringstream ies(expect_mat, std::ios::in);
   Matrix<BaseFloat> expected;
   expected.Read(ies, false /* text */);
+  expected.Scale(BaseFloat(1.0 / 32768.0));
 
   AssertEqual(wave.SampFreq(), hz, 0);
   AssertEqual(wave.Duration(), 5.0 /* samples */ / hz /* Hz */, 1E-6);
@@ -157,6 +162,7 @@ static void UnitTestEndless1() {
   std::istringstream ies(expect_mat, std::ios::in);
   Matrix<BaseFloat> expected;
   expected.Read(ies, false /* text */);
+  expected.Scale(BaseFloat(1.0 / 32768.0));
 
   AssertEqual(wave.Data(), expected);
 }
@@ -194,6 +200,7 @@ static void UnitTestEndless2() {
   std::istringstream ies(expect_mat, std::ios::in);
   Matrix<BaseFloat> expected;
   expected.Read(ies, false /* text */);
+  expected.Scale(BaseFloat(1.0 / 32768.0));
 
   AssertEqual(wave.Data(), expected);
 }

@@ -299,19 +299,19 @@ void AlignmentToPosterior(const std::vector<int32> &ali,
 }
 
 struct ComparePosteriorByPdfs {
-  const TransitionModel *tmodel_;
-  ComparePosteriorByPdfs(const TransitionModel &tmodel): tmodel_(&tmodel) {}
+  const Transitions *tmodel_;
+  ComparePosteriorByPdfs(const Transitions &tmodel): tmodel_(&tmodel) {}
   bool operator() (const std::pair<int32, BaseFloat> &a,
                    const std::pair<int32, BaseFloat> &b) {
-    if (tmodel_->TransitionIdToPdf(a.first)
-        < tmodel_->TransitionIdToPdf(b.first))
+    if (tmodel_->TransitionIdToPdfFast(a.first)
+        < tmodel_->TransitionIdToPdfFast(b.first))
       return true;
     else
       return false;
   }
 };
 
-void SortPosteriorByPdfs(const TransitionModel &tmodel,
+void SortPosteriorByPdfs(const Transitions &tmodel,
                          Posterior *post) {
   ComparePosteriorByPdfs compare(tmodel);
   for (size_t i = 0; i < post->size(); i++) {
@@ -319,7 +319,7 @@ void SortPosteriorByPdfs(const TransitionModel &tmodel,
   }
 }
 
-void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
+void ConvertPosteriorToPdfs(const Transitions &tmodel,
                             const Posterior &post_in,
                             Posterior *post_out) {
   post_out->clear();
@@ -328,7 +328,7 @@ void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
     unordered_map<int32, BaseFloat> pdf_to_post;
     for (size_t j = 0; j < post_in[i].size(); j++) {
       int32 tid = post_in[i][j].first,
-          pdf_id = tmodel.TransitionIdToPdf(tid);
+          pdf_id = tmodel.TransitionIdToPdfFast(tid);
       BaseFloat post = post_in[i][j].second;
       if (pdf_to_post.count(pdf_id) == 0)
         pdf_to_post[pdf_id] = post;
@@ -345,7 +345,7 @@ void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
   }
 }
 
-void ConvertPosteriorToPhones(const TransitionModel &tmodel,
+void ConvertPosteriorToPhones(const Transitions &tmodel,
                               const Posterior &post_in,
                               Posterior *post_out) {
   post_out->clear();
@@ -354,7 +354,7 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
     std::map<int32, BaseFloat> phone_to_post;
     for (size_t j = 0; j < post_in[i].size(); j++) {
       int32 tid = post_in[i][j].first,
-          phone_id = tmodel.TransitionIdToPhone(tid);
+          phone_id = tmodel.InfoForTransitionId(tid).phone;
       BaseFloat post = post_in[i][j].second;
       if (phone_to_post.count(phone_id) == 0)
         phone_to_post[phone_id] = post;
@@ -372,7 +372,7 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
 }
 
 
-void WeightSilencePost(const TransitionModel &trans_model,
+void WeightSilencePost(const Transitions &trans_model,
                        const ConstIntegerSet<int32> &silence_set,
                        BaseFloat silence_scale,
                        Posterior *post) {
@@ -381,7 +381,7 @@ void WeightSilencePost(const TransitionModel &trans_model,
     this_post.reserve((*post)[i].size());
     for (size_t j = 0; j < (*post)[i].size(); j++) {
       int32 tid = (*post)[i][j].first,
-          phone = trans_model.TransitionIdToPhone(tid);
+          phone = trans_model.InfoForTransitionId(tid).phone;
       BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) {  // is a silence.
         if (silence_scale != 0.0)
@@ -395,7 +395,7 @@ void WeightSilencePost(const TransitionModel &trans_model,
 }
 
 
-void WeightSilencePostDistributed(const TransitionModel &trans_model,
+void WeightSilencePostDistributed(const Transitions &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
                                   Posterior *post) {
@@ -405,7 +405,7 @@ void WeightSilencePostDistributed(const TransitionModel &trans_model,
     BaseFloat sil_weight = 0.0, nonsil_weight = 0.0;
     for (size_t j = 0; j < (*post)[i].size(); j++) {
       int32 tid = (*post)[i][j].first,
-          phone = trans_model.TransitionIdToPhone(tid);
+          phone = trans_model.InfoForTransitionId(tid).phone;
       BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) sil_weight += weight;
       else nonsil_weight += weight;
@@ -537,7 +537,7 @@ template void PosteriorToMatrix<double>(const Posterior &post,
 
 template <typename Real>
 void PosteriorToPdfMatrix(const Posterior &post,
-                          const TransitionModel &model,
+                          const Transitions &model,
                           Matrix<Real> *mat) {
   // Allocate the matrix,
   int32 num_rows = post.size(),
@@ -546,7 +546,7 @@ void PosteriorToPdfMatrix(const Posterior &post,
   // Fill from Posterior,
   for (int32 t = 0; t < post.size(); t++) {
     for (int32 i = 0; i < post[t].size(); i++) {
-      int32 col = model.TransitionIdToPdf(post[t][i].first);
+      int32 col = model.TransitionIdToPdfFast(post[t][i].first);
       if (col >= num_cols) {
         KALDI_ERR << "Out-of-bound Posterior element with index " << col
                   << ", higher than number of columns " << num_cols;
@@ -557,10 +557,10 @@ void PosteriorToPdfMatrix(const Posterior &post,
 }
 // instantiate the template function,
 template void PosteriorToPdfMatrix<float>(const Posterior &post,
-                                          const TransitionModel &model,
+                                          const Transitions &model,
                                           Matrix<float> *mat);
 template void PosteriorToPdfMatrix<double>(const Posterior &post,
-                                           const TransitionModel &model,
+                                           const Transitions &model,
                                            Matrix<double> *mat);
 
 } // End namespace kaldi

@@ -69,9 +69,13 @@ void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
 template <class C>
 OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
-    computer_(opts), window_function_(computer_.GetFrameOptions()),
+    computer_(opts),
     features_(opts.frame_opts.max_feature_vectors),
-    input_finished_(false), waveform_offset_(0) { }
+    input_finished_(false),
+    waveform_offset_(0) {
+  InitFeatureWindowFunction(computer_.GetFrameOptions(),
+                            &window_function_);
+}
 
 
 template <class C>
@@ -162,17 +166,14 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   KALDI_ASSERT(num_frames_new >= num_frames_old);
 
   Vector<BaseFloat> window;
-  bool need_raw_log_energy = computer_.NeedRawLogEnergy();
   for (int32 frame = num_frames_old; frame < num_frames_new; frame++) {
-    BaseFloat raw_log_energy = 0.0;
     ExtractWindow(waveform_offset_, waveform_remainder_, frame,
-                  frame_opts, window_function_, &window,
-                  need_raw_log_energy ? &raw_log_energy : NULL);
+                  frame_opts, window_function_, &window);
     Vector<BaseFloat> *this_feature = new Vector<BaseFloat>(computer_.Dim(),
                                                             kUndefined);
     // note: this online feature-extraction code does not support VTLN.
     BaseFloat vtln_warp = 1.0;
-    computer_.Compute(raw_log_energy, vtln_warp, &window, this_feature);
+    computer_.Compute(vtln_warp, &window, this_feature);
     features_.PushBack(this_feature);
   }
   // OK, we will now discard any portion of the signal that will not be
@@ -199,7 +200,6 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
 
 // instantiate the templates defined here for MFCC, PLP and filterbank classes.
 template class OnlineGenericBaseFeature<MfccComputer>;
-template class OnlineGenericBaseFeature<PlpComputer>;
 template class OnlineGenericBaseFeature<FbankComputer>;
 
 OnlineCmvnState::OnlineCmvnState(const OnlineCmvnState &other):

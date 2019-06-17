@@ -18,7 +18,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fst/fstlib.h"
 #include "util/common-utils.h"
 
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < syms->NumSymbols(); i++)
       names[i] = syms->Find(i);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(transition_model_filename, &trans_model);
 
     Vector<double> occs;

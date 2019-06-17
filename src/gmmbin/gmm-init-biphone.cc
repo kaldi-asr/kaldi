@@ -23,8 +23,8 @@
 #include "gmm/am-diag-gmm.h"
 #include "tree/event-map.h"
 #include "tree/context-dep.h"
-#include "hmm/hmm-topology.h"
-#include "hmm/transition-model.h"
+#include "hmm/topology.h"
+#include "hmm/transitions.h"
 
 namespace kaldi {
 // This function reads a file like:
@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
     Vector<BaseFloat> glob_mean(dim);
     glob_mean.Set(1.0);
 
-    HmmTopology topo;
+    Topology topo;
     bool binary_in;
     Input ki(topo_filename, &binary_in);
     topo.Read(ki.Stream(), binary_in);
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
       am_gmm.AddPdf(gmm);
 
     // Now the transition model:
-    TransitionModel trans_model(*ctx_dep, topo);
+    Transitions trans_model(*ctx_dep, topo);
 
     {
       Output ko(model_filename, binary);

@@ -19,7 +19,7 @@
 
 
 #include "base/kaldi-common.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "util/common-utils.h"
 #include "fst/fstlib.h"
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         model_filename = po.GetArg(2),
         alignments_rspecifier = po.GetArg(3);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     ReadKaldiObject(model_filename, &trans_model);
 
     fst::SymbolTable *phones_symtab = NULL;

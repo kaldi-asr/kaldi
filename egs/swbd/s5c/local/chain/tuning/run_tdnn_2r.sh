@@ -210,7 +210,7 @@ if [ $stage -le 11 ]; then
   # needed, as in this type of topology we only have a single pdf-class,
   # numbered zero.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --cluster-phones-opts "--pdf-class-list=0" \
+      --cluster-phones-opts "--pdf-class-list=1" \
       --leftmost-questions-truncate $leftmost_questions_truncate \
       --cmd "$train_cmd" 6000 data/$train_set data/lang_chain_2r $ali_dir $treedir
 fi

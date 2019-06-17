@@ -162,7 +162,7 @@ void DenominatorGraph::GetNormalizationFst(const fst::StdVectorFst &ifst,
 }
 
 
-void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
+void MapFstToPdfIdsPlusOne(const Transitions &trans_model,
                            fst::StdVectorFst *fst) {
   int32 num_states = fst->NumStates();
   for (int32 s = 0; s < num_states; s++) {
@@ -295,7 +295,7 @@ static void CheckDenominatorFst(int32 num_pdfs,
 }
 
 void CreateDenominatorFst(const ContextDependency &ctx_dep,
-                          const TransitionModel &trans_model,
+                          const Transitions &trans_model,
                           const fst::StdVectorFst &phone_lm_in,
                           fst::StdVectorFst *den_fst) {
   using fst::StdVectorFst;

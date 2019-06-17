@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/biglm-faster-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
         alignment_wspecifier = po.GetOptArg(7),
         lattice_wspecifier = po.GetOptArg(8);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;

@@ -19,12 +19,12 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/hmm-topology.h"
+#include "hmm/topology.h"
 #include "tree/build-tree-questions.h"
 
 
 namespace kaldi {
-int32 ProcessTopo(const HmmTopology &topo, const std::vector<std::vector<int32> > &questions) {
+int32 ProcessTopo(const Topology &topo, const std::vector<std::vector<int32> > &questions) {
   std::vector<int32> seen_phones;  // ids of phones seen in questions.
   for (size_t i = 0; i < questions.size(); i++)
     for (size_t j= 0; j < questions[i].size(); j++) seen_phones.push_back(questions[i][j]);
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
         questions_rxfilename = po.GetArg(2),
         questions_out_filename = po.GetArg(3);
 
-    HmmTopology topo;  // just needed for checking, and to get the
+    Topology topo;  // just needed for checking, and to get the
     // largest number of pdf-classes for any phone.
     ReadKaldiObject(topo_filename, &topo);
 

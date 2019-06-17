@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "itf/decodable-itf.h"
 #include "matrix/kaldi-matrix.h"
 
@@ -34,26 +34,26 @@ namespace kaldi {
 class DecodableMatrixScaledMapped: public DecodableInterface {
  public:
   // This constructor creates an object that will not delete "likes" when done.
-  DecodableMatrixScaledMapped(const TransitionModel &tm,
+  DecodableMatrixScaledMapped(const Transitions &tm,
                               const Matrix<BaseFloat> &likes,
                               BaseFloat scale): trans_model_(tm), likes_(&likes),
                                                 scale_(scale), delete_likes_(false) {
     if (likes.NumCols() != tm.NumPdfs())
       KALDI_ERR << "DecodableMatrixScaledMapped: mismatch, matrix has "
-                << likes.NumCols() << " rows but transition-model has "
+                << likes.NumCols() << " rows but transitions.has "
                 << tm.NumPdfs() << " pdf-ids.";
   }
 
   // This constructor creates an object that will delete "likes"
   // when done.
-  DecodableMatrixScaledMapped(const TransitionModel &tm,
+  DecodableMatrixScaledMapped(const Transitions &tm,
                               BaseFloat scale,
                               const Matrix<BaseFloat> *likes):
       trans_model_(tm), likes_(likes),
       scale_(scale), delete_likes_(true) {
     if (likes->NumCols() != tm.NumPdfs())
       KALDI_ERR << "DecodableMatrixScaledMapped: mismatch, matrix has "
-                << likes->NumCols() << " rows but transition-model has "
+                << likes->NumCols() << " rows but transitions.has "
                 << tm.NumPdfs() << " pdf-ids.";
   }
 
@@ -76,7 +76,7 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
     if (delete_likes_) delete likes_;
   }
  private:
-  const TransitionModel &trans_model_;  // for tid to pdf mapping
+  const Transitions &trans_model_;  // for tid to pdf mapping
   const Matrix<BaseFloat> *likes_;
   BaseFloat scale_;
   bool delete_likes_;
@@ -100,13 +100,13 @@ class DecodableMatrixMapped: public DecodableInterface {
   // This constructor creates an object that will not delete "likes" when done.
   // the frame_offset is the frame the row 0 of 'likes' corresponds to, would be
   // greater than one if this is not the first chunk of likelihoods.
-  DecodableMatrixMapped(const TransitionModel &tm,
+  DecodableMatrixMapped(const Transitions &tm,
                         const MatrixBase<BaseFloat> &likes,
                         int32 frame_offset = 0);
 
   // This constructor creates an object that will delete "likes"
   // when done.
-  DecodableMatrixMapped(const TransitionModel &tm,
+  DecodableMatrixMapped(const Transitions &tm,
                         const Matrix<BaseFloat> *likes,
                         int32 frame_offset = 0);
 
@@ -122,7 +122,7 @@ class DecodableMatrixMapped: public DecodableInterface {
   virtual ~DecodableMatrixMapped();
 
  private:
-  const TransitionModel &trans_model_;  // for tid to pdf mapping
+  const Transitions &trans_model_;  // for tid to pdf mapping
   const MatrixBase<BaseFloat> *likes_;
   const Matrix<BaseFloat> *likes_to_delete_;
   int32 frame_offset_;
@@ -151,7 +151,7 @@ class DecodableMatrixMapped: public DecodableInterface {
 */
 class DecodableMatrixMappedOffset: public DecodableInterface {
  public:
-  DecodableMatrixMappedOffset(const TransitionModel &tm):
+  DecodableMatrixMappedOffset(const Transitions &tm):
       trans_model_(tm), frame_offset_(0), input_is_finished_(false) { }
 
   virtual int32 NumFramesReady() { return frame_offset_ + loglikes_.NumRows(); }
@@ -194,7 +194,7 @@ class DecodableMatrixMappedOffset: public DecodableInterface {
   // nothing special to do in destructor.
   virtual ~DecodableMatrixMappedOffset() { }
  private:
-  const TransitionModel &trans_model_;  // for tid to pdf mapping
+  const Transitions &trans_model_;  // for tid to pdf mapping
   Matrix<BaseFloat> loglikes_;
   int32 frame_offset_;
   bool input_is_finished_;

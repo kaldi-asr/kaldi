@@ -24,7 +24,7 @@
 
 
 #include "lat/lattice-functions.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "util/stl-utils.h"
 #include "base/kaldi-math.h"
 #include "hmm/hmm-utils.h"
@@ -396,7 +396,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *post,
 }
 
 
-void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
+void LatticeActivePhones(const Lattice &lat, const Transitions &trans,
                          const vector<int32> &silence_phones,
                          vector< std::set<int32> > *active_phones) {
   KALDI_ASSERT(IsSortedAndUniq(silence_phones));
@@ -411,7 +411,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
         aiter.Next()) {
       const LatticeArc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // Non-epsilon arc
-        int32 phone = trans.TransitionIdToPhone(arc.ilabel);
+        int32 phone = trans.InfoForTransitionId(arc.ilabel).phone;
         if (!std::binary_search(silence_phones.begin(),
                                 silence_phones.end(), phone))
           (*active_phones)[cur_time].insert(phone);
@@ -420,7 +420,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
   }  // end looping over states
 }
 
-void ConvertLatticeToPhones(const TransitionModel &trans,
+void ConvertLatticeToPhones(const Transitions &trans,
                             Lattice *lat) {
   typedef LatticeArc Arc;
   int32 num_states = lat->NumStates();
@@ -429,11 +429,11 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
         aiter.Next()) {
       Arc arc(aiter.Value());
       arc.olabel = 0; // remove any word.
-      if ((arc.ilabel != 0) // has a transition-id on input..
-          && (trans.TransitionIdToHmmState(arc.ilabel) == 0)
-          && (!trans.IsSelfLoop(arc.ilabel))) {
-         // && trans.IsFinal(arc.ilabel)) // there is one of these per phone...
-        arc.olabel = trans.TransitionIdToPhone(arc.ilabel);
+
+      if (arc.ilabel != 0) { // has a transition-id on input..
+        auto info = trans.InfoForTransitionId(arc.ilabel);
+        if (info.is_initial && !info.is_self_loop)
+          arc.olabel = info.phone;
       }
       aiter.SetValue(arc);
     }  // end looping over arcs
@@ -697,7 +697,7 @@ void CompactLatticeDepthPerFrame(const CompactLattice &clat,
 
 
 
-void ConvertCompactLatticeToPhones(const TransitionModel &trans,
+void ConvertCompactLatticeToPhones(const Transitions &trans,
                                    CompactLattice *clat) {
   typedef CompactLatticeArc Arc;
   typedef Arc::Weight Weight;
@@ -711,8 +711,9 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans,
       const std::vector<int32> &tid_seq = arc.weight.String();
       for (std::vector<int32>::const_iterator iter = tid_seq.begin();
            iter != tid_seq.end(); ++iter) {
-        if (trans.IsFinal(*iter))// note: there is one of these per phone...
-          phone_seq.push_back(trans.TransitionIdToPhone(*iter));
+        auto info = trans.InfoForTransitionId(*iter);
+        if (info.is_initial && !info.is_self_loop) // note: there is one of these per phone.
+          phone_seq.push_back(info.phone);
       }
       arc.weight.SetString(phone_seq);
       aiter.SetValue(arc);
@@ -723,8 +724,9 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans,
       const std::vector<int32> &tid_seq = f.String();
       for (std::vector<int32>::const_iterator iter = tid_seq.begin();
            iter != tid_seq.end(); ++iter) {
-        if (trans.IsFinal(*iter))// note: there is one of these per phone...
-          phone_seq.push_back(trans.TransitionIdToPhone(*iter));
+        auto info = trans.InfoForTransitionId(*iter);
+        if (info.is_initial && !info.is_self_loop) // note: there is one of these per phone.
+          phone_seq.push_back(info.phone);
       }
       f.SetString(phone_seq);
       clat->SetFinal(state, f);
@@ -732,7 +734,7 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans,
   }  // end looping over states
 }
 
-bool LatticeBoost(const TransitionModel &trans,
+bool LatticeBoost(const Transitions &trans,
                   const std::vector<int32> &alignment,
                   const std::vector<int32> &silence_phones,
                   BaseFloat b,
@@ -761,8 +763,8 @@ bool LatticeBoost(const TransitionModel &trans,
                      << "lattice/model mismatch?";
           return false;
         }
-        int32 phone = trans.TransitionIdToPhone(arc.ilabel),
-            ref_phone = trans.TransitionIdToPhone(alignment[cur_time]);
+        int32 phone = trans.InfoForTransitionId(arc.ilabel).phone,
+            ref_phone = trans.InfoForTransitionId(alignment[cur_time]).phone;
         BaseFloat frame_error;
         if (phone == ref_phone) {
           frame_error = 0.0;
@@ -792,7 +794,7 @@ bool LatticeBoost(const TransitionModel &trans,
 
 
 BaseFloat LatticeForwardBackwardMpeVariants(
-    const TransitionModel &trans,
+    const Transitions &trans,
     const std::vector<int32> &silence_phones,
     const Lattice &lat,
     const std::vector<int32> &num_ali,
@@ -873,8 +875,8 @@ BaseFloat LatticeForwardBackwardMpeVariants(
       double frame_acc = 0.0;
       if (arc.ilabel != 0) {
         int32 cur_time = state_times[s];
-        int32 phone = trans.TransitionIdToPhone(arc.ilabel),
-            ref_phone = trans.TransitionIdToPhone(num_ali[cur_time]);
+        int32 phone = trans.InfoForTransitionId(arc.ilabel).phone,
+            ref_phone = trans.InfoForTransitionId(num_ali[cur_time]).phone;
         bool phone_is_sil = std::binary_search(silence_phones.begin(),
                                                silence_phones.end(),
                                                phone),
@@ -883,8 +885,8 @@ BaseFloat LatticeForwardBackwardMpeVariants(
                                                   ref_phone),
             both_sil = phone_is_sil && ref_phone_is_sil;
         if (!is_mpfe) { // smbr.
-          int32 pdf = trans.TransitionIdToPdf(arc.ilabel),
-              ref_pdf = trans.TransitionIdToPdf(num_ali[cur_time]);
+          int32 pdf = trans.InfoForTransitionId(arc.ilabel).pdf_id,
+              ref_pdf = trans.InfoForTransitionId(num_ali[cur_time]).pdf_id;
           if (!one_silence_class)  // old behavior
             frame_acc = (pdf == ref_pdf && !phone_is_sil) ? 1.0 : 0.0;
           else
@@ -918,8 +920,8 @@ BaseFloat LatticeForwardBackwardMpeVariants(
       int32 transition_id = arc.ilabel;
       if (arc.ilabel != 0) {
         int32 cur_time = state_times[s];
-        int32 phone = trans.TransitionIdToPhone(arc.ilabel),
-            ref_phone = trans.TransitionIdToPhone(num_ali[cur_time]);
+        int32 phone = trans.InfoForTransitionId(arc.ilabel).phone,
+            ref_phone = trans.InfoForTransitionId(num_ali[cur_time]).phone;
         bool phone_is_sil = std::binary_search(silence_phones.begin(),
                                                silence_phones.end(), phone),
             ref_phone_is_sil = std::binary_search(silence_phones.begin(),
@@ -927,8 +929,8 @@ BaseFloat LatticeForwardBackwardMpeVariants(
                                                   ref_phone),
             both_sil = phone_is_sil && ref_phone_is_sil;
         if (!is_mpfe) { // smbr.
-          int32 pdf = trans.TransitionIdToPdf(arc.ilabel),
-              ref_pdf = trans.TransitionIdToPdf(num_ali[cur_time]);
+          int32 pdf = trans.InfoForTransitionId(arc.ilabel).pdf_id,
+              ref_pdf = trans.InfoForTransitionId(num_ali[cur_time]).pdf_id;
           if (!one_silence_class)  // old behavior
             frame_acc = (pdf == ref_pdf && !phone_is_sil) ? 1.0 : 0.0;
           else
@@ -1024,7 +1026,7 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
 
 
 bool CompactLatticeToWordProns(
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     const CompactLattice &clat,
     std::vector<int32> *words,
     std::vector<int32> *begin_times,
@@ -1080,7 +1082,7 @@ bool CompactLatticeToWordProns(
       std::vector<int32> plengths(split_alignment.size());
       for (size_t i = 0; i < split_alignment.size(); i++) {
         KALDI_ASSERT(!split_alignment[i].empty());
-        phones[i] = tmodel.TransitionIdToPhone(split_alignment[i][0]);
+        phones[i] = tmodel.InfoForTransitionId(split_alignment[i][0]).phone;
         plengths[i] = split_alignment[i].size();
       }
       prons->push_back(phones);
@@ -1215,7 +1217,7 @@ struct ClatRescoreTuple {
     RescoreCompactLattice, "tmodel" will be NULL and speedup_factor will be 1.0.
  */
 bool RescoreCompactLatticeInternal(
-    const TransitionModel *tmodel,
+    const Transitions *tmodel,
     BaseFloat speedup_factor,
     DecodableInterface *decodable,
     CompactLattice *clat) {
@@ -1286,10 +1288,10 @@ bool RescoreCompactLatticeInternal(
     BaseFloat frame_scale = 1.0;
     KALDI_ASSERT(!time_to_state[t].empty());
     if (tmodel != NULL) {
-      int32 pdf_id = tmodel->TransitionIdToPdf(time_to_state[t][0].tid);
+      int32 pdf_id = tmodel->InfoForTransitionId(time_to_state[t][0].tid).pdf_id;
       bool frame_has_multiple_pdfs = false;
       for (size_t i = 1; i < time_to_state[t].size(); i++) {
-        if (tmodel->TransitionIdToPdf(time_to_state[t][i].tid) != pdf_id) {
+        if (tmodel->InfoForTransitionId(time_to_state[t][i].tid).pdf_id != pdf_id) {
           frame_has_multiple_pdfs = true;
           break;
         }
@@ -1345,7 +1347,7 @@ bool RescoreCompactLatticeInternal(
 
 
 bool RescoreCompactLatticeSpeedup(
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     BaseFloat speedup_factor,
     DecodableInterface *decodable,
     CompactLattice *clat) {
@@ -1413,7 +1415,7 @@ bool RescoreLattice(DecodableInterface *decodable,
 
 
 BaseFloat LatticeForwardBackwardMmi(
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     const Lattice &lat,
     const std::vector<int32> &num_ali,
     bool drop_frames,

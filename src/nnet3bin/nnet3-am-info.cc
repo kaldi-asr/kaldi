@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/am-nnet-simple.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     std::string  nnet_rxfilename = po.GetArg(1);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     AmNnetSimple am_nnet;
     {
       bool binary;

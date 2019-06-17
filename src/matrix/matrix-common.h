@@ -28,7 +28,7 @@
 namespace kaldi {
 // this enums equal to CblasTrans and CblasNoTrans constants from CBLAS library
 // we are writing them as literals because we don't want to include here matrix/kaldi-blas.h,
-// which puts many symbols into global scope (like "real") via the header f2c.h 
+// which puts many symbols into global scope (like "real") via the header f2c.h
 typedef enum {
   kTrans    = 112, // = CblasTrans
   kNoTrans  = 111  // = CblasNoTrans
@@ -95,14 +95,12 @@ template<> class OtherReal<double> {
 };
 
 
+// BLAS's interface has 'int' which on even many 64 bit systems is
+// 32 bits, so using 64 bits for the matrix index would be like making
+// a promise we can't keep.
 typedef int32 MatrixIndexT;
-typedef int32 SignedMatrixIndexT;
 typedef uint32 UnsignedMatrixIndexT;
 
-// If you want to use size_t for the index type, do as follows instead:
-//typedef size_t MatrixIndexT;
-//typedef ssize_t SignedMatrixIndexT;
-//typedef size_t UnsignedMatrixIndexT;
 
 }
 

@@ -23,7 +23,7 @@
 namespace kaldi {
 
 
-TrainingGraphCompiler::TrainingGraphCompiler(const TransitionModel &trans_model,
+TrainingGraphCompiler::TrainingGraphCompiler(const Transitions &trans_model,
                                              const ContextDependency &ctx_dep,  // Does not maintain reference to this.
                                              fst::VectorFst<fst::StdArc> *lex_fst,
                                              const std::vector<int32> &disambig_syms,

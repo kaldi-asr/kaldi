@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
 
     ContextDependency ctx_dep;
-    TransitionModel trans_model;
+    Transitions trans_model;
     fst::StdVectorFst phone_lm;
 
     ReadKaldiObject(tree_rxfilename, &ctx_dep);

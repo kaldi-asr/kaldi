@@ -26,7 +26,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "gmm/mle-am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "transform/fmllr-diag-gmm.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         words_wspecifier = po.GetOptArg(6),
         alignment_wspecifier = po.GetOptArg(7);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     {
       bool binary_read;
       Input is(model_in_filename, &binary_read);

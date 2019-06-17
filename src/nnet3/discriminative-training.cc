@@ -94,7 +94,7 @@ class DiscriminativeComputation {
   // even though this does not offer any computational advantages here
   // as in the 'chain' case.
   DiscriminativeComputation(const DiscriminativeOptions &opts,
-      const TransitionModel &tmodel,
+      const Transitions &tmodel,
       const CuVectorBase<BaseFloat> &log_priors,
       const DiscriminativeSupervision &supervision,
       const CuMatrixBase<BaseFloat> &nnet_output,
@@ -109,7 +109,7 @@ class DiscriminativeComputation {
 
  private:
   const DiscriminativeOptions &opts_;
-  const TransitionModel &tmodel_;
+  const Transitions &tmodel_;
 
   // Vector of log-priors of pdfs.
   // This can be a size zero vector e.g. for 'chain' model
@@ -180,7 +180,7 @@ class DiscriminativeComputation {
 
 DiscriminativeComputation::DiscriminativeComputation(
                             const DiscriminativeOptions &opts,
-                            const TransitionModel &tmodel,
+                            const Transitions &tmodel,
                             const CuVectorBase<BaseFloat> &log_priors,
                             const DiscriminativeSupervision &supervision,
                             const CuMatrixBase<BaseFloat> &nnet_output,
@@ -544,7 +544,7 @@ double DiscriminativeComputation::ComputeObjfAndDeriv(Posterior *post,
 
 
 void ComputeDiscriminativeObjfAndDeriv(const DiscriminativeOptions &opts,
-                                       const TransitionModel &tmodel,
+                                       const Transitions &tmodel,
                                        const CuVectorBase<BaseFloat> &log_priors,
                                        const DiscriminativeSupervision &supervision,
                                        const CuMatrixBase<BaseFloat> &nnet_output,

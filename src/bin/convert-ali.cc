@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "hmm/hmm-utils.h"
 #include "hmm/tree-accu.h" // for ReadPhoneMap
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
                 "old-integer-id new-integer-id)");
     po.Register("reorder", &reorder,
                 "True if you want the converted alignments to be 'reordered' "
-                "versus the way they appear in the HmmTopology object");
+                "versus the way they appear in the Topology object");
     po.Register("repeat-frames", &repeat_frames,
                 "Only relevant when frame-subsampling-factor != 1.  If true, "
                 "repeat frames of alignment by 'frame-subsampling-factor' "
@@ -79,10 +79,10 @@ int main(int argc, char *argv[]) {
     SequentialInt32VectorReader alignment_reader(old_alignments_rspecifier);
     Int32VectorWriter alignment_writer(new_alignments_wspecifier);
 
-    TransitionModel old_trans_model;
+    Transitions old_trans_model;
     ReadKaldiObject(old_model_filename, &old_trans_model);
 
-    TransitionModel new_trans_model;
+    Transitions new_trans_model;
     ReadKaldiObject(new_model_filename, &new_trans_model);
 
     if (!(old_trans_model.GetTopo() == new_trans_model.GetTopo()))

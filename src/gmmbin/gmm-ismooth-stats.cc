@@ -21,7 +21,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "gmm/ebw-diag-gmm.h"
 
 int main(int argc, char *argv[]) {
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
       stats.Write(ko.Stream(), binary_write);
     } else if (smooth_from_model) { // Smoothing from model...
       AmDiagGmm am_gmm;
-      TransitionModel trans_model;
+      Transitions trans_model;
       Vector<double> dst_transition_accs;
       AccumAmDiagGmm dst_stats;
       { // read src model

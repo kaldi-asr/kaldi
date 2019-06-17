@@ -19,7 +19,7 @@
 
 #include "util/common-utils.h"
 #include "gmm/mle-am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 
 int main(int argc, char *argv[]) {

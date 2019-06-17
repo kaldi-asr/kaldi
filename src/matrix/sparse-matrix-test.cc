@@ -77,7 +77,7 @@ void UnitTestSparseVectorMax() {
     vec.SetRandn();
     svec.CopyElementsToVec(&vec);
 
-    int32 index1, index2;
+    MatrixIndexT index1, index2;
     Real max1, max2;
 
     max1 = svec.Max(&index1);

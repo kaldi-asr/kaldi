@@ -87,7 +87,7 @@ struct DiscriminativeObjectiveFunctionInfo {
 class NnetDiscriminativeTrainer {
  public:
   NnetDiscriminativeTrainer(const NnetDiscriminativeOptions &config,
-                            const TransitionModel &tmodel,
+                            const Transitions &tmodel,
                             const VectorBase<BaseFloat> &priors,
                             Nnet *nnet);
 
@@ -104,7 +104,7 @@ class NnetDiscriminativeTrainer {
 
   const NnetDiscriminativeOptions opts_;
 
-  const TransitionModel &tmodel_;
+  const Transitions &tmodel_;
   CuVector<BaseFloat> log_priors_;
   
   Nnet *nnet_;

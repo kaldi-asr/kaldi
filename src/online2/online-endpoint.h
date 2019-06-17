@@ -33,7 +33,7 @@
 #include "feat/feature-plp.h"
 #include "itf/online-feature-itf.h"
 #include "lat/kaldi-lattice.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "decoder/lattice-faster-online-decoder.h"
 
 namespace kaldi {
@@ -188,7 +188,7 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
 /// BestPathEnd() and TraceBackOneLink() functions of LatticeFasterOnlineDecoder
 /// to do this efficiently.
 template <typename FST>
-int32 TrailingSilenceLength(const TransitionModel &tmodel,
+int32 TrailingSilenceLength(const Transitions &tmodel,
                             const std::string &silence_phones,
                             const LatticeFasterOnlineDecoderTpl<FST> &decoder);
 
@@ -198,7 +198,7 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
 template <typename FST>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<FST> &decoder);
 

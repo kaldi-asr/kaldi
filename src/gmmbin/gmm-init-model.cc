@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 #include "gmm/mle-am-diag-gmm.h"
 #include "tree/build-tree-utils.h"
 #include "tree/context-dep.h"
@@ -35,7 +35,7 @@ namespace kaldi {
 void InitAmGmm(const BuildTreeStatsType &stats,
                const EventMap &to_pdf_map,
                AmDiagGmm *am_gmm,
-               const TransitionModel &trans_model,
+               const Transitions &trans_model,
                BaseFloat var_floor) {
   // Get stats split by tree-leaf ( == pdf):
   std::vector<BuildTreeStatsType> split_stats;
@@ -126,7 +126,7 @@ void InitAmGmmFromOld(const BuildTreeStatsType &stats,
   ContextDependency old_tree;
   {  // Read old_gm_gmm
     bool binary_in;
-    TransitionModel old_trans_model;
+    Transitions old_trans_model;
     Input ki(old_model_rxfilename, &binary_in);
     old_trans_model.Read(ki.Stream(), binary_in);
     old_am_gmm.Read(ki.Stream(), binary_in);
@@ -270,12 +270,12 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Number of separate statistics is " << stats.size();
 
-    HmmTopology topo;
+    Topology topo;
     ReadKaldiObject(topo_filename, &topo);
 
     const EventMap &to_pdf = ctx_dep.ToPdfMap();  // not owned here.
 
-    TransitionModel trans_model(ctx_dep, topo);
+    Transitions trans_model(ctx_dep, topo);
     
     // Now, the summed_stats will be used to initialize the GMM.
     AmDiagGmm am_gmm;

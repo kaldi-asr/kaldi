@@ -28,7 +28,7 @@
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/decodable-simple-looped.h"
-#include "hmm/transition-model.h"
+#include "hmm/transitions.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -174,7 +174,7 @@ class DecodableNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
 
 
 // This is for traditional decoding where the graph has transition-ids
-// on the arcs, and you need the TransitionModel to map those to
+// on the arcs, and you need the Transitions to map those to
 // pdf-ids.
 // Note: whether or not division by the prior takes place depends on
 // whether you supplied class AmNnetSimple (or just Nnet), to the constructor
@@ -183,7 +183,7 @@ class DecodableNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
 class DecodableAmNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
  public:
   DecodableAmNnetLoopedOnline(
-      const TransitionModel &trans_model,
+      const Transitions &trans_model,
       const DecodableNnetSimpleLoopedInfo &info,
       OnlineFeatureInterface *input_features,
       OnlineFeatureInterface *ivector_features):
@@ -200,7 +200,7 @@ class DecodableAmNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
                                   int32 transition_id);
 
  private:
-  const TransitionModel &trans_model_;
+  const Transitions &trans_model_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetLoopedOnline);
 

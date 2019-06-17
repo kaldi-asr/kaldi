@@ -2,7 +2,7 @@
 
 // Copyright 2009-2011  Karel Vesely;  Microsoft Corporation
 //                2013  Florent Masson
-//                2013  Johns Hopkins University (author: Daniel Povey)
+//           2013-2019  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -56,10 +56,6 @@
 
 
 namespace kaldi {
-
-/// For historical reasons, we scale waveforms to the range
-/// (2^15-1)*[-1, 1], not the usual default DSP range [-1, 1].
-const BaseFloat kWaveSampleMax = 32768.0;
 
 /// This class reads and hold wave file header information.
 class WaveInfo {
@@ -121,6 +117,8 @@ class WaveData {
   // This function returns the wave data-- it's in a matrix
   // becase there may be multiple channels.  In the normal case
   // there's just one channel so Data() will have one row.
+  // This data will be in the range [-1, 1].  This is a difference
+  // from pre-kaldi10.
   const Matrix<BaseFloat> &Data() const { return data_; }
 
   BaseFloat SampFreq() const { return samp_freq_; }

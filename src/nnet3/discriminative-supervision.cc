@@ -135,7 +135,7 @@ void DiscriminativeSupervision::Check() const {
 
 DiscriminativeSupervisionSplitter::DiscriminativeSupervisionSplitter(
     const SplitDiscriminativeSupervisionOptions &config,
-    const TransitionModel &tmodel,
+    const Transitions &tmodel,
     const DiscriminativeSupervision &supervision):
     config_(config), tmodel_(tmodel), supervision_(supervision) {
   if (supervision_.num_sequences != 1) {
