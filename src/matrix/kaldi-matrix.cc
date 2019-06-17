@@ -1152,17 +1152,8 @@ template<typename Real>
 void MatrixBase<Real>::MulElements(const MatrixBase<Real> &a) {
   KALDI_ASSERT(a.NumRows() == num_rows_ && a.NumCols() == num_cols_);
 
-  if (num_cols_ == stride_ && num_cols_ == a.stride_) {
-    mul_elements(num_rows_ * num_cols_, a.data_, data_);
-  } else {
-    MatrixIndexT a_stride = a.stride_, stride = stride_;
-    Real *data = data_, *a_data = a.data_;
-    for (MatrixIndexT i = 0; i < num_rows_; i++) {
-      mul_elements(num_cols_, a_data, data);
-      a_data += a_stride;
-      data += stride;
-    }
-  }
+  cblasext_mul_elements_mat(a.Data(), a.NumRows(), a.NumCols(),
+                            a.Stride(), data_, stride_);
 }
 
 template<typename Real>
@@ -2657,8 +2648,8 @@ bool AttemptComplexPower(double *x_re, double *x_im, double power);
 
 template <typename Real>
 Real TraceMatMat(const MatrixBase<Real> &A,
-                  const MatrixBase<Real> &B,
-                  MatrixTransposeType trans) {  // tr(A B), equivalent to sum of each element of A times same element in B'
+                 const MatrixBase<Real> &B,
+                 MatrixTransposeType trans) {  // tr(A B), equivalent to sum of each element of A times same element in B'
   MatrixIndexT aStride = A.stride_, bStride = B.stride_;
   if (trans == kNoTrans) {
     KALDI_ASSERT(A.NumRows() == B.NumCols() && A.NumCols() == B.NumRows());

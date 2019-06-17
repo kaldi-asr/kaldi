@@ -45,47 +45,31 @@ void cblasext_Xgemv_sparsevec(CBLAS_TRANSPOSE trans, KaldiBlasInt num_rows,
 
 
 
-/// This is not really a wrapper for CBLAS as CBLAS does not have this; in future we could
-/// extend this somehow.
-inline void mul_elements(
+/**
+   Does, elementwise for 0 <= i < dim,
+     b[i] *= a[i].
+*/
+template <typename Real>
+void cblasext_mul_elements_vec(
     const KaldiBlasInt dim,
-    const double *a,
-    double *b) { // does b *= a, elementwise.
-  double c1, c2, c3, c4;
-  KaldiBlasInt i;
-  for (i = 0; i + 4 <= dim; i += 4) {
-    c1 = a[i] * b[i];
-    c2 = a[i+1] * b[i+1];
-    c3 = a[i+2] * b[i+2];
-    c4 = a[i+3] * b[i+3];
-    b[i] = c1;
-    b[i+1] = c2;
-    b[i+2] = c3;
-    b[i+3] = c4;
-  }
-  for (; i < dim; i++)
-    b[i] *= a[i];
-}
+    const Real *a,
+    Real *b);
 
-inline void mul_elements(
-    const KaldiBlasInt dim,
-    const float *a,
-    float *b) { // does b *= a, elementwise.
-  float c1, c2, c3, c4;
-  KaldiBlasInt i;
-  for (i = 0; i + 4 <= dim; i += 4) {
-    c1 = a[i] * b[i];
-    c2 = a[i+1] * b[i+1];
-    c3 = a[i+2] * b[i+2];
-    c4 = a[i+3] * b[i+3];
-    b[i] = c1;
-    b[i+1] = c2;
-    b[i+2] = c3;
-    b[i+3] = c4;
-  }
-  for (; i < dim; i++)
-    b[i] *= a[i];
-}
+
+/**
+   Does b *=  where a and b are matrices of the same dimension.
+   Does not currently support transpose.
+
+   Requires that a and b do not overlap (but this is not checked).
+*/
+template <typename Real>
+void cblasext_mul_elements_mat(
+    const Real *Adata,
+    KaldiBlasInt a_num_rows, KaldiBlasInt a_num_cols, KaldiBlasInt a_stride,
+    Real *Bdata,
+    KaldiBlasInt b_stride);
+
+
 
 
 
