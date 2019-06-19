@@ -1,6 +1,7 @@
 // hmm/hmm-utils.h
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2019  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,6 +20,8 @@
 
 #ifndef KALDI_HMM_HMM_UTILS_H_
 #define KALDI_HMM_HMM_UTILS_H_
+
+#include <memory>
 
 #include "hmm/topology.h"
 #include "hmm/transitions.h"
@@ -66,7 +69,7 @@ struct HmmCacheHash {
 /// HmmCacheType is a map from (central-phone, sequence of pdf-ids) to FST, used
 /// as cache in GetHmmAsFsa, as an optimization.
 typedef unordered_map<std::pair<int32, std::vector<int32> >,
-                      fst::VectorFst<fst::StdArc>*,
+                      std::shared_ptr<fst::ExpandedFst<fst::StdArc>>,
                       HmmCacheHash> HmmCacheType;
 
 
@@ -76,6 +79,7 @@ typedef unordered_map<std::pair<int32, std::vector<int32> >,
 /// "Fst".  This acceptor does not include self-loops; you have to call
 /// AddSelfLoops() for that.  (We do that at a later graph compilation phase,
 /// for efficiency).  The labels on the FSA correspond to transition-ids.
+/// But now we already have self-loops... Problematic?
 ///
 /// as the symbols.
 /// For documentation in context, see \ref hmm_graph_get_hmm_as_fst
@@ -88,9 +92,9 @@ typedef unordered_map<std::pair<int32, std::vector<int32> >,
 ///   @param config Configuration object, see \ref HTransducerConfig.
 ///   @param cache Object used as a lookaside buffer to save computation;
 ///       if it finds that the object it needs is already there, it will
-///       just return a pointer value from "cache"-- not that this means
+///       just return a pointer value from "cache"-- note that this means
 ///       you have to be careful not to delete things twice.
-fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
+std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
     std::vector<int32> context_window,
     const ContextDependencyInterface &ctx_dep,
     const Transitions &trans_model,
@@ -101,7 +105,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
 /// Included mainly as a form of documentation, not used in any other code
 /// currently.  Creates the acceptor FST with self-loops, and with fewer
 /// options.
-fst::VectorFst<fst::StdArc>*
+const fst::StdVectorFst&
 GetHmmAsFsaSimple(std::vector<int32> context_window,
                   const ContextDependencyInterface &ctx_dep,
                   const Transitions &trans_model,
@@ -123,7 +127,7 @@ GetHmmAsFsaSimple(std::vector<int32> context_window,
   * the input of the transducer (i.e. same symbol type as whatever is on the
   * input of the transducer
   */
-fst::VectorFst<fst::StdArc>*
+std::unique_ptr<fst::VectorFst<fst::StdArc>>
 GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
                const ContextDependencyInterface &ctx_dep,
                const Transitions &trans_model,
@@ -167,8 +171,6 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   * @param trans_model [in] Transition model
   * @param disambig_syms [in] Sorted, uniq list of disambiguation symbols, required
   *       if the graph contains disambiguation symbols but only needed for sanity checks.
-  * @param self_loop_scale [in] Transition-probability scale for self-loops; c.f.
-  *                    \ref hmm_scale
   * @param reorder [in] If true, reorders the transitions (see \ref hmm_reorder).
   *                     You'll normally want this to be true.
   * @param check_no_self_loops [in]  If true, it will check that there are no
@@ -180,51 +182,20 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   *                      chain examples.  WARNING: this was added in 2018;
   *                      if you get a compilation error, add this as 'true',
   *                      which emulates the behavior of older code.
-  * @param  fst [in, out] The FST to be modified.
+  * @param  fst [in, out] The FST to be modified. This should normally be HCLG
+  *                       or any other FST with transition ids as its input
+  *                       labels.
   */
 void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
                   BaseFloat self_loop_scale,
-                  bool reorder,
                   bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
 
-/**
-  * Adds transition-probs, with the supplied
-  * scales (see \ref hmm_scale), to the graph.
-  * Useful if you want to create a graph without transition probs, then possibly
-  * train the model (including the transition probs) but keep the graph fixed,
-  * and add back in the transition probs.  It assumes the fst has transition-ids
-  * on it.  It is not an error if the FST has no states (nothing will be done).
-  * @param trans_model [in] The transition model
-  * @param disambig_syms [in] A list of disambiguation symbols, required if the
-  *                       graph has disambiguation symbols on its input but only
-  *                       used for checks.
-  * @param transition_scale [in] A scale on transition-probabilities apart from
-  *                      those involving self-loops; see \ref hmm_scale.
-  * @param self_loop_scale [in] A scale on self-loop transition probabilities;
-  *                      see \ref hmm_scale.
-  * @param  fst [in, out] The FST to be modified.
-  */
-void AddTransitionProbs(const Transitions &trans_model,
-                        const std::vector<int32> &disambig_syms,
-                        BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
-                        fst::VectorFst<fst::StdArc> *fst);
-
-/**
-   This is as AddSelfLoops(), but operates on a Lattice, where
-   it affects the graph part of the weight (the first element
-   of the pair). */
-void AddTransitionProbs(const Transitions &trans_model,
-                        BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
-                        Lattice *lat);
-
 
 /// Returns a transducer from pdfs plus one (input) to  transition-ids (output).
-/// Currenly of use only for testing.
-fst::VectorFst<fst::StdArc>*
+/// Currently of use only for testing.
+std::unique_ptr<fst::VectorFst<fst::StdArc>>
 GetPdfToTransitionIdTransducer(const Transitions &trans_model);
 
 /// Converts all transition-ids in the FST to pdfs plus one.
@@ -277,9 +248,6 @@ bool SplitToPhones(const Transitions &trans_model,
                                 'subsample_factor' separately generated
                                 alignments, to keep the phone boundaries
                                 the same as the input where possible.]
-   @param reorder [in]          True if you want the pdf-ids on the new alignment to
-                                be 'reordered'. (vs. the way they appear in
-                                the Topology object)
    @param phone_map [in]        If non-NULL, map from old to new phones.
    @param new_alignment [out]   The converted alignment.
 */
@@ -290,7 +258,6 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,  // 1 in the normal case -> no subsampling.
                       bool repeat_frames,
-                      bool reorder,
                       const std::vector<int32> *phone_map,  // may be NULL
                       std::vector<int32> *new_alignment);
 
@@ -322,12 +289,6 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
                                 const Transitions &trans_model,
                                 const std::vector<int32> &phone_window,
                                 std::vector<int32> *alignment);
-
-/*
-  If the alignment was non-reordered makes it reordered, and vice versa.
-*/
-void ChangeReorderingOfAlignment(const Transitions &trans_model,
-                                 std::vector<int32> *alignment);
 
 /// @} end "addtogroup hmm_group"
 

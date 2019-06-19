@@ -155,6 +155,9 @@ void Topology::Check() {
     KALDI_ERR << "Entry with no corresponding phones.";
 
   for (auto const& entry: entries_) {
+    if (!fst::Verify(entry)) {
+      KALDI_ERR << "Ill-formed FST provided.";
+    }
     if (entry.NumStates() <= 1)
       KALDI_ERR << "Cannot only have one state (must have a "
                 << "final state and a start state).";
@@ -174,8 +177,8 @@ void Topology::Check() {
           KALDI_ERR << "The topology must be an acceptor but ilabel != olabel.";
         if (arc.ilabel == 0)
           KALDI_ERR << "Epsilon arcs (pdf-class 0) are not allowed.";
-        if (state != entry.Start() && arc.nextstate == entry.Start())
-          KALDI_ERR << "Start state cannot have any inward transitions.";
+        if (arc.nextstate == entry.Start())
+          KALDI_ERR << "Start state may not have any inward transitions.";
         seen_pdf_classes.push_back(arc.ilabel);
         outward_prob_sum += exp(-arc.weight.Value());
       }

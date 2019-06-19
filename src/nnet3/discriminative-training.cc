@@ -234,7 +234,7 @@ void DiscriminativeComputation::LookupNnetOutput(
     for (fst::ArcIterator<Lattice> aiter(den_lat_, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) { // input-side has transition-ids, output-side empty
-        int32 tid = arc.ilabel, pdf_id = tmodel_.TransitionIdToPdf(tid);
+        int32 tid = arc.ilabel, pdf_id = tmodel_.TransitionIdToPdfFast(tid);
         // The ordering of the indexes is similar to that in chain models
         requested_indexes->push_back(MakePair(idx * supervision_.num_sequences + seq, pdf_id));
       }
@@ -247,7 +247,7 @@ void DiscriminativeComputation::LookupNnetOutput(
       int32 seq = t / supervision_.frames_per_sequence,
             idx = t % supervision_.frames_per_sequence;
       int32 tid = supervision_.num_ali[t],
-                  pdf_id = tmodel_.TransitionIdToPdf(tid);
+                  pdf_id = tmodel_.TransitionIdToPdfFast(tid);
       KALDI_ASSERT(pdf_id >= 0 && pdf_id < num_pdfs);
       requested_indexes->push_back(MakePair(idx * supervision_.num_sequences + seq, pdf_id));
     }

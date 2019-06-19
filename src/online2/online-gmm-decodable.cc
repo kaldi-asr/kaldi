@@ -45,7 +45,7 @@ void DecodableDiagGmmScaledOnline::CacheFrame(int32 frame) {
 BaseFloat DecodableDiagGmmScaledOnline::LogLikelihood(int32 frame, int32 index) {
   if (frame != cur_frame_)
     CacheFrame(frame);
-  int32 pdf_id = trans_model_.TransitionIdToPdf(index);
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(index);
   if (cache_[pdf_id].first == frame)
     return cache_[pdf_id].second;
   BaseFloat ans = ac_model_.LogLikelihood(pdf_id, cur_feats_) * ac_scale_;

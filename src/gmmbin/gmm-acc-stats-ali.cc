@@ -61,8 +61,6 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
     AccumAmDiagGmm gmm_accs;
     gmm_accs.Init(am_gmm, kGmmAll);
 
@@ -94,8 +92,7 @@ int main(int argc, char *argv[]) {
 
         for (size_t i = 0; i < alignment.size(); i++) {
           int32 tid = alignment[i],  // transition identifier.
-              pdf_id = trans_model.TransitionIdToPdf(tid);
-          trans_model.Accumulate(1.0, tid, &transition_accs);
+              pdf_id = trans_model.TransitionIdToPdfFast(tid);
           tot_like_this_file += gmm_accs.AccumulateForGmm(am_gmm, mat.Row(i),
                                                           pdf_id, 1.0);
         }
@@ -117,7 +114,6 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(accs_wxfilename, binary);
-      transition_accs.Write(ko.Stream(), binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";

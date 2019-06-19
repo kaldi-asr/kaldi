@@ -77,11 +77,12 @@ int main(int argc, char *argv[]) {
     std::vector<int32> disambig_syms_out;
 
     // The work gets done here.
-    fst::VectorFst<fst::StdArc> *H = GetHTransducer (ilabel_info,
-                                                     ctx_dep,
-                                                     trans_model,
-                                                     hcfg,
-                                                     &disambig_syms_out);
+    std::unique_ptr<fst::VectorFst<fst::StdArc>> 
+      H = GetHTransducer (ilabel_info,
+                          ctx_dep,
+                          trans_model,
+                          hcfg,
+                          &disambig_syms_out);
 #if _MSC_VER
     if (fst_out_filename == "")
       _setmode(_fileno(stdout),  _O_BINARY);
@@ -101,7 +102,6 @@ int main(int argc, char *argv[]) {
                  << (fst_out_filename == "" ?
                      "standard output" : fst_out_filename);
 
-    delete H;
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

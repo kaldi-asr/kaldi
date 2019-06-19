@@ -56,8 +56,6 @@ int main(int argc, char *argv[]) {
     std::cout << "number of pdfs " << trans_model.NumPdfs() << '\n';
     std::cout << "number of transition-ids " << trans_model.NumTransitionIds()
               << '\n';
-    std::cout << "number of transition-states "
-              << trans_model.NumTransitionStates() << '\n';
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

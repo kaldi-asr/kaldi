@@ -167,7 +167,7 @@ class OnlineGmmDecodingModels {
  public:
   OnlineGmmDecodingModels(const OnlineGmmDecodingConfig &config);
 
-  const Transitions &GetTransitionModel() const;
+  const Transitions &GetTransitions() const;
 
   const AmDiagGmm &GetOnlineAlignmentModel() const;
 

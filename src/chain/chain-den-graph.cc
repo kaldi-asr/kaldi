@@ -171,7 +171,7 @@ void MapFstToPdfIdsPlusOne(const Transitions &trans_model,
       fst::StdArc arc = aiter.Value();
       KALDI_ASSERT(arc.ilabel == arc.olabel);
       if (arc.ilabel > 0) {
-        arc.ilabel = trans_model.TransitionIdToPdf(arc.ilabel) + 1;
+        arc.ilabel = trans_model.TransitionIdToPdfFast(arc.ilabel) + 1;
         arc.olabel = arc.ilabel;
         aiter.SetValue(arc);
       }
@@ -342,24 +342,22 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   // we'll use the same value in test time.  Consistency is the key here.
   h_config.transition_scale = 1.0;
 
-  StdVectorFst *h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
-                                       ctx_dep,
-                                       trans_model,
-                                       h_config,
-                                       &disambig_syms_h);
+  std::unique_ptr<StdVectorFst> h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
+                                                       ctx_dep,
+                                                       trans_model,
+                                                       h_config,
+                                                       &disambig_syms_h);
   KALDI_ASSERT(disambig_syms_h.empty());
   StdVectorFst transition_id_fst;
   TableCompose(*h_fst, context_dep_lm, &transition_id_fst);
-  delete h_fst;
 
   BaseFloat self_loop_scale = 1.0;  // We have to be careful to use the same
                                     // value in test time.
   // 'reorder' must always be set to true for chain models.
-  bool reorder = true;
   bool check_no_self_loops = true;
 
   // add self-loops to the FST with transition-ids as its labels.
-  AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
+  AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale,
                check_no_self_loops, &transition_id_fst);
   // at this point transition_id_fst will have transition-ids as its ilabels and
   // context-dependent phones (indexes into IlabelInfo()) as its olabels.

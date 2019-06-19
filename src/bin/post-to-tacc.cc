@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       int32 num_pdf_ids = trans_model.NumPdfs();
       Vector<double> pdf_accs(num_pdf_ids);
       for (int32 i = 1; i < num_transition_ids; i++) {
-        int32 pid = trans_model.TransitionIdToPdf(i);
+        int32 pid = trans_model.TransitionIdToPdfFast(i);
         pdf_accs(pid) += transition_accs(i);
       }
       Vector<BaseFloat> pdf_accs_float(pdf_accs);

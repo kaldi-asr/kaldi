@@ -524,27 +524,21 @@ bool FollowingInputSymbolsAreSameClass(bool end_is_epsilon, const Fst<Arc> &fst,
   return true;
 }
 
+// TODO(galv): Confirm that start_is_epsilon is no longer necessary
+// now that we longer allow epsilon transitions.
 template<class Arc>
-void MakePrecedingInputSymbolsSame(bool start_is_epsilon, MutableFst<Arc> *fst) {
+void MakePrecedingInputSymbolsSame(MutableFst<Arc> *fst) {
   IdentityFunction<typename Arc::Label> f;
-  MakePrecedingInputSymbolsSameClass(start_is_epsilon, fst, f);
+  MakePrecedingInputSymbolsSameClass(fst, f);
 }
 
 template<class Arc, class F>
-void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *fst, const F &f) {
+void MakePrecedingInputSymbolsSameClass(MutableFst<Arc> *fst, const F &f) {
   typedef typename F::Result ClassType;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   vector<ClassType> classes;
   ClassType noClass = f(kNoLabel);
-  ClassType epsClass = f(0);
-  if (start_is_epsilon) {  // treat having-start-state as epsilon in-transition.
-    StateId start_state = fst->Start();
-    if (start_state < 0 || start_state == kNoStateId) // empty FST.
-      return;
-    classes.resize(start_state+1, noClass);
-    classes[start_state] = epsClass;
-  }
 
   // Find bad states (states with multiple input-symbols into them).
   std::set<StateId> bad_states;  // states that we need to change.
@@ -666,12 +660,13 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
 
 
 template<class Arc>
-VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
+std::unique_ptr<VectorFst<Arc>>
+MakeLoopFst(const vector<std::unique_ptr<const ExpandedFst<Arc>>> &fsts) {
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
 
-  VectorFst<Arc> *ans = new VectorFst<Arc>;
+  std::unique_ptr<VectorFst<Arc>> ans(new VectorFst<Arc>);
   StateId loop_state = ans->AddState();  // = 0.
   ans->SetStart(loop_state);
   ans->SetFinal(loop_state, Weight::One());
@@ -681,7 +676,8 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
   unordered_map<const ExpandedFst<Arc> *, Arc> cache;
 
   for (Label i = 0; i < static_cast<Label>(fsts.size()); i++) {
-    const ExpandedFst<Arc> *fst = fsts[i];
+    // TODO(galv): I feel like this won't work with my unique_ptr usage. Call .get()?
+    const ExpandedFst<Arc> *fst = fsts[i].get();
     if (fst == NULL) continue;
     { // optimization with cache: helpful if some members of "fsts" may
       // contain the same pointer value (e.g. in GetHTransducer).
