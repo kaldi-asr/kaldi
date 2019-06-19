@@ -34,12 +34,12 @@ namespace tensor {
    Does a += b for a and b both scalar, on CPU.
  */
 template <class T>
-class ScalarPlusEqScalarOp<T, kCpuDevice>: public Op {
+class ScalarPlusEqScalarCpuOp<T>: public Op {
 
   ScalarPlusEqScalarOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
 
   Op *Copy() {
-    return new ScalarPlusEqScalar<T, kCpuDevice>(a_, b_);
+    return new ScalarPlusEqScalar<T>(a_, b_);
   }
 
   void Do() {
@@ -63,14 +63,14 @@ class ScalarPlusEqScalarOp<T, kCpuDevice>: public Op {
    template for float and double, to use BLAS calls
 */
 template <class T>
-class StvectorPlusEqStvectorOp<T, kCpuDevice>: public Op {
+class StvectorPlusEqStvectorCpuOp<T>: public Op {
 
   StvectorPlusEqStvectorOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
 
   int32 Properties() { return kConcreteOp; }
 
   Op *Copy() {
-    return new StvectorPlusEqStvectorOp<T, kCpuDevice>(a_, b_);
+    return new StvectorPlusEqStvectorCpuOp<T>(a_, b_);
   }
 
   void Do() {
@@ -105,11 +105,11 @@ class StvectorPlusEqStvectorOp<T, kCpuDevice>: public Op {
 
 // override for float that uses BLAS
 template <>
-class StvectorPlusEqStvectorOp<float, kCpuDevice>: public Op {
+class StvectorPlusEqStvectorCpuOp<float>: public Op {
   SvectorPlusEqSvectorOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
   int32 Properties() { return kConcreteOp; }
   Op *Copy() {
-    return new SvectorPlusEqSvectorOp<float, kCpuDevice>(a_, b_);
+    return new SvectorPlusEqSvectorCpuOp<float>(a_, b_);
   }
   void Do() {
     const Pattern &a_pattern = a_.Pattern(),
@@ -137,11 +137,11 @@ class StvectorPlusEqStvectorOp<float, kCpuDevice>: public Op {
 
 // override for double that uses BLAS
 template <>
-class StvectorPlusEqStvectorOp<double, kCpuDevice>: public Op {
+class StvectorPlusEqStvectorCpuOp<double>: public Op {
   SvectorPlusEqSvectorOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
   int32 Properties() { return kConcreteOp; }
   Op *Copy() {
-    return new SvectorPlusEqSvectorOp<double, kCpuDevice>(a_, b_);
+    return new SvectorPlusEqSvectorCpuOp<double>(a_, b_);
   }
   void Do() {
     const Pattern &a_pattern = a_.Pattern(),
@@ -181,13 +181,13 @@ class StvectorPlusEqStvectorOp<double, kCpuDevice>: public Op {
    template for float and double, to use BLAS calls.
 */
 template <class T>
-class ScalarPlusEqStvectorOp<T, kCpuDevice>: public Op {
+class ScalarPlusEqStvectorCpuOp<T>: public Op {
 
   StvectorPlusEqStvectorOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
 
   int32 Properties() { return kConcreteOp; }
 
-  Op *Copy() { return new ScalarPlusEqStvectorOp<T, kCpuDevice>(a_, b_); }
+  Op *Copy() { return new ScalarPlusEqStvectorCpuOp<T>(a_, b_); }
 
   void Do() {
     DebugNormalOp(a, kReadWrite, b_, kRead);
@@ -211,12 +211,12 @@ class ScalarPlusEqStvectorOp<T, kCpuDevice>: public Op {
 
 // Override for T = float.
 template <>
-class ScalarPlusEqStvectorOp<float, kCpuDevice>: public Op {
+class ScalarPlusEqStvectorCpuOp<float>: public Op {
   StvectorPlusEqStvectorOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
 
   int32 Properties() { return kConcreteOp; }
 
-  Op *Copy() { return new ScalarPlusEqStvectorOp<float, kCpuDevice>(a_, b_); }
+  Op *Copy() { return new ScalarPlusEqStvectorCpuOp<float>(a_, b_); }
 
   void Do() {
     DebugNormalOp(a, kReadWrite, b_, kRead);
@@ -234,12 +234,12 @@ class ScalarPlusEqStvectorOp<float, kCpuDevice>: public Op {
 
 // Override for T = double
 template <>
-class ScalarPlusEqStvectorOp<double, kCpuDevice>: public Op {
+class ScalarPlusEqStvectorCpuOp<double>: public Op {
   ScalarPlusEqStvectorOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
 
   int32 Properties() { return kConcreteOp; }
 
-  Op *Copy() { return new ScalarPlusEqStvectorOp<double, kCpuDevice>(a_, b_); }
+  Op *Copy() { return new ScalarPlusEqStvectorCpuOp<double>(a_, b_); }
 
   void Do() {
     DebugNormalOp(a, kReadWrite, b_, kRead);
@@ -262,12 +262,12 @@ class ScalarPlusEqStvectorOp<double, kCpuDevice>: public Op {
    May not be used if a and b overlap.
 */
 template <class T>
-class StvectorPlusEqScalarOp<T, kCpuDevice>: public Op {
+class StvectorPlusEqScalarCpuOp<T>: public Op {
   StvectorPlusEqScalarOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
 
   int32 Properties() { return kConcreteOp; }
 
-  Op *Copy() { return new StvectorPlusEqScalarOp<T, kCpuDevice>(a_, b_); }
+  Op *Copy() { return new StvectorPlusEqScalarCpuOp<T>(a_, b_); }
 
   void Do() {
     const Pattern &a_pattern = a_.Pattern(),
@@ -281,11 +281,62 @@ class StvectorPlusEqScalarOp<T, kCpuDevice>: public Op {
     if (uninitialized) {
       DebugNormalOp(a, kWrite, b_, kRead);
       T b = *b_data;
+#pragma unroll (4)
       for (int32 i = 0; i < dim; i++)
         a_data[i * a_stride] = b;
     } else {
       DebugNormalOp(a, kReadWrite, b_, kRead);
       T b = *b_data;
+#pragma unroll (4)
+      for (int32 i = 0; i < dim; i++)
+        a_data[i * a_stride] += b;
+    }
+  }
+  Tensor a_;
+  Tensor b_;
+};
+
+
+/**
+   Operation doing a += b with a a vector or strided vector (implicitly,
+   interpreted as a row vector) and b a matrix, so it sums up the rows of the
+   matrix.
+
+   May not be used if a and b overlap.
+*/
+template <class T>
+class StvectorPlusEqMatrixCpuOp<T>: public Op {
+  StvectorPlusEqMatrixCpuOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
+
+  int32 Properties() { return kConcreteOp; }
+
+  Op *Copy() { return new StvectorPlusEqMatrixCpuOp<T>(a_, b_); }
+
+  void Do() {
+    const Pattern &a_pattern = a_.Pattern(),
+        &b_pattern = b_.Pattern();
+    int32 a_dim = a_pattern.dims[0],
+        b_num_cols = b_pattern.dims[0],
+        b_num_rows = b_pattern.dims[1],
+        a_stride = a_pattern.strides[0],
+        b_stride =  b_pattern.strides[1];
+    KALDI_PARANOID_ASSERT(b_pattern.strides[0] == 1 &&
+                          a_dim == b_num_cols);
+
+    bool uninitialized;
+    T *a_data = a_.GetData<T>(&uninitialized),
+        *b_data = a_.GetData<T>();
+
+    if (uninitialized) {
+      DebugNormalOp(a, kWrite, b_, kRead);
+      T b = *b_data;
+#pragma unroll (4)
+      for (int32 i = 0; i < dim; i++)
+        a_data[i * a_stride] = b;
+    } else {
+      DebugNormalOp(a, kReadWrite, b_, kRead);
+      T b = *b_data;
+#pragma unroll (4)
       for (int32 i = 0; i < dim; i++)
         a_data[i * a_stride] += b;
     }
@@ -296,8 +347,9 @@ class StvectorPlusEqScalarOp<T, kCpuDevice>: public Op {
 
 
 
+
 }  // namespace tensor
 }  // namespace kaldi
 
 
-#endif  // KALDI_TENSOR__LINEAR_OPS_H_
+#endif  // KALDI_TENSOR_LINEAR_OPS_H_

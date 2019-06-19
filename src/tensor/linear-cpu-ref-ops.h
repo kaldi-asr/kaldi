@@ -34,8 +34,8 @@ namespace tensor {
 
 // Corresponds to the command a += b.
 template <typename T>
-class PlusEqRefOp: public Op {
-  PlusEqRefOp(const Tensor &a, const Tensor &b):
+class PlusEqCpuRefOp: public Op {
+  PlusEqCpuRefOp(const Tensor &a, const Tensor &b):
       a_(a), b_(b) {
     KALDI_ASSERT(!Overlap(a, b) && BroadcastableAndCompatible(a, b));
   }
@@ -43,7 +43,7 @@ class PlusEqRefOp: public Op {
   int32 Properties() { return kConcreteOp ; }
 
   Op *Copy() const override {
-    return new PlusEqRefOp<T>(a_, b_);
+    return new PlusEqCpuRefOp<T>(a_, b_);
   }
 
   void Do() const override {
@@ -96,8 +96,14 @@ class SetZeroRefOp: public Op {
     int32 dim = a_.dims[raxis],
         stride = a_.strides[raxis];
     if (raxis == 0) {
-      for (int32 i = 0; i < dim; i++) {
-        a[i * a_stride] = 0;
+      // TODO: if stride is 1, use memset below.
+      if (stride == 1) {
+        std::memset(a, 0, dim * sizeof(T));
+      } else {
+#pragma unroll (4)
+        for (int32 i = 0; i < dim; i++) {
+          a[i * a_stride] = 0;
+        }
       }
     } else {
       for (int32 i = 0; i < dim; i++) {
@@ -112,8 +118,8 @@ class SetZeroRefOp: public Op {
 // T is the data-type of a, U is the data-type of b;
 // this Op supports type conversion.
 template <typename T, typename U>
-class AssignRefOp: public Op {
-  PlusEqRefOp(const Tensor &a, const Tensor &b):
+class AssignCpuRefOp: public Op {
+  AssignCpuRefOp(const Tensor &a, const Tensor &b):
       a_(a), b_(b) {
     // The DimsGeq() makes sure there is no summation, as this version of the op
     // does not support summation.
@@ -125,7 +131,7 @@ class AssignRefOp: public Op {
   int32 Properties() { return kConcreteOp ; }
 
   Op *Copy() const override {
-    return new PlusEqRefOp<T>(a_, b_);
+    return new AssignCpuRefOp<T>(a_, b_);
   }
 
   void Do() const override {
@@ -141,6 +147,7 @@ class AssignRefOp: public Op {
     int32 dim = std::max<int32>(a_.dims[raxis], b_.dims[raxis]),
         a_stride = a_.strides[raxis], b_stride = b_.strides[raxis];
     if (raxis == 0) {
+#pragma unroll (4)
       for (int32 i = 0; i < dim; i++) {
         a[i * a_stride] = static_cast<T>(b[i * b_stride]);
       }

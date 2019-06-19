@@ -461,12 +461,17 @@ namespace tensor {
                       necessary (since most BLAS implementations do not support
                       negative stride).
 
-   Uniqueness property:  A property of a Pattern that no two different index-tuples,
-                      when used to index the Pattern, generate the same memory-index.
-                      The axis-dominance property is sufficient, but not necessary,
-                      to ensure the uniqueness property.  (The uniqueness property
-                      is probably not so easy to test for efficiently in the general
-                      case).
+   Uniqueness property:  A property of a Pattern that there does not exist
+                      two index-tuples i1 and i2 which are different in non-trivial
+                      axes of the pattern (i.e. i1[r] != i2[r] for some r that is
+                      a non-trivial raxis of the pattern), which when
+                      used to index the Pattern, generate the same memory-index.
+
+                      The axis-dominance property is sufficient, but not
+                      necessary, to ensure the uniqueness property.  (The
+                      uniqueness property is probably not easy to test for
+                      efficiently in the general case where axis dominance does
+                      not hold).
 
     Valid Pattern:
                      A valid Pattern must be as follows.  Think of this as the mathematical definition;

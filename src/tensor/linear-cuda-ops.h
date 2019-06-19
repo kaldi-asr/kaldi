@@ -1,4 +1,4 @@
-// tensor/linear-cpu-ops.h
+// tensor/linear-cuda-ops.h
 
 // Copyright      2019  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,8 +17,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR_LINEAR_SPECIAL_OPS_H_
-#define KALDI_TENSOR_LINEAR_SPECIAL_OPS_H_ 1
+#ifndef KALDI_TENSOR_LINEAR_CUDA_OPS_H_
+#define KALDI_TENSOR_LINEAR_CUDA_OPS_H_ 1
+#if HAVE_CUDA == 1
 
 #include "tensor/tensor.h"
 #include "tensor/linear-special-ops.h"
@@ -30,20 +31,25 @@
 namespace kaldi {
 namespace tensor {
 
-/**
-   Does a += b for a and b both scalar, on CPU.
- */
+
+//    Does a += b for a and b both scalar, on GPU
 template <class T>
-class ScalarPlusEqScalarOp<T, kCpuDevice>: public Op {
+class ScalarPlusEqScalarOp<T, kGpuDevice>;
+
+
+template<>
+class ScalarPlusEqScalarOp<T, kGpuDevice>;
+
 
   ScalarPlusEqScalarOp(const Tensor &a, const Tensor &b): a_(a), b_(b) { }
 
   Op *Copy() {
-    return new ScalarPlusEqScalar<T, kCpuDevice>(a_, b_);
+    return new ScalarPlusEqScalar<T, kGpuDevice>(a_, b_);
   }
 
   void Do() {
     DebugNormalOp(a, kReadWrite, b_, kRead);
+
     *a_.GetData<T>() += *b_.GetData<T>();
   }
 
@@ -299,5 +305,5 @@ class StvectorPlusEqScalarOp<T, kCpuDevice>: public Op {
 }  // namespace tensor
 }  // namespace kaldi
 
-
+#endif  // HAVE_CUDA == 1
 #endif  // KALDI_TENSOR__LINEAR_OPS_H_

@@ -24,7 +24,6 @@ namespace kaldi {
 namespace tensor {
 
 #define KALDI_STANDARD_THREAD_BLOCK_SIZE 256
-#define KALDI_TARGET_NUM_THREAD_BLOCKS 1024
 
 
 /**
@@ -37,11 +36,10 @@ namespace tensor {
                           *appended* to the vector `kernels`.
 
  */
-static void SplitStandardKernelX(const StandardThreeArgKernel &kernel,
-                                 std::vector<StandardThreeArgKernel> *kernels) {
+static void SplitStandardKernelX(const StandardOneArgKernel &kernel,
+                                 std::vector<StandardOneArgKernel> *kernels) {
   int cur_grid_dim = kernels->back().grid_dim.x;
   KALDI_ASSERT(cur_grid_dim > 65535);
-    return;
   int num_kernels = (kernels->back().grid_dim.x + 65534) / 65535;
 
   size_t cur_size = kernels.size(),
@@ -66,16 +64,14 @@ static void SplitStandardKernelX(const StandardThreeArgKernel &kernel,
     if (i + 1 < num_kernels) {
       // the following actually has no effect on operation since all
       // threads will run; it's more for clarity.
-      k.sizes.max_offset_a.x = this_grid_dim * k.sizes.block_stride_a.x;
+      k.sizes.mindex_a_range.x = this_grid_dim * k.sizes.block_stride_a.x;
     } else {
       // for the last kernel, this limit might actually make a difference, as
       // the highest-numbered thread block in the last kernel may not have all
       // threads run.
-      k.sizes.max_offset_a.x -= prev_grid_dim_sum * k.sizes.block_stride_a.x;
+      k.sizes.mindex_a_range.x -= prev_grid_dim_sum * k.sizes.block_stride_a.x;
     }
-    k.base_offset_a += prev_grid_dim_sum * k.sizes.block_stride_a.x;
-    k.base_offset_b += prev_grid_dim_sum * k.sizes.block_stride_b.x;
-    k.base_offset_c += prev_grid_dim_sum * k.sizes.block_stride_c.x;
+    k.offset_a += prev_grid_dim_sum * k.sizes.block_stride_a.x;
 
     prev_grid_dim_sum += this_grid_dim;
   }
@@ -84,8 +80,8 @@ static void SplitStandardKernelX(const StandardThreeArgKernel &kernel,
 
 // This is a copy of SplitStandardKernelX above, but with x's changed to y's.
 // See the documentation for SplitStandardKernelX.
-static void SplitStandardKernelY(const StandardThreeArgKernel &kernel,
-                                 std::vector<StandardThreeArgKernel> *kernels) {
+static void SplitStandardKernelY(const StandardOneArgKernel &kernel,
+                                 std::vector<StandardOneArgKernel> *kernels) {
   int cur_grid_dim = kernels->back().grid_dim.y;
   KALDI_ASSERT(cur_grid_dim > 65535);
     return;
@@ -113,16 +109,14 @@ static void SplitStandardKernelY(const StandardThreeArgKernel &kernel,
     if (i + 1 < num_kernels) {
       // the following actually has no effect on operation since all
       // threads will run; it's more for clarity.
-      k.sizes.max_offset_a.y = this_grid_dim * k.sizes.block_stride_a.y;
+      k.sizes.mindex_a_range.y = this_grid_dim * k.sizes.block_stride_a.y;
     } else {
       // for the last kernel, this limit might actually make a difference, as
       // the highest-numbered thread block in the last kernel may not have all
       // threads run.
-      k.sizes.max_offset_a.y -= prev_grid_dim_sum * k.sizes.block_stride_a.y;
+      k.sizes.mindex_a_range.y -= prev_grid_dim_sum * k.sizes.block_stride_a.y;
     }
-    k.base_offset_a += prev_grid_dim_sum * k.sizes.block_stride_a.y;
-    k.base_offset_b += prev_grid_dim_sum * k.sizes.block_stride_b.y;
-    k.base_offset_c += prev_grid_dim_sum * k.sizes.block_stride_c.y;
+    k.offset_a += prev_grid_dim_sum * k.sizes.block_stride_a.y;
 
     prev_grid_dim_sum += this_grid_dim;
   }
@@ -133,13 +127,11 @@ static void SplitStandardKernelY(const StandardThreeArgKernel &kernel,
 /**
    This function is used to handle cases where we still have more than 3 axes
    (should be very rare since we only use the standard kernel on reduced
-   pattern-tuples).  It creates copies of a kernel that differ only
-   in max_offset_a, max_offset_b, max_offset_c, to take account of
-   an raxis that has not been included in the kernel.
+   pattern-tuples).  It creates copies of a kernel that differ only in
+   mindex_a_range to take account of an raxis that has not been included in the
+   kernel.
 
      @param [in] a      The first Pattern that's an arg to the kernel
-     @param [in] b      The second Pattern that's an arg to the kernel
-     @param [in] c      The third Pattern that's an arg to the kernel
      @param [in] raxis  The raxis that we're splitting on; in place of the
                         single input 'kernel' we will have a separate
                         output for each i in [0, a.dim[raxis] - 1]
@@ -152,21 +144,17 @@ static void SplitStandardKernelY(const StandardThreeArgKernel &kernel,
  */
 static void SplitStandardKernelByAxis(
     const Pattern &a,
-    const Pattern &b,
-    const Pattern &c,
     int32 raxis,
-    const StandardThreeArgKernel &kernel
-    std::vector<StandardThreeArgKernel> *kernels) {
+    const StandardOneArgKernel &kernel
+    std::vector<StandardOneArgKernel> *kernels) {
   // Asserting raxis > 0 is just from knowledge of how the calling code works,
   // it is not something that would affect the operation of this function.
   KALDI_ASSERT(raxis > 0 && raxis < a.num_axes);
   int32 dim = a.dims[raxis];
   for (int32 i = 0; i < dim; i++) {
     kernels->push_back(kernel);
-    StandardThreeArgKernel &k = kernels->back();
-    k.max_offset_a += i * a.strides[raxis];
-    k.max_offset_b += i * b.strides[raxis];
-    k.max_offset_c += i * c.strides[raxis];
+    StandardOneArgKernel &k = kernels->back();
+    k.mindex_a_range += i * a.strides[raxis];
   }
 }
 
@@ -182,9 +170,7 @@ static void SplitStandardKernelByAxis(
 // the start of the tensor is on a 128-byte boundary; we can consider these
 // kinds of optimizations in future).
 static void ProcessStandardKernelX(const Pattern &a,
-                                   const Pattern &b,
-                                   const Pattern &c,
-                                   StandardThreeArgKernel *k) {
+                                   StandardOneArgKernel *k) {
   KALDI_PARANOID_ASSERT(a.num_axes >= 1 && a.dims[0] > 1);
   // Note: b.dims[0] is either 'dim' or 1; it won't affect anything, we only
   // need b's stride.
@@ -201,12 +187,7 @@ static void ProcessStandardKernelX(const Pattern &a,
 
   k->sizes.thread_stride_a.x = a_stride;
   k->sizes.block_stride_a.x = a_stride * bs;
-  k->sizes.thread_stride_b.x = b_stride;
-  k->sizes.block_stride_b.x = b_stride * bs;
-  k->sizes.thread_stride_c.x = c_stride;
-  k->sizes.block_stride_c.x = c_stride * bs;
-
-  k->sizes.max_offset_a.x = dim * a_stride;
+  k->sizes.mindex_a_range.x = dim * a_stride;
 
   k->block_dim.x = bs;
   k->grid_dim.x = num_blocks;
@@ -219,16 +200,12 @@ static void ProcessStandardKernelX(const Pattern &a,
 // and it won't be 0 because axis 0 goes to x and will already have been
 // processed.
 static void ProcessStandardKernelY(const Pattern &a,
-                                   const Pattern &b,
-                                   const Pattern &c,
                                    int32 raxis,
-                                   StandardThreeArgKernel *kernel) {
+                                   StandardOneArgKernel *kernel) {
   KALDI_PARANOID_ASSERT(a.num_axes > raxis && raxis > 0);
 
   int dim = a.dims[raxis],
-      a_stride = a.strides[raxis],
-      b_stride = b.strides[raxis],
-      c_stride = c.strides[raxis];
+      stride = a.strides[raxis];
 
   // bs means block size.
   int bs_x = kernel->block_dim.x;
@@ -240,14 +217,10 @@ static void ProcessStandardKernelY(const Pattern &a,
     bs_y = 1;  // just for robustness to any later code changes.
   int num_blocks = (dim + bs_y - 1) / bs_y;  // round up.
 
-  k->sizes.thread_stride_a.y = a_stride;
-  k->sizes.block_stride_a.y = a_stride * bs_y;
-  k->sizes.thread_stride_b.y = b_stride;
-  k->sizes.block_stride_b.y = b_stride * bs_y;
-  k->sizes.thread_stride_c.y = c_stride;
-  k->sizes.block_stride_c.y = c_stride * bs_y;
+  k->sizes.thread_stride_a.y = stride;
+  k->sizes.block_stride_a.y = stride * bs_y;
 
-  k->sizes.max_offset_a.y = dim * a_stride;
+  k->sizes.mindex_a_range.y = dim * stride;
   k->block_dim.y = bs_y;
   k->grid_dim.y = num_blocks;
 }
@@ -257,14 +230,12 @@ static void ProcessStandardKernelY(const Pattern &a,
 // are assumed to already have been set up) using an raxis-index specified by the
 // user; this will normally be the one with the largest dim, and it won't be 0
 // because axis 0 goes to x and will already have been processed.
-static void ProcessStandardKernelZ(const Pattern &a, const Pattern &b,
-                                   int32 raxis,
-                                   StandardThreeArgKernel *kernel) {
+static void ProcessStandardKernelZ(const Pattern &a,
+                                   StandardOneArgKernel *kernel) {
   KALDI_PARANOID_ASSERT(a.num_axes > raxis && raxis > 0);
 
   int dim = a.dims[raxis],
-      a_stride = a.strides[raxis],
-      b_stride = b.strides[raxis],
+      stride = a.strides[raxis];
       c_stride = c.strides[raxis];
 
   // bs means block size.
@@ -284,16 +255,12 @@ static void ProcessStandardKernelZ(const Pattern &a, const Pattern &b,
 
   int num_blocks = dim / bs_z;  // round up.
 
-  k->sizes.thread_stride_a.z = a_stride;
-  k->sizes.block_stride_a.z = a_stride * bs_z;
-  k->sizes.thread_stride_b.z = b_stride;
-  k->sizes.block_stride_b.z = b_stride * bs_z;
-  k->sizes.thread_stride_c.z = c_stride;
-  k->sizes.block_stride_c.z = c_stride * bs_z;
+  k->sizes.thread_stride_a.z = stride;
+  k->sizes.block_stride_a.z = stride * bs_z;
 
-  // The kernel code will not actually inspect max_offset_a.z; we just leave it
+  // The kernel code will not actually inspect mindex_a_range.z; we just leave it
   // as a guide in case of future code changes.
-  k->sizes.max_offset_a.z = dim * a_stride;
+  k->sizes.mindex_a_range.z = dim * stride;
 
   k->block_dim.z = bs_z;
   k->grid_dim.z = num_blocks;
@@ -303,10 +270,8 @@ static void ProcessStandardKernelZ(const Pattern &a, const Pattern &b,
 
 
 void FinalizeKernel(const Pattern &a,
-                    const Pattern &b,
-                    const Pattern &c,
                     ArrayRef<int32> remaining_axes,
-                    std::vector<StandardThreeArgKernel> *kernels) {
+                    std::vector<StandardOneArgKernel> *kernels) {
   // prev_size is the size of 'kernels'  before the most recent one
   // was added (since GetStandardKernel appends).  Would normally be zero.
   size_t prev_size = kernels->size() - 1;
@@ -334,14 +299,15 @@ void FinalizeKernel(const Pattern &a,
 }
 
 
-// Returns the raxis with the smallest abs(stride).  It is an error if any axis
-// has stride = 0 (i.e. is a trivial axis).  Intended to be called
-// from GetStandardKernel()
-int32 RaxisWithSmallestAbsStride(const Pattern &p) {
+// Returns the raxis with the most negative stride.  It is an error if any axis
+// has stride <= 0 (we can require this because of the normalization of the
+// pattern-tuples given to GetStandard{One,Two,Three}ArgKernel).  Intended to be
+// called from GetStandardKernel()
+int32 RaxisWithMostNegativeStride(const Pattern &p) {
   int32 num_axes = a.num_axes,
       ans = 0;
   for (int32 raxis = 1; raxis < num_axes; raxis++)
-    if (abs(p.strides[raxis]) < abs(p.strides[ans]))
+    if (p.strides[raxis] < p.strides[ans])
       ans = raxis;
   KALDI_ASSERT(p.strides[ans] != 0 &&
                "Args to GetStandardKernel() do not have the expected "
@@ -353,25 +319,23 @@ int32 RaxisWithSmallestAbsStride(const Pattern &p) {
 }
 
 
-void GetStandardThreeArgKernel(const Pattern &a,
-                               const Pattern &b,
-                               const Pattern &c,
-                               std::vector<StandardThreeArgKernel> *kernels) {
-  KALDI_PARANOID_ASSERT(DimsGeq(a, b) && a.num_axes >= b.num_axes &&
-                        Broadcastable(a, b));
-  int32 smallest_stride_raxis = RaxisWithSmallestStride(a);
+void GetStandardOneArgKernel(const Pattern &a,
+                             std::vector<StandardOneArgKernel> *kernels) {
+  int32 smallest_stride_raxis = RaxisWithMostNegativeStride(a);
+  if (a.strides[smallest_stride_raxis] <= 0)
+    KALDI_ERR << "Input pattern does not have expected properties";
+
   if (smallest_stride_raxis != 0) {
     // This is unexpected but we can deal with it by swapping axes.
-    Pattern a_new(a), b_new(b), c_new(c);
+    Pattern a_new(a);
     TransposeR(0, smallest_stride_raxis, &a_new);
-    TransposeR(0, smallest_stride_raxis, &b_new, true);
-    TransposeR(0, smallest_stride_raxis, &c_new, true);
-    GetStandardKernel(a_new, b_new, c_new, kernels);
+    GetStandardKernel(a_new, kernels);
     return;
   }
   kernels->clear();
   kernels->resize(1);
   Kernel *kernel = &(kernels->back());
+  kernel->offset_a = a.offset;
 
   int32 num_axes = a.num_axes;
   switch (num_axes) {
@@ -380,16 +344,16 @@ void GetStandardThreeArgKernel(const Pattern &a,
       // only processes a single element, so there is nothing more to do.
     return;
     case 1:
-      ProcessStandardKernelX(a, b, kernel);
-      FinalizeKernel(a, b, {}, kernels);
+      ProcessStandardKernelX(a, kernel);
+      FinalizeKernel(a, {}, kernels);
       return;
     case 2:
-      ProcessStandardKernelX(a, b, kernel);
-      ProcessStandardKernelY(a, b, 1, kernel);
-      FinalizeKernel(a, b, {}, kernels);
+      ProcessStandardKernelX(a, kernel);
+      ProcessStandardKernelY(a, 1, kernel);
+      FinalizeKernel(a, {}, kernels);
       return;
     default: {  // >= 3 axes
-      ProcessStandardKernelX(a, b, kernel);
+      ProcessStandardKernelX(a, kernel);
       // Sort the raxes 1, 2,... from greatest to least dimension.  (Note: there
       // are cases where this won't be optimal and we may want to take the
       // stride into account in order to ensure more consolidated memory access;
@@ -407,8 +371,8 @@ void GetStandardThreeArgKernel(const Pattern &a,
                   // sorted from greatest to least dim.
                   return a.dims[x] > a.dims[y];
                 });
-      ProcessStandardKernelY(a, b, raxes[0], kernel);
-      ProcessStandardKernelZ(a, b, raxes[1], kernel);
+      ProcessStandardKernelY(a, raxes[0], kernel);
+      ProcessStandardKernelZ(a, raxes[1], kernel);
       raxes_data = &(raxes[0]);
       // The expression {raxes_data + 2, raxes_data + num_axes - 1} is a
       // constructor to ArrayRef which gives an array of ints including raxes[2]
@@ -416,52 +380,98 @@ void GetStandardThreeArgKernel(const Pattern &a,
       // that we haven't already processed, and they should all have fairly
       // small dimension as we've sorted `raxes` from greatest to least
       // dimension.  We'll process these left-over raxes by duplicating the
-      // kernel, shifting the base_offset_{a,b,c} value as needed.
-      FinalizeKernel(a, b, {raxes_data + raxes_data + num_axes - 1},
+      // kernel, shifting the offset_{a,b,c} value as needed.
+      FinalizeKernel(a, {raxes_data + raxes_data + num_axes - 1},
                      raxes.begin  kernel);
       return;
     }
   }
 }
 
-// Convert from 3-arg to 2-arg kernel, discarding information.
-static void ConvertKernel(const StandardThreeArgKernel &src,
-                          StandardTwoArgKernel *dest) {
+// Convert from 1-arg to 3-arg kernel.
+static void ConvertToThreeArgKernel(
+    const Pattern &a,
+    const Pattern &b,
+    const Pattern &c,
+    const StandardOneArgKernel &src,
+    StandardThreeArgKernel *dest) {
   dest->dim_block = src.dim_block;
   dest->dim_grid = src.dim_grid;
-  dest->sizes.thread_stride_a = src.sizes.thread_stride_a;
-  dest->sizes.thread_stride_b = src.sizes.thread_stride_b;
-  dest->sizes.block_stride_a = src.sizes.block_stride_a;
-  dest->sizes.block_stride_b = src.sizes.block_stride_b;
-  dest->sizes.max_offset_a = src.sizes.max_offset_a;
-  dest->base_offset_a = src.base_offset_a;
-  dest->base_offset_b = src.base_offset_b;
+  dest->offset_a = src.offset_a;
+  dest->offset_b = ConvertMindex(a, b, src.offset_a);
+  dest->offset_c = ConvertMindex(a, c, src.offset_a);
+
+  StandardThreeArgKernelSizes &s = dest->sizes;
+  s.thread_stride_a = src.sizes.thread_stride_a;
+  s.block_stride_a = src.sizes.block_stride_a;
+  s.mindex_a_range = src.sizes.mindex_a_range;
+
+  s.thread_stride_b.x = ConvertMindexDifference(a, b, s.thread_stride_a.x);
+  s.thread_stride_b.y = ConvertMindexDifference(a, b, s.thread_stride_a.y);
+  s.thread_stride_b.z = ConvertMindexDifference(a, b, s.thread_stride_a.z);
+  s.block_stride_b.x = ConvertMindexDifference(a, b, s.block_stride_a.x);
+  s.block_stride_b.y = ConvertMindexDifference(a, b, s.block_stride_a.y);
+  s.block_stride_b.z = ConvertMindexDifference(a, b, s.block_stride_a.z);
+
+  s.thread_stride_c.x = ConvertMindexDifference(a, c, s.thread_stride_a.x);
+  s.thread_stride_c.y = ConvertMindexDifference(a, c, s.thread_stride_a.y);
+  s.thread_stride_c.z = ConvertMindexDifference(a, c, s.thread_stride_a.z);
+  s.block_stride_c.x = ConvertMindexDifference(a, c, s.block_stride_a.x);
+  s.block_stride_c.y = ConvertMindexDifference(a, c, s.block_stride_a.y);
+  s.block_stride_c.z = ConvertMindexDifference(a, c, s.block_stride_a.z);
 }
 
-// Convert from 3-arg to 1-arg kernel, discarding information.
-static void ConvertKernel(const StandardThreeArgKernel &src,
-                          StandardTwoArgKernel *dest) {
+// Convert from 1-arg to 2-arg kernel.
+static void ConvertToTwoArgKernel(
+    const Pattern &a,
+    const Pattern &b,
+    const StandardOneArgKernel &src,
+    StandardThreeArgKernel *dest) {
   dest->dim_block = src.dim_block;
   dest->dim_grid = src.dim_grid;
-  dest->sizes.thread_stride_a = src.sizes.thread_stride_a;
-  dest->sizes.block_stride_a = src.sizes.block_stride_a;
-  dest->sizes.max_offset_a = src.sizes.max_offset_a;
-  dest->base_offset_a = src.base_offset_a;
+  dest->offset_a = src.offset_a;
+  dest->offset_b = ConvertMindex(a, b, src.offset_a);
+
+  StandardThreeArgKernelSizes &s = dest->sizes;
+  s.thread_stride_a = src.sizes.thread_stride_a;
+  s.block_stride_a = src.sizes.block_stride_a;
+  s.mindex_a_range = src.sizes.mindex_a_range;
+
+  s.thread_stride_b.x = ConvertMindexDifference(a, b, s.thread_stride_a.x);
+  s.thread_stride_b.y = ConvertMindexDifference(a, b, s.thread_stride_a.y);
+  s.thread_stride_b.z = ConvertMindexDifference(a, b, s.thread_stride_a.z);
+  s.block_stride_b.x = ConvertMindexDifference(a, b, s.block_stride_a.x);
+  s.block_stride_b.y = ConvertMindexDifference(a, b, s.block_stride_a.y);
+  s.block_stride_b.z = ConvertMindexDifference(a, b, s.block_stride_a.z);
 }
 
-// Doing a 2-arg kernel by first doing the 3-arg one is of course
-// wasteful
-void GetStandardTwoArgKernel(const Pattern &a,
-                             const Pattern &b,
-                             const Pattern &c,
-                             std::vector<StandardThreeArgKernel> *kernels) {
+
+void GetStandardThreeArgKernel(const Pattern &a,
+                               const Pattern &b,
+                               const Pattern &c,
+                               std::vector<StandardThreeArgKernel> *kernels) {
+  KALDI_PARANOID_ASSERT(a.num_axes >= b.num_axes && a.num_axes >= c.num_axes &&
+                        Broadcastable(a, b) && DimsGeq(a, b) &&
+                        Broadcastable(a, c) && DimsGeq(a, c));
   std::vector<StandardThreeArgKernel> temp_kernels;
-  GetStandardThreeArgKernel(a, b, b, &temp_kernels);
+  GetStandardOneArgKernel(a, kernels);
   size_t size = temp_kernels.size();
   kernels->resize(size);
   for (size_t i = 0; i < size; i++)
-    ConvertKernel(temp_kernels[i],
+    ConvertToThreeArgKernel(a, b, c, temp_kernels[i], &((*kernels)[i]));
+}
 
+void GetStandardTwoArgKernel(const Pattern &a,
+                             const Pattern &b,
+                             std::vector<StandardThreeArgKernel> *kernels) {
+  KALDI_PARANOID_ASSERT(DimsGeq(a, b) && a.num_axes >= b.num_axes &&
+                        Broadcastable(a, b));
+  std::vector<StandardThreeArgKernel> temp_kernels;
+  GetStandardOneArgKernel(a, kernels);
+  size_t size = temp_kernels.size();
+  kernels->resize(size);
+  for (size_t i = 0; i < size; i++)
+    ConvertToThreeArgKernel(a, b, c, temp_kernels[i], &((*kernels)[i]));
 }
 
 
