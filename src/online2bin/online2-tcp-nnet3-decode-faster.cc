@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_VLOG(1) << "Loading AM...";
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     nnet3::AmNnetSimple am_nnet;
     {
       bool binary;

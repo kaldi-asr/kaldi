@@ -182,7 +182,7 @@ void DiscriminativeSupervisionSplitter::CollapseTransitionIds(
       KALDI_ASSERT(t >= 0 && t < num_frames);
       Arc arc = aiter.Value();
       KALDI_ASSERT(arc.ilabel != 0 && arc.ilabel == arc.olabel);
-      int32 pdf = tmodel_.TransitionIdToPdf(arc.ilabel);
+      int32 pdf = tmodel_.TransitionIdToPdfFast(arc.ilabel);
       if (pdf_to_tid[t].count(pdf) != 0) {
         arc.ilabel = arc.olabel = pdf_to_tid[t][pdf];
         aiter.SetValue(arc);

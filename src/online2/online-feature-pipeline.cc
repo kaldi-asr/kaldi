@@ -25,25 +25,19 @@ namespace kaldi {
 
 OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
     const OnlineFeaturePipelineCommandLineConfig &config) {
-  if (config.feature_type == "mfcc" || config.feature_type == "plp" ||
+  if (config.feature_type == "mfcc" ||
       config.feature_type == "fbank") {
     feature_type = config.feature_type;
   } else {
     KALDI_ERR << "Invalid feature type: " << config.feature_type << ". "
-              << "Supported feature types: mfcc, plp.";
+              << "Supported feature types: mfcc, fbank.";
+    // TODO(galv): Make sure fbank features are really supported here!
   }
 
   if (config.mfcc_config != "") {
     ReadConfigFromFile(config.mfcc_config, &mfcc_opts);
     if (feature_type != "mfcc")
       KALDI_WARN << "--mfcc-config option has no effect "
-                 << "since feature type is set to " << feature_type << ".";
-  }  // else use the defaults.
-
-  if (config.plp_config != "") {
-    ReadConfigFromFile(config.plp_config, &plp_opts);
-    if (feature_type != "plp")
-      KALDI_WARN << "--plp-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
 
@@ -159,8 +153,6 @@ void OnlineFeaturePipeline::GetCmvnState(OnlineCmvnState *cmvn_state) {
 void OnlineFeaturePipeline::Init() {
   if (config_.feature_type == "mfcc") {
     base_feature_ = new OnlineMfcc(config_.mfcc_opts);
-  } else if (config_.feature_type == "plp") {
-    base_feature_ = new OnlinePlp(config_.plp_opts);
   } else if (config_.feature_type == "fbank") {
     base_feature_ = new OnlineFbank(config_.fbank_opts);
   } else {
@@ -286,8 +278,6 @@ void OnlineFeaturePipeline::InputFinished() {
 BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {
   if (feature_type == "mfcc") {
     return mfcc_opts.frame_opts.frame_shift_ms / 1000.0f;
-  } else if (feature_type == "plp") {
-    return plp_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else {
     KALDI_ERR << "Unknown feature type " << feature_type;
     return 0.0;

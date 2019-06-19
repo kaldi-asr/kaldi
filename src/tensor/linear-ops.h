@@ -35,22 +35,19 @@ namespace tensor {
 
    May not be used if a and b overlap.
 */
-class AddOp {
+class PlusEqOp: public Op {
  public:
 
-  AddOp(const Tensor &a, Tensor &b):
+  PlusEqOp(const Tensor &a, Tensor &b):
       a_(a), b_(b) {
     KALDI_ASSERT(!Overlap(a, b) &&
                  BroadcastableAndCompatible(a, b));
   }
-  AddOp(const AddOp &other):
-      a_(other.a_), b_(other.b_) { }
 
-
-  int32 Properties() { return 0 ; }  // Not concrete.
+  int32 Properties() { return 0; }  // not concrete
 
   Op *Copy() const override {
-    return new AddOp(*this);
+    return new PlusEqOp(a_, b_);
   }
 
   // Defined in linear-ops.cc; this function works out the more concrete
@@ -66,7 +63,7 @@ class AddOp {
       return;
     // else return the Op corresponding to:
     // b_deriv_ += a_deriv_.
-    ops->push_back(std::unique_ptr<Op>(new AddOp(AsTensor(b_deriv),
+    ops->push_back(std::unique_ptr<Op>(new PlusEqOp(AsTensor(b_deriv),
                                                  map->Deriv(a_))));
 
   }
@@ -78,12 +75,17 @@ class AddOp {
       return;
     // else return the Op corresponding to:
     // a_deriv_ += b_deriv_.
-    ops->push_back(std::unique_ptr<Op>(new AddOp(AsTensor(a_deriv),
+    ops->push_back(std::unique_ptr<Op>(new PlusEqOp(AsTensor(a_deriv),
                                                  map->Deriv(b_))));
   }
 
 
  private:
+  // The implementation of Expand() is complicated so we split it
+  // into two separate functions.
+  void ExpandCpu(std::vector<std::unique_ptr<Op> > *ops) const;
+  void ExpandCuda(std::vector<std::unique_ptr<Op> > *ops) const;
+
   Tensor a_;
   Tensor b_;
 };
@@ -100,33 +102,42 @@ class AddOp {
        - For each index-tuple i in the index-tuple-set of b, b[i] += a[i].
    Must not be used if b and a overlap.
 
-   "Assign" means that this is the first time we are setting the memory
-   involved, except possibly for things that don't generate any derivative
-   for various reasons.
-
-   See also SetOp, which is for when the memory might previously have
-   been written to by something differentiable.]
-
-   Note: in the backprop for AssignOp, we can do Unset() after, which
-   means the memory concerned must no longer be read from.
+   While most Ops require the arguments to be "compatible", i.e. on the same
+   dtype and device, the Assign op does not require this.  (For the time being,
+   though, there may be limitations on what kinds of things you can do across
+   dtype and device, e.g. it may not support all the broadcasting and summation
+   operations that would normally be allowed).
 */
-class AssignOp {
+class AssignOp: public Op {
  public:
+  /**
+     If `zero_in_backprop` is true, then the backprop command for this operation
+     will zero the deriv w.r.t. b after that command.  (It would be safer to
+     set it by default to true, but this requires extra work).
 
-  AssignOp(const Tensor &a, Tensor &b):
-      a_(a), b_(b) {
-    KALDI_ASSERT(!Overlap(a, b) &&
-                 BroadcastableAndCompatible(a, b));
-  }
-  AssignOp(const AssignOp &other):
-      a_(other.a_), b_(other.b_) { }
-
-  void Do() const override {
-    Set(a, &b);  // b := a
+     Setting this to true should rarely be necessary-- only when we are
+     overwriting something that already had a derivative.  If you forget to set
+     this to true when you needed to, when you run in debug mode the
+     memory-checker code will tell you about the issue and crash.
+  */
+  AssignOp(const Tensor &a, Tensor &b,
+           bool zero_in_backprop = false):
+      a_(a), b_(b), zero_in_backprop(zero_in_backprop) {
+    // We don't require a and b to be compatible (same dtype and device),
+    // although other Ops do require this.
+    KALDI_ASSERT(!Overlap(a, b) && Broadcastable(a, b));
   }
   Op *Copy() const override {
-    return new AssignOp(*this);
+    return new AssignOp(a_, b_, zero_in_backprop_);
   }
+
+  int32 Properties() { return 0; }  // not concrete
+
+  /**
+     Expand into concrete Ops, depending on the dimensions and device.
+  */
+  void Expand() const override;
+
 
   void GetBackwardDerivOps(
       DerivMap *map,
@@ -136,8 +147,11 @@ class AssignOp {
       return;
     // Return the Op corresponding to:
     // a_deriv_ += b_deriv_.
-    ops->push_back(std::unique_ptr<Op>(new AddOp(map->Deriv(b_),
-                                                 AsTensor(a_deriv))));
+    ops->push_back(std::unique_ptr<Op>(new PlusEqOp(map->Deriv(b_),
+                                                    AsTensor(a_deriv))));
+
+    if (zero_in_backprop_)
+      ops->push_back(std::unique_ptr<Op>(new ZeroOp(map->Deriv(b_))));
   }
 
   void GetForwardDerivOps(
@@ -149,11 +163,15 @@ class AssignOp {
     // else return the Op corresponding to:
     // b_deriv_ := a_deriv_.
     ops->push_back(std::unique_ptr<Op>(new AssignOp(AsTensor(a_deriv),
-                                                  map->Deriv(b_))));
+                                                    map->Deriv(b_))));
   }
  private:
-   Tensor a_;
-   Tensor b_;
+  Tensor a_;
+  Tensor b_;
+  // If true, we'll zero the derivative w.r.t. b after doing the backprop to a.
+  // This allows correct backprop in certain cases where you overwrite data, but
+  // it's rarely necessary so we make it optional to avoid unnecessary zeroing.
+  bool zero_in_backprop_;
 };
 
 

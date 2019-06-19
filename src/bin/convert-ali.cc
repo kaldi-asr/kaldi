@@ -38,7 +38,6 @@ int main(int argc, char *argv[]) {
         " convert-ali old/final.mdl new/0.mdl new/tree ark:old/ali.1 ark:new/ali.1\n";
 
     int32 frame_subsampling_factor = 1;
-    bool reorder = true;
     bool repeat_frames = false;
 
     std::string phone_map_rxfilename;
@@ -46,9 +45,6 @@ int main(int argc, char *argv[]) {
     po.Register("phone-map", &phone_map_rxfilename,
                 "File name containing old->new phone mapping (each line is: "
                 "old-integer-id new-integer-id)");
-    po.Register("reorder", &reorder,
-                "True if you want the converted alignments to be 'reordered' "
-                "versus the way they appear in the Topology object");
     po.Register("repeat-frames", &repeat_frames,
                 "Only relevant when frame-subsampling-factor != 1.  If true, "
                 "repeat frames of alignment by 'frame-subsampling-factor' "
@@ -105,7 +101,6 @@ int main(int argc, char *argv[]) {
                            old_alignment,
                            frame_subsampling_factor,
                            repeat_frames,
-                           reorder,
                            (phone_map_rxfilename != "" ? &phone_map : NULL),
                            &new_alignment)) {
         alignment_writer.Write(key, new_alignment);

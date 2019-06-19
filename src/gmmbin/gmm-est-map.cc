@@ -36,7 +36,6 @@ int main(int argc, char *argv[]) {
         "e.g.: gmm-est-map 1.mdl 1.acc 2.mdl\n";
 
     bool binary_write = true;
-    MapTransitionUpdateConfig tcfg;
     MapDiagGmmOptions gmm_opts;
     std::string update_flags_str = "mvwt";
     std::string occs_out_filename;
@@ -47,7 +46,6 @@ int main(int argc, char *argv[]) {
                 "update: subset of mvwt.");
     po.Register("write-occs", &occs_out_filename, "File to write state "
                 "occupancies to.");
-    tcfg.Register(&po);
     gmm_opts.Register(&po);
 
     po.Read(argc, argv);
@@ -80,14 +78,6 @@ int main(int argc, char *argv[]) {
       Input ki(stats_filename, &binary);
       transition_accs.Read(ki.Stream(), binary);
       gmm_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
-    }
-
-    if (update_flags & kGmmTransitions) {  // Update transition model.
-      BaseFloat objf_impr, count;
-      trans_model.MapUpdate(transition_accs, tcfg, &objf_impr, &count);
-      KALDI_LOG << "Transition model update: Overall " << (objf_impr/count)
-                << " log-like improvement per frame over " << (count)
-                << " frames.";
     }
 
     {  // Update GMMs.

@@ -13,7 +13,7 @@ OBJFILES = online-gmm-decodable.o online-feature-pipeline.o online-ivector-featu
 LIBNAME = kaldi-online2
 
 ADDLIBS = ../ivector/kaldi-ivector.a ../nnet3/kaldi-nnet3.a \
-          ../chain/kaldi-chain.a ../nnet2/kaldi-nnet2.a \
+          ../chain/kaldi-chain.a \
           ../cudamatrix/kaldi-cudamatrix.a ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \

@@ -169,7 +169,7 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
                 << " frames.";
 
   ConstIntegerSet<int32> silence_set(silence_phones_);  // faster lookup
-  const Transitions &trans_model = models_.GetTransitionModel();
+  const Transitions &trans_model = models_.GetTransitions();
   WeightSilencePost(trans_model, silence_set,
                     config_.silence_weight, &post);  
   
@@ -309,7 +309,7 @@ SingleUtteranceGmmDecoder::~SingleUtteranceGmmDecoder() {
 
 bool SingleUtteranceGmmDecoder::EndpointDetected(
     const OnlineEndpointConfig &config) {
-  const Transitions &tmodel = models_.GetTransitionModel();
+  const Transitions &tmodel = models_.GetTransitions();
   return kaldi::EndpointDetected(config, tmodel,
                                  feature_pipeline_->FrameShiftInSeconds(),
                                  decoder_);
@@ -386,7 +386,7 @@ OnlineGmmDecodingModels::OnlineGmmDecodingModels(
 }
 
 
-const Transitions &OnlineGmmDecodingModels::GetTransitionModel() const {
+const Transitions &OnlineGmmDecodingModels::GetTransitions() const {
   return tmodel_;
 }
 

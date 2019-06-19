@@ -317,14 +317,22 @@ inline void Squeeze(int32 axis, Pattern *p) {
 /** Transpose the two specified axes (specified in the private/reversed
     numbering) of a Pattern.
 
-    @param [in] raxis1  First axis to be transposed; must be in range
-                        `[0, p->num_axes - 1]`
-    @param [in] raxis2  Second axis to be transposed; must be in range
-                        `[0, p->num_axes - 1]`
+    @param [in] raxis1  First axis to be transposed; must be >=0,
+                        and if increase_num_axes is false, must be
+                        less than p->num_axes.
+    @param [in] raxis2  Second axis to be transposed; must be >=0,
+                        and if increase_num_axes is false, must be
+                        less than p->num_axes.
                         If identical to axis1, nothing will be done.
     @param [in,out] p  Pattern whose axes are to be transposed.
+    @param [in] increase_num_axes   If this is true, we allow
+                        raxis1 and/or raxis2 to be >= p->num_axes;
+                        we will increase p->num_axes as necessary
+                        if this operation results in any
+                        raxis >= p->num_axes becoming non-trivial.
  */
-void TransposeR(int32 raxis1, int32 raxis2, Pattern *p);
+void TransposeR(int32 raxis1, int32 raxis2, Pattern *p,
+                bool increase_num_axes = false);
 
 
 /** Transpose the two specified axes (specified in the private/reversed
@@ -392,12 +400,8 @@ inline void Squeeze(int32 axis, Pattern *p) {
        @param [in] b  The pattern of the second Tensor
        @param [in] b_not_smaller   If true, then we do not allow a dim of
                       b to be 1 while corresponding dim of a is >1.
-       @return  Returns true if a and b are broadcastable (with
-                an additional constraint that `a.dims[i] <= b.dims[i]` if
-                `b_not_smaller == true`.
  */
-bool Broadcastable(const Pattern &a, const Pattern &b,
-                   bool b_not_smaller = false);
+bool Broadcastable(const Pattern &a, const Pattern &b);
 
 
 /**  This function returns true if the dimensions of tensor patterns
@@ -409,18 +413,16 @@ bool Broadcastable(const Pattern &a, const Pattern &b,
        @param [in] a  The pattern of the first Tensor
        @param [in] b  The pattern of the second Tensor
        @param [in] c  The pattern of the third Tensor
-       @param [in] c_not_smaller   If true, then we do not allow a dim of
-                      c to be 1 while corresponding dims of a or b
-                      are > 1.
-       @return  Returns true if a, b and c are broadcastable (with
-                an additional constraint that
-                `max(a.dims[i], b.dims[i]) <= c.dims[i]` if
-                `c_not_smaller == true`).
-
+       @return  Returns true if a, b and c are broadcastable
  */
 bool Broadcastable(const Pattern &a, const Pattern &b,
-                   const Pattern &c, bool c_not_smaller = false);
+                   const Pattern &c);
 
+
+/**
+   Returns true if for each raxis, a.dims[raxis] >= b.dims[raxis].
+ */
+bool DimsGeq(const Pattern &a, const Pattern &b);
 
 
 /**
@@ -481,7 +483,7 @@ bool SameStrides(const Pattern &a,
 
 
 /**
-   Compresses a Pattern by removing or combining as many axes as possible.
+   Reduces a Pattern by removing or combining as many axes as possible.
    This version is suitable for operations that do not rely on any kind of
    structure, such as zeroing or nonlinearities; the only equivalence maintained
    is equivalence of the set of memory locations covered (the memory-index-set).
@@ -489,7 +491,7 @@ bool SameStrides(const Pattern &a,
    output.  The output (dim,stride) pairs will be ordered from
    greatest to least stride (note: all output strides will be positive).
 
-      @param [in,out]  pattern   The pattern to be compressed
+      @param [in,out]  pattern   The pattern to be reduced
 
    Examples are below, where we write a Pattern as
 
@@ -510,7 +512,7 @@ bool SameStrides(const Pattern &a,
    {{2,3,4},{100,4,1}}        {{2,12},{100,1}}
 \endverbatim
  */
-void CompressOnePattern(Pattern *pattern);
+void ReduceOnePattern(Pattern *pattern);
 
 
 
@@ -530,9 +532,16 @@ void CompressOnePattern(Pattern *pattern);
 void SortAxes(Pattern *pattern);
 
 
+/**
+   Returns the raxis with the smallest value of abs(stride[raxis]),
+   taking the lowest-numbered raxis in case of ties (which could only
+   happen in the case of stride == 0).  Requires Valid(pattern).
+ */
+int32 RaxisWithSmallestAbsStride(const Pattern &pattern);
+
 // TODO: document this.
 inline void CanonicalizePattern(Pattern *pattern) {
-  CompressOnePattern(pattern);
+  ReduceOnePattern(pattern);
   SortAxes(pattern);
 }
 
@@ -582,22 +591,22 @@ class PatternHasher {
 
 
 /*
-  CompressTwoPatterns() is a special case of CompressPatterns() where there
-  are exactly two patterns to be jointly compressed.  See documentation of
-  CompressPatterns() for explanation.
+  ReduceTwoPatterns() is a special case of ReducePatterns() where there
+  are exactly two patterns to be jointly reduced.  See documentation of
+  ReducePatterns() for explanation.
 */
-void CompressTwoPatterns(Pattern *a,
+void ReduceTwoPatterns(Pattern *a,
                          Pattern *b);
 
 
 /**
-   Compresses a Pattern by removing or combining as many axes as possible,
+   Reduces a Pattern by removing or combining as many axes as possible,
    while preserving the memory-index-set of the pattern (see glossary for
    explanation), and also while respecting certain invariances that are relevant
    when constructing 'views' ('view' is PyTorch terminology; the NumPy
    equivalent is 'reshape').  The "C" in the function name refers to C-style
    arrays.  Basically what this function does is a highly restricted subset
-   of what CompressOnePattern() does.
+   of what ReduceOnePattern() does.
 
    This function removes axes with dim=1.
 
@@ -632,7 +641,7 @@ void CompressTwoPatterns(Pattern *a,
    {2,3,4},{100,-4,-1}        {{2,12},{100,-1}}
 \endverbatim
  */
-void CompressPatternC(Pattern *p);
+void ReducePatternC(Pattern *p);
 
 
 
@@ -659,10 +668,10 @@ void CompressPatternC(Pattern *p);
 
 
    Notes on implementation (glossing over ones in 'dims' which are easy to
-   handle as a special case): we would first call CompressPattern on
+   handle as a special case): we would first call ReducePattern on
    'pattern_in'.  Then we would attempt to find a correspondence with
-   the dimensions of this compressed pattern and a partition of the
-   sequence 'dims'.  For example, suppose the compressed pattern
+   the dimensions of this reduced pattern and a partition of the
+   sequence 'dims'.  For example, suppose the reduced pattern
    is (100, 9) and dims is (50, 2, 3, 3), then the partition would
    be (50, 2), (3, 3).  If this is not possible (e.g. if dims
    had been (30,10,3) instead), we return false.
@@ -723,6 +732,67 @@ void Slice(int32 eaxis, int32 start, int32 end, Pattern *pattern);
 */
 void Select(int32 eaxis, int32 index,
             const Pattern &src, Pattern *dest);
+
+
+/**
+   Infer an index-tuple from a memory-index m and a pattern p.
+   That is: find the index-tuple i such that src[i] = p[m]
+   and i[r] = 0 in all axes such that p.dims[r] == 1.
+   There is at most one such index-tuple, by the uniqueness property.
+   The numbering used here is by raxis (i.e. the private numbering).
+
+           @param [in] p  Input pattern.  Required to be valid.
+           @param [in] m  The memory-index we are querying.
+           @param [out] index_tuple  On success, the index-tuple will be
+                    written to here (it will have size equal to p.num_axes).
+                    Note: the indexing is by raxis (that is why there
+                    is "R" in the function name).
+                    On failure, the value at exit is undefined.
+           @return  Returns true on success, false if no
+                    such index-tuple existed.
+*/
+bool GetIndexTupleR(const Pattern &p,
+                    int64 m,
+                    std::vector<int32> *index_tuple);
+
+/**
+   Convert a memory-index from one pattern to another.  Specifically, it finds
+   an index-tuple i such that a[i] = mindex_a, and returns mindex_b = b[i], if
+   exactly one such mindex_b exists; otherwise it crashes.  (The caveat about
+   "if exactly one such index exists" has to do with the possibility that there
+   is an raxis r that is trivial for a but not for b).
+
+   These memory-indexes include the 'offset' members of a and b.  For a version
+   that does not include the offset (i.e. is invariant to the offset members),
+   see ConvertMindexDifference.
+
+             @param [in] a     Source Pattern, from which mindex_a is derived
+             @param [out] b    Destination Pattern, which we index to get
+                               the returned mindex
+             @return           Returns the memory-index mindex_b such that
+                               there exists an index-tuple i in the
+                               index-tuple-set of the tuple (a, b) satisfying
+                               a[i] == mindex_a and b[i] == mindex_b.  If it is
+                               not the case that exactly one such memory-index
+                               exists, it is an error and this function may
+                               crash.
+ */
+int64 ConvertMindex(const Pattern &a,
+                    const Pattern &b,
+                    int64 mindex_a);
+
+/**
+   Convert a difference between memory-indexes from one pattern to another.
+   This is equivalent to setting the 'offset' values of a and b to zero and
+   calling ConvertMindex() with the modified args, in cases where that inner
+   call does not crash.  (But this function also generalizes to 'out-of-range'
+   or negative memory-indexes, like a linear continuation of the function).
+
+   See documentation for ConvertMindex() for more explanation.
+*/
+int64 ConvertMindexDifference(const Pattern &a,
+                              const Pattern &b,
+                              int64 mindex_a);
 
 
 /**

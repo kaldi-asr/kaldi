@@ -145,16 +145,15 @@ int main(int argc, char *argv[]) {
     h_cfg.nonterm_phones_offset = nonterm_phones_offset;
     std::vector<int32> disambig_syms_h; // disambiguation symbols on
                                         // input side of H.
-    VectorFst<StdArc> *h_fst = GetHTransducer(ilabels,
-                                              ctx_dep,
-                                              trans_model,
-                                              h_cfg,
-                                              &disambig_syms_h);
+    std::unique_ptr<VectorFst<StdArc>> h_fst = GetHTransducer(ilabels,
+                                                              ctx_dep,
+                                                              trans_model,
+                                                              h_cfg,
+                                                              &disambig_syms_h);
 
     VectorFst<StdArc> hclg_fst;  // transition-id to word.
     TableCompose(*h_fst, clg_fst, &hclg_fst);
     clg_fst.DeleteStates();
-    delete h_fst;
 
     KALDI_ASSERT(hclg_fst.Start() != fst::kNoStateId);
 
@@ -170,12 +169,10 @@ int main(int argc, char *argv[]) {
     MinimizeEncoded(&hclg_fst);
 
     std::vector<int32> disambig;
-    bool check_no_self_loops = true,
-        reorder = true;
+    bool check_no_self_loops = true;
     AddSelfLoops(trans_model,
                  disambig,
                  self_loop_scale,
-                 reorder,
                  check_no_self_loops,
                  &hclg_fst);
 

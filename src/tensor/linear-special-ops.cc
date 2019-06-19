@@ -65,7 +65,7 @@ inline static void AddProductScalar3(
       AddProductScalar3Cpu(alpha, beta, a, b, c);
       return;
 #ifdef HAVE_CUDA
-    case kGpuDevice:
+    case kCudaDevice:
       AddProductScalar3Gpu(alpha, beta, a, b, c);
       return;
 #endif

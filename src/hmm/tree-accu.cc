@@ -84,8 +84,7 @@ void AccumulateTreeStats(const Transitions &trans_model,
       for (int32 j = 0; j < static_cast<int32>(split_alignment[i+info.central_position].size());j++) {
         // for central phone of this window...
         EventType evec_more(evec);
-        int32 pdf_class = trans_model.TransitionIdToPdfClass(
-            split_alignment[i+info.central_position][j]);
+        int32 pdf_class = trans_model.PdfClassForTid(split_alignment[i+info.central_position][j]);
         // pdf_class will normally be 0, 1 or 2 for 3-state HMM.
         std::pair<EventKeyType, EventValueType> pr(kPdfClass, pdf_class);
         evec_more.push_back(pr);

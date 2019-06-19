@@ -102,11 +102,11 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on
   // input side of H.
-  VectorFst<StdArc> *H = GetHTransducer(inv_cfst.IlabelInfo(),
-                                        ctx_dep_,
-                                        trans_model_,
-                                        h_cfg,
-                                        &disambig_syms_h);
+  std::unique_ptr<VectorFst<StdArc>> H = GetHTransducer(inv_cfst.IlabelInfo(),
+                                                        ctx_dep_,
+                                                        trans_model_,
+                                                        h_cfg,
+                                                        &disambig_syms_h);
 
   VectorFst<StdArc> &trans2word_fst = *out_fst;  // transition-id to word.
   TableCompose(*H, ctx2word_fst, &trans2word_fst);
@@ -133,11 +133,9 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   AddSelfLoops(trans_model_,
                disambig,
                opts_.self_loop_scale,
-               opts_.reorder,
                check_no_self_loops,
                &trans2word_fst);
 
-  delete H;
   return true;
 }
 
@@ -198,11 +196,11 @@ bool TrainingGraphCompiler::CompileGraphs(
   h_cfg.transition_scale = opts_.transition_scale;
 
   std::vector<int32> disambig_syms_h;
-  VectorFst<StdArc> *H = GetHTransducer(inv_cfst.IlabelInfo(),
-                                        ctx_dep_,
-                                        trans_model_,
-                                        h_cfg,
-                                        &disambig_syms_h);
+  std::unique_ptr<VectorFst<StdArc>> H = GetHTransducer(inv_cfst.IlabelInfo(),
+                                                        ctx_dep_,
+                                                        trans_model_,
+                                                        h_cfg,
+                                                        &disambig_syms_h);
 
   for (size_t i = 0; i < out_fsts->size(); i++) {
     VectorFst<StdArc> &ctx2word_fst = *((*out_fsts)[i]);
@@ -225,7 +223,6 @@ bool TrainingGraphCompiler::CompileGraphs(
     AddSelfLoops(trans_model_,
                  disambig,
                  opts_.self_loop_scale,
-                 opts_.reorder,
                  check_no_self_loops,
                  &trans2word_fst);
 
@@ -234,7 +231,6 @@ bool TrainingGraphCompiler::CompileGraphs(
     *((*out_fsts)[i]) = trans2word_fst;
   }
 
-  delete H;
   return true;
 }
 

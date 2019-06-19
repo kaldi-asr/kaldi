@@ -39,6 +39,12 @@ typedef float   BaseFloat;
 #endif
 
 
+void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
+                           const MatrixDim d, const double alpha,
+                           const double beta);
+void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
+                           const MatrixDim d, const float alpha,
+                           const float beta);
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,
                            const double beta);
@@ -789,6 +795,30 @@ void cuda_uncompress_int8(dim3 Gr, dim3 Bl, BaseFloat *dest,
 void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
                           MatrixDim dim, const uint8_t *src,
                           int src_stride, float scale);
+
+// copies the sub matrix in src[range_start, range_end] to the matrix in dst
+// if src row is outside of the clamped range it will clamp to the specified
+// rows. src and dst cannot overlap.
+void cudaF_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const float *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   float *dst, int32_t ldd);
+void cudaD_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const double *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   double *dst, int32_t ldd);
+
+// for i=[0,num_mats) perform the matrix copy outputs[i] = inputs[i] where
+// the matrices are of size num_rows[i] x num_cols[i] and have a leading
+// dimension of ldo[i] for the output and ldi[i] for the input.
+void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
+    int32_t *ldo);
+void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
+    int32_t *ldo);
 
 // Launches a kernel that does nothing, explicitly using the legacy default stream;
 // this will synchronize all CUDA streams (except for non-blocking streams) on the

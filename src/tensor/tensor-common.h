@@ -62,11 +62,20 @@ struct Device {
 enum DataType {
   // We will of course later extend this with many more types, including
   // integer types and half-precision floats.
-  kDefaultDtype = 0,
-  // kDefaultDtype means the type used when not specified; it's user definable
-  // via SetDefaultDtype.
   kFloatDtype = 1,
   kDoubleDtype = 2,
+  kInt32Dtype = 3,
+
+
+  // The following enum members are to be used when we want a case statement
+  // over pairs of dtypes, say dtype1 and dtype2.  We would do this as: DataType
+  // pair_dtype = static_cast<DataType>(int32(dtype1) + (int32(dtype2) << 4));
+  kFloatFloatDtypes = 0x11,
+  kFloatDoubleDtypes = 0x12,
+  kFloatInt32Dtypes = 0x13,
+  kDoubleFloatDtype = 0x21,
+  kDoubleDoubleDtype = 0x22,
+  kDoubleInt32Dtype = 0x23
 };
 
 
@@ -95,12 +104,13 @@ enum StridePolicy {
   kCopyStrides   // Means: use the exact strides provided.
 };
 
-/// Enumeration that says whether to zero a freshly initialized Tensor.
+/// Enumeration that says whether to zero a freshly initialized Tensor.  Note:
+/// the Tensor won't actually be zeroed when you construct it, it will be zeroed
+/// whenever it's actually needed (delayed allocation).
 enum InitializePolicy {
   kZeroData,
   kUninitialized
 };
-
 
 
 /// This enumeration value lists the unary functions that we might
@@ -133,7 +143,10 @@ enum TensorUseEnum {
   kRead,
   kReadWrite,
   kWrite,
-  kCheckUninitialized
+  kCheckUninitialized,
+  kInitialize,
+  kReadAndInvalidate,
+  kInvalidate
 };
 
 

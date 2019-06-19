@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
     Transitions trans_model;
     ReadKaldiObject(trans_model_filename, &trans_model);
 
-    fst::VectorFst<fst::StdArc> *fst = GetPdfToTransitionIdTransducer(trans_model);
+    std::unique_ptr<fst::VectorFst<fst::StdArc>> fst =
+      GetPdfToTransitionIdTransducer(trans_model);
 
 #if _MSC_VER
     if (fst_out_filename == "")
@@ -60,7 +61,6 @@ int main(int argc, char *argv[]) {
     if (!fst->Write(fst_out_filename))
       KALDI_ERR << "Error writing fst to "
                 << (fst_out_filename == "" ? "standard output" : fst_out_filename);
-    delete fst;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

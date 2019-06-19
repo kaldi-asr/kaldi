@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     // need VectorFst because we will change it by adding subseq symbol.
     VectorFst<StdArc> *lex_fst = fst::ReadFstKaldi(lex_in_filename);
 
-    TrainingGraphCompilerOptions gc_opts(1.0, true);  // true -> Dan style graph.
+    TrainingGraphCompilerOptions gc_opts;
 
     std::vector<int32> disambig_syms;
     if (disambig_rxfilename != "")

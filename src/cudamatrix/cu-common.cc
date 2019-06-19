@@ -26,7 +26,7 @@
 // files in this directory.
 #include <mutex>
 #include "base/kaldi-common.h"
-#include "matrix/kaldi-blas.h"
+#include "cblasext/kaldi-blas.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-matrixdim.h"

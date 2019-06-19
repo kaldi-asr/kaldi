@@ -116,7 +116,6 @@ int main(int argc, char *argv[]) {
     if (!nnet_config.empty()) {
       Input ki(nnet_config);
       am_nnet.GetNnet().ReadConfig(ki.Stream());
-      am_nnet.SetContext();
     }
 
     if(convert_repeated_to_block)
@@ -136,6 +135,9 @@ int main(int argc, char *argv[]) {
       std::istringstream is(edits_str);
       ReadEditConfig(is, &(am_nnet.GetNnet()));
     }
+
+    am_nnet.SetContext();  // in case we used the config or edits-config or
+                           // edits options
 
     if (scale != 1.0)
       ScaleNnet(scale, &(am_nnet.GetNnet()));

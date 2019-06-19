@@ -35,7 +35,6 @@ int main(int argc, char *argv[]) {
         "e.g.: gmm-est 1.mdl 1.acc 2.mdl\n";
 
     bool binary_write = true;
-    MleTransitionUpdateConfig tcfg;
     MleDiagGmmOptions gmm_opts;
     int32 mixup = 0;
     int32 mixdown = 0;
@@ -61,7 +60,6 @@ int main(int argc, char *argv[]) {
                 "means by standard deviation times this factor.");
     po.Register("write-occs", &occs_out_filename, "File to write pdf "
                 "occupation counts to.");
-    tcfg.Register(&po);
     gmm_opts.Register(&po);
 
     po.Read(argc, argv);
@@ -94,14 +92,6 @@ int main(int argc, char *argv[]) {
       Input ki(stats_filename, &binary);
       transition_accs.Read(ki.Stream(), binary);
       gmm_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
-    }
-
-    if (update_flags & kGmmTransitions) {  // Update transition model.
-      BaseFloat objf_impr, count;
-      trans_model.MleUpdate(transition_accs, tcfg, &objf_impr, &count);
-      KALDI_LOG << "Transition model update: Overall " << (objf_impr/count)
-                << " log-like improvement per frame over " << (count)
-                << " frames.";
     }
 
     {  // Update GMMs.

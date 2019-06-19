@@ -37,82 +37,6 @@ namespace kaldi {
 namespace tensor {
 
 
-Device GetDefaultDevice();
-void SetDefaultDevice(Device device);
-
-// Mechanism to set the default device within a scope by constructing a variable
-// that exists only within that scope.
-class WithDeviceAs {
- public:
-  // Example:
-  // {
-  //   WithDeviceAs _(kCudaDevice);
-  //   // code in this block uses this default.  the variable
-  //   // name is _ because we don't need to access it.
-  // }
-  inline WithDeviceAs(DeviceType device_type):
-      prev_default_(GetDefaultDevice()) {
-    SetDefaultDevice(Device(device_type));
-  }
-  inline WithDeviceAs(Device device):
-      prev_default_(GetDefaultDevice()) {
-    SetDefaultDevice(device);
-  }
-  ~WithDeviceAs() { SetDefaultDevice(prev_default_); }
-
- private:
-  Device prev_default_;
-};
-
-
-
-DataType GetDefaultDtype();
-void SetDefaultDtype(DataType dtype);
-
-class WithDtypeAs {
- public:
-  // Example:
-  // {
-  //   WithDtypeAs _(kDoubleDtype);
-  //   // code in this block uses this default.  the variable
-  //   // name is _ because we don't need to access it.
-  // }
-  inline WithDtypeAs(DataType dtype):
-      prev_default_(GetDefaultDtype()) {
-    SetDefaultDtype(dtype);
-  }
-  ~WithDtypeAs() { SetDefaultDtype(prev_default_); }
-
- private:
-  DataType prev_default_;
-};
-
-
-
-// struct TensorOptions is used as an arg for some constructors
-// when creating Tensors and Variables; it allows flexibility
-// in specifying the device and/or dtype.  See the examples
-// shown where constructors of Tensor or Variable are declared.
-struct TensorOptions {
-  DataType dtype;
-  Device device;
-
-  TensorOptions(): dtype(GetDefaultDtype()),
-                   device(GetDefaultDevice()) { }
-  TensorOptions(DataType dtype):
-      dtype(dtype), device(GetDefaultDevice()) { }
-  TensorOptions(Device device):
-      dtype(GetDefaultDtype()), device(device) { }
-  TensorOptions(DeviceType device_type):
-      dtype(GetDefaultDtype()), device(device_type) { }
-  TensorOptions(DataType dtype, Device device):
-      dtype(dtype), device(device) { }
-  TensorOptions(DataType dtype, Device device_type):
-      dtype(dtype), device(device_type) { }
-  TensorOptions(const TensorOptions &other):
-      dtype(other.dtype), device(other.device) { }
-};
-
 
 // Global variable, initialized from zero, that is used in GetTick().
 // This is defined in tensor-settings.cc.
@@ -122,9 +46,9 @@ inline int64 NextTick() { return ++g_tick_counter; }
 
 // debug_mode activates code that checks for invalidated data in the backprop
 // pass; see "Invalidated:" in glossary in tensor.h.
-// Don't access this variable directly,
-extern bool debug_mode;     // Do not access directly!
-extern int64 debug_start_tick;   // Do not access directly!
+// Don't access this variable directly.
+extern bool g_debug_mode;     // Do not access directly!
+extern int64 g_debug_start_tick;   // Do not access directly!
 
 inline bool DebugMode() {
   return debug_mode;
@@ -162,35 +86,27 @@ class WithDebugModeAs {
 };
 
 
+inline bool DebugMode() {
+  return debug_mode;
+}
+inline void SetDebugMode(bool b) {
+  if (!debug_mode)
+    debug_start_tick = NextTick();
+  debug_mode = b;
+}
 
-// allow_grad means that gradient tracking is allowed; allow_grad = true
-// is the normal case, and means that if gradient tracking is required
-// (e.g. if the user created a Variable with requires_grad = true, and we do
-// operations that depend on it), then we'll track gradients.
-// It is our way to implement an equivalent of PyTorch's `with torch.no_grad()`.
-// Do not access this variable directly; use AllowGrad() and
-extern thread_local bool allow_grad;
-inline bool AllowGrad() { return allow_grad; }
-inline void SetAllowGrad(bool b) { allow_grad = b; }
+extern bool g_reference_mode;     // Do not access directly!
 
-
-class WithNoGrad {
- public:
-  // Example:
-  // {
-  //   WithNoGrad _;
-  //   // code in this block has gradient tracking disabled.
-  //   // variable name is _ because we won't use it.
-  //
-  // }
-  inline WithNoGrad():
-      prev_default_(AllowGrad()) {
-    SetAllowGrad(false);
-  }
-  ~WithNoGrad() { SetAllowGrad(prev_default_); }
- private:
-  bool prev_default_;
-};
+// Gets 'reference mode' bool.  If true, the simple reference implementation
+// will be used instead of the more optimized (e.g. BLAS-based) implementation.
+// This will typically affect the Expand() call of Ops instead of their
+// Do() call.
+inline bool ReferenceMode() {
+  return reference_mode;
+}
+inline void SetReferenceMode(bool b) {
+  reference_mode = b;
+}
 
 
 }  // namespace tensor

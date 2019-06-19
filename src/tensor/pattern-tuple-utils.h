@@ -189,7 +189,7 @@ bool PatternsEquivalent(const Pattern &pattern1,
                duplicates removed and listed in increasing order, each
                stride divides the next one in the list exactly; but this is
                not a necessary condition.   (The necessary condition
-               is that both patterns, when compressed and converted
+               is that both patterns, when reduced and converted
                to common strides, are "Regular" (c.f. "Regularity
                property" in glossary).
 */
@@ -224,7 +224,7 @@ bool ComputeIntersection(const Pattern &pattern1,
                duplicates removed and listed in increasing order, each
                stride divides the next one in the list exactly; but this is
                not a necessary condition.   (The necessary condition
-               is that both patterns, when compressed and converted
+               is that both patterns, when reduced and converted
                to common strides, are "Regular" (c.f. "Regularity
                property" in glossary).
 */
@@ -566,30 +566,30 @@ class PatternRebaser {
   // at all (this is an optimization).
   bool needs_conversion_;
 
-  // The 'offset' value of src_pattern_compressed (i.e. the src_pattern passed
-  // to the constructor, which has been jointly compressed and normalized with
+  // The 'offset' value of src_pattern_reduced (i.e. the src_pattern passed
+  // to the constructor, which has been jointly reduced and normalized with
   // dest_pattern (to make all src_strides positive).
   int64 src_offset_;
-  // The 'offset' value of dest_pattern_compressed
+  // The 'offset' value of dest_pattern_reduced
   int64 dest_offset_;
 
   // num_axes_ is the number of axes, not in the original src_pattern /
-  // dest_pattern but after the two patterns have been jointly compressed and
+  // dest_pattern but after the two patterns have been jointly reduced and
   // then sorted from smallest to greatest stride in src_pattern.
-  // src_strides_ are the resulting strides from src_pattern_compressed, and
-  // dest_strides_ are the resulting strides from dest_pattern_compressed.
+  // src_strides_ are the resulting strides from src_pattern_reduced, and
+  // dest_strides_ are the resulting strides from dest_pattern_reduced.
 
   // dest_pattern_ are the strides of the thus-modified src_pattern and
   // dest_pattern.  As an optimization, if src_strides and dest_strides end up
   // being the same, we set num_axes to zero and skip modifying the strides when
-  // CompressPattern() is called.
+  // ReducePattern() is called.
 
   // Note: all of src_strides_[0] .. src_strides_[num_axes_ - 1] will be greater
   // than zero.  We can guarantee this because src_pattern and dest_pattern as
   // passed to the constructor had the same dims, so any axes with dim=1 would
   // have had dim=1 for both src and dest, hence they would have been removed by
-  // CompressPatterns(), hence no strides would be zero after
-  // CompressPatterns(); and CompressPatterns() normalizes the signs of the
+  // ReducePatterns(), hence no strides would be zero after
+  // ReducePatterns(); and ReducePatterns() normalizes the signs of the
   // strides so the first one (i.e. src_pattern) has positive strides.
   int32 num_axes_;
   int32 src_strides_[KALDI_TENSOR_MAX_DIM];
@@ -666,17 +666,50 @@ class OutOfPlaceAxisSorter {
      @param [in,out]  The patterns whose axes are to be sorted.  The same
                      permutation will be applied to all the patterns.
  */
-void SortTupleAxes(ArrayRef<Pattern*> patterns);
+void SortPatternTupleAxes1(ArrayRef<Pattern*> patterns);
 
 /**
-   Compresses a Pattern-tuple by removing or combining as many axes as possible.
-   See the documentation for CompressOnePattern() in pattern-utils.h basic
-   concept of compressing a single Pattern to a pattern with possibly fewer axes
+   This function sorts the axes in 'patterns' (which must be a valid
+   pattern-tuple, see pattern.h for explanation) from least to
+   greatest abs(stride) in the first Pattern, using the abs(stride)
+   of the remaining patterns, lexicographically, to disambiguate
+   in case of ties in the 1st pattern.
+
+     @param [in,out]  The patterns whose axes are to be sorted.  The same
+                     permutation will be applied to all the patterns.
+ */
+void SortPatternTupleAxesSimple(ArrayRef<Pattern*> patterns);
+
+
+/**
+   TODO: remove this.
+
+   Sorts the axes of the pattern-tuple `patterns` in a way that we use for
+   elementwise operations writing to the first of the patterns.  Let pattern0 be
+   the first pattern in `patterns`.  This function requires that no axis in
+   pattern0 be a trivial axis (dim=1, stride=0); this is because we expect the
+   operation to be non-reducing and the pattern-tuple to be in reduced form
+   (c.f. ReducePatternTuple()).
+
+   The sorting of axes (expressed in the private numbering) is as follows:
+     - First the axis that has the smallest stride in pattern0.
+     - Then the remaining axes, in order from greatest to largest
+       dim in pattern0, using the stride in pattern0 to disambiguate
+    Thus, it is the strides
+
+ */
+void SortPatternTupleAxesForCuda(ArrayRef<Pattern*> patterns);
+
+
+/**
+   Reduces a Pattern-tuple by removing or combining as many axes as possible.
+   See the documentation for ReduceOnePattern() in pattern-utils.h basic
+   concept of reducing a single Pattern to a pattern with possibly fewer axes
    (and maybe with negative strides converted to positive), which covers the
    same set of memory locations as the original Tensor.
 
-   The difference with just calling CompressOnePattern() several times is
-   that CompressPatterns() preserves the relationships between the tensors.
+   The difference with just calling ReduceOnePattern() several times is
+   that ReducePatterns() preserves the relationships between the tensors.
    In the language developed in pattern.h, this means the memory-index-tuple-set
    is preserved.
 
@@ -684,7 +717,7 @@ void SortTupleAxes(ArrayRef<Pattern*> patterns);
    the others may.
 
      @param [in,out] patterns   An nonempty array of the patterns
-                         to be jointly compressed.
+                         to be jointly reduced.
 
       @return  Returns true if it made any change to the patterns,
                false if they were unchanged.
@@ -702,9 +735,9 @@ void SortTupleAxes(ArrayRef<Pattern*> patterns);
  {{3,4},{4,1}}        {{1,1},{0,0}}      {{12},{1}}           {{1},{0}}    # combine
 \endverbatim
 
-   See also SortTupleAxes() and NormalizePatternTuple().
+   See also SortPatternTupleAxes() and NormalizePatternTuple().
  */
-bool CompressPatternTuple(ArrayRef<Pattern*> patterns);
+bool ReducePatternTuple(ArrayRef<Pattern*> patterns);
 
 
 /**
@@ -713,13 +746,13 @@ bool CompressPatternTuple(ArrayRef<Pattern*> patterns);
    i.e. the form produced by this function, which share the same
    memory-index-tuple-set but are not equal).
 
-   This just calls CompressPatternTuple() and then SortPatternTupleAxes().
+   This just calls ReducePatternTuple() and then SortPatternTupleAxes().
 
      @param [in,out] patterns.
 
 */
 inline bool NormalizePatternTuple(ArrayRef<Pattern*> patterns) {
-  CompressPatternTuple(patterns);
+  ReducePatternTuple(patterns);
   NormalizePatternTupleAxes(patterns);
 }
 

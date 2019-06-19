@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
           }
           // Output the class label
           ss << " ";
-          ss << trans_model.TransitionIdToPdf(alignment[i]);
+          ss << trans_model.TransitionIdToPdfFast(alignment[i]);
 
           ko.Stream() << ss.str().c_str();
           ko.Stream() << "\n";

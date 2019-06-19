@@ -29,6 +29,7 @@ class Variable;
 
 
 enum OpProperties {
+  kNotConcreteOp = 0,
   kConcreteOp = 1,  // An Op that is concrete is one that can be executed
                     // directly, i.e. its Do() function works; these Ops will
                     // generally correspond to a single function call, e.g. a
@@ -110,6 +111,10 @@ class Op {
      Example: if the command was "a += b", the derivative operation would
      be: deriv(a) += deriv(b).  In most cases these Ops would be executed
      immediately and then deleted.
+
+     This only has to be defined for Ops that are called directly by
+     user-level code; ops that are only encountered as a byproduct of
+     expanding other Ops do not have to define this function.
   */
   virtual void GetForwardDerivOps(DerivMap *map,
                                   std::vector<std::unique_ptr<Op> > *ops) const {
@@ -133,6 +138,10 @@ class Op {
      Example: if the command was "a += b * c", the operations added to
      'ops' would correspond to `deriv(b) += deriv(a) * c` and
      `deriv(c) += deriv(a) * b`.
+
+     This only has to be defined for Ops that are called directly by
+     user-level code; ops that are only encountered as a byproduct of
+     expanding other Ops do not have to define this function.
   */
   virtual void GetBackwardDerivOps(DerivMap *map,
                                    std::vector<std::unique_ptr<Op> > *ops) const {
@@ -143,7 +152,7 @@ class Op {
 
   /** Destructor.  It's important for efficiency of memory use to destroy Ops as
       soon as you won't need them any more, because it may trigger the freeing
-      of Tensors and hence Storage regions.
+      of Tensors and hence Storage objects.
   */
   virtual ~Op();
  protected:
@@ -162,6 +171,151 @@ class Op {
   }
 
 };
+
+
+
+#ifdef HAVE_CUDA
+// The following macro is primarily for use inside other macros defined below.
+// This version is for when we compile with CUDA support.
+#define SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, T, ...) \
+   {                                                                      \
+   switch (device_type) {                                                 \
+    case kCpuDevice:                                                      \
+      pointer_name = new OpName<T, kCpuDevice>(__VA_ARGS__); break;       \
+    case kCudaDevice:                                                      \
+      pointer_name = new OpName<T, kCudaDevice>(__VA_ARGS__); break;       \
+    default:                                                              \
+    KALDI_ERR << "Invalid device type " << int32(device_type);            \
+  }  while (0)
+// the while(0) is to allow a semicolon after the invocation.
+#else
+// The following macro is primarily for use inside other macros defined below.
+// This version is for when we compile without CUDA support.
+#define SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, T, ...) \
+   {                                                                      \
+   switch (device_type) {                                                 \
+    case kCpuDevice:                                                      \
+      pointer_name = new OpName<T, kCpuDevice>(__VA_ARGS__); break;       \
+    case kCudaDevice:                                                      \
+    KALDI_ERR << "You did not compile for CUDA, reconfigure with "        \
+                 "CUDA support.";                                         \
+    default:                                                              \
+    KALDI_ERR << "Invalid device type " << int32(device_type);            \
+  }  while (0)
+// the while(0) is to allow a semicolon after the invocation.
+#endif
+
+// the following macro is to be used to dispatch device and dtype-specific
+// implementations.  The idea is that you have defined a template like
+// template<class Dtype, class DeviceType> class OpName
+// and have specialized that template for the various combinations.
+// This executes commands like:
+//    pointer_name = new OpName<float, kCpu>(a, b, c);
+// See also SET_TO_TEMPLATED_OP_REAL for ops where integers are not
+// supported
+#define SET_TO_TEMPLATED_OP_ALL(pointer_name, dtype, device_type, OpName, ...) \
+    switch (dtype) {                                \
+     case kFloatDtype:                              \
+     SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, float, __VA_ARGS__); \
+      break;                                        \
+     case kDoubleDtype:                             \
+     SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, double, __VA_ARGS__); \
+      break;                                        \
+     case kInt32Dtype:                             \
+     SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, int32, __VA_ARGS__); \
+      break;                                        \
+    default:                                        \
+      KALDI_ERR << "Invalid dtype (this op only allows float or double): " \
+      << int32(dtype);                              \
+  } while(0)
+// the while(0) is to allow a semicolon after the invocation.
+
+#define SET_TO_TEMPLATED_OP_REAL(pointer_name, dtype, device_type, OpName, ...) \
+    switch (dtype) {                                \
+     case kFloatDtype:                              \
+       SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, float, __VA_ARGS__); \
+      break;                                        \
+     case kDoubleDtype:                             \
+       SET_TO_TEMPLATED_OP_DEVICE(pointer_name, device_type, OpName, double, __VA_ARGS__); \
+      break;                                        \
+    default:                                        \
+      KALDI_ERR << "Invalid dtype (this op only allows float or double): " \
+                << int32(dtype);                              \
+  } while(0)
+// the while(0) is to allow a semicolon after the invocation.
+
+
+#define SET_TO_TEMPLATED_CPU_OP_REAL(pointer_name, dtype, OpName, ...) \
+    switch (dtype) {                                \
+     case kFloatDtype:                              \
+       pointer_name = new OpName<float, kCpuDevice>(__VA_ARGS__); break;       \
+      break;                                        \
+     case kDoubleDtype:                             \
+       pointer_name = new OpName<double, kCpuDevice>(__VA_ARGS__); break;       \
+      break;                                        \
+    default:                                        \
+      KALDI_ERR << "Invalid dtype (this op only allows float or double): " \
+                << int32(dtype);                              \
+  } while(0)
+// the while(0) is to allow a semicolon after the invocation.
+
+// The following is used when you know that you are only using CPU, particularly
+// for "reference implementations"
+#define SET_TO_TEMPLATED_CPU_OP_ALL(pointer_name, dtype, OpName, ...) \
+    switch (dtype) {                                \
+     case kFloatDtype:                              \
+       pointer_name = new OpName<float>(__VA_ARGS__); break;       \
+      break;                                        \
+     case kDoubleDtype:                             \
+       pointer_name = new OpName<double>(__VA_ARGS__); break;       \
+      break;                                        \
+    default:                                        \
+      KALDI_ERR << "Invalid dtype (this op only allows float or double): " \
+                << int32(dtype);                              \
+  } while(0)
+// the while(0) is to allow a semicolon after the invocation.
+
+// The following is used when you know that you are only using CPU, particularly
+// for "reference implementations"; this version accepts two dtype arguments,
+// for SimpleAssignOp which supports type conversion and possibly broadcasting,
+// transpose etc., but not summation.
+#define SET_TO_TEMPLATED_CPU_OP_ALLPAIRS(pointer_name, dtype1, dtype2, OpName, ...) \
+  switch (static_cast<DataType>(int32(dtype1) + (int32(dtype2) << 4))) { \
+     case kFloatFloatDtype:                               \
+       pointer_name = new OpName<float, float>(__VA_ARGS__); break; \
+      break;                                         \
+     case kFloatDoubleDtype:                               \
+       pointer_name = new OpName<float, double>(__VA_ARGS__); break; \
+      break;                                         \
+     case kFloatInt32Dtype:                               \
+       pointer_name = new OpName<float, int32>(__VA_ARGS__); break; \
+      break;                                         \
+     case kDoubleFloatDtype:                               \
+       pointer_name = new OpName<double, float>(__VA_ARGS__); break; \
+      break;                                         \
+     case kDoubleDoubleDtype:                               \
+       pointer_name = new OpName<double, double>(__VA_ARGS__); break; \
+      break;                                         \
+     case kDoubleInt32Dtype:                               \
+       pointer_name = new OpName<double, int32>(__VA_ARGS__); break; \
+      break;                                         \
+     case kInt32FloatDtype:                               \
+       pointer_name = new OpName<int32, float>(__VA_ARGS__); break; \
+      break;                                         \
+     case kInt32DoubleDtype:                               \
+       pointer_name = new OpName<int32, double>(__VA_ARGS__); break; \
+      break;                                         \
+     case kInt32Int32Dtype:                               \
+       pointer_name = new OpName<int32, int32>(__VA_ARGS__); break; \
+      break;                                         \
+    default:                                        \
+      KALDI_ERR << "Invalid pair of dtypes in Assign Op: "       \
+             << int32(dtype1) << ", " << int32(dtype2);   \
+  } while(0)
+
+
+
+
 
 // See linear-ops.h and nonlinear-ops.h for concrete examples of Ops.
 

@@ -49,7 +49,6 @@ namespace kaldi {
 struct OnlineFeaturePipelineCommandLineConfig {
   std::string feature_type;
   std::string mfcc_config;
-  std::string plp_config;
   std::string fbank_config;
   bool add_pitch;
   std::string pitch_config;
@@ -68,15 +67,13 @@ struct OnlineFeaturePipelineCommandLineConfig {
 
   void Register(OptionsItf *opts) {
     opts->Register("feature-type", &feature_type,
-                   "Base feature type [mfcc, plp, fbank]");
+                   "Base feature type [mfcc, fbank]");
     opts->Register("mfcc-config", &mfcc_config, "Configuration file for "
                    "MFCC features (e.g. conf/mfcc.conf)");
-    opts->Register("plp-config", &plp_config, "Configuration file for "
-                   "PLP features (e.g. conf/plp.conf)");
     opts->Register("fbank-config", &fbank_config, "Configuration file for "
                    "filterbank features (e.g. conf/fbank.conf)");
     opts->Register("add-pitch", &add_pitch, "Append pitch features to raw "
-                   "MFCC/PLP features.");
+                   "MFCC features.");
     opts->Register("pitch-config", &pitch_config, "Configuration file for "
                    "pitch features (e.g. conf/pitch.conf)");
     opts->Register("pitch-process-config", &pitch_process_config,
@@ -119,11 +116,10 @@ struct OnlineFeaturePipelineConfig {
 
   BaseFloat FrameShiftInSeconds() const;
 
-  std::string feature_type;  // "mfcc" or "plp" or "fbank"
+  std::string feature_type;  // "mfcc" or "fbank"
 
   MfccOptions mfcc_opts;  // options for MFCC computation,
                           // if feature_type == "mfcc"
-  PlpOptions plp_opts;  // Options for PLP computation, if feature_type == "plp"
   FbankOptions fbank_opts;  // Options for filterbank computation, if
                             // feature_type == "fbank"
 
@@ -226,7 +222,7 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   Matrix<BaseFloat> lda_mat_;  // LDA matrix, if supplied.
   Matrix<BaseFloat> global_cmvn_stats_;  // Global CMVN stats.
 
-  OnlineBaseFeature *base_feature_;        // MFCC/PLP
+  OnlineBaseFeature *base_feature_;        // MFCC
   OnlinePitchFeature *pitch_;              // Raw pitch
   OnlineProcessPitch *pitch_feature_;  // Processed pitch
   OnlineFeatureInterface *feature_;        // CMVN (+ processed pitch)

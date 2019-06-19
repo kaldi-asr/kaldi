@@ -35,7 +35,6 @@ void MfccComputer::Compute(BaseFloat vtln_warp,
   if (opts_.use_energy)
     signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
                                                 opts_.energy_floor));
-
   const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
 
   if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.

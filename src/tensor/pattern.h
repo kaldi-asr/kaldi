@@ -318,6 +318,8 @@ namespace tensor {
 
     Set-equivalent:   Two Patterns are set-equivalent if their memory-index-sets
                       are identical.
+                      Two Pattern-tuples are set-equivalent if their
+                      memory-index-tuple-sets are identical.
 
 
     Shape of a Pattern: The vector of the dimensions of a Pattern: e.g. [] for
@@ -391,6 +393,28 @@ namespace tensor {
                       It is easy to show that the linear property is transitive;
                       that is if P is linear in Q and Q is linear in R, then
                       P is linear in R.
+    Reduced pattern:
+                      A pattern is in reduced form if there is no
+                      set-equivalent pattern which has fewer axes.
+
+                      What this means more concretely is that the pattern has no
+                      trivial axes and has no pairs of axes which could be
+                      combined.  For example, a matrix where successive rows
+                      "touch" (i.e. they are not separated by a stride) can
+                      always be reduced.
+
+    Reduced pattern-tuple:
+                      A pattern-tuple is in reduced form if there is no
+                      set-equivalent pattern-tuple which has fewer axes
+                      (defining the num_axes of a pattern-tuple as the
+                      greatest of the num_axes of the patterns in the tuple).
+
+                      What this means more concretely/intuitively is that there
+                      are no axes which are trivial for all patterns and can be
+                      removed; and there are no pairs of axes which can be
+                      combined for all patterns in the tuple.
+
+
 
     Regularity property:   This is a property of Patterns that is relevant when
                       reducing Patterns to a common set of strides.  It can
@@ -437,12 +461,17 @@ namespace tensor {
                       necessary (since most BLAS implementations do not support
                       negative stride).
 
-   Uniqueness property:  A property of a Pattern that no two different index-tuples,
-                      when used to index the Pattern, generate the same memory-index.
-                      The axis-dominance property is sufficient, but not necessary,
-                      to ensure the uniqueness property.  (The uniqueness property
-                      is probably not so easy to test for efficiently in the general
-                      case).
+   Uniqueness property:  A property of a Pattern that there does not exist
+                      two index-tuples i1 and i2 which are different in non-trivial
+                      axes of the pattern (i.e. i1[r] != i2[r] for some r that is
+                      a non-trivial raxis of the pattern), which when
+                      used to index the Pattern, generate the same memory-index.
+
+                      The axis-dominance property is sufficient, but not
+                      necessary, to ensure the uniqueness property.  (The
+                      uniqueness property is probably not easy to test for
+                      efficiently in the general case where axis dominance does
+                      not hold).
 
     Valid Pattern:
                      A valid Pattern must be as follows.  Think of this as the mathematical definition;

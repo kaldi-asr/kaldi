@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2018  Johns Hopkins University (author: Daniel Povey)
+//                2019  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,6 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <vector>
 
 #include "hmm/hmm-utils.h"
@@ -27,16 +29,12 @@
 
 namespace kaldi {
 
-
-
-fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
+std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
     std::vector<int32> phone_window,
     const ContextDependencyInterface &ctx_dep,
     const Transitions &trans_model,
     const HTransducerConfig &config,
     HmmCacheType *cache) {
-  using namespace fst;
-
   if (static_cast<int32>(phone_window.size()) != ctx_dep.ContextWidth())
     KALDI_ERR << "Context size mismatch, ilabel-info [from context FST is "
               << phone_window.size() << ", context-dependency object "
@@ -49,7 +47,6 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
           "a code error.";
 
   const Topology &topo = trans_model.GetTopo();
-  const Topology::TopologyEntry &entry  = topo.TopologyForPhone(phone);
 
   // vector of the pdfs, indexed by pdf-class (pdf-classes must start from zero
   // and be contiguous).
@@ -70,6 +67,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
           " that general nature.";
     }
   }
+
   std::pair<int32, std::vector<int32> > cache_index(phone, pdfs);
   if (cache != NULL) {
     HmmCacheType::iterator iter = cache->find(cache_index);
@@ -77,81 +75,48 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
       return iter->second;
   }
 
-  VectorFst<StdArc> *ans = new VectorFst<StdArc>;
+  using Arc = fst::StdArc;
+  using MyEditFst = fst::EditFst<Arc>;
+  using StateId = Arc::StateId;
 
-  typedef StdArc Arc;
-  typedef Arc::Weight Weight;
-  typedef Arc::StateId StateId;
-  typedef Arc::Label Label;
+  const fst::StdVectorFst &entry = topo.TopologyForPhone(phone);
+  std::shared_ptr<MyEditFst> loopless_entry = std::make_shared<MyEditFst>(entry);
 
-  std::vector<StateId> state_ids;
-  for (size_t i = 0; i < entry.size(); i++)
-    state_ids.push_back(ans->AddState());
-  KALDI_ASSERT(state_ids.size() != 0);  // Or empty topology entry.
-  ans->SetStart(state_ids[0]);
-  StateId final = state_ids.back();
-  ans->SetFinal(final, Weight::One());
-
-  for (int32 hmm_state = 0;
-       hmm_state < static_cast<int32>(entry.size());
-       hmm_state++) {
-    int32 forward_pdf_class = entry[hmm_state].forward_pdf_class, forward_pdf;
-    int32 self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class, self_loop_pdf;
-    if (forward_pdf_class == kNoPdf) {  // nonemitting state.
-      forward_pdf = kNoPdf;
-      self_loop_pdf = kNoPdf;
-    } else {
-      KALDI_ASSERT(forward_pdf_class < static_cast<int32>(pdfs.size()));
-      KALDI_ASSERT(self_loop_pdf_class < static_cast<int32>(pdfs.size()));
-      forward_pdf = pdfs[forward_pdf_class];
-      self_loop_pdf = pdfs[self_loop_pdf_class];
-    }
-    int32 trans_idx;
-    for (trans_idx = 0;
-        trans_idx < static_cast<int32>(entry[hmm_state].transitions.size());
-        trans_idx++) {
-      BaseFloat log_prob;
-      Label label;
-      int32 dest_state = entry[hmm_state].transitions[trans_idx].first;
-      bool is_self_loop = (dest_state == hmm_state);
-      if (is_self_loop)
-        continue; // We will add self-loops in at a later stage of processing,
-      // not in this function.
-      if (forward_pdf_class == kNoPdf) {
-        // no pdf, hence non-estimated probability.
-        // [would not happen with normal topology] .  There is no transition-state
-        // involved in this case.
-        log_prob = Log(entry[hmm_state].transitions[trans_idx].second);
-        label = 0;
-      } else {  // normal probability.
-        int32 trans_state =
-            trans_model.TupleToTransitionState(phone, hmm_state, forward_pdf, self_loop_pdf);
-        int32 trans_id =
-            trans_model.PairToTransitionId(trans_state, trans_idx);
-        log_prob = trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
-        // log_prob is a negative number (or zero)...
-        label = trans_id;
+  for (fst::StateIterator<MyEditFst> siter(*loopless_entry);
+       !siter.Done(); siter.Next()) {
+    StateId state = siter.Value();
+    std::vector<Arc> non_self_loops;
+    BaseFloat non_self_loop_prob = 1.0;
+    for (fst::ArcIterator<MyEditFst> aiter(*loopless_entry, state);
+         !aiter.Done(); aiter.Next()) {
+      const Arc& arc = aiter.Value();
+      if (arc.nextstate != state) {
+        non_self_loops.push_back(arc);
+      } else {
+        non_self_loop_prob -= exp(-arc.weight.Value());
       }
-      // Will add probability-scale later (we may want to push first).
-      ans->AddArc(state_ids[hmm_state],
-                  Arc(label, label, Weight(-log_prob), state_ids[dest_state]));
+    }
+    KALDI_ASSERT(non_self_loop_prob >= BaseFloat(0));
+    if (non_self_loops.size() != loopless_entry->NumArcs(state)) {
+      loopless_entry->DeleteArcs(state);
+      for (Arc& arc: non_self_loops) {
+        // Renormalize the remaining arcs to have an outgoing weight
+        // of 1.0, so we maintain stochasticity
+        arc.weight = Arc::Weight(-log(exp(-arc.weight.Value()) / non_self_loop_prob));
+        loopless_entry->AddArc(state, arc);
+      }
     }
   }
 
-  fst::RemoveEpsLocal(ans);  // this is safe and will not blow up.
-
-  // Now apply probability scale.
-  // We waited till after the possible weight-pushing steps,
-  // because weight-pushing needs "real" weights in order to work.
-  ApplyProbabilityScale(config.transition_scale, ans);
+  ApplyProbabilityScale(config.transition_scale, loopless_entry.get());
   if (cache != NULL)
-    (*cache)[cache_index] = ans;
-  return ans;
+    (*cache)[cache_index] = loopless_entry;
+  return loopless_entry;
 }
 
 
 
-fst::VectorFst<fst::StdArc>*
+const fst::VectorFst<fst::StdArc>&
 GetHmmAsFsaSimple(std::vector<int32> phone_window,
                   const ContextDependencyInterface &ctx_dep,
                   const Transitions &trans_model,
@@ -168,67 +133,7 @@ GetHmmAsFsaSimple(std::vector<int32> phone_window,
   KALDI_ASSERT(phone != 0);
 
   const Topology &topo = trans_model.GetTopo();
-  const Topology::TopologyEntry &entry  = topo.TopologyForPhone(phone);
-
-  VectorFst<StdArc> *ans = new VectorFst<StdArc>;
-
-  // Create a mini-FST with a superfinal state [in case we have emitting
-  // final-states, which we usually will.]
-  typedef StdArc Arc;
-  typedef Arc::Weight Weight;
-  typedef Arc::StateId StateId;
-  typedef Arc::Label Label;
-
-  std::vector<StateId> state_ids;
-  for (size_t i = 0; i < entry.size(); i++)
-    state_ids.push_back(ans->AddState());
-  KALDI_ASSERT(state_ids.size() > 1);  // Or invalid topology entry.
-  ans->SetStart(state_ids[0]);
-  StateId final = state_ids.back();
-  ans->SetFinal(final, Weight::One());
-
-  for (int32 hmm_state = 0;
-       hmm_state < static_cast<int32>(entry.size());
-       hmm_state++) {
-    int32 forward_pdf_class = entry[hmm_state].forward_pdf_class, forward_pdf;
-    int32 self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class, self_loop_pdf;
-    if (forward_pdf_class == kNoPdf) {   // nonemitting state; not generally used.
-      forward_pdf = kNoPdf;
-      self_loop_pdf = kNoPdf;
-    } else {
-      bool ans = ctx_dep.Compute(phone_window, forward_pdf_class, &forward_pdf);
-      KALDI_ASSERT(ans && "Context-dependency computation failed.");
-      ans = ctx_dep.Compute(phone_window, self_loop_pdf_class, &self_loop_pdf);
-      KALDI_ASSERT(ans && "Context-dependency computation failed.");
-    }
-    int32 trans_idx;
-    for (trans_idx = 0;
-        trans_idx < static_cast<int32>(entry[hmm_state].transitions.size());
-        trans_idx++) {
-      BaseFloat log_prob;
-      Label label;
-      int32 dest_state = entry[hmm_state].transitions[trans_idx].first;
-      if (forward_pdf_class == kNoPdf) {
-        // no pdf, hence non-estimated probability.  very unusual case.  [would
-        // not happen with normal topology] .  There is no transition-state
-        // involved in this case.
-        KALDI_ASSERT(hmm_state != dest_state);
-        log_prob = Log(entry[hmm_state].transitions[trans_idx].second);
-        label = 0;
-      } else {  // normal probability.
-        int32 trans_state =
-            trans_model.TupleToTransitionState(phone, hmm_state, forward_pdf, self_loop_pdf);
-        int32 trans_id =
-            trans_model.PairToTransitionId(trans_state, trans_idx);
-        log_prob = prob_scale * trans_model.GetTransitionLogProb(trans_id);
-        // log_prob is a negative number (or zero)...
-        label = trans_id;
-      }
-      ans->AddArc(state_ids[hmm_state],
-                  Arc(label, label, Weight(-log_prob), state_ids[dest_state]));
-    }
-  }
-  return ans;
+  return topo.TopologyForPhone(phone);
 }
 
 
@@ -236,10 +141,11 @@ GetHmmAsFsaSimple(std::vector<int32> phone_window,
 /// This utility function, used in GetHTransducer(), creates an FSA (finite
 /// state acceptor, i.e. an FST with ilabels equal to olabels) with a single
 /// successful path, with a single label on it.
-static inline fst::VectorFst<fst::StdArc> *MakeTrivialAcceptor(int32 label) {
+static inline std::unique_ptr<fst::VectorFst<fst::StdArc>>
+MakeTrivialAcceptor(int32 label) {
   typedef fst::StdArc Arc;
   typedef Arc::Weight Weight;
-  fst::VectorFst<Arc> *ans = new fst::VectorFst<Arc>;
+  std::unique_ptr<fst::VectorFst<Arc>> ans(new fst::VectorFst<Arc>);
   ans->AddState();
   ans->AddState();
   ans->SetStart(0);
@@ -251,11 +157,12 @@ static inline fst::VectorFst<fst::StdArc> *MakeTrivialAcceptor(int32 label) {
 
 
 // The H transducer has a separate outgoing arc for each of the symbols in ilabel_info.
-fst::VectorFst<fst::StdArc> *GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
-                                            const ContextDependencyInterface &ctx_dep,
-                                            const Transitions &trans_model,
-                                            const HTransducerConfig &config,
-                                            std::vector<int32> *disambig_syms_left) {
+std::unique_ptr<fst::VectorFst<fst::StdArc>>
+GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
+               const ContextDependencyInterface &ctx_dep,
+               const Transitions &trans_model,
+               const HTransducerConfig &config,
+               std::vector<int32> *disambig_syms_left) {
   KALDI_ASSERT(ilabel_info.size() >= 1 && ilabel_info[0].size() == 0);  // make sure that eps == eps.
   HmmCacheType cache;
   // "cache" is an optimization that prevents GetHmmAsFsa repeating work
@@ -266,7 +173,14 @@ fst::VectorFst<fst::StdArc> *GetHTransducer(const std::vector<std::vector<int32>
   typedef Arc::StateId StateId;
   typedef Arc::Label Label;
 
-  std::vector<const ExpandedFst<Arc>* > fsts(ilabel_info.size(), NULL);
+  // I would prefer to do this:
+  // std::vector<std::unique_ptr<const ExpandedFst<Arc>>> fsts(ilabel_info.size(), std::unique_ptr(nullptr));
+  // But the second arg of constructor (2) at https://en.cppreference.com/w/cpp/container/vector/vector
+  // must be able to be turned into a const-reference, which std::unique_ptr cannot be.
+  std::vector<std::unique_ptr<const ExpandedFst<Arc>>> fsts;
+  for(std::size_t i = 0; i < ilabel_info.size(); ++i) {
+    fsts.emplace_back(std::unique_ptr<const ExpandedFst<Arc>>(nullptr));
+  }
   std::vector<int32> phones = trans_model.GetPhones();
 
   KALDI_ASSERT(disambig_syms_left != 0);
@@ -315,19 +229,17 @@ fst::VectorFst<fst::StdArc> *GetHTransducer(const std::vector<std::vector<int32>
     } else {  // Real phone-in-context.
       std::vector<int32> phone_window = ilabel_info[j];
 
-      VectorFst<Arc> *fst = GetHmmAsFsa(phone_window,
-                                        ctx_dep,
-                                        trans_model,
-                                        config,
-                                        &cache);
-      fsts[j] = fst;
+      std::shared_ptr<ExpandedFst<Arc>> fst = GetHmmAsFsa(phone_window,
+                                                          ctx_dep,
+                                                          trans_model,
+                                                          config,
+                                                          &cache);
+      std::unique_ptr<ExpandedFst<Arc>> u_fst(fst->Copy());
+      fsts[j] = std::move(u_fst);
     }
   }
 
-  VectorFst<Arc> *ans = MakeLoopFst(fsts);
-  SortAndUniq(&fsts); // remove duplicate pointers, which we will have
-  // in general, since we used the cache.
-  DeletePointers(&fsts);
+  std::unique_ptr<VectorFst<Arc>> ans = MakeLoopFst(fsts);
   return ans;
 }
 
@@ -404,23 +316,59 @@ void GetIlabelMapping (const std::vector<std::vector<int32> > &ilabel_info_old,
 
 
 
-fst::VectorFst<fst::StdArc> *GetPdfToTransitionIdTransducer(const Transitions &trans_model) {
+std::unique_ptr<fst::VectorFst<fst::StdArc>>
+GetPdfToTransitionIdTransducer(const Transitions &trans_model) {
   using namespace fst;
-  VectorFst<StdArc> *ans = new VectorFst<StdArc>;
+  std::unique_ptr<VectorFst<StdArc>> ans(new VectorFst<StdArc>);
   typedef VectorFst<StdArc>::Weight Weight;
   typedef StdArc Arc;
   ans->AddState();
   ans->SetStart(0);
   ans->SetFinal(0, Weight::One());
   for (int32 tid = 1; tid <= trans_model.NumTransitionIds(); tid++) {
-    int32 pdf = trans_model.TransitionIdToPdf(tid);
+    int32 pdf = trans_model.TransitionIdToPdfFast(tid);
     ans->AddArc(0, Arc(pdf+1, tid, Weight::One(), 0));  // note the offset of 1 on the pdfs.
     // it's because 0 is a valid pdf.
   }
   return ans;
 }
 
+struct TransitionState {
+public:
+  TransitionState(const Transitions::TransitionIdInfo& info):
+    info(info) { }
 
+  bool operator==(const TransitionState& other) const {
+    return info.phone == other.info.phone &&
+      info.topo_state == other.info.topo_state &&
+      info.pdf_id == other.info.pdf_id;
+  }
+
+  bool operator!=(const TransitionState& other) const {
+    return !(*this == other);
+  }
+
+  TransitionState& operator=(TransitionState other) {
+// TODO: Fix this bizarre error when I uncomment this:
+    // this->info = other.info;
+    KALDI_ASSERT(false);
+// hmm-utils.cc: In member function ‘kaldi::TransitionState& kaldi::TransitionState::operator=(kaldi::TransitionState)’:
+// hmm-utils.cc:351:24: error: passing ‘const kaldi::Transitions::TransitionIdInfo’ as ‘this’ argument discards qualifiers [-fpermissive]
+//      this->info = other.info;
+//                         ^~~~
+// In file included from ../hmm/hmm-utils.h:27:0,
+//                  from hmm-utils.cc:25:
+// ../hmm/transitions.h:107:10: note:   in call to ‘kaldi::Transitions::TransitionIdInfo& kaldi::Transitions::TransitionIdInfo::operator=(const kaldi::Transitions::TransitionIdInfo&)’
+
+    return *this;
+  }
+
+  bool operator<(const TransitionState& other) const {
+    return info < other.info;
+  }
+
+  const Transitions::TransitionIdInfo& info;
+};
 
 class TidToTstateMapper {
 public:
@@ -437,26 +385,58 @@ public:
   // with values over 100000/kNontermBigNumber) to zero.
   // Its point is to provide an equivalence class on labels that's relevant to what
   // the self-loop will be on the following (or preceding) state.
+
+  // TransitionState no longer exists. It's basically a
+  // TransitionIdInfo without the arc_index field.
+
   TidToTstateMapper(const Transitions &trans_model,
                     const std::vector<int32> &disambig_syms,
                     bool check_no_self_loops):
       trans_model_(trans_model),
       disambig_syms_(disambig_syms),
-      check_no_self_loops_(check_no_self_loops) { }
-  typedef int32 Result;
-  int32 operator() (int32 label) const {
-    if (label == static_cast<int32>(fst::kNoLabel)) return -1;  // -1 -> -1
-    else if (label >= 1 && label <= trans_model_.NumTransitionIds()) {
-      if (check_no_self_loops_ && trans_model_.IsSelfLoop(label))
+      check_no_self_loops_(check_no_self_loops) {
+    KALDI_ASSERT((*this)(fst::kNoLabel) == NoLabelClass());
+    KALDI_ASSERT((*this)(0) == ZeroClass());
+}
+
+  typedef TransitionState Result;
+  static const Result& NoLabelClass() {
+    // Take advantage of the fact that phone must be greater than or
+    // equal to 1 to create a TransitionIdInfo which in practice will
+    // never be created normally.
+
+    // Use -1 for all other fields so we can easily see when debugging
+    // whether we are using one of these invalid TransitionIdInfo
+    // classes.
+    static auto *no_label =
+      new Transitions::TransitionIdInfo{.phone = -1, .topo_state = -1,
+                                        .arc_index = -1, .pdf_id = -1,
+                                        .self_loop_pdf_id = -1};
+    static auto *no_label_state = new TransitionState(*no_label);
+    return *no_label_state;
+  }
+
+  static const Result& ZeroClass() {
+    static auto *zero_label =
+      new Transitions::TransitionIdInfo{.phone = 0, .topo_state = -1, .arc_index = -1,
+                                        .pdf_id = -1, .self_loop_pdf_id = -1};
+    static auto *zero_label_state = new TransitionState(*zero_label);
+    return *zero_label_state;
+  }
+
+  Result operator() (int32 tid) const {
+    if (tid == static_cast<int32>(fst::kNoLabel)) return NoLabelClass();  // -1 -> -1
+    else if (tid >= 1 && tid <= trans_model_.NumTransitionIds()) {
+      if (check_no_self_loops_ && trans_model_.InfoForTransitionId(tid).is_self_loop)
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
-      return trans_model_.TransitionIdToTransitionState(label);
+      return TransitionState(trans_model_.InfoForTransitionId(tid));
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       int32 big_number = fst::kNontermBigNumber;  // 1000000
-      if (label != 0 && label < big_number)
+      if (tid != 0 && tid < big_number)
         KALDI_ASSERT(std::binary_search(disambig_syms_.begin(),
                                         disambig_syms_.end(),
-                                        label));  // or invalid label
-      return 0;
+                                        tid));  // or invalid tid
+      return ZeroClass();
     }
   }
 
@@ -466,14 +446,27 @@ private:
   bool check_no_self_loops_;
 };
 
-// This is the code that expands an FST from transition-states to
-// transition-ids, in the case where reorder == true, i.e. the non-optional
-// transition is before the self-loop.
-static void AddSelfLoopsReorder(const Transitions &trans_model,
-                                const std::vector<int32> &disambig_syms,
-                                BaseFloat self_loop_scale,
-                                bool check_no_self_loops,
-                                fst::VectorFst<fst::StdArc> *fst) {
+// Returns true if the outgoing arcs of the state s sum to 1.0
+template<typename FST>
+static bool StateIsStochastic(FST fst, typename FST::StateId s) {
+  using namespace fst;
+  using Arc = typename FST::Arc;
+  using Weight = typename Arc::Weight;
+  Weight total_prob = Weight::Zero();
+  for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
+       !aiter.Done();
+       aiter.Next()) {
+    total_prob = Plus(total_prob, aiter.Value());
+  }
+  return ApproxEqual(total_prob.Value(), Weight::One());
+}
+
+void AddSelfLoops(const Transitions &trans_model,
+                  const std::vector<int32> &disambig_syms,
+                  BaseFloat self_loop_scale,
+                  bool check_no_self_loops,
+                  fst::VectorFst<fst::StdArc> *fst) {
+  KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
@@ -485,17 +478,18 @@ static void AddSelfLoopsReorder(const Transitions &trans_model,
   // self-loop to be added to it.  Approximately this means that if a
   // state has multiple different symbols on arcs entering it, it will be
   // duplicated, with one copy per incoming symbol.
-  MakePrecedingInputSymbolsSameClass(true, fst, f);
+  MakePrecedingInputSymbolsSameClass(fst, f);
 
-  int32 kNoTransState = f(kNoLabel);
-  KALDI_ASSERT(kNoTransState == -1);
-
-  // use the following to keep track of the transition-state for each state.
-  std::vector<int32> state_in(fst->NumStates(), kNoTransState);
+  // use the following to keep track of the transition-state incoming
+  // into each state. This works because each state now has only one
+  // transition state coming into (because of
+  // MakePrecedingInputSymbolsSameClass).
+  std::vector<TransitionState> state_in(fst->NumStates(), f.NoLabelClass());
 
   // This first loop just works out the label into each state,
   // and converts the transitions in the graph from transition-states
   // to transition-ids.
+  // state_in maps each state in the fst to its TransitionState
 
   for (StateIterator<VectorFst<Arc> > siter(*fst);
        !siter.Done();
@@ -504,19 +498,19 @@ static void AddSelfLoopsReorder(const Transitions &trans_model,
     for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
          !aiter.Done();
          aiter.Next()) {
-      Arc arc = aiter.Value();
-      int32 trans_state = f(arc.ilabel);
-      if (state_in[arc.nextstate] == kNoTransState)
+      const Arc& arc = aiter.Value();
+      TransitionState trans_state = f(arc.ilabel);
+      if (state_in[arc.nextstate] == f.NoLabelClass()) {
         state_in[arc.nextstate] = trans_state;
-      else {
+      } else {
         KALDI_ASSERT(state_in[arc.nextstate] == trans_state);
         // or probably an error in MakePrecedingInputSymbolsSame.
       }
     }
   }
 
-  KALDI_ASSERT(state_in[fst->Start()] == kNoStateId || state_in[fst->Start()] == 0);
-  // or MakePrecedingInputSymbolsSame failed.
+  // The start state should have no incoming arcs (invariant of Topology)
+  KALDI_ASSERT(state_in[fst->Start()] == f.ZeroClass());
 
   // The next loop looks at each graph state, adds the self-loop [if needed] and
   // multiples all the out-transitions' probs (and final-prob) by the
@@ -525,126 +519,32 @@ static void AddSelfLoopsReorder(const Transitions &trans_model,
   // with the corresponding labels on them by this probability).
 
   for (StateId s = 0; s < static_cast<StateId>(state_in.size()); s++) {
-    if (state_in[s] > 0) {  // defined, and not eps or a disambiguation symbol or a
-                            // nonterminal-related sybol for grammar decoding...
-      int32 trans_state = static_cast<int32>(state_in[s]);
-      // First multiply all probabilities by "forward" probability.
-      BaseFloat log_prob = trans_model.GetNonSelfLoopLogProb(trans_state);
-      fst->SetFinal(s, Times(fst->Final(s), Weight(-log_prob*self_loop_scale)));
+    const TransitionState& trans_state = state_in[s];
+    if (trans_state != f.NoLabelClass() && trans_state != f.ZeroClass() &&
+        trans_state.info.self_loop_pdf_id != -1) {
+      // defined, and not eps or a disambiguation symbol or a
+      // nonterminal-related symbol for grammar decoding, and has a
+      // self-loop which needs to be added, while maintaining
+      int32 self_loop_tid = trans_state.info.self_loop_transition_id;
+      KALDI_ASSERT(self_loop_tid != 0 &&
+                   "Can't have a self_loop_pdf_id without a self_loop_transition_id");
+      // 1) Multiply all probabilities by "forward" probability.
+      BaseFloat self_loop_log_prob =
+        -trans_model.InfoForTransitionId(self_loop_tid).transition_cost;
+      BaseFloat log_forward_prob = log(1.0 - exp(self_loop_log_prob));
+      fst->SetFinal(s, Times(fst->Final(s), Weight(-log_forward_prob)));
       for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
           !aiter.Done();
           aiter.Next()) {
         Arc arc = aiter.Value();
-        arc.weight = Times(arc.weight, Weight(-log_prob*self_loop_scale));
+        arc.weight = Times(arc.weight, Weight(-log_forward_prob));
         aiter.SetValue(arc);
       }
-      // Now add self-loop, if needed.
-      int32 trans_id = trans_model.SelfLoopOf(trans_state);
-      if (trans_id != 0) {  // has self-loop.
-        BaseFloat log_prob = trans_model.GetTransitionLogProb(trans_id);
-        fst->AddArc(s, Arc(trans_id, 0, Weight(-log_prob*self_loop_scale), s));
-      }
+      // 2) Add self-loop
+      fst->AddArc(s, Arc(self_loop_tid, 0, Weight(-self_loop_log_prob), s));
+
     }
-  }
-}
-
-
-// this is the code that expands an FST from transition-states to
-// transition-ids, in the case where reorder == false, i.e. non-optional
-// transition is after the self-loop.
-static void AddSelfLoopsNoReorder(
-    const Transitions &trans_model,
-    const std::vector<int32> &disambig_syms,
-    BaseFloat self_loop_scale,
-    bool check_no_self_loops,
-    fst::VectorFst<fst::StdArc> *fst) {
-  using namespace fst;
-  typedef StdArc Arc;
-  typedef Arc::Label Label;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
-
-  // Duplicate states as necessary so that each state has at most one self-loop
-  // on it.
-  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
-  MakeFollowingInputSymbolsSameClass(true, fst, f);
-
-  StateId num_states = fst->NumStates();
-  for (StateId s = 0; s < num_states; s++) {
-    int32 my_trans_state = f(kNoLabel);
-    KALDI_ASSERT(my_trans_state == -1);
-    for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
-         !aiter.Done();
-         aiter.Next()) {
-      Arc arc = aiter.Value();
-      if (my_trans_state == -1) my_trans_state = f(arc.ilabel);
-      else KALDI_ASSERT(my_trans_state == f(arc.ilabel));  // or MakeFollowingInputSymbolsSameClass failed.
-      if (my_trans_state > 0) {  // transition-id; multiply weight...
-        BaseFloat log_prob = trans_model.GetNonSelfLoopLogProb(my_trans_state);
-        arc.weight = Times(arc.weight, Weight(-log_prob*self_loop_scale));
-        aiter.SetValue(arc);
-      }
-    }
-    if (fst->Final(s) != Weight::Zero()) {
-      KALDI_ASSERT(my_trans_state == kNoLabel || my_trans_state == 0);  // or MakeFollowingInputSymbolsSameClass failed.
-    }
-    if (my_trans_state != kNoLabel && my_trans_state != 0) {
-      // a transition-state;  add self-loop, if it has one.
-      int32 trans_id = trans_model.SelfLoopOf(my_trans_state);
-      if (trans_id != 0) {  // has self-loop.
-        BaseFloat log_prob = trans_model.GetTransitionLogProb(trans_id);
-        fst->AddArc(s, Arc(trans_id, 0, Weight(-log_prob*self_loop_scale), s));
-      }
-    }
-  }
-}
-
-void AddSelfLoops(const Transitions &trans_model,
-                  const std::vector<int32> &disambig_syms,
-                  BaseFloat self_loop_scale,
-                  bool reorder,
-                  bool check_no_self_loops,
-                  fst::VectorFst<fst::StdArc> *fst) {
-  KALDI_ASSERT(fst->Start() != fst::kNoStateId);
-  if (reorder)
-    AddSelfLoopsReorder(trans_model, disambig_syms, self_loop_scale,
-                        check_no_self_loops, fst);
-  else
-    AddSelfLoopsNoReorder(trans_model, disambig_syms, self_loop_scale,
-                          check_no_self_loops, fst);
-}
-
-// IsReordered returns true if the transitions were possibly reordered.  This reordering
-// can happen in AddSelfLoops, if the "reorder" option was true.
-// This makes the out-transition occur before the self-loop transition.
-// The function returns false (no reordering) if there is not enough information in
-// the alignment to tell (i.e. no self-loop were taken), and in this case the calling
-// code doesn't care what the answer is.
-// The "alignment" vector contains a sequence of TransitionIds.
-
-static bool IsReordered(const Transitions &trans_model,
-                        const std::vector<int32> &alignment) {
-  for (size_t i = 0; i + 1 < alignment.size(); i++) {
-    int32 tstate1 = trans_model.TransitionIdToTransitionState(alignment[i]),
-        tstate2 = trans_model.TransitionIdToTransitionState(alignment[i+1]);
-    if (tstate1 != tstate2) {
-      bool is_loop_1 = trans_model.IsSelfLoop(alignment[i]),
-          is_loop_2 = trans_model.IsSelfLoop(alignment[i+1]);
-      KALDI_ASSERT(!(is_loop_1 && is_loop_2));  // Invalid.
-      if (is_loop_1) return true;  // Reordered. self-loop is last.
-      if (is_loop_2) return false;  // Not reordered.  self-loop is first.
-    }
-  }
-
-  // Just one trans-state in whole sequence.
-  if (alignment.empty()) return false;
-  else {
-    bool is_loop_front = trans_model.IsSelfLoop(alignment.front()),
-        is_loop_back = trans_model.IsSelfLoop(alignment.back());
-    if (is_loop_front) return false;  // Not reordered.  Self-loop is first.
-    if (is_loop_back) return true;  // Reordered.  Self-loop is last.
-    return false;  // We really don't know in this case but calling code should
-    // not care.
+    KALDI_PARANOID_ASSERT(StateIsStochastic(fst, s));
   }
 }
 
@@ -658,7 +558,6 @@ static bool IsReordered(const Transitions &trans_model,
 
 static bool SplitToPhonesInternal(const Transitions &trans_model,
                                   const std::vector<int32> &alignment,
-                                  bool reordered,
                                   std::vector<std::vector<int32> > *split_output) {
   if (alignment.empty()) return true;  // nothing to split.
   std::vector<size_t> end_points;  // points at which phones end [in an
@@ -668,31 +567,27 @@ static bool SplitToPhonesInternal(const Transitions &trans_model,
   bool was_ok = true;
   for (size_t i = 0; i < alignment.size(); i++) {
     int32 trans_id = alignment[i];
-    if (trans_model.IsFinal(trans_id)) {  // is final-prob
-      if (!reordered) end_points.push_back(i+1);
-      else {  // reordered.
-        while (i+1 < alignment.size() &&
-              trans_model.IsSelfLoop(alignment[i+1])) {
-          KALDI_ASSERT(trans_model.TransitionIdToTransitionState(alignment[i]) ==
-                 trans_model.TransitionIdToTransitionState(alignment[i+1]));
-          i++;
-        }
-        end_points.push_back(i+1);
+    if (trans_model.InfoForTransitionId(trans_id).is_final) {
+      while (i+1 < alignment.size() &&
+             trans_model.InfoForTransitionId(alignment[i+1]).is_self_loop) {
+        KALDI_ASSERT(trans_model.InfoForTransitionId(alignment[i]) ==
+                     trans_model.InfoForTransitionId(alignment[i+1]));
+        i++;
       }
+      end_points.push_back(i+1);
     } else if (i+1 == alignment.size()) {
       // need to have an end-point at the actual end.
       // but this is an error- should have been detected already.
       was_ok = false;
       end_points.push_back(i+1);
     } else {
-      int32 this_state = trans_model.TransitionIdToTransitionState(alignment[i]),
-          next_state = trans_model.TransitionIdToTransitionState(alignment[i+1]);
-      if (this_state == next_state) continue;  // optimization.
-      int32 this_phone = trans_model.TransitionStateToPhone(this_state),
-          next_phone = trans_model.TransitionStateToPhone(next_state);
-      if (this_phone != next_phone) {
+      int32 this_phone = trans_model.InfoForTransitionId(trans_id).phone;
+      int32 next_trans_id = alignment[i+1];
+      int32 next_phone = trans_model.InfoForTransitionId(next_trans_id).phone;
+
+      if (this_phone != next_phone){
         // The phone changed, but this is an error-- we should have detected this via the
-        // IsFinal check.
+        // is_final check.
         was_ok = false;
         end_points.push_back(i+1);
       }
@@ -700,21 +595,17 @@ static bool SplitToPhonesInternal(const Transitions &trans_model,
   }
 
   size_t cur_point = 0;
-  for (size_t i = 0; i < end_points.size(); i++) {
+  for (int32 end_point: end_points) {
     split_output->push_back(std::vector<int32>());
-    // The next if-statement checks if the initial trans-id at the current end
-    // point is the initial-state of the current phone if that initial-state
-    // is emitting (a cursory check that the alignment is plausible).
-    int32 trans_state =
-      trans_model.TransitionIdToTransitionState(alignment[cur_point]);
-    int32 phone = trans_model.TransitionStateToPhone(trans_state);
-    int32 forward_pdf_class = trans_model.GetTopo().TopologyForPhone(phone)[0].forward_pdf_class;
-    if (forward_pdf_class != kNoPdf)  // initial-state of the current phone is emitting
-      if (trans_model.TransitionStateToHmmState(trans_state) != 0)
-        was_ok = false;
-    for (size_t j = cur_point; j < end_points[i]; j++)
+    // The next if-statement checks if the initial trans-id at the
+    // current end point is the initial-state of the current phone (a
+    // cursory check that the alignment is plausible).
+    int32 topo_state = trans_model.InfoForTransitionId(end_point).topo_state;
+    if (topo_state != 0)
+      was_ok = false;
+    for (size_t j = cur_point; j < end_point; j++)
       split_output->back().push_back(alignment[j]);
-    cur_point = end_points[i];
+    cur_point = end_point;
   }
   return was_ok;
 }
@@ -726,9 +617,7 @@ bool SplitToPhones(const Transitions &trans_model,
   KALDI_ASSERT(split_alignment != NULL);
   split_alignment->clear();
 
-  bool is_reordered = IsReordered(trans_model, alignment);
-  return SplitToPhonesInternal(trans_model, alignment,
-                               is_reordered, split_alignment);
+  return SplitToPhonesInternal(trans_model, alignment, split_alignment);
 }
 
 
@@ -745,9 +634,8 @@ static inline void ConvertAlignmentForPhone(
     const ContextDependencyInterface &new_ctx_dep,
     const std::vector<int32> &old_phone_alignment,
     const std::vector<int32> &new_phone_window,
-    bool old_is_reordered,
-    bool new_is_reordered,
     std::vector<int32> *new_phone_alignment) {
+  KALDI_ASSERT(!old_phone_alignment.empty());
   int32 alignment_size = old_phone_alignment.size();
   static bool warned_topology = false;
   int32 P = new_ctx_dep.CentralPosition(),
@@ -757,14 +645,16 @@ static inline void ConvertAlignmentForPhone(
   const Topology &old_topo = old_trans_model.GetTopo(),
       &new_topo = new_trans_model.GetTopo();
 
-  bool topology_mismatch = !(old_topo.TopologyForPhone(old_central_phone) ==
-                             new_topo.TopologyForPhone(new_central_phone));
-  if (topology_mismatch) {
-    if (!warned_topology) {
-      warned_topology = true;
-      KALDI_WARN << "Topology mismatch detected; automatically converting. "
-                 << "Won't warn again.";
-    }
+  // TODO(galv): Do we need the transition costs to be the same? Right
+  // now, I am assuming that we do, but it is unclear to me that we
+  // really need this.
+  bool topology_mismatch = !fst::Equal(old_topo.TopologyForPhone(old_central_phone),
+                                       new_topo.TopologyForPhone(new_central_phone),
+                                       0.0);
+  if (topology_mismatch && !warned_topology) {
+    warned_topology = true;
+    KALDI_WARN << "Topology mismatch detected; automatically converting. "
+               << "Won't warn again.";
   }
   bool length_mismatch =
       (new_phone_alignment->size() != old_phone_alignment.size());
@@ -773,12 +663,8 @@ static inline void ConvertAlignmentForPhone(
     // old alignment.
     GetRandomAlignmentForPhone(new_ctx_dep, new_trans_model,
                                new_phone_window, new_phone_alignment);
-    if (new_is_reordered)
-      ChangeReorderingOfAlignment(new_trans_model, new_phone_alignment);
     return;
   }
-
-  KALDI_ASSERT(!old_phone_alignment.empty());
 
   int32 new_num_pdf_classes = new_topo.NumPdfClasses(new_central_phone);
   std::vector<int32> pdf_ids(new_num_pdf_classes);  // Indexed by pdf-class
@@ -795,26 +681,18 @@ static inline void ConvertAlignmentForPhone(
   // the topologies and lengths match -> we can directly transfer
   // the alignment.
   for (int32 j = 0; j < alignment_size; j++) {
-    int32 old_tid = old_phone_alignment[j],
-        old_tstate = old_trans_model.TransitionIdToTransitionState(old_tid);
-    int32 forward_pdf_class =
-        old_trans_model.TransitionStateToForwardPdfClass(old_tstate),
-        self_loop_pdf_class =
-        old_trans_model.TransitionStateToSelfLoopPdfClass(old_tstate);
-    int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
-    int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
-    int32 new_forward_pdf = pdf_ids[forward_pdf_class];
-    int32 new_self_loop_pdf = pdf_ids[self_loop_pdf_class];
-    int32 new_trans_state =
-        new_trans_model.TupleToTransitionState(new_central_phone, hmm_state,
-                                               new_forward_pdf, new_self_loop_pdf);
+    int32 old_tid = old_phone_alignment[j];
+    auto&& info = old_trans_model.InfoForTransitionId(old_tid);
+    int32 old_forward_pdf_class = old_trans_model.PdfClassForTid(old_tid);
+    int32 old_self_loop_pdf_class = old_trans_model.PdfClassForTid(info.self_loop_pdf_id);
+    int32 new_forward_pdf_id = pdf_ids[old_forward_pdf_class];
+    int32 new_self_loop_pdf_id = pdf_ids[old_self_loop_pdf_class];
     int32 new_tid =
-        new_trans_model.PairToTransitionId(new_trans_state, trans_idx);
+      new_trans_model.TupleToTransitionId(new_central_phone, info.topo_state,
+                                          info.arc_index, new_forward_pdf_id,
+                                          new_self_loop_pdf_id);
     (*new_phone_alignment)[j] = new_tid;
   }
-
-  if (new_is_reordered != old_is_reordered)
-    ChangeReorderingOfAlignment(new_trans_model, new_phone_alignment);
 }
 
 
@@ -929,11 +807,9 @@ static bool ConvertAlignmentInternal(const Transitions &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       int32 conversion_shift,
                       int32 subsample_factor,
-                      bool new_is_reordered,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
   KALDI_ASSERT(0 <= conversion_shift && conversion_shift < subsample_factor);
-  bool old_is_reordered = IsReordered(old_trans_model, old_alignment);
   KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
   new_alignment->reserve(old_alignment.size());
@@ -998,7 +874,6 @@ static bool ConvertAlignmentInternal(const Transitions &old_trans_model,
 
       ConvertAlignmentForPhone(old_trans_model, new_trans_model, new_ctx_dep,
                                old_alignment_for_phone, new_phone_window,
-                               old_is_reordered, new_is_reordered,
                                &new_alignment_for_phone);
       new_alignment->insert(new_alignment->end(),
                             new_alignment_for_phone.begin(),
@@ -1016,32 +891,37 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,
                       bool repeat_frames,
-                      bool new_is_reordered,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
-  if (!repeat_frames || subsample_factor == 1) {
+  if (subsample_factor == 1) {
+    if (repeat_frames) {
+      KALDI_WARN << "repeat_frames being set to true has no effect when "
+        "subsample_factor=1 (its default value)";
+    }
     return ConvertAlignmentInternal(old_trans_model,
                                     new_trans_model,
                                     new_ctx_dep,
                                     old_alignment,
-                                    subsample_factor - 1,
+                                    subsample_factor - 1, // == 0
                                     subsample_factor,
-                                    new_is_reordered,
                                     phone_map,
                                     new_alignment);
    // The value "subsample_factor - 1" for conversion_shift above ensures the
    // alignments have the same length as the output of 'subsample-feats'
   } else {
+    // either repeat_frames or subsample_factor >= 2. But if repeat_frames == True
+    // then and subsample_factor == 1, then it is the same as the above.
     std::vector<std::vector<int32> > shifted_alignments(subsample_factor);
+    // We create alignments for all shifts from [subsample_factor -1
+    // to 0], inclusive.
     for (int32 conversion_shift = subsample_factor - 1;
          conversion_shift >= 0; conversion_shift--) {
       if (!ConvertAlignmentInternal(old_trans_model,
                                     new_trans_model,
                                     new_ctx_dep,
                                     old_alignment,
-                                    conversion_shift,
+                                    conversion_shift, // conversion_shift
                                     subsample_factor,
-                                    new_is_reordered,
                                     phone_map,
                                     &shifted_alignments[conversion_shift]))
         return false;
@@ -1061,34 +941,9 @@ bool ConvertAlignment(const Transitions &old_trans_model,
   return true;
 }
 
-// Returns the scaled, but not negated, log-prob, with the given scaling factors.
-static BaseFloat GetScaledTransitionLogProb(const Transitions &trans_model,
-                                            int32 trans_id,
-                                            BaseFloat transition_scale,
-                                            BaseFloat self_loop_scale) {
-  if (transition_scale == self_loop_scale) {
-    return trans_model.GetTransitionLogProb(trans_id) * transition_scale;
-  } else {
-    if (trans_model.IsSelfLoop(trans_id)) {
-      return self_loop_scale * trans_model.GetTransitionLogProb(trans_id);
-    } else {
-      int32 trans_state = trans_model.TransitionIdToTransitionState(trans_id);
-      return self_loop_scale * trans_model.GetNonSelfLoopLogProb(trans_state)
-          + transition_scale * trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
-      // This could be simplified to
-      // (self_loop_scale - transition_scale) * trans_model.GetNonSelfLoopLogProb(trans_state)
-      // + trans_model.GetTransitionLogProb(trans_id);
-      // this simplifies if self_loop_scale == 0.0
-    }
-  }
-}
-
-
-
 void AddTransitionProbs(const Transitions &trans_model,
                         const std::vector<int32> &disambig_syms,  // may be empty
                         BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
                         fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   KALDI_ASSERT(IsSortedAndUniq(disambig_syms));
@@ -1102,16 +957,13 @@ void AddTransitionProbs(const Transitions &trans_model,
       StdArc arc = aiter.Value();
       StdArc::Label l = arc.ilabel;
       if (l >= 1 && l <= num_tids) {  // a transition-id.
-        BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
-                                                               l,
-                                                               transition_scale,
-                                                               self_loop_scale);
+        BaseFloat scaled_log_prob =
+          trans_model.InfoForTransitionId(l).transition_cost * transition_scale;
         arc.weight = Times(arc.weight, TropicalWeight(-scaled_log_prob));
-      } else if (l != 0) {
-        if (!std::binary_search(disambig_syms.begin(), disambig_syms.end(),
-                               arc.ilabel))
-          KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
-                    << " on graph input side.";
+      } else if (l != 0 && !std::binary_search(disambig_syms.begin(),
+                                               disambig_syms.end(),l)) {
+        KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
+                  << " on graph input side.";
       }
       aiter.SetValue(arc);
     }
@@ -1120,7 +972,6 @@ void AddTransitionProbs(const Transitions &trans_model,
 
 void AddTransitionProbs(const Transitions &trans_model,
                         BaseFloat transition_scale,
-                        BaseFloat self_loop_scale,
                         Lattice *lat) {
   using namespace fst;
   int num_tids = trans_model.NumTransitionIds();
@@ -1133,10 +984,8 @@ void AddTransitionProbs(const Transitions &trans_model,
       LatticeArc arc = aiter.Value();
       LatticeArc::Label l = arc.ilabel;
       if (l >= 1 && l <= num_tids) {  // a transition-id.
-        BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
-                                                               l,
-                                                               transition_scale,
-                                                               self_loop_scale);
+        BaseFloat scaled_log_prob =
+          trans_model.InfoForTransitionId(l).transition_cost * transition_scale;
         // cost is negated log prob.
         arc.weight.SetValue1(arc.weight.Value1() - scaled_log_prob);
       } else if (l != 0) {
@@ -1211,16 +1060,16 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
   typedef fst::StdArc Arc;
   int32 length = alignment->size();
   BaseFloat prob_scale = 0.0;
-  fst::VectorFst<Arc> *fst = GetHmmAsFsaSimple(phone_window, ctx_dep,
-                                               trans_model, prob_scale);
-  fst::RmEpsilon(fst);
+  fst::VectorFst<Arc> fst = GetHmmAsFsaSimple(phone_window, ctx_dep,
+                                              trans_model, prob_scale);
+  fst::RmEpsilon(&fst);
 
   fst::VectorFst<Arc> length_constraint_fst;
   {  // set up length_constraint_fst.
     std::vector<int32> symbols;
     bool include_epsilon = false;
     // note: 'fst' is an acceptor so ilabels == olabels.
-    GetInputSymbols(*fst, include_epsilon, &symbols);
+    GetInputSymbols(fst, include_epsilon, &symbols);
     int32 cur_state = length_constraint_fst.AddState();
     length_constraint_fst.SetStart(cur_state);
     for (int32 i = 0; i < length; i++) {
@@ -1236,7 +1085,7 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
     length_constraint_fst.SetFinal(cur_state, fst::TropicalWeight::One());
   }
   fst::VectorFst<Arc> composed_fst;
-  fst::Compose(*fst, length_constraint_fst, &composed_fst);
+  fst::Compose(fst, length_constraint_fst, &composed_fst);
   fst::VectorFst<Arc> single_path_fst;
   {  // randomly generate a single path.
     fst::UniformArcSelector<Arc> selector;
@@ -1254,40 +1103,6 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
       single_path_fst, &symbol_sequence, NULL, NULL);
   KALDI_ASSERT(ans && symbol_sequence.size() == length);
   symbol_sequence.swap(*alignment);
-  delete fst;
 }
-
-void ChangeReorderingOfAlignment(const Transitions &trans_model,
-                                 std::vector<int32> *alignment) {
-  int32 start_pos = 0, size = alignment->size();
-  while (start_pos != size) {
-    int32 start_tid = (*alignment)[start_pos];
-    int32 cur_tstate = trans_model.TransitionIdToTransitionState(start_tid);
-    bool start_is_self_loop = trans_model.IsSelfLoop(start_tid) ? 0 : 1;
-    int32 end_pos = start_pos + 1;
-    // If the first instance of this transition-state was a self-loop, then eat
-    // only non-self-loops of this state; if it was a non-self-loop, then eat
-    // only self-loops of this state.  Imposing this condition on self-loops
-    // would only actually matter in the rare circumstances that phones can
-    // have length 1.
-    while (end_pos != size &&
-           trans_model.TransitionIdToTransitionState((*alignment)[end_pos]) ==
-           cur_tstate) {
-      bool this_is_self_loop = trans_model.IsSelfLoop((*alignment)[end_pos]);
-      if (!this_is_self_loop) {
-        if (start_is_self_loop) {
-          break;  // stop before including this transition-id.
-        } else {
-          end_pos++;
-          break;  // stop after including this transition-id.
-        }
-      }
-      end_pos++;
-    }
-    std::swap((*alignment)[start_pos], (*alignment)[end_pos - 1]);
-    start_pos = end_pos;
-  }
-}
-
 
 } // namespace kaldi

@@ -58,8 +58,6 @@ int main(int argc, char *argv[]) {
     std::cout << "number of pdfs " << trans_model.NumPdfs() << '\n';
     std::cout << "number of transition-ids " << trans_model.NumTransitionIds()
               << '\n';
-    std::cout << "number of transition-states "
-              << trans_model.NumTransitionStates() << '\n';
     std::cout << "feature dimension " << am_gmm.Dim() << '\n';
     std::cout << "number of gaussians " << am_gmm.NumGauss() << '\n';
     return 0;

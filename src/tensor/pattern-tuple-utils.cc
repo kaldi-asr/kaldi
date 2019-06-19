@@ -1146,8 +1146,8 @@ int64 PatternRebaser::ConvertMemoryIndex(int64 m) {
   m -= src_offset_;
   if (num_axes == 0)
     return m;
-  // We visit the compressed axes in order from greatest to least src_stride.
-  // What this loop does is to reverse engineer the indexes into (the compressed
+  // We visit the reduced axes in order from greatest to least src_stride.
+  // What this loop does is to reverse engineer the indexes into (the reduced
   // version of) src_pattern that we'd need to get memory-offset m.  The 'i'
   // values in the loop are those indexes.
   for (int32 raxis = num_axes - 1; raxis >= 0; raxis--) {
