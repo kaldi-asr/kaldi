@@ -22,7 +22,7 @@
 #define KALDI_CUDA_DECODER_HASHMAP_NO_KEY -1
 #define KALDI_CUDA_DECODER_HASHMAP_NO_VAL                 \
   {                                                       \
-    KALDI_CUDA_DECODER_HASHMAP_NO_KEY, 0, { INT_MAX, -1 } \
+    KALDI_CUDA_DECODER_HASHMAP_NO_KEY, 0, ULONG_MAX \
   }
 
 #include "util/stl-utils.h"
@@ -45,6 +45,17 @@ struct PlusPlus {
     int2 c;
     c.x = a.x + b.x;
     c.y = a.y + b.y;
+    return c;
+  }
+};
+
+struct PlusPlusPlusPlus {
+  __device__ int4 operator()(const int4 &a, const int4 &b) const {
+    int4 c;
+    c.x = a.x + b.x;
+    c.y = a.y + b.y;
+    c.z = a.z + b.z;
+    c.w = a.w + b.w;
     return c;
   }
 };
@@ -92,6 +103,22 @@ union UInt64UnionInt2 {
   unsigned long long int ull;
 };
 
+#if __CUDA_ARCH__ < 350
+__device__ __inline__ void atomicMinULL(unsigned long long *ptr,
+                                        unsigned long long val) {
+  unsigned long long old = *ptr, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(ptr, assumed, val);
+  } while (old > val && assumed != old);
+}
+#else
+__device__ __forceinline__ void atomicMinULL(unsigned long long *ptr,
+                                             unsigned long long val) {
+  atomicMin(ptr, val);
+}
+#endif
+
 __device__ __inline__ int2 atomicAddI2(int2 *ptr, int2 val) {
   unsigned long long int *ptr64 =
       reinterpret_cast<unsigned long long int *>(ptr);
@@ -133,6 +160,26 @@ __device__ void atomicSubI2(int2 *ptr, int2 sub) {
 // exists
 __device__ __forceinline__ int hash_func(int key) {
   return key;  // using identity for now
+}
+
+// Packing and unpacking a minimum + its argument into a single uint64
+// (min is first, used for sorting)
+// Not using an union because documentation is not clear regarding reordering in structs
+// (for instance, in int2, y is stored before x)
+
+__device__ __inline__ void PackArgminInUInt64(const uint32_t min, const uint32_t arg, unsigned long long *argmin) {
+	unsigned long long p = min;
+	p <<= 32;
+	p |= arg;
+	*argmin = p;
+}
+
+__device__ __inline__ void GetMinFromPackedArgminUInt64(const unsigned long long argmin, uint32_t *min) {
+	*min = (uint32_t)((argmin & 0xFFFFFFFF00000000LL) >> 32);
+}
+
+__device__ __inline__ void GetArgFromPackedArgminUInt64(const unsigned long long argmin, uint32_t *arg) {
+	*arg = (uint32_t)(argmin & 0xFFFFFFFFLL);
 }
 
 // hashmap_insert_or_aggregate
@@ -186,7 +233,9 @@ __device__ __inline__ void hashmap_insert_or_aggregate(
   // Updating values
   *local_idx = atomicAdd(&d_val->count, 1);
   *out_hash_idx = hash_idx;
-  atomicMinI2(&d_val->min_and_argmin_int_cost, {int_cost, arg_int_cost});
+  unsigned long long argmin_u64;
+  PackArgminInUInt64(int_cost, arg_int_cost, &argmin_u64);
+  atomicMinULL(&d_val->min_and_argmin_int_cost_u64, argmin_u64);
 }
 
 // In FSTStateHashIndex, we store both the hash_idx and a boolean
