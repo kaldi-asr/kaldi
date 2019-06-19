@@ -1563,7 +1563,7 @@ inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
 
 inline void cuda_mat_copy_range_clamped(
    int32_t row_start, int32_t row_end, int32_t num_cols,
-   const double *src, int32_t lds, 
+   const double *src, int32_t lds,
    int32_t clamp_low, int32_t clamp_high,
    double *dst, int32_t ldd) {
   cudaD_mat_copy_range_clamped(row_start, row_end, num_cols,
@@ -1572,13 +1572,27 @@ inline void cuda_mat_copy_range_clamped(
 
 inline void cuda_mat_copy_range_clamped(
    int32_t row_start, int32_t row_end, int32_t num_cols,
-   const float *src, int32_t lds, 
+   const float *src, int32_t lds,
    int32_t clamp_low, int32_t clamp_high,
    float *dst, int32_t ldd) {
   cudaF_mat_copy_range_clamped(row_start, row_end, num_cols,
       src, lds, clamp_low, clamp_high, dst, ldd);
 }
-    
+
+inline void cuda_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
+    int32_t *ldo) {
+  cudaF_batched_copy_mats(num_mats, num_rows, num_cols, inputs, ldi,
+      outputs, ldo);
+}
+
+inline void cuda_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
+    int32_t *ldo) {
+  cudaD_batched_copy_mats(num_mats, num_rows, num_cols, inputs, ldi,
+      outputs, ldo);
+}
+
 
 } // namespace kaldi
 
