@@ -1,4 +1,4 @@
-// matrix/cblas-extensions.h
+// cblasext/cblas-extensions.h
 
 // Copyright 2012-2019  Johns Hopkins University (author: Daniel Povey);
 //                      Haihua Xu; Wei Shi
@@ -68,6 +68,37 @@ void cblasext_mul_elements_mat(
     KaldiBlasInt a_num_rows, KaldiBlasInt a_num_cols, KaldiBlasInt a_stride,
     Real *Bdata,
     KaldiBlasInt b_stride);
+
+/**
+   For matrices A and B (possibly with column strides as well as
+   row strides): if transB = false, compute
+      tr(A B) = \sum_{i,j} A(i, j) B(j, i)
+   or if transB = true, compute
+      tr(A B) = \sum_{i,j} A(i, j) B(i, j).
+     @param [in] Adata        Data pointer of matrix A
+     @param [in] a_num_rows   Number of rows of matrix A
+     @param [in] a_num_cols   Number of columns of matrix A
+     @param [in] a_stride     Row stride of matrix A; may have any value.
+     @param [in] a_col_stride Column stride of A, would be 1 for
+                              a normal matrix; must be positive.
+     @param [in] b_data        Data pointer of matrix B; may be
+                              the same as Adata.
+     @param [in] b_trans       True if B is transposed.  Note: the
+                              expression would have the same value
+                              if the transpose was applied to A
+                              instead.
+     @param [in] b_stride     Row stride of matrix B; may have any
+                              value.
+     @param [in] b_col_stride Column stride of matrix B; must be
+                              positive, will normally be 1.
+ */
+template <typename Real>
+Real cblasext_trace_mat_mat(
+    const Real *a_data,
+    KaldiBlasInt a_num_rows, KaldiBlasInt a_num_cols,
+    KaldiBlasInt a_stride, KaldiBlasInt a_col_stride,
+    const Real *b_data, CBLAS_TRANSPOSE b_trans,
+    KaldiBlasInt b_stride, KaldiBlasInt b_col_stride);
 
 
 

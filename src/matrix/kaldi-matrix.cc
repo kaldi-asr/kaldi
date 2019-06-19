@@ -2650,24 +2650,15 @@ template <typename Real>
 Real TraceMatMat(const MatrixBase<Real> &A,
                  const MatrixBase<Real> &B,
                  MatrixTransposeType trans) {  // tr(A B), equivalent to sum of each element of A times same element in B'
-  MatrixIndexT aStride = A.stride_, bStride = B.stride_;
   if (trans == kNoTrans) {
     KALDI_ASSERT(A.NumRows() == B.NumCols() && A.NumCols() == B.NumRows());
-    Real ans = 0.0;
-    Real *adata = A.data_, *bdata = B.data_;
-    MatrixIndexT arows = A.NumRows(), acols = A.NumCols();
-    for (MatrixIndexT row = 0;row < arows;row++, adata+=aStride, bdata++)
-      ans += cblas_Xdot(acols, adata, 1, bdata, bStride);
-    return ans;
   } else {
     KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
-    Real ans = 0.0;
-    Real *adata = A.data_, *bdata = B.data_;
-    MatrixIndexT arows = A.NumRows(), acols = A.NumCols();
-    for (MatrixIndexT row = 0;row < arows;row++, adata+=aStride, bdata+=bStride)
-      ans += cblas_Xdot(acols, adata, 1, bdata, 1);
-    return ans;
   }
+  return cblasext_trace_mat_mat(A.Data(), A.NumRows(), A.NumCols(),
+                                A.Stride(), 1, B.Data(),
+                                static_cast<CBLAS_TRANSPOSE>(trans),
+                                B.Stride(), 1);
 }
 
 

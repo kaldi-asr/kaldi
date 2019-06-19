@@ -120,4 +120,43 @@ template void cblasext_mul_elements_mat(
     double *Bdata, KaldiBlasInt b_stride);
 
 
+template <typename Real>
+Real cblasext_trace_mat_mat(
+    const Real *a_data,
+    KaldiBlasInt a_num_rows, KaldiBlasInt a_num_cols,
+    KaldiBlasInt a_stride, KaldiBlasInt a_col_stride,
+    const Real *b_data, CBLAS_TRANSPOSE b_trans,
+    KaldiBlasInt b_stride, KaldiBlasInt b_col_stride) {
+  Real ans = 0.0;
+  if (b_trans == CblasNoTrans) {
+    for (KaldiBlasInt i = 0; i < a_num_rows;
+         i++, a_data += a_stride, b_data += b_col_stride) {
+      ans += cblas_Xdot(a_num_cols, a_data, a_col_stride, b_data, b_stride);
+    }
+    return ans;
+  } else {
+    for (KaldiBlasInt i = 0; i < a_num_rows;
+         i++, a_data += a_stride, b_data += b_stride) {
+      ans += cblas_Xdot(a_num_cols, a_data, a_col_stride,
+                        b_data, b_col_stride);
+    }
+    return ans;
+  }
+}
+
+template float cblasext_trace_mat_mat(
+    const float *a_data,
+    KaldiBlasInt a_num_rows, KaldiBlasInt a_num_cols,
+    KaldiBlasInt a_stride, KaldiBlasInt a_col_stride,
+    const float *b_data, CBLAS_TRANSPOSE b_trans,
+    KaldiBlasInt b_stride, KaldiBlasInt b_col_stride);
+template double cblasext_trace_mat_mat(
+    const double *a_data,
+    KaldiBlasInt a_num_rows, KaldiBlasInt a_num_cols,
+    KaldiBlasInt a_stride, KaldiBlasInt a_col_stride,
+    const double *b_data, CBLAS_TRANSPOSE b_trans,
+    KaldiBlasInt b_stride, KaldiBlasInt b_col_stride);
+
+
+
 } // namespace kaldi

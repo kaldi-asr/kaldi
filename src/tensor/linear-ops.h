@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSOR__LINEAR_OPS_H_
-#define KALDI_TENSOR__LINEAR_OPS_H_ 1
+#ifndef KALDI_TENSOR_LINEAR_OPS_H_
+#define KALDI_TENSOR_LINEAR_OPS_H_ 1
 
 #include "tensor/tensor.h"
 
