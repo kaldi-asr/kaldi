@@ -1,5 +1,6 @@
 // base/kaldi-error-test.cc
 
+// Copyright 2019 LAIX (Yi Sun)
 // Copyright 2009-2011  Microsoft Corporation
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -17,19 +18,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "base/kaldi-common.h"
 
 // testing that we get the stack trace.
 namespace kaldi {
 
-void MyFunction2() {
-  KALDI_ERR << "Ignore this error";
-}
+void MyFunction2() { KALDI_ERR << "Ignore this error"; }
 
-void MyFunction1() {
-  MyFunction2();
-}
+void MyFunction1() { MyFunction2(); }
 
 void UnitTestError() {
   {
@@ -38,16 +34,51 @@ void UnitTestError() {
   }
 }
 
+#ifdef HAVE_EXECINFO_H
+#ifdef HAVE_CXXABI_H
 
-}  // end namespace kaldi.
+void VerifySymbolRange(const std::string &trace, const bool want_found,
+                       const std::string &want_symbol) {
+  size_t begin, end;
+  const bool found = internal::LocateSymbolRange(
+      "./kaldi-error-test(_ZN5kaldi13UnitTestErrorEv+0xb) [0x804965d]", &begin,
+      &end);
+  KALDI_ASSERT(found == want_found);
+  if (found) {
+    KALDI_ASSERT(trace.substr(begin, end) == want_symbol);
+  }
+}
+
+void TestLocateSymbolRange() {
+  VerifySymbolRange("", false, "");
+  VerifySymbolRange(
+      R"TRACE(./kaldi-error-test(_ZN5kaldi13UnitTestErrorEv+0xb) [0x804965d])TRACE",
+      true, "_ZN5kaldi13UnitTestErrorEv");
+  // It is ok thread_start is not found because it is a C symbol.
+  VerifySymbolRange(
+      R"TRACE(31  libsystem_pthread.dylib             0x00007fff6fe4e40d thread_start + 13)TRACE",
+      false, "");
+  VerifySymbolRange(
+      R"TRACE(0 server 0x000000010f67614d _ZNK5kaldi13MessageLogger10LogMessageEv + 813)TRACE",
+      true, "_ZNK5kaldi13MessageLogger10LogMessageEv");
+  VerifySymbolRange(
+      R"TRACE(29  libsystem_pthread.dylib             0x00007fff6fe4f2eb _pthread_body + 126)TRACE",
+      true, "_pthread_body");
+}
+
+#endif // HAVE_CXXABI_H
+#endif // HAVE_EXECINFO_H
+
+} // namespace kaldi
 
 int main() {
   kaldi::SetProgramName("/foo/bar/kaldi-error-test");
   try {
     kaldi::UnitTestError();
-    KALDI_ASSERT(0);  // should not happen.
+    KALDI_ASSERT(0); // should not happen.
     exit(1);
-  } catch(kaldi::KaldiFatalError &e) {
+  } catch (kaldi::KaldiFatalError &e) {
     std::cout << "The error we generated was: '" << e.KaldiMessage() << "'\n";
   }
+  kaldi::TestLocateSymbolRange();
 }
