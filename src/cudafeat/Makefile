@@ -5,10 +5,10 @@ all:
 include ../kaldi.mk
 ifeq ($(CUDA), true)
 
-TESTFILES = 
+TESTFILES =
 
 ifeq ($(CUDA), true)
-  OBJFILES +=  feature-window-cuda.o feature-mfcc-cuda.o feature-online-cmvn-cuda.o
+  OBJFILES +=  feature-mfcc-cuda.o feature-online-cmvn-cuda.o
 endif
 
 LIBNAME = kaldi-cudafeat

@@ -17,8 +17,10 @@
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
 
-#include "cudafeat/feature-mfcc-cuda.h"
+#include "feat/feature-window.h"
+#include "feat/feature-mfcc.h"
 #include "cudamatrix/cu-rand.h"
+#include "cudafeat/feature-mfcc-cuda.h"
 
 // Each thread block processes a unique frame
 // threads in the same threadblock collaborate to
@@ -246,26 +248,22 @@ __global__ void process_window_kernel(
 }
 
 __device__ inline int32 FirstSampleOfFrame(int32 frame, int32 frame_shift,
-                                           int32 window_size, bool snip_edges) {
-  if (snip_edges) {
-    return frame * frame_shift;
-  } else {
-    int32 midpoint_of_frame = frame_shift * frame + frame_shift / 2,
-          beginning_of_frame = midpoint_of_frame - window_size / 2;
-    return beginning_of_frame;
-  }
+                                           int32 window_size) {
+  int32 midpoint_of_frame = frame_shift * frame + frame_shift / 2,
+      beginning_of_frame = midpoint_of_frame - window_size / 2;
+  return beginning_of_frame;
 }
 
 __global__ void extract_window_kernel(
     int32 frame_shift, int32 frame_length, int32 frame_length_padded,
-    int32 window_size, bool snip_edges, int32_t sample_offset,
+    int32 window_size, int32_t sample_offset,
     const BaseFloat __restrict__ *wave, int32 wave_dim,
     BaseFloat *__restrict__ windows, int32_t wlda) {
   int frame = blockIdx.x;
   int tidx = threadIdx.x;
 
   int32 start_sample =
-      FirstSampleOfFrame(frame, frame_shift, window_size, snip_edges);
+      FirstSampleOfFrame(frame, frame_shift, window_size);
 
   // wave_start and wave_end are start and end indexes into 'wave', for the
   // piece of wave that we're trying to extract.
@@ -339,11 +337,15 @@ __global__ void dot_log_kernel(int32_t num_frames, int32_t frame_length,
 
 namespace kaldi {
 
-CudaMfcc::CudaMfcc(const MfccOptions &opts)
-    : MfccComputer(opts),
+CudaMfcc::CudaMfcc(const MfccOptions &opts):
+    MfccComputer(opts),
       cu_lifter_coeffs_(lifter_coeffs_),
-      cu_dct_matrix_(dct_matrix_),
-      window_function_(opts.frame_opts) {
+      cu_dct_matrix_(dct_matrix_) {
+  {
+    Vector<BaseFloat> temp;
+    InitFeatureWindowFunction(opts.frame_opts, &temp);
+    window_function_.Swap(&temp);
+  }
   const MelBanks *mel_banks = GetMelBanks(1.0);
   const std::vector<std::pair<int32, Vector<BaseFloat>>> &bins =
       mel_banks->GetBins();
@@ -408,7 +410,7 @@ void CudaMfcc::ExtractWindows(int32_t num_frames, int64 sample_offset,
 
   extract_window_kernel<<<num_frames, CU1DBLOCK>>>(
       opts.WindowShift(), frame_length, frame_length_padded, opts.WindowSize(),
-      opts.snip_edges, sample_offset, wave.Data(), wave.Dim(),
+      sample_offset, wave.Data(), wave.Dim(),
       cu_windows_.Data(), cu_windows_.Stride());
   CU_SAFE_CALL(cudaGetLastError());
 }
@@ -422,9 +424,9 @@ void CudaMfcc::ProcessWindows(int num_frames,
   KALDI_ASSERT(fft_num_frames % fft_size_ == 0);
 
   process_window_kernel<<<num_frames, CU1DBLOCK>>>(
-      frame_length_, opts.dither, std::numeric_limits<float>::epsilon(),
+      frame_length_, std::numeric_limits<float>::epsilon(),
       opts.remove_dc_offset, opts.preemph_coeff, NeedRawLogEnergy(),
-      log_energy_pre_window->Data(), window_function_.cu_window.Data(),
+      log_energy_pre_window->Data(), window_function_.Data(),
       tmp_window_.Data(), tmp_window_.Stride(), cu_windows_.Data(),
       cu_windows_.Stride());
 

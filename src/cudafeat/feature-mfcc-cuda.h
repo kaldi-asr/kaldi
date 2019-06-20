@@ -22,9 +22,9 @@
 #include <cufft.h>
 #endif
 
-#include "cudafeat/feature-window-cuda.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
+#include "feat/feature-window.h"
 #include "feat/feature-mfcc.h"
 
 namespace kaldi {
@@ -59,7 +59,7 @@ class CudaMfcc : public MfccComputer {
 
   int frame_length_, padded_length_, fft_length_, fft_size_;
   cufftHandle plan_;
-  CudaFeatureWindowFunction window_function_;
+  CuVector<BaseFloat> window_function_;
 
   int bin_size_;
   int32 *offsets_, *sizes_;
@@ -69,6 +69,7 @@ class CudaMfcc : public MfccComputer {
   // for sanity checking cufft
   int32_t stride_, tmp_stride_;
 };
-}
+
+}  // namespace kaldi
 
 #endif
