@@ -957,10 +957,11 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(bool use_final_probs,
     ret = determinizer_.ProcessChunk(raw_fst, last_get_lattice_frame_,
                                      last_frame_of_chunk);
     last_get_lattice_frame_ = last_frame_of_chunk;
-  } else if (last_get_lattice_frame_ > last_frame_of_chunk)
+  } else if (last_get_lattice_frame_ > last_frame_of_chunk) {
     KALDI_WARN << "Call GetLattice up to frame: " << last_frame_of_chunk
                << " while the determinizer_ has already done up to frame: "
                << last_get_lattice_frame_;
+  }
 
   // step 4
   if (decoding_finalized_) ret &= determinizer_.Finalize();
@@ -1002,10 +1003,10 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
 
   ofst->DeleteStates();
   unordered_multimap<int, StateId>
-      token_label2last_state_map; // for GetInitialRawLattice
+      token_label2last_state; // for GetInitialRawLattice
   // initial arcs for the chunk
   if (create_initial_state)
-    determinizer_.GetInitialRawLattice(ofst, &token_label2last_state_map,
+    determinizer_.GetInitialRawLattice(ofst, &token_label2last_state,
                                        token_label_final_cost_);
   // num-frames plus one (since frames are one-based, and we have
   // an extra frame for the start-state).
@@ -1041,16 +1042,15 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::GetIncrementalRawLattice(
       auto r = token_label_map_.find(tok);
       KALDI_ASSERT(r != token_label_map_.end()); // it should exist
       int32 token_label = r->second;
-      auto range = token_label2last_state_map.equal_range(token_label);
+      auto range = token_label2last_state.equal_range(token_label);
       if (range.first == range.second) {
         KALDI_WARN
             << "The token in the first frame of this chunk does not "
-               "exist in the last frame of previous chunk. It should be seldom"
-               " happen and probably caused by over-pruning in determinization,"
+               "exist in the last frame of previous chunk. It should seldom"
+               " happen and would be caused by over-pruning in determinization,"
                "e.g. the lattice reaches --max-mem constrain.";
         continue;
       }
-      std::vector<BaseFloat> tmp_vec;
       for (auto it = range.first; it != range.second; ++it) {
         // the destination state of the last of the sequence of arcs w.r.t the token
         // label
@@ -1192,7 +1192,7 @@ template <typename FST>
 void LatticeIncrementalDeterminizer<FST>::GetRawLatticeForRedeterminizedStates(
     StateId start_state, StateId state,
     const unordered_map<int32, BaseFloat> &token_label_final_cost,
-    unordered_multimap<int, LatticeArc::StateId> *token_label2last_state_map,
+    unordered_multimap<int, LatticeArc::StateId> *token_label2last_state,
     Lattice *olat) {
   using namespace fst;
   typedef LatticeArc Arc;
@@ -1253,7 +1253,7 @@ void LatticeIncrementalDeterminizer<FST>::GetRawLatticeForRedeterminizedStates(
       // and connected to the state corresponding to token w.r.t arc_olabel
       // Notably, we have multiple states for one token label after determinization,
       // hence we use multiset here
-      token_label2last_state_map->insert(
+      token_label2last_state->insert(
           std::pair<int, StateId>(arc_olabel, laststate_copy));
       arc_olabel = 0; // remove token label
     } else {
@@ -1288,7 +1288,7 @@ void LatticeIncrementalDeterminizer<FST>::GetRawLatticeForRedeterminizedStates(
     if (proc_nextstate)
       GetRawLatticeForRedeterminizedStates(start_state, arc.nextstate,
                                            token_label_final_cost,
-                                           token_label2last_state_map, olat);
+                                           token_label2last_state, olat);
   }
 }
 template <typename FST>
@@ -1374,7 +1374,7 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
 template <typename FST>
 void LatticeIncrementalDeterminizer<FST>::GetInitialRawLattice(
     Lattice *olat,
-    unordered_multimap<int, LatticeArc::StateId> *token_label2last_state_map,
+    unordered_multimap<int, LatticeArc::StateId> *token_label2last_state,
     const unordered_map<int32, BaseFloat> &token_label_final_cost) {
   using namespace fst;
   typedef LatticeArc Arc;
@@ -1385,7 +1385,7 @@ void LatticeIncrementalDeterminizer<FST>::GetInitialRawLattice(
   GetRedeterminizedStates();
 
   olat->DeleteStates();
-  token_label2last_state_map->clear();
+  token_label2last_state->clear();
 
   auto start_state = olat->AddState();
   olat->SetStart(start_state);
@@ -1396,7 +1396,7 @@ void LatticeIncrementalDeterminizer<FST>::GetInitialRawLattice(
     if (modified)
       GetRawLatticeForRedeterminizedStates(start_state, prefinal_state,
                                            token_label_final_cost,
-                                           token_label2last_state_map, olat);
+                                           token_label2last_state, olat);
   }
 }
 
