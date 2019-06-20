@@ -1,6 +1,5 @@
 // base/kaldi-error-test.cc
 
-// Copyright 2019 LAIX (Yi Sun)
 // Copyright 2009-2011  Microsoft Corporation
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -40,12 +39,16 @@ void UnitTestError() {
 void VerifySymbolRange(const std::string &trace, const bool want_found,
                        const std::string &want_symbol) {
   size_t begin, end;
-  const bool found = internal::LocateSymbolRange(
-      "./kaldi-error-test(_ZN5kaldi13UnitTestErrorEv+0xb) [0x804965d]", &begin,
-      &end);
-  KALDI_ASSERT(found == want_found);
-  if (found) {
-    KALDI_ASSERT(trace.substr(begin, end) == want_symbol);
+  const bool found = internal::LocateSymbolRange(trace, &begin, &end);
+  if (found != want_found) {
+    KALDI_ERR << "Found mismatch, got " << found << " want " << want_found;
+  }
+  if (!found) {
+    return;
+  }
+  const std::string symbol = trace.substr(begin, end - begin);
+  if (symbol != want_symbol) {
+    KALDI_ERR << "Symbol mismatch, got " << symbol << " want " << want_symbol;
   }
 }
 
@@ -72,6 +75,8 @@ void TestLocateSymbolRange() {
 } // namespace kaldi
 
 int main() {
+  kaldi::TestLocateSymbolRange();
+
   kaldi::SetProgramName("/foo/bar/kaldi-error-test");
   try {
     kaldi::UnitTestError();
@@ -80,5 +85,4 @@ int main() {
   } catch (kaldi::KaldiFatalError &e) {
     std::cout << "The error we generated was: '" << e.KaldiMessage() << "'\n";
   }
-  kaldi::TestLocateSymbolRange();
 }

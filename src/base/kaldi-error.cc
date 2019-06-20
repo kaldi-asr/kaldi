@@ -74,12 +74,19 @@ static const char *GetShortFileName(const char *path) {
 namespace internal {
 bool LocateSymbolRange(const std::string &trace_name, size_t *begin,
                        size_t *end) {
-  *begin = trace_name.find("(_");
-  if (*begin == std::string::npos) {
-    *begin = trace_name.find(" _");
-    if (*begin == std::string::npos) {
-      return false;
+  // Find the first '_' with leading ' ' or '('.
+  *begin = std::string::npos;
+  for (int i = 1; i < trace_name.size(); i++) {
+    if (trace_name[i] != '_') {
+      continue;
     }
+    if (trace_name[i - 1] == ' ' || trace_name[i - 1] == '(') {
+      *begin = i;
+      break;
+    }
+  }
+  if (*begin == std::string::npos) {
+    return false;
   }
   *end = trace_name.find_first_of(" +", *begin);
   return *end != std::string::npos;
@@ -87,7 +94,7 @@ bool LocateSymbolRange(const std::string &trace_name, size_t *begin,
 } // namespace internal
 
 #ifdef HAVE_EXECINFO_H
-static std::string MaybeDemangle(std::string trace_name) {
+static std::string Demangle(std::string trace_name) {
 #ifndef HAVE_CXXABI_H
   return trace_name;
 #endif // HAVE_CXXABI_H
@@ -136,15 +143,15 @@ static std::string KaldiGetStackTrace() {
   ans += "[ Stack-Trace: ]\n";
   if (size <= KALDI_MAX_TRACE_PRINT) {
     for (size_t i = 0; i < size; i++) {
-      ans += MaybeDemangle(trace_symbol[i]) + "\n";
+      ans += Demangle(trace_symbol[i]) + "\n";
     }
   } else { // Print out first+last (e.g.) 5.
     for (size_t i = 0; i < KALDI_MAX_TRACE_PRINT / 2; i++) {
-      ans += MaybeDemangle(trace_symbol[i]) + "\n";
+      ans += Demangle(trace_symbol[i]) + "\n";
     }
     ans += ".\n.\n.\n";
     for (size_t i = size - KALDI_MAX_TRACE_PRINT / 2; i < size; i++) {
-      ans += MaybeDemangle(trace_symbol[i]) + "\n";
+      ans += Demangle(trace_symbol[i]) + "\n";
     }
     if (size == KALDI_MAX_TRACE_SIZE)
       ans += ".\n.\n.\n"; // Stack was too long, probably a bug.
