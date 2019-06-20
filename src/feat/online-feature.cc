@@ -71,7 +71,11 @@ OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
     computer_(opts), window_function_(computer_.GetFrameOptions()),
     features_(opts.frame_opts.max_feature_vectors),
-    input_finished_(false), waveform_offset_(0) { }
+    input_finished_(false), waveform_offset_(0) {
+  // RE the following assert: search for ONLINE_IVECTOR_LIMIT in
+  // online-ivector-feature.cc.
+  KALDI_ASSERT(opts.frame_opts.max_feature_vectors > 210);
+}
 
 
 template <class C>
