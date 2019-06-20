@@ -61,7 +61,6 @@ Topology GenRandTopology();
 /// the 'reorder' option is as described in the documentation; if true, the
 /// self-loops from a state are reordered to come after the forward-transition.
 void GeneratePathThroughHmm(const Topology &topology,
-                            bool reorder,
                             int32 phone,
                             std::vector<std::pair<int32, int32> > *path);
 
@@ -70,7 +69,6 @@ void GeneratePathThroughHmm(const Topology &topology,
 /// transition-ids) corresponding to a given phone sequence.
 void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
                              const Transitions &trans_model,
-                             bool reorder,
                              const std::vector<int32> &phone_sequence,
                              std::vector<int32> *alignment);
 

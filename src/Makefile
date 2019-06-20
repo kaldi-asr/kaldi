@@ -135,8 +135,8 @@ bin fstbin gmmbin fgmmbin featbin cudafeatbin nnet3bin chainbin latbin ivectorbi
 #2)The libraries have inter-dependencies
 base: base/.depend.mk
 matrix: base
-util: base matrix
-feat: base matrix util gmm transform tree
+util: base cudamatrix matrix
+feat: base cudamatrix matrix util gmm transform tree
 tree: base util matrix
 gmm: base util matrix tree
 transform: base util matrix gmm tree
@@ -151,10 +151,10 @@ rnnlm: base util matrix cudamatrix nnet3 lm hmm
 chain: lat hmm tree fstext matrix cudamatrix util base
 ivector: base util matrix transform tree gmm
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree gmm transform fstext hmm lm decoder lat cudamatrix online
-# python-kaldi-decoding: base matrix util feat tree gmm transform fstext hmm decoder lat online
-cudafeat: base matrix util gmm transform tree feat cudamatrix online2
-cudafeatbin: base matrix util gmm transform tree feat cudamatrix cudafeat online2
+onlinebin: base cudamatrix matrix util feat tree gmm transform fstext hmm lm decoder lat cudamatrix online
+# python-kaldi-decoding: base cudamatrix matrix util feat tree gmm transform fstext hmm decoder lat online
+cudafeat: base cudamatrix matrix util gmm transform tree feat cudamatrix online2
+cudafeatbin: base cudamatrix matrix util gmm transform tree feat cudamatrix cudafeat online2
 online: decoder gmm transform feat matrix util base lat hmm tree
 online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet3 chain
 kws: base util hmm tree matrix lat

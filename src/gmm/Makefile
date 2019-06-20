@@ -14,7 +14,7 @@ OBJFILES = diag-gmm.o diag-gmm-normal.o mle-diag-gmm.o am-diag-gmm.o \
 
 LIBNAME = kaldi-gmm
 
-ADDLIBS = ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+ADDLIBS = ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../cblasext/kaldi-cblasext.a \
           ../base/kaldi-base.a
 
 

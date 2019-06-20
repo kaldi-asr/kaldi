@@ -356,6 +356,20 @@ bool RescoreCompactLatticeSpeedup(
     CompactLattice *clat);
 
 
+/// Adds transition costs from transition-model 'tmodel' to the costs in 'lat'.
+/// Note: these transition costs are not trainable, they are fixed once the
+/// topology is known.
+void AddTransitions(
+    const Transitions &tmodel,
+    CompactLattice *lat);
+/// Adds transition costs from transition-model 'tmodel' to the costs in 'lat'.
+/// Note: these transition costs are not trainable, they are fixed once the
+/// topology is known.
+void AddTransitions(
+    const Transitions &tmodel,
+    Lattice *lat);
+
+
 /// This function *adds* the negated scores obtained from the Decodable object,
 /// to the acoustic scores on the arcs.  If you want to replace them, you should
 /// use ScaleCompactLattice to first set the acoustic scores to zero.  Returns
@@ -377,26 +391,26 @@ void ComposeCompactLatticeDeterministic(
     fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
     CompactLattice* composed_clat);
 
-/// This function computes the mapping from the pair 
-/// (frame-index, transition-id) to the pair 
-/// (sum-of-acoustic-scores, num-of-occurences) over all occurences of the 
+/// This function computes the mapping from the pair
+/// (frame-index, transition-id) to the pair
+/// (sum-of-acoustic-scores, num-of-occurences) over all occurences of the
 /// transition-id in that frame.
-/// frame-index in the lattice. 
-/// This function is useful for retaining the acoustic scores in a 
-/// non-compact lattice after a process like determinization where the 
+/// frame-index in the lattice.
+/// This function is useful for retaining the acoustic scores in a
+/// non-compact lattice after a process like determinization where the
 /// frame-level acoustic scores are typically lost.
-/// The function ReplaceAcousticScoresFromMap is used to restore the 
+/// The function ReplaceAcousticScoresFromMap is used to restore the
 /// acoustic scores computed by this function.
 ///
-///   @param [in] lat   Input lattice. Expected to be top-sorted. Otherwise the 
-///                     function will crash. 
-///   @param [out] acoustic_scores  
+///   @param [in] lat   Input lattice. Expected to be top-sorted. Otherwise the
+///                     function will crash.
+///   @param [out] acoustic_scores
 ///                     Pointer to a map from the pair (frame-index,
 ///                     transition-id) to a pair (sum-of-acoustic-scores,
 ///                     num-of-occurences).
 ///                     Usually the acoustic scores for a pdf-id (and hence
 ///                     transition-id) on a frame will be the same for all the
-///                     occurences of the pdf-id in that frame. 
+///                     occurences of the pdf-id in that frame.
 ///                     But if not, we will take the average of the acoustic
 ///                     scores. Hence, we store both the sum-of-acoustic-scores
 ///                     and the num-of-occurences of the transition-id in that
@@ -409,11 +423,11 @@ void ComputeAcousticScoresMap(
 /// This function restores acoustic scores computed using the function
 /// ComputeAcousticScoresMap into the lattice.
 ///
-///   @param [in] acoustic_scores  
+///   @param [in] acoustic_scores
 ///                      A map from the pair (frame-index, transition-id) to a
-///                      pair (sum-of-acoustic-scores, num-of-occurences) of 
+///                      pair (sum-of-acoustic-scores, num-of-occurences) of
 ///                      the occurences of the transition-id in that frame.
-///                      See the comments for ComputeAcousticScoresMap for 
+///                      See the comments for ComputeAcousticScoresMap for
 ///                      details.
 ///   @param [out] lat   Pointer to the output lattice.
 void ReplaceAcousticScoresFromMap(

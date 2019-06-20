@@ -177,7 +177,6 @@ Topology GenRandTopology() {
 }
 
 void GeneratePathThroughHmm(const Topology &topology,
-                            bool reorder,
                             int32 phone,
                             std::vector<std::pair<int32, int32> > *path) {
   path->clear();
@@ -195,22 +194,7 @@ void GeneratePathThroughHmm(const Topology &topology,
     auto const &arc(aiter.Value());
     if (arc.ilabel != -1) {
       std::pair<int32, int32> pr(cur_state, arc_index);
-      if (!reorder) {
-        path->push_back(pr);
-      } else {
-        bool is_self_loop = (cur_state == arc.nextstate);
-        if (is_self_loop) { // save these up, we'll put them after the forward
-                            // transition.
-          pending_self_loops.push_back(pr);
-        } else {
-          // non-self-loop: output it and then flush out any self-loops we
-          // stored up.
-          path->push_back(pr);
-          path->insert(path->end(), pending_self_loops.begin(),
-                       pending_self_loops.end());
-          pending_self_loops.clear();
-        }
-      }
+      path->push_back(pr);
     }
     cur_state = arc.nextstate;
   }
@@ -220,7 +204,6 @@ void GeneratePathThroughHmm(const Topology &topology,
 
 void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
                              const Transitions &trans_model,
-                             bool reorder,
                              const std::vector<int32> &phone_sequence,
                              std::vector<int32> *alignment) {
   int32 context_width = ctx_dep.ContextWidth(),
@@ -240,7 +223,7 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
     // (emitting-HMM-state, transition-index) pairs
     std::vector<std::pair<int32, int32> > path;
     int32 phone = phone_sequence[i];
-    GeneratePathThroughHmm(trans_model.GetTopo(), reorder, phone, &path);
+    GeneratePathThroughHmm(trans_model.GetTopo(), phone, &path);
     for (size_t k = 0; k < path.size(); k++) {
       auto const &entry = trans_model.GetTopo().TopologyForPhone(phone);
       int32 hmm_state = path[k].first,

@@ -153,34 +153,19 @@ class Transitions {
       else if (phone > other.phone) return false;
       else if (topo_state < other.topo_state) return true;
       else if (topo_state > other.topo_state) return false;
+      else if (arc_index < other.arc_index) return true;
+      else if (arc_index > other.arc_index) return false;
       else if (pdf_id < other.pdf_id) return true;
       else if (pdf_id > other.pdf_id) return false;
       else return (self_loop_pdf_id < other.self_loop_pdf_id);
     }
-    // TODO.  operator == can compare all members. Also compare derived members?
-    bool operator == (const TransitionIdInfo &other) const {
-      // I don't think this is being used right now. For now, just abort
-      // whenever it is used, so I can see where it is used.
-      KALDI_ASSERT(false);
-      if (phone == other.phone && topo_state == other.topo_state &&
-          pdf_id == other.pdf_id) {
-        // This assertion is no longer true. Two states can have
-        // different arc_index fields. This equality operator is just
-        // bizarre. Should a TransitionIdInfo really be the same as
-        // another one if they don't have the same arc_index? I don't
-        // think so...  Should probably make a TransitionState class
-        // exposing a different operator== based on this class.
-        KALDI_ASSERT(self_loop_pdf_id == other.self_loop_pdf_id);
-        return true;
-      } else {
-        return false;
-      }
-    }
 
-    // TransitionIdInfo& operator=(const TransitionIdInfo& other) {
-    //   is_final = other.is_final;
-    //   return *this;
-    // }
+    // Compare all non-derived members.
+    bool operator == (const TransitionIdInfo &other) const {
+      return (phone == other.phone && topo_state == other.topo_state &&
+              arc_index == other.arc_index && pdf_id == other.pdf_id &&
+              self_loop_pdf_id == other.self_loop_pdf_id);
+    }
   };
 
 

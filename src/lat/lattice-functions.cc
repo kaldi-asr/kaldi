@@ -1757,4 +1757,51 @@ void ReplaceAcousticScoresFromMap(
   }
 }
 
+void AddTransitions(
+    const Transitions &tmodel,
+    Lattice *lat) {
+  typedef Lattice::Arc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+  typedef Arc::Label Label;
+
+  for (StateId s = 0; s < lat->NumStates(); s++) {
+    for (fst::MutableArcIterator<Lattice> aiter(lat, s);
+          !aiter.Done(); aiter.Next()) {
+      Arc arc(aiter.Value());
+      int32 tid = arc.ilabel;
+      BaseFloat transition_cost =
+          tmodel.InfoForTransitionId(tid).transition_cost;
+      arc.weight.SetValue1(arc.weight.Value1() + transition_cost);
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+
+void AddTransitions(
+    const Transitions &tmodel,
+    CompactLattice *lat) {
+  typedef CompactLattice::Arc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+  typedef Arc::Label Label;
+
+  for (StateId s = 0; s < lat->NumStates(); s++) {
+    for (fst::MutableArcIterator<CompactLattice> aiter(lat, s);
+          !aiter.Done(); aiter.Next()) {
+      Arc arc(aiter.Value());
+      BaseFloat tot_transition_cost = 0.0;
+      for (int32 tid: arc.weight.String())
+        tot_transition_cost +=
+            tmodel.InfoForTransitionId(tid).transition_cost;
+      LatticeWeight new_weight = arc.weight.Weight();
+      new_weight.SetValue1(new_weight.Value1() + tot_transition_cost);
+      arc.weight.SetWeight(new_weight);
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+
 }  // namespace kaldi

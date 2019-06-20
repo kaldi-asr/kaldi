@@ -31,7 +31,7 @@ void TestTopology() {
   std::string input_str = "<Topology>\n"
       "<TopologyEntry>\n"
       "<ForPhones> 1 2 3 4 5 6 7 8 9 </ForPhones>\n"
-      " 0  1  1  0.0\n"
+      " 0  1  1  0\n"
       " 1  1  1  0.693\n"
       " 1  2  2  0.693\n"
       " 2  2  2  0.693\n"
@@ -42,8 +42,8 @@ void TestTopology() {
 
       "<TopologyEntry>\n"
       "<ForPhones> 10 11 13 </ForPhones>\n"
-      " 0  0  1  0.693\n"
-      " 0  1  1  0.693\n"
+      //      " 0  0  1  0.693\n"   // disallowed!
+      " 0  1  1  0\n"
       " 1  1  2  0.693\n"
       " 1  2  2  0.693\n"
       " 2 \n\n"

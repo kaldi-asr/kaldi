@@ -13,7 +13,7 @@ OBJFILES = ivector-extractor.o voice-activity-detection.o plda.o \
 LIBNAME = kaldi-ivector
 
 ADDLIBS = ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../cblasext/kaldi-cblasext.a \
           ../base/kaldi-base.a 
 
 

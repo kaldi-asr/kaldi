@@ -210,9 +210,8 @@ void TestSplitToPhones() {
     int32 rand_phone = phone_list[RandInt(0, phone_list.size() - 1)];
     phone_seq.push_back(rand_phone);
   }
-  bool reorder = (RandInt(0, 1) == 0);
   std::vector<int32> alignment;
-  GenerateRandomAlignment(*ctx_dep, *trans_model, reorder,
+  GenerateRandomAlignment(*ctx_dep, *trans_model,
                           phone_seq, &alignment);
   std::vector<std::vector<int32> > split_alignment;
   SplitToPhones(*trans_model, alignment, &split_alignment);
@@ -230,18 +229,14 @@ void TestSplitToPhones() {
 }
 
 void TestConvertAlignment() {
-  bool old_reorder = (RandInt(0, 1) == 1),
-      new_reorder = (RandInt(0, 1) == 1),
-      new_tree = (RandInt(0, 1) == 1),
+  bool new_tree = (RandInt(0, 1) == 1),
       new_topology = (RandInt(0, 1) == 1);
   if (!new_tree)
     new_topology = true;
 
   int32 subsample_factor = RandInt(1, 3);
 
-  KALDI_LOG << " old-reorder = " << old_reorder
-            << ", new-reorder = " << new_reorder
-            << ", new-tree = " << new_tree
+  KALDI_LOG << ", new-tree = " << new_tree
             << ", subsample-factor = " << subsample_factor;
 
   std::vector<int32> phones;
@@ -286,15 +281,15 @@ void TestConvertAlignment() {
     phone_sequence.push_back(phones[RandInt(0, phones.size() - 1)]);
   std::vector<int32> old_alignment;
   GenerateRandomAlignment(*ctx_dep_old, trans_model_old,
-                          old_reorder, phone_sequence,
+                          phone_sequence,
                           &old_alignment);
 
   std::vector<int32> new_alignment;
 
   bool ans = ConvertAlignment(trans_model_old, trans_model_new, *ctx_dep_new,
                               old_alignment, subsample_factor, false,
-                              new_reorder, NULL, &new_alignment);
-  if(!ans) {
+                              NULL, &new_alignment);
+  if (!ans) {
     KALDI_WARN << "Alignment conversion failed";
     // make sure it failed for a good reason.
     KALDI_ASSERT(new_topology || subsample_factor > 1);
@@ -312,7 +307,7 @@ void TestConvertAlignment() {
       std::vector<int32> old_alignment_copy;
       bool ans = ConvertAlignment(trans_model_new, trans_model_old, *ctx_dep_old,
                                   new_alignment, subsample_factor, false,
-                                  old_reorder, NULL, &old_alignment_copy);
+                                  NULL, &old_alignment_copy);
       KALDI_ASSERT(ans);
       KALDI_ASSERT(old_alignment_copy == old_alignment);
     }
@@ -336,4 +331,3 @@ int main() {
     kaldi::TestConvertAlignment();
   std::cout << "Test OK.\n";
 }
-

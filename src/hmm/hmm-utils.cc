@@ -51,10 +51,10 @@ std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
   // vector of the pdfs, indexed by pdf-class (pdf-classes must start from zero
   // and be contiguous).
   std::vector<int32> pdfs(topo.NumPdfClasses(phone));
-  for (int32 pdf_class = 0;
-       pdf_class < static_cast<int32>(pdfs.size());
+  for (int32 pdf_class = 1;
+       pdf_class <= static_cast<int32>(pdfs.size());
        pdf_class++) {
-    if (! ctx_dep.Compute(phone_window, pdf_class, &(pdfs[pdf_class])) ) {
+    if (! ctx_dep.Compute(phone_window, pdf_class, &(pdfs[pdf_class - 1])) ) {
       std::ostringstream ctx_ss;
       for (size_t i = 0; i < phone_window.size(); i++)
         ctx_ss << phone_window[i] << ' ';
@@ -278,8 +278,8 @@ void GetIlabelMapping (const std::vector<std::vector<int32> > &ilabel_info_old,
       int32 central_phone = vec[P];
       int32 num_pdf_classes = trans_model.GetTopo().NumPdfClasses(central_phone);
       std::vector<int32> state_seq(num_pdf_classes);  // Indexed by pdf-class
-      for (int32 pdf_class = 0; pdf_class < num_pdf_classes; pdf_class++) {
-        if (!ctx_dep.Compute(vec, pdf_class, &(state_seq[pdf_class]))) {
+      for (int32 pdf_class = 1; pdf_class <= num_pdf_classes; pdf_class++) {
+        if (!ctx_dep.Compute(vec, pdf_class, &(state_seq[pdf_class - 1]))) {
           std::ostringstream ss;
           WriteIntegerVector(ss, false, vec);
           KALDI_ERR << "tree did not succeed in converting phone window "<<ss.str();
@@ -668,9 +668,9 @@ static inline void ConvertAlignmentForPhone(
 
   int32 new_num_pdf_classes = new_topo.NumPdfClasses(new_central_phone);
   std::vector<int32> pdf_ids(new_num_pdf_classes);  // Indexed by pdf-class
-  for (int32 pdf_class = 0; pdf_class < new_num_pdf_classes; pdf_class++) {
+  for (int32 pdf_class = 1; pdf_class <= new_num_pdf_classes; pdf_class++) {
     if (!new_ctx_dep.Compute(new_phone_window, pdf_class,
-                             &(pdf_ids[pdf_class]))) {
+                             &(pdf_ids[pdf_class - 1]))) {
       std::ostringstream ss;
       WriteIntegerVector(ss, false, new_phone_window);
       KALDI_ERR << "tree did not succeed in converting phone window "

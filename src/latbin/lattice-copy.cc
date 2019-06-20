@@ -23,6 +23,8 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "hmm/transitions.h"
+#include "lat/lattice-functions.h"
 
 namespace kaldi {
   int32 CopySubsetLattices(std::string filename,
@@ -154,6 +156,7 @@ int main(int argc, char *argv[]) {
     bool write_compact = true, ignore_missing = false;
     std::string include_rxfilename;
     std::string exclude_rxfilename;
+    std::string transition_model_rxfilename;
 
     po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("include", &include_rxfilename,
@@ -166,6 +169,10 @@ int main(int argc, char *argv[]) {
                 "whose lattices will be excluded");
     po.Register("ignore-missing", &ignore_missing,
                 "Exit with status 0 even if no lattices are copied");
+    po.Register("add-transitions", &transition_model_rxfilename,
+                "If this option is provided, transition costs/probabilities will "
+                "be added, obtained from the provided model.  (Note: these "
+                "are derived from the topology, they are not trained.)");
 
     po.Read(argc, argv);
 
@@ -182,6 +189,11 @@ int main(int argc, char *argv[]) {
     bool sorted = opts.sorted;
 
     int32 n_done = 0;
+
+    Transitions transitions;  // For adding transition costs.
+
+    if (!transition_model_rxfilename.empty())
+      ReadKaldiObject(transition_model_rxfilename, &transitions);
 
     if (write_compact) {
       SequentialCompactLatticeReader lattice_reader(lats_rspecifier);
@@ -200,8 +212,12 @@ int main(int argc, char *argv[]) {
             false, ignore_missing);
       }
 
-      for (; !lattice_reader.Done(); lattice_reader.Next(), n_done++)
-        lattice_writer.Write(lattice_reader.Key(), lattice_reader.Value());
+      for (; !lattice_reader.Done(); lattice_reader.Next(), n_done++) {
+        CompactLattice &lat = lattice_reader.Value();
+        if (!transition_model_rxfilename.empty())
+          AddTransitions(transitions, &lat);
+        lattice_writer.Write(lattice_reader.Key(), lat);
+      }
     } else {
       SequentialLatticeReader lattice_reader(lats_rspecifier);
       LatticeWriter lattice_writer(lats_wspecifier);
@@ -219,8 +235,12 @@ int main(int argc, char *argv[]) {
             true, ignore_missing);
       }
 
-      for (; !lattice_reader.Done(); lattice_reader.Next(), n_done++)
+      for (; !lattice_reader.Done(); lattice_reader.Next(), n_done++) {
+        Lattice &lat = lattice_reader.Value();
+        if (!transition_model_rxfilename.empty())
+          AddTransitions(transitions, &lat);
         lattice_writer.Write(lattice_reader.Key(), lattice_reader.Value());
+      }
     }
     KALDI_LOG << "Done copying " << n_done << " lattices.";
 

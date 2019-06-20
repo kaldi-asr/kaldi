@@ -184,7 +184,7 @@ void Topology::Check() {
       }
       if (!ApproxEqual(outward_prob_sum, 1.0))
         KALDI_WARN << "Outward transition probabilities should sum to 1.0 "
-            "for each state";
+            "for each state, value was: " << outward_prob_sum;
     }
     if (!has_final_state) {
       KALDI_ERR << "Must have a final state.";

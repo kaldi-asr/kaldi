@@ -13,7 +13,7 @@ endif
 
 LIBNAME = kaldi-cudafeat
 
-ADDLIBS = ../feat/kaldi-feat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+ADDLIBS = ../feat/kaldi-feat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../cblasext/kaldi-cblasext.a \
           ../base/kaldi-base.a ../cudamatrix/kaldi-cudamatrix.a \
           ../gmm/kaldi-gmm.a ../online2/kaldi-online2.a
 

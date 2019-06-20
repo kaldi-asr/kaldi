@@ -176,8 +176,13 @@ int32 Transitions::TupleToTransitionId(int32 phone, int32 topo_state,
   // this code to sort first on pdf, and then index on pdf, so those
   // that have the same pdf are in a contiguous range.
   auto lowerbound = std::lower_bound(info_.begin(), info_.end(), tuple);
-  if (lowerbound == info_.end() || !(*lowerbound == tuple))
-    KALDI_ERR << "Tuple not found. (incompatible tree and model?)";
+  if (lowerbound == info_.end() || !(*lowerbound == tuple)) {
+    bool is_end = (lowerbound == info_.end());
+    const TransitionIdInfo &this_tuple = *lowerbound;
+    KALDI_ERR << "Tuple not found. (incompatible tree and model?)"
+              << std::boolalpha << is_end
+              << ", this_tuple pdf_id " << this_tuple.pdf_id;
+  }
 
   return static_cast<int32>((lowerbound - info_.begin()));
 }
