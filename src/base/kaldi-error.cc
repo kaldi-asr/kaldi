@@ -97,7 +97,7 @@ bool LocateSymbolRange(const std::string &trace_name, size_t *begin,
 static std::string Demangle(std::string trace_name) {
 #ifndef HAVE_CXXABI_H
   return trace_name;
-#endif // HAVE_CXXABI_H
+#else  // HAVE_CXXABI_H
   // Try demangle the symbol. We are trying to support the following formats
   // produced by different platforms:
   //
@@ -122,6 +122,7 @@ static std::string Demangle(std::string trace_name) {
   }
   return trace_name.substr(0, begin) + symbol +
          trace_name.substr(end, std::string::npos);
+#endif // HAVE_CXXABI_H
 }
 #endif // HAVE_EXECINFO_H
 
