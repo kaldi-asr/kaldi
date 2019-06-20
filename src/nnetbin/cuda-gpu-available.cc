@@ -35,7 +35,7 @@ using namespace kaldi;
 void TestGpuComputation() {
   CuMatrix<BaseFloat> m(100,100);
   m.SetRandn();
-  m.ApplySoftMaxPerRow(m);
+  m.SoftMaxPerRow(m);
 }
 #endif
 
