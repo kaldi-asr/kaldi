@@ -33,9 +33,6 @@ void UnitTestError() {
   }
 }
 
-#ifdef HAVE_EXECINFO_H
-#ifdef HAVE_CXXABI_H
-
 void VerifySymbolRange(const std::string &trace, const bool want_found,
                        const std::string &want_symbol) {
   size_t begin, end;
@@ -68,9 +65,6 @@ void TestLocateSymbolRange() {
       R"TRACE(29  libsystem_pthread.dylib             0x00007fff6fe4f2eb _pthread_body + 126)TRACE",
       true, "_pthread_body");
 }
-
-#endif // HAVE_CXXABI_H
-#endif // HAVE_EXECINFO_H
 
 } // namespace kaldi
 

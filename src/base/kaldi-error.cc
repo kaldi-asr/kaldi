@@ -76,7 +76,7 @@ bool LocateSymbolRange(const std::string &trace_name, size_t *begin,
                        size_t *end) {
   // Find the first '_' with leading ' ' or '('.
   *begin = std::string::npos;
-  for (int i = 1; i < trace_name.size(); i++) {
+  for (size_t i = 1; i < trace_name.size(); i++) {
     if (trace_name[i] != '_') {
       continue;
     }
