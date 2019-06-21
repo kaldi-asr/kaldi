@@ -542,16 +542,20 @@ void OnlineSilenceWeighting::GetDeltaWeights(
 
   delta_weights->clear();
 
+  int32 prev_num_frames_processed = frame_info_.size();
   if (frame_info_.size() < static_cast<size_t>(num_decoder_frames_ready))
     frame_info_.resize(num_decoder_frames_ready);
 
-
-  // Don't go further backward into the past than 200 frames when modifying the
-  // traceback.  C.f. the value 210 in template
+  // Don't go further backward into the past then 100 frames before the most
+  // recent frame previously than 100 frames when modifying the traceback.
+  // C.f. the value 200 in template
   // OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature in online-feature.cc,
-  // which needs to be more than this value of 200 plus the amount of context
-  // that LDA might use.  Search for ONLINE_IVECTOR_LIMIT in online-feature.cc
-  int32 begin_frame = std::max<int32>(0, num_frames_ready - 200),
+  // which needs to be more than this value of 100 plus the amount of context
+  // that LDA might use plus the chunk size we're likely to decode in one time.
+  // The user can always increase the value of --max-feature-vectors in case one
+  // of these conditions is broken.  Search for ONLINE_IVECTOR_LIMIT in
+  // online-feature.cc
+  int32 begin_frame = std::max<int32>(0, prev_num_frames_processed - 100),
       frames_out = static_cast<int32>(frame_info_.size()) - begin_frame;
   // frames_out is the number of frames we will output.
   KALDI_ASSERT(frames_out >= 0);
