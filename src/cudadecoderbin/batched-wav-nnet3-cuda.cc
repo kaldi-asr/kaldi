@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
     std::string nnet3_rxfilename = po.GetArg(1), fst_rxfilename = po.GetArg(2),
                 wav_rspecifier = po.GetArg(3), clat_wspecifier = po.GetArg(4);
 
-    TransitionModel trans_model;
+    Transitions trans_model;
     nnet3::AmNnetSimple am_nnet;
 
     // read transition model and nnet

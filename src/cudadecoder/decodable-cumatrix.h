@@ -35,7 +35,7 @@ public:
   // This constructor creates an object that will not delete "likes" when done.
   // the frame_offset is the frame the row 0 of 'likes' corresponds to, would be
   // greater than one if this is not the first chunk of likelihoods.
-  DecodableCuMatrixMapped(const TransitionModel &tm,
+  DecodableCuMatrixMapped(const Transitions &tm,
                           const CuMatrixBase<BaseFloat> &likes,
                           int32 frame_offset = 0);
 
@@ -57,7 +57,7 @@ public:
   virtual BaseFloat *GetLogLikelihoodsCudaPointer(int32 subsampled_frame);
 
 private:
-  const TransitionModel &trans_model_; // for tid to pdf mapping
+  const Transitions &trans_model_; // for tid to pdf mapping
   const CuMatrixBase<BaseFloat> *likes_;
 
   int32 frame_offset_;

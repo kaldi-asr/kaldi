@@ -202,7 +202,7 @@ void TestAccumulateTreeStatsOptions() {
 
 void TestSplitToPhones() {
   ContextDependency *ctx_dep = NULL;
-  Transitions *trans_model = GenRandTransitionModel(&ctx_dep);
+  Transitions *trans_model = GenRandTransitions(&ctx_dep);
   std::vector<int32> phone_seq;
   int32 num_phones = RandInt(0, 10);
   const std::vector<int32> &phone_list = trans_model->GetPhones();
@@ -214,7 +214,8 @@ void TestSplitToPhones() {
   GenerateRandomAlignment(*ctx_dep, *trans_model,
                           phone_seq, &alignment);
   std::vector<std::vector<int32> > split_alignment;
-  SplitToPhones(*trans_model, alignment, &split_alignment);
+  bool ans = SplitToPhones(*trans_model, alignment, &split_alignment);
+  KALDI_ASSERT(ans);
   KALDI_ASSERT(split_alignment.size() == phone_seq.size());
   for (size_t i = 0; i < split_alignment.size(); i++) {
     KALDI_ASSERT(!split_alignment[i].empty());
@@ -278,7 +279,7 @@ void TestConvertAlignment() {
   std::vector<int32> phone_sequence;
   int32 phone_sequence_length = RandInt(0, 20);
   for (int32 i = 0; i < phone_sequence_length; i++)
-    phone_sequence.push_back(phones[RandInt(0, phones.size() - 1)]);
+    phone_sequence.push_back(phones[RandInt(1, phones.size())]);
   std::vector<int32> old_alignment;
   GenerateRandomAlignment(*ctx_dep_old, trans_model_old,
                           phone_sequence,

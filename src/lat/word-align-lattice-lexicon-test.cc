@@ -172,7 +172,7 @@ void GenerateCompactLatticeRandomly(const std::vector<int32> &alignment,
 
 void TestWordAlignLatticeLexicon() {
   ContextDependency *ctx_dep;
-  Transitions *trans_model = GenRandTransitionModel(&ctx_dep);
+  Transitions *trans_model = GenRandTransitions(&ctx_dep);
   bool allow_zero_words = true;
   bool allow_empty_word = true;
   bool allow_multiple_prons = true;

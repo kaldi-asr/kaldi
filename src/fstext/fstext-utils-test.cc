@@ -214,19 +214,13 @@ template<class Arc>  void TestAcceptorMinimize() {
 template<class Arc>  void TestMakeSymbolsSame() {
 
   VectorFst<Arc> *fst = RandFst<Arc>();
-  bool foll = (kaldi::Rand() % 2 == 0);
   bool is_symbol = (kaldi::Rand() % 2 == 0);
 
 
   VectorFst<Arc> fst2(*fst);
 
-  if (foll) {
-    MakeFollowingInputSymbolsSame(is_symbol, &fst2);
-    assert(FollowingInputSymbolsAreSame(is_symbol, fst2));
-  } else {
-    MakePrecedingInputSymbolsSame(is_symbol, &fst2);
-    assert(PrecedingInputSymbolsAreSame(is_symbol, fst2));
-  }
+  MakePrecedingInputSymbolsSame(is_symbol, &fst2);
+  assert(PrecedingInputSymbolsAreSame(is_symbol, fst2));
 
 
   assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
@@ -251,20 +245,14 @@ struct TestFunctor {
 template<class Arc>  void TestMakeSymbolsSameClass() {
 
   VectorFst<Arc> *fst = RandFst<Arc>();
-  bool foll = (kaldi::Rand() % 2 == 0);
   bool is_symbol = (kaldi::Rand() % 2 == 0);
 
 
   VectorFst<Arc> fst2(*fst);
 
   TestFunctor<Arc> f;
-  if (foll) {
-    MakeFollowingInputSymbolsSameClass(is_symbol, &fst2, f);
-    assert(FollowingInputSymbolsAreSameClass(is_symbol, fst2, f));
-  } else {
-    MakePrecedingInputSymbolsSameClass(is_symbol, &fst2, f);
-    assert(PrecedingInputSymbolsAreSameClass(is_symbol, fst2, f));
-  }
+  MakePrecedingInputSymbolsSameClass(is_symbol, &fst2, f);
+  assert(PrecedingInputSymbolsAreSameClass(is_symbol, fst2, f));
 
   assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 

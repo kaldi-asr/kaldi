@@ -23,7 +23,7 @@
 
 namespace kaldi {
 
-Transitions *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
+Transitions *GenRandTransitions(ContextDependency **ctx_dep_out) {
   std::vector<int32> phones;
   phones.push_back(1);
   for (int32 i = 2; i < 20; i++)
@@ -182,23 +182,25 @@ void GeneratePathThroughHmm(const Topology &topology,
   path->clear();
   auto const &this_entry = topology.TopologyForPhone(phone); // an FST
   int32 cur_state = 0;  // start-state is always state zero.
+
+  // Note: final_state == num_states - 1 is actually not something
+  // that would be generally true, but it is true for the topologies we
+  // use in the test code.
   int32 num_states = this_entry.NumStates(), final_state = num_states - 1;
   KALDI_ASSERT(num_states > 1);  // there has to be a final nonemitting state
   // that's different from the start state.
-  std::vector<std::pair<int32, int32> > pending_self_loops;
+
   while (cur_state != final_state) {
     int32 num_transitions = this_entry.NumArcs(cur_state),
         arc_index = RandInt(0, num_transitions - 1);
     fst::ArcIterator<fst::StdVectorFst> aiter(this_entry, cur_state);
     aiter.Seek(arc_index);
     auto const &arc(aiter.Value());
-    if (arc.ilabel != -1) {
-      std::pair<int32, int32> pr(cur_state, arc_index);
-      path->push_back(pr);
-    }
+    KALDI_ASSERT(arc.ilabel > 0);
+    std::pair<int32, int32> pr(cur_state, arc_index);
+    path->push_back(pr);
     cur_state = arc.nextstate;
   }
-  KALDI_ASSERT(pending_self_loops.empty());
 }
 
 
@@ -209,8 +211,14 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
   int32 context_width = ctx_dep.ContextWidth(),
       central_position = ctx_dep.CentralPosition(),
       num_phones = phone_sequence.size();
+
+  auto all_phones = trans_model.GetPhones();
+  int32 model_max_phone = *std::max_element(all_phones.begin(),
+                                            all_phones.end());
   alignment->clear();
   for (int32 i = 0; i < num_phones; i++) {
+    KALDI_ASSERT(phone_sequence[i] > 0
+                 && phone_sequence[i] <= model_max_phone);
     std::vector<int32> context_window;
     context_window.reserve(context_width);
     for (int32 j = i - central_position;
@@ -220,7 +228,7 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
       else context_window.push_back(0);  // zero for out-of-window phones
     }
     // 'path' is the path through this phone's HMM, represented as
-    // (emitting-HMM-state, transition-index) pairs
+    // (source-HMM-state, transition-index) pairs
     std::vector<std::pair<int32, int32> > path;
     int32 phone = phone_sequence[i];
     GeneratePathThroughHmm(trans_model.GetTopo(), phone, &path);
@@ -241,8 +249,12 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
 
       bool ans = ctx_dep.Compute(context_window, forward_pdf_class, &forward_pdf_id);
       KALDI_ASSERT(ans && "context-dependency computation failed.");
-      ans = ctx_dep.Compute(context_window, self_loop_pdf_class, &self_loop_pdf_id);
-      KALDI_ASSERT(ans && "context-dependency computation failed.");
+      if (self_loop_pdf_class != -1) {
+        ans = ctx_dep.Compute(context_window, self_loop_pdf_class, &self_loop_pdf_id);
+        KALDI_ASSERT(ans && "context-dependency computation failed.");
+      } else {
+        self_loop_pdf_id = -1;
+      }
       int32 transition_id = trans_model.TupleToTransitionId(phone, hmm_state, arc_index,
                                                             forward_pdf_id, self_loop_pdf_id);
       alignment->push_back(transition_id);

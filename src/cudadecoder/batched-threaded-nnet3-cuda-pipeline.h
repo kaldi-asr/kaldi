@@ -105,7 +105,7 @@ public:
   // allocates reusable objects that are common across all decodings
   void Initialize(const fst::Fst<fst::StdArc> &decode_fst,
                   const nnet3::AmNnetSimple &nnet,
-                  const TransitionModel &trans_model);
+                  const Transitions &trans_model);
 
   // deallocates reusable objects
   void Finalize();
@@ -243,7 +243,7 @@ private:
   const BatchedThreadedNnet3CudaPipelineConfig &config_;
 
   CudaFst cuda_fst_;
-  const TransitionModel *trans_model_;
+  const Transitions *trans_model_;
   const nnet3::AmNnetSimple *am_nnet_;
   nnet3::DecodableNnetSimpleLoopedInfo *decodable_info_;
   OnlineNnet2FeaturePipelineInfo *feature_info_;

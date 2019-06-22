@@ -63,20 +63,24 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
 
   for (size_t i = 0; i < phones.size(); i++) {
     int32 phone = phones[i];
-    auto const &entry = topo_.TopologyForPhone(phone);  // an FST
+    const fst::StdVectorFst &entry = topo_.TopologyForPhone(phone);
     int num_states = entry.NumStates();
 
     std::vector<StateId> state_to_self_loop_pdf_class(num_states, kNoPdf);
-    for (StateId state = 0; state < num_states; ++state)
+    for (StateId state = 0; state < num_states; ++state) {
       for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state); !aiter.Done(); aiter.Next()) {
         const fst::StdArc &arc(aiter.Value());
         if (arc.nextstate == state) {
-          KALDI_ASSERT(state_to_self_loop_pdf_class[state] == kNoPdf);  // Only 1 self-loop allowed.
+          if (state_to_self_loop_pdf_class[state] != kNoPdf)
+            KALDI_ERR << "State " << state << " in topology of phone "
+                      << phone << " has more than one self-loop.";
           state_to_self_loop_pdf_class[state] = arc.ilabel;
         }
       }
+    }
 
-    std::map<std::pair<int32, int32>, std::vector<std::pair<int32, int32> > > phone_to_arc_list;
+    std::map<std::pair<int32, int32>, std::vector<std::pair<int32, int32> > > &phone_to_arc_list(
+        to_arc_list[phone]);
     for (StateId state = 0; state < num_states; ++state) {
       for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state);
            !aiter.Done(); aiter.Next()) {
@@ -90,7 +94,6 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
     }
     for (auto const &pdf_class_to_arc: phone_to_arc_list)
       pdf_class_pairs[phone].push_back(pdf_class_to_arc.first);
-    to_arc_list[phone] = phone_to_arc_list;
   }
   ctx_dep.GetPdfInfo(phones, pdf_class_pairs, &pdf_info);
 
@@ -126,7 +129,7 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
 void Transitions::ComputeDerived() {
   pdf_ids_.resize(info_.size());
   for (int32 tid = 1; tid <= NumTransitionIds(); ++tid) {
-    auto transition = info_[tid];
+    TransitionIdInfo &transition = info_[tid];
     auto const &entry = topo_.TopologyForPhone(transition.phone);  // an FST
     fst::ArcIterator<fst::StdVectorFst> aiter(entry, transition.topo_state);
     aiter.Seek(transition.arc_index);
@@ -153,7 +156,6 @@ void Transitions::ComputeDerived() {
                               arc_index, transition.self_loop_pdf_id,
                               transition.self_loop_pdf_id);
     }
-
     pdf_ids_[tid] = transition.pdf_id;
   }
 }

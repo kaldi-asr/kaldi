@@ -28,7 +28,7 @@ namespace cuda_decoder {
 
 void BatchedThreadedNnet3CudaPipeline::Initialize(
     const fst::Fst<fst::StdArc> &decode_fst, const nnet3::AmNnetSimple &am_nnet,
-    const TransitionModel &trans_model) {
+    const Transitions &trans_model) {
   KALDI_LOG << "BatchedThreadedNnet3CudaPipeline Initialize with "
             << config_.num_control_threads << " control threads, "
             << config_.num_worker_threads << " worker threads"

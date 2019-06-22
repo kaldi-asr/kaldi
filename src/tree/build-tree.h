@@ -72,11 +72,11 @@ namespace kaldi {
  *                  or a negative value (e.g. -1) sets it to the smallest likelihood
  *                  change seen during the splitting algorithm; this typically causes
  *                  about a 20% reduction in the number of leaves.
- 
+
  * @param P [in] The central position of the phone context window, e.g. 1 for a
  *                triphone system.
- * @param round_num_leaves [in]  If true, then the number of leaves in the 
- *                  final tree is made a multiple of 8. This is done by 
+ * @param round_num_leaves [in]  If true, then the number of leaves in the
+ *                  final tree is made a multiple of 8. This is done by
  *                  further clustering the leaves after they are first
  *                  clustered based on log-likelihood change.
  *                  (See cluster_thresh above) (default: true)
@@ -93,7 +93,7 @@ EventMap *BuildTree(Questions &qopts,
                     BaseFloat thresh,
                     int32 max_leaves,
                     BaseFloat cluster_thresh,  // typically == thresh.  If negative, use smallest split.
-                    int32 P, 
+                    int32 P,
                     bool round_num_leaves = true);
 
 
@@ -131,7 +131,7 @@ EventMap *BuildTree(Questions &qopts,
  *                 (generally true for non-silence phones).
  * @param stats [in] The statistics used in tree-building.
  * @param max_leaves_first [in] Maximum number of leaves it will create in first
- *                  level of decision tree. 
+ *                  level of decision tree.
  * @param max_leaves_second [in] Maximum number of leaves it will create in second
  *                  level of decision tree.  Must be > max_leaves_first.
  * @param cluster_leaves [in] Boolean value; if true, we post-cluster the leaves produced
@@ -180,7 +180,8 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
 /// @param N [in] context-size (typically 3)
 /// @param P [in] central-phone position in zero-based numbering (typically 1)
 /// @param phone_ids [in] integer ids of phones
-/// @param hmm_lengths [in] lengths of hmm for phone, indexed by phone.
+/// @param num_pdf_classes [in] number of pdf-classes for each phone, indexed by phone.
+///                    Note: pdf-classes are 1-based.
 /// @param is_ctx_dep [in] boolean array indexed by phone, saying whether each phone
 ///     is context dependent.
 /// @param ensure_all_phones_covered [in] Boolean argument: if true, GenRandStats
@@ -189,7 +190,7 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
 
 void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
                   const std::vector<int32> &phone_ids,
-                  const std::vector<int32> &hmm_lengths,
+                  const std::vector<int32> &num_pdf_classes,
                   const std::vector<bool> &is_ctx_dep,
                   bool ensure_all_phones_covered,
                   BuildTreeStatsType *stats_out);

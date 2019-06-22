@@ -34,7 +34,7 @@ namespace kaldi {
 // This function returns a randomly generated Transitions object.
 // If 'ctx_dep' is not NULL, it outputs to *ctx_dep a pointer to the
 // tree that was used to generate the transition model.
-Transitions *GenRandTransitionModel(ContextDependency **ctx_dep);
+Transitions *GenRandTransitions(ContextDependency **ctx_dep);
 
 /// This function returns a Topology object giving a normal 3-state topology,
 /// covering all phones in the list "phones".  This is mainly of use in testing

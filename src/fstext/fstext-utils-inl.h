@@ -524,21 +524,27 @@ bool FollowingInputSymbolsAreSameClass(bool end_is_epsilon, const Fst<Arc> &fst,
   return true;
 }
 
-// TODO(galv): Confirm that start_is_epsilon is no longer necessary
-// now that we longer allow epsilon transitions.
 template<class Arc>
-void MakePrecedingInputSymbolsSame(MutableFst<Arc> *fst) {
+void MakePrecedingInputSymbolsSame(bool start_is_epsilon, MutableFst<Arc> *fst) {
   IdentityFunction<typename Arc::Label> f;
-  MakePrecedingInputSymbolsSameClass(fst, f);
+  MakePrecedingInputSymbolsSameClass(start_is_epsilon, fst, f);
 }
 
 template<class Arc, class F>
-void MakePrecedingInputSymbolsSameClass(MutableFst<Arc> *fst, const F &f) {
+void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *fst, const F &f) {
   typedef typename F::Result ClassType;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   vector<ClassType> classes;
   ClassType noClass = f(kNoLabel);
+  ClassType epsClass = f(0);
+  if (start_is_epsilon) {  // treat having-start-state as epsilon in-transition.
+    StateId start_state = fst->Start();
+    if (start_state < 0 || start_state == kNoStateId) // empty FST.
+      return;
+    classes.resize(start_state+1, noClass);
+    classes[start_state] = epsClass;
+  }
 
   // Find bad states (states with multiple input-symbols into them).
   std::set<StateId> bad_states;  // states that we need to change.
@@ -600,73 +606,14 @@ void MakePrecedingInputSymbolsSameClass(MutableFst<Arc> *fst, const F &f) {
   }
 }
 
-template<class Arc>
-void MakeFollowingInputSymbolsSame(bool end_is_epsilon, MutableFst<Arc> *fst) {
-  IdentityFunction<typename Arc::Label> f;
-  MakeFollowingInputSymbolsSameClass(end_is_epsilon, fst, f);
-}
-
-template<class Arc, class F>
-void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fst, const F &f) {
-  typedef typename Arc::StateId StateId;
-  typedef typename Arc::Weight Weight;
-  typedef typename F::Result ClassType;
-  vector<StateId> bad_states;
-  ClassType noClass = f(kNoLabel);
-  ClassType epsClass = f(0);
-  for (StateIterator<Fst<Arc> > siter(*fst); !siter.Done(); siter.Next()) {
-    StateId s = siter.Value();
-    ClassType c = noClass;
-    bool bad = false;
-    for (ArcIterator<Fst<Arc> > aiter(*fst, s); !aiter.Done(); aiter.Next()) {
-      const Arc &arc = aiter.Value();
-      if (c == noClass)
-        c = f(arc.ilabel);
-      else
-        if (c != f(arc.ilabel)) {
-          bad = true;
-          break;
-        }
-    }
-    if (end_is_epsilon && c != noClass &&
-       c != epsClass && fst->Final(s) != Weight::Zero())
-      bad = true;
-    if (bad)
-      bad_states.push_back(s);
-  }
-  vector<Arc> my_arcs;
-  for (size_t i = 0; i < bad_states.size(); i++) {
-    StateId s = bad_states[i];
-    my_arcs.clear();
-    for (ArcIterator<MutableFst<Arc> > aiter(*fst, s); !aiter.Done(); aiter.Next())
-      my_arcs.push_back(aiter.Value());
-
-    for (size_t j = 0; j < my_arcs.size(); j++) {
-      Arc &arc = my_arcs[j];
-      if (arc.ilabel != 0) {
-        StateId newstate = fst->AddState();
-        // Create a new state for each non-eps arc in original FST, out of each bad state.
-        // Not as optimal as it could be, but does avoid some complicated weight-pushing
-        // issues in which, to maintain stochasticity, we would have to know which semiring
-        // we want to maintain stochasticity in.
-        fst->AddArc(newstate, Arc(arc.ilabel, 0, Weight::One(), arc.nextstate));
-        MutableArcIterator<MutableFst<Arc> > maiter(fst, s);
-        maiter.Seek(j);
-        maiter.SetValue(Arc(0, arc.olabel, arc.weight, newstate));
-      }
-    }
-  }
-}
-
 
 template<class Arc>
-std::unique_ptr<VectorFst<Arc>>
-MakeLoopFst(const vector<std::unique_ptr<const ExpandedFst<Arc>>> &fsts) {
+VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
 
-  std::unique_ptr<VectorFst<Arc>> ans(new VectorFst<Arc>);
+  VectorFst<Arc> *ans = new VectorFst<Arc>;
   StateId loop_state = ans->AddState();  // = 0.
   ans->SetStart(loop_state);
   ans->SetFinal(loop_state, Weight::One());
@@ -676,8 +623,7 @@ MakeLoopFst(const vector<std::unique_ptr<const ExpandedFst<Arc>>> &fsts) {
   unordered_map<const ExpandedFst<Arc> *, Arc> cache;
 
   for (Label i = 0; i < static_cast<Label>(fsts.size()); i++) {
-    // TODO(galv): I feel like this won't work with my unique_ptr usage. Call .get()?
-    const ExpandedFst<Arc> *fst = fsts[i].get();
+    const ExpandedFst<Arc> *fst = fsts[i];
     if (fst == NULL) continue;
     { // optimization with cache: helpful if some members of "fsts" may
       // contain the same pointer value (e.g. in GetHTransducer).

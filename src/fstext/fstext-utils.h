@@ -24,7 +24,6 @@
 #define KALDI_FSTEXT_FSTEXT_UTILS_H_
 #include <algorithm>
 #include <map>
-#include <memory>
 #include <set>
 #include <vector>
 #include <fst/fstlib.h>
@@ -253,31 +252,15 @@ bool FollowingInputSymbolsAreSameClass(bool end_is_epsilon, const Fst<Arc> &fst,
 /// that have differing input symbols going in, and inserting, for each of
 /// the preceding arcs with non-epsilon input symbol, a new dummy state that
 /// has an epsilon link to the fst state.
+/// If "start_is_epsilon", ensure that start-state can have only epsilon-links
+/// into it.
 template<class Arc>
-void MakePrecedingInputSymbolsSame(MutableFst<Arc> *fst);
+void MakePrecedingInputSymbolsSame(bool start_is_epsilon, MutableFst<Arc> *fst);
 
 
 /// As MakePrecedingInputSymbolsSame, but takes a functor object that maps labels to classes.
 template<class Arc, class F>
-void MakePrecedingInputSymbolsSameClass(MutableFst<Arc> *fst, const F &f);
-
-
-/// MakeFollowingInputSymbolsSame ensures that all arcs exiting any given fst
-/// state have the same input symbol.  It does this by detecting states that have
-/// differing input symbols on arcs that exit it, and inserting, for each of the
-/// following arcs with non-epsilon input symbol, a new dummy state that has an
-/// input-epsilon link from the fst state.  The output symbol and weight stay on the
-/// link to the dummy state (in order to keep the FST output-deterministic and
-/// stochastic, if it already was).
-/// If end_is_epsilon, treat "being a final-state" like having an epsilon output
-/// link.
-template<class Arc>
-void MakeFollowingInputSymbolsSame(bool end_is_epsilon, MutableFst<Arc> *fst);
-
-/// As MakeFollowingInputSymbolsSame, but takes a functor object that maps labels to classes.
-template<class Arc, class F>
-void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fst, const F &f);
-
+void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *fst, const F &f);
 
 
 
@@ -303,7 +286,7 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
 /// less well optimized and would have a lot of final-states.
 
 template<class Arc>
-std::unique_ptr<VectorFst<Arc>> MakeLoopFst(const vector<std::unique_ptr<const ExpandedFst<Arc>>> &fsts);
+VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts);
 
 
 /// ApplyProbabilityScale is applicable to FSTs in the log or tropical semiring.

@@ -113,21 +113,21 @@ void CudaFst::PopulateArcs(const fst::Fst<StdArc> &fst) {
       h_arc_id_ilabels_[idx] = arc.ilabel;
       // For now we consider id indexing == pdf indexing
       // If the two are differents, we'll call ApplyTransModelOnIlabels with a
-      // TransitionModel
+      // Transitions
       h_arc_pdf_ilabels_[idx] = arc.ilabel;
       h_arc_olabels_[idx] = arc.olabel;
     }
   }
 }
 
-void CudaFst::ApplyTransitionModelOnIlabels(
-    const TransitionModel &trans_model) {
+void CudaFst::ApplyTransitionsOnIlabels(
+    const Transitions &trans_model) {
   // Converting ilabel here, to avoid reindexing when reading nnet3 output
   // We only need to convert the emitting arcs
   // The emitting arcs are the first e_count_ arcs
   for (int iarc = 0; iarc < e_count_; ++iarc)
     h_arc_pdf_ilabels_[iarc] =
-        trans_model.TransitionIdToPdf(h_arc_id_ilabels_[iarc]);
+        trans_model.InfoForTransitionId(h_arc_id_ilabels_[iarc]).pdf_id;
 }
 
 void CudaFst::CopyDataToDevice() {
@@ -153,7 +153,7 @@ void CudaFst::CopyDataToDevice() {
 }
 
 void CudaFst::Initialize(const fst::Fst<StdArc> &fst,
-                         const TransitionModel *trans_model) {
+                         const Transitions *trans_model) {
   nvtxRangePushA("CudaFst constructor");
   start_ = fst.Start();
 
@@ -164,7 +164,7 @@ void CudaFst::Initialize(const fst::Fst<StdArc> &fst,
   // at the end of Initialize
   h_arc_pdf_ilabels_.resize(arc_count_);
   PopulateArcs(fst);
-  if (trans_model) ApplyTransitionModelOnIlabels(*trans_model);
+  if (trans_model) ApplyTransitionsOnIlabels(*trans_model);
 
   KALDI_ASSERT(d_e_offsets_);
   KALDI_ASSERT(d_ne_offsets_);

@@ -24,7 +24,7 @@ namespace kaldi {
 namespace cuda_decoder {
 
 DecodableCuMatrixMapped::DecodableCuMatrixMapped(
-    const TransitionModel &tm, const CuMatrixBase<BaseFloat> &likes,
+    const Transitions &tm, const CuMatrixBase<BaseFloat> &likes,
     int32 frame_offset)
     : trans_model_(tm), likes_(&likes), frame_offset_(frame_offset) {
   if (likes.NumCols() != tm.NumPdfs())

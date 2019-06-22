@@ -29,7 +29,7 @@ namespace kaldi {
 
 void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
                   const std::vector<int32> &phone_ids,
-                  const std::vector<int32> &phone2hmm_length,
+                  const std::vector<int32> &phone2num_pdf_classes,
                   const std::vector<bool> &is_ctx_dep,
                   bool ensure_all_phones_covered,
                   BuildTreeStatsType *stats_out) {
@@ -41,7 +41,7 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
   KALDI_ASSERT(phone_ids.size() != 0);
   KALDI_ASSERT(stats_out != NULL && stats_out->empty());
   int32 max_phone = *std::max_element(phone_ids.begin(), phone_ids.end());
-  KALDI_ASSERT(phone2hmm_length.size() >= static_cast<size_t>(1 + max_phone));
+  KALDI_ASSERT(phone2num_pdf_classes.size() >= static_cast<size_t>(1 + max_phone));
   KALDI_ASSERT(is_ctx_dep.size() >= static_cast<size_t>(1 + max_phone));
 
   // Make sure phone id's distinct.
@@ -68,12 +68,12 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
     std::vector<int32> phone_vec(N);
     for (size_t i = 0;i < (size_t)N;i++) phone_vec[i] = phone_ids[(Rand() % num_phones)];
 
-    int32 hmm_length = phone2hmm_length[phone_vec[P]];
-    KALDI_ASSERT(hmm_length > 0);
+    int32 num_pdf_classes = phone2num_pdf_classes[phone_vec[P]];
+    KALDI_ASSERT(num_pdf_classes > 0);
     covered[phone_vec[P]] = true;
 
     // For each position [in the central phone]...
-    for (int32 j = 0; j < hmm_length; j++) {
+    for (int32 j = 0; j < num_pdf_classes; j++) {
       // create event vector.
       EventType event_vec;
       // Use j+1 in next line becuase pdf-classes are 1-based.
@@ -93,7 +93,7 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
         Vector<BaseFloat> weights(N);  // weight of each component.
         for (int32 k = 0; k < N; k++) {
           BaseFloat k_pos = (N - 0.5 - k) / N;  // between 0 and 1, less for lower k...
-          BaseFloat j_pos = (hmm_length - 0.5 - j) / hmm_length;
+          BaseFloat j_pos = (num_pdf_classes - 0.5 - j) / num_pdf_classes;
           // j_pos is between 0 and 1, less for lower j.
 
           BaseFloat weight = j_pos*k_pos + (1.0-j_pos)*(1.0-k_pos);

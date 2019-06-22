@@ -25,34 +25,22 @@
 // Each thread block processes a unique frame
 // threads in the same threadblock collaborate to
 // compute the frame together.
-__global__ void apply_lifter_and_floor_energy(
-    int num_frames, int num_cols, float cepstral_lifter, bool use_energy,
-    float energy_floor, float *log_energy, float *lifter_coeffs,
+__global__ void include_log_energy(
+    int num_frames,
+    float energy_floor,
+    const float *log_energy,
     float *features, int32_t ldf) {
-  int thread_id = threadIdx.x;
   int frame = blockIdx.x;
 
   float *feats = features + frame * ldf;
 
-  // apply lifter coefficients
-  if (cepstral_lifter != 0.0f) {
-    for (int c = thread_id; c < num_cols; c += CU1DBLOCK) {
-      float lift = lifter_coeffs[c];
-      float f = feats[c];
-      feats[c] = f * lift;
-    }
-  }
+  float energy = log_energy[frame];
+  float log_energy_floor = log(energy_floor);
 
-  // Thread 0 for each frame will apply energy
-  if (use_energy && thread_id == 0) {
-    float energy = log_energy[frame];
-    float log_energy_floor = log(energy_floor);
-
-    if (energy_floor > 0.0f && energy < log_energy_floor) {
-      energy = log_energy_floor;
-    }
-    feats[0] = energy;
+  if (energy_floor > 0.0f && energy < log_energy_floor) {
+    energy = log_energy_floor;
   }
+  feats[0] = energy;
 }
 
 // Each threadblock computes a different row of the matrix.
@@ -132,9 +120,8 @@ __global__ void mel_banks_compute_kernel(int32_t num_frames, float energy_floor,
 }
 
 __global__ void process_window_kernel(
-    int frame_length, float dither, float energy_floor, bool remove_dc_offset,
-    float preemph_coeff, bool need_raw_log_energy, float *log_energy_pre_window,
-    const float *windowing, float *tmp_windows, int32_t ldt, float *windows,
+    int frame_length, bool remove_dc_offset,
+    const float *windowing, float *windows,
     int32_t ldw) {
   // Specialize WarpReduce for type float
   typedef cub::BlockReduce<float, CU1DBLOCK> BlockReduce;
@@ -142,7 +129,6 @@ __global__ void process_window_kernel(
 
   int thread_id = threadIdx.x;
   int row = blockIdx.x;
-  float *tmp_window = tmp_windows + row * ldt;
   float *window = windows + row * ldw;
 
   __shared__ float ssum;
@@ -151,26 +137,24 @@ __global__ void process_window_kernel(
   float wdot = 0;
 
   for (int idx = thread_id; idx < frame_length; idx += CU1DBLOCK) {
-    // tmp_window contains optional dither.  Apply that on read.
     float wval = window[idx];
-    if (dither != 0.0f) {
-      wval += tmp_window[idx] * dither;
-    }
     // compute local sum for removing dc offset
     sum += wval;
     // compute dot product for log energy
     wdot += wval * wval;
 
     float windowing_mul = 1;
-    if (remove_dc_offset == false && preemph_coeff == 0.0f) {
+    if (remove_dc_offset == false) {
       // we are done here so set windowing multiplication on write.
       windowing_mul = windowing[idx];
     }
-
     // write dithered output
     window[idx] = wval * windowing_mul;
   }
   __syncthreads();
+  // CAUTION (dp): when various configs were removed I tried to simplify this code
+  // by removing things that weren't supported.  Its structure may not make sense
+  // any more even if I did that correctly.
   if (remove_dc_offset) {
     // we will recompute this below
     wdot = 0.0f;
@@ -184,65 +168,15 @@ __global__ void process_window_kernel(
     sum = -ssum / frame_length;
     for (int idx = thread_id; idx < frame_length; idx += CU1DBLOCK) {
       float windowing_mul = 1;
-      float *out = window;
-      if (preemph_coeff == 0.0f) {
-        // we are done here so apply windowing
-        windowing_mul = windowing[idx];
-      } else {
-        // write to temp window as we will copy back into window
-        // when doing pre-emphasis
-        out = tmp_window;
-      }
+      windowing_mul = windowing[idx];
       // updated window value
       float wval = window[idx] + sum;
 
       // compute new dot product with dc offset removed
       wdot += wval * wval;
 
-      assert(windowing_mul == 1);
       // write output
-      out[idx] = wval * windowing_mul;
-    }
-  }
-  __syncthreads();
-
-  // if pointer is not NULL we will set energy to either
-  // the computed energy or 0 depending on need_raw_log_energy
-  if (log_energy_pre_window != NULL) {
-    float energy = 0.0f;
-
-    if (need_raw_log_energy) {
-      // must sync to use retemp_storage
-      if (remove_dc_offset) __syncthreads();
-      // use cub to reduce
-      wdot = BlockReduce(temp_storage).Sum(wdot);
-
-      energy = max(wdot, energy_floor);
-    }
-
-    if (thread_id == 0) {
-      log_energy_pre_window[row] = log(energy);
-    }
-  }
-
-  // TODO this could be more efficient using shared memory instead of
-  // tmp_window.
-  if (preemph_coeff != 0.0f) {
-    // wait for tmp_window to be computed
-    __threadfence();
-    __syncthreads();
-    // starting thread idx at 0 to keep writes aligned.
-    // unaligned reads are less painful then unaligned writes
-    for (int idx = thread_id; idx < frame_length; idx += CU1DBLOCK) {
-      float wval = tmp_window[idx];
-      float prev_window = wval;
-      if (idx > 0) {
-        prev_window = tmp_window[idx - 1];
-      }
-      // use __fmul_rn to match CPU
-      // window[idx] = (wval - preemph_coeff*prev_window) * windowing[idx];
-      window[idx] =
-          (wval - __fmul_rn(preemph_coeff, prev_window)) * windowing[idx];
+      window[idx] = wval * windowing_mul;
     }
   }
 }
@@ -339,7 +273,6 @@ namespace kaldi {
 
 CudaMfcc::CudaMfcc(const MfccOptions &opts):
     MfccComputer(opts),
-      cu_lifter_coeffs_(lifter_coeffs_),
       cu_dct_matrix_(dct_matrix_) {
   {
     Vector<BaseFloat> temp;
@@ -424,11 +357,9 @@ void CudaMfcc::ProcessWindows(int num_frames,
   KALDI_ASSERT(fft_num_frames % fft_size_ == 0);
 
   process_window_kernel<<<num_frames, CU1DBLOCK>>>(
-      frame_length_, std::numeric_limits<float>::epsilon(),
-      opts.remove_dc_offset, opts.preemph_coeff, NeedRawLogEnergy(),
-      log_energy_pre_window->Data(), window_function_.Data(),
-      tmp_window_.Data(), tmp_window_.Stride(), cu_windows_.Data(),
-      cu_windows_.Stride());
+      frame_length_, opts.remove_dc_offset,
+      window_function_.Data(),
+      cu_windows_.Data(), cu_windows_.Stride());
 
   CU_SAFE_CALL(cudaGetLastError());
 }
@@ -437,11 +368,10 @@ void CudaMfcc::ComputeFinalFeatures(int num_frames, BaseFloat vtln_wrap,
                                     CuVector<BaseFloat> *cu_signal_log_energy,
                                     CuMatrix<BaseFloat> *cu_features) {
   Vector<float> tmp;
-  assert(opts_.htk_compat == false);
 
   if (num_frames == 0) return;
 
-  if (opts_.use_energy && !opts_.raw_energy) {
+  if (opts_.use_energy) {
     dot_log_kernel<<<num_frames, CU1DBLOCK>>>(
         num_frames, cu_windows_.NumCols(), cu_windows_.Data(),
         cu_windows_.Stride(), cu_signal_log_energy->Data());
@@ -483,11 +413,16 @@ void CudaMfcc::ComputeFinalFeatures(int num_frames, BaseFloat vtln_wrap,
   cu_features->AddMatMat(1.0, cu_mel_energies_, kNoTrans, cu_dct_matrix_,
                          kTrans, 0.0);
 
-  apply_lifter_and_floor_energy<<<num_frames, CU1DBLOCK>>>(
-      cu_features->NumRows(), cu_features->NumCols(), opts_.cepstral_lifter,
-      opts_.use_energy, opts_.energy_floor, cu_signal_log_energy->Data(),
-      cu_lifter_coeffs_.Data(), cu_features->Data(), cu_features->Stride());
-  CU_SAFE_CALL(cudaGetLastError());
+  if (opts_.use_energy) {
+    // yes, using 1 thread per block does not make sense.
+    // this code was adapted lazily from previous code.
+    include_log_energy<<<num_frames, 1>>>(
+        cu_features->NumRows(),
+        opts_.energy_floor,
+        cu_signal_log_energy->Data(),
+        cu_features->Data(), cu_features->Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+  }
 }
 
 void CudaMfcc::ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
@@ -499,7 +434,6 @@ void CudaMfcc::ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
   // compute fft frames by rounding up to a multiple of fft_size_
   int fft_num_frames = num_frames + (fft_size_ - num_frames % fft_size_);
   int feature_dim = Dim();
-  bool use_raw_log_energy = NeedRawLogEnergy();
 
   CuVector<BaseFloat> raw_log_energies;
   raw_log_energies.Resize(num_frames, kUndefined);
@@ -510,17 +444,6 @@ void CudaMfcc::ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
   //+1 matches cufft/fftw requirements
   tmp_window_.Resize(fft_num_frames, padded_length_ + 2, kUndefined,
                      kStrideEqualNumCols);
-
-  if (frame_opts.dither != 0.0f) {
-    // Calling cu-rand directly
-    // CuRand class works on CuMatrixBase which must
-    // assume that the matrix is part of a larger matrix
-    // Doing this directly avoids unecessary memory copies
-    CURAND_SAFE_CALL(
-        curandGenerateNormal(GetCurandHandle(), tmp_window_.Data(),
-                             tmp_window_.NumRows() * tmp_window_.Stride(),
-                             0.0 /*mean*/, 1.0 /*stddev*/));
-  }
 
   // Extract Windows
   ExtractWindows(num_frames, 0, cu_wave, frame_opts);

@@ -30,10 +30,14 @@ OBJFILES =
 ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../lm/kaldi-lm.a \
           ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../tree/kaldi-tree.a ../cudamatrix/kaldi-cudamatrix.a \
+          ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
           ../cblasext/kaldi-cblasext.a ../base/kaldi-base.a
 
 
-TESTFILES =
+#LDLIBS += $(CUDA_LDLIBS)
 
-include ../makefiles/default_rules.mk
+
+# # TESTFILES =
+
+# # include ../makefiles/default_rules.mk

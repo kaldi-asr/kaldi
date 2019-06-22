@@ -24,7 +24,7 @@ namespace kaldi {
 
 
 void TestTransitions() {
-  Transitions *trans_model = GenRandTransitionModel(NULL);
+  Transitions *trans_model = GenRandTransitions(NULL);
   bool binary = (rand() % 2 == 0);
 
   std::ostringstream os;

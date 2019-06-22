@@ -34,21 +34,21 @@ void TestGenRandStats() {
     for (size_t i = 0;i < (size_t)num_phones;i++)
       phone_ids[i] = (i == 0 ? (Rand() % 2) : phone_ids[i-1] + 1 + (Rand()%2));
     int32 max_phone = *std::max_element(phone_ids.begin(), phone_ids.end());
-    std::vector<int32> hmm_lengths(max_phone+1);
+    std::vector<int32> num_pdf_classes(max_phone+1);
     std::vector<bool> is_ctx_dep(max_phone+1);
 
     for (int32 i = 0; i <= max_phone; i++) {
-      hmm_lengths[i] = 1 + Rand() % 3;
+      num_pdf_classes[i] = 1 + Rand() % 3;
       is_ctx_dep[i] = (RandUniform() < ctx_dep_prob);  // true w.p. ctx_dep_prob.
     }
     for (size_t i = 0;i < (size_t) num_phones;i++) {
-      KALDI_VLOG(2) <<  "For idx = "<< i << ", (phone_id, hmm_length, is_ctx_dep) == " << (phone_ids[i]) << " " << (hmm_lengths[phone_ids[i]]) << " " << (is_ctx_dep[phone_ids[i]]);
+      KALDI_VLOG(2) <<  "For idx = "<< i << ", (phone_id, num_pdf_classes, is_ctx_dep) == " << (phone_ids[i]) << " " << (num_pdf_classes[phone_ids[i]]) << " " << (is_ctx_dep[phone_ids[i]]);
     }
     BuildTreeStatsType stats;
     // put false for all_covered argument.
     // if it doesn't really ensure that all are covered with true, this will induce
     // failure in the test of context-fst.
-    GenRandStats(dim, num_stats, N, P, phone_ids, hmm_lengths, is_ctx_dep, false, &stats);
+    GenRandStats(dim, num_stats, N, P, phone_ids, num_pdf_classes, is_ctx_dep, false, &stats);
     std::cout << "Writing random stats.";
     std::cout <<"dim = " << dim << '\n';
     std::cout <<"num_phones = " << num_phones << '\n';
@@ -58,7 +58,7 @@ void TestGenRandStats() {
     std::cout << "is-ctx-dep = ";
     for (size_t i = 0;i < is_ctx_dep.size();i++)
       WriteBasicType(std::cout, false, static_cast<bool>(is_ctx_dep[i]));
-    std::cout << "hmm_lengths = "; WriteIntegerVector(std::cout, false, hmm_lengths);
+    std::cout << "num_pdf_classes = "; WriteIntegerVector(std::cout, false, num_pdf_classes);
     std::cout << "phone_ids = "; WriteIntegerVector(std::cout, false, phone_ids);
     std::cout << "Stats are: \n";
     WriteBuildTreeStats(std::cout, false, stats);
@@ -69,10 +69,10 @@ void TestGenRandStats() {
       EventValueType central_phone;
       bool b = EventMap::Lookup(stats[i].first, P, &central_phone);
       KALDI_ASSERT(b);
-      EventValueType position;
-      b = EventMap::Lookup(stats[i].first, kPdfClass, &position);
+      EventValueType pdf_class;
+      b = EventMap::Lookup(stats[i].first, kPdfClass, &pdf_class);
       KALDI_ASSERT(b);
-      KALDI_ASSERT(position>=0 && position < hmm_lengths[central_phone]);
+      KALDI_ASSERT(pdf_class >= 1 && pdf_class <= num_pdf_classes[central_phone]);
 
       for (EventKeyType j = 0; j < N; j++) {
         if (j != P) {  // non-"central" phone.
@@ -102,20 +102,20 @@ void TestBuildTree() {
     for (size_t i = 0;i < (size_t)num_phones;i++)
       phone_ids[i] = (i == 0 ? (Rand() % 2) : phone_ids[i-1] + 1 + (Rand()%2));
     int32 max_phone = *std::max_element(phone_ids.begin(), phone_ids.end());
-    std::vector<int32> hmm_lengths(max_phone+1);
+    std::vector<int32> num_pdf_classes(max_phone+1);
     std::vector<bool> is_ctx_dep(max_phone+1);
 
     for (int32 i = 0; i <= max_phone; i++) {
-      hmm_lengths[i] = 1 + Rand() % 3;
+      num_pdf_classes[i] = 1 + Rand() % 3;
       is_ctx_dep[i] = (RandUniform() < ctx_dep_prob);  // true w.p. ctx_dep_prob.
     }
     for (size_t i = 0;i < (size_t) num_phones;i++) {
-      KALDI_VLOG(2) <<  "For idx = "<< i << ", (phone_id, hmm_length, is_ctx_dep) == " << (phone_ids[i]) << " " << (hmm_lengths[phone_ids[i]]) << " " << (is_ctx_dep[phone_ids[i]]);
+      KALDI_VLOG(2) <<  "For idx = "<< i << ", (phone_id, num_pdf_classes, is_ctx_dep) == " << (phone_ids[i]) << " " << (num_pdf_classes[phone_ids[i]]) << " " << (is_ctx_dep[phone_ids[i]]);
     }
     // Generate rand stats.  These were tested in TestGenRandStats() above.
     BuildTreeStatsType stats;
     bool ensure_all_covered = false;
-    GenRandStats(dim, num_stats, N, P, phone_ids, hmm_lengths, is_ctx_dep, ensure_all_covered, &stats);
+    GenRandStats(dim, num_stats, N, P, phone_ids, num_pdf_classes, is_ctx_dep, ensure_all_covered, &stats);
 
     {  // print out the stats.
       std::cout << "Writing random stats.";
@@ -127,7 +127,7 @@ void TestBuildTree() {
       std::cout << "is-ctx-dep = ";
       for (size_t i = 0;i < is_ctx_dep.size();i++)
         WriteBasicType(std::cout, false, static_cast<bool>(is_ctx_dep[i]));
-      std::cout << "hmm_lengths = "; WriteIntegerVector(std::cout, false, hmm_lengths);
+      std::cout << "num_pdf_classes = "; WriteIntegerVector(std::cout, false, num_pdf_classes);
       std::cout << "phone_ids = "; WriteIntegerVector(std::cout, false, phone_ids);
       std::cout << "Stats are: \n";
       WriteBuildTreeStats(std::cout, false, stats);
@@ -172,11 +172,11 @@ void TestBuildTree() {
         bool round_num_leaves = true;
 
         EventMap *tree_not_rounded =
-               BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
+               BuildTree(qopts, phone_sets, num_pdf_classes, share_roots,
                          do_split, stats, thresh, max_leaves, 0.0, P,
                          false);
 
-        tree = BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
+        tree = BuildTree(qopts, phone_sets, num_pdf_classes, share_roots,
                          do_split, stats, thresh, max_leaves, 0.0, P,
                          round_num_leaves);
 
@@ -214,7 +214,7 @@ void TestBuildTree() {
 
         KALDI_ASSERT(num_removed < 8);
       } else {
-        tree = BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
+        tree = BuildTree(qopts, phone_sets, num_pdf_classes, share_roots,
                          do_split, stats, thresh, max_leaves, 0.0, P,
                          false);
       }
@@ -235,4 +235,3 @@ int main() {
   kaldi::TestGenRandStats();
   kaldi::TestBuildTree();
 }
-

@@ -20,7 +20,7 @@
 #include "cudadecoder/cuda-decoder-common.h"
 #include "cudamatrix/cu-device.h"
 #include "lat/kaldi-lattice.h"
-#include "nnet3/decodable-online-looped.h"  // TransitionModel
+#include "nnet3/decodable-online-looped.h"  // Transitions
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -52,13 +52,13 @@ class CudaFst {
         d_final_(nullptr){};
   // Creates a CSR representation of the FST,
   // then copies it to the GPU
-  // If a TransitionModel is passed, we'll use it to convert the ilabels id
+  // If a Transitions is passed, we'll use it to convert the ilabels id
   // indexes into pdf indexes
-  // If no TransitionModel is passed, we'll assume TransitionModel == identity
-  // Important: The CudaDecodable won't apply the TransitionModel. If you use a
-  // TransitionModel, you need to apply it now
+  // If no Transitions is passed, we'll assume Transitions == identity
+  // Important: The CudaDecodable won't apply the Transitions. If you use a
+  // Transitions, you need to apply it now
   void Initialize(const fst::Fst<StdArc> &fst,
-                  const TransitionModel *trans_model = NULL);
+                  const Transitions *trans_model = NULL);
   void Finalize();
 
   inline uint32_t NumStates() const { return num_states_; }
@@ -75,7 +75,7 @@ class CudaFst {
   // Converting the id ilabels into pdf ilabels using the transition model
   // It allows the CudaDecoder to read the acoustic model loglikelihoods at the
   // right indexes
-  void ApplyTransitionModelOnIlabels(const TransitionModel &trans_model);
+  void ApplyTransitionsOnIlabels(const Transitions &trans_model);
   // Copies fst to device into the pre-allocated datastructures
   void CopyDataToDevice();
   // Total number of states

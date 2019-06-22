@@ -456,7 +456,7 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
 
 void ChainSupervisionTest() {
   ContextDependency *ctx_dep;
-  Transitions *trans_model = GenRandTransitionModel(&ctx_dep);
+  Transitions *trans_model = GenRandTransitions(&ctx_dep);
   const std::vector<int32> &phones = trans_model->GetPhones();
 
   int32 subsample_factor = RandInt(1, 3);
