@@ -105,7 +105,7 @@ if [ $stage -le 8 ]; then
     ark,scp:$lat_dir/lat_tmp.JOB.ark,$lat_dir/lat_tmp.JOB.scp || exit 1
 
   for n in `seq 3`; do
-    cat $lat_dir/lat_tmp.*.scp | awk -v n=$n '{print "rev"n"_"$1" "$2}'
+    cat $lat_dir/lat_tmp.*.scp | awk -v n=$n '{print "rev"n"-"$1" "$2}'
   done > $lat_dir/lat_rvb.scp
 
   $train_cmd JOB=1:$nj $lat_dir/log/copy_rvb_lattices.JOB.log \
