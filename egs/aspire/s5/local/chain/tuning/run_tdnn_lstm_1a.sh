@@ -94,7 +94,7 @@ if [ $stage -le 8 ]; then
 
   for n in `seq $nj`; do
     awk '{print $1}' data/${train_set}/split$nj/$n/utt2spk | \
-      perl -ane 's/rev[1-3]_//g' > $lat_dir/uttlist.$n.$nj
+      perl -ane 's/rev[1-3]-//g' > $lat_dir/uttlist.$n.$nj
   done
 
   rm -f $lat_dir/lat_tmp.*.{ark,scp} 2>/dev/null
@@ -308,4 +308,3 @@ if [ $stage -le 17 ]; then
 fi
 
 exit 0;
-
