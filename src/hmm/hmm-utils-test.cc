@@ -279,7 +279,7 @@ void TestConvertAlignment() {
   std::vector<int32> phone_sequence;
   int32 phone_sequence_length = RandInt(0, 20);
   for (int32 i = 0; i < phone_sequence_length; i++)
-    phone_sequence.push_back(phones[RandInt(1, phones.size())]);
+    phone_sequence.push_back(phones[RandInt(0, phones.size() - 1)]);
   std::vector<int32> old_alignment;
   GenerateRandomAlignment(*ctx_dep_old, trans_model_old,
                           phone_sequence,

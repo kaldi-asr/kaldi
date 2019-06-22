@@ -29,11 +29,11 @@
 
 namespace kaldi {
 
-std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
-    std::vector<int32> phone_window,
+std::shared_ptr<fst::StdVectorFst> GetHmmAsFsa(
+    const std::vector<int32> &phone_window,
     const ContextDependencyInterface &ctx_dep,
     const Transitions &trans_model,
-    const HTransducerConfig &config,
+    bool include_self_loops,
     HmmCacheType *cache) {
   if (static_cast<int32>(phone_window.size()) != ctx_dep.ContextWidth())
     KALDI_ERR << "Context size mismatch, ilabel-info [from context FST is "
@@ -48,13 +48,12 @@ std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
 
   const Topology &topo = trans_model.GetTopo();
 
-  // vector of the pdfs, indexed by pdf-class (pdf-classes must start from zero
-  // and be contiguous).
-  std::vector<int32> pdfs(topo.NumPdfClasses(phone));
+  // vector of the pdf-ids, indexed by pdf-class minus one.
+  std::vector<int32> pdf_ids(topo.NumPdfClasses(phone));
   for (int32 pdf_class = 1;
-       pdf_class <= static_cast<int32>(pdfs.size());
+       pdf_class <= static_cast<int32>(pdf_ids.size());
        pdf_class++) {
-    if (! ctx_dep.Compute(phone_window, pdf_class, &(pdfs[pdf_class - 1])) ) {
+    if (! ctx_dep.Compute(phone_window, pdf_class, &(pdf_ids[pdf_class - 1])) ) {
       std::ostringstream ctx_ss;
       for (size_t i = 0; i < phone_window.size(); i++)
         ctx_ss << phone_window[i] << ' ';
@@ -68,7 +67,7 @@ std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
     }
   }
 
-  std::pair<int32, std::vector<int32> > cache_index(phone, pdfs);
+  std::pair<int32, std::vector<int32> > cache_index(phone, pdf_ids);
   if (cache != NULL) {
     HmmCacheType::iterator iter = cache->find(cache_index);
     if (iter != cache->end())
@@ -76,64 +75,59 @@ std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
   }
 
   using Arc = fst::StdArc;
-  using MyEditFst = fst::EditFst<Arc>;
   using StateId = Arc::StateId;
+  using Weight = Arc::Weight;
 
   const fst::StdVectorFst &entry = topo.TopologyForPhone(phone);
-  std::shared_ptr<MyEditFst> loopless_entry = std::make_shared<MyEditFst>(entry);
+  // the elements correction_factors are factors only in the semiring;
+  // physically they are costs to be added.
+  std::vector<float> correction_factors;
+  if (include_self_loops)
+    correction_factors.resize(entry.NumStates(), 0);
+  else
+    correction_factors = topo.CorrectionFactorsForPhone(phone);
+  const std::vector<int32> &self_loop_pdf_classes =
+      topo.SelfLoopPdfClassesForPhone(phone);
+  std::shared_ptr<fst::StdVectorFst> ans(
+      new fst::StdVectorFst());
+  StateId num_states = entry.NumStates();
+  for (StateId s = 0; s < num_states; s++)
+    ans->AddState();
+  KALDI_PARANOID_ASSERT(entry.Start() == 0);  // required by topology class.
+  ans->SetStart(0);
 
-  for (fst::StateIterator<MyEditFst> siter(*loopless_entry);
-       !siter.Done(); siter.Next()) {
-    StateId state = siter.Value();
-    std::vector<Arc> non_self_loops;
-    BaseFloat non_self_loop_prob = 1.0;
-    for (fst::ArcIterator<MyEditFst> aiter(*loopless_entry, state);
+  for (StateId s = 0; s < num_states; s++) {
+    Weight correction_weight(correction_factors[s]);
+    ans->SetFinal(s, Times(correction_weight, entry.Final(s)));
+
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, s);
          !aiter.Done(); aiter.Next()) {
-      const Arc& arc = aiter.Value();
-      if (arc.nextstate != state) {
-        non_self_loops.push_back(arc);
-      } else {
-        non_self_loop_prob -= exp(-arc.weight.Value());
-      }
-    }
-    KALDI_ASSERT(non_self_loop_prob >= BaseFloat(0));
-    if (non_self_loops.size() != loopless_entry->NumArcs(state)) {
-      loopless_entry->DeleteArcs(state);
-      for (Arc& arc: non_self_loops) {
-        // Renormalize the remaining arcs to have an outgoing weight
-        // of 1.0, so we maintain stochasticity
-        arc.weight = Arc::Weight(-log(exp(-arc.weight.Value()) / non_self_loop_prob));
-        loopless_entry->AddArc(state, arc);
-      }
+      if (!include_self_loops && aiter.Value().nextstate == s)
+        continue;
+      Arc arc = aiter.Value();
+
+      // self_loop_pdf_class is the pdf-class of the self-loop of the destination
+      // state of this arc, if any, else -1.
+      int32 self_loop_pdf_class = self_loop_pdf_classes[arc.nextstate];
+      // self_loop_pdf_id is the pdf-id of the self-loop in the destination
+      // state of this arc, if any, else -1.
+      int32 self_loop_pdf_id = (self_loop_pdf_class != -1 ?
+                                pdf_ids[self_loop_pdf_class - 1] : -1);
+      int32 pdf_class = arc.ilabel,
+          pdf_id = pdf_ids[pdf_class - 1],
+          trans_id = trans_model.TupleToTransitionId(
+              phone, s, aiter.Position(), pdf_id, self_loop_pdf_id);
+
+      arc.ilabel = trans_id;
+      arc.olabel = trans_id;
+      arc.weight = Times(correction_weight, arc.weight);
+      ans->AddArc(s, arc);
     }
   }
 
-  ApplyProbabilityScale(config.transition_scale, loopless_entry.get());
   if (cache != NULL)
-    (*cache)[cache_index] = loopless_entry;
-  return loopless_entry;
-}
-
-
-
-const fst::VectorFst<fst::StdArc>&
-GetHmmAsFsaSimple(std::vector<int32> phone_window,
-                  const ContextDependencyInterface &ctx_dep,
-                  const Transitions &trans_model,
-                  BaseFloat prob_scale) {
-  using namespace fst;
-
-  if (static_cast<int32>(phone_window.size()) != ctx_dep.ContextWidth())
-    KALDI_ERR <<"Context size mismatch, ilabel-info [from context FST is "
-              <<(phone_window.size())<<", context-dependency object "
-        "expects "<<(ctx_dep.ContextWidth());
-
-  int P = ctx_dep.CentralPosition();
-  int32 phone = phone_window[P];
-  KALDI_ASSERT(phone != 0);
-
-  const Topology &topo = trans_model.GetTopo();
-  return topo.TopologyForPhone(phone);
+    (*cache)[cache_index] = ans;
+  return ans;
 }
 
 
@@ -232,7 +226,7 @@ GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
       std::shared_ptr<ExpandedFst<Arc>> fst = GetHmmAsFsa(phone_window,
                                                           ctx_dep,
                                                           trans_model,
-                                                          config,
+                                                          config.include_self_loops,
                                                           &cache);
       std::unique_ptr<ExpandedFst<Arc>> u_fst(fst->Copy());
       fsts[j] = std::move(u_fst);
@@ -240,7 +234,7 @@ GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
   }
 
   // fsts_bare is as fsts, but with bare pointers.
-  std::vector<const ExpandedFst<Arc> *> fsts_bare(fsts.size());
+  std::vector<const fst::ExpandedFst<Arc> *> fsts_bare(fsts.size());
   for (size_t i = 0; i < fsts.size(); i++)
     fsts_bare[i] = fsts[i].get();
 
@@ -332,7 +326,7 @@ GetPdfToTransitionIdTransducer(const Transitions &trans_model) {
   ans->SetFinal(0, Weight::One());
   for (int32 tid = 1; tid <= trans_model.NumTransitionIds(); tid++) {
     int32 pdf = trans_model.TransitionIdToPdfFast(tid);
-    ans->AddArc(0, Arc(pdf+1, tid, Weight::One(), 0));  // note the offset of 1 on the pdfs.
+    ans->AddArc(0, Arc(pdf+1, tid, Weight::One(), 0));  // note the offset of 1 on the pdf_ids.
     // it's because 0 is a valid pdf.
   }
   return ans;
@@ -676,7 +670,7 @@ static inline void ConvertAlignmentForPhone(
     int32 old_pdf_class = old_trans_model.PdfClassForTid(old_tid);
     int32 old_self_loop_pdf_class = (
         info.self_loop_pdf_id != -1 ?
-        old_trans_model.PdfClassForTid(info.self_loop_pdf_id) : -1);
+        old_trans_model.PdfClassForTid(info.self_loop_transition_id) : -1);
     int32 new_pdf_id = pdf_ids[old_pdf_class];
     int32 new_self_loop_pdf_id = (old_self_loop_pdf_class != -1 ?
                                   pdf_ids[old_self_loop_pdf_class] : -1);
@@ -1053,17 +1047,20 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
                                 std::vector<int32> *alignment) {
   typedef fst::StdArc Arc;
   int32 length = alignment->size();
-  BaseFloat prob_scale = 0.0;
-  fst::VectorFst<Arc> fst = GetHmmAsFsaSimple(phone_window, ctx_dep,
-                                              trans_model, prob_scale);
-  fst::RmEpsilon(&fst);
+  bool include_self_loops = true;
+  std::shared_ptr<fst::StdVectorFst> fst =
+      GetHmmAsFsa(phone_window, ctx_dep,
+                  trans_model,
+                  include_self_loops);
+
+  fst::RmEpsilon(fst.get());
 
   fst::VectorFst<Arc> length_constraint_fst;
   {  // set up length_constraint_fst.
     std::vector<int32> symbols;
     bool include_epsilon = false;
     // note: 'fst' is an acceptor so ilabels == olabels.
-    GetInputSymbols(fst, include_epsilon, &symbols);
+    GetInputSymbols(*fst, include_epsilon, &symbols);
     int32 cur_state = length_constraint_fst.AddState();
     length_constraint_fst.SetStart(cur_state);
     for (int32 i = 0; i < length; i++) {
@@ -1079,7 +1076,7 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
     length_constraint_fst.SetFinal(cur_state, fst::TropicalWeight::One());
   }
   fst::VectorFst<Arc> composed_fst;
-  fst::Compose(fst, length_constraint_fst, &composed_fst);
+  fst::Compose(*fst, length_constraint_fst, &composed_fst);
   fst::VectorFst<Arc> single_path_fst;
   {  // randomly generate a single path.
     fst::UniformArcSelector<Arc> selector;
@@ -1096,6 +1093,12 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
   bool ans = fst::GetLinearSymbolSequence<Arc, int32>(
       single_path_fst, &symbol_sequence, NULL, NULL);
   KALDI_ASSERT(ans && symbol_sequence.size() == length);
+  KALDI_PARANOID_ASSERT(
+      trans_model.InfoForTransitionId(symbol_sequence.front()).is_initial &&
+      trans_model.InfoForTransitionId(symbol_sequence.back()).is_final);
+  if (symbol_sequence.size() > 1) {
+    KALDI_ASSERT(!trans_model.InfoForTransitionId(symbol_sequence.back()).is_initial);
+  } // TODO: remove the above.
   symbol_sequence.swap(*alignment);
 }
 

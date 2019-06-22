@@ -97,6 +97,7 @@ void Topology::Read(std::istream &is, bool binary) {
     }
     ExpectToken(is, binary, "</Topology>");
   }
+  ComputeDerived();
   Check();
 }
 
@@ -212,16 +213,32 @@ void Topology::Check() {
     if (fst.NumStates() != num_states || NumArcs(fst) != num_arcs)
       KALDI_ERR << "Topology changed after calling Connect().";
   }
+  KALDI_ASSERT(self_loop_correction_factors_.size() == entries_.size() &&
+               self_loop_pdf_classes_.size() == entries_.size());
 }
 
-// Will throw if phone not covered.
 const fst::StdVectorFst& Topology::TopologyForPhone(int32 phone) const {
   if (static_cast<size_t>(phone) >= phone2idx_.size()
-      || phone2idx_[phone] == -1) {
-    KALDI_ERR << "TopologyForPhone(), phone "<< phone <<" not covered.";
-  }
+      || phone2idx_[phone] == -1)
+    KALDI_ERR << "TopologyForPhone(), phone " << phone << " not covered.";
   return entries_[phone2idx_[phone]];
 }
+
+const std::vector<float>& Topology::CorrectionFactorsForPhone(int32 phone) const {
+  if (static_cast<size_t>(phone) >= phone2idx_.size()
+      || phone2idx_[phone] == -1)
+    KALDI_ERR << "TopologyForPhone(), phone " << phone << " not covered.";
+  return self_loop_correction_factors_[phone2idx_[phone]];
+}
+
+const std::vector<int32>& Topology::SelfLoopPdfClassesForPhone(int32 phone) const {
+  if (static_cast<size_t>(phone) >= phone2idx_.size()
+      || phone2idx_[phone] == -1) {
+    KALDI_ERR << "TopologyForPhone(), phone " << phone << " not covered.";
+  }
+  return self_loop_pdf_classes_[phone2idx_[phone]];
+}
+
 
 int32 Topology::NumPdfClasses(int32 phone) const {
   // will throw if phone not covered.
@@ -302,6 +319,47 @@ bool Topology::operator==(const Topology &other) const {
       }
     }
     return true;
+  }
+}
+
+
+void Topology::ComputeDerived() {
+  using Arc = fst::StdArc;
+  using StateId = Arc::StateId;
+  using Weight = Arc::Weight;
+
+  self_loop_correction_factors_.resize(entries_.size());
+  self_loop_pdf_classes_.resize(entries_.size());
+  for (size_t i = 0; i < entries_.size(); i++) {
+    const fst::StdVectorFst &entry = entries_[i];
+    std::vector<float> &correction_factors(
+        self_loop_correction_factors_[i]);
+    std::vector<int32> &pdf_classes(
+        self_loop_pdf_classes_[i]);
+    StateId num_states = entry.NumStates();
+    correction_factors.resize(num_states);
+    pdf_classes.resize(num_states, -1);
+    for (StateId s = 0; s < num_states; s++) {
+      float tot_prob = exp(-entry.Final(s).Value()),
+          self_loop_prob = 0.0;
+      for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, s);
+           !aiter.Done(); aiter.Next()) {
+        const Arc& arc = aiter.Value();
+        float this_prob = exp(-arc.weight.Value());
+        tot_prob += this_prob;
+        if (arc.nextstate == s) {
+          self_loop_prob += this_prob;
+          KALDI_ASSERT(pdf_classes[s] == -1 &&
+                       "State in topology has more than one self-loop");
+          pdf_classes[s] = arc.ilabel;
+        }
+      }
+      KALDI_ASSERT(tot_prob > 0 && "Invalid topology");
+      // correction_factor is initialized with a number <= 0 that will be added
+      // to costs.  It will result in properly normalized probs after removing
+      // the self-loop, assuming the topo was properly normalized before.
+      correction_factors[s] = log((tot_prob - self_loop_prob) / tot_prob);
+    }
   }
 }
 

@@ -93,6 +93,27 @@ class Topology {
   /// will throw exception if phone not covered by the topology.
   const fst::StdVectorFst &TopologyForPhone(int32 phone) const;
 
+  /// Returns a reference to a vector of floats of size
+  /// `TopologyForPhone(phone).NumStates()`; this contains numbers <= 0 which are to be
+  /// added to the final-costs and non-self-loop arc costs when creating graphs
+  /// without self-loops (we call it a correction factor becuause in the
+  /// semiring it's multiplied, although physically it is added); this
+  /// correction factor will ensure that the probability sum of the
+  /// non-self-loop arcs and final-prob of each state has the same value that it
+  /// did before removing the self-loop.  It's used to make sure that
+  /// intermediate FSTs made during graph compilation are as stochastic as
+  /// possible.
+  /// The user could compute this themselves, but we provide it
+  /// directly for speed.
+  const std::vector<float> &CorrectionFactorsForPhone(int32 phone) const;
+
+  /// For each phone, this will return a vector of size
+  /// `TopologyForPhone(phone).NumStates()` containing, for each state
+  /// in this phone's topology entry, the pdf-class of the self-loop on
+  /// that state (if any), and otherwise, -1.  This could be computed
+  /// by the user from the FST, but is provided for convenience.
+  const std::vector<int32> &SelfLoopPdfClassesForPhone(int32 phone) const;
+
   /// Returns the number of \ref pdf_class "pdf-classes" for this phone;
   /// throws exception if phone not covered by this topology.
   int32 NumPdfClasses(int32 phone) const;
@@ -118,13 +139,41 @@ class Topology {
 
   // Allow default assignment operator and copy constructor.
  private:
+
+  void ComputeDerived();
+
   using Arc     = typename fst::StdVectorFst::Arc;
   using StateId = typename fst::StdVectorFst::StateId;
   using Weight  = typename fst::StdVectorFst::Weight;
 
-  std::vector<int32> phones_;  // list of all phones we have topology for.  Sorted, uniq.  no epsilon (zero) phone.
-  std::vector<int32> phone2idx_;  // map from phones to indexes into the entries vector (or -1 for not present).
-  std::vector<fst::StdVectorFst> entries_;
+  std::vector<int32> phones_;  // list of all phones we have topology for.
+                               // Sorted, uniq.  no epsilon (zero) phone.
+  std::vector<int32> phone2idx_;  // map from phones to indexes into the entries
+                                  // vector (or -1 for not present).
+  std::vector<fst::StdVectorFst> entries_;  // list of topology entries, indexed
+                                            // by the elements of phone2indx_.
+
+  // Below this point are 'derived quantities' (things not written to disk,
+  // that can be worked out from the information above).
+
+  // This is a vector indexed by 'idx' (the same as the index into entries_) and
+  // then by state-id in the corresponding topology entry; it contains the
+  // correction factor that we add to the costs of arcs leaving that state (and
+  // its final-cost) if we remove the self-loop; it's a number <= 0.  This will
+  // make the probability sum of this state have the same value it did before
+  // removing the self-loop, hopefully 1.0.  (viewing the costs as negated
+  // log-probs, of course).  Doing this will make the no-self-loop FST
+  // stochastic if it was stochastic with the self-loops.
+  std::vector<std::vector<float> > self_loop_correction_factors_;
+
+  // This is a vector indexed by 'idx' (the same as the index into entries_) and
+  // then by state-id in the corresponding topology entry; it contains the
+  // pdf-class of the self-loop of each state that had a self-loop, or -1
+  // for the states that didn't have self-loops.  Note: the pdf-class is
+  // a number >0 which is the label on the arc in the topology entries (ilabel
+  // or olabel; they are the same because the topology entries are
+  // acceptors).
+  std::vector<std::vector<int32> > self_loop_pdf_classes_;
 };
 
 

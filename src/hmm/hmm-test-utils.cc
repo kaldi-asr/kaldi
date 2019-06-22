@@ -80,14 +80,14 @@ Topology GetDefaultTopology(const std::vector<int32> &phones_in) {
 
 
 Topology GenRandTopology(const std::vector<int32> &phones_in,
-                            const std::vector<int32> &num_pdf_classes) {
+                         const std::vector<int32> &num_pdf_classes) {
   std::vector<int32> phones(phones_in);
   std::sort(phones.begin(), phones.end());
   KALDI_ASSERT(IsSortedAndUniq(phones) && !phones.empty());
 
   std::ostringstream topo_string;
 
-   std::map<int32, std::vector<int32> > num_pdf_classes_to_phones;
+  std::map<int32, std::vector<int32> > num_pdf_classes_to_phones;
   for (size_t i = 0; i < phones.size(); i++) {
     int32 p = phones[i];
     KALDI_ASSERT(static_cast<size_t>(p) < num_pdf_classes.size());
@@ -108,47 +108,30 @@ Topology GenRandTopology(const std::vector<int32> &phones_in,
     for (size_t i = 0; i < phones.size(); i++)
       topo_string << phones[i] << " ";
     topo_string << "</ForPhones>\n";
-    bool ergodic = (RandInt(0, 1) == 0);
-    if (ergodic) {
-      // Note, this type of topology is not something we ever use in practice- it
-      // has an initial nonemitting state (no PdfClass specified).  But it's
-      // supported so we're testing it.
-      std::vector<int32> state_to_pdf_class;
-      state_to_pdf_class.push_back(-1);  // state zero, nonemitting.
-      for (int32 i = 1; i <= this_num_pdf_classes; i++) {
-        int32 num_states = RandInt(1, 2);
-        for (int32 j = 0; j < num_states; j++)
-          state_to_pdf_class.push_back(i);
-      }
-      state_to_pdf_class.push_back(-1);  // final non-emitting state.
-      { // state zero is nonemitting.  This is not something used in any current
-        // example script.
-        BaseFloat prob = 1.0 / (state_to_pdf_class.size() - 2);
-        for (size_t i = 1; i + 1 < state_to_pdf_class.size(); i++)
-          topo_string << "0 " << i << ' ' << state_to_pdf_class[i]
-                      << ' ' << -Log(prob) << '\n';
-      }
-      // ergodic part.
-      for (size_t i = 1; i + 1 < state_to_pdf_class.size(); i++) {
-        BaseFloat prob = 1.0 / (state_to_pdf_class.size() - 1);
-        for (size_t j = 1; j < state_to_pdf_class.size(); j++)
-          topo_string << i << ' ' << j << ' '
-                      << state_to_pdf_class[i] << ' ' << -Log(prob) << '\n';
-      }
-      // final, nonemitting state.  No pdf-class, no transitions.
-      topo_string << (state_to_pdf_class.size() - 1) << "\n\n";
-    } else {
-      // feedforward topology.
-      int32 cur_state = 0;
-      for (int32 pdf_class = 1; pdf_class <= this_num_pdf_classes; pdf_class++) {
-        int32 this_num_states = RandInt(1, 2);
-        for (int32 s = 0; s < this_num_states; s++) {
-          topo_string << cur_state << " " << (cur_state + 1) << " " << pdf_class << "\n";
-          cur_state++;
-        }
-      }
-      // final, non-emitting state.
-      topo_string << cur_state << "\n\n";
+
+    switch (this_num_pdf_classes)  {
+      case 1:
+        topo_string << "0   1   1   0.0\n"
+                       "1   1   1   0.693\n"
+                      "1  0.693\n\n";
+        break;
+      case 2:
+        topo_string << "0   1   1   0.0\n"
+                       "1   1   1   0.693\n"
+                       "1   2   2  0.693\n"
+                       "2   2   2  0.693\n"
+                       "2  0.693\n\n";
+        break;
+      case 3:
+        topo_string << "0   1   1   0.0\n"
+                       "1   1   1   0.693\n"
+                       "1   2   2  0.693\n"
+                       "2   3   3  0.0\n"  // mix it up a bit.
+                       "3   3   3  0.693\n"
+                       "3  0.693\n\n";
+        break;
+      default:
+        KALDI_ERR << "Un-handled num-pdf-classes\n";
     }
     topo_string << "</TopologyEntry>\n";
   }
@@ -171,7 +154,7 @@ Topology GenRandTopology() {
   } else {
     std::vector<int32> num_pdf_classes(phones.back() + 1, -1);
     for (int32 i = 0; i < phones.size(); i++)
-      num_pdf_classes[phones[i]] = RandInt(1, 5);
+      num_pdf_classes[phones[i]] = RandInt(1, 3);
     return GenRandTopology(phones, num_pdf_classes);
   }
 }

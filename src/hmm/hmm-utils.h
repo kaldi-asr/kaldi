@@ -37,19 +37,16 @@ namespace kaldi {
 /// Configuration class for the GetHTransducer() function; see
 /// \ref hmm_graph_config for context.
 struct HTransducerConfig {
-  /// Transition log-prob scale, see \ref hmm_scale.
-  /// Note this doesn't apply to self-loops; GetHTransducer() does
-  /// not include self-loops.
-  BaseFloat transition_scale;
   int32 nonterm_phones_offset;
+  // We don't currently make `include_self_loops` configurable from the command
+  // line; it's included in order to make it obvious how to add the self loops.
+  bool include_self_loops;
 
   HTransducerConfig():
-      transition_scale(1.0),
-      nonterm_phones_offset(-1) { }
+      nonterm_phones_offset(-1),
+      include_self_loops(false) { }
 
   void Register (OptionsItf *opts) {
-    opts->Register("transition-scale", &transition_scale,
-                   "Scale of transition probs (relative to LM)");
     opts->Register("nonterm-phones-offset", &nonterm_phones_offset,
                    "The integer id of #nonterm_bos in phones.txt, if present. "
                    "Only needs to be set if you are doing grammar decoding, "
@@ -69,7 +66,7 @@ struct HmmCacheHash {
 /// HmmCacheType is a map from (central-phone, sequence of pdf-ids) to FST, used
 /// as cache in GetHmmAsFsa, as an optimization.
 typedef unordered_map<std::pair<int32, std::vector<int32> >,
-                      std::shared_ptr<fst::ExpandedFst<fst::StdArc>>,
+                      std::shared_ptr<fst::StdVectorFst>,
                       HmmCacheHash> HmmCacheType;
 
 
@@ -83,33 +80,26 @@ typedef unordered_map<std::pair<int32, std::vector<int32> >,
 ///
 /// as the symbols.
 /// For documentation in context, see \ref hmm_graph_get_hmm_as_fst
-///   @param context_window  A vector representing the phonetic context; see
+///   @param [in] context_window  A vector representing the phonetic context; see
 ///            \ref tree_window "here" for explanation.
-///   @param ctx_dep The object that contains the phonetic decision-tree
-///   @param trans_model The transition-model object, which provides
+///   @param [in] ctx_dep The object that contains the phonetic decision-tree
+///   @param [in] trans_model The transition-model object, which provides
 ///         the mappings to transition-ids and also the transition
 ///         probabilities.
-///   @param config Configuration object, see \ref HTransducerConfig.
+///   @param [in] include_self_loops.  If true, self-loop arcs will be
+///          included in the result; if false, they will be omitted and
+///          the probabilities appropriately renormalized; you can
+///          add them later using AddSelfLoops().
 ///   @param cache Object used as a lookaside buffer to save computation;
 ///       if it finds that the object it needs is already there, it will
 ///       just return a pointer value from "cache"-- note that this means
 ///       you have to be careful not to delete things twice.
-std::shared_ptr<fst::ExpandedFst<fst::StdArc>> GetHmmAsFsa(
-    std::vector<int32> context_window,
+std::shared_ptr<fst::StdVectorFst> GetHmmAsFsa(
+    const std::vector<int32> &context_window,
     const ContextDependencyInterface &ctx_dep,
     const Transitions &trans_model,
-    const HTransducerConfig &config,
+    bool include_self_loops = false,
     HmmCacheType *cache = NULL);
-
-
-/// Included mainly as a form of documentation, not used in any other code
-/// currently.  Creates the acceptor FST with self-loops, and with fewer
-/// options.
-const fst::StdVectorFst&
-GetHmmAsFsaSimple(std::vector<int32> context_window,
-                  const ContextDependencyInterface &ctx_dep,
-                  const Transitions &trans_model,
-                  BaseFloat prob_scale);
 
 
 /**
