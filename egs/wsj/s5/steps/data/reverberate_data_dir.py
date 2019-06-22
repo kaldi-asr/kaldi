@@ -299,7 +299,7 @@ def generate_reverberation_opts(room_dict,  # the room dictionary, please refer 
 def get_new_id(id, prefix=None, copy=0):
     """ This function generates a new id from the input id
         This is needed when we have to create multiple copies of the original data
-        E.g. get_new_id("swb0035", prefix="rvb", copy=1) returns a string "rvb1_swb0035"
+        E.g. get_new_id("swb0035", prefix="rvb", copy=1) returns a string "rvb1-swb0035"
     """
     if prefix is not None:
         new_id = prefix + str(copy) + "-" + id
@@ -675,4 +675,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
