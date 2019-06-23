@@ -4,6 +4,7 @@
 //                      Saarland University;  Petr Schwarz;  Yanmin Qian;
 //                      Karel Vesely;  Go Vivace Inc.;  Haihua Xu
 //           2017       Shiyin Kang
+//           2019       Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -337,37 +338,42 @@ class MatrixBase {
                  const MatrixIndexT *indexes,
                  MatrixBase<Real> *dst) const;
 
-  /// Applies floor to all matrix elements
-  void ApplyFloor(Real floor_val);
+  inline void ApplyPow(Real power) {
+    this -> Pow(*this, power);
+  };
 
-  /// Applies floor to all matrix elements
-  void ApplyCeiling(Real ceiling_val);
+  
+  inline void ApplyPowAbs(Real power, bool include_sign=false) {
+    this -> PowAbs(*this, power, include_sign);
+  };
+  
+  inline void ApplyHeaviside() {
+    this -> Heaviside(*this);
+  };
+  
+  inline void ApplyFloor(Real floor_val) {
+    this -> Floor(*this, floor_val);
+  };
+  
+  inline void ApplyCeiling(Real ceiling_val) {
+    this -> Ceiling(*this, ceiling_val);
+  };
+  
+  inline void ApplyExp() {
+    this -> Exp(*this);
+  };
 
-  /// Calculates log of all the matrix elemnts
-  void ApplyLog();
+  inline void ApplyExpSpecial() {
+    this -> ExpSpecial(*this);
+  };
 
-  /// Exponentiate each of the elements.
-  void ApplyExp();
-
-  /// For each element x of the matrix, set it to
-  /// (x < 0 ? exp(x) : x + 1).  This function is used
-  /// in our RNNLM training.
-  void ApplyExpSpecial();
-
-  /// Applies power to all matrix elements
-  void ApplyPow(Real power);
-
-  /// Apply power to the absolute value of each element.
-  /// Include the sign of the input element if include_sign == true.
-  /// If the power is negative and the input to the power is zero,
-  /// The output will be set zero.
-  void ApplyPowAbs(Real power, bool include_sign=false);
-
-  /// Applies the Heaviside step function (x > 0 ? 1 : 0) to all matrix elements
-  /// Note: in general you can make different choices for x = 0, but for now
-  /// please leave it as it (i.e. returning zero) because it affects the
-  /// RectifiedLinearComponent in the neural net code.
-  void ApplyHeaviside();
+  inline void ApplyExpLimited(Real lower_limit, Real upper_limit) {
+    this -> ExpLimited(*this, lower_limit, upper_limit);
+  };
+  
+  inline void ApplyLog() {
+    this -> Log(*this);
+  };
 
   /// Eigenvalue Decomposition of a square NxN matrix into the form (*this) = P D
   /// P^{-1}.  Be careful: the relationship of D to the eigenvalues we output is
@@ -483,6 +489,35 @@ class MatrixBase {
   /// because it affects the RectifiedLinearComponent in the neural net code.
   void Heaviside(const MatrixBase<Real> &src);
 
+  void Exp(const MatrixBase<Real> &src);
+
+  void Pow(const MatrixBase<Real> &src, Real power);
+
+  void Log(const MatrixBase<Real> &src);
+
+  /// Apply power to the absolute value of each element.
+  /// If include_sign is true, the result will be multiplied with
+  /// the sign of the input value.
+  /// If the power is negative and the input to the power is zero,
+  /// The output will be set zero. If include_sign is true, it will
+  /// multiply the result by the sign of the input.
+  void PowAbs(const MatrixBase<Real> &src, Real power, bool include_sign=false);
+
+  void Floor(const MatrixBase<Real> &src, Real floor_val);
+  
+  void Ceiling(const MatrixBase<Real> &src, Real ceiling_val);
+
+  /// For each element x of the matrix, set it to
+  /// (x < 0 ? exp(x) : x + 1).  This function is used
+  /// in our RNNLM training.
+  void ExpSpecial(const MatrixBase<Real> &src);
+
+  /// This is equivalent to running:
+  /// Floor(src, lower_limit);
+  /// Ceiling(src, upper_limit);
+  /// Exp(src)
+  void ExpLimited(const MatrixBase<Real> &src, Real lower_limit, Real upper_limit);
+  
   /// Set each element to y = log(1 + exp(x))
   void SoftHinge(const MatrixBase<Real> &src);
 
