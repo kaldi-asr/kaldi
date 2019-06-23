@@ -458,8 +458,8 @@ void AddSelfLoops(const Transitions &trans_model,
 
 
   StateId num_states = fst->NumStates();
-  // self_loop_transition_id gives the transition-id of the self-loop
-  // of this state, or zero or -1 if it doesn't require a self-loop.
+  // self_loop_transition_id gives the transition-id of the self-loop of this
+  // state, or zero or -1 or -2 if it doesn't require a self-loop.
   std::vector<int32> self_loop_transition_id(num_states, -2);
 
   for (StateId s = 0; s < num_states; s++) {
@@ -481,6 +481,8 @@ void AddSelfLoops(const Transitions &trans_model,
   }
 
   if (!currently_self_loop_free) {
+    // there might be some self-loops present already, so make sure we don't
+    // duplicate them.
     for (StateId s = 0; s < num_states; s++) {
       for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
            !aiter.Done();
@@ -494,7 +496,7 @@ void AddSelfLoops(const Transitions &trans_model,
     }
   } else {
     // We shouldn't have added a self-loop to the start state.
-    KALDI_ASSERT(self_loop_transition_id[fst->Start()] == 0);
+    KALDI_ASSERT(self_loop_transition_id[fst->Start()] <= 0);
   }
 
   // The next loop looks at each graph state, adds the self-loop [if needed] and
