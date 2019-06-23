@@ -230,7 +230,7 @@ bool PrecedingInputSymbolsAreSame(bool start_is_epsilon, const Fst<Arc> &fst);
 /// F::Result F::operator() (F::Arg a) const;
 /// where F::Result is an integer type and F::Arc can be constructed from Arc::Label.
 /// this must apply to valid labels and also to kNoLabel (so we can have a marker for
-/// the invalid labels.
+/// the invalid labels).
 template<class Arc, class F>
 bool PrecedingInputSymbolsAreSameClass(bool start_is_epsilon, const Fst<Arc> &fst, const F &f);
 
@@ -258,7 +258,8 @@ template<class Arc>
 void MakePrecedingInputSymbolsSame(bool start_is_epsilon, MutableFst<Arc> *fst);
 
 
-/// As MakePrecedingInputSymbolsSame, but takes a functor object that maps labels to classes.
+/// As MakePrecedingInputSymbolsSame, but takes a functor object that maps
+/// labels to (int32) classes
 template<class Arc, class F>
 void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *fst, const F &f);
 

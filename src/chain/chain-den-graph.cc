@@ -336,12 +336,9 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
             << context_dep_lm.NumStates() << " and " << NumArcs(context_dep_lm);
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on input side
-  // of H -- will be empty.
-  HTransducerConfig h_config;
-  // the default is 1, but just document that we want this to stay as one.
-  // we'll use the same value in test time.  Consistency is the key here.
-  h_config.transition_scale = 1.0;
+                                      // of H -- will be empty.
 
+  HTransducerConfig h_config;
   std::unique_ptr<StdVectorFst> h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
                                                        ctx_dep,
                                                        trans_model,
@@ -351,14 +348,14 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   StdVectorFst transition_id_fst;
   TableCompose(*h_fst, context_dep_lm, &transition_id_fst);
 
-  BaseFloat self_loop_scale = 1.0;  // We have to be careful to use the same
-                                    // value in test time.
   // 'reorder' must always be set to true for chain models.
-  bool check_no_self_loops = true;
+  bool currently_self_loop_free = true,
+      use_weights = true;
 
   // add self-loops to the FST with transition-ids as its labels.
-  AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale,
-               check_no_self_loops, &transition_id_fst);
+  AddSelfLoops(trans_model, disambig_syms_h,
+               currently_self_loop_free, use_weights,
+               &transition_id_fst);
   // at this point transition_id_fst will have transition-ids as its ilabels and
   // context-dependent phones (indexes into IlabelInfo()) as its olabels.
   // Discard the context-dependent phones by projecting on the input, keeping

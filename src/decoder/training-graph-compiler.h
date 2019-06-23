@@ -31,23 +31,13 @@ namespace kaldi {
 
 struct TrainingGraphCompilerOptions {
 
-  BaseFloat transition_scale;
-  BaseFloat self_loop_scale;
   bool rm_eps;
 
-  explicit TrainingGraphCompilerOptions(BaseFloat transition_scale = 1.0,
-                                        BaseFloat self_loop_scale = 1.0) :
-      transition_scale(transition_scale),
-      self_loop_scale(self_loop_scale),
-      rm_eps(false) { }
+  explicit TrainingGraphCompilerOptions(): rm_eps(false) { }
 
   void Register(OptionsItf *opts) {
-    opts->Register("transition-scale", &transition_scale, "Scale of transition "
-                   "probabilities (excluding self-loops)");
-    opts->Register("self-loop-scale", &self_loop_scale, "Scale of self-loop vs. "
-                   "non-self-loop probability mass ");
-    opts->Register("rm-eps", &rm_eps,  "Remove [most] epsilons before minimization (only applicable "
-                   "if disambig symbols present)");
+    opts->Register("rm-eps", &rm_eps,  "Remove [most] epsilons before minimization (only "
+                   "matters if disambig symbols present)");
   }
 };
 

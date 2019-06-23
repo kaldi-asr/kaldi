@@ -98,15 +98,17 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   KALDI_ASSERT(ctx2word_fst.Start() != kNoStateId);
 
   HTransducerConfig h_cfg;
-  h_cfg.transition_scale = opts_.transition_scale;
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on
-  // input side of H.
+                                      // input side of H.
+
   std::unique_ptr<VectorFst<StdArc>> H = GetHTransducer(inv_cfst.IlabelInfo(),
                                                         ctx_dep_,
                                                         trans_model_,
                                                         h_cfg,
                                                         &disambig_syms_h);
+
+  RemoveWeights(H.get());
 
   VectorFst<StdArc> &trans2word_fst = *out_fst;  // transition-id to word.
   TableCompose(*H, ctx2word_fst, &trans2word_fst);
@@ -129,11 +131,13 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   MinimizeEncoded(&trans2word_fst);
 
   std::vector<int32> disambig;
-  bool check_no_self_loops = true;
+  bool currently_self_loop_free = true,
+      use_weights = false;
+
   AddSelfLoops(trans_model_,
                disambig,
-               opts_.self_loop_scale,
-               check_no_self_loops,
+               currently_self_loop_free,
+               use_weights,
                &trans2word_fst);
 
   return true;
@@ -193,7 +197,6 @@ bool TrainingGraphCompiler::CompileGraphs(
   }
 
   HTransducerConfig h_cfg;
-  h_cfg.transition_scale = opts_.transition_scale;
 
   std::vector<int32> disambig_syms_h;
   std::unique_ptr<VectorFst<StdArc>> H = GetHTransducer(inv_cfst.IlabelInfo(),
@@ -214,23 +217,21 @@ bool TrainingGraphCompiler::CompileGraphs(
       if (opts_.rm_eps)
         RemoveEpsLocal(&trans2word_fst);
     }
-
-    // Encoded minimization.
     MinimizeEncoded(&trans2word_fst);
 
     std::vector<int32> disambig;
-    bool check_no_self_loops = true;
+    bool currently_self_loop_free = true,
+        use_weights = true;
     AddSelfLoops(trans_model_,
                  disambig,
-                 opts_.self_loop_scale,
-                 check_no_self_loops,
+                 currently_self_loop_free,
+                 use_weights,
                  &trans2word_fst);
 
     KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);
 
     *((*out_fsts)[i]) = trans2word_fst;
   }
-
   return true;
 }
 

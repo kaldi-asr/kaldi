@@ -158,28 +158,26 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   * same as disambiguation symbols, assuming they are special symbols for
   * grammar decoding.
   *
-  * @param trans_model [in] Transition model
-  * @param disambig_syms [in] Sorted, uniq list of disambiguation symbols, required
-  *       if the graph contains disambiguation symbols but only needed for sanity checks.
-  * @param reorder [in] If true, reorders the transitions (see \ref hmm_reorder).
-  *                     You'll normally want this to be true.
-  * @param check_no_self_loops [in]  If true, it will check that there are no
-  *                      self-loops in the original graph; you'll normally want
-  *                      this to be true.  If false, it will allow them, and
-  *                      will add self-loops after the original self-loop
-  *                      transitions, assuming reorder==true... this happens to
-  *                      be what we want when converting normal to unconstrained
-  *                      chain examples.  WARNING: this was added in 2018;
-  *                      if you get a compilation error, add this as 'true',
-  *                      which emulates the behavior of older code.
+  * @param [in] trans_model  Transition model
+  * @param [in] disambig_syms Sorted, unique list of disambiguation symbols, required
+  *         if the graph contains disambiguation symbols but only needed for sanity checks.
+  * @param [in] currently_self_loop_free   If true, we require (and check) that
+  *                      the graph was free of self-loops at entry.  If
+  *                      false, it assumes that some states may already have
+  *                      self-loops, and will refrain from adding duplicate
+  *                      self-loop to them.
+  * @param [in] use_weights  If true, weights will be used (which
+  *                      includes a correction term to make things continue to
+  *                      sum to one); otherwise, we add the new self-loop arcs
+  *                      with probability One().
   * @param  fst [in, out] The FST to be modified. This should normally be HCLG
   *                       or any other FST with transition ids as its input
   *                       labels.
   */
 void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
-                  BaseFloat self_loop_scale,
-                  bool check_no_self_loops,
+                  bool currently_self_loop_free,
+                  bool use_weights,
                   fst::VectorFst<fst::StdArc> *fst);
 
 

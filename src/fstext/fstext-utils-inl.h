@@ -532,18 +532,17 @@ void MakePrecedingInputSymbolsSame(bool start_is_epsilon, MutableFst<Arc> *fst) 
 
 template<class Arc, class F>
 void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *fst, const F &f) {
-  typedef typename F::Result ClassType;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
-  vector<ClassType> classes;
-  ClassType noClass = f(kNoLabel);
-  ClassType epsClass = f(0);
+  vector<int32> classes;
+  int32 no_class = f(kNoLabel),
+      eps_class = f(0);
   if (start_is_epsilon) {  // treat having-start-state as epsilon in-transition.
     StateId start_state = fst->Start();
     if (start_state < 0 || start_state == kNoStateId) // empty FST.
       return;
-    classes.resize(start_state+1, noClass);
-    classes[start_state] = epsClass;
+    classes.resize(start_state+1, no_class);
+    classes[start_state] = eps_class;
   }
 
   // Find bad states (states with multiple input-symbols into them).
@@ -553,8 +552,8 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
     for (ArcIterator<Fst<Arc> > aiter(*fst, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
       if (classes.size() <= static_cast<size_t>(arc.nextstate))
-        classes.resize(arc.nextstate+1, noClass);
-      if (classes[arc.nextstate] == noClass)
+        classes.resize(arc.nextstate+1, no_class);
+      if (classes[arc.nextstate] == no_class)
         classes[arc.nextstate] = f(arc.ilabel);
       else
         if (classes[arc.nextstate] != f(arc.ilabel))
@@ -562,6 +561,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
     }
   }
   if (bad_states.empty()) return;  // Nothing to do.
+
   kaldi::ConstIntegerSet<StateId> bad_states_ciset(bad_states);  // faster lookup.
 
   // Work out list of arcs we have to change as (state, arc-offset).
@@ -579,7 +579,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
   }
   KALDI_ASSERT(!arcs_to_change.empty());  // since !bad_states.empty().
 
-  std::map<pair<StateId, ClassType>, StateId> state_map;
+  std::map<std::pair<StateId, int32>, StateId> state_map;
   // state_map is a map from (bad-state, input-symbol-class) to dummy-state.
 
   for (size_t i = 0; i < arcs_to_change.size(); i++) {
@@ -590,7 +590,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
 
     // Transition is non-eps transition to "bad" state.  Introduce new state (or find
     // existing one).
-    pair<StateId, ClassType> p(arc.nextstate, f(arc.ilabel));
+    pair<StateId, int32> p(arc.nextstate, f(arc.ilabel));
     if (state_map.count(p) == 0) {
       StateId newstate = state_map[p] = fst->AddState();
       fst->AddArc(newstate, Arc(0, 0, Weight::One(), arc.nextstate));

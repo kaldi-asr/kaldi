@@ -169,11 +169,11 @@ int main(int argc, char *argv[]) {
     MinimizeEncoded(&hclg_fst);
 
     std::vector<int32> disambig;
-    bool check_no_self_loops = true;
+    bool currently_self_loop_free = true;
     AddSelfLoops(trans_model,
                  disambig,
                  self_loop_scale,
-                 check_no_self_loops,
+                 currently_self_loop_free,
                  &hclg_fst);
 
     if (nonterm_phones_offset >= 0)

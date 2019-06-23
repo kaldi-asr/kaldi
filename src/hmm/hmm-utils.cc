@@ -369,80 +369,51 @@ public:
   const Transitions::TransitionIdInfo& info;
 };
 
-class TidToTstateMapper {
+class TidToSelfLoopMapper {
 public:
-  // Function object used in MakePrecedingInputSymbolsSameClass and
-  // MakeFollowingInputSymbolsSameClass (as called by AddSelfLoopsReorder and
-  // AddSelfLoopsNoReorder).  It maps transition-ids to transition-states (and
-  // -1 to -1, 0 to 0 and disambiguation symbols to 0).  If check_no_self_loops
-  // == true, it also checks that there are no self-loops in the graph (i.e. in
-  // the labels it is called with).  This is just a convenient place to put this
-  // check.
+  // Function object used in MakePrecedingInputSymbolsSameClass and.
+  // It maps a transition-ids t to the transition-id on the self-loop
+  // of the destination-state of t (or -1 if there is no self-loop).
+  //
+  // If currently_self_loop_free == true, it also checks that there are no
+  // self-loops in the graph (i.e. in the labels it is called with).  This is
+  // just a convenient place to put this check.
 
-  // This maps valid transition-ids to transition states, maps kNoLabel to -1, and
-  // maps all other symbols (i.e. epsilon symbols, disambig symbols, and symbols
-  // with values over 100000/kNontermBigNumber) to zero.
-  // Its point is to provide an equivalence class on labels that's relevant to what
-  // the self-loop will be on the following (or preceding) state.
-
-  // TransitionState no longer exists. It's basically a
-  // TransitionIdInfo without the arc_index field.
-
-  TidToTstateMapper(const Transitions &trans_model,
+  // This maps valid transition-ids to transition states, and maps all other
+  // symbols (i.e. epsilon symbols, disambig symbols, and symbols with values
+  // over 100000/kNontermBigNumber) to zero.  Its point is to provide an
+  // equivalence class on labels that's relevant to what the self-loop will be
+  // on the following state.
+  TidToSelfLoopMapper(const Transitions &trans_model,
                     const std::vector<int32> &disambig_syms,
-                    bool check_no_self_loops):
+                    bool currently_self_loop_free):
       trans_model_(trans_model),
       disambig_syms_(disambig_syms),
-      check_no_self_loops_(check_no_self_loops) {
-    KALDI_ASSERT((*this)(fst::kNoLabel) == NoLabelClass());
-    KALDI_ASSERT((*this)(0) == ZeroClass());
-}
+      currently_self_loop_free_(currently_self_loop_free) { }
 
-  typedef TransitionState Result;
-  static const Result& NoLabelClass() {
-    // Take advantage of the fact that phone must be greater than or
-    // equal to 1 to create a TransitionIdInfo which in practice will
-    // never be created normally.
-
-    // Use -1 for all other fields so we can easily see when debugging
-    // whether we are using one of these invalid TransitionIdInfo
-    // classes.
-    static auto *no_label =
-      new Transitions::TransitionIdInfo{.phone = -1, .topo_state = -1,
-                                        .arc_index = -1, .pdf_id = -1,
-                                        .self_loop_pdf_id = -1};
-    static auto *no_label_state = new TransitionState(*no_label);
-    return *no_label_state;
-  }
-
-  static const Result& ZeroClass() {
-    static auto *zero_label =
-      new Transitions::TransitionIdInfo{.phone = 0, .topo_state = -1, .arc_index = -1,
-                                        .pdf_id = -1, .self_loop_pdf_id = -1};
-    static auto *zero_label_state = new TransitionState(*zero_label);
-    return *zero_label_state;
-  }
-
-  Result operator() (int32 tid) const {
-    if (tid == static_cast<int32>(fst::kNoLabel)) return NoLabelClass();  // -1 -> -1
-    else if (tid >= 1 && tid <= trans_model_.NumTransitionIds()) {
-      if (check_no_self_loops_ && trans_model_.InfoForTransitionId(tid).is_self_loop)
+  int32 operator() (int32 tid) const {
+    if (tid > 0 && tid <= trans_model_.NumTransitionIds()) {
+      if (currently_self_loop_free_ && trans_model_.InfoForTransitionId(tid).is_self_loop)
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
-      return TransitionState(trans_model_.InfoForTransitionId(tid));
+      return trans_model_.InfoForTransitionId(tid).self_loop_transition_id;
+    } else if (tid == fst::kNoLabel) {
+      return -1;  // actually kNoLabel is -1.
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       int32 big_number = fst::kNontermBigNumber;  // 1000000
-      if (tid != 0 && tid < big_number)
+      if (tid != 0 && tid < big_number) {
         KALDI_ASSERT(std::binary_search(disambig_syms_.begin(),
                                         disambig_syms_.end(),
-                                        tid));  // or invalid tid
-      return ZeroClass();
+                                        tid) &&
+                    "It looks like you have an invalid symbol in your graph: ");
+      }
+      return 0;
     }
   }
 
 private:
   const Transitions &trans_model_;
   const std::vector<int32> &disambig_syms_;  // sorted.
-  bool check_no_self_loops_;
+  bool currently_self_loop_free_;
 };
 
 // Returns true if the outgoing arcs of the state s sum to 1.0
@@ -462,8 +433,8 @@ static bool StateIsStochastic(FST fst, typename FST::StateId s) {
 
 void AddSelfLoops(const Transitions &trans_model,
                   const std::vector<int32> &disambig_syms,
-                  BaseFloat self_loop_scale,
-                  bool check_no_self_loops,
+                  bool currently_self_loop_free,
+                  bool use_weights,
                   fst::VectorFst<fst::StdArc> *fst) {
   KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   using namespace fst;
@@ -472,78 +443,96 @@ void AddSelfLoops(const Transitions &trans_model,
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
 
-  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
+  TidToSelfLoopMapper f(trans_model, disambig_syms, currently_self_loop_free);
+
   // Duplicate states as necessary so that each state will require at most one
   // self-loop to be added to it.  Approximately this means that if a
   // state has multiple different symbols on arcs entering it, it will be
   // duplicated, with one copy per incoming symbol.
   MakePrecedingInputSymbolsSameClass(true, fst, f);
 
-  // use the following to keep track of the transition-state incoming
-  // into each state. This works because each state now has only one
-  // transition state coming into (because of
-  // MakePrecedingInputSymbolsSameClass).
-  std::vector<TransitionState> state_in(fst->NumStates(), f.NoLabelClass());
-
   // This first loop just works out the label into each state,
   // and converts the transitions in the graph from transition-states
   // to transition-ids.
   // state_in maps each state in the fst to its TransitionState
 
-  for (StateIterator<VectorFst<Arc> > siter(*fst);
-       !siter.Done();
-       siter.Next()) {
-    StateId s = siter.Value();
+
+  StateId num_states = fst->NumStates();
+  // self_loop_transition_id gives the transition-id of the self-loop
+  // of this state, or zero or -1 if it doesn't require a self-loop.
+  std::vector<int32> self_loop_transition_id(num_states, -2);
+
+  for (StateId s = 0; s < num_states; s++) {
     for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
          !aiter.Done();
          aiter.Next()) {
-      const Arc& arc = aiter.Value();
-      TransitionState trans_state = f(arc.ilabel);
-      if (state_in[arc.nextstate] == f.NoLabelClass()) {
-        state_in[arc.nextstate] = trans_state;
+      const Arc &arc = aiter.Value();
+      int32 next_state_self_loop_transition_id = f(arc.ilabel);
+      if (self_loop_transition_id[arc.nextstate] == -2) {
+        // Note: next_state_self_loop_transition_id could be
+        self_loop_transition_id[arc.nextstate] =
+            next_state_self_loop_transition_id;
       } else {
-        KALDI_ASSERT(state_in[arc.nextstate] == trans_state);
+        KALDI_ASSERT(self_loop_transition_id[arc.nextstate] ==
+                     next_state_self_loop_transition_id);
         // or probably an error in MakePrecedingInputSymbolsSame.
       }
     }
   }
 
-  // The start state should have no incoming arcs (invariant of Topology)
-  KALDI_ASSERT(state_in[fst->Start()] == f.ZeroClass());
+  if (!currently_self_loop_free) {
+    for (StateId s = 0; s < num_states; s++) {
+      for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
+           !aiter.Done();
+           aiter.Next()) {
+        const Arc &arc = aiter.Value();
+        int32 tid = arc.ilabel;
+        if (tid > 0 && tid <= trans_model.NumTransitionIds() &&
+            trans_model.InfoForTransitionId(tid).is_self_loop)
+          self_loop_transition_id[s] = 0;
+      }
+    }
+  } else {
+    // We shouldn't have added a self-loop to the start state.
+    KALDI_ASSERT(self_loop_transition_id[fst->Start()] == 0);
+  }
 
   // The next loop looks at each graph state, adds the self-loop [if needed] and
-  // multiples all the out-transitions' probs (and final-prob) by the
-  // forward-prob for that state (which is one minus self-loop-prob).  We do it
-  // like this to maintain stochasticity (i.e. rather than multiplying the arcs
-  // with the corresponding labels on them by this probability).
+  // multiples all the out-transitions' probs (and final-prob) by the inverse of
+  // the correction factor that we used when creating the no-self-loops graph.
+  // We do it like this to maintain stochasticity throughout the graph compilation
+  // process.
 
-  for (StateId s = 0; s < static_cast<StateId>(state_in.size()); s++) {
-    const TransitionState& trans_state = state_in[s];
-    if (trans_state != f.NoLabelClass() && trans_state != f.ZeroClass() &&
-        trans_state.info.self_loop_pdf_id != -1) {
-      // defined, and not eps or a disambiguation symbol or a
-      // nonterminal-related symbol for grammar decoding, and has a
-      // self-loop which needs to be added, while maintaining
-      int32 self_loop_tid = trans_state.info.self_loop_transition_id;
-      KALDI_ASSERT(self_loop_tid != 0 &&
-                   "Can't have a self_loop_pdf_id without a self_loop_transition_id");
-      // 1) Multiply all probabilities by "forward" probability.
-      BaseFloat self_loop_log_prob =
-        -trans_model.InfoForTransitionId(self_loop_tid).transition_cost;
-      BaseFloat log_forward_prob = log(1.0 - exp(self_loop_log_prob));
-      fst->SetFinal(s, Times(fst->Final(s), Weight(-log_forward_prob)));
+  if (use_weights) {
+    for (StateId s = 0; s < num_states; s++) {
+      int32 tid = self_loop_transition_id[s];
+      if (tid <= 0)
+        continue;
+      const auto &info(trans_model.InfoForTransitionId(tid));
+
+      BaseFloat self_loop_cost = info.transition_cost,
+          correction_factor = trans_model.GetTopo().CorrectionFactorsForPhone(
+              info.phone)[info.topo_state];
+      Weight correction(-correction_factor),
+          self_loop_weight(self_loop_cost);
+
+      fst->SetFinal(s, Times(fst->Final(s), correction));
       for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
-          !aiter.Done();
-          aiter.Next()) {
+           !aiter.Done();
+           aiter.Next()) {
         Arc arc = aiter.Value();
-        arc.weight = Times(arc.weight, Weight(-log_forward_prob));
+        arc.weight = Times(arc.weight, correction);
         aiter.SetValue(arc);
       }
-      // 2) Add self-loop
-      fst->AddArc(s, Arc(self_loop_tid, 0, Weight(-self_loop_log_prob), s));
-
+      // Add self-loop.  ilabel is `tid`, olabel is epsilon (0).
+      fst->AddArc(s, Arc(tid, 0, self_loop_weight, s));
     }
-    KALDI_PARANOID_ASSERT(StateIsStochastic(*fst, s));
+  } else {
+    for (StateId s = 0; s < num_states; s++) {
+      int32 tid = self_loop_transition_id[s];
+      // Add self-loop.  ilabel is `tid`, olabel is epsilon (0).
+      fst->AddArc(s, Arc(tid, 0, Weight::One(), s));
+    }
   }
 }
 

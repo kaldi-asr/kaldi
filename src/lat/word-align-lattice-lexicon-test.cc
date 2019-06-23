@@ -191,8 +191,7 @@ void TestWordAlignLatticeLexicon() {
   PrintWordsAndPhones(word_seq, phone_seq);
 
   std::vector<int32> alignment;
-  bool reorder = (RandInt(0, 1) == 0);
-  GenerateRandomAlignment(*ctx_dep, *trans_model, reorder,
+  GenerateRandomAlignment(*ctx_dep, *trans_model,
                           phone_seq, &alignment);
 
   CompactLattice clat;
@@ -206,7 +205,6 @@ void TestWordAlignLatticeLexicon() {
   opts.test = true;  // we rely on the self-test code that's activated when we
                      // do this.
   opts.allow_duplicate_paths = true;
-  opts.reorder = reorder;
   CompactLattice aligned_clat;
   bool ans = WordAlignLatticeLexicon(clat, *trans_model, lexicon_info, opts,
                                      &aligned_clat);
@@ -234,4 +232,3 @@ int main() {
     kaldi::TestWordAlignLatticeLexicon();
   std::cout << "Tests succeeded\n";
 }
-

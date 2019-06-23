@@ -21,6 +21,7 @@
 #include "lat/lattice-functions.h"
 #include "util/text-utils.h"
 #include "hmm/hmm-utils.h"
+#include "fstext/fstext-utils.h"
 #include <numeric>
 
 namespace kaldi {
@@ -332,11 +333,7 @@ bool ProtoSupervisionToSupervision(
                                       // disambiguation symbols on the output.
 
   HTransducerConfig h_cfg;
-
-  // We don't want to add any transition probabilities as they will be added
-  // when we compose with the denominator graph.
-  h_cfg.transition_scale = 0.0;
-
+  h_cfg.include_self_loops = true;
   std::unique_ptr<VectorFst<StdArc>> h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
                                                             ctx_dep,
                                                             trans_model,
@@ -344,23 +341,19 @@ bool ProtoSupervisionToSupervision(
                                                             &disambig_syms_h);
   KALDI_ASSERT(disambig_syms_h.empty());
 
+  // We don't want to include any transition probabilities as they will be added
+  // when we compose with the normalization FST.
+  fst::RemoveWeights(h_fst.get());
+
   VectorFst<StdArc> transition_id_fst;
   TableCompose(*h_fst, context_dep_fst, &transition_id_fst);
-
-  // We don't want to add any transition probabilities as they will be added
-  // when we compose with the denominator graph.
-  BaseFloat self_loop_scale = 0.0;
-
-  bool check_no_self_loops = true;
-  // add self-loops to the FST with transition-ids as its labels.
-  AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale,
-               check_no_self_loops, &transition_id_fst);
 
   // at this point transition_id_fst will have transition-ids as its ilabels and
   // context-dependent phones (indexes into ILabelInfo()) as its olabels.
   // Discard the context-dependent phones by projecting on the input, keeping
   // only the transition-ids.
   fst::Project(&transition_id_fst, fst::PROJECT_INPUT);
+
   if (transition_id_fst.Properties(fst::kIEpsilons, true) != 0) {
     // remove epsilons, if there are any.
     fst::RmEpsilon(&transition_id_fst);
@@ -1058,17 +1051,18 @@ bool ConvertSupervisionToUnconstrained(
 
     // There are be no disambiguation symbols here.
     std::vector<int32> disambig_syms;
-    // We're not adding transition probabilities; we rely on compsition with the
+    // We're not adding transition probabilities; we rely on composition with the
     // normalization FST for that.  (note: all transition probabilities are just
     // 0.5 anyway, for the typical chain topology).
-    BaseFloat self_loop_scale = 0.0;
-    // The FST we're about to call AddSelfLoops() on will have self-loops, on
-    // the first frame, so disable the check that the FST was originally
-    // self-loop-free.
-    bool check_no_self_loops = false;
+    //
+    // The FST we're about to call AddSelfLoops() on will already have one
+    // self-loop, on the first frame, so tell that to AddSelfLoops().
+    bool currently_self_loop_free = false,
+        use_weights = false;
     supervision->e2e_fsts.resize(1);
-    AddSelfLoops(trans_mdl, disambig_syms, self_loop_scale,
-                 check_no_self_loops, &(supervision->e2e_fsts[0]));
+    AddSelfLoops(trans_mdl, disambig_syms,
+                 currently_self_loop_free, use_weights,
+                 &(supervision->e2e_fsts[0]));
   }
 
   { // Convert transition-ids to pdf-ids+1 on the FST labels,

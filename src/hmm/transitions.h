@@ -106,6 +106,7 @@ class Transitions {
   // This struct is the information associated with one transition-id.
   // You can work out the transition-id from the first 5 fields.
   struct TransitionIdInfo {
+
     int32 phone;      // The phone
     int32 topo_state; // The state in the topology FST for this phone
     int32 arc_index;  // The arc-index leaving this state
