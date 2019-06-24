@@ -182,7 +182,7 @@ void IvectorExtractorFastCuda::ComputePosteriors(
   posteriors->AddMatMat(-0.5, feats_sq, kNoTrans, ubm_inv_vars_, kTrans, 1.0);
 
   // apply scaling factor
-  posteriors->ApplySoftMaxPerRow(*posteriors);
+  posteriors->ApplySoftMaxPerRow();
 
   if (info_.max_count > 0) {
     // when max count > 0 we need to know the total posterior sum to adjust
