@@ -197,7 +197,6 @@ __global__ void process_window_kernel(
       // compute new dot product with dc offset removed
       wdot += wval * wval;
 
-      assert(windowing_mul == 1);
       // write output
       out[idx] = wval * windowing_mul;
     }
