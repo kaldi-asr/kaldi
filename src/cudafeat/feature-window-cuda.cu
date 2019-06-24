@@ -15,7 +15,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if HAVE_CUDA == 1
 #include <nvToolsExt.h>
+#endif
 #include "cudafeat/feature-window-cuda.h"
 #include "matrix/matrix-functions.h"
 
