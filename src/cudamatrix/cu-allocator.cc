@@ -521,11 +521,13 @@ void CuMemoryAllocator::AllocateNewRegion(size_t size) {
                 << "switching the GPUs to exclusive mode (nvidia-smi -c 3) and using "
                 << "the option --use-gpu=wait to scripts like "
                 << "steps/nnet3/chain/train.py.  Memory info: "
-                << mem_info;
+                << mem_info
+                << " CUDA error: '" << cudaGetErrorString(e) << "'";
     } else {
       KALDI_ERR << "Failed to allocate a memory region of " << region_size
                 << " bytes.  Possibly smaller minibatch size would help.  "
-                << "Memory info: " << mem_info;
+                << "Memory info: " << mem_info
+                << " CUDA error: '" << cudaGetErrorString(e) << "'";
     }
   }
   // this_num_subregions would be approximately 'opts_.num_subregions' if
