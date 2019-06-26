@@ -112,13 +112,12 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         if(@A == 0) { die "$0: Empty or space-only line in scp file $inscp\n"; }
         $u = $A[0];
         $s = $utt2spk{$u};
-        defined $s || die "$0: No utterance $u in utt2spk file $utt2spk_file\n";
-        if(!defined $spk_count{$s}) {
+        if(!defined $s) { die "No such utterance $u in utt2spk file $utt2spk_file"; }
+        if(!defined $spk_data{$s}) {
             push @spkrs, $s;
-            $spk_count{$s} = 0;
             $spk_data{$s} = [];  # ref to new empty array.
         }
-        $spk_count{$s}++;
+        $scpcount++;
         push @{$spk_data{$s}}, $_;
     }
     # Now split as equally as possible ..
@@ -126,88 +125,54 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     # equal number of speakers.
     $numspks = @spkrs;  # number of speakers.
     $numscps = @OUTPUTS; # number of output files.
-    if ($numspks < $numscps) {
-      die "$0: Refusing to split data because number of speakers $numspks " .
-          "is less than the number of output .scp files $numscps\n";
+    if ($scpcount < $numscps) {
+      die "Refusing to split data because number of utt $numspks is less " .
+          "than the number of output .scp files $numscps";
     }
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scparray[$scpidx] = []; # [] is array reference.
     }
-    for ($spkidx = 0; $spkidx < $numspks; $spkidx++) {
-        $scpidx = int(($spkidx*$numscps) / $numspks);
-        $spk = $spkrs[$spkidx];
-        push @{$scparray[$scpidx]}, $spk;
-        $scpcount[$scpidx] += $spk_count{$spk};
-    }
 
-    # Now will try to reassign beginning + ending speakers
-    # to different scp's and see if it gets more balanced.
-    # Suppose objf we're minimizing is sum_i (num utts in scp[i] - average)^2.
-    # We can show that if considering changing just 2 scp's, we minimize
-    # this by minimizing the squared difference in sizes.  This is
-    # equivalent to minimizing the absolute difference in sizes.  This
-    # shows this method is bound to converge.
+    # Now will try to reassign beginning + ending utts
+    # to different split* and see if it gets more balanced.
 
-    $changed = 1;
-    while($changed) {
-        $changed = 0;
-        for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
-            # First try to reassign ending spk of this scp.
-            if($scpidx < $numscps-1) {
-                $sz = @{$scparray[$scpidx]};
-                if($sz > 0) {
-                    $spk = $scparray[$scpidx]->[$sz-1];
-                    $count = $spk_count{$spk};
-                    $nutt1 = $scpcount[$scpidx];
-                    $nutt2 = $scpcount[$scpidx+1];
-                    if( abs( ($nutt2+$count) - ($nutt1-$count))
-                        < abs($nutt2 - $nutt1))  { # Would decrease
-                        # size-diff by reassigning spk...
-                        $scpcount[$scpidx+1] += $count;
-                        $scpcount[$scpidx] -= $count;
-                        pop @{$scparray[$scpidx]};
-                        unshift @{$scparray[$scpidx+1]}, $spk;
-                        $changed = 1;
-                    }
+    $loopDone = 0;
+    $numLoop = 0;
+    until($loopDone){
+        $doneCount = 0;
+        foreach  $spk (@spkrs) {
+            $line = pop @{$spk_data{$spk}};
+            if(!defined $line){
+                $doneCount += 1;
+                if($numspks == $doneCount){
+                    $loopDone = 1;
                 }
-            }
-            if($scpidx > 0 && @{$scparray[$scpidx]} > 0) {
-                $spk = $scparray[$scpidx]->[0];
-                $count = $spk_count{$spk};
-                $nutt1 = $scpcount[$scpidx-1];
-                $nutt2 = $scpcount[$scpidx];
-                if( abs( ($nutt2-$count) - ($nutt1+$count))
-                    < abs($nutt2 - $nutt1))  { # Would decrease
-                    # size-diff by reassigning spk...
-                    $scpcount[$scpidx-1] += $count;
-                    $scpcount[$scpidx] -= $count;
-                    shift @{$scparray[$scpidx]};
-                    push @{$scparray[$scpidx-1]}, $spk;
-                    $changed = 1;
-                }
+            }else{
+                $scpidx = $numLoop % $numscps;
+                push @{$scparray[$scpidx]}, $line;
             }
         }
+        $numLoop += 1;
     }
     # Now print out the files...
+    $count = 0;
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scpfile = $OUTPUTS[$scpidx];
         ($scpfile ne '-' ? open($f_fh, '>', $scpfile)
                          : open($f_fh, '>&', \*STDOUT)) ||
             die "$0: Could not open scp file $scpfile for writing: $!\n";
-        $count = 0;
+        
         if(@{$scparray[$scpidx]} == 0) {
             print STDERR "$0: eError: split_scp.pl producing empty .scp file " .
                          "$scpfile (too many splits and too few speakers?)\n";
             $error = 1;
         } else {
-            foreach $spk ( @{$scparray[$scpidx]} ) {
-                print $f_fh @{$spk_data{$spk}};
-                $count += $spk_count{$spk};
-            }
-            $count == $scpcount[$scpidx] || die "Count mismatch [code error]";
+            print $f_fh @{$scparray[$scpidx]};
         }
+        $count += @{$scparray[$scpidx]};
         close($f_fh);
     }
+    if($count != $scpcount) { die "Count mismatch [code error]"; }
 } else {
    # This block is the "normal" case where there is no --utt2spk
    # option and we just break into equal size chunks.
