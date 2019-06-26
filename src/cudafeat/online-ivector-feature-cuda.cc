@@ -243,6 +243,7 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
   // Forming new non-SP matrix for cusolver.
   CuMatrix<float> A(quadratic);
 
+#if CUDA_VERSION >= 9010
   // This is the cusolver return code.  Checking it would require
   // synchronization.
   // So we do not check it.
@@ -269,7 +270,10 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
       A.Data(), A.Stride(), ivector->Data(), ivector_dim_, d_info));
 
   CuDevice::Instantiate().Free(workspace);
-
+#else
+  KALDI_ERROR << "Online Ivectors in CUDA is not supported by your CUDA version. "
+    << "Upgrade to CUDA 9.1 or later";
+#endif
   // remove prior
   CuSubVector<float> ivector0(*ivector, 0, 1);
   ivector0.Add(-prior_offset_);

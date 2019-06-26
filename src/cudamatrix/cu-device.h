@@ -37,7 +37,7 @@
 #include "cudamatrix/cu-allocator.h"
 #include "cudamatrix/cu-common.h"
 
-#if CUDA_VERSION >= 9100
+#if CUDA_VERSION >= 9010
 #include <cusolverDn.h>
 #else
 // cusolver not supported.  
