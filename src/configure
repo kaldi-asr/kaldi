@@ -526,7 +526,7 @@ WARNING: CUDA will not be used!
     fi
     
     #add cusolver flags for newer toolkits
-    if [[ $CUSOLVER -eq true ]]; then
+    if [ "$CUSOLVER" == "true" ]; then
       echo "CUDA_LDLIBS += -lcusolver" >> kaldi.mk
     fi
 
