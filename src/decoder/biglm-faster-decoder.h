@@ -397,13 +397,11 @@ class BiglmFasterDecoder {
             if (new_weight < next_weight_cutoff) {  // not pruned..
               PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
               Token *new_tok = new Token(arc, ac_weight, tok);
-              Elem *e_found = toks_.Find(next_pair);
+              Elem *e_found = toks_.Insert(next_pair, new_tok);
               if (new_weight + adaptive_beam < next_weight_cutoff)
                 next_weight_cutoff = new_weight + adaptive_beam;
-              if (e_found == NULL) {
-                toks_.Insert(next_pair, new_tok);
-              } else {
-                if ( *(e_found->val) < *new_tok ) {
+              if (e_found->val != new_tok) {
+                if (*(e_found->val) < *new_tok) {
                   Token::TokenDelete(e_found->val);
                   e_found->val = new_tok;
                 } else {
@@ -426,11 +424,12 @@ class BiglmFasterDecoder {
     // Processes nonemitting arcs for one frame. 
     KALDI_ASSERT(queue_.empty());
     for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
-      queue_.push_back(e->key);
+      queue_.push_back(e);
     while (!queue_.empty()) {
-      PairId state_pair = queue_.back();
+      const Elem *e = queue_.back();
       queue_.pop_back();
-      Token *tok = toks_.Find(state_pair)->val;  // would segfault if state not
+      PairId state_pair = e->key;
+      Token *tok = e->val;  // would segfault if state not
       // in toks_ but this can't happen.
       if (tok->weight_.Value() > cutoff) { // Don't bother processing successors.
         continue;
@@ -450,15 +449,14 @@ class BiglmFasterDecoder {
           if (new_tok->weight_.Value() > cutoff) {  // prune
             Token::TokenDelete(new_tok);
           } else {
-            Elem *e_found = toks_.Find(next_pair);
-            if (e_found == NULL) {
-              toks_.Insert(next_pair, new_tok);
-              queue_.push_back(next_pair);
+            Elem *e_found = toks_.Insert(next_pair, new_tok);
+            if (e_found->val == new_tok) {
+              queue_.push_back(e_found);
             } else {
               if ( *(e_found->val) < *new_tok ) {
                 Token::TokenDelete(e_found->val);
                 e_found->val = new_tok;
-                queue_.push_back(next_pair);
+                queue_.push_back(e_found);
               } else {
                 Token::TokenDelete(new_tok);
               }
@@ -477,7 +475,7 @@ class BiglmFasterDecoder {
   fst::DeterministicOnDemandFst<fst::StdArc> *lm_diff_fst_;
   BiglmFasterDecoderOptions opts_;
   bool warned_noarc_;
-  std::vector<PairId> queue_;  // temp variable used in ProcessNonemitting,
+  std::vector<const Elem* > queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
 
