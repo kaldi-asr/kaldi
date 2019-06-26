@@ -271,8 +271,8 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
 
   CuDevice::Instantiate().Free(workspace);
 #else
-  KALDI_ERROR << "Online Ivectors in CUDA is not supported by your CUDA version. "
-    << "Upgrade to CUDA 9.1 or later";
+  KALDI_ERR << "Online Ivectors in CUDA is not supported by your CUDA version. "
+            << "Upgrade to CUDA 9.1 or later";
 #endif
   // remove prior
   CuSubVector<float> ivector0(*ivector, 0, 1);
