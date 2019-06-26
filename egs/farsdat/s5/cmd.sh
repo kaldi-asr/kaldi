@@ -13,3 +13,5 @@
 export train_cmd="queue.pl --mem 2G"
 export decode_cmd="queue.pl --mem 4G"
 export mkgraph_cmd="queue.pl --mem 8G"
+# the use of cuda_cmd is deprecated, used only in 'nnet1',
+export cuda_cmd="queue.pl --gpu 1"
