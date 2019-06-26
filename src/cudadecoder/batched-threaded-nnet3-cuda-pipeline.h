@@ -27,6 +27,7 @@
 #include "lat/determinize-lattice-pruned.h"
 #include "nnet3/nnet-batch-compute.h"
 #include "online2/online-nnet2-feature-pipeline.h"
+#include "cudafeat/online-cuda-feature-pipeline.h"
 #include "thread-pool.h"
 
 // If num_channels sets to automatic,
@@ -53,7 +54,8 @@ struct BatchedThreadedNnet3CudaPipelineConfig {
         num_worker_threads(20),
         determinize_lattice(true),
         max_pending_tasks(4000),
-        num_decoder_copy_threads(2){};
+        num_decoder_copy_threads(2),
+        gpu_feature_extract(true) {};
   void Register(OptionsItf *po) {
     po->Register("max-batch-size", &max_batch_size,
                  "The maximum batch size to be used by the decoder. "
@@ -88,6 +90,11 @@ struct BatchedThreadedNnet3CudaPipelineConfig {
     po->Register("cuda-decoder-copy-threads", &num_decoder_copy_threads,
                  "Advanced - Number of worker threads used in the decoder for "
                  "the host to host copies.");
+    po->Register("gpu-feature-extract", &gpu_feature_extract,
+                 "Extract features on the GPU.  This reduces CPU overhead "
+                 "leading to better scalability but may reduce overall "
+                 "performance for a single GPU.");
+
     feature_opts.Register(po);
     decoder_opts.Register(po);
     det_opts.Register(po);
@@ -101,6 +108,7 @@ struct BatchedThreadedNnet3CudaPipelineConfig {
   bool determinize_lattice;
   int max_pending_tasks;
   int num_decoder_copy_threads;
+  bool gpu_feature_extract;
 
   void ComputeConfig() {
     if (num_channels == -1)
@@ -203,8 +211,10 @@ private:
        wave_samples;  // Used as a pointer to either the raw
                       // data or the samples passed
    float sample_frequency;
-   Vector<BaseFloat> ivector_features;
-   Matrix<BaseFloat> input_features;
+   Vector<BaseFloat> ivector_features_cpu;
+   Matrix<BaseFloat> input_features_cpu;
+   CuVector<BaseFloat> ivector_features;
+   CuMatrix<BaseFloat> input_features;
    CuMatrix<BaseFloat> posteriors;
 
    TaskData(const WaveData &wave_data_in)
@@ -289,7 +299,12 @@ private:
                              std::vector<TaskState *> &tasks);
 
   // Computes Features for a single decode instance.
-  void ComputeOneFeature(TaskState *task);
+  void ComputeOneFeatureCPU(TaskState *task);
+
+  // Computes features across the tasks[first,tasks.size()
+  void ComputeBatchFeatures(int32 first,
+                            std::vector<TaskState *> &tasks,
+                            OnlineCudaFeaturePipeline &feature_pipeline);
 
   // Computes Nnet across the current decode batch
   void ComputeBatchNnet(nnet3::NnetBatchComputer &computer, int32 first,
