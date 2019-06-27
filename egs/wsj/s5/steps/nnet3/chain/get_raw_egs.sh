@@ -59,6 +59,10 @@ max_jobs_run=40         # This should be set to the maximum number of
 
 
 srand=0         # rand seed for nnet3-chain-get-egs, nnet3-chain-copy-egs and nnet3-chain-shuffle-egs
+online_ivector_dir=  # can be used if we are including speaker information as iVectors.
+cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
+            # it doesn't make sense to use different options than were used as input to the
+            # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
 
 lattice_lm_scale=     # If supplied, the graph/lm weight of the lattices will be
                       # used (with this scale) in generating supervisions
@@ -130,8 +134,11 @@ trans_mdl=$chaindir/init/${lang}.mdl  # contains the transition model and a nnet
 normalization_fst=$chaindir/den_fsts/${lang}.normalization.fst
 den_fst=$chaindir/den_fsts/${lang}.den.fst
 
+[ ! -z "$online_ivector_dir" ] && \
+  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+
 for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
-         $tree $trans_mdl $normalization_fst $den_fst; do
+         $tree $trans_mdl $normalization_fst $den_fst $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -204,6 +211,20 @@ if [ ! -z "$lattice_lm_scale" ]; then
   egs_opts="$egs_opts --normalization-fst-scale=$normalization_fst_scale"
 fi
 
+if [ ! -z "$online_ivector_dir" ]; then
+  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+else
+  ivector_opts=""
+fi
+
+feats="scp:$sdata/JOB/feats.scp"
+if [ -f $data/cmvn.scp -a ! -z $cmvn_opts ]; then
+    if [ `echo $cmvn_opts | fgrep -c true` -eq 1 ]; then
+        feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+    fi
+fi
+
 if [ $stage -le 0 ]; then
   $cmd --max-jobs-run $max_jobs_run JOB=1:$nj $dir/log/get_egs.JOB.log \
        lattice-align-phones --replace-output-symbols=true $latdir/final.mdl \
@@ -211,7 +232,7 @@ if [ $stage -le 0 ]; then
        chain-get-supervision $chain_supervision_all_opts \
        $dir/misc/${lang}.tree $dir/misc/${lang}.trans_mdl ark:- ark:- \| \
        nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
-       "$normalization_fst" scp:$sdata/JOB/feats.scp ark,s,cs:- \
+       "$normalization_fst" "$feats" ark,s,cs:- \
        ark,scp:$dir/cegs.JOB.ark,$dir/cegs.JOB.scp || exit 1;
 fi
 
@@ -248,6 +269,19 @@ left_context_initial $left_context_initial
 right_context $right_context
 right_context_final $right_context_final
 EOF
+
+  if [ ! -z "$online_ivector_dir" ]; then
+      ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+      echo $ivector_dim > $dir/info/ivector_dim
+      echo ivector_dim $ivector_dim >> $dir/info.txt
+      ivector_id=`steps/nnet2/get_ivector_id.sh $online_ivector_dir || exit 1`
+      echo ivector_id $ivector_id
+      ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
+      echo ivector_period $ivector_period
+      ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+  else
+      ivector_opts=""
+  fi
 
   if ! cat $dir/info.txt | awk '{if (NF == 1) exit(1);}'; then
     echo "$0: we failed to obtain at least one of the fields in $dir/info.txt"
