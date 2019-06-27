@@ -312,9 +312,7 @@ class CudaDecoder {
   // in PostProcessingMainQueue
   void ExpandArcsEmitting();
   // ExpandArcs, non-emitting stage. Must be called after PruneAndPreprocess.
-  // if *should_iterate is true, we should do another iteration of the
-  // PruneAndPreprocess/ExpandArcsNonEmitting pair
-  void ExpandArcsNonEmitting(bool *should_iterate);
+  void ExpandArcsNonEmitting();
   // If we have more than max_active_ tokens in the queue (either after an
   // expand, or at the end of the frame)
   // we will compute a new beam that will only keep a number of tokens as close
