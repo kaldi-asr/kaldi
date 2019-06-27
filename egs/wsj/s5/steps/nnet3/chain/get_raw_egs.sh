@@ -2,7 +2,7 @@
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script dumps 'raw' egs for 'chaina' training.  What 'raw' means in this
+# This script dumps 'raw' egs for 'chain' training.  What 'raw' means in this
 # context is that they need to be further processed to merge egs of the same
 # speaker, etc.  So they won't be directly consumed by training, but by
 # by the script process_egs.sh.
@@ -82,7 +82,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 4 ]; then
   echo "Usage: $0 [opts] <data> <chain-dir> <lattice-dir> <raw-egs-dir>"
-  echo " e.g.: $0 data/train exp/chaina/tdnn1a_sp exp/tri3_lats exp/chaina/tdnn1a_sp/raw_egs"
+  echo " e.g.: $0 data/train exp/chain/tdnn1a_sp exp/tri3_lats exp/chain/tdnn1a_sp/raw_egs"
   echo ""
   echo "From <chain-dir>, 0/<lang>.mdl (for the transition-model), <lang>.tree (the tree), "
   echo "   den_fsts/<lang>.den.fst, and den_fsts/<lang>.normalization.fst (the normalization "
@@ -173,7 +173,7 @@ if [ ! -z $lattice_prune_beam ]; then
   fi
 fi
 
-egs_opts="--long-key=true --left-context=$left_context --right-context=$right_context --num-frames=$frames_per_chunk --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_chunk --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
 [ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
 
@@ -235,7 +235,7 @@ if [ $stage -le 1 ]; then
   fi
 
   cat >$dir/info.txt <<EOF
-dir_type raw_chaina_egs
+dir_type raw_chain_egs
 num_input_frames $num_frames
 num_chunks $num_chunks
 lang $lang
