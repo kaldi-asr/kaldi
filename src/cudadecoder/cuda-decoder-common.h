@@ -64,6 +64,11 @@
 // it has to be less than the number of 1D threads
 #define KALDI_CUDA_DECODER_HISTO_NBINS 255
 
+// Number of "heavy duty" process non emitting kernels
+// If more non emitting iterations are required, those will be done
+// in the one-CTA persistent kernel
+#define KALDI_CUDA_DECODER_N_NON_EMITTING_MAIN_ITERATIONS 2
+
 // Adaptive beam parameters
 // We will decrease the beam when we detect that we are generating too many
 // tokens
@@ -410,7 +415,7 @@ struct LaneCounters {
   // The histogram for max_active will be computed between min_histo_cost
   // and max_histo_cost. Set for each frame after emitting stage
   CostType min_histo_cost;
-  CostType max_histo_cost; 
+  CostType max_histo_cost;
   CostType histo_bin_width;
   bool compute_max_active;
   // offsets used by concatenate_lanes_data_kernel

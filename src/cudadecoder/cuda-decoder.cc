@@ -299,6 +299,7 @@ CudaDecoder::~CudaDecoder() {
   // Stopping h2h tasks
   h2h_threads_running_ = false;
   n_h2h_main_task_todo_cv_.notify_all();
+  for (std::thread &thread : cpu_dedicated_threads_) thread.join();
   cudaStreamDestroy(compute_st_);
   cudaStreamDestroy(copy_st_);
 
@@ -595,7 +596,7 @@ void CudaDecoder::ExpandArcsEmitting() {
                          *h_device_params_, *h_kernel_params_);
 }
 
-void CudaDecoder::ExpandArcsNonEmitting(bool *should_iterate) {
+void CudaDecoder::ExpandArcsNonEmitting() {
   // false is for non emitting
   ExpandArcsKernel<false>(KaldiCudaDecoderNumBlocks(nlanes_used_),
                           KALDI_CUDA_DECODER_1D_BLOCK, compute_st_,
@@ -798,7 +799,8 @@ void CudaDecoder::AdvanceDecoding(
     ExpandArcsEmitting();
     // We'll loop until we have a small enough number of non-emitting arcs
     // in the token queue. We'll then break the loop
-    for (int i = 0; i < 1; ++i) {  // TODO const
+    for (int i = 0; i < KALDI_CUDA_DECODER_N_NON_EMITTING_MAIN_ITERATIONS;
+         ++i) {
       // If one of the aux_q contains more than max_active_ tokens,
       // we'll reduce the beam to only keep max_active_ tokens
       ApplyMaxActiveAndReduceBeam(AUX_Q);
@@ -808,8 +810,10 @@ void CudaDecoder::AdvanceDecoding(
       // and do the preprocessing necessary for the next ExpandArcs
       PruneAndPreprocess();
 
-      bool should_iterate;
-      ExpandArcsNonEmitting(&should_iterate);  // TODO remvoe should_iterate
+      // "heavy duty" kernel for non-emitting. The long tail of small
+      // non-emitting iterations will be done in
+      // FinalizeProcessNonEmittingKernel
+      ExpandArcsNonEmitting();
     }
     ApplyMaxActiveAndReduceBeam(AUX_Q);
     PruneAndPreprocess();
@@ -1494,6 +1498,10 @@ void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
   TokenId best_cost_idx;
   {
     std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
+    h_all_tokens_info_.shrink_to_fit();
+    h_all_tokens_acoustic_cost_.shrink_to_fit();
+    h_all_tokens_extra_prev_tokens_.shrink_to_fit();
+    h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_.shrink_to_fit();
     best_cost_idx = h_all_argmin_cost_[ichannel].first;
   }
   KALDI_ASSERT(
