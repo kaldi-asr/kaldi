@@ -761,7 +761,7 @@ class CudaDecoder {
   // does
   CostType extra_cost_min_delta_;
   ThreadPool *thread_pool_;
-  std::vector<std::thread> cpu_dedicated_threads_;
+  std::vector<std::thread>* cpu_dedicated_threads_;
   int32 n_threads_used_;
   std::vector<ChannelId> lanes2channels_todo_;
   std::atomic<int> n_acoustic_h2h_copies_todo_;

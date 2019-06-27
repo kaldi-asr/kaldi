@@ -37,6 +37,7 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
       channel_lock_(nchannels + 1),
       extra_cost_min_delta_(0.0f),
       thread_pool_(NULL),
+      cpu_dedicated_threads_(new std::vector<std::thread>()),
       n_threads_used_(0),
       n_h2h_task_not_done_(0),
       n_init_decoding_h2h_task_not_done_(0),
@@ -299,6 +300,10 @@ CudaDecoder::~CudaDecoder() {
   // Stopping h2h tasks
   h2h_threads_running_ = false;
   n_h2h_main_task_todo_cv_.notify_all();
+  for(auto& t : *cpu_dedicated_threads_) {
+    t.join();
+  }
+  delete cpu_dedicated_threads_;
   cudaStreamDestroy(compute_st_);
   cudaStreamDestroy(copy_st_);
 
@@ -1795,7 +1800,7 @@ void CudaDecoder::SetThreadPoolAndStartCPUWorkers(ThreadPool *thread_pool,
   n_threads_used_ = nworkers;
   thread_pool_ = thread_pool;
   for (int32 i = 0; i < nworkers; ++i)
-    cpu_dedicated_threads_.emplace_back(&CudaDecoder::ComputeH2HCopiesCPUWorker,
+    cpu_dedicated_threads_->emplace_back(&CudaDecoder::ComputeH2HCopiesCPUWorker,
                                         this);
 }
 
