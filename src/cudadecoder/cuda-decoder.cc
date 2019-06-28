@@ -300,7 +300,7 @@ CudaDecoder::~CudaDecoder() {
   // Stopping h2h tasks
   h2h_threads_running_ = false;
   n_h2h_main_task_todo_cv_.notify_all();
-  for(auto& t : *cpu_dedicated_threads_) {
+  for (auto& t : *cpu_dedicated_threads_) {
     t.join();
   }
   delete cpu_dedicated_threads_;
