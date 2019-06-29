@@ -280,11 +280,13 @@ double FasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
             Elem *e_found = toks_.Insert(arc.nextstate, new_tok);
             if (new_weight + adaptive_beam < next_weight_cutoff)
               next_weight_cutoff = new_weight + adaptive_beam;
-            if ( *(e_found->val) < *new_tok ) {
-              Token::TokenDelete(e_found->val);
-              e_found->val = new_tok;
-            } else {
-              Token::TokenDelete(new_tok);
+            if (e_found->val != new_tok) {
+              if (*(e_found->val) < *new_tok) {
+                Token::TokenDelete(e_found->val);
+                e_found->val = new_tok;
+              } else {
+                Token::TokenDelete(new_tok);
+              }
             }
           }
         }
@@ -327,7 +329,7 @@ void FasterDecoder::ProcessNonemitting(double cutoff) {
           if (e_found->val == new_tok) {
             queue_.push_back(e_found);
           } else {
-            if ( *(e_found->val) < *new_tok ) {
+            if (*(e_found->val) < *new_tok) {
               Token::TokenDelete(e_found->val);
               e_found->val = new_tok;
               queue_.push_back(e_found);

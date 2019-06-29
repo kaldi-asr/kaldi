@@ -400,11 +400,13 @@ class BiglmFasterDecoder {
               Elem *e_found = toks_.Insert(next_pair, new_tok);
               if (new_weight + adaptive_beam < next_weight_cutoff)
                 next_weight_cutoff = new_weight + adaptive_beam;
-              if ( *(e_found->val) < *new_tok ) {
-                Token::TokenDelete(e_found->val);
-                e_found->val = new_tok;
-              } else {
-                Token::TokenDelete(new_tok);
+              if (e_found->val != new_tok) {
+                if (*(e_found->val) < *new_tok) {
+                  Token::TokenDelete(e_found->val);
+                  e_found->val = new_tok;
+                } else {
+                  Token::TokenDelete(new_tok);
+                }
               }
             }
           }
