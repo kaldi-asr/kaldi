@@ -277,14 +277,18 @@ double FasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
           double new_weight = arc.weight.Value() + tok->cost_ + ac_cost;
           if (new_weight < next_weight_cutoff) {  // not pruned..
             Token *new_tok = new Token(arc, ac_cost, tok);
-            Elem *e_found = toks_.Insert(arc.nextstate, new_tok);
+            Elem *e_found = toks_.Find(arc.nextstate);
             if (new_weight + adaptive_beam < next_weight_cutoff)
               next_weight_cutoff = new_weight + adaptive_beam;
-            if ( *(e_found->val) < *new_tok ) {
-              Token::TokenDelete(e_found->val);
-              e_found->val = new_tok;
+            if (e_found == NULL) {
+              toks_.Insert(arc.nextstate, new_tok);
             } else {
-              Token::TokenDelete(new_tok);
+              if ( *(e_found->val) < *new_tok ) {
+                Token::TokenDelete(e_found->val);
+                e_found->val = new_tok;
+              } else {
+                Token::TokenDelete(new_tok);
+              }
             }
           }
         }
@@ -303,12 +307,11 @@ void FasterDecoder::ProcessNonemitting(double cutoff) {
   // Processes nonemitting arcs for one frame. 
   KALDI_ASSERT(queue_.empty());
   for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
-    queue_.push_back(e);
+    queue_.push_back(e->key);
   while (!queue_.empty()) {
-    const Elem* e = queue_.back();
+    StateId state = queue_.back();
     queue_.pop_back();
-    StateId state = e->key;
-    Token *tok = e->val;  // would segfault if state not
+    Token *tok = toks_.Find(state)->val;  // would segfault if state not
     // in toks_ but this can't happen.
     if (tok->cost_ > cutoff) { // Don't bother processing successors.
       continue;
@@ -323,14 +326,15 @@ void FasterDecoder::ProcessNonemitting(double cutoff) {
         if (new_tok->cost_ > cutoff) {  // prune
           Token::TokenDelete(new_tok);
         } else {
-          Elem *e_found = toks_.Insert(arc.nextstate, new_tok);
-          if (e_found->val == new_tok) {
-            queue_.push_back(e_found);
+          Elem *e_found = toks_.Find(arc.nextstate);
+          if (e_found == NULL) {
+            toks_.Insert(arc.nextstate, new_tok);
+            queue_.push_back(arc.nextstate);
           } else {
             if ( *(e_found->val) < *new_tok ) {
               Token::TokenDelete(e_found->val);
               e_found->val = new_tok;
-              queue_.push_back(e_found);
+              queue_.push_back(arc.nextstate);
             } else {
               Token::TokenDelete(new_tok);
             }

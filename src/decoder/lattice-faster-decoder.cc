@@ -263,16 +263,15 @@ void LatticeFasterDecoderTpl<FST, Token>::PossiblyResizeHash(size_t num_toks) {
 // and also into the singly linked list of tokens active on this frame
 // (whose head is at active_toks_[frame]).
 template <typename FST, typename Token>
-inline typename LatticeFasterDecoderTpl<FST, Token>::Elem*
-LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
+inline Token* LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
       StateId state, int32 frame_plus_one, BaseFloat tot_cost,
       Token *backpointer, bool *changed) {
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
   // if the token was newly created or the cost changed.
   KALDI_ASSERT(frame_plus_one < active_toks_.size());
   Token *&toks = active_toks_[frame_plus_one].toks;
-  Elem *e_found = toks_.Insert(state, NULL);
-  if (e_found->val == NULL) {  // no such token presently.
+  Elem *e_found = toks_.Find(state);
+  if (e_found == NULL) {  // no such token presently.
     const BaseFloat extra_cost = 0.0;
     // tokens on the currently final frame have zero extra_cost
     // as any of them could end up
@@ -281,9 +280,9 @@ LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
     // NULL: no forward links yet
     toks = new_tok;
     num_toks_++;
-    e_found->val = new_tok;
+    toks_.Insert(state, new_tok);
     if (changed) *changed = true;
-    return e_found;
+    return new_tok;
   } else {
     Token *tok = e_found->val;  // There is an existing Token for this state.
     if (tok->tot_cost > tot_cost) {  // replace old token
@@ -302,7 +301,7 @@ LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
     } else {
       if (changed) *changed = false;
     }
-    return e_found;
+    return tok;
   }
 }
 
@@ -801,12 +800,12 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
             next_cutoff = tot_cost + adaptive_beam; // prune by best current token
           // Note: the frame indexes into active_toks_ are one-based,
           // hence the + 1.
-          Elem *e_next = FindOrAddToken(arc.nextstate,
-                                        frame + 1, tot_cost, tok, NULL);
+          Token *next_tok = FindOrAddToken(arc.nextstate,
+                                           frame + 1, tot_cost, tok, NULL);
           // NULL: no change indicator needed
 
           // Add ForwardLink from tok to next_tok (put on head of list tok->links)
-          tok->links = new ForwardLinkT(e_next->val, arc.ilabel, arc.olabel,
+          tok->links = new ForwardLinkT(next_tok, arc.ilabel, arc.olabel,
                                         graph_cost, ac_cost, tok->links);
         }
       } // for all arcs
@@ -856,15 +855,14 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
   for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
     StateId state = e->key;
     if (fst_->NumInputEpsilons(state) != 0)
-      queue_.push_back(e);
+      queue_.push_back(state);
   }
 
   while (!queue_.empty()) {
-    const Elem *e = queue_.back();
+    StateId state = queue_.back();
     queue_.pop_back();
 
-    StateId state = e->key;
-    Token *tok = e->val;  // would segfault if e is a NULL pointer but this can't happen.
+    Token *tok = toks_.Find(state)->val;  // would segfault if state not in toks_ but this can't happen.
     BaseFloat cur_cost = tok->tot_cost;
     if (cur_cost > cutoff) // Don't bother processing successors.
       continue;
@@ -884,16 +882,16 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
         if (tot_cost < cutoff) {
           bool changed;
 
-          Elem *e_new = FindOrAddToken(arc.nextstate, frame + 1, tot_cost,
+          Token *new_tok = FindOrAddToken(arc.nextstate, frame + 1, tot_cost,
                                           tok, &changed);
 
-          tok->links = new ForwardLinkT(e_new->val, 0, arc.olabel,
+          tok->links = new ForwardLinkT(new_tok, 0, arc.olabel,
                                         graph_cost, 0, tok->links);
 
           // "changed" tells us whether the new token has a different
           // cost from before, or is new [if so, add into queue].
           if (changed && fst_->NumInputEpsilons(arc.nextstate) != 0)
-            queue_.push_back(e_new);
+            queue_.push_back(arc.nextstate);
         }
       }
     } // for all arcs
