@@ -66,6 +66,8 @@ struct OnlineNnet2FeaturePipelineConfig {
   std::string mfcc_config;
   std::string plp_config;
   std::string fbank_config;
+  std::string cmvn_config;
+  std::string global_cmvn_stats_rxfilename;
 
   // Note: if we do add pitch, it will not be added to the features we give to
   // the iVector extractor but only to the features we give to the neural
@@ -101,6 +103,11 @@ struct OnlineNnet2FeaturePipelineConfig {
                    "PLP features (e.g. conf/plp.conf)");
     opts->Register("fbank-config", &fbank_config, "Configuration file for "
                    "filterbank features (e.g. conf/fbank.conf)");
+    opts->Register("cmvn-config", &cmvn_config, "Configuration file for "
+                   "file for online CMVN features (e.g. conf/online_cmvn.conf)");
+    opts->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
+                   "(Extended) filename for global CMVN stats, e.g. obtained "
+                   "from 'matrix-sum scp:data/train/cmvn.scp -'");
     opts->Register("add-pitch", &add_pitch, "Append pitch features to raw "
                    "MFCC/PLP/filterbank features [but not for iVector extraction]");
     opts->Register("online-pitch-config", &online_pitch_config, "Configuration "
@@ -144,6 +151,8 @@ struct OnlineNnet2FeaturePipelineInfo {
   ProcessPitchOptions pitch_process_opts;  // Options for pitch post-processing
 
 
+  bool use_cmvn;
+  OnlineCmvnOptions cmvn_opts;
   // If the user specified --ivector-extraction-config, we assume we're using
   // iVectors as an extra input to the neural net.  Actually, we don't
   // anticipate running this setup without iVectors.
@@ -156,6 +165,9 @@ struct OnlineNnet2FeaturePipelineInfo {
   // it's the kind of thing you might want to play with directly
   // on the command line instead of inside sub-config-files.
   OnlineSilenceWeightingConfig silence_weighting_config;
+
+  std::string global_cmvn_stats_rxfilename;  // Filename used for reading global
+                                             // CMVN stats
 
   int32 IvectorDim() { return ivector_extractor_info.extractor.IvectorDim(); }
  private:
@@ -195,6 +207,16 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const;
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  // This is supplied for debug purposes.
+  void GetAQsMatrix(Matrix<BaseFloat> *feats);
+  void FreezeCmvn();  // stop it from moving further (do this when you start
+                      // using fMLLR). This will crash if NumFramesReady() == 0.
+
+  /// Set the CMVN state to a particular value (will generally be
+  /// called after Copy().
+  void SetCmvnState(const OnlineCmvnState &cmvn_state);
+  void GetCmvnState(OnlineCmvnState *cmvn_state);
 
   /// If you are downweighting silence, you can call
   /// OnlineSilenceWeighting::GetDeltaWeights and supply the output to this
@@ -266,19 +288,33 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
 
   virtual ~OnlineNnet2FeaturePipeline();
  private:
+  /// The following constructor is used internally in the New() function;
+  /// it has the same effect as initializing from just "cfg", but avoids
+  /// re-reading the LDA transform from disk.
+  OnlineNnet2FeaturePipeline(const OnlineNnet2FeaturePipelineInfo &info_,
+                        const Matrix<BaseFloat> &lda_mat,
+                        const Matrix<BaseFloat> &global_cmvn_stats);
 
   const OnlineNnet2FeaturePipelineInfo &info_;
+  /// Init() is to be called from the constructor; it assumes the pointer
+  /// members are all uninitialized but config_ and lda_mat_ are
+  /// initialized.
+  void Init();
 
   OnlineBaseFeature *base_feature_;        // MFCC/PLP/filterbank
 
   OnlinePitchFeature *pitch_;              // Raw pitch, if used
   OnlineProcessPitch *pitch_feature_;  // Processed pitch, if pitch used.
 
+  OnlineCmvn *cmvn_feature_;
+  Matrix<BaseFloat> lda_mat_; //LDA matrix, if supplied
+  Matrix<BaseFloat> global_cmvn_stats_;  // Global CMVN stats.
 
   // feature_plus_pitch_ is the base_feature_ appended (OnlineAppendFeature)
   /// with pitch_feature_, if used; otherwise, points to the same address as
   /// base_feature_.
   OnlineFeatureInterface *feature_plus_optional_pitch_;
+  OnlineFeatureInterface *feature_plus_optional_cmvn_;
 
   OnlineIvectorFeature *ivector_feature_;  // iVector feature, if used.
 
