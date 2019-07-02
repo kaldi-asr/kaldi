@@ -177,6 +177,8 @@ wc -l $dict_dir/lexicon-ch/lexicon-ch-iv.txt
 cat $dict_dir/cedict/ch-dict.txt |\
   perl -e '
   use utf8;
+  binmode(STDIN,":encoding(utf8)");
+  binmode(STDOUT,":encoding(utf8)");
   while (<STDIN>) {
     @A = split(" ", $_);
     $word_len = length($A[0]);
@@ -189,6 +191,8 @@ cat $dict_dir/cedict/ch-dict.txt |\
 cat $dict_dir/cedict/ch-dict-1.txt | awk '{print $1}' |\
   perl -e '
   use utf8;
+  binmode(STDIN,":encoding(utf8)");
+  binmode(STDOUT,":encoding(utf8)");
   while (<STDIN>) {
     @A = split(" ", $_);
     @chars = split("", $A[0]);
