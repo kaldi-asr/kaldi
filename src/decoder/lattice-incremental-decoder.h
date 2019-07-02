@@ -42,6 +42,7 @@ struct LatticeIncrementalDecoderConfig {
   int32 determinize_period;
   int32 determinize_max_active;
   int32 redeterminize_max_frames;
+  bool final_prune_after_determinize;
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
   BaseFloat prune_scale; // Note: we don't make this configurable on the command line,
@@ -63,6 +64,7 @@ struct LatticeIncrementalDecoderConfig {
         determinize_period(20),
         determinize_max_active(std::numeric_limits<int32>::max()),
         redeterminize_max_frames(std::numeric_limits<int32>::max()),
+        final_prune_after_determinize(true),
         beam_delta(0.5),
         hash_ratio(2.0),
         prune_scale(0.1),
@@ -98,13 +100,15 @@ struct LatticeIncrementalDecoderConfig {
                    "determinized up to this frame. It can work with "
                    "--determinize-delay to further reduce the computation "
                    "introduced by incremental determinization. ");
-    opts->Register("redeterminize_max_frames", &redeterminize_max_frames,
+    opts->Register("redeterminize-max-frames", &redeterminize_max_frames,
                    "To impose a limit on how far back in time we will "
                    "redeterminize states.  This is mainly intended to avoid "
                    "pathological cases. Smaller value leads to less "
                    "deterministic but less likely to blow up the processing"
                    "time in bad cases. You could set it infinite to get a fully "
                    "determinized lattice.");
+    opts->Register("final-prune-after-determinize", &final_prune_after_determinize,
+                   "prune lattice after determinization ");
     opts->Register("beam-delta", &beam_delta,
                    "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "

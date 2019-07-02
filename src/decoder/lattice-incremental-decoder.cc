@@ -1589,7 +1589,11 @@ bool LatticeIncrementalDeterminizer<FST>::Finalize() {
   // The lattice determinization only needs to be finalized once
   if (determinization_finalized_) return true;
   // step 4: remove dead states
-  Connect(olat); // Remove unreachable states... there might be
+  if (config_.final_prune_after_determinize)
+    PruneLattice(config_.lattice_beam, olat);
+  else
+    Connect(olat); // Remove unreachable states... there might be
+
   KALDI_VLOG(2) << "states of the lattice: " << olat->NumStates();
   determinization_finalized_ = true;
 
