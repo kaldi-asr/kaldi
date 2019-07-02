@@ -655,11 +655,6 @@ void CudaDecoder::PostProcessingMainQueue() {
 }
 
 void CudaDecoder::CopyMainQueueDataToHost() {
-  // Computing lanes offsets for concatenated copies
-  cudaStreamWaitEvent(
-      compute_st_, d2h_copy_extra_prev_tokens_evt_,
-      0);  // waiting on preivous d2h before writing on same device memory
-  ConcatenateData();
   cudaEventRecord(concatenated_data_ready_evt_, compute_st_);
   cudaStreamWaitEvent(copy_st_, concatenated_data_ready_evt_,
                       0);  // the copies on copy_st will wait on compute_st_
@@ -836,6 +831,14 @@ void CudaDecoder::AdvanceDecoding(
     // - compute the extra costs
     PostProcessingMainQueue();
 
+    // Waiting on previous d2h before writing on same device memory
+    cudaStreamWaitEvent(compute_st_, d2h_copy_extra_prev_tokens_evt_, 0);
+    // Concatenating the data that will be moved to host into large arrays
+    ConcatenateData();
+    // Copying the final lane counters for that frame
+    CopyLaneCountersToHostSync();
+    CheckOverflow();
+
     // Moving the data necessary for GetRawLattice/GetBestPath back to host for
     // storage
     CopyMainQueueDataToHost();
@@ -850,8 +853,6 @@ void CudaDecoder::AdvanceDecoding(
       frame_offsets_[ichannel].push_back(frame_offsets_[ichannel].back() +
                                          main_q_end);
     }
-    CopyLaneCountersToHostSync();
-    CheckOverflow();
   }
 
   SaveChannelsStateFromLanes();
