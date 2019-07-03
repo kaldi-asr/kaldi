@@ -116,7 +116,9 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(DecodableInterface *decoda
       // If the number of tokens in a certain frame is less than
       // config_.determinize_max_active, the lattice can be determinized up to this
       // frame. And we try to determinize as most frames as possible so we check
-      // numbers from frame_det_most to frame_det_least
+      // numbers from frame_det_most to frame_det_least.
+      // In the end of the utterance, all of the remaining chunks will be 
+      // processed during the FinalizeDecoding() function later.
       for (int32 f = frame_det_most; f >= frame_det_least; f--) {
         if (config_.determinize_max_active == std::numeric_limits<int32>::max() ||
             GetNumToksForFrame(f) < config_.determinize_max_active) {
