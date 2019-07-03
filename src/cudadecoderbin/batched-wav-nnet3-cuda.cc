@@ -102,7 +102,7 @@ void FinishOneDecode(
   }
 
   nvtxRangePop();
-  }
+}
 
 int main(int argc, char *argv[]) {
   try {
@@ -129,9 +129,9 @@ int main(int argc, char *argv[]) {
     int iterations = 1;
     ParseOptions po(usage);
     std::mutex stdout_mutex, clat_writer_mutex;
-    int pipeline_length = 4000; // length of pipeline of outstanding requests,
-                                // this is independent of queue lengths in
-                                // decoder
+    int pipeline_length = 4000;  // length of pipeline of outstanding requests,
+                                 // this is independent of queue lengths in
+                                 // decoder
 
     po.Register("write-lattice", &write_lattice,
                 "Output lattice to a file. Setting to false is useful when "
@@ -286,8 +286,8 @@ int main(int argc, char *argv[]) {
 
         nvtxRangePop();
         if (num_todo != -1 && num_task_submitted >= num_todo) break;
-      } // end utterance loop
-    } // end iterations loop
+      }  // end utterance loop
+    }    // end iterations loop
 
     // We've submitted all tasks. Now waiting for them to complete
     // We could also have called WaitForAllTasks and CloseAllDecodeHandles
@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
               << " Total Audio: " << total_audio * iterations
               << " RealTimeX: " << total_audio * iterations / total_time;
 
-    delete word_syms; // will delete if non-NULL.
+    delete word_syms;  // will delete if non-NULL.
 
     clat_writer.Close();
 
@@ -329,6 +329,6 @@ int main(int argc, char *argv[]) {
     std::cerr << e.what();
     return -1;
   }
-} // main()
+}  // main()
 
 #endif  // if HAVE_CUDA == 1
