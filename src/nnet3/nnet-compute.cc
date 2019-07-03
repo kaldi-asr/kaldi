@@ -491,8 +491,10 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
   for (int32 i = 0; i < size; i += 30 + RandInt(0, 9)) {
     // Do a pseudo-random spot check that the row-indexes are not out of range.
     int32 submatrix_index = pairs[i].first, row = pairs[i].second;
-    CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
-    KALDI_ASSERT(row >= 0 && row < m.NumRows() && num_cols == m.NumCols());
+    if (submatrix_index != -1) {
+      CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
+      KALDI_ASSERT(row >= 0 && row < m.NumRows() && num_cols == m.NumCols());
+    }
   }
 #endif
   pointers->CopyFromVec(vec);
