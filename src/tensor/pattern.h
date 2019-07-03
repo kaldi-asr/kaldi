@@ -478,36 +478,40 @@ namespace tensor {
                      see the declaration of struct Pattern for additional details about how
                      it is stored.
 
-                          (i) The num_axes must satisfy 0 <= num_axes < KALDI_TENSOR_MAX_DIM
-                          (ii) The offset must be >= 0.
-                          (iii) the dims must all be >0.
-                          (iv) the strides must be nonzero (but not necessarily positive) for axes with
-                                dim != 1.
-                          (v) the axis-dominance property.   This property is sufficient, but not
-                              necessary, to ensure the uniqueness property.  It requires that
-                              when the axes are sorted from least to greatest value of abs(stride),
-                              for each axis-index 0 <= r < num_axes - 1 (using the private numbering
-                              of axis-indexes),
+                          (i)  The num_axes must satisfy 0 <= num_axes <= KALDI_TENSOR_MAX_DIM
+                          (ii) The dims must all be >0a
+                          (iii) We require dim[i] == 1 and strides[i] == 0 for
+                               num_axes < i < KALDI_TENSOR_MAX_DIM
+                          (iv) We require that no memory index reachable through the pattern
+                               be negative, which can be expressed as:
+                               offset + \sum_{i=0}^{num_axes - 1} min(0, strides[i]*(dims[i]-1)) >= 0
+                          (v) The strides must be nonzero for axes i with dim[i] != 1.
+                          (vi) the axis-dominance property.   This property is sufficient, but not
+                               necessary, to ensure the uniqueness property.  It requires that
+                               when the axes are sorted from least to greatest value of abs(stride),
+                               for each axis-index 0 <= r < num_axes - 1 (using the private numbering
+                               of axis-indexes),
                                     dim(r) * abs(stride(r)) <= abs(stride(r+1)).
-                              (Note: this property doesn't require that the axes be sorted that
-                              way; if you need that, search for "Canonical form").
-                          (vi) the strides must be zero for axes with dim=1.
+                               (Note: this property doesn't require that the axes be sorted that
+                               way; if you need that, search for "Canonical form").
+                         (vii) the strides must be zero for axes with dim=1.
 
 
      Valid-1 Pattern:
                       A Pattern is valid-1 (read as: valid minus one) if it
-                      satisfies properties (i) through (v) of a valid Pattern
+                      satisfies properties (i) through (vi) of a valid Pattern
                       (i.e. it may have nonzero strides for axes with dim=1, but
                       must otherwise be valid).  A valid pattern is also valid-1.
 
      Valid-2 Pattern:
                       A Pattern is valid-2 (read as valid minus two) if it
-                      satisfies properties (i) through (iv) of a valid Pattern
-                      and satisfies the uniqueness property.  That is, it must
+                      satisfies properties (i) through (v) of a valid Pattern
+                      and also satisfies the uniqueness property.  That is, it must
                       be a valid Pattern, except:
-                      it may have nonzero strides for axes with dim=1, since
-                      we don't require property (v); and it does not have to
-                      satisfy the axis-dominance property (property (vi)).
+                       - it may have nonzero strides for axes with dim=1, since
+                         we don't require property (vi)
+                       - it does not have to satisfy the axis-dominance property
+                         (property (vi)).
                       However, it must still satisfy the uniqueness property
                       (see its glossary entry); we don't normally explicitly
                       require the uniqueness property because it is implied by
