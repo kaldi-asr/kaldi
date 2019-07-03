@@ -837,6 +837,19 @@ class DropoutMaskComponent: public RandomComponent {
                   dropout, and it would probably make more sense to just use the
                   normal DropoutComponent.
 
+       specaugment-max-proportion=0  If nonzero, causes this component to
+                 implement SpecAugment.  (Note: you probably would want this
+                 after a batch-norm component so the average at input is
+                 zero), and the input dim will be interpreted as some kind of
+                 frequency space, e.g. linear or mel.  specaugment-max-proportion
+                 will be the maximum proportion of the frequency
+                 space that this component might zero out (so multiply this by
+                 by input dim to get the maximum columns that might be zeroed out);
+                 the actual number of columns zeroed out for each sequence will
+                 be randomly chosen between zero and the maximum.  Note: the
+                 non-zeroed frequencies won't be multiplied by a constant more
+                 than one as we would in the normal dropout mode.
+
  */
 class GeneralDropoutComponent: public RandomComponent {
  public:
@@ -908,6 +921,8 @@ class GeneralDropoutComponent: public RandomComponent {
 
   BaseFloat dropout_proportion_;
 
+  BaseFloat specaugment_max_proportion_;
+
   bool continuous_;
 
   const GeneralDropoutComponent &operator
@@ -922,8 +937,11 @@ class GeneralDropoutComponentPrecomputedIndexes:
  public:
 
 
-  // num_mask_rows is the number of rows in the dropout-mask matrix;
-  // it's num-cols is the block_dim_ of the component.
+  // num_mask_rows is the number of rows in the dropout-mask matrix, which will
+  // in the normal case equal the number of sequences we are processing.  Its
+  // num-cols is the block_dim_ of the component (e.g. might be the InputDim()
+  // (which is the same as OutputDim()), or maybe less if the block-dim option
+  // was specified.
   int32 num_mask_rows;
 
   // 'indexes' is of dimension (the number of rows in the matrix we're doing

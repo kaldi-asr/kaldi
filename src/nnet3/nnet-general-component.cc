@@ -1525,6 +1525,8 @@ std::string GeneralDropoutComponent::Info() const {
          << ", dropout-proportion=" << dropout_proportion_;
   if (continuous_)
     stream << ", continuous=true";
+  if (specaugment_max_proportion_ != 0)
+    stream << ", specaugment-max-proportion=" << specaugment_max_proportion_;
   if (time_period_ > 0)
     stream << ", time-period=" << time_period_;
   return stream.str();
@@ -1532,7 +1534,9 @@ std::string GeneralDropoutComponent::Info() const {
 
 GeneralDropoutComponent::GeneralDropoutComponent():
     dim_(-1), block_dim_(-1), time_period_(0),
-    dropout_proportion_(0.5), continuous_(false) { }
+    dropout_proportion_(0.5),
+    specaugment_max_proportion_(0.0),
+    continuous_(false) { }
 
 GeneralDropoutComponent::GeneralDropoutComponent(
     const GeneralDropoutComponent &other):
@@ -1540,6 +1544,7 @@ GeneralDropoutComponent::GeneralDropoutComponent(
     block_dim_(other.block_dim_),
     time_period_(other.time_period_),
     dropout_proportion_(other.dropout_proportion_),
+    specaugment_max_proportion_(other.specaugment_max_proportion_),
     continuous_(other.continuous_) { }
 
 void* GeneralDropoutComponent::Propagate(
@@ -1552,7 +1557,8 @@ void* GeneralDropoutComponent::Propagate(
   // The following will do nothing if 'out' and 'in' refer to the same data.
   out->CopyFromMat(in);
 
-  if (test_mode_ || dropout_proportion_ == 0.0)
+  if (test_mode_ ||
+      (dropout_proportion_ == 0.0 && specaugment_max_proportion_ == 0.0))
     return NULL;
 
   const GeneralDropoutComponentPrecomputedIndexes *indexes =
@@ -1589,7 +1595,8 @@ void GeneralDropoutComponent::Backprop(
   // The following will do no work if in_deriv->Data() == out_deriv.Data().
   in_deriv->CopyFromMat(out_deriv);
 
-  if (test_mode_ || dropout_proportion_ == 0.0) {
+  if (test_mode_ ||
+      (dropout_proportion_ == 0.0 && specaugment_max_proportion_ == 0.0)) {
     KALDI_ASSERT(memo == NULL);
     return;
   }
@@ -1622,6 +1629,12 @@ void GeneralDropoutComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &time_period_);
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
+  if (PeekToken(is, binary) == 'S') {
+    ExpectToken(is, binary, "<SpecaugmentMaxProportion>");
+    ReadBasicType(is, binary, &specaugment_max_proportion_);
+  } else {
+    specaugment_max_proportion_ = 0.0;
+  }
   if (PeekToken(is, binary) == 'T') {
     ExpectToken(is, binary, "<TestMode>");
     test_mode_ = true;
@@ -1648,6 +1661,10 @@ void GeneralDropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, time_period_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
+  if (specaugment_max_proportion_) {
+    WriteToken(os, binary, "<SpecaugmentMaxProportion>");
+    WriteBasicType(os, binary, specaugment_max_proportion_);
+  }
   if (test_mode_)
     WriteToken(os, binary, "<TestMode>");
   if (continuous_)
@@ -1672,18 +1689,55 @@ void GeneralDropoutComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("time-period", &time_period_);
   dropout_proportion_ = 0.5;
   cfl->GetValue("dropout-proportion", &dropout_proportion_);
+
+  specaugment_max_proportion_ = 0.0;
+  cfl->GetValue("specaugment-max-proportion", &specaugment_max_proportion_);
   continuous_ = false;
   cfl->GetValue("continuous", &continuous_);
   test_mode_ = false;
   cfl->GetValue("test-mode", &test_mode_);
+
+  if (specaugment_max_proportion_ != 0.0) {
+    if (specaugment_max_proportion_ < 0.0 ||
+        specaugment_max_proportion_ > 1.0 || continuous_) {
+      KALDI_ERR << "Invalid config values: specaugment-max-proportion = "
+                << specaugment_max_proportion_ << ", continuous = "
+                << std::boolalpha << continuous_;
+    }
+  }
 }
 
 
 CuMatrix<BaseFloat>* GeneralDropoutComponent::GetMemo(
     int32 num_mask_rows) const {
   KALDI_ASSERT(num_mask_rows > 0 && !test_mode_ &&
-               dropout_proportion_ > 0.0);
-  CuMatrix<BaseFloat> *ans = new CuMatrix<BaseFloat>(num_mask_rows, block_dim_);
+               (dropout_proportion_ > 0.0 ||
+                specaugment_max_proportion_ != 0.0));
+  CuMatrix<BaseFloat> *ans = new CuMatrix<BaseFloat>(num_mask_rows, block_dim_,
+                                                     kUndefined);
+
+  if (specaugment_max_proportion_ != 0.0) {
+    // This block takes care of the case where we are doing SpecAugment.
+    int32 num_freq_bins = block_dim_;
+    Matrix<BaseFloat> mask(num_mask_rows, block_dim_);
+    mask.Set(1.0);
+    int32 specaugment_max_zeroed = static_cast<int32>(
+        num_freq_bins * specaugment_max_proportion_  +  0.5);
+    for (int32 seq = 0; seq < num_mask_rows; seq++) {
+      // actually seq is more like a sub-part of a sequence, in the case where
+      // time_period_ is not zero.
+      SubVector<BaseFloat> this_mask(mask, seq);  // will be all ones, right now.
+      int32 num_bins_zeroed = RandInt(0, specaugment_max_zeroed);
+      if (num_bins_zeroed != 0) {
+        int32 start_bin = RandInt(0, num_freq_bins - 1 - num_bins_zeroed);
+        SubVector<BaseFloat> zeroed_region(this_mask, start_bin, num_bins_zeroed);
+        zeroed_region.SetZero();
+      }
+    }
+    ans->CopyFromMat(mask);
+    return ans;
+  }
+
   BaseFloat dropout_proportion = dropout_proportion_;
 
   // This const_cast is only safe assuming you don't attempt
