@@ -132,7 +132,7 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   gru_opts="dropout-per-frame=true dropout-proportion=0.0 gru-nonlinearity-options=\"max-change=0.75\""
 
   mkdir -p $dir/configs

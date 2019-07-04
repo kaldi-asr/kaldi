@@ -8,6 +8,8 @@
     <OPENBLASDIR>C:\Users\Yenda\Downloads\kaldi-svn\tools\OpenBLAS-v0.2.14-Win64-int32</OPENBLASDIR>
     <OPENFST>C:\Users\jtrmal\Documents\openfst\</OPENFST>
     <OPENFSTLIB>C:\Users\jtrmal\Documents\openfst\build64</OPENFSTLIB>
+    <CUBDIR>c:\Users\jtrmal\Documents\cub\</CUBDIR>
+    <NVTOOLSDIR>C:\Program FIles\NVIDIA Corporation\NvToolsExt\</NVTOOLSDIR>
     <!-- Do not modify anything after this line -->
   </PropertyGroup>
   <PropertyGroup />
@@ -27,6 +29,14 @@
     </BuildMacro>
     <BuildMacro Include="MKLDIR">
       <Value>$(MKLDIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="CUBDIR">
+      <Value>$(CUBDIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="NVTOOLSDIR">
+      <Value>$(NVTOOLSDIR)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
   </ItemGroup>

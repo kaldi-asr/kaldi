@@ -3548,7 +3548,7 @@ void* SoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   // Apply softmax function to each row of the output...
   // for that row, we do
   // x_i = exp(x_i) / sum_j exp(x_j).
-  out->ApplySoftMaxPerRow(in);
+  out->SoftMaxPerRow(in);
 
   // This floor on the output helps us deal with
   // almost-zeros in a way that doesn't lead to overflow.
@@ -3601,7 +3601,7 @@ void* LogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     CuMatrixBase<BaseFloat> *out) const {
   // Applies log softmax function to each row of the output. For each row, we do
   // x_i = x_i - log(sum_j exp(x_j))
-  out->ApplyLogSoftMaxPerRow(in);
+  out->LogSoftMaxPerRow(in);
   return NULL;
 }
 
@@ -4068,13 +4068,13 @@ bool CompositeComponent::IsUpdatable() const {
 int32 CompositeComponent::InputDim() const {
   KALDI_ASSERT(!components_.empty());
   return components_.front()->InputDim();
-};
+}
 
 // virtual
 int32 CompositeComponent::OutputDim() const {
   KALDI_ASSERT(!components_.empty());
   return components_.back()->OutputDim();
-};
+}
 
 // virtual
 int32 CompositeComponent::Properties() const {
@@ -4096,7 +4096,7 @@ int32 CompositeComponent::Properties() const {
   if (last_component_properties & kStoresStats)
     ans |= kBackpropNeedsOutput;
   return ans;
-};
+}
 
 
 MatrixStrideType CompositeComponent::GetStrideType(int32 i) const {
@@ -4319,7 +4319,7 @@ void CompositeComponent::Backprop(const std::string &debug_info,
       // optimization; other propagates might also be skippable.
       int32 properties = components_[num_components - 2]->Properties(),
           next_properties = components_[num_components - 1]->Properties();
-      if (!(properties & (kBackpropNeedsOutput || kUsesMemo)) &&
+      if (!(properties & (kBackpropNeedsOutput | kUsesMemo)) &&
           !(next_properties & kBackpropNeedsInput)) {
         num_components_to_propagate--;
       }

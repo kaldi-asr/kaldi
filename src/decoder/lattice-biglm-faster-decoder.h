@@ -312,14 +312,14 @@ class LatticeBiglmFasterDecoder {
   // for the current frame.  [note: it's inserted if necessary into hash toks_
   // and also into the singly linked list of tokens active on this frame
   // (whose head is at active_toks_[frame]).
-  inline Token *FindOrAddToken(PairId state_pair, int32 frame, BaseFloat tot_cost,
-                               bool emitting, bool *changed) {
+  inline Elem *FindOrAddToken(PairId state_pair, int32 frame,
+      BaseFloat tot_cost, bool emitting, bool *changed) {
     // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
     // if the token was newly created or the cost changed.
     KALDI_ASSERT(frame < active_toks_.size());
     Token *&toks = active_toks_[frame].toks;
-    Elem *e_found = toks_.Find(state_pair);
-    if (e_found == NULL) { // no such token presently.
+    Elem *e_found = toks_.Insert(state_pair, NULL);
+    if (e_found->val == NULL) { // no such token presently.
       const BaseFloat extra_cost = 0.0;
       // tokens on the currently final frame have zero extra_cost
       // as any of them could end up
@@ -328,9 +328,9 @@ class LatticeBiglmFasterDecoder {
       // NULL: no forward links yet
       toks = new_tok;
       num_toks_++;
-      toks_.Insert(state_pair, new_tok);
+      e_found->val = new_tok;
       if (changed) *changed = true;
-      return new_tok;
+      return e_found;
     } else {
       Token *tok = e_found->val; // There is an existing Token for this state.
       if (tok->tot_cost > tot_cost) { // replace old token
@@ -346,7 +346,7 @@ class LatticeBiglmFasterDecoder {
       } else {
         if (changed) *changed = false;
       }
-      return tok;
+      return e_found;
     }
   }
   
@@ -744,11 +744,11 @@ class LatticeBiglmFasterDecoder {
             else if (tot_cost + config_.beam < next_cutoff)
               next_cutoff = tot_cost + config_.beam; // prune by best current token
             PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
-            Token *next_tok = FindOrAddToken(next_pair, frame, tot_cost, true, NULL);
+            Elem *e_next = FindOrAddToken(next_pair, frame, tot_cost, true, NULL);
             // true: emitting, NULL: no change indicator needed
           
             // Add ForwardLink from tok to next_tok (put on head of list tok->links)
-            tok->links = new ForwardLink(next_tok, arc.ilabel, arc.olabel, 
+            tok->links = new ForwardLink(e_next->val, arc.ilabel, arc.olabel, 
                                          graph_cost, ac_cost, tok->links);
           }
         } // for all arcs
@@ -770,7 +770,7 @@ class LatticeBiglmFasterDecoder {
     KALDI_ASSERT(queue_.empty());
     BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
     for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
-      queue_.push_back(e->key);
+      queue_.push_back(e);
       // for pruning with current best token
       best_cost = std::min(best_cost, static_cast<BaseFloat>(e->val->tot_cost));
     }
@@ -784,11 +784,12 @@ class LatticeBiglmFasterDecoder {
     BaseFloat cutoff = best_cost + config_.beam;
     
     while (!queue_.empty()) {
-      PairId state_pair = queue_.back();
+      const Elem *e = queue_.back();
       queue_.pop_back();
 
-      Token *tok = toks_.Find(state_pair)->val;  // would segfault if state not in
-                                                 // toks_ but this can't happen.
+      PairId state_pair = e->key;
+      Token *tok = e->val;  // would segfault if state not in
+                            // toks_ but this can't happen.
       BaseFloat cur_cost = tok->tot_cost;
       if (cur_cost > cutoff) // Don't bother processing successors.
         continue;
@@ -812,15 +813,15 @@ class LatticeBiglmFasterDecoder {
           if (tot_cost < cutoff) {
             bool changed;
             PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
-            Token *new_tok = FindOrAddToken(next_pair, frame, tot_cost,
-                                            false, &changed); // false: non-emit
+            Elem *e_new = FindOrAddToken(next_pair, frame, tot_cost,
+                                         false, &changed); // false: non-emit
             
-            tok->links = new ForwardLink(new_tok, 0, arc.olabel,
+            tok->links = new ForwardLink(e_new->val, 0, arc.olabel,
                                          graph_cost, 0, tok->links);
             
             // "changed" tells us whether the new token has a different
             // cost from before, or is new [if so, add into queue].
-            if (changed) queue_.push_back(next_pair);
+            if (changed) queue_.push_back(e_new);
           }
         }
       } // for all arcs
@@ -835,7 +836,7 @@ class LatticeBiglmFasterDecoder {
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
-  std::vector<PairId> queue_;  // temp variable used in ProcessNonemitting,
+  std::vector<const Elem* > queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;

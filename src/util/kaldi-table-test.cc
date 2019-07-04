@@ -90,20 +90,20 @@ void UnitTestReadScriptFile() {
 
 void UnitTestClassifyWspecifier() {
   {
-    std::string a = "b,ark:foo|";
+    std::string a = "b,ark:|foo";
     std::string ark = "x", scp = "y";
     WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" &&
+    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "|foo" && scp == "" &&
                  opts.binary == true);
   }
 
   {
-    std::string a = "t,ark:foo|";
+    std::string a = "t,ark:|foo";
     std::string ark = "x", scp = "y";
     WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" &&
+    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "|foo" && scp == "" &&
                  opts.binary == false);
   }
 

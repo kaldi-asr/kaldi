@@ -169,7 +169,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh /export/corpora/JHU/musan data
+  steps/data/make_musan.sh --sampling-rate 8000 /export/corpora/JHU/musan data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
@@ -336,7 +336,7 @@ if [ $stage -le 10 ]; then
 
       der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
         $nnet_dir/tuning/${dataset}_t${threshold})
-      if [ $(echo $der'<'$best_der | bc -l) -eq 1 ]; then
+      if [ $(perl -e "print ($der < $best_der ? 1 : 0);") -eq 1 ]; then
         best_der=$der
         best_threshold=$threshold
       fi

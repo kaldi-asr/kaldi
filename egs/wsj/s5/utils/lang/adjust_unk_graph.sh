@@ -26,7 +26,7 @@ mkdir -p $graphdir_out
 
 required="HCLG.fst words.txt disambig_tid.int num_pdfs phones phones.txt words.txt"
 for f in $required; do
-  [ ! -f $graphdir_in/$f ] && echo "adjust_unk_graph.sh: expected $graphdir_in/$f to exist" && exit 1;
+  [ ! -e $graphdir_in/$f ] && echo "adjust_unk_graph.sh: expected $graphdir_in/$f to exist" && exit 1;
   cp -r $graphdir_in/$f $graphdir_out
 done
 

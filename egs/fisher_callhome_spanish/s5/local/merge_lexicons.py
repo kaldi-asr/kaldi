@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# Copyright 2014  Gaurav Kumar.   Apache 2.0
 # -*- coding: utf-8 -*-
 #
+# Copyright 2014  Gaurav Kumar.   Apache 2.0
+#    2018  Nagendra Kumar Goel, Saikiran Valluri, GoVivace inc., Avaaya
 # Merges unique words from Spanish Fisher, Gigaword and the LDC spanish lexicon
-
 from __future__ import print_function
-import sys
+import sys, re
 import json
 import codecs
 import operator
@@ -17,6 +17,7 @@ uw_fisher = tmpdir + "/uniquewords"
 uw_gigaword = tmpdir + "/es_wordlist.json"
 uw_LDC = ldc_lexicon + "/callhome_spanish_lexicon_970908/preferences"
 
+filtered_letters = re.compile(u'[¡¥ª°º¿àçèëìîôö0123456789]')
 merged_lexicon = []
 # All three lexicons are in different formats
 # First add the data from lexicon_fisher (A) into the dictionary
@@ -55,7 +56,8 @@ lf = codecs.open(tmpdir + '/uniquewords64k', encoding='utf-8', mode='w+')
 ltuples = sorted(merged_lexicon)
 
 for item in ltuples:
-    lf.write(item + "\n")
+    if not item==u'ñ' and not re.search(filtered_letters, item):
+        lf.write(item + "\n")
 
 lf.close()
 

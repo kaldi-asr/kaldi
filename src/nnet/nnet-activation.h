@@ -49,7 +49,7 @@ class Softmax : public Component {
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
-    out->ApplySoftMaxPerRow(in);
+    out->SoftMaxPerRow(in);
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -81,7 +81,7 @@ class HiddenSoftmax : public Component {
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
-    out->ApplySoftMaxPerRow(in);
+    out->SoftMaxPerRow(in);
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -167,7 +167,7 @@ class BlockSoftmax : public Component {
       CuSubMatrix<BaseFloat> out_bl =
         out->ColRange(block_offset[bl], block_dims[bl]);
       // y = e^x_j/sum_j(e^x_j),
-      out_bl.ApplySoftMaxPerRow(in_bl);
+      out_bl.SoftMaxPerRow(in_bl);
     }
   }
 

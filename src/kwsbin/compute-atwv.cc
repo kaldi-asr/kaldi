@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
       if (vals.size() != 4) {
         KALDI_ERR << "Incorrect format of the reference file"
           << " -- 4 entries expected, " << vals.size() << " given!\n"
-          << "Key: " << kwid << std::endl;
+          << "Key: " << kwid;
       }
       KwsTerm inst(kwid, vals);
       aligner.AddRef(inst);
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
       if (vals.size() != 4) {
         KALDI_ERR << "Incorrect format of the hypotheses file"
           << " -- 4 entries expected, " << vals.size() << " given!\n"
-          << "Key: " << kwid << std::endl;
+          << "Key: " << kwid;
       }
       KwsTerm inst(kwid, vals);
       aligner.AddHyp(inst);
@@ -171,4 +171,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

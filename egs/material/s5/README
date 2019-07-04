@@ -1,0 +1,35 @@
+About the MATERIAL corpus:
+
+The MATERIAL project:
+https://www.iarpa.gov/index.php/research-programs/material
+https://www.nist.gov/itl/iad/mig/openclir-evaluation
+
+The speech data in the MATERIAL corpus consist of four data sets for each
+language: train (BUILD), development (BUILD-dev), test (ANALYSIS1 and ANALYSIS2),
+and unlabeled evaluation audio (EVAL{1,2,3}). The train, development, test, and
+evaluation data contain around 40, 10, 20, and 250 hours of audio respectively.
+The train set is transcribed conversational audio that can be used for training
+an ASR system. It consists of some in 8-bit a-law .sph (Sphere) files and some
+in .wav files with 24-bit samples. The development set is transcribed
+conversational audio that can be used as development data for training to tune
+model parameters. The test data come in long unsegmented files. The reference
+transcripts for the test set is provided, hence, one can measure WER on the test
+set. The evaluation set is untranscribed audio that can be used for
+semi-supervised training of the acoustic model.
+Conversational speech data in the train and test sets are two-channel audio with
+the two channels temporally aligned. Each audio channel is provided and
+transcribed as a separate file, identified as inLine or outLine channel. Both
+audio channels are interleaved in a single file and a there is a single
+interleaved transcript that reflects the temporal alignments. In addition to
+conversational speech, the test and evlatuion sets also contain other
+genres of speech, namely news broadcast and topical broadcast, which are
+single channel files.
+
+
+Running the recipe:
+
+In s5)
+./run.sh --language <swahili|tagalog|somali>
+./local/chain/run_tdnn.sh
+./local/chain/decode_test.sh --language <swahili|tagalog|somali>
+./local/rnnlm/run_tdnn_lstm.sh

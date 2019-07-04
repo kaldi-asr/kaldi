@@ -73,7 +73,7 @@ def run(args):
             new_utt = "{utt_id}-{s:08d}-{e:08d}".format(
                 utt_id=utt_id, s=int(100 * start_relative),
                 e=int(100 * end_relative))
-            print ("{new_utt} {utt_id} {s} {e}".format(
+            print ("{new_utt} {utt_id} {s:.3f} {e:.3f}".format(
                 new_utt=new_utt, utt_id=utt_id, s=start_relative,
                 e=start_relative + args.max_segment_duration))
             start += args.max_segment_duration - args.overlap_duration
@@ -90,7 +90,7 @@ def run(args):
         new_utt = "{utt_id}-{s:08d}-{e:08d}".format(
             utt_id=utt_id, s=int(round(100 * (start - start_time))),
             e=int(round(100 * (end - start_time))))
-        print ("{new_utt} {utt_id} {s} {e}".format(
+        print ("{new_utt} {utt_id} {s:.3f} {e:.3f}".format(
             new_utt=new_utt, utt_id=utt_id, s=start - start_time,
             e=end - start_time))
 

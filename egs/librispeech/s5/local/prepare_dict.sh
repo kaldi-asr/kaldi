@@ -75,7 +75,7 @@ if [ $stage -le 1 ]; then
   auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj | sed 's/,$//')}")
   awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $cmudict_plain $vocab |\
     sort | tee $g2p_dir/vocab_autogen.full |\
-    utils/split_scp.pl - $auto_vocab_splits || exit 1
+    utils/split_scp.pl /dev/stdin $auto_vocab_splits || exit 1
   echo "Autogenerating pronunciations for the words in $auto_vocab_prefix.* ..."
   $cmd JOB=1:$nj $g2p_dir/log/g2p.JOB.log \
     local/g2p.sh  $auto_vocab_prefix.JOB $g2p_model_dir $auto_lexicon_prefix.JOB || exit 1

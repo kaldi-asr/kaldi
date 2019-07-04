@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+
+while (<>) {
+  chomp;
+  my @F = split;
+  my @A = @F[6..$#F];
+  for (my $i = 0; $i <= $#A; $i++) {
+    my $w = $A[$i];
+
+    # Make partial words optionally detectable
+    if ($w =~ m/^(\S+-)$/ || $w =~ m/^(-\S+)$/) {
+      $A[$i] = "(" . $w . ")";
+    }
+    
+    # Remove filler words
+    if ($w =~ m/<(unk|noise|spnoise|sil)>/) {
+      $A[$i] = "";
+    }
+  }
+    
+  print join(" ", @F[0..5]) . " " . join(" ", @A) . "\n";
+}
