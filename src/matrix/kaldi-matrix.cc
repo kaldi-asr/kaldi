@@ -1471,7 +1471,7 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
   if (binary) {  // Read in binary mode.
     int peekval = Peek(is, binary);
     if (peekval == 'C') {
-      // This code enable us to read CompressedMatrix as a regular matrix.
+      // This code enables us to read CompressedMatrix as a regular matrix.
       CompressedMatrix compressed_mat;
       compressed_mat.Read(is, binary); // at this point, add == false.
       this->Resize(compressed_mat.NumRows(), compressed_mat.NumCols());

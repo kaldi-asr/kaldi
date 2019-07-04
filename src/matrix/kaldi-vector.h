@@ -262,7 +262,7 @@ class VectorBase {
   /// Multiplies all elements by this constant.
   void Scale(Real alpha);
 
-  /// Multiplies this vector by lower-triangular marix:  *this <-- *this *M
+  /// Multiplies this vector by lower-triangular matrix:  *this <-- *this *M
   void MulTp(const TpMatrix<Real> &M, const MatrixTransposeType trans);
 
   /// If trans == kNoTrans, solves M x = b, where b is the value of *this at input
@@ -371,7 +371,7 @@ class VectorBase {
   friend class CuVector<Real>;
  protected:
   /// Destructor;  does not deallocate memory, this is handled by child classes.
-  /// This destructor is protected so this object so this object can only be
+  /// This destructor is protected so this object can only be
   /// deleted via a child.
   ~VectorBase() {}
 

@@ -67,7 +67,7 @@ typedef std::vector<std::string> KeyList;
 //  t means text mode.
 //  b means binary mode.
 //  f means flush the stream after writing each entry.
-//   (nf means don't flush, and isn't very useful as the default is to flush).
+//   (nf means don't flush, and the default is not to flush).
 //  p means permissive mode, when writing to an "scp" file only: will ignore
 //     missing scp entries, i.e. won't write anything for those files but will
 //     return success status).
@@ -79,7 +79,7 @@ typedef std::vector<std::string> KeyList;
 //  ark,b:-
 //
 //  The meanings of rxfilename and wxfilename are as described in
-//  kaldi-stream.h (they are filenames but include pipes, stdin/stdout
+//  kaldi-io.h (they are filenames but include pipes, stdin/stdout
 //  and so on; filename is a regular filename.
 //
 
@@ -100,7 +100,7 @@ typedef std::vector<std::string> KeyList;
 //    key filename:12407
 //  where the number is the byte offset into the file.
 //  In this case we restrict the archive-filename to be an actual filename,
-//  as we can't see a situtation where an extended filename would make sense
+//  as we can't see a situation where an extended filename would make sense
 //  for this (we can't fseek() in pipes).
 
 enum WspecifierType  {
@@ -236,7 +236,7 @@ class RandomAccessTableReader {
 
   RandomAccessTableReader(): impl_(NULL) { }
 
-  // This constructor equivalent to default constructor + "open", but
+  // This constructor is equivalent to default constructor + "open", but
   // throws on error.
   explicit RandomAccessTableReader(const std::string &rspecifier);
 
@@ -315,7 +315,7 @@ class SequentialTableReader {
 
   // Return reference to the current value.  It's only valid to call this if
   // Done() returned false.  The reference is valid till next call to this
-  // object.  If will throw if you are reading an scp file, did not specify the
+  // object.  It will throw if you are reading an scp file, did not specify the
   // "permissive" (p) option and the file cannot be read.  [The permissive
   // option makes it behave as if that key does not even exist, if the
   // corresponding file cannot be read.]  You probably wouldn't want to catch

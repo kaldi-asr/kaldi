@@ -158,7 +158,7 @@ inline float RandGauss(struct RandomState* state = NULL) {
 }
 
 // Returns poisson-distributed random number.  Uses Knuth's algorithm.
-// Take care: this takes time proportinal
+// Take care: this takes time proportional
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda, struct RandomState* state = NULL);
 

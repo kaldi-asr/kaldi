@@ -839,7 +839,7 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
   // first frame (called from InitDecoding()).
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
-  // Note-- this queue structure is is not very optimal as
+  // Note-- this queue structure is not very optimal as
   // it may cause us to process states unnecessarily (e.g. more than once),
   // but in the baseline code, turning this vector into a set to fix this
   // problem did not improve overall speed.
