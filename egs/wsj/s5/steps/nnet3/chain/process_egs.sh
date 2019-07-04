@@ -2,7 +2,7 @@
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script takes nnet examples dumped by steps/chaina/get_raw_egs.sh and
+# This script takes nnet examples dumped by steps/chain/get_raw_egs.sh and
 # combines the chunks into groups by speaker (to the extent possible; it may
 # need to combine speakers in some cases), locally randomizes the result, and
 # dumps the resulting egs to disk.  Chunks of these will later be globally
@@ -84,7 +84,7 @@ dir=$2
 # die on error or undefined variable.
 set -e -u
 
-if ! steps/chaina/validate_raw_egs.sh $raw_egs_dir; then
+if ! steps/chain/validate_raw_egs.sh $raw_egs_dir; then
   echo "$0: failed to validate input directory $raw_egs_dir"
   exit 1
 fi
@@ -99,7 +99,7 @@ if [ $stage -le 0 ]; then
   utt2uniq_opt=
   [ -f $raw_egs_dir/misc/utt2uniq ] && utt2uniq_opt="--utt2uniq=$raw_egs_dir/misc/utt2uniq"
 
-  $cmd $dir/log/choose_egs_to_merge.log steps/chaina/internal/choose_egs_to_merge.py \
+  $cmd $dir/log/choose_egs_to_merge.log steps/chain/internal/choose_egs_to_merge.py \
     --chunks-per-group=$chunks_per_group \
     --num-repeats=$num_repeats \
     --num-heldout-groups=$num_heldout_groups \
