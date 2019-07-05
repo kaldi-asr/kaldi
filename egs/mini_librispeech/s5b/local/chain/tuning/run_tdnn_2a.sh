@@ -17,7 +17,7 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=1a_v3   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
@@ -51,17 +51,19 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
-if ! cuda-compiled; then
-  cat <<EOF && exit 1
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
-If you want to use GPUs (and have them), go to src/, and configure and make on a machine
-where "nvcc" is installed.
-EOF
-fi
+# if ! cuda-compiled; then
+#   cat <<EOF && exit 1
+# This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
+# If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+# where "nvcc" is installed.
+# EOF
+# fi
 
-local/chain/data_prep_common.sh --stage $stage \
-                                 --train-set $train_set \
-                                 --gmm $gmm  || exit 1;
+if [ $stage -le 9 ]; then
+    local/chain/data_prep_common.sh  \
+             --train-set $train_set \
+             --gmm $gmm  || exit 1;
+fi
 
 # Problem: We have removed the "train_" prefix of our training set in
 # the alignment directory names! Bad!
@@ -122,7 +124,7 @@ if [ $stage -le 12 ]; then
      echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
   fi
-   steps/nnet3/chain/build_tree.sh \     
+   steps/nnet3/chain/build_tree.sh \
      --frame-subsampling-factor ${frame_subsampling_factor} \
      --context-opts "--context-width=2 --central-position=1" \
      --cmd "$train_cmd" 3500 ${lores_train_data_dir} \
@@ -137,102 +139,46 @@ mkdir -p $dir/configs/
 # $dir/init will contain the initial models
 mkdir -p $dir/init/
 
-l2=0.03
-tdnn_opts="l2-regularize=0.03 dropout-proportion=0.0 dropout-per-dim-continuous=true"
-tdnnf_opts="l2-regularize=0.03 dropout-proportion=0.0 bypass-scale=0.66"
-linear_opts="l2-regularize=0.03 orthonormal-constraint=-1.0"
-prefinal_opts="l2-regularize=0.03"
-output_opts="l2-regularize=0.015"
-num_leaves=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
 learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-if [ $stage -le 13 ]; then
-  echo "$0: creating top neural net using the xconfig parser";
-
-  cat <<EOF > $dir/configs/bottom.xconfig
-  input dim=40 name=input
-  batchnorm-component name=input-batchnorm
-  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=768 input=Append(-1,0,1)
-  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=0
-  # this 'batchnorm-layer' has an affine component but no nonlinearlity
-  linear-component name=linear_bottleneck dim=256 l2-regularize=$l2
-  batchnorm-component name=linear_bottleneck_bn
-  output name=output input=linear_bottleneck_bn
-EOF
-  steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/bottom.xconfig \
-                                   --config-file-out $dir/configs/bottom.config
-  nnet3-init --srand=$srand $dir/configs/bottom.config $dir/init/bottom.raw
-fi
-
 if [ $stage -le 14 ]; then
-  echo "$0: creating adaptation model/transform"
 
-  # note: 'default' corresponds to the language name (we use 'default' since this
-  # is not really a multilingual setup.
-  # Note: the bottleneck dimension of 256 specified in the bottom.nnet must match
-  # with the dimension of this transform (256).
-  cat <<EOF | nnet3-adapt --binary=false init - $tree_dir/tree.map $dir/init/default.ada
-AppendTransform num-transforms=6
-  NoOpTransform dim=64
-  MeanOnlyTransform dim=64
-  FmllrTransform dim=32
-  FmllrTransform dim=32
-  FmllrTransform dim=32
-  FmllrTransform dim=32
+  # Note: we'll use --bottom-subsampling-factor=3, so all time-strides for the
+  # top network should be interpreted at the 30ms frame subsampling rate.
+  num_leaves=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+
+  echo "$0: creating top model"
+  cat <<EOF > $dir/configs/default.xconfig
+  input name=input dim=40
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn0 dim=512
+  relu-renorm-layer name=tdnn1 dim=512 input=Append(-2,-1,0,1,2)
+  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
+  relu-renorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
+  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
+  relu-renorm-layer name=prefinal-chain dim=512 target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_leaves max-change=1.5
+  output-layer name=output-default input=prefinal-chain include-log-softmax=false dim=$num_leaves max-change=1.5
+  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
+  output-layer name=output-xent dim=$num_leaves learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-default-xent input=prefinal-xent dim=$num_leaves learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
-
-  # check the dimensions match
-  transform_dim=$(nnet3-adapt info $dir/init/default.ada | grep '^dim' | awk -F= '/^dim/ { print $2; }')
-  bottom_output_dim=$(nnet3-info $dir/init/bottom.raw | grep 'output-node name=output ' | perl -ane 'm/dim=(\d+)/ && print $1;')
-  if ! [ "$transform_dim" -eq "$bottom_output_dim" ]; then
-    echo "$0: expected dim of transform to equal output-dim of bottom nnet, got '$transform_dim' != '$bottom_output_dim'"
-    exit 1
-  fi
+  steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/default.xconfig \
+                                   --config-file-out $dir/configs/default.config
+  # steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/default.xconfig \
+  #                                  $dir/configs/
+  # nnet3-init --srand=$srand $dir/configs/default.config - | \
+  #    nnet3-am-init $tree_dir/final.mdl - $dir/init/default.mdl
+  copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl 
+  nnet3-init --srand=$srand $dir/configs/default.config - | \
+     nnet3-am-init $tree_dir/final.mdl - $dir/init/default.mdl 
+ #    nnet3-am-copy --edits="rename-node old-name=output new-name=output-default; rename-node old-name=output-xent new-name=output-default-xent;" - $dir/init/default.mdl 
 fi
 
 
 if [ $stage -le 15 ]; then
-
-  # Note: we'll use --bottom-subsampling-factor=3, so all time-strides for the
-  # top network should be interpreted at the 30ms frame subsampling rate.
-
-  echo "$0: creating top model"
-  cat <<EOF > $dir/configs/default.xconfig
-  input name=input dim=256
-  linear-component $linear_opts name=linear_from_input dim=768
-  tdnnf-layer name=tdnnf1 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  linear-component name=prefinal-l dim=192 $linear_opts
-  # adding the output layer for chain branch
-  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
-  output-layer name=output include-log-softmax=false dim=$num_leaves $output_opts
-  # .. and its speaker-independent version
-  prefinal-layer name=prefinal-chain-si input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
-  output-layer name=output-si include-log-softmax=false dim=$num_leaves $output_opts
-  # adding the output layer for xent branch
-  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
-  output-layer name=output-xent dim=$num_leaves learning-rate-factor=$learning_rate_factor $output_opts
-  # .. and its speaker-independent version
-  prefinal-layer name=prefinal-xent-si input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
-  output-layer name=output-si-xent dim=$num_leaves learning-rate-factor=$learning_rate_factor $output_opts
-EOF
-  steps/nnet3/xconfig_to_config.py --xconfig-file $dir/configs/default.xconfig \
-                                   --config-file-out $dir/configs/default.config
-  nnet3-init --srand=$srand $dir/configs/default.config - | \
-     nnet3-am-init $tree_dir/final.mdl - $dir/init/default.mdl
-fi
-
-
-if [ $stage -le 16 ]; then
   # Work out the model's total effective left and right context (in the
   # feature frame-sampling rate).
   # The following script is equivalent to doing something like the
@@ -246,32 +192,30 @@ if [ $stage -le 16 ]; then
   # EOF
   #
   # note: $langs is "default"
-  steps/chaina/get_model_context.sh \
+  steps/chain/get_model_context.sh \
         --frame-subsampling-factor $frame_subsampling_factor \
-        --bottom-subsampling-factor $bottom_subsampling_factor \
        --langs "$langs" $dir/init/ $dir/init/info.txt
 fi
 
-
-if [ $stage -le 17 ]; then
-  # Make phone LM and denominator and normalization FST
+# Make phone LM and denominator and normalization FST
+if [ $stage -le 16 ]; then
+  echo "$0: Making Phone LM and denominator and normalization FST"
   mkdir -p $dir/den_fsts/log
 
   # We may later reorganize this.
   cp $tree_dir/tree $dir/default.tree
 
   echo "$0: creating phone language-model"
-  $cmd $dir/den_fsts/log/make_phone_lm_default.log \
+  $train_cmd $dir/den_fsts/log/make_phone_lm_default.log \
     chain-est-phone-lm --num-extra-lm-states=2000 \
        "ark:gunzip -c $gmm_dir/ali.*.gz | ali-to-phones $gmm_dir/final.mdl ark:- ark:- |" \
        $dir/den_fsts/default.phone_lm.fst
 
   echo "$0: creating denominator FST"
-  $cmd $dir/den_fsts/log/make_den_fst.log \
+  $train_cmd $dir/den_fsts/log/make_den_fst.log \
      chain-make-den-fst $dir/default.tree $dir/init/default.mdl $dir/den_fsts/default.phone_lm.fst \
      $dir/den_fsts/default.den.fst $dir/den_fsts/default.normalization.fst || exit 1;
 fi
-
 
 model_left_context=$(awk '/^model_left_context/ {print $2;}' $dir/init/info.txt)
 model_right_context=$(awk '/^model_right_context/ {print $2;}' $dir/init/info.txt)
@@ -291,52 +235,45 @@ for d in $dir/raw_egs $dir/processed_egs; do
 done
 
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 17 ]; then
   echo "$0: about to dump raw egs."
   # Dump raw egs.
-  steps/chaina/get_raw_egs.sh --cmd "$cmd" \
+  steps/chain/get_raw_egs.sh --cmd "$train_cmd" \
     --lang "default" \
     --left-context $egs_left_context \
     --right-context $egs_right_context \
     --frame-subsampling-factor $frame_subsampling_factor \
     --alignment-subsampling-factor $frame_subsampling_factor \
-    --frames-per-chunk 150 \
+    --frames-per-chunk 140,100,160 \
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
-if [ $stage -le 19 ]; then
+if [ $stage -le 18 ]; then
   echo "$0: about to process egs"
-  steps/chaina/process_egs.sh  --cmd "$cmd" \
+  steps/chain/process_egs.sh  --cmd "$train_cmd" \
     --chunks-per-group ${chunks_per_group} ${dir}/raw_egs ${dir}/processed_egs
 fi
 
-if [ $stage -le 20 ]; then
+if [ $stage -le 19 ]; then
   echo "$0: about to randomize egs"
-  steps/chaina/randomize_egs.sh --frames-per-job 3000000 \
+  steps/chain/randomize_egs.sh --frames-per-job 3000000 \
     ${dir}/processed_egs ${dir}/egs
+  # 3,000,000
+fi
+
+if [ $stage -le 20 ]; then
+  echo "$0: about to train model"
+  steps/chain/train2.sh \
+    --stage $train_stage --cmd "$cuda_cmd" \
+    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
+    --l2-regularize 0.00005 \
+    --max-param-change 2.0 \
+    --num-jobs-initial 2 --num-jobs-final 5 \
+     $dir/egs $dir
+    #--dropout-schedule "$dropout_schedule" \
 fi
 
 if [ $stage -le 21 ]; then
-  echo "$0: about to train model"
-  steps/chaina/train.sh \
-    --stage $train_stage --cmd "$cmd" \
-    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
-    --dropout-schedule "$dropout_schedule" \
-    --num-jobs-initial 2 --num-jobs-final 4 \
-     $dir/egs $dir
-
-fi
-
-
-if [ $stage -le 22 ]; then
-  # Dump the bottom-nnet outputs for this data.
-  test_sets=dev_clean_2
-  for data in $test_sets; do
-    steps/chaina/compute_embeddings.sh data/${data}_hires $dir/final $dir/data/final/${data}
-  done
-fi
-
-if [ $stage -le 23 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
@@ -344,25 +281,23 @@ if [ $stage -le 23 ]; then
     $tree_dir $tree_dir/graph_tgsmall || exit 1;
 fi
 
-if [ $stage -le 24 ]; then
-  # Do the speaker-independent decoding pass
-  test_sets=dev_clean_2
-  for data in $test_sets; do
-    steps/chaina/decode_si.sh --cmd "$cmd" --nj 10 --num-threads 4 \
-        data/${data}_hires $tree_dir/graph_tgsmall\
-        $dir/final $dir/data/final/${data} \
-        $dir/decode_${data}_tgsmall.si
-  done
-fi
-
-if [ $stage -le 25 ]; then
+if [ $stage -le 22 ]; then
   # Do the speaker-dependent decoding pass
   test_sets=dev_clean_2
   for data in $test_sets; do
-    steps/chaina/decode.sh --cmd "$cmd" --num-threads 4 \
-        data/${data}_hires $tree_dir/graph_tgsmall\
-        $dir/final $dir/data/final/${data} \
-        $dir/decode_${data}_tgsmall.si $dir/decode_${data}_tgsmall
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      steps/nnet3/decode.sh \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context $egs_left_context \
+          --extra-right-context $egs_right_context \
+          --frames-per-chunk 150 \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
+          --nj $nspk --cmd "$decode_cmd"   \
+          $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+        data/lang_test_{tgsmall,tglarge} \
+       data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
   done
 fi
 
@@ -381,7 +316,7 @@ exit 0;
   # EOF
   #
   # note: $langs is "default"
-  steps/chaina/get_model_context.sh \
+  steps/chain/get_model_context.sh \
         --frame-subsampling-factor=$frame_subsampling_factor \
         --bottom-subsampling-factor=$bottom_subsampling_factor \
        --langs="$langs" $dir/init/ > $dir/init/info.txt
@@ -459,7 +394,7 @@ fi
 # TDNN systems it would give exactly the same results as the
 # normal decoding.
 
-if $test_online_decoding && [ $stage -le 17 ]; then
+if $test_online_decoding && [ $stage -le 16 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
