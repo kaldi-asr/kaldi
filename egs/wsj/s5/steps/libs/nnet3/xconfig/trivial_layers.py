@@ -80,16 +80,21 @@ class XconfigSpecAugmentComponent(XconfigLayerBase):
       input='[-1]'             [Descriptor giving the input of the layer.]
       max-proportion=0.5       [The maximum proportion of the frequency space that
                                 might be zeroed out]
+      max-regions=1            [The maximum number of regions that might be zeroed
+                                out; the total proportion zeroed out still won't exceed
+                                max-proportion.]
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
         self.config = {'input': '[-1]',
-                       'max-proportion': 0.5 }
+                       'max-proportion': 0.5,
+                       'max-regions': 1}
 
     def check_configs(self):
-        assert self.config['max-proportion'] > 0.0 and self.config['max-proportion'] < 1.0
+        assert (self.config['max-proportion'] > 0.0 and self.config['max-proportion'] < 1.0
+                and self.config['max-regions'] > 0)
 
     def output_name(self, auxiliary_output=None):
         assert auxiliary_output is None
@@ -117,10 +122,13 @@ class XconfigSpecAugmentComponent(XconfigLayerBase):
         input_desc = self.descriptors['input']['final-string']
         input_dim = self.descriptors['input']['dim']
         max_proportion = self.config['max-proportion']
+        max_regions = self.config['max-regions']
 
         configs = []
         line = ('component name={0} type=GeneralDropoutComponent dim={1} specaugment-max-proportion={2}'.format(
             self.name, input_dim, max_proportion))
+        if max_regions > 1:
+            line += ' specaugment-max-regions={0}'.format(max_regions)
         configs.append(line)
         line = ('component-node name={0} component={0} input={1}'.format(
             self.name, input_desc))

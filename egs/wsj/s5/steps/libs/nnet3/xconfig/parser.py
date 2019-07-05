@@ -79,6 +79,7 @@ config_to_layer = {
         'renorm-component': xlayers.XconfigRenormComponent,
         'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'spec-augment-component': xlayers.XconfigSpecAugmentComponent,
+        'spec-augment-layer': xlayers.XconfigSpecAugmentLayer,
         'no-op-component': xlayers.XconfigNoOpComponent,
         'linear-component': xlayers.XconfigLinearComponent,
         'affine-component': xlayers.XconfigAffineComponent,

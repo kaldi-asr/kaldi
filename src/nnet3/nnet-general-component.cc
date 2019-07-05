@@ -1526,7 +1526,8 @@ std::string GeneralDropoutComponent::Info() const {
   if (continuous_)
     stream << ", continuous=true";
   if (specaugment_max_proportion_ != 0)
-    stream << ", specaugment-max-proportion=" << specaugment_max_proportion_;
+    stream << ", specaugment-max-proportion=" << specaugment_max_proportion_
+           << ", specaugment-max-regions=" << specaugment_max_regions_;
   if (time_period_ > 0)
     stream << ", time-period=" << time_period_;
   return stream.str();
@@ -1536,6 +1537,7 @@ GeneralDropoutComponent::GeneralDropoutComponent():
     dim_(-1), block_dim_(-1), time_period_(0),
     dropout_proportion_(0.5),
     specaugment_max_proportion_(0.0),
+    specaugment_max_regions_(1),
     continuous_(false) { }
 
 GeneralDropoutComponent::GeneralDropoutComponent(
@@ -1545,6 +1547,7 @@ GeneralDropoutComponent::GeneralDropoutComponent(
     time_period_(other.time_period_),
     dropout_proportion_(other.dropout_proportion_),
     specaugment_max_proportion_(other.specaugment_max_proportion_),
+    specaugment_max_regions_(other.specaugment_max_regions_),
     continuous_(other.continuous_) { }
 
 void* GeneralDropoutComponent::Propagate(
@@ -1630,10 +1633,17 @@ void GeneralDropoutComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
   if (PeekToken(is, binary) == 'S') {
-    ExpectToken(is, binary, "<SpecaugmentMaxProportion>");
+    ExpectToken(is, binary, "<SpecAugmentMaxProportion>");
     ReadBasicType(is, binary, &specaugment_max_proportion_);
+    if (PeekToken(is, binary) == 'S') {
+      ExpectToken(is, binary, "<SpecAugmentMaxRegions>");
+      ReadBasicType(is, binary, &specaugment_max_regions_);
+    } else {
+      specaugment_max_regions_ = 1;
+    }
   } else {
     specaugment_max_proportion_ = 0.0;
+    specaugment_max_regions_ = 1;
   }
   if (PeekToken(is, binary) == 'T') {
     ExpectToken(is, binary, "<TestMode>");
@@ -1662,8 +1672,12 @@ void GeneralDropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
   if (specaugment_max_proportion_) {
-    WriteToken(os, binary, "<SpecaugmentMaxProportion>");
+    WriteToken(os, binary, "<SpecAugmentMaxProportion>");
     WriteBasicType(os, binary, specaugment_max_proportion_);
+    if (specaugment_max_regions_ != 1) {
+      WriteToken(os, binary, "<SpecAugmentMaxRegions>");
+      WriteBasicType(os, binary, specaugment_max_regions_);
+    }
   }
   if (test_mode_)
     WriteToken(os, binary, "<TestMode>");
@@ -1692,6 +1706,8 @@ void GeneralDropoutComponent::InitFromConfig(ConfigLine *cfl) {
 
   specaugment_max_proportion_ = 0.0;
   cfl->GetValue("specaugment-max-proportion", &specaugment_max_proportion_);
+  specaugment_max_regions_ = 1;
+  cfl->GetValue("specaugment-max-regions", &specaugment_max_regions_);
   continuous_ = false;
   cfl->GetValue("continuous", &continuous_);
   test_mode_ = false;
@@ -1699,10 +1715,12 @@ void GeneralDropoutComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (specaugment_max_proportion_ != 0.0) {
     if (specaugment_max_proportion_ < 0.0 ||
-        specaugment_max_proportion_ > 1.0 || continuous_) {
+        specaugment_max_proportion_ > 1.0 || continuous_ ||
+        specaugment_max_regions_ < 1) {
       KALDI_ERR << "Invalid config values: specaugment-max-proportion = "
                 << specaugment_max_proportion_ << ", continuous = "
-                << std::boolalpha << continuous_;
+                << std::boolalpha << continuous_
+                << ", specaugment-max-regions = " << specaugment_max_regions_;
     }
   }
 }
@@ -1729,9 +1747,29 @@ CuMatrix<BaseFloat>* GeneralDropoutComponent::GetMemo(
       SubVector<BaseFloat> this_mask(mask, seq);  // will be all ones, right now.
       int32 num_bins_zeroed = RandInt(0, specaugment_max_zeroed);
       if (num_bins_zeroed != 0) {
-        int32 start_bin = RandInt(0, num_freq_bins - 1 - num_bins_zeroed);
-        SubVector<BaseFloat> zeroed_region(this_mask, start_bin, num_bins_zeroed);
-        zeroed_region.SetZero();
+        // This is not quite the same as the paper, it is allowed to "wrap around"
+        // from the top to the bottom of the frequency spectrum.
+        int32 start_bin = RandInt(0, num_freq_bins - 1);
+        for (int32 i = start_bin; i < start_bin + num_bins_zeroed; i++)
+          this_mask(i % num_freq_bins) = 0.0;
+
+        // if specaugment_max_regions_ is not 1 (e.g. if it's 2 or 3), we want
+        // to (possibly) split up the zeroed region into more segments.
+        // The way we do this is a bit odd, but it was hard to think of
+        // an elegant way to do it.  We just choose a random half of the spectrum
+        // (viewing it as a circle, so choosing a random half of the circle)
+        // and swap around that half, i.e. flip it on its head.
+        for (int32 n = 1; n < specaugment_max_regions_; n++) {
+          int32 half_bin_size = num_freq_bins / 2,
+              quarter_bin_size = half_bin_size / 2,
+              start_bin = RandInt(0, num_freq_bins - 1),
+              end_bin = start_bin + half_bin_size;
+          for (int32 i = 0; i < quarter_bin_size; i++) {
+            BaseFloat &a = this_mask((start_bin + i) % num_freq_bins),
+                &b = this_mask((end_bin - i) % num_freq_bins);
+            std::swap(a, b);
+          }
+        }
       }
     }
     ans->CopyFromMat(mask);
@@ -1837,6 +1875,243 @@ void GeneralDropoutComponentPrecomputedIndexes::Read(std::istream &is,
   ExpectToken(is, binary,
               "</GeneralDropoutComponentPrecomputedIndexes>");
 }
+
+std::string SpecAugmentTimeMaskComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type()
+         << ", dim=" << dim_
+         << ", zeroed-proportion=" << zeroed_proportion_
+         << ", time-mask-max-frames=" << time_mask_max_frames_;
+  return stream.str();
+}
+
+SpecAugmentTimeMaskComponent::SpecAugmentTimeMaskComponent():
+    dim_(-1), zeroed_proportion_(0.25),
+    time_mask_max_frames_(10) { }
+
+SpecAugmentTimeMaskComponent::SpecAugmentTimeMaskComponent(
+    const SpecAugmentTimeMaskComponent &other):
+    dim_(other.dim_),
+    zeroed_proportion_(other.zeroed_proportion_),
+    time_mask_max_frames_(other.time_mask_max_frames_) { }
+
+void* SpecAugmentTimeMaskComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+
+  KALDI_ASSERT(SameDim(in, *out));
+
+  // The following will do nothing if 'out' and 'in' refer to the same data.
+  out->CopyFromMat(in);
+
+  if (test_mode_ ||
+      zeroed_proportion_ == 0.0)
+    return NULL;
+
+  const SpecAugmentTimeMaskComponentPrecomputedIndexes *indexes =
+    dynamic_cast<const SpecAugmentTimeMaskComponentPrecomputedIndexes*>(indexes_in);
+  KALDI_ASSERT(indexes != NULL);
+
+  CuVector<BaseFloat> *mask = GetMemo(*indexes);
+  out->MulRowsVec(*mask);
+  return mask;
+}
+
+void SpecAugmentTimeMaskComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
+    Component *to_update,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(in_deriv != NULL && SameDim(*in_deriv, out_deriv));
+
+  // The following will do no work if in_deriv->Data() == out_deriv.Data().
+  in_deriv->CopyFromMat(out_deriv);
+
+  if (test_mode_ || zeroed_proportion_ == 0.0) {
+    KALDI_ASSERT(memo == NULL);
+    return;
+  }
+
+  const SpecAugmentTimeMaskComponentPrecomputedIndexes *indexes =
+    dynamic_cast<const SpecAugmentTimeMaskComponentPrecomputedIndexes*>(indexes_in);
+  KALDI_ASSERT(indexes != NULL && memo != NULL);
+  CuVector<BaseFloat> *mask = reinterpret_cast<CuVector<BaseFloat>*>(memo);
+
+  in_deriv->MulRowsVec(*mask);
+}
+
+void SpecAugmentTimeMaskComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<SpecAugmentTimeMaskComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<ZeroedProportion>");
+  ReadBasicType(is, binary, &zeroed_proportion_);
+  ExpectToken(is, binary, "<TimeMaskMaxFrames>");
+  ReadBasicType(is, binary, &time_mask_max_frames_);
+  if (PeekToken(is, binary) == 'T') {
+    ExpectToken(is, binary, "<TestMode>");
+    test_mode_ = true;
+  } else {
+    test_mode_ = false;
+  }
+  ExpectToken(is, binary, "</SpecAugmentTimeMaskComponent>");
+}
+
+
+void SpecAugmentTimeMaskComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SpecAugmentTimeMaskComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<ZeroedProportion>");
+  WriteBasicType(os, binary, zeroed_proportion_);
+  WriteToken(os, binary, "<TimeMaskMaxFrames>");
+  WriteBasicType(os, binary, time_mask_max_frames_);
+  if (test_mode_)
+    WriteToken(os, binary, "<TestMode>");
+  WriteToken(os, binary, "</SpecAugmentTimeMaskComponent>");
+}
+
+Component* SpecAugmentTimeMaskComponent::Copy() const {
+  return new SpecAugmentTimeMaskComponent(*this);
+}
+
+void SpecAugmentTimeMaskComponent::InitFromConfig(ConfigLine *cfl) {
+  dim_ = 0;
+  bool ok = cfl->GetValue("dim", &dim_);
+  KALDI_ASSERT(ok && dim_ > 0);
+  zeroed_proportion_ = 0.25;
+  cfl->GetValue("zeroed-proportion", &zeroed_proportion_);
+  time_mask_max_frames_ = 10;
+  cfl->GetValue("time-mask-max-frames", &time_mask_max_frames_);
+  KALDI_ASSERT(time_mask_max_frames_ > 1);
+}
+
+
+CuVector<BaseFloat>* SpecAugmentTimeMaskComponent::GetMemo(
+    const SpecAugmentTimeMaskComponentPrecomputedIndexes &indexes_in) const {
+
+  const std::vector<std::vector<int32> > &indexes = indexes_in.indexes;
+  int32 num_sequences = indexes.size();
+  BaseFloat z = zeroed_proportion_;
+  int32 time_mask_max_frames = time_mask_max_frames_,
+      non_time_mask_max_frames = time_mask_max_frames * (1-z) / z;
+  KALDI_ASSERT(time_mask_max_frames > 0 &&
+               non_time_mask_max_frames > 0);
+  Vector<BaseFloat> mask(indexes_in.tot_size, kUndefined);
+
+  for (int32 s = 0; s < num_sequences; s++) {
+    // this_row_indexes gives us, for a particular sequence, the ordered list of
+    // row-indexes where we can find the successive 't' values of this sequence.
+    const std::vector<int32> this_row_indexes = indexes[s];
+    int32 seq_length = this_row_indexes.size();
+    KALDI_ASSERT(seq_length > 0);
+
+    int32 t = 0;
+    while (t < seq_length) {
+      // add a non-zeroed, then a zeroed, segment, repeatedly until we have
+      // filled the sequence.  The first time we choose randomly whether to add
+      // a zeroed or a non-zeroed segment.
+      if (t > 0 || WithProb(z)) {
+        int32 nonzeroed_length = RandInt(1, non_time_mask_max_frames);
+        for (; t < seq_length && nonzeroed_length > 0; t++, nonzeroed_length--)
+          mask(this_row_indexes[t]) = 1.0;
+      }
+      int32 zeroed_length = RandInt(1, time_mask_max_frames);
+      for (; t < seq_length && zeroed_length > 0; t++, zeroed_length--)
+        mask(this_row_indexes[t]) = 0.0;
+    }
+  }
+  return new CuVector<BaseFloat>(mask);
+}
+
+ComponentPrecomputedIndexes* SpecAugmentTimeMaskComponent::PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const {
+  KALDI_ASSERT(input_indexes == output_indexes);
+
+  SpecAugmentTimeMaskComponentPrecomputedIndexes *ans = new
+      SpecAugmentTimeMaskComponentPrecomputedIndexes;
+  int32 size = input_indexes.size();
+  KALDI_ASSERT(size != 0);
+  // 'sort_indexes' will contain the n and t values and then
+  // the index into input_indexes.  When we sort these, it will
+  // sort first on the n value and then on the t, which will allow us
+  // to create ans->indexes.
+  std::vector<std::tuple<int32, int32, int32> > sort_indexes(size);
+
+  std::unordered_set<int32> all_n_values;  // just for determining how many
+                                           // there are.
+  for (int32 i = 0; i < size; i++) {
+    int32 n = input_indexes[i].n;
+    all_n_values.insert(n);
+    std::get<0>(sort_indexes[i]) = n;
+    std::get<1>(sort_indexes[i]) = input_indexes[i].t;
+    std::get<2>(sort_indexes[i]) = i;
+  }
+  std::sort(sort_indexes.begin(), sort_indexes.end());
+
+  // the stuff with n_idx is because we don't assume the
+  // n values start from zero and are consecutive.
+  int32 num_n_values = all_n_values.size(),
+      n_idx = 0,
+      cur_n_value = std::get<0>(sort_indexes[0]);
+  ans->indexes.resize(num_n_values);
+  for (int32 i = 0; i < size; i++) {
+    std::tuple<int32, int32, int32> &tp(sort_indexes[i]);
+    int32 n = std::get<0>(tp),
+        row_index = std::get<2>(tp);
+    KALDI_ASSERT(n >= cur_n_value);
+    if (n > cur_n_value) {
+      n_idx++;
+      KALDI_ASSERT(n_idx < num_n_values);
+      cur_n_value = n;
+    }
+    ans->indexes[n_idx].push_back(row_index);
+  }
+  n_idx++;
+  KALDI_ASSERT(n_idx == num_n_values);
+  ans->tot_size = size;
+  return ans;
+}
+
+void SpecAugmentTimeMaskComponentPrecomputedIndexes::Write(std::ostream &os,
+    bool binary) const {
+  WriteToken(os, binary,
+             "<SpecAugmentTimeMaskComponentPrecomputedIndexes>");
+  WriteToken(os, binary, "<Indexes>");
+  int32 size = indexes.size();
+  WriteBasicType(os, binary, size);
+  for (int32 i = 0; i < size; i++) {
+    WriteIntegerVector(os, binary, indexes[i]);
+  }
+  WriteToken(os, binary,
+             "</SpecAugmentTimeMaskComponentPrecomputedIndexes>");
+}
+
+void SpecAugmentTimeMaskComponentPrecomputedIndexes::Read(std::istream &is,
+    bool binary) {
+  ExpectOneOrTwoTokens(is, binary,
+                       "<SpecAugmentTimeMaskComponentPrecomputedIndexes>",
+                       "<Indexes>");
+  int32 size;
+  ReadBasicType(is, binary, &size);
+  indexes.clear();
+  indexes.resize(size);
+  for (int32 i = 0; i < size; i++)
+    ReadIntegerVector(is, binary, &(indexes[i]));
+  ExpectToken(is, binary,
+              "</SpecAugmentTimeMaskComponentPrecomputedIndexes>");
+  tot_size = 0;
+  for (auto v : indexes) tot_size += v.size();
+}
+
+
 
 
 } // namespace nnet3

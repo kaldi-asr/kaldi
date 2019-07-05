@@ -1262,6 +1262,84 @@ class XconfigExistingLayer(XconfigLayerBase):
         return ans
 
 
+class XconfigSpecAugmentLayer(XconfigLayerBase):
+    """This class is for parsing lines like
+     'spec-augment-layer name=spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=10'
+
+    which will produce a component of type GeneralDropoutComponent (to do the
+    frequency-domain part) and then one of type SpecaugmentTimeMaskComponent (to
+    do the time part).
+
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer.]
+      freq-max-proportion=0.5  [The maximum proportion of the frequency space that
+                                might be zeroed out]
+      time-zeroed-proportion=0.2  [The proportion of time frames that will be zeroed
+                                  out]
+      time-mask-max-frames=10   [The maximum length of a zeroed region in the time
+                                axis, in frames.]
+    """
+    def __init__(self, first_token, key_to_value, prev_names=None):
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input': '[-1]',
+                       'freq-max-proportion': 0.5,
+                       'time-zeroed-proportion': 0.2,
+                       'time-mask-max-frames': 10}
+
+
+    def check_configs(self):
+        assert (self.config['freq-max-proportion'] > 0.0 and self.config['freq-max-proportion'] < 1.0
+                and self.config['time-zeroed-proportion'] > 0.0 and self.config['time-zeroed-proportion'] < 1.0
+                and self.config['time-mask-max-frames'] >= 1)
+
+
+    def output_name(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return '{0}.time-mask'.format(self.name)
+
+    def output_dim(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        input_dim = self.descriptors['input']['dim']
+        return input_dim
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    def _generate_config(self):
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        freq_max_proportion = self.config['freq-max-proportion']
+        time_zeroed_proportion = self.config['time-zeroed-proportion']
+        time_mask_max_frames = self.config['time-mask-max-frames']
+
+        configs = []
+        line = ('component name={0}.freq-mask type=GeneralDropoutComponent dim={1} specaugment-max-proportion={2}'.format(
+            self.name, input_dim, freq_max_proportion))
+        configs.append(line)
+        line = ('component-node name={0}.freq-mask component={0}.freq-mask input={1}'.format(
+            self.name, input_desc))
+        configs.append(line)
+        line = ('component name={0}.time-mask type=SpecAugmentTimeMaskComponent dim={1} '
+                'zeroed-proportion={2} time-mask-max-frames={3}'.format(
+                    self.name, input_dim, time_zeroed_proportion, time_mask_max_frames))
+        configs.append(line)
+        line = ('component-node name={0}.time-mask component={0}.time-mask input={0}.freq-mask'.format(
+            self.name))
+        configs.append(line)
+        return configs
+
 
 def test_layers():
     # for some config lines that should be printed the same way as they
