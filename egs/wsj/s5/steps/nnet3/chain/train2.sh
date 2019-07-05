@@ -5,6 +5,8 @@
 
 # Begin configuration section
 stage=0
+cmd=run.pl
+gpu_cmd_opt=
 leaky_hmm_coefficient=0.1
 xent_regularize=0.1
 apply_deriv_weights=false   # you might want to set this to true in unsupervised training
@@ -18,10 +20,7 @@ max_param_change=1.0    # we use a smaller than normal default (it's normally
                         # 2.0), because there are two models (bottom and top).
 use_gpu=yes   # can be "yes", "no", "optional", "wait"
 
-common_opts=           # Options passed through to nnet3-chaina-train and nnet3-chaina-combine
-
-top_unadapted_weight=0.5
-bottom_unadapted_weight=0.5
+common_opts=           # Options passed through to nnet3-chain-train and nnet3-chain-combine
 
 num_epochs=4.0   #  Note: each epoch may actually contain multiple repetitions of
                  #  the data, for various reasons:
@@ -46,7 +45,7 @@ shuffle_buffer_size=1000  # This "buffer_size" variable controls randomization o
                           # on each iter.
 
 
-
+l2_regularize=
 
 # End configuration section
 
@@ -60,7 +59,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 2 ]; then
   echo "Usage: $0  [options] <egs-dir>  <model-dir>"
-  echo " e.g.: $0 exp/chaina/tdnn1a_sp/egs  exp/chaina/tdnn1a_sp"
+  echo " e.g.: $0 exp/chain/tdnn1a_sp/egs  exp/chain/tdnn1a_sp"
   echo ""
   echo " TODO: more documentation"
   exit 1
@@ -71,9 +70,9 @@ dir=$2
 
 set -e -u  # die on failed command or undefined variable
 
-steps/chaina/validate_randomized_egs.sh $egs_dir
+steps/chain/validate_randomized_egs.sh $egs_dir
 
-for f in $dir/init/info.txt $dir/init/bottom.raw; do
+for f in $dir/init/info.txt; do
   if [ ! -f $f ]; then
     echo "$0: expected file $f to exist"
     exit 1
@@ -82,13 +81,6 @@ done
 
 
 frame_subsampling_factor=$(awk '/^frame_subsampling_factor/ {print $2}' <$dir/init/info.txt)
-bottom_subsampling_factor=$(awk '/^bottom_subsampling_factor/ {print $2}' <$dir/init/info.txt)
-
-if ! [ $[frame_subsampling_factor%bottom_subsampling_factor] == 0 ]; then
-  echo "$0: bad subsampling factors in $dir/init/info.txt"
-  exit 1
-fi
-
 num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$egs_dir/info.txt)
 
 steps/chain/internal/get_train_schedule.py \
@@ -119,14 +111,17 @@ langs=$(awk '/^langs/ { $1=""; print; }' <$dir/init/info.txt)
 mkdir -p $dir/log
 
 # Copy models with initial learning rate and dropout options from $dir/init to $dir/0
-mkdir -p $dir/0
-run.pl $dir/log/init_bottom_model.log \
-  nnet3-copy --learning-rate=$lrate $dropout_opt $dir/init/bottom.raw $dir/0/bottom.raw
-for lang in $langs; do
-  run.pl $dir/log/init_model_$lang.log \
-      nnet3-am-copy --learning-rate=$lrate $dropout_opt $dir/init/$lang.mdl $dir/0/$lang.mdl
-done
+#for lang in $langs; do
+  run.pl $dir/log/init_model_default.log \
+      nnet3-am-copy  --learning-rate=$lrate $dropout_opt $dir/init/default.mdl $dir/0.mdl
+        # nnet3-am-copy "--edits=rename-node old-name=output new-name=output-default; rename-node old-name=output-xent new-name=output-default-xent;"  - $dir/0.mdl
+#done
 
+
+l2_regularize_opt=""
+if [ ! -z $l2_regularize ]; then
+    l2_regularize_opt="--l2-regularize=$l2_regularize"
+fi
 
 x=0
 if [ $stage -gt $x ]; then x=$stage; fi
@@ -140,14 +135,10 @@ while [ $x -lt $num_iters ]; do
   echo "$0: training, iteration $x, num-jobs is $num_jobs"
 
   next_x=$[$x+1]
-  model_in_dir=$dir/$x
-  if [ ! -f $model_in_dir/bottom.raw ]; then
-    echo "$0: expected $model_in_dir/bottom.raw to exist"
-    exit 1
-  fi
+  model_in_dir=$dir/${x}.mdl
   den_fst_dir=$egs_dir/misc
   transform_dir=$dir/init
-  model_out_dir=$dir/${next_x}
+  model_out_dir=$dir/${next_x}.mdl
 
 
   # for the first 4 iterations, plus every $diagnostic_period iterations, launch
@@ -155,81 +146,65 @@ while [ $x -lt $num_iters ]; do
   # the batchnorm stats wouldn't be ready
   if [ $x -gt 0 ] && [ $[x%diagnostic_period] -eq 0 -o $x -lt 5 ]; then
 
-    [ -f $dir/$x/.error_diagnostic ] && rm $dir/$x/.error_diagnostic
+    [ -f $dir/.error_diagnostic ] && rm $dir/.error_diagnostic
     for name in train heldout; do
       $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.$x.log \
-         nnet3-chaina-train --use-gpu=$use_gpu \
-            --bottom.train=false --bottom.dropout-test-mode=true \
-            --top.train=false --top.dropout-test-mode=true \
+         nnet3-chain-train2 --use-gpu=$use_gpu \
             --leaky-hmm-coefficient=$leaky_hmm_coefficient \
-            --bottom-subsampling-factor=$bottom_subsampling_factor \
             --xent-regularize=$xent_regularize \
+            $l2_regularize_opt \
             --print-interval=10  \
-           $model_in_dir $den_fst_dir $transform_dir \
+           $model_in_dir $den_fst_dir \
            "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/${name}_subset.scp ark:-|" \
-      || touch $dir/$x/.error_diagnostic &
+           $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic &
     done
   fi
 
-  if [ -d $dir/$next_x ]; then
-    echo "$0: removing previous contents of $dir/$next_x"
-    rm -r $dir/$next_x
-  fi
-  mkdir -p $dir/$next_x
+  # if [ -d $dir/$next_x ]; then
+  #   echo "$0: removing previous contents of $dir/$next_x"
+  #   rm -r $dir/$next_x
+  # fi
+  # mkdir -p $dir/$next_x
 
   for j in $(seq $num_jobs); do
     scp_index=${scp_indexes[$j]}
     frame_shift=${frame_shifts[$j]}
 
+    # not implemented yet
     $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
-         nnet3-chaina-train --job-id=$j --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
+         nnet3-chain-train2 --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
          --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
-         --bottom-subsampling-factor=$bottom_subsampling_factor \
-         --top.unadapted-weight=$top_unadapted_weight --bottom.unadapted-weight=$bottom_unadapted_weight \
          --print-interval=10 --max-param-change=$max_param_change \
-         --l2-regularize-factor=$inv_num_jobs --optimization.memory-compression-level=$memory_compression_level \
-         $model_in_dir $den_fst_dir $transform_dir \
+         --l2-regularize-factor=$inv_num_jobs \
+         $l2_regularize_opt \
+         $model_in_dir $den_fst_dir  \
          "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
-         $model_out_dir || touch $dir/$next_x/.error &
+         $model_out_dir || touch $dir/.error &
   done
   wait
-  if [ -f $dir/$next_x/.error ]; then
+  if [ -f $dir/.error ]; then
     echo "$0: error detected training on iteration $x"
     exit 1
   fi
-  # First average the bottom models
-  models=$(for j in $(seq $num_jobs); do echo $dir/$next_x/bottom.$j.raw; done)
-  run.pl $dir/log/average.$x.log \
-      nnet3-average $models - \| \
-      nnet3-copy --learning-rate=$lrate $dropout_opt - $dir/$next_x/bottom.raw
-  rm $models
-  for lang in $langs; do
-    models=$dir/$next_x/$lang.*.raw
-    run.pl $dir/log/average_${lang}.$x.log \
-           nnet3-average $models - \| \
-           nnet3-am-copy --set-raw-nnet=- --learning-rate=$lrate $dropout_opt $dir/$iter/$lang.mdl $dir/$next_x/$lang.mdl
-    rm $models
-  done
-  wait
   [ -f $dir/$x/.error_diagnostic ] && echo "$0: error getting diagnostics on iter $x" && exit 1;
-
-  $cmd $dir/log/progress_bottom.$x.log \
-     nnet3-show-progress $dir/$x/bottom.raw $dir/$next_x/bottom.raw '&&' \
-     nnet3-info $dir/$next_x/bottom.raw || touch $dir/$next_x/.error &
-  for lang in $langs; do
-    $cmd $dir/log/progress_${lang}.$x.log \
-      nnet3-show-progress $dir/$x/$lang.mdl $dir/$next_x/$lang.mdl '&&' \
-      nnet3-am-info $dir/$next_x/$lang.mdl || touch $dir/$next_x/.error &
+  for name in train heldout; do
+      if [ -f $dir/${next_x}_${name}.mdl ]; then
+          rm $dir/${next_x}_${name}.mdl
+      fi
   done
-  [ -f $dir/$next_x/.error ] && echo "$0: error getting progress logs" && exit 1;
 
   # TODO: cleanup
   x=$[x+1]
 done
 
 
+
 if [ $stage -le $num_iters ]; then
   echo "$0: doing model combination"
+  nnet3-copy  --edits="rename-node old-name=output new-name=output-dummy; rename-node old-name=output-default new-name=output" \
+      $dir/$num_iters.mdl $dir/final.raw
+  nnet3-am-init $dir/0.mdl $dir/final.raw $dir/final.mdl
+  exit 0
   if [ -d $dir/final ]; then
     echo "$0: removing previous contents of $dir/final"
     rm -r $dir/final
@@ -243,55 +218,12 @@ if [ $stage -le $num_iters ]; then
   transform_dir=$dir/init
 
    $cmd $gpu_cmd_opt $dir/log/combine.log \
-      nnet3-chaina-combine --use-gpu=$use_gpu \
+      nnet3-chain-combine --use-gpu=$use_gpu \
         --leaky-hmm-coefficient=$leaky_hmm_coefficient \
-        --bottom-subsampling-factor=$bottom_subsampling_factor \
         --print-interval=10  \
         $input_model_dirs $den_fst_dir $transform_dir \
-        "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/train_subset.scp ark:-|" \
-        $dir/final
-fi
-
-
-if [ $stage -le $[num_iters+1] ]; then
-  # Now accumulate the class-dependent mean (and variance) stats of the
-  # adaptation model, which will be needed for decoding.  We remove the map that
-  # had reduced the num-classes from several thousand to (e.g.) 200, because we
-  # are now estimating the means on a larger set of data and we're not concerned
-  # about noisy estimates.
-  mkdir -p $dir/transforms_unmapped
-  # Note: the plan was to add the option --remove-pdf-map=true to the 'copy'
-  # command below (to use the full number of pdf-ids as classes in test time),
-  # but it seemed to degrade the objective function, based on diagnostics.
-  # We'll look into this later.
-  for lang in $langs; do
-    run.pl $dir/log/copy_transform_${lang}.log \
-        nnet3-adapt copy $dir/init/${lang}.ada $dir/transforms_unmapped/${lang}.ada
-  done
-  den_fst_dir=$egs_dir/misc
-  transform_dir=$dir/init
-
-  num_jobs=$num_scp_files
-  [ $num_jobs -gt 4 ] && num_jobs=4   # there are so few params to estimate that
-                                      # more than 4 jobs would be a waste.
-
-  $cmd $gpu_cmd_opt JOB=1:$num_jobs $dir/log/acc_target_model.JOB.log \
-    nnet3-chaina-train --job-id=JOB --use-gpu=$use_gpu \
-      --bottom-subsampling-factor=$bottom_subsampling_factor \
-      --print-interval=10 \
-      --bottom.train=false --bottom.dropout-test-mode=true --bottom.batchnorm-test-mode=true \
-      --top.train=false --top.dropout-test-mode=true --top.batchnorm-test-mode=true \
-      --adaptation-model-accumulate=true \
-         $dir/final $den_fst_dir $dir/transforms_unmapped \
-        "ark:nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size scp:$egs_dir/train.JOB.scp ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
-        $dir/final
-
-  for lang in $langs; do
-    stats=$dir/final/${lang}.*.ada
-    run.pl $dir/log/estimate_target_model_${lang}.log \
-           nnet3-adapt estimate $stats $dir/final/${lang}.ada
-    rm $stats
-  done
+        "ark:nnet3-chain-merge-egs  scp:$egs_dir/train_subset.scp ark:-|" \
+        $dir/final.mdl
 fi
 
 if [ $stage -le $[num_iters+2] ]; then
@@ -302,11 +234,7 @@ if [ $stage -le $[num_iters+2] ]; then
   for name in train heldout; do
     den_fst_dir=$egs_dir/misc
     $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.final.log \
-         nnet3-chaina-train --use-gpu=$use_gpu \
-         --bottom-subsampling-factor=$bottom_subsampling_factor \
-         --bottom.train=false --bottom.dropout-test-mode=true \
-         --top.train=false --top.dropout-test-mode=true \
-         --adaptation-test-mode=true \
+         nnet3-chain-train --use-gpu=$use_gpu \
          --leaky-hmm-coefficient=$leaky_hmm_coefficient \
          --xent-regularize=$xent_regularize \
          --print-interval=10  \
