@@ -2,7 +2,7 @@
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script takes nnet examples dumped by steps/chaina/process_egs.sh,
+# This script takes nnet examples dumped by steps/chain/process_egs.sh,
 # globally randomizes the egs, and divides into multiple .scp files.  This is
 # the form of egs which is consumed by the training script.  All this is done
 # only by manipulating the contents of .scp files.  To keep locality of disk
@@ -49,7 +49,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 2 ]; then
   echo "Usage: $0 [opts] <processed-egs-dir> <randomized-egs-dir>"
-  echo " e.g.: $0 --frames-per-job 2000000 exp/chaina/tdnn1a_sp/processed_egs exp/chaina/tdnn1a_sp/egs"
+  echo " e.g.: $0 --frames-per-job 2000000 exp/chain/tdnn1a_sp/processed_egs exp/chain/tdnn1a_sp/egs"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options (alternative to this"
@@ -65,7 +65,7 @@ if [ $# != 2 ]; then
   echo "                                                   # randomization and splitting."
   echo "  --num-groups-combine <n;1000>                    # The number of randomly chosen groups to"
   echo "                                                   # put in the subset in 'combine.scp' which will"
-  echo "                                                   # be used in nnet3-chaina-combine to decide which"
+  echo "                                                   # be used in nnet3-chain-combine to decide which"
   echo "                                                   # models to average over."
   echo "  --stage <stage|0>                                # Used to run this script from somewhere in"
   echo "                                                   # the middle."
@@ -79,7 +79,7 @@ dir=$2
 # die on error or undefined variable.
 set -e -u
 
-if ! steps/chaina/validate_processed_egs.sh $processed_egs_dir; then
+if ! steps/chain/validate_processed_egs.sh $processed_egs_dir; then
   echo "$0: could not validate input directory $processed_egs_dir"
   exit 1
 fi
@@ -167,11 +167,11 @@ lang=$(awk '/^lang / { print $2; }' <$processed_egs_dir/info.txt)
 # and when we allow multiple input processed egs dirs for the same language.
 
 grep -v -E '^dir_type|^lang|^feat_dim' <$processed_egs_dir/info.txt | \
-  cat <(echo "dir_type randomized_chaina_egs") - > $dir/info_$lang.txt
+  cat <(echo "dir_type randomized_chain_egs") - > $dir/info_$lang.txt
 
 
 cat <<EOF >$dir/info.txt
-dir_type randomized_chaina_egs
+dir_type randomized_chain_egs
 num_scp_files $num_scp_files
 langs $lang
 frames_per_scp_file $frames_per_scp_file
