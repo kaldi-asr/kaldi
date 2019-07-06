@@ -118,10 +118,12 @@ if [ $stage -le 1 ]; then
     # Linearize these lists and add keys to make it an scp format.
     awk '{for (n=1;n<=NF;n++) { count++; print count, $n; }}' <$dir/temp/${name}.list >$dir/temp/${name}.scp
 
-    $cmd $dir/log/merge_${name}_egs.log \
-      nnet3-chain-merge-egs --minibatch-size=$chunks_per_group --compress=$compress \
-           scp:$dir/temp/${name}.scp ark:- \| \
-      nnet3-chain-shuffle-egs --srand=$srand ark:- ark,scp:$dir/${name}.ark,$dir/${name}.scp
+    # $cmd $dir/log/merge_${name}_egs.log \
+    #   nnet3-chain-merge-egs --minibatch-size=$chunks_per_group --compress=$compress \
+    #        scp:$dir/temp/${name}.scp ark:- \| \
+    #   nnet3-chain-shuffle-egs --srand=$srand ark:- ark,scp:$dir/${name}.ark,$dir/${name}.scp
+    $cmd $dir/log/shuffle_${name}_egs.log \
+      nnet3-chain-shuffle-egs --srand=$srand scp:$dir/temp/${name}.scp ark,scp:$dir/${name}.ark,$dir/${name}.scp
   done
 
   # Split up the training list into multiple smaller lists, as it could be long.
@@ -140,11 +142,14 @@ if [ $stage -le 1 ]; then
     utils/create_data_link.pl $(for j in $(seq $nj); do echo $dir/train.$j.ark; done) || true
   fi
 
-  $cmd JOB=1:$nj $dir/log/merge_train_egs.JOB.log \
-     nnet3-chain-merge-egs --compress=$compress --minibatch-size=$chunks_per_group \
-       scp:$dir/temp/train.JOB.scp ark:- \| \
+  # $cmd JOB=1:$nj $dir/log/merge_train_egs.JOB.log \
+  #    nnet3-chain-merge-egs --compress=$compress --minibatch-size=$chunks_per_group \
+  #      scp:$dir/temp/train.JOB.scp ark:- \| \
+  #    nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size \
+  #        --srand=\$[JOB+$srand] ark:- ark,scp:$dir/train.JOB.ark,$dir/train.JOB.scp
+  $cmd JOB=1:$nj $dir/log/shuffle_train_egs.JOB.log \
      nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size \
-         --srand=\$[JOB+$srand] ark:- ark,scp:$dir/train.JOB.ark,$dir/train.JOB.scp
+         --srand=\$[JOB+$srand] scp:$dir/temp/train.JOB.scp ark,scp:$dir/train.JOB.ark,$dir/train.JOB.scp
   # the awk command is to ensure unique ids for each group.
   cat $(for j in $(seq $nj); do echo $dir/train.$j.scp; done) | awk '{printf("%09d %s\n", NR, $2);}' > $dir/train.scp
 fi
@@ -152,7 +157,7 @@ fi
 
 cat $raw_egs_dir/info.txt  | awk  -v num_repeats=$num_repeats \
    -v chunks_per_group=$chunks_per_group '
-  /^dir_type / { print "dir_type processed_chaina_egs"; next; }
+  /^dir_type / { print "dir_type processed_chain_egs"; next; }
   /^num_input_frames / { print "num_input_frames "$2 * num_repeats; next; } # approximate; ignores held-out egs.
   /^num_chunks / { print "num_chunks " $2 * num_repeats; next; }
    {print;}
