@@ -138,9 +138,16 @@ den_fst=$chaindir/den_fsts/${lang}.den.fst
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
 for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
-         $tree $trans_mdl $normalization_fst $den_fst $extra_files; do
+         $tree $normalization_fst $den_fst $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
+if [ ! -f $trans_mdl ]; then
+    trans_mdl=$chaindir/init/${lang}_trans.mdl
+    if [ ! -f $trans_mdl ]; then
+        echo "$0: cannot find transition model in $chaindir/init/${lang}_trans.mdl or $trans_mdl"
+        exit 1
+    fi
+fi
 
 nj=$(cat $latdir/num_jobs) || exit 1
 if [ -f $latdir/per_utt ]; then
@@ -180,7 +187,7 @@ if [ ! -z $lattice_prune_beam ]; then
   fi
 fi
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_chunk --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
+egs_opts="--long-key=true --left-context=$left_context --right-context=$right_context --num-frames=$frames_per_chunk --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
 [ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
 
@@ -219,7 +226,11 @@ else
 fi
 
 feats="scp:$sdata/JOB/feats.scp"
-if [ -f $data/cmvn.scp -a ! -z $cmvn_opts ]; then
+if [ ! -z $cmvn_opts ]; then
+    if [ ! -f $data/cmvn.scp ]; then
+        echo "Cannot find $data/cmvn.scp. But cmvn_opts=$cmvn_opts"
+        exit 1
+    fi
     if [ `echo $cmvn_opts | fgrep -c true` -eq 1 ]; then
         feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
     fi
