@@ -67,7 +67,7 @@ struct LatticeBiglmFasterDecoderCombineConfig {
                                        hash_ratio(2.0),
                                        cost_scale(1.0),
                                        prune_scale(0.1),
-                                       backfill_interval(10),
+                                       backfill_interval(5),
                                        beta_interval(15),
                                        expand_best_interval(10) { }
   void Register(OptionsItf *opts) {
@@ -552,6 +552,7 @@ class LatticeBiglmFasterDecoderCombineTpl {
   inline Token *FindOrAddToken(PairId state, int32 token_list_index,
                                BaseFloat tot_cost, Token *backpointer,
                                PairIdToTokenMap *token_map,
+                               StateIdToTokenMap *best_token_map,
                                bool *changed);
 
   // prunes outgoing links for all tokens in active_toks_[frame]
@@ -800,6 +801,11 @@ class LatticeBiglmFasterDecoderCombineTpl {
   // "best_token_map" are equivalent to best token in each base state. 
   std::vector<StateIdToTokenMap* > best_token_map_;
   std::vector<Token*> best_token_;
+  int32 count_ = 0;
+  int32 count1_ = 0;
+  int32 count2_ = 0;
+  int32 count3_ = 0;
+  int32 count4_ = 0;
 };
 
 typedef LatticeBiglmFasterDecoderCombineTpl<fst::StdFst,
