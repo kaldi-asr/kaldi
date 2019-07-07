@@ -10,35 +10,10 @@ stage=-1
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . utils/parse_options.sh
 
-set -e -o pipefail -u
-##########################################################
-#
-#  Initial notes
-#
-##########################################################
-
-# To this recipe you'll need
-# 1) An installation of Kaldi
-# 2) xmlstarlet 
-#    xml should be in the PATH. Most new linux distros will already have this.
-#    Otherwise, this should be obtained from http://xmlstar.sourceforge.net/ 
-
-
+# See README for instructions.
 # This script assumes that you are already familiar with Kaldi recipes.
-
-
-##########################################################
-#
-#  Actions required from users
-#
-##########################################################
-
-# This script assumes that the data for training (audio, transcripts and LM text) 
-# is already downloaded. 
-# For details, see http://www.mgb-challenge.org/arabic_download.html
-
-# TO DO: You will need to place the lists of training and dev data
-# (train and dev) in local directory.
+# This script assumes that you have downloaded the corpus and lexicon as 
+# mentioned in the README.
 
 # TO DO: you will need to choose the size of training set you want.
 # Here we select according to an upper threshhold on Matching Error
@@ -46,22 +21,11 @@ set -e -o pipefail -u
 # training shows, this will give you training data speech segments of
 # approximate lengths listed below:
 
- 
+
+set -e -o pipefail -u
 #FILTER OUT SEGMENTS BASED ON MER (Match Error Rate)
 
 mer=80  
-
-# TO DO: set the location of downloaded WAV files, XML, LM text and the LEXICON
-
-# Location of downloaded WAV files
-WAV_DIR=/export/a15/vmanoha1/MGB/MGB-2/audio/
-
-# Location of downloaded XML files
-XML_DIR=/export/a15/vmanoha1/MGB/MGB-2/xml_2016_05_29_bw/
-
-# Using the training data transcript for building the language model
-# Location of downloaded LM text
-LM_DIR=/export/a15/vmanoha1/MGB/MGB-2/mgb.arabic.lm.text.14.02.2016
 
 # Location of lexicon
 # Download from https://github.com/qcri/ArabicASRChallenge2016/blob/master/lexicon/ar-ar_grapheme_lexicon
@@ -79,12 +43,14 @@ nDecodeJobs=80
 
 #1) Data preparation
 
-export SRILM LM_DIR
+if [ $stage -le 0 ]; then
+  local/mgb_extract_data.sh DB
+fi
 
 if [ $stage -le 1 ]; then
   #DATA PREPARATION
   echo "Preparing training data"
-  local/mgb_data_prep.sh $WAV_DIR $XML_DIR $mer
+  local/mgb_data_prep.sh DB $mer
 fi
 
 if [ $stage -le 2 ]; then
@@ -93,12 +59,17 @@ if [ $stage -le 2 ]; then
   local/graphgeme_mgb_prep_dict.sh $LEXICON
 fi
 
+# Using the training data transcript for building the language model
+LM_TEXT=DB/train/lm_text/lm_text_clean_bw
+
 if [ $stage -le 3 ]; then
   #LM TRAINING: Using the training set transcript text for language modelling
   echo "Training n-gram language model"
   local/mgb_train_lms.sh $mer
-  local/mgb_train_lms_extra.sh $mer
-  local/mgb_train_lms_extra_pocolm.sh $mer
+  local/mgb_train_lms_extra.sh $LM_TEXT $mer
+
+  # Uncomment if you want to use pocolm for language modeling 
+  #local/mgb_train_lms_extra_pocolm.sh $LM_TEXT $mer
 fi
 
 if [ $stage -le 4 ]; then
@@ -109,16 +80,19 @@ fi
 
 if [ $stage -le 5 ]; then
   #G compilation
-  local/mgb_format_data.sh --lang-test data/lang_test --arpa-lm data/local/lm_mer80/3gram-mincount/lm_unpruned.gz
+  local/mgb_format_data.sh --lang-test data/lang_test \
+    --arpa-lm data/local/lm_mer80/3gram-mincount/lm_unpruned.gz
   utils/build_const_arpa_lm.sh data/local/lm_large_mer80/4gram-mincount/lm_unpruned.gz \
     data/lang_test data/lang_test_fg
 fi
 
-if [ $stage -le 6 ]; then
-  local/mgb_format_data.sh --lang-test data/lang_poco_test --arpa-lm data/local/pocolm/data/arpa/4gram_small.arpa.gz
-  utils/build_const_arpa_lm.sh data/local/pocolm/data/arpa/4gram_big.arpa.gz \
-    data/lang_poco_test data/lang_poco_test_fg
-fi
+# Uncomment if you want to use pocolm for language modeling 
+#if [ $stage -le 6 ]; then
+#  local/mgb_format_data.sh --lang-test data/lang_poco_test \
+#    --arpa-lm data/local/pocolm/data/arpa/4gram_small.arpa.gz
+#  utils/build_const_arpa_lm.sh data/local/pocolm/data/arpa/4gram_big.arpa.gz \
+#    data/lang_poco_test data/lang_poco_test_fg
+#fi
 
 if [ $stage -le 7 ]; then
   #Calculating mfcc features

@@ -3,10 +3,11 @@
 # Copyright (C) 2016, Qatar Computing Research Institute, HBKU
 # To be run from one directory above this script.
 
-mer=$1
+lm_text=$1
+mer=$2
 
-if [ $# -ne 1 ]; then
-  echo "Usage: $0 <mer>"
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <lm-text> <mer>"
   exit 1
 fi
 
@@ -45,9 +46,6 @@ export PATH=$PATH:./../../../tools/kaldi_lm
    echo Done making the kaldi_lm tools
  fi
 ) || exit 1;
-
-[ -z "$LM_DIR" ] && echo "LM_DIR must be defined." && exit 1
-lm_text=$LM_DIR/mgb.arabic.normalized.bukwalter
 
 dir=data/local/lm_large_mer$mer
 mkdir -p $dir

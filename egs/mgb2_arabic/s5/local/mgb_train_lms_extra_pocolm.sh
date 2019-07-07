@@ -16,13 +16,17 @@ set -u
 stage=0
 dir=data/local/pocolm
 cmd=run.pl
-mer=80
 
 echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh || exit 1;
 
-[ -z "$LM_DIR" ] && echo "LM_DIR must be defined." && exit 1
-lm_text=$LM_DIR/mgb.arabic.normalized.bukwalter
+lm_text=$1
+mer=$2
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <lm-text> <mer>"
+  exit 1
+fi
 
 lm_dir=${dir}/data
 

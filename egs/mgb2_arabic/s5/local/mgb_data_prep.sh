@@ -4,23 +4,21 @@
 #               2016-2019  Vimal Manohar
 
 if [ $# -ne 3 ]; then
-  echo "Usage: $0 <wav-dir> <xml-dir> <mer-sel>"
+  echo "Usage: $0 <DB-dir> <mer-sel>"
   exit 1;
 fi
 
-wavDir=$1
-xmldir=$2
-mer=$3
+db_dir=$1
+mer=$2
 
-#wavDir=$WAV_DIR;xmldir=$XML_DIR;mer=80
-trainDir=data/train_mer$mer
-devDir=data/dev
+train_dir=data/train_mer$mer
+dev_dir=data/dev
 
-for x in $trainDir $devDir; do
+for x in $train_dir $dev_dir; do
   mkdir -p $x
   if [ -f ${x}/wav.scp ]; then
     mkdir -p ${x}/.backup
-    mv $x/{wav.scp,feats.scp,utt2spk,spk2utt,segments,text} ${trainDir}/.backup
+    mv $x/{wav.scp,feats.scp,utt2spk,spk2utt,segments,text} ${train_dir}/.backup
   fi
 done
 
@@ -30,65 +28,51 @@ if [ -z $(which xml) ]; then
   exit 1
 fi
 
+find $db_dir/train/wav -type f -name "*.wav" | \
+  awk -F/ '{print $NF}' | perl -pe 's/\.wav//g' > \
+  $train_dir/wav_list
+
 #Creating the train program lists
-cut -d '/' local/train -f2 | head -500 > train.short
+head -500 $train_dir/wav_list > $train_dir/wav_list.short
 
 set -e -o pipefail
 
-cut -d '/' -f2 local/train | while read basename; do     
+xmldir=$db_dir/train/xml/bw
+cat $train_dir/wav_list | while read basename; do
     [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
-    xml sel -t -m '//segments[@annotation_id="transcript_align"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $trainDir $mer
-    echo $basename $wavDir/$basename.wav >> $trainDir/wav.scp
+    xml sel -t -m '//segments[@annotation_id="transcript_align"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $train_dir $mer
+    echo $basename $wavDir/$basename.wav >> $train_dir/wav.scp
 done 
 
-cut -d '/' -f2 local/dev | while read basename; do
-    [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
-    xml sel -t -m '//segments[@annotation_id="transcript_manual"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $devDir
-    echo $basename $wavDir/$basename.wav >> $devDir/wav.scp
+cp $db_dir/dev/{text,segments} $dev_dir
+find $db_dir/dev/wav -type f -name "*.wav" | \
+  awk -F/ '{print $NF}' | perl -pe 's/\.wav//g' > \
+  $dev_dir/wav_list
+
+for x in $(cat $dev_dir/wav_list); do 
+  echo $x $db_dir/dev/wav/$x.wav >> $dev_dir/wav.scp
 done
 
 #Creating a file reco2file_and_channel which is used by convert_ctm.pl in local/score.sh script
-awk '{print $1" "$1" 1"}' $devDir/wav.scp > $devDir/reco2file_and_channel
-
-#stm reference file for scoring
-cut -d '/' -f2 local/dev | while read basename; do
-    [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
-    local/xml2stm.py $xmldir/$basename.xml 
-done > $devDir/stm
-
-if [ ! -s $devDir/stm ]; then
-  echo "$0: Empty $devDir/stm! Something went wrong!"
-  exit 1
-fi
+awk '{print $1" "$1" 1"}' $dev_dir/wav.scp > $dev_dir/reco2file_and_channel
 
 for list in overlap non_overlap; do
-  rm -rf ${devDir}_$list || true
-  cp -r $devDir ${devDir}_$list
+  rm -rf ${dev_dir}_$list || true
+  cp -r $dev_dir ${dev_dir}_$list
   for x in segments text utt2spk; do
-    utils/filter_scp.pl local/${list}_speech.lst $devDir/$x > ${devDir}_$list/$x
+    utils/filter_scp.pl $db_dir/dev/${list}_speech.lst $dev_dir/$x > ${dev_dir}_$list/$x
   done
 done
 
-for dir in $trainDir $devDir ${devDir}_overlap ${devDir}_non_overlap; do
+for dir in $train_dir $dev_dir ${dev_dir}_overlap ${dev_dir}_non_overlap; do
   utils/fix_data_dir.sh $dir
   utils/validate_data_dir.sh --no-feats $dir
 done
 
-for dir in ${devDir} ${devDir}_overlap ${devDir}_non_overlap; do
-  awk '{print $1 " " $1}' $dir/segments > $dir/spk2utt
-  cp $dir/spk2utt $dir/utt2spk
-  perl -e '
- ($f1,$f2)= split /\s+/, $ARGV[0];
- open(FNAME, "$f1");
- while (<FNAME>){chomp $_;@arr=split /\s+/,$_;shift @arr;$scal = "@arr";$hashExist{$scal}=1;}close (FNAME);
- open(FTR, "$f2"); while (<FTR>){$line=$_;s/ 1 UNKNOWN / /;@arr=split /\s+/,$_;if (defined $hashExist{"$arr[0] $arr[1] $arr[2]"}) {print "$line";}}close (FTR);
- ' "$dir/segments $dir/stm" > $dir/stm_
- mv $dir/stm_ $dir/stm
-done
-
-mkdir -p ${trainDir}_subset500
-utils/filter_scp.pl train.short ${trainDir}/wav.scp > ${trainDir}_subset500/wav.scp
-cp ${trainDir}/{utt2spk,segments,spk2utt} ${trainDir}_subset500
-utils/fix_data_dir.sh ${trainDir}_subset500
+mkdir -p ${train_dir}_subset500
+utils/filter_scp.pl $train_dir/wav_list.short ${train_dir}/wav.scp > \
+  ${train_dir}_subset500/wav.scp
+cp ${train_dir}/{utt2spk,segments,spk2utt} ${train_dir}_subset500
+utils/fix_data_dir.sh ${train_dir}_subset500
 
 echo "Training and Test data preparation succeeded"
