@@ -1276,7 +1276,7 @@ class XconfigSpecAugmentLayer(XconfigLayerBase):
                                 might be zeroed out]
       time-zeroed-proportion=0.2  [The proportion of time frames that will be zeroed
                                   out]
-      time-mask-max-frames=10   [The maximum length of a zeroed region in the time
+      time-mask-max-frames=20   [The maximum length of a zeroed region in the time
                                 axis, in frames.]
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
@@ -1286,7 +1286,7 @@ class XconfigSpecAugmentLayer(XconfigLayerBase):
         self.config = {'input': '[-1]',
                        'freq-max-proportion': 0.5,
                        'time-zeroed-proportion': 0.2,
-                       'time-mask-max-frames': 10}
+                       'time-mask-max-frames': 20}
 
 
     def check_configs(self):
