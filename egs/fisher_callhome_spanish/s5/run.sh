@@ -6,6 +6,9 @@
 
 stage=-1
 lmstage=-2
+
+# GIGAWORD RNNLM training based options below.
+# GIGAWORD RAW CORPUS DATA is assumed to be already downloaded in the gigaword_datapath.
 train_rnnlm=false
 start_textcleanup=false # WARNING : IT starts from flattening gigaword corpus to preparing text folder.
                         # If you already have the normalised gigword text somewhere, you can bypass the
@@ -27,7 +30,7 @@ callhome_speech=/export/corpora/LDC/LDC96S35
 callhome_transcripts=/export/corpora/LDC/LDC96T17
 split_callhome=local/splits/split_callhome
 
-gigaword_datapath=/export/c03/svalluri/Spanish_gigaword_rawcorpus/data
+gigaword_datapath=/export/c03/svalluri/Spanish_gigaword_rawcorpus/data # GIGAWORD RAW CORPUS DATA DOWNLOAD PATH
 rnnlm_workdir=workdir_rnnlm_Spanish_gigaword
 mfccdir=`pwd`/mfcc
 
