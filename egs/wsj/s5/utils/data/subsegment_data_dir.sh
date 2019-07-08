@@ -115,6 +115,11 @@ if [ -f $srcdir/reco2file_and_channel ]; then
   cp $srcdir/reco2file_and_channel $dir
 fi
 
+# copy the source reco2dur
+if [ -f $srcdir/reco2dur ]; then
+  cp $srcdir/reco2dur $dir
+fi
+
 if [ -f $srcdir/segments ]; then
   # we have to map the segments file.
   # What's going on below is a little subtle.
