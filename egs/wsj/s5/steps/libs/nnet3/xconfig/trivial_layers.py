@@ -79,13 +79,17 @@ class XconfigBatchnormComponent(XconfigLayerBase):
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer.]
       target-rms=1.0           [The target RMS of the BatchNormComponent]
+      include-in-init=false     [You should set this to true if this precedes a
+                                `fixed-affine-layer` that is to be initialized
+                                 via LDA]
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
         self.config = {'input': '[-1]',
-                       'target-rms': 1.0 }
+                       'target-rms': 1.0,
+                       'include-in-init': False}
 
     def check_configs(self):
         assert self.config['target-rms'] > 0.0
@@ -108,6 +112,8 @@ class XconfigBatchnormComponent(XconfigLayerBase):
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
+            if self.config['include-in-init']:
+                ans.append(('init', line))
         return ans
 
     def _generate_config(self):
