@@ -2,7 +2,7 @@
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script validates a directory containing 'randomized' egs for 'chaina'
+# This script validates a directory containing 'randomized' egs for 'chain'
 # training, i.e. the output of randomize_egs.sh (this is the final form of the
 # egs which is consumed by the training script).  It also helps to document the
 # expectations on such a directory.
@@ -13,7 +13,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 1 ]; then
   echo "Usage: $0  <randomized-egs-dir>"
-  echo " e.g.: $0 exp/chaina/tdnn1a_sp/egs"
+  echo " e.g.: $0 exp/chain/tdnn1a_sp/egs"
   echo ""
   echo "Validates that the final (randomized) egs dir has the expected format"
 fi
@@ -31,7 +31,7 @@ for f in $dir/train.1.scp $dir/info.txt \
 done
 
 
-if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "randomized_chaina_egs" ]; then
+if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "randomized_chain_egs" ]; then
   grep dir_type $dir/info.txt
   echo "$0: dir_type should be randomized_chaina_egs in $dir/info.txt"
   exit 1
