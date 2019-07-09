@@ -165,7 +165,7 @@ class Output {
 
 // bool binary_in;
 // Input ki(some_filename, &binary_in);
-// MyObject.Read(ki, binary_in);
+// MyObject.Read(ki.Stream(), binary_in);
 //
 // ... more extensive example:
 //

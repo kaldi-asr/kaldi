@@ -133,9 +133,9 @@ class MapInputSymbolsMapper {
       ans.ilabel = (*symbol_mapping_)[ans.ilabel];
     return ans;
   }
-  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
-  MapSymbolsAction InputSymbolsAction() { return MAP_CLEAR_SYMBOLS; }
-  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+  MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  MapSymbolsAction InputSymbolsAction() const { return MAP_CLEAR_SYMBOLS; }
+  MapSymbolsAction OutputSymbolsAction() const { return MAP_COPY_SYMBOLS; }
   uint64 Properties(uint64 props) const {  // Not tested.
     bool remove_epsilons = (symbol_mapping_->size() > 0 && (*symbol_mapping_)[0] != 0);
     bool add_epsilons = (symbol_mapping_->size() > 1 &&

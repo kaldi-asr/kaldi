@@ -30,7 +30,7 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
     feature_type = config.feature_type;
   } else {
     KALDI_ERR << "Invalid feature type: " << config.feature_type << ". "
-              << "Supported feature types: mfcc, plp.";
+              << "Supported feature types: mfcc, plp, fbank.";
   }
 
   if (config.mfcc_config != "") {
