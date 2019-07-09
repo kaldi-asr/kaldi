@@ -2,7 +2,7 @@
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script validates a directory containing 'processed' egs for 'chaina'
+# This script validates a directory containing 'processed' egs for 'chain'
 # training, i.e. the output of process_egs.sh.  It also helps to document the
 # expectations on such a directory.
 
@@ -12,7 +12,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 1 ]; then
   echo "Usage: $0  <processed-egs-dir>"
-  echo " e.g.: $0 exp/chaina/tdnn1a_sp/processed_egs"
+  echo " e.g.: $0 exp/chain/tdnn1a_sp/processed_egs"
   echo ""
   echo "Validates that the processed-egs dir has the expected format"
 fi
@@ -31,9 +31,9 @@ for f in $dir/train.scp $dir/info.txt \
 done
 
 
-if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "processed_chaina_egs" ]; then
+if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "processed_chain_egs" ]; then
   grep dir_type $dir/info.txt
-  echo "$0: dir_type should be processed_chaina_egs in $dir/info.txt"
+  echo "$0: dir_type should be processed_chain_egs in $dir/info.txt"
   exit 1
 fi
 
