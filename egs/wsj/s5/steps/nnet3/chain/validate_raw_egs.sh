@@ -2,7 +2,7 @@
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script validates a directory containing 'raw' egs for 'chaina' training.
+# This script validates a directory containing 'raw' egs for 'chain' training.
 # It also helps to document the expectations on such a directory.
 
 
@@ -28,9 +28,9 @@ for f in $dir/all.scp $dir/cegs.1.ark $dir/info.txt \
 done
 
 
-if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "raw_chaina_egs" ]; then
+if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "raw_chain_egs" ]; then
   grep dir_type $dir/info.txt
-  echo "$0: dir_type should be raw_chaina_egs in $dir/info.txt"
+  echo "$0: dir_type should be raw_chain_egs in $dir/info.txt"
   exit 1
 fi
 
