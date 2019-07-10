@@ -64,6 +64,8 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
       KALDI_WARN << "--online-pitch-config option has no effect "
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
+  // These are setting for CMVN normalization of features and not for use in 
+  //  ivector extraction
   if (config.cmvn_config != "") {
     use_cmvn = true;
     std::cout << "Reading cmvn config opts from " << config.cmvn_config << std::endl;
