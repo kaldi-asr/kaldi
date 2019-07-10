@@ -1032,6 +1032,64 @@ bool ConvertPhnxToProns(const std::vector<int32> &phnx,
 }
 
 
+
+
+void AddTransitionProbs(const Transitions &trans_model,
+                        const std::vector<int32> &disambig_syms,  // may be empty
+                        fst::VectorFst<fst::StdArc> *fst) {
+  using namespace fst;
+  KALDI_ASSERT(IsSortedAndUniq(disambig_syms));
+  int num_tids = trans_model.NumTransitionIds();
+  for (StateIterator<VectorFst<StdArc> > siter(*fst);
+      !siter.Done();
+      siter.Next()) {
+    for (MutableArcIterator<VectorFst<StdArc> > aiter(fst, siter.Value());
+         !aiter.Done();
+         aiter.Next()) {
+      StdArc arc = aiter.Value();
+      StdArc::Label l = arc.ilabel;
+      if (l >= 1 && l <= num_tids) {  // a transition-id.
+        BaseFloat cost = trans_model.InfoForTransitionId(l).transition_cost;
+        arc.weight = Times(arc.weight, TropicalWeight(cost));
+      } else if (l != 0) {
+        if (!std::binary_search(disambig_syms.begin(), disambig_syms.end(),
+                               arc.ilabel))
+          KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
+                    << " on graph input side.";
+      }
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+void AddTransitionProbs(const Transitions &trans_model,
+                        Lattice *lat) {
+  using namespace fst;
+  int num_tids = trans_model.NumTransitionIds();
+  for (fst::StateIterator<Lattice> siter(*lat);
+       !siter.Done();
+       siter.Next()) {
+    for (MutableArcIterator<Lattice> aiter(lat, siter.Value());
+         !aiter.Done();
+         aiter.Next()) {
+      LatticeArc arc = aiter.Value();
+      LatticeArc::Label l = arc.ilabel;
+      if (l >= 1 && l <= num_tids) {  // a transition-id.
+        BaseFloat cost = trans_model.InfoForTransitionId(l).transition_cost;
+        arc.weight.SetValue1(arc.weight.Value1() + cost);
+      } else if (l != 0) {
+        KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
+                  << " on lattice input side.";
+      }
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+
+
+
+
 void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
                                 const Transitions &trans_model,
                                 const std::vector<int32> &phone_window,

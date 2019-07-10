@@ -180,6 +180,30 @@ void AddSelfLoops(const Transitions &trans_model,
                   bool use_weights,
                   fst::VectorFst<fst::StdArc> *fst);
 
+/**
+  * Adds transition-prob to the graph.
+  * Useful if you want to create a graph without transition probs, then possibly
+  * train the model (including the transition probs) but keep the graph fixed,
+  * and add back in the transition probs.  It assumes the fst has transition-ids
+  * on it.  It is not an error if the FST has no states (nothing will be done).
+  * @param trans_model [in] The transition model
+  * @param disambig_syms [in] A list of disambiguation symbols, required if the
+  *                       graph has disambiguation symbols on its input but only
+  *                       used for checks.
+  * @param  fst [in, out] The FST to be modified.
+  */
+void AddTransitionProbs(const Transitions &trans_model,
+                        const std::vector<int32> &disambig_syms,
+                        fst::VectorFst<fst::StdArc> *fst);
+
+/**
+   This is as AddSelfLoops(), but operates on a Lattice, where
+   it affects the graph part of the weight (the first element
+   of the pair). */
+void AddTransitionProbs(const Transitions &trans_model,
+                        Lattice *lat);
+
+
 
 /// Returns a transducer from pdfs plus one (input) to  transition-ids (output).
 /// Currently of use only for testing.
