@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "id.\n"
         "Usage: feat-to-dim [options] <feat-rspecifier> (<dim-wspecifier>|<dim-wxfilename>)\n"
         "e.g.: feat-to-dim scp:feats.scp -\n";
-    
+
     ParseOptions po(usage);
 
     po.Read(argc, argv);
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     std::string wspecifier_or_wxfilename = po.GetArg(2);
 
     SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-      
+
     if (ClassifyWspecifier(wspecifier_or_wxfilename, NULL, NULL, NULL)
         != kNoWspecifier) {
       Int32Writer dim_writer(wspecifier_or_wxfilename);
@@ -57,7 +57,10 @@ int main(int argc, char *argv[]) {
       if (kaldi_reader.Done())
         KALDI_ERR << "Could not read any features (empty archive?)";
       Output ko(wspecifier_or_wxfilename, false); // text mode.
-      ko.Stream() << kaldi_reader.Value().NumCols() << "\n";
+      for (; !kaldi_reader.Done(); kaldi_reader.Next()) {
+        ko.Stream() << kaldi_reader.Key() << " "
+                    << kaldi_reader.Value().NumCols() << "\n";
+      }
     }
     return 0;
   } catch(const std::exception &e) {
