@@ -48,19 +48,12 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
 
-    BaseFloat transition_scale = 1.0;
-    BaseFloat self_loop_scale = 1.0;  // Caution: the script default is 0.1.
     int32 nonterm_phones_offset = -1;
     std::string disambig_rxfilename;
 
 
     po.Register("read-disambig-syms", &disambig_rxfilename, "File containing "
                 "list of disambiguation symbols in phone symbol table");
-    po.Register("transition-scale", &transition_scale, "Scale of transition "
-                "probabilities (excluding self-loops).");
-    po.Register("self-loop-scale", &self_loop_scale, "Scale of self-loop vs. "
-                "non-self-loop probability mass.  Caution: the default of "
-                "mkgraph.sh is 0.1, but this defaults to 1.0.");
     po.Register("nonterm-phones-offset", &nonterm_phones_offset, "Integer "
                 "value of symbol #nonterm_bos in phones.txt, if present. "
                 "(Only relevant for grammar decoding).");
@@ -141,7 +134,6 @@ int main(int argc, char *argv[]) {
     lg_fst.DeleteStates();
 
     HTransducerConfig h_cfg;
-    h_cfg.transition_scale = transition_scale;
     h_cfg.nonterm_phones_offset = nonterm_phones_offset;
     std::vector<int32> disambig_syms_h; // disambiguation symbols on
                                         // input side of H.
@@ -169,11 +161,12 @@ int main(int argc, char *argv[]) {
     MinimizeEncoded(&hclg_fst);
 
     std::vector<int32> disambig;
-    bool currently_self_loop_free = true;
+    bool currently_self_loop_free = true,
+        use_weights = true;
     AddSelfLoops(trans_model,
                  disambig,
-                 self_loop_scale,
                  currently_self_loop_free,
+                 use_weights,
                  &hclg_fst);
 
     if (nonterm_phones_offset >= 0)

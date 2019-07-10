@@ -1,6 +1,5 @@
 
 all:
-	-rm -f arpa2fst
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
@@ -34,10 +33,6 @@ ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../lm/kaldi-lm.a \
           ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
           ../cblasext/kaldi-cblasext.a ../base/kaldi-base.a
 
+TESTFILES =
 
-#LDLIBS += $(CUDA_LDLIBS)
-
-
-# # TESTFILES =
-
-# # include ../makefiles/default_rules.mk
+include ../makefiles/default_rules.mk

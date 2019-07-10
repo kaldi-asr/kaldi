@@ -334,11 +334,11 @@ void Topology::ComputeDerived() {
     const fst::StdVectorFst &entry = entries_[i];
     std::vector<float> &correction_factors(
         self_loop_correction_factors_[i]);
-    std::vector<int32> &pdf_classes(
+    std::vector<int32> &self_loop_pdf_classes(
         self_loop_pdf_classes_[i]);
     StateId num_states = entry.NumStates();
     correction_factors.resize(num_states);
-    pdf_classes.resize(num_states, -1);
+    self_loop_pdf_classes.resize(num_states, -1);
     for (StateId s = 0; s < num_states; s++) {
       float tot_prob = exp(-entry.Final(s).Value()),
           self_loop_prob = 0.0;
@@ -349,9 +349,9 @@ void Topology::ComputeDerived() {
         tot_prob += this_prob;
         if (arc.nextstate == s) {
           self_loop_prob += this_prob;
-          KALDI_ASSERT(pdf_classes[s] == -1 &&
+          KALDI_ASSERT(self_loop_pdf_classes[s] == -1 &&
                        "State in topology has more than one self-loop");
-          pdf_classes[s] = arc.ilabel;
+          self_loop_pdf_classes[s] = arc.ilabel;
         }
       }
       KALDI_ASSERT(tot_prob > 0 && "Invalid topology");

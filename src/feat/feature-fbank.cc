@@ -78,7 +78,7 @@ void FbankComputer::Compute(BaseFloat vtln_warp,
                feature->Dim() == this->Dim());
 
 
-  BaseFloat signal_log_energy;
+  BaseFloat signal_log_energy = 0.0;
   if (opts_.use_energy)
     signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
                                                 opts_.energy_floor));

@@ -134,29 +134,30 @@ bin fstbin gmmbin fgmmbin featbin cudafeatbin nnet3bin chainbin latbin ivectorbi
 
 #2)The libraries have inter-dependencies
 base: base/.depend.mk
-matrix: base
-util: base cudamatrix matrix
-feat: base cudamatrix matrix util gmm transform tree
-tree: base util matrix
-gmm: base util matrix tree
-transform: base util matrix gmm tree
-fstext: base util matrix tree
-hmm: base tree matrix util
-lm: base util matrix fstext
-decoder: base util matrix gmm hmm tree transform lat
-lat: base util hmm tree matrix
-cudamatrix: base util matrix
-nnet3: base util matrix decoder lat gmm hmm tree transform cudamatrix chain fstext
-rnnlm: base util matrix cudamatrix nnet3 lm hmm
-chain: lat hmm tree fstext matrix cudamatrix util base
-ivector: base util matrix transform tree gmm
+cblasext: base
+matrix: base cblasext
+util: base matrix cblasext
+feat: base cudamatrix matrix cblasext util gmm transform tree
+tree: base util matrix cblasext
+gmm: base util matrix cblasext tree
+transform: base util matrix cblasext gmm tree
+fstext: base util matrix cblasext tree
+hmm: base tree matrix cblasext util
+lm: base util matrix cblasext fstext
+decoder: base util matrix cblasext gmm hmm tree transform lat fstext
+lat: base util hmm tree matrix cblasext
+cudamatrix: base util matrix cblasext
+nnet3: base util matrix cblasext decoder lat gmm hmm tree transform cudamatrix chain fstext
+rnnlm: base util matrix cblasext cudamatrix nnet3 lm hmm
+chain: lat hmm tree fstext matrix cblasext cudamatrix util base
+ivector: base util matrix cblasext transform tree gmm
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base cudamatrix matrix util feat tree gmm transform fstext hmm lm decoder lat cudamatrix online
-# python-kaldi-decoding: base cudamatrix matrix util feat tree gmm transform fstext hmm decoder lat online
-cudafeat: base cudamatrix matrix util gmm transform tree feat cudamatrix online2
-cudafeatbin: base cudamatrix matrix util gmm transform tree feat cudamatrix cudafeat online2
-online: decoder gmm transform feat matrix util base lat hmm tree
-online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet3 chain
-kws: base util hmm tree matrix lat
+onlinebin: base cudamatrix matrix cblasext util feat tree gmm transform fstext hmm lm decoder lat cudamatrix online
+# python-kaldi-decoding: base cudamatrix matrix cblasext util feat tree gmm transform fstext hmm decoder lat online
+cudafeat: base cudamatrix matrix cblasext util gmm transform tree feat cudamatrix online2
+cudafeatbin: base cudamatrix matrix cblasext util gmm transform tree feat cudamatrix cudafeat online2
+online: decoder gmm transform feat matrix cblasext util base lat hmm tree
+online2: decoder gmm transform feat matrix cblasext util base lat hmm tree ivector cudamatrix nnet3 chain
+kws: base util hmm tree matrix cblasext lat
 cudadecoder:  cudamatrix cudafeat online2 nnet3 ivector feat fstext lat chain transform
 cudadecoderbin: cudadecoder cudafeat cudamatrix online2 nnet3 ivector feat fstext lat chain transform

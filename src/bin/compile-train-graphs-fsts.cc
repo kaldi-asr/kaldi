@@ -52,9 +52,6 @@ int main(int argc, char *argv[]) {
 
     TrainingGraphCompilerOptions gopts;
     int32 batch_size = 250;
-    gopts.transition_scale = 0.0;  // Change the default to 0.0 since we will generally add the
-    // transition probs in the alignment phase (since they change each time)
-    gopts.self_loop_scale = 0.0;  // Ditto for self-loop probs.
     std::string disambig_rxfilename;
     gopts.Register(&po);
 
@@ -63,7 +60,7 @@ int main(int argc, char *argv[]) {
                 "more memory.  E.g. 500");
     po.Register("read-disambig-syms", &disambig_rxfilename, "File containing "
                 "list of disambiguation symbols in phone symbol table");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 5) {
@@ -103,7 +100,7 @@ int main(int argc, char *argv[]) {
 
     SequentialTableReader<fst::VectorFstHolder> fst_reader(fsts_rspecifier);
     TableWriter<fst::VectorFstHolder> fst_writer(fsts_wspecifier);
-    
+
     int num_succeed = 0, num_fail = 0;
 
     if (batch_size == 1) {  // We treat batch_size of 1 as a special case in order

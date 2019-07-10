@@ -1,6 +1,7 @@
 // gmmbin/gmm-est.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2019  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -85,12 +86,10 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary_read);
     }
 
-    Vector<double> transition_accs;
     AccumAmDiagGmm gmm_accs;
     {
       bool binary;
       Input ki(stats_filename, &binary);
-      transition_accs.Read(ki.Stream(), binary);
       gmm_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
@@ -133,12 +132,10 @@ int main(int argc, char *argv[]) {
       am_gmm.Write(ko.Stream(), binary_write);
     }
 
-    KALDI_LOG << "Written model to " << model_out_filename;
+    KALDI_LOG << "Wrote model to " << model_out_filename;
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
-
-

@@ -50,16 +50,12 @@ int main(int argc, char *argv[]) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
       kaldi::Input ki(stats_in_filename, &binary_read);
-      transition_accs.Read(ki.Stream(), binary_read, true /*add read values*/);
       gmm_accs.Read(ki.Stream(), binary_read, true /*add read values*/);
     }
 
     // Write out the accs
-    {
-      kaldi::Output ko(stats_out_filename, binary);
-      transition_accs.Write(ko.Stream(), binary);
-      gmm_accs.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(gmm_accs, stats_out_filename, binary);
+
     KALDI_LOG << "Summed " << num_accs << " stats, total count "
               << gmm_accs.TotCount() << ", avg like/frame "
               << (gmm_accs.TotLogLike() / gmm_accs.TotCount());
@@ -70,5 +66,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
