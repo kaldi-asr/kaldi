@@ -10,7 +10,7 @@ nj=4
 cmd=run.pl
 stage=0
 # Begin configuration.
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 beam=10
 retry_beam=40
 nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
@@ -19,7 +19,7 @@ text= # (optional) transcipts we align to,
 
 align_to_lats=false # optionally produce alignment in lattice format
  lats_decode_opts="--acoustic-scale=0.1 --beam=20 --lattice_beam=10"
- lats_graph_scales="--transition-scale=1.0 --self-loop-scale=0.1"
+ lats_graph_scales=""
 
 use_gpu="no" # yes|no|optionaly
 # End configuration options.

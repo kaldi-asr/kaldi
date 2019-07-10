@@ -127,7 +127,7 @@ fi
 if [ $stage -le 7 ]; then
   echo "$0: $(date) stage 7: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
-    --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
+     \
     data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
@@ -152,7 +152,7 @@ if [ $stage -le 10 ] && $decode_e2e; then
   echo "$0: $(date) stage 10: decoding end2end setup..."
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 $lang_decode \
+    $lang_decode \
     exp/chain/e2e_cnn_1a/ exp/chain/e2e_cnn_1a/graph || exit 1;
 
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
@@ -170,7 +170,7 @@ if [ $stage -le 11 ] && $decode_chain; then
   echo "$0: $(date) stage 11: decoding chain alignment setup..."
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 $lang_decode \
+    $lang_decode \
     exp/chain/cnn_e2eali_1a/ exp/chain/cnn_e2eali_1a/graph || exit 1;
 
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)

@@ -16,7 +16,6 @@ stage=0
 nj=4
 cmd=run.pl
 # Begin configuration.
-scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
 acoustic_scale=0.1
 beam=10
 retry_beam=40
@@ -112,18 +111,18 @@ if [ $stage -le 0 ]; then
   echo "$0: compiling training graphs"
   tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
-    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $scale_opts $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 
 
 if [ $stage -le 1 ]; then
-  # Note: we need to set --transition-scale=0.0 --self-loop-scale=0.0 because,
+  # Note: we need to set   because,
   # as explained above, we compiled the transition probs into the training
   # graphs.
   echo "$0: aligning data in $data using $alimdl and speaker-independent features."
   $cmd JOB=1:$nj $dir/log/align_pass1.JOB.log \
-    gmm-align-compiled --transition-scale=0.0 --self-loop-scale=0.0 --acoustic-scale=$acoustic_scale \
+    gmm-align-compiled   --acoustic-scale=$acoustic_scale \
         --beam=$beam --retry-beam=$retry_beam "$alimdl_cmd" \
     "ark:gunzip -c $dir/fsts.JOB.gz|" "$sifeats" "ark:|gzip -c >$dir/pre_ali.JOB.gz" || exit 1;
 fi

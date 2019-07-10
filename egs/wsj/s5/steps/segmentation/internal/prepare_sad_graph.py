@@ -41,13 +41,6 @@ def get_args():
         duration constraint.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("--transition-scale", type=float, default=1.0,
-                        help="""Scale on transition probabilities relative to
-                        LM weights""")
-    parser.add_argument("--loopscale", type=float, default=0.1,
-                        help="""Scale on self-loop log-probabilities relative
-                        to LM weights""")
-
     parser.add_argument("--min-silence-duration", type=float, default=0.03,
                         help="""Minimum duration for silence""")
     parser.add_argument("--min-speech-duration", type=float, default=0.3,

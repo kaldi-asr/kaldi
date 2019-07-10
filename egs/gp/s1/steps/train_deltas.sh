@@ -125,7 +125,7 @@ if [ ! -f $alidir/final.mdl ]; then
   exit 1;
 fi
 
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 realign_iters="10 20 30";
 oov_sym=`cat $lang/oov.txt`
 silphonelist=`cat $lang/silphones.csl`

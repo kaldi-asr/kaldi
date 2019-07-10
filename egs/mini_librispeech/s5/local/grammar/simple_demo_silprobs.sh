@@ -65,7 +65,7 @@ if [ $stage -le 2 ]; then
 2  0.69314718055994
 3
 EOF
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar1
+  utils/mkgraph.sh $lang $tree_dir $tree_dir/grammar1
 
   # test that the binary 'compile-graph' does the same thing as mkgraph.sh.
   compile-graph --read-disambig-syms=$lang/phones/disambig.int $tree_dir/tree $tree_dir/1.mdl $lang/L_disambig.fst $lang/G.fst $tree_dir/grammar1/HCLG2.fst
@@ -94,7 +94,7 @@ if [ $stage -le 3 ]; then
 2  0.69314718055994
 3
 EOF
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar2a
+  utils/mkgraph.sh $lang $tree_dir $tree_dir/grammar2a
 
   # test that the binary 'compile-graph' does the same thing as mkgraph.sh.
   offset=$(grep nonterm_bos $lang/phones.txt | awk '{print $2}') # 364
@@ -121,7 +121,7 @@ if [ $stage -le 4 ]; then
 2    3    #nonterm_end <eps>
 3
 EOF
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar2b
+  utils/mkgraph.sh $lang $tree_dir $tree_dir/grammar2b
 
 
   # test that the binary 'compile-graph' does the same thing as mkgraph.sh.

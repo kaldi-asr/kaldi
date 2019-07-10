@@ -15,8 +15,6 @@ stage=0
 cmd=run.pl
 N=3  # change N and P for non-trigram systems.
 P=1
-tscale=1.0 # transition scale.
-loopscale=0.1 # scale for self-loops.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -117,7 +115,7 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: creating Ha.fst"
   make-h-transducer --disambig-syms-out=$dir/phone_graph/disambig_tid.int \
-    --transition-scale=$tscale $dir/phone_graph/ilabels_${N}_${P} $dir/tree $dir/final.mdl \
+    $dir/phone_graph/ilabels_${N}_${P} $dir/tree $dir/final.mdl \
        > $dir/phone_graph/Ha.fst
 fi
 
@@ -131,13 +129,9 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  add-self-loops --self-loop-scale=$loopscale --reorder=true \
-    $dir/final.mdl < $dir/phone_graph/HCLGa.fst > $dir/phone_graph/HCLG.fst || exit 1;
+  add-self-loops $dir/final.mdl < $dir/phone_graph/HCLGa.fst > $dir/phone_graph/HCLG.fst || exit 1;
 
-  if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
-    # No point doing this test if transition-scale not 1, as it is bound to fail.
-    fstisstochastic $dir/phone_graph/HCLG.fst || echo "[info]: final HCLG is not stochastic."
-  fi
+  fstisstochastic $dir/phone_graph/HCLG.fst || echo "[info]: final HCLG is not stochastic."
 
   # $lang/phones.txt is the symbol table that corresponds to the output
   # symbols on the graph; decoding scripts expect it as words.txt.

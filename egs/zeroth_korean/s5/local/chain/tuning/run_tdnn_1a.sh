@@ -252,7 +252,7 @@ if [ $stage -le 13 ]; then
   utils/lang/check_phones_compatible.sh \
     data/lang_test_tgsmall/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgsmall \
+    data/lang_test_tgsmall \
     $tree_dir $tree_dir/graph_tgsmall || exit 1;
 fi
 

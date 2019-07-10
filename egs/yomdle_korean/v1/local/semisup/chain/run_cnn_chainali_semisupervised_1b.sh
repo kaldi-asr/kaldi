@@ -99,7 +99,7 @@ for f in data/$supervised_set/feats.scp \
 done
 
 if [ ! -f $graphdir/HCLG.fst ]; then
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_decode $sup_chain_dir $graphdir
+  utils/mkgraph.sh $lang_decode $sup_chain_dir $graphdir
 fi
 
 # Decode unsupervised data and write lattices in non-compact
@@ -310,7 +310,7 @@ if [ $stage -le 17 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_decode $dir $dir/graph
+  utils/mkgraph.sh $lang_decode $dir $dir/graph
 fi
 
 if [ $stage -le 18 ]; then

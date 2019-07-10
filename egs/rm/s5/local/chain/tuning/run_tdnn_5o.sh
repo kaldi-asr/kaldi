@@ -166,7 +166,7 @@ if [ $stage -le 10 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang $dir $dir/graph
+  utils/mkgraph.sh data/lang $dir $dir/graph
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" \
@@ -175,7 +175,7 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_ug $dir $dir/graph_ug
+  utils/mkgraph.sh data/lang_ug $dir $dir/graph_ug
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \

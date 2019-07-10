@@ -147,7 +147,7 @@ if [ $stage -le 4 ]; then
     --generate-ali-from-lats true \
     --acoustic-scale 1.0 --extra-left-context-initial 0 --extra-right-context-final 0 \
     --frames-per-chunk 150 \
-    --scale-opts "--transition-scale=1.0 --self-loop-scale=1.0" \
+    --scale-opts "" \
     data/train_hires $lang_src_tgt $src_mdl_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -219,7 +219,7 @@ if [ $stage -le 8 ]; then
   tes_ivec_opt=""
   if $use_ivector;then test_ivec_opt="--online-ivector-dir exp/nnet2${nnet_affix}/ivectors_test" ; fi
 
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_src_tgt $dir $dir/graph
+  utils/mkgraph.sh $lang_src_tgt $dir $dir/graph
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" $test_ivec_opt \

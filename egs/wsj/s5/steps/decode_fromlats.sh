@@ -22,7 +22,7 @@ beam=20.0
 lattice_beam=7.0
 acwt=0.083333
 batch_size=75 # Limits memory blowup in compile-train-graphs-fsts
-scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
+scale_opts=""
 skip_scoring=false
 # End configuration.
 

@@ -321,7 +321,7 @@ if [ $stage -le 17 ]; then
   utils/lang/check_phones_compatible.sh \
     data/lang_test_tgpr_5k/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgpr_5k \
+    data/lang_test_tgpr_5k \
     $tree_dir $tree_dir/graph_tgpr_5k || exit 1;
 fi
 

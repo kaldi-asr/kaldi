@@ -130,7 +130,7 @@ if [ $stage -le 18 ]; then
   chunk_right_context=0
   
   utils/mkgraph.sh \
-      --self-loop-scale 1.0 data/lang${lm_suffix}/ \
+      data/lang${lm_suffix}/ \
       $tree_dir $tree_dir/graph${lm_suffix} || exit 1;
 
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)

@@ -20,7 +20,7 @@ type=mono             # Can be either mono or biphone -- either way
                       # the resulting tree is full (i.e. it doesn't do any tying)
 ci_silence=false      # If true, silence phones will be treated as context independent
 
-scale_opts="--transition-scale=0.0 --self-loop-scale=0.0"
+scale_opts=" "
 tie=false             # If true, gmm-init-biphone will do some tying when
                       # creating the full biphone tree (it won't be full anymore).
                       # Specifically, it will revert to monophone if the data

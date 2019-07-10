@@ -13,7 +13,7 @@
 nj=4
 cmd=run.pl
 # Begin configuration.
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 beam=10
 retry_beam=40
 iter=final
@@ -104,10 +104,10 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
   cp $srcdir/frame_subsampling_factor $dir
   if [ "$frame_subsampling_factor" -gt 1 ] && \
-     [ "$scale_opts" == "--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1" ]; then
+     [ "$scale_opts" == "--acoustic-scale=0.1" ]; then
     echo "$0: frame-subsampling-factor is not 1 (so likely a chain system),"
     echo "...  but the scale opts are the defaults.  You probably want"
-    echo "--scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0'"
+    echo "--scale-opts '--acoustic-scale=1.0 '"
     sleep 1
   fi
 fi

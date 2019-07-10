@@ -116,7 +116,7 @@ if [ $stage -le 1 ]; then
          # have some stragglers.
   steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
     --online-ivector-dir $online_ivector_dir \
-    --scale-opts "--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0" \
+    --scale-opts "--acoustic-scale=1.0 " \
     --nj $nj $train_data_dir $lang $srcdir ${srcdir}_ali${affix} ;
 fi
 
@@ -130,7 +130,7 @@ if [ -z "$lats_dir" ]; then
     subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
     # total slots = 80 * 6 = 480.
     steps/nnet3/make_denlats.sh --cmd "$decode_cmd" \
-      --self-loop-scale 1.0 --acwt 1.0 --determinize true \
+      --acwt 1.0 --determinize true \
       --online-ivector-dir $online_ivector_dir \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
       $train_data_dir $lang $srcdir ${lats_dir} ;

@@ -213,7 +213,7 @@ fi
 
 if [ $stage -le 14 ]; then
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_csj_tg $dir $dir/graph_csj_tg
+    data/lang_csj_tg $dir $dir/graph_csj_tg
 
   for decode_set in $test_sets; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --nj 10 \

@@ -111,10 +111,6 @@ cp $srcdir/frame_subsampling_factor $dir 2>/dev/null || true
 
 if [ -f $srcdir/frame_subsampling_factor ]; then
   echo "$0: guessing that this is a chain system, checking parameters."
-  if [ -z $scale_opts ]; then
-    echo "$0: setting scale_opts"
-    scale_opts="--self-loop-scale=1.0 --transition-scale=1.0"
-  fi
   if [ $acwt == 0.1 ]; then
     echo "$0: setting acwt=1.0"
     acwt=1.0

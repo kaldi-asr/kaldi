@@ -19,7 +19,7 @@
 # all the language-model, pronunciation dictionary (lexicon), context-dependency,
 # and HMM structure in our model.  The output is a Finite State Transducer
 # that has word-ids on the output, and pdf-ids on the input (these are indexes
-# that resolve to Gaussian Mixture Models).  
+# that resolve to Gaussian Mixture Models).
 # See
 #  http://kaldi-asr.org/doc/graph_recipe_test.html
 # (this is compiled from this repository using Doxygen,
@@ -30,7 +30,7 @@ N=3
 P=1
 clean=false
 
-for x in 1 2 3; do 
+for x in 1 2 3; do
   if [ $1 == "--mono" ]; then
     N=1;
     P=0;
@@ -59,9 +59,6 @@ dir=$3
 if $clean; then rm -r $lang/tmp; fi
 
 mkdir -p $dir
-
-tscale=1.0
-loopscale=0.1
 
 # If $lang/tmp/LG.fst does not exist or is older than its sources, make it...
 # (note: the [[ ]] brackets make the || type operators work (inside [ ], we
@@ -101,7 +98,7 @@ fi
 if [[ ! -f $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
   make-h-transducer --disambig-syms-out=$dir/disambig_tid.list \
-    --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+    $lang/tmp/ilabels_${N}_${P} $tree $model \
      > $dir/Ha.fst  || exit 1;
 fi
 
@@ -114,13 +111,10 @@ if [[ ! -f $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
 fi
 
 if [[ ! -f $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
-  add-self-loops --self-loop-scale=$loopscale --reorder=true \
+  add-self-loops \
     $model < $dir/HCLGa.fst > $dir/HCLG.fst || exit 1;
 
-  if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
-    # No point doing this test if transition-scale not 1, as it is bound to fail. 
-    fstisstochastic $dir/HCLG.fst || echo "Final HCLG is not stochastic."
-  fi
+  fstisstochastic $dir/HCLG.fst || echo "Final HCLG is not stochastic."
 fi
 
 # keep a copy of the lexicon and a list of silence phones with HCLG...

@@ -4,8 +4,6 @@
 # Apache 2.0
 
 # Begin configuration section.
-tscale=1.0      # transition scale.
-loopscale=0.1   # scale for self-loops.
 cleanup=true
 ngram_order=1
 srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
@@ -34,8 +32,6 @@ if [ $# -ne 4 ]; then
   echo "Options:"
   echo "    --ngram-order           # order of n-gram language model"
   echo "    --srilm-options         # options for ngram-count in SRILM tool"
-  echo "    --tscale                # transition scale"
-  echo "    --loopscale             # scale for self-loops"
   echo "    --cleanup               # if true, removes the intermediate files"
   exit 1;
 fi
@@ -134,7 +130,7 @@ cat $text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   fstisstochastic $wdir/CLG.fst  || echo "$0: $uttid/CLG.fst not stochastic."
 
   make-h-transducer --disambig-syms-out=$wdir/disambig_tid.int \
-    --transition-scale=$tscale $wdir/ilabels_${N}_${P} \
+    $wdir/ilabels_${N}_${P} \
     $model_dir/tree $model_dir/final.mdl > $wdir/Ha.fst
 
   # Builds HCLGa.fst
@@ -145,13 +141,10 @@ cat $text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   fstisstochastic $wdir/HCLGa.fst ||\
     echo "$0: $uttid/HCLGa.fst is not stochastic"
 
-  add-self-loops --self-loop-scale=$loopscale --reorder=true \
-    $model_dir/final.mdl < $wdir/HCLGa.fst > $wdir/HCLG.fst
+  add-self-loops $model_dir/final.mdl < $wdir/HCLGa.fst > $wdir/HCLG.fst
 
-  if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
-    fstisstochastic $wdir/HCLG.fst ||\
-      echo "$0: $uttid/HCLG.fst is not stochastic."
-  fi
+  fstisstochastic $wdir/HCLG.fst ||\
+    echo "$0: $uttid/HCLG.fst is not stochastic."
 
   echo "$uttid $wdir/HCLG.fst" >> $graph_dir/sub_graphs/HCLG.fsts.scp
   echo

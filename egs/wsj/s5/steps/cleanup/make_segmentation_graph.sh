@@ -6,8 +6,6 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-tscale=1.0      # transition scale.
-loopscale=0.1   # scale for self-loops.
 cleanup=true
 ngram_order=1
 srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
@@ -35,8 +33,6 @@ if [ $# -ne 4 ]; then
   echo "Options:"
   echo "    --ngram-order           # order of n-gram language model"
   echo "    --srilm-options         # options for ngram-count in SRILM tool"
-  echo "    --tscale                # transition scale"
-  echo "    --loopscale             # scale for self-loops"
   echo "    --cleanup               # if true, removes the intermediate files"
   exit 1;
 fi
@@ -87,7 +83,7 @@ fi
 
 mkdir -p $graph_dir/split$nj
 mkdir -p $graph_dir/log
- 
+
 split_texts=""
 for n in $(seq $nj); do
   mkdir -p $graph_dir/split$nj/$n
@@ -97,7 +93,6 @@ utils/split_scp.pl $data/text.orig $split_texts
 
 $cmd JOB=1:$nj $graph_dir/log/make_utterance_graph.JOB.log \
   steps/cleanup/make_utterance_graph.sh --cleanup $cleanup \
-  --tscale $tscale --loopscale $loopscale \
   --ngram-order $ngram_order --srilm-options "$srilm_options" \
   $graph_dir/split$nj/JOB/text $lang \
   $model_dir $graph_dir/split$nj/JOB || exit 1;

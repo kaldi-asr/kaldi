@@ -150,7 +150,7 @@ if [ $stage -le 4 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 $lang_decode \
+    $lang_decode \
     $dir $dir/graph || exit 1;
 fi
 

@@ -17,7 +17,7 @@ set -e
 # Begin configuration section.
 nj=10
 cmd=run.pl
-scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
+scale_opts=""
 top_n_words=100 # Number of common words that we compile into each graph (most frequent
                 # in $data/text.orig.
 top_n_words_weight=1.0  # this weight is before renormalization; it can be more
@@ -49,7 +49,7 @@ if [ $# != 4 ]; then
    echo "Main options (for others, see top of script file)"
    echo "  --scale-opts <scale-opts>                 # Options relating to language"
    echo "                                            # model scale; default is "
-   echo "                                            # '--transition-scale=1.0 --self-loop-scale=0.1'"
+   echo "                                            # ''"
    echo "  --top-n-words <N>                         # Number of most-common-words to add with"
    echo "                                            # unigram probabilities into graph (default: 100)"
    echo "  --top-n-words-weight <float>              # Weight given to top-n-words portion of graph"

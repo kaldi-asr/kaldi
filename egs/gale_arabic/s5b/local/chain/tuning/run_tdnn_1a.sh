@@ -200,7 +200,7 @@ if [ $stage -le 17 ]; then
   utils/lang/check_phones_compatible.sh \
     data/lang_test/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test \
+    data/lang_test \
     $tree_dir $tree_dir/graph || exit 1;
 fi
 

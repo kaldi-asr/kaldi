@@ -130,7 +130,7 @@ if [ $stage -le 1 ]; then
   # hardcode no-GPU for alignment, although you could use GPU [you wouldn't
   # get excellent GPU utilization though.]
   steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
-    --scale-opts '--transition-scale=1.0 --acoustic-scale=0.333 --self-loop-scale=0.333' \
+    --scale-opts '--acoustic-scale=0.333' \
     --frames-per-chunk $frames_per_chunk_decoding \
     --extra-left-context $extra_left_context --extra-right-context $extra_right_context \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
@@ -150,7 +150,7 @@ if [ -z "$degs_dir" ]; then
 
     steps/nnet3/get_degs.sh \
       --cmd "$decode_cmd --mem 10G" --num-threads 3 \
-      --self-loop-scale 0.333 --acwt 0.333 \
+      --acwt 0.333 \
       --max-copy-jobs $max_copy_jobs \
       --extra-left-context $extra_left_context \
       --extra-right-context $extra_right_context \

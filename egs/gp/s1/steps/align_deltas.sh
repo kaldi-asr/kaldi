@@ -93,7 +93,7 @@ mkdir -p $dir
 # Create copy of the tree and model and occs...
 cp $srcdir/{tree,final.mdl,final.occs} $dir || exit 1;
 
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 
 if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   split_data.sh $data $nj

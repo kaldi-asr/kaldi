@@ -249,7 +249,7 @@ if [ $stage -le 21 ]; then
   #LM was trained only on Fisher Spanish train subset.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test \
+    data/lang_test \
     $tree_dir $tree_dir/graph_fsp_train || exit 1;
 
 fi

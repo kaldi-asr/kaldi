@@ -33,7 +33,7 @@ vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for
 use_fmllr=false
 fmllr_iters=10
 fmllr_min_count=1000
-scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
+scale_opts=""
 skip_scoring=false
 # End configuration section.
 

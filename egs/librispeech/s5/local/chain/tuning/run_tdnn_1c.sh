@@ -196,7 +196,7 @@ if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 --remove-oov data/lang_test_tgsmall $dir $graph_dir
+  utils/mkgraph.sh --remove-oov data/lang_test_tgsmall $dir $graph_dir
   # remove <UNK> from the graph, and convert back to const-FST.
   fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst - | \
     fstconvert --fst_type=const > $graph_dir/temp.fst
@@ -215,7 +215,7 @@ if [ $stage -le 17 ]; then
           --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_tgsmall || exit 1
-      steps/lmrescore.sh --cmd "$decode_cmd" --self-loop-scale 1.0 data/lang_test_{tgsmall,tgmed} \
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
           data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_{tgsmall,tgmed} || exit 1
       steps/lmrescore_const_arpa.sh \
           --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \

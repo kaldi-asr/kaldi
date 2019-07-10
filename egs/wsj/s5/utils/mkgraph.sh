@@ -15,17 +15,12 @@
 
 set -o pipefail
 
-tscale=1.0
-loopscale=0.1
-
 remove_oov=false
 
 for x in `seq 4`; do
   [ "$1" == "--mono" -o "$1" == "--left-biphone" -o "$1" == "--quinphone" ] && shift && \
     echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
-  [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
-  [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
 done
 
 if [ $# != 3 ]; then
@@ -34,8 +29,6 @@ if [ $# != 3 ]; then
    echo " Options:"
    echo " --remove-oov       #  If true, any paths containing the OOV symbol (obtained from oov.int"
    echo "                    #  in the lang directory) are removed from the G.fst during compilation."
-   echo " --transition-scale #  Scaling factor on transition probabilities."
-   echo " --self-loop-scale  #  Please see: http://kaldi-asr.org/doc/hmm.html#hmm_scale."
    echo "Note: the --mono, --left-biphone and --quinphone options are now deprecated"
    echo "and will be ignored."
    exit 1;
@@ -75,8 +68,6 @@ fi
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
 
-[[ -f $2/frame_subsampling_factor && "$loopscale" == "0.1" ]] && \
-  echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
 if [ -f $lang/phones/nonterm_phones_offset.int ]; then
   if [[ $N != 2  || $P != 1 ]]; then
@@ -124,7 +115,7 @@ trap "rm -f $dir/Ha.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
   make-h-transducer $nonterm_opt --disambig-syms-out=$dir/disambig_tid.int \
-    --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+     $lang/tmp/ilabels_${N}_${P} $tree $model \
      > $dir/Ha.fst.$$  || exit 1;
   mv $dir/Ha.fst.$$ $dir/Ha.fst
 fi
@@ -146,14 +137,11 @@ fi
 
 trap "rm -f $dir/HCLG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
-  add-self-loops --self-loop-scale=$loopscale --reorder=true $model $dir/HCLGa.fst | \
+  add-self-loops $model $dir/HCLGa.fst | \
     $prepare_grammar_command | \
     fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
   mv $dir/HCLG.fst.$$ $dir/HCLG.fst
-  if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
-    # No point doing this test if transition-scale not 1, as it is bound to fail.
-    fstisstochastic $dir/HCLG.fst || echo "[info]: final HCLG is not stochastic."
-  fi
+  fstisstochastic $dir/HCLG.fst || echo "[info]: final HCLG is not stochastic."
 fi
 
 # note: the empty FST has 66 bytes.  this check is for whether the final FST

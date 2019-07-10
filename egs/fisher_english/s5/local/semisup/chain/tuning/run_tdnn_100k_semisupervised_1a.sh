@@ -126,7 +126,7 @@ for f in data/${supervised_set_perturbed}/feats.scp \
 done
 
 if [ ! -f $graphdir/HCLG.fst ]; then
-  utils/mkgraph.sh --self-loop-scale 1.0 $unsup_decode_lang $sup_chain_dir $graphdir
+  utils/mkgraph.sh $unsup_decode_lang $sup_chain_dir $graphdir
 fi
 
 # Prepare the speed-perturbed unsupervised data directory
@@ -402,7 +402,7 @@ if [ $stage -le 17 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 ${test_lang} $dir $test_graph_dir
+  utils/mkgraph.sh ${test_lang} $dir $test_graph_dir
 fi
 
 if [ $stage -le 18 ]; then

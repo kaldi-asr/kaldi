@@ -96,7 +96,7 @@ if [ $stage -le 2 ]; then
   # use the same num-jobs as the alignments
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --acoustic-scale 1.0 \
-                            --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                            \
                             ${train_data_dir} data/lang $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
@@ -210,7 +210,7 @@ if [ $stage -le 6 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test \
+    data/lang_test \
     $dir $dir/graph || exit 1;
 fi
 

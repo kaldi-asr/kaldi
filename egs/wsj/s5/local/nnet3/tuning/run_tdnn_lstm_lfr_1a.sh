@@ -218,12 +218,12 @@ if [ $stage -le 16 ]; then
 
   utils/lang/check_phones_compatible.sh \
     data/lang_test_tgpr/phones.txt $lang/phones.txt
-  utils/mkgraph.sh --self-loop-scale 0.333 data/lang_test_tgpr \
+  utils/mkgraph.sh data/lang_test_tgpr \
                    $dir $dir/graph_tgpr || exit 1;
 
   utils/lang/check_phones_compatible.sh \
     data/lang_test_bd_tgpr/phones.txt $lang/phones.txt
-  utils/mkgraph.sh --self-loop-scale 0.333 data/lang_test_bd_tgpr \
+  utils/mkgraph.sh data/lang_test_bd_tgpr \
       $dir $dir/graph_bd_tgpr || exit 1;
 fi
 
@@ -248,7 +248,7 @@ if [ $stage -le 17 ]; then
           $dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
       done
       steps/lmrescore.sh \
-        --self-loop-scale 0.333 \
+        \
         --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
         data/${data}_hires ${dir}/decode_{tgpr,tg}_${data_affix} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
@@ -284,7 +284,7 @@ if [ $stage -le 18 ]; then
           $dir/graph_${lmtype} data/${data}_hires ${dir}/decode_looped_${lmtype}_${data_affix} || exit 1
       done
       steps/lmrescore.sh \
-        --self-loop-scale 0.333 \
+        \
         --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
         data/${data}_hires ${dir}/decode_looped_{tgpr,tg}_${data_affix} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
@@ -318,7 +318,7 @@ if $test_online_decoding && [ $stage -le 19 ]; then
           $dir/graph_${lmtype} data/${data} ${dir}_online/decode_${lmtype}_${data_affix} || exit 1
       done
       steps/lmrescore.sh \
-        --self-loop-scale 0.333 \
+        \
         --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
         data/${data}_hires ${dir}_online/decode_{tgpr,tg}_${data_affix} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \

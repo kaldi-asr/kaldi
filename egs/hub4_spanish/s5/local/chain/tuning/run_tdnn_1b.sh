@@ -240,7 +240,7 @@ if [ $stage -le 15 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/langp_test \
+    data/langp_test \
     $tree_dir $dir/graph || exit 1;
 fi
 

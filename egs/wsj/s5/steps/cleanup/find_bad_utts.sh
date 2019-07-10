@@ -12,7 +12,7 @@ nj=4
 cmd=run.pl
 use_graphs=false
 # Begin configuration.
-scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
+scale_opts=""
 acoustic_scale=0.1
 beam=15.0
 lattice_beam=8.0
@@ -197,4 +197,3 @@ if [ $stage -le 3 ]; then
     sort -i -b -k1,1 -k4,4nr -k2,2 -k3,3 > $dir/analysis/ops_details.txt
 
 fi
-

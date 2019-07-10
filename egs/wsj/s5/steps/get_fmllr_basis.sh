@@ -8,7 +8,7 @@
 
 stage=0
 # Parameters in alignment of training data
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 per_utt=true # If true, then treat each utterance as a separate speaker for purposes of
   # basis training... this is recommended if the number of actual speakers in your
   # training set is less than (feature-dim) * (feature-dim+1).

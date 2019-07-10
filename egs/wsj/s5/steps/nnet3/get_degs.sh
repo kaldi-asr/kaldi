@@ -59,9 +59,6 @@ nj=200
 iter=final
 
 
-# decoding-graph option
-self_loop_scale=0.1  # for decoding graph.. should be 1.0 for chain models.
-
 # options relating to decoding.
 frames_per_chunk_decoding=150
 beam=13.0
@@ -156,19 +153,8 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   # e.g. for 'chain' systems
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
   cp $srcdir/frame_subsampling_factor $dir
-  if [ $frame_subsampling_factor -ne 1 ] && [ "$self_loop_scale" == "0.1" ]; then
-    echo "$0: warning: frame_subsampling_factor is not 1 (so likely a chain system),"
-    echo "...  but self-loop-scale is 0.1.  Make sure this is not a mistake."
-    sleep 1
-  fi
 else
   frame_subsampling_factor=1
-fi
-
-if [ "$self_loop_scale" == "1.0" ] && [ "$acwt" == 0.1 ]; then
-  echo "$0: warning: you set --self-loop-scale=1.0 (so likely a chain system)",
-  echo " ... but the acwt is still 0.1 (you probably want --acwt 1.0)"
-  sleep 1
 fi
 
 ## Make the decoding graph.
@@ -183,7 +169,7 @@ if [ $stage -le 0 ]; then
     utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
     || exit 1;
 
-  utils/mkgraph.sh --self-loop-scale $self_loop_scale $new_lang $srcdir $dir/dengraph || exit 1;
+  utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
 fi
 
 # copy alignments into ark,scp format which allows us to use different num-jobs

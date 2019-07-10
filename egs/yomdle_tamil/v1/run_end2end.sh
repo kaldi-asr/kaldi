@@ -155,7 +155,7 @@ if [ $stage -le 8 ]; then
   echo "$(date) stage 8: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
     --use-gpu false \
-    --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
+     \
     data/train_aug data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 

@@ -14,7 +14,7 @@
 stage=-5
 fmllr_update_type=full
 cmd=run.pl
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 beam=10
 retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment

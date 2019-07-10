@@ -19,7 +19,7 @@ use_gselect=false # use gselect info from srcdir [regardless, we use
    # Gaussian-selection info, we might have to compute it though.]
 gselect=15  # Number of Gaussian-selection indices for SGMMs.
 # Begin configuration.
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 beam=10
 retry_beam=40
 transform_dir=  # directory to find fMLLR transforms in.

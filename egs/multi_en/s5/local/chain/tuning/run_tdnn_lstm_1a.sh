@@ -252,7 +252,7 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_dir \
+  utils/mkgraph.sh $lang_dir \
     $dir $dir/graph${lang_suffix}
 fi
 

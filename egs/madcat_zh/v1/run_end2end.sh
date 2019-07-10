@@ -96,7 +96,7 @@ fi
 
 if [ $stage -le 5 ] && $decode_e2e; then
   echo "$0: $(date) stage 5: decoding end2end setup..."
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_decode \
+  utils/mkgraph.sh $lang_decode \
     exp/chain/e2e_cnn_1a/ exp/chain/e2e_cnn_1a/graph || exit 1;
 
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --nj $nj --cmd "$cmd" \

@@ -17,7 +17,6 @@ sub_split=1
 beam=13.0
 frames_per_chunk=50
 lattice_beam=7.0
-self_loop_scale=0.1
 acwt=0.1
 max_active=5000
 min_active=200
@@ -102,7 +101,7 @@ else
    awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
     utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
     || exit 1;
-  utils/mkgraph.sh --self-loop-scale $self_loop_scale $new_lang $srcdir $dir/dengraph || exit 1;
+  utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
 fi
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null

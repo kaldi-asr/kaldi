@@ -11,7 +11,7 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 num_iters=40    # Number of iterations of training
 max_iter_inc=30 # Last iter to increase #Gauss on.
 initial_beam=6 # beam used in the first iteration (set smaller to speed up initialization)

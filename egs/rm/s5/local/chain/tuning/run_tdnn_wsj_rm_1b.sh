@@ -211,7 +211,7 @@ if [ $stage -le 8 ]; then
   # the lang directory.
   ivec_opt=""
   if $use_ivector;then ivec_opt="--online-ivector-dir exp/nnet2${nnet_affix}/ivectors_test" ; fi
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_src_tgt $dir $dir/graph
+  utils/mkgraph.sh $lang_src_tgt $dir $dir/graph
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" $ivec_opt \

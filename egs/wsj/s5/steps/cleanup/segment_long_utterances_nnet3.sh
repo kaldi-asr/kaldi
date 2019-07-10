@@ -171,7 +171,7 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   echo "$0: guessing that this is a chain system, checking parameters."
   if [ -z $scale_opts ]; then
     echo "$0: setting scale_opts"
-    scale_opts="--self-loop-scale=1.0 --transition-scale=1.0"
+    scale_opts=" "
   fi
   if [ $acwt == 0.1 ]; then
     echo "$0: setting acwt=1.0"

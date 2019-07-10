@@ -627,19 +627,20 @@ if (!open(T, "<$lang/topo")) {
   %phones_in_topo_int_hash = ( );
   %phones_in_topo_hash = ( );
   while (<T>) {
-    chomp;
-    next if (m/^<.*>[ ]*$/);
-    foreach $i (split(" ", $_)) {
-      if (defined $phones_in_topo_int_hash{$i}) {
-        $topo_ok = 0;
-        $exit = 1; print "--> ERROR: $lang/topo has phone $i twice\n";
+    if (m/<ForPhones>/) {
+      my $line = <T>;
+      foreach $phone (split(" ", $line)) {
+        if (defined $phones_in_topo_int_hash{$phone}) {
+          $topo_ok = 0;
+          $exit = 1; print "--> ERROR: $lang/topo has phone $phone twice\n";
+        }
+        if (!defined $pint2sym{$phone}) {
+          $topo_ok = 0;
+          $exit = 1; print "--> ERROR: $lang/topo has phone $phone which is not in phones.txt\n";
+        }
+        $phones_in_topo_int_hash{$phone} = 1;
+        $phones_in_topo_hash{$pint2sym{$phone}} = 1;
       }
-      if (!defined $pint2sym{$i}) {
-        $topo_ok = 0;
-        $exit = 1; print "--> ERROR: $lang/topo has phone $i which is not in phones.txt\n";
-      }
-      $phones_in_topo_int_hash{$i} = 1;
-      $phones_in_topo_hash{$pint2sym{$i}} = 1;
     }
   }
   close(T);
@@ -816,8 +817,8 @@ if (-s "$lang/phones/$word_boundary.txt") {
 
 # Check validity of L.fst, L_disambig.fst, and word_boundary.int.
 # First we generate a random word/subword sequence. We then compile it into fst and compose it with L.fst/L_disambig.fst.
-# For subword case the last subword of the sequence must be a end-subword 
-# (i.e. the subword can only be at the end of word or is a single word itself) 
+# For subword case the last subword of the sequence must be a end-subword
+# (i.e. the subword can only be at the end of word or is a single word itself)
 # to guarantee the composition would not fail.
 # We then get the corresponging phones sequence and apply a transition matrix on it to get the number of valid boundaries.
 # In word case, the number of valid boundaries should be equal to the number of words.
@@ -883,14 +884,14 @@ if (-s "$lang/phones/$word_boundary.int") {
           $end_subword ++;
         }
       }
-    } 
+    }
 
     # generate the last word (subword)
     $id = int(rand(scalar(keys %wint2sym)));
     if ($subword_check) {
       $subword = $wint2sym{$id};
       $suffix = substr($subword, -$separator_length, $separator_length);
-      # the last subword can not followed by separator  
+      # the last subword can not followed by separator
       while (defined $wdisambig_words_hash{$id} or
            $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
            $wint2sym{$id} =~ m/^#nonterm/ or $id == 0 or $suffix eq $separator) {
@@ -952,7 +953,7 @@ if (-s "$lang/phones/$word_boundary.int") {
       }
     }
     if (!$exit) {
-      if ($subword_check) { 
+      if ($subword_check) {
         $wlen = $end_subword;
       }
       if ($num_words != $wlen) {

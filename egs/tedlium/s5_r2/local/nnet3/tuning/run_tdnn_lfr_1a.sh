@@ -172,7 +172,7 @@ if [ $stage -le 16 ]; then
   # as long as phones.txt was compatible.
 
   utils/lang/check_phones_compatible.sh data/lang/phones.txt $lang/phones.txt
-  utils/mkgraph.sh --self-loop-scale 0.333 data/lang $dir $dir/graph
+  utils/mkgraph.sh data/lang $dir $dir/graph
 fi
 
 

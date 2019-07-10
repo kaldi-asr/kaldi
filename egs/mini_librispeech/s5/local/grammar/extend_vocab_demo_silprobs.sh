@@ -71,7 +71,7 @@ fi
 
 if [ $stage -le 2 ]; then
   # make the top-level part of the graph.
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_base $tree_dir $tree_dir/extvocab_top
+  utils/mkgraph.sh $lang_base $tree_dir $tree_dir/extvocab_top
 fi
 
 if [ $stage -le 3 ] && $run_g2p; then
@@ -267,7 +267,7 @@ if [ $stage -le 6 ]; then
   # make the part of the graph that will be included.
   # Refer to the 'compile-graph' commands in ./simple_demo.sh for how you'd do
   # this in code.
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_ext $tree_dir $tree_dir/extvocab_part
+  utils/mkgraph.sh $lang_ext $tree_dir $tree_dir/extvocab_part
 fi
 
 if [ $stage -le 7 ]; then

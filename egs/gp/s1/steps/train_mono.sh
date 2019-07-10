@@ -77,7 +77,7 @@ dir=$3
 [ -f path.sh ] && . ./path.sh
 
 # Configuration:
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 numiters=40    # Number of iterations of training
 maxiterinc=30 # Last iter to increase #Gauss on.
 numgauss=300 # Initial num-Gauss (must be more than #states=3*phones).

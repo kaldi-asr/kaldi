@@ -17,7 +17,7 @@ cmd=run.pl
 stage=-6 # use this to resume partially finished training
 context_opts= # e.g. set it to "--context-width=5 --central-position=2"  for a
 # quinphone system.
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 num_iters=25   # Total number of iterations of training
 num_iters_alimdl=3 # Number of iterations for estimating alignment model.
 max_iter_inc=15 # Last iter to increase #substates on.

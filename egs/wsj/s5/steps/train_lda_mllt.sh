@@ -14,7 +14,7 @@
 cmd=run.pl
 config=
 stage=-5
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 realign_iters="10 20 30";
 mllt_iters="2 4 6 12";
 num_iters=35    # Number of iterations of training

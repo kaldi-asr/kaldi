@@ -13,7 +13,6 @@ nj=4
 cmd=run.pl
 stage=-1
 # Begin configuration.
-scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
 acoustic_scale=0.1
 beam=20
 iter=final
@@ -94,13 +93,10 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   cp $srcdir/frame_subsampling_factor $dir
   if [[ $frame_subsampling_factor -gt 1 ]]; then
     # Assume a chain system, check agrument sanity.
-    if [[ ! ($scale_opts == *--self-loop-scale=1.0* &&
-             $scale_opts == *--transition-scale=1.0* &&
-             $acoustic_scale = '1.0') ]]; then
+    if [[  $acoustic_scale = '1.0') ]]; then
       echo "$0: ERROR: frame-subsampling-factor is not 1, assuming a chain system."
       echo "... You should pass the following options to this script:"
-      echo "  --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0'" \
-           "--acoustic_scale 1.0"
+      echo "--acoustic_scale 1.0"
     fi
   fi
 fi
@@ -122,7 +118,6 @@ if [ $stage -le 0 ]; then
   ## because the other scripts write them without transition probs.
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
     $prog --read-disambig-syms=$lang/phones/disambig.int \
-    $scale_opts \
     $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1
 fi

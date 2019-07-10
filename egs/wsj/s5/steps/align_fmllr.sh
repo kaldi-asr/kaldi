@@ -18,7 +18,7 @@ nj=4
 cmd=run.pl
 use_graphs=false
 # Begin configuration.
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 beam=10
 retry_beam=40
 careful=false

@@ -10,7 +10,7 @@
 
 # Begin configuration..
 cmd=run.pl
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--acoustic-scale=0.1"
 realign_iters="10 15"; # Only realign twice.
 num_iters=20    # Number of iterations of training
 maxiterinc=15 # Last iter to increase #Gauss on.
