@@ -456,6 +456,8 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
   // OK, we just consumed the word-initial phone.
   if (i == len)
     return false;
+  prev_info = &tmodel.InfoForTransitionId(transition_ids_[i]);
+  i++;
   // Eat up any word-internal phones.
   while (i < len && wb_info.TypeOfPhone(prev_info->phone) ==
          WordBoundaryInfo::kWordInternalPhone) {
@@ -466,7 +468,7 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
     return false;
   // Try to find the ending of the next phone, which should be a word-final
   // phone.
-  for (i = 1; i < len; i++) {
+  for (; i < len; i++) {
     const Transitions::TransitionIdInfo *this_info = &tmodel.InfoForTransitionId(
         transition_ids_[i]);
     if (prev_info->is_final && this_info->is_initial) {

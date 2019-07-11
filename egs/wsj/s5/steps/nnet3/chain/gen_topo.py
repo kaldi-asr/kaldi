@@ -32,17 +32,15 @@ silence_phones = [ int(x) for x in args.silence_phones.split(":") ]
 nonsilence_phones = [ int(x) for x in args.nonsilence_phones.split(":") ]
 all_phones = silence_phones +  nonsilence_phones
 
+
 print("<Topology>")
 print("<TopologyEntry>")
 print("<ForPhones>")
 print(" ".join([str(x) for x in all_phones]))
 print("</ForPhones>")
-# We make the transition-probs 0.5 so they normalize, to keep the code happy.
-# In fact, we always set the transition probability scale to 0.0 in the 'chain'
-# code, so they are never used.
-# Note: the <ForwardPdfClass> will actually happen on the incoming arc because
-# we always build the graph with "reorder=true".
-print("<State> 0 <ForwardPdfClass> 0 <SelfLoopPdfClass> 1 <Transition> 0 0.5 <Transition> 1 0.5 </State>")
-print("<State> 1 </State>")
+print("0  1  1  0.0")
+print("1  1  2  0.69314718055")
+print("1  0.69314718055")
+print("")
 print("</TopologyEntry>")
 print("</Topology>")

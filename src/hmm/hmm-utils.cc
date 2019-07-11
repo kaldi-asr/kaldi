@@ -872,11 +872,11 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                       bool repeat_frames,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
-  if (subsample_factor == 1) {
-    if (repeat_frames) {
-      KALDI_WARN << "repeat_frames being set to true has no effect when "
+  if (subsample_factor == 1 && repeat_frames)
+    KALDI_WARN << "repeat_frames being set to true has no effect when "
         "subsample_factor=1 (its default value)";
-    }
+
+  if (subsample_factor == 1 || !repeat_frames) {
     return ConvertAlignmentInternal(old_trans_model,
                                     new_trans_model,
                                     new_ctx_dep,
@@ -899,7 +899,7 @@ bool ConvertAlignment(const Transitions &old_trans_model,
                                     new_trans_model,
                                     new_ctx_dep,
                                     old_alignment,
-                                    conversion_shift, // conversion_shift
+                                    conversion_shift,
                                     subsample_factor,
                                     phone_map,
                                     &shifted_alignments[conversion_shift]))
