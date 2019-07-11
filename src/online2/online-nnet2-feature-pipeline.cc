@@ -123,6 +123,7 @@ void OnlineNnet2FeaturePipeline::Init()
     KALDI_ERR << "Code error: invalid feature type " << info_.feature_type;
   }
 
+  // Apply CMVN to features
   if (info_.use_cmvn)
   {
     KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
