@@ -3,17 +3,10 @@
 # Copyright 2019  Yiming Wang
 # Apache 2.0
 
-# This script computes the minimum detection cost function, which is a common
-# error metric used in speaker recognition.  Compared to equal error-rate,
-# which assigns equal weight to false negatives and false positives, this
-# error-rate is usually used to assess performance in settings where achieving
-# a low false positive rate is more important than achieving a low false
-# negative rate.  See the NIST 2016 Speaker Recognition Evaluation Plan at
-# https://www.nist.gov/sites/default/files/documents/2016/10/07/sre16_eval_plan_v1.3.pdf
-# for more details about the metric.
 from __future__ import print_function
 from operator import itemgetter
 import sys, argparse, os
+import numpy as np
 
 try:
     import matplotlib as mpl
@@ -41,7 +34,7 @@ def GetArgs():
         help="Input trials file, with columns of the form "
         "<utt-id> <wake-word> or <other-word>")
     parser.add_argument("scores_filename", type=str, nargs='+',
-        help="List of input scores file, with columns of the form "
+        help="List of input scores file (larger means more confidence for wake word), with columns of the form "
         "<utt-id> <score>")
     sys.stderr.write(' '.join(sys.argv) + "\n")
     args = parser.parse_args()
@@ -99,23 +92,6 @@ def ComputeErrorRates(scores, labels):
       fprs = [1 - x / float(fprs_norm) for x in fprs]
       return fnrs, fprs, fps, thresholds
 
-# Computes the minimum of the detection cost function.  The comments refer to
-# equations in Section 3 of the NIST 2016 Speaker Recognition Evaluation Plan.
-def ComputeMinDcf(fnrs, fprs, thresholds, p_target, c_miss, c_fa):
-    min_c_det = float("inf")
-    min_c_det_threshold = thresholds[0]
-    for i in range(0, len(fnrs)):
-        # See Equation (2).  it is a weighted sum of false negative
-        # and false positive errors.
-        c_det = c_miss * fnrs[i] * p_target + c_fa * fprs[i] * (1 - p_target)
-        if c_det < min_c_det:
-            min_c_det = c_det
-            min_c_det_threshold = thresholds[i]
-    # See Equations (3) and (4).  Now we normalize the cost.
-    c_def = min(c_miss * p_target, c_fa * (1 - p_target))
-    min_dcf = min_c_det / c_def
-    return min_dcf, min_c_det_threshold
-
 def PlotRoc(fnrs_list, fprs_list, color_val_list, name_list, savedir):
     assert len(fnrs_list) == len(fprs_list) and \
         len(fnrs_list) == len(color_val_list) and len(fnrs_list) == len(name_list)
@@ -163,8 +139,10 @@ def PlotRoc2(fnrs_list, fps_list, color_val_list, name_list, duration, savedir):
 
     plt.xlabel('False Alarm per Hour')
     plt.ylabel('False Rejects (%)')
-    plt.xlim((0, 10))
-    plt.ylim((0, 15))
+    plt.xlim((0, 5))
+    plt.xticks(np.arange(0, 5, step=0.5))
+    plt.ylim((0, 2))
+    plt.yticks(np.arange(0, 2, step=0.1))
     lgd = plt.legend(handles=roc_plots, loc='lower center',
         bbox_to_anchor=(0.5, -0.2 + len(fnrs_list) * -0.1),
         ncol=1, borderaxespad=0.)

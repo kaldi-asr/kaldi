@@ -1,0 +1,210 @@
+#!/bin/bash
+
+stage=0
+
+
+. ./cmd.sh
+. ./path.sh
+. utils/parse_options.sh
+
+set -euo pipefail
+
+if [ $stage -le 0 ]; then
+  local/snips_data_download.sh
+  echo "$0: Extracted all datasets into data/download/"
+fi
+
+if [ $stage -le 1 ]; then
+  echo "$0: Preparing datasets..."
+  for folder in train dev eval; do
+    mkdir -p data/$folder
+    json_path=data/download/hey_snips_research_6k_en_train_eval_clean_ter/$folder.json
+    if [ $folder = "eval" ]; then
+      json_path=data/download/hey_snips_research_6k_en_train_eval_clean_ter/test.json
+    fi
+    local/prepare_data.py $json_path data/$folder --wake-word "HeySnips" --non-wake-word "FREETEXT"
+  done
+  echo "$0: text, utt2spk and wav.scp have been generated in data/{train|dev|eval}."
+fi
+
+if [ $stage -le 2 ]; then
+  echo "$0: Extracting MFCC..."
+  for folder in train dev eval; do
+    dir=data/$folder
+    utils/fix_data_dir.sh $dir
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 16 $dir
+    steps/compute_cmvn_stats.sh $dir
+    utils/fix_data_dir.sh $dir
+    utils/data/get_utt2dur.sh $dir
+    utils/validate_data_dir.sh $dir
+  done
+fi
+
+if [ $stage -le 3 ]; then
+  echo "$0: Preparing dictionary and lang..."
+  local/prepare_dict.sh
+  utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.5 \
+    --position-dependent-phones false \
+    data/local/dict "<sil>" data/lang/temp data/lang
+fi
+
+if [ $stage -le 4 ]; then
+  id_sil=`cat data/lang/words.txt | grep "<sil>" | awk '{print $2}'`
+  id_freetext=`cat data/lang/words.txt | grep "FREETEXT" | awk '{print $2}'`
+  id_word=`cat data/lang/words.txt | grep "HeySnips" | awk '{print $2}'`
+  mkdir -p data/lang/lm
+  cat <<EOF > data/lang/lm/fst.txt
+0 1 $id_sil $id_sil
+0 4 $id_sil $id_sil 7.0
+1 4 $id_freetext $id_freetext 0.0
+4 0 $id_sil $id_sil
+1 2 $id_word $id_word 2.09
+2 0 $id_sil $id_sil
+0
+EOF
+  fstcompile data/lang/lm/fst.txt data/lang/G.fst
+  set +e
+  fstisstochastic data/lang/G.fst
+  set -e
+  utils/validate_lang.pl data/lang
+fi
+
+if [ $stage -le 5 ]; then
+  echo "$0: subsegmenting for the training data..."
+  srcdir=data/train
+  utils/data/convert_data_dir_to_whole.sh $srcdir ${srcdir}_whole
+
+  utils/data/get_segments_for_data.sh $srcdir > ${srcdir}_whole/segments
+  utils/filter_scp.pl <(awk '{if ($2 == "FREETEXT") print $1}' ${srcdir}_whole/text) \
+    ${srcdir}_whole/segments >${srcdir}_whole/neg_segments
+  utils/filter_scp.pl --exclude ${srcdir}_whole/neg_segments ${srcdir}_whole/segments \
+    >${srcdir}_whole/pos_segments
+  utils/data/get_uniform_subsegments.py --max-segment-duration=2.5 \
+    --overlap-duration=0.3 --max-remaining-duration=0.3 ${srcdir}_whole/neg_segments | \
+    cat ${srcdir}_whole/pos_segments - | sort >${srcdir}_whole/uniform_sub_segments
+  utils/data/subsegment_data_dir.sh ${srcdir}_whole \
+    ${srcdir}_whole/uniform_sub_segments data/train_segmented
+  awk '{print $1,$2}' ${srcdir}_whole/uniform_sub_segments | \
+    utils/apply_map.pl -f 2 ${srcdir}_whole/text >data/train_segmented/text
+  utils/data/extract_wav_segments_data_dir.sh --nj 50 --cmd "$train_cmd" \
+    data/train_segmented data/train_shorter
+  steps/compute_cmvn_stats.sh data/train_shorter
+  utils/fix_data_dir.sh data/train_shorter
+  utils/validate_data_dir.sh data/train_shorter
+fi
+
+# In this section, we augment the training data with reverberation,
+# noise, music, and babble, and combined it with the clean data.
+if [ $stage -le 6 ]; then
+  utils/data/get_utt2dur.sh data/train_shorter
+  cp data/train_shorter/utt2dur data/train_shorter/reco2dur
+  # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+  [ ! -f rirs_noises.zip ] && wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+  [ ! -d "RIRS_NOISES" ] && unzip rirs_noises.zip
+
+  # Make a version with reverberated speech
+  rvb_opts=()
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+
+  # Make a reverberated version of the SWBD+SRE list.  Note that we don't add any
+  # additive noise here.
+  python3 steps/data/reverberate_data_dir.py \
+    "${rvb_opts[@]}" \
+    --speech-rvb-probability 1 \
+    --prefix "rev" \
+    --pointsource-noise-addition-probability 0 \
+    --isotropic-noise-addition-probability 0 \
+    --num-replications 1 \
+    --source-sampling-rate 16000 \
+    data/train_shorter data/train_shorter_reverb
+  cat data/train_shorter/utt2dur | awk -v name=rev1 '{print name"_"$0}' >data/train_shorter_reverb/utt2dur
+
+  # Prepare the MUSAN corpus, which consists of music, speech, and noise
+  # suitable for augmentation.
+  local/make_musan.sh /export/corpora/JHU/musan data
+
+  # Get the duration of the MUSAN recordings.  This will be used by the
+  # script augment_data_dir.py.
+  for name in speech noise music; do
+    utils/data/get_utt2dur.sh data/musan_${name}
+    cp data/musan_${name}/utt2dur data/musan_${name}/reco2dur
+  done
+
+  # Augment with musan_noise
+  steps/data/augment_data_dir_for_asr.py --utt-prefix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train_shorter data/train_shorter_noise
+  cat data/train_shorter/utt2dur | awk -v name=noise '{print name"_"$0}' >data/train_shorter_noise/utt2dur
+  # Augment with musan_music
+  steps/data/augment_data_dir_for_asr.py --utt-prefix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train_shorter data/train_shorter_music
+  cat data/train_shorter/utt2dur | awk -v name=music '{print name"_"$0}' >data/train_shorter_music/utt2dur
+  # Augment with musan_speech
+  steps/data/augment_data_dir_for_asr.py --utt-prefix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train_shorter data/train_shorter_babble
+  cat data/train_shorter/utt2dur | awk -v name=babble '{print name"_"$0}' >data/train_shorter_babble/utt2dur
+fi
+
+if [ $stage -le 7 ]; then
+  # Now make MFCC features
+  for name in reverb noise music babble; do
+    steps/make_mfcc.sh --nj 16 --cmd "$train_cmd" \
+      data/train_shorter_${name} || exit 1;
+    steps/compute_cmvn_stats.sh data/train_shorter_${name}
+    utils/fix_data_dir.sh data/train_shorter_${name}
+    utils/validate_data_dir.sh data/train_shorter_${name}
+  done
+fi
+
+combined_train_set=train_shorter_combined
+if [ $stage -le 8 ]; then
+  aug_affix="reverb noise music babble"
+  eval utils/combine_data.sh data/${combined_train_set} data/train_shorter_{$(echo $aug_affix | sed 's/ /,/g')}
+fi
+
+if [ -f data/${combined_train_set}_spe2e_hires/feats.scp ]; then
+  echo "$0: It seems that features for the perturbed training data already exist."
+  echo "If you want to extract them anyway, remove them first and run this"
+  echo "stage again. Skipping this stage..."
+else
+  if [ $stage -le 9 ]; then
+    echo "$0: perturbing the training data to allowed lengths..."
+    utils/data/get_utt2dur.sh data/${combined_train_set}  # necessary for the next command
+
+    # 12 in the following command means the allowed lengths are spaced
+    # by 12% change in length.
+    utils/data/perturb_speed_to_allowed_lengths.py --speed-perturb false 12 data/${combined_train_set} \
+                                                   data/${combined_train_set}_e2e_hires
+    cat data/${combined_train_set}_e2e_hires/utt2dur | \
+      awk '{print $1 " " substr($1,5)}' >data/${combined_train_set}_e2e_hires/utt2uniq.tmp
+    utils/apply_map.pl -f 2 data/${combined_train_set}/utt2uniq \
+      <data/${combined_train_set}_e2e_hires/utt2uniq.tmp >data/${combined_train_set}_e2e_hires/utt2uniq
+    rm -f data/${combined_train_set}_e2e_hires/utt2uniq.tmp 2>/dev/null || true
+    utils/fix_data_dir.sh data/${combined_train_set}_e2e_hires
+
+    utils/data/get_utt2dur.sh data/train_shorter  # necessary for the next command
+    utils/data/perturb_speed_to_allowed_lengths.py 12 data/train_shorter data/train_shorter_spe2e_hires
+    cat data/train_shorter_spe2e_hires/utt2dur | \
+      awk '{print $1 " " substr($1,5)}' >data/train_shorter_spe2e_hires/utt2uniq
+    utils/fix_data_dir.sh data/train_shorter_spe2e_hires
+    utils/combine_data.sh data/${combined_train_set}_spe2e_hires data/${combined_train_set}_e2e_hires data/train_shorter_spe2e_hires
+    cat data/train_shorter_spe2e_hires/allowed_lengths.txt >data/${combined_train_set}_spe2e_hires/allowed_lengths.txt
+  fi
+
+  if [ $stage -le 10 ]; then
+    echo "$0: extracting MFCC features for the training data..."
+    mfccdir=data/${combined_train_set}_spe2e_hires/data
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+      utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/snips-$(date +'%m_%d_%H_%M')/v1/$mfccdir/storage $mfccdir/storage
+    steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
+                       --cmd "$train_cmd" \
+                       data/${combined_train_set}_spe2e_hires || exit 1;
+    steps/compute_cmvn_stats.sh data/${combined_train_set}_spe2e_hires || exit 1;
+    utils/fix_data_dir.sh data/${combined_train_set}_spe2e_hires
+    utils/validate_data_dir.sh data/${combined_train_set}_spe2e_hires
+  fi
+fi
+
+if [ $stage -le 11 ]; then
+  local/chain/run_e2e_tdnn.sh
+fi
+
+exit 0
+

@@ -1,0 +1,1 @@
+../../../mobvoi/v1/local/copy_lat_dir.sh

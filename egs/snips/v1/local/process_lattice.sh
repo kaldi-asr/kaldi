@@ -1,0 +1,1 @@
+../../../mobvoi/v1/local/process_lattice.sh

@@ -1,0 +1,1 @@
+../../../mobvoi/v1/local/plot_scatter.py

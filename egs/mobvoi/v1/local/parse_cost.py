@@ -28,6 +28,13 @@ def main():
 
     one_entry = []
     wake_word_cost = OrderedDict()
+    # each entry is one line of utt-id either followed by a cost line and an empty line:
+    # <utt-id>
+    # 0 <cost>
+    #
+    # or only followed by an empty line:
+    # <utt-id>
+    #
     for i, line in enumerate(lines_wake_word):
         if line.strip() == '':
             assert len(one_entry) == 1 or len(one_entry) == 2
@@ -58,6 +65,8 @@ def main():
 
     assert len(wake_word_cost) == len(non_wake_word_cost)
     cost = OrderedDict()
+    # each entry in the output looks like:
+    # <utt-id> <wake-word-cost> <non-wake-word-cost>
     for k, v in wake_word_cost.items():
         assert k in non_wake_word_cost
         v2 = non_wake_word_cost[k]

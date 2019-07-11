@@ -1,0 +1,1 @@
+../../../mobvoi/v1/local/compute_min_dcf.py

@@ -58,15 +58,25 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
+  id_sil=`cat data/lang/words.txt | grep "<sil>" | awk '{print $2}'`
   id_freetext=`cat data/lang/words.txt | grep "FREETEXT" | awk '{print $2}'`
   id_word=`cat data/lang/words.txt | grep "嗨小问" | awk '{print $2}'`
   mkdir -p data/lang/lm
   cat <<EOF > data/lang/lm/fst.txt
-0 1 $id_freetext $id_freetext
-0 2 $id_word $id_word
-1 0.0
-2 1.1
+0 1 $id_sil $id_sil
+0 4 $id_sil $id_sil 7.0
+1 4 $id_freetext $id_freetext 0.0
+4 0 $id_sil $id_sil
+1 2 $id_word $id_word 1.1
+2 0 $id_sil $id_sil
+0
 EOF
+#0 1 $id_sil $id_sil
+#1 4 $id_freetext $id_freetext 0.5
+#4 0 $id_sil $id_sil
+#1 2 $id_word $id_word 2.0
+#2 0 $id_sil $id_sil
+#0
   fstcompile data/lang/lm/fst.txt data/lang/G.fst
   set +e
   fstisstochastic data/lang/G.fst
