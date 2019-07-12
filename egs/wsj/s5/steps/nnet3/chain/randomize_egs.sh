@@ -88,18 +88,14 @@ fi
 
 info_in=$processed_egs_dir/info.txt
 
-frames_per_group_avg=$(awk '/^frames_per_chunk_avg/ { fpc=$2; } /^chunks_per_group/ { print int(fpc * $2); }' $info_in)
-if ! [ $frames_per_group_avg -gt 0 ]; then
-  echo "$0: error getting frames per group.";
-fi
-
-num_groups=$(wc -l <$processed_egs_dir/train.scp)
-
-num_scp_files=$[(frames_per_group_avg*num_groups + frames_per_job/2) / frames_per_job]
+# num_scp_files is the number of archives
+num_input_frames=$(awk '/^num_input_frames/ { nif=$2; print nif}' $info_in)
+frames_per_chunk_avg=$(awk '/^frames_per_chunk_avg/ { fpc=$2; print fpc}' $info_in)
+num_chunks=$(awk '/^num_chunks/ { nc=$2; print nc}' $info_in)
+num_scp_files=$[(num_chunks * frames_per_chunk_avg)/frames_per_job +1]
 [ $num_scp_files -eq 0 ] && num_scp_files=1
 
-frames_per_scp_file=$[(frames_per_group_avg * num_groups) / num_scp_files]
-groups_per_scp_file=$[ num_groups / num_scp_files]
+frames_per_scp_file=$[(num_chunks*frames_per_chunk_avg)/num_scp_files] # because it may be slightly different from frames_per_job
 
 
 mkdir -p $dir/temp
@@ -111,47 +107,9 @@ fi
 mkdir -p $dir/misc
 cp $processed_egs_dir/misc/* $dir/misc
 
-
-# We want to globally randomize the order of these blocks of (e.g.) 128 lines of
-# the input train.scp, and then split up into $num_scp_files groups.  we could
-# do this in a specially-written python script, but instead we do it with a
-# combination of existing Kaldi and UNIX utilities.
-
-awk -v gpb=$groups_per_block \
-    '{block=sprintf("%05d", NR / gpb); group_id=$1; print group_id, block;}' \
-    <$processed_egs_dir/train.scp >$dir/temp/key2block
-
-# get list of blocks
-awk '{print $2}' <$dir/temp/key2block | uniq > $dir/temp/blocks
-# get randomized-order list of blocks
-utils/shuffle_list.pl --srand "$srand" <$dir/temp/blocks > $dir/temp/blocks_rand
-# Map block-ids to randomized-order block-ids
-paste $dir/temp/blocks $dir/temp/blocks_rand > $dir/temp/block2rand
-
-
-# The following command first maps block-ids to randomized-order block-ids, then
-# sorts the keys by these randomized-order block-ids while otherwise maintaining
-# stable sorting (-s) which keeps the keys in the blocks in the same order.
-utils/apply_map.pl -f 2 $dir/temp/block2rand <$dir/temp/key2block | \
-  sort -k2 -s > $dir/temp/key2block_rand
-
-
-# The following command just changes the order of train.scp to
-# match the order in key2block_rand (which has the order of blocks
-# of lines randomly moved around).
-awk '{print $1, $1}' $dir/temp/key2block_rand | \
-  utils/apply_map.pl -f 2 $processed_egs_dir/train.scp \
-                     >$dir/temp/train.scp_rand
-
-
-# The following command splits up $dir/temp/train.scp_rand (the randomized-order
-# version of train.scp), while keeping distinct blocks in separate scp files,
-# thanks to the --utt2spk option.
-utils/split_scp.pl --utt2spk=$dir/temp/key2block_rand \
-   $dir/temp/train.scp_rand \
-   $(for i in $(seq $num_scp_files); do echo $dir/train.$i.scp; done)
-
-
+utils/shuffle_list.pl --srand "$srand" $processed_egs_dir/train.scp > $dir/train_shuffled.scp
+utils/split_scp.pl  $dir/train_shuffled.scp  \
+    $(for i in $(seq $num_scp_files); do echo $dir/train.$i.scp; done)
 cp $processed_egs_dir/heldout_subset.scp $processed_egs_dir/train_subset.scp $dir/
 
 
@@ -175,7 +133,6 @@ dir_type randomized_chain_egs
 num_scp_files $num_scp_files
 langs $lang
 frames_per_scp_file $frames_per_scp_file
-groups_per_scp_file $groups_per_scp_file
 EOF
 # frames_per_job, after rounding, becomes frames_per_scp_file.
 
