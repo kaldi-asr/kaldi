@@ -17,18 +17,8 @@ num_repeats=2  # number of times we repeat the same chunks with different
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
-
-num_heldout_groups=200    # The number of groups (i.e. groups of chunks) that
-                          # will go in the held-out set and the train subset
-                          # (heldout_subset.scp and train_subset.scp).  The real
-                          # point of train_subset.scp, and the reason we can't
-                          # just use a subset of train.scp, is that it contains
-                          # egs that are statistically comparable to
-                          # heldout_subset.scp, so their prob can be
-                          # meaningfully compared with those from
-                          # heldout_subset.scp.  Note: the number (e.g. 200) is
-                          # *after* merging chunks into groups of size
-                          # $chunks_per_group.
+num_utts_subset=300     # number of utterances in validation and training
+                        # subsets used for shrinkage and diagnostics.
 
 
 shuffle_buffer_size=5000   # Size of buffer (containing grouped egs) to use
@@ -94,34 +84,44 @@ mkdir -p $dir/temp $dir/log
 
 
 if [ $stage -le 0 ]; then
-  echo "$0: choosing egs to merge"
+  echo "$0: choosing heldout_subset and train_subset"
 
   utt2uniq_opt=
-  [ -f $raw_egs_dir/misc/utt2uniq ] && utt2uniq_opt="--utt2uniq=$raw_egs_dir/misc/utt2uniq"
+  if [ -f $raw_egs_dir/misc/utt2uniq ]; then
+      utt2uniq_opt="--utt2uniq=$raw_egs_dir/misc/utt2uniq"
+      echo "$0: File $raw_egs_dir/misc/utt2uniq exists, so ensuring the hold-out set" \
+           "includes all perturbed versions of the same source utterance."
+      utils/utt2spk_to_spk2utt.pl $raw_egs_dir/misc/utt2uniq 2>/dev/null | \
+          utils/shuffle_list.pl 2>/dev/null | \
+            awk -v max_utt=$num_utts_subset '{
+                for (n=2;n<=NF;n++) print $n;
+                printed += NF-1;
+                if (printed >= max_utt) nextfile; }' \
+          | fgrep -f - $raw_egs_dir/all.scp | sort -k1,1 > $dir/temp/heldout_subset.list
+  else
+      awk '{print $1}' $raw_egs_dir/misc/utt2spk | \
+        utils/shuffle_list.pl 2>/dev/null | \
+        head -$num_utts_subset |  fgrep -f - $raw_egs_dir/all.scp | sort -k1,1 > $dir/temp/heldout_subset.list
+  fi
 
-  $cmd $dir/log/choose_egs_to_merge.log steps/chain/internal/choose_egs_to_merge.py \
-    --chunks-per-group=$chunks_per_group \
-    --num-repeats=$num_repeats \
-    --num-heldout-groups=$num_heldout_groups \
-    $utt2uniq_opt \
-    --scp-in=$raw_egs_dir/all.scp \
-    --training-data-out=$dir/temp/train.list \
-    --heldout-subset-out=$dir/temp/heldout_subset.list \
-    --training-subset-out=$dir/temp/train_subset.list
-fi
+  awk '{print $1}' $raw_egs_dir/misc/utt2spk | \
+     utils/filter_scp.pl --exclude $dir/temp/heldout_subset.list | \
+     utils/shuffle_list.pl 2>/dev/null | \
+     head -$num_utts_subset | fgrep -f - $raw_egs_dir/all.scp | sort -k1,1 > $dir/temp/train_subset.list
+
+  awk '{print $1}' $raw_egs_dir/misc/utt2spk | \
+     utils/filter_scp.pl --exclude $dir/temp/heldout_subset.list | fgrep -f - $raw_egs_dir/all.scp > $dir/temp/train.list
+  fi
+len_valid_uttlist=$(wc -l < $dir/temp/heldout_subset.list)
+len_trainsub_uttlist=$(wc -l <$dir/temp/train_subset.list)
 
 if [ $stage -le 1 ]; then
 
   for name in heldout_subset train_subset; do
     echo "$0: merging and shuffling $name egs"
 
-    # Linearize these lists and add keys to make it an scp format.
-    awk '{for (n=1;n<=NF;n++) { count++; print count, $n; }}' <$dir/temp/${name}.list >$dir/temp/${name}.scp
+    cp $dir/temp/${name}.list $dir/temp/${name}.scp
 
-    # $cmd $dir/log/merge_${name}_egs.log \
-    #   nnet3-chain-merge-egs --minibatch-size=$chunks_per_group --compress=$compress \
-    #        scp:$dir/temp/${name}.scp ark:- \| \
-    #   nnet3-chain-shuffle-egs --srand=$srand ark:- ark,scp:$dir/${name}.ark,$dir/${name}.scp
     $cmd $dir/log/shuffle_${name}_egs.log \
       nnet3-chain-shuffle-egs --srand=$srand scp:$dir/temp/${name}.scp ark,scp:$dir/${name}.ark,$dir/${name}.scp
   done
@@ -132,7 +132,8 @@ if [ $stage -le 1 ]; then
   # nnet3-chain-merge-egs will merge the right groups, it's deterministic
   # and we specified --minibatch-size=$chunks_per_group.
   for j in $(seq $nj); do
-    awk '{for (n=1;n<=NF;n++) { count++; print count, $n; }}' <$dir/temp/train.$j.list >$dir/temp/train.$j.scp
+    #awk '{for (n=1;n<=NF;n++) { count++; print count, $n; }}' <$dir/temp/train.$j.list >$dir/temp/train.$j.scp
+    cp $dir/temp/train.${j}.list $dir/temp/train.${j}.scp
   done
 
   if [ -e $dir/storage ]; then
@@ -142,42 +143,20 @@ if [ $stage -le 1 ]; then
     utils/create_data_link.pl $(for j in $(seq $nj); do echo $dir/train.$j.ark; done) || true
   fi
 
-  # $cmd JOB=1:$nj $dir/log/merge_train_egs.JOB.log \
-  #    nnet3-chain-merge-egs --compress=$compress --minibatch-size=$chunks_per_group \
-  #      scp:$dir/temp/train.JOB.scp ark:- \| \
-  #    nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size \
-  #        --srand=\$[JOB+$srand] ark:- ark,scp:$dir/train.JOB.ark,$dir/train.JOB.scp
   $cmd JOB=1:$nj $dir/log/shuffle_train_egs.JOB.log \
      nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size \
-         --srand=\$[JOB+$srand] scp:$dir/temp/train.JOB.scp ark,scp:$dir/train.JOB.ark,$dir/train.JOB.scp
-  # the awk command is to ensure unique ids for each group.
-  cat $(for j in $(seq $nj); do echo $dir/train.$j.scp; done) | awk '{printf("%09d %s\n", NR, $2);}' > $dir/train.scp
+         --srand=\$[JOB+$srand] scp:$dir/temp/train.JOB.scp ark,scp:$dir/train.JOB.ark,$dir/train.JOB.scp || exit 1;
+  cat $(for j in $(seq $nj); do echo $dir/train.$j.scp; done) > $dir/train.scp
 fi
 
-
 cat $raw_egs_dir/info.txt  | awk  -v num_repeats=$num_repeats \
-   -v chunks_per_group=$chunks_per_group '
+   '
   /^dir_type / { print "dir_type processed_chain_egs"; next; }
   /^num_input_frames / { print "num_input_frames "$2 * num_repeats; next; } # approximate; ignores held-out egs.
   /^num_chunks / { print "num_chunks " $2 * num_repeats; next; }
    {print;}
-  END{print "chunks_per_group " chunks_per_group; print "num_repeats " num_repeats;}' >$dir/info.txt
+  END{print "num_repeats " num_repeats;}' >$dir/info.txt
 
-# # Note: the info.txt will actually look like the following, in general,
-# # taking into account the fields present in the info.txt in the source dir:
-# dir_type processed_chaina_egs
-# num_input_frames $num_frames
-# num_chunks $num_chunks
-# lang $lang
-# feat_dim $feat_dim
-# num_leaves $num_leaves
-# frames_per_chunk $frames_per_chunk
-# frames_per_chunk_avg $frames_per_chunk_avg
-# left_context $left_context
-# left_context_initial $left_context_initial
-# right_context $right_context
-# right_context_final $right_context_final
-# chunks_per_group $chunks_per_group
 
 
 if ! cat $dir/info.txt | awk '{if (NF == 1) exit(1);}'; then
