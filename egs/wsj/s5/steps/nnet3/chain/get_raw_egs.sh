@@ -249,15 +249,15 @@ fi
 
 
 if [ $stage -le 1 ]; then
+  num_input_frames=$(steps/nnet2/get_num_frames.sh $data)
   frames_and_chunks=$(for n in $(seq $nj); do cat $dir/log/get_egs.$n.log; done | \
            perl -e '$nc=0; $nf=0; while(<STDIN>) {
      if (m/Split .+ into (\d+) chunks/) { $this_nc = $1;  }
      if (m/Average chunk length was (\d+) frames/) { $nf += $1 * $this_nc;  $nc += $this_nc; }
     } print "$nf $nc"; ')
     echo $frames_and_chunks
-  num_frames=$(echo $frames_and_chunks | awk '{print $1}')
   num_chunks=$(echo $frames_and_chunks | awk '{print $2}')
-  frames_per_chunk_avg=$[num_frames/num_chunks]
+  frames_per_chunk_avg=$[num_input_frames/num_chunks]
   feat_dim=$(feat-to-dim scp:$sdata/1/feats.scp -)
   num_leaves=$(tree-info $tree | awk '/^num-pdfs/ {print $2}')
   if [ $left_context_initial -lt 0 ]; then
@@ -269,7 +269,7 @@ if [ $stage -le 1 ]; then
 
   cat >$dir/info.txt <<EOF
 dir_type raw_chain_egs
-num_input_frames $num_frames
+num_input_frames $num_input_frames
 num_chunks $num_chunks
 lang $lang
 feat_dim $feat_dim
