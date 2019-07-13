@@ -24,13 +24,16 @@ for i in "${punctuation_symbols[@]}"; do
     num_syms=$((num_syms+1))
 done
 mkdir -p $dir/normalize/$job
-local/clean_abbrevs_text.py $data/$job $data/"$job"_processed
-mv $data/"$job"_processed $data/$job
+
 echo "cat $data/$job | $substitute_arg" > $dir/normalize/$job/substitute.sh
  
 bash $dir/normalize/$job/substitute.sh | \
     sed "s: 's:'s:g" | sed "s: 'm:'m:g" | \
     sed "s: \s*: :g" | tr 'A-ZÂÁÀÄÊÉÈËÏÍÎÖÓÔÖÚÙÛÑÇ' 'a-zâáàäêéèëïíîöóôöúùûñç'  > $dir/normalize/$job/text
+    
+local/clean_abbrevs_text.py $dir/normalize/$job/text $data/"$job"_processed
+mv $data/"$job"_processed $dir/normalize/$job/text
+
 normalizer_main --config=$config --path_prefix=$path_prefix <$dir/normalize/$job/text >$dir/$job.txt
 
 exit 0;
