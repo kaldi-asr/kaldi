@@ -25,6 +25,15 @@
 namespace kaldi {
 
 
+// Compute liftering coefficients (scaling on cepstral coeffs)
+// coeffs are numbered slightly differently from HTK: the zeroth
+// index is C0, which is not affected.
+static void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs) {
+  for (int32 i = 0; i < coeffs->Dim(); i++)
+      (*coeffs)(i) = 1.0 + 0.5 * Q * sin (M_PI * i / Q);
+}
+
+
 void MfccComputer::Compute(BaseFloat vtln_warp,
                            VectorBase<BaseFloat> *signal_frame,
                            VectorBase<BaseFloat> *feature) {
@@ -55,6 +64,7 @@ void MfccComputer::Compute(BaseFloat vtln_warp,
   feature->SetZero();  // in case there were NaNs.
   // feature = dct_matrix_ * mel_energies [which now have log]
   feature->AddMatVec(1.0, dct_matrix_, kNoTrans, mel_energies_, 0.0);
+  feature->MulElements(lifter_coeffs_);
 
   if (opts_.use_energy)
     (*feature)(0) = signal_log_energy;
@@ -73,6 +83,10 @@ MfccComputer::MfccComputer(const MfccOptions &opts):
 
   Matrix<BaseFloat> dct_matrix(num_bins, num_bins);
   ComputeDctMatrix(&dct_matrix);
+  lifter_coeffs_.Resize(opts.num_ceps);
+  ComputeLifterCoeffs(opts.cepstral_lifter, &lifter_coeffs_);
+
+
   // Note that we include zeroth dct in either case.  If using the
   // energy we replace this with the energy.  This means a different
   // ordering of features than HTK.

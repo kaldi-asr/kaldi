@@ -130,13 +130,13 @@ int main(int argc, char *argv[]) {
     }
 
     QuestionsForKey pdfclass_opts(num_iters_refine);
-    std::vector<std::vector<int32> > pdfclass_questions(max_num_pdfclasses-1);
-    for (int32 i = 0; i < max_num_pdfclasses - 1; i++)
-      for (int32 j = 0; j <= i; j++)
-        pdfclass_questions[i].push_back(j);
-    // E.g. if max_num_pdfclasses == 3,  pdfclass_questions is now [ [0], [0, 1] ].
+    std::vector<std::vector<int32> > pdfclass_questions(max_num_pdfclasses - 1);
+    for (int32 i = 1; i <= max_num_pdfclasses - 1; i++)
+      for (int32 j = 1; j <= i; j++)
+        pdfclass_questions[i-1].push_back(j);
+    // E.g. if max_num_pdfclasses == 3,  pdfclass_questions is now [ 1], [1, 2] ].
     pdfclass_opts.initial_questions = pdfclass_questions;
-    KALDI_LOG << "Setting questions for hmm-position [hmm-position ranges from 0 to "<< (max_num_pdfclasses-1) <<"]";
+    KALDI_LOG << "Setting questions for pdf-class [pdf-class ranges from 1 to "<< max_num_pdfclasses <<"]";
     qo.SetQuestionsOf(kPdfClass, pdfclass_opts);
 
     WriteKaldiObject(qo, questions_out_filename, binary);

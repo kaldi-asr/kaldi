@@ -41,11 +41,17 @@ struct MfccOptions {
   int32 num_ceps;  // e.g. 13: num cepstral coeffs, counting zero.
   bool use_energy;  // if true, use energy; else C0
   BaseFloat energy_floor;
+  // cepstral_lifter controls a scaling factor on the cepstra that helps give
+  // all the MFCC coeffs a similar dynamic range by scaling up the
+  // higher-frequency coefficients.  It's a rather odd formula involving
+  // a sigh.   We don't make it configurable.
+  BaseFloat cepstral_lifter;
 
   MfccOptions() : mel_opts(23),
                   num_ceps(13),
                   use_energy(true),
-                  energy_floor(1.0e-10) { }
+                  energy_floor(1.0e-10),
+                  cepstral_lifter(22.0) { }
 
 
   void Register(OptionsItf *opts) {

@@ -1145,9 +1145,6 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
   KALDI_PARANOID_ASSERT(
       trans_model.InfoForTransitionId(symbol_sequence.front()).is_initial &&
       trans_model.InfoForTransitionId(symbol_sequence.back()).is_final);
-  if (symbol_sequence.size() > 1) {
-    KALDI_ASSERT(!trans_model.InfoForTransitionId(symbol_sequence.back()).is_initial);
-  } // TODO: remove the above.
   symbol_sequence.swap(*alignment);
 }
 
