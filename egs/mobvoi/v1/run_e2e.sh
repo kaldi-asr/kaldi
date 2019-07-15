@@ -141,7 +141,7 @@ if [ $stage -le 8 ]; then
   done
 
   # Augment with musan_noise
-  export LC_ALL=en_US.UTF-8
+  export LC_ALL=en_US.UTF-8 
   steps/data/augment_data_dir_for_asr.py --utt-prefix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train_shorter data/train_shorter_noise
   cat data/train_shorter/utt2dur | awk -v name=noise '{print name"_"$0}' >data/train_shorter_noise/utt2dur
   # Augment with musan_music
@@ -164,90 +164,58 @@ if [ $stage -le 9 ]; then
   done
 fi
 
-# monophone training
+combined_train_set=train_shorter_combined
 if [ $stage -le 10 ]; then
-  steps/train_mono.sh --nj 50 --cmd "$train_cmd" \
-    data/train_shorter data/lang exp/mono
-  (
-    utils/mkgraph.sh data/lang \
-      exp/mono exp/mono/graph
-    for test in dev eval; do
-      steps/decode.sh --nj 20 --cmd "$decode_cmd" \
-        --scoring-opts "--wake-word 嗨小问" \
-        exp/mono/graph data/$test exp/mono/decode_$test
-    done
-  )&
-
-  steps/align_si.sh --nj 50 --cmd "$train_cmd" \
-    data/train_shorter data/lang exp/mono exp/mono_ali_train_shorter
+  aug_affix="reverb noise music babble"
+  eval utils/combine_data.sh data/${combined_train_set} data/train_shorter_{$(echo $aug_affix | sed 's/ /,/g')}
 fi
 
-if [ $stage -le 11 ]; then
-  echo "$0: preparing for low-resolution speed-perturbed data (for alignment)"
-  utils/data/perturb_data_dir_speed_3way.sh data/train_shorter data/train_shorter_sp
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 data/train_shorter_sp || exit 1;
-  steps/compute_cmvn_stats.sh data/train_shorter_sp || exit 1;
-  utils/fix_data_dir.sh data/train_shorter_sp
-fi
+if [ -f data/${combined_train_set}_spe2e_hires/feats.scp ]; then
+  echo "$0: It seems that features for the perturbed training data already exist."
+  echo "If you want to extract them anyway, remove them first and run this"
+  echo "stage again. Skipping this stage..."
+else
+  if [ $stage -le 11 ]; then
+    echo "$0: perturbing the training data to allowed lengths..."
+    utils/data/get_utt2dur.sh data/${combined_train_set}  # necessary for the next command
 
-if [ $stage -le 12 ]; then
-  echo "$0: aligning with the perturbed low-resolution data"
-  steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
-    data/train_shorter_sp data/lang exp/mono exp/mono_ali_train_shorter_sp || exit 1
-fi
+    # 12 in the following command means the allowed lengths are spaced
+    # by 12% change in length.
+    utils/data/perturb_speed_to_allowed_lengths.py --speed-perturb false 12 data/${combined_train_set} \
+                                                   data/${combined_train_set}_e2e_hires
+    cat data/${combined_train_set}_e2e_hires/utt2dur | \
+      awk '{print $1 " " substr($1,5)}' >data/${combined_train_set}_e2e_hires/utt2uniq.tmp
+    utils/apply_map.pl -f 2 data/${combined_train_set}/utt2uniq \
+      <data/${combined_train_set}_e2e_hires/utt2uniq.tmp >data/${combined_train_set}_e2e_hires/utt2uniq
+    rm -f data/${combined_train_set}_e2e_hires/utt2uniq.tmp 2>/dev/null || true
+    utils/fix_data_dir.sh data/${combined_train_set}_e2e_hires
 
-if [ $stage -le 13 ]; then
-  echo "$0: creating high-resolution MFCC features"
-  mfccdir=data/train_shorter_sp_hires/data
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/mobvoi-$(dte +'%m_%d_%H_%M')/v1/$mfccdir/storage $mfccdir/storage
+    utils/data/get_utt2dur.sh data/train_shorter  # necessary for the next command
+    utils/data/perturb_speed_to_allowed_lengths.py 12 data/train_shorter data/train_shorter_spe2e_hires
+    cat data/train_shorter_spe2e_hires/utt2dur | \
+      awk '{print $1 " " substr($1,5)}' >data/train_shorter_spe2e_hires/utt2uniq
+    utils/fix_data_dir.sh data/train_shorter_spe2e_hires
+    utils/combine_data.sh data/${combined_train_set}_spe2e_hires data/${combined_train_set}_e2e_hires data/train_shorter_spe2e_hires
+    cat data/train_shorter_spe2e_hires/allowed_lengths.txt >data/${combined_train_set}_spe2e_hires/allowed_lengths.txt
   fi
 
-  for datadir in train_shorter_sp dev eval; do
-    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-  done
-
-  # do volume-perturbation on the training data prior to extracting hires
-  # features; this helps make trained nnets more invariant to test data volume.
-  utils/data/perturb_data_dir_volume.sh data/train_shorter_sp_hires || exit 1;
-
-  for datadir in train_shorter_sp dev eval; do
-    steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/${datadir}_hires || exit 1;
-    steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
-    utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
-  done
-fi
-
-combined_train_set=train_shorter_sp_combined
-aug_affix="reverb noise music babble"
-if [ $stage -le 14 ]; then
-  eval utils/combine_data.sh data/${combined_train_set} data/train_shorter_sp \
-    data/train_shorter_{$(echo $aug_affix | sed 's/ /,/g')}
-fi
-
-if [ $stage -le 15 ]; then
-  for name in $aug_affix; do
-    echo "$0: creating high-resolution MFCC features for train_shorter_${name}"
-    mfccdir=data/train_shorter_${name}_hires/data
+  if [ $stage -le 12 ]; then
+    echo "$0: extracting MFCC features for the training data..."
+    mfccdir=data/${combined_train_set}_spe2e_hires/data
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
       utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/mobvoi-$(date +'%m_%d_%H_%M')/v1/$mfccdir/storage $mfccdir/storage
     fi
-    utils/copy_data_dir.sh data/train_shorter_${name} data/train_shorter_${name}_hires
-    utils/data/perturb_data_dir_volume.sh data/train_shorter_${name}_hires || exit 1;
     steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/train_shorter_${name}_hires || exit 1;
-    steps/compute_cmvn_stats.sh data/train_shorter_${name}_hires || exit 1;
-    utils/fix_data_dir.sh data/train_shorter_${name}_hires || exit 1;
-  done
-  eval utils/combine_data.sh data/${combined_train_set}_hires data/train_shorter_sp_hires \
-    data/train_shorter_{$(echo $aug_affix | sed 's/ /,/g')}_hires
+                       --cmd "$train_cmd" \
+                       data/${combined_train_set}_spe2e_hires || exit 1;
+    steps/compute_cmvn_stats.sh data/${combined_train_set}_spe2e_hires || exit 1;
+    utils/fix_data_dir.sh data/${combined_train_set}_spe2e_hires
+    utils/validate_data_dir.sh data/${combined_train_set}_spe2e_hires
+  fi
 fi
 
-
-if [ $stage -le 16 ]; then
-  local/chain/run_tdnn.sh
+if [ $stage -le 13 ]; then
+  local/chain/run_e2e_tdnn.sh
 fi
 
 exit 0
-

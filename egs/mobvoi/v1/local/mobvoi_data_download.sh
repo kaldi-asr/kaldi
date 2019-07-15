@@ -44,3 +44,7 @@ else
   echo "Done extracting $dataset."
 fi
 
+for dataset in train dev eval; do
+  cp $src_path/${dataset}_list $dl_dir/${dataset}_list
+done
+

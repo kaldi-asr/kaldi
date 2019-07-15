@@ -335,7 +335,7 @@ if [ $stage -le 11 ]; then
   for data in $test_sets; do
     nspk=$(wc -l <data/${data}_hires/spk2utt)
     local/process_lattice.sh --nj $nspk --wake-word $wake_word ${dir}/decode_${data} data/${data}_hires $lang || exit 1
-    echo "Done. Date: $(date). Results:"
+    echo "Done. Date: $(date)."
   done
 fi
 
