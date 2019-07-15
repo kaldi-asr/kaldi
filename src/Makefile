@@ -9,7 +9,7 @@ SUBDIRS = base matrix util feat cudafeat tree gmm transform \
           bin fstbin gmmbin fgmmbin featbin cudafeatbin \
           latbin nnet3 rnnlm chain nnet3bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
-          cudadecoder cudadecoderbin
+          cudadecoder cudadecoderbin cblasext
 
 
 MEMTESTDIRS = base matrix util feat cudafeat tree gmm transform \
