@@ -48,7 +48,7 @@ glossaries="<UNK> <sil>"
 if [ $stage -le 0 ]; then
   echo "$0: making subword lexicon... $(date)."
   # get pair_code file
-  cut -d ' ' -f2- data/train/text | sed 's/<[^>]*>//g' | utils/lang/bpe/learn_bpe.py -s $num_merges > data/local/pair_code.txt
+  cut -d ' ' -f2- data/train/text | sed 's/<sil>//g;s/<UNK>//g' | utils/lang/bpe/learn_bpe.py -s $num_merges > data/local/pair_code.txt
   mv $dir/lexicon.txt $dir/lexicon_word.txt
   # get words
   cut -d ' ' -f1 $dir/lexicon_word.txt > $dir/words.txt
