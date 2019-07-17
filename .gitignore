@@ -73,7 +73,8 @@ GSYMS
 /src/kaldi.mk.bak
 
 # /egs/
-/egs/*/*/mfcc
+/egs/*/*/mfcc*
+/egs/*/*/fbank*
 /egs/*/*/plp
 /egs/*/*/exp
 /egs/*/*/data
