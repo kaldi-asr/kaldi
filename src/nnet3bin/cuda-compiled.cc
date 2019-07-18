@@ -1,4 +1,4 @@
-// nnet2bin/cuda-compiled.cc
+// nnet3bin/cuda-compiled.cc
 
 // Copyright 2014 Johns Hopkins University (author:  Daniel Povey)
 
