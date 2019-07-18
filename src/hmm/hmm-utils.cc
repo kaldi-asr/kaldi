@@ -373,7 +373,7 @@ class TidToSelfLoopMapper {
 public:
   // Function object used in MakePrecedingInputSymbolsSameClass and.
   // It maps a transition-ids t to the transition-id on the self-loop
-  // of the destination-state of t (or -1 if there is no self-loop).
+  // of the destination-state of t (or 0 if there is no self-loop).
   //
   // If currently_self_loop_free == true, it also checks that there are no
   // self-loops in the graph (i.e. in the labels it is called with).  This is
@@ -385,8 +385,8 @@ public:
   // equivalence class on labels that's relevant to what the self-loop will be
   // on the following state.
   TidToSelfLoopMapper(const Transitions &trans_model,
-                    const std::vector<int32> &disambig_syms,
-                    bool currently_self_loop_free):
+                      const std::vector<int32> &disambig_syms,
+                      bool currently_self_loop_free):
       trans_model_(trans_model),
       disambig_syms_(disambig_syms),
       currently_self_loop_free_(currently_self_loop_free) { }
@@ -397,7 +397,7 @@ public:
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
       return trans_model_.InfoForTransitionId(tid).self_loop_transition_id;
     } else if (tid == fst::kNoLabel) {
-      return -1;  // actually kNoLabel is -1.
+      return 0;
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       int32 big_number = fst::kNontermBigNumber;  // 1000000
       if (tid != 0 && tid < big_number) {
@@ -459,8 +459,10 @@ void AddSelfLoops(const Transitions &trans_model,
 
   StateId num_states = fst->NumStates();
   // self_loop_transition_id gives the transition-id of the self-loop of this
-  // state, or zero or -1 or -2 if it doesn't require a self-loop.
-  std::vector<int32> self_loop_transition_id(num_states, -2);
+  // state, or zero if it doesn't require a self-loop.
+  // -1 is where we don't know the self-loop transition id (if any)
+  // for this state yet.
+  std::vector<int32> self_loop_transition_id(num_states, -1);
 
   for (StateId s = 0; s < num_states; s++) {
     for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
@@ -468,7 +470,7 @@ void AddSelfLoops(const Transitions &trans_model,
          aiter.Next()) {
       const Arc &arc = aiter.Value();
       int32 next_state_self_loop_transition_id = f(arc.ilabel);
-      if (self_loop_transition_id[arc.nextstate] == -2) {
+      if (self_loop_transition_id[arc.nextstate] == -1) {
         // Note: next_state_self_loop_transition_id could be
         self_loop_transition_id[arc.nextstate] =
             next_state_self_loop_transition_id;
