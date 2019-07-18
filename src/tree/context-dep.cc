@@ -199,7 +199,7 @@ void ContextDependency::EnumeratePairs(
   to_pdf_->MultiMap(vec, &forward_pdfs);
   SortAndUniq(&forward_pdfs);
 
-  if (self_loop_pdf_class <= 0) {
+  if (self_loop_pdf_class < 0) {
     // Invalid pdf-class because there was no self-loop.  Return pairs
     // where the self-loop pdf-id is -1.
     for (int32 forward_pdf: forward_pdfs) {
