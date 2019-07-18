@@ -76,12 +76,10 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
         common_train_lib.prepare_initial_network(dir, run_opts,
                                                  srand=srand)
 
-    # Convert to .mdl, train the transitions, set the priors.
+    # Convert to .mdl, set the priors.
     common_lib.execute_command(
         """{command} {dir}/log/init_mdl.log \
-                nnet3-am-init {alidir}/final.mdl {raw_mdl} - \| \
-                nnet3-am-train-transitions - \
-                "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
+                nnet3-am-init {alidir}/final.mdl {raw_mdl} {dir}/0.mdl
         """.format(command=run_opts.command,
                    dir=dir, alidir=alidir,
                    raw_mdl=(input_model if input_model is not None
