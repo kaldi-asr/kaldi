@@ -44,11 +44,6 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
   const std::vector<int32> &phones = topo_.GetPhones();
   KALDI_ASSERT(!phones.empty());
 
-  // pdf_info is a set of lists indexed by phone. Each list is indexed by
-  // (pdf-class, self-loop pdf-class) of each arc of that phone, and the element
-  // is a list of possible (pdf, self-loop pdf) pairs that that (pdf-class, self-loop pdf-class)
-  // pair generates.
-  std::vector<std::vector<std::vector<std::pair<int32, int32> > > > pdf_info;
   // pdf_class_pairs is a set of lists indexed by phone. Each list stores
   // all unique (pdf-class, self-loop pdf-class) pairs that that phone
   // can have (on its arcs).
@@ -79,7 +74,7 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
       }
     }
 
-    std::map<std::pair<int32, int32>, std::vector<std::pair<int32, int32> > > &phone_to_arc_list(
+    std::map<std::pair<int32, int32>, std::vector<std::pair<int32, int32> > > &this_to_arc_list(
         to_arc_list[phone]);
     for (StateId state = 0; state < num_states; ++state) {
       for (fst::ArcIterator<fst::StdVectorFst> aiter(entry, state);
@@ -87,17 +82,25 @@ void Transitions::ComputeInfo(const ContextDependencyInterface &ctx_dep) {
         const fst::StdArc &arc(aiter.Value());
         int32 forward_pdf_class = arc.ilabel,
             self_loop_pdf_class = state_to_self_loop_pdf_class[arc.nextstate];
-        auto state_arc_pair = std::make_pair(state, aiter.Position());
+        auto state_arc_pair = std::make_pair(state, int32(aiter.Position()));
         auto pdf_class_pair = std::make_pair(forward_pdf_class, self_loop_pdf_class);
-        phone_to_arc_list[pdf_class_pair].push_back(state_arc_pair);
+        this_to_arc_list[pdf_class_pair].push_back(state_arc_pair);
       }
     }
-    for (auto const &pdf_class_to_arc: phone_to_arc_list)
+    for (auto const &pdf_class_to_arc: this_to_arc_list) {
       pdf_class_pairs[phone].push_back(pdf_class_to_arc.first);
+    }
   }
+  // pdf_info will be a set of lists indexed by phone. Each list is indexed by
+  // the same index as we index into pdf_class_pairs[phone], and the element is
+  // a list of possible (pdf, self-loop pdf) pairs that that (pdf-class,
+  // self-loop pdf-class) pair generates.
+  std::vector<std::vector<std::vector<std::pair<int32, int32> > > > pdf_info;
+
   ctx_dep.GetPdfInfo(phones, pdf_class_pairs, &pdf_info);
 
-  info_.push_back(TransitionIdInfo());  // transition-id is 1-based.
+  info_.push_back(TransitionIdInfo());  // transition-id is 1-based, add a
+                                        // dummy for element zero.
 
   for (int32 i = 0; i < phones.size(); i++) {
     int32 phone = phones[i];
@@ -140,7 +143,7 @@ void Transitions::ComputeDerived() {
     transition.is_final = (entry.Final(arc.nextstate) != fst::StdFst::Weight::Zero());
     transition.transition_cost = arc.weight.Value();
     if (transition.self_loop_pdf_id == -1)
-      transition.self_loop_transition_id = -1;
+      transition.self_loop_transition_id = 0;
     else {
       // Find the self-loop of the destination state:
       int32 arc_index = -1;
