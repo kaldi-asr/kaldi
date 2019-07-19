@@ -381,7 +381,8 @@ public:
 
   // This maps valid transition-ids to transition states, and maps all other
   // symbols (i.e. epsilon symbols, disambig symbols, and symbols with values
-  // over 100000/kNontermBigNumber) to zero.  Its point is to provide an
+  // over 100000/kNontermBigNumber) to zero.  (and -1 == kNoLabel to -1).
+  // Its purpose is to provide an
   // equivalence class on labels that's relevant to what the self-loop will be
   // on the following state.
   TidToSelfLoopMapper(const Transitions &trans_model,
@@ -397,7 +398,7 @@ public:
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
       return trans_model_.InfoForTransitionId(tid).self_loop_transition_id;
     } else if (tid == fst::kNoLabel) {
-      return 0;
+      return -1;
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       int32 big_number = fst::kNontermBigNumber;  // 1000000
       if (tid != 0 && tid < big_number) {
