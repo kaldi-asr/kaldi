@@ -39,6 +39,7 @@ struct LatticeBiglmFasterDecoderCombineConfig {
   int32 max_active;
   int32 min_active;
   BaseFloat lattice_beam;
+  BaseFloat backfill_beam;
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
                             // command-line program.
@@ -61,6 +62,7 @@ struct LatticeBiglmFasterDecoderCombineConfig {
                                        max_active(std::numeric_limits<int32>::max()),
                                        min_active(200),
                                        lattice_beam(10.0),
+                                       backfill_beam(16.0),
                                        prune_interval(25),
                                        determinize_lattice(true),
                                        beam_delta(0.5),
@@ -78,6 +80,7 @@ struct LatticeBiglmFasterDecoderCombineConfig {
     opts->Register("min-active", &min_active, "Decoder minimum #active states.");
     opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam.  Larger->slower, "
                    "and deeper lattices");
+    opts->Register("backfill-beam", &backfill_beam, "Backfill beam. Larger->slower, more accurate.");
     opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
                    "which to prune tokens");
     opts->Register("determinize-lattice", &determinize_lattice, "If true, "
@@ -100,6 +103,7 @@ struct LatticeBiglmFasterDecoderCombineConfig {
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
+                 && backfill_beam > 0.0
                  && min_active <= max_active
                  && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0
                  && prune_scale > 0.0 && prune_scale < 1.0);
@@ -124,7 +128,6 @@ struct ForwardLink {
   Token *next_tok;  // the next token [or NULL if represents final-state]
   Label ilabel;  // ilabel on arc
   Label olabel;  // olabel on arc
-  Label olabel_ori;  // olabel on base fst arc
   BaseFloat graph_cost;  // graph cost of traversing arc (contains LM, etc.)
   BaseFloat acoustic_cost;  // acoustic cost (pre-scaled) of traversing arc
   BaseFloat graph_cost_ori;  // graph cost of base HCLG graph
@@ -801,11 +804,6 @@ class LatticeBiglmFasterDecoderCombineTpl {
   // "best_token_map" are equivalent to best token in each base state. 
   std::vector<StateIdToTokenMap* > best_token_map_;
   std::vector<Token*> best_token_;
-  int32 count_ = 0;
-  int32 count1_ = 0;
-  int32 count2_ = 0;
-  int32 count3_ = 0;
-  int32 count4_ = 0;
 };
 
 typedef LatticeBiglmFasterDecoderCombineTpl<fst::StdFst,

@@ -144,7 +144,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::InitDecoding() {
   // clean up from last time:
   cost_offsets_.clear();
   ClearActiveTokens();  // num_toks_ is set to 0
-  count_ = count1_ = count2_ = count3_ = count4_ = 0;
 
   warned_ = false;
   warned_noarc_ = false;
@@ -192,36 +191,18 @@ bool LatticeBiglmFasterDecoderCombineTpl<FST, Token>::Decode(
   // terms of features), but note that the decodable object uses zero-based
   // numbering, which we have to correct for when we call it.
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
-    std::cout << "Main loop " << NumFramesDecoded() << std::endl;
     ProcessForFrame(decodable);
     if (NumFramesDecoded() % config_.backfill_interval == 0) {
-      std::cout << "Back fill " << NumFramesDecoded() << std::endl;
       complete_frame_ = DoBackfill();
-    }
-    if (active_toks_.size() > 32) {
-    for (Token *tok = active_toks_[32].toks; tok != NULL; tok = tok->next) {
-      if (tok->base_state == 2092989 && tok->lm_state == 1069) {
-        std::cout << "Exist in Decode()" << std::endl;
-      }
-    }
     }
     // Only the tokens and forwardlinks of the complete expanded frames will
     // be processed for saving memory.
     //if (NumFramesDecoded() % config_.prune_interval == 0) {
-    //  std::cout << "Prune For memory " << NumFramesDecoded() << std::endl;
     //  PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     //}
   }
   // A complete token list of the last frame will be generated in FinalizeDecoding()
-  std::cout << "Total is " << NumFramesDecoded() << " and size is "
-            << active_toks_.size() << std::endl;
   FinalizeDecoding();
-  std::cout << "Active_toks_'s size: " << active_toks_.size() << std::endl;
-  std::cout << "Reach End: " << active_toks_.back().toks << std::endl;
-  for (int32 i = 0; i < active_toks_.size(); i++) {
-    if (active_toks_[i].toks == NULL)
-      std::cout << "empty active toks frame " << i << std::endl;
-  }
   // Returns true if we have any kind of traceback available (not necessarily
   // to the end state; query ReachedFinal() for that).
   return !active_toks_.empty() && active_toks_.back().toks != NULL;
@@ -284,14 +265,6 @@ bool LatticeBiglmFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
                  << ": not producing lattice.\n";
       return false;
     }
-    if (f == 32) {
-      std::cout << "Test Frame 32" << std::endl;
-      for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next) {
-        if (tok->base_state == 2092989 && tok->lm_state == 1069) {
-          std::cout << "Exist before Topsort" << std::endl;
-        }
-      }
-    }
     TopSortTokens(active_toks_[f].toks, &token_list);
     for (size_t i = 0; i < token_list.size(); i++)
       if (token_list[i] != NULL)
@@ -306,7 +279,6 @@ bool LatticeBiglmFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
                 << " max:" << tok_map.max_load_factor();
   // Now create all arcs.
   for (int32 f = 0; f <= num_frames; f++) {
-    std::cout << "GetRawLattice frame " << f << std::endl;
     for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next) {
       StateId cur_state = tok_map[tok];
       for (ForwardLinkT *l = tok->links;
@@ -314,14 +286,6 @@ bool LatticeBiglmFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
            l = l->next) {
         typename unordered_map<Token*, StateId>::const_iterator
             iter = tok_map.find(l->next_tok);
-        if (iter == tok_map.end()) {
-          std::cout << "(" << tok->base_state << "," << tok->lm_state
-                    << ")'s link " << l->ilabel << ":" << l->olabel
-                    << " doesn't have next token and hasn't deleted."
-                    << " next token is (" << l->next_tok->base_state
-                    << "," << l->next_tok->lm_state << ")"
-                    << std::endl;
-        }
         KALDI_ASSERT(iter != tok_map.end());
         StateId nextstate = iter->second;
         BaseFloat cost_offset = 0.0;
@@ -439,14 +403,16 @@ inline Token* LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FindOrAddToken(
     // insert into the map
     (*token_map)[state] = new_tok;
     // handle best token map
+    if (changed) *changed = false;
     if (e_best_found == best_token_map->end()) {
       (*best_token_map)[base_state] = new_tok;
+      if (changed) *changed = true;
     } else {
-      if (tot_cost < e_best_found->second->tot_cost) {
+      if (tot_cost <= e_best_found->second->tot_cost) {
         (*best_token_map)[base_state] = new_tok;
+        if (changed) *changed = true;
       }
     }
-    if (changed) *changed = true;
     // Check token_best_map
     return new_tok;
   } else {
@@ -463,10 +429,11 @@ inline Token* LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FindOrAddToken(
       // in case we visit a state for the second time
       // those forward links, that lead to this replaced token before:
       // they remain and will hopefully be pruned later (PruneForwardLinks...)
-      if (changed) *changed = true;
+      if (changed) *changed = false;
       // e_best_found should be available
-      if (tot_cost < e_best_found->second->tot_cost) {
+      if (tot_cost <= e_best_found->second->tot_cost) {
         (*best_token_map)[base_state] = tok;
+        if (changed) *changed = true;
       }
     } else {
       if (changed) *changed = false;
@@ -513,13 +480,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinks(
       for (link = tok->links; link != NULL; ) {
         // See if we need to excise this link...
         Token *next_tok = link->next_tok;
-        if (frame_plus_one == 31 && tok->base_state == 2092989 &&
-            tok->lm_state == 28928 && link->ilabel == 19) {
-          std::cout << "The bug token is (" << next_tok->base_state
-                    << "," << next_tok->lm_state << ") alpha is "
-                    << next_tok->tot_cost << " and beta is "
-                    << next_tok->backward_cost << std::endl; 
-        }
         BaseFloat link_backward_cost = link->acoustic_cost + link->graph_cost +
           next_tok->backward_cost;
         BaseFloat link_cost = link_backward_cost + tok->tot_cost;
@@ -536,7 +496,9 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinks(
         } else {   // keep the link
           if (link_cost < 0) {  // this is just a precaution.
             if (link_cost <  - 0.01)
-              KALDI_WARN << "This link's cost is smaller than the best one.";
+              KALDI_WARN << "(" << frame_plus_one << "," << tok->base_state
+                << "," << tok->lm_state << ") has negative alpha-beta cost "
+                << link_cost;
             link_backward_cost = -tok->tot_cost;
           }
           if (link_backward_cost < tok_backward_cost)
@@ -595,20 +557,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinksFinal() {
     tok->backward_cost = final_cost - final_best_cost_;
     best_cost = std::min(best_cost, tok->tot_cost + tok->backward_cost);
   }
-  std::cout << "Best cost init: " << best_cost << std::endl;
-  BaseFloat threshold = best_cost + config_.lattice_beam;
-  std::cout << "In PruneFinal, before update beta"
-            << frame_plus_one << std::endl;
-  for (Token* tok = active_toks_[frame_plus_one].toks; tok != NULL;
-      tok = tok->next) {
-    std::cout << "(" << tok->base_state  << "," << tok->lm_state << ")"
-              << " alpha is " << tok->tot_cost
-              << " beta is " << tok->backward_cost
-              << " tot is " << tok->tot_cost + tok->backward_cost
-              << " expand is " << tok->expanded
-              << std::endl;
-  }
-  std::cout << std::endl;
   // Now go through tokens on this frame, pruning forward links...  may have to
   // iterate a few times until there is no more change, because the list is not
   // in topological order.  This is a modified version of the code in
@@ -640,18 +588,17 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinksFinal() {
         BaseFloat link_backward_cost = next_tok->backward_cost + 
           link->acoustic_cost + link->graph_cost;
         BaseFloat link_cost = link_backward_cost + tok->tot_cost;
-        if (link_cost > threshold) {  // excise link
+        if (link_cost > config_.lattice_beam) {  // excise link
           ForwardLinkT *next_link = link->next;
           if (prev_link != NULL) prev_link->next = next_link;
           else tok->links = next_link;
           delete link;
           link = next_link; // advance link but leave prev_link the same.
         } else { // keep the link and update the tok_extra_cost if needed.
-          if (link_cost < best_cost) { // this is just a precaution.
-            if (link_cost < best_cost - 0.01)
+          if (link_cost < 0.0) { // this is just a precaution.
+            if (link_cost < -0.01)
               KALDI_WARN << "Negative extra_cost: " << link_cost;
-            best_cost = link_cost;
-            threshold = best_cost + config_.lattice_beam;
+            link_backward_cost = -tok->tot_cost;
           }
           if (link_backward_cost < tok_backward_cost) {  // min
             tok_backward_cost = link_backward_cost;
@@ -664,7 +611,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinksFinal() {
       // was not necessary in the non-final case because then, this case
       // showed up as having no forward links.  Here, the tok_extra_cost has
       // an extra component relating to the final-prob.
-      if (tok_backward_cost > threshold)
+      if (tok_backward_cost + tok->tot_cost > config_.lattice_beam)
         tok_backward_cost = std::numeric_limits<BaseFloat>::infinity();
       // to be pruned in PruneTokensForFrame
 
@@ -673,19 +620,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinksFinal() {
       tok->backward_cost = tok_backward_cost; // will be +infinity or <= lattice_beam_.
     }
   } // while changed
-  std::cout << "Best cost finish: " << best_cost << std::endl;
-  std::cout << "In PruneFinal, after update beta "
-            << frame_plus_one << std::endl;
-  for (Token* tok = active_toks_[frame_plus_one].toks; tok != NULL;
-      tok = tok->next) {
-    std::cout << "(" << tok->base_state  << "," << tok->lm_state << ")"
-              << " alpha is " << tok->tot_cost
-              << " beta is " << tok->backward_cost
-              << " tot is " << tok->tot_cost + tok->backward_cost
-              << " expand is " << tok->expanded
-              << std::endl;
-  }
-  std::cout << std::endl;
 }
 
 
@@ -774,21 +708,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneTokensForFrameFromMap
   if (toks == NULL) {
     KALDI_WARN << "No tokens alive [doing pruning]";
   }
-  bool flag = false;
-  if (token_map_[token_list_index]->size() == 0) {
-    KALDI_WARN << "NO token_map_ on " << token_list_index;
-    flag = true;
-  }
-  if (best_token_map_[token_list_index]->size() == 0) {
-    KALDI_WARN << "No best_token_map_ on " << token_list_index;
-    flag = true;
-  }
-  if (flag) return;
-  std::cout << "At frame " << token_list_index
-            << " Before Prune, best_token_map_ has "
-            << best_token_map_[token_list_index]->size() << " Tokens."
-            << "And token_map_ has "
-            << token_map_[token_list_index]->size() << "Tokens.";
+
   PairIdToTokenMap* &token_map = token_map_[token_list_index];
   StateIdToTokenMap* &best_token_map = best_token_map_[token_list_index];
 
@@ -814,11 +734,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneTokensForFrameFromMap
       prev_tok = tok;
     }
   }
-  std::cout << "After Prune, best_token_map_has "
-            << best_token_map_[token_list_index]->size() << " Tokens."
-            << " And token_map_ has "
-            << token_map_[token_list_index]->size()
-            << std::endl;
 }
 
 
@@ -900,8 +815,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeFinalCosts(
       *final_best_cost = best_cost;
     }
   }
-  std::cout << "Compute Cost: " << best_cost_with_final
-            << std::endl;
 }
 
 template <typename FST, typename Token>
@@ -953,39 +866,17 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::AdvanceDecoding(
 // tokens.  This function used to be called PruneActiveTokensFinal().
 template <typename FST, typename Token>
 void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
-  std::cout << "FinalizeDecoding" << std::endl;
   // Process the espilon arcs for the last frame
-/*  std::cout << "Check Map before ProcessNonemitting" << std::endl;
-  for(int32 frame = 0; frame <= NumFramesDecoded(); frame++) {
-    if (best_token_map_[frame] != NULL) {
-      std::cout << "Still have best_token_map_ " << frame
-                << " And Size is " << best_token_map_[frame]->size()
-                << std::endl;
-    }
-  }*/
   ProcessNonemitting();
-/*  std::cout << "Check Map after ProcessNonemitting" << std::endl;
-  for(int32 frame = 0; frame <= NumFramesDecoded(); frame++) {
-    if (best_token_map_[frame] != NULL) {
-      std::cout << "Still have best_token_map_ " << frame
-                << " And Size is " << best_token_map_[frame]->size()
-                << std::endl;
-    }
-  }
-*/
   // Do backfill for the last few frames
   InitBeta(NumFramesDecoded());
   for (int32 frame = NumFramesDecoded() - 1; frame > complete_frame_; frame--) {
     ComputeBeta(frame, config_.lattice_beam * config_.prune_scale);
   }
-/*  std::cout << "Check Map" << std::endl;
-  for(int32 frame = 0; frame <= NumFramesDecoded(); frame++) {
-    if (best_token_map_[frame] != NULL) {
-      std::cout << "Still have best_token_map_ " << frame
-                << " And Size is " << best_token_map_[frame]->size()
-                << std::endl;
-    }
-  }*/
+  // best_token_ is set in ComputeBeta, but the last frame will not be
+  // processed. so we set it for the last frame mannually.
+  best_token_[NumFramesDecoded()] = active_toks_[NumFramesDecoded()].toks;
+
   PruneForwardLinksWithoutRecompute(complete_frame_);
   for (int32 frame = complete_frame_ + 1; frame < NumFramesDecoded(); frame++) {
     PruneForwardLinksWithoutRecompute(frame);
@@ -1002,16 +893,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
     delete best_token_map_[frame];
     best_token_map_[frame] = NULL;
   }
-  int32 num = 0;
-  for (Token *tok = active_toks_.back().toks; tok != NULL; tok = tok->next) {
-    num++;
-  }
-  std::cout << "In Final last: " << active_toks_.back().toks << std::endl;
-  std::cout << "In Final last frame has " << num << " Tokens." << std::endl;
-  // For here, all the frames have been processed completely.
-//  std::cout << "Count is " << count_  << " " << count1_
-//            << " " << count2_ << " " << count3_ << " " << count4_
-//            << std::endl;
+
   int32 final_frame_plus_one = NumFramesDecoded();
   int32 num_toks_begin = num_toks_;
   // PruneForwardLinksFinal() prunes final frame (with final-probs), and
@@ -1022,22 +904,10 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::FinalizeDecoding() {
     BaseFloat dontcare = 0.0; // delta of zero means we must always update
     PruneForwardLinks(f, &b1, &b2, dontcare);
     PruneTokensForFrame(f + 1);
-    for (Token *tok = active_toks_[32].toks; tok != NULL; tok = tok->next) {
-      if (tok->base_state == 2092989 && tok->lm_state == 1069) {
-        std::cout << "Prune in frame " << f << std::endl;
-        std::cout << "Exist before Topsort" << std::endl;
-      }
-    }
   }
   PruneTokensForFrame(0);
   KALDI_VLOG(4) << "pruned tokens from " << num_toks_begin
                 << " to " << num_toks_;
-  std::cout << "At the end of Finalizing" << std::endl;
-  for (Token *tok = active_toks_[32].toks; tok != NULL; tok = tok->next) {
-    if (tok->base_state == 2092989 && tok->lm_state == 1069) {
-      std::cout << "Exist before Topsort" << std::endl;
-    }
-  }
 }
 
 
@@ -1198,13 +1068,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ProcessForFrame(
       }
     }
   }
-
-  std::cout << "At ProcessForFrame " << cur_frame
-            << " Token Map size is " << token_map_[cur_frame]->size()
-            << " and " << token_map_[next_frame]->size()
-            << " Best Token Map size is " << best_token_map_[cur_frame]->size()
-            << " and " << best_token_map_[next_frame]->size()
-            << std::endl;
 }
 
 
@@ -1437,7 +1300,6 @@ int32 LatticeBiglmFasterDecoderCombineTpl<FST, Token>::DoBackfill() {
     best_token_map_[frame]->clear();
     delete best_token_map_[frame];
     best_token_map_[frame] = NULL;
-    std::cout << "Delete best_token_map_" << frame << std::endl;
   }
   for (int32 frame = expand_best_only_start; frame < NumFramesDecoded();
       frame++) {
@@ -1454,21 +1316,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
   // a. Update the expanded token's beta
   // We have to iterate until there is no more change, because the links
   // are not guaranteed to be in topological order.
-/*  if (frame == 1) {
-    std::cout << "Check frame 1 before compute." << std::endl;
-    for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-      std::cout << "(" << tok->base_state << "," << tok->lm_state
-                << ") is " << tok->expanded << " and forward tokens:"
-                << std::endl;
-      for (ForwardLinkT* link = tok->links; link != NULL; link = link->next) {
-        Token *next_tok = link->next_tok;
-        std::cout << "(" << next_tok->base_state << "," << next_tok->lm_state
-                  << "), alpha is " << link->acoustic_cost
-                  << " beta is " << link->graph_cost << std::endl;
-
-      }
-    }
-  }*/
   bool changed = true; // difference new minus old beta cost >= delta ?
   while (changed) {
     changed = false;
@@ -1492,39 +1339,15 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
     } // for all expanded token
   }
 
-/*  std::cout << "In ComputeBeta, finish beta on frame " << frame << std::endl;
-  for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-    std::cout << "(" << tok->base_state  << "," << tok->lm_state << ")"
-              << " alpha is " << tok->tot_cost
-              << " beta is " << tok->backward_cost
-              << " tot is " << tok->tot_cost + tok->backward_cost
-              << " expand is " << tok->expanded
-              << std::endl;  }
-*/
-  // For debug
-/*  if (frame == 363 && active_toks_.size() == 364) {
-    for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-      std::cout << "(" << tok->base_state << "," << tok->lm_state << ") beta "
-        << "is " << tok->backward_cost << " And alpha+beta is "
-        << tok->tot_cost + tok->backward_cost << std::endl;
-    }
-  }*/
   // b. find the best token (alpha+beta) for the particular frame
-  Token* &best_tok = best_token_[frame];  // the space is opened in ProcessForFrame
+  Token* &best_tok = best_token_[frame];  // the space is opened in
+                                          // ProcessForFrame
   best_tok = active_toks_[frame].toks;
   for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     // Get the best token from expanded tokens
     if (tok->expanded && (*tok < *best_tok) ) best_tok = tok;
   }
-/* 
-  std::cout << "In ComputeBeta, best token on frame " << frame << std::endl;
-  std::cout << "(" << best_tok->base_state  << "," << best_tok->lm_state << ")"
-            << " alpha is " << best_tok->tot_cost
-            << " beta is " << best_tok->backward_cost
-            << " tot is " << best_tok->tot_cost + best_tok->backward_cost
-            << " expand is " << best_tok->expanded
-            << std::endl;
-*/
+
   // c. Build best_token_map with alpha + beta and prune tokens that fall below
   // the config_.beam
   best_token_map_[frame]->clear();  // the space is opened in ProcessForFrame
@@ -1534,7 +1357,15 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
       // Prune useless expanded token with beam
       if (tok->tot_cost + tok->backward_cost <
           best_tok->tot_cost + best_tok->backward_cost + config_.beam) {
-        (*best_token_map)[tok->base_state] = tok;
+        // The "tok" survive. Decide it is the best-in-class token or not
+        typename StateIdToTokenMap::iterator tok_best_found =
+          best_token_map->find(tok->base_state);
+        if (tok_best_found == best_token_map->end()) {
+          (*best_token_map)[tok->base_state] = tok;
+        } else {
+          if (*tok < *tok_best_found->second) 
+            (*best_token_map)[tok->base_state] = tok;
+        }
       } else {  // the expanded token should be pruned.
         // The token will be pruned so prune its forwardlinks
         DeleteForwardLinks(tok);
@@ -1542,20 +1373,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
       }
     }
   }
-/*
-  std::cout << "In ComputeBeta, rebuild best_token_map on frame "
-            << frame << std::endl;
-  for (typename StateIdToTokenMap::iterator it = best_token_map->begin();
-       it != best_token_map->end(); it++) {
-    Token* tok = it->second;
-    std::cout << "(" << tok->base_state  << "," << tok->lm_state << ")"
-              << " alpha is " << tok->tot_cost
-              << " beta is " << tok->backward_cost
-              << " tot is " << tok->tot_cost + tok->backward_cost
-              << " expand is " << tok->expanded
-              << std::endl;
-  }
-*/
+
   // d. Update un-expanded tokens
   for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     if (!tok->expanded) {
@@ -1569,25 +1387,13 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeBeta(int32 frame,
           tok->backward_cost = std::numeric_limits<BaseFloat>::infinity();
         }
       } else {
-        // Prune the token whose corresponding best-in-class token has been pruned.
+        // Prune the token whose corresponding best-in-class token has been
+        // pruned.
         DeleteForwardLinks(tok);
         tok->backward_cost = std::numeric_limits<BaseFloat>::infinity();
       }
     }
   }
-  /*
-  std::cout << "In ComputeBeta, update un-expanded token on frame "
-            << frame << std::endl;
-  for (Token* tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-    std::cout << "(" << tok->base_state  << "," << tok->lm_state << ")"
-              << " alpha is " << tok->tot_cost
-              << " beta is " << tok->backward_cost
-              << " tot is " << tok->tot_cost + tok->backward_cost
-              << " expand is " << tok->expanded
-              << std::endl;
-  }
-  std::cout << std::endl;
-  */
 }
 
 template <typename FST, typename Token>
@@ -1605,7 +1411,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandForward(int32 frame,
   for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
     if (tok->expanded) {
       if (tok->update_alpha) {
-        count1_++;
         KALDI_ASSERT(best_token_map->find(tok->base_state) !=
                      best_token_map->end());
         // Check the expanded token whose alpha is updated so that the alphas of
@@ -1614,15 +1419,12 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandForward(int32 frame,
       }
     } else {  // For unexpanded token 
       if (expand_not_best) {  // expand all survived un-expanded tokens
-        count2_++;
         cur_queue_.Push(tok);
       } else {  // only the better hclg token
         KALDI_ASSERT(best_token_map->find(tok->base_state) !=
                      best_token_map->end());
-        count3_++;
         if (*tok < *(*best_token_map)[tok->base_state]) {
           cur_queue_.Push(tok);
-          count4_++;
         }
       }
     }
@@ -1679,7 +1481,6 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandForward(int32 frame,
         }
       }  // all links
     } else {  // un-expanded token
-      if (!expand_not_best) count_++;
       ExpandTokenBackfill(frame, tok, expand_not_best);
     }
   }  // while loop
@@ -1704,7 +1505,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandTokenBackfill(
     Token* &ref_next_tok = ref_link->next_tok;
 
     StateId new_base_state = ref_next_tok->base_state;
-    Arc arc(ref_link->ilabel, ref_link->olabel_ori, ref_link->graph_cost_ori, 0);
+    Arc arc(ref_link->ilabel, ref_link->olabel, ref_link->graph_cost_ori, 0);
     StateId new_lm_state = PropagateLm(tok->lm_state, &arc);
     PairId new_pair_id = ConstructPair(new_base_state, new_lm_state);
     BaseFloat ac_cost = ref_link->acoustic_cost,
@@ -1713,8 +1514,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandTokenBackfill(
               tot_cost = cur_cost + ac_cost + graph_cost;
 
     int32 new_frame_index = ref_link->ilabel ? frame + 1 : frame;
-    Token* &toks = ref_link->ilabel ? active_toks_[frame + 1].toks :
-                                      active_toks_[frame].toks;
+    Token* &toks = active_toks_[new_frame_index].toks;
     
     // references to maps
     PairIdToTokenMap* &token_map = token_map_[new_frame_index];
@@ -1729,15 +1529,20 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ExpandTokenBackfill(
     Token* new_tok;
     if (token_map->find(new_pair_id) == token_map->end()) {  // a new token
       // check its alpha_beta is within the beam
-      if (tot_cost + backward_cost >=
-          best_token->tot_cost + best_token->backward_cost + config_.beam)
+      if (tot_cost + backward_cost >= config_.beam) {
         continue;
+      }
       // create a new token
       new_tok = new Token(tot_cost, backward_cost, new_base_state,
           new_lm_state, NULL, toks, tok);
+      toks = new_tok;
+      num_toks_++;
       // Add to map
       (*token_map)[new_pair_id] = new_tok;
-      
+      // Add link
+      tok->links = new ForwardLinkT(new_tok, arc.ilabel, arc.olabel,
+                                    graph_cost, ac_cost, 
+                                    ref_link->graph_cost_ori, tok->links);
       // Add to cur_queue_
       if (ref_link->ilabel == 0 && (expand_not_best ||
           tot_cost < best_token_map->find(new_base_state)->second->tot_cost)) {
