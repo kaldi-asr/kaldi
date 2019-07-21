@@ -60,7 +60,7 @@ chunk_right_context=0
 
 # training options
 srand=0
-remove_egs=true
+remove_egs=false
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
@@ -182,13 +182,23 @@ if [ $stage -le 15 ]; then
   input dim=100 name=ivector
   input dim=40 name=input
 
+  no-op-component name=delta_1 input=Scale(-1.0, Offset(input, -1))
+  no-op-component name=delta_2 input=Scale(1.0, Offset(input, 1))
+  no-op-component name=delta_delta_1 input=Scale(-2.0, input)
+  no-op-component name=delta_delta_2 input=Scale(1.0, Offset(input,-2))
+  no-op-component name=delta_delta_3 input=Scale(1.0, Offset(input,2))
+
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  #fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  no-op-component name=input2 input=Append(Offset(input,0), Sum(delta_1, delta_2))
+
+  batchnorm-component name=bn_input
+  no-op-component name=input3 input=Append(bn_input, Scale(1.0, ReplaceIndex(ivector, t, 0)))
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=1024
+  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=1024 input=input3
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
