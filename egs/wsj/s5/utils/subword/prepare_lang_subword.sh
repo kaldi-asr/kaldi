@@ -59,7 +59,7 @@ position_dependent_phones=true
 share_silence_phones=false  # if true, then share pdfs of different silence
                             # phones together.
 sil_prob=0.5
-phone_symbol_table=             # if set, use a specified phone.txt file
+phone_symbol_table=             # if set, use a specified phones.txt file
 num_extra_phone_disambig_syms=1 # Standard one phone disambiguation symbol is used for optional silence.
                                 # Increasing this number does not harm, but is only useful if you later
                                 # want to introduce this labels to L_disambig.fst
