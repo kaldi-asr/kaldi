@@ -14,8 +14,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#if HAVE_CUDA == 1
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
+#endif
 
 #include "cudafeat/feature-mfcc-cuda.h"
 #include "cudamatrix/cu-rand.h"
@@ -197,7 +200,6 @@ __global__ void process_window_kernel(
       // compute new dot product with dc offset removed
       wdot += wval * wval;
 
-      assert(windowing_mul == 1);
       // write output
       out[idx] = wval * windowing_mul;
     }

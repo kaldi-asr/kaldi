@@ -37,7 +37,7 @@
 #include "cudamatrix/cu-allocator.h"
 #include "cudamatrix/cu-common.h"
 
-#if CUDA_VERSION >= 9100
+#if CUDA_VERSION >= 9010
 #include <cusolverDn.h>
 #else
 // cusolver not supported.  
@@ -94,7 +94,7 @@ class CuDevice {
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
   inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
   inline cusolverDnHandle_t GetCusolverDnHandle() { 
-#if CUDA_VERSION < 9100
+#if CUDA_VERSION < 9010
     KALDI_ERR << "CUDA VERSION '" << CUDA_VERSION << "' not new enough to support "
       << "cusolver. Upgrade to at least 9.1";
 #endif

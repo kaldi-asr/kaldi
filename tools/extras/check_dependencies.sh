@@ -134,7 +134,8 @@ case $(uname -m) in
     # We do not know if compiler exists at this point, so double-check the
     # well-known mkl.h file location. The compiler test would still find it if
     # installed in an alternative location (this is unlikely).
-    if [ ! -f /opt/intel/mkl/include/mkl.h ] &&
+    MKL_ROOT="${MKL_ROOT:-/opt/intel/mkl}"
+    if [ ! -f "${MKL_ROOT}/include/mkl.h" ] &&
          ! echo '#include <mkl.h>' | $CXX -I /opt/intel/mkl/include -E - >&/dev/null; then
       if [[ $(uname) == Linux ]]; then
         echo "$0: Intel MKL is not installed. Run extras/install_mkl.sh to install it."

@@ -174,7 +174,6 @@ static void UnitTestCuMatrixApplyExpSpecial() {
   H.ApplyExpSpecial();
 
   Matrix<Real> H2(D);
-
   KALDI_ASSERT(ApproxEqual(H,H2));
 }
 
@@ -201,18 +200,14 @@ static void UnitTestCuMatrixApplyExpLimited() {
   Matrix<Real> H(M, N);
   H.SetRandn();
 
-
   BaseFloat lower_limit = -0.2, upper_limit = 0.2;
 
   CuMatrix<Real> D(H);
-
   D.ApplyExpLimited(lower_limit, upper_limit);
-
 
   H.ApplyFloor(lower_limit);
   H.ApplyCeiling(upper_limit);
   H.ApplyExp();
-
   Matrix<Real> H2(D);
 
   KALDI_ASSERT(ApproxEqual(H,H2));
@@ -2389,11 +2384,11 @@ static void UnitTestCuSoftmax() {
 
     //gpu
     if (i % 2 == 0) {
-      Do.ApplySoftMaxPerRow(Di);
+      Do.SoftMaxPerRow(Di);
     } else {
       // in-place
       Do.CopyFromMat(Di);
-      Do.ApplySoftMaxPerRow(Do);
+      Do.SoftMaxPerRow(Do);
     }
     //cpu
     Ho.CopyFromMat(Hi);
@@ -2426,11 +2421,11 @@ static void UnitTestCuLogSoftmax() {
 
     //gpu
     if (i % 2 == 0) {
-      Do.ApplyLogSoftMaxPerRow(Di);
+      Do.LogSoftMaxPerRow(Di);
     } else {
       // in-place.
       Do.CopyFromMat(Di);
-      Do.ApplyLogSoftMaxPerRow(Do);
+      Do.LogSoftMaxPerRow(Do);
     }
     //cpu
     Ho.CopyFromMat(Hi);
