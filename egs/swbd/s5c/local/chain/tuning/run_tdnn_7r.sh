@@ -1,29 +1,24 @@
 #!/bin/bash
 
-# 7q is as 7p but a modified topology with resnet-style skip connections, more layers,
-#  skinnier bottlenecks, removing the 3-way splicing and skip-layer splicing,
-#  and re-tuning the learning rate and l2 regularize.  The configs are
-#  standardized and substantially simplified.  There isn't any advantage in WER
-#  on this setup; the advantage of this style of config is that it also works
-#  well on smaller datasets, and we adopt this style here also for consistency.
+# 7r is as 7q but replaces the LDA layer at the input of the
+# network with traditional delta and delta-delta features.
 
-# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7q_sp
-# System                tdnn7p_sp tdnn7q_sp
-# WER on train_dev(tg)      11.80     11.79
-# WER on train_dev(fg)      10.77     10.84
-# WER on eval2000(tg)        14.4      14.3
-# WER on eval2000(fg)        13.0      12.9
-# WER on rt03(tg)            17.5      17.6
-# WER on rt03(fg)            15.3      15.2
-# Final train prob         -0.057    -0.058
-# Final valid prob         -0.069    -0.073
-# Final train prob (xent)        -0.886    -0.894
-# Final valid prob (xent)       -0.9005   -0.9106
-# Num-parameters               22865188  18702628
+# local/chain/compare_wer_general.sh --rt03 tdnn7q_sp tdnn7r_sp
+# System                tdnn7q_sp tdnn7r_sp
+# WER on train_dev(tg)      11.87     11.94
+# WER on train_dev(fg)      11.00     11.05
+# WER on eval2000(tg)        14.1      14.1
+# WER on eval2000(fg)        12.7      12.8
+# WER on rt03(tg)            17.3      17.2
+# WER on rt03(fg)            15.0      15.0
+# Final train prob         -0.057    -0.056
+# Final valid prob         -0.072    -0.072
+# Final train prob (xent)        -0.880    -0.894
+# Final valid prob (xent)       -0.8997   -0.9036
+# Num-parameters               18705712  18705712
 
-
-# steps/info/chain_dir_info.pl exp/chain/tdnn7q_sp
-# exp/chain/tdnn7q_sp: num-iters=394 nj=3..16 num-params=18.7M dim=40+100->6034 combine=-0.058->-0.057 (over 8) xent:train/valid[261,393,final]=(-1.20,-0.897,-0.894/-1.20,-0.919,-0.911) logprob:train/valid[261,393,final]=(-0.090,-0.059,-0.058/-0.098,-0.073,-0.073)
+# steps/info/chain_dir_info.pl exp/chain/tdnn7r_sp
+# exp/chain/tdnn7r_sp: num-iters=394 nj=3..16 num-params=18.7M dim=40+100->6040 combine=-0.054->-0.054 (over 5) xent:train/valid[261,393,final]=(-1.12,-0.897,-0.894/-1.10,-0.905,-0.904) logprob:train/valid[261,393,final]=(-0.084,-0.057,-0.056/-0.089,-0.072,-0.072)
 
 set -e
 
@@ -32,7 +27,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7q
+affix=7r
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 
 decode_iter=
@@ -131,13 +126,17 @@ if [ $stage -le 12 ]; then
   input dim=100 name=ivector
   input dim=40 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  no-op-component name=delta_1 input=Scale(-1.0, Offset(input, -1))
+  no-op-component name=delta_2 input=Scale(1.0, Offset(input, 1))
+  no-op-component name=delta_delta_1 input=Scale(-2.0, input)
+  no-op-component name=delta_delta_2 input=Scale(1.0, Offset(input,-2))
+  no-op-component name=delta_delta_3 input=Scale(1.0, Offset(input,2))
 
-  # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536
+  no-op-component name=input2 input=Append(Offset(input,0), Sum(delta_1, delta_2), Sum(delta_delta_1, delta_delta_2, delta_delta_3))
+  batchnorm-component name=bn_input
+  no-op-component name=input3 input=Append(bn_input, Scale(1.0, ReplaceIndex(ivector, t, 0)))
+
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536 input=input3
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
