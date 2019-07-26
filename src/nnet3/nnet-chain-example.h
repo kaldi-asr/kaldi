@@ -274,6 +274,13 @@ MapType eg_to_egs_;
 };
 
 
+bool ParseFromQueryString(const std::string &string,
+                          const std::string &key_name,
+                          std::string *value);
+
+bool ParseFromQueryString(const std::string &string,
+                          const std::string &key_name,
+                          BaseFloat *value);
 
 } // namespace nnet3
 } // namespace kaldi
