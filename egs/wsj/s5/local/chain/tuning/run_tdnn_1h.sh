@@ -188,19 +188,11 @@ if [ $stage -le 15 ]; then
   input dim=40 name=input
 
   idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
-
-  no-op-component name=delta_1 input=Scale(-1.0, Offset(idct, -1))
-  no-op-component name=delta_2 input=Scale(1.0, Offset(idct, 1))
-  no-op-component name=delta_delta_1 input=Scale(-2.0, Offset(idct, 0))
-  no-op-component name=delta_delta_2 input=Scale(1.0, Offset(idct, -2))
-  no-op-component name=delta_delta_3 input=Scale(1.0, Offset(idct, 2))
-  
-  no-op-component name=input2 input=Append(Offset(idct, 0), Sum(delta_1, delta_2), Sum(delta_delta_1, delta_delta_2, delta_delta_3))
-  batchnorm-component name=bn_input
-  no-op-component name=input3 input=Append(bn_input, Scale(1.0, ReplaceIndex(ivector, t, 0)))
+  delta-layer name=delta input=idct
+  no-op-component name=input2 input=Append(delta, Scale(1.0, ReplaceIndex(ivector, t, 0)))
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $tdnn_opts dim=1024 input=input3
+  relu-batchnorm-layer name=tdnn1 $tdnn_opts dim=1024 input=input2
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1

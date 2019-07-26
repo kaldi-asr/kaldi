@@ -126,17 +126,10 @@ if [ $stage -le 12 ]; then
   input dim=100 name=ivector
   input dim=40 name=input
 
-  no-op-component name=delta_1 input=Scale(-1.0, Offset(input, -1))
-  no-op-component name=delta_2 input=Scale(1.0, Offset(input, 1))
-  no-op-component name=delta_delta_1 input=Scale(-2.0, input)
-  no-op-component name=delta_delta_2 input=Scale(1.0, Offset(input,-2))
-  no-op-component name=delta_delta_3 input=Scale(1.0, Offset(input,2))
+  delta-layer name=delta scale=1.0 batchnorm=true
+  no-op-component name=input2 input=Append(delta, Scale(1.0, ReplaceIndex(ivector, t, 0)))
 
-  no-op-component name=input2 input=Append(Offset(input,0), Sum(delta_1, delta_2), Sum(delta_delta_1, delta_delta_2, delta_delta_3))
-  batchnorm-component name=bn_input
-  no-op-component name=input3 input=Append(bn_input, Scale(1.0, ReplaceIndex(ivector, t, 0)))
-
-  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536 input=input3
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536 input=input2
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
