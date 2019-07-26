@@ -10,6 +10,7 @@ lm_url=www.openslr.org/resources/11
 . ./path.sh
 
 stage=0
+train_stage=
 . utils/parse_options.sh
 
 set -euo pipefail
@@ -186,17 +187,23 @@ if [ $stage -le 8 ]; then
     steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
                           exp/tri3b/graph_tgsmall data/$test \
                           exp/tri3b/decode_tgsmall_$test
+    # WER is 17.18%
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
                        data/$test exp/tri3b/decode_{tgsmall,tgmed}_$test
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
       data/$test exp/tri3b/decode_{tgsmall,tglarge}_$test
+    # WER is 12.9%
   done
 fi
 
 # Train a chain model
-if [ $stage -le 9 ]; then
-  local/chain/run_tdnn.sh --stage 0
+if [ $stage -le 24 ]; then
+  trainstageopts=
+  if [ ! -z $train_stage ]; then
+      trainstageopts="--train-stage $train_stage"
+  fi
+  local/chain/tuning/run_tdnn_2c.sh --stage $stage $trainstageopts
 fi
 
 # local/grammar/simple_demo.sh
