@@ -1,0 +1,15 @@
+#!/bin/bash
+
+for x in exp/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+for x in exp/chain/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+# Results on on dev_clean_2
+%WER 15.52 [ 3125 / 20138, 396 ins, 620 del, 2109 sub ] exp/chain/tdnn1a_sp/decode_tglarge_dev_clean_2//wer_9_0.0
+%WER 20.51 [ 4130 / 20138, 400 ins, 871 del, 2859 sub ] exp/chain/tdnn1a_sp/decode_tgsmall_dev_clean_2//wer_9_0.0
+
+# Results with new chain recipe (based on chaina branch). Results are w/o final model combination
+%WER 15.64 [ 3150 / 20138, 395 ins, 584 del, 2171 sub ] exp/chaina/tdnn2c_v4_sp/decode_tglarge_dev_clean_2//wer_11_0.0
+%WER 21.38 [ 4305 / 20138, 449 ins, 740 del, 3116 sub ] exp/chaina/tdnn2c_v4_sp/decode_tgsmall_dev_clean_2//wer_10_0.0
+
