@@ -4,13 +4,14 @@
 # Set this to somewhere where you want to put your data, or where
 # someone else has already put it.  You'll want to change this
 # if you're not on the CLSP grid.
-data=/export/a15/vpanayotov/data
+#data=/export/a15/vpanayotov/data
+data=/gpfs/fs1/lbarnes/kaldi/workspace/data
 
 # base url for downloads.
 data_url=www.openslr.org/resources/12
 lm_url=www.openslr.org/resources/11
 mfccdir=mfcc
-stage=1
+stage=15
 
 . ./cmd.sh
 . ./path.sh
@@ -87,6 +88,7 @@ fi
 
 if [ $stage -le 6 ]; then
   for part in dev_clean test_clean dev_other test_other train_clean_100; do
+    #steps/make_mfcc.sh --cmd "$train_cmd" --nj 40 data/$part exp/make_mfcc/$part $mfccdir
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 40 data/$part exp/make_mfcc/$part $mfccdir
     steps/compute_cmvn_stats.sh data/$part exp/make_mfcc/$part $mfccdir
   done
