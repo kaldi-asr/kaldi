@@ -2,24 +2,22 @@
 
 # 1h is as 1g but replaces the LDA layer at the input of the
 # network with traditional delta and delta-delta features.
-# 1h and 1h2 are results with and without using idct transform
-# of the input MFCC features, respectively.
 
 # local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/tdnn1h2_sp/ exp/chain/tdnn1h_sp/
-# System                tdnn1g_sp tdnn1h_sp tdnn1h2_sp
-#WER dev93 (tgpr)                6.87      6.75      7.01
-#WER dev93 (tg)                  6.66      6.70      6.74
-#WER dev93 (big-dict,tgpr)       4.77      4.60      4.74
-#WER dev93 (big-dict,fg)         4.29      4.40      4.21
-#WER eval92 (tgpr)               4.63      4.71      4.98
-#WER eval92 (tg)                 4.36      4.41      4.71
-#WER eval92 (big-dict,tgpr)      2.71      2.96      2.94
-#WER eval92 (big-dict,fg)        2.39      2.39      2.52
-# Final train prob        -0.0419   -0.0424   -0.0616
-# Final valid prob        -0.0540   -0.0534   -0.0684
-# Final train prob (xent)   -0.6582   -0.6583   -1.0692
-# Final valid prob (xent)   -0.7220   -0.7281   -1.1233
-# Num-params                 8364672   8364672   6087936
+# System                tdnn1g_sp tdnn1h_sp
+#WER dev93 (tgpr)                6.87      6.75
+#WER dev93 (tg)                  6.66      6.70
+#WER dev93 (big-dict,tgpr)       4.77      4.60
+#WER dev93 (big-dict,fg)         4.29      4.40
+#WER eval92 (tgpr)               4.63      4.71
+#WER eval92 (tg)                 4.36      4.41
+#WER eval92 (big-dict,tgpr)      2.71      2.96
+#WER eval92 (big-dict,fg)        2.39      2.39
+# Final train prob        -0.0419   -0.0424
+# Final valid prob        -0.0540   -0.0534
+# Final train prob (xent)   -0.6582   -0.6583
+# Final valid prob (xent)   -0.7220   -0.7281
+# Num-params                 8364672   8364672
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn1h_sp
 # exp/chain/tdnn1h_sp: num-iters=108 nj=2..8 num-params=8.4M dim=40+100->2880 combine=-0.044->-0.044 (over 2) xent:train/valid[71,107,final]=(-0.863,-0.648,-0.658/-0.932,-0.719,-0.728) logprob:train/valid[71,107,final]=(-0.065,-0.043,-0.042/-0.073,-0.055,-0.053)

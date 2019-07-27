@@ -126,7 +126,7 @@ if [ $stage -le 12 ]; then
   input dim=100 name=ivector
   input dim=40 name=input
 
-  delta-layer name=delta scale=1.0 batchnorm=true
+  delta-layer name=delta
   no-op-component name=input2 input=Append(delta, Scale(1.0, ReplaceIndex(ivector, t, 0)))
 
   relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536 input=input2
