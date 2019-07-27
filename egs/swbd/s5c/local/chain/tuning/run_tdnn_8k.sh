@@ -6,7 +6,7 @@ set -e
 
 # configs for 'chain'
 affix=chaina
-stage=12
+stage=9
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -14,7 +14,15 @@ dir=exp/chain/tdnn_8k  # Note: _sp will get added to this if $speed_perturb == t
 decode_iter=
 decode_nj=96
 
+# The amount of extra left/right context we put in the egs.  Note: this could
+# easily be zero, since we're not using a recurrent topology, but we put in a
+# little extra context so that we have more room to play with the configuration
+# without re-dumping egs.
+egs_extra_left_context=5
+egs_extra_right_context=5
+
 # training options
+frame_subsampling_factor=3
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
@@ -69,14 +77,14 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 
 # skipping this step
-# if [ $stage -le 9 ]; then
-#   # Get the alignments as lattices (gives the LF-MMI training more freedom).
-#   # use the same num-jobs as the alignments
-#   nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
-#   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
-#     data/lang exp/tri4 exp/tri4_lats_nodup$suffix
-#   rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
-# fi
+if [ $stage -le 9 ]; then
+  # Get the alignments as lattices (gives the LF-MMI training more freedom).
+  # use the same num-jobs as the alignments
+  nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
+    data/lang exp/tri4 exp/tri4_lats_nodup$suffix
+  rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
+fi
 
 
 if [ $stage -le 10 ]; then
@@ -95,7 +103,7 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology. This is the critically different
   # step compared with other recipes.
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor $frame_subsampling_factor \
       --context-opts "--context-width=2 --central-position=1" \
       --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
 fi
@@ -143,9 +151,140 @@ if [ $stage -le 12 ]; then
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+  if [ $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
+      copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
+  else
+      echo "Keeping the old $dir/init/default_trans.mdl as it already exists."
+  fi
 fi
 
+init_info=$dir/init/info.txt
+if [ $stage -le 12 ]; then
+
+  if [ ! -f $dir/configs/ref.raw ]; then
+      echo "Expected $dir/configs/ref.raw to exist"
+      exit
+  fi
+
+  nnet3-info $dir/configs/ref.raw  > $dir/configs/temp.info 
+  model_left_context=`fgrep 'left-context' $dir/configs/temp.info | awk '{print $2}'`
+  model_right_context=`fgrep 'right-context' $dir/configs/temp.info | awk '{print $2}'`
+  cat >$init_info <<EOF
+frame_subsampling_factor $frame_subsampling_factor
+langs $langs
+model_left_context $model_left_context
+model_right_context $model_right_context
+EOF
+  rm $dir/configs/temp.info
+fi
+
+# Make phone LM and denominator and normalization FST
 if [ $stage -le 13 ]; then
+  echo "$0: Making Phone LM and denominator and normalization FST"
+  mkdir -p $dir/den_fsts/log
+
+  # We may later reorganize this.
+  cp $tree_dir/tree $dir/default.tree
+
+  echo "$0: creating phone language-model"
+  $train_cmd $dir/den_fsts/log/make_phone_lm_default.log \
+    chain-est-phone-lm --num-extra-lm-states=2000 \
+       "ark:gunzip -c $gmm_dir/ali.*.gz | ali-to-phones $gmm_dir/final.mdl ark:- ark:- |" \
+       $dir/den_fsts/default.phone_lm.fst
+
+  echo "$0: creating denominator FST"
+  $train_cmd $dir/den_fsts/log/make_den_fst.log \
+     chain-make-den-fst $dir/default.tree $dir/init/default_trans.mdl $dir/den_fsts/default.phone_lm.fst \
+     $dir/den_fsts/default.den.fst $dir/den_fsts/default.normalization.fst || exit 1;
+fi
+
+model_left_context=$(awk '/^model_left_context/ {print $2;}' $dir/init/info.txt)
+model_right_context=$(awk '/^model_right_context/ {print $2;}' $dir/init/info.txt)
+if [ -z $model_left_context ]; then
+    echo "ERROR: Cannot find entry for model_left_context in $dir/init/info.txt"
+fi
+if [ -z $model_right_context ]; then
+    echo "ERROR: Cannot find entry for model_right_context in $dir/init/info.txt"
+fi
+# Note: we add frame_subsampling_factor/2 so that we can support the frame
+# shifting that's done during training, so if frame-subsampling-factor=3, we
+# train on the same egs with the input shifted by -1,0,1 frames.  This is done
+# via the --frame-shift option to nnet3-chain-copy-egs in the script.
+egs_left_context=$[model_left_context+(frame_subsampling_factor/2)+egs_extra_left_context]
+egs_right_context=$[model_right_context+(frame_subsampling_factor/2)+egs_extra_right_context]
+
+for d in $dir/raw_egs $dir/processed_egs; do
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $d/storage ] ; then
+    mkdir -p $d
+    utils/create_split_dir.pl \
+      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$d/storage $d/storage
+  fi
+done
+
+
+if [ $stage -le 14 ]; then
+  echo "$0: about to dump raw egs."
+  # Dump raw egs.
+  steps/chain/get_raw_egs.sh --cmd "$train_cmd" \
+    --lang "default" \
+    --left-context $egs_left_context \
+    --right-context $egs_right_context \
+    --frame-subsampling-factor $frame_subsampling_factor \
+    --alignment-subsampling-factor $frame_subsampling_factor \
+    --frames-per-chunk $frames_per_eg \
+    ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
+fi
+
+if [ $stage -le 15 ]; then
+  echo "$0: about to process egs"
+  steps/chain/process_egs.sh  --cmd "$train_cmd" \
+      --num-repeats 1 \
+    ${dir}/raw_egs ${dir}/processed_egs
+fi
+
+if [ $stage -le 16 ]; then
+  echo "$0: about to randomize egs"
+  steps/chain/randomize_egs.sh --frames-per-job 1500000 \
+    ${dir}/processed_egs ${dir}/egs
+fi
+
+if [ $stage -le 17 ]; then
+    echo "$0: Training pre-conditioning matrix"
+    num_lda_jobs=`find ${dir}/egs/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
+    steps/chain/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
+        --nj $num_lda_jobs \
+        $dir/configs/init.raw \
+        $dir/egs \
+        $dir || exit 1
+fi
+
+if [ $stage -le 18 ]; then
+    echo "$0: Preparing initial acoustic model"
+    if [ -f $dir/configs/init.config ]; then
+            $train_cmd ${dir}/log/add_first_layer.log \
+                    nnet3-init --srand=${srand} ${dir}/configs/init.raw \
+                    ${dir}/configs/final.config ${dir}/init/default.raw || exit 1
+    else
+            $train_cmd ${dir}/log/init_model.log \
+               nnet3-init --srand=${srand} ${dir}/configs/final.config ${dir}/init/default.raw || exit 1
+    fi
+
+    $train_cmd $dir/log/init_mdl.log \
+        nnet3-am-init ${dir}/init/default_trans.mdl $dir/init/default.raw $dir/init/default.mdl || exit 1
+fi
+
+if [ $stage -le 19 ]; then
+  echo "$0: about to train model"
+  steps/chain/train2.sh \
+    --stage $train_stage --cmd "$cuda_cmd" \
+    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
+    --max-param-change 2.0 \
+    --num-jobs-initial 2 --num-jobs-final 5 \
+     $dir/egs $dir
+fi
+exit
+
+if [ $stage -le 20 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
