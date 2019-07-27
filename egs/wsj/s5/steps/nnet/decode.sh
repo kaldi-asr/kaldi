@@ -109,8 +109,8 @@ D=$srcdir
 # Create the feature stream,
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 # apply-cmvn-online (optional),
-[ -n "$online_cmvn_opts" -a ! -f $nndir/global_cmvn_stats.mat ] && echo "$0: Missing $nndir/global_cmvn_stats.mat" && exit 1
-[ -n "$online_cmvn_opts" ] && feats="$feats apply-cmvn-online $online_cmvn_opts --spk2utt=ark:$srcdata/spk2utt $nndir/global_cmvn_stats.mat ark:- ark:- |"
+[ -n "$online_cmvn_opts" -a ! -f $D/global_cmvn_stats.mat ] && echo "$0: Missing $D/global_cmvn_stats.mat" && exit 1
+[ -n "$online_cmvn_opts" ] && feats="$feats apply-cmvn-online $online_cmvn_opts --spk2utt=ark:$srcdata/spk2utt $D/global_cmvn_stats.mat ark:- ark:- |"
 # apply-cmvn (optional),
 [ -n "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
 [ -n "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
