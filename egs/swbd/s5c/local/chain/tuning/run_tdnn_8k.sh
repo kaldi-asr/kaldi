@@ -6,7 +6,7 @@ set -e
 
 # configs for 'chain'
 affix=chaina
-stage=9
+stage=19
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -35,6 +35,7 @@ frames_per_eg=150
 remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
+srand=0
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
 
@@ -64,6 +65,7 @@ fi
 
 dir=${dir}${affix:+_$affix}$suffix
 train_set=train_nodup$suffix
+gmm_dir=exp/tri4
 ali_dir=exp/tri4_ali_nodup$suffix
 treedir=exp/chain/tri5_7d_tree$suffix
 lang=data/lang_chain_2y
@@ -85,6 +87,8 @@ if [ $stage -le 9 ]; then
     data/lang exp/tri4 exp/tri4_lats_nodup$suffix
   rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
 fi
+lat_dir=exp/tri4_lats_nodup$suffix
+train_data_dir=data/${train_set}_hires
 
 
 if [ $stage -le 10 ]; then
@@ -136,6 +140,7 @@ if [ $stage -le 12 ]; then
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain input=tdnn7 dim=625 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output-default input=prefinal-chain include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -148,24 +153,26 @@ if [ $stage -le 12 ]; then
   # similar in the xent and regular final layers.
   relu-batchnorm-layer name=prefinal-xent input=tdnn7 dim=625 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-default-xent input=prefinal-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-  if [ $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
-      copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
+  if [ ! -f $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
+      copy-transition-model $treedir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
   else
       echo "Keeping the old $dir/init/default_trans.mdl as it already exists."
   fi
 fi
 
 init_info=$dir/init/info.txt
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
 
   if [ ! -f $dir/configs/ref.raw ]; then
       echo "Expected $dir/configs/ref.raw to exist"
       exit
   fi
 
+  mkdir  -p $dir/init
   nnet3-info $dir/configs/ref.raw  > $dir/configs/temp.info 
   model_left_context=`fgrep 'left-context' $dir/configs/temp.info | awk '{print $2}'`
   model_right_context=`fgrep 'right-context' $dir/configs/temp.info | awk '{print $2}'`
@@ -184,12 +191,13 @@ if [ $stage -le 13 ]; then
   mkdir -p $dir/den_fsts/log
 
   # We may later reorganize this.
-  cp $tree_dir/tree $dir/default.tree
+  cp $treedir/tree $dir/default.tree
 
   echo "$0: creating phone language-model"
+  #TODO: check if we should use ali_dir or gmm_dir!
   $train_cmd $dir/den_fsts/log/make_phone_lm_default.log \
     chain-est-phone-lm --num-extra-lm-states=2000 \
-       "ark:gunzip -c $gmm_dir/ali.*.gz | ali-to-phones $gmm_dir/final.mdl ark:- ark:- |" \
+       "ark:gunzip -c $ali_dir/ali.*.gz | ali-to-phones $gmm_dir/final.mdl ark:- ark:- |" \
        $dir/den_fsts/default.phone_lm.fst
 
   echo "$0: creating denominator FST"
@@ -227,6 +235,7 @@ if [ $stage -le 14 ]; then
   # Dump raw egs.
   steps/chain/get_raw_egs.sh --cmd "$train_cmd" \
     --lang "default" \
+    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --left-context $egs_left_context \
     --right-context $egs_right_context \
     --frame-subsampling-factor $frame_subsampling_factor \
@@ -278,8 +287,11 @@ if [ $stage -le 19 ]; then
   steps/chain/train2.sh \
     --stage $train_stage --cmd "$cuda_cmd" \
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
-    --max-param-change 2.0 \
-    --num-jobs-initial 2 --num-jobs-final 5 \
+    --initial-effective-lrate $initial_effective_lrate \
+    --final-effective-lrate $final_effective_lrate \
+    --max-param-change $max_param_change \
+    --l2-regularize 0.00005 \
+    --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
      $dir/egs $dir
 fi
 exit
