@@ -294,42 +294,7 @@ if [ $stage -le 19 ]; then
     --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
      $dir/egs $dir
 fi
-exit
 
-if [ $stage -le 20 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
-  fi
-
-  steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$decode_cmd" \
-    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
-    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize $xent_regularize \
-    --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights false \
-    --chain.lm-opts="--num-extra-lm-states=2000" \
-    --egs.dir "$common_egs_dir" \
-    --egs.stage $get_egs_stage \
-    --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs $num_epochs \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
-    --cleanup.remove-egs $remove_egs \
-    --feat-dir data/${train_set}_hires \
-    --tree-dir $treedir \
-    --lat-dir exp/tri4_lats_nodup$suffix \
-    --dir $dir  || exit 1;
-
-fi
 
 if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
