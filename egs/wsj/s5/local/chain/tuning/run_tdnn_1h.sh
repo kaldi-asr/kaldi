@@ -22,9 +22,6 @@
 # steps/info/chain_dir_info.pl exp/chain/tdnn1h_sp
 # exp/chain/tdnn1h_sp: num-iters=108 nj=2..8 num-params=8.4M dim=40+100->2880 combine=-0.044->-0.044 (over 2) xent:train/valid[71,107,final]=(-0.863,-0.648,-0.658/-0.932,-0.719,-0.728) logprob:train/valid[71,107,final]=(-0.065,-0.043,-0.042/-0.073,-0.055,-0.053)
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1h2_sp
-# exp/chain/tdnn1h2_sp: num-iters=108 nj=2..8 num-params=8.4M dim=40+100->2880 combine=-0.068->-0.068 (over 2) xent:train/valid[71,107,final]=(-1.07,-0.654,-1.07/-1.12,-0.721,-1.12) logprob:train/valid[71,107,final]=(-0.062,-0.043,-0.062/-0.069,-0.056,-0.068)
-
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh

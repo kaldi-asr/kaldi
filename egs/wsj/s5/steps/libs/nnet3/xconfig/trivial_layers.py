@@ -195,7 +195,6 @@ class XconfigDeltaLayer(XconfigLayerBase):
 
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer]
-      dim=120                  [Final dimension of combined features]
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
@@ -234,25 +233,19 @@ class XconfigDeltaLayer(XconfigLayerBase):
         output_dim = self.output_dim()
 
         configs = []
-        line = ('component name={0}_scale-1 type=NoOpComponent dim={1}'.format(
+        line = ('dim-range-node name={0}_copy1 input-node={0} dim={1} dim-offset=0'.format(
             input_desc, input_dim))
         configs.append(line)
-        line = ('component-node name={0}_scale-1 component={0}_scale-1'
-            ' input=Scale(-1.0, {0})'.format(input_desc))
-        configs.append(line)
-        line = ('component name={0}_scale-2 type=NoOpComponent dim={1}'.format(
+        line = ('dim-range-node name={0}_copy2 input-node={0} dim={1} dim-offset=0'.format(
             input_desc, input_dim))
-        configs.append(line)
-        line = ('component-node name={0}_scale-2 component={0}_scale-2'
-            ' input=Scale(-2.0, {0})'.format(input_desc))
         configs.append(line)
 
         line = ('component name={0}_2 type=NoOpComponent dim={1}'.format(
             input_desc, output_dim))
         configs.append(line)
         line = ('component-node name={0}_2 component={0}_2 input=Append(Offset({0},0),'
-            ' Sum(Offset({0}_scale-1,-1), Offset({0},1)), Sum(Offset({0},-2), Offset({0},2),' 
-            ' Offset({0}_scale-2,0)))'.format(input_desc))
+            ' Sum(Offset(Scale(-1.0,{0}_copy1),-1), Offset({0},1)), Sum(Offset({0},-2), Offset({0},2),' 
+            ' Offset(Scale(-2.0,{0}_copy2),0)))'.format(input_desc))
         configs.append(line)
         
         line = ('component name={0} type=BatchNormComponent dim={1}'.format(
