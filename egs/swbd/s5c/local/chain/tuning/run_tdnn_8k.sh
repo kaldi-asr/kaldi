@@ -262,7 +262,7 @@ fi
 
 if [ $stage -le 17 ]; then
     echo "$0: Training pre-conditioning matrix"
-    num_lda_jobs=`find $common_egs_dir/egs/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
+    num_lda_jobs=`find $common_egs_dir/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
     steps/chain/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
         --nj $num_lda_jobs \
         $dir/configs/init.raw \
