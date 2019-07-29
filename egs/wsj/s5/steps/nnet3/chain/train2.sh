@@ -154,7 +154,7 @@ while [ $x -lt $num_iters ]; do
             --xent-regularize=$xent_regularize \
             $l2_regularize_opt \
             --print-interval=10  \
-           "nnet3-am-copy --lrate=$lrate --raw=true $dir/${x}.mdl - |" $den_fst_dir \
+           "nnet3-am-copy --learning-rate=$lrate --raw=true $dir/${x}.mdl - |" $den_fst_dir \
            "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/${name}_subset.scp ark:-|" \
            $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic &
     done
@@ -177,7 +177,7 @@ while [ $x -lt $num_iters ]; do
          --print-interval=10 --max-param-change=$max_param_change \
          --l2-regularize-factor=$inv_num_jobs \
          $l2_regularize_opt \
-         $model_in_dir $den_fst_dir  \
+         "nnet3-am-copy --learning-rate=$lrate --raw=true $dir/${x}.mdl - |" $den_fst_dir  \
          "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
          $model_out_dir || touch $dir/.error &
   done
