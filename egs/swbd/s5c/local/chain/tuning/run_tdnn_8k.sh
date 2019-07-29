@@ -6,7 +6,7 @@ set -e
 
 # configs for 'chain'
 affix=chaina_v3
-stage=21
+stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
