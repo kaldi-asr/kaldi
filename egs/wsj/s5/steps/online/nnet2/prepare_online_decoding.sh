@@ -6,7 +6,7 @@
 # Begin configuration.
 stage=0 # This allows restarting after partway, when something when wrong.
 feature_type=mfcc
-add_pitch=true
+add_pitch=false
 mfcc_config=conf/mfcc.conf # you can override any of these you need to override.
 plp_config=conf/plp.conf
 fbank_config=conf/fbank.conf 
