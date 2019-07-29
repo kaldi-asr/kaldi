@@ -266,7 +266,7 @@ if [ $stage -le 17 ]; then
     steps/chain/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
         --nj $num_lda_jobs \
         $dir/configs/init.raw \
-        $dir/egs \
+        $common_egs_dir \
         $dir || exit 1
 fi
 
@@ -296,7 +296,7 @@ if [ $stage -le 19 ]; then
     --groups-per-minibatch 128 \
     --l2-regularize 0.00005 \
     --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
-     $dir/egs $dir
+     $common_egs_dir $dir
 fi
 
 
