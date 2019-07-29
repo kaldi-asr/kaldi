@@ -230,7 +230,7 @@ for d in $dir/raw_egs $dir/processed_egs; do
 done
 
 
-if [ ! -z $common_egs_dir ]; then
+if [ -z $common_egs_dir ]; then
     if [ $stage -le 14 ]; then
       echo "$0: about to dump raw egs."
       # Dump raw egs.
