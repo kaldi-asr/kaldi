@@ -162,7 +162,7 @@ void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff);
 
 /**
   This function does all the windowing steps after actually
-  extracting the windowed signal: depeding on the
+  extracting the windowed signal: depending on the
   configuration, it does dithering, dc offset removal,
   preemphasis, and multiplication by the windowing function.
    @param [in] opts  The options class to be used
