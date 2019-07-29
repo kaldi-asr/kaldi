@@ -135,7 +135,7 @@ while [ $x -lt $num_iters ]; do
   echo "$0: training, iteration $x, num-jobs is $num_jobs"
 
   next_x=$[$x+1]
-  model_in_dir="nnet3-am-copy --lrate=$lrate --raw=true $dir/${x}.mdl - |"
+  # model_in_dir="nnet3-am-copy --lrate=$lrate --raw=true $dir/${x}.mdl - |"
   den_fst_dir=$egs_dir/misc
   transform_dir=$dir/init
   model_out_dir=$dir/${next_x}.mdl
@@ -154,7 +154,7 @@ while [ $x -lt $num_iters ]; do
             --xent-regularize=$xent_regularize \
             $l2_regularize_opt \
             --print-interval=10  \
-           "$model_in_dir" $den_fst_dir \
+           "nnet3-am-copy --lrate=$lrate --raw=true $dir/${x}.mdl - |" $den_fst_dir \
            "ark:nnet3-chain-merge-egs --minibatch-size=$groups_per_minibatch scp:$egs_dir/${name}_subset.scp ark:-|" \
            $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic &
     done
