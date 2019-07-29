@@ -6,7 +6,7 @@ set -e
 
 # configs for 'chain'
 affix=chaina_v3
-stage=12
+stage=17
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -262,7 +262,7 @@ fi
 
 if [ $stage -le 17 ]; then
     echo "$0: Training pre-conditioning matrix"
-    num_lda_jobs=`find ${dir}/egs/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
+    num_lda_jobs=`find $common_egs_dir/egs/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
     steps/chain/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
         --nj $num_lda_jobs \
         $dir/configs/init.raw \
