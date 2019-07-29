@@ -5,8 +5,8 @@
 set -e
 
 # configs for 'chain'
-affix=chaina
-stage=19
+affix=chaina_v3
+stage=21
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -33,7 +33,7 @@ num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
 remove_egs=true
-common_egs_dir=
+common_egs_dir=exp/chain/tdnn_8k_chaina_v2_sp/egs
 xent_regularize=0.1
 srand=0
 
@@ -230,31 +230,34 @@ for d in $dir/raw_egs $dir/processed_egs; do
 done
 
 
-if [ $stage -le 14 ]; then
-  echo "$0: about to dump raw egs."
-  # Dump raw egs.
-  steps/chain/get_raw_egs.sh --cmd "$train_cmd" \
-    --lang "default" \
-    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
-    --left-context $egs_left_context \
-    --right-context $egs_right_context \
-    --frame-subsampling-factor $frame_subsampling_factor \
-    --alignment-subsampling-factor $frame_subsampling_factor \
-    --frames-per-chunk $frames_per_eg \
-    ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
-fi
+if [ ! -z $common_egs_dir ]; then
+    if [ $stage -le 14 ]; then
+      echo "$0: about to dump raw egs."
+      # Dump raw egs.
+      steps/chain/get_raw_egs.sh --cmd "$train_cmd" \
+        --lang "default" \
+        --online-ivector-dir exp/nnet3/ivectors_${train_set} \
+        --left-context $egs_left_context \
+        --right-context $egs_right_context \
+        --frame-subsampling-factor $frame_subsampling_factor \
+        --alignment-subsampling-factor $frame_subsampling_factor \
+        --frames-per-chunk $frames_per_eg \
+        ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
+    fi
 
-if [ $stage -le 15 ]; then
-  echo "$0: about to process egs"
-  steps/chain/process_egs.sh  --cmd "$train_cmd" \
-      --num-repeats 1 \
-    ${dir}/raw_egs ${dir}/processed_egs
-fi
+    if [ $stage -le 15 ]; then
+      echo "$0: about to process egs"
+      steps/chain/process_egs.sh  --cmd "$train_cmd" \
+          --num-repeats 1 \
+        ${dir}/raw_egs ${dir}/processed_egs
+    fi
 
-if [ $stage -le 16 ]; then
-  echo "$0: about to randomize egs"
-  steps/chain/randomize_egs.sh --frames-per-job 1500000 \
-    ${dir}/processed_egs ${dir}/egs
+    if [ $stage -le 16 ]; then
+      echo "$0: about to randomize egs"
+      steps/chain/randomize_egs.sh --frames-per-job 1500000 \
+        ${dir}/processed_egs ${dir}/egs
+    fi
+    common_egs_dir=$dir/egs
 fi
 
 if [ $stage -le 17 ]; then
@@ -290,17 +293,18 @@ if [ $stage -le 19 ]; then
     --initial-effective-lrate $initial_effective_lrate \
     --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
+    --groups-per-minibatch 128 \
     --l2-regularize 0.00005 \
     --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
      $dir/egs $dir
 fi
 
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 20 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  $mkgraph_cmd $dir/graph_sw1_tg/mkgraph.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $treedir $dir/graph_sw1_tg
 fi
 
 
@@ -309,10 +313,11 @@ iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
 fi
-if [ $stage -le 15 ]; then
+if [ $stage -le 21 ]; then
   rm $dir/.error 2>/dev/null || true
-  for decode_set in train_dev eval2000; do
+  for decode_set in eval2000; do
       (
+      decode_nj=`wc -l data/${decode_set}_hires/spk2utt | cut -d ' ' -f1`
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
