@@ -73,7 +73,7 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
     global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;
     if (global_cmvn_stats_rxfilename == "")
       KALDI_ERR << "--global-cmvn-stats option is required with cmvn_conf.";
-  } else { // else user the defaults
+  } else { // else use the defaults
     use_cmvn = false;
   }
   
@@ -124,8 +124,7 @@ void OnlineNnet2FeaturePipeline::Init()
   }
 
   // Apply CMVN to features
-  if (info_.use_cmvn)
-  {
+  if (info_.use_cmvn) {
     KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
     if (info_.add_pitch) {
       int32 global_dim = global_cmvn_stats_.NumCols() - 1;
