@@ -73,7 +73,7 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
     global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;
     if (global_cmvn_stats_rxfilename == "")
       KALDI_ERR << "--global-cmvn-stats option is required with cmvn_conf.";
-  } else { // else user the defaults
+  } else { // else use the defaults
     use_cmvn = false;
   }
   
@@ -111,8 +111,7 @@ void OnlineNnet2FeaturePipeline::GetCmvnState(OnlineCmvnState *cmvn_state) {
 // Init() is to be called from the constructor; it assumes the pointer
 // members are all uninitialized but config_ and lda_mat_ are
 // initialized.
-void OnlineNnet2FeaturePipeline::Init() 
-{
+void OnlineNnet2FeaturePipeline::Init() {
   if (info_.feature_type == "mfcc") {
     base_feature_ = new OnlineMfcc(info_.mfcc_opts);
   } else if (info_.feature_type == "plp") {
@@ -124,8 +123,7 @@ void OnlineNnet2FeaturePipeline::Init()
   }
 
   // Apply CMVN to features
-  if (info_.use_cmvn)
-  {
+  if (info_.use_cmvn) {
     KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
     if (info_.add_pitch) {
       int32 global_dim = global_cmvn_stats_.NumCols() - 1;
