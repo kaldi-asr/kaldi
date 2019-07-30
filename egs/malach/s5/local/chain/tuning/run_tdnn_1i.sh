@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# same as 1h but replacing proportional-shrink with l2-regularize.
+# Copyright 2019  IBM Corp. (Author: Michael Picheny) Adapted AMI recipe to MALACH corpus
+
+
+# same as 1h in corresponding AMI s5b recipe but replacing proportional-shrink with l2-regularize.
 # The results match those from 1h.
 
 3set -e -o pipefail
@@ -11,7 +14,6 @@ nj=30
 min_seg_len=1.55
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
-ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 ivector_transform_type=pca
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
