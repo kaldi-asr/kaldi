@@ -1536,7 +1536,7 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
                !aiter_postinitial.Done(); aiter_postinitial.Next()) {
             auto arc_postinitial(aiter_postinitial.Value());
             arc_postinitial.weight =
-                Times(arc_postinitial.weight, arc_appended.weight);
+                Times(arc_appended.weight, arc_postinitial.weight);
             arc_postinitial.nextstate += state_offset;
             olat->AddArc(source_state, arc_postinitial);
             if (arc_postinitial.olabel > config_.max_word_id) {
