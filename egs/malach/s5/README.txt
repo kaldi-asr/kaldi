@@ -1,5 +1,7 @@
-This s5b recipe for MALACH data is a modified version of the s5b
-recipe for ami. 
+# Copyright 2019  IBM Corp. (Author: Michael Picheny) Adapted AMI recipe to MALACH corpus
+
+This s5 recipe for MALACH data is a modified version of the s5b
+recipe for AMI. 
 
 You need to download the malach data to get started. For information about the MALACH database see : 
 USC-SFI MALACH Interviews and Transcripts English - Speech Recognition Edition
