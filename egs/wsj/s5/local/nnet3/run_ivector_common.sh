@@ -7,13 +7,13 @@ set -e -o pipefail
 # contains the common feature preparation and iVector-related parts of the
 # script.  See those scripts for examples of usage.
 
-
 stage=0
 nj=30
 train_set=train_si284   # you might set this to e.g. train.
 test_sets="test_dev93 test_eval92"
 gmm=tri4b                # This specifies a GMM-dir from the features of the type you're training the system on;
                          # it should contain alignments for 'train_set'.
+online_cmvn_iextractor=false
 
 num_threads_ubm=32
 
@@ -117,6 +117,7 @@ if [ $stage -le 4 ]; then
   # 100.
   echo "$0: training the iVector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" \
+    --online-cmvn-iextractor $online_cmvn_iextractor \
     --nj $nj_extractor --num-threads $num_threads_extractor --num-processes $num_processes_extractor \
     data/${train_set}_sp_hires exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
@@ -161,7 +162,6 @@ if [ -f data/${train_set}_sp/feats.scp ] && [ $stage -le 7 ]; then
   echo " to avoid wasting time.  Please remove the file and continue if you really mean this."
   exit 1;
 fi
-
 
 if [ $stage -le 6 ]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"

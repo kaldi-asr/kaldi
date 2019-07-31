@@ -13,9 +13,10 @@ nj=30
 
 train_set=train_cleaned   # you might set this to e.g. train.
 gmm=tri3_cleaned          # This specifies a GMM-dir from the features of the type you're training the system on;
-                         # it should contain alignments for 'train_set'.
+                          # it should contain alignments for 'train_set'.
+online_cmvn_iextractor=false
 
-num_threads_ubm=32
+num_threads_ubm=8
 nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/nnet3_cleaned or whatever.
 
@@ -108,7 +109,9 @@ if [ $stage -le 4 ]; then
   # Train the iVector extractor. µUse all of the speed-perturbed data since iVector extractors
   # can be sensitive to the amount of data. The script defaults to an iVector dimension of 100.
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 15 \
+    --num-threads 4 --num-processes 2 \
+    --online-cmvn-iextractor $online_cmvn_iextractor \
     data/${train_set}_sp_hires exp/nnet3${nnet3_affix}/diag_ubm \
     exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
@@ -147,11 +150,10 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ -f data/${train_set}_sp/feats.scp ] && [ $stage -le 9 ]; then
-  echo "$0: $feats already exists.  Refusing to overwrite the features "
+  echo "$0: data/${train_set}_sp/feats.scp already exists.  Refusing to overwrite the features "
   echo " to avoid wasting time.  Please remove the file and continue if you really mean this."
   exit 1;
 fi
-
 
 if [ $stage -le 6 ]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"

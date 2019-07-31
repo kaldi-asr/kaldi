@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# 1g is like 1f but upgrading to a "resnet-style TDNN-F model", i.e.
-#   with bypass resnet connections, and re-tuned.
+# 1i is like 1h, while it introduces 'apply-cmvn-online' that does
+# cmn normalization both for i-extractor and TDNN input.
 
+# TODO update this!
 # local/chain/compare_wer.sh exp/chain/tdnn1f_sp exp/chain/tdnn1g_sp
 # System                tdnn1f_sp tdnn1g_sp
 #WER dev93 (tgpr)                7.03      6.68
@@ -40,12 +41,20 @@ nj_extractor=10
 num_threads_extractor=4
 num_processes_extractor=2
 
-nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
+nnet3_affix=_online_cmn   # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1g   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1i   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
+
+# Setting 'online_cmvn' to true replaces 'apply-cmvn' by
+# 'apply-cmvn-online' both for i-vector extraction and TDNN input.
+# The i-vector extractor uses the config 'conf/online_cmvn.conf' for
+# both the UBM and the i-extractor. The TDNN input is configured via
+# '--feat.cmvn-opts' that is set to the same config, so we use the
+# same cmvn for i-extractor and the TDNN input.
+online_cmvn=true
 
 # LSTM/chain options
 train_stage=-10
@@ -85,6 +94,7 @@ fi
 local/nnet3/run_ivector_common.sh \
   --stage $stage --nj $nj \
   --train-set $train_set --gmm $gmm \
+  --online-cmvn-iextractor $online_cmvn \
   --num-threads-ubm $num_threads_ubm \
   --nj-extractor $nj_extractor \
   --num-processes-extractor $num_processes_extractor \
@@ -182,13 +192,12 @@ if [ $stage -le 15 ]; then
   input dim=100 name=ivector
   input dim=40 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
+  delta-layer name=delta input=idct
+  no-op-component name=input2 input=Append(delta, Scale(1.0, ReplaceIndex(ivector, t, 0)))
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=1024
+  relu-batchnorm-layer name=tdnn1 $tdnn_opts dim=1024 input=input2
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
@@ -223,7 +232,7 @@ if [ $stage -le 16 ]; then
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
-    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts="--config=conf/online_cmvn.conf" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.0 \
@@ -245,7 +254,7 @@ if [ $stage -le 16 ]; then
     --egs.chunk-left-context=0 \
     --egs.chunk-right-context=0 \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.opts="--frames-overlap-per-eg 0 --online-cmvn $online_cmvn" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \

@@ -28,6 +28,7 @@ OnlineIvectorExtractionInfo::OnlineIvectorExtractionInfo(
 
 void OnlineIvectorExtractionInfo::Init(
     const OnlineIvectorExtractionConfig &config) {
+  online_cmvn_iextractor = config.online_cmvn_iextractor;
   ivector_period = config.ivector_period;
   num_gselect = config.num_gselect;
   min_post = config.min_post;
@@ -225,7 +226,12 @@ void OnlineIvectorFeature::UpdateStatsForFrames(
         posterior[j].second *= info_.posterior_scale * weight;
     }
   }
-  lda_->GetFrames(frames, &feats);  // get features without CMN.
+
+  if (! info_.online_cmvn_iextractor) {
+    lda_->GetFrames(frames, &feats);  // default, get features without OnlineCmvn
+  } else {
+    lda_normalized_->GetFrames(frames, &feats); // get features with OnlineCmvn
+  }
   ivector_stats_.AccStats(info_.extractor, feats, posteriors);
 }
 
