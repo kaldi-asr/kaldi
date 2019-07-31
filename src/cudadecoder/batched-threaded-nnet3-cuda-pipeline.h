@@ -139,7 +139,8 @@ public:
  // allocates reusable objects that are common across all decodings
  void Initialize(const fst::Fst<fst::StdArc> &decode_fst,
                  const nnet3::AmNnetSimple &nnet,
-                 const TransitionModel &trans_model);
+                 const TransitionModel &trans_model, 
+                 const std::string &path_hint);
 
  // deallocates reusable objects
  void Finalize();

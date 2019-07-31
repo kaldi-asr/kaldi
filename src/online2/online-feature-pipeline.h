@@ -115,7 +115,8 @@ struct OnlineFeaturePipelineConfig {
       splice_feats(false) { }
 
   OnlineFeaturePipelineConfig(
-      const OnlineFeaturePipelineCommandLineConfig &cmdline_config);
+      const OnlineFeaturePipelineCommandLineConfig &cmdline_config, 
+      const std::string &path_hint="");
 
   BaseFloat FrameShiftInSeconds() const;
 

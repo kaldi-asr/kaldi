@@ -22,8 +22,8 @@
 namespace kaldi {
 
 OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
-    const OnlineNnet2FeaturePipelineConfig &config)
-    : info_(config), mfcc(NULL), ivector(NULL) {
+    const OnlineNnet2FeaturePipelineConfig &config, const std::string &path_hint)
+    : info_(config, path_hint), mfcc(NULL), ivector(NULL) {
   if (info_.feature_type == "mfcc") {
     mfcc = new CudaMfcc(info_.mfcc_opts);
   }
@@ -32,13 +32,13 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
     OnlineIvectorExtractionConfig ivector_extraction_opts;
     ReadConfigFromFile(config.ivector_extraction_config,
                        &ivector_extraction_opts);
-    info_.ivector_extractor_info.Init(ivector_extraction_opts);
+    info_.ivector_extractor_info.Init(ivector_extraction_opts, path_hint);
 
     // Only these ivector options are currently supported
     ivector_extraction_opts.use_most_recent_ivector = true;
     ivector_extraction_opts.greedy_ivector_extractor = true;
 
-    ivector = new IvectorExtractorFastCuda(ivector_extraction_opts);
+    ivector = new IvectorExtractorFastCuda(ivector_extraction_opts, path_hint);
   }
 }
 

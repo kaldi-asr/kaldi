@@ -29,7 +29,7 @@
 #include <string>
 #include "base/kaldi-common.h"
 #include "matrix/kaldi-matrix.h"
-
+#include "util/parse-options.h"
 
 namespace kaldi {
 
@@ -237,20 +237,24 @@ class Input {
 };
 
 template <class C> void ReadKaldiObject(const std::string &filename,
-                                        C *c) {
+                                        C *c,
+                                        const std::string &path_hint="") {
   bool binary_in;
-  Input ki(filename, &binary_in);
+  std::string fqfilename = ResolvePath(filename, path_hint);
+  Input ki(fqfilename, &binary_in);
   c->Read(ki.Stream(), binary_in);
 }
 
 // Specialize the template for reading matrices, because we want to be able to
 // support reading 'ranges' (row and column ranges), like foo.mat[10:20].
 template <> void ReadKaldiObject(const std::string &filename,
-                                 Matrix<float> *m);
+                                 Matrix<float> *m,
+                                 const std::string &path_hint);
 
 
 template <> void ReadKaldiObject(const std::string &filename,
-                                 Matrix<double> *m);
+                                 Matrix<double> *m,
+                                 const std::string &path_hint);
 
 
 

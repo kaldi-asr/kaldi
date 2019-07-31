@@ -180,9 +180,9 @@ struct OnlineIvectorExtractionInfo {
   bool greedy_ivector_extractor;
   BaseFloat max_remembered_frames;
 
-  OnlineIvectorExtractionInfo(const OnlineIvectorExtractionConfig &config);
+  OnlineIvectorExtractionInfo(const OnlineIvectorExtractionConfig &config, const std::string &path_hint="");
 
-  void Init(const OnlineIvectorExtractionConfig &config);
+  void Init(const OnlineIvectorExtractionConfig &config, const std::string &path_hint="");
 
   // This constructor creates a version of this object where everything
   // is empty or zero.

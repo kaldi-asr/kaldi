@@ -24,7 +24,7 @@ namespace kaldi {
 
 
 OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
-    const OnlineFeaturePipelineCommandLineConfig &config) {
+    const OnlineFeaturePipelineCommandLineConfig &config, const std::string &path_hint) {
   if (config.feature_type == "mfcc" || config.feature_type == "plp" ||
       config.feature_type == "fbank") {
     feature_type = config.feature_type;
@@ -34,21 +34,21 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
   }
 
   if (config.mfcc_config != "") {
-    ReadConfigFromFile(config.mfcc_config, &mfcc_opts);
+    ReadConfigFromFile(config.mfcc_config, &mfcc_opts, path_hint);
     if (feature_type != "mfcc")
       KALDI_WARN << "--mfcc-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
 
   if (config.plp_config != "") {
-    ReadConfigFromFile(config.plp_config, &plp_opts);
+    ReadConfigFromFile(config.plp_config, &plp_opts, path_hint);
     if (feature_type != "plp")
       KALDI_WARN << "--plp-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
 
   if (config.fbank_config != "") {
-    ReadConfigFromFile(config.fbank_config, &fbank_opts);
+    ReadConfigFromFile(config.fbank_config, &fbank_opts, path_hint);
     if (feature_type != "fbank")
       KALDI_WARN << "--fbank-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
@@ -56,21 +56,21 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
 
   add_pitch = config.add_pitch;
   if (config.pitch_config != "") {
-    ReadConfigFromFile(config.pitch_config, &pitch_opts);
+    ReadConfigFromFile(config.pitch_config, &pitch_opts, path_hint);
     if (!add_pitch)
       KALDI_WARN << "--pitch-config option has no effect "
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 
   if (config.pitch_process_config != "") {
-    ReadConfigFromFile(config.pitch_process_config, &pitch_process_opts);
+    ReadConfigFromFile(config.pitch_process_config, &pitch_process_opts, path_hint);
     if (!add_pitch)
       KALDI_WARN << "--pitch-process-config option has no effect "
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 
   if (config.cmvn_config != "") {
-    ReadConfigFromFile(config.cmvn_config, &cmvn_opts);
+    ReadConfigFromFile(config.cmvn_config, &cmvn_opts, path_hint);
   }  // else use the defaults.
 
   global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;
@@ -79,7 +79,7 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
 
   add_deltas = config.add_deltas;
   if (config.delta_config != "") {
-    ReadConfigFromFile(config.delta_config, &delta_opts);
+    ReadConfigFromFile(config.delta_config, &delta_opts, path_hint);
     if (!add_deltas)
       KALDI_WARN << "--delta-config option has no effect "
                  << "since you did not supply --add-deltas option.";
@@ -87,7 +87,7 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
 
   splice_feats = config.splice_feats;
   if (config.splice_config != "") {
-    ReadConfigFromFile(config.splice_config, &splice_opts);
+    ReadConfigFromFile(config.splice_config, &splice_opts, path_hint);
     if (!splice_feats)
       KALDI_WARN << "--splice-config option has no effect "
                  << "since you did not supply --splice-feats option.";

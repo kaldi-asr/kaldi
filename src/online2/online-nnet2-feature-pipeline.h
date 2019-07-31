@@ -127,7 +127,7 @@ struct OnlineNnet2FeaturePipelineInfo {
       feature_type("mfcc"), add_pitch(false) { }
 
   OnlineNnet2FeaturePipelineInfo(
-      const OnlineNnet2FeaturePipelineConfig &config);
+      const OnlineNnet2FeaturePipelineConfig &config, const std::string &path_hint="");
 
   BaseFloat FrameShiftInSeconds() const;
 

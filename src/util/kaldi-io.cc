@@ -830,7 +830,8 @@ std::istream &Input::Stream() {
 
 
 template <> void ReadKaldiObject(const std::string &filename,
-                                 Matrix<float> *m) {
+                                 Matrix<float> *m,
+                                 const std::string &path_hint) {
   if (!filename.empty() && filename[filename.size() - 1] == ']') {
     // This filename seems to have a 'range'... like foo.ark:4312423[20:30].
     // (the bit in square brackets is the range).
@@ -841,7 +842,8 @@ template <> void ReadKaldiObject(const std::string &filename,
     }
     Matrix<float> temp;
     bool binary_in;
-    Input ki(rxfilename, &binary_in);
+    std::string fqfilename=ResolvePath(rxfilename, path_hint);
+    Input ki(fqfilename, &binary_in);
     temp.Read(ki.Stream(), binary_in);
     if (!ExtractObjectRange(temp, range, m)) {
       KALDI_ERR << "Error extracting range of object: " << filename;
@@ -849,13 +851,15 @@ template <> void ReadKaldiObject(const std::string &filename,
   } else {
     // The normal case, there is no range.
     bool binary_in;
-    Input ki(filename, &binary_in);
+    std::string fqfilename=ResolvePath(filename, path_hint);
+    Input ki(fqfilename, &binary_in);
     m->Read(ki.Stream(), binary_in);
   }
 }
 
 template <> void ReadKaldiObject(const std::string &filename,
-                                 Matrix<double> *m) {
+                                 Matrix<double> *m,
+                                 const std::string &path_hint) {
   if (!filename.empty() && filename[filename.size() - 1] == ']') {
     // This filename seems to have a 'range'... like foo.ark:4312423[20:30].
     // (the bit in square brackets is the range).
@@ -866,7 +870,8 @@ template <> void ReadKaldiObject(const std::string &filename,
     }
     Matrix<double> temp;
     bool binary_in;
-    Input ki(rxfilename, &binary_in);
+    std::string fqfilename=ResolvePath(rxfilename, path_hint);
+    Input ki(fqfilename, &binary_in);
     temp.Read(ki.Stream(), binary_in);
     if (!ExtractObjectRange(temp, range, m)) {
       KALDI_ERR << "Error extracting range of object: " << filename;
@@ -874,7 +879,8 @@ template <> void ReadKaldiObject(const std::string &filename,
   } else {
     // The normal case, there is no range.
     bool binary_in;
-    Input ki(filename, &binary_in);
+    std::string fqfilename=ResolvePath(filename, path_hint);
+    Input ki(fqfilename, &binary_in);
     m->Read(ki.Stream(), binary_in);
   }
 }

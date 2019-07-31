@@ -115,7 +115,7 @@ class ParseOptions : public OptionsItf {
   /// registering all options.  This is usually used internally after the
   /// standard --config option is used, but it may also be called from a
   /// program.
-  void ReadConfigFile(const std::string &filename);
+  void ReadConfigFile(const std::string &filename, const std::string &path_hint="");
 
   /// Number of positional parameters (c.f. argc-1).
   int NumArgs() const;
@@ -235,30 +235,32 @@ class ParseOptions : public OptionsItf {
 /// "void Register(OptionsItf *opts)" which it can call to register the
 /// ParseOptions object.
 template<class C> void ReadConfigFromFile(const std::string config_filename,
-                                          C *c) {
+                                          C *c,
+                                          const std::string &path_hint="") {
   std::ostringstream usage_str;
   usage_str << "Parsing config from "
             << "from '" << config_filename << "'";
   ParseOptions po(usage_str.str().c_str());
   c->Register(&po);
-  po.ReadConfigFile(config_filename);
+  po.ReadConfigFile(config_filename, path_hint);
 }
 
 /// This variant of the template ReadConfigFromFile is for if you need to read
 /// two config classes from the same file.
 template<class C1, class C2> void ReadConfigsFromFile(const std::string
                                                       config_filename,
-                                                      C1 *c1, C2 *c2) {
+                                                      C1 *c1, C2 *c2,
+                                                      const std::string &path_hint="") {
   std::ostringstream usage_str;
   usage_str << "Parsing config from "
             << "from '" << config_filename << "'";
   ParseOptions po(usage_str.str().c_str());
   c1->Register(&po);
   c2->Register(&po);
-  po.ReadConfigFile(config_filename);
+  po.ReadConfigFile(config_filename, path_hint);
 }
 
-
+std::string ResolvePath(const std::string &filename, const std::string &path_hint);
 
 }  // namespace kaldi
 

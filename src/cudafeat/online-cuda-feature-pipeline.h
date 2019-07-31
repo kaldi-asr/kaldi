@@ -36,7 +36,8 @@ namespace kaldi {
 class OnlineCudaFeaturePipeline {
  public:
   explicit OnlineCudaFeaturePipeline(
-      const OnlineNnet2FeaturePipelineConfig &config);
+      const OnlineNnet2FeaturePipelineConfig &config,
+      const std::string &path_hint="");
 
   void ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
                        BaseFloat sample_freq,

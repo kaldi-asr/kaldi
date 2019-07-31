@@ -21,6 +21,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <unistd.h>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -455,9 +456,33 @@ void ParseOptions::PrintConfig(std::ostream &os) {
   os << '\n';
 }
 
-
-void ParseOptions::ReadConfigFile(const std::string &filename) {
-  std::ifstream is(filename.c_str(), std::ifstream::in);
+#ifdef _WIN32
+#define DIRSEP '\\'
+#else
+#define DIRSEP '/'
+#endif
+std::string ResolvePath(const std::string &filename, const std::string &path_hint)
+{
+  if (access(filename.c_str(), F_OK) == 0) return filename;
+  std::string dir=path_hint;
+  // Walk the directory backwards
+  while (dir.length() > 0) {
+    std::string fqfilename = dir+DIRSEP+filename;
+    // With c++17, this can change to std::filesystem::exist
+    if (access(fqfilename.c_str(), F_OK)==0) {
+      return fqfilename;
+    }
+    off_t sc=dir.rfind(DIRSEP);
+    if (sc != std::string::npos) {
+      dir = dir.substr(0, sc);
+    }
+  }
+  KALDI_ERR << "Failed to find file " << filename;
+}
+  
+void ParseOptions::ReadConfigFile(const std::string &filename, const std::string &path_hint) {
+  std::string fqfilename = ResolvePath(filename, path_hint);
+  std::ifstream is(fqfilename, std::ifstream::in);
   if (!is.good()) {
     KALDI_ERR << "Cannot open config file: " << filename;
   }

@@ -22,12 +22,13 @@
 namespace kaldi {
 
 OnlineIvectorExtractionInfo::OnlineIvectorExtractionInfo(
-    const OnlineIvectorExtractionConfig &config) {
-  Init(config);
+    const OnlineIvectorExtractionConfig &config, const std::string &path_hint) {
+  Init(config, path_hint);
 }
 
 void OnlineIvectorExtractionInfo::Init(
-    const OnlineIvectorExtractionConfig &config) {
+    const OnlineIvectorExtractionConfig &config,
+    const std::string &path_hint) {
   ivector_period = config.ivector_period;
   num_gselect = config.num_gselect;
   min_post = config.min_post;
@@ -47,10 +48,10 @@ void OnlineIvectorExtractionInfo::Init(
       "in the file supplied to --ivector-extractor-config)";
   if (config.lda_mat_rxfilename == "")
     KALDI_ERR << "--lda-matrix option must be set " << note;
-  ReadKaldiObject(config.lda_mat_rxfilename, &lda_mat);
+  ReadKaldiObject(config.lda_mat_rxfilename, &lda_mat, path_hint);
   if (config.global_cmvn_stats_rxfilename == "")
     KALDI_ERR << "--global-cmvn-stats option must be set " << note;
-  ReadKaldiObject(config.global_cmvn_stats_rxfilename, &global_cmvn_stats);
+  ReadKaldiObject(config.global_cmvn_stats_rxfilename, &global_cmvn_stats, path_hint);
   if (config.cmvn_config_rxfilename == "")
     KALDI_ERR << "--cmvn-config option must be set " << note;
   ReadConfigFromFile(config.cmvn_config_rxfilename, &cmvn_opts);
@@ -59,10 +60,10 @@ void OnlineIvectorExtractionInfo::Init(
   ReadConfigFromFile(config.splice_config_rxfilename, &splice_opts);
   if (config.diag_ubm_rxfilename == "")
     KALDI_ERR << "--diag-ubm option must be set " << note;
-  ReadKaldiObject(config.diag_ubm_rxfilename, &diag_ubm);
+  ReadKaldiObject(config.diag_ubm_rxfilename, &diag_ubm, path_hint);
   if (config.ivector_extractor_rxfilename == "")
     KALDI_ERR << "--ivector-extractor option must be set " << note;
-  ReadKaldiObject(config.ivector_extractor_rxfilename, &extractor);
+  ReadKaldiObject(config.ivector_extractor_rxfilename, &extractor, path_hint);
   this->Check();
 }
 

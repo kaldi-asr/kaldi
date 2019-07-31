@@ -23,7 +23,8 @@
 namespace kaldi {
 
 OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
-    const OnlineNnet2FeaturePipelineConfig &config):
+    const OnlineNnet2FeaturePipelineConfig &config,
+    const std::string &path_hint):
     silence_weighting_config(config.silence_weighting_config) {
   if (config.feature_type == "mfcc" || config.feature_type == "plp" ||
       config.feature_type == "fbank") {
@@ -34,21 +35,21 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
   }
 
   if (config.mfcc_config != "") {
-    ReadConfigFromFile(config.mfcc_config, &mfcc_opts);
+    ReadConfigFromFile(config.mfcc_config, &mfcc_opts, path_hint);
     if (feature_type != "mfcc")
       KALDI_WARN << "--mfcc-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
 
   if (config.plp_config != "") {
-    ReadConfigFromFile(config.plp_config, &plp_opts);
+    ReadConfigFromFile(config.plp_config, &plp_opts, path_hint);
     if (feature_type != "plp")
       KALDI_WARN << "--plp-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
 
   if (config.fbank_config != "") {
-    ReadConfigFromFile(config.fbank_config, &fbank_opts);
+    ReadConfigFromFile(config.fbank_config, &fbank_opts, path_hint);
     if (feature_type != "fbank")
       KALDI_WARN << "--fbank-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
@@ -59,7 +60,8 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
   if (config.online_pitch_config != "") {
     ReadConfigsFromFile(config.online_pitch_config,
                         &pitch_opts,
-                        &pitch_process_opts);
+                        &pitch_process_opts,
+                        path_hint);
     if (!add_pitch)
       KALDI_WARN << "--online-pitch-config option has no effect "
                  << "since you did not supply --add-pitch option.";
@@ -69,8 +71,9 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
     use_ivectors = true;
     OnlineIvectorExtractionConfig ivector_extraction_opts;
     ReadConfigFromFile(config.ivector_extraction_config,
-                       &ivector_extraction_opts);
-    ivector_extractor_info.Init(ivector_extraction_opts);
+                       &ivector_extraction_opts,
+                       path_hint);
+    ivector_extractor_info.Init(ivector_extraction_opts, path_hint);
   } else {
     use_ivectors = false;
   }

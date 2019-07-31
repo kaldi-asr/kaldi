@@ -28,7 +28,7 @@ namespace cuda_decoder {
 
 void BatchedThreadedNnet3CudaPipeline::Initialize(
     const fst::Fst<fst::StdArc> &decode_fst, const nnet3::AmNnetSimple &am_nnet,
-    const TransitionModel &trans_model) {
+    const TransitionModel &trans_model, const std::string &path_hint) {
   KALDI_LOG << "BatchedThreadedNnet3CudaPipeline Initialize with "
             << config_.num_control_threads << " control threads, "
             << config_.num_worker_threads << " worker threads"
@@ -38,7 +38,7 @@ void BatchedThreadedNnet3CudaPipeline::Initialize(
   trans_model_ = &trans_model;
   cuda_fst_.Initialize(decode_fst, trans_model_);
 
-  feature_info_ = new OnlineNnet2FeaturePipelineInfo(config_.feature_opts);
+  feature_info_ = new OnlineNnet2FeaturePipelineInfo(config_.feature_opts, path_hint);
   feature_info_->ivector_extractor_info.use_most_recent_ivector = true;
   feature_info_->ivector_extractor_info.greedy_ivector_extractor = true;
 

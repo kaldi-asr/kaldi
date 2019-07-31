@@ -29,7 +29,7 @@ namespace kaldi {
 
 class IvectorExtractorFastCuda {
  public:
-  IvectorExtractorFastCuda(const OnlineIvectorExtractionConfig &config)
+  IvectorExtractorFastCuda(const OnlineIvectorExtractionConfig &config, const std::string &path_hint)
       : b_(0), tot_post_(2) {
     if (config.use_most_recent_ivector == false) {
       KALDI_WARN
@@ -40,7 +40,7 @@ class IvectorExtractorFastCuda {
                     "greedy_ivector_extractor=false.";
     }
 
-    info_.Init(config);
+    info_.Init(config, path_hint);
     naive_cmvn_state_ = OnlineCmvnState(info_.global_cmvn_stats);
     Read(config);
     cu_lda_.Resize(info_.lda_mat.NumRows(), info_.lda_mat.NumCols());
