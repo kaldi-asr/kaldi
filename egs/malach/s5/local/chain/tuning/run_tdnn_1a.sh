@@ -16,6 +16,9 @@
 # Final train prob (xent)  -2.06349
 # Final valid prob (xent)  -2.29166
 
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn1a_sp_bi
+# exp/chain_cleaned/tdnn1i_sp_bi: num-iters=918 nj=2..4 num-params=7.9M dim=40+100->3696 combine=-0.133->-0.130 (over 19) xent:train/valid[610,917,final]=(-2.37,-2.10,-2.06/-2.60,-2.35,-2.29) logprob:train/valid[610,917,final]=(-0.143,-0.124,-0.118/-0.191,-0.173,-0.168)
+
 3set -e -o pipefail
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
