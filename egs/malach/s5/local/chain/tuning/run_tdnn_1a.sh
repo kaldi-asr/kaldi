@@ -2,9 +2,7 @@
 
 # Copyright 2019  IBM Corp. (Author: Michael Picheny) Adapted AMI recipe to MALACH corpus
 
-
 # same as 1h in corresponding AMI s5b recipe but replacing proportional-shrink with l2-regularize.
-# The results match those from 1h.
 
 3set -e -o pipefail
 # First the options that are passed through to run_ivector_common.sh
