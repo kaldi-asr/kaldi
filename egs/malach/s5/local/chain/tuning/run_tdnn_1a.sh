@@ -4,6 +4,18 @@
 
 # same as 1h in corresponding AMI s5b recipe but replacing proportional-shrink with l2-regularize.
 
+# local/chain/compare_wer_general.sh tdnn1a_sp_bi
+
+# System                tdnn1a_sp_bi
+# WER on dev                    23.7
+# Rescore with lstm 1a          21.1
+# Rescore with lstm 1b          20.8
+# Rescore with lstm bs_1a       20.7
+# Final train prob         -0.118005
+# Final valid prob         -0.167522
+# Final train prob (xent)  -2.06349
+# Final valid prob (xent)  -2.29166
+
 3set -e -o pipefail
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
@@ -22,7 +34,7 @@ remove_egs=true
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1i  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1a  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 
