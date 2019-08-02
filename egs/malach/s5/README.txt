@@ -5,7 +5,7 @@ recipe for AMI.
 
 You need to download the malach data to get started. For information about the MALACH database see : 
 USC-SFI MALACH Interviews and Transcripts English - Speech Recognition Edition
-https://catalog.ldc. upenn.edu/LDC2019S11
+https://catalog.ldc.upenn.edu/LDC2019S11
 
 Once the data is unloaded and untar-ed, you need to run:
 
@@ -21,7 +21,7 @@ malach_dir=dummy_directory
 Replace "dummy_directory" with the fully-qualified location of the actual data
 data. For example, let's say you copied the data distribution tar file to 
 /user/jdoe/malach and untar-ed it there. That would create a high level directory called 
-/user/jdoe/malach/malach_eng_speech/recognition. You would then change the above line to read:
+/user/jdoe/malach/malach_eng_speech_recognition. You would then change the above line to read:
 
 malach_dir=/user/doe/malach/malach_eng_speech_recognition/data
 
