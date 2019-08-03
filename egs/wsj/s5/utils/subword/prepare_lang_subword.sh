@@ -138,7 +138,7 @@ if ! utils/validate_dict_dir.pl $srcdir >&/dev/null; then
 fi
 
 # phones.txt file provided, we will do some sanity check here.
-if [[ ! -z $phone_symbol_table ]]; then
+if [ ! -z $phone_symbol_table ]; then
   # Checks if we have position dependent phones
   n1=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sort -u | wc -l`
   n2=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sed 's/_[BIES]$//g' | sort -u | wc -l`
@@ -276,7 +276,7 @@ echo $ndisambig > $tmpdir/lex_ndisambig
 ( for n in `seq 0 $ndisambig`; do echo '#'$n; done ) >$dir/phones/disambig.txt
 
 # Create phone symbol table.
-if [[ ! -z $phone_symbol_table ]]; then
+if [ ! -z $phone_symbol_table ]; then
   start_symbol=`grep \#0 $phone_symbol_table | awk '{print $2}'`
   echo "<eps>" | cat - $dir/phones/{silence,nonsilence}.txt | awk -v f=$phone_symbol_table '
   BEGIN { while ((getline < f) > 0) { phones[$1] = $2; }} { print $1" "phones[$1]; }' | sort -k2 -g |\
