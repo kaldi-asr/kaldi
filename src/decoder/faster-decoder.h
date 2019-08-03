@@ -170,7 +170,7 @@ class FasterDecoder {
   HashList<StateId, Token*> toks_;
   const fst::Fst<fst::StdArc> &fst_;
   FasterDecoderOptions config_;
-  std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
+  std::vector<const Elem* > queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016   Vimal Manohar
 #           2016   Johns Hopkins University (author: Daniel Povey)
@@ -250,4 +250,3 @@ num_ins_lines_giving_taint = 0
 
 ProcessData()
 PrintStats()
-

@@ -70,4 +70,9 @@ utils/filter_scp.pl $data_dir/callhome1/wav.scp $data_dir/callhome/reco2num_spk 
 utils/filter_scp.pl $data_dir/callhome2/wav.scp $data_dir/callhome/reco2num_spk \
   > $data_dir/callhome2/reco2num_spk
 
+rm $data_dir/callhome/segments || exit 1;
+awk '{print $1, $1}' $data_dir/callhome/wav.scp > $data_dir/callhome/utt2spk
+utils/utt2spk_to_spk2utt.pl $data_dir/callhome/utt2spk > $data_dir/callhome/spk2utt
+utils/fix_data_dir.sh $data_dir/callhome
+
 rm -rf $tmp_dir 2> /dev/null

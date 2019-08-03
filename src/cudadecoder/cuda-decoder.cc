@@ -299,6 +299,7 @@ CudaDecoder::~CudaDecoder() {
   // Stopping h2h tasks
   h2h_threads_running_ = false;
   n_h2h_main_task_todo_cv_.notify_all();
+  for (std::thread &thread : cpu_dedicated_threads_) thread.join();
   cudaStreamDestroy(compute_st_);
   cudaStreamDestroy(copy_st_);
 
@@ -595,7 +596,7 @@ void CudaDecoder::ExpandArcsEmitting() {
                          *h_device_params_, *h_kernel_params_);
 }
 
-void CudaDecoder::ExpandArcsNonEmitting(bool *should_iterate) {
+void CudaDecoder::ExpandArcsNonEmitting() {
   // false is for non emitting
   ExpandArcsKernel<false>(KaldiCudaDecoderNumBlocks(nlanes_used_),
                           KALDI_CUDA_DECODER_1D_BLOCK, compute_st_,
@@ -654,11 +655,6 @@ void CudaDecoder::PostProcessingMainQueue() {
 }
 
 void CudaDecoder::CopyMainQueueDataToHost() {
-  // Computing lanes offsets for concatenated copies
-  cudaStreamWaitEvent(
-      compute_st_, d2h_copy_extra_prev_tokens_evt_,
-      0);  // waiting on preivous d2h before writing on same device memory
-  ConcatenateData();
   cudaEventRecord(concatenated_data_ready_evt_, compute_st_);
   cudaStreamWaitEvent(copy_st_, concatenated_data_ready_evt_,
                       0);  // the copies on copy_st will wait on compute_st_
@@ -798,7 +794,8 @@ void CudaDecoder::AdvanceDecoding(
     ExpandArcsEmitting();
     // We'll loop until we have a small enough number of non-emitting arcs
     // in the token queue. We'll then break the loop
-    for (int i = 0; i < 1; ++i) {  // TODO const
+    for (int i = 0; i < KALDI_CUDA_DECODER_N_NON_EMITTING_MAIN_ITERATIONS;
+         ++i) {
       // If one of the aux_q contains more than max_active_ tokens,
       // we'll reduce the beam to only keep max_active_ tokens
       ApplyMaxActiveAndReduceBeam(AUX_Q);
@@ -808,8 +805,10 @@ void CudaDecoder::AdvanceDecoding(
       // and do the preprocessing necessary for the next ExpandArcs
       PruneAndPreprocess();
 
-      bool should_iterate;
-      ExpandArcsNonEmitting(&should_iterate);  // TODO remvoe should_iterate
+      // "heavy duty" kernel for non-emitting. The long tail of small
+      // non-emitting iterations will be done in
+      // FinalizeProcessNonEmittingKernel
+      ExpandArcsNonEmitting();
     }
     ApplyMaxActiveAndReduceBeam(AUX_Q);
     PruneAndPreprocess();
@@ -832,6 +831,14 @@ void CudaDecoder::AdvanceDecoding(
     // - compute the extra costs
     PostProcessingMainQueue();
 
+    // Waiting on previous d2h before writing on same device memory
+    cudaStreamWaitEvent(compute_st_, d2h_copy_extra_prev_tokens_evt_, 0);
+    // Concatenating the data that will be moved to host into large arrays
+    ConcatenateData();
+    // Copying the final lane counters for that frame
+    CopyLaneCountersToHostSync();
+    CheckOverflow();
+
     // Moving the data necessary for GetRawLattice/GetBestPath back to host for
     // storage
     CopyMainQueueDataToHost();
@@ -846,8 +853,6 @@ void CudaDecoder::AdvanceDecoding(
       frame_offsets_[ichannel].push_back(frame_offsets_[ichannel].back() +
                                          main_q_end);
     }
-    CopyLaneCountersToHostSync();
-    CheckOverflow();
   }
 
   SaveChannelsStateFromLanes();
@@ -1494,6 +1499,10 @@ void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
   TokenId best_cost_idx;
   {
     std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
+    h_all_tokens_info_.shrink_to_fit();
+    h_all_tokens_acoustic_cost_.shrink_to_fit();
+    h_all_tokens_extra_prev_tokens_.shrink_to_fit();
+    h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_.shrink_to_fit();
     best_cost_idx = h_all_argmin_cost_[ichannel].first;
   }
   KALDI_ASSERT(

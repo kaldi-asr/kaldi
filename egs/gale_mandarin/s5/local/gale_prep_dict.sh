@@ -131,6 +131,8 @@ unset LC_ALL
 cat $dict_dir/ch-dict.txt |\
   perl -e '
   use utf8;
+  binmode(STDIN,":encoding(utf8)");
+  binmode(STDOUT,":encoding(utf8)");
   while (<STDIN>) {
     @A = split(" ", $_);
     $word_len = length($A[0]);

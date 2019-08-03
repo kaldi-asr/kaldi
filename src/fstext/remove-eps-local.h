@@ -36,7 +36,7 @@ namespace fst {
 /// into one.
 /// The algorithm preserves equivalence and stochasticity in the given semiring.
 /// If you want to preserve stochasticity in a different semiring (e.g. log),
-/// then use RemoveEpsLocalSpecial, which only words for StdArc but which
+/// then use RemoveEpsLocalSpecial, which only works for StdArc but which
 /// preserves stochasticity, where possible (*) in the LogArc sense.  The reason that we can't
 /// just cast to a different semiring is that in that case we would no longer
 /// be able to guarantee equivalence in the original semiring (this arises from
