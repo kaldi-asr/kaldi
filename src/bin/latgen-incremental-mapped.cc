@@ -37,6 +37,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Generate lattices, reading log-likelihoods as matrices\n"
         " (model is needed only for the integer mappings in its transition-model)\n"
+        "The lattice determinization algorithm here can operate\n"
+        "incrementally.\n"
         "Usage: latgen-incremental-mapped [options] trans-model-in "
         "(fst-in|fsts-rspecifier) loglikes-rspecifier"
         " lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
