@@ -1,10 +1,19 @@
 #!/bin/bash
 
-# Set -e here so that we catch if any executable fails immediately
-set -euo pipefail
+# This factorized TDNN (TDNN-F) script is ported from s5b recipe
+# It uses resnet-style skip connections.
+# For details, refer to the paper:
+# "Semi-Orthogonal Low-Rank Matrix Factorization for Deep Neural Networks", Daniel Povey, Gaofeng Cheng, Yiming Wang, Ke Li, Hainan Xu, Mahsa Yarmohamadi, Sanjeev Khudanpur, Interspeech 2018
 
-# First the options that are passed through to run_ivector_common.sh
-# (some of which are also used in this script directly).
+# %WER 73.03 [ 43001 / 58881, 4433 ins, 22250 del, 16318 sub ] exp/chain_train_worn_u100k_cleaned/tdnn1b_sp/decode_dev_beamformit_ref/wer_10_0.0
+# %WER 38.88 [ 22895 / 58881, 1882 ins, 8235 del, 12778 sub ] exp/chain_train_worn_u100k_cleaned/tdnn1b_sp/decode_dev_worn/wer_10_0.0
+
+# steps/info/chain_dir_info.pl exp/chain_train_worn_u100k_cleaned/tdnn1b_sp
+# exp/chain_train_worn_u100k_cleaned/tdnn1b_sp: num-iters=96 nj=3..16 num-params=17.1M dim=40+100->2928 combine=-0.125->-0.125 (over 2) xent:train/valid[63,95,final]=(-2.12,-1.81,-1.82/-2.20,-1.96,-1.96) logprob:train/valid[63,95,final]=(-0.190,-0.126,-0.125/-0.218,-0.183,-0.183)
+
+set -e
+
+# configs for 'chain'
 stage=0
 nj=96
 train_set=train_worn_u100k
@@ -21,11 +30,13 @@ train_stage=-10
 get_egs_stage=-10
 decode_iter=
 
+num_epochs=4
 # training options
 # training chunk-options
 chunk_width=140,100,160
 common_egs_dir=
 xent_regularize=0.1
+dropout_schedule='0,0@0.20,0.5@0.50,0'
 
 # training options
 srand=0
@@ -61,7 +72,6 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 # Problem: We have removed the "train_" prefix of our training set in
 # the alignment directory names! Bad!
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
@@ -71,7 +81,7 @@ lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
+    $lores_train_data_dir/feats.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -101,7 +111,8 @@ fi
 if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj ${nj} --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/align_fmllr_lats.sh --nj ${nj} --cmd "$train_cmd" --generate-ali-from-lats true \
+    ${lores_train_data_dir} \
     data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -111,15 +122,14 @@ if [ $stage -le 12 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
+  if [ -f $tree_dir/final.mdl ]; then
      echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor 3 \
-    --context-opts "--context-width=2 --central-position=1" \
     --cmd "$train_cmd" 3500 ${lores_train_data_dir} \
-    $lang $ali_dir $tree_dir
+    $lang $lat_dir $tree_dir
 fi
 
 
@@ -128,9 +138,12 @@ if [ $stage -le 13 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
-  opts="l2-regularize=0.05"
-  output_opts="l2-regularize=0.01 bottleneck-dim=320"
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  affine_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
+  tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -140,33 +153,31 @@ if [ $stage -le 13 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=512
-  relu-batchnorm-layer name=tdnn2 $opts dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 $opts dim=512
-  relu-batchnorm-layer name=tdnn4 $opts dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 $opts dim=512
-  relu-batchnorm-layer name=tdnn6 $opts dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 $opts dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 $opts dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  linear-component name=prefinal-l dim=256 $linear_opts
 
-  ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain $opts dim=512 target-rms=0.5
-  output-layer name=output include-log-softmax=false $output_opts dim=$num_targets max-change=1.5
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 $opts dim=512 target-rms=0.5
-  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -177,26 +188,26 @@ if [ $stage -le 14 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime5-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$decode_cmd" \
+  steps/nnet3/chain/train.py --stage $train_stage \
+    --cmd "$train_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
-    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
+    --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --trainer.srand=$srand \
+    --trainer.dropout-schedule="$dropout_schedule" \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=10 \
-    --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
-    --trainer.optimization.initial-effective-lrate=0.001 \
-    --trainer.optimization.final-effective-lrate=0.0001 \
-    --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=256,128,64 \
-    --trainer.optimization.momentum=0.0 \
+    --trainer.num-epochs $num_epochs \
+    --trainer.frames-per-iter=1500000 \
+    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-final=16 \
+    --trainer.optimization.initial-effective-lrate=0.00025 \
+    --trainer.optimization.final-effective-lrate=0.000025 \
+    --trainer.num-chunk-per-minibatch=64 \
+    --egs.stage $get_egs_stage \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
@@ -249,12 +260,12 @@ if $test_online_decoding && [ $stage -le 17 ]; then
 
   for data in $test_sets; do
     (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}/spk2utt)
       # note: we just give it "data/${data}" as it only uses the wav.scp, the
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
-        --nj 8 --cmd "$decode_cmd" \
+        --nj $nspk --cmd "$decode_cmd" \
         $tree_dir/graph${lm_suffix} data/${data} ${dir}_online/decode${lm_suffix}_${data} || exit 1
     ) || touch $dir/.error &
   done
