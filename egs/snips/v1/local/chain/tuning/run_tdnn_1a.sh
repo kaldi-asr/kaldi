@@ -54,7 +54,6 @@ gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 lat_dir=exp/chain/${gmm}_${train_set}_sp_lats
 combined_lat_dir=exp/chain/${gmm}_${combined_train_set}_lats
-train_data_dir=data/${train_set}_sp_hires
 combined_train_data_dir=data/${combined_train_set}_hires
 lores_train_data_dir=data/${train_set}_sp
 
@@ -335,7 +334,7 @@ if [ $stage -le 11 ]; then
   for data in $test_sets; do
     nspk=$(wc -l <data/${data}_hires/spk2utt)
     local/process_lattice.sh --nj $nspk --wake-word $wake_word ${dir}/decode_${data} data/${data}_hires $lang || exit 1
-    echo "Done. Date: $(date)."
   done
+  echo "Done. Date: $(date)."
 fi
 

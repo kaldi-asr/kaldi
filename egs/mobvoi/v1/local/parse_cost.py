@@ -71,7 +71,7 @@ def main():
         assert k in non_wake_word_cost
         v2 = non_wake_word_cost[k]
         assert not (v is None and v2 is None)
-        cost[k] = [v if v is not None else 0.0, v2 if v2 is not None else 0.0]
+        cost[k] = [v if v is not None else 9999.0, v2 if v2 is not None else 9999.0]
         print("{} {:.3f} {:.3f}".format(k, cost[k][0], cost[k][1]))
 
 if __name__ == "__main__":

@@ -88,12 +88,13 @@ if [ $stage -le 7 ]; then
     ${srcdir}_whole/segments >${srcdir}_whole/neg_segments
   utils/filter_scp.pl --exclude ${srcdir}_whole/neg_segments ${srcdir}_whole/segments \
     >${srcdir}_whole/pos_segments
-  utils/data/get_uniform_subsegments.py --max-segment-duration=2.0 \
-    --overlap-duration=0.3 --max-remaining-duration=0.3 ${srcdir}_whole/neg_segments | \
-    cat ${srcdir}_whole/pos_segments - | sort >${srcdir}_whole/uniform_sub_segments
+  utils/filter_scp.pl ${srcdir}_whole/pos_segments ${srcdir}_whole/utt2dur >${srcdir}_whole/pos_utt2dur
+  local/get_random_subsegments.py --overlap-duration=0.3 --max-remaining-duration=0.3 \
+    ${srcdir}_whole/neg_segments ${srcdir}_whole/pos_utt2dur | \
+    cat ${srcdir}_whole/pos_segments - | sort >${srcdir}_whole/sub_segments
   utils/data/subsegment_data_dir.sh ${srcdir}_whole \
-    ${srcdir}_whole/uniform_sub_segments data/train_segmented
-  awk '{print $1,$2}' ${srcdir}_whole/uniform_sub_segments | \
+    ${srcdir}_whole/sub_segments data/train_segmented
+  awk '{print $1,$2}' ${srcdir}_whole/sub_segments | \
     utils/apply_map.pl -f 2 ${srcdir}_whole/text >data/train_segmented/text
   utils/data/extract_wav_segments_data_dir.sh --nj 50 --cmd "$train_cmd" \
     data/train_segmented data/train_shorter
@@ -222,11 +223,6 @@ fi
 combined_train_set=train_shorter_sp_combined
 aug_affix="reverb noise music babble"
 if [ $stage -le 14 ]; then
-  eval utils/combine_data.sh data/${combined_train_set} data/train_shorter_sp \
-    data/train_shorter_{$(echo $aug_affix | sed 's/ /,/g')}
-fi
-
-if [ $stage -le 15 ]; then
   for name in $aug_affix; do
     echo "$0: creating high-resolution MFCC features for train_shorter_${name}"
     mfccdir=data/train_shorter_${name}_hires/data
@@ -234,7 +230,6 @@ if [ $stage -le 15 ]; then
       utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/mobvoi-$(date +'%m_%d_%H_%M')/v1/$mfccdir/storage $mfccdir/storage
     fi
     utils/copy_data_dir.sh data/train_shorter_${name} data/train_shorter_${name}_hires
-    utils/data/perturb_data_dir_volume.sh data/train_shorter_${name}_hires || exit 1;
     steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/train_shorter_${name}_hires || exit 1;
     steps/compute_cmvn_stats.sh data/train_shorter_${name}_hires || exit 1;
@@ -245,8 +240,8 @@ if [ $stage -le 15 ]; then
 fi
 
 
-if [ $stage -le 16 ]; then
-  local/chain/run_tdnn.sh
+if [ $stage -le 15 ]; then
+  local/chain/run_tdnn.sh --train-set train_shorter --combined-train-set ${combined_train_set}
 fi
 
 exit 0

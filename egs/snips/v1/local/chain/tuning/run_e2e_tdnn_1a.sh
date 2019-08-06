@@ -77,6 +77,7 @@ if [ $stage -le 1 ]; then
   id_freetext=`cat data/lang/phones.txt | grep "freetext" | awk '{print $2}'`
   cat <<EOF > $tree_dir/phone_lm.txt
 0 1 $id_sil $id_sil
+0 5 $id_sil $id_sil
 1 2 $id_word $id_word
 2 3 $id_sil $id_sil
 1 4 $id_freetext $id_freetext
@@ -124,10 +125,10 @@ if [ $stage -le 2 ]; then
   tdnnf-layer name=tdnnf14 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
   tdnnf-layer name=tdnnf15 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
   tdnnf-layer name=tdnnf16 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
-  #tdnnf-layer name=tdnnf17 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
-  #tdnnf-layer name=tdnnf18 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
-  #tdnnf-layer name=tdnnf19 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
-  #tdnnf-layer name=tdnnf20 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
+  tdnnf-layer name=tdnnf17 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
+  tdnnf-layer name=tdnnf18 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
+  tdnnf-layer name=tdnnf19 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
+  tdnnf-layer name=tdnnf20 $tdnnf_opts dim=$dim bottleneck-dim=$bn_dim time-stride=3
   linear-component name=prefinal-l dim=30 $linear_opts
   
   prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=$dim small-dim=30
@@ -236,7 +237,7 @@ fi
 if [ $stage -le 7 ]; then
   rm -rf $lang_rescore 2>/dev/null || true
   cp -r $lang_decode $lang_rescore
-  for wake_word_cost in 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5; do
+  for wake_word_cost in -0.5 0.0 1.0 1.5 2.0 2.5 3.0 3.5; do
     sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
     freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
     id=`cat $lang_decode/words.txt | grep $wake_word | awk '{print $2}'`
@@ -269,11 +270,11 @@ EOF
 fi
 
 # obtain ROC curves by varying thresholds for confidence scores
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   for data in $test_sets; do
     nspk=$(wc -l <data/${data}_hires/spk2utt)
     local/process_lattice.sh --nj $nspk --wake-word $wake_word ${dir}/decode_${data} data/${data}_hires $lang || exit 1
-    echo "Done. Date: $(date)."
   done
+  echo "Done. Date: $(date)."
 fi
 

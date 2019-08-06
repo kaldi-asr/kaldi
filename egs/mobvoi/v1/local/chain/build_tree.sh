@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
+#                2019  Yiming Wang
 #  Apache 2.0.
 
 
@@ -14,10 +15,6 @@
 
 
 # Begin configuration section.
-stage=-5
-exit_stage=-100 # you can use this to require it to exit at the
-                # beginning of a specific stage.  Not all values are
-                # supported.
 cmd=run.pl
 frame_subsampling_factor=1
 # End configuration section.
@@ -30,23 +27,9 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 4 ]; then
   echo "Usage: $0 <data> <lang> <ali-dir> <exp-dir>"
   echo " e.g.: $0 --frame-subsampling-factor 3 \\"
-  echo "    data/train_si84 data/lang_chain exp/tri3b_ali_si284_sp exp/chain/tree_a_sp"
+  echo "    data/train data/lang_chain exp/mono_ali_train_sp exp/chain/tree"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --config <config-file>                           # config containing options"
-  echo "  --stage <stage>                                  # stage to do partial re-run from."
-  echo "  --repeat-frames <true|false>                     # Only affects alignment conversion at"
-  echo "                                                   # the end. If true, generate an "
-  echo "                                                   # alignment using the frame-subsampled "
-  echo "                                                   # topology that is repeated "
-  echo "                                                   # --frame-subsampling-factor times "
-  echo "                                                   # and interleaved, to be the same "
-  echo "                                                   # length as the original alignment "
-  echo "                                                   # (useful for cross-entropy training "
-  echo "                                                   # of reduced frame rate systems)."
-  echo "  --context-opts <option-string>                   # Options controlling phonetic context;"
-  echo "                                                   # we suggest '--context-width=2 --central-position=1',"
-  echo "                                                   # which is left bigram."
   echo "  --frame-subsampling-factor <factor>              # Factor (e.g. 3) controlling frame subsampling"
   echo "                                                   # at the neural net output, so the frame rate at"
   echo "                                                   # the output is less than at the input."
@@ -89,7 +72,6 @@ else
 fi
 
 # Set up features.
-
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
 
@@ -114,26 +96,20 @@ if [ $frame_subsampling_factor -gt 1 ]; then
   feats="$feats subsample-feats --n=$frame_subsampling_factor ark:- ark:- |"
 fi
 
-if [ -z $alignment_subsampling_factor ]; then
-  alignment_subsampling_factor=$frame_subsampling_factor
-fi
+echo "$0: Initializing monophone model (for alignment conversion, in case topology changed)"
 
-if [ $stage -le -5 ]; then
-  echo "$0: Initializing monophone model (for alignment conversion, in case topology changed)"
-
-  [ ! -f $lang/phones/sets.int ] && exit 1;
-  shared_phones_opt="--shared-phones=$lang/phones/sets.int"
-  # get feature dimension
-  example_feats="`echo $feats | sed s/JOB/1/g`";
-  if ! feat_dim=$(feat-to-dim "$example_feats" - 2>/dev/null) || [ -z $feat_dim ]; then
-    feat-to-dim "$example_feats" - # to see the error message.
-    echo "error getting feature dimension"
-    exit 1;
-  fi
-  $cmd JOB=1 $dir/log/init_mono.log \
-    gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo $feat_dim \
-      $dir/mono.mdl $dir/mono.tree || exit 1;
+[ ! -f $lang/phones/sets.int ] && exit 1;
+shared_phones_opt="--shared-phones=$lang/phones/sets.int"
+# get feature dimension
+example_feats="`echo $feats | sed s/JOB/1/g`";
+if ! feat_dim=$(feat-to-dim "$example_feats" - 2>/dev/null) || [ -z $feat_dim ]; then
+  feat-to-dim "$example_feats" - # to see the error message.
+  echo "error getting feature dimension"
+  exit 1;
 fi
+$cmd JOB=1 $dir/log/init_mono.log \
+  gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo $feat_dim \
+    $dir/mono.mdl $dir/mono.tree || exit 1;
 
 cp $dir/mono.mdl $dir/final.mdl
 cp $dir/mono.tree $dir/tree

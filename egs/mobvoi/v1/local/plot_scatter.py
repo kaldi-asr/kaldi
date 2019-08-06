@@ -51,6 +51,7 @@ def main():
     fig = plt.figure()
     plt.scatter(score, range(1, len(score)+1), s=3, c=colors, alpha=0.5)
     plt.axvline(x=0.0)
+    plt.xlim(-1000, 1000)
     plt.xlabel('Score')
     plt.ylabel('Index')
     fig.suptitle("Scatter")
