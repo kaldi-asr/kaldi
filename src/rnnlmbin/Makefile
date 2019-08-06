@@ -7,7 +7,8 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = rnnlm-get-egs rnnlm-train rnnlm-get-sampling-lm \
-           rnnlm-get-word-embedding rnnlm-compute-prob rnnlm-sentence-probs
+           rnnlm-get-word-embedding rnnlm-compute-prob rnnlm-sentence-probs \
+           rnnlm-generate-text
 
 OBJFILES =
 
