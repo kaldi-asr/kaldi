@@ -710,7 +710,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
 
   StateId final_state = fst->AddState();
   fst->SetFinal(final_state, Weight::One());
-  for (size_t idx = 0;idx < final_states.size(); idx++) {
+  for (size_t idx = 0; idx < final_states.size(); idx++) {
     StateId s = final_states[idx];
     Weight weight = fst->Final(s);
     fst->SetFinal(s, Weight::Zero());
