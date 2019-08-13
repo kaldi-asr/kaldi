@@ -614,7 +614,7 @@ template<class Arc> void AddSelfLoops(MutableFst<Arc> *fst, vector<typename Arc:
          osyms_min = *std::min_element(osyms.begin(), osyms.end()),
          osyms_max = *std::max_element(osyms.begin(), osyms.end());
   std::set<Label> isyms_set, osyms_set;
-  for (size_t i = 0;i < isyms.size();i++) {
+  for (size_t i = 0; i < isyms.size(); i++) {
     assert(isyms[i] > 0 && osyms[i] > 0);  // should not have epsilon or invalid symbols.
     isyms_set.insert(isyms[i]);
     osyms_set.insert(osyms[i]);

@@ -37,7 +37,7 @@
 namespace kaldi {
 
 static const EventKeyType kPdfClass = -1;  // The "name" to which we assign the
-// pdf-class (generally corresponds ot position in the HMM, zero-based);
+// pdf-class (generally corresponds to position in the HMM, zero-based);
 // must not be used for any other event.  I.e. the value corresponding to
 // this key is the pdf-class (see hmm-topology.h for explanation of what this is).
 

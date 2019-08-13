@@ -24,7 +24,7 @@ namespace kaldi {
 // This class is for testing and prototyping purposes, it
 // does not really do anything except wrap a matrix of features
 // in this class.  Note: it maintains a reference to the input
-// matrix, so be careful not to delete it while this object
+// matrix, so be careful not to delete it while this object is alive.
 // Since this is intended for testing purposes, it may occasionally
 // "time out" and return fewer than requested
 class OnlineMatrixInput : public OnlineFeatInputItf {

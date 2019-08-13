@@ -44,7 +44,7 @@ class OnlineAudioSourceItf {
   // In case an unexpected and unrecoverable error occurs the function throws
   // an exception of type KaldiFatalError (by using KALDI_ERR macro).
   //
-  // NOTE: The older version of this interface had a second paramater - "timeout".
+  // NOTE: The older version of this interface had a second parameter - "timeout".
   //       We decided to remove it, because we don't envision usage scenarios,
   //       where "timeout" will need to be changed dynamically from call to call.
   //       If the particular audio source can experience timeouts for some reason
@@ -125,7 +125,7 @@ class OnlinePaSource : public OnlineAudioSourceItf {
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlinePaSource);
 };
 
-// The actual PortAudio callback - delegates to OnlinePaSource->PaCallback()
+// The actual PortAudio callback - delegates to OnlinePaSource->Callback()
 int PaCallback(const void *input, void *output,
                long unsigned frame_count,
                const PaStreamCallbackTimeInfo *time_info,
