@@ -96,7 +96,7 @@ ArpaLmCompiler* Compile(bool seps, const string &infile) {
 }
 
 // Add a state to an FSA after last_state, add a form last_state to the new
-// atate, and return the new state.
+// state, and return the new state.
 fst::StdArc::StateId AddToChainFsa(fst::StdMutableFst* fst,
                                    fst::StdArc::StateId last_state,
                                    int64 symbol) {
@@ -135,7 +135,7 @@ bool CoverageTest(bool seps, const string &infile) {
 
     fst::ArcSort(lm_compiler->MutableFst(), fst::StdOLabelCompare());
 
-    // The past must successfullycompose with the LM FST.
+    // The past must successfully compose with the LM FST.
     fst::StdVectorFst composition;
     Compose(sentence, lm_compiler->Fst(), &composition);
     if (composition.Start() != fst::kNoStateId)
@@ -209,8 +209,7 @@ bool ThrowsExceptionTest(bool seps, const string &infile) {
     // Make memory cleanup easy in both cases of try-catch block.
     std::unique_ptr<ArpaLmCompiler> compiler(Compile(seps, infile));
     return false;
-  } catch (const std::runtime_error&) {
-    // Kaldi throws only std::runtime_error in kaldi-error.cc
+  } catch (const KaldiFatalError&) {
     return true;
   }
 }

@@ -28,6 +28,62 @@ namespace kaldi {
 namespace chain {
 
 
+/**
+   This is a rather special-purpose function which adds something to
+   the derivative in order to encourage the value to stay within
+   a specified range.  This is something we use in chain training
+   in order to encourage the nnet outputs to stay within the
+   range [-30, 30] (needed because we don't do the forward-backward
+   denominator computation in log space).
+
+   It's very similar to l2 regularization but only applied once you depart
+   the range [-limit, limit].
+
+   Basically, this function does as follows:
+
+     (*out_deriv)(i,j) +=   0                                if   -limit <= in_value(i,j) <= limit
+                            (-limit - in_value(i,j)) * scale if  in_value(i,j) < -limit
+                            (limit - in_value(i,j)) * scale  if  in_value(i,j) > limit
+   If limit were zero, this would be the same as l2 regularization with scale 'scale'.
+ */
+static void PenalizeOutOfRange(const CuMatrixBase<BaseFloat> &in_value,
+                               BaseFloat limit,
+                               BaseFloat scale,
+                               CuMatrixBase<BaseFloat> *out_deriv) {
+  KALDI_ASSERT(SameDim(in_value, *out_deriv) && limit > 0 && scale >= 0);
+  if (scale == 0)
+    return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(in_value.NumCols(), CU2DBLOCK),
+                 n_blocks(in_value.NumRows(), CU2DBLOCK));
+    cuda_penalize_out_of_range(dimGrid, dimBlock, limit, scale,
+                               in_value.Data(), in_value.Dim(),
+                               out_deriv->Stride(), out_deriv->Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    int32 num_rows = in_value.NumRows(),
+        num_cols = in_value.NumCols();
+    for (int32 r = 0; r < num_rows; r++) {
+      const BaseFloat *in_row_data =  in_value.RowData(r);
+      BaseFloat *out_row_data = out_deriv->RowData(r);
+      for (int32 c = 0; c < num_cols; c++) {
+        BaseFloat val = in_row_data[c];
+        if (val < -limit) {
+          out_row_data[c] -= scale * (val + limit);
+        } else if (val > limit) {
+          out_row_data[c] -= scale * (val - limit);
+        }
+      }
+    }
+  }
+}
+
 
 void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                  const DenominatorGraph &den_graph,
@@ -46,6 +102,14 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
 
   if (nnet_output_deriv != NULL)
     nnet_output_deriv->SetZero();
+
+  if (nnet_output_deriv != NULL && RandInt(0, 1) == 0) {
+    // Only do this about every other frame, for efficiency; we'll multiply the
+    // scale by 2 to compensate.  See docs for the function, for its purpose.
+    PenalizeOutOfRange(nnet_output, 30.0,
+                       2.0 * opts.out_of_range_regularize,
+                       nnet_output_deriv);
+  }
 
   { // Doing the denominator first helps to reduce the maximum
     // memory use, as we can set 'xent_deriv' to nonempty after
@@ -170,6 +234,14 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     if (nnet_output_deriv)
       ok = denominator.Backward(-supervision.weight,
                                 nnet_output_deriv);
+  }
+
+  if (nnet_output_deriv != NULL && RandInt(0, 1) == 0) {
+    // Only do this about every other frame, for efficiency; we'll multiply the
+    // scale by 2 to compensate.  See docs for the function, for its purpose.
+    PenalizeOutOfRange(nnet_output, 30.0,
+                       2.0 * opts.out_of_range_regularize,
+                       nnet_output_deriv);
   }
 
   if (xent_output_deriv != NULL) {

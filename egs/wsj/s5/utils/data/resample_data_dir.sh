@@ -39,7 +39,6 @@ for line in sys.stdin.readlines():
   if splits[-1] == '|':
     out_line = line.strip() + ' $sox -t wav - -c 1 -b 16 -t wav - rate $freq |'
   else:
-    out_line = 'cat {0} {1} | $sox -t wav - -c 1 -b 16 -t wav - rate $freq |'.format(splits[0], ' '.join(splits[1:]))
+    out_line = '{0} cat {1} | $sox -t wav - -c 1 -b 16 -t wav - rate $freq |'.format(splits[0], ' '.join(splits[1:]))
   print (out_line)" > ${dir}/wav.scp
 rm $dir/wav.scp.tmp
-

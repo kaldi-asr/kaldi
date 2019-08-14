@@ -122,7 +122,7 @@ if [ $stage -le 4 ]; then
 
   # Make a reverberated version of the VoxCeleb2 list.  Note that we don't add any
   # additive noise here.
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --speech-rvb-probability 1 \
     --pointsource-noise-addition-probability 0 \
@@ -137,7 +137,7 @@ if [ $stage -le 4 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh $musan_root data
+  steps/data/make_musan.sh --sampling-rate 16000 $musan_root data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
@@ -147,11 +147,11 @@ if [ $stage -le 4 ]; then
   done
 
   # Augment with musan_noise
-  python steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train_100k data/train_100k_noise
+  steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train_100k data/train_100k_noise
   # Augment with musan_music
-  python steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train_100k data/train_100k_music
+  steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train_100k data/train_100k_music
   # Augment with musan_speech
-  python steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train_100k data/train_100k_babble
+  steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train_100k data/train_100k_babble
 
   # Combine reverb, noise, music, and babble into one directory.
   utils/combine_data.sh data/train_aug data/train_100k_reverb data/train_100k_noise data/train_100k_music data/train_100k_babble

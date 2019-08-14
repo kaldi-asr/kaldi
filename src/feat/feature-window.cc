@@ -144,8 +144,8 @@ void ProcessWindow(const FrameExtractionOptions &opts,
     window->Add(-window->Sum() / frame_length);
 
   if (log_energy_pre_window != NULL) {
-    BaseFloat energy = std::max(VecVec(*window, *window),
-                                std::numeric_limits<BaseFloat>::epsilon());
+    BaseFloat energy = std::max<BaseFloat>(VecVec(*window, *window),
+                                std::numeric_limits<float>::epsilon());
     *log_energy_pre_window = Log(energy);
   }
 
@@ -218,21 +218,5 @@ void ExtractWindow(int64 sample_offset,
 
   ProcessWindow(opts, window_function, &frame, log_energy_pre_window);
 }
-
-void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
-                              const FrameExtractionOptions &opts,
-                              Vector<BaseFloat> *wave_remainder) {
-  int32 frame_shift = opts.WindowShift();
-  int32 num_frames = NumFrames(wave.Dim(), opts);
-  // offset is the amount at the start that has been extracted.
-  int32 offset = num_frames * frame_shift;
-  KALDI_ASSERT(wave_remainder != NULL);
-  int32 remaining_len = wave.Dim() - offset;
-  wave_remainder->Resize(remaining_len);
-  KALDI_ASSERT(remaining_len >= 0);
-  if (remaining_len > 0)
-    wave_remainder->CopyFromVec(SubVector<BaseFloat>(wave, offset, remaining_len));
-}
-
 
 }  // namespace kaldi

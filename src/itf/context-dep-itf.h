@@ -51,7 +51,7 @@ class ContextDependencyInterface {
   /// than P [these represent unknown phone context due to end or
   /// begin of sequence].  We do not insist that Compute must always
   /// output (into stateseq) a nonempty sequence of states, but we
-  /// anticipate that stateseq will alyway be nonempty at output in
+  /// anticipate that stateseq will always be nonempty at output in
   /// typical use cases.  "Compute" returns false if expansion somehow
   /// failed.  Normally the calling code should raise an exception if
   /// this happens.  We can define a different interface later in

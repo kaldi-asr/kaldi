@@ -21,6 +21,7 @@
 #include "base/kaldi-math.h"
 #ifndef _MSC_VER
 #include <stdlib.h>
+#include <unistd.h>
 #endif
 #include <string>
 #include <mutex>
@@ -42,7 +43,7 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
 static std::mutex _RandMutex;
 
 int Rand(struct RandomState* state) {
-#if defined(_MSC_VER) || defined(__CYGWIN__)
+#if !defined(_POSIX_THREAD_SAFE_FUNCTIONS)
   // On Windows and Cygwin, just call Rand()
   return rand();
 #else
@@ -109,10 +110,8 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {
       return min_val + ( (unsigned int)( (Rand(state)+RAND_MAX*Rand(state)))
                     % (unsigned int)(max_val+1-min_val));
     } else {
-      throw std::runtime_error(std::string()
-                               +"rand_int failed because we do not support "
-                               +"such large random numbers. "
-                               +"(Extend this function).");
+      KALDI_ERR << "rand_int failed because we do not support such large "
+          "random numbers. (Extend this function).";
     }
   }
 #else
@@ -122,7 +121,7 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {
 }
 
 // Returns poisson-distributed random number.
-// Take care: this takes time proportinal
+// Take care: this takes time proportional
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda, struct RandomState* state) {
   // Knuth's algorithm.

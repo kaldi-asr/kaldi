@@ -158,7 +158,7 @@ inline float RandGauss(struct RandomState* state = NULL) {
 }
 
 // Returns poisson-distributed random number.  Uses Knuth's algorithm.
-// Take care: this takes time proportinal
+// Take care: this takes time proportional
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda, struct RandomState* state = NULL);
 
@@ -180,7 +180,7 @@ inline Float RandPrune(Float post, BaseFloat prune_thresh,
       (RandUniform(state) <= fabs(post)/prune_thresh ? prune_thresh : 0.0);
 }
 
-
+// returns log(exp(x) + exp(y)).
 inline double LogAdd(double x, double y) {
   double diff;
 
@@ -202,6 +202,7 @@ inline double LogAdd(double x, double y) {
 }
 
 
+// returns log(exp(x) + exp(y)).
 inline float LogAdd(float x, float y) {
   float diff;
 
@@ -223,7 +224,7 @@ inline float LogAdd(float x, float y) {
 }
 
 
-// returns exp(x) - exp(y).
+// returns log(exp(x) - exp(y)).
 inline double LogSub(double x, double y) {
   if (y >= x) {  // Throws exception if y>=x.
     if (y == x)
@@ -242,7 +243,7 @@ inline double LogSub(double x, double y) {
 }
 
 
-// returns exp(x) - exp(y).
+// returns log(exp(x) - exp(y)).
 inline float LogSub(float x, float y) {
   if (y >= x) {  // Throws exception if y>=x.
     if (y == x)

@@ -1,0 +1,51 @@
+WER results for supervised and semi-supervised acoustic model training
+
+Baseline: GMM training to create alignments and lattice-free MMI-trained neural
+network with factorized TDNN. The BUILD package labeled audio is used for
+supervised acoustic model training, the EVALs unlabeled audio is added for
+semi-supervised acoustic model training.
+
+Source-side bitext on the BUILD package and crawled monolingual data are used in
+building the n-gram LM, RNNLM re-scoring, as well as extending the baseline lexicon.
+
+
+Results for *supervised* acoustic model training:
+
+Swahili
+          Baseline +RNNLM +RNNLM-nbest
+BUILD-dev   36.8    36.7    38.9
+ANALYSIS1   42.5    41.3    41.4
+ANALYSIS2   38.1    36.8    36.9
+
+Tagalog
+          Baseline +RNNLM +RNNLM-nbest
+BUILD-dev   46.4    46.1    47.5
+ANALYSIS1   52.1    51.0    50.9
+ANALYSIS2   53.6    52.3    52.2
+
+Somali
+          Baseline +RNNLM +RNNLM-nbest
+BUILD-dev   57.4    56.5    57.8
+ANALYSIS1   61.6    57.8    57.7
+ANALYSIS2   59.3    55.5    55.3
+
+
+Results for *semi-supervised* acoustic model training:
+
+Swahili
+          Baseline +RNNLM +RNNLM-nbest
+BUILD-dev   35.3    35.1    36.7
+ANALYSIS1   35.2    34.5    34.7
+ANALYSIS2   30.8    30.0    30.1
+
+Tagalog
+          Baseline +RNNLM +RNNLM-nbest
+BUILD-dev   45.0    45.2    46.6
+ANALYSIS1   40.8    40.1    40.1
+ANALYSIS2   41.1    40.6    40.6
+
+Somali
+          Baseline +RNNLM +RNNLM-nbest
+BUILD-dev   56.8    56.3    57.7
+ANALYSIS1   50.6    48.8    48.6
+ANALYSIS2   49.8    48.2    48.2

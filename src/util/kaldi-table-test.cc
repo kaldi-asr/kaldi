@@ -90,20 +90,20 @@ void UnitTestReadScriptFile() {
 
 void UnitTestClassifyWspecifier() {
   {
-    std::string a = "b,ark:foo|";
+    std::string a = "b,ark:|foo";
     std::string ark = "x", scp = "y";
     WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" &&
+    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "|foo" && scp == "" &&
                  opts.binary == true);
   }
 
   {
-    std::string a = "t,ark:foo|";
+    std::string a = "t,ark:|foo";
     std::string ark = "x", scp = "y";
     WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" &&
+    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "|foo" && scp == "" &&
                  opts.binary == false);
   }
 
@@ -130,12 +130,6 @@ void UnitTestClassifyWspecifier() {
     std::string ark = "x", scp = "y";
     WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kNoWspecifier);
-  }
-
-  {
-    std::string a = " t,ark:boo";
-    WspecifierType ans = ClassifyWspecifier(a, NULL, NULL, NULL);
     KALDI_ASSERT(ans == kNoWspecifier);
   }
 
@@ -825,9 +819,11 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
     for (size_t i = 0; i < read_keys.size(); i++) {
       std::cout << "Looking up key " << read_keys[i] << std::endl;
       std::string cur_key = read_keys[i];
-      double value;
-      for (size_t i = 0; i < k.size(); i++)
-        if (cur_key == k[i]) value = v[i];
+
+      auto it = std::find(k.begin(), k.end(), cur_key);
+      KALDI_ASSERT(it != k.end());
+      size_t idx = std::distance(k.begin(), it);
+      double value = v[idx];
       if (Rand() % 2 == 0) {
         bool ans = sbr.HasKey(cur_key);
         KALDI_ASSERT(ans == true);

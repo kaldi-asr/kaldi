@@ -86,8 +86,7 @@
 %WER 19.8 | 13098 94475 | 83.1 9.6 7.4 2.8 19.8 51.8 | -0.041 | exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/decode_dev/ascore_10/dev_hires.ctm.filt.sys
 %WER 19.2 | 12643 89964 | 83.2 10.7 6.1 2.5 19.2 49.7 | 0.079 | exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
-# local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic ihm
+# local/chain/multi_condition/tuning/run_tdnn_lstm_1b.sh --mic ihm
 # cleanup + chain TDNN+LSTM model + IHM reverberated data
-%WER 19.4 | 13098 94479 | 83.8 10.0 6.1 3.2 19.4 51.8 | -0.168 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-%WER 19.3 | 12643 89977 | 83.3 11.0 5.7 2.6 19.3 49.6 | -0.046 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
-
+%WER 18.9 | 13098 94488 | 84.1 9.7 6.2 3.0 18.9 51.2 | 0.012 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi/decode_dev/ascore_11/dev_hires.ctm.filt.sys
+%WER 19.3 | 12643 89989 | 83.1 10.7 6.2 2.5 19.3 50.0 | 0.136 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi/decode_eval/ascore_11/eval_hires.ctm.filt.sys

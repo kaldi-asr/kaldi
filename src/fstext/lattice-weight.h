@@ -57,7 +57,7 @@ class LatticeWeightTpl {
 
   inline void SetValue2(T f) { value2_ = f; }
 
-  LatticeWeightTpl() { }
+  LatticeWeightTpl(): value1_{}, value2_{} { }
 
   LatticeWeightTpl(T a, T b): value1_(a), value2_(b) {}
 
@@ -109,12 +109,12 @@ class LatticeWeightTpl {
   }
 
   LatticeWeightTpl Quantize(float delta = kDelta) const {
-    if (value1_+value2_ == -numeric_limits<T>::infinity()) {
+    if (value1_ + value2_ == -numeric_limits<T>::infinity()) {
       return LatticeWeightTpl(-numeric_limits<T>::infinity(), -numeric_limits<T>::infinity());
-    } else if (value1_+value2_ == numeric_limits<T>::infinity()) {
+    } else if (value1_ + value2_ == numeric_limits<T>::infinity()) {
       return LatticeWeightTpl(numeric_limits<T>::infinity(), numeric_limits<T>::infinity());
-    } else if (value1_+value2_ != value1_+value2_) { // NaN
-      return LatticeWeightTpl(value1_+value2_, value1_+value2_);
+    } else if (value1_ + value2_ != value1_ + value2_) { // NaN
+      return LatticeWeightTpl(value1_ + value2_, value1_ + value2_);
     } else {
       return LatticeWeightTpl(floor(value1_/delta + 0.5F)*delta, floor(value2_/delta + 0.5F) * delta);
     }
@@ -179,8 +179,7 @@ class LatticeWeightTpl {
     } else if (s == "-Infinity") {
       f = -numeric_limits<T>::infinity();
     } else if (s == "BadNumber") {
-      f = numeric_limits<T>::infinity();
-      f -= f; // get NaN
+      f = numeric_limits<T>::quiet_NaN();
     } else {
       char *p;
       f = strtod(s.c_str(), &p);
@@ -589,8 +588,8 @@ inline bool ApproxEqual(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
 // break.
 
 template<class WeightType, class IntType>
-inline int Compare (const CompactLatticeWeightTpl<WeightType, IntType> &w1,
-                    const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
+inline int Compare(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+                   const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
   int c1 = Compare(w1.Weight(), w2.Weight());
   if (c1 != 0) return c1;
   int l1 = w1.String().size(), l2 = w2.String().size();

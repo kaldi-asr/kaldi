@@ -1,0 +1,141 @@
+CUDADECODER USAGE AND TUNING GUIDE
+
+INTRODUCTION:
+
+The CudaDecoder was developed by NVIDIA with coordination from Johns Hopkins.
+This work was intended to demonstrate efficient GPU utilization across a range 
+of NVIDIA hardware from SM_35 and on.  The following guide describes how to 
+use and tune the decoder for your models.
+
+A single speech-to-text is not enough work to fully saturate any NVIDIA GPUs.
+To fully saturate GPUs we need to decode many audio files concurrently.  The
+solution provide does this through a combination of batching many audio files
+into a single speech pipeline, running multiple pipelines in parallel on the
+device, and using multiple CPU threads to perform feature extraction and 
+determinization.  Users of the decoder will need to have a high level 
+understanding of the underlying implementation to know how to tune the 
+decoder.  
+
+The interface to the decoder is defined in "batched-threaded-cuda-decoder.h".
+A binary example can be found in cudadecoderbin/batched-wav-nnet3-cuda.cc".
+Below is a simple usage example. 
+/*
+ *  BatchedThreadedCudaDecoderConfig batchedDecoderConfig;
+ *  batchedDecoderConfig.Register(&po);
+ *  po.Read(argc, argv);
+ *  ...
+ *  BatchedThreadedCudaDecoder CudaDecoder(batchedDecoderConfig);
+ *  CudaDecoder.Initialize(*decode_fst, am_nnet, trans_model);
+ *  ...
+ *
+ *  for (; !wav_reader.Done(); wav_reader.Next()) {
+ *    std::string key = wav_reader.Key();
+ *    CudaDecoder.OpenDecodeHandle(key, wave_reader.Value());
+ *    ...
+ *  }
+ *
+ *  while (!processed.empty()) {
+ *    CompactLattice clat;
+ *    CudaDecoder.GetLattice(key, &clat);
+ *    CudaDecoder.CloseDecodeHandle(key);
+ *    ...
+ *  }
+ *
+ *  CudaDecoder.Finalize();
+ */
+
+In the code above we first declare a BatchedThreadedCudaDecoderConfig
+and register its options.  This enables us to tune the configuration 
+options.   Next we declare the CudaDecoder with that configuration.
+Before we can use the CudaDecoder we need to initalize it with an
+FST, AmNnetSimple, and TransitionModel.  
+
+Next we iterate through waves and enqueue them into the decoder by
+calling OpenDecodeHandle.  Note the key must be unique for each 
+decode. Once we have enqueued work we can query the results by calling
+GetLattice on the same key we opened the handle on.  This will automatticaly
+wait for processing to complete before returning. 
+
+The key to get performance is to have many decodes active at the same time
+by opening many decode handles before querying for the lattices.
+
+
+PERFORMANCE TUNING:
+
+The CudaDecoder has a lot of tuning parameters which should be used to
+increase performance on various models and hardware.  Note that it is 
+expected that the optimal parameters will vary according to both the hardware,
+model, and data being decoded.
+
+The following will briefly describe each parameter:
+
+BatchedThreadedCudaDecoderOptions:
+  cuda-control-threads:  Number of CPU threads simultaniously submitting work
+    to the device.  For best performance this should be between 2-4.
+  cuda-worker-threads:  CPU threads for worker tasks like determinization and
+    feature extraction.  For best performance this should take up all spare
+    CPU threads available on the system.
+  max-batch-size:  Maximum batch size in a single pipeline.  This should be as
+    large as possible but is expected to be between 50-200.  
+  batch-drain-size:  How far to drain the batch before getting new work.
+    Draining the batch allows nnet3 to be better batched.  Testing has 
+    indicated that 10-30% of max-batch-size is ideal.
+  determinize-lattice:  Use cuda-worker-threads to determinize the lattice. if
+    this is true then GetRawLattice can no longer be called.
+  max-outstanding-queue-length:  The maximum number of decodes that can be
+    queued and not assigned before OpenDecodeHandle will automatically stall 
+    the submitting thread.  Raising this increases CPU resources.  This should 
+    be set to a few thousand at least.
+
+Decoder Options:
+  beam:  The width of the beam during decoding
+  lattice-beam:  The width of the lattice beam
+  ntokens-preallocated:  number of tokens allocated in host buffers.  If
+    this size is exceeded the buffer will reallocate larger consuming more
+    resources
+  max-tokens-per-frame:  maximum tokens in GPU memory per frame.  If this
+    value is exceeded the beam will tighten and accuracy may decrease.
+  max-active: at the end of each frame computation, we keep only its best max-active tokens (arc instantiations)
+
+Device Options:
+  use-tensor-cores:  Enables tensor core (fp16 math) for gemms.  This is
+    faster but less accurate.  For inference the loss of accuracy is marginal
+
+GPU MEMORY USAGE:
+
+GPU memory is limited.  Large GPUs have between 16-32GB of memory.  Consumer
+GPUs have much less.  For best performance users should have as many
+concurrent decodes as possible.  Thus users should purchase GPUs with as
+much memory as possible.  GPUs with less memory may have to sacrifice either
+performance or accuracy.  On 16GB GPUs for example we are able to support
+around 200 concurrent decodes at a time. This translates into 4
+cuda-control-threads and a max-batch-size of 50 (4x50).  If your model is
+larger or smaller than the models our models when testing you may have to
+raise or lower this.  
+
+There are a number of parameters which can be used to control GPU memory
+usage. How they impact memory usage and accuracy is discussed below:
+
+  max-tokens-per-frame: Controls how many buffers can be stored on the GPU for
+    each frame.  This buffer size cannot be exceed or reallocated.  As this
+    buffer gets closer to being exhausted the beam is reduced possibly reducing
+    quality.  This should be tuned according to the model and data.  For
+    example, a highly accurate model could set this values smaller to enable
+    more concurrent decodes.
+
+  cuda-control-threads:  Each control thread is a concurrent pipeline.  Thus
+    the GPU memory scales linearly with this parameter.  This should always be
+    at least 2 but should probably not be higher than 4 as more concurrent
+    pipelines leads to more driver contention reducing performance.
+
+  max-batch-size:  The number of concurrent decodes in each pipeline.  The
+    memory usage also scales linear with this parameter.  Setting this smaller
+    will reduce kernel runtime while increase launch latency overhead.
+    Ideally this should be as large as possible while still fitting into
+    memory.  Note that currently the maximum allowed is 200.
+
+== Acknowledgement ==
+
+We would like to thank Daniel Povey, Zhehuai Chen and Daniel Galvez for their help and expertise during the review process.
+
+
