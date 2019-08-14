@@ -264,7 +264,7 @@ void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
 template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);
 template void VectorBase<double>::CopyFromVec(const VectorBase<float> &other);
 
-// Remove element from the vector. The vector is non reallocated
+// Remove element from the vector. The vector is not reallocated
 template<typename Real>
 void Vector<Real>::RemoveElement(MatrixIndexT i) {
   KALDI_ASSERT(i <  this->dim_ && "Access out of vector");
@@ -302,7 +302,7 @@ void VectorBase<Real>::SetRandn() {
   kaldi::RandomState rstate;
   MatrixIndexT last = (Dim() % 2 == 1) ? Dim() - 1 : Dim();
   for (MatrixIndexT i = 0; i < last; i += 2) {
-    kaldi::RandGauss2(data_ + i, data_ + i +1, &rstate);
+    kaldi::RandGauss2(data_ + i, data_ + i + 1, &rstate);
   }
   if (Dim() != last) data_[last] = static_cast<Real>(kaldi::RandGauss(&rstate));
 }
@@ -335,7 +335,13 @@ MatrixIndexT VectorBase<Real>::RandCategorical() const {
 template<typename Real>
 void VectorBase<Real>::Set(Real f) {
   // Why not use memset here?
-  for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = f; }
+  // The basic unit of memset is a byte.
+  // If f != 0 and sizeof(Real) > 1, then we cannot use memset.
+  if (f == 0) {
+    this->SetZero(); // calls std::memset
+  } else {
+    for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = f; }
+  }
 }
 
 template<typename Real>
@@ -460,6 +466,7 @@ void VectorBase<double>::Pow(const VectorBase<double> &v, double power) {
 // takes elements to a power.  Does not check output.
 template<typename Real>
 void VectorBase<Real>::Pow(const VectorBase<Real> &v, Real power) {
+  KALDI_ASSERT(dim_ == v.dim_);
   for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] = pow(v.data_[i], power);
   }
@@ -803,6 +810,7 @@ void VectorBase<Real>::ApplyAbs() {
 
 template<typename Real>
 void VectorBase<Real>::Floor(const VectorBase<Real> &v, Real floor_val, MatrixIndexT *floored_count) {
+  KALDI_ASSERT(dim_ == v.dim_);
   if (floored_count == nullptr) {
     for (MatrixIndexT i = 0; i < dim_; i++) {
       data_[i] = std::max(v.data_[i], floor_val);
@@ -811,10 +819,10 @@ void VectorBase<Real>::Floor(const VectorBase<Real> &v, Real floor_val, MatrixIn
     MatrixIndexT num_floored = 0;
     for (MatrixIndexT i = 0; i < dim_; i++) {
       if (v.data_[i] < floor_val) {
-	data_[i] = floor_val;
-	num_floored++;
+        data_[i] = floor_val;
+        num_floored++;
       } else {
-	data_[i] = v.data_[i];
+        data_[i] = v.data_[i];
       }
     }
     *floored_count = num_floored;
@@ -823,6 +831,7 @@ void VectorBase<Real>::Floor(const VectorBase<Real> &v, Real floor_val, MatrixIn
 
 template<typename Real>
 void VectorBase<Real>::Ceiling(const VectorBase<Real> &v, Real ceil_val, MatrixIndexT *ceiled_count) {
+  KALDI_ASSERT(dim_ == v.dim_);
   if (ceiled_count == nullptr) {
     for (MatrixIndexT i = 0; i < dim_; i++) {
       data_[i] = std::min(v.data_[i], ceil_val);
@@ -831,10 +840,10 @@ void VectorBase<Real>::Ceiling(const VectorBase<Real> &v, Real ceil_val, MatrixI
     MatrixIndexT num_changed = 0;
     for (MatrixIndexT i = 0; i < dim_; i++) {
       if (v.data_[i] > ceil_val) {
-	data_[i] = ceil_val;
-	num_changed++;
+        data_[i] = ceil_val;
+        num_changed++;
       } else {
-	data_[i] = v.data_[i];
+        data_[i] = v.data_[i];
       }
     }
     *ceiled_count = num_changed;
@@ -1074,7 +1083,7 @@ void VectorBase<double>::AddVec2(const double alpha, const VectorBase<float> &v)
 
 
 template<typename Real>
-void VectorBase<Real>::Read(std::istream & is,  bool binary, bool add) {
+void VectorBase<Real>::Read(std::istream &is,  bool binary, bool add) {
   if (add) {
     Vector<Real> tmp(Dim());
     tmp.Read(is, binary, false);  // read without adding.
@@ -1097,7 +1106,7 @@ void VectorBase<Real>::Read(std::istream & is,  bool binary, bool add) {
 
 
 template<typename Real>
-void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
+void Vector<Real>::Read(std::istream &is,  bool binary, bool add) {
   if (add) {
     Vector<Real> tmp(this->Dim());
     tmp.Read(is, binary, false);  // read without adding.

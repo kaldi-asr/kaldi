@@ -45,7 +45,7 @@ if(@ARGV != 1) {
 Usage: apply_map.pl [options] map <input >output
  options: [-f <field-range> ] [--permissive]
    This applies a map to some specified fields of some input text:
-   For each line in the map file: the first field is the thing wae
+   For each line in the map file: the first field is the thing we
    map from, and the remaining fields are the sequence we map it to.
    The -f (field-range) option says which fields of the input file the map
    map should apply to.

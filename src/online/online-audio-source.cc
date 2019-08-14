@@ -35,7 +35,7 @@ namespace kaldi {
 
 #ifndef KALDI_NO_PORTAUDIO
 
-// The actual PortAudio callback - delegates to OnlinePaSource->PaCallback()
+// The actual PortAudio callback - delegates to OnlinePaSource->Callback()
 int PaCallback(const void *input, void *output,
                long unsigned frame_count,
                const PaStreamCallbackTimeInfo *time_info,
@@ -58,10 +58,10 @@ OnlinePaSource::OnlinePaSource(const uint32 timeout,
 
   // Note this will work for 32bit integers but not for 64bit.
   // For 64bit integers even double wouldn't work
-  // You would ahve to use something like
+  // You would have to use something like
   // int64 rb_bits = 0; while (rb_size != 0) {++rb_bits; rb_size >>= 1;}
   // it would be much faster than two logs of FP numbers (even floats), too,
-  // but I dont have the time to test it.
+  // but I don't have the time to test it.
   float f = Log(static_cast<float>(rb_size)) / Log(static_cast<float>(2));
   int32 rb_bits = static_cast<int32>(ceil(f));
   if (rb_bits > 30)  // ok, this limit is somewhat arbitrary

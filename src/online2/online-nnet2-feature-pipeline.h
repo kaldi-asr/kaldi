@@ -121,7 +121,7 @@ struct OnlineNnet2FeaturePipelineConfig {
 /// line; instead, it is initialized from class OnlineNnet2FeaturePipelineConfig
 /// which reads the options from the command line.  The reason for structuring
 /// it this way is to make it easier to configure from code as well as from the
-/// command line, as well as for easiter multithreaded operation.
+/// command line, as well as for easier multithreaded operation.
 struct OnlineNnet2FeaturePipelineInfo {
   OnlineNnet2FeaturePipelineInfo():
       feature_type("mfcc"), add_pitch(false) { }

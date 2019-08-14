@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "This program reads input features and writes out, for each utterance,\n"
-        "a vector of floats that are 1.0 if we judge the frame voice and 0.0\n"
+        "a vector of floats that are 1.0 if we judge the frame voiced and 0.0\n"
         "otherwise.  The algorithm is very simple and is based on thresholding\n"
         "the log mel energy (and taking the consensus of threshold decisions\n"
         "within a window centered on the current frame).  See the options for\n"

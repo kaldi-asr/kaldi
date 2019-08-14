@@ -44,20 +44,20 @@ class DecodableMapped: public DecodableInterface {
     KALDI_ASSERT(static_cast<size_t>(state_index) < index_map_.size());
     return decodable_->LogLikelihood(frame, index_map_[state_index]);
   }
-  
+
   // note: indices are assumed to be numbered from one, so
   // NumIndices() will be the same as the largest index.
   virtual int32 NumIndices() const { return static_cast<int32>(index_map_.size()) - 1; }
-  
+
   virtual bool IsLastFrame(int32 frame) const {
     // We require all the decodables have the same #frames.  We don't check this though.
     return decodable_->IsLastFrame(frame);
-  }    
+  }
 
  private:
   std::vector<int32> index_map_;
   DecodableInterface *decodable_;
-  
+
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableMapped);
 };
 

@@ -98,7 +98,7 @@ VectorFst<StdArc> *CastOrConvertToVectorFst(Fst<StdArc> *fst) {
   if (real_type == "vector") {
     return dynamic_cast<VectorFst<StdArc> *>(fst);
   } else {
-    // As the 'fst' can't cast to VectorFst, we carete a new
+    // As the 'fst' can't cast to VectorFst, we create a new
     // VectorFst<StdArc> initialized by 'fst', and delete 'fst'.
     VectorFst<StdArc> *new_fst = new VectorFst<StdArc>(*fst);
     delete fst;
