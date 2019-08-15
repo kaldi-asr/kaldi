@@ -3,22 +3,22 @@
 # 1k is like 1j, while it introduces 'apply-cmvn-online' that does
 # cmn normalization both for i-extractor and TDNN input.
 
-# TODO update this,
-# local/chain/compare_wer.sh --online exp/chain/tdnn1h_sp exp/chain/tdnn1i_sp
-# System                tdnn1h_sp tdnn1i_sp
-#WER dev_clean_2 (tgsmall)      12.09     11.11
-#             [online:]         12.11     11.06
-#WER dev_clean_2 (tglarge)       8.59      7.65
-#             [online:]          8.76      7.74
-# Final train prob        -0.0493   -0.0620
-# Final valid prob        -0.0805   -0.0778
-# Final train prob (xent)   -1.1730   -1.4671
-# Final valid prob (xent)   -1.3872   -1.5783
-# Num-params                 5207856   5207856
+# local/chain/compare_wer.sh --online exp/chain/tdnn1j_sp exp/chain_online_cmn/tdnn1k_sp
+# System                tdnn1j_sp tdnn1k_sp
+#WER dev_clean_2 (tgsmall)      11.25     10.99
+#WER dev_clean_2 (tglarge)       7.72      7.54
+# Final train prob        -0.0632   -0.0623
+# Final valid prob        -0.0792   -0.0803
+# Final train prob (xent)   -1.4499   -1.4396
+# Final valid prob (xent)   -1.5643   -1.5628
+# Num-params                 5210944   5210944
 
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1i_sp
-# exp/chain/tdnn1i_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2328 combine=-0.069->-0.065 (over 4) xent:train/valid[21,33,final]=(-1.69,-1.48,-1.47/-1.78,-1.58,-1.58) logprob:train/valid[21,33,final]=(-0.076,-0.066,-0.062/-0.087,-0.082,-0.078)
+# steps/info/chain_dir_info.pl exp/chain/tdnn1j_sp
+# exp/chain/tdnn1j_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2336 combine=-0.069->-0.064 (over 4) xent:train/valid[21,33,final]=(-1.66,-1.48,-1.45/-1.78,-1.59,-1.56) logprob:train/valid[21,33,final]=(-0.075,-0.069,-0.063/-0.093,-0.085,-0.079)
+
+# steps/info/chain_dir_info.pl exp/chain_online_cmn/tdnn1k_sp
+# exp/chain_online_cmn/tdnn1k_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2336 combine=-0.067->-0.062 (over 5) xent:train/valid[21,33,final]=(-1.64,-1.46,-1.44/-1.75,-1.58,-1.56) logprob:train/valid[21,33,final]=(-0.075,-0.068,-0.062/-0.093,-0.085,-0.080)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
