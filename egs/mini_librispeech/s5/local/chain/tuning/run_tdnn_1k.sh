@@ -42,7 +42,7 @@ online_cmvn=true
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1j   # affix for the TDNN directory name
+affix=1k   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
