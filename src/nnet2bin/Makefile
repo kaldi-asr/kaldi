@@ -2,7 +2,7 @@
 # cuda-compiled was moved to nnet3bin/; remove it in case an outdated
 # version persists.
 all:
-	-rm -f cuda-gpu-available
+	-rm -f cuda-compiled
 
 
 EXTRA_CXXFLAGS = -Wno-sign-compare
