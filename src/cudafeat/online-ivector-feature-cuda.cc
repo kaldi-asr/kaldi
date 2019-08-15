@@ -244,11 +244,6 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
   CuMatrix<float> A(quadratic);
 
 #if CUDA_VERSION >= 9010
-  // This is the cusolver return code.  Checking it would require
-  // synchronization.
-  // So we do not check it.
-  int *d_info = NULL;
-
   // query temp buffer size
   int L_work;
   CUSOLVER_SAFE_CALL(
@@ -262,12 +257,12 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
   // perform factorization
   CUSOLVER_SAFE_CALL(cusolverDnSpotrf(
       GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, A.Data(),
-      A.Stride(), workspace, L_work, d_info));
+      A.Stride(), workspace, L_work, d_info_));
 
   // solve for rhs
   CUSOLVER_SAFE_CALL(cusolverDnSpotrs(
       GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, nrhs,
-      A.Data(), A.Stride(), ivector->Data(), ivector_dim_, d_info));
+      A.Data(), A.Stride(), ivector->Data(), ivector_dim_, d_info_));
 
   CuDevice::Instantiate().Free(workspace);
 #else
