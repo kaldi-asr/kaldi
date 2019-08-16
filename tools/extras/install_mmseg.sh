@@ -43,7 +43,7 @@ if [ -d ./mmseg-1.3.0 ] ; then
 fi
 
 if [ ! -d ./mmseg-1.3.0 ] ; then
-  wget http://pypi.python.org/packages/source/m/mmseg/mmseg-1.3.0.tar.gz
+  wget https://pypi.python.org/packages/source/m/mmseg/mmseg-1.3.0.tar.gz
   tar xf mmseg-1.3.0.tar.gz
 fi
 
