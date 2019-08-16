@@ -289,15 +289,3 @@ for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.s
 %WER 9.29 exp/nnet3/lstm_bidirectional/decode_tgpr_dev93/wer_11_0.5
 %WER 6.61 exp/nnet3/lstm_bidirectional/decode_tgpr_eval92/wer_11_1.0
 
-# Chain results (tdnn-f, ivectors)
-# no-cmvn (local/chain/run_tdnn.sh)
-%WER 4.96 [ 408 / 8234, 47 ins, 59 del, 302 sub ] exp/chain/tdnn1g_sp/decode_bd_tgpr_dev93/wer_11_0.0
-%WER 2.80 [ 158 / 5643, 16 ins, 7 del, 135 sub ] exp/chain/tdnn1g_sp/decode_bd_tgpr_eval92/wer_10_1.0
-%WER 6.89 [ 567 / 8234, 77 ins, 111 del, 379 sub ] exp/chain/tdnn1g_sp/decode_tgpr_dev93/wer_12_0.0
-%WER 4.75 [ 268 / 5643, 36 ins, 55 del, 177 sub ] exp/chain/tdnn1g_sp/decode_tgpr_eval92/wer_14_1.0
-# online-cmvn (local/chain/run_tdnn_online_cmn.sh)
-%WER 4.93 [ 406 / 8234, 36 ins, 68 del, 302 sub ] exp/chain_online_cmn/tdnn1h_sp/decode_bd_tgpr_dev93/wer_12_0.5
-%WER 2.87 [ 162 / 5643, 21 ins, 4 del, 137 sub ] exp/chain_online_cmn/tdnn1h_sp/decode_bd_tgpr_eval92/wer_9_0.5
-%WER 6.97 [ 574 / 8234, 77 ins, 106 del, 391 sub ] exp/chain_online_cmn/tdnn1h_sp/decode_tgpr_dev93/wer_11_0.5
-%WER 4.78 [ 270 / 5643, 35 ins, 51 del, 184 sub ] exp/chain_online_cmn/tdnn1h_sp/decode_tgpr_eval92/wer_13_1.0
-

@@ -3,25 +3,25 @@
 # 1i is like 1h, while it introduces 'apply-cmvn-online' that does
 # cmn normalization both for i-extractor and TDNN input.
 
-# TODO update this!
-# local/chain/compare_wer.sh exp/chain/tdnn1f_sp exp/chain/tdnn1g_sp
-# System                tdnn1f_sp tdnn1g_sp
-#WER dev93 (tgpr)                7.03      6.68
-#WER dev93 (tg)                  6.83      6.57
-#WER dev93 (big-dict,tgpr)       4.99      4.60
-#WER dev93 (big-dict,fg)         4.52      4.26
-#WER eval92 (tgpr)               5.19      4.54
-#WER eval92 (tg)                 4.73      4.32
-#WER eval92 (big-dict,tgpr)      2.94      2.62
-#WER eval92 (big-dict,fg)        2.68      2.32
-# Final train prob        -0.0461   -0.0417
-# Final valid prob        -0.0588   -0.0487
-# Final train prob (xent)   -0.9042   -0.6461
-# Final valid prob (xent)   -0.9447   -0.6882
-# Num-params                 6071244   8354636
+# local/chain/compare_wer.sh exp/chain/tdnn1h_sp exp/chain_online_cmn/tdnn1i_sp
+# System                tdnn1h_sp tdnn1i_sp
+#WER dev93 (tgpr)                6.89      6.66
+#WER dev93 (tg)                  6.63      6.56
+#WER dev93 (big-dict,tgpr)       4.96      4.74
+#WER dev93 (big-dict,fg)         4.53      4.44
+#WER eval92 (tgpr)               4.68      4.89
+#WER eval92 (tg)                 4.32      4.43
+#WER eval92 (big-dict,tgpr)      2.69      2.91
+#WER eval92 (big-dict,fg)        2.34      2.37
+# Final train prob        -0.0442   -0.0439
+# Final valid prob        -0.0537   -0.0529
+# Final train prob (xent)   -0.6548   -0.6581
+# Final valid prob (xent)   -0.7324   -0.7300
+# Num-params                 8349232   8349232
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1g_sp
-# exp/chain/tdnn1g_sp: num-iters=108 nj=2..8 num-params=8.4M dim=40+100->2854 combine=-0.042->-0.042 (over 2) xent:train/valid[71,107,final]=(-0.975,-0.640,-0.646/-0.980,-0.678,-0.688) logprob:train/valid[71,107,final]=(-0.067,-0.043,-0.042/-0.069,-0.050,-0.049)
+# steps/info/chain_dir_info.pl exp/chain_online_cmn/tdnn1i_sp
+# exp/chain_online_cmn/tdnn1i_sp: num-iters=108 nj=2..8 num-params=8.3M dim=40+100->2840 combine=-0.044->-0.044 (over 1) xent:train/valid[71,107,final]=(-0.873,-0.648,-0.658/-0.914,-0.712,-0.730) logprob:train/valid[71,107,final]=(-0.065,-0.044,-0.044/-0.068,-0.054,-0.053)
+
 
 set -e -o pipefail
 
