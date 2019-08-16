@@ -153,8 +153,7 @@ void TestOnlineMfcc() {
   // the parametrization object
   MfccOptions op;
   op.frame_opts.window_type = "hamming";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = true;
+
   op.frame_opts.samp_freq = wave.SampFreq();
   op.mel_opts.low_freq = 0.0;
   op.use_energy = false;  // C0 not energy.
@@ -200,8 +199,7 @@ void TestOnlineTransform() {
   // build online feature interface, take OnlineMfcc as an example
   MfccOptions op;
   op.frame_opts.window_type = "hamming";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = true;
+
   op.frame_opts.samp_freq = wave.SampFreq();
   op.mel_opts.low_freq = 0.0;
   op.use_energy = false;  // C0 not energy.
@@ -240,8 +238,6 @@ void TestOnlineAppendFeature() {
   // the parametrization object for 1st stream mfcc feature
   MfccOptions mfcc_op;
   mfcc_op.frame_opts.window_type = "hamming";
-  mfcc_op.frame_opts.remove_dc_offset = false;
-  mfcc_op.frame_opts.round_to_power_of_two = true;
   mfcc_op.frame_opts.samp_freq = wave.SampFreq();
   mfcc_op.mel_opts.low_freq = 0.0;
   mfcc_op.use_energy = false;  // C0 not energy.

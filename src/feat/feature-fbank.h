@@ -42,14 +42,15 @@ struct FbankOptions {
   FrameExtractionOptions frame_opts;
   MelBanksOptions mel_opts;
   bool use_energy;  // append an extra dimension with energy to the filter banks
-  BaseFloat energy_floor;  // Floor on energy, to avoid log(0.0).  The floor of
-                           // 1e-10 may be interpreted as (approximately)
-                           // 0.1 * 2**-30.  The smallest nonzero value in a 16-bit
-                           // waveform would be 1^-15, and 1^-30 is its square.
+  BaseFloat energy_floor;  // Floor on energy, to avoid log(0.0), which will be
+                           // multiplied by sqrt(window-length-in-frames) and
+                           // applied per FFT bin. The value of 1.0e-09 is
+                           // approximately (1.0/32768.0)^2, like a signal value
+                           // of +- 1 in a 16-bit recording.
 
   FbankOptions(): mel_opts(23),
                   use_energy(false),
-                  energy_floor(1.0e-10) { }
+                  energy_floor(1.0e-09) { }
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
@@ -58,8 +59,9 @@ struct FbankOptions {
                    "Add an extra dimension with energy to the filterbank "
                    "output.");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in filterbank "
-                   "computation.");
+                   "Floor on energy expressed as a squared-signal value per "
+                   "frame.  The default value represents about +-1 in int16 "
+                   "representation.");
   }
 };
 

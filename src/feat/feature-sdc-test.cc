@@ -45,7 +45,7 @@ static void UnitTestCompareWithDeltaFeatures(Matrix<BaseFloat> &raw_features, in
   int32 dd_num_rows = deltas_features.NumRows();
   int32 sdc_num_rows = shifted_deltas_features.NumRows();
   int32 num_features = raw_features.NumCols();
- 
+
   // Number of rows will be equal, but not
   // columns, in general.
   KALDI_ASSERT(dd_num_rows == sdc_num_rows);
@@ -60,7 +60,7 @@ static void UnitTestCompareWithDeltaFeatures(Matrix<BaseFloat> &raw_features, in
   }
 }
 
-static void UnitTestParams(Matrix<BaseFloat> &raw_features, int32 window, 
+static void UnitTestParams(Matrix<BaseFloat> &raw_features, int32 window,
                            int32 shift, int32 n_blocks) {
   std::cout << "=== UnitTestSDCParams() ===\n";
   ShiftedDeltaFeaturesOptions shifted_deltas_opts;
@@ -78,8 +78,8 @@ static void UnitTestParams(Matrix<BaseFloat> &raw_features, int32 window,
   int32 sdc_num_cols = shifted_deltas_features.NumCols();
 
   KALDI_ASSERT(sdc_num_cols == raw_num_cols * (n_blocks  + 1));
-  
-  /* For every coefficient in the raw feature vector a 
+
+  /* For every coefficient in the raw feature vector a
      delta is calculated and appended to the new feature vector,
      as is done normally in a delta-deltas computation.
      In addition, n_blocks delta in advance are also appended.
@@ -89,7 +89,7 @@ static void UnitTestParams(Matrix<BaseFloat> &raw_features, int32 window,
      mapping from these additional deltas to where they would
      appear in a delta-deltas computation and verfies these
      values' equality. */
-  for (int32 i = 0; i < sdc_num_rows; i++) { 
+  for (int32 i = 0; i < sdc_num_rows; i++) {
     for (int32 j = 2 * raw_num_cols; j < sdc_num_cols; j += raw_num_cols) {
       for (int32 k = 0; k < raw_num_cols; k++) {
         int32 row = i + (j/raw_num_cols - 1) * shift;
@@ -103,7 +103,7 @@ static void UnitTestParams(Matrix<BaseFloat> &raw_features, int32 window,
   }
 }
 
-static void UnitTestEndEffects(Matrix<BaseFloat> &raw_features, int32 window, 
+static void UnitTestEndEffects(Matrix<BaseFloat> &raw_features, int32 window,
                                int32 shift, int32 n_blocks) {
   std::cout << "=== UnitTestSDCEndEffects() ===\n";
   ShiftedDeltaFeaturesOptions shifted_deltas_opts;
@@ -118,7 +118,7 @@ static void UnitTestEndEffects(Matrix<BaseFloat> &raw_features, int32 window,
   int32 raw_num_cols = raw_features.NumCols();
   int32 sdc_num_rows = shifted_deltas_features.NumRows();
   int32 sdc_num_cols = shifted_deltas_features.NumCols();
-  
+
   // If the entire window is out-of-bounds the delta should be zero.
   for (int32 i = sdc_num_rows - n_blocks + 1; i < sdc_num_rows; i++) {
     for (int32 j = 2 * raw_num_cols; j < sdc_num_cols; j += raw_num_cols) {
@@ -126,7 +126,7 @@ static void UnitTestEndEffects(Matrix<BaseFloat> &raw_features, int32 window,
         if (i + (j/raw_num_cols - 1) * shift - window/2 > sdc_num_rows)
           KALDI_ASSERT(shifted_deltas_features(i, j + k) <= 0.00001);
       }
-    } 
+    }
   }
 }
 
@@ -137,11 +137,7 @@ int main() {
   KALDI_ASSERT(wave.Data().NumRows() == 1);
   SubVector<BaseFloat> waveform(wave.Data(), 0);
 
-  // mfcc with default configuration...
   MfccOptions op;
-  op.frame_opts.window_type = "hamming";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
   op.use_energy = false;
   Mfcc mfcc(op);
@@ -163,6 +159,5 @@ int main() {
     static_cast<void>(e);
     return 1;
   }
-  
-}
 
+}

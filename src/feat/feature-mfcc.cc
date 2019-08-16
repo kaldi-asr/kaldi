@@ -42,23 +42,26 @@ void MfccComputer::Compute(BaseFloat vtln_warp,
 
   BaseFloat signal_log_energy;
   if (opts_.use_energy)
-    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
-                                                opts_.energy_floor));
+    signal_log_energy = Log(std::max<BaseFloat>(
+        VecVec(*signal_frame, *signal_frame),
+        opts_.energy_floor * opts_.frame_opts.WindowSize()));
   const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
 
-  if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
-    srfft_->Compute(signal_frame->Data(), true);
-  else  // An alternative algorithm that works for non-powers-of-two.
-    RealFft(signal_frame, true);
+  srfft_->Compute(signal_frame->Data(), true);
 
   // Convert the FFT into a power spectrum.
   ComputePowerSpectrum(signal_frame);
   SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
                                       signal_frame->Dim() / 2 + 1);
 
-  mel_banks.Compute(power_spectrum, &mel_energies_);
+  // The energy_floor has the scale for the energy of a single sample, and the
+  // FFT has a higher dynamic range (it's not the orthogonal FFT)... the sqrt
+  // expression is to correct for that.
+  BaseFloat floor = opts_.energy_floor *
+                    std::sqrt(BaseFloat(opts_.frame_opts.WindowSize()));
+  power_spectrum.ApplyFloor(floor);
 
-  mel_energies_.ApplyFloor(opts_.energy_floor);
+  mel_banks.Compute(power_spectrum, &mel_energies_);
   mel_energies_.ApplyLog();
 
   feature->SetZero();  // in case there were NaNs.
@@ -71,7 +74,8 @@ void MfccComputer::Compute(BaseFloat vtln_warp,
 }
 
 MfccComputer::MfccComputer(const MfccOptions &opts):
-    opts_(opts), srfft_(NULL),
+    opts_(opts),
+    srfft_(new SplitRadixRealFft<BaseFloat>(opts.frame_opts.PaddedWindowSize())),
     mel_energies_(opts.mel_opts.num_bins) {
 
   int32 num_bins = opts.mel_opts.num_bins;
@@ -94,10 +98,6 @@ MfccComputer::MfccComputer(const MfccOptions &opts):
   dct_matrix_.Resize(opts.num_ceps, num_bins);
   dct_matrix_.CopyFromMat(dct_rows);  // subset of rows.
 
-  int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
-  if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
-    srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
-
   // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
   // [note: this call caches it.]
   GetMelBanks(1.0);
@@ -107,13 +107,11 @@ MfccComputer::MfccComputer(const MfccComputer &other):
     opts_(other.opts_), lifter_coeffs_(other.lifter_coeffs_),
     dct_matrix_(other.dct_matrix_),
     mel_banks_(other.mel_banks_),
-    srfft_(NULL),
+    srfft_(new SplitRadixRealFft<BaseFloat>(*(other.srfft_))),
     mel_energies_(other.mel_energies_.Dim(), kUndefined) {
   for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
        iter != mel_banks_.end(); ++iter)
     iter->second = new MelBanks(*(iter->second));
-  if (other.srfft_ != NULL)
-    srfft_ = new SplitRadixRealFft<BaseFloat>(*(other.srfft_));
 }
 
 

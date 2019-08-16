@@ -29,48 +29,6 @@ using namespace kaldi;
 
 
 
-/**
- */
-static void UnitTestSimple() {
-  std::cout << "=== UnitTestSimple() ===\n";
-
-  Vector<BaseFloat> v(100000);
-  Matrix<BaseFloat> m;
-
-  // init with noise
-  for (int32 i = 0; i < v.Dim(); i++) {
-    v(i) = (abs( i * 433024253 ) % 65535) - (65535 / 2);
-  }
-
-  std::cout << "<<<=== Just make sure it runs... Nothing is compared\n";
-  // the parametrization object
-  FbankOptions op;
-  // trying to have same opts as baseline.
-  op.frame_opts.window_type = "rectangular";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = true;
-  op.mel_opts.low_freq = 0.0;
-  op.use_energy = true;
-
-  Fbank fbank(op);
-  // use default parameters
-
-  // compute fbanks.
-  fbank.Compute(v, 1.0, &m);
-
-  // possibly dump
-  //   std::cout << "== Output features == \n" << m;
-  std::cout << "Test passed :)\n\n";
-}
-
-
-
-static void UnitTestFeat() {
-  UnitTestSimple();
-}
-
-
-
 
 int main() {
   try {
@@ -83,5 +41,3 @@ int main() {
     return 1;
   }
 }
-
-

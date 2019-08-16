@@ -36,13 +36,11 @@ struct FrameExtractionOptions {
   BaseFloat samp_freq;
   BaseFloat frame_shift_ms;  // in milliseconds.
   BaseFloat frame_length_ms;  // in milliseconds.
-  bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
   // May be "hamming", "rectangular", "povey", "hanning", "blackman"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
   // I just don't think the Hamming window makes sense as a windowing function.
-  bool round_to_power_of_two;
   BaseFloat blackman_coeff;
   bool allow_downsample;
   bool allow_upsample;
@@ -51,9 +49,7 @@ struct FrameExtractionOptions {
       samp_freq(16000),
       frame_shift_ms(10.0),
       frame_length_ms(25.0),
-      remove_dc_offset(true),
       window_type("povey"),
-      round_to_power_of_two(true),
       blackman_coeff(0.42),
       allow_downsample(false),
       allow_upsample(false),
@@ -65,16 +61,11 @@ struct FrameExtractionOptions {
                    "if specified there)");
     opts->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
     opts->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
-    opts->Register("remove-dc-offset", &remove_dc_offset,
-                   "Subtract mean from waveform on each frame");
     opts->Register("window-type", &window_type, "Type of window "
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
                    "|\"blackmann\")");
     opts->Register("blackman-coeff", &blackman_coeff,
                    "Constant coefficient for generalized Blackman window.");
-    opts->Register("round-to-power-of-two", &round_to_power_of_two,
-                   "If true, round window size to power of two by zero-padding "
-                   "input to FFT.");
     opts->Register("allow-downsample", &allow_downsample,
                    "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
@@ -93,8 +84,7 @@ struct FrameExtractionOptions {
     return static_cast<int32>(samp_freq * 0.001 * frame_length_ms);
   }
   int32 PaddedWindowSize() const {
-    return (round_to_power_of_two ? RoundUpToNearestPowerOfTwo(WindowSize()) :
-                                    WindowSize());
+    return RoundUpToNearestPowerOfTwo(WindowSize());
   }
 };
 
@@ -116,8 +106,7 @@ void InitFeatureWindowFunction(
 
       @param [in] flush   True if we are asserting that this number of samples is
              'all there is', false if we expecting more data to possibly come
-             in.  This only makes a difference to the answer if opts.snips_edges
-             == false.  For offline feature extraction you always want flush ==
+             in.   For offline feature extraction you always want flush ==
              true.  In an online-decoding context, once you know (or decide) that
              no more data is coming in, you'd call it with flush == true at the
              end to flush out any remaining data.
@@ -127,17 +116,20 @@ int32 NumFrames(int64 num_samples,
                 bool flush = true);
 
 /*
-   This function returns the index of the first sample of the frame indexed
-   'frame'.  If snip-edges=true, it just returns frame * opts.WindowShift(); if
-   snip-edges=false, the formula is a little more complicated and the result may
-   be negative.
+   This function returns the sample-index of the first sample of the frame
+   indexed 'frame'.
+      @param [in]   frame   frame index frame >= 0
+      @param [in]   opts    Options class, used for window width, and frame
+                            shift.
+      @return               Returns the sample index of the first sample of
+                            this frame.  Note: this may be negative if
+                            `frame` is close to zero.  The calling code
+                            will handle this by reflecting the signal in
+                            the boundary.
 */
 int64 FirstSampleOfFrame(int32 frame,
                          const FrameExtractionOptions &opts);
 
-
-
-void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value);
 
 
 /**

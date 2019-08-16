@@ -29,13 +29,8 @@ namespace kaldi {
 void ComputePowerSpectrum(VectorBase<BaseFloat> *waveform) {
   int32 dim = waveform->Dim();
 
-  // no, letting it be non-power-of-two for now.
-  // KALDI_ASSERT(dim > 0 && (dim & (dim-1) == 0));  // make sure a power of two.. actually my FFT code
-  // does not require this (dan) but this is better in case we use different code [dan].
-
-  // RealFft(waveform, true);  // true == forward (not inverse) FFT; makes no difference here,
-  // as we just want power spectrum.
-
+  // make sure a power of two.
+  KALDI_ASSERT(dim > 0 && ((dim & (dim-1)) == 0));
   // now we have in waveform, first half of complex spectrum
   // it's stored as [real0, realN/2-1, real1, im1, real2, im2, ...]
   int32 half_dim = dim/2;
@@ -46,8 +41,9 @@ void ComputePowerSpectrum(VectorBase<BaseFloat> *waveform) {
     (*waveform)(i) = real*real + im*im;
   }
   (*waveform)(0) = first_energy;
-  (*waveform)(half_dim) = last_energy;  // Will actually never be used, and anyway
-  // if the signal has been bandlimited sensibly this should be zero.
+  (*waveform)(half_dim) = last_energy;
+  // Will actually never be used, and anyway if the signal has been bandlimited
+  // sensibly this should be zero.
 }
 
 
