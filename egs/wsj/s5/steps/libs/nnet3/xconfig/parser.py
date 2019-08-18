@@ -84,7 +84,8 @@ config_to_layer = {
         'scale-component':  xlayers.XconfigPerElementScaleComponent,
         'dim-range-component': xlayers.XconfigDimRangeComponent,
         'offset-component':  xlayers.XconfigPerElementOffsetComponent,
-        'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer
+        'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer,
+        'attention-block': xlayers.XconfigAttentionBlock
 }
 
 # Turn a config line and a list of previous layers into
