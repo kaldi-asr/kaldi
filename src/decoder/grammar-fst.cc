@@ -110,12 +110,15 @@ void GrammarFst::InitNonterminalMap() {
 }
 
 
-void GrammarFst::InitEntryArcs(int32 i) {
+bool GrammarFst::InitEntryArcs(int32 i) {
   KALDI_ASSERT(static_cast<size_t>(i) < ifsts_.size());
   const ConstFst<StdArc> &fst = *(ifsts_[i].second);
+  if (fst.NumStates() == 0)
+    return false;  /* this was the empty FST. */
   InitEntryOrReentryArcs(fst, fst.Start(),
                          GetPhoneSymbolFor(kNontermBegin),
                          &(entry_arcs_[i]));
+  return true;
 }
 
 void GrammarFst::InitInstances() {
@@ -345,8 +348,12 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateUserDefined(
     const ConstFst<StdArc> &child_fst = *(child_instance.fst);
     int32 child_ifst_index = child_instance.ifst_index;
     std::unordered_map<int32, int32> &entry_arcs = entry_arcs_[child_ifst_index];
-    if (entry_arcs.empty())
-      InitEntryArcs(child_ifst_index);
+    if (entry_arcs.empty()) {
+      if (!InitEntryArcs(child_ifst_index)) {
+        // This child-FST was the empty FST.  There are no arcs to expand.
+        continue;
+      }
+    }
     // for explanation of cost_correction, see documentation for CombineArcs().
     float num_entry_arcs = entry_arcs.size(),
         cost_correction = -log(num_entry_arcs);
