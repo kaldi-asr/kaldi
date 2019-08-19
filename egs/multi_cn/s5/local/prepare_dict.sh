@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# this script is copied from 
+# this script is copied from egs/hkust/s5/local/hkust_prepare_dict.sh
 
 # Copyright 2016 LeSpeech (Author: Xingyu Na)
 
@@ -69,7 +69,7 @@ fi
 
 echo "--- Preparing pronunciations for OOV words ..."
 g2p=`which g2p.py`
-if [ ! -x $g2p ]; then
+if [ -z $g2p ] || [ ! -x $g2p ]; then
   echo "g2p.py is not found. Checkout tools/extras/install_sequitur.sh."
   exit 1
 fi

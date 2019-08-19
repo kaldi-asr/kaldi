@@ -51,7 +51,10 @@ for dir in $train_dir $dev_dir $test_dir; do
   sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{print $NF}' > $dir/utt.list
   sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{i=NF-1;printf("%s %s\n",$NF,$i)}' > $dir/utt2spk_all
   paste -d' ' $dir/utt.list $dir/wav.flist > $dir/wav.scp_all
-  utils/filter_scp.pl -f 1 $dir/utt.list $aishell_text > $dir/transcripts.txt
+  utils/filter_scp.pl -f 1 $dir/utt.list $aishell_text | \
+    sed 's/ａ/a/g' | sed 's/ｂ/b/g' |\
+    sed 's/ｃ/c/g' | sed 's/ｋ/k/g' |\
+    sed 's/ｔ/t/g' > $dir/transcripts.txt
   awk '{print $1}' $dir/transcripts.txt > $dir/utt.list
   utils/filter_scp.pl -f 1 $dir/utt.list $dir/utt2spk_all | sort -u | awk '{print $1" BAC009"$2}' > $dir/utt2spk
   utils/filter_scp.pl -f 1 $dir/utt.list $dir/wav.scp_all | sort -u > $dir/wav.scp
