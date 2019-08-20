@@ -658,6 +658,7 @@ void PrunedCompactLatticeComposer::AddFirstState() {
   composed_state_queue_.push(
       std::pair<BaseFloat, int32>(expected_cost_offset,
                                   state_id));  // actually (0.0, 0).
+
 }
 
 

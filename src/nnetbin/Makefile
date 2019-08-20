@@ -1,5 +1,9 @@
 
+# cuda-gpu-available was moved to nnet3bin/; remove it in case an outdated
+# version persists.
 all:
+	-rm -f cuda-gpu-available
+
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
@@ -15,7 +19,7 @@ BINFILES = nnet-train-frmshuff \
         nnet-forward nnet-copy nnet-info nnet-concat \
         transf-to-nnet cmvn-to-nnet nnet-initialize \
 	feat-to-post paste-post train-transitions \
-	cuda-gpu-available nnet-set-learnrate
+	nnet-set-learnrate
 
 OBJFILES =
 
@@ -25,6 +29,6 @@ TESTFILES =
 
 ADDLIBS = ../nnet/kaldi-nnet.a ../cudamatrix/kaldi-cudamatrix.a \
           ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
-          ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+          ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

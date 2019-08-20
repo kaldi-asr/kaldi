@@ -30,7 +30,7 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
     feature_type = config.feature_type;
   } else {
     KALDI_ERR << "Invalid feature type: " << config.feature_type << ". "
-              << "Supported feature types: mfcc, plp.";
+              << "Supported feature types: mfcc, plp, fbank.";
   }
 
   if (config.mfcc_config != "") {
@@ -288,6 +288,8 @@ BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {
     return mfcc_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else if (feature_type == "plp") {
     return plp_opts.frame_opts.frame_shift_ms / 1000.0f;
+  } else if (feature_type == "fbank") {
+    return fbank_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else {
     KALDI_ERR << "Unknown feature type " << feature_type;
     return 0.0;

@@ -1,4 +1,3 @@
-// cudadecoder/cuda-decoder-kernels.h
 //
 // Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 // Hugo Braun, Justin Luitjens, Ryan Leary
@@ -30,6 +29,7 @@ namespace cuda_decoder {
 struct DeviceParams {
   ChannelMatrixView<ChannelCounters> d_channels_counters;
   LaneMatrixView<LaneCounters> d_lanes_counters;
+  LaneMatrixView<LaneCounters> h_lanes_counters;
 
   ChannelMatrixView<int2> d_main_q_state_and_cost;
   ChannelMatrixView<int32> d_main_q_degrees_prefix_sum;
@@ -37,10 +37,9 @@ struct DeviceParams {
   LaneMatrixView<CostType> d_main_q_acoustic_cost;
   LaneMatrixView<InfoToken> d_main_q_info;
   LaneMatrixView<int2> d_aux_q_state_and_cost;
-  LaneMatrixView<CostType> d_aux_q_acoustic_cost;
   LaneMatrixView<InfoToken> d_aux_q_info;
   LaneMatrixView<HashmapValueT> d_hashmap_values;
-  LaneMatrixView<int2> d_list_final_tokens_in_main_q;
+  LaneMatrixView<int2> h_list_final_tokens_in_main_q;
   LaneMatrixView<float2> d_main_q_extra_and_acoustic_cost;
   LaneMatrixView<int32> d_histograms;
   LaneMatrixView<int2> d_main_q_block_sums_prefix_sum;
@@ -71,14 +70,7 @@ struct DeviceParams {
 
 // KernelParams contains all the kernels arguments that change between kernel
 // calls
-// For instance, a given lane does not always compute the same channel
 struct KernelParams {
-  // In AdvanceDecoding,
-  // the lane lane_id will compute the channel
-  // with channel_id = channel_to_compute[lane_id]
-  ChannelId channel_to_compute[KALDI_CUDA_DECODER_MAX_N_LANES];
-  int32 main_q_end_lane_offsets[KALDI_CUDA_DECODER_MAX_N_LANES];
-  BaseFloat *loglikelihoods_ptrs[KALDI_CUDA_DECODER_MAX_N_LANES];
   int32 nlanes_used;
 };
 
@@ -102,6 +94,11 @@ void InitializeInitialLaneKernel(const dim3 &grid, const dim3 &block,
                                  const cudaStream_t &st,
                                  const DeviceParams &cst_dev_params);
 
+void ResetForFrameAndEstimateCutoffKernel(const dim3 &grid, const dim3 &block,
+                                          const cudaStream_t &st,
+                                          const DeviceParams &cst_dev_params,
+                                          const KernelParams &kernel_params);
+
 template <bool IS_EMITTING>
 void ExpandArcsKernel(const dim3 &grid, const dim3 &block,
                       const cudaStream_t &st,
@@ -113,6 +110,11 @@ void PostExpandKernel(const dim3 &grid, const dim3 &block,
                       const cudaStream_t &st,
                       const DeviceParams &cst_dev_params,
                       const KernelParams &kernel_params);
+
+void PostContractAndPreprocessKernel(const dim3 &grid, const dim3 &block,
+                                     const cudaStream_t &st,
+                                     const DeviceParams &cst_dev_params,
+                                     const KernelParams &kernel_params);
 
 void NonEmittingPreprocessAndContractKernel(const dim3 &grid, const dim3 &block,
                                             const cudaStream_t &st,
@@ -140,12 +142,18 @@ void EmittingPreprocessAndListExtraPrevTokensStep4Kernel(
     const dim3 &grid, const dim3 &block, const cudaStream_t &st,
     const DeviceParams &cst_dev_params, const KernelParams &kernel_params);
 
+void ComputeLaneOffsetsKernel(const dim3 &grid, const dim3 &block,
+                              const cudaStream_t &st,
+                              const DeviceParams &cst_dev_params,
+                              const KernelParams &kernel_params);
+
 template <typename T>
 void ConcatenateLanesDataKernel(const dim3 &grid, const dim3 &block,
                                 const cudaStream_t &st,
                                 const DeviceParams &cst_dev_params,
                                 const KernelParams &kernel_params,
-                                const LaneMatrixView<T> &src, T *concat);
+                                const LaneMatrixView<T> &src, T *concat,
+                                int32 *lane_offsets);
 
 void InitHashmapKernel(const dim3 &grid, const dim3 &block,
                        const cudaStream_t &st,
@@ -184,6 +192,11 @@ void GetBestCostStep2Kernel(const dim3 &grid, const dim3 &block,
                             const DeviceParams &cst_dev_params,
                             const KernelParams &kernel_params, bool isfinal,
                             CostType fst_zero);
+
+void GetBestCostStep3Kernel(const dim3 &grid, const dim3 &block,
+                            const cudaStream_t &st,
+                            const DeviceParams &cst_dev_params,
+                            const KernelParams &kernel_params);
 
 typedef unsigned char BinId;
 

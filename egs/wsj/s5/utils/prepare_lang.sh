@@ -269,7 +269,7 @@ fi
 
 # add_lex_disambig.pl is responsible for adding disambiguation symbols to
 # the lexicon, for telling us how many disambiguation symbols it used,
-# and and also for modifying the unknown-word's pronunciation (if the
+# and also for modifying the unknown-word's pronunciation (if the
 # --unk-fst was provided) to the sequence "#1 #2 #3", and reserving those
 # disambig symbols for that purpose.
 # The #2 will later be replaced with the actual unk model.  The reason

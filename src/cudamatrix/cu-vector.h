@@ -6,6 +6,7 @@
 //           2013       Xiaohui Zhang
 //           2015       Guoguo Chen
 //           2017       Daniel Galvez
+//           2019       Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -131,13 +132,26 @@ class CuVectorBase {
                     const MatrixTransposeType trans,
                     const CuArrayBase<int32> &elements);
 
+  void Floor(const CuVectorBase<Real> &src, Real floor_val, MatrixIndexT *floored_count = NULL);
+  void Ceiling(const CuVectorBase<Real> &src, Real ceiling_val, MatrixIndexT *ceiled_count = NULL);
+  void Pow(const CuVectorBase<Real> &src, Real power);
+  
+  inline void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = NULL) {
+    this -> Floor(*this, floor_val, floored_count); 
+  };
+  
+  inline void ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count = NULL) {
+    this -> Ceiling(*this, ceiling_val, ceiled_count);
+  };
+  
+  inline void ApplyPow(Real power) {
+    this -> Pow(*this, power);
+  };
+
   void ApplySoftMax();
   void ApplyLogSoftMax();
   void ApplyExp();
   void ApplyLog();
-  void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = NULL);
-  void ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count = NULL);
-  void ApplyPow(Real power);
   Real Sum() const;
 
   void SetRandn();

@@ -1,0 +1,43 @@
+#!/bin/bash
+
+for x in exp/mer80/*/decode*; do grep Sum $x/score*/*.sys | utils/best_wer.sh; done | sort -k2,2n
+
+exit 0
+
+# tri1
+
+%WER 49.7 | 5002 60169 | 55.5 35.9 8.7 5.1 49.7 95.4 | exp/mer80/tri1/decode_dev_non_overlap/score_13/dev_non_overlap.ctm.updated.utf8.sys
+%WER 82.3 | 840 14419 | 21.3 34.5 44.2 3.7 82.3 99.9 | exp/mer80/tri1/decode_dev_overlap/score_16/dev_overlap.ctm.updated.utf8.sys
+
+# tri2
+
+%WER 48.5 | 5002 60169 | 56.4 34.5 9.1 5.0 48.5 94.9 | exp/mer80/tri2/decode_dev_non_overlap/score_14/dev_non_overlap.ctm.updated.utf8.sys
+%WER 81.9 | 840 14419 | 21.9 32.6 45.5 3.8 81.9 99.9 | exp/mer80/tri2/decode_dev_overlap/score_16/dev_overlap.ctm.updated.utf8.sys
+
+# tri3
+
+%WER 44.0 | 5002 60169 | 60.6 31.0 8.4 4.6 44.0 93.0 | exp/mer80/tri3/decode_dev_non_overlap/score_14/dev_non_overlap.ctm.updated.utf8.sys
+%WER 79.6 | 840 14419 | 26.0 40.4 33.6 5.6 79.6 99.9 | exp/mer80/tri3/decode_dev_overlap/score_12/dev_overlap.ctm.updated.utf8.sys
+
+# tri4
+
+%WER 44.0 | 5002 60169 | 60.9 31.5 7.6 4.9 44.0 93.0 | exp/mer80/tri4/decode_dev_non_overlap.si/score_13/dev_non_overlap.ctm.updated.utf8.sys
+%WER 80.0 | 840 14419 | 24.6 35.8 39.6 4.7 80.0 99.8 | exp/mer80/tri4/decode_dev_overlap.si/score_15/dev_overlap.ctm.updated.utf8.sys
+
+%WER 42.3 | 5002 60169 | 62.7 29.8 7.5 5.0 42.3 92.5 | exp/mer80/tri4/decode_dev_non_overlap/score_13/dev_non_overlap.ctm.updated.utf8.sys
+%WER 79.0 | 840 14419 | 26.4 37.8 35.9 5.4 79.0 99.9 | exp/mer80/tri4/decode_dev_overlap/score_13/dev_overlap.ctm.updated.utf8.sys
+
+# tri5
+
+%WER 42.8 | 5002 60169 | 62.3 30.5 7.2 5.0 42.8 92.1 | exp/mer80/tri5/decode_dev_non_overlap.si/score_14/dev_non_overlap.ctm.updated.utf8.sys
+%WER 79.1 | 840 14419 | 25.5 36.5 37.9 4.7 79.1 99.8 | exp/mer80/tri5/decode_dev_overlap.si/score_15/dev_overlap.ctm.updated.utf8.sys
+
+%WER 40.7 | 5002 60169 | 63.8 28.0 8.2 4.5 40.7 91.6 | exp/mer80/tri5/decode_dev_non_overlap/score_18/dev_non_overlap.ctm.updated.utf8.sys
+%WER 78.2 | 840 14419 | 26.4 34.7 38.9 4.6 78.2 100.0 | exp/mer80/tri5/decode_dev_overlap/score_23/dev_overlap.ctm.updated.utf8.sys
+
+## tri5 rescore with larger LM
+
+%WER 38.9 | 5002 60169 | 65.6 26.7 7.7 4.5 38.9 89.7 | exp/mer80/tri5/decode_dev_non_overlap_fg/score_16/dev_non_overlap.ctm.updated.utf8.sys
+%WER 77.8 | 840 14419 | 27.8 37.8 34.4 5.6 77.8 100.0 | exp/mer80/tri5/decode_dev_overlap_fg/score_13/dev_overlap.ctm.updated.utf8.sys
+
+# For 'chain' model results, see local/chain/*

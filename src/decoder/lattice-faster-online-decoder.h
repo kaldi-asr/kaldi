@@ -84,7 +84,7 @@ class LatticeFasterOnlineDecoderTpl:
     // is one less than you might reasonably expect, e.g. it's -1 for
     // the nonemitting transitions before the first frame.
     BestPathIterator(void *t, int32 f): tok(t), frame(f) { }
-    bool Done() { return tok == NULL; }
+    bool Done() const { return tok == NULL; }
   };
 
 

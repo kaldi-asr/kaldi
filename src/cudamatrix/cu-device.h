@@ -37,6 +37,16 @@
 #include "cudamatrix/cu-allocator.h"
 #include "cudamatrix/cu-common.h"
 
+#if CUDA_VERSION >= 9010
+#include <cusolverDn.h>
+#else
+// cusolver not supported.  
+// Setting a few types to minimize compiler guards.
+// If a user tries to use cusovler it will throw an error.
+typedef void* cusolverDnHandle_t;
+typedef int cusolverStatus_t;
+#endif
+
 namespace kaldi {
 
 class CuTimer;
@@ -83,6 +93,13 @@ class CuDevice {
   inline cublasHandle_t GetCublasHandle() { return cublas_handle_; }
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
   inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
+  inline cusolverDnHandle_t GetCusolverDnHandle() { 
+#if CUDA_VERSION < 9010
+    KALDI_ERR << "CUDA VERSION '" << CUDA_VERSION << "' not new enough to support "
+      << "cusolver. Upgrade to at least 9.1";
+#endif
+    return cusolverdn_handle_; 
+  }
 
   inline void SeedGpu() {
     if (CuDevice::Instantiate().Enabled()) {
@@ -304,6 +321,7 @@ class CuDevice {
   cublasHandle_t cublas_handle_;
   cusparseHandle_t cusparse_handle_;
   curandGenerator_t curand_handle_;
+  cusolverDnHandle_t cusolverdn_handle_;
 }; // class CuDevice
 
 
@@ -320,6 +338,10 @@ class CuTimer: public Timer {
 // in the CUBLAS v2 API, since we so frequently need to access it.
 inline cublasHandle_t GetCublasHandle() { 
   return CuDevice::Instantiate().GetCublasHandle(); 
+}
+
+inline cusolverDnHandle_t GetCusolverDnHandle() { 
+  return CuDevice::Instantiate().GetCusolverDnHandle(); 
 }
 
 // A more convenient way to get the handle to use cuSPARSE APIs.

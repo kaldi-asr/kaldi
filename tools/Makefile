@@ -138,13 +138,9 @@ cub:
 	rm -f cub
 	ln -s cub-$(CUB_VERSION) cub
 
-# OpenBLAS is not compiled by default. Run 'make -j openblas' in this directory to build.
+# OpenBLAS is not compiled by default; you can run `make openblas` to build it,
+# but you should probably just call extras/install_openblas.sh; this is
+# here for legacy reasons.
 .PHONY: openblas
 openblas:
-	@-rm -rf OpenBLAS xianyi-OpenBLAS-*
-	wget -t3 -nv -O- $$( \
-            wget -qO- 'https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v$(OPENBLAS_VERSION)' | \
-            python -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])') | \
-	  tar xzf -
-	mv xianyi-OpenBLAS-* OpenBLAS
-	$(MAKE) PREFIX=$$(pwd)/OpenBLAS/install USE_THREAD=0 -C OpenBLAS all install
+	extras/install_openblas.sh
