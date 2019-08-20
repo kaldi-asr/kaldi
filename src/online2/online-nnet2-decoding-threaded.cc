@@ -496,7 +496,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       silence_weighting_mutex_.lock();
       std::vector<std::pair<int32, BaseFloat> > delta_weights;
       silence_weighting_.GetDeltaWeights(
-          feature_pipeline_.IvectorFeature()->NumFramesReady(),
+          feature_pipeline_.IvectorFeature()->NumFramesReady(), 0,
           &delta_weights);
       silence_weighting_mutex_.unlock();
       feature_pipeline_.IvectorFeature()->UpdateFrameWeights(delta_weights);

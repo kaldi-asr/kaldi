@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
           if (silence_weighting.Active() &&
               feature_pipeline.IvectorFeature() != NULL) {
             silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
-            silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+            silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(), 0,
                                               &delta_weights);
             feature_pipeline.IvectorFeature()->UpdateFrameWeights(delta_weights);
           }

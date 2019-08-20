@@ -574,22 +574,22 @@ int32 OnlineSilenceWeighting::GetBeginFrame() {
 }
 
 void OnlineSilenceWeighting::GetDeltaWeights(
-    int32 num_frames_ready_in,
+    int32 num_frames_ready, int32 first_decoder_frame,
     std::vector<std::pair<int32, BaseFloat> > *delta_weights) {
-  // num_frames_ready_in is at the feature frame-rate, most of the code
+  // num_frames_ready is at the feature frame-rate, most of the code
   // in this function is at the decoder frame-rate.
   // round up, so we are sure to get weights for at least the frame
-  // 'num_frames_ready_in - 1', and maybe one or two frames afterward.
+  // 'num_frames_ready - 1', and maybe one or two frames afterward.
   int32 fs = frame_subsampling_factor_,
-  num_frames_ready = (num_frames_ready_in + fs - 1) / fs;
+  num_decoder_frames_ready = (num_frames_ready - first_decoder_frame + fs - 1) / fs;
 
   const int32 max_state_duration = config_.max_state_duration;
   const BaseFloat silence_weight = config_.silence_weight;
 
   delta_weights->clear();
 
-  if (frame_info_.size() < static_cast<size_t>(num_frames_ready))
-    frame_info_.resize(num_frames_ready);
+  if (frame_info_.size() < static_cast<size_t>(num_decoder_frames_ready))
+    frame_info_.resize(num_decoder_frames_ready);
 
   // we may have to make begin_frame earlier than num_frames_output_and_correct_
   // so that max_state_duration is properly enforced.   GetBeginFrame() handles
@@ -657,15 +657,15 @@ void OnlineSilenceWeighting::GetDeltaWeights(
         new_weight = frame_weight[offset],
         weight_diff = new_weight - old_weight;
     frame_info_[frame].current_weight = new_weight;
-    KALDI_VLOG(6) << "Weight for frame " << frame << " changing from "
-                  << old_weight << " to " << new_weight;
     // Even if the delta-weight is zero for the last frame, we provide it,
     // because the identity of the most recent frame with a weight is used in
     // some debugging/checking code.
     if (weight_diff != 0.0 || offset + 1 == frames_out) {
+      KALDI_VLOG(6) << "Weight for frame " << frame << " changing from "
+                    << old_weight << " to " << new_weight;
       for(int32 i = 0; i < frame_subsampling_factor_; i++) {
-	int32 input_frame = (frame * frame_subsampling_factor_) + i;
-	delta_weights->push_back(std::make_pair(input_frame, weight_diff));
+        int32 input_frame = first_decoder_frame + (frame * frame_subsampling_factor_) + i;
+        delta_weights->push_back(std::make_pair(input_frame, weight_diff));
       }
     }
   }
