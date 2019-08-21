@@ -61,6 +61,7 @@ learn_iv_prons=false # whether we want to learn the prons of IV words (w.r.t. re
 # End configuration section.  
 
 . ./path.sh
+. ./cmd.sh
 . utils/parse_options.sh
 
 if [ $# -lt 6 ] || [ $# -gt 7 ]; then
