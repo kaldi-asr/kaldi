@@ -50,6 +50,7 @@ cleanup=true
 # End configuration section.  
 
 . ./path.sh
+. ./cmd.sh
 . utils/parse_options.sh
 
 if [ $# -lt 6 ] || [ $# -gt 7 ]; then
