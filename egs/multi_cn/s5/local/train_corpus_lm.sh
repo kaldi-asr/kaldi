@@ -4,10 +4,11 @@
 # To be run from one directory above this script.
 . ./path.sh
 
-text=data/train_combined/text
+text=data/$1/train/text
+mainlm=$2
 lexicon=data/local/dict/lexicon.txt
 
-for f in "$text" "$lexicon"; do
+for f in "$text" "$mainlm"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
 done
 
@@ -16,7 +17,7 @@ done
 # It takes as input the files
 # data/train_combined/text
 # data/local/dict/lexicon.txt
-dir=data/local/lm
+dir=data/local/lm/$1
 mkdir -p $dir
 
 kaldi_lm=`which train_lm.sh`
@@ -24,6 +25,14 @@ if [ -z $kaldi_lm ]; then
   echo "$0: train_lm.sh is not found. That might mean it's not installed"
   echo "$0: or it is not added to PATH"
   echo "$0: Use the script tools/extras/install_kaldi_lm.sh to install it"
+  exit 1
+fi
+
+ngram=`which ngram`
+if [ -z $ngram ]; then
+  echo "$0: ngram is not found. That might mean it's not installed"
+  echo "$0: or it is not added to PATH"
+  echo "$0: Use the script tools/extras/install_srilm.sh to install it"
   exit 1
 fi
 
@@ -52,7 +61,25 @@ cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]
   { for(n=2;n<=NF;n++) { printf map[$n]; if(n<NF){ printf " "; } else { print ""; }}}' | gzip -c >$dir/train.gz \
    || exit 1;
 
+if [ `wc -l < $cleantext` -le 10000 ]; then
+  mkdir -p $dir/3gram-mincount
+  # create ngrams and heldout_ngrams
+  cat > $dir/3gram-mincount/config.get_ngrams <<EOF
+D=0 tau=0 phi=1
+D=0 tau=0 phi=1
+D=1 tau=0 phi=1
+EOF
+  gunzip -c $dir/train.gz | tail -n +1000 |\
+    get_raw_ngrams 3 | sort | uniq -c | uniq_to_ngrams |\
+    sort | discount_ngrams $dir/3gram-mincount/config.get_ngrams |\
+    sort | merge_ngrams | gzip -c > $dir/3gram-mincount/ngrams.gz
+  gunzip -c $dir/train.gz | head -n 1000 | \
+    get_raw_ngrams 3 | sort | uniq -c | uniq_to_ngrams | \
+    perl -ane 's/(\S+)$/:$1/; print;' | sort | gzip -c > $dir/3gram-mincount/heldout_ngrams.gz
+fi
+
 train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
+ngram -lm $dir/3gram-mincount/lm_unpruned.gz -mix-lm $mainlm -lambda 0.9 -write-lm $dir/lm_interp.gz
 
 # LM is small enough that we don't need to prune it (only about 0.7M N-grams).
 # Perplexity over 128254.000000 words is 90.446690

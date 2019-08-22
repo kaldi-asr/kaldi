@@ -38,7 +38,7 @@ for x in train dev test; do
     sed 's/！//g' | sed 's/？//g' |\
     sed 's/，//g' | sed 's/－//g' |\
     sed 's/：//g' | sed 's/；//g' |\
-    sed 's/　//g' |\
+    sed 's/　//g' | sed 's/。//g' |\
     local/word_segment.py |\
     tr '[a-z]' '[A-Z]' |\
     sed 's/FIL/[FIL]/g' | sed 's/SPK/[SPK]/' |\
@@ -54,4 +54,3 @@ rm -r $tmp_dir
 utils/data/validate_data_dir.sh --no-feats $data/train || exit 1;
 utils/data/validate_data_dir.sh --no-feats $data/dev || exit 1;
 utils/data/validate_data_dir.sh --no-feats $data/test || exit 1;
-

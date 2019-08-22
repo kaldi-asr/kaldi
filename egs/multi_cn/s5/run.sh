@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2019 Microsoft Corp. (Authors: Xingyu Na)
+# Copyright 2019 Microsoft Corporation (authors: Xingyu Na)
 # Apache 2.0
 
 . ./cmd.sh
@@ -16,12 +16,13 @@ stcmds_url=www.openslr.org/resources/38
 thchs_url=www.openslr.org/resources/18
 
 test_sets="aishell aidatatang magicdata thchs"
+corpus_lm=false   # interpolate with corpus lm
 
 . utils/parse_options.sh
 
 if [ $stage -le 0 ]; then
   # download all training data
-  local/aidatatang_download_and_untar.sh $dbase/aidatatang $aidatatang_url aidatatang_200zh || exit 1; 
+  local/aidatatang_download_and_untar.sh $dbase/aidatatang $aidatatang_url aidatatang_200zh || exit 1;
   local/aishell_download_and_untar.sh $dbase/aishell $aishell_url data_aishell || exit 1;
   local/magicdata_download_and_untar.sh $dbase/magicdata $magicdata_url train_set || exit 1;
   local/primewords_download_and_untar.sh $dbase/primewords $primewords_url || exit 1;
@@ -35,12 +36,12 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  local/aidatatang_data_prep.sh $dbase/aidatatang/aidatatang_200zh data/aidatatang || exit 1;
-  local/aishell_data_prep.sh $dbase/aishell/data_aishell data/aishell || exit 1;
-  local/thchs-30_data_prep.sh $dbase/thchs/data_thchs30 data/thchs || exit 1;
+  #local/aidatatang_data_prep.sh $dbase/aidatatang/aidatatang_200zh data/aidatatang || exit 1;
+  #local/aishell_data_prep.sh $dbase/aishell/data_aishell data/aishell || exit 1;
+  #local/thchs-30_data_prep.sh $dbase/thchs/data_thchs30 data/thchs || exit 1;
   local/magicdata_data_prep.sh $dbase/magicdata data/magicdata || exit 1;
-  local/primewords_data_prep.sh $dbase/primewords data/primewords || exit 1;
-  local/stcmds_data_prep.sh $dbase/stcmds data/stcmds || exit 1;
+  #local/primewords_data_prep.sh $dbase/primewords data/primewords || exit 1;
+  #local/stcmds_data_prep.sh $dbase/stcmds data/stcmds || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
@@ -51,10 +52,15 @@ if [ $stage -le 2 ]; then
     data/{aidatatang,aishell,magicdata,thchs}/{dev,test} || exit 1;
   local/prepare_dict.sh || exit 1;
 fi
-
+exit
 if [ $stage -le 3 ]; then
   # train LM using transcription
   local/train_lms.sh || exit 1;
+  if $corpus_lm; then
+    for c in $test_sets; do
+      local/train_corpus_lm.sh $c data/local/lm/3gram-mincount/lm_unpruned.gz
+    done
+  fi
 fi
 
 if [ $stage -le 4 ]; then
@@ -62,8 +68,12 @@ if [ $stage -le 4 ]; then
   utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang || exit 1;
   utils/format_lm.sh data/lang data/local/lm/3gram-mincount/lm_unpruned.gz \
     data/local/dict/lexicon.txt data/lang_combined_tg || exit 1;
-  utils/build_const_arpa_lm.sh data/local/lm/4gram-mincount/lm_unpruned.gz \
-    data/lang data/lang_combined_fg || exit 1;
+  if $corpus_lm; then
+    for c in $test_sets; do
+      utils/format_lm.sh data/lang data/local/lm/$c/lm_interp.gz \
+        data/local/dict/lexicon.txt data/lang_${c}_tg || exit 1;
+    done
+  fi
 fi
 
 if [ $stage -le 5 ]; then
@@ -125,9 +135,12 @@ if [ $stage -le 9 ]; then
     (
       steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
         exp/tri1b/graph_tg data/$c/test exp/tri1b/decode_${c}_test_tg || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-	data/lang_combined_{tg,fg} data/$c/test \
-        exp/tri1b/decode_${c}_test_{tg,fg} || exit 1;
+      if $corpus_lm; then
+        $mkgraph_cmd exp/tri1b/log/mkgraph.$c.log \
+          utils/mkgraph.sh data/lang_${c}_tg exp/tri1b exp/tri1b/graph_$c || exit 1;
+        steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
+          exp/tri1b/graph_$c data/$c/test exp/tri1b/decode_${c}_test_clm || exit 1;
+      fi
     ) &
   done
   wait
@@ -148,9 +161,12 @@ if [ $stage -le 11 ]; then
     (
       steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
         exp/tri2a/graph_tg data/$c/test exp/tri2a/decode_${c}_test_tg || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-	data/lang_combined_{tg,fg} data/$c/test \
-        exp/tri2a/decode_${c}_test_{tg,fg} || exit 1;
+      if $corpus_lm; then
+        $mkgraph_cmd exp/tri2a/log/mkgraph.$c.log \
+          utils/mkgraph.sh data/lang_${c}_tg exp/tri2a exp/tri2a/graph_$c || exit 1;
+        steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
+          exp/tri2a/graph_$c data/$c/test exp/tri2a/decode_${c}_test_clm || exit 1;
+      fi
     ) &
   done
   wait
@@ -174,9 +190,12 @@ if [ $stage -le 13 ]; then
     (
       steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
         exp/tri3a/graph_tg data/$c/test exp/tri3a/decode_${c}_test_tg || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-	data/lang_combined_{tg,fg} data/$c/test \
-        exp/tri3a/decode_${c}_test_{tg,fg} || exit 1;
+      if $corpus_lm; then
+        $mkgraph_cmd exp/tri3a/log/mkgraph.$c.log \
+          utils/mkgraph.sh data/lang_${c}_tg exp/tri3a exp/tri3a/graph_$c || exit 1;
+        steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
+          exp/tri3a/graph_$c data/$c/test exp/tri3a/decode_${c}_test_clm || exit 1;
+      fi
     ) &
   done
   wait
@@ -200,10 +219,40 @@ if [ $stage -le 15 ]; then
     (
       steps/decode_fmllr.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
         exp/tri4a/graph_tg data/$c/test exp/tri4a/decode_${c}_test_tg || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-	data/lang_combined_{tg,fg} data/$c/test \
-        exp/tri4a/decode_${c}_test_{tg,fg} || exit 1;
+      if $corpus_lm; then
+        $mkgraph_cmd exp/tri4a/log/mkgraph.$c.log \
+          utils/mkgraph.sh data/lang_${c}_tg exp/tri4a exp/tri4a/graph_$c || exit 1;
+        steps/decode_fmllr.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
+          exp/tri4a/graph_$c data/$c/test exp/tri4a/decode_${c}_test_clm || exit 1;
+      fi
     ) &
   done
   wait
+fi
+
+if [ $stage -le 16 ]; then
+  # run clean and retrain
+  local/run_cleanup_segmentation.sh --test-sets "$test_sets" --corpus-lm $corpus_lm
+fi
+
+if [ $stage -le 17 ]; then
+  # collect GMM test results
+  if ! $corpus_lm; then
+    for c in $test_sets; do
+      echo "$c test set results"
+      for x in exp/*/decode_${c}*_tg; do
+        grep WER $x/cer_* | utils/best_wer.sh
+      done
+      echo ""
+    done
+  else
+    # collect corpus LM results
+    for c in $test_sets; do
+      echo "$c test set results"
+      for x in exp/*/decode_${c}*_clm; do
+        grep WER $x/cer_* | utils/best_wer.sh
+      done
+      echo ""
+    done
+  fi
 fi
