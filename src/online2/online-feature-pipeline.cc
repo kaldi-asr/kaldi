@@ -69,8 +69,8 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 
-  if (config.cmvn_config != "") {
-    ReadConfigFromFile(config.cmvn_config, &cmvn_opts);
+  if (config.feat_cmvn_config != "") {
+    ReadConfigFromFile(config.feat_cmvn_config, &cmvn_opts);
   }  // else use the defaults.
 
   global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;

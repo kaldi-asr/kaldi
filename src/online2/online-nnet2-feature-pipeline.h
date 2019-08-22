@@ -66,7 +66,7 @@ struct OnlineNnet2FeaturePipelineConfig {
   std::string mfcc_config;
   std::string plp_config;
   std::string fbank_config;
-  std::string cmvn_config; // CMVN options for normalization of feature. Does 
+  std::string feat_cmvn_config; // CMVN options for normalization of feature. Does 
                            // not affect ivector extract
   std::string global_cmvn_stats_rxfilename;
 
@@ -104,7 +104,7 @@ struct OnlineNnet2FeaturePipelineConfig {
                    "PLP features (e.g. conf/plp.conf)");
     opts->Register("fbank-config", &fbank_config, "Configuration file for "
                    "filterbank features (e.g. conf/fbank.conf)");
-    opts->Register("cmvn-config", &cmvn_config, "Configuration file for "
+    opts->Register("feat-cmvn-config", &feat_cmvn_config, "Configuration file for "
                    "file for online CMVN features (e.g. conf/online_cmvn.conf). "
                    "This is normalization of features and does not affect ivector "
                    "extraction");
@@ -154,7 +154,7 @@ struct OnlineNnet2FeaturePipelineInfo {
   ProcessPitchOptions pitch_process_opts;  // Options for pitch post-processing
 
 
-  bool use_cmvn; //enable CMVN normalization of features, not during ivector
+  bool use_feature_cmvn; //enable CMVN normalization of features, not during ivector
                  //extraction
   OnlineCmvnOptions cmvn_opts;
   // If the user specified --ivector-extraction-config, we assume we're using
@@ -211,11 +211,6 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const;
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
-
-  // This is supplied for debug purposes.
-  void GetAQsMatrix(Matrix<BaseFloat> *feats);
-  void FreezeCmvn();  // stop it from moving further (do this when you start
-                      // using fMLLR). This will crash if NumFramesReady() == 0.
 
   /// Set the CMVN state to a particular value (will generally be
   /// called after Copy().

@@ -66,15 +66,15 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
   }  // else use the defaults.
   // These are setting for CMVN normalization of features and not for use in 
   //  ivector extraction
-  if (config.cmvn_config != "") {
-    use_cmvn = true;
-    std::cout << "Reading cmvn config opts from " << config.cmvn_config << std::endl;
-    ReadConfigFromFile(config.cmvn_config, &cmvn_opts);
+  if (config.feat_cmvn_config != "") {
+    use_feature_cmvn = true;
+    std::cout << "Reading cmvn config opts from " << config.feat_cmvn_config << std::endl;
+    ReadConfigFromFile(config.feat_cmvn_config, &cmvn_opts);
     global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;
     if (global_cmvn_stats_rxfilename == "")
-      KALDI_ERR << "--global-cmvn-stats option is required with cmvn_conf.";
+      KALDI_ERR << "--global-cmvn-stats option is required with feat-cmvn-conf.";
   } else { // else use the defaults
-    use_cmvn = false;
+    use_feature_cmvn = false;
   }
   
 
@@ -122,39 +122,30 @@ void OnlineNnet2FeaturePipeline::Init() {
     KALDI_ERR << "Code error: invalid feature type " << info_.feature_type;
   }
 
-  // Apply CMVN to features
-  if (info_.use_cmvn) {
-    KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
-    if (info_.add_pitch) {
-      int32 global_dim = global_cmvn_stats_.NumCols() - 1;
-      int32 dim = base_feature_->Dim();
-      KALDI_ASSERT(global_dim >= dim);
-      if (global_dim > dim) {
-        Matrix<BaseFloat> last_col(global_cmvn_stats_.ColRange(global_dim, 1));
-        global_cmvn_stats_.Resize(global_cmvn_stats_.NumRows(), dim + 1,
-                                  kCopyData);
-        global_cmvn_stats_.ColRange(dim, 1).CopyFromMat(last_col);
-      }
-    }
-    Matrix<double> global_cmvn_stats_dbl(global_cmvn_stats_);
-    OnlineCmvnState initial_state(global_cmvn_stats_dbl);
-    cmvn_feature_ = new OnlineCmvn(info_.cmvn_opts, initial_state, base_feature_);
-    feature_plus_optional_cmvn_ = cmvn_feature_;
-  } else {
-    cmvn_feature_ = NULL;
-    feature_plus_optional_cmvn_ = base_feature_;
-  }
-
   if (info_.add_pitch) {
     pitch_ = new OnlinePitchFeature(info_.pitch_opts);
     pitch_feature_ = new OnlineProcessPitch(info_.pitch_process_opts,
                                             pitch_);
-    feature_plus_optional_pitch_ = new OnlineAppendFeature(feature_plus_optional_cmvn_,
-                                                           pitch_feature_);
+    feature_plus_optional_pitch_ = 
+	    new OnlineAppendFeature(feature_plus_optional_cmvn_,
+                                    pitch_feature_);
   } else {
     pitch_ = NULL;
     pitch_feature_ = NULL;
     feature_plus_optional_pitch_ = feature_plus_optional_cmvn_;
+  }
+
+  // Apply CMVN to features
+  if (info_.use_feature_cmvn) {
+    KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
+    Matrix<double> global_cmvn_stats_dbl(global_cmvn_stats_);
+    OnlineCmvnState initial_state(global_cmvn_stats_dbl);
+    cmvn_feature_ = new OnlineCmvn(info_.cmvn_opts, initial_state, 
+		                   feature_plus_optional_pitch_);
+    feature_plus_optional_cmvn_ = cmvn_feature_;
+  } else {
+    cmvn_feature_ = NULL;
+    feature_plus_optional_cmvn_ = feature_plus_optional_pitch_;
   }
 
   if (info_.use_ivectors) {
