@@ -482,7 +482,9 @@ class OnlineSilenceWeighting {
   //
   // The first_decoder_frame is the offset from the start of the stream in
   // pipeline frames when decoder was restarted last time. We do not change
-  // weight for frames earlier than first_decoder_frame.
+  // weight for the frames earlier than first_decoder_frame. Set it to 0 in
+  // case of compilation error to reproduce the previous behavior or for a
+  // single utterance decoding.
   //
   // How many frames of weights it outputs depends on how much "num_frames_ready"
   // increased since last time we called this function, and whether the decoder
