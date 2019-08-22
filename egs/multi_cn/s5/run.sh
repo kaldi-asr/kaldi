@@ -36,12 +36,12 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  #local/aidatatang_data_prep.sh $dbase/aidatatang/aidatatang_200zh data/aidatatang || exit 1;
-  #local/aishell_data_prep.sh $dbase/aishell/data_aishell data/aishell || exit 1;
-  #local/thchs-30_data_prep.sh $dbase/thchs/data_thchs30 data/thchs || exit 1;
+  local/aidatatang_data_prep.sh $dbase/aidatatang/aidatatang_200zh data/aidatatang || exit 1;
+  local/aishell_data_prep.sh $dbase/aishell/data_aishell data/aishell || exit 1;
+  local/thchs-30_data_prep.sh $dbase/thchs/data_thchs30 data/thchs || exit 1;
   local/magicdata_data_prep.sh $dbase/magicdata data/magicdata || exit 1;
-  #local/primewords_data_prep.sh $dbase/primewords data/primewords || exit 1;
-  #local/stcmds_data_prep.sh $dbase/stcmds data/stcmds || exit 1;
+  local/primewords_data_prep.sh $dbase/primewords data/primewords || exit 1;
+  local/stcmds_data_prep.sh $dbase/stcmds data/stcmds || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
