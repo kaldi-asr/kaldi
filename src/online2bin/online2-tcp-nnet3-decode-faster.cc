@@ -283,9 +283,9 @@ int main(int argc, char *argv[]) {
               feature_pipeline.IvectorFeature() != NULL) {
             silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
             silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                              frame_offset * decodable_opts.frame_subsampling_factor,
                                               &delta_weights);
-            feature_pipeline.UpdateFrameWeights(delta_weights,
-                                                frame_offset * decodable_opts.frame_subsampling_factor);
+            feature_pipeline.UpdateFrameWeights(delta_weights);
           }
 
           decoder.AdvanceDecoding();
