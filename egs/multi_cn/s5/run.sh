@@ -52,7 +52,7 @@ if [ $stage -le 2 ]; then
     data/{aidatatang,aishell,magicdata,thchs}/{dev,test} || exit 1;
   local/prepare_dict.sh || exit 1;
 fi
-exit
+
 if [ $stage -le 3 ]; then
   # train LM using transcription
   local/train_lms.sh || exit 1;
