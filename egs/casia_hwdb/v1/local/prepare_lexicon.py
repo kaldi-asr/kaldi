@@ -23,8 +23,9 @@ cj5_table = {}
 with open(os.path.join(args.dir, 'cj5-cc.txt'), 'r', encoding='utf-8') as f:
     for line in f:
         line_vect = line.strip().split()
-        if not ''.join(line_vect[:-1]).startswith('yyy') and not ''.join(line_vect[:-1]).startswith('z'):
+        if not line_vect[0].startswith('yyy') and not line_vect[0].startswith('z'):
             cj5_table[line_vect[-1]] = "cj5_" + " cj5_".join(line_vect[:-1])
+#            lex[line_vect[1]] = "cj5_" + " cj5_".join(list(line_vect[0]))
 
 with open(text_path, 'r', encoding='utf-8') as f:
     for line in f:
