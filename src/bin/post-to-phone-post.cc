@@ -46,11 +46,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    po.Read(argc, argv);
-
     po.Register("transition-id-counts", &tacc_rxfilename, "Rxfilename where vector of counts\n"
                 "for transition-ids can be read (would normally come from training data\n"
                 "alignments, e.g. from ali-to-post and then post-to-tacc with --per-pdf=false\n");
+
+    po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
       po.PrintUsage();
