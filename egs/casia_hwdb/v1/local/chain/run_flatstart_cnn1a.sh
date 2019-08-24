@@ -5,12 +5,11 @@
 
 # ./local/chain/compare_wer.sh exp_yomdle_chinese/chain/e2e_cnn_1a exp_yomdle_chinese/chain/cnn_e2eali_1b
 # System                      e2e_cnn_1a cnn_e2eali_1b
-# WER                             63.19     53.67
-# CER                             19.01     12.86
-# Final train prob               0.2908   -0.0455
-# Final valid prob               0.2397   -0.0531
-# Final train prob (xent)                 -0.9753
-# Final valid prob (xent)                 -1.0559
+# CER                             15.44     13.57
+# Final train prob               0.0616   -0.0512
+# Final valid prob               0.0390   -0.0718
+# Final train prob (xent)                 -0.6199
+# Final valid prob (xent)                 -0.7448
 
 set -e
 

@@ -207,8 +207,7 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   /// ideally just after calling AcceptWaveform(), or never call it for the
   /// lifetime of this object.
   void UpdateFrameWeights(
-      const std::vector<std::pair<int32, BaseFloat> > &delta_weights,
-      int32 frame_offset = 0);
+      const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
 
   /// Set the adaptation state to a particular value, e.g. reflecting previous
   /// utterances of the same speaker; this will generally be called after

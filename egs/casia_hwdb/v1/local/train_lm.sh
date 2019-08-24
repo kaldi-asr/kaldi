@@ -6,7 +6,7 @@
 #           2017  Hossein Hadian
 # Apache 2.0
 #
-# This script trains a LM on the YOMDLE+Extra training transcriptions.
+# This script trains a LM on the YOMDLE training transcriptions.
 # It is based on the example scripts distributed with PocoLM
 
 # It will check if pocolm is installed and if not will proceed with installation
@@ -15,8 +15,6 @@ set -e
 stage=0
 dir=data/local/local_lm
 data_dir=data
-extra_lm=download/extra_lm.txt
-order=3
 
 echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh || exit 1;
@@ -59,12 +57,6 @@ if [ $stage -le 0 ]; then
 
   rm ${dir}/data/text/* 2>/dev/null || true
 
-  cat ${extra_lm} | \
-    local/normalize_text.py | \
-    utils/lang/bpe/prepend_words.py | \
-    python3 utils/lang/bpe/apply_bpe.py -c $data_dir/train/bpe.out | \
-    sed 's/@@//g' > ${dir}/data/text/extra_lm.txt
-  
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
   nr=`cat $data_dir/train/text | wc -l`
@@ -84,10 +76,11 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < $data_dir/test/text  > ${dir}/data/real_dev_set.txt
 
   # get the wordlist from MADCAT text
-  cat ${dir}/data/text/{train,extra_lm}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  #cat ${dir}/data/text/extra_fa.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  cat ${dir}/data/text/train.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
+
+order=3
 
 if [ $stage -le 1 ]; then
   # decide on the vocabulary.
@@ -96,7 +89,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='extra_lm=10 train=1'
+  min_counts='train=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
@@ -104,7 +97,7 @@ if [ $stage -le 1 ]; then
     lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
   fi
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
-  train_lm.py  --wordlist=${wordlist} --num-splits=30 --warm-start-ratio=1 \
+  train_lm.py  --wordlist=${wordlist} --num-splits=5 --warm-start-ratio=1 \
                --min-counts="$min_counts" \
                --limit-unk-history=true \
                ${bypass_metaparam_optim_opt} \

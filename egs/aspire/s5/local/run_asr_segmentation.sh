@@ -213,7 +213,7 @@ if [ $stage -le 9 ]; then
   # Use left and right context options that were used when training
   # the chain nnet
   # Increase sil-scale to predict more silence
-  local/nnet3/prep_test_aspire_segmentation.sh --stage $test_stage \
+  local/nnet3/segment_and_decode.sh --stage $test_stage \
     --decode-num-jobs $test_nj --affix "${test_affix}" \
     --sad-opts "$sad_opts" \
     --sad-graph-opts "--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-duration=10.0" --sad-priors-opts "--sil-scale=0.1" \

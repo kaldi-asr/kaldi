@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+# Copyright      2017  Hossein Hadian
+
+# This is a filter used in scoring. It separates all
+# punctuations from words. For e.g. this sentence:
+
+# "They have come!" he said reverently, gripping his
+# hands. "Isn't it a glorious thing! Long awaited."
+
+# is converted to this:
+
+# " They have come ! " he said reverently , gripping his
+# hands . " Isn ' t it a glorious thing ! Long awaited . "
+
+# Sample BPE-based output:
+# |He |ro se |from |his |b re ak f as t - s ch oo l |b en ch
+
+import io
+import sys
+import unicodedata
+
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf8");
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf8");
+for line in sys.stdin:
+  line = unicodedata.normalize('NFKC', line)
+  words = line.strip().split()
+  uttid = words[0]
+  transcript = ''.join(words[1:])
+  transcript = transcript.replace('|', ' ')
+  print("{} {}".format(uttid, transcript))
