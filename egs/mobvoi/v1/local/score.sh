@@ -61,14 +61,3 @@ local/compute_metrics.py $dir/scoring_kaldi/test_filt.txt - --wake-word $wake_wo
 export LC_ALL=C
 
 exit 0;
-
-$cmd $dir/scoring_kaldi/log/best_path_score.log \
-  lattice-scale --inv-acoustic-scale=$lmwt "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-  lattice-1best ark:- ark:- \| \
-  nbest-to-linear ark:- ark:/dev/null ark:/dev/null ark,t:$dir/scoring_kaldi/lmcost ark,t:$dir/scoring_kaldi/accost || exit 1;
-paste -d' ' <(cut -f1,2 -d' ' $dir/scoring_kaldi/lmcost) <(cut -f2 -d' ' $dir/scoring_kaldi/accost) | awk '{print $1,$2+$3}' >$dir/scoring_kaldi/cost
-export LC_ALL=en_US.UTF-8 
-python3 local/plot_scatter.py --wake-word $wake_word $dir/scoring_kaldi/cost $data/utt2dur $data/text
-export LC_ALL=C
-
-exit 0;

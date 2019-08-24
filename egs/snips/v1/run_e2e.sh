@@ -212,7 +212,7 @@ if [ $stage -le 11 ]; then
     echo "$0: extracting MFCC features for the test sets"
     for datadir in dev eval; do
       utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-      steps/make_mfcc.sh --cmd --nj 50 --mfcc-config conf/mfcc_hires.conf \
+      steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 --mfcc-config conf/mfcc_hires.conf \
         --cmd "$train_cmd" data/${datadir}_hires || exit 1;
       steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
       utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
@@ -231,13 +231,13 @@ if [ -f data/${combined_train_set}_hires/feats.scp ]; then
   echo "stage again. Skipping this stage..."
 else
   if [ $stage -le 13 ]; then
-    echo "$0: creating high-resolution MFCC features"
+    echo "$0: preparing for speed-perturbed data"
+    utils/data/perturb_data_dir_speed_3way.sh data/train_shorter data/train_shorter_sp_hires
+    echo "$0: creating high-resolution MFCC features for speed-perturbed data"
     mfccdir=data/train_shorter_sp_hires/data
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
       utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/snips-$(date +'%m_%d_%H_%M')/v1/$mfccdir/storage $mfccdir/storage
-  fi
-
-    utils/copy_data_dir.sh data/train_shorter_sp data/train_shorter_sp_hires
+    fi
 
     # do volume-perturbation on the training data prior to extracting hires
     # features; this helps make trained nnets more invariant to test data volume.
@@ -246,7 +246,7 @@ else
     steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/train_shorter_sp_hires || exit 1;
     steps/compute_cmvn_stats.sh data/train_shorter_sp_hires || exit 1;
-    utils/fix_data_dir.sh data/train_shorter_sp_hires || exit 1;i
+    utils/fix_data_dir.sh data/train_shorter_sp_hires || exit 1;
   fi
 
   if [ $stage -le 14 ]; then
@@ -264,6 +264,7 @@ else
     done
     eval utils/combine_data.sh data/${combined_train_set}_hires data/train_shorter_sp_hires \
       data/train_shorter_{$(echo $aug_affix | sed 's/ /,/g')}_hires
+  fi
 fi
 
 if [ $stage -le 15 ]; then
@@ -276,7 +277,7 @@ fi
 
 if [ $stage -le 16 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
- local/chain/run_tdnn_e2eali.sh --train-set ${combined_train_set} --e2echain-model-dir exp/chain/e2e_tdnn_1a
+  local/chain/run_tdnn_e2eali.sh --train-set ${combined_train_set} --e2echain-model-dir exp/chain/e2e_tdnn_1a
 fi
 
 exit 0

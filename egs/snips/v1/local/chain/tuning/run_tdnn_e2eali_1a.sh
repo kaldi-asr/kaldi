@@ -270,7 +270,7 @@ if [ $stage -le 9 ]; then
     (
       nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/nnet3/decode.sh \
-        --beam 300 --lattice-beam 200 \
+        --beam 200 --lattice-beam 100 \
         --scoring-opts "--wake-word $wake_word" \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --extra-left-context-initial 0 \

@@ -31,7 +31,7 @@ frames_per_iter=3000000
 bs_scale=0.0
 train_set=train_shorter_sp_combined
 test_sets="dev eval"
-wake_word="HeySnips"
+wake_word="嗨小问"
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -111,7 +111,7 @@ if [ $stage -le 3 ]; then
 
   echo "$0: Estimating a phone language model for the denominator graph..."
   id_sil=`cat data/lang/phones.txt | grep "SIL" | awk '{print $2}'`
-  id_word=`cat data/lang/phones.txt | grep "heysnips" | awk '{print $2}'`
+  id_word=`cat data/lang/phones.txt | grep "hixiaowen" | awk '{print $2}'`
   id_freetext=`cat data/lang/phones.txt | grep "freetext" | awk '{print $2}'`
   cat <<EOF > $tree_dir/phone_lm.txt
 0 1 $id_sil $id_sil
