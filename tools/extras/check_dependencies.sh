@@ -174,7 +174,7 @@ if [ -n "$debian_packages" ]; then
       # The case '(pattern)' syntax is necessary in subshell for bash 3.x.
       case $rune in
         (rhel|centos|redhat) echo "yum install $redhat_packages"; break;;
-        (fedora) echo "dnx install $redhat_packages"; break;;
+        (fedora) echo "dnf install $redhat_packages"; break;;
         (suse) echo "zypper install $opensuse_packages"; break;;
         (debian) echo "apt-get install $debian_packages"; break;;
       esac
