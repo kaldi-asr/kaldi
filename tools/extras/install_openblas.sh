@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-OPENBLAS_VERSION=0.3.5
+OPENBLAS_VERSION=0.3.7
 
 set -e
 
@@ -22,4 +22,4 @@ wget -t3 -nv -O- $(wget -qO- "https://api.github.com/repos/xianyi/OpenBLAS/relea
 
 mv xianyi-OpenBLAS-* OpenBLAS
 
-make PREFIX=$(pwd)/OpenBLAS/install USE_THREAD=0 -C OpenBLAS all install
+make PREFIX=$(pwd)/OpenBLAS/install USE_THREAD=0 USE_LOCKING=1 -C OpenBLAS all install
