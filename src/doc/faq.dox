@@ -1,7 +1,7 @@
-// doc/faq.dox
+// doc/kws.dox
 
 
-// Copyright 2019  Daniel Povey
+// Copyright 2013  Johns Hopkins University (author: Guoguo Chen)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,21 +21,21 @@
 namespace kaldi {
 
 /**
-  \page faq   Frequently Asked Questions
+  \page faq  Frequently Asked Questions
+
+  \section faq_intro    Introduction
 
 
-
-  \section kws_intro Introduction
-
-  This page contains the answers to some miscellaneous frequently asked questions
-  from the mailing lists.  This should not be your primary way of finding such
-  answers: the mailing lists and github contain many more discussions, and a
-  web search may be the easiest way to find answers.
+  This page contains the answers to some miscellaneous frequently asked
+  questions from the mailing lists. This should not be your primary way of
+  finding such answers: the mailing lists and github contain many more
+  discussions, and a web search may be the easiest way to find answers.
 
 
-  \section Example question?
+ \section why_is_the_sky_blue  Why is the sky blue?
 
-    Answer to example question
+  Answer to example question goes here.
+   This is just a template.
 
 */
 }
