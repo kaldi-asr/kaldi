@@ -68,7 +68,6 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
   //  ivector extraction
   if (config.feat_cmvn_config != "") {
     use_feature_cmvn = true;
-    std::cout << "Reading cmvn config opts from " << config.feat_cmvn_config << std::endl;
     ReadConfigFromFile(config.feat_cmvn_config, &cmvn_opts);
     global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;
     if (global_cmvn_stats_rxfilename == "")
@@ -127,12 +126,12 @@ void OnlineNnet2FeaturePipeline::Init() {
     pitch_feature_ = new OnlineProcessPitch(info_.pitch_process_opts,
                                             pitch_);
     feature_plus_optional_pitch_ = 
-	    new OnlineAppendFeature(feature_plus_optional_cmvn_,
+	    new OnlineAppendFeature(base_feature_,
                                     pitch_feature_);
   } else {
     pitch_ = NULL;
     pitch_feature_ = NULL;
-    feature_plus_optional_pitch_ = feature_plus_optional_cmvn_;
+    feature_plus_optional_pitch_ = base_feature_;
   }
 
   // Apply CMVN to features
@@ -151,11 +150,11 @@ void OnlineNnet2FeaturePipeline::Init() {
   if (info_.use_ivectors) {
     ivector_feature_ = new OnlineIvectorFeature(info_.ivector_extractor_info,
                                                 base_feature_);
-    final_feature_ = new OnlineAppendFeature(feature_plus_optional_pitch_,
+    final_feature_ = new OnlineAppendFeature(feature_plus_optional_cmvn_,
                                              ivector_feature_);
   } else {
     ivector_feature_ = NULL;
-    final_feature_ = feature_plus_optional_pitch_;
+    final_feature_ = feature_plus_optional_cmvn_;
   }
   dim_ = final_feature_->Dim();
 }
@@ -212,15 +211,15 @@ OnlineNnet2FeaturePipeline::~OnlineNnet2FeaturePipeline() {
   // of the pointers below will be non-NULL.
   // Some of the online-feature pointers are just copies of other pointers,
   // and we do have to avoid deleting them in those cases.
-  if (final_feature_ != feature_plus_optional_pitch_)
+  if (final_feature_ != feature_plus_optional_cmvn_)
     delete final_feature_;
-  delete ivector_feature_;
-  if (feature_plus_optional_pitch_ != feature_plus_optional_cmvn_)
+  if (ivector_feature_) delete ivector_feature_;
+  if (feature_plus_optional_pitch_ != base_feature_)
     delete feature_plus_optional_pitch_;
-  if (feature_plus_optional_cmvn_ != base_feature_)
+  if (feature_plus_optional_cmvn_ != feature_plus_optional_pitch_)
     delete feature_plus_optional_cmvn_;
-  delete pitch_feature_;
-  delete pitch_;
+  if (pitch_feature_) delete pitch_feature_;
+  if (pitch_) delete pitch_;
   delete base_feature_;
 }
 
