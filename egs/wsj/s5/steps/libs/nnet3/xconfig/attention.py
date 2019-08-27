@@ -355,8 +355,7 @@ class XconfigAttentionBlock(XconfigLayerBase):
     def output_name(self, auxiliary_output=None):
         # at a later stage we might want to expose even the pre-nonlinearity
         # vectors
-        return 'Sum(Scale({b}, {name}.noop), {name}.layernorm)'.format(
-            name=self.name, b=self.config['bypass-scale'])
+        return '{0}.noop'.format(self.name)
 
     def attention_input_dim(self):
         context_dim = (self.config['num-left-inputs'] +
@@ -423,14 +422,6 @@ class XconfigAttentionBlock(XconfigLayerBase):
 
 
         configs = []
-        # No-op component that caches the input.  Makes it easier to apply the scale
-        # for the batchnorm.
-        line = ('component name={0}.noop type=NoOpComponent dim={1}'.format(
-            self.name, input_dim))
-        configs.append(line)
-        line = ('component-node name={0}.noop component={0}.noop input={1}'
-                ''.format(self.name, input_desc))
-        configs.append(line)
 
 
         # The first linear component
@@ -441,8 +432,8 @@ class XconfigAttentionBlock(XconfigLayerBase):
                           common_options))
 
         configs.append(line)
-        line = ('component-node name={0}.linear1 component={0}.linear1 input={0}.noop '
-                ''.format(self.name))
+        line = ('component-node name={0}.linear1 component={0}.linear1 input={1} '
+                ''.format(self.name, input_desc))
         configs.append(line)
 
         # The first affine component
@@ -458,13 +449,13 @@ class XconfigAttentionBlock(XconfigLayerBase):
 
         # Batch-norm component
         if True:
-            line = ('component name={0}.batchnorm1 type=BatchNormComponent dim={1} '
+            line = ('component name={0}.layernorm1 type=NormalizeComponent dim={1} '
                     ' '.format(self.name, attention_input_dim))
             configs.append(line)
-            line = ('component-node name={0}.batchnorm1 component={0}.batchnorm1 '
+            line = ('component-node name={0}.layernorm1 component={0}.layernorm1 '
                     'input={0}.affine1 '.format(self.name))
             configs.append(line)
-            cur_name='batchnorm1'
+            cur_name='layernorm1'
         else:
             cur_name='affine1'
 
@@ -510,14 +501,19 @@ class XconfigAttentionBlock(XconfigLayerBase):
                 'input={0}.linear2 '.format(self.name))
         configs.append(line)
 
-        line = ('component name={0}.layernorm type=NormalizeComponent dim={1} '
+        line = ('component name={0}.layernorm2 type=NormalizeComponent dim={1} '
                 'target-rms={2} '.format(self.name, output_dim, target_rms))
         configs.append(line)
-        line = ('component-node name={0}.layernorm component={0}.layernorm '
+        line = ('component-node name={0}.layernorm2 component={0}.layernorm2 '
                 'input={0}.linear3 '.format(self.name))
         configs.append(line)
 
-        # See function `output_name` for what the output of this
-        # layer is.
+
+        line = ('component name={0}.noop type=NoOpComponent dim={1}'.format(
+            self.name, output_dim))
+        configs.append(line)
+        line = ('component-node name={name}.noop component={name}.noop input=Sum(Scale({b}, {i}), {name}.layernorm2)'
+                ''.format(name=self.name, b=self.config['bypass-scale'], i=input_desc))
+        configs.append(line)
 
         return configs
