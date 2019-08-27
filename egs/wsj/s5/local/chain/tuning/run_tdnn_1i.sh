@@ -1,26 +1,27 @@
 #!/bin/bash
 
-# 1h is as 1g but replaces the LDA layer at the input of the
-# network with traditional delta and delta-delta features.
+# 1i is like 1h, while it introduces 'apply-cmvn-online' that does
+# cmn normalization both for i-extractor and TDNN input.
 
-# local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/tdnn1h2_sp/ exp/chain/tdnn1h_sp/
-# System                tdnn1g_sp tdnn1h_sp
-#WER dev93 (tgpr)                6.87      6.75
-#WER dev93 (tg)                  6.66      6.70
-#WER dev93 (big-dict,tgpr)       4.77      4.60
-#WER dev93 (big-dict,fg)         4.29      4.40
-#WER eval92 (tgpr)               4.63      4.71
-#WER eval92 (tg)                 4.36      4.41
-#WER eval92 (big-dict,tgpr)      2.71      2.96
-#WER eval92 (big-dict,fg)        2.39      2.39
-# Final train prob        -0.0419   -0.0424
-# Final valid prob        -0.0540   -0.0534
-# Final train prob (xent)   -0.6582   -0.6583
-# Final valid prob (xent)   -0.7220   -0.7281
-# Num-params                 8364672   8364672
+# local/chain/compare_wer.sh exp/chain/tdnn1h_sp exp/chain_online_cmn/tdnn1i_sp
+# System                tdnn1h_sp tdnn1i_sp
+#WER dev93 (tgpr)                6.89      6.66
+#WER dev93 (tg)                  6.63      6.56
+#WER dev93 (big-dict,tgpr)       4.96      4.74
+#WER dev93 (big-dict,fg)         4.53      4.44
+#WER eval92 (tgpr)               4.68      4.89
+#WER eval92 (tg)                 4.32      4.43
+#WER eval92 (big-dict,tgpr)      2.69      2.91
+#WER eval92 (big-dict,fg)        2.34      2.37
+# Final train prob        -0.0442   -0.0439
+# Final valid prob        -0.0537   -0.0529
+# Final train prob (xent)   -0.6548   -0.6581
+# Final valid prob (xent)   -0.7324   -0.7300
+# Num-params                 8349232   8349232
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1h_sp
-# exp/chain/tdnn1h_sp: num-iters=108 nj=2..8 num-params=8.4M dim=40+100->2880 combine=-0.044->-0.044 (over 2) xent:train/valid[71,107,final]=(-0.863,-0.648,-0.658/-0.932,-0.719,-0.728) logprob:train/valid[71,107,final]=(-0.065,-0.043,-0.042/-0.073,-0.055,-0.053)
+# steps/info/chain_dir_info.pl exp/chain_online_cmn/tdnn1i_sp
+# exp/chain_online_cmn/tdnn1i_sp: num-iters=108 nj=2..8 num-params=8.3M dim=40+100->2840 combine=-0.044->-0.044 (over 1) xent:train/valid[71,107,final]=(-0.873,-0.648,-0.658/-0.914,-0.712,-0.730) logprob:train/valid[71,107,final]=(-0.065,-0.044,-0.044/-0.068,-0.054,-0.053)
+
 
 set -e -o pipefail
 
@@ -40,12 +41,20 @@ nj_extractor=10
 num_threads_extractor=4
 num_processes_extractor=2
 
-nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
+nnet3_affix=_online_cmn   # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1h   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1i   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
+
+# Setting 'online_cmvn' to true replaces 'apply-cmvn' by
+# 'apply-cmvn-online' both for i-vector extraction and TDNN input.
+# The i-vector extractor uses the config 'conf/online_cmvn.conf' for
+# both the UBM and the i-extractor. The TDNN input is configured via
+# '--feat.cmvn-opts' that is set to the same config, so we use the
+# same cmvn for i-extractor and the TDNN input.
+online_cmvn=true
 
 # LSTM/chain options
 train_stage=-10
@@ -60,7 +69,7 @@ chunk_right_context=0
 
 # training options
 srand=0
-remove_egs=false
+remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
@@ -85,6 +94,7 @@ fi
 local/nnet3/run_ivector_common.sh \
   --stage $stage --nj $nj \
   --train-set $train_set --gmm $gmm \
+  --online-cmvn-iextractor $online_cmvn \
   --num-threads-ubm $num_threads_ubm \
   --nj-extractor $nj_extractor \
   --num-processes-extractor $num_processes_extractor \
@@ -222,7 +232,7 @@ if [ $stage -le 16 ]; then
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
-    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts="--config=conf/online_cmvn.conf" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.0 \
@@ -244,7 +254,7 @@ if [ $stage -le 16 ]; then
     --egs.chunk-left-context=0 \
     --egs.chunk-right-context=0 \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.opts="--frames-overlap-per-eg 0 --online-cmvn $online_cmvn" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
