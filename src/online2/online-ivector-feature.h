@@ -509,6 +509,14 @@ class OnlineSilenceWeighting {
       int32 num_frames_ready, int32 first_decoder_frame,
       std::vector<std::pair<int32, BaseFloat> > *delta_weights);
 
+  // A method for backward compatibility, same as above, but for a single
+  // utterance.
+  void GetDeltaWeights(
+      int32 num_frames_ready,
+      std::vector<std::pair<int32, BaseFloat> > *delta_weights) {
+    GetDeltaWeights(num_frames_ready, 0, delta_weights);
+  }
+
  private:
   const TransitionModel &trans_model_;
   const OnlineSilenceWeightingConfig &config_;
