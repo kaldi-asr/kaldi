@@ -119,7 +119,7 @@ feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | trans
 ## This adds online-cmvn in $feats, upon request (configuration taken from UBM),
 ## ('online_cmvn_iextractor' marks that we added online_cmvn_iextractor)
 rm $dir/online_cmvn_iextractor 2>/dev/null || true
-if [ $online_cmvn_iextractor ]; then
+if $online_cmvn_iextractor; then
   feats="$gmm_feats"
   touch $dir/online_cmvn_iextractor
 fi
@@ -209,4 +209,3 @@ ln -s $x.ie $dir/final.ie
 # assign a unique id to this extractor
 # we are not interested in the id itself, just pre-caching ...
 steps/nnet2/get_ivector_id.sh $dir > /dev/null || exit 1
-
