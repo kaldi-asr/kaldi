@@ -166,7 +166,7 @@ if [ -f $data/utt2uniq ]; then
     awk -v max_utt=$num_utts_subset '{
         for (n=2;n<=NF;n++) print $n;
         printed += NF-1;
-        if (printed >= max_utt) nextfile; }' |
+        if (printed >= max_utt) exit(0); }' |
     sort > $dir/valid_uttlist
 else
   awk '{print $1}' $data/utt2spk | \
@@ -206,6 +206,8 @@ if $online_cmvn; then
     exit 1
   fi
   touch $dir/online_cmvn
+else
+  [ -f $dir/online_cmvn ] && rm $dir/online_cmvn
 fi
 
 # create the feature pipelines,
