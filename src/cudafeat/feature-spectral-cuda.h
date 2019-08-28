@@ -1,4 +1,4 @@
-// cudafeat/feature-mfcc-cuda.h
+// cudafeat/feature-spectral-cuda.h
 //
 // Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 // Justin Luitjens
@@ -25,20 +25,65 @@
 #include "cudafeat/feature-window-cuda.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
+#include "feat/feature-fbank.h"
 #include "feat/feature-mfcc.h"
 
 namespace kaldi {
-// This class implements MFCC computation in CUDA.
+enum SpectralFeatureType {MFCC, FBANK};
+struct CudaSpectralFeatureOptions {
+  MfccOptions mfcc_opts;
+  bool use_log_fbank; // LDB: Adding these two to enable fbank and mfcc
+  bool use_power;     //   to use the same code path for GPU (and CPU?)
+  bool use_dct;       // LDB: Adding this so that fbank can run w/o applying dct
+  SpectralFeatureType feature_type;
+  CudaSpectralFeatureOptions(MfccOptions opts_in)
+      : mfcc_opts(opts_in),
+        use_log_fbank(true), 
+	use_power(true), 
+	use_dct(true),
+        feature_type(MFCC) {}
+  CudaSpectralFeatureOptions(FbankOptions opts){
+     mfcc_opts.frame_opts      = opts.frame_opts;
+     mfcc_opts.mel_opts        = opts.mel_opts;
+     mfcc_opts.use_energy      = opts.use_energy;
+     mfcc_opts.energy_floor    = opts.energy_floor;
+     mfcc_opts.raw_energy      = opts.raw_energy;
+     mfcc_opts.htk_compat      = opts.htk_compat;
+     mfcc_opts.cepstral_lifter = 0.0f;
+     use_log_fbank = opts.use_log_fbank;
+     use_power = opts.use_power;
+     use_dct = false;
+     feature_type = FBANK;
+  }
+  // Default is MFCC
+  CudaSpectralFeatureOptions() : use_log_fbank(true),
+                  use_power(true),
+                  use_dct(true),
+                  feature_type(MFCC)	{}
+
+};
+// This class implements MFCC and Fbank computation in CUDA.
 // It takes input from device memory and outputs to
 // device memory.  It also does no synchronization.
-class CudaMfcc : public MfccComputer {
+class CudaSpectralFeatures : public MfccComputer {
  public:
   void ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
                        BaseFloat sample_freq, BaseFloat vtln_warp,
                        CuMatrix<BaseFloat> *cu_features);
 
-  CudaMfcc(const MfccOptions &opts);
-  ~CudaMfcc();
+  CudaSpectralFeatures(const CudaSpectralFeatureOptions &opts);
+  ~CudaSpectralFeatures();
+  CudaSpectralFeatureOptions cumfcc_opts_;
+  int32 Dim()
+  // The dimension of the output is different for MFCC and Fbank. 
+  // This returns the appropriate value depending on the feature
+  // extraction algorithm
+  {
+    if (cumfcc_opts_.feature_type == MFCC) return MfccComputer::Dim();
+    //If we're running fbank, we need to set the dimension right
+    else return cumfcc_opts_.mfcc_opts.mel_opts.num_bins + 
+	        (cumfcc_opts_.mfcc_opts.use_energy ? 1 : 0);
+  }
 
  private:
   void ExtractWindows(int32 num_frames, int64 sample_offset,

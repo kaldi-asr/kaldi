@@ -8,7 +8,7 @@ ifeq ($(CUDA), true)
 TESTFILES = 
 
 ifeq ($(CUDA), true)
-  OBJFILES +=  feature-window-cuda.o feature-mfcc-cuda.o feature-online-cmvn-cuda.o \
+  OBJFILES +=  feature-window-cuda.o feature-spectral-cuda.o feature-online-cmvn-cuda.o \
 							 online-ivector-feature-cuda-kernels.o online-ivector-feature-cuda.o \
 							 online-cuda-feature-pipeline.o
 endif
