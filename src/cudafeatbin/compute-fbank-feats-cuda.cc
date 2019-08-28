@@ -1,4 +1,4 @@
-// cudafeatbin/compute-mfcc-feats-cuda.cc
+// cudafeatbin/compute-fbank-feats-cuda.cc
 //
 // Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 // Justin Luitjens
@@ -26,12 +26,12 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     const char *usage =
-        "Create MFCC feature files.\n"
-        "Usage:  compute-mfcc-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";
+        "Create Fbank feature files.\n"
+        "Usage:  compute-fbank-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";
 
     // construct all the global objects
     ParseOptions po(usage);
-    MfccOptions mfcc_opts;
+    FbankOptions fbank_opts;
     bool subtract_mean = false;
     BaseFloat vtln_warp = 1.0;
     std::string vtln_map_rspecifier;
@@ -41,8 +41,8 @@ int main(int argc, char *argv[]) {
     // Define defaults for gobal options
     std::string output_format = "kaldi";
 
-    // Register the MFCC option struct
-    mfcc_opts.Register(&po);
+    // Register the fbank option struct
+    fbank_opts.Register(&po);
 
     // Register the options
     po.Register("output-format", &output_format, "Format of the output "
@@ -76,7 +76,8 @@ int main(int argc, char *argv[]) {
 
     std::string output_wspecifier = po.GetArg(2);
 
-    CudaSpectralFeatures mfcc(mfcc_opts);
+    // Fbank is implemented via the MFCC code path 
+    CudaSpectralFeatures fbank(fbank_opts);
 
     SequentialTableReader<WaveHolder> reader(wav_rspecifier);
     BaseFloatMatrixWriter kaldi_writer;  // typedef to TableWriter<something>.
@@ -145,8 +146,8 @@ int main(int argc, char *argv[]) {
       try {
         CuVector<BaseFloat> cu_waveform(waveform);
         CuMatrix<BaseFloat> cu_features;
-        mfcc.ComputeFeatures(cu_waveform, wave_data.SampFreq(), vtln_warp_local,
-                             &cu_features);
+        fbank.ComputeFeatures(cu_waveform, wave_data.SampFreq(),
+                              vtln_warp_local, &cu_features);
         features.Resize(cu_features.NumRows(), cu_features.NumCols());
         features.CopyFromMat(cu_features);
       } catch (...) {
@@ -172,7 +173,7 @@ int main(int argc, char *argv[]) {
           100000,  // 10ms shift
           static_cast<int16>(sizeof(float)*(features.NumCols())),
           static_cast<uint16>( 006 | // MFCC
-          (mfcc_opts.use_energy ? 0100 : 020000)) // energy; otherwise c0
+          (fbank_opts.use_energy ? 0100 : 020000)) // energy; otherwise c0
         };
         p.second = header;
         htk_writer.Write(utt, p);
