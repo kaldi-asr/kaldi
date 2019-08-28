@@ -125,7 +125,7 @@ struct OnlineIvectorExtractionConfig {
                    "add online-cmvn to feature pipeline of ivector extractor, "
                    "use the cmvn setup from the UBM.  Note: the default of "
                    "false is what we historically used; we'd use true if "
-                   "we were using CMVN'ed features for the neural net.")
+                   "we were using CMVN'ed features for the neural net.");
     opts->Register("splice-config", &splice_config_rxfilename, "Configuration file "
                    "for frame splicing (--left-context and --right-context "
                    "options); used for iVector extraction.");
