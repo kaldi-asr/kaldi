@@ -148,7 +148,7 @@ void CountErrors(const fst::StdVectorFst &fst,
 
 bool CheckFst(const fst::StdVectorFst &fst, string name, string key) {
 #ifdef DEBUG
-  StateId numstates = fst.NumStates();
+  fst::StdArc::StateId numstates = fst.NumStates();
   std::cerr << " " << name << " has " << numstates << " states" << std::endl;
   std::stringstream ss;
   ss << name << key << ".fst";

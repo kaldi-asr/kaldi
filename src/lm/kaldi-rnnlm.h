@@ -39,7 +39,7 @@ struct KaldiRnnlmWrapperOpts {
   void Register(OptionsItf *opts) {
     opts->Register("unk-symbol", &unk_symbol, "Symbol for out-of-vocabulary "
                    "words in rnnlm.");
-    opts->Register("eos-symbol", &eos_symbol, "End of setence symbol in "
+    opts->Register("eos-symbol", &eos_symbol, "End of sentence symbol in "
                    "rnnlm.");
   }
 };

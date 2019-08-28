@@ -57,6 +57,8 @@ struct OnlineIvectorExtractionConfig {
                                             // stats
   std::string splice_config_rxfilename;  // to read OnlineSpliceOptions
   std::string cmvn_config_rxfilename;  // to read in OnlineCmvnOptions
+  bool online_cmvn_iextractor; // flag activating online-cmvn in iextractor
+                               // feature pipeline
   std::string diag_ubm_rxfilename;  // reads type DiagGmm.
   std::string ivector_extractor_rxfilename;  // reads type IvectorExtractor
 
@@ -99,7 +101,8 @@ struct OnlineIvectorExtractionConfig {
   // by calling SetAdaptationState()).
   BaseFloat max_remembered_frames;
 
-  OnlineIvectorExtractionConfig(): ivector_period(10), num_gselect(5),
+  OnlineIvectorExtractionConfig(): online_cmvn_iextractor(false),
+                                   ivector_period(10), num_gselect(5),
                                    min_post(0.025), posterior_scale(0.1),
                                    max_count(0.0), num_cg_iters(15),
                                    use_most_recent_ivector(true),
@@ -118,6 +121,9 @@ struct OnlineIvectorExtractionConfig {
                    "file for online CMVN features (e.g. conf/online_cmvn.conf),"
                    "only used for iVector extraction.  Contains options "
                    "as for the program 'apply-cmvn-online'");
+    opts->Register("online-cmvn-iextractor", &online_cmvn_iextractor,
+                   "add online-cmvn to feature pipeline of ivector extractor, "
+                   "use the cmvn setup from the UBM");
     opts->Register("splice-config", &splice_config_rxfilename, "Configuration file "
                    "for frame splicing (--left-context and --right-context "
                    "options); used for iVector extraction.");
@@ -162,6 +168,7 @@ struct OnlineIvectorExtractionInfo {
   Matrix<double> global_cmvn_stats;  // Global CMVN stats.
 
   OnlineCmvnOptions cmvn_opts;  // Options for online CMN/CMVN computation.
+  bool online_cmvn_iextractor;  // flag activating online CMN/CMVN for iextractor input.
   OnlineSpliceOptions splice_opts;  // Options for frame splicing
                                     // (--left-context,--right-context)
 
@@ -473,20 +480,31 @@ class OnlineSilenceWeighting {
   void ComputeCurrentTraceback(const LatticeFasterOnlineDecoderTpl<FST> &decoder);
 
   // Calling this function gets the changes in weight that require us to modify
-  // the stats... the output format is (frame-index, delta-weight).  The
-  // num_frames_ready argument is the number of frames available at the input
-  // (or equivalently, output) of the online iVector extractor class, which may
-  // be more than the currently available decoder traceback.  How many frames
-  // of weights it outputs depends on how much "num_frames_ready" increased
-  // since last time we called this function, and whether the decoder traceback
-  // changed.  Negative delta_weights might occur if frames previously
+  // the stats... the output format is (frame-index, delta-weight).
+  //
+  // The num_frames_ready argument is the number of frames available at
+  // the input (or equivalently, output) of the online iVector feature in the
+  // feature pipeline from the stream start. It may be more than the currently
+  // available decoder traceback.
+  //
+  // The first_decoder_frame is the offset from the start of the stream in
+  // pipeline frames when decoder was restarted last time. We do not change
+  // weight for the frames earlier than first_decoder_frame. Set it to 0 in
+  // case of compilation error to reproduce the previous behavior or for a
+  // single utterance decoding.
+  //
+  // How many frames of weights it outputs depends on how much "num_frames_ready"
+  // increased since last time we called this function, and whether the decoder
+  // traceback changed.  Negative delta_weights might occur if frames previously
   // classified as non-silence become classified as silence if the decoder's
   // traceback changes.  You must call this function with "num_frames_ready"
   // arguments that only increase, not decrease, with time.  You would provide
   // this output to class OnlineIvectorFeature by calling its function
   // UpdateFrameWeights with the output.
+  //
+  // Returned frame-index is in pipeline frames from the pipeline start.
   void GetDeltaWeights(
-      int32 num_frames_ready_in,
+      int32 num_frames_ready, int32 first_decoder_frame,
       std::vector<std::pair<int32, BaseFloat> > *delta_weights);
 
  private:
