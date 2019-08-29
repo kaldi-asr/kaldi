@@ -24,7 +24,7 @@ part=$3
 
 if [ ! -d "$data" ]; then
   echo "$0: no such directory $data"
-  exit 1;
+  mkdir -p $data
 fi
 
 part_ok=false
