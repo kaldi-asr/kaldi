@@ -29,6 +29,9 @@ max_count=100   # This max-count of 100 can make iVectors more consistent for
                 # after posterior-scaling, so assuming the posterior-scale is
                 # 0.1, --max-count 100 starts having effect after 1000 frames,
                 # or 10 seconds of data.
+ivector_period=10 # Number of frames for which the i-vector stays the same
+                  # (use same value as from local/nnet3/run_ivector_common.sh).
+
 iter=final
 # End configuration.
 
@@ -156,6 +159,7 @@ if [ ! -z "$iedir" ]; then
   echo "--posterior-scale=$posterior_scale" >>$ieconf # this is currently the default in the scripts.
   echo "--max-remembered-frames=1000" >>$ieconf # the default
   echo "--max-count=$max_count" >>$ieconf
+  echo "--ivector-period=$ivector_period" >>$ieconf
 fi
 
 if $add_pitch; then
