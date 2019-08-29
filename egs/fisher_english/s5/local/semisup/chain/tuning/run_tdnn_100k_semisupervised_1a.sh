@@ -213,7 +213,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 #     data/${supervised_set_perturbed} \
 #     ${sup_tree_dir} \
 #     data/${unsupervised_set_perturbed} \
-#     ${sup_chain_dir}/best_path_${unsupervised_set_perturbed}_big \
+#     ${sup_chain_dir}/best_path_${unsupervised_set_perturbed} \
 #     $treedir || exit 1
 # fi
 #
