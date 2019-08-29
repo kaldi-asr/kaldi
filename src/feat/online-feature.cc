@@ -74,7 +74,9 @@ OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     input_finished_(false), waveform_offset_(0) {
   // RE the following assert: search for ONLINE_IVECTOR_LIMIT in
   // online-ivector-feature.cc.
-  KALDI_ASSERT(opts.frame_opts.max_feature_vectors > 200);
+  // Casting to uint32, an unsigned type, means that -1 would be treated
+  // as `very large`.
+  KALDI_ASSERT(static_cast<uint32>(opts.frame_opts.max_feature_vectors) > 200);
 }
 
 
