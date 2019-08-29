@@ -46,7 +46,7 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
 }
 
 OnlineCudaFeaturePipeline::~OnlineCudaFeaturePipeline() {
-  if (spectral_feat = NULL) delete spectral_feat;
+  if (spectral_feat != NULL) delete spectral_feat;
   if (ivector != NULL) delete ivector;
 }
 
