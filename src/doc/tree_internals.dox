@@ -32,7 +32,7 @@ namespace kaldi {
   The central concept in the decision-tree building code is the event map,
   represented by type EventMap.  Don't be misled by the term "event" to think
   that this is something happening at a particular time.  An event is just a set
-  of (key,value) pairs, with no key repeated.  Conceptually, it could be represented by 
+  of (key,value) pairs, with no key repeated.  Conceptually, it could be represented by
   the type std::map<int32,int32>.  In fact, for efficiency we represent it as a
   sorted vector of pairs, via the typedef:
 \code
@@ -41,7 +41,7 @@ namespace kaldi {
   Here, EventKeyType and EventValueType are just typedefs to int32, but the code is
   easier to understand if we use distinct names for them.  Think of an Event
   (type EventType) as being like a collection of variables, except that the
-  names and values of the variables are both integers.   There is also the type 
+  names and values of the variables are both integers.   There is also the type
   \ref EventAnswerType, and this is also int32.  It is the type returned by the EventMap;
   in practice it is a pdf identifier (acoustic-state index).
   Functions that require EventType expect you to have sorted it first (e.g. by calling
@@ -64,7 +64,7 @@ namespace kaldi {
    // caution: not valid C++.
    EventType e = { {-1,1}, {0,10}, {1,11}, {2,12} }; 
  \endcode
-  Suppose we that the acoustic-state index (pdf-id) corresponding to this
+  Suppose that the acoustic-state index (pdf-id) corresponding to this
   acoustic state happens to be 1000.  Then if we have an
   EventMap "emap" representing the tree, then we would expect the following assert
   not to fail:
@@ -87,14 +87,14 @@ namespace kaldi {
   EventMap is a polymorphic, pure-virtual class (i.e. it cannot be instantiated because it
   has virtual functions that are not implemented).  There are three concrete classes
   that implement the EventMap interface:
-      - ConstantEventMap:  Think of this as a decision-tree leaf node. 
+      - ConstantEventMap:  Think of this as a decision-tree leaf node.
           This class stores an integer of type EventAnswerType and its Map function always returns that value.  
       - SplitEventMap: Think of this as a decision-tree non-leaf node that queries a certain
          key and goes to the "yes" or "no" child node depending on the answer.  Its Map
          function calls the Map function of the appropriate child node.  It stores a set of
          integers of type kAnswerType that correspond to the "yes" child (everything else goes to "no").
       - TableEventMap: This does a complete split on a particular key.  A typical example is:
-         you might first split completely on the central phone and then have a separate 
+         you might first split completely on the central phone and then have a separate
          decision tree for each value of that phone.  Internally it stores a vector of
          EventMap* pointers.  It looks up the value corresponding to the key that it
          is splitting on, and calls the Map function of the EventMap at the corresponding
@@ -240,7 +240,7 @@ namespace kaldi {
  The function AccumulateTreeStats() accumulates statistics for training the tree, given
  features and an alignment that is a sequence of transition-ids (see \ref transition_model_identifiers).
  This function is defined in a different directory from the other tree-building-related functions 
- (hmm/ not tree/) as it depends on more code (e.g. it knows about the the TransitionModel class), 
+ (hmm/ not tree/) as it depends on more code (e.g. it knows about the TransitionModel class), 
  and we preferred to keep the dependencies of the core tree-building code to a minimum.
   
 */

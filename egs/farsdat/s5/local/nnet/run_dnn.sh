@@ -53,7 +53,7 @@ if [ $stage -le 1 ]; then
   # Pre-train DBN, i.e. a stack of RBMs (small database, smaller DNN)
   dir=exp/dnn4_pretrain-dbn
   (tail --pid=$$ -F $dir/log/pretrain_dbn.log 2>/dev/null)& # forward log
-  $cuda_cmd $dir/log/pretrain_dbn.log \
+  "$train_cmd" --gpu 1 $dir/log/pretrain_dbn.log \
     steps/nnet/pretrain_dbn.sh --hid-dim 1024 --rbm-iter 20 $data_fmllr/train $dir || exit 1;
 fi
 
@@ -65,7 +65,7 @@ if [ $stage -le 2 ]; then
   dbn=exp/dnn4_pretrain-dbn/6.dbn
   (tail --pid=$$ -F $dir/log/train_nnet.log 2>/dev/null)& # forward log
   # Train
-  $cuda_cmd $dir/log/train_nnet.log \
+  "$train_cmd" --gpu 1 $dir/log/train_nnet.log \
     steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
     $data_fmllr/train_tr90 $data_fmllr/train_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode (reuse HCLG graph)
@@ -93,7 +93,7 @@ fi
 
 if [ $stage -le 4 ]; then
   # Re-train the DNN by 6 iterations of sMBR 
-  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
+  steps/nnet/train_mpe.sh --cmd ""$train_cmd" --gpu 1" --num-iters 6 --acwt $acwt --do-smbr true \
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode
   for ITER in 1 6; do

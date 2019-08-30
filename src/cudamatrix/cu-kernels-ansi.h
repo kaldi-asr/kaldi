@@ -6,6 +6,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //           2016-2018  Shiyin Kang
+//                2019  Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -39,6 +40,12 @@ typedef float   BaseFloat;
 #endif
 
 
+void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
+                           const MatrixDim d, const double alpha,
+                           const double beta);
+void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
+                           const MatrixDim d, const float alpha,
+                           const float beta);
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,
                            const double beta);
@@ -195,34 +202,6 @@ void cudaD_add_vec_vec(int Gr, int Bl, double alpha, double* v, const double* x,
                        const double* y, double beta, int dim);
 void cudaF_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x,
                        const float* y, float beta, int dim);
-void cudaD_apply_ceiling(dim3 Gr, dim3 Bl, double* mat, double ceiling_val,
-                         MatrixDim d);
-void cudaF_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val,
-                         MatrixDim d);
-void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
-void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
-void cudaD_apply_exp_limited(dim3 Gr, dim3 Bl, double* mat, MatrixDim d,
-                             double lower_limit, double upper_limit);
-void cudaF_apply_exp_limited(dim3 Gr, dim3 Bl, float* mat, MatrixDim d,
-                             float lower_limit, float upper_limit);
-void cudaD_apply_exp_special(dim3 Gr, dim3 Bl, double* out, MatrixDim out_dim,
-                             const double* in, int in_stride);
-void cudaF_apply_exp_special(dim3 Gr, dim3 Bl, float* out, MatrixDim out_dim,
-                             const float* in, int in_stride);
-void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val,
-                       MatrixDim d);
-void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val,
-                       MatrixDim d);
-void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
-void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
-void cudaD_apply_log(dim3 Gr, dim3 Bl, double *mat, MatrixDim d);
-void cudaF_apply_log(dim3 Gr, dim3 Bl, float *mat, MatrixDim d);
-void cudaD_apply_pow_abs(dim3 Gr, dim3 Bl, double* mat, double power,
-                         bool include_sign, MatrixDim d);
-void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power,
-                         bool include_sign, MatrixDim d);
-void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d);
-void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);
 void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data,
                              int num_blocks, const double *C_data,
                              int C_num_cols, int C_row_stride, int C_col_stride,
@@ -500,6 +479,36 @@ void cudaD_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
                      int src_stride);
 void cudaF_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                      int src_stride);
+void cudaD_exp(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
+	       int src_stride);
+void cudaF_exp(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
+	       int src_stride);
+void cudaD_pow(dim3 Gr, dim3 Bl, double *y, const double *x, double power, MatrixDim d,
+	       int src_stride);
+void cudaF_pow(dim3 Gr, dim3 Bl, float *y, const float *x, float power, MatrixDim d,
+	       int src_stride);
+void cudaD_ceiling(dim3 Gr, dim3 Bl, double* y, const double* x, double ceiling_val,
+		   MatrixDim dim, int src_stride);
+void cudaF_ceiling(dim3 Gr, dim3 Bl, float* y, const float* x, float ceiling_val,
+		   MatrixDim dim, int src_stride);
+void cudaD_floor(dim3 Gr, dim3 Bl, double* y, const double* x, double floor_val,
+		 MatrixDim dim, int src_stride);
+void cudaF_floor(dim3 Gr, dim3 Bl, float* y, const float* x, float floor_val,
+		 MatrixDim dim, int src_stride);
+void cudaD_exp_limited(dim3 Gr, dim3 Bl, double* y, const double* x,
+		       double lower_limit, double upper_limit, MatrixDim d, int src_stride);
+void cudaF_exp_limited(dim3 Gr, dim3 Bl, float* y, const float* x,
+		       float lower_limit, float upper_limit, MatrixDim d, int src_stride);
+void cudaD_exp_special(dim3 Gr, dim3 Bl, double* y, const double* x,
+		       MatrixDim d, int src_stride);
+void cudaF_exp_special(dim3 Gr, dim3 Bl, float* y, const float* x,
+		       MatrixDim d, int src_stride);
+void cudaD_log(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride);
+void cudaF_log(dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride);
+void cudaD_pow_abs(dim3 Gr, dim3 Bl, double* y, const double* x, double power,
+		   bool include_sign, MatrixDim dim, int src_stride);
+void cudaF_pow_abs(dim3 Gr, dim3 Bl, float* y, const float* x, float power,
+		   bool include_sign, MatrixDim dim, int src_stride);  
 void cuda_int32_add(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value,
                     MatrixDim d);
 void cuda_int32_set_const(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value,
@@ -789,6 +798,30 @@ void cuda_uncompress_int8(dim3 Gr, dim3 Bl, BaseFloat *dest,
 void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
                           MatrixDim dim, const uint8_t *src,
                           int src_stride, float scale);
+
+// copies the sub matrix in src[range_start, range_end] to the matrix in dst
+// if src row is outside of the clamped range it will clamp to the specified
+// rows. src and dst cannot overlap.
+void cudaF_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const float *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   float *dst, int32_t ldd);
+void cudaD_mat_copy_range_clamped(
+   int32_t row_start, int32_t row_end, int32_t num_cols,
+   const double *src, int32_t lds, 
+   int32_t clamp_low, int32_t clamp_high,
+   double *dst, int32_t ldd);
+
+// for i=[0,num_mats) perform the matrix copy outputs[i] = inputs[i] where
+// the matrices are of size num_rows[i] x num_cols[i] and have a leading
+// dimension of ldo[i] for the output and ldi[i] for the input.
+void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
+    int32_t *ldo);
+void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
+    int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
+    int32_t *ldo);
 
 // Launches a kernel that does nothing, explicitly using the legacy default stream;
 // this will synchronize all CUDA streams (except for non-blocking streams) on the

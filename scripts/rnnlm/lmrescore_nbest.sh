@@ -58,7 +58,7 @@ elif [ ! -f $oldlm ]; then
     exit 1;
 fi
 
-for f in $rnndir/final.raw $data/feats.scp $indir/lat.1.gz; do
+for f in $rnndir/final.raw $indir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
@@ -174,6 +174,7 @@ if [ $stage -le 5 ]; then
       $adir.$n/lmwt.lmonly || exit 1;
   done
 fi
+
 if [ $stage -le 6 ]; then
   echo "$0: invoking rnnlm/compute_sentence_scores.sh which calls rnnlm to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \

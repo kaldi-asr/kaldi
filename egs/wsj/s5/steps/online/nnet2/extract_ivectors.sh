@@ -64,6 +64,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 4 ] && [ $# != 5 ]; then
   echo "Usage: $0 [options] <data> <lang> <extractor-dir> [<alignment-dir>|<decode-dir>|<weights-archive>] <ivector-dir>"
   echo " e.g.: $0 data/test data/lang exp/nnet2_online/extractor exp/tri3/decode_test exp/nnet2_online/ivectors_test"
+  echo "If <alignment-dir|decode-dir> is provided, it is converted to frame-weights "
+  echo "giving silence frames a weight of --silence-weight (default: 0.0). "
+  echo "If <weights-archive> is provided, it must be a single archive file compressed "
+  echo "(using gunzip) containing per-frame weights for each utterance."
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -90,7 +94,7 @@ else # 5 arguments
   data=$1
   lang=$2
   srcdir=$3
-  ali_or_decode_dir=$4
+  ali_or_decode_dir_or_weights=$4
   dir=$5
 fi
 
@@ -102,23 +106,23 @@ done
 mkdir -p $dir/log
 silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
 
-if [ ! -z "$ali_or_decode_dir" ]; then
+if [ ! -z "$ali_or_decode_dir_or_weights" ]; then
 
 
-  if [ -f $ali_or_decode_dir/ali.1.gz ]; then
-    if [ ! -f $ali_or_decode_dir/${mdl}.mdl ]; then
-      echo "$0: expected $ali_or_decode_dir/${mdl}.mdl to exist."
+  if [ -f $ali_or_decode_dir_or_weights/ali.1.gz ]; then
+    if [ ! -f $ali_or_decode_dir_or_weights/${mdl}.mdl ]; then
+      echo "$0: expected $ali_or_decode_dir_or_weights/${mdl}.mdl to exist."
       exit 1;
     fi
-    nj_orig=$(cat $ali_or_decode_dir/num_jobs) || exit 1;
+    nj_orig=$(cat $ali_or_decode_dir_or_weights/num_jobs) || exit 1;
 
     if [ $stage -le 0 ]; then
       rm $dir/weights.*.gz 2>/dev/null
 
       $cmd JOB=1:$nj_orig  $dir/log/ali_to_post.JOB.log \
-        gunzip -c $ali_or_decode_dir/ali.JOB.gz \| \
+        gunzip -c $ali_or_decode_dir_or_weights/ali.JOB.gz \| \
         ali-to-post ark:- ark:- \| \
-        weight-silence-post $silence_weight $silphonelist $ali_or_decode_dir/final.mdl ark:- ark:- \| \
+        weight-silence-post $silence_weight $silphonelist $ali_or_decode_dir_or_weights/final.mdl ark:- ark:- \| \
         post-to-weights ark:- "ark:|gzip -c >$dir/weights.JOB.gz" || exit 1;
 
       # put all the weights in one archive.
@@ -126,10 +130,10 @@ if [ ! -z "$ali_or_decode_dir" ]; then
       rm $dir/weights.*.gz || exit 1;
     fi
 
-  elif [ -f $ali_or_decode_dir/lat.1.gz ]; then
-    nj_orig=$(cat $ali_or_decode_dir/num_jobs) || exit 1;
-    if [ ! -f $ali_or_decode_dir/../${mdl}.mdl ]; then
-      echo "$0: expected $ali_or_decode_dir/../${mdl}.mdl to exist."
+  elif [ -f $ali_or_decode_dir_or_weights/lat.1.gz ]; then
+    nj_orig=$(cat $ali_or_decode_dir_or_weights/num_jobs) || exit 1;
+    if [ ! -f $ali_or_decode_dir_or_weights/../${mdl}.mdl ]; then
+      echo "$0: expected $ali_or_decode_dir_or_weights/../${mdl}.mdl to exist."
       exit 1;
     fi
 
@@ -138,19 +142,19 @@ if [ ! -z "$ali_or_decode_dir" ]; then
       rm $dir/weights.*.gz 2>/dev/null
 
       $cmd JOB=1:$nj_orig  $dir/log/lat_to_post.JOB.log \
-        lattice-best-path --acoustic-scale=$acwt "ark:gunzip -c $ali_or_decode_dir/lat.JOB.gz|" ark:/dev/null ark:- \| \
+        lattice-best-path --acoustic-scale=$acwt "ark:gunzip -c $ali_or_decode_dir_or_weights/lat.JOB.gz|" ark:/dev/null ark:- \| \
         ali-to-post ark:- ark:- \| \
-        weight-silence-post $silence_weight $silphonelist $ali_or_decode_dir/../${mdl}.mdl ark:- ark:- \| \
+        weight-silence-post $silence_weight $silphonelist $ali_or_decode_dir_or_weights/../${mdl}.mdl ark:- ark:- \| \
         post-to-weights ark:- "ark:|gzip -c >$dir/weights.JOB.gz" || exit 1;
 
       # put all the weights in one archive.
       for j in $(seq $nj_orig); do gunzip -c $dir/weights.$j.gz; done | gzip -c >$dir/weights.gz || exit 1;
       rm $dir/weights.*.gz || exit 1;
     fi
-  elif [ -f $ali_or_decode_dir ] && gunzip -c $ali_or_decode_dir >/dev/null; then
-    cp $ali_or_decode_dir $dir/weights.gz || exit 1;
+  elif [ -f $ali_or_decode_dir_or_weights ] && gunzip -c $ali_or_decode_dir_or_weights >/dev/null; then
+    cp $ali_or_decode_dir_or_weights $dir/weights.gz || exit 1;
   else
-    echo "$0: expected ali.1.gz or lat.1.gz to exist in $ali_or_decode_dir";
+    echo "$0: expected ali.1.gz or lat.1.gz to exist in $ali_or_decode_dir_or_weights";
     exit 1;
   fi
 fi
@@ -164,12 +168,15 @@ splice_opts=$(cat $srcdir/splice_opts)
 gmm_feats="ark,s,cs:apply-cmvn-online --spk2utt=ark:$sdata/JOB/spk2utt --config=$srcdir/online_cmvn.conf $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
+# This adds online-cmvn in $feats, upon request (configuration taken from UBM),
+[ -f $srcdir/online_cmvn_iextractor ] && feats="$gmm_feats"
+
 
 if [ $sub_speaker_frames -gt 0 ]; then
 
   if [ $stage -le 1 ]; then
   # We work out 'fake' spk2utt files that possibly split each speaker into multiple pieces.
-    if [ ! -z "$ali_or_decode_dir" ]; then
+    if [ ! -z "$ali_or_decode_dir_or_weights" ]; then
       gunzip -c $dir/weights.gz | copy-vector ark:- ark,t:- | \
         awk '{ sum=0; for (n=3;n<NF;n++) sum += $n; print $1, sum; }' > $dir/utt_counts || exit 1;
     else
@@ -230,7 +237,7 @@ else
 fi
 
 if [ $stage -le 2 ]; then
-  if [ ! -z "$ali_or_decode_dir" ]; then
+  if [ ! -z "$ali_or_decode_dir_or_weights" ]; then
     $cmd --num-threads $num_threads JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
       weight-post ark:- "ark,s,cs:gunzip -c $dir/weights.gz|" ark:- \| \

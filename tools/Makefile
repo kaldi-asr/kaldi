@@ -1,14 +1,15 @@
 # SHELL += -x
 
-CXX = g++
-CC = gcc         # used for sph2pipe
-# CXX = clang++  # Uncomment these lines
-# CC = clang     # to build with Clang.
+CXX ?= g++
+CC ?= gcc        # used for sph2pipe
+# CXX = clang++  # Uncomment these lines...
+# CC = clang     # ...to build with Clang.
 
 # Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
 # e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
 OPENFST_VERSION ?= 1.6.7
 CUB_VERSION ?= 1.8.0
+OPENBLAS_VERSION ?= 0.3.5
 
 # Default features configured for OpenFST; can be overridden in the make command line.
 OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts
@@ -129,31 +130,6 @@ sph2pipe_v2.5.tar.gz:
 	wget -T 10 -t 3 http://www.openslr.org/resources/3/sph2pipe_v2.5.tar.gz || \
 	wget --no-check-certificate -T 10  https://sourceforge.net/projects/kaldi/files/sph2pipe_v2.5.tar.gz
 
-openblas: openblas_compiled
-
-.PHONY: openblas_compiled
-
-fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~ m/target=\S+64\S+/) { print "BINARY=64"; }')
-
-
-# note: you can uncomment the line that has USE_THREAD=1 and comment the line
-# that has USE_THREAD=0 if you want Open Blas to use multiple threads.  then
-# you could set, for example, OPENBLAS_NUM_THREADS=2 in your path.sh so that the
-# runtime knows how many threads to use.  Note: if you ever get the error
-# "Program is Terminated. Because you tried to allocate too many memory
-# regions.", this is because OpenBLAS has a fixed buffer size controlled by the
-# Makefile option NUM_THREADS; I believe this limits the product of number of
-# program threads that are calling BLAS by the shell variable
-# OPENBLAS_NUM_THREADS.  In that case it might help to increase the NUM_THREADS
-# option.
-openblas_compiled:
-	echo "Note: see tools/Makefile for options regarding OpenBLAS compilation"
-	-git clone https://github.com/xianyi/OpenBLAS.git
-	-cd OpenBLAS; git pull
-	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule
-	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
-	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
-
 
 .PHONY: cub
 cub:
@@ -161,3 +137,10 @@ cub:
 	unzip -oq cub-$(CUB_VERSION).zip
 	rm -f cub
 	ln -s cub-$(CUB_VERSION) cub
+
+# OpenBLAS is not compiled by default; you can run `make openblas` to build it,
+# but you should probably just call extras/install_openblas.sh; this is
+# here for legacy reasons.
+.PHONY: openblas
+openblas:
+	extras/install_openblas.sh

@@ -85,9 +85,7 @@ function check_sorted_and_uniq {
 }
 
 function partial_diff {
-  diff $1 $2 | head -n 6
-  echo "..."
-  diff $1 $2 | tail -n 6
+  diff -U1 $1 $2 | (head -n 6; echo "..."; tail -n 6)
   n1=`cat $1 | wc -l`
   n2=`cat $2 | wc -l`
   echo "[Lengths are $1=$n1 versus $2=$n2]"
@@ -341,9 +339,23 @@ if [ -f $data/utt2dur ]; then
     exit 1;
   fi
   cat $data/utt2dur | \
-    awk '{ if (NF != 2 || !($2 > 0)) { print "Bad line : " $0; exit(1) }}' || exit 1
+    awk '{ if (NF != 2 || !($2 > 0)) { print "Bad line utt2dur:" NR ":" $0; exit(1) }}' || exit 1
 fi
 
+if [ -f $data/utt2num_frames ]; then
+  check_sorted_and_uniq $data/utt2num_frames
+  cat $data/utt2num_frames | awk '{print $1}' > $tmpdir/utts.utt2num_frames
+  if ! cmp -s $tmpdir/utts{,.utt2num_frames}; then
+    echo "$0: Error: in $data, utterance-ids extracted from utt2spk and utt2num_frames file"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/utts{,.utt2num_frames}
+    exit 1
+  fi
+  awk <$data/utt2num_frames '{
+    if (NF != 2 || !($2 > 0) || $2 != int($2)) {
+      print "Bad line utt2num_frames:" NR ":" $0
+      exit 1 } }' || exit 1
+fi
 
 if [ -f $data/reco2dur ]; then
   check_sorted_and_uniq $data/reco2dur

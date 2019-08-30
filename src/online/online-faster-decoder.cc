@@ -170,7 +170,7 @@ OnlineFasterDecoder::TracebackNFrames(int32 nframes,
   bool is_final = false;
   double this_cost = best_tok->cost_ +
       fst_.Final(best_tok->arc_.nextstate).Value();
-                             
+
   if (this_cost != std::numeric_limits<double>::infinity())
     is_final = true;
   std::vector<LatticeArc> arcs_reverse;  // arcs in reverse order.

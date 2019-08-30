@@ -33,7 +33,7 @@ namespace kaldi {
 // may otherwise confuse decoder code into thinking there is
 // a problem with the stream (too many timeouts), and cause it to fail.
 bool OnlineCmnInput::Compute(Matrix<BaseFloat> *output) {
-  
+
   int32 orig_nr = output->NumRows(), orig_nc = output->NumCols();
   int32 initial_t_in = t_in_;
   bool ans;
@@ -78,16 +78,16 @@ bool OnlineCmnInput::ComputeInternal(Matrix<BaseFloat> *output) {
 
   Matrix<BaseFloat> input;
   input.Swap(output);
-  
+
   bool more_data = input_->Compute(&input);
 
   int32 num_input_frames = input.NumRows();
-  
+
   int32 output_frames = NumOutputFrames(num_input_frames,
                                         more_data);
   output->Resize(output_frames,
                  output_frames == 0 ? 0 : Dim());
-  
+
   int32 output_counter = 0;
   for (int32 i = 0; i < num_input_frames; i++) {
     AcceptFrame(input.Row(i));
@@ -131,11 +131,11 @@ void OnlineCmnInput::OutputFrame(VectorBase<BaseFloat> *output) {
     num_history_frames = (t_in_ < min_window_ ? t_in_ : min_window_);
   else
     num_history_frames = t_out_;
-  
+
   SubVector<BaseFloat> input_frame(history_, t_out_ % (cmn_window_ + 1));
   output->CopyFromVec(input_frame);
   output->AddVec(-1.0 / num_history_frames, sum_); // Apply CMN to the output.
-  
+
   // Update sum.
   if (t_out_ >= min_window_)
     sum_.AddVec(1.0, input_frame);
@@ -223,7 +223,7 @@ void OnlineLdaInput::SpliceFrames(const MatrixBase<BaseFloat> &input1,
       num_frames_out = num_frames_in - (context_window - 1),
       dim = std::max(input1.NumCols(), std::max(input2.NumCols(), input3.NumCols()));
   // do std::max in case one or more of the input matrices is empty.
-  
+
   if (num_frames_out <= 0) {
     output->Resize(0, 0);
     return;
@@ -299,14 +299,14 @@ bool OnlineLdaInput::Compute(Matrix<BaseFloat> *output) {
         tail.Row(i).CopyFromVec(remainder_.Row(remainder_.NumRows() - 1));
     }
   }
-  
+
   Matrix<BaseFloat> spliced_feats;
   int32 context_window = left_context_ + 1 + right_context_;
   // The next line is a call to a member function.
   SpliceFrames(remainder_, input, tail, context_window, &spliced_feats);
   TransformToOutput(spliced_feats, output);
   ComputeNextRemainder(input);
-  return ans; 
+  return ans;
 }
 
 void OnlineLdaInput::ComputeNextRemainder(const MatrixBase<BaseFloat> &input) {
@@ -378,7 +378,7 @@ void OnlineDeltaInput::AppendFrames(const MatrixBase<BaseFloat> &input1,
     output->Resize(0, 0);
     return;
   }
-  // do std::max in case one or more of the input matrices is empty.  
+  // do std::max in case one or more of the input matrices is empty.
   int32 dim = std::max(input1.NumCols(),
                        std::max(input2.NumCols(), input3.NumCols()));
 
@@ -417,7 +417,7 @@ void OnlineDeltaInput::DeltaComputation(const MatrixBase<BaseFloat> &input,
   } else {
     output->Resize(0, 0);
   }
-}                                     
+}
 
 bool OnlineDeltaInput::Compute(Matrix<BaseFloat> *output) {
   KALDI_ASSERT(output->NumRows() > 0 &&
@@ -462,22 +462,22 @@ bool OnlineDeltaInput::Compute(Matrix<BaseFloat> *output) {
         tail.Row(i).CopyFromVec(remainder_.Row(remainder_.NumRows() - 1));
     }
   }
-  
+
   Matrix<BaseFloat> appended_feats;
   AppendFrames(remainder_, input, tail, &appended_feats);
   DeltaComputation(appended_feats, output, &remainder_);
-  return ans; 
+  return ans;
 }
 
 
 
 void OnlineFeatureMatrix::GetNextFeatures() {
   if (finished_) return; // Nothing to do.
-  
+
   // We always keep the most recent frame of features, if present,
   // in case it is needed (this may happen when someone calls
   // IsLastFrame(), which requires us to get the next frame, while
-  // they're stil processing this frame.
+  // they're still processing this frame.
   bool have_last_frame = (feat_matrix_.NumRows() != 0);
   Vector<BaseFloat> last_frame;
   if (have_last_frame)

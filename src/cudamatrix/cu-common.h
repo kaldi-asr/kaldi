@@ -43,6 +43,14 @@
   } \
 }
 
+#define CUFFT_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != CUFFT_SUCCESS) { \
+    KALDI_ERR << "cublasResult " << ret << " returned from '" << #fun << "'"; \
+  } \
+}
+
 #define CUBLAS_SAFE_CALL(fun) \
 { \
   int32 ret; \
@@ -50,6 +58,15 @@
     KALDI_ERR << "cublasStatus_t " << ret << " : \"" << cublasGetStatusString((cublasStatus_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
 }
+
+#define CUSOLVER_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cusolverStatus_t " << ret << " : \"" << ret << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
 
 #define CUSPARSE_SAFE_CALL(fun) \
 { \

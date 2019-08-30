@@ -269,8 +269,7 @@ def validate_minibatch_size_str(minibatch_size_str):
                 return False
         # check that the thing before the '=' sign is a positive integer
         try:
-            i = b[0]
-            if i <= 0:
+            if int(b[0]) <= 0:
                 return False
         except:
             return False  # not an integer at all.
@@ -321,7 +320,8 @@ def halve_minibatch_size_str(minibatch_size_str):
 
 def copy_egs_properties_to_exp_dir(egs_dir, dir):
     try:
-        for file in ['cmvn_opts', 'splice_opts', 'info/final.ie.id', 'final.mat']:
+        for file in ['cmvn_opts', 'splice_opts', 'info/final.ie.id', 'final.mat',
+                     'global_cmvn.stats', 'online_cmvn']:
             file_name = '{dir}/{file}'.format(dir=egs_dir, file=file)
             if os.path.isfile(file_name):
                 shutil.copy(file_name, dir)
@@ -602,6 +602,16 @@ def get_model_combine_iters(num_iters, num_epochs,
     return models_to_combine
 
 
+def get_current_num_jobs(it, num_it, start, step, end):
+    "Get number of jobs for iteration number 'it' of range('num_it')"
+
+    ideal = float(start) + (end - start) * float(it) / num_it
+    if ideal < step:
+        return int(0.5 + ideal)
+    else:
+        return int(0.5 + ideal / step) * step
+
+
 def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
                       num_archives_to_process,
                       initial_effective_lrate, final_effective_lrate):
@@ -682,13 +692,11 @@ def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
         os.remove(file_name)
 
 
-def self_test():
-    assert halve_minibatch_size_str('64') == '32'
-    assert halve_minibatch_size_str('64,16:32') == '32,8:16'
-    assert halve_minibatch_size_str('1') == '1'
-    assert halve_minibatch_size_str('128=64/256=40,80:100') == '128=32/256=20,40:50'
-    assert validate_chunk_width('64')
-    assert validate_chunk_width('64,25,128')
+def positive_int(arg):
+   val = int(arg)
+   if (val <= 0):
+      raise argparse.ArgumentTypeError("must be positive int: '%s'" % arg)
+   return val
 
 
 class CommonParser(object):
@@ -845,6 +853,10 @@ class CommonParser(object):
                                  type=int, dest='num_jobs_final', default=8,
                                  help="Number of neural net jobs to run in "
                                  "parallel at the end of training")
+        self.parser.add_argument("--trainer.optimization.num-jobs-step",
+            type=positive_int,  metavar='N', dest='num_jobs_step', default=1,
+            help="""Number of jobs increment, when exceeds this number. For
+            example, if N=3, the number of jobs may progress as 1, 2, 3, 6, 9...""")
         self.parser.add_argument("--trainer.optimization.max-models-combine",
                                  "--trainer.max-models-combine",
                                  type=int, dest='max_models_combine',
@@ -983,5 +995,43 @@ class CommonParser(object):
                                  then only failure notifications are sent""")
 
 
+import unittest
+
+class SelfTest(unittest.TestCase):
+
+    def test_halve_minibatch_size_str(self):
+        self.assertEqual('32', halve_minibatch_size_str('64'))
+        self.assertEqual('32,8:16', halve_minibatch_size_str('64,16:32'))
+        self.assertEqual('1', halve_minibatch_size_str('1'))
+        self.assertEqual('128=32/256=20,40:50', halve_minibatch_size_str('128=64/256=40,80:100'))
+
+
+    def test_validate_chunk_width(self):
+        for s in [ '64', '64,25,128' ]:
+            self.assertTrue(validate_chunk_width(s), s)
+
+
+    def test_validate_minibatch_size_str(self):
+        # Good descriptors.
+        for s in [ '32', '32,64', '1:32', '1:32,64', '64,1:32', '1:5,10:15',
+                   '128=64:128/256=32,64', '1=2/3=4', '1=1/2=2/3=3/4=4' ]:
+            self.assertTrue(validate_minibatch_size_str(s), s)
+        # Bad descriptors.
+        for s in [ None, 42, (43,), '', '1:', ':2', '3,', ',4', '5:6,', ',7:8',
+                   '9=', '10=10/', '11=11/11', '12=1:2//13=1:3' '14=/15=15',
+                   '16/17=17', '/18=18', '/18', '//19', '/' ]:
+            self.assertFalse(validate_minibatch_size_str(s), s)
+
+
+    def test_get_current_num_jobs(self):
+        niters = 12
+        self.assertEqual([2, 3, 3, 4, 4, 5, 6, 6, 7, 7, 8, 8],
+                         [get_current_num_jobs(i, niters, 2, 1, 9)
+                              for i in range(niters)])
+        self.assertEqual([2, 3, 3, 3, 3, 6, 6, 6, 6, 6, 9, 9],
+                         [get_current_num_jobs(i, niters, 2, 3, 9)
+                              for i in range(niters)])
+
+
 if __name__ == '__main__':
-    _self_test()
+    unittest.main()

@@ -262,7 +262,7 @@ void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs) {
 // Durbin's recursion - converts autocorrelation coefficients to the LPC
 // pTmp - temporal place [n]
 // pAC - autocorrelation coefficients [n + 1]
-// pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
+// pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i-1] * s[n-i]}})
 //       F(z) = 1 / (1 - A(z)), 1 is not stored in the demoninator
 BaseFloat Durbin(int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp) {
   BaseFloat ki;                // reflection coefficient
