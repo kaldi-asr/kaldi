@@ -196,7 +196,7 @@ fi
 
 # Train a chain model
 if [ $stage -le 9 ]; then
-  local/chain/run_tdnn.sh --stage 0
+  local/chain/run_tdnn.sh
 fi
 
 # local/grammar/simple_demo.sh

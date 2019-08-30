@@ -85,7 +85,8 @@ config_to_layer = {
         'scale-component':  xlayers.XconfigPerElementScaleComponent,
         'dim-range-component': xlayers.XconfigDimRangeComponent,
         'offset-component':  xlayers.XconfigPerElementOffsetComponent,
-        'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer
+        'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer,
+        'delta-layer': xlayers.XconfigDeltaLayer
 }
 
 # Turn a config line and a list of previous layers into

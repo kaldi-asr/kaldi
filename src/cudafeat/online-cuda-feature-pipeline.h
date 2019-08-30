@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "base/kaldi-error.h"
-#include "cudafeat/feature-mfcc-cuda.h"
+#include "cudafeat/feature-spectral-cuda.h"
 #include "cudafeat/online-ivector-feature-cuda.h"
 #include "matrix/matrix-lib.h"
 #include "online2/online-nnet2-feature-pipeline.h"
@@ -47,7 +47,7 @@ class OnlineCudaFeaturePipeline {
 
  private:
   OnlineNnet2FeaturePipelineInfo info_;
-  CudaMfcc *mfcc;
+  CudaSpectralFeatures *spectral_feat;
   IvectorExtractorFastCuda *ivector;
 };
 }  // namespace kaldi

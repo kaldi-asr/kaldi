@@ -29,7 +29,7 @@ fi
 if [ $stage -le 0 ]; then
   echo "$0: processing lexicon text and creating lexicon... $(date)."
   # remove vowels and  rare alef wasla
-  grep -v [0-9] data/local/lexicon_data/grapheme_lexicon |  sed -e 's:[FNKaui\~o\`]::g' -e 's:{:}:g' | sort -u > data/local/lexicon_data/processed_lexicon
+  grep -v "[0-9]" data/local/lexicon_data/grapheme_lexicon |  sed -e 's:[FNKaui\~o\`]::g' -e 's:{:}:g' | sort -u > data/local/lexicon_data/processed_lexicon
   local/prepare_lexicon.py
 fi
 
@@ -48,7 +48,7 @@ glossaries="<UNK> <sil>"
 if [ $stage -le 0 ]; then
   echo "$0: making subword lexicon... $(date)."
   # get pair_code file
-  cut -d ' ' -f2- data/train/text | sed 's/<[^>]*>//g' | utils/lang/bpe/learn_bpe.py -s $num_merges > data/local/pair_code.txt
+  cut -d ' ' -f2- data/train/text | sed 's/<sil>//g;s/<UNK>//g' | utils/lang/bpe/learn_bpe.py -s $num_merges > data/local/pair_code.txt
   mv $dir/lexicon.txt $dir/lexicon_word.txt
   # get words
   cut -d ' ' -f1 $dir/lexicon_word.txt > $dir/words.txt

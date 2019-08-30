@@ -134,12 +134,6 @@ void UnitTestClassifyWspecifier() {
   }
 
   {
-    std::string a = " t,ark:boo";
-    WspecifierType ans = ClassifyWspecifier(a, NULL, NULL, NULL);
-    KALDI_ASSERT(ans == kNoWspecifier);
-  }
-
-  {
     std::string a = " t,ark:boo";  // leading space not allowed.
     WspecifierType ans = ClassifyWspecifier(a, NULL, NULL, NULL);
     KALDI_ASSERT(ans == kNoWspecifier);

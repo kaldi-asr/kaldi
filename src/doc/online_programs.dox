@@ -77,7 +77,7 @@ and even (because of 16-bit sampling). The last packet of size 0 is treated as t
 \subsection results Recognition Results
 
  There are two types of packets sent by the server. Time-aligned results and partial results. Partial results are sent as fast as the decoder recognizes each word and time-alignment is performed
-every time the decoder recognizes the end of an utterance (which may or may not correspond to silences and/or sentance boundaries).
+every time the decoder recognizes the end of an utterance (which may or may not correspond to silences and/or sentence boundaries).
 
  Each partial result packet is prepended by the characters "PARTIAL:" follwed by exactly one word. Each word is sent in a different partial packet.
 
@@ -200,7 +200,7 @@ Element Properties:
                         flags: readable, writable
                         String. Default: "HCLG.fst"
 [..]
-  min-cmn-window      : Minumum CMN window used at start of decoding (adds latency only at start)
+  min-cmn-window      : Minimum CMN window used at start of decoding (adds latency only at start)
                         flags: readable, writable
                         Integer. Range: -2147483648 - 2147483647 Default: 100 
 
@@ -230,7 +230,7 @@ Note that the audio stream is segmented on the fly, with "<#s>" denoting silence
 You can easily try live decoding of microphone input by replacing `filesrc location=test1.wav` with `pulsesrc` (given that
 your OS uses the PulseAudio framework).
 
-An example stript that uses the plugin via the command-line to process a buch of audio files is located in `egs/voxforge/gst_demo/run-simulated.sh`.
+An example script that uses the plugin via the command-line to process a buch of audio files is located in `egs/voxforge/gst_demo/run-simulated.sh`.
 
 \subsection usage_gst Usage through GStreamer bindings
 
@@ -264,7 +264,7 @@ produce some new recognized words).
 
 \subsection code_structure Overview of the online decoders' code
 
-The main components used in the implemention of the online decoders are as follows:
+The main components used in the implementation of the online decoders are as follows:
     - \ref OnlineAudioSource - represents a source of raw audio samples. There are different 
       implementations of this "interface", that can for example acquire samples from microphone
       (e.g. \ref OnlinePaSource, using PortAudio), or read them from existing \ref Vector

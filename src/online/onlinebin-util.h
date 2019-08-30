@@ -28,13 +28,13 @@
 
 // This file hosts the declarations of various auxiliary functions, used by
 // the binaries in "onlinebin" directory. These functions are not part of the
-// core online decoding infrastructure, but rather artefacts of the particular
+// core online decoding infrastructure, but rather artifacts of the particular
 // implementation of the binaries.
 
 namespace kaldi {
 
 // Reads a decoding graph from a file
-fst::Fst<fst::StdArc> *ReadDecodeGraph(std::string filename);
+fst::Fst<fst::StdArc> *ReadDecodeGraph(const std::string& filename);
 
 // Prints a string corresponding to (a possibly partial) decode result as
 // and adds a "new line" character if "line_break" argument is true

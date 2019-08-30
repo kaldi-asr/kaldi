@@ -45,8 +45,12 @@ class IvectorExtractorFastCuda {
     Read(config);
     cu_lda_.Resize(info_.lda_mat.NumRows(), info_.lda_mat.NumCols());
     cu_lda_.CopyFromMat(info_.lda_mat);
+    d_info_ = static_cast<int *>(CuDevice::Instantiate().Malloc(sizeof(int)));
   }
-  ~IvectorExtractorFastCuda() {}
+  ~IvectorExtractorFastCuda() {
+    KALDI_ASSERT(d_info_);
+    CuDevice::Instantiate().Free(d_info_);
+  }
 
   // This function goes directly from features to an i-vector
   // which makes the computation easier to port to GPU
@@ -117,6 +121,9 @@ class IvectorExtractorFastCuda {
   int b_;
   CuVector<BaseFloat> tot_post_;
   float prior_offset_;
+
+  // Buffer used by cusolver
+  int *d_info_;
 };
 }  // namespace kaldi
 

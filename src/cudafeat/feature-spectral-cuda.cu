@@ -1,4 +1,4 @@
-// cudafeature/feature-mfcc-cuda.cu
+// cudafeature/feature-spectral-cuda.cu
 //
 // Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 // Justin Luitjens
@@ -20,7 +20,7 @@
 #include <cub/cub.cuh>
 #endif
 
-#include "cudafeat/feature-mfcc-cuda.h"
+#include "cudafeat/feature-spectral-cuda.h"
 #include "cudamatrix/cu-rand.h"
 
 // Each thread block processes a unique frame
@@ -60,7 +60,8 @@ __global__ void apply_lifter_and_floor_energy(
 // Threads in the same block compute the row collaboratively.
 // This kernel must be called out of place (A_in!=A_out).
 __global__ void power_spectrum_kernel(int row_length, float *A_in, int32_t ldi,
-                                      float *A_out, int32_t ldo) {
+                                      float *A_out, int32_t ldo,
+                                      bool use_power) {
   int thread_id = threadIdx.x;
   int block_id = blockIdx.x;
   float *Ar = A_in + block_id * ldi;
@@ -73,7 +74,11 @@ __global__ void power_spectrum_kernel(int row_length, float *A_in, int32_t ldi,
 
     float2 val = reinterpret_cast<float2 *>(Ar)[idx];
     float ret = val.x * val.x + val.y * val.y;
-    Aw[idx] = ret;
+    if (use_power) {
+      Aw[idx] = ret;
+    } else {
+      Aw[idx] = sqrtf(ret);
+    }
   }
 
   // handle special case
@@ -84,17 +89,23 @@ __global__ void power_spectrum_kernel(int row_length, float *A_in, int32_t ldi,
     // internal implementation
     float im = Ar[row_length];
 
-    Aw[0] = real * real;
-    Aw[half_length] = im * im;
+    if (use_power) {
+      Aw[0] = real * real;
+      Aw[half_length] = im * im;
+    } else {
+      Aw[0] = fabs(real);
+      Aw[half_length] = fabs(im);
+    }
   }
 }
 
 // Expects to be called with 32x8 sized thread block.
+// LDB: Adding use_log flag
 __global__ void mel_banks_compute_kernel(int32_t num_frames, float energy_floor,
                                          int32 *offsets, int32 *sizes,
                                          float **vecs, const float *feats,
-                                         int32_t ldf, float *mels,
-                                         int32_t ldm) {
+                                         int32_t ldf, float *mels, int32_t ldm,
+                                         bool use_log) {
   // Specialize WarpReduce for type float
   typedef cub::WarpReduce<float> WarpReduce;
   // Allocate WarpReduce shared memory for 8 warps
@@ -125,10 +136,14 @@ __global__ void mel_banks_compute_kernel(int32_t num_frames, float energy_floor,
   // Sum in cub
   sum = WarpReduce(temp_storage[wid]).Sum(sum);
   if (tid == 0) {
-    // avoid log of zero
-    if (sum < energy_floor) sum = energy_floor;
-    float val = logf(sum);
-    mels[frame * ldm + bin] = val;
+    if (use_log) {
+      // avoid log of zero
+      if (sum < energy_floor) sum = energy_floor;
+      float val = logf(sum);
+      mels[frame * ldm + bin] = val;
+    } else {
+      mels[frame * ldm + bin] = sum;
+    }
   }
 }
 
@@ -341,11 +356,11 @@ __global__ void dot_log_kernel(int32_t num_frames, int32_t frame_length,
 
 namespace kaldi {
 
-CudaMfcc::CudaMfcc(const MfccOptions &opts)
-    : MfccComputer(opts),
+CudaSpectralFeatures::CudaSpectralFeatures(const CudaSpectralFeatureOptions &opts)
+    : MfccComputer(opts.mfcc_opts),
       cu_lifter_coeffs_(lifter_coeffs_),
       cu_dct_matrix_(dct_matrix_),
-      window_function_(opts.frame_opts) {
+      window_function_(opts.mfcc_opts.frame_opts) {
   const MelBanks *mel_banks = GetMelBanks(1.0);
   const std::vector<std::pair<int32, Vector<BaseFloat>>> &bins =
       mel_banks->GetBins();
@@ -376,8 +391,8 @@ CudaMfcc::CudaMfcc(const MfccOptions &opts)
                                cudaMemcpyHostToDevice, cudaStreamPerThread));
   CU_SAFE_CALL(cudaStreamSynchronize(cudaStreamPerThread));
 
-  frame_length_ = opts.frame_opts.WindowSize();
-  padded_length_ = opts.frame_opts.PaddedWindowSize();
+  frame_length_ = opts.mfcc_opts.frame_opts.WindowSize();
+  padded_length_ = opts.mfcc_opts.frame_opts.PaddedWindowSize();
   fft_length_ = padded_length_ / 2;  // + 1;
   fft_size_ = 800;
 
@@ -395,12 +410,13 @@ CudaMfcc::CudaMfcc(const MfccOptions &opts)
   cufftPlanMany(&plan_, 1, &padded_length_, NULL, 1, stride_, NULL, 1,
                 tmp_stride_ / 2, CUFFT_R2C, fft_size_);
   cufftSetStream(plan_, cudaStreamPerThread);
+  cumfcc_opts_ = opts;
 }
 
 // ExtractWindow extracts a windowed frame of waveform with a power-of-two,
 // padded size.  It does mean subtraction, pre-emphasis and dithering as
 // requested.
-void CudaMfcc::ExtractWindows(int32_t num_frames, int64 sample_offset,
+void CudaSpectralFeatures::ExtractWindows(int32_t num_frames, int64 sample_offset,
                               const CuVectorBase<BaseFloat> &wave,
                               const FrameExtractionOptions &opts) {
   KALDI_ASSERT(sample_offset >= 0 && wave.Dim() != 0);
@@ -415,7 +431,7 @@ void CudaMfcc::ExtractWindows(int32_t num_frames, int64 sample_offset,
   CU_SAFE_CALL(cudaGetLastError());
 }
 
-void CudaMfcc::ProcessWindows(int num_frames,
+void CudaSpectralFeatures::ProcessWindows(int num_frames,
                               const FrameExtractionOptions &opts,
                               CuVectorBase<BaseFloat> *log_energy_pre_window) {
   if (num_frames == 0) return;
@@ -433,15 +449,16 @@ void CudaMfcc::ProcessWindows(int num_frames,
   CU_SAFE_CALL(cudaGetLastError());
 }
 
-void CudaMfcc::ComputeFinalFeatures(int num_frames, BaseFloat vtln_wrap,
+void CudaSpectralFeatures::ComputeFinalFeatures(int num_frames, BaseFloat vtln_wrap,
                                     CuVector<BaseFloat> *cu_signal_log_energy,
                                     CuMatrix<BaseFloat> *cu_features) {
+  MfccOptions mfcc_opts = cumfcc_opts_.mfcc_opts;
   Vector<float> tmp;
-  assert(opts_.htk_compat == false);
+  assert(mfcc_opts.htk_compat == false);
 
   if (num_frames == 0) return;
 
-  if (opts_.use_energy && !opts_.raw_energy) {
+  if (mfcc_opts.use_energy && !mfcc_opts.raw_energy) {
     dot_log_kernel<<<num_frames, CU1DBLOCK>>>(
         num_frames, cu_windows_.NumCols(), cu_windows_.Data(),
         cu_windows_.Stride(), cu_signal_log_energy->Data());
@@ -465,7 +482,7 @@ void CudaMfcc::ComputeFinalFeatures(int num_frames, BaseFloat vtln_wrap,
 
   power_spectrum_kernel<<<num_frames, CU1DBLOCK>>>(
       padded_length_, tmp_window_.Data(), tmp_window_.Stride(),
-      power_spectrum.Data(), power_spectrum.Stride());
+      power_spectrum.Data(), power_spectrum.Stride(), cumfcc_opts_.use_power);
   CU_SAFE_CALL(cudaGetLastError());
 
   // mel banks
@@ -476,24 +493,32 @@ void CudaMfcc::ComputeFinalFeatures(int num_frames, BaseFloat vtln_wrap,
   mel_banks_compute_kernel<<<mel_blocks, mel_threads>>>(
       num_frames, std::numeric_limits<float>::epsilon(), offsets_, sizes_,
       vecs_, power_spectrum.Data(), power_spectrum.Stride(),
-      cu_mel_energies_.Data(), cu_mel_energies_.Stride());
+      cu_mel_energies_.Data(), cu_mel_energies_.Stride(),
+      cumfcc_opts_.use_log_fbank);
   CU_SAFE_CALL(cudaGetLastError());
 
   // dct transform
-  cu_features->AddMatMat(1.0, cu_mel_energies_, kNoTrans, cu_dct_matrix_,
-                         kTrans, 0.0);
+  if (cumfcc_opts_.use_dct) {
+     cu_features->AddMatMat(1.0, cu_mel_energies_, kNoTrans, cu_dct_matrix_,
+                            kTrans, 0.0);
 
-  apply_lifter_and_floor_energy<<<num_frames, CU1DBLOCK>>>(
-      cu_features->NumRows(), cu_features->NumCols(), opts_.cepstral_lifter,
-      opts_.use_energy, opts_.energy_floor, cu_signal_log_energy->Data(),
-      cu_lifter_coeffs_.Data(), cu_features->Data(), cu_features->Stride());
+     apply_lifter_and_floor_energy<<<num_frames, CU1DBLOCK>>>(
+         cu_features->NumRows(), cu_features->NumCols(), 
+	 mfcc_opts.cepstral_lifter, mfcc_opts.use_energy, 
+	 mfcc_opts.energy_floor, cu_signal_log_energy->Data(),
+         cu_lifter_coeffs_.Data(), cu_features->Data(), cu_features->Stride());
+  } else {
+    cudaMemcpyAsync(cu_features->Data(), cu_mel_energies_.Data(),
+               sizeof(BaseFloat) * num_frames * cu_features->Stride(),
+               cudaMemcpyDeviceToDevice, cudaStreamPerThread);
+  }
   CU_SAFE_CALL(cudaGetLastError());
 }
 
-void CudaMfcc::ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
+void CudaSpectralFeatures::ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
                                BaseFloat sample_freq, BaseFloat vtln_warp,
                                CuMatrix<BaseFloat> *cu_features) {
-  nvtxRangePushA("CudaMfcc::ComputeFeatures");
+  nvtxRangePushA("CudaSpectralFeatures::ComputeFeatures");
   const FrameExtractionOptions &frame_opts = GetFrameOptions();
   int num_frames = NumFrames(cu_wave.Dim(), frame_opts, true);
   // compute fft frames by rounding up to a multiple of fft_size_
@@ -533,7 +558,7 @@ void CudaMfcc::ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
 
   nvtxRangePop();
 }
-CudaMfcc::~CudaMfcc() {
+CudaSpectralFeatures::~CudaSpectralFeatures() {
   delete[] cu_vecs_;
   CuDevice::Instantiate().Free(vecs_);
   CuDevice::Instantiate().Free(offsets_);

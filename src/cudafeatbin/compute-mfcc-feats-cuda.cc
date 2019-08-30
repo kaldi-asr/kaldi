@@ -18,7 +18,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "cudafeat/feature-mfcc-cuda.h"
+#include "cudafeat/feature-spectral-cuda.h"
 #include "feat/wave-reader.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
     std::string output_wspecifier = po.GetArg(2);
 
-    CudaMfcc mfcc(mfcc_opts);
+    CudaSpectralFeatures mfcc(mfcc_opts);
 
     SequentialTableReader<WaveHolder> reader(wav_rspecifier);
     BaseFloatMatrixWriter kaldi_writer;  // typedef to TableWriter<something>.
@@ -145,7 +145,8 @@ int main(int argc, char *argv[]) {
       try {
         CuVector<BaseFloat> cu_waveform(waveform);
         CuMatrix<BaseFloat> cu_features;
-        mfcc.ComputeFeatures(cu_waveform, wave_data.SampFreq(), vtln_warp_local, &cu_features);
+        mfcc.ComputeFeatures(cu_waveform, wave_data.SampFreq(), vtln_warp_local,
+                             &cu_features);
         features.Resize(cu_features.NumRows(), cu_features.NumCols());
         features.CopyFromMat(cu_features);
       } catch (...) {

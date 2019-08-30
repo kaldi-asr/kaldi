@@ -7,7 +7,7 @@
 # Usage: make_voxceleb1_v2.pl /export/voxceleb1 dev data/dev
 #
 # The VoxCeleb1 corpus underwent several updates that changed the directory and speaker ID format.
-# The script 'make_voxceleb1.pl' works for the oldest version of the corpus. 
+# The script 'make_voxceleb1.pl' works for the oldest version of the corpus.
 # This script should be used if you've downloaded the corpus recently.
 
 if (@ARGV != 3) {
@@ -40,11 +40,11 @@ if ($dataset eq "dev"){
     my @rec_dirs = grep {-d "$data_base/$dataset/wav/$spkr_id/$_" && ! /^\.{1,2}$/} readdir($dh);
     closedir $dh;
     foreach (@rec_dirs) {
-	  my $rec_id = $_;
-	  opendir my $dh, "$data_base/$dataset/wav/$spkr_id/$rec_id/" or die "Cannot open directory: $!";
-	  my @files = map{s/\.[^.]+$//;$_}grep {/\.wav$/} readdir($dh);
-	  closedir $dh;
-  	  foreach (@files) {
+      my $rec_id = $_;
+      opendir my $dh, "$data_base/$dataset/wav/$spkr_id/$rec_id/" or die "Cannot open directory: $!";
+      my @files = map{s/\.[^.]+$//;$_}grep {/\.wav$/} readdir($dh);
+      closedir $dh;
+      foreach (@files) {
         my $name = $_;
         my $wav = "$data_base/$dataset/wav/$spkr_id/$rec_id/$name.wav";
         my $utt_id = "$spkr_id-$rec_id-$name";
@@ -73,11 +73,13 @@ if ($dataset eq "test"){
     my ($tar_or_non, $path1, $path2) = split;
     # Create entry for left-hand side of trial
     my ($spkr_id, $rec_id, $name) = split('/', $path1);
+    $name =~ s/\.wav$//g;
     my $utt_id1 = "$spkr_id-$rec_id-$name";
     $test_spkrs{$spkr_id} = ();
 
     # Create entry for right-hand side of trial
     my ($spkr_id, $rec_id, $name) = split('/', $path2);
+    $name =~ s/\.wav$//g;
     my $utt_id2 = "$spkr_id-$rec_id-$name";
     $test_spkrs{$spkr_id} = ();
 
@@ -94,11 +96,11 @@ if ($dataset eq "test"){
     my @rec_dirs = grep {-d "$data_base/$dataset/wav/$spkr_id/$_" && ! /^\.{1,2}$/} readdir($dh);
     closedir $dh;
     foreach (@rec_dirs) {
-	  my $rec_id = $_;
-	  opendir my $dh, "$data_base/$dataset/wav/$spkr_id/$rec_id/" or die "Cannot open directory: $!";
-	  my @files = map{s/\.[^.]+$//;$_}grep {/\.wav$/} readdir($dh);
-	  closedir $dh;
-  	  foreach (@files) {
+      my $rec_id = $_;
+      opendir my $dh, "$data_base/$dataset/wav/$spkr_id/$rec_id/" or die "Cannot open directory: $!";
+      my @files = map{s/\.[^.]+$//;$_}grep {/\.wav$/} readdir($dh);
+      closedir $dh;
+      foreach (@files) {
         my $name = $_;
         my $wav = "$data_base/$dataset/wav/$spkr_id/$rec_id/$name.wav";
         my $utt_id = "$spkr_id-$rec_id-$name";

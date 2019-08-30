@@ -76,7 +76,7 @@ class FasterDecoder {
   void Decode(DecodableInterface *decodable);
 
   /// Returns true if a final state was active on the last frame.
-  bool ReachedFinal();
+  bool ReachedFinal() const;
 
   /// GetBestPath gets the decoding traceback. If "use_final_probs" is true
   /// AND we reached a final state, it limits itself to final states;

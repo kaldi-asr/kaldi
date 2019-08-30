@@ -121,7 +121,7 @@ struct OnlineNnet2FeaturePipelineConfig {
 /// line; instead, it is initialized from class OnlineNnet2FeaturePipelineConfig
 /// which reads the options from the command line.  The reason for structuring
 /// it this way is to make it easier to configure from code as well as from the
-/// command line, as well as for easiter multithreaded operation.
+/// command line, as well as for easier multithreaded operation.
 struct OnlineNnet2FeaturePipelineInfo {
   OnlineNnet2FeaturePipelineInfo():
       feature_type("mfcc"), add_pitch(false) { }
@@ -207,8 +207,7 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   /// ideally just after calling AcceptWaveform(), or never call it for the
   /// lifetime of this object.
   void UpdateFrameWeights(
-      const std::vector<std::pair<int32, BaseFloat> > &delta_weights,
-      int32 frame_offset = 0);
+      const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
 
   /// Set the adaptation state to a particular value, e.g. reflecting previous
   /// utterances of the same speaker; this will generally be called after
