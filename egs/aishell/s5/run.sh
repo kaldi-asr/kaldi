@@ -137,7 +137,7 @@ steps/align_fmllr.sh --cmd "$train_cmd" --nj 10 \
 local/nnet3/run_tdnn.sh
 
 # chain
-local/chain/run_tdnn.sh
+local/chain/run_tdnn.sh --stage 7
 
 # getting results (see RESULTS file)
 for x in exp/*/decode_test; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null
