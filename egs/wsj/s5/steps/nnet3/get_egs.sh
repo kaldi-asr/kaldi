@@ -54,7 +54,7 @@ cmvn_opts=  # can be used for specifying CMVN options, if feature type is not ld
 online_cmvn=false # Set to 'true' to replace 'apply-cmvn' by 'apply-cmvn-online' in the nnet3 input.
                   # The configuration is passed externally via '$cmvn_opts' given to train.py,
                   # typically as: --cmvn-opts="--config conf/online_cmvn.conf".
-                  # The global_cmvn.stats are computed by this script from the featutres.
+                  # The global_cmvn.stats are computed by this script from the features.
                   # Note: the online cmvn for ivector extractor it is controlled separately in
                   #       steps/online/nnet2/train_ivector_extractor.sh by --online-cmvn-iextractor
 
@@ -171,9 +171,9 @@ else
   # the alternative front-end with 'apply-cmvn-online',
   # - the $cmvn_opts can be set to '--config=conf/online_cmvn.conf' which is the setup of ivector-extractor,
   echo "$0: feature type is raw, with 'apply-cmvn-online'"
-  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn-online $cmvn_opts $dir/global_cmvn.stats scp:- ark:- |"
-  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts $dir/global_cmvn.stats scp:- ark:- |"
-  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts $dir/global_cmvn.stats scp:- ark:- |"
+  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$sdata/JOB/spk2utt  $dir/global_cmvn.stats scp:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
 fi
 echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
 

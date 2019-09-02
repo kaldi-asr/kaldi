@@ -60,7 +60,7 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=false  # if true, it will run the last decoding stage.
+test_online_decoding=true  # if true, it will run the last decoding stage.
 
 
 # End configuration section.
@@ -284,6 +284,7 @@ if $test_online_decoding && [ $stage -le 17 ]; then
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
     --mfcc-config conf/mfcc_hires.conf \
+    --online-cmvn-config conf/online_cmvn.conf \
     $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
@@ -299,7 +300,7 @@ if $test_online_decoding && [ $stage -le 17 ]; then
         $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_test_{tgsmall,tglarge} \
-       data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
+        data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait
