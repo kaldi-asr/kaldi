@@ -156,6 +156,8 @@ if $online_cmvn; then
     exit 1
   fi
   touch $dir/online_cmvn
+else
+  [ -f $dir/online_cmvn ] && rm $dir/online_cmvn
 fi
 
 # create the feature pipelines,
