@@ -302,6 +302,8 @@ class XconfigAttentionLayer(XconfigLayerBase):
 #   max-change=0.75    [maximum change per iteration, per component]
 #   l2-regularize=0.0  [l2 regularization constant for linear and affine components.]
 #
+#  use-relu=False      [If true, add relu]
+#
 #   Documentation for the rest of the parameters (related to the
 #   attention component) can be found in nnet-attention-component.h
 
@@ -335,7 +337,8 @@ class XconfigAttentionBlock(XconfigLayerBase):
                         'output-context': True,
                         'target-rms': 1.0,
                         'key-scale': 0.0,
-                        'bypass-scale': 0.66 }
+                        'bypass-scale': 0.66,
+                        'use-relu': False}
 
 
     def check_configs(self):
@@ -447,18 +450,13 @@ class XconfigAttentionBlock(XconfigLayerBase):
         configs.append(line)
 
 
-        # Batch-norm component
-        if True:
-            line = ('component name={0}.layernorm1 type=NormalizeComponent dim={1} '
-                    ' '.format(self.name, attention_input_dim))
-            configs.append(line)
-            line = ('component-node name={0}.layernorm1 component={0}.layernorm1 '
-                    'input={0}.affine1 '.format(self.name))
-            configs.append(line)
-            cur_name='layernorm1'
-        else:
-            cur_name='affine1'
-
+        line = ('component name={0}.layernorm1 type=NormalizeComponent dim={1} '
+                ' '.format(self.name, attention_input_dim))
+        configs.append(line)
+        line = ('component-node name={0}.layernorm1 component={0}.layernorm1 '
+                'input={0}.affine1 '.format(self.name))
+        configs.append(line)
+        cur_name='layernorm1'
 
         # The attention component
         line = ('component name={name}.attention type=RestrictedAttentionComponent '
@@ -501,11 +499,24 @@ class XconfigAttentionBlock(XconfigLayerBase):
                 'input={0}.linear2 '.format(self.name))
         configs.append(line)
 
+
+        if self.config['use-relu']:
+            line = ('component name={0}.relu type=RectifiedLinearComponent dim={1} '
+                    ''.format(self.name, output_dim))
+            configs.append(line)
+            line = ('component-node name={0}.relu component={0}.relu '
+                    'input={0}.linear3 '.format(self.name))
+            configs.append(line)
+            cur_name = 'relu'
+        else:
+            cur_name = 'linear3'
+
+
         line = ('component name={0}.layernorm2 type=NormalizeComponent dim={1} '
                 'target-rms={2} '.format(self.name, output_dim, target_rms))
         configs.append(line)
         line = ('component-node name={0}.layernorm2 component={0}.layernorm2 '
-                'input={0}.linear3 '.format(self.name))
+                'input={0}.{1} '.format(self.name, cur_name))
         configs.append(line)
 
 
