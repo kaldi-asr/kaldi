@@ -120,8 +120,7 @@ __global__ void mel_banks_compute_kernel(int32_t num_frames, float energy_floor,
 }
 
 __global__ void process_window_kernel(
-    int frame_length, bool remove_dc_offset,
-    const float *windowing, float *windows,
+    int frame_length, const float *windowing, float *windows,
     int32_t ldw) {
   // Specialize WarpReduce for type float
   typedef cub::BlockReduce<float, CU1DBLOCK> BlockReduce;
@@ -144,10 +143,6 @@ __global__ void process_window_kernel(
     wdot += wval * wval;
 
     float windowing_mul = 1;
-    if (remove_dc_offset == false) {
-      // we are done here so set windowing multiplication on write.
-      windowing_mul = windowing[idx];
-    }
     // write dithered output
     window[idx] = wval * windowing_mul;
   }
@@ -155,7 +150,7 @@ __global__ void process_window_kernel(
   // CAUTION (dp): when various configs were removed I tried to simplify this code
   // by removing things that weren't supported.  Its structure may not make sense
   // any more even if I did that correctly.
-  if (remove_dc_offset) {
+  { // This block comptes and applies the DC offset.
     // we will recompute this below
     wdot = 0.0f;
     // use cub to reduce
@@ -357,7 +352,7 @@ void CudaMfcc::ProcessWindows(int num_frames,
   KALDI_ASSERT(fft_num_frames % fft_size_ == 0);
 
   process_window_kernel<<<num_frames, CU1DBLOCK>>>(
-      frame_length_, opts.remove_dc_offset,
+      frame_length_,
       window_function_.Data(),
       cu_windows_.Data(), cu_windows_.Stride());
 

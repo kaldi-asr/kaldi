@@ -545,7 +545,7 @@ bool RestrictedAttentionComponent::IsComputable(
       } else {
         // This input index is not available.
         int32 offset = (t - output_index.t) / time_stride_;
-        if (offset >= num_left_inputs_required_ &&
+        if (offset >= -num_left_inputs_required_ &&
             offset <= num_right_inputs_required_) {
           used_inputs->clear();
           return false;
@@ -555,9 +555,9 @@ bool RestrictedAttentionComponent::IsComputable(
     // All required time-offsets of the output were computable. -> return true.
     return true;
   } else {
-    int32 t = output_index.t,
-        first_time_required = t - (time_stride_ * num_left_inputs_required_),
-        last_time_required = t + (time_stride_ * num_right_inputs_required_);
+    int32 output_t = output_index.t,
+        first_time_required = output_t - (time_stride_ * num_left_inputs_required_),
+        last_time_required = output_t + (time_stride_ * num_right_inputs_required_);
     for (int32 t = first_time_required;
          t <= last_time_required;
          t += time_stride_) {

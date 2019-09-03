@@ -101,8 +101,10 @@ void ProcessWindow(const FrameExtractionOptions &opts,
   int32 frame_length = opts.WindowSize();
   KALDI_ASSERT(window->Dim() == frame_length);
 
-  if (opts.remove_dc_offset)
-    window->Add(-window->Sum() / frame_length);
+
+  /*  This was formerly enabled by the --remove-dc-offset option.  Right now that
+      option is mandatory.  */
+  window->Add(-window->Sum() / frame_length);
 
   window->MulElements(window_function);
 }
@@ -160,6 +162,7 @@ void ExtractWindow(int64 sample_offset,
   SubVector<BaseFloat> frame(*window, 0, frame_length);
 
   ProcessWindow(opts, window_function, &frame);
+
 }
 
 }  // namespace kaldi

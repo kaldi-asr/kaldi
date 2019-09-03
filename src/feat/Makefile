@@ -4,7 +4,7 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = feature-mfcc-test feature-fbank-test \
+TESTFILES = feature-mfcc-test \
          feature-functions-test pitch-functions-test feature-sdc-test \
          resample-test online-feature-test signal-test wave-reader-test
 

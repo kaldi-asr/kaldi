@@ -96,7 +96,9 @@ namespace nnet3 {
                       if you set this, online (looped) decoding will not work
                       correctly.  It might be wiser just to reduce num-right-inputs
                       if you care about real-time decoding.
-     key-scale        Scale on the keys (but not the added context).  Defaults to 1.0 /
+     key-scale        Scale on the keys (but not the added context, by which we
+                      mean the encoding of the position of the input frame relative
+                      to the current frame).  Defaults to 1.0 /
                       sqrt(key-dim), like the 1/sqrt(d_k) value in the
                       "Attention is all you need" paper.  This helps prevent saturation
                       of the softmax.
@@ -169,8 +171,10 @@ class RestrictedAttentionComponent: public Component {
                                const Index &output_index,
                                std::vector<Index> *desired_indexes) const;
 
-  // This function returns true if at least one of the input indexes used to
-  // compute this output index is computable.
+  // This function returns true if all of the required input indexes used to
+  // compute the output were computable (depends on num_left_inputs_required_
+  // and num_right_inputs_required_).  If used_inputs is non-NULL it outputs to
+  // there all of the input indexes (required or not) that were available.
   virtual bool IsComputable(const MiscComputationInfo &misc_info,
                             const Index &output_index,
                             const IndexSet &input_index_set,

@@ -9,7 +9,6 @@ CC ?= gcc        # used for sph2pipe
 # e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
 OPENFST_VERSION ?= 1.6.7
 CUB_VERSION ?= 1.8.0
-OPENBLAS_VERSION ?= 0.3.5
 
 # Default features configured for OpenFST; can be overridden in the make command line.
 OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts
@@ -138,13 +137,7 @@ cub:
 	rm -f cub
 	ln -s cub-$(CUB_VERSION) cub
 
-# OpenBLAS is not compiled by default. Run 'make -j openblas' in this directory to build.
+# OpenBLAS is not compiled by default. Run 'make openblas' in this directory to build.
 .PHONY: openblas
 openblas:
-	@-rm -rf OpenBLAS xianyi-OpenBLAS-*
-	wget -t3 -nv -O- $$( \
-            wget -qO- 'https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v$(OPENBLAS_VERSION)' | \
-            python -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])') | \
-	  tar xzf -
-	mv xianyi-OpenBLAS-* OpenBLAS
-	$(MAKE) PREFIX=$$(pwd)/OpenBLAS/install USE_THREAD=0 -C OpenBLAS all install
+	extras/install_openblas.sh

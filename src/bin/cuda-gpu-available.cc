@@ -23,6 +23,7 @@
 #endif
 
 #include "base/kaldi-common.h"
+#include "util/parse-options.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-matrix.h"
 
@@ -50,8 +51,9 @@ int main(int argc, char *argv[]) try {
         "exit-code: 0 = success, 1 = compiled without GPU support, -1 = error\n"
         "\n"
         "Usage:  cuda-gpu-available\n";
-  // Remove unused variable warning
-  (void) usage;
+
+  ParseOptions po(usage);
+  po.Read(argc, argv);
 
   char hostname[100] = "UNKNOWN-HOSTNAME";
 #if !defined(_MSC_VER) && !defined(__CYGWIN__)

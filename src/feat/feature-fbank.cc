@@ -24,13 +24,9 @@
 namespace kaldi {
 
 FbankComputer::FbankComputer(const FbankOptions &opts):
-    opts_(opts), srfft_(NULL) {
+    opts_(opts),
+    srfft_(new SplitRadixRealFft<BaseFloat>(opts.frame_opts.PaddedWindowSize())) {
   KALDI_ASSERT(opts.energy_floor > 0.0 && "Nonzero energy floor is required.");
-
-  int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
-  if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
-    srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
-
   // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
   // [note: this call caches it.]
   GetMelBanks(1.0);
@@ -38,13 +34,12 @@ FbankComputer::FbankComputer(const FbankOptions &opts):
 
 FbankComputer::FbankComputer(const FbankComputer &other):
     opts_(other.opts_),
-    mel_banks_(other.mel_banks_), srfft_(NULL) {
+    mel_banks_(other.mel_banks_),
+    srfft_(new SplitRadixRealFft<BaseFloat>(*(other.srfft_))) {
   for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
       iter != mel_banks_.end();
       ++iter)
     iter->second = new MelBanks(*(iter->second));
-  if (other.srfft_)
-    srfft_ = new SplitRadixRealFft<BaseFloat>(*(other.srfft_));
 }
 
 FbankComputer::~FbankComputer() {
@@ -80,18 +75,24 @@ void FbankComputer::Compute(BaseFloat vtln_warp,
 
   BaseFloat signal_log_energy = 0.0;
   if (opts_.use_energy)
-    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
-                                                opts_.energy_floor));
+    signal_log_energy = Log(std::max<BaseFloat>(
+        VecVec(*signal_frame, *signal_frame),
+        opts_.energy_floor * opts_.frame_opts.WindowSize()));
 
-  if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
-    srfft_->Compute(signal_frame->Data(), true);
-  else  // An alternative algorithm that works for non-powers-of-two.
-    RealFft(signal_frame, true);
+  // Compute FFT using split-radix algorithm.
+  srfft_->Compute(signal_frame->Data(), true);
 
   // Convert the FFT into a power spectrum.
   ComputePowerSpectrum(signal_frame);
   SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
                                       signal_frame->Dim() / 2 + 1);
+
+  // The energy_floor has the scale for the energy of a single sample, and the
+  // FFT has a higher dynamic range (it's not the orthogonal FFT)... the sqrt
+  // expression is to correct for that.
+  BaseFloat floor = opts_.energy_floor *
+                    std::sqrt(BaseFloat(opts_.frame_opts.WindowSize()));
+  power_spectrum.ApplyFloor(floor);
 
   int32 mel_offset = (opts_.use_energy ? 1 : 0);
   SubVector<BaseFloat> mel_energies(*feature,
@@ -101,7 +102,6 @@ void FbankComputer::Compute(BaseFloat vtln_warp,
   // Sum with mel fiterbanks over the power spectrum
   mel_banks.Compute(power_spectrum, &mel_energies);
 
-  mel_energies.ApplyFloor(opts_.energy_floor);
   mel_energies.ApplyLog();  // take the log.
 
   // Copy energy as first value

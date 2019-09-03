@@ -3392,20 +3392,6 @@ template<typename Real> static void UnitTestTrace() {
 }
 
 
-template<typename Real> static void UnitTestComplexFt() {
-
-  // Make sure it inverts properly.
-  for (MatrixIndexT d = 0; d < 10; d++) {
-    MatrixIndexT N = Rand() % 100, twoN = 2*N;
-    Vector<Real> v(twoN), w(twoN), x(twoN);
-    v.SetRandn();
-    ComplexFt(v, &w, true);
-    ComplexFt(w, &x, false);
-    if (N>0) x.Scale(1.0/static_cast<Real>(N));
-    AssertEqual(v, x);
-  }
-}
-
 template<typename Real> static void UnitTestDct() {
 
   // Check that DCT matrix is orthogonal (i.e. M^T M = I);
@@ -3418,35 +3404,6 @@ template<typename Real> static void UnitTestDct() {
     KALDI_ASSERT(I.IsUnit());
   }
 
-}
-template<typename Real> static void UnitTestComplexFft() {
-
-  // Make sure it inverts properly.
-  for (MatrixIndexT N_ = 0; N_ < 100; N_+=3) {
-    MatrixIndexT N = N_;
-    if (N>=95) {
-      N = ( Rand() % 150);
-      N = N*N;  // big number.
-    }
-
-    MatrixIndexT twoN = 2*N;
-    Vector<Real> v(twoN), w_base(twoN), w_alg(twoN), x_base(twoN), x_alg(twoN);
-
-    v.SetRandn();
-
-    if (N< 100) ComplexFt(v, &w_base, true);
-    w_alg.CopyFromVec(v);
-    ComplexFft(&w_alg, true);
-    if (N< 100) AssertEqual(w_base, w_alg, 0.01*N);
-
-    if (N< 100) ComplexFt(w_base, &x_base, false);
-    x_alg.CopyFromVec(w_alg);
-    ComplexFft(&x_alg, false);
-
-    if (N< 100) AssertEqual(x_base, x_alg, 0.01*N);
-    x_alg.Scale(1.0/N);
-    AssertEqual(v, x_alg, 0.001*N);
-  }
 }
 
 
@@ -3461,11 +3418,10 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
     std::vector<Real> temp_buffer;
     SplitRadixComplexFft<Real> srfft(N), srfft2(srfft);
     for (MatrixIndexT p = 0; p < 3; p++) {
-      Vector<Real> v(twoN), w_base(twoN), w_alg(twoN), x_base(twoN), x_alg(twoN);
+      Vector<Real> v(twoN), w_alg(twoN), x_alg(twoN);
 
       v.SetRandn();
 
-      if (N< 100) ComplexFt(v, &w_base, true);
       w_alg.CopyFromVec(v);
 
       if (Rand() % 2 == 0)
@@ -3473,13 +3429,9 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
       else
         srfft2.Compute(w_alg.Data(), true, &temp_buffer);
 
-      if (N< 100) AssertEqual(w_base, w_alg, 0.01*N);
-
-      if (N< 100) ComplexFt(w_base, &x_base, false);
       x_alg.CopyFromVec(w_alg);
       srfft.Compute(x_alg.Data(), false);
 
-      if (N< 100) AssertEqual(x_base, x_alg, 0.01*N);
       x_alg.Scale(1.0/N);
       AssertEqual(v, x_alg, 0.001*N);
     }
@@ -3556,38 +3508,6 @@ template<typename Real> static void UnitTestAddVecToCols() {
   }
 }
 
-template<typename Real> static void UnitTestComplexFft2() {
-
-  // Make sure it inverts properly.
-  for (MatrixIndexT pos = 0; pos < 10; pos++) {
-    for (MatrixIndexT N_ = 2; N_ < 15; N_+=2) {
-      if ( pos < N_) {
-        MatrixIndexT N = N_;
-        Vector<Real> v(N), vorig(N), v2(N);
-        v(pos)  = 1.0;
-        vorig.CopyFromVec(v);
-        // KALDI_LOG << "Original v:\n" << v;
-        ComplexFft(&v, true);
-        // KALDI_LOG << "one fft:\n" << v;
-        ComplexFt(vorig, &v2, true);
-        // KALDI_LOG << "one fft[baseline]:\n" << v2;
-        if (!ApproxEqual(v, v2) ) {
-          ComplexFft(&vorig, true);
-          KALDI_ASSERT(0);
-        }
-        ComplexFft(&v, false);
-        // KALDI_LOG << "one more:\n" << v;
-        v.Scale(1.0/(N/2));
-        if (!ApproxEqual(v, vorig)) {
-          ComplexFft(&vorig, true);
-          KALDI_ASSERT(0);
-        }// AssertEqual(v, vorig);
-      }
-    }
-  }
-}
-
-
 template<typename Real> static void UnitTestSplitRadixComplexFft2() {
 
   // Make sure it inverts properly.
@@ -3608,34 +3528,6 @@ template<typename Real> static void UnitTestSplitRadixComplexFft2() {
 }
 
 
-template<typename Real> static void UnitTestRealFft() {
-
-  // First, test RealFftInefficient.
-  for (MatrixIndexT N_ = 2; N_ < 100; N_ += 6) {
-    MatrixIndexT N = N_;
-    if (N >90) N *= Rand() % 60;
-    Vector<Real> v(N), w(N), x(N), y(N);
-    v.SetRandn();
-    w.CopyFromVec(v);
-    RealFftInefficient(&w, true);
-    y.CopyFromVec(v);
-    RealFft(&y, true);  // test efficient one.
-    // KALDI_LOG <<"v = "<<v;
-    // KALDI_LOG << "Inefficient real fft of v is: "<< w;
-    // KALDI_LOG << "Efficient real fft of v is: "<< y;
-    AssertEqual(w, y, 0.01*N);
-    x.CopyFromVec(w);
-    RealFftInefficient(&x, false);
-    RealFft(&y, false);
-    // KALDI_LOG << "Inefficient real fft of v twice is: "<< x;
-    if (N != 0) x.Scale(1.0/N);
-    if (N != 0) y.Scale(1.0/N);
-    AssertEqual(v, x, 0.001*N);
-    AssertEqual(v, y, 0.001*N);  // ?
-  }
-}
-
-
 template<typename Real> static void UnitTestSplitRadixRealFft() {
 
   for (MatrixIndexT p = 0; p < 30; p++) {
@@ -3645,43 +3537,18 @@ template<typename Real> static void UnitTestSplitRadixRealFft() {
     SplitRadixRealFft<Real> srfft(N), srfft2(srfft);
     std::vector<Real> temp_buffer;
     for (MatrixIndexT q = 0; q < 3; q++) {
-      Vector<Real> v(N), w(N), x(N), y(N);
+      Vector<Real> v(N), y(N);
       v.SetRandn();
-      w.CopyFromVec(v);
-      RealFftInefficient(&w, true);
       y.CopyFromVec(v);
       if (Rand() % 2 == 0)
         srfft.Compute(y.Data(), true);
       else
         srfft2.Compute(y.Data(), true, &temp_buffer);
 
-      // KALDI_LOG <<"v = "<<v;
-      // KALDI_LOG << "Inefficient real fft of v is: "<< w;
-      // KALDI_LOG << "Efficient real fft of v is: "<< y;
-      AssertEqual(w, y, 0.01*N);
-      x.CopyFromVec(w);
-      RealFftInefficient(&x, false);
       srfft.Compute(y.Data(), false);
-      // KALDI_LOG << "Inefficient real fft of v twice is: "<< x;
-      x.Scale(1.0/N);
       y.Scale(1.0/N);
-      AssertEqual(v, x, 0.001*N);
-      AssertEqual(v, y, 0.001*N);  // ?
+      AssertEqual(v, y, 0.001*N);
     }
-  }
-}
-
-
-
-template<typename Real> static void UnitTestRealFftSpeed() {
-
-  // First, test RealFftInefficient.
-  KALDI_LOG << "starting. ";
-  MatrixIndexT sz = 512;  // fairly typical size.
-  for (MatrixIndexT i = 0; i < 3000; i++) {
-    if (i % 1000 == 0) KALDI_LOG << "done 1000 [ == ten seconds of speech]";
-    Vector<Real> v(sz);
-    RealFft(&v, true);
   }
 }
 
@@ -4614,14 +4481,10 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   // commenting these out for now-- they test the speed, but take a while.
   // UnitTestSplitRadixRealFftSpeed<Real>();
   // UnitTestRealFftSpeed<Real>();   // won't exit!/
-  UnitTestComplexFt<Real>();
   KALDI_LOG << " Point B";
-  UnitTestComplexFft2<Real>();
-  UnitTestComplexFft<Real>();
   UnitTestSplitRadixComplexFft<Real>();
   UnitTestSplitRadixComplexFft2<Real>();
   UnitTestDct<Real>();
-  UnitTestRealFft<Real>();
   KALDI_LOG << " Point C";
   UnitTestSplitRadixRealFft<Real>();
   UnitTestSvd<Real>();
