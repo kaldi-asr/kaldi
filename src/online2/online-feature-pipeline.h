@@ -54,7 +54,7 @@ struct OnlineFeaturePipelineCommandLineConfig {
   bool add_pitch;
   std::string pitch_config;
   std::string pitch_process_config;
-  std::string cmvn_config;
+  std::string feat_cmvn_config;
   std::string global_cmvn_stats_rxfilename;
   bool add_deltas;
   std::string delta_config;
@@ -82,7 +82,7 @@ struct OnlineFeaturePipelineCommandLineConfig {
     opts->Register("pitch-process-config", &pitch_process_config,
                    "Configuration file for post-processing pitch features "
                    "(e.g. conf/pitch_process.conf)");
-    opts->Register("cmvn-config", &cmvn_config, "Configuration class "
+    opts->Register("feat-cmvn-config", &feat_cmvn_config, "Configuration class "
                    "file for online CMVN features (e.g. conf/online_cmvn.conf)");
     opts->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
                    "(Extended) filename for global CMVN stats, e.g. obtained "

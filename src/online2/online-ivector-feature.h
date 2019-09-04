@@ -56,7 +56,7 @@ struct OnlineIvectorExtractionConfig {
   std::string global_cmvn_stats_rxfilename; // to read matrix of global CMVN
                                             // stats
   std::string splice_config_rxfilename;  // to read OnlineSpliceOptions
-  std::string cmvn_config_rxfilename;  // to read in OnlineCmvnOptions
+  std::string feat_cmvn_config_rxfilename;  // to read in OnlineCmvnOptions
   std::string diag_ubm_rxfilename;  // reads type DiagGmm.
   std::string ivector_extractor_rxfilename;  // reads type IvectorExtractor
 
@@ -114,7 +114,7 @@ struct OnlineIvectorExtractionConfig {
                    "extraction, obtained for example from "
                    "'matrix-sum scp:data/train/cmvn.scp -', only used for "
                    "iVector extraction");
-    opts->Register("cmvn-config", &cmvn_config_rxfilename, "Configuration "
+    opts->Register("feat-cmvn-config", &feat_cmvn_config_rxfilename, "Configuration "
                    "file for online CMVN features (e.g. conf/online_cmvn.conf),"
                    "only used for iVector extraction.  Contains options "
                    "as for the program 'apply-cmvn-online'");

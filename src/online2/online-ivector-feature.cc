@@ -51,9 +51,9 @@ void OnlineIvectorExtractionInfo::Init(
   if (config.global_cmvn_stats_rxfilename == "")
     KALDI_ERR << "--global-cmvn-stats option must be set " << note;
   ReadKaldiObject(config.global_cmvn_stats_rxfilename, &global_cmvn_stats);
-  if (config.cmvn_config_rxfilename == "")
-    KALDI_ERR << "--cmvn-config option must be set " << note;
-  ReadConfigFromFile(config.cmvn_config_rxfilename, &cmvn_opts);
+  if (config.feat_cmvn_config_rxfilename == "")
+    KALDI_ERR << "--feat-cmvn-config option must be set " << note;
+  ReadConfigFromFile(config.feat_cmvn_config_rxfilename, &cmvn_opts);
   if (config.splice_config_rxfilename == "")
     KALDI_ERR << "--splice-config option must be set " << note;
   ReadConfigFromFile(config.splice_config_rxfilename, &splice_opts);
