@@ -58,20 +58,19 @@ NnetChainTrainer2::NnetChainTrainer2(const NnetChainTraining2Options &opts,
 }
 
 
-void NnetChainTrainer2::Train(const std::string &key, const NnetChainExample &chain_eg) {
+void NnetChainTrainer2::Train(const std::string &key, NnetChainExample &chain_eg) {
   bool need_model_derivative = true;
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
   ComputationRequest request;
   std::string lang_name = "default";
   ParseFromQueryString(key, "lang", &lang_name);
-  NnetChainExample chain_eg_copy(chain_eg);
-  for (size_t i = 0; i < chain_eg_copy.outputs.size(); i++) {
+  for (size_t i = 0; i < chain_eg.outputs.size(); i++) {
     // there will normally be exactly one output , named "output"
       if(chain_eg.outputs[i].name.compare("output")==0)
-          chain_eg_copy.outputs[i].name = "output-" + lang_name;
+          chain_eg.outputs[i].name = "output-" + lang_name;
   }
-  GetChainComputationRequest(*nnet_, chain_eg_copy, need_model_derivative,
+  GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
                              nnet_config.store_component_stats,
                              use_xent_regularization, need_model_derivative,
                              &request);
@@ -93,7 +92,7 @@ void NnetChainTrainer2::Train(const std::string &key, const NnetChainExample &ch
     ResetGenerators(nnet_);
     TrainInternalBackstitch(key, chain_eg, *computation, is_backstitch_step1);
   } else { // conventional training
-    TrainInternal(key, chain_eg_copy, *computation);
+    TrainInternal(key, chain_eg, *computation);
   }
   if (num_minibatches_processed_ == 0) {
     ConsolidateMemory(nnet_);
@@ -269,9 +268,11 @@ void NnetChainTrainer2::ProcessOutputs(bool is_backstitch_step2,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    computer->AcceptInput(sup.name, &nnet_output_deriv);
+    /* computer->AcceptInput(sup.name, &nnet_output_deriv); */
+    computer->AcceptInput(node_name, &nnet_output_deriv);
 
-    objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
+    /* objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix, */
+    objf_info_[node_name + suffix].UpdateStats(sup.name + suffix,
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_,
                                      tot_weight, tot_objf, tot_l2_term);
