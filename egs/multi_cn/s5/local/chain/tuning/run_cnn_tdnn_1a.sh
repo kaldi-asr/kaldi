@@ -73,7 +73,7 @@ fi
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh --stage $stage \
+local/chain/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --test-sets $test_sets \
                                   --gmm $gmm \
