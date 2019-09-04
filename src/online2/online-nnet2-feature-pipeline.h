@@ -282,7 +282,7 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   // as the primary (non-iVector) input to the neural network in nnet3
   // applications.
   OnlineFeatureInterface *InputFeature() {
-    return feature_plus_optional_pitch_;
+    return feature_plus_optional_cmvn_;
   }
 
   virtual ~OnlineNnet2FeaturePipeline();
@@ -309,17 +309,20 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   Matrix<BaseFloat> lda_mat_; //LDA matrix, if supplied
   Matrix<BaseFloat> global_cmvn_stats_;  // Global CMVN stats.
 
-  // feature_plus_pitch_ is the base_feature_ appended (OnlineAppendFeature)
+  // feature_plus_optional_pitch_ is the base_feature_ appended (OnlineAppendFeature)
   /// with pitch_feature_, if used; otherwise, points to the same address as
   /// base_feature_.
   OnlineFeatureInterface *feature_plus_optional_pitch_;
+  // feature_plus_cmvn_ is the feature_plus_optional_pitch_ appended (OnlineAppendFeature)
+  /// with cmvn, if used; otherwise, points to the same address as
+  /// feature_plus_optional_pitch.
   OnlineFeatureInterface *feature_plus_optional_cmvn_;
 
   OnlineIvectorFeature *ivector_feature_;  // iVector feature, if used.
 
-  // final_feature_ is feature_plus_optional_pitch_ appended
+  // final_feature_ is feature_plus_optional_cmvn_ appended
   // (OnlineAppendFeature) with ivector_feature_, if ivector_feature_ is used;
-  // otherwise, points to the same address as feature_plus_optional_pitch_.
+  // otherwise, points to the same address as feature_plus_optional_cmvn_.
   OnlineFeatureInterface *final_feature_;
 
   // we cache the feature dimension, to save time when calling Dim().
