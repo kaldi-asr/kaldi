@@ -71,7 +71,7 @@ fi
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh --stage $stage \
+local/chain/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --test-sets $test_sets \
                                   --gmm $gmm \
@@ -225,7 +225,7 @@ if [ $stage -le 17 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $graph_dir data/${data}_hires ${dir}/decode_${data}_tg || exit 1
+          $graph_dir data/${data}/test_hires ${dir}/decode_${data}_tg || exit 1
     ) || touch $dir/.error &
   done
   wait
@@ -248,7 +248,7 @@ if $test_online_decoding && [ $stage -le 18 ]; then
       steps/online/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
-        $graph_dir data/${data} ${dir}_online/decode_${data}_tg || exit 1
+        $graph_dir data/${data}/test ${dir}_online/decode_${data}_tg || exit 1
     ) || touch $dir/.error &
   done
   wait

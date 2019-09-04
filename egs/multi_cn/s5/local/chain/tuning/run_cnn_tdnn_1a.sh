@@ -18,7 +18,7 @@
 # WER on test(fglarge)              3.80          3.69
 # WER on test(tglarge)              3.89          3.80
 # WER on test(tgmed)                4.72          4.64
-# WER on test(tgsmall)              5.19          5.16      
+# WER on test(tgsmall)              5.19          5.16
 # WER on test_other(fglarge)        8.76          8.71
 # WER on test_other(tglarge)        9.19          9.11
 # WER on test_other(tgmed)         11.22         11.00
@@ -73,7 +73,7 @@ fi
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh --stage $stage \
+local/chain/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --test-sets $test_sets \
                                   --gmm $gmm \
@@ -226,7 +226,7 @@ if [ $stage -le 17 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $decode_nj --cmd "$decode_cmd" \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_tg || exit 1
+        $graph_dir data/${decode_set}/test_hires $dir/decode_${decode_set}_tg || exit 1
     ) || touch $dir/.error &
   done
   wait
@@ -249,7 +249,7 @@ if $test_online_decoding && [ $stage -le 18 ]; then
       steps/online/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
-        $graph_dir data/${data} ${dir}_online/decode_${data}_tg || exit 1
+        $graph_dir data/${data}/test ${dir}_online/decode_${data}_tg || exit 1
     ) || touch $dir/.error &
   done
   wait
@@ -257,4 +257,3 @@ if $test_online_decoding && [ $stage -le 18 ]; then
 fi
 
 exit 0;
-                
