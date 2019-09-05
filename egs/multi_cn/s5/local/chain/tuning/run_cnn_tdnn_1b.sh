@@ -73,7 +73,7 @@ fi
 # run those things.
 local/chain/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
-                                  --test-sets $test_sets \
+                                  --test-sets "$test_sets" \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
