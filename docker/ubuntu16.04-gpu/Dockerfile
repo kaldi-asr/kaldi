@@ -2,6 +2,8 @@
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04
 LABEL maintainer="mdoulaty@gmail.com"
 
+ENV LANG C.UTF-8
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         g++ \

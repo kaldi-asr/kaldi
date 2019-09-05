@@ -2,6 +2,8 @@
 FROM debian:9.8
 LABEL maintainer="mdoulaty@gmail.com"
 
+ENV LANG C.UTF-8
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         g++ \
