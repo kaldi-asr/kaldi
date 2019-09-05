@@ -256,3 +256,13 @@ if [ $stage -le 17 ]; then
     done
   fi
 fi
+
+exit 0;
+
+# chain modeling script
+local/chain/run_cnn_tdnn.sh --test-sets "$test_sets"
+for c in $test_sets; do
+  for x in exp/chain_cleaned/*/decode_${c}*_tg; do
+    grep WER $x/cer_* | utils/best_wer.sh
+  done
+done
