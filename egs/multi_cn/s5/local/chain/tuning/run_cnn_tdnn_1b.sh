@@ -120,7 +120,7 @@ if [ $stage -le 14 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=40 name=input
+  input dim=43 name=input
 
   # this takes the MFCCs and generates filterbank coefficients.  The MFCCs
   # are more compressible so we prefer to dump the MFCCs to disk rather
@@ -221,7 +221,7 @@ if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
   for data in $test_sets; do
     (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}/test_hires/spk2utt)
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
@@ -236,13 +236,13 @@ if $test_online_decoding && [ $stage -le 18 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf \
+    --mfcc-config conf/mfcc_hires.conf --add-pitch true \
     $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
   for data in $test_sets; do
     (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}/test/spk2utt)
       # note: we just give it "data/${data}" as it only uses the wav.scp, the
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
