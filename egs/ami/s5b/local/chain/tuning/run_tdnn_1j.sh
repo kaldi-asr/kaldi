@@ -5,17 +5,17 @@
 
 # local/chain/tuning/run_tdnn_1j.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
 
-# local/chain/compare_wer_general.sh sdm1 tdnn1h_sp_bi_ihmali tdnn1i_sp_bi_ihmali
+# local/chain/compare_wer_general.sh sdm1 tdnn1h_sp_bi_ihmali tdnn1j_sp_bi_ihmali
 # System                tdnn1i_sp_bi_ihmali tdnn1i_sp_bi_ihmali
-# WER on dev                   36.6                  32.4
-# WER on eval                  40.6                  35.9
-# Final train prob             -0.196231             -0.0807331
-# Final valid prob             -0.265572             -0.219457
-# Final train prob (xent)      -2.48061              -1.17144
-# Final valid prob (xent)      -2.71794              -1.82858
+# WER on dev                   36.6                  31.7
+# WER on eval                  40.6                  35.1
+# Final train prob             -0.196231             -0.114088
+# Final valid prob             -0.265572             -0.214282
+# Final train prob (xent)      -2.48061              -1.37987
+# Final valid prob (xent)      -2.71794              -1.8639
 
 # steps/info/chain_dir_info.pl exp/sdm1/chain_cleaned/tdnn1j_sp_bi_ihmali
-# exp/sdm1/chain_cleaned/tdnn1j_sp_bi_ihmali: num-iters=327 nj=2..12 num-params=34.3M dim=80+100->3728 combine=-0.099->-0.096 (over 4) xent:train/valid[217,326,final]=(-1.55,-1.29,-1.25/-1.99,-1.92,-1.85) logprob:train/valid[217,326,final]=(-0.120,-0.088,-0.085/-0.221,-0.224,-0.218)
+# exp/sdm1/chain_cleaned/tdnn1j: num-iters=327 nj=2..12 num-params=34.3M dim=80+100->3728 combine=-0.126->-0.124 (over 4) xent:train/valid[217,326,final]=(-1.69,-1.43,-1.38/-2.06,-1.93,-1.86) logprob:train/valid[217,326,final]=(-0.143,-0.120,-0.114/-0.226,-0.218,-0.214)
 
 set -e -o pipefail
 # First the options that are passed through to run_ivector_common.sh
@@ -31,7 +31,7 @@ ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 ivector_transform_type=pca
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
-num_epochs=9
+num_epochs=15
 remove_egs=true
 
 # The rest are configs specific to this script.  Most of the parameters
@@ -40,7 +40,7 @@ train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tdnn_affix=1j  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
-
+dropout_schedule='0,0@0.20,0.5@0.50,0'
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -171,8 +171,8 @@ if [ $stage -le 15 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
-  affine_opts="l2-regularize=0.01"
-  tdnnf_opts="l2-regularize=0.01 bypass-scale=0.66"
+  affine_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
+  tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
   linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"
   prefinal_opts="l2-regularize=0.01"
   output_opts="l2-regularize=0.002"
@@ -182,18 +182,10 @@ if [ $stage -le 15 ]; then
   input dim=100 name=ivector
   input dim=80 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $affine_opts dim=2136
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=2136
   tdnnf-layer name=tdnnf2 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
   tdnnf-layer name=tdnnf3 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
   tdnnf-layer name=tdnnf4 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=1
@@ -209,8 +201,10 @@ if [ $stage -le 15 ]; then
   tdnnf-layer name=tdnnf14 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
   tdnnf-layer name=tdnnf15 $tdnnf_opts dim=2136 bottleneck-dim=210 time-stride=3
   linear-component name=prefinal-l dim=512 $linear_opts
+
   prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=2136 small-dim=512
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
+
   prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=2136 small-dim=512
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 
@@ -234,10 +228,11 @@ if [ $stage -le 16 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch 64 \
+    --trainer.num-chunk-per-minibatch 32 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 2 \
@@ -252,6 +247,7 @@ if [ $stage -le 16 ]; then
     --lat-dir $lat_dir \
     --dir $dir
 fi
+
 
 graph_dir=$dir/graph_${LM}
 if [ $stage -le 17 ]; then
