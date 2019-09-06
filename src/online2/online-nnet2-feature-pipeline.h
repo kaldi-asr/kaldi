@@ -286,14 +286,8 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   }
 
   virtual ~OnlineNnet2FeaturePipeline();
- private:
-  /// The following constructor is used internally in the New() function;
-  /// it has the same effect as initializing from just "cfg", but avoids
-  /// re-reading the LDA transform from disk.
-  OnlineNnet2FeaturePipeline(const OnlineNnet2FeaturePipelineInfo &info_,
-                        const Matrix<BaseFloat> &lda_mat,
-                        const Matrix<BaseFloat> &global_cmvn_stats);
 
+ private:
   const OnlineNnet2FeaturePipelineInfo &info_;
 
   OnlineBaseFeature *base_feature_;    /// MFCC/PLP/filterbank
