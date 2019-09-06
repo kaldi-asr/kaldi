@@ -5,7 +5,7 @@
 
 # local/chain/tuning/run_tdnn_1j.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
 
-# local/chain/compare_wer_general.sh sdm1 tdnn1h_sp_bi_ihmali tdnn1j_sp_bi_ihmali
+# local/chain/compare_wer_general.sh sdm1 tdnn1i_sp_bi_ihmali tdnn1j_sp_bi_ihmali
 # System                tdnn1i_sp_bi_ihmali tdnn1i_sp_bi_ihmali
 # WER on dev                   36.6                  31.7
 # WER on eval                  40.6                  35.1
