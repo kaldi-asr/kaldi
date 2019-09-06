@@ -1,4 +1,4 @@
-// online2/online-nnet3-decoding.h
+// online2/online-nnet3-incremental-decoding.h
 
 // Copyright      2019  Zhehuai Chen
 
