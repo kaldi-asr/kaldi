@@ -15,7 +15,7 @@
 # Final valid prob (xent)      -2.71794              -1.8639
 
 # steps/info/chain_dir_info.pl exp/sdm1/chain_cleaned/tdnn1j_sp_bi_ihmali
-# exp/sdm1/chain_cleaned/tdnn1j: num-iters=327 nj=2..12 num-params=34.3M dim=80+100->3728 combine=-0.126->-0.124 (over 4) xent:train/valid[217,326,final]=(-1.69,-1.43,-1.38/-2.06,-1.93,-1.86) logprob:train/valid[217,326,final]=(-0.143,-0.120,-0.114/-0.226,-0.218,-0.214)
+# exp/sdm1/chain_cleaned/tdnn1j_sp_bi_ihmali: num-iters=327 nj=2..12 num-params=34.3M dim=80+100->3728 combine=-0.126->-0.124 (over 4) xent:train/valid[217,326,final]=(-1.69,-1.43,-1.38/-2.06,-1.93,-1.86) logprob:train/valid[217,326,final]=(-0.143,-0.120,-0.114/-0.226,-0.218,-0.214)
 
 set -e -o pipefail
 # First the options that are passed through to run_ivector_common.sh
