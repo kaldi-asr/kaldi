@@ -5,20 +5,21 @@
 
 # local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1c_sp exp/chain_cleaned_1d/tdnn1d_sp
 # System                tdnn1c_sp tdnn1d_sp
-# WER on dev(orig)           8.32      8.22
-# WER on dev(rescored)       7.63      7.60
-# WER on test(orig)          8.44      8.45
-# WER on test(rescored)      7.84      7.73
-# Final train prob        -0.0688   -0.0677
-# Final valid prob        -0.0826   -0.0847
-# Final train prob (xent)   -0.9842   -0.9814
-# Final valid prob (xent)   -1.0976   -1.0930
+# WER on dev(orig)           8.32      8.50
+# WER on dev(rescored)       7.63      7.91
+# WER on test(orig)          8.44      8.39
+# WER on test(rescored)      7.84      7.88
+# Final train prob        -0.0688   -0.0698
+# Final valid prob        -0.0826   -0.0850
+# Final train prob (xent)   -0.9842   -0.9898
+# Final valid prob (xent)   -1.0976   -1.1018
 # Num-params                 9476304   9476304
 
 # steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn1c_sp
 # exp/chain_cleaned/tdnn1c_sp: num-iters=228 nj=3..12 num-params=9.5M dim=40+100->3688 combine=-0.070->-0.070 (over 5) xent:train/valid[151,227,final]=(-1.19,-0.993,-0.984/-1.28,-1.10,-1.10) logprob:train/valid[151,227,final]=(-0.090,-0.070,-0.069/-0.107,-0.083,-0.083)
+
 # steps/info/chain_dir_info.pl exp/chain_cleaned_1d/tdnn1d_sp
-# exp/chain_cleaned_1d/tdnn1d_sp: num-iters=228 nj=3..12 num-params=9.5M dim=40+100->3688 combine=-0.070->-0.069 (over 4) xent:train/valid[151,227,final]=(-1.18,-0.986,-0.981/-1.28,-1.10,-1.09) logprob:train/valid[151,227,final]=(-0.088,-0.069,-0.068/-0.109,-0.086,-0.085)
+# exp/chain_cleaned_1d/tdnn1d_sp: num-iters=228 nj=3..12 num-params=9.5M dim=40+100->3688 combine=-0.072->-0.072 (over 5) xent:train/valid[151,227,final]=(-1.19,-0.997,-0.990/-1.29,-1.11,-1.10) logprob:train/valid[151,227,final]=(-0.090,-0.071,-0.070/-0.110,-0.085,-0.085)
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
 ## otherwise call it directly in its location).
