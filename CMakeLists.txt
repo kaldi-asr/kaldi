@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 14)
 # TODO: fix this
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../openfst-winport/src/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../openfst-winport/build_output/x64/Debug/lib)
-
+link_libraries(libfst.lib)
 
 
 if(MATHLIB STREQUAL "OpenBLAS")
@@ -34,7 +34,10 @@ find_package(CUDA)
 if(CUDA_FOUND)
     add_definitions(-DHAVE_CUDA=1)
     include_directories(${CUDA_INCLUDE_DIRS})
-    link_libraries(${CUDA_CUDA_LIBRARY})
+    link_libraries(${CUDA_LIBRARY})
+
+    find_package(NvToolExt REQUIRED)
+    link_libraries(NvToolExt)
 endif()
 
 # TODO: version helper
