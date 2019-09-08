@@ -33,7 +33,7 @@
 
 #include "base/kaldi-common.h"
 #include "base/kaldi-error.h"
-#include "base/version.h"
+// #include "base/version.h"
 
 namespace kaldi {
 
