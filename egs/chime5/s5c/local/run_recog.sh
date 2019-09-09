@@ -10,7 +10,8 @@
 # Begin configuration section.
 decode_nj=20
 stage=0
-enhancement=beamformit # for a new enhancement method,
+use_multiarray=false
+enhancement=gss        # for a new enhancement method,
                        # change this variable and stage 4
 # End configuration section
 . ./utils/parse_options.sh
@@ -29,37 +30,57 @@ audio_dir=${chime5_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="eval_${enhancement}_dereverb_ref"
+test_sets="eval_${enhancement}"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
+enhanced_dir=enhanced
+if $use_multiarray; then
+  enhanced_dir=${enhanced_dir}_multiarray
+  enhancement=${enhancement}_multiarray
+fi
+
+enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
+
 if [ $stage -le 4 ]; then
-  # Beamforming using reference arrays
-  # enhanced WAV directory
-  enhandir=enhan
-  dereverb_dir=${PWD}/wav/wpe/
-  for dset in eval; do
-    for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 120G" \
-			      ${audio_dir}/${dset} \
-			      ${dereverb_dir}/${dset} \
-			      ${mictype}
-    done
-  done
-  for dset in dev eval; do
-    for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_beamformit.sh --cmd "$train_cmd" \
-			      ${dereverb_dir}/${dset} \
-			      ${enhandir}/${dset}_${enhancement}_${mictype} \
-			      ${mictype}
-    done
-  done
+  # Guided Source Separation (GSS) from Paderbon Univerisity
+  # http://spandh.dcs.shef.ac.uk/chime_workshop/papers/CHiME_2018_paper_boeddecker.pdf
+  # @Article{PB2018CHiME5,
+  #   author    = {Boeddeker, Christoph and Heitkaemper, Jens and Schmalenstroeer, Joerg and Drude, Lukas and Heymann, Jahn and Haeb-Umbach, Reinhold},
+  #   title     = {{Front-End Processing for the CHiME-5 Dinner Party Scenario}},
+  #   year      = {2018},
+  #   booktitle = {CHiME5 Workshop},
+  # }
+
+  if [ ! -d pb_chime5/ ]; then
+    local/install_pb_chime5.sh
+  fi
+  
+  if [ ! -f pb_chime5/cache/chime5.json ]; then
+    (
+    cd pb_chime5
+    miniconda_dir=$HOME/miniconda3/
+    export PATH=$miniconda_dir/bin:$PATH
+    export CHIME5_DIR=$chime5_corpus
+    make cache/chime5.json
+    )
+  fi
 
   for dset in eval; do
-    local/prepare_data.sh --mictype ref "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-			  ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
+    local/run_gss.sh \
+      --cmd "$train_cmd --max-jobs-run 30" --nj 160 \
+      --use-multiarray $use_multiarray \
+      ${dset} \
+      ${enhanced_dir} \
+      ${enhanced_dir} || exit 1
   done
+
+  for dset in dev eval; do
+    local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/${dset} \
+      ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
+  done
+
 fi
 
 if [ $stage -le 6 ]; then
@@ -76,7 +97,11 @@ if [ $stage -le 6 ]; then
   for dset in ${test_sets}; do
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     mkdir -p data/${dset}_nosplit_fix
-    cp data/${dset}_nosplit/{segments,text,wav.scp} data/${dset}_nosplit_fix/
+    for f in segments text wav.scp; do
+      if [ -f data/${dset}_nosplit/$f ]; then
+        cp data/${dset}_nosplit/$f data/${dset}_nosplit_fix
+      fi
+    done
     awk -F "_" '{print $0 "_" $3}' data/${dset}_nosplit/utt2spk > data/${dset}_nosplit_fix/utt2spk
     utils/utt2spk_to_spk2utt.pl data/${dset}_nosplit_fix/utt2spk > data/${dset}_nosplit_fix/spk2utt
   done
@@ -151,6 +176,6 @@ if [ $stage -le 20 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
-      --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_dereverb_ref_2stage \
-      --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_dereverb_ref_2stage
+      --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
+      --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_2stage
 fi
