@@ -23,12 +23,52 @@ def is_test_source(f):
 def is_source(f):
     return f.endswith(".cc") and not is_test_source(f)
 
-# class CMakeListsHeaders(object)
+def dir_name_to_lib_target(dir_name):
+    return "kaldi-" + dir_name
+
+
+def get_exe_additional_depends(t):
+    additional = {
+        "transform-feats" : ["transform"],
+        "interpolate-pitch" : ["transform"],
+        "post-to-feats" : ["hmm"],
+        "append-post-to-feats" : ["hmm"],
+        "gmm-est-fmllr-gpost": ["sgmm2", "hmm"],
+        "gmm-est-fmllr": ["hmm", "transform"],
+        "gmm-latgen-faster": ["decoder"],
+        "gmm-transform-means": ["hmm"],
+        "gmm-post-to-gpost": ["hmm"],
+        "gmm-init-lvtln": ["transform"],
+        "gmm-rescore-lattice": ["hmm", "lat"],
+        "gmm-est-fmllr-global": ["transform"],
+        "gmm-copy": ["hmm"],
+        "gmm-train-lvtln-special": ["transform", "hmm"],
+        "gmm-est-map": ["hmm"],
+        "gmm-acc-stats2": ["hmm"],
+        "gmm-decode-faster-regtree-mllr": ["decoder"],
+        "gmm-global-est-fmllr": ["transform"],
+        "gmm-est-basis-fmllr": ["hmm", "transform"],
+        "gmm-init-model": ["hmm"],
+        "gmm-est-weights-ebw": ["hmm"],
+        "gmm-init-biphone": ["hmm"],
+        "gmm-compute-likes": ["hmm"],
+        "gmm-est-fmllr-raw-gpost": ["hmm", "transform"],
+        "gmm-*": ["hmm", "transform", "lat", "decoder"] # FUCK!
+    }
+    if t in additional:
+        return list(map(lambda name: dir_name_to_lib_target(name), additional[t]))
+    elif (t.split("-", 1)[0] + "-*") in additional:
+        wildcard = (t.split("-", 1)[0] + "-*")
+        return list(map(lambda name: dir_name_to_lib_target(name), additional[wildcard]))
+    else:
+        return []
+
 
 class CMakeListsLibrary(object):
 
-    def __init__(self, library_name):
-        self.library_name = "kaldi-" + library_name
+    def __init__(self, dir_name):
+        self.dir_name = dir_name
+        self.target_name = dir_name_to_lib_target(self.dir_name)
         self.file_list = []
         self.cuda_file_list = []
         self.test_file_list = []
@@ -60,30 +100,41 @@ class CMakeListsLibrary(object):
         ret = []
         if len(self.cuda_file_list) > 0:
             self.file_list.append("${CUDA_OBJS}")
-            ret.append("cuda_compile(${CUDA_OBJS}")
+            ret.append("cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)")
+            ret.append("cuda_compile(CUDA_OBJS")
             for f in self.cuda_file_list:
                 ret.append("    " + f)
             ret.append(")\n")
 
-        ret.append("add_library(" + self.library_name)
+
+        ret.append("add_library(" + self.target_name)
         for f in self.file_list:
             ret.append("    " + f)
         ret.append(")\n")
-        ret.append("target_include_directories(" + self.library_name + " PUBLIC ")
+        ret.append("target_include_directories(" + self.target_name + " PUBLIC ")
         ret.append("     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>")
         ret.append("     $<INSTALL_INTERFACE:include/kaldi>")
         ret.append(")\n")
 
         if len(self.depends) > 0:
-            ret.append("target_link_libraries(" + self.library_name + " PUBLIC")
+            ret.append("target_link_libraries(" + self.target_name + " PUBLIC")
             for d in self.depends:
                 ret.append("    " + d)
             ret.append(")\n")
 
+        def get_test_exe_name(filename):
+            exe_name = os.path.splitext(f)[0]
+            if self.dir_name.startswith("nnet") and exe_name.startswith("nnet"):
+                return self.dir_name + "-" + exe_name.split("-", 1)[1]
+            else:
+                return exe_name
+
         if len(self.test_file_list) > 0:
             ret.append("if(KALDI_BUILD_TEST)")
             for f in self.test_file_list:
-                ret.append("    add_kaldi_test_executable(NAME " + os.path.splitext(f)[0] + " SOURCES " + f + " DEPENDS " + self.library_name + ")")
+                exe_target = get_test_exe_name(f)
+                depends = (self.target_name + " " + " ".join(get_exe_additional_depends(exe_target))).strip()
+                ret.append("    add_kaldi_test_executable(NAME " + exe_target + " SOURCES " + f + " DEPENDS " + depends + ")")
             ret.append("endif()")
 
         return "\n".join(ret)
@@ -97,13 +148,14 @@ class CMakeListsExecutable(object):
         self.list = []
         exe_name = os.path.splitext(os.path.basename(filename))[0]
         file_name = filename
-        depend = "kaldi-" + dir_name[:-3]
+        depend = dir_name_to_lib_target(dir_name[:-3])
         self.list.append((exe_name, file_name, depend))
 
     def gen_code(self):
         ret = []
         for exe_name, file_name, depend in self.list:
-            ret.append("add_kaldi_executable(NAME " + exe_name + " SOURCES " + file_name + " DEPENDS " + depend + ")")
+            depends = (depend + " " + " ".join(get_exe_additional_depends(exe_name))).strip()
+            ret.append("add_kaldi_executable(NAME " + exe_name + " SOURCES " + file_name + " DEPENDS " + depends + ")")
         return "\n".join(ret)
 
 class CMakeListsFile(object):

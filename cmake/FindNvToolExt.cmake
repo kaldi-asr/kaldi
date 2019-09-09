@@ -27,6 +27,7 @@ find_library(NvToolExt_LIBRARIES NAMES ${NvToolExt_LIBNAME} HINTS ${NvToolExt_SE
 find_package_handle_standard_args(NvToolExt REQUIRED_VARS NvToolExt_INCLUDE_DIR NvToolExt_LIBRARIES)
 
 add_library(NvToolExt INTERFACE)
+target_include_directories(NvToolExt INTERFACE ${NvToolExt_INCLUDE_DIR})
 target_link_directories(NvToolExt INTERFACE ${NvToolExt_INCLUDE_DIR})
 target_link_libraries(NvToolExt INTERFACE ${NvToolExt_LIBRARIES})
 
