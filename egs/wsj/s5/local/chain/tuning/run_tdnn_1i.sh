@@ -5,23 +5,22 @@
 
 # local/chain/compare_wer.sh exp/chain/tdnn1h_sp exp/chain_online_cmn/tdnn1i_sp
 # System                tdnn1h_sp tdnn1i_sp
-#WER dev93 (tgpr)                6.89      6.66
-#WER dev93 (tg)                  6.63      6.56
-#WER dev93 (big-dict,tgpr)       4.96      4.74
+#WER dev93 (tgpr)                6.89      6.90
+#WER dev93 (tg)                  6.63      6.73
+#WER dev93 (big-dict,tgpr)       4.96      4.91
 #WER dev93 (big-dict,fg)         4.53      4.44
-#WER eval92 (tgpr)               4.68      4.89
-#WER eval92 (tg)                 4.32      4.43
-#WER eval92 (big-dict,tgpr)      2.69      2.91
-#WER eval92 (big-dict,fg)        2.34      2.37
-# Final train prob        -0.0442   -0.0439
-# Final valid prob        -0.0537   -0.0529
-# Final train prob (xent)   -0.6548   -0.6581
-# Final valid prob (xent)   -0.7324   -0.7300
+#WER eval92 (tgpr)               4.68      4.77
+#WER eval92 (tg)                 4.32      4.36
+#WER eval92 (big-dict,tgpr)      2.69      2.85
+#WER eval92 (big-dict,fg)        2.34      2.36
+# Final train prob        -0.0442   -0.0436
+# Final valid prob        -0.0537   -0.0540
+# Final train prob (xent)   -0.6548   -0.6592
+# Final valid prob (xent)   -0.7324   -0.7326
 # Num-params                 8349232   8349232
 
 # steps/info/chain_dir_info.pl exp/chain_online_cmn/tdnn1i_sp
-# exp/chain_online_cmn/tdnn1i_sp: num-iters=108 nj=2..8 num-params=8.3M dim=40+100->2840 combine=-0.044->-0.044 (over 1) xent:train/valid[71,107,final]=(-0.873,-0.648,-0.658/-0.914,-0.712,-0.730) logprob:train/valid[71,107,final]=(-0.065,-0.044,-0.044/-0.068,-0.054,-0.053)
-
+# exp/chain_online_cmn/tdnn1i_sp: num-iters=108 nj=2..8 num-params=8.3M dim=40+100->2840 combine=-0.045->-0.045 (over 1) xent:train/valid[71,107,final]=(-0.873,-0.653,-0.659/-0.922,-0.713,-0.733) logprob:train/valid[71,107,final]=(-0.064,-0.044,-0.044/-0.068,-0.054,-0.054)
 
 set -e -o pipefail
 
@@ -72,7 +71,7 @@ srand=0
 remove_egs=true
 
 #decode options
-test_online_decoding=false  # if true, it will run the last decoding stage.
+test_online_decoding=true  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging

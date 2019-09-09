@@ -104,7 +104,7 @@ if ! $online_cmvn; then
 echo "$0: feature type is raw"
   feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 else
-  feats="ark,s,cs:apply-cmvn-online $cmvn_opts $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- |"
+  feats="ark,s,cs:apply-cmvn-online $cmvn_opts --spk2utt=ark:$sdata/JOB/spk2utt $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- |"
 fi
 
 if [ ! -z "$online_ivector_dir" ]; then
