@@ -168,6 +168,9 @@ splice_opts=$(cat $srcdir/splice_opts)
 gmm_feats="ark,s,cs:apply-cmvn-online --spk2utt=ark:$sdata/JOB/spk2utt --config=$srcdir/online_cmvn.conf $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
+# This adds online-cmvn in $feats, upon request (configuration taken from UBM),
+[ -f $srcdir/online_cmvn_iextractor ] && feats="$gmm_feats"
+
 
 if [ $sub_speaker_frames -gt 0 ]; then
 

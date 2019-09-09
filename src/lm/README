@@ -4,7 +4,7 @@
 # Language model & lexicon examples
 # using command-line executables in lm/
 
-# To print and display FSTs, 
+# To print and display FSTs,
 # make sure you have OpenFst binaries in your PATH, for example:
 #   export PATH=$PATH:~/Sources/UBM-ASR/branches/clean/openfst-1.2/bin
 
@@ -18,7 +18,7 @@
 #-------------------------------------------
 # Language model FST (G)
 
-# The command-line utility for 
+# The command-line utility for
 # creating a language model FST from an arpa file is
 # "arpa2fst".
 
@@ -48,7 +48,7 @@ fstprint --save_isymbols=grammar.syms grammar.fst > /dev/null
 # A summary of options and usage can be displayed with:
 ./lex2fst --help
 
-# Read a lexicon file (containing prononciation probabilities)
+# Read a lexicon file (containing pronunciation probabilities)
 # and produce an FST with symbol tables.
 # By default it will have disambiguation markers,
 #   optional silence between words,

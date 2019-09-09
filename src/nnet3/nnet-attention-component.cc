@@ -545,7 +545,7 @@ bool RestrictedAttentionComponent::IsComputable(
       } else {
         // This input index is not available.
         int32 offset = (t - output_index.t) / time_stride_;
-        if (offset >= num_left_inputs_required_ &&
+        if (offset >= -num_left_inputs_required_ &&
             offset <= num_right_inputs_required_) {
           used_inputs->clear();
           return false;

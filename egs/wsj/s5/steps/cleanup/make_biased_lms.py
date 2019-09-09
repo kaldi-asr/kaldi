@@ -7,6 +7,11 @@ import math
 import subprocess
 from collections import defaultdict
 
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding="utf8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer,encoding="utf8")
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer,encoding="utf8")
+
 parser = argparse.ArgumentParser(description="""
 This script is a wrapper for make_one_biased_lm.py that reads a Kaldi archive
 of (integerized) text data from the standard input and writes a Kaldi archive of
@@ -31,7 +36,7 @@ args = parser.parse_args()
 
 
 try:
-    utterance_map_file = open(args.utterance_map, "w")
+    utterance_map_file = open(args.utterance_map, "w", encoding="utf-8")
 except:
     sys.exit("make_biased_lms.py: error opening {0} to write utterance map".format(
             args.utterance_map))

@@ -77,8 +77,11 @@ if [ $stage -le 3 ]; then
     local/prepare_dict.sh --data-dir $data_dir --dir $data_dir/local/dict
     # This recipe uses byte-pair encoding, the silences are part of the words' pronunciations.
     # So we set --sil-prob to 0.0
-    utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
+    utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 6 --sil-prob 0.0 --position-dependent-phones false \
         $data_dir/local/dict "<sil>" $data_dir/lang/temp $data_dir/lang
+    silphonelist=`cat $data_dir/lang/phones/silence.csl`
+    nonsilphonelist=`cat $data_dir/lang/phones/nonsilence.csl`
+    local/gen_topo.py 8 4 10 $nonsilphonelist $silphonelist $data_dir/lang/phones.txt > $data_dir/lang/topo 
     utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 $data_dir/lang
 fi
 

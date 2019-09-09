@@ -39,7 +39,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=10
+CONFIGURE_VERSION=11
 
 # We support bash version 3.2 (Macs still ship with this version as of 2019)
 # and above.
@@ -433,18 +433,32 @@ function configure_cuda {
         7_*)
           MIN_UNSUPPORTED_GCC_VER="5.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=50000;
+          CUSOLVER=false
         ;;
         8_*)
           MIN_UNSUPPORTED_GCC_VER="6.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=60000;
+          CUSOLVER=false
         ;;
-        9_0 | 9_1)
+        9_0)
           MIN_UNSUPPORTED_GCC_VER="7.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=70000;
+          CUSOLVER=false
         ;;
-        9_2 | 9_* | 10_*)
+        9_1)
+          MIN_UNSUPPORTED_GCC_VER="7.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=70000;
+          CUSOLVER=true
+        ;;
+        9_2 | 9_* | 10_0)
           MIN_UNSUPPORTED_GCC_VER="8.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=80000;
+          CUSOLVER=true
+        ;;
+        10_1 | 10_*)
+          MIN_UNSUPPORTED_GCC_VER="9.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=90000;
+          CUSOLVER=true
         ;;
         *)
           echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1;
@@ -488,6 +502,8 @@ function configure_cuda {
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    
+    
     echo >> kaldi.mk
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct
@@ -507,6 +523,11 @@ function configure_cuda {
 WARNING: CUDA will not be used!
          CUDA is not supported with 32-bit builds."
       exit 1;
+    fi
+    
+    #add cusolver flags for newer toolkits
+    if [ "$CUSOLVER" == "true" ]; then
+      echo "CUDA_LDLIBS += -lcusolver" >> kaldi.mk
     fi
 
   else
@@ -1179,7 +1200,7 @@ elif [ "`uname`" == "Linux" ]; then
       echo -n "Configuring MKL library directory: "
       MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
       if [ $? -ne 0 ]; then
-        failure "MKL libraries could not be found. Please use the switch --mkl-libdir "
+        failure "MKL libraries could not be found. Please use the switch --mkl-libdir or try another math library, e.g. --mathlib=ATLAS (would be slower)"
       else
         echo "Found: $MKLLIBDIR"
       fi

@@ -75,6 +75,8 @@ if [ $stage -le 1 ]; then
     utils/fix_data_dir.sh data/${name}_cmn
   done
 
+  echo "0.01" > data/dihard_2018_dev_cmn/frame_shift
+  echo "0.01" > data/dihard_2018_eval_cmn/frame_shift
   echo "0.01" > data/train_cmn/frame_shift
   # Create segments to extract x-vectors from for PLDA training data.
   # The segments are created using an energy-based speech activity
@@ -118,7 +120,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh $musan_root data
+  steps/data/make_musan.sh --sampling-rate 16000 $musan_root data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
@@ -251,7 +253,7 @@ if [ $stage -le 12 ]; then
 
   # The threshold is in terms of the log likelihood ratio provided by the
   # PLDA scores.  In a perfectly calibrated system, the threshold is 0.
-  # In the following loop, we evaluate DER performance on DIHARD 2018 development 
+  # In the following loop, we evaluate DER performance on DIHARD 2018 development
   # set using some reasonable thresholds for a well-calibrated system.
   for threshold in -0.5 -0.4 -0.3 -0.2 -0.1 -0.05 0 0.05 0.1 0.2 0.3 0.4 0.5; do
     diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
@@ -276,23 +278,23 @@ if [ $stage -le 12 ]; then
     --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) --rttm-channel 1 \
     $nnet_dir/xvectors_dihard_2018_dev/plda_scores $nnet_dir/xvectors_dihard_2018_dev/plda_scores
 
-  # Cluster DIHARD 2018 evaluation set using the best threshold found for the DIHARD 
-  # 2018 development set. The DIHARD 2018 development set is used as the validation 
-  # set to tune the parameters. 
+  # Cluster DIHARD 2018 evaluation set using the best threshold found for the DIHARD
+  # 2018 development set. The DIHARD 2018 development set is used as the validation
+  # set to tune the parameters.
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
     --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) --rttm-channel 1 \
     $nnet_dir/xvectors_dihard_2018_eval/plda_scores $nnet_dir/xvectors_dihard_2018_eval/plda_scores
 
   mkdir -p $nnet_dir/results
-  # Compute the DER on the DIHARD 2018 evaluation set. We use the official metrics of   
-  # the DIHARD challenge. The DER is calculated with no unscored collars and including  
+  # Compute the DER on the DIHARD 2018 evaluation set. We use the official metrics of
+  # the DIHARD challenge. The DER is calculated with no unscored collars and including
   # overlapping speech.
   md-eval.pl -r data/dihard_2018_eval/rttm \
     -s $nnet_dir/xvectors_dihard_2018_eval/plda_scores/rttm 2> $nnet_dir/results/threshold.log \
     > $nnet_dir/results/DER_threshold.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     $nnet_dir/results/DER_threshold.txt)
-  # Using supervised calibration, DER: 26.47%
+  # Using supervised calibration, DER: 26.30%
   echo "Using supervised calibration, DER: $der%"
 fi
 
@@ -309,6 +311,6 @@ if [ $stage -le 13 ]; then
     > $nnet_dir/results/DER_num_spk.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     $nnet_dir/results/DER_num_spk.txt)
-  # Using the oracle number of speakers, DER: 23.90%
+  # Using the oracle number of speakers, DER: 23.42%
   echo "Using the oracle number of speakers, DER: $der%"
 fi

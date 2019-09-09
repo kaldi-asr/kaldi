@@ -130,7 +130,9 @@ unset LC_ALL
 # are equal
 cat $dict_dir/ch-dict.txt |\
   perl -e '
-  use encoding utf8;
+  use utf8;
+  binmode(STDIN,":encoding(utf8)");
+  binmode(STDOUT,":encoding(utf8)");
   while (<STDIN>) {
     @A = split(" ", $_);
     $word_len = length($A[0]);
@@ -299,4 +301,3 @@ cat $dict_dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ",
 
 export LC_ALL=C
 echo "$0: Done"
-

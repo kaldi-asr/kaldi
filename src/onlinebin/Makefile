@@ -3,7 +3,7 @@ all:
 EXTRA_CXXFLAGS += -Wno-sign-compare -I../../tools/portaudio/install/include
 include ../kaldi.mk
 
-# The PA_RingBuffer interface is internal and is not exported in the .so libray
+# The PA_RingBuffer interface is internal and is not exported in the .so library
 # so we have to link against the static one
 
 ifneq "$(wildcard ../../tools/portaudio/install/lib/libportaudio.a)" ""
@@ -40,6 +40,6 @@ ADDLIBS = ../online/kaldi-online.a ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

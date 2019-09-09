@@ -121,7 +121,7 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {
 }
 
 // Returns poisson-distributed random number.
-// Take care: this takes time proportinal
+// Take care: this takes time proportional
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda, struct RandomState* state) {
   // Knuth's algorithm.

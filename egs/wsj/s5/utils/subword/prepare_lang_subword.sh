@@ -59,6 +59,7 @@ position_dependent_phones=true
 share_silence_phones=false  # if true, then share pdfs of different silence
                             # phones together.
 sil_prob=0.5
+phone_symbol_table=             # if set, use a specified phones.txt file
 num_extra_phone_disambig_syms=1 # Standard one phone disambiguation symbol is used for optional silence.
                                 # Increasing this number does not harm, but is only useful if you later
                                 # want to introduce this labels to L_disambig.fst
@@ -134,6 +135,23 @@ if ! utils/validate_dict_dir.pl $srcdir >&/dev/null; then
   utils/validate_dict_dir.pl $srcdir  # show the output.
   echo "Validation failed (second time)"
   exit 1;
+fi
+
+# phones.txt file provided, we will do some sanity check here.
+if [ ! -z $phone_symbol_table ]; then
+  # Checks if we have position dependent phones
+  n1=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sort -u | wc -l`
+  n2=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sed 's/_[BIES]$//g' | sort -u | wc -l`
+  $position_dependent_phones && [ $n1 -eq $n2 ] &&\
+    echo "$0: Position dependent phones requested, but not in provided phone symbols" && exit 1;
+  ! $position_dependent_phones && [ $n1 -ne $n2 ] &&\
+    echo "$0: Position dependent phones not requested, but appear in the provided phones.txt" && exit 1;
+
+  # Checks if the phone sets match.
+  cat $srcdir/{,non}silence_phones.txt | awk -v f=$phone_symbol_table '
+  BEGIN { while ((getline < f) > 0) { sub(/_[BEIS]$/, "", $1); phones[$1] = 1; }}
+  { for (x = 1; x <= NF; ++x) { if (!($x in phones)) {
+      print "Phone appears in the lexicon but not in the provided phones.txt: "$x; exit 1; }}}' || exit 1;
 fi
 
 if $position_dependent_phones; then
@@ -258,8 +276,15 @@ echo $ndisambig > $tmpdir/lex_ndisambig
 ( for n in `seq 0 $ndisambig`; do echo '#'$n; done ) >$dir/phones/disambig.txt
 
 # Create phone symbol table.
-echo "<eps>" | cat - $dir/phones/{silence,nonsilence,disambig}.txt | \
-  awk '{n=NR-1; print $1, n;}' > $dir/phones.txt
+if [ ! -z $phone_symbol_table ]; then
+  start_symbol=`grep \#0 $phone_symbol_table | awk '{print $2}'`
+  echo "<eps>" | cat - $dir/phones/{silence,nonsilence}.txt | awk -v f=$phone_symbol_table '
+  BEGIN { while ((getline < f) > 0) { phones[$1] = $2; }} { print $1" "phones[$1]; }' | sort -k2 -g |\
+    cat - <(cat $dir/phones/disambig.txt | awk -v x=$start_symbol '{n=x+NR-1; print $1, n;}') > $dir/phones.txt
+else
+  echo "<eps>" | cat - $dir/phones/{silence,nonsilence,disambig}.txt | \
+     awk '{n=NR-1; print $1, n;}' > $dir/phones.txt
+fi
 
 # Create a file that describes the word-boundary information for
 # each phone.  5 categories.

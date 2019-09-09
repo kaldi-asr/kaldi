@@ -19,7 +19,7 @@ $ignore_oov = 0;
 
 for($x = 0; $x < 2; $x++) {
   if ($ARGV[0] eq "--map-oov") {
-    shift @ARGV; 
+    shift @ARGV;
     $map_oov = shift @ARGV;
     if ($map_oov eq "-f" || $map_oov =~ m/words\.txt$/ || $map_oov eq "") {
       # disallow '-f', the empty string and anything ending in words.txt as the
@@ -29,11 +29,11 @@ for($x = 0; $x < 2; $x++) {
   }
   if ($ARGV[0] eq "-f") {
     shift @ARGV;
-    $field_spec = shift @ARGV; 
+    $field_spec = shift @ARGV;
     if ($field_spec =~ m/^\d+$/) {
       $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
     }
-    if ($field_spec =~ m/^(\d*)[-:](\d*)/) { # accept e.g. 1:10 as a courtesty (properly, 1-10)
+    if ($field_spec =~ m/^(\d*)[-:](\d*)/) { # accept e.g. 1:10 as a courtesy (properly, 1-10)
       if ($1 ne "") {
         $field_begin = $1 - 1;  # Change to zero-based indexing.
       }
@@ -42,7 +42,7 @@ for($x = 0; $x < 2; $x++) {
       }
     }
     if (!defined $field_begin && !defined $field_end) {
-      die "Bad argument to -f option: $field_spec"; 
+      die "Bad argument to -f option: $field_spec";
     }
   }
 }
@@ -98,7 +98,7 @@ while (<>) {
   print "\n";
 }
 if ($num_warning > 0) {
-  print STDERR "** Replaced $num_warning instances of OOVs with $map_oov\n"; 
+  print STDERR "** Replaced $num_warning instances of OOVs with $map_oov\n";
 }
 
 exit(0);

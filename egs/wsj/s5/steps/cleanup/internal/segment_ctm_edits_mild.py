@@ -1331,8 +1331,7 @@ class SegmentsMerger(object):
                     if reject:
                         rejected_clusters.add(tuple(new_cluster))
                         continue
-
-                    heapq.heappush(heap, (-scoring_function(merged_segment),
+                    heapq.heappush(heap, ((-scoring_function(merged_segment), i),
                                           (merged_segment, i, new_cluster)))
 
                 candidate_index = -1
@@ -1527,7 +1526,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
         _global_logger.debug("stage 0: segment %d = %s", i, x)
 
     if args.verbose > 4:
-        print ("Stage 0 [segment cores]:", file=sys.stderr)
+        print("Stage 0 [segment cores]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1542,7 +1541,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
         _global_logger.debug("stage 1: segment %d = %s", i, x)
 
     if args.verbose > 4:
-        print ("Stage 1 [add tainted lines]:", file=sys.stderr)
+        print("Stage 1 [add tainted lines]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1556,7 +1555,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
         _global_logger.debug("stage 2: segment %d = %s", i, x)
 
     if args.verbose > 4:
-        print ("Stage 2 [merge segments]:", file=sys.stderr)
+        print("Stage 2 [merge segments]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1576,7 +1575,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 3: segment %d, %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 3 [split segments]:", file=sys.stderr)
+        print("Stage 3 [split segments]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1598,7 +1597,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 4: segment %d, %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 4 [split long segments]:", file=sys.stderr)
+        print("Stage 4 [split long segments]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1615,7 +1614,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 5: segment %d = %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 5 [truncate boundaries]:", file=sys.stderr)
+        print("Stage 5 [truncate boundaries]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1632,7 +1631,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 6: segment %d = %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 6 [relax boundary truncation]:", file=sys.stderr)
+        print("Stage 6 [relax boundary truncation]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1648,7 +1647,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 7: segment %d = %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 7 [unk-padding]:", file=sys.stderr)
+        print("Stage 7 [unk-padding]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1674,8 +1673,8 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 8: segment %d = %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 8 [remove new segments under "
-               "--min-new-segment-length]:", file=sys.stderr)
+        print("Stage 8 [remove new segments under "
+              "--min-new-segment-length]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1698,8 +1697,8 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 9: segment %d = %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 9 [remove segments under "
-               "--min-segment-length]:", file=sys.stderr)
+        print("Stage 9 [remove segments under "
+              "--min-segment-length]:", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1721,8 +1720,8 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
             "stage 10: segment %d = %s", i, x.debug_info(False))
 
     if args.verbose > 4:
-        print ("Stage 10 [remove segments without scored, non-OOV words "
-               "", file=sys.stderr)
+        print("Stage 10 [remove segments without scored, non-OOV words "
+              "", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
@@ -1756,7 +1755,7 @@ def time_to_string(time, frame_length):
     """ Gives time in string form as an exact multiple of the frame-length,
     e.g. 0.01 (after rounding).
     """
-    n = round(time /frame_length)
+    n = round(time / frame_length)
     assert n >= 0
     # The next function call will remove trailing zeros while printing it, so
     # that e.g. 0.01 will be printed as 0.01 and not 0.0099999999999999.  It
@@ -1929,6 +1928,7 @@ def process_data(args, oov_symbol, utterance_stats, word_stats):
                         args.ctm_edits_out, split_lines_of_cur_utterance,
                         segments_for_utterance, deleted_segments_for_utterance,
                         frame_length=args.frame_length)
+
                 split_lines_of_cur_utterance = []
                 if len(split_pending_line) == 0:
                     break

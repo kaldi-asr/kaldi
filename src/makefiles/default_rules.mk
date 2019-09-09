@@ -3,11 +3,19 @@ SHELL := /bin/bash
 
 ifeq ($(KALDI_FLAVOR), dynamic)
   ifeq ($(shell uname), Darwin)
-    ifdef LIBNAME
-      LIBFILE = lib$(LIBNAME).dylib
+    ifdef ANDROIDINC # cross-compiling enabled on host MacOS
+      ifdef LIBNAME
+        LIBFILE = lib$(LIBNAME).so
+      endif
+      LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
+      EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))$(notdir $(basename $(dep))).a)
+    else
+      ifdef LIBNAME
+        LIBFILE = lib$(LIBNAME).dylib
+      endif
+      LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
+      EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).dylib)
     endif
-    LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
-    EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).dylib)
   else ifeq ($(shell uname), Linux)
     ifdef LIBNAME
       LIBFILE = lib$(LIBNAME).so
