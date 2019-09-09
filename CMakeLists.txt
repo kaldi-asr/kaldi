@@ -10,14 +10,12 @@ include(Utils)
 set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL")
 option(KALDI_BUILD_TEST "" ON)
 
-set(CUB_ROOT_DIR "tools/cub")
-
-
 # TODO: fix this
 if(WIN32)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../openfst-winport/src/include)
     link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../openfst-winport/build_output/x64/Debug/lib)
     link_libraries(libfst.lib)
+    add_compile_options(/bigobj)
 else()
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/include)
     link_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/lib)
@@ -46,12 +44,20 @@ else()
     message(FATAL_ERROR "TODO: error message" "${MATHLIB}")
 endif()
 
+if(MSVC)
+    # otherwise, cuda.lib will not be found
+    set(CUDA_USE_STATIC_CUDA_RUNTIME OFF CACHE INTERNAL "")
+    # add_definitions(-DWIN32_LEAN_AND_MEAN=1)
+endif()
+
 find_package(CUDA)
 if(CUDA_FOUND)
-    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+    set(CUB_ROOT_DIR "${CUDA_TOOLKIT_ROOT_DIR}/include/thrust/system/cuda/detail"  "tools/cub")
+
+    set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
     if(MSVC)
-        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /std:latest") # be aggressive
+        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /std:c++14" "-keep") # be aggressive
     else()
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
     endif()
@@ -61,9 +67,10 @@ if(CUDA_FOUND)
     add_definitions(-DHAVE_CUDA=1)
     add_definitions(-DCUDA_API_PER_THREAD_DEFAULT_STREAM=1)
     include_directories(${CUDA_INCLUDE_DIRS})
-    link_libraries(${CUDA_LIBRARIES} ${CUDA_CUFFT_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY} ${CUDA_cusparse_LIBRARY})
+    link_libraries(${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUFFT_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY} ${CUDA_cusparse_LIBRARY})
 
     find_package(NvToolExt REQUIRED)
+    include_directories(${NvToolExt_INCLUDE_DIR})
     link_libraries(NvToolExt)
 
     find_package(CUB REQUIRED)
