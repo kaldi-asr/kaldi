@@ -1,3 +1,7 @@
+set(PUBLIC_HEADERS
+    tensorflow-rnnlm.h
+)
+
 add_library(kaldi-tfrnnlm
     tensorflow-rnnlm.cc
 )
@@ -24,4 +28,15 @@ target_link_libraries(kaldi-tfrnnlm PUBLIC
     -ltensorflow_cc
     -ltensorflow_framework
 )
+
+
+install(TARGETS kaldi-tfrnnlm
+    EXPORT kaldi-tfrnnlm-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/tfrnnlm)
 

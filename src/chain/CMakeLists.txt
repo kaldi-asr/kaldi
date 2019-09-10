@@ -1,3 +1,15 @@
+set(PUBLIC_HEADERS
+    chain-supervision.h
+    chain-training.h
+    language-model.h
+    chain-den-graph.h
+    chain-generic-numerator.h
+    chain-numerator.h
+    chain-denominator.h
+    chain-kernels-ansi.h
+    chain-datastruct.h
+)
+
 cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 cuda_compile(CUDA_OBJS
     chain-kernels.cu
@@ -34,3 +46,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME language-model-test SOURCES language-model-test.cc DEPENDS kaldi-chain)
     add_kaldi_test_executable(NAME chain-supervision-test SOURCES chain-supervision-test.cc DEPENDS kaldi-chain)
 endif()
+
+install(TARGETS kaldi-chain
+    EXPORT kaldi-chain-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/chain)
+

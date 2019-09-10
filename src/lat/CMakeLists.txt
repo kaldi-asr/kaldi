@@ -1,3 +1,18 @@
+set(PUBLIC_HEADERS
+    compose-lattice-pruned.h
+    lattice-functions.h
+    word-align-lattice-lexicon.h
+    push-lattice.h
+    sausages.h
+    phone-align-lattice.h
+    arctic-weight.h
+    kaldi-lattice.h
+    minimize-lattice.h
+    confidence.h
+    determinize-lattice-pruned.h
+    word-align-lattice.h
+)
+
 add_library(kaldi-lat
     kaldi-lattice.cc
     phone-align-lattice.cc
@@ -32,3 +47,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME word-align-lattice-lexicon-test SOURCES word-align-lattice-lexicon-test.cc DEPENDS kaldi-lat)
     add_kaldi_test_executable(NAME push-lattice-test SOURCES push-lattice-test.cc DEPENDS kaldi-lat)
 endif()
+
+install(TARGETS kaldi-lat
+    EXPORT kaldi-lat-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/lat)
+

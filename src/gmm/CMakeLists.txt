@@ -1,3 +1,21 @@
+set(PUBLIC_HEADERS
+    diag-gmm-inl.h
+    indirect-diff-diag-gmm.h
+    am-diag-gmm.h
+    model-test-common.h
+    full-gmm-normal.h
+    ebw-diag-gmm.h
+    diag-gmm-normal.h
+    mle-full-gmm.h
+    full-gmm.h
+    mle-diag-gmm.h
+    diag-gmm.h
+    mle-am-diag-gmm.h
+    full-gmm-inl.h
+    model-common.h
+    decodable-am-diag-gmm.h
+)
+
 add_library(kaldi-gmm
     indirect-diff-diag-gmm.cc
     full-gmm-normal.cc
@@ -35,3 +53,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME mle-full-gmm-test SOURCES mle-full-gmm-test.cc DEPENDS kaldi-gmm)
     add_kaldi_test_executable(NAME am-diag-gmm-test SOURCES am-diag-gmm-test.cc DEPENDS kaldi-gmm)
 endif()
+
+install(TARGETS kaldi-gmm
+    EXPORT kaldi-gmm-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/gmm)
+

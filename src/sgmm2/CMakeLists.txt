@@ -1,3 +1,12 @@
+set(PUBLIC_HEADERS
+    estimate-am-sgmm2.h
+    estimate-am-sgmm2-ebw.h
+    fmllr-sgmm2.h
+    am-sgmm2-project.h
+    am-sgmm2.h
+    decodable-am-sgmm2.h
+)
+
 add_library(kaldi-sgmm2
     estimate-am-sgmm2-ebw.cc
     decodable-am-sgmm2.cc
@@ -26,3 +35,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME fmllr-sgmm2-test SOURCES fmllr-sgmm2-test.cc DEPENDS kaldi-sgmm2)
     add_kaldi_test_executable(NAME estimate-am-sgmm2-test SOURCES estimate-am-sgmm2-test.cc DEPENDS kaldi-sgmm2)
 endif()
+
+install(TARGETS kaldi-sgmm2
+    EXPORT kaldi-sgmm2-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/sgmm2)
+

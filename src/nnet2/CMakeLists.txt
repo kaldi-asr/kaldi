@@ -1,3 +1,35 @@
+set(PUBLIC_HEADERS
+    nnet-nnet.h
+    nnet-precondition.h
+    online-nnet2-decodable.h
+    nnet-compute.h
+    nnet-update.h
+    nnet-compute-discriminative-parallel.h
+    nnet-compute-discriminative.h
+    combine-nnet.h
+    combine-nnet-a.h
+    rescale-nnet.h
+    nnet-compute-online.h
+    nnet-precondition-online.h
+    train-nnet-ensemble.h
+    nnet-component.h
+    nnet-stats.h
+    train-nnet.h
+    decodable-am-nnet.h
+    nnet-functions.h
+    combine-nnet-fast.h
+    nnet-example.h
+    get-feature-transform.h
+    shrink-nnet.h
+    nnet-limit-rank.h
+    nnet-fix.h
+    mixup-nnet.h
+    am-nnet.h
+    nnet-example-functions.h
+    nnet-update-parallel.h
+    widen-nnet.h
+)
+
 add_library(kaldi-nnet2
     nnet-compute-discriminative.cc
     train-nnet.cc
@@ -56,3 +88,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME nnet2-component-test SOURCES nnet-component-test.cc DEPENDS kaldi-nnet2)
     add_kaldi_test_executable(NAME nnet2-precondition-online-test SOURCES nnet-precondition-online-test.cc DEPENDS kaldi-nnet2)
 endif()
+
+install(TARGETS kaldi-nnet2
+    EXPORT kaldi-nnet2-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/nnet2)
+

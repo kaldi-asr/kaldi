@@ -69,19 +69,23 @@ class CMakeListsLibrary(object):
     def __init__(self, dir_name):
         self.dir_name = dir_name
         self.target_name = dir_name_to_lib_target(self.dir_name)
-        self.file_list = []
-        self.cuda_file_list = []
-        self.test_file_list = []
+        self.header_list = []
+        self.source_list = []
+        self.cuda_source_list = []
+        self.test_source_list = []
         self.depends = []
 
-    def add_test_source(self, filename):
-        self.test_file_list.append(filename)
+    def add_header(self, filename):
+        self.header_list.append(filename)
 
     def add_source(self, filename):
-        self.file_list.append(filename)
+        self.source_list.append(filename)
 
     def add_cuda_source(self, filename):
-        self.cuda_file_list.append(filename)
+        self.cuda_source_list.append(filename)
+
+    def add_test_source(self, filename):
+        self.test_source_list.append(filename)
 
     def load_dependency_from_makefile(self, filename):
         with open(filename) as f:
@@ -94,21 +98,25 @@ class CMakeListsLibrary(object):
             for l in libs:
                 self.depends.append(os.path.splitext(os.path.basename(l))[0])
 
-
-
     def gen_code(self):
         ret = []
-        if len(self.cuda_file_list) > 0:
-            self.file_list.append("${CUDA_OBJS}")
-            ret.append("cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)")
-            ret.append("cuda_compile(CUDA_OBJS")
-            for f in self.cuda_file_list:
+
+        if len(self.header_list) > 0:
+            ret.append("set(PUBLIC_HEADERS")
+            for f in self.header_list:
                 ret.append("    " + f)
             ret.append(")\n")
 
+        if len(self.cuda_source_list) > 0:
+            self.source_list.append("${CUDA_OBJS}")
+            ret.append("cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)")
+            ret.append("cuda_compile(CUDA_OBJS")
+            for f in self.cuda_source_list:
+                ret.append("    " + f)
+            ret.append(")\n")
 
         ret.append("add_library(" + self.target_name)
-        for f in self.file_list:
+        for f in self.source_list:
             ret.append("    " + f)
         ret.append(")\n")
         ret.append("target_include_directories(" + self.target_name + " PUBLIC ")
@@ -129,13 +137,25 @@ class CMakeListsLibrary(object):
             else:
                 return exe_name
 
-        if len(self.test_file_list) > 0:
+        if len(self.test_source_list) > 0:
             ret.append("if(KALDI_BUILD_TEST)")
-            for f in self.test_file_list:
+            for f in self.test_source_list:
                 exe_target = get_test_exe_name(f)
                 depends = (self.target_name + " " + " ".join(get_exe_additional_depends(exe_target))).strip()
                 ret.append("    add_kaldi_test_executable(NAME " + exe_target + " SOURCES " + f + " DEPENDS " + depends + ")")
             ret.append("endif()")
+
+        ret.append("""
+install(TARGETS %s
+    EXPORT %s-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/%s)
+""" % (self.target_name,self.target_name,self.dir_name))
 
         return "\n".join(ret)
 
@@ -204,5 +224,7 @@ if __name__ == "__main__":
                     lib.add_cuda_source(filename)
                 elif is_test_source(filename):
                     lib.add_test_source(filename)
+                elif is_header(filename):
+                    lib.add_header(filename)
 
         cmakelists.write_file()

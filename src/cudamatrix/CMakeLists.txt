@@ -1,3 +1,28 @@
+set(PUBLIC_HEADERS
+    cu-array.h
+    cu-common.h
+    cu-allocator.h
+    cu-sp-matrix.h
+    cu-compressed-matrix.h
+    cu-matrixdim.h
+    cu-math.h
+    cu-value.h
+    cu-matrix.h
+    cublas-wrappers.h
+    cu-packed-matrix.h
+    cu-array-inl.h
+    cu-vector.h
+    cu-kernels.h
+    cu-block-matrix.h
+    cu-rand.h
+    cu-kernels-ansi.h
+    cu-matrix-lib.h
+    cu-sparse-matrix.h
+    cu-device.h
+    cu-matrix-inl.h
+    cu-tp-matrix.h
+)
+
 cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 cuda_compile(CUDA_OBJS
     cu-kernels.cu
@@ -50,3 +75,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME cu-device-test SOURCES cu-device-test.cc DEPENDS kaldi-cudamatrix)
     add_kaldi_test_executable(NAME cu-array-test SOURCES cu-array-test.cc DEPENDS kaldi-cudamatrix)
 endif()
+
+install(TARGETS kaldi-cudamatrix
+    EXPORT kaldi-cudamatrix-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/cudamatrix)
+

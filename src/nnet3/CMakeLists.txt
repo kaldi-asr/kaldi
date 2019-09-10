@@ -1,3 +1,49 @@
+set(PUBLIC_HEADERS
+    nnet-training.h
+    discriminative-training.h
+    nnet-nnet.h
+    nnet-computation.h
+    nnet-optimize.h
+    nnet-convolutional-component.h
+    nnet-compile-looped.h
+    nnet-compute.h
+    nnet-common.h
+    nnet-simple-component.h
+    nnet-test-utils.h
+    nnet-analyze.h
+    nnet-compile-utils.h
+    nnet-attention-component.h
+    am-nnet-simple.h
+    nnet-compile.h
+    nnet-component-itf.h
+    nnet-optimize-utils.h
+    nnet-combined-component.h
+    nnet-am-decodable-simple.h
+    decodable-simple-looped.h
+    nnet-example-utils.h
+    nnet-discriminative-diagnostics.h
+    nnet-utils.h
+    nnet-computation-graph.h
+    natural-gradient-online.h
+    decodable-online-looped.h
+    nnet-chain-example.h
+    nnet-example.h
+    nnet-discriminative-example.h
+    convolution.h
+    nnet-general-component.h
+    attention.h
+    nnet-diagnostics.h
+    nnet-discriminative-training.h
+    discriminative-supervision.h
+    nnet-chain-diagnostics.h
+    nnet-normalize-component.h
+    nnet-batch-compute.h
+    nnet-parse.h
+    nnet-chain-training.h
+    nnet-descriptor.h
+    nnet-graph.h
+)
+
 add_library(kaldi-nnet3
     nnet-chain-diagnostics.cc
     nnet-discriminative-diagnostics.cc
@@ -84,3 +130,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME nnet3-compile-test SOURCES nnet-compile-test.cc DEPENDS kaldi-nnet3)
     add_kaldi_test_executable(NAME convolution-test SOURCES convolution-test.cc DEPENDS kaldi-nnet3)
 endif()
+
+install(TARGETS kaldi-nnet3
+    EXPORT kaldi-nnet3-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/nnet3)
+

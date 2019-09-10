@@ -1,3 +1,12 @@
+set(PUBLIC_HEADERS
+    feature-window-cuda.h
+    feature-online-cmvn-cuda.h
+    online-cuda-feature-pipeline.h
+    online-ivector-feature-cuda.h
+    online-ivector-feature-cuda-kernels.h
+    feature-spectral-cuda.h
+)
+
 cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 cuda_compile(CUDA_OBJS
     feature-window-cuda.cu
@@ -27,4 +36,15 @@ target_link_libraries(kaldi-cudafeat PUBLIC
     kaldi-ivector
     kaldi-online2
 )
+
+
+install(TARGETS kaldi-cudafeat
+    EXPORT kaldi-cudafeat-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/cudafeat)
 

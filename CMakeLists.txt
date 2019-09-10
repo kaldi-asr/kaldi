@@ -3,6 +3,8 @@ project(kaldi)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
+
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(Utils)
@@ -78,7 +80,8 @@ if(CUDA_FOUND)
 endif()
 
 # TODO: version helper
-add_definitions(-DKALDI_VERSION="cmake")
+set(KALDI_VERSION 0.0)
+add_definitions(-DKALDI_VERSION="${KALDI_VERSION}")
 add_definitions(-DKALDI_NO_PORTAUDIO=1)
 
 # add all native libraries
@@ -122,3 +125,19 @@ if(CUDA_FOUND)
     add_subdirectory(src/cudafeatbin)
     add_subdirectory(src/cudadecoderbin)
 endif()
+
+include(CMakePackageConfigHelpers)
+# maybe we should put this into subfolder?
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kaldi-config.cmake.in
+    ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake
+    INSTALL_DESTINATION lib/cmake/kaldi
+)
+write_basic_package_version_file(
+    ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
+    VERSION ${KALDI_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
+    DESTINATION lib/cmake/kaldi
+)

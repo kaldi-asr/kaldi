@@ -1,3 +1,15 @@
+set(PUBLIC_HEADERS
+    decodable-cumatrix.h
+    cuda-fst.h
+    cuda-decoder-kernels-utils.h
+    cuda-decodable-itf.h
+    thread-pool.h
+    batched-threaded-nnet3-cuda-pipeline.h
+    cuda-decoder-kernels.h
+    cuda-decoder-common.h
+    cuda-decoder.h
+)
+
 cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 cuda_compile(CUDA_OBJS
     cuda-decoder-kernels.cu
@@ -33,4 +45,15 @@ target_link_libraries(kaldi-cudadecoder PUBLIC
     kaldi-nnet3
     kaldi-cudafeat
 )
+
+
+install(TARGETS kaldi-cudadecoder
+    EXPORT kaldi-cudadecoder-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/cudadecoder)
 

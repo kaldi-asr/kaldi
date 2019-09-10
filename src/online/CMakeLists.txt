@@ -1,3 +1,12 @@
+set(PUBLIC_HEADERS
+    online-faster-decoder.h
+    online-audio-source.h
+    onlinebin-util.h
+    online-tcp-source.h
+    online-feat-input.h
+    online-decodable.h
+)
+
 add_library(kaldi-online
     online-feat-input.cc
     online-decodable.cc
@@ -28,3 +37,14 @@ target_link_libraries(kaldi-online PUBLIC
 if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME online-feat-test SOURCES online-feat-test.cc DEPENDS kaldi-online)
 endif()
+
+install(TARGETS kaldi-online
+    EXPORT kaldi-online-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/online)
+

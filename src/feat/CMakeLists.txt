@@ -1,3 +1,20 @@
+set(PUBLIC_HEADERS
+    feature-common.h
+    signal.h
+    feature-common-inl.h
+    feature-functions.h
+    feature-plp.h
+    mel-computations.h
+    feature-window.h
+    pitch-functions.h
+    online-feature.h
+    feature-fbank.h
+    resample.h
+    wave-reader.h
+    feature-mfcc.h
+    feature-spectrogram.h
+)
+
 add_library(kaldi-feat
     feature-plp.cc
     feature-window.cc
@@ -39,3 +56,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME feature-mfcc-test SOURCES feature-mfcc-test.cc DEPENDS kaldi-feat)
     add_kaldi_test_executable(NAME feature-plp-test SOURCES feature-plp-test.cc DEPENDS kaldi-feat)
 endif()
+
+install(TARGETS kaldi-feat
+    EXPORT kaldi-feat-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/feat)
+

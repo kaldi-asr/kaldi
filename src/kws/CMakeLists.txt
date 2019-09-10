@@ -1,3 +1,9 @@
+set(PUBLIC_HEADERS
+    kaldi-kws.h
+    kws-scoring.h
+    kws-functions.h
+)
+
 add_library(kaldi-kws
     kws-scoring.cc
     kws-functions2.cc
@@ -17,4 +23,15 @@ target_link_libraries(kaldi-kws PUBLIC
     kaldi-matrix
     kaldi-base
 )
+
+
+install(TARGETS kaldi-kws
+    EXPORT kaldi-kws-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/kws)
 

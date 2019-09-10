@@ -1,3 +1,18 @@
+set(PUBLIC_HEADERS
+    online-nnet2-decoding-threaded.h
+    online-ivector-feature.h
+    online-nnet2-feature-pipeline.h
+    online-gmm-decoding.h
+    online-gmm-decodable.h
+    online-feature-pipeline.h
+    online-timing.h
+    onlinebin-util.h
+    online-speex-wrapper.h
+    online-endpoint.h
+    online-nnet2-decoding.h
+    online-nnet3-decoding.h
+)
+
 add_library(kaldi-online2
     online-ivector-feature.cc
     online-endpoint.cc
@@ -35,4 +50,15 @@ target_link_libraries(kaldi-online2 PUBLIC
     kaldi-matrix
     kaldi-base
 )
+
+
+install(TARGETS kaldi-online2
+    EXPORT kaldi-online2-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/online2)
 

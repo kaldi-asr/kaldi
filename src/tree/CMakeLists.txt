@@ -1,3 +1,14 @@
+set(PUBLIC_HEADERS
+    context-dep.h
+    cluster-utils.h
+    build-tree-questions.h
+    build-tree-utils.h
+    event-map.h
+    tree-renderer.h
+    build-tree.h
+    clusterable-classes.h
+)
+
 add_library(kaldi-tree
     build-tree.cc
     context-dep.cc
@@ -27,3 +38,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME build-tree-test SOURCES build-tree-test.cc DEPENDS kaldi-tree)
     add_kaldi_test_executable(NAME context-dep-test SOURCES context-dep-test.cc DEPENDS kaldi-tree)
 endif()
+
+install(TARGETS kaldi-tree
+    EXPORT kaldi-tree-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/tree)
+

@@ -1,3 +1,19 @@
+set(PUBLIC_HEADERS
+    simple-decoder.h
+    decodable-sum.h
+    biglm-faster-decoder.h
+    lattice-faster-online-decoder.h
+    faster-decoder.h
+    lattice-faster-decoder.h
+    training-graph-compiler.h
+    lattice-simple-decoder.h
+    lattice-biglm-faster-decoder.h
+    decodable-mapped.h
+    decoder-wrappers.h
+    decodable-matrix.h
+    grammar-fst.h
+)
+
 add_library(kaldi-decoder
     decoder-wrappers.cc
     lattice-simple-decoder.cc
@@ -26,4 +42,15 @@ target_link_libraries(kaldi-decoder PUBLIC
     kaldi-matrix
     kaldi-base
 )
+
+
+install(TARGETS kaldi-decoder
+    EXPORT kaldi-decoder-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/decoder)
 

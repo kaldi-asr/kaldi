@@ -1,3 +1,11 @@
+set(PUBLIC_HEADERS
+    voice-activity-detection.h
+    plda.h
+    logistic-regression.h
+    agglomerative-clustering.h
+    ivector-extractor.h
+)
+
 add_library(kaldi-ivector
     agglomerative-clustering.cc
     plda.cc
@@ -25,3 +33,14 @@ if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME plda-test SOURCES plda-test.cc DEPENDS kaldi-ivector)
     add_kaldi_test_executable(NAME logistic-regression-test SOURCES logistic-regression-test.cc DEPENDS kaldi-ivector)
 endif()
+
+install(TARGETS kaldi-ivector
+    EXPORT kaldi-ivector-targets
+    INCLUDES DESTINATION include/kaldi
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/ivector)
+
