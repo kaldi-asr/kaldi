@@ -52,12 +52,12 @@ endif()
 
 find_package(CUDA)
 if(CUDA_FOUND)
-    set(CUB_ROOT_DIR "${CUDA_TOOLKIT_ROOT_DIR}/include/thrust/system/cuda/detail"  "tools/cub")
+    set(CUB_ROOT_DIR "tools/cub")
 
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
     if(MSVC)
-        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /std:c++14" "-keep") # be aggressive
+        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /std:c++latest") # be aggressive
     else()
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
     endif()
