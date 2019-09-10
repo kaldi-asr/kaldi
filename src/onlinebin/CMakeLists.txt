@@ -1,0 +1,6 @@
+add_kaldi_executable(NAME online-audio-server-decode-faster SOURCES online-audio-server-decode-faster.cc DEPENDS kaldi-online)
+add_kaldi_executable(NAME online-gmm-decode-faster SOURCES online-gmm-decode-faster.cc DEPENDS kaldi-online)
+add_kaldi_executable(NAME online-net-client SOURCES online-net-client.cc DEPENDS kaldi-online)
+add_kaldi_executable(NAME online-audio-client SOURCES online-audio-client.cc DEPENDS kaldi-online)
+add_kaldi_executable(NAME online-wav-gmm-decode-faster SOURCES online-wav-gmm-decode-faster.cc DEPENDS kaldi-online)
+add_kaldi_executable(NAME online-server-gmm-decode-faster SOURCES online-server-gmm-decode-faster.cc DEPENDS kaldi-online)

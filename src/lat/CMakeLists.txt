@@ -1,0 +1,34 @@
+add_library(kaldi-lat
+    kaldi-lattice.cc
+    phone-align-lattice.cc
+    minimize-lattice.cc
+    lattice-functions.cc
+    sausages.cc
+    determinize-lattice-pruned.cc
+    confidence.cc
+    word-align-lattice-lexicon.cc
+    word-align-lattice.cc
+    compose-lattice-pruned.cc
+    push-lattice.cc
+)
+
+target_include_directories(kaldi-lat PUBLIC 
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+     $<INSTALL_INTERFACE:include/kaldi>
+)
+
+target_link_libraries(kaldi-lat PUBLIC
+    kaldi-hmm
+    kaldi-tree
+    kaldi-util
+    kaldi-matrix
+    kaldi-base
+)
+
+if(KALDI_BUILD_TEST)
+    add_kaldi_test_executable(NAME determinize-lattice-pruned-test SOURCES determinize-lattice-pruned-test.cc DEPENDS kaldi-lat)
+    add_kaldi_test_executable(NAME minimize-lattice-test SOURCES minimize-lattice-test.cc DEPENDS kaldi-lat)
+    add_kaldi_test_executable(NAME kaldi-lattice-test SOURCES kaldi-lattice-test.cc DEPENDS kaldi-lat)
+    add_kaldi_test_executable(NAME word-align-lattice-lexicon-test SOURCES word-align-lattice-lexicon-test.cc DEPENDS kaldi-lat)
+    add_kaldi_test_executable(NAME push-lattice-test SOURCES push-lattice-test.cc DEPENDS kaldi-lat)
+endif()

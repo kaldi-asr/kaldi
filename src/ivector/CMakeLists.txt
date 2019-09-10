@@ -1,0 +1,27 @@
+add_library(kaldi-ivector
+    agglomerative-clustering.cc
+    plda.cc
+    logistic-regression.cc
+    ivector-extractor.cc
+    voice-activity-detection.cc
+)
+
+target_include_directories(kaldi-ivector PUBLIC 
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+     $<INSTALL_INTERFACE:include/kaldi>
+)
+
+target_link_libraries(kaldi-ivector PUBLIC
+    kaldi-transform
+    kaldi-gmm
+    kaldi-tree
+    kaldi-util
+    kaldi-matrix
+    kaldi-base
+)
+
+if(KALDI_BUILD_TEST)
+    add_kaldi_test_executable(NAME ivector-extractor-test SOURCES ivector-extractor-test.cc DEPENDS kaldi-ivector)
+    add_kaldi_test_executable(NAME plda-test SOURCES plda-test.cc DEPENDS kaldi-ivector)
+    add_kaldi_test_executable(NAME logistic-regression-test SOURCES logistic-regression-test.cc DEPENDS kaldi-ivector)
+endif()
