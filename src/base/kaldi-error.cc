@@ -33,7 +33,11 @@
 
 #include "base/kaldi-common.h"
 #include "base/kaldi-error.h"
-// #include "base/version.h"
+
+// KALDI_GIT_HEAD is useless currently in full repo
+#if !defined(KALDI_VERSION)
+#include "base/version.h"
+#endif
 
 namespace kaldi {
 
