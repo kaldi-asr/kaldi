@@ -1,0 +1,10 @@
+affix=new_egs_shuffled_v2
+common_egs_dir=exp/chain/tdnn_8k_chaina_dummy_sp/egs_shuffled
+stage=12
+graph_dir=exp/chain/tdnn_8k_chaina_v3_sp/graph_sw1_tg/
+
+stage=13
+train_stage=-3
+
+train_stage=0
+train_stage=126

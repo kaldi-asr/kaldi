@@ -1,0 +1,9 @@
+stage=12
+common_egs_dir=exp/chain/tdnn_8k_chaina_dummy_sp/randomized_egs_oldstyle
+affix=new_egs_shuffled_v2
+graph_dir=exp/chain/tdnn_8k_chaina_v3_sp/graph_sw1_tg
+
+
+# changed for the next experiment. because I changed randomized_egs_oldstyle/info
+# num_archives was originally 100, now it is 207
+affix=new_egs_shuffled_v3
