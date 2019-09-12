@@ -1,0 +1,12 @@
+stage=12
+common_egs_dir=exp/chain/tdnn_8k_chaina_dummy_sp/randomized_egs
+affix=chaina_v4
+graph_dir=exp/chain/tdnn_8k_chaina_v3_sp/graph_sw1_tg
+stage=21
+
+stage=19
+train_stage=261
+
+# decoding with frames-per-eg=150
+stage=21
+decode_suff=fpe150
