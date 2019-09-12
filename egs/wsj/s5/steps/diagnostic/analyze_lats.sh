@@ -13,6 +13,8 @@ acwt=0.1
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
+exit 0
+
 
 #[ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
