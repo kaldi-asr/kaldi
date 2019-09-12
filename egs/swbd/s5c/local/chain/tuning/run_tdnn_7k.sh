@@ -17,7 +17,7 @@ set -e
 
 # configs for 'chain'
 affix=
-stage=12
+stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -38,6 +38,8 @@ frames_per_eg=150
 remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
+graph_dir=
+config=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
 
@@ -47,6 +49,10 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+if [ ! -z $config ]; then
+    . $config
+fi
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -162,7 +168,8 @@ if [ $stage -le 13 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$decode_cmd" \
+    --cmd "$cuda_cmd" \
+    --egs.cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -194,11 +201,17 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  if [ -z $graph_dir -o ! -d $graph_dir ]; then
+    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+    graph_dir=$dir/graph_sw1_tg
+  fi
+  if [ -z $graph_dir ]; then
+    graph_dir=$dir/graph_sw1_tg
+  fi
+
 fi
 
 
-graph_dir=$dir/graph_sw1_tg
 iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
