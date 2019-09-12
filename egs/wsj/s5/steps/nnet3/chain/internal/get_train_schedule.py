@@ -103,8 +103,8 @@ def get_schedules(args):
             # regardless of the --num-jobs-initial and --num-jobs-final.  This
             # is because the model averaging does not work reliably for a
             # freshly initialized model.
-            if iter == 0:
-                current_num_jobs = 1
+            # if iter == 0:
+            #     current_num_jobs = 1
 
             lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
                                                        num_iters,
@@ -135,8 +135,9 @@ def get_schedules(args):
                 # [0, 1, -1].  This is clearer in intent, and keeps the
                 # supervision starting at frame zero, which IIRC is a
                 # requirement somewhere in the 'chaina' code.
-                if frame_shift > (args.frame_subsampling_factor // 2):
-                    frame_shift = frame_shift - args.frame_subsampling_factor
+#               TODO: delete this section if no longer useful
+                # if frame_shift > (args.frame_subsampling_factor // 2):
+                #     frame_shift = frame_shift - args.frame_subsampling_factor
 
                 frame_shifts.append(str(frame_shift))
                 egs.append(str(scp_index))
