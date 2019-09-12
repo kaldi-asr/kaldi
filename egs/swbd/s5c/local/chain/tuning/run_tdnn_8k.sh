@@ -6,13 +6,14 @@ set -e
 
 # configs for 'chain'
 affix=chaina_v3
-stage=17
+stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_8k  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_nj=96
+decode_suff=
 
 # The amount of extra left/right context we put in the egs.  Note: this could
 # easily be zero, since we're not using a recurrent topology, but we put in a
@@ -36,6 +37,8 @@ remove_egs=true
 common_egs_dir=exp/chain/tdnn_8k_chaina_v2_sp/egs
 xent_regularize=0.1
 srand=0
+graph_dir=
+config=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
 
@@ -45,6 +48,10 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+if [ ! -z $config ]; then
+    . $config
+fi
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -304,11 +311,16 @@ if [ $stage -le 20 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  $mkgraph_cmd $dir/graph_sw1_tg/mkgraph.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $treedir $dir/graph_sw1_tg
+  if [ -z $graph_dir -o ! -d $graph_dir ]; then
+    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+    graph_dir=$dir/graph_sw1_tg
+  fi
+  if [ -z $graph_dir ]; then
+    graph_dir=$dir/graph_sw1_tg
+  fi
 fi
 
 
-graph_dir=$dir/graph_sw1_tg
 iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
@@ -322,11 +334,11 @@ if [ $stage -le 21 ]; then
           --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
           $graph_dir data/${decode_set}_hires \
-          $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
+          $dir/decode_${decode_set}${decode_iter:+_$decode_iter}${decode_suff}_sw1_tg || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+            $dir/decode_${decode_set}${decode_iter:+_$decode_iter}${decode_suff}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) || touch $dir/.error &
   done
