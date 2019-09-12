@@ -162,13 +162,13 @@ while [ $x -lt $num_iters ]; do
 
     Args=() # bash array of training commands for 1:nj, that put accs to stdout.
     for j in $(seq $nj_full); do
-      Args[$j]=`echo "ivector-extractor-acc-stats --num-threads=$num_threads $dir/$x.ie '$feats' 'ark,s,cs:gunzip -c $dir/post.JOB.gz|' -|" | sed s/JOB/$j/g`
+      Args[$j]=`echo "ivector-extractor-acc-stats  $dir/$x.ie '$feats' 'ark,s,cs:gunzip -c $dir/post.JOB.gz|' -|" | sed s/JOB/$j/g`
     done
 
     echo "Accumulating stats (pass $x)"
     for g in $(seq $nj); do
       start=$[$num_processes*($g-1)+1]
-      $cmd --num-threads $[$num_threads*$num_processes] $dir/log/acc.$x.$g.log \
+      $cmd  $dir/log/acc.$x.$g.log \
         ivector-extractor-sum-accs --parallel=true "${Args[@]:$start:$num_processes}" \
           $dir/acc.$x.$g || touch $dir/.error &
     done
@@ -189,8 +189,8 @@ while [ $x -lt $num_iters ]; do
                                       # The parallel-opts was either specified by
                                       # the user or we computed it correctly in
                                       # tge previous stages
-    $cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
-      ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
+    $cmd  $dir/log/update.$x.log \
+      ivector-extractor-est  $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
     rm $dir/acc.$x.*
     if $cleanup; then
       rm $dir/acc.$x $dir/$x.ie
