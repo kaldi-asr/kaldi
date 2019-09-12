@@ -51,7 +51,7 @@ if [ $stage -le 0 ]; then
             egs_rspecifier="ark:nnet3-chain-copy-egs $egs_opts ark:$egs/train.JOB.ark ark:- |"
         fi
         echo "$0: Accumulating LDA stats"
-        $cmd JOB=1:$nj $ldafolder/acc.JOB.log \
+        $cmd JOB=1:$nj $ldafolder/log/acc.JOB.log \
                 nnet3-chain-acc-lda-stats $lda_acc_opts --rand-prune=${rand_prune} \
                 $model "${egs_rspecifier}" \
                 $ldafolder/JOB.lda_stats || exit 1
@@ -66,14 +66,16 @@ if [ $stage -le 1 ]; then
 
     $cmd $ldafolder/log/sum_transform_stats.log \
         sum-lda-accs $lda_sum_opts $ldafolder/lda_stats $lda_stats_files || exit 1
+    rm $lda_stats_files
 fi
 
 if [ $stage -le 2 ]; then
     echo "$0: Computing LDA transform"
-    $cmd $ldafolder/get_transform.log \
+    $cmd $ldafolder/log/get_transform.log \
         nnet-get-feature-transform $lda_transform_opts \
         $ldafolder/lda.mat $ldafolder/lda_stats || exit 1
 
+    rm $ldafolder/lda_stats
     ln -rs $ldafolder/lda.mat $ldafolder/configs/lda.mat
 fi
 
