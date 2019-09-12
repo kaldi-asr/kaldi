@@ -20,6 +20,7 @@ cmd=run.pl
 groups_per_block=128     # The 'groups' are the egs in the scp file from
                          # process_egs.sh, containing '--chunks-per-group' sequences
                          # each.
+num_blocks=256
 
 frames_per_job=3000000   # The number of frames of data we want to process per
                          # training job (will determine how long each job takes,
@@ -107,9 +108,16 @@ fi
 mkdir -p $dir/misc
 cp $processed_egs_dir/misc/* $dir/misc
 
-utils/shuffle_list.pl --srand "$srand" $processed_egs_dir/train.scp > $dir/train_shuffled.scp
-utils/split_scp.pl  $dir/train_shuffled.scp  \
-    $(for i in $(seq $num_scp_files); do echo $dir/train.$i.scp; done)
+utils/shuffle_list.pl  $processed_egs_dir/train.scp > $dir/temp/train.scp
+utils/split_scp.pl $dir/temp/train.scp $(for i in $(seq $num_blocks); do echo $dir/temp/train.$i.scp; done)
+for i in `seq $num_blocks`; do
+    utils/split_scp.pl <(utils/shuffle_list.pl $dir/temp/train.$i.scp) $(for j in $(seq $num_scp_files); do echo $dir/temp/train.$i.$j.scp; done)
+done
+for j in `seq $num_scp_files`; do
+    cat $dir/temp/train.*.$j.scp | utils/shuffle_list.pl > $dir/train.$j.scp
+done
+rm -rf $dir/temp &
+
 cp $processed_egs_dir/heldout_subset.scp $processed_egs_dir/train_subset.scp $dir/
 
 
@@ -148,4 +156,5 @@ if ! cat $dir/info.txt | awk '{if (NF == 1) exit(1);}'; then
 fi
 
 
+wait;
 echo "$0: Finished randomizing egs"
