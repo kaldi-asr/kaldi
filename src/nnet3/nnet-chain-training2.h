@@ -138,7 +138,7 @@ class NnetChainTrainer2 {
                     Nnet *nnet);
 
   // train on one minibatch.
-  void Train(const std::string &key, const NnetChainExample &eg);
+  void Train(const std::string &key, NnetChainExample &eg);
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
