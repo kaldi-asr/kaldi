@@ -9,6 +9,7 @@ stage=0
 train_stage=-10
 affix=1a
 remove_egs=false
+online_cmvn=true
 
 # training options
 srand=0
@@ -144,7 +145,7 @@ if [ $stage -le 3 ]; then
 
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$decode_cmd" \
-    --feat.cmvn-opts="--norm-means=true --norm-vars=false" \
+    --feat.cmvn-opts="--config=conf/online_cmvn.conf" \
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
@@ -161,7 +162,7 @@ if [ $stage -le 3 ]; then
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.optimization.momentum=0.0 \
     --egs.dir "$common_egs_dir" \
-    --egs.opts "--num-utts-subset 300" \
+    --egs.opts "--num-utts-subset 300 --online-cmvn $online_cmvn" \
     --cleanup.remove-egs=$remove_egs \
     --feat-dir data/${train_set}_hires \
     --tree-dir $tree_dir \
@@ -273,6 +274,39 @@ if [ $stage -le 8 ]; then
   for data in $test_sets; do
     nspk=$(wc -l <data/${data}_hires/spk2utt)
     local/process_lattice.sh --nj $nspk --wake-word $wake_word ${dir}/decode_${data} data/${data}_hires $lang || exit 1
+  done
+  echo "Done. Date: $(date)."
+fi
+
+if [ $stage -le 9 ]; then
+  steps/online/nnet3/prepare_online_decoding.sh \
+    --mfcc-config conf/mfcc_hires.conf \
+    --online-cmvn-config conf/online_cmvn.conf \
+    $lang ${dir} ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+
+  frames_per_chunk=150
+  for data in $test_sets; do
+    (
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      steps/online/nnet3/decode.sh \
+        --scoring-opts "--wake-word $wake_word" \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context-initial 0 \
+        --frames-per-chunk $frames_per_chunk \
+        --nj $nspk --cmd "$decode_cmd" \
+        $tree_dir/graph data/${data}_hires ${dir}_online/decode_${data} || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+if [ $stage -le 10 ]; then
+  for data in $test_sets; do
+    nspk=$(wc -l <data/${data}_hires/spk2utt)
+    local/process_lattice.sh --nj $nspk --wake-word $wake_word ${dir}_online/decode_${data} data/${data}_hires $lang || exit 1
   done
   echo "Done. Date: $(date)."
 fi
