@@ -38,6 +38,7 @@ if(MATHLIB STREQUAL "OpenBLAS")
 elseif(MATHLIB STREQUAL "MKL")
     set(BLA_VENDOR "Intel10_64lp")
     # find_package(BLAS REQUIRED)
+    normalize_env_path(ENV{MKLROOT})
     find_package(LAPACK REQUIRED)
     add_definitions(-DHAVE_MKL=1)
     include_directories($ENV{MKLROOT}/include) # TODO: maybe not use env, idk, find_package doesnt handle includes...
@@ -47,9 +48,20 @@ else()
 endif()
 
 if(MSVC)
+    add_compile_options(/permissive- /wd4819)
+
+    # some warnings related with fst
+    add_compile_options(/wd4018 /wd4244 /wd4267 /wd4291 /wd4305)
+
     # otherwise, cuda.lib will not be found
     set(CUDA_USE_STATIC_CUDA_RUNTIME OFF CACHE INTERNAL "")
     # add_definitions(-DWIN32_LEAN_AND_MEAN=1)
+    if(NOT DEFINED ENV{CUDAHOSTCXX})
+        set(ENV{CUDAHOSTCXX} ${CMAKE_CXX_COMPILER})
+    endif()
+    if(NOT DEFINED CUDA_HOST_COMPILER)
+        set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+    endif()
 endif()
 
 find_package(CUDA)
@@ -58,11 +70,11 @@ if(CUDA_FOUND)
 
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
-    if(MSVC)
-        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /std:c++latest") # be aggressive
-    else()
-        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
-    endif()
+    # if(MSVC)
+    #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /std:c++${CMAKE_CXX_STANDARD},/permissive-,/wd4819")
+    # else()
+    #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
+    # endif()
 
     set(CUDA_NVCC_FLAGS ${KALDI_CUDA_NVCC_FLAGS} ${CUDA_NVCC_FLAGS})
 
@@ -141,3 +153,5 @@ write_basic_package_version_file(
 install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
     DESTINATION lib/cmake/kaldi
 )
+
+# message(FATAL_ERROR ${CUDA_HOST_COMPILER})

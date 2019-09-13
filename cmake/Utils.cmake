@@ -1,3 +1,16 @@
+macro(normalize_path in_path)
+    file(TO_CMAKE_PATH "${${in_path}}" normalize_path_out_path)
+    set(${in_path} "${normalize_path_out_path}")
+    unset(normalize_path_out_path)
+endmacro()
+
+macro(normalize_env_path in_path)
+    file(TO_CMAKE_PATH "$${in_path}" normalize_env_path_out_path)
+    set(${in_path} "${normalize_env_path_out_path}")
+    unset(normalize_env_path_out_path)
+endmacro()
+
+
 macro(add_kaldi_executable)
     cmake_parse_arguments(kaldi_exe "" "NAME" "SOURCES;DEPENDS" ${ARGN})
     add_executable(${kaldi_exe_NAME} ${kaldi_exe_SOURCES})
@@ -9,8 +22,6 @@ macro(add_kaldi_executable)
     unset(kaldi_exe_SOURCES)
     unset(kaldi_exe_DEPENDS)
 endmacro()
-
-
 
 macro(add_kaldi_test_executable)
     cmake_parse_arguments(kaldi_test_exe "" "NAME" "SOURCES;DEPENDS" ${ARGN})
