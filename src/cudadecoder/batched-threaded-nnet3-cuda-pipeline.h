@@ -215,6 +215,7 @@ private:
    Matrix<BaseFloat> input_features_cpu;
    CuVector<BaseFloat> ivector_features;
    CuMatrix<BaseFloat> input_features;
+   CuMatrix<BaseFloat> spectral_features;
    CuMatrix<BaseFloat> posteriors;
 
    TaskData(const WaveData &wave_data_in)

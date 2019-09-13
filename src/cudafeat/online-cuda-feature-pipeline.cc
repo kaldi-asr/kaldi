@@ -31,6 +31,14 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
     spectral_feat = new CudaSpectralFeatures(info_.fbank_opts);
   }
 
+  if (info_.use_cmvn) {
+    KALDI_ASSERT(info_.global_cmvn_stats_rxfilename != "");
+    ReadKaldiObject(info_.global_cmvn_stats_rxfilename, &global_cmvn_stats);
+    OnlineCmvnState cmvn_state(global_cmvn_stats);
+    CudaOnlineCmvnState cu_cmvn_state(cmvn_state);
+    cmvn = new CudaOnlineCmvn(info_.cmvn_opts, cu_cmvn_state);
+  }
+
   if (info_.use_ivectors) {
     OnlineIvectorExtractionConfig ivector_extraction_opts;
     ReadConfigFromFile(config.ivector_extraction_config,
@@ -47,6 +55,7 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
 
 OnlineCudaFeaturePipeline::~OnlineCudaFeaturePipeline() {
   if (spectral_feat != NULL) delete spectral_feat;
+  if (cmvn != NULL) delete cmvn;
   if (ivector != NULL) delete ivector;
 }
 
@@ -61,6 +70,11 @@ void OnlineCudaFeaturePipeline::ComputeFeatures(
     spectral_feat->ComputeFeatures(cu_wave, sample_freq, vtln_warp, input_features);
   } else {
     KALDI_ASSERT(false);
+  }
+
+  if (info_.use_cmvn) {
+    // Can we do this in place?
+    cmvn->ComputeFeatures(*input_features, input_features);
   }
 
   // Ivector
