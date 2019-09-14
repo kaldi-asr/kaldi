@@ -1,37 +1,37 @@
 set(PUBLIC_HEADERS
-    nnet-nnet.h
-    nnet-convolutional-component.h
-    nnet-loss.h
-    nnet-affine-transform.h
-    nnet-various.h
-    nnet-frame-pooling-component.h
-    nnet-matrix-buffer.h
-    nnet-pdf-prior.h
-    nnet-blstm-projected.h
-    nnet-sentence-averaging-component.h
-    nnet-max-pooling-component.h
-    nnet-linear-transform.h
-    nnet-recurrent.h
-    nnet-average-pooling-component.h
-    nnet-component.h
-    nnet-parallel-component.h
     nnet-activation.h
-    nnet-lstm-projected.h
-    nnet-utils.h
+    nnet-affine-transform.h
+    nnet-average-pooling-component.h
+    nnet-blstm-projected.h
+    nnet-component.h
+    nnet-convolutional-component.h
+    nnet-frame-pooling-component.h
     nnet-kl-hmm.h
+    nnet-linear-transform.h
+    nnet-loss.h
+    nnet-lstm-projected.h
+    nnet-matrix-buffer.h
+    nnet-max-pooling-component.h
     nnet-multibasis-component.h
-    nnet-trnopts.h
+    nnet-nnet.h
+    nnet-parallel-component.h
     nnet-parametric-relu.h
-    nnet-rbm.h
+    nnet-pdf-prior.h
     nnet-randomizer.h
+    nnet-rbm.h
+    nnet-recurrent.h
+    nnet-sentence-averaging-component.h
+    nnet-trnopts.h
+    nnet-utils.h
+    nnet-various.h
 )
 
 add_library(kaldi-nnet
-    nnet-pdf-prior.cc
-    nnet-nnet.cc
-    nnet-randomizer.cc
-    nnet-loss.cc
     nnet-component.cc
+    nnet-loss.cc
+    nnet-nnet.cc
+    nnet-pdf-prior.cc
+    nnet-randomizer.cc
 )
 
 target_include_directories(kaldi-nnet PUBLIC 
@@ -49,8 +49,8 @@ target_link_libraries(kaldi-nnet PUBLIC
 )
 
 if(KALDI_BUILD_TEST)
-    add_kaldi_test_executable(NAME nnet-randomizer-test SOURCES nnet-randomizer-test.cc DEPENDS kaldi-nnet)
     add_kaldi_test_executable(NAME nnet-component-test SOURCES nnet-component-test.cc DEPENDS kaldi-nnet)
+    add_kaldi_test_executable(NAME nnet-randomizer-test SOURCES nnet-randomizer-test.cc DEPENDS kaldi-nnet)
 endif()
 
 install(TARGETS kaldi-nnet

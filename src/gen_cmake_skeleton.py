@@ -26,6 +26,14 @@ def is_source(f):
 def dir_name_to_lib_target(dir_name):
     return "kaldi-" + dir_name
 
+def wrap_notwin32_condition(should_wrap, lines):
+    if isinstance(lines, str):
+        lines = [lines]
+    if should_wrap:
+        return ["if(NOT WIN32)"] + list(map(lambda l: "    " + l, lines)) + ["endif()"]
+    else:
+        return lines
+
 
 def get_exe_additional_depends(t):
     additional = {
@@ -63,6 +71,15 @@ def get_exe_additional_depends(t):
     else:
         return []
 
+def disable_for_win32(t):
+    disabled = [
+        "online-audio-client",
+        "online-net-client",
+        "online2-tcp-nnet3-decode-faster",
+        "online-server-gmm-decode-faster",
+        "online-audio-server-decode-faster"
+    ]
+    return t in disabled
 
 class CMakeListsLibrary(object):
 
@@ -142,7 +159,8 @@ class CMakeListsLibrary(object):
             for f in self.test_source_list:
                 exe_target = get_test_exe_name(f)
                 depends = (self.target_name + " " + " ".join(get_exe_additional_depends(exe_target))).strip()
-                ret.append("    add_kaldi_test_executable(NAME " + exe_target + " SOURCES " + f + " DEPENDS " + depends + ")")
+                ret.extend(wrap_notwin32_condition(disable_for_win32(self.target_name),
+                    "    add_kaldi_test_executable(NAME " + exe_target + " SOURCES " + f + " DEPENDS " + depends + ")"))
             ret.append("endif()")
 
         ret.append("""
@@ -175,7 +193,9 @@ class CMakeListsExecutable(object):
         ret = []
         for exe_name, file_name, depend in self.list:
             depends = (depend + " " + " ".join(get_exe_additional_depends(exe_name))).strip()
-            ret.append("add_kaldi_executable(NAME " + exe_name + " SOURCES " + file_name + " DEPENDS " + depends + ")")
+            ret.extend(wrap_notwin32_condition(disable_for_win32(exe_name),
+                       "add_kaldi_executable(NAME " + exe_name + " SOURCES " + file_name + " DEPENDS " + depends + ")"))
+
         return "\n".join(ret)
 
 class CMakeListsFile(object):
@@ -188,7 +208,7 @@ class CMakeListsFile(object):
         self.sections.append(section)
 
     def write_file(self):
-        with open(self.path, "w") as f:
+        with open(self.path, "w", newline='\n') as f: # good luck for python2
             for s in self.sections:
                 code = s.gen_code()
                 f.write(code)
@@ -216,7 +236,7 @@ if __name__ == "__main__":
                 continue
             lib.load_dependency_from_makefile(makefile)
             cmakelists.add_section(lib)
-            for f in get_files(d):
+            for f in sorted(get_files(d)):
                 filename = os.path.basename(f)
                 if is_source(filename):
                     lib.add_source(filename)

@@ -1,30 +1,30 @@
 set(PUBLIC_HEADERS
-    compose-lattice-pruned.h
-    lattice-functions.h
-    word-align-lattice-lexicon.h
-    push-lattice.h
-    sausages.h
-    phone-align-lattice.h
     arctic-weight.h
-    kaldi-lattice.h
-    minimize-lattice.h
+    compose-lattice-pruned.h
     confidence.h
     determinize-lattice-pruned.h
+    kaldi-lattice.h
+    lattice-functions.h
+    minimize-lattice.h
+    phone-align-lattice.h
+    push-lattice.h
+    sausages.h
+    word-align-lattice-lexicon.h
     word-align-lattice.h
 )
 
 add_library(kaldi-lat
-    kaldi-lattice.cc
-    phone-align-lattice.cc
-    minimize-lattice.cc
-    lattice-functions.cc
-    sausages.cc
-    determinize-lattice-pruned.cc
+    compose-lattice-pruned.cc
     confidence.cc
+    determinize-lattice-pruned.cc
+    kaldi-lattice.cc
+    lattice-functions.cc
+    minimize-lattice.cc
+    phone-align-lattice.cc
+    push-lattice.cc
+    sausages.cc
     word-align-lattice-lexicon.cc
     word-align-lattice.cc
-    compose-lattice-pruned.cc
-    push-lattice.cc
 )
 
 target_include_directories(kaldi-lat PUBLIC 
@@ -42,10 +42,10 @@ target_link_libraries(kaldi-lat PUBLIC
 
 if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME determinize-lattice-pruned-test SOURCES determinize-lattice-pruned-test.cc DEPENDS kaldi-lat)
-    add_kaldi_test_executable(NAME minimize-lattice-test SOURCES minimize-lattice-test.cc DEPENDS kaldi-lat)
     add_kaldi_test_executable(NAME kaldi-lattice-test SOURCES kaldi-lattice-test.cc DEPENDS kaldi-lat)
-    add_kaldi_test_executable(NAME word-align-lattice-lexicon-test SOURCES word-align-lattice-lexicon-test.cc DEPENDS kaldi-lat)
+    add_kaldi_test_executable(NAME minimize-lattice-test SOURCES minimize-lattice-test.cc DEPENDS kaldi-lat)
     add_kaldi_test_executable(NAME push-lattice-test SOURCES push-lattice-test.cc DEPENDS kaldi-lat)
+    add_kaldi_test_executable(NAME word-align-lattice-lexicon-test SOURCES word-align-lattice-lexicon-test.cc DEPENDS kaldi-lat)
 endif()
 
 install(TARGETS kaldi-lat

@@ -1,19 +1,19 @@
 set(PUBLIC_HEADERS
-    kaldi-utils.h
-    kaldi-common.h
-    timer.h
-    kaldi-math.h
-    io-funcs.h
-    kaldi-types.h
     io-funcs-inl.h
+    io-funcs.h
+    kaldi-common.h
     kaldi-error.h
+    kaldi-math.h
+    kaldi-types.h
+    kaldi-utils.h
+    timer.h
 )
 
 add_library(kaldi-base
-    kaldi-error.cc
     io-funcs.cc
-    kaldi-utils.cc
+    kaldi-error.cc
     kaldi-math.cc
+    kaldi-utils.cc
     timer.cc
 )
 
@@ -24,9 +24,9 @@ target_include_directories(kaldi-base PUBLIC
 
 if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME io-funcs-test SOURCES io-funcs-test.cc DEPENDS kaldi-base)
-    add_kaldi_test_executable(NAME timer-test SOURCES timer-test.cc DEPENDS kaldi-base)
     add_kaldi_test_executable(NAME kaldi-error-test SOURCES kaldi-error-test.cc DEPENDS kaldi-base)
     add_kaldi_test_executable(NAME kaldi-math-test SOURCES kaldi-math-test.cc DEPENDS kaldi-base)
+    add_kaldi_test_executable(NAME timer-test SOURCES timer-test.cc DEPENDS kaldi-base)
 endif()
 
 install(TARGETS kaldi-base

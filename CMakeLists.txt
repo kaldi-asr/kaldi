@@ -48,14 +48,13 @@ else()
 endif()
 
 if(MSVC)
-    add_compile_options(/permissive- /wd4819)
+    # add_definitions(-DWIN32_LEAN_AND_MEAN=1)
+    add_compile_options(/permissive- /FS /wd4819)
 
     # some warnings related with fst
     add_compile_options(/wd4018 /wd4244 /wd4267 /wd4291 /wd4305)
 
-    # otherwise, cuda.lib will not be found
     set(CUDA_USE_STATIC_CUDA_RUNTIME OFF CACHE INTERNAL "")
-    # add_definitions(-DWIN32_LEAN_AND_MEAN=1)
     if(NOT DEFINED ENV{CUDAHOSTCXX})
         set(ENV{CUDAHOSTCXX} ${CMAKE_CXX_COMPILER})
     endif()
@@ -70,18 +69,26 @@ if(CUDA_FOUND)
 
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
-    # if(MSVC)
-    #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /std:c++${CMAKE_CXX_STANDARD},/permissive-,/wd4819")
-    # else()
+    if(MSVC)
+        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /permissive-,/wd4819")
+        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /wd4018,/wd4244,/wd4267,/wd4291,/wd4305")
+    else()
     #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
-    # endif()
+    endif()
 
     set(CUDA_NVCC_FLAGS ${KALDI_CUDA_NVCC_FLAGS} ${CUDA_NVCC_FLAGS})
 
     add_definitions(-DHAVE_CUDA=1)
     add_definitions(-DCUDA_API_PER_THREAD_DEFAULT_STREAM=1)
     include_directories(${CUDA_INCLUDE_DIRS})
-    link_libraries(${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUFFT_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY} ${CUDA_cusparse_LIBRARY})
+    link_libraries(
+        ${CUDA_LIBRARIES}
+        ${CUDA_CUDA_LIBRARY}
+        ${CUDA_CUBLAS_LIBRARIES}
+        ${CUDA_CUFFT_LIBRARIES}
+        ${CUDA_curand_LIBRARY}
+        ${CUDA_cusolver_LIBRARY}
+        ${CUDA_cusparse_LIBRARY})
 
     find_package(NvToolExt REQUIRED)
     include_directories(${NvToolExt_INCLUDE_DIR})
@@ -153,5 +160,3 @@ write_basic_package_version_file(
 install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
     DESTINATION lib/cmake/kaldi
 )
-
-# message(FATAL_ERROR ${CUDA_HOST_COMPILER})

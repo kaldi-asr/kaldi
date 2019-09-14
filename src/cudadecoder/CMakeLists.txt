@@ -1,13 +1,13 @@
 set(PUBLIC_HEADERS
-    decodable-cumatrix.h
-    cuda-fst.h
-    cuda-decoder-kernels-utils.h
-    cuda-decodable-itf.h
-    thread-pool.h
     batched-threaded-nnet3-cuda-pipeline.h
-    cuda-decoder-kernels.h
+    cuda-decodable-itf.h
     cuda-decoder-common.h
+    cuda-decoder-kernels-utils.h
+    cuda-decoder-kernels.h
     cuda-decoder.h
+    cuda-fst.h
+    decodable-cumatrix.h
+    thread-pool.h
 )
 
 cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -16,10 +16,10 @@ cuda_compile(CUDA_OBJS
 )
 
 add_library(kaldi-cudadecoder
-    cuda-fst.cc
-    decodable-cumatrix.cc
     batched-threaded-nnet3-cuda-pipeline.cc
     cuda-decoder.cc
+    cuda-fst.cc
+    decodable-cumatrix.cc
     ${CUDA_OBJS}
 )
 

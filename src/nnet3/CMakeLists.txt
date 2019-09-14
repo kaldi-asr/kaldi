@@ -1,94 +1,94 @@
 set(PUBLIC_HEADERS
-    nnet-training.h
-    discriminative-training.h
-    nnet-nnet.h
-    nnet-computation.h
-    nnet-optimize.h
-    nnet-convolutional-component.h
-    nnet-compile-looped.h
-    nnet-compute.h
-    nnet-common.h
-    nnet-simple-component.h
-    nnet-test-utils.h
-    nnet-analyze.h
-    nnet-compile-utils.h
-    nnet-attention-component.h
     am-nnet-simple.h
+    attention.h
+    convolution.h
+    decodable-online-looped.h
+    decodable-simple-looped.h
+    discriminative-supervision.h
+    discriminative-training.h
+    natural-gradient-online.h
+    nnet-am-decodable-simple.h
+    nnet-analyze.h
+    nnet-attention-component.h
+    nnet-batch-compute.h
+    nnet-chain-diagnostics.h
+    nnet-chain-example.h
+    nnet-chain-training.h
+    nnet-combined-component.h
+    nnet-common.h
+    nnet-compile-looped.h
+    nnet-compile-utils.h
     nnet-compile.h
     nnet-component-itf.h
-    nnet-optimize-utils.h
-    nnet-combined-component.h
-    nnet-am-decodable-simple.h
-    decodable-simple-looped.h
-    nnet-example-utils.h
-    nnet-discriminative-diagnostics.h
-    nnet-utils.h
     nnet-computation-graph.h
-    natural-gradient-online.h
-    decodable-online-looped.h
-    nnet-chain-example.h
-    nnet-example.h
-    nnet-discriminative-example.h
-    convolution.h
-    nnet-general-component.h
-    attention.h
-    nnet-diagnostics.h
-    nnet-discriminative-training.h
-    discriminative-supervision.h
-    nnet-chain-diagnostics.h
-    nnet-normalize-component.h
-    nnet-batch-compute.h
-    nnet-parse.h
-    nnet-chain-training.h
+    nnet-computation.h
+    nnet-compute.h
+    nnet-convolutional-component.h
     nnet-descriptor.h
+    nnet-diagnostics.h
+    nnet-discriminative-diagnostics.h
+    nnet-discriminative-example.h
+    nnet-discriminative-training.h
+    nnet-example-utils.h
+    nnet-example.h
+    nnet-general-component.h
     nnet-graph.h
+    nnet-nnet.h
+    nnet-normalize-component.h
+    nnet-optimize-utils.h
+    nnet-optimize.h
+    nnet-parse.h
+    nnet-simple-component.h
+    nnet-test-utils.h
+    nnet-training.h
+    nnet-utils.h
 )
 
 add_library(kaldi-nnet3
-    nnet-chain-diagnostics.cc
-    nnet-discriminative-diagnostics.cc
-    nnet-computation.cc
-    nnet-compile.cc
-    nnet-analyze.cc
-    nnet-compile-utils.cc
-    nnet-optimize-utils.cc
-    nnet-example.cc
-    attention.cc
-    nnet-discriminative-training.cc
-    nnet-simple-component.cc
-    nnet-attention-component.cc
-    nnet-example-utils.cc
-    nnet-component-itf.cc
-    nnet-nnet.cc
-    nnet-convolutional-component.cc
-    nnet-am-decodable-simple.cc
-    nnet-compute.cc
-    discriminative-training.cc
-    nnet-computation-graph.cc
-    convolution.cc
-    nnet-optimize.cc
-    nnet-combined-component.cc
-    discriminative-supervision.cc
-    nnet-utils.cc
-    nnet-normalize-component.cc
-    nnet-chain-example.cc
-    nnet-compile-looped.cc
-    natural-gradient-online.cc
     am-nnet-simple.cc
-    nnet-descriptor.cc
-    nnet-parse.cc
-    nnet-tdnn-component.cc
-    nnet-general-component.cc
-    nnet-training.cc
-    nnet-discriminative-example.cc
+    attention.cc
+    convolution.cc
     decodable-online-looped.cc
     decodable-simple-looped.cc
-    nnet-common.cc
-    nnet-chain-training.cc
+    discriminative-supervision.cc
+    discriminative-training.cc
+    natural-gradient-online.cc
+    nnet-am-decodable-simple.cc
+    nnet-analyze.cc
+    nnet-attention-component.cc
     nnet-batch-compute.cc
+    nnet-chain-diagnostics.cc
+    nnet-chain-example.cc
+    nnet-chain-training.cc
+    nnet-combined-component.cc
+    nnet-common.cc
+    nnet-compile-looped.cc
+    nnet-compile-utils.cc
+    nnet-compile.cc
+    nnet-component-itf.cc
+    nnet-computation-graph.cc
+    nnet-computation.cc
+    nnet-compute.cc
+    nnet-convolutional-component.cc
+    nnet-descriptor.cc
     nnet-diagnostics.cc
-    nnet-test-utils.cc
+    nnet-discriminative-diagnostics.cc
+    nnet-discriminative-example.cc
+    nnet-discriminative-training.cc
+    nnet-example-utils.cc
+    nnet-example.cc
+    nnet-general-component.cc
     nnet-graph.cc
+    nnet-nnet.cc
+    nnet-normalize-component.cc
+    nnet-optimize-utils.cc
+    nnet-optimize.cc
+    nnet-parse.cc
+    nnet-simple-component.cc
+    nnet-tdnn-component.cc
+    nnet-test-utils.cc
+    nnet-training.cc
+    nnet-utils.cc
 )
 
 target_include_directories(kaldi-nnet3 PUBLIC 
@@ -112,23 +112,23 @@ target_link_libraries(kaldi-nnet3 PUBLIC
 )
 
 if(KALDI_BUILD_TEST)
-    add_kaldi_test_executable(NAME nnet3-graph-test SOURCES nnet-graph-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-optimize-test SOURCES nnet-optimize-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-compute-test SOURCES nnet-compute-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME natural-gradient-online-test SOURCES natural-gradient-online-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-common-test SOURCES nnet-common-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-utils-test SOURCES nnet-utils-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-descriptor-test SOURCES nnet-descriptor-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-derivative-test SOURCES nnet-derivative-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-compile-utils-test SOURCES nnet-compile-utils-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-analyze-test SOURCES nnet-analyze-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-nnet-test SOURCES nnet-nnet-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-parse-test SOURCES nnet-parse-test.cc DEPENDS kaldi-nnet3)
     add_kaldi_test_executable(NAME attention-test SOURCES attention-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-component-test SOURCES nnet-component-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-example-test SOURCES nnet-example-test.cc DEPENDS kaldi-nnet3)
-    add_kaldi_test_executable(NAME nnet3-compile-test SOURCES nnet-compile-test.cc DEPENDS kaldi-nnet3)
     add_kaldi_test_executable(NAME convolution-test SOURCES convolution-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME natural-gradient-online-test SOURCES natural-gradient-online-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-analyze-test SOURCES nnet-analyze-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-common-test SOURCES nnet-common-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-compile-test SOURCES nnet-compile-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-compile-utils-test SOURCES nnet-compile-utils-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-component-test SOURCES nnet-component-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-compute-test SOURCES nnet-compute-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-derivative-test SOURCES nnet-derivative-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-descriptor-test SOURCES nnet-descriptor-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-example-test SOURCES nnet-example-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-graph-test SOURCES nnet-graph-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-nnet-test SOURCES nnet-nnet-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-optimize-test SOURCES nnet-optimize-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-parse-test SOURCES nnet-parse-test.cc DEPENDS kaldi-nnet3)
+    add_kaldi_test_executable(NAME nnet3-utils-test SOURCES nnet-utils-test.cc DEPENDS kaldi-nnet3)
 endif()
 
 install(TARGETS kaldi-nnet3

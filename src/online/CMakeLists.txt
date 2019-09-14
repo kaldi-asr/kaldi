@@ -1,17 +1,17 @@
 set(PUBLIC_HEADERS
-    online-faster-decoder.h
     online-audio-source.h
-    onlinebin-util.h
-    online-tcp-source.h
-    online-feat-input.h
     online-decodable.h
+    online-faster-decoder.h
+    online-feat-input.h
+    online-tcp-source.h
+    onlinebin-util.h
 )
 
 add_library(kaldi-online
-    online-feat-input.cc
+    online-audio-source.cc
     online-decodable.cc
     online-faster-decoder.cc
-    online-audio-source.cc
+    online-feat-input.cc
     online-tcp-source.cc
     onlinebin-util.cc
 )

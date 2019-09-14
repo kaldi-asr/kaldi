@@ -1,40 +1,40 @@
 set(PUBLIC_HEADERS
-    parse-options.h
-    kaldi-cygwin-io-inl.h
-    kaldi-pipebuf.h
-    const-integer-set-inl.h
-    stl-utils.h
     basic-filebuf.h
-    kaldi-io-inl.h
-    text-utils.h
-    hash-list.h
-    edit-distance-inl.h
-    simple-io-funcs.h
-    kaldi-io.h
-    kaldi-holder.h
-    edit-distance.h
-    kaldi-thread.h
-    table-types.h
-    kaldi-semaphore.h
-    simple-options.h
-    hash-list-inl.h
-    kaldi-table.h
-    kaldi-holder-inl.h
-    kaldi-table-inl.h
     common-utils.h
+    const-integer-set-inl.h
     const-integer-set.h
+    edit-distance-inl.h
+    edit-distance.h
+    hash-list-inl.h
+    hash-list.h
+    kaldi-cygwin-io-inl.h
+    kaldi-holder-inl.h
+    kaldi-holder.h
+    kaldi-io-inl.h
+    kaldi-io.h
+    kaldi-pipebuf.h
+    kaldi-semaphore.h
+    kaldi-table-inl.h
+    kaldi-table.h
+    kaldi-thread.h
+    parse-options.h
+    simple-io-funcs.h
+    simple-options.h
+    stl-utils.h
+    table-types.h
+    text-utils.h
 )
 
 add_library(kaldi-util
-    simple-options.cc
-    kaldi-semaphore.cc
-    text-utils.cc
-    simple-io-funcs.cc
-    kaldi-thread.cc
-    kaldi-io.cc
-    parse-options.cc
     kaldi-holder.cc
+    kaldi-io.cc
+    kaldi-semaphore.cc
     kaldi-table.cc
+    kaldi-thread.cc
+    parse-options.cc
+    simple-io-funcs.cc
+    simple-options.cc
+    text-utils.cc
 )
 
 target_include_directories(kaldi-util PUBLIC 
@@ -48,16 +48,16 @@ target_link_libraries(kaldi-util PUBLIC
 )
 
 if(KALDI_BUILD_TEST)
+    add_kaldi_test_executable(NAME const-integer-set-test SOURCES const-integer-set-test.cc DEPENDS kaldi-util)
+    add_kaldi_test_executable(NAME edit-distance-test SOURCES edit-distance-test.cc DEPENDS kaldi-util)
+    add_kaldi_test_executable(NAME hash-list-test SOURCES hash-list-test.cc DEPENDS kaldi-util)
+    add_kaldi_test_executable(NAME kaldi-io-test SOURCES kaldi-io-test.cc DEPENDS kaldi-util)
+    add_kaldi_test_executable(NAME kaldi-table-test SOURCES kaldi-table-test.cc DEPENDS kaldi-util)
+    add_kaldi_test_executable(NAME kaldi-thread-test SOURCES kaldi-thread-test.cc DEPENDS kaldi-util)
     add_kaldi_test_executable(NAME parse-options-test SOURCES parse-options-test.cc DEPENDS kaldi-util)
     add_kaldi_test_executable(NAME simple-options-test SOURCES simple-options-test.cc DEPENDS kaldi-util)
-    add_kaldi_test_executable(NAME kaldi-io-test SOURCES kaldi-io-test.cc DEPENDS kaldi-util)
-    add_kaldi_test_executable(NAME kaldi-thread-test SOURCES kaldi-thread-test.cc DEPENDS kaldi-util)
     add_kaldi_test_executable(NAME stl-utils-test SOURCES stl-utils-test.cc DEPENDS kaldi-util)
-    add_kaldi_test_executable(NAME hash-list-test SOURCES hash-list-test.cc DEPENDS kaldi-util)
-    add_kaldi_test_executable(NAME edit-distance-test SOURCES edit-distance-test.cc DEPENDS kaldi-util)
-    add_kaldi_test_executable(NAME const-integer-set-test SOURCES const-integer-set-test.cc DEPENDS kaldi-util)
     add_kaldi_test_executable(NAME text-utils-test SOURCES text-utils-test.cc DEPENDS kaldi-util)
-    add_kaldi_test_executable(NAME kaldi-table-test SOURCES kaldi-table-test.cc DEPENDS kaldi-util)
 endif()
 
 install(TARGETS kaldi-util

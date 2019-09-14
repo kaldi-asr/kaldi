@@ -1,18 +1,18 @@
 set(PUBLIC_HEADERS
-    feature-window-cuda.h
     feature-online-cmvn-cuda.h
-    online-cuda-feature-pipeline.h
-    online-ivector-feature-cuda.h
-    online-ivector-feature-cuda-kernels.h
     feature-spectral-cuda.h
+    feature-window-cuda.h
+    online-cuda-feature-pipeline.h
+    online-ivector-feature-cuda-kernels.h
+    online-ivector-feature-cuda.h
 )
 
 cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 cuda_compile(CUDA_OBJS
-    feature-window-cuda.cu
     feature-online-cmvn-cuda.cu
-    online-ivector-feature-cuda-kernels.cu
     feature-spectral-cuda.cu
+    feature-window-cuda.cu
+    online-ivector-feature-cuda-kernels.cu
 )
 
 add_library(kaldi-cudafeat

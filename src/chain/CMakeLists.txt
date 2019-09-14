@@ -1,13 +1,13 @@
 set(PUBLIC_HEADERS
+    chain-datastruct.h
+    chain-den-graph.h
+    chain-denominator.h
+    chain-generic-numerator.h
+    chain-kernels-ansi.h
+    chain-numerator.h
     chain-supervision.h
     chain-training.h
     language-model.h
-    chain-den-graph.h
-    chain-generic-numerator.h
-    chain-numerator.h
-    chain-denominator.h
-    chain-kernels-ansi.h
-    chain-datastruct.h
 )
 
 cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -16,13 +16,13 @@ cuda_compile(CUDA_OBJS
 )
 
 add_library(kaldi-chain
-    chain-generic-numerator.cc
-    chain-denominator.cc
-    chain-training.cc
     chain-den-graph.cc
+    chain-denominator.cc
+    chain-generic-numerator.cc
     chain-numerator.cc
-    language-model.cc
     chain-supervision.cc
+    chain-training.cc
+    language-model.cc
     ${CUDA_OBJS}
 )
 
@@ -43,8 +43,8 @@ target_link_libraries(kaldi-chain PUBLIC
 )
 
 if(KALDI_BUILD_TEST)
-    add_kaldi_test_executable(NAME language-model-test SOURCES language-model-test.cc DEPENDS kaldi-chain)
     add_kaldi_test_executable(NAME chain-supervision-test SOURCES chain-supervision-test.cc DEPENDS kaldi-chain)
+    add_kaldi_test_executable(NAME language-model-test SOURCES language-model-test.cc DEPENDS kaldi-chain)
 endif()
 
 install(TARGETS kaldi-chain

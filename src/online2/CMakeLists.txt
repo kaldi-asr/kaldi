@@ -1,30 +1,30 @@
 set(PUBLIC_HEADERS
-    online-nnet2-decoding-threaded.h
-    online-ivector-feature.h
-    online-nnet2-feature-pipeline.h
-    online-gmm-decoding.h
-    online-gmm-decodable.h
+    online-endpoint.h
     online-feature-pipeline.h
+    online-gmm-decodable.h
+    online-gmm-decoding.h
+    online-ivector-feature.h
+    online-nnet2-decoding-threaded.h
+    online-nnet2-decoding.h
+    online-nnet2-feature-pipeline.h
+    online-nnet3-decoding.h
+    online-speex-wrapper.h
     online-timing.h
     onlinebin-util.h
-    online-speex-wrapper.h
-    online-endpoint.h
-    online-nnet2-decoding.h
-    online-nnet3-decoding.h
 )
 
 add_library(kaldi-online2
-    online-ivector-feature.cc
     online-endpoint.cc
-    online-speex-wrapper.cc
     online-feature-pipeline.cc
-    online-timing.cc
-    online-nnet3-decoding.cc
     online-gmm-decodable.cc
     online-gmm-decoding.cc
+    online-ivector-feature.cc
     online-nnet2-decoding-threaded.cc
-    online-nnet2-feature-pipeline.cc
     online-nnet2-decoding.cc
+    online-nnet2-feature-pipeline.cc
+    online-nnet3-decoding.cc
+    online-speex-wrapper.cc
+    online-timing.cc
     onlinebin-util.cc
 )
 

@@ -1,19 +1,19 @@
 set(PUBLIC_HEADERS
-    posterior.h
-    hmm-utils.h
     hmm-test-utils.h
     hmm-topology.h
+    hmm-utils.h
+    posterior.h
     transition-model.h
     tree-accu.h
 )
 
 add_library(kaldi-hmm
+    hmm-test-utils.cc
+    hmm-topology.cc
     hmm-utils.cc
+    posterior.cc
     transition-model.cc
     tree-accu.cc
-    hmm-test-utils.cc
-    posterior.cc
-    hmm-topology.cc
 )
 
 target_include_directories(kaldi-hmm PUBLIC 
@@ -29,8 +29,8 @@ target_link_libraries(kaldi-hmm PUBLIC
 )
 
 if(KALDI_BUILD_TEST)
-    add_kaldi_test_executable(NAME hmm-utils-test SOURCES hmm-utils-test.cc DEPENDS kaldi-hmm)
     add_kaldi_test_executable(NAME hmm-topology-test SOURCES hmm-topology-test.cc DEPENDS kaldi-hmm)
+    add_kaldi_test_executable(NAME hmm-utils-test SOURCES hmm-utils-test.cc DEPENDS kaldi-hmm)
     add_kaldi_test_executable(NAME posterior-test SOURCES posterior-test.cc DEPENDS kaldi-hmm)
     add_kaldi_test_executable(NAME transition-model-test SOURCES transition-model-test.cc DEPENDS kaldi-hmm)
 endif()

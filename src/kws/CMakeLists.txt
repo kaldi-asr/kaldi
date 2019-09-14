@@ -1,13 +1,13 @@
 set(PUBLIC_HEADERS
     kaldi-kws.h
-    kws-scoring.h
     kws-functions.h
+    kws-scoring.h
 )
 
 add_library(kaldi-kws
-    kws-scoring.cc
-    kws-functions2.cc
     kws-functions.cc
+    kws-functions2.cc
+    kws-scoring.cc
 )
 
 target_include_directories(kaldi-kws PUBLIC 

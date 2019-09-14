@@ -1,37 +1,37 @@
 set(PUBLIC_HEADERS
     cblas-wrappers.h
-    sp-matrix-inl.h
-    sp-matrix.h
-    srfft.h
     compressed-matrix.h
-    matrix-common.h
-    sparse-matrix.h
     jama-eig.h
+    jama-svd.h
+    kaldi-blas.h
     kaldi-matrix-inl.h
-    tp-matrix.h
+    kaldi-matrix.h
     kaldi-vector-inl.h
     kaldi-vector.h
-    kaldi-blas.h
-    jama-svd.h
-    matrix-lib.h
-    packed-matrix.h
+    matrix-common.h
     matrix-functions-inl.h
     matrix-functions.h
+    matrix-lib.h
     optimization.h
-    kaldi-matrix.h
+    packed-matrix.h
+    sp-matrix-inl.h
+    sp-matrix.h
+    sparse-matrix.h
+    srfft.h
+    tp-matrix.h
 )
 
 add_library(kaldi-matrix
-    sp-matrix.cc
-    packed-matrix.cc
     compressed-matrix.cc
-    qr.cc
-    kaldi-vector.cc
-    srfft.cc
-    sparse-matrix.cc
-    matrix-functions.cc
     kaldi-matrix.cc
+    kaldi-vector.cc
+    matrix-functions.cc
     optimization.cc
+    packed-matrix.cc
+    qr.cc
+    sp-matrix.cc
+    sparse-matrix.cc
+    srfft.cc
     tp-matrix.cc
 )
 

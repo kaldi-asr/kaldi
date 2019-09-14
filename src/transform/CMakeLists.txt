@@ -1,35 +1,35 @@
 set(PUBLIC_HEADERS
-    fmllr-diag-gmm.h
-    cmvn.h
-    lda-estimate.h
-    fmpe.h
-    mllt.h
-    regtree-fmllr-diag-gmm.h
-    regression-tree.h
-    transform-common.h
-    fmllr-raw.h
-    decodable-am-diag-gmm-regtree.h
-    regtree-mllr-diag-gmm.h
-    lvtln.h
     basis-fmllr-diag-gmm.h
+    cmvn.h
     compressed-transform-stats.h
+    decodable-am-diag-gmm-regtree.h
+    fmllr-diag-gmm.h
+    fmllr-raw.h
+    fmpe.h
+    lda-estimate.h
+    lvtln.h
+    mllt.h
+    regression-tree.h
+    regtree-fmllr-diag-gmm.h
+    regtree-mllr-diag-gmm.h
+    transform-common.h
 )
 
 add_library(kaldi-transform
-    fmllr-raw.cc
     basis-fmllr-diag-gmm.cc
-    lda-estimate.cc
     cmvn.cc
-    fmllr-diag-gmm.cc
-    lvtln.cc
     compressed-transform-stats.cc
-    transform-common.cc
-    regtree-fmllr-diag-gmm.cc
     decodable-am-diag-gmm-regtree.cc
-    regression-tree.cc
+    fmllr-diag-gmm.cc
+    fmllr-raw.cc
     fmpe.cc
+    lda-estimate.cc
+    lvtln.cc
     mllt.cc
+    regression-tree.cc
+    regtree-fmllr-diag-gmm.cc
     regtree-mllr-diag-gmm.cc
+    transform-common.cc
 )
 
 target_include_directories(kaldi-transform PUBLIC 
@@ -46,13 +46,13 @@ target_link_libraries(kaldi-transform PUBLIC
 )
 
 if(KALDI_BUILD_TEST)
-    add_kaldi_test_executable(NAME regtree-fmllr-diag-gmm-test SOURCES regtree-fmllr-diag-gmm-test.cc DEPENDS kaldi-transform)
-    add_kaldi_test_executable(NAME fmpe-test SOURCES fmpe-test.cc DEPENDS kaldi-transform)
-    add_kaldi_test_executable(NAME regtree-mllr-diag-gmm-test SOURCES regtree-mllr-diag-gmm-test.cc DEPENDS kaldi-transform)
     add_kaldi_test_executable(NAME fmllr-diag-gmm-test SOURCES fmllr-diag-gmm-test.cc DEPENDS kaldi-transform)
-    add_kaldi_test_executable(NAME regression-tree-test SOURCES regression-tree-test.cc DEPENDS kaldi-transform)
-    add_kaldi_test_executable(NAME lda-estimate-test SOURCES lda-estimate-test.cc DEPENDS kaldi-transform)
     add_kaldi_test_executable(NAME fmllr-raw-test SOURCES fmllr-raw-test.cc DEPENDS kaldi-transform)
+    add_kaldi_test_executable(NAME fmpe-test SOURCES fmpe-test.cc DEPENDS kaldi-transform)
+    add_kaldi_test_executable(NAME lda-estimate-test SOURCES lda-estimate-test.cc DEPENDS kaldi-transform)
+    add_kaldi_test_executable(NAME regression-tree-test SOURCES regression-tree-test.cc DEPENDS kaldi-transform)
+    add_kaldi_test_executable(NAME regtree-fmllr-diag-gmm-test SOURCES regtree-fmllr-diag-gmm-test.cc DEPENDS kaldi-transform)
+    add_kaldi_test_executable(NAME regtree-mllr-diag-gmm-test SOURCES regtree-mllr-diag-gmm-test.cc DEPENDS kaldi-transform)
 endif()
 
 install(TARGETS kaldi-transform

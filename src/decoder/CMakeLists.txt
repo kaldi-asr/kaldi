@@ -1,29 +1,29 @@
 set(PUBLIC_HEADERS
-    simple-decoder.h
-    decodable-sum.h
     biglm-faster-decoder.h
-    lattice-faster-online-decoder.h
-    faster-decoder.h
-    lattice-faster-decoder.h
-    training-graph-compiler.h
-    lattice-simple-decoder.h
-    lattice-biglm-faster-decoder.h
     decodable-mapped.h
-    decoder-wrappers.h
     decodable-matrix.h
+    decodable-sum.h
+    decoder-wrappers.h
+    faster-decoder.h
     grammar-fst.h
+    lattice-biglm-faster-decoder.h
+    lattice-faster-decoder.h
+    lattice-faster-online-decoder.h
+    lattice-simple-decoder.h
+    simple-decoder.h
+    training-graph-compiler.h
 )
 
 add_library(kaldi-decoder
-    decoder-wrappers.cc
-    lattice-simple-decoder.cc
     decodable-matrix.cc
+    decoder-wrappers.cc
+    faster-decoder.cc
     grammar-fst.cc
     lattice-faster-decoder.cc
-    training-graph-compiler.cc
-    simple-decoder.cc
     lattice-faster-online-decoder.cc
-    faster-decoder.cc
+    lattice-simple-decoder.cc
+    simple-decoder.cc
+    training-graph-compiler.cc
 )
 
 target_include_directories(kaldi-decoder PUBLIC 

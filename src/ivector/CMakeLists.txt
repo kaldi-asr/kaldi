@@ -1,16 +1,16 @@
 set(PUBLIC_HEADERS
-    voice-activity-detection.h
-    plda.h
-    logistic-regression.h
     agglomerative-clustering.h
     ivector-extractor.h
+    logistic-regression.h
+    plda.h
+    voice-activity-detection.h
 )
 
 add_library(kaldi-ivector
     agglomerative-clustering.cc
-    plda.cc
-    logistic-regression.cc
     ivector-extractor.cc
+    logistic-regression.cc
+    plda.cc
     voice-activity-detection.cc
 )
 
@@ -30,8 +30,8 @@ target_link_libraries(kaldi-ivector PUBLIC
 
 if(KALDI_BUILD_TEST)
     add_kaldi_test_executable(NAME ivector-extractor-test SOURCES ivector-extractor-test.cc DEPENDS kaldi-ivector)
-    add_kaldi_test_executable(NAME plda-test SOURCES plda-test.cc DEPENDS kaldi-ivector)
     add_kaldi_test_executable(NAME logistic-regression-test SOURCES logistic-regression-test.cc DEPENDS kaldi-ivector)
+    add_kaldi_test_executable(NAME plda-test SOURCES plda-test.cc DEPENDS kaldi-ivector)
 endif()
 
 install(TARGETS kaldi-ivector
