@@ -27,10 +27,8 @@
 #include "online/online-audio-source.h"
 #include "online/online-feat-input.h"
 
+
 int main(int argc, char *argv[]) {
-#if KALDI_NO_PORTAUDIO
-  KALDI_ERR << "PortAudio is needed";
-#else
   try {
     using namespace kaldi;
 
@@ -128,5 +126,4 @@ int main(int argc, char *argv[]) {
     std::cerr << e.what();
     return -1;
   }
-#endif
 } // main()
