@@ -6,6 +6,8 @@ This is a Chinese speech recognition recipe that trains on all Chinese corpora o
 * ST-CMDS (110 hours)
 * THCHS-30 (26 hours)
 
+This recipe was developed by Xingyu Na (Microsoft Corporation) and Hui Bu (AISHELL Foundation).
+
 ## Highlights
 
 1. This recipe start from bootstraping small GMM models using small portion of data to speaker adaptive training using cleaned full partition, which is over 1k hours.
