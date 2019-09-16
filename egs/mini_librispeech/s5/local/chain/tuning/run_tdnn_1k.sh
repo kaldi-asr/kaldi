@@ -5,20 +5,21 @@
 
 # local/chain/compare_wer.sh --online exp/chain/tdnn1j_sp exp/chain_online_cmn/tdnn1k_sp
 # System                tdnn1j_sp tdnn1k_sp
-#WER dev_clean_2 (tgsmall)      11.25     10.99
-#WER dev_clean_2 (tglarge)       7.72      7.54
-# Final train prob        -0.0632   -0.0623
-# Final valid prob        -0.0792   -0.0803
-# Final train prob (xent)   -1.4499   -1.4396
-# Final valid prob (xent)   -1.5643   -1.5628
+#WER dev_clean_2 (tgsmall)      10.97     10.64
+#             [online:]         10.97     10.62
+#WER dev_clean_2 (tglarge)       7.57      7.17
+#             [online:]          7.65      7.16
+# Final train prob        -0.0623   -0.0618
+# Final valid prob        -0.0793   -0.0793
+# Final train prob (xent)   -1.4448   -1.4376
+# Final valid prob (xent)   -1.5605   -1.5461
 # Num-params                 5210944   5210944
 
-
 # steps/info/chain_dir_info.pl exp/chain/tdnn1j_sp
-# exp/chain/tdnn1j_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2336 combine=-0.069->-0.064 (over 4) xent:train/valid[21,33,final]=(-1.66,-1.48,-1.45/-1.78,-1.59,-1.56) logprob:train/valid[21,33,final]=(-0.075,-0.069,-0.063/-0.093,-0.085,-0.079)
+# exp/chain/tdnn1j_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2336 combine=-0.068->-0.064 (over 4) xent:train/valid[21,33,final]=(-1.65,-1.48,-1.44/-1.77,-1.58,-1.56) logprob:train/valid[21,33,final]=(-0.076,-0.068,-0.062/-0.091,-0.084,-0.079)
 
 # steps/info/chain_dir_info.pl exp/chain_online_cmn/tdnn1k_sp
-# exp/chain_online_cmn/tdnn1k_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2336 combine=-0.067->-0.062 (over 5) xent:train/valid[21,33,final]=(-1.64,-1.46,-1.44/-1.75,-1.58,-1.56) logprob:train/valid[21,33,final]=(-0.075,-0.068,-0.062/-0.093,-0.085,-0.080)
+# exp/chain_online_cmn/tdnn1k_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2336 combine=-0.067->-0.062 (over 5) xent:train/valid[21,33,final]=(-1.63,-1.47,-1.44/-1.73,-1.57,-1.55) logprob:train/valid[21,33,final]=(-0.074,-0.067,-0.062/-0.093,-0.085,-0.079)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -60,7 +61,7 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=false  # if true, it will run the last decoding stage.
+test_online_decoding=true  # if true, it will run the last decoding stage.
 
 
 # End configuration section.
@@ -284,6 +285,7 @@ if $test_online_decoding && [ $stage -le 17 ]; then
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
     --mfcc-config conf/mfcc_hires.conf \
+    --online-cmvn-config conf/online_cmvn.conf \
     $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
@@ -299,7 +301,7 @@ if $test_online_decoding && [ $stage -le 17 ]; then
         $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_test_{tgsmall,tglarge} \
-       data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
+        data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait
