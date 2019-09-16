@@ -534,7 +534,7 @@ void OnlineSilenceWeighting::GetDeltaWeights(
   // in this function is at the decoder frame-rate.
   // round up, so we are sure to get weights for at least the frame
   // 'num_frames_ready - 1', and maybe one or two frames afterward.
-  KALDI_ASSERT(num_frames_ready > first_decoder_frame);
+  KALDI_ASSERT(num_frames_ready > first_decoder_frame || num_frames_ready == 0);
   int32 fs = frame_subsampling_factor_,
   num_decoder_frames_ready = (num_frames_ready - first_decoder_frame + fs - 1) / fs;
 
