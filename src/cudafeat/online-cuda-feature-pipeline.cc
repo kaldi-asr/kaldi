@@ -24,6 +24,9 @@ namespace kaldi {
 OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
     const OnlineNnet2FeaturePipelineConfig &config)
     : info_(config), spectral_feat(NULL), ivector(NULL) {
+  spectral_feat = NULL;
+  cmvn = NULL;
+  ivector = NULL;
   if (info_.feature_type == "mfcc") {
     spectral_feat = new CudaSpectralFeatures(info_.mfcc_opts);
   }
@@ -37,7 +40,7 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
     OnlineCmvnState cmvn_state(global_cmvn_stats);
     CudaOnlineCmvnState cu_cmvn_state(cmvn_state);
     cmvn = new CudaOnlineCmvn(info_.cmvn_opts, cu_cmvn_state);
-  }
+  } 
 
   if (info_.use_ivectors) {
     OnlineIvectorExtractionConfig ivector_extraction_opts;
@@ -50,7 +53,7 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
     ivector_extraction_opts.greedy_ivector_extractor = true;
 
     ivector = new IvectorExtractorFastCuda(ivector_extraction_opts);
-  }
+  } 
 }
 
 OnlineCudaFeaturePipeline::~OnlineCudaFeaturePipeline() {
@@ -73,7 +76,6 @@ void OnlineCudaFeaturePipeline::ComputeFeatures(
   }
 
   if (info_.use_cmvn) {
-    // Can we do this in place?
     cmvn->ComputeFeatures(*input_features, input_features);
   }
 
