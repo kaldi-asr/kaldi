@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
         tot_t += feats.NumRows();
         feature_writer.Write(utt, normalized_feats);
         
-        num_done++;
+        //num_done++;
       }
     }
     
