@@ -197,7 +197,7 @@ if [ $stage -le 7 ]; then
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch=128 \
+    --trainer.num-chunk-per-minibatch=1:128 \
     --trainer.frames-per-iter 1000000 \
     --trainer.num-epochs 2 \
     --trainer.optimization.num-jobs-initial=2 \
