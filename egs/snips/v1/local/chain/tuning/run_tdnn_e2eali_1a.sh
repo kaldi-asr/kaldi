@@ -342,10 +342,9 @@ if [ $stage -le 12 ]; then
   for data in $test_sets; do
     (
       nspk=$(wc -l <data/${data}_hires/spk2utt)
-      steps/online/nnet3/decode.sh \
+      steps/online/nnet3/decode_wake_word.sh \
         --beam 200 --lattice-beam 100 \
-        --scoring-opts "--wake-word $wake_word" \
-        --acwt 1.0 --post-decode-acwt 10.0 \
+        --wake-word $wake_word \
         --extra-left-context-initial 0 \
         --frames-per-chunk $frames_per_chunk \
         --nj $nspk --cmd "$decode_cmd" \
