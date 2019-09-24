@@ -1,1 +1,0 @@
-../../../mobvoi/v1/local/make_musan.sh

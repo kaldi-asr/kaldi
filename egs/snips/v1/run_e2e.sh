@@ -119,11 +119,11 @@ if [ $stage -le 6 ]; then
     --num-replications 1 \
     --source-sampling-rate 16000 \
     data/train_shorter data/train_shorter_reverb
-  cat data/train_shorter/utt2dur | awk -v name=rev1 '{print name"_"$0}' >data/train_shorter_reverb/utt2dur
+  cat data/train_shorter/utt2dur | awk -v name=rev1 '{print name"-"$0}' >data/train_shorter_reverb/utt2dur
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh /export/corpora/JHU/musan data
+  steps/data/make_musan.sh /export/corpora/JHU/musan data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.

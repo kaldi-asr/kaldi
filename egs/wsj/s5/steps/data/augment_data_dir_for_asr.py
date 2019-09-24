@@ -11,8 +11,8 @@
 from __future__ import print_function
 import sys, random, argparse, os, imp
 sys.path.append("steps/data/")
-from reverberate_data_dir import ParseFileToDict
-from reverberate_data_dir import WriteDictToFile
+from reverberate_data_dir import parse_file_to_dict
+from reverberate_data_dir import write_dict_to_file
 data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')
 
 def GetArgs():
@@ -89,14 +89,14 @@ def GetNewId(id, prefix=None):
 def CreateCorruptedUtt2uniq(input_dir, output_dir, prefix):
     corrupted_utt2uniq = {}
     # Parse the utt2spk to get the utterance id
-    utt2spk = ParseFileToDict(input_dir + "/utt2spk", value_processor = lambda x: " ".join(x))
+    utt2spk = parse_file_to_dict(input_dir + "/utt2spk", value_processor = lambda x: " ".join(x))
     keys = sorted(utt2spk.keys())
 
     for utt_id in keys:
         new_utt_id = GetNewId(utt_id, prefix)
         corrupted_utt2uniq[new_utt_id] = utt_id
 
-    WriteDictToFile(corrupted_utt2uniq, output_dir + "/utt2uniq")
+    write_dict_to_file(corrupted_utt2uniq, output_dir + "/utt2uniq")
 
 
 def GetNoiseList(noise_wav_scp_filename):
@@ -166,7 +166,7 @@ def main():
     input_dir = args.input_dir
     output_dir = args.output_dir
     num_bg_noises = list(map(int, args.num_bg_noises.split(":")))
-    reco2dur = ParseFileToDict(input_dir + "/reco2dur",
+    reco2dur = parse_file_to_dict(input_dir + "/reco2dur",
         value_processor = lambda x: float(x[0]))
     wav_scp_file = open(input_dir + "/wav.scp", 'r').readlines()
 
@@ -179,7 +179,7 @@ def main():
     if args.bg_noise_dir:
         bg_noise_wav_filename = args.bg_noise_dir + "/wav.scp"
         bg_noise_utts, bg_noise_wavs = GetNoiseList(bg_noise_wav_filename)
-        bg_noise_reco2dur = ParseFileToDict(args.bg_noise_dir + "/reco2dur",
+        bg_noise_reco2dur = parse_file_to_dict(args.bg_noise_dir + "/reco2dur",
             value_processor = lambda x: float(x[0]))
         noise_wavs.update(bg_noise_wavs)
         noise_reco2dur.update(bg_noise_reco2dur)
@@ -189,7 +189,7 @@ def main():
         fg_noise_wav_filename = args.fg_noise_dir + "/wav.scp"
         fg_noise_reco2dur_filename = args.fg_noise_dir + "/reco2dur"
         fg_noise_utts, fg_noise_wavs = GetNoiseList(fg_noise_wav_filename)
-        fg_noise_reco2dur = ParseFileToDict(args.fg_noise_dir + "/reco2dur",
+        fg_noise_reco2dur = parse_file_to_dict(args.fg_noise_dir + "/reco2dur",
             value_processor = lambda x: float(x[0]))
         noise_wavs.update(fg_noise_wavs)
         noise_reco2dur.update(fg_noise_reco2dur)
@@ -214,7 +214,7 @@ def main():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    WriteDictToFile(new_utt2wav, output_dir + "/wav.scp")
+    write_dict_to_file(new_utt2wav, output_dir + "/wav.scp")
     AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", args.utt_prefix, field = [0, 1])
     data_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
                     .format(output_dir = output_dir))
