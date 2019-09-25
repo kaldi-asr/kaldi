@@ -103,7 +103,6 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   frame_subsampling_opt="--frame-subsampling-factor=$(cat $srcdir/frame_subsampling_factor)"
 fi
 
-wake_word_id=$(cat data/lang/phones.txt | grep $wake_word | awk '{print $2}')
 if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
     online2-wav-nnet3-wake-word-decoder-faster \
@@ -113,7 +112,7 @@ if [ $stage -le 0 ]; then
        $frame_subsampling_opt \
      --config=$online_config \
      --min-active=$min_active --max-active=$max_active --beam=$beam \
-     --rt-min=0.8 --rt-max=0.85 --wake-word-id $wake_word_id \
+     --rt-min=0.8 --rt-max=0.85 --wake-word-id=$wake_word_id \
      $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
      $graphdir/words.txt "$silphones" ark,t:$dir/trans.txt \
      ark,t:$dir/ali.txt || exit 1;

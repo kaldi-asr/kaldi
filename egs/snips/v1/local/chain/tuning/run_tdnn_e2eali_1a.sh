@@ -343,7 +343,7 @@ if [ $stage -le 12 ]; then
     (
       nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/online/nnet3/decode_wake_word.sh \
-        --beam 200 --lattice-beam 100 \
+        --beam 200 \
         --wake-word $wake_word \
         --extra-left-context-initial 0 \
         --frames-per-chunk $frames_per_chunk \

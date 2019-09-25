@@ -23,6 +23,7 @@
 #include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
+#include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
 #include "util/kaldi-thread.h"
@@ -57,6 +58,7 @@ int main(int argc, char *argv[]) {
     OnlineNnet2FeaturePipelineConfig feature_opts;
     nnet3::NnetSimpleLoopedComputationOptions decodable_opts;
     OnlineWakeWordFasterDecoderOpts decoder_opts;
+    OnlineEndpointConfig endpoint_opts;
 
     BaseFloat chunk_length_secs = 0.18;
     bool online = true;
@@ -81,6 +83,7 @@ int main(int argc, char *argv[]) {
     feature_opts.Register(&po);
     decodable_opts.Register(&po);
     decoder_opts.Register(&po, true);
+    endpoint_opts.Register(&po);
 
 
     po.Read(argc, argv);
@@ -192,7 +195,6 @@ int main(int argc, char *argv[]) {
         }
 
         int32 samp_offset = 0;
-        std::vector<std::pair<int32, BaseFloat> > delta_weights;
 
         int32 start_frame = 0;
         bool partial_res = false;
