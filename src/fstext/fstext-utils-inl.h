@@ -114,6 +114,52 @@ void GetInputSymbols(const Fst<Arc> &fst,
   std::sort(symbols->begin(), symbols->end());
 }
 
+template<class Arc, class I>
+class RemoveSomeInputSymbolsMapper {
+public:
+  Arc operator ()(const Arc &arc_in) {
+    Arc ans = arc_in;
+    if (to_remove_set_.count(ans.ilabel) != 0) ans.ilabel = 0;  // remove this symbol
+    return ans;
+  }
+  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
+  MapSymbolsAction InputSymbolsAction() { return MAP_CLEAR_SYMBOLS; }
+  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+  uint64 Properties(uint64 props) const {
+    // remove the following as we don't know now if any of them are true.
+    uint64 to_remove = kAcceptor|kNotAcceptor|kIDeterministic|kNonIDeterministic|
+        kNoEpsilons|kNoIEpsilons|kILabelSorted|kNotILabelSorted;
+    return props & ~to_remove;
+  }
+  RemoveSomeInputSymbolsMapper(const std::vector<I> &to_remove):
+      to_remove_set_(to_remove) {
+    KALDI_ASSERT_IS_INTEGER_TYPE(I);
+         assert(to_remove_set_.count(0) == 0);  // makes no sense to remove epsilon.
+       }
+private:
+  kaldi::ConstIntegerSet<I> to_remove_set_;
+};
+
+// Lookahead composition is used for optimized online
+// composition of FSTs during decoding. See
+// nnet3/nnet3-latgen-faster-lookahead.cc
+template<class Arc, class I>
+ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> > LookaheadComposeFst(const Fst<Arc> &ifst1,
+                                    const Fst<Arc> &ifst2,
+                                    const std::vector<I> &to_remove) {
+  typedef LookAheadMatcher< StdFst > M;
+  typedef AltSequenceComposeFilter<M> SF;
+  typedef LookAheadComposeFilter<SF, M>  LF;
+  typedef PushWeightsComposeFilter<LF, M> WF;
+  typedef PushLabelsComposeFilter<WF, M> ComposeFilter;
+
+  fst::CacheOptions cache_opts(true, 1 << 26LL);
+  ComposeFstOptions<StdArc, M, ComposeFilter> opts(cache_opts);
+
+  RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
+
+  return ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> >(ComposeFst<Arc>(ifst1, ifst2, opts), mapper);
+}
 
 template<class Arc, class I>
 void RemoveSomeInputSymbols(const std::vector<I> &to_remove,

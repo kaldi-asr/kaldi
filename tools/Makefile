@@ -17,7 +17,7 @@ SCTK_VERSION ?= $(SCTK_VERSION_PARTIAL)-20151007-1312Z
 SPH2PIPE_VERSION = v2.5
 
 # Default features configured for OpenFST; can be overridden in the make command line.
-OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts
+OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts --enable-lookahead-fsts
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
