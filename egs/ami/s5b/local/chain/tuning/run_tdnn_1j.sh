@@ -61,6 +61,7 @@ fi
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --mic $mic \
                                   --nj $nj \
+                                  --hires_suffix 80 \
                                   --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
