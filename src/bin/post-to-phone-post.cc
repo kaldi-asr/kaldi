@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     po.Register("transition-id-counts", &tacc_rxfilename, "Rxfilename where vector of counts\n"
                 "for transition-ids can be read (would normally come from training data\n"
-                "alignments, e.g. from ali-to-post and then post-to-tacc with --per-pdf=false\n");
+                "alignments, e.g. from ali-to-post and then post-to-tacc with --per-pdf=false)\n");
 
     po.Read(argc, argv);
 
@@ -109,15 +109,16 @@ int main(int argc, char *argv[]) {
         BaseFloat denominator = 0.0;
         for (auto p: pdf_to_phones[i])
           denominator += p.second;
-        for (auto q: pdf_to_phones[i]) {
+        for (auto iter = pdf_to_phones[i].begin(); iter != pdf_to_phones[i].end();
+             ++iter) {
           if (denominator != 0.0)
-            q.second /= denominator;
+            iter->second /= denominator;
           else
-            q.second = 1.0 / pdf_to_phones[i].size();
+            iter->second = 1.0 / pdf_to_phones[i].size();
         }
       }
 
-      // Input is transition-ids
+      // Input is pdf-ids
       for (; !posterior_reader.Done(); posterior_reader.Next()) {
         const kaldi::Posterior &posterior = posterior_reader.Value();
         int32 T = posterior.size();
@@ -125,7 +126,7 @@ int main(int argc, char *argv[]) {
         std::unordered_map<int32, BaseFloat> phone_to_count;
         for (int32 t = 0; t < T; t++) {
           phone_to_count.clear();
-          for (auto p : phone_posterior[t]) {
+          for (auto p : posterior[t]) {
             int32 pdf_id = p.first;
             BaseFloat count = p.second;
             if (pdf_id < 0 || pdf_id >= num_pdfs)
@@ -134,7 +135,8 @@ int main(int argc, char *argv[]) {
             for (auto q: pdf_to_phones[pdf_id]) {
               int32 phone = q.first;
               BaseFloat prob = q.second;
-              phone_to_count[phone] += count * prob;
+              if (prob != 0.0)
+                phone_to_count[phone] += count * prob;
             }
           }
           for (auto p : phone_to_count) {
@@ -154,4 +156,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

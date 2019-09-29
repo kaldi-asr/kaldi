@@ -6,14 +6,17 @@
 
 stage=1
 nnet_affix=_online
-extractor=exp/nnet2${nnet_affix}/extractor
 ivector_dim=50
 mfcc_config=conf/mfcc_hires.conf
 use_ivector=true # If false, it skips training ivector extractor and
                  # ivector extraction stages.
+online_cmvn_iextractor=false
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+extractor=exp/nnet2${nnet_affix}/extractor
 
 if $use_gpu; then
   if ! cuda-compiled; then
@@ -56,7 +59,8 @@ fi
 if [ ! -f $extractor/final.ie ] && [ $ivector_dim -gt 0 ]; then
   if [ $stage -le 1 ]; then
     mkdir -p exp/nnet2${nnet_affix}
-    steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 40 --num-frames 200000 \
+    steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 40 \
+      --num-threads 6 --num-frames 200000 \
       data/${train_set} 256 exp/tri3b exp/nnet2${nnet_affix}/diag_ubm
   fi
 
@@ -64,7 +68,8 @@ if [ ! -f $extractor/final.ie ] && [ $ivector_dim -gt 0 ]; then
     # use a smaller iVector dim (50) than the default (100) because RM has a very
     # small amount of data.
     steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-      --ivector-dim $ivector_dim \
+      --num-threads 3 --num-processes 2 --ivector-dim $ivector_dim \
+      --online-cmvn-iextractor $online_cmvn_iextractor \
      data/${train_set} exp/nnet2${nnet_affix}/diag_ubm $extractor || exit 1;
   fi
 fi

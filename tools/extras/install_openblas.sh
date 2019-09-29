@@ -3,6 +3,8 @@
 
 OPENBLAS_VERSION=0.3.7
 
+WGET=${WGET:-wget}
+
 set -e
 
 if ! command -v gfortran 2>/dev/null; then
@@ -16,10 +18,19 @@ if ! command -v gfortran 2>/dev/null; then
 fi
 
 
-rm -rf xianyi-OpenBLAS-* OpenBLAS
+tarball=OpenBLAS-$OPENBLAS_VERSION.tar.gz
 
-wget -t3 -nv -O- $(wget -qO- "https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])') | tar xzf -
+rm -rf xianyi-OpenBLAS-* OpenBLAS OpenBLAS-*.tar.gz
 
+if [ -d "$DOWNLOAD_DIR" ]; then
+  cp -p "$DOWNLOAD_DIR/$tarball" .
+else
+  url=$($WGET -qO- "https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
+  test -n "$url"
+  $WGET -t3 -nv -O $tarball "$url"
+fi
+
+tar xzf $tarball
 mv xianyi-OpenBLAS-* OpenBLAS
 
 make PREFIX=$(pwd)/OpenBLAS/install USE_THREAD=0 USE_LOCKING=1 -C OpenBLAS all install

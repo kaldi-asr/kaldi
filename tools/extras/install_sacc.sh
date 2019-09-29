@@ -1,5 +1,7 @@
 #!/bin/bash
 
+WGET=${WGET:-wget}
+
 # Make sure we are in the tools/ directory.
 if [ `basename $PWD` == extras ]; then
   cd ..
@@ -13,8 +15,10 @@ mkdir -p pitch_trackers/sacc
 cd pitch_trackers/sacc
 if [ -s SAcC_GLNXA64.zip ]; then
   echo "*SAcC_GLNXA64.zip already exists, not getting it."
+elif [ -d "$DOWNLOAD_DIR" ]; then
+  cp -p "$DOWNLOAD_DIR/SAcC_GLNXA64.zip" . || exit 1
 else
-  ! wget -t 2 http://labrosa.ee.columbia.edu/projects/SAcC/SAcC_GLNXA64.zip && \
+  ! $WGET -t 2 https://labrosa.ee.columbia.edu/projects/SAcC/SAcC_GLNXA64.zip && \
     echo "Error wgetting SAcC_GLNXA64.zip" && exit 1;
 fi
 
@@ -27,8 +31,10 @@ fi
 
 if [ -f MCRInstaller_glnxa64.bin ]; then
   echo "*It looks like you already downloaded MCRInstaller_glnxa64.bin, not getting it."
+elif [ -d "$DOWNLOAD_DIR" ]; then
+  cp -p "$DOWNLOAD_DIR/MCRInstaller_glnxa64.bin" . || exit 1
 else
-  ! wget -t 2 http://www.ee.columbia.edu/~dpwe/tmp/MCRInstaller_glnxa64.bin && \
+  ! $WGET -t 2 https://www.ee.columbia.edu/~dpwe/tmp/MCRInstaller_glnxa64.bin && \
    echo "Error getting MCRInstaller_glnxa64.bin" && exit 1;
 fi
 

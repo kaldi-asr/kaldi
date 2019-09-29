@@ -57,6 +57,8 @@ struct OnlineIvectorExtractionConfig {
                                             // stats
   std::string splice_config_rxfilename;  // to read OnlineSpliceOptions
   std::string cmvn_config_rxfilename;  // to read in OnlineCmvnOptions
+  bool online_cmvn_iextractor; // flag activating online-cmvn in iextractor
+                               // feature pipeline
   std::string diag_ubm_rxfilename;  // reads type DiagGmm.
   std::string ivector_extractor_rxfilename;  // reads type IvectorExtractor
 
@@ -99,7 +101,8 @@ struct OnlineIvectorExtractionConfig {
   // by calling SetAdaptationState()).
   BaseFloat max_remembered_frames;
 
-  OnlineIvectorExtractionConfig(): ivector_period(10), num_gselect(5),
+  OnlineIvectorExtractionConfig(): online_cmvn_iextractor(false),
+                                   ivector_period(10), num_gselect(5),
                                    min_post(0.025), posterior_scale(0.1),
                                    max_count(0.0), num_cg_iters(15),
                                    use_most_recent_ivector(true),
@@ -118,6 +121,11 @@ struct OnlineIvectorExtractionConfig {
                    "file for online CMVN features (e.g. conf/online_cmvn.conf),"
                    "only used for iVector extraction.  Contains options "
                    "as for the program 'apply-cmvn-online'");
+    opts->Register("online-cmvn-iextractor", &online_cmvn_iextractor,
+                   "add online-cmvn to feature pipeline of ivector extractor, "
+                   "use the cmvn setup from the UBM.  Note: the default of "
+                   "false is what we historically used; we'd use true if "
+                   "we were using CMVN'ed features for the neural net.");
     opts->Register("splice-config", &splice_config_rxfilename, "Configuration file "
                    "for frame splicing (--left-context and --right-context "
                    "options); used for iVector extraction.");
@@ -162,6 +170,7 @@ struct OnlineIvectorExtractionInfo {
   Matrix<double> global_cmvn_stats;  // Global CMVN stats.
 
   OnlineCmvnOptions cmvn_opts;  // Options for online CMN/CMVN computation.
+  bool online_cmvn_iextractor;  // flag activating online CMN/CMVN for iextractor input.
   OnlineSpliceOptions splice_opts;  // Options for frame splicing
                                     // (--left-context,--right-context)
 
@@ -461,7 +470,7 @@ class OnlineSilenceWeighting {
 
   OnlineSilenceWeighting(const TransitionModel &trans_model,
                          const OnlineSilenceWeightingConfig &config,
-			 int32 frame_subsampling_factor = 1);
+                         int32 frame_subsampling_factor = 1);
 
   bool Active() const { return config_.Active(); }
 
@@ -500,6 +509,14 @@ class OnlineSilenceWeighting {
       int32 num_frames_ready, int32 first_decoder_frame,
       std::vector<std::pair<int32, BaseFloat> > *delta_weights);
 
+  // A method for backward compatibility, same as above, but for a single
+  // utterance.
+  void GetDeltaWeights(
+      int32 num_frames_ready,
+      std::vector<std::pair<int32, BaseFloat> > *delta_weights) {
+    GetDeltaWeights(num_frames_ready, 0, delta_weights);
+  }
+
  private:
   const TransitionModel &trans_model_;
   const OnlineSilenceWeightingConfig &config_;
@@ -520,12 +537,6 @@ class OnlineSilenceWeighting {
     BaseFloat current_weight;
     FrameInfo(): token(NULL), transition_id(-1), current_weight(0.0) {}
   };
-
-  // gets the frame at which we need to begin our processing in
-  // GetDeltaWeights...  normally this is equal to
-  // num_frames_output_and_correct_, but it may be earlier in case
-  // max_state_duration is relevant.
-  int32 GetBeginFrame();
 
   // This contains information about any previously computed traceback;
   // when the traceback changes we use this variable to compare it with the

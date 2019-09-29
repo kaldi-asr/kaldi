@@ -6,7 +6,7 @@
 # look at the top of those files, we don't put those in the
 # RESULTS file.
 
-for dir in exp/*; do
+for dir in exp/* exp/chain*/*; do
   steps/info/gmm_dir_info.pl $dir
   for x in $dir/decode*dev93* $dir/decode*eval92*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
 done
@@ -288,3 +288,4 @@ for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.s
 %WER 4.27 exp/nnet3/lstm_bidirectional/decode_bd_tgpr_eval92/wer_11_0.0
 %WER 9.29 exp/nnet3/lstm_bidirectional/decode_tgpr_dev93/wer_11_0.5
 %WER 6.61 exp/nnet3/lstm_bidirectional/decode_tgpr_eval92/wer_11_1.0
+

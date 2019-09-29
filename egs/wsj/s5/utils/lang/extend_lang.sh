@@ -157,6 +157,13 @@ perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$tmpdir/lexiconp.txt >$tmpdir/align_lex
 cat $tmpdir/align_lexicon.txt | \
   perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | sort | uniq > $dir/phones/align_lexicon.txt
 
+if [ -f $dir/phones/nonterminals.txt ]; then
+  for w in "#nonterm_begin" "#nonterm_end" $(cat $dir/phones/nonterminals.txt); do
+    echo $w $w  # These are words without pronunciations, so leave those prons
+                # empty.
+  done >> $dir/phones/align_lexicon.txt
+fi
+
 # create phones/align_lexicon.int from phones/align_lexicon.txt
 cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
   utils/sym2int.pl -f 1-2 $dir/words.txt > $dir/phones/align_lexicon.int

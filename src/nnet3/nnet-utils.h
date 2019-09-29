@@ -234,8 +234,8 @@ struct CollapseModelConfig {
   bool collapse_batchnorm;  // batchnorm then affine.
   bool collapse_affine;  // affine or fixed-affine then affine.
   bool collapse_scale;  // affine then fixed-scale.
-  CollapseModelConfig(): collapse_dropout(true),
-                         collapse_batchnorm(true),
+  CollapseModelConfig(): collapse_dropout(false),
+                         collapse_batchnorm(false),
                          collapse_affine(true),
                          collapse_scale(true) { }
 };

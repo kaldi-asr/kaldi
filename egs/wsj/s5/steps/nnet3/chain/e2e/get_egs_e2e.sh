@@ -14,7 +14,6 @@
 # Begin configuration section.
 cmd=run.pl
 normalize_egs=true
-feat_type=raw     # set it to 'lda' to use LDA features.
 frame_subsampling_factor=3 # frames-per-second of features we train on divided
                            # by frames-per-second at output of chain model
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
@@ -47,6 +46,13 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
+online_cmvn=false # Set to 'true' to replace 'apply-cmvn' by 'apply-cmvn-online' in the nnet3 input.
+                  # The configuration is passed externally via '$cmvn_opts' given to train.py,
+                  # typically as: --cmvn-opts="--config conf/online_cmvn.conf".
+                  # The global_cmvn.stats are computed by this script from the features.
+                  # Note: the online cmvn for ivector extractor it is controlled separately in
+                  #       steps/online/nnet2/train_ivector_extractor.sh by --online-cmvn-iextractor
+
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -147,18 +153,39 @@ if [ $len_uttlist -lt $num_utts_subset ]; then
   echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
 fi
 
-
 ## Set up features.
-echo "$0: feature type is $feat_type"
 
-case $feat_type in
-  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
-   ;;
-  *) echo "$0: invalid feature type --feat-type '$feat_type'" && exit 1;
-esac
+# get the global_cmvn stats for online-cmvn,
+if $online_cmvn; then
+  # create global_cmvn.stats,
+  #
+  # caution: the top-level nnet training script should copy
+  # 'global_cmvn.stats' and 'online_cmvn' to its own dir.
+  if ! matrix-sum --binary=false scp:$data/cmvn.scp - >$dir/global_cmvn.stats 2>/dev/null; then
+    echo "$0: Error summing cmvn stats"
+    exit 1
+  fi
+  touch $dir/online_cmvn
+else
+  [ -f $dir/online_cmvn ] && rm $dir/online_cmvn
+fi
+
+# create the feature pipelines,
+if ! $online_cmvn; then
+  # the original front-end with 'apply-cmvn',
+  echo "$0: feature type is raw, with 'apply-cmvn'"
+  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+else
+  # the alternative front-end with 'apply-cmvn-online',
+  # - the $cmvn_opts can be set to '--config=conf/online_cmvn.conf' which is the setup of ivector-extractor,
+  echo "$0: feature type is raw, with 'apply-cmvn-online'"
+  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+fi
+echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
