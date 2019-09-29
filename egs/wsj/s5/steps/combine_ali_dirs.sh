@@ -154,14 +154,13 @@ do_combine() {
     # Each numbered variable will contain the list of archives, e. g.:
     # src_arcs_1="exp/tri3_ali/ali.1.gz exp/tri3_ali/ali.1.gz ..."
     # ('printf' repeats its format as long as there are more arguments).
-    printf -v src_arks_${src_id} "$src/$ark.%d.gz " $(seq $nj_src)
-    export src_arks_${src_id}
+    printf "$src/$ark.%d.gz " $(seq $nj_src) > $temp_dir/src_arks.${src_id}
   done
-
+  
   # Gather archives in parallel jobs.
   $cmd JOB=1:$src_id $dest/log/gather_$entities.JOB.log \
     $copy_program \
-      "ark:gunzip -c \${src_arks_JOB} |" \
+      "ark:gunzip -c \$(cat $temp_dir/src_arks.JOB) |" \
       "ark,scp:$temp_dir/$ark.JOB.ark,$temp_dir/$ark.JOB.scp" || exit 1
 
   # Merge (presumed already sorted) scp's into a single script.
