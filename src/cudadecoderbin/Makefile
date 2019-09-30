@@ -13,7 +13,7 @@ OBJFILES =
 
 TESTFILES =
 
-ADDLIBS = ../cudadecoder/kaldi-cudadecoder.a  \
+ADDLIBS = ../cudadecoder/kaldi-cudadecoder.a  ../cudafeat/kaldi-cudafeat.a \
 ../online2/kaldi-online2.a ../ivector/kaldi-ivector.a \
 ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
 ../cudamatrix/kaldi-cudamatrix.a ../decoder/kaldi-decoder.a \

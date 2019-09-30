@@ -3548,7 +3548,7 @@ void* SoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   // Apply softmax function to each row of the output...
   // for that row, we do
   // x_i = exp(x_i) / sum_j exp(x_j).
-  out->ApplySoftMaxPerRow(in);
+  out->SoftMaxPerRow(in);
 
   // This floor on the output helps us deal with
   // almost-zeros in a way that doesn't lead to overflow.
@@ -3601,7 +3601,7 @@ void* LogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     CuMatrixBase<BaseFloat> *out) const {
   // Applies log softmax function to each row of the output. For each row, we do
   // x_i = x_i - log(sum_j exp(x_j))
-  out->ApplyLogSoftMaxPerRow(in);
+  out->LogSoftMaxPerRow(in);
   return NULL;
 }
 

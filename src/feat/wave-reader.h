@@ -115,7 +115,7 @@ class WaveData {
   void Write(std::ostream &os) const;
 
   // This function returns the wave data-- it's in a matrix
-  // becase there may be multiple channels.  In the normal case
+  // because there may be multiple channels.  In the normal case
   // there's just one channel so Data() will have one row.
   // This data will be in the range [-1, 1].  This is a difference
   // from pre-kaldi10.

@@ -13,11 +13,22 @@ import textwrap
 def get_args():
     parser = argparse.ArgumentParser(
         description=textwrap.dedent("""
-        Creates a subsegments file from an input segments file
-        that has the format
+        Creates a subsegments file from an input segments file.
+
+        The output format is
+
         <subsegment-id> <utterance-id> <start-time> <end-time>,
-        where the timing are relative to the start-time of the
-        <utterance-id> in the input segments file.
+
+        where the timings are relative to the start-time of the
+         <utterance-id> in the input segments file.
+        Reminder: the format of the input segments file is:
+
+         <utterance-id> <recording-id> <start-time> <end-time>
+
+        where the recording-id corresponds to a wav file (or a channel of
+        a wav file) from wav.scp.  Note: you can use
+        utils/data/get_segments_for_data.sh to generate a 'default'
+        segments file for your data if one doesn't already exist.
 
         e.g.: get_uniform_subsegments.py data/dev/segments > \\
                 data/dev_uniform_segments/sub_segments

@@ -11,7 +11,6 @@ SUBDIRS = base matrix util feat cudafeat tree gmm transform \
           ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
           cudadecoder cudadecoderbin cblasext
 
-
 MEMTESTDIRS = base matrix util feat cudafeat tree gmm transform \
           fstext hmm lm decoder lat kws chain \
           bin fstbin gmmbin fgmmbin featbin cudafeatbin \
@@ -128,6 +127,7 @@ $(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
+
 bin fstbin gmmbin fgmmbin featbin cudafeatbin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin cudadecoderbin: \
  base matrix util feat cudafeat tree gmm transform fstext hmm \
  lm decoder lat cudadecoder cudamatrix nnet3 ivector chain kws online2 rnnlm
@@ -151,13 +151,13 @@ nnet3: base util matrix cblasext decoder lat gmm hmm tree transform cudamatrix c
 rnnlm: base util matrix cblasext cudamatrix nnet3 lm hmm
 chain: lat hmm tree fstext matrix cblasext cudamatrix util base
 ivector: base util matrix cblasext transform tree gmm
-#3)Dependencies for optional parts of Kaldi
+cudafeat: base cudamatrix matrix cblasext util gmm transform tree feat cudamatrix online2
 onlinebin: base cudamatrix matrix cblasext util feat tree gmm transform fstext hmm lm decoder lat cudamatrix online
 # python-kaldi-decoding: base cudamatrix matrix cblasext util feat tree gmm transform fstext hmm decoder lat online
-cudafeat: base cudamatrix matrix cblasext util gmm transform tree feat cudamatrix online2
+
 cudafeatbin: base cudamatrix matrix cblasext util gmm transform tree feat cudamatrix cudafeat online2
 online: decoder gmm transform feat matrix cblasext util base lat hmm tree
 online2: decoder gmm transform feat matrix cblasext util base lat hmm tree ivector cudamatrix nnet3 chain
 kws: base util hmm tree matrix cblasext lat
 cudadecoder:  cudamatrix cudafeat online2 nnet3 ivector feat fstext lat chain transform
-cudadecoderbin: cudadecoder cudafeat cudamatrix online2 nnet3 ivector feat fstext lat chain transform
+

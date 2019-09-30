@@ -357,7 +357,7 @@ void ShiftChainExampleTimes(int32 frame_shift,
       input_end = eg->inputs.end();
   for (; input_iter != input_end; ++input_iter) {
     bool must_exclude = false;
-    std::vector<string>::const_iterator exclude_iter = exclude_names.begin(),
+    std::vector<std::string>::const_iterator exclude_iter = exclude_names.begin(),
         exclude_end = exclude_names.end();
     for (; exclude_iter != exclude_end; ++exclude_iter)
       if (input_iter->name == *exclude_iter)

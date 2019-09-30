@@ -245,5 +245,4 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
 
 
 
-
 }  // namespace kaldi

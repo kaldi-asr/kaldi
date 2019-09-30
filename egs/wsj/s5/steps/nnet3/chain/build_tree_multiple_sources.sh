@@ -131,8 +131,8 @@ for n in `seq 0 $[num_sys-1]`; do
     fi
 
     echo "$0: Using transforms from ${alidirs[$n]}"
-    feats[i]="${feats[i]} transform-feats --utt2spk=ark:$this_sdata/JOB/utt2spk ark,s,cs:${alidirs[$n]}/trans.JOB ark:- ark:- |"
-    feats_one[i]="${feats_one[i]} transform-feats --utt2spk=ark:$this_sdata/1/utt2spk ark,s,cs:${alidirs[$n]}/trans.1 ark:- ark:- |"
+    feats[$n]="${feats[$n]} transform-feats --utt2spk=ark:$this_sdata/JOB/utt2spk ark,s,cs:${alidirs[$n]}/trans.JOB ark:- ark:- |"
+    feats_one[$n]="${feats_one[$n]} transform-feats --utt2spk=ark:$this_sdata/1/utt2spk ark,s,cs:${alidirs[$n]}/trans.1 ark:- ark:- |"
   fi
 
   # Do subsampling of feats, if needed

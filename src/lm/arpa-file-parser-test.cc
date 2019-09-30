@@ -73,7 +73,8 @@ inline CountedArray<T> MakeCountedArray(T(&array)[N]) {
 
 class TestableArpaFileParser : public ArpaFileParser {
  public:
-  TestableArpaFileParser(ArpaParseOptions options, fst::SymbolTable *symbols)
+  TestableArpaFileParser(const ArpaParseOptions &options,
+                         fst::SymbolTable *symbols)
       : ArpaFileParser(options, symbols),
         header_available_(false),
         read_complete_(false),
@@ -89,7 +90,7 @@ class TestableArpaFileParser : public ArpaFileParser {
   bool header_available_;
   bool read_complete_;
   int32 last_order_;
-  std::vector <NGramTestData> ngrams_;
+  std::vector<NGramTestData> ngrams_;
 };
 
 void TestableArpaFileParser::HeaderAvailable() {

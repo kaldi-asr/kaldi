@@ -32,9 +32,15 @@
 using namespace kaldi;
 using namespace cuda_decoder;
 
+// When the pipeline is full, wait for
+// KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP
+// Not using a semaphore because it is usually not necessary to wait
+#define KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP ((double)1 / 1e5)
+
 void GetDiagnosticsAndPrintOutput(const std::string &utt,
                                   const fst::SymbolTable *word_syms,
                                   const CompactLattice &clat,
+                                  std::mutex *stdout_mutex,
                                   int64 *tot_num_frames, double *tot_like) {
   if (clat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice.";
@@ -56,66 +62,47 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   likelihood = -(weight.Value1() + weight.Value2());
   *tot_num_frames += num_frames;
   *tot_like += likelihood;
-  KALDI_VLOG(2) << "Likelihood per frame for utterance " << utt << " is "
-                << (likelihood / num_frames) << " over " << num_frames
-                << " frames.";
+  {
+    std::lock_guard<std::mutex> lk(*stdout_mutex);
+    KALDI_VLOG(2) << "Likelihood per frame for utterance " << utt << " is "
+                  << (likelihood / num_frames) << " over " << num_frames
+                  << " frames.";
 
-  if (word_syms != NULL) {
-    std::ostringstream oss_warn;
-    oss_warn << utt << " ";
-    for (size_t i = 0; i < words.size(); i++) {
-      std::string s = word_syms->Find(words[i]);
-      if (s == "")
-        oss_warn << "Word-id " << words[i] << " not in symbol table.";
-      oss_warn << s << " ";
+    if (word_syms != NULL) {
+      std::ostringstream oss_warn;
+      oss_warn << utt << " ";
+      for (size_t i = 0; i < words.size(); i++) {
+        std::string s = word_syms->Find(words[i]);
+        if (s == "")
+          oss_warn << "Word-id " << words[i] << " not in symbol table.";
+        oss_warn << s << " ";
+      }
+      KALDI_WARN << oss_warn.str();
     }
-    KALDI_WARN << oss_warn.str();
   }
 }
 
-// using a macro here to avoid a ton of parameters in a function
-// while also being able to reuse this in two spots
+// Called when a task is complete. Will be called by different threads
+// concurrently,
+// so it must be threadsafe
 void FinishOneDecode(
+    const std::string &utt, const std::string &key,
     const BatchedThreadedNnet3CudaPipelineConfig &batched_decoder_config,
     const fst::SymbolTable *word_syms, const bool write_lattice,
-    const int32 total_audio, const int32 count_per_iteration,
-    BatchedThreadedNnet3CudaPipeline *cuda_pipeline,
-    std::queue<std::pair<std::string, std::string>> *processed,
-    CompactLatticeWriter *clat_writer, Timer *timer, int32 *current_count,
-    int64 *num_frames, int32 *output_iter, double *tot_like) {
-  std::string &utt = processed->front().first;
-  std::string &key = processed->front().second;
-  CompactLattice clat;
-  bool valid;
+    BatchedThreadedNnet3CudaPipeline *cuda_pipeline, int64 *num_frames,
+    double *tot_like, CompactLatticeWriter *clat_writer,
+    std::mutex *clat_writer_mutex, std::mutex *stdout_mutex,
+    CompactLattice &clat) {
+  nvtxRangePushA("FinishOneDecode");
+  GetDiagnosticsAndPrintOutput(utt, word_syms, clat, stdout_mutex, num_frames,
+                               tot_like);
+  if (write_lattice) {
+    std::lock_guard<std::mutex> lk(*clat_writer_mutex);
+    clat_writer->Write(utt, clat);
+  }
 
-  if (batched_decoder_config.determinize_lattice) {
-    valid = cuda_pipeline->GetLattice(key, &clat);
-  } else {
-    Lattice lat;
-    valid = cuda_pipeline->GetRawLattice(key, &lat);
-    ConvertLattice(lat, &clat);
-  }
-  if (valid) {
-    GetDiagnosticsAndPrintOutput(utt, word_syms, clat, num_frames, tot_like);
-    if (write_lattice && key == utt) { /*only write output on first iteration*/
-      nvtxRangePushA("Lattice Write");
-      clat_writer->Write(utt, clat);
-      nvtxRangePop();
-    }
-  }
-  cuda_pipeline->CloseDecodeHandle(key);
-  processed->pop();
-  if (++(*current_count) ==
-      count_per_iteration) { /*this utt is the last in an iter*/
-    double total_time = timer->Elapsed();
-    KALDI_VLOG(2) << "Iteration: " << *output_iter
-                  << " ~Aggregate Total Time: " << total_time
-                  << " Total Audio: " << total_audio * *output_iter
-                  << " RealTimeX: " << *output_iter * total_audio / total_time;
-    current_count = 0;
-    (*output_iter)++;
-  }
-  }
+  nvtxRangePop();
+}
 
 int main(int argc, char *argv[]) {
   try {
@@ -141,9 +128,10 @@ int main(int argc, char *argv[]) {
     int num_todo = -1;
     int iterations = 1;
     ParseOptions po(usage);
-    int pipeline_length = 4000; // length of pipeline of outstanding requests,
-                                // this is independent of queue lengths in
-                                // decoder
+    std::mutex stdout_mutex, clat_writer_mutex;
+    int pipeline_length = 4000;  // length of pipeline of outstanding requests,
+                                 // this is independent of queue lengths in
+                                 // decoder
 
     po.Register("write-lattice", &write_lattice,
                 "Output lattice to a file. Setting to false is useful when "
@@ -208,12 +196,14 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Could not read symbol table from file "
                   << word_syms_rxfilename;
 
-    int32 num_done = 0, num_err = 0;
+    int32 num_task_submitted = 0, num_err = 0;
     double tot_like = 0.0;
     int64 num_frames = 0;
     double total_audio = 0;
 
     nvtxRangePush("Global Timer");
+
+    int num_groups_done=0;
 
     // starting timer here so we
     // can measure throughput
@@ -221,17 +211,20 @@ int main(int argc, char *argv[]) {
     // overheads
     // using kaldi timer, which starts counting in the constructor
     Timer timer;
-
-    int count_per_iteration = 0;
-    int current_count = 0;
-    int output_iter = 1;
-
-    std::queue<std::pair<std::string, std::string>> processed;
+    std::vector<double> iteration_timer;
     for (int iter = 0; iter < iterations; iter++) {
+      std::string task_group = std::to_string(iter);
+      num_task_submitted = 0;
       SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
-
+      if (iter > 0)
+        write_lattice =
+            false;  // write the lattices only on the first iteration
       for (; !wav_reader.Done(); wav_reader.Next()) {
         nvtxRangePushA("Utterance Iteration");
+
+        while (cuda_pipeline.GetNumberOfTasksPending() >= pipeline_length) {
+          kaldi::Sleep(KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP);
+        }
 
         std::string utt = wav_reader.Key();
         std::string key = utt;
@@ -243,51 +236,93 @@ int main(int argc, char *argv[]) {
 
         if (iter == 0) {
           // calculating number of utterances per iteration
-          count_per_iteration++;
           // calculating total audio time per iteration
           total_audio += wave_data.Duration();
         }
 
-        cuda_pipeline.OpenDecodeHandle(key, wave_data);
-        processed.push(pair<string, string>(utt, key));
-        num_done++;
-
-        while (processed.size() >= pipeline_length) {
-          FinishOneDecode(batched_decoder_config, word_syms, write_lattice,
-                          total_audio, count_per_iteration, &cuda_pipeline,
-                          &processed, &clat_writer, &timer, &current_count,
-                          &num_frames, &output_iter, &tot_like);
-        }  // end while
+        // Creating a function alias for the callback function of that utterance
+        auto finish_one_decode_lamba = [
+            // Capturing the arguments that will change by copy
+            utt, key, write_lattice,
+            // Capturing the const/global args by reference
+            &word_syms, &batched_decoder_config, &cuda_pipeline,
+            &clat_writer_mutex, &stdout_mutex, &clat_writer, &num_frames,
+            &tot_like]
+            // The callback function receive the compact lattice as argument
+            // if determinize_lattice is true, it is a determinized lattice
+            // otherwise, it is a raw lattice converted to compact format
+            // through ConvertLattice
+            (CompactLattice & clat_in) {
+              // Content of our callback function. Calling the general
+              // FinishOneDecode function with the proper arguments
+              FinishOneDecode(
+                  // Captured arguments used to specialize FinishOneDecode for
+                  // this task
+                  utt, key, batched_decoder_config, word_syms, write_lattice,
+                  &cuda_pipeline, &num_frames, &tot_like, &clat_writer,
+                  &clat_writer_mutex, &stdout_mutex,
+                  // Generated lattice that will be passed once the task is
+                  // complete
+                  clat_in);
+            };
+        // Adding a new task. Once the output lattice is ready, it will call
+        // finish_one_decode_lamba
+        // Important : finish_one_decode_lamba is called in the threadpool. We
+        // need it to be threadsafe
+        // (use locks around relevant parts, like writing to I/O)
+        cuda_pipeline.OpenDecodeHandle(key, wave_data, task_group,
+                                       finish_one_decode_lamba);
+        num_task_submitted++;
 
         nvtxRangePop();
-        if (num_todo != -1 && num_done >= num_todo)
-          break;
-      } // end utterance loop
+        if (num_todo != -1 && num_task_submitted >= num_todo) break;
+      }  // end utterance loop
+        
+      std::string group_done;
+      // Non-blocking way to check if a group is done
+      // returns false if zero groups are ready
+      while (cuda_pipeline.IsAnyGroupCompleted(&group_done)) {
+        cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
+        double total_time = timer.Elapsed();
+        int32 iter = std::atoi(group_done.c_str());
+        KALDI_LOG << "~Group " << group_done << " completed"
+                  << " Aggregate Total Time: " << total_time
+                  << " Audio: " << total_audio * (iter + 1)
+                  << " RealTimeX: " << total_audio * (iter + 1) / total_time;
+        num_groups_done++;
+      }
+    }    // end iterations loop
 
-    } // end iterations loop
-
-    while (processed.size() > 0) {
-      FinishOneDecode(batched_decoder_config, word_syms, write_lattice,
-                      total_audio, count_per_iteration, &cuda_pipeline,
-                      &processed, &clat_writer, &timer, &current_count,
-                      &num_frames, &output_iter, &tot_like);
-    } // end while
-
-    KALDI_LOG << "Decoded " << num_done << " utterances, " << num_err
-              << " with errors.";
-    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
-              << " per frame over " << num_frames << " frames.";
+    // We've submitted all tasks. Now waiting for them to complete
+    // We could also have called WaitForAllTasks and CloseAllDecodeHandles
+    while (num_groups_done<iterations) {
+      // WaitForAnyGroup is blocking. It will hold until one group is ready
+      std::string group_done = cuda_pipeline.WaitForAnyGroup();
+      cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
+      double total_time = timer.Elapsed();
+      int32 iter = std::atoi(group_done.c_str());
+      KALDI_LOG << "~Group " << group_done << " completed"
+                << " Aggregate Total Time: " << total_time
+                << " Audio: " << total_audio * (iter + 1)
+                << " RealTimeX: " << total_audio * (iter + 1) / total_time;
+      num_groups_done++;
+    }
 
     // number of seconds elapsed since the creation of timer
     double total_time = timer.Elapsed();
     nvtxRangePop();
+
+    KALDI_LOG << "Decoded " << num_task_submitted << " utterances, " << num_err
+              << " with errors.";
+    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
+              << " per frame over " << num_frames << " frames.";
 
     KALDI_LOG << "Overall: "
               << " Aggregate Total Time: " << total_time
               << " Total Audio: " << total_audio * iterations
               << " RealTimeX: " << total_audio * iterations / total_time;
 
-    delete word_syms; // will delete if non-NULL.
+    delete word_syms;  // will delete if non-NULL.
 
     clat_writer.Close();
 
@@ -295,12 +330,10 @@ int main(int argc, char *argv[]) {
     cudaDeviceSynchronize();
 
     return 0;
-
-    // return (num_done != 0 ? 0 : 1);
   } catch (const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
-} // main()
+}  // main()
 
 #endif  // if HAVE_CUDA == 1

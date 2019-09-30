@@ -468,7 +468,7 @@ struct IvectorExtractorEstimationOptions {
                    "update any associated parameters.");
     opts->Register("diagonalize", &diagonalize,
                    "If true, diagonalize the quadratic term in the "
-                   "objective function. This reorders the ivector dimensions"
+                   "objective function. This reorders the ivector dimensions "
                    "from most to least important.");
   }
 };

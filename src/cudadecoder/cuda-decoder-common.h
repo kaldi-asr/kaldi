@@ -29,8 +29,12 @@
 //
 // An analogy would be lane -> a core, channel -> a software thread
 
-// Number of GPU decoder lanes
-#define KALDI_CUDA_DECODER_MAX_N_LANES 200
+// Some config parameters can be computed using other parameters
+// (e.g. we can set main_q_capacity using max-active)
+// Those values are the different factors between parameters that we know
+// and parameters we want to set
+#define KALDI_CUDA_DECODER_MAX_ACTIVE_MAIN_Q_CAPACITY_FACTOR 4
+#define KALDI_CUDA_DECODER_AUX_Q_MAIN_Q_CAPACITIES_FACTOR 3
 
 // If we're at risk of filling the tokens queue,
 // the beam is reduced to keep only the best candidates in the
@@ -60,6 +64,11 @@
 // it has to be less than the number of 1D threads
 #define KALDI_CUDA_DECODER_HISTO_NBINS 255
 
+// Number of "heavy duty" process non emitting kernels
+// If more non emitting iterations are required, those will be done
+// in the one-CTA persistent kernel
+#define KALDI_CUDA_DECODER_N_NON_EMITTING_MAIN_ITERATIONS 2
+
 // Adaptive beam parameters
 // We will decrease the beam when we detect that we are generating too many
 // tokens
@@ -85,7 +94,6 @@
 // so that we can avoid triggering ApplyMaxActiveAndReduceBeam for just a few
 // tokens above the limit
 // at the end of the frame
-#define KALDI_CUDA_DECODER_MAX_ACTIVE_TOLERANCE 0.2
 
 #define KALDI_CUDA_DECODER_DIV_ROUND_UP(a, b) ((a + b - 1) / b)
 
@@ -97,6 +105,9 @@
     }                                                                   \
   }
 // Macro for checking cuda errors following a cuda launch or api call
+#ifdef NDEBUG
+#define KALDI_DECODER_CUDA_CHECK_ERROR()
+#else
 #define KALDI_DECODER_CUDA_CHECK_ERROR()                                  \
   {                                                                       \
     cudaError_t e = cudaGetLastError();                                   \
@@ -105,6 +116,7 @@
                                  false);                                  \
     }                                                                     \
   }
+#endif
 
 #define KALDI_DECODER_CUDA_API_CHECK_ERROR(e)                             \
   {                                                                       \
@@ -132,7 +144,8 @@
 #define KALDI_CUDA_DECODER_1D_BLOCK 256
 #define KALDI_CUDA_DECODER_LARGEST_1D_BLOCK 1024
 #define KALDI_CUDA_DECODER_ONE_THREAD_BLOCK 1
-
+#define KALDI_CUDA_DECODER_MAX_CTA_COUNT 4096u
+#define KALDI_CUDA_DECODER_MAX_CTA_PER_LANE 512u
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -140,9 +153,25 @@ namespace cuda_decoder {
 // M is usually the batch size
 inline dim3 KaldiCudaDecoderNumBlocks(int N, int M) {
   dim3 grid;
-  // TODO MAX_NUM_BLOCKS.
   grid.x = KALDI_CUDA_DECODER_DIV_ROUND_UP(N, KALDI_CUDA_DECODER_1D_BLOCK);
+  unsigned int max_CTA_per_lane =
+      std::max(KALDI_CUDA_DECODER_MAX_CTA_COUNT / M, 1u);
+  grid.x = std::min(grid.x, max_CTA_per_lane);
   grid.y = M;
+  return grid;
+}
+
+// Use a fixed number of blocks for nlanes
+// Using the max number of CTAs possible for each lane,
+// according to KALDI_CUDA_DECODER_MAX_CTA_COUNT
+// and KALDI_CUDA_DECODER_MAX_CTA_PER_LANE
+inline dim3 KaldiCudaDecoderNumBlocks(int nlanes) {
+  dim3 grid;
+  unsigned int n_CTA_per_lane =
+      std::max(KALDI_CUDA_DECODER_MAX_CTA_COUNT / nlanes, 1u);
+  if (n_CTA_per_lane == 0) n_CTA_per_lane = 1;
+  grid.x = std::min(KALDI_CUDA_DECODER_MAX_CTA_PER_LANE, n_CTA_per_lane);
+  grid.y = nlanes;
   return grid;
 }
 
@@ -214,6 +243,49 @@ class DeviceMatrix {
   // abstract getInterface...
 };
 
+template <typename T>
+// if necessary, make a version that always use ncols_ as the next power of 2
+class HostMatrix {
+  T *data_;
+  void Allocate() {
+    KALDI_ASSERT(nrows_ > 0);
+    KALDI_ASSERT(ncols_ > 0);
+    KALDI_ASSERT(!data_);
+    cudaMallocHost((void **)&data_, (size_t)nrows_ * ncols_ * sizeof(*data_));
+    KALDI_ASSERT(data_);
+  }
+  void Free() {
+    KALDI_ASSERT(data_);
+    cudaFreeHost(data_);
+  }
+
+ protected:
+  int32 ncols_;
+  int32 nrows_;
+
+ public:
+  HostMatrix() : data_(NULL), ncols_(0), nrows_(0) {}
+
+  virtual ~HostMatrix() {
+    if (data_) Free();
+  }
+
+  void Resize(int32 nrows, int32 ncols) {
+    if (data_) Free();
+    KALDI_ASSERT(nrows > 0);
+    KALDI_ASSERT(ncols > 0);
+    nrows_ = nrows;
+    ncols_ = ncols;
+    Allocate();
+  }
+
+  T *MutableData() {
+    KALDI_ASSERT(data_);
+    return data_;
+  }
+  // abstract getInterface...
+};
+
 // Views of DeviceMatrix
 // Those views are created by either DeviceChannelMatrix or
 // DeviceLaneMatrix
@@ -255,6 +327,16 @@ class DeviceLaneMatrix : public DeviceMatrix<T> {
 };
 
 template <typename T>
+class HostLaneMatrix : public HostMatrix<T> {
+ public:
+  LaneMatrixView<T> GetView() { return {this->MutableData(), this->ncols_}; }
+
+  T *lane(const int32 ilane) {
+    return &this->MutableData()[ilane * this->ncols_];
+  }
+};
+
+template <typename T>
 class DeviceChannelMatrix : public DeviceMatrix<T> {
  public:
   ChannelMatrixView<T> GetView() { return {this->MutableData(), this->ncols_}; }
@@ -269,6 +351,10 @@ class DeviceChannelMatrix : public DeviceMatrix<T> {
 // queue
 // LaneCounters are used during computation
 struct LaneCounters {
+  // hannel that this lane will compute for the current frame
+  ChannelId channel_to_compute;
+  // Pointer to the loglikelihoods array for this channel and current frame
+  BaseFloat *loglikelihoods;
   // Contains both main_q_end and narcs
   // End index of the main queue
   // only tokens at index i with i < main_q_end
@@ -289,6 +375,8 @@ struct LaneCounters {
   // Some tokens in the same frame share the same token.next_state
   // main_q_n_extra_prev_tokens is the count of those tokens
   int32 main_q_n_extra_prev_tokens;
+  // Number of tokens created during the emitting stage
+  int32 main_q_n_emitting_tokens;
   // Depending on the value of the parameter "max_tokens_per_frame"
   // we can end up with an overflow when generating the tokens for a frame
   // We try to prevent this from happening using an adaptive beam
@@ -312,7 +400,6 @@ struct LaneCounters {
   // Same thing, but for main_q_n_extra_prev_tokens (those are also transfered
   // back to host)
   int32 main_q_extra_prev_tokens_global_offset;
-
   // Minimum token for that frame
   IntegerCostType min_int_cost;
   // Current beam. Can be different from default_beam,
@@ -323,9 +410,18 @@ struct LaneCounters {
   // valid.
   // After that index, we need to lower the adaptive beam
   int2 adaptive_int_beam_with_validity_index;
-
   // min_cost + beam
   IntegerCostType int_cutoff;
+  // The histogram for max_active will be computed between min_histo_cost
+  // and max_histo_cost. Set for each frame after emitting stage
+  CostType min_histo_cost;
+  CostType max_histo_cost;
+  CostType histo_bin_width;
+  bool compute_max_active;
+  // offsets used by concatenate_lanes_data_kernel
+  int32 main_q_end_lane_offset;
+  int32 main_q_n_emitting_tokens_lane_offset;
+  int32 main_q_n_extra_prev_tokens_lane_offset;
 
   // --- Only valid after calling GetBestCost
   // min_cost and its arg. Can be different than min_cost, because we may
@@ -334,6 +430,7 @@ struct LaneCounters {
   // Number of final tokens with cost < best + lattice_beam
   int32 n_within_lattice_beam;
   int32 has_reached_final;  // if there's at least one final token in the queue
+  int32 prev_arg_min_int_cost;
 };
 
 // Channel counters
@@ -353,7 +450,6 @@ struct ChannelCounters {
   // different than min_int_cost : we include the "final" cost
   int2 min_int_cost_and_arg_with_final;
   int2 min_int_cost_and_arg_without_final;
-  //
 };
 
 class CudaDecoderException : public std::exception {
@@ -451,7 +547,7 @@ struct __align__(16) HashmapValueT {
   // Number of tokens associated to that state
   int32 count;
   // minimum cost for that state + argmin
-  int2 min_and_argmin_int_cost;
+  unsigned long long min_and_argmin_int_cost_u64;
 };
 
 enum OVERFLOW_TYPE {

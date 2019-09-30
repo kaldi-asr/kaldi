@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "Useful for speaker-id; see also apply-cmvn-online\n"
         "\n"
         "Usage: apply-cmvn-sliding [options] <feats-rspecifier> <feats-wspecifier>\n";
-    
+
     ParseOptions po(usage);
     SlidingWindowCmnOptions opts;
     opts.Register(&po);
@@ -48,13 +48,13 @@ int main(int argc, char *argv[]) {
     }
 
     int32 num_done = 0, num_err = 0;
-    
+
     std::string feat_rspecifier = po.GetArg(1);
     std::string feat_wspecifier = po.GetArg(2);
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
-    
+
     for (;!feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
       Matrix<BaseFloat> feat(feat_reader.Value());
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
                                   feat.NumCols(), kUndefined);
 
       SlidingWindowCmn(opts, feat, &cmvn_feat);
-      
+
       feat_writer.Write(utt, cmvn_feat);
       num_done++;
     }

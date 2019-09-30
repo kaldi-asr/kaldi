@@ -16,7 +16,7 @@
 # WER on test(fglarge)              3.80          3.69
 # WER on test(tglarge)              3.89          3.80
 # WER on test(tgmed)                4.72          4.64
-# WER on test(tgsmall)              5.19          5.16      
+# WER on test(tgsmall)              5.19          5.16
 # WER on test_other(fglarge)        8.76          8.71
 # WER on test_other(tglarge)        9.19          9.11
 # WER on test_other(tgmed)         11.22         11.00
@@ -212,10 +212,6 @@ if [ $stage -le 16 ]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   utils/mkgraph.sh --remove-oov data/lang_test_tgsmall $dir $graph_dir
-  # remove <UNK> from the graph, and convert back to const-FST.
-  fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst - | \
-    fstconvert --fst_type=const > $graph_dir/temp.fst
-  mv $graph_dir/temp.fst $graph_dir/HCLG.fst
 fi
 
 iter_opts=
@@ -275,4 +271,4 @@ if $test_online_decoding && [ $stage -le 18 ]; then
 fi
 
 exit 0;
-                
+

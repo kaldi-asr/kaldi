@@ -111,7 +111,7 @@ void CuDevice::Initialize() {
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
 
-#if CUDA_VERSION >= 9100
+#if CUDA_VERSION >= 9010
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
     CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_, 
             cudaStreamPerThread));
@@ -271,7 +271,7 @@ void CuDevice::FinalizeActiveGpu() {
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
     
-#if CUDA_VERSION >= 9100 
+#if CUDA_VERSION >= 9010 
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
     CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
             cudaStreamPerThread));
@@ -573,7 +573,7 @@ CuDevice::~CuDevice() {
   if (curand_handle_) {
     CURAND_SAFE_CALL(curandDestroyGenerator(curand_handle_));
   }
-#if CUDA_VERSION >= 9100
+#if CUDA_VERSION >= 9010
   if (cusolverdn_handle_) {
     CUSOLVER_SAFE_CALL(cusolverDnDestroy(cusolverdn_handle_));
   }

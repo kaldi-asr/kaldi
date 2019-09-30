@@ -32,13 +32,15 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
 
+    using std::string;
+
     const char *usage =
         "Reverse a lattice in order to rescore the lattice with a RNNLM \n"
         "trained reversed text. An example for its application is at \n"
         "swbd/local/rnnlm/run_lstm_tdnn_back.sh\n"
         "Usage: lattice-reverse lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-reverse ark:forward.lats ark:backward.lats\n";
-    
+
     ParseOptions po(usage);
     std::string include_rxfilename;
     std::string exclude_rxfilename;
@@ -54,10 +56,10 @@ int main(int argc, char *argv[]) {
                 lats_wspecifier = po.GetArg(2);
 
     int32 n_done = 0;
-    
+
     SequentialLatticeReader lattice_reader(lats_rspecifier);
     LatticeWriter lattice_writer(lats_wspecifier);
-    
+
     for (; !lattice_reader.Done(); lattice_reader.Next(), n_done++) {
       string key = lattice_reader.Key();
       Lattice &lat = lattice_reader.Value();
@@ -67,7 +69,7 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Done reversing " << n_done << " lattices.";
-    
+
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

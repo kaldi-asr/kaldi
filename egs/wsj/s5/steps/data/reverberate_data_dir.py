@@ -299,7 +299,7 @@ def generate_reverberation_opts(room_dict,  # the room dictionary, please refer 
 def get_new_id(id, prefix=None, copy=0):
     """ This function generates a new id from the input id
         This is needed when we have to create multiple copies of the original data
-        E.g. get_new_id("swb0035", prefix="rvb", copy=1) returns a string "rvb1_swb0035"
+        E.g. get_new_id("swb0035", prefix="rvb", copy=1) returns a string "rvb1-swb0035"
     """
     if prefix is not None:
         new_id = prefix + str(copy) + "-" + id
@@ -445,6 +445,8 @@ def create_reverberated_copy(input_dir,
         add_prefix_to_fields(input_dir + "/segments", output_dir + "/segments", num_replicas, include_original, prefix, field = [0,1])
     if os.path.isfile(input_dir + "/reco2file_and_channel"):
         add_prefix_to_fields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, include_original, prefix, field = [0,1])
+    if os.path.isfile(input_dir + "/vad.scp"):
+        add_prefix_to_fields(input_dir + "/vad.scp", output_dir + "/vad.scp", num_replicas, include_original, prefix, field=[0])
 
     data_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats --no-text {output_dir}"
                     .format(output_dir = output_dir))
@@ -675,4 +677,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

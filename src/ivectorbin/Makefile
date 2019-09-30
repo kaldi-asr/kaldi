@@ -4,7 +4,7 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
+BINFILES = ivector-extractor-init ivector-extractor-copy ivector-extractor-acc-stats \
            ivector-extractor-sum-accs ivector-extractor-est \
            ivector-extract compute-vad select-voiced-frames \
            compute-vad-from-frame-likes merge-vads \

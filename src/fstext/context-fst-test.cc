@@ -25,7 +25,8 @@
 
 namespace fst
 {
-
+using std::vector;
+using std::cout;
 
 // GenAcceptorFromSequence generates a linear acceptor (identical input+output symbols) that has this
 // sequence of symbols, and

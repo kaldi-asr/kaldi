@@ -308,8 +308,8 @@ if [ $stage -le 8 ]; then
 
 
 
-#  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
-#%WER 11.79 [ 2375 / 20138, 195 ins, 343 del, 1837 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_12_0.0# s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
+ #  s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
+ # %WER 11.79 [ 2375 / 20138, 195 ins, 343 del, 1837 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_12_0.0
 
  #.. versus the baseline below note, the baseline is not 100% comparable as it used the
  #   silence probabilities, which the grammar-decoding does not (yet) support...

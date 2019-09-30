@@ -5,7 +5,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 # KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
@@ -17,35 +17,43 @@
 # This script attempts to install mpg123, which can be used for decoding 
 # mp2 and mp3 file formats.
 
+VERSION=1.21.0
+
+WGET=${WGET:-wget}
+
 errcho() { echo "$@" 1>&2; }
 
 errcho "****() Installing MPG123"
 
-if [ ! -e mpg123-1.21.0.tar.bz2 ]; then
-    errcho "Could not find the tarball mpg123-1.21.0.tar.bz2"  
-    
-    if ! which wget >&/dev/null; then
-        errcho "This script requires you to first install wget"
-        errcho "You can also just download mpg123-1.21.0.tar.bz2 from"
-        errcho "http://www.mpg123.org/download.shtml)"
-        errcho "and run this installation script again"
-        exit 1;
+if [ ! -e mpg123-$VERSION.tar.bz2 ]; then
+    errcho "Could not find the tarball mpg123-$VERSION.tar.bz2"
+
+    if [ -d "$DOWNLOAD_DIR" ]; then
+        cp -p "$DOWNLOAD_DIR/mpg123-$VERSION.tar.bz2" .
+    else
+        if ! $WGET --version >&/dev/null; then
+            errcho "This script requires you to first install wget"
+            errcho "You can also just download mpg123-$VERSION.tar.bz2 from"
+            errcho "https://www.mpg123.org/download.shtml"
+            errcho "and run this installation script again"
+            exit 1
+        fi
+
+        $WGET -T 10 -t 3 -c "https://downloads.sourceforge.net/project/mpg123/mpg123/$VERSION/mpg123-$VERSION.tar.bz2"
     fi
 
-   wget -T 10 -t 3 -c 'http://downloads.sourceforge.net/project/mpg123/mpg123/1.21.0/mpg123-1.21.0.tar.bz2'
-
-   if [ ! -e mpg123-1.21.0.tar.bz2 ]; then
-        errcho "Download of mpg123-1.21.0.tar.bz2 failed!"
-        errcho "You can also just download mpg123-1.21.0.tar.bz2 from"
-        errcho "http://www.mpg123.org/download.shtml)"
+    if [ ! -e mpg123-$VERSION.tar.bz2 ]; then
+        errcho "Download of mpg123-$VERSION.tar.bz2 failed!"
+        errcho "You can also just download mpg123-$VERSION.tar.bz2 from"
+        errcho "https://www.mpg123.org/download.shtml"
         errcho "and run this installation script again"
-    exit 1;
-   fi
+        exit 1
+    fi
 fi
 
-tar xjf mpg123-1.21.0.tar.bz2|| exit 1
+tar xjf mpg123-$VERSION.tar.bz2 || exit 1
 rm -fr mpg123
-ln -s mpg123-1.21.0  mpg123
+ln -s mpg123-$VERSION  mpg123
 
 (
   cd mpg123

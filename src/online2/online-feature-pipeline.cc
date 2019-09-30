@@ -278,6 +278,8 @@ void OnlineFeaturePipeline::InputFinished() {
 BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {
   if (feature_type == "mfcc") {
     return mfcc_opts.frame_opts.frame_shift_ms / 1000.0f;
+  } else if (feature_type == "fbank") {
+    return fbank_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else {
     KALDI_ERR << "Unknown feature type " << feature_type;
     return 0.0;

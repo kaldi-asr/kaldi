@@ -182,6 +182,7 @@ if [ $stage -le 12 ]; then
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
+  mkdir -p $dir/egs
   touch $dir/egs/.nodelete # keep egs around when that run dies.
 
   steps/nnet3/chain/train.py --stage $train_stage \
