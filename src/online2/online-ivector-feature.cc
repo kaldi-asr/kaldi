@@ -542,7 +542,7 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback(
     if (frame_info_[frame].token == iter.tok) {
       // we know that the traceback from this point back will be identical, so
       // no point tracing back further.  Note: we are comparing memory addresses
-      // of tokens of the decoder; this guarantees it's the same exact token
+      // of tokens of the decoder; this guarantees it's the same exact token,
       // because tokens, once allocated on a frame, are only deleted, never
       // reallocated for that frame.
       break;
