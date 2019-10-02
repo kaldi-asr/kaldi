@@ -259,8 +259,8 @@ void MakePrecedingInputSymbolsSame(bool start_is_epsilon, MutableFst<Arc> *fst);
 
 
 /// As MakePrecedingInputSymbolsSame, but takes a functor object that maps
-/// labels to (int32) classes.  Caution: it must not map kNoLabel (-1)
-/// to the same value as any real symbol.
+/// labels to (int32) classes.  Caution: it must not map kNoLabel (-1) to the
+/// same value as any real symbol (it should generally map -1 to -1).
 template<class Arc, class F>
 void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *fst, const F &f);
 
