@@ -210,9 +210,9 @@ cat $tmpdir/align_lexicon.txt | \
 
 if [ -f $dir/phones/nonterminals.txt ]; then
   for w in "#nonterm_begin" "#nonterm_end" $(cat $dir/phones/nonterminals.txt); do
-      echo $w $w  # These are words without pronunciations, so leave those prons
-                      # empty.
-        done >> $dir/phones/align_lexicon.txt
+    echo $w $w  # These are words without pronunciations, so leave those prons
+                # empty.
+    done >> $dir/phones/align_lexicon.txt
 fi
 
 # create phones/align_lexicon.int from phones/align_lexicon.txt
