@@ -502,8 +502,8 @@ function configure_cuda {
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
-    
-    
+
+
     echo >> kaldi.mk
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct
@@ -524,7 +524,7 @@ WARNING: CUDA will not be used!
          CUDA is not supported with 32-bit builds."
       exit 1;
     fi
-    
+
     #add cusolver flags for newer toolkits
     if [ "$CUSOLVER" == "true" ]; then
       echo "CUDA_LDLIBS += -lcusolver" >> kaldi.mk
@@ -1345,6 +1345,9 @@ echo >> kaldi.mk
 if [ -n "$ENV_CXXFLAGS" ]; then echo "CXXFLAGS += $ENV_CXXFLAGS" >> kaldi.mk; fi
 if [ -n "$ENV_LDFLAGS" ]; then echo "LDFLAGS += $ENV_LDFLAGS" >> kaldi.mk; fi
 if [ -n "$ENV_LDLIBS" ]; then echo "LDLIBS += $ENV_LDLIBS" >> kaldi.mk; fi
+
+echo "# The following makes it possible to include as kaldi/foo/bar.h" >> kaldi.mk
+echo "CXXFLAGS += -I ../.." >> kaldi.mk
 
 # We check for slow exp implementation just before we exit. This check uses
 # and possibly modifies the kaldi.mk file that we just generated.

@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include "kaldi/base/kaldi-error.h"
 
 /**
    This is some notes on plans for kaldi10 tensor stuff, nothing is fully fleshed out.
@@ -59,6 +60,8 @@ struct Device {
 };
 
 
+// TODO: use NumPy data-type enum, for greater compatibility.
+
 enum DataType {
   // We will of course later extend this with many more types, including
   // integer types and half-precision floats.
@@ -82,21 +85,21 @@ enum DataType {
 
 inline int32 SizeOf(DataType dtype) {
   switch(dtype) {
-    case 0: return 4;
+    case kFloatDtype: return 4;
     case 1: return 8;
     case 2: KALDI_ERR << "Invalid data-type " << int32(dtype); return 0;
   }
 }
 
 
-/// Enumeration that says what strides we should choose when allocating
-/// A Tensor.
+/// Enumeration that says what strides we should choose when
+/// allocating a Tensor that is a copy of a provided Tensor.
 enum StridePolicy {
   kKeepStrideOrder,  // Means: keep the size-ordering of the strides from the
                      // source Tensor (but the chosen strides will all be
                      // positive even of some of the source Tensor's strides
                      // were negative).
-  kNormalized    // Means: strides for dimensions that are != 1 are ordered from
+  kNormalized,    // Means: strides for dimensions that are != 1 are ordered from
                  // greatest to smallest as in a "C" array in the public
                  // numbering, or smallest to greatest in the private numbering.
                  // Per our policy, any dimension that is 1 will be given a zero stride.

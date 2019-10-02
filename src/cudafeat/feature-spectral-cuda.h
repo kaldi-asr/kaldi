@@ -22,7 +22,6 @@
 #include <cufft.h>
 #endif
 
-#include "cudafeat/feature-window-cuda.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "feat/feature-fbank.h"
@@ -38,8 +37,8 @@ struct CudaSpectralFeatureOptions {
   SpectralFeatureType feature_type;
   CudaSpectralFeatureOptions(MfccOptions opts_in)
       : mfcc_opts(opts_in),
-        use_log_fbank(true), 
-	use_power(true), 
+        use_log_fbank(true),
+	use_power(true),
 	use_dct(true),
         feature_type(MFCC) {}
   CudaSpectralFeatureOptions(FbankOptions opts){
@@ -75,13 +74,13 @@ class CudaSpectralFeatures : public MfccComputer {
   ~CudaSpectralFeatures();
   CudaSpectralFeatureOptions cumfcc_opts_;
   int32 Dim()
-  // The dimension of the output is different for MFCC and Fbank. 
+  // The dimension of the output is different for MFCC and Fbank.
   // This returns the appropriate value depending on the feature
   // extraction algorithm
   {
     if (cumfcc_opts_.feature_type == MFCC) return MfccComputer::Dim();
     //If we're running fbank, we need to set the dimension right
-    else return cumfcc_opts_.mfcc_opts.mel_opts.num_bins + 
+    else return cumfcc_opts_.mfcc_opts.mel_opts.num_bins +
 	        (cumfcc_opts_.mfcc_opts.use_energy ? 1 : 0);
   }
 

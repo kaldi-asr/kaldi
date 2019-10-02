@@ -133,35 +133,6 @@ class MelBanks {
 };
 
 
-<<<<<<< HEAD
-=======
-// Compute liftering coefficients (scaling on cepstral coeffs)
-// coeffs are numbered slightly differently from HTK: the zeroth
-// index is C0, which is not affected.
-void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs);
-
-
-// Durbin's recursion - converts autocorrelation coefficients to the LPC
-// pTmp - temporal place [n]
-// pAC - autocorrelation coefficients [n + 1]
-// pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i-1] * s[n-i]}})
-//       F(z) = 1 / (1 - A(z)), 1 is not stored in the denominator
-// Returns log energy of residual (I think)
-BaseFloat Durbin(int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp);
-
-// Compute LP coefficients from autocorrelation coefficients.
-// Returns log energy of residual (I think)
-BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
-                     Vector<BaseFloat> *lpc_out);
-
-void Lpc2Cepstrum(int n, const BaseFloat *pLPC, BaseFloat *pCepst);
-
-
-
-void GetEqualLoudnessVector(const MelBanks &mel_banks,
-                            Vector<BaseFloat> *ans);
->>>>>>> upstream/master
-
 /// @} End of "addtogroup feat"
 }  // namespace kaldi
 

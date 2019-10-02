@@ -98,11 +98,11 @@ int main(int argc, char *argv[]) {
 
       for (int32 i = 1; i <= num_tids; i++) {
         BaseFloat count = transition_counts(i);
-        int32 phone = trans_model.TransitionIdToPhone(i),
-            pdf_id = trans_model.TransitionIdToPdf(i);
+        const Transitions::TransitionIdInfo
+            &info = trans_model.InfoForTransitionId(i);
         // Relying on C++11 value-initialization thingies that should make the
         // map's elements default to zero.
-        pdf_to_phones[pdf_id][phone] += count;
+        pdf_to_phones[info.pdf_id][info.phone] += count;
       }
 
       for (int32 i = 0; i < num_pdfs; i++) {
