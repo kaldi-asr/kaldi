@@ -112,17 +112,27 @@ if [ $stage -le 0 ]; then
        $frame_subsampling_opt \
      --config=$online_config \
      --min-active=$min_active --max-active=$max_active --beam=$beam \
-     --rt-min=0.8 --rt-max=0.85 --wake-word-id=$wake_word_id \
+     --wake-word-id=$wake_word_id \
      $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
-     $graphdir/words.txt "$silphones" ark,t:$dir/trans.txt \
-     ark,t:$dir/ali.txt || exit 1;
-  exit 0
+     $graphdir/words.txt "$silphones" ark,t:$dir/trans.JOB.txt \
+     ark,t:$dir/ali.JOB.txt || exit 1;
 fi
 
-if ! $skip_scoring ; then
-  [ ! -x local/score.sh ] && \
+if [ $stage -le 1 ]; then
+  for n in $(seq $nj); do
+    cat $dir/trans.$n.txt
+  done > $dir/trans.txt
+  rm -f $dir/trans.*.txt
+  for n in $(seq $nj); do
+    cat $dir/ali.$n.txt
+  done > $dir/ali.txt
+  rm -f $dir/ali.*.txt
+fi
+
+if [ $stage -le 2 ] && ! $skip_scoring ; then
+  [ ! -x local/score_online.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $scoring_opts --wake-word $wake_word $data $graphdir $dir
+  local/score_online.sh $scoring_opts --wake-word $wake_word $data $graphdir $dir
 fi
 
 exit 0;

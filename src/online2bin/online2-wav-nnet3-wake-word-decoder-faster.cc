@@ -21,6 +21,7 @@
 #include "feat/wave-reader.h"
 #include "online2/online-nnet3-wake-word-faster-decoder.h"
 #include "online2/online-nnet2-feature-pipeline.h"
+#include "nnet3/decodable-online-looped.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
 #include "online2/online-endpoint.h"
@@ -60,7 +61,7 @@ int main(int argc, char *argv[]) {
     OnlineWakeWordFasterDecoderOpts decoder_opts;
     OnlineEndpointConfig endpoint_opts;
 
-    BaseFloat chunk_length_secs = 0.18;
+    BaseFloat chunk_length_secs = 1.0;
     bool online = true;
     int32 wake_word_id = 2;
 
@@ -180,9 +181,12 @@ int main(int argc, char *argv[]) {
         feature_pipeline.SetAdaptationState(adaptation_state);
         feature_pipeline.SetCmvnState(cmvn_state);
 
+        nnet3::DecodableAmNnetLoopedOnline decodable(trans_model,
+            decodable_info, feature_pipeline.InputFeature(),
+            feature_pipeline.IvectorFeature());
+
         OnlineWakeWordFasterDecoder decoder(*decode_fst, decoder_opts,
-                                            silence_phones, trans_model,
-                                            decodable_info, &feature_pipeline);
+                                            silence_phones, trans_model);
         OnlineTimer decoding_timer(utt);
 
         BaseFloat samp_freq = wave_data.SampFreq();
@@ -196,7 +200,6 @@ int main(int argc, char *argv[]) {
 
         int32 samp_offset = 0;
 
-        int32 start_frame = 0;
         bool partial_res = false;
         decoder.InitDecoding();
         while (samp_offset < data.Dim()) {
@@ -214,8 +217,8 @@ int main(int argc, char *argv[]) {
             feature_pipeline.InputFinished();
           }
 
-          OnlineWakeWordFasterDecoder::DecodeState dstate = decoder.Decode();
-          if (dstate & (decoder.kEndFeats | decoder.kEndUtt)) {
+          decoder.AdvanceDecoding(&decodable);
+          if (decodable.IsLastFrame(decoder.NumFramesDecoded() - 1)) {
             std::vector<int32> word_ids;
             decoder.FinishTraceBack(&out_fst);
             fst::GetLinearSymbolSequence(out_fst,
@@ -230,14 +233,10 @@ int main(int argc, char *argv[]) {
                                          &tids,
                                          &word_ids,
                                          static_cast<LatticeArc::Weight*>(0));
-            std::stringstream res_key;
-            res_key << utt << '_' << start_frame << '-' << decoder.frame();
-            if (!word_ids.empty())
-              words_writer.Write(res_key.str(), word_ids);
-            alignment_writer.Write(res_key.str(), tids);
-            if (dstate == decoder.kEndFeats)
-              break;
-            start_frame = decoder.frame();
+            //if (!word_ids.empty())
+            words_writer.Write(utt, word_ids);
+            alignment_writer.Write(utt, tids);
+            break;
           } else {
             std::vector<int32> word_ids;
             if (decoder.PartialTraceback(&out_fst)) {
@@ -248,6 +247,18 @@ int main(int argc, char *argv[]) {
               PrintPartialResult(word_ids, word_syms, false);
               if (!partial_res)
                 partial_res = (word_ids.size() > 0);
+              if (std::find(word_ids.begin(), word_ids.end(), wake_word_id) !=
+                  word_ids.end()) {
+                decoder.GetBestPath(&out_fst);
+                std::vector<int32> tids;
+                fst::GetLinearSymbolSequence(out_fst,
+                                             &tids,
+                                             &word_ids,
+                                             static_cast<LatticeArc::Weight*>(0));
+                words_writer.Write(utt, word_ids);
+                alignment_writer.Write(utt, tids);
+                break;
+              }
             }
           }
         }

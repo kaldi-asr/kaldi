@@ -26,17 +26,16 @@
 
 namespace kaldi {
 
-void OnlineWakeWordFasterDecoder::ResetDecoder(bool full) {
+void OnlineWakeWordFasterDecoder::InitDecoding() {
   ClearToks(toks_.Clear());
   StateId start_state = fst_.Start();
   KALDI_ASSERT(start_state != fst::kNoStateId);
   Arc dummy_arc(0, 0, Weight::One(), start_state);
   Token *dummy_token = new Token(dummy_arc, NULL);
   toks_.Insert(start_state, dummy_token);
+  ProcessNonemitting(std::numeric_limits<float>::max());
+  num_frames_decoded_ = 0;
   prev_immortal_tok_ = immortal_tok_ = dummy_token;
-  utt_frames_ = 0;
-  if (full)
-    frame_ = 0;
 }
 
 
@@ -85,7 +84,7 @@ void OnlineWakeWordFasterDecoder::UpdateImmortalToken() {
   unordered_set<Token*> emitting;
   for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
     Token* tok = e->val;
-    while (tok->arc_.ilabel == 0) //deal with non-emitting ones ...
+    while (tok != NULL && tok->arc_.ilabel == 0) //deal with non-emitting ones ...
       tok = tok->prev_;
     if (tok != NULL)
       emitting.insert(tok);
@@ -202,72 +201,5 @@ void OnlineWakeWordFasterDecoder::TracebackNFrames(int32 nframes,
   RemoveEpsLocal(out_fst);
 }
 
-
-bool OnlineWakeWordFasterDecoder::EndOfUtterance() {
-  fst::VectorFst<LatticeArc> trace;
-  int32 sil_frm = opts_.inter_utt_sil / (1 + utt_frames_ / opts_.max_utt_len_);
-  TracebackNFrames(sil_frm, &trace);
-  std::vector<int32> isymbols;
-  fst::GetLinearSymbolSequence(trace, &isymbols,
-                               static_cast<std::vector<int32>* >(0),
-                               static_cast<LatticeArc::Weight*>(0));
-  std::vector<std::vector<int32> > split;
-  SplitToPhones(trans_model_, isymbols, &split);
-  for (size_t i = 0; i < split.size(); i++) {
-    int32 tid = split[i][0];
-    int32 phone = trans_model_.TransitionIdToPhone(tid);
-    if (silence_set_.count(phone) == 0)
-      return false;
-  }
-  return true;
-}
-
-
-OnlineWakeWordFasterDecoder::DecodeState
-OnlineWakeWordFasterDecoder::Decode() {
-  if (state_ == kEndFeats || state_ == kEndUtt) // new utterance
-    ResetDecoder(state_ == kEndFeats);
-  ProcessNonemitting(std::numeric_limits<float>::max());
-  int32 batch_frame = 0;
-  Timer timer;
-  double64 tstart = timer.Elapsed(), tstart_batch = tstart;
-  BaseFloat factor = -1;
-  for (; !decodable_.IsLastFrame(frame_ - 1) && batch_frame < opts_.batch_size;
-       ++frame_, ++utt_frames_, ++batch_frame) {
-    if (batch_frame != 0 && (batch_frame % opts_.update_interval) == 0) {
-      // adjust the beam if needed
-      BaseFloat tend = timer.Elapsed();
-      BaseFloat elapsed = (tend - tstart) * 1000;
-      // warning: hardcoded 10ms frames assumption!
-      factor = elapsed / (opts_.rt_max * opts_.update_interval * 10);
-      BaseFloat min_factor = (opts_.rt_min / opts_.rt_max);
-      if (factor > 1 || factor < min_factor) {
-        BaseFloat update_factor = (factor > 1)?
-            -std::min(opts_.beam_update * factor, opts_.max_beam_update):
-             std::min(opts_.beam_update / factor, opts_.max_beam_update);
-        effective_beam_ += effective_beam_ * update_factor;
-        effective_beam_ = std::min(effective_beam_, max_beam_);
-      }
-      tstart = tend;
-    }
-    if (batch_frame != 0 && (frame_ % 200) == 0)
-      // one log message at every 2 seconds assuming 10ms frames
-      KALDI_VLOG(3) << "Beam: " << effective_beam_
-          << "; Speed: "
-          << ((timer.Elapsed() - tstart_batch) * 1000) / (batch_frame*10)
-          << " xRT";
-    BaseFloat weight_cutoff = ProcessEmitting(&decodable_);
-    ProcessNonemitting(weight_cutoff);
-  }
-  if (batch_frame == opts_.batch_size && !decodable_.IsLastFrame(frame_ - 1)) {
-    if (EndOfUtterance())
-      state_ = kEndUtt;
-    else
-      state_ = kEndBatch;
-  } else {
-    state_ = kEndFeats;
-  }
-  return state_;
-}
 
 } // namespace kaldi
