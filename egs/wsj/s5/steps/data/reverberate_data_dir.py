@@ -377,7 +377,7 @@ def add_prefix_to_fields(input_file, output_file, num_replicas, include_original
     """ This function replicate the entries in files like segments, utt2spk, text
     """
     list = [x.strip() for x in open(input_file, encoding='utf-8')]
-    f = open(output_file, "w" ,encoding='utf-8')
+    f = open(output_file, "w", encoding='utf-8')
     if include_original:
         start_index = 0
     else:
