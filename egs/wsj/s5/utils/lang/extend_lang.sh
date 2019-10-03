@@ -88,7 +88,7 @@ silprob=false
 if [ $(basename $lexicon) == "lexiconp_silprob.txt" ]; then
   silprob=true
   if [ -z $silprob_file ] ; then
-    echo "silprob_file not provided, check $srcdir"
+    echo "silprob_file not provided, checking $srcdir"
     if [ -f $srcdir/silprob.txt ]; then
         silprob_file=$srcdir/silprob.txt
         echo "silprob_file found in $srcdir"
