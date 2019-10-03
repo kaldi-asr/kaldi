@@ -78,7 +78,7 @@ void LatticeFasterDecoderTpl<FST, Token>::InitDecoding() {
 template <typename FST, typename Token>
 bool LatticeFasterDecoderTpl<FST, Token>::Decode(DecodableInterface *decodable) {
   InitDecoding();
-
+  AdvanceDecoding(decodable);
   // We use 1-based indexing for frames in this decoder (if you view it in
   // terms of features), but note that the decodable object uses zero-based
   // numbering, which we have to correct for when we call it.
