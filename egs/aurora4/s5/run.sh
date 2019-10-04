@@ -2,9 +2,17 @@
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
+. ./path.sh
 
-# This is a shell script, but it's recommended that you run the commands one by
-# one by copying and pasting into the shell.
+stage=0
+train_set=multi # Set this to 'clean' or 'multi'
+test_sets="eval92 0166"
+train=true   # set to false to disable the training-related scripts
+             # note: you probably only want to set --train false if you
+             # are using at least --stage 1.
+decode=true  # set to false to disable the decoding-related scripts.
+
+. utils/parse_options.sh
 
 #clean LDC wsj0 corpus available in CLSP server: /export/corpora5/LDC/LDC93S6B
 #aurora4 directory in CLSP server: /export/corpora5/AURORA
@@ -15,129 +23,119 @@ aurora4=/export/corpora5/AURORA
 #wsj0=/mnt/spdb/wall_street_journal
 wsj0=/export/corpora5/LDC/LDC93S6B
 
-local/aurora4_data_prep.sh $aurora4 $wsj0
+if [ $stage -le 0 ]; then
+  local/aurora4_data_prep.sh $aurora4 $wsj0
+fi
 
-local/wsj_prepare_dict.sh || exit 1;
+if [ $stage -le 1 ]; then
+  local/wsj_prepare_dict.sh
+  utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang
+fi
 
-utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
+if [ $stage -le 2 ]; then
+  local/aurora4_format_data.sh
+fi
 
-local/aurora4_format_data.sh || exit 1;
-
-# Now make MFCC features.
-# mfccdir should be some place with a largish disk where you
-# want to store MFCC features.
 mfccdir=mfcc
-for x in train_si84_clean train_si84_multi test_eval92 test_0166 dev_0330 dev_1206; do 
- steps/make_mfcc.sh  --nj 10 \
-   data/$x exp/make_mfcc/$x $mfccdir || exit 1;
- steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
-done
+if [ $stage -le 3 ]; then
+  # Now make MFCC features.
+  # mfccdir should be some place with a largish disk where you
+  # want to store MFCC features.
+  for x in train_si84_clean train_si84_multi test_eval92 test_0166 dev_0330 dev_1206; do 
+   steps/make_mfcc.sh  --nj 10 \
+     data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+  done
+fi
 
-# make fbank features
-fbankdir=fbank
-mkdir -p data-fbank
-for x in train_si84_clean train_si84_multi dev_0330 dev_1206 test_eval92 test_0166; do
-  cp -r data/$x data-fbank/$x
-  steps/make_fbank.sh --nj 10 \
-    data-fbank/$x exp/make_fbank/$x $fbankdir || exit 1;
-done
+model_affix=
+if [ $train_set == 'multi' ]; then
+  model_affix=_multi
+fi
 
-# Note: the --boost-silence option should probably be omitted by default
-# for normal setups.  It doesn't always help. [it's to discourage non-silence
-# models from modeling silence.]
-#steps/train_mono.sh --boost-silence 1.25 --nj 10  \
-#  data/train_si84_clean data/lang exp/mono0a || exit 1;
+if [ $stage -le 4 ]; then
+  # Note: the --boost-silence option should probably be omitted by default
+  # for normal setups.  It doesn't always help. [it's to discourage non-silence
+  # models from modeling silence.]
+  if $train; then
+    steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
+      data/train_si84_${train_set} data/lang exp/mono0a${model_affix} || exit 1;
+  fi
 
-steps/train_mono.sh --boost-silence 1.25 --nj 10  \
-  data/train_si84_multi data/lang exp/mono0a_multi || exit 1;
-#(
-# utils/mkgraph.sh data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
-# steps/decode.sh --nj 8  \
-#   exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 
-#) &
+  if $decode; then
+    for testdir in $test_sets; do
+      utils/mkgraph.sh data/lang_test_tgpr exp/mono0a${model_affix} exp/mono0a${model_affix}/graph_tgpr && \
+      steps/decode.sh --nj 8 --cmd "$decode_cmd" \
+        exp/mono0a${model_affix}/graph_tgpr data/test_${testdir} exp/mono0a${model_affix}/decode_tgpr_${testdir}
+    done 
+  fi
+fi
 
-#steps/align_si.sh --boost-silence 1.25 --nj 10  \
-#   data/train_si84_clean data/lang exp/mono0a exp/mono0a_ali || exit 1;
-steps/align_si.sh --boost-silence 1.25 --nj 10  \
-   data/train_si84_multi data/lang exp/mono0a_multi exp/mono0a_multi_ali || exit 1;
+if [ $stage -le 5 ]; then
+  # tri1
+  if $train; then
+    steps/align_si.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
+       data/train_si84_${train_set} data/lang exp/mono0a${model_affix} exp/mono0a${model_affix}_ali || exit 1;
 
-#steps/train_deltas.sh --boost-silence 1.25 \
-#    2000 10000 data/train_si84_clean data/lang exp/mono0a_ali exp/tri1 || exit 1;
+    steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
+        2000 10000 data/train_si84_${train_set} data/lang exp/mono0a${model_affix}_ali exp/tri1${model_affix} || exit 1;
+  fi
+fi
 
-steps/train_deltas.sh --boost-silence 1.25 \
-    2000 10000 data/train_si84_multi data/lang exp/mono0a_multi_ali exp/tri1_multi || exit 1;
+if [ $stage -le 6 ]; then
+  # tri2
+  if $train; then 
+    steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+      data/train_si84_${train_set} data/lang exp/tri1${model_affix} exp/tri1${model_affix}_ali_si84 || exit 1;
 
+    steps/train_deltas.sh --cmd "$train_cmd" 2500 15000 \
+      data/train_si84_${train_set} data/lang exp/tri1${model_affix}_ali_si84 exp/tri2a${model_affix} || exit 1;
 
-steps/align_si.sh --nj 10 \
-  data/train_si84_multi data/lang exp/tri1_multi exp/tri1_multi_ali_si84 || exit 1;
+    steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+      data/train_si84_${train_set} data/lang exp/tri2a${model_affix} exp/tri2a${model_affix}_ali_si84 || exit 1;
+    
+    steps/train_lda_mllt.sh --cmd "$train_cmd" \
+       --splice-opts "--left-context=3 --right-context=3" \
+       2500 15000 data/train_si84_${train_set} data/lang exp/tri2a${model_affix}_ali_si84 exp/tri2b${model_affix} || exit 1;
+  fi
+  
+  if $decode; then
+    for testdir in $test_sets; do
+      utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri2b${model_affix} exp/tri2b${model_affix}/graph_tgpr_5k || exit 1;
+      steps/decode.sh --nj 8 --cmd "$decode_cmd" \
+        exp/tri2b${model_affix}/graph_tgpr_5k data/test_${testdir} exp/tri2b${model_affix}/decode_tgpr_5k_${testdir} || exit 1;
+    done
+  fi
+fi
 
-steps/train_deltas.sh  \
-  2500 15000 data/train_si84_multi data/lang exp/tri1_multi_ali_si84 exp/tri2a_multi || exit 1;
+if [ $stage -le 7 ]; then
+  # From 2b system, train 3b which is LDA + MLLT + SAT.
 
-steps/train_lda_mllt.sh \
-   --splice-opts "--left-context=3 --right-context=3" \
-   2500 15000 data/train_si84_multi data/lang exp/tri1_multi_ali_si84 exp/tri2b_multi || exit 1;
+  # Align tri2b system with all the si84 data.
+  if $train; then
+    steps/align_si.sh  --nj 10 --cmd "$train_cmd" --use-graphs true \
+      data/train_si84_${train_set} data/lang exp/tri2b${model_affix} exp/tri2b${model_affix}_ali_si84  || exit 1;
+    
+    steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
+      data/train_si84_${train_set} data/lang exp/tri2b${model_affix}_ali_si84 exp/tri3b${model_affix} || exit 1;
+  fi
 
+  if $decode; then
+    for testdir in $test_sets; do
+      nspk=$(wc -l <data/test_${testdir}/spk2utt)
+      utils/mkgraph.sh data/lang_test_tgpr \
+        exp/tri3b${model_affix} exp/tri3b${model_affix}/graph_tgpr || exit 1;
+      steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd" \
+        exp/tri3b${model_affix}/graph_tgpr data/test_${testdir} exp/tri3b${model_affix}/decode_tgpr_${testdir} || exit 1;
+    done
+  fi
+fi
 
-utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri2b_multi exp/tri2b_multi/graph_tgpr_5k || exit 1;
-steps/decode.sh --nj 8 \
-  exp/tri2b_multi/graph_tgpr_5k data/test_eval92 exp/tri2b_multi/decode_tgpr_5k_eval92 || exit 1;
+# Chain training
+if [ $stage -le 8 ]; then
+  # Caution: this part needs a GPU.
+  local/chain/run_tdnn.sh 
+fi
 
-# Align tri2b system with si84 multi-condition data.
-steps/align_si.sh  --nj 10 \
-  --use-graphs true data/train_si84_multi data/lang exp/tri2b_multi exp/tri2b_multi_ali_si84  || exit 1;
+exit 0;
 
-steps/align_si.sh  --nj 10 \
-  data/dev_0330 data/lang exp/tri2b_multi exp/tri2b_multi_ali_dev_0330 || exit 1;
-
-steps/align_si.sh  --nj 10 \
-  data/dev_1206 data/lang exp/tri2b_multi exp/tri2b_multi_ali_dev_1206 || exit 1;
-
-#Now begin train DNN systems on multi data
-. ./path.sh
-#RBM pretrain
-dir=exp/tri3a_dnn_pretrain
-$cuda_cmd $dir/_pretrain_dbn.log \
-  steps/nnet/pretrain_dbn.sh --nn-depth 7 --rbm-iter 3 data-fbank/train_si84_multi $dir
-
-dir=exp/tri3a_dnn
-ali=exp/tri2b_multi_ali_si84
-ali_dev=exp/tri2b_multi_ali_dev_0330
-feature_transform=exp/tri3a_dnn_pretrain/final.feature_transform
-dbn=exp/tri3a_dnn_pretrain/7.dbn
-$cuda_cmd $dir/_train_nnet.log \
-  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
-  data-fbank/train_si84_multi data-fbank/dev_0330 data/lang $ali $ali_dev $dir || exit 1;
-
-utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3a_dnn exp/tri3a_dnn/graph_tgpr_5k || exit 1;
-dir=exp/tri3a_dnn
-steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
-  exp/tri3a_dnn/graph_tgpr_5k data-fbank/test_eval92 $dir/decode_tgpr_5k_eval92 || exit 1;
-
-
-#realignments
-srcdir=exp/tri3a_dnn
-steps/nnet/align.sh --nj 10 \
-  data-fbank/train_si84_multi data/lang $srcdir ${srcdir}_ali_si84_multi || exit 1;
-steps/nnet/align.sh --nj 10 \
-  data-fbank/dev_0330 data/lang $srcdir ${srcdir}_ali_dev_0330 || exit 1;
-
-#train system again 
-
-dir=exp/tri4a_dnn
-ali=exp/tri3a_dnn_ali_si84_multi
-ali_dev=exp/tri3a_dnn_ali_dev_0330
-feature_transform=exp/tri3a_dnn_pretrain/final.feature_transform
-dbn=exp/tri3a_dnn_pretrain/7.dbn
-$cuda_cmd $dir/_train_nnet.log \
-  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
-  data-fbank/train_si84_multi data-fbank/dev_0330 data/lang $ali $ali_dev $dir || exit 1;
-
-utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri4a_dnn exp/tri4a_dnn/graph_tgpr_5k || exit 1;
-dir=exp/tri4a_dnn
-steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
-  exp/tri4a_dnn/graph_tgpr_5k data-fbank/test_eval92 $dir/decode_tgpr_5k_eval92 || exit 1;
-
-
-# DNN Sequential DT training
-#......
