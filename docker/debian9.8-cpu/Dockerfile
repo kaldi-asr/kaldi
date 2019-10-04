@@ -19,7 +19,7 @@ RUN apt-get update && \
         python3 \
         zlib1g-dev \
         ca-certificates \
-	gfortran \
+        gfortran \
         patch \
         ffmpeg \
 	vim && \
