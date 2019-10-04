@@ -63,11 +63,11 @@ if [ $stage -le 4 ]; then
   fi
 
   if $decode; then
-		for testdir in $test_sets; do
-			utils/mkgraph.sh data/lang_test_tgpr exp/mono0a${model_affix} exp/mono0a${model_affix}/graph_tgpr && \
-			steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-				exp/mono0a${model_affix}/graph_tgpr data/test_${testdir} exp/mono0a${model_affix}/decode_tgpr_${testdir}
-		done 
+    for testdir in $test_sets; do
+      utils/mkgraph.sh data/lang_test_tgpr exp/mono0a${model_affix} exp/mono0a${model_affix}/graph_tgpr && \
+      steps/decode.sh --nj 8 --cmd "$decode_cmd" \
+        exp/mono0a${model_affix}/graph_tgpr data/test_${testdir} exp/mono0a${model_affix}/decode_tgpr_${testdir}
+    done 
   fi
 fi
 
@@ -113,7 +113,7 @@ if [ $stage -le 7 ]; then
 
   # Align tri2b system with all the si84 data.
   if $train; then
-		steps/align_si.sh  --nj 10 --cmd "$train_cmd" --use-graphs true \
+    steps/align_si.sh  --nj 10 --cmd "$train_cmd" --use-graphs true \
       data/train_si84_${train_set} data/lang exp/tri2b${model_affix} exp/tri2b${model_affix}_ali_si84  || exit 1;
     
     steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
