@@ -3,12 +3,10 @@
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
-# This is a shell script, but it's recommended that you run the commands one by
-# one by copying and pasting into the shell.
 
 stage=0
 train_set=multi # Set this to 'clean' or 'multi'
-test_sets="test_eval92"
+test_sets="eval92 0166"
 train=true   # set to false to disable the training-related scripts
              # note: you probably only want to set --train false if you
              # are using at least --stage 1.
@@ -24,7 +22,6 @@ aurora4=/export/corpora5/AURORA
 #we need lm, trans, from WSJ0 CORPUS
 #wsj0=/mnt/spdb/wall_street_journal
 wsj0=/export/corpora5/LDC/LDC93S6B
-wsj1=/export/corpora5/LDC/LDC94S13B
 
 if [ $stage -le 0 ]; then
   local/aurora4_data_prep.sh $aurora4 $wsj0
@@ -66,9 +63,11 @@ if [ $stage -le 4 ]; then
   fi
 
   if $decode; then
-    utils/mkgraph.sh data/lang_test_tgpr exp/mono0a${model_affix} exp/mono0a${model_affix}/graph_tgpr && \
-    steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-      exp/mono0a${model_affix}/graph_tgpr data/test_eval92 exp/mono0a${model_affix}/decode_tgpr_eval92 
+		for testdir in $test_sets; do
+			utils/mkgraph.sh data/lang_test_tgpr exp/mono0a${model_affix} exp/mono0a${model_affix}/graph_tgpr && \
+			steps/decode.sh --nj 8 --cmd "$decode_cmd" \
+				exp/mono0a${model_affix}/graph_tgpr data/test_${testdir} exp/mono0a${model_affix}/decode_tgpr_${testdir}
+		done 
   fi
 fi
 
@@ -101,9 +100,11 @@ if [ $stage -le 6 ]; then
   fi
   
   if $decode; then
-    utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri2b${model_affix} exp/tri2b${model_affix}/graph_tgpr_5k || exit 1;
-    steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-      exp/tri2b${model_affix}/graph_tgpr_5k data/test_eval92 exp/tri2b${model_affix}/decode_tgpr_5k_eval92 || exit 1;
+    for testdir in $test_sets; do
+      utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri2b${model_affix} exp/tri2b${model_affix}/graph_tgpr_5k || exit 1;
+      steps/decode.sh --nj 8 --cmd "$decode_cmd" \
+        exp/tri2b${model_affix}/graph_tgpr_5k data/test_${testdir} exp/tri2b${model_affix}/decode_tgpr_5k_${testdir} || exit 1;
+    done
   fi
 fi
 
@@ -120,11 +121,13 @@ if [ $stage -le 7 ]; then
   fi
 
   if $decode; then
-    nspk=$(wc -l <data/test_eval92/spk2utt)
-    utils/mkgraph.sh data/lang_test_tgpr \
-      exp/tri3b${model_affix} exp/tri3b${model_affix}/graph_tgpr || exit 1;
-    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd" \
-      exp/tri3b${model_affix}/graph_tgpr data/test_eval92 exp/tri3b${model_affix}/decode_tgpr_eval92 || exit 1;
+    for testdir in $test_sets; do
+      nspk=$(wc -l <data/test_${testdir}/spk2utt)
+      utils/mkgraph.sh data/lang_test_tgpr \
+        exp/tri3b${model_affix} exp/tri3b${model_affix}/graph_tgpr || exit 1;
+      steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd" \
+        exp/tri3b${model_affix}/graph_tgpr data/test_${testdir} exp/tri3b${model_affix}/decode_tgpr_${testdir} || exit 1;
+    done
   fi
 fi
 
@@ -133,51 +136,6 @@ if [ $stage -le 8 ]; then
   # Caution: this part needs a GPU.
   local/chain/run_tdnn.sh 
 fi
-exit 1
-if [ $stage -le 8 ]; then
-  # Estimate pronunciation and silence probabilities.
-
-  # Silprob for normal lexicon.
-  #steps/get_prons.sh --cmd "$train_cmd" \
-  #  data/train_si84_${train_set} data/lang exp/tri3b${model_affix} || exit 1;
-  utils/dict_dir_add_pronprobs.sh --max-normalize true \
-    data/local/dict \
-    exp/tri3b${model_affix}/pron_counts_nowb.txt exp/tri3b${model_affix}/sil_counts_nowb.txt \
-    exp/tri3b${model_affix}/pron_bigram_counts_nowb.txt data/local/dict || exit 1
-
-  utils/prepare_lang.sh data/local/dict \
-    "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
-
-  for lm_suffix in bg bg_5k tg tg_5k tgpr tgpr_5k; do
-    mkdir -p data/lang_test_${lm_suffix}
-    cp -r data/lang/* data/lang_test_${lm_suffix}/ || exit 1;
-    rm -rf data/lang_test_${lm_suffix}/tmp
-    cp data/lang_test_${lm_suffix}/G.* data/lang_test_${lm_suffix}/
-  done
-fi
-exit 1
-if [ $stage -le 9 ]; then
-  # From 3b system, now using data/lang as the lang directory (we have now added
-  # pronunciation and silence probabilities), train another SAT system (tri4b).
-
-  if $train; then
-    steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
-      data/train_si84_${train_set} data/lang exp/tri3b${model_affix} exp/tri4b${model_affix} || exit 1;
-  fi
-
-  if $decode; then
-    utils/mkgraph.sh data/lang_test_tgpr_5k \
-      exp/tri4b${model_affix} exp/tri4b${model_affix}/graph_tgpr_5k || exit 1;
-
-    for data in 0166 eval92; do
-      nspk=$(wc -l <data/test_${data}/spk2utt)
-      steps/decode_fmllr.sh --nj ${nspk} --cmd "$decode_cmd" \
-        exp/tri4b${model_affix}/graph_tgpr_5k data/test_${data} \
-        exp/tri4b${model_affix}/decode_tgpr_5k_${data} || exit 1;
-    done
-  fi
-fi
-
 
 exit 0;
 

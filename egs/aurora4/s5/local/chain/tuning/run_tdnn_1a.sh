@@ -5,6 +5,7 @@
 # local/chain/compare_wer.sh exp/chain/tdnn1a_sp
 # System                  tdnn1a_sp
 # WER eval92 (tgpr_5k)       7.67
+# WER 0166 (tgpr_5k)         7.88
 # Final train prob        -0.0338
 # Final valid prob        -0.0602
 # Final train prob (xent)   -0.7632
@@ -21,7 +22,7 @@ set -e -o pipefail
 stage=0
 nj=30
 train_set=train_si84_multi
-test_sets="test_eval92"
+test_sets="eval92 0166"
 gmm=tri3b_multi        # this is the source gmm-dir that we'll use for alignments; it
                  # should have alignments for the specified training data.
 
@@ -264,9 +265,9 @@ if [ $stage -le 15 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
 
-  for data in $test_sets; do
+  for data in ${test_sets}; do
     data_affix=$(echo $data | sed s/test_//)
-    nspk=$(wc -l <data/${data}_hires/spk2utt)
+    nspk=$(wc -l <data/test_${data}_hires/spk2utt)
     for lmtype in tgpr_5k; do
       steps/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
@@ -275,8 +276,8 @@ if [ $stage -le 15 ]; then
         --extra-right-context-final 0 \
         --frames-per-chunk $frames_per_chunk \
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-        $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_test_${data}_hires \
+        $tree_dir/graph_${lmtype} data/test_${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
     done
   done
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1

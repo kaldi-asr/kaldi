@@ -63,13 +63,14 @@ for x in $*; do   printf "% 10s" " $(basename $x)";   done
 echo
 
 strings=(
-"#WER eval92 (tgpr_5k)         ")
+"# WER eval92 (tgpr_5k)         "
+"# WER 0166 (tgpr_5k)           ")
 
-for n in 0; do
+for n in 0 1; do
    echo -n "${strings[$n]}"
    for x in $*; do
      set_names $x  # sets $dirname and $epoch_infix
-     decode_names=(tgpr_5k_eval92)
+     decode_names=(tgpr_5k_eval92 tgpr_5k_0166)
 
      wer=$(cat $dirname/decode_${decode_names[$n]}/wer* | utils/best_wer.sh | awk '{print $2}')
      printf "% 10s" $wer
