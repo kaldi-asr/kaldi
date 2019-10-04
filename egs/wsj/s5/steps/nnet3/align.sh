@@ -59,7 +59,7 @@ sdata=$data/split${nj}
 
 if $use_gpu; then
   queue_opt="--gpu 1"
-  gpu_opt="--use-gpu=yes"
+  gpu_opt="--use-gpu=wait"
 else
   queue_opt=""
   gpu_opt="--use-gpu=no"
