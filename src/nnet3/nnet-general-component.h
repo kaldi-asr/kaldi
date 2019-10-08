@@ -417,12 +417,12 @@ class StatisticsPoolingComponent: public Component {
   int32 num_log_count_features_;
   bool output_stddevs_;
   BaseFloat variance_floor_;
-  bool require_direct_input_;  // If set to true, this component will require
-                               // input for the same t as requested, to be
-                               // defined, to be computable.  Used in computing
-                               // the "real" left/right context of the network,
-                               // but this member isn't currently written to
-                               // disk and will default to false when read.
+  // If require_direct_input_ is set to true, in order for a particular 't'
+  // value to be available at the output of this component, it will require that
+  // 't' value to be computable at the input.  This is used in computing the
+  // "real" left/right context of the network, but this member isn't currently
+  // written to disk and will default to false when read.
+  bool require_direct_input_;
 
 };
 

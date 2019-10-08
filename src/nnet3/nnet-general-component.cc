@@ -615,6 +615,9 @@ void StatisticsPoolingComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<VarianceFloor>");
   ReadBasicType(is, binary, &variance_floor_);
   ExpectToken(is, binary, "</StatisticsPoolingComponent>");
+  require_direct_input_ = false;  // This is not written to disk, it's only used
+                                  // temporarily, in memory (see
+                                  // nnet3-xvector-compute-batched.cc).
   Check();
 }
 
