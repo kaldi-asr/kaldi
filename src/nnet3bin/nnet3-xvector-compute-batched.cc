@@ -121,7 +121,7 @@ class BatchedXvectorComputer {
 
 
   /**  Returns true if at least one xvector is pending output (i.e. that
-       the user may call OutputXvector().
+       the user may call OutputXvector()).
    */
   bool XvectorReady() const;
 
@@ -130,7 +130,10 @@ class BatchedXvectorComputer {
      just returned true,  outputs an xvector for an utterance.
        @param [out] utt  The utterance-id is written to here.
                         Note: these will be output in the same order
-                        as the user called AcceptUtterance().
+                        as the user called AcceptUtterance(), except
+                        that if opts_.pad_input is false and
+                        and utterance is shorter than the chunk
+                        size, some utterances may be skipped.
        @param [out] xvector  The xvector will be written to here.
    */
   void OutputXvector(std::string *utt,
@@ -165,7 +168,7 @@ class BatchedXvectorComputer {
      repeated or omitted due to gaps between chunks or overlaps between chunks);
      and we try to minimize the variance of the x-vector estimate; this is minimized
      when all the frames have the same weight, which is only possible if it can be
-     exactly divide into chunks; anyway, this function computes the best division
+     exactly divided into chunks; anyway, this function computes the best division
      into chunks.
 
      It's a question of whether to allow overlaps or gaps.
@@ -183,14 +186,12 @@ class BatchedXvectorComputer {
      to overlap by total_context_ even if the part at the statistics-computation
      layer were ideally cut up.
 
-
-
         @param [in] num_frames  The number of frames in the utterance
         @param [out] start_frames  This function will output to here a vector
                     containing all the start-frames of chunks in this utterance.
                     All chunks will have duration opts_.chunk_size; if a chunk
                     goes past the end of the input we'll repeat the last frame.
-                    (Should only happen if opts_.pad_input is false and
+                    (This will only happen if opts_.pad_input is false and
                     num_frames is less than opts_.chunk_length.)
    */
   void SplitUtteranceIntoChunks(int32 num_frames,
@@ -204,7 +205,8 @@ class BatchedXvectorComputer {
 
   /**
      Does the nnet computation for one batch and distributes the
-     computed x-vectors (of chunks) appropriately.
+     computed x-vectors (of chunks) appropriately to their XvectorTask
+     objects.
    */
   void ComputeOneBatch();
 
@@ -241,17 +243,14 @@ class BatchedXvectorComputer {
   */
   Matrix<BaseFloat> input_feats_;
 
-  /** input_feats_ is copied to to cu_input_feats_ each time before we
-      run the computation. */
-  CuMatrix<BaseFloat> cu_input_feats_;
-
 
   /** The compiled computation (will be the same for every batch).  */
   std::shared_ptr<const NnetComputation> computation_;
 
 
   /**  position_in_batch_ is the number of chunks that we have filled in in
-       the input_feats_ matrix and tasks_this_batch_.
+       the input_feats_ matrix and tasks_this_batch_.  When it reaches
+       opts_.batch_size we will do the actual computation.
   */
   int32 position_in_batch_;
 
@@ -263,7 +262,7 @@ class BatchedXvectorComputer {
   std::vector<XvectorTask*> tasks_this_batch_;
 
   // results_head_ is the first element in the singly linked list of
-  // already-computed xvectors, or NULL if it's empty.  Note:
+  // already-computed xvectors, or NULL if that list is empty.  Note:
   // utterances that are ready will appear here first; new utterances
   // get added to the tail.
   XvectorTask *results_head_;
@@ -307,10 +306,8 @@ BatchedXvectorComputer::BatchedXvectorComputer(
   input_feats_.Resize(feature_dim_ * opts_.batch_size,
                       feature_dim_);
 
-
   CachingOptimizingCompiler compiler(nnet, opts.optimize_config,
                                      opts.compiler_config);
-
 
   {  // This block creates computation_.
     ComputationRequest request;
@@ -321,6 +318,9 @@ BatchedXvectorComputer::BatchedXvectorComputer(
     input.name = "input";
     input.has_deriv = false;
     input.indexes.resize(opts_.batch_size * opts_.chunk_size);
+    // Note: the sequences are interleaved in the input; this will save an extra
+    // copy since it corresponds to how nnet3 stores things by default.  (Makes
+    // TDNNs easier to implement.)
     for (int32 n = 0; n < opts_.batch_size; n++) {
       for (int32 t = 0; t < opts_.chunk_size; t++) {
         Index index;
@@ -354,8 +354,8 @@ void BatchedXvectorComputer::AddChunkToBatch(
     SubVector<BaseFloat> dest(input_feats_, t * opts_.batch_size + n);
     int32 src_t = t + chunk_start;
     if (src_t >= num_input_frames) {
-      KALDI_ASSERT(!opts_.pad_input);
-      src_t = num_input_frames - t;  // Pad with repeats of the last frame.
+      KALDI_ASSERT(opts_.pad_input);
+      src_t = num_input_frames - 1;  // Pad with repeats of the last frame.
     }
     SubVector<BaseFloat> src(input, t);
     dest.CopyFromVec(src);
@@ -363,9 +363,10 @@ void BatchedXvectorComputer::AddChunkToBatch(
 }
 
 bool BatchedXvectorComputer::XvectorReady() const {
+  if (results_head_ == NULL)
+    return false;
   KALDI_ASSERT(results_head_->num_chunks_finished <= results_head_->num_chunks);
-  return (results_head_ != NULL &&
-          results_head_->num_chunks_finished == results_head_->num_chunks);
+  return results_head_->num_chunks_finished == results_head_->num_chunks;
 }
 
 void BatchedXvectorComputer::OutputXvector(std::string *utt,
@@ -389,11 +390,11 @@ void BatchedXvectorComputer::Flush() {
 
 void BatchedXvectorComputer::ComputeOneBatch() {
 
-  cu_input_feats_ = input_feats_;
+  CuMatrix<BaseFloat> cu_input_feats(input_feats_);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(opts_.compute_config, *computation_,
                         nnet_, nnet_to_update);
-  computer.AcceptInput("input", &cu_input_feats_);
+  computer.AcceptInput("input", &cu_input_feats);
   computer.Run();
   CuMatrix<BaseFloat> cu_output;
   computer.GetOutputDestructive("output", &cu_output);
@@ -428,8 +429,6 @@ void BatchedXvectorComputer::AcceptUtterance(
   }
 }
 
-
-
 void BatchedXvectorComputer::SplitUtteranceIntoChunks(
     int32 num_frames, std::vector<int32> *start_frames) {
   start_frames->clear();
@@ -439,9 +438,11 @@ void BatchedXvectorComputer::SplitUtteranceIntoChunks(
     // if we leave start_frames empty, then we just won't compute anything for
     // this file.
   } else {
-    // these modified quantities are to account for the context effects...
-    // when the chunks overlap by exactly total_context_, the frames that
-    // get averaged would touch but not overlap.
+    // these modified quantities are to account for the context effects...  when
+    // the chunks overlap by exactly total_context_, the frames that get
+    // averaged by the respective chunks in their averaging layers would touch
+    // but not overlap.  So the optimal separation between chunks would equal
+    // opts_.chunk_size - total_context_.
     int32 modified_num_frames = num_frames - total_context_,
         modified_chunk_size = opts_.chunk_size - total_context_;
     KALDI_ASSERT(modified_num_frames > modified_chunk_size);
@@ -451,17 +452,27 @@ void BatchedXvectorComputer::SplitUtteranceIntoChunks(
         num_frames2 = num_chunks2 * modified_chunk_size;
     KALDI_ASSERT(num_frames2 > modified_chunk_size);
     // The M and N below correspond to the M and N in the comment:
-    // M is the number of frames repeated once in the sum, N
-    // the number of frames repeated twice.
+    // M is the number of frames repeated once in the averaging, N
+    // the number of frames repeated twice.  (Basically a solution
+    // of the equations: (M + 2N == num_frames2, M+N == modified_num_frames).
+    // Note: by a "frame" above, I mean a specific "t" value in
+    // the utterance.
     int32 N = num_frames2 - modified_num_frames,
         M = modified_num_frames - N;
-    KALDI_ASSERT(M * 2*N == num_frames2 && M + N == modified_num_frames);
+    KALDI_ASSERT(M + 2*N == num_frames2 && M + N == modified_num_frames);
 
+    // The variances below are proportional to the variance of our
+    // estimate of the xvector under certain simplifying assumptions..
+    // they help us choose whether to have gaps between the chunks
+    // or overlaps between them.
     BaseFloat variance1 = 1.0 / num_frames1,  // the 1/M mentioned above.
         variance2 = (M + 4.0*N) / ((M + 2.0*N)*(M + 2.0*N));
     if (variance1 <= variance2) {
       // We'll choose the smaller number of chunks.  There may be gaps.
-      // Counting the positions at the ends, there are num_chunks+1 gaps.
+      // Counting the positions at the ends, there are num_chunks+1 positions
+      // where there might be gaps.
+      // Note: "total_gap" is <= 0, it's the negative of the sum of the
+      // sizes of those gaps.
       int32 num_chunks = num_chunks1,
           num_gaps = num_chunks + 1,
           total_gap = modified_num_frames - num_chunks * modified_chunk_size;
@@ -478,7 +489,7 @@ void BatchedXvectorComputer::SplitUtteranceIntoChunks(
       int32 num_chunks = num_chunks2,
           num_overlaps = num_chunks - 1,
           total_overlap = modified_num_frames - num_chunks * modified_chunk_size;
-      KALDI_ASSERT(total_overlap <= 0 && total_overlap < modified_chunk_size);
+      KALDI_ASSERT(total_overlap >= 0 && total_overlap < modified_chunk_size);
       std::vector<int32> overlap_sizes;  // elements will be <= 0.
       DivideIntoPieces(total_overlap, num_overlaps, &overlap_sizes);
       int32 pos = 0;
