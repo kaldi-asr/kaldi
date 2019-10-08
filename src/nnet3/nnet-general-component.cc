@@ -573,7 +573,7 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 StatisticsPoolingComponent::StatisticsPoolingComponent():
     input_dim_(-1), input_period_(1), left_context_(-1), right_context_(-1),
     num_log_count_features_(0), output_stddevs_(false),
-    variance_floor_(1.0e-10) { }
+    variance_floor_(1.0e-10), require_direct_input_(false) { }
 
 
 StatisticsPoolingComponent::StatisticsPoolingComponent(
@@ -582,7 +582,8 @@ StatisticsPoolingComponent::StatisticsPoolingComponent(
     left_context_(other.left_context_), right_context_(other.right_context_),
     num_log_count_features_(other.num_log_count_features_),
     output_stddevs_(other.output_stddevs_),
-    variance_floor_(1.0e-10) {
+    variance_floor_(other.variance_floor_),
+    require_direct_input_(other.require_direct_input_) {
   Check();
 }
 
