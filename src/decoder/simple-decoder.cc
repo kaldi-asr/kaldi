@@ -32,13 +32,7 @@ SimpleDecoder::~SimpleDecoder() {
 
 bool SimpleDecoder::Decode(DecodableInterface *decodable) {
   InitDecoding();
-  while( !decodable->IsLastFrame(num_frames_decoded_ - 1)) {
-    ClearToks(prev_toks_);
-    cur_toks_.swap(prev_toks_);
-    ProcessEmitting(decodable);
-    ProcessNonemitting();
-    PruneToks(beam_, &cur_toks_);
-  }
+  AdvanceDecoding(decodable);
   return (!cur_toks_.empty());
 }
 
@@ -76,7 +70,7 @@ void SimpleDecoder::AdvanceDecoding(DecodableInterface *decodable,
     ProcessEmitting(decodable);
     ProcessNonemitting();
     PruneToks(beam_, &cur_toks_);
-  }   
+  }
 }
 
 bool SimpleDecoder::ReachedFinal() const {
@@ -188,7 +182,7 @@ void SimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
       if (arc.ilabel != 0) {  // propagate..
         BaseFloat acoustic_cost = -decodable->LogLikelihood(frame, arc.ilabel);
         double total_cost = tok->cost_ + arc.weight.Value() + acoustic_cost;
-        
+
         if (total_cost > cutoff) continue;
         if (total_cost + beam_  < cutoff)
           cutoff = total_cost + beam_;
@@ -224,7 +218,7 @@ void SimpleDecoder::ProcessNonemitting() {
     best_cost = std::min(best_cost, iter->second->cost_);
   }
   double cutoff = best_cost + beam_;
-  
+
   while (!queue.empty()) {
     StateId state = queue.back();
     queue.pop_back();

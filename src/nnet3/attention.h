@@ -59,7 +59,7 @@ namespace attention {
 //
 // To explain what's going on, we start with the simplest form of attention:
 // single-head, and no positional encoding, but with restricted context.  For purposes
-// of exposition we assume that the time offsets we need form a contigous
+// of exposition we assume that the time offsets we need form a contiguous
 // range, i.e. with time-stride == 1; the code does have the notion of a stride (you'll
 // see later).
 //

@@ -100,7 +100,7 @@ class ParseOptions : public OptionsItf {
 
     Initially the variables have implicit values,
     then the config file values are set-up,
-    finally the command line vaues given.
+    finally the command line values given.
     Returns the first position in argv that was not used.
     [typically not useful: use NumParams() and GetParam(). ]
    */
@@ -223,8 +223,8 @@ class ParseOptions : public OptionsItf {
   /// and sets "has_equal_sign" to true if an equals-sign was parsed..
   /// this is needed in order to correctly allow --x for a boolean option
   /// x, and --y= for a string option y, and to disallow --x= and --y.
-  void SplitLongArg(std::string in, std::string *key, std::string *value,
-                    bool *has_equal_sign);
+  void SplitLongArg(const std::string &in, std::string *key,
+                    std::string *value, bool *has_equal_sign);
 
   void NormalizeArgName(std::string *str);
 };
@@ -234,7 +234,7 @@ class ParseOptions : public OptionsItf {
 /// occasionally be needed.  This function assumes the config has a function
 /// "void Register(OptionsItf *opts)" which it can call to register the
 /// ParseOptions object.
-template<class C> void ReadConfigFromFile(const std::string config_filename,
+template<class C> void ReadConfigFromFile(const std::string &config_filename,
                                           C *c) {
   std::ostringstream usage_str;
   usage_str << "Parsing config from "
@@ -246,16 +246,15 @@ template<class C> void ReadConfigFromFile(const std::string config_filename,
 
 /// This variant of the template ReadConfigFromFile is for if you need to read
 /// two config classes from the same file.
-template<class C1, class C2> void ReadConfigsFromFile(const std::string
-                                                      config_filename,
+template<class C1, class C2> void ReadConfigsFromFile(const std::string &conf,
                                                       C1 *c1, C2 *c2) {
   std::ostringstream usage_str;
   usage_str << "Parsing config from "
-            << "from '" << config_filename << "'";
+            << "from '" << conf << "'";
   ParseOptions po(usage_str.str().c_str());
   c1->Register(&po);
   c2->Register(&po);
-  po.ReadConfigFile(config_filename);
+  po.ReadConfigFile(conf);
 }
 
 

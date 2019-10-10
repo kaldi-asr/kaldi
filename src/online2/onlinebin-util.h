@@ -34,11 +34,11 @@
 namespace kaldi {
 
 // Reads a decoding graph from a file
-fst::Fst<fst::StdArc> *ReadDecodeGraph(std::string filename);
+fst::Fst<fst::StdArc> *ReadDecodeGraph(const std::string &filename);
 
 // Prints a string corresponding to (a possibly partial) decode result as
 // and adds a "new line" character if "line_break" argument is true
-void PrintPartialResult(const std::vector<int32>& words,
+void PrintPartialResult(const std::vector<int32> &words,
                         const fst::SymbolTable *word_syms,
                         bool line_break);
 

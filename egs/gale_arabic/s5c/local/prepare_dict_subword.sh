@@ -29,7 +29,7 @@ fi
 if [ $stage -le 0 ]; then
   echo "$0: processing lexicon text and creating lexicon... $(date)."
   # remove vowels and  rare alef wasla
-  grep -v [0-9] data/local/lexicon_data/grapheme_lexicon |  sed -e 's:[FNKaui\~o\`]::g' -e 's:{:}:g' | sort -u > data/local/lexicon_data/processed_lexicon
+  grep -v "[0-9]" data/local/lexicon_data/grapheme_lexicon |  sed -e 's:[FNKaui\~o\`]::g' -e 's:{:}:g' | sort -u > data/local/lexicon_data/processed_lexicon
   local/prepare_lexicon.py
 fi
 

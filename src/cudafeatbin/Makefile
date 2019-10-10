@@ -9,7 +9,7 @@ LDLIBS += $(CUDA_LDLIBS)
 BINFILES =
 
 ifeq ($(CUDA), true)
-  BINFILES += compute-mfcc-feats-cuda apply-cmvn-online-cuda compute-online-feats-cuda
+  BINFILES += compute-mfcc-feats-cuda apply-cmvn-online-cuda compute-online-feats-cuda compute-fbank-feats-cuda
 endif
 
 OBJFILES =

@@ -135,7 +135,9 @@ void ComputationGraphBuilder::ExplainWhyNotComputable(
     int32 first_cindex_id) const {
   int32 max_lines_print = 100;
   std::deque<int32> cindexes_to_explain;
+  std::vector<bool> added_to_queue(graph_->cindexes.size(), false);
   cindexes_to_explain.push_back(first_cindex_id);
+  added_to_queue[first_cindex_id] = true;
   KALDI_ASSERT(graph_->cindexes.size() == graph_->dependencies.size());
   std::ostringstream os;
   os << "*** cindex ";
@@ -148,18 +150,17 @@ void ComputationGraphBuilder::ExplainWhyNotComputable(
     cindexes_to_explain.pop_front();
     KALDI_ASSERT(static_cast<size_t>(cindex_id) < graph_->cindexes.size());
     PrintCindexId(os, cindex_id);
-    os << " is " << static_cast<ComputableInfo>(
-        computable_info_[cindex_id]) << ", dependencies: ";
+    os << " is " << cindex_info_[cindex_id].computable << ", dependencies: ";
     const std::vector<int32> dependencies = graph_->dependencies[cindex_id];
     std::vector<int32>::const_iterator iter = dependencies.begin(),
         end = dependencies.end();
     for (; iter != end; iter++) {
       int32 dep_cindex_id = *iter;
       PrintCindexId(os, dep_cindex_id);
-      ComputableInfo status = static_cast<ComputableInfo>(
-          computable_info_[cindex_id]);
-      if (status != kComputable) {
-        os << '[' << status << ']';
+      const CindexInfo &dep_info = cindex_info_[dep_cindex_id];
+      os << '[' << dep_info.computable << ']';
+      if (dep_info.computable != kComputable && !added_to_queue[dep_cindex_id]) {
+        added_to_queue[dep_cindex_id] = true;
         cindexes_to_explain.push_back(dep_cindex_id);
       }
       if (iter+2 != end)
@@ -223,16 +224,19 @@ void ComputationGraph::Print(std::ostream &os,
 
 
 // inline
-void ComputationGraphBuilder::AddCindexId(int32 cindex_id,
-                                          bool is_input,
-                                          bool is_output) {
+void ComputationGraphBuilder::AddCindexId(int32 cindex_id) {
   // If this cindex_id has just now been added to the graph, the following
   // assert should succeed.
-  KALDI_PARANOID_ASSERT(cindex_id == computable_queued_.size() &&
-                        cindex_id == computable_info_.size() &&
-                        cindex_id == depend_on_this_.size() &&
-                        cindex_id == usable_count_.size());
+  KALDI_PARANOID_ASSERT(cindex_id == depend_on_this_.size() &&
+                        cindex_id == cindex_info_.size());
+  depend_on_this_.push_back(std::vector<int32>());
+  cindex_info_.push_back(CindexInfo());
+}
+/*
+  CindexInfo &info = cindex_info_.back();
   if (is_input) {
+    info.computable = k
+
     computable_info_.push_back(kComputable);
     computable_queued_.push_back(false);
   } else {
@@ -242,9 +246,9 @@ void ComputationGraphBuilder::AddCindexId(int32 cindex_id,
     computable_queued_.push_back(false);
     next_queue_.push_back(cindex_id);
   }
-  depend_on_this_.push_back(std::vector<int32>());
+  depend_on_this_.
   usable_count_.push_back(is_output ? 1 : 0);
-}
+  }*/
 
 
 void ComputationGraphBuilder::AddInputs() {
@@ -263,7 +267,8 @@ void ComputationGraphBuilder::AddInputs() {
       bool is_input = true, is_new;
       int32 cindex_id = graph_->GetCindexId(cindex, is_input, &is_new);
       KALDI_ASSERT(is_new && "Input index seems to be listed more than once");
-      AddCindexId(cindex_id, true, false);
+      AddCindexId(cindex_id);
+      cindex_info_.back().computable = kComputable;
       num_added++;
     }
   }
@@ -282,7 +287,10 @@ void ComputationGraphBuilder::AddOutputs() {
       bool is_input = false, is_new;
       int32 cindex_id = graph_->GetCindexId(cindex, is_input, &is_new);
       KALDI_ASSERT(is_new && "Output index seems to be listed more than once");
-      AddCindexId(cindex_id, false, true);
+      AddCindexId(cindex_id);
+      cindex_info_.back().usable_count = 1;
+      cindex_info_.back().queued = true;
+      next_queue_.push_back(cindex_id);
       num_added++;
     }
   }
@@ -290,17 +298,15 @@ void ComputationGraphBuilder::AddOutputs() {
     KALDI_ERR << "Cannot process computation request with no outputs";
   }
   current_distance_ = 0;
-  // the calls to AddCindexId in this function will have added to next_queue_.
   KALDI_ASSERT(current_queue_.empty());
   current_queue_.swap(next_queue_);
 }
 
 bool ComputationGraphBuilder::AllOutputsAreComputable() const {
-  char is_computable_char = static_cast<char>(kComputable);
-  std::vector<char>::const_iterator iter = computable_info_.begin(),
-      end = computable_info_.end();
+  auto iter = cindex_info_.begin(),
+      end = cindex_info_.end();
   for (int32 cindex_id = 0; iter != end; ++iter, ++cindex_id) {
-    if (*iter != is_computable_char) {  // is not computable.
+    if (iter->computable != kComputable) {
       int32 network_node = graph_->cindexes[cindex_id].first;
       if (nnet_.IsOutputNode(network_node))
         return false;
@@ -318,8 +324,6 @@ std::ostream& operator << (std::ostream &os,
       break;
     case ComputationGraphBuilder::kNotComputable: os << "kNotComputable";
       break;
-    case ComputationGraphBuilder::kWillNotCompute: os << "kWillNotCompute";
-      break;
     default: os << "[invalid enum value]"; break;
   }
   return os;
@@ -335,10 +339,9 @@ void ComputationGraphBuilder::ExplainWhyAllOutputsNotComputable() const {
       end = graph_->cindexes.end();
   for (int32 cindex_id = 0; iter != end; ++iter,++cindex_id) {
     int32 network_node = iter->first;
-    ComputableInfo c = static_cast<ComputableInfo>(computable_info_[cindex_id]);
     if (nnet_.IsOutputNode(network_node)) {
       num_outputs_total++;
-      if (c != kComputable)
+      if (cindex_info_[cindex_id].computable != kComputable)
         outputs_not_computable.push_back(cindex_id);
     }
   }
@@ -362,16 +365,17 @@ void ComputationGraphBuilder::ExplainWhyAllOutputsNotComputable() const {
 // which are actually used in computing it.  It also clears the dependencies
 // of those cindexes that are not computable.
 void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
-  ComputableInfo c = static_cast<ComputableInfo>(computable_info_[cindex_id]);
-  // by the time this is called, there should be no cindexes with unknown state.
-  KALDI_ASSERT(c != kUnknown);
-  if (c == kNotComputable || c == kWillNotCompute) {
-    // if something is not computable, there is no point
+  const CindexInfo &info = cindex_info_[cindex_id];
+  // by the time this is called, there should be no cindexes with unknown state
+  // that are usable.
+  KALDI_ASSERT(!(info.computable == kUnknown && info.usable_count != 0));
+  if (info.computable == kNotComputable || info.usable_count == 0) {
+    // if something is not computable or is not usable, there is no point
     // keeping around its dependencies.
     graph_->dependencies[cindex_id].clear();
     return;
   }
-  KALDI_ASSERT(c == kComputable);
+  KALDI_ASSERT(info.computable == kComputable);
   const Cindex &cindex = graph_->cindexes[cindex_id];
   int32 node_id = cindex.first;
   const Index &index = cindex.second;
@@ -385,7 +389,7 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
     case kDescriptor: {
       const Descriptor &desc = node.descriptor;
       bool dont_care = false;  // there should be no kUnknown, and we check this
-      CindexSet cindex_set(*graph_, computable_info_, dont_care);
+      CindexSet cindex_set(*graph_, cindex_info_, dont_care);
       std::vector<Cindex> used_cindexes;
       bool ans = desc.IsComputable(index, cindex_set, &used_cindexes);
       // If the next assert fails it could be a failure in the assumption that
@@ -410,7 +414,7 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
       // In the line below, node_id - 1 is the index of the component-input
       // node-- the descriptor at the input to the component.  We are interested
       // in the set of inputs to the component that are computable.
-      IndexSet index_set(*graph_, computable_info_, node_id - 1, dont_care);
+      IndexSet index_set(*graph_, cindex_info_, node_id - 1, dont_care);
       std::vector<Index> used_indexes;
       bool ans = c->IsComputable(request_->misc_info, index, index_set,
                                  &used_indexes);
@@ -476,12 +480,10 @@ void ComputationGraphBuilder::Compute(const ComputationRequest &request) {
     // only check rarely if we're running at low verbose level.
     if (GetVerboseLevel() >= 3 || RandInt(1,  (current_distance_ + 1)) == 1)
       Check(cur_segment_start);
-    // TODO: come up with a scheme to delay when we call
-    // UpdateAllComputableInfo().
-    UpdateAllComputableInfo();
     if (current_queue_.empty()) // we're done.
       break;
   }
+  KALDI_VLOG(6) << "current_distance = " << current_distance_; // TEMP
   if (current_distance_ == max_distance)
     KALDI_ERR << "Loop detected while building computation graph (bad "
               << "network topology?)";
@@ -507,7 +509,8 @@ void ComputationGraphBuilder::Check(int32 start_cindex_id) const {
         KALDI_ASSERT(std::count(dep.begin(), dep.end(), cindex_id) == 1);
       }
     }
-    { // check dependencies.
+    if (cindex_info_[cindex_id].dependencies_computed) {
+      // check dependencies.
       std::vector<int32> dependencies = graph_->dependencies[cindex_id];
       int32 size = dependencies.size();
       std::sort(dependencies.begin(), dependencies.end());
@@ -525,49 +528,40 @@ void ComputationGraphBuilder::Check(int32 start_cindex_id) const {
     {
       // check usable_count_
       int32 node_index = graph_->cindexes[cindex_id].first;
-      int32 usable_count = usable_count_[cindex_id],
+      int32 usable_count = cindex_info_[cindex_id].usable_count,
           usable_count_recomputed = nnet_.IsOutputNode(node_index) ? 1 : 0;
       std::vector<int32> depend_on_this = depend_on_this_[cindex_id];
       int32 size = depend_on_this.size();
       for (size_t j = 0; j < size; j++) {
         int32 other_cindex_id = depend_on_this[j];
-        if (usable_count_[other_cindex_id] != 0 &&
-            computable_info_[other_cindex_id] != kNotComputable)
+        if (cindex_info_[other_cindex_id].usable_count != 0 &&
+            cindex_info_[other_cindex_id].computable != kNotComputable)
           usable_count_recomputed++;
       }
       KALDI_ASSERT(usable_count == usable_count_recomputed);
     }
-    // check computable_info_.  note: this will not be accurate
-    // if the cindex_id is still queued to have dependencies added
-    // (in cur_queue_ or next_queue_).
-    if (computable_queue_.empty()) {
+    // check `computable`.
+    if (cindex_info_[cindex_id].dependencies_computed) {
       ComputationGraphBuilder::ComputableInfo c =
           ComputeComputableInfo(cindex_id);
-      // the status doesn't have to be correct if it's kWillNotCompute,
-      // because these are cindex-ids that we chose not to compute
-      // because we determined they would not be useful, and
-      // ComputeComputableInfo() will never return this value.
-      if (c != computable_info_[cindex_id] &&
-          computable_info_[cindex_id] != kWillNotCompute) {
-        int32 count_cur = std::count(current_queue_.begin(),
-                                     current_queue_.end(), cindex_id),
-            count_next = std::count(next_queue_.begin(),
-                                    next_queue_.end(), cindex_id);
-        // if it wasn't queued, then something is wrong.
-        if (count_cur + count_next == 0)
-          KALDI_ERR << "Mismatch in computable status";
+      // the status doesn't have to match if the stored info is kUnknown.
+      if (c != cindex_info_[cindex_id].computable &&
+          cindex_info_[cindex_id].computable != kUnknown) {
+        KALDI_ERR << "Mismatch in computable status";
       }
     }
-    // check computable_queued_.
+    // check `queued`.
     // note, the following checks might be a bit slow.
-    if (computable_queued_[cindex_id]) {
-      KALDI_ASSERT(std::count(computable_queue_.begin(),
-                              computable_queue_.end(),
-                              cindex_id) == 1);
-    } else {
-      KALDI_ASSERT(std::count(computable_queue_.begin(),
-                              computable_queue_.end(),
-                              cindex_id) == 0);
+    if (RandInt(0, cindex_id) == 0) {
+      if (cindex_info_[cindex_id].queued) {
+        KALDI_ASSERT(std::count(current_queue_.begin(),
+                                current_queue_.end(),
+                                cindex_id) == 1);
+      } else {
+        KALDI_ASSERT(std::count(current_queue_.begin(),
+                                current_queue_.end(),
+                                cindex_id) == 0);
+      }
     }
   }
 }
@@ -595,13 +589,13 @@ void ComputationGraphBuilder::Prune() {
   std::vector<bool> keep(num_cindex_ids - start_cindex_id, false);
   for (int32 c = start_cindex_id; c < num_cindex_ids; c++) {
     if (required[c - start_cindex_id] || graph_->is_input[c]) {
-      KALDI_ASSERT(computable_info_[c] == kComputable &&
+      KALDI_ASSERT(cindex_info_[c].computable == kComputable &&
                    "You are calling Prune when not everything is computable.");
       keep[c - start_cindex_id] = true;
     }
   }
   graph_->Renumber(start_cindex_id, keep);
-  // We also need to renumber computable_info_ and usable_count_, which
+  // We also need to renumber cindex_info_ b,
   // graph_->Renumber doesn't do for us, but we can make some shortcuts.  We set
   // all computable_info_ to kComputable because actually it all was kComputable
   // (we checked when deciding what to keep); and we set the usable_count_ to 1
@@ -613,21 +607,18 @@ void ComputationGraphBuilder::Prune() {
   // segments" is not critical.  [this information only gets used if we process
   // additional segments as part of the compilation of an online computation.]
   int32 new_num_cindex_ids = graph_->cindexes.size();
-  computable_info_.resize(start_cindex_id);
-  computable_info_.resize(new_num_cindex_ids, (char)kComputable);
-  usable_count_.resize(start_cindex_id);
-  usable_count_.resize(new_num_cindex_ids, 1);
+  cindex_info_.resize(start_cindex_id);
+  cindex_info_.resize(new_num_cindex_ids);
+  for (int32 i = start_cindex_id; i < new_num_cindex_ids; i++) {
+    cindex_info_[i].computable = kComputable;
+    cindex_info_[i].usable_count = 1;
+  }
   // depend_on_this_ is a vector of vectors-- keeping track of the reverse of
   // the dependencies-- and I believe we won't be needing this information any
   // more past this point.
   depend_on_this_.resize(start_cindex_id);
   depend_on_this_.resize(new_num_cindex_ids);
-  // computable_queued_ also shouldn't be queried past this point, but
-  // I believe they should all be false at this point anyway (note that
-  // we assert below that computable_queue_ is empty).
-  computable_queued_.resize(new_num_cindex_ids);
 
-  KALDI_ASSERT(computable_queue_.empty());
   graph_->segment_ends.push_back(new_num_cindex_ids);
 }
 
@@ -636,7 +627,6 @@ void ComputationGraphBuilder::AddDependencies(int32 cindex_id) {
   if (static_cast<int32>(graph_->dependencies.size()) <= cindex_id) {
     graph_->dependencies.resize(2 * cindex_id + 1);
   }
-
   Cindex cindex = graph_->cindexes[cindex_id];
 
   // find the dependencies of this cindex.
@@ -696,8 +686,11 @@ void ComputationGraphBuilder::AddDependencies(int32 cindex_id) {
     int32 dep_cindex_id = graph_->GetCindexId(input_cindexes[i],
                                               is_input, &is_new);
     this_dep[i] = dep_cindex_id;
-    if (is_new)
-      AddCindexId(dep_cindex_id, false, false);
+    if (is_new) {
+      AddCindexId(dep_cindex_id);
+      cindex_info_.back().queued = true;
+      next_queue_.push_back(dep_cindex_id);
+    }
     // we will keep dependent's usable_count_ up to date below
   }
   // remove duplicates of dependencies.
@@ -720,15 +713,6 @@ void ComputationGraphBuilder::AddDependencies(int32 cindex_id) {
     depend_on_this_[dep_cindex_id].push_back(cindex_id);
     IncrementUsableCount(dep_cindex_id);
   }
-
-  // Now that we've added the dependencies, we can put this into
-  // the computable_queue_ to assess whether it's computable
-  KALDI_ASSERT(computable_info_[cindex_id] == kUnknown &&
-               !computable_queued_[cindex_id]);
-  // we think it'll be faster in the next line to do push_front instead of
-  // push_back; either one would be correct.
-  computable_queue_.push_front(cindex_id);
-  computable_queued_[cindex_id] = true;
 }
 
 
@@ -743,18 +727,19 @@ ComputationGraphBuilder::ComputeComputableInfo(int32 cindex_id)
     case kDescriptor: {
       const Descriptor &desc = node.descriptor;
       {
-        CindexSet cindex_set(*graph_, computable_info_, false);
+        CindexSet cindex_set(*graph_, cindex_info_, false);
         if (desc.IsComputable(index, cindex_set, NULL)) {
-          // it's computable even without counting kUnknown inputs as computable
-          // [treat_unknown_as_computable = false] -> definitely computable.
+          // it's computable even without counting kUnknown and kWillNotCompute
+          // inputs as computable [treat_unknown_as_computable = false] ->
+          // definitely computable.
           return kComputable;
         }
       }
-      CindexSet cindex_set2(*graph_, computable_info_, true);
+      CindexSet cindex_set2(*graph_, cindex_info_, true);
       if (!desc.IsComputable(index, cindex_set2, NULL)) {
-        // it's not computable even when counting kUnknown inputs as
-        // computable [treat_unknown_as_computable = true] -> definitely not
-        // computable.
+        // it's not computable even when counting kUnknown
+        // inputs as computable [treat_unknown_as_computable = true] ->
+        // definitely not computable.
         return kNotComputable;
       }
       return kUnknown;
@@ -763,14 +748,15 @@ ComputationGraphBuilder::ComputeComputableInfo(int32 cindex_id)
       const Component *c = nnet_.GetComponent(node.u.component_index);
       const int32 input_node_id = node_id - 1;
       {
-        IndexSet index_set(*graph_, computable_info_, input_node_id, false);
+        IndexSet index_set(*graph_, cindex_info_, input_node_id, false);
         if (c->IsComputable(request_->misc_info, index, index_set, NULL)) {
-          // it's computable even without counting kUnknown inputs as computable
-          // [treat_unknown_as_computable = false] -> definitely computable.
+          // it's computable even without counting kUnknown
+          // inputs as computable [treat_unknown_as_computable = false] ->
+          // definitely computable.
           return kComputable;
         }
       }
-      IndexSet index_set2(*graph_, computable_info_, input_node_id, true);
+      IndexSet index_set2(*graph_, cindex_info_, input_node_id, true);
       if (!c->IsComputable(request_->misc_info, index, index_set2, NULL)) {
         // it's not computable even when counting kUnknown inputs as computable
         // [treat_unknown_as_computable = true] -> definitely not computable.
@@ -782,7 +768,7 @@ ComputationGraphBuilder::ComputeComputableInfo(int32 cindex_id)
       Cindex input_cindex(node.u.node_index, index);
       int32 input_cindex_id = graph_->GetCindexId(input_cindex);
       if (input_cindex_id != -1)
-        return ComputableInfo(computable_info_[input_cindex_id]);
+        return cindex_info_[input_cindex_id].computable;
       else
         return kUnknown;
     }
@@ -802,7 +788,7 @@ void ComputationGraphBuilder::GetComputableInfo(
     std::vector<std::vector<bool> > *computable) const {
   KALDI_ASSERT(!graph_->cindexes.empty() &&
                "You need to call this after Compute()!");
-  KALDI_ASSERT(!computable_info_.empty() &&
+  KALDI_ASSERT(!cindex_info_.empty() &&
                "You need to call this before Prune()!");
   computable->clear();
   computable->resize(request_->outputs.size());
@@ -817,7 +803,7 @@ void ComputationGraphBuilder::GetComputableInfo(
       Cindex cindex(n, output.indexes[j]);
       int32 cindex_id = graph_->GetCindexId(cindex);
       KALDI_ASSERT(cindex_id != -1);
-      this_vec[j] = (computable_info_[cindex_id] == kComputable);
+      this_vec[j] = (cindex_info_[cindex_id].computable == kComputable);
     }
   }
 }
@@ -826,11 +812,18 @@ void ComputationGraphBuilder::GetComputableInfo(
 void ComputationGraphBuilder::UpdateComputableInfo(int32 cindex_id) {
   // if the current computable_info_ for cindex_id value is not kUnknown, this
   // cindex_id should not have been in the queue.
-  KALDI_ASSERT(static_cast<size_t>(cindex_id) < computable_info_.size());
-  char &output = computable_info_[cindex_id];
+  KALDI_ASSERT(static_cast<size_t>(cindex_id) < cindex_info_.size());
+
+  // We don't need to update the computable info of this node since it's
+  // not usable (i.e. not currently reachable from any node that is not
+  // kNotComputable).
+  if (cindex_info_[cindex_id].usable_count == 0)
+    return;
+
+  ComputableInfo &output = cindex_info_[cindex_id].computable;
   KALDI_ASSERT(output == kUnknown);
 
-  output = static_cast<char>(ComputeComputableInfo(cindex_id));
+  output = ComputeComputableInfo(cindex_id);
 
   if (output != kUnknown) {
     // The computable status of cindexes that depend on this cindex and whose
@@ -840,15 +833,15 @@ void ComputationGraphBuilder::UpdateComputableInfo(int32 cindex_id) {
         end = depend_on_this_[cindex_id].end();
     for (; iter != end; ++iter) {
       int32 other_cindex_id = *iter;
-      if (computable_info_[other_cindex_id] == kUnknown &&
-          !computable_queued_[other_cindex_id]) {
-        computable_queue_.push_back(other_cindex_id);
-        computable_queued_[other_cindex_id] = true;
+      if (cindex_info_[other_cindex_id].computable == kUnknown &&
+          !cindex_info_[other_cindex_id].queued) {
+        cindex_info_[other_cindex_id].queued = true;
+        next_queue_.push_back(other_cindex_id);
       }
     }
-    if (output == kNotComputable && usable_count_[cindex_id] != 0) {
+    if (output == kNotComputable && cindex_info_[cindex_id].usable_count != 0) {
       // If we have just changed the computable state from kUnknown to
-      // kNotComputable, then given the way the usable_count_ is defined (see
+      // kNotComputable, then given the way the usable_count is defined (see
       // the declaration), this means that we must decrement the
       // usable_count_ of all cindex_ids that we depend on.
       std::vector<int32>::const_iterator
@@ -862,37 +855,12 @@ void ComputationGraphBuilder::UpdateComputableInfo(int32 cindex_id) {
   }
 }
 
-void ComputationGraphBuilder::SetAsWillNotCompute(int32 cindex_id) {
-  KALDI_ASSERT(usable_count_[cindex_id] == 0);
-  computable_info_[cindex_id] = kWillNotCompute;
-  std::vector<int32>::const_iterator iter = depend_on_this_[cindex_id].begin(),
-      end = depend_on_this_[cindex_id].end();
-  for (; iter != end; ++iter) {
-    int32 other_cindex_id = *iter;
-    if (computable_info_[other_cindex_id] == kUnknown &&
-        !computable_queued_[other_cindex_id]) {
-      computable_queue_.push_back(other_cindex_id);
-      computable_queued_[other_cindex_id] = true;
-    }
-  }
-}
-
-
-void ComputationGraphBuilder::UpdateAllComputableInfo() {
-  while (!computable_queue_.empty()) {
-    int32 cindex_id = computable_queue_.front();
-    computable_queue_.pop_front();
-    computable_queued_[cindex_id] = false;
-    UpdateComputableInfo(cindex_id);
-  }
-}
-
 
 void ComputationGraphBuilder::IncrementUsableCount(int32 cindex_id) {
   KALDI_PARANOID_ASSERT(static_cast<size_t>(cindex_id)<usable_count_.size());
-  // the next line post-increments the reachable count.
-  if (usable_count_[cindex_id]++ == 0 &&
-      computable_info_[cindex_id] != kNotComputable) {
+  CindexInfo &info = cindex_info_[cindex_id];
+  if (info.usable_count++ == 0 &&
+      info.computable != kNotComputable) {
     std::vector<int32>::const_iterator
         iter = graph_->dependencies[cindex_id].begin(),
         end = graph_->dependencies[cindex_id].end();
@@ -900,15 +868,22 @@ void ComputationGraphBuilder::IncrementUsableCount(int32 cindex_id) {
       int32 dep_cindex_id = *iter;
       IncrementUsableCount(dep_cindex_id);
     }
+    if (info.computable == kUnknown &&
+        !info.queued) {
+      // It's become usable, so make sure it's queued to process whether it is
+      // computable or not.
+      info.queued = true;
+      next_queue_.push_back(cindex_id);
+    }
   }
 }
 
 
 void ComputationGraphBuilder::DecrementUsableCount(int32 cindex_id) {
   KALDI_PARANOID_ASSERT(static_cast<size_t>(cindex_id)<usable_count_.size());
-  KALDI_PARANOID_ASSERT(usable_count_[cindex_id] > 0);
-  if (--usable_count_[cindex_id] == 0 &&
-      computable_info_[cindex_id] != kNotComputable) {
+  KALDI_PARANOID_ASSERT(cindex_info_[cindex_id].usable_count > 0);
+  if (--cindex_info_[cindex_id].usable_count == 0 &&
+      cindex_info_[cindex_id].computable != kNotComputable) {
     std::vector<int32>::const_iterator
         iter = graph_->dependencies[cindex_id].begin(),
         end = graph_->dependencies[cindex_id].end();
@@ -924,11 +899,19 @@ void ComputationGraphBuilder::BuildGraphOneIter() {
   while (!current_queue_.empty()) {
     int32 cindex_id = current_queue_.back();
     current_queue_.pop_back();
-    KALDI_ASSERT(computable_info_[cindex_id] == kUnknown);
-    if (usable_count_[cindex_id] == 0)
-      SetAsWillNotCompute(cindex_id);
-    else
+    cindex_info_[cindex_id].queued = false;
+    if (!cindex_info_[cindex_id].dependencies_computed &&
+        cindex_info_[cindex_id].usable_count != 0) {
+      cindex_info_[cindex_id].dependencies_computed = true;
       AddDependencies(cindex_id);
+      // Add to the queue so we can check whether it's computable.
+      if (!cindex_info_[cindex_id].queued) {
+        cindex_info_[cindex_id].queued = true;
+        next_queue_.push_back(cindex_id);
+      }
+    } else if (cindex_info_[cindex_id].computable == kUnknown) {
+      UpdateComputableInfo(cindex_id);
+    }
   }
   current_queue_.swap(next_queue_);  // now next_queue_ will be empty.
   current_distance_++;
@@ -940,7 +923,7 @@ void ComputationGraphBuilder::ComputeRequiredArray(
 
   int32 num_cindex_ids = graph_->cindexes.size();
   KALDI_ASSERT(num_cindex_ids >= start_cindex_id);
-  KALDI_ASSERT(computable_info_.size() == num_cindex_ids);
+  KALDI_ASSERT(cindex_info_.size() == num_cindex_ids);
   required->clear();
   required->resize(num_cindex_ids - start_cindex_id, false);
 
@@ -976,7 +959,7 @@ void ComputationGraphBuilder::ComputeRequiredArray(
   // usable_count_ == 0; this would indicate a bug somewhere.
   for (int32 c = start_cindex_id; c < num_cindex_ids; c++)
     KALDI_ASSERT(!((*required)[c - start_cindex_id] &&
-                   (usable_count_[c] == 0)));
+                   (cindex_info_[c].usable_count == 0)));
 
 }
 
@@ -1483,12 +1466,12 @@ void ComputeComputationPhases(
 }
 
 CindexSet::CindexSet(const ComputationGraph &graph):
-    graph_(graph), is_computable_(NULL) { }
+    graph_(graph), info_(NULL) { }
 
 CindexSet::CindexSet(const ComputationGraph &graph,
-                     const std::vector<char> &is_computable,
+                     const std::vector<ComputationGraphBuilder::CindexInfo> &info,
                      bool treat_unknown_as_computable):
-    graph_(graph), is_computable_(&is_computable),
+    graph_(graph), info_(&info),
     treat_unknown_as_computable_(treat_unknown_as_computable) { }
 
 
@@ -1497,26 +1480,23 @@ bool CindexSet::operator () (const Cindex &cindex) const {
   if (cindex_id == -1) {
     return false;
   } else {
-    if (is_computable_ == NULL) {
+    if (info_ == NULL) {
       return true;
     } else {
       ComputationGraphBuilder::ComputableInfo
-          c = static_cast<ComputationGraphBuilder::ComputableInfo>(
-              ((*is_computable_)[cindex_id]));
-      if (treat_unknown_as_computable_)
-        return (c == ComputationGraphBuilder::kComputable ||
-                c == ComputationGraphBuilder::kUnknown);
-      else
-        return (c == ComputationGraphBuilder::kComputable);
+          c = (*info_)[cindex_id].computable;
+      return (c == ComputationGraphBuilder::kComputable ||
+              (c == ComputationGraphBuilder::kUnknown &&
+               treat_unknown_as_computable_));
     }
   }
 }
 
 IndexSet::IndexSet(const ComputationGraph &graph,
-                   const std::vector<char> &is_computable,
+                   const std::vector<ComputationGraphBuilder::CindexInfo> &info,
                    int32 node_id,
                    bool treat_unknown_as_computable):
-    graph_(graph), is_computable_(is_computable), node_id_(node_id),
+    graph_(graph), info_(info), node_id_(node_id),
     treat_unknown_as_computable_(treat_unknown_as_computable) { }
 
 bool IndexSet::operator () (const Index &index) const {
@@ -1524,9 +1504,7 @@ bool IndexSet::operator () (const Index &index) const {
   if (cindex_id == -1) {
     return false;
   } else {
-    ComputationGraphBuilder::ComputableInfo
-        c = static_cast<ComputationGraphBuilder::ComputableInfo>(
-            is_computable_[cindex_id]);
+    ComputationGraphBuilder::ComputableInfo c = info_[cindex_id].computable;
     if (treat_unknown_as_computable_)
       return (c == ComputationGraphBuilder::kComputable ||
               c == ComputationGraphBuilder::kUnknown);

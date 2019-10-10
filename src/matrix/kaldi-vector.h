@@ -234,9 +234,9 @@ class VectorBase {
   /// Set each element to y = (x == orig ? changed : x).
   void ReplaceValue(Real orig, Real changed);
 
-  /// Multipy element-by-element by another vector.
+  /// Multiply element-by-element by another vector.
   void MulElements(const VectorBase<Real> &v);
-  /// Multipy element-by-element by another vector of different type.
+  /// Multiply element-by-element by another vector of different type.
   template<typename OtherReal>
   void MulElements(const VectorBase<OtherReal> &v);
 
@@ -249,7 +249,7 @@ class VectorBase {
   /// Add a constant to each element of a vector.
   void Add(Real c);
 
-  /// Add element-by-element product of vectlrs:
+  /// Add element-by-element product of vectors:
   //  this <-- alpha * v .* r + beta*this .
   void AddVecVec(Real alpha, const VectorBase<Real> &v,
                  const VectorBase<Real> &r, Real beta);
@@ -360,7 +360,7 @@ class VectorBase {
 
   /// Reads from C++ stream (option to add to existing contents).
   /// Throws exception on failure
-  void Read(std::istream & in, bool binary, bool add = false);
+  void Read(std::istream &in, bool binary, bool add = false);
 
   /// Writes to C++ stream (option to write in binary).
   void Write(std::ostream &Out, bool binary) const;
@@ -455,7 +455,7 @@ class Vector: public VectorBase<Real> {
 
   /// Read function using C++ streams.  Can also add to existing contents
   /// of matrix.
-  void Read(std::istream & in, bool binary, bool add = false);
+  void Read(std::istream &in, bool binary, bool add = false);
 
   /// Set vector to a specified size (can be zero).
   /// The value of the new data depends on resize_type:
@@ -469,7 +469,7 @@ class Vector: public VectorBase<Real> {
   /// Remove one element and shifts later elements down.
   void RemoveElement(MatrixIndexT i);
 
-  /// Assignment operator, protected so it can only be used by std::vector
+  /// Assignment operator.
   Vector<Real> &operator = (const Vector<Real> &other) {
     Resize(other.Dim(), kUndefined);
     this->CopyFromVec(other);
@@ -535,7 +535,6 @@ class SubVector : public VectorBase<Real> {
     VectorBase<Real>::data_ = const_cast<Real*>(data);
     VectorBase<Real>::dim_   = length;
   }
-
 
   /// This operation does not preserve const-ness, so be careful.
   SubVector(const MatrixBase<Real> &matrix, MatrixIndexT row) {

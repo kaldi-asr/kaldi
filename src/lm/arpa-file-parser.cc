@@ -29,7 +29,7 @@
 
 namespace kaldi {
 
-ArpaFileParser::ArpaFileParser(ArpaParseOptions options,
+ArpaFileParser::ArpaFileParser(const ArpaParseOptions& options,
                                fst::SymbolTable* symbols)
     : options_(options), symbols_(symbols),
       line_number_(0), warning_count_(0) {
@@ -261,20 +261,21 @@ void ArpaFileParser::Read(std::istream &is) {
                << "--max_warnings=-1 to see all warnings";
   }
 
-  current_line_.empty();
+  current_line_.clear();
   ReadComplete();
 
 #undef PARSE_ERR
 }
 
 std::string ArpaFileParser::LineReference() const {
-  std::stringstream ss;
+  std::ostringstream ss;
   ss << "line " << line_number_ << " [" << current_line_ << "]";
   return ss.str();
 }
 
 bool ArpaFileParser::ShouldWarn() {
-  return ++warning_count_ <= static_cast<uint32>(options_.max_warnings);
+  return (warning_count_ != -1) &&
+    (++warning_count_ <= static_cast<uint32>(options_.max_warnings));
 }
 
 }  // namespace kaldi

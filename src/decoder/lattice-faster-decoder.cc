@@ -78,17 +78,10 @@ void LatticeFasterDecoderTpl<FST, Token>::InitDecoding() {
 template <typename FST, typename Token>
 bool LatticeFasterDecoderTpl<FST, Token>::Decode(DecodableInterface *decodable) {
   InitDecoding();
-
   // We use 1-based indexing for frames in this decoder (if you view it in
   // terms of features), but note that the decodable object uses zero-based
   // numbering, which we have to correct for when we call it.
-
-  while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
-    if (NumFramesDecoded() % config_.prune_interval == 0)
-      PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
-  }
+  AdvanceDecoding(decodable);
   FinalizeDecoding();
 
   // Returns true if we have any kind of traceback available (not necessarily

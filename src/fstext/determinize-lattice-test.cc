@@ -23,6 +23,8 @@
 #include "base/kaldi-math.h"
 
 namespace fst {
+using std::vector;
+using std::cout;
 
 void TestLatticeStringRepository() {
   typedef int32 IntType;

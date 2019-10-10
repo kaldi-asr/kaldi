@@ -27,6 +27,8 @@
 
 namespace kaldi {
 
+ using std::string;
+
 typedef fst::StdArc::Label Label;
 typedef std::vector<std::pair<Label, Label>> LabelPairVector;
 

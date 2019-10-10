@@ -203,6 +203,8 @@ int main(int argc, char *argv[]) {
 
     nvtxRangePush("Global Timer");
 
+    int num_groups_done=0;
+
     // starting timer here so we
     // can measure throughput
     // without allocation
@@ -271,27 +273,29 @@ int main(int argc, char *argv[]) {
         cuda_pipeline.OpenDecodeHandle(key, wave_data, task_group,
                                        finish_one_decode_lamba);
         num_task_submitted++;
-        std::string group_done;
-        // Non-blocking way to check if a group is done
-        // returns false if zero groups are ready
-        if (cuda_pipeline.IsAnyGroupCompleted(&group_done)) {
-          cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
-          double total_time = timer.Elapsed();
-          int32 iter = std::atoi(group_done.c_str());
-          KALDI_LOG << "~Group " << group_done << " completed"
-                    << " Aggregate Total Time: " << total_time
-                    << " Audio: " << total_audio * (iter + 1)
-                    << " RealTimeX: " << total_audio * (iter + 1) / total_time;
-        }
 
         nvtxRangePop();
         if (num_todo != -1 && num_task_submitted >= num_todo) break;
       }  // end utterance loop
+        
+      std::string group_done;
+      // Non-blocking way to check if a group is done
+      // returns false if zero groups are ready
+      while (cuda_pipeline.IsAnyGroupCompleted(&group_done)) {
+        cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
+        double total_time = timer.Elapsed();
+        int32 iter = std::atoi(group_done.c_str());
+        KALDI_LOG << "~Group " << group_done << " completed"
+                  << " Aggregate Total Time: " << total_time
+                  << " Audio: " << total_audio * (iter + 1)
+                  << " RealTimeX: " << total_audio * (iter + 1) / total_time;
+        num_groups_done++;
+      }
     }    // end iterations loop
 
     // We've submitted all tasks. Now waiting for them to complete
     // We could also have called WaitForAllTasks and CloseAllDecodeHandles
-    while (cuda_pipeline.GetNumberOfTasksPending()) {
+    while (num_groups_done<iterations) {
       // WaitForAnyGroup is blocking. It will hold until one group is ready
       std::string group_done = cuda_pipeline.WaitForAnyGroup();
       cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
@@ -301,6 +305,7 @@ int main(int argc, char *argv[]) {
                 << " Aggregate Total Time: " << total_time
                 << " Audio: " << total_audio * (iter + 1)
                 << " RealTimeX: " << total_audio * (iter + 1) / total_time;
+      num_groups_done++;
     }
 
     // number of seconds elapsed since the creation of timer

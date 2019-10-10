@@ -146,7 +146,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   BaseFloat sampling_frequency_;
 
   // waveform_offset_ is the number of samples of waveform that we have
-  // already discarded, i.e. thatn were prior to 'waveform_remainder_'.
+  // already discarded, i.e. that were prior to 'waveform_remainder_'.
   int64 waveform_offset_;
 
   // waveform_remainder_ is a short piece of waveform that we may need to keep
@@ -226,7 +226,7 @@ struct OnlineCmvnOptions {
       ring_buffer_size(20),
       skip_dims("") { }
 
-  void Check() {
+  void Check() const {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
                  && modulus > 0);
   }
@@ -270,7 +270,7 @@ struct OnlineCmvnState {
 
   // The following is the global CMVN stats, in the usual
   // format, of dimension 2 x (dim+1), as [  sum-stats          count
-  //                                       sum-sqared-stats   0    ]
+  //                                       sum-squared-stats   0    ]
   Matrix<double> global_cmvn_stats;
 
   // If nonempty, contains CMVN stats representing the "frozen" state
