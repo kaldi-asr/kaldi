@@ -808,7 +808,7 @@ or:
 \verbatim
   lattice-to-nbest --acoustic-scale=0.1 --n=10 ark:1.lats ark:1.nbest
 \endverbatim
- then the archive 1.nbest will contain lattices for uttA-1, uttA-2, ... uttA-2,
+ then the archive 1.nbest will contain lattices for uttA-1, uttA-2, ... uttA-10,
  for uttB-1 ... uttB-10, and so on.  Of course some of the utterances may not
  have that many N-best entries if the lattice did not contain that many distinct
  word sequences.  The program lattice-to-nbest needs the acoustic scale as this
