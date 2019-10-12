@@ -126,7 +126,7 @@ if [ $stage -le 14 ]; then
 
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=43 name=input
+  input dim=40 name=input
 
   # MFCC to filterbank
   idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
@@ -237,7 +237,7 @@ if $test_online_decoding && [ $stage -le 18 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf --add-pitch true \
+    --mfcc-config conf/mfcc_hires.conf \
     $lang exp/nnet3${nnet3_affix}/extractor $dir ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
