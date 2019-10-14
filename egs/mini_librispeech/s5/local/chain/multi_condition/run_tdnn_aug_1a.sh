@@ -2,19 +2,15 @@
 
 # This recipe does multi-style training of TDNN model
 
-# local/chain/compare_wer_general.sh --rt03 tdnn7q_sp tdnn1a_aug
-# System                tdnn7q_sp tdnn1a_aug
-# WER on train_dev(tg)      11.91     12.06
-# WER on train_dev(fg)      10.99     10.92
-# WER on eval2000(tg)        14.3      14.4
-# WER on eval2000(fg)        12.8      12.9
-# WER on rt03(tg)            17.2      17.1
-# WER on rt03(fg)            15.1      14.8
-# Final train prob         -0.062    -0.087
-# Final valid prob         -0.074    -0.105
-# Final train prob (xent)        -0.933    -1.164
-# Final valid prob (xent)       -0.9027   -1.2246
-# Num-parameters               18693376  18483664
+# local/chain/compare_wer.sh exp/chain/tdnn1a_aug
+# System                       tdnn1h_sp         tdnn1a_aug
+#WER dev_clean_2 (tgsmall)        12.19               12.50   
+#WER dev_clean_2 (tglarge)         8.73                8.77
+# Final train prob               -0.0493            -0.0644
+# Final valid prob               -0.0813            -0.0995
+# Final train prob (xent)        -1.1749            -1.4163
+# Final valid prob (xent)        -1.3913            -1.6007
+# Num-params                     5207856            5127568
 
 set -e
 
