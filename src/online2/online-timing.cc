@@ -52,7 +52,7 @@ void OnlineTimingStats::Print(bool online){
     // real-time factor.
     double real_time_factor = (total_time_taken_ - total_time_waited_) /
         total_audio_;
-    KALDI_LOG << "Timing stats: real-time factor for offline decoding was "
+    KALDI_LOG << "Timing stats: real-time factor for online decoding was "
               << real_time_factor << " = "
               << (total_time_taken_ - total_time_waited_) << " seconds "
               << " / " << total_audio_ << " seconds.";
