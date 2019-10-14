@@ -31,7 +31,21 @@ namespace kaldi {
   finding such answers: the mailing lists and github contain many more
   discussions, and a web search may be the easiest way to find answers.
   
-  Below are FAQ candidates (with some TODOs) from the mailing lists, we will update these candidates to make them more readable.
+  \section kaldi_name_and_logo About the name and logo of Kaldi
+  According to legend, Kaldi was the Ethiopian goatherder who discovered the coffee plant. The name was chosen by sponsors of this project because they drank a lot of coffee that time (in 2009 according to <a href="https://groups.google.com/forum/#!topic/kaldi-help/J2F3y6KOejY"> Ondrej Glembek </a>). 
+  Then the logo symbolizes those guys working on a speech project (the microphone in the logo) while drinking coffee (the coffee bean in the logo). There are some <a href=https://groups.google.com/forum/#!topic/kaldi-help/DmbFnaDi7Co>dissenting opinion</a> about the logo, they suggest we should use more awesome logo. Generally, we would like to change logo if someone comes up with a well-designed new logo.  
+
+  \section how_to_check_version How to check the Kaldi version?  
+  Refer to version.h.
+  
+  \section reading_materials_for_beginners Reading materials for beginners in speech recognition.  
+  We notice that there are more and more beginners in speech recognition starting using Kaldi as their first toolkit for speech recognition. For those guys, we recommend them first to read these basic materials to get started:
+  - HTK book (at least reading the Tutorial Overview part)
+  - The Application of Hidden Markov Models in Speech Recognition
+  - Speech Recognition with Weighted Finite-State Transducers for WSFT
+  - A Bit of Progress in Language Modeling (Extended Version)
+  
+  \section faq_candidates Below are FAQ candidates (with some TODOs) from the mailing lists, we will update these candidates to make them more readable.
 
  1. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/zMK8pnHJmHE> How to interpret the final.mdl </a> </b>
 	- interpret final.mdl with an example
@@ -88,6 +102,8 @@ namespace kaldi {
 	    - - <a href=https://groups.google.com/forum/#!topic/kaldi-help/g36HqAEC9lI> How to get timestamps while decoding with mfcc feature? </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/6FjW0tWPjFI> How to get the phones from recognition </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/5nfBCim6Ptw> Getting a CTM file of the phone alignment of the training data </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/lbo9IRSqXgk> ctm file with words, times and confidences for each n-best paths </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/PPlvG_Vfmto> Phone level output </a>
 
 6. <b> Random in Feature Extraction </b>
 	- related questions:
@@ -186,6 +202,9 @@ namespace kaldi {
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/jDG5CmAy_3w> How to accelerate the rescoring </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/LsfPUwHj3d8> Kaldi with Huge LM </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/DddJe3_d5wY> what does rescoring mean?? </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/LNJrE93J3UI> Use the same n-gram to do the lattice rescore but lost accuracy </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/sZQ4LE9J6ig> worse result on lattice rescoring </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/bWoq7vcRCvw> please help, can i do the lattice-rescore with a big lm trained by different and larger corpus </a>
 
 21. <b> Free training data </b>
 	- related questions:
