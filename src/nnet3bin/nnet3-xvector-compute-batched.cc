@@ -299,11 +299,14 @@ BatchedXvectorComputer::BatchedXvectorComputer(
     position_in_batch_(0),
     results_head_(NULL),
     results_tail_(NULL) {
+
+  tasks_this_batch_.resize(opts_.batch_size);
+
   feature_dim_ = nnet.InputDim("input");
   xvector_dim_ = nnet.OutputDim("output");
   // Zero input_feats_ in case there is only one batch, to avoid
   // NaN's being generated due to undefined data.
-  input_feats_.Resize(feature_dim_ * opts_.batch_size,
+  input_feats_.Resize(opts_.chunk_size * opts_.batch_size,
                       feature_dim_);
 
   CachingOptimizingCompiler compiler(nnet, opts.optimize_config,
