@@ -68,7 +68,7 @@ if [ -f $data/text ] && [ $nu -ne $nt ]; then
 fi
 
 ns=`cat $data/spk2utt | wc -l`
-if [ $numsplit -gt $ns ]; then
+if [ $numsplit -gt $ns ] && [ $split_per_spk = "true" ]; then
     echo "You should reduce the number of jobs ($numsplit) as there are not enough speakers ($ns)."
     exit 1
 fi
