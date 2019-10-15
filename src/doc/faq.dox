@@ -45,6 +45,40 @@ namespace kaldi {
   - Speech Recognition with Weighted Finite-State Transducers for WSFT
   - A Bit of Progress in Language Modeling (Extended Version)
   
+  For those who may want a "Kaldi Book" with tutorial on theory and implementation like what HTK Book does, we would generally just say sorry. As Dan explains in this <a href=https://groups.google.com/forum/#!topic/kaldi-help/3LBSzmploC0> post </a>, the field of speech recognition is moving so fast that we need to implement too many things in Kaldi and have no time to write such a book.
+  
+  \section free_data_to_train_model Free dataset to get started
+  If you have not bought any LDC license, there are also some free dataset for you to get started, that is, Librispeech, Tedlium and AMI. 
+
+  \section about_timit About TIMIT
+  There are many people asked questions about TIMIT on mailing lists, as Dan says in this <a href=https://groups.google.com/forum/#!topic/kaldi-help/YUbX_XUkFCw> post</a>, generally we'll suggest you do not use TIMIT. 
+  
+  \section windows_asr_toolkit Windows ASR toolkit based on Kaldi
+  <a href=https://ai-toolkit.blogspot.com/p/voicebridge.html> VoiceBridge</a> is a ASR toolkit which is designed for windows developers and based on Kaldi. Currently it only supports GMM-based ASR but it will be updated with more models added as the author declared <a href=https://groups.google.com/forum/#!topic/kaldi-help/-CBE3qoXyeU> here</a>. 
+  Of course, if anyone create or know any other windows ASR toolkit based on Kaldi, please feel free to let us know and we will add it in this section. 
+
+  \section python_wrapper_for_kaldi Python wrapper for Kaldi
+  There are a few Python wrappers for Kaldi including:
+  - <a href=https://github.com/pykaldi/pykaldi> PyKaldi </a>
+  - <a href=https://github.com/jzlianglu/pykaldi2> PyKaldi2 </a>
+  - <a href=https://github.com/mravanelli/pytorch-kaldi> PyTorch-Kaldi </a>
+  - <a href=https://github.com/gooofy/py-kaldi-asr> py-kaldi-asr</a>: just for nnet3 online decoder
+  
+  People may wonder why TensorFlow or PyTorch isn't used in Kaldi DNN setup. It is mainly a historical reason as Dan explained <a href=https://groups.google.com/forum/#!topic/kaldi-help/DO_m3KwXr70> here</a>. A good news is that a PyTorch-integrated version of Kaldi that Dan decalred <a href=https://groups.google.com/forum/#!topic/kaldi-help/ueXh-xvzZxo> here</a> is already in the planning stage. Dan may announce it when it's ready.
+  
+  \section docker_for_kaldi Docker for Kaldi
+  Kaldi offers two set of images: CPU-based images and GPU-based images, please see <a href=https://github.com/kaldi-asr/kaldi/tree/master/docker> here</a>.
+  
+  \section indeterminacy_in_feature_extraction Indeterminacy in feature extraction
+  Uses may notice that there is tiny difference when they run two rounds of feature extraction including MFCC, Fbank and PLP. This is because the random signal-level ‘dithering’ used in the extraction process to prevent zeros in the filterbank energy computation. The corresponding code is 'Dither' function in file feature-window.cc. For those who want deterministic result, just set 
+  \verbatim
+  --dither=0 and --energy-floor=1
+  \endverbatim
+  or do srand(0) at the start of program. 
+  BTW, we really do NOT think the determinism is worth considering, users should measure WER instead of the output of feature extraction. For more discussions, please refer to:
+  - <a href=https://groups.google.com/forum/#!topic/kaldi-help/fQS3VmQ0eCA> MFCC feature extraction </a>
+  - <a href=https://groups.google.com/forum/#!topic/kaldi-help/LOD4A7Z9hYY> mfcc features significantly different if run more than once </a>
+  
   \section faq_candidates Below are FAQ candidates (with some TODOs) from the mailing lists, we will update these candidates to make them more readable.
 
  1. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/zMK8pnHJmHE> How to interpret the final.mdl </a> </b>
@@ -104,16 +138,6 @@ namespace kaldi {
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/5nfBCim6Ptw> Getting a CTM file of the phone alignment of the training data </a>
 		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/lbo9IRSqXgk> ctm file with words, times and confidences for each n-best paths </a>
 		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/PPlvG_Vfmto> Phone level output </a>
-
-6. <b> Random in Feature Extraction </b>
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/fQS3VmQ0eCA> MFCC feature extraction </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/mT8BMJSmU1M> different results for every decoding with same data </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/qyt1cXtd91E> Inconsistent mfcc feature computed between linux and windows </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/hyViCDw3gMU> when i increase the number of threads while extracting MFCC features, the cost time doubled and redoubled. What's the reason? </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/LOD4A7Z9hYY> mfcc features significantly different if run more than once </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/lk2CtNT8aBM> About the randomness in feature extraction. </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/WzzvmiyxUcc> The same wav file, different decoding results？ </a>
 
 7. <b> Copy related tools (copy-feats, copy-matrix, etc ) </b>
 	- related questions:
@@ -184,13 +208,9 @@ namespace kaldi {
 
 15. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/L6ZBsYaAExE> Nnet-align-compiled used too much memory? </a> </b>
 
-16. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/YCSezfmsDC8> How do I check the kaldi version? </a> </b>
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Ep2q0-DiLLc> How to check the version after installation </a>
-
 17. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/7AxZqD69vvY> Getting acoustic scores on state level in decoding </a> </b>
 	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/d7ZjCLveU8c> How do I get nnet3 computed matrix (socres) from online-wav-nnet3-latgen-faster </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/d7ZjCLveU8c> How do I get nnet3 computed matrix (scores) from online-wav-nnet3-latgen-faster </a>
 
 18. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/jnkXeHVASo0> Mandarin: Pitch vs No Pitch </a> </b>
 
@@ -206,31 +226,16 @@ namespace kaldi {
 		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/sZQ4LE9J6ig> worse result on lattice rescoring </a>
 		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/bWoq7vcRCvw> please help, can i do the lattice-rescore with a big lm trained by different and larger corpus </a>
 
-21. <b> Free training data </b>
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/YUbX_XUkFCw> Re: [kaldi-help] Result on word level </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/GcS51souK8s> People who did not buy LDC license </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Y3kk0pxk6t4> Neural network </a>
-
 22. <b> Thread safe in Kaldi </b>
 	- related questions
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/x1Vozgv9HSI> is kaldi thread safe ? </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/HjraFqQFSnI> MfccComputer is not thread-safe? </a>
-
-23. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/DmbFnaDi7Co> Kaldi logo </a>  </b>
 
 24. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/qVT1EziyqpI> Lexicon free Text recognition </a> </b>
 
 25. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/xs4wSKSK3vk> Decoding .wav files </a> </b>
 
 26. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/3o8JKY17tcE> How to remove the silence modeling during training and testing </a> </b>
-
-27. <b> Python wrapper for Kaldi </b>
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/TDfvnPa1PfE> Simple python wrapper for Kaldi's nnet3 online decoder </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Gaf8t56o24s> PyKaldi - A Python Wrapper for Kaldi </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/DO_m3KwXr70> Have you tried this Kaldi-PyTorch integration? </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ueXh-xvzZxo> Pykaldi2: Yet another speech toolkit based on Kaldi and Pytorch </a>
 
 28. <b> Examples for different task </b>
 	- related questions:
@@ -255,10 +260,6 @@ namespace kaldi {
 31. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/_Ij6L4uORBE> Problem when do alignment </a> </b>
 
 32. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/vioP5AhdzSg> Why is there a disambiguation symbol in L_disambig.fst after optional silence? </a> </b>
-
-33. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/3LBSzmploC0> Kaldi Book for beginners </a> </b>
-
-34. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/AcOmp5958rU> Docker for kaldi </a> </b>
 
 35. <b> RNNLM </b>
 	- related questions:
@@ -317,8 +318,6 @@ namespace kaldi {
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Xwd1naCxs4I> keyword sporting in continuous speech </a>
 
 45. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/BPZKi9YhwOw> Kaldi supported gpus </a> </b>
-
-46. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/-CBE3qoXyeU> Windows ASR toolkit based on Kaldi </a>  </b>
 
 47. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/faZtacN7CrU> Optimizing model load time? </a> </b>
 
@@ -387,8 +386,6 @@ namespace kaldi {
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8QNPRd9hiwc> kaldi compilation on android </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/VRCwuEUvrZg> Is kaldi compatible with Android ??? </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/TkNKrc6HPUs> Android application using kaldi speech recognition </a>
-
-66. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/J2F3y6KOejY> Why the name is kaldi? </a> </b>
 
 67. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/s7zq30ckaEM> Adapt speaker recognition model </a> </b>
 
