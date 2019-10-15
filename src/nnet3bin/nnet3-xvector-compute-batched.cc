@@ -282,6 +282,7 @@ BatchedXvectorComputer::CreateTask(
   task->tail = NULL;
   if (results_tail_) {
     results_tail_->tail = task;
+    results_tail_ = task;
   } else {  // List was previously empty.
     results_head_ = task;
     results_tail_ = task;
@@ -360,7 +361,7 @@ void BatchedXvectorComputer::AddChunkToBatch(
       KALDI_ASSERT(opts_.pad_input);
       src_t = num_input_frames - 1;  // Pad with repeats of the last frame.
     }
-    SubVector<BaseFloat> src(input, t);
+    SubVector<BaseFloat> src(input, src_t);
     dest.CopyFromVec(src);
   }
 }
@@ -474,13 +475,13 @@ void BatchedXvectorComputer::SplitUtteranceIntoChunks(
       // We'll choose the smaller number of chunks.  There may be gaps.
       // Counting the positions at the ends, there are num_chunks+1 positions
       // where there might be gaps.
-      // Note: "total_gap" is <= 0, it's the negative of the sum of the
+      // Note: "total_gap" is >= 0, it's the positive of the sum of the
       // sizes of those gaps.
       int32 num_chunks = num_chunks1,
           num_gaps = num_chunks + 1,
           total_gap = modified_num_frames - num_chunks * modified_chunk_size;
-      KALDI_ASSERT(total_gap <= 0 && total_gap > -modified_chunk_size);
-      std::vector<int32> gap_sizes;  // elements will be <= 0.
+      KALDI_ASSERT(0 <= total_gap && total_gap < modified_chunk_size);
+      std::vector<int32> gap_sizes;  // elements will be >= 0.
       DivideIntoPieces(total_gap, num_gaps, &gap_sizes);
       int32 pos = gap_sizes[0];
       for (int32 i = 0; i < num_chunks; i++) {
@@ -492,7 +493,7 @@ void BatchedXvectorComputer::SplitUtteranceIntoChunks(
       int32 num_chunks = num_chunks2,
           num_overlaps = num_chunks - 1,
           total_overlap = modified_num_frames - num_chunks * modified_chunk_size;
-      KALDI_ASSERT(total_overlap >= 0 && total_overlap < modified_chunk_size);
+      KALDI_ASSERT( -modified_chunk_size < total_overlap && total_overlap <= 0 );
       std::vector<int32> overlap_sizes;  // elements will be <= 0.
       DivideIntoPieces(total_overlap, num_overlaps, &overlap_sizes);
       int32 pos = 0;
