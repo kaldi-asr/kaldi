@@ -353,7 +353,7 @@ sub print_segments {
     $i *= 10;
     $num_digits++;
   }
-  $format_str = "%0${num_digits}d"; # e.g. "%05d"
+  $format_str = "%0${num_digits}.0f"; # e.g. "%05.0f" round the same as seconds
 
   foreach $s (@segments) {
     my ($start,$end) = split(":", $s);
