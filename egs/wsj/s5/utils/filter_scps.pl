@@ -90,7 +90,6 @@ if ($outfile !~ m/$jobname/ &&  $jobend > $jobstart) {
 
 # Some variables that we set to produce a warning.
 $warn_uncovered = 0;
-$warn_multiply_covered = 0;
 
 for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
   $idlist_n = $idlist;
@@ -133,9 +132,6 @@ while (<F>) {
     $warn_uncovered = 1;
   } else {
     @jobs = @{$id2jobs{$id}};   # this dereferences the array reference.
-    if (@jobs > 1) {
-      $warn_multiply_covered = 1;
-    }
     foreach $job_id (@jobs) {
       if (!defined $job2output{$job_id}) {
         die "Likely code error";
@@ -163,8 +159,4 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
 
 if ($warn_uncovered && $print_warnings) {
   print STDERR "filter_scps.pl: warning: some input lines did not get output\n";
-}
-if ($warn_multiply_covered && $print_warnings) {
-  print STDERR "filter_scps.pl: warning: some input lines were output to multiple files [OK if splitting per utt] " .
-    join(" ", @ARGV) . "\n";
 }
