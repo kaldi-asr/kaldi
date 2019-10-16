@@ -29,7 +29,10 @@ def main():
             #    print(head + '-' + prefix + '_' + remainder + ' ' + val)
         else:
             for prefix in args.prefix:
-                print(prefix + '_' + id + ' ' + val)
+                if prefix.startswith('rev'):
+                    print(prefix + '-' + id + ' ' + val)
+                else:
+                    print(prefix + '_' + id + ' ' + val)
 
 
 if __name__ == "__main__":
