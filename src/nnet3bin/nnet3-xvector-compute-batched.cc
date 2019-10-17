@@ -334,8 +334,17 @@ BatchedXvectorComputer::BatchedXvectorComputer(
         input.indexes[n + opts_.batch_size * t] = index;
       }
     }
-    request.outputs.push_back(IoSpecification("output", 0,
-                                              opts_.batch_size));
+    IoSpecification output;
+    output.name = "output";
+    output.has_deriv = false;
+    output.indexes.resize(opts_.batch_size);
+    for (int32 n = 0; n < opts_.batch_size; n++){
+        Index index;
+        index.n = n;
+        index.t = 0;
+        output.indexes[n] = index;
+    }
+    request.outputs.push_back(output);
     computation_ = compiler.Compile(request);
   }
 }
