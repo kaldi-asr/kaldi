@@ -44,7 +44,7 @@ lang=data/lang_chain
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh --stage $stage --num-data-reps 3|| exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage --num-data-reps ${num_data_reps} || exit 1;
 
 if [ $stage -le 7 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
