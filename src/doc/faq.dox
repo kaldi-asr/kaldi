@@ -45,7 +45,7 @@ namespace kaldi {
   - Speech Recognition with Weighted Finite-State Transducers for WSFT
   - A Bit of Progress in Language Modeling (Extended Version)
   
-  For those who may want a "Kaldi Book" with tutorial on theory and implementation like what HTK Book does, we would generally just say sorry. As Dan explains in this <a href=https://groups.google.com/forum/#!topic/kaldi-help/3LBSzmploC0> post </a>, the field of speech recognition is moving so fast that we need to implement too many things in Kaldi and have no time to write such a book.
+  For those who may want a "Kaldi Book" with tutorial on theory and implementation like what HTK Book does, we would generally just say sorry. As Dan explains in this <a href=https://groups.google.com/forum/#!topic/kaldi-help/3LBSzmploC0> post</a>, the field of speech recognition is moving so fast that we need to implement too many things in Kaldi and have no time to write such a book.
   
   \section free_data_to_train_model Free dataset to get started
   If you have not bought any LDC license, there are also some free dataset for you to get started, that is, Librispeech, Tedlium and AMI. 
@@ -64,10 +64,148 @@ namespace kaldi {
   - <a href=https://github.com/mravanelli/pytorch-kaldi> PyTorch-Kaldi </a>
   - <a href=https://github.com/gooofy/py-kaldi-asr> py-kaldi-asr</a>: just for nnet3 online decoder
   
-  People may wonder why TensorFlow or PyTorch isn't used in Kaldi DNN setup. It is mainly a historical reason as Dan explained <a href=https://groups.google.com/forum/#!topic/kaldi-help/DO_m3KwXr70> here</a>. A good news is that a PyTorch-integrated version of Kaldi that Dan decalred <a href=https://groups.google.com/forum/#!topic/kaldi-help/ueXh-xvzZxo> here</a> is already in the planning stage. Dan may announce it when it's ready.
+  People may wonder why TensorFlow or PyTorch isn't used in Kaldi DNN setup. It is mainly a historical reason as Dan explained <a href=https://groups.google.com/forum/#!topic/kaldi-help/DO_m3KwXr70> here</a>. A good news is that a PyTorch-integrated version of Kaldi that Dan declared <a href=https://groups.google.com/forum/#!topic/kaldi-help/ueXh-xvzZxo>here</a> is already in the planning stage. Dan may announce it when it's ready.
   
   \section docker_for_kaldi Docker for Kaldi
   Kaldi offers two set of images: CPU-based images and GPU-based images, please see <a href=https://github.com/kaldi-asr/kaldi/tree/master/docker> here</a>.
+  
+  \section kaldi_for_android Kaldi for Android
+  A guide for compiling Kaldi for Android with the corresponding Dockerfile can be found <a href=http://jcsilva.github.io/2017/03/18/compile-kaldi-android/>here</a>. Note that this build is just based on Ubuntu and does not continue to update for new version of NDK, so if you build Kaldi for Android on different computing platform or using different toolchain (e.g. CMake instead of ndk-build in this post), please let us know. 
+  
+  \section naming_conventions_of_tool Naming conventions of common tools in Kaldi
+  There are many tools in Kaldi following simple and consistent naming conventions. Three typical frequently used tools with self-explanatory names are: 
+  - <b>copy-* (or *-copy)</b>: e.g. copy-matrix, copy-feats, copy-feats-to-htk, copy-tree, copy-transition-model, copy-posts, wav-copy, gmm-copy, sgmm2-copy, nnet3-copy, lattice-copy.  
+  - <b>*-info</b>: e.g. tree-info, hmm-info, gmm-info, am-info, nnet3-am-info, nnet3-info.
+  - <b>*-to*</b>: e.g. feat-to-dim, feat-to-len, ali-to-phones, ali-to-post, lattice-to-nbest, lattice-to-post, nbest-to-lattice.
+  
+  We strongly suggest you search first in your build output directory to find tools you need before seeking help from others in mailing lists. Here I'll just give some example usages which are asked in the mailing lists.
+  
+  \verbatim
+  copy-feats ark:data/raw_mfcc.ark ark,t:data/mfcc.txt  # copy binary feature archive to text archive format
+  \endverbatim
+  
+  \verbatim
+  cat feats_with_range.scp
+  utt_id_1 raw_mfcc.1.ark:9[0:2,0:5]
+  utt_id_2 raw_mfcc.1.ark:16965[0:3]
+  
+  # copy ranges of feature archive to stdout with text archive format
+  copy-feats scp:feats_with_range.scp ark,t:- 
+  \endverbatim
+  
+  \verbatim
+  cat cmvn.scp
+  speaker_id_1 data/cmvn_test.ark:4
+  speaker_id_2 data/cmvn_test.ark:247
+  speaker_id_3 data/cmvn_test.ark:490
+  speaker_id_4 data/cmvn_test.ark:733
+  speaker_id_5 data/cmvn_test.ark:976
+  
+  # copy specific speaker's cmvn vector to stdout with text format
+  copy-feats --binary=false $(grep speaker_id_2 cmvn.scp | awk '{print $2}') -    
+  \endverbatim
+  
+  \verbatim
+  # copy GMM model to text format
+  gmm-copy --binary=false final.mdl final_text.mdl  
+  \endverbatim
+  
+  \verbatim
+  hmm-info final.mdl
+  number of phones 351
+  number of pdfs 3400
+  number of transition-ids 47952
+  number of transition-states 23916
+  \endverbatim
+  
+  \verbatim
+  nnet3-am-info final.mdl | head
+  input-dim: 40
+  ivector-dim: 100
+  num-pdfs: 2856
+  prior-dimension: 0
+  # Nnet info follows.
+  left-context: 29
+  right-context: 29
+  num-parameters: 8355408
+  modulus: 1
+  input-node name=ivector dim=100
+  input-node name=input dim=40
+  component-node name=idct component=idct input=input input-dim=40 output-dim=40
+  \endverbatim
+  
+  \verbatim
+  # write utterance length in frames to stdout with text archive format
+  feat-to-len scp:feats.scp ark,t:- | head  
+  \endverbatim
+
+  \section some_useful_script_for_data_processing Some useful scripts for data preparation and processing
+  Besides tools mentioned above, there are also some useful scripts in Kaldi in the directory of "steps" and "utils". Here we will list some frequently used scripts in data preparation and processing and leave other important scripts to be illustrated in the corresponding sections below.
+  
+  \verbatim
+  steps/combine_ali_dirs.sh              # combine alignment directories
+  steps/combine_lat_dirs.sh              # combine lattice directories
+  
+  # create lattices for the aug dirs by copying the lattices of original train dir
+  steps/copy_lat_dir.sh 
+  # create alignments for the aug dirs by copying the alignments of original train dir  
+  steps/copy_ali_dir.sh                 
+  
+  steps/cleanup/split_long_utterance.sh  # truncate the long audio into smaller overlapping segments
+  
+  # perform segmentation of the input data based on the transcription
+  # and outputs segmented data along with the corresponding aligned transcription
+  steps/cleanup/segment_long_utterances[_nnet3].sh                                                     
+  \endverbatim
+  
+  \verbatim
+  # copy train/test data directory to another directory, 
+  # possibly adding a specified prefix or a suffix to the utterance and/or speaker names
+  utils/copy_data_dir.sh
+  
+  # combine the data from multiple source directories into a single destination directory
+  utils/combine_data.sh 
+  # split data-dir to multiple subsets according to num-to-split or speaker numbers
+  utils/split_data.sh
+  # split scp file up with an approximately equal number of lines in each output file 
+  utils/split_scp.pl
+  # create a subset of train/test data with different options, consisting of some specified number of utterances 
+  utils/subset_data_dir.sh
+
+  # filter a scp file by list of utterance-ids
+  utils/filter_scp.pl
+  
+  utils/int2sym.pl   # map from integers to symbols (e.g. word-ids to transcript)
+  utils/sym2int.pl   # map from symbols to integers
+  # like ./sym2int.pl, but a bit more general in that it doesn't assume the things being mapped to are single tokens
+  utils/apply_map.pl 
+  
+  utils/utt2spk_to_spk2utt.pl   # convert an utt2spk file to a spk2utt file
+  utils/spk2utt_to_utt2spk.pl   # convert a spk2utt file to an utt2spk file
+
+  \endverbatim
+  
+  \verbatim
+  # get file 'utt2dur' which maps from utterance to the duration of the utterance in seconds
+  utils/data/get_utt2dur.sh
+  # get file 'reco2durr' which maps from recording to the duration of the recording in seconds 
+  utils/data/get_reco2dur.sh
+  
+  # copy the data directory and modify it to use the recording-id as the speaker 
+  utils/data/modify_speaker_info_to_recording.sh
+  
+  # remove excess utterances once they appear more than a specified number of times with the same transcription
+  utils/data/remove_dup_utts.sh
+  
+  # create a new subsegmented output directory from an existing data-dir with 'segments' file
+  utils/data/subsegment_data_dir.sh
+  
+  # do the standard 3-way speed perturbing of a data directory (it operates on the wav.scp).
+  utils/data/perturb_data_dir_speed_3way.sh
+  # generate the files which are used for perturbing the speed of the original data
+  utils/perturb_data_dir_speed.sh
+  
+  \endverbatim
   
   \section indeterminacy_in_feature_extraction Indeterminacy in feature extraction
   Uses may notice that there is tiny difference when they run two rounds of feature extraction including MFCC, Fbank and PLP. This is because the random signal-level ‘dithering’ used in the extraction process to prevent zeros in the filterbank energy computation. The corresponding code is 'Dither' function in file feature-window.cc. For those who want deterministic result, just set 
@@ -94,11 +232,6 @@ namespace kaldi {
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/-C_XipM18Os> FST format </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ialNoCbuB-w> arpa to fst</a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/NUW9ornQHzo> fst to carpa </a>
-
-3. <b> Feat related tools </b>
-	- list feat related tools: feat-to-len, feat-to-dim, etc.
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/HC638Dw618Y> Number of frames in an mfcc file </a>
 
 4. <b> Lattice </b>
 	- list lattice related tools with example: nbest-to-linear, linear-to-1best, etc.
@@ -138,18 +271,6 @@ namespace kaldi {
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/5nfBCim6Ptw> Getting a CTM file of the phone alignment of the training data </a>
 		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/lbo9IRSqXgk> ctm file with words, times and confidences for each n-best paths </a>
 		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/PPlvG_Vfmto> Phone level output </a>
-
-7. <b> Copy related tools (copy-feats, copy-matrix, etc ) </b>
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/0pEdzBAcdL8> how to extract pre-defined feature matrix from ark file </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/V177P1oZfjI> How can I see feature extraction results in .ark files? </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/uEQ-zIK954U> Extract a matrix from a table of matrices </a>
-
-8. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/klthQqkmDCM> Usage of Common tools (in data preparation?)</a> </b>
-	- utt2spk_to_spk2utt.pl, spk2utt_to_utt2spk.pl, etc.
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/px-rPmGIK7A> Creation of reco2dur </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/_btaMRJpRrk> how to merge ali.JOB.gz </a>
 
 9. <b> Resume training </b>
 	- related questions:
@@ -380,12 +501,6 @@ namespace kaldi {
 63. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/rAfu9TKJJYI> Robustness of ASR </a> </b>
 
 64. <b> <a href=https://groups.google.com/forum/#!forum/kaldi-help> Python3 vs. Python2.7 in Kaldi scripts </a> </b>
-
-65. <b> Kaldi for Android </b>
-	- related questions:
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8QNPRd9hiwc> kaldi compilation on android </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/VRCwuEUvrZg> Is kaldi compatible with Android ??? </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/TkNKrc6HPUs> Android application using kaldi speech recognition </a>
 
 67. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/s7zq30ckaEM> Adapt speaker recognition model </a> </b>
 
