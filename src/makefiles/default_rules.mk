@@ -1,6 +1,7 @@
 
 SHELL := /bin/bash
 
+
 ifeq ($(KALDI_FLAVOR), dynamic)
   ifeq ($(shell uname), Darwin)
     ifdef LIBNAME
@@ -23,6 +24,13 @@ else
     LIBFILE = $(LIBNAME).a
   endif
   XDEPENDS = $(ADDLIBS)
+endif
+
+ifeq ($(LIBFILE_EXTENSION),)
+else
+  # This will be reached if compiling in the pybind11 directory,
+  # which uses a special extension name for the library.
+  LIBFILE=$(LIBNAME)$(LIBFILE_EXTENSION)
 endif
 
 all: $(LIBFILE) $(BINFILES)
