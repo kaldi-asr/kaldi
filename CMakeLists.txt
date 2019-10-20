@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(kaldi)
 
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
+include(Utils)
+include(get_third_party)
+
 execute_process(COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py" "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(CMAKE_CXX_STANDARD 14)
@@ -8,18 +12,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
 
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
-include(Utils)
-
 set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
 option(KALDI_BUILD_TEST "" ON)
 
-# TODO: fix this
 if(WIN32)
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../openfst-winport/src/include)
-    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../openfst-winport/build_output/x64/Debug/lib)
-    link_libraries(libfst.lib)
-    add_compile_options(/bigobj)
+    get_third_party(openfst)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
+    add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/openfst ${CMAKE_CURRENT_BINARY_DIR}/openfst-build EXCLUDE_FROM_ALL)
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/openfst/src/include)
+    link_libraries(fst)
 else()
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/include)
     link_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/lib)
@@ -59,7 +60,7 @@ if(MSVC)
     # Added in source, but we actually should do it in build script, whatever...
     # add_definitions(-DWIN32_LEAN_AND_MEAN=1)
 
-    add_compile_options(/permissive- /FS /wd4819)
+    add_compile_options(/permissive- /FS /wd4819 /EHsc /bigobj)
 
     # some warnings related with fst
     add_compile_options(/wd4018 /wd4244 /wd4267 /wd4291 /wd4305)
