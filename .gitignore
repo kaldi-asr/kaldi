@@ -151,3 +151,4 @@ GSYMS
 /tools/python/
 
 /src/**/CMakeLists.txt
+/build
