@@ -117,6 +117,7 @@ add_definitions(-DKALDI_NO_PORTAUDIO=1)
 # add all native libraries
 add_subdirectory(src/base)
 add_subdirectory(src/matrix)
+add_subdirectory(src/cudamatrix)
 add_subdirectory(src/util)
 add_subdirectory(src/feat)
 add_subdirectory(src/tree)
@@ -140,7 +141,6 @@ add_subdirectory(src/kws)
 
 # add all cuda libraries
 if(CUDA_FOUND)
-    add_subdirectory(src/cudamatrix)
     add_subdirectory(src/cudafeat)
     add_subdirectory(src/cudadecoder)
 endif()
