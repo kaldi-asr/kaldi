@@ -9,7 +9,7 @@ set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(Utils)
 
-set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL")
+set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
 option(KALDI_BUILD_TEST "" ON)
 
 # TODO: fix this
@@ -42,6 +42,12 @@ elseif(MATHLIB STREQUAL "MKL")
     find_package(LAPACK REQUIRED)
     add_definitions(-DHAVE_MKL=1)
     include_directories($ENV{MKLROOT}/include) # TODO: maybe not use env, idk, find_package doesnt handle includes...
+    link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+elseif(MATHLIB STREQUAL "Accelerate")
+    set(BLA_VENDOR "Apple")
+    find_package(BLAS REQUIRED)
+    find_package(LAPACK REQUIRED)
+    add_definitions(-DHAVE_CLAPACK=1)
     link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 else()
     message(FATAL_ERROR "TODO: error message" "${MATHLIB}")
