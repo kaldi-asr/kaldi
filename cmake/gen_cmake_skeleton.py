@@ -72,7 +72,10 @@ def get_exe_additional_depends(t):
         "gmm-init-biphone": ["hmm"],
         "gmm-compute-likes": ["hmm"],
         "gmm-est-fmllr-raw-gpost": ["hmm", "transform"],
-        "gmm-*": ["hmm", "transform", "lat", "decoder"] # FUCK!
+        # gmm-* is a bottom case, it will add link dependencies to all other
+        # target whose names start with gmm-, it is harmless, but will increase
+        # link time. Better to avoid it at best.
+        "gmm-*": ["hmm", "transform", "lat", "decoder"],
     }
     if t in additional:
         return list(map(lambda name: dir_name_to_lib_target(name), additional[t]))
