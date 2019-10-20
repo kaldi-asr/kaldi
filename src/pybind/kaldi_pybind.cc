@@ -1,4 +1,4 @@
-// pybind/matrix-lib.cc
+// pybind/kaldi_pybind.cc
 
 // Copyright 2019   Daniel Povey
 

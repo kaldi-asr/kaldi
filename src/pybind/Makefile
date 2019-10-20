@@ -2,8 +2,6 @@
 # make "all" the target.
 all:
 
-##$ c++ -O3 -Wall -shared -std=c++11 -undefined dynamic_lookup `` example.cpp -o example`python3-config --extension-suffix`
-
 
 
 # Disable linking math libs because  not needed here.  Just for compilation speed.
@@ -25,7 +23,11 @@ PYBIND_EXTENSION=$(shell python3-config --extension-suffix)
 LIBFILE=kaldi-pybind
 LIBFILE_EXTENSION=$(PYBIND_EXTENSION)
 
-CXXFLAGS += -O3
+# pybind11 is heavily templated and generates code that is bloated before optimization.
+# -flto is link time optimization which apparently is important.
+CXXFLAGS += -O3 -flto
+LDFLAGS += -flto
+# TODO:
 
 ifeq ($(shell uname),Darwin)
   LDFLAGS += -undefined dynamic_lookup
