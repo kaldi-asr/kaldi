@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(kaldi)
 
+execute_process(COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py" "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
@@ -50,11 +52,13 @@ elseif(MATHLIB STREQUAL "Accelerate")
     add_definitions(-DHAVE_CLAPACK=1)
     link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 else()
-    message(FATAL_ERROR "TODO: error message" "${MATHLIB}")
+    message(FATAL_ERROR "${MATHLIB} is not tested and supported, you are on your own now.")
 endif()
 
 if(MSVC)
+    # Added in source, but we actually should do it in build script, whatever...
     # add_definitions(-DWIN32_LEAN_AND_MEAN=1)
+
     add_compile_options(/permissive- /FS /wd4819)
 
     # some warnings related with fst

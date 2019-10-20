@@ -1,6 +1,17 @@
 import os
 import sys
 import re
+import argparse
+
+# earily parse, will refernece args globally
+parser = argparse.ArgumentParser()
+parser.add_argument("working_dir")
+parser.add_argument("--quiet", default=False, action="store_true")
+args = parser.parse_args()
+
+def print_wrapper(*args_, **kwargs):
+    if not args.quiet:
+        print(*args_, **kwargs)
 
 def get_subdirectories(d):
     return [name for name in os.listdir(d) if os.path.isdir(os.path.join(d, name))]
@@ -108,7 +119,7 @@ class CMakeListsLibrary(object):
         with open(filename) as f:
             makefile = f.read()
             if "ADDLIBS" not in makefile:
-                print("WARNING: non-standard", filename)
+                print_wrapper("WARNING: non-standard", filename)
                 return
             libs = makefile.split("ADDLIBS")[-1].split("\n\n")[0]
             libs = re.findall("[^\s\\\\=]+", libs)
@@ -213,10 +224,12 @@ class CMakeListsFile(object):
                 code = s.gen_code()
                 f.write(code)
                 f.write("\n")
-        print("  Writed", self.path)
+        print_wrapper("  Writed", self.path)
 
 
 if __name__ == "__main__":
+    os.chdir(args.working_dir)
+    print_wrapper("Working in ", args.working_dir)
 
     subdirs = get_subdirectories(".")
     for d in subdirs:
