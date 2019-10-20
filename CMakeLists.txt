@@ -5,7 +5,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(Utils)
 include(get_third_party)
 
-execute_process(COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py" "${CMAKE_CURRENT_SOURCE_DIR}/src")
+execute_process(COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py" "${CMAKE_CURRENT_SOURCE_DIR}/src" "--quiet")
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
