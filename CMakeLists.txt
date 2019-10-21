@@ -17,7 +17,7 @@ option(KALDI_BUILD_TEST "" ON)
 option(KALDI_USE_PATCH_NUMBER "Use MAJOR.MINOR.PATCH format" OFF)
 
 if(WIN32)
-    # get_third_party(openfst)
+    get_third_party(openfst)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
     add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/openfst ${CMAKE_CURRENT_BINARY_DIR}/openfst-build EXCLUDE_FROM_ALL)
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/openfst/src/include)
