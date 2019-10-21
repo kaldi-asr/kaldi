@@ -13,7 +13,8 @@ set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
 
 
 set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
-option(KALDI_BUILD_TEST "" ON)
+option(KALDI_BUILD_EXE "If disabled, will make add_kaldi_executable a no-op" ON)
+option(KALDI_BUILD_TEST "If disabled, will make add_kaldi_test_executable a no-op" ON)
 option(KALDI_USE_PATCH_NUMBER "Use MAJOR.MINOR.PATCH format" OFF)
 
 if(WIN32)
