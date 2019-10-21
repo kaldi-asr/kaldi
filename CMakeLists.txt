@@ -14,9 +14,10 @@ set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
 
 set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
 option(KALDI_BUILD_TEST "" ON)
+option(KALDI_USE_PATCH_NUMBER "Use MAJOR.MINOR.PATCH format" OFF)
 
 if(WIN32)
-    get_third_party(openfst)
+    # get_third_party(openfst)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
     add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/openfst ${CMAKE_CURRENT_BINARY_DIR}/openfst-build EXCLUDE_FROM_ALL)
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/openfst/src/include)
@@ -109,13 +110,17 @@ if(CUDA_FOUND)
     include_directories(${CUB_INCLUDE_DIR})
 endif()
 
-# TODO: version helper
-set(KALDI_VERSION 0.0)
-add_definitions(-DKALDI_VERSION="${KALDI_VERSION}")
 add_definitions(-DKALDI_NO_PORTAUDIO=1)
 
+include(VersionHelper)
+get_version() # this will set KALDI_VERSION and KALDI_PATCH_NUMBER
+if(${KALDI_USE_PATCH_NUMBER})
+    set(KALDI_VERSION "${KALDI_VERSION}.${KALDI_PATCH_NUMBER}")
+endif()
+
 # add all native libraries
-add_subdirectory(src/base)
+add_subdirectory(src/base) # NOTE, we need to patch the target with version from outside
+set_property(TARGET kaldi-base PROPERTY COMPILE_DEFINITIONS "KALDI_VERSION=\"${KALDI_VERSION}\"")
 add_subdirectory(src/matrix)
 add_subdirectory(src/cudamatrix)
 add_subdirectory(src/util)
