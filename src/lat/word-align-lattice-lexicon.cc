@@ -116,7 +116,7 @@ class LatticeLexiconWordAligner {
     size_t Hash() const {
       VectorHasher<int32> vh;
       const int32 p1 = 11117, p2 = 90647, p3 = 3967, p4 = 3557; // primes.
-      int32 ans = 0;
+      size_t ans = 0;
       for (int32 i = 0; i < static_cast<int32>(transition_ids_.size()); i++) {
         ans *= p1;
         ans += vh(transition_ids_[i]);
