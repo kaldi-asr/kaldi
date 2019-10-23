@@ -10,7 +10,10 @@ execute_process(COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skel
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
-
+if(BUILD_SHARED_LIBS)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib")
+endif()
 
 set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
 option(KALDI_BUILD_EXE "If disabled, will make add_kaldi_executable a no-op" ON)
@@ -91,8 +94,8 @@ if(CUDA_FOUND)
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /wd4018,/wd4244,/wd4267,/wd4291,/wd4305")
     else()
     #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
+        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
     endif()
-
     set(CUDA_NVCC_FLAGS ${KALDI_CUDA_NVCC_FLAGS} ${CUDA_NVCC_FLAGS})
 
     add_definitions(-DHAVE_CUDA=1)
