@@ -34,13 +34,25 @@ PYBIND11_MODULE(kaldi_pybind, m) {
       .value("kCopyData", kCopyData, "Copy any previously existing data")
       .export_values();
 
-  py::class_<Vector<float> >(m, "FloatVector")
-      .def(py::init<const MatrixIndexT, MatrixResizeType>(),
-           py::arg("size"), py::arg("resize_type") = kSetZero)
+
+  py::class_<Vector<float> >(m, "FloatVector", pybind11::buffer_protocol())
+      .def_buffer([](const Vector<float> &v) -> pybind11::buffer_info {
+    return pybind11::buffer_info(
+        (void*)v.Data(),
+        sizeof(float),
+        pybind11::format_descriptor<float>::format(),
+        1, // num-axes
+        { v.Dim() },
+        { 4 }); // strides (in chars)
+        })
+      .def("Dim", &Vector<float>::Dim, "Return the dimension of the vector")
       .def("__repr__",
            [] (const Vector<float> &a) -> std::string {
              std::ostringstream str;  a.Write(str, false); return str.str();
-           });
+           })
+      .def(py::init<const MatrixIndexT, MatrixResizeType>(),
+           py::arg("size"), py::arg("resize_type") = kSetZero);
+
 }
 
 
