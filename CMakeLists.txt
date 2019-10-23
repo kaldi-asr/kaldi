@@ -13,21 +13,13 @@ set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
 if(BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib")
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
 option(KALDI_BUILD_EXE "If disabled, will make add_kaldi_executable a no-op" ON)
 option(KALDI_BUILD_TEST "If disabled, will make add_kaldi_test_executable a no-op" ON)
 option(KALDI_USE_PATCH_NUMBER "Use MAJOR.MINOR.PATCH format, otherwise MAJOR.MINOR" OFF)
-
-get_third_party(openfst)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
-add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/openfst ${CMAKE_CURRENT_BINARY_DIR}/openfst-build EXCLUDE_FROM_ALL)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/openfst/src/include)
-link_libraries(fst)
-# NOTE: This is simply a hack, older version cmake do not support install target in subdirectory
-# We call the install script directly for the openfst lib.
-install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/openfst-build/src/lib/cmake_install.cmake)
 
 link_libraries(${CMAKE_DL_LIBS})
 
@@ -85,6 +77,10 @@ if(CUDA_FOUND)
     if(MSVC)
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /permissive-,/wd4819")
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /wd4018,/wd4244,/wd4267,/wd4291,/wd4305")
+        if(BUILD_SHARED_LIBS)
+            list(APPEND CUDA_NVCC_FLAGS_RELEASE -Xcompiler /MD)
+            list(APPEND CUDA_NVCC_FLAGS_DEBUG -Xcompiler /MDd)
+        endif()
     else()
     #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
@@ -118,6 +114,15 @@ get_version() # this will set KALDI_VERSION and KALDI_PATCH_NUMBER
 if(${KALDI_USE_PATCH_NUMBER})
     set(KALDI_VERSION "${KALDI_VERSION}.${KALDI_PATCH_NUMBER}")
 endif()
+
+get_third_party(openfst)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
+add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/openfst ${CMAKE_CURRENT_BINARY_DIR}/openfst-build EXCLUDE_FROM_ALL)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/openfst/src/include)
+link_libraries(fst)
+# NOTE: This is simply a hack, older version cmake do not support install target in subdirectory
+# We call the install script directly for the openfst lib.
+install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/openfst-build/src/lib/cmake_install.cmake)
 
 # add all native libraries
 add_subdirectory(src/base) # NOTE, we need to patch the target with version from outside
