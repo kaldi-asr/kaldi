@@ -4,6 +4,8 @@ This is the official Kaldi INSTALL. Look also at INSTALL.md for the git mirror i
 (1)
 go to tools/  and follow INSTALL instructions there.
 
-(2) 
+(2)
 go to src/ and follow INSTALL instructions there.
 
+Alternatively, new cmake based build system is support with faster build speed.
+Note, it may not be well tested and not all features are supported currently.
