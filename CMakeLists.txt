@@ -123,7 +123,7 @@ if(${KALDI_USE_PATCH_NUMBER})
 endif()
 
 get_third_party(openfst)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
+# file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
 add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/openfst ${CMAKE_CURRENT_BINARY_DIR}/openfst-build EXCLUDE_FROM_ALL)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/openfst/src/include)
 link_libraries(fst)
@@ -189,4 +189,5 @@ write_basic_package_version_file(
 install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
     DESTINATION lib/cmake/kaldi
 )
+install(EXPORT fst-exports DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/openfst)
 install(EXPORT kaldi-exports DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)

@@ -1,0 +1,42 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index acc4bf1..aef01cb 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -14,5 +14,5 @@ endif(HAVE_BIN)
+
+ add_subdirectory(extensions)
+
+-enable_testing()
+-add_subdirectory(test)
++# enable_testing()
++# add_subdirectory(test)
+diff --git a/src/lib/CMakeLists.txt b/src/lib/CMakeLists.txt
+index c004aee..6412e54 100644
+--- a/src/lib/CMakeLists.txt
++++ b/src/lib/CMakeLists.txt
+@@ -14,13 +14,18 @@ add_library(fst
+   weight.cc
+   ${HEADER_FILES}
+ )
+-set_target_properties(fst PROPERTIES
+-  SOVERSION "${SOVERSION}"
+-)
+-
++# set_target_properties(fst PROPERTIES
++#   SOVERSION "${SOVERSION}"
++# )
+
++install(DIRECTORY "${PROJECT_SOURCE_DIR}/src/include/fst"
++  DESTINATION include/fst
++  PATTERN "src/include/fst/test" EXCLUDE
++)
+
+ install(TARGETS fst
+-  LIBRARY DESTINATION lib
+-  ARCHIVE DESTINATION lib
+-  RUNTIME DESTINATION lib)
++  EXPORT fst-exports
++  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
++)
