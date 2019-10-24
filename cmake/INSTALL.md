@@ -1,22 +1,22 @@
 # Install Instruction
 
-Execute the follow commands in repo root.
+Execute following commands in the repo root.
 
 ## Build with Old Style Make Generator
 ```bash
 mkdir -p build && cd build
-cmake ..  -DCMAKE_INSTALL_PREFIX=../dist # configure
+cmake  -DCMAKE_INSTALL_PREFIX=../dist .. # configure
 cmake --build . --target install -- -j6  # build && install
 ```
 
 ## Build with Ninja Generator
 ``` bash
 mkdir -p build && cd build
-cmake .. -GNinja -DCMAKE_INSTALL_PREFIX=../dist
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=../dist ..
 cmake --build . --target install
 ```
 
-After build, you can find all installed files in <your_repo_root>/dist
+After built, you can find all installed files in <your_repo_root>/dist
 
 # For Advance User
 
@@ -29,3 +29,6 @@ Follow options are currently available:
 | KALDI_BUILD_TEST       | ON,OFF                  | ON |
 | KALDI_USE_PATCH_NUMBER | ON,OFF                  | OFF |
 | BUILD_SHARED_LIBS      | ON,OFF                  | OFF |
+
+NOTE: Currently, BUILD_SHARED_LIBS does not work on Windows due to some symbols
+      (variables) are not properly exported.

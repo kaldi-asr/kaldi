@@ -7,5 +7,6 @@ go to tools/  and follow INSTALL instructions there.
 (2)
 go to src/ and follow INSTALL instructions there.
 
-Alternatively, new cmake based build system is support with faster build speed.
-Note, it may not be well tested and not all features are supported currently.
+Alternatively, a new cmake based build system is supported with faster build speed.
+Note, it may not be well tested and some features are missing currently.
+Go to cmake/ and follow INSTALL.md instructions there.
