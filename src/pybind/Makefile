@@ -33,11 +33,19 @@ ifeq ($(shell uname),Darwin)
   LDFLAGS += -undefined dynamic_lookup
 endif
 
-OBJFILES = kaldi_pybind.o
+CCFILES = kaldi_pybind.cc
 
 LIBNAME = kaldi_pybind
 
-# Note: the following will actually get turned into dynamic library names.
-ADDLIBS = ../lib/kaldi-util.so ../lib/kaldi-matrix.so ../lib/kaldi-base.so
+ADDLIBS = ../lib/libkaldi-util.so ../lib/libkaldi-matrix.so ../lib/libkaldi-base.so
 
-include ../makefiles/default_rules.mk
+LIBFILE=$(LIBNAME)$(LIBFILE_EXTENSION)
+
+all: $(LIBFILE)
+
+
+$(LIBFILE): $(ADDLIBS)
+	$(CXX) $(CXXFLAGS) -shared -o $@ $(CCFILES) -Wl,--no-whole-archive -Wl,-rpath=$(CURDIR)/../lib $(LDFLAGS) $(ADDLIBS) $(LDLIBS)
+
+clean:
+	-rm -f *.so
