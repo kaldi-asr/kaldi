@@ -13,8 +13,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
 if(BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib")
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    if(APPLE)
+        set(CMAKE_INSTALL_RPATH "@loader_path")
+    else()
+        set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib")
+    endif()
 endif()
 
 set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
