@@ -37,7 +37,10 @@ CCFILES = kaldi_pybind.cc
 
 LIBNAME = kaldi_pybind
 
-ADDLIBS = ../lib/libkaldi-util.so ../lib/libkaldi-matrix.so ../lib/libkaldi-base.so
+
+ADDLIBS = ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+
+EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).so)
 
 LIBFILE=$(LIBNAME)$(LIBFILE_EXTENSION)
 
@@ -45,7 +48,8 @@ all: $(LIBFILE)
 
 
 $(LIBFILE): $(ADDLIBS)
-	$(CXX) $(CXXFLAGS) -shared -o $@ $(CCFILES) -Wl,--no-whole-archive -Wl,-rpath=$(CURDIR)/../lib $(LDFLAGS) $(ADDLIBS) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) -shared -o $@ $(CCFILES) -Wl,--no-whole-archive -Wl,-rpath=$(CURDIR)/../lib $(LDFLAGS) $(LDLIBS) $(EXTRA_LDLIBS)
+	python3 -c 'import kaldi_pybind'  # this line is a test.
 
 clean:
 	-rm -f *.so
