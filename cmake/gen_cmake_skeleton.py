@@ -178,16 +178,16 @@ class CMakeListsLibrary(object):
             ret.append("endif()")
 
         ret.append("""
-install(TARGETS %s
-    EXPORT %s-targets
+install(TARGETS {tgt}
+    EXPORT kaldi-exports
     INCLUDES DESTINATION include/kaldi
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    ARCHIVE DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
+    LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
+    RUNTIME DESTINATION ${{CMAKE_INSTALL_BINDIR}}
 )
 
-install(FILES ${PUBLIC_HEADERS} DESTINATION include/kaldi/%s)
-""" % (self.target_name,self.target_name,self.dir_name))
+install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir})
+""".format(tgt=self.target_name, dir=self.dir_name))
 
         return "\n".join(ret)
 

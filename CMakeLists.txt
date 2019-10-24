@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(kaldi)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
+include(GNUInstallDirs)
 include(Utils)
 include(get_third_party)
 
@@ -101,7 +102,7 @@ if(CUDA_FOUND)
 
     find_package(NvToolExt REQUIRED)
     include_directories(${NvToolExt_INCLUDE_DIR})
-    link_libraries(NvToolExt)
+    link_libraries(${NvToolExt_LIBRARIES})
 
     find_package(CUB REQUIRED)
     include_directories(${CUB_INCLUDE_DIR})
@@ -182,3 +183,4 @@ write_basic_package_version_file(
 install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
     DESTINATION lib/cmake/kaldi
 )
+install(EXPORT kaldi-exports DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)
