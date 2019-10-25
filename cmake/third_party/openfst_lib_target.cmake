@@ -7,7 +7,6 @@ set(fst_include_dir ${OPENFST_ROOT_DIR}/src/include)
 
 include_directories(${fst_include_dir})
 file(GLOB fst_sources "${fst_source_dir}/*.cc")
-file(GLOB fst_headers "${fst_include_dir}/fst/*.h")
 
 add_library(fst ${fst_sources})
 target_include_directories(fst PUBLIC
@@ -17,15 +16,16 @@ target_include_directories(fst PUBLIC
 
 install(TARGETS fst
     EXPORT kaldi-targets
-    INCLUDES DESTINATION include/kaldi
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(FILES ${fst_headers} DESTINATION include/openfst/fst)
+install(DIRECTORY ${fst_include_dir}/fst
+    DESTINATION include/openfst
+    PATTERN "test/*.h" EXCLUDE
+)
 
 unset(fst_source_dir)
 unset(fst_include_dir)
 unset(fst_sources)
-unset(fst_headers)
