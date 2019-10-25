@@ -12,7 +12,7 @@ file(GLOB fst_headers "${fst_include_dir}/fst/*.h")
 add_library(fst ${fst_sources})
 target_include_directories(fst PUBLIC
      $<BUILD_INTERFACE:${fst_include_dir}>
-     $<INSTALL_INTERFACE:include>
+     $<INSTALL_INTERFACE:include/openfst>
 )
 
 install(TARGETS fst
@@ -23,7 +23,7 @@ install(TARGETS fst
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(FILES ${fst_headers} DESTINATION include/fst)
+install(FILES ${fst_headers} DESTINATION include/openfst/fst)
 
 unset(fst_source_dir)
 unset(fst_include_dir)
