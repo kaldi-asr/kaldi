@@ -6,7 +6,12 @@ include(GNUInstallDirs)
 include(Utils)
 include(third_party/get_third_party)
 
-execute_process(COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py" "${CMAKE_CURRENT_SOURCE_DIR}/src" "--quiet")
+message(STATUS "Running gen_cmake_skeleton.py")
+execute_process(COMMAND python
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "--quiet"
+)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -152,6 +157,8 @@ add_subdirectory(src/ivector)
 add_subdirectory(src/online)
 add_subdirectory(src/online2)
 add_subdirectory(src/kws)
+
+add_subdirectory(src/itf)
 
 # add all cuda libraries
 if(CUDA_FOUND)

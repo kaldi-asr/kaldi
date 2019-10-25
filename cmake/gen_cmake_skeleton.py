@@ -95,6 +95,46 @@ def disable_for_win32(t):
     ]
     return t in disabled
 
+class CMakeListsHeaderLibrary(object):
+    def __init__(self, dir_name):
+        self.dir_name = dir_name
+        self.target_name = dir_name_to_lib_target(self.dir_name)
+        self.header_list = []
+
+    def add_header(self, filename):
+        self.header_list.append(filename)
+
+    def add_source(self, filename):
+        pass
+
+    def add_cuda_source(self, filename):
+        pass
+
+    def add_test_source(self, filename):
+        pass
+
+    def gen_code(self):
+        ret = []
+        if len(self.header_list) > 0:
+            ret.append("set(PUBLIC_HEADERS")
+            for f in self.header_list:
+                ret.append("    " + f)
+            ret.append(")\n")
+
+        ret.append("add_library(" + self.target_name + " INTERFACE)")
+        ret.append("target_include_directories(" + self.target_name + " INTERFACE ")
+        ret.append("     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>")
+        ret.append("     $<INSTALL_INTERFACE:include/kaldi>")
+        ret.append(")\n")
+
+        ret.append("""
+install(TARGETS {tgt} EXPORT kaldi-targets)
+
+install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir})
+""".format(tgt=self.target_name, dir=self.dir_name))
+
+        return "\n".join(ret)
+
 class CMakeListsLibrary(object):
 
     def __init__(self, dir_name):
@@ -180,7 +220,6 @@ class CMakeListsLibrary(object):
         ret.append("""
 install(TARGETS {tgt}
     EXPORT kaldi-targets
-    INCLUDES DESTINATION include/kaldi
     ARCHIVE DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
     LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
     RUNTIME DESTINATION ${{CMAKE_INSTALL_BINDIR}}
@@ -246,11 +285,13 @@ if __name__ == "__main__":
                     cmakelists.add_section(exe)
         else:
             dir_name = os.path.basename(d)
-            lib = CMakeListsLibrary(dir_name)
+            lib = None
             makefile = os.path.join(d, "Makefile")
             if not os.path.exists(makefile):
-                continue
-            lib.load_dependency_from_makefile(makefile)
+                lib = CMakeListsHeaderLibrary(dir_name)
+            else:
+                lib = CMakeListsLibrary(dir_name)
+                lib.load_dependency_from_makefile(makefile)
             cmakelists.add_section(lib)
             for f in sorted(get_files(d)):
                 filename = os.path.basename(f)
