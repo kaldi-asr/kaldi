@@ -1,6 +1,7 @@
 // pybind/kaldi_pybind.cc
 
 // Copyright 2019   Daniel Povey
+//           2019   Dongji Gao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -34,6 +35,10 @@ PYBIND11_MODULE(kaldi_pybind, m) {
       .value("kCopyData", kCopyData, "Copy any previously existing data")
       .export_values();
 
+  py::enum_<MatrixStrideType>(m, "MatrixStrideType", py::arithmetic(), "Matrix stride policies")
+      .value("kDefaultStride", kDefaultStride, "Set to a multiple of 16 in bytes")
+      .value("kStrideEqualNumCols", kStrideEqualNumCols, "Set to the number of columns")
+      .export_values();
 
   py::class_<Vector<float> >(m, "FloatVector", pybind11::buffer_protocol())
       .def_buffer([](const Vector<float> &v) -> pybind11::buffer_info {
@@ -53,6 +58,27 @@ PYBIND11_MODULE(kaldi_pybind, m) {
       .def(py::init<const MatrixIndexT, MatrixResizeType>(),
            py::arg("size"), py::arg("resize_type") = kSetZero);
 
+  py::class_<Matrix<float> >(m, "FloatMatrix", pybind11::buffer_protocol())
+      .def_buffer([](const Matrix<float> &m) -> pybind11::buffer_info {
+    return pybind11::buffer_info(
+        (void*)m.Data(), // pointer to buffer
+        sizeof(float),   // size of one scalar 
+        pybind11::format_descriptor<float>::format(),
+        2,               // num-axes
+        { m.NumRows(), m.NumCols() },    // buffer dimensions
+        { sizeof(float) * m.Stride(), sizeof(float) });  // stride for each index (in chars)
+        })
+      .def("NumRows", &Matrix<float>::NumRows, "Return number of rows")
+      .def("NumCols", &Matrix<float>::NumCols, "Return number of columns")
+      .def("Stride", &Matrix<float>::Stride, "Return stride")
+      .def("__repr__",
+           [] (const Matrix<float> &b) -> std::string {
+             std::ostringstream str; b.Write(str, false); return str.str();
+           })
+      .def(py::init<const MatrixIndexT, const MatrixIndexT,
+          MatrixResizeType, MatrixStrideType>(),
+          py::arg("row"), py::arg("col"), py::arg("resize_type") = kSetZero,
+          py::arg("stride_type") = kDefaultStride);
 }
 
 
