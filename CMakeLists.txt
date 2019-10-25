@@ -4,7 +4,7 @@ project(kaldi)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(GNUInstallDirs)
 include(Utils)
-include(get_third_party)
+include(third_party/get_third_party)
 
 execute_process(COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py" "${CMAKE_CURRENT_SOURCE_DIR}/src" "--quiet")
 
@@ -123,13 +123,9 @@ if(${KALDI_USE_PATCH_NUMBER})
 endif()
 
 get_third_party(openfst)
-# file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/openfst/src/test/CMakeLists.txt" "")
-add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/openfst ${CMAKE_CURRENT_BINARY_DIR}/openfst-build EXCLUDE_FROM_ALL)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/openfst/src/include)
+set(OPENFST_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/openfst)
+include(third_party/openfst_lib_target)
 link_libraries(fst)
-# NOTE: This is simply a hack, older version cmake do not support install target in subdirectory
-# We call the install script directly for the openfst lib.
-install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/openfst-build/src/lib/cmake_install.cmake)
 
 # add all native libraries
 add_subdirectory(src/base) # NOTE, we need to patch the target with version from outside
@@ -189,5 +185,4 @@ write_basic_package_version_file(
 install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
     DESTINATION lib/cmake/kaldi
 )
-install(EXPORT fst-exports DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/openfst)
 install(EXPORT kaldi-exports DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)
