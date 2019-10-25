@@ -179,7 +179,7 @@ class CMakeListsLibrary(object):
 
         ret.append("""
 install(TARGETS {tgt}
-    EXPORT kaldi-exports
+    EXPORT kaldi-targets
     INCLUDES DESTINATION include/kaldi
     ARCHIVE DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
     LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
