@@ -5,31 +5,6 @@
 # This is based on tdnn_1d_sp, but adding cnn as the front-end.
 # The cnn-tdnn-f (tdnn_cnn_1a_sp) outperforms the tdnn-f (tdnn_1d_sp).
 
-# bash local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1d_sp exp/chain_cleaned/tdnn_cnn_1a_sp/
-# System                         tdnn_1d_sp  tdnn_cnn_1a_sp
-# WER on dev(fglarge)               3.29          3.34
-# WER on dev(tglarge)               3.44          3.39
-# WER on dev(tgmed)                 4.22          4.29
-# WER on dev(tgsmall)               4.72          4.77
-# WER on dev_other(fglarge)         8.71          8.62
-# WER on dev_other(tglarge)         9.05          9.00
-# WER on dev_other(tgmed)          11.09         10.93
-# WER on dev_other(tgsmall)        12.13         12.02
-# WER on test(fglarge)              3.80          3.69
-# WER on test(tglarge)              3.89          3.80
-# WER on test(tgmed)                4.72          4.64
-# WER on test(tgsmall)              5.19          5.16
-# WER on test_other(fglarge)        8.76          8.71
-# WER on test_other(tglarge)        9.19          9.11
-# WER on test_other(tgmed)         11.22         11.00
-# WER on test_other(tgsmall)       12.24         12.16
-# Final train prob               -0.0378       -0.0420
-# Final valid prob               -0.0374       -0.0400
-# Final train prob (xent)        -0.6099       -0.6881
-# Final valid prob (xent)        -0.6353       -0.7180
-# Num-parameters                22623456      18100736
-
-
 set -e
 
 # configs for 'chain'
