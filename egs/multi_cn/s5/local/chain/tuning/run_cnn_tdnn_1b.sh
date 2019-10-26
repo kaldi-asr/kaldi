@@ -13,7 +13,6 @@ set -euo pipefail
 stage=0
 decode_nj=10
 train_set=train_all_cleaned
-test_sets=""
 gmm=tri4a_cleaned
 nnet3_affix=_cleaned
 
@@ -37,6 +36,7 @@ remove_egs=true
 reporting_email=
 
 # decode options
+test_sets=""
 test_online_decoding=true  # if true, it will run the last decoding stage.
 
 
