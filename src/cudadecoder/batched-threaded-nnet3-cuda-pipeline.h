@@ -219,11 +219,23 @@ private:
 
    TaskData(const WaveData &wave_data_in)
        : wave_samples(NULL), sample_frequency(0) {
-     raw_data.Resize(
-         wave_data_in.Data().NumRows() * wave_data_in.Data().NumCols(),
-         kUndefined);
-     memcpy(raw_data.Data(), wave_data_in.Data().Data(),
-            raw_data.Dim() * sizeof(BaseFloat));
+     int rows = wave_data_in.Data().NumRows();
+     int cols = wave_data_in.Data().NumCols();
+     int stride = wave_data_in.Data().Stride();
+
+     raw_data.Resize(rows * cols, kUndefined);
+
+     if (stride == cols) {
+       // contigious so use one large memory copy
+       memcpy(raw_data.Data(), wave_data_in.Data().Data(),
+              rows * cols * sizeof(BaseFloat));
+     } else {
+       // data is not contigious so we need to copy one row at a time
+       for (int i = 0; i < rows; i++) {
+         memcpy(raw_data.Data() + i * cols, wave_data_in.Data().RowData(i),
+                cols * sizeof(BaseFloat));
+       }
+     }
      wave_samples =
          std::make_shared<SubVector<BaseFloat>>(raw_data, 0, raw_data.Dim());
      sample_frequency = wave_data_in.SampFreq();

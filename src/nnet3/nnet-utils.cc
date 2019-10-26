@@ -300,6 +300,15 @@ void SetNnetAsGradient(Nnet *nnet) {
   }
 }
 
+void SetRequireDirectInput(bool b, Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (dynamic_cast<StatisticsPoolingComponent*>(comp) != NULL)
+      dynamic_cast<StatisticsPoolingComponent*>(comp)->SetRequireDirectInput(b);
+  }
+}
+
+
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   if (scale == 1.0) return;
   else {
@@ -724,7 +733,7 @@ class SvdApplier {
               << " components to FixedAffineComponent.";
   }
 
-  // This function finds the minimum index of 
+  // This function finds the minimum index of
   // the Descending order sorted [input_vector],
   // over a range of indices from [lower] to [upper] index,
   // for which the sum of elements upto the found min. index is greater
@@ -743,7 +752,7 @@ class SvdApplier {
     }
     return (i+1);
   }
- 
+
 // Here we perform SVD based refactorig of an input Affine component.
 // After applying SVD , we sort the Singularity values in descending order,
 // and take the subset of values which contribute to energy_threshold times
@@ -777,7 +786,7 @@ class SvdApplier {
     if (energy_threshold_ > 0) {
       BaseFloat min_singular_sum = energy_threshold_ * s2_sum_orig;
       bottleneck_dim_ = GetReducedDimension(s2, 0, s2.Dim()-1, min_singular_sum);
-    } 
+    }
     SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
     BaseFloat s2_sum_reduced = this_part.Sum();
     BaseFloat shrinkage_ratio =
