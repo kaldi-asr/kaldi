@@ -10,13 +10,13 @@
 
 # local/chain/compare_cer.sh --online exp/chain_cleaned/tdnn_cnn_1a_pitch_sp exp/chain_nopitch/tdnn_cnn_1a_sp
 # System                      tdnn_cnn_1a_pitch_sp tdnn_cnn_1a_sp
-# WER on aidatatang(tg)            4.99      4.98
+# CER on aidatatang(tg)            4.99      4.98
 #             [online:]          4.99      4.98
-# WER on aishell(tg)               6.01      5.90
+# CER on aishell(tg)               6.01      5.90
 #             [online:]          6.01      5.90
-# WER on magicdata(tg)             4.21      4.24
+# CER on magicdata(tg)             4.21      4.24
 #             [online:]          4.23      4.25
-# WER on thchs30(tg)              13.02     12.96
+# CER on thchs30(tg)              13.02     12.96
 #             [online:]         13.00     12.94
 # Final train prob              -0.0436   -0.0438
 # Final valid prob              -0.0553   -0.0544

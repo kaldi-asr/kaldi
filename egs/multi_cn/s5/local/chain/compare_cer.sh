@@ -60,10 +60,10 @@ for x in $*; do   printf "% 10s" " $(basename $x)";   done
 echo
 
 strings=(
-  "# WER on aidatatang(tg)      "
-  "# WER on aishell(tg)         "
-  "# WER on magicdata(tg)       "
-  "# WER on thchs30(tg)         ")
+  "# CER on aidatatang(tg)      "
+  "# CER on aishell(tg)         "
+  "# CER on magicdata(tg)       "
+  "# CER on thchs30(tg)         ")
 
 for n in 0 1 2 3; do
    echo -n "${strings[$n]}"
