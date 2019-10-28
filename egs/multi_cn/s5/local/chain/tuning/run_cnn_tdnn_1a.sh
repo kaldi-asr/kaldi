@@ -1,9 +1,28 @@
 #!/bin/bash
 
 # This script is copied from librispeech/s5
+# In a previous version, pitch is used with hires mfcc, however,
+# removing pitch does not cause regression, and helps online
+# decoding, so pitch is removed in this recipe.
 
 # This is based on tdnn_1d_sp, but adding cnn as the front-end.
 # The cnn-tdnn-f (tdnn_cnn_1a_sp) outperforms the tdnn-f (tdnn_1d_sp).
+
+# local/chain/compare_cer.sh --online exp/chain_cleaned/tdnn_cnn_1a_pitch_sp exp/chain_nopitch/tdnn_cnn_1a_sp
+# System                      tdnn_cnn_1a_pitch_sp tdnn_cnn_1a_sp
+# WER on aidatatang(tg)            4.99      4.98
+#             [online:]          4.99      4.98
+# WER on aishell(tg)               6.01      5.90
+#             [online:]          6.01      5.90
+# WER on magicdata(tg)             4.21      4.24
+#             [online:]          4.23      4.25
+# WER on thchs30(tg)              13.02     12.96
+#             [online:]         13.00     12.94
+# Final train prob              -0.0436   -0.0438
+# Final valid prob              -0.0553   -0.0544
+# Final train prob (xent)       -0.8083   -0.8157
+# Final valid prob (xent)       -0.8766   -0.8730
+# Num-parameters               19141072  19141072
 
 set -e
 
