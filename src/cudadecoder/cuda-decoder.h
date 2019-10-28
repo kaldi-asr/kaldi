@@ -826,7 +826,7 @@ class CudaDecoder {
   // Multiple token in the same frame can go to the same FST state.
   // GetSameFSTStateTokenList
   // returns that list
-  void GetSameFSTStateTokenList(ChannelId ichannel, InfoToken token,
+  void GetSameFSTStateTokenList(ChannelId ichannel, InfoToken &token,
                                 InfoToken **tok_beg,
                                 float2 **arc_extra_cost_beg, int32 *nprevs);
 
