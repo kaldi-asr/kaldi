@@ -741,6 +741,14 @@ void BatchedThreadedNnet3CudaPipeline::PostDecodeProcessing(
     futures[i].get();
   }
 
+  for (int i = channels.size(); i < tasks.size(); i++) {
+    // Clear working data (raw input, posteriors, etc.)
+    // This should be done on the control thread in order
+    // to ensure the thread that allocated the memory
+    // also deallocates that memory.
+    tasks[i]->task_data.reset();
+  }
+
   tasks.resize(channels.size());
   decodables.resize(channels.size());
   completed_channels.resize(0);
@@ -768,9 +776,6 @@ void BatchedThreadedNnet3CudaPipeline::CompleteTask(CudaDecoder *cuda_decoder,
 
   if (task->callback)  // if callable
     task->callback(task->dlat);
-
-  // Clear working data (raw input, posteriors, etc.)
-  task->task_data.reset();
 
   task->finished = true;
 
