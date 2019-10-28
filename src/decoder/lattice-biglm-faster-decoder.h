@@ -88,6 +88,7 @@ class LatticeBiglmFasterDecoder {
     active_toks_[0].toks = start_tok;
     toks_.Insert(start_pair, start_tok);
     num_toks_++;
+    cost_offsets_.clear();
     ProcessNonemitting(0);
     
     // We use 1-based indexing for frames in this decoder (if you view it in
@@ -176,8 +177,13 @@ class LatticeBiglmFasterDecoder {
               tok_map.find(l->next_tok);
           StateId nextstate = iter->second;
           KALDI_ASSERT(iter != tok_map.end());
+          BaseFloat cost_offset = 0.0;
+          if (l->ilabel != 0) {
+            KALDI_ASSERT(f >= 0 && f < cost_offsets_.size());
+            cost_offset = cost_offsets_[f];
+          }
           Arc arc(l->ilabel, l->olabel,
-                  Weight(l->graph_cost, l->acoustic_cost),
+                  Weight(l->graph_cost, l->acoustic_cost - cost_offset),
                   nextstate);
           ofst->AddArc(cur_state, arc);
         }
@@ -272,6 +278,10 @@ class LatticeBiglmFasterDecoder {
     ForwardLink *links; // Head of singly linked list of ForwardLinks
     
     Token *next; // Next in list of tokens for this frame.
+
+    // Temporaily for debug
+    StateId base_state;
+    StateId lm_state;
     
     inline Token(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLink *links,
                  Token *next): tot_cost(tot_cost), extra_cost(extra_cost),
@@ -446,6 +456,8 @@ class LatticeBiglmFasterDecoder {
       StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);
       Token *tok = e->val;
+      tok->base_state = state;
+      tok->lm_state = lm_state;
       BaseFloat final_cost = fst_.Final(state).Value() +
           lm_diff_fst_->Final(lm_state).Value();
       tok_to_final_cost[tok] = final_cost;
@@ -529,6 +541,28 @@ class LatticeBiglmFasterDecoder {
         }
       }
     }
+
+    for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {    
+      if (tok->extra_cost != infinity) {
+        std::cout << "(" << tok->base_state << "," << tok->lm_state
+          << ")'s alpha-beta is " << tok->tot_cost << " + "
+          << tok->extra_cost - tok->tot_cost << " = " << tok->extra_cost
+          << std::endl;
+        ForwardLink *link = NULL;
+        for (link = tok->links; link != NULL; link = link->next) {
+          std::cout << "  ->" << link->ilabel << ":" << link->olabel << "--> ("
+            << link->next_tok->base_state << ","
+            << link->next_tok->lm_state << ")'s alpha-beta is "
+            << link->next_tok->tot_cost << " + "
+            << link->next_tok->extra_cost - link->next_tok->tot_cost
+            << " = " << link->next_tok->extra_cost
+            << " ["
+            << link->graph_cost << " + " << link->acoustic_cost
+            << "]" << std::endl;
+        }
+      }
+    }
+
   }
   
   // Prune away any tokens on this frame that have no forward links.
@@ -698,11 +732,13 @@ class LatticeBiglmFasterDecoder {
 
     // First process the best token to get a hopefully
     // reasonably tight bound on the next cutoff.
+    BaseFloat cost_offset = 0.0;
     if (best_elem) {
       PairId state_pair = best_elem->key;
       StateId state = PairToState(state_pair), // state in "fst"
           lm_state = PairToLmState(state_pair);
       Token *tok = best_elem->val;
+      cost_offset = - tok->tot_cost;
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
            !aiter.Done();
            aiter.Next()) {
@@ -712,12 +748,15 @@ class LatticeBiglmFasterDecoder {
           // We don't need the return value (the new LM state).
           arc.weight = Times(arc.weight,
                              Weight(-decodable->LogLikelihood(frame-1, arc.ilabel)));
-          BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
+          BaseFloat new_weight = arc.weight.Value() + tok->tot_cost + cost_offset;
           if (new_weight + adaptive_beam < next_cutoff)
             next_cutoff = new_weight + adaptive_beam;
         }
       }
     }
+
+    cost_offsets_.resize(frame, 0.0);
+    cost_offsets_[frame - 1] = cost_offset;
     
     // the tokens are now owned here, in last_toks, and the hash is empty.
     // 'owned' is a complex thing here; the point is we need to call DeleteElem
@@ -736,7 +775,7 @@ class LatticeBiglmFasterDecoder {
           if (arc_ref.ilabel != 0) {  // propagate..
             Arc arc(arc_ref);
             StateId next_lm_state = PropagateLm(lm_state, &arc);
-            BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel),
+            BaseFloat ac_cost = cost_offset - decodable->LogLikelihood(frame-1, arc.ilabel),
                 graph_cost = arc.weight.Value(),
                 cur_cost = tok->tot_cost,
                 tot_cost = cur_cost + ac_cost + graph_cost;
@@ -848,6 +887,7 @@ class LatticeBiglmFasterDecoder {
   // on the last frame.
   std::map<Token*, BaseFloat> final_costs_; // A cache of final-costs
   // of tokens on the last frame-- it's just convenient to store it this way.
+  std::vector<BaseFloat> cost_offsets_;
   
   // It might seem unclear why we call DeleteElems(toks_.Clear()).
   // There are two separate cleanup tasks we need to do at when we start a new file.

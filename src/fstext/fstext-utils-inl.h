@@ -28,6 +28,7 @@
 #include "fstext/factor.h"
 #include "fstext/pre-determinize.h"
 #include "fstext/determinize-star.h"
+#include "fstext/lattice-weight.h"
 
 #include <sstream>
 #include <algorithm>
@@ -174,6 +175,7 @@ void MapInputSymbols(const vector<I> &symbol_mapping,
   Map(fst, mapper);
 }
 
+
 template<class Arc, class I>
 bool GetLinearSymbolSequence(const Fst<Arc> &fst,
                              vector<I> *isymbols_out,
@@ -214,7 +216,65 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
     }
   }
 }
+/*
+template<>
+inline bool GetLinearSymbolSequence(
+    const Fst<ArcTpl<LatticeWeightTpl<kaldi::BaseFloat> > > &fst,
+    vector<int32> *isymbols_out,
+    vector<int32> *osymbols_out,
+    typename ArcTpl<LatticeWeightTpl<kaldi::BaseFloat> >::Weight *tot_weight_out);
 
+template<>
+inline bool GetLinearSymbolSequence(
+    const Fst<ArcTpl<LatticeWeightTpl<kaldi::BaseFloat> > > &fst,
+    vector<int32> *isymbols_out,
+    vector<int32> *osymbols_out,
+    typename ArcTpl<LatticeWeightTpl<kaldi::BaseFloat> >::Weight *tot_weight_out) {
+  typedef ArcTpl<LatticeWeightTpl<kaldi::BaseFloat> > LatticeArc;
+  typedef typename LatticeArc::StateId StateId;
+  typedef typename LatticeArc::Weight Weight;
+
+  Weight tot_weight = Weight::One();
+  vector<int32> ilabel_seq;
+  vector<int32> olabel_seq;
+
+  StateId cur_state = fst.Start();
+  if (cur_state == kNoStateId) {  // empty sequence.
+    if (isymbols_out != NULL) isymbols_out->clear();
+    if (osymbols_out != NULL) osymbols_out->clear();
+    if (tot_weight_out != NULL) *tot_weight_out = Weight::Zero();
+    return true;
+  }
+  kaldi::BaseFloat total = 0.0;
+  while (1) {
+    Weight w = fst.Final(cur_state);
+    if (w != Weight::Zero()) {  // is final..
+      tot_weight = Times(w, tot_weight);
+      if (fst.NumArcs(cur_state) != 0) return false;
+      if (isymbols_out != NULL) *isymbols_out = ilabel_seq;
+      if (osymbols_out != NULL) *osymbols_out = olabel_seq;
+      if (tot_weight_out != NULL) *tot_weight_out = tot_weight;
+      KALDI_VLOG(2) << "Final Weights [" << w.Value1() << " + "
+                    << w.Value2() << "]";
+      return true;
+    } else {
+      if (fst.NumArcs(cur_state) != 1) return false;
+
+      ArcIterator<Fst<LatticeArc> > iter(fst, cur_state);  // get the only arc.
+      const LatticeArc &arc = iter.Value();
+      tot_weight = Times(arc.weight, tot_weight);
+      if (arc.ilabel != 0) ilabel_seq.push_back(arc.ilabel);
+      if (arc.olabel != 0) olabel_seq.push_back(arc.olabel);
+      total += (arc.weight.Value1() + arc.weight.Value2());
+      KALDI_VLOG(2) << "(" << cur_state << ") " << arc.ilabel << " : "
+                    << arc.olabel << " [" << arc.weight.Value1()
+                    << " + " << arc.weight.Value2() << "] -> ("
+                    << arc.nextstate << ")" << ". Current total is " << total;
+      cur_state = arc.nextstate;
+    }
+  }
+}
+*/
 
 // see fstext-utils.h for comment.
 template<class Arc>

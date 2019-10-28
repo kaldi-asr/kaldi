@@ -393,16 +393,16 @@ class LatticeBiglmFasterDecoderCombineTpl {
   using ForwardLinkT = biglmdecodercombine::ForwardLink<Token>;
   using PairId = uint64;  // (StateId in fst) + (StateId in lm_diff_fst) << 32
 
-  using StateIdToTokenMap = typename std::unordered_map<StateId, Token*>;
-  //using StateIdToTokenMap = typename std::unordered_map<StateId, Token*,
-  //      std::hash<StateId>, std::equal_to<StateId>,
-  //      fst::PoolAllocator<std::pair<const StateId, Token*> > >;
+  //using StateIdToTokenMap = typename std::unordered_map<StateId, Token*>;
+  using StateIdToTokenMap = typename std::unordered_map<StateId, Token*,
+        std::hash<StateId>, std::equal_to<StateId>,
+        fst::PoolAllocator<std::pair<const StateId, Token*> > >;
   using IterType = typename StateIdToTokenMap::const_iterator;
 
-  using PairIdToTokenMap = typename std::unordered_map<PairId, Token*>;
-  //using PairIdToTokenMap = typename std::unordered_map<PairId, Token*,
-  //      std::hash<PairId>, std::equal_to<PairId>,
-  //      fst::PoolAllocator<std::pair<const PairId, Token*> > >;
+  //using PairIdToTokenMap = typename std::unordered_map<PairId, Token*>;
+  using PairIdToTokenMap = typename std::unordered_map<PairId, Token*,
+        std::hash<PairId>, std::equal_to<PairId>,
+        fst::PoolAllocator<std::pair<const PairId, Token*> > >;
 
 
 

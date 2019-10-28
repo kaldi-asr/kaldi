@@ -34,6 +34,7 @@
 #include "util/text-utils.h" // for SplitStringToVector
 #include "fst/script/print-impl.h"
 
+
 namespace fst {
 
 /// Returns the highest numbered output symbol id of the FST (or zero
@@ -134,7 +135,6 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
                              vector<I> *isymbols_out,
                              vector<I> *osymbols_out,
                              typename Arc::Weight *tot_weight_out);
-
 
 /// This function converts an FST with a special structure, which is
 /// output by the OpenFst functions ShortestPath and RandGen, and converts

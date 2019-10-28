@@ -281,6 +281,21 @@ bool LatticeBiglmFasterDecoderCombineTpl<FST, Token>::GetRawLattice(
   for (int32 f = 0; f <= num_frames; f++) {
     for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next) {
       StateId cur_state = tok_map[tok];
+      //Check
+      BaseFloat min = std::numeric_limits<BaseFloat>::infinity();
+      for (Token *tmp_tok = active_toks_[f].toks; tmp_tok != NULL;
+          tmp_tok = tmp_tok->next) {
+        if (tmp_tok->tot_cost + tmp_tok->backward_cost < min)
+          min = tmp_tok->tot_cost + tmp_tok->backward_cost;
+      }
+      /*
+      if (tok->tot_cost + tok->backward_cost == min) {
+        std::cout << "Frame " << f << " (" << tok->base_state << ","
+          << tok->lm_state << ") is [" << tok->tot_cost << " + "
+          << tok->backward_cost << "] = " << tok->tot_cost + tok->backward_cost
+          << std::endl; 
+      }
+      */
       for (ForwardLinkT *l = tok->links;
            l != NULL;
            l = l->next) {
@@ -498,7 +513,11 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinks(
             if (link_cost <  - 0.01)
               KALDI_WARN << "(" << frame_plus_one << "," << tok->base_state
                 << "," << tok->lm_state << ") has negative alpha-beta cost "
-                << link_cost;
+                << tok->tot_cost << " + " << link_backward_cost << " = "
+                << link_cost << " [" << next_tok->tot_cost << ","
+                << next_tok->backward_cost << "," << link->acoustic_cost
+                << "," << link->graph_cost << "] (" << next_tok->base_state << ","
+                << next_tok->lm_state << ")";
             link_backward_cost = -tok->tot_cost;
           }
           if (link_backward_cost < tok_backward_cost)
@@ -507,7 +526,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinks(
           link = link->next;
         }
       }  // for all outgoing links
-      if (fabs(tok_backward_cost - tok->backward_cost) > delta)
+      if (fabs(tok_backward_cost - tok->backward_cost) > 0)
         changed = true;   // difference new minus old is bigger than delta
       tok->backward_cost = tok_backward_cost;
       // will be +infinity or <= lattice_beam_.
@@ -620,6 +639,31 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::PruneForwardLinksFinal() {
       tok->backward_cost = tok_backward_cost; // will be +infinity or <= lattice_beam_.
     }
   } // while changed
+  /*
+  // Check
+  for (Token *tok = active_toks_[frame_plus_one].toks; tok != NULL;
+      tok = tok->next) {
+    if (tok->backward_cost != std::numeric_limits<BaseFloat>::infinity()) {
+      std::cout << "(" << tok->base_state << "," << tok->lm_state
+        << ")'s alpha-beta is " << tok->tot_cost << " + "
+        << tok->backward_cost << " = " << tok->tot_cost + tok->backward_cost
+        << std::endl;
+      ForwardLinkT *link = NULL;
+      for (link = tok->links; link != NULL; link = link->next) {
+        std::cout << "  ->" << link->ilabel << ":" << link->olabel << "--> ("
+          << link->next_tok->base_state << ","
+          << link->next_tok->lm_state << ")'s alpha-beta is "
+          << link->next_tok->tot_cost << " + "
+          << link->next_tok->backward_cost
+          << " = " << link->next_tok->tot_cost + link->next_tok->backward_cost
+          << " ["
+          << link->graph_cost << " + " << link->acoustic_cost
+          << "]" << std::endl;
+      }
+    }
+  }
+  // Check end
+  */
 }
 
 
@@ -783,6 +827,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeFinalCosts(
   KALDI_ASSERT(!decoding_finalized_);
   if (final_costs != NULL)
     final_costs->clear();
+
   BaseFloat infinity = std::numeric_limits<BaseFloat>::infinity();
   BaseFloat best_cost = infinity,
       best_cost_with_final = infinity;
@@ -790,8 +835,10 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeFinalCosts(
   // The final tokens are recorded in active_toks_[last_frame]
   for (Token *tok = active_toks_[active_toks_.size() - 1].toks; tok != NULL;
        tok = tok->next) {
-    StateId state = tok->base_state;
-    BaseFloat final_cost = fst_->Final(state).Value();
+    StateId state = tok->base_state,
+            lm_state = tok->lm_state;
+    BaseFloat final_cost = fst_->Final(state).Value() + 
+                           lm_diff_fst_->Final(lm_state).Value();
     BaseFloat cost = tok->tot_cost,
         cost_with_final = cost + final_cost;
     best_cost = std::min(cost, best_cost);
@@ -799,6 +846,7 @@ void LatticeBiglmFasterDecoderCombineTpl<FST, Token>::ComputeFinalCosts(
     if (final_costs != NULL && final_cost != infinity)
       (*final_costs)[tok] = final_cost;
   }
+
   if (final_relative_cost != NULL) {
     if (best_cost == infinity && best_cost_with_final == infinity) {
       // Likely this will only happen if there are no tokens surviving.
