@@ -6,7 +6,7 @@ Execute following commands in the repo root.
 ```bash
 mkdir -p build && cd build
 cmake  -DCMAKE_INSTALL_PREFIX=../dist .. # configure
-cmake --build . --target install -- -j6  # build && install
+cmake --build . --target install -- -j8  # build && install, substitude -j8 with /m:8 if you are on Windows
 ```
 
 ## Build with Ninja Generator
