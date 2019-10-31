@@ -92,8 +92,8 @@ if [ $stage -le 9 ]; then
 
  # combine the non-hires features for alignments/lattices
  rm -rf data/${latgen_train_set}_min${min_seg_len}
-  utt_prefix="THISISUNIQUESTRING_"
-  spk_prefix="THISISUNIQUESTRING_"
+  utt_prefix="THISISUNIQUESTRING-"
+  spk_prefix="THISISUNIQUESTRING-"
   utils/copy_data_dir.sh --spk-prefix "$spk_prefix" --utt-prefix "$utt_prefix" \
     data/train data/train_temp_for_lats
   utils/data/combine_short_segments.sh \
