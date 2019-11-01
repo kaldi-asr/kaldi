@@ -18,12 +18,43 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 namespace py = pybind11;
 #include "matrix/kaldi-matrix.h"
+#include "util/table-types.h"
+#include "util/kaldi-table-inl.h"
 
 using namespace kaldi;
+
+template<class Holder>
+void sequential_matrix_reader(py::module &m, std::string suffix) {
+    std::string name = "SequentialBaseFloatMatrixReader" + suffix;
+    py::class_<SequentialTableReader<Holder > >(m, name.c_str())
+        .def(py::init<>()) 
+        .def(py::init<const std::string &>()) 
+        .def("Open", &SequentialTableReader<Holder>::Open) 
+        .def("Done", &SequentialTableReader<Holder>::Done) 
+        .def("Key", &SequentialTableReader<Holder>::Key)   
+        .def("FreeCurrent", &SequentialTableReader<Holder>::FreeCurrent) 
+        .def("Value", &SequentialTableReader<Holder>::Value) 
+        .def("Next", &SequentialTableReader<Holder>::Next) 
+        .def("IsOpen", &SequentialTableReader<Holder>::IsOpen) 
+        .def("Close", &SequentialTableReader<Holder>::Close);  
+}
+
+template<class Holder>
+void matrix_writer(py::module &m, std::string suffix) {
+  std::string name = "BaseFloatMatrixWriter" + suffix;
+  py::class_<TableWriter<Holder > >(m, name.c_str())
+      .def(py::init<const std::string &>())
+      .def("IsOpen", &TableWriter<Holder>::IsOpen)
+      .def("Open", &TableWriter<Holder>::Open)    
+      .def("Write", &TableWriter<Holder>::Write)  
+      .def("Flush", &TableWriter<Holder>::Flush)  
+      .def("Close", &TableWriter<Holder>::Close); 
+}
 
 PYBIND11_MODULE(kaldi_pybind, m) {
   m.doc() = "pybind11 binding of some things from kaldi's src/matrix directory. "
@@ -81,9 +112,10 @@ PYBIND11_MODULE(kaldi_pybind, m) {
           py::arg("stride_type") = kDefaultStride);
 }
 
+  sequential_matrix_reader<KaldiObjectHolder<Matrix<float>>>(m, "_Matrix");
+  sequential_matrix_reader<KaldiObjectHolder<Vector<float>>>(m, "_Vector");
 
-
-
-
-
+  matrix_writer<KaldiObjectHolder<Matrix<float>>>(m, "_Matrix");
+  matrix_writer<KaldiObjectHolder<Vector<float>>>(m, "_Vector");
+}
 
