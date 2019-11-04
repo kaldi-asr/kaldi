@@ -17,7 +17,7 @@ set -e
 
 # configs for 'chain'
 affix=
-stage=0
+stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -162,8 +162,7 @@ if [ $stage -le 13 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$cuda_cmd" \
-    --egs.cmd "$decode_cmd" \
+    --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \

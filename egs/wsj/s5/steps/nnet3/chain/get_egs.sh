@@ -469,7 +469,7 @@ if [ $stage -le 5 ]; then
     else
       output_archive="ark:$dir/cegs.JOB.ark"
     fi
-    $cmd --max-jobs-run $max_shuffle_jobs_run  \
+    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G \
       JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-normalize-egs --normalization-fst-scale=$normalization_fst_scale \
         $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
@@ -500,7 +500,7 @@ if [ $stage -le 5 ]; then
         ln -sf cegs.$archive_index.ark $dir/cegs.$x.$y.ark || exit 1
       done
     done
-    $cmd --max-jobs-run $max_shuffle_jobs_run  \
+    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G \
       JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-normalize-egs --normalization-fst-scale=$normalization_fst_scale \
         $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
