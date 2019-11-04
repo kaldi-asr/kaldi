@@ -38,6 +38,7 @@ common_egs_dir=exp/chain/tdnn_8k_chaina_v2_sp/egs
 xent_regularize=0.1
 srand=0
 graph_dir=
+config=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
 
@@ -47,6 +48,10 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+if [ ! -z $config ]; then
+    . $config
+fi
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -306,11 +311,16 @@ if [ $stage -le 20 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  if [ -z $graph_dir -o ! -d $graph_dir ]; then
+    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+    graph_dir=$dir/graph_sw1_tg
+  fi
+  if [ -z $graph_dir ]; then
+    graph_dir=$dir/graph_sw1_tg
+  fi
 fi
 
 
-graph_dir=$dir/graph_sw1_tg
 iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
