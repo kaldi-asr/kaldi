@@ -39,7 +39,6 @@ remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
 graph_dir=
-config=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
 
@@ -49,10 +48,6 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
-if [ ! -z $config ]; then
-    . $config
-fi
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
