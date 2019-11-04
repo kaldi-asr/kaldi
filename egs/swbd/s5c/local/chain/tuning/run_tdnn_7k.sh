@@ -38,7 +38,6 @@ frames_per_eg=150
 remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
-graph_dir=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
 
