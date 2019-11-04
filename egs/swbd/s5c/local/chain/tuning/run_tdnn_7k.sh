@@ -200,6 +200,7 @@ if [ $stage -le 14 ]; then
 fi
 
 
+graph_dir=$dir/graph_sw1_tg
 iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
