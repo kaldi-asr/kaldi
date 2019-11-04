@@ -74,7 +74,7 @@ dir=$2
 
 set -e -u  # die on failed command or undefined variable
 
-steps/chain/validate_randomized_egs.sh $egs_dir
+steps/chain2/validate_randomized_egs.sh $egs_dir
 
 for f in $dir/init/info.txt; do
   if [ ! -f $f ]; then
@@ -90,7 +90,7 @@ num_scp_files=$(awk '/^num_scp_files/ {print $2}' <$egs_dir/info.txt)
 
 if [ $stage -le -2 ]; then
     echo "$0: Generating training schedule"
-    steps/chain/internal/get_train_schedule.py \
+    steps/chain2/internal/get_train_schedule.py \
       --frame-subsampling-factor=$frame_subsampling_factor \
       --num-jobs-initial=$num_jobs_initial \
       --num-jobs-final=$num_jobs_final \
@@ -212,7 +212,7 @@ while [ $x -lt $num_iters ]; do
       rm $models_to_average
   else
       lang=$(echo $langs | awk '{print $1}')
-      model_index=`steps/nnet3/chain/internal/get_best_model.sh --output output-${lang} $dir/log/train.$x.*.log`
+      model_index=`steps/nnet3/chain2/internal/get_best_model.sh --output output-${lang} $dir/log/train.$x.*.log`
       cp ${model_out_prefix}.$model_index.raw $dir/$next_x.raw
       rm ${model_out_prefix}.*.raw
   fi
