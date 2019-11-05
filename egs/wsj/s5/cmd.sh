@@ -15,7 +15,7 @@ export decode_cmd="queue.pl --mem 2G"
 # the use of cuda_cmd is deprecated, used only in 'nnet1',
 export cuda_cmd="queue.pl --gpu 1"
 
-if [[ "$(hostname -f)" == "*.fit.vutbr.cz" ]]; then
+if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
   queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
   export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
   export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"

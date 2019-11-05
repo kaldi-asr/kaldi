@@ -84,13 +84,13 @@ class LatticeFasterOnlineDecoderTpl:
     // is one less than you might reasonably expect, e.g. it's -1 for
     // the nonemitting transitions before the first frame.
     BestPathIterator(void *t, int32 f): tok(t), frame(f) { }
-    bool Done() { return tok == NULL; }
+    bool Done() const { return tok == NULL; }
   };
 
 
   /// Outputs an FST corresponding to the single best path through the lattice.
   /// This is quite efficient because it doesn't get the entire raw lattice and find
-  /// the best path through it; insterad, it uses the BestPathEnd and BestPathIterator
+  /// the best path through it; instead, it uses the BestPathEnd and BestPathIterator
   /// so it basically traces it back through the lattice.
   /// Returns true if result is nonempty (using the return status is deprecated,
   /// it will become void).  If "use_final_probs" is true AND we reached the

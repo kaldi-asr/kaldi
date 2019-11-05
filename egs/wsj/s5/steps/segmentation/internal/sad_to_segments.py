@@ -174,9 +174,8 @@ class Segmentation(object):
                     self.segments.append(
                         [float(i - prev_length) * frame_shift,
                          float(i) * frame_shift, prev_label])
-
+                    self.stats.initial_duration += (prev_length * frame_shift)
                 prev_label = process_label(text_label)
-                self.stats.initial_duration += (prev_length * frame_shift)
                 prev_length = 0
             elif prev_label is None:
                 prev_label = process_label(text_label)
@@ -259,7 +258,7 @@ class Segmentation(object):
         for segment in self.segments[1:]:
             assert segment[2] == 2, segment
             if segment[0] == merged_segments[-1][1] and \
-                    segment[1] - merged_segments[-1][1] <= max_dur:
+                    segment[1] - merged_segments[-1][0] <= max_dur:
                 # The segment starts at the same time the last segment ends,
                 # and the merged segment is shorter than 'max_dur'.
                 # Extend the previous segment.

@@ -10,22 +10,28 @@ nj=4
 cmd=run.pl
 plp_config=conf/plp.conf
 compress=true
-write_utt2num_frames=false  # if true writes utt2num_frames
+write_utt2num_frames=true  # If true writes utt2num_frames.
+write_utt2dur=true
 # End configuration section.
 
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $@"  # Print the command line for logging.
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# -lt 1 ] || [ $# -gt 3 ]; then
-   echo "Usage: $0 [options] <data-dir> [<log-dir> [<plp-dir>] ]";
-   echo "e.g.: $0 data/train exp/make_plp/train mfcc"
-   echo "Note: <log-dir> defaults to <data-dir>/log, and <plp-dir> defaults to <data-dir>/data"
-   echo "Options: "
-   echo "  --plp-config <config-file>                      # config passed to compute-plp-feats "
-   echo "  --nj <nj>                                        # number of parallel jobs"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  cat >&2 <<EOF
+Usage: $0 [options] <data-dir> [<log-dir> [<plp-dir>] ]
+ e.g.: $0 data/train
+Note: <log-dir> defaults to <data-dir>/log, and
+      <plp-dir> defaults to <data-dir>/data
+Options:
+  --plp-config <config-file>           # config passed to compute-plp-feats.
+  --nj <nj>                            # number of parallel jobs.
+  --cmd <run.pl|queue.pl <queue opts>> # how to run jobs.
+  --write-utt2num-frames <true|false>  # If true, write utt2num_frames file.
+  --write-utt2dur <true|false>         # If true, write utt2dur file.
+EOF
    exit 1;
 fi
 
@@ -62,7 +68,7 @@ required="$scp $plp_config"
 
 for f in $required; do
   if [ ! -f $f ]; then
-    echo "make_plp.sh: no such file $f"
+    echo "$0: no such file $f"
     exit 1;
   fi
 done
@@ -74,6 +80,8 @@ if [ -f $data/spk2warp ]; then
 elif [ -f $data/utt2warp ]; then
   echo "$0 [info]: using VTLN warp factors from $data/utt2warp"
   vtln_opts="--vtln-map=ark:$data/utt2warp"
+else
+  vtln_opts=
 fi
 
 for n in $(seq $nj); do
@@ -88,9 +96,15 @@ else
   write_num_frames_opt=
 fi
 
+if $write_utt2dur; then
+  write_utt2dur_opt="--write-utt2dur=ark,t:$logdir/utt2dur.JOB"
+else
+  write_utt2dur_opt=
+fi
+
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
-  split_segments=""
+  split_segments=
   for n in $(seq $nj); do
     split_segments="$split_segments $logdir/segments.$n"
   done
@@ -100,14 +114,15 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_plp_${name}.JOB.log \
     extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
-    compute-plp-feats $vtln_opts --verbose=2 --config=$plp_config ark:- ark:- \| \
+    compute-plp-feats $vtln_opts $write_utt2dur_opt --verbose=2 \
+      --config=$plp_config ark:- ark:- \| \
     copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
      || exit 1;
 
 else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
-  split_scps=""
+  split_scps=
   for n in $(seq $nj); do
     split_scps="$split_scps $logdir/wav_${name}.$n.scp"
   done
@@ -115,7 +130,8 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
 
   $cmd JOB=1:$nj $logdir/make_plp_${name}.JOB.log \
-    compute-plp-feats  $vtln_opts --verbose=2 --config=$plp_config scp,p:$logdir/wav_${name}.JOB.scp ark:- \| \
+    compute-plp-feats $vtln_opts $write_utt2dur_opt --verbose=2 \
+      --config=$plp_config scp,p:$logdir/wav_${name}.JOB.scp ark:- \| \
     copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
       || exit 1;
@@ -124,34 +140,48 @@ fi
 
 
 if [ -f $logdir/.error.$name ]; then
-  echo "Error producing plp features for $name:"
+  echo "$0: Error producing PLP features for $name:"
   tail $logdir/make_plp_${name}.1.log
   exit 1;
 fi
 
 # concatenate the .scp files together.
 for n in $(seq $nj); do
-  cat $plpdir/raw_plp_$name.$n.scp || exit 1;
+  cat $plpdir/raw_plp_$name.$n.scp || exit 1
 done > $data/feats.scp
 
 if $write_utt2num_frames; then
   for n in $(seq $nj); do
-    cat $logdir/utt2num_frames.$n || exit 1;
+    cat $logdir/utt2num_frames.$n || exit 1
   done > $data/utt2num_frames || exit 1
-  rm $logdir/utt2num_frames.*
 fi
 
-rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
+if $write_utt2dur; then
+  for n in $(seq $nj); do
+    cat $logdir/utt2dur.$n || exit 1
+  done > $data/utt2dur || exit 1
+fi
 
-nf=`cat $data/feats.scp | wc -l`
-nu=`cat $data/utt2spk | wc -l`
+# Store frame_shift and plp_config along with features.
+frame_shift=$(perl -ne 'if (/^--frame-shift=(\d+)/) {
+                          printf "%.3f", 0.001 * $1; exit; }' $plp_config)
+echo ${frame_shift:-'0.01'} > $data/frame_shift
+mkdir -p $data/conf && cp $plp_config $data/conf/plp.conf || exit 1
+
+rm $logdir/wav_${name}.*.scp  $logdir/segments.* \
+   $logdir/utt2num_frames.* $logdir/utt2dur.* 2>/dev/null
+
+nf=$(wc -l < $data/feats.scp)
+nu=$(wc -l < $data/utt2spk)
 if [ $nf -ne $nu ]; then
-  echo "It seems not all of the feature files were successfully ($nf != $nu);"
-  echo "consider using utils/fix_data_dir.sh $data"
-fi
-if [ $nf -lt $[$nu - ($nu/20)] ]; then
-  echo "Less than 95% the features were successfully generated.  Probably a serious error."
-  exit 1;
+  echo "$0: It seems not all of the feature files were successfully procesed" \
+       "($nf != $nu); consider using utils/fix_data_dir.sh $data"
 fi
 
-echo "Succeeded creating PLP features for $name"
+if (( nf < nu - nu/20 )); then
+  echo "$0: Less than 95% the features were successfully generated."\
+       "Probably a serious error."
+  exit 1
+fi
+
+echo "$0: Succeeded creating PLP features for $name"

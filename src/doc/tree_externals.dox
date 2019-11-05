@@ -201,7 +201,7 @@ stress-dependent phones; in this case each "real" phone would correspond
 to a set of integer phone ids.  In that case we share the roots for all
 versions of a particular underlying phone.  Below is an example of a roots file
 for Wall Street Journal, from the egs/wsj/s5 scripts (this is in text, not integer form;
-it would have to be converted to integer form before being read by Kalid):
+it would have to be converted to integer form before being read by Kaldi):
 \verbatim
 not-shared not-split SIL SIL_B SIL_E SIL_I SIL_S SPN SPN_B SPN_E SPN_I SPN_S NSN NSN_B NSN_E NSN_I NSN_S
 shared split AA_B AA_E AA_I AA_S AA0_B AA0_E AA0_I AA0_S AA1_B AA1_E AA1_I AA1_S AA2_B AA2_E AA2_I AA2_S
@@ -306,7 +306,7 @@ SplitEventMap and TableEventMap both have a "key" that they query, which in this
 would be 0, 1 or 2 corresponding to left, central or right context, or -1 corresponding
 to the identity of the "pdf-class".  Normally the value of the pdf-class
 is the same as the index of the HMM state, i.e. 0, 1 or 2.  Try not to get confused by
-this: the key is -1, but the value is 0, 1 or 2, and this has no connnection to the 0, 1 or 2
+this: the key is -1, but the value is 0, 1 or 2, and this has no connection to the 0, 1 or 2
 which are the keys of the phones in the context-window.
 The SplitEventMap has a set of values that will trigger the "yes" branch of the tree.
 Below is a kind of quasi-BNF notation that explains the tree-file format.
@@ -344,7 +344,7 @@ has value 0 (i.e. the leftmost HMM-state).  Assuming the answer is "yes", the ne
 is "SE 2 [ 220 221 222 223 ]", which is asking whether the phone to the right is one of various
 forms of the phone "M" (a rather unintuitive question to ask, since we're
 in the leftmost HMM-state); if yes, we ask "SE 0 [ 104 105 106 107... 286 287 ]" which is
-a question about the phone to the right; if yes, then the pdf-id is 5 ("CE 5") and if
+a question about the phone to the left; if yes, then the pdf-id is 5 ("CE 5") and if
 no, 696 ("CE 696").
 \verbatim
 s3# copy-tree --binary=false exp/tri1/tree - 2>/dev/null | head -100

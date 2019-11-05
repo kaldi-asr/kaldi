@@ -4,6 +4,9 @@
 
 # Begin configuration section.
 # End configuration section
+
+GIT=${GIT:-git}
+
 set -e -o pipefail
 
 
@@ -19,13 +22,12 @@ fi
 
 
 if [ ! -d ./irstlm ] ; then
-  svn=`which git`
-  if [ $? != 0 ]  ; then
+  if ! $GIT --version >&/dev/null ; then
     errcho "****() You need to have git installed"
     exit 1
   fi
   (
-    git clone https://github.com/irstlm-team/irstlm.git irstlm
+    $GIT clone https://github.com/irstlm-team/irstlm.git irstlm
   ) || {
     errcho "****() Error getting the IRSTLM sources. The server hosting it"
     errcho "****() might be down."

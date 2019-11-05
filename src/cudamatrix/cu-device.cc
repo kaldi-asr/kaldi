@@ -110,9 +110,34 @@ void CuDevice::Initialize() {
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
+
+#if CUDA_VERSION >= 9010
+    CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
+    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_, 
+            cudaStreamPerThread));
+#endif
+    
+#if CUDA_VERSION >= 9000 
+    if (device_options_.use_tensor_cores) {
+      // Enable tensor cores in CUBLAS
+      // Note if the device does not support tensor cores this will fall back to normal math mode
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
+            CUBLAS_TENSOR_OP_MATH));
+    }
+#endif
+
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
+
+    // Initialize the generator,
+    CURAND_SAFE_CALL(curandCreateGenerator(
+          &curand_handle_, CURAND_RNG_PSEUDO_DEFAULT));
+    // To get same random sequence, call srand() before the constructor is invoked,
+    CURAND_SAFE_CALL(curandSetGeneratorOrdering(
+          curand_handle_, CURAND_ORDERING_PSEUDO_DEFAULT));
+    CURAND_SAFE_CALL(curandSetStream(curand_handle_, cudaStreamPerThread));
+    SeedGpu();
   }
 }
 
@@ -245,9 +270,34 @@ void CuDevice::FinalizeActiveGpu() {
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
+    
+#if CUDA_VERSION >= 9010 
+    CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
+    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
+            cudaStreamPerThread));
+#endif
+
+#if CUDA_VERSION >= 9000 
+    if (device_options_.use_tensor_cores) {
+      // Enable tensor cores in CUBLAS
+      // Note if the device does not support tensor cores this will fall back to normal math mode
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
+            CUBLAS_TENSOR_OP_MATH));
+    }
+#endif
+
+    
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
+    
+    // Initialize the generator,
+    CURAND_SAFE_CALL(curandCreateGenerator(
+          &curand_handle_, CURAND_RNG_PSEUDO_DEFAULT));
+    // To get same random sequence, call srand() before the constructor is invoked,
+    CURAND_SAFE_CALL(curandSetGeneratorOrdering(
+          curand_handle_, CURAND_ORDERING_PSEUDO_DEFAULT));
+    SeedGpu();
 
     // Notify the user which GPU is being userd.
     char name[128];
@@ -417,7 +467,7 @@ void CuDevice::AccuProfile(const char *function_name,
     // per-thread default stream.  Since we compile with
     // -DCUDA_API_PER_THREAD_DEFAULT_STREAM, this equates to a per-thread
     // stream.
-    cudaStreamSynchronize(0);
+    CU_SAFE_CALL(cudaStreamSynchronize(0));
     double elapsed = timer.Elapsed();
     if (profile_map_.find(key) == profile_map_.end())
       profile_map_[key] = elapsed;
@@ -511,7 +561,8 @@ CuDevice::CuDevice():
     initialized_(false),
     device_id_copy_(-1),
     cublas_handle_(NULL),
-    cusparse_handle_(NULL) {
+    cusparse_handle_(NULL),
+    cusolverdn_handle_(NULL) {
 }
 
 CuDevice::~CuDevice() {
@@ -519,12 +570,22 @@ CuDevice::~CuDevice() {
     CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle_));
   if (cusparse_handle_)
     CUSPARSE_SAFE_CALL(cusparseDestroy(cusparse_handle_));
+  if (curand_handle_) {
+    CURAND_SAFE_CALL(curandDestroyGenerator(curand_handle_));
+  }
+#if CUDA_VERSION >= 9010
+  if (cusolverdn_handle_) {
+    CUSOLVER_SAFE_CALL(cusolverDnDestroy(cusolverdn_handle_));
+  }
+#endif
 }
 
 
 // Each thread has its own copy of the CuDevice object.
 // Note: this was declared "static".
 thread_local CuDevice CuDevice::this_thread_device_;
+  
+CuDevice::CuDeviceOptions CuDevice::device_options_;
 
 // define and initialize the static members of the CuDevice object.
 int32 CuDevice::device_id_ = -1;

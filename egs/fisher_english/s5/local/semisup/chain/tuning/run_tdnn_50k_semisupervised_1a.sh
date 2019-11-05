@@ -228,11 +228,11 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 #   steps/nnet3/chain/build_tree_multiple_sources.sh \
 #     --use-fmllr false --context-opts "--context-width=2 --central-position=1" \
 #     --frame-subsampling-factor $frame_subsampling_factor \
-#     7000 $lang \
+#     7000 $unsup_decode_lang \
 #     data/${supervised_set_perturbed} \
 #     ${sup_tree_dir} \
 #     data/${unsupervised_set_perturbed} \
-#     $chaindir/best_path_${unsupervised_set_perturbed} \
+#     ${sup_chain_dir}/best_path_${unsupervised_set_perturbed}_big \
 #     $treedir || exit 1
 # fi
 #
@@ -250,7 +250,7 @@ if [ $stage -le 11 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $sup_tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig

@@ -530,7 +530,7 @@ void DiagGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
   loglikes->Resize(gconsts_.Dim(), kUndefined);
   loglikes->CopyFromVec(gconsts_);
   if (data.Dim() != Dim()) {
-    KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
+    KALDI_ERR << "DiagGmm::LogLikelihoods, dimension "
               << "mismatch " << data.Dim() << " vs. "<< Dim();
   }
   Vector<BaseFloat> data_sq(data);
@@ -549,7 +549,7 @@ void DiagGmm::LogLikelihoods(const MatrixBase<BaseFloat> &data,
   loglikes->Resize(data.NumRows(), gconsts_.Dim(), kUndefined);
   loglikes->CopyRowsFromVec(gconsts_);
   if (data.NumCols() != Dim()) {
-    KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
+    KALDI_ERR << "DiagGmm::LogLikelihoods, dimension "
               << "mismatch " << data.NumCols() << " vs. "<< Dim();
   }
   Matrix<BaseFloat> data_sq(data);

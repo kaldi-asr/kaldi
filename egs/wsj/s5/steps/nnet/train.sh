@@ -22,6 +22,7 @@ nnet_proto=         # (optional) use this NN prototype for initialization,
 
 # feature processing,
 splice=5            # (default) splice features both-ways along time axis,
+online_cmvn_opts=   # (optional) adds 'apply-cmvn-online' to input feature pipeline, see opts,
 cmvn_opts=          # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
 delta_opts=         # (optional) adds 'add-deltas' to input feature pipeline, see opts,
 ivector=            # (optional) adds 'append-vector-to-feats', the option is rx-filename for the 2nd stream,
@@ -34,7 +35,6 @@ splice_after_transf=5 # (feat_type=transf) splice after the linear transform,
 
 feature_transform_proto= # (optional) use this prototype for 'feature_transform',
 feature_transform=  # (optional) directly use this 'feature_transform',
-pytel_transform=    # (BUT) use external python transform,
 
 # labels,
 labels=            # (optional) specify non-default training targets,
@@ -209,12 +209,11 @@ cp $data_cv/feats.scp $dir/cv.scp_non_local
 
 ###### OPTIONALLY IMPORT FEATURE SETTINGS (from pre-training) ######
 ivector_dim= # no ivectors,
-if [ ! -z $feature_transform ]; then
+if [ -n "$feature_transform" ]; then
   D=$(dirname $feature_transform)
   echo "# importing feature settings from dir '$D'"
-  [ -e $D/norm_vars ] && cmvn_opts="--norm-means=true --norm-vars=$(cat $D/norm_vars)" # Bwd-compatibility,
+  [ -e $D/online_cmvn_opts ] && online_cmvn_opts=$(cat $D/online_cmvn_opts)
   [ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
-  [ -e $D/delta_order ] && delta_opts="--delta-order=$(cat $D/delta_order)" # Bwd-compatibility,
   [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
   [ -e $D/ivector_dim ] && ivector_dim=$(cat $D/ivector_dim)
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
@@ -227,7 +226,14 @@ feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 
 # optionally add per-speaker CMVN,
-if [ ! -z "$cmvn_opts" ]; then
+[ -n "$online_cmvn_opts" -a -n "$cmvn_opts" ] && echo "Error: use \$online_cmvn_opts or \$cmvn_opts, not both!" && exit 1
+if [ -n "$online_cmvn_opts" ]; then
+  echo "# + 'apply-cmvn-online' with '$online_cmvn_opts' is used,"
+  global_cmvn_stats=$dir/global_cmvn_stats.mat
+  matrix-sum --binary=false scp:$data/cmvn.scp $global_cmvn_stats
+  feats_tr="$feats_tr apply-cmvn-online $online_cmvn_opts $global_cmvn_stats ark:- ark:- |"
+  feats_cv="$feats_cv apply-cmvn-online $online_cmvn_opts $global_cmvn_stats ark:- ark:- |"
+elif [ -n "$cmvn_opts" ]; then
   echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
   [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
   [ ! -r $data_cv/cmvn.scp ] && echo "Missing $data_cv/cmvn.scp" && exit 1;
@@ -245,19 +251,10 @@ if [ ! -z "$delta_opts" ]; then
 fi
 
 # keep track of the config,
-[ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts
-[ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
+[ -n "$online_cmvn_opts" ] && echo "$online_cmvn_opts" >$dir/online_cmvn_opts
+[ -n "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts
+[ -n "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
 #
-
-# optionally append python feature transform,
-if [ ! -z "$pytel_transform" ]; then
-  cp $pytel_transform $dir/pytel_transform.py
-  { echo; echo "### Comes from here: '$pytel_transform' ###"; } >> $dir/pytel_transform.py
-  pytel_transform=$dir/pytel_transform.py
-  feats_tr="$feats_tr /bin/env python $pytel_transform |"
-  feats_cv="$feats_cv /bin/env python $pytel_transform |"
-  echo "# + 'pytel-transform' from '$pytel_transform'"
-fi
 
 # temoprary pipeline with first 10k,
 feats_tr_10k="${feats_tr/train.scp/train.scp.10k}"
@@ -273,13 +270,13 @@ echo "# feature dim : $feat_dim (input of 'feature_transform')"
 # So it has to be done by a single process (we are using exclusive mode).
 # This also reduces the CPU-GPU uploads/downloads to minimum.
 
-if [ ! -z "$feature_transform" ]; then
+if [ -n "$feature_transform" ]; then
   echo "# importing 'feature_transform' from '$feature_transform'"
   tmp=$dir/imported_$(basename $feature_transform)
   cp $feature_transform $tmp; feature_transform=$tmp
 else
   # Make default proto with splice,
-  if [ ! -z $feature_transform_proto ]; then
+  if [ -n "$feature_transform_proto" ]; then
     echo "# importing custom 'feature_transform_proto' from '$feature_transform_proto'"
   else
     echo "# + default 'feature_transform_proto' with splice +/-$splice frames,"
@@ -374,7 +371,7 @@ if [ ! -z $ivector ]; then
   echo $dim_ivec >$dir/ivector_dim # mark down the iVec dim!
   echo $ivector_append_tool >$dir/ivector_append_tool
 
-  # pasting the iVecs to the feaures,
+  # pasting the iVecs to the features,
   echo "# + ivector input '$ivector'"
   feats_tr="$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |"
   feats_cv="$feats_cv $ivector_append_tool ark:- '$ivector' ark:- |"
@@ -425,18 +422,6 @@ else
       delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
       echo "Debug : $delta_opts, delta_order $delta_order"
       utils/nnet/make_cnn_proto.py $cnn_proto_opts \
-        --splice=$splice --delta-order=$delta_order --dir=$dir \
-        $num_fea >$nnet_proto
-      cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
-      utils/nnet/make_nnet_proto.py $proto_opts \
-        --no-smaller-input-weights \
-        ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto
-      ;;
-    cnn2d)
-      delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
-      echo "Debug : $delta_opts, delta_order $delta_order"
-      utils/nnet/make_cnn2d_proto.py $cnn_proto_opts \
         --splice=$splice --delta-order=$delta_order --dir=$dir \
         $num_fea >$nnet_proto
       cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')

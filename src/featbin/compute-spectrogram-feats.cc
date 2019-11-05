@@ -18,9 +18,9 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
 #include "feat/feature-spectrogram.h"
 #include "feat/wave-reader.h"
+#include "util/common-utils.h"
 
 
 int main(int argc, char *argv[]) {
@@ -28,29 +28,33 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     const char *usage =
         "Create spectrogram feature files.\n"
-        "Usage:  compute-spectrogram-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";
+        "Usage:  compute-spectrogram-feats [options...] <wav-rspecifier> "
+        "<feats-wspecifier>\n";
 
-    // construct all the global objects
+    // Construct all the global objects.
     ParseOptions po(usage);
     SpectrogramOptions spec_opts;
+    // Define defaults for global options.
     bool subtract_mean = false;
     int32 channel = -1;
     BaseFloat min_duration = 0.0;
-    // Define defaults for gobal options
     std::string output_format = "kaldi";
+    std::string utt2dur_wspecifier;
 
     // Register the option struct
     spec_opts.Register(&po);
     // Register the options
-    po.Register("output-format", &output_format, "Format of the output files [kaldi, htk]");
-    po.Register("subtract-mean", &subtract_mean, "Subtract mean of each feature file [CMS]; not recommended to do it this way. ");
-    po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
-    po.Register("min-duration", &min_duration, "Minimum duration of segments to process (in seconds).");
+    po.Register("output-format", &output_format,
+                "Format of the output files [kaldi, htk]");
+    po.Register("subtract-mean", &subtract_mean, "Subtract mean of each "
+                "feature file [CMS]; not recommended to do it this way. ");
+    po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, "
+                "0 -> left, 1 -> right)");
+    po.Register("min-duration", &min_duration, "Minimum duration of segments "
+                "to process (in seconds).");
+    po.Register("write-utt2dur", &utt2dur_wspecifier, "Wspecifier to write "
+                "duration of each utterance in seconds, e.g. 'ark,t:utt2dur'.");
 
-    // OPTION PARSING ..........................................................
-    //
-
-    // parse options (+filling the registered variables)
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -79,6 +83,8 @@ int main(int argc, char *argv[]) {
     } else {
       KALDI_ERR << "Invalid output_format string " << output_format;
     }
+
+    DoubleWriter utt2dur_writer(utt2dur_wspecifier);
 
     int32 num_utts = 0, num_success = 0;
     for (; !reader.Done(); reader.Next()) {
@@ -114,8 +120,7 @@ int main(int argc, char *argv[]) {
       try {
         spec.ComputeFeatures(waveform, wave_data.SampFreq(), 1.0, &features);
       } catch (...) {
-        KALDI_WARN << "Failed to compute features for utterance "
-                   << utt;
+        KALDI_WARN << "Failed to compute features for utterance " << utt;
         continue;
       }
       if (subtract_mean) {
@@ -141,6 +146,9 @@ int main(int argc, char *argv[]) {
         p.second = header;
         htk_writer.Write(utt, p);
       }
+      if (utt2dur_writer.IsOpen()) {
+        utt2dur_writer.Write(utt, wave_data.Duration());
+      }
       if(num_utts % 10 == 0)
         KALDI_LOG << "Processed " << num_utts << " utterances";
       KALDI_VLOG(2) << "Processed features for key " << utt;
@@ -153,6 +161,4 @@ int main(int argc, char *argv[]) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
-

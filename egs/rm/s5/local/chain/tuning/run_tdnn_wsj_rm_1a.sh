@@ -130,7 +130,7 @@ if [ $stage -le 7 ]; then
   echo " generating new layers, that are specific to rm. These layers ";
   echo " are added to the transferred part of the wsj network.";
   num_targets=$(tree-info --print-args=false $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   mkdir -p $dir
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -165,7 +165,6 @@ if [ $stage -le 8 ]; then
     --cmd "$decode_cmd" \
     --trainer.input-model $dir/input.raw \
     --feat.online-ivector-dir "$ivector_dir" \
-    --chain.xent-regularize $xent_regularize \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \

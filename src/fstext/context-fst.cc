@@ -21,6 +21,7 @@
 #include "base/kaldi-error.h"
 
 namespace fst {
+using std::vector;
 
 
 InverseContextFst::InverseContextFst(
@@ -345,7 +346,7 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<int32> > &info,
                                          const SymbolTable &phones_symtab,
                                          std::string separator,
                                          std::string initial_disambig) {  // e.g. separator = "/", initial-disambig="#-1"
-  KALDI_ASSERT(!info.empty() && !info[0].empty());
+  KALDI_ASSERT(!info.empty() && info[0].empty());
   SymbolTable *ans = new SymbolTable("ilabel-info-symtab");
   int64 s = ans->AddSymbol(phones_symtab.Find(static_cast<int64>(0)));
   assert(s == 0);

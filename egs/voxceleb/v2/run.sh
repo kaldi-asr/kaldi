@@ -15,7 +15,7 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
 
-# The trials file is downloaded by local/make_voxceleb1.pl.
+# The trials file is downloaded by local/make_voxceleb1_v2.pl.
 voxceleb1_trials=data/voxceleb1_test/trials
 voxceleb1_root=/export/corpora/VoxCeleb1
 voxceleb2_root=/export/corpora/VoxCeleb2
@@ -27,11 +27,14 @@ stage=0
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
   local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
-  # This script reates data/voxceleb1_test and data/voxceleb1_train.
+  # This script creates data/voxceleb1_test and data/voxceleb1_train for latest version of VoxCeleb1.
   # Our evaluation set is the test portion of VoxCeleb1.
-  local/make_voxceleb1.pl $voxceleb1_root data
+  local/make_voxceleb1_v2.pl $voxceleb1_root dev data/voxceleb1_train
+  local/make_voxceleb1_v2.pl $voxceleb1_root test data/voxceleb1_test
+  # if you downloaded the dataset soon after it was released, you will want to use the make_voxceleb1.pl script instead.
+  # local/make_voxceleb1.pl $voxceleb1_root data
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
-  # This should give 7,351 speakers and 1,277,503 utterances.
+  # This should give 7,323 speakers and 1,276,888 utterances.
   utils/combine_data.sh data/train data/voxceleb2_train data/voxceleb2_test data/voxceleb1_train
 fi
 
@@ -66,7 +69,7 @@ if [ $stage -le 2 ]; then
 
   # Make a reverberated version of the VoxCeleb2 list.  Note that we don't add any
   # additive noise here.
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --speech-rvb-probability 1 \
     --pointsource-noise-addition-probability 0 \
@@ -81,7 +84,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh $musan_root data
+  steps/data/make_musan.sh --sampling-rate 16000 $musan_root data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
@@ -91,11 +94,11 @@ if [ $stage -le 2 ]; then
   done
 
   # Augment with musan_noise
-  python steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
+  steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
   # Augment with musan_music
-  python steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
+  steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
   # Augment with musan_speech
-  python steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
+  steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
 
   # Combine reverb, noise, music, and babble into one directory.
   utils/combine_data.sh data/train_aug data/train_reverb data/train_noise data/train_music data/train_babble

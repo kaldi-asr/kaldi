@@ -19,6 +19,8 @@ vaddir=`pwd`/mfcc
 data_root=/export/corpora5/LDC
 stage=0
 nnet_dir=exp/xvector_nnet_1a/
+num_components=1024 # the number of UBM components (used for VB resegmentation)
+ivector_dim=400 # the dimension of i-vector (used for VB resegmentation)
 
 # Prepare datasets
 if [ $stage -le 0 ]; then
@@ -53,7 +55,7 @@ if [ $stage -le 1 ]; then
   # callhome1 and callhome2.  Each partition is treated like a held-out
   # dataset, and used to estimate various quantities needed to perform
   # diarization on the other part (and vice versa).
-  for name in train callhome1 callhome2; do
+  for name in train callhome1 callhome2 callhome; do
     steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 \
       --cmd "$train_cmd" --write-utt2num-frames true \
       data/$name exp/make_mfcc $mfccdir
@@ -115,7 +117,7 @@ if [ $stage -le 2 ]; then
 
   # Make a reverberated version of the SWBD+SRE list.  Note that we don't add any
   # additive noise here.
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --speech-rvb-probability 1 \
     --pointsource-noise-addition-probability 0 \
@@ -130,7 +132,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh /export/corpora/JHU/musan data
+  steps/data/make_musan.sh --sampling-rate 8000 /export/corpora/JHU/musan data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
@@ -140,11 +142,11 @@ if [ $stage -le 2 ]; then
   done
 
   # Augment with musan_noise
-  python steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
+  steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
   # Augment with musan_music
-  python steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
+  steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
   # Augment with musan_speech
-  python steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
+  steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
 
   # Combine reverb, noise, music, and babble into one directory.
   utils/combine_data.sh data/train_aug data/train_reverb data/train_noise data/train_music data/train_babble
@@ -297,7 +299,7 @@ if [ $stage -le 10 ]; then
 
       der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
         $nnet_dir/tuning/${dataset}_t${threshold})
-      if [ $(echo $der'<'$best_der | bc -l) -eq 1 ]; then
+      if [ $(perl -e "print ($der < $best_der ? 1 : 0);") -eq 1 ]; then
         best_der=$der
         best_threshold=$threshold
       fi
@@ -355,4 +357,48 @@ if [ $stage -le 11 ]; then
   # Using the oracle number of speakers, DER: 7.12%
   # Compare to 8.69% in ../v1/run.sh
   echo "Using the oracle number of speakers, DER: $der%"
+fi
+
+# Variational Bayes resegmentation using the code from Brno University of Technology
+# Please see https://speech.fit.vutbr.cz/software/vb-diarization-eigenvoice-and-hmm-priors 
+# for details
+if [ $stage -le 12 ]; then
+  utils/subset_data_dir.sh data/train 32000 data/train_32k
+  # Train the diagonal UBM.
+  sid/train_diag_ubm.sh --cmd "$train_cmd --mem 20G" \
+    --nj 40 --num-threads 8 --subsample 1 --delta-order 0 --apply-cmn false \
+    data/train_32k $num_components exp/diag_ubm_$num_components
+
+  # Train the i-vector extractor. The UBM is assumed to be diagonal.
+  diarization/train_ivector_extractor_diag.sh \
+    --cmd "$train_cmd --mem 35G" \
+    --ivector-dim $ivector_dim --num-iters 5 --apply-cmn false \
+    --num-threads 1 --num-processes 1 --nj 40 \
+    exp/diag_ubm_$num_components/final.dubm data/train \
+    exp/extractor_diag_c${num_components}_i${ivector_dim}
+fi
+
+if [ $stage -le 13 ]; then
+  output_rttm_dir=exp/VB/rttm
+  mkdir -p $output_rttm_dir || exit 1;
+  cat $nnet_dir/xvectors_callhome1/plda_scores/rttm \
+    $nnet_dir/xvectors_callhome2/plda_scores/rttm > $output_rttm_dir/x_vector_rttm
+  init_rttm_file=$output_rttm_dir/x_vector_rttm
+
+  # VB resegmentation. In this script, I use the x-vector result to 
+  # initialize the VB system. You can also use i-vector result or random 
+  # initize the VB system. The following script uses kaldi_io. 
+  # You could use `sh ../../../tools/extras/install_kaldi_io.sh` to install it
+  diarization/VB_resegmentation.sh --nj 20 --cmd "$train_cmd --mem 10G" \
+    --initialize 1 data/callhome $init_rttm_file exp/VB \
+    exp/diag_ubm_$num_components/final.dubm exp/extractor_diag_c${num_components}_i${ivector_dim}/final.ie || exit 1; 
+
+  # Compute the DER after VB resegmentation
+  mkdir -p exp/VB/results || exit 1;
+  md-eval.pl -1 -c 0.25 -r data/callhome/fullref.rttm -s $output_rttm_dir/VB_rttm 2> exp/VB/log/VB_DER.log \
+    > exp/VB/results/VB_DER.txt
+  der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
+    exp/VB/results/VB_DER.txt)
+  # After VB resegmentation, DER: 6.48%
+  echo "After VB resegmentation, DER: $der%"
 fi

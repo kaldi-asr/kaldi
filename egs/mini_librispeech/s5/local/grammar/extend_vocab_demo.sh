@@ -96,7 +96,7 @@ if [ $stage -le 4 ]; then
   if $run_g2p; then
     steps/dict/apply_g2p.sh $tree_dir/extvocab_nosp_lexicon/words $tree_dir/extvocab_nosp_g2p  $tree_dir/extvocab_nosp_lexicon
   else
-    cat <<EOF >$tree_dir/extvocab_nosp_lexicon//lexicon.lex
+    cat <<EOF >$tree_dir/extvocab_nosp_lexicon/lexicon.lex
 HARDWIGG	0.962436	HH AA1 R D W IH1 G
 SUDVESTR	0.162048	S AH1 D V EY1 S T R
 SUDVESTR	0.133349	S AH1 D V EH1 S T R
@@ -308,8 +308,8 @@ if [ $stage -le 8 ]; then
 
 
 
-#  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
-#%WER 11.79 [ 2375 / 20138, 195 ins, 343 del, 1837 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_12_0.0# s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
+ #  s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
+ # %WER 11.79 [ 2375 / 20138, 195 ins, 343 del, 1837 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_12_0.0
 
  #.. versus the baseline below note, the baseline is not 100% comparable as it used the
  #   silence probabilities, which the grammar-decoding does not (yet) support...

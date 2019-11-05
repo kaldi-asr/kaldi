@@ -300,6 +300,15 @@ void SetNnetAsGradient(Nnet *nnet) {
   }
 }
 
+void SetRequireDirectInput(bool b, Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (dynamic_cast<StatisticsPoolingComponent*>(comp) != NULL)
+      dynamic_cast<StatisticsPoolingComponent*>(comp)->SetRequireDirectInput(b);
+  }
+}
+
+
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   if (scale == 1.0) return;
   else {
@@ -630,13 +639,37 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes) {
 }
 
 
+// Parameters used in applying SVD:
+// 1. Energy threshold : For each Affine weights layer in the original baseline nnet3 model,
+//  we perform SVD based factoring of the weights matrix of the layer,
+//  into a singular values (left diagonal) matrix, and two Eigen matrices.
+//
+// SVD : Wx = UEV, U,V are Eigen matrices, and E is the singularity matrix)
+//
+// We take the center matrix E, and consider only the Singular values which contribute
+//  to (Energy-threshold) times the total Energy of Singularity parameters.
+//   These Singularity parameters are actually sorted in descending order and lower
+//    values are pruned out until the Total energy (Sum of squares) of the pruned set
+//     of parameters is just above (Energy-threshold * Total init energy). The values which
+//      are pruned away are replaced with 0 in the Singularity matrix
+//      and the Weights matrix after SVD is derived with shrinked dimensions.
+//
+// 2. Shrinkage-threshold : If the Shrinkage ratio of the SVD refactored Weights matrix
+//       is higher than Shrinkage-threshold for any of the Tdnn layers,
+//        the SVD process is aborted for that particular Affine weights layer.
+//
+
 // this class implements the internals of the edit directive 'apply-svd'.
 class SvdApplier {
  public:
   SvdApplier(const std::string component_name_pattern,
              int32 bottleneck_dim,
+             BaseFloat energy_threshold,
+             BaseFloat shrinkage_threshold,
              Nnet *nnet): nnet_(nnet),
                           bottleneck_dim_(bottleneck_dim),
+        		  energy_threshold_(energy_threshold),
+          		  shrinkage_threshold_(shrinkage_threshold),
                           component_name_pattern_(component_name_pattern) { }
   void ApplySvd() {
     DecomposeComponents();
@@ -673,43 +706,70 @@ class SvdApplier {
                      << " -> " << output_dim;
           continue;
         }
-        size_t n = modified_component_info_.size();
-        modification_index_[c] = n;
-        modified_component_info_.resize(n + 1);
-        ModifiedComponentInfo &info = modified_component_info_[n];
-        info.component_index = c;
-        info.component_name = component_name;
         Component *component_a = NULL, *component_b = NULL;
-        info.component_name_a = component_name + "_a";
-        info.component_name_b = component_name + "_b";
-        if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_a;
-        if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_b;
-        DecomposeComponent(component_name, *affine, &component_a, &component_b);
-        info.component_a_index = nnet_->AddComponent(info.component_name_a,
-                                                     component_a);
-        info.component_b_index = nnet_->AddComponent(info.component_name_b,
-                                                     component_b);
+	if (DecomposeComponent(component_name, *affine, &component_a, &component_b)) {
+	  size_t n = modified_component_info_.size();
+	  modification_index_[c] = n;
+	  modified_component_info_.resize(n + 1);
+	  ModifiedComponentInfo &info = modified_component_info_[n];
+	  info.component_index = c;
+	  info.component_name = component_name;
+	  info.component_name_a = component_name + "_a";
+	  info.component_name_b = component_name + "_b";
+	  if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_a;
+	  if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_b;
+	  info.component_a_index = nnet_->AddComponent(info.component_name_a,
+						       component_a);
+	  info.component_b_index = nnet_->AddComponent(info.component_name_b,
+						       component_b);
+	}
       }
     }
     KALDI_LOG << "Converted " << modified_component_info_.size()
               << " components to FixedAffineComponent.";
   }
 
-  void DecomposeComponent(const std::string &component_name,
+  // This function finds the minimum index of
+  // the Descending order sorted [input_vector],
+  // over a range of indices from [lower] to [upper] index,
+  // for which the sum of elements upto the found min. index is greater
+  // than [min_val].
+  // We add one to this index to return the reduced dimension value.
+
+  int32 GetReducedDimension(const Vector<BaseFloat> &input_vector,
+			     int32 lower,
+			     int32 upper,
+			     BaseFloat min_val) {
+    BaseFloat sum = 0;
+    int32 i = 0;
+    for (i = lower; i <= upper; i++) {
+	sum = sum + input_vector(i);
+	if (sum >= min_val) break;
+    }
+    return (i+1);
+  }
+
+// Here we perform SVD based refactorig of an input Affine component.
+// After applying SVD , we sort the Singularity values in descending order,
+// and take the subset of values which contribute to energy_threshold times
+// total original sum of squared singular values, and then refactor the Affine
+// component using only these selected singular values, thus making the bottleneck
+// dim of the refactored Affine layer equal to the no. of Singular values selected.
+// This function returs false if the shrinkage ratio of the total no. of parameters,
+// after the above SVD based refactoring, is greater than shrinkage threshold.
+//
+  bool DecomposeComponent(const std::string &component_name,
                           const AffineComponent &affine,
                           Component **component_a_out,
                           Component **component_b_out) {
     int32 input_dim = affine.InputDim(), output_dim = affine.OutputDim();
     Matrix<BaseFloat> linear_params(affine.LinearParams());
     Vector<BaseFloat> bias_params(affine.BiasParams());
-
-    int32 bottleneck_dim = bottleneck_dim_,
-        middle_dim = std::min<int32>(input_dim, output_dim);
-    KALDI_ASSERT(bottleneck_dim < middle_dim);
+    int32 middle_dim = std::min<int32>(input_dim, output_dim);
 
     // note: 'linear_params' is of dimension output_dim by input_dim.
     Vector<BaseFloat> s(middle_dim);
@@ -718,15 +778,40 @@ class SvdApplier {
     linear_params.Svd(&s, &B, &A);
     // make sure the singular values are sorted from greatest to least value.
     SortSvd(&s, &B, &A);
-    BaseFloat s_sum_orig = s.Sum();
-    s.Resize(bottleneck_dim, kCopyData);
-    A.Resize(bottleneck_dim, input_dim, kCopyData);
-    B.Resize(output_dim, bottleneck_dim, kCopyData);
-    BaseFloat s_sum_reduced = s.Sum();
+    Vector<BaseFloat> s2(s.Dim());
+    s2.AddVec2(1.0, s);
+    BaseFloat s2_sum_orig = s2.Sum();
+    KALDI_ASSERT(energy_threshold_ < 1);
+    KALDI_ASSERT(shrinkage_threshold_ < 1);
+    if (energy_threshold_ > 0) {
+      BaseFloat min_singular_sum = energy_threshold_ * s2_sum_orig;
+      bottleneck_dim_ = GetReducedDimension(s2, 0, s2.Dim()-1, min_singular_sum);
+    }
+    SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
+    BaseFloat s2_sum_reduced = this_part.Sum();
+    BaseFloat shrinkage_ratio =
+      static_cast<BaseFloat>(bottleneck_dim_ * (input_dim+output_dim))
+      / static_cast<BaseFloat>(input_dim * output_dim);
+    if (shrinkage_ratio > shrinkage_threshold_) {
+      KALDI_LOG << "Shrinkage ratio " << shrinkage_ratio
+		<< " greater than threshold : " << shrinkage_threshold_
+		<< " Skipping SVD for this layer.";
+      return false;
+    }
+
+    s.Resize(bottleneck_dim_, kCopyData);
+    A.Resize(bottleneck_dim_, input_dim, kCopyData);
+    B.Resize(output_dim, bottleneck_dim_, kCopyData);
     KALDI_LOG << "For component " << component_name
-              << " singular value sum changed by "
-              << (s_sum_orig - s_sum_reduced)
-              << " (from " << s_sum_orig << " to " << s_sum_reduced << ")";
+              << " singular value squared sum changed by "
+              << (s2_sum_orig - s2_sum_reduced)
+              << " (from " << s2_sum_orig << " to " << s2_sum_reduced << ")";
+    KALDI_LOG << "For component " << component_name
+	      << " dimension reduced from "
+              << " (" << input_dim << "," << output_dim << ")"
+	      << " to [(" << input_dim << "," << bottleneck_dim_
+	      << "), (" << bottleneck_dim_ << "," << output_dim <<")]";
+    KALDI_LOG << "shrinkage ratio : " << shrinkage_ratio;
 
     // we'll divide the singular values equally between the two
     // parameter matrices.
@@ -745,23 +830,22 @@ class SvdApplier {
     component_b->SetUpdatableConfigs(affine);
     *component_a_out = component_a;
     *component_b_out = component_b;
+    return true;
   }
 
   // This function modifies the topology of the neural network, splitting
   // up the components we're modifying into two parts.
   // Suppose we have something like:
   //  component-node name=some_node component=some_component input=
+  // nodes_to_modify will be a list of component-node indexes that we
+  // need to split into two.  These will be nodes like
+  // component-node name=component_node_name component=component_name input=xxx
+  // where 'component_name' is one of the components that we're splitting.
+  // node_names_modified is nnet_->node_names_ except with, for the nodes that
+  // we are splitting in two, "some_node_name" replaced with
+  // "some_node_name_b" (the second of the two split nodes).
   void ModifyTopology() {
-    // nodes_to_split will be a list of component-node indexes that we
-    // need to split into two.  These will be nodes like
-    // component-node name=component_node_name component=component_name input=xxx
-    // where 'component_name' is one of the components that we're splitting.
     std::set<int32> nodes_to_modify;
-
-
-    // node_names_modified is nnet_->node_names_ except with, for the nodes that
-    // we are splitting in two, "some_node_name" replaced with
-    // "some_node_name_b" (the second of the two split nodes).
     std::vector<std::string> node_names_orig = nnet_->GetNodeNames(),
         node_names_modified = node_names_orig;
 
@@ -881,6 +965,8 @@ class SvdApplier {
 
   Nnet *nnet_;
   int32 bottleneck_dim_;
+  BaseFloat energy_threshold_;
+  BaseFloat shrinkage_threshold_;
   std::string component_name_pattern_;
 };
 
@@ -1313,13 +1399,21 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
     } else if (directive == "apply-svd") {
       std::string name_pattern;
       int32 bottleneck_dim = -1;
-      if (!config_line.GetValue("name", &name_pattern) ||
-          !config_line.GetValue("bottleneck-dim", &bottleneck_dim))
-        KALDI_ERR << "Edit directive apply-svd requires 'name' and "
-            "'bottleneck-dim' to be specified.";
-      if (bottleneck_dim <= 0)
-        KALDI_ERR << "Bottleneck-dim must be positive in apply-svd command.";
-      SvdApplier applier(name_pattern, bottleneck_dim, nnet);
+      BaseFloat energy_threshold = -1;
+      BaseFloat shrinkage_threshold = 1.0;
+      config_line.GetValue("bottleneck-dim", &bottleneck_dim);
+      config_line.GetValue("energy-threshold", &energy_threshold);
+      config_line.GetValue("shrinkage-threshold", &shrinkage_threshold);
+      if (!config_line.GetValue("name", &name_pattern))
+        KALDI_ERR << "Edit directive apply-svd requires 'name' to be specified.";
+      if (bottleneck_dim <= 0 && energy_threshold <=0)
+        KALDI_ERR << "Either Bottleneck-dim or energy-threshold "
+	  "must be set in apply-svd command. "
+	  "Range of possible values is (0 1]";
+      SvdApplier applier(name_pattern, bottleneck_dim,
+			 energy_threshold,
+			 shrinkage_threshold,
+			 nnet);
       applier.ApplySvd();
     } else if (directive == "reduce-rank") {
       std::string name_pattern;
@@ -1654,7 +1748,6 @@ class ModelCollapser {
                                                   batchnorm_component_name,
                                                   component_index2);
   }
-
 
   /**
      Tries to produce a component that's equivalent to running the component
@@ -2170,6 +2263,48 @@ void ApplyL2Regularization(const Nnet &nnet,
         dest_component->Add(scale, *src_component);
     }
   }
+}
+
+
+bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
+                             BaseFloat max_param_change,
+                             BaseFloat max_change_scale,
+                             BaseFloat scale, Nnet *nnet,
+                             MaxChangeStats *stats) {
+  bool ans = UpdateNnetWithMaxChange(
+      delta_nnet, max_param_change, max_change_scale,
+      scale, nnet,
+      &(stats->num_max_change_per_component_applied),
+      &(stats->num_max_change_global_applied));
+  stats->num_minibatches_processed++;
+  return ans;
+}
+
+
+void MaxChangeStats::Print(const Nnet &nnet) const {
+  int32 i = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(
+          comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_change_per_component_applied[i] > 0)
+        KALDI_LOG << "For " << nnet.GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << ((100.0 * num_max_change_per_component_applied[i]) /
+                      num_minibatches_processed)
+                  << " \% of the time.";
+      i++;
+    }
+  }
+  if (num_max_change_global_applied > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << ((100.0 * num_max_change_global_applied) /
+                  num_minibatches_processed)
+              << " \% of the time.";
 }
 
 

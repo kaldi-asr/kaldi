@@ -54,9 +54,8 @@ cat $dir/silence_phones.txt| awk '{printf("%s ", $1);} END{printf "\n";}' > \
 $dir/extra_questions.txt || exit 1;
 
 # Add prons for laughter, noise, oov
-for w in `grep -v sil $dir/silence_phones.txt`; do
-sed -i "/\[$w\]/d" $tmpdir/lexicon.3
-done
+w=$(grep -v sil $dir/silence_phones.txt | tr '\n' '|')
+perl -i -ne "print unless /\[(${w%?})\]/"  $tmpdir/lexicon.3
 
 for w in `grep -v sil $dir/silence_phones.txt`; do
 echo "[$w] $w"

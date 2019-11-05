@@ -19,33 +19,35 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
 #include "feat/feature-mfcc.h"
 #include "feat/wave-reader.h"
+#include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     const char *usage =
         "Create MFCC feature files.\n"
-        "Usage:  compute-mfcc-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";
+        "Usage:  compute-mfcc-feats [options...] <wav-rspecifier> "
+        "<feats-wspecifier>\n";
 
-    // construct all the global objects
+    // Construct all the global objects.
     ParseOptions po(usage);
     MfccOptions mfcc_opts;
+    // Define defaults for global options.
     bool subtract_mean = false;
     BaseFloat vtln_warp = 1.0;
     std::string vtln_map_rspecifier;
     std::string utt2spk_rspecifier;
     int32 channel = -1;
     BaseFloat min_duration = 0.0;
-    // Define defaults for gobal options
     std::string output_format = "kaldi";
+    std::string utt2dur_wspecifier;
 
-    // Register the MFCC option struct
+    // Register the MFCC option struct.
     mfcc_opts.Register(&po);
 
-    // Register the options
+    // Register the options.
     po.Register("output-format", &output_format, "Format of the output "
                 "files [kaldi, htk]");
     po.Register("subtract-mean", &subtract_mean, "Subtract mean of each "
@@ -60,6 +62,8 @@ int main(int argc, char *argv[]) {
                 "0 -> left, 1 -> right)");
     po.Register("min-duration", &min_duration, "Minimum duration of segments "
                 "to process (in seconds).");
+    po.Register("write-utt2dur", &utt2dur_wspecifier, "Wspecifier to write "
+                "duration of each utterance in seconds, e.g. 'ark,t:utt2dur'.");
 
     po.Read(argc, argv);
 
@@ -74,16 +78,16 @@ int main(int argc, char *argv[]) {
 
     Mfcc mfcc(mfcc_opts);
 
+    if (utt2spk_rspecifier != "" && vtln_map_rspecifier == "")
+      KALDI_ERR << ("The --utt2spk option is only needed if "
+                    "the --vtln-map option is used.");
+    RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
+                                                      utt2spk_rspecifier);
+
     SequentialTableReader<WaveHolder> reader(wav_rspecifier);
     BaseFloatMatrixWriter kaldi_writer;  // typedef to TableWriter<something>.
     TableWriter<HtkMatrixHolder> htk_writer;
 
-    if (utt2spk_rspecifier != "")
-      KALDI_ASSERT(vtln_map_rspecifier != "" && "the utt2spk option is only "
-                   "needed if the vtln-map option is used.");
-    RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
-                                                      utt2spk_rspecifier);
-    
     if (output_format == "kaldi") {
       if (!kaldi_writer.Open(output_wspecifier))
         KALDI_ERR << "Could not initialize output with wspecifier "
@@ -95,6 +99,8 @@ int main(int argc, char *argv[]) {
     } else {
       KALDI_ERR << "Invalid output_format string " << output_format;
     }
+
+    DoubleWriter utt2dur_writer(utt2dur_wspecifier);
 
     int32 num_utts = 0, num_success = 0;
     for (; !reader.Done(); reader.Next()) {
@@ -139,10 +145,10 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        mfcc.ComputeFeatures(waveform, wave_data.SampFreq(), vtln_warp_local, &features);
+        mfcc.ComputeFeatures(waveform, wave_data.SampFreq(),
+                             vtln_warp_local, &features);
       } catch (...) {
-        KALDI_WARN << "Failed to compute features for utterance "
-                   << utt;
+        KALDI_WARN << "Failed to compute features for utterance " << utt;
         continue;
       }
       if (subtract_mean) {
@@ -168,6 +174,9 @@ int main(int argc, char *argv[]) {
         p.second = header;
         htk_writer.Write(utt, p);
       }
+      if (utt2dur_writer.IsOpen()) {
+        utt2dur_writer.Write(utt, wave_data.Duration());
+      }
       if (num_utts % 10 == 0)
         KALDI_LOG << "Processed " << num_utts << " utterances";
       KALDI_VLOG(2) << "Processed features for key " << utt;
@@ -181,4 +190,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

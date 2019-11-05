@@ -98,7 +98,7 @@ numbered state of a
 "prototype HMM" has two variables "forward_pdf_class" and "self_loop_pdf_class".
 The "self_loop_pdf_class" is a kind of pdf-class that is associated
 with self-loop transition. It is by default identical to "forward_pdf_class",
-but it can be used to define less-convectional HMM topologies
+but it can be used to define less-conventional HMM topologies
 where the pdfs on the self-loop and forward transitions are different.
 The decision to allow the pdf-class on just the self-loop to be different,
 while not embracing a fully "arc-based" representation where the pdfs on

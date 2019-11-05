@@ -1,5 +1,6 @@
-On some machines, expf() turns out to be very slow: much slower than its double precision counterpart exp().
-Probably this is concerned with the version of glibc.
+On some machines, expf() turns out to be very slow: much slower than its double
+precision counterpart exp().  Probably this is concerned with the version of
+glibc.
 
 Here are a couple of examples:
 
@@ -21,5 +22,7 @@ configuration$ ./exp-test
 exp() time: 0.0028439
 expf() time: 0.00713329
 
-If slow behaviour is detected, then KALDI_NO_EXPF macro will be used, and the Exp() wrapper in base/kaldi-math.h will use exp() even for single precision floats.
-The behaviour of expf() is considered to be slow if it is slower than exp() by at least 10%.
+If slow behaviour is detected, then KALDI_NO_EXPF macro will be used, and the
+Exp() wrapper in base/kaldi-math.h will use exp() even for single precision
+floats.  The behaviour of expf() is considered to be slow if it is slower than
+exp() by at least 10%.

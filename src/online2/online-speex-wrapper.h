@@ -40,7 +40,7 @@ struct SpeexOptions {
   BaseFloat sample_rate;
 
   /// Ranges from 0 to 10, the higher the quality is better. In my preliminary
-  /// tests with the RM recipe, if set it to 8, I observed the WER incresed by
+  /// tests with the RM recipe, if set it to 8, I observed the WER increased by
   /// 0.1%; while set it to 10, the WER almost kept unchanged.
   int32 speex_quality;
 

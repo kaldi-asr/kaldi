@@ -1,5 +1,7 @@
 #!/bin/bash
 
+WGET=${WGET:-wget}
+
 set -e
 
 if [ $# -ne 1 ]; then
@@ -19,10 +21,14 @@ fi
 
 cd $tools_dir
 echo Downloading and installing the rnnlm tools
-# http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz
+# https://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz
 arc_file="$rnnlm_ver.tgz"
 if [ ! -f "$arc_file" ]; then
-    wget "http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz" -O "$arc_file" || exit 1;
+    if [ -d "$DOWNLOAD_DIR" ]; then
+        cp -p "$DOWNLOAD_DIR/$arc_file" . || exit 1
+    else
+        $WGET "https://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz" -O "$arc_file" || exit 1;
+    fi
 fi
 mkdir $rnnlm_ver
 cd $rnnlm_ver

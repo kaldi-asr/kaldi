@@ -41,6 +41,7 @@ num_processes=4 # each job runs this many processes, each with --num-threads thr
 cmd="run.pl"
 stage=-4
 ivector_dim=100 # dimension of the extracted i-vector
+online_cmvn_iextractor=false # apply online-cmvn on i-vector input features, uses the configuration from UBM,
 num_iters=10
 num_gselect=5 # Gaussian-selection using diagonal model: number of Gaussians to select
 posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
@@ -112,9 +113,16 @@ splice_opts=$(cat $srcdir/splice_opts)
 
 ## Set up features.  $gmm_feats is the version of the features with online CMVN, that we use
 ## to get the Gaussian posteriors, $feats is the version of the features with no CMN.
-gmm_feats="ark,s,cs:apply-cmvn-online --config=$dir/online_cmvn.conf $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+gmm_feats="ark,s,cs:apply-cmvn-online --config=$dir/online_cmvn.conf --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
+## This adds online-cmvn in $feats, upon request (configuration taken from UBM),
+## ('online_cmvn_iextractor' marks that we added online_cmvn_iextractor)
+rm $dir/online_cmvn_iextractor 2>/dev/null || true
+if $online_cmvn_iextractor; then
+  feats="$gmm_feats"
+  touch $dir/online_cmvn_iextractor
+fi
 
 # Initialize the i-vector extractor using the input GMM, which is converted to
 # full because that's what the i-vector extractor expects.  Note: we have to do
@@ -201,4 +209,3 @@ ln -s $x.ie $dir/final.ie
 # assign a unique id to this extractor
 # we are not interested in the id itself, just pre-caching ...
 steps/nnet2/get_ivector_id.sh $dir > /dev/null || exit 1
-

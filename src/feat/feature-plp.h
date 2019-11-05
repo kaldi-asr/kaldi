@@ -110,7 +110,7 @@ class PlpComputer {
 
   int32 Dim() const { return opts_.num_ceps; }
 
-  bool NeedRawLogEnergy() { return opts_.use_energy && opts_.raw_energy; }
+  bool NeedRawLogEnergy() const { return opts_.use_energy && opts_.raw_energy; }
 
   /**
      Function that computes one frame of features from
@@ -133,7 +133,7 @@ class PlpComputer {
      @param [out] feature  Pointer to a vector of size this->Dim(), to which
          the computed feature will be written.
   */
-  void Compute(BaseFloat signal_log_energy,
+  void Compute(BaseFloat signal_raw_log_energy,
                BaseFloat vtln_warp,
                VectorBase<BaseFloat> *signal_frame,
                VectorBase<BaseFloat> *feature);

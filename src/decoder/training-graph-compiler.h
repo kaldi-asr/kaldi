@@ -24,6 +24,7 @@
 #include "hmm/transition-model.h"
 #include "fst/fstlib.h"
 #include "fstext/fstext-lib.h"
+#include "tree/context-dep.h"
 
 
 namespace kaldi {

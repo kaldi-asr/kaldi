@@ -32,13 +32,7 @@ SimpleDecoder::~SimpleDecoder() {
 
 bool SimpleDecoder::Decode(DecodableInterface *decodable) {
   InitDecoding();
-  while( !decodable->IsLastFrame(num_frames_decoded_ - 1)) {
-    ClearToks(prev_toks_);
-    cur_toks_.swap(prev_toks_);
-    ProcessEmitting(decodable);
-    ProcessNonemitting();
-    PruneToks(beam_, &cur_toks_);
-  }
+  AdvanceDecoding(decodable);
   return (!cur_toks_.empty());
 }
 
@@ -76,7 +70,7 @@ void SimpleDecoder::AdvanceDecoding(DecodableInterface *decodable,
     ProcessEmitting(decodable);
     ProcessNonemitting();
     PruneToks(beam_, &cur_toks_);
-  }   
+  }
 }
 
 bool SimpleDecoder::ReachedFinal() const {
@@ -188,7 +182,7 @@ void SimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
       if (arc.ilabel != 0) {  // propagate..
         BaseFloat acoustic_cost = -decodable->LogLikelihood(frame, arc.ilabel);
         double total_cost = tok->cost_ + arc.weight.Value() + acoustic_cost;
-        
+
         if (total_cost > cutoff) continue;
         if (total_cost + beam_  < cutoff)
           cutoff = total_cost + beam_;
@@ -214,20 +208,20 @@ void SimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
 void SimpleDecoder::ProcessNonemitting() {
   // Processes nonemitting arcs for one frame.  Propagates within
   // cur_toks_.
-  std::vector<StateId> queue_;
+  std::vector<StateId> queue;
   double infinity = std::numeric_limits<double>::infinity();
   double best_cost = infinity;
   for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
        iter != cur_toks_.end();
        ++iter) {
-    queue_.push_back(iter->first);
+    queue.push_back(iter->first);
     best_cost = std::min(best_cost, iter->second->cost_);
   }
   double cutoff = best_cost + beam_;
-  
-  while (!queue_.empty()) {
-    StateId state = queue_.back();
-    queue_.pop_back();
+
+  while (!queue.empty()) {
+    StateId state = queue.back();
+    queue.pop_back();
     Token *tok = cur_toks_[state];
     KALDI_ASSERT(tok != NULL && state == tok->arc_.nextstate);
     for (fst::ArcIterator<fst::Fst<StdArc> > aiter(fst_, state);
@@ -244,12 +238,12 @@ void SimpleDecoder::ProcessNonemitting() {
               = cur_toks_.find(arc.nextstate);
           if (find_iter == cur_toks_.end()) {
             cur_toks_[arc.nextstate] = new_tok;
-            queue_.push_back(arc.nextstate);
+            queue.push_back(arc.nextstate);
           } else {
             if ( *(find_iter->second) < *new_tok ) {
               Token::TokenDelete(find_iter->second);
               find_iter->second = new_tok;
-              queue_.push_back(arc.nextstate);
+              queue.push_back(arc.nextstate);
             } else {
               Token::TokenDelete(new_tok);
             }

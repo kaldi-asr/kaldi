@@ -44,7 +44,7 @@ static void RunNnetComputation(const MatrixBase<BaseFloat> &features,
   output_spec.indexes.resize(1);
   request.outputs.resize(1);
   request.outputs[0].Swap(&output_spec);
-  std::shared_ptr<const NnetComputation> computation(std::move(compiler->Compile(request)));
+  std::shared_ptr<const NnetComputation> computation(compiler->Compile(request));
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(NnetComputeOptions(), *computation,
                   nnet, nnet_to_update);
@@ -96,6 +96,8 @@ int main(int argc, char *argv[]) {
     opts.acoustic_scale = 1.0; // by default do no scaling in this recipe.
 
     std::string use_gpu = "no";
+    std::string cached_compiler_in;
+    std::string cached_compiler_out;
     int32 chunk_size = -1,
       min_chunk_size = 100;
     bool pad_input = true;
@@ -112,6 +114,14 @@ int main(int argc, char *argv[]) {
       "Minimum chunk-size allowed when extracting xvectors.");
     po.Register("pad-input", &pad_input, "If true, duplicate the first and "
       "last frames of the input features as required to equal min-chunk-size.");
+    po.Register("cached-compiler-in", &cached_compiler_in,
+      "If set, read the cached compiler from the specified file path.");
+    po.Register("cached-compiler-out", &cached_compiler_out,
+      "If set, write the cached compiler to the specified file path.");
+
+#if HAVE_CUDA==1
+    CuDevice::RegisterDeviceOptions(&po);
+#endif
 
     po.Read(argc, argv);
 
@@ -135,6 +145,13 @@ int main(int argc, char *argv[]) {
     CollapseModel(CollapseModelConfig(), &nnet);
 
     CachingOptimizingCompiler compiler(nnet, opts.optimize_config, compiler_config);
+    
+    if (!cached_compiler_in.empty()) {
+        KALDI_LOG << "Reading cache from " << cached_compiler_in;
+        bool cache_binary_in;
+        Input ki(cached_compiler_in, &cache_binary_in);
+        compiler.ReadCache(ki.Stream(), cache_binary_in);
+    }
 
     BaseFloatVectorWriter vector_writer(vector_wspecifier);
 
@@ -223,6 +240,13 @@ int main(int argc, char *argv[]) {
               << (elapsed*100.0/frame_count);
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
+    
+    if (!cached_compiler_out.empty()) {
+        KALDI_LOG << "Writing cache to " << cached_compiler_out;
+        bool binary_write = true;
+        Output ko(cached_compiler_out, &binary_write);
+        compiler.WriteCache(ko.Stream(), binary_write);
+    }
 
     if (num_success != 0) return 0;
     else return 1;

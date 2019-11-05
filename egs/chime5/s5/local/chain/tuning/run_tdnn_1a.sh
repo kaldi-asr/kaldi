@@ -24,20 +24,15 @@ decode_iter=
 # training options
 # training chunk-options
 chunk_width=140,100,160
-# we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
 common_egs_dir=
 xent_regularize=0.1
 
 # training options
 srand=0
 remove_egs=true
-reporting_email=
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
-
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -59,7 +54,7 @@ fi
 # run those things.
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
-				  --test-sets "$test_sets" \
+                                  --test-sets "$test_sets" \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
@@ -133,7 +128,7 @@ if [ $stage -le 13 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   opts="l2-regularize=0.05"
   output_opts="l2-regularize=0.01 bottleneck-dim=320"
 
@@ -176,7 +171,6 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
-
 if [ $stage -le 14 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
@@ -204,15 +198,10 @@ if [ $stage -le 14 ]; then
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
-    --reporting.email="$reporting_email" \
     --feat-dir=$train_data_dir \
     --tree-dir=$tree_dir \
     --lat-dir=$lat_dir \
@@ -235,10 +224,6 @@ if [ $stage -le 16 ]; then
     (
       steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
-          --extra-left-context $chunk_left_context \
-          --extra-right-context $chunk_right_context \
-          --extra-left-context-initial 0 \
-          --extra-right-context-final 0 \
           --frames-per-chunk $frames_per_chunk \
           --nj 8 --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \

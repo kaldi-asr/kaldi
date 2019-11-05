@@ -24,6 +24,7 @@ final_beam=20  # For the lattice-generation phase there is no retry-beam.  This
 boost_silence=1.0 # factor by which to boost silence during alignment.
 fmllr_update_type=full
 generate_ali_from_lats=false # If true, alingments generated from lattices.
+max_active=7000
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -149,7 +150,7 @@ if [ $stage -le 3 ]; then
   #    will be small anyway).
   echo "$0: generating lattices containing alternate pronunciations."
   $cmd JOB=1:$nj $dir/log/generate_lattices.JOB.log \
-    gmm-latgen-faster --acoustic-scale=$acoustic_scale --beam=$final_beam \
+    gmm-latgen-faster --max-active=$max_active --acoustic-scale=$acoustic_scale --beam=$final_beam \
         --lattice-beam=$final_beam --allow-partial=false --word-determinize=false \
       "$mdl_cmd" "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
       "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;

@@ -131,12 +131,12 @@ struct StdToken {
   // to keep it in a good numerical range).
   BaseFloat tot_cost;
 
-  // exta_cost is >= 0.  After calling PruneForwardLinks, this equals
-  // the minimum difference between the cost of the best path, and the cost of
-  // this is on, and the cost of the absolute best path, under the assumption
-  // that any of the currently active states at the decoding front may
-  // eventually succeed (e.g. if you were to take the currently active states
-  // one by one and compute this difference, and then take the minimum).
+  // exta_cost is >= 0.  After calling PruneForwardLinks, this equals the
+  // minimum difference between the cost of the best path that this link is a
+  // part of, and the cost of the absolute best path, under the assumption that
+  // any of the currently active states at the decoding front may eventually
+  // succeed (e.g. if you were to take the currently active states one by one
+  // and compute this difference, and then take the minimum).
   BaseFloat extra_cost;
 
   // 'links' is the head of singly-linked list of ForwardLinks, which is what we
@@ -216,7 +216,7 @@ struct BackpointerToken {
    will normally be StdToken, but also may be BackpointerToken which is to support
    quick lookup of the current best path (see lattice-faster-online-decoder.h)
 
-   The FST you invoke this decoder with is expected to equal
+   The FST you invoke this decoder which is expected to equal
    Fst::Fst<fst::StdArc>, a.k.a. StdFst, or GrammarFst.  If you invoke it with
    FST == StdFst and it notices that the actual FST type is
    fst::VectorFst<fst::StdArc> or fst::ConstFst<fst::StdArc>, the decoder object
@@ -380,9 +380,9 @@ class LatticeFasterDecoderTpl {
   // token was newly created or the cost changed.
   // If Token == StdToken, the 'backpointer' argument has no purpose (and will
   // hopefully be optimized out).
-  inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
-                               BaseFloat tot_cost, Token *backpointer,
-                               bool *changed);
+  inline Elem *FindOrAddToken(StateId state, int32 frame_plus_one,
+                              BaseFloat tot_cost, Token *backpointer,
+                              bool *changed);
 
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens
@@ -464,7 +464,7 @@ class LatticeFasterDecoderTpl {
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
-  std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
+  std::vector<const Elem* > queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
 
   // fst_ is a pointer to the FST we are decoding from.
@@ -495,7 +495,7 @@ class LatticeFasterDecoderTpl {
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;
 
-  // There are various cleanup tasks... the the toks_ structure contains
+  // There are various cleanup tasks... the toks_ structure contains
   // singly linked lists of Token pointers, where Elem is the list type.
   // It also indexes them in a hash, indexed by state (this hash is only
   // maintained for the most recent frame).  toks_.Clear()

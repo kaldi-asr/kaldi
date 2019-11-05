@@ -41,6 +41,36 @@ namespace kaldi {
 /// @{
 
 
+/// This class serves as a storage for feature vectors with an option to limit
+/// the memory usage by removing old elements. The deleted frames indices are
+/// "remembered" so that regardless of the MAX_ITEMS setting, the user always
+/// provides the indices as if no deletion was being performed.
+/// This is useful when processing very long recordings which would otherwise
+/// cause the memory to eventually blow up when the features are not being removed.
+class RecyclingVector {
+public:
+  /// By default it does not remove any elements.
+  RecyclingVector(int items_to_hold = -1);
+
+  /// The ownership is being retained by this collection - do not delete the item.
+  Vector<BaseFloat> *At(int index) const;
+
+  /// The ownership of the item is passed to this collection - do not delete the item.
+  void PushBack(Vector<BaseFloat> *item);
+
+  /// This method returns the size as if no "recycling" had happened,
+  /// i.e. equivalent to the number of times the PushBack method has been called.
+  int Size() const;
+
+  ~RecyclingVector();
+
+private:
+  std::deque<Vector<BaseFloat>*> items_;
+  int items_to_hold_;
+  int first_available_index_;
+};
+
+
 /// This is a templated class for online feature extraction;
 /// it's templated on a class like MfccComputer or PlpComputer
 /// that does the basic feature extraction.
@@ -61,7 +91,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
     return computer_.GetFrameOptions().frame_shift_ms / 1000.0f;
   }
 
-  virtual int32 NumFramesReady() const { return features_.size(); }
+  virtual int32 NumFramesReady() const { return features_.Size(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
@@ -83,14 +113,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // more waveform.  This will help flush out the last frame or two
   // of features, in the case where snip-edges == false; it also
   // affects the return value of IsLastFrame().
-  virtual void InputFinished() {
-    input_finished_ = true;
-    ComputeFeatures();
-  }
-
-  ~OnlineGenericBaseFeature() {
-    DeletePointers(&features_);
-  }
+  virtual void InputFinished();
 
  private:
   // This function computes any additional feature frames that it is possible to
@@ -101,13 +124,19 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // waveform_remainder_ while incrementing waveform_offset_ by the same amount.
   void ComputeFeatures();
 
+  void MaybeCreateResampler(BaseFloat sampling_rate);
+
   C computer_;  // class that does the MFCC or PLP or filterbank computation
+
+  // resampler in cases when the input sampling frequency is not equal to
+  // the expected sampling rate
+  std::unique_ptr<LinearResample> resampler_;
 
   FeatureWindowFunction window_function_;
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
 
-  std::vector<Vector<BaseFloat>*> features_;
+  RecyclingVector features_;
 
   // True if the user has called "InputFinished()"
   bool input_finished_;
@@ -117,7 +146,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   BaseFloat sampling_frequency_;
 
   // waveform_offset_ is the number of samples of waveform that we have
-  // already discarded, i.e. thatn were prior to 'waveform_remainder_'.
+  // already discarded, i.e. that were prior to 'waveform_remainder_'.
   int64 waveform_offset_;
 
   // waveform_remainder_ is a short piece of waveform that we may need to keep
@@ -197,7 +226,7 @@ struct OnlineCmvnOptions {
       ring_buffer_size(20),
       skip_dims("") { }
 
-  void Check() {
+  void Check() const {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
                  && modulus > 0);
   }
@@ -241,7 +270,7 @@ struct OnlineCmvnState {
 
   // The following is the global CMVN stats, in the usual
   // format, of dimension 2 x (dim+1), as [  sum-stats          count
-  //                                       sum-sqared-stats   0    ]
+  //                                       sum-squared-stats   0    ]
   Matrix<double> global_cmvn_stats;
 
   // If nonempty, contains CMVN stats representing the "frozen" state
