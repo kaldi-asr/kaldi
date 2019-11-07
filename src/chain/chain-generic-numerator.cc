@@ -156,6 +156,7 @@ void GenericNumeratorComputation::CopySpecificPdfsIndirect(
 BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
                                               const Matrix<BaseFloat> &probs,
                                               Matrix<BaseFloat> *alpha) {
+  NVTX_RANGE(__func__);
   // Define some variables to make things nicer
   const int32 num_sequences = supervision_.num_sequences,
               num_frames = supervision_.frames_per_sequence;
@@ -212,6 +213,7 @@ BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
 bool GenericNumeratorComputation::ForwardBackward(
                                  BaseFloat *total_loglike,
                                  CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+  NVTX_RANGE(__func__);
   KALDI_ASSERT(total_loglike != NULL);
   KALDI_ASSERT(nnet_output_deriv != NULL);
   KALDI_ASSERT(nnet_output_deriv->NumCols() == nnet_output_.NumCols());
@@ -298,6 +300,7 @@ void GenericNumeratorComputation::BetaRemainingFrames(int seq,
                                                 const Matrix<BaseFloat> &alpha,
                                                 Matrix<BaseFloat> *beta,
                                                 Matrix<BaseFloat> *derivs) {
+  NVTX_RANGE(__func__);
   const int32
       num_sequences = supervision_.num_sequences,
       num_frames = supervision_.frames_per_sequence,

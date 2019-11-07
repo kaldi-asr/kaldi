@@ -94,6 +94,7 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                  BaseFloat *weight,
                                  CuMatrixBase<BaseFloat> *nnet_output_deriv,
                                  CuMatrix<BaseFloat> *xent_output_deriv) {
+  NVTX_RANGE(__func__);
   BaseFloat num_logprob_weighted, den_logprob_weighted;
   bool denominator_ok = true;
   bool numerator_ok = true;
@@ -211,6 +212,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
                               CuMatrix<BaseFloat> *xent_output_deriv) {
+  NVTX_RANGE(__func__);
   if (!supervision.e2e_fsts.empty()) {
     ComputeChainObjfAndDerivE2e(opts, den_graph, supervision,
                                 nnet_output, objf, l2_term,
