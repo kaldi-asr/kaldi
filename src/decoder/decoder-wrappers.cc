@@ -232,7 +232,8 @@ bool DecodeUtteranceLatticeIncremental(
   int32 num_frames;
   { // First do some stuff with word-level traceback...
     VectorFst<LatticeArc> decoded;
-    if (!decoder.GetBestPath(&decoded))
+    decoder.GetBestPath(&decoded);
+    if (decoded.Start() == fst::kNoStateId)
       // Shouldn't really reach this point as already checked success.
       KALDI_ERR << "Failed to get traceback for utterance " << utt;
 
@@ -258,9 +259,9 @@ bool DecodeUtteranceLatticeIncremental(
     likelihood = -(weight.Value1() + weight.Value2());
   }
 
-  // Get lattice, and do determinization if requested.
+  // Get lattice
   CompactLattice clat;
-  decoder.GetLattice(&clat);
+  decoder.GetLattice(true, decoder.NumFramesDecoded(), &clat);
   if (clat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
     // We'll write the lattice without acoustic scaling.

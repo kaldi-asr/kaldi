@@ -43,11 +43,13 @@ struct LatticeFasterDecoderConfig {
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
                             // command-line program.
-  BaseFloat beam_delta; // has nothing to do with beam_ratio
+  BaseFloat beam_delta;
   BaseFloat hash_ratio;
-  BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
-                           // it's not a very important parameter.  It affects the
-                           // algorithm that prunes the tokens as we go.
+  // Note: we don't make prune_scale configurable on the command line, it's not
+  // a very important parameter.  It affects the algorithm that prunes the
+  // tokens as we go.
+  BaseFloat prune_scale;
+
   // Most of the options inside det_opts are not actually queried by the
   // LatticeFasterDecoder class itself, but by the code that calls it, for
   // example in the function DecodeUtteranceLatticeFaster.
