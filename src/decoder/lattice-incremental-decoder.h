@@ -74,9 +74,10 @@ namespace kaldi {
            to labels that identify states in the determinized
            lattice (i.e. state indexes in lat_).
 
-       redeterminized-non-splice-state, aka redetnss:
+       redeterminized-non-splice-state, aka ns_redet:
          A redeterminized state which is not also a splice state;
-         refer to the paper for explanation.
+         refer to the paper for explanation.  In the already-determinized
+         part this means a redeterminized state which is not final.
 
  */
 struct LatticeIncrementalDecoderConfig {
@@ -649,13 +650,12 @@ class LatticeIncrementalDeterminizer {
   // Record whether we have finished determinized the whole utterance
   // (including re-determinize)
   bool determinization_finalized_;
+
   /**
-  // A map from the prefinal state to its correponding first final arc (there could be
-  // multiple final arcs). We keep final arc information for GetRedeterminizedStates()
-  // later. It can also be used to identify whether a state is a prefinal state.
+     final_arc_list_ is a map from each non-final redeterminized-state
+     in clat_ to the arc-index of its first arc to a final state.
   */
   unordered_map<StateId, size_t> final_arc_list_;
-  unordered_map<StateId, size_t> final_arc_list_prev_;
   // alpha of each state in lat_
   std::vector<BaseFloat> forward_costs_;
   // we allocate a unique id for each source-state of the last arc of a series of

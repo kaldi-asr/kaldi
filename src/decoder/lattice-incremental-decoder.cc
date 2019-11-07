@@ -1148,7 +1148,6 @@ LatticeIncrementalDeterminizer<FST>::LatticeIncrementalDeterminizer(
 template <typename FST>
 void LatticeIncrementalDeterminizer<FST>::Init() {
   final_arc_list_.clear();
-  final_arc_list_prev_.clear();
   clat_.DeleteStates();
   determinization_finalized_ = false;
   forward_costs_.clear();
@@ -1290,10 +1289,10 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
   using namespace fst;
   processed_prefinal_states_.clear();
   // go over all prefinal state
-  KALDI_ASSERT(final_arc_list_prev_.size());
+  KALDI_ASSERT(final_arc_list_.size());
   unordered_set<StateId> prefinal_states;
 
-  for (auto &i : final_arc_list_prev_) {
+  for (auto &i : final_arc_list_) {
     auto prefinal_state = i.first;
     ArcIterator<CompactLattice> aiter(clat_, prefinal_state);
     KALDI_ASSERT(clat_.NumArcs(prefinal_state) > i.second);
@@ -1336,9 +1335,9 @@ void LatticeIncrementalDeterminizer<FST>::GetRedeterminizedStates() {
             // destination-state of the arc is no further than
             // redeterminize_max_frames from the most recent frame we are
             // determinizing
-            auto r = final_arc_list_prev_.find(arc.nextstate);
+            auto r = final_arc_list_.find(arc.nextstate);
             // destination-state of the arc is not prefinal state
-            if (r == final_arc_list_prev_.end()) remain_the_arc = true;
+            if (r == final_arc_list_.end()) remain_the_arc = true;
             // destination-state of the arc is prefinal state
             else
               remain_the_arc = false;
@@ -1568,7 +1567,6 @@ void LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(
     }
   }
 
-  final_arc_list_.swap(final_arc_list_prev_);
   final_arc_list_.clear();
 }
 
