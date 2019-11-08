@@ -67,6 +67,11 @@ if [ -f $data/text ] && [ $nu -ne $nt ]; then
   echo "** use utils/fix_data_dir.sh to fix this."
 fi
 
+ns=`cat $data/spk2utt | wc -l`
+if [ $numsplit -gt $ns ] && [ $split_per_spk = "true" ]; then
+    echo "You should reduce the number of jobs ($numsplit) as there are not enough speakers ($ns)."
+    exit 1
+fi
 
 if $split_per_spk; then
   utt2spk_opt="--utt2spk=$data/utt2spk"
@@ -74,6 +79,11 @@ if $split_per_spk; then
 else
   utt2spk_opt=
   utt="utt"
+fi
+
+utt2dur_opt=
+if [ -f $data/utt2dur ]; then
+    utt2dur_opt="--utt2dur=$data/utt2dur"
 fi
 
 s1=$data/split${numsplit}${utt}/1
@@ -108,7 +118,7 @@ fi
 which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock
 trap 'rm -f $data/.split_lock' EXIT HUP INT PIPE TERM
 
-utils/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
+utils/split_scp.pl $utt2spk_opt $utt2dur_opt $data/utt2spk $utt2spks || exit 1
 
 for n in `seq $numsplit`; do
   dsn=$data/split${numsplit}${utt}/$n
