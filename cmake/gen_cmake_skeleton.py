@@ -253,6 +253,8 @@ class CMakeListsExecutable(object):
 
 class CMakeListsFile(object):
 
+    GEN_CMAKE_HEADER = "# generated with cmake/gen_cmake_skeleton.py, DO NOT MODIFY.\n"
+
     def __init__(self, directory):
         self.path = os.path.realpath(os.path.join(directory, "CMakeLists.txt"))
         self.sections = []
@@ -262,6 +264,7 @@ class CMakeListsFile(object):
 
     def write_file(self):
         with open(self.path, "w", newline='\n') as f: # good luck for python2
+            f.write(CMakeListsFile.GEN_CMAKE_HEADER)
             for s in self.sections:
                 code = s.gen_code()
                 f.write(code)
