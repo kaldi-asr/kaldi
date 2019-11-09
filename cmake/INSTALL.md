@@ -30,14 +30,20 @@ Follow options are currently available:
 | KALDI_USE_PATCH_NUMBER | ON,OFF                    | OFF |
 | BUILD_SHARED_LIBS      | ON,OFF                    | OFF |
 
-Append `-D<Variable>=<Value>` to the configure command to use it, e.g., `-DKALDI_BUILD_TEST=OFF`
-will disable building of test executables. For more information, please refers to [CMake
-Documentation](https://cmake.org/cmake/help/latest/manual/cmake.1.html).
+Append `-D<Variable>=<Value>` to the configure command to use it, e.g.,
+`-DKALDI_BUILD_TEST=OFF` will disable building of test executables. For more
+information, please refers to
+[CMake Documentation](https://cmake.org/cmake/help/latest/manual/cmake.1.html).
+For quick learning CMake usage, LLVM's short introuction will do the trick:
+[Basic CMake usage](https://llvm.org/docs/CMake.html#usage),
+[Options and variables](https://llvm.org/docs/CMake.html#options-and-variables),
+[Frequently-used CMake variables](https://llvm.org/docs/CMake.html#frequently-used-cmake-variables).
 
-NOTE 1: Currently, BUILD_SHARED_LIBS does not work on Windows due to some symbols (variables) are
-        not properly exported.
+NOTE 1: Currently, BUILD_SHARED_LIBS does not work on Windows due to some symbols
+        (variables) are not properly exported.
 
-NOTE 2: For scripts users, since you are doing an out of source build, and the install destination
-        is at your disposal, the `$PATH` is not configured properly in this case. Scripts will not
-        work out of box. See how `$PATH` is modified in [path.sh](../egs/wsj/s5/path.sh). You should
-        add `<installation_path>/bin` to your `$PATH` before running any scripts.
+NOTE 2: For scripts users, since you are doing an out of source build, and the
+        install destination is at your disposal, the `$PATH` is not configured
+        properly in this case. Scripts will not work out of box. See how `$PATH`
+        is modified in [path.sh](../egs/wsj/s5/path.sh). You should add
+        `<installation_path>/bin` to your `$PATH` before running any scripts.
