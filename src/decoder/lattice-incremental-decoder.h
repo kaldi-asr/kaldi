@@ -1,6 +1,6 @@
 // decoder/lattice-incremental-decoder.h
 
-// Copyright      2019  Zhehuai Chen, Hainan Xu, Daniel Povey
+// Copyright      2019  Zhehuai Chen, Daniel Povey
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -116,8 +116,6 @@ struct LatticeIncrementalDecoderConfig {
   int32 determinize_period;
   int32 determinize_max_active;
   int32 redeterminize_max_frames;
-  bool final_prune_after_determinize;
-  int32 max_word_id; // for GetLattice
 
 
   LatticeIncrementalDecoderConfig()
@@ -132,9 +130,7 @@ struct LatticeIncrementalDecoderConfig {
         determinize_delay(25),
         determinize_period(20),
         determinize_max_active(std::numeric_limits<int32>::max()),
-        redeterminize_max_frames(std::numeric_limits<int32>::max()),
-        final_prune_after_determinize(true),
-        max_word_id(1e8) {}
+        redeterminize_max_frames(std::numeric_limits<int32>::max()) { }
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
     opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
@@ -210,8 +206,7 @@ class LatticeIncrementalDeterminizer2 {
                                                 specific type all the time but
                                                 just say 'Label' */
 
-  LatticeIncrementalDeterminizer2(const LatticeIncrementalDecoderConfig &config,
-                                  const TransitionModel &trans_model);
+  LatticeIncrementalDeterminizer2() { }
 
   // Resets the lattice determinization data for new utterance
   void Init();
@@ -226,7 +221,7 @@ class LatticeIncrementalDeterminizer2 {
      specifically the initial-state i and the redeterminized-states.
 
      After calling this, the caller would add the remaining arcs and states
-     to `olat` and then call AcceptChunk() with the result.
+     to `olat` and then call AcceptRawLatticeChunk() with the result.
 
         @param [out] olat    The lattice to be (partially) created
 
@@ -270,15 +265,24 @@ class LatticeIncrementalDeterminizer2 {
 
   const CompactLattice &GetLattice() { return clat_; }
 
- private:
 
-  // kTokenLabelOffset is where we start allocating labels corresponding to Tokens
-  // (these correspond with raw lattice states);
   // kStateLabelOffset is what we add to state-ids in clat_ to produce labels
   // to identify them in the raw lattice chunk
+  // kTokenLabelOffset is where we start allocating labels corresponding to Tokens
+  // (these correspond with raw lattice states);
   enum  { kStateLabelOffset = (int)1e8,  kTokenLabelOffset = (int)2e8, kMaxTokenLabel = (int)3e8 };
 
-  Label next_state_label_;
+ private:
+  // Sets up non_final_redet_states_.  See documentation for that variable.
+  void GetNonFinalRedetStates();
+
+  // Contains the set of redeterminized-states which are not final in the
+  // canonical appended lattice.  Since the final ones don't physically appear
+  // in clat_, this means the set of redeterminized-states which are physically
+  // in clat_.  In code terms, this means set of .first elements in final_arcs,
+  // plus whatever other states in clat_ are reachable from such states.
+  std::unordered_set<CompactLatticeArc::StateId> non_final_redet_states_;
+
 
   // clat_ is the appended lattice (containing all chunks processed so
   // far), except its `final-arcs` (i.e. arcs which in the canonical
@@ -286,14 +290,6 @@ class LatticeIncrementalDeterminizer2 {
   // separately in final_arcs_) and states which in the canonical lattice
   // should have final-arcs leaving them will instead have a final-prob.
   CompactLattice clat_;
-
-  // The elements of this set are the redeterminized-states which are not final in
-  // the canonical appended lattice.  This means the set of .first elements in
-  // final_arcs, plus whatever states in clat_ are reachable from such states.
-  // (The final redeterminized states/splice-states are never actually
-  // materialized.)
-  std::unordered_set<CompactLatticeArc::StateId> non_final_redet_states_;
-
 
   // final_arcs_ contains arcs which would appear in the canonical appended
   // lattice but for implementation reasons are not physically present in clat_.
@@ -303,14 +299,6 @@ class LatticeIncrementalDeterminizer2 {
   // contain a physical state, but contain state-labels allocated by
   // AllocateNewStateLabel().
   std::vector<CompactLatticeArc> final_arcs_;
-
-
-  // final_weights_ contain the final-probs of states that are final in the
-  // canonical compact lattice.  Physically it maps from the state-labels which
-  // are allocated by AllocateNewStateLabel() and are stored in the .nextstate
-  // in final_arcs_, to the weight that would be on that final-state in the
-  // canonical compact lattice.
-  std::unordered_map<Label, CompactLatticeWeight> final_weights_;
 
   // forward_costs_, indexed by the state-id in clat_, stores the alpha
   // (forward) costs, i.e. the minimum cost from the start state to each state
@@ -421,18 +409,7 @@ class LatticeIncrementalDecoderTpl {
      still have to do a fair amount of work; calling it every, say,
      10 to 40 frames would make sense though.
 
-      @param [in] use_final_probs  True if you want the final-probs
-                     of HCLG to be included in the output lattice.
-                     (However, if no state was final on frame
-                     `num_frames_to_include` they won't be included regardless
-                     of use_final_probs; if this equals NumFramesDecoded() you
-                     can test this with ReachedFinal()).  Caution:
-                     it is an error to call this function with
-                     the same num_frames_to_include and different values
-                     of `use_final_probs`.  (This is not a fundamental
-                     limitation but just the way we coded it.)
-
-      @param [in] num_frames_to_include  The number of frames that you want
+     @param [in] num_frames_to_include  The number of frames that you want
                      to be included in the lattice.  Must be >0 and
                      <= NumFramesDecoded().  If you are calling this just to
                      keep the incremental lattice determinization up to date and
@@ -448,13 +425,29 @@ class LatticeIncrementalDecoderTpl {
                      a few frames larger) is probably not a good use of
                      computational resources.
 
+     @param [in] use_final_probs  True if you want the final-probs
+                    of HCLG to be included in the output lattice.  Must not be
+                    set if num_frames_to_include < NumFramesDecoded().  If no
+                    state was final on frame `num_frames_to_include` they won't
+                    be included regardless of use_final_probs; you can test this
+                    with ReachedFinal().  Caution: it is an error to call this
+                    function in succession with the same num_frames_to_include
+                    and different values of `use_final_probs`.  (This is not a
+                    fundamental limitation but just the way we coded it.)
+
+     @param [in] finalize  If true, finalize the lattice (does an extra
+                    pruning step on the raw lattice).  After this call, no
+                    further calls to GetLattice() will be allowed.
+
       @return clat   The CompactLattice representing what has been decoded
                      up until `num_frames_to_include` (e.g., LatticeStateTimes()
                      on this lattice would return `num_frames_to_include`).
 
   */
-  const CompactLattice &GetLattice(bool use_final_probs,
-                                   int32 num_frames_to_include);
+  const CompactLattice &GetLattice(int32 num_frames_to_include,
+                                   bool use_final_probs = false,
+                                   bool finalize = false);
+
 
 
 
@@ -475,21 +468,6 @@ class LatticeIncrementalDecoderTpl {
   */
   void AdvanceDecoding(DecodableInterface *decodable, int32 max_num_frames = -1);
 
-
-  /**
-     This function may be optionally called after AdvanceDecoding(), when you
-     do not plan to decode any further.  It does an extra pruning step that
-     will help to prune the lattices output by GetLattice more accurately,
-     particularly toward the end of the utterance.
-     It does this by using the final-probs in pruning (if any
-     final-state survived); it also does a final pruning step that visits all
-     states (the pruning that is done during decoding may fail to prune states
-     that are within kPruningScale = 0.1 outside of the beam).  If you call
-     this, you cannot call AdvanceDecoding again (it will fail), and you
-     cannot call GetLattice() and related functions with use_final_probs =
-     false.
-  */
-  void FinalizeDecoding();
 
   /** FinalRelativeCost() serves the same purpose as ReachedFinal(), but gives
       more information.  It returns the difference between the best (final-cost
@@ -544,28 +522,38 @@ class LatticeIncrementalDecoderTpl {
   int32 num_toks_;
   bool warned_;
   bool decoding_finalized_;
+
+  int32 final_cost_frame_; // TODO: initialize.
   unordered_map<Token *, BaseFloat> final_costs_;
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;
 
-  /*** Variables below this point relate to the incremental
-       determinization. ***/
+  /***********************
+      Variables below this point relate to the incremental
+      determinization.
+  *********************/
   LatticeIncrementalDecoderConfig config_;
   /** Much of the the incremental determinization algorithm is encapsulated in
       the determinize_ object.  */
   LatticeIncrementalDeterminizer2 determinizer_;
 
+
+  /* Just a temporary used in a function; stored here to avoid reallocation. */
+  unordered_map<Token*, StateId> temp_token_map_;
+
   /** num_frames_in_lattice_ is the highest `num_frames_to_include_` argument
       for any prior call to GetLattice(). */
   int32 num_frames_in_lattice_;
-  // a map from Token to its token_label
-  unordered_map<Token *, int32> token2label_map_;
+  // A map from Token to its token_label.  Will contain an entry for
+  // each Token in active_toks_[num_frames_in_lattice_].
+  unordered_map<Token*, Label> token2label_map_;
+
+  // A temporary used in a function, kept here to avoid reallocation.
+  unordered_map<Token*, Label> token2label_map_temp_;
+
   // we allocate a unique id for each Token
-  int32 token_label_available_idx_;
-  // We keep cost_offset for each token_label (Token) in final arcs. We need them to
-  // guide determinization
-  // We cancel them after determinization
-  unordered_map<int32, BaseFloat> token_label2final_cost_;
+  Label next_token_label_;
+  inline Label AllocateNewTokenLabel() { return next_token_label_++; }
 
 
   // There are various cleanup tasks... the the toks_ structure contains
@@ -591,28 +579,10 @@ class LatticeIncrementalDecoderTpl {
 
   void ClearActiveTokens();
 
-  // The following part is specifically designed for incremental determinization
-  // This function is modified from LatticeFasterDecoderTpl::GetRawLattice()
-  // and specific design for step 1 of incremental determinization
-  // introduced before above GetLattice()
-  // It does the same thing as GetRawLattice in lattice-faster-decoder.cc except:
-  //
-  // i) it creates a initial state, and connect
-  // each token in the first frame of this chunk to the initial state
-  // by one or more arcs with a state_label correponding to the pre-final state w.r.t
-  // this token(the pre-final state is appended in the last chunk) as its olabel
-  // ii) it creates a final state, and connect
-  // all the tokens in the last frame of this chunk to the final state
-  // by an arc with a per-token token_label as its olabel
-  // `frame_begin` and `frame_end` are the first and last frame of this chunk
-  // if `create_initial_state` == false, we will not create initial state and
-  // the corresponding initial arcs. Similar for `create_final_state`
-  // In incremental GetLattice, we do not create the initial state in
-  // the first chunk, and we do not create the final state in the last chunk
-  bool GetIncrementalRawLattice(Lattice *ofst, bool use_final_probs,
-                                int32 frame_begin, int32 frame_end,
-                                bool create_initial_state, bool create_final_state);
-  // Returns the number of active tokens on frame `frame`.
+
+  // Returns the number of active tokens on frame `frame`.  Can be used as part
+  // of a heuristic to decide which frame to determinize until, if you are not
+  // at the end of an utterance.
   int32 GetNumToksForFrame(int32 frame);
 
   // DeterminizeLattice() is just a wrapper for GetLattice() that uses the various
@@ -622,6 +592,16 @@ class LatticeIncrementalDecoderTpl {
   // Decode() which is not recommended for users to call in most scenarios).
   // We may at some point decide to make this public.
   void DeterminizeLattice();
+
+  /**
+     This function used to be public in LatticeFasterDecoder but is now accessed
+     only by including the 'finalize' argument to GetLattice().  It may be
+     called only once per utterance, at the end.  (GetLattice() will ensure this
+     anyway.
+     It prunes the raw lattice.
+  */
+  void FinalizeDecoding();
+
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);
 };
