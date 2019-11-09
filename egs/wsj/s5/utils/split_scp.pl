@@ -117,8 +117,12 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
         @A = split;
         @A == 2 || die "Bad line $_ in utt2spk file $utt2dur_file";
         ($u,$d) = @A;
-        $utt2dur{$u} = $d;
         $dursum += $d;
+        $s = $utt2spk{$u};
+        if (!defined $spk2dur{$s}) {
+            $spk2dur{$s} = 0.0;
+        }
+        $spk2dur{$s} += $d;
     }
     open(I, "<$inscp") || die "Opening input scp file $inscp";
     @spkrs = ();
@@ -149,6 +153,7 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
     }
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scparray[$scpidx] = []; # [] is array reference.
+        $scp2dur[$scpidx] = 0.0;
     }
     $splitdur = $dursum / $numscps;
     $dursum = 0.0;
@@ -156,38 +161,96 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
     for my $spk (sort (keys %spk2utt)) {
         $scpcount[$scpidx] += $spk_count{$spk};
         push @{$scparray[$scpidx]}, $spk;
-        for my $utt (@{$spk2utt{$spk}}) {
-            $dur = $utt2dur{$utt};
-            $dursum += $dur;
-        }
+        $dur = $spk2dur{$spk};
+        $dursum += $dur;
         if ( $dursum >= $splitdur ) {
+            $scp2dur[$scpidx] = $dursum;
             $scpidx += 1;
             $dursum = 0.0;
         }
     }
 
-    # Because scpidx might not have gone up to numscps (because all utts from one
-    # speaker go into one split means a major imbalance will mean not all splits
-    # are filled), move one speaker inside scparray to the indices which don't have
-    # any.
-    if ( $scpidx + 1 < $numscps || @{$scparray[$scpidx]} == 0 ) {
-        $scpdone = $scpidx;
-        if ( @{$scparray[$scpidx]} == 0 ) {
-            $scpdone -= 1;
+    # Adjust split if necessary.
+    #
+    # It should be easy to understand that for datasets where for example
+    # one speaker is 90% of the data, it will be impossible to
+    # create equally sized splits.
+    #
+    # Not only that, but because speakers must go into the same split,
+    # one split will be much larger than average, resulting in other splits
+    # getting no speakers (and no data) at all. The below code tries
+    # to fix that situation in a general way so that there should be some
+    # data in each split.
+
+    # Indices which were already used and should be skipped
+    my %argmax_used;
+    for($i = 0; $i < int($numscps/2); $i++) {
+        # Iterate through scps and find difference between actual and target duration
+        $split_with_zero_exists = 0;
+        my @diffs;
+        for($j = 0; $j < $numscps; $j++) {
+            $surplus = $scp2dur[$j] - $splitdur;
+            push @diffs, $surplus;
+            $cnt = @{$scparray[$scpidx]};
+            if ($cnt == 0) {
+                $split_with_zero_exists = 1;
+            }
         }
-        for(; $scpidx < $numscps; $scpidx++) {
-            $i = 0;
-            for(; $i < $scpdone; $i++) {
-                $numspk = @{$scparray[$i]};
+
+        # Find min and max of surpluses.
+        $min = 1.0;
+        $max = -1.0;
+        $argmin = 0;
+        $argmax = 0;
+        for($j = 0; $j < $numscps; $j++) {
+            $surplus = $diffs[$j];
+            if ($surplus < $min) {
+                $min = $surplus;
+                $argmin = $j;
+            }
+            if ($surplus > $max && !exists($argmax_used{$j})) {
+                $numspk = @{$scparray[$j]};
                 if ($numspk > 1) {
-                    last;
+                    $max = $surplus;
+                    $argmax = $j;
                 }
             }
-            $spk = pop @{$scparray[$i]};
-            $scpcount[$i] -= $spk_count{$spk};
+        }
 
-            push @{$scparray[$scpidx]}, $spk;
-            $scpcount[$scpidx] += $spk_count{$spk};
+        # Difference smaller than this is considered okay.
+        # +10 for weird cases of tiny datasets.
+        $min_surplus = $splitdur / 10.0 + 10.0;
+        if ($min > -$min_surplus && $max < $min_surplus && !$split_with_zero_exists) {
+            last;
+        }
+
+        $numspk = @{$scparray[$argmax]};
+        # Find speakers to move
+        for($j = 0; $j < $numspk;) {
+            my $s = $scparray[$argmax][$j];
+            $d = $spk2dur{$s};
+            # 100.0 to allow for some slack
+            if ($d < $max && $min + $d < 100.0) {
+                splice @{$scparray[$argmax]}, $j, 1;
+                $scpcount[$argmax] -= $spk_count{$s};
+                $scp2dur[$argmax] -= $d;
+                $max -= $d;
+                $numspk--;
+
+                push @{$scparray[$argmin]}, $s;
+                $min += $d;
+                $scp2dur[$argmin] += $d;
+                $scpcount[$argmin] += $spk_count{$s};
+            } else {
+                $j++;
+            }
+            if ($j >= $numspk - 1) {
+                # Reached the end, should not use this argmax again
+                $argmax_used{$argmax} = 1;
+            }
+            if (($max < $min_surplus && $min > -$min_surplus) || $numspk == 1) {
+                last;
+            }
         }
     }
 
