@@ -79,6 +79,17 @@ namespace kaldi {
          refer to the paper for explanation.  In the already-determinized
          part this means a redeterminized state which is not final.
 
+       canonical appended lattice:  This is the appended compact lattice
+         that we conceptually have (i.e. what we described in the paper).
+         The difference from the "actual appended lattice" is that the
+         actual appended lattice has all its final-arcs replaced with
+         final-probs (we keep the real final-arcs "on the side" in a
+         separate data structure).
+
+       final-arc:  An arc in the canonical appended CompactLattice which
+         goes to a final-state.  These arcs will have `state-labels` as
+         their labels.
+
  */
 struct LatticeIncrementalDecoderConfig {
   // All the configuration values until det_opts are the same as in
@@ -183,8 +194,133 @@ struct LatticeIncrementalDecoderConfig {
   }
 };
 
-template <typename FST>
-class LatticeIncrementalDeterminizer;
+
+
+/**
+   This class is used inside LatticeIncrementalDecoderTpl; it handles
+   some of the details of incremental determinization.
+   https://www.danielpovey.com/files/ *TBD*.pdf for the paper.
+
+*/
+class LatticeIncrementalDeterminizer2 {
+ public:
+  using Label = typename LatticeArc::Label;  /* Actualy the same labels appear
+                                                in both lattice and compact
+                                                lattice, so we don't use the
+                                                specific type all the time but
+                                                just say 'Label' */
+
+  LatticeIncrementalDeterminizer2(const LatticeIncrementalDecoderConfig &config,
+                                  const TransitionModel &trans_model);
+
+  // Resets the lattice determinization data for new utterance
+  void Init();
+
+  // Returns the current determinized lattice.
+  const CompactLattice &GetDeterminizedLattice() const { return clat_; }
+
+  /**
+     Starts the process of creating a raw lattice chunk.  (Search the glossary
+     for "raw lattice chunk").  This just sets up the initial states and
+     redeterminized-states in the chunk.  Relates to sec. 5.2 in the paper,
+     specifically the initial-state i and the redeterminized-states.
+
+     After calling this, the caller would add the remaining arcs and states
+     to `olat` and then call AcceptChunk() with the result.
+
+        @param [out] olat    The lattice to be (partially) created
+
+        @param [out] token_label2state  This function outputs to here
+                a map from `token-label` to the state we created for
+                it in *olat.  See glossary for `token-label`.
+                The keys actually correspond to the .nextstate fields
+                in the arcs in final_arcs_; values are states in `olat`.
+                See the last bullet point before Sec. 5.3 in the paper.
+  */
+  void InitializeRawLatticeChunk(
+      Lattice *olat,
+      unordered_map<Label, LatticeArc::StateId> *token_label2state);
+
+  /**
+     This function accepts the raw FST (state-level lattice) corresponding to a
+     single chunk of the lattice, determinizes it and appends it to this->clat_.
+     Unless this was the
+
+     Note: final-probs in `raw_fst` are treated specially: they are used to
+     guide the pruned determinization, but when you call GetLattice() it will be
+     -- except for pruning effects-- as if all nonzero final-probs in `raw_fst`
+     were: One() if final_costs == NULL; else the value present in `final_costs`.
+
+       @param [in] raw_fst  (Consumed destructively).  The input
+                  raw (state-level) lattice.  Would correspond to the
+                  FST A in the paper if first_frame == 0, and B
+                  otherwise.
+       @param [in] final_costs  Final-costs that the user wants to
+                  be included in clat_.  These replace the values present
+                  in the Final() probs in raw_fst whenever there was
+                  a nonzero final-prob in raw_fst.  (States in raw_fst
+                  that had a final-prob will still be non-final).
+
+     @return returns false if determinization finished earlier than the beam,
+         true otherwise.
+  */
+  bool AcceptRawLatticeChunk(Lattice *raw_fst,
+                             const std::unordered_map<LatticeArc::StateId, BaseFloat> *final_costs = NULL);
+
+
+  const CompactLattice &GetLattice() { return clat_; }
+
+ private:
+
+  // kTokenLabelOffset is where we start allocating labels corresponding to Tokens
+  // (these correspond with raw lattice states);
+  // kStateLabelOffset is what we add to state-ids in clat_ to produce labels
+  // to identify them in the raw lattice chunk
+  enum  { kStateLabelOffset = (int)1e8,  kTokenLabelOffset = (int)2e8, kMaxTokenLabel = (int)3e8 };
+
+  Label next_state_label_;
+
+  // clat_ is the appended lattice (containing all chunks processed so
+  // far), except its `final-arcs` (i.e. arcs which in the canonical
+  // lattice would go to final-states) are not present (they are stored
+  // separately in final_arcs_) and states which in the canonical lattice
+  // should have final-arcs leaving them will instead have a final-prob.
+  CompactLattice clat_;
+
+  // The elements of this set are the redeterminized-states which are not final in
+  // the canonical appended lattice.  This means the set of .first elements in
+  // final_arcs, plus whatever states in clat_ are reachable from such states.
+  // (The final redeterminized states/splice-states are never actually
+  // materialized.)
+  std::unordered_set<CompactLatticeArc::StateId> non_final_redet_states_;
+
+
+  // final_arcs_ contains arcs which would appear in the canonical appended
+  // lattice but for implementation reasons are not physically present in clat_.
+  // These are arcs to final states in the canonical appended lattice.  The
+  // .first elements are the source states in clat_ (these will all be elements
+  // of non_final_redet_states_); the .nextstate elements of the arcs does not
+  // contain a physical state, but contain state-labels allocated by
+  // AllocateNewStateLabel().
+  std::vector<CompactLatticeArc> final_arcs_;
+
+
+  // final_weights_ contain the final-probs of states that are final in the
+  // canonical compact lattice.  Physically it maps from the state-labels which
+  // are allocated by AllocateNewStateLabel() and are stored in the .nextstate
+  // in final_arcs_, to the weight that would be on that final-state in the
+  // canonical compact lattice.
+  std::unordered_map<Label, CompactLatticeWeight> final_weights_;
+
+  // forward_costs_, indexed by the state-id in clat_, stores the alpha
+  // (forward) costs, i.e. the minimum cost from the start state to each state
+  // in clat_.  This is relevant for pruned determinization.  The BaseFloat can
+  // be thought of as the sum of a Value1() + Value2() in a LatticeWeight.
+  std::vector<BaseFloat> forward_costs_;
+
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDeterminizer2);
+};
+
 
 /** This is an extention to the "normal" lattice-generating decoder.
    See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
@@ -285,38 +421,41 @@ class LatticeIncrementalDecoderTpl {
      still have to do a fair amount of work; calling it every, say,
      10 to 40 frames would make sense though.
 
-      @param [in] use_final_probs  If true *and* at least one final-state in HCLG
-                     was active on the most recently decoded frame, include the
-                     final-probs from the decoding FST (HCLG) in the lattice.
-                     Otherwise treat all final-costs of states active on the
-                     most recent frame as zero (i.e. use Weight::One()).  You
-                     can tell whether a final-prob was active on the most
-                     recent frame by calling ReachedFinal().
-                     Setting use_final_probs will not affect the lattices
-                     output by subsequent calls to this function.  (TODO:
-                     verify this).
+      @param [in] use_final_probs  True if you want the final-probs
+                     of HCLG to be included in the output lattice.
+                     (However, if no state was final on frame
+                     `num_frames_to_include` they won't be included regardless
+                     of use_final_probs; if this equals NumFramesDecoded() you
+                     can test this with ReachedFinal()).  Caution:
+                     it is an error to call this function with
+                     the same num_frames_to_include and different values
+                     of `use_final_probs`.  (This is not a fundamental
+                     limitation but just the way we coded it.)
 
       @param [in] num_frames_to_include  The number of frames that you want
                      to be included in the lattice.  Must be >0 and
-                     <= NumFramesDecoded().  If you are calling this
-                     just to keep the incremental lattice determinization up to
-                     date and don't really need the lattice (olat == NULL), you
-                     will probably want to give it some delay (at least 5 or 10
-                     frames); search for determinize-delay in the paper
-                     and for determinize_delay in the configuration class and the
-                     code.  You may not call this with a num_frames_to_include
-                     that is smaller than the largest value previously
-                     provided.
+                     <= NumFramesDecoded().  If you are calling this just to
+                     keep the incremental lattice determinization up to date and
+                     don't really need the lattice now or don't need it to be up
+                     to date, you will probably want to make
+                     num_frames_to_include at least 5 or 10 frames less than
+                     NumFramessDecoded(); search for determinize-delay in the
+                     paper and for determinize_delay in the configuration class
+                     and the code.  You may not call this with a
+                     num_frames_to_include that is smaller than the largest
+                     value previously provided.  Calling it with an
+                     only-slightly-larger version than the last time (e.g. just
+                     a few frames larger) is probably not a good use of
+                     computational resources.
 
-      @param [out] olat  The CompactLattice representing what has been decoded
+      @return clat   The CompactLattice representing what has been decoded
                      up until `num_frames_to_include` (e.g., LatticeStateTimes()
                      on this lattice would return `num_frames_to_include`).
-                     If NULL, the lattice won't be output, and this will save
-                     the work of copying it, but the incremental determinization
-                     will still be done.
+
   */
-  void GetLattice(bool use_final_probs, int32 num_frames_to_include,
-                  CompactLattice *olat = NULL);
+  const CompactLattice &GetLattice(bool use_final_probs,
+                                   int32 num_frames_to_include);
+
 
 
   /**
@@ -414,10 +553,11 @@ class LatticeIncrementalDecoderTpl {
   LatticeIncrementalDecoderConfig config_;
   /** Much of the the incremental determinization algorithm is encapsulated in
       the determinize_ object.  */
-  LatticeIncrementalDeterminizer<FST> determinizer_;
-  /** last_get_lattice_frame_ is the highest `num_frames_to_include_` argument
+  LatticeIncrementalDeterminizer2 determinizer_;
+
+  /** num_frames_in_lattice_ is the highest `num_frames_to_include_` argument
       for any prior call to GetLattice(). */
-  int32 last_get_lattice_frame_;
+  int32 num_frames_in_lattice_;
   // a map from Token to its token_label
   unordered_map<Token *, int32> token2label_map_;
   // we allocate a unique id for each Token
@@ -489,201 +629,6 @@ class LatticeIncrementalDecoderTpl {
 typedef LatticeIncrementalDecoderTpl<fst::StdFst, decoder::StdToken>
     LatticeIncrementalDecoder;
 
-/**
-   This class is used inside LatticeIncrementalDecoderTpl; it handles
-   some of the details of incremental determinization.
-   https://www.danielpovey.com/files/ *TBD*.pdf for the paper.
-
-*/
-template <typename FST>
-class LatticeIncrementalDeterminizer {
- public:
-  using Arc = typename FST::Arc;
-  using Label = typename Arc::Label;
-  using StateId = typename Arc::StateId;
-  using Weight = typename Arc::Weight;
-
-  LatticeIncrementalDeterminizer(const LatticeIncrementalDecoderConfig &config,
-                                 const TransitionModel &trans_model);
-
-  // Resets the lattice determinization data for new utterance
-  void Init();
-
-  // Returns the current determinized lattice.
-  const CompactLattice &GetDeterminizedLattice() const { return clat_; }
-
-
-  /**
-     Starts the process of creating a raw lattice chunk.  (Search the glossary
-     for "raw lattice chunk").  This just sets up the initial states and
-     redeterminized-states in the chunk.  Relates to sec. 5.2 in the paper,
-     specifically the initial-state i and the redeterminized-states.
-
-     After calling this, the caller would add the remaining arcs and states
-     to `olat` and then call AcceptChunk() with the result.
-
-        @param [out] olat    The lattice to be (partially) created
-        @param [in] token_label2final_cost   For each token-label,
-                contains a cost that we will need to negate and then
-                introduce into newly created arcs in 'olat' that correspond
-                to arcs with that token-label on in the previous
-                determinized chunk.  (They won't actually have the token
-                label as we remove them at this point).  This relates
-                to an issue not discussed in the paper, which is
-                that to get pruned determinization to work right we
-                have to introduce special final-probs when determinizing
-                the previous chunk (think of the previous chunk as
-                the FST A in the paper).  This map allows us to cancel
-                out those final-probs.
-        @param [out] token_label2state  For each token-label (say, t)
-                that appears in lat_ (i.e. the result of determinizing previous
-                chunks), this identifies the state in `olat` that we allocate
-                for that token-label.  This is a so-called `splice-state`; they
-                will never have arcs leaving them within `lat_`.  When the
-                calling code processes the arcs in the raw lattice, it will add
-                arcs leaving these splice states.
-                See the last bullet point before Sec. 5.3 in the paper.
-  */
-  void InitializeRawLatticeChunk(
-      Lattice *olat,
-      const unordered_map<int32, BaseFloat> &token_label2final_cost,
-      unordered_map<int, LatticeArc::StateId> *token_label2state);
-
-  /**
-     This function accepts the raw FST (state-level lattice) corresponding
-     to a single chunk of the lattice, determinizes it and appends it to
-     this->clat_.
-
-       @param [in] first_frame  The start frame-index, which equals the
-                  total number of frames in all chunks previous to this one.
-                  Only needed to ask "is this the first chunk", plus
-                  debug info.
-       @param [in] last_frame  The end frame-index, which equals the
-                  total number of frames in all previous chunks plus
-                  this one.  Only needed for debug.
-       @param [in] raw_fst  (Consumed destructively).  The input
-                  raw (state-level) lattice.  Would correspond to the
-                  FST A in the paper if first_frame == 0, and B
-                  otherwise.
-
-     @return returns false if determinization finished earlier than the beam,
-         true otherwise.
-  */
-  bool AcceptRawLatticeChunk(int32 first_frame, int32 last_frame, Lattice *raw_fst);
-
-
-  /**
-     Finalize incremental decoding by pruning the lattice (if
-     config_.final_prune_after_determinize), otherwise just removing unreachable
-     states.
-  */
-  void Finalize();
-
-
- private:
-
-  /**
-  // Step 3 of incremental determinization,
-  // which is to append the new chunk in clat to the old one in lat_
-  // If not_first_chunk == false, we do not need to append and just copy
-  // clat into olat
-  // Otherwise, we need to connect states of the last frame of
-  // the last chunk to states of the first frame of this chunk.
-  // These post-initial and pre-final states are corresponding to the same Token,
-  // guaranteed by unique state labels.
-     NOTE clat must be top sorted.
-   */
-  void AppendLatticeChunks(const CompactLattice &clat, bool first_chunk);
-
-
-  /**
-     In the paper, recall from Sec. 5.2 that some states in det(A) (specifically:
-     redeterminized state) are also included in B.  In the paper we just assumed
-     that the same state-ids were used, but in practice they are different numbers;
-     in redeterminized_state_map_ we store the mapping from state-id in det(A)==clat_ to
-     the state-id in B==raw_lat_chunk.  The map is re-initialized each time we
-     process a new chunk.  This function maps from the the state-id in clat_
-     to the state_id in `raw_lat_chunk`, adding to the map and creating a new state
-     in `raw_lat_chunk` if it was not already present.
-
-          @param [in] redet_state  State-id of a redeterminized-state in clat_
-          @param [in] raw_lat_chunk  The raw lattice that we are creating;
-                        this function may add a new state to it.
-          @param [out] state_id   If non-NULL, the state-id in `raw_lat_chunk`
-                       will be output to here
-          @return    Returns true if a new state was created and added to the map
-  */
-  bool FindOrAddRedeterminizedState(
-      CompactLattice::StateId redet_state,
-      Lattice *raw_lat_chunk,
-      Lattice::StateId *state_id = NULL);
-
-  /**
-     TODO
-   */
-  void ProcessRedeterminizedState(
-      Lattice::StateId state,
-      const unordered_map<int32, BaseFloat> &token_label2final_cost,
-      unordered_map<int, LatticeArc::StateId> *token_label2state,
-      Lattice *raw_lat_chunk);
-
-  // This function is to preprocess the appended compact lattice before
-  // generating raw lattices for the next chunk.
-  // After identifying redeterminized states, for any such state that is separated by
-  // more than config_.redeterminize_max_frames from the end of the current
-  // appended lattice, we create an extra state for it; we add an epsilon arc
-  // from that redeterminized state to the extra state; we copy any final arcs from
-  // the pre-final state to its extra state and we remove those final arcs from
-  // the original pre-final state.
-  // We also copy arcs meet the following requirements: i) destination-state of the
-  // arc is prefinal state. ii) destination-state of the arc is no further than than
-  // redeterminize_max_frames from the most recent frame we are determinizing.
-  // Now this extra state is the pre-final state to
-  // redeterminize and the original pre-final state does not need to redeterminize
-  // The epsilon would be removed later on in AppendLatticeChunks, while
-  // splicing the compact lattices together
-  void GetRedeterminizedStates();
-
-  const LatticeIncrementalDecoderConfig config_;
-  const TransitionModel &trans_model_; // keep it for determinization
-
-  // Record whether we have finished determinized the whole utterance
-  // (including re-determinize)
-  bool determinization_finalized_;
-
-  /**
-     final_arc_list_ is a map from each non-final redeterminized-state
-     in clat_ to the arc-index of its first arc to a final state.
-  */
-  unordered_map<StateId, size_t> final_arc_list_;
-  // alpha of each state in lat_
-  std::vector<BaseFloat> forward_costs_;
-  // we allocate a unique id for each source-state of the last arc of a series of
-  // initial arcs in InitializeRawLatticeChunk
-  int32 state_last_initial_offset_;
-
-  // We define a state in the appended lattice as a 'redeterminized-state' (meaning:
-  // one that will be redeterminized), if it is: a pre-final state, or there
-  // exists an arc from a redeterminized state to this state. We keep reapplying
-  // this rule until there are no more redeterminized states. The final state
-  // is not included. These redeterminized states will be stored in this map
-  // which is a map from the state in the appended compact lattice to the
-  // state_copy in the newly-created raw lattice.
-  unordered_map<StateId, StateId> redeterminized_state_map_;
-
-  /**
-  // It is a map used in GetRedeterminizedStates (see the description there)
-  // A map from the original pre-final state to the pre-final states (i.e. the
-  // original pre-final state or an extra state generated by
-  // GetRedeterminizedStates) used for generating raw lattices of the next chunk.
-  */
-  unordered_map<StateId, StateId> processed_prefinal_states_;
-
-  // The compact lattice we obtain. It should be cleared before processing a new
-  // utterance
-  CompactLattice clat_;
-  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDeterminizer);
-};
 
 } // end namespace kaldi.
 

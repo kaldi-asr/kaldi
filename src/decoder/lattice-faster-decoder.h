@@ -318,15 +318,10 @@ class LatticeFasterDecoderTpl {
   /// This function may be optionally called after AdvanceDecoding(), when you
   /// do not plan to decode any further.  It does an extra pruning step that
   /// will help to prune the lattices output by GetLattice and (particularly)
-  /// GetRawLattice more accurately, particularly toward the end of the
-  /// utterance.  It does this by using the final-probs in pruning (if any
-  /// final-state survived); it also does a final pruning step that visits all
-  /// states (the pruning that is done during decoding may fail to prune states
-  /// that are within kPruningScale = 0.1 outside of the beam).  If you call
-  /// this, you cannot call AdvanceDecoding again (it will fail), and you
-  /// cannot call GetLattice() and related functions with use_final_probs =
-  /// false.
-  /// Used to be called PruneActiveTokensFinal().
+  /// GetRawLattice more completely, particularly toward the end of the
+  /// utterance.  If you call this, you cannot call AdvanceDecoding again (it
+  /// will fail), and you cannot call GetLattice() and related functions with
+  /// use_final_probs = false.  Used to be called PruneActiveTokensFinal().
   void FinalizeDecoding();
 
   /// FinalRelativeCost() serves the same purpose as ReachedFinal(), but gives
