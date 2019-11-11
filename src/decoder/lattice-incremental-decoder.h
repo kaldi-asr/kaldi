@@ -81,15 +81,20 @@ namespace kaldi {
 
        canonical appended lattice:  This is the appended compact lattice
          that we conceptually have (i.e. what we described in the paper).
-         The difference from the "actual appended lattice" is that the
+         The difference from the "actual appended lattice" stored
+         in LatticeIncrementalDeterminizer::clat_ is that the
          actual appended lattice has all its final-arcs replaced with
-         final-probs (we keep the real final-arcs "on the side" in a
-         separate data structure).
+         final-probs, and we keep the real final-arcs "on the side" in a
+         separate data structure.  The final-probs in clat_ aren't
+         necessarily related to the costs on the final-arcs; instead
+         they can have arbitrary values passed in by the user (e.g.
+         if we want to include final-probs).  This means that the
+         clat_ can be returned without modification to the user who wants
+         a partially determinized result.
 
        final-arc:  An arc in the canonical appended CompactLattice which
          goes to a final-state.  These arcs will have `state-labels` as
          their labels.
-
  */
 struct LatticeIncrementalDecoderConfig {
   // All the configuration values until det_opts are the same as in
@@ -203,7 +208,10 @@ class LatticeIncrementalDeterminizer2 {
                                                 lattice, so we don't use the
                                                 specific type all the time but
                                                 just say 'Label' */
-  LatticeIncrementalDeterminizer2() { }
+  LatticeIncrementalDeterminizer2(
+      const TransitionModel &trans_model,
+      const LatticeIncrementalDecoderConfig &config):
+      trans_model_(trans_model), config_(config) { }
 
   // Resets the lattice determinization data for new utterance
   void Init();
@@ -253,8 +261,8 @@ class LatticeIncrementalDeterminizer2 {
                   a nonzero final-prob in raw_fst.  (States in raw_fst
                   that had a final-prob will still be non-final).
 
-     @return returns false if determinization finished earlier than the beam,
-         true otherwise.
+     @return returns false if determinization finished earlier than the beam
+         or the determinized lattice was empty; true otherwise.
   */
   bool AcceptRawLatticeChunk(Lattice *raw_fst,
                              const std::unordered_map<LatticeArc::StateId, BaseFloat> *final_costs = NULL);
@@ -276,6 +284,18 @@ class LatticeIncrementalDeterminizer2 {
   // Updates forward_costs_ for all the states which are successors of states
   // appearing as values in `state_map`.  (By "a is a successor of b" I mean
   // there is an arc from a to b.)
+  // For states that already had entries in the forward_costs_ array, this
+  // will never decrease their forward costs.  This may in theory make
+  // the forward-costs inaccurate (too large) in cases where arcs
+  // between redeterminized-states were removed by pruned determinization.
+  // But the forward_costs_ are anyway only used for the pruned determinization,
+  // and this would never cause things to be pruned away
+  // and such paths can never become the best-path (this is true because of
+  // how we set the betas/final-probs/extra-costs on the tokens
+
+  // But this is OK because
+  // adding a piece of lattice should never worsen the cost of existing
+  // states
   void UpdateForwardCosts(
       const std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> &state_map);
 
@@ -296,6 +316,26 @@ class LatticeIncrementalDeterminizer2 {
   //       and if there were weights on arcs leaving it we'd need to take
   //       them into account somehow.
   void ReweightChunk(CompactLattice *chunk_clat) const;
+
+
+  // Identifies states in `chunk_clat` that have arcs entering them with a
+  // `token-label` on them (see glossary in header for definition).  We're
+  // calling these `token-final` states.  This function outputs a map from such
+  // states in chunk_clat, to the `token-label` on arcs entering them.  (It is
+  // not possible that the same state would have multiple arcs entering it with
+  // different token-labels, or some arcs entering with one token-label and some
+  // another, or be both initial and have such arcs; this is true due to how we
+  // construct the raw lattice.)
+  void IdentifyTokenFinalStates(
+      const CompactLattice &chunk_clat,
+      std::unordered_map<CompactLatticeArc::StateId, CompactLatticeArc::Label> *token_map) const;
+
+  // trans_model_ is needed by DeterminizeLatticePhonePrunedWrapper() which this
+  // class calls.
+  const TransitionModel &trans_model_;
+  // config_ is needed by DeterminizeLatticePhonePrunedWrapper() which this
+  // class calls.
+  const LatticeIncrementalDecoderConfig &config_;
 
 
   // Contains the set of redeterminized-states which are not final in the
@@ -407,18 +447,9 @@ class LatticeIncrementalDecoderTpl {
   }
 
   /**
-     Outputs an FST corresponding to the single best path through the lattice.
-     If "use_final_probs" is true AND we reached the
-     final-state of the graph then it will include those as final-probs, else
-     it will treat all final-probs as one.
-
-     Note: this gets the traceback from the compact lattice, which will not
-     include the most recently decoded frames if determinize_delay > 0 and
-     FinalizeDecoding() has not been called.  If you'll be wanting to call
-     GetBestPath() a lot and need it to be up to date, you may prefer to
-     use LatticeIncrementalOnlineDecoder.
-  */
-  void GetBestPath(Lattice *ofst, bool use_final_probs = true);
+     This decoder has no GetBestPath() function.
+     If you need that functionality you should probably use lattice-incremental-online-decoder.h,
+     which makes it very efficient to obtain the best path. */
 
   /**
      This GetLattice() function is the main way you will interact with the
@@ -590,14 +621,6 @@ class LatticeIncrementalDecoderTpl {
   // but are also linked together on each frame by their own linked-list,
   // using the "next" pointer.  We delete them manually.
   void DeleteElems(Elem *list);
-
-  // This function takes a singly linked list of tokens for a single frame, and
-  // outputs a list of them in topological order (it will crash if no such order
-  // can be found, which will typically be due to decoding graphs with epsilon
-  // cycles, which are not allowed).  Note: the output list may contain NULLs,
-  // which the caller should pass over; it just happens to be more efficient for
-  // the algorithm to output a list that contains NULLs.
-  static void TopSortTokens(Token *tok_list, std::vector<Token *> *topsorted_list);
 
   void ClearActiveTokens();
 
