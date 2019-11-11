@@ -170,8 +170,6 @@ struct LatticeIncrementalDecoderConfig {
                    "deterministic but less likely to blow up the processing"
                    "time in bad cases. You could set it infinite to get a fully "
                    "determinized lattice.");
-    opts->Register("final-prune-after-determinize", &final_prune_after_determinize,
-                   "prune lattice after determinization ");
     opts->Register("beam-delta", &beam_delta,
                    "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "
@@ -205,7 +203,6 @@ class LatticeIncrementalDeterminizer2 {
                                                 lattice, so we don't use the
                                                 specific type all the time but
                                                 just say 'Label' */
-
   LatticeIncrementalDeterminizer2() { }
 
   // Resets the lattice determinization data for new utterance
@@ -275,6 +272,31 @@ class LatticeIncrementalDeterminizer2 {
  private:
   // Sets up non_final_redet_states_.  See documentation for that variable.
   void GetNonFinalRedetStates();
+
+  // Updates forward_costs_ for all the states which are successors of states
+  // appearing as values in `state_map`.  (By "a is a successor of b" I mean
+  // there is an arc from a to b.)
+  void UpdateForwardCosts(
+      const std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> &state_map);
+
+
+  // Reweights `chunk_clat`.  Must not be called if this is the first chunk.
+  // This does:
+  //  (1)  For arcs leaving chunk_clat->Start(), identify the redeterminized-state
+  //       clat_state in clat_ that its .nextstate corresponds to, and multiply the weight
+  //       by LatticeWeight(-forward_costs_[clat_state], 0).  This is the opposite
+  //       of a cost that we introduced when constructing the raw lattice chunk,
+  //       in order to make sure that determinized pruning works right.  We need to
+  //       cancel it out because it's not really part of this chunk.
+  //  (2)  After doing (1), modifies chunk_clat so that the weights on arcs
+  //       leaving its start state are all CompactLatticeWeight::One()...
+  //       does this while maintaining equivalence, using OpenFst's
+  //       Reweight() function.  This is done for convenience, because
+  //       the start state doesn't correspond to any state in clat_,
+  //       and if there were weights on arcs leaving it we'd need to take
+  //       them into account somehow.
+  void ReweightChunk(CompactLattice *chunk_clat) const;
+
 
   // Contains the set of redeterminized-states which are not final in the
   // canonical appended lattice.  Since the final ones don't physically appear
