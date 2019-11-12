@@ -1536,7 +1536,8 @@ bool LatticeIncrementalDeterminizer<FST>::AppendLatticeChunks(CompactLattice cla
 
         if (clat.Final(arc.nextstate) != CompactLatticeWeight::Zero()) {
           // it should be the last chunk
-          olat->AddArc(source_state, arc_appended);
+          olat->SetFinal(source_state, 
+              Times(arc_appended.weight, clat.Final(arc.nextstate)));
         } else {
           // append lattice chunk and remove Epsilon together
           for (ArcIterator<CompactLattice> aiter_postinitial(clat, arc.nextstate);
