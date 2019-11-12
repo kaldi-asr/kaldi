@@ -16,13 +16,18 @@
 # limitations under the License.
 
 split_per_spk=true
+allow_uneven_split=false
 if [ "$1" == "--per-utt" ]; then
   split_per_spk=false
   shift
 fi
+if [ "$1" == "--allow-uneven-split" ]; then
+    allow_uneven_split=true
+    shift
+fi
 
 if [ $# != 2 ]; then
-  echo "Usage: $0 [--per-utt] <data-dir> <num-to-split>"
+  echo "Usage: $0 [--per-utt] [--allow-uneven-split] <data-dir> <num-to-split>"
   echo "E.g.: $0 data/train 50"
   echo "It creates its output in e.g. data/train/split50/{1,2,3,...50}, or if the "
   echo "--per-utt option was given, in e.g. data/train/split50utt/{1,2,3,...50}."
@@ -30,6 +35,7 @@ if [ $# != 2 ]; then
   echo "This script will not split the data-dir if it detects that the output is newer than the input."
   echo "By default it splits per speaker (so each speaker is in only one split dir),"
   echo "but with the --per-utt option it will ignore the speaker information while splitting."
+  echo "To avoid crash caused by splitting imbalanced data use --allow-uneven-split"
   exit 1
 fi
 
@@ -118,7 +124,12 @@ fi
 which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock
 trap 'rm -f $data/.split_lock' EXIT HUP INT PIPE TERM
 
-utils/split_scp.pl $utt2spk_opt $utt2dur_opt $data/utt2spk $utt2spks || exit 1
+even_split_opt=""
+if $allow_uneven_split; then
+    even_split_opt="--allow-uneven-split"
+fi
+
+utils/split_scp.pl $even_split_opt $utt2spk_opt $utt2dur_opt $data/utt2spk $utt2spks || exit 1
 
 for n in `seq $numsplit`; do
   dsn=$data/split${numsplit}${utt}/$n

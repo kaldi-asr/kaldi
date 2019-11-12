@@ -30,6 +30,11 @@
 # this case, if there are more chunks than speakers (and in some other
 # circumstances), some of the resulting chunks will be empty and it will print
 # an error message and exit with nonzero status.
+# With the --utt2dur (and --utt2spk) option it will try and create equal size
+# chunks by duration. This can cause issues when there is a severe imbalance
+# in the data (extreme example, 90% of the data is one speaker), in which case
+# the script will stop with an error message. This behaviour can be overriden
+# with --allow-uneven-splits.
 # You will normally call this like:
 # split_scp.pl scp scp.1 scp.2 scp.3 ...
 # or
@@ -49,8 +54,9 @@ $job_id = 0;
 $utt2spk_file = "";
 $utt2dur_file = "";
 $one_based = 0;
+$allow_uneven_split = 0;
 
-for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
+for ($x = 1; $x <= 4 && @ARGV > 0; $x++) {
     if ($ARGV[0] eq "-j") {
         shift @ARGV;
         $num_jobs = shift @ARGV;
@@ -70,6 +76,10 @@ for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
         $one_based = 1;
         shift @ARGV;
     }
+    if ($ARGV[0] eq '--allow-uneven-split') {
+        $allow_uneven_split = 1;
+        shift @ARGV;
+    }
 }
 
 if ($num_jobs != 0 && ($num_jobs < 0 || $job_id - $one_based < 0 ||
@@ -84,8 +94,8 @@ $one_based
 
 if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2))) {
     die
-"Usage: split_scp.pl [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp out1.scp out2.scp ...
-   or: split_scp.pl -j num-jobs job-id [--one-based] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp [out.scp]
+"Usage: split_scp.pl [--allow-uneven-splits] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp out1.scp out2.scp ...
+   or: split_scp.pl -j num-jobs job-id [--allow-uneven-splits] [--one-based] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp [out.scp]
  ... where 0 <= job-id < num-jobs, or 1 <= job-id <- num-jobs if --one-based.\n";
 }
 
@@ -117,8 +127,12 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
         @A = split;
         @A == 2 || die "Bad line $_ in utt2spk file $utt2dur_file";
         ($u,$d) = @A;
-        $utt2dur{$u} = $d;
         $dursum += $d;
+        $s = $utt2spk{$u};
+        if (!defined $spk2dur{$s}) {
+            $spk2dur{$s} = 0.0;
+        }
+        $spk2dur{$s} += $d;
     }
     open(I, "<$inscp") || die "Opening input scp file $inscp";
     @spkrs = ();
@@ -149,45 +163,47 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
     }
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scparray[$scpidx] = []; # [] is array reference.
+        $scp2dur[$scpidx] = 0.0;
     }
     $splitdur = $dursum / $numscps;
     $dursum = 0.0;
     $scpidx = 0;
+    $dursum_current = 0.0;
     for my $spk (sort (keys %spk2utt)) {
         $scpcount[$scpidx] += $spk_count{$spk};
         push @{$scparray[$scpidx]}, $spk;
-        for my $utt (@{$spk2utt{$spk}}) {
-            $dur = $utt2dur{$utt};
-            $dursum += $dur;
-        }
-        if ( $dursum >= $splitdur ) {
+        $dur = $spk2dur{$spk};
+        $dursum += $dur;
+        $dursum_current += $dur;
+        if ($dursum >= $splitdur * ($scpidx + 1) && $dursum_current > 10.0) {
+            $scp2dur[$scpidx] = $dursum_current;
             $scpidx += 1;
-            $dursum = 0.0;
+            $dursum_current = 0.0;
+            if ($scpidx >= $numscps) {
+                last;
+            }
         }
     }
 
-    # Because scpidx might not have gone up to numscps (because all utts from one
-    # speaker go into one split means a major imbalance will mean not all splits
-    # are filled), move one speaker inside scparray to the indices which don't have
-    # any.
-    if ( $scpidx + 1 < $numscps || @{$scparray[$scpidx]} == 0 ) {
-        $scpdone = $scpidx;
-        if ( @{$scparray[$scpidx]} == 0 ) {
-            $scpdone -= 1;
+    $smallest_dur = $splitdur;
+    $largest_dur = $splitdur;
+    for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
+        $scpdur = $scp2dur[$scpidx];
+        if ($scpdur > $largest_dur) {
+            $largest_dur = $scpdur;
         }
-        for(; $scpidx < $numscps; $scpidx++) {
-            $i = 0;
-            for(; $i < $scpdone; $i++) {
-                $numspk = @{$scparray[$i]};
-                if ($numspk > 1) {
-                    last;
-                }
-            }
-            $spk = pop @{$scparray[$i]};
-            $scpcount[$i] -= $spk_count{$spk};
+        if ($scpdur < $smallest_dur) {
+            $smallest_dur = $scpdur;
+        }
+    }
 
-            push @{$scparray[$scpidx]}, $spk;
-            $scpcount[$scpidx] += $spk_count{$spk};
+    if ($allow_uneven_split != 1) {
+        if (($smallest_dur < $largest_dur / 2 && $largest_dur > 3600) ||
+            $smallest_dur == 0.0) {
+            die "Trying to split data while taking duration into account leads to a " .
+                "severe imbalance in splits. This happens when there is a lot more data " .
+                "for some speakers than for others.\n" .
+                "You should use utils/data/modify_speaker_duration.sh to fix that.\n"
         }
     }
 
