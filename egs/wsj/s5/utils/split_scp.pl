@@ -54,9 +54,9 @@ $job_id = 0;
 $utt2spk_file = "";
 $utt2dur_file = "";
 $one_based = 0;
-$allow_uneven_splits = 0;
+$allow_uneven_split = 0;
 
-for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
+for ($x = 1; $x <= 4 && @ARGV > 0; $x++) {
     if ($ARGV[0] eq "-j") {
         shift @ARGV;
         $num_jobs = shift @ARGV;
@@ -76,8 +76,8 @@ for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
         $one_based = 1;
         shift @ARGV;
     }
-    if ($ARGV[0] eq '--allow-uneven-splits') {
-        $allow_uneven_splits = 1;
+    if ($ARGV[0] eq '--allow-uneven-split') {
+        $allow_uneven_split = 1;
         shift @ARGV;
     }
 }
@@ -197,7 +197,7 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
         }
     }
 
-    if ($allow_uneven_splits != 1) {
+    if ($allow_uneven_split != 1) {
         if (($smallest_dur < $largest_dur / 2 && $largest_dur > 3600) ||
             $smallest_dur == 0.0) {
             die "Trying to split data while taking duration into account leads to a " .
