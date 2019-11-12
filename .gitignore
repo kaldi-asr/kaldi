@@ -77,6 +77,8 @@ GSYMS
 /egs/*/*/plp
 /egs/*/*/exp
 /egs/*/*/data
+/egs/*/*/wav
+/egs/*/*/enhan
 
 # /tools/
 /tools/pocolm/
