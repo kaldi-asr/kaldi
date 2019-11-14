@@ -70,7 +70,7 @@ Normally the classifier-based approach archives better performance than GOP-base
 Different from GOP based method, an extra supervised training process is needed. The input features for supervised training are phone-level, segmental features. The phone-level feature is defined as:
 
 $$
-{[LPP(p_1),\cdots,LPP(p_M), LPR(p_1|pi), \cdots, LPR(p_j|p_i),\cdots]}^T
+{[LPP(p_1),\cdots,LPP(p_M), LPR(p_1|p_i), \cdots, LPR(p_j|p_i),\cdots]}^T
 $$
 
 where the Log Posterior Ratio (LPR) between phone $p_j$ and $p_i$ is defined as:

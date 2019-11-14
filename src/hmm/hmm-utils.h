@@ -332,7 +332,8 @@ void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
 
 // GetPdfToPhoneDict creates and returns a std::map which maps each pdf-id into its
 // corresponding monophone set.
-std::map<int32, std::set<int32> > PdfToPhonesDict(const TransitionModel &trans_model);
+void PdfToPhonesDict(const TransitionModel &trans_model,
+                     std::map<int32, std::set<int32> > *pdf2phones);
 
 /// @} end "addtogroup hmm_group"
 

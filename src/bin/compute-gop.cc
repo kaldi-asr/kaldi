@@ -48,13 +48,12 @@
    classifier-based approach archives better performance than the GOP-based approach.
 
    The phone-level feature is defined as:
-     {[LPP(p_1),\cdots,LPP(p_M), LPR(p_1|pi), \cdots, LPR(p_j|p_i),\cdots]}^T
+     {[LPP(p_1),\cdots,LPP(p_M), LPR(p_1|p_i), \cdots, LPR(p_j|p_i),\cdots]}^T
 
    where the Log Posterior Ratio (LPR) between phone p_j and p_i is defined as:
      LPR(p_j|p_i) = \log p(p_j|\mathbf o; t_s, t_e) - \log p(p_i|\mathbf o; t_s, t_e)
  */
 
-#include <regex>
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
@@ -74,24 +73,22 @@ namespace kaldi {
     riphones whose current phone is the canonical phone p.
 
  */
-Vector<BaseFloat> FrameLevelLpp(SubVector<BaseFloat> prob_row,
-                                std::map<int32, std::set<int32> > &pdf2phones,
-                                std::vector<int32> *phone_map,
-                                int32 target_phone_num) {
-  Vector<BaseFloat> frame_level_lpp(target_phone_num);
+void FrameLevelLpp(const SubVector<BaseFloat> &prob_row,
+                   const std::map<int32, std::set<int32> > &pdf2phones,
+                   const std::vector<int32> *phone_map,
+                   Vector<BaseFloat> *out_frame_level_lpp) {
   for (int32 i = 0; i < prob_row.Dim(); i++) {
     std::set<int32> dest_idxs;
-    for (int32 ph : pdf2phones[i]) {
-      dest_idxs.insert((phone_map != NULL) ? phone_map->at(ph) - 1 : ph - 1);
+    for (int32 ph : pdf2phones.at(i)) {
+      dest_idxs.insert((phone_map != NULL) ? (*phone_map)[ph] - 1 : ph - 1);
     }
 
     for (int32 idx : dest_idxs) {
-      KALDI_ASSERT(idx < target_phone_num);
-      frame_level_lpp(idx) += prob_row(i);
+      KALDI_ASSERT(idx < out_frame_level_lpp->Dim());
+      (*out_frame_level_lpp)(idx) += prob_row(i);
     }
   }
-  frame_level_lpp.ApplyLog();
-  return frame_level_lpp;
+  out_frame_level_lpp->ApplyLog();
 }
 
 }  // namespace kaldi
@@ -140,7 +137,8 @@ int main(int argc, char *argv[]) {
       Input ki(model_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
     }
-    auto pdf2phones = PdfToPhonesDict(trans_model);
+    std::map<int32, std::set<int32> > pdf2phones;
+    PdfToPhonesDict(trans_model, &pdf2phones);
     int32 phone_num = trans_model.NumPhones();
 
     std::vector<int32> phone_map;
@@ -176,9 +174,10 @@ int main(int argc, char *argv[]) {
       Posterior posterior_gop;
       for (int32 i = 0; i < frame_num; i++) {
         // Calculate LPP and LPR for each pure-phone
-        auto frame_level_lpp = FrameLevelLpp(probs.Row(i), pdf2phones,
-                               (phone_map_rxfilename != "") ? &phone_map : NULL,
-                               phone_num);
+        Vector<BaseFloat> frame_level_lpp(phone_num);
+        FrameLevelLpp(probs.Row(i), pdf2phones,
+                      (phone_map_rxfilename != "") ? &phone_map : NULL,
+                      &frame_level_lpp);
 
         // LPP(p)=\frac{1}{t_e-t_s+1} \sum_{t=t_s}^{t_e}\log p(p|o_t)
         lpp_part.AddVec(1, frame_level_lpp);
@@ -189,7 +188,7 @@ int main(int argc, char *argv[]) {
           // The current phone's feature have been ready
           lpp_part.Scale(1.0 / duration);
 
-          // LPR(p_j|p_i)=\log p(p_j|\mathbf o; t_s, t_e) - \log p(p_i|\mathbf o; t_s, t_e)
+          // LPR(p_j|p_i)=\log p(p_j|\mathbf o; t_s, t_e)-\log p(p_i|\mathbf o; t_s, t_e)
           for (int k = 0; k < phone_num; k++)
             phone_level_feat(phone_num + k) = lpp_part(cur_phone_id) - lpp_part(k);
           phone_level_feat_stdvector.push_back(phone_level_feat);
