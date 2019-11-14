@@ -861,6 +861,11 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
     return determinizer_.GetLattice();
   }
 
+  if (finalize) {
+    /* Will prune away tokens on the last frame.. */
+    FinalizeDecoding();
+  }
+
   if (num_frames_to_include < num_frames_in_lattice_ ||
       num_frames_to_include > NumFramesDecoded()) {
     KALDI_ERR << "GetLattice() called with num-frames-to-include = "
@@ -895,16 +900,57 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
   next_token2label_map.clear();
 
 
-  { // Deal with the last frame.  We allocate token labels, and set tokens as
+  std::unordered_map<LatticeArc::StateId, BaseFloat> state2final_cost;
+
+
+  if (use_final_probs) {
+    final_cost_frame_ = num_frames_to_include;
+    ComputeFinalCosts(&final_costs_, &final_relative_cost_,
+                      &final_best_cost_);
+  }
+  if (final_costs_.empty()) {
+    /* If no states were final on the last frame, we don't use the final-probs.
+       The user can detect this by calling ReachedFinal(). */
+    use_final_probs = false;
+  }
+  /*
+    for (auto iter = final_costs_.begin(); iter != final_costs_.end();
+         ++iter) {
+      Token *tok = iter->first;
+      BaseFloat final_cost = iter->second;
+      auto iter2 = tok2state_map.find(tok);
+      KALDI_ASSERT(iter2 != tok2state_map.end());
+      StateId lat_state = iter2->second;
+      bool inserted = final_costs.insert({lat_state, final_cost}).second;
+      KALDI_ASSERT(inserted);
+    }
+    } */
+
+
+  { // Deal with the last frame in the chunk, the one numbered `num_frames_to_include`.
+    // (Yes, this is backwards).   We allocate token labels, and set tokens as
     // final, but don't add any transitions.  This may leave some states
     // disconnected (e.g. due to chains of nonemitting arcs), but it's OK; we'll
     // fix it when we generate the next chunk of lattice.
     int32 frame = num_frames_to_include;
     // Allocate state-ids for all tokens on this frame.
+
     for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+      BaseFloat final_cost = 0.0;
+      if (use_final_probs) {
+        auto iter = final_costs_.find(tok);
+        if (iter == final_costs_.end())
+          continue;
+        final_cost = iter->second;
+      }
+
       StateId state = chunk_lat.AddState();
       tok2state_map[tok] = state;
       next_token2label_map[tok] = AllocateNewTokenLabel();
+      if (use_final_probs)
+        state2final_cost[state] = final_cost;
+
+      //   (A) the case where this is not the last chunk:
       // First imagine extra_cost == 0, which it would be if
       // num_frames_to_include == NumFramesDecoded().  We use a final-prob
       // (i.e. beta) that is the negative of the token's total cost.  This
@@ -914,8 +960,16 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
       // frames than the final one, the extra cost is equal to the beta (==cost
       // to the end), assuming we had set the betas on last frame to the
       // negatives of the alphas.
-      chunk_lat.SetFinal(state,
-                         LatticeWeight(-(tok->tot_cost + tok->extra_cost), 0.0));
+      //
+      //  (B) the case where this is the last chunk:
+      // use `final_cost`, which reflect the final-cost in HCLG if
+      // requested by the user and if at least one final state was present
+      // on the last frame; and otherwise zero.
+
+      BaseFloat chunk_final_cost = (finalize ? final_cost :
+                                    -(tok->tot_cost + tok->extra_cost));
+
+      chunk_lat.SetFinal(state, LatticeWeight(chunk_final_cost, 0.0));
     }
   }
 
@@ -987,26 +1041,9 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
   }
   token2label_map_.swap(next_token2label_map);
 
-  std::unordered_map<LatticeArc::StateId, BaseFloat> final_costs;
-  if (use_final_probs) {
-    final_cost_frame_ = num_frames_to_include;
-    ComputeFinalCosts(&final_costs_, &final_relative_cost_,
-                      &final_best_cost_);
-    for (auto iter = final_costs_.begin(); iter != final_costs_.end();
-         ++iter) {
-      Token *tok = iter->first;
-      BaseFloat final_cost = iter->second;
-      auto iter2 = tok2state_map.find(tok);
-      KALDI_ASSERT(iter2 != tok2state_map.end());
-      StateId lat_state = iter2->second;
-      bool inserted = final_costs.insert({lat_state, final_cost}).second;
-      KALDI_ASSERT(inserted);
-    }
-  }
-
   // bool finished_before_beam =
   determinizer_.AcceptRawLatticeChunk(&chunk_lat,
-                                      (use_final_probs ? &final_costs : NULL));
+                                      (use_final_probs ? &state2final_cost : NULL));
   // We are ignoring the return status, which say whether it finished before the beam.
 
   num_frames_in_lattice_ = num_frames_to_include;

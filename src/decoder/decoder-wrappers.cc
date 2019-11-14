@@ -227,12 +227,21 @@ bool DecodeUtteranceLatticeIncremental(
     }
   }
 
+  // Get lattice
+  CompactLattice clat;
+  decoder.GetLattice(decoder.NumFramesDecoded(), true, true);
+  if (clat.NumStates() == 0)
+    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
+
   double likelihood;
   LatticeWeight weight;
   int32 num_frames;
   { // First do some stuff with word-level traceback...
-    VectorFst<LatticeArc> decoded;
-    decoder.GetBestPath(&decoded);
+    CompactLattice decoded_clat;
+    CompactLatticeShortestPath(clat, &decoded_clat);
+    Lattice decoded;
+    fst::ConvertLattice(decoded_clat, &decoded);
+
     if (decoded.Start() == fst::kNoStateId)
       // Shouldn't really reach this point as already checked success.
       KALDI_ERR << "Failed to get traceback for utterance " << utt;
@@ -259,12 +268,7 @@ bool DecodeUtteranceLatticeIncremental(
     likelihood = -(weight.Value1() + weight.Value2());
   }
 
-  // Get lattice
-  CompactLattice clat;
-  decoder.GetLattice(true, decoder.NumFramesDecoded(), &clat);
-  if (clat.NumStates() == 0)
-    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
-    // We'll write the lattice without acoustic scaling.
+  // We'll write the lattice without acoustic scaling.
   if (acoustic_scale != 0.0)
     fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
   compact_lattice_writer->Write(utt, clat);
