@@ -30,11 +30,6 @@
 # this case, if there are more chunks than speakers (and in some other
 # circumstances), some of the resulting chunks will be empty and it will print
 # an error message and exit with nonzero status.
-# With the --utt2dur (and --utt2spk) option it will try and create equal size
-# chunks by duration. This can cause issues when there is a severe imbalance
-# in the data (extreme example, 90% of the data is one speaker), in which case
-# the script will stop with an error message. This behaviour can be overriden
-# with --allow-uneven-splits.
 # You will normally call this like:
 # split_scp.pl scp scp.1 scp.2 scp.3 ...
 # or
@@ -52,11 +47,9 @@ use warnings;
 $num_jobs = 0;
 $job_id = 0;
 $utt2spk_file = "";
-$utt2dur_file = "";
 $one_based = 0;
-$allow_uneven_split = 0;
 
-for ($x = 1; $x <= 4 && @ARGV > 0; $x++) {
+for ($x = 1; $x <= 3 && @ARGV > 0; $x++) {
     if ($ARGV[0] eq "-j") {
         shift @ARGV;
         $num_jobs = shift @ARGV;
@@ -66,18 +59,8 @@ for ($x = 1; $x <= 4 && @ARGV > 0; $x++) {
         $utt2spk_file=$1;
         shift;
     }
-
-    if ($ARGV[0] =~ "--utt2dur=(.+)") {
-        $utt2dur_file=$1;
-        shift;
-    }
-
     if ($ARGV[0] eq '--one-based') {
         $one_based = 1;
-        shift @ARGV;
-    }
-    if ($ARGV[0] eq '--allow-uneven-split') {
-        $allow_uneven_split = 1;
         shift @ARGV;
     }
 }
@@ -86,7 +69,6 @@ if ($num_jobs != 0 && ($num_jobs < 0 || $job_id - $one_based < 0 ||
                        $job_id - $one_based >= $num_jobs)) {
   die "$0: Invalid job number/index values for '-j $num_jobs $job_id" .
       ($one_based ? " --one-based" : "") . "'\n"
-
 }
 
 $one_based
@@ -94,8 +76,8 @@ $one_based
 
 if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2))) {
     die
-"Usage: split_scp.pl [--allow-uneven-splits] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp out1.scp out2.scp ...
-   or: split_scp.pl -j num-jobs job-id [--allow-uneven-splits] [--one-based] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp [out.scp]
+"Usage: split_scp.pl [--utt2spk=<utt2spk_file>] in.scp out1.scp out2.scp ...
+   or: split_scp.pl -j num-jobs job-id [--one-based] [--utt2spk=<utt2spk_file>] in.scp [out.scp]
  ... where 0 <= job-id < num-jobs, or 1 <= job-id <- num-jobs if --one-based.\n";
 }
 
@@ -113,119 +95,8 @@ if ($num_jobs == 0) { # without -j option
         }
     }
 }
-if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
-    open(U, "<$utt2spk_file") || die "Failed to open utt2spk file $utt2spk_file";
-    while(<U>) {
-        @A = split;
-        @A == 2 || die "Bad line $_ in utt2spk file $utt2spk_file";
-        ($u,$s) = @A;
-        $utt2spk{$u} = $s;
-    }
-    $dursum = 0.0;
-    open(U, "<$utt2dur_file") || die "Failed to open utt2dur file $utt2dur_file";
-    while(<U>) {
-        @A = split;
-        @A == 2 || die "Bad line $_ in utt2spk file $utt2dur_file";
-        ($u,$d) = @A;
-        $dursum += $d;
-        $s = $utt2spk{$u};
-        if (!defined $spk2dur{$s}) {
-            $spk2dur{$s} = 0.0;
-        }
-        $spk2dur{$s} += $d;
-    }
-    open(I, "<$inscp") || die "Opening input scp file $inscp";
-    @spkrs = ();
-    while(<I>) {
-        @A = split;
-        if(@A == 0) { die "Empty or space-only line in scp file $inscp"; }
-        $u = $A[0];
-        $s = $utt2spk{$u};
-        if(!defined $s) { die "No such utterance $u in utt2spk file $utt2spk_file"; }
-        if(!defined $spk_count{$s}) {
-            push @spkrs, $s;
-            $spk_count{$s} = 0;
-            $spk_data{$s} = [];  # ref to new empty array.
-        }
-        if(!defined $spk2utt{$s}) {
-            $spk2utt{$s} = [];
-        }
-        $spk_count{$s}++;
-        push @{$spk_data{$s}}, $_;
-        push @{$spk2utt{$s}}, $u;
-    }
 
-    $numspks = @spkrs;  # number of speakers.
-    $numscps = @OUTPUTS; # number of output files.
-    if ($numspks < $numscps) {
-      die "Refusing to split data because number of speakers $numspks is less " .
-          "than the number of output .scp files $numscps";
-    }
-    for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
-        $scparray[$scpidx] = []; # [] is array reference.
-        $scp2dur[$scpidx] = 0.0;
-    }
-    $splitdur = $dursum / $numscps;
-    $dursum = 0.0;
-    $scpidx = 0;
-    $dursum_current = 0.0;
-    for my $spk (sort (keys %spk2utt)) {
-        $scpcount[$scpidx] += $spk_count{$spk};
-        push @{$scparray[$scpidx]}, $spk;
-        $dur = $spk2dur{$spk};
-        $dursum += $dur;
-        $dursum_current += $dur;
-        if ($dursum >= $splitdur * ($scpidx + 1) && $dursum_current > 10.0) {
-            $scp2dur[$scpidx] = $dursum_current;
-            $scpidx += 1;
-            $dursum_current = 0.0;
-            if ($scpidx >= $numscps) {
-                last;
-            }
-        }
-    }
-
-    $smallest_dur = $splitdur;
-    $largest_dur = $splitdur;
-    for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
-        $scpdur = $scp2dur[$scpidx];
-        if ($scpdur > $largest_dur) {
-            $largest_dur = $scpdur;
-        }
-        if ($scpdur < $smallest_dur) {
-            $smallest_dur = $scpdur;
-        }
-    }
-
-    if ($allow_uneven_split != 1) {
-        if (($smallest_dur < $largest_dur / 2 && $largest_dur > 3600) ||
-            $smallest_dur == 0.0) {
-            die "Trying to split data while taking duration into account leads to a " .
-                "severe imbalance in splits. This happens when there is a lot more data " .
-                "for some speakers than for others.\n" .
-                "You should use utils/data/modify_speaker_duration.sh to fix that.\n"
-        }
-    }
-
-    # Now print out the files...
-    for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
-        $scpfn = $OUTPUTS[$scpidx];
-        open(F, ">$scpfn") || die "Could not open scp file $scpfn for writing.";
-        $count = 0;
-        if(@{$scparray[$scpidx]} == 0) {
-            print STDERR "Error: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)\n";
-            $error = 1;
-        } else {
-            foreach $spk ( sort @{$scparray[$scpidx]} ) {
-                print F @{$spk_data{$spk}};
-                $count += $spk_count{$spk};
-            }
-            if($count != $scpcount[$scpidx]) { die "Count mismatch [code error]"; }
-        }
-        close(F);
-    }
-} elsif ($utt2spk_file ne "") {  # We have the --utt2spk option...
-
+if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     open($u_fh, '<', $utt2spk_file) || die "$0: Error opening utt2spk file $utt2spk_file: $!\n";
     while(<$u_fh>) {
         @A = split;
