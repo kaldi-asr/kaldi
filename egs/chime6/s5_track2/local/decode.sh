@@ -73,7 +73,7 @@ fi
 sad_stage=0
 dir=exp/segmentation${affix}
 sad_work_dir=exp/sad${affix}_${nnet_type}/
-sad_nnet_dir=$dir/tdnn_${nnet_type}_asr_sad_1a
+sad_nnet_dir=$dir/tdnn_${nnet_type}_sad_1a
 
 if [ $stage -le 2 ]; then
   for datadir in ${test_sets}; do

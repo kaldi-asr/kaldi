@@ -103,16 +103,6 @@ seg_dir=${dir}/${segmentation_name}${affix}_${data_id}${feat_affix}
 test_data_dir=data/${data_id}${feat_affix}
 
 ###############################################################################
-## Extract input features 
-###############################################################################
-
-if [ $stage -le 1 ]; then
-  steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $nj --cmd "$cmd" \
-    --write-utt2num-frames true \
-    ${test_data_dir} exp/make_hires$feat_affix/${data_id} $mfcc_dir
-fi
-
-###############################################################################
 ## Forward pass through the network network and dump the log-likelihoods.
 ###############################################################################
 
@@ -122,7 +112,7 @@ if [ -f $sad_nnet_dir/frame_subsampling_factor ]; then
 fi
 
 mkdir -p $dir
-if [ $stage -le 4 ]; then
+if [ $stage -le 1 ]; then
   if [ "$(readlink -f $sad_nnet_dir)" != "$(readlink -f $dir)" ]; then
     cp $sad_nnet_dir/cmvn_opts $dir || exit 1
   fi
@@ -161,7 +151,7 @@ utils/data/get_utt2dur.sh --nj $nj --cmd "$cmd" $test_data_dir || exit 1
 frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir) || exit 1
 
 graph_dir=${dir}/graph_${output_name}
-if [ $stage -le 5 ]; then
+if [ $stage -le 2 ]; then
   mkdir -p $graph_dir
 
   # 1 for silence and 2 for speech
@@ -196,7 +186,7 @@ if [ ! -f $sad_nnet_dir/post_${output_name}.vec ]; then
 fi
 
 mkdir -p $seg_dir
-if [ $stage -le 6 ]; then
+if [ $stage -le 3 ]; then
   steps/segmentation/internal/get_transform_probs_mat.py \
     --priors="$post_vec" $transform_probs_opts > $seg_dir/transform_probs.mat
 
@@ -210,7 +200,7 @@ fi
 ## Post-process segmentation to create kaldi data directory.
 ###############################################################################
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 4 ]; then
   steps/segmentation/post_process_sad_to_segments.sh \
     --segment-padding $segment_padding --min-segment-dur $min_segment_dur \
     --merge-consecutive-max-dur $merge_consecutive_max_dur \
@@ -218,7 +208,7 @@ if [ $stage -le 7 ]; then
     ${test_data_dir} ${seg_dir} ${seg_dir}
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 5 ]; then
   utils/data/subsegment_data_dir.sh ${test_data_dir} ${seg_dir}/segments \
     ${data_dir}_seg
 fi

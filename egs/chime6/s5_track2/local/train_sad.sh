@@ -57,7 +57,7 @@ fi
 
 dir=exp/segmentation${affix}
 sad_work_dir=exp/sad${affix}_${nnet_type}/
-sad_nnet_dir=$dir/tdnn_${nnet_type}_asr_sad_1a
+sad_nnet_dir=$dir/tdnn_${nnet_type}_sad_1a
 
 mkdir -p $dir
 mkdir -p ${sad_work_dir}
@@ -128,14 +128,14 @@ fi
 if [ $stage -le 3 ]; then
 	if [ $nnet_type == "stats" ]; then
 		# Train a STATS-pooling network for SAD
-		local/segmentation/tuning/train_stats_asr_sad_1a.sh \
+		local/segmentation/tuning/train_stats_sad_1a.sh \
 		  --stage $nstage --train-stage $train_stage \
 		  --targets-dir ${targets_dir} \
 		  --data-dir ${whole_data_dir} --affix "1a" || exit 1
 	
 	elif [ $nnet_type == "lstm" ]; then
     # Train a TDNN+LSTM network for SAD
-    local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
+    local/segmentation/tuning/train_lstm_sad_1a.sh \
       --stage $nstage --train-stage $train_stage \
       --targets-dir ${targets_dir} \
       --data-dir ${whole_data_dir} --affix "1a" || exit 1

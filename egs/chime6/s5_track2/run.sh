@@ -15,6 +15,7 @@ decode_nj=20
 stage=0
 chain_stage=0
 sad_stage=0
+diarizer_stage=0
 decode_stage=0
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and decode stage
@@ -26,7 +27,7 @@ decode_only=false
 . ./path.sh
 
 if [ $decode_only == "true" ]; then
-  stage=24
+  stage=17
 fi
 
 set -e # exit on error
@@ -40,8 +41,8 @@ audio_dir=${chime5_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
-
+#test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
+test_sets="eval_beamformit_dereverb_ref"
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
@@ -198,7 +199,7 @@ fi
 # Now run the SAD script. This contains stages 15 to 19.
 # If you just want to perform SAD decoding (without
 # training), run from stage 19.
-if [ $stage -le 19 ]; then
+if [ $stage -le 15 ]; then
   local/train_sad.sh --stage $sad_stage \
     --data-dir data/${train_set} --test-sets "${test_sets}" \
     --sat-model-dir exp/tri3 \
@@ -208,6 +209,11 @@ fi
 ##########################################################################
 # DIARIZATION MODEL TRAINING
 ##########################################################################
+if [ $stage -le 16 ]; then
+  local/train_diarizer.sh --stage $diarizer_stage \
+    --data-dir data/${train_set} \
+    --model-dir exp/xvector_nnet_1a
+fi
 
 ##########################################################################
 # DECODING: In track 2, we are given raw utterances without segment
@@ -215,10 +221,10 @@ fi
 # SAD -> Diarization -> ASR. This is done in the local/decode.sh
 # script.
 ##########################################################################
-if [ $stage -le 24 ]; then
+if [ $stage -le 17 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
-    --test-sets $test_sets
+    --test-sets "$test_sets"
 fi
 
 exit 0;
