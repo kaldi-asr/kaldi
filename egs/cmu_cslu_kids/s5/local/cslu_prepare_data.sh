@@ -39,7 +39,7 @@ for d in $data/test $data/train; do
     ./utils/fix_data_dir.sh $d
 done
 if [ -f debug/cslu_dataprep_debug ]; then
-    echo "Can't map some utterances to transcripts. See cslu_dataprep_debug"
+    echo "Missing transcripts for some utterances. See cslu_dataprep_debug"
 fi
 
 # Optional

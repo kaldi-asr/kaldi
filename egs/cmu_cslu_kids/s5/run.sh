@@ -25,7 +25,7 @@ mkdir -p data/local
 if [ $stage -le 0 ]; then
   # Make soft link to the corpora
   if [ ! -e cmu_kids ]; then
-    ln -s $cmu_kids cmu_kids
+    ln -sf $cmu_kids cmu_kids
   fi
   if [ ! -e cslu ]; then
     ln -sf $cslu_kids cslu
