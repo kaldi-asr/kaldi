@@ -496,7 +496,9 @@ class LatticeIncrementalDecoderTpl {
                      up until `num_frames_to_include` (e.g., LatticeStateTimes()
                      on this lattice would return `num_frames_to_include`).
 
-     See also UpdateLatticeDeterminizaton().
+     See also UpdateLatticeDeterminizaton().  Caution: this const ref
+     is only valid until the next time you call AdvanceDecoding() or
+     GetLattice().
   */
   const CompactLattice &GetLattice(int32 num_frames_to_include,
                                    bool use_final_probs = false);

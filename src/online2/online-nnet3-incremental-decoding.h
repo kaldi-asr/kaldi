@@ -54,10 +54,10 @@ class SingleUtteranceNnet3IncrementalDecoderTpl {
   // Constructor. The pointer 'features' is not being given to this class to own
   // and deallocate, it is owned externally.
   SingleUtteranceNnet3IncrementalDecoderTpl(const LatticeIncrementalDecoderConfig &decoder_opts,
-                                 const TransitionModel &trans_model,
-                                 const nnet3::DecodableNnetSimpleLoopedInfo &info,
-                                 const FST &fst,
-                                 OnlineNnet2FeaturePipeline *features);
+                                            const TransitionModel &trans_model,
+                                            const nnet3::DecodableNnetSimpleLoopedInfo &info,
+                                            const FST &fst,
+                                            OnlineNnet2FeaturePipeline *features);
 
   /// Initializes the decoding and sets the frame offset of the underlying
   /// decodable object. This method is called by the constructor. You can also
@@ -71,17 +71,37 @@ class SingleUtteranceNnet3IncrementalDecoderTpl {
   /// Finalizes the decoding. Cleans up and prunes remaining tokens, so the
   /// GetLattice() call will return faster.  You must not call this before
   /// calling (TerminateDecoding() or InputIsFinished()) and then Wait().
-  void FinalizeDecoding();
+  void FinalizeDecoding() { decoder_.FinalizeDecoding(); }
 
-  int32 NumFramesDecoded() const;
+  int32 NumFramesDecoded() const { return decoder_.NumFramesDecoded(); }
 
-  /// Gets the lattice.  The output lattice has any acoustic scaling in it
-  /// (which will typically be desirable in an online-decoding context); if you
-  /// want an un-scaled lattice, scale it using ScaleLattice() with the inverse
-  /// of the acoustic weight.  "end_of_utterance" will be true if you want the
-  /// final-probs to be included.
-  void GetLattice(bool end_of_utterance,
-                  CompactLattice *clat);
+  int32 NumFramesInLattice() const { return decoder_.NumFramesInLattice(); }
+
+  /* Gets the lattice.  The output lattice has any acoustic scaling in it
+     (which will typically be desirable in an online-decoding context); if you
+     want an un-scaled lattice, scale it using ScaleLattice() with the inverse
+     of the acoustic weight.
+
+         @param [in] num_frames_to_include  The number of frames you want
+                  to be included in the lattice.  Must be in the range
+                  [NumFramesInLattice().. NumFramesDecoded()].  If you
+                  make it a few frames less than NumFramesDecoded(), it
+                  will save significant computation.
+         @param [in] use_final_probs   True if you want the lattice to
+                  contain final-probs (if at least one state was final
+                  on the most recently decoded frame).  Must be false
+                  if num_frames_to_include < NumFramesDecoded().
+                  Must be true if you have previously called
+                  FinalizeDecoding().
+  */
+  const CompactLattice &GetLattice(int32 num_frames_to_include,
+                                      bool use_final_probs = false) {
+    return decoder_.GetLattice(num_frames_to_include, use_final_probs);
+  }
+
+
+
+
 
   /// Outputs an FST corresponding to the single best path through the current
   /// lattice. If "use_final_probs" is true AND we reached the final-state of

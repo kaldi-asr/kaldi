@@ -52,24 +52,6 @@ void SingleUtteranceNnet3IncrementalDecoderTpl<FST>::AdvanceDecoding() {
 }
 
 template <typename FST>
-void SingleUtteranceNnet3IncrementalDecoderTpl<FST>::FinalizeDecoding() {
-  decoder_.FinalizeDecoding();
-}
-
-template <typename FST>
-int32 SingleUtteranceNnet3IncrementalDecoderTpl<FST>::NumFramesDecoded() const {
-  return decoder_.NumFramesDecoded();
-}
-
-template <typename FST>
-void SingleUtteranceNnet3IncrementalDecoderTpl<FST>::GetLattice(bool end_of_utterance,
-                                             CompactLattice *clat) {
-  if (NumFramesDecoded() == 0)
-    KALDI_ERR << "You cannot get a lattice if you decoded no frames.";
-  decoder_.GetLattice(end_of_utterance, decoder_.NumFramesDecoded(), clat);
-}
-
-template <typename FST>
 void SingleUtteranceNnet3IncrementalDecoderTpl<FST>::GetBestPath(bool end_of_utterance,
                                               Lattice *best_path) const {
   decoder_.GetBestPath(best_path, end_of_utterance);
