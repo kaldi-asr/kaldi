@@ -11,6 +11,8 @@
 nj=50
 decode_nj=20
 stage=0
+sad_stage=0
+diarizer_stage=0
 enhancement=
 test_sets=
 skip_scoring=false
@@ -70,7 +72,6 @@ fi
 #######################################################################
 # Perform SAD on the dev/eval data
 #######################################################################
-sad_stage=0
 dir=exp/segmentation${affix}
 sad_work_dir=exp/sad${affix}_${nnet_type}/
 sad_nnet_dir=$dir/tdnn_${nnet_type}_sad_1a
@@ -99,13 +100,21 @@ fi
 # Perform diarization on the dev/eval data
 #######################################################################
 if [ $stage -le 3 ]; then
-  continue
+  for datadir in ${test_sets}; do
+    local/diarize.sh --nj 10 --cmd "$train_cmd" --stage $diarizer_stage \
+      --ref-rttm data/${datadir}_${nnet_type}_seg/rttm \
+      exp/xvector_nnet_1a \
+      data/${datadir}_${nnet_type}_seg \
+      exp/${datadir}_${nnet_type}_seg_diarization
+  done
 fi
 
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
-
+if [ $stage -le 4 ]; then
+  continue
+fi
 
 #######################################################################
 # Score decoded dev/eval sets

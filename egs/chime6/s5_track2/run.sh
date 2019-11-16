@@ -15,8 +15,7 @@ decode_nj=20
 stage=0
 chain_stage=0
 sad_stage=0
-diarizer_stage=0
-decode_stage=0
+decode_stage=2
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and decode stage
 decode_only=false
