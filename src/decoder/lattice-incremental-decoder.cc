@@ -78,38 +78,39 @@ void LatticeIncrementalDecoderTpl<FST, Token>::InitDecoding() {
   determinizer_.Init();
   num_frames_in_lattice_ = 0;
   token2label_map_.clear();
-  next_token_label_ = LatticeIncrementalDeterminizer2::kTokenLabelOffset;
+  next_token_label_ = LatticeIncrementalDeterminizer::kTokenLabelOffset;
   ProcessNonemitting(config_.beam);
 }
 
 template <typename FST, typename Token>
-void LatticeIncrementalDecoderTpl<FST, Token>::DeterminizeLattice() {
-  // We always incrementally determinize the lattice after lattice pruning in
-  // PruneActiveTokens() since we need extra_cost as the weights
-  // of final arcs to denote the "future" information of final states (Tokens)
-  // Moreover, the delay on GetLattice to do determinization
-  // make it process more skinny lattices which reduces the computation overheads.
-  int32 frame_det_most = NumFramesDecoded() - config_.determinize_delay;
-  // The minimum length of chunk is config_.determinize_period.
-  if (frame_det_most % config_.determinize_period == 0) {
-    int32 frame_det_least = num_frames_in_lattice_ + config_.determinize_period;
-    // Incremental determinization:
-    // To adaptively decide the length of chunk, we further compare the number of
-    // tokens in each frame and a pre-defined threshold.
-    // If the number of tokens in a certain frame is less than
-    // config_.determinize_max_active, the lattice can be determinized up to this
-    // frame. And we try to determinize as most frames as possible so we check
-    // numbers from frame_det_most to frame_det_least
-    for (int32 f = frame_det_most; f >= frame_det_least; f--) {
-      if (config_.determinize_max_active == std::numeric_limits<int32>::max() ||
-          GetNumToksForFrame(f) < config_.determinize_max_active) {
-        KALDI_VLOG(2) << "Frame: " << NumFramesDecoded()
-                      << " incremental determinization up to " << f;
-        GetLattice(false, f);
-        break;
-      }
+void LatticeIncrementalDecoderTpl<FST, Token>::UpdateLatticeDeterminization() {
+  if (NumFramesDecoded() - num_frames_in_lattice_ <
+      config_.determinize_max_delay)
+    return;
+
+
+  /* Make sure the token-pruning is active.  Note: PruneActiveTokens() has
+     internal logic that prevents it from doing unnecessary work if you
+     call it and then immediately call it again. */
+  PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
+
+  int32 first = num_frames_in_lattice_ + config_.determinize_min_chunk_size,
+      last = NumFramesDecoded(),
+      fewest_tokens = std::numeric_limits<int32>::max(),
+      best_frame = -1;
+  for (int32 t = first; t <= last; t++) {
+    /* Make sure PruneActiveTokens() has computed num_toks for all these
+       frames... */
+    KALDI_ASSERT(!active_toks_[t].num_toks != -1);
+    if (active_toks_[t].num_toks < fewest_tokens) {
+      fewest_tokens = active_toks_[t].num_toks;
+      best_frame = t;
     }
   }
+  /* OK, determinize the chunk that spans from num_frames_in_lattice_ to
+     best_frame. */
+  bool use_final_probs = false;
+  GetLattice(best_frame, use_final_probs);
   return;
 }
 // Returns true if any kind of traceback is available (not necessarily from
@@ -128,14 +129,15 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(DecodableInterface *decoda
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
 
-    DeterminizeLattice();
+    UpdateLatticeDeterminization();
 
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(cost_cutoff);
   }
   Timer timer;
   FinalizeDecoding();
-  GetLattice(true, NumFramesDecoded());
+  bool use_final_probs = true;
+  GetLattice(NumFramesDecoded(), use_final_probs);
   KALDI_VLOG(2) << "Delay time during and after FinalizeDecoding()"
                 << "(secs): " << timer.Elapsed();
 
@@ -405,13 +407,9 @@ void LatticeIncrementalDecoderTpl<FST, Token>::PruneForwardLinksFinal() {
 
 template <typename FST, typename Token>
 BaseFloat LatticeIncrementalDecoderTpl<FST, Token>::FinalRelativeCost() const {
-  if (NumFramesDecoded() != final_cost_frame_) {
-    BaseFloat relative_cost;
-    ComputeFinalCosts(NULL, &relative_cost, NULL);
-    return relative_cost;
-  } else {
-    return final_relative_cost_;
-  }
+  BaseFloat relative_cost;
+  ComputeFinalCosts(NULL, &relative_cost, NULL);
+  return relative_cost;
 }
 
 // Prune away any tokens on this frame that have no forward links.
@@ -425,7 +423,8 @@ void LatticeIncrementalDecoderTpl<FST, Token>::PruneTokensForFrame(
   Token *&toks = active_toks_[frame_plus_one].toks;
   if (toks == NULL) KALDI_WARN << "No tokens alive [doing pruning]";
   Token *tok, *next_tok, *prev_tok = NULL;
-  for (tok = toks; tok != NULL; tok = next_tok) {
+  int32 num_toks = 0;
+  for (tok = toks; tok != NULL; tok = next_tok, num_toks++) {
     next_tok = tok->next;
     if (tok->extra_cost == std::numeric_limits<BaseFloat>::infinity()) {
       // token is unreachable from end of graph; (no forward links survived)
@@ -440,6 +439,7 @@ void LatticeIncrementalDecoderTpl<FST, Token>::PruneTokensForFrame(
       prev_tok = tok;
     }
   }
+  active_toks_[frame_plus_one].num_toks = num_toks;
 }
 
 // Go backwards through still-alive tokens, pruning them, starting not from
@@ -557,9 +557,6 @@ void LatticeIncrementalDecoderTpl<FST, Token>::AdvanceDecoding(
     if (NumFramesDecoded() % config_.prune_interval == 0) {
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
-
-    DeterminizeLattice();
-
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(cost_cutoff);
   }
@@ -853,200 +850,178 @@ void LatticeIncrementalDecoderTpl<
 template <typename FST, typename Token>
 const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
     int32 num_frames_to_include,
-    bool use_final_probs, bool finalize) {
+    bool use_final_probs) {
+  KALDI_ASSERT(num_frames_to_include >= num_frames_in_lattice_ &&
+               num_frames_to_include <= NumFramesDecoded());
 
-  if (num_frames_to_include == num_frames_in_lattice_) {
-    // We've already obtained the lattice up to here.
-    KALDI_ASSERT(finalize == decoding_finalized_);
-    return determinizer_.GetLattice();
+  if (decoding_finalized_ && !use_final_probs) {
+    // This is not supported
+    KALDI_ERR << "You cannot get the lattice without final-probs after "
+        "calling FinalizeDecoding().";
+  }
+  if (use_final_probs && num_frames_to_include != NumFramesDecoded()) {
+    /* This is because we only remember the relation between HCLG states and
+       Tokens for the current frame; the Token does not have a `state` field. */
+    KALDI_ERR << "use-final-probs may no be true if you are not "
+        "getting a lattice for all frames decoded so far.";
   }
 
-  if (finalize) {
-    /* Will prune away tokens on the last frame.. */
-    FinalizeDecoding();
-  }
 
-  if (num_frames_to_include < num_frames_in_lattice_ ||
-      num_frames_to_include > NumFramesDecoded()) {
-    KALDI_ERR << "GetLattice() called with num-frames-to-include = "
-              << num_frames_to_include << " but already determinized "
-              << num_frames_in_lattice_ << " frames and "
-              << NumFramesDecoded() << " frames decoded so far.";
-  }
-  KALDI_ASSERT(!decoding_finalized_);
-  if (finalize)
-    FinalizeDecoding();  // does pruning of the raw lattice.
+  if (num_frames_to_include > num_frames_in_lattice_) {
+    /* Make sure the token-pruning is up to date.   If we just pruned the tokens,
+       this will do very little work. */
+    PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
 
-  if (num_frames_to_include < NumFramesDecoded() &&
-      (use_final_probs || finalize)) {
-    KALDI_ERR << "You cannot set use_final_probs or finalize if not requesting "
-        "all the frames decoded so far.";
-  }
+    Lattice chunk_lat;
 
-  Lattice chunk_lat;
-
-  unordered_map<Label, LatticeArc::StateId> token_label2state;
-  if (num_frames_in_lattice_ != 0) {
-    determinizer_.InitializeRawLatticeChunk(&chunk_lat,
-                                            &token_label2state);
-  }
-
-  // tok_map will map from Token* to state-id in chunk_lat.
-  // The cur and prev versions alternate on different frames.
-  unordered_map<Token*, StateId> &tok2state_map(temp_token_map_);
-  tok2state_map.clear();
-
-  unordered_map<Token*, Label> &next_token2label_map(token2label_map_temp_);
-  next_token2label_map.clear();
-
-
-  std::unordered_map<LatticeArc::StateId, BaseFloat> state2final_cost;
-
-
-  if (use_final_probs) {
-    final_cost_frame_ = num_frames_to_include;
-    ComputeFinalCosts(&final_costs_, &final_relative_cost_,
-                      &final_best_cost_);
-  }
-  if (final_costs_.empty()) {
-    /* If no states were final on the last frame, we don't use the final-probs.
-       The user can detect this by calling ReachedFinal(). */
-    use_final_probs = false;
-  }
-  /*
-    for (auto iter = final_costs_.begin(); iter != final_costs_.end();
-         ++iter) {
-      Token *tok = iter->first;
-      BaseFloat final_cost = iter->second;
-      auto iter2 = tok2state_map.find(tok);
-      KALDI_ASSERT(iter2 != tok2state_map.end());
-      StateId lat_state = iter2->second;
-      bool inserted = final_costs.insert({lat_state, final_cost}).second;
-      KALDI_ASSERT(inserted);
+    unordered_map<Label, LatticeArc::StateId> token_label2state;
+    if (num_frames_in_lattice_ != 0) {
+      determinizer_.InitializeRawLatticeChunk(&chunk_lat,
+                                              &token_label2state);
     }
-    } */
 
+    // tok_map will map from Token* to state-id in chunk_lat.
+    // The cur and prev versions alternate on different frames.
+    unordered_map<Token*, StateId> &tok2state_map(temp_token_map_);
+    tok2state_map.clear();
 
-  { // Deal with the last frame in the chunk, the one numbered `num_frames_to_include`.
-    // (Yes, this is backwards).   We allocate token labels, and set tokens as
-    // final, but don't add any transitions.  This may leave some states
-    // disconnected (e.g. due to chains of nonemitting arcs), but it's OK; we'll
-    // fix it when we generate the next chunk of lattice.
-    int32 frame = num_frames_to_include;
-    // Allocate state-ids for all tokens on this frame.
+    unordered_map<Token*, Label> &next_token2label_map(token2label_map_temp_);
+    next_token2label_map.clear();
 
-    for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-      BaseFloat final_cost = 0.0;
-      if (use_final_probs) {
-        auto iter = final_costs_.find(tok);
-        if (iter == final_costs_.end())
-          continue;
-        final_cost = iter->second;
-      }
+    { // Deal with the last frame in the chunk, the one numbered `num_frames_to_include`.
+      // (Yes, this is backwards).   We allocate token labels, and set tokens as
+      // final, but don't add any transitions.  This may leave some states
+      // disconnected (e.g. due to chains of nonemitting arcs), but it's OK; we'll
+      // fix it when we generate the next chunk of lattice.
+      int32 frame = num_frames_to_include;
+      // Allocate state-ids for all tokens on this frame.
 
-      StateId state = chunk_lat.AddState();
-      tok2state_map[tok] = state;
-      next_token2label_map[tok] = AllocateNewTokenLabel();
-      if (use_final_probs)
-        state2final_cost[state] = final_cost;
-
-      //   (A) the case where this is not the last chunk:
-      // First imagine extra_cost == 0, which it would be if
-      // num_frames_to_include == NumFramesDecoded().  We use a final-prob
-      // (i.e. beta) that is the negative of the token's total cost.  This
-      // ensures that all tokens on the final frame are the 'best token' / have
-      // the same best-path cost.  This is done for pruning purposes, so we
-      // never prune anything out that's active on the last frame.  For earlier
-      // frames than the final one, the extra cost is equal to the beta (==cost
-      // to the end), assuming we had set the betas on last frame to the
-      // negatives of the alphas.
-      //
-      //  (B) the case where this is the last chunk:
-      // use `final_cost`, which reflect the final-cost in HCLG if
-      // requested by the user and if at least one final state was present
-      // on the last frame; and otherwise zero.
-
-      BaseFloat chunk_final_cost = (finalize ? final_cost :
-                                    -(tok->tot_cost + tok->extra_cost));
-
-      chunk_lat.SetFinal(state, LatticeWeight(chunk_final_cost, 0.0));
-    }
-  }
-
-  // Go in reverse order over the remaining frames so we can create arcs as we
-  // go, and their destination-states will already be in the map.
-  for (int32 frame = num_frames_to_include - 1;
-       frame >= num_frames_in_lattice_; frame--) {
-    BaseFloat cost_offset = cost_offsets_[frame];
-
-    // For the first frame of the chunk, we need to make sure the states are
-    // the ones created by InitializeRawLatticeChunk() (where not pruned away).
-    if (frame == num_frames_in_lattice_ && num_frames_in_lattice_ != 0) {
       for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-        auto iter = token2label_map_.find(tok);
-        KALDI_ASSERT(iter != token2label_map_.end());
-        Label token_label = iter->second;
-        auto iter2 = token_label2state.find(token_label);
-        if (iter2 != token_label2state.end()) {
-          StateId state = iter2->second;
-          tok2state_map[tok] = state;
+        /* If we included the final-costs at this stage, they will cause
+           non-final states to be pruned out from the end of the lattice. */
+        BaseFloat final_cost;
+        if (decoding_finalized_) {
+          if (final_costs_.empty()) {
+            final_cost = 0.0;  /* No final-state survived, so treat all as final
+                                * with probability One(). */
+          } else {
+            auto iter = final_costs_.find(tok);
+            if (iter == final_costs_.end())
+              continue;
+            final_cost = iter->second;
+          }
         } else {
-          // Some states may have been pruned out, but we should still allocate
-          // them.  They might have been part of chains of nonemitting arcs
-          // where the state became disconnected because the last chunk didn't
-          // include arcs starting at this frame.
+          /* this is a `fake` final-cost used to guide pruning. This equals
+             the alpha+beta of the state, if we were to set the betas on
+             the final frame to the negatives of the alphas (this is a trick
+             to make all such tokens on the best path, to avoid pruning out
+             anything that might be within `lattice-beam` of the eventual
+             best path).
+          */
+          final_cost = -(tok->tot_cost + tok->extra_cost);
+        }
+
+        StateId state = chunk_lat.AddState();
+        tok2state_map[tok] = state;
+        next_token2label_map[tok] = AllocateNewTokenLabel();
+        chunk_lat.SetFinal(state, LatticeWeight(final_cost, 0.0));
+      }
+    }
+
+    // Go in reverse order over the remaining frames so we can create arcs as we
+    // go, and their destination-states will already be in the map.
+    for (int32 frame = num_frames_to_include - 1;
+         frame >= num_frames_in_lattice_; frame--) {
+      BaseFloat cost_offset = cost_offsets_[frame];
+
+      // For the first frame of the chunk, we need to make sure the states are
+      // the ones created by InitializeRawLatticeChunk() (where not pruned away).
+      if (frame == num_frames_in_lattice_ && num_frames_in_lattice_ != 0) {
+        for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+          auto iter = token2label_map_.find(tok);
+          KALDI_ASSERT(iter != token2label_map_.end());
+          Label token_label = iter->second;
+          auto iter2 = token_label2state.find(token_label);
+          if (iter2 != token_label2state.end()) {
+            StateId state = iter2->second;
+            tok2state_map[tok] = state;
+          } else {
+            // Some states may have been pruned out, but we should still allocate
+            // them.  They might have been part of chains of nonemitting arcs
+            // where the state became disconnected because the last chunk didn't
+            // include arcs starting at this frame.
+            StateId state = chunk_lat.AddState();
+            tok2state_map[tok] = state;
+          }
+        }
+      } else {
+        for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
           StateId state = chunk_lat.AddState();
           tok2state_map[tok] = state;
         }
       }
-    } else {
       for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-        StateId state = chunk_lat.AddState();
-        tok2state_map[tok] = state;
+        auto iter = tok2state_map.find(tok);
+        KALDI_ASSERT(iter != tok2state_map.end());
+        StateId cur_state = iter->second;
+        for (ForwardLinkT *l = tok->links; l != NULL; l = l->next) {
+          auto next_iter = tok2state_map.find(l->next_tok);
+          KALDI_ASSERT(next_iter != tok2state_map.end());
+          StateId next_state = next_iter->second;
+          BaseFloat this_offset = (l->ilabel != 0 ? cost_offset : 0);
+          LatticeArc arc(l->ilabel, l->olabel,
+                         LatticeWeight(l->graph_cost, l->acoustic_cost - this_offset),
+                         next_state);
+          chunk_lat.AddArc(cur_state, arc);
+        }
       }
     }
-    for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-      auto iter = tok2state_map.find(tok);
+    if (num_frames_in_lattice_ == 0) {
+      // This block locates the start token.  NOTE: we use the fact that in the
+      // linked list of tokens, things are added at the head, so the start state
+      // must be at the tail.  If this data structure is changed in future, we
+      // might need to explicitly store the start token as a class member.
+      Token *tok = active_toks_[0].toks;
+      if (tok == NULL) {
+        KALDI_WARN << "No tokens exist on start frame";
+        return determinizer_.GetLattice();  // will be empty.
+      }
+      while (tok->next != NULL)
+        tok = tok->next;
+      Token *start_token = tok;
+      auto iter = tok2state_map.find(start_token);
       KALDI_ASSERT(iter != tok2state_map.end());
-      StateId cur_state = iter->second;
-      for (ForwardLinkT *l = tok->links; l != NULL; l = l->next) {
-        auto next_iter = tok2state_map.find(l->next_tok);
-        KALDI_ASSERT(next_iter != tok2state_map.end());
-        StateId next_state = next_iter->second;
-        BaseFloat this_offset = (l->ilabel != 0 ? cost_offset : 0);
-        LatticeArc arc(l->ilabel, l->olabel,
-                       LatticeWeight(l->graph_cost, l->acoustic_cost - this_offset),
-                       next_state);
-        chunk_lat.AddArc(cur_state, arc);
-      }
+      StateId start_state = iter->second;
+      chunk_lat.SetStart(start_state);
+    }
+    token2label_map_.swap(next_token2label_map);
+
+    // bool finished_before_beam =
+    determinizer_.AcceptRawLatticeChunk(&chunk_lat);
+    // We are ignoring the return status, which say whether it finished before the beam.
+
+    num_frames_in_lattice_ = num_frames_to_include;
+  }
+
+  unordered_map<Token*, BaseFloat> token2final_cost;
+  unordered_map<Label, BaseFloat> token_label2final_cost;
+  if (use_final_probs) {
+    ComputeFinalCosts(&token2final_cost, NULL, NULL);
+    for (const auto &p: token2final_cost) {
+      Token *tok = p.first;
+      BaseFloat cost = p.second;
+      auto iter = token2label_map_.find(tok);
+      KALDI_ASSERT(iter != token2label_map_.end());
+      Label token_label = iter->second;
+      bool ret = token_label2final_cost.insert({token_label, cost}).second;
+      KALDI_ASSERT(ret); /* Make sure it was inserted. */
     }
   }
-  if (num_frames_in_lattice_ == 0) {
-    // This block locates the start token.  NOTE: we use the fact that in the
-    // linked list of tokens, things are added at the head, so the start state
-    // must be at the tail.  If this data structure is changed in future, we
-    // might need to explicitly store the start token as a class member.
-    Token *tok = active_toks_[0].toks;
-    if (tok == NULL) {
-      KALDI_WARN << "No tokens exist on start frame";
-      return determinizer_.GetLattice();  // will be empty.
-    }
-    while (tok->next != NULL)
-      tok = tok->next;
-    Token *start_token = tok;
-    auto iter = tok2state_map.find(start_token);
-    KALDI_ASSERT(iter != tok2state_map.end());
-    StateId start_state = iter->second;
-    chunk_lat.SetStart(start_state);
-  }
-  token2label_map_.swap(next_token2label_map);
+  /* Note: these final-probs won't affect the next chunk, only the lattice
+     returned from GetLattice().  They are kind of temporaries. */
+  determinizer_.SetFinalCosts(token_label2final_cost.empty() ? NULL :
+                              &token_label2final_cost);
 
-  // bool finished_before_beam =
-  determinizer_.AcceptRawLatticeChunk(&chunk_lat,
-                                      (use_final_probs ? &state2final_cost : NULL));
-  // We are ignoring the return status, which say whether it finished before the beam.
-
-  num_frames_in_lattice_ = num_frames_to_include;
   return determinizer_.GetLattice();
 }
 
@@ -1092,7 +1067,7 @@ static void AddCompactLatticeArcToLattice(
 }
 
 
-void LatticeIncrementalDeterminizer2::Init() {
+void LatticeIncrementalDeterminizer::Init() {
   non_final_redet_states_.clear();
   clat_.DeleteStates();
   final_arcs_.clear();
@@ -1100,7 +1075,7 @@ void LatticeIncrementalDeterminizer2::Init() {
 }
 
 // See documentation in header
-void LatticeIncrementalDeterminizer2::ReweightChunk(
+void LatticeIncrementalDeterminizer::ReweightChunk(
     CompactLattice *chunk_clat) const {
   using StateId = CompactLatticeArc::StateId;
   using Label = CompactLatticeArc::Label;
@@ -1141,7 +1116,7 @@ void LatticeIncrementalDeterminizer2::ReweightChunk(
 
 
 // See documentation in header
-void LatticeIncrementalDeterminizer2::IdentifyTokenFinalStates(
+void LatticeIncrementalDeterminizer::IdentifyTokenFinalStates(
     const CompactLattice &chunk_clat,
     std::unordered_map<CompactLatticeArc::StateId, CompactLatticeArc::Label> *token_map) const {
   token_map->clear();
@@ -1166,7 +1141,7 @@ void LatticeIncrementalDeterminizer2::IdentifyTokenFinalStates(
 
 
 
-void LatticeIncrementalDeterminizer2::GetNonFinalRedetStates() {
+void LatticeIncrementalDeterminizer::GetNonFinalRedetStates() {
   using StateId = CompactLatticeArc::StateId;
   non_final_redet_states_.clear();
   non_final_redet_states_.reserve(final_arcs_.size());
@@ -1196,7 +1171,7 @@ void LatticeIncrementalDeterminizer2::GetNonFinalRedetStates() {
 }
 
 
-void LatticeIncrementalDeterminizer2::InitializeRawLatticeChunk(
+void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
     Lattice *olat,
     unordered_map<Label, LatticeArc::StateId> *token_label2state) {
   using namespace fst;
@@ -1298,7 +1273,7 @@ void LatticeIncrementalDeterminizer2::InitializeRawLatticeChunk(
 
 
 static bool incr_det_warned = false;
-void LatticeIncrementalDeterminizer2::UpdateForwardCosts(
+void LatticeIncrementalDeterminizer::UpdateForwardCosts(
     const std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> &state_map) {
   using StateId = CompactLattice::StateId;
   BaseFloat infinity = std::numeric_limits<BaseFloat>::infinity();
@@ -1334,16 +1309,45 @@ void LatticeIncrementalDeterminizer2::UpdateForwardCosts(
         forward_costs_[arc.nextstate] = next_cost;
       }
     }
-
-
   }
-
 }
 
 
-bool LatticeIncrementalDeterminizer2::AcceptRawLatticeChunk(
-    Lattice *raw_fst,
-    const std::unordered_map<LatticeArc::StateId, BaseFloat> *new_final_costs) {
+void LatticeIncrementalDeterminizer::GetRawLatticeFinalCosts(
+    const Lattice &raw_fst,
+    std::unordered_map<Label, BaseFloat> *old_final_costs) {
+  LatticeArc::StateId raw_fst_num_states = raw_fst.NumStates();
+  for (LatticeArc::StateId s = 0; s < raw_fst_num_states; s++) {
+    for (fst::ArcIterator<Lattice> aiter(raw_fst, s); !aiter.Done();
+         aiter.Next()) {
+      const LatticeArc &value = aiter.Value();
+      if (value.olabel >= (Label)kTokenLabelOffset &&
+          value.olabel < (Label)kMaxTokenLabel) {
+        LatticeWeight final_weight = raw_fst.Final(value.nextstate);
+        if (final_weight == LatticeWeight::Zero() ||
+            final_weight.Value2() != 0) {
+          KALDI_ERR << "Label " << value.olabel
+                    << " looks like a token-label but its next-state "
+              "has unexpected final-weight " << final_weight.Value1() << ','
+                    << final_weight.Value2();
+        }
+        auto r = old_final_costs->insert({value.olabel,
+                final_weight.Value1()});
+        if (!r.second && r.first->second != final_weight.Value1()) {
+          // For any given token-label, all arcs in raw_fst with that
+          // olabel should go to the same state, so this should be
+          // impossible.
+          KALDI_ERR << "Unexpected mismatch in final-costs for tokens, "
+                    << r.first->second << " vs " << final_weight.Value1();
+        }
+      }
+    }
+  }
+}
+
+
+bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
+    Lattice *raw_fst) {
   using Label = CompactLatticeArc::Label;
   using StateId = CompactLatticeArc::StateId;
 
@@ -1356,33 +1360,7 @@ bool LatticeIncrementalDeterminizer2::AcceptRawLatticeChunk(
   // only to guide pruned determinization, and we will use `old_final_costs`
   // later to cancel them out.
   std::unordered_map<Label, BaseFloat> old_final_costs;
-  StateId raw_fst_num_states = raw_fst->NumStates();
-  for (LatticeArc::StateId s = 0; s < raw_fst_num_states; s++) {
-    for (fst::ArcIterator<Lattice> aiter(*raw_fst, s); !aiter.Done();
-         aiter.Next()) {
-      const LatticeArc &value = aiter.Value();
-      if (value.olabel >= (Label)kTokenLabelOffset &&
-          value.olabel < (Label)kMaxTokenLabel) {
-        LatticeWeight final_weight = raw_fst->Final(value.nextstate);
-        if (final_weight == LatticeWeight::Zero() ||
-            final_weight.Value2() != 0) {
-          KALDI_ERR << "Label " << value.olabel
-                    << " looks like a token-label but its next-state "
-              "has unexpected final-weight " << final_weight.Value1() << ','
-                    << final_weight.Value2();
-        }
-        auto r = old_final_costs.insert({value.olabel,
-                final_weight.Value1()});
-        if (!r.second && r.first->second != final_weight.Value1()) {
-          // For any given token-label, all arcs in raw_fst with that
-          // olabel should go to the same state, so this should be
-          // impossible.
-          KALDI_ERR << "Unexpected mismatch in final-costs for tokens, "
-                    << r.first->second << " vs " << final_weight.Value1();
-        }
-      }
-    }
-  }
+  GetRawLatticeFinalCosts(*raw_fst, &old_final_costs);
 
   CompactLattice chunk_clat;
   bool determinized_till_beam = DeterminizeLatticePhonePrunedWrapper(
@@ -1418,8 +1396,8 @@ bool LatticeIncrementalDeterminizer2::AcceptRawLatticeChunk(
   // if s is final, then a state-label allocated by AllocateNewStateLabel();
   //   this will become a .nextstate in final_arcs_).
   std::unordered_map<StateId, StateId> state_map;
-  bool is_first_chunk = false;
 
+  bool is_first_chunk = false;
   StateId clat_num_states = clat_.NumStates();
 
   // Process arcs leaving the start state of chunk_clat.  These will
@@ -1492,24 +1470,34 @@ bool LatticeIncrementalDeterminizer2::AcceptRawLatticeChunk(
     }
     StateId clat_state = iter->second;
 
+    // We know that this point that `clat_state` is not a token-final state
+    // (see glossary for definition) as if it were we would have done
+    // `continue` above.
+    //
     // Only in the last chunk of the lattice would be there be a final-prob on
     // states that are not `token-final states`; these final-probs would
-    // normally all be zero at this point.
-    // So in almost all cases the following call will do nothing.
+    // normally all be Zero() at this point.  So in almost all cases the following
+    // call will do nothing.
     clat_.SetFinal(clat_state, chunk_clat.Final(chunk_state));
 
+    // Process arcs leaving this state.
     for (fst::ArcIterator<CompactLattice> aiter(chunk_clat, chunk_state);
          !aiter.Done(); aiter.Next()) {
       CompactLatticeArc arc(aiter.Value());
 
       auto next_iter = state_map.find(arc.nextstate);
       if (next_iter != state_map.end()) {
+        // The normal case (when the .nextstate has a corresponding
+        // state in clat_) is very simple.  Just copy the arc over.
         arc.nextstate = next_iter->second;
         clat_.AddArc(clat_state, arc);
       } else {
-        // TODO: remove the following slightly excessive assertion.
+        // This is the case when the arc is to a `token-final` state (see
+        // glossary.)
+
+        // TODO: remove the following slightly excessive assertion?
         KALDI_ASSERT(chunk_clat.Final(arc.nextstate) != CompactLatticeWeight::Zero() &&
-                     arc.olabel >=  (Label)kTokenLabelOffset &&
+                     arc.olabel >= (Label)kTokenLabelOffset &&
                      arc.olabel < (Label)kMaxTokenLabel &&
                      chunk_state_to_token.count(arc.nextstate) != 0 &&
                      old_final_costs.count(arc.olabel) != 0);
@@ -1520,34 +1508,13 @@ bool LatticeIncrementalDeterminizer2::AcceptRawLatticeChunk(
                                 chunk_clat.Final(arc.nextstate));
 
         BaseFloat old_final_cost = old_final_costs[arc.olabel];
-        auto iter = new_final_costs->find(arc.olabel);
 
-        BaseFloat new_cost;
-        if (new_final_costs == NULL) {
-          new_cost = 0.0;  // treat all new final-costs as One()
-        } else if (iter != new_final_costs->end()) {
-          new_cost = iter->second;
-        } else {
-          new_cost = std::numeric_limits<BaseFloat>::infinity();
-        }
-
-        if (new_cost != std::numeric_limits<BaseFloat>::infinity()) {
-          // Add a final-prob in clat_.
-          // These final-probs will be consumed by the user if they get the
-          // lattices as we incrementally determinize, but they will not affect
-          // what happens after we process the next chunk.  These final-probs
-          // would not exist in the `canonical compact lattice` (see glossary).
-          LatticeWeight cost_correction(new_cost - old_final_cost, 0.0);
-          CompactLatticeWeight final_prob(arc.weight);
-          final_prob.SetWeight(fst::Times(cost_correction, final_prob.Weight()));
-          clat_.SetFinal(clat_state, fst::Plus(clat_.Final(clat_state),
-                                               final_prob));
-        }
-
-        // OK, `arc` is going to become an element of final_arcs_.  These
+        // `arc` is going to become an element of final_arcs_.  These
         // contain information about transitions from states in clat_ to
         // `token-final` states (i.e. states that have a token-label on the arc
         // to them and that are final in the canonical compact lattice).
+        // We subtract the old_final_cost as it was just a temporary cost
+        // introduced for pruning purposes.
         arc.weight.SetWeight(fst::Times(arc.weight.Weight(),
                                         LatticeWeight{-old_final_cost, 0.0}));
         // In a slight abuse of the Arc data structure, the nextstate is set to
@@ -1564,6 +1531,64 @@ bool LatticeIncrementalDeterminizer2::AcceptRawLatticeChunk(
 
   return determinized_till_beam;
 }
+
+
+
+void LatticeIncrementalDeterminizer::SetFinalCosts(
+    const unordered_map<Label, BaseFloat> *token_label2final_cost) {
+  if (final_arcs_.empty()) {
+    KALDI_WARN << "SetFinalCosts() called when final_arcs_.empty()... possibly "
+        "means you are calling this after Finalize()?  Not allowed: could "
+        "indicate a code error.  Or possibly decoding failed somehow.";
+  }
+
+  /*
+    prefinal states a terminology that does not appear in the paper.  What it
+    means is: the set of states that have an arc with a Token-label as the label
+    leaving them in the canonical appended lattice.
+  */
+  std::unordered_set<int32> &prefinal_states(temp_);
+  prefinal_states.clear();
+  for (const auto &arc: final_arcs_) {
+    /* Caution: `state` is actually the state the arc would
+       leave from in the canonical appended lattice; we just store
+       that in the .nextstate field. */
+    CompactLatticeArc::StateId state = arc.nextstate;
+    prefinal_states.insert(state);
+  }
+
+  for (int32 state: prefinal_states)
+    clat_.SetFinal(state, CompactLatticeWeight::Zero());
+
+
+  for (const CompactLatticeArc &arc: final_arcs_) {
+    Label token_label = arc.ilabel;
+    /* Note: we store the source state in the .nextstate field. */
+    CompactLatticeArc::StateId src_state = arc.nextstate;
+    BaseFloat graph_final_cost;
+    if (token_label2final_cost == NULL) {
+      graph_final_cost = 0.0;
+    } else {
+      auto iter = token_label2final_cost->find(token_label);
+      if (iter == token_label2final_cost->end())
+        continue;
+      else
+        graph_final_cost = iter->second;
+    }
+    /* It might seem odd to set a final-prob on the src-state of the arc..
+       the point is that the symbol on the arc is a token-label, which should not
+       appear in the lattice the user sees, so after that token-label is removed
+       the arc would just become a final-prob.
+    */
+    clat_.SetFinal(src_state,
+                   fst::Plus(clat_.Final(src_state),
+                             fst::Times(arc.weight,
+                                        CompactLatticeWeight(
+                                            LatticeWeight(graph_final_cost, 0), {}))));
+  }
+}
+
+
 
 
 // Instantiate the template for the combination of token types and FST types
