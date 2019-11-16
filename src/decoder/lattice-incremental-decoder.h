@@ -470,32 +470,16 @@ class LatticeIncrementalDecoderTpl {
      which makes it very efficient to obtain the best path. */
 
   /**
-     This GetLattice() function is the main way you will interact with the
-     incremental determinization that this class provides.  Note that the
-     interface is slightly different from that of other decoders.  For example,
-     if olat is NULL it will do the work of incremental determinization without
-     actually giving you the lattice (which can save it some time).
-
-     Note: calling it on every frame doesn't make sense as it would
-     still have to do a fair amount of work; calling it every, say,
-     10 to 40 frames would make sense though.
+     This GetLattice() function returns the lattice containing
+     `num_frames_to_decode` frames; this will be all frames decoded so
+     far, if you let num_frames_to_decode == NumFramesDecoded(),
+     but it will generally be better to make it a few frames less than
+     that to avoid the lattice having too many active states at
+     the end.
 
      @param [in] num_frames_to_include  The number of frames that you want
-                     to be included in the lattice.  Must be >0 and
-                     <= NumFramesDecoded().  If you are calling this just to
-                     keep the incremental lattice determinization up to date and
-                     don't really need the lattice now or don't need it to be fully up
-                     to date, you will probably want to make
-                     num_frames_to_include at least 5 or 10 frames less than
-                     NumFramessDecoded(), to avoid the lattice having too many
-                     arcs.
-
-                     CAUTION: You may not call this with a
-                     num_frames_to_include that is smaller than NumFramesInLattice()
-                     value previously provided to Get.  Calling it with an
-                     only-slightly-larger version than the last time (e.g. just
-                     a few frames larger) is probably not a good use of
-                     computational resources.
+                     to be included in the lattice.  Must be >=
+                     NumFramesInLattice() and <= NumFramesDecoded().
 
      @param [in] use_final_probs  True if you want the final-probs
                     of HCLG to be included in the output lattice.  Must not
@@ -503,9 +487,10 @@ class LatticeIncrementalDecoderTpl {
                     NumFramesDecoded().  Must be set to true if you have
                     previously called FinalizeDecoding().
 
-                    (If no state was final on frame `num_frames_to_include` the
-                    final-probs won't be included regardless of use_final_probs;
-                    you can test this with ReachedFinal().
+                    (If no state was final on frame `num_frames_to_include`, the
+                    final-probs won't be included regardless of
+                    `use_final_probs`; you can test whether this
+                    was the case by calling ReachedFinal().
 
       @return clat   The CompactLattice representing what has been decoded
                      up until `num_frames_to_include` (e.g., LatticeStateTimes()
@@ -515,18 +500,6 @@ class LatticeIncrementalDecoderTpl {
   */
   const CompactLattice &GetLattice(int32 num_frames_to_include,
                                    bool use_final_probs = false);
-
-  /**
-     UpdateLatticeDeterminization() is what you call when you don't yet need
-     the lattice, but want to make sure the work of determinization is kept
-     up to date so that when you do need the lattice you can get it fast.
-     It uses the configuration values `determinize_delay`,
-     `determinize_period`, `determinize_period` and `determinize_max_active`
-     to decide whether and when to call GetLattice().  You can safely
-     call this as often as you want, it won't do subtantially more work if it
-     is called frequently.
-  */
-  void UpdateLatticeDeterminization();
 
   /*
     Returns the number of frames in the currently-determinized part of the
@@ -685,6 +658,16 @@ class LatticeIncrementalDecoderTpl {
   // at the end of an utterance.
   int32 GetNumToksForFrame(int32 frame);
 
+  /**
+     UpdateLatticeDeterminization() ensures the work of determinization is kept
+     up to date so that when you do need the lattice you can get it fast.  It
+     uses the configuration values `determinize_delay`, `determinize_max_delay`
+     and `determinize_min_chunk_size` to decide whether and when to call
+     GetLattice().  You can safely call this as often as you want (e.g.  after
+     each time you call AdvanceDecoding(); it won't do subtantially more work if
+     it is called frequently.
+  */
+  void UpdateLatticeDeterminization();
 
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeIncrementalDecoderTpl);

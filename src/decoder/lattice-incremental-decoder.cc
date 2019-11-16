@@ -101,7 +101,7 @@ void LatticeIncrementalDecoderTpl<FST, Token>::UpdateLatticeDeterminization() {
   for (int32 t = first; t <= last; t++) {
     /* Make sure PruneActiveTokens() has computed num_toks for all these
        frames... */
-    KALDI_ASSERT(!active_toks_[t].num_toks != -1);
+    KALDI_ASSERT(active_toks_[t].num_toks != -1);
     if (active_toks_[t].num_toks < fewest_tokens) {
       fewest_tokens = active_toks_[t].num_toks;
       best_frame = t;
@@ -128,7 +128,6 @@ bool LatticeIncrementalDecoderTpl<FST, Token>::Decode(DecodableInterface *decoda
     if (NumFramesDecoded() % config_.prune_interval == 0) {
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
-
     UpdateLatticeDeterminization();
 
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
@@ -560,6 +559,7 @@ void LatticeIncrementalDecoderTpl<FST, Token>::AdvanceDecoding(
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(cost_cutoff);
   }
+  UpdateLatticeDeterminization();
 }
 
 // FinalizeDecoding() is a version of PruneActiveTokens that we call
