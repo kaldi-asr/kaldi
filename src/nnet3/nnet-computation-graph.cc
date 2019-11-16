@@ -857,7 +857,6 @@ void ComputationGraphBuilder::UpdateComputableInfo(int32 cindex_id) {
 
 
 void ComputationGraphBuilder::IncrementUsableCount(int32 cindex_id) {
-  KALDI_PARANOID_ASSERT(static_cast<size_t>(cindex_id)<usable_count_.size());
   CindexInfo &info = cindex_info_[cindex_id];
   if (info.usable_count++ == 0 &&
       info.computable != kNotComputable) {
@@ -880,7 +879,6 @@ void ComputationGraphBuilder::IncrementUsableCount(int32 cindex_id) {
 
 
 void ComputationGraphBuilder::DecrementUsableCount(int32 cindex_id) {
-  KALDI_PARANOID_ASSERT(static_cast<size_t>(cindex_id)<usable_count_.size());
   KALDI_PARANOID_ASSERT(cindex_info_[cindex_id].usable_count > 0);
   if (--cindex_info_[cindex_id].usable_count == 0 &&
       cindex_info_[cindex_id].computable != kNotComputable) {
