@@ -265,9 +265,9 @@ int main(int argc, char *argv[]) {
         }
         decoder.FinalizeDecoding();
 
-        CompactLattice clat;
-        bool end_of_utterance = true;
-        decoder.GetLattice(end_of_utterance, &clat);
+        bool use_final_probs = true;
+        CompactLattice clat = decoder.GetLattice(decoder.NumFramesDecoded(),
+                                                 use_final_probs);
 
         GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
                                      &num_frames, &tot_like);

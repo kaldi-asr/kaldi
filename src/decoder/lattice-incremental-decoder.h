@@ -140,7 +140,9 @@ struct LatticeIncrementalDecoderConfig {
         hash_ratio(2.0),
         prune_scale(0.1),
         determinize_max_delay(60),
-        determinize_min_chunk_size(20) { }
+        determinize_min_chunk_size(20) {
+    det_opts.minimize = false;
+  }
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
     opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
@@ -169,12 +171,17 @@ struct LatticeIncrementalDecoderConfig {
 
   }
   void Check() const {
-    KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 &&
-                 min_active <= max_active && prune_interval > 0 &&
-                 beam_delta > 0.0 && hash_ratio >= 1.0 &&
-                 prune_scale > 0.0 && prune_scale < 1.0 &&
-                 determinize_max_delay > determinize_min_chunk_size &&
-                 determinize_min_chunk_size > 0);
+    if (!(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 &&
+          min_active <= max_active && prune_interval > 0 &&
+          beam_delta > 0.0 && hash_ratio >= 1.0 &&
+          prune_scale > 0.0 && prune_scale < 1.0 &&
+          determinize_max_delay > determinize_min_chunk_size &&
+          determinize_min_chunk_size > 0))
+        KALDI_ERR << "Invalid options given to decoder";
+    /* Minimization of the chunks is not compatible withour algorithm (or at
+       least, would require additional complexity to implement.) */
+    if (det_opts.minimize || !det_opts.word_determinize)
+      KALDI_ERR << "Invalid determinization options given to decoder.";
   }
 };
 
@@ -299,7 +306,7 @@ class LatticeIncrementalDeterminizer {
   void GetNonFinalRedetStates();
 
   // Updates forward_costs_ for all the states which are successors of states
-  // appearing as values in `state_map`.  (By "a is a successor of b" I mean
+  // appearing as values in `clat_new_states`.  (By "a is a successor of b" I mean
   // there is an arc from a to b.)
   // For states that already had entries in the forward_costs_ array, this
   // will never decrease their forward costs.  This may in theory make
@@ -312,8 +319,13 @@ class LatticeIncrementalDeterminizer {
   // how we set the betas/final-probs/extra-costs on the tokens, which
   // makes the distance of a state or arc from the best path a lower bound on what that
   // distance will eventually become after we finish decoding.)
+  //
+  //   @param [in] clat_new_states  Sorted list of state-ids in
+  //                   clat_ which were either given new arcs, or
+  //                   created, in the most recent iteration of
+  //                   pruned lattice determinization
   void UpdateForwardCosts(
-      const std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> &state_map);
+      const std::vector<int32> &clat_new_states);
 
 
   // Reweights `chunk_clat`.  Must not be called if this is the first chunk.
