@@ -1,3 +1,7 @@
+if(NOT CMAKE_VERSION VERSION_LESS "3.10")
+    include_guard()
+endif()
+
 # For Windows, some env or vars are using backward slash for pathes, convert
 # them to forward slashes will fix some nasty problem in CMake.
 macro(normalize_path in_path)
