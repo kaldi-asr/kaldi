@@ -1,3 +1,5 @@
+# For Windows, some env or vars are using backward slash for pathes, convert
+# them to forward slashes will fix some nasty problem in CMake.
 macro(normalize_path in_path)
     file(TO_CMAKE_PATH "${${in_path}}" normalize_path_out_path)
     set(${in_path} "${normalize_path_out_path}")
