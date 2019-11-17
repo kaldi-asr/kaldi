@@ -82,7 +82,7 @@ endif()
 
 find_package(CUDA)
 if(CUDA_FOUND)
-    set(CUB_ROOT_DIR "tools/cub")
+    set(CUB_ROOT_DIR "${CMAKE_PROJECT_DIR}/tools/cub")
 
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
