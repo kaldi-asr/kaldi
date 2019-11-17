@@ -4,7 +4,7 @@ project(openfst-download NONE)
 include(ExternalProject)
 ExternalProject_Add(openfst
     GIT_REPOSITORY https://github.com/kkm000/openfst
-    GIT_TAG winport
+    GIT_TAG win/1.7.2.1
     SOURCE_DIR "${CMAKE_BINARY_DIR}/openfst"
     BINARY_DIR ""
     CONFIGURE_COMMAND ""
