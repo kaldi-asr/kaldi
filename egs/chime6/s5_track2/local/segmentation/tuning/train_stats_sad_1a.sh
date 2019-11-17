@@ -47,7 +47,7 @@ set -o pipefail
 set -u
 
 if [ -z "$dir" ]; then
-  dir=exp/segmentation_1a/tdnn_stats_asr_sad
+  dir=exp/segmentation_1a/tdnn_stats_sad
 fi
 dir=$dir${affix:+_$affix}
 
