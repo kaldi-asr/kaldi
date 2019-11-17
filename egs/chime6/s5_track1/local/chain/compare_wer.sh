@@ -101,33 +101,31 @@ if $used_epochs; then
   exit 0;  # the diagnostics aren't comparable between regular and discriminatively trained systems.
 fi
 
+
 echo -n "# Final train prob     "
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_train.{final,combined}.log 2>/dev/null | grep log-like | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_train.final.log | grep -v xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
 echo -n "# Final valid prob     "
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_valid.{final,combined}.log 2>/dev/null | grep log-like | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -v xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
-echo -n "# Final train acc      "
+echo -n "# Final train prob (xent)"
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_train.{final,combined}.log 2>/dev/null | grep accuracy | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_train.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
-echo -n "# Final valid acc      "
+echo -n "# Final valid prob (xent)"
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_valid.{final,combined}.log 2>/dev/null | grep accuracy | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
-
-echo
-
