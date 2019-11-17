@@ -243,6 +243,7 @@ template <typename FST, typename Token>
 void LatticeIncrementalDecoderTpl<FST, Token>::PruneForwardLinks(
     int32 frame_plus_one, bool *extra_costs_changed, bool *links_pruned,
     BaseFloat delta) {
+  KALDI_LOG << "In PruneForwardLinks " << frame_plus_one;
   // delta is the amount by which the extra_costs must change
   // If delta is larger,  we'll tend to go back less far
   //    toward the beginning of the file.
@@ -419,6 +420,7 @@ BaseFloat LatticeIncrementalDecoderTpl<FST, Token>::FinalRelativeCost() const {
 template <typename FST, typename Token>
 void LatticeIncrementalDecoderTpl<FST, Token>::PruneTokensForFrame(
     int32 frame_plus_one) {
+  KALDI_LOG << "In PruneTokensForFrame: " << frame_plus_one;
   KALDI_ASSERT(frame_plus_one >= 0 && frame_plus_one < active_toks_.size());
   Token *&toks = active_toks_[frame_plus_one].toks;
   if (toks == NULL) KALDI_WARN << "No tokens alive [doing pruning]";
@@ -484,7 +486,6 @@ void LatticeIncrementalDecoderTpl<FST, Token>::PruneActiveTokens(BaseFloat delta
       active_toks_[f + 1].must_prune_tokens = false;
     }
   }
-  PruneTokensForFrame(0);
   KALDI_VLOG(4) << "pruned tokens from " << num_toks_begin
                 << " to " << num_toks_;
 }
@@ -493,7 +494,6 @@ template <typename FST, typename Token>
 void LatticeIncrementalDecoderTpl<FST, Token>::ComputeFinalCosts(
     unordered_map<Token *, BaseFloat> *final_costs, BaseFloat *final_relative_cost,
     BaseFloat *final_best_cost) const {
-  KALDI_ASSERT(!decoding_finalized_);
   if (final_costs != NULL) final_costs->clear();
   const Elem *final_toks = toks_.GetList();
   BaseFloat infinity = std::numeric_limits<BaseFloat>::infinity();
@@ -582,7 +582,7 @@ template <typename FST, typename Token>
 void LatticeIncrementalDecoderTpl<FST, Token>::FinalizeDecoding() {
   int32 final_frame_plus_one = NumFramesDecoded();
   int32 num_toks_begin = num_toks_;
-  // PruneForwardLinksFinal() prunes final frame (with final-probs), and
+  // PruneForwardLinksFinal() prunes the final frame (with final-probs), and
   // sets decoding_finalized_.
   PruneForwardLinksFinal();
   for (int32 f = final_frame_plus_one - 1; f >= 0; f--) {
@@ -913,25 +913,28 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
         /* If we included the final-costs at this stage, they will cause
            non-final states to be pruned out from the end of the lattice. */
         BaseFloat final_cost;
-        if (decoding_finalized_) {
-          if (final_costs_.empty()) {
-            final_cost = 0.0;  /* No final-state survived, so treat all as final
-                                * with probability One(). */
+        {  // This block computes final_cost
+          if (decoding_finalized_) {
+            if (final_costs_.empty()) {
+              final_cost = 0.0;  /* No final-state survived, so treat all as final
+                                  * with probability One(). */
+            } else {
+              auto iter = final_costs_.find(tok);
+              if (iter == final_costs_.end())
+                final_cost = std::numeric_limits<BaseFloat>::infinity();
+              else
+                final_cost = iter->second;
+            }
           } else {
-            auto iter = final_costs_.find(tok);
-            if (iter == final_costs_.end())
-              continue;
-            final_cost = iter->second;
+            /* this is a `fake` final-cost used to guide pruning. This equals
+               the alpha+beta of the state, if we were to set the betas on
+               the final frame to the negatives of the alphas (this is a trick
+               to make all such tokens on the best path, to avoid pruning out
+               anything that might be within `lattice-beam` of the eventual
+               best path).
+            */
+            final_cost = -(tok->tot_cost + tok->extra_cost);
           }
-        } else {
-          /* this is a `fake` final-cost used to guide pruning. This equals
-             the alpha+beta of the state, if we were to set the betas on
-             the final frame to the negatives of the alphas (this is a trick
-             to make all such tokens on the best path, to avoid pruning out
-             anything that might be within `lattice-beam` of the eventual
-             best path).
-          */
-          final_cost = -(tok->tot_cost + tok->extra_cost);
         }
 
         StateId state = chunk_lat.AddState();
@@ -945,8 +948,12 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
                                     LatticeWeight::One(),
                                     token_final_state));
         KALDI_ASSERT(final_cost - final_cost == 0.0);   // no inf.
-        KALDI_LOG << "Setting state " << token_final_state << " final w.p. " << final_cost;
         chunk_lat.SetFinal(token_final_state, LatticeWeight(final_cost, 0.0));
+
+        if (decoding_finalized_ && frame == num_frames_to_include) {
+          // If this is the last chunk, we need to include epsilon transitions
+          // on the last frame.
+        }
       }
     }
 
@@ -1094,50 +1101,29 @@ void LatticeIncrementalDeterminizer::Init() {
   clat_.DeleteStates();
   final_arcs_.clear();
   forward_costs_.clear();
+  arcs_in_.clear();
 }
 
-// See documentation in header
-void LatticeIncrementalDeterminizer::ReweightChunk(
-    CompactLattice *chunk_clat) const {
-  using StateId = CompactLatticeArc::StateId;
-  using Label = CompactLatticeArc::Label;
-  StateId chunk_start_state = chunk_clat->Start(),
-      clat_num_states = clat_.NumStates();
-  std::vector<CompactLatticeWeight> potentials(chunk_clat->NumStates(),
-                                               CompactLatticeWeight::One());
-
-  for (fst::MutableArcIterator<CompactLattice> aiter(chunk_clat,
-                                                     chunk_start_state);
-       !aiter.Done(); aiter.Next()) {
-    CompactLatticeArc arc = aiter.Value();
-    Label label = arc.ilabel;  // ilabel == olabel.
-    StateId clat_state = label - kStateLabelOffset;
-    KALDI_ASSERT(clat_state >= 0 && clat_state < clat_num_states);
-    // `extra_weight` serves to cancel out the weight
-    // `forward_costs_[clat_state]` that we introduced in
-    // InitializeRawLatticeChunk(); the purpose of that was to
-    // make the pruned determinization work right, but they are
-    // no longer needed.
-    LatticeWeight extra_weight(-forward_costs_[clat_state], 0.0);
-    arc.weight.SetWeight(fst::Times(arc.weight.Weight(), extra_weight));
-    aiter.SetValue(arc);
-    potentials[arc.nextstate] = arc.weight;
-  }
-  // TODO: consider doing the following manually for this special case,
-  // since most states are not reweighted.
-  fst::Reweight(chunk_clat, potentials, fst::REWEIGHT_TO_FINAL);
-
-  // Below is just a check that weights on arcs leaving initial state
-  // are all One().
-  // TODO: remove the following.
-  for (fst::ArcIterator<CompactLattice> aiter(*chunk_clat,
-                                              chunk_start_state);
-       !aiter.Done(); aiter.Next()) {
-    KALDI_ASSERT(fst::ApproxEqual(aiter.Value().weight,
-                                  CompactLatticeWeight::One()));
-  }
+CompactLatticeArc::StateId LatticeIncrementalDeterminizer::AddStateToClat() {
+  CompactLatticeArc::StateId ans = clat_.AddState();
+  forward_costs_.push_back(std::numeric_limits<BaseFloat>::infinity());
+  KALDI_ASSERT(forward_costs_.size() == ans + 1);
+  arcs_in_.resize(ans + 1);
+  return ans;
 }
 
+void LatticeIncrementalDeterminizer::AddArcToClat(
+    CompactLatticeArc::StateId state,
+    const CompactLatticeArc &arc) {
+  int32 arc_idx = clat_.NumArcs(state);
+  clat_.AddArc(state, arc);
+  arcs_in_[arc.nextstate].push_back({state, arc_idx});
+  BaseFloat forward_cost = forward_costs_[state] +
+      ConvertToCost(arc.weight);
+  if (forward_cost < forward_costs_[arc.nextstate])
+    forward_costs_[arc.nextstate] = forward_cost;
+  KALDI_ASSERT(forward_cost - forward_cost == 0);  // TODO: remove this.  TEMP.
+}
 
 // See documentation in header
 void LatticeIncrementalDeterminizer::IdentifyTokenFinalStates(
@@ -1240,6 +1226,8 @@ void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
       clat_arc.nextstate = lat_nextstate;
       AddCompactLatticeArcToLattice(clat_arc, lat_state, olat);
     }
+    clat_.DeleteArcs(redet_state);
+    clat_.SetFinal(redet_state, CompactLatticeWeight::Zero());
   }
 
   for (const CompactLatticeArc &arc: final_arcs_) {
@@ -1297,47 +1285,6 @@ void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
   }
 }
 
-
-static bool incr_det_warned = false;
-void LatticeIncrementalDeterminizer::UpdateForwardCosts(
-    const std::vector<int32> &new_states) {
-  using StateId = CompactLattice::StateId;
-  BaseFloat infinity = std::numeric_limits<BaseFloat>::infinity();
-  StateId cur_size = forward_costs_.size();
-  for (StateId state: new_states) {
-    // The reason we can make the following assertion is that the states should
-    // be in topological order and each state should be reachable from an
-    // earlier state (and we should have processed that earlier state by now).
-    KALDI_ASSERT(state < cur_size);
-    BaseFloat cur_cost = forward_costs_[state];
-    if (cur_cost == infinity) {
-      // I don't think I can exclude that there might be unreachable
-      // states
-      if (!incr_det_warned) {
-        KALDI_WARN << "Found unreachable state in compact lattice while determinizing";
-        incr_det_warned = true;
-      }
-      continue;
-    }
-    KALDI_ASSERT(cur_cost < infinity);
-    for (fst::ArcIterator<CompactLattice> aiter(clat_, state);
-         !aiter.Done(); aiter.Next()) {
-      const CompactLatticeArc &arc = aiter.Value();
-      BaseFloat arc_cost = arc.weight.Weight().Value1() +
-          arc.weight.Weight().Value2(),
-          next_cost = cur_cost + arc_cost;
-      if (arc.nextstate >= cur_size) {
-        forward_costs_.resize(arc.nextstate + 1, infinity);
-        cur_size = arc.nextstate + 1;
-        forward_costs_[arc.nextstate] = next_cost;
-      } else if (forward_costs_[arc.nextstate] > next_cost) {
-        forward_costs_[arc.nextstate] = next_cost;
-      }
-    }
-  }
-}
-
-
 void LatticeIncrementalDeterminizer::GetRawLatticeFinalCosts(
     const Lattice &raw_fst,
     std::unordered_map<Label, BaseFloat> *old_final_costs) {
@@ -1377,16 +1324,6 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
   using Label = CompactLatticeArc::Label;
   using StateId = CompactLatticeArc::StateId;
 
-
-  {
-    std::ostringstream os;
-    bool acceptor = false, write_one = false;
-    fst::FstPrinter<LatticeArc> printer(*raw_fst, NULL, NULL,
-                                   NULL, acceptor, write_one, "\t");
-    printer.Print(&os, "<unknown>");
-    KALDI_LOG << "Raw FST is " << os.str();
-  }
-
   // old_final_costs is a map from a `token-label` (see glossary) to the
   // associated final-prob in a final-state of `raw_fst`, that is associated
   // with that Token.  These are Tokens that were active at the end of the
@@ -1403,23 +1340,11 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
       trans_model_, raw_fst, config_.lattice_beam, &chunk_clat,
       config_.det_opts);
 
-  {
-    std::ostringstream os;
-    bool acceptor = false, write_one = false;
-    fst::FstPrinter<CompactLatticeArc> printer(chunk_clat, NULL, NULL,
-                                   NULL, acceptor, write_one, "\t");
-    printer.Print(&os, "<unknown>");
-    KALDI_LOG << "Determinized chunk FST is " << os.str();
-  }
-
-
-
   TopSortCompactLatticeIfNeeded(&chunk_clat);
 
   std::unordered_map<StateId, Label> chunk_state_to_token;
   IdentifyTokenFinalStates(chunk_clat,
                            &chunk_state_to_token);
-  KALDI_LOG << "num token-final states is " << chunk_state_to_token.size();
   StateId chunk_num_states = chunk_clat.NumStates();
   if (chunk_num_states == 0) {
     // This will be an error but user-level calling code can detect it from the
@@ -1438,22 +1363,28 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
   // clat_), and will transition to a state in `chunk_clat` that we can identify
   // with that redeterminized-state.
 
-  // state_map maps from (non-initial state s in chunk_clat) to:
-  // if s is not token-final, then a state in clat_,
-
-  // if s is token-final, then a state-label allocated by
-  //   AllocateNewStateLabel(); this will become a .nextstate in final_arcs_).
+  // state_map maps from (non-initial, non-token-final state s in chunk_clat) to
+  // a state in clat_.
   std::unordered_map<StateId, StateId> state_map;
-
-  std::unordered_map<StateId, StateId> rev_state_map;
 
 
   bool is_first_chunk = false;
   StateId clat_num_states = clat_.NumStates();
 
-  // Process arcs leaving the start state of chunk_clat.  These will
-  // have state-labels on them.  The weights will all be One();
-  // this is ensured in ReweightChunk().
+
+
+  if (0) {
+    std::ostringstream os;
+    bool acceptor = false, write_one = false;
+    fst::FstPrinter<CompactLatticeArc> printer(chunk_clat, NULL, NULL,
+                                   NULL, acceptor, write_one, "\t");
+    printer.Print(&os, "<unknown>");
+    KALDI_LOG << "Determinized chunk FST is " << os.str();
+  }
+
+
+  // Process arcs leaving the start state of chunk_clat.  These arcs will have
+  // state-labels on them (unless this is the first chunk).
   for (fst::ArcIterator<CompactLattice> aiter(chunk_clat, start_state);
        !aiter.Done(); aiter.Next()) {
     const CompactLatticeArc &arc = aiter.Value();
@@ -1469,13 +1400,69 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     }
     StateId clat_state = label - kStateLabelOffset;
     StateId chunk_state = arc.nextstate;
-    bool inserted = state_map.insert({chunk_state, clat_state}).second;
-    // Should not have been in the map before.
-    KALDI_ASSERT(inserted);
-  }
+    auto p = state_map.insert({chunk_state, clat_state});
+    StateId dest_clat_state = p.first->second;
+    /*
+      In almost all cases, dest_clat_state and clat_state will be the sme state;
+      but there may be situations where two arcs with different state-labels
+      left the start state and entered the same next-state in chunk_clat; and in
+      these cases, they will be different.
 
-  if (!is_first_chunk)
-    ReweightChunk(&chunk_clat);  // Note: we haven't inspected any weights yet.
+      We didn't address this issue in the paper (or actually realize it could be
+      a problem).  What we do is pick one of the clat_states as the "canonical"
+      one, and redirect all incoming transitions of the others to enter the
+      "canonical" one.  (Search below for new_in_arc.nextstate =
+      dest_clat_state).
+     */
+
+    // in_weight is an extra weight that we'll include on arcs entering this
+    // state from the previous chunk.  We need to cancel out
+    // `forward_costs[clat_state]`, which was included in the corresponding arc
+    // in the raw lattice for pruning purposes; and we need to include
+    // the weight from the start-state of `chunk_clat` to this state.
+    CompactLatticeWeight extra_weight_in = arc.weight;
+    extra_weight_in.SetWeight(
+        fst::Times(extra_weight_in.Weight(),
+                   LatticeWeight(-forward_costs_[clat_state], 0.0)));
+
+    // Note: 0 is the start state of clat_.  This was checked.
+    forward_costs_[clat_state] = (clat_state == 0 ? 0 :
+                                  std::numeric_limits<BaseFloat>::infinity());
+    std::vector<std::pair<StateId, int32> > &arcs_in(arcs_in_[clat_state]);
+    std::vector<std::pair<StateId, int32> > new_arcs_in;
+    for (auto p: arcs_in) {
+      // Note: we'll be doing `continue` below if this input arc came from
+      // another redeterminized-state, because we did DeleteStates() for them in
+      // InitializeRawLatticeChunk().
+      CompactLattice::StateId src_state = p.first;
+      int32 arc_pos = p.second;
+      if (arc_pos >= (int32)clat_.NumArcs(src_state))
+        continue;
+      fst::MutableArcIterator<CompactLattice> aiter(&clat_, src_state);
+      aiter.Seek(arc_pos);
+      if (aiter.Value().nextstate != clat_state)
+        continue;  // This arc record has become invalidated.
+      CompactLatticeArc new_in_arc(aiter.Value());
+      // In most cases we will have dest_clat_state == clat_state, so the next
+      // line won't change the value of .nextstate
+      new_in_arc.nextstate = dest_clat_state;
+      new_in_arc.weight = fst::Times(new_in_arc.weight, extra_weight_in);
+      aiter.SetValue(new_in_arc);
+
+      BaseFloat new_forward_cost = forward_costs_[src_state] +
+          ConvertToCost(new_in_arc.weight);
+      if (new_forward_cost < forward_costs_[dest_clat_state])
+        forward_costs_[dest_clat_state] = new_forward_cost;
+      new_arcs_in.push_back(p);
+    }
+    // Commit a cleaned-up version of `arcs_in` that doesn't contain any
+    // no-longer-valid arcs.  This may seem redundant, since no-longer-valid
+    // arcs are permitted in arcs_in_, and we almost certainly won't need this
+    // information in future; but I am concerned that if some states remain
+    // active for many chunks, keeping all the old input arcs might cause the
+    // algorithm to become quadratic-time.
+    arcs_in.swap(new_arcs_in);
+  }
 
   // Remove any existing arcs in clat_ that leave redeterminized-states, and
   // make those states non-final.  Below, we'll add arcs leaving those states
@@ -1485,7 +1472,7 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     clat_.SetFinal(clat_state, CompactLatticeWeight::Zero());
   }
 
-  // The final-arc info is no longer relevant; we'll recreate it below.
+  // The previous final-arc info is no longer relevant; we'll recreate it below.
   final_arcs_.clear();
 
   // assume chunk_lat.Start() == 0; we asserted it above.  Allocate state-ids
@@ -1498,18 +1485,19 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     StateId new_clat_state = clat_.NumStates();
     if (state_map.insert({state, new_clat_state}).second) {
       // If it was inserted then we need to actually allocate that state
-      StateId s = clat_.AddState();
+      StateId s = AddStateToClat();
       KALDI_ASSERT(s == new_clat_state);
     }   // else do nothing; it would have been a redeterminized-state and no
   }     // allocation is needed since they already exist in clat_. and
         // in state_map.
 
   if (is_first_chunk) {
-    KALDI_ASSERT(forward_costs_.empty() && start_state == 0);
-    forward_costs_.push_back(0.0);  // forward-cost of start state is 0.
     auto iter = state_map.find(start_state);
     KALDI_ASSERT(iter != state_map.end());
-    clat_.SetStart(iter->second);
+    CompactLatticeArc::StateId clat_start_state = iter->second;
+    KALDI_ASSERT(clat_start_state == 0);  // topological order.
+    clat_.SetStart(clat_start_state);
+    forward_costs_[clat_start_state] = 0.0;
   }
 
   // Now transfer arcs from chunk_clat to clat_.
@@ -1525,7 +1513,7 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     StateId clat_state = iter->second;
 
     // We know that this point that `clat_state` is not a token-final state
-    // (see glossary for definition) as if it were we would have done
+    // (see glossary for definition) as if it were, we would have done
     // `continue` above.
     //
     // Only in the last chunk of the lattice would be there be a final-prob on
@@ -1546,7 +1534,7 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
         arc.nextstate = next_iter->second;
         KALDI_ASSERT(arc.ilabel < kTokenLabelOffset ||
                      arc.ilabel > kMaxTokenLabel);
-        clat_.AddArc(clat_state, arc);
+        AddArcToClat(clat_state, arc);
       } else {
         // This is the case when the arc is to a `token-final` state (see
         // glossary.)
@@ -1582,18 +1570,6 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     }
   }
   GetNonFinalRedetStates();
-
-  {
-    // `clat_new_states` is states that are newly added
-    // or which were modified (i.e. redeterminized-states).
-    std::vector<int32> clat_new_states;
-    for (auto p: state_map)
-      if (p.second < kStateLabelOffset)
-        clat_new_states.push_back(p.second);
-    std::sort(clat_new_states.begin(),
-              clat_new_states.end());
-    UpdateForwardCosts(clat_new_states);
-  }
 
   return determinized_till_beam;
 }
