@@ -1,5 +1,5 @@
 This is the official Kaldi INSTALL. Look also at INSTALL.md for the git mirror installation.
-[Option 1 in the following dose not apply to native Windows install, see windows/INSTALL or following Option 2]
+[Option 1 in the following does not apply to native Windows install, see windows/INSTALL or following Option 2]
 
 Option 1 (bash + makefile):
 
