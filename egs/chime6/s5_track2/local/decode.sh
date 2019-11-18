@@ -89,7 +89,9 @@ if [ $stage -le 2 ]; then
       data/${datadir} || exit 1
    
     mv data/${datadir}_seg data/${datadir}_${nnet_type}_seg
-    # Get RTTM file
+    # Generate RTTM file from segmentation performed by SAD. This can
+    # be used to evaluate the performance of the SAD as an intermediate
+    # step.
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
       data/${datadir}_${nnet_type}_seg/utt2spk data/${datadir}_${nnet_type}_seg/segments \
       data/${datadir}_${nnet_type}_seg/rttm
@@ -102,7 +104,6 @@ fi
 if [ $stage -le 3 ]; then
   for datadir in ${test_sets}; do
     local/diarize.sh --nj 10 --cmd "$train_cmd" --stage $diarizer_stage \
-      --ref-rttm data/${datadir}_${nnet_type}_seg/rttm \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
       exp/${datadir}_${nnet_type}_seg_diarization

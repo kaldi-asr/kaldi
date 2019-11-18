@@ -47,7 +47,7 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0: extracting x-vectors for all segments"
-  local/nnet3/xvector/extract_xvectors.sh --cmd "$cmd" \
+  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$cmd" \
     --nj $nj --window 1.5 --period 0.75 --apply-cmn false \
     --min-segment 0.5 $model_dir \
     data/${name}_cmn $out_dir/xvectors_${name}
@@ -57,7 +57,7 @@ fi
 if [ $stage -le 2 ]; then
   # Perform PLDA scoring on all pairs of segments for each recording.
   echo "$0: performing PLDA scoring between all pairs of x-vectors"
-  local/diarization/score_plda.sh --cmd "$cmd" \
+  diarization/nnet3/xvector/score_plda.sh --cmd "$cmd" \
     --target-energy 0.5 \
     --nj $nj $model_dir/ $out_dir/xvectors_${name} \
     $out_dir/xvectors_${name}/plda_scores
@@ -66,7 +66,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: performing clustering using PLDA scores (we assume 4 speakers per recording)"
   awk '{print $1, "4"}' data/$name/wav.scp > data/$name/reco2num_spk
-  local/diarization/cluster.sh --cmd "$cmd" --nj $nj \
+  diarization/cluster.sh --cmd "$cmd" --nj $nj \
     --reco2num-spk data/$name/reco2num_spk \
     --rttm-channel 1 \
     $out_dir/xvectors_${name}/plda_scores $out_dir
