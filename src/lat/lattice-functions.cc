@@ -1138,8 +1138,8 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
     }
   }
   std::vector<StateId> states; // states on best path.
-  StateId cur_state = superfinal;
-  while (cur_state != 0) {
+  StateId cur_state = superfinal, start_state = clat.Start();
+  while (cur_state != start_state) {
     StateId prev_state = best_cost_and_pred[cur_state].second;
     if (prev_state == kNoStateId) {
       KALDI_WARN << "Failure in best-path algorithm for lattice (infinite costs?)";
