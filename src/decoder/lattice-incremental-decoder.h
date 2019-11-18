@@ -291,6 +291,7 @@ class LatticeIncrementalDeterminizer {
 
  private:
 
+  // [called from AcceptRawLatticeChunk()]
   // Gets the final costs from token-final states in the raw lattice (see
   // glossary for definition).  These final costs will be subtracted after
   // determinization; in the normal case they are `temporaries` used to guide
@@ -304,6 +305,34 @@ class LatticeIncrementalDeterminizer {
 
   // Sets up non_final_redet_states_.  See documentation for that variable.
   void GetNonFinalRedetStates();
+
+  /** [called from AcceptRawLatticeChunk()] Processes arcs that leave the
+      start-state of `chunk_clat` (if this is not the first chunk); does nothing
+      if this is the first chunk.  This includes using the `state-labels` to
+      work out which states in clat_ these states correspond to, and writing
+      that mapping to `state_map`.
+
+      Also modifies forward_costs_, because it has to do a kind of reweighting
+      of the clat states that are the values it puts in `state_map`, to take
+      account of the probabilities on the arcs from the start state of
+      chunk_clat to the states corresponding to those redeterminized-states
+      (i.e. the states in clat corresponding to the values it puts in
+      `*state_map`).  It also modifies arcs_in_, mostly because there
+      are rare cases when we end up `merging` sets of those redeterminized-states,
+      because the determinization process mapped them to a single state,
+      and that means we need to reroute the arcs into members of that
+      set into one single member (which will appear as a value in
+      `*state_map`).
+
+        @param [in] chunk_clat   The determinized chunk of lattice we are
+                          processing
+        @param [out] state_map    Mapping from states in chunk_clat to
+                          the state in clat_ they correspond to.
+        @return     Returns true if this is the first chunk.
+  */
+  bool ProcessArcsFromStartState(
+      const CompactLattice &chunk_clat,
+      std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> *state_map);
 
 
   void AddArcToClat(CompactLatticeArc::StateId state,

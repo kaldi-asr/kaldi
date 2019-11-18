@@ -1339,63 +1339,17 @@ void LatticeIncrementalDeterminizer::GetRawLatticeFinalCosts(
 }
 
 
-bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
-    Lattice *raw_fst) {
-  using Label = CompactLatticeArc::Label;
-  using StateId = CompactLatticeArc::StateId;
-
-  // old_final_costs is a map from a `token-label` (see glossary) to the
-  // associated final-prob in a final-state of `raw_fst`, that is associated
-  // with that Token.  These are Tokens that were active at the end of the
-  // chunk.  The final-probs may arise from beta (backward) costs, introduced
-  // for pruning purposes, and/or from final-probs in HCLG.  Those costs will
-  // not be included in anything we store permamently in this class; they used
-  // only to guide pruned determinization, and we will use `old_final_costs`
-  // later to cancel them out.
-  std::unordered_map<Label, BaseFloat> old_final_costs;
-  GetRawLatticeFinalCosts(*raw_fst, &old_final_costs);
-
-  CompactLattice chunk_clat;
-  bool determinized_till_beam = DeterminizeLatticePhonePrunedWrapper(
-      trans_model_, raw_fst, config_.lattice_beam, &chunk_clat,
-      config_.det_opts);
-
-  TopSortCompactLatticeIfNeeded(&chunk_clat);
-
-  std::unordered_map<StateId, Label> chunk_state_to_token;
-  IdentifyTokenFinalStates(chunk_clat,
-                           &chunk_state_to_token);
-  StateId chunk_num_states = chunk_clat.NumStates();
-  if (chunk_num_states == 0) {
-    // This will be an error but user-level calling code can detect it from the
-    // lattice being empty.
-    KALDI_WARN << "Empty lattice, something went wrong.";
-    clat_.DeleteStates();
-    return false;
-  }
-
-  StateId start_state = chunk_clat.Start();  // would be 0.
-  KALDI_ASSERT(start_state == 0);
-
-  // Process arcs leaving the start state of chunk_clat. Unless this is the
-  // first chunk in the lattice, all arcs leaving the start state of chunk_clat
-  // will have `state labels` on them (identifying redeterminized-states in
-  // clat_), and will transition to a state in `chunk_clat` that we can identify
-  // with that redeterminized-state.
-
-  // state_map maps from (non-initial, non-token-final state s in chunk_clat) to
-  // a state in clat_.
-  std::unordered_map<StateId, StateId> state_map;
-
-
-  bool is_first_chunk = false;
+bool LatticeIncrementalDeterminizer::ProcessArcsFromStartState(
+    const CompactLattice &chunk_clat,
+    std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> *state_map) {
+  using StateId = CompactLattice::StateId;
   StateId clat_num_states = clat_.NumStates();
 
   // Process arcs leaving the start state of chunk_clat.  These arcs will have
   // state-labels on them (unless this is the first chunk).
   // For destination-states of those arcs, work out which states in
   // clat_ they correspond to and update their forward_costs.
-  for (fst::ArcIterator<CompactLattice> aiter(chunk_clat, start_state);
+  for (fst::ArcIterator<CompactLattice> aiter(chunk_clat, chunk_clat.Start());
        !aiter.Done(); aiter.Next()) {
     const CompactLatticeArc &arc = aiter.Value();
     Label label = arc.ilabel;  // ilabel == olabel; would be the olabel
@@ -1404,13 +1358,12 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
           label - kStateLabelOffset < clat_num_states)) {
       // The label was not a state-label.  This should only be possible on the
       // first chunk.
-      KALDI_ASSERT(state_map.empty());
-      is_first_chunk = true;
-      break;
+      KALDI_ASSERT(state_map->empty());
+      return true;  // this is the first chunk.
     }
     StateId clat_state = label - kStateLabelOffset;
     StateId chunk_state = arc.nextstate;
-    auto p = state_map.insert({chunk_state, clat_state});
+    auto p = state_map->insert({chunk_state, clat_state});
     StateId dest_clat_state = p.first->second;
     // We deleted all its arcs in InitializeRawLatticeChunk
     KALDI_ASSERT(clat_.NumArcs(clat_state) == 0);
@@ -1469,6 +1422,60 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
       arcs_in_[dest_clat_state].push_back(p);
     }
   }
+  return false;  // this is not the first chunk.
+}
+
+
+bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
+    Lattice *raw_fst) {
+  using Label = CompactLatticeArc::Label;
+  using StateId = CompactLatticeArc::StateId;
+
+  // old_final_costs is a map from a `token-label` (see glossary) to the
+  // associated final-prob in a final-state of `raw_fst`, that is associated
+  // with that Token.  These are Tokens that were active at the end of the
+  // chunk.  The final-probs may arise from beta (backward) costs, introduced
+  // for pruning purposes, and/or from final-probs in HCLG.  Those costs will
+  // not be included in anything we store permamently in this class; they used
+  // only to guide pruned determinization, and we will use `old_final_costs`
+  // later to cancel them out.
+  std::unordered_map<Label, BaseFloat> old_final_costs;
+  GetRawLatticeFinalCosts(*raw_fst, &old_final_costs);
+
+  CompactLattice chunk_clat;
+  bool determinized_till_beam = DeterminizeLatticePhonePrunedWrapper(
+      trans_model_, raw_fst, config_.lattice_beam, &chunk_clat,
+      config_.det_opts);
+
+  TopSortCompactLatticeIfNeeded(&chunk_clat);
+
+  std::unordered_map<StateId, Label> chunk_state_to_token;
+  IdentifyTokenFinalStates(chunk_clat,
+                           &chunk_state_to_token);
+  StateId chunk_num_states = chunk_clat.NumStates();
+  if (chunk_num_states == 0) {
+    // This will be an error but user-level calling code can detect it from the
+    // lattice being empty.
+    KALDI_WARN << "Empty lattice, something went wrong.";
+    clat_.DeleteStates();
+    return false;
+  }
+
+  StateId start_state = chunk_clat.Start();  // would be 0.
+  KALDI_ASSERT(start_state == 0);
+
+  // Process arcs leaving the start state of chunk_clat. Unless this is the
+  // first chunk in the lattice, all arcs leaving the start state of chunk_clat
+  // will have `state labels` on them (identifying redeterminized-states in
+  // clat_), and will transition to a state in `chunk_clat` that we can identify
+  // with that redeterminized-state.
+
+  // state_map maps from (non-initial, non-token-final state s in chunk_clat) to
+  // a state in clat_.
+  std::unordered_map<StateId, StateId> state_map;
+
+
+  bool is_first_chunk = ProcessArcsFromStartState(chunk_clat, &state_map);
 
   // Remove any existing arcs in clat_ that leave redeterminized-states, and
   // make those states non-final.  Below, we'll add arcs leaving those states
