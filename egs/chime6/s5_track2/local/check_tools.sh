@@ -62,7 +62,7 @@ except ImportError:
     print('0')"`
 
 if [ "$result" == "1" ]; then
-    echo "WPE is installed"
+    continue
 else
     echo "WPE is not installed. Please run ../../../tools/extras/install_wpe.sh"
     exit 1
