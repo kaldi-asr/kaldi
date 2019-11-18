@@ -112,34 +112,38 @@ else
 fi
 $cleanup && rm -f $dir/text.* $dir/wav.scp.* $dir/wav.flist
 
-if [ $train == "true" ]; then
-  # Prepare 'segments', 'utt2spk', 'spk2utt' for train set
-  if [ $mictype == "worn" ]; then
-    cut -d" " -f 1 $dir/text | \
-      awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
-      sed -e "s/_[A-Z]*\././2" \
-      > $dir/segments
-  elif [ $mictype == "ref" ]; then
-    cut -d" " -f 1 $dir/text | \
-      awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
-      sed -e "s/_[A-Z]*\././2" |\
-      sed -e "s/ P.._/ /" > $dir/segments
-  else
-    cut -d" " -f 1 $dir/text | \
-      awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
-      sed -e "s/_[A-Z]*\././2" |\
-      sed -e 's/ P.._/ /' > $dir/segments
-  fi
-  cut -f 1 -d ' ' $dir/segments | \
-    perl -ne 'chomp;$utt=$_;s/_.*//;print "$utt $_\n";' > $dir/utt2spk
-
-  utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
-
-  # Check that data dirs are okay!
-  utils/validate_data_dir.sh --no-feats $dir || exit 1
+# Prepare 'segments', 'utt2spk', 'spk2utt'
+if [ $mictype == "worn" ]; then
+  cut -d" " -f 1 $dir/text | \
+    awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
+    sed -e "s/_[A-Z]*\././2" \
+    > $dir/segments
+elif [ $mictype == "ref" ]; then
+  cut -d" " -f 1 $dir/text | \
+    awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
+    sed -e "s/_[A-Z]*\././2" |\
+    sed -e "s/ P.._/ /" > $dir/segments
 else
-  # For dev and eval data, prepare pseudo utt2spk
+  cut -d" " -f 1 $dir/text | \
+    awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
+    sed -e "s/_[A-Z]*\././2" |\
+    sed -e 's/ P.._/ /' > $dir/segments
+fi
+cut -f 1 -d ' ' $dir/segments | \
+  perl -ne 'chomp;$utt=$_;s/_.*//;print "$utt $_\n";' > $dir/utt2spk
+
+utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
+
+if [ $train != 'true' ]; then
+  # For scoring the final system, we need the original utt2spk
+  # and text file. So we keep them with the extension .bak here
+  # so that they don't affect the validate_data_dir steps in
+  # the intermediate steps.
+  for file in text utt2spk spk2utt segments; do
+    mv $dir/$file $dir/$file.bak
+  done
+  
+  # For dev and eval data, prepare pseudo utt2spk.
   awk '{print $1, $1}' $dir/wav.scp > $dir/utt2spk
   utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
-  rm $dir/text
 fi
