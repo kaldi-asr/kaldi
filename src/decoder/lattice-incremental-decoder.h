@@ -357,7 +357,44 @@ class LatticeIncrementalDeterminizer {
   void ReweightStartState(CompactLatticeWeight &extra_start_weight);
 
 
-  void AddArcToClat(CompactLatticeArc::StateId state,
+  /**
+     This function, called from AcceptRawLatticeChunk(), transfers arcs from
+     `chunk_clat` to clat_.  For those arcs that have `token-labels` on them,
+     they don't get written to clat_ but instead are stored in the arcs_ array.
+
+        @param [in] chunk_clat    The determinized lattice for the chunk
+                         we are processing; this is the source of the arcs
+                         we are moving.
+        @param [in] is_first_chunk  True if this is the first chunk in the
+                         utterance; it's needed because if it is, we
+                         will also transfer arcs from the start state of
+                         chunk_clat.
+        @param [in] state_map  Map from state-ids in chunk_clat to state-ids
+                         in clat_.
+        @param [in] chunk_state_to_token  Map from `token-final states`
+                         (see glossary) in chunk_clat, to the token-label
+                         on arcs entering those states.
+        @param [in] old_final_costs  Map from token-label to the
+                         final-costs that were on the corresponding
+                         token-final states in the undeterminized lattice;
+                         these final-costs need to be removed when
+                         we record the weights in final_arcs_, because
+                         they were just temporary.
+   */
+  void TransferArcsToClat(
+      const CompactLattice &chunk_clat,
+      bool is_first_chunk,
+      const std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> &state_map,
+      const std::unordered_map<CompactLattice::StateId, Label> &chunk_state_to_token,
+      const std::unordered_map<Label, BaseFloat> &old_final_costs);
+
+
+
+  /**
+     Adds one arc to `clat_`.  It's like clat_.AddArc(state, arc), except
+     it also modifies arcs_in_ and forward_costs_.
+   */
+  void AddArcToClat(CompactLattice::StateId state,
                     const CompactLatticeArc &arc);
   CompactLattice::StateId AddStateToClat();
 
@@ -371,7 +408,7 @@ class LatticeIncrementalDeterminizer {
   // construct the raw lattice.)
   void IdentifyTokenFinalStates(
       const CompactLattice &chunk_clat,
-      std::unordered_map<CompactLatticeArc::StateId, CompactLatticeArc::Label> *token_map) const;
+      std::unordered_map<CompactLattice::StateId, CompactLatticeArc::Label> *token_map) const;
 
   // trans_model_ is needed by DeterminizeLatticePhonePrunedWrapper() which this
   // class calls.
@@ -386,7 +423,7 @@ class LatticeIncrementalDeterminizer {
   // in clat_, this means the set of redeterminized-states which are physically
   // in clat_.  In code terms, this means set of .first elements in final_arcs,
   // plus whatever other states in clat_ are reachable from such states.
-  std::unordered_set<CompactLatticeArc::StateId> non_final_redet_states_;
+  std::unordered_set<CompactLattice::StateId> non_final_redet_states_;
 
 
   // clat_ is the appended lattice (containing all chunks processed so
@@ -403,7 +440,7 @@ class LatticeIncrementalDeterminizer {
   // be valid (some may be out-of-date, and may refer to an out-of-range
   // arc or an arc that does not point to this state).  But all
   // input arcs will always be listed.
-  std::vector<std::vector<std::pair<CompactLatticeArc::StateId, int32> > > arcs_in_;
+  std::vector<std::vector<std::pair<CompactLattice::StateId, int32> > > arcs_in_;
 
   // final_arcs_ contains arcs which would appear in the canonical appended
   // lattice but for implementation reasons are not physically present in clat_.

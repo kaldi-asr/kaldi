@@ -1120,8 +1120,8 @@ void LatticeIncrementalDeterminizer::Init() {
   arcs_in_.clear();
 }
 
-CompactLatticeArc::StateId LatticeIncrementalDeterminizer::AddStateToClat() {
-  CompactLatticeArc::StateId ans = clat_.AddState();
+CompactLattice::StateId LatticeIncrementalDeterminizer::AddStateToClat() {
+  CompactLattice::StateId ans = clat_.AddState();
   forward_costs_.push_back(std::numeric_limits<BaseFloat>::infinity());
   KALDI_ASSERT(forward_costs_.size() == ans + 1);
   arcs_in_.resize(ans + 1);
@@ -1129,7 +1129,7 @@ CompactLatticeArc::StateId LatticeIncrementalDeterminizer::AddStateToClat() {
 }
 
 void LatticeIncrementalDeterminizer::AddArcToClat(
-    CompactLatticeArc::StateId state,
+    CompactLattice::StateId state,
     const CompactLatticeArc &arc) {
   BaseFloat forward_cost = forward_costs_[state] +
       ConvertToCost(arc.weight);
@@ -1145,9 +1145,9 @@ void LatticeIncrementalDeterminizer::AddArcToClat(
 // See documentation in header
 void LatticeIncrementalDeterminizer::IdentifyTokenFinalStates(
     const CompactLattice &chunk_clat,
-    std::unordered_map<CompactLatticeArc::StateId, CompactLatticeArc::Label> *token_map) const {
+    std::unordered_map<CompactLattice::StateId, CompactLatticeArc::Label> *token_map) const {
   token_map->clear();
-  using StateId = CompactLatticeArc::StateId;
+  using StateId = CompactLattice::StateId;
   using Label = CompactLatticeArc::Label;
 
   StateId num_states = chunk_clat.NumStates();
@@ -1169,7 +1169,7 @@ void LatticeIncrementalDeterminizer::IdentifyTokenFinalStates(
 
 
 void LatticeIncrementalDeterminizer::GetNonFinalRedetStates() {
-  using StateId = CompactLatticeArc::StateId;
+  using StateId = CompactLattice::StateId;
   non_final_redet_states_.clear();
   non_final_redet_states_.reserve(final_arcs_.size());
 
@@ -1216,9 +1216,9 @@ void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
   // canonical appended lattice leave (physically, these are in the .nextstate
   // elements of arcs_, since we use that field for the source state), plus any
   // states reachable from those states.
-  unordered_map<CompactLatticeArc::StateId, LatticeArc::StateId> redet_state_map;
+  unordered_map<CompactLattice::StateId, LatticeArc::StateId> redet_state_map;
 
-  for (CompactLatticeArc::StateId redet_state: non_final_redet_states_)
+  for (CompactLattice::StateId redet_state: non_final_redet_states_)
     redet_state_map[redet_state] = olat->AddState();
 
   // First, process any arcs leaving the non-final redeterminized states that
@@ -1226,13 +1226,13 @@ void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
   // stats that are final in the `canonical appended lattice`.. they may
   // actually be physically final in clat_, because we make clat_ what we want
   // to return to the user.
-  for (CompactLatticeArc::StateId redet_state: non_final_redet_states_) {
+  for (CompactLattice::StateId redet_state: non_final_redet_states_) {
     LatticeArc::StateId lat_state = redet_state_map[redet_state];
 
     for (ArcIterator<CompactLattice> aiter(clat_, redet_state);
          !aiter.Done(); aiter.Next()) {
       const CompactLatticeArc &arc = aiter.Value();
-      CompactLatticeArc::StateId nextstate = arc.nextstate;
+      CompactLattice::StateId nextstate = arc.nextstate;
       LatticeArc::StateId lat_nextstate = olat->NumStates();
       auto r = redet_state_map.insert({nextstate, lat_nextstate});
       if (r.second) {  // Was inserted.
@@ -1252,7 +1252,7 @@ void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
 
   for (const CompactLatticeArc &arc: final_arcs_) {
     // We abuse the `nextstate` field to store the source state.
-    CompactLatticeArc::StateId src_state = arc.nextstate;
+    CompactLattice::StateId src_state = arc.nextstate;
     auto iter = redet_state_map.find(src_state);
     KALDI_ASSERT(iter != redet_state_map.end());
     LatticeArc::StateId src_lat_state = iter->second;
@@ -1287,7 +1287,7 @@ void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
   // a state that is not a redeterminized state."  In fact, we include these
   // arcs for all redeterminized states.  I realized that it won't make a
   // difference to the outcome, and it's easier to do it this way.
-  for (CompactLatticeArc::StateId state_id: non_final_redet_states_) {
+  for (CompactLattice::StateId state_id: non_final_redet_states_) {
     BaseFloat forward_cost = forward_costs_[state_id];
     LatticeArc arc;
     arc.ilabel = 0;
@@ -1454,10 +1454,93 @@ void LatticeIncrementalDeterminizer::ReweightStartState(
   }
 }
 
+void LatticeIncrementalDeterminizer::TransferArcsToClat(
+    const CompactLattice &chunk_clat,
+    bool is_first_chunk,
+    const std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> &state_map,
+    const std::unordered_map<CompactLattice::StateId, Label> &chunk_state_to_token,
+    const std::unordered_map<Label, BaseFloat> &old_final_costs) {
+  using StateId = CompactLattice::StateId;
+  StateId chunk_num_states = chunk_clat.NumStates();
+
+  // Now transfer arcs from chunk_clat to clat_.
+  for (StateId chunk_state = (is_first_chunk ? 0 : 1);
+       chunk_state < chunk_num_states; chunk_state++) {
+    auto iter = state_map.find(chunk_state);
+    if (iter == state_map.end()) {
+      KALDI_ASSERT(chunk_state_to_token.count(chunk_state) != 0);
+      // Don't process token-final states.  Anyway they have no arcs leaving
+      // them.
+      continue;
+    }
+    StateId clat_state = iter->second;
+
+    // We know that this point that `clat_state` is not a token-final state
+    // (see glossary for definition) as if it were, we would have done
+    // `continue` above.
+    //
+    // Only in the last chunk of the lattice would be there be a final-prob on
+    // states that are not `token-final states`; these final-probs would
+    // normally all be Zero() at this point.  So in almost all cases the following
+    // call will do nothing.
+    clat_.SetFinal(clat_state, chunk_clat.Final(chunk_state));
+
+    // Process arcs leaving this state.
+    for (fst::ArcIterator<CompactLattice> aiter(chunk_clat, chunk_state);
+         !aiter.Done(); aiter.Next()) {
+      CompactLatticeArc arc(aiter.Value());
+
+      auto next_iter = state_map.find(arc.nextstate);
+      if (next_iter != state_map.end()) {
+        // The normal case (when the .nextstate has a corresponding
+        // state in clat_) is very simple.  Just copy the arc over.
+        arc.nextstate = next_iter->second;
+        KALDI_ASSERT(arc.ilabel < kTokenLabelOffset ||
+                     arc.ilabel > kMaxTokenLabel);
+        AddArcToClat(clat_state, arc);
+      } else {
+        // This is the case when the arc is to a `token-final` state (see
+        // glossary.)
+
+        // TODO: remove the following slightly excessive assertion?
+        KALDI_ASSERT(chunk_clat.Final(arc.nextstate) != CompactLatticeWeight::Zero() &&
+                     arc.olabel >= (Label)kTokenLabelOffset &&
+                     arc.olabel < (Label)kMaxTokenLabel &&
+                     chunk_state_to_token.count(arc.nextstate) != 0 &&
+                     old_final_costs.count(arc.olabel) != 0);
+
+        // Include the final-cost of the next state (which should be final)
+        // in arc.weight.
+        arc.weight = fst::Times(arc.weight,
+                                chunk_clat.Final(arc.nextstate));
+
+        auto cost_iter = old_final_costs.find(arc.olabel);
+        KALDI_ASSERT(cost_iter != old_final_costs.end());
+        BaseFloat old_final_cost = cost_iter->second;
+
+        // `arc` is going to become an element of final_arcs_.  These
+        // contain information about transitions from states in clat_ to
+        // `token-final` states (i.e. states that have a token-label on the arc
+        // to them and that are final in the canonical compact lattice).
+        // We subtract the old_final_cost as it was just a temporary cost
+        // introduced for pruning purposes.
+        arc.weight.SetWeight(fst::Times(arc.weight.Weight(),
+                                        LatticeWeight{-old_final_cost, 0.0}));
+        // In a slight abuse of the Arc data structure, the nextstate is set to
+        // the source state.  The label (ilabel == olabel) indicates the
+        // token it is associated with.
+        arc.nextstate = clat_state;
+        final_arcs_.push_back(arc);
+      }
+    }
+  }
+
+}
+
 bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     Lattice *raw_fst) {
   using Label = CompactLatticeArc::Label;
-  using StateId = CompactLatticeArc::StateId;
+  using StateId = CompactLattice::StateId;
 
   // old_final_costs is a map from a `token-label` (see glossary) to the
   // associated final-prob in a final-state of `raw_fst`, that is associated
@@ -1480,6 +1563,7 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
   std::unordered_map<StateId, Label> chunk_state_to_token;
   IdentifyTokenFinalStates(chunk_clat,
                            &chunk_state_to_token);
+
   StateId chunk_num_states = chunk_clat.NumStates();
   if (chunk_num_states == 0) {
     // This will be an error but user-level calling code can detect it from the
@@ -1537,81 +1621,14 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
   if (is_first_chunk) {
     auto iter = state_map.find(start_state);
     KALDI_ASSERT(iter != state_map.end());
-    CompactLatticeArc::StateId clat_start_state = iter->second;
+    CompactLattice::StateId clat_start_state = iter->second;
     KALDI_ASSERT(clat_start_state == 0);  // topological order.
     clat_.SetStart(clat_start_state);
     forward_costs_[clat_start_state] = 0.0;
   }
 
-  // Now transfer arcs from chunk_clat to clat_.
-  for (StateId chunk_state = (is_first_chunk ? 0 : 1);
-       chunk_state < chunk_num_states; chunk_state++) {
-    auto iter = state_map.find(chunk_state);
-    if (iter == state_map.end()) {
-      KALDI_ASSERT(chunk_state_to_token.count(chunk_state) != 0);
-      // Don't process token-final states.  Anyway they have no arcs leaving
-      // them.
-      continue;
-    }
-    StateId clat_state = iter->second;
-
-    // We know that this point that `clat_state` is not a token-final state
-    // (see glossary for definition) as if it were, we would have done
-    // `continue` above.
-    //
-    // Only in the last chunk of the lattice would be there be a final-prob on
-    // states that are not `token-final states`; these final-probs would
-    // normally all be Zero() at this point.  So in almost all cases the following
-    // call will do nothing.
-    clat_.SetFinal(clat_state, chunk_clat.Final(chunk_state));
-
-    // Process arcs leaving this state.
-    for (fst::ArcIterator<CompactLattice> aiter(chunk_clat, chunk_state);
-         !aiter.Done(); aiter.Next()) {
-      CompactLatticeArc arc(aiter.Value());
-
-      auto next_iter = state_map.find(arc.nextstate);
-      if (next_iter != state_map.end()) {
-        // The normal case (when the .nextstate has a corresponding
-        // state in clat_) is very simple.  Just copy the arc over.
-        arc.nextstate = next_iter->second;
-        KALDI_ASSERT(arc.ilabel < kTokenLabelOffset ||
-                     arc.ilabel > kMaxTokenLabel);
-        AddArcToClat(clat_state, arc);
-      } else {
-        // This is the case when the arc is to a `token-final` state (see
-        // glossary.)
-
-        // TODO: remove the following slightly excessive assertion?
-        KALDI_ASSERT(chunk_clat.Final(arc.nextstate) != CompactLatticeWeight::Zero() &&
-                     arc.olabel >= (Label)kTokenLabelOffset &&
-                     arc.olabel < (Label)kMaxTokenLabel &&
-                     chunk_state_to_token.count(arc.nextstate) != 0 &&
-                     old_final_costs.count(arc.olabel) != 0);
-
-        // Include the final-cost of the next state (which should be final)
-        // in arc.weight.
-        arc.weight = fst::Times(arc.weight,
-                                chunk_clat.Final(arc.nextstate));
-
-        BaseFloat old_final_cost = old_final_costs[arc.olabel];
-
-        // `arc` is going to become an element of final_arcs_.  These
-        // contain information about transitions from states in clat_ to
-        // `token-final` states (i.e. states that have a token-label on the arc
-        // to them and that are final in the canonical compact lattice).
-        // We subtract the old_final_cost as it was just a temporary cost
-        // introduced for pruning purposes.
-        arc.weight.SetWeight(fst::Times(arc.weight.Weight(),
-                                        LatticeWeight{-old_final_cost, 0.0}));
-        // In a slight abuse of the Arc data structure, the nextstate is set to
-        // the source state.  The label (ilabel == olabel) indicates the
-        // token it is associated with.
-        arc.nextstate = clat_state;
-        final_arcs_.push_back(arc);
-      }
-    }
-  }
+  TransferArcsToClat(chunk_clat, is_first_chunk,
+                     state_map, chunk_state_to_token, old_final_costs);
 
   if (extra_start_weight != CompactLatticeWeight::One())
     ReweightStartState(extra_start_weight);
@@ -1642,7 +1659,7 @@ void LatticeIncrementalDeterminizer::SetFinalCosts(
     /* Caution: `state` is actually the state the arc would
        leave from in the canonical appended lattice; we just store
        that in the .nextstate field. */
-    CompactLatticeArc::StateId state = arc.nextstate;
+    CompactLattice::StateId state = arc.nextstate;
     prefinal_states.insert(state);
   }
 
@@ -1653,7 +1670,7 @@ void LatticeIncrementalDeterminizer::SetFinalCosts(
   for (const CompactLatticeArc &arc: final_arcs_) {
     Label token_label = arc.ilabel;
     /* Note: we store the source state in the .nextstate field. */
-    CompactLatticeArc::StateId src_state = arc.nextstate;
+    CompactLattice::StateId src_state = arc.nextstate;
     BaseFloat graph_final_cost;
     if (token_label2final_cost == NULL) {
       graph_final_cost = 0.0;

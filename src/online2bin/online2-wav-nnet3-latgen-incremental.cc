@@ -270,6 +270,7 @@ int main(int argc, char *argv[]) {
         CompactLattice clat = decoder.GetLattice(decoder.NumFramesDecoded(),
                                                  use_final_probs);
 
+        Connect(&clat);
         GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
                                      &num_frames, &tot_like);
 
