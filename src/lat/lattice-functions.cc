@@ -1107,7 +1107,6 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
   // Now we can assume it's topologically sorted.
   shortest_path->DeleteStates();
   if (clat.Start() == kNoStateId) return;
-  KALDI_ASSERT(clat.Start() == 0); // since top-sorted.
   typedef CompactLatticeArc Arc;
   typedef Arc::StateId StateId;
   typedef CompactLatticeWeight Weight;
@@ -1117,7 +1116,7 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
     best_cost_and_pred[s].first = std::numeric_limits<double>::infinity();
     best_cost_and_pred[s].second = fst::kNoStateId;
   }
-  best_cost_and_pred[0].first = 0;
+  best_cost_and_pred[clat.Start()].first = 0;
   for (StateId s = 0; s < clat.NumStates(); s++) {
     double my_cost = best_cost_and_pred[s].first;
     for (ArcIterator<CompactLattice> aiter(clat, s);
