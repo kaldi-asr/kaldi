@@ -41,6 +41,11 @@ test_sets="dev_${enhancement}" #"dev_worn dev_addition_dereverb_ref"
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
+
+###########################################################################
+# We prepare dict and lang in stages 1 to 3.
+###########################################################################
+
 if [ $stage -le 1 ]; then
   echo "$0:  prepare data..."
   # skip u03 as they are missing
@@ -87,6 +92,11 @@ fi
 
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
+#########################################################################################
+# In stage 4, we perform GSS based enhacement for the dev and test sets. multiarray = false 
+#can take around 15 hrs for dev and eval data.
+#########################################################################################
+
 if [ $stage -le 4 ]; then
   echo "$0:  enhance data..."
   # Guided Source Separation (GSS) from Paderbon Univerisity
@@ -126,6 +136,12 @@ if [ $stage -le 4 ]; then
       ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
   done
 fi
+
+#########################################################################################
+# In stages 5 to 7, we augment and fix train data for our training purpose. point source
+# noises are extracted from chime corpus. Here we use 400k utterances from array microphones,
+# its augmentation and all the worn set utterances in train.
+#########################################################################################
 
 if [ $stage -le 5 ]; then
   # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
@@ -218,6 +234,10 @@ if [ $stage -le 8 ]; then
   done
 fi
 
+##################################################################################
+# Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
+##################################################################################
+
 if [ $stage -le 9 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
@@ -237,6 +257,11 @@ if [ $stage -le 10 ]; then
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
+
+###################################################################################
+# Stages 11 to 15 train monophone and triphone models. They will be used for
+# generating lattices for training the chain model
+###################################################################################
 
 if [ $stage -le 11 ]; then
   # Starting basic training on MFCC features
@@ -293,6 +318,10 @@ if [ $stage -le 17 ]; then
     data/${train_set} data/lang exp/tri3 exp/tri3_cleaned data/${train_set}_cleaned
 fi
 
+##########################################################################
+# CHAIN MODEL TRAINING
+##########################################################################
+
 if [ $stage -le 18 ]; then
   # chain TDNN
   local/chain/tuning/run_tdnn_1b.sh --nj ${nj} \
@@ -301,6 +330,10 @@ if [ $stage -le 18 ]; then
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
 fi
+
+##########################################################################
+# DECODING: we perform 2 stage decoding. 
+##########################################################################
 
 if [ $stage -le 19 ]; then
   # 2-stage decoding
@@ -314,6 +347,10 @@ if [ $stage -le 19 ]; then
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp 
   done
 fi
+
+##########################################################################
+# Scoring: here we obtian wer per session per location and overall WER
+##########################################################################
 
 if [ $stage -le 20 ]; then
   # final scoring to get the official challenge result
