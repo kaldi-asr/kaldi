@@ -271,6 +271,7 @@ bool DecodeUtteranceLatticeIncremental(
   // We'll write the lattice without acoustic scaling.
   if (acoustic_scale != 0.0)
     fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+  Connect(&clat);
   compact_lattice_writer->Write(utt, clat);
   KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
             << (likelihood / num_frames) << " over "

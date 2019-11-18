@@ -485,6 +485,9 @@ class LatticeIncrementalDecoderTpl {
      See also UpdateLatticeDeterminizaton().  Caution: this const ref
      is only valid until the next time you call AdvanceDecoding() or
      GetLattice().
+
+     CAUTION: the lattice may contain disconnnected states; you should
+     call Connect() on the output before writing it out.
   */
   const CompactLattice &GetLattice(int32 num_frames_to_include,
                                    bool use_final_probs = false);
@@ -495,17 +498,8 @@ class LatticeIncrementalDecoderTpl {
     be the largest number that GetLattice() was called with, but note
     that GetLattice() may be called from UpdateLatticeDeterminization().
 
-    Made
-    available in case the user wants to give that same number to
+    Made available in case the user wants to give that same number to
     GetLattice().
-
-    CAUTION: if the caller wants to call GetLattice() with use_final_probs ==
-    true, or use_final_probs == true and finalize == true, and you previously
-    updated the lattice with UpdateLatticeDeterminization() up to a certain
-    frame, it's necessary to call GetLattice() with a *higher* frame than the
-    previously used one, because the interface doesn't support adding/removing
-    the final-probs unless you are processing a new chunk.  This is
-    not a fundamental limitation, it's just the way we have coded it.
    */
   int NumFramesInLattice() const { return num_frames_in_lattice_; }
 
