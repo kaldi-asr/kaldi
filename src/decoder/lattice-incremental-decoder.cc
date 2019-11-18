@@ -932,14 +932,16 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
                 final_cost = iter->second;
             }
           } else {
-            /* this is a `fake` final-cost used to guide pruning. This equals
-               the alpha+beta of the state, if we were to set the betas on
-               the final frame to the negatives of the alphas (this is a trick
-               to make all such tokens on the best path, to avoid pruning out
-               anything that might be within `lattice-beam` of the eventual
-               best path).
+            /* this is a `fake` final-cost used to guide pruning.  It's as if we
+               set the betas (backward-probs) on the final frame to the
+               negatives of the corresponding alphas, so all tokens on the last
+               frae will be on a best path..  the extra_cost for each token
+               always corresponds to its alpha+beta on this assumption.  We want
+               the final_cost here to correspond to the beta (backward-prob), so
+               we get that by final_cost = extra_cost - tot_cost.
+               [The tot_cost is the forward/alpha cost.]
             */
-            final_cost = -(tok->tot_cost + tok->extra_cost);
+            final_cost = tok->extra_cost - tok->tot_cost;
           }
         }
 
@@ -1443,7 +1445,8 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     for (auto p: arcs_in) {
       // Note: we'll be doing `continue` below if this input arc came from
       // another redeterminized-state, because we did DeleteStates() for them in
-      // InitializeRawLatticeChunk().
+      // InitializeRawLatticeChunk().  Those arcs will be transferred
+      // from chunk_clat later on.
       CompactLattice::StateId src_state = p.first;
       int32 arc_pos = p.second;
       if (arc_pos >= (int32)clat_.NumArcs(src_state))
