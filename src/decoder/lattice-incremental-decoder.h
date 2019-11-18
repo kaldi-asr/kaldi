@@ -328,11 +328,33 @@ class LatticeIncrementalDeterminizer {
                           processing
         @param [out] state_map    Mapping from states in chunk_clat to
                           the state in clat_ they correspond to.
+        @param [out] extra_start_weight  If the start-state of
+                          clat_ (its state 0) needs to be modified as
+                          if its incoming arcs were multiplied by
+                          `extra_start_weight`, this isn't possible
+                          using the `in_arcs_` data-structure,
+                          so we remember the extra weight and multiply
+                          it in later, after processing arcs leaving
+                          the start state of clat_.  This is set
+                          only if the start-state of clat_ is a
+                          redeterminized state.
         @return     Returns true if this is the first chunk.
   */
-  bool ProcessArcsFromStartState(
+  bool ProcessArcsFromChunkStartState(
       const CompactLattice &chunk_clat,
-      std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> *state_map);
+      std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> *state_map,
+      CompactLatticeWeight *extra_start_weight);
+
+  /**
+     This function, called from AcceptRawLatticeChunk(), takes care of an
+     unusual situation where we need to reweight the start state of clat_.  This
+     `extra_start_weight` is to be thought of as an extra `incoming` weight, and
+     we need to left-multiply all the arcs leaving the start state, by it.
+
+     This function does not need to modify forward_costs_; that will
+     already have been done by ProcessArcsFromChunkStartState().
+   */
+  void ReweightStartState(CompactLatticeWeight &extra_start_weight);
 
 
   void AddArcToClat(CompactLatticeArc::StateId state,

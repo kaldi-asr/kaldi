@@ -1339,9 +1339,10 @@ void LatticeIncrementalDeterminizer::GetRawLatticeFinalCosts(
 }
 
 
-bool LatticeIncrementalDeterminizer::ProcessArcsFromStartState(
+bool LatticeIncrementalDeterminizer::ProcessArcsFromChunkStartState(
     const CompactLattice &chunk_clat,
-    std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> *state_map) {
+    std::unordered_map<CompactLattice::StateId, CompactLattice::StateId> *state_map,
+    CompactLatticeWeight *extra_start_weight) {
   using StateId = CompactLattice::StateId;
   StateId clat_num_states = clat_.NumStates();
 
@@ -1379,6 +1380,15 @@ bool LatticeIncrementalDeterminizer::ProcessArcsFromStartState(
       "canonical" one.  (Search below for new_in_arc.nextstate =
       dest_clat_state).
      */
+    if (clat_state != dest_clat_state) {
+      // Check that the start state isn't getting merged with any other state.
+      // If this were possible, we'd need to deal with it specially, but it
+      // can't be, because to be merged, 2 states must have identical arcs
+      // leaving them with identical weights, so we'd need to have another state
+      // on frame 0 identical to the start state, which is not possible if the
+      // lattice is deterministic and epsilon-free.
+      KALDI_ASSERT(clat_state != 0 && dest_clat_state != 0);
+    }
 
     // in_weight is an extra weight that we'll include on arcs entering this
     // state from the previous chunk.  We need to cancel out
@@ -1389,6 +1399,15 @@ bool LatticeIncrementalDeterminizer::ProcessArcsFromStartState(
     extra_weight_in.SetWeight(
         fst::Times(extra_weight_in.Weight(),
                    LatticeWeight(-forward_costs_[clat_state], 0.0)));
+
+    if (clat_state == 0) {
+      // if clat_state is the star-state of clat_ (state 0), we can't modify
+      // incoming arcs; we need to modify outgoing arcs, but we'll do that
+      // later, after we add them.
+      *extra_start_weight = extra_weight_in;
+      forward_costs_[0] = forward_costs_[0] + ConvertToCost(extra_weight_in);
+      continue;
+    }
 
     // Note: 0 is the start state of clat_.  This was checked.
     forward_costs_[clat_state] = (clat_state == 0 ? 0 :
@@ -1425,6 +1444,15 @@ bool LatticeIncrementalDeterminizer::ProcessArcsFromStartState(
   return false;  // this is not the first chunk.
 }
 
+void LatticeIncrementalDeterminizer::ReweightStartState(
+    CompactLatticeWeight &extra_start_weight) {
+  for (fst::MutableArcIterator<CompactLattice> aiter(&clat_, 0);
+       !aiter.Done(); aiter.Next()) {
+    CompactLatticeArc arc(aiter.Value());
+    arc.weight = fst::Times(extra_start_weight, arc.weight);
+    aiter.SetValue(arc);
+  }
+}
 
 bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
     Lattice *raw_fst) {
@@ -1475,7 +1503,9 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
   std::unordered_map<StateId, StateId> state_map;
 
 
-  bool is_first_chunk = ProcessArcsFromStartState(chunk_clat, &state_map);
+  CompactLatticeWeight extra_start_weight = CompactLatticeWeight::One();
+  bool is_first_chunk = ProcessArcsFromChunkStartState(chunk_clat, &state_map,
+                                                       &extra_start_weight);
 
   // Remove any existing arcs in clat_ that leave redeterminized-states, and
   // make those states non-final.  Below, we'll add arcs leaving those states
@@ -1582,6 +1612,10 @@ bool LatticeIncrementalDeterminizer::AcceptRawLatticeChunk(
       }
     }
   }
+
+  if (extra_start_weight != CompactLatticeWeight::One())
+    ReweightStartState(extra_start_weight);
+
   GetNonFinalRedetStates();
 
   return determinized_till_beam;
