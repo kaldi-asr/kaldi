@@ -51,7 +51,6 @@ mkdir -p ${odir}
 mkdir -p ${expdir}/log
 
 CONDA_PATH=${HOME}/miniconda3/bin
-CONDA_PATH=/home/shinji/anaconda3/bin
 IN_PATH=${sdir}/audio
 OUT_PATH=${odir}/audio
 TMP_PATH=${odir}/audio_tmp
