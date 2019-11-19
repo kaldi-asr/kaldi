@@ -56,8 +56,9 @@ if __name__ == '__main__':
             else:
                 location = 'NOLOCATION'
 
-            start_time = x['start_time'][mictype]
-            end_time = x['end_time'][mictype]
+            # remove mic dependency for CHiME-6
+            start_time = x['start_time']
+            end_time = x['end_time']
 
             # remove meta chars and convert to lower
             words = x['words'].replace('"', '')\

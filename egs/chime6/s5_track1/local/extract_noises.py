@@ -33,10 +33,11 @@ def Trans_time(time, fs):
     return int(time_second*fs)
 
 
-def Get_time(conf, tag, mic, fs):
+# remove mic dependency for CHiME-6
+def Get_time(conf, tag, fs):
     for i in conf:
-        st = Trans_time(i['start_time'][mic], fs)
-        ed = Trans_time(i['end_time'][mic], fs)
+        st = Trans_time(i['start_time'], fs)
+        ed = Trans_time(i['end_time'], fs)
         tag[st:ed] = 0
     return tag
 
@@ -74,7 +75,7 @@ def main():
         if i == 0 or session != session_p:
             with open(args.trans_dir + "/" + session + '.json') as f:
                 conf = json.load(f)
-        tag = Get_time(conf, tag, mic, fs)
+        tag = Get_time(conf, tag, fs)
         cnt = write_noise(args.out_dir, args.segment_length, audio, sig, tag, fs, cnt)
         session_p = session
 
