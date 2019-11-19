@@ -18,13 +18,13 @@ use strict;
 use warnings;
 
 my $Usage = <<EOU;
-remove_symbols_from_phones.pl:
+remove_phone_markers.pl:
 This script processes a phone set (i.e. the phones.txt file), remove the stress
-symbols and the pos-in-word symbols, and creates a new phone.txt file and an
+markers and the pos-in-word markers, and creates a new phone.txt file and an
 old->new phone mapping file, in which each line is: "old-integer-id new-integer-id.
 
-Usage: utils/remove_symbols_from_phones.pl <old-phone-symbols> <new-phone-symbols> <mapping>
- e.g.: utils/remove_symbols_from_phones.pl phones.txt phones-pure.txt phone-to-pure-phone.int
+Usage: utils/remove_phone_markers.pl <old-phone-symbols> <new-phone-symbols> <mapping>
+ e.g.: utils/remove_phone_markers.pl phones.txt phones-pure.txt phone-to-pure-phone.int
 EOU
 
 if (@ARGV < 3) {

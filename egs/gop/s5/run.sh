@@ -56,9 +56,9 @@ fi
 
 if [ $stage -le 3 ]; then
   # make a map which converts phones to "pure-phones"
-  # "pure-phone" means the phone whose stress and pos-in-word symbols are ignored
+  # "pure-phone" means the phone whose stress and pos-in-word markers are ignored
   # eg. AE1_B --> AE, EH2_S --> EH, SIL --> SIL
-  utils/remove_symbols_from_phones.pl $lang/phones.txt $dir/phones-pure.txt \
+  local/remove_phone_markers.pl $lang/phones.txt $dir/phones-pure.txt \
     $dir/phone-to-pure-phone.int
 
   # Convert transition-id to pure-phone id
