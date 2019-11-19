@@ -9,9 +9,9 @@
 usage()
 {
     echo "-----------------------------------------------------------------------------"
-    echo -e "\e[35m\e[1m                  LASeR: Linux Automatic Speech Recognition \e[0m"
+    echo -e "\e[35m\e[1m                  Kaldi Automatic Speech Recognition \e[0m"
     echo "-----------------------------------------------------------------------------"
-    echo "Usage: sudo ./setup [options] <values>"
+    echo "Usage: sudo ./install.bash [options] <values>"
     echo -e "Options:\n \
         -h | --help\n \
         --tue\n \
