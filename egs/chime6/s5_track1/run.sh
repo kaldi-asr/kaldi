@@ -30,6 +30,9 @@ set -e # exit on error
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
+# chime6 data directories, which are generated from ${chime5_corpus},
+# to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
+chime6_corpus=${PWD}/CHiME6
 json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
 
@@ -41,6 +44,15 @@ test_sets="dev_${enhancement}" #"dev_worn dev_addition_dereverb_ref"
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
+###########################################################################
+# We first generate the synchronized audio files across arrays and
+# corresponding JSON files. Note that this requires sox v14.4.2,
+# which is installed via miniconda in ./local/check_tools.sh
+###########################################################################
+
+if [ $stage -le 0 ]; then
+  local/generate_chime6_data.sh --cmd "$train_cmd" ${chime5_corpus} ${chime6_corpus}
+fi
 
 ###########################################################################
 # We prepare dict and lang in stages 1 to 3.
@@ -93,13 +105,13 @@ fi
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
 #########################################################################################
-# In stage 4, we perform GSS based enhacement for the dev and test sets. multiarray = false 
+# In stage 4, we perform GSS based enhancement for the dev and test sets. multiarray = false 
 #can take around 15 hrs for dev and eval data.
 #########################################################################################
 
 if [ $stage -le 4 ]; then
   echo "$0:  enhance data..."
-  # Guided Source Separation (GSS) from Paderbon Univerisity
+  # Guided Source Separation (GSS) from Paderborn University
   # http://spandh.dcs.shef.ac.uk/chime_workshop/papers/CHiME_2018_paper_boeddecker.pdf
   # @Article{PB2018CHiME5,
   #   author    = {Boeddeker, Christoph and Heitkaemper, Jens and Schmalenstroeer, Joerg and Drude, Lukas and Heymann, Jahn and Haeb-Umbach, Reinhold},
@@ -349,7 +361,7 @@ if [ $stage -le 19 ]; then
 fi
 
 ##########################################################################
-# Scoring: here we obtian wer per session per location and overall WER
+# Scoring: here we obtain wer per session per location and overall WER
 ##########################################################################
 
 if [ $stage -le 20 ]; then
