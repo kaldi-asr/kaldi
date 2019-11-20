@@ -1,0 +1,21 @@
+
+# tri2
+%WER 88.52 [ 52121 / 58881, 2023 ins, 30285 del, 19813 sub ] exp/tri2/decode_dev_gss/wer_17_0.5
+
+# tri3
+%WER 85.72 [ 50471 / 58881, 3079 ins, 23787 del, 23605 sub ] exp/tri3/decode_dev_gss/wer_17_0.5
+
+# nnet3 tdnn+chain
+%WER 41.21 [ 24267 / 58881, 2428 ins, 7606 del, 14233 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_worn_2stage/wer_11_0.0
+%WER 62.30 [ 36684 / 58881, 3048 ins, 17964 del, 15672 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_gss_2stage/wer_11_0.0
+
+# result with the challenge submission format (Nov 17, 2019)
+# after the fix of speaker ID across arrays
+==== development set ====
+session S02 room dining: #words 8288, #errors 5106, wer 61.60 %
+session S02 room kitchen: #words 12696, #errors 9177, wer 72.28 %
+session S02 room living: #words 15460, #errors 8388, wer 54.25 %
+session S09 room dining: #words 5766, #errors 3821, wer 66.26 %
+session S09 room kitchen: #words 8911, #errors 5594, wer 62.77 %
+session S09 room living: #words 7760, #errors 4598, wer 59.25 %
+overall: #words 58881, #errors 36684, wer 62.30 %
