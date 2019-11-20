@@ -83,7 +83,7 @@ done
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 mkdir -p $dir/log
 cp $alidir/tree $dir

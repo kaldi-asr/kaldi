@@ -254,7 +254,7 @@ if [ $stage -le 7 ]; then
   # Get TF-IDF for the reference documents.
   echo $nj > $dir/docs/num_jobs
 
-  utils/split_data.sh $data_uniform_seg $nj
+  utils/split_data.sh $data_uniform_seg $nj || exit 1;
 
   mkdir -p $dir/docs/split$nj/
 

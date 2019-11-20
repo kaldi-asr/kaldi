@@ -271,7 +271,7 @@ def train(args, run_opts):
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for compiling FSTs
-    common_lib.execute_command("utils/split_data.sh {0} {1}".format(
+    common_lib.execute_command("utils/split_data.sh {0} {1} || exit 1;".format(
             args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
     shutil.copy('{0}/phones.txt'.format(args.tree_dir), args.dir)

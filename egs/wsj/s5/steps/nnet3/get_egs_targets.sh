@@ -115,7 +115,7 @@ for f in $data/feats.scp $targets_scp $extra_files; do
 done
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 mkdir -p $dir/log $dir/info
 

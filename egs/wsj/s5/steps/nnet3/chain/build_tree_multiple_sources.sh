@@ -264,7 +264,7 @@ if [ $stage -le -1 ]; then
     cat $dir/ali.$n.scp
   done | sort -k1,1 > $dir/ali.scp || exit 1
 
-  utils/split_data.sh $data $nj
+  utils/split_data.sh $data $nj || exit 1;
   $cmd JOB=1:$nj $dir/log/copy_alignments.JOB.log \
     copy-int-vector "scp:utils/filter_scp.pl $data/split$nj/JOB/utt2spk $dir/ali.scp |" \
     "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1

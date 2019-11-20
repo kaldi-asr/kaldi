@@ -184,10 +184,13 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
             }
         }
     }
+    if ($scpidx < $numscps) {
+      $scp2dur[$scpidx] = $dursum_current;
+    }
 
     $smallest_dur = $splitdur;
     $largest_dur = $splitdur;
-    for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
+    for ($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scpdur = $scp2dur[$scpidx];
         if ($scpdur > $largest_dur) {
             $largest_dur = $scpdur;
@@ -200,9 +203,9 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
     if ($allow_uneven_split != 1) {
         if (($smallest_dur < $largest_dur / 2 && $largest_dur > 3600) ||
             $smallest_dur == 0.0) {
-            die "Trying to split data while taking duration into account leads to a " .
+            die "$0: Trying to split data while taking duration into account leads to a " .
                 "severe imbalance in splits. This happens when there is a lot more data " .
-                "for some speakers than for others.\n" .
+                "for some speakers than for others (smallest,largest) dur are $smallest_dur,$largest_dur.\n" .
                 "You should use utils/data/modify_speaker_duration.sh to fix that.\n"
         }
     }
