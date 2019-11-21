@@ -145,23 +145,15 @@ using LookaheadFst = ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> >;
 
 // Lookahead composition is used for optimized online
 // composition of FSTs during decoding. See
-// nnet3/nnet3-latgen-faster-lookahead.cc
+// nnet3/nnet3-latgen-faster-lookahead.cc. For details of compose filters
+// see DefaultLookAhead in fst/compose.h
 template<class Arc, class I>
 LookaheadFst<Arc, I> LookaheadComposeFst(const Fst<Arc> &ifst1,
                                          const Fst<Arc> &ifst2,
                                          const std::vector<I> &to_remove) {
-  typedef LookAheadMatcher< StdFst > M;
-  typedef AltSequenceComposeFilter<M> SF;
-  typedef LookAheadComposeFilter<SF, M>  LF;
-  typedef PushWeightsComposeFilter<LF, M> WF;
-  typedef PushLabelsComposeFilter<WF, M> ComposeFilter;
-
   fst::CacheOptions cache_opts(true, 1 << 26LL);
-  ComposeFstOptions<StdArc, M, ComposeFilter> opts(cache_opts);
-
   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
-
-  return LookaheadFst<Arc, I>(ComposeFst<Arc>(ifst1, ifst2, opts), mapper);
+  return LookaheadFst<Arc, I>(ComposeFst<Arc>(ifst1, ifst2, cache_opts), mapper);
 }
 
 template<class Arc, class I>
