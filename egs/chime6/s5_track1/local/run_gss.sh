@@ -48,6 +48,7 @@ fi
 $cmd JOB=1:$nj $log_dir/log/enhance_${session_id}.JOB.log \
   cd pb_chime5/ '&&' \
   $miniconda_dir/bin/python -m pb_chime5.scripts.kaldi_run with \
+    chime6=True \
     storage_dir=$enhanced_dir \
     session_id=$session_id \
     job_id=JOB number_of_jobs=$nj \
