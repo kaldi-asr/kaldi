@@ -1290,7 +1290,7 @@ void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
 }
 
 void GetPdfToPhonesMap(const TransitionModel &trans_model,
-                     std::vector<std::set<int32> > *pdf2phones) {
+                       std::vector<std::set<int32> > *pdf2phones) {
   pdf2phones->clear();
   pdf2phones->resize(trans_model.NumPdfs());
   for (int32 i = 0; i < trans_model.NumTransitionIds(); i++) {
