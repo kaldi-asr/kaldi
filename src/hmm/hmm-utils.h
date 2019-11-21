@@ -330,10 +330,10 @@ void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
                                  std::vector<int32> *alignment);
 
 
-// GetPdfToPhoneDict creates and returns a std::map which maps each pdf-id into its
-// corresponding monophone set.
-void PdfToPhonesDict(const TransitionModel &trans_model,
-                     std::map<int32, std::set<int32> > *pdf2phones);
+// GetPdfToPhonesMap creates a map which maps each pdf-id into its
+// corresponding monophones.
+void GetPdfToPhonesMap(const TransitionModel &trans_model,
+                     std::vector<std::set<int32> > *pdf2phones);
 
 /// @} end "addtogroup hmm_group"
 

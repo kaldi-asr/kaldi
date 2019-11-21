@@ -1289,17 +1289,14 @@ void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
   }
 }
 
-void PdfToPhonesDict(const TransitionModel &trans_model,
-                     std::map<int32, std::set<int32> > *pdf2phones) {
+void GetPdfToPhonesMap(const TransitionModel &trans_model,
+                     std::vector<std::set<int32> > *pdf2phones) {
+  pdf2phones->clear();
+  pdf2phones->resize(trans_model.NumPdfs());
   for (int32 i = 0; i < trans_model.NumTransitionIds(); i++) {
     int32 trans_id = i + 1;
     int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
     int32 phone = trans_model.TransitionIdToPhone(trans_id);
-
-    if (pdf2phones->find(pdf_id) == pdf2phones->end()) {
-      std::set<int32> phones;
-      (*pdf2phones)[pdf_id] = phones;
-    }
     (*pdf2phones)[pdf_id].insert(phone);
   }
 }

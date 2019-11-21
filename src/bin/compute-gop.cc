@@ -74,7 +74,7 @@ namespace kaldi {
 
  */
 void FrameLevelLpp(const SubVector<BaseFloat> &prob_row,
-                   const std::map<int32, std::set<int32> > &pdf2phones,
+                   const std::vector<std::set<int32> > &pdf2phones,
                    const std::vector<int32> *phone_map,
                    Vector<BaseFloat> *out_frame_level_lpp) {
   for (int32 i = 0; i < prob_row.Dim(); i++) {
@@ -137,8 +137,8 @@ int main(int argc, char *argv[]) {
       Input ki(model_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
     }
-    std::map<int32, std::set<int32> > pdf2phones;
-    PdfToPhonesDict(trans_model, &pdf2phones);
+    std::vector<std::set<int32> > pdf2phones;
+    GetPdfToPhonesMap(trans_model, &pdf2phones);
     int32 phone_num = trans_model.NumPhones();
 
     std::vector<int32> phone_map;
