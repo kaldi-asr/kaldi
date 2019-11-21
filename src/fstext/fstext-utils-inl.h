@@ -140,13 +140,16 @@ private:
   kaldi::ConstIntegerSet<I> to_remove_set_;
 };
 
+template<class Arc, class I>
+using LookaheadFst = ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> >;
+
 // Lookahead composition is used for optimized online
 // composition of FSTs during decoding. See
 // nnet3/nnet3-latgen-faster-lookahead.cc
 template<class Arc, class I>
-ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> > LookaheadComposeFst(const Fst<Arc> &ifst1,
-                                    const Fst<Arc> &ifst2,
-                                    const std::vector<I> &to_remove) {
+LookaheadFst<Arc, I> LookaheadComposeFst(const Fst<Arc> &ifst1,
+                                         const Fst<Arc> &ifst2,
+                                         const std::vector<I> &to_remove) {
   typedef LookAheadMatcher< StdFst > M;
   typedef AltSequenceComposeFilter<M> SF;
   typedef LookAheadComposeFilter<SF, M>  LF;
@@ -158,7 +161,7 @@ ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> > LookaheadComposeFst(c
 
   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
 
-  return ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> >(ComposeFst<Arc>(ifst1, ifst2, opts), mapper);
+  return LookaheadFst<Arc, I>(ComposeFst<Arc>(ifst1, ifst2, opts), mapper);
 }
 
 template<class Arc, class I>

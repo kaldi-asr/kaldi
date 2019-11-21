@@ -145,10 +145,10 @@ int main(int argc, char *argv[]) {
 
       fst::Fst<StdArc> *hcl_fst = fst::StdFst::Read(fst_in_str);
       fst::Fst<StdArc> *g_fst = fst::StdFst::Read(g_in_str);
-      fst::ArcMapFst<StdArc, StdArc, fst::RemoveSomeInputSymbolsMapper<StdArc, int32> > decode_fst = fst::LookaheadComposeFst(*hcl_fst,
-                                                                    *g_fst,
-                                                                    disambig_in);
-
+      fst::LookaheadFst<StdArc, int32> decode_fst = 
+                       fst::LookaheadComposeFst(*hcl_fst,
+                                                *g_fst,
+                                                disambig_in);
       timer.Reset();
 
       {
