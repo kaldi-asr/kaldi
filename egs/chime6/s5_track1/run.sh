@@ -50,7 +50,10 @@ test_sets="dev_${enhancement}" #"dev_worn dev_beamformit"
 ###########################################################################
 
 if [ $stage -le 0 ]; then
-  local/generate_chime6_data.sh --cmd "$train_cmd" ${chime5_corpus} ${chime6_corpus}
+  local/generate_chime6_data.sh \
+    --cmd "$train_cmd --max-jobs-run 5" \
+    ${chime5_corpus} \
+    ${chime6_corpus}
 fi
 
 ###########################################################################
@@ -123,13 +126,13 @@ if [ $stage -le 4 ] && [[ ${enhancement} == *gss* ]]; then
     local/install_pb_chime5.sh
   fi
   
-  if [ ! -f pb_chime5/cache/chime5.json ]; then
+  if [ ! -f pb_chime5/cache/chime6.json ]; then
     (
     cd pb_chime5
     miniconda_dir=$HOME/miniconda3/
     export PATH=$miniconda_dir/bin:$PATH
-    export CHIME5_DIR=$chime6_corpus
-    make cache/chime5.json
+    export CHIME6_DIR=$chime6_corpus
+    make cache/chime6.json
     )
   fi
 
