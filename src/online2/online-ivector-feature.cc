@@ -67,13 +67,6 @@ void OnlineIvectorExtractionInfo::Init(
   this->Check();
 }
 
-int32 OnlineIvectorExtractionInfo::ExpectedFeatureDim() const {
-  int32 num_splice = 1 + splice_opts.left_context + splice_opts.right_context,
-      full_dim = diag_ubm.Dim();
-  KALDI_ASSERT(full_dim % num_splice == 0 &&
-               "Something went wrong getting the feature dimension");
-  return full_dim / num_splice;
-}
 
 void OnlineIvectorExtractionInfo::Check() const {
   KALDI_ASSERT(global_cmvn_stats.NumRows() == 2);
