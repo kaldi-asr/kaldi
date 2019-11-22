@@ -1,0 +1,95 @@
+import kaldiio
+import os
+import numpy as np
+import shutil
+import scipy as sp
+import scipy.signal as sp_sig
+
+def copy_and_overwrite(from_path, to_path):
+    if os.path.exists(to_path):
+        shutil.rmtree(to_path)
+    shutil.copytree(from_path, to_path)
+
+basedir = os.getcwd()
+setlist = ['test', 'train', 'dev']
+
+featdim = 64 # insert your feature dim here
+tags = 'myfeats'
+splits = 10
+
+fbankdatadir = os.path.join(basedir, 'data-fbank')
+fbankfeatdir = os.path.join (basedir, 'fbank')
+
+datadir = os.path.join(basedir, 'data-'+ tags)
+featdir = os.path.join(basedir, tags);
+
+# create dirs if they dont exist
+if not os.path.isdir(datadir):
+    os.makedirs(datadir)
+if not os.path.isdir(featdir):
+    os.makedirs(featdir)
+
+for setnum in range(len(setlist)):
+
+    setname = setlist[setnum];
+    print ('Processing ' + setname + ' data.')
+
+    # copy files
+    src_dir = os.path.join(fbankdatadir, setname)
+    dst_dir = os.path.join(datadir, setname)
+    copy_and_overwrite(src_dir, dst_dir)
+
+    filelist = os.path.join(datadir, setname, 'wav.scp')
+    dtag = setname
+
+    filenames = []
+    keys_orig = []
+    for line in open(filelist):
+        filenames.append(line.split()[4]) # wavenames is in the 5th column
+        keys_orig.append(line.split()[0]) # key or id is in the first column
+    numfiles = len(filenames)
+
+    fileindex = 0
+
+    for splitindex in range(splits):
+        print ('Processing ' +  str(splitindex) + ' of ' +  str(splits) + ' split data.')
+
+        srcark = 'raw_fbank_' + dtag + '.' + str(splitindex + 1) + '.ark'
+        srcscp = 'raw_fbank_' + dtag + '.' + str(splitindex + 1) + '.scp'
+
+        destark = 'raw_' + tags + '_' + dtag + '.' + str(splitindex + 1) + '.ark'
+        destscp = 'raw_' + tags + '_' + dtag + '.' + str(splitindex + 1) + '.scp'
+
+        srcark_filename = os.path.join(fbankfeatdir, srcark)
+        destark_filename = os.path.join(featdir, destark)
+
+        srcscp_filename = os.path.join(fbankfeatdir, srcscp)
+        destscp_filename = os.path.join(featdir, destscp)
+
+        d = kaldiio.load_ark(srcark_filename)
+        write_dict={} # kaldiio uses features in the form of a dict
+        for key, array in d:
+            # check if keys match
+            if keys_orig[fileindex] != key :
+                raise ValueError('ID Mismatch!')
+            fname = filenames[fileindex]
+            # read audio, assuming wav file
+            # change this if the file is of some other type
+	    fs, sig = sp.io.wavfile.read(fname)
+
+            # Do your feature extraction below: 
+            # expected shape is (numframes x featdim)
+	    newfeat = extract_my_feats(sig)
+            
+	    # do the numframes check, if we are reusing existing alignments
+            # else, comment out this check
+            if array.shape[0] != newfeat.shape[0] :
+                raise ValueError('Dimension mismatch!')
+
+            # append the features into the dictionary
+            write_dict [key] = newfeat.astype(np.float32) # let us store it as float32
+            fileindex += 1
+
+        # write features to disk
+        print ("Writing to " + destark_filename)
+        kaldiio.save_ark(destark_filename, write_dict, scp=destscp_filename)
