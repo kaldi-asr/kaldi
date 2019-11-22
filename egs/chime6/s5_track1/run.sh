@@ -8,7 +8,7 @@
 
 # Begin configuration section.
 nj=96
-decode_nj=20
+decode_nj=8
 stage=0
 nnet_stage=-10
 num_data_reps=4
@@ -399,11 +399,13 @@ if [ $stage -le 20 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
+  # Note that we disabled the eval set scoring.
 
-  local/get_location.py $json_dir/dev > exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_${enhancement}_2stage/uttid_location
-  local/get_location.py $json_dir/eval > exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_${enhancement}_2stage/uttid_location
-
+  for dset in dev; do
+    local/get_location.py $json_dir/${dset} > exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${dset}_${enhancement}_2stage/uttid_location
+  done
   local/score_for_submit.sh \
+      --do_eval false \
       --dev exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_${enhancement}_2stage \
       --eval exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_${enhancement}_2stage
 fi

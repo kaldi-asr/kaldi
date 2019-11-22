@@ -2,7 +2,7 @@
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
 # Apache 2.0
 #
-# This script provides official CHiME-5 challenge submission scores per room and session.
+# This script provides official CHiME-6 challenge submission scores per room and session.
 # It first calculates the best search parameter configurations by using the dev set
 # and also create the transcriptions for dev and eval sets to be submitted.
 # The default setup does not calculate scores of the evaluation set since
@@ -67,6 +67,12 @@ wer=`echo "scale=2; 100 * $nerr / $nwrd" | bc`
 echo -n "#words $nwrd, "
 echo -n "#errors $nerr, "
 echo "wer $wer %"
+
+if ! ${do_eval}; then
+  echo "skip to score the evaluation set at this moment (Nov. 2019)"
+  echo "please set do_eval=true once the evaluation set is released."
+  exit 0
+fi
 
 echo "==== evaluation set ===="
 # evaluation set
