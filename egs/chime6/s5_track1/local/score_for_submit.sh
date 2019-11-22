@@ -1,8 +1,9 @@
 #!/bin/bash
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
+# Copyright 2019       Johns Hopkins University (Author: Shinji Watanabe)
 # Apache 2.0
 #
-# This script provides official CHiME-6 challenge submission scores per room and session.
+# This script provides official CHiME-6 challenge track 1 submission scores per room and session.
 # It first calculates the best search parameter configurations by using the dev set
 # and also create the transcriptions for dev and eval sets to be submitted.
 # The default setup does not calculate scores of the evaluation set since
@@ -19,7 +20,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# -ne 0 ]; then
     echo "Usage: $0 [--cmd (run.pl|queue.pl...)]"
-    echo "This script provides official CHiME-5 challenge submission scores"
+    echo "This script provides official CHiME-6 challenge submission scores"
     echo " Options:"
     echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
     echo "    --dev <dev-decode-dir>          # dev set decoding directory"
@@ -118,7 +119,7 @@ if $do_eval; then
 else
     echo "skip evaluation scoring"
     echo ""
-    echo "==== when you submit your result to the CHiME-5 challenge ===="
+    echo "==== when you submit your result to the CHiME-6 challenge track 1 ===="
     echo "Please rename your recognition results of "
     echo "$dev/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt"
     echo "$eval/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt"
