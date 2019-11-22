@@ -61,11 +61,16 @@ try:
 except ImportError:
     print('0')"`
 
-if [ "$result" == "1" ]; then
-    echo "WPE is installed"
-else
-    echo "WPE is not installed. Please run ../../../tools/extras/install_wpe.sh"
-    exit 1
+if [ "$result" != "1" ]; then
+  echo "WPE is not installed. Please run ../../../tools/extras/install_wpe.sh"
+  exit 1
+fi
+
+# this is used for the audio synchronization
+sox_conda=`command -v ${miniconda_dir}/bin/sox 2>/dev/null`
+if [ -z "${sox_conda}" ]; then
+  echo "install conda sox (v14.4.2)" 
+  ${miniconda_dir}/bin/conda install -c conda-forge sox
 fi
 
 exit  0

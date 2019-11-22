@@ -17,5 +17,6 @@ git submodule update
 
 $miniconda_dir/bin/python -m pip install cython
 $miniconda_dir/bin/python -m pip install pymongo
+$miniconda_dir/bin/python -m pip install fire
 $miniconda_dir/bin/python -m pip install -e pb_bss/
 $miniconda_dir/bin/python -m pip install -e .

@@ -16,8 +16,8 @@ snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
 use_multiarray=false
-enhancement=gss        # for a new enhancement method,
-                       # change this variable and stage 4
+enhancement=beamformit # gss or beamformit
+
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -30,17 +30,31 @@ set -e # exit on error
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
-json_dir=${chime5_corpus}/transcriptions
-audio_dir=${chime5_corpus}/audio
+# chime6 data directories, which are generated from ${chime5_corpus},
+# to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
+chime6_corpus=${PWD}/CHiME6
+json_dir=${chime6_corpus}/transcriptions
+audio_dir=${chime6_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}" #"dev_worn dev_addition_dereverb_ref"
-#test_sets="dev_${enhancement}_ref" #"dev_worn dev_addition_dereverb_ref"
+test_sets="dev_${enhancement}" #"dev_worn dev_beamformit"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
+###########################################################################
+# We first generate the synchronized audio files across arrays and
+# corresponding JSON files. Note that this requires sox v14.4.2,
+# which is installed via miniconda in ./local/check_tools.sh
+###########################################################################
+
+if [ $stage -le 0 ]; then
+  local/generate_chime6_data.sh \
+    --cmd "$train_cmd --max-jobs-run 5" \
+    ${chime5_corpus} \
+    ${chime6_corpus}
+fi
 
 ###########################################################################
 # We prepare dict and lang in stages 1 to 3.
@@ -48,8 +62,8 @@ test_sets="dev_${enhancement}" #"dev_worn dev_addition_dereverb_ref"
 
 if [ $stage -le 1 ]; then
   echo "$0:  prepare data..."
-  # skip u03 as they are missing
-  for mictype in worn u01 u02 u04 u05 u06; do
+  # skip u03 and u04 as they are missing
+  for mictype in worn u01 u02 u05 u06; do
     local/prepare_data.sh --mictype ${mictype} \
 			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
   done
@@ -93,13 +107,13 @@ fi
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
 #########################################################################################
-# In stage 4, we perform GSS based enhacement for the dev and test sets. multiarray = false 
+# In stage 4, we perform GSS based enhancement for the dev and test sets. multiarray = false 
 #can take around 15 hrs for dev and eval data.
 #########################################################################################
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 4 ] && [[ ${enhancement} == *gss* ]]; then
   echo "$0:  enhance data..."
-  # Guided Source Separation (GSS) from Paderbon Univerisity
+  # Guided Source Separation (GSS) from Paderborn University
   # http://spandh.dcs.shef.ac.uk/chime_workshop/papers/CHiME_2018_paper_boeddecker.pdf
   # @Article{PB2018CHiME5,
   #   author    = {Boeddeker, Christoph and Heitkaemper, Jens and Schmalenstroeer, Joerg and Drude, Lukas and Heymann, Jahn and Haeb-Umbach, Reinhold},
@@ -112,17 +126,17 @@ if [ $stage -le 4 ]; then
     local/install_pb_chime5.sh
   fi
   
-  if [ ! -f pb_chime5/cache/chime5.json ]; then
+  if [ ! -f pb_chime5/cache/chime6.json ]; then
     (
     cd pb_chime5
     miniconda_dir=$HOME/miniconda3/
     export PATH=$miniconda_dir/bin:$PATH
-    export CHIME5_DIR=$chime5_corpus
-    make cache/chime5.json
+    export CHIME6_DIR=$chime6_corpus
+    make cache/chime6.json
     )
   fi
 
-  for dset in dev eval; do
+  for dset in dev; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run 30" --nj 160 \
       --use-multiarray $use_multiarray \
@@ -131,9 +145,38 @@ if [ $stage -le 4 ]; then
       ${enhanced_dir} || exit 1
   done
 
-  for dset in dev eval; do
+  for dset in dev; do
     local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/${dset} \
       ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
+  done
+fi
+
+if [ $stage -le 4 ] && [ ${enhancement} = "beamformit" ]; then
+  # Beamforming using reference arrays
+  # enhanced WAV directory
+  enhanced_dir=enhan
+  dereverb_dir=${PWD}/wav/wpe/
+  for dset in dev; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 120G" \
+		       ${audio_dir}/${dset} \
+		       ${dereverb_dir}/${dset} \
+		       ${mictype}
+    done
+  done
+  
+  for dset in dev; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_beamformit.sh --cmd "$train_cmd" \
+		              ${dereverb_dir}/${dset} \
+		              ${enhanced_dir}/${dset}_${enhancement}_${mictype} \
+		              ${mictype}
+    done
+  done
+
+  for dset in dev; do
+    local/prepare_data.sh --mictype ref "$PWD/${enhanced_dir}/${dset}_${enhancement}_u0*" \
+	                  ${json_dir}/${dset} data/${dset}_${enhancement}
   done
 fi
 
@@ -152,7 +195,7 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-  local/extract_noises.py $chime5_corpus/audio/train $chime5_corpus/transcriptions/train \
+  local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
     local/distant_audio_list distant_noises
   local/make_noise_list.py distant_noises > distant_noise_list
 
@@ -187,7 +230,7 @@ if [ $stage -le 7 ]; then
   # combine mix array and worn mics
   # randomly extract first 100k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
-  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u04 data/train_u05 data/train_u06
+  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
   utils/combine_data.sh data/${train_set} data/train_worn data/train_worn_rvb data/train_u400k
 
@@ -225,7 +268,7 @@ if [ $stage -le 8 ]; then
 
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
-  for dset in ${train_set} dev_worn; do
+  for dset in ${train_set}; do
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
   done
@@ -349,7 +392,7 @@ if [ $stage -le 19 ]; then
 fi
 
 ##########################################################################
-# Scoring: here we obtian wer per session per location and overall WER
+# Scoring: here we obtain wer per session per location and overall WER
 ##########################################################################
 
 if [ $stage -le 20 ]; then
