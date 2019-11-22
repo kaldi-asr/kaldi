@@ -1254,6 +1254,8 @@ void LatticeIncrementalDeterminizer::InitializeRawLatticeChunk(
     // We abuse the `nextstate` field to store the source state.
     CompactLattice::StateId src_state = arc.nextstate;
     auto iter = redet_state_map.find(src_state);
+    if (forward_costs_[src_state] == std::numeric_limits<BaseFloat>::infinity())
+      continue;  /* Unreachable state */
     KALDI_ASSERT(iter != redet_state_map.end());
     LatticeArc::StateId src_lat_state = iter->second;
     Label token_label = arc.ilabel;  // will be == arc.olabel.
