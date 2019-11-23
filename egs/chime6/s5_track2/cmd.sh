@@ -12,4 +12,4 @@
 
 export train_cmd="retry.pl queue.pl --mem 2G"
 export decode_cmd="queue.pl --mem 4G"
-
+export score_cmd="queue.pl"

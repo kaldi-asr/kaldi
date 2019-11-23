@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# This script decodes raw utterances through the entire pipeline: 
+# This script decodes raw utterances through the entire pipeline:
 # Feature extraction -> SAD -> Diarization -> ASR
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
@@ -8,14 +8,20 @@
 # Apache 2.0
 
 # Begin configuration section.
-nj=50
+nj=10
 decode_nj=20
 stage=0
 sad_stage=0
 diarizer_stage=0
-enhancement=
-test_sets=
+decode_diarize_stage=0
+score_stage=0
+enhancement=beamformit
+test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
 skip_scoring=false
+chime5_corpus=/export/corpora4/CHiME5
+json_dir=${chime5_corpus}/transcriptions
+audio_dir=${chime5_corpus}/audio
+train_set=train_worn_simu_u400k
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -45,16 +51,16 @@ if [ $stage -le 0 ]; then
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
-			      ${dereverb_dir}/${dset} \
-			      ${enhandir}/${dset}_${enhancement}_${mictype} \
-			      ${mictype}
+    		              ${dereverb_dir}/${dset} \
+    		              ${enhandir}/${dset}_${enhancement}_${mictype} \
+    		              ${mictype}
     done
   done
 
   for dset in dev eval; do
     local/prepare_data.sh --mictype ref --train false \
       "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-			${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref 
+			${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
   done
 fi
 
@@ -87,7 +93,7 @@ if [ $stage -le 2 ]; then
     local/segmentation/detect_speech_activity.sh --nj 10 --stage $sad_stage \
       $test_set $sad_nnet_dir mfcc $sad_work_dir \
       data/${datadir} || exit 1
-   
+
     mv data/${datadir}_seg data/${datadir}_${nnet_type}_seg
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
@@ -114,13 +120,23 @@ fi
 # Decode diarized output using trained chain model
 #######################################################################
 if [ $stage -le 4 ]; then
-  continue
+  for datadir in ${test_sets}; do
+    local/decode_diarized.sh --nj 40 --cmd "$decode_cmd" --stage $decode_diarize_stage \
+      exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang_chain \
+      exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
+      data/${datadir}_diarized
+  done
 fi
 
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-if [ $skip_scoring == "false" ]; then
-  continue
+if [ $stage -le 5 ]; then
+  for datadir in ${test_sets}; do
+    local/multispeaker_score.sh --cmd "$score_cmd" --stage $score_stage \
+      data/${datadir}_diarized/text \
+      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi/penalty_1.0/10.txt \
+      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi_multispeaker
+  done
 fi
 exit 0;
