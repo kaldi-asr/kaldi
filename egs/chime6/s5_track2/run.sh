@@ -147,10 +147,17 @@ if [ $stage -le 6 ]; then
 fi
 
 
+if [ $stage -le 7 ]; then
+  # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
+  # lets us use more jobs for decoding etc.
+  utils/copy_data_dir.sh data/${train_set} data/${train_set}_nosplit
+  utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${train_set}_nosplit data/${train_set}
+fi
+
 ##################################################################################
 # Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
 ##################################################################################
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
@@ -169,19 +176,19 @@ fi
 # for training the SAD system.
 ###################################################################################
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
 		      data/${train_set}_30kshort data/lang exp/mono
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/mono exp/mono_ali
 
@@ -189,7 +196,7 @@ if [ $stage -le 10 ]; then
 			2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri1 exp/tri1_ali
 
@@ -197,7 +204,7 @@ if [ $stage -le 11 ]; then
 			  4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
@@ -205,12 +212,12 @@ if [ $stage -le 12 ]; then
 		     5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
     data/${train_set} data/lang exp/tri3 exp/tri3_ali
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 15 ]; then
   # The following script cleans the data and produces cleaned data
   steps/cleanup/clean_and_segment_data.sh --nj $nj --cmd "$train_cmd" \
     --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
@@ -220,7 +227,7 @@ fi
 ##########################################################################
 # CHAIN MODEL TRAINING
 ##########################################################################
-if [ $stage -le 15 ]; then
+if [ $stage -le 16 ]; then
   # chain TDNN
   local/chain/run_tdnn.sh --nj $nj \
     --stage $nnet_stage \
@@ -235,7 +242,7 @@ fi
 # Now run the SAD script. This contains stages 15 to 19.
 # If you just want to perform SAD decoding (without
 # training), run from stage 19.
-if [ $stage -le 16 ]; then
+if [ $stage -le 17 ]; then
   local/train_sad.sh --stage $sad_stage \
     --data-dir data/${train_set} --test-sets "${test_sets}" \
     --sat-model-dir exp/tri3 \
@@ -245,7 +252,7 @@ fi
 ##########################################################################
 # DIARIZATION MODEL TRAINING
 ##########################################################################
-if [ $stage -le 17 ]; then
+if [ $stage -le 18 ]; then
   local/train_diarizer.sh --stage $diarizer_stage \
     --data-dir data/${train_set} \
     --model-dir exp/xvector_nnet_1a
@@ -257,7 +264,7 @@ fi
 # SAD -> Diarization -> ASR. This is done in the local/decode.sh
 # script.
 ##########################################################################
-if [ $stage -le 18 ]; then
+if [ $stage -le 19 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
     --test-sets "$test_sets"

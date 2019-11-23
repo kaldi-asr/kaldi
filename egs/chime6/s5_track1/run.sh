@@ -228,7 +228,7 @@ fi
 
 if [ $stage -le 7 ]; then
   # combine mix array and worn mics
-  # randomly extract first 100k utterances from all mics
+  # randomly extract first 400k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
@@ -367,7 +367,7 @@ fi
 
 if [ $stage -le 18 ]; then
   # chain TDNN
-  local/chain/tuning/run_tdnn_1b.sh --nj ${nj} \
+  local/chain/run_tdnn.sh --nj ${nj} \
     --stage $nnet_stage \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
