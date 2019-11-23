@@ -9,7 +9,7 @@
 
 # Begin configuration section.
 nj=50
-decode_nj=20
+decode_nj=10
 stage=0
 sad_stage=0
 diarizer_stage=0
@@ -63,7 +63,7 @@ if [ $stage -le 1 ]; then
   # want to store MFCC features.
   mfccdir=mfcc
   for x in ${test_sets}; do
-    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
+    steps/make_mfcc.sh --nj $decode_nj --cmd "$train_cmd" \
       --mfcc-config conf/mfcc_hires.conf \
 		  data/$x exp/make_mfcc/$x $mfccdir
   done
@@ -84,7 +84,7 @@ if [ $stage -le 2 ]; then
       exit 0
     fi
     # Perform segmentation
-    local/segmentation/detect_speech_activity.sh --nj 10 --stage $sad_stage \
+    local/segmentation/detect_speech_activity.sh --nj $decode_nj --stage $sad_stage \
       $test_set $sad_nnet_dir mfcc $sad_work_dir \
       data/${datadir} || exit 1
    
