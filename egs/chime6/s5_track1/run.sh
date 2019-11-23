@@ -8,7 +8,7 @@
 
 # Begin configuration section.
 nj=96
-decode_nj=8
+decode_nj=20
 stage=0
 nnet_stage=-10
 num_data_reps=4
