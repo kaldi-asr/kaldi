@@ -32,12 +32,14 @@ fi
 
 set -e # exit on error
 
-# chime6 data is same as chime5 data
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
-json_dir=${chime5_corpus}/transcriptions
-audio_dir=${chime5_corpus}/audio
+# chime6 data directories, which are generated from ${chime5_corpus},
+# to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
+chime6_corpus=${PWD}/CHiME6
+json_dir=${chime6_corpus}/transcriptions
+audio_dir=${chime6_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
@@ -47,12 +49,25 @@ test_sets="dev_${enhancement}_dereverb_ref"
 ./local/check_tools.sh || exit 1
 
 ###########################################################################
+# We first generate the synchronized audio files across arrays and
+# corresponding JSON files. Note that this requires sox v14.4.2,
+# which is installed via miniconda in ./local/check_tools.sh
+###########################################################################
+
+if [ $stage -le 0 ]; then
+  local/generate_chime6_data.sh \
+    --cmd "$train_cmd --max-jobs-run 5" \
+    ${chime5_corpus} \
+    ${chime6_corpus}
+fi
+
+###########################################################################
 # We prepare dict and lang in stages 1 to 3.
 ###########################################################################
 
 if [ $stage -le 1 ]; then
-  # skip u03 as they are missing
-  for mictype in worn u01 u02 u04 u05 u06; do
+  # skip u03 u04 as they are missing
+  for mictype in worn u01 u02 u05 u06; do
     local/prepare_data.sh --mictype ${mictype} --train true \
 			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
   done
