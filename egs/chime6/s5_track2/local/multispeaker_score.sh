@@ -81,6 +81,7 @@ if [ $stage -le 3 ]; then
   cat $wer_dir/all.txt | local/print_dset_error.py $output_dir/recordinid_spkorder
 fi
 
+mkdir -p $wer_dir/wer_details $wer_dir/wer_details/log/
 if [ $stage -le 4 ]; then
   echo "$0 generate per utterance wer details at utterance level"
   while read -r line;
@@ -94,26 +95,27 @@ if [ $stage -le 4 ]; then
     for ind_h in "${spkorder_list[@]}";
     do
 
-      mkdir -p $wer_dir/${recording_id}_r${ind_r}h${ind_h}/wer_details $wer_dir/${recording_id}_r${ind_r}h${ind_h}/log
-
-      $cmd $wer_dir/${recording_id}_r${ind_r}h${ind_h}/log/stats2.log \
+      $cmd $wer_dir/wer_details/log/${recording_id}_r${ind_r}h${ind_h}_comb.log \
         align-text ark:${output_dir}/ref_${sessionid}_${ind_r}_comb ark:${output_dir}/hyp_${recording_id}_${ind_h}_comb ark:$output_dir/alignment_${sessionid}_r${ind_r}h${ind_h}.txt
 
       # split hypothesis texts along with reference utterances using word alignment of combined texts
       local/gen_aligned_hyp.py $output_dir/alignment_${sessionid}_r${ind_r}h${ind_h}.txt ${output_dir}/ref_wc_${sessionid}_${ind_r} > ${output_dir}/hyp_${recording_id}_r${ind_r}h${ind_h}_ref_segmentation
 
       ## compute per utterance alignments
-      $cmd $wer_dir/${recording_id}_r${ind_r}h${ind_h}/log/stats3.log \
+      $cmd $wer_dir/wer_details/log/${recording_id}_r${ind_r}h${ind_h}_per_utt.log \
         cat ${output_dir}/hyp_${recording_id}_r${ind_r}h${ind_h}_ref_segmentation \| \
         align-text --special-symbol="'***'" ark:${output_dir}/ref_${sessionid}_${ind_r} ark:- ark,t:- \|  \
-        utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $wer_dir/${recording_id}_r${ind_r}h${ind_h}/wer_details/per_utt || exit 1
+        utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $wer_dir/wer_details/per_utt_${recording_id}_r${ind_r}h${ind_h} || exit 1
 
-      $cmd $wer_dir/${recording_id}_r${ind_r}h${ind_h}/log/stats4.log \
-        cat $wer_dir/${recording_id}_r${ind_r}h${ind_h}/wer_details/per_utt \| \
+      $cmd $wer_dir/wer_details/log/${recording_id}_r${ind_r}h${ind_h}_ops.log \
+        cat $wer_dir/wer_details/per_utt_${recording_id}_r${ind_r}h${ind_h} \| \
         utils/scoring/wer_ops_details.pl --special-symbol "'***'" \| \
-        sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $wer_dir/${recording_id}_r${ind_r}h${ind_h}/wer_details/ops || exit 1;
+        sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $wer_dir/wer_details/ops_${recording_id}_r${ind_r}h${ind_h} || exit 1;
 
       ind_r=$(( ind_r + 1 ))
     done
   done < $output_dir/recordinid_spkorder
+  echo "$0 done generating per utterance wer details"
 fi
+
+echo "$0 done scoring"
