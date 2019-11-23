@@ -52,7 +52,7 @@ if [ $stage -le 1 ]; then
   echo "$0 create dummy per speaker per array hypothesis files for if the"
   echo " perdicted number of speakers by diarization is less than 4 "
   if [ $num_hyp_spk -le 3 ]; then
-    for recording_id in "${rec/rding_id_array[@]}"; do
+    for recording_id in "${recording_id_array[@]}"; do
       for (( i=$num_hyp_spk+1; i<5; i++ )); do
         echo 'utt ' > ${dir}/hyp_${recording_id}_${i}_comb
       done
