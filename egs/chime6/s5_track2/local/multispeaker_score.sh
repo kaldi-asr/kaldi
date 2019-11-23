@@ -9,7 +9,10 @@ nj=40
 cmd=queue.pl
 num_spkrs=4
 num_hyp_spk=4
+
+# For the evaluation set, we update this line:
 declare -a recording_id_array=("S02_U01" "S02_U02" "S02_U03" "S02_U04" "S02_U06" "S09_U01" "S09_U02" "S09_U03" "S09_U04" "S09_U06")
+
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
@@ -49,8 +52,7 @@ if [ $stage -le 1 ]; then
   echo "$0 create dummy per speaker per array hypothesis files for if the"
   echo " perdicted number of speakers by diarization is less than 4 "
   if [ $num_hyp_spk -le 3 ]; then
-    for recording_id in "${recording_id_array[@]}"
-    do
+    for recording_id in "${recording_id_array[@]}"; do
       for (( i=$num_hyp_spk+1; i<5; i++ )); do
         echo 'utt ' > ${dir}/hyp_${recording_id}_${i}_comb
       done
@@ -92,8 +94,7 @@ if [ $stage -le 4 ]; then
     IFS='_' read -r -a spkorder_list <<< "$spkorder_str"
     IFS=" "
     ind_r=1
-    for ind_h in "${spkorder_list[@]}";
-    do
+    for ind_h in "${spkorder_list[@]}"; do
 
       $cmd $wer_dir/wer_details/log/${recording_id}_r${ind_r}h${ind_h}_comb.log \
         align-text ark:${output_dir}/ref_${sessionid}_${ind_r}_comb ark:${output_dir}/hyp_${recording_id}_${ind_h}_comb ark:$output_dir/alignment_${sessionid}_r${ind_r}h${ind_h}.txt
