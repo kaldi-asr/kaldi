@@ -8,7 +8,7 @@
 # Apache 2.0
 
 # Begin configuration section.
-nj=50
+nj=40
 decode_nj=10
 stage=0
 sad_stage=0
@@ -16,7 +16,7 @@ diarizer_stage=0
 decode_diarize_stage=0
 score_stage=0
 enhancement=beamformit
-test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
+test_sets="dev_${enhancement}_dereverb_ref"
 skip_scoring=false
 chime5_corpus=/export/corpora4/CHiME5
 json_dir=${chime5_corpus}/transcriptions
@@ -121,7 +121,7 @@ fi
 #######################################################################
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
-    local/decode_diarized.sh --nj 40 --cmd "$decode_cmd" --stage $decode_diarize_stage \
+    local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang_chain \
       exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
       data/${datadir}_diarized
@@ -133,7 +133,7 @@ fi
 #######################################################################
 if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
-    local/multispeaker_score.sh --cmd "$score_cmd" --stage $score_stage \
+    local/multispeaker_score.sh --cmd "$score_cmd" --stage $train_cmd \
       data/${datadir}_diarized/text \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi/penalty_1.0/10.txt \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi_multispeaker

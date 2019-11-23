@@ -49,9 +49,9 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  echo "$0 create dummy per speaker per array hypothesis files for if the"
-  echo " perdicted number of speakers by diarization is less than 4 "
   if [ $num_hyp_spk -le 3 ]; then
+    echo "$0 create dummy per speaker per array hypothesis files for if the"
+    echo " perdicted number of speakers by diarization is less than 4 "
     for recording_id in "${recording_id_array[@]}"; do
       for (( i=$num_hyp_spk+1; i<5; i++ )); do
         echo 'utt ' > ${dir}/hyp_${recording_id}_${i}_comb
@@ -78,6 +78,7 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0 print best word error rate"
+  echo "$0 it will print best wer for each recording and each array"
   cat $wer_dir/best_wer* > $wer_dir/all.txt
   cat $wer_dir/all.txt | local/print_dset_error.py $output_dir/recordinid_spkorder
 fi
