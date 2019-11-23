@@ -66,7 +66,7 @@ fi
 ###########################################################################
 
 if [ $stage -le 1 ]; then
-  # skip u03 u04 as they are missing
+  # skip u03 and u04 as they are missing
   for mictype in worn u01 u02 u05 u06; do
     local/prepare_data.sh --mictype ${mictype} --train true \
 			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
@@ -148,7 +148,7 @@ fi
 
 if [ $stage -le 6 ]; then
   # combine mix array and worn mics
-  # randomly extract first 100k utterances from all mics
+  # randomly extract first 400k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
