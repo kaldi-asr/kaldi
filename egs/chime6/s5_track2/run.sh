@@ -27,7 +27,7 @@ decode_only=false
 . ./path.sh
 
 if [ $decode_only == "true" ]; then
-  stage=17
+  stage=19
 fi
 
 set -e # exit on error
@@ -41,7 +41,7 @@ audio_dir=${chime5_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
+test_sets="dev_${enhancement}_dereverb_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -85,11 +85,6 @@ if [ $stage -le 3 ]; then
 
 fi
 
-#########################################################################################
-# In stages 4 to 6, we modify train and dev data for our training purpose. Here we
-# use 400k utterances from array microphones and all the worn set utterances in train.
-#########################################################################################
-
 if [ $stage -le 4 ]; then
   # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
   # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
@@ -98,45 +93,81 @@ if [ $stage -le 4 ]; then
   utils/fix_data_dir.sh data/train_worn
 fi
 
-if [ $stage -le 5 ]; then
-  # combine mix array and worn mics
-  # randomly extract first 400k utterances from all mics
-  # if you want to include more training data, you can increase the number of array mic utterances
-  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u04 data/train_u05 data/train_u06
-  utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
-  utils/combine_data.sh data/${train_set} data/train_worn data/train_u400k
 
-  # only use left channel for worn mic recognition
-  # you can use both left and right channels for training
-  for dset in train dev; do
-    utils/copy_data_dir.sh data/${dset}_worn data/${dset}_worn_stereo
-    grep "\.L-" data/${dset}_worn_stereo/text > data/${dset}_worn/text
-    utils/fix_data_dir.sh data/${dset}_worn
-  done
+#########################################################################################
+# In stages 5 and 6, we augment and fix train data for our training purpose. point source
+# noises are extracted from chime corpus. Here we use 400k utterances from array microphones,
+# its augmentation and all the worn set utterances in train.
+#########################################################################################
+if [ $stage -le 5 ]; then
+  local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
+    local/distant_audio_list distant_noises
+  local/make_noise_list.py distant_noises > distant_noise_list
+
+  noise_list=distant_noise_list
+
+  if [ ! -d RIRS_NOISES/ ]; then
+    # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+    wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+    unzip rirs_noises.zip
+  fi
+
+  # This is the config for the system using simulated RIRs and point-source noises
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+  rvb_opts+=(--noise-set-parameters $noise_list)
+
+  steps/data/reverberate_data_dir.py \
+    "${rvb_opts[@]}" \
+    --prefix "rev" \
+    --foreground-snrs $foreground_snrs \
+    --background-snrs $background_snrs \
+    --speech-rvb-probability 1 \
+    --pointsource-noise-addition-probability 1 \
+    --isotropic-noise-addition-probability 1 \
+    --num-replications $num_data_reps \
+    --max-noises-per-minute 1 \
+    --source-sampling-rate 16000 \
+    data/train_worn data/train_worn_rvb
 fi
 
 if [ $stage -le 6 ]; then
+  # combine mix array and worn mics
+  # randomly extract first 100k utterances from all mics
+  # if you want to include more training data, you can increase the number of array mic utterances
+  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
+  utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_worn_rvb data/train_u400k
+
+  # only use left channel for worn mic recognition
+  # you can use both left and right channels for training
+  utils/copy_data_dir.sh data/train_worn data/train_worn_stereo
+  grep "\.L-" data/train_worn_stereo/text > data/train_worn/text
+  utils/fix_data_dir.sh data/train_worn
+fi
+
+
+if [ $stage -le 7 ]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
-  for dset in ${train_set}; do
-    utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
-    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
-  done
+  utils/copy_data_dir.sh data/${train_set} data/${train_set}_nosplit
+  utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${train_set}_nosplit data/${train_set}
 fi
 
 ##################################################################################
 # Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
 ##################################################################################
-
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
+  # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
+  echo "$0:  make features..."
   mfccdir=mfcc
-  for x in ${train_set}; do
-    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
-      --mfcc-config conf/mfcc_hires.conf \
-		  data/$x exp/make_mfcc/$x $mfccdir
-  done
+  steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
+             --mfcc-config conf/mfcc_hires.conf \
+             data/${train_set} exp/make_mfcc/${train_set} $mfccdir
+  steps/compute_cmvn_stats.sh data/${train_set} exp/make_mfcc/${train_set} $mfccdir
+  utils/fix_data_dir.sh data/${train_set}
 fi
 
 ###################################################################################
@@ -145,19 +176,19 @@ fi
 # for training the SAD system.
 ###################################################################################
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
 		      data/${train_set}_30kshort data/lang exp/mono
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/mono exp/mono_ali
 
@@ -165,7 +196,7 @@ if [ $stage -le 10 ]; then
 			2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri1 exp/tri1_ali
 
@@ -173,7 +204,7 @@ if [ $stage -le 11 ]; then
 			  4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
@@ -181,16 +212,28 @@ if [ $stage -le 12 ]; then
 		     5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
     data/${train_set} data/lang exp/tri3 exp/tri3_ali
+fi
+
+if [ $stage -le 15 ]; then
+  # The following script cleans the data and produces cleaned data
+  steps/cleanup/clean_and_segment_data.sh --nj $nj --cmd "$train_cmd" \
+    --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
+    data/${train_set} data/lang exp/tri3 exp/tri3_cleaned data/${train_set}_cleaned
 fi
 
 ##########################################################################
 # CHAIN MODEL TRAINING
 ##########################################################################
-if [ $stage -le 14 ]; then
-  local/chain/run_tdnn.sh --stage $chain_stage
+if [ $stage -le 16 ]; then
+  # chain TDNN
+  local/chain/run_tdnn.sh --nj $nj \
+    --stage $nnet_stage \
+    --train-set ${train_set}_cleaned \
+    --test-sets "$test_sets" \
+    --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
 fi
 
 ##########################################################################
@@ -199,7 +242,7 @@ fi
 # Now run the SAD script. This contains stages 15 to 19.
 # If you just want to perform SAD decoding (without
 # training), run from stage 19.
-if [ $stage -le 15 ]; then
+if [ $stage -le 17 ]; then
   local/train_sad.sh --stage $sad_stage \
     --data-dir data/${train_set} --test-sets "${test_sets}" \
     --sat-model-dir exp/tri3 \
@@ -209,7 +252,7 @@ fi
 ##########################################################################
 # DIARIZATION MODEL TRAINING
 ##########################################################################
-if [ $stage -le 16 ]; then
+if [ $stage -le 18 ]; then
   local/train_diarizer.sh --stage $diarizer_stage \
     --data-dir data/${train_set} \
     --model-dir exp/xvector_nnet_1a
@@ -221,7 +264,7 @@ fi
 # SAD -> Diarization -> ASR. This is done in the local/decode.sh
 # script.
 ##########################################################################
-if [ $stage -le 17 ]; then
+if [ $stage -le 19 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
     --test-sets "$test_sets"
