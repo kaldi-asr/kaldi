@@ -228,8 +228,7 @@ bool DecodeUtteranceLatticeIncremental(
   }
 
   // Get lattice
-  CompactLattice clat;
-  decoder.GetLattice(decoder.NumFramesDecoded(), true);
+  CompactLattice clat = decoder.GetLattice(decoder.NumFramesDecoded(), true);
   if (clat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
 
