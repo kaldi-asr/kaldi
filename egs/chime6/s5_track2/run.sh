@@ -20,6 +20,10 @@ decode_stage=0
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and decode stage
 decode_only=false
+num_data_reps=4
+snrs="20:10:15:5:0"
+foreground_snrs="20:10:15:5:0"
+background_snrs="20:10:15:5:0"
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -114,6 +118,7 @@ fi
 # noises are extracted from chime corpus. Here we use 400k utterances from array microphones,
 # its augmentation and all the worn set utterances in train.
 #########################################################################################
+
 if [ $stage -le 5 ]; then
   local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
     local/distant_audio_list distant_noises
