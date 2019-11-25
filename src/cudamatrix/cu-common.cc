@@ -31,7 +31,6 @@
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-matrixdim.h"
 
-
 namespace kaldi {
 
 #if HAVE_CUDA == 1

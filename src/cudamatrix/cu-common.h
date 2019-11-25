@@ -138,6 +138,10 @@ const char* cusparseGetStatusString(cusparseStatus_t status);
 const char* curandGetStatusString(curandStatus_t status);
 }
 
+#else
+namespace kaldi {
+#define NVTX_RANGE(name)
+};
 #endif // HAVE_CUDA
 
 namespace kaldi {

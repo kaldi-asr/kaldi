@@ -219,6 +219,7 @@ void TdnnComponent::Backprop(
     void*, // memo
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("TdnnComponent::Backprop");
   const PrecomputedIndexes *indexes =
       dynamic_cast<const PrecomputedIndexes*>(indexes_in);
   KALDI_ASSERT(indexes != NULL &&
