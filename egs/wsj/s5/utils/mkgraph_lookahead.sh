@@ -115,8 +115,8 @@ trap "rm -f $dir/HCLr.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLr.fst || $dir/HCLr.fst -ot $dir/Ha.fst || \
       $dir/HCLr.fst -ot $cl ]]; then
   fstcompose $dir/Ha.fst "$cl" | fstdeterminizestar --use-log=true | \
-     fstrmepslocal --use-log=true | \
      fstminimizeencoded | \
+     fstpushspecial | \
      add-self-loops --disambig-syms=$dir/disambig_tid.int --self-loop-scale=$loopscale --reorder=true $model | \
      fstarcsort --sort_type=olabel | \
      fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=${dir}/relabel \

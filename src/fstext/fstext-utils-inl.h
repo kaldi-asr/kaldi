@@ -148,12 +148,14 @@ using LookaheadFst = ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> >;
 // nnet3/nnet3-latgen-faster-lookahead.cc. For details of compose filters
 // see DefaultLookAhead in fst/compose.h
 template<class Arc, class I>
-LookaheadFst<Arc, I> LookaheadComposeFst(const Fst<Arc> &ifst1,
-                                         const Fst<Arc> &ifst2,
-                                         const std::vector<I> &to_remove) {
-  fst::CacheOptions cache_opts(true, 1 << 26LL);
+LookaheadFst<Arc, I> *LookaheadComposeFst(const Fst<Arc> &ifst1,
+                                          const Fst<Arc> &ifst2,
+                                          const std::vector<I> &to_remove) {
+  fst::CacheOptions cache_opts(true, 1 << 25LL);
+  fst::CacheOptions cache_opts_map(true, 0);
+  fst::ArcMapFstOptions arcmap_opts(cache_opts);
   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
-  return LookaheadFst<Arc, I>(ComposeFst<Arc>(ifst1, ifst2, cache_opts), mapper);
+  return new LookaheadFst<Arc, I>(ComposeFst<Arc>(ifst1, ifst2, cache_opts), mapper, arcmap_opts);
 }
 
 template<class Arc, class I>

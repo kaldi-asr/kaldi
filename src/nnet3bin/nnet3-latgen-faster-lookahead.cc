@@ -145,14 +145,14 @@ int main(int argc, char *argv[]) {
 
       fst::Fst<StdArc> *hcl_fst = fst::StdFst::Read(fst_in_str);
       fst::Fst<StdArc> *g_fst = fst::StdFst::Read(g_in_str);
-      fst::LookaheadFst<StdArc, int32> decode_fst = 
+      fst::LookaheadFst<StdArc, int32> *decode_fst =
                        fst::LookaheadComposeFst(*hcl_fst,
                                                 *g_fst,
                                                 disambig_in);
       timer.Reset();
 
       {
-        LatticeFasterDecoder decoder(decode_fst, config);
+        LatticeFasterDecoder decoder(*decode_fst, config);
 
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
@@ -201,7 +201,8 @@ int main(int argc, char *argv[]) {
           } else num_fail++;
         }
       }
-      delete hcl_fst; // delete this only after decoder goes out of scope.
+      delete decode_fst; // delete this only after decoder goes out of scope.
+      delete hcl_fst;
       delete g_fst;
     } else { // We have different FSTs for different utterances.
       KALDI_ERR << "Not supported for lookahead";
