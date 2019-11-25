@@ -9,6 +9,7 @@
 
 # Begin configuration section.
 decode_nj=20
+gss_nj=50
 stage=0
 enhancement=gss        # for a new enhancement method,
                        # change this variable and stage 4
@@ -89,7 +90,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
 
   for dset in dev; do
     local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run 50" --nj 160 \
+      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       ${dset} \
       ${enhanced_dir} \
       ${enhanced_dir} || exit 1
