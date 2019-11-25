@@ -31,7 +31,7 @@ background_snrs="20:10:15:5:0"
 . ./path.sh
 
 if [ $decode_only == "true" ]; then
-  stage=19
+  stage=18
 fi
 
 set -e # exit on error
@@ -177,6 +177,7 @@ fi
 ##################################################################################
 # Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
 ##################################################################################
+
 if [ $stage -le 8 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
@@ -191,7 +192,7 @@ if [ $stage -le 8 ]; then
 fi
 
 ###################################################################################
-# Stages 8 to 13 train monophone and triphone models. They will be used for 
+# Stages 9 to 14 train monophone and triphone models. They will be used for
 # generating lattices for training the chain model and for obtaining targets
 # for training the SAD system.
 ###################################################################################
@@ -233,11 +234,6 @@ if [ $stage -le 13 ]; then
 fi
 
 if [ $stage -le 14 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/${train_set} data/lang exp/tri3 exp/tri3_ali
-fi
-
-if [ $stage -le 15 ]; then
   # The following script cleans the data and produces cleaned data
   steps/cleanup/clean_and_segment_data.sh --nj $nj --cmd "$train_cmd" \
     --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
@@ -247,7 +243,8 @@ fi
 ##########################################################################
 # CHAIN MODEL TRAINING
 ##########################################################################
-if [ $stage -le 16 ]; then
+
+if [ $stage -le 15 ]; then
   # chain TDNN
   local/chain/run_tdnn.sh --nj $nj \
     --stage $nnet_stage \
@@ -262,17 +259,19 @@ fi
 # Now run the SAD script. This contains stages 15 to 19.
 # If you just want to perform SAD decoding (without
 # training), run from stage 19.
-if [ $stage -le 17 ]; then
+
+if [ $stage -le 16 ]; then
   local/train_sad.sh --stage $sad_stage \
     --data-dir data/${train_set} --test-sets "${test_sets}" \
-    --sat-model-dir exp/tri3 \
+    --sat-model-dir exp/tri3_cleaned \
     --model-dir exp/tri2
 fi
 
 ##########################################################################
 # DIARIZATION MODEL TRAINING
 ##########################################################################
-if [ $stage -le 18 ]; then
+
+if [ $stage -le 17 ]; then
   local/train_diarizer.sh --stage $diarizer_stage \
     --data-dir data/${train_set} \
     --model-dir exp/xvector_nnet_1a
@@ -284,7 +283,8 @@ fi
 # SAD -> Diarization -> ASR. This is done in the local/decode.sh
 # script.
 ##########################################################################
-if [ $stage -le 19 ]; then
+
+if [ $stage -le 18 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
     --test-sets "$test_sets"

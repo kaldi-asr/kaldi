@@ -33,7 +33,7 @@ audio_dir=${chime6_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement} eval_${enhancement}"
+test_sets="dev_${enhancement}"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -105,6 +105,11 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
       ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
   done
 fi
+
+#######################################################################
+# Prepare the dev data with dereverberation (WPE) and
+# beamforming.
+#######################################################################
 
 if [ $stage -le 1 ] && [ ${enhancement} = "beamformit" ]; then
   # Beamforming using reference arrays
@@ -187,7 +192,6 @@ fi
 ##########################################################################
 # DECODING: we perform 2 stage decoding. 
 ##########################################################################
-
 nnet3_affix=_${train_set}_cleaned_rvb
 lm_suffix=
 

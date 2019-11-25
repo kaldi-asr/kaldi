@@ -11,6 +11,8 @@ nj=96
 decode_nj=20
 stage=0
 nnet_stage=-10
+decode_stage=1
+decode_only=false
 num_data_reps=4
 snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
@@ -24,6 +26,9 @@ enhancement=beamformit # gss or beamformit
 . ./cmd.sh
 . ./path.sh
 
+if [ $decode_only == "true" ]; then
+  stage=18
+fi
 
 set -e # exit on error
 
@@ -188,16 +193,16 @@ if [ $stage -le 8 ]; then
   done
 fi
 
+###################################################################################
+# Stages 9 to 13 train monophone and triphone models. They will be used for
+# generating lattices for training the chain model
+###################################################################################
+
 if [ $stage -le 9 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
-
-###################################################################################
-# Stages 11 to 14 train monophone and triphone models. They will be used for
-# generating lattices for training the chain model
-###################################################################################
 
 if [ $stage -le 10 ]; then
   # Starting basic training on MFCC features
@@ -228,6 +233,10 @@ if [ $stage -le 13 ]; then
   steps/train_sat.sh --cmd "$train_cmd" \
 		     5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
 fi
+
+#######################################################################
+# Perform data cleanup for training data.
+#######################################################################
 
 if [ $stage -le 14 ]; then
   # The following script cleans the data and produces cleaned data
