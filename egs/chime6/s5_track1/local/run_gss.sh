@@ -8,8 +8,9 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 # Config:
 cmd=run.pl
 nj=4
-use_multiarray=false
-
+multiarray=outer_array_mics
+bss_iterations=5
+context_samples=160000
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
@@ -24,7 +25,7 @@ fi
 session_id=$1
 log_dir=$2
 enhanced_dir=$3
-
+multiarray=True
 if [ ! -d pb_chime5/ ]; then
   echo "Missing pb_chime5, run 'local/install_pb_chime5'" 
   exit 1
@@ -39,12 +40,6 @@ fi
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || \
   { echo "Could not make absolute '$enhanced_dir'" && exit 1; }
 
-if $use_multiarray; then
-  multiarray=True
-else
-  multiarray=False
-fi
-
 $cmd JOB=1:$nj $log_dir/log/enhance_${session_id}.JOB.log \
   cd pb_chime5/ '&&' \
   $miniconda_dir/bin/python -m pb_chime5.scripts.kaldi_run with \
@@ -52,4 +47,6 @@ $cmd JOB=1:$nj $log_dir/log/enhance_${session_id}.JOB.log \
     storage_dir=$enhanced_dir \
     session_id=$session_id \
     job_id=JOB number_of_jobs=$nj \
+    bss_iterations=$bss_iterations \
+    context_samples=$context_samples \
     multiarray=$multiarray || exit 1
