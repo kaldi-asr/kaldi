@@ -18,14 +18,27 @@ if [ $# != 3 ]; then
    echo "Usage: local/run_gss.sh [options] <session-id> <log-dir> <enhanced-dir>"
    echo "main options (for others, see top of script file)"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
-   echo "  --bmf \"1 2 3 4\"                        # microphones used for beamforming"
+   echo "  --bss_iterations 5                   # Number of EM iterations"
+   echo "  --context_samples 160000                  # Left-right context in number of samples"
+   echo "  --multiarray <configuration>             # Multiarray configuration"
    exit 1;
 fi
+
+# setting multiarray as "true" uses all mics, we didn't see any performance
+# gain from this we have chosen settings that makes the enhacement finish
+# in around 1/3 of a day without significant change in performance.
+# our result during the experiments are as follows:
+
+#MAF: multi array = False
+#MAT: multi array = True
+#Enhancement  Iterations  Num Microphones  Context  Computational time for GSS  #cpus  dev WER  eval WER
+#GSS(MAF)     10           24                        17   hrs                   30     62.3     57.98
+#GSS(MAT)      5           24               10s      26   hrs                   50     53.15    53.77
+#GSS(MAT)      5           12               10s       9.5 hrs                   50     53.09    53.75
 
 session_id=$1
 log_dir=$2
 enhanced_dir=$3
-multiarray=True
 if [ ! -d pb_chime5/ ]; then
   echo "Missing pb_chime5, run 'local/install_pb_chime5'" 
   exit 1
