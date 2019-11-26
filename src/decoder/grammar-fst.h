@@ -217,7 +217,10 @@ class GrammarFst {
   // too much work when it is initialized.  Each call to this function only
   // takes time O(number of left-context phones), which is quite small, but we'd
   // like to avoid that if possible.
-  void InitEntryArcs(int32 i);
+  //
+  // This function returns true if it successfully initialized the
+  // entry_arcs_[i]; and false if it left it empty because
+  bool InitEntryArcs(int32 i);
 
   // sets up instances_ with the top-level instance.
   void InitInstances();

@@ -50,7 +50,7 @@ struct MelBanksOptions {
                         // to the Nyquist frequency to get the cutoff.
   bool debug_mel;
   // htk_mode is a "hidden" config, it does not show up on command line.
-  // Enables more exact compatibibility with HTK, for testing purposes.  Affects
+  // Enables more exact compatibility with HTK, for testing purposes.  Affects
   // mel-energy flooring and reproduces a bug in HTK.
   bool htk_mode;
   explicit MelBanksOptions(int num_bins = 25)
@@ -116,6 +116,10 @@ class MelBanks {
   // returns vector of central freq of each bin; needed by plp code.
   const Vector<BaseFloat> &GetCenterFreqs() const { return center_freqs_; }
 
+  const std::vector<std::pair<int32, Vector<BaseFloat> > >& GetBins() const {
+    return bins_;
+  }
+
   // Copy constructor
   MelBanks(const MelBanks &other);
  private:
@@ -144,8 +148,8 @@ void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs);
 // Durbin's recursion - converts autocorrelation coefficients to the LPC
 // pTmp - temporal place [n]
 // pAC - autocorrelation coefficients [n + 1]
-// pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
-//       F(z) = 1 / (1 - A(z)), 1 is not stored in the demoninator
+// pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i-1] * s[n-i]}})
+//       F(z) = 1 / (1 - A(z)), 1 is not stored in the denominator
 // Returns log energy of residual (I think)
 BaseFloat Durbin(int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp);
 

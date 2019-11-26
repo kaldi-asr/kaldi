@@ -78,17 +78,10 @@ void LatticeFasterDecoderTpl<FST, Token>::InitDecoding() {
 template <typename FST, typename Token>
 bool LatticeFasterDecoderTpl<FST, Token>::Decode(DecodableInterface *decodable) {
   InitDecoding();
-
   // We use 1-based indexing for frames in this decoder (if you view it in
   // terms of features), but note that the decodable object uses zero-based
   // numbering, which we have to correct for when we call it.
-
-  while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
-    if (NumFramesDecoded() % config_.prune_interval == 0)
-      PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
-  }
+  AdvanceDecoding(decodable);
   FinalizeDecoding();
 
   // Returns true if we have any kind of traceback available (not necessarily
@@ -263,15 +256,16 @@ void LatticeFasterDecoderTpl<FST, Token>::PossiblyResizeHash(size_t num_toks) {
 // and also into the singly linked list of tokens active on this frame
 // (whose head is at active_toks_[frame]).
 template <typename FST, typename Token>
-inline Token* LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
+inline typename LatticeFasterDecoderTpl<FST, Token>::Elem*
+LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
       StateId state, int32 frame_plus_one, BaseFloat tot_cost,
       Token *backpointer, bool *changed) {
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
   // if the token was newly created or the cost changed.
   KALDI_ASSERT(frame_plus_one < active_toks_.size());
   Token *&toks = active_toks_[frame_plus_one].toks;
-  Elem *e_found = toks_.Find(state);
-  if (e_found == NULL) {  // no such token presently.
+  Elem *e_found = toks_.Insert(state, NULL);
+  if (e_found->val == NULL) {  // no such token presently.
     const BaseFloat extra_cost = 0.0;
     // tokens on the currently final frame have zero extra_cost
     // as any of them could end up
@@ -280,9 +274,9 @@ inline Token* LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
     // NULL: no forward links yet
     toks = new_tok;
     num_toks_++;
-    toks_.Insert(state, new_tok);
+    e_found->val = new_tok;
     if (changed) *changed = true;
-    return new_tok;
+    return e_found;
   } else {
     Token *tok = e_found->val;  // There is an existing Token for this state.
     if (tok->tot_cost > tot_cost) {  // replace old token
@@ -301,7 +295,7 @@ inline Token* LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
     } else {
       if (changed) *changed = false;
     }
-    return tok;
+    return e_found;
   }
 }
 
@@ -800,12 +794,12 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
             next_cutoff = tot_cost + adaptive_beam; // prune by best current token
           // Note: the frame indexes into active_toks_ are one-based,
           // hence the + 1.
-          Token *next_tok = FindOrAddToken(arc.nextstate,
-                                           frame + 1, tot_cost, tok, NULL);
+          Elem *e_next = FindOrAddToken(arc.nextstate,
+                                        frame + 1, tot_cost, tok, NULL);
           // NULL: no change indicator needed
 
           // Add ForwardLink from tok to next_tok (put on head of list tok->links)
-          tok->links = new ForwardLinkT(next_tok, arc.ilabel, arc.olabel,
+          tok->links = new ForwardLinkT(e_next->val, arc.ilabel, arc.olabel,
                                         graph_cost, ac_cost, tok->links);
         }
       } // for all arcs
@@ -838,7 +832,7 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
   // first frame (called from InitDecoding()).
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
-  // Note-- this queue structure is is not very optimal as
+  // Note-- this queue structure is not very optimal as
   // it may cause us to process states unnecessarily (e.g. more than once),
   // but in the baseline code, turning this vector into a set to fix this
   // problem did not improve overall speed.
@@ -855,14 +849,15 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
   for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
     StateId state = e->key;
     if (fst_->NumInputEpsilons(state) != 0)
-      queue_.push_back(state);
+      queue_.push_back(e);
   }
 
   while (!queue_.empty()) {
-    StateId state = queue_.back();
+    const Elem *e = queue_.back();
     queue_.pop_back();
 
-    Token *tok = toks_.Find(state)->val;  // would segfault if state not in toks_ but this can't happen.
+    StateId state = e->key;
+    Token *tok = e->val;  // would segfault if e is a NULL pointer but this can't happen.
     BaseFloat cur_cost = tok->tot_cost;
     if (cur_cost > cutoff) // Don't bother processing successors.
       continue;
@@ -882,16 +877,16 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
         if (tot_cost < cutoff) {
           bool changed;
 
-          Token *new_tok = FindOrAddToken(arc.nextstate, frame + 1, tot_cost,
+          Elem *e_new = FindOrAddToken(arc.nextstate, frame + 1, tot_cost,
                                           tok, &changed);
 
-          tok->links = new ForwardLinkT(new_tok, 0, arc.olabel,
+          tok->links = new ForwardLinkT(e_new->val, 0, arc.olabel,
                                         graph_cost, 0, tok->links);
 
           // "changed" tells us whether the new token has a different
           // cost from before, or is new [if so, add into queue].
           if (changed && fst_->NumInputEpsilons(arc.nextstate) != 0)
-            queue_.push_back(arc.nextstate);
+            queue_.push_back(e_new);
         }
       }
     } // for all arcs

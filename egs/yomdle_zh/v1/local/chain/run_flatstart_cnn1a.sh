@@ -5,11 +5,12 @@
 
 # ./local/chain/compare_wer.sh exp_yomdle_chinese/chain/e2e_cnn_1a exp_yomdle_chinese/chain/cnn_e2eali_1b
 # System                      e2e_cnn_1a cnn_e2eali_1b
-# CER                             15.44     13.57
-# Final train prob               0.0616   -0.0512
-# Final valid prob               0.0390   -0.0718
-# Final train prob (xent)                 -0.6199
-# Final valid prob (xent)                 -0.7448
+# WER                             63.19     53.67
+# CER                             19.01     12.86
+# Final train prob               0.2908   -0.0455
+# Final valid prob               0.2397   -0.0531
+# Final train prob (xent)                 -0.9753
+# Final valid prob (xent)                 -1.0559
 
 set -e
 
@@ -77,7 +78,7 @@ if [ $stage -le 1 ]; then
   cat $data_dir/$train_set/text \| \
     steps/nnet3/chain/e2e/text_to_phones.py $data_dir/lang \| \
     utils/sym2int.pl -f 2- $data_dir/lang/phones.txt \| \
-    chain-est-phone-lm --num-extra-lm-states=500 \
+    chain-est-phone-lm --num-extra-lm-states=1500 \
                        ark:- $treedir/phone_lm.fst
 fi
 
@@ -140,6 +141,7 @@ if [ $stage -le 3 ]; then
     --trainer.optimization.shrink-value 1.0 \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs true \
+    --use-gpu=wait \
     --feat-dir $data_dir/${train_set} \
     --tree-dir $treedir \
     --dir $dir  || exit 1;

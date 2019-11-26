@@ -1114,7 +1114,7 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
   vector<std::pair<double, StateId> > best_cost_and_pred(clat.NumStates() + 1);
   StateId superfinal = clat.NumStates();
   for (StateId s = 0; s <= clat.NumStates(); s++) {
-    best_cost_and_pred[s].first = numeric_limits<double>::infinity();
+    best_cost_and_pred[s].first = std::numeric_limits<double>::infinity();
     best_cost_and_pred[s].second = fst::kNoStateId;
   }
   best_cost_and_pred[0].first = 0;

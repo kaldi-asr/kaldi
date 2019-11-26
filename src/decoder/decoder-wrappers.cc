@@ -34,7 +34,7 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     DecodableInterface *decodable,
     const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
-    std::string utt,
+    const std::string &utt,
     BaseFloat acoustic_scale,
     bool determinize,
     bool allow_partial,

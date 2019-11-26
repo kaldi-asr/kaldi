@@ -67,7 +67,7 @@ void ApplyCmvnReverse(const MatrixBase<double> &stats,
 /// is done to disable CMVN for those dimensions.
 void FakeStatsForSomeDims(const std::vector<int32> &dims,
                           MatrixBase<double> *stats);
-                          
+
 
 
 }  // namespace kaldi

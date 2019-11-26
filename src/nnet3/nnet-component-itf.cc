@@ -69,6 +69,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new RestrictedAttentionComponent::PrecomputedIndexes();
   } else if (cpi_type == "GeneralDropoutComponentPrecomputedIndexes") {
     ans = new GeneralDropoutComponentPrecomputedIndexes();
+  } else if (cpi_type == "SpecAugmentTimeMaskComponentPrecomputedIndexes") {
+    ans = new SpecAugmentTimeMaskComponentPrecomputedIndexes();
   } else if (cpi_type == "TdnnComponentPrecomputedIndexes") {
     ans = new TdnnComponent::PrecomputedIndexes();
   }
@@ -167,6 +169,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new DropoutMaskComponent();
   } else if (component_type == "GeneralDropoutComponent") {
     ans = new GeneralDropoutComponent();
+  } else if (component_type == "SpecAugmentTimeMaskComponent") {
+    ans = new SpecAugmentTimeMaskComponent();
   } else if (component_type == "BackpropTruncationComponent") {
     ans = new BackpropTruncationComponent();
   } else if (component_type == "LstmNonlinearityComponent") {

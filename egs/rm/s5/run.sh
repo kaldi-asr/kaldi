@@ -251,4 +251,7 @@ local/run_sgmm2.sh
 # local/nnet/run_cnn2d.sh
 
 # chain recipe
-# local/chain/run_tdnn_5f.sh
+local/chain/run_tdnn.sh
+
+# chain recipe with online-cmn
+local/chain/run_tdnn_online_cmn.sh

@@ -1361,6 +1361,15 @@ void Compiler::OutputDebugInfo(NnetComputation *computation) const {
     NnetComputation::MatrixDebugInfo &debug_info =
         computation->matrix_debug_info[value_matrix];
     debug_info.is_deriv = false;
+    if (!debug_info.cindexes.empty()) {
+      // This can happen if we created an alias for a node using a
+      // dim-range-node that covers all the dimensions (would satisfy
+      // IsWholeMatrix() above while not being a unique matrix).  We sometimes
+      // do that to work around compiler constraints when creating expressions
+      // that have the same quantity with more than one scaling value within the
+      // same expression (like for computing deltas).
+      continue;
+    }
     AppendCindexes(step_info.node_index, step_info.output_indexes,
                    &debug_info.cindexes);
     if (deriv_matrix != 0) {

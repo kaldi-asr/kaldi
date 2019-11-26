@@ -23,7 +23,7 @@ nnet3_affix=_train_worn_u100k
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 
-for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
+for f in data/${train_set}/utt2spk ${gmm_dir}/final.mdl; do
   if [ ! -f $f ]; then
     echo "$0: expected file $f to exist"
     exit 1

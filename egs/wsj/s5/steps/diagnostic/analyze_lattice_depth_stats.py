@@ -9,6 +9,15 @@ from __future__ import division
 import argparse
 import sys, os
 from collections import defaultdict
+from io import open
+import codecs
+
+# reference: http://www.macfreek.nl/memory/Encoding_of_Python_stdout
+if sys.version_info.major == 2:
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout, 'strict')
+else:
+    assert sys.version_info.major == 3
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
 
 parser = argparse.ArgumentParser(description="This script reads stats created in analyze_lats.sh "
@@ -29,13 +38,13 @@ args = parser.parse_args()
 # set up phone_int2text to map from phone to printed form.
 phone_int2text = {}
 try:
-    f = open(args.lang + "/phones.txt", "r");
+    f = open(args.lang + "/phones.txt", "r", encoding='utf-8')
     for line in f.readlines():
         [ word, number] = line.split()
         phone_int2text[int(number)] = word
     f.close()
 except:
-    sys.exit("analyze_lattice_depth_stats.py: error opening or reading {0}/phones.txt".format(
+    sys.exit(u"analyze_lattice_depth_stats.py: error opening or reading {0}/phones.txt".format(
             args.lang))
 # this is a special case... for begin- and end-of-sentence stats,
 # we group all nonsilence phones together.
@@ -49,14 +58,14 @@ try:
     # open lang/phones/silence.csl-- while there are many ways of obtaining the
     # silence/nonsilence phones, we read this because it's present in graph
     # directories as well as lang directories.
-    filename = "{0}/phones/silence.csl".format(args.lang)
+    filename = u"{0}/phones/silence.csl".format(args.lang)
     f = open(filename, "r")
     line = f.readline()
     for silence_phone in line.split(":"):
         nonsilence.remove(int(silence_phone))
     f.close()
 except Exception as e:
-    sys.exit("analyze_lattice_depth_stats.py: error processing {0}/phones/silence.csl: {1}".format(
+    sys.exit(u"analyze_lattice_depth_stats.py: error processing {0}/phones/silence.csl: {1}".format(
             args.lang, str(e)))
 
 # phone_depth_counts is a dict of dicts.
@@ -80,7 +89,7 @@ while True:
         break
     a = line.split()
     if len(a) != 3:
-        sys.exit("analyze_lattice_depth_stats.py: reading stdin, could not interpret line: " + line)
+        sys.exit(u"analyze_lattice_depth_stats.py: reading stdin, could not interpret line: " + line)
     try:
         phone, depth, count = [ int(x) for x in a ]
 
@@ -92,11 +101,11 @@ while True:
         universal_phone = -1
         phone_depth_counts[universal_phone][depth] += count
     except Exception as e:
-        sys.exit("analyze_lattice_depth_stats.py: unexpected phone {0} "
-                 "seen (lang directory mismatch?): line is {1}, error is {2}".format(phone, line, str(e)))
+        sys.exit(u"analyze_lattice_depth_stats.py: unexpected phone {0} "
+                 u"seen (lang directory mismatch?): line is {1}, error is {2}".format(phone, line, str(e)))
 
 if total_frames == 0:
-    sys.exit("analyze_lattice_depth_stats.py: read no input")
+    sys.exit(u"analyze_lattice_depth_stats.py: read no input")
 
 
 # If depth_to_count is a map from depth-in-frames to count,
@@ -125,8 +134,8 @@ def GetMean(depth_to_count):
     return this_total_depth / this_total_frames
 
 
-print("The total amount of data analyzed assuming 100 frames per second "
-      "is {0} hours".format("%.1f" % (total_frames / 360000.0)))
+print(u"The total amount of data analyzed assuming 100 frames per second "
+      u"is {0} hours".format("%.1f" % (total_frames / 360000.0)))
 
 # the next block prints lines like (to give some examples):
 # Nonsilence phones as a group account for 74.4% of phone occurrences, with lattice depth (10,50,90-percentile)=(1,2,7) and mean=3.1
@@ -152,18 +161,18 @@ for phone,depths in sorted(phone_depth_counts.items(), key = lambda x : -sum(x[1
         try:
             phone_text = phone_int2text[phone]
         except:
-            sys.exit("analyze_lattice_depth_stats.py: phone {0} is not covered on phones.txt "
-                     "(lang/alignment mismatch?)".format(phone))
-        preamble = "Phone {phone_text} accounts for {percent}% of frames, with".format(
+            sys.exit(u"analyze_lattice_depth_stats.py: phone {0} is not covered on phones.txt "
+                     u"(lang/alignment mismatch?)".format(phone))
+        preamble = u"Phone {phone_text} accounts for {percent}% of frames, with".format(
             phone_text = phone_text, percent = "%.1f" % frequency_percentage)
     elif phone == 0:
-        preamble = "Nonsilence phones as a group account for {percent}% of frames, with".format(
+        preamble = u"Nonsilence phones as a group account for {percent}% of frames, with".format(
             percent = "%.1f" % frequency_percentage)
     else:
         assert phone == -1
         preamble = "Overall,";
 
-    print("{preamble} lattice depth (10,50,90-percentile)=({p10},{p50},{p90}) and mean={mean}".format(
+    print(u"{preamble} lattice depth (10,50,90-percentile)=({p10},{p50},{p90}) and mean={mean}".format(
             preamble = preamble,
             p10 = depth_percentile_10,
             p50 = depth_percentile_50,

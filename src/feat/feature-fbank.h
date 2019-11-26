@@ -94,7 +94,7 @@ class FbankComputer {
     return opts_.mel_opts.num_bins + (opts_.use_energy ? 1 : 0);
   }
 
-  bool NeedRawLogEnergy() { return opts_.use_energy && opts_.raw_energy; }
+  bool NeedRawLogEnergy() const { return opts_.use_energy && opts_.raw_energy; }
 
   const FrameExtractionOptions &GetFrameOptions() const {
     return opts_.frame_opts;
@@ -121,7 +121,7 @@ class FbankComputer {
      @param [out] feature  Pointer to a vector of size this->Dim(), to which
          the computed feature will be written.
   */
-  void Compute(BaseFloat signal_log_energy,
+  void Compute(BaseFloat signal_raw_log_energy,
                BaseFloat vtln_warp,
                VectorBase<BaseFloat> *signal_frame,
                VectorBase<BaseFloat> *feature);

@@ -44,7 +44,7 @@ SpectrogramComputer::~SpectrogramComputer() {
   delete srfft_;
 }
 
-void SpectrogramComputer::Compute(BaseFloat signal_log_energy,
+void SpectrogramComputer::Compute(BaseFloat signal_raw_log_energy,
                                   BaseFloat vtln_warp,
                                   VectorBase<BaseFloat> *signal_frame,
                                   VectorBase<BaseFloat> *feature) {
@@ -54,13 +54,18 @@ void SpectrogramComputer::Compute(BaseFloat signal_log_energy,
 
   // Compute energy after window function (not the raw one)
   if (!opts_.raw_energy)
-    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
+    signal_raw_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
                                      std::numeric_limits<float>::epsilon()));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
   else  // An alternative algorithm that works for non-powers-of-two
     RealFft(signal_frame, true);
+
+  if (opts_.return_raw_fft) {
+    feature->CopyFromVec(*signal_frame);
+    return;
+  }
 
   // Convert the FFT into a power spectrum.
   ComputePowerSpectrum(signal_frame);
@@ -72,11 +77,11 @@ void SpectrogramComputer::Compute(BaseFloat signal_log_energy,
 
   feature->CopyFromVec(power_spectrum);
 
-  if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_)
-    signal_log_energy = log_energy_floor_;
+  if (opts_.energy_floor > 0.0 && signal_raw_log_energy < log_energy_floor_)
+    signal_raw_log_energy = log_energy_floor_;
   // The zeroth spectrogram component is always set to the signal energy,
   // instead of the square of the constant component of the signal.
-  (*feature)(0) = signal_log_energy;
+  (*feature)(0) = signal_raw_log_energy;
 }
 
 }  // namespace kaldi

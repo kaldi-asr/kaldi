@@ -36,7 +36,7 @@ namespace kaldi {
 class OnlineTimer;
 
 /// class OnlineTimingStats stores statistics from timing of online decoding,
-/// which will enable the Print() function to print out the averate real-time
+/// which will enable the Print() function to print out the average real-time
 /// factor and average delay per utterance.  See class OnlineTimer.
 class OnlineTimingStats {
  public:
