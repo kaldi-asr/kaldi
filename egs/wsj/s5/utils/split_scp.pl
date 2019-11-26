@@ -172,10 +172,13 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
     for my $spk (sort (keys %spk2utt)) {
         $scpcount[$scpidx] += $spk_count{$spk};
         push @{$scparray[$scpidx]}, $spk;
+        $numspks--;
         $dur = $spk2dur{$spk};
         $dursum += $dur;
         $dursum_current += $dur;
-        if ($dursum >= $splitdur * ($scpidx + 1) && $dursum_current > 10.0) {
+
+        $num_split_left = $numscps - $scpidx - 1;
+        if (($dursum >= $splitdur * ($scpidx + 1) && $dursum_current > 10.0) || $numspks == $num_split_left) {
             $scp2dur[$scpidx] = $dursum_current;
             $scpidx += 1;
             $dursum_current = 0.0;
@@ -206,7 +209,7 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
             die "$0: Trying to split data while taking duration into account leads to a " .
                 "severe imbalance in splits. This happens when there is a lot more data " .
                 "for some speakers than for others (smallest,largest) dur are $smallest_dur,$largest_dur.\n" .
-                "You should use utils/data/modify_speaker_duration.sh to fix that.\n"
+                "You should use utils/data/modify_speaker_info.sh to fix that.\n"
         }
     }
 
