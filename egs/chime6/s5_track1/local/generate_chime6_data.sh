@@ -84,7 +84,7 @@ popd
 
 # finally check md5sum
 pushd ${odir}
-md5sum -c ${SYNC_PATH}/audio_md5sums.txt
+md5sum -c ${SYNC_PATH}/audio_md5sums.txt || echo "check https://github.com/chimechallenge/chime6-synchronisation"; exit 1
 popd
 
 echo "`basename $0` Done."
