@@ -18,8 +18,8 @@ if [ $# != 3 ]; then
    echo "Usage: local/run_gss.sh [options] <session-id> <log-dir> <enhanced-dir>"
    echo "main options (for others, see top of script file)"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
-   echo "  --bss_iterations 5                   # Number of EM iterations"
-   echo "  --context_samples 160000                  # Left-right context in number of samples"
+   echo "  --bss_iterations 5                       # Number of EM iterations"
+   echo "  --context_samples 160000                 # Left-right context in number of samples"
    echo "  --multiarray <configuration>             # Multiarray configuration"
    exit 1;
 fi

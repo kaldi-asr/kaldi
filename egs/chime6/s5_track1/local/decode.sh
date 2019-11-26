@@ -249,6 +249,7 @@ if [ $stage -le 5 ]; then
   done
 
   local/score_for_submit.sh \
+      --do_eval false \
       --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
       --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_2stage
 fi
