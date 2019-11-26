@@ -17,7 +17,6 @@ num_data_reps=4
 snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
-use_multiarray=false
 enhancement=beamformit # gss or beamformit
 
 # End configuration section

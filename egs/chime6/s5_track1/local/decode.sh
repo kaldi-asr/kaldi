@@ -44,20 +44,6 @@ enhancement=${enhancement}_multiarray
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
 
-###########################################################################
-# We first generate the synchronized audio files across arrays and
-# corresponding JSON files. Note that this requires sox v14.4.2,
-# which is installed via miniconda in ./local/check_tools.sh
-###########################################################################
-
-if [ $stage -le 0 ]; then
-  local/generate_chime6_data.sh \
-    --cmd "$train_cmd --max-jobs-run 5" \
-    ${chime5_corpus} \
-    ${chime6_corpus}
-fi
-
-
 #########################################################################################
 # In stage 1, we perform GSS based enhancement or beamformit for the dev. multiarray = false
 #can take around 7hrs for dev set.
