@@ -1,16 +1,18 @@
 #!/bin/bash
 
-# run_tdnn_8k.sh is like run_tdnn_7k.sh but uses new kaldi recipe.
+# Copyright 2019 Idiap Research Institute (Srikanth Madikeri)
+# Apache 2.0.
+# run_tdnn_7k.sh in local/chain but uses new kaldi recipe.
 
 set -e
 
 # configs for 'chain'
-affix=chaina_v3
+affix=chain2
 stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_8k  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain2/tdnn_8k  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_nj=96
 decode_suff=
