@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright   2019  Idiap Research Institute (Author: Srikanth Madikeri).  Apache 2.0.
 #
 # This script validates a directory containing 'raw' egs for 'chain' training.
 # It also helps to document the expectations on such a directory.

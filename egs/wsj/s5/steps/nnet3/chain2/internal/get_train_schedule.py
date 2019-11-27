@@ -2,6 +2,7 @@
 
 # Copyright 2019    Johns Hopkins University (author: Daniel Povey)
 # Copyright         Hossein Hadian
+# Copyright   2019  Idiap Research Institute (Author: Srikanth Madikeri).  
 
 
 # Apache 2.0.

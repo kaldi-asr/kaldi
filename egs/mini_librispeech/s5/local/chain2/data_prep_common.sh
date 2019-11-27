@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2019 Daniel Povey
+#           2019 Srikanth Madikeri (Idiap Research Institute)
 
 set -euo pipefail
 

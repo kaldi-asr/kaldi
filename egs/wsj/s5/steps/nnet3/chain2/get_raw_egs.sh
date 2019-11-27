@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright   2019  Idiap Research Institute (Author: Srikanth Madikeri).  Apache 2.0.
 #
 # This script dumps 'raw' egs for 'chain' training.  What 'raw' means in this
 # context is that they need to be further processed to merge egs of the same

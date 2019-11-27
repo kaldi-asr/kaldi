@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright   2019  Idiap Research Institute (Author: Srikanth Madikeri).  Apache 2.0.
 #
 # This script validates a directory containing 'processed' egs for 'chain'
 # training, i.e. the output of process_egs.sh.  It also helps to document the

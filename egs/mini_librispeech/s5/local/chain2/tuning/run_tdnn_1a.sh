@@ -1,7 +1,9 @@
 #!/bin/bash
 
+# Copyright 2019 Srikanth Madikeri (Idiap Research Institute)
+
 # 
-# Derived from 2b, this has LDA layer now.
+# This script is a modification of local/chain/run_tdnn.sh adapted to the chain2 recipes.
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
