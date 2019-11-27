@@ -68,12 +68,6 @@ echo -n "#words $nwrd, "
 echo -n "#errors $nerr, "
 echo "wer $wer %"
 
-if ! ${do_eval}; then
-  echo "skip to score the evaluation set at this moment (Nov. 2019)"
-  echo "please set do_eval=true once the evaluation set is released."
-  exit 0
-fi
-
 echo "==== evaluation set ===="
 # evaluation set
 # get the scoring result per utterance. Copied from local/score.sh
