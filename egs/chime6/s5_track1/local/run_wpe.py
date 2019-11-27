@@ -15,6 +15,9 @@ import os, errno
 from tqdm import tqdm
 import argparse
 
+# to avoid huge memory consumption we decided to use `wpe_v8` instead of the original wpe by
+# following the advice from Christoph Boeddeker at Paderborn University
+# https://github.com/chimechallenge/kaldi_chime6/commit/2ea6ac07ef66ad98602f073b24a233cb7f61605c#r36147334
 from nara_wpe.wpe import wpe_v8 as wpe
 from nara_wpe.utils import stft, istft
 from nara_wpe import project_root
