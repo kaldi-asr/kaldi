@@ -15,7 +15,7 @@ import os, errno
 from tqdm import tqdm
 import argparse
 
-from nara_wpe.wpe import wpe
+from nara_wpe.wpe import wpe_v8 as wpe
 from nara_wpe.utils import stft, istft
 from nara_wpe import project_root
 

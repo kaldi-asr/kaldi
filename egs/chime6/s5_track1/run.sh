@@ -55,7 +55,7 @@ test_sets="dev_${enhancement}" #"dev_worn dev_beamformit"
 
 if [ $stage -le 0 ]; then
   local/generate_chime6_data.sh \
-    --cmd "$train_cmd --max-jobs-run 5" \
+    --cmd "$train_cmd" \
     ${chime5_corpus} \
     ${chime6_corpus}
 fi

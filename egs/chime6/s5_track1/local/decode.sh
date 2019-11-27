@@ -52,7 +52,7 @@ enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
 if [ $stage -le 0 ]; then
   local/generate_chime6_data.sh \
-    --cmd "$train_cmd --max-jobs-run 5" \
+    --cmd "$train_cmd" \
     ${chime5_corpus} \
     ${chime6_corpus}
 fi
@@ -107,14 +107,14 @@ fi
 # beamforming.
 #######################################################################
 
-if [ $stage -le 1 ] && [ ${enhancement} = "beamformit" ]; then
+if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
   # Beamforming using reference arrays
   # enhanced WAV directory
   enhanced_dir=enhan
   dereverb_dir=${PWD}/wav/wpe/
   for dset in dev; do
     for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 120G" \
+      local/run_wpe.sh --nj 20 --cmd "$train_cmd --mem 20G" \
                ${audio_dir}/${dset} \
                ${dereverb_dir}/${dset} \
                ${mictype}

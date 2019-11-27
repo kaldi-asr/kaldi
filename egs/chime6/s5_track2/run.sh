@@ -60,7 +60,7 @@ test_sets="dev_${enhancement}_dereverb_ref"
 
 if [ $stage -le 0 ]; then
   local/generate_chime6_data.sh \
-    --cmd "$train_cmd --max-jobs-run 5" \
+    --cmd "$train_cmd" \
     ${chime5_corpus} \
     ${chime6_corpus}
 fi
