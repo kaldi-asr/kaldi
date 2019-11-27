@@ -1,6 +1,7 @@
 // nnet3bin/nnet3-chain-train.cc
 
 // Copyright 2015  Johns Hopkins University (author: Daniel Povey)
+//           2019    Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

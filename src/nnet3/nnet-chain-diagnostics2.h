@@ -1,6 +1,7 @@
 // nnet3/nnet-chain-diagnostics.h
 
 // Copyright    2015  Johns Hopkins University (author: Daniel Povey)
+//                2019    Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

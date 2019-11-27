@@ -2,6 +2,7 @@
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
 //                2016    Xiaohui Zhang
+//                2019    Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
