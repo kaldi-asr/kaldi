@@ -119,7 +119,8 @@ int main(int argc, char *argv[]) {
           feat_dim -= 3;
         }
 
-        OnlineMatrixFeature matrix_feature(feats.ColRange(0, feat_dim));
+        SubMatrix<BaseFloat> range = feats.ColRange(0, feat_dim);
+        OnlineMatrixFeature matrix_feature(range);
 
         OnlineIvectorFeature ivector_feature(ivector_info,
                                              &matrix_feature);
