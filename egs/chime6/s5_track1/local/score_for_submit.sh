@@ -38,11 +38,10 @@ echo "insertion penalty weight: $best_wip"
 echo "==== development set ===="
 # development set
 # get the scoring result per utterance
-local/replace_uttid.py $dev/uttid_location $dev/scoring_kaldi/wer_details/per_utt > $dev/scoring_kaldi/wer_details/per_utt_loc
 score_result=$dev/scoring_kaldi/wer_details/per_utt_loc
 
 for session in S02 S09; do
-    for room in dining kitchen living; do
+    for room in DINING KITCHEN LIVING; do
 	# get nerror
 	nerr=`grep "\#csid" $score_result | grep $room | grep $session | awk '{sum+=$4+$5+$6} END {print sum}'`
 	# get nwords from references (NF-2 means to exclude utterance id and " ref ")
@@ -84,10 +83,9 @@ $cmd $eval/scoring_kaldi/log/stats1.log \
      align-text --special-symbol="'***'" ark:$eval/scoring_kaldi/test_filt.txt ark:- ark,t:- \|  \
      utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \> $eval/scoring_kaldi/wer_details_devbest/per_utt
 
-local/replace_uttid.py $eval/uttid_location $eval/scoring_kaldi/wer_details_devbest/per_utt > $eval/scoring_kaldi/wer_details_devbest/per_utt_loc
 score_result=$eval/scoring_kaldi/wer_details_devbest/per_utt_loc
 for session in S01 S21; do
-    for room in dining kitchen living; do
+    for room in DINING KITCHEN LIVING; do
 	if $do_eval; then
 	    # get nerror
 	    nerr=`grep "\#csid" $score_result | grep $room | grep $session | awk '{sum+=$4+$5+$6} END {print sum}'`

@@ -73,13 +73,13 @@ if [ $stage -le 1 ]; then
   # skip u03 and u04 as they are missing
   for mictype in worn u01 u02 u05 u06; do
     local/prepare_data.sh --mictype ${mictype} --train true \
-			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
+        ${audio_dir}/train ${json_dir}/train data/train_${mictype}
   done
   for dataset in dev; do
     for mictype in worn; do
       local/prepare_data.sh --mictype ${mictype} --train true \
-			    ${audio_dir}/${dataset} ${json_dir}/${dataset} \
-			    data/${dataset}_${mictype}
+          ${audio_dir}/${dataset} ${json_dir}/${dataset} \
+          data/${dataset}_${mictype}
     done
   done
 fi
@@ -100,7 +100,7 @@ LM=data/srilm/best_3gram.gz
 if [ $stage -le 3 ]; then
   # Compiles G for chime5 trigram LM
   utils/format_lm.sh \
-		data/lang $LM data/local/dict/lexicon.txt data/lang
+    data/lang $LM data/local/dict/lexicon.txt data/lang
 
 fi
 
@@ -206,31 +206,31 @@ fi
 if [ $stage -le 10 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
-		      data/${train_set}_30kshort data/lang exp/mono
+          data/${train_set}_30kshort data/lang exp/mono
 fi
 
 if [ $stage -le 11 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-		    data/${train_set} data/lang exp/mono exp/mono_ali
+        data/${train_set} data/lang exp/mono exp/mono_ali
 
   steps/train_deltas.sh --cmd "$train_cmd" \
-			2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
+      2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
 fi
 
 if [ $stage -le 12 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-		    data/${train_set} data/lang exp/tri1 exp/tri1_ali
+        data/${train_set} data/lang exp/tri1 exp/tri1_ali
 
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
-			  4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
+        4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
 fi
 
 if [ $stage -le 13 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
+        data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
   steps/train_sat.sh --cmd "$train_cmd" \
-		     5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
+         5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
 fi
 
 if [ $stage -le 14 ]; then
@@ -291,3 +291,4 @@ if [ $stage -le 18 ]; then
 fi
 
 exit 0;
+

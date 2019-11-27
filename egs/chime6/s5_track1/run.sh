@@ -17,7 +17,6 @@ num_data_reps=4
 snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
-use_multiarray=false
 enhancement=beamformit # gss or beamformit
 
 # End configuration section
@@ -151,7 +150,7 @@ fi
 
 if [ $stage -le 6 ]; then
   # combine mix array and worn mics
-  # randomly extract first 100k utterances from all mics
+  # randomly extract first 400k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
@@ -251,7 +250,7 @@ fi
 
 if [ $stage -le 15 ]; then
   # chain TDNN
-  local/chain/tuning/run_tdnn_1b.sh --nj ${nj} \
+  local/chain/run_tdnn.sh --nj ${nj} \
     --stage $nnet_stage \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \

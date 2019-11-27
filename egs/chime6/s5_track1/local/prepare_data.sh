@@ -95,11 +95,9 @@ elif [ $mictype == "gss" ]; then
       $path = $_;
       next unless $path;
       @F = split "/", $path;
-      ($f = $F[@F-1]) =~ s/.wav//;
-      $f =~ m/(P[0-9]*_S[0-9]*)_(\d+)-(\d+)/;
-      print "$1-$2-$3 $path\n";
+      print "$F[@F-1] $path\n";
     }' | sort > $dir/wav.scp
-  
+
   cat $dir/text.orig | sort > $dir/text
 else
   # array mic case

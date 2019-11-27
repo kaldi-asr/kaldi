@@ -62,6 +62,11 @@ fi
 mkdir -p $OUT_PATH/train $OUT_PATH/eval $OUT_PATH/dev
 mkdir -p $TMP_PATH/train $TMP_PATH/eval $TMP_PATH/dev
 
+if [ -f ${odir}/audio/dev/S02_P05.wav ]; then
+  echo "CHiME-6 date already exists"
+  exit 0
+fi
+
 pushd ${SYNC_PATH}
 echo "Correct for frame dropping"
 for session in S01 S02 S03 S04 S05 S06 S07 S08 S09 S12 S13 S16 S17 S18 S19 S20 S21 S22 S23 S24; do
@@ -84,7 +89,7 @@ popd
 
 # finally check md5sum
 pushd ${odir}
-md5sum -c ${SYNC_PATH}/audio_md5sums.txt
+md5sum -c ${SYNC_PATH}/audio_md5sums.txt || echo "check https://github.com/chimechallenge/chime6-synchronisation"
 popd
 
 echo "`basename $0` Done."

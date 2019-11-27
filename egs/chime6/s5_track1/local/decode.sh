@@ -9,8 +9,8 @@
 
 # Begin configuration section.
 decode_nj=20
+gss_nj=50
 stage=0
-use_multiarray=false
 enhancement=gss        # for a new enhancement method,
                        # change this variable and stage 4
 # End configuration section
@@ -39,11 +39,8 @@ test_sets="dev_${enhancement}"
 ./local/check_tools.sh || exit 1
 
 enhanced_dir=enhanced
-if $use_multiarray; then
-  enhanced_dir=${enhanced_dir}_multiarray
-  enhancement=${enhancement}_multiarray
-fi
-
+enhanced_dir=${enhanced_dir}_multiarray
+enhancement=${enhancement}_multiarray
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
 
@@ -93,8 +90,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
 
   for dset in dev; do
     local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run 30" --nj 160 \
-      --use-multiarray $use_multiarray \
+      --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       ${dset} \
       ${enhanced_dir} \
       ${enhanced_dir} || exit 1
@@ -247,9 +243,13 @@ if [ $stage -le 5 ]; then
   # Note that we disabled the eval set scoring.
 
   for dset in dev; do
-    local/get_location.py $json_dir/${dset} > exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${dset}_${enhancement}_2stage/uttid_location
+    local/add_location_to_uttid.sh ${json_dir}/${dset} \
+      exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/scoring_kaldi/wer_details/ \
+      exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/uttid_location
   done
+
   local/score_for_submit.sh \
+      --do_eval false \
       --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
       --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_2stage
 fi

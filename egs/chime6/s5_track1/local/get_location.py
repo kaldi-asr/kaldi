@@ -20,10 +20,11 @@ for file in json_files:
             ref=uttid['ref']
             speaker_id = uttid['speaker']
             location = uttid['location']
+            location=location.upper()
             session_id=uttid['session_id']
             words = uttid['words']
 
-            end_time_hh=str(uttid['end_time'][speaker_id])
+            end_time_hh=str(uttid['end_time'])
             time = end_time_hh.strip().split(':')
             hrs, mins, secs = float(time[0]), float(time[1]), float(time[2])
             end_time = timedelta(hours=hrs, minutes=mins, seconds=secs).total_seconds()
@@ -32,7 +33,7 @@ for file in json_files:
             end_time = int(end_time)
             end_time = str(end_time).zfill(7)
 
-            start_time_hh = str(uttid['start_time'][speaker_id])
+            start_time_hh = str(uttid['start_time'])
             time = start_time_hh.strip().split(':')
             hrs, mins, secs = float(time[0]), float(time[1]), float(time[2])
             start_time = timedelta(hours=hrs, minutes=mins, seconds=secs).total_seconds()
