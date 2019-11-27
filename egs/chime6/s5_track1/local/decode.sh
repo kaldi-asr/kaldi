@@ -31,9 +31,8 @@ chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 
-# training and test data
+# training data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -43,6 +42,14 @@ enhanced_dir=${enhanced_dir}_multiarray
 enhancement=${enhancement}_multiarray
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
+# test data
+if [[ ${enhancement} == *gss* ]]; then
+  test_sets="dev_${enhancement} eval_${enhancement}"
+fi
+
+if [[ ${enhancement} == *beamformit* ]]; then
+  test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
+fi
 
 ###########################################################################
 # We first generate the synchronized audio files across arrays and
@@ -59,8 +66,8 @@ fi
 
 
 #########################################################################################
-# In stage 1, we perform GSS based enhancement or beamformit for the dev. multiarray = false
-#can take around 7hrs for dev set.
+# In stage 1, we perform GSS based enhancement or beamformit for the test sets. multiarray = true
+#can take around 10hrs for dev and eval set.
 #########################################################################################
 
 if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
@@ -88,7 +95,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
     )
   fi
 
-  for dset in dev; do
+  for dset in dev eval; do
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
       ${dset} \
@@ -96,14 +103,14 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *gss* ]]; then
       ${enhanced_dir} || exit 1
   done
 
-  for dset in dev; do
+  for dset in dev eval; do
     local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/${dset} \
       ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
   done
 fi
 
 #######################################################################
-# Prepare the dev data with dereverberation (WPE) and
+# Prepare the dev and eval data with dereverberation (WPE) and
 # beamforming.
 #######################################################################
 
@@ -112,7 +119,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
   # enhanced WAV directory
   enhanced_dir=enhan
   dereverb_dir=${PWD}/wav/wpe/
-  for dset in dev; do
+  for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
       local/run_wpe.sh --nj 20 --cmd "$train_cmd --mem 20G" \
                ${audio_dir}/${dset} \
@@ -121,7 +128,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
     done
   done
 
-  for dset in dev; do
+  for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
                       ${dereverb_dir}/${dset} \
@@ -130,7 +137,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
     done
   done
 
-  for dset in dev; do
+  for dset in dev eval; do
     local/prepare_data.sh --mictype ref "$PWD/${enhanced_dir}/${dset}_${enhancement}_u0*" \
                       ${json_dir}/${dset} data/${dset}_${enhancement}
   done
@@ -240,16 +247,14 @@ if [ $stage -le 5 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
-  # Note that we disabled the eval set scoring.
 
-  for dset in dev; do
+  for dset in dev eval; do
     local/add_location_to_uttid.sh ${json_dir}/${dset} \
       exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/scoring_kaldi/wer_details/ \
       exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/uttid_location
   done
 
   local/score_for_submit.sh \
-      --do_eval false \
       --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
       --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_2stage
 fi

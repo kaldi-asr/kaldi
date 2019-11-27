@@ -47,7 +47,7 @@ audio_dir=${chime6_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}_dereverb_ref"
+test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
