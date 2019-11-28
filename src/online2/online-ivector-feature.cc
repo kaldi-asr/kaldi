@@ -69,7 +69,7 @@ void OnlineIvectorExtractionInfo::Init(
 
 int32 OnlineIvectorExtractionInfo::ExpectedFeatureDim() const {
   int32 num_splice = 1 + splice_opts.left_context + splice_opts.right_context,
-      full_dim = lda_mat.NumCols() - 1;
+      full_dim = lda_mat.NumCols();
   if (!(full_dim % num_splice == 0) || (full_dim % num_splice == 1)) {
     KALDI_WARN << "Error getting expected feature dimension: full-dim = "
                << full_dim << ", num-splice = " << num_splice;
