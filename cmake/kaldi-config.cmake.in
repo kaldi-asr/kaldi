@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+find_package(Threads)
+
+if(NOT TARGET kaldi-base)
+    include(${CMAKE_CURRENT_LIST_DIR}/kaldi-targets.cmake)
+endif()
