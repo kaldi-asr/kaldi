@@ -189,8 +189,8 @@ class CuSubArray: public CuArrayBase<T> {
   CuSubArray(const T* data, MatrixIndexT length) {
     // Yes, we're evading C's restrictions on const here, and yes, it can be used
     // to do wrong stuff; unfortunately the workaround would be very difficult.
-    CuArrayBase<T>::data_ = const_cast<T*>(data);
-    CuArrayBase<T>::dim_ = length;
+    this->data_ = const_cast<T*>(data);
+    this->dim_ = length;
   }
 };
 
