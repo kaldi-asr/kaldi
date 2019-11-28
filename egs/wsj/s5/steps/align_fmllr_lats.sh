@@ -54,7 +54,7 @@ sdata=$data/split$nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh --allow-uneven-split $data $nj || exit 1;
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
 cp $lang/phones.txt $dir || exit 1;

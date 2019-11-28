@@ -206,10 +206,10 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
     if ($allow_uneven_split != 1) {
         if (($smallest_dur < $largest_dur / 2 && $largest_dur > 3600) ||
             $smallest_dur == 0.0) {
-            die "$0: Trying to split data while taking duration into account leads to a " .
+            print STDERR "$0: Trying to split data while taking duration into account leads to a " .
                 "severe imbalance in splits. This happens when there is a lot more data " .
                 "for some speakers than for others (smallest,largest) dur are $smallest_dur,$largest_dur.\n" .
-                "You should use utils/data/modify_speaker_info.sh to fix that.\n"
+                "You should use utils/data/modify_speaker_info.sh to fix that.\n";
         }
     }
 
