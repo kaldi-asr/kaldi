@@ -246,14 +246,7 @@ if [ $stage -le 5 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
-
-  for dset in dev eval; do
-    local/add_location_to_uttid.sh ${json_dir}/${dset} \
-      exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/scoring_kaldi/wer_details/ \
-      exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/uttid_location
-  done
-
-  local/score_for_submit.sh \
+  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
       --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
       --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_2stage
 fi
