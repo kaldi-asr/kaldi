@@ -89,7 +89,7 @@ $one_based
 if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2))) {
     die
 "Usage: split_scp.pl [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp out1.scp out2.scp ...
-   or: split_scp.pl -j num-jobs job-id [--allow-uneven-splits] [--one-based] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp [out.scp]
+   or: split_scp.pl -j num-jobs job-id [--one-based] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp [out.scp]
  ... where 0 <= job-id < num-jobs, or 1 <= job-id <- num-jobs if --one-based.\n";
 }
 
