@@ -32,10 +32,6 @@ json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 
 enhanced_dir=enhanced
-enhanced_dir=${enhanced_dir}_multiarray
-enhancement=${enhancement}_multiarray
-enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
-
 if [[ ${enhancement} == *gss* ]]; then
   enhanced_dir=${enhanced_dir}_multiarray
   enhancement=${enhancement}_multiarray
@@ -45,6 +41,8 @@ if [[ ${enhancement} == *beamformit* ]]; then
   enhanced_dir=${enhanced_dir}
   enhancement=${enhancement}
 fi
+
+enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
 # training data
 train_set=train_worn_simu_u400k

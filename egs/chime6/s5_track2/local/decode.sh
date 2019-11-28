@@ -40,7 +40,7 @@ if [ $stage -le 0 ]; then
 
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u06; do
-      local/run_wpe.sh --nj 20 --cmd "$train_cmd --mem 20G" \
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
             ${audio_dir}/${dset} \
             ${dereverb_dir}/${dset} \
             ${mictype}
