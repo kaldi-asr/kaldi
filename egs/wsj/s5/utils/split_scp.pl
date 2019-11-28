@@ -33,8 +33,7 @@
 # With the --utt2dur (and --utt2spk) option it will try and create equal size
 # chunks by duration. This can cause issues when there is a severe imbalance
 # in the data (extreme example, 90% of the data is one speaker), in which case
-# the script will stop with an error message. This behaviour can be overriden
-# with --allow-uneven-splits.
+# the script will stop with an error message.
 # You will normally call this like:
 # split_scp.pl scp scp.1 scp.2 scp.3 ...
 # or
@@ -54,7 +53,6 @@ $job_id = 0;
 $utt2spk_file = "";
 $utt2dur_file = "";
 $one_based = 0;
-$allow_uneven_split = 0;
 
 for ($x = 1; $x <= 4 && @ARGV > 0; $x++) {
     if ($ARGV[0] eq "-j") {
@@ -76,10 +74,6 @@ for ($x = 1; $x <= 4 && @ARGV > 0; $x++) {
         $one_based = 1;
         shift @ARGV;
     }
-    if ($ARGV[0] eq '--allow-uneven-split') {
-        $allow_uneven_split = 1;
-        shift @ARGV;
-    }
 }
 
 if ($num_jobs != 0 && ($num_jobs < 0 || $job_id - $one_based < 0 ||
@@ -94,7 +88,7 @@ $one_based
 
 if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2))) {
     die
-"Usage: split_scp.pl [--allow-uneven-splits] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp out1.scp out2.scp ...
+"Usage: split_scp.pl [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp out1.scp out2.scp ...
    or: split_scp.pl -j num-jobs job-id [--allow-uneven-splits] [--one-based] [--utt2spk=<utt2spk_file>] [--utt2dur=<utt2dur_file>] in.scp [out.scp]
  ... where 0 <= job-id < num-jobs, or 1 <= job-id <- num-jobs if --one-based.\n";
 }
@@ -203,14 +197,11 @@ if ($utt2spk_file ne "" && $utt2dur_file ne "" ) {  # --utt2spk and --utt2dur
         }
     }
 
-    if ($allow_uneven_split != 1) {
-        if (($smallest_dur < $largest_dur / 2 && $largest_dur > 3600) ||
-            $smallest_dur == 0.0) {
-            print STDERR "$0: Trying to split data while taking duration into account leads to a " .
-                "severe imbalance in splits. This happens when there is a lot more data " .
-                "for some speakers than for others (smallest,largest) dur are $smallest_dur,$largest_dur.\n" .
-                "You should use utils/data/modify_speaker_info.sh to fix that.\n";
-        }
+    if (($smallest_dur < $largest_dur / 2 && $largest_dur > 3600) || $smallest_dur == 0.0) {
+        print STDERR "$0: Trying to split data while taking duration into account leads to a " .
+            "severe imbalance in splits. This happens when there is a lot more data " .
+            "for some speakers than for others (smallest,largest) dur are $smallest_dur,$largest_dur.\n" .
+            "You should use utils/data/modify_speaker_info.sh to fix that.\n";
     }
 
     # Now print out the files...
