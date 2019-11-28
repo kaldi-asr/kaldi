@@ -31,25 +31,25 @@ chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 
-# training data
-train_set=train_worn_simu_u400k
-
-# This script also needs the phonetisaurus g2p, srilm, beamformit
-./local/check_tools.sh || exit 1
-
 enhanced_dir=enhanced
-enhanced_dir=${enhanced_dir}_multiarray
-enhancement=${enhancement}_multiarray
-enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
-
-# test data
 if [[ ${enhancement} == *gss* ]]; then
-  test_sets="dev_${enhancement} eval_${enhancement}"
+  enhanced_dir=${enhanced_dir}_multiarray
+  enhancement=${enhancement}_multiarray
 fi
 
 if [[ ${enhancement} == *beamformit* ]]; then
-  test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
+  enhanced_dir=${enhanced_dir}
+  enhancement=${enhancement}
 fi
+
+enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
+
+# training data
+train_set=train_worn_simu_u400k
+test_sets="dev_${enhancement} eval_${enhancement}"
+
+# This script also needs the phonetisaurus g2p, srilm, beamformit
+./local/check_tools.sh || exit 1
 
 ###########################################################################
 # We first generate the synchronized audio files across arrays and
@@ -63,7 +63,6 @@ if [ $stage -le 0 ]; then
     ${chime5_corpus} \
     ${chime6_corpus}
 fi
-
 
 #########################################################################################
 # In stage 1, we perform GSS based enhancement or beamformit for the test sets. multiarray = true
@@ -121,7 +120,7 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
   dereverb_dir=${PWD}/wav/wpe/
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_wpe.sh --nj 20 --cmd "$train_cmd --mem 20G" \
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
                ${audio_dir}/${dset} \
                ${dereverb_dir}/${dset} \
                ${mictype}
@@ -247,14 +246,7 @@ if [ $stage -le 5 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
-
-  for dset in dev eval; do
-    local/add_location_to_uttid.sh ${json_dir}/${dset} \
-      exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/scoring_kaldi/wer_details/ \
-      exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_${dset}_${enhancement}_2stage/uttid_location
-  done
-
-  local/score_for_submit.sh \
+  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
       --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_2stage \
       --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_2stage
 fi

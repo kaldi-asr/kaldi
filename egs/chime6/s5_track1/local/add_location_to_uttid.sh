@@ -33,5 +33,5 @@ if [[ ${enhancement} == *gss* ]]; then
 fi
 
 if [[ ${enhancement} == *beamformit* ]]; then
-  cp $puttdir/per_utt $puttdir/per_utt_loc
+  cat $puttdir/per_utt > $puttdir/per_utt_loc
 fi

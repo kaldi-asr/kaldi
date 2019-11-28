@@ -25,7 +25,7 @@ enhancement=beamformit # gss or beamformit
 . ./path.sh
 
 if [ $decode_only == "true" ]; then
-  stage=15
+  stage=16
 fi
 
 set -e # exit on error
@@ -39,20 +39,21 @@ chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 
-# training data
+if [[ ${enhancement} == *gss* ]]; then
+  enhanced_dir=${enhanced_dir}_multiarray
+  enhancement=${enhancement}_multiarray
+fi
+
+if [[ ${enhancement} == *beamformit* ]]; then
+  enhanced_dir=${enhanced_dir}
+  enhancement=${enhancement}
+fi
+
+test_sets="dev_${enhancement} eval_${enhancement}"
 train_set=train_worn_simu_u400k
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
-
-# test data
-if [[ ${enhancement} == *gss* ]]; then
-  test_sets="dev_${enhancement} eval_${enhancement}"
-fi
-
-if [[ ${enhancement} == *beamformit* ]]; then
-  test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
-fi
 
 ###########################################################################
 # We first generate the synchronized audio files across arrays and
@@ -253,7 +254,7 @@ fi
 
 ##########################################################################
 # CHAIN MODEL TRAINING
-# skipping decoding here and performing it in step 15
+# skipping decoding here and performing it in step 16
 ##########################################################################
 
 if [ $stage -le 15 ]; then
@@ -270,7 +271,7 @@ fi
 # enhancement, fixes test sets performs feature extraction and 2 stage decoding
 ##########################################################################
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 16 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
     --test-sets "$test_sets" \

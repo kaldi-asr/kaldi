@@ -13,6 +13,8 @@ cmd=run.pl
 dev=exp/chain_train_worn_u100k_cleaned/tdnn1a_sp/decode_dev_beamformit_ref
 eval=exp/chain_train_worn_u100k_cleaned/tdnn1a_sp/decode_eval_beamformit_ref
 do_eval=true
+enhancement=gss
+json=
 
 echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh
@@ -25,6 +27,8 @@ if [ $# -ne 0 ]; then
     echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
     echo "    --dev <dev-decode-dir>          # dev set decoding directory"
     echo "    --eval <eval-decode-dir>        # eval set decoding directory"
+    echo "    --enhancement                   # enhancement type (gss or beamformit)"
+    echo "    --json <json-directory>         # directory containing CHiME-6 json files"
     exit 1;
 fi
 
@@ -37,6 +41,9 @@ echo "insertion penalty weight: $best_wip"
 
 echo "==== development set ===="
 # development set
+# get uttid location mapping
+local/add_location_to_uttid.sh --enhancement $enhancement $json/dev \
+  $dev/scoring_kaldi/wer_details/ $dev/scoring_kaldi/wer_details/uttid_location
 # get the scoring result per utterance
 score_result=$dev/scoring_kaldi/wer_details/per_utt_loc
 
@@ -76,6 +83,9 @@ $cmd $eval/scoring_kaldi/log/stats1.log \
      cat $eval/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \| \
      align-text --special-symbol="'***'" ark:$eval/scoring_kaldi/test_filt.txt ark:- ark,t:- \|  \
      utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \> $eval/scoring_kaldi/wer_details_devbest/per_utt
+
+local/add_location_to_uttid.sh --enhancement $enhancement $json/eval \
+  $eval/scoring_kaldi/wer_details_devbest/ $eval/scoring_kaldi/wer_details_devbest/uttid_location
 
 score_result=$eval/scoring_kaldi/wer_details_devbest/per_utt_loc
 for session in S01 S21; do
