@@ -132,7 +132,7 @@ fi
 #######################################################################
 if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
-    local/multispeaker_score.sh --cmd "$score_cmd" --stage $train_cmd \
+    local/multispeaker_score.sh --cmd "$train_cmd" --stage $score_stage \
       data/${datadir}_diarized/text \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi/penalty_1.0/10.txt \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi_multispeaker
