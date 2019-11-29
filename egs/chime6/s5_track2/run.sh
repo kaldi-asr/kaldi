@@ -122,7 +122,7 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: Extracting noise list from training data"
-  local/extract_noises.py $chime5_corpus/audio/train $chime5_corpus/transcriptions/train \
+  local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
     local/distant_audio_list distant_noises
   local/make_noise_list.py distant_noises > distant_noise_list
 
