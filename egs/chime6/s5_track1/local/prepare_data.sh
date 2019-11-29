@@ -22,7 +22,7 @@ fi
 
 set -e -o pipefail
 
-adir=$1
+adir=$(utils/make_absolute.sh $1)
 jdir=$2
 dir=$3
 
@@ -96,10 +96,9 @@ elif [ $mictype == "gss" ]; then
       next unless $path;
       @F = split "/", $path;
       ($f = $F[@F-1]) =~ s/.wav//;
-      $f =~ m/(P[0-9]*_S[0-9]*)_(\d+)-(\d+)/;
-      print "$1-$2-$3 $path\n";
+      print "$f $path\n";
     }' | sort > $dir/wav.scp
-  
+
   cat $dir/text.orig | sort > $dir/text
 else
   # array mic case

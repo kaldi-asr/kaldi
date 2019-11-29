@@ -11,36 +11,54 @@ nj=96
 decode_nj=20
 stage=0
 nnet_stage=-10
+decode_stage=1
+decode_only=false
 num_data_reps=4
 snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
-use_multiarray=false
-enhancement=gss        # for a new enhancement method,
-                       # change this variable and stage 4
+enhancement=beamformit # gss or beamformit
+
 # End configuration section
 . ./utils/parse_options.sh
 
 . ./cmd.sh
 . ./path.sh
 
+if [ $decode_only == "true" ]; then
+  stage=18
+fi
 
 set -e # exit on error
 
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
-json_dir=${chime5_corpus}/transcriptions
-audio_dir=${chime5_corpus}/audio
+# chime6 data directories, which are generated from ${chime5_corpus},
+# to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
+chime6_corpus=${PWD}/CHiME6
+json_dir=${chime6_corpus}/transcriptions
+audio_dir=${chime6_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}" #"dev_worn dev_addition_dereverb_ref"
-#test_sets="dev_${enhancement}_ref" #"dev_worn dev_addition_dereverb_ref"
+test_sets="dev_${enhancement}" #"dev_worn dev_beamformit"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
+###########################################################################
+# We first generate the synchronized audio files across arrays and
+# corresponding JSON files. Note that this requires sox v14.4.2,
+# which is installed via miniconda in ./local/check_tools.sh
+###########################################################################
+
+if [ $stage -le 0 ]; then
+  local/generate_chime6_data.sh \
+    --cmd "$train_cmd --max-jobs-run 5" \
+    ${chime5_corpus} \
+    ${chime6_corpus}
+fi
 
 ###########################################################################
 # We prepare dict and lang in stages 1 to 3.
@@ -48,8 +66,8 @@ test_sets="dev_${enhancement}" #"dev_worn dev_addition_dereverb_ref"
 
 if [ $stage -le 1 ]; then
   echo "$0:  prepare data..."
-  # skip u03 as they are missing
-  for mictype in worn u01 u02 u04 u05 u06; do
+  # skip u03 and u04 as they are missing
+  for mictype in worn u01 u02 u05 u06; do
     local/prepare_data.sh --mictype ${mictype} \
 			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
   done
@@ -84,66 +102,13 @@ if [ $stage -le 3 ]; then
 
 fi
   
-enhanced_dir=enhanced
-if $use_multiarray; then
-  enhanced_dir=${enhanced_dir}_multiarray
-  enhancement=${enhancement}_multiarray
-fi
-
-enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
-
 #########################################################################################
-# In stage 4, we perform GSS based enhacement for the dev and test sets. multiarray = false 
-#can take around 15 hrs for dev and eval data.
-#########################################################################################
-
-if [ $stage -le 4 ]; then
-  echo "$0:  enhance data..."
-  # Guided Source Separation (GSS) from Paderbon Univerisity
-  # http://spandh.dcs.shef.ac.uk/chime_workshop/papers/CHiME_2018_paper_boeddecker.pdf
-  # @Article{PB2018CHiME5,
-  #   author    = {Boeddeker, Christoph and Heitkaemper, Jens and Schmalenstroeer, Joerg and Drude, Lukas and Heymann, Jahn and Haeb-Umbach, Reinhold},
-  #   title     = {{Front-End Processing for the CHiME-5 Dinner Party Scenario}},
-  #   year      = {2018},
-  #   booktitle = {CHiME5 Workshop},
-  # }
-
-  if [ ! -d pb_chime5/ ]; then
-    local/install_pb_chime5.sh
-  fi
-  
-  if [ ! -f pb_chime5/cache/chime5.json ]; then
-    (
-    cd pb_chime5
-    miniconda_dir=$HOME/miniconda3/
-    export PATH=$miniconda_dir/bin:$PATH
-    export CHIME5_DIR=$chime5_corpus
-    make cache/chime5.json
-    )
-  fi
-
-  for dset in dev eval; do
-    local/run_gss.sh \
-      --cmd "$train_cmd --max-jobs-run 30" --nj 160 \
-      --use-multiarray $use_multiarray \
-      ${dset} \
-      ${enhanced_dir} \
-      ${enhanced_dir} || exit 1
-  done
-
-  for dset in dev eval; do
-    local/prepare_data.sh --mictype gss ${enhanced_dir}/audio/${dset} \
-      ${json_dir}/${dset} data/${dset}_${enhancement} || exit 1
-  done
-fi
-
-#########################################################################################
-# In stages 5 to 7, we augment and fix train data for our training purpose. point source
+# In stages 4 to 7, we augment and fix train data for our training purpose. point source
 # noises are extracted from chime corpus. Here we use 400k utterances from array microphones,
 # its augmentation and all the worn set utterances in train.
 #########################################################################################
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
   # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
   utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
@@ -151,8 +116,8 @@ if [ $stage -le 5 ]; then
   utils/fix_data_dir.sh data/train_worn
 fi
 
-if [ $stage -le 6 ]; then
-  local/extract_noises.py $chime5_corpus/audio/train $chime5_corpus/transcriptions/train \
+if [ $stage -le 5 ]; then
+  local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
     local/distant_audio_list distant_noises
   local/make_noise_list.py distant_noises > distant_noise_list
 
@@ -183,11 +148,11 @@ if [ $stage -le 6 ]; then
     data/train_worn data/train_worn_rvb
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   # combine mix array and worn mics
-  # randomly extract first 100k utterances from all mics
+  # randomly extract first 400k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
-  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u04 data/train_u05 data/train_u06
+  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
   utils/combine_data.sh data/${train_set} data/train_worn data/train_worn_rvb data/train_u400k
 
@@ -200,37 +165,12 @@ if [ $stage -le 7 ]; then
   done
 fi
 
-if [ $stage -le 8 ]; then
-  # fix speaker ID issue (thanks to Dr. Naoyuki Kanda)
-  # add array ID to the speaker ID to avoid the use of other array information to meet regulations
-  # Before this fix
-  # $ head -n 2 data/eval_beamformit_ref_nosplit/utt2spk
-  # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01
-  # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01
-  # After this fix
-  # $ head -n 2 data/eval_beamformit_ref_nosplit_fix/utt2spk
-  # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01_U02
-  # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01_U02
-  for dset in ${test_sets}; do
-    utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
-    mkdir -p data/${dset}_nosplit_fix
-    for f in segments text wav.scp; do
-      if [ -f data/${dset}_nosplit/$f ]; then
-        cp data/${dset}_nosplit/$f data/${dset}_nosplit_fix
-      fi
-    done
-    awk -F "_" '{print $0 "_" $3}' data/${dset}_nosplit/utt2spk > data/${dset}_nosplit_fix/utt2spk
-    utils/utt2spk_to_spk2utt.pl data/${dset}_nosplit_fix/utt2spk > data/${dset}_nosplit_fix/spk2utt
-  done
-
+if [ $stage -le 7 ]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
-  for dset in ${train_set} dev_worn; do
+  for dset in ${train_set}; do
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
-  done
-  for dset in ${test_sets}; do
-    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit_fix data/${dset}
   done
 fi
 
@@ -238,13 +178,13 @@ fi
 # Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
 ##################################################################################
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   # Now make MFCC features.
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   echo "$0:  make features..."
   mfccdir=mfcc
-  for x in ${train_set} ${test_sets}; do
+  for x in ${train_set}; do
     steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
 		       data/$x exp/make_mfcc/$x $mfccdir
     steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
@@ -252,24 +192,24 @@ if [ $stage -le 9 ]; then
   done
 fi
 
-if [ $stage -le 10 ]; then
+###################################################################################
+# Stages 9 to 13 train monophone and triphone models. They will be used for
+# generating lattices for training the chain model
+###################################################################################
+
+if [ $stage -le 9 ]; then
   # make a subset for monophone training
   utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
   utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
 fi
 
-###################################################################################
-# Stages 11 to 15 train monophone and triphone models. They will be used for
-# generating lattices for training the chain model
-###################################################################################
-
-if [ $stage -le 11 ]; then
+if [ $stage -le 10 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
 		      data/${train_set}_30kshort data/lang exp/mono
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 11 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/mono exp/mono_ali
 
@@ -277,7 +217,7 @@ if [ $stage -le 12 ]; then
 			2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 12 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri1 exp/tri1_ali
 
@@ -285,16 +225,7 @@ if [ $stage -le 13 ]; then
 			  4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
 fi
 
-if [ $stage -le 14 ]; then
-  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
-  for dset in ${test_sets}; do
-    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-		    exp/tri2/graph data/${dset} exp/tri2/decode_${dset} &
-  done
-  wait
-fi
-
-if [ $stage -le 15 ]; then
+if [ $stage -le 13 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
@@ -302,16 +233,11 @@ if [ $stage -le 15 ]; then
 		     5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
 fi
 
-if [ $stage -le 16 ]; then
-  utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph
-  for dset in ${test_sets}; do
-    steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-			  exp/tri3/graph data/${dset} exp/tri3/decode_${dset} &
-  done
-  wait
-fi
+#######################################################################
+# Perform data cleanup for training data.
+#######################################################################
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 14 ]; then
   # The following script cleans the data and produces cleaned data
   steps/cleanup/clean_and_segment_data.sh --nj ${nj} --cmd "$train_cmd" \
     --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
@@ -322,9 +248,9 @@ fi
 # CHAIN MODEL TRAINING
 ##########################################################################
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 15 ]; then
   # chain TDNN
-  local/chain/tuning/run_tdnn_1b.sh --nj ${nj} \
+  local/chain/run_tdnn.sh --nj ${nj} \
     --stage $nnet_stage \
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
@@ -332,35 +258,15 @@ if [ $stage -le 18 ]; then
 fi
 
 ##########################################################################
-# DECODING: we perform 2 stage decoding. 
+# DECODING is done in the local/decode.sh script. This script performs
+# enhancement, fixes test sets performs feature extraction and 2 stage decoding
 ##########################################################################
 
-if [ $stage -le 19 ]; then
-  # 2-stage decoding
-  for test_set in $test_sets; do
-    local/nnet3/decode.sh --affix 2stage --pass2-decode-opts "--min-active 1000" \
-      --acwt 1.0 --post-decode-acwt 10.0 \
-      --frames-per-chunk 150 --nj $decode_nj \
-      --ivector-dir exp/nnet3_${train_set}_cleaned_rvb \
-      data/${test_set} data/lang_chain \
-      exp/chain_${train_set}_cleaned_rvb/tree_sp/graph \
-      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp 
-  done
+if [ $stage -le 18 ]; then
+  local/decode.sh --stage $decode_stage \
+    --enhancement $enhancement \
+    --test-sets "$test_sets" \
+    --train_set "$train_set"
 fi
 
-##########################################################################
-# Scoring: here we obtian wer per session per location and overall WER
-##########################################################################
-
-if [ $stage -le 20 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-
-  local/get_location.py $json_dir/dev > exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_${enhancement}_2stage/uttid_location
-  local/get_location.py $json_dir/eval > exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_${enhancement}_2stage/uttid_location
-
-  local/score_for_submit.sh \
-      --dev exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_${enhancement}_2stage \
-      --eval exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_${enhancement}_2stage
-fi
+exit 0;
