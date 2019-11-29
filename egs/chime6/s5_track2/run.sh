@@ -172,7 +172,7 @@ if [ $stage -le 7 ]; then
 fi
 
 ##################################################################################
-# Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
+# Now make MFCC features. We use 13-dim MFCCs to train the GMM-HMM models.
 ##################################################################################
 
 if [ $stage -le 8 ]; then
@@ -181,8 +181,8 @@ if [ $stage -le 8 ]; then
   # want to store MFCC features.
   echo "$0:  make features..."
   mfccdir=mfcc
-  steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
-             --mfcc-config conf/mfcc_hires.conf \
+  steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
+             --mfcc-config conf/mfcc.conf \
              data/${train_set} exp/make_mfcc/${train_set} $mfccdir
   steps/compute_cmvn_stats.sh data/${train_set} exp/make_mfcc/${train_set} $mfccdir
   utils/fix_data_dir.sh data/${train_set}
