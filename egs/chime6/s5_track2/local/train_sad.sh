@@ -37,7 +37,7 @@ prepare_targets_stage=-10
 nstage=-10
 train_stage=-10
 stage=0
-nj=80
+nj=50
 reco_nj=40
 
 # test options
@@ -117,10 +117,10 @@ if [ $stage -le 2 ]; then
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
     --merge-weights "$merge_weights" \
+    --remove-mismatch-frames false \
     --graph-dir "$graph_dir" \
     $lang $data_dir $whole_data_dir $sat_model_dir $model_dir $dir
 fi
-
 
 ###############################################################################
 # Train a neural network for SAD

@@ -36,7 +36,7 @@ nj=40
 dir=
 affix=1a2
 
-data_dir=exp/segmentation_1a/train_whole_rvb_hires
+data_dir=exp/segmentation_1a/train_whole_hires
 targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
 . ./cmd.sh
