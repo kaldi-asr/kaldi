@@ -4,6 +4,8 @@
 #           2016  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
+GIT=${GIT:-git}
+
 set -u
 set -e
 
@@ -23,7 +25,7 @@ if [ -d pocolm ]; then
 fi
 
 echo Downloading and installing the pocolm tools
-git clone https://github.com/danpovey/pocolm.git || exit 1;
+$GIT clone https://github.com/danpovey/pocolm.git || exit 1;
 cd pocolm/src
 make || exit 1;
 echo Done making the pocolm tools

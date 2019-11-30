@@ -32,13 +32,7 @@ SimpleDecoder::~SimpleDecoder() {
 
 bool SimpleDecoder::Decode(DecodableInterface *decodable) {
   InitDecoding();
-  while( !decodable->IsLastFrame(num_frames_decoded_ - 1)) {
-    ClearToks(prev_toks_);
-    cur_toks_.swap(prev_toks_);
-    ProcessEmitting(decodable);
-    ProcessNonemitting();
-    PruneToks(beam_, &cur_toks_);
-  }
+  AdvanceDecoding(decodable);
   return (!cur_toks_.empty());
 }
 

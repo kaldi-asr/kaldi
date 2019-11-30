@@ -131,8 +131,8 @@ for n in `seq 0 $[num_sys-1]`; do
     fi
 
     echo "$0: Using transforms from ${alidirs[$n]}"
-    feats[i]="${feats[i]} transform-feats --utt2spk=ark:$this_sdata/JOB/utt2spk ark,s,cs:${alidirs[$n]}/trans.JOB ark:- ark:- |"
-    feats_one[i]="${feats_one[i]} transform-feats --utt2spk=ark:$this_sdata/1/utt2spk ark,s,cs:${alidirs[$n]}/trans.1 ark:- ark:- |"
+    feats[$n]="${feats[$n]} transform-feats --utt2spk=ark:$this_sdata/JOB/utt2spk ark,s,cs:${alidirs[$n]}/trans.JOB ark:- ark:- |"
+    feats_one[$n]="${feats_one[$n]} transform-feats --utt2spk=ark:$this_sdata/1/utt2spk ark,s,cs:${alidirs[$n]}/trans.1 ark:- ark:- |"
   fi
 
   # Do subsampling of feats, if needed
@@ -264,7 +264,7 @@ if [ $stage -le -1 ]; then
     cat $dir/ali.$n.scp
   done | sort -k1,1 > $dir/ali.scp || exit 1
 
-  utils/split_data.sh $data $nj
+  utils/split_data.sh $data $nj || exit 1;
   $cmd JOB=1:$nj $dir/log/copy_alignments.JOB.log \
     copy-int-vector "scp:utils/filter_scp.pl $data/split$nj/JOB/utt2spk $dir/ali.scp |" \
     "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1

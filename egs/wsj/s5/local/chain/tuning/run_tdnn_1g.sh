@@ -33,12 +33,12 @@ test_sets="test_dev93 test_eval92"
 gmm=tri4b        # this is the source gmm-dir that we'll use for alignments; it
                  # should have alignments for the specified training data.
 
-num_threads_ubm=32
+num_threads_ubm=8
 
 nj_extractor=10
 # It runs a JOB with '-pe smp N', where N=$[threads*processes]
 num_threads_extractor=4
-num_processes_extractor=4
+num_processes_extractor=2
 
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 

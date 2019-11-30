@@ -88,7 +88,7 @@ void OnlineFasterDecoder::UpdateImmortalToken() {
   unordered_set<Token*> emitting;
   for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
     Token* tok = e->val;
-    while (tok->arc_.ilabel == 0) //deal with non-emitting ones ...
+    while (tok != NULL && tok->arc_.ilabel == 0) //deal with non-emitting ones ...
       tok = tok->prev_;
     if (tok != NULL)
       emitting.insert(tok);

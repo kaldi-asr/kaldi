@@ -55,6 +55,11 @@ namespace kaldi {
 ///
 /// Although the name of this header mentions nnet2, actually the code is
 /// used in the online decoding with nnet3 also.
+///
+/// The class OnlineNnet2FeaturePipeline also has a support to optionally
+/// append pitch features and to apply OnlineCmvn on nnet3 input.
+/// We pass the unnormalized base_features to i-vector extractor,
+/// the OnlineCmvn for i-vector extractor is handled elsewhere.
 
 
 /// This configuration class is to set up OnlineNnet2FeaturePipelineInfo, which
@@ -66,12 +71,13 @@ struct OnlineNnet2FeaturePipelineConfig {
   std::string mfcc_config;
   std::string plp_config;
   std::string fbank_config;
+  std::string cmvn_config;
+  std::string global_cmvn_stats_rxfilename;
 
   // Note: if we do add pitch, it will not be added to the features we give to
   // the iVector extractor but only to the features we give to the neural
   // network, after the base features but before the iVector.  We don't think
-  // the iVector will be particularly helpful in normalizing the pitch features,
-  // and we wanted to avoid complications with things like online CMVN.
+  // the iVector will be particularly helpful in normalizing the pitch features.
   bool add_pitch;
 
   // the following contains the type of options that you could give to
@@ -101,6 +107,13 @@ struct OnlineNnet2FeaturePipelineConfig {
                    "PLP features (e.g. conf/plp.conf)");
     opts->Register("fbank-config", &fbank_config, "Configuration file for "
                    "filterbank features (e.g. conf/fbank.conf)");
+    opts->Register("cmvn-config", &cmvn_config, "Configuration file for "
+                   "online cmvn features (e.g. conf/online_cmvn.conf). "
+                   "Controls features on nnet3 input (not ivector features). "
+                   "If not set, the OnlineCmvn is disabled.");
+    opts->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
+                   "filename with global stats for OnlineCmvn for features "
+                   "on nnet3 input (not ivector features)");
     opts->Register("add-pitch", &add_pitch, "Append pitch features to raw "
                    "MFCC/PLP/filterbank features [but not for iVector extraction]");
     opts->Register("online-pitch-config", &online_pitch_config, "Configuration "
@@ -124,37 +137,43 @@ struct OnlineNnet2FeaturePipelineConfig {
 /// command line, as well as for easier multithreaded operation.
 struct OnlineNnet2FeaturePipelineInfo {
   OnlineNnet2FeaturePipelineInfo():
-      feature_type("mfcc"), add_pitch(false) { }
+      feature_type("mfcc"), add_pitch(false), use_cmvn(false) { }
 
   OnlineNnet2FeaturePipelineInfo(
       const OnlineNnet2FeaturePipelineConfig &config);
 
   BaseFloat FrameShiftInSeconds() const;
 
-  std::string feature_type;  // "mfcc" or "plp" or "fbank"
+  std::string feature_type; /// "mfcc" or "plp" or "fbank"
 
-  MfccOptions mfcc_opts;  // options for MFCC computation,
-                          // if feature_type == "mfcc"
-  PlpOptions plp_opts;  // Options for PLP computation, if feature_type == "plp"
-  FbankOptions fbank_opts;  // Options for filterbank computation, if
-                            // feature_type == "fbank"
+  MfccOptions mfcc_opts;  /// options for MFCC computation,
+                          /// if feature_type == "mfcc"
+  PlpOptions plp_opts;    /// Options for PLP computation, if feature_type == "plp"
+  FbankOptions fbank_opts;  /// Options for filterbank computation, if
+                            /// feature_type == "fbank"
 
   bool add_pitch;
-  PitchExtractionOptions pitch_opts;  // Options for pitch extraction, if done.
-  ProcessPitchOptions pitch_process_opts;  // Options for pitch post-processing
+  PitchExtractionOptions pitch_opts;  /// Options for pitch extraction, if done.
+  ProcessPitchOptions pitch_process_opts;  /// Options for pitch post-processing
 
+  /// If the user specified --cmvn-config, we set 'use_cmvn' to true,
+  /// and the OnlineCmvn is added to the feature preparation pipeline.
+  bool use_cmvn;
+  OnlineCmvnOptions cmvn_opts; /// Options for online cmvn, read from config file.
+  std::string global_cmvn_stats_rxfilename;  /// Filename used for reading global
+                                             /// cmvn stats in OnlineCmvn.
 
-  // If the user specified --ivector-extraction-config, we assume we're using
-  // iVectors as an extra input to the neural net.  Actually, we don't
-  // anticipate running this setup without iVectors.
+  /// If the user specified --ivector-extraction-config, we assume we're using
+  /// iVectors as an extra input to the neural net.  Actually, we don't
+  /// anticipate running this setup without iVectors.
   bool use_ivectors;
   OnlineIvectorExtractionInfo ivector_extractor_info;
 
-  // Config for weighting silence in iVector adaptation.
-  // We declare this outside of ivector_extractor_info... it was
-  // just easier to set up the code that way; and also we think
-  // it's the kind of thing you might want to play with directly
-  // on the command line instead of inside sub-config-files.
+  /// Config for weighting silence in iVector adaptation.
+  /// We declare this outside of ivector_extractor_info... it was
+  /// just easier to set up the code that way; and also we think
+  /// it's the kind of thing you might want to play with directly
+  /// on the command line instead of inside sub-config-files.
   OnlineSilenceWeightingConfig silence_weighting_config;
 
   int32 IvectorDim() { return ivector_extractor_info.extractor.IvectorDim(); }
@@ -207,15 +226,13 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   /// ideally just after calling AcceptWaveform(), or never call it for the
   /// lifetime of this object.
   void UpdateFrameWeights(
-      const std::vector<std::pair<int32, BaseFloat> > &delta_weights,
-      int32 frame_offset = 0);
+      const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
 
   /// Set the adaptation state to a particular value, e.g. reflecting previous
   /// utterances of the same speaker; this will generally be called after
   /// Copy().
   void SetAdaptationState(
       const OnlineIvectorExtractorAdaptationState &adaptation_state);
-
 
   /// Get the adaptation state; you may want to call this before destroying this
   /// object, to get adaptation state that can be used to improve decoding of
@@ -225,6 +242,10 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   void GetAdaptationState(
       OnlineIvectorExtractorAdaptationState *adaptation_state) const;
 
+  /// Set the CMVN state to a particular value.
+  /// (for features on nnet3 input, not the i-vector input).
+  void SetCmvnState(const OnlineCmvnState &cmvn_state);
+  void GetCmvnState(OnlineCmvnState *cmvn_state);
 
   /// Accept more data to process.  It won't actually process it until you call
   /// GetFrame() [probably indirectly via (decoder).AdvanceDecoding()], when you
@@ -242,56 +263,67 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   /// rescoring the lattices, this may not be much of an issue.
   void InputFinished();
 
-  // This function returns the iVector-extracting part of the feature pipeline
-  // (or NULL if iVectors are not being used); the pointer ownership is retained
-  // by this object and not transferred to the caller.  This function is used in
-  // nnet3, and also in the silence-weighting code used to exclude silence from
-  // the iVector estimation.
+  /// This function returns the iVector-extracting part of the feature pipeline
+  /// (or NULL if iVectors are not being used); the pointer ownership is retained
+  /// by this object and not transferred to the caller.  This function is used in
+  /// nnet3, and also in the silence-weighting code used to exclude silence from
+  /// the iVector estimation.
   OnlineIvectorFeature *IvectorFeature() {
     return ivector_feature_;
   }
 
-  // A const accessor for the iVector extractor. Returns NULL if iVectors are
-  // not being used.
+  /// A const accessor for the iVector extractor. Returns NULL if iVectors are
+  /// not being used.
   const OnlineIvectorFeature *IvectorFeature() const {
     return ivector_feature_;
   }
 
-  // This function returns the part of the feature pipeline that would be given
-  // as the primary (non-iVector) input to the neural network in nnet3
-  // applications.
+  /// This function returns the part of the feature pipeline that would be given
+  /// as the primary (non-iVector) input to the neural network in nnet3
+  /// applications.
   OnlineFeatureInterface *InputFeature() {
-    return feature_plus_optional_pitch_;
+    return nnet3_feature_;
   }
 
   virtual ~OnlineNnet2FeaturePipeline();
- private:
 
+ private:
   const OnlineNnet2FeaturePipelineInfo &info_;
 
-  OnlineBaseFeature *base_feature_;        // MFCC/PLP/filterbank
+  OnlineBaseFeature *base_feature_;    /// MFCC/PLP/filterbank
 
-  OnlinePitchFeature *pitch_;              // Raw pitch, if used
-  OnlineProcessPitch *pitch_feature_;  // Processed pitch, if pitch used.
+  OnlinePitchFeature *pitch_;          /// Raw pitch, if used
+  OnlineProcessPitch *pitch_feature_;  /// Processed pitch, if pitch used.
 
+  OnlineCmvn *cmvn_feature_;
+  Matrix<BaseFloat> lda_mat_;          /// LDA matrix, if supplied
+  Matrix<double> global_cmvn_stats_;   /// Global CMVN stats.
 
-  // feature_plus_pitch_ is the base_feature_ appended (OnlineAppendFeature)
+  /// feature_plus_optional_pitch_ is the base_feature_ appended (OnlineAppendFeature)
   /// with pitch_feature_, if used; otherwise, points to the same address as
   /// base_feature_.
   OnlineFeatureInterface *feature_plus_optional_pitch_;
 
-  OnlineIvectorFeature *ivector_feature_;  // iVector feature, if used.
+  /// feature_plus_optional_cmvn_ is the feature_plus_optional_pitch_
+  /// transformed with OnlineCmvn if cmvn is active; otherwise, points
+  /// to the same address as feature_plus_optional_pitch_.
+  OnlineFeatureInterface *feature_plus_optional_cmvn_;
 
-  // final_feature_ is feature_plus_optional_pitch_ appended
-  // (OnlineAppendFeature) with ivector_feature_, if ivector_feature_ is used;
-  // otherwise, points to the same address as feature_plus_optional_pitch_.
+  OnlineIvectorFeature *ivector_feature_;  /// iVector feature, if used.
+
+  /// Part of the feature pipeline that would be given as the primary
+  /// (non-iVector) input to the neural network in nnet3 applications.
+  /// This pointer is returned by InputFeature().
+  OnlineFeatureInterface *nnet3_feature_;
+
+  /// final_feature_ is feature_plus_optional_cmvn_ appended
+  /// (OnlineAppendFeature) with ivector_feature_, if ivector_feature_ is used;
+  /// otherwise, points to the same address as feature_plus_optional_pitch_.
   OnlineFeatureInterface *final_feature_;
 
-  // we cache the feature dimension, to save time when calling Dim().
+  /// we cache the feature dimension, to save time when calling Dim().
   int32 dim_;
 };
-
-
 
 
 /// @} End of "addtogroup onlinefeat"

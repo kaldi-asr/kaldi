@@ -118,6 +118,14 @@ void ScaleNnet(BaseFloat scale, Nnet *nnet);
 /// learning_rate_ to 1 for each UpdatableComponent in nnet
 void SetNnetAsGradient(Nnet *nnet);
 
+
+/// Calls the corresponding function in any component of type
+/// StatisticsPoolingComponent; used as a way to compute the 'real' left-right
+/// context of networks including SatisticsPoolingComponent, which will give you
+/// the minimum chunk size they can consume.
+void SetRequireDirectInput(bool b, Nnet *nnet);
+
+
 /// Does *dest += alpha * src (affects nnet parameters and
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
@@ -234,8 +242,8 @@ struct CollapseModelConfig {
   bool collapse_batchnorm;  // batchnorm then affine.
   bool collapse_affine;  // affine or fixed-affine then affine.
   bool collapse_scale;  // affine then fixed-scale.
-  CollapseModelConfig(): collapse_dropout(true),
-                         collapse_batchnorm(true),
+  CollapseModelConfig(): collapse_dropout(false),
+                         collapse_batchnorm(false),
                          collapse_affine(true),
                          collapse_scale(true) { }
 };

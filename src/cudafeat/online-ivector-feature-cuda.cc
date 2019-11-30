@@ -216,17 +216,21 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
 
   batched_gemv_reduce(num_gauss_, feat_dim_, ivector_dim_,
                       ie_Sigma_inv_M_f_.Stride(), ie_Sigma_inv_M_f_.Data(),
-                      X.Stride(), X.Data(), gamma.Data(), linear.Data());
+                      X.Stride(), X.Data(), linear.Data());
 
   CuSubVector<float> q_vec(quadratic.Data(),
                            ivector_dim_ * (ivector_dim_ + 1) / 2);
   q_vec.AddMatVec(1.0f, ie_U_, kTrans, gamma, 0.0f);
 
+  // TODO for online this needs to be stored and passed forward
+  // For offline this is always zero.
+  float old_num_frames = 0.0f;
+
   // compute and apply prior offset to linear and quadraditic terms
   // offset tot_post_ by correct buffer
-  update_linear_and_quadratic_terms(quadratic.NumRows(), prior_offset_,
-                                    tot_post_.Data() + b_, info_.max_count,
-                                    quadratic.Data(), linear.Data());
+  update_linear_and_quadratic_terms(
+      quadratic.NumRows(), old_num_frames, prior_offset_, tot_post_.Data() + b_,
+      info_.max_count, quadratic.Data(), linear.Data());
   // advance double buffer
   b_ = (b_ + 1) % 2;
 
@@ -238,43 +242,72 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
   // linear system.  So just use choleskey's to solve for a single ivector
   // Equation being solved: quadratic * ivector = linear
 
+#if CUDA_VERSION >= 9010
+  // Comment this out to use LU decomposistion instead.
+  // CHOLESKY's should be faster and more accurate so this is preffered.
+#define CHOLESKY  
   int nrhs = 1;
-
   // Forming new non-SP matrix for cusolver.
   CuMatrix<float> A(quadratic);
 
-#if CUDA_VERSION >= 9010
-  // This is the cusolver return code.  Checking it would require
-  // synchronization.
-  // So we do not check it.
-  int *d_info = NULL;
-
+#ifdef CHOLESKY
   // query temp buffer size
   int L_work;
   CUSOLVER_SAFE_CALL(
       cusolverDnSpotrf_bufferSize(GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER,
-                                  ivector_dim_, A.Data(), A.Stride(), &L_work));
+                                  A.NumRows(), A.Data(), A.Stride(), &L_work));
 
   // allocate temp buffer
-  float *workspace =
-      static_cast<float *>(CuDevice::Instantiate().Malloc(L_work));
+  float *workspace = static_cast<float *>(
+      CuDevice::Instantiate().Malloc(L_work * sizeof(float)));
 
   // perform factorization
   CUSOLVER_SAFE_CALL(cusolverDnSpotrf(
-      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, A.Data(),
-      A.Stride(), workspace, L_work, d_info));
+      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, A.NumRows(), A.Data(),
+      A.Stride(), workspace, L_work, d_info_));
 
   // solve for rhs
   CUSOLVER_SAFE_CALL(cusolverDnSpotrs(
-      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, nrhs,
-      A.Data(), A.Stride(), ivector->Data(), ivector_dim_, d_info));
+      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, A.NumRows(), nrhs,
+      A.Data(), A.Stride(), ivector->Data(), ivector_dim_, d_info_));
 
   CuDevice::Instantiate().Free(workspace);
 #else
-  KALDI_ERR << "Online Ivectors in CUDA is not supported by your CUDA version. "
-            << "Upgrade to CUDA 9.1 or later";
+  // query temp buffer size
+  int L_work;
+  CUSOLVER_SAFE_CALL(
+      cusolverDnSgetrf_bufferSize(GetCusolverDnHandle(), A.NumRows(),
+                                  A.NumCols(), A.Data(), A.Stride(), &L_work));
+
+  // allocate temp buffer
+  float *workspace = static_cast<float *>(
+      CuDevice::Instantiate().Malloc(L_work * sizeof(float)));
+  int *devIpiv =
+      static_cast<int *>(CuDevice::Instantiate().Malloc(L_work * sizeof(int)));
+
+  // perform factorization
+  CUSOLVER_SAFE_CALL(cusolverDnSgetrf(GetCusolverDnHandle(), A.NumRows(),
+                                      A.NumCols(), A.Data(), A.Stride(),
+                                      workspace, devIpiv, d_info_));
+
+  // solve for rhs
+  CUSOLVER_SAFE_CALL(cusolverDnSgetrs(
+      GetCusolverDnHandle(), CUBLAS_OP_N, A.NumRows(), nrhs, A.Data(),
+      A.Stride(), devIpiv, ivector->Data(), ivector_dim_, d_info_));
+
+  CuDevice::Instantiate().Free(workspace);
+  CuDevice::Instantiate().Free(devIpiv);
 #endif
-  // remove prior
+#else
+  // Cuda version is too old for cu-solver.  
+  // Use Kaldi built-in inversion routine.
+  quadratic.Invert();
+  CuVector<float> linear_tmp(linear);
+  ivector->Resize(ivector_dim_, kUndefined);
+  ivector->AddSpVec(1.0, quadratic, linear_tmp, 0.0);
+#endif
+
+  // remove prior from ivector
   CuSubVector<float> ivector0(*ivector, 0, 1);
   ivector0.Add(-prior_offset_);
 }

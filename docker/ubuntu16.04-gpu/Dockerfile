@@ -18,6 +18,7 @@ RUN apt-get update && \
         python2.7 \
         python3 \
         zlib1g-dev \
+        gfortran \
         ca-certificates \
         patch \
         ffmpeg \

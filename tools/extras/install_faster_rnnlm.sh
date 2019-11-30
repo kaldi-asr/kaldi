@@ -3,6 +3,8 @@
 # The script downloads and installs faster-rnnlm
 # https://github.com/yandex/faster-rnnlm
 
+GIT=${GIT:-git}
+
 set -e
 
 # Make sure we are in the tools/ directory.
@@ -16,10 +18,10 @@ fi
 echo "Installing Faster RNNLM"
 
 if [ ! -d "faster-rnnlm" ]; then
-    git clone https://github.com/yandex/faster-rnnlm.git
+    $GIT clone https://github.com/yandex/faster-rnnlm.git
 fi
 
 cd faster-rnnlm
-git pull
+$GIT pull
 ./build.sh
 ln -sf faster-rnnlm/rnnlm

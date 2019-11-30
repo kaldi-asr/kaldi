@@ -166,7 +166,7 @@ cp $treedir/phones.txt $dir
 nj=`cat $treedir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs

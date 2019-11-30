@@ -20,13 +20,14 @@
 namespace kaldi {
 void batched_gemv_reduce(int batch_size, int rows, int cols, int A_stride,
                          const float *AT, int B_stride, const float *B,
-                         const float *y, float *C);
+                         float *C);
 
 void splice_features(int32_t num_frames, int32_t feat_dim, int32_t left,
                      int32_t size, const float *feats, int32_t ldf,
                      float *sfeats, int32_t lds);
 
-void update_linear_and_quadratic_terms(int32_t n, float prior_offset_,
+void update_linear_and_quadratic_terms(int32_t n, float old_num_frames,
+                                       float prior_offset_,
                                        float *cur_tot_weight, int32_t max_count,
                                        float *quadratic, float *linear);
 

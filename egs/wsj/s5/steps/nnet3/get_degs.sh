@@ -130,7 +130,7 @@ cp $lang/phones.txt $dir || exit 1;
 
 
 
-utils/split_data.sh --per-utt $data $nj
+utils/split_data.sh --per-utt $data $nj || exit 1;
 sdata=$data/split${nj}utt
 
 

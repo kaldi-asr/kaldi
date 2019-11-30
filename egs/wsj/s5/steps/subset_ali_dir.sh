@@ -35,7 +35,7 @@ ali_dir=$3
 dir=$4
 
 nj=$(cat $ali_dir/num_jobs) || exit 1
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 mkdir -p $dir
 cp $ali_dir/{final.mdl,*.mat,*_opts,tree} $dir/ || true
@@ -54,7 +54,7 @@ if [ $num_spk -lt $nj ]; then
   nj=$num_spk
 fi
 
-utils/split_data.sh $subset_data $nj
+utils/split_data.sh $subset_data $nj || exit 1;
 $cmd JOB=1:$nj $dir/log/filter_alignments.JOB.log \
   copy-int-vector \
   "scp:utils/filter_scp.pl $subset_data/split${nj}/JOB/utt2spk $dir/ali_tmp.scp |" \

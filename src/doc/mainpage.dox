@@ -46,6 +46,7 @@
    - \subpage tutorial
    - \subpage kaldi_for_dummies
    - \subpage examples
+   - \subpage faq
    - \subpage glossary
    - \subpage data_prep
    - \subpage build_setup

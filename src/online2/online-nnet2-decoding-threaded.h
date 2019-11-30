@@ -200,7 +200,8 @@ class SingleUtteranceNnet2DecoderThreaded {
       const nnet2::AmNnet &am_nnet,
       const fst::Fst<fst::StdArc> &fst,
       const OnlineNnet2FeaturePipelineInfo &feature_info,
-      const OnlineIvectorExtractorAdaptationState &adaptation_state);
+      const OnlineIvectorExtractorAdaptationState &adaptation_state,
+      const OnlineCmvnState &cmvn_state);
 
 
 
@@ -293,6 +294,14 @@ class SingleUtteranceNnet2DecoderThreaded {
   /// You may only call this function after either calling TerminateDecoding() or
   /// InputFinished, and then Wait().  Otherwise it is an error.
   void GetAdaptationState(OnlineIvectorExtractorAdaptationState *adaptation_state);
+
+  /// Outputs the OnlineCmvnState of the feature pipeline to "cmvn_stat".  This
+  /// stores cmvn stats for the non-iVector features, and will be called at the
+  /// end of an utterance, assuming it's a scenario where each speaker is seen for
+  /// more than one utterance.
+  /// You may only call this function after either calling TerminateDecoding() or
+  /// InputFinished, and then Wait().  Otherwise it is an error.
+  void GetCmvnState(OnlineCmvnState *cmvn_state);
 
   /// Gets the remaining, un-decoded part of the waveform and returns the sample
   /// rate.  May only be called after Wait(), and it only makes sense to call

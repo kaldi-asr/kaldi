@@ -64,7 +64,7 @@ if have "$CXX" && ! echo "#include <zlib.h>" | $CXX -E - >&/dev/null; then
   add_packages zlib-devel zlib1g-dev
 fi
 
-for f in make automake autoconf patch grep bzip2 gzip unzip wget git sox; do
+for f in make automake autoconf patch grep bzip2 gzip unzip wget git sox gfortran; do
   if ! have $f; then
     echo "$0: $f is not installed."
     add_packages $f
@@ -174,7 +174,7 @@ if [ -n "$debian_packages" ]; then
       # The case '(pattern)' syntax is necessary in subshell for bash 3.x.
       case $rune in
         (rhel|centos|redhat) echo "yum install $redhat_packages"; break;;
-        (fedora) echo "dnx install $redhat_packages"; break;;
+        (fedora) echo "dnf install $redhat_packages"; break;;
         (suse) echo "zypper install $opensuse_packages"; break;;
         (debian) echo "apt-get install $debian_packages"; break;;
       esac

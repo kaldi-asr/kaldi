@@ -17,8 +17,8 @@ decode=true  # set to false to disable the decoding-related scripts.
 #wsj0=/ais/gobi2/speech/WSJ/csr_?_senn_d?
 #wsj1=/ais/gobi2/speech/WSJ/csr_senn_d?
 
-#wsj0=/mnt/matylda2/data/WSJ0
-#wsj1=/mnt/matylda2/data/WSJ1
+#wsj0=/mnt/matylda2/data/WSJ/WSJ0
+#wsj1=/mnt/matylda2/data/WSJ/WSJ1
 
 #wsj0=/data/corpora0/LDC93S6B
 #wsj1=/data/corpora0/LDC94S13B

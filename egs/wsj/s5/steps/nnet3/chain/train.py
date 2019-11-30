@@ -300,7 +300,7 @@ def train(args, run_opts):
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
-    common_lib.execute_command("utils/split_data.sh {0} {1}"
+    common_lib.execute_command("utils/split_data.sh {0} {1} || exit 1;"
                                "".format(args.feat_dir, num_jobs))
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
         f.write(str(num_jobs))

@@ -107,7 +107,7 @@ cp $lang/phones.txt $dir || exit 1;
 nj=$(cat $denlatdir/num_jobs) || exit 1;
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 # Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \

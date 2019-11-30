@@ -30,6 +30,7 @@
 
 int main(int argc, char *argv[]) {
   try {
+#ifndef KALDI_NO_PORTAUDIO
     using namespace kaldi;
 
     typedef kaldi::int32 int32;
@@ -122,6 +123,9 @@ int main(int argc, char *argv[]) {
     }
     freeaddrinfo(server_addr);
     return 0;
+#else
+    throw std::runtime_error("kaldi is compiled with KALDI_NO_PORTAUDIO");
+#endif
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

@@ -72,7 +72,7 @@ fi
 nj=$(cat $latdir/num_jobs)
 oov=$(cat $lang/oov.int)
 
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 sdata=$data/split${nj}
 
