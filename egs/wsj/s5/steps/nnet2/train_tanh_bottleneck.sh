@@ -149,7 +149,7 @@ num_leaves=`am-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print 
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
 sdata=$data/split$nj
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 mkdir -p $dir/log
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`

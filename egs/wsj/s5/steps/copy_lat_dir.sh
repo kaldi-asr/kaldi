@@ -55,7 +55,7 @@ else
   cat $dir/lat_out.scp.aug | sort -k1,1 > $dir/lat_out.scp
 fi
 
-utils/split_data.sh ${data} $nj
+utils/split_data.sh ${data} $nj || exit 1;
 
 # Copy and dump the lattices for perturbed data
 echo Creating lattices for augmented data by copying lattices from clean data

@@ -138,7 +138,7 @@ num_leaves=`tree-info $alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
 sdata=$data/split$nj
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs

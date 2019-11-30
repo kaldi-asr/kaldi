@@ -107,7 +107,7 @@ for f in $data/feats.scp $data/allowed_lengths.txt \
 done
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj
+utils/split_data.sh $data $nj || exit 1;
 
 mkdir -p $dir/log $dir/info
 
