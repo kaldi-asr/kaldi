@@ -88,7 +88,7 @@ done
 mkdir -p $dir/log
 nj_full=$[$nj*$num_processes]
 sdata=$data/split$nj_full;
-utils/split_data.sh $data $nj_full || exit 1;
+utils/split_data.sh $data $nj_full
 
 cp $srcdir/final.dubm $dir
 

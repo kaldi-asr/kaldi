@@ -76,7 +76,7 @@ nj=$(cat $denlatdir/num_jobs) || exit 1; # $nj is the number of
 nj_ali=$(cat $alidir/num_jobs) || exit 1;
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 
 

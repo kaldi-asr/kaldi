@@ -146,10 +146,10 @@ done
 nj=$(cat $latdir/num_jobs) || exit 1
 if [ -f $latdir/per_utt ]; then
   sdata=$data/split${nj}utt
-  utils/split_data.sh --per-utt $data $nj || exit 1;
+  utils/split_data.sh --per-utt $data $nj
 else
   sdata=$data/split$nj
-  utils/split_data.sh $data $nj || exit 1;
+  utils/split_data.sh $data $nj
 fi
 
 mkdir -p $dir/log $dir/info

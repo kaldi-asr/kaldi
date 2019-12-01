@@ -56,7 +56,7 @@ else
   cat $dir/ali_out.scp.aug | sort -k1,1 > $dir/ali_out.scp
 fi
 
-utils/split_data.sh ${data} $nj || exit 1;
+utils/split_data.sh ${data} $nj
 
 # Copy and dump the lattices for perturbed data
 echo Creating alignments for augmented data by copying alignments from clean data

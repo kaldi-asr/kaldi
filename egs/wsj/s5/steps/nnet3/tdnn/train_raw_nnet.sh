@@ -127,7 +127,7 @@ done
 
 # in this dir we'll have just one job.
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs

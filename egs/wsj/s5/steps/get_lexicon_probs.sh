@@ -55,7 +55,7 @@ for f in $data/text $lang/L.fst $lang/phones/word_boundary.int $srcdir/ali.1.gz 
 done
 
 mkdir -p $dir/log
-utils/split_data.sh $data $nj || exit 1; # Make sure split data-dir exists.
+utils/split_data.sh $data $nj # Make sure split data-dir exists.
 sdata=$data/split$nj
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
