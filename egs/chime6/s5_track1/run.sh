@@ -183,7 +183,7 @@ if [ $stage -le 7 ]; then
 fi
 
 ##################################################################################
-# Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
+# Now make 13-dim MFCC features. We use 13-dim fetures for GMM-HMM systems.
 ##################################################################################
 
 if [ $stage -le 8 ]; then
