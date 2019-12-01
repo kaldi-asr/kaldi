@@ -239,6 +239,10 @@ fi
 
 ##########################################################################
 # CHAIN MODEL TRAINING
+# You can also download a pretrained chain ASR model using:
+# wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz
+# Once it is downloaded, extract using: tar -xvzf 0012_asr_v1.tar.gz
+# and copy the contents of the exp/ directory to your exp/
 ##########################################################################
 if [ $stage -le 15 ]; then
   # chain TDNN
@@ -251,6 +255,10 @@ fi
 
 ##########################################################################
 # SAD MODEL TRAINING
+# You can also download a pretrained SAD model using:
+# wget http://kaldi-asr.org/models/12/0012_sad_v1.tar.gz
+# Once it is downloaded, extract using: tar -xvzf 0012_sad_v1.tar.gz
+# and copy the contents of the exp/ directory to your exp/
 ##########################################################################
 if [ $stage -le 16 ]; then
   local/train_sad.sh --stage $sad_stage --nj $nj \
@@ -261,6 +269,10 @@ fi
 
 ##########################################################################
 # DIARIZATION MODEL TRAINING
+# You can also download a pretrained diarization model using:
+# wget http://kaldi-asr.org/models/12/0012_diarization_v1.tar.gz
+# Once it is downloaded, extract using: tar -xvzf 0012_diarization_v1.tar.gz
+# and copy the contents of the exp/ directory to your exp/
 ##########################################################################
 if [ $stage -le 17 ]; then
   local/train_diarizer.sh --stage $diarizer_stage \
