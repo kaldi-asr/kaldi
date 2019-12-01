@@ -13,7 +13,7 @@
 nj=50
 decode_nj=20
 stage=0
-chain_stage=0
+nnet_stage=-10
 sad_stage=0
 diarizer_stage=0
 decode_stage=0
