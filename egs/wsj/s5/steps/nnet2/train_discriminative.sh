@@ -126,7 +126,7 @@ utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exi
 cp $lang/phones.txt $dir || exit 1;
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 # function to remove egs that might be soft links.
 remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }

@@ -46,7 +46,7 @@ for f in $vad_dir/ali.1.gz $vad_dir/num_jobs; do
 done
 
 nj=`cat $vad_dir/num_jobs` || exit 1
-utils/split_data.sh $data_dir $nj || exit 1;
+utils/split_data.sh $data_dir $nj
 
 utils/data/get_utt2dur.sh $data_dir
 
