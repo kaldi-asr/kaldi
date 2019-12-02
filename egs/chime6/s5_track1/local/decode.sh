@@ -13,6 +13,9 @@ gss_nj=50
 stage=0
 enhancement=gss        # for a new enhancement method,
                        # change this variable and stage 4
+
+# training data
+train_set=train_worn_simu_u400k
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -43,9 +46,6 @@ if [[ ${enhancement} == *beamformit* ]]; then
 fi
 
 enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
-
-# training data
-train_set=train_worn_simu_u400k
 test_sets="dev_${enhancement} eval_${enhancement}"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
