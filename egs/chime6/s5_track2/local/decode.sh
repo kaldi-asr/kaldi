@@ -16,23 +16,44 @@ diarizer_stage=0
 decode_diarize_stage=0
 score_stage=0
 enhancement=beamformit
-test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
-chime5_corpus=/export/corpora4/CHiME5
-json_dir=${chime5_corpus}/transcriptions
-audio_dir=${chime5_corpus}/audio
-train_set=train_worn_simu_u400k
-# End configuration section
-. ./utils/parse_options.sh
 
-. ./cmd.sh
-. ./path.sh
-. ./conf/sad.conf
+# chime5 main directory path
+# please change the path accordingly
+chime5_corpus=/export/corpora4/CHiME5
+# chime6 data directories, which are generated from ${chime5_corpus},
+# to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
+chime6_corpus=${PWD}/CHiME6
+json_dir=${chime6_corpus}/transcriptions
+audio_dir=${chime6_corpus}/audio
+
+enhanced_dir=enhanced
+enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
+
+# training data
+train_set=train_worn_simu_u400k
+test_sets="dev_${enhancement} eval_${enhancement}"
+
+# This script also needs the phonetisaurus g2p, srilm, beamformit
+./local/check_tools.sh || exit 1
+
+###########################################################################
+# We first generate the synchronized audio files across arrays and
+# corresponding JSON files. Note that this requires sox v14.4.2,
+# which is installed via miniconda in ./local/check_tools.sh
+###########################################################################
+
+if [ $stage -le 0 ]; then
+  local/generate_chime6_data.sh \
+    --cmd "$train_cmd" \
+    ${chime5_corpus} \
+    ${chime6_corpus}
+fi
 
 #######################################################################
 # Prepare the dev and eval data with dereverberation (WPE) and
 # beamforming.
 #######################################################################
-if [ $stage -le 0 ]; then
+if [ $stage -le 1 ]; then
   # Beamforming using reference arrays
   # enhanced WAV directory
   enhandir=enhan
@@ -63,7 +84,7 @@ if [ $stage -le 0 ]; then
   done
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le 2 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   mfccdir=mfcc
@@ -81,7 +102,7 @@ dir=exp/segmentation${affix}
 sad_work_dir=exp/sad${affix}_${nnet_type}/
 sad_nnet_dir=$dir/tdnn_${nnet_type}_sad_1a
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   for datadir in ${test_sets}; do
     test_set=data/${datadir}
     if [ ! -f ${test_set}/wav.scp ]; then
@@ -106,7 +127,7 @@ fi
 #######################################################################
 # Perform diarization on the dev/eval data
 #######################################################################
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
     local/diarize.sh --nj 10 --cmd "$train_cmd" --stage $diarizer_stage \
       exp/xvector_nnet_1a \
@@ -118,7 +139,7 @@ fi
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang_chain \
@@ -130,7 +151,7 @@ fi
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   for datadir in ${test_sets}; do
     local/multispeaker_score.sh --cmd "$train_cmd" --stage $score_stage \
       data/${datadir}_diarized/text \
