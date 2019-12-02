@@ -44,7 +44,7 @@ remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
-
+skip_decoding=true
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -226,7 +226,7 @@ if [ $stage -le 15 ]; then
     $tree_dir $tree_dir/graph${lm_suffix} || exit 1;
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 16 ] && [[ $skip_decoding == "false" ]]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
 

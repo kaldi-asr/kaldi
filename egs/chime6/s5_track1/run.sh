@@ -14,7 +14,6 @@ nnet_stage=-10
 decode_stage=1
 decode_only=false
 num_data_reps=4
-snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
 enhancement=beamformit # gss or beamformit
@@ -26,7 +25,7 @@ enhancement=beamformit # gss or beamformit
 . ./path.sh
 
 if [ $decode_only == "true" ]; then
-  stage=18
+  stage=16
 fi
 
 set -e # exit on error
@@ -40,9 +39,18 @@ chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 
-# training and test data
+if [[ ${enhancement} == *gss* ]]; then
+  enhanced_dir=${enhanced_dir}_multiarray
+  enhancement=${enhancement}_multiarray
+fi
+
+if [[ ${enhancement} == *beamformit* ]]; then
+  enhanced_dir=${enhanced_dir}
+  enhancement=${enhancement}
+fi
+
+test_sets="dev_${enhancement} eval_${enhancement}"
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}" #"dev_worn dev_beamformit"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -55,7 +63,7 @@ test_sets="dev_${enhancement}" #"dev_worn dev_beamformit"
 
 if [ $stage -le 0 ]; then
   local/generate_chime6_data.sh \
-    --cmd "$train_cmd --max-jobs-run 5" \
+    --cmd "$train_cmd" \
     ${chime5_corpus} \
     ${chime6_corpus}
 fi
@@ -175,7 +183,7 @@ if [ $stage -le 7 ]; then
 fi
 
 ##################################################################################
-# Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
+# Now make 13-dim MFCC features. We use 13-dim fetures for GMM-HMM systems.
 ##################################################################################
 
 if [ $stage -le 8 ]; then
@@ -246,6 +254,7 @@ fi
 
 ##########################################################################
 # CHAIN MODEL TRAINING
+# skipping decoding here and performing it in step 16
 ##########################################################################
 
 if [ $stage -le 15 ]; then
@@ -262,7 +271,7 @@ fi
 # enhancement, fixes test sets performs feature extraction and 2 stage decoding
 ##########################################################################
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 16 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
     --test-sets "$test_sets" \
