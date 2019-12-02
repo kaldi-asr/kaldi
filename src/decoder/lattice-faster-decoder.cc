@@ -229,24 +229,17 @@ void LatticeFasterDecoderTpl<FST, Token>::PossiblyResizeHash(size_t num_toks) {
 
   extra_cost is used in pruning tokens, to save memory.
 
-  Define the 'forward cost' of a token as zero for any token on the frame
-  we're currently decoding; and for other frames, as the shortest-path cost
-  between that token and a token on the frame we're currently decoding.
-  (by "currently decoding" I mean the most recently processed frame).
-
-  Then define the extra_cost of a token (always >= 0) as the forward-cost of
-  the token minus the smallest forward-cost of any token on the same frame.
+  extra_cost can be thought of as a beta (backward) cost assuming
+  we had set the betas on currently-active tokens to all be the negative
+  of the alphas for those tokens.  (So all currently active tokens would
+  be on (tied) best paths).
 
   We can use the extra_cost to accurately prune away tokens that we know will
   never appear in the lattice.  If the extra_cost is greater than the desired
   lattice beam, the token would provably never appear in the lattice, so we can
   prune away the token.
 
-  The advantage of storing the extra_cost rather than the forward-cost, is that
-  it is less costly to keep the extra_cost up-to-date when we process new frames.
-  When we process a new frame, *all* the previous frames' forward-costs would change;
-  but in general the extra_cost will change only for a finite number of frames.
-  (Actually we don't update all the extra_costs every time we update a frame; we
+  (Note: we don't update all the extra_costs every time we update a frame; we
   only do it every 'config_.prune_interval' frames).
  */
 

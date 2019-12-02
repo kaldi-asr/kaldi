@@ -1,7 +1,6 @@
-// online2bin/online2-wav-nnet3-latgen-faster.cc
+// online2bin/online2-wav-nnet3-latgen-incremental.cc
 
-// Copyright 2014  Johns Hopkins University (author: Daniel Povey)
-//           2016  Api.ai (Author: Ilya Platonov)
+// Copyright      2019  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,7 +18,7 @@
 // limitations under the License.
 
 #include "feat/wave-reader.h"
-#include "online2/online-nnet3-decoding.h"
+#include "online2/online-nnet3-incremental-decoding.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
@@ -88,8 +87,10 @@ int main(int argc, char *argv[]) {
         "(nnet3 setup), with optional iVector-based speaker adaptation and\n"
         "optional endpointing.  Note: some configuration values and inputs are\n"
         "set via config files whose filenames are passed as options\n"
+        "The lattice determinization algorithm here can operate\n"
+        "incrementally.\n"
         "\n"
-        "Usage: online2-wav-nnet3-latgen-faster [options] <nnet3-in> <fst-in> "
+        "Usage: online2-wav-nnet3-latgen-incremental [options] <nnet3-in> <fst-in> "
         "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
         "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
         "you want to decode utterance by utterance.\n";
@@ -102,7 +103,7 @@ int main(int argc, char *argv[]) {
     // as well as the basic features.
     OnlineNnet2FeaturePipelineConfig feature_opts;
     nnet3::NnetSimpleLoopedComputationOptions decodable_opts;
-    LatticeFasterDecoderConfig decoder_opts;
+    LatticeIncrementalDecoderConfig decoder_opts;
     OnlineEndpointConfig endpoint_opts;
 
     BaseFloat chunk_length_secs = 0.18;
@@ -148,16 +149,12 @@ int main(int argc, char *argv[]) {
         clat_wspecifier = po.GetArg(5);
 
     OnlineNnet2FeaturePipelineInfo feature_info(feature_opts);
+
     if (!online) {
       feature_info.ivector_extractor_info.use_most_recent_ivector = true;
       feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
       chunk_length_secs = -1.0;
     }
-
-    Matrix<double> global_cmvn_stats;
-    if (feature_info.global_cmvn_stats_rxfilename != "")
-      ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
-                      &global_cmvn_stats);
 
     TransitionModel trans_model;
     nnet3::AmNnetSimple am_nnet;
@@ -199,11 +196,8 @@ int main(int argc, char *argv[]) {
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-
       OnlineIvectorExtractorAdaptationState adaptation_state(
           feature_info.ivector_extractor_info);
-      OnlineCmvnState cmvn_state(global_cmvn_stats);
-
       for (size_t i = 0; i < uttlist.size(); i++) {
         std::string utt = uttlist[i];
         if (!wav_reader.HasKey(utt)) {
@@ -218,14 +212,13 @@ int main(int argc, char *argv[]) {
 
         OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
         feature_pipeline.SetAdaptationState(adaptation_state);
-        feature_pipeline.SetCmvnState(cmvn_state);
 
         OnlineSilenceWeighting silence_weighting(
             trans_model,
             feature_info.silence_weighting_config,
             decodable_opts.frame_subsampling_factor);
 
-        SingleUtteranceNnet3Decoder decoder(decoder_opts, trans_model,
+        SingleUtteranceNnet3IncrementalDecoder decoder(decoder_opts, trans_model,
                                             decodable_info,
                                             *decode_fst, &feature_pipeline);
         OnlineTimer decoding_timer(utt);
@@ -273,10 +266,11 @@ int main(int argc, char *argv[]) {
         }
         decoder.FinalizeDecoding();
 
-        CompactLattice clat;
-        bool end_of_utterance = true;
-        decoder.GetLattice(end_of_utterance, &clat);
+        bool use_final_probs = true;
+        CompactLattice clat = decoder.GetLattice(decoder.NumFramesDecoded(),
+                                                 use_final_probs);
 
+        Connect(&clat);
         GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
                                      &num_frames, &tot_like);
 
@@ -285,7 +279,6 @@ int main(int argc, char *argv[]) {
         // In an application you might avoid updating the adaptation state if
         // you felt the utterance had low confidence.  See lat/confidence.h
         feature_pipeline.GetAdaptationState(&adaptation_state);
-        feature_pipeline.GetCmvnState(&cmvn_state);
 
         // we want to output the lattice with un-scaled acoustics.
         BaseFloat inv_acoustic_scale =
