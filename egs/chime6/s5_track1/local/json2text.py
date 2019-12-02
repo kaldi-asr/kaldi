@@ -85,5 +85,8 @@ if __name__ == '__main__':
             else:
                 uttid += '_' + location + '-' + start_time + '-' + end_time
 
+            # In several utterances, there are inconsistency in the time stamp
+            # (the end time is earlier than the start time)
+            # We just ignored such utterances.
             if end_time > start_time:
                 sys.stdout.buffer.write((uttid + ' ' + words + '\n').encode("utf-8"))

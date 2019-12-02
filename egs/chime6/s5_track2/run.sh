@@ -13,7 +13,7 @@
 nj=50
 decode_nj=20
 stage=0
-chain_stage=0
+nnet_stage=-10
 sad_stage=0
 diarizer_stage=0
 decode_stage=0
@@ -48,7 +48,7 @@ audio_dir=${chime6_corpus}/audio
 # training and test data
 train_set=train_worn_simu_u400k
 sad_train_set=train_worn_u400k
-test_sets="dev_${enhancement}_dereverb_ref"
+test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1;
@@ -61,7 +61,7 @@ test_sets="dev_${enhancement}_dereverb_ref"
 
 if [ $stage -le 0 ]; then
   local/generate_chime6_data.sh \
-    --cmd "$train_cmd --max-jobs-run 5" \
+    --cmd "$train_cmd" \
     ${chime5_corpus} \
     ${chime6_corpus}
 fi

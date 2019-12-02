@@ -16,8 +16,7 @@ diarizer_stage=0
 decode_diarize_stage=0
 score_stage=0
 enhancement=beamformit
-test_sets="dev_${enhancement}_dereverb_ref"
-skip_scoring=false
+test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
 chime5_corpus=/export/corpora4/CHiME5
 json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
@@ -41,10 +40,10 @@ if [ $stage -le 0 ]; then
 
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u06; do
-      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 120G" \
-        ${audio_dir}/${dset} \
-        ${dereverb_dir}/${dset} \
-        ${mictype}
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
+            ${audio_dir}/${dset} \
+            ${dereverb_dir}/${dset} \
+            ${mictype}
     done
   done
 
@@ -133,7 +132,7 @@ fi
 #######################################################################
 if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
-    local/multispeaker_score.sh --cmd "$score_cmd" --stage $train_cmd \
+    local/multispeaker_score.sh --cmd "$train_cmd" --stage $score_stage \
       data/${datadir}_diarized/text \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi/penalty_1.0/10.txt \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi_multispeaker
