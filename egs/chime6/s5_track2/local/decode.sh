@@ -33,6 +33,12 @@ enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 train_set=train_worn_simu_u400k
 test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
 
+. ./utils/parse_options.sh
+
+. ./cmd.sh
+. ./path.sh
+. ./conf/sad.conf
+
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
