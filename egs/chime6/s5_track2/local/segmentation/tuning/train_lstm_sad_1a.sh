@@ -36,8 +36,8 @@ nj=40
 dir=
 affix=1a
 
-data_dir=exp/segmentation_1a/train_whole_rvb_hires
-targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
+data_dir=
+targets_dir=
 
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
@@ -62,6 +62,8 @@ fi
 mkdir -p $dir
 
 samples_per_iter=`perl -e "print int(400000 / $chunk_width)"`
+cmvn_opts="--norm-means=false --norm-vars=false"
+echo $cmvn_opts > $dir/cmvn_opts
 
 if [ $stage -le 5 ]; then
   echo "$0: creating neural net configs using the xconfig parser";

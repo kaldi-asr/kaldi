@@ -47,10 +47,11 @@ audio_dir=${chime6_corpus}/audio
 
 # training and test data
 train_set=train_worn_simu_u400k
+sad_train_set=train_worn_u400k
 test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
-./local/check_tools.sh || exit 1
+./local/check_tools.sh || exit 1;
 
 ###########################################################################
 # We first generate the synchronized audio files across arrays and
@@ -120,12 +121,14 @@ fi
 #########################################################################################
 
 if [ $stage -le 5 ]; then
+  echo "$0: Extracting noise list from training data"
   local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
     local/distant_audio_list distant_noises
   local/make_noise_list.py distant_noises > distant_noise_list
 
   noise_list=distant_noise_list
-
+  
+  echo "$0: Preparing simulated RIRs for data augmentation"
   if [ ! -d RIRS_NOISES/ ]; then
     # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
     wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
@@ -158,14 +161,8 @@ if [ $stage -le 6 ]; then
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
   utils/combine_data.sh data/${train_set} data/train_worn data/train_worn_rvb data/train_u400k
-
-  # only use left channel for worn mic recognition
-  # you can use both left and right channels for training
-  utils/copy_data_dir.sh data/train_worn data/train_worn_stereo
-  grep "\.L-" data/train_worn_stereo/text > data/train_worn/text
-  utils/fix_data_dir.sh data/train_worn
+  utils/combine_data.sh data/${sad_train_set} data/train_worn data/train_u400k
 fi
-
 
 if [ $stage -le 7 ]; then
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
@@ -175,7 +172,7 @@ if [ $stage -le 7 ]; then
 fi
 
 ##################################################################################
-# Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
+# Now make MFCC features. We use 13-dim MFCCs to train the GMM-HMM models.
 ##################################################################################
 
 if [ $stage -le 8 ]; then
@@ -184,15 +181,15 @@ if [ $stage -le 8 ]; then
   # want to store MFCC features.
   echo "$0:  make features..."
   mfccdir=mfcc
-  steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
-             --mfcc-config conf/mfcc_hires.conf \
+  steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
+             --mfcc-config conf/mfcc.conf \
              data/${train_set} exp/make_mfcc/${train_set} $mfccdir
   steps/compute_cmvn_stats.sh data/${train_set} exp/make_mfcc/${train_set} $mfccdir
   utils/fix_data_dir.sh data/${train_set}
 fi
 
 ###################################################################################
-# Stages 9 to 14 train monophone and triphone models. They will be used for
+# Stages 9 to 14 train monophone and triphone models. They will be used for 
 # generating lattices for training the chain model and for obtaining targets
 # for training the SAD system.
 ###################################################################################
@@ -242,8 +239,11 @@ fi
 
 ##########################################################################
 # CHAIN MODEL TRAINING
+# You can also download a pretrained chain ASR model using:
+# wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz
+# Once it is downloaded, extract using: tar -xvzf 0012_asr_v1.tar.gz
+# and copy the contents of the exp/ directory to your exp/
 ##########################################################################
-
 if [ $stage -le 15 ]; then
   # chain TDNN
   local/chain/run_tdnn.sh --nj $nj \
@@ -255,22 +255,25 @@ fi
 
 ##########################################################################
 # SAD MODEL TRAINING
+# You can also download a pretrained SAD model using:
+# wget http://kaldi-asr.org/models/12/0012_sad_v1.tar.gz
+# Once it is downloaded, extract using: tar -xvzf 0012_sad_v1.tar.gz
+# and copy the contents of the exp/ directory to your exp/
 ##########################################################################
-# Now run the SAD script. This contains stages 15 to 19.
-# If you just want to perform SAD decoding (without
-# training), run from stage 19.
-
 if [ $stage -le 16 ]; then
-  local/train_sad.sh --stage $sad_stage \
-    --data-dir data/${train_set} --test-sets "${test_sets}" \
+  local/train_sad.sh --stage $sad_stage --nj $nj \
+    --data-dir data/${sad_train_set} --test-sets "${test_sets}" \
     --sat-model-dir exp/tri3_cleaned \
     --model-dir exp/tri2
 fi
 
 ##########################################################################
 # DIARIZATION MODEL TRAINING
+# You can also download a pretrained diarization model using:
+# wget http://kaldi-asr.org/models/12/0012_diarization_v1.tar.gz
+# Once it is downloaded, extract using: tar -xvzf 0012_diarization_v1.tar.gz
+# and copy the contents of the exp/ directory to your exp/
 ##########################################################################
-
 if [ $stage -le 17 ]; then
   local/train_diarizer.sh --stage $diarizer_stage \
     --data-dir data/${train_set} \
@@ -283,7 +286,6 @@ fi
 # SAD -> Diarization -> ASR. This is done in the local/decode.sh
 # script.
 ##########################################################################
-
 if [ $stage -le 18 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \

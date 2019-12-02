@@ -34,10 +34,10 @@ egs_dir=
 nj=40
 
 dir=
-affix=1a2
+affix=1a
 
-data_dir=exp/segmentation_1a/train_whole_rvb_hires
-targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
+data_dir=
+targets_dir=
 
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
@@ -62,6 +62,8 @@ fi
 mkdir -p $dir
 
 samples_per_iter=`perl -e "print int(400000 / $chunk_width)"`
+cmvn_opts="--norm-means=false --norm-vars=false"
+echo $cmvn_opts > $dir/cmvn_opts
 
 if [ $stage -le 5 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
@@ -96,7 +98,7 @@ if [ $stage -le 6 ]; then
   num_utts_subset=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 300 ? 300 : ($n < 12 ? 12 : $n))' $num_utts`
 
   steps/nnet3/train_raw_rnn.py --stage=$train_stage \
-    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts=$cmvn_opts \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \

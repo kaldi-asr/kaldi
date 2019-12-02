@@ -37,7 +37,7 @@ prepare_targets_stage=-10
 nstage=-10
 train_stage=-10
 stage=0
-nj=80
+nj=50
 reco_nj=40
 
 # test options
@@ -96,14 +96,23 @@ if [ $stage -le 0 ]; then
 fi
 
 ###############################################################################
-# Extract features for the whole data directory
+# Extract features for the whole data directory. We extract 13-dim MFCCs to
+# generate targets using the GMM system, and 40-dim MFCCs to train the NN-based
+# SAD.
 ###############################################################################
 if [ $stage -le 1 ]; then
   steps/make_mfcc.sh --nj $reco_nj --cmd "$train_cmd"  --write-utt2num-frames true \
-    --mfcc-config conf/mfcc_hires.conf \
+    --mfcc-config conf/mfcc.conf \
     $whole_data_dir exp/make_mfcc/${whole_data_id}
   steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${whole_data_id}
   utils/fix_data_dir.sh $whole_data_dir
+
+  utils/copy_data_dir.sh $whole_data_dir ${whole_data_dir}_hires
+  steps/make_mfcc.sh --nj $reco_nj --cmd "$train_cmd"  --write-utt2num-frames true \
+    --mfcc-config conf/mfcc_hires.conf \
+    ${whole_data_dir}_hires exp/make_mfcc/${whole_data_id}_hires
+  steps/compute_cmvn_stats.sh ${whole_data_dir}_hires exp/make_mfcc/${whole_data_id}_hires
+  utils/fix_data_dir.sh ${whole_data_dir}_hires
 fi
 
 ###############################################################################
@@ -117,10 +126,10 @@ if [ $stage -le 2 ]; then
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
     --merge-weights "$merge_weights" \
+    --remove-mismatch-frames false \
     --graph-dir "$graph_dir" \
     $lang $data_dir $whole_data_dir $sat_model_dir $model_dir $dir
 fi
-
 
 ###############################################################################
 # Train a neural network for SAD
@@ -131,14 +140,14 @@ if [ $stage -le 3 ]; then
 		local/segmentation/tuning/train_stats_sad_1a.sh \
 		  --stage $nstage --train-stage $train_stage \
 		  --targets-dir ${targets_dir} \
-		  --data-dir ${whole_data_dir} --affix "1a" || exit 1
+		  --data-dir ${whole_data_dir}_hires --affix "1a" || exit 1
 	
 	elif [ $nnet_type == "lstm" ]; then
     # Train a TDNN+LSTM network for SAD
     local/segmentation/tuning/train_lstm_sad_1a.sh \
       --stage $nstage --train-stage $train_stage \
       --targets-dir ${targets_dir} \
-      --data-dir ${whole_data_dir} --affix "1a" || exit 1
+      --data-dir ${whole_data_dir}_hires --affix "1a" || exit 1
 
   fi
 fi

@@ -50,16 +50,16 @@ if [ $stage -le 0 ]; then
   for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
-    		              ${dereverb_dir}/${dset} \
-    		              ${enhandir}/${dset}_${enhancement}_${mictype} \
-    		              ${mictype}
+        ${dereverb_dir}/${dset} \
+        ${enhandir}/${dset}_${enhancement}_${mictype} \
+        ${mictype}
     done
   done
 
   for dset in dev eval; do
     local/prepare_data.sh --mictype ref --train false \
       "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-			${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
+      ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
   done
 fi
 
@@ -70,7 +70,7 @@ if [ $stage -le 1 ]; then
   for x in ${test_sets}; do
     steps/make_mfcc.sh --nj $decode_nj --cmd "$train_cmd" \
       --mfcc-config conf/mfcc_hires.conf \
-		  data/$x exp/make_mfcc/$x $mfccdir
+      data/$x exp/make_mfcc/$x $mfccdir
   done
 fi
 
