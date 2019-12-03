@@ -16,7 +16,7 @@ stage=0
 nnet_stage=-10
 sad_stage=0
 diarizer_stage=0
-decode_stage=0
+decode_stage=1
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and decode stage
 decode_only=false
