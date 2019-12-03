@@ -68,7 +68,7 @@ fi
 
 nj=$(cat $dest/num_jobs)
 
-if [ -f $dest/trans.1 ] ; then rm $dest/trans.* ;fi
+if [ -f $dest/trans.1 ] ; then rm $dest/trans.* ;fi    #remove old trans.*
 
 # Make temporary directory, delete on signal, but not on 'exit 1'.
 temp_dir=$(mktemp -d $dest/temp.XXXXXX) || exit 1
@@ -110,7 +110,7 @@ do_combine_trans() {
       "scp:utils/split_scp.pl  -j $nj JOB --one-based $temp_dir/$ark.scp |" \
       "ark:$dest/$ark.JOB" || exit 1
 
-  # Get some interesting stats, and signal an error if error threshold exceeded.
+  # Get some interesting stats.
   n_utt=$(wc -l <$data/spk2utt)
   n_trans=$(wc -l <$temp_dir/$ark.scp)
   n_utt_no_trans_pct=$(perl -e "print int(($n_utt - $n_trans)/$n_utt * 100 + .5);")
@@ -127,9 +127,7 @@ do_combine_trans() {
 
 $do_trans && do_combine_trans trans 'transforms' copy-matrix "$@"
 
-# Delete the temporary directory on success.
-cleanup
+cleanup     # Delete the temporary directory on success.
 
-echo "$0: Stored combined fmllr trans in $dest"  # No period, interferes with
-                                            # copy/paste from tty emulator.
+echo "$0: Stored combined fmllr trans in $dest"  
 exit 0
