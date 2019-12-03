@@ -83,6 +83,11 @@ if [ $stage -le 1 ]; then
     done
   done
 
+  # Note that for the evaluation sets, we use the flag
+  # "--train false". This keeps the files segments, text,
+  # and utt2spk with .bak extensions, so that they can
+  # be used later for scoring if needed but are not used
+  # in the intermediate stages.
   for dset in dev eval; do
     local/prepare_data.sh --mictype ref --train false \
       "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
