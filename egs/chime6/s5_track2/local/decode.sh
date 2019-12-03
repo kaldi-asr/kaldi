@@ -8,7 +8,7 @@
 # Apache 2.0
 
 # Begin configuration section.
-nj=40
+nj=8
 decode_nj=10
 stage=0
 sad_stage=0
@@ -153,14 +153,14 @@ if [ $stage -le 5 ]; then
       data/${datadir}_diarized
   done
 fi
-
+exit
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
 if [ $stage -le 6 ]; then
   for datadir in ${test_sets}; do
     local/multispeaker_score.sh --cmd "$train_cmd" --stage $score_stage \
-      data/${datadir}_diarized/text \
+      --datadir $datadir data/${datadir}_diarized/text \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi/penalty_1.0/10.txt \
       exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi_multispeaker
   done

@@ -6,7 +6,7 @@
 
 
 stage=0
-nj=40
+nj=8
 cmd=queue.pl
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -38,13 +38,9 @@ if [ $stage -le 0 ]; then
   echo "$0 copying data files in output directory"
   cp $rttm_dir/rttm $rttm_dir/rttm_1
   sed -i 's/'.ENH'/''/g' $rttm_dir/rttm_1
-  utils/copy_data_dir.sh ${data_in} $out_dir
-  utils/data/get_reco2dur.sh ${out_dir}
-
-  utils/copy_data_dir.sh ${out_dir} ${out_dir}_hires
-
-  mv ${out_dir}_hires/utt2dur ${out_dir}_hires/utt2dur.bak
-  mv ${out_dir}_hires/utt2num_frames ${out_dir}_hires/utt2num_frames.bak
+  mkdir -p ${out_dir}_hires
+  cp ${data_in}/{wav.scp,utt2spk} ${out_dir}_hires
+  utils/data/get_reco2dur.sh ${out_dir}_hires
 fi
 
 if [ $stage -le 1 ]; then
@@ -56,13 +52,13 @@ if [ $stage -le 1 ]; then
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt
 
   awk '{print $1" "$1" 1"}' ${out_dir}_hires/wav.scp > ${out_dir}_hires/reco2file_and_channel
+  utils/fix_data_dir.sh ${out_dir}_hires || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
   echo "$0 extracting mfcc freatures using segments file"
   steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}_hires
   steps/compute_cmvn_stats.sh ${out_dir}_hires
-  cp $data_in/text.bak $out_dir/text
   cp $data_in/text.bak ${out_dir}_hires/text
 fi
 
