@@ -61,9 +61,9 @@ for src in $@; do
 done
 
 if [ ! -f $dest/ali.1.gz  ] && [ ! -f $dest/lat.1.gz ] ; then 
-    echo "warning: we assume you have combined the ali or lat dirs " \
+    echo "$0: warning: we assume you have combined the ali or lat dirs " \
          "please run combine_ali_dir.sh or combine_lat_dir.sh firstly"
-    exit
+    exit 1
 fi
 
 nj=$(cat $dest/num_jobs)
