@@ -7,7 +7,7 @@
 #
 # This is a subset of run.sh to only perform recognition experiments with evaluation data
 # This script can run standalone. 
-# You can also download a pretrained chain ASR model using:
+# You can download a pretrained chain ASR model using:
 # wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz
 # Once it is downloaded, extract using: tar -xvzf 0012_asr_v1.tar.gz
 # and copy the contents of the {data/ exp/} directory to your {data/ exp/}
