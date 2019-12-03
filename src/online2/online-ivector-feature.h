@@ -33,6 +33,7 @@
 #include "feat/online-feature.h"
 #include "ivector/ivector-extractor.h"
 #include "decoder/lattice-faster-online-decoder.h"
+#include "decoder/lattice-incremental-online-decoder.h"
 
 namespace kaldi {
 /// @addtogroup  onlinefeat OnlineFeatureExtraction
@@ -480,6 +481,8 @@ class OnlineSilenceWeighting {
   // It will be instantiated for FST == fst::Fst<fst::StdArc> and fst::GrammarFst.
   template <typename FST>
   void ComputeCurrentTraceback(const LatticeFasterOnlineDecoderTpl<FST> &decoder);
+  template <typename FST>
+  void ComputeCurrentTraceback(const LatticeIncrementalOnlineDecoderTpl<FST> &decoder);
 
   // Calling this function gets the changes in weight that require us to modify
   // the stats... the output format is (frame-index, delta-weight).

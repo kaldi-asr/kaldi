@@ -21,32 +21,35 @@
 #include "fstext/fst-test-utils.h"
 #include "util/kaldi-io.h"
 
-#include <sys/stat.h> 
+#include <sys/stat.h>
 
 namespace fst {
+using std::cout;
+using std::cerr;
+using std::endl;
 
-bool FileExists(string strFilename) { 
-  struct stat stFileInfo; 
-  bool blnReturn; 
-  int intStat; 
+bool FileExists(std::string strFilename) {
+  struct stat stFileInfo;
+  bool blnReturn;
+  int intStat;
 
-  // Attempt to get the file attributes 
-  intStat = stat(strFilename.c_str(), &stFileInfo); 
-  if (intStat == 0) { 
-    // We were able to get the file attributes 
-    // so the file obviously exists. 
-    blnReturn = true; 
-  } else { 
-    // We were not able to get the file attributes. 
-    // This may mean that we don't have permission to 
-    // access the folder which contains this file. If you 
-    // need to do that level of checking, lookup the 
-    // return values of stat which will give you 
-    // more details on why stat failed. 
-    blnReturn = false; 
-  } 
-   
-  return blnReturn; 
+  // Attempt to get the file attributes
+  intStat = stat(strFilename.c_str(), &stFileInfo);
+  if (intStat == 0) {
+    // We were able to get the file attributes
+    // so the file obviously exists.
+    blnReturn = true;
+  } else {
+    // We were not able to get the file attributes.
+    // This may mean that we don't have permission to
+    // access the folder which contains this file. If you
+    // need to do that level of checking, lookup the
+    // return values of stat which will give you
+    // more details on why stat failed.
+    blnReturn = false;
+  }
+
+  return blnReturn;
 }
 
 // Simplify writing
@@ -102,9 +105,9 @@ StdVectorFst* CreateResultFst() {
   fst->AddState();    // state 4
   fst->AddArc(4, StdArc(15, 15, 0.5, 5));
 
-  fst->AddState();     // state 5 
+  fst->AddState();     // state 5
   fst->SetFinal(5, 0.6);
-  
+
   return fst;
 }
 
@@ -119,13 +122,13 @@ Weight WalkSinglePath(StdVectorFst *ifst, DeterministicOnDemandFst<StdArc> *dfst
   StateId isrc=ifst->Start();
   StateId dsrc=dfst->Start();
   Weight totalCost = Weight::One();
-  
+
   while (ifst->Final(isrc) == Weight::Zero()) { // while not final
     fst::ArcIterator<StdVectorFst> aiter(*ifst, isrc);
     const StdArc &iarc = aiter.Value();
     if (dfst->GetArc(dsrc, iarc.olabel, &oarc)) {
       Weight cost = Times(iarc.weight, oarc.weight);
-      // cout << "  Matched label "<<iarc.olabel<<" at summed cost "<<cost<<endl;      
+      // cout << "  Matched label "<<iarc.olabel<<" at summed cost "<<cost<<endl;
       totalCost = Times(totalCost, cost);
     } else {
       cout << "  Can't match arc ["<<iarc.ilabel<<","<<iarc.olabel<<","<<iarc.weight<<"] from "<<isrc<<endl;
@@ -136,7 +139,7 @@ Weight WalkSinglePath(StdVectorFst *ifst, DeterministicOnDemandFst<StdArc> *dfst
     dsrc = oarc.nextstate;
   }
   totalCost = Times(totalCost, dfst->Final(dsrc));
-                    
+
   cout << "  Total cost: " << totalCost << endl;
   return totalCost;
 }
@@ -152,7 +155,7 @@ void TestBackoffAndCache() {
   ArcSort(nfst, StdILabelCompare());
   BackoffDeterministicOnDemandFst<StdArc> dfst1a(*nfst);
   CacheDeterministicOnDemandFst<StdArc> dfst1(&dfst1a);
-  
+
   // Compare all arcs in dfst1 with expected result
   for (StateIterator<StdVectorFst> riter(*rfst); !riter.Done(); riter.Next()) {
     StateId rsrc = riter.Value();
@@ -197,9 +200,9 @@ void TestCompose() {
 
   VectorFst<StdArc> path_fst;
   ShortestPath(composed_fst, &path_fst);
-  
+
   BackoffDeterministicOnDemandFst<StdArc> dfst2(composed_fst);
-  
+
   Weight w1 = WalkSinglePath(&path_fst, &dfst1),
       w2 = WalkSinglePath(&path_fst, &dfst2);
   KALDI_ASSERT(ApproxEqual(w1, w2));
@@ -226,4 +229,4 @@ int main() {
   TestBackoffAndCache();
   TestCompose();
 }
-  
+

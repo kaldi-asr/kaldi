@@ -47,10 +47,7 @@ void FasterDecoder::InitDecoding() {
 
 void FasterDecoder::Decode(DecodableInterface *decodable) {
   InitDecoding();
-  while (!decodable->IsLastFrame(num_frames_decoded_ - 1)) {
-    double weight_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(weight_cutoff);
-  }
+  AdvanceDecoding(decodable);
 }
 
 void FasterDecoder::AdvanceDecoding(DecodableInterface *decodable,

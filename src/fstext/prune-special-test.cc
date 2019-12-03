@@ -39,7 +39,7 @@ static void TestPruneSpecial() {
   {
     FstPrinter<Arc> fstprinter(*ifst, NULL, NULL, NULL, false, true, "\t");
     fstprinter.Print(&std::cout, "standard output");
-    std::cout << endl;
+    std::cout << std::endl;
   }
 
   // Do the special pruning.
@@ -48,7 +48,7 @@ static void TestPruneSpecial() {
   {
     FstPrinter<Arc> fstprinter(ofst1, NULL, NULL, NULL, false, true, "\t");
     fstprinter.Print(&std::cout, "standard output");
-    std::cout << endl;
+    std::cout << std::endl;
   }
 
   // Do the normal pruning.
@@ -57,7 +57,7 @@ static void TestPruneSpecial() {
   {
     FstPrinter<Arc> fstprinter(ofst2, NULL, NULL, NULL, false, true, "\t");
     fstprinter.Print(&std::cout, "standard output");
-    std::cout << endl;
+    std::cout << std::endl;
   }
 
   KALDI_ASSERT(RandEquivalent(ofst1, ofst2,

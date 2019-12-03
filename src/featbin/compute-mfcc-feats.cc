@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
     Mfcc mfcc(mfcc_opts);
 
-    if (utt2spk_rspecifier != "" && vtln_map_rspecifier != "")
+    if (utt2spk_rspecifier != "" && vtln_map_rspecifier == "")
       KALDI_ERR << ("The --utt2spk option is only needed if "
                     "the --vtln-map option is used.");
     RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,

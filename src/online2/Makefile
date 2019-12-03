@@ -9,7 +9,7 @@ OBJFILES = online-gmm-decodable.o online-feature-pipeline.o online-ivector-featu
            online-nnet2-feature-pipeline.o online-gmm-decoding.o online-timing.o \
            online-endpoint.o onlinebin-util.o online-speex-wrapper.o \
            online-nnet2-decoding.o online-nnet2-decoding-threaded.o \
-           online-nnet3-decoding.o
+           online-nnet3-decoding.o online-nnet3-incremental-decoding.o
 
 LIBNAME = kaldi-online2
 
