@@ -31,7 +31,7 @@ enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 
 # training data
 train_set=train_worn_simu_u400k
-test_sets="dev_${enhancement}_dereverb_ref eval_${enhancement}_dereverb_ref"
+test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
 
 . ./utils/parse_options.sh
 
@@ -91,7 +91,7 @@ if [ $stage -le 1 ]; then
   for dset in dev eval; do
     local/prepare_data.sh --mictype ref --train false \
       "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-      ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
+      ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb
   done
 fi
 
