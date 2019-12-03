@@ -36,6 +36,15 @@ for f in $data_in/feats.scp $data_in/segments $model_dir/plda \
 done
 
 if [ $stage -le 0 ]; then
+  echo "$0: keeping only data corresponding to array U06 "
+  echo "$0: we can modify this stage, to perform diarization on all arrays "
+  cp -r data/$name data/${name}.bak
+  mv data/$name/wav.scp data/$name/wav.scp.bak
+  grep 'U06' data/$name/wav.scp.bak > data/$name/wav.scp
+  utils/fix_data_dir.sh data/$name
+fi
+
+if [ $stage -le 1 ]; then
   echo "$0: computing features for x-vector extractor"
   utils/fix_data_dir.sh data/${name}
   rm -rf data/${name}_cmn
@@ -45,7 +54,7 @@ if [ $stage -le 0 ]; then
   utils/fix_data_dir.sh data/${name}_cmn
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le 2 ]; then
   echo "$0: extracting x-vectors for all segments"
   diarization/nnet3/xvector/extract_xvectors.sh --cmd "$cmd" \
     --nj $nj --window 1.5 --period 0.75 --apply-cmn false \
@@ -54,7 +63,7 @@ if [ $stage -le 1 ]; then
 fi
 
 # Perform PLDA scoring
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   # Perform PLDA scoring on all pairs of segments for each recording.
   echo "$0: performing PLDA scoring between all pairs of x-vectors"
   diarization/nnet3/xvector/score_plda.sh --cmd "$cmd" \
@@ -63,7 +72,7 @@ if [ $stage -le 2 ]; then
     $out_dir/xvectors_${name}/plda_scores
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: performing clustering using PLDA scores (we assume 4 speakers per recording)"
   awk '{print $1, "4"}' data/$name/wav.scp > data/$name/reco2num_spk
   diarization/cluster.sh --cmd "$cmd" --nj $nj \
@@ -73,7 +82,7 @@ if [ $stage -le 3 ]; then
   echo "$0: wrote RTTM to output directory ${out_dir}"
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   if [ -f $ref_rttm ]; then
     echo "$0: computing diariztion error rate (DER) using reference ${ref_rttm}"
     mkdir -p $out_dir/tuning/
