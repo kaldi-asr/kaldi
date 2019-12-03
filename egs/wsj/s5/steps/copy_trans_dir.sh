@@ -33,11 +33,11 @@ src_dir=$2
 dir=$3
 
 if [ ! -d $dir ]; then
-    echo "warning : you may need combine ali or lat first !" && exit
+    echo "$0: warning : you may need combine ali or lat first !" && exit 1
 fi
 
 if [ ! -f $src_dir/trans.1 ] ; then
-    echo "no trans exist in $src_dir dir"  && exit
+    echo "$0: no trans exist in $src_dir dir"  && exit 1
 fi
 
 
