@@ -8,7 +8,7 @@ stage=0
 cmd=queue.pl
 num_spkrs=4
 num_hyp_spk=4
-datadir=dev_beamformit_dereverb_ref
+datadir=dev_beamformit_dereverb
 declare -a recording_id_array=("S02_U06" "S09_U06")
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi

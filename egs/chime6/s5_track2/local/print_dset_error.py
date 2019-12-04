@@ -12,6 +12,8 @@ total_errors={}
 spk_order={}
 total_errors_arrayid={}
 total_words_arrayid={}
+
+output.write('WER for each recording: \n')
 for line in infile:
     toks = line.strip().split()
     recordingid = toks[1]
@@ -30,6 +32,7 @@ for line in infile:
     spkorder_writer.write(recordingid + ':' + str(spk_order[recordingid]) + '\n')
 
 
+output.write('WER for each array: \n')
 for arrayid in sorted(total_errors_arrayid):
     wer = float(total_errors_arrayid[arrayid])/float(total_words_arrayid[arrayid])*100
     utt = "{0} {1} {2} {3:5.2f}".format(arrayid, total_words_arrayid[arrayid], total_errors_arrayid[arrayid], wer)
