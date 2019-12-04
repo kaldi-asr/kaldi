@@ -42,6 +42,7 @@ if [ $stage -le 0 ]; then
   mv data/$name/wav.scp data/$name/wav.scp.bak
   grep 'U06' data/$name/wav.scp.bak > data/$name/wav.scp
   utils/fix_data_dir.sh data/$name
+  nj=2 # since we have reduced number of "speakers" now
 fi
 
 if [ $stage -le 1 ]; then
