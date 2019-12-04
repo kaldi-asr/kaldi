@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright Ashish Arora
+# Apache 2.0
+# This script is used in score_for_submit. It adds locationid to the utteranceid,
+# using uttid_location file, for locationwise scoring.
 
 import sys, io
 output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -19,5 +23,7 @@ for line in open(sys.argv[2],'r', encoding='utf8'):
         location = locations[uttid]
         location_uttid = location +'_'+ str(uttid)
         output.write(location_uttid + ' ' + res)
-    except:
-        continue
+    except KeyError as e:
+            raise Exception("Could not find utteranceid in "
+                            "uttid_location file"
+                            "({0})\n".format(str(e)))

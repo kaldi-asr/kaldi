@@ -8,7 +8,7 @@ stage=0
 cmd=queue.pl
 num_spkrs=4
 num_hyp_spk=4
-datadir=dev_beamformit_dereverb_ref
+datadir=dev_beamformit_dereverb
 declare -a recording_id_array=("S02_U06" "S09_U06")
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -75,7 +75,9 @@ if [ $stage -le 2 ]; then
       sessionid="$(echo $recording_id | cut -d'_' -f1)"
 
       # compute WER with combined texts
-      compute-wer --text --mode=present ark:${output_dir}/ref_${sessionid}_${ind_r}_comb ark:${output_dir}/hyp_${recording_id}_${ind_h}_comb > $wer_dir/wer_${recording_id}_r${ind_r}h${ind_h}
+      compute-wer --text --mode=present ark:${output_dir}/ref_${sessionid}_${ind_r}_comb \
+        ark:${output_dir}/hyp_${recording_id}_${ind_h}_comb \
+        > $wer_dir/wer_${recording_id}_r${ind_r}h${ind_h} 2>/dev/null
     done
 
     local/get_best_error.py $wer_dir $recording_id
