@@ -5,14 +5,11 @@
 # multispeaker scoring.
 
 stage=0
-nj=40
 cmd=queue.pl
 num_spkrs=4
 num_hyp_spk=4
-
-# For the evaluation set, we update this line:
-declare -a recording_id_array=("S02_U01" "S02_U02" "S02_U03" "S02_U04" "S02_U06" "S09_U01" "S09_U02" "S09_U03" "S09_U04" "S09_U06")
-
+datadir=dev_beamformit_dereverb
+declare -a recording_id_array=("S02_U06" "S09_U06")
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
@@ -20,10 +17,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 3 ]; then
   echo "Usage: $0 <ref-file> <hyp-file> <out-dir>"
   echo "e.g.: $0 data/diarized/text data/dev \
-    exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_xvector_sad/scoring_kaldi/penalty_1.0/10.txt \
-    exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_xvector_sad/scoring_kaldi_multispeaker"
+    exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_xvector_sad/scoring_kaldi/penalty_1.0/10.txt \
+    exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_xvector_sad/scoring_kaldi_multispeaker"
   echo "Options: "
-  echo "  --nj <nj>                                        # number of parallel jobs."
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   exit 1;
 fi
@@ -34,6 +30,16 @@ out_dir=$3
 
 output_dir=$out_dir/per_speaker_output
 wer_dir=$out_dir/per_speaker_wer
+
+# For dev and evaluation set, we take corresopnding arrays
+if [[ ${datadir} == *dev* ]]; then
+  recording_id_array=("S02_U06" "S09_U06")
+fi
+
+if [[ ${datadir} == *eval* ]]; then
+  recording_id_array=("S01_U06" "S21_U06")
+fi
+
 for f in $ref_file $hyp_file; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
@@ -53,7 +59,7 @@ if [ $stage -le 1 ]; then
     echo "$0 create dummy per speaker per array hypothesis files for if the"
     echo " perdicted number of speakers by diarization is less than 4 "
     for recording_id in "${recording_id_array[@]}"; do
-      for (( i=$num_hyp_spk+1; i<5; i++ )); do
+      for (( i=$num_hyp_spk+1; i<$num_spkrs+1; i++ )); do
         echo 'utt ' > ${dir}/hyp_${recording_id}_${i}_comb
       done
     done
@@ -69,7 +75,9 @@ if [ $stage -le 2 ]; then
       sessionid="$(echo $recording_id | cut -d'_' -f1)"
 
       # compute WER with combined texts
-      compute-wer --text --mode=present ark:${output_dir}/ref_${sessionid}_${ind_r}_comb ark:${output_dir}/hyp_${recording_id}_${ind_h}_comb > $wer_dir/wer_${recording_id}_r${ind_r}h${ind_h}
+      compute-wer --text --mode=present ark:${output_dir}/ref_${sessionid}_${ind_r}_comb \
+        ark:${output_dir}/hyp_${recording_id}_${ind_h}_comb \
+        > $wer_dir/wer_${recording_id}_r${ind_r}h${ind_h} 2>/dev/null
     done
 
     local/get_best_error.py $wer_dir $recording_id

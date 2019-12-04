@@ -274,7 +274,6 @@ fi
 if [ $stage -le 16 ]; then
   local/decode.sh --stage $decode_stage \
     --enhancement $enhancement \
-    --test-sets "$test_sets" \
     --train_set "$train_set"
 fi
 

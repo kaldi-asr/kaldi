@@ -1,53 +1,70 @@
 #!/usr/bin/env python3
+# Copyright Ashish Arora
+# Apache 2.0
+# This script create a utterance and location mapping file
+# It is used in score_for_submit script to get locationwise WER.
+# for GSS enhancement
+
 import json
 from datetime import timedelta
 from glob import glob
 import sys, io
+from decimal import Decimal
+
+SAMPLE_RATE = 16000
+
+def to_samples(time: str):
+    "mapping time in string to int, as mapped in pb_chime5"
+    "see https://github.com/fgnt/pb_chime5/blob/master/pb_chime5/database/chime5/get_speaker_activity.py"
+    hours, minutes, seconds = [t for t in time.split(':')]
+    hours = int(hours)
+    minutes = int(minutes)
+    seconds = Decimal(seconds)
+
+    seconds_samples = seconds * SAMPLE_RATE
+    samples = (
+        hours * 3600 * SAMPLE_RATE
+        + minutes * 60 * SAMPLE_RATE
+        + seconds_samples
+    )
+    return int(samples)
 
 
-output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-location_dict = {}
+def main():
+    output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    json_file_location= sys.argv[1] + '/*.json'
+    json_files = glob(json_file_location)
 
-json_file_location= sys.argv[1] + '/*.json'
-json_files = glob(json_file_location)
+    json_file_location= sys.argv[1] + '/*.json'
+    json_files = glob(json_file_location)
+    location_dict = {}
+    json_file_location= sys.argv[1] + '/*.json'
+    json_files = glob(json_file_location)
+    location_dict = {}
+    for file in json_files:
+        with open(file, 'r') as f:
+            session_dict = json.load(f)
 
-for file in json_files:
-    with open(file, 'r') as f:
-        session_dict = json.load(f)
+        for uttid in session_dict:
+            try:
+                ref=uttid['ref']
+                speaker_id = uttid['speaker']
+                location = uttid['location']
+                location=location.upper()
+                session_id=uttid['session_id']
+                words = uttid['words']
+                end_sample=to_samples(str(uttid['end_time']))
+                start_sample=to_samples(str(uttid['start_time']))
+                start_sample_str = str(int(start_sample * 100 / SAMPLE_RATE)).zfill(7)
+                end_sample_str = str(int(end_sample * 100 / SAMPLE_RATE)).zfill(7)
+                utt = "{0}_{1}-{2}-{3}".format(speaker_id, session_id, start_sample_str, end_sample_str)
+                location_dict[utt]=(location)
+            except:
+                continue
 
-    for uttid in session_dict:
-        try:
-            ref=uttid['ref']
-            speaker_id = uttid['speaker']
-            location = uttid['location']
-            location=location.upper()
-            session_id=uttid['session_id']
-            words = uttid['words']
+    for key in sorted(location_dict.keys()):
+        utt= "{0} {1}".format(key, location_dict[key])
+        output.write(utt+ '\n')
 
-            end_time_hh=str(uttid['end_time'])
-            time = end_time_hh.strip().split(':')
-            hrs, mins, secs = float(time[0]), float(time[1]), float(time[2])
-            end_time = timedelta(hours=hrs, minutes=mins, seconds=secs).total_seconds()
-            end_time = '{0:7.2f}'.format(end_time)
-            end_time = "".join(end_time.strip().split('.'))
-            end_time = int(end_time)
-            end_time = str(end_time).zfill(7)
-
-            start_time_hh = str(uttid['start_time'])
-            time = start_time_hh.strip().split(':')
-            hrs, mins, secs = float(time[0]), float(time[1]), float(time[2])
-            start_time = timedelta(hours=hrs, minutes=mins, seconds=secs).total_seconds()
-            start_time = '{0:7.2f}'.format(start_time)
-            start_time = "".join(start_time.strip().split('.'))
-            start_time = int(start_time)
-            start_time =str(start_time).zfill(7)
-
-            utt = "{0}_{1}-{2}-{3}".format(speaker_id, session_id, start_time, end_time)
-            location_dict[utt]=(location)
-        except:
-            continue
-
-for key in sorted(location_dict.keys()):
-    utt= "{0} {1}".format(key, location_dict[key])
-    output.write(utt+ '\n')
-
+if __name__ == '__main__':
+    main()

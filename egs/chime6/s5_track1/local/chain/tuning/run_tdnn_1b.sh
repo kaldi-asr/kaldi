@@ -4,9 +4,7 @@
 # It uses resnet-style skip connections.
 # For details, refer to the paper:
 # "Semi-Orthogonal Low-Rank Matrix Factorization for Deep Neural Networks", Daniel Povey, Gaofeng Cheng, Yiming Wang, Ke Li, Hainan Xu, Mahsa Yarmohamadi, Sanjeev Khudanpur, Interspeech 2018
-
-#%WER 62.30 [ 36684 / 58881, 3048 ins, 17964 del, 15672 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_gss_2stage/wer_11_0.0
-#%WER 64.55 [ 38009 / 58881, 3266 ins, 19371 del, 15372 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_gss/wer_11_0.0
+#%WER 51.76 [ 30474 / 58881, 2665 ins, 11749 del, 16060 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_gss_multiarray_2stage/wer_10_0.0
 
 # steps/info/chain_dir_info.pl exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn_1b_sp
 # exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/: num-iters=429 nj=3..16 num-params=17.0M dim=40+100->2776 combine=-0.134->-0.133 (over 3) xent:train/valid[285,428,final]=(-2.37,-1.95,-1.95/-2.19,-1.90,-1.91) logprob:train/valid[285,428,final]=(-0.201,-0.125,-0.124/-0.198,-0.147,-0.148)
