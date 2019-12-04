@@ -358,6 +358,7 @@ void CudaDecoder::ComputeInitialChannel() {
 
   CopyLaneCountersToHostSync();
   PostProcessingMainQueue();
+  ConcatenateData();
   CopyLaneCountersToHostSync();
 
   const int32 main_q_end =
