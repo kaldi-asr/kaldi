@@ -178,24 +178,6 @@ if [ $stage -le 2 ]; then
   done
 fi
 
-##################################################################################
-# Now make MFCC features. We use 40-dim "hires" MFCCs for all our systems.
-##################################################################################
-
-if [ $stage -le 3 ]; then
-  # Now make MFCC features.
-  # mfccdir should be some place with a largish disk where you
-  # want to store MFCC features.
-  echo "$0: make features..."
-  mfccdir=mfcc
-  for x in ${test_sets}; do
-    steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" \
-           data/$x exp/make_mfcc/$x $mfccdir
-    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
-    utils/fix_data_dir.sh data/$x
-  done
-fi
-
 ##########################################################################
 # DECODING: we perform 2 stage decoding.
 ##########################################################################
@@ -203,7 +185,7 @@ fi
 nnet3_affix=_${train_set}_cleaned_rvb
 lm_suffix=
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   # First the options that are passed through to run_ivector_common.sh
   # (some of which are also used in this script directly).
 
@@ -248,7 +230,7 @@ fi
 # Scoring: here we obtain wer per session per location and overall WER
 ##########################################################################
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
