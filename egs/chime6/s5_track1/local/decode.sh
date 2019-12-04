@@ -6,8 +6,8 @@
 # Apache 2.0
 #
 # This is a subset of run.sh to only perform recognition experiments with evaluation data
-# This script can run standalone. 
-# You can download a pretrained chain ASR model using:
+# This script can be run from run.sh or standalone. 
+# To run it standalone, you can download a pretrained chain ASR model using:
 # wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz
 # Once it is downloaded, extract using: tar -xvzf 0012_asr_v1.tar.gz
 # and copy the contents of the {data/ exp/} directory to your {data/ exp/}
@@ -147,7 +147,20 @@ if [ $stage -le 1 ] && [[ ${enhancement} == *beamformit* ]]; then
   done
 fi
 
-if [ $stage -le 2 ]; then
+# In GSS enhancement, we do not have array information in utterance ID
+if [ $stage -le 2 ] && [[ ${enhancement} == *gss* ]]; then
+  # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
+  # lets us use more jobs for decoding etc.
+  for dset in ${test_sets}; do
+    utils/copy_data_dir.sh data/${dset} data/${dset}_orig
+  done
+
+  for dset in ${test_sets}; do
+    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_orig data/${dset}
+  done
+fi
+
+if [ $stage -le 2 ] && [[ ${enhancement} == *beamformit* ]]; then
   # fix speaker ID issue (thanks to Dr. Naoyuki Kanda)
   # add array ID to the speaker ID to avoid the use of other array information to meet regulations
   # Before this fix
