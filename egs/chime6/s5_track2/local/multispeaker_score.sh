@@ -80,7 +80,7 @@ if [ $stage -le 2 ]; then
         > $wer_dir/wer_${recording_id}_r${ind_r}h${ind_h} 2>/dev/null
     done
 
-    local/get_best_error.py $wer_dir $recording_id
+    local/get_best_error.py $wer_dir $recording_id $num_spkrs
   done
 fi
 
@@ -91,8 +91,14 @@ if [ $stage -le 3 ]; then
   cat $wer_dir/all.txt | local/print_dset_error.py $output_dir/recordinid_spkorder
 fi
 
-mkdir -p $wer_dir/wer_details $wer_dir/wer_details/log/
 if [ $stage -le 4 ]; then
+  echo "$0 checks if DP result of total error is equivalent "
+  echo "$0 to the sum of the individual errors:"
+  local/check_dset_error.py $wer_dir $output_dir
+fi
+
+mkdir -p $wer_dir/wer_details $wer_dir/wer_details/log/
+if [ $stage -le 5 ]; then
   echo "$0 generate per utterance wer details at utterance level"
   while read -r line;
   do
