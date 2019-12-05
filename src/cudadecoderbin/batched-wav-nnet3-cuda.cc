@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
 
     std::string word_syms_rxfilename;
 
+    int file_skip = 0;  // For debugging.  Let's us skip to a specific file
     bool write_lattice = true;
     int num_todo = -1;
     int iterations = 1;
@@ -136,6 +137,7 @@ int main(int argc, char *argv[]) {
                 "benchmarking");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
+    po.Register("file-skip", &file_skip, "skip decoding this many files.");
     po.Register("file-limit", &num_todo,
                 "Limits the number of files that are processed by this driver. "
                 "After N files are processed the remaining files are ignored. "
@@ -203,6 +205,8 @@ int main(int argc, char *argv[]) {
 
     int num_groups_done = 0;
 
+    int cur = 0;
+
     clat_writer.Open(clat_wspecifier);
     // starting timer here so we
     // can measure throughput
@@ -218,6 +222,10 @@ int main(int argc, char *argv[]) {
 
       for (; !wav_reader.Done(); wav_reader.Next()) {
         nvtxRangePushA("Utterance Iteration");
+
+        if (cur++ < file_skip) {
+          continue;
+        }
 
         while (cuda_pipeline.GetNumberOfTasksPending() >= pipeline_length) {
           kaldi::Sleep(KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP);
@@ -243,11 +251,10 @@ int main(int argc, char *argv[]) {
         auto finish_one_decode_lamba =
             [
                 // Capturing the arguments that will change by copy
-                utt, key, 
+                utt, key,
                 // Capturing the const/global args by reference
                 &word_syms, &cuda_pipeline, &stdout_mutex, &num_frames,
-                &clat_write_mutex, &clat_writer, &write_lattice,
-                &tot_like]
+                &clat_write_mutex, &clat_writer, &write_lattice, &tot_like]
             // The callback function receive the compact lattice as argument
             // if determinize_lattice is true, it is a determinized lattice
             // otherwise, it is a raw lattice converted to compact format
@@ -259,8 +266,7 @@ int main(int argc, char *argv[]) {
                   // Captured arguments used to specialize FinishOneDecode for
                   // this task
                   utt, key, word_syms, &cuda_pipeline, &num_frames, &tot_like,
-                  &clat_writer, &clat_write_mutex, &stdout_mutex, 
-                  write_lattice,
+                  &clat_writer, &clat_write_mutex, &stdout_mutex, write_lattice,
                   // Generated lattice that will be passed once the task is
                   // complete
                   clat_in);
@@ -277,7 +283,7 @@ int main(int argc, char *argv[]) {
         nvtxRangePop();
         if (num_todo != -1 && num_task_submitted >= num_todo) break;
       }  // end utterance loop
-      
+
       std::string group_done;
       // Non-blocking way to check if a group is done
       // returns false if zero groups are ready
@@ -324,7 +330,7 @@ int main(int argc, char *argv[]) {
 
     cuda_pipeline.Finalize();
     cudaDeviceSynchronize();
-      
+
     delete word_syms;  // will delete if non-NULL.
 
     return 0;
