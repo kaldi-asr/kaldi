@@ -167,7 +167,7 @@ void NnetComputation(const Nnet &nnet,
 }
 
 void NnetComputationChunked(const Nnet &nnet,
-                     const Matrix<BaseFloat> &input,  // features
+                     const CuMatrixBase<BaseFloat> &input,  // features
                      int32 chunk_size,
                      Matrix<BaseFloat> *output) {
   int32 num_rows,
