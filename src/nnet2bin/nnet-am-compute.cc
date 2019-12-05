@@ -115,10 +115,10 @@ int main(int argc, char *argv[]) {
       }
 
       Matrix<BaseFloat> output(output_frames, output_dim);
-      if (chunk_size > 0 && chunk_size < feats.NumRows()) {
-        NnetComputationChunked(nnet, feats, chunk_size, &output);
+      CuMatrix<BaseFloat> cu_feats(feats);
+      if (chunk_size > 0 && chunk_size < feats.NumRows()) {      
+        NnetComputationChunked(nnet, cu_feats, chunk_size, &output);
       } else {
-        CuMatrix<BaseFloat> cu_feats(feats);
         CuMatrix<BaseFloat> cu_output(output);
         NnetComputation(nnet, cu_feats, pad_input, &cu_output);
         output.CopyFromMat(cu_output);
