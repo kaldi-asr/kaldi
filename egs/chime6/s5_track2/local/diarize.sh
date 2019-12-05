@@ -83,11 +83,14 @@ if [ $stage -le 4 ]; then
   echo "$0: wrote RTTM to output directory ${out_dir}"
 fi
 
+# For scoring the diarization system, we use the same tool that was
+# used in the DIHARD II challenge. This is available at:
+# https://github.com/nryant/dscore
 if [ $stage -le 5 ]; then
   if [ -f $ref_rttm ]; then
     echo "$0: computing diariztion error rate (DER) using reference ${ref_rttm}"
     ref_rttm_path=$((readlink -f $ref_rttm))
-    out_rttm_path=$((readling -f $out_dir/rttm))
+    out_rttm_path=$((readlink -f $out_dir/rttm))
     if ! [ -d dscore ]; then
       git clone https://github.com/nryant/dscore.git || exit 1;
       cd dscore
