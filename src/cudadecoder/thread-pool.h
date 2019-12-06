@@ -28,6 +28,7 @@ freely, subject to the following restrictions:
 #ifndef KALDI_CUDA_DECODER_THREAD_POOL_H_
 #define KALDI_CUDA_DECODER_THREAD_POOL_H_
 
+#include <climits>
 #include <condition_variable>
 #include <functional>
 #include <future>
