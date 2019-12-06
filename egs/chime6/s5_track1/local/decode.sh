@@ -5,7 +5,7 @@
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
 # Apache 2.0
 #
-# This is a subset of run.sh to only perform recognition experiments with evaluation data
+# This script only performs recognition experiments with evaluation data
 # This script can be run from run.sh or standalone. 
 # To run it standalone, you can download a pretrained chain ASR model using:
 # wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz

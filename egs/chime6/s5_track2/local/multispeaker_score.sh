@@ -9,8 +9,8 @@ cmd=queue.pl
 num_spkrs=4
 num_hyp_spk=4
 datadir=dev_beamformit_dereverb
+get_stats=true
 declare -a recording_id_array=("S02_U06" "S09_U06")
-echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
@@ -45,8 +45,8 @@ for f in $ref_file $hyp_file; do
 done
 
 if [ $stage -le 0 ]; then
-  echo "$0 generate per speaker per session file at paragraph level for the reference"
-  echo "and per speaker per array file at paraghaph level for the hypothesis"
+  # generate per speaker per session file at paragraph level for the reference"
+  # and per speaker per array file at paraghaph level for the hypothesis"
   mkdir -p $output_dir $wer_dir
   local/wer_output_filter < $ref_file > $output_dir/ref_filt.txt
   local/wer_output_filter < $hyp_file > $output_dir/hyp_filt.txt
@@ -56,8 +56,8 @@ fi
 
 if [ $stage -le 1 ]; then
   if [ $num_hyp_spk -le 3 ]; then
-    echo "$0 create dummy per speaker per array hypothesis files for if the"
-    echo " perdicted number of speakers by diarization is less than 4 "
+    # create dummy per speaker per array hypothesis files for if the"
+    # perdicted number of speakers by diarization is less than 4 "
     for recording_id in "${recording_id_array[@]}"; do
       for (( i=$num_hyp_spk+1; i<$num_spkrs+1; i++ )); do
         echo 'utt ' > ${dir}/hyp_${recording_id}_${i}_comb
@@ -67,7 +67,7 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0 calculate wer for each ref and hypothesis speaker"
+  # calculate wer for each ref and hypothesis speaker"
   for recording_id in "${recording_id_array[@]}"; do
     for (( i=0; i<$((num_spkrs * num_spkrs)); i++ )); do
       ind_r=$((i / num_spkrs + 1))
@@ -85,21 +85,22 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  echo "$0 print best word error rate"
-  echo "$0 it will print best wer for each recording and each array"
+  # print best word error rate"
+  # it will print best wer for each recording and each array"
   cat $wer_dir/best_wer* > $wer_dir/all.txt
-  cat $wer_dir/all.txt | local/print_dset_error.py $output_dir/recordinid_spkorder
+  cat $wer_dir/all.txt | local/print_dset_error.py \
+    $output_dir/recordinid_spkorder > $wer_dir/array_wer.txt
 fi
 
 if [ $stage -le 4 ]; then
-  echo "$0 checks if DP result of total error is equivalent "
-  echo "$0 to the sum of the individual errors:"
+  # checks if DP result of total error is equivalent
+  # to the sum of the individual errors:
   local/check_dset_error.py $wer_dir $output_dir
 fi
 
-mkdir -p $wer_dir/wer_details $wer_dir/wer_details/log/
-if [ $stage -le 5 ]; then
-  echo "$0 generate per utterance wer details at utterance level"
+if [ $stage -le 5 ] && [[ $get_stats == "true" ]]; then
+  # generate per utterance wer details at utterance level
+  mkdir -p $wer_dir/wer_details $wer_dir/wer_details/log/
   while read -r line;
   do
     recording_id=$(echo "$line" | cut -f1 -d ":")
@@ -130,7 +131,5 @@ if [ $stage -le 5 ]; then
       ind_r=$(( ind_r + 1 ))
     done
   done < $output_dir/recordinid_spkorder
-  echo "$0 done generating per utterance wer details"
+  # done generating per utterance wer details
 fi
-
-echo "$0 done scoring"

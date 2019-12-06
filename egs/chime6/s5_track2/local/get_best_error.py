@@ -72,15 +72,12 @@ def get_min_wer(recording_id, num_speakers, WER_dir):
     best_wer_writer.write(" recording_id: "+ recording_id + ' ')
     best_wer_writer.write(' best hypothesis speaker order: ' + spk_order + ' ')
     best_wer_writer.write(text+ '\n')
-    print("recording_id: "+ recording_id + ' ')
-    print('best hypothesis speaker order: ' + spk_order + ' ')
-    print(text)
     best_wer_writer.close()
 
 
 def main():
     args = get_args()
-    get_min_wer(args.recording_id, args.num_speakers, args.WER_dir)
+    get_min_wer(args.recording_id, int(args.num_speakers), args.WER_dir)
 
 
 if __name__ == '__main__':

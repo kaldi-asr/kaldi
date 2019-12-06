@@ -163,11 +163,10 @@ fi
 # Score decoded dev/eval sets
 #######################################################################
 if [ $stage -le 6 ]; then
-  for datadir in ${test_sets}; do
-    local/multispeaker_score.sh --cmd "$train_cmd" --stage $score_stage \
-      --datadir $datadir data/${datadir}_diarized_hires/text \
-      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi/penalty_1.0/10.txt \
-      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi_multispeaker
-  done
+  local/score_for_submit.sh --stage $score_stage \
+      --dev_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_diarized_2stage \
+      --dev_datadir dev_beamformit_dereverb_diarized_hires \
+      --eval_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized_2stage \
+      --eval_datadir eval_beamformit_dereverb_diarized_hires
 fi
 exit 0;
