@@ -263,6 +263,7 @@ void TdnnComponent::UpdateSimple(
     const PrecomputedIndexes &indexes,
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
+  NVTX_RANGE("UpdateSimple");
 
   if (bias_params_.Dim() != 0)
     bias_params_.AddRowSumMat(learning_rate_, out_deriv);
@@ -286,6 +287,7 @@ void TdnnComponent::UpdateNaturalGradient(
     const PrecomputedIndexes &indexes,
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
+  NVTX_RANGE("UpdateNaturalGradient");
 
   int32 num_offsets = time_offsets_.size(),
       num_rows = out_deriv.NumRows(),
