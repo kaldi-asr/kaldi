@@ -83,13 +83,23 @@ if [ $stage -le 4 ]; then
   echo "$0: wrote RTTM to output directory ${out_dir}"
 fi
 
+# For scoring the diarization system, we use the same tool that was
+# used in the DIHARD II challenge. This is available at:
+# https://github.com/nryant/dscore
 if [ $stage -le 5 ]; then
   if [ -f $ref_rttm ]; then
     echo "$0: computing diariztion error rate (DER) using reference ${ref_rttm}"
-    mkdir -p $out_dir/tuning/
-    md-eval.pl -c 0.25 -1 -r $ref_rttm -s $out_dir/rttm 2> $out_dir/log/der.log > $out_dir/der
-    der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' ${out_dir}/der)
-    echo "DER: $der%"
+    ref_rttm_path=$((readlink -f $ref_rttm))
+    out_rttm_path=$((readlink -f $out_dir/rttm))
+    if ! [ -d dscore ]; then
+      git clone https://github.com/nryant/dscore.git || exit 1;
+      cd dscore
+      python -m pip install --user -r requirements.txt
+      cd ..
+    fi
+    cd dscore
+    python score.py -r $ref_rttm_path -s $out_rttm_path
+    cd ..
   fi
 fi
 
