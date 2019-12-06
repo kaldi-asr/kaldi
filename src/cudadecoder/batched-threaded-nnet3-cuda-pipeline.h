@@ -258,7 +258,7 @@ private:
    bool error;
    std::string error_string;
 
-   std::shared_ptr<TaskData> task_data;
+   std::unique_ptr<TaskData> task_data;
 
    int32 ichannel;              // associated CudaDecoder channel
    Lattice lat;                 // Raw Lattice output
@@ -279,13 +279,13 @@ private:
 
    // Init when wave data is passed directly in.  This data is deep copied.
    void Init(const std::string &key_in, const WaveData &wave_data_in) {
-     task_data = std::make_shared<TaskData>(wave_data_in);
+     task_data.reset(new TaskData(wave_data_in));
      key = key_in;
    };
    // Init when raw data is passed in.  This data is shallow copied.
    void Init(const std::string &key_in,
              const VectorBase<BaseFloat> &wave_data_in, float sample_rate) {
-     task_data = std::make_shared<TaskData>(wave_data_in, sample_rate);
+     task_data.reset(new TaskData(wave_data_in, sample_rate));
      key = key_in;
    }
   };

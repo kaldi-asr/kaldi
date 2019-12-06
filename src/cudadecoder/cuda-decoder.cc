@@ -358,6 +358,7 @@ void CudaDecoder::ComputeInitialChannel() {
 
   CopyLaneCountersToHostSync();
   PostProcessingMainQueue();
+  ConcatenateData();
   CopyLaneCountersToHostSync();
 
   const int32 main_q_end =
@@ -1340,7 +1341,7 @@ void CudaDecoder::GetTokenRawLatticeData(
 }
 
 void CudaDecoder::GetSameFSTStateTokenList(
-    ChannelId ichannel, InfoToken token, InfoToken **tok_beg,
+    ChannelId ichannel, InfoToken &token, InfoToken **tok_beg,
     float2 **extra_extra_and_acoustic_cost_beg, int32 *nsame) {
   // We now need to consider all tokens related to that (iframe,
   // fst_state)

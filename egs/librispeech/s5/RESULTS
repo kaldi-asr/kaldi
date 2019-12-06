@@ -1,6 +1,6 @@
 # In the results below, "tgsmall" is the pruned 3-gram LM, which is used for lattice generation.
 # The following language models are then used for rescoring:
-# a) tgmed- slightly less pruned 3-gram LM  
+# a) tgmed- slightly less pruned 3-gram LM
 # b) tglarge- the full, non-pruned 3-gram LM
 # c) fglarge- non-pruned 4-gram LM
 #
@@ -337,7 +337,7 @@
 %WER 4.39 [ 2387 / 54402, 377 ins, 199 del, 1811 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_dev_clean_tglarge/wer_14
 %WER 5.36 [ 2918 / 54402, 328 ins, 338 del, 2252 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_dev_clean_tgmed/wer_17
 %WER 6.08 [ 3305 / 54402, 369 ins, 396 del, 2540 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_dev_clean_tgsmall/wer_15
-%WER 4.40 [ 2395 / 54402, 375 ins, 200 del, 1820 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tglarge/wer_14 
+%WER 4.40 [ 2395 / 54402, 375 ins, 200 del, 1820 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tglarge/wer_14
 %WER 5.35 [ 2909 / 54402, 328 ins, 339 del, 2242 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tgmed/wer_17
 %WER 6.05 [ 3291 / 54402, 384 ins, 381 del, 2526 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tgsmall/wer_14
 %WER 13.45 [ 6850 / 50948, 808 ins, 876 del, 5166 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch0_dev_other_tglarge/wer_15
@@ -423,7 +423,7 @@
 %WER 17.64 [ 9231 / 52343, 764 ins, 1662 del, 6805 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tgsmall_utt_offline/wer_14
 
 # Results with nnet3 tdnn
-# local/nnet3/run_tdnn.sh
+# local/nnet3/run_tdnn.sh (with old configs, now moved to local/nnet3/tuning/run_tdnn_1a.sh)
 # (4 epoch training on speed-perturbed data)
 # num_params=19.3M
 %WER 4.43 [ 2410 / 54402, 306 ins, 278 del, 1826 sub ] exp/nnet3/tdnn_sp/decode_dev_clean_fglarge/wer_13_1.0
@@ -444,7 +444,7 @@
 %WER 16.29 [ 8528 / 52343, 828 ins, 1320 del, 6380 sub ] exp/nnet3/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
 
 # Results with nnet3 tdnn
-# local/nnet3/run_tdnn.sh
+# local/nnet3/run_tdnn.sh (with old configs, now moved to local/nnet3/tuning/run_tdnn_1a.sh)
 # (4 epoch training on speed-perturbed and volumn-perturbed "cleaned" data)
 # num_params=19.3M, average training time=68.8s per job(on Tesla K80), real-time factor=1.23161
 # for x in exp/nnet3_cleaned/tdnn_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
@@ -465,6 +465,24 @@
 %WER 14.78 [ 7737 / 52343, 807 ins, 1115 del, 5815 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgmed/wer_15_0.0
 %WER 16.28 [ 8521 / 52343, 843 ins, 1258 del, 6420 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
 
+# Results with nnet3 tdnn with new configs, a.k.a. xconfig
+# local/nnet3/run_tdnn.sh (linked to local/nnet3/tuning/run_tdnn_1b.sh)
+%WER 4.60 [ 2502 / 54402, 324 ins, 286 del, 1892 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_fglarge/wer_13_1.0
+%WER 4.80 [ 2612 / 54402, 350 ins, 285 del, 1977 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_tglarge/wer_11_1.0
+%WER 5.97 [ 3248 / 54402, 460 ins, 310 del, 2478 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_tgmed/wer_11_0.0
+%WER 6.66 [ 3625 / 54402, 479 ins, 392 del, 2754 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_tgsmall/wer_11_0.0
+%WER 12.29 [ 6262 / 50948, 863 ins, 665 del, 4734 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_fglarge/wer_15_0.0
+%WER 12.89 [ 6565 / 50948, 773 ins, 853 del, 4939 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_tglarge/wer_14_0.5
+%WER 15.41 [ 7849 / 50948, 894 ins, 1083 del, 5872 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_tgmed/wer_15_0.0
+%WER 16.81 [ 8562 / 50948, 896 ins, 1215 del, 6451 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_tgsmall/wer_14_0.0
+%WER 4.99 [ 2624 / 52576, 393 ins, 253 del, 1978 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_fglarge/wer_13_0.5
+%WER 5.16 [ 2715 / 52576, 359 ins, 319 del, 2037 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_tglarge/wer_12_1.0
+%WER 6.29 [ 3307 / 52576, 471 ins, 341 del, 2495 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_tgmed/wer_12_0.0
+%WER 7.13 [ 3750 / 52576, 473 ins, 452 del, 2825 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_tgsmall/wer_13_0.0
+%WER 12.73 [ 6665 / 52343, 894 ins, 711 del, 5060 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_fglarge/wer_14_0.0
+%WER 13.33 [ 6979 / 52343, 920 ins, 796 del, 5263 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tglarge/wer_14_0.0
+%WER 15.90 [ 8323 / 52343, 921 ins, 1126 del, 6276 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgmed/wer_13_0.0
+%WER 17.28 [ 9044 / 52343, 894 ins, 1372 del, 6778 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
 
 # Results with nnet3 tdnn+sMBR
 # local/nnet3/run_tdnn_discriminative.sh

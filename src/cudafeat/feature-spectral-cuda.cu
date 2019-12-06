@@ -276,7 +276,7 @@ __device__ inline int32 FirstSampleOfFrame(int32 frame, int32 frame_shift,
 __global__ void extract_window_kernel(
     int32 frame_shift, int32 frame_length, int32 frame_length_padded,
     int32 window_size, bool snip_edges, int32_t sample_offset,
-    const BaseFloat __restrict__ *wave, int32 wave_dim,
+    const BaseFloat * __restrict__ wave, int32 wave_dim,
     BaseFloat *__restrict__ windows, int32_t wlda) {
   int frame = blockIdx.x;
   int tidx = threadIdx.x;
@@ -503,8 +503,8 @@ void CudaSpectralFeatures::ComputeFinalFeatures(int num_frames, BaseFloat vtln_w
                             kTrans, 0.0);
 
      apply_lifter_and_floor_energy<<<num_frames, CU1DBLOCK>>>(
-         cu_features->NumRows(), cu_features->NumCols(), 
-	 mfcc_opts.cepstral_lifter, mfcc_opts.use_energy, 
+         cu_features->NumRows(), cu_features->NumCols(),
+	 mfcc_opts.cepstral_lifter, mfcc_opts.use_energy,
 	 mfcc_opts.energy_floor, cu_signal_log_energy->Data(),
          cu_lifter_coeffs_.Data(), cu_features->Data(), cu_features->Stride());
   } else {

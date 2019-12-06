@@ -192,8 +192,10 @@ void BatchedThreadedNnet3CudaPipeline::CloseAllDecodeHandlesForGroup(
   WaitForGroup(group);
   std::lock_guard<std::mutex> lk1(tasks_lookup_mutex_);
   auto p = tasks_group_lookup_.equal_range(group);
-  for (auto it = p.first; it != p.second; ++it)
+  for (auto it = p.first; it != p.second; ++it) {
+    KALDI_ASSERT(it->second->finished==true);
     tasks_lookup_.erase(it->second->key);
+  }
   tasks_group_lookup_.erase(p.first, p.second);
   std::lock_guard<std::mutex> lk2(group_tasks_mutex_);
   group_tasks_not_done_.erase(group);
@@ -440,7 +442,7 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchNnet(
   // for all new batches enqueue up nnet work.
   for (int i = first; i < tasks.size(); i++) {
     TaskState &task = *tasks[i];
-    std::shared_ptr<TaskData> &task_data = task.task_data;
+    std::unique_ptr<TaskData> &task_data = task.task_data;
     std::vector<nnet3::NnetInferenceTask> &ntasks = nnet_tasks[i];
 
     if (config_.gpu_feature_extract) {
@@ -482,16 +484,16 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchNnet(
   // Extract Posteriors
   for (int i = first; i < tasks.size(); i++) {
     TaskState &task = *tasks[i];
-    std::shared_ptr<TaskData> &task_data = task.task_data;
+    std::unique_ptr<TaskData> &task_data = task.task_data;
     CuMatrix<BaseFloat> &posteriors = task_data->posteriors;
     MergeTaskOutput(nnet_tasks[i], &posteriors);
 
     // nnet output is no longer necessary as we have copied the output out
     nnet_tasks[i].resize(0);
 
-    // featurs are no longer needed so free memory
+    // features are no longer needed so free memory here
     task_data->ivector_features.Resize(0);
-    task_data->input_features.Resize(0, 0);
+    task_data->input_features.Resize(0,0);
   }
 
   nvtxRangePop();
@@ -501,7 +503,7 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchNnet(
 void BatchedThreadedNnet3CudaPipeline::ComputeOneFeatureCPU(TaskState *task_) {
   nvtxRangePushA("ComputeOneFeatureCPU");
   TaskState &task = *task_;
-  std::shared_ptr<TaskData> &task_data = task.task_data;
+  std::unique_ptr<TaskData> &task_data = task.task_data;
   Vector<BaseFloat> &ivector_features = task_data->ivector_features_cpu;
   Matrix<BaseFloat> &input_features = task_data->input_features_cpu;
 
@@ -568,14 +570,14 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchFeatures(
     // WAR:  Not pinning memory because it seems to impact correctness
     // we are continuing to look into a fix but want to commit this workaround
     // as a temporary measure.
-    // if (pinned_vector.Dim() != 0) {
-    //  cudaHostUnregister(pinned_vector.Data());
-    //}
+    if (pinned_vector.Dim() != 0) {
+      cudaHostUnregister(pinned_vector.Data());
+    }
 
     // allocated array 2x size
     pinned_vector.Resize(count * 2, kUndefined);
-    // cudaHostRegister(pinned_vector.Data(),
-    //                 pinned_vector.Dim() * sizeof(BaseFloat), 0);
+    cudaHostRegister(pinned_vector.Data(),
+        pinned_vector.Dim() * sizeof(BaseFloat), 0);
   }
 
   // We will launch a thread for each task in order to get better host memory
@@ -592,7 +594,7 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchFeatures(
   // next launch threads to copy all waves for each task in parallel
   count = 0;
   for (int i = first; i < tasks.size(); i++) {
-    std::shared_ptr<TaskData> &task_data = tasks[i]->task_data;
+    std::unique_ptr<TaskData> &task_data = tasks[i]->task_data;
     SubVector<BaseFloat> wave(pinned_vector, count,
                               task_data->wave_samples->Dim());
     count += task_data->wave_samples->Dim();
@@ -621,7 +623,7 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchFeatures(
   count = 0;
   for (int i = first; i < tasks.size(); i++) {
     TaskState &task = *tasks[i];
-    std::shared_ptr<TaskData> &task_data = task.task_data;
+    std::unique_ptr<TaskData> &task_data = task.task_data;
 
     CuSubVector<BaseFloat> cu_wave(cu_waves, count,
                                    task_data->wave_samples->Dim());
@@ -646,7 +648,7 @@ void BatchedThreadedNnet3CudaPipeline::AllocateDecodables(
     std::vector<CudaDecodableInterface *> &decodables) {
   // Create mapped decodable here
   for (int i = first; i < tasks.size(); i++) {
-    std::shared_ptr<TaskData> &task_data = tasks[i]->task_data;
+    std::unique_ptr<TaskData> &task_data = tasks[i]->task_data;
     CuMatrix<BaseFloat> &posteriors = task_data->posteriors;
     decodables.push_back(
         new DecodableCuMatrixMapped(*trans_model_, posteriors, 0));
@@ -719,6 +721,7 @@ void BatchedThreadedNnet3CudaPipeline::PostDecodeProcessing(
   cuda_decoder.PrepareForGetRawLattice(completed_channels, true);
   // clean up datastructures for completed tasks
   for (int i = channels.size(); i < tasks.size(); i++) {
+    tasks[i]->task_data->posteriors.Resize(0,0);
     delete decodables[i];
   }
 
@@ -768,9 +771,6 @@ void BatchedThreadedNnet3CudaPipeline::CompleteTask(CudaDecoder *cuda_decoder,
 
   if (task->callback)  // if callable
     task->callback(task->dlat);
-
-  // Clear working data (raw input, posteriors, etc.)
-  task->task_data.reset();
 
   task->finished = true;
 
