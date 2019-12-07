@@ -10,6 +10,7 @@ num_spkrs=4
 num_hyp_spk=4
 datadir=dev_beamformit_dereverb
 get_stats=true
+all_array=false
 declare -a recording_id_array=("S02_U06" "S09_U06")
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
@@ -38,6 +39,14 @@ fi
 
 if [[ ${datadir} == *eval* ]]; then
   recording_id_array=("S01_U06" "S21_U06")
+fi
+
+if [[ ${datadir} == *dev* ]] && [[ $all_array == "true" ]]; then
+  recording_id_array=("S02_U01" "S02_U02" "S02_U03" "S02_U04" "S02_U06" "S09_U01" "S09_U02" "S09_U03" "S09_U04" "S09_U06")
+fi
+
+if [[ ${datadir} == *eval* ]] && [[ $all_array == "true" ]]; then
+  recording_id_array=("S01_U01" "S01_U02" "S01_U03" "S01_U04" "S01_U06" "S21_U01" "S21_U02" "S21_U03" "S21_U04" "S21_U06")
 fi
 
 for f in $ref_file $hyp_file; do

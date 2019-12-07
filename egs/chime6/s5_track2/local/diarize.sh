@@ -38,6 +38,8 @@ done
 if [ $stage -le 0 ]; then
   echo "$0: keeping only data corresponding to array U06 "
   echo "$0: we can skip this stage, to perform diarization on all arrays "
+  # to perform diarization ond scoring on all array please skip this step and
+  # pass all_array = true in local/multispeaker_score.sh
   cp -r data/$name data/${name}.bak
   mv data/$name/wav.scp data/$name/wav.scp.bak
   grep 'U06' data/$name/wav.scp.bak > data/$name/wav.scp
