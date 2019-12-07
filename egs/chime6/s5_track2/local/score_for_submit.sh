@@ -9,7 +9,7 @@ cmd=run.pl
 stage=0
 word_ins_penalty=0.0,0.5,1.0
 min_lmwt=7
-max_lmwt=12
+max_lmwt=17
 dev_decodedir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_diarized_2stage
 eval_decodedir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized_2stage
 dev_datadir=dev_beamformit_dereverb_diarized_hires
@@ -51,6 +51,7 @@ fi
 if [ $stage -le 2 ]; then
   # obtaining best lmwt, wip and wer
   # adding /dev/null to the command list below forces grep to output the filename
+  mkdir -p $dev_decodedir/scoring_kaldi_multispeaker
   grep WER $dev_decodedir/scoring_kaldi_multispeaker_*/*/per_speaker_wer/array_wer.txt /dev/null \
     | utils/best_wer.sh >& $dev_decodedir/scoring_kaldi_multispeaker/best_wer
 
