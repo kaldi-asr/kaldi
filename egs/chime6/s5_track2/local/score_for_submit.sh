@@ -43,7 +43,7 @@ if [ $stage -le 1 ]; then
       local/multispeaker_score.sh --cmd "$cmd" \
       --datadir $dev_datadir --get_stats false data/$dev_datadir/text \
       $dev_decodedir/scoring_kaldi/penalty_$wip/$LMWT.txt \
-      $dev_decodedir/scoring_kaldi_multispeaker_$wip/$LMWT/
+      $dev_decodedir/scoring_kaldi_multispeaker/penalty_$wip/$LMWT
     done
   done
 fi
@@ -52,7 +52,7 @@ if [ $stage -le 2 ]; then
   # obtaining best lmwt, wip and wer
   # adding /dev/null to the command list below forces grep to output the filename
   mkdir -p $dev_decodedir/scoring_kaldi_multispeaker
-  grep WER $dev_decodedir/scoring_kaldi_multispeaker_*/*/per_speaker_wer/array_wer.txt /dev/null \
+  grep WER $dev_decodedir/scoring_kaldi_multispeaker/penalty_*/*/per_speaker_wer/array_wer.txt /dev/null \
     | utils/best_wer.sh >& $dev_decodedir/scoring_kaldi_multispeaker/best_wer
 
   best_wer_file=$(awk '{print $NF}' $dev_decodedir/scoring_kaldi_multispeaker/best_wer)
@@ -68,7 +68,7 @@ if [ $stage -le 3 ]; then
   local/multispeaker_score.sh --cmd "$cmd" \
     --datadir $dev_datadir data/$dev_datadir/text \
     $dev_decodedir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
-    $dev_decodedir/scoring_kaldi_multispeaker_$best_wip/$best_lmwt/
+    $dev_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/
 fi
 
 if [ $stage -le 4 ]; then
@@ -76,7 +76,7 @@ if [ $stage -le 4 ]; then
   local/multispeaker_score.sh --cmd "$cmd" \
     --datadir $eval_datadir data/$eval_datadir/text \
     $eval_decodedir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
-    $eval_decodedir/scoring_kaldi_multispeaker_$best_wip/$best_lmwt/
+    $eval_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/
 fi
 
 if [ $stage -le 5 ]; then
@@ -84,7 +84,7 @@ if [ $stage -le 5 ]; then
   echo $best_lmwt > $dev_decodedir/scoring_kaldi_multispeaker/lmwt
   echo $best_wip >  $dev_decodedir/scoring_kaldi_multispeaker/wip
 
-  echo "$(<$dev_decodedir/scoring_kaldi_multispeaker_$best_wip/$best_lmwt/per_speaker_wer/array_wer.txt)"
-  echo "$(<$eval_decodedir/scoring_kaldi_multispeaker_$best_wip/$best_lmwt/per_speaker_wer/array_wer.txt)"
+  echo "$(<$dev_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/per_speaker_wer/array_wer.txt)"
+  echo "$(<$eval_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/per_speaker_wer/array_wer.txt)"
 fi
 
