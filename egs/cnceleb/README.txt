@@ -6,5 +6,4 @@ CSLT@Tsinghua http://cslt.riit.tsinghua.edu.cn/~data/CN-Celeb/
 
 The subdirectories "v1" and so on are different speaker recognition 
 recipes. The recipe in v1 demonstrates a standard approach using a 
-full-covariance GMM-UBM, iVectors, and a PLDA backend. The example 
-in v2 demonstrates DNN speaker embeddings with a PLDA backend.
+full-covariance GMM-UBM, iVectors, and a PLDA backend. 
