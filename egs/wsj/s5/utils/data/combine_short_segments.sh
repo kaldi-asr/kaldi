@@ -16,6 +16,7 @@
 
 # begin configuration section
 cleanup=true
+speaker_only=false
 # end configuration section
 
 . utils/parse_options.sh
@@ -72,6 +73,7 @@ set -o pipefail
 utils/data/get_utt2dur.sh $srcdir
 
 utils/data/internal/choose_utts_to_combine.py --min-duration=$min_seg_len \
+  --merge-within-speakers-only=$speaker_only \
   $srcdir/spk2utt $srcdir/utt2dur $dir/utt2utts $dir/utt2spk $dir/utt2dur
 
 utils/utt2spk_to_spk2utt.pl < $dir/utt2spk > $dir/spk2utt
