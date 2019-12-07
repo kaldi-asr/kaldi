@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyrigh       2017  Ignacio Viñals
+# Copyright      2017  Ignacio Viñals
 #           2017-2018  David Snyder
 #                2019  Jiawen Kang
 #
