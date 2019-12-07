@@ -55,7 +55,7 @@ if ! mkdir -p $dir; then
   exit 1;
 fi
 
-if ! utils/validate_data_dir.sh $srcdir; then
+if ! utils/validate_data_dir.sh --no-text $srcdir; then
   echo "$0: failed to validate input directory $srcdir.  If needed, run   utils/fix_data_dir.sh $srcdir"
   exit 1
 fi
@@ -87,7 +87,9 @@ utils/apply_map.pl -f 2- $srcdir/feats.scp <$dir/utt2utts | \
 
 # create $dir/text by concatenating the source 'text' entries for the original
 # utts.
-utils/apply_map.pl -f 2- $srcdir/text <$dir/utt2utts > $dir/text
+if [ -f $srcdir/text ]; then
+  utils/apply_map.pl -f 2- $srcdir/text <$dir/utt2utts > $dir/text
+fi
 
 if [ -f $srcdir/utt2uniq ]; then
   # the utt2uniq file is such that if 2 utts were derived from the same original
@@ -171,7 +173,7 @@ fi
 # note: the user will have to recompute the cmvn, as the speakers may have changed.
 rm $dir/cmvn.scp 2>/dev/null || true
 
-utils/validate_data_dir.sh --no-wav $dir
+utils/validate_data_dir.sh --no-text --no-wav $dir
 
 if $cleanup; then
   rm $dir/utt2utts
