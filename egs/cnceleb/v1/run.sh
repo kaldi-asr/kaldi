@@ -15,8 +15,8 @@
 . ./cmd.sh
 . ./path.sh
 set -e
-mfccdir=`pwd`/_mfcc
-vaddir=`pwd`/_vad
+mfccdir=`pwd`/mfcc
+vaddir=`pwd`/mfcc
 
 cnceleb_root=/export/corpora/CN-Celeb
 eval_trails_core=data/eval_test/trials/trials.lst
