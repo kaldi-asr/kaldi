@@ -66,7 +66,8 @@ if [ $stage -le 4 ]; then
   # Note that there are over one-third of the utterances less than 2 seconds in our training set,
   # and these short utterances are harmful for PLDA training. Therefore, to improve performance 
   # of PLDA modeling and inference, we will combine the short utterances longer than 5 seconds.
-  local/combine_short_segments.sh data/train 5 data/train_comb
+  utils/data/combine_short_segments.sh --speaker-only true \
+    data/train 5 data/train_comb
   # Compute the energy-based VAD for train_comb
   sid/compute_vad_decision.sh --nj 20 --cmd "$train_cmd" \
     data/train_comb exp/make_vad $vaddir
