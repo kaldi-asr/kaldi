@@ -126,6 +126,7 @@ if [ $stage -le 3 ]; then
       data/${datadir} || exit 1
 
     mv data/${datadir}_seg data/${datadir}_${nnet_type}_seg
+    mv data/${datadir}/{segments.bak,utt2spk.bak} data/${datadir}_${nnet_type}_seg
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
     # step.
