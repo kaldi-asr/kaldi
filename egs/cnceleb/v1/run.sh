@@ -120,9 +120,9 @@ if [ $stage -le 7 ]; then
     "cat '$eval_trails_core' | cut -d\  --fields=1,2 |" exp/scores/cnceleb_eval_scores || exit 1;
 
   # CN-Celeb Eval Core:
-  # EER: 13.93%
-  # minDCF(p-target=0.01): 0.6528
-  # minDCF(p-target=0.001): 0.6528
+  # EER: 13.91%
+  # minDCF(p-target=0.01): 0.6530
+  # minDCF(p-target=0.001): 0.7521
   echo -e "\nCN-Celeb Eval Core:";
   eer=$(paste $eval_trails_core exp/scores/cnceleb_eval_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   mindcf1=`sid/compute_min_dcf.py --p-target 0.01 exp/scores/cnceleb_eval_scores $eval_trails_core 2> /dev/null`
