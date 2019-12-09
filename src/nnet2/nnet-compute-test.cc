@@ -44,7 +44,6 @@ void UnitTestNnetCompute() {
     return;
   CuMatrix<BaseFloat> output1(num_output_rows, output_dim);
   NnetComputation(*nnet, input, pad_input, &output1);
-
   CuMatrix<BaseFloat> output2(output1.NumRows(), output1.NumCols());
   int32 cur_input_pos = 0, cur_output_pos = 0;
 
