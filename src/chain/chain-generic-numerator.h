@@ -102,6 +102,18 @@ namespace chain {
  */
 
 
+struct GenericNumeratorComputationOptions {
+  bool multithreaded;
+  GenericNumeratorComputationOptions(): multithreaded(false) { }
+  void Register(OptionsItf *opts) {
+    opts->Register("multithreaded-numerator-graph", &multithreaded, "If true, "
+                   "use multiple threads to parallelize the chain numerator "
+                   "graph computation");
+  }
+
+};
+
+
 // This class is responsible for the forward-backward of the
 // end-to-end 'supervision' (numerator) FST. This kind of FST can
 // have self-loops.
@@ -112,7 +124,8 @@ namespace chain {
 class GenericNumeratorComputation {
  public:
   /// Initializes the object.
-  GenericNumeratorComputation(const Supervision &supervision,
+  GenericNumeratorComputation(const GenericNumeratorComputationOptions &opts,
+                              const Supervision &supervision,
                               const CuMatrixBase<BaseFloat> &nnet_output);
 
   // Does the forward-backward computation. Returns the total log-prob
@@ -198,6 +211,9 @@ class GenericNumeratorComputation {
   // an offset subtracted from the logprobs of transitions out of the first
   // state of each graph to help reduce numerical problems.
   Vector<BaseFloat> offsets_;
+
+  // Configuration options
+  const GenericNumeratorComputationOptions &opts_;
 };
 
 }  // namespace chain

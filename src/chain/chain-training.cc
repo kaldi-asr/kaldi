@@ -138,7 +138,8 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
 
 
   {
-    GenericNumeratorComputation numerator(supervision, nnet_output);
+    GenericNumeratorComputation numerator(opts.numerator_opts,
+                                          supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, as well as the returned logprob.
     if (xent_output_deriv) {

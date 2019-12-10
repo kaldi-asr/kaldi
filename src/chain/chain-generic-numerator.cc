@@ -35,10 +35,12 @@ namespace chain {
 // for end-to-end training 'supervision's.
 
 GenericNumeratorComputation::GenericNumeratorComputation(
+    const GenericNumeratorComputationOptions &opts,
     const Supervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output):
     supervision_(supervision),
-    nnet_output_(nnet_output) {
+    nnet_output_(nnet_output),
+    opts_(opts) {
   KALDI_ASSERT(supervision.num_sequences *
                supervision.frames_per_sequence == nnet_output.NumRows() &&
                supervision.label_dim == nnet_output.NumCols());
@@ -214,181 +216,6 @@ BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
   return log_prob_product + log_scale_product;
 }
 
-/*
-bool GenericNumeratorComputation::ForwardBackward(
-                                 BaseFloat *total_loglike,
-                                 CuMatrixBase<BaseFloat> *nnet_output_deriv) {
-  NVTX_RANGE(__func__);
-  KALDI_ASSERT(total_loglike != NULL);
-  KALDI_ASSERT(nnet_output_deriv != NULL);
-  KALDI_ASSERT(nnet_output_deriv->NumCols() == nnet_output_.NumCols());
-  KALDI_ASSERT(nnet_output_deriv->NumRows() == nnet_output_.NumRows());
-
-  BaseFloat partial_loglike = 0;
-  const int32 num_sequences = supervision_.num_sequences;
-
-  bool ok = true;
-  Matrix<BaseFloat> alpha;
-  Matrix<BaseFloat> beta;
-  Matrix<BaseFloat> probs;
-  Matrix<BaseFloat> derivs;
-
-  // We selectively copy only those pdfs we need
-  CopySpecificPdfsIndirect(nnet_output_, index_to_pdf_, &probs);
-
-  derivs.Resize(probs.NumRows(), probs.NumCols());
-  derivs.Set(-std::numeric_limits<BaseFloat>::infinity());
-
-  for (int seq = 0; seq < num_sequences; ++seq) {
-    // Forward part
-    AlphaFirstFrame(seq, &alpha);
-    partial_loglike += AlphaRemainingFrames(seq, probs, &alpha);
-
-    // Backward part
-    BetaLastFrame(seq, alpha, &beta);
-    BetaRemainingFrames(seq, probs, alpha, &beta, &derivs);
-    if (GetVerboseLevel() >= 1)
-      ok = ok && CheckValues(seq, probs, alpha, beta, derivs);
-  }
-  // Transfer and add the derivatives to the values in the matrix
-  AddSpecificPdfsIndirect(&derivs, index_to_pdf_, nnet_output_deriv);
-  *total_loglike = partial_loglike;
-  return ok;
-}
-*/
-
-/*
-bool GenericNumeratorComputation::ForwardBackward(
-                                 BaseFloat *total_loglike,
-                                 CuMatrixBase<BaseFloat> *nnet_output_deriv) {
-  NVTX_RANGE(__func__);
-  KALDI_ASSERT(total_loglike != NULL);
-  KALDI_ASSERT(nnet_output_deriv != NULL);
-  KALDI_ASSERT(nnet_output_deriv->NumCols() == nnet_output_.NumCols());
-  KALDI_ASSERT(nnet_output_deriv->NumRows() == nnet_output_.NumRows());
-
-  BaseFloat partial_loglike = 0;
-  const int32 num_sequences = supervision_.num_sequences;
-
-  bool ok = true;
-  Matrix<BaseFloat> alpha;
-  Matrix<BaseFloat> beta;
-  Matrix<BaseFloat> probs;
-  Matrix<BaseFloat> derivs;
-
-  // We selectively copy only those pdfs we need
-  CopySpecificPdfsIndirect(nnet_output_, index_to_pdf_, &probs);
-
-  derivs.Resize(probs.NumRows(), probs.NumCols());
-  derivs.Set(-std::numeric_limits<BaseFloat>::infinity());
-
-  for (int seq = 0; seq < num_sequences; ++seq) {
-    // Forward part
-    AlphaFirstFrame(seq, &alpha);
-    partial_loglike += AlphaRemainingFrames(seq, probs, &alpha);
-
-    // Backward part
-    BetaLastFrame(seq, alpha, &beta);
-    BetaRemainingFrames(seq, probs, alpha, &beta, &derivs);
-    if (GetVerboseLevel() >= 1)
-      ok = ok && CheckValues(seq, probs, alpha, beta, derivs);
-  }
-
-  // Multi threaded version
-  unsigned int nthreads = std::thread::hardware_concurrency();
-  // std::cout << "Using " << nthreads << " threads" << std::endl;
-  // nthreads = 2; // DEBUG: validate first with just 1 thread
-  unsigned int num_sequences_per_thread = 
-    (num_sequences + nthreads - 1) / nthreads;
-
-  std::vector<Matrix<BaseFloat>> alpha_mt(nthreads);
-  std::vector<Matrix<BaseFloat>> beta_mt(nthreads);
-  
-  Matrix<BaseFloat> derivs_mt; // Don't need nthreads copies to avoid data
-                               // races since each sequence operates on a
-                               // distinct set of columns
-  derivs_mt.Resize(probs.NumRows(), probs.NumCols());
-  derivs_mt.Set(-std::numeric_limits<BaseFloat>::infinity());
-
-  std::vector<BaseFloat> partial_loglike_mt(nthreads, static_cast<BaseFloat>(0));
-  std::vector<bool> ok_mt(nthreads, true);
-
-  // Lambda function for each thread's portion of the computation
-  auto thread_lambda = [&] (int thread, int num_sequences, int num_sequences_per_thread) {
-    int seq_st = thread * num_sequences_per_thread;
-    int seq_en = seq_st + num_sequences_per_thread;
-    seq_en = (seq_en <= num_sequences) ? seq_en : num_sequences;
-    for (int seq = seq_st; seq < seq_en; ++seq) {
-      // Forward part
-      AlphaFirstFrame(seq, &alpha_mt[thread]);
-      partial_loglike_mt[thread] += AlphaRemainingFrames(seq, probs, &alpha_mt[thread]);
-
-      // Backward part
-      BetaLastFrame(seq, alpha_mt[thread], &beta_mt[thread]);
-      BetaRemainingFrames(seq, probs, alpha_mt[thread], &beta_mt[thread], &derivs_mt);
-      if (GetVerboseLevel() >= 1)
-        ok_mt[thread] = ok_mt[thread] && CheckValues(seq, probs, alpha_mt[thread], beta_mt[thread], derivs_mt);
-    }
-    return;
-  };
-
-  std::vector<std::thread> workers(nthreads);
-  BaseFloat partial_loglike_mt_sum = static_cast<BaseFloat>(0);
-  {
-    NVTX_RANGE("Multithreaded F-B");
-    for (int thread = 0; thread < nthreads; ++thread)
-      // Launch all threads
-      workers[thread] = std::thread(thread_lambda, thread, num_sequences, num_sequences_per_thread);
-    for (int thread = 0; thread < nthreads; ++thread) {
-      // Join threads back in
-      workers[thread].join();
-      partial_loglike_mt_sum += partial_loglike_mt[thread];
-    }
-  }
-
-  // Check forward pass
-  // std::cout << "partial_loglike = " << partial_loglike
-  //           << ", partial_loglike_mt_sum = " << partial_loglike_mt_sum
-  //           << ", diff = " << std::abs(partial_loglike_mt_sum - partial_loglike) << std::endl;
-  KALDI_ASSERT( std::abs(partial_loglike_mt_sum - partial_loglike) < 1.e-3f );
-
-  // Check the backward pass
-  BaseFloat max_err = static_cast<BaseFloat>(0);
-  for (int t = 0; t < derivs.NumRows(); ++t) {
-    for (int id = 0; id < derivs.NumCols(); ++id) {
-      BaseFloat err = std::abs(derivs(t, id) - derivs_mt(t, id));
-      max_err = (err > max_err) ? err : max_err;
-    }
-  }
-  // std::cout << "Max derivs error = " << max_err << std::endl;
-  KALDI_ASSERT( max_err < 1.e-3f );
-
-  // Transfer and add the derivatives to the values in the matrix
-  AddSpecificPdfsIndirect(&derivs, index_to_pdf_, nnet_output_deriv);
-  *total_loglike = partial_loglike;
-  return ok;
-}
-
-BaseFloat GenericNumeratorComputation::ComputeObjf() {
-  NVTX_RANGE(__func__);
-  BaseFloat partial_loglike = 0;
-  const int32 num_sequences = supervision_.num_sequences;
-
-  Matrix<BaseFloat> alpha;
-  Matrix<BaseFloat> probs;
-
-  // We selectively copy only those pdfs we need
-  CopySpecificPdfsIndirect(nnet_output_, index_to_pdf_, &probs);
-
-  for (int seq = 0; seq < num_sequences; ++seq) {
-    // Forward part
-    AlphaFirstFrame(seq, &alpha);
-    partial_loglike += AlphaRemainingFrames(seq, probs, &alpha);
-  }
-  return partial_loglike;
-}
-*/
-
 bool GenericNumeratorComputation::ForwardBackward(
                                  BaseFloat *total_loglike,
                                  CuMatrixBase<BaseFloat> *nnet_output_deriv) {
@@ -413,14 +240,17 @@ bool GenericNumeratorComputation::ForwardBackward(
   derivs.Resize(probs.NumRows(), probs.NumCols());
   derivs.Set(-std::numeric_limits<BaseFloat>::infinity());
 
-  // Multi threaded version
-  unsigned int nthreads = std::thread::hardware_concurrency();
+  // Set total number of workers to the available hardware concurrency
+  unsigned int nthreads = opts_.multithreaded ? std::thread::hardware_concurrency() : 1;
+  // Naive load balancing, each thread gets a chunk of the sequences to process
   unsigned int num_sequences_per_thread = 
     (num_sequences + nthreads - 1) / nthreads;
 
+  // Allocate one alpha and beta matrix per thread to avoid contention
   std::vector<Matrix<BaseFloat>> alpha(nthreads);
   std::vector<Matrix<BaseFloat>> beta(nthreads);
   
+  // Per thread partial values and boolean
   std::vector<BaseFloat> partial_loglike_mt(nthreads, static_cast<BaseFloat>(0));
   std::vector<bool> ok_mt(nthreads, true);
 
@@ -444,17 +274,15 @@ bool GenericNumeratorComputation::ForwardBackward(
   };
 
   std::vector<std::thread> workers(nthreads);
-  {
-    NVTX_RANGE("Multithreaded F-B");
-    for (int thread = 0; thread < nthreads; ++thread)
-      // Launch all threads
-      workers[thread] = std::thread(thread_lambda, thread, num_sequences, num_sequences_per_thread);
-    for (int thread = 0; thread < nthreads; ++thread) {
-      // Join threads back in
-      workers[thread].join();
-      partial_loglike += partial_loglike_mt[thread];
-      ok = ok && ok_mt[thread];
-    }
+  for (int thread = 0; thread < nthreads; ++thread)
+    // Launch all threads
+    workers[thread] = std::thread(thread_lambda, thread, num_sequences, num_sequences_per_thread);
+  for (int thread = 0; thread < nthreads; ++thread) {
+    // Join threads back in
+    workers[thread].join();
+    // Reduce thread values to a single value
+    partial_loglike += partial_loglike_mt[thread];
+    ok = ok && ok_mt[thread];
   }
 
   // Transfer and add the derivatives to the values in the matrix
