@@ -21,7 +21,7 @@ set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=0
+stage=-1
 nj=30
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
@@ -53,14 +53,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/chain/run_ivector_common.sh --stage $stage \
-                                  --nj $nj \
-                                  --train-set $train_set \
-                                  --gmm $gmm \
-                                  --num-threads-ubm $num_threads_ubm \
-                                  --nnet3-affix "$nnet3_affix"
-
-
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
@@ -69,6 +61,23 @@ dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
+
+
+if [ $stage -le -1 ]; then
+    steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+        data/${train_set}_sp  \
+        data/lang \
+        exp/tri5 \
+        $ali_dir
+fi
+
+local/chain/run_ivector_common.sh --stage $stage \
+                                  --nj $nj \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --num-threads-ubm $num_threads_ubm \
+                                  --nnet3-affix "$nnet3_affix"
+
 
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
@@ -172,7 +181,7 @@ if [ $stage -le 17 ]; then
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
   if [ ! -f $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
-      copy-transition-model $treedir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
+      copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
   else
       echo "Keeping the old $dir/init/default_trans.mdl as it already exists."
   fi
@@ -207,7 +216,7 @@ if [ $stage -le 19 ]; then
   mkdir -p $dir/den_fsts/log
 
   # We may later reorganize this.
-  cp $treedir/tree $dir/default.tree
+  cp $tree_dir/tree $dir/default.tree
 
   echo "$0: creating phone language-model"
   $train_cmd $dir/den_fsts/log/make_phone_lm_default.log \
