@@ -96,7 +96,7 @@ if [ $stage -le 5 ]; then
     | grep $best_array | utils/best_wer.sh >& $eval_decodedir/scoring_kaldi_multispeaker/best_wer
 
   # printing dev and eval wer
-  cut -d " " -f 1-13 $dev_decodedir/scoring_kaldi_multispeaker/best_wer
-  cut -d " " -f 1-13 $eval_decodedir/scoring_kaldi_multispeaker/best_wer
+  echo "Dev:  $(<$dev_decodedir/scoring_kaldi_multispeaker/best_wer)" | cut -d " " -f 1-15
+  echo "Eval: $(<$eval_decodedir/scoring_kaldi_multispeaker/best_wer)" | cut -d " " -f 1-14
 fi
 
