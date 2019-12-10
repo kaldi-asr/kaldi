@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Copyright 2019 Srikanth Madikeri (Idiap Research Institute)
-
 # 
 # This script is a modification of local/chain/run_tdnn.sh adapted to the chain2 recipes.
 
