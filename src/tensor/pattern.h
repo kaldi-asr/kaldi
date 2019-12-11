@@ -136,7 +136,7 @@ namespace tensor {
                      in the relevant storage region; we will assume that it is obvious
                      from the context which storage region.   See also: "Storage region"
 
-    Disjoint Patterns:  When we speak of disjoint Patterns we mean that
+    Disjoint Patterns:  When we speak of Patterns being disjoint we mean that
                     their memory-index-sets are disjoint; see memory-index-set.
 
     Eaxis-index / extended axis-index:
@@ -153,7 +153,7 @@ namespace tensor {
                       `dims = [5 1]`, we can index that Tensor with an index-tuple
                       that:
                        (1) may have nonzero index values in any axis for which
-                          with dim=1, so `index_tuple = [4 100]` would be a valid
+                          dim=1, so `index_tuple = [4 100]` would be a valid
                           index for this Tensor in extended indexing.
                        (2) may have more elements than the Tensor's num-axes; the
                          Tensor is implicitly extended with extra axes on the left
@@ -188,11 +188,11 @@ namespace tensor {
                       multiplied by the Pattern's stride for that axis.
 
     Index-tuple-set of a Pattern: The index-tuple-set I(p) of a Pattern p is the
-                      set of valid index-tuples assuming we are not allowing extended
+                      set of valid index-tuples minus those that require extended
                       indexing.  For example, for a Tensor with `dims = [2]`, the
-                      set of valid index-tuples would be `{ (0), (1) }`; for
-                      a Tensor with `dims = [2 2]` the set of valid index-tuples
-                      is `{ (0,0), (0,1), (1,0), (1,1) }`.
+                      index-tuple-set `{ (0), (1) }`; for
+                      a Tensor with `dims = [1 2]` the set of valid index-tuples
+                      is `{ (0,0), (0,1) }`.
 
     Index-tuple-set of a Pattern-tuple:  The index-tuple-set I(P, Q) of a Pattern-tuple
                       (P, Q) is the index-tuple-set that you would obtain for a
