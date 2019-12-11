@@ -198,8 +198,8 @@ public:
  // Check if any group is available. If one is available, set its name in *group
  bool IsAnyGroupCompleted(std::string *group);
  inline int NumPendingTasks() {
-   return (tasks_back_ - tasks_front_ + config_.max_pending_tasks + 1) %
-          (config_.max_pending_tasks + 1);
+   return (tasks_back_ - tasks_front_ + config_.max_pending_tasks + 10) %
+          (config_.max_pending_tasks + 10);
   };
 
 private:
