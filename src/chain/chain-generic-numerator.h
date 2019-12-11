@@ -104,7 +104,7 @@ namespace chain {
 
 struct GenericNumeratorComputationOptions {
   bool multithreaded;
-  GenericNumeratorComputationOptions(): multithreaded(false) { }
+  GenericNumeratorComputationOptions(): multithreaded(true) { }
   void Register(OptionsItf *opts) {
     opts->Register("multithreaded-numerator-graph", &multithreaded, "If true, "
                    "use multiple threads to parallelize the chain numerator "
