@@ -383,7 +383,6 @@ bool CuDevice::SelectAndInitializeGpuIdWithExistingCudaContext(int dev_id) {
   return true;
 }
 
-
 template <typename TA, typename TB>
 bool greater_pair(const std::pair<TA, TB> &left, const std::pair<TA, TB> &right) {
   return left.second > right.second;
