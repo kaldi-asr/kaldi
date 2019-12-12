@@ -6,8 +6,6 @@
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 //
 //  http://www.apache.org/licenses/LICENSE-2.0
 //
@@ -29,9 +27,9 @@ namespace py = pybind11;
 using namespace kaldi;
 
 template<class Holder>
-void sequential_matrix_reader(py::module &m, std::string suffix) {
-    std::string name = "SequentialBaseFloatMatrixReader" + suffix;
-    py::class_<SequentialTableReader<Holder > >(m, name.c_str())
+void sequential_matrix_reader(py::module &m, const std::string &data_type) {
+    std::string name = "SequentialBaseFloat" + data_type + "Reader";
+    py::class_<SequentialTableReader<Holder>>(m, name.c_str())
         .def(py::init<>()) 
         .def(py::init<const std::string &>()) 
         .def("Open", &SequentialTableReader<Holder>::Open) 
@@ -45,9 +43,22 @@ void sequential_matrix_reader(py::module &m, std::string suffix) {
 }
 
 template<class Holder>
-void matrix_writer(py::module &m, std::string suffix) {
-  std::string name = "BaseFloatMatrixWriter" + suffix;
-  py::class_<TableWriter<Holder > >(m, name.c_str())
+void random_access_matrix_reader(py::module &m, const std::string &data_type) {
+    std::string name = "RandomAccessBaseFloat" + data_type + "Reader";
+    py::class_<RandomAccessTableReader<Holder>>(m, name.c_str())
+        .def(py::init<>()) 
+        .def(py::init<const std::string &>()) 
+        .def("Open", &RandomAccessTableReader<Holder>::Open) 
+        .def("IsOpen", &RandomAccessTableReader<Holder>::IsOpen) 
+        .def("Close", &RandomAccessTableReader<Holder>::Close)
+        .def("HasKey", &RandomAccessTableReader<Holder>::HasKey)
+        .def("Value", &RandomAccessTableReader<Holder>::Value);  
+}
+
+template<class Holder>
+void matrix_writer(py::module &m, const std::string &data_type) {
+  std::string name = "BaseFloat" + data_type + "Writer";
+  py::class_<TableWriter<Holder>>(m, name.c_str())
       .def(py::init<const std::string &>())
       .def("IsOpen", &TableWriter<Holder>::IsOpen)
       .def("Open", &TableWriter<Holder>::Open)    
@@ -110,12 +121,15 @@ PYBIND11_MODULE(kaldi_pybind, m) {
           MatrixResizeType, MatrixStrideType>(),
           py::arg("row"), py::arg("col"), py::arg("resize_type") = kSetZero,
           py::arg("stride_type") = kDefaultStride);
-}
 
-  sequential_matrix_reader<KaldiObjectHolder<Matrix<float>>>(m, "_Matrix");
-  sequential_matrix_reader<KaldiObjectHolder<Vector<float>>>(m, "_Vector");
 
-  matrix_writer<KaldiObjectHolder<Matrix<float>>>(m, "_Matrix");
-  matrix_writer<KaldiObjectHolder<Vector<float>>>(m, "_Vector");
+  sequential_matrix_reader<KaldiObjectHolder<Matrix<float>>>(m, "Matrix");
+  sequential_matrix_reader<KaldiObjectHolder<Vector<float>>>(m, "Vector");
+
+  random_access_matrix_reader<KaldiObjectHolder<Matrix<float>>>(m, "Matrix");
+  random_access_matrix_reader<KaldiObjectHolder<Vector<float>>>(m, "Vector");
+
+  matrix_writer<KaldiObjectHolder<Matrix<float>>>(m, "Matrix");
+  matrix_writer<KaldiObjectHolder<Vector<float>>>(m, "Vector");
 }
 
