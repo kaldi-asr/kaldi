@@ -103,12 +103,12 @@ namespace chain {
 
 
 struct GenericNumeratorComputationOptions {
-  bool multithreaded;
-  GenericNumeratorComputationOptions(): multithreaded(true) { }
+  unsigned int num_threads;
+  GenericNumeratorComputationOptions(): num_threads(1) { }
   void Register(OptionsItf *opts) {
-    opts->Register("multithreaded-numerator-graph", &multithreaded, "If true, "
-                   "use multiple threads to parallelize the chain numerator "
-                   "graph computation");
+    opts->Register("numerator-graph-threads", &num_threads, "Number of threads "
+                   "to use to parallelize the chain numerator graph computation. "
+                   "If 0, use available hardware concurrency.");
   }
 
 };

@@ -241,7 +241,8 @@ bool GenericNumeratorComputation::ForwardBackward(
   derivs.Set(-std::numeric_limits<BaseFloat>::infinity());
 
   // Set total number of workers to the available hardware concurrency
-  unsigned int nthreads = opts_.multithreaded ? std::thread::hardware_concurrency() : 1;
+  unsigned int nthreads = opts_.num_threads > 0 ? opts_.num_threads :
+                              std::thread::hardware_concurrency();
   // Naive load balancing, each thread gets a chunk of the sequences to process
   unsigned int num_sequences_per_thread = 
     (num_sequences + nthreads - 1) / nthreads;
