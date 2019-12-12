@@ -16,8 +16,12 @@
 
 # begin configuration section
 cleanup=true
-speaker_only=false
+speaker_only=false  # If true, utterances are only combined from the same speaker.
+                    # It may be useful for the speaker recognition task.
+                    # If false, utterances are preferentially combined from the same speaker,
+                    # and then combined across different speakers.
 # end configuration section
+
 
 . utils/parse_options.sh
 
@@ -26,7 +30,8 @@ if [ $# != 3 ]; then
   echo "  $0 [options] <srcdir> <min-segment-length-in-seconds> <dir>"
   echo "e.g.:"
   echo " $0 data/train 1.55 data/train_comb"
-  # options documentation here.
+  echo " Options:"
+  echo "  --speaker-only <true|false>  # options to internal/choose_utts_to_combine.py, default false."
   exit 1;
 fi
 

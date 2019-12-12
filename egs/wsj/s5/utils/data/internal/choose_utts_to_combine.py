@@ -39,9 +39,9 @@ parser.add_argument("--min-duration", type = float, default = 1.55,
                     help="Minimum utterance duration")
 parser.add_argument("--merge-within-speakers-only", type = str, default = 'false',
                     choices = ['true', 'false'],
-                    help="If true, utterances were only combined from the same speaker."
+                    help="If true, utterances are only combined from the same speaker."
                     "It may be useful for the speaker recognition task."
-                    "If false, utterances were preferentially combined from the same speaker,"
+                    "If false, utterances are preferentially combined from the same speaker,"
                     "and then combined across different speakers.")
 parser.add_argument("spk2utt_in", type = str, metavar = "<spk2utt-in>",
                     help="Filename of [input] speaker to utterance map needed "
@@ -222,8 +222,8 @@ def SelfTest():
 # This function figures out the grouping of utterances.
 # The input is:
 # 'min_duration' which is the minimum utterance length in seconds.
-# 'merge_within_speakers_only' which is the option to control if 
-# utterances were only combined from the same speaker.
+# 'merge_within_speakers_only' which is a ['true', 'false'] choice.
+# If true, then utterances are only combined if they belong to the same speaker.
 # 'spk2utt' which is a list of pairs (speaker-id, [list-of-utterances])
 # 'utt2dur' which is a dict from utterance-id to duration (as a float)
 # It returns a lists of lists of utterances; each list corresponds to
