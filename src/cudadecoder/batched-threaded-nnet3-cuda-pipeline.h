@@ -54,6 +54,7 @@ struct BatchedThreadedNnet3CudaPipelineConfig {
         num_worker_threads(20),
         determinize_lattice(true),
         max_pending_tasks(4000),
+        pending_queue_padding(10),
         num_decoder_copy_threads(2),
         gpu_feature_extract(true) {};
   void Register(OptionsItf *po) {
@@ -107,6 +108,7 @@ struct BatchedThreadedNnet3CudaPipelineConfig {
   int num_worker_threads;
   bool determinize_lattice;
   int max_pending_tasks;
+  int pending_queue_padding;
   int num_decoder_copy_threads;
   bool gpu_feature_extract;
 
@@ -198,8 +200,9 @@ public:
  // Check if any group is available. If one is available, set its name in *group
  bool IsAnyGroupCompleted(std::string *group);
  inline int NumPendingTasks() {
-   return (tasks_back_ - tasks_front_ + config_.max_pending_tasks + 1) %
-          (config_.max_pending_tasks + 1);
+   return (tasks_back_ - tasks_front_ + config_.max_pending_tasks + 
+       config_.pending_queue_padding) %
+          (config_.max_pending_tasks + config_.pending_queue_padding);
   };
 
 private:
