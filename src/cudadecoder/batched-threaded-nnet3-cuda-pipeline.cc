@@ -45,9 +45,10 @@ void BatchedThreadedNnet3CudaPipeline::Initialize(
   // initialize threads and save their contexts so we can join them later
   thread_contexts_.resize(config_.num_control_threads);
 
-  // create work queue, padding by 10 so that we can better detect if this
+  // create work queue, padding so that we can better detect if this
   // overflows. this should not happen and is just there as a sanity check
-  pending_task_queue_ = new TaskState *[config_.max_pending_tasks + 10];
+  pending_task_queue_ = new TaskState *[config_.max_pending_tasks + 
+                                        config_.pending_queue_padding];
   tasks_front_ = 0;
   tasks_back_ = 0;
 
@@ -359,7 +360,8 @@ void BatchedThreadedNnet3CudaPipeline::AddTaskToPendingTaskQueue(
     // insert into pending task queue
     pending_task_queue_[tasks_back_] = task;
     // (int)tasks_back_);
-    tasks_back_ = (tasks_back_ + 1) % (config_.max_pending_tasks + 10);
+    tasks_back_ = (tasks_back_ + 1) % (config_.max_pending_tasks + 
+        config_.pending_queue_padding);
     KALDI_ASSERT(NumPendingTasks() <= config_.max_pending_tasks);
   }
 }
@@ -391,7 +393,8 @@ void BatchedThreadedNnet3CudaPipeline::AquireAdditionalTasks(
         // pending_task_queue_[tasks_front_]);
         KALDI_ASSERT(NumPendingTasks() > 0);
         tasks.push_back(pending_task_queue_[tasks_front_]);
-        tasks_front_ = (tasks_front_ + 1) % (config_.max_pending_tasks + 10);
+        tasks_front_ = (tasks_front_ + 1) % (config_.max_pending_tasks
+            + config_.pending_queue_padding);
       }
     }
   }
