@@ -728,8 +728,6 @@ void BatchedThreadedNnet3CudaPipeline::PostDecodeProcessing(
     delete decodables[i];
   }
 
-  std::vector<std::future<void>> futures;
-
   // Calling GetRawLattice + Determinize (optional) on a CPU worker thread
   for (int i = channels.size(); i < tasks.size(); i++) {
     // checking that this channel is actually in the completed channels list
@@ -737,14 +735,13 @@ void BatchedThreadedNnet3CudaPipeline::PostDecodeProcessing(
     KALDI_ASSERT(tasks[i]->ichannel ==
                  completed_channels[channels.size() +
                                     completed_channels.size() - i - 1]);
-    futures.push_back(
-        work_pool_->enqueue(THREAD_POOL_NORMAL_PRIORITY,
+    // enqueue task completion on a worker thread.  We do not need to wait 
+    // for sychronization on this thread as the parameters passed to this
+    // thread are persistent and that thread will return resources to the
+    // system when they free up.
+    work_pool_->enqueue(THREAD_POOL_NORMAL_PRIORITY,
                             &BatchedThreadedNnet3CudaPipeline::CompleteTask,
-                            this, &cuda_decoder, &channel_state, tasks[i]));
-  }
-
-  for (int i = 0; i < futures.size(); i++) {
-    futures[i].get();
+                            this, &cuda_decoder, &channel_state, tasks[i]);
   }
 
   tasks.resize(channels.size());
