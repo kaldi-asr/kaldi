@@ -1,10 +1,10 @@
-// pybind/kaldi_pybind.cc
+// pybind/matrix/vector_pybind.h
 
 // Copyright 2019   Daniel Povey
 //           2019   Dongji Gao
 //           2019   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
-// See ../../COPYING for clarification regarding multiple authors
+// See ../../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 //
@@ -17,24 +17,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KALDI_PYBIND_MATRIX_VECTOR_PYBIND_H_
+#define KALDI_PYBIND_MATRIX_VECTOR_PYBIND_H_
+
 #include "pybind/kaldi_pybind.h"
 
-#include <string>
+void pybind_vector(py::module& m);
 
-#include "matrix/matrix_common_pybind.h"
-#include "matrix/matrix_pybind.h"
-#include "matrix/vector_pybind.h"
-#include "util/table_types_pybind.h"
-
-void pybind_matrix(py::module& m);
-PYBIND11_MODULE(kaldi_pybind, m) {
-  m.doc() =
-      "pybind11 binding of some things from kaldi's "
-      "src/matrix and src/util directories. "
-      "Source is in $(KALDI_ROOT)/src/pybind/kaldi_pybind.cc";
-
-  pybind_matrix_common(m);
-  pybind_matrix(m);
-  pybind_vector(m);
-  pybind_table_types(m);
-}
+#endif  // KALDI_PYBIND_MATRIX_VECTOR_PYBIND_H_
