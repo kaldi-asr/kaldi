@@ -782,7 +782,7 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
               graph_cost = arc.weight.Value(),
               cur_cost = tok->tot_cost,
               tot_cost = cur_cost + ac_cost + graph_cost;
-          if (tot_cost > next_cutoff) continue;
+          if (tot_cost >= next_cutoff) continue;
           else if (tot_cost + adaptive_beam < next_cutoff)
             next_cutoff = tot_cost + adaptive_beam; // prune by best current token
           // Note: the frame indexes into active_toks_ are one-based,
