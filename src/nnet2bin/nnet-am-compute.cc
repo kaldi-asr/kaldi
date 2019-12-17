@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
       } else {
         NnetComputation(nnet, cu_feats, pad_input, &cu_output);
       }
-      output.CopyFromMat(cu_output);
+      cu_output.swap(&output);
       
       if (divide_by_priors) {
         output.MulColsVec(inv_priors); // scales each column by the corresponding element
