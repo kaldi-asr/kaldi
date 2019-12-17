@@ -791,7 +791,7 @@ class LatticeBiglmFasterDecoder {
       Token *tok = e->val;  // would segfault if state not in
                             // toks_ but this can't happen.
       BaseFloat cur_cost = tok->tot_cost;
-      if (cur_cost > cutoff) // Don't bother processing successors.
+      if (cur_cost >= cutoff) // Don't bother processing successors.
         continue;
       StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);

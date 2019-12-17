@@ -852,7 +852,7 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
     StateId state = e->key;
     Token *tok = e->val;  // would segfault if e is a NULL pointer but this can't happen.
     BaseFloat cur_cost = tok->tot_cost;
-    if (cur_cost > cutoff) // Don't bother processing successors.
+    if (cur_cost >= cutoff) // Don't bother processing successors.
       continue;
     // If "tok" has any existing forward links, delete them,
     // because we're about to regenerate them.  This is a kind
