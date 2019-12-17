@@ -17,6 +17,7 @@ and the first 2.5s of the second utterance i.e. from 25s to 27.s is truncated.
 """
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import collections
 import logging
@@ -37,7 +38,8 @@ logger.addHandler(handler)
 def get_args():
     """gets command line arguments"""
 
-    usage = """ Python script to resolve overlaps in ctms """
+    usage = """ Python script to resolve overlaps in ctms.  May be used with
+                utils/data/subsegment_data_dir.sh. """
     parser = argparse.ArgumentParser(usage)
     parser.add_argument('segments', type=argparse.FileType('r'),
                         help='use segments to resolve overlaps')
@@ -231,7 +233,7 @@ def resolve_overlaps(ctms, segments):
             try:
                 index = next(
                     (i for i, line in enumerate(ctm_for_next_utt)
-                     if line[2] + line[3] / 2.0 > overlap / 2.0))
+                    if line[2] + line[3] / 2.0 > overlap / 2.0))
             except StopIteration:
                 # This can happen if there is no word hypothesized after
                 # half the overlap region.
@@ -277,7 +279,7 @@ def run(args):
     segments, reco2utt = read_segments(args.segments)
     ctms = read_ctm(args.ctm_in, segments)
 
-    for reco, utts in reco2utt.iteritems():
+    for reco, utts in reco2utt.items():
         ctms_for_reco = []
         for utt in sorted(utts, key=lambda x: segments[x][1]):
             if (reco, utt) in ctms:

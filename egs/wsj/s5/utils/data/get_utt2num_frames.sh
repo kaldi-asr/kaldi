@@ -10,13 +10,14 @@ frame_shift=0.01
 frame_overlap=0.015
 
 . utils/parse_options.sh
+. ./path.sh
 
 if [ $# -ne 1 ]; then
   echo "This script writes a file utt2num_frames with the "
   echo "number of frames in each utterance as measured based on the "
   echo "duration of the utterances (in utt2dur) and the specified "
   echo "frame_shift and frame_overlap."
-  echo "Usage: $0 <data>" 
+  echo "Usage: $0 <data>"
   exit 1
 fi
 
@@ -28,7 +29,7 @@ if [ -s $data/utt2num_frames ]; then
 fi
 
 if [ ! -f $data/feats.scp ]; then
-  utils/data/get_utt2dur.sh $data
+  utils/data/get_utt2dur.sh --nj ${nj} --cmd "$cmd" $data
   awk -v fs=$frame_shift -v fovlp=$frame_overlap \
     '{print $1" "int( ($2 - fovlp) / fs)}' $data/utt2dur > $data/utt2num_frames
   exit 0

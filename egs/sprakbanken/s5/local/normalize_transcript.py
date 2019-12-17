@@ -17,8 +17,8 @@ normdict = {".": "",
             "\t": " "
             }
 
-from_chars = ''.join(normdict.keys())
-to_chars = ''.join(normdict.values())
+from_chars = ''.join(list(normdict.keys()))
+to_chars = ''.join(list(normdict.values()))
 
 #t_table = maketrans(from_chars, to_chars)
 

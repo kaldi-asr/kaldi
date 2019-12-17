@@ -18,6 +18,8 @@ nj=18
 # The values below are in seconds
 frame_shift=0.01
 segment_padding=0.2
+min_segment_dur=0
+merge_consecutive_max_dur=0
 
 . utils/parse_options.sh
 
@@ -53,6 +55,7 @@ if [ $stage -le 0 ]; then
     copy-int-vector "ark:gunzip -c $vad_dir/ali.JOB.gz |" ark,t:- \| \
     steps/segmentation/internal/sad_to_segments.py \
       --frame-shift=$frame_shift --segment-padding=$segment_padding \
+      --min-segment-dur=$min_segment_dur --merge-consecutive-max-dur=$merge_consecutive_max_dur \
       --utt2dur=$data_dir/utt2dur - $dir/segments.JOB
 fi
 

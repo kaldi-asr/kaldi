@@ -35,7 +35,7 @@ namespace kaldi {
 
 #ifndef KALDI_NO_PORTAUDIO
 
-// The actual PortAudio callback - delegates to OnlinePaSource->PaCallback()
+// The actual PortAudio callback - delegates to OnlinePaSource->Callback()
 int PaCallback(const void *input, void *output,
                long unsigned frame_count,
                const PaStreamCallbackTimeInfo *time_info,
@@ -58,10 +58,10 @@ OnlinePaSource::OnlinePaSource(const uint32 timeout,
 
   // Note this will work for 32bit integers but not for 64bit.
   // For 64bit integers even double wouldn't work
-  // You would ahve to use something like
+  // You would have to use something like
   // int64 rb_bits = 0; while (rb_size != 0) {++rb_bits; rb_size >>= 1;}
   // it would be much faster than two logs of FP numbers (even floats), too,
-  // but I dont have the time to test it.
+  // but I don't have the time to test it.
   float f = Log(static_cast<float>(rb_size)) / Log(static_cast<float>(2));
   int32 rb_bits = static_cast<int32>(ceil(f));
   if (rb_bits > 30)  // ok, this limit is somewhat arbitrary
@@ -72,18 +72,18 @@ OnlinePaSource::OnlinePaSource(const uint32 timeout,
                                &pa_ringbuf_, sizeof(SampleType),
                                rb_size_ / sizeof(SampleType), ring_buffer_);
   if (rbs != 0)
-    throw runtime_error("Unexpected PortAudio ring buffer init error");
+    KALDI_ERR << "PortAudio ring buffer init error";
 
   PaError paerr = Pa_Initialize();
   if (paerr != paNoError)
-    throw runtime_error("PortAudio initialization error");
+    KALDI_ERR << "PortAudio initialization error";
   // Monophone, 16-bit input hardcoded
   KALDI_ASSERT(sizeof(SampleType) == 2 &&
                "The current OnlinePaSource code assumes 16-bit input");
   paerr = Pa_OpenDefaultStream(&pa_stream_, 1, 0, paInt16, sample_rate_, 0,
                                PaCallback, this);
   if (paerr != paNoError)
-    throw runtime_error("PortAudio failed to open the default stream");
+    KALDI_ERR << "PortAudio failed to open the default stream";
 }
 
 
@@ -103,7 +103,7 @@ bool OnlinePaSource::Read(Vector<BaseFloat> *data) {
   if (!pa_started_) {  // start stream the first time Read() is called
     PaError paerr = Pa_StartStream(pa_stream_);
     if (paerr != paNoError)
-      throw std::runtime_error("Error while trying to open PortAudio stream");
+      KALDI_ERR << "Error while trying to open PortAudio stream";
     pa_started_ = true;
   }
   Timer timer;

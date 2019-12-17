@@ -5,7 +5,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 # KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
@@ -23,34 +23,42 @@
 # I just let it be like this at this moment, and may add a patch to resolve this
 # later.
 
+VERSION=1.2rc1
+
+WGET=${WGET:-wget}
+
 echo "****() Installing Speex"
 
-if [ ! -e speex-1.2rc1.tar.gz ]; then
-    echo "Could not find Speex tarball speex-1.2rc1.tar.gz"
+if [ ! -e speex-$VERSION.tar.gz ]; then
+    echo "Could not find Speex tarball speex-$VERSION.tar.gz"
     echo "Trying to download it via wget!"
     
     if ! which wget >&/dev/null; then
         echo "This script requires you to first install wget"
-        echo "You can also just download speex-1.2rc1.tar.gz from"
-        echo "http://www.speex.org/downloads/)"
+        echo "You can also just download speex-$VERSION.tar.gz from"
+        echo "https://www.speex.org/downloads/)"
         exit 1;
     fi
 
-   wget -T 10 -t 3 -c http://downloads.xiph.org/releases/speex/speex-1.2rc1.tar.gz
+    if [ -d "$DOWNLOAD_DIR" ]; then
+        cp -p "$DOWNLOAD_DIR/speex-$VERSION.tar.gz" .
+    else
+        $WGET -T 10 -t 3 -c https://downloads.xiph.org/releases/speex/speex-$VERSION.tar.gz
+    fi
 
-   if [ ! -e speex-1.2rc1.tar.gz ]; then
-        echo "Download of speex_v1.2rc1.tar.gz - failed!"
+    if [ ! -e speex-$VERSION.tar.gz ]; then
+        echo "Download of speex-$VERSION.tar.gz - failed!"
         echo "Aborting script. Please download and install Speex manually!"
-    exit 1;
-   fi
+        exit 1;
+    fi
 fi
 
-tar -xovzf speex-1.2rc1.tar.gz|| exit 1
+tar -xovzf speex-$VERSION.tar.gz || exit 1
 rm -fr speex
 
-cd speex-1.2rc1
+cd speex-$VERSION
 ./configure --prefix `pwd`/build
 make; make install
 
 cd ..
-ln -s speex-1.2rc1/build speex 
+ln -s speex-$VERSION/build speex

@@ -21,7 +21,7 @@ num_threads_ubm=32
 ivector_transform_type=lda
 nnet3_affix=_cleaned     # affix for exp/$mic/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/$mic/nnet3_cleaned or whatever.
-
+hires_suffix=
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -72,7 +72,7 @@ if [ $stage -le 2 ]; then
   utils/data/perturb_data_dir_volume.sh data/$mic/${train_set}_sp_hires
 
   for datadir in ${train_set}_sp dev eval; do
-    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires$hires_suffix.conf \
       --cmd "$train_cmd" data/$mic/${datadir}_hires
     steps/compute_cmvn_stats.sh data/$mic/${datadir}_hires
     utils/fix_data_dir.sh data/$mic/${datadir}_hires

@@ -2,6 +2,8 @@
 
 # The script downloads and installs kaldi_lm
 
+GIT=${GIT:-git}
+
 set -e
 
 # Make sure we are in the tools/ directory.
@@ -15,8 +17,7 @@ fi
 echo "Installing kaldi_lm"
 
 if [ ! -d "kaldi_lm" ]; then
-  wget http://www.danielpovey.com/files/kaldi/kaldi_lm.tar.gz || exit 1;
-  tar -xvzf kaldi_lm.tar.gz || exit 1;
+  $GIT clone https://github.com/danpovey/kaldi_lm.git || exit 1
 fi
 
 cd kaldi_lm

@@ -253,13 +253,13 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
   return false;  // doesn't have banned symbol.
 }
 
-template<class T> void CopySetToVector(const std::set<T> s, vector<T> *v) {
+template<class T> void CopySetToVector(const std::set<T> s, std::vector<T> *v) {
   // adds members of s to v, in sorted order from lowest to highest
   // (because the set was in sorted order).
   assert(v != NULL);
   v->resize(s.size());
   typename std::set<T>::const_iterator siter = s.begin();
-  typename vector<T>::iterator viter = v->begin();
+  typename std::vector<T>::iterator viter = v->begin();
   for (;  siter != s.end(); ++siter, ++viter) {
     assert(viter != v->end());
     *viter = *siter;
@@ -268,7 +268,7 @@ template<class T> void CopySetToVector(const std::set<T> s, vector<T> *v) {
 
 // Warning.  This function calls 'new'.
 template<class T>
-vector<T>* InsertMember(const vector<T> m, vector<vector<T>*> *S) {
+std::vector<T>* InsertMember(const std::vector<T> m, std::vector<std::vector<T>*> *S) {
   assert(m.size() > 0);
   T idx = m[0];
   assert(idx>=(T)0 && idx < (T)S->size());
@@ -278,7 +278,7 @@ vector<T>* InsertMember(const vector<T> m, vector<vector<T>*> *S) {
     // It could either be a programming error or a deeper conceptual bug.
     return NULL;  // nothing was inserted.
   } else {
-    vector<T> *ret = (*S)[idx] = new vector<T>(m);  // New copy of m.
+    std::vector<T> *ret = (*S)[idx] = new std::vector<T>(m);  // New copy of m.
     return ret;  // was inserted.
   }
 }
@@ -289,9 +289,9 @@ vector<T>* InsertMember(const vector<T> m, vector<vector<T>*> *S) {
 // not problematic.  We assume that the fst is sorted on input label (so epsilon arcs first)
 // The algorithm is described in section (C) above.  We use the same variable for S and T.
 template<class Arc> void Closure(MutableFst<Arc> *fst, std::set<typename Arc::StateId> *S,
-                                 const vector<bool> &pVec) {
+                                 const std::vector<bool> &pVec) {
   typedef typename Arc::StateId StateId;
-  vector<StateId> Q;
+  std::vector<StateId> Q;
   CopySetToVector(*S, &Q);
   while (Q.size() != 0) {
     StateId s = Q.back();
@@ -301,7 +301,7 @@ template<class Arc> void Closure(MutableFst<Arc> *fst, std::set<typename Arc::St
       if (arc.ilabel != 0) break;  // Break from the loop: due to sorting there will be no
       // more transitions with epsilons as input labels.
       if (!pVec[arc.nextstate]) {  // Next state is not problematic -> we can use this transition.
-        pair< typename std::set<StateId>::iterator, bool > p = S->insert(arc.nextstate);
+        std::pair< typename std::set<StateId>::iterator, bool > p = S->insert(arc.nextstate);
         if (p.second) {  // True means: was inserted into S (wasn't already there).
           Q.push_back(arc.nextstate);
         }
@@ -316,7 +316,7 @@ template<class Arc> void Closure(MutableFst<Arc> *fst, std::set<typename Arc::St
 template<class Arc, class Int>
 void PreDeterminize(MutableFst<Arc> *fst,
                     typename Arc::Label first_new_sym,
-                    vector<Int> *symsOut) {
+                    std::vector<Int> *symsOut) {
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef size_t ArcId;  // Our own typedef, not standard OpenFst.  Use size_t
@@ -357,10 +357,10 @@ void PreDeterminize(MutableFst<Arc> *fst,
     KALDI_VLOG(2) <<  "PreDeterminize: n_states = "<<(n_states)<<", max_state ="<<(max_state);
   }
 
-  vector<bool> p_vec(max_state+1, false);  // compute this next.
+  std::vector<bool> p_vec(max_state+1, false);  // compute this next.
   {  // D(ii): computing the array p. ["problematic states, i.e. states with >1 input transition,
     // counting being the initial state as an input transition"].
-    vector<bool> seen_vec(max_state+1, false);  // rather than counting incoming transitions we just have a bool that says we saw at least one.
+    std::vector<bool> seen_vec(max_state+1, false);  // rather than counting incoming transitions we just have a bool that says we saw at least one.
 
     seen_vec[fst->Start()] = true;
     for (StateIterator<MutableFst<Arc> > siter(*fst); ! siter.Done(); siter.Next()) {
@@ -375,19 +375,19 @@ void PreDeterminize(MutableFst<Arc> *fst,
     }
   }
   // D(iii): set up m(a)
-  std::map<pair<StateId, ArcId>, size_t> m_map;
+  std::map<std::pair<StateId, ArcId>, size_t> m_map;
   // This is the array m, indexed by arcs.  It maps to the index of the symbol we add.
 
 
   // WARNING: we should be sure to clean up this memory before exiting.  Do not return
   // or throw an exception from this function, later than this point, without cleaning up!
   // Note that the vectors are shared between Q and S (they "belong to" S.
-  vector<vector<StateId>* > S(max_state+1, (vector<StateId>*)(void*)0);
-  vector<pair<vector<StateId>*, size_t> > Q;
+  std::vector<std::vector<StateId>* > S(max_state+1, (std::vector<StateId>*)(void*)0);
+  std::vector<std::pair<std::vector<StateId>*, size_t> > Q;
 
   // D(iv): initialize S and Q.
   {
-    vector<StateId> all_seed_states;  // all "problematic" states, plus initial state (if not problematic).
+    std::vector<StateId> all_seed_states;  // all "problematic" states, plus initial state (if not problematic).
     if (!p_vec[fst->Start()])
       all_seed_states.push_back(fst->Start());
     for (StateId s = 0;s<=max_state; s++)
@@ -399,16 +399,16 @@ void PreDeterminize(MutableFst<Arc> *fst,
       closure_s.insert(s);  // insert "seed" state.
       pre_determinize_helpers::Closure(fst, &closure_s, p_vec);  // follow epsilons to non-problematic states.
       // Closure in this case whis will usually not add anything, for typical topologies in speech
-      vector<StateId> closure_s_vec;
+      std::vector<StateId> closure_s_vec;
       pre_determinize_helpers::CopySetToVector(closure_s, &closure_s_vec);
       KALDI_ASSERT(closure_s_vec.size() != 0);
-      vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_s_vec, &S);
+      std::vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_s_vec, &S);
       KALDI_ASSERT(ptr != NULL);  // Or conceptual bug or programming error.
-      Q.push_back(pair<vector<StateId>*, size_t>(ptr, 0));
+      Q.push_back(std::pair<std::vector<StateId>*, size_t>(ptr, 0));
     }
   }
 
-  vector<bool> d_vec(max_state+1, false);  // "done vector".  Purely for debugging.
+  std::vector<bool> d_vec(max_state+1, false);  // "done vector".  Purely for debugging.
 
 
   size_t num_extra_det_states = 0;
@@ -417,9 +417,9 @@ void PreDeterminize(MutableFst<Arc> *fst,
   while (Q.size() != 0) {
 
     // (D)(v)(a)
-    pair<vector<StateId>*, size_t> cur_pair(Q.back());
+    std::pair<std::vector<StateId>*, size_t> cur_pair(Q.back());
     Q.pop_back();
-    const vector<StateId> &A(*cur_pair.first);
+    const std::vector<StateId> &A(*cur_pair.first);
     size_t n =cur_pair.second;  // next special symbol to add.
 
     // (D)(v)(b)
@@ -430,7 +430,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
 
     // From here is (D)(v)(c).  We work out S_\eps and S_t (for t\neq eps)
     // simultaneously at first.
-    map<Label, set<pair<pair<StateId, ArcId>, StateId> > > arc_hash;
+    std::map<Label, std::set<std::pair<std::pair<StateId, ArcId>, StateId> > > arc_hash;
     // arc_hash is a hash with info of all arcs from states in the set A to
     // non-problematic states.
     // It is a map from ilabel to pair(pair(start-state, arc-offset), end-state).
@@ -446,8 +446,8 @@ void PreDeterminize(MutableFst<Arc> *fst,
         for (ArcIterator<MutableFst<Arc> > aiter(*fst, s); ! aiter.Done(); aiter.Next(), ++arc_id) {
           const Arc &arc = aiter.Value();
 
-          pair<pair<StateId, ArcId>, StateId>
-              this_pair(pair<StateId, ArcId>(s, arc_id), arc.nextstate);
+          std::pair<std::pair<StateId, ArcId>, StateId>
+              this_pair(std::pair<StateId, ArcId>(s, arc_id), arc.nextstate);
           bool inserted = (arc_hash[arc.ilabel].insert(this_pair)).second;
           assert(inserted);  // Otherwise we had a duplicate.
         }
@@ -456,10 +456,10 @@ void PreDeterminize(MutableFst<Arc> *fst,
 
     // (D)(v)(d)
     if (arc_hash.count(0) == 1) {  // We have epsilon transitions out.
-      set<pair<pair<StateId, ArcId>, StateId> >  &eps_set = arc_hash[0];
-      typedef typename set<pair<pair<StateId, ArcId>, StateId> >::iterator set_iter_t;
+      std::set<std::pair<std::pair<StateId, ArcId>, StateId> >  &eps_set = arc_hash[0];
+      typedef typename std::set<std::pair<std::pair<StateId, ArcId>, StateId> >::iterator set_iter_t;
       for (set_iter_t siter = eps_set.begin(); siter != eps_set.end(); ++siter) {
-        const pair<pair<StateId, ArcId>, StateId>  &this_pr = *siter;
+        const std::pair<std::pair<StateId, ArcId>, StateId>  &this_pr = *siter;
         if (p_vec[this_pr.second]) {  // Eps-transition to problematic state.
           assert(m_map.count(this_pr.first) == 0);
           m_map[this_pr.first] = n;
@@ -470,13 +470,13 @@ void PreDeterminize(MutableFst<Arc> *fst,
 
     // (D)(v)(e)
     {
-      typedef typename map<Label, set<pair<pair<StateId, ArcId>, StateId> > >::iterator map_iter_t;
-      typedef typename set<pair<pair<StateId, ArcId>, StateId> >::iterator set_iter_t2;
+      typedef typename std::map<Label, std::set<std::pair<std::pair<StateId, ArcId>, StateId> > >::iterator map_iter_t;
+      typedef typename std::set<std::pair<std::pair<StateId, ArcId>, StateId> >::iterator set_iter_t2;
       for (map_iter_t miter = arc_hash.begin(); miter != arc_hash.end(); ++miter) {
         Label t = miter->first;
-        set<pair<pair<StateId, ArcId>, StateId> >  &S_t = miter->second;
+        std::set<std::pair<std::pair<StateId, ArcId>, StateId> >  &S_t = miter->second;
         if (t != 0) {  // For t != epsilon,
-          set<StateId> V_t;  // set of destination non-problem states.  Will create this set now.
+          std::set<StateId> V_t;  // set of destination non-problem states.  Will create this set now.
 
           // exists_noproblem is true iff |U_t| > 0.
           size_t k = 0;
@@ -485,7 +485,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
           // The if-statement if (|S_t|>1) is pushed inside the loop, as the loop also computes
           // the set V_t.
           for (set_iter_t2 siter = S_t.begin(); siter != S_t.end(); ++siter) {
-            const pair<pair<StateId, ArcId>, StateId>  &this_pr = *siter;
+            const std::pair<std::pair<StateId, ArcId>, StateId>  &this_pr = *siter;
             if (p_vec[this_pr.second]) {  // only consider problematic states (just set T_t)
               if (S_t.size() > 1) {  // This is where we pushed the if-statement in.
                 assert(m_map.count(this_pr.first) == 0);
@@ -499,11 +499,11 @@ void PreDeterminize(MutableFst<Arc> *fst,
           }
           if (V_t.size() != 0) {
             pre_determinize_helpers::Closure(fst, &V_t, p_vec);  // follow epsilons to non-problematic states.
-            vector<StateId> closure_V_t_vec;
+            std::vector<StateId> closure_V_t_vec;
             pre_determinize_helpers::CopySetToVector(V_t, &closure_V_t_vec);
-            vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_V_t_vec, &S);
+            std::vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_V_t_vec, &S);
             if (ptr != NULL) {  // was inserted.
-              Q.push_back(pair<vector<StateId>*, size_t>(ptr, k));
+              Q.push_back(std::pair<std::vector<StateId>*, size_t>(ptr, k));
             }
           }
         }
@@ -522,7 +522,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
   {  // (D)(vii): compute symbol-table ID's.
     // sets up symsOut array.
     int64 n = -1;
-    for (typename map<pair<StateId, ArcId>, size_t>::iterator m_iter = m_map.begin();
+    for (typename std::map<std::pair<StateId, ArcId>, size_t>::iterator m_iter = m_map.begin();
         m_iter != m_map.end();
         ++m_iter) {
       n = std::max(n, (int64) m_iter->second);  // m_iter->second is of type size_t.
@@ -533,14 +533,14 @@ void PreDeterminize(MutableFst<Arc> *fst,
   }
 
   // (D)(viii): set up hash.
-  map<pair<StateId, size_t>, StateId> h_map;
+  std::map<std::pair<StateId, size_t>, StateId> h_map;
 
   {  // D(ix): add extra symbols!  This is where the work gets done.
 
     // Core part of this is below, search for (*)
     size_t n_states_added = 0;
 
-    for (typename map<pair<StateId, ArcId>, size_t>::iterator m_iter = m_map.begin();
+    for (typename std::map<std::pair<StateId, ArcId>, size_t>::iterator m_iter = m_map.begin();
         m_iter != m_map.end();
         ++m_iter) {
       StateId state = m_iter->first.first;
@@ -555,7 +555,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
       if (arc.ilabel == 0)
         arc.ilabel = (*symsOut)[m_a];
       else {
-        pair<StateId, size_t> pr(arc.nextstate, m_a);
+        std::pair<StateId, size_t> pr(arc.nextstate, m_a);
         if (!h_map.count(pr)) {
           n_states_added++;
           StateId newstate = fst->AddState();
@@ -579,7 +579,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
 
 
 template<class Label> void CreateNewSymbols(SymbolTable *input_sym_table, int nSym,
-                                            std::string prefix, vector<Label> *symsOut) {
+                                            std::string prefix, std::vector<Label> *symsOut) {
   // Creates nSym new symbols named (prefix)0, (prefix)1 and so on.
   // Crashes if it cannot create them because one or more of them were in the symbol
   // table already.
@@ -596,8 +596,8 @@ template<class Label> void CreateNewSymbols(SymbolTable *input_sym_table, int nS
 
 
 // see pre-determinize.h for documentation.
-template<class Arc> void AddSelfLoops(MutableFst<Arc> *fst, vector<typename Arc::Label> &isyms,
-                                      vector<typename Arc::Label> &osyms) {
+template<class Arc> void AddSelfLoops(MutableFst<Arc> *fst, std::vector<typename Arc::Label> &isyms,
+                                      std::vector<typename Arc::Label> &osyms) {
   assert(fst != NULL);
   assert(isyms.size() == osyms.size());
   typedef typename Arc::Label Label;
@@ -614,7 +614,7 @@ template<class Arc> void AddSelfLoops(MutableFst<Arc> *fst, vector<typename Arc:
          osyms_min = *std::min_element(osyms.begin(), osyms.end()),
          osyms_max = *std::max_element(osyms.begin(), osyms.end());
   std::set<Label> isyms_set, osyms_set;
-  for (size_t i = 0;i < isyms.size();i++) {
+  for (size_t i = 0; i < isyms.size(); i++) {
     assert(isyms[i] > 0 && osyms[i] > 0);  // should not have epsilon or invalid symbols.
     isyms_set.insert(isyms[i]);
     osyms_set.insert(osyms[i]);
@@ -648,7 +648,7 @@ template<class Arc> void AddSelfLoops(MutableFst<Arc> *fst, vector<typename Arc:
 }
 
 template<class Arc>
-int64 DeleteISymbols(MutableFst<Arc> *fst, vector<typename Arc::Label> isyms) {
+int64 DeleteISymbols(MutableFst<Arc> *fst, std::vector<typename Arc::Label> isyms) {
 
   // We could do this using the Mapper concept, but this is much easier to understand.
 
@@ -690,7 +690,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   assert(fst != NULL);
   StateId num_states = fst->NumStates();
   StateId num_final = 0;
-  vector<StateId> final_states;
+  std::vector<StateId> final_states;
   for (StateId s = 0; s < num_states; s++) {
     if (fst->Final(s) != Weight::Zero()) {
       num_final++;
@@ -710,7 +710,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
 
   StateId final_state = fst->AddState();
   fst->SetFinal(final_state, Weight::One());
-  for (size_t idx = 0;idx < final_states.size(); idx++) {
+  for (size_t idx = 0; idx < final_states.size(); idx++) {
     StateId s = final_states[idx];
     Weight weight = fst->Final(s);
     fst->SetFinal(s, Weight::Zero());

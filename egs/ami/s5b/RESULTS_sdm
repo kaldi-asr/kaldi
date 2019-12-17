@@ -93,9 +93,13 @@
 %WER 35.9 | 14900 94497 | 67.8 18.2 14.1 3.7 35.9 62.5 | 0.647 | exp/sdm1/chain_cleaned/tdnn_lstm1l_sp_bi_ihmali_ld5/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
 %WER 39.4 | 13223 89946 | 64.1 19.7 16.2 3.5 39.4 67.0 | 0.611 | exp/sdm1/chain_cleaned/tdnn_lstm1l_sp_bi_ihmali_ld5/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
-# local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
+# local/chain/multi_condition/tuning/run_tdnn_lstm_1b.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
 # cleanup + chain TDNN+LSTM model, SDM original + IHM reverberated data, alignments from ihm data.
-# *** best system ***
-%WER 34.0 | 14455 94497 | 69.8 17.7 12.5 3.8 34.0 63.9 | 0.675 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
-%WER 37.5 | 13261 89982 | 65.9 19.3 14.7 3.5 37.5 66.2 | 0.642 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+%WER 33.9 | 14185 94492 | 70.3 18.1 11.7 4.2 33.9 66.0 | 0.605 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 37.4 | 13610 89969 | 66.3 19.9 13.7 3.7 37.4 65.5 | 0.568 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1b_sp_rvb_bi_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
+# local/chain/multi_condition/tuning/run_tdnn_1a.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
+# cleanup + chain TDNN-F model, SDM original + IHM reverberated data, alignments from ihm data.
+# *** best system ***
+%WER 33.3 | 14696 94538 | 70.4 17.2 12.4 3.7 33.3 63.1 | 0.612 | exp/sdm1/chain_cleaned_rvb/tdnn1a_sp_rvb_bi_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 36.7 | 14855 89974 | 66.7 18.9 14.4 3.4 36.7 59.8 | 0.580 | exp/sdm1/chain_cleaned_rvb/tdnn1a_sp_rvb_bi_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys

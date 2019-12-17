@@ -5,6 +5,7 @@
 # Apache 2.0
 
 
+from __future__ import print_function
 import sys
 from codecs import open
 

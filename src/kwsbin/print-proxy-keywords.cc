@@ -25,6 +25,7 @@
 #include "fstext/kaldi-fst-io.h"
 
 namespace fst {
+using std::vector;
 
 bool PrintProxyFstPath(const VectorFst<StdArc> &proxy,
                        vector<vector<StdArc::Label> > *path,

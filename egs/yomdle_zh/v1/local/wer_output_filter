@@ -1,0 +1,151 @@
+#!/usr/bin/env perl
+# Copyright 2012-2014  Johns Hopkins University (Author: Yenda Trmal)
+# Apache 2.0
+
+use utf8;
+
+use open qw(:encoding(utf8));
+binmode STDIN, ":utf8";
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
+# Arabic-specific normalization
+while (<>) {
+  @F = split " ";
+  print "$F[0] ";
+  foreach $s (@F[1..$#F]) {
+    # Normalize tabs, spaces, and no-break spaces
+    $s =~ s/[\x{0009}\x{0020}\x{00A0}]+/ /g;
+    # Normalize "dots"/"filled-circles" to periods
+    $s =~ s/[\x{25CF}\x{u2022}\x{2219}]+/\x{002E}/g;
+    # Normalize dashes to regular hyphen
+    $s =~ s/[\x{2010}\x{2011}\x{2012}\x{2013}\x{2014}\x{2015}]+/\x{002D}/g;
+    # Normalize various parenthesis to regular parenthesis
+    $s =~ s/\x{FF09}/\x{0029}/g;
+    $s =~ s/\x{FF08}/\x{0028}/g;
+    
+    # Convert various presentation forms to base form
+    $s =~ s/[\x{FED1}\x{FED3}\x{FED4}\x{FED2}]+/\x{0641}/g;
+    $s =~ s/[\x{FBB0}\x{FBB1}]+/\x{06D3}/g;
+    $s =~ s/[\x{FECD}\x{FECF}\x{FED0}\x{FECE}]+/\x{063A}/g;
+    $s =~ s/[\x{FBDD}]+/\x{0677}/g;
+    $s =~ s/[\x{FBA6}\x{FBA8}\x{FBA9}\x{FBA7}]+/\x{06C1}/g;
+    $s =~ s/[\x{FEC1}\x{FEC3}\x{FEC4}\x{FEC2}]+/\x{0637}/g;
+    $s =~ s/[\x{FE85}\x{FE86}]+/\x{0624}/g;
+    $s =~ s/[\x{FEA5}\x{FEA7}\x{FEA8}\x{FEA6}]+/\x{062E}/g;
+    $s =~ s/[\x{FBD9}\x{FBDA}]+/\x{06C6}/g;
+    $s =~ s/[\x{FE8F}\x{FE91}\x{FE92}\x{FE90}]+/\x{0628}/g;
+    $s =~ s/[\x{FEED}\x{FEEE}]+/\x{0648}/g;
+    $s =~ s/[\x{FE99}\x{FE9B}\x{FE9C}\x{FE9A}]+/\x{062B}/g;
+    $s =~ s/[\x{FEBD}\x{FEBF}\x{FEC0}\x{FEBE}]+/\x{0636}/g;
+    $s =~ s/[\x{FEE5}\x{FEE7}\x{FEE8}\x{FEE6}]+/\x{0646}/g;
+    $s =~ s/[\x{FBFC}\x{FBFE}\x{FBFF}\x{FBFD}]+/\x{06CC}/g;
+    $s =~ s/[\x{FBA4}\x{FBA5}]+/\x{06C0}/g;
+    $s =~ s/[\x{FB72}\x{FB74}\x{FB75}\x{FB73}]+/\x{0684}/g;
+    $s =~ s/[\x{FBD3}\x{FBD5}\x{FBD6}\x{FBD4}]+/\x{06AD}/g;
+    $s =~ s/[\x{FB6A}\x{FB6C}\x{FB6D}\x{FB6B}]+/\x{06A4}/g;
+    $s =~ s/[\x{FB66}\x{FB68}\x{FB69}\x{FB67}]+/\x{0679}/g;
+    $s =~ s/[\x{FB5E}\x{FB60}\x{FB61}\x{FB5F}]+/\x{067A}/g;
+    $s =~ s/[\x{FB88}\x{FB89}]+/\x{0688}/g;
+    $s =~ s/[\x{FB7E}\x{FB80}\x{FB81}\x{FB7F}]+/\x{0687}/g;
+    $s =~ s/[\x{FB8E}\x{FB90}\x{FB91}\x{FB8F}]+/\x{06A9}/g;
+    $s =~ s/[\x{FB86}\x{FB87}]+/\x{068E}/g;
+    $s =~ s/[\x{FE83}\x{FE84}]+/\x{0623}/g;
+    $s =~ s/[\x{FB8A}\x{FB8B}]+/\x{0698}/g;
+    $s =~ s/[\x{FED5}\x{FED7}\x{FED8}\x{FED6}]+/\x{0642}/g;
+    $s =~ s/[\x{FED9}\x{FEDB}\x{FEDC}\x{FEDA}]+/\x{0643}/g;
+    $s =~ s/[\x{FBE0}\x{FBE1}]+/\x{06C5}/g;
+    $s =~ s/[\x{FEB9}\x{FEBB}\x{FEBC}\x{FEBA}]+/\x{0635}/g;
+    $s =~ s/[\x{FEC5}\x{FEC7}\x{FEC8}\x{FEC6}]+/\x{0638}/g;
+    $s =~ s/[\x{FE8D}\x{FE8E}]+/\x{0627}/g;
+    $s =~ s/[\x{FB9A}\x{FB9C}\x{FB9D}\x{FB9B}]+/\x{06B1}/g;
+    $s =~ s/[\x{FEAD}\x{FEAE}]+/\x{0631}/g;
+    $s =~ s/[\x{FEF1}\x{FEF3}\x{FEF4}\x{FEF2}]+/\x{064A}/g;
+    $s =~ s/[\x{FE93}\x{FE94}]+/\x{0629}/g;
+    $s =~ s/[\x{FBE4}\x{FBE6}\x{FBE7}\x{FBE5}]+/\x{06D0}/g;
+    $s =~ s/[\x{FE89}\x{FE8B}\x{FE8C}\x{FE8A}]+/\x{0626}/g;
+    $s =~ s/[\x{FB84}\x{FB85}]+/\x{068C}/g;
+    $s =~ s/[\x{FE9D}\x{FE9F}\x{FEA0}\x{FE9E}]+/\x{062C}/g;
+    $s =~ s/[\x{FB82}\x{FB83}]+/\x{068D}/g;
+    $s =~ s/[\x{FEA1}\x{FEA3}\x{FEA4}\x{FEA2}]+/\x{062D}/g;
+    $s =~ s/[\x{FB52}\x{FB54}\x{FB55}\x{FB53}]+/\x{067B}/g;
+    $s =~ s/[\x{FB92}\x{FB94}\x{FB95}\x{FB93}]+/\x{06AF}/g;
+    $s =~ s/[\x{FB7A}\x{FB7C}\x{FB7D}\x{FB7B}]+/\x{0686}/g;
+    $s =~ s/[\x{FBDB}\x{FBDC}]+/\x{06C8}/g;
+    $s =~ s/[\x{FB56}\x{FB58}\x{FB59}\x{FB57}]+/\x{067E}/g;
+    $s =~ s/[\x{FEB5}\x{FEB7}\x{FEB8}\x{FEB6}]+/\x{0634}/g;
+    $s =~ s/[\x{FBE2}\x{FBE3}]+/\x{06C9}/g;
+    $s =~ s/[\x{FB96}\x{FB98}\x{FB99}\x{FB97}]+/\x{06B3}/g;
+    $s =~ s/[\x{FE80}]+/\x{0621}/g;
+    $s =~ s/[\x{FBAE}\x{FBAF}]+/\x{06D2}/g;
+    $s =~ s/[\x{FB62}\x{FB64}\x{FB65}\x{FB63}]+/\x{067F}/g;
+    $s =~ s/[\x{FEE9}\x{FEEB}\x{FEEC}\x{FEEA}]+/\x{0647}/g;
+    $s =~ s/[\x{FE81}\x{FE82}]+/\x{0622}/g;
+    $s =~ s/[\x{FBDE}\x{FBDF}]+/\x{06CB}/g;
+    $s =~ s/[\x{FE87}\x{FE88}]+/\x{0625}/g;
+    $s =~ s/[\x{FB6E}\x{FB70}\x{FB71}\x{FB6F}]+/\x{06A6}/g;
+    $s =~ s/[\x{FBA0}\x{FBA2}\x{FBA3}\x{FBA1}]+/\x{06BB}/g;
+    $s =~ s/[\x{FBAA}\x{FBAC}\x{FBAD}\x{FBAB}]+/\x{06BE}/g;
+    $s =~ s/[\x{FEA9}\x{FEAA}]+/\x{062F}/g;
+    $s =~ s/[\x{FEE1}\x{FEE3}\x{FEE4}\x{FEE2}]+/\x{0645}/g;
+    $s =~ s/[\x{FEEF}\x{FBE8}\x{FBE9}\x{FEF0}]+/\x{0649}/g;
+    $s =~ s/[\x{FB8C}\x{FB8D}]+/\x{0691}/g;
+    $s =~ s/[\x{FB76}\x{FB78}\x{FB79}\x{FB77}]+/\x{0683}/g;
+    $s =~ s/[\x{FB5A}\x{FB5C}\x{FB5D}\x{FB5B}]+/\x{0680}/g;
+    $s =~ s/[\x{FB9E}\x{FB9F}]+/\x{06BA}/g;
+    $s =~ s/[\x{FEC9}\x{FECB}\x{FECC}\x{FECA}]+/\x{0639}/g;
+    $s =~ s/[\x{FEDD}\x{FEDF}\x{FEE0}\x{FEDE}]+/\x{0644}/g;
+    $s =~ s/[\x{FB50}\x{FB51}]+/\x{0671}/g;
+    $s =~ s/[\x{FEB1}\x{FEB3}\x{FEB4}\x{FEB2}]+/\x{0633}/g;
+    $s =~ s/[\x{FE95}\x{FE97}\x{FE98}\x{FE96}]+/\x{062A}/g;
+    $s =~ s/[\x{FBD7}\x{FBD8}]+/\x{06C7}/g;
+    $s =~ s/[\x{FEAF}\x{FEB0}]+/\x{0632}/g;
+    $s =~ s/[\x{FEAB}\x{FEAC}]+/\x{0630}/g;
+
+    # Remove tatweel
+    $s =~ s/\x{0640}//g;
+    # Remove vowels and hamza
+    $s =~ s/[\x{064B}-\x{0655}]+//g;
+    # Remove right-to-left and left-to-right
+    $s =~ s/[\x{200F}\x{200E}]+//g;
+    # Arabic Keheh to Arabic Kaf
+    $s =~ s/\x{06A9}/\x{0643}/g;
+    # Arabic Yeh to Farsi Yeh
+    $s =~ s/\x{064A}/\x{06CC}/g;
+    # Decompose RIAL
+    $s =~ s/\x{FDFC}/\x{0631}\x{06CC}\x{0627}\x{0644}/g;
+    # Farsi arabic-indic digits to arabic-indic digits
+    $s =~ s/\x{06F0}/\x{0660}/g;
+    $s =~ s/\x{06F1}/\x{0661}/g;
+    $s =~ s/\x{06F2}/\x{0662}/g;
+    $s =~ s/\x{06F3}/\x{0663}/g;
+    $s =~ s/\x{06F4}/\x{0664}/g;
+    $s =~ s/\x{06F5}/\x{0665}/g;
+    $s =~ s/\x{06F6}/\x{0666}/g;
+    $s =~ s/\x{06F7}/\x{0667}/g;
+    $s =~ s/\x{06F8}/\x{0668}/g;
+    $s =~ s/\x{06F9}/\x{0669}/g;
+    # Arabic-indic digits to digits
+    $s =~ s/\x{0660}/0/g;
+    $s =~ s/\x{0661}/1/g;
+    $s =~ s/\x{0662}/2/g;
+    $s =~ s/\x{0663}/3/g;
+    $s =~ s/\x{0664}/4/g;
+    $s =~ s/\x{0665}/5/g;
+    $s =~ s/\x{0666}/6/g;
+    $s =~ s/\x{0667}/7/g;
+    $s =~ s/\x{0668}/8/g;
+    $s =~ s/\x{0669}/9/g;
+    # Arabic comma to comma
+    $s =~ s/\x{060C}/\x{002C}/g;
+
+    $s =~ s/\|/ /g;
+    if ($s ne "") {
+      print "$s";
+    } else {
+      print "";
+    }
+  }
+  print "\n";
+}
+

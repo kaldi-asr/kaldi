@@ -35,6 +35,7 @@
 #include "lat/kaldi-lattice.h"
 #include "hmm/transition-model.h"
 #include "decoder/lattice-faster-online-decoder.h"
+#include "decoder/lattice-incremental-online-decoder.h"
 
 namespace kaldi {
 /// @addtogroup  onlinedecoding OnlineDecoding
@@ -182,26 +183,34 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
                       BaseFloat final_relative_cost);
 
 
-
-class LatticeFasterOnlineDecoder;
-
 /// returns the number of frames of trailing silence in the best-path traceback
 /// (not using final-probs).  "silence_phones" is a colon-separated list of
 /// integer id's of phones that we consider silence.  We use the the
 /// BestPathEnd() and TraceBackOneLink() functions of LatticeFasterOnlineDecoder
 /// to do this efficiently.
+template <typename FST, typename DEC>
 int32 TrailingSilenceLength(const TransitionModel &tmodel,
                             const std::string &silence_phones,
-                            const LatticeFasterOnlineDecoder &decoder);
+                            const DEC &decoder);
 
 
 /// This is a higher-level convenience function that works out the
 /// arguments to the EndpointDetected function above, from the decoder.
+template <typename FST>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
-    const LatticeFasterOnlineDecoder &decoder);
+    const LatticeFasterOnlineDecoderTpl<FST> &decoder);
+
+/// This is a higher-level convenience function that works out the
+/// arguments to the EndpointDetected function above, from the decoder.
+template <typename FST>
+bool EndpointDetected(
+    const OnlineEndpointConfig &config,
+    const TransitionModel &tmodel,
+    BaseFloat frame_shift_in_seconds,
+    const LatticeIncrementalOnlineDecoderTpl<FST> &decoder);
 
 
 

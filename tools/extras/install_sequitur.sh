@@ -1,4 +1,7 @@
 #!/bin/bash
+
+GIT=${GIT:-git}
+
 set -u
 set -e
 
@@ -18,7 +21,7 @@ if ! $(python -c "import distutils.sysconfig" &> /dev/null); then
     echo "Proceeding with installation." >&2
 else
   # get include path for this python version
-  INCLUDE_PY=$(python -c "from distutils import sysconfig as s; print s.get_config_vars()['INCLUDEPY']")
+  INCLUDE_PY=$(python -c "from distutils import sysconfig as s; print(s.get_python_inc())")
   if [ ! -f "${INCLUDE_PY}/Python.h" ]; then
       echo "$0 : ERROR: python-devel/python-dev not installed" >&2
       if which yum >&/dev/null; then
@@ -49,12 +52,12 @@ if [ -d ./g2p ] || [ -d sequitur ] ; then
 fi
 
 if [ ! -d ./sequitur-g2p ] ; then
-  git clone https://github.com/sequitur-g2p/sequitur-g2p.git sequitur-g2p ||
+  $GIT clone https://github.com/sequitur-g2p/sequitur-g2p.git sequitur-g2p ||
   {
     echo  >&2 "$0: Warning: git clone operation ended unsuccessfully"
     echo  >&2 "  I will assume this is because you don't have https support"
     echo  >&2 "  compiled into your git "
-    git clone git@github.com:sequitur-g2p/sequitur-g2p.git sequitur-g2p
+    $GIT clone git@github.com:sequitur-g2p/sequitur-g2p.git sequitur-g2p
 
     if [ $? -ne 0 ]; then
       echo  >&2 "$0: Error git clone operation ended unsuccessfully"
@@ -66,10 +69,10 @@ else
   echo >&2 "$0: Updating the repository -- we will try to merge with local changes (if you have any)"
   (
     cd sequitur-g2p/
-    git pull
+    $GIT pull
     # this would work also, but would drop all local modifications
-    #git fetch
-    #git reset --hard origin/master
+    #$GIT fetch
+    #$GIT reset --hard origin/master
   ) || {
     echo >&2 "Failed to do git pull, delete the sequitur dir and run again";
     exit 1

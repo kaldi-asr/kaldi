@@ -2520,7 +2520,9 @@ template<typename Real> static void UnitTestIo() {
       bool binary_in;
       bool either_way = (i%2 == 0);
       std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
-      InitKaldiInputStream(ins, &binary_in);
+      if (!InitKaldiInputStream(ins, &binary_in)) {
+        KALDI_ERR << "Malformed input stream.";
+      }
       N.Resize(0, 0);
       T.Resize(0);
       v2.Resize(0);
@@ -2585,7 +2587,9 @@ template<typename Real> static void UnitTestIoCross() {  // across types.
     {
       std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
       bool binary_in;
-      InitKaldiInputStream(ins, &binary_in);
+      if (!InitKaldiInputStream(ins, &binary_in)) {
+        KALDI_ERR << "Malformed input stream";
+      }
 
       MO.Read(ins, binary_in);
       SO.Read(ins, binary_in);
@@ -2691,14 +2695,14 @@ template<typename Real> static void UnitTestRange() {  // Testing SubMatrix clas
 
     SubVector<Real> sub(V, lenStart, lenEnd-lenStart);
 
-    KALDI_ASSERT(sub.Sum() == V.Range(lenStart, lenEnd-lenStart).Sum());
+    KALDI_ASSERT(ApproxEqual(sub.Sum(), V.Range(lenStart, lenEnd-lenStart).Sum()));
 
     for (MatrixIndexT i = lenStart;i < lenEnd;i++)
       KALDI_ASSERT(V(i) == sub(i-lenStart));
 
     sub.SetRandn();
 
-    KALDI_ASSERT(sub.Sum() == V.Range(lenStart, lenEnd-lenStart).Sum());
+    KALDI_ASSERT(ApproxEqual(sub.Sum(), V.Range(lenStart, lenEnd-lenStart).Sum()));
 
     for (MatrixIndexT i = lenStart;i < lenEnd;i++)
       KALDI_ASSERT(V(i) == sub(i-lenStart));

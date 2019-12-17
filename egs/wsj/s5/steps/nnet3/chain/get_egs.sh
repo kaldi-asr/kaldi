@@ -65,6 +65,12 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
+online_cmvn=false # Set to 'true' to replace 'apply-cmvn' by 'apply-cmvn-online' in the nnet3 input.
+                  # The configuration is passed externally via '$cmvn_opts' given to train.py,
+                  # typically as: --cmvn-opts="--config conf/online_cmvn.conf".
+                  # The global_cmvn.stats are computed by this script from the features.
+                  # Note: the online cmvn for ivector extractor it is controlled separately in
+                  #       steps/online/nnet2/train_ivector_extractor.sh by --online-cmvn-iextractor
 lattice_lm_scale=     # If supplied, the graph/lm weight of the lattices will be
                       # used (with this scale) in generating supervisions
                       # This is 0 by default for conventional supervised training,
@@ -151,43 +157,76 @@ mkdir -p $dir/log $dir/info
 # Get list of validation utterances.
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
 
-awk '{print $1}' $data/utt2spk | \
-  utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/valid_uttlist
-
-len_uttlist=$(wc -l < $dir/valid_uttlist)
-if [ $len_uttlist -lt $num_utts_subset ]; then
-  echo "Number of utterances is very small. Please check your data." && exit 1;
+if [ -f $data/utt2uniq ]; then
+  # Must hold out all augmented versions of the same utterance.
+  echo "$0: File $data/utt2uniq exists, so ensuring the hold-out set" \
+       "includes all perturbed versions of the same source utterance."
+  utils/utt2spk_to_spk2utt.pl $data/utt2uniq 2>/dev/null | \
+      utils/shuffle_list.pl 2>/dev/null | \
+    awk -v max_utt=$num_utts_subset '{
+        for (n=2;n<=NF;n++) print $n;
+        printed += NF-1;
+        if (printed >= max_utt) exit(0); }' |
+    sort > $dir/valid_uttlist
+else
+  awk '{print $1}' $data/utt2spk | \
+    utils/shuffle_list.pl 2>/dev/null | \
+    head -$num_utts_subset > $dir/valid_uttlist
 fi
-
-if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
-  # because of this stage we can again have utts with lengths less than
-  # frames_per_eg
-  echo "File $data/utt2uniq exists, so augmenting valid_uttlist to"
-  echo "include all perturbed versions of the same 'real' utterances."
-  mv $dir/valid_uttlist $dir/valid_uttlist.tmp
-  utils/utt2spk_to_spk2utt.pl $data/utt2uniq > $dir/uniq2utt
-  cat $dir/valid_uttlist.tmp | utils/apply_map.pl $data/utt2uniq | \
-    sort | uniq | utils/apply_map.pl $dir/uniq2utt | \
-    awk '{for(n=1;n<=NF;n++) print $n;}' | sort  > $dir/valid_uttlist
-  rm $dir/uniq2utt $dir/valid_uttlist.tmp
-fi
-
-echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
+len_valid_uttlist=$(wc -l < $dir/valid_uttlist)
 
 awk '{print $1}' $data/utt2spk | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/train_subset_uttlist
-len_uttlist=$(wc -l <$dir/train_subset_uttlist)
-if [ $len_uttlist -lt $num_utts_subset ]; then
-  echo "Number of utterances is very small. Please check your data." && exit 1;
+   utils/shuffle_list.pl 2>/dev/null | \
+   head -$num_utts_subset > $dir/train_subset_uttlist
+len_trainsub_uttlist=$(wc -l <$dir/train_subset_uttlist)
+
+if [[ $len_valid_uttlist -lt $num_utts_subset ||
+      $len_trainsub_uttlist -lt $num_utts_subset ]]; then
+  echo "$0: Number of utterances is very small. Please check your data." && exit 1;
 fi
 
+echo "$0: Holding out $len_valid_uttlist utterances in validation set and" \
+     "$len_trainsub_uttlist in training diagnostic set, out of total" \
+     "$(wc -l < $data/utt2spk)."
+
+
+echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
+
 ## Set up features.
-echo "$0: feature type is raw"
-feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+
+# get the global_cmvn stats for online-cmvn,
+if $online_cmvn; then
+  # create global_cmvn.stats,
+  #
+  # caution: the top-level nnet training script should copy
+  # 'global_cmvn.stats' and 'online_cmvn' to its own dir.
+  if ! matrix-sum --binary=false scp:$data/cmvn.scp - >$dir/global_cmvn.stats 2>/dev/null; then
+    echo "$0: Error summing cmvn stats"
+    exit 1
+  fi
+  touch $dir/online_cmvn
+else
+  [ -f $dir/online_cmvn ] && rm $dir/online_cmvn
+fi
+
+# create the feature pipelines,
+if ! $online_cmvn; then
+  # the original front-end with 'apply-cmvn',
+  echo "$0: feature type is raw, with 'apply-cmvn'"
+  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+else
+  # the alternative front-end with 'apply-cmvn-online',
+  # - the $cmvn_opts can be set to '--config=conf/online_cmvn.conf' which is the setup of ivector-extractor,
+  echo "$0: feature type is raw, with 'apply-cmvn-online'"
+  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+fi
 echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
+
 
 tree-info $chaindir/tree | grep num-pdfs | awk '{print $2}' > $dir/info/num_pdfs || exit 1
 
@@ -342,9 +381,8 @@ if [ $stage -le 2 ]; then
         $egs_opts --normalization-fst-scale=$normalization_fst_scale \
         $trans_mdl_opt $chaindir/normalization.fst \
         "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || exit 1
-    wait
     sleep 5  # wait for file system to sync.
-    echo "... Getting subsets of validation examples for diagnostics and combination."
+    echo "$0: Getting subsets of validation examples for diagnostics and combination."
     if $generate_egs_scp; then
       valid_diagnostic_output="ark,scp:$dir/valid_diagnostic.cegs,$dir/valid_diagnostic.scp"
       train_diagnostic_output="ark,scp:$dir/train_diagnostic.cegs,$dir/train_diagnostic.scp"
@@ -365,7 +403,6 @@ if [ $stage -le 2 ]; then
     $cmd $dir/log/create_train_subset_diagnostic.log \
       nnet3-chain-subset-egs --n=$num_egs_diagnostic ark:$dir/train_subset_all.cegs \
       $train_diagnostic_output || exit 1
-    wait
     sleep 5  # wait for file system to sync.
     if $generate_egs_scp; then
       cat $dir/valid_combine.cegs $dir/train_combine.cegs | \
@@ -375,7 +412,7 @@ if [ $stage -le 2 ]; then
     fi
 
     for f in $dir/{combine,train_diagnostic,valid_diagnostic}.cegs; do
-      [ ! -s $f ] && echo "No examples in file $f" && exit 1;
+      [ ! -s $f ] && echo "$0: No examples in file $f" && exit 1;
     done
     rm $dir/valid_all.cegs $dir/train_subset_all.cegs $dir/{train,valid}_combine.cegs
   ) || touch $dir/.error &
@@ -412,7 +449,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ -f $dir/.error ]; then
-  echo "Error detected while creating train/valid egs" && exit 1
+  echo "$0: Error detected while creating train/valid egs" && exit 1
 fi
 
 if [ $stage -le 5 ]; then
@@ -485,11 +522,11 @@ fi
 
 wait
 if [ -f $dir/.error ]; then
-  echo "Error detected while creating train/valid egs" && exit 1
+  echo "$0: Error detected while creating train/valid egs" && exit 1
 fi
 
 if [ $stage -le 6 ]; then
-  echo "$0: removing temporary archives"
+  echo "$0: Removing temporary archives, alignments and lattices"
   (
     cd $dir
     for f in $(ls -l . | grep 'cegs_orig' | awk '{ X=NF-1; Y=NF-2; if ($X == "->")  print $Y, $NF; }'); do rm $f; done
@@ -501,7 +538,6 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
-  echo "$0: removing temporary alignments, lattices and transforms"
   rm $dir/ali.{ark,scp} 2>/dev/null
   rm $dir/lat_special.*.{ark,scp} 2>/dev/null
 fi

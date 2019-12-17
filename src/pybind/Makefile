@@ -26,7 +26,7 @@ LIBFILE_EXTENSION=$(PYBIND_EXTENSION)
 
 # pybind11 is heavily templated and generates code that is bloated before optimization.
 # -flto is link time optimization which apparently is important.
-CXXFLAGS += -O3 -flto
+CXXFLAGS += -O3 -flto -I.
 LDFLAGS += -flto
 # TODO:
 
@@ -61,8 +61,8 @@ clean:
 	-rm -rf __pycache__
 
 test: all
-	./tests/test_kaldi_pybind.py
-	./tests/test_matrix.py
+	python3 tests/test_kaldi_pybind.py
+	python3 tests/test_matrix.py
 
 # valgrind-python.supp is from http://svn.python.org/projects/python/trunk/Misc/valgrind-python.supp
 # since we do not compile Python from souce, we follow the comment in valgrind-python.supp

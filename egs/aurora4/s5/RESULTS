@@ -1,8 +1,19 @@
-for x in exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+for x in exp/{mono,tri,sgmm,nnet,dnn,chain/tdnn*}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
-%WER 19.61 [ 14698 / 74942, 1233 ins, 3759 del, 9706 sub ] exp/tri2b_multi/decode_tgpr_5k_eval92/wer_13
-%WER 13.93 [ 10437 / 74942, 732 ins, 2695 del, 7010 sub ] exp/tri3a_dnn/decode_tgpr_5k_eval92/wer_10
-%WER 13.61 [ 10202 / 74942, 660 ins, 2987 del, 6555 sub ] exp/tri4a_dnn/decode_tgpr_5k_eval92/wer_11
+# mono
+%WER 37.42 [ 14223 / 38010, 1030 ins, 2613 del, 10580 sub ] exp/mono0a_multi/decode_tgpr_0166/wer_10
+%WER 38.18 [ 28612 / 74942, 1919 ins, 5319 del, 21374 sub ] exp/mono0a_multi/decode_tgpr_eval92/wer_10
 
+# tri2b
+%WER 20.42 [ 7763 / 38010, 827 ins, 1905 del, 5031 sub ] exp/tri2b_multi/decode_tgpr_5k_0166/wer_12
+%WER 19.61 [ 14728 / 74942, 1411 ins, 3548 del, 9769 sub ] exp/tri2b_multi/decode_tgpr_5k_eval92/wer_12
+
+# tri3b
+%WER 15.71 [ 5970 / 38010, 641 ins, 1403 del, 3926 sub ] exp/tri3b_multi/decode_tgpr_0166/wer_13
+%WER 15.28 [ 11454 / 74942, 1082 ins, 2633 del, 7739 sub ] exp/tri3b_multi/decode_tgpr_eval92/wer_13
+
+# chain
+%WER 7.88 [ 2994 / 38010, 216 ins, 1045 del, 1733 sub ] exp/chain/tdnn1a_sp/decode_tgpr_5k_0166/wer_15
+%WER 7.67 [ 5745 / 74942, 392 ins, 1758 del, 3595 sub ] exp/chain/tdnn1a_sp/decode_tgpr_5k_eval92/wer_13
 
 for x in /mnt/matylda3/qmallidi/Karels_New-Parametric-ReLU/kaldi/egs/aurora4/s5_PReLU/exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep WER $x/wer_* | /mnt/matylda5/iveselyk/DEVEL/kaldi-official/egs/aurora4/s5/utils/best_wer.sh; done

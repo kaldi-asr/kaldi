@@ -6,7 +6,7 @@
 //                      Haihua Xu; Wei Shi
 //                2015  Guoguo Chen
 //                2017  Daniel Galvez
-
+//                2019  Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -264,7 +264,7 @@ void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
 template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);
 template void VectorBase<double>::CopyFromVec(const VectorBase<float> &other);
 
-// Remove element from the vector. The vector is non reallocated
+// Remove element from the vector. The vector is not reallocated
 template<typename Real>
 void Vector<Real>::RemoveElement(MatrixIndexT i) {
   KALDI_ASSERT(i <  this->dim_ && "Access out of vector");
@@ -302,7 +302,7 @@ void VectorBase<Real>::SetRandn() {
   kaldi::RandomState rstate;
   MatrixIndexT last = (Dim() % 2 == 1) ? Dim() - 1 : Dim();
   for (MatrixIndexT i = 0; i < last; i += 2) {
-    kaldi::RandGauss2(data_ + i, data_ + i +1, &rstate);
+    kaldi::RandGauss2(data_ + i, data_ + i + 1, &rstate);
   }
   if (Dim() != last) data_[last] = static_cast<Real>(kaldi::RandGauss(&rstate));
 }
@@ -335,7 +335,13 @@ MatrixIndexT VectorBase<Real>::RandCategorical() const {
 template<typename Real>
 void VectorBase<Real>::Set(Real f) {
   // Why not use memset here?
-  for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = f; }
+  // The basic unit of memset is a byte.
+  // If f != 0 and sizeof(Real) > 1, then we cannot use memset.
+  if (f == 0) {
+    this->SetZero(); // calls std::memset
+  } else {
+    for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = f; }
+  }
 }
 
 template<typename Real>
@@ -448,32 +454,21 @@ void VectorBase<double>::CopyRowFromSp(const SpMatrix<double> &mat, MatrixIndexT
 
 #ifdef HAVE_MKL
 template<>
-void VectorBase<float>::ApplyPow(float power) { vsPowx(dim_, data_, power, data_); }
+void VectorBase<float>::Pow(const VectorBase<float> &v, float power) {
+  vsPowx(dim_, data_, power, v.data_);
+}
 template<>
-void VectorBase<double>::ApplyPow(double power) { vdPowx(dim_, data_, power, data_); }
+void VectorBase<double>::Pow(const VectorBase<double> &v, double power) {
+  vdPowx(dim_, data_, power, v.data_);
+}
 #else
-// takes elements to a power.  Throws exception if could not (but only for power != 1 and power != 2).
+
+// takes elements to a power.  Does not check output.
 template<typename Real>
-void VectorBase<Real>::ApplyPow(Real power) {
-  if (power == 1.0) return;
-  if (power == 2.0) {
-    for (MatrixIndexT i = 0; i < dim_; i++)
-      data_[i] = data_[i] * data_[i];
-  } else if (power == 0.5) {
-    for (MatrixIndexT i = 0; i < dim_; i++) {
-      if (!(data_[i] >= 0.0))
-        KALDI_ERR << "Cannot take square root of negative value "
-                  << data_[i];
-      data_[i] = std::sqrt(data_[i]);
-    }
-  } else {
-    for (MatrixIndexT i = 0; i < dim_; i++) {
-      data_[i] = pow(data_[i], power);
-      if (data_[i] == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
-        KALDI_ERR << "Could not raise element "  << i << " to power "
-                  << power << ": returned value = " << data_[i];
-      }
-    }
+void VectorBase<Real>::Pow(const VectorBase<Real> &v, Real power) {
+  KALDI_ASSERT(dim_ == v.dim_);
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    data_[i] = pow(v.data_[i], power);
   }
 }
 #endif
@@ -814,17 +809,20 @@ void VectorBase<Real>::ApplyAbs() {
 }
 
 template<typename Real>
-void VectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
+void VectorBase<Real>::Floor(const VectorBase<Real> &v, Real floor_val, MatrixIndexT *floored_count) {
+  KALDI_ASSERT(dim_ == v.dim_);
   if (floored_count == nullptr) {
     for (MatrixIndexT i = 0; i < dim_; i++) {
-      data_[i] = std::max(data_[i], floor_val);
+      data_[i] = std::max(v.data_[i], floor_val);
     }
   } else {
     MatrixIndexT num_floored = 0;
     for (MatrixIndexT i = 0; i < dim_; i++) {
-      if (data_[i] < floor_val) {
-	data_[i] = floor_val;
-	num_floored++;
+      if (v.data_[i] < floor_val) {
+        data_[i] = floor_val;
+        num_floored++;
+      } else {
+        data_[i] = v.data_[i];
       }
     }
     *floored_count = num_floored;
@@ -832,17 +830,20 @@ void VectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
 }
 
 template<typename Real>
-void VectorBase<Real>::ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count) {
+void VectorBase<Real>::Ceiling(const VectorBase<Real> &v, Real ceil_val, MatrixIndexT *ceiled_count) {
+  KALDI_ASSERT(dim_ == v.dim_);
   if (ceiled_count == nullptr) {
     for (MatrixIndexT i = 0; i < dim_; i++) {
-      data_[i] = std::min(data_[i], ceil_val);
+      data_[i] = std::min(v.data_[i], ceil_val);
     }
   } else {
     MatrixIndexT num_changed = 0;
     for (MatrixIndexT i = 0; i < dim_; i++) {
-      if (data_[i] > ceil_val) {
-	data_[i] = ceil_val;
-	num_changed++;
+      if (v.data_[i] > ceil_val) {
+        data_[i] = ceil_val;
+        num_changed++;
+      } else {
+        data_[i] = v.data_[i];
       }
     }
     *ceiled_count = num_changed;
@@ -1082,7 +1083,7 @@ void VectorBase<double>::AddVec2(const double alpha, const VectorBase<float> &v)
 
 
 template<typename Real>
-void VectorBase<Real>::Read(std::istream & is,  bool binary, bool add) {
+void VectorBase<Real>::Read(std::istream &is,  bool binary, bool add) {
   if (add) {
     Vector<Real> tmp(Dim());
     tmp.Read(is, binary, false);  // read without adding.
@@ -1105,7 +1106,7 @@ void VectorBase<Real>::Read(std::istream & is,  bool binary, bool add) {
 
 
 template<typename Real>
-void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
+void Vector<Real>::Read(std::istream &is,  bool binary, bool add) {
   if (add) {
     Vector<Real> tmp(this->Dim());
     tmp.Read(is, binary, false);  // read without adding.

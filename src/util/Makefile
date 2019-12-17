@@ -15,6 +15,6 @@ OBJFILES = text-utils.o kaldi-io.o kaldi-holder.o kaldi-table.o \
 
 LIBNAME = kaldi-util
 
-ADDLIBS = ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+ADDLIBS = ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

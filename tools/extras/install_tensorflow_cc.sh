@@ -1,5 +1,10 @@
 #!/bin/bash
 
+BAZEL_VERSION=0.15.0
+
+GIT=${GIT:-git}
+WGET=${WGET:-wget}
+
 set -e
 
 #export JAVA_HOME=/LOCATION_ON_YOUR_MACHINE/java/jdk1.8.0_121
@@ -17,7 +22,7 @@ good_version=`echo 1.8 $java_version | awk '{if($1<$2)print 1; else print 0}'`
 if [ $good_version -eq 0 ]; then
   echo You have jdk version = $java_version, which is older than 1.8
   echo You need to download a later than 1.8 JDK version at
-  echo http://www.oracle.com/technetwork/pt/java/javase/downloads/jdk8-downloads-2133151.html
+  echo https://www.oracle.com/technetwork/pt/java/javase/downloads/jdk8-downloads-2133151.html
   echo and set your JAVA_HOME to point to where it is installed
   exit 1
 else
@@ -25,20 +30,35 @@ else
 fi
 
 
-[ ! -f bazel.zip ] && wget https://github.com/bazelbuild/bazel/releases/download/0.5.4/bazel-0.5.4-dist.zip -O bazel.zip
+if [ ! -f bazel-$BAZEL_VERSION-dist.zip ]; then
+  if [ -d "$DOWNLOAD_DIR" ]; then
+    cp -p "$DOWNLOAD_DIR/bazel-$BAZEL_VERSION-dist.zip" .
+  else
+    $WGET https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-dist.zip
+  fi
+fi
 mkdir -p bazel
 cd bazel
-unzip ../bazel.zip
+unzip ../bazel-$BAZEL_VERSION-dist.zip
 ./compile.sh
 cd ../
 
 # now bazel is built
-git clone https://github.com/tensorflow/tensorflow
+[ ! -d tensorflow ] && $GIT clone https://github.com/tensorflow/tensorflow
 cd tensorflow
-git checkout r1.4
+$GIT fetch --tags
+$GIT checkout r1.12
 ./configure
 
-tensorflow/contrib/makefile/download_dependencies.sh 
+if $GIT --version >&/dev/null && $WGET --version >&/dev/null
+then
+  tensorflow/contrib/makefile/download_dependencies.sh
+else
+  echo "Please run tensorflow/tensorflow/contrib/makefile/download_dependencies.sh"
+  echo "to download needed dependencies."
+  exit 1
+fi
+
 bazel build -c opt //tensorflow:libtensorflow.so
 bazel build -c opt //tensorflow:libtensorflow_cc.so
 

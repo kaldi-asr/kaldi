@@ -24,7 +24,6 @@
 #define KALDI_HMM_POSTERIOR_H_
 
 #include "base/kaldi-common.h"
-#include "tree/context-dep.h"
 #include "util/const-integer-set.h"
 #include "util/kaldi-table.h"
 #include "hmm/transition-model.h"
@@ -190,8 +189,9 @@ struct CompareReverseSecond {
 /// by applying Softmax(), then prunes the posteriors using "gselect" and
 /// "min_post" (keeping at least one), and outputs the result into
 /// "post_entry", sorted from greatest to least posterior.
-/// Returns the total log-likelihood (the output of calling ApplySoftMax()
-/// on a copy of log_likes).
+///
+/// It returns the log of the sum of the selected log-likes that contributed
+/// to the posterior.
 BaseFloat VectorToPosteriorEntry(
     const VectorBase<BaseFloat> &log_likes,
     int32 num_gselect,
