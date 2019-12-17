@@ -1,34 +1,7 @@
 #!/bin/bash
 
-# 1b is as 1a but uses xconfigs.
+# 1c is as 1b, but uses more modern TDNN configuration.
 
-# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_sp
-# System                        tdnn_sp
-# WER on dev(fglarge)              4.52
-# WER on dev(tglarge)              4.80
-# WER on dev(tgmed)                6.02
-# WER on dev(tgsmall)              6.80
-# WER on dev_other(fglarge)       12.54
-# WER on dev_other(tglarge)       13.16
-# WER on dev_other(tgmed)         15.51
-# WER on dev_other(tgsmall)       17.12
-# WER on test(fglarge)             5.00
-# WER on test(tglarge)             5.22
-# WER on test(tgmed)               6.40
-# WER on test(tgsmall)             7.14
-# WER on test_other(fglarge)      12.56
-# WER on test_other(tglarge)      13.04
-# WER on test_other(tgmed)        15.58
-# WER on test_other(tgsmall)      16.88
-# Final train prob               0.7180
-# Final valid prob               0.7003
-# Final train prob (logLL)      -0.9483
-# Final valid prob (logLL)      -0.9963
-# Num-parameters               19268504
-
-
-# steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/tdnn_sp
-# exp/nnet3_cleaned/tdnn_sp/: num-iters=1088 nj=3..16 num-params=19.3M dim=40+100->5784 combine=-0.94->-0.93 (over 7) loglike:train/valid[723,1087,combined]=(-0.99,-0.95,-0.95/-1.02,-0.99,-1.00) accuracy:train/valid[723,1087,combined]=(0.710,0.721,0.718/0.69,0.70,0.700)
 
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
@@ -100,17 +73,32 @@ if [ $stage -le 11 ]; then
   input dim=40 name=input
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
-  relu-batchnorm-layer name=tdnn0 dim=1280
-  relu-batchnorm-layer name=tdnn1 dim=1280 input=Append(-1,2)
-  relu-batchnorm-layer name=tdnn2 dim=1280 input=Append(-3,3)
-  relu-batchnorm-layer name=tdnn3 dim=1280 input=Append(-7,2)
-  relu-batchnorm-layer name=tdnn4 dim=1280
-  output-layer name=output input=tdnn4 dim=$num_targets max-change=1.5
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf16 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf17 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  linear-component name=prefinal-l dim=256 $linear_opts
+
+  prefinal-layer name=prefinal input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256
+  output-layer name=output input=prefinal dim=$num_targets max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs || exit 1;
 fi
-
+exit
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
