@@ -105,6 +105,10 @@ class RNNLMModel(tf.Module):
     loss_obj = tf.losses.SparseCategoricalCrossentropy(from_logits=True)
     return loss_obj(labels, logits)
 
+  def get_score(self, logits):
+    """Take logits as input, output a score."""
+    return tf.nn.log_softmax(logits)
+
   @tf.function
   def get_initial_state(self):
     """Exported function which emits zeroed RNN context vector."""
@@ -127,7 +131,7 @@ class RNNLMModel(tf.Module):
     rnn_states = tf.stack(rnn_out_and_states[1:])
 
     logits = self.fc(rnn_out)
-    output = tf.nn.log_softmax(logits)
+    output = self.get_score(logits)
     log_prob = output[0, word_id[0, 0]]
     return {"log_prob": log_prob, "rnn_states": rnn_states, "rnn_out": rnn_out}
 
@@ -194,6 +198,11 @@ def main(_):
   config = get_config()
   config.hidden_size = FLAGS.hidden_size
   config.vocab_size = len(word_map)
+
+  if __TESTING:
+    # use a much smaller scale on our tiny test data
+    config.num_steps = 8
+    config.batch_size = 4
 
   model = RNNLMModel(config)
   train_producer = reader.RNNLMProducer(train_data, config.batch_size, config.num_steps)
