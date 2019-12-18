@@ -472,7 +472,7 @@ bool CuDevice::SelectGpuIdAuto() {
     success = SelectGpuId(dev_id);
 
     max_id++;
-  } while (success && (max_id < free_mem_ratio.size()));
+  } while (!success && (max_id < free_mem_ratio.size()));
 
   if (e != cudaSuccess) {
     KALDI_WARN << "Failed to (automatically) select any device";
