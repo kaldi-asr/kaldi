@@ -68,7 +68,7 @@ void pybind_matrix(py::module& m) {
            py::arg("stride_type") = kDefaultStride);
 
   py::class_<SubMatrix<float>, MatrixBase<float>>(m, "FloatSubMatrix")
-      .def("__init__", [](SubMatrix<float>& m, py::buffer b) {
+      .def(py::init([](py::buffer b) {
         py::buffer_info info = b.request();
         if (info.format != py::format_descriptor<float>::format()) {
           KALDI_ERR << "Expected format: "
@@ -81,8 +81,8 @@ void pybind_matrix(py::module& m) {
         }
 
         // numpy is row major by default, so we use strides[0]
-        new (&m)
+        return new
             SubMatrix<float>(reinterpret_cast<float*>(info.ptr), info.shape[0],
                              info.shape[1], info.strides[0] / sizeof(float));
-      });
+      }));
 }

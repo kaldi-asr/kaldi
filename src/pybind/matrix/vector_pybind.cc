@@ -65,7 +65,7 @@ void pybind_vector(py::module& m) {
            py::arg("resize_type") = kSetZero);
 
   py::class_<SubVector<float>, VectorBase<float>>(m, "FloatSubVector")
-      .def("__init__", [](SubVector<float>& m, py::buffer b) {
+      .def(py::init([](py::buffer b) {
         py::buffer_info info = b.request();
         if (info.format != py::format_descriptor<float>::format()) {
           KALDI_ERR << "Expected format: "
@@ -76,7 +76,7 @@ void pybind_vector(py::module& m) {
           KALDI_ERR << "Expected dim: 1\n"
                     << "Current dim: " << info.ndim;
         }
-        new (&m)
+        return new
             SubVector<float>(reinterpret_cast<float*>(info.ptr), info.shape[0]);
-      });
+      }));
 }
