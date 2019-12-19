@@ -66,7 +66,7 @@ def data_type():
 class RNNLMModel(tf.Module):
   """The RNN model itself."""
 
-  def __init__(self, config):
+  def __init__(self, config, logits_bias_initializer=None):
     super().__init__()
     self._config = config
 
@@ -85,7 +85,10 @@ class RNNLMModel(tf.Module):
     self.embedding = tf.keras.layers.Embedding(vocab_size, size, dtype=dt)
     self.cells = [lstm_cell() for _ in range(config.num_layers)]
     self.rnn = tf.keras.layers.RNN(self.cells, return_sequences=True)
-    self.fc = tf.keras.layers.Dense(vocab_size)
+
+    if logits_bias_initializer is None:
+      logits_bias_initializer = 'zeros'
+    self.fc = tf.keras.layers.Dense(vocab_size, bias_initializer=logits_bias_initializer)
 
     # only used in training
     self.training_cells = [add_dropout(cell) for cell in self.cells]

@@ -90,6 +90,9 @@ class MyFastLossFunction(LossFunctionWrapper):
 
 
 class FastRNNLMModel(RNNLMModel):
+  def __init__(self, config):
+    super().__init__(config, tf.constant_initializer(-9))
+
   def get_loss(self, word_ids, labels, is_training=False):
     logits = self.get_logits(word_ids, is_training)
     loss_obj = MyFastLossFunction()
