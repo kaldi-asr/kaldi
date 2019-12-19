@@ -25,6 +25,7 @@
 #include "matrix/matrix_pybind.h"
 #include "matrix/vector_pybind.h"
 #include "util/table_types_pybind.h"
+#include "feat/wave_reader_pybind.h"
 
 void pybind_matrix(py::module& m);
 PYBIND11_MODULE(kaldi_pybind, m) {
@@ -37,4 +38,5 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_matrix(m);
   pybind_vector(m);
   pybind_table_types(m);
+  pybind_wave_reader(m);
 }

@@ -6,9 +6,9 @@ import kaldi_pybind as kp
 class SequentialVectorReader(kp.SequentialBaseFloatVectorReader):
     def __init__(self, rspecifier=None):
         if not rspecifier:
-            kp.SequentialBaseFloatVectorReader.__init__(self)      
+            kp.SequentialBaseFloatVectorReader.__init__(self)
         else:
-            kp.SequentialBaseFloatVectorReader.__init__(self, rspecifier)      
+            kp.SequentialBaseFloatVectorReader.__init__(self, rspecifier)
 
     def __iter__(self):
         return self
@@ -24,9 +24,27 @@ class SequentialVectorReader(kp.SequentialBaseFloatVectorReader):
 class SequentialMatrixReader(kp.SequentialBaseFloatMatrixReader):
     def __init__(self, rspecifier=None):
         if not rspecifier:
-            kp.SequentialBaseFloatMatrixReader.__init__(self)      
+            kp.SequentialBaseFloatMatrixReader.__init__(self)
         else:
-            kp.SequentialBaseFloatMatrixReader.__init__(self, rspecifier)      
+            kp.SequentialBaseFloatMatrixReader.__init__(self, rspecifier)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.Done():
+            raise StopIteration()
+        else:
+            key, value = self.Key(), self.Value()
+            self.Next()
+            return key, value
+
+class SequentialWaveReader(kp.SequentialWaveReader):
+    def __init__(self, rspecifier=None):
+        if not rspecifier:
+            kp.SequentialWaveReader.__init__(self)
+        else:
+            kp.SequentialWaveReader.__init__(self, rspecifier)
 
     def __iter__(self):
         return self
@@ -52,9 +70,9 @@ class ReaderIterator():
 class RandomAccessVectorReader(kp.RandomAccessBaseFloatVectorReader):
     def __init__(self, rspecifier=None):
         if not rspecifier:
-            kp.RandomAccessBaseFloatVectorReader.__init__(self)      
+            kp.RandomAccessBaseFloatVectorReader.__init__(self)
         else:
-            kp.RandomAccessBaseFloatVectorReader.__init__(self, rspecifier)      
+            kp.RandomAccessBaseFloatVectorReader.__init__(self, rspecifier)
 
     def __getitem__(self, key):
         if not self.HasKey(key):
@@ -68,9 +86,25 @@ class RandomAccessVectorReader(kp.RandomAccessBaseFloatVectorReader):
 class RandomAccessMatrixReader(kp.RandomAccessBaseFloatMatrixReader):
     def __init__(self, rspecifier=None):
         if not rspecifier:
-            kp.RandomAccessBaseFloatMatrixReader.__init__(self)      
+            kp.RandomAccessBaseFloatMatrixReader.__init__(self)
         else:
-            kp.RandomAccessBaseFloatMatrixReader.__init__(self, rspecifier)      
+            kp.RandomAccessBaseFloatMatrixReader.__init__(self, rspecifier)
+
+    def __getitem__(self, key):
+        if not self.HasKey(key):
+            raise KeyError("{} does not exits.".format(key))
+        else:
+            return self.Value(key)
+
+    def __contains__(self, key):
+        return self.HasKey(key)
+
+class RandomAccessWaveReader(kp.RandomAccessWaveReader):
+    def __init__(self, rspecifier=None):
+        if not rspecifier:
+            kp.RandomAccessWaveReader.__init__(self)
+        else:
+            kp.RandomAccessWaveReader.__init__(self, rspecifier)
 
     def __getitem__(self, key):
         if not self.HasKey(key):
