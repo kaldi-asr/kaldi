@@ -21,13 +21,17 @@
 
 #include <string>
 
+#include "feat/wave_reader_pybind.h"
 #include "matrix/matrix_common_pybind.h"
 #include "matrix/matrix_pybind.h"
 #include "matrix/vector_pybind.h"
 #include "util/table_types_pybind.h"
-#include "feat/wave_reader_pybind.h"
 
-void pybind_matrix(py::module& m);
+#include "fst/fst_pybind.h"
+
+#include "chain/chain_pybind.h"
+#include "nnet3/nnet3_pybind.h"
+
 PYBIND11_MODULE(kaldi_pybind, m) {
   m.doc() =
       "pybind11 binding of some things from kaldi's "
@@ -39,4 +43,8 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_vector(m);
   pybind_table_types(m);
   pybind_wave_reader(m);
+
+  pybind_fst(m);
+  pybind_chain(m);
+  pybind_nnet3(m);
 }

@@ -53,13 +53,12 @@ void pybind_vector(py::module& m) {
            [](VectorBase<float>& m, int i, float v) { m(i) = v; });
 
   py::class_<Vector<float>, VectorBase<float>>(m, "FloatVector",
-                                               pybind11::buffer_protocol())
-      .def_buffer([](const Vector<float>& v) -> pybind11::buffer_info {
-        return pybind11::buffer_info(
-            (void*)v.Data(), sizeof(float),
-            pybind11::format_descriptor<float>::format(),
-            1,                // num-axes
-            {v.Dim()}, {4});  // strides (in chars)
+                                               py::buffer_protocol())
+      .def_buffer([](const Vector<float>& v) -> py::buffer_info {
+        return py::buffer_info((void*)v.Data(), sizeof(float),
+                               py::format_descriptor<float>::format(),
+                               1,                // num-axes
+                               {v.Dim()}, {4});  // strides (in chars)
       })
       .def(py::init<const MatrixIndexT, MatrixResizeType>(), py::arg("size"),
            py::arg("resize_type") = kSetZero);
@@ -76,7 +75,7 @@ void pybind_vector(py::module& m) {
           KALDI_ERR << "Expected dim: 1\n"
                     << "Current dim: " << info.ndim;
         }
-        return new
-            SubVector<float>(reinterpret_cast<float*>(info.ptr), info.shape[0]);
+        return new SubVector<float>(reinterpret_cast<float*>(info.ptr),
+                                    info.shape[0]);
       }));
 }
