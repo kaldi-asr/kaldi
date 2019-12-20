@@ -151,7 +151,7 @@ cub:
 	if [ -d "$(DOWNLOAD_DIR)" ]; then \
 		cp -p "$(DOWNLOAD_DIR)/cub-$(CUB_VERSION).zip" .; \
 	else \
-		$(WGET) -T 10 -t 3 -c https://github.com/NVlabs/cub/archive/$(CUB_VERSION).zip; \
+		$(WGET) -T 10 -t 3 -O cub-$(CUB_VERSION).zip https://github.com/NVlabs/cub/archive/$(CUB_VERSION).zip; \
 	fi
 	unzip -oq cub-$(CUB_VERSION).zip
 	rm -f cub
