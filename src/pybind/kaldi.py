@@ -4,3 +4,7 @@ from symbol_table import *
 from util.table import SequentialNnetChainExampleReader
 from util.table import RandomAccessNnetChainExampleReader
 from util.table import NnetChainExampleWriter
+from util.table import SequentialWaveReader
+from util.table import SequentialWaveInfoReader
+from util.table import RandomAccessWaveReader
+from util.table import RandomAccessWaveInfoReader

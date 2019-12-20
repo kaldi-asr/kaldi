@@ -112,7 +112,7 @@ void pybind_random_access_table_reader(py::module& m,
 
 template <class Holder>
 void pybind_table_writer(py::module& m, const std::string& class_name,
-                         const string& class_help_doc = "") {
+                         const std::string& class_help_doc = "") {
   using PyClass = TableWriter<Holder>;
   py::class_<PyClass>(m, class_name.c_str(), class_help_doc.c_str())
       .def(py::init<>())

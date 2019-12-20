@@ -39,24 +39,6 @@ class SequentialMatrixReader(kp.SequentialBaseFloatMatrixReader):
             self.Next()
             return key, value
 
-class SequentialWaveReader(kp.SequentialWaveReader):
-    def __init__(self, rspecifier=None):
-        if not rspecifier:
-            kp.SequentialWaveReader.__init__(self)
-        else:
-            kp.SequentialWaveReader.__init__(self, rspecifier)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.Done():
-            raise StopIteration()
-        else:
-            key, value = self.Key(), self.Value()
-            self.Next()
-            return key, value
-
 class ReaderIterator():
     def __init__(self, reader_class):
         self.iterator = reader_class
@@ -89,22 +71,6 @@ class RandomAccessMatrixReader(kp.RandomAccessBaseFloatMatrixReader):
             kp.RandomAccessBaseFloatMatrixReader.__init__(self)
         else:
             kp.RandomAccessBaseFloatMatrixReader.__init__(self, rspecifier)
-
-    def __getitem__(self, key):
-        if not self.HasKey(key):
-            raise KeyError("{} does not exits.".format(key))
-        else:
-            return self.Value(key)
-
-    def __contains__(self, key):
-        return self.HasKey(key)
-
-class RandomAccessWaveReader(kp.RandomAccessWaveReader):
-    def __init__(self, rspecifier=None):
-        if not rspecifier:
-            kp.RandomAccessWaveReader.__init__(self)
-        else:
-            kp.RandomAccessWaveReader.__init__(self, rspecifier)
 
     def __getitem__(self, key):
         if not self.HasKey(key):

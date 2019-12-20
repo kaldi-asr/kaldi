@@ -37,6 +37,8 @@ endif
 CCFILES = \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
+feat/feat_pybind.cc \
+feat/feature_pybind.cc \
 feat/wave_reader_pybind.cc \
 fst/arc_pybind.cc \
 fst/compile_pybind.cc \
@@ -98,6 +100,7 @@ test: all
 	python3 tests/test_kaldi_pybind.py
 	python3 tests/test_matrix.py
 	python3 tests/test_wave.py
+	python3 tests/test_feat.py
 	make -C fst test
 	make -C chain test
 	make -C nnet3 test

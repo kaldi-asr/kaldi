@@ -29,6 +29,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 from kaldi_pybind.nnet3 import _SequentialNnetChainExampleReader
 from kaldi_pybind.nnet3 import _RandomAccessNnetChainExampleReader
 from kaldi_pybind.nnet3 import _NnetChainExampleWriter
+from kaldi_pybind.feat import _SequentialWaveReader
+from kaldi_pybind.feat import _RandomAccessWaveReader
+from kaldi_pybind.feat import _SequentialWaveInfoReader
+from kaldi_pybind.feat import _RandomAccessWaveInfoReader
 
 ################################################################################
 # Sequential Readers
@@ -164,6 +168,15 @@ class SequentialNnetChainExampleReader(_SequentialReaderBase,
     """Sequential table reader for nnet chain examples."""
     pass
 
+class SequentialWaveReader(_SequentialReaderBase,
+                           _SequentialWaveReader):
+    """Sequential table reader for wave files."""
+    pass
+
+class SequentialWaveInfoReader(_SequentialReaderBase,
+                               _SequentialWaveInfoReader):
+    """Sequential table reader for wave file headers."""
+    pass
 
 ################################################################################
 # Random Access Readers
@@ -276,6 +289,15 @@ class RandomAccessNnetChainExampleReader(_RandomAccessReaderBase,
     """Random access table reader for nnet chain examples."""
     pass
 
+class RandomAccessWaveReader(_RandomAccessReaderBase,
+                             _RandomAccessWaveReader):
+    """Random access table reader for wave files."""
+    pass
+
+class RandomAccessWaveInfoReader(_RandomAccessReaderBase,
+                                 _RandomAccessWaveInfoReader):
+    """Random access table reader for wave file headers."""
+    pass
 
 ################################################################################
 # Writers
@@ -371,7 +393,6 @@ class NnetChainExampleWriter(_WriterBase, _NnetChainExampleWriter):
     """Table writer for nnet chain examples."""
     pass
 
-
 if False:
     # TODO(fangjun): enable the following once other wrappers are added
 
@@ -395,16 +416,6 @@ if False:
                                        _kaldi_table.SequentialDoubleMatrixReader
                                       ):
         """Sequential table reader for double precision matrices."""
-        pass
-
-    class SequentialWaveReader(_SequentialReaderBase,
-                               _kaldi_table.SequentialWaveReader):
-        """Sequential table reader for wave files."""
-        pass
-
-    class SequentialWaveInfoReader(_SequentialReaderBase,
-                                   _kaldi_table.SequentialWaveInfoReader):
-        """Sequential table reader for wave file headers."""
         pass
 
     class SequentialPosteriorReader(_SequentialReaderBase,
@@ -516,16 +527,6 @@ if False:
             _RandomAccessReaderBase,
             _kaldi_table.RandomAccessDoubleMatrixReader):
         """Random access table reader for double precision matrices."""
-        pass
-
-    class RandomAccessWaveReader(_RandomAccessReaderBase,
-                                 _kaldi_table.RandomAccessWaveReader):
-        """Random access table reader for wave files."""
-        pass
-
-    class RandomAccessWaveInfoReader(_RandomAccessReaderBase,
-                                     _kaldi_table.RandomAccessWaveInfoReader):
-        """Random access table reader for wave file headers."""
         pass
 
     class RandomAccessPosteriorReader(_RandomAccessReaderBase,

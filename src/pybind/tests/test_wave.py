@@ -18,7 +18,7 @@ class TestWaveData(unittest.TestCase):
 
     def test_duration(self):
         waveform = kaldi.FloatMatrix(1, 16000)
-        wave_data = kaldi.WaveData(samp_freq=16000, data=waveform)
+        wave_data = kaldi.feat.WaveData(samp_freq=16000, data=waveform)
         self.assertEqual(1, wave_data.Duration())
 
 

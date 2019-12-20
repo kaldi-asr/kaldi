@@ -22,6 +22,7 @@
 #include <string>
 
 #include "feat/wave_reader_pybind.h"
+#include "feat/feat_pybind.h"
 #include "matrix/matrix_common_pybind.h"
 #include "matrix/matrix_pybind.h"
 #include "matrix/vector_pybind.h"
@@ -42,7 +43,7 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_matrix(m);
   pybind_vector(m);
   pybind_table_types(m);
-  pybind_wave_reader(m);
+  pybind_feat(m);
 
   pybind_fst(m);
   pybind_chain(m);
