@@ -22,7 +22,11 @@ fi
 
 set -e -o pipefail
 
-adir=$(utils/make_absolute.sh $1)
+if [ $mictype != "ref" ];then
+  adir=$(utils/make_absolute.sh $1)
+else
+  adir=$1
+fi
 jdir=$2
 dir=$3
 
