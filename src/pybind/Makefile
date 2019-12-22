@@ -3,7 +3,7 @@
 all:
 
 
-# Disable linking math libs because  not needed here.  Just for compilation speed.
+# Disable linking math libs because not needed here. Just for compilation speed.
 # no, it's now needed for context-fst-test.
 # MATHLIB = NONE
 
@@ -20,23 +20,28 @@ PYBIND_INCLUDES=$(shell python3 -m pybind11 --includes)
 
 CXXFLAGS += $(PYBIND_INCLUDES)
 
-PYBIND_EXTENSION=$(shell python3-config --extension-suffix)
-LIBFILE=kaldi-pybind
-LIBFILE_EXTENSION=$(PYBIND_EXTENSION)
+PYBIND_EXTENSION := $(shell python3-config --extension-suffix)
+LIBFILE := kaldi-pybind
+LIBFILE_EXTENSION := $(PYBIND_EXTENSION)
 
 # pybind11 is heavily templated and generates code that is bloated before optimization.
 # -flto is link time optimization which apparently is important.
 CXXFLAGS += -O3 -flto -I.
 LDFLAGS += -flto
-# TODO:
 
 ifeq ($(shell uname),Darwin)
   LDFLAGS += -undefined dynamic_lookup
 endif
 
+# files should be sorted in alphabetic order
 CCFILES = \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
+cudamatrix/cu_device_pybind.cc \
+cudamatrix/cu_matrix_pybind.cc \
+cudamatrix/cu_vector_pybind.cc \
+cudamatrix/cudamatrix_pybind.cc \
+dlpack/dlpack_pybind.cc \
 feat/feat_pybind.cc \
 feat/feature_pybind.cc \
 feat/wave_reader_pybind.cc \
@@ -59,12 +64,13 @@ util/table_types_pybind.cc
 
 CCFILES_OBJS := $(CCFILES:%.cc=%.o)
 
-LIBNAME = kaldi_pybind
+LIBNAME := kaldi_pybind
 
-
-ADDLIBS = \
+# libs should be sorted in alphabetic order
+ADDLIBS := \
 ../base/kaldi-base.a \
 ../chain/kaldi-chain.a \
+../cudamatrix/kaldi-cudamatrix.a \
 ../feat/kaldi-feat.a \
 ../fstext/kaldi-fstext.a \
 ../matrix/kaldi-matrix.a \
@@ -85,7 +91,7 @@ LIBFILE=$(LIBNAME)$(LIBFILE_EXTENSION)
 all: $(LIBFILE)
 
 %.o: %.cc
-	$(CXX) -c $(CXXFLAGS) -o $@ $^
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 $(LIBFILE): $(ADDLIBS) $(CCFILES_OBJS)
 	$(CXX) $(CXXFLAGS) -shared -o $@ $(CCFILES_OBJS) -Wl,--no-whole-archive -Wl,-rpath=$(CURDIR)/../lib $(LDFLAGS) $(LDLIBS) $(EXTRA_LDLIBS)
@@ -95,19 +101,29 @@ clean:
 	-rm -f *.so
 	-rm -rf __pycache__
 	-rm -f $(CCFILES_OBJS)
+	-rm -f .depend.mk
 
 test: all
 	python3 tests/test_kaldi_pybind.py
-	python3 tests/test_matrix.py
-	python3 tests/test_wave.py
-	python3 tests/test_feat.py
-	make -C fst test
 	make -C chain test
+	make -C cudamatrix test
+	make -C dlpack test
+	make -C feat test
+	make -C fst test
+	make -C matrix test
 	make -C nnet3 test
 
 # valgrind-python.supp is from http://svn.python.org/projects/python/trunk/Misc/valgrind-python.supp
-# since we do not compile Python from souce, we follow the comment in valgrind-python.supp
+# since we do not compile Python from source, we follow the comment in valgrind-python.supp
 # to uncomment suppressions for PyObject_Free and PyObject_Realloc.
 valgrind:
 	valgrind --tool=memcheck --suppressions=./valgrind-python.supp \
    python3 -E -tt ./tests/test_matrix.py
+
+depend:
+	rm -f .depend.mk
+	for f in $(CCFILES); do \
+    $(CXX) -M -MT "$$(dirname $$f)/$$(basename -s .cc $$f).o" $(CXXFLAGS) $$f >> .depend.mk; \
+  done
+
+-include .depend.mk

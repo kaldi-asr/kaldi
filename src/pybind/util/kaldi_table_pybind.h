@@ -65,7 +65,7 @@ void pybind_sequential_table_reader(py::module& m,
            "user can just specify the p option in the rspecifier. We make this "
            "non-const to enable things like shallow swap on the held object in "
            "situations where this would avoid making a redundant copy.",
-           py::return_value_policy::copy)
+           py::return_value_policy::reference)
       .def("Next", &PyClass::Next,
            "Next goes to the next key.  It will not throw; any error will "
            "result in Done() returning true, and then the destructor will "
@@ -107,7 +107,7 @@ void pybind_random_access_table_reader(py::module& m,
            "Value() may throw if you are reading an scp file, you do not have "
            "the ' permissive'  (p) option, and an entry in the scp file cannot "
            "be read. Typically you won't want to catch this error.",
-           py::return_value_policy::copy);
+           py::return_value_policy::reference);
 }
 
 template <class Holder>

@@ -32,33 +32,40 @@ void pybind_vector(py::module& m) {
       "Provides a vector abstraction class.\n"
       "This class provides a way to work with vectors in kaldi.\n"
       "It encapsulates basic operations and memory optimizations.")
-      .def("Read", &VectorBase<float>::Read,
-           "Reads from C++ stream (option to add to existing contents).\n"
-           "Throws exception on failure",
-           py::arg("in"), py::arg("binary"), py::arg("add") = false)
-      .def("Write", &VectorBase<float>::Write,
-           "Writes to C++ stream (option to write in binary).", py::arg("out"),
-           py::arg("binary"))
       .def("Dim", &VectorBase<float>::Dim,
-           "Returns the  dimension of the vector.")
+           "Returns the dimension of the vector.")
       .def("__repr__",
-           [](const VectorBase<float>& a) -> std::string {
+           [](const VectorBase<float>& v) -> std::string {
              std::ostringstream str;
-             a.Write(str, false);
+             v.Write(str, false);
              return str.str();
            })
       .def("__getitem__",
-           [](const VectorBase<float>& m, int i) { return m(i); })
+           [](const VectorBase<float>& v, int i) { return v(i); })
       .def("__setitem__",
-           [](VectorBase<float>& m, int i, float v) { m(i) = v; });
+           [](VectorBase<float>& v, int i, float val) { v(i) = val; })
+      .def("numpy", [](VectorBase<float>* v) {
+        return py::array_t<float>(
+            {v->Dim()},       // shape
+            {sizeof(float)},  // stride in bytes
+            v->Data(),        // ptr
+            py::none());      // pass a base object to avoid copy!
+        // (fangjun): the base object can be anything containing a non-null
+        // ptr. I cannot think of a better way than to pass a `None` object.
+        //
+        // `numpy` instead of `Numpy`, `ToNumpy` or `SomeOtherName` is used here
+        // because we want to follow the style in PyKaldi and PyTorch using the
+        // method `numpy()` to convert a matrix/tensor to a numpy array.
+      });
 
   py::class_<Vector<float>, VectorBase<float>>(m, "FloatVector",
                                                py::buffer_protocol())
       .def_buffer([](const Vector<float>& v) -> py::buffer_info {
         return py::buffer_info((void*)v.Data(), sizeof(float),
                                py::format_descriptor<float>::format(),
-                               1,                // num-axes
-                               {v.Dim()}, {4});  // strides (in chars)
+                               1,  // num-axes
+                               {v.Dim()},
+                               {sizeof(float)});  // strides (in chars)
       })
       .def(py::init<const MatrixIndexT, MatrixResizeType>(), py::arg("size"),
            py::arg("resize_type") = kSetZero);

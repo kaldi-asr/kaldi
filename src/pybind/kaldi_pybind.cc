@@ -21,8 +21,9 @@
 
 #include <string>
 
-#include "feat/wave_reader_pybind.h"
+#include "cudamatrix/cudamatrix_pybind.h"
 #include "feat/feat_pybind.h"
+#include "feat/wave_reader_pybind.h"
 #include "matrix/matrix_common_pybind.h"
 #include "matrix/matrix_pybind.h"
 #include "matrix/vector_pybind.h"
@@ -32,6 +33,8 @@
 
 #include "chain/chain_pybind.h"
 #include "nnet3/nnet3_pybind.h"
+
+#include "dlpack/dlpack_pybind.h"
 
 PYBIND11_MODULE(kaldi_pybind, m) {
   m.doc() =
@@ -48,4 +51,8 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_fst(m);
   pybind_chain(m);
   pybind_nnet3(m);
+
+  pybind_dlpack(m);
+
+  pybind_cudamatrix(m);
 }

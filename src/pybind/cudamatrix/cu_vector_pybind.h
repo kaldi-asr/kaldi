@@ -1,10 +1,9 @@
-// pybind/kaldi_pybind.h
+// pybind/cudamatrix/cu_vector_pybind.h
 
-// Copyright 2019   Daniel Povey
-//           2019   Dongji Gao
-//           2019   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
-//
-// See ../../COPYING for clarification regarding multiple authors
+// Copyright 2019   Mobvoi AI Lab, Beijing, China
+//                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+
+// See ../../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 //
@@ -17,14 +16,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_PYBIND_KALDI_PYBIND_H_
-#define KALDI_PYBIND_KALDI_PYBIND_H_
+#ifndef KALDI_PYBIND_CUDAMATRIX_CU_VECTOR_PYBIND_H_
+#define KALDI_PYBIND_CUDAMATRIX_CU_VECTOR_PYBIND_H_
 
-#include <pybind11/numpy.h>
-#include <pybind11/operators.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include "pybind/kaldi_pybind.h"
 
-namespace py = pybind11;
+void pybind_cu_vector(py::module& m);
 
-#endif  // KALDI_PYBIND_KALDI_PYBIND_H_
+#endif  // KALDI_PYBIND_CUDAMATRIX_CU_VECTOR_PYBIND_H_

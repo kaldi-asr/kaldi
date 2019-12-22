@@ -141,6 +141,55 @@ void CuDevice::Initialize() {
   }
 }
 
+void CuDevice::SelectGpuDevice(int device_id) {
+  if (device_id_ != -1) {
+    KALDI_ERR << "You cannot call SelectGpu* twice if, on the first time, "
+                 "you requested a GPU.";
+  }
+
+  if (device_id < 0) {
+    KALDI_LOG << "Manually selected to compute on CPU.";
+    return;
+  }
+  // Check that we have a gpu available
+  int32 num_gpus = 0;
+
+  cudaError_t e = cudaGetDeviceCount(&num_gpus);
+
+  // Make sure the global allocator object has the up-to-date options.
+  g_cuda_allocator.SetOptions(g_allocator_options);
+
+  if (num_gpus == 0) {
+    KALDI_CUDA_ERR(e, "No CUDA GPU detected!");
+  }
+
+  if (device_id > num_gpus - 1) {
+    KALDI_ERR
+        << "Valid device id should be in the range (both inclusive): 0 to "
+        << (num_gpus - 1) << ". You passed: " << device_id;
+  }
+
+  KALDI_LOG << "Select gpu id " << device_id << " out of " << (num_gpus - 1)
+            << " (starting from 0)";
+
+  e = cudaSetDevice(device_id);
+  if (e != cudaSuccess) {
+    KALDI_CUDA_ERR(e, "Failed to select device with id " << device_id);
+  }
+  // Double check that we have the context
+  KALDI_ASSERT(cudaSuccess == cudaDeviceSynchronize());
+
+  // Check if the machine uses compute exclusive mode
+  if (IsComputeExclusive()) {
+    KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.";
+  } else {
+    // Suggest to use compute exclusive mode
+    KALDI_WARN << "Not in compute-exclusive mode.  Suggestion: use "
+                  "'nvidia-smi -c 3' to set compute exclusive mode";
+  }
+  FinalizeActiveGpu();
+}
+
 void CuDevice::SelectGpuId(std::string use_gpu) {
   if (device_id_ != -1) {
     KALDI_ERR << "You cannot call SelectGpuId twice if, on the first time, "

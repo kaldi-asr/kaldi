@@ -48,7 +48,14 @@ void pybind_matrix(py::module& m) {
       .def("__setitem__",
            [](MatrixBase<float>& m, std::pair<ssize_t, ssize_t> i, float v) {
              m(i.first, i.second) = v;
-           });
+           })
+      .def("numpy", [](MatrixBase<float>* m) {
+        return py::array_t<float>(
+            {m->NumRows(), m->NumCols()},                  // shape
+            {sizeof(float) * m->Stride(), sizeof(float)},  // stride in bytes
+            m->Data(),                                     // ptr
+            py::none());  // pass a base object to avoid copy!
+      });
 
   py::class_<Matrix<float>, MatrixBase<float>>(m, "FloatMatrix",
                                                pybind11::buffer_protocol())
@@ -81,8 +88,8 @@ void pybind_matrix(py::module& m) {
         }
 
         // numpy is row major by default, so we use strides[0]
-        return new
-            SubMatrix<float>(reinterpret_cast<float*>(info.ptr), info.shape[0],
-                             info.shape[1], info.strides[0] / sizeof(float));
+        return new SubMatrix<float>(reinterpret_cast<float*>(info.ptr),
+                                    info.shape[0], info.shape[1],
+                                    info.strides[0] / sizeof(float));
       }));
 }
