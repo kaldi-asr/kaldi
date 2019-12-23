@@ -1,4 +1,4 @@
-// pybind/feat/feat_pybind.cc
+// pybind/feat/online_feature_pybind.h
 
 // Copyright 2019   Microsoft Corporation (author: Xingyu Na)
 
@@ -15,16 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "feat/feat_pybind.h"
+#ifndef KALDI_PYBIND_FEAT_ONLINE_FEATURE_PYBIND_H_
+#define KALDI_PYBIND_FEAT_ONLINE_FEATURE_PYBIND_H_
 
-#include "feat/feature_pybind.h"
-#include "feat/online_feature_pybind.h"
-#include "feat/wave_reader_pybind.h"
+#include "pybind/kaldi_pybind.h"
 
-void pybind_feat(py::module& _m) {
-  py::module m = _m.def_submodule("feat", "feat pybind for Kaldi");
+void pybind_online_feature(py::module& m);
 
-  pybind_feature(m);
-  pybind_online_feature(m);
-  pybind_wave_reader(m);
-}
+#endif  // KALDI_PYBIND_FEAT_ONLINE_FEATURE_PYBIND_H_

@@ -19,6 +19,7 @@
 
 #include "feat/feature-mfcc.h"
 #include "feat/feature-fbank.h"
+#include "feat/online-feature.h"
 
 using namespace kaldi;
 
