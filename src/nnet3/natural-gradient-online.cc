@@ -397,7 +397,7 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   Matrix<BaseFloat> U_t(R, R);
   Vector<BaseFloat> c_t(R);
   // do the symmetric eigenvalue decomposition Z_t = U_t C_t U_t^T.
-  Z_t_scaled.Eig(&c_t, &U_t);
+  Z_t_scaled.EigMKL(&c_t, &U_t);
   SortSvd(&c_t, &U_t);
   c_t.Scale(z_t_scale);
 
@@ -492,6 +492,7 @@ void OnlineNaturalGradient::ComputeWt1(int32 N,
                                        const CuMatrixBase<BaseFloat> &W_t,
                                        CuMatrixBase<BaseFloat> *J_t,
                                        CuMatrixBase<BaseFloat> *W_t1) const {
+  NVTX_RANGE(__func__);
 
   int32 R = d_t.Dim(), D = W_t.NumCols();
   BaseFloat eta = Eta(N);
@@ -533,6 +534,7 @@ void OnlineNaturalGradient::ComputeZt(int32 N,
                                      const MatrixBase<BaseFloat> &K_t,
                                      const MatrixBase<BaseFloat> &L_t,
                                      SpMatrix<double> *Z_t) const {
+  NVTX_RANGE(__func__);
   // Use doubles because the range of quantities in Z_t can get large (fourth
   // power of data), and we want to avoid overflow.  This routine is fast.
   BaseFloat eta = Eta(N);
@@ -562,6 +564,7 @@ void OnlineNaturalGradient::ComputeEt(const VectorBase<BaseFloat> &d_t,
                                      VectorBase<BaseFloat> *e_t,
                                      VectorBase<BaseFloat> *sqrt_e_t,
                                      VectorBase<BaseFloat> *inv_sqrt_e_t) const {
+  NVTX_RANGE(__func__);
   // e_{tii} = 1/(\beta_t/d_{tii} + 1)
   int32 D = d_t.Dim();
   const BaseFloat *d = d_t.Data();

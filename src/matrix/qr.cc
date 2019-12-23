@@ -25,6 +25,8 @@
 #include "matrix/matrix-functions.h"
 #include "matrix/cblas-wrappers.h"
 
+#include "cudamatrix/cu-common.h"
+
 // This file contains an implementation of the Symmetric QR Algorithm
 // for the symmetric eigenvalue problem.  See Golub and Van Loan,
 // 3rd ed., Algorithm 8.3.3.
@@ -430,7 +432,28 @@ void SpMatrix<Real>::Qr(MatrixBase<Real> *Q) {
 }
 
 template<typename Real>
+void spevd( const char* jobz, const char* uplo, const MKL_INT* n, Real* ap,
+            Real* w, Real* z, const MKL_INT* ldz, Real* work,
+            const MKL_INT* lwork, MKL_INT* iwork, const MKL_INT* liwork,
+            MKL_INT* info);
+template <>
+void spevd<float>( const char* jobz, const char* uplo, const MKL_INT* n, float* ap,
+                   float* w, float* z, const MKL_INT* ldz, float* work,
+                   const MKL_INT* lwork, MKL_INT* iwork, const MKL_INT* liwork,
+                   MKL_INT* info) {
+  sspevd(jobz, uplo, n, ap, w, z, ldz, work, lwork, iwork, liwork, info);
+}
+template <>
+void spevd<double>( const char* jobz, const char* uplo, const MKL_INT* n, double* ap,
+                   double* w, double* z, const MKL_INT* ldz, double* work,
+                   const MKL_INT* lwork, MKL_INT* iwork, const MKL_INT* liwork,
+                   MKL_INT* info) {
+  dspevd(jobz, uplo, n, ap, w, z, ldz, work, lwork, iwork, liwork, info);
+}
+
+template<typename Real>
 void SpMatrix<Real>::Eig(VectorBase<Real> *s, MatrixBase<Real> *P) const {
+  NVTX_RANGE(__func__);
   MatrixIndexT dim = this->NumRows();
   KALDI_ASSERT(s->Dim() == dim);
   KALDI_ASSERT(P == NULL || (P->NumRows() == dim && P->NumCols() == dim));
@@ -447,6 +470,51 @@ void SpMatrix<Real>::Eig(VectorBase<Real> *s, MatrixBase<Real> *P) const {
   A.Qr(P); // Diagonalizes.
   if(P) P->Transpose();
   s->CopyDiagFromPacked(A);
+}
+
+template<typename Real>
+void SpMatrix<Real>::EigMKL(VectorBase<Real> *s, MatrixBase<Real> *P) const {
+  NVTX_RANGE(__func__);
+  MatrixIndexT dim = this->NumRows();
+  KALDI_ASSERT(s->Dim() == dim);
+  KALDI_ASSERT(P == NULL || (P->NumRows() == dim && P->NumCols() == dim));
+
+  SpMatrix<Real> ap(*this); // Copy *this, since the tridiagonalization
+  // and QR decomposition are destructive.
+  // Note: for efficiency of memory access, the tridiagonalization
+  // algorithm makes the *rows* of P the eigenvectors, not the columns.
+  // We'll transpose P before we exit.
+  // Also note: P may be null if you don't want the eigenvectors.  This
+  // will make this function more efficient.
+
+  // LAPACK spevd call here. Row major lower triangular == col major upper triangular
+  // Eigenvectors P are col major, so keep the transpose
+  char jobz = P ? 'V' : 'N';
+  char uplo = 'U';
+  int n = dim;
+  int ldz = P->Stride();
+  int lwork = 1 + 6*dim + dim*dim;
+  Vector<Real> work(lwork);
+  int liwork = 3 + 5*dim;
+  std::vector<int> iwork(liwork);
+  int info;
+  spevd<Real>(&jobz, &uplo, &n, ap.Data(),
+              s->Data(), P->Data(), &ldz, work.Data(),
+              &lwork, iwork.data(), &liwork,
+              &info);
+
+  if(P) P->Transpose();
+
+  // if (P) {
+  //   SortSvd(s, P);
+  //   SortSvd(&w, &z);
+
+  //   for (int i = 0; i < dim; ++i) {
+  //     Real err = w(i) - (*s)(i);
+  //     err = err < 0 ? -err : err;
+  //     KALDI_ASSERT(err <= 1.e-3);
+  //   }
+  // }
 }
 
 
@@ -560,6 +628,10 @@ template
 void SpMatrix<float>::Eig(VectorBase<float>*, MatrixBase<float>*) const;
 template
 void SpMatrix<double>::Eig(VectorBase<double>*, MatrixBase<double>*) const;
+template
+void SpMatrix<float>::EigMKL(VectorBase<float>*, MatrixBase<float>*) const;
+template
+void SpMatrix<double>::EigMKL(VectorBase<double>*, MatrixBase<double>*) const;
 
 template
 void SpMatrix<float>::TopEigs(VectorBase<float>*, MatrixBase<float>*, MatrixIndexT) const;
