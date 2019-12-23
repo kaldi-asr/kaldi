@@ -43,6 +43,9 @@ void pybind_dlpack(py::module& m) {
     KALDI_ASSERT(tensor->dtype.bits == 32);
     KALDI_ASSERT(tensor->dtype.lanes == 1);
 
+    auto* ctx = &tensor->ctx;
+    KALDI_ASSERT(ctx->device_type == kDLCPU);
+
     return SubVector<float>(reinterpret_cast<float*>(tensor->data),
                             tensor->shape[0]);
   });
@@ -59,6 +62,9 @@ void pybind_dlpack(py::module& m) {
     KALDI_ASSERT(tensor->dtype.code == kDLFloat);
     KALDI_ASSERT(tensor->dtype.bits == 32);
     KALDI_ASSERT(tensor->dtype.lanes == 1);
+
+    auto* ctx = &tensor->ctx;
+    KALDI_ASSERT(ctx->device_type == kDLCPU);
 
     // DLPack assumes row major, so we use strides[0]
     return SubMatrix<float>(reinterpret_cast<float*>(tensor->data),
@@ -80,6 +86,10 @@ void pybind_dlpack(py::module& m) {
     KALDI_ASSERT(tensor->dtype.bits == 32);
     KALDI_ASSERT(tensor->dtype.lanes == 1);
 
+    auto* ctx = &tensor->ctx;
+    KALDI_ASSERT(ctx->device_type == kDLGPU);
+    KALDI_ASSERT(ctx->device_id == CuDevice::GetCurrentDeviceId());
+
     return CuSubVector<float>(reinterpret_cast<float*>(tensor->data),
                               tensor->shape[0]);
 #else
@@ -100,6 +110,10 @@ void pybind_dlpack(py::module& m) {
     KALDI_ASSERT(tensor->dtype.code == kDLFloat);
     KALDI_ASSERT(tensor->dtype.bits == 32);
     KALDI_ASSERT(tensor->dtype.lanes == 1);
+
+    auto* ctx = &tensor->ctx;
+    KALDI_ASSERT(ctx->device_type == kDLGPU);
+    KALDI_ASSERT(ctx->device_id == CuDevice::GetCurrentDeviceId());
 
     // DLPack assumes row major, so we use strides[0]
     return CuSubMatrix<float>(reinterpret_cast<float*>(tensor->data),

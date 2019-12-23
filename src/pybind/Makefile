@@ -41,6 +41,7 @@ cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
 cudamatrix/cudamatrix_pybind.cc \
+dlpack/dlpack_deleter.cc \
 dlpack/dlpack_pybind.cc \
 feat/feat_pybind.cc \
 feat/feature_pybind.cc \

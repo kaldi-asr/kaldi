@@ -40,4 +40,14 @@ void pybind_matrix_common(py::module& m) {
       .value("kStrideEqualNumCols", kStrideEqualNumCols,
              "Set to the number of columns")
       .export_values();
+
+  py::enum_<MatrixTransposeType>(
+      m, "MatrixTransposeType", py::arithmetic(),
+      "this enums equal to CblasTrans and CblasNoTrans constants from CBLAS "
+      "library we are writing them as literals because we don't want to "
+      "include here matrix/kaldi-blas.h, which puts many symbols into global "
+      "scope (like 'real') via the header f2c.h")
+      .value("kTrans", kTrans, "CblasTrans == 112")
+      .value("kNoTrans", kNoTrans, "CblasNoTrans == 111")
+      .export_values();
 }

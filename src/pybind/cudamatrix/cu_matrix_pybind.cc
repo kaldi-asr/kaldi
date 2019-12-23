@@ -21,6 +21,7 @@
 #include "cudamatrix/cu_matrix_pybind.h"
 
 #include "cudamatrix/cu-matrix.h"
+#include "dlpack/dlpack_deleter.h"
 
 using namespace kaldi;
 
@@ -37,10 +38,71 @@ void pybind_cu_matrix(py::module& m) {
         .def("SetZero", &PyClass::SetZero)
         .def("Set", &PyClass::Set, py::arg("value"))
         .def("Add", &PyClass::Add, py::arg("value"))
-        .def("Scale", &PyClass::Scale, py::arg("value"));
-    ;
+        .def("Scale", &PyClass::Scale, py::arg("value"))
+        .def("__getitem__",
+             [](const PyClass& m, std::pair<ssize_t, ssize_t> i) {
+               return m(i.first, i.second);
+             })
+#if HAVE_CUDA == 1
+        .def("to_dlpack",
+             [](PyClass* m) {
+               // we use the name `to_dlpack` because PyTorch uses the same name
+
+               // the created `managed_tensor` will be freed in
+               // `DLManagedTensorDeleter`, so no memory leak here
+               auto* managed_tensor = new DLManagedTensor();
+               managed_tensor->manager_ctx = nullptr;
+
+               // setup the deleter to free allocated memory.
+               // refer to
+               // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L361
+               // for how and when the deleter is invoked.
+               managed_tensor->deleter = &DLManagedTensorDeleter;
+
+               auto* tensor = &managed_tensor->dl_tensor;
+               tensor->data = m->Data();
+               tensor->ctx.device_type = kDLGPU;
+               tensor->ctx.device_id = CuDevice::GetCurrentDeviceId();
+
+               tensor->ndim = 2;
+
+               tensor->dtype.code = kDLFloat;
+               tensor->dtype.bits = 32;  // single precision float
+               tensor->dtype.lanes = 1;
+
+               // `shape` and `strides` are freed in `DLManagedTensorDeleter`,
+               // so no memory leak here
+               tensor->shape = new int64_t[2];
+               tensor->shape[0] = m->NumRows();
+               tensor->shape[1] = m->NumCols();
+
+               tensor->strides = new int64_t[2];
+               tensor->strides[0] = m->Stride();
+               tensor->strides[1] = 1;
+               tensor->byte_offset = 0;
+
+               // WARNING(fangjun): the name of the capsule MUST be `dltensor`
+               // for PyTorch; refer to
+               // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L383/
+               // for more details.
+               return py::capsule(managed_tensor, "dltensor");
+             })
+#endif
+        ;
   }
-  // TODO(fangjun): add wrapper for CuMatrix
+  {
+    using PyClass = CuMatrix<float>;
+    py::class_<PyClass, CuMatrixBase<float>>(m, "FloatCuMatrix")
+        .def(py::init<>())
+        .def(py::init<MatrixIndexT, MatrixIndexT, MatrixResizeType,
+                      MatrixStrideType>(),
+             py::arg("rows"), py::arg("cols"),
+             py::arg("resize_type") = kSetZero,
+             py::arg("MatrixStrideType") = kDefaultStride)
+        .def(py::init<const MatrixBase<float>&, MatrixTransposeType>(),
+             py::arg("other"), py::arg("trans") = kNoTrans);
+    // TODO(fangjun): wrap other methods when needed
+  }
   {
     using PyClass = CuSubMatrix<float>;
     py::class_<PyClass, CuMatrixBase<float>>(m, "FloatCuSubMatrix");

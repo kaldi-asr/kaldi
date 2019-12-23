@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 
+import gc
 import math
 import unittest
 
@@ -18,6 +19,7 @@ except ImportError:
     print('PyTorch 1.3.0dev20191006 has been tested and is guaranteed to work.')
     sys.exit(0)
 
+from torch.utils.dlpack import from_dlpack
 from torch.utils.dlpack import to_dlpack
 
 import kaldi
@@ -26,7 +28,6 @@ import kaldi
 class TestDLPack(unittest.TestCase):
 
     def test_pytorch_cpu_tensor_to_subvector(self):
-
         tensor = torch.arange(3).float()
 
         # v and tensor share the same memory
@@ -38,9 +39,9 @@ class TestDLPack(unittest.TestCase):
         v[1] = 200
         v[2] = 300
 
-        self.assertEqual(v[0], 100)
-        self.assertEqual(v[1], 200)
-        self.assertEqual(v[2], 300)
+        self.assertEqual(tensor[0], 100)
+        self.assertEqual(tensor[1], 200)
+        self.assertEqual(tensor[2], 300)
 
     def test_pytorch_cpu_tensor_to_submatrix(self):
         tensor = torch.arange(6).reshape(2, 3).float()
@@ -51,7 +52,7 @@ class TestDLPack(unittest.TestCase):
         m[0, 0] = 100  # also changes tensor, since memory is shared
         self.assertEqual(tensor[0, 0], 100)
 
-    def test_pytorch_gpu_tensor_to_cu_subvector_and_cu_submatrix(self):
+    def test_pytorch_and_kaldi_gpu_tensor_zero_copy(self):
         if torch.cuda.is_available() == False:
             print('No GPU detected! Skip it')
             return
@@ -107,6 +108,156 @@ class TestDLPack(unittest.TestCase):
         self.assertEqual(tensor[0, 0], 0)
         self.assertEqual(tensor[0, 1], 0)
         self.assertEqual(tensor[0, 2], 0)
+
+        # now from Kaldi to PyTorch
+
+        # (fangjun): we put all tests in this function to avoid
+        # invoking SelectGpuDevice() twice
+
+        dim = 2
+        cpu_v = kaldi.FloatVector(size=dim)
+        cpu_v[0] = 10
+        cpu_v[1] = 20
+
+        gpu_v = kaldi.FloatCuVector(cpu_v)
+        self.assertEqual(gpu_v[0], 10)
+        self.assertEqual(gpu_v[1], 20)
+
+        # memory is shared between `gpu_v` and `tensor`
+        tensor = from_dlpack(gpu_v.to_dlpack())
+
+        self.assertTrue(tensor.is_cuda)
+        self.assertEqual(tensor.device.index, device_id)
+
+        self.assertTrue(tensor[0], 10)
+        self.assertTrue(tensor[1], 20)
+
+        tensor[0] = 1  # also changes `gpu_v`
+        tensor[1] = 2
+
+        self.assertEqual(gpu_v[0], 1)
+        self.assertEqual(gpu_v[1], 2)
+
+        gpu_v.Add(10)  # also changes `tensor`
+
+        self.assertEqual(tensor[0], 11)
+        self.assertEqual(tensor[1], 12)
+
+        del tensor
+        gc.collect()
+
+        self.assertEqual(gpu_v[0], 11)  # gpu_v is still alive
+        self.assertEqual(gpu_v[1], 12)
+
+        # now for CuMatrix
+        num_rows = 1
+        num_cols = 2
+
+        cpu_m = kaldi.FloatMatrix(row=num_rows, col=num_cols)
+        cpu_m[0, 0] = 1
+        cpu_m[0, 1] = 2
+
+        gpu_m = kaldi.FloatCuMatrix(cpu_m)
+        self.assertEqual(gpu_m[0, 0], 1)
+        self.assertEqual(gpu_m[0, 1], 2)
+
+        # memory is shared between `gpu_m` and `tensor`
+        tensor = from_dlpack(gpu_m.to_dlpack())
+
+        self.assertTrue(tensor.is_cuda)
+        self.assertEqual(tensor.device.index, device_id)
+
+        self.assertTrue(tensor[0, 0], 1)
+        self.assertTrue(tensor[0, 1], 2)
+
+        tensor[0, 0] = 6  # also changes `gpu_m`
+        tensor[0, 1] = 8
+
+        self.assertEqual(gpu_m[0, 0], 6)
+        self.assertEqual(gpu_m[0, 1], 8)
+
+        gpu_m.Add(2)  # also changes `tensor`
+        self.assertTrue(tensor[0, 0], 8)
+        self.assertTrue(tensor[0, 1], 10)
+
+        del tensor
+        gc.collect()
+
+        self.assertEqual(gpu_m[0, 0], 8)  # `gpu_m` is still alive
+        self.assertEqual(gpu_m[0, 1], 10)
+
+    def test_vector_to_pytorch_cpu_tensor(self):
+        dim = 2
+        v = kaldi.FloatVector(size=dim)
+        v[0] = 10
+        v[1] = 20
+
+        # memory is shared between kaldi::Vector and PyTorch Tensor
+        tensor = from_dlpack(v.to_dlpack())
+        self.assertEqual(tensor.is_cuda, False)
+
+        self.assertEqual(tensor[0], 10)
+        self.assertEqual(tensor[1], 20)
+
+        tensor[0] = 100  # also changes `v`
+        tensor[1] = 200
+
+        self.assertEqual(v[0], 100)
+        self.assertEqual(v[1], 200)
+
+        v[0] = 9  # also changes `tensor`
+        self.assertEqual(tensor[0], 9)
+
+        del tensor
+        gc.collect()
+
+        # one more time
+
+        self.assertEqual(v[0], 9)  # v is still alive
+        self.assertEqual(v[1], 200)
+
+        tensor = from_dlpack(v.to_dlpack())
+        self.assertEqual(tensor.is_cuda, False)
+
+        tensor[0] = 8
+        tensor[1] = 10
+        self.assertEqual(v[0], 8)
+        self.assertEqual(v[1], 10)
+
+    def test_vector_to_pytorch_cpu_tensor(self):
+        num_rows = 1
+        num_cols = 2
+        m = kaldi.FloatMatrix(row=num_rows, col=num_cols)
+        m[0, 0] = 10
+        m[0, 1] = 20
+
+        # memory is shared between `tensor` and `m`
+        tensor = from_dlpack(m.to_dlpack())
+        self.assertEqual(tensor.is_cuda, False)
+        self.assertEqual(tensor.ndim, 2)
+
+        self.assertEqual(tensor[0, 0], 10)
+        self.assertEqual(tensor[0, 1], 20)
+
+        m[0, 0] = 100
+        self.assertEqual(tensor[0, 0], 100)
+
+        tensor[0, 0] = 1000
+        self.assertEqual(m[0, 0], 1000)
+
+        del tensor
+        gc.collect()
+
+        # one more time
+
+        self.assertEqual(m[0, 0], 1000)  # m is still alive
+        self.assertEqual(m[0, 1], 20)
+
+        tensor = from_dlpack(m.to_dlpack())
+        self.assertEqual(tensor.is_cuda, False)
+
+        tensor[0, 0] = 8
+        self.assertEqual(m[0, 0], 8)
 
 
 if __name__ == '__main__':

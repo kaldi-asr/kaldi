@@ -21,6 +21,7 @@
 
 #include "matrix/matrix_pybind.h"
 
+#include "dlpack/dlpack_deleter.h"
 #include "matrix/kaldi-matrix.h"
 
 using namespace kaldi;
@@ -49,12 +50,56 @@ void pybind_matrix(py::module& m) {
            [](MatrixBase<float>& m, std::pair<ssize_t, ssize_t> i, float v) {
              m(i.first, i.second) = v;
            })
-      .def("numpy", [](MatrixBase<float>* m) {
-        return py::array_t<float>(
-            {m->NumRows(), m->NumCols()},                  // shape
-            {sizeof(float) * m->Stride(), sizeof(float)},  // stride in bytes
-            m->Data(),                                     // ptr
-            py::none());  // pass a base object to avoid copy!
+      .def("numpy",
+           [](MatrixBase<float>* m) {
+             return py::array_t<float>(
+                 {m->NumRows(), m->NumCols()},  // shape
+                 {sizeof(float) * m->Stride(),
+                  sizeof(float)},  // stride in bytes
+                 m->Data(),        // ptr
+                 py::none());      // pass a base object to avoid copy!
+           })
+      .def("to_dlpack", [](MatrixBase<float>* m) {
+        // we use the name `to_dlpack` because PyTorch uses the same name
+
+        // the created `managed_tensor` will be freed in
+        // `DLManagedTensorDeleter`, so no memory leak here
+        auto* managed_tensor = new DLManagedTensor();
+        managed_tensor->manager_ctx = nullptr;
+
+        // setup the deleter to free allocated memory.
+        // refer to
+        // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L361
+        // for how and when the deleter is invoked.
+        managed_tensor->deleter = &DLManagedTensorDeleter;
+
+        auto* tensor = &managed_tensor->dl_tensor;
+        tensor->data = m->Data();
+        tensor->ctx.device_type = kDLCPU;
+        tensor->ctx.device_id = 0;
+
+        tensor->ndim = 2;
+
+        tensor->dtype.code = kDLFloat;
+        tensor->dtype.bits = 32;  // single precision float
+        tensor->dtype.lanes = 1;
+
+        // `shape` and `strides` are freed in `DLManagedTensorDeleter`, so
+        // no memory leak here
+        tensor->shape = new int64_t[2];
+        tensor->shape[0] = m->NumRows();
+        tensor->shape[1] = m->NumCols();
+
+        tensor->strides = new int64_t[2];
+        tensor->strides[0] = m->Stride();
+        tensor->strides[1] = 1;
+        tensor->byte_offset = 0;
+
+        // WARNING(fangjun): the name of the capsule MUST be `dltensor` for
+        // PyTorch; refer to
+        // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L383/
+        // for more details.
+        return py::capsule(managed_tensor, "dltensor");
       });
 
   py::class_<Matrix<float>, MatrixBase<float>>(m, "FloatMatrix",

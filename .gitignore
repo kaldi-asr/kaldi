@@ -6,8 +6,9 @@
 !/src/doc/*
 !/src/*/Makefile
 !/src/*/README
+!/src/pybind/*
 
-# Compiled Object files and python ciles
+# Compiled Object files and python files
 *.slo
 *.lo
 *.o
