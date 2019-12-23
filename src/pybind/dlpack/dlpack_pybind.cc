@@ -93,7 +93,8 @@ void pybind_dlpack(py::module& m) {
     return CuSubVector<float>(reinterpret_cast<float*>(tensor->data),
                               tensor->shape[0]);
 #else
-      KALDI_ERR << "Kaldi is not compiled with GPU!"
+    KALDI_ERR << "Kaldi is not compiled with GPU!";
+    return py::none();
 #endif
   });
 
@@ -120,7 +121,8 @@ void pybind_dlpack(py::module& m) {
                               tensor->shape[0], tensor->shape[1],
                               tensor->strides[0]);
 #else
-      KALDI_ERR << "Kaldi is not compiled with GPU!"
+    KALDI_ERR << "Kaldi is not compiled with GPU!";
+    return py::none();
 #endif
   });
 }

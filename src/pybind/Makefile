@@ -125,7 +125,8 @@ valgrind:
 depend:
 	rm -f .depend.mk
 	for f in $(CCFILES); do \
-    $(CXX) -M -MT "$$(dirname $$f)/$$(basename -s .cc $$f).o" $(CXXFLAGS) $$f >> .depend.mk; \
+        $(CXX) -M -MT "$$(dirname $$f)/$$(basename -s .cc $$f).o" \
+          $(CXXFLAGS) $$f >> .depend.mk; \
   done
 
 -include .depend.mk

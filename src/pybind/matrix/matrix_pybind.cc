@@ -63,7 +63,8 @@ void pybind_matrix(py::module& m) {
         // we use the name `to_dlpack` because PyTorch uses the same name
 
         // the created `managed_tensor` will be freed in
-        // `DLManagedTensorDeleter`, so no memory leak here
+        // `DLManagedTensorDeleter`, which does not free `data`,
+        // so no memory leak here
         auto* managed_tensor = new DLManagedTensor();
         managed_tensor->manager_ctx = nullptr;
 
@@ -136,12 +137,31 @@ void pybind_matrix(py::module& m) {
         return new SubMatrix<float>(reinterpret_cast<float*>(info.ptr),
                                     info.shape[0], info.shape[1],
                                     info.strides[0] / sizeof(float));
-      }));
+      }))
+      .def("from_dlpack", [](py::capsule* capsule) {
+        DLManagedTensor* managed_tensor = *capsule;
 
-  py::class_<Matrix<double>,
-             std::unique_ptr<Matrix<double>, py::nodelete>>(
+        auto* tensor = &managed_tensor->dl_tensor;
+
+        // we support only 2-D tensor
+        KALDI_ASSERT(tensor->ndim == 2);
+
+        // we support only float (single precision, 32-bit) tensor
+        KALDI_ASSERT(tensor->dtype.code == kDLFloat);
+        KALDI_ASSERT(tensor->dtype.bits == 32);
+        KALDI_ASSERT(tensor->dtype.lanes == 1);
+
+        auto* ctx = &tensor->ctx;
+        KALDI_ASSERT(ctx->device_type == kDLCPU);
+
+        // DLPack assumes row major, so we use strides[0]
+        return SubMatrix<float>(reinterpret_cast<float*>(tensor->data),
+                                tensor->shape[0], tensor->shape[1],
+                                tensor->strides[0]);
+      });
+
+  py::class_<Matrix<double>, std::unique_ptr<Matrix<double>, py::nodelete>>(
       m, "DoubleMatrix",
       "This bind is only for internal use, e.g. by OnlineCmvnState.")
       .def(py::init<const Matrix<float>&>(), py::arg("src"));
-
 }
