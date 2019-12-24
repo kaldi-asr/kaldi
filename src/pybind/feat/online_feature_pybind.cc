@@ -26,14 +26,7 @@ using namespace kaldi;
 template <class Feature>
 void online_base_feature(py::module& m, const std::string& feat_type) {
   py::class_<OnlineGenericBaseFeature<Feature>, OnlineBaseFeature>(m, feat_type.c_str())
-      .def(py::init<const typename Feature::Options&>())
-      .def("Dim", &OnlineGenericBaseFeature<Feature>::Dim)
-      .def("IsLastFrame", &OnlineGenericBaseFeature<Feature>::IsLastFrame)
-      .def("FrameShiftInSeconds", &OnlineGenericBaseFeature<Feature>::FrameShiftInSeconds)
-      .def("NumFramesReady", &OnlineGenericBaseFeature<Feature>::NumFramesReady)
-      .def("GetFrame", &OnlineGenericBaseFeature<Feature>::GetFrame)
-      .def("AcceptWaveform", &OnlineGenericBaseFeature<Feature>::AcceptWaveform)
-      .def("InputFinished", &OnlineGenericBaseFeature<Feature>::InputFinished);
+      .def(py::init<const typename Feature::Options&>(), py::arg("opts"));
 }
 
 void pybind_online_feature(py::module& m) {
@@ -50,7 +43,16 @@ void pybind_online_feature(py::module& m) {
       .def("GetFrames", &OnlineFeatureInterface::GetFrames)
       .def("FrameShiftInSeconds", &OnlineFeatureInterface::FrameShiftInSeconds);
 
-  py::class_<OnlineBaseFeature, OnlineFeatureInterface>(m, "OnlineBaseFeature");
+  py::class_<OnlineBaseFeature, OnlineFeatureInterface>(m, "OnlineBaseFeature")
+      .def("AcceptWaveform", &OnlineBaseFeature::AcceptWaveform,
+           "This would be called from the application, when you get more wave data."
+           "Note: the sampling_rate is typically only provided so the code can assert"
+           "that it matches the sampling rate expected in the options.")
+      .def("InputFinished", &OnlineBaseFeature::InputFinished,
+           "InputFinished() tells the class you won't be providing any"
+           "more waveform.  This will help flush out the last few frames"
+           "of delta or LDA features (it will typically affect the return value"
+           "of IsLastFrame.");
 
   online_base_feature<MfccComputer>(m, "OnlineMfcc");
   online_base_feature<FbankComputer>(m, "OnlineFbank");
@@ -61,6 +63,7 @@ void pybind_online_feature(py::module& m) {
       .def_readwrite("speaker_frames", &OnlineCmvnOptions::speaker_frames)
       .def_readwrite("global_frames", &OnlineCmvnOptions::global_frames)
       .def_readwrite("normalize_mean", &OnlineCmvnOptions::normalize_mean)
+      .def_readwrite("normalize_variance", &OnlineCmvnOptions::normalize_variance)
       .def_readwrite("modulus", &OnlineCmvnOptions::modulus)
       .def_readwrite("ring_buffer_size", &OnlineCmvnOptions::ring_buffer_size)
       .def_readwrite("skip_dims", &OnlineCmvnOptions::skip_dims)
@@ -72,22 +75,25 @@ void pybind_online_feature(py::module& m) {
       .def_readwrite("right_context", &OnlineSpliceOptions::right_context);
 
   py::class_<OnlineCmvn, OnlineFeatureInterface>(m, "OnlineCmvn")
-      .def(py::init<const OnlineCmvnOptions&, OnlineFeatureInterface*>())
+      .def(py::init<const OnlineCmvnOptions&, OnlineFeatureInterface*>(),
+           py::arg("opts"), py::arg("src"))
       .def("GetState", &OnlineCmvn::GetState)
       .def("SetState", &OnlineCmvn::SetState)
       .def("Freeze", &OnlineCmvn::Freeze);
 
   py::class_<OnlineSpliceFrames, OnlineFeatureInterface>(m, "OnlineSpliceFrames")
-      .def(py::init<const OnlineSpliceOptions&, OnlineFeatureInterface*>());
+      .def(py::init<const OnlineSpliceOptions&, OnlineFeatureInterface*>(),
+           py::arg("opts"), py::arg("src"));
 
   py::class_<OnlineTransform, OnlineFeatureInterface>(m, "OnlineTransform")
       .def(py::init<const Matrix<float>&, OnlineFeatureInterface*>());
 
   py::class_<OnlineCacheFeature, OnlineFeatureInterface>(m, "OnlineCacheFeature")
-      .def(py::init<OnlineFeatureInterface*>())
+      .def(py::init<OnlineFeatureInterface*>(), py::arg("src"))
       .def("ClearCache", &OnlineCacheFeature::ClearCache);
 
   py::class_<OnlineAppendFeature, OnlineFeatureInterface>(m, "OnlineAppendFeature")
-      .def(py::init<OnlineFeatureInterface*, OnlineFeatureInterface*>());
+      .def(py::init<OnlineFeatureInterface*, OnlineFeatureInterface*>(),
+           py::arg("src1"), py::arg("src2"));
 
 }
