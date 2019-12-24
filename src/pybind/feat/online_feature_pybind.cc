@@ -68,18 +68,27 @@ void pybind_online_feature(py::module& m) {
       .def_readwrite("ring_buffer_size", &OnlineCmvnOptions::ring_buffer_size)
       .def_readwrite("skip_dims", &OnlineCmvnOptions::skip_dims)
       .def("Check", &OnlineCmvnOptions::Check);
-  
-  py::class_<OnlineSpliceOptions>(m, "OnlineSpliceOptions")
+
+  py::class_<OnlineCmvnState>(m, "OnlineCmvnState",
+      "This bind is only used internally, so members are not exposed.")
       .def(py::init<>())
-      .def_readwrite("left_context", &OnlineSpliceOptions::left_context)
-      .def_readwrite("right_context", &OnlineSpliceOptions::right_context);
+      .def(py::init<const Matrix<double>&>())
+      .def(py::init<const OnlineCmvnState&>());
 
   py::class_<OnlineCmvn, OnlineFeatureInterface>(m, "OnlineCmvn")
       .def(py::init<const OnlineCmvnOptions&, OnlineFeatureInterface*>(),
            py::arg("opts"), py::arg("src"))
+      .def(py::init<const OnlineCmvnOptions&, const OnlineCmvnState&,
+           OnlineFeatureInterface*>(),
+           py::arg("opts"), py::arg("stat"), py::arg("src"))
       .def("GetState", &OnlineCmvn::GetState)
       .def("SetState", &OnlineCmvn::SetState)
       .def("Freeze", &OnlineCmvn::Freeze);
+
+  py::class_<OnlineSpliceOptions>(m, "OnlineSpliceOptions")
+      .def(py::init<>())
+      .def_readwrite("left_context", &OnlineSpliceOptions::left_context)
+      .def_readwrite("right_context", &OnlineSpliceOptions::right_context);
 
   py::class_<OnlineSpliceFrames, OnlineFeatureInterface>(m, "OnlineSpliceFrames")
       .def(py::init<const OnlineSpliceOptions&, OnlineFeatureInterface*>(),

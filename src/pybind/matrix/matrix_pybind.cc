@@ -92,4 +92,11 @@ void pybind_matrix(py::module& m) {
                                     info.shape[0], info.shape[1],
                                     info.strides[0] / sizeof(float));
       }));
+
+  py::class_<Matrix<double>,
+             std::unique_ptr<Matrix<double>, py::nodelete>>(
+      m, "DoubleMatrix",
+      "This bind is only for internal use, e.g. by OnlineCmvnState.")
+      .def(py::init<const Matrix<float>&>(), py::arg("src"));
+
 }
