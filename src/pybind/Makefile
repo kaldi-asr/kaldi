@@ -44,6 +44,7 @@ cudamatrix/cudamatrix_pybind.cc \
 dlpack/dlpack_pybind.cc \
 feat/feat_pybind.cc \
 feat/feature_pybind.cc \
+feat/online_feature_pybind.cc \
 feat/wave_reader_pybind.cc \
 fst/arc_pybind.cc \
 fst/compile_pybind.cc \
