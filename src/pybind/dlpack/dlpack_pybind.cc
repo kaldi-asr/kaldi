@@ -191,7 +191,7 @@ after del tensor
 ```
 */
 
-py::capsule VectorToDLPack(VectorBase<float>* v) {
+py::capsule VectorToDLPack(Vector<float>* v) {
   auto* managed_tensor = CreateDLManagedtensor(kDLCPU, 0, v->Data());
   auto* tensor = &managed_tensor->dl_tensor;
 
@@ -213,7 +213,7 @@ py::capsule VectorToDLPack(VectorBase<float>* v) {
   // `py::object` is implicitly converted to `py::capsule`
 }
 
-py::capsule MatrixToDLPack(MatrixBase<float>* m) {
+py::capsule MatrixToDLPack(Matrix<float>* m) {
   auto* managed_tensor = CreateDLManagedtensor(kDLCPU, 0, m->Data());
   auto* tensor = &managed_tensor->dl_tensor;
 
@@ -235,7 +235,7 @@ py::capsule MatrixToDLPack(MatrixBase<float>* m) {
   return py::object(capsule, is_borrowed);
 }
 
-py::capsule CuVectorToDLPack(CuVectorBase<float>* v) {
+py::capsule CuVectorToDLPack(CuVector<float>* v) {
 #if HAVE_CUDA == 1
   auto* managed_tensor =
       CreateDLManagedtensor(kDLGPU, CuDevice::GetCurrentDeviceId(), v->Data());
@@ -262,7 +262,7 @@ py::capsule CuVectorToDLPack(CuVectorBase<float>* v) {
 #endif
 }
 
-py::capsule CuMatrixToDLPack(CuMatrixBase<float>* m) {
+py::capsule CuMatrixToDLPack(CuMatrix<float>* m) {
 #if HAVE_CUDA == 1
   auto* managed_tensor =
       CreateDLManagedtensor(kDLGPU, CuDevice::GetCurrentDeviceId(), m->Data());

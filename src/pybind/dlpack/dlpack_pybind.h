@@ -28,10 +28,10 @@ void pybind_dlpack(py::module& m);
 
 namespace kaldi {
 
-py::capsule VectorToDLPack(VectorBase<float>* v);
-py::capsule MatrixToDLPack(MatrixBase<float>* m);
-py::capsule CuVectorToDLPack(CuVectorBase<float>* v);
-py::capsule CuMatrixToDLPack(CuMatrixBase<float>* m);
+py::capsule VectorToDLPack(Vector<float>* v);
+py::capsule MatrixToDLPack(Matrix<float>* m);
+py::capsule CuVectorToDLPack(CuVector<float>* v);
+py::capsule CuMatrixToDLPack(CuMatrix<float>* m);
 
 DLPackSubVector<float>* SubVectorFromDLPack(py::capsule* capsule);
 DLPackSubMatrix<float>* SubMatrixFromDLPack(py::capsule* capsule);

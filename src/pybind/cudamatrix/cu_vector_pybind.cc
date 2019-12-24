@@ -36,11 +36,7 @@ void pybind_cu_vector(py::module& m) {
         .def("Set", &PyClass::Set, py::arg("value"))
         .def("Add", &PyClass::Add, py::arg("value"))
         .def("Scale", &PyClass::Scale, py::arg("value"))
-        .def("__getitem__", [](const PyClass& v, int i) { return v(i); })
-        .def("to_dlpack", [](PyClass* v) {
-          // we use the name `to_dlpack` because PyTorch uses the same name
-          return CuVectorToDLPack(v);
-        });
+        .def("__getitem__", [](const PyClass& v, int i) { return v(i); });
   }
   {
     using PyClass = CuVector<float>;
@@ -48,7 +44,11 @@ void pybind_cu_vector(py::module& m) {
         .def(py::init<>())
         .def(py::init<MatrixIndexT, MatrixResizeType>(), py::arg("dim"),
              py::arg("MatrixResizeType") = kSetZero)
-        .def(py::init<const VectorBase<float>&>(), py::arg("v"));
+        .def(py::init<const VectorBase<float>&>(), py::arg("v"))
+        .def("to_dlpack", [](PyClass* v) {
+          // we use the name `to_dlpack` because PyTorch uses the same name
+          return CuVectorToDLPack(v);
+        });
     // TODO(fangjun): wrap other methods when needed
   }
   {

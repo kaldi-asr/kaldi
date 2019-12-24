@@ -42,11 +42,7 @@ void pybind_cu_matrix(py::module& m) {
         .def("__getitem__",
              [](const PyClass& m, std::pair<ssize_t, ssize_t> i) {
                return m(i.first, i.second);
-             })
-        .def("to_dlpack", [](PyClass* m) {
-          // we use the name `to_dlpack` because PyTorch uses the same name
-          return CuMatrixToDLPack(m);
-        });
+             });
   }
 
   {
@@ -59,7 +55,11 @@ void pybind_cu_matrix(py::module& m) {
              py::arg("resize_type") = kSetZero,
              py::arg("MatrixStrideType") = kDefaultStride)
         .def(py::init<const MatrixBase<float>&, MatrixTransposeType>(),
-             py::arg("other"), py::arg("trans") = kNoTrans);
+             py::arg("other"), py::arg("trans") = kNoTrans)
+        .def("to_dlpack", [](PyClass* m) {
+          // we use the name `to_dlpack` because PyTorch uses the same name
+          return CuMatrixToDLPack(m);
+        });
     // TODO(fangjun): wrap other methods when needed
   }
   {

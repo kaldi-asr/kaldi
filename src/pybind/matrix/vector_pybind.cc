@@ -45,25 +45,20 @@ void pybind_vector(py::module& m) {
            [](const VectorBase<float>& v, int i) { return v(i); })
       .def("__setitem__",
            [](VectorBase<float>& v, int i, float val) { v(i) = val; })
-      .def("numpy",
-           [](VectorBase<float>* v) {
-             return py::array_t<float>(
-                 {v->Dim()},       // shape
-                 {sizeof(float)},  // stride in bytes
-                 v->Data(),        // ptr
-                 py::none());      // pass a base object to avoid copy!
-             // (fangjun): the base object can be anything containing a non-null
-             // ptr. I cannot think of a better way than to pass a `None`
-             // object.
-             //
-             // `numpy` instead of `Numpy`, `ToNumpy` or `SomeOtherName` is used
-             // here because we want to follow the style in PyKaldi and PyTorch
-             // using  the  method `numpy()` to convert a matrix/tensor to a
-             // numpy array.
-           })
-      .def("to_dlpack", [](VectorBase<float>* v) {
-        // we use the name `to_dlpack` because PyTorch uses the same name
-        return VectorToDLPack(v);
+      .def("numpy", [](VectorBase<float>* v) {
+        return py::array_t<float>(
+            {v->Dim()},       // shape
+            {sizeof(float)},  // stride in bytes
+            v->Data(),        // ptr
+            py::none());      // pass a base object to avoid copy!
+        // (fangjun): the base object can be anything containing a non-null
+        // ptr. I cannot think of a better way than to pass a `None`
+        // object.
+        //
+        // `numpy` instead of `Numpy`, `ToNumpy` or `SomeOtherName` is used
+        // here because we want to follow the style in PyKaldi and PyTorch
+        // using  the  method `numpy()` to convert a matrix/tensor to a
+        // numpy array.
       });
 
   py::class_<Vector<float>, VectorBase<float>>(m, "FloatVector",
@@ -76,7 +71,11 @@ void pybind_vector(py::module& m) {
                                {sizeof(float)});  // strides (in chars)
       })
       .def(py::init<const MatrixIndexT, MatrixResizeType>(), py::arg("size"),
-           py::arg("resize_type") = kSetZero);
+           py::arg("resize_type") = kSetZero)
+      .def("to_dlpack", [](Vector<float>* v) {
+        // we use the name `to_dlpack` because PyTorch uses the same name
+        return VectorToDLPack(v);
+      });
 
   py::class_<SubVector<float>, VectorBase<float>>(m, "FloatSubVector")
       .def(py::init([](py::buffer b) {

@@ -50,18 +50,12 @@ void pybind_matrix(py::module& m) {
            [](MatrixBase<float>& m, std::pair<ssize_t, ssize_t> i, float v) {
              m(i.first, i.second) = v;
            })
-      .def("numpy",
-           [](MatrixBase<float>* m) {
-             return py::array_t<float>(
-                 {m->NumRows(), m->NumCols()},  // shape
-                 {sizeof(float) * m->Stride(),
-                  sizeof(float)},  // stride in bytes
-                 m->Data(),        // ptr
-                 py::none());      // pass a base object to avoid copy!
-           })
-      .def("to_dlpack", [](MatrixBase<float>* m) {
-        // we use the name `to_dlpack` because PyTorch uses the same name
-        return MatrixToDLPack(m);
+      .def("numpy", [](MatrixBase<float>* m) {
+        return py::array_t<float>(
+            {m->NumRows(), m->NumCols()},                  // shape
+            {sizeof(float) * m->Stride(), sizeof(float)},  // stride in bytes
+            m->Data(),                                     // ptr
+            py::none());  // pass a base object to avoid copy!
       });
 
   py::class_<Matrix<float>, MatrixBase<float>>(m, "FloatMatrix",
@@ -80,7 +74,8 @@ void pybind_matrix(py::module& m) {
       .def(py::init<const MatrixIndexT, const MatrixIndexT, MatrixResizeType,
                     MatrixStrideType>(),
            py::arg("row"), py::arg("col"), py::arg("resize_type") = kSetZero,
-           py::arg("stride_type") = kDefaultStride);
+           py::arg("stride_type") = kDefaultStride)
+      .def("to_dlpack", [](Matrix<float>* m) { return MatrixToDLPack(m); });
 
   py::class_<SubMatrix<float>, MatrixBase<float>>(m, "FloatSubMatrix")
       .def(py::init([](py::buffer b) {
@@ -106,8 +101,6 @@ void pybind_matrix(py::module& m) {
       .def("from_dlpack",
            [](py::capsule* capsule) { return SubMatrixFromDLPack(capsule); },
            py::return_value_policy::take_ownership);
-  // no need to wrap its constructor as the user is not supposed
-  // to call it directly in Python.
 
   py::class_<Matrix<double>, std::unique_ptr<Matrix<double>, py::nodelete>>(
       m, "DoubleMatrix",
