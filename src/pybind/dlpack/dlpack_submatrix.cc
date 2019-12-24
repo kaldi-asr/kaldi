@@ -1,4 +1,4 @@
-// pybind/dlpck/dlpack_pybind.h
+// pybind/dlpack/dlpack_submatrix.cc
 
 // Copyright 2019   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
@@ -16,28 +16,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_PYBIND_DLPACK_DLPACK_PYBIND_H_
-#define KALDI_PYBIND_DLPACK_DLPACK_PYBIND_H_
-
-#include "pybind/kaldi_pybind.h"
-
 #include "dlpack/dlpack_submatrix.h"
-#include "dlpack/dlpack_subvector.h"
-
-void pybind_dlpack(py::module& m);
 
 namespace kaldi {
 
-py::capsule VectorToDLPack(VectorBase<float>* v);
-py::capsule MatrixToDLPack(MatrixBase<float>* m);
-py::capsule CuVectorToDLPack(CuVectorBase<float>* v);
-py::capsule CuMatrixToDLPack(CuMatrixBase<float>* m);
-
-DLPackSubVector<float>* SubVectorFromDLPack(py::capsule* capsule);
-DLPackSubMatrix<float>* SubMatrixFromDLPack(py::capsule* capsule);
-DLPackCuSubVector<float>* CuSubVectorFromDLPack(py::capsule* capsule);
-DLPackCuSubMatrix<float>* CuSubMatrixFromDLPack(py::capsule* capsule);
+template class DLPackSubMatrix<float>;
+template class DLPackCuSubMatrix<float>;
 
 }  // namespace kaldi
-
-#endif  // KALDI_PYBIND_DLPACK_DLPACK_PYBIND_H_

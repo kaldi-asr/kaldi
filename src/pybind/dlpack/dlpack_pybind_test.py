@@ -33,16 +33,18 @@ class TestDLPack(unittest.TestCase):
         PyTorch CPU tensor to kaldi's FloatSubVector:
 
         Method 1:
-            v = kaldi.ToSubVector(to_dlpack(tensor))
+            v = kaldi.SubVectorFromDLPack(to_dlpack(tensor))
 
         Method 2:
-            v = kaldi.FloatSubVector.from_dlpack(to_dlpack(tensor))
+            v = kaldi.DLPackFloatSubVector.from_dlpack(to_dlpack(tensor))
         '''
         tensor = torch.arange(3).float()
 
         # v and tensor share the same memory
         # no data is copied
-        v = kaldi.ToSubVector(to_dlpack(tensor))
+        v = kaldi.SubVectorFromDLPack(to_dlpack(tensor))
+        # since DLPackFloatSubVector is a subclass of FloatSubVector
+        # the following assertion is True
         self.assertIsInstance(v, kaldi.FloatSubVector)
 
         v[0] = 100
@@ -54,13 +56,19 @@ class TestDLPack(unittest.TestCase):
         self.assertEqual(tensor[2], 300)
 
         del v
+        # the destructor of DLPackFloatSubVector is invoked
+        # by the above `del v` statement, you should see the log message
+        # here if you have put it in the destructor.
 
         # memory is shared between `v` and `tensor`
-        v = kaldi.FloatSubVector.from_dlpack(to_dlpack(tensor))
+        v = kaldi.DLPackFloatSubVector.from_dlpack(to_dlpack(tensor))
         self.assertEqual(v[0], 100)
 
         v[0] = 1  # also changes tensor
         self.assertEqual(tensor[0], 1)
+
+        # the destructor of DLPackFloatSubVector is also invoked here
+        # after v is collected by the garbage collector.
 
     def test_pytorch_cpu_tensor_to_submatrix(self):
         '''
@@ -68,14 +76,14 @@ class TestDLPack(unittest.TestCase):
         PyTorch CPU tensor to kaldi's FloatSubMatrix:
 
         Method 1:
-            v = kaldi.ToSubMatrix(to_dlpack(tensor))
+            v = kaldi.SubMatrixFromDLPack(to_dlpack(tensor))
 
         Method 2:
-            v = kaldi.FloatSubMatrix.from_dlpack(to_dlpack(tensor))
+            v = kaldi.DLPackFloatSubMatrix.from_dlpack(to_dlpack(tensor))
         '''
         tensor = torch.arange(6).reshape(2, 3).float()
 
-        m = kaldi.ToSubMatrix(to_dlpack(tensor))
+        m = kaldi.SubMatrixFromDLPack(to_dlpack(tensor))
         self.assertIsInstance(m, kaldi.FloatSubMatrix)
 
         m[0, 0] = 100  # also changes tensor, since memory is shared
@@ -84,7 +92,7 @@ class TestDLPack(unittest.TestCase):
         del m
 
         # memory is shared between `m` and `tensor`
-        m = kaldi.FloatSubMatrix.from_dlpack(to_dlpack(tensor))
+        m = kaldi.DLPackFloatSubMatrix.from_dlpack(to_dlpack(tensor))
         m[0, 1] = 200
         self.assertEqual(tensor[0, 1], 200)
 
@@ -108,7 +116,7 @@ class TestDLPack(unittest.TestCase):
 
         # GPU data is shared between kaldi::CuSubVector and PyTorch GPU tensor
         # no data is copied
-        v = kaldi.ToCuSubVector(to_dlpack(tensor))
+        v = kaldi.CuSubVectorFromDLPack(to_dlpack(tensor))
         self.assertIsInstance(v, kaldi.FloatCuSubVector)
 
         v.Add(value=10)
@@ -133,7 +141,7 @@ class TestDLPack(unittest.TestCase):
         # make sure the tensor from PyTorch is indeed on GPU
         self.assertTrue(tensor.is_cuda)
 
-        m = kaldi.ToCuSubMatrix(to_dlpack(tensor))
+        m = kaldi.CuSubMatrixFromDLPack(to_dlpack(tensor))
         m.ApplyExp()
 
         self.assertAlmostEqual(tensor[0, 0], math.exp(0), places=7)
@@ -227,7 +235,7 @@ class TestDLPack(unittest.TestCase):
         tensor = tensor.to(device)
 
         # memory is shared between `tensor` and `v`
-        v = kaldi.FloatCuSubVector.from_dlpack(to_dlpack(tensor))
+        v = kaldi.DLPackFloatCuSubVector.from_dlpack(to_dlpack(tensor))
         self.assertEqual(v[0], 1)
 
         v.Add(1)  # also changes `tensor`
@@ -240,7 +248,7 @@ class TestDLPack(unittest.TestCase):
         tensor = tensor.to(device)
 
         # memory is shared between `tensor` and `m`
-        m = kaldi.FloatCuSubMatrix.from_dlpack(to_dlpack(tensor))
+        m = kaldi.DLPackFloatCuSubMatrix.from_dlpack(to_dlpack(tensor))
         self.assertEqual(m[0, 0], 1)
 
         m.Add(100)  # also changes `tensor`
@@ -270,6 +278,8 @@ class TestDLPack(unittest.TestCase):
 
         del tensor
         gc.collect()
+        # you should have seen the log messages from the
+        # deleter of DLManagedTensor if you have put one in it.
 
         # one more time
         self.assertEqual(v[0], 9)  # v is still alive

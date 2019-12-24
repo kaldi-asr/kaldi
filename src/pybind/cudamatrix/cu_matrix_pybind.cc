@@ -21,7 +21,7 @@
 #include "cudamatrix/cu_matrix_pybind.h"
 
 #include "cudamatrix/cu-matrix.h"
-#include "dlpack/dlpack_deleter.h"
+#include "dlpack/dlpack_pybind.h"
 
 using namespace kaldi;
 
@@ -44,52 +44,8 @@ void pybind_cu_matrix(py::module& m) {
                return m(i.first, i.second);
              })
         .def("to_dlpack", [](PyClass* m) {
-#if HAVE_CUDA == 1
           // we use the name `to_dlpack` because PyTorch uses the same name
-
-          // the created `managed_tensor` will be freed in
-          // `DLManagedTensorDeleter`, which does not free `data`,
-          // so no memory leak here
-          auto* managed_tensor = new DLManagedTensor();
-          managed_tensor->manager_ctx = nullptr;
-
-          // setup the deleter to free allocated memory.
-          // refer to
-          // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L361
-          // for how and when the deleter is invoked.
-          managed_tensor->deleter = &DLManagedTensorDeleter;
-
-          auto* tensor = &managed_tensor->dl_tensor;
-          tensor->data = m->Data();
-          tensor->ctx.device_type = kDLGPU;
-          tensor->ctx.device_id = CuDevice::GetCurrentDeviceId();
-
-          tensor->ndim = 2;
-
-          tensor->dtype.code = kDLFloat;
-          tensor->dtype.bits = 32;  // single precision float
-          tensor->dtype.lanes = 1;
-
-          // `shape` and `strides` are freed in `DLManagedTensorDeleter`,
-          // so no memory leak here
-          tensor->shape = new int64_t[2];
-          tensor->shape[0] = m->NumRows();
-          tensor->shape[1] = m->NumCols();
-
-          tensor->strides = new int64_t[2];
-          tensor->strides[0] = m->Stride();
-          tensor->strides[1] = 1;
-          tensor->byte_offset = 0;
-
-          // WARNING(fangjun): the name of the capsule MUST be `dltensor`
-          // for PyTorch; refer to
-          // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L383/
-          // for more details.
-          return py::capsule(managed_tensor, "dltensor");
-#else
-          KALDI_ERR << "Kaldi is not compiled with GPU!";
-          return py::none();
-#endif
+          return CuMatrixToDLPack(m);
         });
   }
 
@@ -108,33 +64,12 @@ void pybind_cu_matrix(py::module& m) {
   }
   {
     using PyClass = CuSubMatrix<float>;
-    py::class_<PyClass, CuMatrixBase<float>>(m, "FloatCuSubMatrix")
-        .def("from_dlpack", [](py::capsule* capsule) {
-#if HAVE_CUDA == 1
-          DLManagedTensor* managed_tensor = *capsule;
-
-          auto* tensor = &managed_tensor->dl_tensor;
-
-          // we support only 2-D tensor
-          KALDI_ASSERT(tensor->ndim == 2);
-
-          // we support only float (single precision, 32-bit) tensor
-          KALDI_ASSERT(tensor->dtype.code == kDLFloat);
-          KALDI_ASSERT(tensor->dtype.bits == 32);
-          KALDI_ASSERT(tensor->dtype.lanes == 1);
-
-          auto* ctx = &tensor->ctx;
-          KALDI_ASSERT(ctx->device_type == kDLGPU);
-          KALDI_ASSERT(ctx->device_id == CuDevice::GetCurrentDeviceId());
-
-          // DLPack assumes row major, so we use strides[0]
-          return CuSubMatrix<float>(reinterpret_cast<float*>(tensor->data),
-                                    tensor->shape[0], tensor->shape[1],
-                                    tensor->strides[0]);
-#else
-          KALDI_ERR << "Kaldi is not compiled with GPU!";
-          return py::none();
-#endif
-        });
+    py::class_<PyClass, CuMatrixBase<float>>(m, "FloatCuSubMatrix");
   }
+
+  py::class_<DLPackCuSubMatrix<float>, CuSubMatrix<float>>(
+      m, "DLPackFloatCuSubMatrix")
+      .def("from_dlpack",
+           [](py::capsule* capsule) { return CuSubMatrixFromDLPack(capsule); },
+           py::return_value_policy::take_ownership);
 }

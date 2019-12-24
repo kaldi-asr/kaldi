@@ -1,4 +1,4 @@
-// pybind/dlpck/dlpack_deleter.h
+// pybind/tests/test_dlpack_subvector.cc
 
 // Copyright 2019   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
@@ -16,15 +16,23 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_PYBIND_DLPACK_DLPACK_DELETER_H_
-#define KALDI_PYBIND_DLPACK_DLPACK_DELETER_H_
+#include "dlpack/dlpack_pybind.h"
 
-#include "dlpack/dlpack.h"
+// TODO(fangjun): remove this file if neccessary
+// this file is to show that we can pass
+// a DLPackSubVector to a function in C++
+// that accepts a pointer/reference to VectorBase<float>
 
-namespace kaldi {
+using namespace kaldi;
+namespace {
+void Hello(VectorBase<float>& vref, VectorBase<float>* vptr) {
+  KALDI_LOG << "dim of vref is: " << vref.Dim();
+  KALDI_LOG << "vptr[0] = " << (*vptr)(0);
+}
+}
 
-void DLManagedTensorDeleter(struct DLManagedTensor* dl_managed_tensor);
-
-}  // namespace kaldi
-
-#endif  // KALDI_PYBIND_DLPACK_DLPACK_DELETER_H_
+void test_dlpack(py::module& m) {
+  m.def("Hello", &Hello,
+        "For test only. Pass a DLPackSubVector to C++ that accepts a pointer "
+        "to VectorBase<float>");
+}

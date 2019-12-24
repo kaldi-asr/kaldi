@@ -21,7 +21,7 @@
 
 #include "matrix/vector_pybind.h"
 
-#include "dlpack/dlpack_deleter.h"
+#include "dlpack/dlpack_pybind.h"
 #include "matrix/kaldi-vector.h"
 
 using namespace kaldi;
@@ -63,44 +63,7 @@ void pybind_vector(py::module& m) {
            })
       .def("to_dlpack", [](VectorBase<float>* v) {
         // we use the name `to_dlpack` because PyTorch uses the same name
-
-        // the created `managed_tensor` will be freed in
-        // `DLManagedTensorDeleter`, which does not free `data`,
-        // so no memory leak here
-        auto* managed_tensor = new DLManagedTensor();
-        managed_tensor->manager_ctx = nullptr;
-
-        // setup the deleter to free allocated memory.
-        // refer to
-        // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L361
-        // for how and when the deleter is invoked.
-        managed_tensor->deleter = &DLManagedTensorDeleter;
-
-        auto* tensor = &managed_tensor->dl_tensor;
-        tensor->data = v->Data();
-        tensor->ctx.device_type = kDLCPU;
-        tensor->ctx.device_id = 0;
-
-        tensor->ndim = 1;
-
-        tensor->dtype.code = kDLFloat;
-        tensor->dtype.bits = 32;  // single precision float
-        tensor->dtype.lanes = 1;
-
-        // `shape` and `strides` are freed in `DLManagedTensorDeleter`, so
-        // no memory leak here .
-        tensor->shape = new int64_t[1];
-        tensor->shape[0] = v->Dim();
-
-        tensor->strides = new int64_t[1];
-        tensor->strides[0] = 1;
-        tensor->byte_offset = 0;
-
-        // WARNING(fangjun): the name of the capsule MUST be `dltensor` for
-        // PyTorch; refer to
-        // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L383/
-        // for more details
-        return py::capsule(managed_tensor, "dltensor");
+        return VectorToDLPack(v);
       });
 
   py::class_<Vector<float>, VectorBase<float>>(m, "FloatVector",
@@ -129,27 +92,11 @@ void pybind_vector(py::module& m) {
         }
         return new SubVector<float>(reinterpret_cast<float*>(info.ptr),
                                     info.shape[0]);
-      }))
-      .def("from_dlpack", [](py::capsule* capsule) {
-        DLManagedTensor* managed_tensor = *capsule;
-        // (fangjun): the above assignment will either throw or succeed with a
-        // non-null ptr so no need to check for nullptr below
+      }));
 
-        auto* tensor = &managed_tensor->dl_tensor;
-
-        // we support only 1-D tensor
-        KALDI_ASSERT(tensor->ndim == 1);
-
-        // we support only float (single precision, 32-bit) tensor
-        KALDI_ASSERT(tensor->dtype.code == kDLFloat);
-        KALDI_ASSERT(tensor->dtype.bits == 32);
-        KALDI_ASSERT(tensor->dtype.lanes == 1);
-
-        auto* ctx = &tensor->ctx;
-        KALDI_ASSERT(ctx->device_type == kDLCPU);
-
-        return SubVector<float>(reinterpret_cast<float*>(tensor->data),
-                                tensor->shape[0]);
-
-      });
+  py::class_<DLPackSubVector<float>, SubVector<float>>(m,
+                                                       "DLPackFloatSubVector")
+      .def("from_dlpack",
+           [](py::capsule* capsule) { return SubVectorFromDLPack(capsule); },
+           py::return_value_policy::take_ownership);
 }
