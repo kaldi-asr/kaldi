@@ -9,8 +9,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 
 import unittest
 
-import numpy as np
-
 import kaldi
 
 

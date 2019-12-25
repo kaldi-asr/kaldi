@@ -55,4 +55,7 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_dlpack(m);
 
   pybind_cudamatrix(m);
+
+  void test_dlpack(py::module & m);  // forward declaration
+  test_dlpack(m);
 }

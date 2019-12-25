@@ -42,7 +42,10 @@ cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
 cudamatrix/cudamatrix_pybind.cc \
+dlpack/dlpack_deleter.cc \
 dlpack/dlpack_pybind.cc \
+dlpack/dlpack_submatrix.cc \
+dlpack/dlpack_subvector.cc \
 feat/feat_pybind.cc \
 feat/feature_pybind.cc \
 feat/online_feature_pybind.cc \
@@ -62,6 +65,7 @@ nnet3/nnet3_pybind.cc \
 nnet3/nnet_chain_example_pybind.cc \
 nnet3/nnet_common_pybind.cc \
 nnet3/nnet_example_pybind.cc \
+tests/test_dlpack_subvector.cc \
 util/table_types_pybind.cc
 
 CCFILES_OBJS := $(CCFILES:%.cc=%.o)
@@ -106,6 +110,7 @@ clean:
 	-rm -f .depend.mk
 
 test: all
+	python3 tests/test_dlpack_subvector.py
 	python3 tests/test_kaldi_pybind.py
 	make -C chain test
 	make -C cudamatrix test
@@ -125,7 +130,8 @@ valgrind:
 depend:
 	rm -f .depend.mk
 	for f in $(CCFILES); do \
-    $(CXX) -M -MT "$$(dirname $$f)/$$(basename -s .cc $$f).o" $(CXXFLAGS) $$f >> .depend.mk; \
+        $(CXX) -M -MT "$$(dirname $$f)/$$(basename -s .cc $$f).o" \
+          $(CXXFLAGS) $$f >> .depend.mk; \
   done
 
 -include .depend.mk

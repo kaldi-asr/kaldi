@@ -90,6 +90,10 @@ class CuDevice {
     return ans;
   }
 
+  static inline int32 GetCurrentDeviceId() {
+    return device_id_;
+  }
+
   inline cublasHandle_t GetCublasHandle() { return cublas_handle_; }
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
   inline curandGenerator_t GetCurandHandle() { return curand_handle_; }

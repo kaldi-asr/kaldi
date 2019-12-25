@@ -21,6 +21,28 @@
 
 #include "pybind/kaldi_pybind.h"
 
+#include "dlpack/dlpack_submatrix.h"
+#include "dlpack/dlpack_subvector.h"
+
 void pybind_dlpack(py::module& m);
+
+namespace kaldi {
+
+// it is very cheap to copy a `py::object`,
+// so we pass a copy here
+// Inside the function, we will use
+// ```Vector<float>* v = obj.cast<Vector<float>*>();```
+// if it fails, it will throw.
+py::capsule VectorToDLPack(py::object obj);
+py::capsule MatrixToDLPack(py::object obj);
+py::capsule CuVectorToDLPack(py::object obj);
+py::capsule CuMatrixToDLPack(py::object obj);
+
+DLPackSubVector<float>* SubVectorFromDLPack(py::capsule* capsule);
+DLPackSubMatrix<float>* SubMatrixFromDLPack(py::capsule* capsule);
+DLPackCuSubVector<float>* CuSubVectorFromDLPack(py::capsule* capsule);
+DLPackCuSubMatrix<float>* CuSubMatrixFromDLPack(py::capsule* capsule);
+
+}  // namespace kaldi
 
 #endif  // KALDI_PYBIND_DLPACK_DLPACK_PYBIND_H_
