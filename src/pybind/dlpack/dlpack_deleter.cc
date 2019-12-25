@@ -1,14 +1,11 @@
-// pybind/chain/chain_pybind.cc
+// pybind/dlpack/dlpack_deleter.cc
 
 // Copyright 2019   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
-//           2019   Microsoft Corporation (author: Xingyu Na)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 //
 //  http://www.apache.org/licenses/LICENSE-2.0
 //
@@ -19,16 +16,28 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "chain/chain_pybind.h"
+#include "dlpack/dlpack_deleter.h"
 
-#include "chain/chain_den_graph_pybind.h"
-#include "chain/chain_supervision_pybind.h"
-#include "chain/chain_training_pybind.h"
+#include <Python.h>
 
-void pybind_chain(py::module& _m) {
-  py::module m = _m.def_submodule("chain", "chain pybind for Kaldi");
+namespace kaldi {
 
-  pybind_chain_den_graph(m);
-  pybind_chain_supervision(m);
-  pybind_chain_training(m);
+void DLManagedTensorDeleter(struct DLManagedTensor* dl_managed_tensor) {
+  // data is shared, so do NOT free data
+
+  // `shape` is created with `new[]`
+  delete[] dl_managed_tensor->dl_tensor.shape;
+
+  // `strides` is created with `new[]`
+  delete[] dl_managed_tensor->dl_tensor.strides;
+
+  if (dl_managed_tensor->manager_ctx) {
+    PyObject* obj = reinterpret_cast<PyObject*>(dl_managed_tensor->manager_ctx);
+    Py_XDECREF(obj);
+  }
+
+  // now delete the `DLManagedTensor` which is created with `new`
+  delete dl_managed_tensor;
 }
+
+}  // namespace kaldi

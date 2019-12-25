@@ -67,12 +67,6 @@ class TestFloatVecotr(unittest.TestCase):
         for i in range(dim):
             self.assertEqual(d[i], v[i])
 
-        # TODO(fangjun): kaldi::Vector<float> and kaldi::Matrix<float>
-        # have the limitation that they allocate memory by themselves.
-        # There is no way to construct a kaldi::Vector<float> from numpy
-        # without memory copy. Discuss with Dan whether some necessary
-        # changes should be made.
-
 
 if __name__ == '__main__':
     unittest.main()

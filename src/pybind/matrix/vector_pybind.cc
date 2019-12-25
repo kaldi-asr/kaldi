@@ -21,6 +21,7 @@
 
 #include "matrix/vector_pybind.h"
 
+#include "dlpack/dlpack_pybind.h"
 #include "matrix/kaldi-vector.h"
 
 using namespace kaldi;
@@ -50,12 +51,6 @@ void pybind_vector(py::module& m) {
             {sizeof(float)},  // stride in bytes
             v->Data(),        // ptr
             py::none());      // pass a base object to avoid copy!
-        // (fangjun): the base object can be anything containing a non-null
-        // ptr. I cannot think of a better way than to pass a `None` object.
-        //
-        // `numpy` instead of `Numpy`, `ToNumpy` or `SomeOtherName` is used here
-        // because we want to follow the style in PyKaldi and PyTorch using the
-        // method `numpy()` to convert a matrix/tensor to a numpy array.
       });
 
   py::class_<Vector<float>, VectorBase<float>>(m, "FloatVector",
@@ -68,7 +63,8 @@ void pybind_vector(py::module& m) {
                                {sizeof(float)});  // strides (in chars)
       })
       .def(py::init<const MatrixIndexT, MatrixResizeType>(), py::arg("size"),
-           py::arg("resize_type") = kSetZero);
+           py::arg("resize_type") = kSetZero)
+      .def("to_dlpack", [](py::object obj) { return VectorToDLPack(obj); });
 
   py::class_<SubVector<float>, VectorBase<float>>(m, "FloatSubVector")
       .def(py::init([](py::buffer b) {
@@ -85,4 +81,10 @@ void pybind_vector(py::module& m) {
         return new SubVector<float>(reinterpret_cast<float*>(info.ptr),
                                     info.shape[0]);
       }));
+
+  py::class_<DLPackSubVector<float>, SubVector<float>>(m,
+                                                       "DLPackFloatSubVector")
+      .def("from_dlpack",
+           [](py::capsule* capsule) { return SubVectorFromDLPack(capsule); },
+           py::return_value_policy::take_ownership);
 }

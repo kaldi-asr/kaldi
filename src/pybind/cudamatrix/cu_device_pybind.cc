@@ -20,6 +20,7 @@
 
 #include "cudamatrix/cu_device_pybind.h"
 
+#include "base/kaldi-error.h"
 #include "cudamatrix/cu-device.h"
 
 using namespace kaldi;
@@ -30,7 +31,7 @@ void pybind_cu_device(py::module& m) {
 #if HAVE_CUDA == 1
           CuDevice::Instantiate().SelectGpuDevice(device_id);
 #else
-          KALDI_LOG << "Kaldi is NOT compiled with GPU! Ingore it.";
+          KALDI_LOG << "Kaldi is NOT compiled with GPU! Ignore it.";
 #endif
         },
         py::arg("device_id"));

@@ -21,6 +21,7 @@
 
 #include "matrix/matrix_pybind.h"
 
+#include "dlpack/dlpack_pybind.h"
 #include "matrix/kaldi-matrix.h"
 
 using namespace kaldi;
@@ -73,7 +74,8 @@ void pybind_matrix(py::module& m) {
       .def(py::init<const MatrixIndexT, const MatrixIndexT, MatrixResizeType,
                     MatrixStrideType>(),
            py::arg("row"), py::arg("col"), py::arg("resize_type") = kSetZero,
-           py::arg("stride_type") = kDefaultStride);
+           py::arg("stride_type") = kDefaultStride)
+      .def("to_dlpack", [](py::object obj) { return MatrixToDLPack(obj); });
 
   py::class_<SubMatrix<float>, MatrixBase<float>>(m, "FloatSubMatrix")
       .def(py::init([](py::buffer b) {
@@ -93,4 +95,15 @@ void pybind_matrix(py::module& m) {
                                     info.shape[0], info.shape[1],
                                     info.strides[0] / sizeof(float));
       }));
+
+  py::class_<DLPackSubMatrix<float>, SubMatrix<float>>(m,
+                                                       "DLPackFloatSubMatrix")
+      .def("from_dlpack",
+           [](py::capsule* capsule) { return SubMatrixFromDLPack(capsule); },
+           py::return_value_policy::take_ownership);
+
+  py::class_<Matrix<double>, std::unique_ptr<Matrix<double>, py::nodelete>>(
+      m, "DoubleMatrix",
+      "This bind is only for internal use, e.g. by OnlineCmvnState.")
+      .def(py::init<const Matrix<float>&>(), py::arg("src"));
 }

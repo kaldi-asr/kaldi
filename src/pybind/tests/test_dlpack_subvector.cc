@@ -1,14 +1,11 @@
-// pybind/chain/chain_pybind.cc
+// pybind/tests/test_dlpack_subvector.cc
 
 // Copyright 2019   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
-//           2019   Microsoft Corporation (author: Xingyu Na)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 //
 //  http://www.apache.org/licenses/LICENSE-2.0
 //
@@ -19,16 +16,23 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "chain/chain_pybind.h"
+#include "dlpack/dlpack_pybind.h"
 
-#include "chain/chain_den_graph_pybind.h"
-#include "chain/chain_supervision_pybind.h"
-#include "chain/chain_training_pybind.h"
+// TODO(fangjun): remove this file if neccessary
+// this file is to show that we can pass
+// a DLPackSubVector to a function in C++
+// that accepts a pointer/reference to VectorBase<float>
 
-void pybind_chain(py::module& _m) {
-  py::module m = _m.def_submodule("chain", "chain pybind for Kaldi");
+using namespace kaldi;
+namespace {
+void Hello(VectorBase<float>& vref, VectorBase<float>* vptr) {
+  KALDI_LOG << "dim of vref is: " << vref.Dim();
+  KALDI_LOG << "vptr[0] = " << (*vptr)(0);
+}
+}
 
-  pybind_chain_den_graph(m);
-  pybind_chain_supervision(m);
-  pybind_chain_training(m);
+void test_dlpack(py::module& m) {
+  m.def("Hello", &Hello,
+        "For test only. Pass a DLPackSubVector to C++ that accepts a pointer "
+        "to VectorBase<float>");
 }

@@ -21,6 +21,7 @@
 #include "cudamatrix/cu_matrix_pybind.h"
 
 #include "cudamatrix/cu-matrix.h"
+#include "dlpack/dlpack_pybind.h"
 
 using namespace kaldi;
 
@@ -32,17 +33,38 @@ void pybind_cu_matrix(py::module& m) {
         .def("NumRows", &PyClass::NumRows, "Return number of rows")
         .def("NumCols", &PyClass::NumCols, "Return number of columns")
         .def("Stride", &PyClass::Stride, "Return stride")
-        // the following methods are only for testing
         .def("ApplyExp", &PyClass::ApplyExp)
         .def("SetZero", &PyClass::SetZero)
         .def("Set", &PyClass::Set, py::arg("value"))
         .def("Add", &PyClass::Add, py::arg("value"))
-        .def("Scale", &PyClass::Scale, py::arg("value"));
-    ;
+        .def("Scale", &PyClass::Scale, py::arg("value"))
+        .def("__getitem__",
+             [](const PyClass& m, std::pair<ssize_t, ssize_t> i) {
+               return m(i.first, i.second);
+             });
   }
-  // TODO(fangjun): add wrapper for CuMatrix
+
+  {
+    using PyClass = CuMatrix<float>;
+    py::class_<PyClass, CuMatrixBase<float>>(m, "FloatCuMatrix")
+        .def(py::init<>())
+        .def(py::init<MatrixIndexT, MatrixIndexT, MatrixResizeType,
+                      MatrixStrideType>(),
+             py::arg("rows"), py::arg("cols"),
+             py::arg("resize_type") = kSetZero,
+             py::arg("MatrixStrideType") = kDefaultStride)
+        .def(py::init<const MatrixBase<float>&, MatrixTransposeType>(),
+             py::arg("other"), py::arg("trans") = kNoTrans)
+        .def("to_dlpack", [](py::object obj) { return CuMatrixToDLPack(obj); });
+  }
   {
     using PyClass = CuSubMatrix<float>;
     py::class_<PyClass, CuMatrixBase<float>>(m, "FloatCuSubMatrix");
   }
+
+  py::class_<DLPackCuSubMatrix<float>, CuSubMatrix<float>>(
+      m, "DLPackFloatCuSubMatrix")
+      .def("from_dlpack",
+           [](py::capsule* capsule) { return CuSubMatrixFromDLPack(capsule); },
+           py::return_value_policy::take_ownership);
 }
