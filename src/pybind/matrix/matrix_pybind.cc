@@ -75,7 +75,7 @@ void pybind_matrix(py::module& m) {
                     MatrixStrideType>(),
            py::arg("row"), py::arg("col"), py::arg("resize_type") = kSetZero,
            py::arg("stride_type") = kDefaultStride)
-      .def("to_dlpack", [](Matrix<float>* m) { return MatrixToDLPack(m); });
+      .def("to_dlpack", [](py::object obj) { return MatrixToDLPack(obj); });
 
   py::class_<SubMatrix<float>, MatrixBase<float>>(m, "FloatSubMatrix")
       .def(py::init([](py::buffer b) {

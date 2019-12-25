@@ -67,8 +67,6 @@ class DLPackSubMatrix : public SubMatrix<Real> {
     if (dl_managed_tensor_ && dl_managed_tensor_->deleter) {
       dl_managed_tensor_->deleter(dl_managed_tensor_);
     }
-    // TODO(fangjun): remove this log
-    std::cout << "dlpack SubMatrix is called" << std::endl;
   }
 
  private:
@@ -91,7 +89,6 @@ class DLPackCuSubMatrix : public CuSubMatrix<Real> {
     if (dl_managed_tensor_ && dl_managed_tensor_->deleter) {
       dl_managed_tensor_->deleter(dl_managed_tensor_);
     }
-    std::cout << "dlpack CuSubMatrix is called" << std::endl;
   }
 
  private:

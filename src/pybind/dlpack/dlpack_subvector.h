@@ -58,7 +58,6 @@ class DLPackSubVector : public SubVector<Real> {
     if (dl_managed_tensor_ && dl_managed_tensor_->deleter) {
       dl_managed_tensor_->deleter(dl_managed_tensor_);
     }
-    std::cout << "dlpack subvector is called" << std::endl;
   }
 
  private:
@@ -78,7 +77,6 @@ class DLPackCuSubVector : public CuSubVector<Real> {
     if (dl_managed_tensor_ && dl_managed_tensor_->deleter) {
       dl_managed_tensor_->deleter(dl_managed_tensor_);
     }
-    std::cout << "dlpack CuSubVector is called" << std::endl;
   }
 
  private:

@@ -132,6 +132,8 @@ void DLPackCapsuleDestructor(PyObject* data) {
   } else {
     // the managed_tensor has been consumed
     // PyCapsule_GetPointer has set an error indicator
+    // We rely on the consumer to call the deleter;
+    // At least, PyTorch, CuPy and TVM as consumers will call the deleter
     PyErr_Clear();
   }
 }
@@ -140,58 +142,8 @@ void DLPackCapsuleDestructor(PyObject* data) {
 
 namespace kaldi {
 
-/*
-To test the deleter function of `VectorToDLPack`, you can use the following
-methods (first print a log inside the deleter function)
-
-(1) When the capsule has not been consumed, call the deleter by ourselves
-
-```python
-import kaldi
-
-v = kaldi.FloatVector(2)
-
-dlpack = v.to_dlpack()
-print('del dlpack')
-del dlpack
-print('after del dlpack')
-```
-
-You should see
-
-```
-del dlpack
-<the log message you added in the deleter>
-after del dlpack
-```
-
-(2) When the capsule has been consumed, the deleter is also invoked.
-
-```python
-import torch
-from torch.utils.dlpack import from_dlpack
-
-import kaldi
-
-v = kaldi.FloatVector(2)
-
-dlpack = v.to_dlpack()
-tensor = from_dlpack(dlpack)
-print('del tensor')
-del tensor
-print('after del tensor')
-```
-
-You should see
-
-```
-del tensor
-<the log message you added in the deleter>
-after del tensor
-```
-*/
-
-py::capsule VectorToDLPack(Vector<float>* v) {
+py::capsule VectorToDLPack(py::object obj) {
+  auto* v = obj.cast<Vector<float>*>();
   auto* managed_tensor = CreateDLManagedtensor(kDLCPU, 0, v->Data());
   auto* tensor = &managed_tensor->dl_tensor;
 
@@ -205,15 +157,17 @@ py::capsule VectorToDLPack(Vector<float>* v) {
   tensor->strides = new int64_t[1];
   tensor->strides[0] = 1;
 
+  managed_tensor->manager_ctx = obj.ptr();
+  obj.inc_ref();  // increase it since the above line borrows it
+
   PyObject* capsule =
       PyCapsule_New(managed_tensor, kDLPackTensorName, DLPackCapsuleDestructor);
   bool is_borrowed = false;
   return py::object(capsule, is_borrowed);
-  // `py::object` will free `capsule` created above in its destructor
-  // `py::object` is implicitly converted to `py::capsule`
 }
 
-py::capsule MatrixToDLPack(Matrix<float>* m) {
+py::capsule MatrixToDLPack(py::object obj) {
+  auto* m = obj.cast<Matrix<float>*>();
   auto* managed_tensor = CreateDLManagedtensor(kDLCPU, 0, m->Data());
   auto* tensor = &managed_tensor->dl_tensor;
 
@@ -229,14 +183,18 @@ py::capsule MatrixToDLPack(Matrix<float>* m) {
   tensor->strides[0] = m->Stride();
   tensor->strides[1] = 1;
 
+  managed_tensor->manager_ctx = obj.ptr();
+  obj.inc_ref();  // increase it since the above line borrows it
+
   PyObject* capsule =
       PyCapsule_New(managed_tensor, kDLPackTensorName, DLPackCapsuleDestructor);
   bool is_borrowed = false;
   return py::object(capsule, is_borrowed);
 }
 
-py::capsule CuVectorToDLPack(CuVector<float>* v) {
+py::capsule CuVectorToDLPack(py::object obj) {
 #if HAVE_CUDA == 1
+  auto* v = obj.cast<CuVector<float>*>();
   auto* managed_tensor =
       CreateDLManagedtensor(kDLGPU, CuDevice::GetCurrentDeviceId(), v->Data());
 
@@ -252,6 +210,9 @@ py::capsule CuVectorToDLPack(CuVector<float>* v) {
   tensor->strides = new int64_t[1];
   tensor->strides[0] = 1;
 
+  managed_tensor->manager_ctx = obj.ptr();
+  obj.inc_ref();  // increase it since the above line borrows it
+
   PyObject* capsule =
       PyCapsule_New(managed_tensor, kDLPackTensorName, DLPackCapsuleDestructor);
   bool is_borrowed = false;
@@ -262,8 +223,10 @@ py::capsule CuVectorToDLPack(CuVector<float>* v) {
 #endif
 }
 
-py::capsule CuMatrixToDLPack(CuMatrix<float>* m) {
+py::capsule CuMatrixToDLPack(py::object obj) {
 #if HAVE_CUDA == 1
+  auto* m = obj.cast<CuMatrix<float>*>();
+
   auto* managed_tensor =
       CreateDLManagedtensor(kDLGPU, CuDevice::GetCurrentDeviceId(), m->Data());
 
@@ -280,6 +243,9 @@ py::capsule CuMatrixToDLPack(CuMatrix<float>* m) {
   tensor->strides = new int64_t[2];
   tensor->strides[0] = m->Stride();
   tensor->strides[1] = 1;
+
+  managed_tensor->manager_ctx = obj.ptr();
+  obj.inc_ref();  // increase it since the above line borrows it
 
   PyObject* capsule =
       PyCapsule_New(managed_tensor, kDLPackTensorName, DLPackCapsuleDestructor);
@@ -308,41 +274,6 @@ DLPackSubVector<float>* SubVectorFromDLPack(py::capsule* capsule) {
   // Therefore, we use `new` instead of `malloc` with `placement new` here.
   return new DLPackSubVector<float>(reinterpret_cast<float*>(tensor->data),
                                     tensor->shape[0], managed_tensor);
-  // clang-format off
-/*
-You can use the following method to check that the above allocated
-memory is indeed freed.
-
-1. Put a `std::cout` statement or use `KALDI_LOG` inside
-the destructor of `DLPackSubVector`
-
-2. Run the following Python test code
-
-```python
-import torch
-from torch.utils.dlpack import to_dlpack
-import kaldi
-
-tensor = torch.tensor([1, 2]).float()
-
-dlpack = to_dlpack(tensor)
-v = kaldi.SubVectorFromDLPack(dlpack)
-print('del v')
-del v
-print('after del v')
-```
-You should see
-
-```
-del v
-<the log message you added inside the destructor of DLPackSubVector>
-after del v
-```
-
-Since the destructor is called, we can trust Pybind11 that it
-invokes the `delete` operator to free the memory allocated by `new`.
-*/
-  // clang-format on
 }
 
 DLPackSubMatrix<float>* SubMatrixFromDLPack(py::capsule* capsule) {
@@ -367,44 +298,6 @@ DLPackCuSubVector<float>* CuSubVectorFromDLPack(py::capsule* capsule) {
   KALDI_ERR << "Kaldi is not compiled with GPU!";
   return py::none();
 #endif
-  // clang-format off
-/*
-You can use the following methods to check that the
-desturctor of `DLPackCuSubVector` is invoked from Python
-and thus there is no memory leak in the above `new statement`.
-
-1. print some log in the destructor of DLPackCuSubVector
-
-2. try the following code
-
-```python
-import torch
-from torch.utils.dlpack import to_dlpack
-import kaldi
-
-device_id = 0
-device = torch.device('cuda', device_id)
-
-tensor = torch.tensor([1, 2]).float()
-tensor = tensor.to(device)
-dlpack = to_dlpack(tensor)
-
-kaldi.SelectGpuDevice(device_id=device_id)
-v = kaldi.CuSubVectorFromDLPack(dlpack)
-print('del v')
-del v
-print('after del v')
-```
-
-You shoulde see something like this:
-
-```
-del v
-<the log message you added inside the destructor>
-after del v
-```
- */
-  // clang-format on
 }
 
 DLPackCuSubMatrix<float>* CuSubMatrixFromDLPack(py::capsule* capsule) {

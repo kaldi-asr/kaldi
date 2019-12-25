@@ -97,6 +97,9 @@ class TestDLPack(unittest.TestCase):
         self.assertEqual(tensor[0, 1], 200)
 
     def test_pytorch_and_kaldi_gpu_tensor_zero_copy(self):
+        # (fangjun): we put all tests in this function to avoid
+        # invoking SelectGpuDevice() twice
+
         if torch.cuda.is_available() == False:
             print('No GPU detected! Skip it')
             return
@@ -155,9 +158,6 @@ class TestDLPack(unittest.TestCase):
 
         # now from Kaldi to PyTorch
 
-        # (fangjun): we put all tests in this function to avoid
-        # invoking SelectGpuDevice() twice
-
         dim = 2
         cpu_v = kaldi.FloatVector(size=dim)
         cpu_v[0] = 10
@@ -167,8 +167,13 @@ class TestDLPack(unittest.TestCase):
         self.assertEqual(gpu_v[0], 10)
         self.assertEqual(gpu_v[1], 20)
 
+        gpu_v_reference_count = sys.getrefcount(gpu_v)
+
         # memory is shared between `gpu_v` and `tensor`
         tensor = from_dlpack(gpu_v.to_dlpack())
+
+        # `gpu_v.to_dlpack()` increases the reference count of `gpu_v`
+        self.assertEqual(gpu_v_reference_count + 1, sys.getrefcount(gpu_v))
 
         self.assertTrue(tensor.is_cuda)
         self.assertEqual(tensor.device.index, device_id)
@@ -190,6 +195,9 @@ class TestDLPack(unittest.TestCase):
         del tensor
         gc.collect()
 
+        # now the reference count for gpu_v is decreased by one
+        self.assertEqual(gpu_v_reference_count, sys.getrefcount(gpu_v))
+
         self.assertEqual(gpu_v[0], 11)  # gpu_v is still alive
         self.assertEqual(gpu_v[1], 12)
 
@@ -205,8 +213,12 @@ class TestDLPack(unittest.TestCase):
         self.assertEqual(gpu_m[0, 0], 1)
         self.assertEqual(gpu_m[0, 1], 2)
 
+        gpu_m_reference_count = sys.getrefcount(gpu_m)
+
         # memory is shared between `gpu_m` and `tensor`
         tensor = from_dlpack(gpu_m.to_dlpack())
+
+        self.assertEqual(gpu_m_reference_count + 1, sys.getrefcount(gpu_m))
 
         self.assertTrue(tensor.is_cuda)
         self.assertEqual(tensor.device.index, device_id)
@@ -227,6 +239,8 @@ class TestDLPack(unittest.TestCase):
         del tensor
         gc.collect()
 
+        self.assertEqual(gpu_m_reference_count, sys.getrefcount(gpu_m))
+
         self.assertEqual(gpu_m[0, 0], 8)  # `gpu_m` is still alive
         self.assertEqual(gpu_m[0, 1], 10)
 
@@ -242,7 +256,9 @@ class TestDLPack(unittest.TestCase):
         self.assertEqual(tensor[0], 2)
         self.assertEqual(tensor[1], 3)
 
+        del v
         del tensor
+
         # now for CuMatrix from_dlpack
         tensor = torch.tensor([1, 2]).reshape(1, 2).float()
         tensor = tensor.to(device)
@@ -254,14 +270,36 @@ class TestDLPack(unittest.TestCase):
         m.Add(100)  # also changes `tensor`
         self.assertEqual(tensor[0, 0], 101)
 
+        del m
+        del tensor
+        gc.collect()
+
+        # now test the issue: https://github.com/pytorch/pytorch/issues/9261
+        # it will not consume all GPU memory
+        for i in range(100):
+            b = torch.randn(1024 * 1024 * 1024 // 4, 1, device=device)  # 1G
+            a = kaldi.CuSubMatrixFromDLPack(to_dlpack(b))
+            gc.collect()
+        torch.cuda.empty_cache()
+
+        for i in range(100 * 4):
+            b = kaldi.FloatCuMatrix(1024 * 1024, 64)  # 256 MB
+            a = from_dlpack(b.to_dlpack())
+            gc.collect()
+
     def test_vector_to_pytorch_cpu_tensor(self):
         dim = 2
         v = kaldi.FloatVector(size=dim)
         v[0] = 10
         v[1] = 20
 
+        v_reference_count = sys.getrefcount(v)
+
         # memory is shared between kaldi::Vector and PyTorch Tensor
         tensor = from_dlpack(v.to_dlpack())
+
+        self.assertEqual(v_reference_count + 1, sys.getrefcount(v))
+
         self.assertEqual(tensor.is_cuda, False)
 
         self.assertEqual(tensor[0], 10)
@@ -278,20 +316,26 @@ class TestDLPack(unittest.TestCase):
 
         del tensor
         gc.collect()
-        # you should have seen the log messages from the
-        # deleter of DLManagedTensor if you have put one in it.
+
+        self.assertEqual(v_reference_count, sys.getrefcount(v))
 
         # one more time
         self.assertEqual(v[0], 9)  # v is still alive
         self.assertEqual(v[1], 200)
 
         tensor = from_dlpack(v.to_dlpack())
+
+        self.assertEqual(v_reference_count + 1, sys.getrefcount(v))
+
         self.assertEqual(tensor.is_cuda, False)
 
         tensor[0] = 8
         tensor[1] = 10
         self.assertEqual(v[0], 8)
         self.assertEqual(v[1], 10)
+
+        del tensor
+        self.assertEqual(v_reference_count, sys.getrefcount(v))
 
     def test_matrix_to_pytorch_cpu_tensor(self):
         num_rows = 1
@@ -300,8 +344,13 @@ class TestDLPack(unittest.TestCase):
         m[0, 0] = 10
         m[0, 1] = 20
 
+        m_reference_count = sys.getrefcount(m)
+
         # memory is shared between `tensor` and `m`
         tensor = from_dlpack(m.to_dlpack())
+
+        self.assertEqual(m_reference_count + 1, sys.getrefcount(m))
+
         self.assertEqual(tensor.is_cuda, False)
         self.assertEqual(tensor.ndim, 2)
 
@@ -317,15 +366,23 @@ class TestDLPack(unittest.TestCase):
         del tensor
         gc.collect()
 
+        self.assertEqual(m_reference_count, sys.getrefcount(m))
+
         # one more time
         self.assertEqual(m[0, 0], 1000)  # m is still alive
         self.assertEqual(m[0, 1], 20)
 
         tensor = from_dlpack(m.to_dlpack())
+        self.assertEqual(m_reference_count + 1, sys.getrefcount(m))
+
         self.assertEqual(tensor.is_cuda, False)
 
         tensor[0, 0] = 8
         self.assertEqual(m[0, 0], 8)
+
+        del tensor
+
+        self.assertEqual(m_reference_count, sys.getrefcount(m))
 
 
 if __name__ == '__main__':

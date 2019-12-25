@@ -33,7 +33,6 @@ void pybind_cu_matrix(py::module& m) {
         .def("NumRows", &PyClass::NumRows, "Return number of rows")
         .def("NumCols", &PyClass::NumCols, "Return number of columns")
         .def("Stride", &PyClass::Stride, "Return stride")
-        // the following methods are only for testing
         .def("ApplyExp", &PyClass::ApplyExp)
         .def("SetZero", &PyClass::SetZero)
         .def("Set", &PyClass::Set, py::arg("value"))
@@ -56,11 +55,7 @@ void pybind_cu_matrix(py::module& m) {
              py::arg("MatrixStrideType") = kDefaultStride)
         .def(py::init<const MatrixBase<float>&, MatrixTransposeType>(),
              py::arg("other"), py::arg("trans") = kNoTrans)
-        .def("to_dlpack", [](PyClass* m) {
-          // we use the name `to_dlpack` because PyTorch uses the same name
-          return CuMatrixToDLPack(m);
-        });
-    // TODO(fangjun): wrap other methods when needed
+        .def("to_dlpack", [](py::object obj) { return CuMatrixToDLPack(obj); });
   }
   {
     using PyClass = CuSubMatrix<float>;

@@ -17,42 +17,10 @@
 // limitations under the License.
 
 #include "dlpack/dlpack_deleter.h"
-#include <iostream>
+
+#include <Python.h>
 
 namespace kaldi {
-
-/*
- * To check that the deleter is indeed called by the consumer of the PyCapsule,
- * you can print a log message inside this deleter.
- *
- * Take PyTorch as an example, for the following test Python code
-
-```python
-from torch.utils.dlpack import from_dlpack
-import kaldi
-
-v = kaldi.FloatVector(3)
-
-tensor = from_dlpack(v.to_dlpack())
-print('begin to delete tensor')
-del tensor
-print('you should see the deleter has been called')
-```
-
-If you put:
-```cpp
-  std::cout << "deleter is called!" << std::endl;
-```
-inside the following function, you should see the following output
-for the above python program:
-
-```
-begin to delete tensor
-deleter is called!
-you should see the deleter has been called
-```
- *
- */
 
 void DLManagedTensorDeleter(struct DLManagedTensor* dl_managed_tensor) {
   // data is shared, so do NOT free data
@@ -63,9 +31,13 @@ void DLManagedTensorDeleter(struct DLManagedTensor* dl_managed_tensor) {
   // `strides` is created with `new[]`
   delete[] dl_managed_tensor->dl_tensor.strides;
 
-  // now delete the DLManagedTensor which is created with `new`
+  if (dl_managed_tensor->manager_ctx) {
+    PyObject* obj = reinterpret_cast<PyObject*>(dl_managed_tensor->manager_ctx);
+    Py_XDECREF(obj);
+  }
+
+  // now delete the `DLManagedTensor` which is created with `new`
   delete dl_managed_tensor;
-  std::cout << "deleter is called!" << std::endl;
 }
 
 }  // namespace kaldi
