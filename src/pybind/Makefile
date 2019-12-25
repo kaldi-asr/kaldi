@@ -35,6 +35,7 @@ endif
 
 # files should be sorted in alphabetic order
 CCFILES = \
+chain/chain_den_graph_pybind.cc \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
 chain/chain_training_pybind.cc \
