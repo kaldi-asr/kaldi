@@ -68,7 +68,9 @@ nnet3/nnet_chain_example_pybind.cc \
 nnet3/nnet_common_pybind.cc \
 nnet3/nnet_example_pybind.cc \
 tests/test_dlpack_subvector.cc \
-util/table_types_pybind.cc
+util/kaldi_io_pybind.cc \
+util/table_types_pybind.cc \
+util/util_pybind.cc
 
 CCFILES_OBJS := $(CCFILES:%.cc=%.o)
 
