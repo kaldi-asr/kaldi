@@ -37,6 +37,7 @@ endif
 CCFILES = \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
+chain/chain_training_pybind.cc \
 cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
