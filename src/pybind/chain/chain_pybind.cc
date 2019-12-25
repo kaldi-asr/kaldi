@@ -2,6 +2,7 @@
 
 // Copyright 2019   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+//           2019   Microsoft Corporation (author: Xingyu Na)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -20,12 +21,14 @@
 
 #include "chain/chain_pybind.h"
 
+#include "chain/chain_den_graph_pybind.h"
 #include "chain/chain_supervision_pybind.h"
 #include "chain/chain_training_pybind.h"
 
 void pybind_chain(py::module& _m) {
   py::module m = _m.def_submodule("chain", "chain pybind for Kaldi");
 
+  pybind_chain_den_graph(m);
   pybind_chain_supervision(m);
   pybind_chain_training(m);
 }
