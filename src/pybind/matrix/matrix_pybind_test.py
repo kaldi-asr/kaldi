@@ -78,26 +78,14 @@ class TestGeneralMatrix(unittest.TestCase):
         m = kaldi.FloatMatrix(row=num_rows, col=num_cols)
         mg = kaldi.GeneralMatrix(m)
 
-        m = mg.mat
+        mi = kaldi.FloatMatrix()
+        mg.GetMatrix(mi)
 
-        self.assertEqual(m.NumRows(), num_rows)
-        self.assertEqual(m.NumCols(), num_cols)
+        self.assertEqual(mi.NumRows(), num_rows)
+        self.assertEqual(mi.NumCols(), num_cols)
         for r in range(num_rows):
             for c in range(num_cols):
-                self.assertEqual(m[r, c], 0)
-
-    def test_from_sparse_matrix(self):
-        num_rows = 5
-        num_cols = 6
-        m = kaldi.FloatMatrix(row=num_rows, col=num_cols)
-        m = kaldi.SparseMatrix(m)
-        mg = kaldi.GeneralMatrix(m)
-
-        sm = mg.smat
-
-        self.assertEqual(sm.NumRows(), num_rows)
-        self.assertEqual(sm.NumCols(), num_cols)
-        self.assertEqual(sm.NumElements(), 0)
+                self.assertEqual(mi[r, c], 0)
 
 
 if __name__ == '__main__':
