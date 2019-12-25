@@ -70,7 +70,7 @@ void pybind_matrix(py::module& m) {
             {sizeof(float) * m.Stride(),
              sizeof(float)});  // stride for each index (in chars)
       })
-      .def(py::init())
+      .def(py::init<>())
       .def(py::init<const MatrixIndexT, const MatrixIndexT, MatrixResizeType,
                     MatrixStrideType>(),
            py::arg("row"), py::arg("col"), py::arg("resize_type") = kSetZero,

@@ -28,6 +28,18 @@ using namespace kaldi;
 
 void pybind_sparse_matrix(py::module& m) {
   {
+    using PyClass = SparseMatrix<BaseFloat>;
+    py::class_<PyClass>(
+        m, "SparseMatrix",
+        "This class is defined for sparse matrix type.")
+        .def(py::init<>())
+        .def(py::init<const MatrixBase<BaseFloat> &>(), py::arg("mat"))
+        .def(py::init<int32, int32>(), py::arg("num_rows"), py::arg("num_cols"))
+        .def("NumRows", &PyClass::NumRows, "Return number of rows")
+        .def("NumCols", &PyClass::NumCols, "Return number of columns")
+        .def("NumElements", &PyClass::NumElements, "Return number of elements");
+  }
+  {
     using PyClass = GeneralMatrix;
     py::class_<PyClass>(
         m, "GeneralMatrix",
@@ -37,7 +49,9 @@ void pybind_sparse_matrix(py::module& m) {
         "and write a single object type.  It is useful for neural-net training "
         "targets which might be sparse or not, and might be compressed or not.")
         .def(py::init<>())
-        // TODO(fangjun): wrap other methods when needed
-        ;
+	.def(py::init<const MatrixBase<BaseFloat> &>(), py::arg("mat"))
+        .def("GetMatrix", &PyClass::GetMatrix, 
+        "Outputs the contents as a matrix returns kFullMatrix, this will work"
+	"regardless of Type().", py::arg("mat"));
   }
 }

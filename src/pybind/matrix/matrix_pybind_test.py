@@ -70,5 +70,23 @@ class TestFloatMatrix(unittest.TestCase):
                 self.assertEqual(d[r, c], m[r, c])
 
 
+class TestGeneralMatrix(unittest.TestCase):
+
+    def test_from_base_matrix(self):
+        num_rows = 5
+        num_cols = 6
+        m = kaldi.FloatMatrix(row=num_rows, col=num_cols)
+        mg = kaldi.GeneralMatrix(m)
+
+        mi = kaldi.FloatMatrix()
+        mg.GetMatrix(mi)
+
+        self.assertEqual(mi.NumRows(), num_rows)
+        self.assertEqual(mi.NumCols(), num_cols)
+        for r in range(num_rows):
+            for c in range(num_cols):
+                self.assertEqual(mi[r, c], 0)
+
+
 if __name__ == '__main__':
     unittest.main()
