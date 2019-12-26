@@ -90,10 +90,6 @@ class CuDevice {
     return ans;
   }
 
-  static inline int32 GetCurrentDeviceId() {
-    return device_id_;
-  }
-
   inline cublasHandle_t GetCublasHandle() { return cublas_handle_; }
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
   inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
@@ -157,10 +153,6 @@ class CuDevice {
   ///  "optional" -- Do as above, but if it fails, back off to CPU.
   ///  "no"       -- Run on CPU.
   void SelectGpuId(std::string use_gpu);
-
-  /// when device_id < 0, use CPU
-  /// otherwise, select the specified GPU
-  void SelectGpuDevice(int device_id);
 
   // Select a specific GPU for computation. Will reuse the existing Cuda Context
   // for that device. Initialize the necessary handles for GPU use (e.g. cublas
@@ -369,7 +361,6 @@ inline cusparseHandle_t GetCusparseHandle() {
 inline curandGenerator_t GetCurandHandle() { 
   return CuDevice::Instantiate().GetCurandHandle(); 
 }
-
 
 }  // namespace kaldi
 
