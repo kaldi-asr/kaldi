@@ -15,7 +15,7 @@ import kaldi_pybind.nnet3 as nnet3
 import kaldi
 
 
-def _read_nnet_chain_example(rxfilename):
+def read_nnet_chain_example(rxfilename):
     eg = nnet3.NnetChainExample()
     ki = kaldi.Input(rxfilename=rxfilename)
     eg.Read(ki.Stream(), True)
@@ -117,7 +117,7 @@ class NnetChainExampleDatasetCollateFunc:
         for b in batch:
             key, rxfilename = b
             key_list.append(key)
-            eg = _read_nnet_chain_example(rxfilename)
+            eg = read_nnet_chain_example(rxfilename)
 
             assert len(eg.outputs) == 1
             assert eg.outputs[0].name == 'output'
