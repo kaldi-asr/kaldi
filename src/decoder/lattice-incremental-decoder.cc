@@ -738,7 +738,7 @@ BaseFloat LatticeIncrementalDecoderTpl<FST, Token>::ProcessEmitting(
                         cost_offset - decodable->LogLikelihood(frame, arc.ilabel),
                     graph_cost = arc.weight.Value(), cur_cost = tok->tot_cost,
                     tot_cost = cur_cost + ac_cost + graph_cost;
-          if (tot_cost > next_cutoff)
+          if (tot_cost >= next_cutoff)
             continue;
           else if (tot_cost + adaptive_beam < next_cutoff)
             next_cutoff = tot_cost + adaptive_beam; // prune by best current token
@@ -808,7 +808,7 @@ void LatticeIncrementalDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cuto
         toks_.Find(state)
             ->val; // would segfault if state not in toks_ but this can't happen.
     BaseFloat cur_cost = tok->tot_cost;
-    if (cur_cost > cutoff) // Don't bother processing successors.
+    if (cur_cost >= cutoff) // Don't bother processing successors.
       continue;
     // If "tok" has any existing forward links, delete them,
     // because we're about to regenerate them.  This is a kind

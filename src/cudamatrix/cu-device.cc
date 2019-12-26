@@ -202,6 +202,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     KALDI_LOG << "Manually selected to compute on CPU.";
     return;
   }
+
   // Check that we have a gpu available
   int32 num_gpus = 0;
 
@@ -521,7 +522,7 @@ bool CuDevice::SelectGpuIdAuto() {
     success = SelectGpuId(dev_id);
 
     max_id++;
-  } while (success && (max_id < free_mem_ratio.size()));
+  } while (!success && (max_id < free_mem_ratio.size()));
 
   if (e != cudaSuccess) {
     KALDI_WARN << "Failed to (automatically) select any device";

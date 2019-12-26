@@ -98,7 +98,7 @@ openfst-$(OPENFST_VERSION).tar.gz:
 		cp -p "$(DOWNLOAD_DIR)/openfst-$(OPENFST_VERSION).tar.gz" .; \
 	else \
 		$(WGET) -T 10 -t 1 http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
-		$(WGET) -T 10 -t 3 https://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz; \
+		$(WGET) -T 10 -t 3 -c https://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz; \
 	fi
 
 sclite: sclite_compiled
@@ -143,7 +143,7 @@ sph2pipe_$(SPH2PIPE_VERSION).tar.gz:
 		cp -p "$(DOWNLOAD_DIR)/sph2pipe_$(SPH2PIPE_VERSION).tar.gz" .; \
 	else \
 		$(WGET) -T 10 -t 3 https://www.openslr.org/resources/3/sph2pipe_$(SPH2PIPE_VERSION).tar.gz || \
-		$(WGET) -T 10 https://sourceforge.net/projects/kaldi/files/sph2pipe_$(SPH2PIPE_VERSION).tar.gz; \
+		$(WGET) -T 10 -c https://sourceforge.net/projects/kaldi/files/sph2pipe_$(SPH2PIPE_VERSION).tar.gz; \
 	fi
 
 .PHONY: cub
