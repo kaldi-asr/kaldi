@@ -370,7 +370,6 @@ inline curandGenerator_t GetCurandHandle() {
   return CuDevice::Instantiate().GetCurandHandle(); 
 }
 
-
 }  // namespace kaldi
 
 #endif // HAVE_CUDA
