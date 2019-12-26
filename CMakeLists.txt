@@ -6,8 +6,16 @@ include(GNUInstallDirs)
 include(Utils)
 include(third_party/get_third_party)
 
+# Should update cmake to a more recent version which supports FindPython3.
+find_package(PythonInterp)
+if(NOT PYTHON_EXECUTABLE OR PYTHON_VERSION_MAJOR LESS 3)
+    message(WARNING "Needs python3 to auto-generate most CMake files, but not found. "
+                    "Will try `python3` directly...")
+    set(PYTHON_EXECUTABLE "python3")
+endif()
+
 message(STATUS "Running gen_cmake_skeleton.py")
-execute_process(COMMAND python
+execute_process(COMMAND ${PYTHON_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "--quiet"
@@ -28,10 +36,20 @@ if(BUILD_SHARED_LIBS)
     endif()
 endif()
 
-set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
+if(APPLE)
+    # Use built-in BLAS on MacOS by default.
+    set(MATHLIB "Accelerate" CACHE STRING "OpenBLAS|MKL|Accelerate")
+else()
+    set(MATHLIB "OpenBLAS" CACHE STRING "OpenBLAS|MKL|Accelerate")
+endif()
 option(KALDI_BUILD_EXE "If disabled, will make add_kaldi_executable a no-op" ON)
 option(KALDI_BUILD_TEST "If disabled, will make add_kaldi_test_executable a no-op" ON)
 option(KALDI_USE_PATCH_NUMBER "Use MAJOR.MINOR.PATCH format, otherwise MAJOR.MINOR" OFF)
+
+if (KALDI_BUILD_TEST)
+    include(CTest)
+    enable_testing()
+endif()
 
 link_libraries(${CMAKE_DL_LIBS})
 
@@ -53,6 +71,19 @@ elseif(MATHLIB STREQUAL "MKL")
     include_directories($ENV{MKLROOT}/include) # TODO: maybe not use env, idk, find_package doesnt handle includes...
     link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 elseif(MATHLIB STREQUAL "Accelerate")
+    execute_process(COMMAND sw_vers -productVersion
+        OUTPUT_VARIABLE MACOS_VERSION)
+    if(MACOS_VERSION VERSION_LESS "10.12" AND MACOS_VERSION VERSION_GREATER_EQUAL "10.11")
+        message(WARNING
+            "**BAD WARNING**: You are using OS X El Capitan.  Some versions of this OS"
+            " have a bug in the BLAS implementation that affects Kaldi."
+            " After compiling, cd to matrix/ and type 'make test'.  The"
+            " test will fail if the problem exists in your version."
+            " Eventually this issue will be fixed by system updates from"
+            " Apple.  Unexplained crashes with reports of NaNs will"
+            " be caused by this bug, but some recipes will (sometimes) work."
+        )
+    endif()
     set(BLA_VENDOR "Apple")
     find_package(BLAS REQUIRED)
     find_package(LAPACK REQUIRED)
@@ -159,6 +190,11 @@ add_subdirectory(src/online2)
 add_subdirectory(src/kws)
 
 add_subdirectory(src/itf)
+
+if(TENSORFLOW_DIR)
+    add_subdirectory(src/tfrnnlm)
+    add_subdirectory(src/tfrnnlmbin)
+endif()
 
 # add all cuda libraries
 if(CUDA_FOUND)

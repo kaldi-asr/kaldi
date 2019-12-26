@@ -25,9 +25,11 @@ mkdir -p data/local
 if [ $stage -le 0 ]; then
   # Make soft link to the corpora
   if [ ! -e cmu_kids ]; then
+    if [ ! -d $cmu_kids/kids ]; then echo "ERROR: Expected to find a directory called 'kids' in $cmu_kids. Exiting." && exit 1; fi
     ln -sf $cmu_kids cmu_kids
   fi
   if [ ! -e cslu ]; then
+    if [ ! -d $cslu_kids/speech ]; then echo "ERROR: Expected to find a directory called 'speech' in $cslu_kids. Exiting." && exit 1; fi
     ln -sf $cslu_kids cslu
   fi
   
