@@ -5,7 +5,9 @@
 
 import torch
 from torch.autograd import Function
+from torch.utils.dlpack import to_dlpack
 
+import kaldi
 import kaldi_pybind.chain as chain
 
 g_nnet_output_deriv_tensor = None
@@ -52,7 +54,7 @@ class KaldiChainObjfFunction(Function):
             g_xent_output_deriv_tensor.zero_()
 
         # it contains [objf, l2_term, weight] and will be returned to the caller
-        objf_l2_term_weight_tensor = torch.zeros(3)
+        objf_l2_term_weight_tensor = torch.zeros(3).float()
 
         nnet_output = kaldi.CuSubMatrixFromDLPack(to_dlpack(nnet_output_tensor))
 
@@ -77,7 +79,7 @@ class KaldiChainObjfFunction(Function):
                               g_xent_output_deriv_tensor)
 
         objf_l2_term_weight_tensor = objf_l2_term_weight_tensor.to(
-            nnet_output_tensor.device())
+            nnet_output_tensor.device)
         return objf_l2_term_weight_tensor
 
     @staticmethod

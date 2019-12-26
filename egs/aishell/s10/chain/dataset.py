@@ -15,6 +15,34 @@ import kaldi_pybind.nnet3 as nnet3
 import kaldi
 
 
+def get_dataloader(egs_dir, egs_left_context, egs_right_context):
+
+    dataset = NnetChainExampleDataset(egs_dir=egs_dir)
+    frame_subsampling_factor = 3
+
+    # we have merged egs offline, so batch size is 1
+    batch_size = 1
+
+    collate_fn = NnetChainExampleDatasetCollateFunc(
+        egs_left_context=egs_left_context,
+        egs_right_context=egs_right_context,
+        frame_subsampling_factor=frame_subsampling_factor)
+
+    dataloader = DataLoader(dataset,
+                            batch_size=batch_size,
+                            num_workers=0,
+                            collate_fn=collate_fn)
+    return dataloader
+
+
+def read_mat(filename):
+    ki = kaldi.Input(filename)
+    m = kaldi.FloatMatrix()
+    m.Read(ki.Stream(), binary=True, add=False)
+    ki.Close()
+    return m.numpy()
+
+
 def load_lda_mat(lda_mat_filename):
     lda_mat = read_mat(lda_mat_filename)
     # y = Ax + b,
@@ -73,6 +101,7 @@ class NnetChainExampleDataset(Dataset):
         We assume that there exist many cegs.*.scp files inside egs_dir
         '''
         self.scps = glob.glob('{}/cegs.*.scp'.format(egs_dir))
+        assert len(self.scps) > 0
         self.items = list()
         for scp in self.scps:
             with open(scp, 'r') as f:

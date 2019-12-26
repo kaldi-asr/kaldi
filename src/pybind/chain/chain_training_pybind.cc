@@ -78,12 +78,6 @@ void pybind_chain_training(py::module& m) {
             opts, den_graph, supervision, nnet_output, objf, l2_term, weight,
             nnet_output_deriv,
             reinterpret_cast<CuMatrix<float>*>(xent_output_deriv));
-        // test that we can return the value to pytorch
-        *objf = 1;
-        *l2_term = 2;
-        *weight = 3;
-        (*nnet_output_deriv)(0, 0) = 1234;
-        (*xent_output_deriv)(0, 0) = 5678;
       },
       py::arg("opts"), py::arg("den_graph"), py::arg("supervision"),
       py::arg("nnet_output"), py::arg("objf_l2_term_weight"),

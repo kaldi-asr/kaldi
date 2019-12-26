@@ -42,10 +42,22 @@ from dataset import load_lda_mat
 '''
 
 
+def get_chain_model(feat_dim, output_dim, lda_mat_filename, hidden_dim,
+                    kernel_size_list, dilation_list):
+    model = ChainModel(feat_dim=feat_dim,
+                       output_dim=output_dim,
+                       lda_mat_filename=lda_mat_filename,
+                       hidden_dim=hidden_dim,
+                       kernel_size_list=kernel_size_list,
+                       dilation_list=dilation_list)
+    return model
+
+
 # Create a network like the above one
 class ChainModel(nn.Module):
 
-    def __init__(feat_dim,
+    def __init__(self,
+                 feat_dim,
                  output_dim,
                  lda_mat_filename,
                  hidden_dim=625,
@@ -61,7 +73,7 @@ class ChainModel(nn.Module):
         for i in range(num_layers):
             in_channels = hidden_dim
             if i == 0:
-                in_channels = feat_dim
+                in_channels = feat_dim * 3
 
             kernel_size = kernel_size_list[i]
             dilation = dilation_list[i]
