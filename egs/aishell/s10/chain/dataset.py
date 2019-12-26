@@ -15,6 +15,21 @@ import kaldi_pybind.nnet3 as nnet3
 import kaldi
 
 
+def load_lda_mat(lda_mat_filename):
+    lda_mat = read_mat(lda_mat_filename)
+    # y = Ax + b,
+    # lda contains [A, b], x is feature
+    # A.rows() == b.rows()
+    # b.cols() == 1
+    # lda.rows() == A.rows() == b.rows()
+    # lda.cols() == A.cols() + 1
+    assert lda_mat.shape[0] + 1 == lda_mat.shape[1]
+    lda_A = torch.from_numpy(np.transpose(lda_mat[:, :-1])).float()
+    lda_b = torch.from_numpy(np.transpose(lda_mat[:, -1:])).float()
+    # transpose because we use x^T * A^T + b^T
+    return lda_A, lda_b
+
+
 def read_nnet_chain_example(rxfilename):
     eg = nnet3.NnetChainExample()
     ki = kaldi.Input(rxfilename=rxfilename)
