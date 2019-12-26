@@ -86,8 +86,6 @@ class NnetChainExampleDatasetCollateFunc:
         '''
         egs_left_context is from egs/info/left_context
         egs_right_context is from egs/info/right_context
-
-        when frame_shift == -1, it means no frameshift
         '''
 
         assert egs_left_context >= 0
@@ -104,7 +102,9 @@ class NnetChainExampleDatasetCollateFunc:
     def __call__(self, batch):
         '''
         batch is a list of [key, rxfilename]
-        returned from `__getitem()` of `NnetChainExampleDataset`
+        returned from `__getitem__()` of `NnetChainExampleDataset`
+
+        Since we combined egs offline, the batch size is usually one.
         '''
 
         key_list = []
@@ -135,9 +135,9 @@ class NnetChainExampleDatasetCollateFunc:
             assert len(eg.inputs) == 1
             assert eg.inputs[0].name == 'input'
 
-            feats = kaldi.FloatMatrix()
-            eg.inputs[0].features.GetMatrix(feats)
-            feats = feats.numpy().copy()
+            _feats = kaldi.FloatMatrix()
+            eg.inputs[0].features.GetMatrix(_feats)
+            feats = _feats.numpy()
 
             assert feats.shape[0] == batch_size * frames_per_sequence
 
@@ -183,17 +183,28 @@ def _test_nnet_chain_example_dataset():
         egs_right_context=egs_right_context,
         frame_subsampling_factor=frame_subsampling_factor)
 
+    # FIXME(fangjun): num_workers > 0 causes errors!
+    # How to reproduce the error?
+    # 1. add a destructor to `struct Supervision` in `chain/chain-supversion.h`
+    '''
+      ~Supervision() {
+        static int i = 0;
+        KALDI_LOG << "destructor called! " << i;
+        i++;
+      }
+    '''
+    # 2. add a `print` statement at the end of `__call__` of `NnetChainExampleDatasetCollateFunc`
+    # 3. You will see that the destructor of `chain::Supervsion` is caleld! That is,
+    # `for b in dataloader`, the `b` we get contains an empty supervsion!
     dataloader = DataLoader(dataset,
                             batch_size=1,
-                            num_workers=2,
+                            num_workers=0,
                             collate_fn=collate_fn)
-    i = 0
     for b in dataloader:
         key_list, feature_list, supervision_list = b
-        print(key_list)
-        print('weight', supervision_list[0].weight)
-        i += 1
-        if i > 10: break
+        assert feature_list[0].shape == (128, 192, 120)
+        assert supervision_list[0].weight == 1
+        supervision_list[0].num_sequences == 128  # minibach size is 128
 
 
 if __name__ == '__main__':
