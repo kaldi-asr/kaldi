@@ -37,7 +37,11 @@ class TestFloatSubVecotr(unittest.TestCase):
         # =============================================================
         # Convert a FloatSubVector to a numpy array; memory is shared
         # -------------------------------------------------------------
+        v_reference_count = sys.getrefcount(v)
+
         d = v.numpy()
+
+        self.assertEqual(v_reference_count + 1, sys.getrefcount(v))
 
         self.assertIsInstance(d, np.ndarray)
         self.assertEqual(d.ndim, 1)
@@ -47,6 +51,9 @@ class TestFloatSubVecotr(unittest.TestCase):
         for i in range(num_data):
             d[i] += 10
             self.assertEqual(v[i], d[i])
+
+        del d
+        self.assertEqual(v_reference_count, sys.getrefcount(v))
 
 
 class TestFloatVecotr(unittest.TestCase):

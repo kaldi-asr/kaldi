@@ -43,11 +43,18 @@ class TestFloatSubMatrix(unittest.TestCase):
         # =============================================================
         # Convert a FloatSubMatrix to a numpy array; memory is shared
         # -------------------------------------------------------------
+        m_reference_count = sys.getrefcount(m)
+
         d = m.numpy()
+
+        self.assertEqual(m_reference_count + 1, sys.getrefcount(m))
+
         d += 10  # m is also changed because of memory sharing
         for r in range(num_rows):
             for c in range(num_cols):
                 self.assertEqual(d[r, c], m[r, c])
+        del d
+        self.assertEqual(m_reference_count, sys.getrefcount(m))
 
 
 class TestFloatMatrix(unittest.TestCase):
@@ -61,13 +68,19 @@ class TestFloatMatrix(unittest.TestCase):
             for c in range(num_cols):
                 self.assertEqual(m[r, c], 0)
 
+        m_reference_count = sys.getrefcount(m)
+
         # now to numpy; memory is shared
         d = m.numpy()
+
+        self.assertEqual(m_reference_count + 1, sys.getrefcount(m))
 
         d += 10
         for r in range(num_rows):
             for c in range(num_cols):
                 self.assertEqual(d[r, c], m[r, c])
+        del d
+        self.assertEqual(m_reference_count, sys.getrefcount(m))
 
 
 class TestGeneralMatrix(unittest.TestCase):

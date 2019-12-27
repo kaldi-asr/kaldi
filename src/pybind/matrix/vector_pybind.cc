@@ -45,12 +45,13 @@ void pybind_vector(py::module& m) {
            [](const VectorBase<float>& v, int i) { return v(i); })
       .def("__setitem__",
            [](VectorBase<float>& v, int i, float val) { v(i) = val; })
-      .def("numpy", [](VectorBase<float>* v) {
+      .def("numpy", [](py::object obj) {
+        auto* v = obj.cast<VectorBase<float>*>();
         return py::array_t<float>(
             {v->Dim()},       // shape
             {sizeof(float)},  // stride in bytes
             v->Data(),        // ptr
-            py::none());      // pass a base object to avoid copy!
+            obj);  // it will increase the reference count of **this** vector
       });
 
   py::class_<Vector<float>, VectorBase<float>>(m, "FloatVector",

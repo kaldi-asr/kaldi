@@ -50,12 +50,13 @@ void pybind_matrix(py::module& m) {
            [](MatrixBase<float>& m, std::pair<ssize_t, ssize_t> i, float v) {
              m(i.first, i.second) = v;
            })
-      .def("numpy", [](MatrixBase<float>* m) {
+      .def("numpy", [](py::object obj) {
+        auto* m = obj.cast<MatrixBase<float>*>();
         return py::array_t<float>(
             {m->NumRows(), m->NumCols()},                  // shape
             {sizeof(float) * m->Stride(), sizeof(float)},  // stride in bytes
             m->Data(),                                     // ptr
-            py::none());  // pass a base object to avoid copy!
+            obj);  // it will increase the reference count of **this** matrix
       });
 
   py::class_<Matrix<float>, MatrixBase<float>>(m, "FloatMatrix",
