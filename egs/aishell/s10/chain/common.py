@@ -6,7 +6,11 @@
 from datetime import datetime
 import logging
 
+import numpy as np
+
 import torch
+
+import kaldi
 
 
 def setup_logger(log_filename, log_level='info'):
@@ -75,3 +79,54 @@ def save_training_info(filename, model_path, current_epoch, learning_rate, objf,
         f.write('best epoch: {}\n'.format(best_epoch))
 
     logging.info('write training info to {}'.format(filename))
+
+
+def read_mat(filename):
+    ki = kaldi.Input(filename)
+    m = kaldi.FloatMatrix()
+    m.Read(ki.Stream(), binary=True, add=False)
+    ki.Close()
+    return m.numpy()
+
+
+def load_lda_mat(lda_mat_filename):
+    lda_mat = read_mat(lda_mat_filename)
+    # y = Ax + b,
+    # lda contains [A, b], x is feature
+    # A.rows() == b.rows()
+    # b.cols() == 1
+    # lda.rows() == A.rows() == b.rows()
+    # lda.cols() == A.cols() + 1
+    assert lda_mat.shape[0] + 1 == lda_mat.shape[1]
+    lda_A = torch.from_numpy(np.transpose(lda_mat[:, :-1])).float()
+    lda_b = torch.from_numpy(np.transpose(lda_mat[:, -1:])).float()
+    # transpose because we use x^T * A^T + b^T
+    return lda_A, lda_b
+
+
+def splice_feats(x):
+    '''
+    Example input:
+        0 1
+        2 3
+        4 5
+        6 7
+    Example output:
+        0 1 2 3 4 5
+        2 3 4 5 6 7
+
+    The purpose of this function is for LDA.
+    '''
+    x = torch.from_numpy(x)
+    # x is [T, C] where T is seq_len, C is feat_dim
+    x = x.unsqueeze(0)
+    x = x.unsqueeze(0)
+    # now x is [1, 1, T, C]
+    # we use a fixed constant 3 since kaldi usually uses 3 for LDA
+    x = torch.nn.functional.unfold(x, kernel_size=(3, x.shape[-1]))
+    # now x is 3-D [1, C', T']
+    x = x.permute(0, 2, 1)
+    # now x is 3-D [1, T', C']
+    x = x.squeeze(0)
+    # now x is 2-D [T', C'], where T' = T - 2, C' = 3 * C
+    return x.numpy()

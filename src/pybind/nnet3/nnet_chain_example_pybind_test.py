@@ -35,7 +35,6 @@ class TestNnetChainExample(unittest.TestCase):
             self.assertEqual(nnet_io.name, 'input')
 
             features = nnet_io.features
-            print(features.Type())
             m = kaldi_pybind.FloatMatrix()
             features.GetMatrix(m)
             m = m.numpy()

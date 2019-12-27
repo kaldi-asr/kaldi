@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dataset import load_lda_mat
+from common import load_lda_mat
 '''
   input dim=$feat_dim name=input
 
@@ -117,8 +117,8 @@ class ChainModel(nn.Module):
         assert x.ndim == 3
 
         # to() does not copy data if lda_A is already in the expected device
-        self.lda_A = self.lda_A.to(x.get_device())
-        self.lda_b = self.lda_b.to(x.get_device())
+        self.lda_A = self.lda_A.to(x.device)
+        self.lda_b = self.lda_b.to(x.device)
 
         x = torch.matmul(x, self.lda_A) + self.lda_b
 

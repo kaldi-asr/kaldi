@@ -7,6 +7,25 @@ import argparse
 import os
 
 
+def _set_inference_args(parser):
+    parser.add_argument('--feats-scp',
+                        dest='feats_scp',
+                        help='feats.scp filename, required for inference',
+                        type=str)
+
+    parser.add_argument('--model-left-context',
+                        dest='model_left_context',
+                        help='model left context',
+                        type=int,
+                        default=-1)
+
+    parser.add_argument('--model-right-context',
+                        dest='model_right_context',
+                        help='model right context',
+                        type=int,
+                        default=-1)
+
+
 def _set_training_args(parser):
     parser.add_argument('--train.cegs-dir',
                         dest='cegs_dir',
@@ -56,6 +75,20 @@ def _check_training_args(args):
     assert args.learning_rate > 0
     assert args.l2_regularize > 0
 
+    if args.checkpoint:
+        assert os.path.exists(args.checkpoint)
+
+
+def _check_inference_args(args):
+    assert args.checkpoint is not None
+    assert os.path.isfile(args.checkpoint)
+
+    assert args.feats_scp is not None
+    assert os.path.isfile(args.feats_scp)
+
+    assert args.model_left_context > 0
+    assert args.model_right_context > 0
+
 
 def _check_args(args):
 
@@ -63,6 +96,8 @@ def _check_args(args):
 
     if args.is_training == 1:
         _check_training_args(args)
+    else:
+        _check_inference_args(args)
 
     assert os.path.isfile(args.lda_mat_filename)
 
@@ -88,15 +123,13 @@ def _check_args(args):
 
     assert args.log_level in ['debug', 'info', 'warning']
 
-    if args.checkpoint:
-        assert os.path.exists(args.checkpoint)
-
 
 def get_args():
     parser = argparse.ArgumentParser(
         description='chain training in PyTorch with kaldi pybind')
 
     _set_training_args(parser)
+    _set_inference_args(parser)
 
     parser.add_argument('--dir',
                         help='dir to save results. The user has to '
@@ -159,10 +192,11 @@ def get_args():
                         type=str,
                         default='info')
 
-    parser.add_argument('--checkpoint',
-                        dest='checkpoint',
-                        help='filename of the checkpoint',
-                        type=str)
+    parser.add_argument(
+        '--checkpoint',
+        dest='checkpoint',
+        help='filename of the checkpoint, required for inference',
+        type=str)
 
     args = parser.parse_args()
 

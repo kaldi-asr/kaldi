@@ -22,7 +22,7 @@ from common import load_checkpoint
 from common import save_checkpoint
 from common import save_training_info
 from common import setup_logger
-from dataset import get_dataloader
+from egs_dataset import get_egs_dataloader
 from model import get_chain_model
 from options import get_args
 
@@ -151,9 +151,9 @@ def main():
 
     model.to(device)
 
-    dataloader = get_dataloader(egs_dir=args.cegs_dir,
-                                egs_left_context=args.egs_left_context,
-                                egs_right_context=args.egs_right_context)
+    dataloader = get_egs_dataloader(egs_dir=args.cegs_dir,
+                                    egs_left_context=args.egs_left_context,
+                                    egs_right_context=args.egs_right_context)
 
     optimizer = optim.Adam(model.parameters(),
                            lr=learning_rate,
