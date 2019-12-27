@@ -83,6 +83,7 @@ def new_softmax(labels, logits):
 
   return -res + row_sums - 1
 
+
 class MyFastLossFunction(LossFunctionWrapper):
   def __init__(self):
     super().__init__(new_softmax)
