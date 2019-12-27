@@ -19,7 +19,7 @@ feat_dim=43
 output_dim=4464
 hidden_dim=625
 kernel_size_list="1, 3, 3, 3, 3, 3" # comma separated list
-dilation_list="1, 1, 1, 3, 3, 3" # comma separated list
+stride_list="1, 1, 3, 1, 1, 1" # comma separated list
 
 # you may set CUDA_VISIBLE_DEVICES and then set `device_id=0`
 device_id=6
@@ -29,21 +29,25 @@ lr=1e-3
 egs_left_context=13
 egs_right_context=13
 
+log_level=info # valid values: debug, info, warning
+
 
 # sort the options alphabetically
 python3 ./chain/train.py \
   --device-id $device_id \
-  --dilation-list "$dilation_list" \
   --dir $dir \
   --feat-dim $feat_dim \
   --hidden-dim $hidden_dim \
+  --is-training 1 \
   --kernel-size-list "$kernel_size_list" \
   --lda-mat-filename $lda_mat_filename \
+  --log-level $log_level \
   --output-dim $output_dim \
+  --stride-list "$stride_list" \
   --train.cegs-dir $cegs_dir \
   --train.den-fst $den_fst_filename \
   --train.egs-left-context $egs_left_context \
   --train.egs-right-context $egs_right_context \
-  --train.lr $lr \
   --train.l2-regularize 5e-4 \
+  --train.lr $lr \
   --train.num-epochs $num_epochs

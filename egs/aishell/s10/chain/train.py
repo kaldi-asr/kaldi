@@ -3,19 +3,23 @@
 # Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
+import sys
+import logging
+
 import torch
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
 from torch.nn.utils import clip_grad_value_
+from torch.optim.lr_scheduler import StepLR
 
 import kaldi
-import kaldi_pybind.fst as fst
 import kaldi_pybind.chain as chain
+import kaldi_pybind.fst as fst
 
-from options import get_args
-from model import get_chain_model
-from dataset import get_dataloader
 from chain_loss import KaldiChainObjfFunction
+from common import setup_logger
+from dataset import get_dataloader
+from model import get_chain_model
+from options import get_args
 
 
 def train_one_epoch(dataloader, model, device, optimizer, criterion,
@@ -61,6 +65,7 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
             optimizer.zero_grad()
             objf.backward()
 
+            # TODO(fangjun): how to choose this value or do we need this ?
             clip_grad_value_(model.parameters(), 5.0)
             optimizer.step()
 
@@ -71,20 +76,28 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
             num_frames = nnet_output.shape[0]
             total_frames += num_frames
         if batch_idx % 10 == 0:
-            print('Process {}/{}({:.6f}%) global average objf: {:.6f} over {} \
-                    frames, current batch average objf: {:.6f} over {} frames, epoch {}'
-                  .format(
-                      batch_idx, len(dataloader),
-                      float(batch_idx) / len(dataloader),
-                      total_objf / total_weight, total_frames,
-                      float(objf_l2_term_weight[0].item()) /
-                      objf_l2_term_weight[2].item(), num_frames, current_epoch))
+            logging.info(
+                'Process {}/{}({:.6f}%) global average objf: {:.6f} over {} '
+                'frames, current batch average objf: {:.6f} over {} frames, epoch {}'
+                .format(
+                    batch_idx, len(dataloader),
+                    float(batch_idx) / len(dataloader) * 100,
+                    total_objf / total_weight, total_frames,
+                    objf_l2_term_weight[0].item() /
+                    objf_l2_term_weight[2].item(), num_frames, current_epoch))
 
 
 def main():
     args = get_args()
+    setup_logger('{}/log-train'.format(args.dir), args.log_level)
+    logging.info(' '.join(sys.argv))
 
-    # we always use GPU
+    if torch.cuda.is_available() == False:
+        logging.error('No GPU detected!')
+        return
+
+    # WARNING(fangjun): we have to select GPU at the very
+    # beginning; otherwise you will get trouble later
     kaldi.SelectGpuDevice(device_id=args.device_id)
     device = torch.device('cuda', args.device_id)
 
@@ -102,26 +115,15 @@ def main():
                             lda_mat_filename=args.lda_mat_filename,
                             hidden_dim=args.hidden_dim,
                             kernel_size_list=args.kernel_size_list,
-                            dilation_list=args.dilation_list)
+                            stride_list=args.stride_list)
 
     model.to(device)
 
     dataloader = get_dataloader(egs_dir=args.cegs_dir,
                                 egs_left_context=args.egs_left_context,
                                 egs_right_context=args.egs_right_context)
-    params = [{
-        'params': [
-            param for name, param in model.named_parameters()
-            if 'xent' not in name
-        ]
-    }, {
-        'params':
-        [param for name, param in model.named_parameters() if 'xent' in name],
-        'lr':
-        args.learning_rate * 5
-    }]
 
-    optimizer = optim.Adam(params,
+    optimizer = optim.Adam(model.parameters(),
                            lr=args.learning_rate,
                            weight_decay=args.l2_regularize)
 
@@ -130,7 +132,7 @@ def main():
 
     for epoch in range(args.num_epochs):
         learning_rate = scheduler.get_lr()[0]
-        print('epoch {}, learning rate {}'.format(epoch, learning_rate))
+        logging.info('epoch {}, learning rate {}'.format(epoch, learning_rate))
         train_one_epoch(dataloader=dataloader,
                         model=model,
                         device=device,
@@ -139,7 +141,8 @@ def main():
                         current_epoch=epoch,
                         opts=opts,
                         den_graph=den_graph)
-    print('Done')
+        scheduler.step()
+    logging.warning('Done')
 
 
 if __name__ == '__main__':

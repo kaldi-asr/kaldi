@@ -43,13 +43,13 @@ from dataset import load_lda_mat
 
 
 def get_chain_model(feat_dim, output_dim, lda_mat_filename, hidden_dim,
-                    kernel_size_list, dilation_list):
+                    kernel_size_list, stride_list):
     model = ChainModel(feat_dim=feat_dim,
                        output_dim=output_dim,
                        lda_mat_filename=lda_mat_filename,
                        hidden_dim=hidden_dim,
                        kernel_size_list=kernel_size_list,
-                       dilation_list=dilation_list)
+                       stride_list=stride_list)
     return model
 
 
@@ -62,11 +62,14 @@ class ChainModel(nn.Module):
                  lda_mat_filename,
                  hidden_dim=625,
                  kernel_size_list=[1, 3, 3, 3, 3, 3],
-                 dilation_list=[1, 1, 1, 3, 3, 3],
+                 stride_list=[1, 1, 3, 1, 1, 1],
                  frame_subsampling_factor=3):
         super().__init__()
 
-        assert len(kernel_size_list) == len(dilation_list)
+        # at present, we current support only frame_subsampling_factor to be 3
+        assert frame_subsampling_factor == 3
+
+        assert len(kernel_size_list) == len(stride_list)
         num_layers = len(kernel_size_list)
 
         tdnns = []
@@ -76,14 +79,14 @@ class ChainModel(nn.Module):
                 in_channels = feat_dim * 3
 
             kernel_size = kernel_size_list[i]
-            dilation = dilation_list[i]
+            stride = stride_list[i]
 
             # we do not need to perform padding in Conv1d because it
             # has been included in left/right context while generating egs
             layer = nn.Conv1d(in_channels=in_channels,
                               out_channels=hidden_dim,
                               kernel_size=kernel_size,
-                              dilation=dilation)
+                              stride=stride)
             tdnns.append(layer)
 
         self.tdnns = nn.ModuleList(tdnns)
@@ -91,20 +94,16 @@ class ChainModel(nn.Module):
             nn.BatchNorm1d(num_features=hidden_dim) for i in range(num_layers)
         ])
 
-        stride = frame_subsampling_factor
-
         self.prefinal_chain_tdnn = nn.Conv1d(in_channels=hidden_dim,
                                              out_channels=hidden_dim,
-                                             kernel_size=1,
-                                             stride=stride)
+                                             kernel_size=1)
         self.prefinal_chain_batch_norm = nn.BatchNorm1d(num_features=hidden_dim)
         self.output_fc = nn.Linear(in_features=hidden_dim,
                                    out_features=output_dim)
 
         self.prefinal_xent_tdnn = nn.Conv1d(in_channels=hidden_dim,
                                             out_channels=hidden_dim,
-                                            kernel_size=1,
-                                            stride=stride)
+                                            kernel_size=1)
         self.prefinal_xent_batch_norm = nn.BatchNorm1d(num_features=hidden_dim)
         self.output_xent_fc = nn.Linear(in_features=hidden_dim,
                                         out_features=output_dim)

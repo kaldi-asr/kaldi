@@ -11,43 +11,36 @@ def _set_training_args(parser):
     parser.add_argument('--train.cegs-dir',
                         dest='cegs_dir',
                         help='cegs dir containing comibined cegs.*.scp',
-                        required=True,
                         type=str)
 
     parser.add_argument('--train.den-fst',
                         dest='den_fst_filename',
                         help='denominator fst filename',
-                        required=True,
                         type=str)
 
     parser.add_argument('--train.egs-left-context',
                         dest='egs_left_context',
                         help='egs left context',
-                        required=True,
                         type=int)
 
     parser.add_argument('--train.egs-right-context',
                         dest='egs_right_context',
                         help='egs right context',
-                        required=True,
                         type=int)
 
     parser.add_argument('--train.num-epochs',
                         dest='num_epochs',
                         help='number of epochs to train',
-                        required=True,
                         type=int)
 
     parser.add_argument('--train.lr',
                         dest='learning_rate',
                         help='learning rate',
-                        required=True,
                         type=float)
 
     parser.add_argument('--train.l2-regularize',
                         dest='l2_regularize',
                         help='l2 regularize',
-                        required=True,
                         type=float)
 
 
@@ -66,7 +59,10 @@ def _check_training_args(args):
 
 def _check_args(args):
 
-    _check_training_args(args)
+    assert args.is_training in [0, 1]
+
+    if args.is_training == 1:
+        _check_training_args(args)
 
     assert os.path.isfile(args.lda_mat_filename)
 
@@ -81,14 +77,16 @@ def _check_args(args):
     assert args.kernel_size_list is not None
     assert len(args.kernel_size_list) > 0
 
-    assert args.dilation_list is not None
-    assert len(args.dilation_list) > 0
+    assert args.stride_list is not None
+    assert len(args.stride_list) > 0
 
     args.kernel_size_list = [int(k) for k in args.kernel_size_list.split(', ')]
 
-    args.dilation_list = [int(k) for k in args.dilation_list.split(', ')]
+    args.stride_list = [int(k) for k in args.stride_list.split(', ')]
 
-    assert len(args.kernel_size_list) == len(args.dilation_list)
+    assert len(args.kernel_size_list) == len(args.stride_list)
+
+    assert args.log_level in ['debug', 'info', 'warning']
 
 
 def get_args():
@@ -106,6 +104,12 @@ def get_args():
     parser.add_argument('--device-id',
                         dest='device_id',
                         help='GPU device id',
+                        required=True,
+                        type=int)
+
+    parser.add_argument('--is-training',
+                        dest='is_training',
+                        help='1 for training, 0 for inference',
                         required=True,
                         type=int)
 
@@ -140,11 +144,17 @@ def get_args():
                         required=True,
                         type=str)
 
-    parser.add_argument('--dilation-list',
-                        dest='dilation_list',
-                        help='dilation list',
+    parser.add_argument('--stride-list',
+                        dest='stride_list',
+                        help='stride list',
                         required=True,
                         type=str)
+
+    parser.add_argument('--log-level',
+                        dest='log_level',
+                        help='log level. valid values: debug, info, warning',
+                        type=str,
+                        default='info')
 
     args = parser.parse_args()
 
