@@ -66,7 +66,7 @@ class ChainModel(nn.Module):
                  frame_subsampling_factor=3):
         super().__init__()
 
-        # at present, we current support only frame_subsampling_factor to be 3
+        # at present, we support only frame_subsampling_factor to be 3
         assert frame_subsampling_factor == 3
 
         assert len(kernel_size_list) == len(stride_list)

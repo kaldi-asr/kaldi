@@ -88,7 +88,7 @@ class KaldiChainObjfFunction(Function):
         # Multiply by a negative number as we want to do
         # gradient **descent** and not **ascent**
         nnet_output_deriv *= -1
-        xent_output_deriv *= -0.2  # TODO(fangjun): how to choose this value ??
+        xent_output_deriv *= -0.1  # TODO(fangjun): how to choose this value ??
 
         # return the derivative for the input parametes:
         # (opts, den_graph, supervision, nnet_output_tensor, xent_out_unused_tensor)

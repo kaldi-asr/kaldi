@@ -88,6 +88,9 @@ def _check_args(args):
 
     assert args.log_level in ['debug', 'info', 'warning']
 
+    if args.checkpoint:
+        assert os.path.exists(args.checkpoint)
+
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -155,6 +158,11 @@ def get_args():
                         help='log level. valid values: debug, info, warning',
                         type=str,
                         default='info')
+
+    parser.add_argument('--checkpoint',
+                        dest='checkpoint',
+                        help='filename of the checkpoint',
+                        type=str)
 
     args = parser.parse_args()
 

@@ -3,19 +3,24 @@
 # Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
-import sys
 import logging
+import os
+import sys
 
 import torch
 import torch.optim as optim
 from torch.nn.utils import clip_grad_value_
 from torch.optim.lr_scheduler import StepLR
+from torch.utils.tensorboard import SummaryWriter
 
 import kaldi
 import kaldi_pybind.chain as chain
 import kaldi_pybind.fst as fst
 
 from chain_loss import KaldiChainObjfFunction
+from common import load_checkpoint
+from common import save_checkpoint
+from common import save_training_info
 from common import setup_logger
 from dataset import get_dataloader
 from model import get_chain_model
@@ -23,12 +28,12 @@ from options import get_args
 
 
 def train_one_epoch(dataloader, model, device, optimizer, criterion,
-                    current_epoch, opts, den_graph):
+                    current_epoch, opts, den_graph, tf_writer):
     model.train()
 
     total_objf = 0.
     total_weight = 0.
-    total_frames = 0.
+    total_frames = 0.  # for display only
 
     for batch_idx, batch in enumerate(dataloader):
         key_list, feature_list, supervision_list = batch
@@ -75,7 +80,7 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
             total_weight += objf_l2_term_weight[2].item()
             num_frames = nnet_output.shape[0]
             total_frames += num_frames
-        if batch_idx % 10 == 0:
+        if batch_idx % 100 == 0:
             logging.info(
                 'Process {}/{}({:.6f}%) global average objf: {:.6f} over {} '
                 'frames, current batch average objf: {:.6f} over {} frames, epoch {}'
@@ -85,6 +90,17 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
                     total_objf / total_weight, total_frames,
                     objf_l2_term_weight[0].item() /
                     objf_l2_term_weight[2].item(), num_frames, current_epoch))
+
+        if batch_idx % 100 == 0:
+            tf_writer.add_scalar('train/global_average_objf',
+                                 total_objf / total_weight,
+                                 batch_idx + current_epoch * len(dataloader))
+            tf_writer.add_scalar(
+                'train/current_batch_average_objf',
+                objf_l2_term_weight[0].item() / objf_l2_term_weight[2].item(),
+                batch_idx + current_epoch * len(dataloader))
+
+    return total_objf / total_weight
 
 
 def main():
@@ -99,6 +115,7 @@ def main():
     # WARNING(fangjun): we have to select GPU at the very
     # beginning; otherwise you will get trouble later
     kaldi.SelectGpuDevice(device_id=args.device_id)
+    kaldi.CuDeviceAllowMultithreading()
     device = torch.device('cuda', args.device_id)
 
     den_fst = fst.StdVectorFst.Read(args.den_fst_filename)
@@ -117,6 +134,21 @@ def main():
                             kernel_size_list=args.kernel_size_list,
                             stride_list=args.stride_list)
 
+    start_epoch = 0
+    num_epochs = args.num_epochs
+    learning_rate = args.learning_rate
+    best_objf = -100000
+
+    if args.checkpoint:
+        start_epoch, learning_rate, best_objf = load_checkpoint(
+            args.checkpoint, model)
+        logging.info(
+            'loaded from checkpoint: start epoch {start_epoch}, '
+            'learning rate {learning_rate}, best objf {best_objf}'.format(
+                start_epoch=start_epoch,
+                learning_rate=learning_rate,
+                best_objf=best_objf))
+
     model.to(device)
 
     dataloader = get_dataloader(egs_dir=args.cegs_dir,
@@ -124,28 +156,102 @@ def main():
                                 egs_right_context=args.egs_right_context)
 
     optimizer = optim.Adam(model.parameters(),
-                           lr=args.learning_rate,
+                           lr=learning_rate,
                            weight_decay=args.l2_regularize)
 
     scheduler = StepLR(optimizer, gamma=0.5, step_size=2)
     criterion = KaldiChainObjfFunction.apply
 
-    for epoch in range(args.num_epochs):
-        learning_rate = scheduler.get_lr()[0]
-        logging.info('epoch {}, learning rate {}'.format(epoch, learning_rate))
-        train_one_epoch(dataloader=dataloader,
+    tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
+
+    best_epoch = start_epoch
+    best_model_path = os.path.join(args.dir, 'best_model.pt')
+    best_epoch_info_filename = os.path.join(args.dir, 'best-epoch-info')
+    try:
+        for epoch in range(start_epoch, args.num_epochs):
+            learning_rate = scheduler.get_lr()[0]
+            logging.info('epoch {}, learning rate {}'.format(
+                epoch, learning_rate))
+            tf_writer.add_scalar('learning_rate', learning_rate, epoch)
+
+            objf = train_one_epoch(dataloader=dataloader,
+                                   model=model,
+                                   device=device,
+                                   optimizer=optimizer,
+                                   criterion=criterion,
+                                   current_epoch=epoch,
+                                   opts=opts,
+                                   den_graph=den_graph,
+                                   tf_writer=tf_writer)
+            scheduler.step()
+
+            if best_objf is None:
+                best_objf = objf
+                best_epoch = epoch
+
+            # the higher, the better
+            if objf > best_objf:
+                best_objf = objf
+                best_epoch = epoch
+                save_checkpoint(filename=best_model_path,
+                                model=model,
+                                epoch=epoch,
+                                learning_rate=learning_rate,
+                                objf=objf)
+                save_training_info(filename=best_epoch_info_filename,
+                                   model_path=best_model_path,
+                                   current_epoch=epoch,
+                                   learning_rate=learning_rate,
+                                   objf=best_objf,
+                                   best_objf=best_objf,
+                                   best_epoch=best_epoch)
+
+            # we always save the model for every epoch
+            model_path = os.path.join(args.dir, 'epoch-{}.pt'.format(epoch))
+            save_checkpoint(filename=model_path,
+                            model=model,
+                            epoch=epoch,
+                            learning_rate=learning_rate,
+                            objf=objf)
+
+            epoch_info_filename = os.path.join(args.dir,
+                                               'epoch-{}-info'.format(epoch))
+            save_training_info(filename=epoch_info_filename,
+                               model_path=model_path,
+                               current_epoch=epoch,
+                               learning_rate=learning_rate,
+                               objf=objf,
+                               best_objf=best_objf,
+                               best_epoch=best_epoch)
+
+    except KeyboardInterrupt:
+        # save the model when ctrl-c is pressed
+        model_path = os.path.join(args.dir,
+                                  'epoch-{}-interrupted.pt'.format(epoch))
+        # use a very small objf for interrupted model
+        objf = -100000
+        save_checkpoint(model_path,
                         model=model,
-                        device=device,
-                        optimizer=optimizer,
-                        criterion=criterion,
-                        current_epoch=epoch,
-                        opts=opts,
-                        den_graph=den_graph)
-        scheduler.step()
+                        epoch=epoch,
+                        learning_rate=learning_rate,
+                        objf=objf)
+
+        epoch_info_filename = os.path.join(
+            args.dir, 'epoch-{}-interrupted-info'.format(epoch))
+        save_training_info(filename=epoch_info_filename,
+                           model_path=model_path,
+                           current_epoch=epoch,
+                           learning_rate=learning_rate,
+                           objf=objf,
+                           best_objf=best_objf,
+                           best_epoch=best_epoch)
+
+    tf_writer.close()
     logging.warning('Done')
 
 
 if __name__ == '__main__':
+    torch.manual_seed(20191227)
     main()
 
 # TODO(fangjun)
