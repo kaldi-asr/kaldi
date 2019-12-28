@@ -99,7 +99,8 @@ def _check_args(args):
     else:
         _check_inference_args(args)
 
-    assert os.path.isfile(args.lda_mat_filename)
+    if args.lda_mat_filename:
+        assert os.path.isfile(args.lda_mat_filename)
 
     # although -1 means to use CPU in `kaldi.SelectGpuDevice()`
     # we do NOT want to use CPU here so we require it to be >= 0
@@ -153,7 +154,7 @@ def get_args():
         '--lda-mat-filename',
         dest='lda_mat_filename',
         help='affine-transform-file in fixed-affine-layer of kaldi',
-        required=True,
+        default=None,
         type=str)
 
     parser.add_argument('--feat-dim',

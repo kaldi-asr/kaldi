@@ -3,6 +3,9 @@
 # Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
+cmd=run.pl
+nj=10
+
 acwt=1.0 # change from 0.1 to 1.0 for chain model (by fangjun)
 beam=12.0
 lattice_beam=4.0
@@ -41,13 +44,19 @@ if [[ ! -f $confidence_scp ]]; then
   exit 1
 fi
 
-
 mkdir -p $dir
 
-lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.1.gz"
+for i in $(seq $nj); do
+  utils/split_scp.pl -j $nj $[$i - 1] $confidence_scp $dir/confidence.$i.scp
+done
 
-# TODO(fangjun): split feats to multiple files and uses `run.pl`
-latgen-faster-mapped-parallel \
+lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
+
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
+
+$cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
+  latgen-faster-mapped$thread_string  \
     --acoustic-scale=$acwt \
     --allow-partial=true \
     --beam=$beam \
@@ -57,4 +66,4 @@ latgen-faster-mapped-parallel \
     --min-active=$min_active \
     --num-threads=$num_threads \
     --word-symbol-table=$graphdir/words.txt \
-    $trans_model $graphdir/HCLG.fst scp:$confidence_scp "$lat_wspecifier" &> $dir/decode.log || exit 1
+    $trans_model $graphdir/HCLG.fst scp:$dir/confidence.JOB.scp "$lat_wspecifier" || exit 1

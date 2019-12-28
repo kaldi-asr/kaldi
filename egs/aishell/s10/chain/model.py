@@ -3,6 +3,8 @@
 # Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
+import logging
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -42,8 +44,12 @@ from common import load_lda_mat
 '''
 
 
-def get_chain_model(feat_dim, output_dim, lda_mat_filename, hidden_dim,
-                    kernel_size_list, stride_list):
+def get_chain_model(feat_dim,
+                    output_dim,
+                    hidden_dim,
+                    kernel_size_list,
+                    stride_list,
+                    lda_mat_filename=None):
     model = ChainModel(feat_dim=feat_dim,
                        output_dim=output_dim,
                        lda_mat_filename=lda_mat_filename,
@@ -108,23 +114,35 @@ class ChainModel(nn.Module):
         self.output_xent_fc = nn.Linear(in_features=hidden_dim,
                                         out_features=output_dim)
 
-        self.lda_A, self.lda_b = load_lda_mat(lda_mat_filename)
-
-        assert feat_dim * 3 == self.lda_A.shape[0]
+        if lda_mat_filename:
+            logging.info('Use LDA from {}'.format(lda_mat_filename))
+            self.lda_A, self.lda_b = load_lda_mat(lda_mat_filename)
+            assert feat_dim * 3 == self.lda_A.shape[0]
+            self.has_LDA = True
+        else:
+            logging.info('replace LDA with BatchNorm')
+            self.input_batch_norm = nn.BatchNorm1d(num_features=feat_dim * 3)
+            self.has_LDA = False
 
     def forward(self, x):
         # input x is of shape: [batch_size, seq_len, feat_dim] = [N, T, C]
         assert x.ndim == 3
 
-        # to() does not copy data if lda_A is already in the expected device
-        self.lda_A = self.lda_A.to(x.device)
-        self.lda_b = self.lda_b.to(x.device)
+        if self.has_LDA:
+            # to() does not copy data if lda_A is already in the expected device
+            self.lda_A = self.lda_A.to(x.device)
+            self.lda_b = self.lda_b.to(x.device)
 
-        x = torch.matmul(x, self.lda_A) + self.lda_b
+            x = torch.matmul(x, self.lda_A) + self.lda_b
 
-        # at this point, x is [N, T, C]
+            # at this point, x is [N, T, C]
 
-        x = x.permute(0, 2, 1)
+            x = x.permute(0, 2, 1)
+        else:
+            # at this point, x is [N, T, C]
+            x = x.permute(0, 2, 1)
+            # at this point, x is [N, C, T]
+            x = self.input_batch_norm(x)
 
         # at this point, x is [N, C, T]
 

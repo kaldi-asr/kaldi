@@ -26,7 +26,7 @@ def main():
 
     if torch.cuda.is_available() == False:
         logging.error('No GPU detected!')
-        return
+        sys.exit(-1)
 
     kaldi.SelectGpuDevice(device_id=args.device_id)
     kaldi.CuDeviceAllowMultithreading()

@@ -180,7 +180,7 @@ def _test_nnet_chain_example_dataset():
 
     # FIXME(fangjun): num_workers > 0 causes errors!
     # How to reproduce the error?
-    # 1. add a destructor to `struct Supervision` in `chain/chain-supversion.h`
+    # 1. add a destructor to `struct Supervision` in `chain/chain-superversion.h`
     '''
       ~Supervision() {
         static int i = 0;
@@ -189,8 +189,8 @@ def _test_nnet_chain_example_dataset():
       }
     '''
     # 2. add a `print` statement at the end of `__call__` of `NnetChainExampleDatasetCollateFunc`
-    # 3. You will see that the destructor of `chain::Supervsion` is caleld! That is,
-    # `for b in dataloader`, the `b` we get contains an empty supervsion!
+    # 3. You will see that the destructor of `chain::Supervision` is called! That is,
+    # `for b in dataloader`, the `b` we get contains an empty supervision!
     dataloader = DataLoader(dataset,
                             batch_size=1,
                             num_workers=0,

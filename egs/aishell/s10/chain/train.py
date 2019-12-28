@@ -10,7 +10,7 @@ import sys
 import torch
 import torch.optim as optim
 from torch.nn.utils import clip_grad_value_
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.tensorboard import SummaryWriter
 
 import kaldi
@@ -110,7 +110,7 @@ def main():
 
     if torch.cuda.is_available() == False:
         logging.error('No GPU detected!')
-        return
+        sys.exit(-1)
 
     # WARNING(fangjun): we have to select GPU at the very
     # beginning; otherwise you will get trouble later
@@ -159,7 +159,7 @@ def main():
                            lr=learning_rate,
                            weight_decay=args.l2_regularize)
 
-    scheduler = StepLR(optimizer, gamma=0.5, step_size=2)
+    scheduler = MultiStepLR(optimizer, milestones=[2, 6, 8, 9], gamma=0.5)
     criterion = KaldiChainObjfFunction.apply
 
     tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
@@ -253,8 +253,3 @@ def main():
 if __name__ == '__main__':
     torch.manual_seed(20191227)
     main()
-
-# TODO(fangjun)
-# 1. support load/save checkpoint
-# 2. support inference only mode
-# 3. support tensorboard
