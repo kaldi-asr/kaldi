@@ -47,7 +47,14 @@ def main():
     specifier = 'ark,scp:{filename}.ark,{filename}.scp'.format(
         filename=os.path.join(args.dir, 'confidence'))
 
-    writer = kaldi.CompressedMatrixWriter(specifier)
+    if args.save_as_compressed:
+        Writer = kaldi.CompressedMatrixWriter
+        Matrix = kaldi.CompressedMatrix
+    else:
+        Writer = kaldi.MatrixWriter
+        Matrix = kaldi.FloatMatrix
+
+    writer = Writer(specifier)
 
     dataloader = get_feat_dataloader(
         feats_scp=args.feats_scp,
@@ -69,13 +76,14 @@ def main():
             value = value.cpu()
 
             m = kaldi.SubMatrixFromDLPack(to_dlpack(value))
-            m = kaldi.CompressedMatrix(m)
+            m = Matrix(m)
             writer.Write(key, m)
 
         if batch_idx % 10 == 0:
             logging.info('Processed batch {}/{} ({:.6f}%)'.format(
                 batch_idx, len(dataloader),
                 float(batch_idx) / len(dataloader) * 100))
+
     writer.Close()
     logging.info('confidence is saved to {}'.format(
         os.path.join(args.dir, 'confidence.scp')))

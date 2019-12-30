@@ -25,6 +25,13 @@ def _set_inference_args(parser):
                         type=int,
                         default=-1)
 
+    parser.add_argument(
+        '--save-as-compressed',
+        dest='save_as_compressed',
+        help='1 to save the neural network output to CompressedMatrix,'
+        ' 0 to Matrix<float>',
+        type=int)
+
 
 def _set_training_args(parser):
     parser.add_argument('--train.cegs-dir',
@@ -88,6 +95,9 @@ def _check_inference_args(args):
 
     assert args.model_left_context > 0
     assert args.model_right_context > 0
+
+    assert args.save_as_compressed in [0, 1]
+    args.save_as_compressed = (args.save_as_compressed == 1)
 
 
 def _check_args(args):

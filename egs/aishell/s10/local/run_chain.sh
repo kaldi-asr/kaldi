@@ -36,6 +36,10 @@ stride_list="1, 1, 3, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning
 
+# 1 to save network output as kaldi::CompressedMatrix
+# 0 to save it as kaldi::Matrix<float>
+save_nn_output_as_compressed=0
+
 . ./path.sh
 . ./cmd.sh
 
@@ -188,6 +192,7 @@ if [[ $stage -le 9 ]]; then
         --model-left-context $model_left_context \
         --model-right-context $model_right_context \
         --output-dim $output_dim \
+        --save-as-compressed $save_nn_output_as_compressed \
         --stride-list "$stride_list" || exit 1
     fi
   done
