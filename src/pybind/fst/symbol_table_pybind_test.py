@@ -104,6 +104,9 @@ class TestSymbolTable(unittest.TestCase):
         self.assertEqual(words.CheckSum(), words_bin_read_back.CheckSum())
         self.assertTrue(fst.CompatSymbols(words, words_bin_read_back))
 
+        os.remove('words.bin')
+        os.remove('words.txt')
+
 
 if __name__ == '__main__':
     unittest.main()
