@@ -47,7 +47,7 @@ def main():
     specifier = 'ark,scp:{filename}.ark,{filename}.scp'.format(
         filename=os.path.join(args.dir, 'confidence'))
 
-    writer = kaldi.MatrixWriter(specifier)
+    writer = kaldi.CompressedMatrixWriter(specifier)
 
     dataloader = get_feat_dataloader(
         feats_scp=args.feats_scp,
@@ -69,7 +69,7 @@ def main():
             value = value.cpu()
 
             m = kaldi.SubMatrixFromDLPack(to_dlpack(value))
-            m = kaldi.FloatMatrix(m)
+            m = kaldi.CompressedMatrix(m)
             writer.Write(key, m)
 
         if batch_idx % 10 == 0:

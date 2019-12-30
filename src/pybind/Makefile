@@ -59,10 +59,12 @@ fst/vector_fst_pybind.cc \
 fst/weight_pybind.cc \
 fstext/kaldi_fst_io_pybind.cc \
 kaldi_pybind.cc \
+matrix/compressed_matrix_pybind.cc \
+matrix/kaldi_matrix_pybind.cc \
+matrix/kaldi_vector_pybind.cc \
 matrix/matrix_common_pybind.cc \
 matrix/matrix_pybind.cc \
 matrix/sparse_matrix_pybind.cc \
-matrix/vector_pybind.cc \
 nnet3/nnet3_pybind.cc \
 nnet3/nnet_chain_example_pybind.cc \
 nnet3/nnet_common_pybind.cc \

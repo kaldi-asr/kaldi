@@ -30,9 +30,6 @@ minibatch_size=128
 num_epochs=10
 lr=2e-3
 
-feat_dim=$(cat exp/chain/egs/info/feat_dim)
-output_dim=$(cat exp/chain/egs/info/num_pdfs)
-
 hidden_dim=625
 kernel_size_list="1, 3, 3, 3, 3, 3" # comma separated list
 stride_list="1, 1, 3, 1, 1, 1" # comma separated list
@@ -115,6 +112,9 @@ if [[ $stage -le 5 ]]; then
     data/fbank_pitch/train \
     exp/chain $lat_dir exp/chain/egs
 fi
+
+feat_dim=$(cat exp/chain/egs/info/feat_dim)
+output_dim=$(cat exp/chain/egs/info/num_pdfs)
 
 if [[ $stage -le 6 ]]; then
   echo "merging egs"

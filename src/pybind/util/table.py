@@ -43,6 +43,8 @@ from kaldi_pybind import _SequentialBaseFloatVectorReader
 from kaldi_pybind import _RandomAccessBaseFloatVectorReader
 from kaldi_pybind import _BaseFloatVectorWriter
 
+from kaldi_pybind import _CompressedMatrixWriter
+
 ################################################################################
 # Sequential Readers
 ################################################################################
@@ -434,6 +436,10 @@ class MatrixWriter(_WriterBase, _BaseFloatMatrixWriter):
 
 class VectorWriter(_WriterBase, _BaseFloatVectorWriter):
     '''Table writer for single precision vectors.'''
+    pass
+
+class CompressedMatrixWriter(_WriterBase, _CompressedMatrixWriter):
+    '''Table writer for single precision compressed matrices.'''
     pass
 
 
