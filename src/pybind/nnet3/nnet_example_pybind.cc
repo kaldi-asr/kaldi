@@ -32,7 +32,12 @@ void pybind_nnet_example(py::module& m) {
         .def(py::init<>())
         .def_readwrite("name", &PyClass::name,
                        "the name of the input in the neural net; in simple "
-                       "setups it will just be 'input'.");
+                       "setups it will just be 'input'.")
+        .def_readwrite(
+            "features", &PyClass::features,
+            "The features or labels.  GeneralMatrix may contain either "
+            "a CompressedMatrix, a Matrix, or SparseMatrix (a "
+            "SparseMatrix would be the natural format for posteriors).");
     // TODO(fangjun): other constructors, fields and methods can be wrapped when
   }
 }

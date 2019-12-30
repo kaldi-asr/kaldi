@@ -33,7 +33,12 @@ class TestNnetChainExample(unittest.TestCase):
             nnet_io = inputs[0]
             self.assertTrue(isinstance(nnet_io, nnet3.NnetIo))
             self.assertEqual(nnet_io.name, 'input')
-            # its `features` has not been wrapped yet.
+
+            features = nnet_io.features
+            m = kaldi_pybind.FloatMatrix()
+            features.GetMatrix(m)
+            m = m.numpy()
+            print(m.shape)
 
             self.assertTrue(isinstance(key, str))
             self.assertTrue(isinstance(value, nnet3.NnetChainExample))

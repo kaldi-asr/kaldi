@@ -94,7 +94,8 @@ void pybind_nnet_chain_example(py::module& m) {
         .def("Compress", &PyClass::Compress,
              "Compresses the input features (if not compressed)")
         .def("__eq__",
-             [](const PyClass& a, const PyClass& b) { return a == b; });
+             [](const PyClass& a, const PyClass& b) { return a == b; })
+        .def("Read", &PyClass::Read, py::arg("is"), py::arg("binary"));
 
     // (fangjun): we follow the PyKaldi style to prepend a underline before the
     // registered classes and the user in general should not use them directly;

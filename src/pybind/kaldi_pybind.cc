@@ -28,7 +28,7 @@
 #include "matrix/matrix_pybind.h"
 #include "matrix/sparse_matrix_pybind.h"
 #include "matrix/vector_pybind.h"
-#include "util/table_types_pybind.h"
+#include "util/util_pybind.h"
 
 #include "fst/fst_pybind.h"
 
@@ -47,7 +47,7 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_matrix(m);
   pybind_sparse_matrix(m);
   pybind_vector(m);
-  pybind_table_types(m);
+  pybind_util(m);
   pybind_feat(m);
 
   pybind_fst(m);
