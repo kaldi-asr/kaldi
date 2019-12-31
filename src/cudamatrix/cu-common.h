@@ -95,16 +95,16 @@
 
 namespace kaldi {
 
-// #ifdef USE_NVTX
-// class NvtxTracer {
-// public:
-//     NvtxTracer(const char* name);
-//     ~NvtxTracer();
-// };
-// #define NVTX_RANGE(name) NvtxTracer uniq_name_using_macros(name);
-// #else
-// #define NVTX_RANGE(name)
-// #endif
+#ifdef USE_NVTX
+class NvtxTracer {
+public:
+    NvtxTracer(const char* name);
+    ~NvtxTracer();
+};
+#define NVTX_RANGE(name) NvtxTracer uniq_name_using_macros(name);
+#else
+#define NVTX_RANGE(name)
+#endif
 
 /** Number of blocks in which the task of size 'size' is splitted **/
 inline int32 n_blocks(int32 size, int32 block_size) {
