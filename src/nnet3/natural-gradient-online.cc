@@ -397,7 +397,7 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   Matrix<BaseFloat> U_t(R, R);
   Vector<BaseFloat> c_t(R);
   // do the symmetric eigenvalue decomposition Z_t = U_t C_t U_t^T.
-  Z_t_scaled.EigMKL(&c_t, &U_t);
+  Z_t_scaled.Eig(&c_t, &U_t);
   SortSvd(&c_t, &U_t);
   c_t.Scale(z_t_scale);
 

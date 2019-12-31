@@ -1282,8 +1282,11 @@ void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    cuda_add_row_sum_mat(mat.NumCols(), CU1DBLOCK, Data(), mat.Data(),
+    CuArray<int> flag(mat.NumCols());
+    cuda_add_row_sum_mat(Data(), mat.Data(), flag.Data(),
                          mat.Dim(), alpha, beta);
+    // cuda_add_row_sum_mat(mat.NumCols(), CU1DBLOCK, Data(), mat.Data(),
+    //                      mat.Dim(), alpha, beta);
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim);

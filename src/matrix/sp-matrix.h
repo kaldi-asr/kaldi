@@ -167,7 +167,6 @@ class SpMatrix : public PackedMatrix<Real> {
   /// If you need the eigenvalues sorted, the function SortSvd declared in
   /// kaldi-matrix is suitable.
   void Eig(VectorBase<Real> *s, MatrixBase<Real> *P = NULL) const;
-  void EigMKL(VectorBase<Real> *s, MatrixBase<Real> *P = NULL) const;
 
   /// This function gives you, approximately, the largest eigenvalues of the
   /// symmetric matrix and the corresponding eigenvectors.  (largest meaning,
