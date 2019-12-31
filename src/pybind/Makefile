@@ -119,6 +119,7 @@ test: all
 	make -C chain test
 	make -C cudamatrix test
 	make -C dlpack test
+	$(eval include ../../tools/env.sh)
 	make -C feat test
 	make -C fst test
 	make -C matrix test
