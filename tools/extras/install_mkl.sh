@@ -254,9 +254,8 @@ ConfigLdSo() {
     ldconfig )
 }
 
+# Load MKL libraris, which is need for pybind tests to pass
 (
-  set +u
-
   echo "export LD_PRELOAD:=/opt/intel/mkl/lib/intel64/libmkl_def.so:\
 /opt/intel/mkl/lib/intel64/libmkl_avx2.so:\
 /opt/intel/mkl/lib/intel64/libmkl_core.so:\
