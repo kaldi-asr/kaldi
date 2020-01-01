@@ -1,4 +1,4 @@
-// pybind/matrix/vector_pybind.cc
+// pybind/matrix/kaldi_vector_pybind.cc
 
 // Copyright 2019   Daniel Povey
 //           2019   Dongji Gao
@@ -19,14 +19,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "matrix/vector_pybind.h"
+#include "matrix/kaldi_vector_pybind.h"
 
 #include "dlpack/dlpack_pybind.h"
 #include "matrix/kaldi-vector.h"
 
 using namespace kaldi;
 
-void pybind_vector(py::module& m) {
+void pybind_kaldi_vector(py::module& m) {
   py::class_<VectorBase<float>,
              std::unique_ptr<VectorBase<float>, py::nodelete>>(
       m, "FloatVectorBase",

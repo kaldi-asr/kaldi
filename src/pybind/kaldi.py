@@ -17,3 +17,5 @@ from util.table import MatrixWriter
 from util.table import SequentialVectorReader
 from util.table import RandomAccessVectorReader
 from util.table import VectorWriter
+
+from util.table import CompressedMatrixWriter

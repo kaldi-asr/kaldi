@@ -7,6 +7,21 @@ import argparse
 import os
 
 
+def _str2bool(v):
+    '''
+    This function is modified from
+    https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+    '''
+    if isinstance(v, bool):
+        return v
+    elif v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def _set_inference_args(parser):
     parser.add_argument('--feats-scp',
                         dest='feats_scp',
@@ -24,6 +39,13 @@ def _set_inference_args(parser):
                         help='model right context',
                         type=int,
                         default=-1)
+
+    parser.add_argument(
+        '--save-as-compressed',
+        dest='save_as_compressed',
+        help='true to save the neural network output to CompressedMatrix,'
+        ' false to Matrix<float>',
+        type=_str2bool)
 
 
 def _set_training_args(parser):
@@ -92,9 +114,7 @@ def _check_inference_args(args):
 
 def _check_args(args):
 
-    assert args.is_training in [0, 1]
-
-    if args.is_training == 1:
+    if args.is_training:
         _check_training_args(args)
     else:
         _check_inference_args(args)
@@ -146,9 +166,9 @@ def get_args():
 
     parser.add_argument('--is-training',
                         dest='is_training',
-                        help='1 for training, 0 for inference',
+                        help='true for training, false for inference',
                         required=True,
-                        type=int)
+                        type=_str2bool)
 
     parser.add_argument(
         '--lda-mat-filename',

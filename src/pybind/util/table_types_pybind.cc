@@ -46,4 +46,7 @@ void pybind_table_types(py::module& m) {
 
   pybind_table_writer<KaldiObjectHolder<Vector<float>>>(
       m, "_BaseFloatVectorWriter");
+
+  pybind_table_writer<KaldiObjectHolder<CompressedMatrix>>(
+      m, "_CompressedMatrixWriter");
 }

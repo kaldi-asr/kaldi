@@ -24,10 +24,7 @@
 #include "cudamatrix/cudamatrix_pybind.h"
 #include "feat/feat_pybind.h"
 #include "feat/wave_reader_pybind.h"
-#include "matrix/matrix_common_pybind.h"
 #include "matrix/matrix_pybind.h"
-#include "matrix/sparse_matrix_pybind.h"
-#include "matrix/vector_pybind.h"
 #include "util/util_pybind.h"
 
 #include "fst/fst_pybind.h"
@@ -43,10 +40,7 @@ PYBIND11_MODULE(kaldi_pybind, m) {
       "src/matrix and src/util directories. "
       "Source is in $(KALDI_ROOT)/src/pybind/kaldi_pybind.cc";
 
-  pybind_matrix_common(m);
   pybind_matrix(m);
-  pybind_sparse_matrix(m);
-  pybind_vector(m);
   pybind_util(m);
   pybind_feat(m);
 

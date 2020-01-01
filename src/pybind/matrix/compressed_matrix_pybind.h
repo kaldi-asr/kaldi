@@ -1,8 +1,6 @@
-// pybind/matrix/vector_pybind.h
+// pybind/matrix/compressed_matrix_pybind.h
 
-// Copyright 2019   Daniel Povey
-//           2019   Dongji Gao
-//           2019   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+// Copyright 2019   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -17,11 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_PYBIND_MATRIX_VECTOR_PYBIND_H_
-#define KALDI_PYBIND_MATRIX_VECTOR_PYBIND_H_
+#ifndef KALDI_PYBIND_MATRIX_COMPRESSED_MATRIX_PYBIND_H_
+#define KALDI_PYBIND_MATRIX_COMPRESSED_MATRIX_PYBIND_H_
 
 #include "pybind/kaldi_pybind.h"
 
-void pybind_vector(py::module& m);
+void pybind_compressed_matrix(py::module& m);
 
-#endif  // KALDI_PYBIND_MATRIX_VECTOR_PYBIND_H_
+#endif  // KALDI_PYBIND_MATRIX_COMPRESSED_MATRIX_PYBIND_H_
