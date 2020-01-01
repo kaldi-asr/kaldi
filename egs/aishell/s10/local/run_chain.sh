@@ -36,9 +36,9 @@ stride_list="1, 1, 3, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning
 
-# 1 to save network output as kaldi::CompressedMatrix
-# 0 to save it as kaldi::Matrix<float>
-save_nn_output_as_compressed=0
+# true to save network output as kaldi::CompressedMatrix
+# false to save it as kaldi::Matrix<float>
+save_nn_output_as_compressed=false
 
 . ./path.sh
 . ./cmd.sh
@@ -156,7 +156,7 @@ if [[ $stage -le 8 ]]; then
     --dir exp/chain/train \
     --feat-dim $feat_dim \
     --hidden-dim $hidden_dim \
-    --is-training 1 \
+    --is-training true \
     --kernel-size-list "$kernel_size_list" \
     --log-level $log_level \
     --output-dim $output_dim \
@@ -186,7 +186,7 @@ if [[ $stage -le 9 ]]; then
         --feat-dim $feat_dim \
         --feats-scp data/fbank_pitch/$x/feats.scp \
         --hidden-dim $hidden_dim \
-        --is-training 0 \
+        --is-training false \
         --kernel-size-list "$kernel_size_list" \
         --log-level $log_level \
         --model-left-context $model_left_context \

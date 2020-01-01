@@ -25,12 +25,10 @@ def main():
     logging.info(' '.join(sys.argv))
 
     if torch.cuda.is_available() == False:
-        logging.error('No GPU detected!')
-        sys.exit(-1)
-
-    kaldi.SelectGpuDevice(device_id=args.device_id)
-    kaldi.CuDeviceAllowMultithreading()
-    device = torch.device('cuda', args.device_id)
+        logging.warning('No GPU detected! Use CPU for inference.')
+        device = torch.device('cpu')
+    else:
+        device = torch.device('cuda', args.device_id)
 
     model = get_chain_model(feat_dim=args.feat_dim,
                             output_dim=args.output_dim,
