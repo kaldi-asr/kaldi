@@ -1,6 +1,7 @@
 // util/table-types.h
 
-// Copyright 2009-2011     Microsoft Corporation
+// Copyright 2009-2011    Microsoft Corporation
+//           2020         Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -69,6 +70,20 @@ typedef SequentialTableReader<KaldiObjectHolder<Vector<double> > >
                               SequentialDoubleVectorReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Vector<double> > >
                                 RandomAccessDoubleVectorReader;
+
+typedef TableWriter<KaldiObjectHolder<NumpyArray<BaseFloat>>>
+                                      BaseFloatNumpyArrayWriter;
+typedef SequentialTableReader<KaldiObjectHolder<NumpyArray<BaseFloat>>>
+                              SequentialBaseFloatNumpyArrayReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<NumpyArray<BaseFloat>>>
+                                RandomAccessBaseFloatNumpyArrayReader;
+
+typedef TableWriter<KaldiObjectHolder<NumpyArray<double>>>
+                                      DoubleNumpyArrayWriter;
+typedef SequentialTableReader<KaldiObjectHolder<NumpyArray<double>>>
+                              SequentialDoubleNumpyArrayReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<NumpyArray<double>>>
+                                RandomAccessDoubleNumpyArrayReader;
 
 typedef TableWriter<KaldiObjectHolder<CuMatrix<BaseFloat> > >
                                       BaseFloatCuMatrixWriter;

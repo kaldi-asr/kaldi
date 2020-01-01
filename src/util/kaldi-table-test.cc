@@ -1,6 +1,7 @@
 // util/kaldi-table-test.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//           2020       Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1044,6 +1045,84 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
   unlink("tmpf.scp");
 }
 
+void UnitTestTableNumpyArray() {
+  const char* wspecifier = "ark,scp:numpy_array.ark,numpy_array.scp";
+
+  const char* key1 = "key1";
+  const char* key2 = "key2";
+
+  Vector<BaseFloat> v(2);
+  v(0) = 1;
+  v(1) = 2;
+
+  Matrix<BaseFloat> m(1, 3);
+  m(0, 0) = 10;
+  m(0, 1) = 20;
+  m(0, 2) = 30;
+
+  BaseFloatNumpyArrayWriter writer(wspecifier);
+
+  writer.Write(key1, NumpyArray<BaseFloat>(v));
+  writer.Write(key2, NumpyArray<BaseFloat>(m));
+  writer.Close();
+  usleep(200);
+
+  const char* rspecifier = "scp:numpy_array.scp";
+  {
+    SequentialBaseFloatNumpyArrayReader reader(rspecifier);
+    for(; !reader.Done(); reader.Next()) {
+      auto key = reader.Key();
+      auto& value = reader.Value();
+      if (key == key1) {
+        KALDI_ASSERT(value.NumElements() == 2);
+        KALDI_ASSERT(value.Shape().size() == 1);
+        KALDI_ASSERT(value.Shape()[0] ==  2);
+        KALDI_ASSERT(value[0] == 1);
+        KALDI_ASSERT(value[1] == 2);
+      } else if (key == key2) {
+        KALDI_ASSERT(value.NumElements() == 3);
+        KALDI_ASSERT(value.Shape().size() == 2);
+        KALDI_ASSERT(value.Shape()[0] == 1);
+        KALDI_ASSERT(value.Shape()[1] == 3);
+        KALDI_ASSERT(value[0] == 10);
+        KALDI_ASSERT(value[1] == 20);
+        KALDI_ASSERT(value[2] == 30);
+      } else {
+        KALDI_ERR << "Unexpected key: " << key;
+      }
+    }
+    reader.Close();
+  }
+
+  {
+    RandomAccessBaseFloatNumpyArrayReader reader(rspecifier);
+    {
+      KALDI_ASSERT(reader.HasKey(key1));
+      auto& value = reader.Value(key1);
+      KALDI_ASSERT(value.NumElements() == 2);
+      KALDI_ASSERT(value.Shape().size() == 1);
+      KALDI_ASSERT(value.Shape()[0] ==  2);
+      KALDI_ASSERT(value[0] == 1);
+      KALDI_ASSERT(value[1] == 2);
+    }
+    {
+      KALDI_ASSERT(reader.HasKey(key2));
+      auto& value = reader.Value(key2);
+      KALDI_ASSERT(value.NumElements() == 3);
+      KALDI_ASSERT(value.Shape().size() == 2);
+      KALDI_ASSERT(value.Shape()[0] == 1);
+      KALDI_ASSERT(value.Shape()[1] == 3);
+      KALDI_ASSERT(value[0] == 10);
+      KALDI_ASSERT(value[1] == 20);
+      KALDI_ASSERT(value[2] == 30);
+    }
+    reader.Close();
+  }
+
+  unlink("numpy_array.scp");
+  unlink("numpy_array.ark");
+}
+
 
 
 }  // end namespace kaldi.
@@ -1081,6 +1160,7 @@ int main() {
       }
     }
   }
+  UnitTestTableNumpyArray();
   std::cout << "Test OK.\n";
   return 0;
 }

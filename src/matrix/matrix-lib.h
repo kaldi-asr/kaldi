@@ -32,6 +32,7 @@
 #include "matrix/compressed-matrix.h"
 #include "matrix/sparse-matrix.h"
 #include "matrix/optimization.h"
+#include "matrix/numpy-array.h"
 
 #endif
 
