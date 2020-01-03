@@ -671,7 +671,7 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::GetCutoff(Elem *list_head, size_t
     if (tok_count != NULL) *tok_count = count;
 
     BaseFloat beam_cutoff = best_weight + config_.beam,
-        min_active_cutoff = std::numeric_limits<BaseFloat>::infinity(),
+        min_active_cutoff = -std::numeric_limits<BaseFloat>::infinity(),
         max_active_cutoff = std::numeric_limits<BaseFloat>::infinity();
 
     KALDI_VLOG(6) << "Number of tokens active on frame " << NumFramesDecoded()
@@ -704,9 +704,16 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::GetCutoff(Elem *list_head, size_t
         *adaptive_beam = min_active_cutoff - best_weight + config_.beam_delta;
       return min_active_cutoff;
     } else {
-      *adaptive_beam = config_.beam;
-      return beam_cutoff;
+      if (tmp_array_.size() < static_cast<size_t>(config_.min_active)) {
+        *adaptive_beam = config_.beam + config_.beam_delta;
+        beam_cutoff += config_.beam_delta;
+        return beam_cutoff;
+      else {
+        *adaptive_beam = config_.beam;
+        return beam_cutoff;
+      }
     }
+
   }
 }
 
