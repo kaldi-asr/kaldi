@@ -1700,36 +1700,62 @@ inline __device__ void myAtomicReduce(float *address, float val, TransReduceOp<S
 }
 
 // Reduce a matrix 'data' to a row vector 'dots'
-template <EnumTransformReduce TransReduceType, typename Real>
-__global__ void stridedReductionPersistentKernel(Real *dots, const Real *data, int *flag, int D, int N,
+template <EnumTransformReduce TransReduceType, typename Real, int unroll_count>
+__global__ void stridedReductionPersistentKernel(Real * __restrict__ dots, const Real * __restrict__ data,
+                                                 void * __restrict__ scratch, const MatrixDim d,
                                                  const TransReduceOp<TransReduceType, Real> op) {
-  // This kernel assumes blockDim.x == warpSize
-  Real dots_orig;
+  // Tihis kernel assuming blockDim.x == warpSize
   Real thread_data = op.InitValue();
-  int colStart = blockIdx.y * blockDim.x + threadIdx.x;
+  int colStart = blockIdx.x * blockDim.x + threadIdx.x;
+
+  Real* reduce = reinterpret_cast<Real*>(scratch);
+  unsigned int* flag = reinterpret_cast<unsigned int*>(reduce + d.cols);
+
+  Real dots_orig;
+  dots_orig = dots[colStart];
+
+  __shared__ bool isLastBlock;
 
   // Read in current data and write out initial value to allow for atomics
-  if ((blockIdx.x == 0) && (threadIdx.y == 0) && (colStart < D)) {
+  if ((blockIdx.y == 0) && (threadIdx.y == 0) && (colStart < d.cols)) {
     // Keep original value in registers
-    dots_orig = dots[colStart];
     // Set dots to op.InitValue() in preparation for atomics
-    dots[colStart] = thread_data;
+    reduce[colStart] = thread_data;
 
     // Mark arrived for grid sync later
     if (threadIdx.x == 0) {
-      volatile int * vflag = (volatile int *)flag;
-      vflag[blockIdx.y] = gridDim.x;
+      volatile unsigned int * vflag = (volatile unsigned int *)flag;
+      vflag[blockIdx.x] = gridDim.y;
     }
   }
   __threadfence();
 
   // Thread reduction while reading from global memory
   // in a grid strided loop
-  if (colStart < D) {
-    int rowStart = blockIdx.x * blockDim.y + threadIdx.y;
-    int stride = blockDim.y * gridDim.x;
-    for (int j = rowStart; j < N; j += stride) {
-      int idx = colStart + j * D;
+  if (colStart < d.cols) {
+    int rowStart = blockIdx.y * blockDim.y + threadIdx.y;
+    int stride = blockDim.y * gridDim.y;
+
+    int unroll_stride = unroll_count * stride;
+    // Closest multiple of unroll_stride less than d.rows
+    int Nmod = (d.rows / unroll_stride) * unroll_stride;
+    int j = rowStart;
+    for (; j < Nmod; j += unroll_stride) {
+      Real vals[unroll_count];
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        int idx = colStart + (j + u*stride) * d.stride;
+        vals[u] = op.Transform(data[idx]);
+      }
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        thread_data = op.Reduce(thread_data, vals[u]);
+      }
+    }
+    for (; j < d.rows; j += stride) {
+      int idx = colStart + j * d.stride;
       thread_data = op.Reduce(thread_data, op.Transform(data[idx]));
     }
   }
@@ -1748,50 +1774,41 @@ __global__ void stridedReductionPersistentKernel(Real *dots, const Real *data, i
 
   // Grid reduction (only 1 warp active per block)
   if (threadIdx.y == 0) {
+    thread_data = temp[myidx];
+
     int flagval = 0;
-    volatile int * vflag = (volatile int *)flag;
-    // Grid sync to ensure dots is ready for atomics
+    volatile unsigned int * vflag = (volatile unsigned int *)flag;
+    // Grid sync to ensure reduce is ready for atomics
     do {
-      flagval = vflag[blockIdx.y];
-    } while (flagval < gridDim.x);
+      flagval = vflag[blockIdx.x];
+    } while (flagval < gridDim.y);
     __threadfence();
 
-    if (colStart < D) {
-      myAtomicReduce(dots + colStart, temp[myidx], op);
+    if (colStart < d.cols) {
+      myAtomicReduce(reduce + colStart, thread_data, op);
     }
-    __syncwarp(); // For Volta+ independent thread scheduling
+    // __syncwarp(); // For Volta+ independent thread scheduling
 
     if (threadIdx.x == 0) {
       // Mark arrived
-      atomicAdd(&flag[blockIdx.y], 1);
+      // Last block to arrive sets flag to zero as well
+      unsigned int value = atomicInc(&flag[blockIdx.x], 2*gridDim.y);
+      isLastBlock = (value == (2*gridDim.y - 1));
     }
     __syncwarp(); // For Volta+ independent thread scheduling
 
-    // Block 0 to perform the post-reduce op
-    if (blockIdx.x == 0) {
-      // Ensure all atomics are completed
-      volatile int * vflag = (volatile int *)flag;
-      do {
-        flagval = vflag[blockIdx.y];
-      } while (flagval != 2*gridDim.x);
-      __threadfence();
-
+    if (isLastBlock) {
       // Post reduction
-      if (colStart < D)
-        dots[colStart] = op.PostReduce(dots[colStart], dots_orig);
-      __syncwarp(); // For Volta+ independent thread scheduling
-
-      // Reset flag to zero
-      if (threadIdx.x == 0)
-        atomicAdd(&flag[blockIdx.y], -2*static_cast<int>(gridDim.x));
+      if (colStart < d.cols)
+        dots[colStart] = op.PostReduce(reduce[colStart], dots_orig);
     }
   }
 }
 
 template <typename Real>
-inline void stridedReductionPersistent(Real *result, const Real *mat, int *flag,
-                                       const MatrixDim d, const Real alpha,
-                                       const Real beta) {
+void stridedReductionPersistent(Real *dots, const Real *data, void *scratch,
+                                const MatrixDim d, const Real alpha,
+                                const Real beta) {
   int device;
   cudaGetDevice(&device);
 
@@ -1801,27 +1818,14 @@ inline void stridedReductionPersistent(Real *result, const Real *mat, int *flag,
   dim3 thrds(warpSize, 16);
   size_t shmemSize = sizeof(Real) * thrds.x * thrds.y;
 
-  int numBlocksPerSM;
-  int blockSize = thrds.x * thrds.y;
-  cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSM,
-        stridedReductionPersistentKernel<SUMAB, Real>, blockSize, shmemSize);
-  int numSMs;
-  cudaDeviceGetAttribute(&numSMs, cudaDevAttrMultiProcessorCount, device);
-  int numResidentBlocks = numBlocksPerSM * numSMs;
-
-  int N = d.rows, D = d.cols;
-
-  int elemsPerThread = (N + thrds.y - 1) / thrds.y;
+  int elemsPerThread = (d.rows + thrds.y - 1) / thrds.y;
   elemsPerThread = (elemsPerThread > 8) ? 8 : elemsPerThread;
-  dim3 nblks((N + thrds.y*elemsPerThread - 1) / (thrds.y*elemsPerThread),
-             (D + thrds.x - 1) / thrds.x);
-  while (nblks.x > numResidentBlocks) {
-    elemsPerThread *= 2;
-    nblks.x = (N + thrds.y*elemsPerThread - 1) / (thrds.y*elemsPerThread);
-  }
 
-  stridedReductionPersistentKernel<<<nblks, thrds, shmemSize,
-      cudaStreamPerThread>>>(result, mat, flag, D, N,
+  dim3 nblks((d.cols + thrds.x - 1) / thrds.x,
+             (d.rows + thrds.y*elemsPerThread - 1) / (thrds.y * elemsPerThread));
+
+  stridedReductionPersistentKernel<SUMAB, Real, 4><<<nblks, thrds,
+      shmemSize, cudaStreamPerThread>>>(dots, data, scratch, d,
       TransReduceOp<SUMAB, Real>(alpha, beta));
 }
 
@@ -4164,10 +4168,10 @@ void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,float>());
 }
-void cudaF_add_row_sum_mat(float* result, const float* mat, int* flag,
+void cudaF_add_row_sum_mat(float* result, const float* mat, void* scratch,
                            const MatrixDim d, const float alpha,
                            const float beta) {
-  stridedReductionPersistent(result, mat, flag, d, alpha, beta);
+  stridedReductionPersistent(result, mat, scratch, d, alpha, beta);
 }
 // void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
 //                            const MatrixDim d, const float alpha,
@@ -4885,10 +4889,10 @@ void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,double>());
 }
-void cudaD_add_row_sum_mat(double* result, const double* mat, int* flag,
+void cudaD_add_row_sum_mat(double* result, const double* mat, void* scratch,
                            const MatrixDim d, const double alpha,
                            const double beta) {
-  stridedReductionPersistent(result, mat, flag, d, alpha, beta);
+  stridedReductionPersistent(result, mat, scratch, d, alpha, beta);
 }
 // void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
 //                            const MatrixDim d, const double alpha,

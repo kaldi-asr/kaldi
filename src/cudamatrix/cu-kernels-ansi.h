@@ -40,13 +40,13 @@ typedef float   BaseFloat;
 #endif
 
 
-void cudaD_add_row_sum_mat(double* result, const double* mat, int* flag,
+void cudaD_add_row_sum_mat(double* result, const double* mat, void* scratch,
                            const MatrixDim d, const double alpha,
                            const double beta);
 // void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
 //                            const MatrixDim d, const double alpha,
 //                            const double beta);
-void cudaF_add_row_sum_mat(float* result, const float* mat, int* flag,
+void cudaF_add_row_sum_mat(float* result, const float* mat, void* scratch,
                            const MatrixDim d, const float alpha,
                            const float beta);
 // void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,

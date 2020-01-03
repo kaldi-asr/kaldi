@@ -40,9 +40,9 @@
 namespace kaldi {
 
 inline void cuda_add_row_sum_mat(double* result, const double* mat,
-                                 int* flag, const MatrixDim d,
+                                 void* scratch, const MatrixDim d,
                                  const double alpha, const double beta) {
-  cudaD_add_row_sum_mat(result, mat, flag, d, alpha, beta);
+  cudaD_add_row_sum_mat(result, mat, scratch, d, alpha, beta);
 }
 // inline void cuda_add_row_sum_mat(int Gr, int Bl, double* result,
 //                                  const double* mat, const MatrixDim d,
@@ -50,9 +50,9 @@ inline void cuda_add_row_sum_mat(double* result, const double* mat,
 //   cudaD_add_row_sum_mat(Gr, Bl, result, mat, d, alpha, beta);
 // }
 inline void cuda_add_row_sum_mat(float* result, const float* mat,
-                                 int* flag, const MatrixDim d,
+                                 void* scratch, const MatrixDim d,
                                  const float alpha, const float beta) {
-  cudaF_add_row_sum_mat(result, mat, flag, d, alpha, beta);
+  cudaF_add_row_sum_mat(result, mat, scratch, d, alpha, beta);
 }
 // inline void cuda_add_row_sum_mat(int Gr, int Bl, float* result,
 //                                  const float* mat, const MatrixDim d,
