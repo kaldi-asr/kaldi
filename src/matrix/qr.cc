@@ -433,7 +433,6 @@ void SpMatrix<Real>::Qr(MatrixBase<Real> *Q) {
 
 template<typename Real>
 void SpMatrix<Real>::Eig(VectorBase<Real> *s, MatrixBase<Real> *P) const {
-  NVTX_RANGE(__func__);
   MatrixIndexT dim = this->NumRows();
   KALDI_ASSERT(s->Dim() == dim);
   KALDI_ASSERT(P == NULL || (P->NumRows() == dim && P->NumCols() == dim));

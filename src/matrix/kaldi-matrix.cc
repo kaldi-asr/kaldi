@@ -2581,7 +2581,6 @@ double TraceMatMatMatMat(const MatrixBase<double> &A, MatrixTransposeType transA
 
 template<typename Real> void  SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
                                    MatrixBase<Real> *Vt, bool sort_on_absolute_value) {
-  NVTX_RANGE(__func__);
   /// Makes sure the Svd is sorted (from greatest to least absolute value).
   MatrixIndexT num_singval = s->Dim();
   KALDI_ASSERT(U == NULL || U->NumCols() == num_singval);

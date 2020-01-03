@@ -37,10 +37,6 @@
 #include <limits>
 #include <string>
 
-#if HAVE_CUDA == 1
-#include "nvToolsExt.h"
-#endif
-
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4056 4305 4800 4267 4996 4756 4661)
 #if _MSC_VER < 1400
@@ -93,19 +89,6 @@ inline int MachineIsLittleEndian() {
 // to sleep for a possibly fractional
 // number of seconds.  On Windows it's only accurate to microseconds.
 void Sleep(float seconds);
-
-#if HAVE_CUDA == 1
-#ifdef USE_NVTX
-class NvtxTracer {
-public:
-    NvtxTracer(const char* name);
-    ~NvtxTracer();
-};
-#define NVTX_RANGE(name) NvtxTracer uniq_name_using_macros(name);
-#else
-#define NVTX_RANGE(name)
-#endif
-#endif
 
 }
 
