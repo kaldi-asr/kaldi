@@ -70,12 +70,15 @@ class NumpyArray {
   Real& operator[](int i) { return data_[i]; }
 
  private:
+  static uint32_t ReadHeaderLen10(std::istream& in);
+  static uint32_t ReadHeaderLen20And30(std::istream& in);
+
   void ParseHeader(const std::string& header);
 
  private:
   std::vector<int> shape_;
   Real* data_ = nullptr;
-  int num_elements_ = 0;
+  uint32_t num_elements_ = 0;
 };
 
 /// @} end of \addtogroup matrix_group

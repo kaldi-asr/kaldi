@@ -28,14 +28,11 @@ namespace {
 
 constexpr const char* kMagicPrefix = "\x93NUMPY";
 constexpr int kMagicLen = 6;
-// TODO(fangjun): We support only format 1.0 at present.
-// Support for 2.0 and 3.0 can be added later when needed.
-constexpr int8_t kMajorVersion = 1;
-constexpr int8_t kMinorVersion = 0;
 
 constexpr bool kIsLittleEndian = true;
 
-// TODO(fangjun): Get `kIsLittleEndian` at runtime instead of at compile time.
+// TODO(fangjun): Get `kIsLittleEndian` at runtime instead of at compile time
+// or change `src/configure` to define a new macro, e.g., -DIS_LITLE_ENDIAN=1
 
 template <bool is_little_endian>
 struct EndianString {
@@ -69,42 +66,49 @@ namespace kaldi {
 template <typename Real>
 void NumpyArray<Real>::Read(std::istream& in, bool binary) {
   KALDI_ASSERT(binary == true);
+
   std::string magic_prefix(kMagicLen + 1, 0);
   if (!in.read(&magic_prefix[0], kMagicLen)) {
     KALDI_ERR << "Failed to read the magic prefix";
   }
+
   if (strncmp(magic_prefix.c_str(), kMagicPrefix, kMagicLen)) {
     KALDI_ERR << "Expected prefix: " << kMagicPrefix << "\n"
               << "Actual prefix: " << magic_prefix;
   }
 
-  int8_t major = -1;
-  int8_t minor = -1;
+  uint8_t major = 0xff;
+  uint8_t minor = 0xff;
   in.read(reinterpret_cast<char*>(&major), 1);
   in.read(reinterpret_cast<char*>(&minor), 1);
   if (!in) {
     KALDI_ERR << "Failed to read major and minor version";
   }
 
-  if (major != kMajorVersion || minor != kMinorVersion) {
-    KALDI_ERR << "Exepcted version: " << (int)kMajorVersion << "."
-              << (int)kMinorVersion << "\n"
-              << "Actual version: " << (int)major << "." << (int)minor;
+  KALDI_ASSERT(minor == 0);
+
+  uint32_t header_len;
+  uint32_t expected_len;
+  switch (major) {
+    case 1:
+      header_len = ReadHeaderLen10(in);
+      // 4 = 2 bytes version + 2 bytes length
+      expected_len = kMagicLen + 4 + header_len;
+      break;
+    case 2:  // fall-through
+    case 3:
+      header_len = ReadHeaderLen20And30(in);
+      // 6 = 2 bytes version + 4 bytes length
+      expected_len = kMagicLen + 6 + header_len;
+      break;
+    default:
+      KALDI_ERR << "Unsupported major version: " << major;
+      break;
   }
 
-  int16_t header_len = -1;
-  if (!in.read(reinterpret_cast<char*>(&header_len), 2)) {
-    KALDI_ERR << "Failed to read header len";
-  }
-
-  if (!kIsLittleEndian) {
-    // TODO(fangjun): we should swap the bytes in header_len
-  }
-
-  int expected_len = kMagicLen + 4 + header_len;
-  if (expected_len & 0x0f) {
+  if (expected_len & (64 - 1)) {
     KALDI_ERR << "Expected length " << expected_len
-              << " is not a multiple of 16.";
+              << " is not a multiple of 64.";
   }
 
   std::string header(header_len, 0);
@@ -120,6 +124,7 @@ void NumpyArray<Real>::Read(std::istream& in, bool binary) {
 
   data_ = new Real[num_elements_];
   in.read(reinterpret_cast<char*>(data_), sizeof(Real) * num_elements_);
+  // TODO(fangjun): handle the big endian case, i.e., swap bytes if necessary
 }
 
 template <typename Real>
@@ -130,8 +135,10 @@ void NumpyArray<Real>::Write(std::ostream& out, bool binary) const {
 
   KALDI_ASSERT(binary == true);
   out.write(kMagicPrefix, kMagicLen);
-  out.put(kMajorVersion);
-  out.put(kMinorVersion);
+
+  // we always save to version 1.0 .
+  out.put(static_cast<uint8_t>(1));
+  out.put(static_cast<uint8_t>(0));
 
   std::ostringstream os;
   os << "{";
@@ -145,14 +152,18 @@ void NumpyArray<Real>::Write(std::ostream& out, bool binary) const {
     s = ", ";
   }
   if (shape_.size() == 1) {
+    // (fangjun): we have to add a trailing comma here.
+    // For example, (1) is not a tuple in python, but (1,) is.
     os << ",";
   }
   os << "), }";
 
-  int16_t header_len = os.str().size();
-  int16_t expected_header_len = (header_len + kMagicLen + 4 + 15) & (~0x0f);
+  uint16_t header_len = os.str().size();
+  uint16_t expected_header_len =
+      (header_len + kMagicLen + 4 + 63) & (~(64 - 1));
 
   expected_header_len -= kMagicLen + 4;
+  // -1 for the final `\n`
   int padding_len = expected_header_len - header_len - 1;
   for (int i = 0; i < padding_len; ++i) {
     os << ' ';
@@ -163,6 +174,8 @@ void NumpyArray<Real>::Write(std::ostream& out, bool binary) const {
   out.write(reinterpret_cast<char*>(&expected_header_len), 2);
   out.write(const_cast<char*>(os.str().c_str()), os.str().size());
   out.write(reinterpret_cast<char*>(data_), sizeof(Real) * num_elements_);
+
+  KALDI_ASSERT(out);  // out should be in a good state
 }
 
 template <typename Real>
@@ -268,6 +281,38 @@ void NumpyArray<Real>::ParseHeader(const std::string& header) {
     KALDI_ERR << "Expected shape size: 1 or 2\n"
               << "Actual shape size: " << shape_.size();
   }
+}
+
+template <typename Real>
+uint32_t NumpyArray<Real>::ReadHeaderLen10(std::istream& in) {
+  // refer to
+  // https://github.com/numpy/numpy/blob/master/numpy/lib/format.py#L102
+  //
+  // The next 2 bytes form a little-endian unsigned short int: the length of
+  // the header data HEADER_LEN.
+
+  uint16_t header_len = 0;
+  if (!in.read(reinterpret_cast<char*>(&header_len), 2)) {
+    KALDI_ERR << "Failed to read header len";
+  }
+
+  if (!kIsLittleEndian) {
+    // TODO(fangjun): we should swap the bytes in header_len
+  }
+  return header_len;
+}
+
+template <typename Real>
+uint32_t NumpyArray<Real>::ReadHeaderLen20And30(std::istream& in) {
+  uint32_t header_len = 0;
+  if (!in.read(reinterpret_cast<char*>(&header_len), 4)) {
+    KALDI_ERR << "Failed to read header len";
+  }
+
+  if (!kIsLittleEndian) {
+    // TODO(fangjun): we should swap the bytes in header_len
+  }
+  return header_len;
 }
 
 template class NumpyArray<float>;
