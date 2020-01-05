@@ -8,37 +8,45 @@
 # This script creates setup for decoding with lookahead online composition. The 
 # graph HCLr.fst represents pronunciation dictionary (lexicon), context-dependency,
 # and HMM structure in our model. The graph Gr.fst represents the language model.
-# Both are combined into single graph HCLrGr for quick testing.
+# If arpa model is provided it compiles ngram model into compact LOUDS-encoded
+# structure with opengrm. Both HCLr.fst and Gr.fst are optionally combined into
+# single graph HCLG for testing with default decoders.
+#
 # See
 #  http://kaldi-asr.org/doc/graph_recipe_test.html
 # (this is compiled from this repository using Doxygen,
 # the source for this part is in src/doc/graph_recipe_test.dox)
-
+#
+# Note that most of the fsts here are not stochastic, so many kaldi operations like
+# fstpushspecial or fstdeterminizestar in log domain do not really work for them. 
+# Instead most operations are in tropical domain.
 set -o pipefail
 
 tscale=1.0
 loopscale=0.1
 
-remove_oov=false
+has_arpa=false
 compose_graph=false
 
 for x in `seq 4`; do
   [ "$1" == "--mono" -o "$1" == "--left-biphone" -o "$1" == "--quinphone" ] && shift && \
     echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
-  [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--compose-graph" ] && compose_graph=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
 done
 
-if [ $# != 3 ]; then
-   echo "Usage: $0 [options] <lang-dir> <model-dir> <graphdir>"
-   echo "e.g.: $0 data/lang_test exp/tri1 exp/tri1/lgraph"
+# Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
+# place of -o
+if [[ $# != 3 && $# != 4 ]]; then
+   echo "Usage: $0 [options] <lang-dir> <arpa.gz> <model-dir> [<arpa_file>] <graphdir>"
+   echo "e.g.: $0 data/lang data/local/lm.gz exp/tri1 db/trigram.lm.gz exp/tri1/lgraph"
    echo " Options:"
    echo " --remove-oov       #  If true, any paths containing the OOV symbol (obtained from oov.int"
    echo "                    #  in the lang directory) are removed from the G.fst during compilation."
    echo " --transition-scale #  Scaling factor on transition probabilities."
    echo " --self-loop-scale  #  Please see: http://kaldi-asr.org/doc/hmm.html#hmm_scale."
+   echo " --compose-graph    #  Compile composed graph for testing with stadnard decoders (default: false)"
    echo "Note: the --mono, --left-biphone and --quinphone options are now deprecated"
    echo "and will be ignored."
    exit 1;
@@ -49,11 +57,26 @@ if [ -f path.sh ]; then . ./path.sh; fi
 lang=$1
 tree=$2/tree
 model=$2/final.mdl
-dir=$3
+
+if [ $# == 3 ]; then
+  echo "$0 : compiling grammar $1/G.fst"
+  arpa=
+  dir=$3
+else
+  echo "$0 : compiling grammar $3"
+  arpa=$3
+  dir=$4
+  loc=`which ngramread`
+  if [ -z $loc ]; then
+    echo You appear to not have OpenGRM tools installed.
+    echo cd to $KALDI_ROOT/tools and run extras/install_opengrm.sh.
+    exit 1
+  fi
+fi
 
 mkdir -p $dir
 
-required="$lang/L_disambig.fst $lang/G.fst $lang/phones.txt $lang/words.txt $lang/phones/silence.csl $lang/phones/disambig.int $arpa $model $tree"
+required="$lang/L_disambig.fst $arpa $lang/phones.txt $lang/words.txt $lang/phones/silence.csl $lang/phones/disambig.int $arpa $model $tree"
 for f in $required; do
   [ ! -f $f ] && echo "$0 : expected $f to exist" && exit 1;
 done
@@ -70,6 +93,7 @@ if [ -f $dir/HCLG.fst ]; then
   fi
 fi
 
+
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
 
@@ -77,10 +101,8 @@ P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error 
   echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
 trap "rm -f $dir/L_disambig_det.fst.$$" EXIT HUP INT PIPE TERM
-# Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
-# place of -o
 if [[ ! -s $dir/L_disambig_det.fst || $dir/L_disambig_det -ot $lang/L_disambig.fst ]]; then
-  fstdeterminizestar --use-log=true $lang/L_disambig.fst | fstarcsort --sort_type=ilabel > $dir/L_disambig_det.fst.$$ || exit 1;
+  fstdeterminizestar $lang/L_disambig.fst | fstarcsort --sort_type=ilabel > $dir/L_disambig_det.fst.$$ || exit 1;
   mv $dir/L_disambig_det.fst.$$ $dir/L_disambig_det.fst
 fi
 
@@ -98,7 +120,6 @@ if [[ ! -s $cl || $cl -ot $dir/L_disambig_det.fst \
     fstarcsort --sort_type=ilabel > $cl_tmp
   mv $cl_tmp $cl
   mv $ilabels_tmp $ilabels
-  fstisstochastic $cl || echo "[info]: CL not stochastic."
 fi
 
 trap "rm -f $dir/Ha.fst.$$" EXIT HUP INT PIPE TERM
@@ -114,9 +135,7 @@ fi
 trap "rm -f $dir/HCLr.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLr.fst || $dir/HCLr.fst -ot $dir/Ha.fst || \
       $dir/HCLr.fst -ot $cl ]]; then
-  fstcompose $dir/Ha.fst "$cl" | fstdeterminizestar --use-log=true | \
-     fstminimizeencoded | \
-     fstpushspecial | \
+  fstcompose $dir/Ha.fst "$cl" | fstdeterminizestar | \
      add-self-loops --disambig-syms=$dir/disambig_tid.int --self-loop-scale=$loopscale --reorder=true $model | \
      fstarcsort --sort_type=olabel | \
      fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=${dir}/relabel \
@@ -125,21 +144,33 @@ if [[ ! -s $dir/HCLr.fst || $dir/HCLr.fst -ot $dir/Ha.fst || \
 fi
 
 trap "rm -f $dir/Gr.fst.$$" EXIT HUP INT PIPE TERM
-if [[ ! -s $dir/Gr.fst || $dir/Gr.fst -ot $lang/G.fst ]]; then
-  gr=${lang}/G.fst
-  if $remove_oov; then
-    [ ! -f $lang/oov.int ] && \
-      echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
-    fstrmsymbols --remove-arcs=true --apply-to-output=true $lang/oov.int $gr | \
-      fstrelabel --relabel_ipairs=${dir}/relabel | \
-      fstarcsort --sort_type=ilabel | \
-      fstconvert --fst_type=const > ${dir}/Gr.fst.$$
-  else
-    fstrelabel --relabel_ipairs=${dir}/relabel "$gr" | \
-      fstarcsort --sort_type=ilabel | \
-      fstconvert --fst_type=const > ${dir}/Gr.fst.$$
+if [[ -z $arpa ]]; then
+  if [[ ! -s $dir/Gr.fst || $dir/Gr.fst -ot $lang/G.fst ]]; then
+    gr=${lang}/G.fst
+    if $remove_oov; then
+      [ ! -f $lang/oov.int ] && \
+        echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
+      fstrmsymbols --remove-arcs=true --apply-to-output=true $lang/oov.int $gr | \
+        fstrelabel --relabel_ipairs=${dir}/relabel | \
+        fstarcsort --sort_type=ilabel | \
+        fstconvert --fst_type=const > ${dir}/Gr.fst.$$
+    else
+      fstrelabel --relabel_ipairs=${dir}/relabel "$gr" | \
+        fstarcsort --sort_type=ilabel | \
+        fstconvert --fst_type=const > ${dir}/Gr.fst.$$
+    fi
+    mv $dir/Gr.fst.$$ $dir/Gr.fst
+    cp $lang/words.txt $dir/ || exit 1;
   fi
-  mv $dir/Gr.fst.$$ $dir/Gr.fst
+else
+  if [[ ! -s $dir/Gr.fst || $dir/Gr.fst -ot $arpa ]]; then
+    # Opengrm builds acceptors, so we need to reorder words in symboltable
+    utils/mkgraph_lookahead_vocab.py ${dir}/relabel ${lang}/words.txt > ${dir}/words.txt
+    gunzip -c $arpa | ngramread --OOV_symbol=`cat ${lang}/oov.txt` --symbols=${dir}/words.txt --ARPA | \
+    fstarcsort --sort_type=ilabel | \
+      fstconvert --fst_type=ngram > ${dir}/Gr.fst.$$
+    mv $dir/Gr.fst.$$ $dir/Gr.fst
+  fi
 fi
 
 if $compose_graph; then
@@ -167,8 +198,6 @@ fi
 # keep a copy of the lexicon and a list of silence phones with HCLG...
 # this means we can decode without reference to the $lang directory.
 
-cp $lang/words.txt $dir/ || exit 1;
-#utils/mkgraph_lookahead_vocab.py $dir/relabel $lang/words.txt > $dir/words.txt || exit 1;
 mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
