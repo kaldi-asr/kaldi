@@ -24,13 +24,11 @@ set -o pipefail
 
 tscale=1.0
 loopscale=0.1
-
-has_arpa=false
 compose_graph=false
+remove_oov=false
 
 for x in `seq 4`; do
-  [ "$1" == "--mono" -o "$1" == "--left-biphone" -o "$1" == "--quinphone" ] && shift && \
-    echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
+  [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--compose-graph" ] && compose_graph=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
@@ -39,7 +37,7 @@ done
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
 if [[ $# != 3 && $# != 4 ]]; then
-   echo "Usage: $0 [options] <lang-dir> <arpa.gz> <model-dir> [<arpa_file>] <graphdir>"
+   echo "Usage: $0 [options] <lang-dir> <model-dir> [<arpa_file>] <graphdir>"
    echo "e.g.: $0 data/lang data/local/lm.gz exp/tri1 db/trigram.lm.gz exp/tri1/lgraph"
    echo " Options:"
    echo " --remove-oov       #  If true, any paths containing the OOV symbol (obtained from oov.int"
@@ -47,8 +45,6 @@ if [[ $# != 3 && $# != 4 ]]; then
    echo " --transition-scale #  Scaling factor on transition probabilities."
    echo " --self-loop-scale  #  Please see: http://kaldi-asr.org/doc/hmm.html#hmm_scale."
    echo " --compose-graph    #  Compile composed graph for testing with stadnard decoders (default: false)"
-   echo "Note: the --mono, --left-biphone and --quinphone options are now deprecated"
-   echo "and will be ignored."
    exit 1;
 fi
 
