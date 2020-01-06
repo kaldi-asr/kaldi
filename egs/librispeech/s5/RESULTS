@@ -465,25 +465,6 @@
 %WER 14.78 [ 7737 / 52343, 807 ins, 1115 del, 5815 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgmed/wer_15_0.0
 %WER 16.28 [ 8521 / 52343, 843 ins, 1258 del, 6420 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
 
-# Results with nnet3 tdnn with new configs, a.k.a. xconfig
-# local/nnet3/run_tdnn.sh (linked to local/nnet3/tuning/run_tdnn_1b.sh)
-%WER 4.60 [ 2502 / 54402, 324 ins, 286 del, 1892 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_fglarge/wer_13_1.0
-%WER 4.80 [ 2612 / 54402, 350 ins, 285 del, 1977 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_tglarge/wer_11_1.0
-%WER 5.97 [ 3248 / 54402, 460 ins, 310 del, 2478 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_tgmed/wer_11_0.0
-%WER 6.66 [ 3625 / 54402, 479 ins, 392 del, 2754 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_clean_tgsmall/wer_11_0.0
-%WER 12.29 [ 6262 / 50948, 863 ins, 665 del, 4734 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_fglarge/wer_15_0.0
-%WER 12.89 [ 6565 / 50948, 773 ins, 853 del, 4939 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_tglarge/wer_14_0.5
-%WER 15.41 [ 7849 / 50948, 894 ins, 1083 del, 5872 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_tgmed/wer_15_0.0
-%WER 16.81 [ 8562 / 50948, 896 ins, 1215 del, 6451 sub ] exp/nnet3_cleaned/tdnn_sp/decode_dev_other_tgsmall/wer_14_0.0
-%WER 4.99 [ 2624 / 52576, 393 ins, 253 del, 1978 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_fglarge/wer_13_0.5
-%WER 5.16 [ 2715 / 52576, 359 ins, 319 del, 2037 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_tglarge/wer_12_1.0
-%WER 6.29 [ 3307 / 52576, 471 ins, 341 del, 2495 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_tgmed/wer_12_0.0
-%WER 7.13 [ 3750 / 52576, 473 ins, 452 del, 2825 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_clean_tgsmall/wer_13_0.0
-%WER 12.73 [ 6665 / 52343, 894 ins, 711 del, 5060 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_fglarge/wer_14_0.0
-%WER 13.33 [ 6979 / 52343, 920 ins, 796 del, 5263 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tglarge/wer_14_0.0
-%WER 15.90 [ 8323 / 52343, 921 ins, 1126 del, 6276 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgmed/wer_13_0.0
-%WER 17.28 [ 9044 / 52343, 894 ins, 1372 del, 6778 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
-
 # Results with nnet3 tdnn+sMBR
 # local/nnet3/run_tdnn_discriminative.sh
 # a subset of the full list of results (using the acoustic model obtained at the end of the training):
