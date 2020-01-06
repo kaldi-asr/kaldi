@@ -2,6 +2,32 @@
 
 # 1c is as 1b, but uses more modern TDNN configuration.
 
+# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_sp exp/nnet3_cleaned/tdnn_1c_sp
+# System                        tdnn_sp tdnn_1c_sp
+# WER on dev(fglarge)              4.52      4.20
+# WER on dev(tglarge)              4.80      4.37
+# WER on dev(tgmed)                6.02      5.31
+# WER on dev(tgsmall)              6.80      5.86
+# WER on dev_other(fglarge)       12.54     12.55
+# WER on dev_other(tglarge)       13.16     13.00
+# WER on dev_other(tgmed)         15.51     14.98
+# WER on dev_other(tgsmall)       17.12     15.88
+# WER on test(fglarge)             5.00      4.91
+# WER on test(tglarge)             5.22      4.99
+# WER on test(tgmed)               6.40      5.93
+# WER on test(tgsmall)             7.14      6.49
+# WER on test_other(fglarge)      12.56     12.94
+# WER on test_other(tglarge)      13.04     13.38
+# WER on test_other(tgmed)        15.58     15.11
+# WER on test_other(tgsmall)      16.88     16.28
+# Final train prob               0.7180    0.8509
+# Final valid prob               0.7003    0.8157
+# Final train prob (logLL)      -0.9483   -0.4294
+# Final valid prob (logLL)      -0.9963   -0.5662
+# Num-parameters               19268504  18391704
+
+# steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/tdnn_sp
+# exp/nnet3_cleaned/tdnn_1c_sp: num-iters=1088 nj=3..16 num-params=18.4M dim=40+100->5784 combine=-0.43->-0.43 (over 4) loglike:train/valid[723,1087,combined]=(-0.48,-0.43,-0.43/-0.58,-0.57,-0.57) accuracy:train/valid[723,1087,combined]=(0.840,0.854,0.851/0.811,0.816,0.816)
 
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
@@ -98,7 +124,7 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs || exit 1;
 fi
-exit
+
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
