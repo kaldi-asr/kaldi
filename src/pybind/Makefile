@@ -119,7 +119,7 @@ clean:
 mkl:
 	-grep "LD_PRELOAD" ../../tools/env.sh > .mkl_env.mk
 
-test: mkl
+test: all mkl
 	python3 tests/test_dlpack_subvector.py
 	python3 tests/test_kaldi_pybind.py
 	make -C chain test
