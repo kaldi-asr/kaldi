@@ -97,6 +97,10 @@ LDFLAGS += -Wl,-rpath=$(CURDIR)/../../tools/openfst/lib
 
 LIBFILE=$(LIBNAME)$(LIBFILE_EXTENSION)
 
+ifdef MKL_LD_PRELOAD
+LD_PRELOAD += $(MKL_LD_PRELOAD)
+export LD_PRELOAD
+endif
 
 .PHONY: all clean test
 
@@ -138,6 +142,6 @@ depend:
 	for f in $(CCFILES); do \
            $(CXX) -M -MT "$$(dirname $$f)/$$(basename -s .cc $$f).o" \
            $(CXXFLAGS) $$f >> .depend.mk; \
-        done
+      done
 
 -include .depend.mk

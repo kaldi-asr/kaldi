@@ -254,13 +254,15 @@ ConfigLdSo() {
     ldconfig )
 }
 
-# Load MKL libraris, which is need for pybind tests to pass
+# Load MKL libraries, which is needed for pybind tests to pass
 (
-  echo "export LD_PRELOAD:=/opt/intel/mkl/lib/intel64/libmkl_def.so:\
+  # WARNING: we assume that you installed MKL in the default path: /opt/intel
+  # if not, please refer to `MKL_LD_PRELOAD` in `src/kaldi.mk`
+  echo "export LD_PRELOAD=/opt/intel/mkl/lib/intel64/libmkl_def.so:\
 /opt/intel/mkl/lib/intel64/libmkl_avx2.so:\
 /opt/intel/mkl/lib/intel64/libmkl_core.so:\
 /opt/intel/mkl/lib/intel64/libmkl_intel_lp64.so:\
-/opt/intel/mkl/lib/intel64/libmkl_intel_thread.so"
+/opt/intel/mkl/lib/intel64/libmkl_intel_thread.so:${LD_PRELOAD}"
 ) >> env.sh
 
 # Invoke installation.

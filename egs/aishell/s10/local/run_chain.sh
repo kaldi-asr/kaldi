@@ -174,8 +174,8 @@ if [[ $stage -le 9 ]]; then
   echo "inference: computing likelihood"
   for x in test dev; do
     mkdir -p exp/chain/inference/$x
-    if [[ -f exp/chain/inference/$x/confidence.scp ]]; then
-      echo "exp/chain/inference/$x/confidence.scp already exists! Skip"
+    if [[ -f exp/chain/inference/$x/nnet_output.scp ]]; then
+      echo "exp/chain/inference/$x/nnet_output.scp already exists! Skip"
     else
       best_epoch=$(cat exp/chain/train/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
       inference_checkpoint=exp/chain/train/epoch-${best_epoch}.pt
@@ -201,8 +201,8 @@ fi
 if [[ $stage -le 10 ]]; then
   echo "decoding"
   for x in test dev; do
-    if [[ ! -f exp/chain/inference/$x/confidence.scp ]]; then
-      echo "exp/chain/inference/$x/confidence.scp does not exist!"
+    if [[ ! -f exp/chain/inference/$x/nnet_output.scp ]]; then
+      echo "exp/chain/inference/$x/nnet_output.scp does not exist!"
       echo "Please run inference.py first"
       exit 1
     fi
@@ -212,7 +212,7 @@ if [[ $stage -le 10 ]]; then
       --nj $nj \
       exp/chain/graph \
       exp/chain/0.trans_mdl \
-      exp/chain/inference/$x/confidence.scp \
+      exp/chain/inference/$x/nnet_output.scp \
       exp/chain/decode_res/$x
   done
 fi
