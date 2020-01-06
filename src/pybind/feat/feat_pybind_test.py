@@ -10,9 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 import unittest
 import numpy as np
 
-import kaldi_pybind as k
-
-import kaldi_pybind.feat as feat
+import kaldi
+from kaldi import feat
 from kaldi import SequentialWaveReader
 from kaldi import SequentialMatrixReader
 
@@ -35,8 +34,8 @@ class TestFeat(unittest.TestCase):
                                    value.Duration() * value.SampFreq(),
                                    places=1)
 
-            waveform = k.FloatSubVector(nd.reshape(nsamp))
-            features = k.FloatMatrix(1, 1)
+            waveform = kaldi.FloatSubVector(nd.reshape(nsamp))
+            features = kaldi.FloatMatrix(1, 1)
             mfcc.ComputeFeatures(waveform, value.SampFreq(), 1.0, features)
             self.assertEqual(key, gold_reader.Key())
             gold_feat = gold_reader.Value().numpy()

@@ -7,7 +7,6 @@ import sys
 
 # Add .. to the PYTHONPATH
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
-import kaldi_pybind as kp
 import kaldi
 
 
@@ -15,7 +14,7 @@ class TestKaldiPybind(unittest.TestCase):
 
     def test_float_vector(self):
         # test FloatVector
-        kp_vector = kp.FloatVector(5)
+        kp_vector = kaldi.FloatVector(5)
 
         np_array = kp_vector.numpy()
         self.assertIsInstance(np_array, np.ndarray)
@@ -28,7 +27,7 @@ class TestKaldiPybind(unittest.TestCase):
     def test_float_matrix(self):
         return
         # test FloatMatrix
-        kp_matrix = kp.FloatMatrix(4, 5)
+        kp_matrix = kaldi.FloatMatrix(4, 5)
 
         np_matrix = kp_matrix.numpy()
 
@@ -43,7 +42,7 @@ class TestKaldiPybind(unittest.TestCase):
         self.assertTrue((kp_matrix == gold).all())
 
     def test_matrix_reader_writer(self):
-        kp_matrix = kp.FloatMatrix(2, 3)
+        kp_matrix = kaldi.FloatMatrix(2, 3)
         wspecifier = 'ark,t:test.ark'
         rspecifier = 'ark:test.ark'
         matrix_writer = kaldi.MatrixWriter(wspecifier)
@@ -63,7 +62,7 @@ class TestKaldiPybind(unittest.TestCase):
         self.assertTrue((np.array(value, copy=False) == gold).all())
 
     def test_matrix_reader_iterator(self):
-        kp_matrix = kp.FloatMatrix(2, 3)
+        kp_matrix = kaldi.FloatMatrix(2, 3)
         wspecifier = 'ark,t:test.ark'
         rspecifier = 'ark:test.ark'
         matrix_writer = kaldi.MatrixWriter(wspecifier)
@@ -79,7 +78,7 @@ class TestKaldiPybind(unittest.TestCase):
             self.assertTrue((value == gold_value).all())
 
     def test_matrix_random_access_reader(self):
-        kp_matrix = kp.FloatMatrix(2, 3)
+        kp_matrix = kaldi.FloatMatrix(2, 3)
         wspecifier = 'ark,t:test.ark'
         rspecifier = 'ark:test.ark'
         matrix_writer = kaldi.MatrixWriter(wspecifier)
