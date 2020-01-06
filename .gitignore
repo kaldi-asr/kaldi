@@ -157,3 +157,6 @@ GSYMS
 # They are added here to avoid accidently checkin.
 /src/**/CMakeLists.txt
 /build*
+
+# /src/pybind/
+/src/pybind/.mkl_env.mk

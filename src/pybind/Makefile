@@ -114,14 +114,18 @@ clean:
 	-rm -rf __pycache__
 	-rm -f $(CCFILES_OBJS)
 	-rm -f .depend.mk
+	-rm -f .mkl_env.mk
 
-test: all
+mkl:
+	-grep "LD_PRELOAD" ../../tools/env.sh > .mkl_env.mk
+
+test: mkl
 	python3 tests/test_dlpack_subvector.py
 	python3 tests/test_kaldi_pybind.py
 	make -C chain test
 	make -C cudamatrix test
 	make -C dlpack test
-	$(eval -include ../../tools/env.sh)
+	$(eval -include .mkl_env.mk)
 	make -C feat test
 	make -C fst test
 	make -C matrix test
