@@ -178,7 +178,7 @@ def run(args):
                 cmd = ("copy-feats --binary=false {mat_fn} -"
                        "".format(mat_fn=targets[utt]))
                 p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
+                                     stderr=subprocess.PIPE, universal_newlines=True)
 
                 try:
                     mat = np.matrix(common_lib.read_matrix_ascii(p.stdout),
