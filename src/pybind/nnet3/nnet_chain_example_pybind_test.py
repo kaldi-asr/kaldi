@@ -9,14 +9,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 
 import unittest
 
-import kaldi_pybind
-
-import kaldi_pybind.chain as chain
-import kaldi_pybind.nnet3 as nnet3
+import kaldi
 from kaldi import NnetChainExampleWriter
 from kaldi import RandomAccessNnetChainExampleReader
 from kaldi import SequentialNnetChainExampleReader
-from kaldi_pybind.fst import StdVectorFst
+from kaldi import chain
+from kaldi import nnet3
 
 
 class TestNnetChainExample(unittest.TestCase):
@@ -35,7 +33,7 @@ class TestNnetChainExample(unittest.TestCase):
             self.assertEqual(nnet_io.name, 'input')
 
             features = nnet_io.features
-            m = kaldi_pybind.FloatMatrix()
+            m = kaldi.FloatMatrix()
             features.GetMatrix(m)
             m = m.numpy()
             print(m.shape)
@@ -63,7 +61,7 @@ class TestNnetChainExample(unittest.TestCase):
 
             # now comes to the FST part !!!
             fst = sup.fst
-            self.assertTrue(isinstance(sup.fst, StdVectorFst))
+            self.assertTrue(isinstance(sup.fst, kaldi.fst.StdVectorFst))
             # see pybind/fst/vector_fst_pybind_test.py for operations wrapped for fst::StdVectorFst
             # TODO(fangjun): finish the test
 

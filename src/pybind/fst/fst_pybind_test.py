@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 
 import unittest
 
-import kaldi_pybind.fst as fst
+from kaldi import fst
 
 
 class TestArc(unittest.TestCase):

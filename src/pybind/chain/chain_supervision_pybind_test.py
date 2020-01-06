@@ -11,7 +11,7 @@ import unittest
 
 import numpy as np
 
-import kaldi_pybind.chain as chain
+from kaldi import chain
 
 
 class TestChainSupervision(unittest.TestCase):
