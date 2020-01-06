@@ -92,7 +92,7 @@ def read_lexiconp(filename):
                 sys.exit(1)
             prons = a[2:]
             if pron_prob <= 0.0:
-                print("{0}: error: invalid pron-prob in line '{1}' of lexicon file {2} ".format(
+                print("{0}: error: invalid pron-prob in line '{1}' of lexicon file {1} ".format(
                     sys.argv[0], line.strip(" \t\r\n"), filename), file=sys.stderr)
                 sys.exit(1)
             if len(prons) == 0:
@@ -133,19 +133,6 @@ def write_nonterminal_arcs(start_state, loop_state, next_state,
           strings, e.g. ['#nonterm:contact_list', ... ].
        left_context_phones: a list of phones that may appear as left-context,
           e.g. ['a', 'ah', ... '#nonterm_bos'].
-          
-          
-    this will produce a structure like
-    
-                       +>>>>>> left_context_phone[0] >>>>>+   
-                       ^                  ...             v 
-    (start state)      ^  +>> left_context_phone[-1] >>+  v
-         v             ^  ^                            v  v
-    #nonterm_begin >> (shared)                        (loop) >> #nonterm_end
-                       ^  ^                            v  v          v
-                       ^  +<<<< nonterminals[0]  <<<<<<+  v     (final state)
-                       ^               ...                v
-                       +<<<<<<<< nonterminals[-1]  <<<<<<<+
     """
     shared_state = next_state
     next_state += 1
