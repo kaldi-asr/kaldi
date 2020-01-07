@@ -298,7 +298,6 @@ void RestrictedAttentionComponent::Backprop(
     void *memo_in,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
-  NVTX_RANGE("RestrictedAttentionComponent::Backprop");
   const PrecomputedIndexes *indexes =
       dynamic_cast<const PrecomputedIndexes*>(indexes_in);
   KALDI_ASSERT(indexes != NULL);

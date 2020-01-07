@@ -22,6 +22,7 @@
 #include "nnet3/nnet-chain-training.h"
 #include "cudamatrix/cu-allocator.h"
 
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -52,9 +53,6 @@ int main(int argc, char *argv[]) {
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     opts.Register(&po);
-#if HAVE_CUDA==1
-    CuDevice::RegisterDeviceOptions(&po);
-#endif
     RegisterCuAllocatorOptions(&po);
 
     po.Read(argc, argv);

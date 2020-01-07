@@ -34,7 +34,6 @@
 #include "hmm/transition-model.h"
 #include "chain/chain-den-graph.h"
 #include "chain/chain-supervision.h"
-#include "chain/chain-generic-numerator.h"
 
 namespace kaldi {
 namespace chain {
@@ -94,12 +93,7 @@ struct ChainTrainingOptions {
                    "nonzero, the network is expected to have an output "
                    "named 'output-xent', which should have a softmax as "
                    "its final nonlinearity.");
-
-    numerator_opts.Register(opts);
   }
-  
-  // Config for numerator graph object
-  GenericNumeratorComputationOptions numerator_opts;
 };
 
 
