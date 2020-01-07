@@ -136,7 +136,10 @@ def pick_item_with_probability(x):
         collection (list or dictionary) where the values contain a field called probability
     """
     if isinstance(x, dict):
-        plist = list(set(x.values()))
+        keylist = list(x.keys())
+        keylist.sort()
+        random.shuffle(keylist)
+        plist = [x[k] for k in keylist]
     else:
         plist = x
     total_p = sum(item.probability for item in plist)

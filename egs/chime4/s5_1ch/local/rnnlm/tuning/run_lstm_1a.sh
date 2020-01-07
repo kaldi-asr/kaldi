@@ -66,6 +66,7 @@ if [ $stage -le 0 ]; then
   mkdir -p $text_dir
   cp $srcdir/train.rnn $text_dir/chime4.txt.tmp
   sed -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt.tmp > $text_dir/chime4.txt
+  rm $text_dir/chime4.txt.tmp
   cp $srcdir/valid.rnn $text_dir/dev.txt
 fi
 

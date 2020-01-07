@@ -10,7 +10,7 @@ if ! command -v gfortran 2>/dev/null; then
   echo "$0: gfortran is not installed.  Please install it, e.g. by:"
   echo " apt-get install gfortran"
   echo "(if on Debian or Ubuntu), or:"
-  echo " yum install fortran"
+  echo " yum install gcc-gfortran"
   echo "(if on RedHat/CentOS).  On a Mac, if brew is installed, it's:"
   echo " brew install gfortran"
   exit 1

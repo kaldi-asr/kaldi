@@ -329,6 +329,12 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
 void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
                                  std::vector<int32> *alignment);
 
+
+// GetPdfToPhonesMap creates a map which maps each pdf-id into its
+// corresponding monophones.
+void GetPdfToPhonesMap(const TransitionModel &trans_model,
+                       std::vector<std::set<int32> > *pdf2phones);
+
 /// @} end "addtogroup hmm_group"
 
 } // end namespace kaldi

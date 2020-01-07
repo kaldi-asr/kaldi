@@ -166,10 +166,13 @@ do_combine() {
   # Merge (presumed already sorted) scp's into a single script.
   sort -m $temp_dir/$ark.*.scp > $temp_dir/$ark.scp || exit 1
 
+  inputs=$(for n in `seq $nj`; do echo $temp_dir/$ark.$n.scp; done)
+  utils/split_scp.pl --utt2spk=$data/utt2spk $temp_dir/$ark.scp $inputs
+
   echo "$0: Splitting combined $entities into $nj archives on speaker boundary."
   $cmd JOB=1:$nj $dest/log/chop_combined_$entities.JOB.log \
     $copy_program \
-      "scp:utils/split_scp.pl --utt2spk=$data/utt2spk --one-based -j $nj JOB $temp_dir/$ark.scp |" \
+      "scp:$temp_dir/$ark.JOB.scp" \
       "ark:| gzip -c > $dest/$ark.JOB.gz" || exit 1
 
   # Get some interesting stats, and signal an error if error threshold exceeded.
