@@ -25,8 +25,6 @@
 
 #include <vector>
 #include <map>
-#include <algorithm>
-#include <thread>
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -104,20 +102,6 @@ namespace chain {
  */
 
 
-struct GenericNumeratorComputationOptions {
-  unsigned int num_threads;
-  GenericNumeratorComputationOptions() : 
-    num_threads(std::min(static_cast<unsigned int>(4),
-                std::thread::hardware_concurrency())) { }
-  void Register(OptionsItf *opts) {
-    opts->Register("numerator-graph-threads", &num_threads, "Number of threads "
-                   "to use to parallelize the chain numerator graph computation. "
-                   "If 0, use available hardware concurrency.");
-  }
-
-};
-
-
 // This class is responsible for the forward-backward of the
 // end-to-end 'supervision' (numerator) FST. This kind of FST can
 // have self-loops.
@@ -128,8 +112,7 @@ struct GenericNumeratorComputationOptions {
 class GenericNumeratorComputation {
  public:
   /// Initializes the object.
-  GenericNumeratorComputation(const GenericNumeratorComputationOptions &opts,
-                              const Supervision &supervision,
+  GenericNumeratorComputation(const Supervision &supervision,
                               const CuMatrixBase<BaseFloat> &nnet_output);
 
   // Does the forward-backward computation. Returns the total log-prob
@@ -215,9 +198,6 @@ class GenericNumeratorComputation {
   // an offset subtracted from the logprobs of transitions out of the first
   // state of each graph to help reduce numerical problems.
   Vector<BaseFloat> offsets_;
-
-  // Configuration options
-  const GenericNumeratorComputationOptions &opts_;
 };
 
 }  // namespace chain

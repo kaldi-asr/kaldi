@@ -23,6 +23,7 @@
 
 #include <iterator>
 #include <limits>
+#include <algorithm>
 
 namespace kaldi {
 namespace chain {
@@ -33,16 +34,13 @@ namespace chain {
 // for end-to-end training 'supervision's.
 
 GenericNumeratorComputation::GenericNumeratorComputation(
-    const GenericNumeratorComputationOptions &opts,
     const Supervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output):
     supervision_(supervision),
-    nnet_output_(nnet_output),
-    opts_(opts) {
+    nnet_output_(nnet_output) {
   KALDI_ASSERT(supervision.num_sequences *
                supervision.frames_per_sequence == nnet_output.NumRows() &&
                supervision.label_dim == nnet_output.NumCols());
-  NVTX_RANGE(__func__);
 
   using std::vector;
   int num_sequences = supervision_.num_sequences;
@@ -121,7 +119,6 @@ GenericNumeratorComputation::GenericNumeratorComputation(
 
 void GenericNumeratorComputation::AlphaFirstFrame(int seq,
                                                   Matrix<BaseFloat> *alpha) {
-  NVTX_RANGE(__func__);
   const int32 num_frames = supervision_.frames_per_sequence,
               num_states = supervision_.e2e_fsts[seq].NumStates();
   alpha->Resize(num_frames + 1,  num_states + 1, kSetZero);
@@ -136,7 +133,6 @@ void GenericNumeratorComputation::CopySpecificPdfsIndirect(
                                     const std::vector<MatrixIndexT> &indices,
                                     Matrix<BaseFloat> *out) {
   KALDI_ASSERT(nnet_output_stride_ == nnet_output_.Stride());
-  NVTX_RANGE(__func__);
   const int32 num_sequences = supervision_.num_sequences,
               frames_per_sequence = supervision_.frames_per_sequence;
 
@@ -160,7 +156,6 @@ void GenericNumeratorComputation::CopySpecificPdfsIndirect(
 BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
                                               const Matrix<BaseFloat> &probs,
                                               Matrix<BaseFloat> *alpha) {
-  NVTX_RANGE(__func__);
   // Define some variables to make things nicer
   const int32 num_sequences = supervision_.num_sequences,
               num_frames = supervision_.frames_per_sequence;
@@ -217,7 +212,6 @@ BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
 bool GenericNumeratorComputation::ForwardBackward(
                                  BaseFloat *total_loglike,
                                  CuMatrixBase<BaseFloat> *nnet_output_deriv) {
-  NVTX_RANGE(__func__);
   KALDI_ASSERT(total_loglike != NULL);
   KALDI_ASSERT(nnet_output_deriv != NULL);
   KALDI_ASSERT(nnet_output_deriv->NumCols() == nnet_output_.NumCols());
@@ -227,10 +221,10 @@ bool GenericNumeratorComputation::ForwardBackward(
   const int32 num_sequences = supervision_.num_sequences;
 
   bool ok = true;
+  Matrix<BaseFloat> alpha;
+  Matrix<BaseFloat> beta;
   Matrix<BaseFloat> probs;
-  Matrix<BaseFloat> derivs; // Don't need nthreads copies to avoid data
-                            // races since each sequence operates on a
-                            // distinct set of columns
+  Matrix<BaseFloat> derivs;
 
   // We selectively copy only those pdfs we need
   CopySpecificPdfsIndirect(nnet_output_, index_to_pdf_, &probs);
@@ -238,52 +232,17 @@ bool GenericNumeratorComputation::ForwardBackward(
   derivs.Resize(probs.NumRows(), probs.NumCols());
   derivs.Set(-std::numeric_limits<BaseFloat>::infinity());
 
-  // Set total number of workers to the available hardware concurrency
-  unsigned int nthreads = opts_.num_threads > 0 ? opts_.num_threads :
-                              std::thread::hardware_concurrency();
-  // Naive load balancing, each thread gets a chunk of the sequences to process
-  unsigned int num_sequences_per_thread = 
-    (num_sequences + nthreads - 1) / nthreads;
+  for (int seq = 0; seq < num_sequences; ++seq) {
+    // Forward part
+    AlphaFirstFrame(seq, &alpha);
+    partial_loglike += AlphaRemainingFrames(seq, probs, &alpha);
 
-  // Allocate one alpha and beta matrix per thread to avoid contention
-  std::vector<Matrix<BaseFloat>> alpha(nthreads);
-  std::vector<Matrix<BaseFloat>> beta(nthreads);
-  
-  // Per thread partial values and boolean
-  std::vector<BaseFloat> partial_loglike_mt(nthreads, static_cast<BaseFloat>(0));
-  std::vector<bool> ok_mt(nthreads, true);
-
-  // Lambda function for each thread's portion of the computation
-  auto thread_lambda = [&] (int thread, int num_sequences, int num_sequences_per_thread) {
-    int seq_st = thread * num_sequences_per_thread;
-    int seq_en = seq_st + num_sequences_per_thread;
-    seq_en = (seq_en <= num_sequences) ? seq_en : num_sequences;
-    for (int seq = seq_st; seq < seq_en; ++seq) {
-      // Forward part
-      AlphaFirstFrame(seq, &alpha[thread]);
-      partial_loglike_mt[thread] += AlphaRemainingFrames(seq, probs, &alpha[thread]);
-
-      // Backward part
-      BetaLastFrame(seq, alpha[thread], &beta[thread]);
-      BetaRemainingFrames(seq, probs, alpha[thread], &beta[thread], &derivs);
-      if (GetVerboseLevel() >= 1)
-        ok_mt[thread] = ok_mt[thread] && CheckValues(seq, probs, alpha[thread], beta[thread], derivs);
-    }
-    return;
-  };
-
-  std::vector<std::thread> workers(nthreads);
-  for (int thread = 0; thread < nthreads; ++thread)
-    // Launch all threads
-    workers[thread] = std::thread(thread_lambda, thread, num_sequences, num_sequences_per_thread);
-  for (int thread = 0; thread < nthreads; ++thread) {
-    // Join threads back in
-    workers[thread].join();
-    // Reduce thread values to a single value
-    partial_loglike += partial_loglike_mt[thread];
-    ok = ok && ok_mt[thread];
+    // Backward part
+    BetaLastFrame(seq, alpha, &beta);
+    BetaRemainingFrames(seq, probs, alpha, &beta, &derivs);
+    if (GetVerboseLevel() >= 1)
+      ok = ok && CheckValues(seq, probs, alpha, beta, derivs);
   }
-
   // Transfer and add the derivatives to the values in the matrix
   AddSpecificPdfsIndirect(&derivs, index_to_pdf_, nnet_output_deriv);
   *total_loglike = partial_loglike;
@@ -291,7 +250,6 @@ bool GenericNumeratorComputation::ForwardBackward(
 }
 
 BaseFloat GenericNumeratorComputation::ComputeObjf() {
-  NVTX_RANGE(__func__);
   BaseFloat partial_loglike = 0;
   const int32 num_sequences = supervision_.num_sequences;
 
@@ -317,7 +275,6 @@ BaseFloat GenericNumeratorComputation::GetTotalProb(
 void GenericNumeratorComputation::BetaLastFrame(int seq,
                                                 const Matrix<BaseFloat> &alpha,
                                                 Matrix<BaseFloat> *beta) {
-  NVTX_RANGE(__func__);
   // Sets up the beta quantity on the last frame (frame ==
   // frames_per_sequence_).  Note that the betas we use here contain a
   // 1/(tot-prob) factor in order to simplify the backprop.
@@ -341,7 +298,6 @@ void GenericNumeratorComputation::BetaRemainingFrames(int seq,
                                                 const Matrix<BaseFloat> &alpha,
                                                 Matrix<BaseFloat> *beta,
                                                 Matrix<BaseFloat> *derivs) {
-  NVTX_RANGE(__func__);
   const int32
       num_sequences = supervision_.num_sequences,
       num_frames = supervision_.frames_per_sequence,
@@ -384,7 +340,6 @@ void GenericNumeratorComputation::AddSpecificPdfsIndirect(
                                  Matrix<BaseFloat> *logprobs,
                                  const std::vector<MatrixIndexT> &indices,
                                  CuMatrixBase<BaseFloat> *output) {
-  NVTX_RANGE(__func__);
   const int32 num_sequences = supervision_.num_sequences,
               frames_per_sequence = supervision_.frames_per_sequence;
 
