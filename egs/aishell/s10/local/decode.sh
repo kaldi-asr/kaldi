@@ -20,13 +20,13 @@ post_decode_acwt=10  # can be used in 'chain' systems to scale acoustics by 10
 . parse_options.sh || exit 1
 
 if [ $# != 4 ]; then
-    echo "Usage: $0 [options] <graph-dir> <trans_model> <confidence_scp> <decode-dir>"
+    echo "Usage: $0 [options] <graph-dir> <trans_model> <nnet_output_scp> <decode-dir>"
     exit 1
 fi
 
 graphdir=$1
 trans_model=$2
-confidence_scp=$3
+nnet_output_scp=$3
 dir=$4
 
 if [[ ! -d $graphdir ]]; then
@@ -39,15 +39,15 @@ if [[ ! -f $trans_model ]]; then
   exit 1
 fi
 
-if [[ ! -f $confidence_scp ]]; then
-  echo "confidence scp $confidence_scp does not exist"
+if [[ ! -f $nnet_output_scp ]]; then
+  echo "nnet_output_scp $nnet_output_scp does not exist"
   exit 1
 fi
 
 mkdir -p $dir
 
 for i in $(seq $nj); do
-  utils/split_scp.pl -j $nj $[$i - 1] $confidence_scp $dir/confidence.$i.scp
+  utils/split_scp.pl -j $nj $[$i - 1] $nnet_output_scp $dir/nnet_output.$i.scp
 done
 
 lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
@@ -66,4 +66,4 @@ $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     --min-active=$min_active \
     --num-threads=$num_threads \
     --word-symbol-table=$graphdir/words.txt \
-    $trans_model $graphdir/HCLG.fst scp:$dir/confidence.JOB.scp "$lat_wspecifier" || exit 1
+    $trans_model $graphdir/HCLG.fst scp:$dir/nnet_output.JOB.scp "$lat_wspecifier" || exit 1

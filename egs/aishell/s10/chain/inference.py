@@ -43,7 +43,7 @@ def main():
     model.eval()
 
     specifier = 'ark,scp:{filename}.ark,{filename}.scp'.format(
-        filename=os.path.join(args.dir, 'confidence'))
+        filename=os.path.join(args.dir, 'nnet_output'))
 
     if args.save_as_compressed:
         Writer = kaldi.CompressedMatrixWriter
@@ -83,8 +83,8 @@ def main():
                 float(batch_idx) / len(dataloader) * 100))
 
     writer.Close()
-    logging.info('confidence is saved to {}'.format(
-        os.path.join(args.dir, 'confidence.scp')))
+    logging.info('pseudo-log-likelihood is saved to {}'.format(
+        os.path.join(args.dir, 'nnet_output.scp')))
 
 
 if __name__ == '__main__':
