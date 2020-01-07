@@ -114,10 +114,6 @@ int main(int argc, char *argv[]) {
       int32 sym = phone_syms[i];
       loop_fst.AddArc(0, StdArc(sym, sym, TropicalWeight::One(), 0));
     }
-    for (size_t i = 0; i < disambig_in.size(); i++) {
-      int32 sym = disambig_in[i];
-      loop_fst.AddArc(0, StdArc(sym, sym, TropicalWeight::One(), 0));
-    }
 
     std::vector<std::vector<int32> > ilabels;
     VectorFst<StdArc> context_fst;
