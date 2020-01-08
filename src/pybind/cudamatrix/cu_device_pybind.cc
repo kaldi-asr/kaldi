@@ -43,4 +43,14 @@ void pybind_cu_device(py::module& m) {
     KALDI_LOG << "Kaldi is NOT compiled with GPU! Ignore it.";
 #endif
   });
+
+  m.def("CudaCompiled",
+        []() -> bool {
+#if HAVE_CUDA == 1
+          return true;
+#else
+          return false;
+#endif
+        },
+        "true if kaldi is compiled with GPU support; false otherwise");
 }
