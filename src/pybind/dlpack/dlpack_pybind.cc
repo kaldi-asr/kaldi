@@ -296,7 +296,7 @@ DLPackCuSubVector<float>* CuSubVectorFromDLPack(py::capsule* capsule) {
                                       tensor->shape[0], managed_tensor);
 #else
   KALDI_ERR << "Kaldi is not compiled with GPU!";
-  return py::none();
+  return nullptr;
 #endif
 }
 
@@ -312,7 +312,7 @@ DLPackCuSubMatrix<float>* CuSubMatrixFromDLPack(py::capsule* capsule) {
                                       tensor->strides[0], managed_tensor);
 #else
   KALDI_ERR << "Kaldi is not compiled with GPU!";
-  return py::none();
+  return nullptr;
 #endif
 }
 
