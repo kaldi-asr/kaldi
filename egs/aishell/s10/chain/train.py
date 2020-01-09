@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
-# Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2019-2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
 import logging
 import os
 import sys
+import warnings
+
+# disable warnings when loading tensorboard
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import torch
 import torch.optim as optim

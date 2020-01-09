@@ -1,0 +1,45 @@
+# If you execute `run.sh`, then you should get similar results as follows:
+
+# Results for kaldi pybind LF-MMI training with PyTorch
+## head exp/chain/decode_res/*/scoring_kaldi/best_* > RESULTS
+#
+==> exp/chain/decode_res/dev/scoring_kaldi/best_cer <==
+%WER 8.22 [ 16888 / 205341, 774 ins, 1007 del, 15107 sub ] exp/chain/decode_res/dev/cer_10_1.0
+
+==> exp/chain/decode_res/dev/scoring_kaldi/best_wer <==
+%WER 16.66 [ 21278 / 127698, 1690 ins, 3543 del, 16045 sub ] exp/chain/decode_res/dev/wer_11_0.5
+
+==> exp/chain/decode_res/test/scoring_kaldi/best_cer <==
+%WER 9.98 [ 10454 / 104765, 693 ins, 802 del, 8959 sub ] exp/chain/decode_res/test/cer_11_1.0
+
+==> exp/chain/decode_res/test/scoring_kaldi/best_wer <==
+%WER 18.89 [ 12170 / 64428, 1112 ins, 1950 del, 9108 sub ] exp/chain/decode_res/test/wer_12_0.5
+
+# Results for kaldi nnet3 LF-MMI training
+## head exp/chain_nnet3/tdnn_1b/decode_*/scoring_kaldi/best_*
+#
+==> exp/chain_nnet3/tdnn_1b/decode_dev/scoring_kaldi/best_cer <==
+%WER 7.06 [ 14494 / 205341, 466 ins, 726 del, 13302 sub ] exp/chain_nnet3/tdnn_1b/decode_dev/cer_10_0.5
+
+==> exp/chain_nnet3/tdnn_1b/decode_dev/scoring_kaldi/best_wer <==
+%WER 15.11 [ 19296 / 127698, 1800 ins, 2778 del, 14718 sub ] exp/chain_nnet3/tdnn_1b/decode_dev/wer_11_0.0
+
+==> exp/chain_nnet3/tdnn_1b/decode_test/scoring_kaldi/best_cer <==
+%WER 8.63 [ 9041 / 104765, 367 ins, 668 del, 8006 sub ] exp/chain_nnet3/tdnn_1b/decode_test/cer_11_1.0
+
+==> exp/chain_nnet3/tdnn_1b/decode_test/scoring_kaldi/best_wer <==
+%WER 17.40 [ 11210 / 64428, 1059 ins, 1654 del, 8497 sub ] exp/chain_nnet3/tdnn_1b/decode_test/wer_11_0.5
+
+# kaldi pybind LF-MMI training currently uses batchnorm to replace the LDA layer
+# since it is not easy to get lda.mat without constructing a nnet3 network.
+
+# Training Time comparison between kaldi pybind with PyTorch and nnet3
+# on single GPU is as follows:
+#
+# training time for 6 epochs:
+#   - kaldi pybind with PyTorch: about 45 minutes
+#   - kaldi nnet3: about 4 hours 37 minutes
+
+# You can find the training log in the following:
+#  - kaldi pybind with PyTorch: ./kaldi-pybind-with-pytorch-training-log.txt
+#  - kaldi nnet3: ./nnet3-training-log.txt
