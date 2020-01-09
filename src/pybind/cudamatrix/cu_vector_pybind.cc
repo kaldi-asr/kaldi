@@ -44,7 +44,8 @@ void pybind_cu_vector(py::module& m) {
         .def(py::init<MatrixIndexT, MatrixResizeType>(), py::arg("dim"),
              py::arg("MatrixResizeType") = kSetZero)
         .def(py::init<const VectorBase<float>&>(), py::arg("v"))
-        .def("to_dlpack", [](py::object obj) { return CuVectorToDLPack(obj); });
+        .def("to_dlpack",
+             [](py::object obj) { return CuVectorToDLPack(&obj); });
   }
   {
     using PyClass = CuSubVector<float>;
