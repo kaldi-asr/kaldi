@@ -80,7 +80,7 @@ void pybind_kaldi_matrix(py::module& m) {
            py::arg("M"), py::arg("trans") = kNoTrans)
       .def("Read", &Matrix<float>::Read, "allows resizing", py::arg("is"),
            py::arg("binary"), py::arg("add") = false)
-      .def("to_dlpack", [](py::object obj) { return MatrixToDLPack(obj); });
+      .def("to_dlpack", [](py::object obj) { return MatrixToDLPack(&obj); });
 
   py::class_<SubMatrix<float>, MatrixBase<float>>(m, "FloatSubMatrix")
       .def(py::init([](py::buffer b) {

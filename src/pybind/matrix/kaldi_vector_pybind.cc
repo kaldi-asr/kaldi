@@ -65,7 +65,7 @@ void pybind_kaldi_vector(py::module& m) {
       })
       .def(py::init<const MatrixIndexT, MatrixResizeType>(), py::arg("size"),
            py::arg("resize_type") = kSetZero)
-      .def("to_dlpack", [](py::object obj) { return VectorToDLPack(obj); });
+      .def("to_dlpack", [](py::object obj) { return VectorToDLPack(&obj); });
 
   py::class_<SubVector<float>, VectorBase<float>>(m, "FloatSubVector")
       .def(py::init([](py::buffer b) {

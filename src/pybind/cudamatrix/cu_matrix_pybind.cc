@@ -55,7 +55,8 @@ void pybind_cu_matrix(py::module& m) {
              py::arg("MatrixStrideType") = kDefaultStride)
         .def(py::init<const MatrixBase<float>&, MatrixTransposeType>(),
              py::arg("other"), py::arg("trans") = kNoTrans)
-        .def("to_dlpack", [](py::object obj) { return CuMatrixToDLPack(obj); });
+        .def("to_dlpack",
+             [](py::object obj) { return CuMatrixToDLPack(&obj); });
   }
   {
     using PyClass = CuSubMatrix<float>;
