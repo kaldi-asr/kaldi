@@ -1701,9 +1701,9 @@ inline __device__ void myAtomicReduce(float *address, float val, TransReduceOp<S
 
 // Reduce a matrix 'data' to a row vector 'dots'
 template <EnumTransformReduce TransReduceType, typename Real, int unroll_count>
-__global__ void stridedReductionPersistentKernel(Real * __restrict__ dots, const Real * __restrict__ data,
-                                                 void * __restrict__ scratch, const MatrixDim d,
-                                                 const TransReduceOp<TransReduceType, Real> op) {
+__global__ void _strided_reduction_fused_kernel(Real * __restrict__ dots, const Real * __restrict__ data,
+                                                void * __restrict__ scratch, const MatrixDim d,
+                                                const TransReduceOp<TransReduceType, Real> op) {
   // Tihis kernel assuming blockDim.x == warpSize
   Real thread_data = op.InitValue();
   int colStart = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1792,7 +1792,7 @@ __global__ void stridedReductionPersistentKernel(Real * __restrict__ dots, const
     if (threadIdx.x == 0) {
       // Mark arrived
       // Last block to arrive sets flag to zero as well
-      unsigned int value = atomicInc(&flag[blockIdx.x], 2*gridDim.y);
+      unsigned int value = atomicInc(&flag[blockIdx.x], 2*gridDim.y-1);
       isLastBlock = (value == (2*gridDim.y - 1));
     }
     __syncwarp(); // For Volta+ independent thread scheduling
@@ -1806,9 +1806,9 @@ __global__ void stridedReductionPersistentKernel(Real * __restrict__ dots, const
 }
 
 template <typename Real>
-void stridedReductionPersistent(Real *dots, const Real *data, void *scratch,
-                                const MatrixDim d, const Real alpha,
-                                const Real beta) {
+void _strided_reduction_fused(Real *dots, const Real *data, void *scratch,
+                              const MatrixDim d, const Real alpha,
+                              const Real beta) {
   int device;
   cudaGetDevice(&device);
 
@@ -1824,7 +1824,7 @@ void stridedReductionPersistent(Real *dots, const Real *data, void *scratch,
   dim3 nblks((d.cols + thrds.x - 1) / thrds.x,
              (d.rows + thrds.y*elemsPerThread - 1) / (thrds.y * elemsPerThread));
 
-  stridedReductionPersistentKernel<SUMAB, Real, 4><<<nblks, thrds,
+  _strided_reduction_fused_kernel<SUMAB, Real, 4><<<nblks, thrds,
       shmemSize, cudaStreamPerThread>>>(dots, data, scratch, d,
       TransReduceOp<SUMAB, Real>(alpha, beta));
 }
@@ -4171,7 +4171,7 @@ void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
 void cudaF_add_row_sum_mat(float* result, const float* mat, void* scratch,
                            const MatrixDim d, const float alpha,
                            const float beta) {
-  stridedReductionPersistent(result, mat, scratch, d, alpha, beta);
+  _strided_reduction_fused(result, mat, scratch, d, alpha, beta);
 }
 // void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
 //                            const MatrixDim d, const float alpha,
@@ -4892,7 +4892,7 @@ void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
 void cudaD_add_row_sum_mat(double* result, const double* mat, void* scratch,
                            const MatrixDim d, const double alpha,
                            const double beta) {
-  stridedReductionPersistent(result, mat, scratch, d, alpha, beta);
+  _strided_reduction_fused(result, mat, scratch, d, alpha, beta);
 }
 // void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
 //                            const MatrixDim d, const double alpha,
