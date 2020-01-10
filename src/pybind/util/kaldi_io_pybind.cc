@@ -30,29 +30,40 @@ void pybind_kaldi_io(py::module& m) {
     using PyClass = Input;
     py::class_<PyClass>(m, "Input")
         .def(py::init<>())
-        .def(py::init<const std::string&, bool*>(),
-             "The normal constructor.  Opens the stream in binary mode. "
-             "Equivalent to calling the default constructor followed by "
-             "Open(); then, if binary != NULL, it calls ReadHeader(), putting "
-             "the output in 'binary'; it throws on error.",
-             py::arg("rxfilename"), py::arg("contents_binary") = nullptr)
-        .def("Open", &PyClass::Open,
-             "Open opens the stream for reading (the mode, where relevant, is "
-             "binary; use OpenTextMode for text-mode, we made this a separate "
-             "function rather than a boolean argument, to avoid confusion with "
-             "Kaldi's text/binary distinction, since reading in the file "
-             "system's text mode is unusual.)  If contents_binary != NULL, it "
-             "reads the binary-mode header and puts it in the  'binary' "
-             "variable.  Returns true on success.  If it returns false it will "
-             "not be open.  You may call Open even if it is already open; it "
-             "will close the existing stream and reopen (however if closing "
-             "the old stream failed it will throw).",
-             py::arg("rxfilename"), py::arg("contents_binary") = nullptr)
-        .def("OpenTextMode", &PyClass::OpenTextMode,
-             "As Open but (if the file system has text/binary modes) opens in "
-             "text mode; you shouldn't ever have to use this as in Kaldi we "
-             "read even text files in binary mode (and ignore the \r).",
-             py::arg("rxfilename"))
+        // the constructor and `Open` both require a `bool*` argument
+        // but pybind11 does not support passing a pointer to a primitive
+        // type, only pointer to customized type is allowed.
+        //
+        // For more information, please refer to
+        // https://github.com/pybind/pybind11/pull/1760/commits/1d8caa5fbd0903cece06ae646447fff9b4aa33c0
+        // https://github.com/pybind/pybind11/pull/1760
+        //
+        // Were it be `bool*`, would it always be non-NULL in C++!
+        .def(
+            "Open",
+            [](PyClass* ki, const std::string& rxfilename,
+               bool read_header = false) -> std::vector<int> {
+              // WARNING(fangjun): we cannot use `std::vector<bool> res;` here
+              // since it is invalid to use `&result[0]` if it is a bool vector
+              std::vector<int> result(1, 0);
+              if (read_header) {
+                result.resize(2);
+                bool tmp;
+                result[0] = ki->Open(rxfilename, &tmp);
+                result[1] = tmp;
+              } else {
+                result[0] = ki->Open(rxfilename);
+              }
+              return result;
+            },
+            "Open the stream for reading. "
+            "if `read_header` is true, then calls `ReadHeader()`, putting the "
+            "output in the 1st position of the return value (counting from 0); "
+            "if `read_header is false, the return value has only one element`. "
+            "The return value has two elements if `read_header` is true, else "
+            " contains only one element. The zeroth element indicates whether "
+            "`Open` succeeds or not.",
+            py::arg("rxfilename"), py::arg("read_header") = false)
         .def("IsOpen", &PyClass::IsOpen,
              "Return true if currently open for reading and Stream() will "
              "succeed.  Does not guarantee that the stream is good.")

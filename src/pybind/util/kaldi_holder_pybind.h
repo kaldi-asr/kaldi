@@ -1,6 +1,6 @@
-// pybind/util/util_pybind.cc
+// pybind/util/kaldi_holder_pybind.h
 
-// Copyright 2019   Mobvoi AI Lab, Beijing, China
+// Copyright 2020   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
 
 // See ../../../COPYING for clarification regarding multiple authors
@@ -16,14 +16,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "util/util_pybind.h"
+#ifndef KALDI_PYBIND_UTIL_KALDI_HOLDER_PYBIND_H_
+#define KALDI_PYBIND_UTIL_KALDI_HOLDER_PYBIND_H_
 
-#include "util/kaldi_holder_pybind.h"
-#include "util/kaldi_io_pybind.h"
-#include "util/table_types_pybind.h"
+#include "pybind/kaldi_pybind.h"
 
-void pybind_util(py::module& m) {
-  pybind_table_types(m);
-  pybind_kaldi_io(m);
-  pybind_kaldi_holder(m);
-}
+void pybind_kaldi_holder(py::module& m);
+
+#endif  // KALDI_PYBIND_UTIL_KALDI_HOLDER_PYBIND_H_

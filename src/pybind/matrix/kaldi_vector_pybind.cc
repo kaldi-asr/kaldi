@@ -63,10 +63,15 @@ void pybind_kaldi_vector(py::module& m) {
                                {v.Dim()},
                                {sizeof(float)});  // strides (in chars)
       })
+      .def(py::init<>())
       .def(py::init<const MatrixIndexT, MatrixResizeType>(), py::arg("size"),
            py::arg("resize_type") = kSetZero)
       .def(py::init<const VectorBase<float>&>(), py::arg("v"),
            "Copy-constructor from base-class, needed to copy from SubVector.")
+      .def("Read", &Vector<float>::Read,
+           "Reads from C++ stream (option to add to existing contents).Throws "
+           "exception on failure",
+           py::arg("in"), py::arg("binary"), py::arg("add") = false)
       .def("to_dlpack", [](py::object obj) { return VectorToDLPack(&obj); });
 
   py::class_<SubVector<float>, VectorBase<float>>(m, "FloatSubVector")
