@@ -35,16 +35,12 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 2 ]; then
   echo "Usage: $0 [opts] <raw-egs-dir> <processed-egs-dir>"
-  echo " e.g.: $0 --chunks-per-group 4 exp/chaina/tdnn1a_sp/raw_egs exp/chaina/tdnn1a_sp/processed_egs"
+  echo " e.g.: $0 exp/chaina/tdnn1a_sp/raw_egs exp/chaina/tdnn1a_sp/processed_egs"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options (alternative to this"
   echo "                                                   # command line)"
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --chunks-per-group <n;4>                           # Number of chunks (preferentially, from a single speaker"
-  echo "                                                   # to combine into each example.  This grouping of"
-  echo "                                                   # egs is part of the 'chaina' framework; the adaptation"
-  echo "                                                   # parameters will be estimated from these groups."
   echo "  --num-repeats <n;2>                              # Number of times we group the same chunks into different"
   echo "                                                   # groups.  For now only the values 1 and 2 are"
   echo "                                                   # recommended, due to the very simple way we choose"
