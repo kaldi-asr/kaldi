@@ -26,6 +26,9 @@ import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 
+import numpy as np
+
+import kaldi_pybind
 from kaldi_pybind.nnet3 import _SequentialNnetChainExampleReader
 from kaldi_pybind.nnet3 import _RandomAccessNnetChainExampleReader
 from kaldi_pybind.nnet3 import _NnetChainExampleWriter
@@ -44,6 +47,10 @@ from kaldi_pybind import _RandomAccessBaseFloatVectorReader
 from kaldi_pybind import _BaseFloatVectorWriter
 
 from kaldi_pybind import _CompressedMatrixWriter
+
+from kaldi_pybind import _SequentialInt32VectorReader
+from kaldi_pybind import _RandomAccessInt32VectorReader
+from kaldi_pybind import _Int32VectorWriter
 
 ################################################################################
 # Sequential Readers
@@ -199,6 +206,12 @@ class SequentialVectorReader(_SequentialReaderBase,
     pass
 
 
+class SequentialIntVectorReader(_SequentialReaderBase,
+                                _SequentialInt32VectorReader):
+    '''Sequential table reader for integer sequences.'''
+    pass
+
+
 ################################################################################
 # Random Access Readers
 ################################################################################
@@ -334,6 +347,12 @@ class RandomAccessVectorReader(_RandomAccessReaderBase,
     pass
 
 
+class RandomAccessIntVectorReader(_RandomAccessReaderBase,
+                                  _RandomAccessInt32VectorReader):
+    '''Random access table reader for integer sequences.'''
+    pass
+
+
 ################################################################################
 # Writers
 ################################################################################
@@ -431,16 +450,31 @@ class NnetChainExampleWriter(_WriterBase, _NnetChainExampleWriter):
 
 class MatrixWriter(_WriterBase, _BaseFloatMatrixWriter):
     '''Table writer for single precision matrices.'''
-    pass
+
+    def Write(self, key, value):
+        if isinstance(value, np.ndarray):
+            m = kaldi_pybind.FloatSubMatrix(value)
+            value = kaldi_pybind.FloatMatrix(m)
+        super().Write(key, value)
 
 
 class VectorWriter(_WriterBase, _BaseFloatVectorWriter):
     '''Table writer for single precision vectors.'''
-    pass
+
+    def Write(self, key, value):
+        if isinstance(value, np.ndarray):
+            v = kaldi_pybind.FloatSubVector(value)
+            value = kaldi_pybind.FloatVector(v)
+        super().Write(key, value)
 
 
 class CompressedMatrixWriter(_WriterBase, _CompressedMatrixWriter):
     '''Table writer for single precision compressed matrices.'''
+    pass
+
+
+class IntVectorWriter(_WriterBase, _Int32VectorWriter):
+    '''Table writer for integer sequences.'''
     pass
 
 
@@ -524,11 +558,6 @@ if False:
     class SequentialBoolReader(_SequentialReaderBase,
                                _kaldi_table.SequentialBoolReader):
         '''Sequential table reader for Booleans.'''
-        pass
-
-    class SequentialIntVectorReader(_SequentialReaderBase,
-                                    _kaldi_table.SequentialIntVectorReader):
-        '''Sequential table reader for integer sequences.'''
         pass
 
     class SequentialIntVectorVectorReader(
@@ -621,11 +650,6 @@ if False:
     class RandomAccessBoolReader(_RandomAccessReaderBase,
                                  _kaldi_table.RandomAccessBoolReader):
         '''Random access table reader for Booleans.'''
-        pass
-
-    class RandomAccessIntVectorReader(_RandomAccessReaderBase,
-                                      _kaldi_table.RandomAccessIntVectorReader):
-        '''Random access table reader for integer sequences.'''
         pass
 
     class RandomAccessIntVectorVectorReader(
@@ -884,10 +908,6 @@ if False:
 
     class BoolWriter(_WriterBase, _kaldi_table.BoolWriter):
         '''Table writer for Booleans.'''
-        pass
-
-    class IntVectorWriter(_WriterBase, _kaldi_table.IntVectorWriter):
-        '''Table writer for integer sequences.'''
         pass
 
     class IntVectorVectorWriter(_WriterBase,
