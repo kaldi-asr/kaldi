@@ -86,6 +86,9 @@ class TestStdVectorFst(unittest.TestCase):
         print('read back compiled fst is:')
         print(read_back_compiled_fst)
 
+        os.remove(compiled_filename)
+        os.remove(fst_filename)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -49,4 +49,12 @@ void pybind_table_types(py::module& m) {
 
   pybind_table_writer<KaldiObjectHolder<CompressedMatrix>>(
       m, "_CompressedMatrixWriter");
+
+  pybind_sequential_table_reader<BasicVectorHolder<int32>>(
+      m, "_SequentialInt32VectorReader");
+
+  pybind_random_access_table_reader<BasicVectorHolder<int32>>(
+      m, "_RandomAccessInt32VectorReader");
+
+  pybind_table_writer<BasicVectorHolder<int32>>(m, "_Int32VectorWriter");
 }

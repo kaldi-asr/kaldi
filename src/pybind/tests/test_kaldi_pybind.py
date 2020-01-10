@@ -25,13 +25,10 @@ class TestKaldiPybind(unittest.TestCase):
         self.assertTrue((kp_vector == gold).all())
 
     def test_float_matrix(self):
-        return
         # test FloatMatrix
         kp_matrix = kaldi.FloatMatrix(4, 5)
 
-        np_matrix = kp_matrix.numpy()
-
-        np_matrix[2][3] = 2.0
+        kp_matrix[2, 3] = 2.0
 
         gold = np.array([
             [0, 0, 0, 0, 0],
@@ -39,7 +36,7 @@ class TestKaldiPybind(unittest.TestCase):
             [0, 0, 0, 2, 0],
             [0, 0, 0, 0, 0],
         ])
-        self.assertTrue((kp_matrix == gold).all())
+        np.testing.assert_array_equal(kp_matrix.numpy(), gold)
 
     def test_matrix_reader_writer(self):
         kp_matrix = kaldi.FloatMatrix(2, 3)
@@ -47,8 +44,7 @@ class TestKaldiPybind(unittest.TestCase):
         rspecifier = 'ark:test.ark'
         matrix_writer = kaldi.MatrixWriter(wspecifier)
 
-        np_matrix = kp_matrix.numpy()
-        np_matrix[0, 0] = 10
+        kp_matrix[0, 0] = 10
 
         matrix_writer.Write('id_1', kp_matrix)
         matrix_writer.Close()
@@ -59,7 +55,10 @@ class TestKaldiPybind(unittest.TestCase):
 
         value = matrix_reader.Value()
         gold = np.array([[10, 0, 0], [0, 0, 0]])
-        self.assertTrue((np.array(value, copy=False) == gold).all())
+        np.testing.assert_array_equal(value.numpy(), gold)
+
+        matrix_reader.Close()
+        os.remove('test.ark')
 
     def test_matrix_reader_iterator(self):
         kp_matrix = kaldi.FloatMatrix(2, 3)
@@ -71,11 +70,13 @@ class TestKaldiPybind(unittest.TestCase):
 
         gold_key_list = ['id_1']
         gold_value_list = [np.array([[0, 0, 0], [0, 0, 0]])]
-        for (key, value), gold_key, gold_value in zip(
-                kaldi.SequentialMatrixReader(rspecifier), gold_key_list,
-                gold_value_list):
+        reader = kaldi.SequentialMatrixReader(rspecifier)
+        for (key, value), gold_key, gold_value in zip(reader, gold_key_list,
+                                                      gold_value_list):
             self.assertEqual(key, gold_key)
-            self.assertTrue((value == gold_value).all())
+            np.testing.assert_array_equal(value.numpy(), gold_value)
+        reader.Close()
+        os.remove('test.ark')
 
     def test_matrix_random_access_reader(self):
         kp_matrix = kaldi.FloatMatrix(2, 3)
@@ -88,8 +89,11 @@ class TestKaldiPybind(unittest.TestCase):
         reader = kaldi.RandomAccessMatrixReader(rspecifier)
         gold = np.array([[0, 0, 0], [0, 0, 0]])
         self.assertTrue('id_1' in reader)
-        self.assertTrue((np.array(reader['id_1']) == gold).all())
+
+        np.testing.assert_array_equal(reader['id_1'].numpy(), gold)
         self.assertFalse('id_2' in reader)
+        reader.Close()
+        os.remove('test.ark')
 
 
 if __name__ == '__main__':
