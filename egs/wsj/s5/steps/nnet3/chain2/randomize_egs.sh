@@ -81,7 +81,7 @@ dir=$2
 # die on error or undefined variable.
 set -e -u
 
-if ! steps/chain/validate_processed_egs.sh $processed_egs_dir; then
+if ! steps/chain2/validate_processed_egs.sh $processed_egs_dir; then
   echo "$0: could not validate input directory $processed_egs_dir"
   exit 1
 fi

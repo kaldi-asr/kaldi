@@ -75,7 +75,7 @@ dir=$2
 # die on error or undefined variable.
 set -e -u
 
-if ! steps/chain/validate_raw_egs.sh $raw_egs_dir; then
+if ! steps/chain2/validate_raw_egs.sh $raw_egs_dir; then
   echo "$0: failed to validate input directory $raw_egs_dir"
   exit 1
 fi
