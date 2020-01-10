@@ -126,8 +126,6 @@ if [ $stage -le -1 ]; then
   echo "$0: Copying transition model"
   cp $dir/init/default.raw $dir/0.raw
   cp $dir/init/default_trans.mdl $dir/0_trans.mdl
-        # nnet3-am-copy "--edits=rename-node old-name=output new-name=output-default; rename-node old-name=output-xent new-name=output-default-xent;"  - $dir/0.mdl
-#done
 fi
 
 
@@ -228,7 +226,9 @@ while [ $x -lt $num_iters ]; do
           rm $dir/$delete_iter.raw
       fi
   fi
-  rm $dir/${next_x}_{train,heldout}.mdl
+  if [ -f $dir/${next_x}_train.mdl ]; then
+      rm $dir/${next_x}_{train,heldout}.mdl
+  fi
   x=$[x+1]
 done
 
@@ -236,10 +236,6 @@ done
 
 if [ $stage -le $num_iters ]; then
   echo "$0: doing model combination"
-  # nnet3-copy  --edits="rename-node old-name=output new-name=output-dummy; rename-node old-name=output-default new-name=output" \
-  #     $dir/$num_iters.mdl $dir/final.raw
-  # nnet3-am-init $dir/0.mdl $dir/final.raw $dir/final.mdl
-  # exit 0
   den_fst_dir=$egs_dir/misc
   input_models=$(for x in $(seq $combine_start_iter $num_iters); do echo $dir/${x}.raw; done)
   output_model_dir=$dir/final
