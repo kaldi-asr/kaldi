@@ -1,21 +1,5 @@
 #!/bin/bash
-
-
-# by default, with cleanup
-# please note that the language(s) was not selected for any particular reason (other to represent the various sizes of babel datasets)
-# 304-lithuanian   | %WER 42.6 | 20041 61492 | 60.3 29.6 10.1 2.9 42.6 29.2 | -0.226 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
-#                  num-iters=48 nj=2..12 num-params=6.7M dim=43+100->3273 combine=-0.192->-0.179
-#                  xent:train/valid[31,47,final]=(-2.47,-2.34,-2.33/-2.66,-2.57,-2.57)
-#                  logprob:train/valid[31,47,final]=(-0.191,-0.163,-0.162/-0.246,-0.242,-0.243)
-# 206-zulu         | %WER 54.6 | 22805 52162 | 49.1 39.7 11.2 3.7 54.6 31.1 | -0.567 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
-#                  num-iters=66 nj=2..12 num-params=6.7M dim=43+100->3274 combine=-0.236->-0.227
-#                  xent:train/valid[43,65,final]=(-2.59,-2.46,-2.46/-2.73,-2.67,-2.66)
-#                  logprob:train/valid[43,65,final]=(-0.236,-0.208,-0.206/-0.289,-0.287,-0.286)
-# 104-pashto       | %WER 42.7 | 21825 101803 | 61.1 27.5 11.4 3.8 42.7 30.4 | -0.345 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
-#                  num-iters=85 nj=2..12 num-params=6.8M dim=43+100->3328 combine=-0.215->-0.211
-#                  xent:train/valid[55,84,final]=(-2.44,-2.32,-2.32/-2.63,-2.57,-2.56)
-#                  logprob:train/valid[55,84,final]=(-0.214,-0.192,-0.191/-0.281,-0.276,-0.275)
-
+# chain2 recipe for monolingual systems for BABEL
 
 set -e -o pipefail
 
@@ -23,10 +7,10 @@ set -e -o pipefail
 # (some of which are also used in this script directly).
 stage=-1
 nj=30
-train_set=train_cleaned
-gmm=tri5_cleaned  # the gmm for the target data
-langdir=data/langp/tri5_ali
-num_threads_ubm=12
+train_set=train
+gmm=tri5  # the gmm for the target data
+langdir=data/lang
+num_threads_ubm=1
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
 # The rest are configs specific to this script.  Most of the parameters
@@ -36,7 +20,14 @@ tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the 
 tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 chunk_width=150,120,90,75
+frame_subsampling_factor=3
 langs=default  # has multiple values for a multilingual system
+srand=-1
+num_jobs_initial=2
+num_jobs_final=12
+initial_effective_lrate=0.001
+final_effective_lrate=0.0001
+max_param_change=2.0
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -55,21 +46,13 @@ fi
 
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
+tree_dir=exp/chain2${nnet3_affix}/tree${tree_affix}
+lat_dir=exp/chain2${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain2${nnet3_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
-
-if [ $stage -le -1 ]; then
-    steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-        data/${train_set}_sp  \
-        data/lang \
-        exp/tri5 \
-        $ali_dir
-fi
 
 local/chain/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
@@ -85,7 +68,7 @@ for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: creating lang directory with one state per phone."
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -108,7 +91,7 @@ if [ $stage -le 14 ]; then
   fi
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 8 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -116,7 +99,7 @@ if [ $stage -le 15 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 9 ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.
@@ -131,7 +114,7 @@ if [ $stage -le 16 ]; then
 fi
 
 xent_regularize=0.1
-if [ $stage -le 17 ]; then
+if [ $stage -le 10 ]; then
   mkdir -p $dir
 
   echo "$0: creating neural net configs using the xconfig parser";
@@ -189,7 +172,7 @@ EOF
 fi
 
 init_info=$dir/init/info.txt
-if [ $stage -le 18 ]; then
+if [ $stage -le 11 ]; then
 
   if [ ! -f $dir/configs/ref.raw ]; then
       echo "Expected $dir/configs/ref.raw to exist"
@@ -211,7 +194,7 @@ fi
 
 
 # Make phone LM and denominator and normalization FST
-if [ $stage -le 19 ]; then
+if [ $stage -le 12 ]; then
   echo "$0: Making Phone LM and denominator and normalization FST"
   mkdir -p $dir/den_fsts/log
 
@@ -251,28 +234,28 @@ for d in $dir/raw_egs $dir/processed_egs; do
 done
 
 if [ -z $common_egs_dir ]; then
-    if [ $stage -le 20 ]; then
+    if [ $stage -le 13 ]; then
       echo "$0: about to dump raw egs."
       # Dump raw egs.
       steps/chain2/get_raw_egs.sh --cmd "$train_cmd" \
         --lang "default" \
-        --online-ivector-dir exp/nnet3/ivectors_${train_set} \
+        --online-ivector-dir $train_ivector_dir \
         --left-context $egs_left_context \
         --right-context $egs_right_context \
         --frame-subsampling-factor $frame_subsampling_factor \
         --alignment-subsampling-factor $frame_subsampling_factor \
-        --frames-per-chunk $frames_per_eg \
+        --frames-per-chunk $chunk_width \
         ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
     fi
 
-    if [ $stage -le 21 ]; then
+    if [ $stage -le 14 ]; then
       echo "$0: about to process egs"
       steps/chain2/process_egs.sh  --cmd "$train_cmd" \
           --num-repeats 1 \
         ${dir}/raw_egs ${dir}/processed_egs
     fi
 
-    if [ $stage -le 22 ]; then
+    if [ $stage -le 15 ]; then
       echo "$0: about to randomize egs"
       steps/chain2/randomize_egs.sh --frames-per-job 1500000 \
         ${dir}/processed_egs ${dir}/egs
@@ -280,7 +263,7 @@ if [ -z $common_egs_dir ]; then
     common_egs_dir=$dir/egs
 fi
 
-if [ $stage -le 23 ]; then
+if [ $stage -le 16 ]; then
     echo "$0: Training pre-conditioning matrix"
     num_lda_jobs=`find $common_egs_dir/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
     steps/chain2/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
@@ -291,7 +274,7 @@ if [ $stage -le 23 ]; then
 fi
 
 
-if [ $stage -le 24 ]; then
+if [ $stage -le 17 ]; then
     echo "$0: Preparing initial acoustic model"
     if [ -f $dir/configs/init.config ]; then
             $train_cmd ${dir}/log/add_first_layer.log \
@@ -306,9 +289,9 @@ if [ $stage -le 24 ]; then
         nnet3-am-init ${dir}/init/default_trans.mdl $dir/init/default.raw $dir/init/default.mdl || exit 1
 fi
 
-if [ $stage -le 25 ]; then
+if [ $stage -le 18 ]; then
   echo "$0: Starting model training"
-  steps/chain2/train2.sh \
+  steps/chain2/train.sh \
     --stage $train_stage --cmd "$cuda_cmd" \
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
     --initial-effective-lrate $initial_effective_lrate \
@@ -324,8 +307,10 @@ if [ $stage -le 19 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/langp_test $dir $dir/graph
+  if [ ! -f $dir/tree ]; then
+      cp $tree_dir/tree $dir/tree
+  fi
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_chain $dir $dir/graph
 fi
 
 exit 0
-
