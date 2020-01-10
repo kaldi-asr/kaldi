@@ -254,7 +254,7 @@ if [ $stage -le 1 ]; then
   frames_and_chunks=$(for n in $(seq $nj); do cat $dir/log/get_egs.$n.log; done | \
            perl -e '$nc=0; $nf=0; while(<STDIN>) {
      if (m/Split .+ into (\d+) chunks/) { $this_nc = $1;  }
-     if (m/Average chunk length was (\d+) frames/) { $nf += $1 * $this_nc;  $nc += $this_nc; }
+     if (m/Average chunk length was (\d+.\d+) frames/) { $nf += $1 * $this_nc;  $nc += $this_nc; }
     } print "$nf $nc"; ')
     echo $frames_and_chunks
   num_chunks=$(echo $frames_and_chunks | awk '{print $2}')
