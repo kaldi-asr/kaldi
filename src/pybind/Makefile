@@ -106,6 +106,17 @@ LD_PRELOAD += $(MKL_LD_PRELOAD)
 export LD_PRELOAD
 endif
 
+# directories should be sorted in alphabetic order
+TEST_DIRS := \
+chain \
+cudamatrix \
+dlpack \
+feat \
+fst \
+matrix \
+nnet3 \
+tests
+
 .PHONY: all clean test
 
 all: $(LIBFILE)
@@ -124,15 +135,7 @@ clean:
 	-rm -f .depend.mk
 
 test: all
-	python3 tests/test_dlpack_subvector.py
-	python3 tests/test_kaldi_pybind.py
-	make -C chain test
-	make -C cudamatrix test
-	make -C dlpack test
-	make -C feat test
-	make -C fst test
-	make -C matrix test
-	make -C nnet3 test
+	for d in $(TEST_DIRS); do make -C $$d test; done
 
 # valgrind-python.supp is from http://svn.python.org/projects/python/trunk/Misc/valgrind-python.supp
 # since we do not compile Python from source, we follow the comment in valgrind-python.supp
@@ -145,7 +148,7 @@ depend:
 	rm -f .depend.mk
 	for f in $(CCFILES); do \
            $(CXX) -M -MT "$$(dirname $$f)/$$(basename -s .cc $$f).o" \
-           $(CXXFLAGS) $$f >> .depend.mk; \
+             $(CXXFLAGS) $$f >> .depend.mk; \
       done
 
 -include .depend.mk
