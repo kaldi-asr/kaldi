@@ -12,9 +12,8 @@
 
 # Begin configuration section.
 cmd=run.pl
-chunks_per_group=4
-num_repeats=2  # number of times we repeat the same chunks with different
-               # grouping.  Recommend 1 or 2; must divide chunks_per_group
+num_repeats=1  # number of times we repeat the same chunks with different
+               # grouping.  
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -129,11 +128,7 @@ if [ $stage -le 1 ]; then
 
   # Split up the training list into multiple smaller lists, as it could be long.
   utils/split_scp.pl $dir/temp/train.list  $(for j in $(seq $nj); do echo $dir/temp/train.$j.list; done)
-  # Linearize these lists and add keys to make them in scp format;
-  # nnet3-chain-merge-egs will merge the right groups, it's deterministic
-  # and we specified --minibatch-size=$chunks_per_group.
   for j in $(seq $nj); do
-    #awk '{for (n=1;n<=NF;n++) { count++; print count, $n; }}' <$dir/temp/train.$j.list >$dir/temp/train.$j.scp
     cp $dir/temp/train.${j}.list $dir/temp/train.${j}.scp
   done
 
