@@ -40,10 +40,10 @@ def get_egs_dataloader(egs_dir, egs_left_context, egs_right_context):
 def read_nnet_chain_example(rxfilename):
     eg = nnet3.NnetChainExample()
     ki = kaldi.Input()
-    res = ki.Open(rxfilename, read_header=True)
-    if res[0] == 0:
+    is_opened, is_binary = ki.Open(rxfilename, read_header=True)
+    if not is_opened:
         raise Exception('Failed to open {}'.format(rxfilename))
-    eg.Read(ki.Stream(), res[1])
+    eg.Read(ki.Stream(), is_binary)
     ki.Close()
     return eg
 

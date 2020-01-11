@@ -67,6 +67,11 @@ fst/weight_pybind.cc \
 fstext/fstext_pybind.cc \
 fstext/kaldi_fst_io_pybind.cc \
 fstext/lattice_weight_pybind.cc \
+hmm/hmm_pybind.cc \
+hmm/hmm_topology_pybind.cc \
+hmm/transition_model_pybind.cc \
+itf/context_dep_itf_pybind.cc \
+itf/itf_pybind.cc \
 kaldi_pybind.cc \
 lat/determinize_lattice_pruned_pybind.cc \
 lat/kaldi_lattice_pybind.cc \
@@ -124,6 +129,7 @@ dlpack \
 feat \
 fst \
 fstext \
+hmm \
 lat \
 matrix \
 nnet3 \

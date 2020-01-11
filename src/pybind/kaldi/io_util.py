@@ -22,8 +22,8 @@ def read_vec_int(rxfilename):
     It can be used to read alignment information from `ali.scp`
     '''
     ki = kaldi_pybind.Input()
-    res = ki.Open(rxfilename, read_header=False)
-    if res[0] == 0:
+    is_opened, = ki.Open(rxfilename, read_header=False)
+    if not is_opened:
         raise FileNotOpenException('Failed to open {}'.format(rxfilename))
 
     holder = kaldi_pybind.IntVectorHolder()
@@ -40,12 +40,12 @@ def read_vec_flt(rxfilename):
     '''Read a kaldi::Vector<float> from an rxfilename
     '''
     ki = kaldi_pybind.Input()
-    res = ki.Open(rxfilename, read_header=True)
-    if res[0] == 0:
+    is_opened, is_binary = ki.Open(rxfilename, read_header=True)
+    if not is_opened:
         raise FileNotOpenException('Failed to open {}'.format(rxfilename))
 
     v = kaldi_pybind.FloatVector()
-    v.Read(ki.Stream(), res[1])
+    v.Read(ki.Stream(), is_binary)
     ki.Close()
 
     return v
@@ -57,12 +57,12 @@ def read_mat(rxfilename):
     '''Read a kaldi::Matrix<float> from an rxfilename
     '''
     ki = kaldi_pybind.Input()
-    res = ki.Open(rxfilename, read_header=True)
-    if res[0] == 0:
+    is_opened, is_binary = ki.Open(rxfilename, read_header=True)
+    if not is_opened:
         raise FileNotOpenException('Failed to open {}'.format(rxfilename))
 
     mat = kaldi_pybind.FloatMatrix()
-    mat.Read(ki.Stream(), res[1])
+    mat.Read(ki.Stream(), is_binary)
     ki.Close()
 
     return mat

@@ -28,6 +28,8 @@
 #include "feat/feat_pybind.h"
 #include "feat/wave_reader_pybind.h"
 #include "fst/fst_pybind.h"
+#include "hmm/hmm_pybind.h"
+#include "itf/itf_pybind.h"
 #include "lat/lat_pybind.h"
 #include "matrix/matrix_pybind.h"
 #include "nnet3/nnet3_pybind.h"
@@ -50,6 +52,8 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_cudamatrix(m);
 
   pybind_decoder(m);
+  pybind_itf(m);
+  pybind_hmm(m);
 
   void test_dlpack(py::module & m);  // forward declaration
   test_dlpack(m);
