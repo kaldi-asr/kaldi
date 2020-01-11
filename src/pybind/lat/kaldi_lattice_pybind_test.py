@@ -18,6 +18,18 @@ class TestKaldiLattice(unittest.TestCase):
     def test_lattice_arc(self):
         w = kaldi.LatticeWeight(10, 20)
         arc = kaldi.LatticeArc(ilabel=1, olabel=2, weight=w, nextstate=3)
+
+        self.assertEqual(arc.ilabel, 1)
+        self.assertEqual(arc.olabel, 2)
+        self.assertEqual(arc.weight, w)
+        self.assertEqual(arc.nextstate, 3)
+
+    def test_compact_lattice_arc(self):
+        lat_w = kaldi.LatticeWeight(10, 20)
+        s = [1, 2, 3, 4, 5]
+        w = kaldi.CompactLatticeWeight(lat_w, s)
+        arc = kaldi.CompactLatticeArc(ilabel=1, olabel=2, weight=w, nextstate=3)
+
         self.assertEqual(arc.ilabel, 1)
         self.assertEqual(arc.olabel, 2)
         self.assertEqual(arc.weight, w)
