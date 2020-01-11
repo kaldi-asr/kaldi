@@ -45,7 +45,7 @@ def read_vec_flt(rxfilename):
         raise FileNotOpenException('Failed to open {}'.format(rxfilename))
 
     v = kaldi_pybind.FloatVector()
-    v.Read(ki.Stream(), res[1] == True)
+    v.Read(ki.Stream(), res[1])
     ki.Close()
 
     return v
@@ -62,7 +62,7 @@ def read_mat(rxfilename):
         raise FileNotOpenException('Failed to open {}'.format(rxfilename))
 
     mat = kaldi_pybind.FloatMatrix()
-    mat.Read(ki.Stream(), res[1] == True)
+    mat.Read(ki.Stream(), res[1])
     ki.Close()
 
     return mat

@@ -32,6 +32,7 @@ endif
 
 CXXFLAGS += -O3 $(LTOFLAG) -I.
 LDFLAGS += $(LTOFLAG)
+LDFLAGS += -fuse-ld=gold
 
 ifeq ($(shell uname),Darwin)
   LDFLAGS += -undefined dynamic_lookup
@@ -61,8 +62,12 @@ fst/fst_pybind.cc \
 fst/symbol_table_pybind.cc \
 fst/vector_fst_pybind.cc \
 fst/weight_pybind.cc \
+fstext/fstext_pybind.cc \
 fstext/kaldi_fst_io_pybind.cc \
+fstext/lattice_weight_pybind.cc \
 kaldi_pybind.cc \
+lat/kaldi_lattice_pybind.cc \
+lat/lat_pybind.cc \
 matrix/compressed_matrix_pybind.cc \
 matrix/kaldi_matrix_pybind.cc \
 matrix/kaldi_vector_pybind.cc \
@@ -114,6 +119,8 @@ cudamatrix \
 dlpack \
 feat \
 fst \
+fstext \
+lat \
 matrix \
 nnet3 \
 tests
@@ -136,7 +143,7 @@ clean:
 	-rm -f .depend.mk
 
 test: all
-	for d in $(TEST_DIRS); do make -C $$d test; done
+	for d in $(TEST_DIRS); do make -C $$d test || exit 1; done
 
 # valgrind-python.supp is from http://svn.python.org/projects/python/trunk/Misc/valgrind-python.supp
 # since we do not compile Python from source, we follow the comment in valgrind-python.supp

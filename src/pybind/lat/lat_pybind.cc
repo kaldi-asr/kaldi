@@ -1,7 +1,7 @@
-// pybind/fst/arc_pybind.cc
+// pybind/lat/lat_pybind.cc
 
-// Copyright 2019-2020   Mobvoi AI Lab, Beijing, China
-//                       (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+// Copyright 2020   Mobvoi AI Lab, Beijing, China
+//                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -16,12 +16,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "fst/arc_pybind.h"
+#include "lat/lat_pybind.h"
+#include "lat/kaldi_lattice_pybind.h"
 
-#include "fst/arc.h"
-
-void pybind_arc(py::module& m) {
-  // (fangjun): we have wrapped fst::TropicalWeight
-  // in fst/weight_pybind.cc
-  pybind_arc_impl<fst::TropicalWeight>(m, "StdArc");
-}
+void pybind_lat(py::module& m) { pybind_kaldi_lattice(m); }

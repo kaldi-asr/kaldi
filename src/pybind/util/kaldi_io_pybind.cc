@@ -30,7 +30,35 @@ void pybind_kaldi_io(py::module& m) {
     using PyClass = Input;
     py::class_<PyClass>(m, "Input")
         .def(py::init<>())
-        // the constructor and `Open` both require a `bool*` argument
+        .def("Open",
+             [](PyClass* ki, const std::string& rxfilename,
+                bool read_header = false) -> std::vector<bool> {
+               std::vector<bool> result(1, false);
+               if (read_header) {
+                 result.resize(2, false);
+                 bool tmp;
+                 result[0] = ki->Open(rxfilename, &tmp);
+                 result[1] = tmp;
+               } else {
+                 result[0] = ki->Open(rxfilename);
+               }
+               return result;
+             },
+             "Open the stream for reading. "
+             "Return a vector containing one bool or two depending on "
+             "whether `read_header` is false or true."
+             "\n",
+             "(1) If `read_header` is true, it returns [opened, binary], where "
+             "`opened` is true if the stream was opened successfully, false "
+             "otherwise;\n"
+             "`binary` is true if the stream was opened **and** in binary "
+             "format\n"
+             "\n"
+             "(2) If `read_header` is false, it returns [opened], where "
+             "`opened` is true if the stream was opened successfully, false "
+             "otherwise",
+             py::arg("rxfilename"), py::arg("read_header") = false)
+        // the constructor and `Open` method both require a `bool*` argument
         // but pybind11 does not support passing a pointer to a primitive
         // type, only pointer to customized type is allowed.
         //
@@ -38,32 +66,10 @@ void pybind_kaldi_io(py::module& m) {
         // https://github.com/pybind/pybind11/pull/1760/commits/1d8caa5fbd0903cece06ae646447fff9b4aa33c0
         // https://github.com/pybind/pybind11/pull/1760
         //
-        // Were it be `bool*`, would it always be non-NULL in C++!
-        .def(
-            "Open",
-            [](PyClass* ki, const std::string& rxfilename,
-               bool read_header = false) -> std::vector<int> {
-              // WARNING(fangjun): we cannot use `std::vector<bool> res;` here
-              // since it is invalid to use `&result[0]` if it is a bool vector
-              std::vector<int> result(1, 0);
-              if (read_header) {
-                result.resize(2);
-                bool tmp;
-                result[0] = ki->Open(rxfilename, &tmp);
-                result[1] = tmp;
-              } else {
-                result[0] = ki->Open(rxfilename);
-              }
-              return result;
-            },
-            "Open the stream for reading. "
-            "if `read_header` is true, then calls `ReadHeader()`, putting the "
-            "output in the 1st position of the return value (counting from 0); "
-            "if `read_header is false, the return value has only one element`. "
-            "The return value has two elements if `read_header` is true, else "
-            " contains only one element. The zeroth element indicates whether "
-            "`Open` succeeds or not.",
-            py::arg("rxfilename"), py::arg("read_header") = false)
+        // Was it a `bool*`, would it always be non-NULL in C++!
+        //
+        // Therefore, we wrap the `Open` method and do NOT wrap the
+        // `constructor` with `bool*` arguments
         .def("IsOpen", &PyClass::IsOpen,
              "Return true if currently open for reading and Stream() will "
              "succeed.  Does not guarantee that the stream is good.")

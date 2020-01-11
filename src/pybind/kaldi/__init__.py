@@ -9,3 +9,7 @@ from io_util import *
 from pytorch_util import *
 from symbol_table import *
 from table import *
+
+# import some classes from fst to kaldi
+from kaldi_pybind.fst import CompactLatticeWeight
+from kaldi_pybind.fst import LatticeWeight

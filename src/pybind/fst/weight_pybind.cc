@@ -49,7 +49,7 @@ void pybind_weight(py::module& m) {
         .def_static("Zero", &PyClass::Zero)
         .def_static("One", &PyClass::One)
         .def_static("NoWeight", &PyClass::NoWeight)
-        .def_static("Type", &PyClass::Type)
+        .def_static("Type", &PyClass::Type, py::return_value_policy::reference)
         .def_static("Properties", &PyClass::Properties);
 
     m.def("Plus", [](const PyClass& w1, const PyClass& w2) {

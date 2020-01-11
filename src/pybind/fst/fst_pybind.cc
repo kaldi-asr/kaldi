@@ -1,7 +1,7 @@
 // pybind/fst/fst_pybind.cc
 
-// Copyright 2019   Mobvoi AI Lab, Beijing, China
-//                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+// Copyright 2019-2020   Mobvoi AI Lab, Beijing, China
+//                       (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -25,7 +25,7 @@
 #include "fst/symbol_table_pybind.h"
 #include "fst/vector_fst_pybind.h"
 #include "fst/weight_pybind.h"
-#include "fstext/kaldi_fst_io_pybind.h"
+#include "fstext/fstext_pybind.h"
 
 template <typename... Args>
 using overload_cast_ = py::detail::overload_cast_impl<Args...>;
@@ -35,6 +35,7 @@ namespace {
 void _pybind_fst(py::module& m) {
   m.attr("kNoLabel") = fst::kNoLabel;
   m.attr("kNoStateId") = fst::kNoStateId;
+  m.attr("kDelta") = fst::kDelta;  // for weight.Quantize()
   {
     using PyClass = fst::FstHeader;
     py::class_<PyClass>(m, "FstHeader")
@@ -348,6 +349,7 @@ void pybind_fst(py::module& _m) {
 
   _pybind_fst(m);
   pybind_vector_fst(m);
-  pybind_kaldi_fst_io(m);
   pybind_compile(m);
+
+  pybind_fstext(m);
 }
