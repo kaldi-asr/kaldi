@@ -26,4 +26,5 @@ using namespace kaldi;
 
 void pybind_kaldi_lattice(py::module& m) {
   pybind_arc_impl<LatticeWeight>(m, "LatticeArc");
+  pybind_arc_impl<CompactLatticeWeight>(m, "CompactLatticeArc");
 }

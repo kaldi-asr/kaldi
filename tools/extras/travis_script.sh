@@ -84,7 +84,8 @@ if [[ $CI_TARGETS == test ]]; then
   # the following command is copied from https://pytorch.org/get-started/locally/
   runvx pip3 install torch==1.3.1+cpu torchvision==0.4.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
   runvx cd pybind
-  runvx make -j$MAXPAR test
+  runvx make -j$MAXPAR all
+  runvx make test
   runvx cd ..
 fi
 
