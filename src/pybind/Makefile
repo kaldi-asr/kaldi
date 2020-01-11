@@ -48,6 +48,8 @@ cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
 cudamatrix/cudamatrix_pybind.cc \
+decoder/decoder_pybind.cc \
+decoder/lattice_faster_decoder_pybind.cc \
 dlpack/dlpack_deleter.cc \
 dlpack/dlpack_pybind.cc \
 dlpack/dlpack_submatrix.cc \
@@ -66,6 +68,7 @@ fstext/fstext_pybind.cc \
 fstext/kaldi_fst_io_pybind.cc \
 fstext/lattice_weight_pybind.cc \
 kaldi_pybind.cc \
+lat/determinize_lattice_pruned_pybind.cc \
 lat/kaldi_lattice_pybind.cc \
 lat/lat_pybind.cc \
 matrix/compressed_matrix_pybind.cc \
@@ -116,6 +119,7 @@ endif
 TEST_DIRS := \
 chain \
 cudamatrix \
+decoder \
 dlpack \
 feat \
 fst \

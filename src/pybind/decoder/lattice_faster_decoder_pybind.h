@@ -1,4 +1,4 @@
-// pybind/lat/lat_pybind.cc
+// pybind/decoder/lattice_faster_decoder_pybind.h
 
 // Copyright 2020   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
@@ -16,12 +16,12 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lat/lat_pybind.h"
-#include "lat/kaldi_lattice_pybind.h"
+#ifndef KALDI_PYBIND_DECODER_LATTICE_FASTER_DECODER_PYBIND_H_
+#define KALDI_PYBIND_DECODER_LATTICE_FASTER_DECODER_PYBIND_H_
 
-void pybind_lat(py::module& m) {
-  pybind_kaldi_lattice(m);
+#include "pybind/kaldi_pybind.h"
 
-  // pybind_determinize_lattice_pruned is wrapped in fst/fst_pybind.cc
-  // since it is in the `fst` namespace
-}
+void pybind_lattice_faster_decoder(py::module& kaldi_module,
+                                   py::module& decoder_module);
+
+#endif  // KALDI_PYBIND_DECODER_LATTICE_FASTER_DECODER_PYBIND_H_

@@ -27,6 +27,8 @@
 #include "fst/weight_pybind.h"
 #include "fstext/fstext_pybind.h"
 
+#include "lat/determinize_lattice_pruned_pybind.h"
+
 namespace {
 
 void _pybind_fst(py::module& m) {
@@ -201,4 +203,6 @@ void pybind_fst(py::module& _m) {
   pybind_compile(m);
 
   pybind_fstext(m);
+
+  pybind_determinize_lattice_pruned(m);
 }

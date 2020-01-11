@@ -23,6 +23,7 @@
 
 #include "chain/chain_pybind.h"
 #include "cudamatrix/cudamatrix_pybind.h"
+#include "decoder/decoder_pybind.h"
 #include "dlpack/dlpack_pybind.h"
 #include "feat/feat_pybind.h"
 #include "feat/wave_reader_pybind.h"
@@ -47,6 +48,8 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   pybind_dlpack(m);
 
   pybind_cudamatrix(m);
+
+  pybind_decoder(m);
 
   void test_dlpack(py::module & m);  // forward declaration
   test_dlpack(m);
