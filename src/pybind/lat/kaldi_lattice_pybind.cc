@@ -23,6 +23,7 @@
 #include "fst/vector_fst_pybind.h"
 #include "fstext/lattice-weight.h"
 #include "lat/kaldi-lattice.h"
+#include "util/kaldi_table_pybind.h"
 
 using namespace kaldi;
 
@@ -55,12 +56,12 @@ void pybind_kaldi_lattice(py::module& m) {
           }
           return p;
           // NOTE(fangjun): p points to a memory area allocated by `operator
-          // new` we ask python to take the ownership of the allocate memory
-          // which will finally calls `operator delete`
+          // new`; we ask python to take the ownership of the allocated memory
+          // which will finally invokes `operator delete`.
           //
           // Refer to
           // https://pybind11-rtdtest.readthedocs.io/en/stable/advanced.html
-          // for the explanation of `return_value_policy::take_ownership`
+          // for the explanation of `return_value_policy::take_ownership`.
         },
         py::arg("is"), py::arg("binary"),
         py::return_value_policy::take_ownership);
@@ -76,4 +77,44 @@ void pybind_kaldi_lattice(py::module& m) {
         },
         py::arg("is"), py::arg("binary"),
         py::return_value_policy::take_ownership);
+
+  {
+    using PyClass = LatticeHolder;
+    py::class_<PyClass>(m, "LatticeHolder")
+        .def(py::init<>())
+        .def_static("Write", &PyClass::Write, py::arg("os"), py::arg("binary"),
+                    py::arg("t"))
+        .def("Read", &PyClass::Read, py::arg("is"))
+        .def_static("IsReadInBinary", &PyClass::IsReadInBinary)
+        .def("Value", &PyClass::Value, py::return_value_policy::reference)
+        .def("Clear", &PyClass::Clear);
+    // TODO(fangjun): other methods can be wrapped when needed
+  }
+  {
+    using PyClass = CompactLatticeHolder;
+    py::class_<PyClass>(m, "CompactLatticeHolder")
+        .def(py::init<>())
+        .def_static("Write", &PyClass::Write, py::arg("os"), py::arg("binary"),
+                    py::arg("t"))
+        .def("Read", &PyClass::Read, py::arg("is"))
+        .def_static("IsReadInBinary", &PyClass::IsReadInBinary)
+        .def("Value", &PyClass::Value, py::return_value_policy::reference)
+        .def("Clear", &PyClass::Clear);
+    // TODO(fangjun): other methods can be wrapped when needed
+  }
+
+  pybind_sequential_table_reader<LatticeHolder>(m, "_SequentialLatticeReader");
+
+  pybind_random_access_table_reader<LatticeHolder>(
+      m, "_RandomAccessLatticeReader");
+
+  pybind_table_writer<LatticeHolder>(m, "_LatticeWriter");
+
+  pybind_sequential_table_reader<CompactLatticeHolder>(
+      m, "_SequentialCompactLatticeReader");
+
+  pybind_random_access_table_reader<CompactLatticeHolder>(
+      m, "_RandomAccessCompactLatticeReader");
+
+  pybind_table_writer<CompactLatticeHolder>(m, "_CompactLatticeWriter");
 }
