@@ -45,6 +45,8 @@ DEFINE_ARG_NAME(std::string, StringArg);
 template <typename Type>
 struct Arg {
   Type value{};
+  Arg() = default;
+  Arg(const Type& v) : value(v) {}
 };
 
 template <typename Type, typename Opt>
@@ -52,6 +54,7 @@ void pybind_arg(py::module& m, Opt& opt) {
   using PyClass = Arg<Type>;
   py::class_<PyClass>(m, ArgName<Type>::value)
       .def(py::init<>())
+      .def(py::init<const Type&>(), py::arg("v"))
       .def_readwrite("value", &PyClass::value)
       .def("__str__", [](const PyClass& arg) {
         std::ostringstream os;

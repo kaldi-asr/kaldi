@@ -66,3 +66,19 @@ def read_mat(rxfilename):
     ki.Close()
 
     return mat
+
+
+def read_transition_model(rxfilename):
+    '''Read binary transition model from an rxfilename.
+    '''
+    ki = kaldi_pybind.Input()
+    is_opened, is_binary = ki.Open(rxfilename, read_header=True)
+    if not is_opened:
+        raise FileNotOpenException('Failed to open {}'.format(rxfilename))
+
+    trans_model = kaldi_pybind.TransitionModel()
+    trans_model.Read(ki.Stream(), is_binary)
+
+    ki.Close()
+
+    return trans_model
