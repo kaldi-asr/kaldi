@@ -21,9 +21,7 @@
 #include "decoder/decodable_matrix_pybind.h"
 #include "decoder/lattice_faster_decoder_pybind.h"
 
-void pybind_decoder(py::module& kaldi_m) {
-  py::module decoder_m = kaldi_m.def_submodule("decoder", "pybind for decoder");
-
-  pybind_lattice_faster_decoder(kaldi_m, decoder_m);
-  pybind_decodable_matrix(kaldi_m);
+void pybind_decoder(py::module& m) {
+  pybind_lattice_faster_decoder(m);
+  pybind_decodable_matrix(m);
 }

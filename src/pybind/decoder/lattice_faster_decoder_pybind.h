@@ -21,7 +21,6 @@
 
 #include "pybind/kaldi_pybind.h"
 
-void pybind_lattice_faster_decoder(py::module& kaldi_module,
-                                   py::module& decoder_module);
+void pybind_lattice_faster_decoder(py::module& m);
 
 #endif  // KALDI_PYBIND_DECODER_LATTICE_FASTER_DECODER_PYBIND_H_
