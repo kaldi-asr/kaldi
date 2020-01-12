@@ -141,7 +141,8 @@ hmm \
 lat \
 matrix \
 nnet3 \
-tests
+tests \
+util
 
 .PHONY: all clean test
 
