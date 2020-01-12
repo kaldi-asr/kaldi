@@ -55,26 +55,29 @@ void pybind_lattice_faster_decoder_config(py::module& m) {
       .def_readwrite("prune_scale", &PyClass::prune_scale)
       .def_readwrite("det_opts", &PyClass::det_opts)
       .def("Check", &PyClass::Check)
-      .def("__str__", [](const PyClass& opts) {
-        std::ostringstream os;
-        os << "beam: " << opts.beam << "\n";
-        os << "max_active: " << opts.max_active << "\n";
-        os << "lattice_beam: " << opts.lattice_beam << "\n";
-        os << "prune_interval: " << opts.prune_interval << "\n";
-        os << "determinize_lattice: " << opts.determinize_lattice << "\n";
-        os << "beam_delta: " << opts.beam_delta << "\n";
-        os << "hash_ratio: " << opts.hash_ratio << "\n";
-        os << "prune_scale: " << opts.prune_scale << "\n";
+      .def("__str__",
+           [](const PyClass& opts) {
+             std::ostringstream os;
+             os << "beam: " << opts.beam << "\n";
+             os << "max_active: " << opts.max_active << "\n";
+             os << "lattice_beam: " << opts.lattice_beam << "\n";
+             os << "prune_interval: " << opts.prune_interval << "\n";
+             os << "determinize_lattice: " << opts.determinize_lattice << "\n";
+             os << "beam_delta: " << opts.beam_delta << "\n";
+             os << "hash_ratio: " << opts.hash_ratio << "\n";
+             os << "prune_scale: " << opts.prune_scale << "\n";
 
-        os << "det_opts:\n";
-        os << "  delta: " << opts.det_opts.delta << "\n";
-        os << "  max_mem: " << opts.det_opts.max_mem << "\n";
-        os << "  phone_determinize: " << opts.det_opts.phone_determinize
-           << "\n";
-        os << "  word_determinize: " << opts.det_opts.word_determinize << "\n";
-        os << "  minimize: " << opts.det_opts.minimize << "\n";
-        return os.str();
-      });
+             os << "det_opts:\n";
+             os << "  delta: " << opts.det_opts.delta << "\n";
+             os << "  max_mem: " << opts.det_opts.max_mem << "\n";
+             os << "  phone_determinize: " << opts.det_opts.phone_determinize
+                << "\n";
+             os << "  word_determinize: " << opts.det_opts.word_determinize
+                << "\n";
+             os << "  minimize: " << opts.det_opts.minimize << "\n";
+             return os.str();
+           })
+      .def("Register", &PyClass::Register, py::arg("opts"));
 }
 
 template <typename FST, typename Token = decoder::StdToken>

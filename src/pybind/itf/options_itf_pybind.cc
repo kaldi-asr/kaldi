@@ -1,4 +1,4 @@
-// pybind/itf/itf_pybind.cc
+// pybind/itf/options_itf_pybind.cc
 
 // Copyright 2020   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
@@ -16,14 +16,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "itf/itf_pybind.h"
-
-#include "itf/context_dep_itf_pybind.h"
-#include "itf/decodable_itf_pybind.h"
 #include "itf/options_itf_pybind.h"
 
-void pybind_itf(py::module& m) {
-  pybind_context_dep_itf(m);
-  pybind_decodable_itf(m);
-  pybind_options_itf(m);
+#include "itf/options-itf.h"
+
+using namespace kaldi;
+
+void pybind_options_itf(py::module& m) {
+  using PyClass = OptionsItf;
+  py::class_<PyClass>(m, "OptionsItf");
+  // NOTE(fangjun): the `Register` methods are not needed for pybind
 }

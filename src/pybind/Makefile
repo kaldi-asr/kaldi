@@ -75,6 +75,7 @@ hmm/transition_model_pybind.cc \
 itf/context_dep_itf_pybind.cc \
 itf/decodable_itf_pybind.cc \
 itf/itf_pybind.cc \
+itf/options_itf_pybind.cc \
 kaldi_pybind.cc \
 lat/determinize_lattice_pruned_pybind.cc \
 lat/kaldi_lattice_pybind.cc \
@@ -92,6 +93,7 @@ nnet3/nnet_example_pybind.cc \
 tests/test_dlpack_subvector.cc \
 util/kaldi_holder_pybind.cc \
 util/kaldi_io_pybind.cc \
+util/parse_options_pybind.cc \
 util/table_types_pybind.cc \
 util/util_pybind.cc
 

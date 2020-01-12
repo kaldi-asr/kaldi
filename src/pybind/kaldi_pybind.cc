@@ -39,6 +39,7 @@ PYBIND11_MODULE(kaldi_pybind, m) {
   m.doc() = "pybind11 binding of some things from kaldi";
 
   pybind_matrix(m);
+  pybind_itf(m);
   pybind_util(m);
   pybind_feat(m);
 
@@ -51,7 +52,6 @@ PYBIND11_MODULE(kaldi_pybind, m) {
 
   pybind_cudamatrix(m);
 
-  pybind_itf(m);
   pybind_decoder(m);
   pybind_hmm(m);
 
