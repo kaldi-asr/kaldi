@@ -50,6 +50,7 @@ cudamatrix/cu_vector_pybind.cc \
 cudamatrix/cudamatrix_pybind.cc \
 decoder/decodable_matrix_pybind.cc \
 decoder/decoder_pybind.cc \
+decoder/decoder_wrappers_pybind.cc \
 decoder/lattice_faster_decoder_pybind.cc \
 dlpack/dlpack_deleter.cc \
 dlpack/dlpack_pybind.cc \
