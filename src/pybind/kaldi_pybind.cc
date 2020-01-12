@@ -51,8 +51,8 @@ PYBIND11_MODULE(kaldi_pybind, m) {
 
   pybind_cudamatrix(m);
 
-  pybind_decoder(m);
   pybind_itf(m);
+  pybind_decoder(m);
   pybind_hmm(m);
 
   void test_dlpack(py::module & m);  // forward declaration

@@ -48,6 +48,7 @@ cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
 cudamatrix/cudamatrix_pybind.cc \
+decoder/decodable_matrix_pybind.cc \
 decoder/decoder_pybind.cc \
 decoder/lattice_faster_decoder_pybind.cc \
 dlpack/dlpack_deleter.cc \
@@ -71,6 +72,7 @@ hmm/hmm_pybind.cc \
 hmm/hmm_topology_pybind.cc \
 hmm/transition_model_pybind.cc \
 itf/context_dep_itf_pybind.cc \
+itf/decodable_itf_pybind.cc \
 itf/itf_pybind.cc \
 kaldi_pybind.cc \
 lat/determinize_lattice_pruned_pybind.cc \
@@ -101,8 +103,11 @@ ADDLIBS := \
 ../base/kaldi-base.a \
 ../chain/kaldi-chain.a \
 ../cudamatrix/kaldi-cudamatrix.a \
+../decoder/kaldi-decoder.a \
 ../feat/kaldi-feat.a \
 ../fstext/kaldi-fstext.a \
+../hmm/kaldi-hmm.a \
+../lat/kaldi-lat.a \
 ../matrix/kaldi-matrix.a \
 ../nnet3/kaldi-nnet3.a \
 ../util/kaldi-util.a

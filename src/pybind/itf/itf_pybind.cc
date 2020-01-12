@@ -19,5 +19,9 @@
 #include "itf/itf_pybind.h"
 
 #include "itf/context_dep_itf_pybind.h"
+#include "itf/decodable_itf_pybind.h"
 
-void pybind_itf(py::module& m) { pybind_context_dep_itf(m); }
+void pybind_itf(py::module& m) {
+  pybind_context_dep_itf(m);
+  pybind_decodable_itf(m);
+}

@@ -1,4 +1,4 @@
-// pybind/decoder/decoder_pybind.cc
+// pybind/itf/decodable_itf_pybind.h
 
 // Copyright 2020   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
@@ -16,14 +16,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "decoder/decoder_pybind.h"
+#ifndef KALDI_PYBIND_ITF_DECODABLE_ITF_PYBIND_H_
+#define KALDI_PYBIND_ITF_DECODABLE_ITF_PYBIND_H_
 
-#include "decoder/decodable_matrix_pybind.h"
-#include "decoder/lattice_faster_decoder_pybind.h"
+#include "pybind/kaldi_pybind.h"
 
-void pybind_decoder(py::module& kaldi_m) {
-  py::module decoder_m = kaldi_m.def_submodule("decoder", "pybind for decoder");
+void pybind_decodable_itf(py::module& m);
 
-  pybind_lattice_faster_decoder(kaldi_m, decoder_m);
-  pybind_decodable_matrix(kaldi_m);
-}
+#endif  // KALDI_PYBIND_ITF_DECODABLE_ITF_PYBIND_H_
