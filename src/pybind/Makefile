@@ -26,8 +26,12 @@ LIBFILE_EXTENSION := $(PYBIND_EXTENSION)
 
 # pybind11 is heavily templated and generates code that is bloated before optimization.
 # -flto is link time optimization which apparently is important.
-CXXFLAGS += -O3 -flto -I.
-LDFLAGS += -flto
+ifndef CI_TARGETS
+  LTOFLAG = -flto
+endif
+
+CXXFLAGS += -O3 $(LTOFLAG) -I.
+LDFLAGS += $(LTOFLAG)
 
 ifeq ($(shell uname),Darwin)
   LDFLAGS += -undefined dynamic_lookup

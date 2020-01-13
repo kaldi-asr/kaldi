@@ -155,6 +155,10 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0;
     for (; !prob_reader.Done(); prob_reader.Next()) {
       std::string key = prob_reader.Key();
+      if (!alignment_reader.HasKey(key)) {
+        KALDI_WARN << "No alignment for utterance " << key;
+        continue;
+      }       
       auto alignment = alignment_reader.Value(key);
       Matrix<BaseFloat> &probs = prob_reader.Value();
       if (log_applied) probs.ApplyExp();
