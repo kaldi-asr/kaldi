@@ -54,11 +54,14 @@ void pybind_lattice_weight_impl(py::module& m, const std::string& class_name,
         return os.str();
       });
 
-  m.def("ScaleTupleWeight", &fst::ScaleTupleWeight<FloatType, FloatType>,
-        "ScaleTupleWeight is a function defined for LatticeWeightTpl and "
-        "CompactLatticeWeightTpl that mutliplies the pair (value1_, value2_) "
-        "by a 2x2 matrix.  Used, for example, in applying acoustic scaling.",
-        py::arg("w"), py::arg("scale"));
+  m.def(
+      "ScaleTupleWeight",
+      (PyClass(*)(const PyClass&, const std::vector<std::vector<FloatType>>&))(
+          &fst::ScaleTupleWeight<FloatType, FloatType>),
+      "ScaleTupleWeight is a function defined for LatticeWeightTpl and "
+      "CompactLatticeWeightTpl that mutliplies the pair (value1_, value2_) "
+      "by a 2x2 matrix.  Used, for example, in applying acoustic scaling.",
+      py::arg("w"), py::arg("scale"));
 }
 
 template <typename WeightType, typename IntType>
