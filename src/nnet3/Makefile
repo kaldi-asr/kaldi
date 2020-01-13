@@ -32,7 +32,7 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   decodable-online-looped.o convolution.o \
   nnet-convolutional-component.o attention.o \
   nnet-attention-component.o nnet-tdnn-component.o nnet-batch-compute.o \
-  nnet-chain-training2.o
+  nnet-chain-training2.o nnet-chain-diagnostics.o
 
 
 LIBNAME = kaldi-nnet3
