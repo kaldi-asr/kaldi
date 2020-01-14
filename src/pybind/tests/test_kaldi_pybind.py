@@ -58,6 +58,18 @@ class TestKaldiPybind(unittest.TestCase):
         np.testing.assert_array_equal(value.numpy(), gold)
 
         matrix_reader.Close()
+
+        # test with context manager
+        kp_matrix[0, 0] = 20
+        with kaldi.MatrixWriter(wspecifier) as writer:
+            writer.Write('id_2', kp_matrix)
+        with kaldi.SequentialMatrixReader(rspecifier) as reader:
+            key = reader.Key()
+            self.assertEqual(key, "id_2")
+            value = reader.Value()
+            gold = np.array([[20, 0, 0], [0, 0, 0]])
+            np.testing.assert_array_equal(value.numpy(), gold)
+        
         os.remove('test.ark')
 
     def test_matrix_reader_iterator(self):
