@@ -37,7 +37,7 @@ void pybind_cu_device(py::module& m) {
         py::arg("device_id"));
 
   m.def("SelectGpuId",
-        [](std::string use_gpu) {
+        [](const std::string& use_gpu) {
 #if HAVE_CUDA == 1
           CuDevice::Instantiate().SelectGpuId(use_gpu);
 #else
