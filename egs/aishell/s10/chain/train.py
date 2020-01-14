@@ -163,7 +163,7 @@ def main():
                            lr=learning_rate,
                            weight_decay=args.l2_regularize)
 
-    scheduler = MultiStepLR(optimizer, milestones=[2, 6, 8, 9], gamma=0.5)
+    scheduler = MultiStepLR(optimizer, milestones=[1, 2, 3, 4, 5], gamma=0.5)
     criterion = KaldiChainObjfFunction.apply
 
     tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
