@@ -65,7 +65,7 @@ class TestKaldiPybind(unittest.TestCase):
             writer.Write('id_2', kp_matrix)
         with kaldi.SequentialMatrixReader(rspecifier) as reader:
             key = reader.Key()
-            self.assertEqual(key, "id_2")
+            self.assertEqual(key, 'id_2')
             value = reader.Value()
             gold = np.array([[20, 0, 0], [0, 0, 0]])
             np.testing.assert_array_equal(value.numpy(), gold)
