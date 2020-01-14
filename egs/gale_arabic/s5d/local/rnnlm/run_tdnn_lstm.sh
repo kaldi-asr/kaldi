@@ -37,9 +37,9 @@ text_dir=data/rnnlm/text_nosp_1e
 mkdir -p $dir/config
 set -e
 
-for f in $text $lexicon; do
+for f in $text $lexicon $giga_text; do
   [ ! -f $f ] && \
-    echo "$0: expected file $f to exist; search for local/wsj_extend_dict.sh in run.sh" && exit 1
+    echo "$0: expected file $f to exist;" && exit 1
 done
 
 if [ $stage -le 0 ]; then
