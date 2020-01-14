@@ -17,10 +17,9 @@ train_stage=-10
 # variables for lattice rescoring
 run_lat_rescore=true
 run_nbest_rescore=false
-run_backward_rnnlm=false
 
 ac_model_dir=exp/chain/tdnn_1a_sp/
-decode_dir_suffix=rnnlm_1e
+decode_dir_suffix=rnnlm_1a
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
@@ -33,7 +32,7 @@ pruned_rescore=true
 text=data/train/text
 giga_text=giga/text.2000k
 lexicon=data/local/dict/lexiconp.txt
-text_dir=data/rnnlm/text_nosp_1e
+text_dir=data/rnnlm/text_nosp_1a
 mkdir -p $dir/config
 set -e
 
@@ -130,12 +129,6 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
       data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}_nbest
   done
-fi
-
-# running backward RNNLM, which further improves WERS by combining backward with
-# the forward RNNLM trained in this script.
-if [ $stage -le 6 ] && $run_backward_rnnlm; then
-  local/rnnlm/run_tdnn_lstm_back.sh
 fi
 
 exit 0
