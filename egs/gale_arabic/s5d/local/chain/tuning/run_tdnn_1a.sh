@@ -1,18 +1,5 @@
 #!/bin/bash
 
-# ./local/chain/compare_wer.sh exp/chain/tdnn_1a_sp
-# System                      tdnn_1a_sp
-# WER                             16.47
-# CER                              6.68
-# Final train prob              -0.0652
-# Final valid prob              -0.0831
-# Final train prob (xent)       -0.8965
-# Final valid prob (xent)       -0.9964
-
-# steps/info/chain_dir_info.pl exp/chain/tdnn_1a_sp/
-# exp/chain/tdnn_1a_sp/: num-iters=441 nj=3..16 num-params=18.6M dim=40+100->5816 combine=-0.063->-0.062 (over 6) xent:train/valid[293,440,final]=(-1.22,-0.912,-0.896/-1.29,-1.01,-0.996) logprob:train/valid[293,440,final]=(-0.097,-0.066,-0.065/-0.108,-0.084,-0.083)
-
-
 set -e -o pipefail
 stage=0
 nj=30
