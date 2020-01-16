@@ -93,6 +93,8 @@ void pybind_kaldi_vector(py::module& m) {
   py::class_<DLPackSubVector<float>, SubVector<float>>(m,
                                                        "DLPackFloatSubVector")
       .def("from_dlpack",
-           [](py::capsule* capsule) { return SubVectorFromDLPack(capsule); },
+           [](py::capsule* capsule) {
+             return SubVectorFromDLPack<float>(capsule);
+           },
            py::return_value_policy::take_ownership);
 }

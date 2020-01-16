@@ -39,6 +39,7 @@ class TestLatGenFasterMapped(unittest.TestCase):
         if not os.path.exists(
                 '../../../egs/aishell/s10/exp/chain/graph/HCLG.fst'):
             print('Please execute kaldi/egs/aishell/s10/run.sh first')
+            print('and souce path.sh in it before running this script')
             print('Or replace relevant files in this test with your own')
             print('Skip this test')
             return

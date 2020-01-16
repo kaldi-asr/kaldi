@@ -44,6 +44,7 @@ chain/chain_den_graph_pybind.cc \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
 chain/chain_training_pybind.cc \
+ctc/ctc_pybind.cc \
 cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
@@ -147,6 +148,11 @@ util
 .PHONY: all clean test
 
 all: $(LIBFILE)
+
+include ctc/ctc.mk
+
+ctc/%.o: ctc/%.cc $(LIB_WARP_CTC)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 %.o: %.cc
 	$(CXX) -c $(CXXFLAGS) -o $@ $<

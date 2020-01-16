@@ -20,11 +20,15 @@
 #define KALDI_PYBIND_DLPACK_DLPACK_SUBVECTOR_H_
 
 #include "dlpack/dlpack.h"
+#include "pybind/kaldi_pybind.h"
 
 #include "cudamatrix/cu-vector.h"
 #include "matrix/kaldi-vector.h"
 
 namespace kaldi {
+
+template <typename, typename>
+class _DLPackSubVector;
 
 /*
 The following comment is copied from
@@ -44,17 +48,20 @@ from Python by `PyCapsule`.
 */
 
 template <typename Real>
-class DLPackSubVector : public SubVector<Real> {
+class _DLPackSubVector<
+    Real,
+    typename std::enable_if<std::is_floating_point<Real>::value, Real>::type>
+    : public SubVector<Real> {
  public:
   // Note that `const Real* data` will be `const_cast`
   // to `Real *`
-  DLPackSubVector(const Real* data, MatrixIndexT length, DLManagedTensor* ptr)
+  _DLPackSubVector(const Real* data, MatrixIndexT length, DLManagedTensor* ptr)
       : SubVector<Real>(data, length), dl_managed_tensor_(ptr) {}
 
-  DLPackSubVector(const DLPackSubVector&) = delete;
-  DLPackSubVector& operator=(const DLPackSubVector&) = delete;
+  _DLPackSubVector(const _DLPackSubVector&) = delete;
+  _DLPackSubVector& operator=(const _DLPackSubVector&) = delete;
 
-  ~DLPackSubVector() {
+  ~_DLPackSubVector() {
     if (dl_managed_tensor_ && dl_managed_tensor_->deleter) {
       dl_managed_tensor_->deleter(dl_managed_tensor_);
     }
@@ -63,6 +70,48 @@ class DLPackSubVector : public SubVector<Real> {
  private:
   DLManagedTensor* dl_managed_tensor_ = nullptr;
 };
+
+template <typename Integer>
+class _DLPackSubVector<
+    Integer,
+    typename std::enable_if<std::is_integral<Integer>::value, Integer>::type> {
+ public:
+  using type = Integer;
+  _DLPackSubVector(Integer* data, MatrixIndexT length, DLManagedTensor* ptr)
+      : data_(data), dim_(length), dl_managed_tensor_(ptr) {}
+
+  _DLPackSubVector(const _DLPackSubVector&) = delete;
+  _DLPackSubVector& operator=(const _DLPackSubVector&) = delete;
+
+  ~_DLPackSubVector() {
+    if (dl_managed_tensor_ && dl_managed_tensor_->deleter) {
+      dl_managed_tensor_->deleter(dl_managed_tensor_);
+    }
+  }
+
+  Integer& operator[](int i) { return data_[i]; }
+  Integer operator[](int i) const { return data_[i]; }
+
+  Integer* Data() { return data_; }
+  const Integer* Data() const { return data_; }
+
+  MatrixIndexT Dim() const { return dim_; }
+  MatrixIndexT SizeInBytes() const { return (dim_ * sizeof(Integer)); }
+
+  Integer* begin() { return data_; }
+  const Integer* begin() const { return data_; }
+
+  Integer* end() { return data_ + dim_; }
+  const Integer* end() const { return data_ + dim_; }
+
+ private:
+  Integer* data_ = nullptr;
+  MatrixIndexT dim_ = 0;
+  DLManagedTensor* dl_managed_tensor_ = nullptr;
+};
+
+template <typename T>
+using DLPackSubVector = _DLPackSubVector<T, T>;
 
 template <typename Real>
 class DLPackCuSubVector : public CuSubVector<Real> {
@@ -84,5 +133,7 @@ class DLPackCuSubVector : public CuSubVector<Real> {
 };
 
 }  // namespace kaldi
+
+void pybind_DL_subvector(py::module& m);
 
 #endif  // KALDI_PYBIND_DLPACK_DLPACK_SUBVECTOR_H_

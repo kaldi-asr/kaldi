@@ -36,7 +36,9 @@ py::capsule MatrixToDLPack(py::object* obj);
 py::capsule CuVectorToDLPack(py::object* obj);
 py::capsule CuMatrixToDLPack(py::object* obj);
 
-DLPackSubVector<float>* SubVectorFromDLPack(py::capsule* capsule);
+template <typename DType>
+DLPackSubVector<DType>* SubVectorFromDLPack(py::capsule* capsule);
+
 DLPackSubMatrix<float>* SubMatrixFromDLPack(py::capsule* capsule);
 DLPackCuSubVector<float>* CuSubVectorFromDLPack(py::capsule* capsule);
 DLPackCuSubMatrix<float>* CuSubMatrixFromDLPack(py::capsule* capsule);

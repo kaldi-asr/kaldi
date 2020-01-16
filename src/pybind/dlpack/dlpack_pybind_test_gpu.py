@@ -16,7 +16,7 @@ try:
 except ImportError:
     print('This test needs PyTorch.')
     print('Please install PyTorch first.')
-    print('PyTorch 1.3.0dev20191006 has been tested and is guaranteed to work.')
+    print('PyTorch 1.3.0dev20191006 has been tested and is known to work.')
     sys.exit(0)
 
 from torch.utils.dlpack import from_dlpack

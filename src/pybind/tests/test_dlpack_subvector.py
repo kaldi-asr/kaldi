@@ -34,10 +34,10 @@ class TestDLPackSubVector(unittest.TestCase):
         to `Hello`.
         '''
         tensor1 = torch.tensor([1, 2]).float()
-        v1 = kaldi.SubVectorFromDLPack(to_dlpack(tensor1))
+        v1 = kaldi.FloatSubVectorFromDLPack(to_dlpack(tensor1))
 
         tensor2 = torch.tensor([10, 20, 30]).float()
-        v2 = kaldi.SubVectorFromDLPack(to_dlpack(tensor2))
+        v2 = kaldi.FloatSubVectorFromDLPack(to_dlpack(tensor2))
 
         kaldi.Hello(v1, v2)
 

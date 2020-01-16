@@ -22,6 +22,7 @@
 #include <string>
 
 #include "chain/chain_pybind.h"
+#include "ctc/ctc_pybind.h"
 #include "cudamatrix/cudamatrix_pybind.h"
 #include "decoder/decoder_pybind.h"
 #include "dlpack/dlpack_pybind.h"
@@ -54,6 +55,8 @@ PYBIND11_MODULE(kaldi_pybind, m) {
 
   pybind_decoder(m);
   pybind_hmm(m);
+
+  pybind_ctc(m);
 
   void test_dlpack(py::module & m);  // forward declaration
   test_dlpack(m);
