@@ -43,26 +43,17 @@ namespace kaldi {
  // The Topology object can have multiple <TopologyEntry> blocks.
  // This is useful if there are multiple types of topology in the system.
 
- <Topology>
- <TopologyEntry>
- <ForPhones> 1 2 3 4 5 6 7 8 </ForPhones>
- <State> 0 <PdfClass> 0
- <Transition> 0 0.5
- <Transition> 1 0.5
- </State>
- <State> 1 <PdfClass> 1
- <Transition> 1 0.5
- <Transition> 2 0.5
- </State>
- <State> 2 <PdfClass> 2
- <Transition> 2 0.5
- <Transition> 3 0.5
- <Final> 0.5
- </State>
- <State> 3
- </State>
- </TopologyEntry>
- </Topology>
+<Topology>
+<TopologyEntry>
+<ForPhones>
+1 2 3 4 5 6 7 8
+</ForPhones>
+<State> 0 <PdfClass> 0 <Transition> 0 0.5 <Transition> 1 0.5 </State>
+<State> 1 <PdfClass> 1 <Transition> 1 0.5 <Transition> 2 0.5 </State>
+<State> 2 <PdfClass> 2 <Transition> 2 0.5 <Transition> 3 0.5 </State>
+<State> 3 </State>
+</TopologyEntry>
+</Topology>
 */
 
 // kNoPdf is used where pdf_class or pdf would be used, to indicate,

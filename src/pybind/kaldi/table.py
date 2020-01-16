@@ -52,6 +52,14 @@ from kaldi_pybind import _SequentialInt32VectorReader
 from kaldi_pybind import _RandomAccessInt32VectorReader
 from kaldi_pybind import _Int32VectorWriter
 
+from kaldi_pybind import _SequentialLatticeReader
+from kaldi_pybind import _RandomAccessLatticeReader
+from kaldi_pybind import _LatticeWriter
+
+from kaldi_pybind import _SequentialCompactLatticeReader
+from kaldi_pybind import _RandomAccessCompactLatticeReader
+from kaldi_pybind import _CompactLatticeWriter
+
 ################################################################################
 # Sequential Readers
 ################################################################################
@@ -212,6 +220,17 @@ class SequentialIntVectorReader(_SequentialReaderBase,
     pass
 
 
+class SequentialLatticeReader(_SequentialReaderBase, _SequentialLatticeReader):
+    '''Sequential table reader for lattices.'''
+    pass
+
+
+class SequentialCompactLatticeReader(_SequentialReaderBase,
+                                     _SequentialCompactLatticeReader):
+    '''Sequential table reader for compact lattices.'''
+    pass
+
+
 ################################################################################
 # Random Access Readers
 ################################################################################
@@ -353,6 +372,18 @@ class RandomAccessIntVectorReader(_RandomAccessReaderBase,
     pass
 
 
+class RandomAccessLatticeReader(_RandomAccessReaderBase,
+                                _RandomAccessLatticeReader):
+    '''Random access table reader for lattices.'''
+    pass
+
+
+class RandomAccessCompactLatticeReader(_RandomAccessReaderBase,
+                                       _RandomAccessCompactLatticeReader):
+    '''Random access table reader for compact lattices.'''
+    pass
+
+
 ################################################################################
 # Writers
 ################################################################################
@@ -478,6 +509,16 @@ class IntVectorWriter(_WriterBase, _Int32VectorWriter):
     pass
 
 
+class LatticeWriter(_WriterBase, _LatticeWriter):
+    '''Table writer for lattices.'''
+    pass
+
+
+class CompactLatticeWriter(_WriterBase, _CompactLatticeWriter):
+    '''Table writer for compact lattices.'''
+    pass
+
+
 if False:
     # TODO(fangjun): enable the following once other wrappers are added
 
@@ -517,16 +558,6 @@ if False:
             _SequentialReaderBase,
             _kaldi_table_ext.SequentialKwsIndexFstReader):
         '''Sequential table reader for FSTs over the KWS index semiring.'''
-        pass
-
-    class SequentialLatticeReader(_SequentialReaderBase,
-                                  _kaldi_table.SequentialLatticeReader):
-        '''Sequential table reader for lattices.'''
-        pass
-
-    class SequentialCompactLatticeReader(
-            _SequentialReaderBase, _kaldi_table.SequentialCompactLatticeReader):
-        '''Sequential table reader for compact lattices.'''
         pass
 
     class SequentialNnetExampleReader(_SequentialReaderBase,
@@ -613,17 +644,6 @@ if False:
             _RandomAccessReaderBase,
             _kaldi_table_ext.RandomAccessKwsIndexFstReader):
         '''Random access table reader for FSTs over the KWS index semiring.'''
-        pass
-
-    class RandomAccessLatticeReader(_RandomAccessReaderBase,
-                                    _kaldi_table.RandomAccessLatticeReader):
-        '''Random access table reader for lattices.'''
-        pass
-
-    class RandomAccessCompactLatticeReader(
-            _RandomAccessReaderBase,
-            _kaldi_table.RandomAccessCompactLatticeReader):
-        '''Random access table reader for compact lattices.'''
         pass
 
     class RandomAccessNnetExampleReader(
@@ -876,14 +896,6 @@ if False:
 
     class KwsIndexFstWriter(_WriterBase, _kaldi_table_ext.KwsIndexFstWriter):
         '''Table writer for FSTs over the KWS index semiring.'''
-        pass
-
-    class LatticeWriter(_WriterBase, _kaldi_table.LatticeWriter):
-        '''Table writer for lattices.'''
-        pass
-
-    class CompactLatticeWriter(_WriterBase, _kaldi_table.CompactLatticeWriter):
-        '''Table writer for compact lattices.'''
         pass
 
     class NnetExampleWriter(_WriterBase, _kaldi_table.NnetExampleWriter):

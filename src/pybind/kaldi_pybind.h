@@ -27,4 +27,7 @@
 
 namespace py = pybind11;
 
+template <typename... Args>
+using overload_cast_ = py::detail::overload_cast_impl<Args...>;
+
 #endif  // KALDI_PYBIND_KALDI_PYBIND_H_

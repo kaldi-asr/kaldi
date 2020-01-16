@@ -18,10 +18,14 @@
 
 #include "util/util_pybind.h"
 
+#include "util/kaldi_holder_pybind.h"
 #include "util/kaldi_io_pybind.h"
+#include "util/parse_options_pybind.h"
 #include "util/table_types_pybind.h"
 
 void pybind_util(py::module& m) {
   pybind_table_types(m);
   pybind_kaldi_io(m);
+  pybind_kaldi_holder(m);
+  pybind_parse_options(m);
 }

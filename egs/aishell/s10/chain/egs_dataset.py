@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2019-2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
 import glob
@@ -39,8 +39,11 @@ def get_egs_dataloader(egs_dir, egs_left_context, egs_right_context):
 
 def read_nnet_chain_example(rxfilename):
     eg = nnet3.NnetChainExample()
-    ki = kaldi.Input(rxfilename=rxfilename)
-    eg.Read(ki.Stream(), True)
+    ki = kaldi.Input()
+    is_opened, is_binary = ki.Open(rxfilename, read_header=True)
+    if not is_opened:
+        raise Exception('Failed to open {}'.format(rxfilename))
+    eg.Read(ki.Stream(), is_binary)
     ki.Close()
     return eg
 

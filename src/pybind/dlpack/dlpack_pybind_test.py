@@ -16,7 +16,7 @@ try:
 except ImportError:
     print('This test needs PyTorch.')
     print('Please install PyTorch first.')
-    print('PyTorch 1.3.0dev20191006 has been tested and is guaranteed to work.')
+    print('PyTorch 1.3.0dev20191006 has been tested and is known to work.')
     sys.exit(0)
 
 from torch.utils.dlpack import from_dlpack
@@ -33,7 +33,7 @@ class TestDLPackCPU(unittest.TestCase):
         PyTorch CPU tensor to kaldi's FloatSubVector:
 
         Method 1:
-            v = kaldi.SubVectorFromDLPack(to_dlpack(tensor))
+            v = kaldi.FloatSubVectorFromDLPack(to_dlpack(tensor))
 
         Method 2:
             v = kaldi.DLPackFloatSubVector.from_dlpack(to_dlpack(tensor))
@@ -42,7 +42,7 @@ class TestDLPackCPU(unittest.TestCase):
 
         # v and tensor share the same memory
         # no data is copied
-        v = kaldi.SubVectorFromDLPack(to_dlpack(tensor))
+        v = kaldi.FloatSubVectorFromDLPack(to_dlpack(tensor))
         # since DLPackFloatSubVector is a subclass of FloatSubVector
         # the following assertion is True
         self.assertIsInstance(v, kaldi.FloatSubVector)
@@ -330,6 +330,22 @@ class TestDLPackCPU(unittest.TestCase):
 
         v.Add(100)
         self.assertEqual(tensor[0], 108)
+
+    def test_pytorch_cpu_int_tensor_to_subvector(self):
+        tensor = torch.arange(3, dtype=torch.int32)
+        v = kaldi.IntSubVectorFromDLPack(to_dlpack(tensor))
+
+        #  tensor and v share the underlying memory
+        v[0] = 100
+        v[1] = 200
+        v[2] = 300
+
+        self.assertEqual(tensor[0], 100)
+        self.assertEqual(tensor[1], 200)
+        self.assertEqual(tensor[2], 300)
+
+        tensor[0] = 10
+        self.assertEqual(v[0], 10)
 
 
 if __name__ == '__main__':

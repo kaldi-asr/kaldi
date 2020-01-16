@@ -1,7 +1,7 @@
 // pybind/fst/fst_pybind.cc
 
-// Copyright 2019   Mobvoi AI Lab, Beijing, China
-//                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+// Copyright 2019-2020   Mobvoi AI Lab, Beijing, China
+//                       (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -25,16 +25,17 @@
 #include "fst/symbol_table_pybind.h"
 #include "fst/vector_fst_pybind.h"
 #include "fst/weight_pybind.h"
-#include "fstext/kaldi_fst_io_pybind.h"
+#include "fstext/fstext_pybind.h"
 
-template <typename... Args>
-using overload_cast_ = py::detail::overload_cast_impl<Args...>;
+#include "lat/determinize_lattice_pruned_pybind.h"
 
 namespace {
 
 void _pybind_fst(py::module& m) {
   m.attr("kNoLabel") = fst::kNoLabel;
   m.attr("kNoStateId") = fst::kNoStateId;
+  m.attr("kDelta") = fst::kDelta;  // for weight.Quantize()
+
   {
     using PyClass = fst::FstHeader;
     py::class_<PyClass>(m, "FstHeader")
@@ -60,6 +61,7 @@ void _pybind_fst(py::module& m) {
         .def("Write", &PyClass::Write, py::arg("strm"), py::arg("source"))
         .def("DebugString", &PyClass::DebugString);
   }
+
   {
     using PyClass = fst::FstWriteOptions;
 
@@ -148,168 +150,18 @@ void _pybind_fst(py::module& m) {
       .value("MATCH_UNKNOWN", fst::MatchType::MATCH_UNKNOWN,
              "match type unknown.")
       .export_values();
-  {
-    using PyClass = fst::StateIteratorBase<fst::StdArc>;
-    py::class_<PyClass>(m, "StdArcStateIteratorBase")
-        .def("Done", &PyClass::Done, "End of iterator?")
-        .def("Value", &PyClass::Value, "Returns current state (when !Done()).")
-        .def("Next", &PyClass::Next, "Advances to next state (when !Done()).")
-        .def("Reset", &PyClass::Reset, "Resets to initial condition.");
-  }
 
-  {
-    using PyClass = fst::StateIteratorData<fst::StdArc>;
-    py::class_<PyClass, std::unique_ptr<PyClass, py::nodelete>>(
-        m, "StdArcStateIteratorData")
-        .def(py::init<>())
-        .def_readwrite("base", &PyClass::base,
-                       "Specialized iterator if non-zero.")
-        .def_readwrite("nstates", &PyClass::nstates,
-                       "Otherwise, the total number of states.");
-  }
-
-  {
-    using PyClass = fst::ArcIteratorBase<fst::StdArc>;
-    py::class_<PyClass>(m, "StdArcArcIteratorBase")
-        .def("Done", &PyClass::Done, "End of iterator?")
-        .def("Value", &PyClass::Value, "Returns current arc (when !Done()).",
-             py::return_value_policy::reference)
-        .def("Next", &PyClass::Next, "Advances to next arc (when !Done()).")
-        .def("Position", &PyClass::Position, "Returns current position.")
-        .def("Reset", &PyClass::Reset, "Resets to initial condition.")
-        .def("Seek", &PyClass::Seek, "Advances to arbitrary arc by position.")
-        .def("Flags", &PyClass::Flags, "Returns current behavorial flags.")
-        .def("SetFlags", &PyClass::SetFlags, "Sets behavorial flags.");
-  }
-
-  {
-    using PyClass = fst::ArcIteratorData<fst::StdArc>;
-    py::class_<PyClass, std::unique_ptr<PyClass, py::nodelete>>(
-        m, "StdArcArcIteratorData")
-        .def(py::init<>())
-        .def_readwrite("base", &PyClass::base,
-                       "Specialized iterator if non-zero.")
-        .def_readwrite("arcs", &PyClass::arcs, "Otherwise arcs pointer")
-        .def_readwrite("narcs", &PyClass::narcs, "arc count")
-        .def_readwrite("ref_count", &PyClass::ref_count,
-                       "reference count if non-zero.");
-  }
-
-  {
-    using PyClass = fst::StdFst;
-    using Arc = PyClass::Arc;
-    using StateId = PyClass::StateId;
-    using Weight = PyClass::Weight;
-
-    auto fst_state_iterator =
-        py::class_<fst::StateIterator<fst::StdFst>>(m, "StdFstStateIterator");
-    auto fst_arc_iterator =
-        py::class_<fst::ArcIterator<fst::StdFst>>(m, "StdFstArcIterator");
-
-    py::class_<PyClass>(
-        m, "StdFst",
-        "A generic FST, templated on the arc definition, with \n"
-        "common-demoninator methods (use StateIterator and \n"
-        "ArcIterator to iterate over its states and arcs).")
-        .def("Start", &PyClass::Start, "Initial state.")
-        .def("Final", &PyClass::Final, "State's final weight.")
-        .def("NumArcs", &PyClass::NumArcs, "State's arc count.")
-        .def("NumInputEpsilons", &PyClass::NumInputEpsilons,
-             "State's output epsilon count.")
-        .def("Properties", &PyClass::Properties,
-             "Property bits. If test = false, return stored properties bits "
-             "for mask\n"
-             "(some possibly unknown); if test = true, return property bits "
-             "for mask\n"
-             "(computing o.w. unknown).",
-             py::arg("mask"), py::arg("test"))
-        .def("Type", &PyClass::Type, "FST typename",
-             py::return_value_policy::reference)
-        .def(
-            "Copy", &PyClass::Copy,
-            "Gets a copy of this Fst. The copying behaves as follows:\n",
-            "\n"
-            "(1) The copying is constant time if safe = false or if safe = "
-            "true and is on an otherwise unaccessed FST.\n"
-            "\n"
-            "(2) If safe = true, the copy is thread-safe in that the original\n"
-            "and copy can be safely accessed (but not necessarily mutated) by\n"
-            "separate threads. For some FST types, 'Copy(true)' should only\n"
-            "be called on an FST that has not otherwise been accessed.\n"
-            "Behavior is otherwise undefined.\n"
-            "\n"
-            "(3) If a MutableFst is copied and then mutated, then the original"
-            "\n"
-            "is unmodified and vice versa (often by a copy-on-write on the \n"
-            "initial mutation, which may not be constant time).",
-            py::arg("safe") = false, py::return_value_policy::take_ownership)
-        .def_static(
-            "Read",
-            // clang-format off
-            overload_cast_<std::istream&, const fst::FstReadOptions&>()(&PyClass::Read),
-            // clang-format on
-            "Reads an FST from an input stream; returns nullptr on error.",
-            py::arg("strm"), py::arg("opts"),
-            py::return_value_policy::take_ownership)
-        .def_static(
-            "Read", overload_cast_<const fst::string&>()(&PyClass::Read),
-            "Reads an FST from a file; returns nullptr on error. An empty\n"
-            "filename results in reading from standard input.",
-            py::arg("filename"), py::return_value_policy::take_ownership)
-        .def("Write",
-             // clang-format off
-            (bool (PyClass::*)(std::ostream&, const fst::FstWriteOptions&)const)&PyClass::Write,
-             // clang-format on
-             "Writes an FST to an output stream; returns false on error.",
-             py::arg("strm"), py::arg("opts"))
-        .def("Write",
-             (bool (PyClass::*)(const fst::string&) const) & PyClass::Write,
-             "Writes an FST to a file; returns false on error; an empty\n"
-             "filename results in writing to standard output.",
-             py::arg("filename"))
-        .def("InputSymbols", &PyClass::InputSymbols,
-             "Returns input label symbol table; return nullptr if not "
-             "specified.",
-             py::return_value_policy::reference)
-        .def("OutputSymbols", &PyClass::OutputSymbols,
-             "Returns output label symbol table; return nullptr if not "
-             "specified.",
-             py::return_value_policy::reference)
-        .def("InitStateIterator", &PyClass::InitStateIterator,
-             "For generic state iterator construction (not normally called "
-             "directly by users). Does not copy the FST.",
-             py::arg("data"))
-        .def("InitArcIterator", &PyClass::InitArcIterator,
-             "For generic arc iterator construction (not normally called "
-             "directly by users). Does not copy the FST.",
-             py::arg("s"), py::arg("data"))
-#if 0
-      // TODO(fangjun): what is the use of InitMatcher?
-        .def("InitMatcher", &PyClass::InitMatcher,
-             "For generic matcher construction (not normally called directly "
-             "by users).",
-             py::arg("match_type")) // TODO(fangjun): reference semantics ?
-#endif
-        ;
-    fst_state_iterator.def(py::init<const PyClass&>(), py::arg("fst"))
-        .def("Done", &fst::StateIterator<PyClass>::Done)
-        .def("Value", &fst::StateIterator<PyClass>::Value)
-        .def("Next", &fst::StateIterator<PyClass>::Next)
-        .def("Reset", &fst::StateIterator<PyClass>::Reset);
-
-    fst_arc_iterator
-        .def(py::init<const PyClass&, StateId>(), py::arg("fst"), py::arg("s"))
-        .def("Done", &fst::ArcIterator<PyClass>::Done)
-        .def("Value", &fst::ArcIterator<PyClass>::Value,
-             py::return_value_policy::reference)
-        .def("Next", &fst::ArcIterator<PyClass>::Next)
-        .def("Reset", &fst::ArcIterator<PyClass>::Reset)
-        .def("Seek", &fst::ArcIterator<PyClass>::Seek, py::arg("a"))
-        .def("Position", &fst::ArcIterator<PyClass>::Position)
-        .def("Flags", &fst::ArcIterator<PyClass>::Flags)
-        .def("SetFlags", &fst::ArcIterator<PyClass>::SetFlags);
-    ;
-  }
+  pybind_state_iterator_base_impl<fst::StdArc>(m, "StdArcStateIteratorBase");
+  pybind_state_iterator_data_impl<fst::StdArc>(m, "StdArcStateIteratorData");
+  pybind_arc_iterator_base_impl<fst::StdArc>(m, "StdArcArcIteratorBase");
+  pybind_arc_iterator_data_impl<fst::StdArc>(m, "StdArcArcIteratorData");
+  pybind_fst_impl<fst::StdArc>(
+      m, "StdFst",
+      "A generic FST, templated on the arc definition, with \n"
+      "common-demoninator methods (use StateIterator and \n"
+      "ArcIterator to iterate over its states and arcs).");
+  pybind_state_iterator_impl<fst::StdFst>(m, "StdFstStateIterator");
+  pybind_arc_iterator_impl<fst::StdFst>(m, "StdFstArcIterator");
 
   m.def("TestProperties", &fst::TestProperties<fst::StdArc>, py::arg("fst"),
         py::arg("mask"), py::arg("known"));
@@ -348,6 +200,9 @@ void pybind_fst(py::module& _m) {
 
   _pybind_fst(m);
   pybind_vector_fst(m);
-  pybind_kaldi_fst_io(m);
   pybind_compile(m);
+
+  pybind_fstext(m);
+
+  pybind_determinize_lattice_pruned(m);
 }

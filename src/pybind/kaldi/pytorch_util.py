@@ -26,5 +26,5 @@ def PytorchToCuSubVector(dlpack_tensor):
 
 
 def PytorchToSubVector(dlpack_tensor):
-    sub_vector = kaldi_pybind.SubVectorFromDLPack(dlpack_tensor)
+    sub_vector = kaldi_pybind.FloatSubVectorFromDLPack(dlpack_tensor)
     return sub_vector

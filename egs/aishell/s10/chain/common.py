@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2019-2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
 from datetime import datetime
@@ -81,16 +81,8 @@ def save_training_info(filename, model_path, current_epoch, learning_rate, objf,
     logging.info('write training info to {}'.format(filename))
 
 
-def read_mat(filename):
-    ki = kaldi.Input(filename)
-    m = kaldi.FloatMatrix()
-    m.Read(ki.Stream(), binary=True, add=False)
-    ki.Close()
-    return m.numpy()
-
-
 def load_lda_mat(lda_mat_filename):
-    lda_mat = read_mat(lda_mat_filename)
+    lda_mat = kaldi.read_mat(lda_mat_filename).numpy()
     # y = Ax + b,
     # lda contains [A, b], x is feature
     # A.rows() == b.rows()

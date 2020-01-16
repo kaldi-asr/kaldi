@@ -32,6 +32,7 @@ endif
 
 CXXFLAGS += -O3 $(LTOFLAG) -I.
 LDFLAGS += $(LTOFLAG)
+LDFLAGS += -fuse-ld=gold
 
 ifeq ($(shell uname),Darwin)
   LDFLAGS += -undefined dynamic_lookup
@@ -43,10 +44,15 @@ chain/chain_den_graph_pybind.cc \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
 chain/chain_training_pybind.cc \
+ctc/ctc_pybind.cc \
 cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
 cudamatrix/cudamatrix_pybind.cc \
+decoder/decodable_matrix_pybind.cc \
+decoder/decoder_pybind.cc \
+decoder/decoder_wrappers_pybind.cc \
+decoder/lattice_faster_decoder_pybind.cc \
 dlpack/dlpack_deleter.cc \
 dlpack/dlpack_pybind.cc \
 dlpack/dlpack_submatrix.cc \
@@ -61,8 +67,20 @@ fst/fst_pybind.cc \
 fst/symbol_table_pybind.cc \
 fst/vector_fst_pybind.cc \
 fst/weight_pybind.cc \
+fstext/fstext_pybind.cc \
 fstext/kaldi_fst_io_pybind.cc \
+fstext/lattice_weight_pybind.cc \
+hmm/hmm_pybind.cc \
+hmm/hmm_topology_pybind.cc \
+hmm/transition_model_pybind.cc \
+itf/context_dep_itf_pybind.cc \
+itf/decodable_itf_pybind.cc \
+itf/itf_pybind.cc \
+itf/options_itf_pybind.cc \
 kaldi_pybind.cc \
+lat/determinize_lattice_pruned_pybind.cc \
+lat/kaldi_lattice_pybind.cc \
+lat/lat_pybind.cc \
 matrix/compressed_matrix_pybind.cc \
 matrix/kaldi_matrix_pybind.cc \
 matrix/kaldi_vector_pybind.cc \
@@ -74,7 +92,9 @@ nnet3/nnet_chain_example_pybind.cc \
 nnet3/nnet_common_pybind.cc \
 nnet3/nnet_example_pybind.cc \
 tests/test_dlpack_subvector.cc \
+util/kaldi_holder_pybind.cc \
 util/kaldi_io_pybind.cc \
+util/parse_options_pybind.cc \
 util/table_types_pybind.cc \
 util/util_pybind.cc
 
@@ -87,8 +107,11 @@ ADDLIBS := \
 ../base/kaldi-base.a \
 ../chain/kaldi-chain.a \
 ../cudamatrix/kaldi-cudamatrix.a \
+../decoder/kaldi-decoder.a \
 ../feat/kaldi-feat.a \
 ../fstext/kaldi-fstext.a \
+../hmm/kaldi-hmm.a \
+../lat/kaldi-lat.a \
 ../matrix/kaldi-matrix.a \
 ../nnet3/kaldi-nnet3.a \
 ../util/kaldi-util.a
@@ -110,16 +133,26 @@ endif
 TEST_DIRS := \
 chain \
 cudamatrix \
+decoder \
 dlpack \
 feat \
 fst \
+fstext \
+hmm \
+lat \
 matrix \
 nnet3 \
-tests
+tests \
+util
 
 .PHONY: all clean test
 
 all: $(LIBFILE)
+
+include ctc/ctc.mk
+
+ctc/%.o: ctc/%.cc $(LIB_WARP_CTC)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 %.o: %.cc
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
@@ -135,7 +168,7 @@ clean:
 	-rm -f .depend.mk
 
 test: all
-	for d in $(TEST_DIRS); do make -C $$d test; done
+	for d in $(TEST_DIRS); do make -C $$d test || exit 1; done
 
 # valgrind-python.supp is from http://svn.python.org/projects/python/trunk/Misc/valgrind-python.supp
 # since we do not compile Python from source, we follow the comment in valgrind-python.supp

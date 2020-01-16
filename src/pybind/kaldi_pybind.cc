@@ -21,36 +21,42 @@
 
 #include <string>
 
+#include "chain/chain_pybind.h"
+#include "ctc/ctc_pybind.h"
 #include "cudamatrix/cudamatrix_pybind.h"
+#include "decoder/decoder_pybind.h"
+#include "dlpack/dlpack_pybind.h"
 #include "feat/feat_pybind.h"
 #include "feat/wave_reader_pybind.h"
+#include "fst/fst_pybind.h"
+#include "hmm/hmm_pybind.h"
+#include "itf/itf_pybind.h"
+#include "lat/lat_pybind.h"
 #include "matrix/matrix_pybind.h"
+#include "nnet3/nnet3_pybind.h"
 #include "util/util_pybind.h"
 
-#include "fst/fst_pybind.h"
-
-#include "chain/chain_pybind.h"
-#include "nnet3/nnet3_pybind.h"
-
-#include "dlpack/dlpack_pybind.h"
-
 PYBIND11_MODULE(kaldi_pybind, m) {
-  m.doc() =
-      "pybind11 binding of some things from kaldi's "
-      "src/matrix and src/util directories. "
-      "Source is in $(KALDI_ROOT)/src/pybind/kaldi_pybind.cc";
+  m.doc() = "pybind11 binding of some things from kaldi";
 
   pybind_matrix(m);
+  pybind_itf(m);
   pybind_util(m);
   pybind_feat(m);
 
   pybind_fst(m);
+  pybind_lat(m);
   pybind_chain(m);
   pybind_nnet3(m);
 
   pybind_dlpack(m);
 
   pybind_cudamatrix(m);
+
+  pybind_decoder(m);
+  pybind_hmm(m);
+
+  pybind_ctc(m);
 
   void test_dlpack(py::module & m);  // forward declaration
   test_dlpack(m);
