@@ -15,7 +15,6 @@ from torch.nn.utils.rnn import pad_sequence
 import kaldi_pybind.nnet3 as nnet3
 import kaldi
 
-from common import read_mat
 from common import splice_feats
 from model import get_chain_model
 
@@ -110,7 +109,7 @@ class FeatDatasetCollateFunc:
         for b in batch:
             key, rxfilename = b
             key_list.append(key)
-            feat = read_mat(rxfilename)
+            feat = kaldi.read_mat(rxfilename).numpy()
             feat_len = feat.shape[0]
             output_len = (feat_len + self.frame_subsampling_factor -
                           1) // self.frame_subsampling_factor
