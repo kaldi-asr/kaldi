@@ -91,6 +91,10 @@ class _SequentialReaderBase(object):
     def __enter__(self):
         return self
 
+    def __exit__(self, type, value, traceback):
+        if self.IsOpen():
+            self.Close()
+
     def __iter__(self):
         while not self.Done():
             key = self.Key()
@@ -262,6 +266,10 @@ class _RandomAccessReaderBase(object):
     def __enter__(self):
         return self
 
+    def __exit__(self, type, value, traceback):
+        if self.IsOpen():
+            self.Close()
+
     def __contains__(self, key):
         return self.HasKey(key)
 
@@ -417,6 +425,10 @@ class _WriterBase(object):
     def __enter__(self):
         return self
 
+    def __exit__(self, type, value, traceback):
+        if self.IsOpen():
+            self.Close()
+    
     def __setitem__(self, key, value):
         self.Write(key, value)
 

@@ -124,6 +124,13 @@ class TestTableTypes(unittest.TestCase):
             np.testing.assert_array_almost_equal(
                 reader.Value(key).numpy(), data[key])
         reader.Close()
+        
+        # test RandomAccessReader with context manager        
+        with kaldi.RandomAccessMatrixReader(rspecifier) as reader:
+            for key in data.keys():
+                self.assertTrue(reader.HasKey(key))
+                np.testing.assert_array_almost_equal(
+                    reader.Value(key).numpy(), data[key])
 
         shutil.rmtree(tmp)
 
