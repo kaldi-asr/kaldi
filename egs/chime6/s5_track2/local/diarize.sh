@@ -15,7 +15,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 if [ $# != 3 ]; then
-  echo "Usage: $0 <model-dir>  <in-data-dir> <out-dir>"
+  echo "Usage: $0 <model-dir> <in-data-dir> <out-dir>"
   echo "e.g.: $0 exp/xvector_nnet_1a  data/dev exp/dev_diarization"
   echo "Options: "
   echo "  --nj <nj>                                        # number of parallel jobs."
@@ -38,6 +38,8 @@ done
 if [ $stage -le 0 ]; then
   echo "$0: keeping only data corresponding to array U06 "
   echo "$0: we can skip this stage, to perform diarization on all arrays "
+  # to perform diarization ond scoring on all array please skip this step and
+  # pass all_array = true in local/multispeaker_score.sh
   cp -r data/$name data/${name}.bak
   mv data/$name/wav.scp data/$name/wav.scp.bak
   grep 'U06' data/$name/wav.scp.bak > data/$name/wav.scp
@@ -83,13 +85,29 @@ if [ $stage -le 4 ]; then
   echo "$0: wrote RTTM to output directory ${out_dir}"
 fi
 
+# For scoring the diarization system, we use the same tool that was
+# used in the DIHARD II challenge. This is available at:
+# https://github.com/nryant/dscore
 if [ $stage -le 5 ]; then
-  if [ -f $ref_rttm ]; then
-    echo "$0: computing diariztion error rate (DER) using reference ${ref_rttm}"
-    mkdir -p $out_dir/tuning/
-    md-eval.pl -c 0.25 -1 -r $ref_rttm -s $out_dir/rttm 2> $out_dir/log/der.log > $out_dir/der
-    der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' ${out_dir}/der)
-    echo "DER: $der%"
+  # If a reference RTTM file is not provided, we create one using the backed up
+  # segments and utt2spk files in the original data directory.
+  if [ -z $ref_rttm ]; then
+    ref_rttm=data/$name/rttm
+    echo "$0: preparing ref RTTM file from segments and utt2spk"
+    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/$name/utt2spk.bak \
+      data/$name/segments.bak $ref_rttm
   fi
+  grep 'U06' $ref_rttm > ${ref_rttm}.U06
+  ref_rttm_path=$(readlink -f ${ref_rttm}.U06)
+  out_rttm_path=$(readlink -f $out_dir/rttm)
+  if ! [ -d dscore ]; then
+    git clone https://github.com/nryant/dscore.git || exit 1;
+    cd dscore
+    python -m pip install --user -r requirements.txt
+    cd ..
+  fi
+  cd dscore
+  python score.py -r $ref_rttm_path -s $out_rttm_path
+  cd ..
 fi
 

@@ -2,6 +2,34 @@
 
 # 1b is as 1a but uses xconfigs.
 
+# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_sp
+# System                        tdnn_sp
+# WER on dev(fglarge)              4.52
+# WER on dev(tglarge)              4.80
+# WER on dev(tgmed)                6.02
+# WER on dev(tgsmall)              6.80
+# WER on dev_other(fglarge)       12.54
+# WER on dev_other(tglarge)       13.16
+# WER on dev_other(tgmed)         15.51
+# WER on dev_other(tgsmall)       17.12
+# WER on test(fglarge)             5.00
+# WER on test(tglarge)             5.22
+# WER on test(tgmed)               6.40
+# WER on test(tgsmall)             7.14
+# WER on test_other(fglarge)      12.56
+# WER on test_other(tglarge)      13.04
+# WER on test_other(tgmed)        15.58
+# WER on test_other(tgsmall)      16.88
+# Final train prob               0.7180
+# Final valid prob               0.7003
+# Final train prob (logLL)      -0.9483
+# Final valid prob (logLL)      -0.9963
+# Num-parameters               19268504
+
+
+# steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/tdnn_sp
+# exp/nnet3_cleaned/tdnn_sp/: num-iters=1088 nj=3..16 num-params=19.3M dim=40+100->5784 combine=-0.94->-0.93 (over 7) loglike:train/valid[723,1087,combined]=(-0.99,-0.95,-0.95/-1.02,-0.99,-1.00) accuracy:train/valid[723,1087,combined]=(0.710,0.721,0.718/0.69,0.70,0.700)
+
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
 

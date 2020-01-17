@@ -180,11 +180,13 @@ class CMakeListsLibrary(object):
 
         if len(self.cuda_source_list) > 0:
             self.source_list.append("${CUDA_OBJS}")
-            ret.append("cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)")
-            ret.append("cuda_compile(CUDA_OBJS")
+            ret.append("if(CUDA_FOUND)")
+            ret.append("    cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)")
+            ret.append("    cuda_compile(CUDA_OBJS")
             for f in self.cuda_source_list:
-                ret.append("    " + f)
-            ret.append(")\n")
+                ret.append("        " + f)
+            ret.append("    )")
+            ret.append("endif()\n")
 
         ret.append("add_library(" + self.target_name)
         for f in self.source_list:
@@ -278,6 +280,8 @@ if __name__ == "__main__":
 
     subdirs = get_subdirectories(".")
     for d in subdirs:
+        if d.startswith('tfrnnlm'):
+            continue
         cmakelists = CMakeListsFile(d)
         if is_bin_dir(d):
             for f in get_files(d):

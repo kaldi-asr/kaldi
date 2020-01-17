@@ -126,6 +126,7 @@ if [ $stage -le 3 ]; then
       data/${datadir} || exit 1
 
     mv data/${datadir}_seg data/${datadir}_${nnet_type}_seg
+    mv data/${datadir}/{segments.bak,utt2spk.bak} data/${datadir}_${nnet_type}_seg
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
     # step.
@@ -153,7 +154,7 @@ fi
 if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
-      exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang_chain \
+      exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang \
       exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
       data/${datadir}_diarized
   done
@@ -163,11 +164,13 @@ fi
 # Score decoded dev/eval sets
 #######################################################################
 if [ $stage -le 6 ]; then
-  for datadir in ${test_sets}; do
-    local/multispeaker_score.sh --cmd "$train_cmd" --stage $score_stage \
-      --datadir $datadir data/${datadir}_diarized_hires/text \
-      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi/penalty_1.0/10.txt \
-      exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_${datadir}_diarized_2stage/scoring_kaldi_multispeaker
-  done
+  # final scoring to get the challenge result
+  # please specify both dev and eval set directories so that the search parameters
+  # (insertion penalty and language model weight) will be tuned using the dev set
+  local/score_for_submit.sh --stage $score_stage \
+      --dev_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_diarized_2stage \
+      --dev_datadir dev_beamformit_dereverb_diarized_hires \
+      --eval_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized_2stage \
+      --eval_datadir eval_beamformit_dereverb_diarized_hires
 fi
 exit 0;

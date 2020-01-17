@@ -199,6 +199,7 @@ void DistributeComponent::Backprop(const std::string &debug_info,
                                    void *memo,
                                    Component *, // to_update,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("DistributeComponent::Backprop");
   if (in_deriv == NULL) return;
 
   int32 num_blocks = input_dim_ / output_dim_,
@@ -482,6 +483,7 @@ void StatisticsExtractionComponent::Backprop(
     void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("StatisticsExtractionComponent::Backprop");
   KALDI_ASSERT(indexes_in != NULL);
   const StatisticsExtractionComponentPrecomputedIndexes *indexes =
       dynamic_cast<const StatisticsExtractionComponentPrecomputedIndexes*>(indexes_in);
@@ -830,6 +832,7 @@ void StatisticsPoolingComponent::Backprop(
     void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("StatisticsPoolingComponent::Backprop");
   KALDI_ASSERT(indexes_in != NULL);
   const StatisticsPoolingComponentPrecomputedIndexes *indexes =
       dynamic_cast<const StatisticsPoolingComponentPrecomputedIndexes*>(
@@ -1108,6 +1111,7 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                              Component *to_update_in, // may be NULL; may be
                              // identical to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("BackpropTruncationComponent::Backprop");
   const BackpropTruncationComponentPrecomputedIndexes *indexes =
       dynamic_cast<const BackpropTruncationComponentPrecomputedIndexes*>(
           indexes_in);
@@ -1243,6 +1247,7 @@ void ConstantComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("ConstantComponent::Backprop");
   // we don't update in_deriv, since we set the flag
   // kBackpropAdds, and the output doesn't depend on the
   // input, so the input-derivative is zero.
@@ -1597,6 +1602,7 @@ void GeneralDropoutComponent::Backprop(
     void *memo,
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("GeneralDropoutComponent::Backprop");
   KALDI_ASSERT(in_deriv != NULL && SameDim(*in_deriv, out_deriv));
 
   // The following will do no work if in_deriv->Data() == out_deriv.Data().
@@ -1931,6 +1937,7 @@ void SpecAugmentTimeMaskComponent::Backprop(
     void *memo,
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("SpecAugmentTimeMaskComponent::Backprop");
   KALDI_ASSERT(in_deriv != NULL && SameDim(*in_deriv, out_deriv));
 
   // The following will do no work if in_deriv->Data() == out_deriv.Data().
