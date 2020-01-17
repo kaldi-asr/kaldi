@@ -33,6 +33,9 @@ from kaldi_pybind.nnet3 import _SequentialNnetChainExampleReader
 from kaldi_pybind.nnet3 import _RandomAccessNnetChainExampleReader
 from kaldi_pybind.nnet3 import _NnetChainExampleWriter
 
+from kaldi_pybind.nnet3 import _SequentialNnetExampleReader
+from kaldi_pybind.nnet3 import _RandomAccessNnetExampleReader
+
 from kaldi_pybind.feat import _SequentialWaveReader
 from kaldi_pybind.feat import _RandomAccessWaveReader
 from kaldi_pybind.feat import _SequentialWaveInfoReader
@@ -194,6 +197,11 @@ class SequentialNnetChainExampleReader(_SequentialReaderBase,
     '''Sequential table reader for nnet chain examples.'''
     pass
 
+class SequentialNnetExampleReader(_SequentialReaderBase,
+                                  _SequentialNnetExampleReader):
+    '''Sequential table reader for nnet examples.'''
+    pass
+
 
 class SequentialWaveReader(_SequentialReaderBase, _SequentialWaveReader):
     '''Sequential table reader for wave files.'''
@@ -350,6 +358,10 @@ class RandomAccessNnetChainExampleReader(_RandomAccessReaderBase,
     '''Random access table reader for nnet chain examples.'''
     pass
 
+class RandomAccessNnetExampleReader(_RandomAccessReaderBase,
+                                    _RandomAccessNnetExampleReader):
+    '''Random access table reader for nnet examples.'''
+    pass
 
 class RandomAccessWaveReader(_RandomAccessReaderBase, _RandomAccessWaveReader):
     '''Random access table reader for wave files.'''
@@ -572,11 +584,6 @@ if False:
         '''Sequential table reader for FSTs over the KWS index semiring.'''
         pass
 
-    class SequentialNnetExampleReader(_SequentialReaderBase,
-                                      _kaldi_table.SequentialNnetExampleReader):
-        '''Sequential table reader for nnet examples.'''
-        pass
-
     class SequentialRnnlmExampleReader(_SequentialReaderBase,
                                        _kaldi_table.SequentialRnnlmExampleReader
                                       ):
@@ -656,12 +663,6 @@ if False:
             _RandomAccessReaderBase,
             _kaldi_table_ext.RandomAccessKwsIndexFstReader):
         '''Random access table reader for FSTs over the KWS index semiring.'''
-        pass
-
-    class RandomAccessNnetExampleReader(
-            _RandomAccessReaderBase,
-            _kaldi_table.RandomAccessNnetExampleReader):
-        '''Random access table reader for nnet examples.'''
         pass
 
     class RandomAccessIntReader(_RandomAccessReaderBase,
