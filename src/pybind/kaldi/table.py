@@ -572,11 +572,6 @@ if False:
         '''Sequential table reader for FSTs over the KWS index semiring.'''
         pass
 
-    class SequentialNnetExampleReader(_SequentialReaderBase,
-                                      _kaldi_table.SequentialNnetExampleReader):
-        '''Sequential table reader for nnet examples.'''
-        pass
-
     class SequentialRnnlmExampleReader(_SequentialReaderBase,
                                        _kaldi_table.SequentialRnnlmExampleReader
                                       ):
@@ -656,12 +651,6 @@ if False:
             _RandomAccessReaderBase,
             _kaldi_table_ext.RandomAccessKwsIndexFstReader):
         '''Random access table reader for FSTs over the KWS index semiring.'''
-        pass
-
-    class RandomAccessNnetExampleReader(
-            _RandomAccessReaderBase,
-            _kaldi_table.RandomAccessNnetExampleReader):
-        '''Random access table reader for nnet examples.'''
         pass
 
     class RandomAccessIntReader(_RandomAccessReaderBase,
