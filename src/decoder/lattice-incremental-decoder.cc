@@ -873,6 +873,16 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
   KALDI_ASSERT(num_frames_to_include >= num_frames_in_lattice_ &&
                num_frames_to_include <= NumFramesDecoded());
 
+
+  if (num_frames_in_lattice_ > 0 &&
+      determinizer_.GetLattice().NumStates() == 0) {
+    /* Something went wrong, lattice is empty and will continue to be empty.
+       User-level code should detect and deal with this.
+     */
+    num_frames_in_lattice_ = num_frames_to_include;
+    return determinizer_.GetLattice();
+  }
+
   if (decoding_finalized_ && !use_final_probs) {
     // This is not supported
     KALDI_ERR << "You cannot get the lattice without final-probs after "
@@ -1044,6 +1054,9 @@ const CompactLattice& LatticeIncrementalDecoderTpl<FST, Token>::GetLattice(
     // We are ignoring the return status, which say whether it finished before the beam.
 
     num_frames_in_lattice_ = num_frames_to_include;
+
+    if (determinizer_.GetLattice().NumStates() == 0)
+      return determinizer_.GetLattice();   // Something went wrong, lattice is empty.
   }
 
   unordered_map<Token*, BaseFloat> token2final_cost;
