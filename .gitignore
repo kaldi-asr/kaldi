@@ -72,6 +72,7 @@ GSYMS
 /src/kaldi.mk
 /src/kaldi.mk.tmp
 /src/kaldi.mk.bak
+/src/pybind/ctc/warp-ctc*
 
 # /egs/
 /egs/*/*/mfcc
