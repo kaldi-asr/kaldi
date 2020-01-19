@@ -50,7 +50,7 @@ if [[ $stage -le 0 ]]; then
     dst_dir=data/fbank_pitch/$datadir
     utils/copy_data_dir.sh data/$datadir $dst_dir
     echo "making fbank-pitch features for LF-MMI training"
-    steps/make_fbank_pitch.sh --cmd $train_cmd --nj $nj $dst_dir || exit 1
+    steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj $nj $dst_dir || exit 1
     steps/compute_cmvn_stats.sh $dst_dir || exit 1
     utils/fix_data_dir.sh $dst_dir
   done
@@ -74,7 +74,7 @@ if [[ $stage -le 2 ]]; then
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd $train_cmd 5000 data/train $lang $ali_dir $treedir
+      --cmd "$train_cmd" 5000 data/train $lang $ali_dir $treedir
 fi
 
 if  [[ $stage -le 3 ]]; then
@@ -98,7 +98,7 @@ if [[ $stage -le 5 ]]; then
   echo "generating egs"
   steps/nnet3/chain/get_egs.sh \
     --alignment-subsampling-factor 3 \
-    --cmd $train_cmd \
+    --cmd "$train_cmd" \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --frame-subsampling-factor 3 \
     --frames-overlap-per-eg 0 \
@@ -221,7 +221,7 @@ if [[ $stage -le 11 ]]; then
   echo "scoring"
 
   for x in test dev; do
-    ./local/score.sh --cmd $decode_cmd \
+    ./local/score.sh --cmd "$decode_cmd" \
       data/fbank_pitch/$x \
       exp/chain/graph \
       exp/chain/decode_res/$x || exit 1

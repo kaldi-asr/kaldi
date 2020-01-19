@@ -57,7 +57,7 @@ fi
 mfccdir=mfcc
 if [[ $stage -le 5 ]]; then
   for x in train dev test; do
-    steps/make_mfcc_pitch.sh --cmd $train_cmd --nj $nj \
+    steps/make_mfcc_pitch.sh --cmd "$train_cmd" --nj $nj \
       data/$x exp/make_mfcc/$x $mfccdir || exit 1
     steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1
     utils/fix_data_dir.sh data/$x || exit 1
@@ -65,47 +65,47 @@ if [[ $stage -le 5 ]]; then
 fi
 
 if [[ $stage -le 6 ]]; then
-  steps/train_mono.sh --cmd $train_cmd --nj $nj \
+  steps/train_mono.sh --cmd "$train_cmd" --nj $nj \
     data/train data/lang exp/mono || exit 1
 fi
 
 if [[ $stage -le 7 ]]; then
-  steps/align_si.sh --cmd $train_cmd --nj $nj \
+  steps/align_si.sh --cmd "$train_cmd" --nj $nj \
     data/train data/lang exp/mono exp/mono_ali || exit 1
 fi
 
 if [[ $stage -le 8 ]]; then
-  steps/train_deltas.sh --cmd $train_cmd \
+  steps/train_deltas.sh --cmd "$train_cmd" \
    2500 20000 data/train data/lang exp/mono_ali exp/tri1 || exit 1
 fi
 
 if [[ $stage -le 9 ]]; then
-  steps/align_si.sh --cmd $train_cmd --nj $nj \
+  steps/align_si.sh --cmd "$train_cmd" --nj $nj \
     data/train data/lang exp/tri1 exp/tri1_ali || exit 1
 fi
 
 if [[ $stage -le 10 ]]; then
-  steps/train_deltas.sh --cmd $train_cmd \
+  steps/train_deltas.sh --cmd "$train_cmd" \
    2500 20000 data/train data/lang exp/tri1_ali exp/tri2 || exit 1
 fi
 
 if [[ $stage -le 11 ]]; then
-  steps/align_si.sh --cmd $train_cmd --nj $nj \
+  steps/align_si.sh --cmd "$train_cmd" --nj $nj \
     data/train data/lang exp/tri2 exp/tri2_ali || exit 1
 fi
 
 if [[ $stage -le 12 ]]; then
-  steps/train_lda_mllt.sh --cmd $train_cmd \
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
    2500 20000 data/train data/lang exp/tri2_ali exp/tri3a || exit 1
 fi
 
 if [[ $stage -le 13 ]]; then
-  steps/align_fmllr.sh --cmd $train_cmd --nj $nj \
+  steps/align_fmllr.sh --cmd "$train_cmd" --nj $nj \
     data/train data/lang exp/tri3a exp/tri3a_ali || exit 1
 fi
 
 if [[ $stage -le 14 ]]; then
-  steps/align_fmllr_lats.sh --nj $nj --cmd $train_cmd data/train \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
     data/lang exp/tri3a exp/tri3a_lats
   rm exp/tri3a_lats/fsts.*.gz # save space
 fi
