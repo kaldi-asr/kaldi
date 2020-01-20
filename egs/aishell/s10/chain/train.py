@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
-# Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2019-2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
 import logging
 import os
 import sys
+import warnings
+
+# disable warnings when loading tensorboard
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import torch
 import torch.optim as optim
@@ -159,7 +163,7 @@ def main():
                            lr=learning_rate,
                            weight_decay=args.l2_regularize)
 
-    scheduler = MultiStepLR(optimizer, milestones=[2, 6, 8, 9], gamma=0.5)
+    scheduler = MultiStepLR(optimizer, milestones=[1, 2, 3, 4, 5], gamma=0.5)
     criterion = KaldiChainObjfFunction.apply
 
     tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))

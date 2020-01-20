@@ -9,14 +9,14 @@ stage=0
 
 # GPU device id to use (count from 0).
 # you can also set `CUDA_VISIBLE_DEVICES` and set `device_id=0`
-device_id=7
+device_id=0
 
 nj=10
 
 lang=data/lang_chain # output lang dir
-ali_dir=exp/tri3a_ali  # input alignment dir
-lat_dir=exp/tri3a_lats # input lat dir
-treedir=exp/chain/tri3_tree # output tree dir
+ali_dir=exp/tri5a_ali  # input alignment dir
+lat_dir=exp/tri5a_lats # input lat dir
+treedir=exp/chain/tri5_tree # output tree dir
 
 # You should know how to calculate your model's left/right context **manually**
 model_left_context=12
@@ -27,8 +27,8 @@ frames_per_eg=150,110,90
 frames_per_iter=1500000
 minibatch_size=128
 
-num_epochs=10
-lr=2e-3
+num_epochs=6
+lr=1e-3
 
 hidden_dim=625
 kernel_size_list="1, 3, 3, 3, 3, 3" # comma separated list
@@ -48,11 +48,17 @@ save_nn_output_as_compressed=false
 if [[ $stage -le 0 ]]; then
   for datadir in train dev test; do
     dst_dir=data/fbank_pitch/$datadir
-    utils/copy_data_dir.sh data/$datadir $dst_dir
-    echo "making fbank-pitch features for LF-MMI training"
-    steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj $nj $dst_dir || exit 1
-    steps/compute_cmvn_stats.sh $dst_dir || exit 1
-    utils/fix_data_dir.sh $dst_dir
+    if [[ ! -f $dst_dir/feats.scp ]]; then
+      utils/copy_data_dir.sh data/$datadir $dst_dir
+      echo "making fbank-pitch features for LF-MMI training"
+      steps/make_fbank_pitch.sh --cmd $train_cmd --nj $nj $dst_dir || exit 1
+      steps/compute_cmvn_stats.sh $dst_dir || exit 1
+      utils/fix_data_dir.sh $dst_dir
+    else
+      echo "$dst_dir/feats.scp already exists."
+      echo "kaldi (local/run_tdnn_1b.sh) LF-MMI may have generated it."
+      echo "skip $dst_dir"
+    fi
   done
 fi
 
