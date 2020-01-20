@@ -105,7 +105,7 @@ if [ $stage -le 5 ]; then
   utils/mkgraph.sh data/lang_test_tgmed exp/tri1 exp/tri1/graph 
   steps/decode.sh --config conf/decode.config --nj 40 --cmd "$decode_cmd" exp/tri1/graph data/test exp/tri1/decode
   # Align - make graph - decode again   
-  steps/align_si.sh --nj 20 --cmd "queue.pl" --use-graphs true data/train data/lang_test_tgmed exp/tri1 exp/tri1_ali
+  steps/align_si.sh --nj 20 --cmd "$train_cmd" --use-graphs true data/train data/lang_test_tgmed exp/tri1 exp/tri1_ali
   utils/mkgraph.sh data/lang_test_tgmed exp/tri1_ali exp/tri1_ali/graph
   steps/decode.sh --config conf/decode.config --nj 40 --cmd "$decode_cmd" exp/tri1_ali/graph data/test exp/tri1_ali/decode
 fi

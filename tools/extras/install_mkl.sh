@@ -12,7 +12,7 @@
 
 set -o pipefail
 
-default_package=intel-mkl-64bit-2019.2-057
+default_package=intel-mkl-64bit-2020.0-088
 
 yum_repo='https://yum.repos.intel.com/mkl/setup/intel-mkl.repo'
 apt_repo='https://apt.repos.intel.com/mkl'
@@ -163,13 +163,14 @@ variable, sudo might not allow it to propagate to the command that it invokes."
   exit 0
 fi
 
-# The install variants, each in a finction to simplify error reporting.
+# The install variants, each in a function to simplify error reporting.
 # Each one invokes a subshell with a 'set -x' to to show system-modifying
 # commands it runs. The subshells simply limit the scope of this diagnostics
 # and avoid creating noise (if we were using 'set +x', it would be printed).
 Install_redhat () {
   # yum-utils contains yum-config-manager, in case the user does not have it.
   ( set -x
+    rpm --import $intel_key_url
     yum -y install yum-utils &&
     yum-config-manager --add-repo "$yum_repo" &&
     yum -y install "$package" )
@@ -177,6 +178,7 @@ Install_redhat () {
 
 Install_fedora () {
   ( set -x
+    rpm --import $intel_key_url
     dnf -y install 'dnf-command(config-manager)' &&
     dnf config-manager --add-repo "$yum_repo" &&
     dnf -y install "$package" )
@@ -188,6 +190,7 @@ Install_suse () {
   # We must disable gpg checks with '--no-gpg-checks'. I won't bend backwards
   # as far as check the installed .so version...
   ( set -x
+    rpm --import $intel_key_url
     zypper addrepo "$yum_repo" &&
     zypper --gpg-auto-import-keys --no-gpg-checks \
            --non-interactive install "$package" )
