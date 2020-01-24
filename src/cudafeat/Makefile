@@ -10,7 +10,8 @@ TESTFILES =
 ifeq ($(CUDA), true)
   OBJFILES +=  feature-window-cuda.o feature-spectral-cuda.o feature-online-cmvn-cuda.o \
 							 online-ivector-feature-cuda-kernels.o online-ivector-feature-cuda.o \
-							 online-cuda-feature-pipeline.o
+							 online-cuda-feature-pipeline.o src/cudafeat/feature-online-batched-cmvn-cuda.o \
+							 src/cudafeat/feature-online-batched-cmvn-cuda-kernels.o
 endif
 
 LIBNAME = kaldi-cudafeat
