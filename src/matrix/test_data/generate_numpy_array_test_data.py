@@ -7,13 +7,19 @@ import numpy as np
 
 
 def main():
-    data = np.arange(8).astype(np.float32)
-    np.save('float_vector.npy', data)
-    np.save('double_vector.npy', data.astype(np.float64))
+    data = np.arange(8)
+    np.save('float_vector.npy', data.astype('<f4'))
+    np.save('double_vector.npy', data.astype('<f8'))
 
-    data = data.reshape(2, 4).astype(np.float32)
-    np.save('float_matrix.npy', data)
-    np.save('double_matrix.npy', data.astype(np.float64))
+    np.save('float_vector_big_endian.npy', data.astype('>f4'))
+    np.save('double_vector_big_endian.npy', data.astype('>f8'))
+
+    data = data.reshape(2, 4)
+    np.save('float_matrix.npy', data.astype('<f4'))
+    np.save('double_matrix.npy', data.astype('<f8'))
+
+    np.save('float_matrix_big_endian.npy', data.astype('>f4'))
+    np.save('double_matrix_big_endian.npy', data.astype('>f8'))
 
 
 if __name__ == '__main__':

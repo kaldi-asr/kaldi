@@ -70,10 +70,15 @@ class NumpyArray {
   Real& operator[](int i) { return data_[i]; }
 
  private:
+  // for version 1.0
   static uint32_t ReadHeaderLen10(std::istream& in);
+
+  // for version 2.0 and 3.0
   static uint32_t ReadHeaderLen20And30(std::istream& in);
 
-  void ParseHeader(const std::string& header);
+  // return true if the data is saved in little endian
+  // return false if the data is saved in big endian
+  bool ParseHeader(const std::string& header);
 
  private:
   std::vector<int> shape_;

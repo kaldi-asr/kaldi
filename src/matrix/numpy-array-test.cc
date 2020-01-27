@@ -52,6 +52,12 @@ void test_numpy() {
   test<double>("test_data/double_vector.npy", 1);
   test<double>("test_data/double_matrix.npy", 2);
 
+  test<float>("test_data/float_vector_big_endian.npy", 1);
+  test<float>("test_data/float_matrix_big_endian.npy", 2);
+
+  test<double>("test_data/double_vector_big_endian.npy", 1);
+  test<double>("test_data/double_matrix_big_endian.npy", 2);
+
   NumpyArray<float> a;
   std::ifstream in("test_data/float_matrix.npy");
   a.Read(in, true);
