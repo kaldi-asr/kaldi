@@ -10,8 +10,8 @@ Eval        5.6             5.9           11.5
 
 # Diarization
         DER       JER
-Dev     57.15     83.96
-Eval    54.12     80.33
+Dev     60.31     67.58
+Eval    61.80     71.29
 
 # ASR nnet3 tdnn+chain
 Dev:  U06 %WER 81.18 [ 58881 / 47798, 1638 ins, 30528 del, 15632 sub ]

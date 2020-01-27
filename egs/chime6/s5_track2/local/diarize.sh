@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright   2019   David Snder
+# Copyright   2019   David Snyder
 # Apache 2.0.
 #
 # This script takes an input directory that has a segments file (and
@@ -97,7 +97,7 @@ if [ $stage -le 5 ]; then
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/$name/utt2spk.bak \
       data/$name/segments.bak $ref_rttm
   fi
-  grep 'U06' $ref_rttm > ${ref_rttm}.U06
+  sed 's/_U0[1-5]/_U06/g' $ref_rttm > ${ref_rttm}.U06
   ref_rttm_path=$(readlink -f ${ref_rttm}.U06)
   out_rttm_path=$(readlink -f $out_dir/rttm)
   if ! [ -d dscore ]; then
