@@ -97,9 +97,10 @@ if [ $stage -le 5 ]; then
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/$name/utt2spk.bak \
       data/$name/segments.bak $ref_rttm
   fi
-  sed 's/_U0[1-5]/_U06/g' $ref_rttm > ${ref_rttm}.U06
-  ref_rttm_path=$(readlink -f ${ref_rttm}.U06)
-  out_rttm_path=$(readlink -f $out_dir/rttm)
+  sed 's/_U0[1-6]//g' $ref_rttm > ${ref_rttm}.scoring
+  sed 's/_U0[1-6]//g' $out_dir/rttm > ${out_dir}/rttm.scoring
+  ref_rttm_path=$(readlink -f ${ref_rttm}.scoring)
+  out_rttm_path=$(readlink -f $out_dir/rttm.scoring)
   if ! [ -d dscore ]; then
     git clone https://github.com/nryant/dscore.git || exit 1;
     cd dscore
