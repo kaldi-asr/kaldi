@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1b but uses batchnorm components instead of renorm
 

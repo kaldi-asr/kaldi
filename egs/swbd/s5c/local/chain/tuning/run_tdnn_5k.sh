@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5k is as _5j (omitting iVectors), and adding a statistics-extraction layer
 # in the middle, like 5e->5g, to see whether it recovers some of the improvement

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _lfr1a is as _c, but is LFR (low frame rate): it uses triphone chain topology
 #  with a frame subsampling factor of 3.

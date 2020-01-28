@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This factorized TDNN (TDNN-F) script is adapted from SWBD recipe 7q.
 # It uses resnet-style skip connections.

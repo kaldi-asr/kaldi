@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1a is a straight forward combination of tdnn_7h and lstm_6j.
 # TDNN layers are stacked before LSTM.

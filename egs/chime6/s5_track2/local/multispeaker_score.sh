@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright   2019   Ashish Arora, Yusuke Fujita
 # Apache 2.0.
 # This script takes a reference and hypothesis text file, and performs 

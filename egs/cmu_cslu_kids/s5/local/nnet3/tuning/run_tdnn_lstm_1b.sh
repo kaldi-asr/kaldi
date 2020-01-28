@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is like 1a, but adding dropout.   It's definitely helpful,
 # and you can see in the objf values that the train-test difference

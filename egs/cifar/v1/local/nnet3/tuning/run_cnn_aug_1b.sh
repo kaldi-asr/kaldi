@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_cnn_aug_1b is the same as run_cnn_1e but with data augmentation.
 

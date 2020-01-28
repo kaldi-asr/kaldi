@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # this (local/nnet2/run_6c_gpu.sh) trains a p-norm neural network on top of

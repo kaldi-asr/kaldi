@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2018   Zili Huang
 # Apache 2.0.
 #

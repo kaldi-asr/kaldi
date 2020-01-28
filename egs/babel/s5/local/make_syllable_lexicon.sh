@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 help="Usage: $(basename $0) <input-lexicon-with-tabs> <word2syllable-lexicon-out> <syllable-lexicon-out>

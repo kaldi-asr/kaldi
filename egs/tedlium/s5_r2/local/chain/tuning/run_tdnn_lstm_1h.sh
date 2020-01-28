@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #######################
 # 1h is as 1e, but increasing decay-time from to to 30.

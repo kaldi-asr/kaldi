@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g is like 1e, but reducing decay-time from 20 to 15, to see if
 # it reduces the difference between regular and looped decoding.

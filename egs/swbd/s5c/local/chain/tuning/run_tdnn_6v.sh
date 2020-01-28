@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script contains online decoding using chain + nnet3 setup.
 # _6v is as _6h, but moving to a TDNN+ReLU recipe instead of using jesus-layer.
 # Otherwise we make everything as similar as possible to 6h.

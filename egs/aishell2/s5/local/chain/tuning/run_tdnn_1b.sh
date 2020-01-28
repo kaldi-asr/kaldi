@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _1b is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
 

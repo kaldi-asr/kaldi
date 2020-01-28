@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2p is as _2m, but 6500 instead of 9000 as the target for num-leaves.
 

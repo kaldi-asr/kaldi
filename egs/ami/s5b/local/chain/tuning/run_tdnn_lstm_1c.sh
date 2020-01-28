@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1a, but with more TDNN layers between each LSTM
 # results on sdm1 with ihm ali
