@@ -1,0 +1,18 @@
+# Results for Chime-6 track 2 for dev and eval, using pretrained models
+# available at http://kaldi-asr.org/models/m12.
+
+# Speech Activity Detection (SAD)
+          Missed speech   False alarm   Total error
+Dev         4.3             2.1           6.4                                                
+Eval        5.6             5.9           11.5
+
+# The results for the remaining pipeline are only for array U06.
+
+# Diarization
+        DER       JER
+Dev     57.15     83.96
+Eval    54.12     80.33
+
+# ASR nnet3 tdnn+chain
+Dev:  U06 %WER 81.18 [ 58881 / 47798, 1638 ins, 30528 del, 15632 sub ]
+Eval: U06 %WER 85.39 [ 55132 / 47076, 1107 ins, 27768 del, 18201 sub ]

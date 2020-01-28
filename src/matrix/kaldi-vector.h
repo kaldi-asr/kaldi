@@ -510,36 +510,36 @@ class SubVector : public VectorBase<Real> {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(origin)+
                  static_cast<UnsignedMatrixIndexT>(length) <=
                  static_cast<UnsignedMatrixIndexT>(t.Dim()));
-    VectorBase<Real>::data_ = const_cast<Real*> (t.Data()+origin);
-    VectorBase<Real>::dim_   = length;
+    this->data_ = const_cast<Real*> (t.Data()+origin);
+    this->dim_   = length;
   }
 
   /// This constructor initializes the vector to point at the contents
   /// of this packed matrix (SpMatrix or TpMatrix).
   SubVector(const PackedMatrix<Real> &M) {
-    VectorBase<Real>::data_ = const_cast<Real*> (M.Data());
-    VectorBase<Real>::dim_   = (M.NumRows()*(M.NumRows()+1))/2;
+    this->data_ = const_cast<Real*> (M.Data());
+    this->dim_   = (M.NumRows()*(M.NumRows()+1))/2;
   }
 
   /// Copy constructor
   SubVector(const SubVector &other) : VectorBase<Real> () {
     // this copy constructor needed for Range() to work in base class.
-    VectorBase<Real>::data_ = other.data_;
-    VectorBase<Real>::dim_ = other.dim_;
+    this->data_ = other.data_;
+    this->dim_ = other.dim_;
   }
 
   /// Constructor from a pointer to memory and a length.  Keeps a pointer
   /// to the data but does not take ownership (will never delete).
   /// Caution: this constructor enables you to evade const constraints.
   SubVector(const Real *data, MatrixIndexT length) : VectorBase<Real> () {
-    VectorBase<Real>::data_ = const_cast<Real*>(data);
-    VectorBase<Real>::dim_   = length;
+    this->data_ = const_cast<Real*>(data);
+    this->dim_   = length;
   }
 
   /// This operation does not preserve const-ness, so be careful.
   SubVector(const MatrixBase<Real> &matrix, MatrixIndexT row) {
-    VectorBase<Real>::data_ = const_cast<Real*>(matrix.RowData(row));
-    VectorBase<Real>::dim_   = matrix.NumCols();
+    this->data_ = const_cast<Real*>(matrix.RowData(row));
+    this->dim_   = matrix.NumCols();
   }
 
   ~SubVector() {}  ///< Destructor (does nothing; no pointers are owned here).

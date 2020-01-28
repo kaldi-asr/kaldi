@@ -180,9 +180,10 @@ option num_threads=1 --cpus-per-task 1  --ntasks-per-node=1 # Do not add anythin
 default gpu=0
 option gpu=0 -p shared
 option gpu=* -p gpu --gres=gpu:$0 --time 4:0:0  # this has to be figured out
+EOF
+
 # note: the --max-jobs-run option is supported as a special case
 # by slurm.pl and you don't have to handle it in the config file.
-EOF
 
 # Here the configuration options specified by the user on the command line
 # (e.g. --mem 2G) are converted to options to the qsub system as defined in
