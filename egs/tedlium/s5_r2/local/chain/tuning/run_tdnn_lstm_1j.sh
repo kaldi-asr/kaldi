@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1j is as 1e, but adding self-repair-scale=1.0e-04 on 1st tdnn layer [default is 1e-5].
 # It's definitely more effective in preventing under or over-saturated ReLUs, but

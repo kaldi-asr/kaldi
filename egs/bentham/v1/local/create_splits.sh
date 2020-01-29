@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright   2018   Desh Raj (Johns Hopkins University) 
 
 # This script reads the extracted Bentham database files and creates

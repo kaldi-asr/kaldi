@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5t is as _5s but further reducing the jesus-hidden-dim (trying to speed it
 # up), from 5000 to 3500.  Seems to make no difference to WERs; valid prob improves.

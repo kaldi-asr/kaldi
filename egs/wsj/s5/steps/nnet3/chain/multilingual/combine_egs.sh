@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017     Pegah Ghahremani
 #           2017-18  Vimal Manohar

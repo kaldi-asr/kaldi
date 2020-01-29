@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright    2017  Hossein Hadian
 
 # This script performs chain training in a flat-start manner

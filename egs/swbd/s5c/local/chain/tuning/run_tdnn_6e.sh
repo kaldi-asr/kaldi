@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # _6e is as _6d but going further: reducing --num-jesus-blocks to 72 = ceil(500/7).

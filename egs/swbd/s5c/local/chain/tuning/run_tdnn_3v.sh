@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3v is as _3t but decreasing the --num-jesus-blocks from 100 to 50.
 # I stopped it early after likelihoods were not promising:

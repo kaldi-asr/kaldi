@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # steps/info/chain_dir_info.pl exp/chainfsf4/cnn1a_1/
 # exp/chainfsf4/cnn1a_1/: num-iters=21 nj=2..4 num-params=4.4M dim=40->380 combine=-0.033->-0.025 xent:train/valid[13,20,final]=(-1.07,-1.31,-0.560/-1.30,-1.70,-0.978) logprob:train/valid[13,20,final]=(-0.064,-0.119,-0.011/-0.115,-0.208,-0.096)

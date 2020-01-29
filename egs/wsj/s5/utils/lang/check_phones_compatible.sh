@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016 Hang Lyu
 
 # Licensed udner the Apache License, Version 2.0 (the "Lincense");

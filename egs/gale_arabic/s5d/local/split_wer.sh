@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Report WER for reports and conversational
 # Copyright 2014 QCRI (author: Ahmed Ali)

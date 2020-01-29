@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_lstm_1i.sh is like run_tdnn_lstm_1{e,f}.sh but
 # with a different frames-per-iter: 2 million, vs. 1.5 million

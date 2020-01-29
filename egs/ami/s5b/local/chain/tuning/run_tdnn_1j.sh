@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #  1j is same as swbd 7q. It uses modified topology with resnet-style skip connections, more layers,
 #  skinnier bottlenecks.

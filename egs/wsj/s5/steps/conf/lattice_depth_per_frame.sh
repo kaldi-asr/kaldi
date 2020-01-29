@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015  Brno University of Technology (Author: Karel Vesely)
 # Licensed under the Apache License, Version 2.0 (the "License")
 

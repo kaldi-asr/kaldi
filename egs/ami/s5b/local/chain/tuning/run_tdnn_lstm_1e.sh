@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1c but with only right context for the TDNNs i.e., (0,3) in place
 # of (-3,0,3)

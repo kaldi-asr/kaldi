@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6u is as _6h, but with slightly different splicing indexes (start
 # narrower than 6h and ramp up slowly).  These are designed to be

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # This script demonstrates discriminative training of ensemble-trained p-norm neural nets.
