@@ -19,7 +19,8 @@ ifeq ($(CUDA), true)
 		feature-online-batched-cmvn-cuda.o \
 		feature-online-batched-cmvn-cuda-kernels.o \
 		feature-online-batched-ivector-cuda.o \
-		feature-online-batched-ivector-cuda-kernels.o 
+		feature-online-batched-ivector-cuda-kernels.o  \
+    online-batched-feature-pipeline-cuda.o 
 endif
 
 LIBNAME = kaldi-cudafeat
