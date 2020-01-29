@@ -31,6 +31,7 @@ dir10=/export/corpora/LDC/LDC2018S05/
 text10=/export/corpora/LDC/LDC2018T14/        
 
 mgb2_dir=""
+process_xml=""
 mer=80
 
 . ./utils/parse_options.sh
@@ -119,21 +120,34 @@ if [ ! -z $mgb2_dir ]; then
     mv $output_dir/mgb2 ${output_dir}/.backup
   fi
 
-  if [ -z $(which xml) ]; then
-    echo "xml not found, using BeautifulSoup in python"
+  if [ $process_xml == 'python' ]; then
+    echo "using python to process xml file"
+    # check if bs4 and lxml are installed in python
+    local/check_tools.sh
     ls $mgb2_dir/train/wav/ | while read name; do
       basename=`basename -s .wav $name`
       [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
       local/process_xml.py $xmldir/$basename.xml - | local/add_to_datadir.py $basename $train_dir $mer
       echo $basename $db_dir/train/wav/$basename.wav >> $output_dir/wav.scp
     done
+  elif [ $process_xml == 'xml' ]; then
+    # check if xml binary exsits
+    if command -v xml >/dev/null 2>/dev/null; then
+      echo "using xml"
+      ls $mgb2_dir/train/wav/ | while read name; do
+        basename=`basename -s .wav $name`
+        [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
+        xml sel -t -m '//segments[@annotation_id="transcript_align"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $output_dir $mer
+        echo $basename $db_dir/train/wav/$basename.wav >> $output_dir/wav.scp
+      done
+    else
+      echo "xml not found, you may use python by '--process-xml python'"
+      exit 1;
+    fi
   else
-    ls $mgb2_dir/train/wav/ | while read name; do
-      basename=`basename -s .wav $name`
-      [ ! -e $xmldir/$basename.xml ] && echo "Missing $xmldir/$basename.xml" && exit 1
-      xml sel -t -m '//segments[@annotation_id="transcript_align"]' -m "segment" -n -v  "concat(@who,' ',@starttime,' ',@endtime,' ',@WMER,' ')" -m "element" -v "concat(text(),' ')" $xmldir/$basename.xml | local/add_to_datadir.py $basename $output_dir $mer
-      echo $basename $db_dir/train/wav/$basename.wav >> $output_dir/wav.scp
-    done
+    # invalid option
+    echo "$0: invalid option for --process-xml, choose from 'xml' or 'python'"
+    exit 1;
   fi
 
   # add mgb2 data to training data (GALE/all and wav.scp)

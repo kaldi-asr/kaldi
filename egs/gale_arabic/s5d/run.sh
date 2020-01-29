@@ -46,6 +46,9 @@ galeData=GALE
 mgb2_dir=""
 giga_dir=""
 
+# preference on how to process xml file (use xml binary or python)
+process_xml=""
+
 run_rnnlm=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -64,7 +67,7 @@ if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
 
   options=""
-  [ ! -z $mgb2_dir ] && options="--mgb2-dir $mgb2_dir"
+  [ ! -z $mgb2_dir ] && options="--process-xml python --mgb2-dir $mgb2_dir"
   local/prepare_data.sh $options
 
   echo "$0: Preparing lexicon and LM..." 

@@ -1,14 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
+from bs4 import BeautifulSoup
 import sys
 import argparse
-
-try:
-    from bs4 import BeautifulSoup
-except ImportError as error:
-    print(sys.argv[0] + ": ImportError,", error)
-    print(sys.argv[0] + ": BeautifulSoup4 is needed to process xml file. You can install it by 'pip install beautifulsoup4'.")
-    sys.exit(1)
 
 def get_args():
     parser = argparse.ArgumentParser(description="""This script process xml file.""")
