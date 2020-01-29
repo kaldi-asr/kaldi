@@ -6,6 +6,9 @@
 
 stage=-1
 
+# preference on how to process xml file [python, xml]
+process_xml="python"
+
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . utils/parse_options.sh
@@ -50,7 +53,7 @@ fi
 if [ $stage -le 1 ]; then
   #DATA PREPARATION
   echo "Preparing training data"
-  local/mgb_data_prep.sh DB $mer
+  local/mgb_data_prep.sh DB $mer $process_xml
 fi
 
 if [ $stage -le 2 ]; then
