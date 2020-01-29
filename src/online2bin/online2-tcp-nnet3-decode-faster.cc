@@ -431,7 +431,7 @@ bool TcpServer::ReadChunk(size_t len) {
       KALDI_WARN << "Socket timeout! Disconnecting...";
       break;
     }
-    if (client_set_[0].revents != POLLIN) {
+    if (poll_ret < 0) {
       KALDI_WARN << "Socket error! Disconnecting...";
       break;
     }

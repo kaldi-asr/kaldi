@@ -136,7 +136,10 @@ def pick_item_with_probability(x):
         collection (list or dictionary) where the values contain a field called probability
     """
     if isinstance(x, dict):
-        plist = list(set(x.values()))
+        keylist = list(x.keys())
+        keylist.sort()
+        random.shuffle(keylist)
+        plist = [x[k] for k in keylist]
     else:
         plist = x
     total_p = sum(item.probability for item in plist)
@@ -377,7 +380,7 @@ def add_prefix_to_fields(input_file, output_file, num_replicas, include_original
     """ This function replicate the entries in files like segments, utt2spk, text
     """
     list = [x.strip() for x in open(input_file, encoding='utf-8')]
-    f = open(output_file, "w" ,encoding='utf-8')
+    f = open(output_file, "w", encoding='utf-8')
     if include_original:
         start_index = 0
     else:
@@ -445,6 +448,8 @@ def create_reverberated_copy(input_dir,
         add_prefix_to_fields(input_dir + "/segments", output_dir + "/segments", num_replicas, include_original, prefix, field = [0,1])
     if os.path.isfile(input_dir + "/reco2file_and_channel"):
         add_prefix_to_fields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, include_original, prefix, field = [0,1])
+    if os.path.isfile(input_dir + "/vad.scp"):
+        add_prefix_to_fields(input_dir + "/vad.scp", output_dir + "/vad.scp", num_replicas, include_original, prefix, field=[0])
 
     data_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats --no-text {output_dir}"
                     .format(output_dir = output_dir))
@@ -466,7 +471,7 @@ def smooth_probability_distribution(set_list, smoothing_weight=0.0, target_sum=1
       uniform_probability = 0
       if num_unspecified > 0 and accumulated_prob < 1:
           uniform_probability = (1 - accumulated_prob) / float(num_unspecified)
-      elif num_unspecified > 0 and accumulate_prob >= 1:
+      elif num_unspecified > 0 and accumulated_prob >= 1:
           warnings.warn("The sum of probabilities specified by user is larger than or equal to 1. "
                         "The items without probabilities specified will be given zero to their probabilities.")
 

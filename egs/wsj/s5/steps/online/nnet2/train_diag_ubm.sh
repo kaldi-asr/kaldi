@@ -111,8 +111,8 @@ fi
 
 # Note: there is no point subsampling all_feats, because gmm-global-init-from-feats
 # effectively does subsampling itself (it keeps a random subset of the features).
-all_feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+all_feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
 num_gauss_init=$(perl -e "print int($initial_gauss_proportion * $num_gauss); ");
 ! [ $num_gauss_init -gt 0 ] && echo "Invalid num-gauss-init $num_gauss_init" && exit 1;

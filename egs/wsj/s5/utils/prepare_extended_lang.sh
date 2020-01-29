@@ -24,6 +24,7 @@ word_list= # if a word list (mapping words from the srcdict to IDs) is provided,
 # we'll make sure the IDs of these words are kept as before.
 # end configuration sections
 
+echo "$0: warning: This sript is is now deprecated. You may want to use utils/lang/extend_lang.sh"
 echo "$0 $@"  # Print the command line for logging
 
 . utils/parse_options.sh

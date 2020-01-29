@@ -22,7 +22,7 @@
 #include "util/stl-utils.h"
 
 namespace fst {
-
+using std::vector;
 
 InverseLeftBiphoneContextFst::InverseLeftBiphoneContextFst(
     Label nonterm_phones_offset,

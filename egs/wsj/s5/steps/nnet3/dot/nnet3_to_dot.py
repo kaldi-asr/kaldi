@@ -269,6 +269,8 @@ def DescriptorSegmentToDot(segment, parent_node_name, affix, edge_attributes = N
         dot_graph += ProcessReplaceIndexDescriptor(segment, parent_node_name, affix, edge_attributes)
     elif segment['name'] == "Round":
         dot_graph += ProcessRoundDescriptor(segment, parent_node_name, affix, edge_attributes)
+    elif segment['name'] == "Scale":
+        pass
     else:
         raise Exception('Descriptor {0}, is not recognized by this script. Please add Process{0}Descriptor method'.format(segment['name']))
     return dot_graph

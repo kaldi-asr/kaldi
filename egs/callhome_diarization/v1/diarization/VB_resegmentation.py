@@ -32,6 +32,17 @@ def get_utt2num_frames(utt2num_frames_filename):
         utt2num_frames[line_split[0]] = int(line_split[1])
     return utt2num_frames
 
+# prepare utt2feats dictionary
+def get_utt2feats(utt2feats_filename):
+    utt2feats = {}
+    with open(utt2feats_filename, 'r') as fh:
+        content = fh.readlines()
+    for line in content:
+        line = line.strip('\n')
+        line_split = line.split(None, 1)
+        utt2feats[line_split[0]] = line_split[1]
+    return utt2feats
+
 def create_ref(uttname, utt2num_frames, full_rttm_filename):
     num_frames = utt2num_frames[uttname]
 
@@ -157,9 +168,7 @@ def main():
     V = IE_M
 
     # Load the MFCC features
-    feats_dict = {}
-    for key,mat in kaldi_io.read_mat_scp("{}/feats.scp".format(args.data_dir)):
-        feats_dict[key] = mat
+    feats_dict = get_utt2feats("{}/feats.scp".format(args.data_dir))
 
     for utt in utt_list:
         # Get the alignments from the clustering result.
@@ -169,7 +178,7 @@ def main():
         init_ref = create_ref(utt, utt2num_frames, args.init_rttm_filename)
 
         # load MFCC features
-        X = (feats_dict[utt]).astype(np.float64)
+        X = kaldi_io.read_mat(feats_dict[utt]).astype(np.float64)
         assert len(init_ref) == len(X)
 
         # Keep only the voiced frames (0 denotes the silence 

@@ -78,17 +78,10 @@ void LatticeFasterDecoderTpl<FST, Token>::InitDecoding() {
 template <typename FST, typename Token>
 bool LatticeFasterDecoderTpl<FST, Token>::Decode(DecodableInterface *decodable) {
   InitDecoding();
-
   // We use 1-based indexing for frames in this decoder (if you view it in
   // terms of features), but note that the decodable object uses zero-based
   // numbering, which we have to correct for when we call it.
-
-  while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
-    if (NumFramesDecoded() % config_.prune_interval == 0)
-      PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
-  }
+  AdvanceDecoding(decodable);
   FinalizeDecoding();
 
   // Returns true if we have any kind of traceback available (not necessarily
@@ -236,24 +229,17 @@ void LatticeFasterDecoderTpl<FST, Token>::PossiblyResizeHash(size_t num_toks) {
 
   extra_cost is used in pruning tokens, to save memory.
 
-  Define the 'forward cost' of a token as zero for any token on the frame
-  we're currently decoding; and for other frames, as the shortest-path cost
-  between that token and a token on the frame we're currently decoding.
-  (by "currently decoding" I mean the most recently processed frame).
-
-  Then define the extra_cost of a token (always >= 0) as the forward-cost of
-  the token minus the smallest forward-cost of any token on the same frame.
+  extra_cost can be thought of as a beta (backward) cost assuming
+  we had set the betas on currently-active tokens to all be the negative
+  of the alphas for those tokens.  (So all currently active tokens would
+  be on (tied) best paths).
 
   We can use the extra_cost to accurately prune away tokens that we know will
   never appear in the lattice.  If the extra_cost is greater than the desired
   lattice beam, the token would provably never appear in the lattice, so we can
   prune away the token.
 
-  The advantage of storing the extra_cost rather than the forward-cost, is that
-  it is less costly to keep the extra_cost up-to-date when we process new frames.
-  When we process a new frame, *all* the previous frames' forward-costs would change;
-  but in general the extra_cost will change only for a finite number of frames.
-  (Actually we don't update all the extra_costs every time we update a frame; we
+  (Note: we don't update all the extra_costs every time we update a frame; we
   only do it every 'config_.prune_interval' frames).
  */
 
@@ -796,7 +782,7 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
               graph_cost = arc.weight.Value(),
               cur_cost = tok->tot_cost,
               tot_cost = cur_cost + ac_cost + graph_cost;
-          if (tot_cost > next_cutoff) continue;
+          if (tot_cost >= next_cutoff) continue;
           else if (tot_cost + adaptive_beam < next_cutoff)
             next_cutoff = tot_cost + adaptive_beam; // prune by best current token
           // Note: the frame indexes into active_toks_ are one-based,
@@ -866,7 +852,7 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
     StateId state = e->key;
     Token *tok = e->val;  // would segfault if e is a NULL pointer but this can't happen.
     BaseFloat cur_cost = tok->tot_cost;
-    if (cur_cost > cutoff) // Don't bother processing successors.
+    if (cur_cost >= cutoff) // Don't bother processing successors.
       continue;
     // If "tok" has any existing forward links, delete them,
     // because we're about to regenerate them.  This is a kind

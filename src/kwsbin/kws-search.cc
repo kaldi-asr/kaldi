@@ -159,6 +159,7 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;
+    using std::vector;
     typedef kaldi::int32 int32;
     typedef kaldi::uint32 uint32;
     typedef kaldi::uint64 uint64;

@@ -89,9 +89,9 @@ void OnlineGenericBaseFeature<C>::MaybeCreateResampler(
     KALDI_ASSERT(resampler_->GetInputSamplingRate() == sampling_rate);
     KALDI_ASSERT(resampler_->GetOutputSamplingRate() == expected_sampling_rate);
   } else if (((sampling_rate > expected_sampling_rate) &&
-              !computer_.GetFrameOptions().allow_downsample) ||
-             ((sampling_rate > expected_sampling_rate) &&
-              !computer_.GetFrameOptions().allow_upsample)) {
+              computer_.GetFrameOptions().allow_downsample) ||
+             ((sampling_rate < expected_sampling_rate) &&
+              computer_.GetFrameOptions().allow_upsample)) {
     resampler_.reset(new LinearResample(
         sampling_rate, expected_sampling_rate,
         std::min(sampling_rate / 2, expected_sampling_rate / 2), 6));
