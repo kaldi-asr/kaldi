@@ -16,7 +16,7 @@
 // limitations under the License.
 
 #include "cudafeat/feature-online-batched-spectral-cuda.h"
-#include "cudafeat/feature-spectral-batched-kernels.h"
+#include "cudafeat/feature-online-batched-spectral-cuda-kernels.h"
 
 namespace kaldi {
 

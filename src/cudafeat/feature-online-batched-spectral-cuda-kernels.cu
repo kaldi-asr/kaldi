@@ -1,4 +1,4 @@
-// cudafeature/feature-spectral-batched_kernels.cu
+// cudafeature/feature-online-batched-spectral-cuda-kernels.cu
 //
 // Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 // Justin Luitjens, Levi Barnes
@@ -20,8 +20,7 @@
 #include <cub/cub.cuh>
 #endif
 
-#include "cudafeat/feature-spectral-batched-kernels.h"
-#include "cudafeat/feature-spectral-cuda.h"
+#include "cudafeat/feature-online-batched-spectral-cuda-kernels.h"
 #include "cudafeat/lane-desc.h"
 #include "cudamatrix/cu-rand.h"
 

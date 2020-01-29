@@ -1,4 +1,4 @@
-// cudafeature/feature-spectral-batched-kernels.h
+// cudafeature/feature-online-batched-spectral-cuda-kernels.h
 //
 // Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 // Justin Luitjens, Levi Barnes
@@ -15,8 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDAFEAT_FEATURE_SPECTRAL_BATCHED_KERNELS_H_
-#define KALDI_CUDAFEAT_FEATURE_SPECTRAL_BATCHED_KERNELS_H_
+#ifndef KALDI_CUDAFEAT_FEATURE_ONLINE_BATCHED_SPECTRAL_CUDA_KERNELS_H_
+#define KALDI_CUDAFEAT_FEATURE_ONLINE_BATCHED_SPECTRAL_CUDA_KERNELS_H_
 
 #include "cudafeat/lane-desc.h"
 
