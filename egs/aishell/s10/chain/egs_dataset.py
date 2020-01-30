@@ -170,10 +170,10 @@ class NnetChainExampleDatasetCollateFunc:
 
 
 def _test_nnet_chain_example_dataset():
-    egs_dir = '/cache/fangjun/chain/aishell_kaldi_pybind/test'
+    egs_dir = 'exp/chain/merged_egs'
     dataset = NnetChainExampleDataset(egs_dir=egs_dir)
-    egs_left_context = 23
-    egs_right_context = 23
+    egs_left_context = 29
+    egs_right_context = 29
     frame_subsampling_factor = 3
 
     collate_fn = NnetChainExampleDatasetCollateFunc(
@@ -200,7 +200,9 @@ def _test_nnet_chain_example_dataset():
                             collate_fn=collate_fn)
     for b in dataloader:
         key_list, feature_list, supervision_list = b
-        assert feature_list[0].shape == (128, 192, 120)
+        assert feature_list[0].shape == (128, 204, 129) \
+                or feature_list[0].shape == (128, 144, 129) \
+                or feature_list[0].shape == (128, 165, 129)
         assert supervision_list[0].weight == 1
         supervision_list[0].num_sequences == 128  # minibach size is 128
 
