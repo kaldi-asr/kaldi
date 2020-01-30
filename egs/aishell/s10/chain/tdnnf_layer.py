@@ -62,14 +62,20 @@ class FactorizedTDNN(nn.Module):
         https://github.com/kaldi-asr/kaldi/blob/master/src/nnet3/nnet-utils.cc#L982
     '''
 
-    def __init__(self, dim, bottleneck_dim, time_stride):
+    def __init__(self, dim, bottleneck_dim, time_stride, bypass_scale=0.66):
         super().__init__()
+
         assert time_stride in [0, 1]
+        assert abs(bypass_scale) <= 1
+
+        self.bypass_scale = bypass_scale
 
         if time_stride == 0:
             kernel_size = 1
         else:
             kernel_size = 3
+
+        self.kernel_size = kernel_size
 
         # WARNING(fangjun): kaldi uses [-1, 0] for the first linear layer
         # and [0, 1] for the second affine layer;
@@ -90,6 +96,10 @@ class FactorizedTDNN(nn.Module):
     def forward(self, x):
         # input x is of shape: [batch_size, feat_dim, seq_len] = [N, C, T]
         assert x.ndim == 3
+
+        # save it for skip connection
+        input_x = x
+
         x = self.conv(x)
         # at this point, x is [N, C, T]
 
@@ -109,6 +119,10 @@ class FactorizedTDNN(nn.Module):
         # TODO(fangjun): implement GeneralDropoutComponent in PyTorch
 
         # at this point, x is [N, C, T]
+        if self.kernel_size == 3:
+            x = self.bypass_scale * input_x[:, :, 1:-1] + x
+        else:
+            x = self.bypass_scale * input_x + x
         return x
 
     def constraint_orthonormal(self):
@@ -175,6 +189,10 @@ def _test_factorized_tdnn():
     x = torch.arange(N * T * C).reshape(N, C, T).float()
     y = model(x)
     assert y.size(2) == T - 2
+
+    model = FactorizedTDNN(dim=C, bottleneck_dim=2, time_stride=0)
+    y = model(x)
+    assert y.size(2) == T
 
 
 if __name__ == '__main__':
