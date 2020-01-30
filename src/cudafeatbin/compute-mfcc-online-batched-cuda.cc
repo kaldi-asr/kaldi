@@ -15,7 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if HAVE_CUDA == 1
 #include <cuda_profiler_api.h>
+#endif
+
 #include <string>
 #include <vector>
 
@@ -367,8 +370,9 @@ int main(int argc, char *argv[]) {
     cudaHostUnregister(h_batch_feats_out.Data());
 
     cudaDeviceSynchronize();
+#if HAVE_CUDA == 1
     cudaProfilerStop();
-
+#endif
     return 0;
   } catch (const std::exception &e) {
     std::cerr << e.what();
