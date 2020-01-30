@@ -302,12 +302,15 @@ __global__ void batched_update_linear_and_quadratic_terms_kernel(
   linear = linear + lane * stridel;
   quadratic = quadratic + lane * strideq;
 
-  // This is always zero.  not 100% certain as why we don't need
-  // to account for earlier chunk.  maybe Dan knows.
+  // This is always zero because linear and quadratic terms are not
+  // being carried forward.  Thus we don't need to remove old prior
+  // scale.  Keeping the code below so that it logically matches
+  // the CPU code in case someone is looking at this in the future.
   float old_num_frames = 0;
   // float old_num_frames = desc.current_frame;
   float new_num_frames = desc.current_frame + desc.num_chunk_frames;
 
+  // in CPU code the frame counts are scaled by posterior scale
   new_num_frames *= posterior_scale;
   old_num_frames *= posterior_scale;
 
