@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # caution: the egs for this were dumped with a bug in the numerator lattices,
 # you can subtract 0.0152 from the likelihoods to correct for this.  (compare

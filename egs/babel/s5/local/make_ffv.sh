@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/usr/bin/env bash 
 
 # Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 #                      Bagher BabaAli
@@ -151,7 +151,7 @@ for ((n=1; n<=nj; n++)); do
 done
 
 cat <<'EOF' > $ffv_script
-#!/bin/bash
+#!/usr/bin/env bash
 # script for execution of ffv
 flen=0.01
 sfreq=8000
@@ -189,7 +189,7 @@ fi
 # script file in the experimental directory.  Quotes around 'EOF' disable any 
 # interpretation in the here-doc.
 cat <<'EOF' > $expdir/convert.sh
-#!/bin/bash
+#!/usr/bin/env bash
 ffv_flist=$1 
 scpfile=$2
 [ $# -ne 2 ] && echo "Usage: convert.sh <ffv-flist-in> <scpfile-out>" && exit 1;

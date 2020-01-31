@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2a is as _z but setting --lm-opts "--num-extra-states=8000".
 #  Note, this leads to a cutoff of zero, so it's the same as infinite --num-extra-states.

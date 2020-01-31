@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1k is like 1j, while it introduces 'apply-cmvn-online' that does
 # cmn normalization both for i-extractor and TDNN input.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_1b.sh is like run_tdnn_1a.sh but upgrading to xconfig-based
 # config generation.

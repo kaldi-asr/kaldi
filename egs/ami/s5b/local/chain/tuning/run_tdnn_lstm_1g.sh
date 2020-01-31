@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1c but with smaller minibatch
 # using smaller minibatches seems to be better in TDNN+LSTM archs.

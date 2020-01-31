@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # exp/resnet1b: num-iters=130 nj=2..4 num-params=1.3M dim=96->10 combine=-0.04->-0.04 loglike:train/valid[85,129,final]=(-0.049,-0.044,-0.036/-0.098,-0.085,-0.076) accuracy:train/valid[85,129,final]=(0.9904,0.9908,0.9940/0.9764,0.9804,0.9831)
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright  2016-2017  Go-Vivace Inc. (Author: Mousmita Sarma)
 #
 # Apache 2.0.

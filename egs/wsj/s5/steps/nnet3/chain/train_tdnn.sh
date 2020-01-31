@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # THIS SCRIPT IS DEPRECATED, see ./train.py
 

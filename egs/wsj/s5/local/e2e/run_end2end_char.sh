@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017    Hossein Hadian
 
 # This top-level script demonstrates character-based end-to-end LF-MMI training

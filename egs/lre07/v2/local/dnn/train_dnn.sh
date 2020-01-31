@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is based on egs/fisher_english/s5/run.sh. It trains a
 # multisplice time-delay neural network used in the DNN-based speaker
