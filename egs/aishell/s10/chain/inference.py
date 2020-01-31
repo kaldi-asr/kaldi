@@ -34,8 +34,9 @@ def main():
                             output_dim=args.output_dim,
                             lda_mat_filename=args.lda_mat_filename,
                             hidden_dim=args.hidden_dim,
-                            kernel_size_list=args.kernel_size_list,
-                            stride_list=args.stride_list)
+                            bottleneck_dim=args.bottleneck_dim,
+                            time_stride_list=args.time_stride_list,
+                            conv_stride_list=args.conv_stride_list)
 
     load_checkpoint(args.checkpoint, model)
 

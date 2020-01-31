@@ -201,6 +201,14 @@ class ChainModel(nn.Module):
 
         return nnet_output, xent_output
 
+    def constrain_orthonormal(self):
+        for i in range(len(self.tdnnfs)):
+            self.tdnnfs[i].constrain_orthonormal()
+
+        self.prefinal_l.constrain_orthonormal()
+        self.prefinal_chain.constrain_orthonormal()
+        self.prefinal_xent.constrain_orthonormal()
+
 
 if __name__ == '__main__':
     feat_dim = 43
@@ -212,3 +220,4 @@ if __name__ == '__main__':
     x = torch.arange(N * T * C).reshape(N, T, C).float()
     nnet_output, xent_output = model(x)
     print(x.shape, nnet_output.shape, xent_output.shape)
+    model.constrain_orthonormal()

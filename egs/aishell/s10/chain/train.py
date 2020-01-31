@@ -11,6 +11,7 @@ import warnings
 # disable warnings when loading tensorboard
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+import numpy as np
 import torch
 import torch.optim as optim
 from torch.nn.utils import clip_grad_value_
@@ -84,6 +85,11 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
             total_weight += objf_l2_term_weight[2].item()
             num_frames = nnet_output.shape[0]
             total_frames += num_frames
+
+        if np.random.choice(4) == 0:
+            with torch.no_grad():
+                model.constraint_orthonormal()
+
         if batch_idx % 100 == 0:
             logging.info(
                 'Process {}/{}({:.6f}%) global average objf: {:.6f} over {} '
@@ -135,8 +141,9 @@ def main():
                             output_dim=args.output_dim,
                             lda_mat_filename=args.lda_mat_filename,
                             hidden_dim=args.hidden_dim,
-                            kernel_size_list=args.kernel_size_list,
-                            stride_list=args.stride_list)
+                            bottleneck_dim=args.bottleneck_dim,
+                            time_stride_list=args.time_stride_list,
+                            conv_stride_list=args.conv_stride_list)
 
     start_epoch = 0
     num_epochs = args.num_epochs

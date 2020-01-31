@@ -85,7 +85,7 @@ if [[ $stage -le 2 ]]; then
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd $train_cmd 5000 data/train $lang $ali_dir $treedir
+      --cmd $train_cmd 5000 data/mfcc/train $lang $ali_dir $treedir
 fi
 
 if [[ $stage -le 3 ]]; then

@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def _constraint_orthonormal_internal(M):
+def _constrain_orthonormal_internal(M):
     '''
     Refer to
         void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M)
@@ -58,7 +58,7 @@ class OrthonormalLinear(nn.Module):
         assert time_stride in [0, 1]
         # WARNING(fangjun): kaldi uses [-1, 0] for the first linear layer
         # and [0, 1] for the second affine layer;
-        # We use [-1, 0, 1] for the first linear layer
+        # we use [-1, 0, 1] for the first linear layer if time_stride == 1
 
         if time_stride == 0:
             kernel_size = 1
@@ -79,7 +79,7 @@ class OrthonormalLinear(nn.Module):
         x = self.conv(x)
         return x
 
-    def constraint_orthonormal(self):
+    def constrain_orthonormal(self):
         state_dict = self.conv.state_dict()
         w = state_dict['weight']
         # w is of shape [out_channels, in_channels, kernel_size]
@@ -97,7 +97,7 @@ class OrthonormalLinear(nn.Module):
             w = w.t()
             need_transpose = True
 
-        w = _constraint_orthonormal_internal(w)
+        w = _constrain_orthonormal_internal(w)
 
         if need_transpose:
             w = w.t()
@@ -142,6 +142,9 @@ class PrefinalLayer(nn.Module):
 
         return x
 
+    def constrain_orthonormal(self):
+        self.linear.constrain_orthonormal()
+
 
 class FactorizedTDNN(nn.Module):
     '''
@@ -175,6 +178,8 @@ class FactorizedTDNN(nn.Module):
                                         time_stride=time_stride)
 
         # affine requires [N, C, T]
+        # WARNING(fangjun): we do not use nn.Linear here
+        # since we want to use `stride`
         self.affine = nn.Conv1d(in_channels=bottleneck_dim,
                                 out_channels=dim,
                                 kernel_size=1,
@@ -191,31 +196,34 @@ class FactorizedTDNN(nn.Module):
         input_x = x
 
         x = self.linear(x)
+
         # at this point, x is [N, C, T]
 
         x = self.affine(x)
+
         # at this point, x is [N, C, T]
 
         x = F.relu(x)
+
         # at this point, x is [N, C, T]
 
         x = self.batchnorm(x)
+
         # at this point, x is [N, C, T]
 
         # TODO(fangjun): implement GeneralDropoutComponent in PyTorch
 
-        # at this point, x is [N, C, T]
         if self.linear.kernel_size == 3:
             x = self.bypass_scale * input_x[:, :, 1:-1:self.conv_stride] + x
         else:
             x = self.bypass_scale * input_x[:, :, ::self.conv_stride] + x
         return x
 
-    def constraint_orthonormal(self):
-        self.linear.constraint_orthonormal()
+    def constrain_orthonormal(self):
+        self.linear.constrain_orthonormal()
 
 
-def _test_constraint_orthonormal():
+def _test_constrain_orthonormal():
 
     def compute_loss(M):
         P = torch.mm(M, M.t())
@@ -238,7 +246,7 @@ def _test_constraint_orthonormal():
     loss.append(compute_loss(w))
 
     for i in range(15):
-        w = _constraint_orthonormal_internal(w)
+        w = _constrain_orthonormal_internal(w)
         loss.append(compute_loss(w))
 
     for i in range(1, len(loss)):
@@ -252,11 +260,11 @@ def _test_constraint_orthonormal():
                            time_stride=1,
                            conv_stride=3)
     loss = []
-    model.constraint_orthonormal()
+    model.constrain_orthonormal()
     loss.append(
         compute_loss(model.linear.conv.state_dict()['weight'].reshape(128, -1)))
     for i in range(5):
-        model.constraint_orthonormal()
+        model.constrain_orthonormal()
         loss.append(
             compute_loss(model.linear.conv.state_dict()['weight'].reshape(
                 128, -1)))
@@ -308,4 +316,4 @@ def _test_factorized_tdnn():
 if __name__ == '__main__':
     torch.manual_seed(20200130)
     _test_factorized_tdnn()
-    _test_constraint_orthonormal()
+    _test_constrain_orthonormal()

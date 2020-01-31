@@ -9,7 +9,7 @@ stage=0
 
 # GPU device id to use (count from 0).
 # you can also set `CUDA_VISIBLE_DEVICES` and set `device_id=0`
-device_id=0
+device_id=6
 
 nj=10
 
@@ -19,8 +19,8 @@ lat_dir=exp/tri5a_lats # input lat dir
 treedir=exp/chain/tri5_tree # output tree dir
 
 # You should know how to calculate your model's left/right context **manually**
-model_left_context=12
-model_right_context=12
+model_left_context=28
+model_right_context=28
 egs_left_context=$[$model_left_context + 1]
 egs_right_context=$[$model_right_context + 1]
 frames_per_eg=150,110,90
@@ -30,9 +30,10 @@ minibatch_size=128
 num_epochs=6
 lr=1e-3
 
-hidden_dim=625
-kernel_size_list="1, 3, 3, 3, 3, 3" # comma separated list
-stride_list="1, 1, 3, 1, 1, 1" # comma separated list
+hidden_dim=1024
+bottleneck_dim=128
+time_stride_list="1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
+conv_stride_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning
 
@@ -47,11 +48,16 @@ save_nn_output_as_compressed=false
 
 if [[ $stage -le 0 ]]; then
   for datadir in train dev test; do
-    dst_dir=data/fbank_pitch/$datadir
+    dst_dir=data/mfcc_hires/$datadir
     if [[ ! -f $dst_dir/feats.scp ]]; then
+      echo "making mfcc-pitch features for LF-MMI training"
       utils/copy_data_dir.sh data/$datadir $dst_dir
-      echo "making fbank-pitch features for LF-MMI training"
-      steps/make_fbank_pitch.sh --cmd $train_cmd --nj $nj $dst_dir || exit 1
+      steps/make_mfcc_pitch.sh \
+        --mfcc-config conf/mfcc_hires.conf \
+        --pitch-config conf/pitch.conf \
+        --cmd "$train_cmd" \
+        --nj $nj \
+        $dst_dir || exit 1
       steps/compute_cmvn_stats.sh $dst_dir || exit 1
       utils/fix_data_dir.sh $dst_dir
     else
@@ -80,12 +86,12 @@ if [[ $stage -le 2 ]]; then
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 5000 data/train $lang $ali_dir $treedir
+      --cmd "$train_cmd" 5000 data/mfcc/train $lang $ali_dir $treedir
 fi
 
 if  [[ $stage -le 3 ]]; then
   echo "creating phone language-model"
-  $train_cmd exp/chain/log/make_phone_lm.log \
+  "$train_cmd" exp/chain/log/make_phone_lm.log \
     chain-est-phone-lm \
      "ark:gunzip -c $treedir/ali.*.gz | ali-to-phones $treedir/final.mdl ark:- ark:- |" \
      exp/chain/phone_lm.fst || exit 1
@@ -95,7 +101,7 @@ if [[ $stage -le 4 ]]; then
   echo "creating denominator FST"
   copy-transition-model $treedir/final.mdl exp/chain/0.trans_mdl
   cp $treedir/tree exp/chain
-  $train_cmd exp/chain/log/make_den_fst.log \
+  "$train_cmd" exp/chain/log/make_den_fst.log \
     chain-make-den-fst exp/chain/tree exp/chain/0.trans_mdl exp/chain/phone_lm.fst \
        exp/chain/den.fst exp/chain/normalization.fst || exit 1
 fi
@@ -119,7 +125,7 @@ if [[ $stage -le 5 ]]; then
     --right-tolerance 5 \
     --srand 0 \
     --stage -10 \
-    data/fbank_pitch/train \
+    data/mfcc_hires/train \
     exp/chain $lat_dir exp/chain/egs
 fi
 
@@ -157,16 +163,17 @@ if [[ $stage -le 8 ]]; then
 
   # sort the options alphabetically
   python3 ./chain/train.py \
+    --bottleneck-dim $bottleneck_dim \
     --checkpoint=${train_checkpoint:-} \
+    --conv-stride-list "$conv_stride_list" \
     --device-id $device_id \
     --dir exp/chain/train \
     --feat-dim $feat_dim \
     --hidden-dim $hidden_dim \
     --is-training true \
-    --kernel-size-list "$kernel_size_list" \
     --log-level $log_level \
     --output-dim $output_dim \
-    --stride-list "$stride_list" \
+    --time-stride-list "$time_stride_list" \
     --train.cegs-dir exp/chain/merged_egs \
     --train.den-fst exp/chain/den.fst \
     --train.egs-left-context $egs_left_context \
@@ -186,20 +193,21 @@ if [[ $stage -le 9 ]]; then
       best_epoch=$(cat exp/chain/train/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
       inference_checkpoint=exp/chain/train/epoch-${best_epoch}.pt
       python3 ./chain/inference.py \
+        --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
+        --conv-stride-list "$conv_stride_list" \
         --device-id $device_id \
         --dir exp/chain/inference/$x \
         --feat-dim $feat_dim \
-        --feats-scp data/fbank_pitch/$x/feats.scp \
+        --feats-scp data/mfcc_hires/$x/feats.scp \
         --hidden-dim $hidden_dim \
         --is-training false \
-        --kernel-size-list "$kernel_size_list" \
         --log-level $log_level \
         --model-left-context $model_left_context \
         --model-right-context $model_right_context \
         --output-dim $output_dim \
         --save-as-compressed $save_nn_output_as_compressed \
-        --stride-list "$stride_list" || exit 1
+        --time-stride-list "$time_stride_list" || exit 1
     fi
   done
 fi
@@ -228,7 +236,7 @@ if [[ $stage -le 11 ]]; then
 
   for x in test dev; do
     ./local/score.sh --cmd "$decode_cmd" \
-      data/fbank_pitch/$x \
+      data/mfcc_hires/$x \
       exp/chain/graph \
       exp/chain/decode_res/$x || exit 1
   done
