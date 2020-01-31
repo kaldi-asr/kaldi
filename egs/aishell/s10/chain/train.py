@@ -88,7 +88,7 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
 
         if np.random.choice(4) == 0:
             with torch.no_grad():
-                model.constraint_orthonormal()
+                model.constrain_orthonormal()
 
         if batch_idx % 100 == 0:
             logging.info(

@@ -50,11 +50,10 @@ if [[ $stage -le 0 ]]; then
   for datadir in train dev test; do
     dst_dir=data/mfcc_hires/$datadir
     if [[ ! -f $dst_dir/feats.scp ]]; then
-      echo "making mfcc-pitch features for LF-MMI training"
+      echo "making mfcc features for LF-MMI training"
       utils/copy_data_dir.sh data/$datadir $dst_dir
-      steps/make_mfcc_pitch.sh \
+      steps/make_mfcc.sh \
         --mfcc-config conf/mfcc_hires.conf \
-        --pitch-config conf/pitch.conf \
         --cmd "$train_cmd" \
         --nj $nj \
         $dst_dir || exit 1
