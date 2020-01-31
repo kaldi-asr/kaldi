@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012   Vassil Panayotov
 #           2017   Ewald Enzinger

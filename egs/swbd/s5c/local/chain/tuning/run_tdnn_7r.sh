@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 7r is as 7q but replaces the LDA layer at the input of the
 # network with traditional delta and delta-delta features.

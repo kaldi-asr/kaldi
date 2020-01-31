@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This scripts tests the VTLN estimation where the system used to get the
 # VTLN warps is based on delta+delta-deltas.

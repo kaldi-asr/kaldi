@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright Vijayaditya Peddinti, 2016.
 # Apache 2.0.

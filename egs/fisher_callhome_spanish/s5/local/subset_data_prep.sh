@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 # The input is a subset of the dataset in use. (*.sph files) 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # 1l is as 1k, but having the dropout end at the end of training, not @0.75.

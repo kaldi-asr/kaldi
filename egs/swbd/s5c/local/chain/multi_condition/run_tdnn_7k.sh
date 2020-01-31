@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script (multi_condition/run_tdnn_7k.sh) is the reverberated version of
 # tuning/run_tdnn_7k.sh. It reverberates the training data with room impulse responses

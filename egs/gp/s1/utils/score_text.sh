@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2010-2011 Microsoft Corporation
 
 if [ -f ./path.sh ]; then . ./path.sh; fi

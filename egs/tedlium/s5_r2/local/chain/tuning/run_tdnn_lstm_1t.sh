@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1t is as 1e, but increasing the TDNN dim and LSTM cell-dim into
 # 1024, the recurrent and non-recurrent projection of the LSTM from

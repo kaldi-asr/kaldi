@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5z is as _5v, but adding skip-splicing (a new configuration option)
 # It seems not helpful.  I'll remove the option soon.

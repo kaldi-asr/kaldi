@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_lstm_1b.sh is as run_lstm_1a.sh but replacing the projected LSTM
 # with a regular LSTM.  This is done in order to have an LSTM-only baseline

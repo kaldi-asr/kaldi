@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015  Johns Hopkins University (Author: Vijayaditya Peddinti)
 # Apache 2.0.
 set -e

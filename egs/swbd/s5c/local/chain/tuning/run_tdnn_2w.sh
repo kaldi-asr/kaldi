@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2w is as _2o, but setting the frame subsampling factor to 2 instead of 3.
 # Going back to 100 frames per eg, which I previously found to be about the same in

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # _1c is as _1b but it uses source chain-trained DNN model instead of GMM model
 # to generate alignments for RM using WSJ model.
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _f is as _e but with 30 as the number of left phone classes instead
 # of 10.

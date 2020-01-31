@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_lstm_1a.sh is a first attempt at an LSTM system, based on xconfigs-- it's
 # probably not very well configured, e.g. the num-params might be too small.

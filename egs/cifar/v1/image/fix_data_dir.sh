@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script makes sure that only the segments present in
 # all of "feats.scp", "images.scp" [if present], segments [if present]

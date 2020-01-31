@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2e is as _2b, but --frames-overlap-per-eg 0 (also compare with _y, which has
 # an overlap of 30; _2b has 75).  BUT we also made a code change as in 2a->2c, where we use

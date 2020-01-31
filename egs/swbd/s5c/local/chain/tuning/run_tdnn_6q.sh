@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6q is as _5n (which is a double-frame-rate system), but putting back
 # the iVectors and otherwise changing the configuration as in 5j -> 6g,
