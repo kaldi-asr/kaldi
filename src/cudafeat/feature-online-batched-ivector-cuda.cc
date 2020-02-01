@@ -255,6 +255,8 @@ void BatchedIvectorExtractorCuda::LDATransform(const CuMatrix<BaseFloat> &feats,
 void BatchedIvectorExtractorCuda::ComputePosteriors(CuMatrix<BaseFloat> &feats,
                                                     const LaneDesc *lanes,
                                                     int32_t num_lanes) {
+  int right = info_.splice_opts.right_context;
+
   // inititalize posteriors
   posteriors_.CopyRowsFromVec(ubm_gconsts_);
 
@@ -271,6 +273,13 @@ void BatchedIvectorExtractorCuda::ComputePosteriors(CuMatrix<BaseFloat> &feats,
   posteriors_.AddMatMat(-0.5, feats, kNoTrans, ubm_inv_vars_, kTrans, 1.0);
 
   posteriors_.ApplySoftMaxPerRow();
+
+  // At this point some rows of posteriors are invalid because they
+  // didn't have valid input rows.  Zero those out now so that
+  // they don't impact stats
+  zero_invalid_posteriors(
+      chunk_size_, num_gauss_, posteriors_.Data(), posteriors_.Stride(),
+      posteriors_.Stride() * chunk_size_, right, lanes, num_lanes);
 }
 
 void BatchedIvectorExtractorCuda::ComputeIvectorStats(
@@ -296,7 +305,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorStats(
   int32_t ldc = X_.Stride();
   int32_t strideC = ldc * num_gauss_;
 
-  // multiplying X = stash * feats
+  // multiplying X = post * feats
   CUBLAS_SAFE_CALL(cublasGemmStridedBatchedEx(
       GetCublasHandle(), CUBLAS_OP_N, CUBLAS_OP_T, m, n, k, &alpha, A,
       CUDA_R_32F, lda, strideA, B, CUDA_R_32F, ldb, strideB, &beta, C,
@@ -311,9 +320,6 @@ void BatchedIvectorExtractorCuda::ComputeIvectorStats(
 void BatchedIvectorExtractorCuda::ComputeIvectorsFromStats(
     CuVectorBase<BaseFloat> *ivectors, const LaneDesc *lanes,
     int32_t num_lanes) {
-  static int current_frame = 0;
-  current_frame++;
-
   // Computing Linear Term
   {
     // need to set this term to zero because batched_compute_linear_term
@@ -365,7 +371,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorsFromStats(
   // cusolver solves in place.  Ivectors are now in linear_
 
 #else
-  // We could make a fallback if necessary.  This would likely just loop 
+  // We could make a fallback if necessary.  This would likely just loop
   // over each matrix and call Invert not batched.  This would be very slow and
   // throwing an error is probably better force people to use a more recent
   // version of CUDA.
