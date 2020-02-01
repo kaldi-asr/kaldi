@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script does discriminative training on top of CE nnet3 system.
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,

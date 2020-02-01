@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3y is as _3s but doubling jesus-hidden-dim from 15000 to 30000.
 #  not promising: by iteration 228, train prob changed -0.09583->-0.09575, and

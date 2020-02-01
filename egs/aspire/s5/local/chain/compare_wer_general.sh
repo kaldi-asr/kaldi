@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is used for comparing decoding results between systems.
 # e.g. local/chain/compare_wer_general.sh exp/chain/tdnn_7b exp/chain/tdnn_lstm_1a

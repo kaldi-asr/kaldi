@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is a chain-training script with TDNN+LSTM neural networks.
 # This script is similar to local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh,

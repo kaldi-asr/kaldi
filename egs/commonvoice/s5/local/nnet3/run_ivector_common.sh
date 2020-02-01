@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Adapted from egs/mini_librispeech/s5/local/nnet3/run_ivector_common.sh (commit 92c99ee51caeba4be7c5ab39ea7c1d6100f3d67b)
 

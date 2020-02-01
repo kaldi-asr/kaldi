@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script does discriminative training on top of CE nnet3 system.  To
 # simplify things, this assumes you are using the "cleaned" data (since this is

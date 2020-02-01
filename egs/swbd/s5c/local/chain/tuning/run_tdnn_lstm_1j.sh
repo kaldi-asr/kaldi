@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1e but with delay of -1
 # System                tdnn_lstm_1e_sp tdnn_lstm_1j_sp

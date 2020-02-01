@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2017 Yiwen Shao
 #             2018 Ashish Arora

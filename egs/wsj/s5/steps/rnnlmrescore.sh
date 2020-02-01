@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # please see lmrescore_rnnlm_lat.sh which is a newer script using lattices.
 

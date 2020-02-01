@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script builds a larger word-list and dictionary 
 # than used for the LMs supplied with the WSJ corpus.

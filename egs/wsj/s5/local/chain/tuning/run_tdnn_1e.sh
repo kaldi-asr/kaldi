@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1e is as 1d but increasing num-jobs-final to 8 for greater speed,
 #   adding l2-regularize options and removing proportional-shrink.

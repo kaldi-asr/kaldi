@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017  Radboud University (Author: Emre Yilmaz)
 
 . ./cmd.sh

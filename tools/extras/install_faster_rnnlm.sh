@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # The script downloads and installs faster-rnnlm
 # https://github.com/yandex/faster-rnnlm

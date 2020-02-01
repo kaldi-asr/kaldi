@@ -1,5 +1,5 @@
 
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 steps/scoring/score_kaldi_wer.sh "$@"
