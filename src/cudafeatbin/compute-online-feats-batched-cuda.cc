@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
     Timer timer;
 
     size_t free_byte, total_byte;
-    cudaMemGetInfo( &free_byte, &total_byte );
+    cudaMemGetInfo(&free_byte, &total_byte);
     double allocated = (total_byte - free_byte) / 1024 / 1024;
     // current pipeline
     int p = -1;
@@ -409,8 +409,11 @@ int main(int argc, char *argv[]) {
       }
 
       // enqueue copy slices callback
+#if CUDA_VERSION >= 10000
       cudaLaunchHostFunc(dtoh, CopySlicesCallback, (void *)&cb_state[p]);
-
+#else
+      KALDI_ERR << "Cuda 10.0 or newer required to run this binary";
+#endif
       // mark the end of this chunk
       cudaEventRecord(pipeline_events[p], dtoh);
 
