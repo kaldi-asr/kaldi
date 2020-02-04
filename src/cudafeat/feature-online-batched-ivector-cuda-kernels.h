@@ -29,6 +29,11 @@ namespace kaldi {
 //    Thus to compute the matrix pointer of a matrix you use this formula:
 //         matrix_pointer = base_pointer + batch_number * stride
 
+void zero_invalid_posteriors(int32_t num_chunk_frames, int32_t num_gauss,
+                             float *posteriors, int32_t ldp, int32_t stridep,
+                             int32_t right, const LaneDesc *lanes,
+                             int32_t num_lanes);
+
 void splice_features_batched(int32_t num_chunk_frames, int32_t feat_dim,
                              int32_t left, int32_t right, const float *feats,
                              int32_t ldf, int32_t stridef,

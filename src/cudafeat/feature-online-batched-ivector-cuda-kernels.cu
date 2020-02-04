@@ -21,18 +21,17 @@
 #include "cudamatrix/cu-common.h"
 namespace kaldi {
 
-// computes feats^2.  This works in place and out of place.
+// computes pointwise square of each matrix
 __global__ void square_batched_matrix_kernel(
     int32_t chunk_frames, int32_t num_cols, const float *feats, int32_t ldf,
     int32_t stridef, float *feats_sq, int32_t lds, int32_t strides,
     const LaneDesc *lanes, int32_t num_lanes) {
   int32_t lane = blockIdx.z;
-  int32_t num_chunk_frames = lanes[lane].num_chunk_frames;
 
   feats = feats + lane * stridef;
   feats_sq = feats_sq + lane * strides;
 
-  for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < num_chunk_frames;
+  for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < chunk_frames;
        i += blockDim.y * gridDim.y) {
     for (int j = blockIdx.x * blockDim.x + threadIdx.x; j < num_cols;
          j += blockDim.x * gridDim.x) {
@@ -56,6 +55,55 @@ void square_batched_matrix(int32_t chunk_frames, int32_t num_cols,
   CU_SAFE_CALL(cudaGetLastError());
 }
 
+// after computing posteriors some rows are invalid because they were created
+// with rows with undefined data.  This kernel zeros those rows out so that
+// they will not contribue to stats.
+__global__ void zero_invalid_posteriors_kernel(
+    int32_t chunk_size, int32_t num_gauss, float *posteriors, int32_t ldp,
+    int32_t stridep, int32_t right, const LaneDesc *lanes, int32_t num_lanes) {
+  int32_t lane = blockIdx.z;
+
+  LaneDesc desc = lanes[lane];
+  int32_t num_chunk_frames = desc.num_chunk_frames;
+  int32_t current_frame = desc.current_frame;
+  bool last = desc.last;
+
+  // last valid frame for reading
+  int32_t num_computed_rows = current_frame + num_chunk_frames;
+
+  // if not the last frame remove right context
+  if (!last) {
+    num_computed_rows -= right;
+  }
+
+  // offset by lane
+  posteriors = posteriors + lane * stridep;
+
+  for (int r = blockIdx.y * blockDim.y + threadIdx.y; r < chunk_size;
+       r += blockDim.y * gridDim.y) {
+    int global_row = current_frame + r - right;
+    if (global_row < 0 || global_row >= num_computed_rows) {
+      // zero this row out
+      for (int c = blockIdx.x * blockDim.x + threadIdx.x; c < num_gauss;
+           c += blockDim.x * gridDim.x) {
+        posteriors[r * ldp + c] = 0.0f;
+      }
+    }
+  }
+}
+
+void zero_invalid_posteriors(int32_t num_chunk_frames, int32_t num_gauss,
+                             float *posteriors, int32_t ldp, int32_t stridep,
+                             int32_t right, const LaneDesc *lanes,
+                             int32_t num_lanes) {
+  dim3 threads(32, 32);
+  dim3 blocks((num_gauss + 31) / 32, (num_chunk_frames + 31) / 32, num_lanes);
+
+  zero_invalid_posteriors_kernel<<<blocks, threads>>>(
+      num_chunk_frames, num_gauss, posteriors, ldp, stridep, right, lanes,
+      num_lanes);
+}
+
 // Meant to be called with blockDim= 32x32
 // takes features in feat and writes them into sfeats while applying
 // the splicing algorithm for the left and right context.
@@ -67,39 +115,48 @@ __global__ void splice_features_batched_kernel(
     float *__restrict__ feats_out, int32_t ldo, int32_t strideo,
     const LaneDesc *lanes, int32_t num_lanes) {
   int32_t lane = blockIdx.y;
-  int32_t frame = blockIdx.x;
+  // output frame index
+  int32_t oframe = blockIdx.x;
   int32_t tid = threadIdx.x;
 
   LaneDesc desc = lanes[lane];
   int32_t num_chunk_frames = desc.num_chunk_frames;
   int32_t channel = desc.channel;
-  int32_t start_frame = desc.current_frame;
-
-  bool valid_frame = true;
-  // check that we have valid input
-  if (frame >= num_chunk_frames) {
-    valid_frame = false;
-  }
-
-  // for first chunk we process less frames
-  if (start_frame == 0 && frame >= num_chunk_frames - right) {
-    valid_frame = false;
-  }
-
-  // the stash size
-  int32_t ssize = left + right;
-  int32_t size = ssize + 1;
+  int32_t current_frame = desc.current_frame;
+  bool last = desc.last;
 
   // offset by lane
   feats_in = feats_in + lane * stridei;
   feats_out = feats_out + lane * strideo;
+
+  // offset by channel
   feats_stash = feats_stash + channel * stridest;
 
-  // offset feature output to process frame
-  feats_out = feats_out + ldo * frame;
+  // offset feature output to process oframe
+  feats_out = feats_out + ldo * oframe;
 
-  if (!valid_frame) {
-    // this frames output is not valid, zero it here
+  // the size of the stash
+  int32_t ssize = left + right;
+  // the size of the window
+  int32_t size = ssize + 1;
+
+  // number of valid frame for reading
+  int32_t num_valid_frames = current_frame + num_chunk_frames;
+
+  // number of valid frames for writing
+  int32_t num_computed_frames = num_valid_frames;
+
+  // if not the last frame remove right context
+  if (!last) {
+    num_computed_frames -= right;
+  }
+
+  // subtract right context from logical frame to delay output
+  int32_t local_frame = oframe - right;
+  int32_t global_frame = current_frame + local_frame;
+
+  // these frames are set to zeros
+  if (global_frame < 0 || global_frame >= num_computed_frames) {
     for (int i = 0; i < size; i++) {
       for (int c = tid; c < feat_dim; c += blockDim.x) {
         feats_out[i * feat_dim + c] = 0.0f;
@@ -108,44 +165,40 @@ __global__ void splice_features_batched_kernel(
     return;
   }
 
-  // for each splice of input
-  for (int i = 0; i < size; i++) {
-    const float *feats_src = feats_in;
+  for (int i = -left; i <= right; i++) {
+    int32_t g_in = global_frame + i;  // global frame index
+    int32_t l_in = local_frame + i;   // local frame index
+
+    // if global row is below zero clamp local to zero
+    if (g_in < 0) l_in = 0;
+
+    // if global row is larger than the number of valid frames
+    if (g_in >= num_valid_frames) {
+      // should only happen on last chunk
+      assert(last);
+      // clamp input
+      l_in = num_chunk_frames - 1;
+    }
+
+    // set default input location
+    const float *feats = feats_in;
     int32_t ld = ldi;
 
-    // shift input row by left context
-    int r = frame + i - left;
-
-    // clamp input row if necessary
-    if (start_frame + r < 0) {
-      r = 0;
-    }
-
-    // if we have a right context shift input row by that too
-    if (start_frame > 0) {
-      r = r - right;
-    }
-
-    if (r > num_chunk_frames - 1) {
-      // This should only happen on the last chunk
-      assert(desc.last == true);
-      r = num_chunk_frames - 1;
-    }
-
-    if (r < 0) {
-      // feats are located in stash from previous chunk
-      feats_src = feats_stash;
+    // if l < 0 then feats come from the stash
+    if (l_in < 0) {
+      // input is from stash
+      feats = feats_stash;
       ld = ldst;
-      r = r + ssize;
+      l_in += ssize;  // offset by stash size
     }
 
     // for each column of input in parallel
     for (int c = tid; c < feat_dim; c += blockDim.x) {
       // read feature from input row offset by column
-      float val = feats_src[r * ld + c];
+      float val = feats[l_in * ld + c];
 
       // write feature to output offset by splice index and column
-      feats_out[i * feat_dim + c] = val;
+      feats_out[(i + left) * feat_dim + c] = val;
     }
   }
 }
@@ -159,6 +212,7 @@ void splice_features_batched(int32_t num_chunk_frames, int32_t feat_dim,
                              const LaneDesc *lanes, int32_t num_lanes) {
   int threads = (feat_dim + 31) / 32 * 32;  // round up to the nearest warp size
   if (threads > 1024) threads = 1024;       // Max block size is 1024 threads
+
   dim3 blocks(num_chunk_frames, num_lanes);
 
   splice_features_batched_kernel<<<blocks, threads>>>(
@@ -302,12 +356,15 @@ __global__ void batched_update_linear_and_quadratic_terms_kernel(
   linear = linear + lane * stridel;
   quadratic = quadratic + lane * strideq;
 
-  // This is always zero.  not 100% certain as why we don't need
-  // to account for earlier chunk.  maybe Dan knows.
+  // This is always zero because linear and quadratic terms are not
+  // being carried forward.  Thus we don't need to remove old prior
+  // scale.  Keeping the code below so that it logically matches
+  // the CPU code in case someone is looking at this in the future.
   float old_num_frames = 0;
   // float old_num_frames = desc.current_frame;
   float new_num_frames = desc.current_frame + desc.num_chunk_frames;
 
+  // in CPU code the frame counts are scaled by posterior scale
   new_num_frames *= posterior_scale;
   old_num_frames *= posterior_scale;
 
@@ -458,9 +515,6 @@ __global__ void batched_sum_posteriors_kernel(
     int32_t stridep, float *gamma, int32_t strideg, float post_scale,
     const LaneDesc *lanes, int32_t num_lanes) {
   int32_t lane = blockIdx.y;
-  LaneDesc desc = lanes[lane];
-
-  int32_t num_rows = desc.num_chunk_frames;
 
   // offset input and output by lane
   posteriors = posteriors + lane * stridep;
@@ -471,7 +525,7 @@ __global__ void batched_sum_posteriors_kernel(
        col += blockDim.x * gridDim.x) {
     // compute sum across rows for this column
     float sum = 0.0f;
-    for (int row = 0; row < num_rows; row++) {
+    for (int row = 0; row < chunk_size; row++) {
       sum += posteriors[row * ldp + col];
     }
 
@@ -509,7 +563,7 @@ __global__ void initialize_channels_kernel(int32_t num_gauss, int32_t feat_dim,
 
     // initialize stashes to zero
     for (int i = threadIdx.y * blockDim.x + threadIdx.x; i < num_gauss;
-         i += blockDim.x * gridDim.x) {
+         i += blockDim.y * blockDim.x) {
       gamma[i] = 0.0f;
     }
 

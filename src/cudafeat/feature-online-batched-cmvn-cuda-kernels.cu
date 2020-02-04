@@ -18,13 +18,13 @@
 #include <cub/cub.cuh>
 #include "cudafeat/feature-online-batched-cmvn-cuda-kernels.h"
 
-__device__ inline float2 operator-(const float2 &a, const float2 &b) {
+__host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
   float2 retval;
   retval.x = a.x - b.x;
   retval.y = a.y - b.y;
   return retval;
 }
-__device__ inline float2 operator+(const float2 &a, const float2 &b) {
+__host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
   float2 retval;
   retval.x = a.x + b.x;
   retval.y = a.y + b.y;
