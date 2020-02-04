@@ -101,6 +101,6 @@ else
       "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
-steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir || exit 1;
 
 echo "$0: done aligning data."
