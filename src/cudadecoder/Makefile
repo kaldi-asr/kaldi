@@ -4,6 +4,7 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
+ifeq ($(WITH_CUDAFEAT), 1)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifndef CUDA_ARCH
@@ -29,6 +30,12 @@ ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../base/kaldi-base.a ../matrix/kaldi-
 # Implicit rule for kernel compilation
 %.o : %.cu
 	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC)
+
+else
+all:
+		$(warning "Not building cuda-decoder extension -- please configure with --with-cudafeat[=true]")
+endif
+
 endif
 
 include ../makefiles/default_rules.mk

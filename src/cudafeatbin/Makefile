@@ -1,5 +1,5 @@
-src/cudafeatbin/Makefile
 all:
+		
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 ifeq ($(CUDA), true)
@@ -31,7 +31,8 @@ ADDLIBS = ../cudafeat/kaldi-cudafeat.a ../online2/kaldi-online2.a  \
           ../base/kaldi-base.a
 
 else
-	$(warning "Not building cudafeat extension -- please configure with --with-cudafeat[=true]")
+all:
+		$(warning "Not building cudafeat extension -- please configure with --with-cudafeat[=true]")
 endif
 
 endif

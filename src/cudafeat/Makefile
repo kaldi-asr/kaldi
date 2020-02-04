@@ -1,6 +1,6 @@
 
-
 all:
+		
 
 include ../kaldi.mk
 ifeq ($(CUDA), true)
@@ -34,8 +34,10 @@ LDLIBS += $(CUDA_LDLIBS)
 
 %.o : %.cu
 	$(CUDATKDIR)/bin/nvcc -c -g $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC)
+
 else
-	$(warning "Not building cudafeat extension -- please configure with --with-cudafeat[=true]")
+all:
+		$(warning "Not building cudafeat extension -- please configure with --with-cudafeat[=true]")
 endif
 
 endif
