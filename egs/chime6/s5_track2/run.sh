@@ -16,7 +16,7 @@ stage=0
 nnet_stage=-10
 sad_stage=0
 diarizer_stage=0
-decode_stage=1
+decode_stage=0
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and decode stage
 decode_only=false
@@ -111,8 +111,12 @@ if [ $stage -le 4 ]; then
   utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
   grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
   utils/fix_data_dir.sh data/train_worn
-fi
 
+  # Remove S12_U05 from training data since it has known issues
+  utils/copy_data_dir.sh data/train_u05 data/train_u05_org # back up
+  grep -v -e "^S12_U05" data/train_u05_org/text > data/train_u05/text
+  utils/fix_data_dir.sh data/train_u05
+fi
 
 #########################################################################################
 # In stages 5 and 6, we augment and fix train data for our training purpose. point source
