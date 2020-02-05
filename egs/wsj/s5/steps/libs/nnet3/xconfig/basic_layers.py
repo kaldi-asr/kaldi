@@ -624,7 +624,7 @@ class XconfigOutputLayer(XconfigLayerBase):
             # note: by default the LinearComponent uses natural gradient.
             line = ('component name={0}.linear type=LinearComponent '
                     'orthonormal-constraint={1} param-stddev={2} '
-                    'input-dim={3} output-dim={4} max-change=0.75 {5}'
+                    'input-dim={3} output-dim={4} max-change=0.75 use-natural-gradient=false {5}'
                     ''.format(self.name, self.config['orthonormal-constraint'],
                               self.config['orthonormal-constraint'] / math.sqrt(input_dim),
                               input_dim, bottleneck_dim, linear_options))
@@ -637,7 +637,7 @@ class XconfigOutputLayer(XconfigLayerBase):
 
 
         line = ('component name={0}.affine'
-                ' type=NaturalGradientAffineComponent'
+                ' type=AffineComponent'
                 ' input-dim={1} output-dim={2} {3}'
                 ''.format(self.name, cur_dim, output_dim, affine_options))
         configs.append(line)
@@ -843,7 +843,7 @@ class XconfigBasicLayer(XconfigLayerBase):
             bottleneck_dim = self.config['bottleneck-dim']
             # note: by default the LinearComponent uses natural gradient.
             line = ('component name={0}.linear type=LinearComponent '
-                    'input-dim={1} orthonormal-constraint=1.0 output-dim={2} {3}'
+                    'input-dim={1} orthonormal-constraint=1.0 output-dim={2} {3} use-natural-gradient=false'
                     ''.format(self.name, input_dim, bottleneck_dim, linear_options))
             configs.append(line)
             line = ('component-node name={0}.linear component={0}.linear input={1}'
@@ -853,7 +853,7 @@ class XconfigBasicLayer(XconfigLayerBase):
             cur_dim = bottleneck_dim
 
 
-        line = ('component name={0}.affine type=NaturalGradientAffineComponent'
+        line = ('component name={0}.affine type=AffineComponent'
                 ' input-dim={1} output-dim={2} {3}'
                 ''.format(self.name, cur_dim, output_dim, affine_options))
         configs.append(line)

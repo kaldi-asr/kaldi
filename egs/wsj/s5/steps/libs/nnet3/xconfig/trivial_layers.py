@@ -328,7 +328,7 @@ class XconfigLinearComponent(XconfigLayerBase):
 
         configs = []
         line = ('component name={0} type=LinearComponent input-dim={1} output-dim={2} '
-                '{3}'.format(self.name, input_dim, output_dim, opts))
+                '{3} use-natural-gradient=false'.format(self.name, input_dim, output_dim, opts))
         configs.append(line)
         line = ('component-node name={0} component={0} input={1}'.format(
             self.name, input_desc))
