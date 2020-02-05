@@ -26,7 +26,7 @@ if [ -z "$(command -v dos2unix 2>/dev/null)" ]; then
     exit 1;
 fi
 
-# have to remvoe previous files to avoid filtering speakers according to cmvn.scp and feats.scp
+# have to remove previous files to avoid filtering speakers according to cmvn.scp and feats.scp
 rm -rf   data/all data/train data/test data/eval data/local/train
 mkdir -p data/all data/train data/test data/eval data/local/train
 
