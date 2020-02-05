@@ -167,7 +167,7 @@ class XconfigTdnnfLayer(XconfigLayerBase):
         # The first linear layer, from input-dim (spliced x2) to bottleneck-dim
         configs.append('component name={0}.linear type=TdnnComponent input-dim={1} '
                        'output-dim={2} l2-regularize={3} max-change={4} use-bias=false '
-                       'time-offsets={5} orthonormal-constraint=-1.0'.format(
+                       'time-offsets={5} orthonormal-constraint=-1.0 use-natural-gradient=false'.format(
                            name, input_dim, bottleneck_dim, l2_regularize,
                            max_change, time_offsets1))
         configs.append('component-node name={0}.linear component={0}.linear '
@@ -176,7 +176,7 @@ class XconfigTdnnfLayer(XconfigLayerBase):
         # The affine layer, from bottleneck-dim (spliced x2) to output-dim
         configs.append('component name={0}.affine type=TdnnComponent '
                        'input-dim={1} output-dim={2} l2-regularize={3} max-change={4} '
-                       'time-offsets={5}'.format(
+                       'time-offsets={5} use-natural-gradient=false'.format(
                            name, bottleneck_dim, output_dim, l2_regularize,
                            max_change, time_offsets2))
         configs.append('component-node name={0}.affine component={0}.affine '
@@ -291,7 +291,7 @@ class XconfigPrefinalLayer(XconfigLayerBase):
         self_repair_scale = self.config['self-repair-scale']
 
         # The affine layer, from input-dim to big-dim.
-        configs.append('component name={0}.affine type=NaturalGradientAffineComponent '
+        configs.append('component name={0}.affine type=AffineComponent '
                        'input-dim={1} output-dim={2} l2-regularize={3} max-change={4}'.format(
                            name, input_dim, big_dim, l2_regularize, max_change))
         configs.append('component-node name={0}.affine component={0}.affine '
@@ -314,7 +314,7 @@ class XconfigPrefinalLayer(XconfigLayerBase):
         # ("floating" orthonormal constraint).
         configs.append('component name={0}.linear type=LinearComponent '
                        'input-dim={1} output-dim={2} l2-regularize={3} max-change={4} '
-                       'orthonormal-constraint=-1 '.format(
+                       'orthonormal-constraint=-1 use-natural-gradient=false '.format(
                            name, big_dim, small_dim,
                            l2_regularize, max_change))
         configs.append('component-node name={0}.linear component={0}.linear '
