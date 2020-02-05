@@ -26,6 +26,11 @@ BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
       chunk_size_(chunk_size),
       max_lanes_(num_lanes),
       num_channels_(num_channels) {
+#if CUDA_VERSION < 9010
+  // some components require newer cuda versions.  If you see this error
+  // upgrade to a more recent CUDA version.
+  KALDI_ERR << "BatchedIvectorExtractorCuda requires CUDA 9.1 or newer.";
+#endif
   info_.Init(config);
   Read(config);
 
@@ -290,6 +295,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorStats(
                          posteriors_.Stride() * chunk_size_, gamma_.Data(),
                          num_gauss_, info_.posterior_scale, lanes, num_lanes);
 
+#if CUDA_VERSION >= 9010
   int32_t m = feat_dim_;
   int32_t n = num_gauss_;
   int32_t k = chunk_size_;
@@ -310,6 +316,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorStats(
       GetCublasHandle(), CUBLAS_OP_N, CUBLAS_OP_T, m, n, k, &alpha, A,
       CUDA_R_32F, lda, strideA, B, CUDA_R_32F, ldb, strideB, &beta, C,
       CUDA_R_32F, ldc, strideC, num_lanes, CUDA_R_32F, CUBLAS_GEMM_DEFAULT))
+#endif
 
   apply_and_update_stash(
       num_gauss_, feat_dim_, gamma_.Data(), gamma_stash_.Data(), num_gauss_,
@@ -354,9 +361,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorsFromStats(
       ivector_dim_, lanes, num_lanes);
 
 #if CUDA_VERSION >= 9010
-
   int nrhs = 1;
-
   // perform factorization in batched
   CUSOLVER_SAFE_CALL(cusolverDnSpotrfBatched(
       GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, quad_array_,
@@ -367,17 +372,9 @@ void BatchedIvectorExtractorCuda::ComputeIvectorsFromStats(
       GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, nrhs,
       quad_array_, ivector_dim_, ivec_array_, ivector_dim_, d_infoArray_,
       num_lanes));
+#endif
 
   // cusolver solves in place.  Ivectors are now in linear_
-
-#else
-  // We could make a fallback if necessary.  This would likely just loop
-  // over each matrix and call Invert not batched.  This would be very slow and
-  // throwing an error is probably better force people to use a more recent
-  // version of CUDA.
-  KALDI_ERR << "Online Ivectors in CUDA is not supported by your CUDA version. "
-            << "Upgrade to CUDA 9.1 or later";
-#endif
 
   // Create a submatrix which points to the first element of each ivector
   CuSubMatrix<BaseFloat> ivector0(linear_.Data(), num_lanes, 1, ivector_dim_);
