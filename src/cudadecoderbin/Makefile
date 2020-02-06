@@ -4,7 +4,7 @@ all:
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
-ifeq ($(WITH_CUDAFEAT), 1)
+ifneq ($(WITHOUT_CUDADECODER), 1)
 
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
@@ -26,7 +26,7 @@ ADDLIBS = ../cudadecoder/kaldi-cudadecoder.a  ../cudafeat/kaldi-cudafeat.a \
 
 else
 all:
-		$(warning "Not building cuda-decoder extension -- please configure with --with-cudafeat[=true]")
+		$(warning "Not building cudadecoder extension -- to build with it configure without --without-cudadecoder[=true]")
 endif
 
 endif

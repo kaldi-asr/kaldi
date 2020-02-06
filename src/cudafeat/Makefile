@@ -4,7 +4,7 @@ all:
 
 include ../kaldi.mk
 ifeq ($(CUDA), true)
-ifeq ($(WITH_CUDAFEAT), 1)
+ifneq ($(WITHOUT_CUDADECODER), 1)
 
 TESTFILES =
 
@@ -37,7 +37,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 else
 all:
-		$(warning "Not building cudafeat extension -- please configure with --with-cudafeat[=true]")
+		$(warning "Not building cudadecoder extension -- to build with it configure without --without-cudadecoder[=true]")
 endif
 
 endif

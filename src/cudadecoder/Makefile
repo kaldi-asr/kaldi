@@ -4,7 +4,7 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
-ifeq ($(WITH_CUDAFEAT), 1)
+ifneq ($(WITHOUT_CUDADECODER), 1)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifndef CUDA_ARCH
@@ -33,7 +33,7 @@ ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../base/kaldi-base.a ../matrix/kaldi-
 
 else
 all:
-		$(warning "Not building cuda-decoder extension -- please configure with --with-cudafeat[=true]")
+		$(warning "Not building cudadecoder extension -- to build with it configure without --without-cudadecoder[=true]")
 endif
 
 endif
