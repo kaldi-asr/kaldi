@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2013  Daniel Povey
 # Apache 2.0.
@@ -113,7 +113,7 @@ splice_opts=$(cat $srcdir/splice_opts)
 
 ## Set up features.  $gmm_feats is the version of the features with online CMVN, that we use
 ## to get the Gaussian posteriors, $feats is the version of the features with no CMN.
-gmm_feats="ark,s,cs:apply-cmvn-online --config=$dir/online_cmvn.conf $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+gmm_feats="ark,s,cs:apply-cmvn-online --config=$dir/online_cmvn.conf --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
 ## This adds online-cmvn in $feats, upon request (configuration taken from UBM),

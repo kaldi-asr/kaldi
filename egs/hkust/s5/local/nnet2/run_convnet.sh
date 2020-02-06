@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 2015 Xingyu Na
 # This script runs on the full training set, using ConvNet setup on top of

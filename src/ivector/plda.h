@@ -91,7 +91,7 @@ class Plda {
   ///
   /// If config.normalize_length == true, it will also normalize the iVector's
   /// length by multiplying by a scalar that ensures that ivector^T inv_var
-  /// ivector = dim.  In this case, "num_examples" comes into play because it
+  /// ivector = dim.  In this case, "num_enroll_examples" comes into play because it
   /// affects the expected covariance matrix of the iVector.  The normalization
   /// factor is returned, even if config.normalize_length == false, in which
   /// case the normalization factor is computed but not applied.
@@ -100,25 +100,25 @@ class Plda {
   /// to be equal to the square root of the iVector dimension.
   double TransformIvector(const PldaConfig &config,
                           const VectorBase<double> &ivector,
-                          int32 num_examples,
+                          int32 num_enroll_examples,
                           VectorBase<double> *transformed_ivector) const;
 
   /// float version of the above (not BaseFloat because we'd be implementing it
   /// twice for the same type if BaseFloat == double).
   float TransformIvector(const PldaConfig &config,
                          const VectorBase<float> &ivector,
-                         int32 num_examples,
+                         int32 num_enroll_examples,
                          VectorBase<float> *transformed_ivector) const;
 
   /// Returns the log-likelihood ratio
   /// log (p(test_ivector | same) / p(test_ivector | different)).
-  /// transformed_train_ivector is an average over utterances for
-  /// that speaker.  Both transformed_train_vector and transformed_test_ivector
+  /// transformed_enroll_ivector is an average over utterances for
+  /// that speaker.  Both transformed_enroll_vector and transformed_test_ivector
   /// are assumed to have been transformed by the function TransformIvector().
   /// Note: any length normalization will have been done while computing
   /// the transformed iVectors.
-  double LogLikelihoodRatio(const VectorBase<double> &transformed_train_ivector,
-                            int32 num_train_utts,
+  double LogLikelihoodRatio(const VectorBase<double> &transformed_enroll_ivector,
+                            int32 num_enroll_utts,
                             const VectorBase<double> &transformed_test_ivector)
                             const;
 

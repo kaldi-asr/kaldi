@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # example script for online-nnet2 system training and decoding,
 # based on the one for fisher-English.

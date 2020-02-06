@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # E.g. of usage: ./convert_htk.sh ../.. /mnt/matylda5/jhu09/setup/CH1/English/exp/xwrd.R0_800_TB500/hmm84/MMF /mnt/matylda5/jhu09/setup/CH1/English/exp/xwrd.R0_800_TB500/hmm10_800_500/cluster.trees convert_dir
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # _1c is as _1b but it uses source chain-trained DNN model instead of GMM model
 # to generate alignments for RM using WSJ model.
 
@@ -188,7 +188,6 @@ if [ $stage -le 7 ]; then
     --cmd "$decode_cmd" \
     --trainer.input-model $dir/input.raw \
     --feat.online-ivector-dir "$ivector_dir" \
-    --chain.xent-regularize 0.1 \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \

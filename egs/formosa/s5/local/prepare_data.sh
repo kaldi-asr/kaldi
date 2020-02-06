@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015-2016  Sarah Flora Juan
 # Copyright 2016  Johns Hopkins University (Author: Yenda Trmal)
 # Copyright 2018  Yuan-Fu Liao, National Taipei University of Technology
@@ -32,9 +32,9 @@ mkdir -p data/all data/train data/test data/eval data/local/train
 
 
 # make utt2spk, wav.scp and text
-find $train_dir -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $y' \; | dos2unix > data/all/utt2spk
-find $train_dir -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $x' \; | dos2unix > data/all/wav.scp
-find $train_dir -name *.txt -exec sh -c 'x={}; y=$(basename -s .txt $x); printf "%s " $y; cat $x'    \; | dos2unix > data/all/text
+find -L $train_dir -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $y' \; | dos2unix > data/all/utt2spk
+find -L $train_dir -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $x' \; | dos2unix > data/all/wav.scp
+find -L $train_dir -name *.txt -exec sh -c 'x={}; y=$(basename -s .txt $x); printf "%s " $y; cat $x'    \; | dos2unix > data/all/text
 
 # fix_data_dir.sh fixes common mistakes (unsorted entries in wav.scp,
 # duplicate entries and so on). Also, it regenerates the spk2utt from
@@ -51,9 +51,9 @@ echo "cp data/train/text data/local/train/text for language model training"
 cat data/train/text | awk '{$1=""}1;' | awk '{$1=$1}1;' > data/local/train/text
 
 # preparing EVAL set.
-find $eval_dir     -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $y' \; | dos2unix > data/eval/utt2spk
-find $eval_dir     -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $x' \; | dos2unix > data/eval/wav.scp
-find $eval_key_dir -name *.txt -exec sh -c 'x={}; y=$(basename -s .txt $x); printf "%s " $y; cat $x'    \; | dos2unix > data/eval/text
+find -L $eval_dir     -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $y' \; | dos2unix > data/eval/utt2spk
+find -L $eval_dir     -name *.wav -exec sh -c 'x={}; y=$(basename -s .wav $x); printf "%s %s\n"     $y $x' \; | dos2unix > data/eval/wav.scp
+find -L $eval_key_dir -name *.txt -exec sh -c 'x={}; y=$(basename -s .txt $x); printf "%s " $y; cat $x'    \; | dos2unix > data/eval/text
 utils/fix_data_dir.sh data/eval
 
 echo "Data preparation completed."

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # this is the tdnn-lstmp based on the run_tdnn_lstm_1n.sh under Switchboard.
 
 # training acoustic model and decoding:
@@ -180,10 +180,6 @@ if [ $stage -le 14 ]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   utils/mkgraph.sh --self-loop-scale 1.0 --remove-oov data/lang_test_tgsmall $dir $graph_dir
-  # remove <UNK> from the graph, and convert back to const-FST.
-  fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst - | \
-    fstconvert --fst_type=const > $graph_dir/temp.fst
-  mv $graph_dir/temp.fst $graph_dir/HCLG.fst
 fi
 
 

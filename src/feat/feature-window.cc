@@ -115,6 +115,10 @@ FeatureWindowFunction::FeatureWindowFunction(const FrameExtractionOptions &opts)
     double i_fl = static_cast<double>(i);
     if (opts.window_type == "hanning") {
       window(i) = 0.5  - 0.5*cos(a * i_fl);
+    } else if (opts.window_type == "sine") {
+      // when you are checking ws wikipedia, please
+      // note that 0.5 * a = M_PI/(frame_length-1)
+      window(i) = sin(0.5 * a * i_fl);
     } else if (opts.window_type == "hamming") {
       window(i) = 0.54 - 0.46*cos(a * i_fl);
     } else if (opts.window_type == "povey") {  // like hamming but goes to zero at edges.

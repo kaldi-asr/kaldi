@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5p is as _5e but adding (new option) --self-repair-scale-nonlinearity 0.00001, to repair
 # ReLUs that are over or under-saturated. [abandoned after discovering bug,

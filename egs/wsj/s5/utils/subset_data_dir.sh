@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2010-2011  Microsoft Corporation
 #           2012-2013  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -108,7 +108,7 @@ elif $speakers; then
 elif $perspk; then
   awk '{ n='$numutt'; printf("%s ",$1);
          skip=1; while(n*(skip+1) <= NF-1) { skip++; }
-         for(x=2; x<=NF && x <= n*skip; x += skip) { printf("%s ", $x); }
+         for(x=2; x<=NF && x <= (n*skip+1); x += skip) { printf("%s ", $x); }
          printf("\n"); }' <$srcdir/spk2utt >$destdir/spk2utt
   utils/spk2utt_to_utt2spk.pl < $destdir/spk2utt > $destdir/utt2spk
 else

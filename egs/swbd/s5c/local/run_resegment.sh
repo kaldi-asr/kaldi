@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script demonstrates some scripts for resegmenting data.  This was
 # developed for a scenario where the evaluation data doesn't come with

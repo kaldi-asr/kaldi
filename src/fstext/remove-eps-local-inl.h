@@ -64,9 +64,9 @@ class RemoveEpsLocalClass {
  private:
   MutableFst<Arc> *fst_;
   StateId non_coacc_state_;  //  use this to delete arcs: make it nextstate
-  vector<StateId> num_arcs_in_;   // The number of arcs into the state, plus one
+  std::vector<StateId> num_arcs_in_;   // The number of arcs into the state, plus one
                                   // if it's the start state.
-  vector<StateId> num_arcs_out_;  // The number of arcs out of the state, plus
+  std::vector<StateId> num_arcs_out_;  // The number of arcs out of the state, plus
                                   // one if it's a final state.
   ReweightPlus reweight_plus_;
 
@@ -174,7 +174,7 @@ class RemoveEpsLocalClass {
     const StateId nextstate = arc.nextstate;
     Weight total_removed = Weight::Zero(),
         total_kept = Weight::Zero();  // totals out of nextstate.
-    vector<Arc> arcs_to_add;  // to add to state s.
+    std::vector<Arc> arcs_to_add;  // to add to state s.
     for (MutableArcIterator<MutableFst<Arc> > aiter_next(fst_, nextstate);
         !aiter_next.Done();
         aiter_next.Next()) {

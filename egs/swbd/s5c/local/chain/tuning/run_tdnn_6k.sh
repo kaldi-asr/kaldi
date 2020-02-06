@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6k is as _6i, but one more epoch.  After running the first few stages, I'm
 # copying the last model from 6i and starting from that point, to save compute.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016 Api.ai (Author: Ilya Platonov)
 # Apache 2.0
 

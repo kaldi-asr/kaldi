@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2c is as _2a but after a code change in which we start using transition-scale
 # and self-loop-scale of 1 instead of zero in training; we change the options to

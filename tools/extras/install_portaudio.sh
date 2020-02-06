@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #Copyright 2012 Cisco Systems; Matthias Paulik
 #
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
 #You may obtain a copy of the License at
 #
-#http://www.apache.org/licenses/LICENSE-2.0
+#https://www.apache.org/licenses/LICENSE-2.0
 #
 #THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 #KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
@@ -33,29 +33,36 @@
 #(always assuming that you installed XCode, wget and
 #the Linux environment stuff on MacOS)
 
+VERSION=v19_20111121
+
+WGET=${WGET:-wget}
+
 echo "****() Installing portaudio"
 
-if [ ! -e pa_stable_v19_20111121.tgz ]; then
-    echo "Could not find portaudio tarball pa_stable_v19_20111121.tgz"
+if [ ! -e pa_stable_$VERSION.tgz ]; then
+    echo "Could not find portaudio tarball pa_stable_$VERSION.tgz"
     echo "Trying to download it via wget!"
 
-    if ! which wget >&/dev/null; then
-        echo "This script requires you to first install wget"
-        echo "You can also just download pa_stable_v19_20111121.tgz from"
-        echo "http://www.portaudio.com/download.html)"
-        exit 1;
+    if [ -d "$DOWNLOAD_DIR" ]; then
+        cp -p "$DOWNLOAD_DIR/pa_stable_$VERSION.tgz" .
+    else
+        if ! $WGET --version >&/dev/null; then
+            echo "This script requires you to first install wget"
+            echo "You can also just download pa_stable_$VERSION.tgz from"
+            echo "http://www.portaudio.com/download.html)"
+            exit 1;
+        fi
+        $WGET -T 10 -t 3 http://www.portaudio.com/archives/pa_stable_$VERSION.tgz
     fi
 
-   wget -T 10 -t 3 http://www.portaudio.com/archives/pa_stable_v19_20111121.tgz
-
-   if [ ! -e pa_stable_v19_20111121.tgz ]; then
-        echo "Download of pa_stable_v19_20111121.tgz - failed!"
+    if [ ! -e pa_stable_$VERSION.tgz ]; then
+        echo "Download of pa_stable_$VERSION.tgz - failed!"
         echo "Aborting script. Please download and install port audio manually!"
-    exit 1;
-   fi
+        exit 1;
+    fi
 fi
 
-tar -xovzf pa_stable_v19_20111121.tgz || exit 1
+tar -xovzf pa_stable_$VERSION.tgz || exit 1
 
 read -d '' pa_patch << "EOF"
 --- portaudio/Makefile.in	2012-08-05 10:42:05.000000000 +0300

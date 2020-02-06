@@ -1,14 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+LIBSNDFILE_VERSION=1.0.25
+
+GIT=${GIT:-git}
+WGET=${WGET:-wget}
 
 # Installs beamformit from the location https://github.com/xanguera/BeamformIt
 
 # libsndfile needed by beamformit
-[ ! -f libsndfile-1.0.25.tar.gz ] && \
-  wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.25.tar.gz
-[ ! -d libsndfile-1.0.25 ] && \
-  tar xzf libsndfile-1.0.25.tar.gz
+if [ ! -f libsndfile-$LIBSNDFILE_VERSION.tar.gz ]; then
+  if [ -d "$DOWNLOAD_DIR" ]; then
+    cp -p "$DOWNLOAD_DIR/libsndfile-$LIBSNDFILE_VERSION.tar.gz" . || exit 1
+  else
+    $WGET http://www.mega-nerd.com/libsndfile/files/libsndfile-$LIBSNDFILE_VERSION.tar.gz || exit 1
+  fi
+fi
+[ ! -d libsndfile-$LIBSNDFILE_VERSION ] && \
+  tar xzf libsndfile-$LIBSNDFILE_VERSION.tar.gz
 (
-  cd libsndfile-1.0.25
+  cd libsndfile-$LIBSNDFILE_VERSION
   ./configure --prefix=$PWD
   make
   make install
@@ -16,11 +26,11 @@
 
 # building beamformit
 [ ! -d ./BeamformIt ] &&
-  git clone https://github.com/xanguera/BeamformIt
+  $GIT clone https://github.com/xanguera/BeamformIt
 (
   cd BeamformIt
-  git pull
-  cmake -DLIBSND_INSTALL_DIR=$PWD/../libsndfile-1.0.25 .
+  $GIT pull
+  cmake -DLIBSND_INSTALL_DIR=$PWD/../libsndfile-$LIBSNDFILE_VERSION .
   make
 )
 

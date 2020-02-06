@@ -182,6 +182,7 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   void *memo,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("NormalizeComponent::Backprop");
   if (!in_deriv)
     return;
   if (block_dim_ != input_dim_) {
@@ -214,8 +215,8 @@ void BatchNormComponent::ComputeDerived() {
 
   if (count_ == 0.0) {
     KALDI_WARN << "Test-mode is set but there is no data count.  "
-        "Creating random counts.  This only makes sense "
-        "in unit-tests (or compute_prob_*.0.log).  If you see this "
+        "Creating random counts.  This is NOT A PROBLEM if the message "
+        "appears in unit-tests or in compute_prob_*.0.log.  If you see this "
         "elsewhere, something is very wrong.";
     count_ = 1.0;
     stats_sum_.SetRandn();
@@ -472,6 +473,7 @@ void BatchNormComponent::Backprop(
     void *memo_in,
     Component *to_update,  // unused
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("BatchNormComponent::Backprop");
 
   KALDI_ASSERT(SameDim(out_value, out_deriv) &&
                SameDim(out_value, *in_deriv) &&

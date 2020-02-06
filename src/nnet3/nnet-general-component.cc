@@ -199,6 +199,7 @@ void DistributeComponent::Backprop(const std::string &debug_info,
                                    void *memo,
                                    Component *, // to_update,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("DistributeComponent::Backprop");
   if (in_deriv == NULL) return;
 
   int32 num_blocks = input_dim_ / output_dim_,
@@ -482,6 +483,7 @@ void StatisticsExtractionComponent::Backprop(
     void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("StatisticsExtractionComponent::Backprop");
   KALDI_ASSERT(indexes_in != NULL);
   const StatisticsExtractionComponentPrecomputedIndexes *indexes =
       dynamic_cast<const StatisticsExtractionComponentPrecomputedIndexes*>(indexes_in);
@@ -573,7 +575,7 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 StatisticsPoolingComponent::StatisticsPoolingComponent():
     input_dim_(-1), input_period_(1), left_context_(-1), right_context_(-1),
     num_log_count_features_(0), output_stddevs_(false),
-    variance_floor_(1.0e-10) { }
+    variance_floor_(1.0e-10), require_direct_input_(false) { }
 
 
 StatisticsPoolingComponent::StatisticsPoolingComponent(
@@ -582,7 +584,8 @@ StatisticsPoolingComponent::StatisticsPoolingComponent(
     left_context_(other.left_context_), right_context_(other.right_context_),
     num_log_count_features_(other.num_log_count_features_),
     output_stddevs_(other.output_stddevs_),
-    variance_floor_(1.0e-10) {
+    variance_floor_(other.variance_floor_),
+    require_direct_input_(other.require_direct_input_) {
   Check();
 }
 
@@ -614,6 +617,9 @@ void StatisticsPoolingComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<VarianceFloor>");
   ReadBasicType(is, binary, &variance_floor_);
   ExpectToken(is, binary, "</StatisticsPoolingComponent>");
+  require_direct_input_ = false;  // This is not written to disk, it's only used
+                                  // temporarily, in memory (see
+                                  // nnet3-xvector-compute-batched.cc).
   Check();
 }
 
@@ -826,6 +832,7 @@ void StatisticsPoolingComponent::Backprop(
     void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("StatisticsPoolingComponent::Backprop");
   KALDI_ASSERT(indexes_in != NULL);
   const StatisticsPoolingComponentPrecomputedIndexes *indexes =
       dynamic_cast<const StatisticsPoolingComponentPrecomputedIndexes*>(
@@ -1104,6 +1111,7 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                              Component *to_update_in, // may be NULL; may be
                              // identical to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("BackpropTruncationComponent::Backprop");
   const BackpropTruncationComponentPrecomputedIndexes *indexes =
       dynamic_cast<const BackpropTruncationComponentPrecomputedIndexes*>(
           indexes_in);
@@ -1239,6 +1247,7 @@ void ConstantComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("ConstantComponent::Backprop");
   // we don't update in_deriv, since we set the flag
   // kBackpropAdds, and the output doesn't depend on the
   // input, so the input-derivative is zero.
@@ -1593,6 +1602,7 @@ void GeneralDropoutComponent::Backprop(
     void *memo,
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("GeneralDropoutComponent::Backprop");
   KALDI_ASSERT(in_deriv != NULL && SameDim(*in_deriv, out_deriv));
 
   // The following will do no work if in_deriv->Data() == out_deriv.Data().
@@ -1927,6 +1937,7 @@ void SpecAugmentTimeMaskComponent::Backprop(
     void *memo,
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("SpecAugmentTimeMaskComponent::Backprop");
   KALDI_ASSERT(in_deriv != NULL && SameDim(*in_deriv, out_deriv));
 
   // The following will do no work if in_deriv->Data() == out_deriv.Data().

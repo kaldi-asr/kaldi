@@ -26,7 +26,7 @@
 
 namespace fst
 {
-
+using std::vector;
 
 // Don't instantiate with log semiring, as RandEquivalent may fail.
 template<class Arc> static void TestFactor() {

@@ -91,7 +91,7 @@ def check_args(args):
     return args
 
 def get_noise_list(noise_wav_scp_filename):
-    noise_wav_scp_file = open(noise_wav_scp_filename, 'r').readlines()
+    noise_wav_scp_file = open(noise_wav_scp_filename, 'r', encoding='utf-8').readlines()
     noise_wavs = {}
     noise_utts = []
     for line in noise_wav_scp_file:
@@ -204,7 +204,7 @@ def main():
     num_bg_noises = [int(i) for i in args.num_bg_noises.split(":")]
     reco2dur = parse_file_to_dict(input_dir + "/reco2dur",
         value_processor = lambda x: float(x[0]))
-    wav_scp_file = open(input_dir + "/wav.scp", 'r').readlines()
+    wav_scp_file = open(input_dir + "/wav.scp", 'r', encoding='utf-8').readlines()
 
     noise_wavs = {}
     noise_reco2dur = {}

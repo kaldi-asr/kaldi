@@ -48,7 +48,9 @@ class OnlineCudaFeaturePipeline {
  private:
   OnlineNnet2FeaturePipelineInfo info_;
   CudaSpectralFeatures *spectral_feat;
+  CudaOnlineCmvn *cmvn;
   IvectorExtractorFastCuda *ivector;
+  Matrix<double> global_cmvn_stats;
 };
 }  // namespace kaldi
 

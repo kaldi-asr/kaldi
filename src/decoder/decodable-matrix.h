@@ -40,7 +40,7 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
                                                 scale_(scale), delete_likes_(false) {
     if (likes.NumCols() != tm.NumPdfs())
       KALDI_ERR << "DecodableMatrixScaledMapped: mismatch, matrix has "
-                << likes.NumCols() << " rows but transition-model has "
+                << likes.NumCols() << " cols but transition-model has "
                 << tm.NumPdfs() << " pdf-ids.";
   }
 
@@ -53,7 +53,7 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
       scale_(scale), delete_likes_(true) {
     if (likes->NumCols() != tm.NumPdfs())
       KALDI_ERR << "DecodableMatrixScaledMapped: mismatch, matrix has "
-                << likes->NumCols() << " rows but transition-model has "
+                << likes->NumCols() << " cols but transition-model has "
                 << tm.NumPdfs() << " pdf-ids.";
   }
 

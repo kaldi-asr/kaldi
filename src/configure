@@ -73,6 +73,7 @@ Configuration options:
   --cudatk-dir=DIR      CUDA toolkit directory
   --cuda-arch=FLAGS     Override the default CUDA_ARCH flags. See:
          https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#nvcc-examples.
+  --debug-level=N       Use assertion level 0 (disabled), 1, or 2 [default=1]
   --double-precision    Build with BaseFloat set to double if yes [default=no],
                         mostly useful for testing purposes.
   --static-fst          Build with static OpenFst libraries [default=no]
@@ -739,6 +740,7 @@ ENV_LDFLAGS=$LDFLAGS
 ENV_LDLIBS=$LDLIBS
 
 # Default configuration
+debug_level=1
 double_precision=false
 dynamic_kaldi=false
 use_cuda=true
@@ -770,6 +772,9 @@ do
     dynamic_kaldi=true;
     static_math=false;
     static_fst=false;
+    shift ;;
+  --debug-level=*)
+    GetSwitchValueOrDie debug_level "$1"
     shift ;;
   --double-precision)
     double_precision=true;
@@ -900,6 +905,11 @@ do
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
+
+case "$debug_level" in
+  [012]) ;;
+  *) failure "Invalid value --debug-level=$debug_level. Supported values are 0, 1, and 2." ;;
+esac
 
 # The idea here is that if you change the configuration options from using
 # CUDA to not using it, or vice versa, we want to recompile all parts of the
@@ -1033,6 +1043,7 @@ if $dynamic_kaldi ; then
   echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
   echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
 fi
+echo "DEBUG_LEVEL = $debug_level" >> kaldi.mk
 if $double_precision; then
   echo "DOUBLE_PRECISION = 1" >> kaldi.mk
 else

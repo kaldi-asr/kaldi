@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 echo "This script has not yet been tested, you would have to comment this statement if you want to run it. Please let us know if you see any issues" && exit 1;
 
@@ -95,8 +95,8 @@ if [ $frame_subsampling_factor -ne 1 ]; then
 
     data_dirs=
     for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do
-      steps/shift_feats.sh --cmd "$train_cmd --max-jobs-run 40" --nj 350 \
-        $x $train_data_dir exp/shift_hires mfcc_hires
+      utils/data/shift_feats.sh \
+        $x $train_data_dir ${train_data_dir}_fs$x
       utils/fix_data_dir.sh ${train_data_dir}_fs$x
       data_dirs="$data_dirs ${train_data_dir}_fs$x"
       awk -v nfs=$x '{print "fs"nfs"-"$0}' $train_ivector_dir/ivector_online.scp >> ${train_ivector_dir}_fs/ivector_online.scp

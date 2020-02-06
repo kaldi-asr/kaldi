@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is based on tdnn_1d_sp, but adding cnn as the front-end.
 # The cnn-tdnn-f (tdnn_cnn_1a_sp) outperforms the tdnn-f (tdnn_1d_sp).
@@ -212,10 +212,6 @@ if [ $stage -le 16 ]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   utils/mkgraph.sh --self-loop-scale 1.0 --remove-oov data/lang_test_tgsmall $dir $graph_dir
-  # remove <UNK> from the graph, and convert back to const-FST.
-  fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst - | \
-    fstconvert --fst_type=const > $graph_dir/temp.fst
-  mv $graph_dir/temp.fst $graph_dir/HCLG.fst
 fi
 
 iter_opts=

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
 # lattice alignments and to build a tree

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e -o pipefail
 
@@ -47,6 +47,10 @@ if [ $stage -le 1 ]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
   utils/data/perturb_data_dir_speed_3way.sh \
     data/${train_set} data/${train_set}_sp
+
+  for datadir in ${train_set}_sp dev test; do
+    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+  done
 fi
 
 if [ $stage -le 2 ]; then
@@ -77,11 +81,6 @@ if [ $stage -le 5 ] && [ -f data/${train_set}_sp_hires/feats.scp ]; then
   exit 1
 fi
 
-if [ $stage -le 4 ]; then
-  echo "$0: preparing directory for speed-perturbed data"
-  utils/data/perturb_data_dir_speed_3way.sh data/${train_set} data/${train_set}_sp
-fi
-
 if [ $stage -le 5 ]; then
   echo "$0: creating high-resolution MFCC features"
 
@@ -93,10 +92,6 @@ if [ $stage -le 5 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/mfcc/tedlium-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
-
-  for datadir in ${train_set}_sp dev test; do
-    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-  done
 
   # do volume-perturbation on the training data prior to extracting hires
   # features; this helps make trained nnets more invariant to test data volume.

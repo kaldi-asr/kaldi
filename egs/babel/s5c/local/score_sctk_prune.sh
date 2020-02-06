@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Authors: Daniel Povey, Sanjeev Khudanpur) 2012-2013.  Apache 2.0.
 
 # begin configuration section.

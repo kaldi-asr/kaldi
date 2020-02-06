@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Yandex (Author: Ilya Edrenkin)
 # Apache 2.0

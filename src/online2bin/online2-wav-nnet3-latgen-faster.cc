@@ -58,7 +58,8 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   *tot_like += likelihood;
   KALDI_VLOG(2) << "Likelihood per frame for utterance " << utt << " is "
                 << (likelihood / num_frames) << " over " << num_frames
-                << " frames.";
+                << " frames, = " << (-weight.Value1() / num_frames)
+                << ',' << (weight.Value2() / num_frames);
 
   if (word_syms != NULL) {
     std::cerr << utt << ' ';
@@ -147,12 +148,16 @@ int main(int argc, char *argv[]) {
         clat_wspecifier = po.GetArg(5);
 
     OnlineNnet2FeaturePipelineInfo feature_info(feature_opts);
-
     if (!online) {
       feature_info.ivector_extractor_info.use_most_recent_ivector = true;
       feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
       chunk_length_secs = -1.0;
     }
+
+    Matrix<double> global_cmvn_stats;
+    if (feature_info.global_cmvn_stats_rxfilename != "")
+      ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
+                      &global_cmvn_stats);
 
     TransitionModel trans_model;
     nnet3::AmNnetSimple am_nnet;
@@ -194,8 +199,11 @@ int main(int argc, char *argv[]) {
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
+
       OnlineIvectorExtractorAdaptationState adaptation_state(
           feature_info.ivector_extractor_info);
+      OnlineCmvnState cmvn_state(global_cmvn_stats);
+
       for (size_t i = 0; i < uttlist.size(); i++) {
         std::string utt = uttlist[i];
         if (!wav_reader.HasKey(utt)) {
@@ -210,6 +218,7 @@ int main(int argc, char *argv[]) {
 
         OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
         feature_pipeline.SetAdaptationState(adaptation_state);
+        feature_pipeline.SetCmvnState(cmvn_state);
 
         OnlineSilenceWeighting silence_weighting(
             trans_model,
@@ -276,6 +285,7 @@ int main(int argc, char *argv[]) {
         // In an application you might avoid updating the adaptation state if
         // you felt the utterance had low confidence.  See lat/confidence.h
         feature_pipeline.GetAdaptationState(&adaptation_state);
+        feature_pipeline.GetCmvnState(&cmvn_state);
 
         // we want to output the lattice with un-scaled acoustics.
         BaseFloat inv_acoustic_scale =

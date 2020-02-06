@@ -1,0 +1,67 @@
+# GMM results w/o corpus LM
+# ./run.sh --stage 17
+# aishell test set results
+%WER 22.25 [ 23314 / 104765, 675 ins, 1534 del, 21105 sub ] exp/tri1b/decode_aishell_test_tg/cer_13_0.0
+%WER 20.63 [ 21616 / 104765, 701 ins, 1413 del, 19502 sub ] exp/tri2a/decode_aishell_test_tg/cer_13_0.0
+%WER 19.03 [ 19941 / 104765, 725 ins, 1222 del, 17994 sub ] exp/tri3a/decode_aishell_test_tg/cer_13_0.5
+%WER 21.68 [ 22710 / 104765, 902 ins, 2361 del, 19447 sub ] exp/tri4a/decode_aishell_test_tg/cer_14_0.0
+%WER 16.64 [ 17436 / 104765, 857 ins, 706 del, 15873 sub ] exp/tri4a_cleaned/decode_aishell_test_tg/cer_14_0.5
+%WER 5.90 [ 6176 / 104765, 119 ins, 169 del, 5888 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp/decode_aishell_tg/cer_11_1.0
+%WER 5.90 [ 6177 / 104765, 121 ins, 168 del, 5888 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp_online/decode_aishell_tg/cer_11_1.0
+
+# aidatatang test set results
+%WER 33.86 [ 158799 / 468933, 3856 ins, 33811 del, 121132 sub ] exp/tri1b/decode_aidatatang_test_tg/cer_14_0.0
+%WER 32.62 [ 152977 / 468933, 4182 ins, 31249 del, 117546 sub ] exp/tri2a/decode_aidatatang_test_tg/cer_14_0.0
+%WER 23.67 [ 111009 / 468933, 4535 ins, 19118 del, 87356 sub ] exp/tri3a/decode_aidatatang_test_tg/cer_14_0.0
+%WER 20.01 [ 93829 / 468933, 4563 ins, 16970 del, 72296 sub ] exp/tri4a/decode_aidatatang_test_tg/cer_15_0.0
+%WER 17.85 [ 83717 / 468933, 6506 ins, 13716 del, 63495 sub ] exp/tri4a_cleaned/decode_aidatatang_test_tg/cer_15_0.0
+%WER 4.98 [ 23370 / 468933, 2190 ins, 3188 del, 17992 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp/decode_aidatatang_tg/cer_10_0.0
+%WER 4.98 [ 23371 / 468933, 2224 ins, 3171 del, 17976 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp_online/decode_aidatatang_tg/cer_10_0.0
+
+# magicdata test set results
+%WER 27.01 [ 64815 / 239927, 4838 ins, 14852 del, 45125 sub ] exp/tri1b/decode_magicdata_test_tg/cer_17_0.0
+%WER 27.10 [ 65010 / 239927, 5746 ins, 12552 del, 46712 sub ] exp/tri2a/decode_magicdata_test_tg/cer_17_0.0
+%WER 22.42 [ 53784 / 239927, 6513 ins, 7409 del, 39862 sub ] exp/tri3a/decode_magicdata_test_tg/cer_17_0.0
+%WER 15.45 [ 37076 / 239927, 3942 ins, 5217 del, 27917 sub ] exp/tri4a/decode_magicdata_test_tg/cer_17_0.0
+%WER 13.99 [ 33568 / 239927, 6267 ins, 3705 del, 23596 sub ] exp/tri4a_cleaned/decode_magicdata_test_tg/cer_17_0.5
+%WER 4.24 [ 10180 / 239927, 1405 ins, 2001 del, 6774 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp/decode_magicdata_tg/cer_11_1.0
+%WER 4.25 [ 10188 / 239927, 1428 ins, 1997 del, 6763 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp_online/decode_magicdata_tg/cer_11_1.0
+
+# thchs test set results
+%WER 35.75 [ 29005 / 81139, 353 ins, 1824 del, 26828 sub ] exp/tri1b/decode_thchs_test_tg/cer_10_1.0
+%WER 32.59 [ 26446 / 81139, 326 ins, 1622 del, 24498 sub ] exp/tri2a/decode_thchs_test_tg/cer_11_0.5
+%WER 30.26 [ 24549 / 81139, 328 ins, 1412 del, 22809 sub ] exp/tri3a/decode_thchs_test_tg/cer_10_1.0
+%WER 27.67 [ 22449 / 81139, 410 ins, 1102 del, 20937 sub ] exp/tri4a/decode_thchs_test_tg/cer_10_0.5
+%WER 25.41 [ 20615 / 81139, 399 ins, 847 del, 19369 sub ] exp/tri4a_cleaned/decode_thchs_test_tg/cer_11_0.5
+%WER 12.96 [ 10514 / 81139, 120 ins, 300 del, 10094 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp/decode_thchs_tg/cer_10_1.0
+%WER 12.94 [ 10499 / 81139, 120 ins, 299 del, 10080 sub ] exp/chain_cleaned/tdnn_cnn_1a_sp_online/decode_thchs_tg/cer_10_1.0
+
+# GMM results w/ corpus LM
+# ./run.sh --stage 17 --corpus-lm true
+# aishell test set results
+%WER 19.10 [ 20013 / 104765, 694 ins, 1203 del, 18116 sub ] exp/tri1b/decode_aishell_test_clm/cer_13_0.0
+%WER 17.36 [ 18188 / 104765, 726 ins, 984 del, 16478 sub ] exp/tri2a/decode_aishell_test_clm/cer_13_0.0
+%WER 16.25 [ 17023 / 104765, 763 ins, 850 del, 15410 sub ] exp/tri3a/decode_aishell_test_clm/cer_13_0.0
+%WER 13.25 [ 13880 / 104765, 693 ins, 607 del, 12580 sub ] exp/tri4a/decode_aishell_test_clm/cer_13_0.5
+%WER 13.35 [ 13986 / 104765, 647 ins, 688 del, 12651 sub ] exp/tri4a_cleaned/decode_aishell_test_clm/cer_16_0.0
+
+# aidatatang test set results
+%WER 28.04 [ 131471 / 468933, 4093 ins, 29140 del, 98238 sub ] exp/tri1b/decode_aidatatang_test_clm/cer_15_0.0
+%WER 27.22 [ 127656 / 468933, 4885 ins, 26015 del, 96756 sub ] exp/tri2a/decode_aidatatang_test_clm/cer_14_0.0
+%WER 19.66 [ 92204 / 468933, 4748 ins, 16197 del, 71259 sub ] exp/tri3a/decode_aidatatang_test_clm/cer_15_0.0
+%WER 15.46 [ 72485 / 468933, 4665 ins, 12969 del, 54851 sub ] exp/tri4a/decode_aidatatang_test_clm/cer_15_0.0
+%WER 15.65 [ 73376 / 468933, 6387 ins, 12384 del, 54605 sub ] exp/tri4a_cleaned/decode_aidatatang_test_clm/cer_16_0.0
+
+# magicdata test set results
+%WER 25.60 [ 61422 / 239927, 4852 ins, 13931 del, 42639 sub ] exp/tri1b/decode_magicdata_test_clm/cer_17_0.0
+%WER 25.95 [ 62262 / 239927, 5827 ins, 12034 del, 44401 sub ] exp/tri2a/decode_magicdata_test_clm/cer_17_0.0
+%WER 21.28 [ 51063 / 239927, 6478 ins, 6831 del, 37754 sub ] exp/tri3a/decode_magicdata_test_clm/cer_17_0.0
+%WER 14.76 [ 35422 / 239927, 3924 ins, 4924 del, 26574 sub ] exp/tri4a/decode_magicdata_test_clm/cer_16_0.5
+%WER 13.61 [ 32655 / 239927, 6256 ins, 3636 del, 22763 sub ] exp/tri4a_cleaned/decode_magicdata_test_clm/cer_17_0.5
+
+# thchs test set results
+%WER 35.67 [ 28941 / 81139, 300 ins, 1697 del, 26944 sub ] exp/tri1b/decode_thchs_test_clm/cer_12_0.0
+%WER 32.36 [ 26259 / 81139, 277 ins, 1363 del, 24619 sub ] exp/tri2a/decode_thchs_test_clm/cer_12_0.0
+%WER 29.92 [ 24276 / 81139, 288 ins, 1128 del, 22860 sub ] exp/tri3a/decode_thchs_test_clm/cer_11_0.0
+%WER 26.08 [ 21162 / 81139, 296 ins, 974 del, 19892 sub ] exp/tri4a/decode_thchs_test_clm/cer_12_0.0
+%WER 25.68 [ 20834 / 81139, 342 ins, 919 del, 19573 sub ] exp/tri4a_cleaned/decode_thchs_test_clm/cer_12_0.0

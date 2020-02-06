@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2016.  Apache 2.0.
 
 # This script performs some analysis of alignments on disk, currently in terms
-# of phone lengths, including lenghts of leading and trailing silences
+# of phone lengths, including lengths of leading and trailing silences
 
 
 # begin configuration section.
