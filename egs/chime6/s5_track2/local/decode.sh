@@ -8,11 +8,11 @@
 # Apache 2.0
 
 # Begin configuration section.
-nj=8
+nj=10
 decode_nj=10
 stage=0
 sad_stage=0
-diarizer_stage=0
+diarizer_stage=1
 decode_diarize_stage=0
 score_stage=0
 enhancement=beamformit
@@ -32,6 +32,10 @@ enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 # training data
 train_set=train_worn_simu_u400k
 test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
+
+# arrays and sessions for which we compute results
+array_ids="U01 U02 U03 U04 U05 U06"
+session_ids="S01 S02 S09 S21"
 
 . ./utils/parse_options.sh
 
@@ -93,6 +97,7 @@ if [ $stage -le 1 ]; then
       "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
       ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb
   done
+
 fi
 
 if [ $stage -le 2 ]; then
@@ -136,12 +141,47 @@ if [ $stage -le 3 ]; then
   done
 fi
 
+if [ $stage -le 4 ]; then
+  # In this stage we score the SAD output. Note that SAD scores
+  # will not be used for evaluation in the actual challenge, but
+  # this is just provided for reference.
+  for datadir in ${test_sets}; do
+    echo "SAD results for "${datadir}
+    test_dir=data/${datadir}_${nnet_type}_seg
+    mkdir -p $test_dir/scoring
+    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
+      ${test_dir}/segments.bak ${test_dir}/ref_rttm
+    for session in ${session_ids}; do
+      ref_rttm_path=$test_dir/scoring/rttm_ref.$session
+      grep "$session" ${test_dir}/ref_rttm > $ref_rttm_path
+      if ! [ -s $ref_rttm_path ]; then
+        rm $ref_rttm_path
+        continue
+      fi
+      for array in ${array_ids}; do
+        hyp_rttm_path=$test_dir/scoring/rttm_hyp.${session}_${array}
+        grep ${session}_${array} data/${datadir}_${nnet_type}_seg/rttm > $hyp_rttm_path
+        if ! [ -s $hyp_rttm_path ]; then
+          rm $hyp_rttm_path
+          continue
+        fi
+        echo "${session}_${array}"
+        sed 's/_U0[1-6]//g' $ref_rttm_path > $ref_rttm_path.scoring
+        sed 's/_U0[1-6]//g' $hyp_rttm_path > $hyp_rttm_path.scoring
+        md-eval.pl -1 -c 0.25 -r $ref_rttm_path.scoring -s $hyp_rttm_path.scoring |\
+          awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
+      done
+    done
+  done
+fi
+
 #######################################################################
 # Perform diarization on the dev/eval data
 #######################################################################
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
-    local/diarize.sh --nj 10 --cmd "$train_cmd" --stage $diarizer_stage \
+    local/diarize.sh --nj $decode_nj --cmd "$train_cmd" --stage $diarizer_stage \
+      --array-ids ${array_ids} --session-ids ${session_ids} \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
       exp/${datadir}_${nnet_type}_seg_diarization
@@ -151,7 +191,7 @@ fi
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang \
@@ -163,7 +203,7 @@ fi
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   # final scoring to get the challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
