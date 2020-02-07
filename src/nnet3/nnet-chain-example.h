@@ -1,6 +1,7 @@
 // nnet3/nnet-chain-example.h
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2020  Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
