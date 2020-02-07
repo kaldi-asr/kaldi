@@ -122,10 +122,7 @@ if [ $stage -le 1 ]; then
   done
 
   # Split up the training list into multiple smaller lists, as it could be long.
-  utils/split_scp.pl $dir/temp/train.list  $(for j in $(seq $nj); do echo $dir/temp/train.$j.list; done)
-  for j in $(seq $nj); do
-    cp $dir/temp/train.${j}.list $dir/temp/train.${j}.scp
-  done
+  utils/split_scp.pl $dir/temp/train.list  $(for j in $(seq $nj); do echo $dir/temp/train.$j.scp; done)
 
   if [ -e $dir/storage ]; then
     # Make soft links to storage directories, if distributing this way..  See
