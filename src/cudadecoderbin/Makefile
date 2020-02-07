@@ -1,10 +1,14 @@
-
 all:
-
+		
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
-ifneq ($(WITHOUT_CUDADECODER), 1)
+ifneq ($(WITH_CUDADECODER), 0)
+
+# Make sure we have CUDA_ARCH from kaldi.mk,
+ifndef CUDA_ARCH
+  $(error CUDA_ARCH is undefined, run 'src/configure')
+endif
 
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
@@ -26,7 +30,7 @@ ADDLIBS = ../cudadecoder/kaldi-cudadecoder.a  ../cudafeat/kaldi-cudafeat.a \
 
 else
 all:
-		$(warning "Not building cudadecoder extension -- to build with it configure without --without-cudadecoder[=true]")
+		$(warning "Not building cudadecoder extension -- to build with it, configure with --with-cudadecoder[=true]")
 endif
 
 endif

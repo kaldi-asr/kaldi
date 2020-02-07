@@ -70,7 +70,7 @@ Configuration options:
   --static              Build and link against static libraries [default=no]
   --shared              Build and link against shared libraries [default=no]
   --use-cuda            Build with CUDA [default=yes]
-  --without-cudadecoder Build without CUDA decoder [default=no]
+  --with-cudadecoder    Build with CUDA decoder [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
   --cuda-arch=FLAGS     Override the default CUDA_ARCH flags. See:
          https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#nvcc-examples.
@@ -744,7 +744,7 @@ debug_level=1
 double_precision=false
 dynamic_kaldi=false
 use_cuda=true
-without_cudadecoder=0
+with_cudadecoder=1
 static_fst=false
 static_math=false
 threaded_atlas=false
@@ -819,14 +819,14 @@ do
   --use-cuda=no)
     use_cuda=false;
     shift ;;
-  --without-cudadecoder)
-    without_cudadecoder=1;
+  --with-cudadecoder)
+    with_cudadecoder=1;
     shift ;;
-  --without-cudadecoder=yes)
-    without_cudadecoder=1;
+  --with-cudadecoder=yes)
+    with_cudadecoder=1;
     shift ;;
-  --without-cudadecoder=no)
-    without_cudadecoder=0;
+  --with-cudadecoder=no)
+    with_cudadecoder=0;
     shift ;;
   --static-math)
     static_math=true;
@@ -1100,7 +1100,7 @@ else
   echo "CUBROOT = $CUBROOT" >> kaldi.mk
 fi
 
-echo "WITHOUT_CUDADECODER = $without_cudadecoder" >> kaldi.mk
+echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 echo >> kaldi.mk
 
 # OS-specific steps given below append to kaldi.mk
