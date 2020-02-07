@@ -158,7 +158,7 @@ while changed:
                  changed = True
 
 for uniq in sorted(uniq2orig_uniq.keys()):
-    print uniq, uniq2orig_uniq[uniq]
+    print(uniq, uniq2orig_uniq[uniq])
 ' > $dir/uniq_to_orig_uniq
   rm $dir/uniq_sets
 
