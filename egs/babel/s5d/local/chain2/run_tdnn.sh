@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright     2020    Idiap Research Institute (Srikanth Madikeri)
 # chain2 recipe for monolingual systems for BABEL
 
 set -e -o pipefail
@@ -28,6 +29,7 @@ num_jobs_final=12
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 max_param_change=2.0
+xent_regularize=0.1
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -94,7 +96,7 @@ fi
 if [ $stage -le 8 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
     $langdir $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -107,13 +109,12 @@ if [ $stage -le 9 ]; then
     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
     exit 1;
   fi
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor $frame_subsampling_factor \
       --context-opts "--context-width=2 --central-position=1" \
       --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
-xent_regularize=0.1
 if [ $stage -le 10 ]; then
   mkdir -p $dir
 
@@ -251,7 +252,6 @@ if [ -z $common_egs_dir ]; then
     if [ $stage -le 14 ]; then
       echo "$0: about to process egs"
       steps/chain2/process_egs.sh  --cmd "$train_cmd" \
-          --num-repeats 1 \
         ${dir}/raw_egs ${dir}/processed_egs
     fi
 
