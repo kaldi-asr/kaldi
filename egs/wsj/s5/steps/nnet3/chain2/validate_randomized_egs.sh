@@ -34,7 +34,7 @@ done
 
 if [ $(awk '/^dir_type/ { print $2; }' <$dir/info.txt) != "randomized_chain_egs" ]; then
   grep dir_type $dir/info.txt
-  echo "$0: dir_type should be randomized_chaina_egs in $dir/info.txt"
+  echo "$0: dir_type should be randomized_chain_egs in $dir/info.txt"
   exit 1
 fi
 
