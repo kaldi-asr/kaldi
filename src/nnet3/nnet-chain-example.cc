@@ -522,7 +522,15 @@ void ChainExampleMerger::WriteMinibatch(
   NnetChainExample merged_eg;
   MergeChainExamples(config_.compress, egs, &merged_eg);
   std::ostringstream key;
-  key << "merged-" << (num_egs_written_++) << "-" << minibatch_size;
+  std::string suffix = "";
+  if(config_.multilingual_eg) {
+      // we just pick the first output's suffix
+      std::string output_name = merged_eg.outputs[0].name;
+      const size_t pos = output_name.find('-');
+      const size_t len = output_name.length();
+      suffix = "?lang=" + output_name.substr(pos+1, len);
+  }
+  key << "merged-" << (num_egs_written_++) << "-" << minibatch_size << suffix;
   writer_->Write(key.str(), merged_eg);
 }
 

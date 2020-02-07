@@ -148,7 +148,7 @@ class NnetChainTrainer2 {
  private:
   // The internal function for doing one step of conventional SGD training.
   void TrainInternal(const std::string &key, const NnetChainExample &eg,
-                     const NnetComputation &computation);
+                     const NnetComputation &computation, const std::string &lang_name);
 
   // The internal function for doing one step of backstitch training. Depending
   // on whether is_backstitch_step1 is true, It could be either the first

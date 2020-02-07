@@ -93,7 +93,7 @@ void NnetChainTrainer2::Train(const std::string &key, NnetChainExample &chain_eg
     ResetGenerators(nnet_);
     TrainInternalBackstitch(key, chain_eg, *computation, is_backstitch_step1);
   } else { // conventional training
-    TrainInternal(key, chain_eg, *computation);
+    TrainInternal(key, chain_eg, *computation, lang_name);
   }
   if (num_minibatches_processed_ == 0) {
     ConsolidateMemory(nnet_);
@@ -104,16 +104,14 @@ void NnetChainTrainer2::Train(const std::string &key, NnetChainExample &chain_eg
 
 void NnetChainTrainer2::TrainInternal(const std::string &key,
                                      const NnetChainExample &eg,
-                                     const NnetComputation &computation) {
+                                     const NnetComputation &computation,
+                                     const std::string &lang_name) {
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   // note: because we give the 1st arg (nnet_) as a pointer to the
   // constructor of 'computer', it will use that copy of the nnet to
   // store stats.
   NnetComputer computer(nnet_config.compute_config, computation,
                         nnet_, delta_nnet_);
-
-  std::string lang_name = "default";
-  ParseFromQueryString(key, "lang", &lang_name);
 
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.inputs);
