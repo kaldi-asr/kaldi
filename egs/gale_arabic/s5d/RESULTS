@@ -15,5 +15,5 @@ chain for test_p2 set
 rnnlm-rescoring for test_p2 set
 %WER 13.51 [ 9413 / 69668, 1059 ins, 2517 del, 5837 sub ] exp/chain/tdnn_1a_sp/decode_test_p2_rnnlm_1e_0.45/wer_9_0.0
 
-rnnlm-rescoring for test_p2 set
+rnnlm-rescoring for mt_eval set
 %WER 12.02 [ 10829 / 90112, 1483 ins, 2401 del, 6945 sub ] exp/chain/tdnn_1a_sp/decode_mt_all_rnnlm_1e_0.45/wer_9_0.0
