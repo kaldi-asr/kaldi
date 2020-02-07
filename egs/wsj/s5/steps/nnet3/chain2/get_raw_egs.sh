@@ -287,6 +287,7 @@ EOF
       ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
       echo $ivector_dim > $dir/info/ivector_dim
       echo ivector_dim $ivector_dim >> $dir/info.txt
+      echo final.ie.id `cat $online_ivector_dir/final.ie.id` >> $dir/info.txt
       ivector_id=`steps/nnet2/get_ivector_id.sh $online_ivector_dir || exit 1`
       echo ivector_id $ivector_id
       ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
