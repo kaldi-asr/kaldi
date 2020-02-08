@@ -966,6 +966,291 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
 
 }
 
+template <class DTYPE, int veclen>
+struct IOType{};
+
+template <>
+struct IOType<float, 1> {
+  typedef float Type;
+};
+template <>
+struct IOType<float, 2> {
+  typedef float2 Type;
+};
+template <>
+struct IOType<float, 4> {
+  typedef float4 Type;
+};
+template <>
+struct IOType<double, 1> {
+  typedef double Type;
+};
+template <>
+struct IOType<double, 2> {
+  typedef double2 Type;
+};
+template <>
+struct IOType<double, 4> {
+  typedef double4 Type;
+};
+
+#if __CUDA_ARCH__ < 350
+template <typename T>
+__device__ T __ldg(const T * ptr) {return *ptr;}
+#endif
+__device__ double4 __ldg(const double4 * ptr) {return *ptr;}
+
+// Class to encapsulate vectorized datatypes, loads and stores
+template <typename math_, int veclen_>
+struct TxN_t {
+  public:
+  /** underlying math data type */
+  typedef math_ math_t;
+  /** internal storage data type */
+  typedef typename IOType<math_t, veclen_>::Type io_t;
+
+  static const int Ratio = veclen_;
+
+  union Val {
+    /** the vectorized data that is used for subsequent operations */
+    math_t data[Ratio];
+    /** internal data used to ensure vectorized loads/stores */
+    io_t internal;
+    __device__ Val() {}
+  } val;
+
+  __device__ TxN_t() {
+  }
+
+  __device__ TxN_t(math_t _val) {
+    #pragma unroll
+    for (int i = 0; i < Ratio; ++i) {
+      val.data[i] = _val;
+    }
+  }
+
+  __device__ void load(const math_t *ptr) {
+    const io_t *bptr = reinterpret_cast<const io_t *>(ptr);
+    val.internal = __ldg(bptr);
+  }
+
+  __device__ void load(math_t *ptr) {
+    io_t *bptr = reinterpret_cast<io_t *>(ptr);
+    val.internal = *bptr;
+  }
+
+  __device__ void store(math_t *ptr) {
+    io_t *bptr = reinterpret_cast<io_t *>(ptr);
+    *bptr = val.internal;
+  }
+};
+
+#if __CUDA_ARCH__ < 600
+template <typename Type>
+inline __device__ void myAtomicAdd(Type *address, Type val) {
+  atomicAdd(address, val);
+}
+// Ref:
+// http://on-demand.gputechconf.com/gtc/2013/presentations/S3101-Atomic-Memory-Operations.pdf
+template <>
+inline __device__ void myAtomicAdd(double *address, double val) {
+  unsigned long long int *address_as_ull = (unsigned long long int *)address;
+  unsigned long long int old = *address_as_ull, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+                    __double_as_longlong(val + __longlong_as_double(assumed)));
+  } while (assumed != old);
+}
+#else
+#define myAtomicAdd(a, b) atomicAdd(a, b)
+#endif  // __CUDA_ARCH__
+
+template <typename Real, int THREADS_X, int THREADS_Y, int veclen, int unroll_count>
+__global__ void _trace_mat_mat_trans_atomic(Real * result,
+                                            const Real * A, const Real * B,
+                                            MatrixDim dA, int B_stride) {
+  // This kernel assumes result is already set to zero
+  TxN_t<Real,veclen> thread_data(static_cast<Real>(0));
+  int colStart = veclen * (blockIdx.x * blockDim.x + threadIdx.x);
+
+  // Thread reduction while reading from global memory
+  // in a grid strided loop
+  if (colStart < dA.cols) {
+    int rowStart = blockIdx.y * blockDim.y + threadIdx.y;
+    int stride = blockDim.y * gridDim.y;
+
+    int unroll_stride = unroll_count * stride;
+    // Closest multiple of unroll_stride less than dA.rows
+    int Nmod = (dA.rows / unroll_stride) * unroll_stride;
+    int j = rowStart;
+    for (; j < Nmod; j += unroll_stride) {
+      TxN_t<Real,veclen> A_vals[unroll_count];
+      TxN_t<Real,veclen> B_vals[unroll_count];
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        int idx_A = colStart + (j + u*stride) * dA.stride;
+        int idx_B = colStart + (j + u*stride) * B_stride;
+        A_vals[u].load(&A[idx_A]);
+        B_vals[u].load(&B[idx_B]);
+      }
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        #pragma unroll
+        for (int i = 0; i < veclen; ++i) {
+          thread_data.val.data[i] += A_vals[u].val.data[i] * B_vals[u].val.data[i];
+        }
+      }
+    }
+    for (; j < dA.rows; j += stride) {
+      int idx_A = colStart + j * dA.stride;
+      int idx_B = colStart + j * B_stride;
+      TxN_t<Real,veclen> A_val;
+      TxN_t<Real,veclen> B_val;
+      A_val.load(&A[idx_A]);
+      B_val.load(&B[idx_B]);
+      #pragma unroll
+      for (int i = 0; i < veclen; ++i) {
+        thread_data.val.data[i] += A_val.val.data[i] * B_val.val.data[i];
+      }
+    }
+  }
+
+  // Block reduction
+  typedef cub::BlockReduce<Real, THREADS_X,
+                      cub::BLOCK_REDUCE_WARP_REDUCTIONS, THREADS_Y> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
+  Real aggregate = BlockReduceT(temp_storage).Sum(thread_data.val.data);
+
+  // Grid reduction (only thread 0 active per block)
+  if ((threadIdx.x == 0) && (threadIdx.y == 0))
+      myAtomicAdd(result, aggregate);
+}
+
+template <typename Real, int THREADS_X, int THREADS_Y, int veclen, int unroll_count>
+__global__ void _frobenius_norm_atomic(Real * result,
+                                       const Real * A,
+                                       MatrixDim dA) {
+  // This kernel assumes result is already set to zero
+  TxN_t<Real,veclen> thread_data(static_cast<Real>(0));
+  int colStart = veclen * (blockIdx.x * blockDim.x + threadIdx.x);
+
+  // Thread reduction while reading from global memory
+  // in a grid strided loop
+  if (colStart < dA.cols) {
+    int rowStart = blockIdx.y * blockDim.y + threadIdx.y;
+    int stride = blockDim.y * gridDim.y;
+
+    int unroll_stride = unroll_count * stride;
+    // Closest multiple of unroll_stride less than dA.rows
+    int Nmod = (dA.rows / unroll_stride) * unroll_stride;
+    int j = rowStart;
+    for (; j < Nmod; j += unroll_stride) {
+      TxN_t<Real,veclen> A_vals[unroll_count];
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        int idx = colStart + (j + u*stride) * dA.stride;
+        A_vals[u].load(&A[idx]);
+      }
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        #pragma unroll
+        for (int i = 0; i < veclen; ++i) {
+          thread_data.val.data[i] += A_vals[u].val.data[i] * A_vals[u].val.data[i];
+        }
+      }
+    }
+    for (; j < dA.rows; j += stride) {
+      int idx = colStart + j * dA.stride;
+      TxN_t<Real,veclen> A_val;
+      A_val.load(&A[idx]);
+      #pragma unroll
+      for (int i = 0; i < veclen; ++i) {
+        thread_data.val.data[i] += A_val.val.data[i] * A_val.val.data[i];
+      }
+    }
+  }
+
+  // Block reduction
+  typedef cub::BlockReduce<Real, THREADS_X,
+                      cub::BLOCK_REDUCE_WARP_REDUCTIONS, THREADS_Y> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
+  Real aggregate = BlockReduceT(temp_storage).Sum(thread_data.val.data);
+
+  // Grid reduction (only thread 0 active per block)
+  if ((threadIdx.x == 0) && (threadIdx.y == 0))
+      myAtomicAdd(result, aggregate);
+}
+
+template <typename Real>
+void trace_mat_mat_trans_atomic(Real *d_result,
+                                const Real *A, const Real *B,
+                                MatrixDim dA, int B_stride,
+                                cudaStream_t stream) {
+  // cudaMemsetAsync(d_result, 0, sizeof(float), stream);
+
+  constexpr int THREADS_X = 32;
+  constexpr int THREADS_Y = 16;
+
+  dim3 thrds(THREADS_X, THREADS_Y);
+
+  int veclen = 1;
+  if ( (dA.cols*sizeof(Real))%(4*sizeof(float)) == 0)
+    veclen = 4*sizeof(float)/sizeof(Real);
+  else if ( (dA.cols*sizeof(Real))%(2*sizeof(float)) == 0)
+    veclen = 2*sizeof(float)/sizeof(Real);
+
+  bool isSameAB = (A == B);
+
+  int elemsPerThread = (dA.rows + static_cast<int>(thrds.y) - 1) / static_cast<int>(thrds.y);
+  elemsPerThread = (elemsPerThread > 8) ? 8 : elemsPerThread;
+
+  dim3 nblks((dA.cols + (static_cast<int>(thrds.x) * veclen) - 1) / (static_cast<int>(thrds.x) * veclen),
+             (dA.rows + (static_cast<int>(thrds.y) * elemsPerThread) - 1) / (static_cast<int>(thrds.y) * elemsPerThread));
+
+  if (isSameAB) {
+    switch (veclen) {
+      case 4:
+        _frobenius_norm_atomic<Real, THREADS_X, THREADS_Y, 4, 4><<<nblks, thrds, 0, stream>>>(d_result,
+                                                  A, dA);
+        break;
+      case 2:
+        _frobenius_norm_atomic<Real, THREADS_X, THREADS_Y, 2, 4><<<nblks, thrds, 0, stream>>>(d_result,
+                                                  A, dA);
+        break;
+      default:
+        _frobenius_norm_atomic<Real, THREADS_X, THREADS_Y, 1, 4><<<nblks, thrds, 0, stream>>>(d_result,
+                                                  A, dA);
+        break;
+    }
+  } else {
+    switch (veclen) {
+      case 4:
+        _trace_mat_mat_trans_atomic<Real, THREADS_X, THREADS_Y, 4, 4><<<nblks, thrds, 0, stream>>>(d_result,
+                                                  A, B, dA, B_stride);
+        break;
+      case 2:
+        _trace_mat_mat_trans_atomic<Real, THREADS_X, THREADS_Y, 2, 4><<<nblks, thrds, 0, stream>>>(d_result,
+                                                  A, B, dA, B_stride);
+        break;
+      default:
+        _trace_mat_mat_trans_atomic<Real, THREADS_X, THREADS_Y, 1, 4><<<nblks, thrds, 0, stream>>>(d_result,
+                                                  A, B, dA, B_stride);
+        break;
+    }
+  }
+
+  // Real result;
+  // cudaMemcpyAsync(&result, d_result, sizeof(Real), cudaMemcpyDeviceToHost, stream);
+  // cudaStreamSynchronize(stream);
+
+  // return result;
+}
+
 // _trace_mat_mat_trans reduce the partial sum to
 // value[blockIdx.y * gridDim.x + blockIdx.x]
 template<typename Real>
@@ -1641,27 +1926,6 @@ static void _vec_transform_reduce(
     result[blockIdx.x] = op.PostReduce(sdata[0], result[blockIdx.x]);
 }
 
-
-#if __CUDA_ARCH__ < 600
-template <typename Type>
-inline __device__ void myAtomicAdd(Type *address, Type val) {
-  atomicAdd(address, val);
-}
-// Ref:
-// http://on-demand.gputechconf.com/gtc/2013/presentations/S3101-Atomic-Memory-Operations.pdf
-template <>
-inline __device__ void myAtomicAdd(double *address, double val) {
-  unsigned long long int *address_as_ull = (unsigned long long int *)address;
-  unsigned long long int old = *address_as_ull, assumed;
-  do {
-    assumed = old;
-    old = atomicCAS(address_as_ull, assumed,
-                    __double_as_longlong(val + __longlong_as_double(assumed)));
-  } while (assumed != old);
-}
-#else
-#define myAtomicAdd(a, b) atomicAdd(a, b)
-#endif  // __CUDA_ARCH__
 
 template <typename T, typename ReduceLambda>
 inline __device__ void myAtomicReduce(T *address, T val, ReduceLambda op);
@@ -4224,9 +4488,10 @@ void cudaF_vec_max(int Gr, int Bl, const float* v, float* value, int dim,
       TransReduceOp<MAX, float>());
 }
 
-void cudaF_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A, const float* B,
+void cudaF_trace_mat_mat_trans(const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  // _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  trace_mat_mat_trans_atomic(value, A, B, dA, B_stride, cudaStreamPerThread);
 }
 
 void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
@@ -4935,10 +5200,11 @@ void cudaD_vec_max(int Gr, int Bl, const double* v, double* value, int dim,
       TransReduceOp<MAX, double>());
 }
 
-void cudaD_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A,
+void cudaD_trace_mat_mat_trans(const double* A,
                                const double* B, MatrixDim dA, int B_stride,
                                double* value) {
-  _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  // _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  trace_mat_mat_trans_atomic(value, A, B, dA, B_stride, cudaStreamPerThread);
 }
 
 void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B,

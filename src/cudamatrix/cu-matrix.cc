@@ -2174,17 +2174,21 @@ Real TraceMatMat(const CuMatrixBase<Real> &A,
         dimGrid.y = 1;
       }
     }
-    CuVector<Real> result_vec(dimGrid.x * dimGrid.y, kUndefined);
     if (trans == kNoTrans) {
+      CuVector<Real> result_vec(dimGrid.x * dimGrid.y, kUndefined);
       cuda_trace_mat_mat(dimGrid, dimBlock, A.Data(), B.Data(), A.Dim(),
           B.Stride(), result_vec.Data());
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
+      result = result_cpu.Sum();
     } else {
-      cuda_trace_mat_mat_trans(dimGrid, dimBlock, A.Data(), B.Data(), A.Dim(),
+      CuVector<Real> result_vec(1, kSetZero);
+      cuda_trace_mat_mat_trans(A.Data(), B.Data(), A.Dim(),
           B.Stride(), result_vec.Data());
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> result_cpu(result_vec);
+      result = result_cpu(0);
     }
-    CU_SAFE_CALL(cudaGetLastError());
-    Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
-    result = result_cpu.Sum();
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif

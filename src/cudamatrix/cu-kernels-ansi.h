@@ -719,10 +719,10 @@ void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B,
                          MatrixDim dA, int B_stride, double* value);
 void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
                          MatrixDim dA, int B_stride, float* value);
-void cudaD_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A,
+void cudaD_trace_mat_mat_trans(const double* A,
                                const double* B, MatrixDim dA, int B_stride,
                                double* value);
-void cudaF_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A, const float* B,
+void cudaF_trace_mat_mat_trans(const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value);
 void cudaD_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat,
                           MatrixDim mat_dim, const int* smat_row_ptr,

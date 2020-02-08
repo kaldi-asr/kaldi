@@ -1383,15 +1383,15 @@ inline void cuda_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value) {
   cudaF_trace_mat_mat(Gr, Bl, A, B, dA, B_stride, value);
 }
-inline void cuda_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A,
+inline void cuda_trace_mat_mat_trans(const double* A,
                                      const double* B, MatrixDim dA,
                                      int B_stride, double* value) {
-  cudaD_trace_mat_mat_trans(Gr, Bl, A, B, dA, B_stride, value);
+  cudaD_trace_mat_mat_trans(A, B, dA, B_stride, value);
 }
-inline void cuda_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A,
+inline void cuda_trace_mat_mat_trans(const float* A,
                                      const float* B, MatrixDim dA, int B_stride,
                                      float* value) {
-  cudaF_trace_mat_mat_trans(Gr, Bl, A, B, dA, B_stride, value);
+  cudaF_trace_mat_mat_trans(A, B, dA, B_stride, value);
 }
 inline void cuda_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat,
                                 MatrixDim mat_dim, const int* smat_row_ptr,
