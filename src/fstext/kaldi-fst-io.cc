@@ -45,6 +45,7 @@ VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
 // Register const fst to load it automatically. Other types like
 // olabel_lookahead or ngram or compact_fst should be registered
 // through OpenFst registration API.
+static fst::FstRegisterer<VectorFst<StdArc>> VectorFst_StdArc_registerer;
 static fst::FstRegisterer<ConstFst<StdArc>> ConstFst_StdArc_registerer;
 
 Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
