@@ -161,7 +161,7 @@ if [[ -z $arpa ]]; then
 else
   if [[ ! -s $dir/Gr.fst || $dir/Gr.fst -ot $arpa ]]; then
     # Opengrm builds acceptors, so we need to reorder words in symboltable
-    utils/mkgraph_lookahead_vocab.py ${dir}/relabel ${lang}/words.txt > ${dir}/words.txt
+    utils/apply_map.pl --permissive -f 2 ${dir}/relabel < ${lang}/words.txt > ${dir}/words.txt
     gunzip -c $arpa | ngramread --OOV_symbol=`cat ${lang}/oov.txt` --symbols=${dir}/words.txt --ARPA | \
     fstarcsort --sort_type=ilabel | \
       fstconvert --fst_type=ngram > ${dir}/Gr.fst.$$
