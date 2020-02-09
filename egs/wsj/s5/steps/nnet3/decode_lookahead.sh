@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Copyright 2019       Alpha Cephei Inc (Author: Nickolay Shmmyrev).
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 # Apache 2.0.
 
