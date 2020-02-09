@@ -44,7 +44,7 @@ if [[ $# != 3 && $# != 4 ]]; then
    echo "                    #  in the lang directory) are removed from the G.fst during compilation."
    echo " --transition-scale #  Scaling factor on transition probabilities."
    echo " --self-loop-scale  #  Please see: http://kaldi-asr.org/doc/hmm.html#hmm_scale."
-   echo " --compose-graph    #  Compile composed graph for testing with stadnard decoders (default: false)"
+   echo " --compose-graph    #  Compile composed graph for testing with other decoders (default: false)"
    exit 1;
 fi
 

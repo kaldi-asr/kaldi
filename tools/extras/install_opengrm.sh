@@ -1,34 +1,17 @@
 #!/bin/bash
 # Copyright 2019 Alpha Cephei Inc (author: Nickolay Shmyrev)
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Apache 2.0
 #
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-# MERCHANTABLITY OR NON-INFRINGEMENT.
-# See the Apache 2 License for the specific language governing permissions and
-# limitations under the License.
-#
-# This script attempts to install Speex, which is needed by someone who wants
-# to enable audio compression when doing online decoding.
-#
-# Note: This script installs Speex in a non-standard position and leads the test 
-# procedure of Speex give out errors. Those errors will not influence the 
-# installation acutally. So you can ignore them and call Speex's library correctly.
-# I just let it be like this at this moment, and may add a patch to resolve this
-# later.
+# This script installs OpenGrm, a library which makes and modifies n-gram language 
+# models encoded as weighted finite-state transducers (FSTs).
 
 echo "****() Installing OpenGrm"
 
 if [ ! -e ngram-1.3.7.tar.gz ]; then
     echo "Could not find OpenGrm tarball ngram-1.3.7.tar.gz "
     echo "Trying to download it via wget!"
-    
+
     if ! which wget >&/dev/null; then
         echo "This script requires you to first install wget"
         echo "You can also just download ngram-1.3.7.tar.gz from"
