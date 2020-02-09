@@ -229,8 +229,8 @@ if [ $stage -le 14 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=20 \
     --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=5 \
+    --trainer.optimization.num-jobs-initial=1 \
+    --trainer.optimization.num-jobs-final=1 \
     --trainer.optimization.initial-effective-lrate=0.002 \
     --trainer.optimization.final-effective-lrate=0.0002 \
     --trainer.num-chunk-per-minibatch=128,64 \

@@ -5,30 +5,29 @@
 # Example script for lookahead composition
 
 lm=tgmed
-am=exp/chain_cleaned/tdnn_1d_sp
-testset=test_clean
+am=exp/chain_online_cmn/tdnn1k_sp
+testset=dev_clean_2
 
-# %WER 4.86 [ 2553 / 52576, 315 ins, 222 del, 2016 sub ] exp/chain_cleaned/tdnn_1d_sp/decode_test_clean_lookahead/wer_11_0.0
-# %WER 4.79 [ 2518 / 52576, 279 ins, 292 del, 1947 sub ] exp/chain_cleaned/tdnn_1d_sp/decode_test_clean_lookahead_arpa/wer_11_0.0
-# %WER 4.82 [ 2532 / 52576, 286 ins, 290 del, 1956 sub ] exp/chain_cleaned/tdnn_1d_sp/decode_test_clean_lookahead_arpa_fast/wer_11_0.0
-# %WER 4.86 [ 2553 / 52576, 314 ins, 222 del, 2017 sub ] exp/chain_cleaned/tdnn_1d_sp/decode_test_clean_lookahead_base/wer_11_0.0
-# %WER 4.86 [ 2553 / 52576, 315 ins, 222 del, 2016 sub ] exp/chain_cleaned/tdnn_1d_sp/decode_test_clean_lookahead_static/wer_11_0.0
-
+# %WER 10.32 [ 2078 / 20138, 201 ins, 275 del, 1602 sub ] exp/chain_online_cmn/tdnn1k_sp/decode_dev_clean_2_lookahead_base/wer_10_0.5
+# %WER 10.29 [ 2073 / 20138, 200 ins, 272 del, 1601 sub ] exp/chain_online_cmn/tdnn1k_sp/decode_dev_clean_2_lookahead_static/wer_10_0.5
+# %WER 10.25 [ 2064 / 20138, 192 ins, 277 del, 1595 sub ] exp/chain_online_cmn/tdnn1k_sp/decode_dev_clean_2_lookahead/wer_10_0.5
+# %WER 10.24 [ 2063 / 20138, 187 ins, 290 del, 1586 sub ] exp/chain_online_cmn/tdnn1k_sp/decode_dev_clean_2_lookahead_arpa/wer_10_0.5
+# %WER 10.29 [ 2072 / 20138, 228 ins, 242 del, 1602 sub ] exp/chain_online_cmn/tdnn1k_sp/decode_dev_clean_2_lookahead_arpa_fast/wer_9_0.5
 
 # Speed
 #
-# base       0.18 xRT
-# static     0.18 xRT
-# lookahead  0.29 xRT
-# arpa       0.35 xRT
-# arpa_fast  0.21 xRT
+# base       0.29 xRT
+# static     0.31 xRT
+# lookahead  0.77 xRT
+# arpa       1.03 xRT
+# arpa_fast  0.31 xRT
 
 # Graph size
 #
-# Base                 476 Mb
-# Static               621 Mb
-# Lookahead            48 Mb HCL + 77 Mb Grammar
-# Lookahead + OpenGrm  48 Mb HCL + 42 Mb Grammar
+# Base                 461 Mb
+# Static               587 Mb
+# Lookahead            44 Mb HCL + 77 Mb Grammar
+# Lookahead + OpenGrm  44 Mb HCL + 42 Mb Grammar
 
 if [ ! -f "${KALDI_ROOT}/tools/openfst/lib/libfstlookahead.so" ]; then
     echo "Missing ${KALDI_ROOT}/tools/openfst/lib/libfstlookahead.so"
@@ -51,7 +50,7 @@ utils/mkgraph.sh --self-loop-scale 1.0 --remove-oov \
 
 steps/nnet3/decode.sh --nj 20 \
     --acwt 1.0 --post-decode-acwt 10.0 \
-    --online-ivector-dir exp/nnet3_cleaned/ivectors_${testset}_hires \
+    --online-ivector-dir exp/nnet3_online_cmn/ivectors_${testset}_hires \
     ${am}/graph_${lm}_lookahead_base data/${testset}_hires ${am}/decode_${testset}_lookahead_base
 
 utils/mkgraph_lookahead.sh --self-loop-scale 1.0 --remove-oov --compose-graph \
@@ -60,13 +59,13 @@ utils/mkgraph_lookahead.sh --self-loop-scale 1.0 --remove-oov --compose-graph \
 # Decode with statically composed lookahead graph
 steps/nnet3/decode.sh --nj 20 \
     --acwt 1.0 --post-decode-acwt 10.0 \
-    --online-ivector-dir exp/nnet3_cleaned/ivectors_${testset}_hires \
+    --online-ivector-dir exp/nnet3_online_cmn/ivectors_${testset}_hires \
     ${am}/graph_${lm}_lookahead data/${testset}_hires ${am}/decode_${testset}_lookahead_static
 
 # Decode with runtime composition
 steps/nnet3/decode_lookahead.sh --nj 20 \
     --acwt 1.0 --post-decode-acwt 10.0 \
-    --online-ivector-dir exp/nnet3_cleaned/ivectors_${testset}_hires \
+    --online-ivector-dir exp/nnet3_online_cmn/ivectors_${testset}_hires \
     ${am}/graph_${lm}_lookahead data/${testset}_hires ${am}/decode_${testset}_lookahead
 
 # Compile arpa graph
@@ -76,12 +75,12 @@ utils/mkgraph_lookahead.sh --self-loop-scale 1.0 --compose-graph \
 # Decode with runtime composition
 steps/nnet3/decode_lookahead.sh --nj 20 \
     --acwt 1.0 --post-decode-acwt 10.0 \
-    --online-ivector-dir exp/nnet3_cleaned/ivectors_${testset}_hires \
+    --online-ivector-dir exp/nnet3_online_cmn/ivectors_${testset}_hires \
     ${am}/graph_${lm}_lookahead_arpa data/${testset}_hires ${am}/decode_${testset}_lookahead_arpa
 
 # Decode with runtime composition and tuned beams
 steps/nnet3/decode_lookahead.sh --nj 20 \
     --beam 12.0 --max-active 3000 \
     --acwt 1.0 --post-decode-acwt 10.0 \
-    --online-ivector-dir exp/nnet3_cleaned/ivectors_${testset}_hires \
+    --online-ivector-dir exp/nnet3_online_cmn/ivectors_${testset}_hires \
     ${am}/graph_${lm}_lookahead_arpa data/${testset}_hires ${am}/decode_${testset}_lookahead_arpa_fast
