@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. path.sh
+. ./path.sh
 
 # Example script for lookahead composition
 
