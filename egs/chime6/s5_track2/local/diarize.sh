@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright   2019   David Snyder
 #             2020   Desh Raj
+
 # Apache 2.0.
 #
 # This script takes an input directory that has a segments file (and
