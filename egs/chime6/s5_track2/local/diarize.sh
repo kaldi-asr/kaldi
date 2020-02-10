@@ -10,8 +10,6 @@
 stage=0
 nj=10
 cmd="run.pl"
-array_ids=
-session_ids=
 ref_rttm=
 
 echo "$0 $@"  # Print the command line for logging
@@ -87,12 +85,21 @@ if [ $stage -le 4 ]; then
   echo "$0: wrote RTTM to output directory ${out_dir}"
 fi
 
+hyp_rttm=${out_dir}/rttm
+
 # For scoring the diarization system, we use the same tool that was
 # used in the DIHARD II challenge. This is available at:
 # https://github.com/nryant/dscore
+# Note that the scoring takes a single reference RTTM and a single
+# hypothesis RTTM.
 if [ $stage -le 5 ]; then
   # If a reference RTTM file is not provided, we create one using the backed up
   # segments and utt2spk files in the original data directory.
+  if [ -z "$ref_rttm" ]; then
+    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/$name/utt2spk.bak \
+      data/$name/segments.bak data/$name/rttm
+    ref_rttm=data/$name/rttm
+  fi
   echo "Diarization results for "${name}
   if ! [ -d dscore ]; then
     git clone https://github.com/nryant/dscore.git || exit 1;
@@ -100,28 +107,10 @@ if [ $stage -le 5 ]; then
     python -m pip install --user -r requirements.txt
     cd ..
   fi
-  mkdir -p $out_dir/scoring
-  for session in ${session_ids}; do
-    ref_rttm_path=$out_dir/scoring/rttm_ref.$session
-    grep "$session" $ref_rttm > $ref_rttm_path
-    if ! [ -s $ref_rttm_path ]; then
-      rm $ref_rttm_path
-      continue
-    fi
-    for array in ${array_ids}; do
-      hyp_rttm_path=$out_dir/scoring/rttm_hyp.${session}_${array}
-      grep ${session}_${array} ${out_dir}/rttm > $hyp_rttm_path
-      if ! [ -s $hyp_rttm_path ]; then
-        rm $hyp_rttm_path
-        continue
-      fi
-      echo "${session}_${array}"
-      sed 's/_U0[1-6]//g' $ref_rttm_path > $ref_rttm_path.scoring
-      sed 's/_U0[1-6]//g' $hyp_rttm_path > $hyp_rttm_path.scoring
-      ref_rttm_full=$(readlink -f ${ref_rttm_path}.scoring)
-      hyp_rttm_full=$(readlink -f ${hyp_rttm_path}.scoring)
-      cd dscore && python score.py -r $ref_rttm_full -s $hyp_rttm_full && cd .. || exit 1;
-    done
-  done
+  sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
+  sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
+  ref_rttm_path=$(readlink -f ${ref_rttm}.scoring)
+  hyp_rttm_path=$(readlink -f ${hyp_rttm}.scoring)
+  cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path && cd .. || exit 1;
 fi
 

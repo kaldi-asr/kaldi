@@ -33,10 +33,6 @@ enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
 train_set=train_worn_simu_u400k
 test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
 
-# arrays and sessions for which we compute results
-array_ids="U01 U02 U03 U04 U05 U06"
-session_ids="S01 S02 S09 S21"
-
 . ./utils/parse_options.sh
 
 . ./cmd.sh
@@ -181,7 +177,6 @@ fi
 if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
     local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --array-ids "${array_ids}" --session-ids "${session_ids}" \
       --ref-rttm data/${datadir}_${nnet_type}_seg/ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
