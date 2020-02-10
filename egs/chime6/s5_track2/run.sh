@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Chime-6 Track 2 baseline. Based mostly on the Chime-5 recipe, with the exception
 # that we are required to perform speech activity detection and speaker

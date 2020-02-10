@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # run_tdnn_1d.sh is like run_tdnn_1b.sh but using 10 times the self-repair

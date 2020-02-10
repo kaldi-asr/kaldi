@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5u is as _5o but modifying the mfcc generation to use a narrower window while
 # generating the lower-order mfcc coefficients (the first 10).

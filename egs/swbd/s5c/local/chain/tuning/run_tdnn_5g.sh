@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5g is as _5e, but adding one statistics-extraction layer to the
 # splice indexes, in the middle of the network (with both mean

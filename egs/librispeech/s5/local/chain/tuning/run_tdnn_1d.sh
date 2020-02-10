@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # 1d is as 1c but a recipe based on the newer, more compact configs, and with

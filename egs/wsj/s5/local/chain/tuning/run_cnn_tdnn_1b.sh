@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # 1b is like 1a, but converting the batch-norm layers in all but the CNN

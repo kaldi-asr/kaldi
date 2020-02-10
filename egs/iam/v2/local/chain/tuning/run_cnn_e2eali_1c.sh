@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # e2eali_1c is the same as e2eali_1b but has fewer CNN layers, smaller
 # l2-regularize, more epochs and uses dropout.

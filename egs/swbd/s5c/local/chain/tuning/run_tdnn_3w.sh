@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3w is as _3t but instead of having a rectangular affine component in each
 # layer, making it square (700->600 not 1300->400), and introducing a new script

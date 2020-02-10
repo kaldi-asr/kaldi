@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3h is as _3g but using a different and hopefully better type of recurrence, using
 # steps/nnet3/make_jesus_configs_recurrent.py to create the configs.  This is more

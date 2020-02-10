@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 # AMI Corpus training data preparation 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_lstm_1k.sh is like run_tdnn_lstm_1e.sh but
 # added the per-frame dropout location 4 as paper:

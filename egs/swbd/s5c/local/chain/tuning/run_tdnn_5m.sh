@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5m is as _5e, but with a script change where we are randomizing
 # the frame shift a bit better.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is used for comparing decoding results between systems.
 # e.g. local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_{c,d}_sp

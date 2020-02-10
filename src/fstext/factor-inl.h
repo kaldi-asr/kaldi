@@ -219,32 +219,6 @@ void ExpandInputSequences(const std::vector<std::vector<I> > &sequences,
 }
 
 
-template<class Arc, class I>
-class RemoveSomeInputSymbolsMapper {
-public:
-  Arc operator ()(const Arc &arc_in) {
-    Arc ans = arc_in;
-    if (to_remove_set_.count(ans.ilabel) != 0) ans.ilabel = 0;  // remove this symbol
-    return ans;
-  }
-  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
-  MapSymbolsAction InputSymbolsAction() { return MAP_CLEAR_SYMBOLS; }
-  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
-  uint64 Properties(uint64 props) const {
-    // remove the following as we don't know now if any of them are true.
-    uint64 to_remove = kAcceptor|kNotAcceptor|kIDeterministic|kNonIDeterministic|
-        kNoEpsilons|kNoIEpsilons|kILabelSorted|kNotILabelSorted;
-    return props & ~to_remove;
-  }
-  RemoveSomeInputSymbolsMapper(const std::vector<I> &to_remove):
-      to_remove_set_(to_remove) {
-    KALDI_ASSERT_IS_INTEGER_TYPE(I);
-         assert(to_remove_set_.count(0) == 0);  // makes no sense to remove epsilon.
-       }
-private:
-  kaldi::ConstIntegerSet<I> to_remove_set_;
-};
-
 
 template<class Arc, class I>
 void CreateFactorFst(const std::vector<std::vector<I> > &sequences,

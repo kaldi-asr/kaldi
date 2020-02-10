@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 6x is as 6w, but changing the splice-indexes to be like in 6u
 # except since this is a TDNN setup, we need a final "0" [the jesus-layer
