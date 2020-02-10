@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #adapted from fisher dict preparation script, Author: Pawel Swietojanski
 

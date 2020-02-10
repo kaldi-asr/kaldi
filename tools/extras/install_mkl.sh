@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Intel MKL is now freely available even for commercial use. This script
 # attempts to install the MKL package automatically from Intel's repository.

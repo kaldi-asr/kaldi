@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4v is as _4r, but with --xent-regularize 0.1.  Increasing max_param_change
 # from 1.0 to 2.0 because there is a lot of parameter change in the final xent

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright  2014  University of Edinburgh (Author: Pawel Swietojanski, Jonathan Kilgour)
 #            2015  Brno University of Technology (Author: Karel Vesely)
@@ -59,7 +59,7 @@ wgetfile=$wdir/wget_$mic.sh
 manifest="wget --continue -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
 license="wget --continue -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
 
-echo "#!/bin/bash" > $wgetfile
+echo "#!/usr/bin/env bash" > $wgetfile
 echo $manifest >> $wgetfile
 echo $license >> $wgetfile
 while read line; do

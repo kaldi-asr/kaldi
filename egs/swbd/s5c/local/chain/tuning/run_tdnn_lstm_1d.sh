@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # run_tdnn_lstm_1d.sh is like run_tdnn_lstm_1c.sh but making

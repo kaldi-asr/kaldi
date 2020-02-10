@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4f is as _4e, but halving the regularization from 0.0001 to 0.00005.
 

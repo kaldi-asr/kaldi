@@ -34,7 +34,6 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
     using fst::VectorFst;
-    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -76,7 +75,7 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
-    Fst<StdArc> *lex_fst = fst::ReadFstKaldiGeneric(lex_in_filename);
+    VectorFst<StdArc> *lex_fst = fst::ReadFstKaldi(lex_in_filename);
     // ownership will be taken by gc.
 
     std::vector<int32> disambig_syms;    

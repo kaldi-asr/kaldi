@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015-2016  Sarah Flora Juan
 # Copyright 2016  Johns Hopkins University (Author: Yenda Trmal)
 # Copyright 2016  Radboud University (Author: Emre Yilmaz)

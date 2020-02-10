@@ -52,7 +52,7 @@ class CudaOnlineCmvn {
 
  private:
   const OnlineCmvnOptions &opts_;
-  const CudaOnlineCmvnState &cmvn_state_;
+  const CudaOnlineCmvnState cmvn_state_;
 };
 }
 

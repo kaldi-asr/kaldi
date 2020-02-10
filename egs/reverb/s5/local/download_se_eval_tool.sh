@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2018 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
 # This script downloads the official REVERB challenge SE scripts and SRMR toolbox
 # This script also downloads and compiles PESQ

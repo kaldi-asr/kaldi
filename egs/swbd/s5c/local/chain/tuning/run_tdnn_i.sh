@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _i is as _h but longer egs: 150 frames instead of 75, and
 # 128 elements per minibatch instead of 256.

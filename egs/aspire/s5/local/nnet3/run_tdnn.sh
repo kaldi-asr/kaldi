@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is a script to train the nnet3 TDNN acoustic model
 

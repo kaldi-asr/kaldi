@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # RT-03 data preparation (conversational telephone speech part only)
 # Adapted from Arnab Ghoshal's script for Hub-5 Eval 2000 by Peng Qi

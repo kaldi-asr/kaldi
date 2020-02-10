@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 2016 Modified by Takafumi Moriya at Tokyo Institute of Technology
 # for Japanese speech recognition using CSJ.

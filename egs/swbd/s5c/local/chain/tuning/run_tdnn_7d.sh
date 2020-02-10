@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 7d is as 7b, but changing the HMM context from triphone to left biphone.
 
