@@ -159,7 +159,6 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &X0) {
 void OnlineNaturalGradient::PreconditionDirections(
     CuMatrixBase<BaseFloat> *X_t,
     BaseFloat *scale) {
-  NVTX_RANGE(__func__);
   if (X_t->NumCols() == 1) {
     // If the dimension of the space equals one then our natural gradient update
     // with rescaling becomes a no-op, but the code wouldn't naturally handle it
