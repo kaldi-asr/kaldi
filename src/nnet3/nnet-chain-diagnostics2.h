@@ -103,6 +103,11 @@ void RecomputeStats2(const std::string &lang_name, std::vector<NnetChainExample>
                     NnetChainModel2 &model,
                     Nnet *nnet);
 
+void RecomputeStats2(std::vector<std::pair<std::string, NnetChainExample> > &egs,
+                    const chain::ChainTrainingOptions &chain_config_in,
+                    NnetChainModel2 &model,
+                    Nnet *nnet);
+
 void RecomputeStats2(std::vector<NnetChainExample> &egs,
                     const chain::ChainTrainingOptions &chain_config_in,
                     NnetChainModel2 &model,
