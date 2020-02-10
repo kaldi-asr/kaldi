@@ -159,6 +159,7 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &X0) {
 void OnlineNaturalGradient::PreconditionDirections(
     CuMatrixBase<BaseFloat> *X_t,
     BaseFloat *scale) {
+  NVTX_RANGE(__func__);
   if (X_t->NumCols() == 1) {
     // If the dimension of the space equals one then our natural gradient update
     // with rescaling becomes a no-op, but the code wouldn't naturally handle it
@@ -491,7 +492,6 @@ void OnlineNaturalGradient::ComputeWt1(int32 N,
                                        const CuMatrixBase<BaseFloat> &W_t,
                                        CuMatrixBase<BaseFloat> *J_t,
                                        CuMatrixBase<BaseFloat> *W_t1) const {
-  NVTX_RANGE(__func__);
 
   int32 R = d_t.Dim(), D = W_t.NumCols();
   BaseFloat eta = Eta(N);
@@ -533,7 +533,6 @@ void OnlineNaturalGradient::ComputeZt(int32 N,
                                      const MatrixBase<BaseFloat> &K_t,
                                      const MatrixBase<BaseFloat> &L_t,
                                      SpMatrix<double> *Z_t) const {
-  NVTX_RANGE(__func__);
   // Use doubles because the range of quantities in Z_t can get large (fourth
   // power of data), and we want to avoid overflow.  This routine is fast.
   BaseFloat eta = Eta(N);
@@ -563,7 +562,6 @@ void OnlineNaturalGradient::ComputeEt(const VectorBase<BaseFloat> &d_t,
                                      VectorBase<BaseFloat> *e_t,
                                      VectorBase<BaseFloat> *sqrt_e_t,
                                      VectorBase<BaseFloat> *inv_sqrt_e_t) const {
-  NVTX_RANGE(__func__);
   // e_{tii} = 1/(\beta_t/d_{tii} + 1)
   int32 D = d_t.Dim();
   const BaseFloat *d = d_t.Data();
