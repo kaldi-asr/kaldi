@@ -265,12 +265,12 @@ if [ $stage -le 11 ]; then
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2$ivector_to_append) dim=1024
-  relu-renorm-layer name=tdnn2 dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,2) dim=1024
-  relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,3) dim=1024
-  relu-renorm-layer name=tdnn6 input=Append(-7,2) dim=1024
+  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2$ivector_to_append) dim=450
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=450
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=450
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=450
+  relu-batchnorm-layer name=tdnn7 input=Append(-6,-3,0) dim=450
   relu-renorm-layer name=tdnn_bn dim=$bnf_dim
   # adding the layers for diffrent language's output
   # dummy output node
@@ -283,7 +283,7 @@ EOF
     num_targets=`tree-info $tree_dir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
 
     lang_name=${lang_list[${lang_index}]}
-    echo "relu-renorm-layer name=prefinal-affine-lang-${lang_name} input=tdnn_bn dim=1024"
+    echo "relu-renorm-layer name=prefinal-affine-lang-${lang_name} input=tdnn_bn dim=450 target-rms=0.5"
     echo "output-layer name=output-${lang_name} dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5"
     echo "output-layer name=output-${lang_name}-xent input=prefinal-affine-lang-${lang_name} dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5"
   done >> $dir/configs/network.xconfig
@@ -427,11 +427,17 @@ fi
 
 if [ $stage -le 19 ]; then
     echo "$0: Splitting models"
+    frame_subsampling_factor=`fgrep "frame_subsampling_factor" $dir/init/info.txt | awk '{print $2}'`
     for lang_index in `seq 0 $[$num_langs-1]`;do
         lang_name=${lang_list[$lang_index]}
-        mkdir $dir/${lang_name}
+       [[ ! -d $dir/${lang_name} ]] && mkdir $dir/${lang_name}
        nnet3-copy --edits="rename-node old-name=output new-name=output-dummy; rename-node old-name=output-${lang_name} new-name=output" \
            $dir/final.raw - | \
            nnet3-am-init $dir/init/${lang_name}_trans.mdl - $dir/${lang_name}/final.mdl
+       [[ ! -d $dir/${lang_name}/init ]] && mkdir $dir/${lang_name}/init
+       params="frame_subsampling_factor model_left_context model_right_context feat_dim left_context left_context_initial right_context right_context_final ivector_dim frames_per_chunk"
+       for param_name in $params; do
+            grep -m 1 "^$param_name " $dir/init/info.txt
+       done > $dir/${lang_name}/init/info.txt
     done
 fi
