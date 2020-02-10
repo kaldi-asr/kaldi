@@ -35,7 +35,7 @@ namespace nnet3 {
 // make a copy of 'nnet', set test modes on that and evaluate its objective.
 // Note: the object that prob_computer->nnet_ refers to should be 'nnet'.
 double ComputeObjf(bool batchnorm_test_mode, bool dropout_test_mode,
-                   std::vector<NnetChainExample> &egs, const Nnet &nnet,
+                   std::vector<std::pair<std::string, NnetChainExample> > &egs, const Nnet &nnet,
                    const chain::ChainTrainingOptions &chain_config,
                    NnetChainModel2 &model,
                    NnetChainComputeProb2 *prob_computer) {
@@ -52,10 +52,13 @@ double ComputeObjf(bool batchnorm_test_mode, bool dropout_test_mode,
                        chain_config, model, &prob_computer_test);
   } else {
     prob_computer->Reset();
-    std::vector<NnetChainExample>::iterator iter = egs.begin(),
+    std::vector<std::pair<std::string, NnetChainExample> >::iterator iter = egs.begin(),
                                                    end = egs.end();
-    for (; iter != end; ++iter)
-      prob_computer->Compute(*iter);
+    for (; iter != end; ++iter) {
+      std::string lang_name = "default";
+      ParseFromQueryString(iter->first, "lang", &lang_name);
+      prob_computer->Compute(lang_name, (*iter).second);
+    }
 
     double tot_weight = 0.0;
     double tot_objf = prob_computer->GetTotalObjective(&tot_weight);
@@ -154,7 +157,7 @@ int main(int argc, char *argv[]) {
     NnetChainComputeProb2 prob_computer(compute_prob_opts, chain_config,
         model, moving_average_nnet);
 
-    std::vector<NnetChainExample> egs;
+    std::vector<std::pair<std::string, NnetChainExample> > egs;
     egs.reserve(10000);  // reserve a lot of space to minimize the chance of
                          // reallocation.
 
@@ -162,7 +165,7 @@ int main(int argc, char *argv[]) {
       SequentialNnetChainExampleReader example_reader(
           valid_examples_rspecifier);
       for (; !example_reader.Done(); example_reader.Next())
-        egs.push_back(example_reader.Value());
+        egs.push_back(std::make_pair(example_reader.Key(), example_reader.Value()));
       KALDI_LOG << "Read " << egs.size() << " examples.";
       KALDI_ASSERT(!egs.empty());
     }

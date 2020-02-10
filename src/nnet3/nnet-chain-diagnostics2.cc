@@ -84,8 +84,8 @@ void NnetChainComputeProb2::Reset() {
 }
 
 void NnetChainComputeProb2::Compute(NnetChainExample &chain_eg) {
-    std::string default_lang = "default";
-    Compute(default_lang, chain_eg);
+    std::string lang_name = "default";
+    Compute(lang_name, chain_eg);
 }
 
 void NnetChainComputeProb2::Compute(const std::string &lang_key, NnetChainExample &chain_eg) {
@@ -101,12 +101,10 @@ void NnetChainComputeProb2::Compute(const std::string &lang_key, NnetChainExampl
   // regular objective.
   bool use_xent_regularization = (chain_config_.xent_regularize != 0.0),
       use_xent_derivative = false;
-  std::string lang_name = "default";
-  ParseFromQueryString(lang_key, "lang", &lang_name);
   for (size_t i = 0; i < chain_eg.outputs.size(); i++) {
     // there will normally be exactly one output , named "output"
       if(chain_eg.outputs[i].name.compare("output")==0) {
-          chain_eg.outputs[i].name = "output-" + lang_name;
+          chain_eg.outputs[i].name = "output-" + lang_key;
           break;
       }
   }
@@ -120,7 +118,7 @@ void NnetChainComputeProb2::Compute(const std::string &lang_key, NnetChainExampl
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet_, chain_eg.inputs);
   computer.Run();
-  this->ProcessOutputs(lang_name, chain_eg, &computer);
+  this->ProcessOutputs(lang_key, chain_eg, &computer);
   if (nnet_config_.compute_deriv)
     computer.Run();
 }
@@ -265,6 +263,31 @@ void RecomputeStats2(std::vector<NnetChainExample> &egs,
     RecomputeStats2("default", egs, chain_config_in, model, nnet);       
 }
 
+// TODO: Merge the next two functions. There is some duplication going on
+void RecomputeStats2(std::vector<std::pair<std::string, NnetChainExample> > &egs,
+                    const chain::ChainTrainingOptions &chain_config_in,
+                    NnetChainModel2 &model,
+                    Nnet *nnet) {
+  KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
+  chain::ChainTrainingOptions chain_config(chain_config_in);
+  if (HasXentOutputs2(*nnet) &&
+      chain_config.xent_regularize == 0) {
+    chain_config.xent_regularize = 0.1;
+  }
+  ZeroComponentStats(nnet);
+  NnetComputeProbOptions nnet_config;
+  nnet_config.store_component_stats = true;
+  NnetChainComputeProb2 prob_computer(nnet_config, chain_config, model, nnet);
+  std::vector<std::pair<std::string, NnetChainExample> >::iterator iter = egs.begin(),
+                                                   end = egs.end();
+   for (; iter != end; ++iter) {
+      std::string lang_name = "default";
+      ParseFromQueryString(iter->first, "lang", &lang_name);
+      prob_computer.Compute(lang_name, (*iter).second);
+   }
+  KALDI_LOG << "Done recomputing stats.";
+}
+
 // TODO: Note this only works for lang=default for now. So we will have to generalize this later
 void RecomputeStats2(const std::string &lang_name, std::vector<NnetChainExample> &egs,
                     const chain::ChainTrainingOptions &chain_config_in,
@@ -286,8 +309,7 @@ void RecomputeStats2(const std::string &lang_name, std::vector<NnetChainExample>
   nnet_config.store_component_stats = true;
   NnetChainComputeProb2 prob_computer(nnet_config, chain_config, model, nnet);
   for (size_t i = 0; i < egs.size(); i++)
-    prob_computer.Compute(egs[i]);
-  /* prob_computer.PrintTotalStats(); */
+    prob_computer.Compute(lang_name, egs[i]);
   KALDI_LOG << "Done recomputing stats.";
 }
 } // namespace nnet3
