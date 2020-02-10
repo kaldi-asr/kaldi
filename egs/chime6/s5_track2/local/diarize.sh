@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright   2019   David Snyder
+#             2020   Desh Raj
 # Apache 2.0.
 #
 # This script takes an input directory that has a segments file (and
@@ -9,6 +10,8 @@
 stage=0
 nj=10
 cmd="run.pl"
+array_ids=
+session_ids=
 ref_rttm=
 
 echo "$0 $@"  # Print the command line for logging
@@ -20,7 +23,6 @@ if [ $# != 3 ]; then
   echo "Options: "
   echo "  --nj <nj>                                        # number of parallel jobs."
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --ref-rttm <path to reference RTTM>              # if present, used to score output RTTM."
   exit 1;
 fi
 
@@ -91,24 +93,35 @@ fi
 if [ $stage -le 5 ]; then
   # If a reference RTTM file is not provided, we create one using the backed up
   # segments and utt2spk files in the original data directory.
-  if [ -z $ref_rttm ]; then
-    ref_rttm=data/$name/rttm
-    echo "$0: preparing ref RTTM file from segments and utt2spk"
-    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/$name/utt2spk.bak \
-      data/$name/segments.bak $ref_rttm
-  fi
-  sed 's/_U0[1-6]//g' $ref_rttm > ${ref_rttm}.scoring
-  sed 's/_U0[1-6]//g' $out_dir/rttm > ${out_dir}/rttm.scoring
-  ref_rttm_path=$(readlink -f ${ref_rttm}.scoring)
-  out_rttm_path=$(readlink -f $out_dir/rttm.scoring)
+  echo "Diarization results for "${name}
   if ! [ -d dscore ]; then
     git clone https://github.com/nryant/dscore.git || exit 1;
     cd dscore
     python -m pip install --user -r requirements.txt
     cd ..
   fi
-  cd dscore
-  python score.py -r $ref_rttm_path -s $out_rttm_path
-  cd ..
+  mkdir -p $out_dir/scoring
+  for session in ${session_ids}; do
+    ref_rttm_path=$out_dir/scoring/rttm_ref.$session
+    grep "$session" $ref_rttm > $ref_rttm_path
+    if ! [ -s $ref_rttm_path ]; then
+      rm $ref_rttm_path
+      continue
+    fi
+    for array in ${array_ids}; do
+      hyp_rttm_path=$out_dir/scoring/rttm_hyp.${session}_${array}
+      grep ${session}_${array} ${out_dir}/rttm > $hyp_rttm_path
+      if ! [ -s $hyp_rttm_path ]; then
+        rm $hyp_rttm_path
+        continue
+      fi
+      echo "${session}_${array}"
+      sed 's/_U0[1-6]//g' $ref_rttm_path > $ref_rttm_path.scoring
+      sed 's/_U0[1-6]//g' $hyp_rttm_path > $hyp_rttm_path.scoring
+      ref_rttm_full=$(readlink -f ${ref_rttm_path}.scoring)
+      hyp_rttm_full=$(readlink -f ${hyp_rttm_path}.scoring)
+      cd dscore && python score.py -r $ref_rttm_full -s $hyp_rttm_full && cd .. || exit 1;
+    done
+  done
 fi
 

@@ -12,7 +12,7 @@ nj=10
 decode_nj=10
 stage=0
 sad_stage=0
-diarizer_stage=1
+diarizer_stage=0
 decode_diarize_stage=0
 score_stage=0
 enhancement=beamformit
@@ -180,8 +180,9 @@ fi
 #######################################################################
 if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
-    local/diarize.sh --nj $decode_nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --array-ids ${array_ids} --session-ids ${session_ids} \
+    local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
+      --array-ids "${array_ids}" --session-ids "${session_ids}" \
+      --ref-rttm data/${datadir}_${nnet_type}_seg/ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
       exp/${datadir}_${nnet_type}_seg_diarization
