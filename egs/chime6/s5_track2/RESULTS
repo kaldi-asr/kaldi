@@ -9,9 +9,11 @@ Eval        5.6             5.9           11.5
 # The results for the remaining pipeline are only for array U06.
 
 # Diarization
-        DER       JER
-Dev     60.31     67.58
-Eval    61.80     71.29
+              DER       JER
+Dev (S02)    58.56     64.21
+Dev (S09)    68.42     78.55
+Eval (S01)   61.50     68.06
+Eval (S21)   64.20     75.72
 
 # ASR nnet3 tdnn+chain
 Dev:  U06 %WER 81.18 [ 58881 / 47798, 1638 ins, 30528 del, 15632 sub ]
