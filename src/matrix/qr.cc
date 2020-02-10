@@ -25,8 +25,6 @@
 #include "matrix/matrix-functions.h"
 #include "matrix/cblas-wrappers.h"
 
-#include "cudamatrix/cu-common.h"
-
 // This file contains an implementation of the Symmetric QR Algorithm
 // for the symmetric eigenvalue problem.  See Golub and Van Loan,
 // 3rd ed., Algorithm 8.3.3.
@@ -450,6 +448,7 @@ void SpMatrix<Real>::Eig(VectorBase<Real> *s, MatrixBase<Real> *P) const {
   if(P) P->Transpose();
   s->CopyDiagFromPacked(A);
 }
+
 
 template<typename Real>
 void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,

@@ -1066,6 +1066,10 @@ inline __device__ void myAtomicAdd(double *address, double val) {
 #define myAtomicAdd(a, b) atomicAdd(a, b)
 #endif  // __CUDA_ARCH__
 
+// Kernel to compute tr(AB^T) and store result in GPU memory.
+// Each block computes a partial sum and adds to result atomicaly.
+// Order of computation is not guaranteed, but this doesn't affect
+// accuracy significantly.
 template <typename Real, int THREADS_X, int THREADS_Y, int veclen, int unroll_count>
 __global__ void _trace_mat_mat_trans_atomic(Real * result,
                                             const Real * A, const Real * B,
@@ -1129,6 +1133,8 @@ __global__ void _trace_mat_mat_trans_atomic(Real * result,
       myAtomicAdd(result, aggregate);
 }
 
+// Specialization of the above kernel to case when A and B are
+// the same matrices.
 template <typename Real, int THREADS_X, int THREADS_Y, int veclen, int unroll_count>
 __global__ void _frobenius_norm_atomic(Real * result,
                                        const Real * A,
@@ -1191,7 +1197,7 @@ void trace_mat_mat_trans_atomic(Real *d_result,
                                 const Real *A, const Real *B,
                                 MatrixDim dA, int B_stride,
                                 cudaStream_t stream) {
-  // cudaMemsetAsync(d_result, 0, sizeof(float), stream);
+  // Assuming *d_result is set to zero already
 
   constexpr int THREADS_X = 32;
   constexpr int THREADS_Y = 16;
@@ -1244,11 +1250,6 @@ void trace_mat_mat_trans_atomic(Real *d_result,
     }
   }
 
-  // Real result;
-  // cudaMemcpyAsync(&result, d_result, sizeof(Real), cudaMemcpyDeviceToHost, stream);
-  // cudaStreamSynchronize(stream);
-
-  // return result;
 }
 
 // _trace_mat_mat_trans reduce the partial sum to
@@ -1968,7 +1969,7 @@ template <EnumTransformReduce TransReduceType, typename Real, int unroll_count>
 __global__ void _strided_reduction_fused_kernel(Real * __restrict__ dots, const Real * __restrict__ data,
                                                 void * __restrict__ scratch, const MatrixDim d,
                                                 const TransReduceOp<TransReduceType, Real> op) {
-  // Tihis kernel assuming blockDim.x == warpSize
+  // This kernel assuming blockDim.x == warpSize
   Real thread_data = op.InitValue();
   int colStart = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -2051,7 +2052,6 @@ __global__ void _strided_reduction_fused_kernel(Real * __restrict__ dots, const 
     if (colStart < d.cols) {
       myAtomicReduce(reduce + colStart, thread_data, op);
     }
-    // __syncwarp(); // For Volta+ independent thread scheduling
 
     if (threadIdx.x == 0) {
       // Mark arrived
@@ -4437,12 +4437,6 @@ void cudaF_add_row_sum_mat(float* result, const float* mat, void* scratch,
                            const float beta) {
   _strided_reduction_fused(result, mat, scratch, d, alpha, beta);
 }
-// void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
-//                            const MatrixDim d, const float alpha,
-//                            const float beta) {
-//   _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
-//       TransReduceOp<SUMAB, float>(alpha, beta));
-// }
 void cudaF_add_col_sum_mat(int Gr, int Bl, float* result, const float* mat,
                            const MatrixDim d, const float alpha,
                            const float beta) {
@@ -4490,7 +4484,6 @@ void cudaF_vec_max(int Gr, int Bl, const float* v, float* value, int dim,
 
 void cudaF_trace_mat_mat_trans(const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value) {
-  // _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
   trace_mat_mat_trans_atomic(value, A, B, dA, B_stride, cudaStreamPerThread);
 }
 
@@ -5159,12 +5152,6 @@ void cudaD_add_row_sum_mat(double* result, const double* mat, void* scratch,
                            const double beta) {
   _strided_reduction_fused(result, mat, scratch, d, alpha, beta);
 }
-// void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
-//                            const MatrixDim d, const double alpha,
-//                            const double beta) {
-//   _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
-//       TransReduceOp<SUMAB, double>(alpha, beta));
-// }
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,
                            const double beta) {
@@ -5203,7 +5190,6 @@ void cudaD_vec_max(int Gr, int Bl, const double* v, double* value, int dim,
 void cudaD_trace_mat_mat_trans(const double* A,
                                const double* B, MatrixDim dA, int B_stride,
                                double* value) {
-  // _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
   trace_mat_mat_trans_atomic(value, A, B, dA, B_stride, cudaStreamPerThread);
 }
 

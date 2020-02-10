@@ -89,7 +89,6 @@ inline int MachineIsLittleEndian() {
 // to sleep for a possibly fractional
 // number of seconds.  On Windows it's only accurate to microseconds.
 void Sleep(float seconds);
-
 }
 
 #define KALDI_SWAP8(a) { \
