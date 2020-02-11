@@ -257,6 +257,9 @@ if [ $stage -le 11 ]; then
     ivector_node_xconfig="input dim=$ivector_dim name=ivector"
     ivector_to_append=", ReplaceIndex(ivector, t, 0)"
   fi
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
+  dummy_tree_dir=${multi_ali_treedirs[0]}
+  num_targets=`tree-info $dummy_tree_dir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
   cat <<EOF > $dir/configs/network.xconfig
   $ivector_node_xconfig
   input dim=$feat_dim name=input
@@ -274,8 +277,8 @@ if [ $stage -le 11 ]; then
   relu-renorm-layer name=tdnn_bn dim=$bnf_dim
   # adding the layers for diffrent language's output
   # dummy output node
-  output-layer name=output dim=10 max-change=1.5
-  output-layer name=output-xent input=tdnn_bn dim=10 learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output dim=$num_targets max-change=1.5
+  output-layer name=output-xent input=tdnn_bn dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   # added separate outptut layer and softmax for all languages.
   for lang_index in `seq 0 $[$num_langs-1]`;do
