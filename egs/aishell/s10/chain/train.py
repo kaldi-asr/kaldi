@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2019-2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2019-2020 JD AI, Beijing, China (author: Lu Fan)
 # Apache 2.0
 
 import logging
@@ -100,15 +101,28 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
                     total_objf / total_weight, total_frames,
                     objf_l2_term_weight[0].item() /
                     objf_l2_term_weight[2].item(), num_frames, current_epoch))
+            log_norm = ["{}: {:.4f}".format(name, torch.norm(parms)) \ 
+                        for name, parms in model.named_parameters() \
+                        if "affine" in name or "linear" in name]
+            logging.info("Process {}/{}({:.6f}%) l2-norm is:[ {} ]".format(batch_idx, 
+                        len(dataloader), float(batch_idx) / len(dataloader) * 100), 
+                        " ".join(log_norm))
 
         if batch_idx % 100 == 0:
+            current_iter = batch_idx + current_epoch * len(dataloader)
             tf_writer.add_scalar('train/global_average_objf',
                                  total_objf / total_weight,
-                                 batch_idx + current_epoch * len(dataloader))
+                                 current_iter)
             tf_writer.add_scalar(
                 'train/current_batch_average_objf',
                 objf_l2_term_weight[0].item() / objf_l2_term_weight[2].item(),
-                batch_idx + current_epoch * len(dataloader))
+                current_iter)
+            for name, parms in model.named_parameters():
+                tf_writer.add_histogram(f'train/norm/{name}', 
+                    parms.clone().cpu().data.numpy(),
+                    current_iter)
+                tf_writer.add_scalar(f'train/l2_norm/{name}', torch.norm(parms),
+                    current_iter)
 
     return total_objf / total_weight
 
@@ -142,8 +156,7 @@ def main():
                             lda_mat_filename=args.lda_mat_filename,
                             hidden_dim=args.hidden_dim,
                             bottleneck_dim=args.bottleneck_dim,
-                            time_stride_list=args.time_stride_list,
-                            conv_stride_list=args.conv_stride_list)
+                            time_stride_list=args.time_stride_list)
 
     start_epoch = 0
     num_epochs = args.num_epochs

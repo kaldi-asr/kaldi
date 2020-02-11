@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2020 JD AI, Beijing, China (author: Lu Fan)
 # Apache 2.0
 
 set -e
@@ -33,7 +34,6 @@ lr=1e-3
 hidden_dim=1024
 bottleneck_dim=128
 time_stride_list="1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
-conv_stride_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning
 
@@ -164,7 +164,6 @@ if [[ $stage -le 8 ]]; then
   python3 ./chain/train.py \
     --bottleneck-dim $bottleneck_dim \
     --checkpoint=${train_checkpoint:-} \
-    --conv-stride-list "$conv_stride_list" \
     --device-id $device_id \
     --dir exp/chain/train \
     --feat-dim $feat_dim \
@@ -194,7 +193,6 @@ if [[ $stage -le 9 ]]; then
       python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
-        --conv-stride-list "$conv_stride_list" \
         --device-id $device_id \
         --dir exp/chain/inference/$x \
         --feat-dim $feat_dim \

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2019-2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2019-2020 JD AI, Beijing, China (author: Lu Fan)
 # Apache 2.0
 
 import logging
@@ -20,14 +21,13 @@ def get_chain_model(feat_dim,
                     hidden_dim,
                     bottleneck_dim,
                     time_stride_list,
-                    conv_stride_list,
                     lda_mat_filename=None):
     model = ChainModel(feat_dim=feat_dim,
                        output_dim=output_dim,
                        lda_mat_filename=lda_mat_filename,
                        hidden_dim=hidden_dim,
-                       time_stride_list=time_stride_list,
-                       conv_stride_list=conv_stride_list)
+                       bottleneck_dim=bottleneck_dim,
+                       time_stride_list=time_stride_list)
     return model
 
 
@@ -72,15 +72,14 @@ class ChainModel(nn.Module):
                  lda_mat_filename=None,
                  hidden_dim=1024,
                  bottleneck_dim=128,
-                 time_stride_list=[1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-                 conv_stride_list=[1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1],
+                 time_stride_list=[1, 1, 1, 0, 3, 3, 3, 3, 3, 3, 3, 3],
                  frame_subsampling_factor=3):
         super().__init__()
 
         # at present, we support only frame_subsampling_factor to be 3
         assert frame_subsampling_factor == 3
-
-        assert len(time_stride_list) == len(conv_stride_list)
+        self.frame_subsampling_factor = frame_subsampling_factor
+        self.time_stride_list = time_stride_list
         num_layers = len(time_stride_list)
 
         # tdnn1_affine requires [N, T, C]
@@ -93,11 +92,9 @@ class ChainModel(nn.Module):
         tdnnfs = []
         for i in range(num_layers):
             time_stride = time_stride_list[i]
-            conv_stride = conv_stride_list[i]
             layer = FactorizedTDNN(dim=hidden_dim,
                                    bottleneck_dim=bottleneck_dim,
-                                   time_stride=time_stride,
-                                   conv_stride=conv_stride)
+                                   time_stride=time_stride)
             tdnnfs.append(layer)
 
         # tdnnfs requires [N, C, T]
@@ -105,8 +102,7 @@ class ChainModel(nn.Module):
 
         # prefinal_l affine requires [N, C, T]
         self.prefinal_l = OrthonormalLinear(dim=hidden_dim,
-                                            bottleneck_dim=bottleneck_dim * 2,
-                                            time_stride=0)
+                                            bottleneck_dim=bottleneck_dim * 2)
 
         # prefinal_chain requires [N, C, T]
         self.prefinal_chain = PrefinalLayer(big_dim=hidden_dim,
@@ -174,6 +170,13 @@ class ChainModel(nn.Module):
         # tdnnf requires input of shape [N, C, T]
         for i in range(len(self.tdnnfs)):
             x = self.tdnnfs[i](x)
+            # stride manually, do not stride context
+            if self.tdnnfs[i].time_stride == 0:
+                cur_context = sum(self.time_stride_list[i:])
+                x_left = x[:, :, :cur_context]
+                x_mid = x[:, :, cur_context:-cur_context:self.frame_subsampling_factor]
+                x_right = x[:, :, -cur_context:]
+                x = torch.cat([x_left, x_mid, x_right], dim=2)
 
         # at this point, x is [N, C, T]
 

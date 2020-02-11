@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2020 JD AI, Beijing, China (author: Lu Fan)
 # Apache 2.0
 
 import argparse
@@ -134,14 +135,7 @@ def _check_args(args):
     assert args.time_stride_list is not None
     assert len(args.time_stride_list) > 0
 
-    assert args.conv_stride_list is not None
-    assert len(args.conv_stride_list) > 0
-
     args.time_stride_list = [int(k) for k in args.time_stride_list.split(', ')]
-
-    args.conv_stride_list = [int(k) for k in args.conv_stride_list.split(', ')]
-
-    assert len(args.time_stride_list) == len(args.conv_stride_list)
 
     assert args.log_level in ['debug', 'info', 'warning']
 
@@ -205,12 +199,6 @@ def get_args():
     parser.add_argument('--time-stride-list',
                         dest='time_stride_list',
                         help='time stride list',
-                        required=True,
-                        type=str)
-
-    parser.add_argument('--conv-stride-list',
-                        dest='conv_stride_list',
-                        help='conv stride list',
                         required=True,
                         type=str)
 
