@@ -12,9 +12,11 @@ nj=10
 decode_nj=10
 stage=0
 sad_stage=0
+score_sad=true
 diarizer_stage=0
 decode_diarize_stage=0
 score_stage=0
+
 enhancement=beamformit
 
 # chime5 main directory path
@@ -126,55 +128,40 @@ if [ $stage -le 3 ]; then
       $test_set $sad_nnet_dir mfcc $sad_work_dir \
       data/${datadir} || exit 1
 
-    mv data/${datadir}_seg data/${datadir}_${nnet_type}_seg
-    mv data/${datadir}/{segments.bak,utt2spk.bak} data/${datadir}_${nnet_type}_seg
+    test_dir=data/${datadir}_${nnet_type}_seg
+    mv data/${datadir}_seg ${test_dir}/
+    mv data/${datadir}/{segments.bak,utt2spk.bak} ${test_dir}/
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
     # step.
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-      data/${datadir}_${nnet_type}_seg/utt2spk data/${datadir}_${nnet_type}_seg/segments \
-      data/${datadir}_${nnet_type}_seg/rttm
-  done
-fi
+      ${test_dir}/utt2spk ${test_dir}/segments ${test_dir}/rttm
 
-if [ $stage -le 4 ]; then
-  # In this stage we score the SAD output. Note that SAD scores
-  # will not be used for evaluation in the actual challenge, but
-  # this is just provided for reference.
-  for datadir in ${test_sets}; do
-    echo "SAD results for "${datadir}
-    test_dir=data/${datadir}_${nnet_type}_seg
-    mkdir -p $test_dir/scoring
-    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
-      ${test_dir}/segments.bak ${test_dir}/ref_rttm
-    for session in ${session_ids}; do
-      ref_rttm_path=$test_dir/scoring/rttm_ref.$session
-      grep "$session" ${test_dir}/ref_rttm > $ref_rttm_path
-      if ! [ -s $ref_rttm_path ]; then
-        rm $ref_rttm_path
-        continue
-      fi
-      for array in ${array_ids}; do
-        hyp_rttm_path=$test_dir/scoring/rttm_hyp.${session}_${array}
-        grep ${session}_${array} data/${datadir}_${nnet_type}_seg/rttm > $hyp_rttm_path
-        if ! [ -s $hyp_rttm_path ]; then
-          rm $hyp_rttm_path
-          continue
-        fi
-        echo "${session}_${array}"
-        sed 's/_U0[1-6]//g' $ref_rttm_path > $ref_rttm_path.scoring
-        sed 's/_U0[1-6]//g' $hyp_rttm_path > $hyp_rttm_path.scoring
-        md-eval.pl -1 -c 0.25 -r $ref_rttm_path.scoring -s $hyp_rttm_path.scoring |\
-          awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
-      done
-    done
+    if [ $score_sad == "true" ]; then
+      echo "Scoring $datadir.."
+      # We first generate the reference RTTM from the backed up utt2spk and segments
+      # files. 
+      ref_rttm=${test_dir}/ref_rttm
+      steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
+        ${test_dir}/segments.bak ${test_dir}/ref_rttm
+
+      # To score, we select just U06 segments from the hypothesis RTTM.
+      hyp_rttm=${test_dir}/rttm.U06
+      grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
+      echo "Array U06 selected for scoring.."
+
+      sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
+      sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
+      md-eval.pl -1 -c 0.25 -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
+        awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
+    fi
   done
 fi
 
 #######################################################################
 # Perform diarization on the dev/eval data
 #######################################################################
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
     local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm data/${datadir}_${nnet_type}_seg/ref_rttm \
@@ -187,7 +174,7 @@ fi
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang \
@@ -199,7 +186,7 @@ fi
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   # final scoring to get the challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
