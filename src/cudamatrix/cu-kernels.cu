@@ -1205,10 +1205,18 @@ void trace_mat_mat_trans_atomic(Real *d_result,
   dim3 thrds(THREADS_X, THREADS_Y);
 
   int veclen = 1;
-  if ( (dA.cols*sizeof(Real))%(4*sizeof(float)) == 0)
-    veclen = 4*sizeof(float)/sizeof(Real);
-  else if ( (dA.cols*sizeof(Real))%(2*sizeof(float)) == 0)
-    veclen = 2*sizeof(float)/sizeof(Real);
+  // Check for alignment before using vectorization
+  if ( ((uintptr_t)(const void *)A % 256 == 0 ) &&
+       ((uintptr_t)(const void *)B % 256 == 0 ) ) {
+    if ( (dA.cols*sizeof(Real))%(4*sizeof(float)) == 0)
+      veclen = 4*sizeof(float)/sizeof(Real);
+    else if ( (dA.cols*sizeof(Real))%(2*sizeof(float)) == 0)
+      veclen = 2*sizeof(float)/sizeof(Real);
+
+    // Ensure alignment of each row to vector length
+    while ((dA.stride%veclen != 0) || (B_stride%veclen != 0))
+      veclen /= 2;
+  }
 
   bool isSameAB = (A == B);
 
