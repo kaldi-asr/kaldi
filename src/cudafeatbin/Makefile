@@ -20,6 +20,7 @@ BINFILES = compute-mfcc-feats-cuda \
 						compute-fbank-feats-cuda \
 						apply-batched-cmvn-online-cuda \
 						compute-mfcc-online-batched-cuda \
+            compute-fbank-online-batched-cuda \
 						compute-online-feats-batched-cuda
 
 OBJFILES =
