@@ -33,8 +33,8 @@ lr=1e-3
 hidden_dim=1024
 bottleneck_dim=128
 prefinal_bottleneck_dim=256
-time_stride_list="1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
-conv_stride_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
+kernel_size_list="2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2" # comma separated list
+subsampling_factor_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning
 
@@ -165,16 +165,16 @@ if [[ $stage -le 8 ]]; then
   python3 ./chain/train.py \
     --bottleneck-dim $bottleneck_dim \
     --checkpoint=${train_checkpoint:-} \
-    --conv-stride-list "$conv_stride_list" \
     --device-id $device_id \
     --dir exp/chain/train \
     --feat-dim $feat_dim \
     --hidden-dim $hidden_dim \
     --is-training true \
+    --kernel-size-list "$kernel_size_list" \
     --log-level $log_level \
     --output-dim $output_dim \
     --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
-    --time-stride-list "$time_stride_list" \
+    --subsampling-factor-list "$subsampling_factor_list" \
     --train.cegs-dir exp/chain/merged_egs \
     --train.den-fst exp/chain/den.fst \
     --train.egs-left-context $egs_left_context \
@@ -196,20 +196,20 @@ if [[ $stage -le 9 ]]; then
       python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
-        --conv-stride-list "$conv_stride_list" \
         --device-id $device_id \
         --dir exp/chain/inference/$x \
         --feat-dim $feat_dim \
         --feats-scp data/mfcc_hires/$x/feats.scp \
         --hidden-dim $hidden_dim \
         --is-training false \
+        --kernel-size-list "$kernel_size_list" \
         --log-level $log_level \
         --model-left-context $model_left_context \
         --model-right-context $model_right_context \
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --save-as-compressed $save_nn_output_as_compressed \
-        --time-stride-list "$time_stride_list" || exit 1
+        --subsampling-factor-list "$subsampling_factor_list" || exit 1
     fi
   done
 fi

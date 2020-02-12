@@ -132,17 +132,17 @@ def _check_args(args):
     assert args.bottleneck_dim > 0
     assert args.prefinal_bottleneck_dim > 0
 
-    assert args.time_stride_list is not None
-    assert len(args.time_stride_list) > 0
+    assert args.kernel_size_list is not None
+    assert len(args.kernel_size_list) > 0
 
-    assert args.conv_stride_list is not None
-    assert len(args.conv_stride_list) > 0
+    assert args.subsampling_factor_list is not None
+    assert len(args.subsampling_factor_list) > 0
 
-    args.time_stride_list = [int(k) for k in args.time_stride_list.split(', ')]
+    args.kernel_size_list = [int(k) for k in args.kernel_size_list.split(', ')]
 
-    args.conv_stride_list = [int(k) for k in args.conv_stride_list.split(', ')]
+    args.subsampling_factor_list = [int(k) for k in args.subsampling_factor_list.split(', ')]
 
-    assert len(args.time_stride_list) == len(args.conv_stride_list)
+    assert len(args.kernel_size_list) == len(args.subsampling_factor_list)
 
     assert args.log_level in ['debug', 'info', 'warning']
 
@@ -209,15 +209,15 @@ def get_args():
                         required=True,
                         type=int)
 
-    parser.add_argument('--time-stride-list',
-                        dest='time_stride_list',
-                        help='time stride list',
+    parser.add_argument('--kernel-size-list',
+                        dest='kernel_size_list',
+                        help='kernel_size_list',
                         required=True,
                         type=str)
 
-    parser.add_argument('--conv-stride-list',
-                        dest='conv_stride_list',
-                        help='conv stride list',
+    parser.add_argument('--subsampling-factor-list',
+                        dest='subsampling_factor_list',
+                        help='subsampling_factor_list',
                         required=True,
                         type=str)
 

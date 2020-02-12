@@ -20,8 +20,8 @@ def get_chain_model(feat_dim,
                     hidden_dim,
                     bottleneck_dim,
                     prefinal_bottleneck_dim,
-                    time_stride_list,
-                    conv_stride_list,
+                    kernel_size_list,
+                    subsampling_factor_list,
                     lda_mat_filename=None):
     model = ChainModel(feat_dim=feat_dim,
                        output_dim=output_dim,
@@ -29,8 +29,8 @@ def get_chain_model(feat_dim,
                        hidden_dim=hidden_dim,
                        bottleneck_dim=bottleneck_dim,
                        prefinal_bottleneck_dim=prefinal_bottleneck_dim,
-                       time_stride_list=time_stride_list,
-                       conv_stride_list=conv_stride_list)
+                       kernel_size_list=kernel_size_list,
+                       subsampling_factor_list=subsampling_factor_list)
     return model
 
 
@@ -76,16 +76,16 @@ class ChainModel(nn.Module):
                  hidden_dim=1024,
                  bottleneck_dim=128,
                  prefinal_bottleneck_dim=256,
-                 time_stride_list=[1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-                 conv_stride_list=[1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1],
+                 kernel_size_list=[2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2],
+                 subsampling_factor_list=[1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1],
                  frame_subsampling_factor=3):
         super().__init__()
 
         # at present, we support only frame_subsampling_factor to be 3
         assert frame_subsampling_factor == 3
 
-        assert len(time_stride_list) == len(conv_stride_list)
-        num_layers = len(time_stride_list)
+        assert len(kernel_size_list) == len(subsampling_factor_list)
+        num_layers = len(kernel_size_list)
 
         # tdnn1_affine requires [N, T, C]
         self.tdnn1_affine = nn.Linear(in_features=feat_dim * 3,
@@ -97,12 +97,12 @@ class ChainModel(nn.Module):
 
         tdnnfs = []
         for i in range(num_layers):
-            time_stride = time_stride_list[i]
-            conv_stride = conv_stride_list[i]
+            kernel_size = kernel_size_list[i]
+            subsampling_factor = subsampling_factor_list[i]
             layer = FactorizedTDNN(dim=hidden_dim,
                                    bottleneck_dim=bottleneck_dim,
-                                   time_stride=time_stride,
-                                   conv_stride=conv_stride)
+                                   kernel_size=kernel_size,
+                                   subsampling_factor=subsampling_factor)
             tdnnfs.append(layer)
 
         # tdnnfs requires [N, C, T]
@@ -112,7 +112,7 @@ class ChainModel(nn.Module):
         self.prefinal_l = OrthonormalLinear(
             dim=hidden_dim,
             bottleneck_dim=prefinal_bottleneck_dim,
-            time_stride=0)
+            kernel_size=1)
 
         # prefinal_chain requires [N, C, T]
         self.prefinal_chain = PrefinalLayer(big_dim=hidden_dim,
@@ -217,9 +217,14 @@ class ChainModel(nn.Module):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+                level=logging.DEBUG,
+                format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+            )
     feat_dim = 43
     output_dim = 4344
     model = ChainModel(feat_dim=feat_dim, output_dim=output_dim)
+    logging.info(model)
     N = 1
     T = 150 + 27 + 27
     C = feat_dim * 3

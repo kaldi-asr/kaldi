@@ -37,8 +37,8 @@ def main():
         hidden_dim=args.hidden_dim,
         bottleneck_dim=args.bottleneck_dim,
         prefinal_bottleneck_dim=args.prefinal_bottleneck_dim,
-        time_stride_list=args.time_stride_list,
-        conv_stride_list=args.conv_stride_list)
+        kernel_size_list=args.kernel_size_list,
+        subsampling_factor_list=args.subsampling_factor_list)
 
     load_checkpoint(args.checkpoint, model)
 
