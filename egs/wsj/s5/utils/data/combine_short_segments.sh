@@ -135,7 +135,6 @@ if [ -f $srcdir/utt2uniq ]; then
   # (in general, we take the lowest string in lexicographical order).
 
   cat $dir/uniq_sets | LC_ALL=C python -c '
-#!/usr/bin/env python
 import sys;
 from collections import defaultdict
 uniq2orig_uniq = dict()
