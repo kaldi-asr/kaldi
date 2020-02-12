@@ -113,11 +113,11 @@ class PrefinalLayer(nn.Module):
     def __init__(self, big_dim, small_dim):
         super().__init__()
         self.affine = nn.Linear(in_features=small_dim, out_features=big_dim)
-        self.batchnorm1 = nn.BatchNorm1d(num_features=big_dim)
+        self.batchnorm1 = nn.BatchNorm1d(num_features=big_dim, affine=False)
         self.linear = OrthonormalLinear(dim=big_dim,
                                         bottleneck_dim=small_dim,
                                         time_stride=0)
-        self.batchnorm2 = nn.BatchNorm1d(num_features=small_dim)
+        self.batchnorm2 = nn.BatchNorm1d(num_features=small_dim, affine=False)
 
     def forward(self, x):
         # x is [N, C, T]
@@ -186,7 +186,7 @@ class FactorizedTDNN(nn.Module):
                                 stride=conv_stride)
 
         # batchnorm requires [N, C, T]
-        self.batchnorm = nn.BatchNorm1d(num_features=dim)
+        self.batchnorm = nn.BatchNorm1d(num_features=dim, affine=False)
 
     def forward(self, x):
         # input x is of shape: [batch_size, feat_dim, seq_len] = [N, C, T]

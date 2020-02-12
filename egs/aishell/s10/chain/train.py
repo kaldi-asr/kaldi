@@ -110,6 +110,21 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
                 objf_l2_term_weight[0].item() / objf_l2_term_weight[2].item(),
                 batch_idx + current_epoch * len(dataloader))
 
+            state_dict = model.state_dict()
+            for key, value in state_dict.items():
+                # skip batchnorm parameters
+                if value.dtype != torch.float32:
+                    continue
+                if 'running_mean' in key or 'running_var' in key:
+                    continue
+
+                with torch.no_grad():
+                    frobenius_norm = torch.norm(value, p='fro')
+
+                tf_writer.add_scalar(
+                    'train/parameters/{}'.format(key), frobenius_norm,
+                    batch_idx + current_epoch * len(dataloader))
+
     return total_objf / total_weight
 
 
@@ -137,13 +152,15 @@ def main():
 
     den_graph = chain.DenominatorGraph(fst=den_fst, num_pdfs=args.output_dim)
 
-    model = get_chain_model(feat_dim=args.feat_dim,
-                            output_dim=args.output_dim,
-                            lda_mat_filename=args.lda_mat_filename,
-                            hidden_dim=args.hidden_dim,
-                            bottleneck_dim=args.bottleneck_dim,
-                            time_stride_list=args.time_stride_list,
-                            conv_stride_list=args.conv_stride_list)
+    model = get_chain_model(
+        feat_dim=args.feat_dim,
+        output_dim=args.output_dim,
+        lda_mat_filename=args.lda_mat_filename,
+        hidden_dim=args.hidden_dim,
+        bottleneck_dim=args.bottleneck_dim,
+        prefinal_bottleneck_dim=args.prefinal_bottleneck_dim,
+        time_stride_list=args.time_stride_list,
+        conv_stride_list=args.conv_stride_list)
 
     start_epoch = 0
     num_epochs = args.num_epochs
@@ -166,11 +183,12 @@ def main():
                                     egs_left_context=args.egs_left_context,
                                     egs_right_context=args.egs_right_context)
 
-    optimizer = optim.Adam(model.parameters(),
-                           lr=learning_rate,
-                           weight_decay=args.l2_regularize)
+    optimizer = optim.SGD(model.parameters(),
+                          lr=learning_rate,
+                          momentum=0.9,
+                          weight_decay=args.l2_regularize)
 
-    scheduler = MultiStepLR(optimizer, milestones=[1, 2, 3, 4, 5], gamma=0.5)
+    scheduler = MultiStepLR(optimizer, milestones=[1, 3, 5], gamma=0.5)
     criterion = KaldiChainObjfFunction.apply
 
     tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))

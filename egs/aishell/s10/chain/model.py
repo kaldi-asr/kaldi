@@ -19,6 +19,7 @@ def get_chain_model(feat_dim,
                     output_dim,
                     hidden_dim,
                     bottleneck_dim,
+                    prefinal_bottleneck_dim,
                     time_stride_list,
                     conv_stride_list,
                     lda_mat_filename=None):
@@ -26,6 +27,8 @@ def get_chain_model(feat_dim,
                        output_dim=output_dim,
                        lda_mat_filename=lda_mat_filename,
                        hidden_dim=hidden_dim,
+                       bottleneck_dim=bottleneck_dim,
+                       prefinal_bottleneck_dim=prefinal_bottleneck_dim,
                        time_stride_list=time_stride_list,
                        conv_stride_list=conv_stride_list)
     return model
@@ -72,6 +75,7 @@ class ChainModel(nn.Module):
                  lda_mat_filename=None,
                  hidden_dim=1024,
                  bottleneck_dim=128,
+                 prefinal_bottleneck_dim=256,
                  time_stride_list=[1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
                  conv_stride_list=[1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1],
                  frame_subsampling_factor=3):
@@ -88,7 +92,8 @@ class ChainModel(nn.Module):
                                       out_features=hidden_dim)
 
         # tdnn1_batchnorm requires [N, C, T]
-        self.tdnn1_batchnorm = nn.BatchNorm1d(num_features=hidden_dim)
+        self.tdnn1_batchnorm = nn.BatchNorm1d(num_features=hidden_dim,
+                                              affine=False)
 
         tdnnfs = []
         for i in range(num_layers):
@@ -104,23 +109,24 @@ class ChainModel(nn.Module):
         self.tdnnfs = nn.ModuleList(tdnnfs)
 
         # prefinal_l affine requires [N, C, T]
-        self.prefinal_l = OrthonormalLinear(dim=hidden_dim,
-                                            bottleneck_dim=bottleneck_dim * 2,
-                                            time_stride=0)
+        self.prefinal_l = OrthonormalLinear(
+            dim=hidden_dim,
+            bottleneck_dim=prefinal_bottleneck_dim,
+            time_stride=0)
 
         # prefinal_chain requires [N, C, T]
         self.prefinal_chain = PrefinalLayer(big_dim=hidden_dim,
-                                            small_dim=bottleneck_dim * 2)
+                                            small_dim=prefinal_bottleneck_dim)
 
         # output_affine requires [N, T, C]
-        self.output_affine = nn.Linear(in_features=bottleneck_dim * 2,
+        self.output_affine = nn.Linear(in_features=prefinal_bottleneck_dim,
                                        out_features=output_dim)
 
         # prefinal_xent requires [N, C, T]
         self.prefinal_xent = PrefinalLayer(big_dim=hidden_dim,
-                                           small_dim=bottleneck_dim * 2)
+                                           small_dim=prefinal_bottleneck_dim)
 
-        self.output_xent_affine = nn.Linear(in_features=bottleneck_dim * 2,
+        self.output_xent_affine = nn.Linear(in_features=prefinal_bottleneck_dim,
                                             out_features=output_dim)
 
         if lda_mat_filename:

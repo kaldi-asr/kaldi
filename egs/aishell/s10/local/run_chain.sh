@@ -32,6 +32,7 @@ lr=1e-3
 
 hidden_dim=1024
 bottleneck_dim=128
+prefinal_bottleneck_dim=256
 time_stride_list="1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 conv_stride_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 
@@ -172,6 +173,7 @@ if [[ $stage -le 8 ]]; then
     --is-training true \
     --log-level $log_level \
     --output-dim $output_dim \
+    --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
     --time-stride-list "$time_stride_list" \
     --train.cegs-dir exp/chain/merged_egs \
     --train.den-fst exp/chain/den.fst \
@@ -205,6 +207,7 @@ if [[ $stage -le 9 ]]; then
         --model-left-context $model_left_context \
         --model-right-context $model_right_context \
         --output-dim $output_dim \
+        --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --save-as-compressed $save_nn_output_as_compressed \
         --time-stride-list "$time_stride_list" || exit 1
     fi

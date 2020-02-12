@@ -130,6 +130,7 @@ def _check_args(args):
     assert args.output_dim > 0
     assert args.hidden_dim > 0
     assert args.bottleneck_dim > 0
+    assert args.prefinal_bottleneck_dim > 0
 
     assert args.time_stride_list is not None
     assert len(args.time_stride_list) > 0
@@ -199,6 +200,12 @@ def get_args():
     parser.add_argument('--bottleneck-dim',
                         dest='bottleneck_dim',
                         help='nn bottleneck dimension',
+                        required=True,
+                        type=int)
+
+    parser.add_argument('--prefinal-bottleneck-dim',
+                        dest='prefinal_bottleneck_dim',
+                        help='nn prefinal bottleneck dimension',
                         required=True,
                         type=int)
 
