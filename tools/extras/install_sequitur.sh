@@ -127,7 +127,7 @@ site_packages_dir=$(cd sequitur-g2p; find ./lib{,64} -type d -name site-packages
   wd=`readlink -f $wd || pwd`
 
   echo "export SEQUITUR=\"$wd/sequitur-g2p\""
-  echo "export PATH=\"\$PATH:\${SEQUITUR}/bin\""
+  echo "export PATH=\"\$PATH:\${SEQUITUR}\""
   echo "export PYTHONPATH=\"\${PYTHONPATH:-}:\$SEQUITUR/${site_packages_dir}\""
 ) >> env.sh
 
