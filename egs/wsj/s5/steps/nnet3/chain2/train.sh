@@ -50,7 +50,7 @@ shuffle_buffer_size=1000  # This "buffer_size" variable controls randomization o
 
 
 l2_regularize=
-multilingual_eg=
+multilingual_eg=false
 
 # End configuration section
 
@@ -115,7 +115,7 @@ echo "$0: will train for $num_epochs epochs = $num_iters iterations"
 # source the 1st line of schedule.txt in the shell; this sets
 # lrate and dropout_opt, among other variables.
 . <(head -n 1 $dir/schedule.txt)
-langs=$(awk '/^langs/ { $1=""; print; }' <$dir/init/info.txt)
+langs=$(awk '/^langs/ { $1=""; print; }' <$dir/init/info.txt | tail -1)
 num_langs=$(echo $langs | wc -w)
 
 mkdir -p $dir/log
@@ -127,12 +127,14 @@ if [ $stage -le -1 ]; then
   #     nnet3-am-copy  --learning-rate=$lrate $dropout_opt $dir/init/default.mdl $dir/0.mdl
   echo "$0: Copying transition model"
   if [ $num_langs -eq 1 ]; then
+      echo "$0: Num langs is 1"
       cp $dir/init/default.raw $dir/0.raw
+      if [ -f $dir/init/default_trans.mdl ]; then
+          cp $dir/init/default_trans.mdl $dir/0_trans.mdl 
+      fi
   else
+      echo "$0: Num langs is $num_langs"
       cp $dir/init/multi.raw $dir/0.raw
-  fi
-  if [ -f $dir/init/default_trans.mdl ]; then
-      cp $dir/init/default_trans.mdl $dir/0_trans.mdl 
   fi
 fi
 
@@ -172,6 +174,11 @@ while [ $x -lt $num_iters ]; do
 
     [ -f $dir/.error_diagnostic ] && rm $dir/.error_diagnostic
     for name in train heldout; do
+      egs_opts=
+      if $multilingual_eg; then
+          weight_rspecifier=$egs_dir/${name}.weight.ark
+          [[ -f $weight_rspecifier ]] && egs_opts="--weights=ark:$weight_rspecifier"
+      fi
       $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.$x.log \
          nnet3-chain-train2 --use-gpu=$use_gpu \
             --leaky-hmm-coefficient=$leaky_hmm_coefficient \
@@ -179,7 +186,7 @@ while [ $x -lt $num_iters ]; do
             $l2_regularize_opt \
             --print-interval=10  \
            "nnet3-am-init $dir/0_trans.mdl $dir/${x}.raw - | nnet3-am-copy --learning-rate=$lrate - - |" $den_fst_dir \
-           "ark:nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch scp:$egs_dir/${name}_subset.scp ark:-|" \
+           "ark:nnet3-chain-copy-egs $egs_opts scp:$egs_dir/${name}_subset.scp ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
            $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic &
     done
   fi
@@ -193,6 +200,11 @@ while [ $x -lt $num_iters ]; do
     frame_shift=${frame_shifts[$j]}
 
     # not implemented yet
+    egs_opts=
+    if $multilingual_eg; then
+        weight_rspecifier=$egs_dir/train.weight.$scp_index.ark
+        [[ -f $weight_rspecifier ]] && egs_opts="--weights=ark:$weight_rspecifier"
+    fi
     $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
          nnet3-chain-train2  \
              $parallel_train_opts $verbose_opt \
@@ -205,7 +217,7 @@ while [ $x -lt $num_iters ]; do
              $l2_regularize_opt \
              --srand=$srand \
              "nnet3-am-init $dir/0_trans.mdl $dir/${x}.raw - | nnet3-am-copy --learning-rate=$lrate - - |" $den_fst_dir  \
-             "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
+             "ark:nnet3-chain-copy-egs $egs_opts --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
              ${model_out_prefix}.$j.raw || touch $dir/.error &
   done
   wait
@@ -257,7 +269,7 @@ if [ $stage -le $num_iters ]; then
         $den_fst_dir $input_models \
         "ark:nnet3-chain-merge-egs $multilingual_eg_opts  scp:$egs_dir/train_subset.scp ark:-|" \
         $dir/final.raw || exit 1;
-   if [ "$langs" == "default" ]; then
+   if ! $multilingual_eg; then
        nnet3-copy  --edits="rename-node old-name=output new-name=output-dummy; rename-node old-name=output-default new-name=output" \
           $dir/final.raw - | \
           nnet3-am-init $dir/0_trans.mdl - $dir/final.mdl
