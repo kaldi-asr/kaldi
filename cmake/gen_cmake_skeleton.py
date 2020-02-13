@@ -76,6 +76,7 @@ def get_exe_additional_depends(t):
         # target whose names start with gmm-, it is harmless, but will increase
         # link time. Better to avoid it at best.
         "gmm-*": ["hmm", "transform", "lat", "decoder"],
+        "make-grammar-fst": ["decoder"],
     }
     if t in additional:
         return list(map(lambda name: dir_name_to_lib_target(name), additional[t]))

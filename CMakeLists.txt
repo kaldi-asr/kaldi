@@ -213,6 +213,9 @@ if(CUDA_FOUND)
     add_subdirectory(src/cudadecoderbin)
 endif()
 
+add_library(kaldi-fst ALIAS kaldi-fstext)
+add_subdirectory(src/fstbin)
+
 include(CMakePackageConfigHelpers)
 # maybe we should put this into subfolder?
 configure_package_config_file(
