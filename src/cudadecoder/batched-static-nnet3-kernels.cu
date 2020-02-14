@@ -61,9 +61,8 @@ namespace cuda_decoder {
 					}
 				}
 
-				if(iframe == 0) { // one CTA moves the ivectors
+				if(iframe == 0 && params.d_batch_ivectors) { // one CTA moves the ivectors
 					for (int idim = threadIdx.x; idim < params.ivector_dim; idim += blockDim.x) {
-						//printf("%i ivector[%i] = %f \n", batch_slot, idim, batch_assign.d_ivectors[idim]);
 						params.d_batch_ivectors[batch_slot*params.d_batch_ivectors_stride +idim] = batch_assign.d_ivectors[idim];
 					}
 				}
@@ -109,7 +108,7 @@ float f =						d_batch_slot_with_context[iframe * params.d_batch_with_context_fr
 					} 
 				}
 
-				if(iframe == 0) { // one CTA moves the ivectors
+				if(iframe == 0 && params.d_batch_ivectors) { // one CTA moves the ivectors
 					for (int idim = threadIdx.x; idim < params.ivector_dim; idim += blockDim.x) {
 						params.d_batch_ivectors[batch_slot*params.d_batch_ivectors_stride +idim] = batch_assign.d_ivectors[idim];
 					}

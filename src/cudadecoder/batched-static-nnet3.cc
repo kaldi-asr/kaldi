@@ -200,7 +200,8 @@ void BatchedStaticNnet3::BatchContextSwitch(
       d_batch_with_context_.Data();
   context_switch_kernel_params_.d_batch_with_context_frame_stride =
       d_batch_with_context_.Stride();
-  context_switch_kernel_params_.d_batch_ivectors = d_batch_ivectors_.Data();
+  context_switch_kernel_params_.d_batch_ivectors =
+      has_ivector_ ? d_batch_ivectors_.Data() : NULL;
   context_switch_kernel_params_.d_batch_ivectors_stride =
       d_batch_ivectors_.Stride();
   context_switch_kernel_params_.d_batch_with_context_batch_stride =
