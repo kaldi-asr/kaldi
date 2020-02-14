@@ -187,13 +187,11 @@ class FactorizedTDNN(nn.Module):
 
         # save it for skip connection
         input_x = x
-        logging.debug(f"input_x shape is {input_x.shape}")
+
         x = self.linear(x)
-        logging.debug(f"x shape after linear is {x.shape}")
         # at this point, x is [N, C, T]
 
         x = self.affine(x)
-        logging.debug(f"x shape after affine is {x.shape}")
         # at this point, x is [N, C, T]
 
         x = F.relu(x)
@@ -296,7 +294,6 @@ def _test_factorized_tdnn():
                            subsampling_factor=3)
     y = model(x)
     assert y.size(2) == math.ceil(math.ceil((T - 3)) - 3)
-
 
 
 if __name__ == '__main__':

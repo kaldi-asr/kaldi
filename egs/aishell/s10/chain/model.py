@@ -136,7 +136,8 @@ class ChainModel(nn.Module):
             self.has_LDA = True
         else:
             logging.info('replace LDA with BatchNorm')
-            self.input_batch_norm = nn.BatchNorm1d(num_features=feat_dim * 3)
+            self.input_batch_norm = nn.BatchNorm1d(num_features=feat_dim * 3,
+                                                   affine=False)
             self.has_LDA = False
 
     def forward(self, x):
@@ -218,9 +219,9 @@ class ChainModel(nn.Module):
 
 if __name__ == '__main__':
     logging.basicConfig(
-                level=logging.DEBUG,
-                format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
-            )
+        level=logging.DEBUG,
+        format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+    )
     feat_dim = 43
     output_dim = 4344
     model = ChainModel(feat_dim=feat_dim, output_dim=output_dim)

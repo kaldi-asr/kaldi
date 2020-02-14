@@ -183,12 +183,11 @@ def main():
                                     egs_left_context=args.egs_left_context,
                                     egs_right_context=args.egs_right_context)
 
-    optimizer = optim.SGD(model.parameters(),
-                          lr=learning_rate,
-                          momentum=0.9,
-                          weight_decay=args.l2_regularize)
+    optimizer = optim.Adam(model.parameters(),
+                           lr=learning_rate,
+                           weight_decay=args.l2_regularize)
 
-    scheduler = MultiStepLR(optimizer, milestones=[1, 3, 5], gamma=0.5)
+    scheduler = MultiStepLR(optimizer, milestones=[1, 2, 3, 4, 5], gamma=0.5)
     criterion = KaldiChainObjfFunction.apply
 
     tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
