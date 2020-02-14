@@ -17,7 +17,10 @@ import kaldi
 from common import splice_feats
 
 
-def get_egs_dataloader(egs_dir, egs_left_context, egs_right_context):
+def get_egs_dataloader(egs_dir,
+                       egs_left_context,
+                       egs_right_context,
+                       shuffle=True):
 
     dataset = NnetChainExampleDataset(egs_dir=egs_dir)
     frame_subsampling_factor = 3
@@ -32,6 +35,7 @@ def get_egs_dataloader(egs_dir, egs_left_context, egs_right_context):
 
     dataloader = DataLoader(dataset,
                             batch_size=batch_size,
+                            shuffle=shuffle,
                             num_workers=0,
                             collate_fn=collate_fn)
     return dataloader

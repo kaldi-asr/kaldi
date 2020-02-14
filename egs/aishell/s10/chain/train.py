@@ -181,7 +181,8 @@ def main():
 
     dataloader = get_egs_dataloader(egs_dir=args.cegs_dir,
                                     egs_left_context=args.egs_left_context,
-                                    egs_right_context=args.egs_right_context)
+                                    egs_right_context=args.egs_right_context,
+                                    shuffle=True)
 
     optimizer = optim.Adam(model.parameters(),
                            lr=learning_rate,
