@@ -36,6 +36,9 @@ using namespace cuda_decoder;
 // Not using a semaphore because it is usually not necessary to wait
 #define KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP ((double)1 / 1e5)
 
+// This pipeline is deprecated and will be removed. Please switch to
+// batched-wav-nnet3-cuda2
+
 void GetDiagnosticsAndPrintOutput(const std::string &utt,
                                   const fst::SymbolTable *word_syms,
                                   const CompactLattice &clat,
@@ -233,7 +236,7 @@ int main(int argc, char *argv[]) {
         std::string utt = wav_reader.Key();
         std::string key = utt;
 
-        if (iterations > 0) {
+        if (iter > 0) {
           // make key unique for each iteration
           key = std::to_string(iter) + "-" + key;
         }

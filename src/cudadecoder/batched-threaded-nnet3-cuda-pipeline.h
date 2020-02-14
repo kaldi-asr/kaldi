@@ -15,20 +15,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_DECODER_H_
-#define KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_DECODER_H_
+#ifndef KALDI_CUDA_DECODER_BATCHED_THREADED_NNET3_CUDA_PIPELINE_H_
+#define KALDI_CUDA_DECODER_BATCHED_THREADED_NNET3_CUDA_PIPELINE_H_
 
 #include <atomic>
 #include <thread>
 
 #include "cudadecoder/cuda-decoder.h"
+#include "cudadecoder/deprecated/decodable-cumatrix.h"
+#include "cudadecoder/deprecated/thread-pool.h"
 #include "cudafeat/online-cuda-feature-pipeline.h"
-#include "decodable-cumatrix.h"
 #include "feat/wave-reader.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "nnet3/nnet-batch-compute.h"
 #include "online2/online-nnet2-feature-pipeline.h"
-#include "thread-pool.h"
+
+// This pipeline is deprecated and will be removed. Please switch to
+// batched-threaded-nnet3-cuda-pipeline2
 
 // If num_channels sets to automatic,
 // num_channels = [this define] * max_batch_size

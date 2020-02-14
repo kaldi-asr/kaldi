@@ -23,12 +23,18 @@
 #include <nvToolsExt.h>
 #include "base/kaldi-utils.h"
 
+// This pipeline is deprecated and will be removed. Please switch to
+// batched-threaded-nnet3-cuda-pipeline2
+
 namespace kaldi {
 namespace cuda_decoder {
 
 void BatchedThreadedNnet3CudaPipeline::Initialize(
     const fst::Fst<fst::StdArc> &decode_fst, const nnet3::AmNnetSimple &am_nnet,
     const TransitionModel &trans_model) {
+  KALDI_LOG << "\n\nIMPORTANT: This pipeline is deprecated. Please switch to "
+               "cudadecoderbin/batch-wav-nnet3-cuda2 (binary) or "
+               "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h (class)\n";
   KALDI_LOG << "BatchedThreadedNnet3CudaPipeline Initialize with "
             << config_.num_control_threads << " control threads, "
             << config_.num_worker_threads << " worker threads"
@@ -57,6 +63,9 @@ void BatchedThreadedNnet3CudaPipeline::Initialize(
   cudaStreamSynchronize(cudaStreamPerThread);
 
   // Create threadpool for CPU work
+  // Using the thread pool light for decoder
+  // This pipeline is deprecated. Using two thread pools is not ideal but
+  // this pipeline will be removed eventually
   work_pool_ = new ThreadPool(config_.num_worker_threads);
 
   exit_ = false;
@@ -809,9 +818,6 @@ void BatchedThreadedNnet3CudaPipeline::ExecuteWorker(int threadId) {
   // thread
   CudaDecoder cuda_decoder(cuda_fst_, config_.decoder_opts,
                            config_.max_batch_size, config_.num_channels);
-  if (config_.num_decoder_copy_threads > 0)
-    cuda_decoder.SetThreadPoolAndStartCPUWorkers(
-        work_pool_, config_.num_decoder_copy_threads);
   nnet3::NnetBatchComputer computer(config_.compute_opts, am_nnet_->GetNnet(),
                                     am_nnet_->Priors());
 
