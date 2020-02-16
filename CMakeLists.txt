@@ -215,6 +215,7 @@ endif()
 
 add_library(kaldi-fst ALIAS kaldi-fstext)
 add_subdirectory(src/fstbin)
+add_subdirectory(src/lmbin)
 
 include(CMakePackageConfigHelpers)
 # maybe we should put this into subfolder?
