@@ -40,7 +40,7 @@ def lib_dir_name_to_lib_target(dir_name):
 
 def bin_dir_name_to_lib_target(dir_name):
     """return the primary lib target for all executable targets in this bin dir"""
-    assert dir_name.endswith("bin")
+    assert is_bin_dir(dir_name)
     if dir_name == "bin":
         # NOTE: "kaldi-util" might be a more strict primary lib target...
         return "kaldi-hmm"
