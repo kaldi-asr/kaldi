@@ -5,18 +5,16 @@
 
 set -e
 
-stage=0
+stage=10
 
 # GPU device id to use (count from 0).
 # you can also set `CUDA_VISIBLE_DEVICES` and set `device_id=0`
-device_id=6
+device_id=3
 
 nj=10
 
-lang=data/lang_chain # output lang dir
-ali_dir=exp/tri5a_ali  # input alignment dir
-lat_dir=exp/tri5a_lats # input lat dir
-treedir=exp/chain/tri5_tree # output tree dir
+train_set=train_cleaned
+gmm_dir=exp/tri3_cleaned
 
 # You should know how to calculate your model's left/right context **manually**
 model_left_context=28
@@ -47,67 +45,107 @@ save_nn_output_as_compressed=false
 
 . parse_options.sh
 
+ali_dir=${gmm_dir}_ali_${train_set}_sp  # output ali dir
+lat_dir=${gmm_dir}_lat_${train_set}_sp  # output lat dir
+tree_dir=${gmm_dir}_tree_${train_set}_sp  # output tree dir
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+
 if [[ $stage -le 0 ]]; then
-  for datadir in train dev test; do
-    dst_dir=data/mfcc_hires/$datadir
-    if [[ ! -f $dst_dir/feats.scp ]]; then
-      echo "making mfcc features for LF-MMI training"
-      utils/copy_data_dir.sh data/$datadir $dst_dir
-      steps/make_mfcc.sh \
-        --mfcc-config conf/mfcc_hires.conf \
-        --cmd "$train_cmd" \
-        --nj $nj \
-        $dst_dir || exit 1
-      steps/compute_cmvn_stats.sh $dst_dir || exit 1
-      utils/fix_data_dir.sh $dst_dir
-    else
-      echo "$dst_dir/feats.scp already exists."
-      echo "kaldi (local/run_tdnn_1b.sh) LF-MMI may have generated it."
-      echo "skip $dst_dir"
-    fi
+  echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
+  utils/data/perturb_data_dir_speed_3way.sh data/$train_set data/${train_set}_sp
+
+  for x in ${train_set}_sp dev test; do
+    utils/copy_data_dir.sh data/$x data/${x}_hires
   done
 fi
 
 if [[ $stage -le 1 ]]; then
-  # Create a version of the lang/ directory that has one state per phone in the
-  # topo file. [note, it really has two states.. the first one is only repeated
-  # once, the second one has zero or more repeats.]
-  rm -rf $lang
-  cp -r data/lang $lang
-  silphonelist=$(cat $lang/phones/silence.csl) || exit 1
-  nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1
-  # Use our special topology... note that later on may have to tune this
-  # topology.
-  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
+  echo "$0: making MFCC features for low-resolution speed-perturbed data"
+  steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" data/${train_set}_sp
+  steps/compute_cmvn_stats.sh data/${train_set}_sp
+  echo "fixing input data-dir to remove nonexistent features, in case some "
+  echo ".. speed-perturbed segments were too short."
+  utils/fix_data_dir.sh data/${train_set}_sp
 fi
 
 if [[ $stage -le 2 ]]; then
-  # Build a tree using our new topology. This is the critically different
-  # step compared with other recipes.
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 5000 data/mfcc/train $lang $ali_dir $treedir
+  echo "$0: aligning with the perturbed low-resolution data"
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/${train_set}_sp data/lang $gmm_dir $ali_dir
 fi
 
-if  [[ $stage -le 3 ]]; then
-  echo "creating phone language-model"
-  "$train_cmd" exp/chain/log/make_phone_lm.log \
-    chain-est-phone-lm \
-     "ark:gunzip -c $treedir/ali.*.gz | ali-to-phones $treedir/final.mdl ark:- ark:- |" \
-     exp/chain/phone_lm.fst || exit 1
+if [[ $stage -le 3 ]]; then
+  echo "$0: creating high-resolution MFCC features"
+
+  # do volume-perturbation on the training data prior to extracting hires
+  # features; this helps make trained nnets more invariant to test data volume.
+  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires
+
+  for x in ${train_set}_sp dev test; do
+    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/${x}_hires
+    steps/compute_cmvn_stats.sh data/${x}_hires
+    utils/fix_data_dir.sh data/${x}_hires
+  done
 fi
 
 if [[ $stage -le 4 ]]; then
+  for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
+      $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+    [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
+  done
+fi
+
+if [[ $stage -le 5 ]]; then
+  echo "$0: creating lang directory with one state per phone."
+  # Create a version of the lang/ directory that has one state per phone in the
+  # topo file. [note, it really has two states.. the first one is only repeated
+  # once, the second one has zero or more repeats.]
+  cp -r data/lang data/lang_chain
+  silphonelist=$(cat data/lang_chain/phones/silence.csl) || exit 1;
+  nonsilphonelist=$(cat data/lang_chain/phones/nonsilence.csl) || exit 1;
+  # Use our special topology... note that later on may have to tune this
+  # topology.
+  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >data/lang_chain/topo
+fi
+
+if [[ $stage -le 6 ]]; then
+  # Get the alignments as lattices (gives the chain training more freedom).
+  # use the same num-jobs as the alignments
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
+    data/lang $gmm_dir $lat_dir
+  rm $lat_dir/fsts.*.gz # save space
+fi
+
+if [[ $stage -le 7 ]]; then
+  # Build a tree using our new topology.  We know we have alignments for the
+  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
+  # those.
+  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+      --context-opts "--context-width=2 --central-position=1" \
+      --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
+fi
+
+if  [[ $stage -le 8 ]]; then
+  echo "$0: creating phone language-model"
+  "$train_cmd" exp/chain/log/make_phone_lm.log \
+    chain-est-phone-lm \
+     "ark:gunzip -c $tree_dir/ali.*.gz | ali-to-phones $tree_dir/final.mdl ark:- ark:- |" \
+     exp/chain/phone_lm.fst || exit 1
+fi
+
+if [[ $stage -le 9 ]]; then
   echo "creating denominator FST"
-  copy-transition-model $treedir/final.mdl exp/chain/0.trans_mdl
-  cp $treedir/tree exp/chain
+  copy-transition-model $tree_dir/final.mdl exp/chain/0.trans_mdl
+  cp $tree_dir/tree exp/chain
   "$train_cmd" exp/chain/log/make_den_fst.log \
     chain-make-den-fst exp/chain/tree exp/chain/0.trans_mdl exp/chain/phone_lm.fst \
        exp/chain/den.fst exp/chain/normalization.fst || exit 1
 fi
 
-if [[ $stage -le 5 ]]; then
-  echo "generating egs"
+if [[ $stage -le 10 ]]; then
+  echo "$0: generating egs"
   steps/nnet3/chain/get_egs.sh \
     --alignment-subsampling-factor 3 \
     --cmd "$train_cmd" \
@@ -125,15 +163,15 @@ if [[ $stage -le 5 ]]; then
     --right-tolerance 5 \
     --srand 0 \
     --stage -10 \
-    data/mfcc_hires/train \
+    $train_data_dir \
     exp/chain $lat_dir exp/chain/egs
 fi
 
 feat_dim=$(cat exp/chain/egs/info/feat_dim)
 output_dim=$(cat exp/chain/egs/info/num_pdfs)
 
-if [[ $stage -le 6 ]]; then
-  echo "merging egs"
+if [[ $stage -le 11 ]]; then
+  echo "$0: merging egs"
   mkdir -p exp/chain/merged_egs
   num_egs=$(ls -1 exp/chain/egs/cegs*.ark | wc -l)
 
@@ -145,15 +183,15 @@ if [[ $stage -le 6 ]]; then
   rm exp/chain/egs/cegs.*.ark
 fi
 
-if [[ $stage -le 7 ]]; then
+if [[ $stage -le 12 ]]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   local/mkgraph.sh --self-loop-scale 1.0 data/lang_test exp/chain exp/chain/graph
 fi
 
-if [[ $stage -le 8 ]]; then
-  echo "training..."
+if [[ $stage -le 13 ]]; then
+  echo "$0: training..."
 
   mkdir -p exp/chain/train/tensorboard
   train_checkpoint=
@@ -187,12 +225,12 @@ if [[ $stage -le 8 ]]; then
     --train.xent-regularize 0.1
 fi
 
-if [[ $stage -le 9 ]]; then
-  echo "inference: computing likelihood"
+if [[ $stage -le 14 ]]; then
+  echo "$0: inference: computing likelihood"
   for x in test dev; do
-    mkdir -p exp/chain/inference/$x
-    if [[ -f exp/chain/inference/$x/nnet_output.scp ]]; then
-      echo "exp/chain/inference/$x/nnet_output.scp already exists! Skip"
+    mkdir -p exp/chain/inference/${x}_hires
+    if [[ -f exp/chain/inference/${x}_hires/nnet_output.scp ]]; then
+      echo "$0: exp/chain/inference/${x}_hires/nnet_output.scp already exists! Skip"
     else
       best_epoch=$(cat exp/chain/train/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
       inference_checkpoint=exp/chain/train/epoch-${best_epoch}.pt
@@ -200,9 +238,9 @@ if [[ $stage -le 9 ]]; then
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
         --device-id $device_id \
-        --dir exp/chain/inference/$x \
+        --dir exp/chain/inference/${x}_hires \
         --feat-dim $feat_dim \
-        --feats-scp data/mfcc_hires/$x/feats.scp \
+        --feats-scp data/${x}_hires/feats.scp \
         --hidden-dim $hidden_dim \
         --is-training false \
         --kernel-size-list "$kernel_size_list" \
@@ -217,36 +255,36 @@ if [[ $stage -le 9 ]]; then
   done
 fi
 
-if [[ $stage -le 10 ]]; then
-  echo "decoding"
+if [[ $stage -le 15 ]]; then
+  echo "$0: decoding"
   for x in test dev; do
-    if [[ ! -f exp/chain/inference/$x/nnet_output.scp ]]; then
-      echo "exp/chain/inference/$x/nnet_output.scp does not exist!"
-      echo "Please run inference.py first"
+    if [[ ! -f exp/chain/inference/${x}_hires/nnet_output.scp ]]; then
+      echo "$0: exp/chain/inference/${x}_hires/nnet_output.scp does not exist!"
+      echo "$0: Please run inference.py first"
       exit 1
     fi
-    echo "decoding $x"
+    echo "$0: decoding ${x}_hires"
 
     ./local/decode.sh \
       --nj $nj \
       exp/chain/graph \
       exp/chain/0.trans_mdl \
-      exp/chain/inference/$x/nnet_output.scp \
-      exp/chain/decode_res/$x
+      exp/chain/inference/${x}_hires/nnet_output.scp \
+      exp/chain/decode_res/${x}_hires
   done
 fi
 
-if [[ $stage -le 11 ]]; then
-  echo "scoring"
+if [[ $stage -le 16 ]]; then
+  echo "$0: scoring"
 
   for x in test dev; do
     ./local/score.sh --cmd "$decode_cmd" \
-      data/mfcc_hires/$x \
+      data/${x}_hires \
       exp/chain/graph \
-      exp/chain/decode_res/$x || exit 1
+      exp/chain/decode_res/${x}_hires || exit 1
   done
 
   for x in test dev; do
-    head exp/chain/decode_res/$x/scoring_kaldi/best_*
+    head exp/chain/decode_res/${x}_hires/scoring_kaldi/best_*
   done
 fi
