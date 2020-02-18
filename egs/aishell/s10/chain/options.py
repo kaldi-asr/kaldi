@@ -54,6 +54,11 @@ def _set_training_args(parser):
                         help='cegs dir containing comibined cegs.*.scp',
                         type=str)
 
+    parser.add_argument('--train.valid-cegs-scp',
+                        dest='valid_cegs_scp',
+                        help='validation cegs scp',
+                        type=str)
+
     parser.add_argument('--train.den-fst',
                         dest='den_fst_filename',
                         help='denominator fst filename',
@@ -84,9 +89,20 @@ def _set_training_args(parser):
                         help='l2 regularize',
                         type=float)
 
+    parser.add_argument('--train.xent-regularize',
+                        dest='xent_regularize',
+                        help='xent regularize',
+                        type=float)
+
+    parser.add_argument('--train.leaky-hmm-coefficient',
+                        dest='leaky_hmm_coefficient',
+                        help='leaky hmm coefficient',
+                        type=float)
+
 
 def _check_training_args(args):
     assert os.path.isdir(args.cegs_dir)
+    assert os.path.isfile(args.valid_cegs_scp)
 
     assert os.path.isfile(args.den_fst_filename)
 
@@ -95,7 +111,9 @@ def _check_training_args(args):
 
     assert args.num_epochs > 0
     assert args.learning_rate > 0
-    assert args.l2_regularize > 0
+    assert args.l2_regularize >= 0
+    assert args.xent_regularize >= 0
+    assert args.leaky_hmm_coefficient >= 0
 
     if args.checkpoint:
         assert os.path.exists(args.checkpoint)
@@ -140,7 +158,9 @@ def _check_args(args):
 
     args.kernel_size_list = [int(k) for k in args.kernel_size_list.split(', ')]
 
-    args.subsampling_factor_list = [int(k) for k in args.subsampling_factor_list.split(', ')]
+    args.subsampling_factor_list = [
+        int(k) for k in args.subsampling_factor_list.split(', ')
+    ]
 
     assert len(args.kernel_size_list) == len(args.subsampling_factor_list)
 

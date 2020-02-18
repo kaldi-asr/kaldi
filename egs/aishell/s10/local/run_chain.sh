@@ -33,7 +33,7 @@ lr=1e-3
 hidden_dim=1024
 bottleneck_dim=128
 prefinal_bottleneck_dim=256
-kernel_size_list="2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2" # comma separated list
+kernel_size_list="3, 3, 3, 1, 3, 3, 3, 3, 3, 3, 3, 3" # comma separated list
 subsampling_factor_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning
@@ -179,9 +179,12 @@ if [[ $stage -le 8 ]]; then
     --train.den-fst exp/chain/den.fst \
     --train.egs-left-context $egs_left_context \
     --train.egs-right-context $egs_right_context \
-    --train.l2-regularize 5e-4 \
+    --train.l2-regularize 5e-5 \
+    --train.leaky-hmm-coefficient 0.1 \
     --train.lr $lr \
-    --train.num-epochs $num_epochs
+    --train.num-epochs $num_epochs \
+    --train.valid-cegs-scp exp/chain/egs/valid_diagnostic.scp \
+    --train.xent-regularize 0.1
 fi
 
 if [[ $stage -le 9 ]]; then

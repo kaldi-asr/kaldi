@@ -4,6 +4,7 @@
 # Apache 2.0
 
 import glob
+import os
 
 import numpy as np
 import torch
@@ -17,12 +18,12 @@ import kaldi
 from common import splice_feats
 
 
-def get_egs_dataloader(egs_dir,
+def get_egs_dataloader(egs_dir_or_scp,
                        egs_left_context,
                        egs_right_context,
                        shuffle=True):
 
-    dataset = NnetChainExampleDataset(egs_dir=egs_dir)
+    dataset = NnetChainExampleDataset(egs_dir_or_scp=egs_dir_or_scp)
     frame_subsampling_factor = 3
 
     # we have merged egs offline, so batch size is 1
@@ -54,11 +55,16 @@ def read_nnet_chain_example(rxfilename):
 
 class NnetChainExampleDataset(Dataset):
 
-    def __init__(self, egs_dir):
+    def __init__(self, egs_dir_or_scp):
         '''
-        We assume that there exist many cegs.*.scp files inside egs_dir
+        If egs_dir_or_scp is a directory, we assume that there exist many cegs.*.scp files
+        inside egs_dir_or_scp.
         '''
-        self.scps = glob.glob('{}/cegs.*.scp'.format(egs_dir))
+        if os.path.isdir(egs_dir_or_scp):
+            self.scps = glob.glob('{}/cegs.*.scp'.format(egs_dir_or_scp))
+        else:
+            self.scps = [egs_dir_or_scp]
+
         assert len(self.scps) > 0
         self.items = list()
         for scp in self.scps:
@@ -175,7 +181,7 @@ class NnetChainExampleDatasetCollateFunc:
 
 def _test_nnet_chain_example_dataset():
     egs_dir = 'exp/chain/merged_egs'
-    dataset = NnetChainExampleDataset(egs_dir=egs_dir)
+    dataset = NnetChainExampleDataset(egs_dir_or_scp=egs_dir)
     egs_left_context = 29
     egs_right_context = 29
     frame_subsampling_factor = 3

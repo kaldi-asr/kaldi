@@ -175,7 +175,7 @@ class FactorizedTDNN(nn.Module):
         # since we want to use `stride`
         self.affine = nn.Conv1d(in_channels=bottleneck_dim,
                                 out_channels=dim,
-                                kernel_size=kernel_size,
+                                kernel_size=1,
                                 stride=subsampling_factor)
 
         # batchnorm requires [N, C, T]
@@ -204,7 +204,7 @@ class FactorizedTDNN(nn.Module):
 
         # TODO(fangjun): implement GeneralDropoutComponent in PyTorch
 
-        if self.linear.kernel_size == 2:
+        if self.linear.kernel_size == 3:
             x = self.bypass_scale * input_x[:, :, self.s:-self.s:self.s] + x
         else:
             x = self.bypass_scale * input_x[:, :, ::self.s] + x
@@ -248,7 +248,7 @@ def _test_constrain_orthonormal():
 
     model = FactorizedTDNN(dim=1024,
                            bottleneck_dim=128,
-                           kernel_size=2,
+                           kernel_size=3,
                            subsampling_factor=1)
     loss = []
     model.constrain_orthonormal()
@@ -279,10 +279,10 @@ def _test_factorized_tdnn():
     y = model(x)
     assert y.size(2) == T
 
-    # case 1: kernel_size == 2, subsampling_factor == 1
+    # case 1: kernel_size == 3, subsampling_factor == 1
     model = FactorizedTDNN(dim=C,
                            bottleneck_dim=2,
-                           kernel_size=2,
+                           kernel_size=3,
                            subsampling_factor=1)
     y = model(x)
     assert y.size(2) == T - 2
