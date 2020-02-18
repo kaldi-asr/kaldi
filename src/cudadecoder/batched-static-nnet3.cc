@@ -80,7 +80,7 @@ void BatchedStaticNnet3::Allocate() {
   d_all_context_frames_.Resize(nchannels_ * total_nnet_context_, input_dim_);
   d_batch_with_context_.Resize(
       max_batch_size_ * input_frames_per_chunk_with_context_, input_dim_);
-  d_batch_ivectors_.Resize(max_batch_size_, ivector_dim_);
+  if (has_ivector_) d_batch_ivectors_.Resize(max_batch_size_, ivector_dim_);
   cudaMalloc(&d_batch_slot_assignement_,
              max_batch_size_ * sizeof(*d_batch_slot_assignement_));
   cudaMallocHost(&h_batch_slot_assignement_,
@@ -146,7 +146,7 @@ void BatchedStaticNnet3::BatchContextSwitch(
   // AcceptInput destroys input, resizing
   d_batch_with_context_.Resize(
       max_batch_size_ * input_frames_per_chunk_with_context_, input_dim_);
-  d_batch_ivectors_.Resize(max_batch_size_, ivector_dim_);
+  if (has_ivector_) d_batch_ivectors_.Resize(max_batch_size_, ivector_dim_);
 
   n_output_frames_valid->resize(batch_size);
 
@@ -159,7 +159,8 @@ void BatchedStaticNnet3::BatchContextSwitch(
 
     KALDI_ASSERT(ninput_frames <= input_frames_per_chunk_);
     h_batch_slot_assignement_[i].d_features = d_features[i];
-    h_batch_slot_assignement_[i].d_ivectors = d_ivectors[i];
+    h_batch_slot_assignement_[i].d_ivectors =
+        has_ivector_ ? d_ivectors[i] : NULL;
     h_batch_slot_assignement_[i].ichannel = channel;
     h_batch_slot_assignement_[i].n_frames_already_in_context =
         nframes_in_context;
@@ -203,7 +204,7 @@ void BatchedStaticNnet3::BatchContextSwitch(
   context_switch_kernel_params_.d_batch_ivectors =
       has_ivector_ ? d_batch_ivectors_.Data() : NULL;
   context_switch_kernel_params_.d_batch_ivectors_stride =
-      d_batch_ivectors_.Stride();
+      has_ivector_ ? d_batch_ivectors_.Stride() : 0;
   context_switch_kernel_params_.d_batch_with_context_batch_stride =
       d_batch_with_context_.Stride() * input_frames_per_chunk_with_context_;
 
@@ -236,7 +237,7 @@ void BatchedStaticNnet3::RunNnet3(CuMatrix<BaseFloat> *d_all_log_posteriors,
     // Nnet3 destroys input, resizing
     d_nnet3_input_.Resize(
         nnet3_batch_size_ * input_frames_per_chunk_with_context_, input_dim_);
-    d_nnet3_ivectors_.Resize(nnet3_batch_size_, ivector_dim_);
+    if (has_ivector_) d_nnet3_ivectors_.Resize(nnet3_batch_size_, ivector_dim_);
 
     int minibatch_size = std::min(nnet3_batch_size_, batch_size - off);
     {
@@ -299,10 +300,11 @@ void BatchedStaticNnet3::RunBatch(
     std::vector<std::vector<std::pair<int, BaseFloat *>>>
         *all_frames_log_posteriors_ptrs) {
   KALDI_ASSERT(d_features.size() == channels.size());
-  KALDI_ASSERT(d_ivectors.size() == channels.size());
   KALDI_ASSERT(is_last_chunk.size() == channels.size());
   KALDI_ASSERT(is_first_chunk.size() == channels.size());
-
+  if (has_ivector_) {
+    KALDI_ASSERT(d_ivectors.size() == channels.size());
+  }
   // Initializing the new channels
   for (size_t i = 0; i < is_first_chunk.size(); ++i) {
     if (is_first_chunk[i]) InitChannel(channels[i]);

@@ -392,8 +392,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ReadParametersFromModel() {
   OnlineNnet2FeaturePipeline feature(*feature_info_);
   use_ivectors_ = (feature.IvectorFeature() != NULL);
   input_dim_ = feature.InputFeature()->Dim();
-  ivector_dim_ = feature.IvectorFeature()->Dim();
-  model_frequency_ = feature_info_->mfcc_opts.frame_opts.samp_freq;
+  if (use_ivectors_) ivector_dim_ = feature.IvectorFeature()->Dim();
+  model_frequency_ = feature_info_->GetModelFrequency();
   BaseFloat frame_shift = feature_info_->FrameShiftInSeconds();
   input_frames_per_chunk_ = config_.compute_opts.frames_per_chunk;
   seconds_per_chunk_ = input_frames_per_chunk_ * frame_shift;
