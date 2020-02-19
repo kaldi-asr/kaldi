@@ -14,7 +14,7 @@ set -e
 cmd=
 block_size=256
 stage=0
-frames_per_job=3000000   
+frames_per_job=1500000  
 left_context=13
 right_context=9
 # TODO: add lang2weight support
@@ -86,9 +86,7 @@ for lang in $(seq 0 $[$num_langs-1]);do
   done
   num_chunks=$(fgrep num_chunks ${multi_egs_dir[$lang]}/info.txt | awk '{print $2}')
   curr_frames_per_chunk_avg=`awk '/^frames_per_chunk_avg/  {print $2;}' ${multi_egs_dir[$lang]}/info.txt`
-  tot_num_archives=$[tot_num_archives+(num_chunks*curr_frames_per_chunk_avg)]
-  train_scp_list="$train_scp_list ${args[$lang]}/train.scp"
-  num_scps=$(fgrep num_scp_files ${multi_egs_dir[$lang]}/info.txt | awk '{print $2}')
+  tot_num_archives=$[tot_num_archives+((num_chunks*curr_frames_per_chunk_avg)/frames_per_job+1)]
   tot_num_scps=$[tot_num_scps+num_scps]
   train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_subset.scp"
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_subset.scp"
@@ -105,14 +103,13 @@ for lang in $(seq 0 $[$num_langs-1]);do
     fi
   done
 done
-# num_scp_files=$[(tot_num_archives)/frames_per_job +1]
-num_scp_files=$tot_num_scps
+num_scp_files=$tot_num_archives
 echo "num_scp_files $num_scp_files" >> $megs_dir/info.txt
 sed_cmd=
 for lang in $(seq 0 $[$num_langs-1]);do
     lang_name=${lang_list[$lang]}
-    weight=${lang2weight[$lang]}
-    sed_cmd="$sed_cmd s/.*lang=${lang_name}/$weight/;"
+    weight=`echo $lang2weight | tr ',' ' ' | cut -d ' ' -f$[$lang+1]`
+    sed_cmd="$sed_cmd s/.*lang=${lang_name}.*/$weight/;"
 done
 
 dir=$megs_dir/
@@ -139,7 +136,9 @@ if [ $stage -le 0 ]; then
         # the shuffling is probably not required because we will do it once again before
         # merging examples
         cat $input_list | utils/shuffle_list.pl > $dir/train.$j.scp
-        sed "$sed_cmd" < $dir/train.$j.scp > $dir/train.weight.$j.scp
+        sed "$sed_cmd" < <(awk '{print $1}' $dir/train.$j.scp) > $dir/train.weight.$j.ark.col2
+        paste -d ' ' <(awk '{print $1}' $dir/train.$j.scp) $dir/train.weight.$j.ark.col2 > $dir/train.weight.$j.ark
+        rm $dir/train.weight.$j.ark.col2
     done
 fi
 
@@ -151,7 +150,9 @@ if [ $stage -le 1 ]; then
             awk -v lang_name="$lang_name" \
                 '{if ($1 !~ /?/){$1=$1"?lang=" lang_name; print;} else {$1=$1"&lang=" lang_name; print;}}' 
         done > $dir/${subset_file}.scp
-        sed "$sed_cmd" < $dir/${subset_file}.scp > $dir/${subset_file}.weight.scp
+        sed "$sed_cmd" < <(awk '{print $1}' $dir/${subset_file}.scp) > $dir/${subset_file}.weight.ark.col2
+        paste -d ' ' <(awk '{print $1}' $dir/${subset_file}.scp) $dir/${subset_file}.weight.ark.col2 > $dir/${subset_file}.weight.ark
+        rm $dir/${subset_file}.weight.ark.col2
     done
 fi
 
