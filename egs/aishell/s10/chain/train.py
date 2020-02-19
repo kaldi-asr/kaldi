@@ -15,7 +15,6 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.nn.utils import clip_grad_value_
-from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.tensorboard import SummaryWriter
 
 import kaldi
@@ -32,8 +31,63 @@ from model import get_chain_model
 from options import get_args
 
 
-def train_one_epoch(dataloader, model, device, optimizer, criterion,
-                    current_epoch, opts, den_graph, tf_writer):
+def get_validation_objf(dataloader, model, device, criterion, opts, den_graph):
+    total_objf = 0.
+    total_weight = 0.
+    total_frames = 0.  # for display only
+
+    model.eval()
+
+    for batch_idx, batch in enumerate(dataloader):
+        key_list, feature_list, supervision_list = batch
+
+        assert len(key_list) == len(feature_list) == len(supervision_list)
+        batch_size = len(key_list)
+
+        for n in range(batch_size):
+            feats = feature_list[n]
+            assert feats.ndim == 3
+
+            # at this point, feats is [N, T, C]
+            feats = feats.to(device)
+
+            with torch.no_grad():
+                nnet_output, xent_output = model(feats)
+
+            # at this point, nnet_output is: [N, T, C]
+            # refer to kaldi/src/chain/chain-training.h
+            # the output should be organized as
+            # [all sequences for frame 0]
+            # [all sequences for frame 1]
+            # [etc.]
+            nnet_output = nnet_output.permute(1, 0, 2)
+            # at this point, nnet_output is: [T, N, C]
+            nnet_output = nnet_output.contiguous().view(-1,
+                                                        nnet_output.shape[-1])
+
+            # at this point, xent_output is: [N, T, C]
+            xent_output = xent_output.permute(1, 0, 2)
+            # at this point, xent_output is: [T, N, C]
+            xent_output = xent_output.contiguous().view(-1,
+                                                        xent_output.shape[-1])
+            objf_l2_term_weight = criterion(opts, den_graph,
+                                            supervision_list[n], nnet_output,
+                                            xent_output)
+            objf = objf_l2_term_weight[0]
+
+            objf_l2_term_weight = objf_l2_term_weight.cpu()
+
+            total_objf += objf_l2_term_weight[0].item()
+            total_weight += objf_l2_term_weight[2].item()
+
+            num_frames = nnet_output.shape[0]
+            total_frames += num_frames
+
+    return total_objf, total_weight, total_frames
+
+
+def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
+                    criterion, current_epoch, opts, den_graph, tf_writer):
     model.train()
 
     total_objf = 0.
@@ -75,8 +129,8 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
             optimizer.zero_grad()
             objf.backward()
 
-            # TODO(fangjun): how to choose this value or do we need this ?
             clip_grad_value_(model.parameters(), 5.0)
+
             optimizer.step()
 
             objf_l2_term_weight = objf_l2_term_weight.detach().cpu()
@@ -101,6 +155,25 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
                     objf_l2_term_weight[0].item() /
                     objf_l2_term_weight[2].item(), num_frames, current_epoch))
 
+        if batch_idx % 500 == 0:
+            total_valid_objf, total_valid_weight, total_valid_frames = get_validation_objf(
+                dataloader=valid_dataloader,
+                model=model,
+                device=device,
+                criterion=criterion,
+                opts=opts,
+                den_graph=den_graph)
+
+            model.train()
+
+            logging.info(
+                'Validation average objf: {:.6f} over {} frames'.format(
+                    total_valid_objf / total_valid_weight, total_valid_frames))
+
+            tf_writer.add_scalar('train/global_valid_average_objf',
+                                 total_valid_objf / total_valid_weight,
+                                 batch_idx + current_epoch * len(dataloader))
+
         if batch_idx % 100 == 0:
             tf_writer.add_scalar('train/global_average_objf',
                                  total_objf / total_weight,
@@ -109,6 +182,21 @@ def train_one_epoch(dataloader, model, device, optimizer, criterion,
                 'train/current_batch_average_objf',
                 objf_l2_term_weight[0].item() / objf_l2_term_weight[2].item(),
                 batch_idx + current_epoch * len(dataloader))
+
+            state_dict = model.state_dict()
+            for key, value in state_dict.items():
+                # skip batchnorm parameters
+                if value.dtype != torch.float32:
+                    continue
+                if 'running_mean' in key or 'running_var' in key:
+                    continue
+
+                with torch.no_grad():
+                    frobenius_norm = torch.norm(value, p='fro')
+
+                tf_writer.add_scalar(
+                    'train/parameters/{}'.format(key), frobenius_norm,
+                    batch_idx + current_epoch * len(dataloader))
 
     return total_objf / total_weight
 
@@ -130,20 +218,22 @@ def main():
 
     den_fst = fst.StdVectorFst.Read(args.den_fst_filename)
 
-    # TODO(fangjun): pass these options from commandline
     opts = chain.ChainTrainingOptions()
-    opts.l2_regularize = 5e-4
-    opts.leaky_hmm_coefficient = 0.1
+    opts.l2_regularize = args.l2_regularize
+    opts.xent_regularize = args.xent_regularize
+    opts.leaky_hmm_coefficient = args.leaky_hmm_coefficient
 
     den_graph = chain.DenominatorGraph(fst=den_fst, num_pdfs=args.output_dim)
 
-    model = get_chain_model(feat_dim=args.feat_dim,
-                            output_dim=args.output_dim,
-                            lda_mat_filename=args.lda_mat_filename,
-                            hidden_dim=args.hidden_dim,
-                            bottleneck_dim=args.bottleneck_dim,
-                            time_stride_list=args.time_stride_list,
-                            conv_stride_list=args.conv_stride_list)
+    model = get_chain_model(
+        feat_dim=args.feat_dim,
+        output_dim=args.output_dim,
+        lda_mat_filename=args.lda_mat_filename,
+        hidden_dim=args.hidden_dim,
+        bottleneck_dim=args.bottleneck_dim,
+        prefinal_bottleneck_dim=args.prefinal_bottleneck_dim,
+        kernel_size_list=args.kernel_size_list,
+        subsampling_factor_list=args.subsampling_factor_list)
 
     start_epoch = 0
     num_epochs = args.num_epochs
@@ -162,15 +252,21 @@ def main():
 
     model.to(device)
 
-    dataloader = get_egs_dataloader(egs_dir=args.cegs_dir,
+    dataloader = get_egs_dataloader(egs_dir_or_scp=args.cegs_dir,
                                     egs_left_context=args.egs_left_context,
-                                    egs_right_context=args.egs_right_context)
+                                    egs_right_context=args.egs_right_context,
+                                    shuffle=True)
+
+    valid_dataloader = get_egs_dataloader(
+        egs_dir_or_scp=args.valid_cegs_scp,
+        egs_left_context=args.egs_left_context,
+        egs_right_context=args.egs_right_context,
+        shuffle=False)
 
     optimizer = optim.Adam(model.parameters(),
                            lr=learning_rate,
-                           weight_decay=args.l2_regularize)
+                           weight_decay=5e-4)
 
-    scheduler = MultiStepLR(optimizer, milestones=[1, 2, 3, 4, 5], gamma=0.5)
     criterion = KaldiChainObjfFunction.apply
 
     tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
@@ -180,12 +276,17 @@ def main():
     best_epoch_info_filename = os.path.join(args.dir, 'best-epoch-info')
     try:
         for epoch in range(start_epoch, args.num_epochs):
-            learning_rate = scheduler.get_lr()[0]
+            learning_rate = 1e-3 * pow(0.4, epoch)
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = learning_rate
+
             logging.info('epoch {}, learning rate {}'.format(
                 epoch, learning_rate))
+
             tf_writer.add_scalar('learning_rate', learning_rate, epoch)
 
             objf = train_one_epoch(dataloader=dataloader,
+                                   valid_dataloader=valid_dataloader,
                                    model=model,
                                    device=device,
                                    optimizer=optimizer,
@@ -194,7 +295,6 @@ def main():
                                    opts=opts,
                                    den_graph=den_graph,
                                    tf_writer=tf_writer)
-            scheduler.step()
 
             if best_objf is None:
                 best_objf = objf

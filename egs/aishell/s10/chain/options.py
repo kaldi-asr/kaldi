@@ -54,6 +54,11 @@ def _set_training_args(parser):
                         help='cegs dir containing comibined cegs.*.scp',
                         type=str)
 
+    parser.add_argument('--train.valid-cegs-scp',
+                        dest='valid_cegs_scp',
+                        help='validation cegs scp',
+                        type=str)
+
     parser.add_argument('--train.den-fst',
                         dest='den_fst_filename',
                         help='denominator fst filename',
@@ -84,9 +89,20 @@ def _set_training_args(parser):
                         help='l2 regularize',
                         type=float)
 
+    parser.add_argument('--train.xent-regularize',
+                        dest='xent_regularize',
+                        help='xent regularize',
+                        type=float)
+
+    parser.add_argument('--train.leaky-hmm-coefficient',
+                        dest='leaky_hmm_coefficient',
+                        help='leaky hmm coefficient',
+                        type=float)
+
 
 def _check_training_args(args):
     assert os.path.isdir(args.cegs_dir)
+    assert os.path.isfile(args.valid_cegs_scp)
 
     assert os.path.isfile(args.den_fst_filename)
 
@@ -95,7 +111,9 @@ def _check_training_args(args):
 
     assert args.num_epochs > 0
     assert args.learning_rate > 0
-    assert args.l2_regularize > 0
+    assert args.l2_regularize >= 0
+    assert args.xent_regularize >= 0
+    assert args.leaky_hmm_coefficient >= 0
 
     if args.checkpoint:
         assert os.path.exists(args.checkpoint)
@@ -130,18 +148,21 @@ def _check_args(args):
     assert args.output_dim > 0
     assert args.hidden_dim > 0
     assert args.bottleneck_dim > 0
+    assert args.prefinal_bottleneck_dim > 0
 
-    assert args.time_stride_list is not None
-    assert len(args.time_stride_list) > 0
+    assert args.kernel_size_list is not None
+    assert len(args.kernel_size_list) > 0
 
-    assert args.conv_stride_list is not None
-    assert len(args.conv_stride_list) > 0
+    assert args.subsampling_factor_list is not None
+    assert len(args.subsampling_factor_list) > 0
 
-    args.time_stride_list = [int(k) for k in args.time_stride_list.split(', ')]
+    args.kernel_size_list = [int(k) for k in args.kernel_size_list.split(', ')]
 
-    args.conv_stride_list = [int(k) for k in args.conv_stride_list.split(', ')]
+    args.subsampling_factor_list = [
+        int(k) for k in args.subsampling_factor_list.split(', ')
+    ]
 
-    assert len(args.time_stride_list) == len(args.conv_stride_list)
+    assert len(args.kernel_size_list) == len(args.subsampling_factor_list)
 
     assert args.log_level in ['debug', 'info', 'warning']
 
@@ -202,15 +223,21 @@ def get_args():
                         required=True,
                         type=int)
 
-    parser.add_argument('--time-stride-list',
-                        dest='time_stride_list',
-                        help='time stride list',
+    parser.add_argument('--prefinal-bottleneck-dim',
+                        dest='prefinal_bottleneck_dim',
+                        help='nn prefinal bottleneck dimension',
+                        required=True,
+                        type=int)
+
+    parser.add_argument('--kernel-size-list',
+                        dest='kernel_size_list',
+                        help='kernel_size_list',
                         required=True,
                         type=str)
 
-    parser.add_argument('--conv-stride-list',
-                        dest='conv_stride_list',
-                        help='conv stride list',
+    parser.add_argument('--subsampling-factor-list',
+                        dest='subsampling_factor_list',
+                        help='subsampling_factor_list',
                         required=True,
                         type=str)
 
