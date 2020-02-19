@@ -17,7 +17,7 @@ memory_compression_level=2  # Enables us to use larger minibatch size than we
                             # (--> set to 0 if you have plenty of memory.
 dropout_schedule=
 srand=0
-max_param_change=1.0    # we use a smaller than normal default (it's normally
+max_param_change=2.0    # we use a smaller than normal default (it's normally
                         # 2.0), because there are two models (bottom and top).
 use_gpu=yes   # can be "yes", "no", "optional", "wait"
 print_interval=10
@@ -177,7 +177,7 @@ while [ $x -lt $num_iters ]; do
     for name in train heldout; do
       egs_opts=
       if $multilingual_eg; then
-          weight_rspecifier=$egs_dir/${name}.weight.ark
+          weight_rspecifier=$egs_dir/diagnostic_${name}.weight.ark
           [[ -f $weight_rspecifier ]] && egs_opts="--weights=ark:$weight_rspecifier"
       fi
       $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.$x.log \
@@ -200,7 +200,6 @@ while [ $x -lt $num_iters ]; do
     scp_index=${scp_indexes[$j]}
     frame_shift=${frame_shifts[$j]}
 
-    # not implemented yet
     egs_opts=
     if $multilingual_eg; then
         weight_rspecifier=$egs_dir/train.weight.$scp_index.ark
