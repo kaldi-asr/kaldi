@@ -87,6 +87,7 @@ done
 
 if [ "$speed_perturb" == "true" ]; then suffix=_sp; fi
 dir=${dir}${suffix}
+dir=exp/chain2_cleaned/tdnn_multi_sp_v7/
 
 ivec_feat_suffix=${feat_suffix}
 if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
@@ -222,6 +223,7 @@ if [ $stage -le 9 ]; then
       steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
         $langdir $gmm_dir $lat_dir
       rm $lat_dir/fsts.*.gz # save space
+      exit
   done
 fi 
 
@@ -248,7 +250,7 @@ fi
 if [ $stage -le 11 ]; then
   echo "$0: creating multilingual neural net configs using the xconfig parser";
   if [ -z $bnf_dim ]; then
-    bnf_dim=1024
+    bnf_dim=80
   fi
   mkdir -p $dir/configs
   ivector_node_xconfig=""
@@ -268,13 +270,13 @@ if [ $stage -le 11 ]; then
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2$ivector_to_append) dim=450
+  relu-batchnorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2$ivector_to_append) dim=450
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=450
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=450
   relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=450
   relu-batchnorm-layer name=tdnn7 input=Append(-6,-3,0) dim=450
-  relu-renorm-layer name=tdnn_bn dim=$bnf_dim
+  relu-batchnorm-layer name=tdnn_bn dim=$bnf_dim
   # adding the layers for diffrent language's output
   # dummy output node
   output-layer name=output dim=$num_targets max-change=1.5
