@@ -99,6 +99,21 @@ def _set_training_args(parser):
                         help='leaky hmm coefficient',
                         type=float)
 
+    # PyTorch DistributedDataParallel (ddp) parameters
+    parser.add_argument(
+        '--train.use-ddp',
+        dest='use_ddp',
+        help="true to use PyTorch's built-in DistributedDataParallel trainer",
+        type=_str2bool)
+
+    # note that we use device id as local rank.
+
+    parser.add_argument('--train.ddp.world-size',
+                        dest='world_size',
+                        help='world size in ddp',
+                        default=1,
+                        type=int)
+
 
 def _check_training_args(args):
     assert os.path.isdir(args.cegs_dir)
@@ -117,6 +132,9 @@ def _check_training_args(args):
 
     if args.checkpoint:
         assert os.path.exists(args.checkpoint)
+
+    if args.use_ddp:
+        assert args.world_size >= 1
 
 
 def _check_inference_args(args):

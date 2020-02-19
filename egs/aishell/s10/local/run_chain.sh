@@ -5,11 +5,10 @@
 
 set -e
 
-stage=10
+stage=0
 
-# GPU device id to use (count from 0).
-# you can also set `CUDA_VISIBLE_DEVICES` and set `device_id=0`
-device_id=3
+export CUDA_VISIBLE_DEVICES="0,3"
+device_id=0
 
 nj=10
 
@@ -199,30 +198,71 @@ if [[ $stage -le 13 ]]; then
     train_checkpoint=./exp/chain/train/best_model.pt
   fi
 
-  # sort the options alphabetically
-  python3 ./chain/train.py \
-    --bottleneck-dim $bottleneck_dim \
-    --checkpoint=${train_checkpoint:-} \
-    --device-id $device_id \
-    --dir exp/chain/train \
-    --feat-dim $feat_dim \
-    --hidden-dim $hidden_dim \
-    --is-training true \
-    --kernel-size-list "$kernel_size_list" \
-    --log-level $log_level \
-    --output-dim $output_dim \
-    --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
-    --subsampling-factor-list "$subsampling_factor_list" \
-    --train.cegs-dir exp/chain/merged_egs \
-    --train.den-fst exp/chain/den.fst \
-    --train.egs-left-context $egs_left_context \
-    --train.egs-right-context $egs_right_context \
-    --train.l2-regularize 5e-5 \
-    --train.leaky-hmm-coefficient 0.1 \
-    --train.lr $lr \
-    --train.num-epochs $num_epochs \
-    --train.valid-cegs-scp exp/chain/egs/valid_diagnostic.scp \
-    --train.xent-regularize 0.1
+  num_gpus=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
+
+  if [[ $num_gpus -gt 1 ]]; then
+    echo "$0: training with ddp..."
+
+    export MASTER_ADDR=localhost
+    export MASTER_PORT=6666
+
+    for ((i = 0; i < $num_gpus; ++i)); do
+      # sort the options alphabetically
+      python3 ./chain/ddp_train.py \
+        --bottleneck-dim $bottleneck_dim \
+        --checkpoint=${train_checkpoint:-} \
+        --device-id $i \
+        --dir exp/chain/train \
+        --feat-dim $feat_dim \
+        --hidden-dim $hidden_dim \
+        --is-training true \
+        --kernel-size-list "$kernel_size_list" \
+        --log-level $log_level \
+        --output-dim $output_dim \
+        --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
+        --subsampling-factor-list "$subsampling_factor_list" \
+        --train.cegs-dir exp/chain/merged_egs \
+        --train.ddp.world-size $num_gpus \
+        --train.den-fst exp/chain/den.fst \
+        --train.egs-left-context $egs_left_context \
+        --train.egs-right-context $egs_right_context \
+        --train.l2-regularize 5e-5 \
+        --train.leaky-hmm-coefficient 0.1 \
+        --train.lr $lr \
+        --train.num-epochs $num_epochs \
+        --train.use-ddp true \
+        --train.valid-cegs-scp exp/chain/egs/valid_diagnostic.scp \
+        --train.xent-regularize 0.1 &
+    done
+    wait
+  else
+    echo "$0: training with single gpu..."
+    # sort the options alphabetically
+    python3 ./chain/train.py \
+      --bottleneck-dim $bottleneck_dim \
+      --checkpoint=${train_checkpoint:-} \
+      --device-id $device_id \
+      --dir exp/chain/train \
+      --feat-dim $feat_dim \
+      --hidden-dim $hidden_dim \
+      --is-training true \
+      --kernel-size-list "$kernel_size_list" \
+      --log-level $log_level \
+      --output-dim $output_dim \
+      --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
+      --subsampling-factor-list "$subsampling_factor_list" \
+      --train.cegs-dir exp/chain/merged_egs \
+      --train.den-fst exp/chain/den.fst \
+      --train.egs-left-context $egs_left_context \
+      --train.egs-right-context $egs_right_context \
+      --train.l2-regularize 5e-5 \
+      --train.leaky-hmm-coefficient 0.1 \
+      --train.lr $lr \
+      --train.num-epochs $num_epochs \
+      --train.use-ddp false \
+      --train.valid-cegs-scp exp/chain/egs/valid_diagnostic.scp \
+      --train.xent-regularize 0.1
+  fi
 fi
 
 if [[ $stage -le 14 ]]; then

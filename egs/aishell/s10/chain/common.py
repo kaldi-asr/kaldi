@@ -52,7 +52,10 @@ def load_checkpoint(filename, model):
     return epoch, learning_rate, objf
 
 
-def save_checkpoint(filename, model, epoch, learning_rate, objf):
+def save_checkpoint(filename, model, epoch, learning_rate, objf, local_rank=0):
+    if local_rank != 0:
+        return
+
     logging.info('Save checkpoint to {filename}: epoch={epoch}, '
                  'learning_rate={learning_rate}, objf={objf}'.format(
                      filename=filename,
@@ -68,8 +71,17 @@ def save_checkpoint(filename, model, epoch, learning_rate, objf):
     torch.save(checkpoint, filename)
 
 
-def save_training_info(filename, model_path, current_epoch, learning_rate, objf,
-                       best_objf, best_epoch):
+def save_training_info(filename,
+                       model_path,
+                       current_epoch,
+                       learning_rate,
+                       objf,
+                       best_objf,
+                       best_epoch,
+                       local_rank=0):
+    if local_rank != 0:
+        return
+
     with open(filename, 'w') as f:
         f.write('model_path: {}\n'.format(model_path))
         f.write('epoch: {}\n'.format(current_epoch))
