@@ -270,9 +270,11 @@ def main():
     best_epoch = start_epoch
     best_model_path = os.path.join(args.dir, 'best_model.pt')
     best_epoch_info_filename = os.path.join(args.dir, 'best-epoch-info')
+
+    lr = learning_rate
     try:
         for epoch in range(start_epoch, args.num_epochs):
-            learning_rate = 1e-3 * pow(0.4, epoch)
+            learning_rate = lr * pow(0.4, epoch)
             for param_group in optimizer.param_groups:
                 param_group['lr'] = learning_rate
 
