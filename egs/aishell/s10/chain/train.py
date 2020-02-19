@@ -140,10 +140,6 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
             num_frames = nnet_output.shape[0]
             total_frames += num_frames
 
-        if np.random.choice(4) == 0:
-            with torch.no_grad():
-                model.constrain_orthonormal()
-
         if batch_idx % 100 == 0:
             logging.info(
                 'Process {}/{}({:.6f}%) global average objf: {:.6f} over {} '

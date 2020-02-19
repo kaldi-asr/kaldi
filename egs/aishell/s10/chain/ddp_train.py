@@ -142,12 +142,6 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
             num_frames = nnet_output.shape[0]
             total_frames += num_frames
 
-        # TODO(fangjun): model is not of type nn.Module any more
-        # we cannot invoke the method `constrain_orthonormal()` here.
-
-        #  with torch.no_grad():
-        #      model.constrain_orthonormal()
-
         if batch_idx % 100 == 0:
             logging.info(
                 'Device ({}) processing {}/{}({:.6f}%) global average objf: {:.6f} over {} '

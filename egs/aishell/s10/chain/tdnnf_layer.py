@@ -136,9 +136,6 @@ class PrefinalLayer(nn.Module):
 
         return x
 
-    def constrain_orthonormal(self):
-        self.linear.constrain_orthonormal()
-
 
 class FactorizedTDNN(nn.Module):
     '''
@@ -210,9 +207,6 @@ class FactorizedTDNN(nn.Module):
             x = self.bypass_scale * input_x[:, :, ::self.s] + x
         return x
 
-    def constrain_orthonormal(self):
-        self.linear.constrain_orthonormal()
-
 
 def _test_constrain_orthonormal():
 
@@ -251,11 +245,17 @@ def _test_constrain_orthonormal():
                            kernel_size=3,
                            subsampling_factor=1)
     loss = []
-    model.constrain_orthonormal()
+
+    for m in model.modules():
+        if hasattr(m, 'constrain_orthonormal'):
+            m.constrain_orthonormal()
+
     loss.append(
         compute_loss(model.linear.conv.state_dict()['weight'].reshape(128, -1)))
     for i in range(5):
-        model.constrain_orthonormal()
+        for m in model.modules():
+            if hasattr(m, 'constrain_orthonormal'):
+                m.constrain_orthonormal()
         loss.append(
             compute_loss(model.linear.conv.state_dict()['weight'].reshape(
                 128, -1)))
