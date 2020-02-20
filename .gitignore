@@ -151,6 +151,8 @@ GSYMS
 /tools/cub-1.8.0/
 /tools/cub
 /tools/python/
+/tools/ngram-1.3.7.tar.gz
+/tools/ngram-1.3.7/
 
 # These CMakeLists.txt files are all genareted on the fly at the moment.
 # They are added here to avoid accidently checkin.
