@@ -3,16 +3,38 @@
 # Copyright 2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
+# This program takes as input a phone symbol table
+# `tokens.txt` and prints a text fst to the console.
+#
+# You can use `fstcompile` to convert the printed text fst
+# to a binary fst.
+#
+# Two integer values in the symbol table have particular meaning:
+#  - 0 for `<eps>`
+#  - 1 for the blank symbol `<blk>`
+
 import argparse
 import os
 
 
 def get_args():
-    parser = argparse.ArgumentParser(
-        description='convert tokens.txt to tokens.fst')
+    parser = argparse.ArgumentParser(description='''
+Convert tokens.txt to tokens.fst.
+
+Usage:
+    python3 ./local/token_to_fst.py \
+            --tokens-txt-filename data/lang/tokens.txt |
+    fstcompile \
+      --isymbols=data/lang/tokens.txt \
+      --osymbols=data/lang/tokens.txt \
+      --keep_isymbols=false \
+      --keep_osymbols=false |
+    fstarcsort --sort_type=olabel > $data/lang/T.fst || exit 1
+''')
 
     parser.add_argument('--tokens-txt-filename',
                         dest='tokens_txt_filename',
+                        help="a phone symbol table",
                         type=str)
 
     args = parser.parse_args()
