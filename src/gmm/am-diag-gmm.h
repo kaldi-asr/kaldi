@@ -58,7 +58,7 @@ class AmDiagGmm {
                     BaseFloat power, BaseFloat min_count);
 
 
-  // In SplitByCount we use the "target_components" and "power"
+  // In MergeByCount we use the "target_components" and "power"
   // to work out targets for each state (according to power-of-occupancy rule),
   // and any state over its target gets mixed down.  If some states
   // were under their target, this may take the #Gauss below the target.
