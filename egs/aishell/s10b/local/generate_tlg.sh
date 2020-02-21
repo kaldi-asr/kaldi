@@ -141,6 +141,6 @@ set -e
 
 # remove files not needed any more
 for f in G.fst L.fst T.fst LG.fst disambig.list \
-         lexiconp.txt lexiconp_disambig.txt phones.list; do
+         lexiconp.txt lexiconp_disambig.txt; do
   rm $dir/$f
 done

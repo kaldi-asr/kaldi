@@ -13,7 +13,7 @@ data_url=www.openslr.org/resources/33
 
 nj=30
 
-stage=6
+stage=0
 
 if [[ $stage -le 0 ]]; then
   local/download_and_untar.sh $data $data_url data_aishell || exit 1
@@ -62,4 +62,12 @@ if [[ $stage -le 6 ]]; then
   for x in train_sp dev_sp test; do
     ./local/convert_text_to_labels.sh data/$x data/lang
   done
+fi
+
+if [[ $stage -le 7 ]]; then
+  ./local/run_ctc.sh \
+    --train-data-dir data/train_sp \
+    --dev-data-dir data/dev_sp \
+    --test-data-dir data/test \
+    --lang-dir data/lang
 fi
