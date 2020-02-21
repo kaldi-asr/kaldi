@@ -340,7 +340,7 @@ void BatchedStaticNnet3::RunBatch(
     if (!is_last_chunk[i]) continue;
     eos_channels_.push_back(channels[i]);
     d_eos_features_.push_back(NULL);  // the context will serve as features
-    d_eos_ivectors_.push_back(d_ivectors[i]);
+    if (has_ivector_) d_eos_ivectors_.push_back(d_ivectors[i]);
     eos_n_input_frames_valid_.push_back(0);
     eos_n_output_frames_offset_.push_back(
         n_output_frames_valid_[i]);  // append to previously generated frames
