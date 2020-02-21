@@ -1,6 +1,6 @@
 // chainbin/chain-make-num-fst-e2e.cc
 
-// Copyright 2019  Johns Hopkins University (author: Yiwen Shao)
+// Copyright 2020  Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-/** @brief Converts fsts (containing transition-ids) to fsts (containing pdf-ids, zero-based).
+/** @brief Converts fsts (containing transition-ids) to fsts (containing pdf-ids + 1).
 */
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
@@ -28,9 +28,9 @@
 
 namespace kaldi {
 
-bool FstTransitionToPdf(const fst::StdVectorFst &fst_transition,
-			const TransitionModel &trans_model,
-			fst::StdVectorFst *fst_pdf) {
+bool FstTransitionToPdfPlusOne(const fst::StdVectorFst &fst_transition,
+			       const TransitionModel &trans_model,
+			       fst::StdVectorFst *fst_pdf) {
   fst::StdVectorFst fst_tmp(fst_transition);
   fst::RemoveEpsLocal(&fst_tmp);
   fst::RmEpsilon(&fst_tmp);
@@ -74,12 +74,12 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-      "Converts chain e2e numerator fst (containing transition-ids) to fst (containing pdf-ids, \n"
-      "zero-based, eps-removed, and normalized by the normalization fst) \n"
+      "Converts chain e2e numerator fst (containing transition-ids) to fst (containing pdf-ids+1, \n"
+      "and composed by the normalization fst) \n"
       "Usage:  chain-make-num-fst-e2e [options] <model> <normalization-fst>\n"
       "<trainsition-fst-rspecifier> <pdf-fst-wspecifier>\n"
         "e.g.: \n"
-        " fst-transition-to-pdf 1.mdl ark:1.fst ark,t:-\n";
+        " chain-make-num-fst-e2e 1.mdl ark:1.fst ark,t:-\n";
     ParseOptions po(usage);
 
     po.Read(argc, argv);
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
       std::string key = fsts_reader.Key();
       fst::VectorFst<fst::StdArc> fst_transition(fsts_reader.Value());
       fst::StdVectorFst fst_pdf;
-      FstTransitionToPdf(fst_transition, trans_model, &fst_pdf);
+      FstTransitionToPdfPlusOne(fst_transition, trans_model, &fst_pdf);
       AddWeightToFst(normalization_fst, &fst_pdf);
       fsts_writer.Write(key, fst_pdf);
       num_done++;
