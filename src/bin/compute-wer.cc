@@ -25,6 +25,41 @@
 #include "tree/context-dep.h"
 #include "util/edit-distance.h"
 
+
+
+namespace kaldi {
+
+
+template<typename T>
+void PrintAlignmentStats(const std::vector<T> &ref,
+                         const std::vector<T> &hyp,
+                         T eps,
+                         std::ostream &os) {
+  // Make sure the eps symbol is not in the sentences we're aligning; this would
+  // not make sense.
+  KALDI_ASSERT(std::find(ref.begin(), ref.end(), eps) == ref.end());
+  KALDI_ASSERT(std::find(hyp.begin(), hyp.end(), eps) == hyp.end());
+
+  std::vector<std::pair<T, T> > aligned;
+  typedef typename std::vector<std::pair<T, T> >::const_iterator  aligned_iterator;
+
+  LevenshteinAlignment(ref, hyp, eps, &aligned);
+  for (aligned_iterator it = aligned.begin();
+       it != aligned.end(); ++it) {
+    KALDI_ASSERT(!(it->first == eps && it->second == eps));
+    if (it->first == eps) {
+      os << "insertion " << it->second << std::endl;
+    } else if (it->second == eps) {
+      os << "deletion " << it->first << std::endl;
+    } else if (it->first != it->second) {
+      os << "substitution " << it->first << ' ' << it->second << std::endl;
+    } else {
+      os << "correct " << it->first << std::endl;
+    }
+  }
+ }
+}
+
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
@@ -34,8 +69,9 @@ int main(int argc, char *argv[]) {
         "Compute WER by comparing different transcriptions\n"
         "Takes two transcription files, in integer or text format,\n"
         "and outputs overall WER statistics to standard output.\n"
+        "Optionally, the third argument can be used to obtain detailed statistics\n"
         "\n"
-        "Usage: compute-wer [options] <ref-rspecifier> <hyp-rspecifier>\n"
+        "Usage: compute-wer [options] <ref-rspecifier> <hyp-rspecifier> [<stats-out>]\n"
         "E.g.: compute-wer --text --mode=present ark:data/train/text ark:hyp_text\n"
         "See also: align-text,\n"
         "Example scoring script: egs/wsj/s5/steps/score_kaldi.sh\n";
@@ -54,13 +90,18 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string ref_rspecifier = po.GetArg(1);
     std::string hyp_rspecifier = po.GetArg(2);
+
+    Output stats_output;
+    bool detailed_stats = (po.NumArgs() == 3);
+    if (detailed_stats)
+      stats_output.Open(po.GetOptArg(3), false, false);  // non-binary output
 
     if (mode != "strict" && mode != "present" && mode != "all") {
       KALDI_ERR << "--mode option invalid: expected \"present\"|\"all\"|\"strict\", got "
@@ -95,6 +136,11 @@ int main(int argc, char *argv[]) {
       num_ins += ins;
       num_del += del;
       num_sub += sub;
+      
+      if (detailed_stats) {
+          const std::string eps = "";
+          PrintAlignmentStats(ref_sent, hyp_sent, eps, stats_output.Stream());
+      }
 
       num_sent++;
       sent_errs += (ref_sent != hyp_sent);
