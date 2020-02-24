@@ -201,13 +201,12 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
 
   KALDI_ASSERT(d_all_features_.NumRows() == h_all_features_.NumRows() &&
                d_all_features_.NumCols() == h_all_features_.NumCols());
-  KALDI_ASSERT(d_all_ivectors_.Dim() >=
-               (h_all_ivectors_.NumRows() * h_all_ivectors_.NumCols()));
-
   cudaMemcpyAsync(d_all_features_.Data(), h_all_features_.Data(),
                   h_all_features_.SizeInBytes(), cudaMemcpyHostToDevice,
                   cudaStreamPerThread);
   if (use_ivectors_) {
+    KALDI_ASSERT(d_all_ivectors_.Dim() >=
+                 (h_all_ivectors_.NumRows() * h_all_ivectors_.NumCols()));
     cudaMemcpyAsync(d_all_ivectors_.Data(), h_all_ivectors_.Data(),
                     h_all_ivectors_.SizeInBytes(), cudaMemcpyHostToDevice,
                     cudaStreamPerThread);
@@ -297,7 +296,6 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature(int element) {
   if (nframes > 0) {
     SubMatrix<BaseFloat> utt_features =
         h_all_features_.RowRange(element * input_frames_per_chunk_, nframes);
-    SubVector<BaseFloat> utt_ivector = h_all_ivectors_.Row(element);
     std::vector<int> frames(nframes);
     for (int j = start_iframe; j < end_iframe; ++j)
       frames[j - start_iframe] = j;
@@ -307,6 +305,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature(int element) {
 
     // If available, copy ivectors
     if (use_ivectors_) {
+      SubVector<BaseFloat> utt_ivector = h_all_ivectors_.Row(element);
       feature_pipeline.IvectorFeature()->GetFrame(end_iframe - 1, &utt_ivector);
     }
   }
