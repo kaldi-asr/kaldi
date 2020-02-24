@@ -4,19 +4,22 @@
 # Apache 2.0
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 
-def compute_delta_feat(x, weight):
+def compute_delta_feat(x, weight, enable_padding):
     '''
     Args:
         x: input feat of shape [batch_size, seq_len, feat_dim]
 
         weight: coefficients for computing delta features;
-              it has a shape of [feat_dim, 1, kernel_size].
+              it has shape [feat_dim, 1, kernel_size].
+
+        enable_padding: True to add padding.
 
     Returns:
-        a tensor fo shape [batch_size, seq_len, feat_dim]
+        a tensor of shape [batch_size, seq_len, feat_dim]
     '''
 
     assert x.ndim == 3
@@ -27,51 +30,61 @@ def compute_delta_feat(x, weight):
 
     feat_dim = x.size(2)
 
-    pad_size = weight.size(2) // 2
+    if enable_padding:
+        pad_size = weight.size(2) // 2
 
-    # F.pad requires a 4-D tensor in our case
-    x = x.unsqueeze(0)
+        # F.pad requires a 4-D tensor in our case
+        x = x.unsqueeze(0)
 
-    # (0, 0, pad_size, pad_size) == (left, right, top, bottom)
-    padded_x = F.pad(x, (0, 0, pad_size, pad_size), mode='replicate')
+        # (0, 0, pad_size, pad_size) == (left, right, top, bottom)
+        x = F.pad(x, (0, 0, pad_size, pad_size), mode='replicate')
 
-    # after padding, we have to convert it back to 3-D
-    # since conv1d requires 3-D input
-    padded_x = padded_x.squeeze(0)
+        # after padding, we have to convert it back to 3-D
+        # since conv1d requires 3-D input
+        x = x.squeeze(0)
 
     # conv1d requires a shape of [batch_size, feat_dim, seq_len]
-    padded_x = padded_x.permute(0, 2, 1)
+    x = x.permute(0, 2, 1)
 
     # NOTE(fangjun): we perform a depthwise convolution here by
     # setting groups == number of channels
-    y = F.conv1d(input=padded_x, weight=weight, groups=feat_dim)
+    y = F.conv1d(input=x, weight=weight, groups=feat_dim)
 
-    # now convert y back to be of shape [batch_size, seq_len, feat_dim]
+    # now convert y back to shape [batch_size, seq_len, feat_dim]
     y = y.permute(0, 2, 1)
 
     return y
 
 
-class AddDeltasTransform:
+class AddDeltasTransform(nn.Module):
     '''
     This class implements `add-deltas` in kaldi with
     order == 2 and window == 2.
 
-    It generates the identical output as kaldi's `add-deltas` with default
-    parameters given the same input.
+    It can generate the identical output as kaldi's `add-deltas`.
+
+    See transform_test.py
     '''
 
-    def __init__(self):
-        # yapf: disable
-        self.first_order_coef = torch.tensor([-0.2, -0.1, 0, 0.1, 0.2])
-        self.second_order_coef = torch.tensor([0.04, 0.04, 0.01, -0.04, -0.1, -0.04, 0.01, 0.04, 0.04])
-        # yapf: enable
+    def __init__(self,
+                 first_order_coef=[-1, 0, 1],
+                 second_order_coef=[1, 0, -2, 0, 1],
+                 enable_padding=False):
+        '''
+        Note that this class has no trainable `nn.Parameters`.
 
-        # TODO(fangjun): change the coefficients to the following as suggested by Dan
-        #  [-1, 0, 1]
-        #  [1, 0, -2,  0, 1]
+        Args:
+            first_order_coef: coefficient to compute the first order delta feature
 
-    def __call__(self, x):
+            second_order_coef: coefficient to compute the second order delta feature
+        '''
+        super().__init__()
+
+        self.first_order_coef = torch.tensor(first_order_coef)
+        self.second_order_coef = torch.tensor(second_order_coef)
+        self.enable_padding = enable_padding
+
+    def forward(self, x):
         '''
         Args:
             x: a tensor of shape [batch_size, seq_len, feat_dim]
@@ -94,9 +107,22 @@ class AddDeltasTransform:
             self.first_order_coef = self.first_order_coef.to(device)
             self.second_order_coef = self.second_order_coef.to(device)
 
-        first_order = compute_delta_feat(x, self.first_order_coef)
-        second_order = compute_delta_feat(x, self.second_order_coef)
+        first_order = compute_delta_feat(x, self.first_order_coef,
+                                         self.enable_padding)
+        second_order = compute_delta_feat(x, self.second_order_coef,
+                                          self.enable_padding)
 
-        y = torch.cat([x, first_order, second_order], dim=2)
+        if self.enable_padding:
+            y = torch.cat([x, first_order, second_order], dim=2)
+        else:
+            zeroth = (x.size(1) - second_order.size(1)) // 2
+            first = (first_order.size(1) - second_order.size(1)) // 2
+
+            y = torch.cat([
+                x[:, zeroth:-zeroth, :],
+                first_order[:, first:-first, :],
+                second_order,
+            ],
+                          dim=2)
 
         return y

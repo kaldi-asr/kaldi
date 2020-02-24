@@ -30,11 +30,18 @@ class TransformTest(unittest.TestCase):
             [3, 2],
             [5, 1],
             [10, -2],
+            [10, 20],
+            [100, 200],
         ]).float()
 
         x = x.unsqueeze(0)
 
-        transform = AddDeltasTransform()
+        transform = AddDeltasTransform(
+            first_order_coef=[-0.2, -0.1, 0, 0.1, 0.2],
+            second_order_coef=[
+                0.04, 0.04, 0.01, -0.04, -0.1, -0.04, 0.01, 0.04, 0.04
+            ],
+            enable_padding=True)
         y = transform(x)
 
         # now use kaldi's add-deltas to compute the ground truth
@@ -60,7 +67,17 @@ class TransformTest(unittest.TestCase):
 
         y = y.squeeze(0)
 
-        np.testing.assert_array_almost_equal(y.numpy(), expected.numpy())
+        np.testing.assert_array_almost_equal(y.numpy(),
+                                             expected.numpy(),
+                                             decimal=5)
+
+        # now for padding == False
+        transform.enable_padding = False
+        y = transform(x).squeeze(0)
+
+        np.testing.assert_array_almost_equal(y.numpy(),
+                                             expected.numpy()[4:-4, :],
+                                             decimal=5)
 
         reader.Close()
 
