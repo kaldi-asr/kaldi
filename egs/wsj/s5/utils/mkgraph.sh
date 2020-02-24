@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2010-2012 Microsoft Corporation
 #           2012-2013 Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0

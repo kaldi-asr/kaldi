@@ -1500,10 +1500,11 @@ void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
   TokenId best_cost_idx;
   {
     std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
-    h_all_tokens_info_.shrink_to_fit();
-    h_all_tokens_acoustic_cost_.shrink_to_fit();
-    h_all_tokens_extra_prev_tokens_.shrink_to_fit();
-    h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_.shrink_to_fit();
+    h_all_tokens_info_[ichannel].shrink_to_fit();
+    h_all_tokens_acoustic_cost_[ichannel].shrink_to_fit();
+    h_all_tokens_extra_prev_tokens_[ichannel].shrink_to_fit();
+    h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
+      .shrink_to_fit();
     best_cost_idx = h_all_argmin_cost_[ichannel].first;
   }
   KALDI_ASSERT(

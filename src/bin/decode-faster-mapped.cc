@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
     using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -88,7 +89,7 @@ int main(int argc, char *argv[]) {
     // It has to do with what happens on UNIX systems if you call fork() on a
     // large process: the page-table entries are duplicated, which requires a
     // lot of virtual memory.
-    VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
+    Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_filename);
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;

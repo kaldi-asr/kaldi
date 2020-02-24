@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g is as 1f but moving to a factorized TDNN (TDNN-F) model, re-tuning it, and
 #  switching to unconstrained egs (the last of which gives around 0.1%

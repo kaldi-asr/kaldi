@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1n is as 1k, but maxing out at 0.5, not 0.7.
 # 1k is as 1e, but introducing a dropout schedule.

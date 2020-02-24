@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017 Lucas Jo (Atlas Guide)
 # Apache 2.0

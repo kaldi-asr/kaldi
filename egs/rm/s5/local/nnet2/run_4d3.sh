@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # run_4d3.sh is as run_4d.sh, but using a newer version of the scripts that

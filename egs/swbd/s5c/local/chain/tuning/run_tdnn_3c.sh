@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3c is as _2y, but using 'jesus' nonlinearity: the --jesus-dim 800 option, instead of
 #   --relu-dim 850.

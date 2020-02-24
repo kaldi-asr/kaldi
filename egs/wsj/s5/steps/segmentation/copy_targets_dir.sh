@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright    2017  Nagendra Kumar Goel
 #              2014  Johns Hopkins University (author: Nagendra K Goel)

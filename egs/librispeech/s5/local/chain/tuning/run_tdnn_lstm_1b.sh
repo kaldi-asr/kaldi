@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # this is the tdnn-lstmp based on the run_tdnn_lstm_1a.sh under Librispeech but with larger model size.
 
 # training acoustic model and decoding:

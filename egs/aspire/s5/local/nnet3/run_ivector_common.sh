@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #set -e
 # this script is based on local/multicondition/run_nnet2_common.sh
 # minor corrections were made to dir names for nnet3

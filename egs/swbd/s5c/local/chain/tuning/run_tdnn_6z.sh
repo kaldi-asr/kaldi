@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 6z is as 6y, but fixing the right-tolerance in the scripts to default to 5 (as
 # the default is in the code), rather than the previous script default value of

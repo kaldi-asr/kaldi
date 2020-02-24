@@ -194,6 +194,8 @@ struct OnlineIvectorExtractionInfo {
 
   void Init(const OnlineIvectorExtractionConfig &config);
 
+  int32 ExpectedFeatureDim() const;
+
   // This constructor creates a version of this object where everything
   // is empty or zero.
   OnlineIvectorExtractionInfo();

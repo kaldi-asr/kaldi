@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # 1d is as 1c but setting num-minibatches-history=40.

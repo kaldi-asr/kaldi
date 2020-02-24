@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6h is as _6g but adding --xent-separate-forward-affine=true, which
 # gives a separate last-but-one weight matrix to the xent output.

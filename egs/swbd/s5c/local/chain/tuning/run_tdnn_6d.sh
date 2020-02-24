@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6d is as _5v but changing adding --num-jesus-blocks 84 (default is 100).
 # this means (after rounding) that we have 6, not 5, as

@@ -23,8 +23,6 @@
 
 #include <iterator>
 #include <limits>
-#include <algorithm>
-#include <thread>
 
 namespace kaldi {
 namespace chain {

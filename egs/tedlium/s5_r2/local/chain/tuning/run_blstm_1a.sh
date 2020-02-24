@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_blstm_1a.sh is a first attempt at an BLSTM system, based on xconfigs
 # ./local/chain/compare_wer_general.sh exp/chain_cleaned/blstm_1a_sp_bi

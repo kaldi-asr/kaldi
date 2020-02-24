@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _n is as _m but changing the egs configuration to get better and more even
 # coverage of the data: increasing frames_per_eg from 150 to 200,

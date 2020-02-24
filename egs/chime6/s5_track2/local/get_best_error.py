@@ -18,6 +18,8 @@ def get_args():
                         help="path of WER files")
     parser.add_argument("recording_id", type=str,
                         help="recording_id name")
+    parser.add_argument("num_speakers", type=str,
+                        help="number of speakers in ref")
     args = parser.parse_args()
     return args
 
@@ -48,17 +50,17 @@ def get_min_wer(recording_id, num_speakers, WER_dir):
             filename = WER_dir + filename
             total_words, ins, deletions, sub = get_results(filename)
             ins = int(ins)
-            dele = int(deletions)
+            deletions = int(deletions)
             sub = int(sub)
-            total_error = ins + dele + sub
+            total_error = ins + deletions + sub
             total_error_mat[i-1][j-1]=total_error
-            all_errors_mat[i-1][j-1]= (total_words, total_error, ins, dele, sub)
+            all_errors_mat[i-1][j-1]= (total_words, total_error, ins, deletions, sub)
 
     indexes = m.compute(total_error_mat)
     total_errors=total_words=total_ins=total_del=total_sub=0
     spk_order = '('
     for row, column in indexes:
-        words, errs, ins, dele, sub = all_errors_mat[row][column]
+        words, errs, ins, deletions, sub = all_errors_mat[row][column]
         total_errors += int(errs)
         total_words += int(words)
         total_ins += int(ins)
@@ -70,16 +72,12 @@ def get_min_wer(recording_id, num_speakers, WER_dir):
     best_wer_writer.write(" recording_id: "+ recording_id + ' ')
     best_wer_writer.write(' best hypothesis speaker order: ' + spk_order + ' ')
     best_wer_writer.write(text+ '\n')
-    print("recording_id: "+ recording_id + ' ')
-    print('best hypothesis speaker order: ' + spk_order + ' ')
-    print(text)
     best_wer_writer.close()
 
 
 def main():
     args = get_args()
-    num_speakers = 4
-    get_min_wer(args.recording_id, num_speakers, args.WER_dir)
+    get_min_wer(args.recording_id, int(args.num_speakers), args.WER_dir)
 
 
 if __name__ == '__main__':

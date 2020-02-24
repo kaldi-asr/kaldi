@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script uses weight transfer as a transfer learning method to transfer
 # already trained neural net model on wsj to rm.
