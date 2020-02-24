@@ -154,7 +154,7 @@ class CtcDatasetCollateFunc:
 
             if label_rxfilename:
                 label = kaldi.read_vec_int(label_rxfilename)
-                label_list.append(label)
+                label_list.extend(label)
                 label_len_list.append(len(label))
 
         feat = pad_sequence(feat_list, batch_first=True)

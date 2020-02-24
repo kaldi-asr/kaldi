@@ -50,30 +50,10 @@ class CtcModel(nn.Module):
         self.input_batch_norm = nn.BatchNorm1d(num_features=input_dim,
                                                affine=False)
 
-        for i in range(num_layers):
-            if i == 0:
-                lstm_input_dim = input_dim
-            else:
-                lstm_input_dim = proj_dim
-
-            lstm_layer = nn.LSTM(input_size=lstm_input_dim,
-                                 hidden_size=hidden_dim,
-                                 num_layers=1,
-                                 batch_first=True)
-
-            proj_layer = nn.Linear(in_features=hidden_dim,
-                                   out_features=proj_dim)
-
-            lstm_layer_list.append(lstm_layer)
-            proj_layer_list.append(proj_layer)
-
-        self.lstm_layer_list = nn.ModuleList(lstm_layer_list)
-        self.proj_layer_list = nn.ModuleList(proj_layer_list)
-
-        self.num_layers = num_layers
-
-        self.prefinal_affine = nn.Linear(in_features=proj_dim,
-                                         out_features=output_dim)
+        self.lstm = nn.LSTM(input_size=input_dim,
+                            hidden_size=hidden_dim,
+                            num_layers=num_layers,
+                            batch_first=True)
 
     def forward(self, feat, feat_len_list):
         '''
@@ -97,22 +77,15 @@ class CtcModel(nn.Module):
 
         # at his point, x is of shape [batch_size, seq_len, feat_dim] == [N, L, C]
 
-        for i in range(self.num_layers):
-            x = pack_padded_sequence(input=x,
-                                     lengths=feat_len_list,
-                                     batch_first=True,
-                                     enforce_sorted=False)
+        x = pack_padded_sequence(input=x,
+                                 lengths=feat_len_list,
+                                 batch_first=True,
+                                 enforce_sorted=False)
 
-            # TODO(fangjun): save intermediate LSTM state to support streaming inference
-            x, _ = self.lstm_layer_list[i](x)
+        # TODO(fangjun): save intermediate LSTM state to support streaming inference
+        x, _ = self.lstm(x)
 
-            x, _ = pad_packed_sequence(x, batch_first=True)
-
-            x = self.proj_layer_list[i](x)
-
-            x = torch.tanh(x)
-
-        x = self.prefinal_affine(x)
+        x, _ = pad_packed_sequence(x, batch_first=True)
 
         x = F.log_softmax(x, dim=-1)
 

@@ -18,10 +18,11 @@ import torch.nn.functional as F
 
 import kaldi
 
-from options import get_args
 from common import setup_logger
-from model import get_ctc_model
+from ctc_loss import CTCLoss
 from dataset import get_ctc_dataloader
+from model import get_ctc_model
+from options import get_args
 
 
 def main():
@@ -32,6 +33,8 @@ def main():
     if torch.cuda.is_available() == False:
         logging.error('No GPU detected!')
         sys.exit(-1)
+
+    kaldi.SelectGpuDevice(device_id=args.device_id)
 
     device = torch.device('cuda', args.device_id)
 
@@ -56,6 +59,8 @@ def main():
 
     model.train()
 
+    loss_func = CTCLoss(use_warp_ctc=True, blank=0, reduction='mean')
+
     for epoch in range(args.num_epochs):
         learning_rate = lr * pow(0.4, epoch)
 
@@ -76,26 +81,22 @@ def main():
             log_probs = log_probs.permute(1, 0, 2)
             # now log_probs is of shape [seq_len, batch_size, output_dim]
 
-            label_tensor_list = [torch.tensor(x) for x in label_list]
+            targets = torch.tensor(label_list)
 
-            targets = torch.cat(label_tensor_list).to(device)
+            input_lengths = torch.tensor(feat_len_list)
 
-            input_lengths = torch.tensor(feat_len_list).to(device)
+            target_lengths = torch.tensor(label_len_list)
 
-            target_lengths = torch.tensor(label_len_list).to(device)
-
-            loss = F.ctc_loss(log_probs=log_probs,
-                              targets=targets,
-                              input_lengths=input_lengths,
-                              target_lengths=target_lengths,
-                              blank=0,
-                              reduction='mean')
+            loss = loss_func(log_probs=log_probs,
+                             targets=targets,
+                             input_lengths=input_lengths,
+                             target_lengths=target_lengths)
 
             optimizer.zero_grad()
 
             loss.backward()
 
-            #  clip_grad_value_(model.parameters(), 5.0)
+            clip_grad_value_(model.parameters(), 5.0)
 
             optimizer.step()
 
