@@ -15,12 +15,12 @@ import torch.nn.functional as F
 
 import kaldi
 
-from transform import AddDeltasTransform
+from add_deltas_layer import AddDeltasLayer
 
 
-class TransformTest(unittest.TestCase):
+class AddDeltasLayerTest(unittest.TestCase):
 
-    def test_add_deltas_transform(self):
+    def test(self):
         x = torch.tensor([
             [1, 3],
             [5, 10],
@@ -36,13 +36,12 @@ class TransformTest(unittest.TestCase):
 
         x = x.unsqueeze(0)
 
-        transform = AddDeltasTransform(
-            first_order_coef=[-0.2, -0.1, 0, 0.1, 0.2],
-            second_order_coef=[
-                0.04, 0.04, 0.01, -0.04, -0.1, -0.04, 0.01, 0.04, 0.04
-            ],
-            enable_padding=True)
-        y = transform(x)
+        transform = AddDeltasLayer(first_order_coef=[-0.2, -0.1, 0, 0.1, 0.2],
+                                   second_order_coef=[
+                                       0.04, 0.04, 0.01, -0.04, -0.1, -0.04,
+                                       0.01, 0.04, 0.04
+                                   ])
+        y = transform(x.permute(0, 2, 1)).permute(0, 2, 1)
 
         # now use kaldi's add-deltas to compute the ground truth
         d = tempfile.mkdtemp()
@@ -66,14 +65,6 @@ class TransformTest(unittest.TestCase):
         expected = reader['utt1']
 
         y = y.squeeze(0)
-
-        np.testing.assert_array_almost_equal(y.numpy(),
-                                             expected.numpy(),
-                                             decimal=5)
-
-        # now for padding == False
-        transform.enable_padding = False
-        y = transform(x).squeeze(0)
 
         np.testing.assert_array_almost_equal(y.numpy(),
                                              expected.numpy()[4:-4, :],
