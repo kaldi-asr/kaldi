@@ -13,7 +13,7 @@ data_url=www.openslr.org/resources/33
 
 nj=30
 
-stage=0
+stage=8
 
 if [[ $stage -le 0 ]]; then
   local/download_and_untar.sh $data $data_url data_aishell || exit 1
@@ -57,6 +57,7 @@ if [[ $stage -le 5 ]]; then
   done
 fi
 
+
 if [[ $stage -le 6 ]]; then
   echo "$0: convert text to labels"
   for x in train_sp dev_sp test; do
@@ -64,10 +65,19 @@ if [[ $stage -le 6 ]]; then
   done
 fi
 
+n=128
 if [[ $stage -le 7 ]]; then
+  utils/subset_data_dir.sh --first data/train_sp $n data/train_sp$n || exit 1
+  utils/subset_data_dir.sh --first data/dev_sp $n data/dev_sp$n || exit 1
+  for x in train_sp dev_sp; do
+    ./local/convert_text_to_labels.sh data/${x}$n data/lang
+  done
+fi
+
+if [[ $stage -le 8 ]]; then
   ./local/run_ctc.sh \
-    --train-data-dir data/train_sp \
-    --dev-data-dir data/dev_sp \
+    --train-data-dir data/train_sp$n \
+    --dev-data-dir data/dev_sp$n \
     --test-data-dir data/test \
     --lang-dir data/lang
 fi

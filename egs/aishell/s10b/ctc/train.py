@@ -61,8 +61,12 @@ def main():
 
     loss_func = CTCLoss(use_warp_ctc=True, blank=0, reduction='mean')
 
+    total_loss = 0
+    num = 0
+
     for epoch in range(args.num_epochs):
-        learning_rate = lr * pow(0.4, epoch)
+        #  learning_rate = lr * pow(0.4, epoch)
+        learning_rate = lr
 
         for param_group in optimizer.param_groups:
             param_group['lr'] = learning_rate
@@ -83,7 +87,7 @@ def main():
 
             targets = torch.tensor(label_list)
 
-            input_lengths = torch.tensor(feat_len_list)
+            input_lengths = torch.tensor(feat_len_list) - 4
 
             target_lengths = torch.tensor(label_len_list)
 
@@ -96,11 +100,14 @@ def main():
 
             loss.backward()
 
-            clip_grad_value_(model.parameters(), 5.0)
+            #  clip_grad_value_(model.parameters(), 5.0)
 
             optimizer.step()
 
-            logging.info('batch {}, loss {}'.format(batch_idx, loss.item()))
+            total_loss += loss.item()
+            num += 1
+            logging.info('batch {}, loss {}, average {}'.format(
+                batch_idx, loss.item(), total_loss / num))
 
 
 if __name__ == '__main__':

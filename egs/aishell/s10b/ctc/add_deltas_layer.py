@@ -52,8 +52,8 @@ class AddDeltasLayer(nn.Module):
         '''
         super().__init__()
 
-        self.first_order_coef = torch.tensor(first_order_coef)
-        self.second_order_coef = torch.tensor(second_order_coef)
+        self.first_order_coef = torch.tensor(first_order_coef).float()
+        self.second_order_coef = torch.tensor(second_order_coef).float()
 
     def forward(self, x):
         '''

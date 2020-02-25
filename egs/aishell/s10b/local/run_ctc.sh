@@ -9,7 +9,7 @@ echo "$0 $@"  # Print the command line for logging
 
 stage=0
 
-device_id=1
+device_id=2
 
 train_data_dir=data/train_sp
 dev_data_dir=data/dev_sp
@@ -17,12 +17,12 @@ test_data_dir=data/test
 lang_dir=data/lang
 
 lr=1e-4
-num_epochs=6
+num_epochs=20
 l2_regularize=1e-5
-num_layers=4
-hidden_dim=512
+num_layers=6
+hidden_dim=320
 proj_dim=200
-batch_size=64
+batch_size=16
 
 
 dir=exp/ctc

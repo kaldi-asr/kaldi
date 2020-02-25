@@ -11,6 +11,8 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence
 from torch.nn.utils.rnn import pad_packed_sequence
 
+from add_deltas_layer import AddDeltasLayer
+
 
 def get_ctc_model(input_dim,
                   output_dim,
@@ -47,13 +49,15 @@ class CtcModel(nn.Module):
         proj_layer_list = []
 
         # batchnorm requires input of shape [N, C, L] == [batch_size, dim, seq_len]
-        self.input_batch_norm = nn.BatchNorm1d(num_features=input_dim,
+        self.input_batch_norm = nn.BatchNorm1d(num_features=input_dim * 3,
                                                affine=False)
 
-        self.lstm = nn.LSTM(input_size=input_dim,
+        self.lstm = nn.LSTM(input_size=input_dim * 3,
                             hidden_size=hidden_dim,
                             num_layers=num_layers,
                             batch_first=True)
+
+        self.add_deltas_layer = AddDeltasLayer()
 
     def forward(self, feat, feat_len_list):
         '''
@@ -71,11 +75,16 @@ class CtcModel(nn.Module):
         x = x.permute(0, 2, 1)
 
         # at his point, x is of shape [batch_size, feat_dim, seq_len] == [N, C, L]
+
+        x = self.add_deltas_layer(x)
+
         x = self.input_batch_norm(x)
 
         x = x.permute(0, 2, 1)
 
         # at his point, x is of shape [batch_size, seq_len, feat_dim] == [N, L, C]
+
+        feat_len_list = [n - 4 for n in feat_len_list]
 
         x = pack_padded_sequence(input=x,
                                  lengths=feat_len_list,
