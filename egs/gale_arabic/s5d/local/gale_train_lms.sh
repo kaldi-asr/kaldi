@@ -43,8 +43,7 @@ lexicon=$2  # data/local/dict/lexicon.txt
 dir=$3      # data/local/lm
 
 shift 3
-giga_dir=( $@ )
-[ -z $giga_dir ] && echo "Training LM without using external Arabic Gigaword."
+giga_dirs=( $@ )
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
@@ -95,43 +94,44 @@ if [ $stage -le 1 ]; then
   echo "training 4-gram lm"
   ngram-count -text $dir/train.gz -order 4 -limit-vocab -vocab $dir/wordlist \
     -unk -map-unk "<UNK>" -${smoothing}discount -interpolate -lm $dir/gale.o4g.${smoothing}.gz
-  echo "PPL for SWBD1 4gram LM:"
+  echo "PPL for GALE Arabic 4gram LM:"
   ngram -unk -lm $dir/gale.o4g.${smoothing}.gz -ppl $dir/heldout
   ngram -unk -lm $dir/gale.o4g.${smoothing}.gz -ppl $dir/heldout -debug 2 >& $dir/4gram.${smoothing}.ppl2
 fi
 
-
-if [ $stage -le 2 ]; then
-  if [ ! -z $giga_dir ]; then
-    echo "Using external data."
-    mkdir -p $dir/giga
-    cp $giga_dir/text.2000k $dir/giga
-    cat $dir/giga/text.2000k | gzip -c > $dir/giga/text2000k.gz
-  
-    for x in 3 4; do
-      smoothing="kn"
-      ngram-count -text $dir/giga/text2000k.gz -order $x -limit-vocab \
-        -vocab $dir/wordlist -unk -map-unk "<UNK>" -${smoothing}discount -interpolate \
-        -lm $dir/giga/giga.o${x}g.${smoothing}.gz
-      echo "PPL for Gigaword ${x}gram LM:"
-      ngram -unk -lm $dir/giga/giga.o${x}g.${smoothing}.gz -ppl $dir/heldout
-      ngram -unk -lm $dir/giga/giga.o${x}g.${smoothing}.gz -ppl $dir/heldout -debug 2 \
-        >& $dir/giga/${x}gram.${smoothing}.ppl2
-      compute-best-mix $dir/${x}gram.${smoothing}.ppl2 \
-        $dir/giga/${x}gram.${smoothing}.ppl2 >& $dir/gale_giga_mix.${x}gram.${smoothing}.log
-      grep 'best lambda' $dir/gale_giga_mix.${x}gram.${smoothing}.log | perl -e '
-        $_=<>;
-        s/.*\(//; s/\).*//;
-        @A = split;
-        die "Expecting 2 numbers; found: $_" if(@A!=2);
-        print "$A[0]\n$A[1]\n";' > $dir/gale_giga_mix.${x}gram.${smoothing}.weights
-      gale_weight=$(head -1 $dir/gale_giga_mix.${x}gram.${smoothing}.weights)
-      giga_weight=$(tail -n 1 $dir/gale_giga_mix.${x}gram.${smoothing}.weights)
-      ngram -order $x -lm $dir/gale.o${x}g.${smoothing}.gz -lambda $swb1_weight \
-        -mix-lm $dir/giga/giga.o${x}g.${smoothing}.gz \
-        -unk -write-lm $dir/gale_giga.o${x}g.${smoothing}.gz
-      echo "PPL for GALE + Gigaword ${x}gram LM:"
-      ngram -unk -lm $dir/gale_giga.o${x}g.${smoothing}.gz -ppl $dir/heldout
-    done
+if [ ! -z $giga_dirs ]; then
+  mkdir -p $dir/giga
+  if [ ! -f $giga_dirs/text.2000k ]; then
+    echo "Arabic Gigaword text not found, prepare it"
+    local/prepare_giga.sh $giga_dirs
   fi
+
+  cp $giga_dirs/text.2000k $dir/giga
+  cat $dir/giga/text.2000k | gzip -c > $dir/giga/text2000k.gz
+  
+  for x in 3 4; do
+    smoothing="kn"
+    ngram-count -text $dir/giga/text2000k.gz -order $x -limit-vocab \
+      -vocab $dir/wordlist -unk -map-unk "<UNK>" -${smoothing}discount -interpolate \
+      -lm $dir/giga/giga.o${x}g.${smoothing}.gz
+    echo "PPL for Gigaword ${x}gram LM:"
+    ngram -unk -lm $dir/giga/giga.o${x}g.${smoothing}.gz -ppl $dir/heldout
+    ngram -unk -lm $dir/giga/giga.o${x}g.${smoothing}.gz -ppl $dir/heldout -debug 2 \
+      >& $dir/giga/${x}gram.${smoothing}.ppl2
+    compute-best-mix $dir/${x}gram.${smoothing}.ppl2 \
+      $dir/giga/${x}gram.${smoothing}.ppl2 >& $dir/gale_giga_mix.${x}gram.${smoothing}.log
+    grep 'best lambda' $dir/gale_giga_mix.${x}gram.${smoothing}.log | perl -e '
+      $_=<>;
+      s/.*\(//; s/\).*//;
+      @A = split;
+      die "Expecting 2 numbers; found: $_" if(@A!=2);
+      print "$A[0]\n$A[1]\n";' > $dir/gale_giga_mix.${x}gram.${smoothing}.weights
+    gale_weight=$(head -1 $dir/gale_giga_mix.${x}gram.${smoothing}.weights)
+    giga_weight=$(tail -n 1 $dir/gale_giga_mix.${x}gram.${smoothing}.weights)
+    ngram -order $x -lm $dir/gale.o${x}g.${smoothing}.gz -lambda $swb1_weight \
+      -mix-lm $dir/giga/giga.o${x}g.${smoothing}.gz \
+      -unk -write-lm $dir/gale_giga.o${x}g.${smoothing}.gz
+    echo "PPL for GALE + Gigaword ${x}gram LM:"
+    ngram -unk -lm $dir/gale_giga.o${x}g.${smoothing}.gz -ppl $dir/heldout
+  done
 fi

@@ -40,7 +40,7 @@ class CudaOnlineBatchedCmvn {
 
  private:
   const OnlineCmvnOptions &opts_;
-  const CudaOnlineCmvnState &cmvn_state_;
+  const CudaOnlineCmvnState cmvn_state_;
 
   int32_t feat_dim_;
   int32_t chunk_size_;

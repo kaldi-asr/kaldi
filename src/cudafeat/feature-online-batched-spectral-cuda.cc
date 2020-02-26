@@ -176,17 +176,16 @@ void CudaOnlineBatchedSpectralFeatures::ComputeFinalFeaturesBatched(
                       cumfcc_opts_.use_power);
   CU_SAFE_CALL(cudaGetLastError());
 
-  // mel banks
   int num_bins = bin_size_;
-  cuda_mel_banks_compute(lanes, num_lanes, max_chunk_frames_, num_bins,
+  // mel banks plus optional dct transform
+  if (cumfcc_opts_.use_dct) {
+    // MFCC uses dct
+    cuda_mel_banks_compute(lanes, num_lanes, max_chunk_frames_, num_bins,
                          std::numeric_limits<float>::epsilon(), offsets_,
                          sizes_, vecs_, power_spectrum_.Data(),
                          power_spectrum_.Stride(), cu_mel_energies_.Data(),
                          cu_mel_energies_.Stride(), cumfcc_opts_.use_log_fbank);
-  CU_SAFE_CALL(cudaGetLastError());
-
-  // dct transform
-  if (cumfcc_opts_.use_dct) {
+    CU_SAFE_CALL(cudaGetLastError());
     if (cu_features->NumRows() > cu_mel_energies_.NumRows()) {
       CuSubMatrix<BaseFloat> cu_feats_sub(*cu_features, 0,
                                           cu_mel_energies_.NumRows(), 0,
@@ -202,12 +201,15 @@ void CudaOnlineBatchedSpectralFeatures::ComputeFinalFeaturesBatched(
         mfcc_opts.cepstral_lifter, mfcc_opts.use_energy, mfcc_opts.energy_floor,
         cu_signal_log_energy->Data(), cu_signal_log_energy->Stride(),
         cu_lifter_coeffs_.Data(), cu_features->Data(), cu_features->Stride());
-
+    CU_SAFE_CALL(cudaGetLastError());
   } else {
-    cudaMemcpyAsync(cu_features->Data(), cu_mel_energies_.Data(),
-                    sizeof(BaseFloat) * max_chunk_frames_ * num_lanes *
-                        cu_features->Stride(),
-                    cudaMemcpyDeviceToDevice, cudaStreamPerThread);
+    // fbank puts the result of mel_banks_compute directly into cu_features 
+    cuda_mel_banks_compute(lanes, num_lanes, max_chunk_frames_, num_bins,
+                         std::numeric_limits<float>::epsilon(), offsets_,
+                         sizes_, vecs_, power_spectrum_.Data(),
+                         power_spectrum_.Stride(), cu_features->Data(),
+                         cu_features->Stride(), cumfcc_opts_.use_log_fbank);
+    CU_SAFE_CALL(cudaGetLastError());
   }
   CU_SAFE_CALL(cudaGetLastError());
 }
