@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
 
-    const char *usage =  "Write an equally spaced alignment (for getting training started)"
+    const char *usage =  "Write an equally spaced alignment (for getting training started)\n"
         "Usage:  align-equal-compiled <graphs-rspecifier> <features-rspecifier> <alignments-wspecifier>\n"
         "e.g.: \n"
         " align-equal-compiled 1.fsts scp:train.scp ark:equal.ali\n";

@@ -71,7 +71,7 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
   return false;
 }
 
-template <typename FST, typename DEC>
+template <typename DEC>
 int32 TrailingSilenceLength(const TransitionModel &tmodel,
                             const std::string &silence_phones_str,
                             const DEC &decoder) {
@@ -106,50 +106,30 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
   return num_silence_frames;
 }
 
-template <typename FST>
+template <typename DEC>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
-    const LatticeFasterOnlineDecoderTpl<FST> &decoder) {
+    const DEC &decoder) {
   if (decoder.NumFramesDecoded() == 0) return false;
 
   BaseFloat final_relative_cost = decoder.FinalRelativeCost();
 
   int32 num_frames_decoded = decoder.NumFramesDecoded(),
-      trailing_silence_frames = TrailingSilenceLength<FST, LatticeFasterOnlineDecoderTpl<FST>>(tmodel,
+      trailing_silence_frames = TrailingSilenceLength(tmodel,
                                                       config.silence_phones,
                                                       decoder);
 
   return EndpointDetected(config, num_frames_decoded, trailing_silence_frames,
                           frame_shift_in_seconds, final_relative_cost);
 }
-
-template <typename FST>
-bool EndpointDetected(
-    const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
-    BaseFloat frame_shift_in_seconds,
-    const LatticeIncrementalOnlineDecoderTpl<FST> &decoder) {
-  if (decoder.NumFramesDecoded() == 0) return false;
-
-  BaseFloat final_relative_cost = decoder.FinalRelativeCost();
-
-  int32 num_frames_decoded = decoder.NumFramesDecoded(),
-      trailing_silence_frames = TrailingSilenceLength<FST, LatticeIncrementalOnlineDecoderTpl<FST>>(tmodel,
-                                                      config.silence_phones,
-                                                      decoder);
-
-  return EndpointDetected(config, num_frames_decoded, trailing_silence_frames,
-                          frame_shift_in_seconds, final_relative_cost);
-}
-
 
 
 // Instantiate EndpointDetected for the types we need.
 // It will require TrailingSilenceLength so we don't have to instantiate that.
 template
-bool EndpointDetected<fst::Fst<fst::StdArc> >(
+bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > >(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
@@ -157,14 +137,14 @@ bool EndpointDetected<fst::Fst<fst::StdArc> >(
 
 
 template
-bool EndpointDetected<fst::GrammarFst>(
+bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::GrammarFst> >(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<fst::GrammarFst> &decoder);
 
 template
-bool EndpointDetected<fst::Fst<fst::StdArc> >(
+bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > >(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
@@ -172,7 +152,7 @@ bool EndpointDetected<fst::Fst<fst::StdArc> >(
 
 
 template
-bool EndpointDetected<fst::GrammarFst>(
+bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::GrammarFst> >(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,

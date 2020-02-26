@@ -70,6 +70,7 @@ Configuration options:
   --static              Build and link against static libraries [default=no]
   --shared              Build and link against shared libraries [default=no]
   --use-cuda            Build with CUDA [default=yes]
+  --with-cudadecoder    Build with CUDA decoder [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
   --cuda-arch=FLAGS     Override the default CUDA_ARCH flags. See:
          https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#nvcc-examples.
@@ -500,11 +501,10 @@ function configure_cuda {
     echo >> kaldi.mk
     echo "# CUDA configuration" >> kaldi.mk
     echo >> kaldi.mk
+
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
-    
-    
     echo >> kaldi.mk
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct
@@ -525,7 +525,7 @@ WARNING: CUDA will not be used!
          CUDA is not supported with 32-bit builds."
       exit 1;
     fi
-    
+
     #add cusolver flags for newer toolkits
     if [ "$CUSOLVER" == "true" ]; then
       echo "CUDA_LDLIBS += -lcusolver" >> kaldi.mk
@@ -744,6 +744,7 @@ debug_level=1
 double_precision=false
 dynamic_kaldi=false
 use_cuda=true
+with_cudadecoder=1
 static_fst=false
 static_math=false
 threaded_atlas=false
@@ -817,6 +818,15 @@ do
     shift ;;
   --use-cuda=no)
     use_cuda=false;
+    shift ;;
+  --with-cudadecoder)
+    with_cudadecoder=1;
+    shift ;;
+  --with-cudadecoder=yes)
+    with_cudadecoder=1;
+    shift ;;
+  --with-cudadecoder=no)
+    with_cudadecoder=0;
     shift ;;
   --static-math)
     static_math=true;
@@ -1090,6 +1100,8 @@ else
   echo "CUBROOT = $CUBROOT" >> kaldi.mk
 fi
 
+echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
+echo >> kaldi.mk
 
 # OS-specific steps given below append to kaldi.mk
 echo "Doing OS specific configurations ..."
