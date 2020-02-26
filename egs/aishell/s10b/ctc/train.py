@@ -12,6 +12,7 @@ import warnings
 # disable warnings when loading tensorboard
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -26,8 +27,8 @@ from common import save_training_info
 from common import setup_logger
 from ctc_loss import CTCLoss
 from dataset import get_ctc_dataloader
-from model import get_ctc_model
 from options import get_args
+from tdnnf_model import get_tdnnf_model
 
 
 def train_one_epoch(dataloader, model, device, optimizer, loss_func,
@@ -35,7 +36,7 @@ def train_one_epoch(dataloader, model, device, optimizer, loss_func,
     total_loss = 0.
     num = 0.
 
-    num_repeat = 100
+    num_repeat = 1
     for kk in range(num_repeat):
         for batch_idx, batch in enumerate(dataloader):
             unused_uttid_list, feat, feat_len_list, label_list, label_len_list = batch
@@ -83,6 +84,11 @@ def train_one_epoch(dataloader, model, device, optimizer, loss_func,
 
             total_loss += loss.item()
             num += 1
+
+            if np.random.choice(4) == 0:
+                with torch.no_grad():
+                    model.constrain_orthonormal()
+
             if batch_idx % 100 == 0:
                 logging.info(
                     'batch {}/{} ({:.2f}%) ({}/{}), loss {:.5f}, average {:.5f}'
@@ -117,11 +123,14 @@ def main():
 
     device = torch.device('cuda', args.device_id)
 
-    model = get_ctc_model(input_dim=args.input_dim,
-                          output_dim=args.output_dim,
-                          num_layers=args.num_layers,
-                          hidden_dim=args.hidden_dim,
-                          proj_dim=args.proj_dim)
+    model = get_tdnnf_model(
+        input_dim=args.input_dim,
+        output_dim=args.output_dim,
+        hidden_dim=args.hidden_dim,
+        bottleneck_dim=args.bottleneck_dim,
+        prefinal_bottleneck_dim=args.prefinal_bottleneck_dim,
+        kernel_size_list=args.kernel_size_list,
+        subsampling_factor_list=args.subsampling_factor_list)
 
     start_epoch = 0
     num_epochs = args.num_epochs
@@ -245,5 +254,6 @@ def main():
 
 
 if __name__ == '__main__':
+    np.random.seed(20200221)
     torch.manual_seed(20200221)
     main()

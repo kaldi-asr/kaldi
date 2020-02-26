@@ -8,9 +8,9 @@ set -e
 echo "$0 $@"  # Print the command line for logging
 
 stage=0
-nj=10
+nj=30
 
-export CUDA_VISIBLE_DEVICES="0,1"
+export CUDA_VISIBLE_DEVICES="0"
 device_id=0
 
 train_data_dir=data/train_sp
@@ -21,14 +21,20 @@ lang_dir=data/lang
 lr=1e-3
 num_epochs=6
 l2_regularize=1e-5
-# l2_regularize=0
-num_layers=5
+batch_size=64
+
+# WARNING(fangjun): You should know how to calculate your
+# model's left/right context **manually**
+model_left_context=29
+model_right_context=29
+
 hidden_dim=1024
-proj_dim=200
-batch_size=8
-# we use delta features which requires model's left/right context
-model_left_context=2
-model_right_context=2
+bottleneck_dim=128
+prefinal_bottleneck_dim=256
+kernel_size_list="3, 3, 3, 1, 3, 3, 3, 3, 3, 3, 3, 3" # comma separated list
+subsampling_factor_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
+
+log_level=info # valid values: debug, info, warning
 
 post_decode_acwt=1
 
@@ -94,6 +100,7 @@ if [[ $stage -le 0 ]]; then
     # sort options alphabetically
     python3 ./ctc/train.py \
       --batch-size $batch_size \
+      --bottleneck-dim $bottleneck_dim \
       --checkpoint=${train_checkpoint:-} \
       --device-id $device_id \
       --dir $dir/train \
@@ -101,11 +108,13 @@ if [[ $stage -le 0 ]]; then
       --hidden-dim $hidden_dim \
       --input-dim $feat_dim \
       --is-training true \
+      --kernel-size-list "$kernel_size_list" \
+      --log-level $log_level \
       --model-left-context $model_left_context \
       --model-right-context $model_right_context \
-      --num-layers $num_layers \
       --output-dim $output_dim \
-      --proj-dim $proj_dim \
+      --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
+      --subsampling-factor-list "$subsampling_factor_list" \
       --train.l2-regularize $l2_regularize \
       --train.labels-scp $train_data_dir/labels.scp \
       --train.lr $lr \
@@ -131,6 +140,7 @@ if [[ $stage -le 1 ]]; then
     # sort options alphabetically
     python3 ./ctc/inference.py \
       --batch-size $batch_size \
+      --bottleneck-dim $bottleneck_dim \
       --checkpoint ${inference_checkpoint:-} \
       --device-id $device_id \
       --dir $dir/inference/$basename \
@@ -138,11 +148,13 @@ if [[ $stage -le 1 ]]; then
       --hidden-dim $hidden_dim \
       --input-dim $feat_dim \
       --is-training false \
+      --kernel-size-list "$kernel_size_list" \
+      --log-level $log_level \
       --model-left-context $model_left_context \
       --model-right-context $model_right_context \
-      --num-layers $num_layers \
       --output-dim $output_dim \
-      --proj-dim $proj_dim
+      --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
+      --subsampling-factor-list "$subsampling_factor_list"
     fi
   done
 fi

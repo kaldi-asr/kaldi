@@ -17,6 +17,7 @@ from common import setup_logger
 from dataset import get_ctc_dataloader
 from model import get_ctc_model
 from options import get_args
+from tdnnf_model import get_tdnnf_model
 
 
 def main():
@@ -31,11 +32,14 @@ def main():
     else:
         device = torch.device('cuda', args.device_id)
 
-    model = get_ctc_model(input_dim=args.input_dim,
-                          output_dim=args.output_dim,
-                          num_layers=args.num_layers,
-                          hidden_dim=args.hidden_dim,
-                          proj_dim=args.proj_dim)
+    model = get_tdnnf_model(
+        input_dim=args.input_dim,
+        output_dim=args.output_dim,
+        hidden_dim=args.hidden_dim,
+        bottleneck_dim=args.bottleneck_dim,
+        prefinal_bottleneck_dim=args.prefinal_bottleneck_dim,
+        kernel_size_list=args.kernel_size_list,
+        subsampling_factor_list=args.subsampling_factor_list)
 
     load_checkpoint(args.checkpoint, model)
 

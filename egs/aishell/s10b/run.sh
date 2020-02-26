@@ -64,7 +64,7 @@ if [[ $stage -le 6 ]]; then
   done
 fi
 
-# n=8
+# n=1024
 # # n=
 # if [[ $stage -le 7 ]]; then
 #   if true; then
@@ -84,7 +84,7 @@ if [[ $stage -le 8 ]]; then
   ./local/run_ctc.sh \
     --train-data-dir data/train_sp$n \
     --dev-data-dir data/dev_sp$n \
-    --test-data-dir data/train_sp$n \
+    --test-data-dir data/test  \
     --lang-dir data/lang \
     --nj $nj
 fi

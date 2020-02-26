@@ -96,16 +96,30 @@ def _check_args(args):
     assert args.output_dim > 0
     assert args.model_left_context >= 0
     assert args.model_right_context >= 0
-    assert args.num_layers > 0
     assert args.hidden_dim > 0
-    assert args.proj_dim > 0
+    assert args.bottleneck_dim > 0
+    assert args.prefinal_bottleneck_dim > 0
+
+    assert args.kernel_size_list is not None
+    assert len(args.kernel_size_list) > 0
+
+    assert args.subsampling_factor_list is not None
+    assert len(args.subsampling_factor_list) > 0
+
+    args.kernel_size_list = [int(k) for k in args.kernel_size_list.split(', ')]
+
+    args.subsampling_factor_list = [
+        int(k) for k in args.subsampling_factor_list.split(', ')
+    ]
+
+    assert len(args.kernel_size_list) == len(args.subsampling_factor_list)
 
     assert args.log_level in ['debug', 'info', 'warning']
 
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description='chain training in PyTorch with kaldi pybind')
+        description='CTC training in PyTorch with kaldi pybind')
 
     _set_training_args(parser)
 
@@ -163,24 +177,35 @@ def get_args():
                         type=int,
                         default=0)
 
-    parser.add_argument('--num-layers',
-                        dest='num_layers',
-                        help="number of LSTM layers in the network",
-                        required=True,
-                        type=int)
-
     parser.add_argument('--hidden-dim',
                         dest='hidden_dim',
-                        help="dimension of the LSTM cell state",
+                        help='nn hidden dimension',
                         required=True,
                         type=int)
 
-    parser.add_argument(
-        '--proj-dim',
-        dest='proj_dim',
-        help="dimension of the affine layer after every LSTM layer",
-        required=True,
-        type=int)
+    parser.add_argument('--bottleneck-dim',
+                        dest='bottleneck_dim',
+                        help='nn bottleneck dimension',
+                        required=True,
+                        type=int)
+
+    parser.add_argument('--prefinal-bottleneck-dim',
+                        dest='prefinal_bottleneck_dim',
+                        help='nn prefinal bottleneck dimension',
+                        required=True,
+                        type=int)
+
+    parser.add_argument('--kernel-size-list',
+                        dest='kernel_size_list',
+                        help='kernel_size_list',
+                        required=True,
+                        type=str)
+
+    parser.add_argument('--subsampling-factor-list',
+                        dest='subsampling_factor_list',
+                        help='subsampling_factor_list',
+                        required=True,
+                        type=str)
 
     parser.add_argument('--log-level',
                         dest='log_level',
