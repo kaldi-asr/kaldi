@@ -6,7 +6,6 @@
 !/src/doc/*
 !/src/*/Makefile
 !/src/*/README
-!/src/cudadecoder/deprecated
 
 # Compiled Object files and python ciles
 *.slo
