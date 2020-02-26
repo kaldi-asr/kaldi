@@ -18,9 +18,9 @@
 #ifndef KALDI_CUDA_DECODER_CUDA_DECODER_H_
 #define KALDI_CUDA_DECODER_CUDA_DECODER_H_
 
+#include "cudadecoder/cuda-decodable-itf.h"
 #include "cudadecoder/cuda-decoder-common.h"
 #include "cudadecoder/cuda-fst.h"
-#include "cudadecoder/deprecated/cuda-decodable-itf.h"
 #include "cudadecoder/thread-pool-light.h"
 #include "nnet3/decodable-online-looped.h"
 

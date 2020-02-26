@@ -15,6 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//
+// Important: This file is deprecated and will be removed in a future release
+//
+
 #ifndef KALDI_CUDA_DECODER_DECODABLE_ITF_H
 #define KALDI_CUDA_DECODER_DECODABLE_ITF_H
 
@@ -24,7 +28,7 @@ namespace kaldi {
 namespace cuda_decoder {
 
 class CudaDecodableInterface : public DecodableInterface {
-public:
+ public:
   virtual BaseFloat *GetLogLikelihoodsCudaPointer(int32 subsampled_frame) = 0;
 };
 

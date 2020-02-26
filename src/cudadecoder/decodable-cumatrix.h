@@ -16,6 +16,10 @@
  * limitations under the License.
  */
 
+//
+// Important: This file is deprecated and will be removed in a future release
+//
+
 #ifndef KALDI_CUDA_DECODER_DECODABLE_CUMATRIX_H_
 #define KALDI_CUDA_DECODER_DECODABLE_CUMATRIX_H_
 
@@ -31,10 +35,11 @@ namespace cuda_decoder {
   an interface similar to the Decodable Interface
   */
 class DecodableCuMatrixMapped : public CudaDecodableInterface {
-public:
-  // This constructor creates an object that will not delete "likes" when done.
-  // the frame_offset is the frame the row 0 of 'likes' corresponds to, would be
-  // greater than one if this is not the first chunk of likelihoods.
+ public:
+  // This constructor creates an object that will not delete "likes" when
+  // done. the frame_offset is the frame the row 0 of 'likes' corresponds
+  // to, would be greater than one if this is not the first chunk of
+  // likelihoods.
   DecodableCuMatrixMapped(const TransitionModel &tm,
                           const CuMatrixBase<BaseFloat> &likes,
                           int32 frame_offset = 0);
@@ -56,8 +61,8 @@ public:
   // returns cuda pointer to nnet3 output
   virtual BaseFloat *GetLogLikelihoodsCudaPointer(int32 subsampled_frame);
 
-private:
-  const TransitionModel &trans_model_; // for tid to pdf mapping
+ private:
+  const TransitionModel &trans_model_;  // for tid to pdf mapping
   const CuMatrixBase<BaseFloat> *likes_;
 
   int32 frame_offset_;
