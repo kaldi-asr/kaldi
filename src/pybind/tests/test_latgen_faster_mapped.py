@@ -28,9 +28,11 @@ from kaldi import fst
 class TestLatGenFasterMapped(unittest.TestCase):
 
     def test(self):
-        usage = 'Generate lattices, reading log-likelihoods as matrices\n'
-        ' (model is needed only for the integer mappings in its transition-model)\n'
-        po = kaldi.ParseOptions(usage)
+        usage = kaldi.StringArg(
+            'Generate lattices, reading log-likelihoods as matrices\n'
+            ' (model is needed only for the integer mappings in its transition-model)\n'
+        )
+        po = kaldi.ParseOptions(usage=usage)
 
         allow_partial = kaldi.BoolArg(False)
         acoustic_scale = kaldi.FloatArg(0.1)
@@ -39,7 +41,7 @@ class TestLatGenFasterMapped(unittest.TestCase):
         if not os.path.exists(
                 '../../../egs/aishell/s10/exp/chain/graph/HCLG.fst'):
             print('Please execute kaldi/egs/aishell/s10/run.sh first')
-            print('and souce path.sh in it before running this script')
+            print('and source path.sh in it before running this script')
             print('Or replace relevant files in this test with your own')
             print('Skip this test')
             return

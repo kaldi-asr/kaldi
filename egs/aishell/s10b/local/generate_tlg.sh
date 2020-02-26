@@ -88,10 +88,20 @@ fi
 
 if [[ ! -f $dir/G.fst ]]; then
   gunzip -c $lm |
-    arpa2fst --disambig-symbol='#0' \
-             --read-symbol-table=$dir/words.txt \
-             - \
-             $dir/G.fst
+    grep -v '<s> <s>' |
+    grep -v '</s> <s>' |
+    grep -v '</s> </s>' |
+    arpa2fst - |
+    fstprint |
+    utils/eps2disambig.pl |
+    utils/s2eps.pl |
+    fstcompile \
+      --isymbols=$dir/words.txt \
+      --osymbols=$dir/words.txt  \
+      --keep_isymbols=false \
+      --keep_osymbols=false |
+    fstrmepsilon |
+    fstarcsort --sort_type=ilabel > $dir/G.fst
 fi
 
 set +e
@@ -134,6 +144,9 @@ fstisstochastic $dir/LG.fst
 set -e
 
 fsttablecompose $dir/T.fst $dir/LG.fst > $dir/TLG.fst || exit 1
+
+fstconvert --fst_type=const TLG.fst const_TLG.fst
+mv const_TLG.fst TLG.fst
 
 set +e
 fstisstochastic $dir/TLG.fst

@@ -14,23 +14,27 @@ from torch.nn.utils.rnn import pad_packed_sequence
 from add_deltas_layer import AddDeltasLayer
 
 
+# TODO(fangjun): remove proj_dim since we'll use TDNN-F.
 def get_ctc_model(input_dim,
                   output_dim,
                   num_layers=4,
                   hidden_dim=512,
-                  proj_dim=256):
+                  proj_dim=256,
+                  frame_subsampling_factor=3):
     model = CtcModel(input_dim=input_dim,
                      output_dim=output_dim,
                      num_layers=num_layers,
                      hidden_dim=hidden_dim,
-                     proj_dim=proj_dim)
+                     proj_dim=proj_dim,
+                     frame_subsampling_factor=frame_subsampling_factor)
 
     return model
 
 
 class CtcModel(nn.Module):
 
-    def __init__(self, input_dim, output_dim, num_layers, hidden_dim, proj_dim):
+    def __init__(self, input_dim, output_dim, num_layers, hidden_dim, proj_dim,
+                 frame_subsampling_factor):
         '''
         Args:
             input_dim: input dimension of the network
@@ -45,6 +49,9 @@ class CtcModel(nn.Module):
         '''
         super().__init__()
 
+        assert frame_subsampling_factor in [1, 3]
+        self.sf = frame_subsampling_factor
+
         lstm_layer_list = []
         proj_layer_list = []
 
@@ -55,7 +62,11 @@ class CtcModel(nn.Module):
         self.lstm = nn.LSTM(input_size=input_dim * 3,
                             hidden_size=hidden_dim,
                             num_layers=num_layers,
+                            dropout=0.2,
                             batch_first=True)
+
+        self.prefinal = nn.Linear(in_features=hidden_dim,
+                                  out_features=output_dim)
 
         self.add_deltas_layer = AddDeltasLayer()
 
@@ -67,7 +78,8 @@ class CtcModel(nn.Module):
 
         Returns:
             a 3-D tensor of shape [batch_size, seq_len, output_dim]
-            representing log prob, i.e., the output of log_softmax.
+            It is the output of `nn.Linear`. That is, **NO** log_softmax
+            is applied to the output.
         '''
         x = feat
 
@@ -78,13 +90,16 @@ class CtcModel(nn.Module):
 
         x = self.add_deltas_layer(x)
 
+        if self.sf == 3:
+            x = x[:, :, ::3]
+            feat_len_list = (torch.tensor(feat_len_list).int() + 2) / 3
+            # feat_len_list is still of type int32
+
         x = self.input_batch_norm(x)
 
         x = x.permute(0, 2, 1)
 
         # at his point, x is of shape [batch_size, seq_len, feat_dim] == [N, L, C]
-
-        feat_len_list = [n - 4 for n in feat_len_list]
 
         x = pack_padded_sequence(input=x,
                                  lengths=feat_len_list,
@@ -96,9 +111,9 @@ class CtcModel(nn.Module):
 
         x, _ = pad_packed_sequence(x, batch_first=True)
 
-        x = F.log_softmax(x, dim=-1)
+        x = self.prefinal(x)
 
-        return x
+        return x, feat_len_list
 
 
 def _test_ctc_model():

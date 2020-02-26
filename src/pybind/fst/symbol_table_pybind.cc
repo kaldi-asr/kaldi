@@ -60,20 +60,13 @@ void pybind_symbol_table(py::module& m) {
              "Constructs symbol table with an optional name.",
              py::arg("name") = "<unspecified>")
         .def_static("ReadText",
-                    overload_cast_<std::istream&, const fst::string&,
-                                   const fst::SymbolTableTextOptions&>()(
-                        &PyClass::ReadText),
-                    "Reads a text representation of the symbol table from an "
-                    "istream. Pass a name to give the resulting SymbolTable.",
-                    py::arg("strm"), py::arg("name"),
-                    py::arg("opts") = fst::SymbolTableTextOptions())
-        .def_static("ReadText",
                     overload_cast_<const fst::string&,
                                    const fst::SymbolTableTextOptions&>()(
                         &PyClass::ReadText),
                     "Reads a text representation of the symbol table",
                     py::arg("filename"),
-                    py::arg("opts") = fst::SymbolTableTextOptions())
+                    py::arg("opts") = fst::SymbolTableTextOptions(),
+                    py::return_value_policy::take_ownership)
         .def_static(
             "Read",
             overload_cast_<std::istream&, const fst::SymbolTableReadOptions&>()(

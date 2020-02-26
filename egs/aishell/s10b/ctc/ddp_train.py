@@ -13,8 +13,10 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import torch
+import torch.distributed as dist
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.nn.utils import clip_grad_value_
 from torch.utils.tensorboard import SummaryWriter
 
@@ -35,6 +37,7 @@ def train_one_epoch(dataloader, model, device, optimizer, loss_func,
     total_loss = 0.
     num = 0.
 
+    # TODO(fangjun): remove `num_repeat`. It's used only for testing.
     num_repeat = 100
     for kk in range(num_repeat):
         for batch_idx, batch in enumerate(dataloader):
@@ -85,12 +88,12 @@ def train_one_epoch(dataloader, model, device, optimizer, loss_func,
             num += 1
             if batch_idx % 100 == 0:
                 logging.info(
-                    'batch {}/{} ({:.2f}%) ({}/{}), loss {:.5f}, average {:.5f}'
-                    .format(batch_idx, len(dataloader),
+                    'Device ({}) batch {}/{} ({:.2f}%) ({}/{}), loss {:.5f}, average {:.5f}'
+                    .format(device.index, batch_idx, len(dataloader),
                             float(batch_idx) / len(dataloader) * 100, kk,
                             num_repeat, loss.item(), total_loss / num))
 
-            if batch_idx % 100 == 0:
+            if tf_writer and batch_idx % 100 == 0:
                 tf_writer.add_scalar(
                     'train/current_batch_average_loss', loss.item(),
                     batch_idx + kk * len(dataloader) +
@@ -106,12 +109,17 @@ def train_one_epoch(dataloader, model, device, optimizer, loss_func,
 
 def main():
     args = get_args()
-    setup_logger('{}/log-train'.format(args.dir), args.log_level)
+    setup_logger('{}/log-train-device-{}'.format(args.dir, args.device_id),
+                 args.log_level)
     logging.info(' '.join(sys.argv))
 
     if torch.cuda.is_available() == False:
         logging.error('No GPU detected!')
         sys.exit(-1)
+
+    dist.init_process_group('nccl',
+                            rank=args.device_id,
+                            world_size=args.world_size)
 
     kaldi.SelectGpuDevice(device_id=args.device_id)
 
@@ -140,6 +148,8 @@ def main():
 
     model.to(device)
 
+    model = DDP(model, device_ids=[args.device_id])
+
     dataloader = get_ctc_dataloader(
         feats_scp=args.feats_scp,
         labels_scp=args.labels_scp,
@@ -147,14 +157,19 @@ def main():
         shuffle=True,
         num_workers=8,
         model_left_context=args.model_left_context,
-        model_right_context=args.model_right_context)
+        model_right_context=args.model_right_context,
+        world_size=args.world_size,
+        local_rank=args.device_id)
 
     lr = learning_rate
     optimizer = optim.Adam(model.parameters(),
                            lr=lr,
                            weight_decay=args.l2_regularize)
 
-    tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
+    if device.index == 0:
+        tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
+    else:
+        tf_writer = None
 
     model.train()
 
@@ -164,17 +179,21 @@ def main():
     best_model_path = os.path.join(args.dir, 'best_model.pt')
     best_epoch_info_filename = os.path.join(args.dir, 'best-epoch-info')
 
+    dist.barrier()
+
     try:
         for epoch in range(start_epoch, num_epochs):
             learning_rate = lr * pow(0.8, epoch)
             #  learning_rate = lr
-            tf_writer.add_scalar('learning_rate', learning_rate, epoch)
+
+            if tf_writer:
+                tf_writer.add_scalar('learning_rate', learning_rate, epoch)
 
             for param_group in optimizer.param_groups:
                 param_group['lr'] = learning_rate
 
-            logging.info('epoch {}, learning rate {}'.format(
-                epoch, learning_rate))
+            logging.info('Device ({}) epoch {}, learning rate {}'.format(
+                device.index, epoch, learning_rate))
 
             loss = train_one_epoch(dataloader=dataloader,
                                    model=model,
@@ -184,7 +203,7 @@ def main():
                                    current_epoch=epoch,
                                    tf_writer=tf_writer)
 
-            # the loss, the better
+            # the lower, the better
             if best_loss is None or best_loss > loss:
                 best_loss = loss
                 best_epoch = epoch
@@ -192,14 +211,16 @@ def main():
                                 model=model,
                                 epoch=epoch,
                                 learning_rate=learning_rate,
-                                loss=loss)
+                                loss=loss,
+                                local_rank=args.device_id)
                 save_training_info(filename=best_epoch_info_filename,
                                    model_path=best_model_path,
                                    current_epoch=epoch,
                                    learning_rate=learning_rate,
                                    loss=loss,
                                    best_loss=best_loss,
-                                   best_epoch=best_epoch)
+                                   best_epoch=best_epoch,
+                                   local_rank=args.device_id)
 
             # we always save the model for every epoch
             model_path = os.path.join(args.dir, 'epoch-{}.pt'.format(epoch))
@@ -207,7 +228,8 @@ def main():
                             model=model,
                             epoch=epoch,
                             learning_rate=learning_rate,
-                            loss=loss)
+                            loss=loss,
+                            local_rank=args.device_id)
 
             epoch_info_filename = os.path.join(args.dir,
                                                'epoch-{}-info'.format(epoch))
@@ -217,7 +239,8 @@ def main():
                                learning_rate=learning_rate,
                                loss=loss,
                                best_loss=best_loss,
-                               best_epoch=best_epoch)
+                               best_epoch=best_epoch,
+                               local_rank=args.device_id)
     except KeyboardInterrupt:
         # save the model when ctrl-c is pressed
         model_path = os.path.join(args.dir,
@@ -228,7 +251,8 @@ def main():
                         model=model,
                         epoch=epoch,
                         learning_rate=learning_rate,
-                        loss=loss)
+                        loss=loss,
+                        local_rank=args.device_id)
 
         epoch_info_filename = os.path.join(
             args.dir, 'epoch-{}-interrupted-info'.format(epoch))
@@ -238,10 +262,12 @@ def main():
                            learning_rate=learning_rate,
                            loss=loss,
                            best_loss=best_loss,
-                           best_epoch=best_epoch)
+                           best_epoch=best_epoch,
+                           local_rank=args.device_id)
 
-    tf_writer.close()
-    logging.warning('Training done!')
+    if tf_writer:
+        tf_writer.close()
+    logging.warning('Device ({}) Training done!'.format(args.device_id))
 
 
 if __name__ == '__main__':

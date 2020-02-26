@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
+# Copyright 2020 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
 import argparse
@@ -45,6 +45,21 @@ def _set_training_args(parser):
 
     # TODO(fangjun): add validation feats_scp
 
+    # PyTorch DistributedDataParallel (ddp) parameters
+    parser.add_argument(
+        '--train.use-ddp',
+        dest='use_ddp',
+        help="true to use PyTorch's built-in DistributedDataParallel trainer",
+        type=_str2bool)
+
+    # note that we use device id as local rank.
+
+    parser.add_argument('--train.ddp.world-size',
+                        dest='world_size',
+                        help='world size in ddp',
+                        default=1,
+                        type=int)
+
 
 def _check_training_args(args):
     assert os.path.isfile(args.labels_scp)
@@ -56,10 +71,20 @@ def _check_training_args(args):
     if args.checkpoint:
         assert os.path.exists(args.checkpoint)
 
+    if args.use_ddp:
+        assert args.world_size >= 1
+
+
+def _check_inference_args(args):
+    assert args.checkpoint is not None
+    assert os.path.isfile(args.checkpoint)
+
 
 def _check_args(args):
     if args.is_training:
         _check_training_args(args)
+    else:
+        _check_inference_args(args)
 
     assert os.path.isdir(args.dir)
     assert os.path.isfile(args.feats_scp)
@@ -69,6 +94,8 @@ def _check_args(args):
 
     assert args.input_dim > 0
     assert args.output_dim > 0
+    assert args.model_left_context >= 0
+    assert args.model_right_context >= 0
     assert args.num_layers > 0
     assert args.hidden_dim > 0
     assert args.proj_dim > 0
@@ -123,6 +150,18 @@ def get_args():
                         help='output dimension of the network',
                         required=True,
                         type=int)
+
+    parser.add_argument('--model-left-context',
+                        dest='model_left_context',
+                        help='model left context',
+                        type=int,
+                        default=0)
+
+    parser.add_argument('--model-right-context',
+                        dest='model_right_context',
+                        help='model right context',
+                        type=int,
+                        default=0)
 
     parser.add_argument('--num-layers',
                         dest='num_layers',

@@ -6,6 +6,7 @@
 import os
 import logging
 
+import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
@@ -18,19 +19,51 @@ def get_ctc_dataloader(feats_scp,
                        labels_scp=None,
                        batch_size=1,
                        shuffle=False,
-                       num_workers=0):
+                       num_workers=0,
+                       model_left_context=0,
+                       model_right_context=0,
+                       world_size=None,
+                       local_rank=None):
 
     dataset = CtcDataset(feats_scp=feats_scp, labels_scp=labels_scp)
 
-    collate_fn = CtcDatasetCollateFunc()
+    collate_fn = CtcDatasetCollateFunc(model_left_context=model_left_context,
+                                       model_right_context=model_right_context)
+
+    if world_size:
+        logging.info('world_size: {}'.format(world_size))
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset, num_replicas=world_size, rank=local_rank, shuffle=shuffle)
+        # sampler and shuffle are mutually exclusive;
+        # it will raise an exception if you set both
+        shuffle = False
+
+    else:
+        sampler = None
 
     dataloader = DataLoader(dataset,
                             batch_size=batch_size,
                             shuffle=shuffle,
                             num_workers=num_workers,
-                            collate_fn=collate_fn)
+                            collate_fn=collate_fn,
+                            sampler=sampler)
 
     return dataloader
+
+
+def _add_model_left_right_context(x, left_context, right_context):
+    padded = x
+    if left_context > 0:
+        first_frame = x[0, :]
+        left_padding = [first_frame] * left_context
+        padded = np.vstack([left_padding, x])
+
+    if right_context > 0:
+        last_frame = x[-1, :]
+        right_padding = [last_frame] * right_context
+        padded = np.vstack([padded, right_padding])
+
+    return padded
 
 
 class CtcDataset(Dataset):
@@ -117,6 +150,10 @@ class CtcDataset(Dataset):
 
 class CtcDatasetCollateFunc:
 
+    def __init__(self, model_left_context=0, model_right_context=0):
+        self.model_left_context = model_left_context
+        self.model_right_context = model_right_context
+
     def __call__(self, batch):
         '''
         Args:
@@ -147,13 +184,24 @@ class CtcDatasetCollateFunc:
             uttid_list.append(uttid)
 
             feat = kaldi.read_mat(feat_rxfilename).numpy()
-            feat = torch.from_numpy(feat).float()
-            feat_list.append(feat)
 
-            feat_len_list.append(feat.size(0))
+            # use the length before padding
+            feat_len_list.append(feat.shape[0])
+
+            feat = _add_model_left_right_context(feat, self.model_left_context,
+                                                 self.model_right_context)
+
+            feat = torch.from_numpy(feat).float()
+
+            feat_list.append(feat)
 
             if label_rxfilename:
                 label = kaldi.read_vec_int(label_rxfilename)
+                assert 0 not in label
+
+                # we will use frame subsampling factor == 3
+                assert len(label) < feat_len_list[-1] / 3
+
                 label_list.extend(label)
                 label_len_list.append(len(label))
 

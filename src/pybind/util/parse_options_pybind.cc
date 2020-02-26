@@ -75,7 +75,6 @@ void pybind_parse_options(py::module& m) {
 
   auto opt =
       py::class_<PyClass, OptionsItf>(m, "ParseOptions")
-          .def(py::init<const char*>(), py::arg("usage"))
           .def("Read",
                [](PyClass* opts, const std::vector<std::string>& args) {
                  int argc = static_cast<int>(args.size());
@@ -130,4 +129,12 @@ void pybind_parse_options(py::module& m) {
   pybind_arg<float>(m, opt);
   pybind_arg<double>(m, opt);
   pybind_arg<std::string>(m, opt);
+
+  opt.def(py::init([](const Arg<std::string>& usage) {
+            // NOTE(fangjun): no memory leak here using `new`.
+            // Refer to
+            // https://pybind11.readthedocs.io/en/stable/upgrade.html#new-api-for-defining-custom-constructors-and-pickling-functions
+            return new PyClass(usage.value.c_str());
+          }),
+          py::arg("usage"));
 }

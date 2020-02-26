@@ -16,12 +16,12 @@ from kaldi import ctc
 class WarpCtcLoss(Function):
 
     @staticmethod
-    def forward(ctx, log_probs, targets, input_lengths, target_lengths, blank,
+    def forward(ctx, activations, targets, input_lengths, target_lengths, blank,
                 reduction):
         '''
         Args:
-            log_probs: `(seq_len, batch_size, C)`, where `C` is the number
-                       of characters in aphabet including the blank symbol.
+            activations: `(seq_len, batch_size, C)`, where `C` is the number
+                          of characters in aphabet including the blank symbol.
 
             targets: a tensor of [batch size] containing the concatenated labels.
                      Targets cannot be blank.
@@ -44,21 +44,21 @@ class WarpCtcLoss(Function):
 
                        `sum`: the output will be summed.
         '''
-        device = log_probs.device
+        device = activations.device
         assert device.type == 'cuda', 'we only support computing CTCLoss on GPU devices.'
 
-        activations_tensor = log_probs.float().reshape(-1).contiguous()
-        gradients_tensor = torch.empty_like(activations_tensor).contiguous()
+        activations_tensor = activations.float().reshape(-1).contiguous()
+        gradients_tensor = torch.zeros_like(activations_tensor).contiguous()
 
         # NOTE(fangjun): foobar.cpu() is a no operation if foobar is already on CPU.
         flat_labels_tensor = targets.int().view(-1).cpu()
         label_lengths_tensor = target_lengths.int().view(-1).cpu()
         input_lengths_tensor = input_lengths.int().view(-1).cpu()
 
-        alphabet_size = log_probs.size(2)
-        minibatch = log_probs.size(1)
+        alphabet_size = activations.size(2)
+        minibatch = activations.size(1)
 
-        costs_tensor = torch.empty(minibatch, dtype=torch.float32).contiguous()
+        costs_tensor = torch.zeros(minibatch, dtype=torch.float32).contiguous()
 
         info = ctc.CtcOptions()
         info.loc = ctc.CtcComputeLocation.CTC_GPU
@@ -80,11 +80,12 @@ class WarpCtcLoss(Function):
         assert status == ctc.CtcStatus.CTC_STATUS_SUCCESS
 
         num_floats = size_in_bytes // 4 + 1
-        workspace_tensor = torch.empty(
+        workspace_tensor = torch.zeros(
             num_floats, dtype=torch.float32).contiguous().to(device)
 
-        activations = kaldi.CuSubVectorFromDLPack(to_dlpack(activations_tensor))
-        gradients = kaldi.CuSubVectorFromDLPack(to_dlpack(gradients_tensor))
+        cu_activations = kaldi.CuSubVectorFromDLPack(
+            to_dlpack(activations_tensor))
+        cu_gradients = kaldi.CuSubVectorFromDLPack(to_dlpack(gradients_tensor))
         flat_labels = kaldi.IntSubVectorFromDLPack(
             to_dlpack(flat_labels_tensor))
         costs = kaldi.FloatSubVectorFromDLPack(to_dlpack(costs_tensor))
@@ -92,8 +93,8 @@ class WarpCtcLoss(Function):
 
         stream = torch.cuda.default_stream(device)
         with torch.cuda.stream(stream):
-            status = ctc.ComputeCtcLossGpu(activations=activations,
-                                           gradients=gradients,
+            status = ctc.ComputeCtcLossGpu(activations=cu_activations,
+                                           gradients=cu_gradients,
                                            flat_labels=flat_labels,
                                            label_lengths=label_lengths,
                                            input_lengths=input_lengths,
@@ -103,7 +104,7 @@ class WarpCtcLoss(Function):
                                            workspace=workspace,
                                            options=info)
 
-        gradients_tensor = gradients_tensor.reshape(*log_probs.shape)
+        gradients_tensor = gradients_tensor.reshape(*activations.shape)
 
         ctx.save_for_backward(gradients_tensor),
 
@@ -124,7 +125,7 @@ class WarpCtcLoss(Function):
     def backward(ctx, unused):
         '''
         The `forward` method has 6 inputs:
-            `log_probs`, `targets`, `input_lengths`,
+            `activations`, `targets`, `input_lengths`,
             `target_lengths`, `blank`, `reduction`
 
         We have to return 6 values.
@@ -133,7 +134,7 @@ class WarpCtcLoss(Function):
         return gradients, None, None, None, None, None
 
 
-def warp_ctc_loss(log_probs, targets, input_lengths, target_lengths, blank,
+def warp_ctc_loss(activations, targets, input_lengths, target_lengths, blank,
                   reduction):
     '''
     A thin wrapper for WarpCtcLoss.
@@ -141,7 +142,7 @@ def warp_ctc_loss(log_probs, targets, input_lengths, target_lengths, blank,
     We can use keyword arguments with this wrapper
     '''
     loss_func = WarpCtcLoss.apply
-    return loss_func(log_probs, targets, input_lengths, target_lengths, blank,
+    return loss_func(activations, targets, input_lengths, target_lengths, blank,
                      reduction)
 
 
@@ -168,21 +169,22 @@ class CTCLoss(nn.Module):
         '''
         super().__init__()
         assert reduction in ['none', 'mean', 'sum']
-        if use_warp_ctc:
-            self.loss_func = warp_ctc_loss
-        else:
-            self.loss_func = F.ctc_loss
+
+        #  if use_warp_ctc:
+        #      self.loss_func = warp_ctc_loss
+        #  else:
+        #      self.loss_func = F.ctc_loss
 
         self.use_warp_ctc = use_warp_ctc
 
         self.blank = blank
         self.reduction = reduction
 
-    def forward(self, log_probs, targets, input_lengths, target_lengths):
+    def forward(self, activations, targets, input_lengths, target_lengths):
         '''
         Args:
-            log_probs: `(seq_len, batch_size, C)`, where `C` is the number
-                       of characters in aphabet including the blank symbol.
+            activations: `(seq_len, batch_size, C)`, where `C` is the number
+                         of characters in alphabet including the blank symbol.
 
             targets: a tensor of [batch size] containing the concatenated labels.
                      Targets cannot be blank.
@@ -194,14 +196,23 @@ class CTCLoss(nn.Module):
         '''
         if self.use_warp_ctc == False:
             # move all tensors to GPU
-            device = log_probs.device
+            device = activations.device
             targets = targets.to(device)
             input_lengths = input_lengths.to(device)
             target_lengths = target_lengths.to(device)
 
-        return self.loss_func(log_probs=log_probs,
+            log_probs = F.log_softmax(activations, dim=-1)
+
+            return F.ctc_loss(log_probs=log_probs,
                               targets=targets,
                               input_lengths=input_lengths,
                               target_lengths=target_lengths,
                               blank=self.blank,
                               reduction=self.reduction)
+        else:
+            return warp_ctc_loss(activations=activations,
+                                 targets=targets,
+                                 input_lengths=input_lengths,
+                                 target_lengths=target_lengths,
+                                 blank=self.blank,
+                                 reduction=self.reduction)
