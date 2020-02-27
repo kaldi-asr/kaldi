@@ -14,7 +14,7 @@ set -e -o pipefail
 
 remove_egs=false
 cmd=queue.pl
-srand=0
+srand=-1
 stage=0
 train_stage=-10
 get_egs_stage=-10
@@ -37,8 +37,9 @@ tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the 
 tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 feat_suffix=_hires      
 
+label_delay=5
 frame_subsampling_factor=3
-xent_regularize=0.1
+xent_regularize=0.025
 max_param_change=2.0
 num_jobs_initial=2
 num_jobs_final=12
@@ -47,6 +48,8 @@ final_effective_lrate=0.0001
 num_jobs_initial=2
 num_jobs_final=8
 chunk_width=150
+extra_left_context=50
+extra_right_context=0
 common_egs_dir=  # you can set this to use previously dumped egs.
 langconf=local.conf
 
@@ -87,7 +90,7 @@ done
 
 if [ "$speed_perturb" == "true" ]; then suffix=_sp; fi
 dir=${dir}${suffix}
-dir=exp/chain2_cleaned/tdnn_multi_sp_v7/
+dir=exp/chain2_cleaned/tdnn_multi_sp_v12/
 
 ivec_feat_suffix=${feat_suffix}
 if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
@@ -263,8 +266,8 @@ if [ $stage -le 11 ]; then
   dummy_tree_dir=${multi_ali_treedirs[0]}
   num_targets=`tree-info $dummy_tree_dir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
   cat <<EOF > $dir/configs/network.xconfig
-  $ivector_node_xconfig
   input dim=$feat_dim name=input
+  $ivector_node_xconfig
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -276,11 +279,11 @@ if [ $stage -le 11 ]; then
   relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=450
   relu-batchnorm-layer name=tdnn7 input=Append(-6,-3,0) dim=450
-  relu-batchnorm-layer name=tdnn_bn dim=$bnf_dim
+  #relu-batchnorm-layer name=tdnn_bn dim=$bnf_dim
   # adding the layers for diffrent language's output
   # dummy output node
-  output-layer name=output dim=$num_targets max-change=1.5
-  output-layer name=output-xent input=tdnn_bn dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output dim=$num_targets max-change=1.5 output-delay=5 
+  output-layer name=output-xent input=tdnn7 dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   # added separate outptut layer and softmax for all languages.
   for lang_index in `seq 0 $[$num_langs-1]`;do
@@ -288,11 +291,12 @@ EOF
     num_targets=`tree-info $tree_dir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
 
     lang_name=${lang_list[${lang_index}]}
-    echo "relu-renorm-layer name=prefinal-affine-lang-${lang_name} input=tdnn_bn dim=450 target-rms=0.5"
-    echo "output-layer name=output-${lang_name} dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5"
-    echo "output-layer name=output-${lang_name}-xent input=prefinal-affine-lang-${lang_name} dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5"
+    #echo "relu-renorm-layer name=prefinal-affine-lang-${lang_name} input=tdnn7 dim=450 target-rms=0.5"
+    echo "output-layer name=output-${lang_name} dim=$num_targets output-delay=5 input=tdnn7  max-change=1.5 include-log-softmax=false"
+    echo "output-layer name=output-${lang_name}-xent input=tdnn7 output-delay=5  dim=$num_targets  learning-rate-factor=$learning_rate_factor max-change=1.5"
   done >> $dir/configs/network.xconfig
 
+  lang_name=${lang_list[0]}
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ 
 fi
@@ -324,8 +328,8 @@ fi
 if [ -z $model_right_context ]; then
     echo "ERROR: Cannot find entry for model_right_context in $dir/init/info.txt"
 fi
-egs_left_context=$[model_left_context+(frame_subsampling_factor/2)+egs_extra_left_context]
-egs_right_context=$[model_right_context+(frame_subsampling_factor/2)+egs_extra_right_context]
+egs_left_context=$[model_left_context+(frame_subsampling_factor/2)+extra_left_context]
+egs_right_context=$[model_right_context+(frame_subsampling_factor/2)+extra_right_context]
 
 if [ $stage -le 13 ]; then
   for lang_index in `seq 0 $[$num_langs-1]`;do
@@ -405,14 +409,8 @@ fi
 
 if [ $stage -le 17 ]; then
     echo "$0: Preparing initial acoustic model"
-    if [ -f $dir/configs/init.config ]; then
-            $cuda_cmd ${dir}/log/add_first_layer.log \
-                    nnet3-init --srand=${srand} ${dir}/configs/init.raw \
-                    ${dir}/configs/final.config ${dir}/init/default.raw || exit 1
-    else
-            $cuda_cmd ${dir}/log/init_model.log \
-               nnet3-init --srand=${srand} ${dir}/configs/final.config ${dir}/init/multi.raw || exit 1
-    fi
+    $cuda_cmd ${dir}/log/init_model.log \
+           nnet3-init --srand=${srand} ${dir}/configs/final.config ${dir}/init/multi.raw || exit 1
 fi
 
 if [ $stage -le 18 ]; then
@@ -420,12 +418,14 @@ if [ $stage -le 18 ]; then
   steps/chain2/train.sh \
     --stage $train_stage --cmd "$cuda_cmd" \
     --multilingual-eg true \
-    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
+    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.25 --out-of-range-regularize 0.0 \
     --initial-effective-lrate $initial_effective_lrate \
     --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
     --groups-per-minibatch 128 \
-    --l2-regularize 10e-8 \
+    --srand 1 \
+    --shuffle-buffer-size 5000 \
+    --l2-regularize 5e-5 \
     --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
      $common_egs_dir $dir
 fi
