@@ -21,8 +21,12 @@ from common import splice_feats
 def get_egs_dataloader(egs_dir_or_scp,
                        egs_left_context,
                        egs_right_context,
-                       shuffle=True):
-
+                       shuffle=True,
+                       world_size=None,
+                       local_rank=None):
+    '''
+    world_size and local_rank is for DistributedDataParallel training.
+    '''
     dataset = NnetChainExampleDataset(egs_dir_or_scp=egs_dir_or_scp)
     frame_subsampling_factor = 3
 
@@ -34,11 +38,22 @@ def get_egs_dataloader(egs_dir_or_scp,
         egs_right_context=egs_right_context,
         frame_subsampling_factor=frame_subsampling_factor)
 
+    if world_size:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset, num_replicas=world_size, rank=local_rank)
+        # sampler and shuffle are mutually exclusive;
+        # it will raise an exception if you set both
+        shuffle = False
+
+    else:
+        sampler = None
+
     dataloader = DataLoader(dataset,
                             batch_size=batch_size,
                             shuffle=shuffle,
                             num_workers=0,
-                            collate_fn=collate_fn)
+                            collate_fn=collate_fn,
+                            sampler=sampler)
     return dataloader
 
 

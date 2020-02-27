@@ -66,6 +66,16 @@ output-layer name=output-xent dim=3456 learning-rate-factor=5.0 l2-regularize=0.
 '''
 
 
+def constrain_orthonormal_hook(model, unused_x):
+    if model.training == False:
+        return
+
+    with torch.no_grad():
+        for m in model.modules():
+            if hasattr(m, 'constrain_orthonormal'):
+                m.constrain_orthonormal()
+
+
 # Create a network like the above one
 class ChainModel(nn.Module):
 
@@ -76,7 +86,7 @@ class ChainModel(nn.Module):
                  hidden_dim=1024,
                  bottleneck_dim=128,
                  prefinal_bottleneck_dim=256,
-                 kernel_size_list=[2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2],
+                 kernel_size_list=[3, 3, 3, 1, 3, 3, 3, 3, 3, 3, 3, 3],
                  subsampling_factor_list=[1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1],
                  frame_subsampling_factor=3):
         super().__init__()
@@ -139,6 +149,8 @@ class ChainModel(nn.Module):
             self.input_batch_norm = nn.BatchNorm1d(num_features=feat_dim * 3,
                                                    affine=False)
             self.has_LDA = False
+
+        self.register_forward_pre_hook(constrain_orthonormal_hook)
 
     def forward(self, x):
         # input x is of shape: [batch_size, seq_len, feat_dim] = [N, T, C]
@@ -208,28 +220,19 @@ class ChainModel(nn.Module):
 
         return nnet_output, xent_output
 
-    def constrain_orthonormal(self):
-        for i in range(len(self.tdnnfs)):
-            self.tdnnfs[i].constrain_orthonormal()
-
-        self.prefinal_l.constrain_orthonormal()
-        self.prefinal_chain.constrain_orthonormal()
-        self.prefinal_xent.constrain_orthonormal()
-
 
 if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
     )
-    feat_dim = 43
-    output_dim = 4344
+    feat_dim = 40
+    output_dim = 3456
     model = ChainModel(feat_dim=feat_dim, output_dim=output_dim)
-    logging.info(model)
+    #  logging.info(model)
     N = 1
     T = 150 + 27 + 27
     C = feat_dim * 3
     x = torch.arange(N * T * C).reshape(N, T, C).float()
     nnet_output, xent_output = model(x)
     print(x.shape, nnet_output.shape, xent_output.shape)
-    model.constrain_orthonormal()

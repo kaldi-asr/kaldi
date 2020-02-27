@@ -13,7 +13,9 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import numpy as np
 import torch
+import torch.distributed as dist
 import torch.optim as optim
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.nn.utils import clip_grad_value_
 from torch.utils.tensorboard import SummaryWriter
 
@@ -142,16 +144,16 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
 
         if batch_idx % 100 == 0:
             logging.info(
-                'Process {}/{}({:.6f}%) global average objf: {:.6f} over {} '
+                'Device ({}) processing {}/{}({:.6f}%) global average objf: {:.6f} over {} '
                 'frames, current batch average objf: {:.6f} over {} frames, epoch {}'
                 .format(
-                    batch_idx, len(dataloader),
+                    device.index, batch_idx, len(dataloader),
                     float(batch_idx) / len(dataloader) * 100,
                     total_objf / total_weight, total_frames,
                     objf_l2_term_weight[0].item() /
                     objf_l2_term_weight[2].item(), num_frames, current_epoch))
 
-        if batch_idx % 500 == 0:
+        if valid_dataloader and batch_idx % 1000 == 0:
             total_valid_objf, total_valid_weight, total_valid_frames = get_validation_objf(
                 dataloader=valid_dataloader,
                 model=model,
@@ -170,7 +172,7 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
                                  total_valid_objf / total_valid_weight,
                                  batch_idx + current_epoch * len(dataloader))
 
-        if batch_idx % 100 == 0:
+        if device.index == 0 and batch_idx % 100 == 0:
             tf_writer.add_scalar('train/global_average_objf',
                                  total_objf / total_weight,
                                  batch_idx + current_epoch * len(dataloader))
@@ -199,17 +201,23 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
 
 def main():
     args = get_args()
-    setup_logger('{}/log-train'.format(args.dir), args.log_level)
+    setup_logger('{}/log-train-device-{}'.format(args.dir, args.device_id),
+                 args.log_level)
     logging.info(' '.join(sys.argv))
 
     if torch.cuda.is_available() == False:
         logging.error('No GPU detected!')
         sys.exit(-1)
 
+    dist.init_process_group('nccl',
+                            rank=args.device_id,
+                            world_size=args.world_size)
+
     # WARNING(fangjun): we have to select GPU at the very
     # beginning; otherwise you will get trouble later
     kaldi.SelectGpuDevice(device_id=args.device_id)
     kaldi.CuDeviceAllowMultithreading()
+
     device = torch.device('cuda', args.device_id)
 
     den_fst = fst.StdVectorFst.Read(args.den_fst_filename)
@@ -240,24 +248,32 @@ def main():
         start_epoch, learning_rate, best_objf = load_checkpoint(
             args.checkpoint, model)
         logging.info(
-            'loaded from checkpoint: start epoch {start_epoch}, '
+            'Device ({device_id}) loaded from checkpoint: start epoch {start_epoch}, '
             'learning rate {learning_rate}, best objf {best_objf}'.format(
+                device_id=args.device_id,
                 start_epoch=start_epoch,
                 learning_rate=learning_rate,
                 best_objf=best_objf))
 
     model.to(device)
 
+    model = DDP(model, device_ids=[args.device_id])
+
     dataloader = get_egs_dataloader(egs_dir_or_scp=args.cegs_dir,
                                     egs_left_context=args.egs_left_context,
                                     egs_right_context=args.egs_right_context,
-                                    shuffle=True)
+                                    shuffle=False,
+                                    world_size=args.world_size,
+                                    local_rank=args.device_id)
 
-    valid_dataloader = get_egs_dataloader(
-        egs_dir_or_scp=args.valid_cegs_scp,
-        egs_left_context=args.egs_left_context,
-        egs_right_context=args.egs_right_context,
-        shuffle=False)
+    if args.device_id == 0:
+        valid_dataloader = get_egs_dataloader(
+            egs_dir_or_scp=args.valid_cegs_scp,
+            egs_left_context=args.egs_left_context,
+            egs_right_context=args.egs_right_context,
+            shuffle=False)
+    else:
+        valid_dataloader = None
 
     optimizer = optim.Adam(model.parameters(),
                            lr=learning_rate,
@@ -265,23 +281,28 @@ def main():
 
     criterion = KaldiChainObjfFunction.apply
 
-    tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
+    if args.device_id == 0:
+        tf_writer = SummaryWriter(log_dir='{}/tensorboard'.format(args.dir))
+    else:
+        tf_writer = None
 
     best_epoch = start_epoch
     best_model_path = os.path.join(args.dir, 'best_model.pt')
     best_epoch_info_filename = os.path.join(args.dir, 'best-epoch-info')
 
-    lr = learning_rate
+    dist.barrier()
+
     try:
         for epoch in range(start_epoch, args.num_epochs):
-            learning_rate = lr * pow(0.4, epoch)
+            learning_rate = 1e-3 * pow(0.4, epoch)
             for param_group in optimizer.param_groups:
                 param_group['lr'] = learning_rate
 
             logging.info('epoch {}, learning rate {}'.format(
                 epoch, learning_rate))
 
-            tf_writer.add_scalar('learning_rate', learning_rate, epoch)
+            if tf_writer:
+                tf_writer.add_scalar('learning_rate', learning_rate, epoch)
 
             objf = train_one_epoch(dataloader=dataloader,
                                    valid_dataloader=valid_dataloader,
@@ -306,14 +327,16 @@ def main():
                                 model=model,
                                 epoch=epoch,
                                 learning_rate=learning_rate,
-                                objf=objf)
+                                objf=objf,
+                                local_rank=args.device_id)
                 save_training_info(filename=best_epoch_info_filename,
                                    model_path=best_model_path,
                                    current_epoch=epoch,
                                    learning_rate=learning_rate,
                                    objf=best_objf,
                                    best_objf=best_objf,
-                                   best_epoch=best_epoch)
+                                   best_epoch=best_epoch,
+                                   local_rank=args.device_id)
 
             # we always save the model for every epoch
             model_path = os.path.join(args.dir, 'epoch-{}.pt'.format(epoch))
@@ -321,7 +344,8 @@ def main():
                             model=model,
                             epoch=epoch,
                             learning_rate=learning_rate,
-                            objf=objf)
+                            objf=objf,
+                            local_rank=args.device_id)
 
             epoch_info_filename = os.path.join(args.dir,
                                                'epoch-{}-info'.format(epoch))
@@ -331,7 +355,8 @@ def main():
                                learning_rate=learning_rate,
                                objf=objf,
                                best_objf=best_objf,
-                               best_epoch=best_epoch)
+                               best_epoch=best_epoch,
+                               local_rank=args.device_id)
 
     except KeyboardInterrupt:
         # save the model when ctrl-c is pressed
@@ -343,7 +368,8 @@ def main():
                         model=model,
                         epoch=epoch,
                         learning_rate=learning_rate,
-                        objf=objf)
+                        objf=objf,
+                        local_rank=args.device_id)
 
         epoch_info_filename = os.path.join(
             args.dir, 'epoch-{}-interrupted-info'.format(epoch))
@@ -353,9 +379,11 @@ def main():
                            learning_rate=learning_rate,
                            objf=objf,
                            best_objf=best_objf,
-                           best_epoch=best_epoch)
+                           best_epoch=best_epoch,
+                           local_rank=args.device_id)
 
-    tf_writer.close()
+    if tf_writer:
+        tf_writer.close()
     logging.warning('Done')
 
 

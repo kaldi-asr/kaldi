@@ -43,7 +43,19 @@ def load_checkpoint(filename, model):
     for k in keys:
         assert k in checkpoint
 
-    model.load_state_dict(checkpoint['state_dict'])
+    if not list(model.state_dict().keys())[0].startswith('module.') \
+            and list(checkpoint['state_dict'])[0].startswith('module.'):
+        # the checkpoint was saved by DDP
+        logging.info('load checkpoint from DDP')
+        dst_state_dict = model.state_dict()
+        src_state_dict = checkpoint['state_dict']
+        for key in dst_state_dict.keys():
+            src_key = '{}.{}'.format('module', key)
+            dst_state_dict[key] = src_state_dict.pop(src_key)
+        assert len(src_state_dict) == 0
+        model.load_state_dict(dst_state_dict)
+    else:
+        model.load_state_dict(checkpoint['state_dict'])
 
     epoch = checkpoint['epoch']
     learning_rate = checkpoint['learning_rate']
@@ -52,7 +64,10 @@ def load_checkpoint(filename, model):
     return epoch, learning_rate, objf
 
 
-def save_checkpoint(filename, model, epoch, learning_rate, objf):
+def save_checkpoint(filename, model, epoch, learning_rate, objf, local_rank=0):
+    if local_rank != 0:
+        return
+
     logging.info('Save checkpoint to {filename}: epoch={epoch}, '
                  'learning_rate={learning_rate}, objf={objf}'.format(
                      filename=filename,
@@ -68,8 +83,17 @@ def save_checkpoint(filename, model, epoch, learning_rate, objf):
     torch.save(checkpoint, filename)
 
 
-def save_training_info(filename, model_path, current_epoch, learning_rate, objf,
-                       best_objf, best_epoch):
+def save_training_info(filename,
+                       model_path,
+                       current_epoch,
+                       learning_rate,
+                       objf,
+                       best_objf,
+                       best_epoch,
+                       local_rank=0):
+    if local_rank != 0:
+        return
+
     with open(filename, 'w') as f:
         f.write('model_path: {}\n'.format(model_path))
         f.write('epoch: {}\n'.format(current_epoch))
