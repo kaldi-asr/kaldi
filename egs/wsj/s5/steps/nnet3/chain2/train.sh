@@ -51,6 +51,7 @@ shuffle_buffer_size=1000  # This "buffer_size" variable controls randomization o
 
 
 l2_regularize=
+out_of_range_regularize=0.01
 multilingual_eg=false
 
 # End configuration section
@@ -184,16 +185,17 @@ while [ $x -lt $num_iters ]; do
          nnet3-chain-train2 --use-gpu=$use_gpu \
             --leaky-hmm-coefficient=$leaky_hmm_coefficient \
             --xent-regularize=$xent_regularize \
+            --out-of-range-regularize=$out_of_range_regularize \
             $l2_regularize_opt \
             --print-interval=10  \
            "nnet3-am-init $dir/0_trans.mdl $dir/${x}.raw - | nnet3-am-copy --learning-rate=$lrate - - |" $den_fst_dir \
-           "ark:nnet3-chain-copy-egs $egs_opts scp:$egs_dir/${name}_subset.scp ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
+           "ark:nnet3-chain-copy-egs $egs_opts scp:$egs_dir/${name}_subset.scp ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=1:64 ark:- ark:-|" \
            $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic &
     done
   fi
 
   cache_io_opt="--write-cache=$dir/cache.$next_x"
-  if [ $x -gt 1 -a -f $dir/cache.$x ]; then
+  if [ $x -gt 0 -a -f $dir/cache.$x ]; then
       cache_io_opt="$cache_io_opt --read-cache=$dir/cache.$x"
   fi
   for j in $(seq $num_jobs); do
@@ -208,6 +210,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
          nnet3-chain-train2  \
              $parallel_train_opts $verbose_opt \
+            --out-of-range-regularize=$out_of_range_regularize \
              $cache_io_opt \
              --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
              --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
