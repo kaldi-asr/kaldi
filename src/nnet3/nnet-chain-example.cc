@@ -524,7 +524,7 @@ void ChainExampleMerger::WriteMinibatch(
   std::ostringstream key;
   std::string suffix = "";
   if(config_.multilingual_eg) {
-      // we just pick the first output's suffix
+      // pick the first output's suffix
       std::string output_name = merged_eg.outputs[0].name;
       const size_t pos = output_name.find('-');
       const size_t len = output_name.length();
