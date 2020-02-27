@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 echo "$0: finding missing inter-directory dependencies in src/Makefile"
 

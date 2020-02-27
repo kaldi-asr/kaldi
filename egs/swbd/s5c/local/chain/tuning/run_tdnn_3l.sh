@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # [abandoned, not working well.]
 # _3l is as _3j, but making similar changes to as 3i->3k, which is (1) adding

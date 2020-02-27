@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1d is like 1c except it uses l2-regularize instead of proportional-shrink
 

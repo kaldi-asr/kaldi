@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 max_utt_len=60 # 60 seconds.
 stage=0

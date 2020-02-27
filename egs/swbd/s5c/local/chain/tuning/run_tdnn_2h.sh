@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2h is as _2g but --ngram-order=4, and --num-lm-states=5k.
 # see table in run_tdnn_2a.sh for results.

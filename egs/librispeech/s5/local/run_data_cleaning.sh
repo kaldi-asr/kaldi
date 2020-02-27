@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # This script shows how you can do data-cleaning, and exclude data that has a

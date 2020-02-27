@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Based on run_tdnn_7b.sh in the fisher swbd recipe

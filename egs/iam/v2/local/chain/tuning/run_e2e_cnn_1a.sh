@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)

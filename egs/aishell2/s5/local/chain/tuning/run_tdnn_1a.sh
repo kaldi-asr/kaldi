@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is the original baseline scripts, which is supposed to be deprecated.
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3u is as _3s (and re-using the egs) but with one more layer; keeping the same dim
 # and total context, and reducing --jesus-forward-output-dim from 1500 to 1300 to

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2019   Phani Sankar Nidadavolu
 # Copyright 2019   manhong wang(marvin)
 # Apache 2.0.

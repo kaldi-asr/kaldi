@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is the "multi-splice" version of the online-nnet2 training script.
 # It's currently the best recipe.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2019 Fei Wu
 set -eu 
 # Adapted from the local/prepare_dict script in 

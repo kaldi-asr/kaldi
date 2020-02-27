@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _y is as _s but trying --apply-deriv-weights false. (note: in the
 # interim, the script was changed so the train and valid probs have --pdf-boundary-penalty 0

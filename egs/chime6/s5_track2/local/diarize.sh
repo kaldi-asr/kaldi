@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright   2019   David Snder
 # Apache 2.0.
 #

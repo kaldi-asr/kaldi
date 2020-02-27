@@ -1,0 +1,19 @@
+tri1
+%WER 40.91 [ 32272 / 78894, 2147 ins, 7478 del, 22647 sub ] exp/tri1/decode/wer_12_0.5
+tri2b
+%WER 36.68 [ 28936 / 78894, 2752 ins, 5682 del, 20502 sub ] exp/tri2b/decode/wer_13_0.0
+tri3b
+%WER 35.35 [ 27892 / 78894, 2587 ins, 7024 del, 18281 sub ] exp/tri3b/decode/wer_14_0.0
+
+chain for dev set
+%WER 16.60 [ 13094 / 78894, 1314 ins, 2992 del, 8788 sub ] exp/chain/tdnn_1a_sp/decode_dev/wer_9_0.0
+rnnlm-rescoring for dev set
+%WER 15.02 [ 11846 / 78894, 1248 ins, 2836 del, 7762 sub ] exp/chain/tdnn_1a_sp/decode_dev_rnnlm_1e_0.45/wer_9_0.0
+
+chain for test_p2 set
+%WER 14.95 [ 10416 / 69668, 1129 ins, 2593 del, 6694 sub ] exp/chain/tdnn_1a_sp/decode_test_p2/wer_9_0.0
+rnnlm-rescoring for test_p2 set
+%WER 13.51 [ 9413 / 69668, 1059 ins, 2517 del, 5837 sub ] exp/chain/tdnn_1a_sp/decode_test_p2_rnnlm_1e_0.45/wer_9_0.0
+
+rnnlm-rescoring for mt_eval set
+%WER 12.02 [ 10829 / 90112, 1483 ins, 2401 del, 6945 sub ] exp/chain/tdnn_1a_sp/decode_mt_all_rnnlm_1e_0.45/wer_9_0.0

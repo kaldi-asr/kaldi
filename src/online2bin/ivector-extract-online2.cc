@@ -94,6 +94,7 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatVectorReader frame_weights_reader(frame_weights_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
 
+    bool warned_dim = false;
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -108,7 +109,18 @@ int main(int argc, char *argv[]) {
         }
         const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
 
-        OnlineMatrixFeature matrix_feature(feats);
+        int32 feat_dim = feats.NumCols();
+        if (feat_dim == ivector_info.ExpectedFeatureDim() + 3) {
+          if (!warned_dim) {
+            KALDI_WARN << "Feature dimension is too large by 3, assuming there are "
+                "pitch features and removing the last 3 dims.";
+            warned_dim = true;
+          }
+          feat_dim -= 3;
+        }
+
+        SubMatrix<BaseFloat> range = feats.ColRange(0, feat_dim);
+        OnlineMatrixFeature matrix_feature(range);
 
         OnlineIvectorFeature ivector_feature(ivector_info,
                                              &matrix_feature);
