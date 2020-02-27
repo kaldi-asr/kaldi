@@ -14,5 +14,5 @@ Dev     57.15     83.96
 Eval    54.12     80.33
 
 # ASR nnet3 tdnn+chain
-Dev:  %WER 84.33 [ 49653 / 58881, 1529 ins, 35813 del, 12311 sub ]
-Eval: %WER 78.08 [ 43046 / 55132, 957 ins, 32045 del, 10044 sub ]
+Dev:  %WER 82.23 [ 48416 / 58881, 1842 ins, 31218 del, 15356 sub ]
+Eval: %WER 77.25 [ 42590 / 55132, 1718 ins, 28757 del, 12115 sub ]
