@@ -107,7 +107,7 @@ if [ $stage -le 5 ]; then
     cd ..
   fi
   cd dscore
-  python score.py -r $ref_rttm_path -s $out_rttm_path
+  python score.py -u ../local/uem_file -r $ref_rttm_path -s $out_rttm_path
   cd ..
 fi
 
