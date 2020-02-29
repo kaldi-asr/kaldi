@@ -156,7 +156,7 @@ if [ $stage -le 5 ]; then
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang \
       exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
-      data/${datadir}_diarized
+      data/${datadir}_diarized || exit 1
   done
 fi
 

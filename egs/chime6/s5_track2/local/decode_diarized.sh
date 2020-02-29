@@ -38,7 +38,7 @@ if [ $stage -le 0 ]; then
   echo "$0 copying data files in output directory"
   cp $rttm_dir/rttm $rttm_dir/rttm_1
   sed -i 's/'.ENH'/''/g' $rttm_dir/rttm_1
-  local/truncate_rttm.py $rttm_dir/rttm_1 $rttm_dir/rttm_introduction_removed
+  local/truncate_rttm.py $rttm_dir/rttm_1 local/uem_file $rttm_dir/rttm_introduction_removed
   mkdir -p ${out_dir}_hires
   cp ${data_in}/{wav.scp,utt2spk} ${out_dir}_hires
   utils/data/get_reco2dur.sh ${out_dir}_hires
