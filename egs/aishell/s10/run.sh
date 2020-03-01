@@ -20,12 +20,12 @@
 . ./cmd.sh
 . ./path.sh
 
-data=/data/fangjunkuang/data/aishell
+data=/home/asr-corpus/public/aishell
 data_url=www.openslr.org/resources/33
 
 nj=30
 
-stage=0
+stage=13
 
 if [[ $stage -le 0 ]]; then
   local/download_and_untar.sh $data $data_url data_aishell || exit 1
@@ -99,10 +99,5 @@ if [[ $stage -le 12 ]]; then
 fi
 
 if [[ $stage -le 13 ]]; then
-  local/run_cleanup_segmentation.sh --nj $nj
-fi
-
-if [[ $stage -le 14 ]]; then
-  local/run_chain.sh --nj $nj \
-    --gmm-dir exp/tri3_cleaned
+  local/run_chain.sh --nj $nj 
 fi

@@ -21,7 +21,6 @@ from common import splice_feats
 def get_egs_dataloader(egs_dir_or_scp,
                        egs_left_context,
                        egs_right_context,
-                       shuffle=True,
                        world_size=None,
                        local_rank=None):
     '''
@@ -38,22 +37,19 @@ def get_egs_dataloader(egs_dir_or_scp,
         egs_right_context=egs_right_context,
         frame_subsampling_factor=frame_subsampling_factor)
 
-    if world_size:
+    if local_rank != None:
         sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, num_replicas=world_size, rank=local_rank)
-        # sampler and shuffle are mutually exclusive;
-        # it will raise an exception if you set both
-        shuffle = False
-
-    else:
-        sampler = None
-
-    dataloader = DataLoader(dataset,
+            dataset, num_replicas=world_size, rank=local_rank, shuffle=True)
+        dataloader = DataLoader(dataset,
                             batch_size=batch_size,
-                            shuffle=shuffle,
-                            num_workers=0,
                             collate_fn=collate_fn,
                             sampler=sampler)
+    else:
+         base_sampler = torch.utils.data.RandomSampler(dataset)
+         sampler = torch.utils.data.BatchSampler(base_sampler, batch_size, False)
+         dataloader = DataLoader(dataset,
+                            batch_sampler=sampler,
+                            collate_fn=collate_fn)
     return dataloader
 
 

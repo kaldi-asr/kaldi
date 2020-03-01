@@ -5,50 +5,21 @@
 
 set -e
 
-stage=0
-
-export CUDA_VISIBLE_DEVICES="0,3"
-device_id=0
+stage=12
 
 nj=10
 
-train_set=train_cleaned
-gmm_dir=exp/tri3_cleaned
-
-# You should know how to calculate your model's left/right context **manually**
-model_left_context=28
-model_right_context=28
-egs_left_context=$[$model_left_context + 1]
-egs_right_context=$[$model_right_context + 1]
-frames_per_eg=150,110,90
-frames_per_iter=1500000
-minibatch_size=128
-
-num_epochs=6
-lr=1e-3
-
-hidden_dim=1024
-bottleneck_dim=128
-prefinal_bottleneck_dim=256
-kernel_size_list="3, 3, 3, 1, 3, 3, 3, 3, 3, 3, 3, 3" # comma separated list
-subsampling_factor_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
-
-log_level=info # valid values: debug, info, warning
-
-# true to save network output as kaldi::CompressedMatrix
-# false to save it as kaldi::Matrix<float>
-save_nn_output_as_compressed=false
+train_set=train
+gmm=tri3
+nnet3_affix=_pybind
+tree_affix= 
+tdnn_affix=
 
 . ./path.sh
 . ./cmd.sh
 
 . parse_options.sh
 
-ali_dir=${gmm_dir}_ali_${train_set}_sp  # output ali dir
-lat_dir=${gmm_dir}_lat_${train_set}_sp  # output lat dir
-tree_dir=${gmm_dir}_tree_${train_set}_sp  # output tree dir
-train_data_dir=data/${train_set}_sp_hires
-lores_train_data_dir=data/${train_set}_sp
 
 if [[ $stage -le 0 ]]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
@@ -61,12 +32,16 @@ fi
 
 if [[ $stage -le 1 ]]; then
   echo "$0: making MFCC features for low-resolution speed-perturbed data"
-  steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" data/${train_set}_sp
+  steps/make_mfcc.sh --nj $nj \
+    --cmd "$train_cmd" data/${train_set}_sp
   steps/compute_cmvn_stats.sh data/${train_set}_sp
   echo "fixing input data-dir to remove nonexistent features, in case some "
   echo ".. speed-perturbed segments were too short."
   utils/fix_data_dir.sh data/${train_set}_sp
 fi
+
+gmm_dir=exp/$gmm
+ali_dir=exp/${gmm}_ali_${train_set}_sp
 
 if [[ $stage -le 2 ]]; then
   echo "$0: aligning with the perturbed low-resolution data"
@@ -88,6 +63,12 @@ if [[ $stage -le 3 ]]; then
     utils/fix_data_dir.sh data/${x}_hires
   done
 fi
+
+tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
 
 if [[ $stage -le 4 ]]; then
   for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
@@ -128,27 +109,48 @@ fi
 
 if  [[ $stage -le 8 ]]; then
   echo "$0: creating phone language-model"
-  "$train_cmd" exp/chain/log/make_phone_lm.log \
+  $mkgraph_cmd $dir/log/make_phone_lm.log \
     chain-est-phone-lm \
      "ark:gunzip -c $tree_dir/ali.*.gz | ali-to-phones $tree_dir/final.mdl ark:- ark:- |" \
-     exp/chain/phone_lm.fst || exit 1
+     $dir/phone_lm.fst || exit 1
 fi
 
 if [[ $stage -le 9 ]]; then
   echo "creating denominator FST"
-  copy-transition-model $tree_dir/final.mdl exp/chain/0.trans_mdl
-  cp $tree_dir/tree exp/chain
-  "$train_cmd" exp/chain/log/make_den_fst.log \
-    chain-make-den-fst exp/chain/tree exp/chain/0.trans_mdl exp/chain/phone_lm.fst \
-       exp/chain/den.fst exp/chain/normalization.fst || exit 1
+  copy-transition-model $tree_dir/final.mdl $dir/0.trans_mdl
+  cp $tree_dir/tree $dir 
+  $train_cmd $dir/log/make_den_fst.log \
+    chain-make-den-fst $dir/tree $dir/0.trans_mdl $dir/phone_lm.fst \
+       $dir/den.fst $dir/normalization.fst || exit 1
 fi
+
+# You should know how to calculate your model's left/right context **manually**
+model_left_context=28
+model_right_context=28
+egs_left_context=$[$model_left_context + 1]
+egs_right_context=$[$model_right_context + 1]
+frames_per_eg=150,110,90
+frames_per_iter=1500000
+minibatch_size=128
+
+hidden_dim=1024
+bottleneck_dim=128
+prefinal_bottleneck_dim=256
+kernel_size_list="3, 3, 3, 1, 3, 3, 3, 3, 3, 3, 3, 3" # comma separated list
+subsampling_factor_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
+
+log_level=info # valid values: debug, info, warning
+
+# true to save network output as kaldi::CompressedMatrix
+# false to save it as kaldi::Matrix<float>
+save_nn_output_as_compressed=false
 
 if [[ $stage -le 10 ]]; then
   echo "$0: generating egs"
   steps/nnet3/chain/get_egs.sh \
     --alignment-subsampling-factor 3 \
     --cmd "$train_cmd" \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
+    --online-cmvn true \
     --frame-subsampling-factor 3 \
     --frames-overlap-per-eg 0 \
     --frames-per-eg $frames_per_eg \
@@ -163,56 +165,65 @@ if [[ $stage -le 10 ]]; then
     --srand 0 \
     --stage -10 \
     $train_data_dir \
-    exp/chain $lat_dir exp/chain/egs
+    $dir $lat_dir $dir/egs 
 fi
 
-feat_dim=$(cat exp/chain/egs/info/feat_dim)
-output_dim=$(cat exp/chain/egs/info/num_pdfs)
 
 if [[ $stage -le 11 ]]; then
   echo "$0: merging egs"
-  mkdir -p exp/chain/merged_egs
-  num_egs=$(ls -1 exp/chain/egs/cegs*.ark | wc -l)
+  mkdir -p $dir/merged_egs
+  num_egs=$(ls -1 $dir/egs/cegs*.ark | wc -l)
 
-  run.pl --max-jobs-run $nj JOB=1:$num_egs exp/chain/merged_egs/log/merge_egs.JOB.log \
-    nnet3-chain-shuffle-egs ark:exp/chain/egs/cegs.JOB.ark ark:- \| \
+  $train_cmd --max-jobs-run $nj JOB=1:$num_egs $dir/merged_egs/log/merge_egs.JOB.log \
+    nnet3-chain-shuffle-egs ark:$dir/egs/cegs.JOB.ark ark:- \| \
     nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:- \
-      ark,scp:exp/chain/merged_egs/cegs.JOB.ark,exp/chain/merged_egs/cegs.JOB.scp || exit 1
+      ark,scp:$dir/merged_egs/cegs.JOB.ark,$dir/merged_egs/cegs.JOB.scp || exit 1
 
-  rm exp/chain/egs/cegs.*.ark
+  rm $dir/egs/cegs.*.ark
 fi
+
+feat_dim=$(cat $dir/egs/info/feat_dim)
+output_dim=$(cat $dir/egs/info/num_pdfs)
 
 if [[ $stage -le 12 ]]; then
-  # Note: it might appear that this $lang directory is mismatched, and it is as
-  # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
-  # the lang directory.
-  local/mkgraph.sh --self-loop-scale 1.0 data/lang_test exp/chain exp/chain/graph
-fi
-
-if [[ $stage -le 13 ]]; then
   echo "$0: training..."
 
-  mkdir -p exp/chain/train/tensorboard
+  mkdir -p $dir/train/tensorboard
   train_checkpoint=
-  if [[ -f exp/chain/train/best_model.pt ]]; then
-    train_checkpoint=./exp/chain/train/best_model.pt
+  if [[ -f $dir/train/best_model.pt ]]; then
+    train_checkpoint=$dir/train/best_model.pt
   fi
 
-  num_gpus=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
+  INIT_FILE=$dir/ddp_init
+  rm -f $INIT_FILE # delete old one before starting
+  init_method=file://$(readlink -f $INIT_FILE)
+  # use '127.0.0.1' for training on a single machine
+  # init_method=tcp://127.0.0.1:7275
+  echo "$0: init method is $init_method"
 
-  if [[ $num_gpus -gt 1 ]]; then
-    echo "$0: training with ddp..."
+  num_epochs=6
+  lr=1e-3
+  
+  # use_ddp = false: training model with one GPU
+  # use_ddp = true & use_multiple_machine = false: training model with multiple GPUs on a single machine
+  # use_ddp = true & use_multiple_machine = true:  training model with GPU on multiple machines
 
-    export MASTER_ADDR=localhost
-    export MASTER_PORT=6666
-
-    for ((i = 0; i < $num_gpus; ++i)); do
-      # sort the options alphabetically
-      python3 ./chain/ddp_train.py \
+  use_ddp=true
+  world_size=4
+  use_multiple_machine=false 
+  if $use_multiple_machine ; then
+    # suppose you are using Sun GridEngine
+    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size JOB=1:$world_size $dir/train/logs/job.JOB.log")
+  else
+    # TODO: for running with multiple GPUs on a single machine (SGE), 
+    #       we should tell SGE how many GPUs we will use on that machine
+    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size $dir/train/logs/train.log")
+  fi
+ 
+  $cuda_train_cmd python3 ./chain/train.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint=${train_checkpoint:-} \
-        --device-id $i \
-        --dir exp/chain/train \
+        --dir $dir \
         --feat-dim $feat_dim \
         --hidden-dim $hidden_dim \
         --is-training true \
@@ -221,110 +232,92 @@ if [[ $stage -le 13 ]]; then
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --subsampling-factor-list "$subsampling_factor_list" \
-        --train.cegs-dir exp/chain/merged_egs \
-        --train.ddp.world-size $num_gpus \
-        --train.den-fst exp/chain/den.fst \
+        --train.use-ddp $use_ddp \
+        --train.ddp.init-method $init_method \
+        --train.ddp.multiple-machine $use_multiple_machine \
+        --train.ddp.world-size $world_size \
+        --train.cegs-dir $dir/merged_egs \
+        --train.den-fst $dir/den.fst \
         --train.egs-left-context $egs_left_context \
         --train.egs-right-context $egs_right_context \
         --train.l2-regularize 5e-5 \
         --train.leaky-hmm-coefficient 0.1 \
         --train.lr $lr \
         --train.num-epochs $num_epochs \
-        --train.use-ddp true \
-        --train.valid-cegs-scp exp/chain/egs/valid_diagnostic.scp \
-        --train.xent-regularize 0.1 &
-    done
-    wait
-  else
-    echo "$0: training with single gpu..."
-    # sort the options alphabetically
-    python3 ./chain/train.py \
-      --bottleneck-dim $bottleneck_dim \
-      --checkpoint=${train_checkpoint:-} \
-      --device-id $device_id \
-      --dir exp/chain/train \
-      --feat-dim $feat_dim \
-      --hidden-dim $hidden_dim \
-      --is-training true \
-      --kernel-size-list "$kernel_size_list" \
-      --log-level $log_level \
-      --output-dim $output_dim \
-      --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
-      --subsampling-factor-list "$subsampling_factor_list" \
-      --train.cegs-dir exp/chain/merged_egs \
-      --train.den-fst exp/chain/den.fst \
-      --train.egs-left-context $egs_left_context \
-      --train.egs-right-context $egs_right_context \
-      --train.l2-regularize 5e-5 \
-      --train.leaky-hmm-coefficient 0.1 \
-      --train.lr $lr \
-      --train.num-epochs $num_epochs \
-      --train.use-ddp false \
-      --train.valid-cegs-scp exp/chain/egs/valid_diagnostic.scp \
-      --train.xent-regularize 0.1
-  fi
+        --train.valid-cegs-scp $dir/egs/valid_diagnostic.scp \
+        --train.xent-regularize 0.1 || exit 1;
 fi
 
-if [[ $stage -le 14 ]]; then
-  echo "$0: inference: computing likelihood"
+if [[ $stage -le 13 ]]; then
+  echo "inference: computing likelihood"
   for x in test dev; do
-    mkdir -p exp/chain/inference/${x}_hires
-    if [[ -f exp/chain/inference/${x}_hires/nnet_output.scp ]]; then
-      echo "$0: exp/chain/inference/${x}_hires/nnet_output.scp already exists! Skip"
+    mkdir -p $dir/inference/$x
+    if [[ -f $dir/inference/$x/nnet_output.scp ]]; then
+      echo "$dir/inference/$x/nnet_output.scp already exists! Skip"
     else
-      best_epoch=$(cat exp/chain/train/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
-      inference_checkpoint=exp/chain/train/epoch-${best_epoch}.pt
-      python3 ./chain/inference.py \
+      apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
+          scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+      best_epoch=$(cat $dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
+      inference_checkpoint=$dir/epoch-${best_epoch}.pt
+      $cuda_inference_cmd $dir/inference/logs/${x}.log python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
-        --device-id $device_id \
-        --dir exp/chain/inference/${x}_hires \
+        --dir $dir/inference/$x \
         --feat-dim $feat_dim \
-        --feats-scp data/${x}_hires/feats.scp \
+        --feats-scp data/${x}_hires/online_cmvn_feats.scp \
         --hidden-dim $hidden_dim \
         --is-training false \
-        --kernel-size-list "$kernel_size_list" \
         --log-level $log_level \
+        --kernel-size-list "$kernel_size_list" \
+        --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --model-left-context $model_left_context \
         --model-right-context $model_right_context \
         --output-dim $output_dim \
-        --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --save-as-compressed $save_nn_output_as_compressed \
-        --subsampling-factor-list "$subsampling_factor_list" || exit 1
+        --subsampling-factor-list "$subsampling_factor_list" || exit 1;
     fi
   done
 fi
 
+if [[ $stage -le 14 ]]; then
+  # Note: it might appear that this $lang directory is mismatched, and it is as
+  # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
+  # the lang directory.
+  cp $tree_dir/final.mdl $dir/final.mdl
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $dir/graph
+fi
+
+
 if [[ $stage -le 15 ]]; then
-  echo "$0: decoding"
+  echo "decoding"
   for x in test dev; do
-    if [[ ! -f exp/chain/inference/${x}_hires/nnet_output.scp ]]; then
-      echo "$0: exp/chain/inference/${x}_hires/nnet_output.scp does not exist!"
-      echo "$0: Please run inference.py first"
+    if [[ ! -f $dir/inference/$x/nnet_output.scp ]]; then
+      echo "exp/chain/inference/$x/nnet_output.scp does not exist!"
+      echo "Please run inference.py first"
       exit 1
     fi
-    echo "$0: decoding ${x}_hires"
+    echo "decoding $x"
 
     ./local/decode.sh \
       --nj $nj \
-      exp/chain/graph \
-      exp/chain/0.trans_mdl \
-      exp/chain/inference/${x}_hires/nnet_output.scp \
-      exp/chain/decode_res/${x}_hires
+      $dir/graph \
+      $dir/0.trans_mdl \
+      $dir/inference/$x/nnet_output.scp \
+      $dir/decode_res/$x
   done
 fi
 
 if [[ $stage -le 16 ]]; then
-  echo "$0: scoring"
+  echo "scoring"
 
   for x in test dev; do
     ./local/score.sh --cmd "$decode_cmd" \
       data/${x}_hires \
-      exp/chain/graph \
-      exp/chain/decode_res/${x}_hires || exit 1
+      $dir/graph \
+      $dir/decode_res/$x || exit 1
   done
 
   for x in test dev; do
-    head exp/chain/decode_res/${x}_hires/scoring_kaldi/best_*
+    head $dir/decode_res/$x/scoring_kaldi/best_*
   done
 fi
