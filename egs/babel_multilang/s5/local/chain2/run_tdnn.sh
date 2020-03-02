@@ -39,7 +39,7 @@ feat_suffix=_hires
 
 label_delay=5
 frame_subsampling_factor=3
-xent_regularize=0.025
+xent_regularize=0.01
 max_param_change=2.0
 num_jobs_initial=2
 num_jobs_final=12
@@ -417,7 +417,7 @@ if [ $stage -le 18 ]; then
   steps/chain2/train.sh \
     --stage $train_stage --cmd "$cuda_cmd" \
     --multilingual-eg true \
-    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.25 --out-of-range-regularize 0.0 \
+    --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.25  \
     --initial-effective-lrate $initial_effective_lrate \
     --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
