@@ -33,114 +33,94 @@ from egs_dataset import get_egs_dataloader
 from model import get_chain_model
 from options import get_args
 
+def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None):
+    total_objf = 0.
+    total_weight = 0.
+    total_frames = 0.  # for display only
+    
+    key_list, feature_list, supervision_list = batch
+    assert len(key_list) == len(feature_list) == len(supervision_list)
+    batch_size = len(key_list)
+    for n in range(batch_size):
+        feats = feature_list[n]
+        assert feats.ndim == 3
+
+        # at this point, feats is [N, T, C]
+        feats = feats.to(device)
+        if training:
+            nnet_output, xent_output = model(feats)
+        else:
+            with torch.no_grad():
+                nnet_output, xent_output = model(feats)
+
+        # at this point, nnet_output is: [N, T, C]
+        # refer to kaldi/src/chain/chain-training.h
+        # the output should be organized as
+        # [all sequences for frame 0]
+        # [all sequences for frame 1]
+        # [etc.]
+        nnet_output = nnet_output.permute(1, 0, 2)
+        # at this point, nnet_output is: [T, N, C]
+        nnet_output = nnet_output.contiguous().view(-1,
+	       					nnet_output.shape[-1])
+
+        # at this point, xent_output is: [N, T, C]
+        xent_output = xent_output.permute(1, 0, 2)
+        # at this point, xent_output is: [T, N, C]
+        xent_output = xent_output.contiguous().view(-1,
+						xent_output.shape[-1])
+        objf_l2_term_weight = criterion(opts, den_graph,
+				    supervision_list[n], nnet_output,
+				    xent_output)
+        objf = objf_l2_term_weight[0]
+        if training:
+            optimizer.zero_grad()
+            objf.backward()
+            clip_grad_value_(model.parameters(), 5.0)
+            optimizer.step()
+
+        objf_l2_term_weight = objf_l2_term_weight.detach().cpu()
+
+        total_objf += objf_l2_term_weight[0].item()
+        total_weight += objf_l2_term_weight[2].item()
+        num_frames = nnet_output.shape[0]
+        total_frames += num_frames
+
+    return total_objf, total_weight, total_frames
+
+
 def get_validation_objf(dataloader, model, device, criterion, opts, den_graph):
     total_objf = 0.
     total_weight = 0.
     total_frames = 0.  # for display only
-
+ 
     model.eval()
 
     for batch_idx, batch in enumerate(dataloader):
-        key_list, feature_list, supervision_list = batch
-
-        assert len(key_list) == len(feature_list) == len(supervision_list)
-        batch_size = len(key_list)
-
-        for n in range(batch_size):
-            feats = feature_list[n]
-            assert feats.ndim == 3
-
-            # at this point, feats is [N, T, C]
-            feats = feats.to(device)
-
-            with torch.no_grad():
-                nnet_output, xent_output = model(feats)
-
-            # at this point, nnet_output is: [N, T, C]
-            # refer to kaldi/src/chain/chain-training.h
-            # the output should be organized as
-            # [all sequences for frame 0]
-            # [all sequences for frame 1]
-            # [etc.]
-            nnet_output = nnet_output.permute(1, 0, 2)
-            # at this point, nnet_output is: [T, N, C]
-            nnet_output = nnet_output.contiguous().view(-1,
-                                                        nnet_output.shape[-1])
-
-            # at this point, xent_output is: [N, T, C]
-            xent_output = xent_output.permute(1, 0, 2)
-            # at this point, xent_output is: [T, N, C]
-            xent_output = xent_output.contiguous().view(-1,
-                                                        xent_output.shape[-1])
-            objf_l2_term_weight = criterion(opts, den_graph,
-                                            supervision_list[n], nnet_output,
-                                            xent_output)
-            objf = objf_l2_term_weight[0]
-
-            objf_l2_term_weight = objf_l2_term_weight.cpu()
-
-            total_objf += objf_l2_term_weight[0].item()
-            total_weight += objf_l2_term_weight[2].item()
-
-            num_frames = nnet_output.shape[0]
-            total_frames += num_frames
+        objf, weight, frames = get_objf(
+            batch, model, device, criterion, opts, den_graph, False) 
+        total_objf += objf
+        total_weight += weight
+        total_frames += frames
 
     return total_objf, total_weight, total_frames
 
 
 def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
                     criterion, current_epoch, opts, den_graph, tf_writer, rank):
-    model.train()
-
     total_objf = 0.
     total_weight = 0.
     total_frames = 0.  # for display only
 
+    model.train()
+
     for batch_idx, batch in enumerate(dataloader):
-        key_list, feature_list, supervision_list = batch
-        assert len(key_list) == len(feature_list) == len(supervision_list)
-        batch_size = len(key_list)
-        for n in range(batch_size):
-            feats = feature_list[n]
-            assert feats.ndim == 3
+        curr_batch_objf, curr_batch_weight, curr_batch_frames = get_objf(
+            batch, model, device, criterion, opts, den_graph, True, optimizer) 
 
-            # at this point, feats is [N, T, C]
-            feats = feats.to(device)
-            nnet_output, xent_output = model(feats)
-
-            # at this point, nnet_output is: [N, T, C]
-            # refer to kaldi/src/chain/chain-training.h
-            # the output should be organized as
-            # [all sequences for frame 0]
-            # [all sequences for frame 1]
-            # [etc.]
-            nnet_output = nnet_output.permute(1, 0, 2)
-            # at this point, nnet_output is: [T, N, C]
-            nnet_output = nnet_output.contiguous().view(-1,
-                                                        nnet_output.shape[-1])
-
-            # at this point, xent_output is: [N, T, C]
-            xent_output = xent_output.permute(1, 0, 2)
-            # at this point, xent_output is: [T, N, C]
-            xent_output = xent_output.contiguous().view(-1,
-                                                        xent_output.shape[-1])
-            objf_l2_term_weight = criterion(opts, den_graph,
-                                            supervision_list[n], nnet_output,
-                                            xent_output)
-            objf = objf_l2_term_weight[0]
-            optimizer.zero_grad()
-            objf.backward()
-
-            clip_grad_value_(model.parameters(), 5.0)
-
-            optimizer.step()
-
-            objf_l2_term_weight = objf_l2_term_weight.detach().cpu()
-
-            total_objf += objf_l2_term_weight[0].item()
-            total_weight += objf_l2_term_weight[2].item()
-            num_frames = nnet_output.shape[0]
-            total_frames += num_frames
+        total_objf += curr_batch_objf
+        total_weight += curr_batch_weight
+        total_frames += curr_batch_frames
 
         if batch_idx % 100 == 0:
             logging.info(
@@ -150,8 +130,8 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
                     device.index, batch_idx, len(dataloader),
                     float(batch_idx) / len(dataloader) * 100,
                     total_objf / total_weight, total_frames,
-                    objf_l2_term_weight[0].item() /
-                    objf_l2_term_weight[2].item(), num_frames, current_epoch))
+                    curr_batch_objf / curr_batch_weight, 
+                    curr_batch_frames, current_epoch))
 
         if valid_dataloader and batch_idx % 1000 == 0:
             total_valid_objf, total_valid_weight, total_valid_frames = get_validation_objf(
@@ -161,7 +141,6 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
                 criterion=criterion,
                 opts=opts,
                 den_graph=den_graph)
-
             model.train()
 
             logging.info(
@@ -178,7 +157,7 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
                                  batch_idx + current_epoch * len(dataloader))
             tf_writer.add_scalar(
                 'train/current_batch_average_objf',
-                objf_l2_term_weight[0].item() / objf_l2_term_weight[2].item(),
+                curr_batch_objf / curr_batch_weight,
                 batch_idx + current_epoch * len(dataloader))
 
             state_dict = model.state_dict()
@@ -206,20 +185,24 @@ def main():
         if args.multiple_machine:
             # Suppose we have submitted multiple jobs with SGE (Sun Grid Engine)
             local_rank = int(os.environ['SGE_TASK_ID']) - 1
-            process_job(learning_rate, local_rank)
+            process_job(learning_rate, local_rank=local_rank)
         else:
             proc = []
+            if args.device_ids != None:
+                assert len(args.device_ids) >= args.world_size
             for i in range(args.world_size):
-                p = Process(target=process_job, args=(learning_rate, i))
+                device_id = None if args.device_ids == None else args.device_ids[i]
+                p = Process(target=process_job, args=(learning_rate, device_id, i))
                 proc.append(p)
                 p.start()
             for p in proc:
                 p.join()
     else:
-        process_job(args.learning_rate)
+        device_id = None if args.device_ids == None else args.device_ids[0]
+        process_job(args.learning_rate, device_id)
 
 
-def process_job(learning_rate, local_rank=None):
+def process_job(learning_rate, device_id=None, local_rank=None):
     args = get_args()
     if local_rank != None:    
         setup_logger('{}/train/logs/log-train-rank-{}'.format(args.dir, local_rank),
@@ -233,12 +216,13 @@ def process_job(learning_rate, local_rank=None):
         logging.error('No GPU detected!')
         sys.exit(-1)
 
-    devices = allocate_gpu_devices(1)
-    if len(devices) < 1:
-        logging.error('Allocate GPU failed!')
-        sys.exit(-1)
+    if device_id == None:
+        devices = allocate_gpu_devices(1)
+        if len(devices) < 1:
+            logging.error('Allocate GPU failed!')
+            sys.exit(-1)
+        device_id = devices[0][0]
     
-    device_id = devices[0][0]
     logging.info('device: {}'.format(device_id))
 
     if args.use_ddp:

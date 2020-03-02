@@ -30,11 +30,16 @@ def main():
         logging.warning('No GPU detected! Use CPU for inference.')
         device = torch.device('cpu')
     else:
-        devices = allocate_gpu_devices(1)
-        if len(devices) != 1:
-            logging.error('Allocate GPU failed!')
-            sys.exit(-1)
-        device = torch.device('cuda', devices[0][0])
+        if args.device_ids != None and len(args.device_ids) > 0:
+            device_id = args.device_ids[0]
+        else:
+            devices = allocate_gpu_devices(1)
+            if len(devices) != 1:
+                logging.error('Allocate GPU failed!')
+                sys.exit(-1)
+            device_id = devices[0][0]
+        logging.info('device: {}'.format(device_id))
+        device = torch.device('cuda', device_id)
 
     model = get_chain_model(
         feat_dim=args.feat_dim,
