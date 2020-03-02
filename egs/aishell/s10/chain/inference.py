@@ -12,12 +12,13 @@ from torch.utils.dlpack import to_dlpack
 
 import kaldi
 
+
 from common import load_checkpoint
 from common import setup_logger
+from device_utils import allocate_gpu_devices
 from feat_dataset import get_feat_dataloader
 from model import get_chain_model
 from options import get_args
-
 
 def main():
     args = get_args()
@@ -28,7 +29,11 @@ def main():
         logging.warning('No GPU detected! Use CPU for inference.')
         device = torch.device('cpu')
     else:
-        device = torch.device('cuda', args.device_id)
+        devices = allocate_gpu_devices(1)
+        if len(devices) != 1:
+            logging.error('Allocate GPU failed!')
+            sys.exit(-1)
+        device = torch.device('cuda', devices[0][0])
 
     model = get_chain_model(
         feat_dim=args.feat_dim,

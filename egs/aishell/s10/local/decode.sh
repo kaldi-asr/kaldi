@@ -3,7 +3,6 @@
 # Copyright 2019 Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 # Apache 2.0
 
-cmd=run.pl
 nj=10
 
 acwt=1.0 # change from 0.1 to 1.0 for chain model (by fangjun)
@@ -55,7 +54,7 @@ lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
-$cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
+$decode_cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
   latgen-faster-mapped$thread_string  \
     --acoustic-scale=$acwt \
     --allow-partial=true \

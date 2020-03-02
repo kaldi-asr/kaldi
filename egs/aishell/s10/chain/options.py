@@ -100,13 +100,22 @@ def _set_training_args(parser):
                         type=float)
 
     # PyTorch DistributedDataParallel (ddp) parameters
-    parser.add_argument(
-        '--train.use-ddp',
-        dest='use_ddp',
-        help="true to use PyTorch's built-in DistributedDataParallel trainer",
-        type=_str2bool)
+    parser.add_argument('--train.use-ddp',
+                        dest='use_ddp',
+                        help="use PyTorch's built-in DistributedDataParallel trainer",
+                        type=_str2bool)
 
-    # note that we use device id as local rank.
+    parser.add_argument('--train.ddp.multiple-machine',
+                        dest='multiple_machine',
+                        help="use ddp with multiple machines",
+                        type=_str2bool)
+
+
+    parser.add_argument('--train.ddp.init-method',
+                        dest='init_method',
+                        help='init method in ddp',
+                        type=str)
+    
 
     parser.add_argument('--train.ddp.world-size',
                         dest='world_size',
@@ -160,7 +169,7 @@ def _check_args(args):
 
     # although -1 means to use CPU in `kaldi.SelectGpuDevice()`
     # we do NOT want to use CPU here so we require it to be >= 0
-    assert args.device_id >= 0
+    # assert args.device_id >= 0
 
     assert args.feat_dim > 0
     assert args.output_dim > 0
@@ -201,7 +210,7 @@ def get_args():
     parser.add_argument('--device-id',
                         dest='device_id',
                         help='GPU device id',
-                        required=True,
+                        required=False,
                         type=int)
 
     parser.add_argument('--is-training',

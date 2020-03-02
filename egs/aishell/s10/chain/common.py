@@ -65,7 +65,7 @@ def load_checkpoint(filename, model):
 
 
 def save_checkpoint(filename, model, epoch, learning_rate, objf, local_rank=0):
-    if local_rank != 0:
+    if local_rank != None and local_rank != 0:
         return
 
     logging.info('Save checkpoint to {filename}: epoch={epoch}, '
@@ -91,7 +91,7 @@ def save_training_info(filename,
                        best_objf,
                        best_epoch,
                        local_rank=0):
-    if local_rank != 0:
+    if local_rank != None and local_rank != 0:
         return
 
     with open(filename, 'w') as f:
