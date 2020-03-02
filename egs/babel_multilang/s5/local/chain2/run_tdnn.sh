@@ -90,7 +90,6 @@ done
 
 if [ "$speed_perturb" == "true" ]; then suffix=_sp; fi
 dir=${dir}${suffix}
-dir=exp/chain2_cleaned/tdnn_multi_sp_v12/
 
 ivec_feat_suffix=${feat_suffix}
 if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
@@ -282,7 +281,7 @@ if [ $stage -le 11 ]; then
   #relu-batchnorm-layer name=tdnn_bn dim=$bnf_dim
   # adding the layers for diffrent language's output
   # dummy output node
-  output-layer name=output dim=$num_targets max-change=1.5 output-delay=5 
+  output-layer name=output dim=$num_targets max-change=1.5 include-log-softmax=false
   output-layer name=output-xent input=tdnn7 dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   # added separate outptut layer and softmax for all languages.
@@ -292,8 +291,8 @@ EOF
 
     lang_name=${lang_list[${lang_index}]}
     #echo "relu-renorm-layer name=prefinal-affine-lang-${lang_name} input=tdnn7 dim=450 target-rms=0.5"
-    echo "output-layer name=output-${lang_name} dim=$num_targets output-delay=5 input=tdnn7  max-change=1.5 include-log-softmax=false"
-    echo "output-layer name=output-${lang_name}-xent input=tdnn7 output-delay=5  dim=$num_targets  learning-rate-factor=$learning_rate_factor max-change=1.5"
+    echo "output-layer name=output-${lang_name} dim=$num_targets input=tdnn7  max-change=1.5 include-log-softmax=false"
+    echo "output-layer name=output-${lang_name}-xent input=tdnn7 dim=$num_targets  learning-rate-factor=$learning_rate_factor max-change=1.5"
   done >> $dir/configs/network.xconfig
 
   lang_name=${lang_list[0]}
