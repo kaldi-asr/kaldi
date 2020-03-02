@@ -26,6 +26,7 @@ data_url=www.openslr.org/resources/33
 nj=30
 
 stage=13
+. utils/parse_options.sh || exit 1;
 
 if [[ $stage -le 0 ]]; then
   local/download_and_untar.sh $data $data_url data_aishell || exit 1

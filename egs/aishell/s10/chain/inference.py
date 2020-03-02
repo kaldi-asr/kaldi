@@ -38,6 +38,7 @@ def main():
     model = get_chain_model(
         feat_dim=args.feat_dim,
         output_dim=args.output_dim,
+        ivector_dim=args.ivector_dim,
         lda_mat_filename=args.lda_mat_filename,
         hidden_dim=args.hidden_dim,
         bottleneck_dim=args.bottleneck_dim,
@@ -64,15 +65,36 @@ def main():
 
     dataloader = get_feat_dataloader(
         feats_scp=args.feats_scp,
+        ivector_scp=args.ivector_scp,
         model_left_context=args.model_left_context,
         model_right_context=args.model_right_context,
-        batch_size=32)
-
+        batch_size=1,
+        num_workers=0)
+    subsampling_factor = 3
+    subsampled_frames_per_chunk = args.frames_per_chunk // subsampling_factor
     for batch_idx, batch in enumerate(dataloader):
-        key_list, padded_feat, output_len_list = batch
+        key_list, padded_feat, output_len_list, padded_ivector, ivector_len_list = batch
         padded_feat = padded_feat.to(device)
+        if ivector_len_list:
+            padded_ivector = padded_ivector.to(device)
         with torch.no_grad():
-            nnet_output, _ = model(padded_feat)
+            nnet_outputs = []
+            input_num_frames = padded_feat.shape[1] + 2 \
+                                - args.model_left_context - args.model_right_context
+            for i in range(0, output_len_list[0], subsampled_frames_per_chunk):
+                # 418 -> [0, 17, 34, 51, 68, 85, 102, 119, 136]
+                first_output = i * subsampling_factor
+                last_output = min(input_num_frames, \
+                    first_output + (subsampled_frames_per_chunk-1) * subsampling_factor)
+                first_input = first_output
+                last_input = last_output + args.model_left_context + args.model_right_context
+                input_x = padded_feat[:, first_input:last_input+1, :]
+                ivector_index = (first_output + last_output) // 2 // args.ivector_period
+                input_ivector = padded_ivector[:, ivector_index, :]
+                feat = torch.cat((input_x, input_ivector.repeat((1, input_x.shape[1], 1))), dim=-1)
+                nnet_output_temp, _ = model(feat)
+                nnet_outputs.append(nnet_output_temp)
+            nnet_output = torch.cat(nnet_outputs, dim=1)
 
         num = len(key_list)
         for i in range(num):
@@ -85,7 +107,7 @@ def main():
             m = Matrix(m)
             writer.Write(key, m)
 
-        if batch_idx % 10 == 0:
+        if batch_idx % 100 == 0:
             logging.info('Processed batch {}/{} ({:.6f}%)'.format(
                 batch_idx, len(dataloader),
                 float(batch_idx) / len(dataloader) * 100))

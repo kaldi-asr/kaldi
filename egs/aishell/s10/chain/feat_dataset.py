@@ -22,9 +22,10 @@ from model import get_chain_model
 def get_feat_dataloader(feats_scp,
                         model_left_context,
                         model_right_context,
+                        ivector_scp=None,
                         batch_size=16,
                         num_workers=10):
-    dataset = FeatDataset(feats_scp=feats_scp)
+    dataset = FeatDataset(feats_scp=feats_scp, ivector_scp=ivector_scp)
 
     collate_fn = FeatDatasetCollateFunc(model_left_context=model_left_context,
                                         model_right_context=model_right_context,
@@ -55,21 +56,36 @@ def _add_model_left_right_context(x, left_context, right_context):
 
 class FeatDataset(Dataset):
 
-    def __init__(self, feats_scp):
+    def __init__(self, feats_scp, ivector_scp=None):
         assert os.path.isfile(feats_scp)
 
         self.feats_scp = feats_scp
 
-        # items is a list of [key, rxfilename]
-        items = list()
+        # items is a dict of {key: [key, rxfilename, ivec]}
+        items = dict()
 
         with open(feats_scp, 'r') as f:
             for line in f:
                 split = line.split()
                 assert len(split) == 2
-                items.append(split)
+                uttid, rxfilename =split
+                assert uttid not in items
+                items[uttid] = [uttid, rxfilename, None]
+        if ivector_scp:
+            self.ivector_scp = ivector_scp
+            expected_count = len(items)
+            n = 0
+            with open(ivector_scp, 'r') as f:
+                for line in f:
+                    uttid_rxfilename = line.split()
+                    assert len(uttid_rxfilename) == 2
+                    uttid, rxfilename = uttid_rxfilename
+                    assert uttid in items
+                    items[uttid][-1] = rxfilename
+                    n += 1
+            assert n == expected_count
 
-        self.items = items
+        self.items = list(items.values())
 
         self.num_items = len(self.items)
 
@@ -81,6 +97,8 @@ class FeatDataset(Dataset):
 
     def __str__(self):
         s = 'feats scp: {}\n'.format(self.feats_scp)
+        if self.ivector_scp:
+            s += 'ivector_scp scp: {}\n'.format(self.ivector_scp)
         s += 'num utt: {}\n'.format(self.num_items)
         return s
 
@@ -105,11 +123,15 @@ class FeatDatasetCollateFunc:
         '''
         key_list = []
         feat_list = []
+        ivector_list = []
+        ivector_len_list = []
         output_len_list = []
         for b in batch:
-            key, rxfilename = b
+            key, rxfilename, ivector_rxfilename = b
             key_list.append(key)
             feat = kaldi.read_mat(rxfilename).numpy()
+            if ivector_rxfilename:
+                ivector = kaldi.read_mat(ivector_rxfilename).numpy() # L // 10 * C
             feat_len = feat.shape[0]
             output_len = (feat_len + self.frame_subsampling_factor -
                           1) // self.frame_subsampling_factor
@@ -120,10 +142,16 @@ class FeatDatasetCollateFunc:
             feat = splice_feats(feat)
             feat_list.append(feat)
             # no need to sort the feat by length
+            ivector_list.append(ivector)
+            ivector_len_list.append(ivector.shape[0])
 
         # the user should sort utterances by length offline
         # to avoid unnecessary padding
         padded_feat = pad_sequence(
             [torch.from_numpy(feat).float() for feat in feat_list],
             batch_first=True)
-        return key_list, padded_feat, output_len_list
+        if ivector_list:
+            padded_ivector = pad_sequence(
+                [torch.from_numpy(ivector).float() for ivector in ivector_list],
+                batch_first=True)
+        return key_list, padded_feat, output_len_list, padded_ivector, ivector_len_list

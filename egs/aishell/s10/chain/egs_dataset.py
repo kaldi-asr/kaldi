@@ -151,12 +151,16 @@ class NnetChainExampleDatasetCollateFunc:
                     self.egs_left_context + self.egs_right_context
 
             # TODO(fangjun): support ivector
-            assert len(eg.inputs) == 1
             assert eg.inputs[0].name == 'input'
 
             _feats = kaldi.FloatMatrix()
             eg.inputs[0].features.GetMatrix(_feats)
             feats = _feats.numpy()
+
+            if len(eg.inputs) > 1:
+                _ivectors = kaldi.FloatMatrix()
+                eg.inputs[1].features.GetMatrix(_ivectors)
+                ivectors = _ivectors.numpy()
 
             assert feats.shape[0] == batch_size * frames_per_sequence
 
@@ -173,6 +177,9 @@ class NnetChainExampleDatasetCollateFunc:
                 end_index -= 1  # remove the rightmost frame added for frame shift
                 feat = feats[start_index:end_index:, :]
                 feat = splice_feats(feat)
+                if len(eg.inputs) > 1:
+                    repeat_ivector = torch.from_numpy(ivectors[i]).repeat(feat.shape[0], 1)
+                    feat = torch.cat((torch.from_numpy(feat), repeat_ivector), dim=1).numpy()
                 feat_list.append(feat)
 
             batched_feat = np.stack(feat_list, axis=0)
@@ -182,7 +189,10 @@ class NnetChainExampleDatasetCollateFunc:
             # the first -2 is from extra left/right context
             # the second -2 is from lda feats splicing
             assert batched_feat.shape[1] == frames_per_sequence - 4
-            assert batched_feat.shape[2] == feats.shape[-1] * 3
+            if len(eg.inputs) > 1:
+                assert batched_feat.shape[2] == feats.shape[-1] * 3 + ivectors.shape[-1]
+            else:
+                assert batched_feat.shape[2] == feats.shape[-1] * 3
 
             torch_feat = torch.from_numpy(batched_feat).float()
             feature_list.append(torch_feat)

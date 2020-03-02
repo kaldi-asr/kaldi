@@ -17,6 +17,7 @@ from tdnnf_layer import PrefinalLayer
 
 def get_chain_model(feat_dim,
                     output_dim,
+                    ivector_dim,
                     hidden_dim,
                     bottleneck_dim,
                     prefinal_bottleneck_dim,
@@ -25,6 +26,7 @@ def get_chain_model(feat_dim,
                     lda_mat_filename=None):
     model = ChainModel(feat_dim=feat_dim,
                        output_dim=output_dim,
+                       ivector_dim=ivector_dim,
                        lda_mat_filename=lda_mat_filename,
                        hidden_dim=hidden_dim,
                        bottleneck_dim=bottleneck_dim,
@@ -82,6 +84,7 @@ class ChainModel(nn.Module):
     def __init__(self,
                  feat_dim,
                  output_dim,
+                 ivector_dim=0,
                  lda_mat_filename=None,
                  hidden_dim=1024,
                  bottleneck_dim=128,
@@ -97,8 +100,9 @@ class ChainModel(nn.Module):
         assert len(kernel_size_list) == len(subsampling_factor_list)
         num_layers = len(kernel_size_list)
 
+        input_dim = feat_dim * 3 + ivector_dim
         # tdnn1_affine requires [N, T, C]
-        self.tdnn1_affine = nn.Linear(in_features=feat_dim * 3,
+        self.tdnn1_affine = nn.Linear(in_features=input_dim,
                                       out_features=hidden_dim)
 
         # tdnn1_batchnorm requires [N, C, T]
@@ -142,11 +146,11 @@ class ChainModel(nn.Module):
         if lda_mat_filename:
             logging.info('Use LDA from {}'.format(lda_mat_filename))
             self.lda_A, self.lda_b = load_lda_mat(lda_mat_filename)
-            assert feat_dim * 3 == self.lda_A.shape[0]
+            assert input_dim == self.lda_A.shape[0]
             self.has_LDA = True
         else:
             logging.info('replace LDA with BatchNorm')
-            self.input_batch_norm = nn.BatchNorm1d(num_features=feat_dim * 3,
+            self.input_batch_norm = nn.BatchNorm1d(num_features=input_dim,
                                                    affine=False)
             self.has_LDA = False
 
