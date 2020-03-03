@@ -40,10 +40,10 @@ typedef float   BaseFloat;
 #endif
 
 
-void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
+void cudaD_add_row_sum_mat(double* result, const double* mat, void* scratch,
                            const MatrixDim d, const double alpha,
                            const double beta);
-void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
+void cudaF_add_row_sum_mat(float* result, const float* mat, void* scratch,
                            const MatrixDim d, const float alpha,
                            const float beta);
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
@@ -713,10 +713,10 @@ void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B,
                          MatrixDim dA, int B_stride, double* value);
 void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
                          MatrixDim dA, int B_stride, float* value);
-void cudaD_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A,
+void cudaD_trace_mat_mat_trans(const double* A,
                                const double* B, MatrixDim dA, int B_stride,
                                double* value);
-void cudaF_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A, const float* B,
+void cudaF_trace_mat_mat_trans(const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value);
 void cudaD_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat,
                           MatrixDim mat_dim, const int* smat_row_ptr,
