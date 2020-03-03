@@ -16,6 +16,8 @@ tree_affix=
 tdnn_affix=
 online_cmvn=true
 train_ivector=false
+num_epochs=6
+
 . ./path.sh
 . ./cmd.sh
 
@@ -204,8 +206,8 @@ if [[ $stage -le 17 ]]; then
 
   mkdir -p $dir/train/tensorboard
   train_checkpoint=
-  if [[ -f $dir/train/best_model.pt ]]; then
-    train_checkpoint=$dir/train/best_model.pt
+  if [[ -f $dir/best_model.pt ]]; then
+    train_checkpoint=$dir/best_model.pt
   fi
 
   INIT_FILE=$dir/ddp_init
@@ -215,7 +217,7 @@ if [[ $stage -le 17 ]]; then
   # init_method=tcp://127.0.0.1:7275
   echo "$0: init method is $init_method"
 
-  num_epochs=6
+  num_epochs=$num_epochs
   lr=1e-3
   
   # use_ddp = false: training model with one GPU
@@ -274,7 +276,8 @@ if [[ $stage -le 18 ]]; then
           scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
       best_epoch=$(cat $dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
       inference_checkpoint=$dir/epoch-${best_epoch}.pt
-      $cuda_inference_cmd $dir/inference/logs/${x}.log python3 ./chain/inference.py \
+      $cuda_inference_cmd $dir/inference/logs/${x}.log \
+        python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
         --dir $dir/inference/$x \
@@ -316,7 +319,7 @@ if [[ $stage -le 20 ]]; then
     fi
     echo "decoding $x"
 
-    ./local/decode.sh --cmd "$decode_cmd" \
+    ./local/decode.sh \
       --nj $nj \
       $dir/graph \
       $dir/0.trans_mdl \

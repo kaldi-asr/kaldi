@@ -4,7 +4,7 @@
 # Apache 2.0
 
 import os
-
+import math
 import numpy as np
 import torch
 
@@ -22,14 +22,18 @@ from model import get_chain_model
 def get_feat_dataloader(feats_scp,
                         model_left_context,
                         model_right_context,
+                        frames_per_chunk=51,
                         ivector_scp=None,
+                        ivector_period=10,
                         batch_size=16,
                         num_workers=10):
     dataset = FeatDataset(feats_scp=feats_scp, ivector_scp=ivector_scp)
 
     collate_fn = FeatDatasetCollateFunc(model_left_context=model_left_context,
                                         model_right_context=model_right_context,
-                                        frame_subsampling_factor=3)
+                                        frame_subsampling_factor=3,
+                                        frames_per_chunk=frames_per_chunk,
+                                        ivector_period=ivector_period)
 
     dataloader = DataLoader(dataset,
                             batch_size=batch_size,
@@ -108,7 +112,9 @@ class FeatDatasetCollateFunc:
     def __init__(self,
                  model_left_context,
                  model_right_context,
-                 frame_subsampling_factor=3):
+                 frame_subsampling_factor=3,
+                 frames_per_chunk=51,
+                 ivector_period=10):
         '''
         We need `frame_subsampling_factor` because we want to know
         the number of output frames of different waves in the same batch
@@ -116,6 +122,8 @@ class FeatDatasetCollateFunc:
         self.model_left_context = model_left_context
         self.model_right_context = model_right_context
         self.frame_subsampling_factor = frame_subsampling_factor
+        self.frames_per_chunk = frames_per_chunk
+        self.ivector_period = ivector_period
 
     def __call__(self, batch):
         '''
@@ -126,6 +134,8 @@ class FeatDatasetCollateFunc:
         ivector_list = []
         ivector_len_list = []
         output_len_list = []
+        subsampled_frames_per_chunk = (self.frames_per_chunk // 
+                                    self.frame_subsampling_factor)
         for b in batch:
             key, rxfilename, ivector_rxfilename = b
             key_list.append(key)
@@ -140,18 +150,32 @@ class FeatDatasetCollateFunc:
             feat = _add_model_left_right_context(feat, self.model_left_context,
                                                  self.model_right_context)
             feat = splice_feats(feat)
-            feat_list.append(feat)
-            # no need to sort the feat by length
-            ivector_list.append(ivector)
-            ivector_len_list.append(ivector.shape[0])
 
-        # the user should sort utterances by length offline
-        # to avoid unnecessary padding
+            # now we split feat to chunk, then we can do decode by chunk
+            input_num_frames = (feat.shape[0] + 2 
+                                - self.model_left_context - self.model_right_context)
+            for i in range(0, output_len, subsampled_frames_per_chunk):
+                # input len:418 -> output len:140 -> output chunk:[0, 17, 34, 51, 68, 85, 102, 119, 136]
+                first_output = i * self.frame_subsampling_factor
+                last_output = min(input_num_frames, \
+                    first_output + (subsampled_frames_per_chunk-1) * self.frame_subsampling_factor)
+                first_input = first_output
+                last_input = last_output + self.model_left_context + self.model_right_context
+                input_x = feat[first_input:last_input+1, :]
+                if ivector_rxfilename:
+                    ivector_index = (first_output + last_output) // 2 // self.ivector_period
+                    input_ivector = ivector[ivector_index, :].reshape(1,-1)
+                    feat_list.append(np.concatenate((input_x, 
+                                            np.repeat(input_ivector, input_x.shape[0], axis=0)), 
+                                            axis=-1))
+                else:
+                    feat_list.append(input_x)
+
         padded_feat = pad_sequence(
             [torch.from_numpy(feat).float() for feat in feat_list],
             batch_first=True)
-        if ivector_list:
-            padded_ivector = pad_sequence(
-                [torch.from_numpy(ivector).float() for ivector in ivector_list],
-                batch_first=True)
-        return key_list, padded_feat, output_len_list, padded_ivector, ivector_len_list
+        
+        assert sum([math.ceil(l / subsampled_frames_per_chunk) for l in output_len_list]) \
+                    == padded_feat.shape[0]
+
+        return key_list, padded_feat, output_len_list
