@@ -62,19 +62,23 @@ class FeatDataset(Dataset):
 
     def __init__(self, feats_scp, ivector_scp=None):
         assert os.path.isfile(feats_scp)
+        if ivector_scp:
+            assert os.path.isfile(ivector_scp)
 
         self.feats_scp = feats_scp
 
-        # items is a dict of {key: [key, rxfilename, ivec]}
+        # items is a dict of [uttid, feat_rxfilename, None]
+        # or [uttid, feat_rxfilename, ivector_rxfilename] if ivector_scp is not None
         items = dict()
 
         with open(feats_scp, 'r') as f:
             for line in f:
                 split = line.split()
                 assert len(split) == 2
-                uttid, rxfilename =split
+                uttid, rxfilename = split
                 assert uttid not in items
                 items[uttid] = [uttid, rxfilename, None]
+        self.ivector_scp = None
         if ivector_scp:
             self.ivector_scp = ivector_scp
             expected_count = len(items)
@@ -134,14 +138,15 @@ class FeatDatasetCollateFunc:
         ivector_list = []
         ivector_len_list = []
         output_len_list = []
-        subsampled_frames_per_chunk = (self.frames_per_chunk // 
-                                    self.frame_subsampling_factor)
+        subsampled_frames_per_chunk = (self.frames_per_chunk //
+                                       self.frame_subsampling_factor)
         for b in batch:
             key, rxfilename, ivector_rxfilename = b
             key_list.append(key)
             feat = kaldi.read_mat(rxfilename).numpy()
             if ivector_rxfilename:
-                ivector = kaldi.read_mat(ivector_rxfilename).numpy() # L // 10 * C
+                ivector = kaldi.read_mat(
+                    ivector_rxfilename).numpy()  # L // 10 * C
             feat_len = feat.shape[0]
             output_len = (feat_len + self.frame_subsampling_factor -
                           1) // self.frame_subsampling_factor
@@ -152,30 +157,31 @@ class FeatDatasetCollateFunc:
             feat = splice_feats(feat)
 
             # now we split feat to chunk, then we can do decode by chunk
-            input_num_frames = (feat.shape[0] + 2 
+            input_num_frames = (feat.shape[0] + 2
                                 - self.model_left_context - self.model_right_context)
             for i in range(0, output_len, subsampled_frames_per_chunk):
                 # input len:418 -> output len:140 -> output chunk:[0, 17, 34, 51, 68, 85, 102, 119, 136]
                 first_output = i * self.frame_subsampling_factor
-                last_output = min(input_num_frames, \
-                    first_output + (subsampled_frames_per_chunk-1) * self.frame_subsampling_factor)
+                last_output = min(input_num_frames,
+                                  first_output + (subsampled_frames_per_chunk-1) * self.frame_subsampling_factor)
                 first_input = first_output
                 last_input = last_output + self.model_left_context + self.model_right_context
                 input_x = feat[first_input:last_input+1, :]
                 if ivector_rxfilename:
-                    ivector_index = (first_output + last_output) // 2 // self.ivector_period
-                    input_ivector = ivector[ivector_index, :].reshape(1,-1)
-                    feat_list.append(np.concatenate((input_x, 
-                                            np.repeat(input_ivector, input_x.shape[0], axis=0)), 
-                                            axis=-1))
+                    ivector_index = (
+                        first_output + last_output) // 2 // self.ivector_period
+                    input_ivector = ivector[ivector_index, :].reshape(1, -1)
+                    feat_list.append(np.concatenate((input_x,
+                                                     np.repeat(input_ivector, input_x.shape[0], axis=0)),
+                                                    axis=-1))
                 else:
                     feat_list.append(input_x)
 
         padded_feat = pad_sequence(
             [torch.from_numpy(feat).float() for feat in feat_list],
             batch_first=True)
-        
+
         assert sum([math.ceil(l / subsampled_frames_per_chunk) for l in output_len_list]) \
-                    == padded_feat.shape[0]
+            == padded_feat.shape[0]
 
         return key_list, padded_feat, output_len_list
