@@ -125,7 +125,8 @@ def _set_training_args(parser):
     parser.add_argument('--train.ddp.multiple-machine',
                         dest='multiple_machine',
                         help="use ddp with multiple machines",
-                        type=_str2bool)
+                        type=_str2bool,
+                        default=False)
 
 
     parser.add_argument('--train.ddp.init-method',
@@ -184,9 +185,14 @@ def _check_args(args):
     if args.lda_mat_filename:
         assert os.path.isfile(args.lda_mat_filename)
 
-    # although -1 means to use CPU in `kaldi.SelectGpuDevice()`
-    # we do NOT want to use CPU here so we require it to be >= 0
-    # assert args.device_id >= 0
+    if args.device_ids != None:
+        # do NOT support assigning GPU when training with multiple machines
+        assert args.multiple_machine == False
+        args.device_ids = [int(i) for i in args.device_ids.split(', ')]
+        # although -1 means to use CPU in `kaldi.SelectGpuDevice()`
+        # we do NOT want to use CPU here so we require it to be >= 0
+        for i in args.device_ids:
+            assert i >= 0
 
     assert args.feat_dim > 0
     assert args.output_dim > 0
@@ -224,11 +230,11 @@ def get_args():
                         required=True,
                         type=str)
 
-    parser.add_argument('--device-id',
-                        dest='device_id',
-                        help='GPU device id',
+    parser.add_argument('--device-ids',
+                        dest='device_ids',
+                        help='GPU device ids',
                         required=False,
-                        type=int)
+                        type=str)
 
     parser.add_argument('--is-training',
                         dest='is_training',

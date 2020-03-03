@@ -227,6 +227,8 @@ if [[ $stage -le 17 ]]; then
   use_ddp=true
   world_size=4
   use_multiple_machine=true 
+  # you can assign GPUs with --device-ids "$device_ids"
+  # device_ids="4, 5, 6, 7"
   if $use_multiple_machine ; then
     # suppose you are using Sun GridEngine
     cuda_train_cmd=$(echo "$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/train/logs/job.JOB.log")
