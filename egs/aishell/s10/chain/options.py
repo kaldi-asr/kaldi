@@ -27,6 +27,23 @@ def _set_inference_args(parser):
                         dest='feats_scp',
                         help='feats.scp filename, required for inference',
                         type=str)
+    
+    parser.add_argument('--frames-per-chunk',
+                        dest='frames_per_chunk',
+                        help='frames per chunk',
+                        type=int,
+                        default=51)
+
+    parser.add_argument('--ivector-scp',
+                        dest='ivector_scp',
+                        help='ivector.scp filename, required for ivector inference',
+                        type=str)
+    
+    parser.add_argument('--ivector-period',
+                        dest='ivector_period',
+                        help='ivector period',
+                        type=int,
+                        default=10)
 
     parser.add_argument('--model-left-context',
                         dest='model_left_context',
@@ -228,8 +245,15 @@ def get_args():
 
     parser.add_argument('--feat-dim',
                         dest='feat_dim',
-                        help='nn input dimension',
+                        help='nn input 0 dimension',
                         required=True,
+                        type=int)
+
+    parser.add_argument('--ivector-dim',
+                        dest='ivector_dim',
+                        help='nn input 1 dimension',
+                        required=False,
+                        default=0,
                         type=int)
 
     parser.add_argument('--output-dim',

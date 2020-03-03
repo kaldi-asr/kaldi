@@ -14,12 +14,14 @@ gmm=tri3
 nnet3_affix=_pybind
 tree_affix= 
 tdnn_affix=
+online_cmvn=true
+train_ivector=false
+num_epochs=6
 
 . ./path.sh
 . ./cmd.sh
 
 . parse_options.sh
-
 
 if [[ $stage -le 0 ]]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
@@ -64,20 +66,31 @@ if [[ $stage -le 3 ]]; then
   done
 fi
 
+train_ivector_dir=
+if [[ $train_ivector ]]; then
+  local/run_ivector_common.sh --stage $stage \
+                              --nj $nj \
+                              --train-set $train_set \
+                              --online-cmvn-iextractor $online_cmvn \
+                              --nnet3-affix "$nnet3_affix"
+  train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
+fi
+echo $train_ivector_dir
+
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
 dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 
-if [[ $stage -le 4 ]]; then
+if [[ $stage -le 9 ]]; then
   for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
       $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
     [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
   done
 fi
 
-if [[ $stage -le 5 ]]; then
+if [[ $stage -le 10 ]]; then
   echo "$0: creating lang directory with one state per phone."
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -90,7 +103,7 @@ if [[ $stage -le 5 ]]; then
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >data/lang_chain/topo
 fi
 
-if [[ $stage -le 6 ]]; then
+if [[ $stage -le 11 ]]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -98,7 +111,7 @@ if [[ $stage -le 6 ]]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [[ $stage -le 7 ]]; then
+if [[ $stage -le 12 ]]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.
@@ -107,7 +120,7 @@ if [[ $stage -le 7 ]]; then
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
-if  [[ $stage -le 8 ]]; then
+if  [[ $stage -le 13 ]]; then
   echo "$0: creating phone language-model"
   $mkgraph_cmd $dir/log/make_phone_lm.log \
     chain-est-phone-lm \
@@ -115,7 +128,7 @@ if  [[ $stage -le 8 ]]; then
      $dir/phone_lm.fst || exit 1
 fi
 
-if [[ $stage -le 9 ]]; then
+if [[ $stage -le 14 ]]; then
   echo "creating denominator FST"
   copy-transition-model $tree_dir/final.mdl $dir/0.trans_mdl
   cp $tree_dir/tree $dir 
@@ -145,12 +158,13 @@ log_level=info # valid values: debug, info, warning
 # false to save it as kaldi::Matrix<float>
 save_nn_output_as_compressed=false
 
-if [[ $stage -le 10 ]]; then
+if [[ $stage -le 15 ]]; then
   echo "$0: generating egs"
   steps/nnet3/chain/get_egs.sh \
     --alignment-subsampling-factor 3 \
     --cmd "$train_cmd" \
-    --online-cmvn true \
+    --online-cmvn $online_cmvn \
+    --online-ivector-dir $train_ivector_dir \
     --frame-subsampling-factor 3 \
     --frames-overlap-per-eg 0 \
     --frames-per-eg $frames_per_eg \
@@ -169,7 +183,7 @@ if [[ $stage -le 10 ]]; then
 fi
 
 
-if [[ $stage -le 11 ]]; then
+if [[ $stage -le 16 ]]; then
   echo "$0: merging egs"
   mkdir -p $dir/merged_egs
   num_egs=$(ls -1 $dir/egs/cegs*.ark | wc -l)
@@ -183,15 +197,17 @@ if [[ $stage -le 11 ]]; then
 fi
 
 feat_dim=$(cat $dir/egs/info/feat_dim)
+ivector_dim=$(cat $dir/egs/info/ivector_dim)
+ivector_period=$(cat $train_ivector_dir/ivector_period)
 output_dim=$(cat $dir/egs/info/num_pdfs)
 
-if [[ $stage -le 12 ]]; then
+if [[ $stage -le 17 ]]; then
   echo "$0: training..."
 
   mkdir -p $dir/train/tensorboard
   train_checkpoint=
-  if [[ -f $dir/train/best_model.pt ]]; then
-    train_checkpoint=$dir/train/best_model.pt
+  if [[ -f $dir/best_model.pt ]]; then
+    train_checkpoint=$dir/best_model.pt
   fi
 
   INIT_FILE=$dir/ddp_init
@@ -201,7 +217,7 @@ if [[ $stage -le 12 ]]; then
   # init_method=tcp://127.0.0.1:7275
   echo "$0: init method is $init_method"
 
-  num_epochs=6
+  num_epochs=$num_epochs
   lr=1e-3
   
   # use_ddp = false: training model with one GPU
@@ -210,10 +226,10 @@ if [[ $stage -le 12 ]]; then
 
   use_ddp=true
   world_size=4
-  use_multiple_machine=false 
+  use_multiple_machine=true 
   if $use_multiple_machine ; then
     # suppose you are using Sun GridEngine
-    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size JOB=1:$world_size $dir/train/logs/job.JOB.log")
+    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/train/logs/job.JOB.log")
   else
     # TODO: for running with multiple GPUs on a single machine (SGE), 
     #       we should tell SGE how many GPUs we will use on that machine
@@ -227,6 +243,7 @@ if [[ $stage -le 12 ]]; then
         --feat-dim $feat_dim \
         --hidden-dim $hidden_dim \
         --is-training true \
+        --ivector-dim $ivector_dim \
         --kernel-size-list "$kernel_size_list" \
         --log-level $log_level \
         --output-dim $output_dim \
@@ -248,7 +265,7 @@ if [[ $stage -le 12 ]]; then
         --train.xent-regularize 0.1 || exit 1;
 fi
 
-if [[ $stage -le 13 ]]; then
+if [[ $stage -le 18 ]]; then
   echo "inference: computing likelihood"
   for x in test dev; do
     mkdir -p $dir/inference/$x
@@ -259,7 +276,8 @@ if [[ $stage -le 13 ]]; then
           scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
       best_epoch=$(cat $dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
       inference_checkpoint=$dir/epoch-${best_epoch}.pt
-      $cuda_inference_cmd $dir/inference/logs/${x}.log python3 ./chain/inference.py \
+      $cuda_inference_cmd $dir/inference/logs/${x}.log \
+        python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
         --dir $dir/inference/$x \
@@ -267,6 +285,9 @@ if [[ $stage -le 13 ]]; then
         --feats-scp data/${x}_hires/online_cmvn_feats.scp \
         --hidden-dim $hidden_dim \
         --is-training false \
+        --ivector-dim $ivector_dim \
+        --ivector-period $ivector_period \
+        --ivector-scp exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp \
         --log-level $log_level \
         --kernel-size-list "$kernel_size_list" \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
@@ -279,7 +300,7 @@ if [[ $stage -le 13 ]]; then
   done
 fi
 
-if [[ $stage -le 14 ]]; then
+if [[ $stage -le 19 ]]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -288,7 +309,7 @@ if [[ $stage -le 14 ]]; then
 fi
 
 
-if [[ $stage -le 15 ]]; then
+if [[ $stage -le 20 ]]; then
   echo "decoding"
   for x in test dev; do
     if [[ ! -f $dir/inference/$x/nnet_output.scp ]]; then
@@ -307,7 +328,7 @@ if [[ $stage -le 15 ]]; then
   done
 fi
 
-if [[ $stage -le 16 ]]; then
+if [[ $stage -le 21 ]]; then
   echo "scoring"
 
   for x in test dev; do

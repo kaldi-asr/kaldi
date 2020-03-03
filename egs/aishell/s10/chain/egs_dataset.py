@@ -41,15 +41,16 @@ def get_egs_dataloader(egs_dir_or_scp,
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=world_size, rank=local_rank, shuffle=True)
         dataloader = DataLoader(dataset,
-                            batch_size=batch_size,
-                            collate_fn=collate_fn,
-                            sampler=sampler)
+                                batch_size=batch_size,
+                                collate_fn=collate_fn,
+                                sampler=sampler)
     else:
-         base_sampler = torch.utils.data.RandomSampler(dataset)
-         sampler = torch.utils.data.BatchSampler(base_sampler, batch_size, False)
-         dataloader = DataLoader(dataset,
-                            batch_sampler=sampler,
-                            collate_fn=collate_fn)
+        base_sampler = torch.utils.data.RandomSampler(dataset)
+        sampler = torch.utils.data.BatchSampler(
+            base_sampler, batch_size, False)
+        dataloader = DataLoader(dataset,
+                                batch_sampler=sampler,
+                                collate_fn=collate_fn)
     return dataloader
 
 
@@ -146,17 +147,20 @@ class NnetChainExampleDatasetCollateFunc:
 
             batch_size = supervision.num_sequences
 
-            frames_per_sequence = (supervision.frames_per_sequence * \
-                    self.frame_subsampling_factor) + \
-                    self.egs_left_context + self.egs_right_context
+            frames_per_sequence = (supervision.frames_per_sequence *
+                                   self.frame_subsampling_factor) + \
+                self.egs_left_context + self.egs_right_context
 
-            # TODO(fangjun): support ivector
-            assert len(eg.inputs) == 1
             assert eg.inputs[0].name == 'input'
 
             _feats = kaldi.FloatMatrix()
             eg.inputs[0].features.GetMatrix(_feats)
             feats = _feats.numpy()
+
+            if len(eg.inputs) > 1:
+                _ivectors = kaldi.FloatMatrix()
+                eg.inputs[1].features.GetMatrix(_ivectors)
+                ivectors = _ivectors.numpy()
 
             assert feats.shape[0] == batch_size * frames_per_sequence
 
@@ -173,6 +177,11 @@ class NnetChainExampleDatasetCollateFunc:
                 end_index -= 1  # remove the rightmost frame added for frame shift
                 feat = feats[start_index:end_index:, :]
                 feat = splice_feats(feat)
+                if len(eg.inputs) > 1:
+                    repeat_ivector = torch.from_numpy(
+                        ivectors[i]).repeat(feat.shape[0], 1)
+                    feat = torch.cat(
+                        (torch.from_numpy(feat), repeat_ivector), dim=1).numpy()
                 feat_list.append(feat)
 
             batched_feat = np.stack(feat_list, axis=0)
@@ -182,7 +191,11 @@ class NnetChainExampleDatasetCollateFunc:
             # the first -2 is from extra left/right context
             # the second -2 is from lda feats splicing
             assert batched_feat.shape[1] == frames_per_sequence - 4
-            assert batched_feat.shape[2] == feats.shape[-1] * 3
+            if len(eg.inputs) > 1:
+                assert batched_feat.shape[2] == feats.shape[-1] * \
+                    3 + ivectors.shape[-1]
+            else:
+                assert batched_feat.shape[2] == feats.shape[-1] * 3
 
             torch_feat = torch.from_numpy(batched_feat).float()
             feature_list.append(torch_feat)
@@ -222,8 +235,8 @@ def _test_nnet_chain_example_dataset():
     for b in dataloader:
         key_list, feature_list, supervision_list = b
         assert feature_list[0].shape == (128, 204, 129) \
-                or feature_list[0].shape == (128, 144, 129) \
-                or feature_list[0].shape == (128, 165, 129)
+            or feature_list[0].shape == (128, 144, 129) \
+            or feature_list[0].shape == (128, 165, 129)
         assert supervision_list[0].weight == 1
         supervision_list[0].num_sequences == 128  # minibach size is 128
 

@@ -270,6 +270,7 @@ def process_job(learning_rate, local_rank=None):
     model = get_chain_model(
         feat_dim=args.feat_dim,
         output_dim=args.output_dim,
+        ivector_dim=args.ivector_dim,
         lda_mat_filename=args.lda_mat_filename,
         hidden_dim=args.hidden_dim,
         bottleneck_dim=args.bottleneck_dim,

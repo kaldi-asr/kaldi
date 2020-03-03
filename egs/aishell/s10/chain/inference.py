@@ -6,6 +6,7 @@
 import logging
 import os
 import sys
+import math
 
 import torch
 from torch.utils.dlpack import to_dlpack
@@ -38,6 +39,7 @@ def main():
     model = get_chain_model(
         feat_dim=args.feat_dim,
         output_dim=args.output_dim,
+        ivector_dim=args.ivector_dim,
         lda_mat_filename=args.lda_mat_filename,
         hidden_dim=args.hidden_dim,
         bottleneck_dim=args.bottleneck_dim,
@@ -64,10 +66,13 @@ def main():
 
     dataloader = get_feat_dataloader(
         feats_scp=args.feats_scp,
+        ivector_scp=args.ivector_scp,
         model_left_context=args.model_left_context,
         model_right_context=args.model_right_context,
-        batch_size=32)
-
+        batch_size=32,
+        num_workers=10)
+    subsampling_factor = 3
+    subsampled_frames_per_chunk = args.frames_per_chunk // subsampling_factor
     for batch_idx, batch in enumerate(dataloader):
         key_list, padded_feat, output_len_list = batch
         padded_feat = padded_feat.to(device)
@@ -75,11 +80,15 @@ def main():
             nnet_output, _ = model(padded_feat)
 
         num = len(key_list)
+        first = 0
         for i in range(num):
             key = key_list[i]
             output_len = output_len_list[i]
-            value = nnet_output[i, :output_len, :]
+            target_len = math.ceil(output_len / subsampled_frames_per_chunk)
+            result = nnet_output[first:first + target_len, :, :].split(1, 0)
+            value = torch.cat(result, dim=1)[0, :output_len, :]
             value = value.cpu()
+            first += target_len
 
             m = kaldi.SubMatrixFromDLPack(to_dlpack(value))
             m = Matrix(m)
