@@ -112,6 +112,6 @@ if [ $stage -le 5 ]; then
   sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
   ref_rttm_path=$(readlink -f ${ref_rttm}.scoring)
   hyp_rttm_path=$(readlink -f ${hyp_rttm}.scoring)
-  cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path && cd .. || exit 1;
+  cd dscore && python score.py -u ../local/uem_file -r $ref_rttm_path -s $hyp_rttm_path && cd .. || exit 1;
 fi
 

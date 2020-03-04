@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import fnmatch
 import argparse
 
 # earily parse, will refernece args globally
@@ -34,8 +35,19 @@ def is_test_source(f):
 def is_source(f):
     return f.endswith(".cc") and not is_test_source(f)
 
-def dir_name_to_lib_target(dir_name):
+def lib_dir_name_to_lib_target(dir_name):
     return "kaldi-" + dir_name
+
+def bin_dir_name_to_lib_target(dir_name):
+    """return the primary lib target for all executable targets in this bin dir"""
+    assert is_bin_dir(dir_name)
+    if dir_name == "bin":
+        # NOTE: "kaldi-util" might be a more strict primary lib target...
+        return "kaldi-hmm"
+    elif dir_name == "fstbin":
+        return "kaldi-fstext"
+    else:
+        return "kaldi-" + dir_name[:-3]
 
 def wrap_notwin32_condition(should_wrap, lines):
     if isinstance(lines, str):
@@ -48,42 +60,73 @@ def wrap_notwin32_condition(should_wrap, lines):
 
 def get_exe_additional_depends(t):
     additional = {
-        "transform-feats" : ["transform"],
-        "interpolate-pitch" : ["transform"],
+        # solve bin
+        "align-*": ["decoder"],
+        "compile-*graph*": ["decoder"],
+        "decode-faster": ["decoder"],
+        "latgen-faster-mapped": ["decoder"],
+        "latgen-faster-mapped-parallel": ["decoder"],
+        "latgen-incremental-mapped": ["decoder"],
+        "decode-faster-mapped": ["decoder"],
+        "sum-lda-accs": ["transform"],
+        "sum-mllt-accs": ["transform"],
+        "est-mllt": ["transform"],
+        "est-lda": ["transform"],
+        "acc-lda": ["transform"],
+        "build-pfile-from-ali": ["gmm"],
+        "make-*-transducer": ["fstext"],
+        "phones-to-prons": ["fstext"],
+
+        # solve gmmbin
         "post-to-feats" : ["hmm"],
         "append-post-to-feats" : ["hmm"],
+        "gmm-*": ["hmm", "transform"],
+        "gmm-latgen-*": ["decoder"],
+        "gmm-decode-*": ["decoder"],
+        "gmm-align": ["decoder"],
+        "gmm-align-compiled": ["decoder"],
         "gmm-est-fmllr-gpost": ["sgmm2", "hmm"],
-        "gmm-est-fmllr": ["hmm", "transform"],
-        "gmm-latgen-faster": ["decoder"],
-        "gmm-transform-means": ["hmm"],
-        "gmm-post-to-gpost": ["hmm"],
-        "gmm-init-lvtln": ["transform"],
         "gmm-rescore-lattice": ["hmm", "lat"],
-        "gmm-est-fmllr-global": ["transform"],
-        "gmm-copy": ["hmm"],
-        "gmm-train-lvtln-special": ["transform", "hmm"],
-        "gmm-est-map": ["hmm"],
-        "gmm-acc-stats2": ["hmm"],
-        "gmm-decode-faster-regtree-mllr": ["decoder"],
-        "gmm-global-est-fmllr": ["transform"],
-        "gmm-est-basis-fmllr": ["hmm", "transform"],
-        "gmm-init-model": ["hmm"],
-        "gmm-est-weights-ebw": ["hmm"],
-        "gmm-init-biphone": ["hmm"],
-        "gmm-compute-likes": ["hmm"],
-        "gmm-est-fmllr-raw-gpost": ["hmm", "transform"],
-        # gmm-* is a bottom case, it will add link dependencies to all other
-        # target whose names start with gmm-, it is harmless, but will increase
-        # link time. Better to avoid it at best.
-        "gmm-*": ["hmm", "transform", "lat", "decoder"],
+
+        # solve fstbin
+        "make-grammar-fst": ["decoder"],
+
+        # solve sgmm2bin
+        "sgmm2-*": ["hmm"],
+        "sgmm2-latgen-faster*": ["decoder"],
+        "sgmm2-align-compiled": ["decoder"],
+        "sgmm2-rescore-lattice": ["lat"],
+        "init-ubm": ["hmm"],
+
+        # solve nnetbin
+        "nnet-train-mmi-sequential": ["lat"],
+        "nnet-train-mpe-sequential": ["lat"],
+
+        # solve nnet2bin
+        "nnet-latgen-faster*": ["fstext", "decoder"],
+        "nnet-align-compiled": ["decoder"],
+        "nnet1-to-raw-nnet": ["nnet"],
+
+        # solve chainbin
+        "nnet3-chain-*": ["nnet3"],
+
+        # solve latbin
+        "lattice-compose": ["fstext"],
+        "lattice-lmrescore": ["fstext"],
+        "lattice-lmrescore-*": ["fstext", "rnnlm"],
+
+        # solve ivectorbin
+        "ivector-extract*": ["hmm"],
+
+        # solve kwsbin
+        "generate-proxy-keywords": ["fstext"],
+        "transcripts-to-fsts": ["fstext"],
     }
-    if t in additional:
-        return list(map(lambda name: dir_name_to_lib_target(name), additional[t]))
-    elif (t.split("-", 1)[0] + "-*") in additional:
-        wildcard = (t.split("-", 1)[0] + "-*")
-        return list(map(lambda name: dir_name_to_lib_target(name), additional[wildcard]))
-    else:
-        return []
+    l = []
+    for pattern in additional.keys():
+        if fnmatch.fnmatch(t, pattern):
+            l.extend(list(map(lambda name: lib_dir_name_to_lib_target(name), additional[pattern])))
+    return sorted(list(set(l)))
 
 def disable_for_win32(t):
     disabled = [
@@ -98,7 +141,7 @@ def disable_for_win32(t):
 class CMakeListsHeaderLibrary(object):
     def __init__(self, dir_name):
         self.dir_name = dir_name
-        self.target_name = dir_name_to_lib_target(self.dir_name)
+        self.target_name = lib_dir_name_to_lib_target(self.dir_name)
         self.header_list = []
 
     def add_header(self, filename):
@@ -123,8 +166,8 @@ class CMakeListsHeaderLibrary(object):
 
         ret.append("add_library(" + self.target_name + " INTERFACE)")
         ret.append("target_include_directories(" + self.target_name + " INTERFACE ")
-        ret.append("     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>")
-        ret.append("     $<INSTALL_INTERFACE:include/kaldi>")
+        ret.append("    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>")
+        ret.append("    $<INSTALL_INTERFACE:include/kaldi>")
         ret.append(")\n")
 
         ret.append("""
@@ -139,7 +182,7 @@ class CMakeListsLibrary(object):
 
     def __init__(self, dir_name):
         self.dir_name = dir_name
-        self.target_name = dir_name_to_lib_target(self.dir_name)
+        self.target_name = lib_dir_name_to_lib_target(self.dir_name)
         self.header_list = []
         self.source_list = []
         self.cuda_source_list = []
@@ -241,7 +284,7 @@ class CMakeListsExecutable(object):
         self.list = []
         exe_name = os.path.splitext(os.path.basename(filename))[0]
         file_name = filename
-        depend = dir_name_to_lib_target(dir_name[:-3])
+        depend = bin_dir_name_to_lib_target(dir_name)
         self.list.append((exe_name, file_name, depend))
 
     def gen_code(self):

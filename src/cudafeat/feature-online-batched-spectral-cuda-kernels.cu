@@ -276,7 +276,7 @@ __host__ __device__ inline int32 FirstSampleOfFrame(int32 frame,
 __global__ void batched_extract_window_kernel(
     const LaneDesc *lanes, int32_t num_lanes, int32 frame_shift,
     int32 frame_length, int32 frame_length_padded, bool snip_edges,
-    const BaseFloat __restrict__ *wave, int32_t ldw,
+    const BaseFloat *__restrict__ wave, int32_t ldw,
     BaseFloat *__restrict__ windows, int32_t window_size, int32_t wlda,
     BaseFloat *stash, int32_t ssize, int32_t lds) {
   // local frame number
