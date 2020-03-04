@@ -91,6 +91,7 @@ nnet3/nnet3_pybind.cc \
 nnet3/nnet_chain_example_pybind.cc \
 nnet3/nnet_common_pybind.cc \
 nnet3/nnet_example_pybind.cc \
+nnet3/nnet_nnet_pybind.cc \
 tests/test_dlpack_subvector.cc \
 util/kaldi_holder_pybind.cc \
 util/kaldi_io_pybind.cc \
