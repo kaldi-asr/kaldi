@@ -114,5 +114,7 @@ if [ $stage -le 5 ]; then
   hyp_rttm_path=$(readlink -f ${hyp_rttm}.scoring)
   cd dscore && python score.py -u ./local/uem_file -r $ref_rttm_path \
     -s $hyp_rttm_path && cd .. || exit 1;
+  mode="$(cut -d'_' -f1 <<<"$name")"
+  ref_rttm_path2=../local/${mode}_rttm.U06
+  python score.py -u ../local/uem_file -r $ref_rttm_path2 -s $out_rttm_path
 fi
-
