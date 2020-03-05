@@ -236,7 +236,7 @@ py::capsule CuVectorToDLPack(py::object* obj) {
 }
 
 py::capsule CuMatrixToDLPack(py::object* obj) {
-  auto* m = obj->cast<CuMatrix<float>*>();
+  auto* m = obj->cast<CuMatrixBase<float>*>();
 #if HAVE_CUDA == 1
   KALDI_ASSERT(CuDevice::Instantiate().Enabled());
 

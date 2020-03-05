@@ -38,6 +38,8 @@ void pybind_cu_matrix(py::module& m) {
         .def("Set", &PyClass::Set, py::arg("value"))
         .def("Add", &PyClass::Add, py::arg("value"))
         .def("Scale", &PyClass::Scale, py::arg("value"))
+        .def("to_dlpack",
+             [](py::object obj) { return CuMatrixToDLPack(&obj); })
         .def("__getitem__",
              [](const PyClass& m, std::pair<ssize_t, ssize_t> i) {
                return m(i.first, i.second);
@@ -55,8 +57,9 @@ void pybind_cu_matrix(py::module& m) {
              py::arg("MatrixStrideType") = kDefaultStride)
         .def(py::init<const MatrixBase<float>&, MatrixTransposeType>(),
              py::arg("other"), py::arg("trans") = kNoTrans)
-        .def("to_dlpack",
-             [](py::object obj) { return CuMatrixToDLPack(&obj); });
+        // .def("to_dlpack",
+        //      [](py::object obj) { return CuMatrixToDLPack(&obj); })
+             ;
   }
   {
     using PyClass = CuSubMatrix<float>;
