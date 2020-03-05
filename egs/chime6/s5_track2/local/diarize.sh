@@ -108,6 +108,8 @@ if [ $stage -le 5 ]; then
   fi
   cd dscore
   python score.py -u ../local/uem_file -r $ref_rttm_path -s $out_rttm_path
+  mode="$(cut -d'_' -f1 <<<"$name")"
+  ref_rttm_path2=../local/${mode}_rttm.U06
+  python score.py -u ../local/uem_file -r $ref_rttm_path2 -s $out_rttm_path
   cd ..
 fi
-
