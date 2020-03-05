@@ -129,7 +129,7 @@ if [ $stage -le 3 ]; then
 
     test_dir=data/${datadir}_${nnet_type}_seg
     mv data/${datadir}_seg ${test_dir}/
-    mv data/${datadir}/{segments.bak,utt2spk.bak} ${test_dir}/
+    cp data/${datadir}/{segments.bak,utt2spk.bak} ${test_dir}/
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
     # step.
@@ -151,7 +151,7 @@ if [ $stage -le 3 ]; then
 
       sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
       sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
-      md-eval.pl -1 -c 0.25 -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
+      md-eval.pl -1 -c 0.25 -u ./local/uem_file -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
         awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
     fi
   done
