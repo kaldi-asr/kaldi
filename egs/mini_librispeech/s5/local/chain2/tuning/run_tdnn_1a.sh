@@ -140,7 +140,7 @@ mkdir -p $dir/configs/
 # $dir/init will contain the initial models
 mkdir -p $dir/init/
 
-learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
 if [ $stage -le 14 ]; then
 
