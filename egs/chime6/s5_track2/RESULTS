@@ -3,17 +3,15 @@
 
 # Speech Activity Detection (SAD)
           Missed speech   False alarm   Total error
-Dev         4.3             2.1           6.4                                                
-Eval        5.6             5.9           11.5
+Dev         5.4             2.0           7.4                                                
+Eval        6.5             2.8           9.3
 
 # The results for the remaining pipeline are only for array U06.
 
 # Diarization
-              DER       JER
-Dev (S02)    58.78     63.68
-Dev (S09)    66.49     76.10
-Eval (S01)   61.64     67.74
-Eval (S21)   62.29     71.46
+        DER       JER
+Dev    61.66     69.89
+Eval   61.94     71.46
 
 # ASR nnet3 tdnn+chain
 Dev:  %WER 84.25 [ 49610 / 58881, 1937 ins, 34685 del, 12988 sub ]
