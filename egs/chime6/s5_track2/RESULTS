@@ -1,12 +1,13 @@
 # Results for Chime-6 track 2 for dev and eval, using pretrained models
 # available at http://kaldi-asr.org/models/m12.
 
+# These results are reported only for array U06, which is the default
+# array selection method in the baseline system.
+
 # Speech Activity Detection (SAD)
           Missed speech   False alarm   Total error
 Dev         5.4             2.0           7.4                                                
 Eval        6.5             2.8           9.3
-
-# The results for the remaining pipeline are only for array U06.
 
 # Diarization
         DER       JER
