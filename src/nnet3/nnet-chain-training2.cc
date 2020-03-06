@@ -322,7 +322,7 @@ NnetChainModel2::~NnetChainModel2() {
 NnetChainModel2::LanguageInfo::LanguageInfo(
     const NnetChainModel2::LanguageInfo &other):
     name(other.name),
-    den_graph_(other.den_graph_)
+    den_graph(other.den_graph)
      { }
 
 
@@ -331,7 +331,7 @@ NnetChainModel2::LanguageInfo::LanguageInfo(
     const fst::StdVectorFst &den_fst, 
     int32 num_pdfs):
     name(name),
-    den_graph_(den_fst, num_pdfs){
+    den_graph(den_fst, num_pdfs){
 }
 
 void NnetChainModel2::GetPathname(const std::string &dir,
@@ -379,7 +379,7 @@ NnetChainModel2::LanguageInfo *NnetChainModel2::GetInfoForLang(
 
 chain::DenominatorGraph *NnetChainModel2::GetDenGraphForLang(const std::string &language_name){
   LanguageInfo *info = GetInfoForLang(language_name);
-  return &(info->den_graph_);
+  return &(info->den_graph);
 }
 } // namespace nnet3
 } // namespace kaldi
