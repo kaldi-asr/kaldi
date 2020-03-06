@@ -18,6 +18,9 @@ score_stage=0
 
 enhancement=beamformit
 
+# option to use the new RTTM reference for sad and diarization
+use_new_rttm_reference=true
+
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
@@ -139,7 +142,7 @@ if [ $stage -le 3 ]; then
     if [ $score_sad == "true" ]; then
       echo "Scoring $datadir.."
       # We first generate the reference RTTM from the backed up utt2spk and segments
-      # files. 
+      # files.
       ref_rttm=${test_dir}/ref_rttm
       steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
         ${test_dir}/segments.bak ${test_dir}/ref_rttm
@@ -148,7 +151,11 @@ if [ $stage -le 3 ]; then
       hyp_rttm=${test_dir}/rttm.U06
       grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
       echo "Array U06 selected for scoring.."
-
+      if $use_new_rttm_reference == "true"; then
+        echo "Use the new RTTM reference."
+        mode="$(cut -d'_' -f1 <<<"$datadir")"
+        ref_rttm=./local/${mode}_rttm
+      fi
       sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
       sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
       md-eval.pl -1 -c 0.25 -u ./local/uem_file -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
@@ -162,8 +169,14 @@ fi
 #######################################################################
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
+    if $use_new_rttm_reference == "true"; then
+      mode="$(cut -d'_' -f1 <<<"$datadir")"
+      ref_rttm=./local/${mode}_rttm
+    else
+      ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
+    fi
     local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --ref-rttm data/${datadir}_${nnet_type}_seg/ref_rttm \
+      --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
       exp/${datadir}_${nnet_type}_seg_diarization

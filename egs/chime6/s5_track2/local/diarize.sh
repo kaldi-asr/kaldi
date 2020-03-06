@@ -22,6 +22,7 @@ if [ $# != 3 ]; then
   echo "Options: "
   echo "  --nj <nj>                                        # number of parallel jobs."
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --ref_rttm ./local/dev_rttm                      # the location of the reference RTTM file"
   exit 1;
 fi
 
@@ -115,6 +116,4 @@ if [ $stage -le 5 ]; then
   cd dscore && python score.py -u ./local/uem_file -r $ref_rttm_path \
     -s $hyp_rttm_path && cd .. || exit 1;
   mode="$(cut -d'_' -f1 <<<"$name")"
-  ref_rttm_path2=../local/${mode}_rttm.U06
-  python score.py -u ../local/uem_file -r $ref_rttm_path2 -s $out_rttm_path
 fi
