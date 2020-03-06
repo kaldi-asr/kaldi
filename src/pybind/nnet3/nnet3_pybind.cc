@@ -2,6 +2,7 @@
 
 // Copyright 2019   Mobvoi AI Lab, Beijing, China
 //                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+// Copyright 2020   JD AI, Beijing, China (author: Lu Fan)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //

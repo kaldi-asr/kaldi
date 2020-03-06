@@ -971,6 +971,7 @@ class LinearComponent: public UpdatableComponent {
   BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
   CuMatrixBase<BaseFloat> &Params() { return params_; }
   const CuMatrixBase<BaseFloat> &Params() const { return params_; }
+  const CuMatrix<BaseFloat> &Params2() const { return params_; }
  private:
 
   // disallow assignment operator.

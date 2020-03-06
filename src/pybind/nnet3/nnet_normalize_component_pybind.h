@@ -15,11 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_PYBIND_NNET3_NNET_NORNALIZE_COMPONENT_PYBIND_H_
-#define KALDI_PYBIND_NNET3_NNET_NORNALIZE_COMPONENT_PYBIND_H_
+#ifndef KALDI_PYBIND_NNET3_NNET_NORMALIZE_COMPONENT_PYBIND_H_
+#define KALDI_PYBIND_NNET3_NNET_NORMALIZE_COMPONENT_PYBIND_H_
 
 #include "pybind/kaldi_pybind.h"
 
 void pybind_nnet_normalize_component(py::module& m);
 
-#endif  // KALDI_PYBIND_NNET3_NNET_NORNALIZE_COMPONENT_PYBIND_H_
+#endif  // KALDI_PYBIND_NNET3_NNET_NORMALIZE_COMPONENT_PYBIND_H_

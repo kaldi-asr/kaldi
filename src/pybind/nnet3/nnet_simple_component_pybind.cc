@@ -25,21 +25,22 @@ using namespace kaldi::nnet3;
 
 void pybind_nnet_simple_component(py::module& m) {
   using FAC = FixedAffineComponent;
-  py::class_<FAC>(m, "FixedAffineComponent")
-      .def("Type", &FAC::Type)
-      .def("LinearParams", &FAC::LinearParams)
-      .def("BiasParams", &FAC::BiasParams);
+  py::class_<FAC, Component>(m, "FixedAffineComponent")
+      .def("LinearParams", &FAC::LinearParams,
+           py::return_value_policy::reference)
+      .def("BiasParams", &FAC::BiasParams, py::return_value_policy::reference);
 
   using LC = LinearComponent;
-  py::class_<LC>(m, "LinearComponent")
-      .def("Type", &LC::Type)
-      .def("Params", overload_cast_<>()(&LC::Params, py::const_), py::return_value_policy::reference);
+  py::class_<LC, Component>(m, "LinearComponent")
+      .def("Params", overload_cast_<>()(&LC::Params2, py::const_),
+           py::return_value_policy::reference);
 
   using AC = AffineComponent;
-  py::class_<AC>(m, "AffineComponent")
-      .def("Type", &AC::Type)
-      .def("LinearParams", overload_cast_<>()(&AC::LinearParams, py::const_))
-      .def("BiasParams", overload_cast_<>()(&AC::BiasParams, py::const_));
+  py::class_<AC, Component>(m, "AffineComponent")
+      .def("LinearParams", overload_cast_<>()(&AC::LinearParams, py::const_),
+           py::return_value_policy::reference)
+      .def("BiasParams", overload_cast_<>()(&AC::BiasParams, py::const_),
+           py::return_value_policy::reference);
 
   using NGAC = NaturalGradientAffineComponent;
   py::class_<NGAC, AC>(m, "NaturalGradientAffineComponent");

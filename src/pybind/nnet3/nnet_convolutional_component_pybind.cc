@@ -25,8 +25,9 @@ using namespace kaldi::nnet3;
 
 void pybind_nnet_convolutional_component(py::module& m) {
   using TC = kaldi::nnet3::TdnnComponent;
-  py::class_<TC>(m, "TdnnComponent")
-      .def("Type", &TC::Type)
-      .def("LinearParams", &TC::LinearParams, py::return_value_policy::reference)
-      .def("BiasParams", &TC::BiasParams, py::return_value_policy::reference);
+  py::class_<TC, Component>(m, "TdnnComponent")
+      .def("LinearParams", &TC::Linearparams,
+           py::return_value_policy::reference)
+      .def("BiasParams", &TC::BiasParams,
+           py::return_value_policy::reference);
 }

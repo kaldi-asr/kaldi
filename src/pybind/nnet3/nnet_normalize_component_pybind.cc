@@ -25,11 +25,12 @@ using namespace kaldi::nnet3;
 
 void pybind_nnet_normalize_component(py::module& m) {
   using PyClass = kaldi::nnet3::BatchNormComponent;
-  py::class_<PyClass>(m, "BatchNormComponent")
-      .def("Type", &PyClass::Type)
-      .def("StatsSum", &PyClass::StatsSum)
-      .def("StatsSumsq", &PyClass::StatsSumsq)
+  py::class_<PyClass, Component>(m, "BatchNormComponent")
+      .def("StatsSum", &PyClass::StatsSum, py::return_value_policy::reference)
+      .def("StatsSumsq", &PyClass::StatsSumsq, py::return_value_policy::reference)
       .def("Count", &PyClass::Count)
-      .def("Offset", &PyClass::Offset)
-      .def("Scale", overload_cast_<>()(&PyClass::Scale, py::const_));
+      .def("Eps", &PyClass::Eps)
+      .def("Offset", &PyClass::Offset, py::return_value_policy::reference)
+      .def("Scale", overload_cast_<>()(&PyClass::Scale, py::const_),
+           py::return_value_policy::reference);
 }
