@@ -247,3 +247,9 @@ exit 0
 %WER 14.6 | 1831 21395 | 87.1 9.2 3.6 1.8 14.6 51.8 | exp/tri7uc-sat_mmi_b0.1/decode_eval2000_graph_sw1_tg_it4/score_17_0.0/eval2000.ctm.swbd.filt.sys
 # fisher 4gram rescoring,
 %WER 13.2 | 1831 21395 | 88.3 8.2 3.4 1.5 13.2 49.2 | exp/tri7uc-sat_mmi_b0.1/decode_eval2000_graph_sw1_fsh_fg_it4/score_19_0.0/eval2000.ctm.swbd.filt.sys
+
+# chain2 recipe with tdnn_7k
+%WER 17.7 | 4459 42989 | 84.0 10.2 5.8 1.7 17.7 55.7 | exp/chain2/tdnn_7k_sp/decode_eval2000_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
+%WER 11.4 | 1831 21395 | 89.6 6.6 3.8 1.0 11.4 46.9 | exp/chain2/tdnn_7k_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 16.2 | 4459 42989 | 85.3 9.5 5.2 1.5 16.2 53.9 | exp/chain2/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
+%WER 10.3 | 1831 21395 | 90.5 5.8 3.7 0.8 10.3 44.1 | exp/chain2/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
