@@ -133,6 +133,7 @@ Invoke this script with the option '-p <style>', where <style> can be:
   fedora -- Fedora 22+, also RedHat-like, but uses dnf instead of yum.
   suse   -- SUSE-like, uses zypper and rpm.
   debian -- Debian-like, uses apt and dpkg.
+  arch   -- Archlinux, uses pacman.
 
 We do not currently support other package management systems. Check the Intel's
 documentation at https://software.intel.com/mkl/choose-download for other
