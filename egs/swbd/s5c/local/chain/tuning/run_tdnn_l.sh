@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _l is as _k but even longer chunk size: 200 instead of 150.  having to halve
 #  minibatch size to save memory.  I correspondingly changed max-param-change.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # makes sure the line See ../../COPYING for clarification regarding multiple
 # authors appears in the apache headers in the source, and that source files

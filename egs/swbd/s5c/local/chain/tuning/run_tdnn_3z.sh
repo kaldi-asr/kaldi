@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3z is as _3s, but reducing the target num-states in the tree building from 9k to 6k.
 # A slight degradation in WER, but it's not 100% consistent.  The final train-prob

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5r is as _5q but also reducing --jesus-hidden-dim from 7500 to 5000.
 # [abandoned after discovering bug, this thread is picked up in 5s and 5t.]

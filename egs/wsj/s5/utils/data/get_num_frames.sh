@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script works out the approximate number of frames in a training directory.
 # This is sometimes needed by higher-level scripts

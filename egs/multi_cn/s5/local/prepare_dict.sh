@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is copied from egs/hkust/s5/local/hkust_prepare_dict.sh
 

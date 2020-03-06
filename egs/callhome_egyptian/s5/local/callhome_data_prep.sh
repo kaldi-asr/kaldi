@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Johns Hopkins University : (Gaurav Kumar)
 # The input is the Callhome Egyptian Arabic Dataset which contains *.sph files

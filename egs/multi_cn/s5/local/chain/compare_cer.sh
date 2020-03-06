@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is modified from egs/librispeech/s5/local/chain/compare_wer.sh
 

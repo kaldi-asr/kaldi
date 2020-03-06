@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script demonstrates some commands that you could run after run_dnn.sh,
 # that relate to conversion to the nnet2 model format.

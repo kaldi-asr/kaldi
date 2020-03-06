@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script trains LMs on the WSJ LM-training data.
 # It requires that you have already run wsj_extend_dict.sh,

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.

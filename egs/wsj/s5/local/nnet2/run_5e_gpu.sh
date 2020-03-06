@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is an ensemble training recipe using pnorm neural nets on top of adapted 40-dimensional features.
 ensemble_size=4

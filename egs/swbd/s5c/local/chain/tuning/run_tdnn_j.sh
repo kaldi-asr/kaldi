@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _j is as _i and using the same egs, but setting
 # --left-deriv-truncate and --right-deriv-truncate to 10

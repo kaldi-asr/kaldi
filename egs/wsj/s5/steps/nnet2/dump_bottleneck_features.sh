@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #           2014  Pegah Ghahremani
 # Apache 2.0

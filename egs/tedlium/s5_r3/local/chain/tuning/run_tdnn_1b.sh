@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_1b.sh is the script which results are presented in the corpus release paper.
 # It uses 2 to 6 jobs and add proportional-shrink 10.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 
 # Modified by Takafumi Moriya for Japanese speech recognition using CSJ.

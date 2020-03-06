@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script creates a new data directory data/sdm1/train_cleanali or
 # data/mdm8/train_cleanali which has the segment ids from (e.g.) data/sdm1/train

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script does discriminative training on top of the 1e chain system.  To
 # simplify things, this assumes you are using the "cleaned" data (since this is
