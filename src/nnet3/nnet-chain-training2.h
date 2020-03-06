@@ -105,7 +105,7 @@ class NnetChainModel2 {
     std::string name;
     // den_fst comes from <den_fst_dir>/<language_name>.den.fst
    // fst::StdVectorFst den_fst;
-    chain::DenominatorGraph den_graph_;
+    chain::DenominatorGraph den_graph;
 
     // transform comes from <transform_dir>/<language_name>.ada
     LanguageInfo() { }
