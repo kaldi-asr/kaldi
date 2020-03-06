@@ -641,7 +641,7 @@ void BatchNormComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</BatchNormComponent>");
 }
 
-CuVector<BaseFloat> BatchNormComponent::Mean() {
+CuVector<BaseFloat> BatchNormComponent::Mean() const {
   CuVector<BaseFloat> mean(stats_sum_);
   if (count_ != 0) {
     mean.Scale(1.0 / count_);
@@ -649,7 +649,7 @@ CuVector<BaseFloat> BatchNormComponent::Mean() {
   return mean;
 }
 
-CuVector<BaseFloat> BatchNormComponent::Var() {
+CuVector<BaseFloat> BatchNormComponent::Var() const {
   CuVector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
   if (count_ != 0) {
     mean.Scale(1.0 / count_);
