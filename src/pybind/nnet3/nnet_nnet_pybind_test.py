@@ -3,22 +3,23 @@
 # Copyright 2020 JD AI, Beijing, China (author: Lu Fan)
 # Apache 2.0
 
-import kaldi
-import unittest
-from torch.utils.dlpack import to_dlpack
-from torch.utils.dlpack import from_dlpack
 import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir))
 
+import unittest
+
 try:
     import torch
+    from torch.utils.dlpack import to_dlpack
+    from torch.utils.dlpack import from_dlpack
 except ImportError:
     print('This test needs PyTorch.')
     print('Please install PyTorch first.')
     print('PyTorch 1.3.0dev20191006 has been tested and is known to work.')
     sys.exit(0)
 
+import kaldi
 
 """
 input dim=40 name=input
@@ -39,8 +40,6 @@ output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=16 small-dim=4
 output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 """
-
-
 class TestNnetNnet(unittest.TestCase):
 
     def test_nnet_nnet(self):
@@ -58,7 +57,7 @@ class TestNnetNnet(unittest.TestCase):
         kaldi.SelectGpuDevice(device_id=device_id)
         kaldi.CuDeviceAllowMultithreading()
 
-        final_mdl = 'src/pybind/nnet3/final.mdl'
+        final_mdl = 'final.mdl'
         nnet = kaldi.read_nnet3_model(final_mdl)
         for i in range(nnet.NumComponents()):
             component = nnet.GetComponent(i)
@@ -83,7 +82,11 @@ class TestNnetNnet(unittest.TestCase):
                 self.assertEqual(bias_params.shape, (16,))
             elif comp_name == 'tdnn1.batchnorm':
                 self.assertEqual(comp_type, 'BatchNormComponent')
-                # TODO BN get mean and var
+                component.SetTestMode(True)
+                offset = from_dlpack(component.Offset().to_dlpack())
+                scale = from_dlpack(component.Scale().to_dlpack())
+                self.assertEqual(offset.shape, (16,))
+                self.assertEqual(scale.shape, (16,))
             elif comp_name == 'tdnnf2.linear':
                 self.assertEqual(comp_type, 'TdnnComponent')
                 linear_params = from_dlpack(
@@ -98,7 +101,11 @@ class TestNnetNnet(unittest.TestCase):
                 self.assertEqual(bias_params.shape, (16,))
             elif comp_name == 'tdnnf2.batchnorm':
                 self.assertEqual(comp_type, 'BatchNormComponent')
-                # TODO BN get mean and var
+                component.SetTestMode(True)
+                offset = from_dlpack(component.Offset().to_dlpack())
+                scale = from_dlpack(component.Scale().to_dlpack())
+                self.assertEqual(offset.shape, (16,))
+                self.assertEqual(scale.shape, (16,))
             elif comp_name == 'prefinal-l':
                 self.assertEqual(comp_type, 'LinearComponent')
                 params = from_dlpack(component.Params().to_dlpack())
@@ -112,14 +119,22 @@ class TestNnetNnet(unittest.TestCase):
                 self.assertEqual(bias_params.shape, (16,))
             elif comp_name == 'prefinal-chain.batchnorm1':
                 self.assertEqual(comp_type, 'BatchNormComponent')
-                # TODO BN get mean and var
+                component.SetTestMode(True)
+                offset = from_dlpack(component.Offset().to_dlpack())
+                scale = from_dlpack(component.Scale().to_dlpack())
+                self.assertEqual(offset.shape, (16,))
+                self.assertEqual(scale.shape, (16,))
             elif comp_name == 'prefinal-chain.linear':
                 self.assertEqual(comp_type, 'LinearComponent')
                 params = from_dlpack(component.Params().to_dlpack())
                 self.assertEqual(linear_params.shape, (16, 4))
             elif comp_name == 'prefinal-chain.batchnorm2':
                 self.assertEqual(comp_type, 'BatchNormComponent')
-                # TODO BN get mean and var
+                component.SetTestMode(True)
+                offset = from_dlpack(component.Offset().to_dlpack())
+                scale = from_dlpack(component.Scale().to_dlpack())
+                self.assertEqual(offset.shape, (4,))
+                self.assertEqual(scale.shape, (4,))
             elif comp_name == 'output.affine':
                 self.assertEqual(comp_type, 'NaturalGradientAffineComponent')
                 linear_params = from_dlpack(
@@ -136,14 +151,22 @@ class TestNnetNnet(unittest.TestCase):
                 self.assertEqual(bias_params.shape, (16,))
             elif comp_name == 'prefinal-xent.batchnorm1':
                 self.assertEqual(comp_type, 'BatchNormComponent')
-                # TODO BN get mean and var
+                component.SetTestMode(True)
+                offset = from_dlpack(component.Offset().to_dlpack())
+                scale = from_dlpack(component.Scale().to_dlpack())
+                self.assertEqual(offset.shape, (16,))
+                self.assertEqual(scale.shape, (16,))
             elif comp_name == 'prefinal-xent.linear':
                 self.assertEqual(comp_type, 'LinearComponent')
                 params = from_dlpack(component.Params().to_dlpack())
                 self.assertEqual(linear_params.shape, (16, 4))
             elif comp_name == 'prefinal-xent.batchnorm2':
                 self.assertEqual(comp_type, 'BatchNormComponent')
-                # TODO BN get mean and var
+                component.SetTestMode(True)
+                offset = from_dlpack(component.Offset().to_dlpack())
+                scale = from_dlpack(component.Scale().to_dlpack())
+                self.assertEqual(offset.shape, (4,))
+                self.assertEqual(scale.shape, (4,))
             elif comp_name == 'output-xent.affine':
                 self.assertEqual(comp_type, 'NaturalGradientAffineComponent')
                 linear_params = from_dlpack(
@@ -151,7 +174,8 @@ class TestNnetNnet(unittest.TestCase):
                 bias_params = from_dlpack(component.BiasParams().to_dlpack())
                 self.assertEqual(linear_params.shape, (3448, 4))
                 self.assertEqual(bias_params.shape, (3448,))
-            
+            else:
+                self.assertEqual(comp_type, 'LogSoftmaxComponent')
 
 if __name__ == '__main__':
     unittest.main()
