@@ -123,6 +123,7 @@ if [[ ! $distro ]]; then
   [[ ! $distro && -f /etc/redhat-release ]] && distro=redhat
   [[ ! $distro && -f /etc/SuSE-release ]]   && distro=suse
   [[ ! $distro && -f /etc/debian_release ]] && distro=debian
+  [[ ! $distro && -f /etc/arch_release ]] && distro=arch
 
   [[ ! $distro ]] && Fatal "\
 Unable to determine package management style.
@@ -243,6 +244,13 @@ a higher version of apt, removing this link will help make it more secure.
 This is not considered a severe security issue, but separating keyrings is the
 current recommended security practice."
   fi
+}
+
+Install_arch () {
+  ( set -x
+    echo y | pacman -Syu intel-mkl && # In pacman we don't specify the version
+    pacman -Q --info intel-mkl | grep -v None
+  )
 }
 
 # Register MKL .so libraries with the ld.so.
