@@ -79,7 +79,11 @@ for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
 done
 
 sdata=$data/split$nj;
-cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
+if [ -f $srcdir/cmvn_opts ]; then
+    cmvn_opts=`cat $srcdir/cmvn_opts` 
+else
+    cmvn_opts="--norm-means=false --norm-vars=false"
+fi
 thread_string=
 if $use_gpu; then
   if [ $num_threads -eq 1 ]; then
@@ -122,6 +126,11 @@ frame_subsampling_opt=
 if [ -f $srcdir/frame_subsampling_factor ]; then
   # e.g. for 'chain' systems
   frame_subsampling_opt="--frame-subsampling-factor=$(cat $srcdir/frame_subsampling_factor)"
+elif [ -f $srcdir/init/info.txt ]; then
+    frame_subsampling_factor=$(awk '/^frame_subsampling_factor/ {print $2}' <$srcdir/init/info.txt)
+    if [ ! -z $frame_subsampling_factor ]; then
+        frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
+    fi
 fi
 
 if [ $stage -le 1 ]; then
