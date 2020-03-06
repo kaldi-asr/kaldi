@@ -26,10 +26,8 @@ using namespace kaldi::nnet3;
 void pybind_nnet_normalize_component(py::module& m) {
   using PyClass = kaldi::nnet3::BatchNormComponent;
   py::class_<PyClass, Component>(m, "BatchNormComponent")
-      .def("StatsSum", &PyClass::StatsSum, py::return_value_policy::reference)
-      .def("StatsSumsq", &PyClass::StatsSumsq,
-           py::return_value_policy::reference)
-      .def("Mean", &PyClass::Mean, py::return_value_policy::reference)
+      .def("Mean", &PyClass::Mean)
+      .def("Var", &PyClass::Var)
       .def("Count", &PyClass::Count)
       .def("Eps", &PyClass::Eps)
       .def("SetTestMode", &PyClass::SetTestMode, py::arg("test_mode"))

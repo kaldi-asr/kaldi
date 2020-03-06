@@ -83,10 +83,10 @@ class TestNnetNnet(unittest.TestCase):
             elif comp_name == 'tdnn1.batchnorm':
                 self.assertEqual(comp_type, 'BatchNormComponent')
                 component.SetTestMode(True)
-                offset = from_dlpack(component.Offset().to_dlpack())
-                scale = from_dlpack(component.Scale().to_dlpack())
-                self.assertEqual(offset.shape, (16,))
-                self.assertEqual(scale.shape, (16,))
+                mean = from_dlpack(component.Mean().to_dlpack())
+                var = from_dlpack(component.Var().to_dlpack())
+                self.assertEqual(mean.shape, (16,))
+                self.assertEqual(var.shape, (16,))
             elif comp_name == 'tdnnf2.linear':
                 self.assertEqual(comp_type, 'TdnnComponent')
                 linear_params = from_dlpack(
@@ -102,10 +102,10 @@ class TestNnetNnet(unittest.TestCase):
             elif comp_name == 'tdnnf2.batchnorm':
                 self.assertEqual(comp_type, 'BatchNormComponent')
                 component.SetTestMode(True)
-                offset = from_dlpack(component.Offset().to_dlpack())
-                scale = from_dlpack(component.Scale().to_dlpack())
-                self.assertEqual(offset.shape, (16,))
-                self.assertEqual(scale.shape, (16,))
+                mean = from_dlpack(component.Mean().to_dlpack())
+                var = from_dlpack(component.Var().to_dlpack())
+                self.assertEqual(mean.shape, (16,))
+                self.assertEqual(var.shape, (16,))
             elif comp_name == 'prefinal-l':
                 self.assertEqual(comp_type, 'LinearComponent')
                 params = from_dlpack(component.Params().to_dlpack())
@@ -120,10 +120,10 @@ class TestNnetNnet(unittest.TestCase):
             elif comp_name == 'prefinal-chain.batchnorm1':
                 self.assertEqual(comp_type, 'BatchNormComponent')
                 component.SetTestMode(True)
-                offset = from_dlpack(component.Offset().to_dlpack())
-                scale = from_dlpack(component.Scale().to_dlpack())
-                self.assertEqual(offset.shape, (16,))
-                self.assertEqual(scale.shape, (16,))
+                mean = from_dlpack(component.Mean().to_dlpack())
+                var = from_dlpack(component.Var().to_dlpack())
+                self.assertEqual(mean.shape, (16,))
+                self.assertEqual(var.shape, (16,))
             elif comp_name == 'prefinal-chain.linear':
                 self.assertEqual(comp_type, 'LinearComponent')
                 params = from_dlpack(component.Params().to_dlpack())
@@ -131,10 +131,10 @@ class TestNnetNnet(unittest.TestCase):
             elif comp_name == 'prefinal-chain.batchnorm2':
                 self.assertEqual(comp_type, 'BatchNormComponent')
                 component.SetTestMode(True)
-                offset = from_dlpack(component.Offset().to_dlpack())
-                scale = from_dlpack(component.Scale().to_dlpack())
-                self.assertEqual(offset.shape, (4,))
-                self.assertEqual(scale.shape, (4,))
+                mean = from_dlpack(component.Mean().to_dlpack())
+                var = from_dlpack(component.Var().to_dlpack())
+                self.assertEqual(mean.shape, (4,))
+                self.assertEqual(var.shape, (4,))
             elif comp_name == 'output.affine':
                 self.assertEqual(comp_type, 'NaturalGradientAffineComponent')
                 linear_params = from_dlpack(
@@ -152,10 +152,10 @@ class TestNnetNnet(unittest.TestCase):
             elif comp_name == 'prefinal-xent.batchnorm1':
                 self.assertEqual(comp_type, 'BatchNormComponent')
                 component.SetTestMode(True)
-                offset = from_dlpack(component.Offset().to_dlpack())
-                scale = from_dlpack(component.Scale().to_dlpack())
-                self.assertEqual(offset.shape, (16,))
-                self.assertEqual(scale.shape, (16,))
+                mean = from_dlpack(component.Mean().to_dlpack())
+                var = from_dlpack(component.Var().to_dlpack())
+                self.assertEqual(mean.shape, (16,))
+                self.assertEqual(var.shape, (16,))
             elif comp_name == 'prefinal-xent.linear':
                 self.assertEqual(comp_type, 'LinearComponent')
                 params = from_dlpack(component.Params().to_dlpack())
@@ -163,10 +163,10 @@ class TestNnetNnet(unittest.TestCase):
             elif comp_name == 'prefinal-xent.batchnorm2':
                 self.assertEqual(comp_type, 'BatchNormComponent')
                 component.SetTestMode(True)
-                offset = from_dlpack(component.Offset().to_dlpack())
-                scale = from_dlpack(component.Scale().to_dlpack())
-                self.assertEqual(offset.shape, (4,))
-                self.assertEqual(scale.shape, (4,))
+                mean = from_dlpack(component.Mean().to_dlpack())
+                var = from_dlpack(component.Var().to_dlpack())
+                self.assertEqual(mean.shape, (4,))
+                self.assertEqual(var.shape, (4,))
             elif comp_name == 'output-xent.affine':
                 self.assertEqual(comp_type, 'NaturalGradientAffineComponent')
                 linear_params = from_dlpack(

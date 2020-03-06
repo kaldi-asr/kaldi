@@ -224,8 +224,8 @@ class BatchNormComponent: public Component {
   const CuVector<BaseFloat> &Offset() const { return offset_; }
   const CuVector<BaseFloat> &Scale() const { return scale_; }
 
-  CuVector<double> &StatsSum() { return stats_sum_; }
-  CuVector<double> &StatsSumsq() { return stats_sumsq_; }
+  CuVector<BaseFloat> Mean();
+  CuVector<BaseFloat> Var();
   double Count() { return count_; }
   BaseFloat Eps() { return epsilon_; }
 
