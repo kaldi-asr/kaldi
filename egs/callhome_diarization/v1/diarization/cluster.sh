@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright       2016  David Snyder
 #            2017-2018  Matthew Maciejewski

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen, Yenda Trmal)
 # Apache 2.0.
@@ -144,7 +144,7 @@ if [ $stage -le 2 ]; then
   echo "Writing normalized results"
   $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_normalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
-    cat ${kwsoutdir}_LMWT/result.* \| \
+    gunzip -c ${kwsoutdir}_LMWT/result.* \| \
       utils/write_kwslist.pl  --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
         --segments=$datadir/segments --normalize=true --duptime=$duptime --remove-dup=true\
         --map-utter=$kwsdatadir/utter_map --digits=3 \
@@ -155,7 +155,7 @@ if [ $stage -le 3 ]; then
   echo "Writing unnormalized results"
   $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_unnormalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
-    cat ${kwsoutdir}_LMWT/result.* \| \
+    gunzip -c ${kwsoutdir}_LMWT/result.* \| \
         utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
           --segments=$datadir/segments --normalize=false --duptime=$duptime --remove-dup=true\
           --map-utter=$kwsdatadir/utter_map \

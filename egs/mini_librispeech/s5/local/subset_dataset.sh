@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017  Luminar Technologies, Inc. (author: Daniel Galvez)
 # Apache 2.0

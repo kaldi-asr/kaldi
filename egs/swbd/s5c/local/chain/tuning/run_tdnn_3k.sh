@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3k is as _3i, but adding the option --jesus-stddev-scale 0.316 "
 # [~sqrt(1/10)], which will make the jesus layer learn about 10 times faster- it

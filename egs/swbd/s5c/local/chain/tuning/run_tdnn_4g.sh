@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4g is as _4c, but reducing the --jesus-hidden-dim further from 7500 to 4000.
 # Strangely, the trend from 4a->4a does not continue: instead of continuing to get worse,

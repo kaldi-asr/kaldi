@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This factorized TDNN (TDNN-F) script is adapted from SWBD recipe 7q.
 # It uses resnet-style skip connections.
@@ -63,7 +63,6 @@ fi
 # run those things.
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
-                                  --test-sets "$test_sets" \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 

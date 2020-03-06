@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Chao Weng
 #           2016 Alibaba Robotics Corp. (Author: Xingyu Na)

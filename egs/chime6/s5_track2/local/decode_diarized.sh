@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright   2019   Ashish Arora, Vimal Manohar
 # Apache 2.0.
 # This script takes an rttm file, and performs decoding on on a test directory.

@@ -39,11 +39,18 @@ def main():
         combined_hyp_file = args.output_dir_path + '/' + 'hyp' + '_' + sessionid_micid_speakerid + '_comb'
         combined_hyp_writer = open(combined_hyp_file, 'w')
         utterances = sessionid_micid_speakerid_dict[sessionid_micid_speakerid]
-        text = ''
+        # sorting utterances by start and end time
+        sessionid_micid_speakerid_utterances={}
         for line in utterances:
             parts = line.strip().split()
+            utt_parts = parts[0].strip().split('-')
+            time ='-'.join(utt_parts[2:])
+            sessionid_micid_speakerid_utterances[time] = line
+        text = ''
+        for time_key in sorted(sessionid_micid_speakerid_utterances):
+            parts = sessionid_micid_speakerid_utterances[time_key].strip().split()
             text = text + ' ' + ' '.join(parts[1:])
-            hyp_writer.write(line)
+            hyp_writer.write(sessionid_micid_speakerid_utterances[time_key])
         combined_utterance = 'utt' + " " + text
         combined_hyp_writer.write(combined_utterance)
         combined_hyp_writer.write('\n')

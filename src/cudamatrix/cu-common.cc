@@ -31,10 +31,30 @@
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-matrixdim.h"
 
-
 namespace kaldi {
 
 #if HAVE_CUDA == 1
+
+#ifdef USE_NVTX
+NvtxTracer::NvtxTracer(const char* name) {
+  const uint32_t colors[] = { 0xff00ff00, 0xff0000ff, 0xffffff00, 0xffff00ff, 0xff00ffff, 0xffff0000, 0xffffffff };
+  const int num_colors = sizeof(colors)/sizeof(uint32_t);
+  int color_id = ((int)name[0])%num_colors;
+	nvtxEventAttributes_t eventAttrib = {0};
+	eventAttrib.version = NVTX_VERSION;
+	eventAttrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+	eventAttrib.colorType = NVTX_COLOR_ARGB;
+	eventAttrib.color = colors[color_id];
+	eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
+	eventAttrib.message.ascii = name;
+	nvtxRangePushEx(&eventAttrib);
+  // nvtxRangePushA(name);
+}
+NvtxTracer::~NvtxTracer() {
+  nvtxRangePop();
+}
+#endif
+
 cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans) {
   cublasOperation_t cublas_trans;
 

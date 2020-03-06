@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013  The Shenzhen Key Laboratory of Intelligent Media and Speech,
 #                 PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)

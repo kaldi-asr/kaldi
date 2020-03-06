@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 . ./cmd.sh
 featdir=mfcc_vtln

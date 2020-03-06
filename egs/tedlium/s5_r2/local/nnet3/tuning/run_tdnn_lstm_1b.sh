@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1b is as 1a, but removing the decay-time option as a baseline.
 
