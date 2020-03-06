@@ -6,13 +6,13 @@
 
 # Speech Activity Detection (SAD)
           Missed speech   False alarm   Total error
-Dev         5.4             2.0           7.4                                                
-Eval        6.5             2.8           9.3
+Dev         2.5             0.8           3.3                                                
+Eval        4.1             1.8           5.9           
 
 # Diarization
         DER       JER
-Dev    61.66     69.89
-Eval   61.94     71.46
+Dev    61.56     69.79
+Eval   61.96     71.40
 
 # ASR nnet3 tdnn+chain
 Dev:  %WER 84.25 [ 49610 / 58881, 1937 ins, 34685 del, 12988 sub ]

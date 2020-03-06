@@ -149,9 +149,10 @@ if [ $stage -le 3 ]; then
       grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
       echo "Array U06 selected for scoring.."
 
-      sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
-      sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
-      md-eval.pl -1 -c 0.25 -u ./local/uem_file -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
+      sed 's/_U0[1-6].ENH//g' $ref_rttm > $ref_rttm.scoring
+      sed 's/_U0[1-6].ENH//g' $hyp_rttm > $hyp_rttm.scoring
+      cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.tmp
+      md-eval.pl -1 -c 0.25 -u ./local/uem_file.tmp -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
         awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
     fi
   done
