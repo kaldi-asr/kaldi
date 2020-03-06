@@ -123,7 +123,7 @@ if [[ ! $distro ]]; then
   [[ ! $distro && -f /etc/redhat-release ]] && distro=redhat
   [[ ! $distro && -f /etc/SuSE-release ]]   && distro=suse
   [[ ! $distro && -f /etc/debian_release ]] && distro=debian
-  [[ ! $distro && -f /etc/arch_release ]] && distro=arch
+  [[ ! $distro && -f /etc/arch-release ]] && distro=arch
 
   [[ ! $distro ]] && Fatal "\
 Unable to determine package management style.
