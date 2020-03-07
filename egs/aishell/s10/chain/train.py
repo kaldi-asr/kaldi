@@ -33,7 +33,7 @@ from egs_dataset import get_egs_dataloader
 from model import get_chain_model
 from options import get_args
 
-def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None):
+def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None, dropout=0.):
     total_objf = 0.
     total_weight = 0.
     total_frames = 0.  # for display only
@@ -48,7 +48,7 @@ def get_objf(batch, model, device, criterion, opts, den_graph, training, optimiz
         # at this point, feats is [N, T, C]
         feats = feats.to(device)
         if training:
-            nnet_output, xent_output = model(feats)
+            nnet_output, xent_output = model(feats, dropout=dropout)
         else:
             with torch.no_grad():
                 nnet_output, xent_output = model(feats)
@@ -113,10 +113,12 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
     total_frames = 0.  # for display only
 
     model.train()
-
+    dropout = 0.
+    if current_epoch >=1 and current_epoch <=3:
+        dropout = 0.5
     for batch_idx, batch in enumerate(dataloader):
         curr_batch_objf, curr_batch_weight, curr_batch_frames = get_objf(
-            batch, model, device, criterion, opts, den_graph, True, optimizer) 
+            batch, model, device, criterion, opts, den_graph, True, optimizer, dropout=dropout) 
 
         total_objf += curr_batch_objf
         total_weight += curr_batch_weight

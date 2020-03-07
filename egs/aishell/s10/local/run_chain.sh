@@ -274,11 +274,11 @@ if [[ $stage -le 18 ]]; then
     if [[ -f $dir/inference/$x/nnet_output.scp ]]; then
       echo "$dir/inference/$x/nnet_output.scp already exists! Skip"
     else
-      apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
-          scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+      # apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
+      #     scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
       best_epoch=$(cat $dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
       inference_checkpoint=$dir/epoch-${best_epoch}.pt
-      $cuda_inference_cmd $dir/inference/logs/${x}.log \
+      $cuda_inference_cmd --gpu 1 $dir/inference/logs/${x}.log \
         python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \

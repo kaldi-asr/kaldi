@@ -51,6 +51,29 @@ def _constrain_orthonormal_internal(M):
     return M
 
 
+class SharedDimScaleDropout(nn.Module):
+    def __init__(self, dim=1):
+        '''
+        Continuous scaled dropout that is const over chosen dim (usually across time)
+        Multiplies inputs by random mask taken from Uniform([1 - 2\alpha, 1 + 2\alpha])
+        '''
+        super(SharedDimScaleDropout, self).__init__()
+        self.dim = dim
+        self.register_buffer('mask', torch.tensor(0.))
+
+    def forward(self, X, alpha=0.0):
+        if self.training:
+            if alpha != 0.:
+                # sample mask from uniform dist with dim of length 1 in self.dim and then repeat to match size
+                tied_mask_shape = list(X.shape)
+                tied_mask_shape[self.dim] = 1
+                repeats = [1 if i != self.dim else X.shape[self.dim]
+                           for i in range(len(X.shape))]
+                return X * self.mask.repeat(tied_mask_shape).uniform_(1 - 2*alpha, 1 + 2*alpha).repeat(repeats)
+                # expected value of dropout mask is 1 so no need to scale outputs like vanilla dropout
+        return X
+
+
 class OrthonormalLinear(nn.Module):
 
     def __init__(self, dim, bottleneck_dim, kernel_size):
@@ -178,7 +201,9 @@ class FactorizedTDNN(nn.Module):
         # batchnorm requires [N, C, T]
         self.batchnorm = nn.BatchNorm1d(num_features=dim, affine=False)
 
-    def forward(self, x):
+        self.dropout = SharedDimScaleDropout(dim=2)
+
+    def forward(self, x, dropout=0.):
         # input x is of shape: [batch_size, feat_dim, seq_len] = [N, C, T]
         assert x.ndim == 3
 
@@ -199,7 +224,7 @@ class FactorizedTDNN(nn.Module):
 
         # at this point, x is [N, C, T]
 
-        # TODO(fangjun): implement GeneralDropoutComponent in PyTorch
+        x = self.dropout(x)
 
         if self.linear.kernel_size == 3:
             x = self.bypass_scale * input_x[:, :, self.s:-self.s:self.s] + x

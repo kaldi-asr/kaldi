@@ -156,7 +156,7 @@ class ChainModel(nn.Module):
 
         self.register_forward_pre_hook(constrain_orthonormal_hook)
 
-    def forward(self, x):
+    def forward(self, x, dropout=0.):
         # input x is of shape: [batch_size, seq_len, feat_dim] = [N, T, C]
         assert x.ndim == 3
 
@@ -196,7 +196,7 @@ class ChainModel(nn.Module):
 
         # tdnnf requires input of shape [N, C, T]
         for i in range(len(self.tdnnfs)):
-            x = self.tdnnfs[i](x)
+            x = self.tdnnfs[i](x, dropout=dropout)
 
         # at this point, x is [N, C, T]
 
