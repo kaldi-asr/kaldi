@@ -120,7 +120,6 @@ void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
       avg_prob(num_states);
   cur_prob(fst.Start()) = 1.0;
   for (int32 iter = 0; iter < num_iters; iter++) {
-    avg_prob.AddVec(1.0 / num_iters, cur_prob);
     for (int32 s = 0; s < num_states; s++) {
       double prob = cur_prob(s) * normalizing_factor(s);
 
@@ -132,9 +131,10 @@ void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
     }
     cur_prob.Swap(&next_prob);
     next_prob.SetZero();
-    // Renormalize, beause the HMM won't sum to one even after the
+    // Renormalize, because the HMM won't sum to one even after the
     // previous normalization (due to final-probs).
     cur_prob.Scale(1.0 / cur_prob.Sum());
+    avg_prob.AddVec(1.0 / num_iters, cur_prob);
   }
 
   Vector<BaseFloat> avg_prob_float(avg_prob);
