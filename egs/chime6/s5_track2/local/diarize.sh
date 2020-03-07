@@ -109,11 +109,11 @@ if [ $stage -le 5 ]; then
     python -m pip install --user -r requirements.txt
     cd ..
   fi
-  sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
-  sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
+  sed 's/_U0[1-6]\.ENH//g' $ref_rttm > $ref_rttm.scoring
+  sed 's/_U0[1-6]\.ENH//g' $hyp_rttm > $hyp_rttm.scoring
   ref_rttm_path=$(readlink -f ${ref_rttm}.scoring)
   hyp_rttm_path=$(readlink -f ${hyp_rttm}.scoring)
-  cd dscore && python score.py -u ./local/uem_file -r $ref_rttm_path \
+  cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.scoring
+  cd dscore && python score.py -u ../local/uem_file.scoring -r $ref_rttm_path \
     -s $hyp_rttm_path && cd .. || exit 1;
-  mode="$(cut -d'_' -f1 <<<"$name")"
 fi

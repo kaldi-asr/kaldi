@@ -169,12 +169,6 @@ fi
 #######################################################################
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
-    if $use_new_rttm_reference == "true"; then
-      mode="$(cut -d'_' -f1 <<<"$datadir")"
-      ref_rttm=./local/${mode}_rttm
-    else
-      ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
-    fi
     local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
