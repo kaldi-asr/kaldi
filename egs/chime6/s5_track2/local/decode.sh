@@ -19,7 +19,7 @@ score_stage=0
 enhancement=beamformit
 
 # option to use the new RTTM reference for sad and diarization
-use_new_rttm_reference=true
+use_new_rttm_reference=false
 
 # chime5 main directory path
 # please change the path accordingly
@@ -169,6 +169,12 @@ fi
 #######################################################################
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
+    if $use_new_rttm_reference == "true"; then
+      mode="$(cut -d'_' -f1 <<<"$datadir")"
+      ref_rttm=./local/${mode}_rttm
+    else
+      ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
+    fi
     local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
