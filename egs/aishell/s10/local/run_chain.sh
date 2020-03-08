@@ -150,7 +150,7 @@ minibatch_size=128
 hidden_dim=1024
 bottleneck_dim=128
 prefinal_bottleneck_dim=256
-kernel_size_list="3, 3, 3, 1, 3, 3, 3, 3, 3, 3, 3, 3" # comma separated list
+kernel_size_list="2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2" # comma separated list
 subsampling_factor_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning

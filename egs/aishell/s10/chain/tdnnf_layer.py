@@ -172,7 +172,7 @@ class FactorizedTDNN(nn.Module):
         # since we want to use `stride`
         self.affine = nn.Conv1d(in_channels=bottleneck_dim,
                                 out_channels=dim,
-                                kernel_size=1,
+                                kernel_size=kernel_size,
                                 stride=subsampling_factor)
 
         # batchnorm requires [N, C, T]
@@ -201,7 +201,7 @@ class FactorizedTDNN(nn.Module):
 
         # TODO(fangjun): implement GeneralDropoutComponent in PyTorch
 
-        if self.linear.kernel_size == 3:
+        if self.linear.kernel_size > 1:
             x = self.bypass_scale * input_x[:, :, self.s:-self.s:self.s] + x
         else:
             x = self.bypass_scale * input_x[:, :, ::self.s] + x
