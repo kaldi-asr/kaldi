@@ -67,7 +67,7 @@ if [[ $stage -le 3 ]]; then
 fi
 
 train_ivector_dir=
-if [[ $train_ivector ]]; then
+if [ "$train_ivector" = true ]; then
   local/run_ivector_common.sh --stage $stage \
                               --nj $nj \
                               --train-set $train_set \
@@ -164,7 +164,7 @@ if [[ $stage -le 15 ]]; then
     --alignment-subsampling-factor 3 \
     --cmd "$train_cmd" \
     --online-cmvn $online_cmvn \
-    --online-ivector-dir $train_ivector_dir \
+    --online-ivector-dir "$train_ivector_dir" \
     --frame-subsampling-factor 3 \
     --frames-overlap-per-eg 0 \
     --frames-per-eg $frames_per_eg \
@@ -197,8 +197,13 @@ if [[ $stage -le 16 ]]; then
 fi
 
 feat_dim=$(cat $dir/egs/info/feat_dim)
-ivector_dim=$(cat $dir/egs/info/ivector_dim)
-ivector_period=$(cat $train_ivector_dir/ivector_period)
+ivector_dim=0
+ivector_period=0
+if [ "$train_ivector" = true ]; then
+  ivector_dim=$(cat $dir/egs/info/ivector_dim)
+  ivector_period=$(cat $train_ivector_dir/ivector_period)
+fi
+echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
 output_dim=$(cat $dir/egs/info/num_pdfs)
 
 if [[ $stage -le 17 ]]; then
@@ -274,22 +279,29 @@ if [[ $stage -le 18 ]]; then
     if [[ -f $dir/inference/$x/nnet_output.scp ]]; then
       echo "$dir/inference/$x/nnet_output.scp already exists! Skip"
     else
-      apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
-          scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+      if [ "$train_ivector" = true ]; then
+        ivector_scp="exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp"
+      fi
+      feat_scp="data/${x}_hires/feats.scp"
+      if [ "$online_cmvn" = true ]; then
+        apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
+            scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+        feat_scp="data/${x}_hires/online_cmvn_feats.scp"
+      fi
       best_epoch=$(cat $dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
       inference_checkpoint=$dir/epoch-${best_epoch}.pt
-      $cuda_inference_cmd $dir/inference/logs/${x}.log \
+      $cuda_inference_cmd --gpu 1 $dir/inference/logs/${x}.log \
         python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
         --dir $dir/inference/$x \
         --feat-dim $feat_dim \
-        --feats-scp data/${x}_hires/online_cmvn_feats.scp \
+        --feats-scp "$feat_scp" \
         --hidden-dim $hidden_dim \
         --is-training false \
         --ivector-dim $ivector_dim \
         --ivector-period $ivector_period \
-        --ivector-scp exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp \
+        --ivector-scp "$ivector_scp" \
         --log-level $log_level \
         --kernel-size-list "$kernel_size_list" \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
