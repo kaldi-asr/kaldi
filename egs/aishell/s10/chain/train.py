@@ -17,6 +17,7 @@ import torch.distributed as dist
 import torch.optim as optim
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.nn.utils import clip_grad_value_
+from torch.utils.data.distributed import DistributedSampler
 from torch.utils.tensorboard import SummaryWriter 
 
 import kaldi
@@ -205,10 +206,10 @@ def main():
 def process_job(learning_rate, device_id=None, local_rank=None):
     args = get_args()
     if local_rank != None:    
-        setup_logger('{}/train/logs/log-train-rank-{}'.format(args.dir, local_rank),
+        setup_logger('{}/logs/log-train-rank-{}'.format(args.dir, local_rank),
                  args.log_level)
     else:
-        setup_logger('{}/train/logs/log-train-single-GPU'.format(args.dir), args.log_level)
+        setup_logger('{}/logs/log-train-single-GPU'.format(args.dir), args.log_level)
 
     logging.info(' '.join(sys.argv))
 
@@ -325,6 +326,9 @@ def process_job(learning_rate, device_id=None, local_rank=None):
 
             if tf_writer:
                 tf_writer.add_scalar('learning_rate', curr_learning_rate, epoch)
+            
+            if dataloader.sampler and isinstance(dataloader.sampler, DistributedSampler):
+                dataloader.sampler.set_epoch(epoch)
 
             objf = train_one_epoch(dataloader=dataloader,
                                    valid_dataloader=valid_dataloader,

@@ -1247,6 +1247,10 @@ void* AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
   // of *out.
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+  KALDI_VLOG(4) << "Affine" << in.Row(0);
+  KALDI_VLOG(4) << "Affine" << linear_params_.Row(0);
+  KALDI_VLOG(4) << "Affine" << bias_params_;
+  KALDI_VLOG(4) << "Affine" << out->Row(0);
   return NULL;
 }
 
@@ -3394,6 +3398,9 @@ void* FixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes
                                      CuMatrixBase<BaseFloat> *out) const  {
   out->CopyRowsFromVec(bias_params_); // Adds the bias term first.
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+  KALDI_VLOG(4) << linear_params_.Row(0);
+  KALDI_VLOG(4) << bias_params_;
+  KALDI_VLOG(4) << out->Row(0);
   return NULL;
 }
 
@@ -3432,8 +3439,10 @@ void FixedAffineComponent::Write(std::ostream &os, bool binary) const {
 void FixedAffineComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<FixedAffineComponent>", "<LinearParams>");
   linear_params_.Read(is, binary);
+  KALDI_VLOG(4) << linear_params_.Row(0);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
+  KALDI_VLOG(4) << bias_params_;
   ExpectToken(is, binary, "</FixedAffineComponent>");
 }
 

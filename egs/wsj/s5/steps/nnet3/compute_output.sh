@@ -67,7 +67,8 @@ done
 
 if [ ! -z "$output_name" ] && [ "$output_name" != "output" ]; then
   echo "$0: Using output-name $output_name"
-  model="nnet3-copy --edits='remove-output-nodes name=output;rename-node old-name=$output_name new-name=output' $model - |"
+  # model="nnet3-copy --edits='remove-output-nodes name=output;rename-node old-name=$output_name new-name=output' $model - |"
+  model="nnet3-copy --nnet-config='echo output-node name=output input=$output_name |' $model -|"
 fi
 
 sdata=$data/split$nj;

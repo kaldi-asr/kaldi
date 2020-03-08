@@ -14,6 +14,7 @@ gmm=tri3
 nnet3_affix=_pybind
 tree_affix= 
 tdnn_affix=
+train_affix=
 online_cmvn=true
 train_ivector=false
 num_epochs=6
@@ -206,16 +207,17 @@ fi
 echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
 output_dim=$(cat $dir/egs/info/num_pdfs)
 
+train_dir=train${train_affix}
 if [[ $stage -le 17 ]]; then
   echo "$0: training..."
 
-  mkdir -p $dir/train/tensorboard
+  mkdir -p $dir/$train_dir/tensorboard
   train_checkpoint=
-  if [[ -f $dir/best_model.pt ]]; then
-    train_checkpoint=$dir/best_model.pt
+  if [[ -f $dir/$train_dir/best_model.pt ]]; then
+    train_checkpoint=$dir/$train_dir/best_model.pt
   fi
 
-  INIT_FILE=$dir/ddp_init
+  INIT_FILE=$dir/$train_dir/ddp_init
   rm -f $INIT_FILE # delete old one before starting
   init_method=file://$(readlink -f $INIT_FILE)
   # use '127.0.0.1' for training on a single machine
@@ -236,17 +238,17 @@ if [[ $stage -le 17 ]]; then
   # device_ids="4, 5, 6, 7"
   if $use_multiple_machine ; then
     # suppose you are using Sun GridEngine
-    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/train/logs/job.JOB.log")
+    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/$train_dir/logs/job.JOB.log")
   else
     # TODO: for running with multiple GPUs on a single machine (SGE), 
     #       we should tell SGE how many GPUs we will use on that machine
-    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size $dir/train/logs/train.log")
+    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size $dir/$train_dir/logs/train.log")
   fi
  
   $cuda_train_cmd python3 ./chain/train.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint=${train_checkpoint:-} \
-        --dir $dir \
+        --dir $dir/$train_dir \
         --feat-dim $feat_dim \
         --hidden-dim $hidden_dim \
         --is-training true \
@@ -275,26 +277,26 @@ fi
 if [[ $stage -le 18 ]]; then
   echo "inference: computing likelihood"
   for x in test dev; do
-    mkdir -p $dir/inference/$x
-    if [[ -f $dir/inference/$x/nnet_output.scp ]]; then
-      echo "$dir/inference/$x/nnet_output.scp already exists! Skip"
+    mkdir -p $dir/$train_dir/inference/$x
+    if [[ -f $dir/$train_dir/inference/$x/nnet_output.scp ]]; then
+      echo "$dir/$train_dir/inference/$x/nnet_output.scp already exists! Skip"
     else
-      if [ "$train_ivector" = true ]; then
+      if [[ "$train_ivector" = true ]]; then
         ivector_scp="exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp"
       fi
       feat_scp="data/${x}_hires/feats.scp"
-      if [ "$online_cmvn" = true ]; then
+      if [[ "$online_cmvn" = true && ! -f "data/${x}_hires/online_cmvn_feats.scp" ]]; then
         apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
             scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
         feat_scp="data/${x}_hires/online_cmvn_feats.scp"
       fi
-      best_epoch=$(cat $dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
-      inference_checkpoint=$dir/epoch-${best_epoch}.pt
-      $cuda_inference_cmd --gpu 1 $dir/inference/logs/${x}.log \
+      best_epoch=$(cat $dir/$train_dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
+      inference_checkpoint=$dir/$train_dir/epoch-${best_epoch}.pt
+      $cuda_inference_cmd --gpu 1 $dir/$train_dir/inference/logs/${x}.log \
         python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
-        --dir $dir/inference/$x \
+        --dir $dir/$train_dir/inference/$x \
         --feat-dim $feat_dim \
         --feats-scp "$feat_scp" \
         --hidden-dim $hidden_dim \
@@ -326,7 +328,7 @@ fi
 if [[ $stage -le 20 ]]; then
   echo "decoding"
   for x in test dev; do
-    if [[ ! -f $dir/inference/$x/nnet_output.scp ]]; then
+    if [[ ! -f $dir/$train_dir/inference/$x/nnet_output.scp ]]; then
       echo "exp/chain/inference/$x/nnet_output.scp does not exist!"
       echo "Please run inference.py first"
       exit 1
@@ -337,8 +339,8 @@ if [[ $stage -le 20 ]]; then
       --nj $nj \
       $dir/graph \
       $dir/0.trans_mdl \
-      $dir/inference/$x/nnet_output.scp \
-      $dir/decode_res/$x
+      $dir/$train_dir/inference/$x/nnet_output.scp \
+      $dir/$train_dir/decode_res/$x
   done
 fi
 
@@ -349,10 +351,10 @@ if [[ $stage -le 21 ]]; then
     ./local/score.sh --cmd "$decode_cmd" \
       data/${x}_hires \
       $dir/graph \
-      $dir/decode_res/$x || exit 1
+      $dir/$train_dir/decode_res/$x || exit 1
   done
 
   for x in test dev; do
-    head $dir/decode_res/$x/scoring_kaldi/best_*
+    head $dir/$train_dir/decode_res/$x/scoring_kaldi/best_*
   done
 fi
