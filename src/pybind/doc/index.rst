@@ -18,3 +18,10 @@ Welcome to Kaldi Pybind's documentation!
 
    introduction
    getting_started
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Tutorial
+
+    tutorial/working_with_kaldi_matrices
+    tutorial/working_with_kaldi_io

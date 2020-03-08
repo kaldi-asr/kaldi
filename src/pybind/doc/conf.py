@@ -18,14 +18,11 @@
 # otherwise `import` will throw.
 import sphinx_rtd_theme
 
-
-
 # -- Project information -----------------------------------------------------
 
 project = 'Kaldi Pybind'
-copyright = '2020, Kaldi Pybind Authors'
+copyright = '2019-2020, Kaldi Pybind Authors'
 author = 'Kaldi Pybind Authors'
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -33,12 +30,13 @@ author = 'Kaldi Pybind Authors'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-'sphinx.ext.autodoc',
-'sphinx.ext.autosummary',
-'sphinx.ext.mathjax',
-'sphinx.ext.napoleon',
-'sphinx.ext.todo',
-'sphinx.ext.viewcode',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.githubpages',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -59,7 +57,6 @@ master_doc = 'index'
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
-
 
 # -- Options for HTML output -------------------------------------------------
 
