@@ -188,7 +188,7 @@ if [ $stage -le 4 ]; then
       exp/${datadir}_${nnet_type}_seg_diarization
   done
 fi
-exit 1
+
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
