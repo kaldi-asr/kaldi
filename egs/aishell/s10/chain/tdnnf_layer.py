@@ -181,17 +181,10 @@ class TDNN(nn.Module):
     def forward(self, x, dropout=0.):
         # input x is of shape: [batch_size, feat_dim, seq_len] = [N, C, T]
         x = self.affine(x)
-        # at this point, x is [N, C, T]
-        
         x = F.relu(x)
-        # at this point, x is [N, C, T]
-
         x = self.batchnorm(x)
-        # at this point, x is [N, C, T]
-
         x = self.dropout(x, alpha=dropout)
-        # at this point, x is [N, C, T]
-
+        # return shape is [N, C, T]
         return x
 
 
