@@ -31,10 +31,11 @@ from common import save_training_info
 from common import setup_logger
 from device_utils import allocate_gpu_devices
 from egs_dataset import get_egs_dataloader
+from libs.nnet3.train.dropout_schedule import _get_dropout_proportions
 from model import get_chain_model
 from options import get_args
 
-def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None):
+def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None, dropout=0.):
     total_objf = 0.
     total_weight = 0.
     total_frames = 0.  # for display only
@@ -49,7 +50,7 @@ def get_objf(batch, model, device, criterion, opts, den_graph, training, optimiz
         # at this point, feats is [N, T, C]
         feats = feats.to(device)
         if training:
-            nnet_output, xent_output = model(feats)
+            nnet_output, xent_output = model(feats, dropout=dropout)
         else:
             with torch.no_grad():
                 nnet_output, xent_output = model(feats)
@@ -107,17 +108,20 @@ def get_validation_objf(dataloader, model, device, criterion, opts, den_graph):
     return total_objf, total_weight, total_frames
 
 
-def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer,
-                    criterion, current_epoch, opts, den_graph, tf_writer, rank):
+def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer, criterion, 
+                    current_epoch, num_epochs, opts, den_graph, tf_writer, rank, dropout_schedule):
     total_objf = 0.
     total_weight = 0.
     total_frames = 0.  # for display only
 
     model.train()
-
     for batch_idx, batch in enumerate(dataloader):
+        data_fraction = (batch_idx + current_epoch *
+                         len(dataloader)) / (len(dataloader) * num_epochs)
+        _, dropout = _get_dropout_proportions(
+            dropout_schedule, data_fraction)[0]
         curr_batch_objf, curr_batch_weight, curr_batch_frames = get_objf(
-            batch, model, device, criterion, opts, den_graph, True, optimizer) 
+            batch, model, device, criterion, opts, den_graph, True, optimizer, dropout=dropout)
 
         total_objf += curr_batch_objf
         total_weight += curr_batch_weight
@@ -250,7 +254,6 @@ def process_job(learning_rate, device_id=None, local_rank=None):
     opts.leaky_hmm_coefficient = args.leaky_hmm_coefficient
 
     den_graph = chain.DenominatorGraph(fst=den_fst, num_pdfs=args.output_dim)
-
     
     model = get_chain_model(
         feat_dim=args.feat_dim,
@@ -337,10 +340,12 @@ def process_job(learning_rate, device_id=None, local_rank=None):
                                    optimizer=optimizer,
                                    criterion=criterion,
                                    current_epoch=epoch,
+                                   num_epochs=num_epochs,
                                    opts=opts,
                                    den_graph=den_graph,
                                    tf_writer=tf_writer,
-                                   rank=local_rank)
+                                   rank=local_rank,
+                                   dropout_schedule=args.dropout_schedule)
 
             if best_objf is None:
                 best_objf = objf

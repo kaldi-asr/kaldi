@@ -18,6 +18,7 @@ train_affix=
 online_cmvn=true
 train_ivector=false
 num_epochs=6
+dropout_schedule=0,0@0.20,0.5@0.50,0      # you might set this to 0,0 or 0.5,0.5 to train.
 
 . ./path.sh
 . ./cmd.sh
@@ -150,7 +151,7 @@ minibatch_size=128
 hidden_dim=1024
 bottleneck_dim=128
 prefinal_bottleneck_dim=256
-kernel_size_list="2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2" # comma separated list
+kernel_size_list="3, 3, 3, 1, 3, 3, 3, 3, 3, 3, 3, 3" # comma separated list
 subsampling_factor_list="1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1" # comma separated list
 
 log_level=info # valid values: debug, info, warning
@@ -262,6 +263,7 @@ if [[ $stage -le 17 ]]; then
         --train.ddp.init-method $init_method \
         --train.ddp.multiple-machine $use_multiple_machine \
         --train.ddp.world-size $world_size \
+        --train.dropout-schedule "$dropout_schedule" \
         --train.cegs-dir $dir/merged_egs \
         --train.den-fst $dir/den.fst \
         --train.egs-left-context $egs_left_context \
@@ -285,7 +287,7 @@ if [[ $stage -le 18 ]]; then
         ivector_scp="exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp"
       fi
       feat_scp="data/${x}_hires/feats.scp"
-      if [[ "$online_cmvn" = true && ! -f "data/${x}_hires/online_cmvn_feats.scp" ]]; then
+      if [[ "$online_cmvn" = true ]]; then
         apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
             scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
         feat_scp="data/${x}_hires/online_cmvn_feats.scp"

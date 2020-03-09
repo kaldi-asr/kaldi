@@ -5,4 +5,4 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH
 . $KALDI_ROOT/tools/config/common_path.sh
 export LC_ALL=C
 
-export PYTHONPATH=$KALDI_ROOT/src/pybind:$PYTHONPATH
+export PYTHONPATH=$KALDI_ROOT/src/pybind:$KALDI_ROOT/egs/wsj/s5/steps:$PYTHONPATH

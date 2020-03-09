@@ -13,6 +13,7 @@ from common import load_lda_mat
 from tdnnf_layer import FactorizedTDNN
 from tdnnf_layer import OrthonormalLinear
 from tdnnf_layer import PrefinalLayer
+from tdnnf_layer import SharedDimScaleDropout
 
 
 def get_chain_model(feat_dim,
@@ -108,6 +109,8 @@ class ChainModel(nn.Module):
         # tdnn1_batchnorm requires [N, C, T]
         self.tdnn1_batchnorm = nn.BatchNorm1d(num_features=hidden_dim,
                                               affine=False)
+        
+        self.tdnn1_dropout = SharedDimScaleDropout(dim=2)
 
         tdnnfs = []
         for i in range(num_layers):
@@ -156,7 +159,7 @@ class ChainModel(nn.Module):
 
         self.register_forward_pre_hook(constrain_orthonormal_hook)
 
-    def forward(self, x):
+    def forward(self, x, dropout=0.):
         # input x is of shape: [batch_size, seq_len, feat_dim] = [N, T, C]
         assert x.ndim == 3
 
@@ -194,9 +197,11 @@ class ChainModel(nn.Module):
 
         x = self.tdnn1_batchnorm(x)
 
+        x = self.tdnn1_dropout(x, dropout=dropout)
+
         # tdnnf requires input of shape [N, C, T]
         for i in range(len(self.tdnnfs)):
-            x = self.tdnnfs[i](x)
+            x = self.tdnnfs[i](x, dropout=dropout)
 
         # at this point, x is [N, C, T]
 
