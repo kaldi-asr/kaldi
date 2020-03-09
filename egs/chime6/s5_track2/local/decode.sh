@@ -4,7 +4,7 @@
 # Feature extraction -> SAD -> Diarization -> ASR
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
-#            2019  Desh Raj, David Snyder, Ashish Arora
+#            2019  Desh Raj, David Snyder, Ashish Arora, Zhaoheng Ni
 # Apache 2.0
 
 # Begin configuration section.
@@ -20,6 +20,9 @@ enhancement=beamformit
 
 # option to use the new RTTM reference for sad and diarization
 use_new_rttm_reference=false
+if $use_new_rttm_reference == "true"; then
+  git clone https://github.com/nateanl/chime6_rttm
+fi
 
 # chime5 main directory path
 # please change the path accordingly
@@ -154,7 +157,7 @@ if [ $stage -le 3 ]; then
       if $use_new_rttm_reference == "true"; then
         echo "Use the new RTTM reference."
         mode="$(cut -d'_' -f1 <<<"$datadir")"
-        ref_rttm=./local/${mode}_rttm
+        ref_rttm=./chime6_rttm/${mode}_rttm
       fi
       sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
       sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
