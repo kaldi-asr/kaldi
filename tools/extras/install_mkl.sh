@@ -31,7 +31,7 @@ to install MKL into this directory; run this script using the sudo command.
 
 Options:
   -s  - Skip check for MKL being already present.
-  -p <suse|redhat|debian|fedora> -- Force type of package management. Use only
+  -p <suse|redhat|debian|fedora|arch> -- Force type of package management. Use only
                                     if automatic detection fails, as instructed.
   -h  - Show this message.
 
@@ -54,9 +54,9 @@ while getopts ":hksp:" opt; do
     h) Usage ;;
     s) skip_cc=yes ;;
     p) case $OPTARG in
-         suse|redhat|debian|fedora) distro=$OPTARG ;;
+         suse|redhat|debian|fedora|arch) distro=$OPTARG ;;
          *) Fatal "invalid value -p '${OPTARG}'. " \
-                  "Allowed: 'suse', 'redhat', 'debian' or 'fedora'."
+                  "Allowed: 'suse', 'redhat', 'debian', 'fedora', or 'arch'."
        esac ;;
     \?) echo >&2 "$0: invalid option -${OPTARG}."; Usage ;;
   esac
@@ -112,7 +112,7 @@ if [[ ! $distro ]]; then
     case "$rune" in
       cpe:/o:fedoraproject:fedora:2[01]) distro=redhat; break;;  # Use yum.
       rhel|centos) distro=redhat; break;;
-      redhat|suse|fedora|debian) distro=$rune; break;;
+      redhat|suse|fedora|debian|arch) distro=$rune; break;;
     esac
   done
 
