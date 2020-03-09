@@ -5,14 +5,18 @@
 # array selection method in the baseline system.
 
 # Speech Activity Detection (SAD)
-          Missed speech   False alarm   Total error
-Dev         2.5             0.8           3.3                                                
-Eval        4.1             1.8           5.9           
+                  Missed speech   False alarm   Total error
+Dev (old RTTM)        2.5             0.8           3.3                                                
+Dev (new RTTM)        1.9             0.7           2.6                                                
+Eval (old RTTM)       4.1             1.8           5.9           
+Eval (new RTTM)       4.3             1.5           5.8           
 
 # Diarization
-        DER       JER
-Dev    61.56     69.79
-Eval   61.96     71.40
+                    DER      JER
+Dev (old RTTM)    61.56     69.75
+Dev (new RTTM)    63.42     70.83
+Eval (old RTTM)   61.96     71.40
+Eval (new RTTM)   68.20     72.54
 
 # ASR nnet3 tdnn+chain
 Dev:  %WER 84.25 [ 49610 / 58881, 1937 ins, 34685 del, 12988 sub ]

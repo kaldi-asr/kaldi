@@ -4,7 +4,7 @@
 # Feature extraction -> SAD -> Diarization -> ASR
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
-#            2019  Desh Raj, David Snyder, Ashish Arora
+#            2019  Desh Raj, David Snyder, Ashish Arora, Zhaoheng Ni
 # Apache 2.0
 
 # Begin configuration section.
@@ -12,11 +12,17 @@ nj=8
 stage=0
 sad_stage=0
 score_sad=true
-diarizer_stage=0
+diarizer_stage=5
 decode_diarize_stage=0
 score_stage=0
 
 enhancement=beamformit
+
+# option to use the new RTTM reference for sad and diarization
+use_new_rttm_reference=true
+if $use_new_rttm_reference == "true"; then
+  git clone https://github.com/nateanl/chime6_rttm
+fi
 
 # chime5 main directory path
 # please change the path accordingly
@@ -139,7 +145,7 @@ if [ $stage -le 3 ]; then
     if [ $score_sad == "true" ]; then
       echo "Scoring $datadir.."
       # We first generate the reference RTTM from the backed up utt2spk and segments
-      # files. 
+      # files.
       ref_rttm=${test_dir}/ref_rttm
       steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
         ${test_dir}/segments.bak ${test_dir}/ref_rttm
@@ -148,6 +154,12 @@ if [ $stage -le 3 ]; then
       hyp_rttm=${test_dir}/rttm.U06
       grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
       echo "Array U06 selected for scoring.."
+      
+      if $use_new_rttm_reference == "true"; then
+        echo "Use the new RTTM reference."
+        mode="$(cut -d'_' -f1 <<<"$datadir")"
+        ref_rttm=./chime6_rttm/${mode}_rttm
+      fi
 
       sed 's/_U0[1-6].ENH//g' $ref_rttm > $ref_rttm.scoring
       sed 's/_U0[1-6].ENH//g' $hyp_rttm > $hyp_rttm.scoring
@@ -163,14 +175,20 @@ fi
 #######################################################################
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
+    if $use_new_rttm_reference == "true"; then
+      mode="$(cut -d'_' -f1 <<<"$datadir")"
+      ref_rttm=./chime6_rttm/${mode}_rttm
+    else
+      ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
+    fi
     local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --ref-rttm data/${datadir}_${nnet_type}_seg/ref_rttm \
+      --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
       exp/${datadir}_${nnet_type}_seg_diarization
   done
 fi
-
+exit 1
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
