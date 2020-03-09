@@ -159,6 +159,42 @@ class PrefinalLayer(nn.Module):
         return x
 
 
+class TDNN(nn.Module):
+    '''
+    This class implements the following topology in kaldi:
+      relu-batchnorm-dropout-layer name=tdnn1 dropout-per-dim-continuous=true dim=1024
+    '''
+
+    def __init__(self, input_dim, hidden_dim):
+        super().__init__()
+        # affine conv1d requires [N, C, T]
+        self.affine = nn.Conv1d(in_channels=input_dim,
+                                out_channels=hidden_dim,
+                                kernel_size=1)
+
+        # tdnn1_batchnorm requires [N, C, T]
+        self.batchnorm = nn.BatchNorm1d(num_features=hidden_dim,
+                                              affine=False)
+        
+        self.dropout = SharedDimScaleDropout(dim=2)
+
+    def forward(self, x, dropout=0.):
+        # input x is of shape: [batch_size, feat_dim, seq_len] = [N, C, T]
+        x = self.affine(x)
+        # at this point, x is [N, C, T]
+        
+        x = F.relu(x)
+        # at this point, x is [N, C, T]
+
+        x = self.batchnorm(x)
+        # at this point, x is [N, C, T]
+
+        x = self.dropout(x, alpha=dropout)
+        # at this point, x is [N, C, T]
+
+        return x
+
+
 class FactorizedTDNN(nn.Module):
     '''
     This class implements the following topology in kaldi:
@@ -223,7 +259,7 @@ class FactorizedTDNN(nn.Module):
 
         # at this point, x is [N, C, T]
 
-        x = self.dropout(x)
+        x = self.dropout(x, alpha=dropout)
 
         if self.linear.kernel_size > 1:
             x = self.bypass_scale * input_x[:, :, self.s:-self.s:self.s] + x

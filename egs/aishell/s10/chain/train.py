@@ -164,6 +164,11 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer, crit
                 'train/current_batch_average_objf',
                 curr_batch_objf / curr_batch_weight,
                 batch_idx + current_epoch * len(dataloader))
+            
+            tf_writer.add_scalar(
+                'train/current_dropout',
+                dropout,
+                batch_idx + current_epoch * len(dataloader))
 
             state_dict = model.state_dict()
             for key, value in state_dict.items():
