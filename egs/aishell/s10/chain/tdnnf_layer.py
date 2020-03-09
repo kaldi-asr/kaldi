@@ -57,7 +57,7 @@ class SharedDimScaleDropout(nn.Module):
         Continuous scaled dropout that is const over chosen dim (usually across time)
         Multiplies inputs by random mask taken from Uniform([1 - 2\alpha, 1 + 2\alpha])
         '''
-        super(SharedDimScaleDropout, self).__init__()
+        super().__init__()
         self.dim = dim
         self.register_buffer('mask', torch.tensor(0.))
 

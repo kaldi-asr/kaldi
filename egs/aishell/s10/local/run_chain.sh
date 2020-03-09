@@ -69,7 +69,7 @@ if [[ $stage -le 3 ]]; then
 fi
 
 train_ivector_dir=
-if [ "$train_ivector" = true ]; then
+if $train_ivector; then
   local/run_ivector_common.sh --stage $stage \
                               --nj $nj \
                               --train-set $train_set \
@@ -201,7 +201,7 @@ fi
 feat_dim=$(cat $dir/egs/info/feat_dim)
 ivector_dim=0
 ivector_period=0
-if [ "$train_ivector" = true ]; then
+if $train_ivector; then
   ivector_dim=$(cat $dir/egs/info/ivector_dim)
   ivector_period=$(cat $train_ivector_dir/ivector_period)
 fi
@@ -259,19 +259,19 @@ if [[ $stage -le 17 ]]; then
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --subsampling-factor-list "$subsampling_factor_list" \
-        --train.use-ddp $use_ddp \
+        --train.cegs-dir $dir/merged_egs \
         --train.ddp.init-method $init_method \
         --train.ddp.multiple-machine $use_multiple_machine \
         --train.ddp.world-size $world_size \
-        --train.dropout-schedule "$dropout_schedule" \
-        --train.cegs-dir $dir/merged_egs \
         --train.den-fst $dir/den.fst \
+        --train.dropout-schedule "$dropout_schedule" \
         --train.egs-left-context $egs_left_context \
         --train.egs-right-context $egs_right_context \
         --train.l2-regularize 5e-5 \
         --train.leaky-hmm-coefficient 0.1 \
         --train.lr $lr \
         --train.num-epochs $num_epochs \
+        --train.use-ddp $use_ddp \
         --train.valid-cegs-scp $dir/egs/valid_diagnostic.scp \
         --train.xent-regularize 0.1 || exit 1;
 fi
@@ -283,11 +283,11 @@ if [[ $stage -le 18 ]]; then
     if [[ -f $dir/$train_dir/inference/$x/nnet_output.scp ]]; then
       echo "$dir/$train_dir/inference/$x/nnet_output.scp already exists! Skip"
     else
-      if [[ "$train_ivector" = true ]]; then
+      if $train_ivector; then
         ivector_scp="exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp"
       fi
       feat_scp="data/${x}_hires/feats.scp"
-      if [[ "$online_cmvn" = true ]]; then
+      if $online_cmvn; then
         apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
             scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
         feat_scp="data/${x}_hires/online_cmvn_feats.scp"
