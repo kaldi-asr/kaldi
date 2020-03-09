@@ -154,14 +154,17 @@ if [ $stage -le 3 ]; then
       hyp_rttm=${test_dir}/rttm.U06
       grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
       echo "Array U06 selected for scoring.."
+      
       if $use_new_rttm_reference == "true"; then
         echo "Use the new RTTM reference."
         mode="$(cut -d'_' -f1 <<<"$datadir")"
         ref_rttm=./chime6_rttm/${mode}_rttm
       fi
-      sed 's/_U0[1-6]//g' $ref_rttm > $ref_rttm.scoring
-      sed 's/_U0[1-6]//g' $hyp_rttm > $hyp_rttm.scoring
-      md-eval.pl -1 -c 0.25 -u ./local/uem_file -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
+
+      sed 's/_U0[1-6].ENH//g' $ref_rttm > $ref_rttm.scoring
+      sed 's/_U0[1-6].ENH//g' $hyp_rttm > $hyp_rttm.scoring
+      cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.tmp
+      md-eval.pl -1 -c 0.25 -u ./local/uem_file.tmp -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
         awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
     fi
   done
@@ -174,7 +177,7 @@ if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
     if $use_new_rttm_reference == "true"; then
       mode="$(cut -d'_' -f1 <<<"$datadir")"
-      ref_rttm=./local/${mode}_rttm
+      ref_rttm=./chime6_rttm/${mode}_rttm
     else
       ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
     fi
