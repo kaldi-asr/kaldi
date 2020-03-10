@@ -19,6 +19,7 @@ online_cmvn=true
 train_ivector=false
 num_epochs=6
 dropout_schedule=0,0@0.20,0.5@0.50,0      # you might set this to 0,0 or 0.5,0.5 to train.
+frame_subsampling_factor=3
 
 . ./path.sh
 . ./cmd.sh
@@ -123,20 +124,23 @@ if [[ $stage -le 12 ]]; then
 fi
 
 if  [[ $stage -le 13 ]]; then
-  echo "$0: creating phone language-model"
-  $mkgraph_cmd $dir/log/make_phone_lm.log \
-    chain-est-phone-lm \
-     "ark:gunzip -c $tree_dir/ali.*.gz | ali-to-phones $tree_dir/final.mdl ark:- ark:- |" \
-     $dir/phone_lm.fst || exit 1
-fi
+  echo "$0: Making Phone LM and denominator and normalization FST"
+  mkdir -p $dir/den_fsts/log
 
-if [[ $stage -le 14 ]]; then
-  echo "creating denominator FST"
-  copy-transition-model $tree_dir/final.mdl $dir/0.trans_mdl
-  cp $tree_dir/tree $dir 
-  $train_cmd $dir/log/make_den_fst.log \
-    chain-make-den-fst $dir/tree $dir/0.trans_mdl $dir/phone_lm.fst \
-       $dir/den.fst $dir/normalization.fst || exit 1
+  # We may later reorganize this.
+  cp $tree_dir/tree $dir/default.tree
+
+  echo "$0: creating phone language-model"
+  $train_cmd $dir/den_fsts/log/make_phone_lm_default.log \
+    chain-est-phone-lm --num-extra-lm-states=2000 \
+       "ark:gunzip -c $tree_dir/ali.*.gz | ali-to-phones $tree_dir/final.mdl ark:- ark:- |" \
+       $dir/den_fsts/default.phone_lm.fst
+  mkdir -p $dir/init
+  copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl
+  echo "$0: creating denominator FST"
+  $train_cmd $dir/den_fsts/log/make_den_fst.log \
+     chain-make-den-fst $dir/default.tree $dir/init/default_trans.mdl $dir/den_fsts/default.phone_lm.fst \
+     $dir/den_fsts/default.den.fst $dir/den_fsts/default.normalization.fst || exit 1;
 fi
 
 # You should know how to calculate your model's left/right context **manually**
@@ -159,44 +163,77 @@ log_level=info # valid values: debug, info, warning
 # true to save network output as kaldi::CompressedMatrix
 # false to save it as kaldi::Matrix<float>
 save_nn_output_as_compressed=false
-
-if [[ $stage -le 15 ]]; then
-  echo "$0: generating egs"
-  steps/nnet3/chain/get_egs.sh \
-    --alignment-subsampling-factor 3 \
-    --cmd "$train_cmd" \
+if [ $stage -le 14 ]; then
+  echo "$0: about to dump raw egs."
+  # Dump raw egs.
+  steps/chain2/get_raw_egs.sh --cmd "$train_cmd" \
+    --lang "default" \
     --online-cmvn $online_cmvn \
     --online-ivector-dir "$train_ivector_dir" \
-    --frame-subsampling-factor 3 \
-    --frames-overlap-per-eg 0 \
-    --frames-per-eg $frames_per_eg \
-    --frames-per-iter $frames_per_iter \
-    --generate-egs-scp true \
     --left-context $egs_left_context \
-    --left-context-initial -1 \
-    --left-tolerance 5 \
     --right-context $egs_right_context \
-    --right-context-final -1 \
-    --right-tolerance 5 \
-    --srand 0 \
-    --stage -10 \
-    $train_data_dir \
-    $dir $lat_dir $dir/egs 
+    --frame-subsampling-factor $frame_subsampling_factor \
+    --alignment-subsampling-factor $frame_subsampling_factor \
+    --frames-per-chunk $frames_per_eg \
+    ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
+if [ $stage -le 15 ]; then
+  echo "$0: about to process egs"
+  steps/chain2/process_egs.sh  --cmd "$train_cmd" \
+      --num-repeats 1 \
+    ${dir}/raw_egs ${dir}/processed_egs
+fi
 
-if [[ $stage -le 16 ]]; then
+if [ $stage -le 16 ]; then
+  echo "$0: about to randomize egs"
+  steps/chain2/randomize_egs.sh --frames-per-job 3000000 \
+    ${dir}/processed_egs ${dir}/egs
+fi
+
+if [[ $stage -le 17 ]]; then
+  echo $dir
+  mkdir -p $dir/configs
+  if $train_ivector; then
+    cat <<EOF > $dir/configs/init.config
+input-node name=ivector dim=100
+input-node name=input dim=40
+output-node name=output input=Append(Offset(input, -1), input, Offset(input, 1), ReplaceIndex(ivector, t, 0))
+EOF
+  else
+    cat <<EOF > $dir/configs/init.config
+input-node name=input dim=40
+output-node name=output input=Append(Offset(input, -1), input, Offset(input, 1))
+EOF
+  fi
+  $train_cmd $dir/log/nnet_init.log \
+    nnet3-init --srand=-2 $dir/configs/init.config $dir/configs/init.raw
+fi
+
+if [ $stage -le 18 ]; then
+    echo "$0: Training pre-conditioning matrix"
+    num_lda_jobs=`find ${dir}/egs/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
+    steps/chain2/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
+        --nj $num_lda_jobs \
+        $dir/configs/init.raw \
+        $dir/egs \
+        $dir || exit 1
+fi
+
+merged_egs_dir=merged_egs_chain2
+if [[ $stage -le 19 ]]; then
   echo "$0: merging egs"
-  mkdir -p $dir/merged_egs
-  num_egs=$(ls -1 $dir/egs/cegs*.ark | wc -l)
 
-  $train_cmd --max-jobs-run $nj JOB=1:$num_egs $dir/merged_egs/log/merge_egs.JOB.log \
-    nnet3-chain-shuffle-egs ark:$dir/egs/cegs.JOB.ark ark:- \| \
+  mkdir -p $dir/$merged_egs_dir
+  num_egs=$(ls -1 $dir/egs/train.*.scp | wc -l)
+
+  $train_cmd --max-jobs-run $nj JOB=1:$num_egs $dir/$merged_egs_dir/log/merge_egs.JOB.log \
+    nnet3-chain-shuffle-egs scp:$dir/egs/train.JOB.scp ark:- \| \
     nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:- \
-      ark,scp:$dir/merged_egs/cegs.JOB.ark,$dir/merged_egs/cegs.JOB.scp || exit 1
+      ark,scp:$dir/$merged_egs_dir/cegs.JOB.ark,$dir/$merged_egs_dir/cegs.JOB.scp || exit 1
 
-  rm $dir/egs/cegs.*.ark
 fi
+
 
 feat_dim=$(cat $dir/egs/info/feat_dim)
 ivector_dim=0
@@ -209,7 +246,7 @@ echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
 output_dim=$(cat $dir/egs/info/num_pdfs)
 
 train_dir=train${train_affix}
-if [[ $stage -le 17 ]]; then
+if [[ $stage -le 20 ]]; then
   echo "$0: training..."
 
   mkdir -p $dir/$train_dir/tensorboard
@@ -255,11 +292,12 @@ if [[ $stage -le 17 ]]; then
         --is-training true \
         --ivector-dim $ivector_dim \
         --kernel-size-list "$kernel_size_list" \
+        --lda-mat-filename "$dir/lda.mat" \
         --log-level $log_level \
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --subsampling-factor-list "$subsampling_factor_list" \
-        --train.cegs-dir $dir/merged_egs \
+        --train.cegs-dir $dir/$merged_egs_dir \
         --train.ddp.init-method $init_method \
         --train.ddp.multiple-machine $use_multiple_machine \
         --train.ddp.world-size $world_size \
@@ -272,11 +310,11 @@ if [[ $stage -le 17 ]]; then
         --train.lr $lr \
         --train.num-epochs $num_epochs \
         --train.use-ddp $use_ddp \
-        --train.valid-cegs-scp $dir/egs/valid_diagnostic.scp \
+        --train.valid-cegs-scp $dir/egs/train_subset.scp \
         --train.xent-regularize 0.1 || exit 1;
 fi
 
-if [[ $stage -le 18 ]]; then
+if [[ $stage -le 21 ]]; then
   echo "inference: computing likelihood"
   for x in test dev; do
     mkdir -p $dir/$train_dir/inference/$x
@@ -306,6 +344,7 @@ if [[ $stage -le 18 ]]; then
         --ivector-dim $ivector_dim \
         --ivector-period $ivector_period \
         --ivector-scp "$ivector_scp" \
+        --lda-mat-filename "$dir/lda.mat" \
         --log-level $log_level \
         --kernel-size-list "$kernel_size_list" \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
@@ -318,7 +357,7 @@ if [[ $stage -le 18 ]]; then
   done
 fi
 
-if [[ $stage -le 19 ]]; then
+if [[ $stage -le 22 ]]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -327,7 +366,7 @@ if [[ $stage -le 19 ]]; then
 fi
 
 
-if [[ $stage -le 20 ]]; then
+if [[ $stage -le 23 ]]; then
   echo "decoding"
   for x in test dev; do
     if [[ ! -f $dir/$train_dir/inference/$x/nnet_output.scp ]]; then
@@ -340,13 +379,13 @@ if [[ $stage -le 20 ]]; then
     ./local/decode.sh \
       --nj $nj \
       $dir/graph \
-      $dir/0.trans_mdl \
+      $dir/init/default_trans.mdl \
       $dir/$train_dir/inference/$x/nnet_output.scp \
       $dir/$train_dir/decode_res/$x
   done
 fi
 
-if [[ $stage -le 21 ]]; then
+if [[ $stage -le 24 ]]; then
   echo "scoring"
 
   for x in test dev; do
