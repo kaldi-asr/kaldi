@@ -13,6 +13,6 @@
 export train_cmd="queue.pl -q all.q --mem 4G"
 export decode_cmd="queue.pl -q all.q --mem 4G"
 export mkgraph_cmd="queue.pl -q all.q --mem 8G"
-export cuda_train_cmd="queue.pl -q v100.q --mem 4G"
-export cuda_inference_cmd="queue.pl -q v100.q --mem 4G"
+export cuda_train_cmd="queue.pl -q g.q --mem 4G"
+export cuda_inference_cmd="queue.pl -q g.q --mem 4G"
 

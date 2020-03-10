@@ -105,6 +105,12 @@ def _set_training_args(parser):
                         dest='l2_regularize',
                         help='l2 regularize',
                         type=float)
+    
+    parser.add_argument('--train.dropout-schedule',
+                        dest='dropout_schedule',
+                        help='dropout schedule',
+                        type=str,
+                        default='0,0@0.20,0.5@0.50,0')
 
     parser.add_argument('--train.xent-regularize',
                         dest='xent_regularize',

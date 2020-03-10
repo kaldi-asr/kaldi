@@ -13,6 +13,7 @@ from common import load_lda_mat
 from tdnnf_layer import FactorizedTDNN
 from tdnnf_layer import OrthonormalLinear
 from tdnnf_layer import PrefinalLayer
+from tdnnf_layer import TDNN
 
 
 def get_chain_model(feat_dim,
@@ -101,13 +102,8 @@ class ChainModel(nn.Module):
         num_layers = len(kernel_size_list)
 
         input_dim = feat_dim * 3 + ivector_dim
-        # tdnn1_affine requires [N, T, C]
-        self.tdnn1_affine = nn.Linear(in_features=input_dim,
-                                      out_features=hidden_dim)
-
-        # tdnn1_batchnorm requires [N, C, T]
-        self.tdnn1_batchnorm = nn.BatchNorm1d(num_features=hidden_dim,
-                                              affine=False)
+        
+        self.tdnn1 = TDNN(input_dim=input_dim, hidden_dim=hidden_dim)
 
         tdnnfs = []
         for i in range(num_layers):
@@ -156,7 +152,7 @@ class ChainModel(nn.Module):
 
         self.register_forward_pre_hook(constrain_orthonormal_hook)
 
-    def forward(self, x):
+    def forward(self, x, dropout=0.):
         # input x is of shape: [batch_size, seq_len, feat_dim] = [N, T, C]
         assert x.ndim == 3
 
@@ -178,25 +174,11 @@ class ChainModel(nn.Module):
 
         # at this point, x is [N, C, T]
 
-        x = x.permute(0, 2, 1)
-
-        # at this point, x is [N, T, C]
-
-        x = self.tdnn1_affine(x)
-
-        # at this point, x is [N, T, C]
-
-        x = F.relu(x)
-
-        x = x.permute(0, 2, 1)
-
-        # at this point, x is [N, C, T]
-
-        x = self.tdnn1_batchnorm(x)
+        x = self.tdnn1(x, dropout=dropout)
 
         # tdnnf requires input of shape [N, C, T]
         for i in range(len(self.tdnnfs)):
-            x = self.tdnnfs[i](x)
+            x = self.tdnnfs[i](x, dropout=dropout)
 
         # at this point, x is [N, C, T]
 

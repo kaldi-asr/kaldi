@@ -11,7 +11,7 @@ lattice_beam=4.0
 max_active=7000 # limit of active tokens
 max_mem=50000000 # approx. limit to memory consumption during minimization in bytes
 min_active=200
-num_threads=20
+num_threads=10
 post_decode_acwt=10  # can be used in 'chain' systems to scale acoustics by 10
 
 . ./path.sh

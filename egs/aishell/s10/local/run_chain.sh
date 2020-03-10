@@ -14,9 +14,11 @@ gmm=tri3
 nnet3_affix=_pybind
 tree_affix= 
 tdnn_affix=
+train_affix=
 online_cmvn=true
 train_ivector=false
 num_epochs=6
+dropout_schedule=0,0@0.20,0.5@0.50,0      # you might set this to 0,0 or 0.5,0.5 to train.
 
 . ./path.sh
 . ./cmd.sh
@@ -67,7 +69,7 @@ if [[ $stage -le 3 ]]; then
 fi
 
 train_ivector_dir=
-if [[ $train_ivector ]]; then
+if $train_ivector; then
   local/run_ivector_common.sh --stage $stage \
                               --nj $nj \
                               --train-set $train_set \
@@ -164,7 +166,7 @@ if [[ $stage -le 15 ]]; then
     --alignment-subsampling-factor 3 \
     --cmd "$train_cmd" \
     --online-cmvn $online_cmvn \
-    --online-ivector-dir $train_ivector_dir \
+    --online-ivector-dir "$train_ivector_dir" \
     --frame-subsampling-factor 3 \
     --frames-overlap-per-eg 0 \
     --frames-per-eg $frames_per_eg \
@@ -197,20 +199,26 @@ if [[ $stage -le 16 ]]; then
 fi
 
 feat_dim=$(cat $dir/egs/info/feat_dim)
-ivector_dim=$(cat $dir/egs/info/ivector_dim)
-ivector_period=$(cat $train_ivector_dir/ivector_period)
+ivector_dim=0
+ivector_period=0
+if $train_ivector; then
+  ivector_dim=$(cat $dir/egs/info/ivector_dim)
+  ivector_period=$(cat $train_ivector_dir/ivector_period)
+fi
+echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
 output_dim=$(cat $dir/egs/info/num_pdfs)
 
+train_dir=train${train_affix}
 if [[ $stage -le 17 ]]; then
   echo "$0: training..."
 
-  mkdir -p $dir/train/tensorboard
+  mkdir -p $dir/$train_dir/tensorboard
   train_checkpoint=
-  if [[ -f $dir/best_model.pt ]]; then
-    train_checkpoint=$dir/best_model.pt
+  if [[ -f $dir/$train_dir/best_model.pt ]]; then
+    train_checkpoint=$dir/$train_dir/best_model.pt
   fi
 
-  INIT_FILE=$dir/ddp_init
+  INIT_FILE=$dir/$train_dir/ddp_init
   rm -f $INIT_FILE # delete old one before starting
   init_method=file://$(readlink -f $INIT_FILE)
   # use '127.0.0.1' for training on a single machine
@@ -231,17 +239,17 @@ if [[ $stage -le 17 ]]; then
   # device_ids="4, 5, 6, 7"
   if $use_multiple_machine ; then
     # suppose you are using Sun GridEngine
-    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/train/logs/job.JOB.log")
+    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/$train_dir/logs/job.JOB.log")
   else
     # TODO: for running with multiple GPUs on a single machine (SGE), 
     #       we should tell SGE how many GPUs we will use on that machine
-    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size $dir/train/logs/train.log")
+    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size $dir/$train_dir/logs/train.log")
   fi
  
   $cuda_train_cmd python3 ./chain/train.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint=${train_checkpoint:-} \
-        --dir $dir \
+        --dir $dir/$train_dir \
         --feat-dim $feat_dim \
         --hidden-dim $hidden_dim \
         --is-training true \
@@ -251,18 +259,19 @@ if [[ $stage -le 17 ]]; then
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --subsampling-factor-list "$subsampling_factor_list" \
-        --train.use-ddp $use_ddp \
+        --train.cegs-dir $dir/merged_egs \
         --train.ddp.init-method $init_method \
         --train.ddp.multiple-machine $use_multiple_machine \
         --train.ddp.world-size $world_size \
-        --train.cegs-dir $dir/merged_egs \
         --train.den-fst $dir/den.fst \
+        --train.dropout-schedule "$dropout_schedule" \
         --train.egs-left-context $egs_left_context \
         --train.egs-right-context $egs_right_context \
         --train.l2-regularize 5e-5 \
         --train.leaky-hmm-coefficient 0.1 \
         --train.lr $lr \
         --train.num-epochs $num_epochs \
+        --train.use-ddp $use_ddp \
         --train.valid-cegs-scp $dir/egs/valid_diagnostic.scp \
         --train.xent-regularize 0.1 || exit 1;
 fi
@@ -270,26 +279,33 @@ fi
 if [[ $stage -le 18 ]]; then
   echo "inference: computing likelihood"
   for x in test dev; do
-    mkdir -p $dir/inference/$x
-    if [[ -f $dir/inference/$x/nnet_output.scp ]]; then
-      echo "$dir/inference/$x/nnet_output.scp already exists! Skip"
+    mkdir -p $dir/$train_dir/inference/$x
+    if [[ -f $dir/$train_dir/inference/$x/nnet_output.scp ]]; then
+      echo "$dir/$train_dir/inference/$x/nnet_output.scp already exists! Skip"
     else
-      apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
-          scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
-      best_epoch=$(cat $dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
-      inference_checkpoint=$dir/epoch-${best_epoch}.pt
-      $cuda_inference_cmd $dir/inference/logs/${x}.log \
+      if $train_ivector; then
+        ivector_scp="exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp"
+      fi
+      feat_scp="data/${x}_hires/feats.scp"
+      if $online_cmvn; then
+        apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
+            scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+        feat_scp="data/${x}_hires/online_cmvn_feats.scp"
+      fi
+      best_epoch=$(cat $dir/$train_dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
+      inference_checkpoint=$dir/$train_dir/epoch-${best_epoch}.pt
+      $cuda_inference_cmd --gpu 1 $dir/$train_dir/inference/logs/${x}.log \
         python3 ./chain/inference.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint $inference_checkpoint \
-        --dir $dir/inference/$x \
+        --dir $dir/$train_dir/inference/$x \
         --feat-dim $feat_dim \
-        --feats-scp data/${x}_hires/online_cmvn_feats.scp \
+        --feats-scp "$feat_scp" \
         --hidden-dim $hidden_dim \
         --is-training false \
         --ivector-dim $ivector_dim \
         --ivector-period $ivector_period \
-        --ivector-scp exp/nnet3${nnet3_affix}/ivectors_${x}_hires/ivector_online.scp \
+        --ivector-scp "$ivector_scp" \
         --log-level $log_level \
         --kernel-size-list "$kernel_size_list" \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
@@ -314,7 +330,7 @@ fi
 if [[ $stage -le 20 ]]; then
   echo "decoding"
   for x in test dev; do
-    if [[ ! -f $dir/inference/$x/nnet_output.scp ]]; then
+    if [[ ! -f $dir/$train_dir/inference/$x/nnet_output.scp ]]; then
       echo "exp/chain/inference/$x/nnet_output.scp does not exist!"
       echo "Please run inference.py first"
       exit 1
@@ -325,8 +341,8 @@ if [[ $stage -le 20 ]]; then
       --nj $nj \
       $dir/graph \
       $dir/0.trans_mdl \
-      $dir/inference/$x/nnet_output.scp \
-      $dir/decode_res/$x
+      $dir/$train_dir/inference/$x/nnet_output.scp \
+      $dir/$train_dir/decode_res/$x
   done
 fi
 
@@ -337,10 +353,10 @@ if [[ $stage -le 21 ]]; then
     ./local/score.sh --cmd "$decode_cmd" \
       data/${x}_hires \
       $dir/graph \
-      $dir/decode_res/$x || exit 1
+      $dir/$train_dir/decode_res/$x || exit 1
   done
 
   for x in test dev; do
-    head $dir/decode_res/$x/scoring_kaldi/best_*
+    head $dir/$train_dir/decode_res/$x/scoring_kaldi/best_*
   done
 fi
