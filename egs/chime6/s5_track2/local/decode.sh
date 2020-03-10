@@ -4,18 +4,25 @@
 # Feature extraction -> SAD -> Diarization -> ASR
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
-#            2019  Desh Raj, David Snyder, Ashish Arora
+#            2019  Desh Raj, David Snyder, Ashish Arora, Zhaoheng Ni
 # Apache 2.0
 
 # Begin configuration section.
 nj=8
-decode_nj=10
 stage=0
 sad_stage=0
+score_sad=true
 diarizer_stage=0
 decode_diarize_stage=0
 score_stage=0
+
 enhancement=beamformit
+
+# option to use the new RTTM reference for sad and diarization
+use_new_rttm_reference=false
+if $use_new_rttm_reference == "true"; then
+  git clone https://github.com/nateanl/chime6_rttm
+fi
 
 # chime5 main directory path
 # please change the path accordingly
@@ -93,6 +100,7 @@ if [ $stage -le 1 ]; then
       "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
       ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb
   done
+
 fi
 
 if [ $stage -le 2 ]; then
@@ -100,7 +108,7 @@ if [ $stage -le 2 ]; then
   # want to store MFCC features.
   mfccdir=mfcc
   for x in ${test_sets}; do
-    steps/make_mfcc.sh --nj $decode_nj --cmd "$train_cmd" \
+    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
       --mfcc-config conf/mfcc_hires.conf \
       data/$x exp/make_mfcc/$x $mfccdir
   done
@@ -121,18 +129,44 @@ if [ $stage -le 3 ]; then
       exit 0
     fi
     # Perform segmentation
-    local/segmentation/detect_speech_activity.sh --nj $decode_nj --stage $sad_stage \
+    local/segmentation/detect_speech_activity.sh --nj $nj --stage $sad_stage \
       $test_set $sad_nnet_dir mfcc $sad_work_dir \
       data/${datadir} || exit 1
 
-    mv data/${datadir}_seg data/${datadir}_${nnet_type}_seg
-    mv data/${datadir}/{segments.bak,utt2spk.bak} data/${datadir}_${nnet_type}_seg
+    test_dir=data/${datadir}_${nnet_type}_seg
+    mv data/${datadir}_seg ${test_dir}/
+    cp data/${datadir}/{segments.bak,utt2spk.bak} ${test_dir}/
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
     # step.
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-      data/${datadir}_${nnet_type}_seg/utt2spk data/${datadir}_${nnet_type}_seg/segments \
-      data/${datadir}_${nnet_type}_seg/rttm
+      ${test_dir}/utt2spk ${test_dir}/segments ${test_dir}/rttm
+
+    if [ $score_sad == "true" ]; then
+      echo "Scoring $datadir.."
+      # We first generate the reference RTTM from the backed up utt2spk and segments
+      # files.
+      ref_rttm=${test_dir}/ref_rttm
+      steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
+        ${test_dir}/segments.bak ${test_dir}/ref_rttm
+
+      # To score, we select just U06 segments from the hypothesis RTTM.
+      hyp_rttm=${test_dir}/rttm.U06
+      grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
+      echo "Array U06 selected for scoring.."
+      
+      if $use_new_rttm_reference == "true"; then
+        echo "Use the new RTTM reference."
+        mode="$(cut -d'_' -f1 <<<"$datadir")"
+        ref_rttm=./chime6_rttm/${mode}_rttm
+      fi
+
+      sed 's/_U0[1-6].ENH//g' $ref_rttm > $ref_rttm.scoring
+      sed 's/_U0[1-6].ENH//g' $hyp_rttm > $hyp_rttm.scoring
+      cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.tmp
+      md-eval.pl -1 -c 0.25 -u ./local/uem_file.tmp -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
+        awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
+    fi
   done
 fi
 
@@ -141,7 +175,14 @@ fi
 #######################################################################
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
-    local/diarize.sh --nj 10 --cmd "$train_cmd" --stage $diarizer_stage \
+    if $use_new_rttm_reference == "true"; then
+      mode="$(cut -d'_' -f1 <<<"$datadir")"
+      ref_rttm=./chime6_rttm/${mode}_rttm
+    else
+      ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
+    fi
+    local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
+      --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
       exp/${datadir}_${nnet_type}_seg_diarization
@@ -156,7 +197,7 @@ if [ $stage -le 5 ]; then
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang \
       exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
-      data/${datadir}_diarized
+      data/${datadir}_diarized || exit 1
   done
 fi
 
