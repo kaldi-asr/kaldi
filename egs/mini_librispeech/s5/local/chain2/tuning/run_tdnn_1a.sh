@@ -99,8 +99,9 @@ lat_dir=exp/chain2${nnet3_affix}/${gmm}_${train_set}_sp_lats
 dir=exp/chain2${nnet3_affix}/tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
-for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
+for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
     $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
@@ -278,6 +279,7 @@ if [ $stage -le 17 ]; then
     --frame-subsampling-factor $frame_subsampling_factor \
     --alignment-subsampling-factor $frame_subsampling_factor \
     --frames-per-chunk ${chunk_width} \
+    --online-ivector-dir ${train_ivector_dir}
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
