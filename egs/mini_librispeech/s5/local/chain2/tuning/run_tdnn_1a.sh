@@ -1,8 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Copyright 2019 Srikanth Madikeri (Idiap Research Institute)
-# 
-# This script is a modification of local/chain/run_tdnn.sh adapted to the chain2 recipes.
+# This is a basic TDNN experiment.
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+# exp/chain/tdnn1a_sp: num-iters=6 nj=2..5 num-params=7.0M dim=40+100->2309 combine=-0.072->-0.069 xent:train/valid[3,5,final]=(-2.10,-1.62,-1.48/-2.26,-1.85,-1.77) logprob:train/valid[3,5,final]=(-0.096,-0.069,-0.060/-0.124,-0.107,-0.104)
+
+# local/chain/compare_wer.sh --online exp/chain/tdnn1a_sp
+# System                tdnn1a_sp
+#WER dev_clean_2 (tgsmall)      18.58
+#             [online:]         18.49
+#WER dev_clean_2 (tglarge)      13.35
+#             [online:]         13.47
+# Final train prob        -0.0596
+# Final valid prob        -0.1036
+# Final train prob (xent)   -1.4843
+# Final valid prob (xent)   -1.7723
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -14,19 +26,19 @@ decode_nj=10
 train_set=train_clean_5
 test_sets=dev_clean_2
 gmm=tri3b
-srand=0
 nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=2c   # affix for the TDNN directory name
+affix=1a   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
+decode_iter=
 
-
+# training options
 # training chunk-options
-chunk_width=140
+chunk_width=140,100,160
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 xent_regularize=0.1
 bottom_subsampling_factor=1  # I'll set this to 3 later, 1 is for compatibility with a broken ru.
@@ -45,6 +57,14 @@ egs_extra_right_context=5
 # to group multiple speaker together in some cases).
 chunks_per_group=4
 
+# training options
+srand=0
+remove_egs=true
+reporting_email=
+
+#decode options
+test_online_decoding=true  # if true, it will run the last decoding stage.
+
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -53,28 +73,30 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
-# if ! cuda-compiled; then
-#   cat <<EOF && exit 1
-# This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
-# If you want to use GPUs (and have them), go to src/, and configure and make on a machine
-# where "nvcc" is installed.
-# EOF
-# fi
-
-if [ $stage -le 9 ]; then
-    local/chain2/data_prep_common.sh  \
-             --train-set $train_set \
-             --gmm $gmm  || exit 1;
+if ! cuda-compiled; then
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
 fi
+
+# The iVector-extraction and feature-dumping parts are the same as the standard
+# nnet3 setup, and you can skip them by setting "--stage 11" if you have already
+# run those things.
+local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --nnet3-affix "$nnet3_affix" || exit 1;
 
 # Problem: We have removed the "train_" prefix of our training set in
 # the alignment directory names! Bad!
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chaina/tree_sp${tree_affix:+_$tree_affix}
+tree_dir=exp/chain2${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
-lat_dir=exp/chaina/${gmm}_${train_set}_sp_lats
-dir=exp/chaina/tdnn${affix}_sp
+lat_dir=exp/chain2${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain2${nnet3_affix}/tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 
@@ -151,9 +173,15 @@ if [ $stage -le 14 ]; then
 
   echo "$0: creating top model"
   cat <<EOF > $dir/configs/default.xconfig
-  input name=input dim=40
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
   # the first splicing is moved before the lda layer, so no splicing here
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2) affine-transform-file=$dir/configs/lda.mat
   relu-renorm-layer name=tdnn1 dim=512 input=Append(-2,-1,0,1,2)
   relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
   relu-renorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
@@ -249,7 +277,7 @@ if [ $stage -le 17 ]; then
     --right-context $egs_right_context \
     --frame-subsampling-factor $frame_subsampling_factor \
     --alignment-subsampling-factor $frame_subsampling_factor \
-    --frames-per-chunk 140,100,160 \
+    --frames-per-chunk ${chunk_width} \
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
@@ -298,7 +326,7 @@ if [ $stage -le 22 ]; then
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
     --max-param-change 2.0 \
     --num-jobs-initial 2 --num-jobs-final 5 \
-     $dir/egs $dir
+     $dir/egs $dir || exit 1;
 fi
 
 if [ $stage -le 23 ]; then
@@ -310,23 +338,29 @@ if [ $stage -le 23 ]; then
 fi
 
 if [ $stage -le 24 ]; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   # Do the speaker-dependent decoding pass
   test_sets=dev_clean_2
   for data in $test_sets; do
+    (
       nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --extra-left-context $egs_left_context \
           --extra-right-context $egs_right_context \
-          --frames-per-chunk 150 \
           --extra-left-context-initial 0 \
           --extra-right-context-final 0 \
-          --nj $nspk --cmd "$decode_cmd"   \
+          --frames-per-chunk $frames_per_chunk \
+          --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
+          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
           $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_test_{tgsmall,tglarge} \
        data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
+    ) || touch $dir/.error &
   done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
 exit 0;
