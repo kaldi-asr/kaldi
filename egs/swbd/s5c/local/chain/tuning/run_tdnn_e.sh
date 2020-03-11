@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _e is as _d but making it more similar in configuration to _b.
 # (turns out b was better than a after all-- the egs' likelihoods had to

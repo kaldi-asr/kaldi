@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2016   Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # Copyright 2014-2015   Vimal Manohar
@@ -107,7 +107,7 @@ cp $lang/phones.txt $dir || exit 1;
 nj=$(cat $denlatdir/num_jobs) || exit 1;
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 # Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \

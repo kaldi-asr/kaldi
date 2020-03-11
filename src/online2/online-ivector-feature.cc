@@ -67,6 +67,15 @@ void OnlineIvectorExtractionInfo::Init(
   this->Check();
 }
 
+int32 OnlineIvectorExtractionInfo::ExpectedFeatureDim() const {
+  int32 num_splice = 1 + splice_opts.left_context + splice_opts.right_context,
+      full_dim = lda_mat.NumCols();
+  if (!(full_dim % num_splice == 0 || full_dim % num_splice == 1)){
+    KALDI_WARN << "Error getting expected feature dimension: full-dim = "
+               << full_dim << ", num-splice = " << num_splice;
+  }
+  return full_dim / num_splice;
+}
 
 void OnlineIvectorExtractionInfo::Check() const {
   KALDI_ASSERT(global_cmvn_stats.NumRows() == 2);
@@ -519,6 +528,57 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback(
   }
 }
 
+template <typename FST>
+void OnlineSilenceWeighting::ComputeCurrentTraceback(
+    const LatticeIncrementalOnlineDecoderTpl<FST> &decoder) {
+  int32 num_frames_decoded = decoder.NumFramesDecoded(),
+      num_frames_prev = frame_info_.size();
+  // note, num_frames_prev is not the number of frames previously decoded,
+  // it's the generally-larger number of frames that we were requested to
+  // provide weights for.
+  if (num_frames_prev < num_frames_decoded)
+    frame_info_.resize(num_frames_decoded);
+  if (num_frames_prev > num_frames_decoded &&
+      frame_info_[num_frames_decoded].transition_id != -1)
+    KALDI_ERR << "Number of frames decoded decreased";  // Likely bug
+
+  if (num_frames_decoded == 0)
+    return;
+  int32 frame = num_frames_decoded - 1;
+  bool use_final_probs = false;
+  typename LatticeIncrementalOnlineDecoderTpl<FST>::BestPathIterator iter =
+      decoder.BestPathEnd(use_final_probs, NULL);
+  while (frame >= 0) {
+    LatticeArc arc;
+    arc.ilabel = 0;
+    while (arc.ilabel == 0)  // the while loop skips over input-epsilons
+      iter = decoder.TraceBackBestPath(iter, &arc);
+    // note, the iter.frame values are slightly unintuitively defined,
+    // they are one less than you might expect.
+    KALDI_ASSERT(iter.frame == frame - 1);
+
+    if (frame_info_[frame].token == iter.tok) {
+      // we know that the traceback from this point back will be identical, so
+      // no point tracing back further.  Note: we are comparing memory addresses
+      // of tokens of the decoder; this guarantees it's the same exact token,
+      // because tokens, once allocated on a frame, are only deleted, never
+      // reallocated for that frame.
+      break;
+    }
+
+    if (num_frames_output_and_correct_ > frame)
+      num_frames_output_and_correct_ = frame;
+
+    frame_info_[frame].token = iter.tok;
+    frame_info_[frame].transition_id = arc.ilabel;
+    frame--;
+    // leave frame_info_.current_weight at zero for now (as set in the
+    // constructor), reflecting that we haven't already output a weight for that
+    // frame.
+  }
+}
+
+
 // Instantiate the template OnlineSilenceWeighting::ComputeCurrentTraceback().
 template
 void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
@@ -526,6 +586,13 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
 template
 void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFst>(
     const LatticeFasterOnlineDecoderTpl<fst::GrammarFst> &decoder);
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
+    const LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFst>(
+    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFst> &decoder);
+
 
 void OnlineSilenceWeighting::GetDeltaWeights(
     int32 num_frames_ready, int32 first_decoder_frame,

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2016 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
@@ -108,7 +108,7 @@ for f in $data/feats.scp $alidir/ali.1.gz $alidir/final.mdl $alidir/tree $extra_
 done
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 mkdir -p $dir/log $dir/info
 cp $alidir/tree $dir

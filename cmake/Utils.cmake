@@ -36,6 +36,10 @@ macro(add_kaldi_test_executable)
         cmake_parse_arguments(kaldi_test_exe "" "NAME" "SOURCES;DEPENDS" ${ARGN})
         add_executable(${kaldi_test_exe_NAME} ${kaldi_test_exe_SOURCES})
         target_link_libraries(${kaldi_test_exe_NAME} PRIVATE ${kaldi_test_exe_DEPENDS})
+        add_test(
+            NAME ${kaldi_test_exe_NAME}
+            COMMAND ${kaldi_test_exe_NAME}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
         # list(APPEND KALDI_TEST_EXECUTABLES ${kaldi_test_exe_NAME})
         install(TARGETS ${kaldi_test_exe_NAME} RUNTIME DESTINATION testbin)
 

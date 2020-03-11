@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2017  Vimal Manohar
 #  Apache 2.0.
@@ -264,7 +264,7 @@ if [ $stage -le -1 ]; then
     cat $dir/ali.$n.scp
   done | sort -k1,1 > $dir/ali.scp || exit 1
 
-  utils/split_data.sh $data $nj || exit 1;
+  utils/split_data.sh $data $nj
   $cmd JOB=1:$nj $dir/log/copy_alignments.JOB.log \
     copy-int-vector "scp:utils/filter_scp.pl $data/split$nj/JOB/utt2spk $dir/ali.scp |" \
     "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1

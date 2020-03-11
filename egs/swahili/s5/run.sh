@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # initialization PATH
 . ./path.sh  || die "path.sh expected";

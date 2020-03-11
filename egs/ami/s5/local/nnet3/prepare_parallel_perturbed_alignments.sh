@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script creates the parallel data dir based on ihm data,
 # creates speed perturbed versions of this parallel data

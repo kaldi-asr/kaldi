@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3x is as _3s (and continuing the same kind of experimentation as in 3t->3w)...
 #  increasing --jesus-forward-output-dim from 1500 to 2000.

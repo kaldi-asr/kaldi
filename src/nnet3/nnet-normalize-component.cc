@@ -182,6 +182,7 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   void *memo,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("NormalizeComponent::Backprop");
   if (!in_deriv)
     return;
   if (block_dim_ != input_dim_) {
@@ -472,6 +473,7 @@ void BatchNormComponent::Backprop(
     void *memo_in,
     Component *to_update,  // unused
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("BatchNormComponent::Backprop");
 
   KALDI_ASSERT(SameDim(out_value, out_deriv) &&
                SameDim(out_value, *in_deriv) &&

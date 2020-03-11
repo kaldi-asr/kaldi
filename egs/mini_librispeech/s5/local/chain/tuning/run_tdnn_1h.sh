@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1h is as 1g but a re-tuned model based on resnet-style TDNN-F layers with
 # bypass connections.  Below, 1h2 and 1h3 are just reruns of 1h with different

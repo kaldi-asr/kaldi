@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Installs chainer with nn-gev dependencies
 # miniconda should be installed in $HOME/miniconda3/ 

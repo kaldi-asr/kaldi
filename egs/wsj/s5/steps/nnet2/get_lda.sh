@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # This script, which will generally be called from other neural-net training
@@ -77,7 +77,7 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs

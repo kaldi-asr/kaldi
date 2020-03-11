@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017  Intellisist, Inc. (Author: Navneeth K)
 #           2017  Xiaohui Zhang

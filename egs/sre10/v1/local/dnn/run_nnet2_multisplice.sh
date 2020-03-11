@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is based on run_nnet2_multisplice.sh in
 # egs/fisher_english/s5/local/online. It has been modified

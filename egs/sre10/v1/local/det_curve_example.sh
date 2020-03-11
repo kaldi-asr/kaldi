@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This shell-script is just to show how you would plot det curves
 # using DETWare.

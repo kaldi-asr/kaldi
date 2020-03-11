@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is a modified version of run_tdnn_5o.sh. It uses online-cmn
 # for input features, both for ivector extractor and the chain model.

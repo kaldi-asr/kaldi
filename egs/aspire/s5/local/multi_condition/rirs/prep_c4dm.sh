@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015  Johns Hopkins University (author: Vijayaditya Peddinti)
 # Apache 2.0
 # Room impulse responses from Center for Digital Music, Queen Mary University of London

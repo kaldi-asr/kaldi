@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2014 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
@@ -76,7 +76,7 @@ done
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 cp $alidir/tree $dir

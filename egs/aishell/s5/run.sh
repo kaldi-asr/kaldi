@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017 Beijing Shell Shell Tech. Co. Ltd. (Authors: Hui Bu)
 #           2017 Jiayu Du
@@ -141,5 +141,6 @@ local/chain/run_tdnn.sh
 
 # getting results (see RESULTS file)
 for x in exp/*/decode_test; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null
+for x in exp/*/*/decode_test; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null
 
 exit 0;

@@ -17,7 +17,7 @@ SCTK_VERSION ?= $(SCTK_VERSION_PARTIAL)-20151007-1312Z
 SPH2PIPE_VERSION = v2.5
 
 # Default features configured for OpenFST; can be overridden in the make command line.
-OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts
+OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts --enable-lookahead-fsts --with-pic
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
@@ -77,12 +77,12 @@ openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 # "file too big".
 ifeq ($(OSTYPE),cygwin)
   # Note: OSTYPE path is probably dead for latest cygwin64 (installed on 2016/11/11).
-  openfst_add_CXXFLAGS = -O -Wa,-mbig-obj
+  openfst_add_CXXFLAGS = -g -O2 -Wa,-mbig-obj
 else ifeq ($(OS),Windows_NT)
   # This new OS path is confirmed working on Windows 10 / Cygwin64.
-  openfst_add_CXXFLAGS = -O -Wa,-mbig-obj
+  openfst_add_CXXFLAGS = -g -O2 -Wa,-mbig-obj
 else
-  openfst_add_CXXFLAGS =
+  openfst_add_CXXFLAGS = -g -O2
 endif
 
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs
@@ -98,7 +98,7 @@ openfst-$(OPENFST_VERSION).tar.gz:
 		cp -p "$(DOWNLOAD_DIR)/openfst-$(OPENFST_VERSION).tar.gz" .; \
 	else \
 		$(WGET) -T 10 -t 1 http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
-		$(WGET) -T 10 -t 3 https://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz; \
+		$(WGET) -T 10 -t 3 -c https://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz; \
 	fi
 
 sclite: sclite_compiled
@@ -143,7 +143,7 @@ sph2pipe_$(SPH2PIPE_VERSION).tar.gz:
 		cp -p "$(DOWNLOAD_DIR)/sph2pipe_$(SPH2PIPE_VERSION).tar.gz" .; \
 	else \
 		$(WGET) -T 10 -t 3 https://www.openslr.org/resources/3/sph2pipe_$(SPH2PIPE_VERSION).tar.gz || \
-		$(WGET) -T 10 https://sourceforge.net/projects/kaldi/files/sph2pipe_$(SPH2PIPE_VERSION).tar.gz; \
+		$(WGET) -T 10 -c https://sourceforge.net/projects/kaldi/files/sph2pipe_$(SPH2PIPE_VERSION).tar.gz; \
 	fi
 
 .PHONY: cub

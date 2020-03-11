@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey)
 # Copyright   2017  Hossein Hadian
@@ -107,7 +107,7 @@ for f in $data/feats.scp $data/allowed_lengths.txt \
 done
 
 sdata=$data/split$nj
-utils/split_data.sh $data $nj || exit 1;
+utils/split_data.sh $data $nj
 
 mkdir -p $dir/log $dir/info
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1e is as 1d, but reducing decay-time from 40 to 20.
 

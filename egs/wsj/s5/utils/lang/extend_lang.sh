@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright     2018  Johns Hopkins University (Author: Daniel Povey);
 #               2019  Dongji Gao
 

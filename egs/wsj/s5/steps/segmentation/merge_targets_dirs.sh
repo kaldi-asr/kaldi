@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
@@ -53,7 +53,7 @@ targets_dirs=( $@ )  # read the remaining arguments into an array
 unset targets_dirs[${#targets_dirs[@]}-1]  # 'pop' the last argument which is odir
 num_sources=${#targets_dirs[@]}  # number of targets to combine
 
-utils/data/split_data.sh --per-utt $data $nj || exit 1;
+utils/data/split_data.sh --per-utt $data $nj
 sdata=${data}/split${nj}utt
 
 frame_subsampling_factor=1

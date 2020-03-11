@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Guoguo Chen
 #           2016  Vimal Manohar
@@ -337,7 +337,7 @@ if [ $stage -le 8 ]; then
   # Get TF-IDF for the reference documents.
   echo $nj > $dir/docs/num_jobs
 
-  utils/split_data.sh $data_uniform_seg $nj || exit 1;
+  utils/split_data.sh $data_uniform_seg $nj
 
   mkdir -p $dir/docs/split$nj/
 

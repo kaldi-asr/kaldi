@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # testing the graph creation (verifies we get the same answer as with HTK)
 # needs the model-list.

@@ -188,7 +188,7 @@ class DiagGmm {
 
   /// Mutators for both float or double
   template<class Real>
-  void SetWeights(const VectorBase<Real> &w);    ///< Set mixure weights
+  void SetWeights(const VectorBase<Real> &w);    ///< Set mixture weights
 
   /// Use SetMeans to update only the Gaussian means (and not variances)
   template<class Real>

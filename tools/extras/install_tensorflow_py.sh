@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 export HOME=$PWD/tensorflow_build/
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is copied from librispeech/s5
 # In a previous version, pitch is used with hires mfcc, however,

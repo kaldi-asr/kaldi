@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
             // of scope anyway.
           }
           fst_writer.Write(key, fst);
-        } catch (const std::runtime_error e) {
+        } catch (const std::runtime_error &e) {
           KALDI_WARN << "Error during determinization for key " << key;
         }
       }

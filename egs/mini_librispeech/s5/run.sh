@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Change this location to somewhere where you want to put the data.
 data=./corpus/
@@ -196,7 +196,7 @@ fi
 
 # Train a chain model
 if [ $stage -le 9 ]; then
-  local/chain/run_tdnn.sh
+  local/chain2/run_tdnn.sh
 fi
 
 # local/grammar/simple_demo.sh

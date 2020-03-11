@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 7p is as 7o but adding the option "--constrained false" to --egs.opts.
 # This is the new 'unconstrained egs' code where it uses the e2e examples.

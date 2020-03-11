@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #  Apache 2.0.
 
@@ -90,10 +90,10 @@ cp $lang/phones.txt $dir || exit 1;
 echo $nj >$dir/num_jobs
 if [ -f $alidir/per_utt ]; then
   sdata=$data/split${nj}utt
-  utils/split_data.sh --per-utt $data $nj || exit 1;
+  utils/split_data.sh --per-utt $data $nj
 else
   sdata=$data/split$nj
-  utils/split_data.sh $data $nj || exit 1;
+  utils/split_data.sh $data $nj
 fi
 
 # Set up features.

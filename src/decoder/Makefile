@@ -7,7 +7,8 @@ TESTFILES =
 
 OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-decoder.o \
    lattice-faster-online-decoder.o simple-decoder.o faster-decoder.o \
-   decoder-wrappers.o grammar-fst.o decodable-matrix.o
+   decoder-wrappers.o grammar-fst.o decodable-matrix.o \
+   lattice-incremental-decoder.o lattice-incremental-online-decoder.o
 
 LIBNAME = kaldi-decoder
 

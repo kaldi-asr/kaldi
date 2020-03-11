@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # To be run from one directory above this script.
 # Creat text, utt2spk, spk2utt, images.scp, and feats.scp for test and train.

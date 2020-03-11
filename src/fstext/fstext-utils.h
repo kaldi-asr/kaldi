@@ -392,8 +392,6 @@ void RhoCompose(const Fst<Arc> &fst1,
                 typename Arc::Label rho_label,
                 MutableFst<Arc> *fst);
 
-
-
 /** This function returns true if, in the semiring of the FST, the sum (within
     the semiring) of all the arcs out of each state in the FST is one, to within
     delta.  After MakeStochasticFst, this should be true (for a connected FST).
