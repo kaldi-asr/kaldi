@@ -99,10 +99,7 @@ void DenominatorComputation::AlphaFirstFrame() {
                                    den_graph_.NumStates(),
                                    num_sequences_,
                                    num_sequences_);
-  // TODO (possible): It would be more efficient here if we implemented a
-  // CopyColsFromVec function in class CuMatrix.
-  alpha_mat.SetZero();
-  alpha_mat.AddVecToCols(1.0, den_graph_.InitialProbs(), 0.0);
+  alpha_mat.CopyColsFromVec(den_graph_.InitialProbs());
 }
 
 
