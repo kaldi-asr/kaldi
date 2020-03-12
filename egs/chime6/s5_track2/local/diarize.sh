@@ -1,5 +1,7 @@
-#!/usr/bin/env bash
-# Copyright   2019   David Snder
+#!/bin/bash
+# Copyright   2019   David Snyder
+#             2020   Desh Raj
+
 # Apache 2.0.
 #
 # This script takes an input directory that has a segments file (and
@@ -20,7 +22,7 @@ if [ $# != 3 ]; then
   echo "Options: "
   echo "  --nj <nj>                                        # number of parallel jobs."
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --ref-rttm <path to reference RTTM>              # if present, used to score output RTTM."
+  echo "  --ref_rttm ./local/dev_rttm                      # the location of the reference RTTM file"
   exit 1;
 fi
 
@@ -85,29 +87,33 @@ if [ $stage -le 4 ]; then
   echo "$0: wrote RTTM to output directory ${out_dir}"
 fi
 
+hyp_rttm=${out_dir}/rttm
+
 # For scoring the diarization system, we use the same tool that was
 # used in the DIHARD II challenge. This is available at:
 # https://github.com/nryant/dscore
+# Note that the scoring takes a single reference RTTM and a single
+# hypothesis RTTM.
 if [ $stage -le 5 ]; then
   # If a reference RTTM file is not provided, we create one using the backed up
   # segments and utt2spk files in the original data directory.
-  if [ -z $ref_rttm ]; then
-    ref_rttm=data/$name/rttm
-    echo "$0: preparing ref RTTM file from segments and utt2spk"
+  if [ -z "$ref_rttm" ]; then
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/$name/utt2spk.bak \
-      data/$name/segments.bak $ref_rttm
+      data/$name/segments.bak data/$name/rttm
+    ref_rttm=data/$name/rttm
   fi
-  grep 'U06' $ref_rttm > ${ref_rttm}.U06
-  ref_rttm_path=$(readlink -f ${ref_rttm}.U06)
-  out_rttm_path=$(readlink -f $out_dir/rttm)
+  echo "Diarization results for "${name}
   if ! [ -d dscore ]; then
     git clone https://github.com/nryant/dscore.git || exit 1;
     cd dscore
     python -m pip install --user -r requirements.txt
     cd ..
   fi
-  cd dscore
-  python score.py -r $ref_rttm_path -s $out_rttm_path
-  cd ..
+  sed 's/_U0[1-6]\.ENH//g' $ref_rttm > $ref_rttm.scoring
+  sed 's/_U0[1-6]\.ENH//g' $hyp_rttm > $hyp_rttm.scoring
+  ref_rttm_path=$(readlink -f ${ref_rttm}.scoring)
+  hyp_rttm_path=$(readlink -f ${hyp_rttm}.scoring)
+  cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.scoring
+  cd dscore && python score.py -u ../local/uem_file.scoring -r $ref_rttm_path \
+    -s $hyp_rttm_path && cd .. || exit 1;
 fi
-

@@ -1840,6 +1840,11 @@ inline __device__ void myAtomicReduce(float *address, float val, TransReduceOp<S
   myAtomicAdd(address, val);
 }
 
+#if CUDA_VERSION < 9000
+// if not CUDA 9+, no need for syncwarp
+inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
+#endif
+
 // Reduce a matrix 'data' to a row vector 'dots'
 template <EnumTransformReduce TransReduceType, typename Real, int unroll_count>
 __global__ void _strided_reduction_fused_kernel(Real * __restrict__ dots, const Real * __restrict__ data,
