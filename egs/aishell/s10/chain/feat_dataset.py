@@ -154,11 +154,9 @@ class FeatDatasetCollateFunc:
             # now add model left and right context
             feat = _add_model_left_right_context(feat, self.model_left_context,
                                                  self.model_right_context)
-            feat = splice_feats(feat)
 
             # now we split feat to chunk, then we can do decode by chunk
-            input_num_frames = (feat.shape[0] + 2
-                                - self.model_left_context - self.model_right_context)
+            input_num_frames = feat.shape[0] - self.model_left_context - self.model_right_context
             for i in range(0, output_len, subsampled_frames_per_chunk):
                 # input len:418 -> output len:140 -> output chunk:[0, 17, 34, 51, 68, 85, 102, 119, 136]
                 first_output = i * self.frame_subsampling_factor

@@ -20,6 +20,7 @@ train_ivector=false
 num_epochs=6
 dropout_schedule=0,0@0.20,0.5@0.50,0      # you might set this to 0,0 or 0.5,0.5 to train.
 frame_subsampling_factor=3
+feat_type=lda
 
 . ./path.sh
 . ./cmd.sh
@@ -175,6 +176,7 @@ if [ $stage -le 14 ]; then
     --frame-subsampling-factor $frame_subsampling_factor \
     --alignment-subsampling-factor $frame_subsampling_factor \
     --frames-per-chunk $frames_per_eg \
+    --feat-type $feat_type \
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
@@ -191,26 +193,26 @@ if [ $stage -le 16 ]; then
     ${dir}/processed_egs ${dir}/egs
 fi
 
-if [[ $stage -le 17 ]]; then
-  echo $dir
-  mkdir -p $dir/configs
-  if $train_ivector; then
-    cat <<EOF > $dir/configs/init.config
+lda_mat_filename=
+if [[ "$feat_type" == "lda" ]]; then
+  if [[ $stage -le 17 ]]; then
+    echo $dir
+    mkdir -p $dir/configs
+    if $train_ivector; then
+      cat <<EOF > $dir/configs/init.config
 input-node name=ivector dim=100
-input-node name=input dim=40
-output-node name=output input=Append(Offset(input, -1), input, Offset(input, 1), ReplaceIndex(ivector, t, 0))
+input-node name=input dim=120
+output-node name=output input=Append(input, ReplaceIndex(ivector, t, 0))
 EOF
-  else
-    cat <<EOF > $dir/configs/init.config
-input-node name=input dim=40
-output-node name=output input=Append(Offset(input, -1), input, Offset(input, 1))
+    else
+      cat <<EOF > $dir/configs/init.config
+input-node name=input dim=120
+output-node name=output input=Append(input)
 EOF
-  fi
-  $train_cmd $dir/log/nnet_init.log \
-    nnet3-init --srand=-2 $dir/configs/init.config $dir/configs/init.raw
-fi
+    fi
+    $train_cmd $dir/log/nnet_init.log \
+      nnet3-init --srand=-2 $dir/configs/init.config $dir/configs/init.raw
 
-if [ $stage -le 18 ]; then
     echo "$0: Training pre-conditioning matrix"
     num_lda_jobs=`find ${dir}/egs/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
     steps/chain2/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
@@ -218,6 +220,8 @@ if [ $stage -le 18 ]; then
         $dir/configs/init.raw \
         $dir/egs \
         $dir || exit 1
+  fi
+  lda_mat_filename=$dir/lda.mat
 fi
 
 merged_egs_dir=merged_egs_chain2
@@ -232,18 +236,20 @@ if [[ $stage -le 19 ]]; then
     nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:- \
       ark,scp:$dir/$merged_egs_dir/cegs.JOB.ark,$dir/$merged_egs_dir/cegs.JOB.scp || exit 1
 
+  rm $dir/raw_egs/cegs.*.ark
 fi
 
 
-feat_dim=$(cat $dir/egs/info/feat_dim)
+feat_dim=$(cat $dir/raw_egs/info.txt | grep 'feat_dim' | awk '{print $NF}')
 ivector_dim=0
 ivector_period=0
 if $train_ivector; then
-  ivector_dim=$(cat $dir/egs/info/ivector_dim)
+  ivector_dim=$(cat $dir/raw_egs/info.txt | grep 'ivector_dim' | awk '{print $NF}')
   ivector_period=$(cat $train_ivector_dir/ivector_period)
 fi
 echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
-output_dim=$(cat $dir/egs/info/num_pdfs)
+output_dim=$(cat $dir/raw_egs/info.txt | grep 'num_leaves' | awk '{print $NF}')
+
 
 train_dir=train${train_affix}
 if [[ $stage -le 20 ]]; then
@@ -292,7 +298,7 @@ if [[ $stage -le 20 ]]; then
         --is-training true \
         --ivector-dim $ivector_dim \
         --kernel-size-list "$kernel_size_list" \
-        --lda-mat-filename "$dir/lda.mat" \
+        --lda-mat-filename "$lda_mat_filename" \
         --log-level $log_level \
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
@@ -301,7 +307,7 @@ if [[ $stage -le 20 ]]; then
         --train.ddp.init-method $init_method \
         --train.ddp.multiple-machine $use_multiple_machine \
         --train.ddp.world-size $world_size \
-        --train.den-fst $dir/den.fst \
+        --train.den-fst $dir/den_fsts/default.den.fst \
         --train.dropout-schedule "$dropout_schedule" \
         --train.egs-left-context $egs_left_context \
         --train.egs-right-context $egs_right_context \
@@ -326,8 +332,15 @@ if [[ $stage -le 21 ]]; then
       fi
       feat_scp="data/${x}_hires/feats.scp"
       if $online_cmvn; then
-        apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/egs/global_cmvn.stats \
-            scp:data/${x}_hires/feats.scp ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+        if [[ "$feat_type" == "lda" ]]; then
+          apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/raw_egs/global_cmvn.stats \
+              scp:data/${x}_hires/feats.scp ark:- | splice-feats --left_context=1 --right_context=1 \
+              ark:- ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+        else
+          apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/raw_egs/global_cmvn.stats \
+              scp:data/${x}_hires/feats.scp ark:- | add-deltas --print-args=false --delta-order=2 --delta-window=2 \
+              ark:- ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
+        fi
         feat_scp="data/${x}_hires/online_cmvn_feats.scp"
       fi
       best_epoch=$(cat $dir/$train_dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
@@ -344,7 +357,7 @@ if [[ $stage -le 21 ]]; then
         --ivector-dim $ivector_dim \
         --ivector-period $ivector_period \
         --ivector-scp "$ivector_scp" \
-        --lda-mat-filename "$dir/lda.mat" \
+        --lda-mat-filename "$lda_mat_filename" \
         --log-level $log_level \
         --kernel-size-list "$kernel_size_list" \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
@@ -362,6 +375,7 @@ if [[ $stage -le 22 ]]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   cp $tree_dir/final.mdl $dir/final.mdl
+  cp $tree_dir/tree $dir/tree
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $dir/graph
 fi
 
