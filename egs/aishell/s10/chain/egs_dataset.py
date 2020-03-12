@@ -17,7 +17,6 @@ import kaldi
 
 from common import splice_feats
 
-
 def get_egs_dataloader(egs_dir_or_scp,
                        egs_left_context,
                        egs_right_context,
@@ -173,10 +172,9 @@ class NnetChainExampleDatasetCollateFunc:
 
                 end_index = start_index + frames_per_sequence
 
-                start_index += 1  # remove the leftmost frame added for frame shift
-                end_index -= 1  # remove the rightmost frame added for frame shift
+                start_index += 2  # remove the leftmost frame added for frame shift
+                end_index -= 2  # remove the rightmost frame added for frame shift
                 feat = feats[start_index:end_index:, :]
-                feat = splice_feats(feat)
                 if len(eg.inputs) > 1:
                     repeat_ivector = torch.from_numpy(
                         ivectors[i]).repeat(feat.shape[0], 1)
@@ -192,10 +190,9 @@ class NnetChainExampleDatasetCollateFunc:
             # the second -2 is from lda feats splicing
             assert batched_feat.shape[1] == frames_per_sequence - 4
             if len(eg.inputs) > 1:
-                assert batched_feat.shape[2] == feats.shape[-1] * \
-                    3 + ivectors.shape[-1]
+                assert batched_feat.shape[2] == feats.shape[-1] + ivectors.shape[-1]
             else:
-                assert batched_feat.shape[2] == feats.shape[-1] * 3
+                assert batched_feat.shape[2] == feats.shape[-1]
 
             torch_feat = torch.from_numpy(batched_feat).float()
             feature_list.append(torch_feat)
@@ -204,7 +201,7 @@ class NnetChainExampleDatasetCollateFunc:
 
 
 def _test_nnet_chain_example_dataset():
-    egs_dir = 'exp/chain/merged_egs'
+    egs_dir = 'exp/chain_pybind/tdnnivector_delta_sp/merged_egs_chain2'
     dataset = NnetChainExampleDataset(egs_dir_or_scp=egs_dir)
     egs_left_context = 29
     egs_right_context = 29
