@@ -21,6 +21,7 @@ num_epochs=6
 dropout_schedule=0,0@0.20,0.5@0.50,0      # you might set this to 0,0 or 0.5,0.5 to train.
 frame_subsampling_factor=3
 feat_type=lda
+lang=default
 
 . ./path.sh
 . ./cmd.sh
@@ -129,19 +130,19 @@ if  [[ $stage -le 13 ]]; then
   mkdir -p $dir/den_fsts/log
 
   # We may later reorganize this.
-  cp $tree_dir/tree $dir/default.tree
+  cp $tree_dir/tree $dir/${lang}.tree
 
   echo "$0: creating phone language-model"
-  $train_cmd $dir/den_fsts/log/make_phone_lm_default.log \
+  $train_cmd $dir/den_fsts/log/make_phone_lm_${lang}.log \
     chain-est-phone-lm --num-extra-lm-states=2000 \
        "ark:gunzip -c $tree_dir/ali.*.gz | ali-to-phones $tree_dir/final.mdl ark:- ark:- |" \
-       $dir/den_fsts/default.phone_lm.fst
+       $dir/den_fsts/${lang}.phone_lm.fst
   mkdir -p $dir/init
-  copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl
+  copy-transition-model $tree_dir/final.mdl $dir/init/${lang}_trans.mdl
   echo "$0: creating denominator FST"
   $train_cmd $dir/den_fsts/log/make_den_fst.log \
-     chain-make-den-fst $dir/default.tree $dir/init/default_trans.mdl $dir/den_fsts/default.phone_lm.fst \
-     $dir/den_fsts/default.den.fst $dir/den_fsts/default.normalization.fst || exit 1;
+     chain-make-den-fst $dir/${lang}.tree $dir/init/${lang}_trans.mdl $dir/den_fsts/${lang}.phone_lm.fst \
+     $dir/den_fsts/${lang}.den.fst $dir/den_fsts/${lang}.normalization.fst || exit 1;
 fi
 
 # You should know how to calculate your model's left/right context **manually**
@@ -168,7 +169,7 @@ if [ $stage -le 14 ]; then
   echo "$0: about to dump raw egs."
   # Dump raw egs.
   steps/chain2/get_raw_egs.sh --cmd "$train_cmd" \
-    --lang "default" \
+    --lang "${lang}" \
     --online-cmvn $online_cmvn \
     --online-ivector-dir "$train_ivector_dir" \
     --left-context $egs_left_context \
@@ -179,6 +180,7 @@ if [ $stage -le 14 ]; then
     --feat-type $feat_type \
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
+
 
 if [ $stage -le 15 ]; then
   echo "$0: about to process egs"
@@ -193,20 +195,30 @@ if [ $stage -le 16 ]; then
     ${dir}/processed_egs ${dir}/egs
 fi
 
+info_file=$dir/raw_egs/info.txt
+feat_dim=$(cat $info_file | grep 'feat_dim' | awk '{print $NF}')
+ivector_dim=0
+ivector_period=0
+if $train_ivector; then
+  ivector_dim=$(cat $info_file | grep 'ivector_dim' | awk '{print $NF}')
+  ivector_period=$(cat $train_ivector_dir/ivector_period)
+fi
+echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
 lda_mat_filename=
 if [[ "$feat_type" == "lda" ]]; then
+  splice_feat_dim=$[3*$feat_dim]
   if [[ $stage -le 17 ]]; then
     echo $dir
     mkdir -p $dir/configs
     if $train_ivector; then
       cat <<EOF > $dir/configs/init.config
-input-node name=ivector dim=100
-input-node name=input dim=120
+input-node name=ivector dim=$ivector_dim
+input-node name=input dim=$splice_feat_dim
 output-node name=output input=Append(input, ReplaceIndex(ivector, t, 0))
 EOF
     else
       cat <<EOF > $dir/configs/init.config
-input-node name=input dim=120
+input-node name=input dim=$splice_feat_dim
 output-node name=output input=Append(input)
 EOF
     fi
@@ -239,18 +251,7 @@ if [[ $stage -le 19 ]]; then
   rm $dir/raw_egs/cegs.*.ark
 fi
 
-
-feat_dim=$(cat $dir/raw_egs/info.txt | grep 'feat_dim' | awk '{print $NF}')
-ivector_dim=0
-ivector_period=0
-if $train_ivector; then
-  ivector_dim=$(cat $dir/raw_egs/info.txt | grep 'ivector_dim' | awk '{print $NF}')
-  ivector_period=$(cat $train_ivector_dir/ivector_period)
-fi
-echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
-output_dim=$(cat $dir/raw_egs/info.txt | grep 'num_leaves' | awk '{print $NF}')
-
-
+output_dim=$(cat $info_file | grep 'num_leaves' | awk '{print $NF}')
 train_dir=train${train_affix}
 if [[ $stage -le 20 ]]; then
   echo "$0: training..."
@@ -307,7 +308,7 @@ if [[ $stage -le 20 ]]; then
         --train.ddp.init-method $init_method \
         --train.ddp.multiple-machine $use_multiple_machine \
         --train.ddp.world-size $world_size \
-        --train.den-fst $dir/den_fsts/default.den.fst \
+        --train.den-fst $dir/den_fsts/${lang}.den.fst \
         --train.dropout-schedule "$dropout_schedule" \
         --train.egs-left-context $egs_left_context \
         --train.egs-right-context $egs_right_context \
@@ -393,7 +394,7 @@ if [[ $stage -le 23 ]]; then
     ./local/decode.sh \
       --nj $nj \
       $dir/graph \
-      $dir/init/default_trans.mdl \
+      $dir/init/${lang}_trans.mdl \
       $dir/$train_dir/inference/$x/nnet_output.scp \
       $dir/$train_dir/decode_res/$x
   done
