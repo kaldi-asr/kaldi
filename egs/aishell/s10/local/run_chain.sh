@@ -20,7 +20,7 @@ train_ivector=false
 num_epochs=6
 dropout_schedule=0,0@0.20,0.5@0.50,0      # you might set this to 0,0 or 0.5,0.5 to train.
 frame_subsampling_factor=3
-feat_type=lda
+feat_type=delta
 lang=default
 
 . ./path.sh
@@ -181,7 +181,6 @@ if [ $stage -le 14 ]; then
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
-
 if [ $stage -le 15 ]; then
   echo "$0: about to process egs"
   steps/chain2/process_egs.sh  --cmd "$train_cmd" \
@@ -204,37 +203,6 @@ if $train_ivector; then
   ivector_period=$(cat $train_ivector_dir/ivector_period)
 fi
 echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
-lda_mat_filename=
-if [[ "$feat_type" == "lda" ]]; then
-  splice_feat_dim=$[3*$feat_dim]
-  if [[ $stage -le 17 ]]; then
-    echo $dir
-    mkdir -p $dir/configs
-    if $train_ivector; then
-      cat <<EOF > $dir/configs/init.config
-input-node name=ivector dim=$ivector_dim
-input-node name=input dim=$splice_feat_dim
-output-node name=output input=Append(input, ReplaceIndex(ivector, t, 0))
-EOF
-    else
-      cat <<EOF > $dir/configs/init.config
-input-node name=input dim=$splice_feat_dim
-output-node name=output input=Append(input)
-EOF
-    fi
-    $train_cmd $dir/log/nnet_init.log \
-      nnet3-init --srand=-2 $dir/configs/init.config $dir/configs/init.raw
-
-    echo "$0: Training pre-conditioning matrix"
-    num_lda_jobs=`find ${dir}/egs/ -iname 'train.*.scp' | wc -l | cut -d ' ' -f2`
-    steps/chain2/compute_preconditioning_matrix.sh --cmd "$train_cmd" \
-        --nj $num_lda_jobs \
-        $dir/configs/init.raw \
-        $dir/egs \
-        $dir || exit 1
-  fi
-  lda_mat_filename=$dir/lda.mat
-fi
 
 merged_egs_dir=merged_egs_chain2
 if [[ $stage -le 19 ]]; then
@@ -299,7 +267,6 @@ if [[ $stage -le 20 ]]; then
         --is-training true \
         --ivector-dim $ivector_dim \
         --kernel-size-list "$kernel_size_list" \
-        --lda-mat-filename "$lda_mat_filename" \
         --log-level $log_level \
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
@@ -333,11 +300,7 @@ if [[ $stage -le 21 ]]; then
       fi
       feat_scp="data/${x}_hires/feats.scp"
       if $online_cmvn; then
-        if [[ "$feat_type" == "lda" ]]; then
-          apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/raw_egs/global_cmvn.stats \
-              scp:data/${x}_hires/feats.scp ark:- | splice-feats --left_context=1 --right_context=1 \
-              ark:- ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
-        else
+        if [[ "$feat_type" == "delta" ]]; then
           apply-cmvn-online --spk2utt=ark:data/${x}_hires/spk2utt $dir/raw_egs/global_cmvn.stats \
               scp:data/${x}_hires/feats.scp ark:- | add-deltas --print-args=false --delta-order=2 --delta-window=2 \
               ark:- ark,scp:data/${x}_hires/data/online_cmvn_feats.ark,data/${x}_hires/online_cmvn_feats.scp
@@ -358,7 +321,6 @@ if [[ $stage -le 21 ]]; then
         --ivector-dim $ivector_dim \
         --ivector-period $ivector_period \
         --ivector-scp "$ivector_scp" \
-        --lda-mat-filename "$lda_mat_filename" \
         --log-level $log_level \
         --kernel-size-list "$kernel_size_list" \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
