@@ -224,6 +224,11 @@ class BatchNormComponent: public Component {
   const CuVector<BaseFloat> &Offset() const { return offset_; }
   const CuVector<BaseFloat> &Scale() const { return scale_; }
 
+  CuVector<BaseFloat> Mean() const;
+  CuVector<BaseFloat> Var() const;
+  double Count() const { return count_; }
+  BaseFloat Eps() const { return epsilon_; }
+
  private:
 
   struct Memo {

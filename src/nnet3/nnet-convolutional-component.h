@@ -553,6 +553,8 @@ class TdnnComponent: public UpdatableComponent {
 
   CuMatrixBase<BaseFloat> &LinearParams() { return linear_params_; }
 
+  const CuMatrix<BaseFloat> &Linearparams() const { return linear_params_; }
+
   // This allows you to resize the vector in order to add a bias where
   // there previously was none-- obviously this should be done carefully.
   CuVector<BaseFloat> &BiasParams() { return bias_params_; }
