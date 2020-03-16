@@ -2,10 +2,10 @@
 
 # This is a basic TDNN experiment.
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
-# exp/chain/tdnn1a_sp: num-iters=6 nj=2..5 num-params=7.0M dim=40+100->2309 combine=-0.072->-0.069 xent:train/valid[3,5,final]=(-2.10,-1.62,-1.48/-2.26,-1.85,-1.77) logprob:train/valid[3,5,final]=(-0.096,-0.069,-0.060/-0.124,-0.107,-0.104)
+# steps/info/chain_dir_info.pl exp/chain2/tdnn1a_sp
+# exp/chain2/tdnn1a_sp: num-iters=6 nj=2..5 combine=-0.038->-0.033 (over 3)
 
-# local/chain/compare_wer.sh --online exp/chain/tdnn1a_sp
+# local/chain2/compare_wer.sh --online exp/chain/tdnn1a_sp
 # System                tdnn1a_sp
 #WER dev_clean_2 (tgsmall)      18.58
 #             [online:]         18.49
@@ -183,7 +183,7 @@ if [ $stage -le 14 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=512 input=Append(-2,-1,0,1,2)
+  relu-renorm-layer name=tdnn1 dim=512
   relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
   relu-renorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
   relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
@@ -279,7 +279,7 @@ if [ $stage -le 17 ]; then
     --frame-subsampling-factor $frame_subsampling_factor \
     --alignment-subsampling-factor $frame_subsampling_factor \
     --frames-per-chunk ${chunk_width} \
-    --online-ivector-dir ${train_ivector_dir}
+    --online-ivector-dir ${train_ivector_dir} \
     ${train_data_dir} ${dir} ${lat_dir} ${dir}/raw_egs
 fi
 
