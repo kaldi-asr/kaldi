@@ -322,7 +322,7 @@ fi
 
 if [ $stage -le 7 ]; then
   # Caution: this part needs a GPU.
-  local/chain/run_tdnn.sh
+  local/chain2/run_tdnn.sh
 fi
 
 exit 0;
