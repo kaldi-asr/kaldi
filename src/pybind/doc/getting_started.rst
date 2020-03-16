@@ -15,7 +15,7 @@ from
 
     Kaldi Pybind is still under active development and has not
     yet been merged into the master branch. You should checkout
-    the `pybind11` branch before compilation.
+    the ``pybind11`` branch before compilation.
 
 .. Note::
 
@@ -40,3 +40,15 @@ The following is a quick start:
     make
     make test
 
+After a successful compilation, you have to modify the environment
+variable ``PYTHONPATH``:
+
+.. code-block:: bash
+
+  export KALDI_ROOT=/path/to/your/kaldi
+  export PYTHONPATH=$KALDI_ROOT/src/pybind:$PYTHONPATH
+
+.. HINT::
+
+  There is no ``make install``. Once compiled, you are ready to
+  use Kaldi Pybind.

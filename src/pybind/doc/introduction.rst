@@ -10,7 +10,7 @@ About Kaldi Pybind
 
 Kaldi Pybind is a Python wrapper for Kaldi
 using `Pybind11 <https://github.com/pybind/pybind11>`_.
+It is still under active development.
 
-Kaldi Pybind is still under active development.
 Everything related to Kaldi Pybind is put in the
 `pybind11 branch <https://github.com/kaldi-asr/kaldi/tree/pybind11>`_.

@@ -20,6 +20,11 @@ def read_vec_int(rxfilename):
     '''Read an int32 vector from an rxfilename.
 
     It can be used to read alignment information from `ali.scp`
+
+    Args:
+        rxfilename: filename to read.
+    Returns:
+        A list of int.
     '''
     ki = kaldi_pybind.Input()
     is_opened, = ki.Open(rxfilename, read_header=False)
@@ -38,6 +43,11 @@ def read_vec_int(rxfilename):
 # https://github.com/vesis84/kaldi-io-for-python/blob/master/kaldi_io/kaldi_io.py#L256
 def read_vec_flt(rxfilename):
     '''Read a kaldi::Vector<float> from an rxfilename
+
+    Args:
+        rxfilename: filename to read.
+    Returns:
+        an object of kaldi.FloatVector.
     '''
     ki = kaldi_pybind.Input()
     is_opened, is_binary = ki.Open(rxfilename, read_header=True)
@@ -55,6 +65,11 @@ def read_vec_flt(rxfilename):
 # https://github.com/vesis84/kaldi-io-for-python/blob/master/kaldi_io/kaldi_io.py#L376
 def read_mat(rxfilename):
     '''Read a kaldi::Matrix<float> from an rxfilename
+
+    Args:
+        rxfilename: filename to read
+    Returns:
+       an object of kaldi.FloatMatrix
     '''
     ki = kaldi_pybind.Input()
     is_opened, is_binary = ki.Open(rxfilename, read_header=True)
@@ -68,8 +83,35 @@ def read_mat(rxfilename):
     return mat
 
 
+def write_mat(mat, wxfilename, binary=True):
+    '''Write a kaldi.FloatMatrix to wxfilename
+
+    Args:
+        mat: an object of kaldi.FloatMatrix
+        wxfilename: filename to save the matrix
+        binary: true to save the matrix in binary format;
+                false to text format.
+    '''
+    if binary:
+        write_header = True
+    else:
+        write_header = False
+
+    output = kaldi_pybind.Output(filename=wxfilename,
+                                 binary=binary,
+                                 write_header=write_header)
+
+    assert output.IsOpen(), 'Failed to create {}'.format(wxfilename)
+
+    mat.Write(output.Stream(), binary=binary)
+
+
 def read_transition_model(rxfilename):
     '''Read binary transition model from an rxfilename.
+    Args:
+        rxfilename: filename to read
+    Returns:
+        Return a `TransitionModel`
     '''
     ki = kaldi_pybind.Input()
     is_opened, is_binary = ki.Open(rxfilename, read_header=True)

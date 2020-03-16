@@ -125,6 +125,21 @@ class TestIOUtil(unittest.TestCase):
 
         shutil.rmtree(tmp)
 
+    def test_read_mat_xfilename(self):
+        tmp = mkdtemp()
+
+        xfilename = os.path.join(tmp, 'lda.mat')
+        lda = kaldi.FloatMatrix(3, 3)
+        lda[1, 1] = 10
+        lda[2, 2] = 100
+        kaldi.write_mat(mat=lda, wxfilename=xfilename, binary=False)
+
+        mat = kaldi.read_mat(xfilename)
+
+        np.testing.assert_array_equal(lda.numpy(), mat.numpy())
+
+        shutil.rmtree(tmp)
+
 
 if __name__ == '__main__':
     unittest.main()

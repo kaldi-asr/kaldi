@@ -82,4 +82,42 @@ void pybind_kaldi_io(py::module& m) {
              "Returns the underlying stream. Throws if !IsOpen()",
              py::return_value_policy::reference);
   }
+
+  py::class_<std::ostream>(m, "ostream");
+  {
+    using PyClass = Output;
+    py::class_<PyClass>(m, "Output")
+        .def(py::init<>())
+        .def(py::init<const std::string&, bool, bool>(),
+             "The normal constructor, provided for convenience. Equivalent to "
+             "calling with default constructor then Open() with these "
+             "arguments.",
+             py::arg("filename"), py::arg("binary"),
+             py::arg("write_header") = true)
+        .def("Open", &PyClass::Open,
+             "This opens the stream, with the given mode (binary or text).  It "
+             "returns true on success and false on failure.  However, it will "
+             "throw if something was already open and could not be closed (to "
+             "avoid this, call Close() first.  if write_header == true and "
+             "binary == true, it writes the Kaldi binary-mode header ('\0' "
+             "then 'B').  You may call Open even if it is already open; it "
+             "will close the existing stream and reopen (however if closing "
+             "the old stream failed it will throw).",
+             py::arg("wxfilename"), py::arg("binary"), py::arg("write_header"))
+        .def("IsOpen", &PyClass::IsOpen,
+             "return true if we have an open "
+             "stream.  Does not imply stream is "
+             "good for writing.")
+        .def("Stream", &PyClass::Stream,
+             "will throw if not open; else returns stream.",
+             py::return_value_policy::reference)
+        .def("Close", &PyClass::Close,
+             "Close closes the stream. Calling Close is never necessary unless "
+             "you want to avoid exceptions being thrown.  There are times when "
+             "calling Close will hurt efficiency (basically, when using "
+             "offsets into files, and using the same Input object), but most "
+             "of the time the user won't be doing this directly, it will be "
+             "done in kaldi-table.{h, cc}, so you don't have to worry about "
+             "it.");
+  }
 }
