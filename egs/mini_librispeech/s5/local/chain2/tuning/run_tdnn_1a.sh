@@ -39,7 +39,6 @@ decode_iter=
 # training options
 # training chunk-options
 chunk_width=140,100,160
-dropout_schedule='0,0@0.20,0.3@0.50,0'
 xent_regularize=0.1
 bottom_subsampling_factor=1  # I'll set this to 3 later, 1 is for compatibility with a broken ru.
 frame_subsampling_factor=3
@@ -274,6 +273,7 @@ if [ $stage -le 17 ]; then
   # Dump raw egs.
   steps/chain2/get_raw_egs.sh --cmd "$train_cmd" \
     --lang "default" \
+    --cmvn-opts "--norm-means=false --norm-vars=false" \
     --left-context $egs_left_context \
     --right-context $egs_right_context \
     --frame-subsampling-factor $frame_subsampling_factor \
@@ -328,6 +328,7 @@ if [ $stage -le 22 ]; then
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
     --max-param-change 2.0 \
     --num-jobs-initial 2 --num-jobs-final 5 \
+    --groups-per-minibatch 256,128,64 \
      $dir/egs $dir || exit 1;
 fi
 
