@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # Copyright   2019  Idiap Research Institute (Author: Srikanth Madikeri).  Apache 2.0.
@@ -197,9 +197,8 @@ while [ $x -lt $num_iters ]; do
   if [ $x -gt 0 ]; then
     # This doesn't use the egs, it only shows the relative change in model parameters.
     $cmd $dir/log/progress.$x.log \
-      nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |"
-        "nnet3-am-copy --raw=true $dir/$x.mdl - |" '&&' \
-        nnet3-am-info $dir/$x.mdl &
+      nnet3-show-progress --use-gpu=no $dir/$[$x-1].raw $dir/${x}.raw '&&' \
+        nnet3-info $dir/${x}.raw &
   fi
 
   cache_io_opt="--write-cache=$dir/cache.$next_x"

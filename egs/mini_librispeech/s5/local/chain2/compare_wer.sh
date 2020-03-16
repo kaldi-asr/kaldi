@@ -111,7 +111,7 @@ echo
 
 echo -n "# Final valid prob     "
 for x in $*; do
-  prob=$(grep Overall $x/log/diagnostic_valid.final.log | grep -v xent | awk '{printf("%.4f", $10)}')
+  prob=$(grep Overall $x/log/diagnostic_heldout.final.log | grep -v xent | awk '{printf("%.4f", $10)}')
   printf "% 10s" $prob
 done
 echo
@@ -125,7 +125,7 @@ echo
 
 echo -n "# Final valid prob (xent)"
 for x in $*; do
-  prob=$(grep Overall $x/log/diagnostic_valid.final.log | grep -w xent | awk '{printf("%.4f", $10)}')
+  prob=$(grep Overall $x/log/diagnostic_heldout.final.log | grep -w xent | awk '{printf("%.4f", $10)}')
   printf "% 10s" $prob
 done
 echo

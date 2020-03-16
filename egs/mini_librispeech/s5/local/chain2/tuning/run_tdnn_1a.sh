@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 
 # This is a basic TDNN experiment.
+# run_tdnn_1a.sh in local/chain2 but uses new kaldi recipe.
 
 # steps/info/chain_dir_info.pl exp/chain2/tdnn1a_sp
 # exp/chain2/tdnn1a_sp: num-iters=6 nj=2..5 combine=-0.038->-0.033 (over 3)
 
-# local/chain2/compare_wer.sh --online exp/chain/tdnn1a_sp
+# local/chain2/compare_wer.sh exp/chain2/tdnn1a_sp
 # System                tdnn1a_sp
-#WER dev_clean_2 (tgsmall)      18.58
-#             [online:]         18.49
-#WER dev_clean_2 (tglarge)      13.35
-#             [online:]         13.47
-# Final train prob        -0.0596
-# Final valid prob        -0.1036
-# Final train prob (xent)   -1.4843
-# Final valid prob (xent)   -1.7723
+#WER dev_clean_2 (tgsmall)      17.32
+#WER dev_clean_2 (tglarge)      12.68
+# Final train prob        -0.0437
+# Final valid prob        -0.0406
+# Final train prob (xent)   -1.1710
+# Final valid prob (xent)   -1.0848
+# Num-params                10005600
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
