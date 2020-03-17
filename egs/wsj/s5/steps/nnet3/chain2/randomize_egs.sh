@@ -29,6 +29,11 @@ frames_per_job=3000000   # The number of frames of data we want to process per
                          # --frames-per-job is clearer as each job does this
                          # many.
 
+num_workers=1            # The number of workers to load generated scp files. 
+                         # This is for PyTorch training usage. Just keep 
+                         # the default value if you are training with 
+                         # Kaldi command-lines.
+
 num_groups_combine=1000  # the number of groups from the training set that we
                          # randomly choose as input to nnet3-chain-combine;
                          # these will go to combine.scp.  train_subset.scp and
@@ -42,7 +47,7 @@ num_groups_combine=1000  # the number of groups from the training set that we
 srand=0
 stage=0
 
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $*"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
@@ -64,6 +69,10 @@ if [ $# != 2 ]; then
   echo "  --frames-per-job <n;3000000>                     # The number of input frames (not counting context)"
   echo "                                                   # that we aim to have in each scp file after"
   echo "                                                   # randomization and splitting."
+  echo "  --num-workers <n;1>                              # The number of workers to load generated scp files."
+  echo "                                                   # This is for PyTorch training usage. Just Keep " 
+  echo "                                                   # the default value if you are training with"
+  echo "                                                   # kaldi command-lines."
   echo "  --num-groups-combine <n;1000>                    # The number of randomly chosen groups to"
   echo "                                                   # put in the subset in 'combine.scp' which will"
   echo "                                                   # be used in nnet3-chain-combine to decide which"
@@ -93,7 +102,8 @@ info_in=$processed_egs_dir/info.txt
 num_input_frames=$(awk '/^num_input_frames/ { nif=$2; print nif}' $info_in)
 frames_per_chunk_avg=$(awk '/^frames_per_chunk_avg/ { fpc=$2; print fpc}' $info_in)
 num_chunks=$(awk '/^num_chunks/ { nc=$2; print nc}' $info_in)
-num_scp_files=$[(num_chunks * frames_per_chunk_avg)/frames_per_job +1]
+num_scp_files=$(((num_chunks * frames_per_chunk_avg)/frames_per_job +1))
+num_scp_files=$((num_workers * ((num_scp_files + num_workers - 1) / num_workers)))
 [ $num_scp_files -eq 0 ] && num_scp_files=1
 
 frames_per_scp_file=$[(num_chunks*frames_per_chunk_avg)/num_scp_files] # because it may be slightly different from frames_per_job
