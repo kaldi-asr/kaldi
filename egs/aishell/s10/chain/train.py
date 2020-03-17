@@ -121,7 +121,7 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer, crit
         # `len(dataloader)` returns the number of `pseudo_epoch`
         # in the current worker, that is the number of scp files
         # we will process in this worker.
-        data_fraction = (pseudo_epoch + current_epoch *
+        data_fraction = (pseudo_epoch + 1 + current_epoch *
                          len(dataloader)) / (len(dataloader) * num_epochs)
         _, dropout = _get_dropout_proportions(
             dropout_schedule, data_fraction)[0]
