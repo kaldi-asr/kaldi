@@ -520,7 +520,7 @@ void ConsolidateMemory(Nnet *nnet);
     consecutive).
 
 
-    @param [in] vec    The vector of NnetIo objects from the training example
+    @param [in] io_vec    The vector of NnetIo objects from the training example
                        (NnetExample or NnetChainExample) for which we need the
                        number of 'n' values
     @param [in] exhaustive   If true, it will check exhaustively what largest

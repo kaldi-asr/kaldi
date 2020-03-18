@@ -135,7 +135,7 @@ already being used.  It is particularly useful with tables (see next section).
    - The script-file format is, on each line, "<key> <rspecifier|wspecifier>", e.g.
       "utt1 /foo/bar/utt1.mat".  It is OK for the rspecifier or wspecifier to contain
       spaces, e.g. "utt1 gunzip -c /foo/bar/utt1.mat.gz|".
-   - The archive format is: <key1> <object1> <newline> <key2> <object2> <newline> ...
+   - The archive format is: "<key1> <object1> <newline> <key2> <object2> <newline> ..."
    - Archives may be concatenated and they will still be valid archives, but be careful about
      the order of concatenation, e.g. avoid \verbatim "cat a/b/*.ark"\endverbatim
      if you need the sorted order.

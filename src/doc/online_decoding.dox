@@ -468,11 +468,11 @@ The TCP protocol simply takes RAW signal on input (16-bit signed integer
 encoding at chosen sampling frequency) and outputs simple text using the following
 logic:
     - each refresh period (output-freq argument) the current state of decoding is output
-    - each line is terminated by '\r'
-    - once an utterance boundary is detected due to endpointing a '\n' char is output
+    - each line is terminated by '\\r'
+    - once an utterance boundary is detected due to endpointing a '\\n' char is output
 
-Each output string (delimited by '\r') should be treated as uncertain and can change
-entirely until the utterance delimiter ('\n') is sent. The delimiter chars are chosen
+Each output string (delimited by '\\r') should be treated as uncertain and can change
+entirely until the utterance delimiter ('\\n') is sent. The delimiter chars are chosen
 specifically in order to make the output look neat in the terminal. It is possible to
 use it with other interfaces and a web demo (HTML/JS AudioAPI+WebSockets) exists.
 

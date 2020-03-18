@@ -30,7 +30,8 @@
 
 namespace kaldi {
 
-/// @{ \addtogroup matrix_funcs_scalar
+/// \addtogroup matrix_funcs_scalar
+/// @{
 
 /// We need to declare this here as it will be a friend function.
 /// tr(A B), or tr(A B^T).
@@ -976,6 +977,9 @@ template<typename Real>
 bool WriteSphinx(std::ostream &os, const MatrixBase<Real> &M);
 
 /// @} end of "addtogroup matrix_funcs_io"
+
+/// \addtogroup matrix_funcs_io
+/// @{
 
 /**
   Sub-matrix representation.

@@ -3242,7 +3242,7 @@ class ComputationExpander {
 
   /// This function is used in mapping row-indexes into matrices, from the
   /// old to the new computation.
-  ///    @param [in] matrix_index  The matrix-index > 0, for which we
+  ///    @param [in] old_matrix_index  The matrix-index > 0, for which we
   ///                              are mapping row-indexes.  The
   ///                              matrix-indexes are the same in the old
   ///                              and new computations.
@@ -4691,7 +4691,7 @@ class MemoryCompressionOptimizer {
  public:
 
   /** @param [in] nnet         The neural net the computation is for.
-      @param [in] memory_compression_level.  The level of compression:
+      @param [in] memory_compression_level  The level of compression:
          0 = no compression (the constructor should not be called with this value).
          1 = compression that doesn't affect the results (but still takes time).
          2 = compression that affects the results only very slightly

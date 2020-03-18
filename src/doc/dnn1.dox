@@ -94,7 +94,7 @@ Besides the DNN recipe, there are also other example scripts which can be handy:
 - CNN : egs/rm/s5/local/nnet/run_cnn.sh , (CNN = Convolutional Neural Network, <a href="www.cs.toronto.edu/~asamir/papers/icassp13_cnn.pdf">see paper</a>, we have 1D convolution on frequency axis)
 - Autoencoder training : egs/timit/s5/local/nnet/run_autoencoder.sh
 - Tandem system : egs/swbd/s5c/local/nnet/run_dnn_tandem_uc.sh , (uc = Universal context network, <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2011/vesely_asru2011_00042.pdf">see paper</a>)
-- Multilingual/Multitask : egs/rm/s5/local/nnet/run_blocksoftmax.sh, (Network with <BlockSoftmax> output trained on RM and WSJ, same C++ design as was used in <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2012/vesely_slt2012_0000336.pdf">SLT2012 paper</a>)
+- Multilingual/Multitask : egs/rm/s5/local/nnet/run_blocksoftmax.sh, (Network with \<BlockSoftmax\> output trained on RM and WSJ, same C++ design as was used in <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2012/vesely_slt2012_0000336.pdf">SLT2012 paper</a>)
 
 
 <hr><!-- #################################################################################################################### -->
@@ -106,9 +106,9 @@ The main neural network training script <a href="https://github.com/kaldi-asr/ka
 steps/nnet/train.sh <data-train> <data-dev> <lang-dir> <ali-train> <ali-dev> <exp-dir>
 \endverbatim
 
-The network input features are taken from data directories <data-train> <data-dev>, the training targets are taken from directories <ali-train> <ali-dev>.
-The <lang-dir> is used only in the special case when using LDA feature-transform, and to generate phoneme frame-count statistics from the alignment, it is not crucial for the training. 
-The output (i.e. the trained networks and logfiles) goes into <exp-dir>.
+The network input features are taken from data directories \<data-train\> \<data-dev\>, the training targets are taken from directories \<ali-train\> \<ali-dev\>.
+The \<lang-dir\> is used only in the special case when using LDA feature-transform, and to generate phoneme frame-count statistics from the alignment, it is not crucial for the training. 
+The output (i.e. the trained networks and logfiles) goes into \<exp-dir\>.
 
 Internally the script prepares the feature+target pipelines, generates a neural-network prototype and initialization, creates feature_transform and calls the scheduler script 
 <a href="https://github.com/kaldi-asr/kaldi/blob/master/egs/wsj/s5/steps/nnet/train_scheduler.sh">steps/nnet/train_scheduler.sh</a>,
@@ -126,7 +126,7 @@ labels_tr="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\"
 labels_cv="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir_cv/ali.*.gz |\" ark:- | ali-to-post ark:- ark:- |"
 \endverbatim
 
-3. shuffled features get copied to /tmp/???/..., this can be disabled by '--copy-feats false', or location changed by '--copy-feats-tmproot <dir>'
+3. shuffled features get copied to /tmp/???/..., this can be disabled by '--copy-feats false', or location changed by '--copy-feats-tmproot \<dir\>'
 - The features are re-saved to disk using the shuffled list, this dramatically lowers the stress on hard-disks during training, as it prevents from heavy disk-seeking
 
 4. the feature pipeline is prepared:
@@ -152,8 +152,8 @@ feats_cv="$feats_cv add-deltas --delta-order=$delta_order ark:- ark:- |"
 
 6. a network prototype is generated in utils/nnet/make_nnet_proto.py:
 - each component is on a separate line, where dimensions and initialization hyper-parameters are specified
-- for \ref AffineTransform the bias is initialized by Uniform distribution given by <BiasMean> and <BiasRange>, while weights are initialized from Normal distribution scaled by <ParamStddev>
-- note.: if you like to experiment with externally prepared prototypes, use option '--mlp-proto <proto>'
+- for \ref AffineTransform the bias is initialized by Uniform distribution given by \<BiasMean\> and \<BiasRange\>, while weights are initialized from Normal distribution scaled by \<ParamStddev\>
+- note.: if you like to experiment with externally prepared prototypes, use option '--mlp-proto \<proto\>'
 
 \verbatim
 $ cat exp/dnn5b_pretrain-dbn_dnn/nnet.proto
@@ -346,9 +346,9 @@ The nnet1 related binaries are located in src/nnetbin, the important tools are :
 
 \section dnn1_print_by_nnet_info Showing the network topology with nnet-info
 The following print from \ref nnet-info.cc shows the "feature_transform" corresponding to '--feat-type plain' of steps/nnet/train.sh, it contains 3 components: 
-- <Splice> which splices features to contain left/right context by using frames with offsets relative to the central frame [ -5 -4 -3 -2 -1 0 1 2 3 4 5 ]
-- <Addshift> which shifts features to have zero mean
-- <Rescale> which scales features to have unit variance
+- \<Splice\> which splices features to contain left/right context by using frames with offsets relative to the central frame [ -5 -4 -3 -2 -1 0 1 2 3 4 5 ]
+- \<Addshift\> which shifts features to have zero mean
+- \<Rescale\> which scales features to have unit variance
 - Note: we read low-dimensional features from disk, expansion to high dimensional features is done on-the-fly by "feature_transform", this saves both hard-disk space and reading throughput
 
 \verbatim
@@ -367,8 +367,8 @@ LOG (nnet-info:main():nnet-info.cc:57) Printed info about exp/dnn5b_pretrain-dbn
 \endverbatim
   
 The next print shows a neural network with 6 hidden layers:
-- each layer is composed of 2 components, typically the <AffineTransform> and a nonlinearity <Sigmoid> or <Softmax>
-- for each <AffineTransform> some statistics are shown (min, max, mean, variance, ...) separately for weights and bias
+- each layer is composed of 2 components, typically the \<AffineTransform\> and a nonlinearity \<Sigmoid\> or \<Softmax\>
+- for each \<AffineTransform\> some statistics are shown (min, max, mean, variance, ...) separately for weights and bias
 
 \verbatim
 $ nnet-info exp/dnn5b_pretrain-dbn_dnn/final.nnet

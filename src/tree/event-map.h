@@ -31,6 +31,7 @@ namespace kaldi {
 
 /// \defgroup event_map_group Event maps
 /// \ingroup tree_group
+/// @{
 /// See \ref tree_internals for overview, and specifically \ref treei_event_map.
 
 

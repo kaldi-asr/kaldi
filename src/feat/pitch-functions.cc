@@ -241,11 +241,9 @@ class PitchFrameInfo {
   ///  @param  opts         The options as provided by the user
   ///  @param  nccf_pitch   The nccf as computed for the pitch computation
   ///                       (with ballast).
-  ///  @param  nccf_pov     The nccf as computed for the POV computation
-  ///                       (without ballast).
   ///  @param  lags         The log-spaced lags at which nccf_pitch and
   ///                       nccf_pov are sampled.
-  ///  @param  prev_frame_forward_cost   The forward-cost vector for the
+  ///  @param  prev_forward_cost   The forward-cost vector for the
   ///                       previous frame.
   ///  @param  index_info   A pointer to a temporary vector used by this function
   ///  @param  this_forward_cost   The forward-cost vector for this frame
@@ -616,7 +614,7 @@ class OnlinePitchFeatureImpl {
   ///
   /// @param downsampled_wave_part  One chunk of the downsampled wave,
   ///                      starting from sample-index downsampled_samples_discarded_.
-  /// @param sample_index  The desired starting sample index (measured from
+  /// @param frame_index  The desired starting sample index (measured from
   ///                      the start of the whole signal, not just this part).
   /// @param window  The part of the signal is output to here.
   void ExtractFrame(const VectorBase<BaseFloat> &downsampled_wave_part,

@@ -208,7 +208,7 @@ class MultiTaskLoss : public LossItf {
   }
 
   /// Initialize from string, the format for string 's' is :
-  /// 'multitask,<type1>,<dim1>,<weight1>,...,<typeN>,<dimN>,<weightN>'
+  /// 'multitask,\<type1\>,\<dim1\>,\<weight1\>,...,\<typeN\>,\<dimN\>,\<weightN\>'
   ///
   /// Practically it can look like this :
   /// 'multitask,xent,2456,1.0,mse,440,0.001'

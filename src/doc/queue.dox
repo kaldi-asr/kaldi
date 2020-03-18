@@ -112,7 +112,7 @@ The basic usage of these tools is, as we said,
 \endverbatim
 and what we are about to say also holds for <tt>run.pl</tt>, <tt>ssh.pl</tt> and <tt>slurm.pl</tt>.
 
-<tt><options></tt> may include some or all of the following:
+<tt>\<options\></tt> may include some or all of the following:
 <ul>
   <li> A job range specifier (e.g. JOB=1:10).  The name is uppercase by convention only, and may include underscores.
        The starting index must be 1 or more; this is a GridEngine limitation.
@@ -122,10 +122,10 @@ and what we are about to say also holds for <tt>run.pl</tt>, <tt>ssh.pl</tt> and
   <li> New-style options like <tt>--mem 10G</tt> (see below).
 </ul>
 
-<tt><log-file></tt> is just a filename, which for array jobs must contain the identifier of
+<tt>\<log-file\></tt> is just a filename, which for array jobs must contain the identifier of
  the array (e.g. <tt>exp/foo/log/process_data.JOB.log</tt>).
 
-<tt><command></tt> can basically be anything, including symbols that would
+<tt>\<command\></tt> can basically be anything, including symbols that would
 be interpreted by the shell, but of course <tt>queue.pl</tt> can't process
 something if it gets interpreted by <tt>bash</tt> first.   For instance, this is WRONG:
 \verbatim
@@ -137,12 +137,12 @@ standard output piped into the awk command.  Instead you should write
  queue.pl test.log  echo foo \| awk 's/f/F/';
 \endverbatim
 You need to escape or quote the pipe symbol, and also things like ";" and ">".
-If one of the arguments in the <tt><command></tt> contains a space, then
+If one of the arguments in the <tt>\<command\></tt> contains a space, then
 queue.pl will assume you quoted it for a reason, and will quote it for you when
 it gets passed to bash.  It quotes using single quotes by default, but if the
 string itself contains single quotes then it uses double quotes instead.  This
 usually does what we want.  The <tt>PATH</tt> variable from the shell that
-you executed </tt>queue.pl</tt> from will be passed through to the scripts
+you executed <tt>queue.pl</tt> from will be passed through to the scripts
 that get executed, and just to be certain you get everything you need,
 the file <tt>./path.sh</tt> will also be sourced.  The commands will be executed
 with bash.
@@ -832,7 +832,7 @@ servers is a particularly good idea for queues that are shared by many people,
 because it's inevitable that people will overload file servers, and if there are
 only one or two file servers, the queue will end up being in a degraded state
 for much of the time.  The network bandwidth of each individual file server at
-CLSP@JHU is quite slow: for cost reasons we still use 1G ethernet, but all
+CLSP\@JHU is quite slow: for cost reasons we still use 1G ethernet, but all
 connected to each other with an expensive Cisco router so that there is no
 global bottleneck.  This means that each file server gets overloaded quite
 easily; but because there are so many individual file servers, this generally

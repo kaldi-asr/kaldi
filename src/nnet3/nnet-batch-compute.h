@@ -252,6 +252,7 @@ class NnetBatchComputer {
      @param [in] output_to_cpu  Will become the 'output_to_cpu' member of the
              output tasks; this controls whether the computation code should transfer
              the outputs to CPU (which is to save GPU memory).
+     @param [in] input
      @param [in] ivector  If non-NULL, and i-vector for the whole utterance is
              expected to be supplied here (and online_ivectors should be NULL).
              This is relevant if you estimate i-vectors per speaker instead of
@@ -519,6 +520,7 @@ class NnetBatchInference {
       @param [in] ivector  If non-NULL, this is expected to be the
              i-vector for this utterance (and 'online_ivectors' should
              be NULL).
+      @param [in] online_ivectors
       @param [in] online_ivector_period  Only relevant if
              'online_ivector' is non-NULL, this says how many
              frames of 'input' is covered by each row of
@@ -654,6 +656,7 @@ class NnetBatchDecoder {
       @param [in] ivector  If non-NULL, this is expected to be the
              i-vector for this utterance (and 'online_ivectors' should
              be NULL).
+      @param [in] online_ivectors
       @param [in] online_ivector_period  Only relevant if
              'online_ivector' is non-NULL, this says how many
              frames of 'input' is covered by each row of

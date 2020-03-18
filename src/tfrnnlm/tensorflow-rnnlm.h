@@ -83,10 +83,10 @@ class KaldiTfRnnlmWrapper {
  public:
 
   /// constructor
-  /// opts specify symbol for <unk> and num-threads for computation
+  /// opts specify symbol for "<unk>" and num-threads for computation
   /// rnn_wordlist specifies a wordlist file with format
   ///        [int-word-id] [word]
-  ///     the word <oos> must appear in this file
+  ///     the word "<oos>" must appear in this file
   //
   /// word_symbol_table_rxfilename points to a standard word-list file in OpenFST style
   /// unk_prob_file has the format
@@ -119,7 +119,7 @@ class KaldiTfRnnlmWrapper {
   /// and we generate (context_out, new_cell) by passing (context_in, word)
   /// into the TensorFlow session that manages the RNNLM
   /// if the last 2 pointers are NULL we don't query them in TF session
-  /// e.g. in the case of computing p(</s>|some history)
+  /// e.g. in the case of computing p("</s>"|some history)
   BaseFloat GetLogProb(int32 word,      // word id in RNN wordlist
                        int32 fst_word,  // FST word label, only for computing OOS cost
                        const Tensor &context_in,
@@ -128,7 +128,7 @@ class KaldiTfRnnlmWrapper {
                        Tensor *cell_out);
 
   /// takes in a word-id for FST and return the word-id for RNNLM
-  /// return the word-id for <oos> if not found
+  /// return the word-id for "<oos>" if not found
   int FstLabelToRnnLabel(int i) const;
 
  private:

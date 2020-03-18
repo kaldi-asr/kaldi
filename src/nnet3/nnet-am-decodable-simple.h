@@ -297,9 +297,6 @@ class DecodableAmNnetSimple: public DecodableInterface {
      @param [in] am_nnet   The neural net that we're going to do the computation with;
                          we also get the priors to divide by, if applicable, from here.
      @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
-                         We
-     @param [in] ivector If you are using iVectors estimated in batch mode,
-                         a pointer to the iVector, else NULL.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
      @param [in] online_ivectors

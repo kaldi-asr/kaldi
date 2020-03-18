@@ -40,7 +40,7 @@ namespace kaldi {
  best done on GPU: it is all under the control of the programmer.
 
 
-  \subsection cudamatrix_configuration Configuring the CUDA matrix library
+ \section cudamatrix_configuration Configuring the CUDA matrix library
 
  If the <tt>configure</tt> script sees that the NVidia compilation tool <tt>nvcc</tt> is on
  the path when it is run, it assumes you want to compile for GPU, and will define

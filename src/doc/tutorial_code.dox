@@ -175,7 +175,7 @@ When you are done, and it compiles, type
 \endverbatim
 to see what changes you made.  If you are contributing to the Kaldi project and
 planning to send us code in the near future, you
-may want to commit them to a branch as described in the \tutorial_git, so that you
+may want to commit them to a branch as described in the \ref tutorial_git, so that you
 can generate a clean <a href="https://help.github.com/articles/using-pull-requests/">
 GitHub pull request</a> later. We recommend that you familiarize
 yourself with Git branches even if you are not contributing your changes
@@ -289,9 +289,9 @@ Next look at hmm/hmm-topology.h.  The class HmmTopology defines a set of HMM
 topologies for a number of phones.  In general each phone can have a different
 topology.  The topology includes "default" transitions, used for initialization.
 Look at the example topology in the extended comment at the top of the header.
-There is a tag <PdfClass> (note: as with HTK text formats,
+There is a tag \<PdfClass\> (note: as with HTK text formats,
 this file looks vaguely XML-like, but it is not really XML).
-The <PdfClass> is always the same as the HMM-state (<State>) here; in
+The \<PdfClass\> is always the same as the HMM-state (\<State\>) here; in
 general, it doesn't have to be.  This is a mechanism to enforce tying of
 distributions between distinct HMM states; it's possibly useful if you want to
 5~create more interesting transition models.

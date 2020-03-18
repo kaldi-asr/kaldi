@@ -142,6 +142,7 @@ class RnnlmCoreTrainer {
  public:
   /** Constructor.
        @param [in] config  Structure that holds configuration options
+       @param [in] objective_config  Structure that holds configuration options
        @param [in,out] nnet   The neural network that is to be trained.
                               Will be modified each time you call Train().
    */
@@ -208,6 +209,7 @@ class RnnlmCoreTrainer {
    @param [in] derived  Derived quantities from the minibatch.
    @param [in] word_embedding  The word embedding, with the same numbering as
                       used in the minibatch (may be subsampled at this point).
+   @param [in] computer
    @param [out] word_embedding_deriv  If non-NULL, the part of the derivative
                       w.r.t. the word-embedding that arises from the output
                       computation will be *added* to here.

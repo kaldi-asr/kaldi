@@ -43,12 +43,6 @@
 #ifndef KALDI_FSTEXT_CONTEXT_FST_H_
 #define KALDI_FSTEXT_CONTEXT_FST_H_
 
-/* This header defines a context FST "C" (the "C" in "HCLG") which transduces
-   from symbols representing phone context windows (e.g. "a, b, c") to
-   individual phones, e.g. "a".  Search for "hbka.pdf" ("Speech Recognition
-   with Weighted Finite State Transducers") by M. Mohri, for more context.
-*/
-
 #include <unordered_map>
 using std::unordered_map;
 
@@ -63,6 +57,14 @@ using std::unordered_map;
 
 namespace fst {
 
+
+/* \defgroup context_fst_group context FST
+ * @{
+ * This header defines a context FST "C" (the "C" in "HCLG") which transduces
+ * from symbols representing phone context windows (e.g. "a, b, c") to
+ * individual phones, e.g. "a".  Search for "hbka.pdf" ("Speech Recognition
+ * with Weighted Finite State Transducers") by M. Mohri, for more context.
+*/
 
 
 
@@ -334,6 +336,7 @@ private:
 
 };
 
+// @}
 }  // namespace fst
 
 

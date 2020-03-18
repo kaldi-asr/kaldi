@@ -52,9 +52,9 @@ struct DiscriminativeOptions {
   BaseFloat acoustic_scale; // e.g. 0.1
   bool drop_frames; // for MMI, true if we ignore frames where alignment
                     // pdf-id is not in the lattice.
-  bool one_silence_class;  // Affects MPFE and SMBR objectives 
+  bool one_silence_class;  // Affects MPFE and SMBR objectives
   BaseFloat boost; // for MMI, boosting factor (would be Boosted MMI)... e.g. 0.1.
-  
+
   std::string silence_phones_str; // colon-separated list of integer ids of silence phones,
                                   // for MPFE and SMBR objectives
 
@@ -67,27 +67,27 @@ struct DiscriminativeOptions {
   // the objf will be -0.5 times this constant times the squared l2 norm.
   // (squared so it's additive across the dimensions).  e.g. try 0.0005.
   BaseFloat l2_regularize;
-  
-  // Options for debugging discriminative training
-  
-  // Accumulates gradients wrt nnet outputs
-  bool accumulate_gradients;  
-  
-  // Accumulates nnet output
-  bool accumulate_output;     
-  
-  // Applicable for debugging discriminative training when accumulate_gradients
-  // or accumulate_output is true 
-  int32 num_pdfs;             
 
-  DiscriminativeOptions(): criterion("smbr"), 
+  // Options for debugging discriminative training
+
+  // Accumulates gradients wrt nnet outputs
+  bool accumulate_gradients;
+
+  // Accumulates nnet output
+  bool accumulate_output;
+
+  // Applicable for debugging discriminative training when accumulate_gradients
+  // or accumulate_output is true
+  int32 num_pdfs;
+
+  DiscriminativeOptions(): criterion("smbr"),
                            acoustic_scale(0.1),
                            drop_frames(false),
                            one_silence_class(false),
-                           boost(0.0), 
-                           xent_regularize(0.0), 
+                           boost(0.0),
+                           xent_regularize(0.0),
                            l2_regularize(0.0),
-                           accumulate_gradients(false), 
+                           accumulate_gradients(false),
                            accumulate_output(false),
                            num_pdfs(0) { }
 
@@ -132,27 +132,27 @@ struct DiscriminativeObjectiveInfo {
   double tot_t_weighted; // total number of frames times weight.
   double tot_objf;      // for 'mmi', the (weighted) denominator likelihood; for
                         // everything else, the objective function.
-  double tot_num_count; // total count of numerator posterior 
-  double tot_den_count; // total count of denominator posterior 
+  double tot_num_count; // total count of numerator posterior
+  double tot_den_count; // total count of denominator posterior
   double tot_num_objf;  // for 'mmi', the (weighted) numerator likelihood; for
                         // everything else 0
-  
+
   double tot_l2_term;   // l2 regularization objective
   // l2 regularization constant on the 'chain' output; the actual term added to
   // the objf will be -0.5 times this constant times the squared l2 norm.
   // (squared so it's additive across the dimensions).  e.g. try 0.0005.
 
   // Options for debugging discriminative training
-  
+
   // Accumulates gradients wrt nnet outputs
-  bool accumulate_gradients;  
-  
+  bool accumulate_gradients;
+
   // Accumulates nnet output
-  bool accumulate_output;     
-  
+  bool accumulate_output;
+
   // Applicable for debugging discriminative training when accumulate_gradients
-  // or accumulate_output is true 
-  int32 num_pdfs;             
+  // or accumulate_output is true
+  int32 num_pdfs;
 
   // Used to accumulates gradients wrt nnet outputs
   // when accumulate_gradients is true
@@ -161,8 +161,8 @@ struct DiscriminativeObjectiveInfo {
   CuVector<double> output;
 
   // Print statistics for the criterion
-  void Print(const std::string &criterion, 
-             bool print_avg_gradients = false, 
+  void Print(const std::string &criterion,
+             bool print_avg_gradients = false,
              bool print_avg_output = false) const;
 
   // Print all accumulated statistics for debugging
@@ -182,16 +182,16 @@ struct DiscriminativeObjectiveInfo {
     return tot_objf;
   }
 
-  // Returns true if accumulate_gradients is true 
-  // and the gradients vector has been resized to store the 
+  // Returns true if accumulate_gradients is true
+  // and the gradients vector has been resized to store the
   // accumulated gradients
   inline bool AccumulateGradients() const {
     return accumulate_gradients && gradients.Dim() > 0;
   }
 
-  // Returns true if accumulate_output is true 
-  // and the output vector has been resized to store the 
-  // accumulated nnet output 
+  // Returns true if accumulate_output is true
+  // and the output vector has been resized to store the
+  // accumulated nnet output
   inline bool AccumulateOutput() const {
     return accumulate_output && output.Dim() > 0;
   }
@@ -204,34 +204,35 @@ struct DiscriminativeObjectiveInfo {
 
   // Constructor from config options
   DiscriminativeObjectiveInfo(const DiscriminativeOptions &opts);
-  
+
   // Reset statistics
   void Reset();
-  
+
   void Configure(const DiscriminativeOptions &opts);
 };
 
 /**
-   This function does forward-backward on the numerator and denominator 
-   lattices and computes derivates wrt to the output for the specified 
+   This function does forward-backward on the numerator and denominator
+   lattices and computes derivates wrt to the output for the specified
    objective function.
 
    @param [in] opts        Struct containing options
    @param [in] tmodel       Transition model
    @param [in] log_priors   Vector of log-priors for pdfs
    @param [in] supervision  The supervision object, containing the numerator
-                            and denominator paths. The denominator is 
+                            and denominator paths. The denominator is
                             always a lattice. The numerator is an alignment.
    @param [in] nnet_output  The output of the neural net; dimension must equal
                           ((supervision.num_sequences * supervision.frames_per_sequence) by
                             tmodel.NumPdfs()).
 
-   @param [out] stats       Statistics accumulated during training such as 
+   @param [out] stats       Statistics accumulated during training such as
                             the objective function and the total weight.
+   @param [out] nnet_output_deriv
    @param [out] xent_output_deriv  If non-NULL, then the xent objective derivative
                            (which equals a posterior from the numerator forward-backward,
                            scaled by the supervision weight) is written to here.  This will
-                           be used in the cross-entropy regularization code.  
+                           be used in the cross-entropy regularization code.
 */
 void ComputeDiscriminativeObjfAndDeriv(
     const DiscriminativeOptions &opts,

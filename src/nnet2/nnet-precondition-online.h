@@ -59,9 +59,9 @@ namespace nnet2 {
 
   Our approximation to the Fisher matrix (the scatter of derivatives) will be of the following form
   (and just think of this as an approximate variance matrix of some arbitrary quantities).
-
+  \f[
      F_t =(def) R_t^T D_t R_t + \rho_t I
-
+  \f]
   (t is the minibatch index), where R_t is an R by D matrix with orthonormal
   rows (1 <= R < D is our chosen rank), D_t is a positive-definite diagonal matrix, and
   \rho_t > 0.  Suppose the dimension of F_t is D.  Let the vectors whose variance
@@ -71,7 +71,9 @@ namespace nnet2 {
   i.e. each row is one of the vectors whose scatter we're estimating.  On the
   t'th iteration, define the scatter S_t of the input vectors X_t as:
 
+  \f[
      S_t =(def) 1/N X_t^T X_t           (eqn:St)
+  \f]
 
   (where N is the minibatch size).  Be careful not to confuse the rank R with
   with input X_t (we would typeface X_t in bold if this were not plain text, to
@@ -82,25 +84,35 @@ namespace nnet2 {
   changing).  We use a constant 0 < \eta < 1 to control the updating rate.  Our
   update for R_t is based on the power method.  Define the smoothed scatter
 
+  \f[
    T_t =(def) \eta S_t + (1-\eta) F_t
+  \f]
 
   we'll use this in place of the observed scatter S_t, to slow down the update.
   Defining
 
+  \f[
    Y_t =(def) R_t T_t
+  \f]
 
   which can be expanded as follows:
+  \f[
        Y_t = R_t ( \eta S_t + (1-\eta) F_t )
            = R_t ( \eta S_t + (1-\eta) (R_t^T D_t R_t + \rho_t I) )
            = R_t ( \eta S_t + (1-\eta) (R_t^T D_t R_t + \rho_t I) )
            = \eta R_t S_t + (1-\eta) (D_t + \rho_t I) R_t
+  \f]
 
   It is useful to think of Y_t as having each of the top eigenvectors of the
   scatter scaled by the corresponding eigenvalue \lambda_i.
   We compute the following R by R matrix:
+  \f[
     Z_t =(def) Y_t Y_t^T
+  \f]
   and do the symmetric eigenvalue decomposition
+  \f[
     Z_t = U_t C_t U_t^T
+  \f]
   where C_t is diagonal and U_t orthogonal; the diagonal elements of C_t will be
   positive (since \rho_t > 0, T_t is positive definite; since R_t has full row rank
   and T_t is positive definite, Y_t has full row rank; hence Z_t is positive definite).
@@ -109,12 +121,16 @@ namespace nnet2 {
   [we should check that no element of C_t is <= 0.]
 
   It is easy to show that C_t^{-0.5} U_t^T Z_t U_t C_t^{-0.5} = I, so
+  \f[
      (C_t^{-0.5} U_t^T Y_t) (Y_t^T U_t C_t^{-0.5}) = I.  Define
     R_{t+1} =(def) C_t^{-0.5} U_t^T Y_t
+  \f]
 
   and it's clear that R_{t+1} R_{t+1}^T = I.
   We will set
+  \f[
      D_{t+1} =(def) C_t^{0.5} - \rho_{t+1} I             (eqn:dt1)
+  \f]
 
   which ensures that for each row r of R_{t+1}, the variance of our scatter
   matrix F_{t+1} will be the square root of the corresponding diagonal element
@@ -125,20 +141,28 @@ namespace nnet2 {
   tr(F_{t+1}) = tr(T_t).
 
   For any t,
+  \f[
      tr(F_t) = D \rho_t + tr(D_t)
      tr(T_t) = \eta tr(S_t) + (1-\eta) tr(F_t)
              = \eta tr(S_t) + (1-\eta) (D \rho_t + tr(D_t))
+  \f]
   Expanding out D_{t+1} from (eqn:dt1) in the expression for tr(F_{t+1}) below:
+  \f[
       tr(F_{t+1})  = D \rho_{t+1} +  tr(D_{t+1})
       tr(F_{t+1})  = D \rho_{t+1} +  tr(C_t^{0.5} - \rho_{t+1} I)
                    = (D - R) \rho_{t+1} + tr(C_t^{0.5})
+  \f]
    and equating tr(F_{t+1}) with T_t (since F_{t+1} is supposed to be a low-rank
    approximation to T_t), we have
+  \f[
                           tr(F_{t+1}) = tr(T_t)
   (D - R) \rho_{t+1} + tr(C_t^{0.5})  = \eta tr(S_t) + (1-\eta) (D \rho_t + tr(D_t))
+  \f]
 
   Solving for \rho_{t+1},
+  \f[
        \rho_{t+1} = 1/(D - R) (\eta tr(S_t) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).   (eqn:rhot1)
+  \f]
 
   Note that it is technically possible that diagonal elements of
   of D_{t+1} may be negative, but we can still show that F_{t+1} is strictly
@@ -157,22 +181,32 @@ namespace nnet2 {
   that's smoothed with some constant times the identity.  Below, (\alpha is a
   configuration value, e.g. 4.0 seemed to work well).  The following formula is
   designed to ensure that the smoothing varies proportionally with the scale of F_t:
+  \f[
 
         G_t =(def) F_t +  \alpha/D tr(F_t) I
             =     R_t^T D_t R_t + (\rho_t + \alpha/D tr(F_t)) I
             =     R_t^T D_t R_t + \beta_t I
+  \f]
   where
+  \f[
     \beta_t =(def) \rho_t + \alpha/D tr(F_t)
             =      \rho_t(1+\alpha) + \alpha/D tr(D_t)       (eqn:betat2)
+  \f]
 
   Define
+  \f[
      \hat{X}_t =(def)  \beta_t X_t G_t^{-1}.
+  \f]
   the factor of \beta_t is inserted arbitrarily as it just happens to be convenient
   to put unit scale on X_t in the formula for \hat{X}_t; it will anyway be canceled out
   in the next step.  Then our final preconditioned minibatch of vectors is:
+  \f[
      \bar{X}_t = \gamma_t \hat{X}_t
+  \f]
   where
+  \f[
      \gamma_t = sqrt(tr(X_t X_t^T)  / tr(\hat{X}_t \hat{X}_t^T).
+  \f]
   The factor of \gamma ensures that \bar{X}_t is scaled to have the same overall
   2-norm as the input X_t.  We found in previous versions of this method that this
   rescaling was helpful, as otherwise there are certain situations (e.g. at the
@@ -183,58 +217,84 @@ namespace nnet2 {
 
   To efficiently compute G_t^{-1}, we will use the Woodbury matrix identity.
   Writing the Woodbury formula for the symmetric case,
+  \f[
     (A + U D U^T)^{-1} = A^{-1} - A^{-1} U (D^{-1} + U^T A^{-1} U)^{-1} U^T A^{-1}
+  \f]
   Substituting A = \beta_t I, D = D_t and U = R_t^T, this becomes
        G_t^{-1} = 1/\beta_t I - 1/\beta_t^2 R_t^T (D_t^{-1} + 1/\beta_t I)^{-1} R_t
                 = 1/\beta_t (I - R_t^T E_t R_t)
+  \f]
   where
+  \f[
         E_t =(def)  1/\beta_t (D_t^{-1} + 1/\beta_t I)^{-1},         (eqn:etdef)
+  \f]
   so
+  \f[
     e_{tii} =   1/\beta_t * 1/(1/d_{tii} + 1/\beta_t)                (eqn:tii)
             =   1/(\beta_t/d_{tii} + 1)
+  \f]
 
   We would like an efficient-to-compute expression for \hat{X}_t, without too many separate
   invocations of kernels on the GPU.
+  \f[
      \hat{X}_t = \beta_t X_t G_t^{-1}
          = X_t - X_t R_t^T E_t R_t
+  \f]
   For efficient operation on the GPU, we want to reduce the number of high-dimensional
   operations that we do (defining "high-dimension" as anything involving D or M, but not
   R, since R is likely small, such as 20).  We define
+  \f[
      W_t =(def)  E_t^{0.5} R_t.
+  \f]
   We will actually be storing W_t on the GPU rather than R_t, in order to reduce the
   number of operations on the GPU.  We can now write:
 
+  \f[
         \hat{X}_t = X_t - X_t W_t^T W_t       (eqn:pt2)
+  \f]
 
   The following, which we'll compute on the GPU, are going to be useful in computing
   quantities like Z_t:
 
+  \f[
      H_t =(def) X_t W_t^T     (dim is N by R)
      J_t =(def) H_t^T X_t     (dim is R by D)
          =      W_t X_t^T X_t
      K_t =(def) J_t J_t^T     (dim is R by R, symmetric).. transfer this to CPU.
      L_t =(def) H_t^T H_t     (dim is R by R, symmetric).. transfer this to CPU.
          =      W_t X_t^T X_t W_t^T
+  \f]
      Note: L_t may also be computed as
+  \f[
      L_t = J_t W_t^T
+  \f]
      which may be more efficient if D < N.
 
   Note: after we have computed H_t we can directly compute
+  \f[
      \hat{X}_t = X_t - H_t W_t
+  \f]
 
   We need to determine how Y_t and Z_t relate to the quantities we just defined.
   First, we'll expand out H_t, J_t, K_t and L_t in terms of the more fundamental quantities.
+  \f[
      H_t = X_t R_t^T E_t^{0.5}
      J_t = E_t^{0.5} R_t X_t^T X_t
      K_t = E_t^{0.5} R_t X_t^T X_t X_t^T X_t R_t^T E_t^{0.5}
      L_t = E_t^{0.5} R_t X_t^T X_t R_t^T E_t^{0.5}
+  \f]
 
   we wrote above that
+  \f[
       Y_t = \eta R_t S_t + (1-\eta) (D_t + \rho_t I) R_t
+  \f]
   so
+  \f[
       Y_t = \eta/N R_t X_t^T X_t   + (1-\eta) (D_t + \rho_t I) R_t
           = \eta/N E_t^{-0.5} J_t  + (1-\eta) (D_t + \rho_t I) R_t     (eqn:yt)
+  \f]
   We will expand Z_t using the expression for Y_t in the line above:
+  \f[
       Z_t = Y_t Y_t^T
           =  (\eta/N)^2 E_t^{-0.5} J_t J_t^T E_t^{-0.5}
             +(\eta/N)(1-\eta) E_t^{-0.5} J_t R_t^T (D_t + \rho_t I)
@@ -244,9 +304,12 @@ namespace nnet2 {
            +(\eta/N)(1-\eta) E_t^{-0.5} L_t E_t^{-0.5} (D_t + \rho_t I)
            +(\eta/N)(1-\eta) (D_t + \rho_t I) E_t^{-0.5} L_t E_t^{-0.5}
            +(1-\eta)^2 (D_t + \rho_t I)^2                              (eqn:Zt)
+  \f]
   We compute Z_t on the CPU using the expression above, and then do the symmetric
   eigenvalue decomposition (also on the CPU):
+  \f[
       Z_t = U_t C_t U_t^T.
+  \f]
   and we make sure the eigenvalues are sorted from largest to smallest, for
   reasons that will be mentioned later.
 
@@ -269,23 +332,33 @@ namespace nnet2 {
 
   For current purposes, you can imagine that we computed tr(\hat{X}_t \hat{X}_t^T) directly.
   Using (from eqn:pt2)
+  \f[
       \hat{X}_t = X_t - X_t W_t^T W_t,
+  \f]
   we can expand tr(\hat{X}_t \hat{X}_t^T) as:
+  \f[
    tr(\hat{X}_t \hat{X}_t^T) = tr(X_t X_t^T) + tr(X_t W_t^T W_t W_t^T W_t X_t^T)
                   - 2 tr(X_t W_t^T W_t X_t^T)
                  = tr(X_t X_t^T) + tr(W_t X_t^T X_t W_t^T W_t W_t^T)
                   - 2 tr(W_t X_t^T X_t W_t^T)
                  = tr(X_t X_t^T) + tr(L_t W_t W_t^T) - 2 tr(L_t)
                  = tr(X_t X_t^T) + tr(L_t E_t) - 2 tr(L_t)
+  \f]
   and all quantities have already been computed (or are quick to compute, such as
   the small traces on the right), except tr(X_t X_t^T), so we can write
 
+  \f[
     tr(X_t X_t^T) = tr(\hat{X}_t \hat{X}_t^T) - tr(L_t E_t) + 2 tr(L_t)
+  \f]
   and the above expression can be used to obtain tr(X_t X_t^2).
   We can then do
+  \f[
      \gamma_t <-- sqrt(tr(X_t X_t^T)  / tr(\hat{X}_t \hat{X}_t^T)).
+  \f]
   (or one if the denominator is zero), and then
+  \f[
       \bar{X}_t <-- \gamma_t \hat{X}_t
+  \f]
   We can then output the per-row squared-l2-norms of Q by scaling those we
   computed from P by \gamma_t^2.
 
@@ -293,13 +366,19 @@ namespace nnet2 {
   We now return to the computation of R_{t+1}, W_{t+1}, \rho_{t+1}, D_{t+1} and E_{t+1}.
 
   We found above in (eqn:rhot1)
+  \f[
      \rho_{t+1} = 1/(D - R) (\eta tr(S_t) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).
+  \f]
   Expanding out S_t from its definition in (eqn:St),
+  \f[
      \rho_{t+1} = 1/(D - R) (\eta/N tr(X_t X_t^T) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).
+  \f]
   We can compute this directly as all the quantities involved are already known
   or easy to compute.
   Next, from (eqn:dt1), we compute
+  \f[
      D_{t+1} = C_t^{0.5} - \rho_{t+1} I
+  \f]
   At this point if \rho_{t+1} is smaller than some small value \epsilon, e.g. 1.0e-10, we
   set it to \epsilon; as mentioned, we do this to stop F_t approaching zero if all inputs
   are zero.  Next, if any diagonal element D_{t+1,i,i} has absolute value less
@@ -307,26 +386,39 @@ namespace nnet2 {
   elements of E are never zero, which would cause problems.
 
   Next, we compute (from eqn:betat2, eqn:etdef, eqn:tii),
+  \f[
         \beta_{t+1} = \rho_{t+1} (1+\alpha) + \alpha/D tr(D_{t+1})
             E_{t+1} = 1/\beta_{t+1} (D_{t+1}^{-1} + 1/\beta_{t+1} I)^{-1},
- i.e.:      e_{tii} = 1/(\beta_{t+1}/d_{t+1,ii} + 1)
+  \f]
+ i.e.:
+  \f[
+   e_{tii} = 1/(\beta_{t+1}/d_{t+1,ii} + 1)
+  \f]
 
  We'll want to store D_{t+1}.  We next want to compute W_{t+1}.
 
   Before computing W_{t+1}, we need to find an expression for
+  \f[
      R_{t+1} = C_t^{-0.5} U_t^T Y_t
+  \f]
    Expanding out Y_t using the expression in (eqn:yt),
+  \f[
      R_{t+1} = C_t^{-0.5} U_t^T  (\eta/N E_t^{-0.5} J_t  + (1-\eta) (D_t + \rho_t I) R_t)
              =  (\eta/N C_t^{-0.5} U_t^T E_t^{-0.5})  J_t
                +((1-\eta) C_t^{-0.5} U_t^T (D_t + \rho_t I) E_t^{-0.5}) W_t
+  \f]
 
    What we actually want is W_{t+1} = E_{t+1}^{0.5} R_{t+1}:
+  \f[
      W_{t+1} = (\eta/N E_{t+1}^{0.5} C_t^{-0.5} U_t^T E_t^{-0.5}) J_t
               +((1-\eta) E_{t+1}^{0.5} C_t^{-0.5} U_t^T (D_t + \rho_t I) E_t^{-0.5}) W_t
+  \f]
    and to minimize the number of matrix-matrix multiplies we can factorize this as:
+  \f[
      W_{t+1} = A_t B_t
         A_t = (\eta/N) E_{t+1}^{0.5} C_t^{-0.5} U_t^T E_t^{-0.5}
         B_t = J_t + (1-\eta)/(\eta/N) (D_t + \rho_t I) W_t
+  \f]
    [note: we use the fact that (D_t + \rho_t I) and E_t^{-0.5} commute because
     they are diagonal].
 
@@ -349,16 +441,22 @@ namespace nnet2 {
    define it as E_{t+1}^{-0.5} W_{t+1}.  Define the following (and we will
    just use t instead of t+1 below, as all quantities have the same subscript):
 
+  \f[
       O_t =(def) R_t R_t^T
           =  E_t^{-0.5} W_t W_t^T E_t^{-0.5}
+  \f]
 
    (and we would compute this by computing W_t W_t^T on the GPU, transferring
    it to the CPU, and doing the rest there).  If O_t is not sufficiently close
    to the unit matrix, we can re-orthogonalize as follows:
    Do the Cholesky decomposition
+  \f[
       O_t = C C^T
+  \f]
    Clearly C^{-1} O_t C^{-T} = I, so if we correct R_t with:
+  \f[
       R_t <-- C^{-1} R_t
+  \f]
    we can ensure orthogonality.  If R_t's first k rows are orthogonal, this
    transform will not affect them, because of its lower-triangular
    structure... this is good because (thanks to the eigenvalue sorting), the
@@ -366,7 +464,9 @@ namespace nnet2 {
    in the same direction.  Any loss of orthogonality will be dealt with by
    modifying the smaller eigenvectors.
    As a modification to W_t, this would be:
+  \f[
       W_t <-- (E_t^{0.5} C^{-1} E_t^{-0.5}) W_t,
+  \f]
    and the matrix in parentheses is computed on the CPU, transferred to the
    GPU, and the multiplication is done there.
 
@@ -378,10 +478,12 @@ namespace nnet2 {
    minibatch size (num-rows of R0).  If L is the corresponding RxR diagonal
    matrix of eigenvalues, then we will set D_0 = L - \rho_0 I.  We set \rho_0
    to ensure that
+  \f[
                       tr(F_0) = 1/N tr(X_0 X_0^T),
            tr(D_0) - \rho_0 D = 1/N tr(X_0 X_0^T),
   tr(L) + \rho_0 R - \rho_0 D = 1/N tr(X_0 X_0^T)
                        \rho_0 = (1/N tr(X_0 X_0^T) - tr(L)) / (D - R)
+  \f]
 
    We then floor \rho_0 to \epsilon (e.g. 1.0e-10) and also floor the
    diagonal elements of D_0 to \epsilon; this ensures that we won't

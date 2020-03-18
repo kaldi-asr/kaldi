@@ -189,7 +189,7 @@ name of each speaker (in this case it is also a 'recordingID' - every speaker
 has only one audio data folder from one recording session). In my example there
 are 5 female and 5 male speakers (f = female, m = male).
 
-<b>Pattern:</b> <speakerID> <gender>
+<b>Pattern:</b> \<speakerID\> \<gender\>
 \verbatim
 cristine f
 dad m
@@ -205,7 +205,7 @@ you stick to my naming approach, 'utteranceID' is nothing more than 'speakerID'
 (speaker's folder name) glued with *.wav file name without '.wav' ending (look
 for examples below).
 
-<b>Pattern:</b> <uterranceID> <full_path_to_audio_file>
+<b>Pattern:</b> \<uterranceID\> \<full_path_to_audio_file\>
 \verbatim
 dad_4_4_2 /home/{user}/kaldi/egs/digits/digits_audio/train/dad/4_4_2.wav
 july_1_2_5 /home/{user}/kaldi/egs/digits/digits_audio/train/july/1_2_5.wav
@@ -216,7 +216,7 @@ july_6_8_3 /home/{user}/kaldi/egs/digits/digits_audio/train/july/6_8_3.wav
 c.) \c text <br>
 This file contains every utterance matched with its text transcription.
 
-<b>Pattern:</b> <uterranceID> <text_transcription>
+<b>Pattern:</b> \<uterranceID\> \<text_transcription\>
 \verbatim
 dad_4_4_2 four four two
 july_1_2_5 one two five
@@ -227,7 +227,7 @@ july_6_8_3 six eight three
 d.) \c utt2spk <br>
 This file tells the ASR system which utterance belongs to particular speaker.
 
-<b>Pattern:</b> <uterranceID> <speakerID>
+<b>Pattern:</b> \<uterranceID\> \<speakerID\>
 \verbatim
 dad_4_4_2 dad
 july_1_2_5 july
@@ -242,7 +242,7 @@ file \c corpus.txt which should contain every single utterance transcription
 that can occur in your ASR system (in our case it will be 100 lines from 100
 audio files).
 
-<b>Pattern:</b> <text_transcription>
+<b>Pattern:</b> \<text_transcription\>
 \verbatim
 one two five
 six eight three
@@ -265,7 +265,7 @@ a.) \c lexicon.txt <br>
 This file contains every word from your dictionary with its 'phone
 transcriptions' (taken from \c /egs/voxforge).
 
-<b>Pattern:</b> <word> <phone 1> <phone 2> ...
+<b>Pattern:</b> \<word\> \<phone 1\> \<phone 2\> ...
 \verbatim
 !SIL sil
 <UNK> spn
@@ -286,7 +286,7 @@ zero z iy r ow
 b.) \c nonsilence_phones.txt <br>
 This file lists nonsilence phones that are present in your project.
 
-<b>Pattern:</b> <phone>
+<b>Pattern:</b> \<phone\>
 \verbatim
 ah
 ao
@@ -313,7 +313,7 @@ z
 c.) \c silence_phones.txt <br>
 This file lists silence phones.
 
-<b>Pattern:</b> <phone>
+<b>Pattern:</b> \<phone\>
 \verbatim
 sil
 spn
@@ -322,7 +322,7 @@ spn
 d.) \c optional_silence.txt <br>
 This file lists optional silence phones.
 
-<b>Pattern:</b> <phone>
+<b>Pattern:</b> \<phone\>
 \verbatim
 sil
 \endverbatim

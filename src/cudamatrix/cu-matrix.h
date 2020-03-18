@@ -64,7 +64,7 @@ void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
  * Does the computation on the CUDA card when CUDA is compiled in and
  * we have a suitable GPU (CuDevice::Instantiate().Enabled() == true);
  * otherwise, does it on the CPU.
- */
+ **/
 
 /*
 template<typename Real>
@@ -73,7 +73,7 @@ struct MatrixElement {
   int column;
   Real weight;
 };
-// */
+*/
 
 template<typename Real>
 class CuMatrixBase {
@@ -176,14 +176,14 @@ class CuMatrixBase {
 
 
   /// For each row r of this and for each column c, sets (*this)(r, c) to the
-  /// sum \sum_j src(r, j), where j ranges from indexes[c].first through
+  /// sum \f$\sum_j\f$ src(r, j),where j ranges from indexes[c].first through
   /// indexes[c].second - 1.
   void SumColumnRanges(const CuMatrixBase<Real> &src,
                        const CuArrayBase<Int32Pair> &indexes);
 
 
   /// For each row r of this and for each column c, do
-  /// (*this)(r, c) += \sum_j src(j, c),
+  /// (*this)(r, c) += \f$\sum_j\f$ src(j, c),
   /// where j ranges from indexes[r].first through indexes[r].second - 1.
   /// In general indexes must be >= 0 and < src.NumRows(); but to represent an empty range
   /// you may use the pair (-1, -1) or any pair of numbers (i, j) such that i >= j.
@@ -250,7 +250,7 @@ class CuMatrixBase {
   template<typename OtherReal>
   void CopyFromTp(const CuTpMatrix<OtherReal> &M,
                   MatrixTransposeType trans = kNoTrans);
-  
+
   // This function will copy from source rows (start_range, end_range]
   // if the range is outside of the clamped region then the clamped
   // row will be replicated across the out of range areas
@@ -307,9 +307,9 @@ class CuMatrixBase {
   void PowAbs(const CuMatrixBase<Real> &src, Real power, bool include_sign=false);
 
   void Floor(const CuMatrixBase<Real> &src, Real floor_val);
-  
+
   void Ceiling(const CuMatrixBase<Real> &src, Real ceiling_val);
-  
+
   /// This is equivalent to running:
   /// Floor(src, lower_limit);
   /// Ceiling(src, upper_limit);
@@ -320,21 +320,21 @@ class CuMatrixBase {
   /// (x < 0 ? exp(x) : x + 1).  This function is used
   /// in our RNNLM training.
   void ExpSpecial(const CuMatrixBase<Real> &src);
-  
+
   /// Softmax nonlinearity
-  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row,
+  /// Y = Softmax(X) : \f$Y_{ij} = e^X_{ij} / sum_k(e^{X_{ik}})\f$, done to each row,
   /// with attention to avoiding  overflow or underflow.
   /// Supports in-place operation (i.e. this == &src).
   void SoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// LogSoftmax nonlinearity
-  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row,
+  /// Y = LogSoftmax(X) : \f$Y_{ij} = X_{ij} - \log(\sum_k(e^{X_{ik}}))\f$, done to each row,
   /// with attention to avoiding  overflow or underflow.
   /// Supports in-place operation (i.e. this == &src).
   void LogSoftMaxPerRow(const CuMatrixBase<Real> &src);
 
-  
-  /// Apply the function y = log(1 + exp(x)), to each element.
+
+  /// Apply the function \f$y = log(1 + exp(x))\f$, to each element.
   /// Note: the derivative of this function is the sigmoid function.
   /// This is like a soft ReLU.
   void SoftHinge(const CuMatrixBase<Real> &src);
@@ -439,23 +439,23 @@ class CuMatrixBase {
     this -> Pow(*this, power);
   };
 
-  
+
   inline void ApplyPowAbs(Real power, bool include_sign=false) {
     this -> PowAbs(*this, power, include_sign);
   };
-  
+
   inline void ApplyHeaviside() {
     this -> Heaviside(*this);
   };
-  
+
   inline void ApplyFloor(Real floor_val) {
     this -> Floor(*this, floor_val);
   };
-  
+
   inline void ApplyCeiling(Real ceiling_val) {
     this -> Ceiling(*this, ceiling_val);
   };
-  
+
   inline void ApplyExp() {
     this -> Exp(*this);
   };
@@ -761,12 +761,12 @@ class CuMatrixBase {
 
  protected:
 
-  // The constructors are protected to prevent the user creating an instance of
-  // this class (you should create a child class CuMatrix or CuSubMatrix.
+  /// The constructors are protected to prevent the user creating an instance of
+  /// this class (you should create a child class CuMatrix or CuSubMatrix.
 
   CuMatrixBase(): data_(NULL), num_cols_(0), num_rows_(0), stride_(0) { }
 
-  /// This constructor takes the #rows, #cols and stride; it's called from
+  /// This constructor takes the # rows, # cols and stride; it's called from
   /// the constructor of CuSubMatrix.
   CuMatrixBase(Real *data,
                MatrixIndexT num_rows,

@@ -106,6 +106,7 @@ struct ImageAugmentationConfig {
                      image->NumRows() is the width (number of x values) in
                      the image; image->NumCols() is the height times number
                      of channels (channel varies the fastest).
+  @param [in] fill_mode
  */
 void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
                           int32 num_channels,

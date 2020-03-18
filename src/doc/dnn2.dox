@@ -29,7 +29,7 @@ namespace kaldi {
   Karel's version, see \ref dnn1.
 
  This (rather hastily prepared) introduction to the DNN setup includes \ref
- dnn2_toplevel, \ref dnn2_gpu, \ref dnn2_tuning and \ref dnn2_preconditioning.
+ dnn2_toplevel, \ref dnn2_gpu, \ref dnn2_tuning and \ref dnn2_algorithms_preconditioning.
 
   \section dnn2_toplevel Looking at the scripts
 
@@ -144,7 +144,7 @@ SoftmaxComponent dim=1475
   trained with standard stochastic gradient descent.  AffineComponentPreconditionedOnline is
   as AffineComponent, but the training procedure uses not just a single global learning rate
   but a matrix-valued learning rate to precondition the gradient descent.
-  We aim to describe more about this below (see \ref dnn2_preconditioning).
+  We aim to describe more about this below (see \ref dnn2_algorithms_preconditioning).
  The PnormComponent is the nonlinearity; for a more conventional neural network this
  would be TanhComponent instead.  The NormalizeComponent is something we add to stabilize
  the training of p-norm networks.  It is also a fixed, non-trainable nonlinearity, but it acts

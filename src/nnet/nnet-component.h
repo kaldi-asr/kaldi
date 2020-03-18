@@ -155,10 +155,10 @@ class Component {
   /// Write the component to a stream,
   void Write(std::ostream &os, bool binary) const;
 
-  /// Print some additional info (after <ComponentName> and the dims),
+  /// Print some additional info (after "<ComponentName>" and the dims),
   virtual std::string Info() const { return ""; }
 
-  /// Print some additional info about gradient (after <...> and dims),
+  /// Print some additional info about gradient (after "<...>" and dims),
   virtual std::string InfoGradient() const { return ""; }
 
 
@@ -203,7 +203,7 @@ class Component {
  * Class UpdatableComponent is a Component which has trainable parameters,
  * it contains SGD training hyper-parameters in NnetTrainOptions.
  * The constants 'learning_rate_coef_' and 'bias_learn_rate_coef_'
- * are separate, and should be stored by ::WriteData(...),
+ * are separate, and should be stored by "::WriteData(...)",
  */
 class UpdatableComponent : public Component {
  public:
@@ -265,11 +265,11 @@ class UpdatableComponent : public Component {
   NnetTrainOptions opts_;
 
   /// Scalar applied to learning rate for weight matrices
-  /// (to be used in ::Update method),
+  /// (to be used in "::Update method"),
   BaseFloat learn_rate_coef_;
 
   /// Scalar applied to learning rate for bias
-  /// (to be used in ::Update method),
+  /// (to be used in "::Update method"),
   BaseFloat bias_learn_rate_coef_;
 };
 

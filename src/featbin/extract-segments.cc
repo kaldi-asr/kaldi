@@ -24,7 +24,7 @@
 
 /*! @brief This is the main program for extracting segments from a wav file
  - usage :
-     - extract-segments [options ..]  <scriptfile > <segments-file> <wav-written-specifier>
+     - extract-segments [options ..]  \<scriptfile\> \<segments-file\> \<wav-written-specifier\>
      - "scriptfile" must contain full path of the wav file.
      - "segments-file" should have the information of the segments that needs to be extracted from wav file
      - the format of the segments file : speaker_name wavfilename start_time(in secs) end_time(in secs) channel-id(0 or 1)
@@ -180,10 +180,10 @@ int main(int argc, char *argv[]) {
       // conversion requires a proper rounding.
       int32 start_samp = static_cast<int32>(start * samp_freq + 0.5f),
           end_samp = static_cast<int32>(end * samp_freq + 0.5f);
-    
-      if (end_samp > num_samp) 
+
+      if (end_samp > num_samp)
         end_samp = num_samp;
-     
+
       // Get the range of data from the orignial wave_data matrix.
       SubMatrix<BaseFloat> segment_matrix(wave_data, channel, 1,
                                           start_samp, end_samp - start_samp);

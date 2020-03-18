@@ -255,7 +255,7 @@ class LatticeFasterDecoderTpl {
 
   ~LatticeFasterDecoderTpl();
 
-  /// Decodes until there are no more frames left in the "decodable" object..
+  /// Decodes until there are no more frames left in the "decodable" object.
   /// note, this may block waiting for input if the "decodable" object blocks.
   /// Returns true if any kind of traceback is available (not necessarily from a
   /// final state).

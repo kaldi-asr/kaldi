@@ -150,13 +150,13 @@ class CompressedMatrix {
   inline MatrixIndexT NumCols() const { return (data_ == NULL) ? 0 :
       (*reinterpret_cast<GlobalHeader*>(data_)).num_cols; }
 
-  /// Copies row #row of the matrix into vector v.
-  /// Note: v must have same size as #cols.
+  /// Copies row \#row of the matrix into vector v.
+  /// Note: v must have same size as \#cols.
   template<typename Real>
   void CopyRowToVec(MatrixIndexT row, VectorBase<Real> *v) const;
 
-  /// Copies column #col of the matrix into vector v.
-  /// Note: v must have same size as #rows.
+  /// Copies column \#col of the matrix into vector v.
+  /// Note: v must have same size as \#rows.
   template<typename Real>
   void CopyColToVec(MatrixIndexT col, VectorBase<Real> *v) const;
 

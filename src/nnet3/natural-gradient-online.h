@@ -439,17 +439,17 @@ class OnlineNaturalGradient {
   /**
      This call implements the main functionality of this class.
 
-     @param [in,out] R  The "R" pointer is both the input (R in the
-            comment, X in the paper), and the output (P in the comment,
-            X with a hat on it in the paper).  Each row of R is viewed
+     @param [in,out] X  The "X" pointer is both the input (X in the
+            comment, X in the paper), and the output (X in the comment,
+            X with a hat on it in the paper).  Each row of X is viewed
             as a vector in some space, where we're estimating a smoothed
             Fisher matrix and then multiplying by the inverse of that
             smoothed Fisher matrix.
 
     @param [out] scale  If non-NULL, a scaling factor is written to here,
-            and the output 'R' should be multiplied by this factor by
+            and the output 'X' should be multiplied by this factor by
             the user (we don't do it internally, to save an operation).
-            The factor is chosen so that the vector 2-norm of R is the
+            The factor is chosen so that the vector 2-norm of X is the
             same after the natural gradient as it was before.  (The pointer
             being NULL or non-NULL doesn't affect the magnitude of R;
             in any case the user will probably want to do this rescaling,

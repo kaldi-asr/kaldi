@@ -49,8 +49,8 @@ void GetTestSentences(const std::set<std::string> &forbidden_symbols,
 
 
 
-/// Returns a symbol table that maps <eps> -> 0, <s> -> 1,
-/// </s> -> 2, <brk> -> 3, and any symbols that appear in 'sentences' to
+/// Returns a symbol table that maps "<eps>" -> 0, "<s>" -> 1,
+/// "</s>" -> 2, "<brk>" -> 3, and any symbols that appear in 'sentences' to
 /// other values.
 fst::SymbolTable *GetSymbolTable(
     const std::vector<std::vector<std::string> > &sentences);

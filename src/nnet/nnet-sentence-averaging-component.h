@@ -33,7 +33,7 @@ namespace nnet1 {
 
 /**
  * SimpleSentenceAveragingComponent does not have nested network,
- * it is intended to be used inside of a <ParallelComponent>.
+ * it is intended to be used inside of a "<ParallelComponent>".
  * For training use 'nnet-train-perutt'.
  *
  * The sentence-averaging typically leads to small gradients, so we boost it 100x

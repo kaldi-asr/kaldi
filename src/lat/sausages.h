@@ -58,7 +58,7 @@ struct MinimumBayesRiskOptions {
   /// to do MBR decoding (if false, our output is the MAP decoded output, but we
   /// output the stats too (i.e. the confidences)).
   bool decode_mbr;
-  /// Boolean configuration parameter: if true, the 1-best path will 'keep' the <eps> bins,
+  /// Boolean configuration parameter: if true, the 1-best path will 'keep' the "<eps>" bins,
   bool print_silence;
 
   MinimumBayesRiskOptions() : decode_mbr(true), print_silence(false)
