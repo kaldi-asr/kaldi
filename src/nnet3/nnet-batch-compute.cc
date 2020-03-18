@@ -1020,7 +1020,6 @@ void MergeTaskOutput(
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
     std::vector<const BaseFloat*> inputs(num_tasks);
     std::vector<BaseFloat*> outputs(num_tasks);
     std::vector<int32_t> ldi(num_tasks), ldo(num_tasks);
@@ -1056,7 +1055,6 @@ void MergeTaskOutput(
     // execute batched copy
     cuda_batched_copy_mats(b, &num_rows[0], &num_cols[0], &inputs[0], &ldi[0],
         &outputs[0], &ldo[0]);
-
   } else
 #endif
  {
@@ -1522,7 +1520,6 @@ NnetBatchDecoder::~NnetBatchDecoder() {
             << num_partial_ << " forced out); failed for "
             << num_fail_;
 }
-
 
 }  // namespace nnet3
 }  // namespace kaldi
