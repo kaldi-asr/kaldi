@@ -4,24 +4,24 @@
 # cmn normalization both for i-extractor and TDNN input.
 # run_tdnn_1i.sh in local/chain2 uses new kaldi recipe.
 
-# local/chain/compare_wer.sh exp/chain/tdnn1h_sp exp/chain_online_cmn/tdnn1i_sp
-# System                tdnn1h_sp tdnn1i_sp
-#WER dev93 (tgpr)                6.89      6.90
-#WER dev93 (tg)                  6.63      6.73
-#WER dev93 (big-dict,tgpr)       4.96      4.91
-#WER dev93 (big-dict,fg)         4.53      4.44
-#WER eval92 (tgpr)               4.68      4.77
-#WER eval92 (tg)                 4.32      4.36
-#WER eval92 (big-dict,tgpr)      2.69      2.85
-#WER eval92 (big-dict,fg)        2.34      2.36
-# Final train prob        -0.0442   -0.0436
-# Final valid prob        -0.0537   -0.0540
-# Final train prob (xent)   -0.6548   -0.6592
-# Final valid prob (xent)   -0.7324   -0.7326
-# Num-params                 8349232   8349232
+# local/chain2/compare_wer.sh exp/chain2_online_cmn/tdnn1i_sp
+# System                tdnn1i_sp
+#WER dev93 (tgpr)                6.83
+#WER dev93 (tg)                  6.53
+#WER dev93 (big-dict,tgpr)       4.71
+#WER dev93 (big-dict,fg)         4.31
+#WER eval92 (tgpr)               4.86
+#WER eval92 (tg)                 4.43
+#WER eval92 (big-dict,tgpr)      2.71
+#WER eval92 (big-dict,fg)        2.27
+# Final train prob        -0.0397
+# Final valid prob        -0.0346
+# Final train prob (xent)   -0.7091
+# Final valid prob (xent)   -0.6436
+# Num-params                 9476352
 
 # steps/info/chain_dir_info.pl exp/chain_online_cmn/tdnn1i_sp
-# exp/chain_online_cmn/tdnn1i_sp: num-iters=108 nj=2..8 num-params=8.3M dim=40+100->2840 combine=-0.045->-0.045 (over 1) xent:train/valid[71,107,final]=(-0.873,-0.653,-0.659/-0.922,-0.713,-0.733) logprob:train/valid[71,107,final]=(-0.064,-0.044,-0.044/-0.068,-0.054,-0.054)
+# exp/chain_online_cmn/tdnn1i_sp: num-iters=108 nj=2..8 num-params=8.4M dim=40+100->2880 combine=-0.044->-0.044 (over 1) xent:train/valid[71,107,final]=(-0.873,-0.660,-0.672/-0.906,-0.714,-0.734) logprob:train/valid[71,107,final]=(-0.067,-0.044,-0.044/-0.068,-0.054,-0.055)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -192,6 +192,8 @@ if [ $stage -le 15 ]; then
   # models.  It's a scratch space used by this script but not by
   # scripts called from here.
   mkdir -p $dir/configs/
+  # $dir/init will contain the initial models
+  mkdir -p $dir/init/
   
   echo "$0: creating neural net configs using the xconfig parser";
 
@@ -230,9 +232,11 @@ if [ $stage -le 15 ]; then
 
   prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1024 small-dim=192
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
+  output-layer name=output-default input=prefinal-chain include-log-softmax=false dim=$num_targets $output_opts
 
   prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1024 small-dim=192
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
+  output-layer name=output-default-xent input=prefinal-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
   if [ $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
@@ -421,6 +425,7 @@ fi
 # normal decoding.
 
 if $test_online_decoding && [ $stage -le 25 ]; then
+  cp $dir/default.tree $dir/tree
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
