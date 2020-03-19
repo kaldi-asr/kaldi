@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Copyright 2019 Srikanth Madikeri (Idiap Research Institute)
+#
+# This script is a modification of local/chain/run_tdnn.sh adapted to the chain2 recipes.
+
 # This is a basic TDNN experiment.
 # run_tdnn_1a.sh in local/chain2 but uses new kaldi recipe.
 
