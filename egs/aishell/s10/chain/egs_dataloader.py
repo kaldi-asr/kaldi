@@ -12,7 +12,6 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
-from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
 from kaldi import SequentialNnetChainExampleReader
@@ -182,9 +181,6 @@ class NnetChainExampleCollateFunc:
         batched_feat = np.stack(feat_list, axis=0)
         assert batched_feat.shape[0] == batch_size
 
-        # -4 = -2 -2
-        # the first -2 is from extra left/right context
-        # the second -2 is from lda feats splicing
         assert batched_feat.shape[1] == frames_per_sequence - 4
         if len(eg.inputs) > 1:
             assert batched_feat.shape[2] == feats.shape[-1] + ivectors.shape[-1]
