@@ -87,7 +87,7 @@ remove_egs=true
 test_online_decoding=true  # if true, it will run the last decoding stage.
 
 # End configuration section.
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $*"  # Print the command line for logging
 
 
 . ./cmd.sh
@@ -239,7 +239,7 @@ if [ $stage -le 15 ]; then
   output-layer name=output-default-xent input=prefinal-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-  if [ $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
+  if [ "$dir/init/default_trans.mdl" ]; then # checking this because it may have been copied in a previous run of the same script
       copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
   else
       echo "Keeping the old $dir/init/default_trans.mdl as it already exists."
@@ -255,8 +255,8 @@ if [ $stage -le 16 ]; then
   fi
 
   nnet3-info $dir/configs/ref.raw  > $dir/configs/temp.info 
-  model_left_context=`fgrep 'left-context' $dir/configs/temp.info | awk '{print $2}'`
-  model_right_context=`fgrep 'right-context' $dir/configs/temp.info | awk '{print $2}'`
+  model_left_context=$(grep -F 'left-context' $dir/configs/temp.info | awk '{print $2}')
+  model_right_context=$(grep -F 'right-context' $dir/configs/temp.info | awk '{print $2}')
   cat >$init_info <<EOF
 frame_subsampling_factor $frame_subsampling_factor
 langs $langs
@@ -298,8 +298,8 @@ fi
 # shifting that's done during training, so if frame-subsampling-factor=3, we
 # train on the same egs with the input shifted by -1,0,1 frames.  This is done
 # via the --frame-shift option to nnet3-chain-copy-egs in the script.
-egs_left_context=$[model_left_context+(frame_subsampling_factor/2)+egs_extra_left_context]
-egs_right_context=$[model_right_context+(frame_subsampling_factor/2)+egs_extra_right_context]
+egs_left_context=$((model_left_context+(frame_subsampling_factor/2)+egs_extra_left_context))
+egs_right_context=$((model_right_context+(frame_subsampling_factor/2)+egs_extra_right_context))
 
 for d in $dir/raw_egs $dir/processed_egs; do
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $d/storage ] ; then

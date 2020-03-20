@@ -197,7 +197,7 @@ while [ $x -lt $num_iters ]; do
   if [ $x -gt 0 ]; then
     # This doesn't use the egs, it only shows the relative change in model parameters.
     $cmd $dir/log/progress.$x.log \
-      nnet3-show-progress --use-gpu=no $dir/$[$x-1].raw $dir/${x}.raw '&&' \
+      nnet3-show-progress --use-gpu=no $dir/$(($x-1)).raw $dir/${x}.raw '&&' \
         nnet3-info $dir/${x}.raw &
   fi
 
