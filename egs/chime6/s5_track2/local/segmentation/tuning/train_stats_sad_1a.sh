@@ -98,7 +98,7 @@ if [ $stage -le 6 ]; then
   num_utts_subset=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 300 ? 300 : ($n < 12 ? 12 : $n))' $num_utts`
 
   steps/nnet3/train_raw_rnn.py --stage=$train_stage \
-    --feat.cmvn-opts=$cmvn_opts \
+    --feat.cmvn-opts="$cmvn_opts" \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \
