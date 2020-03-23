@@ -45,7 +45,7 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
   int lda_cols = cu_lda_.NumCols();
 
   // normalized pipeline
-  CuMatrix<BaseFloat> lda_feats_normalized(rows, cols, kUndefined);
+  CuMatrix<BaseFloat> lda_feats_normalized(rows, lda_rows, kUndefined);
   {
     CudaOnlineCmvn cmvn(info_.cmvn_opts, naive_cmvn_state_);
     CuMatrix<BaseFloat> cmvn_feats(rows, cols, kUndefined);
@@ -81,7 +81,7 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
   }
 
   // non-normalized pipeline
-  CuMatrix<BaseFloat> lda_feats(feats.NumRows(), feats.NumCols(), kUndefined);
+  CuMatrix<BaseFloat> lda_feats(rows, lda_rows, kUndefined);
   {
     CuMatrix<BaseFloat> spliced_feats;
 
