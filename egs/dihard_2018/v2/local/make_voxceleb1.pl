@@ -1,1 +1,1 @@
-../../v1/local/make_voxceleb1.pl
+../../../voxceleb/v1/local/make_voxceleb1.pl
