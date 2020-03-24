@@ -10,7 +10,7 @@
 
 -----------
 
-Welcome to Kaldi Pybind's documentation!
+Kaldi Pybind11
 ========================================
 
 .. toctree::

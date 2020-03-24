@@ -43,7 +43,7 @@ struct FeatureTransformEstimateOptions {
   BaseFloat max_singular_value;
   FeatureTransformEstimateOptions(): remove_offset(true), dim(-1),
                                      within_class_factor(0.001), max_singular_value(5.0) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("remove-offset", &remove_offset, "If true, output an affine "
                    "transform that makes the projected data mean equal to zero.");
@@ -56,7 +56,7 @@ struct FeatureTransformEstimateOptions {
     opts->Register("max-singular-value", &max_singular_value, "If >0, maximum "
                    "allowed singular value of final transform (they are floored "
                    "to this)");
-  }    
+  }
 };
 
 /**
@@ -108,27 +108,28 @@ struct FeatureTransformEstimateOptions {
       We need to explain the step that applies the dimension-specific scaling,
       which we described above as, "Apply a transform that reduces the variance
       of dimensions with low between-class variance".  For a particular
-      dimension, let the between-class diagonal covariance element be \lambda_i,
+      dimension, let the between-class diagonal covariance element be
+      \f$\lambda_i\f$,
       and the within-class diagonal covariance is 1 at this point (since we
       have normalized the within-class covariance to unity); hence, the total
-      variance is \lambda_i + 1.
+      variance is \f$\lambda_i + 1\f$.
       Below, "within-class-factor" is a constant that we set by default to
       0.001.  We scale the i'th dimension of the features by:
-      
+
          \f$  sqrt( (within-class-factor + \lambda_i) / (1 + \lambda_i) ) \f$
-           
-      If \lambda_i >> 1, this scaling factor approaches 1 (we don't need to
-      scale up dimensions with high between-class variance as they already
-      naturally have a higher variance than other dimensions.  As \lambda_i
+
+      If \f$\lambda_i >> 1\f$, this scaling factor approaches 1 (we don't need
+      to scale up dimensions with high between-class variance as they already
+      naturally have a higher variance than other dimensions. As \f$\lambda_i\f$
       becomes small, this scaling factor approaches sqrt(within-class-factor),
       so dimensions with very small between-class variance get assigned a small
       variance equal to within-class-factor, and for dimensions with
       intermediate between-class variance, they end up with a variance roughly
-      equal to \lambda_i: consider that the variance was originally (1 +
-      \lambda_i), so by scaling the features by approximately sqrt((\lambda_i) /
-      (1 + \lambda_i)), the variance becomes approximately \lambda_i [this is
-      clear after noting that the variance gets scaled by the square of the
-      feature scale].      
+      equal to \f$\lambda_i\f$: consider that the variance was originally
+      \f$(1 +c\lambda_i)\f$, so by scaling the features by approximately
+      \f$\sqrt((\lambda_i) /(1 + \lambda_i))\f$, the variance becomes
+      approximately \f$\lambda_i\f$ [this iscclear after noting that the
+      variance gets scaled by the square of thecfeature scale].
  */
 class FeatureTransformEstimate: public LdaEstimate {
  public:

@@ -160,3 +160,11 @@ GSYMS
 # They are added here to avoid accidently checkin.
 /src/**/CMakeLists.txt
 /build*
+
+
+# automatic documentation
+# Documentation files
+src/xml
+src/api
+html
+

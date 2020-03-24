@@ -38,7 +38,7 @@ namespace kaldi {
 /// This function takes the step direction (delta) of fMLLR matrix as argument,
 /// and optimize step size using Newton's method. This is an iterative method,
 /// where each iteration should not decrease the auxiliary function. Note that
-/// the resulting step size \k should be close to 1. If \k <<1 or >>1, there
+/// the resulting step size \f$\k\f$ should be close to 1. If \f$\k\f$ <<1 or >>1, there
 /// maybe problems with preconditioning or the speaker stats.
 static BaseFloat CalBasisFmllrStepSize(
     const AffineXformStats &spk_stats,
