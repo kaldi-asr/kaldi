@@ -1,0 +1,59 @@
+
+Software required to install and run Kaldi
+==========================================
+
+Ideal computing environment
+---------------------------
+
+First, we'll explain the ideal type of computing environment, and then we'll say what is the bare minimum you need to run Kaldi. The ideal computing environment is a cluster of Linux machines (any major distribution) running Sun GridEngine (SGE), with access to shared directories via NFS or some similar network filesystem. In the ideal case, some computers on the grid will have NVidia GPUs which you can use for neural net training, and you can reserve these on the queue by adding some extra option to qsub. See `Parallelization in Kaldi <pages/api-undefined.md#queue>`_ for more information.
+
+Some time ago we started a separate project called `Kluster  <https://sourceforge.net/projects/kluster/>`_ that shows you how to create such a cluster on Amazon's EC2; however, this is not very well maintained; MIT's `StarCluster  <http://star.mit.edu/cluster/>`_ is a larger and better-supported project that provides the same functionality. Most of the scripts should be suitable for a locally hosted cluster based on Debian or Red Hat; you can investigate `Rocks <http://www.rocksclusters.org/wordpress/>`_ which aims to help you set up a cluster like that.
+
+Bare minimum computing environment
+----------------------------------
+
+The bare minimum computing environment to run Kaldi is any Unix-like environment; and it's possible to run it on a single machine, although of course it will be slower, and you may have to reduce the number of jobs used in some of the example scripts to avoid exhausting your machine's memory.
+
+Kaldi is best tested on Debian and Red Hat Linux, but will run on any Linux distribution, or on Cygwin or Mac OsX.
+
+Kaldi's scripts have been written in such a way that if you replace SGE with a similar mechanism with different syntax (such as Tork), it should be relatively easy to get it to work; we also provide a "dumb" replacement that you can use when there is no queueing system (search for run.pl and ssh.pl in the scripts).
+
+In the past Kaldi has been compiled on Windows; however, the example scripts will not work there, and we are not very actively maintaining the Windows compatibility of the code or the Windows build scripts (we fix problems when we are told about them though).
+
+Software packages required
+--------------------------
+The following is a non-exhaustive list of some of the packages you need in order to install Kaldi. The full list is not important since the installation scripts will tell you what you are missing.
+
+
+* Git: this is needed to download Kaldi and other software that it depends on.
+
+* wget: is required for the installation of some non-Kaldi components described below
+
+* The example scripts require standard UNIX utilities such as bash, perl, awk, grep, and make.
+
+It can also be helpful if you have an ATLAS linear-algebra package installed on your system. Most systems already have this (You can also search the packages in Linux for installation by simple commands like ``"yum search atlas"`` or ``"apt-cache search libatlas"``); the best approach is to ignore this requirement for now and see if you have problems when you install Kaldi.
+
+Software packages installed by Kaldi
+------------------------------------
+The following tools and libraries come with installation scripts in the ``tools/`` directory so you won't have to install them yourself (note: this is a non-exhaustive list).
+
+
+*  OpenFst: we compile against this and use it heavily.
+
+*  IRSTLM: this a language modeling toolkit. Some of the example scripts require it but it is not tightly integrated with Kaldi; we can convert any Arpa format language model to an FST.
+
+    *   The IRSTLM build process requires automake, aclocal, and libtoolize (the corresponding packages are automake and libtool).
+
+    *  Note: some of the example scripts now use SRILM; we make it easy to install that, although you still have to register online to download it.
+
+*  SRILM: some of the example scripts use this. It's generally a better and more complete language modeling toolkit than IRSTLM; the only drawback is the license, which is not free for commercial use. You have to enter your name on the download page to download it, so the installation script requires some human interaction.
+
+*  sph2pipe: this is for converting sph format files into other formats such as wav. It's needed for the example scripts that use LDC data.
+
+*  sclite: this is for scoring and is not necessary as we have our own, simple scoring program (``compute-wer.cc``).
+
+*  ATLAS, the linear algebra library. This is only needed for the headers; in typical setups we expect that ATLAS will be on your system. However, if it not already on your system you can compile ATLAS as long as your machine does not have CPU throttling enabled.
+
+* CLAPACK, the linear algebra library (we download the headers). This is useful only on systems where you don't have ATLAS and are instead compiling with CLAPACK.
+
+* OpenBLAS: this is an alternative to ATLAS or CLAPACK. The scripts don't use it by default but we provide installation scripts so you can install it if you want to compare it against ATLAS (it's more actively maintained than ATLAS).
