@@ -143,7 +143,7 @@ if [ $stage -le 7 ]; then
   # Dev (using -c 0.25)
   # MISSED SPEECH =   1188.59 secs (  3.3 percent of scored time)
   # FALARM SPEECH =    539.37 secs (  1.5 percent of scored time)
-  echo "[ 30 2 1 ]" > $dir/post_output.vec || exit 1
+  echo " [ 30 2 1 ]" > $dir/post_output.vec || exit 1
 
   echo 3 > $dir/frame_subsampling_factor
 fi
