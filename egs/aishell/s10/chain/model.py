@@ -70,7 +70,11 @@ output-layer name=output-xent dim=3456 learning-rate-factor=5.0 l2-regularize=0.
 
 
 def constrain_orthonormal_hook(model, unused_x):
-    if model.training == False:
+    if not model.training:
+        return
+    
+    model.ortho_constrain_count = (model.ortho_constrain_count + 1) % 2
+    if model.ortho_constrain_count != 0:
         return
 
     with torch.no_grad():
@@ -100,6 +104,8 @@ class ChainModel(nn.Module):
 
         assert len(kernel_size_list) == len(subsampling_factor_list)
         num_layers = len(kernel_size_list)
+        
+        self.ortho_constrain_count = 0
 
         input_dim = feat_dim * 3 + ivector_dim
         
