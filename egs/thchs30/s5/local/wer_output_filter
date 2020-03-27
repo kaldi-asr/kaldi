@@ -12,7 +12,7 @@ for l in sys.stdin:
     ll=l.split()
     lk=ll[0]
     for v in ll[1:]:
-        v = v.decode('utf-8')
+        v = v.encode('utf-8').decode('utf-8')
         for i in v:
            lk= lk + ' ' + i
         
