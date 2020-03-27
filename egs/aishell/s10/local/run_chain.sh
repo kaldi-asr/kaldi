@@ -5,7 +5,7 @@
 
 set -e
 
-stage=12
+stage=16
 
 nj=10
 
@@ -20,7 +20,7 @@ train_ivector=false
 num_epochs=6
 dropout_schedule=0,0@0.20,0.5@0.50,0      # you might set this to 0,0 or 0.5,0.5 to train.
 frame_subsampling_factor=3
-feat_type=delta
+feat_type="delta"
 lang=default
 
 . ./path.sh
@@ -148,8 +148,8 @@ fi
 # You should know how to calculate your model's left/right context **manually**
 model_left_context=28
 model_right_context=28
-egs_left_context=$[$model_left_context + 1]
-egs_right_context=$[$model_right_context + 1]
+egs_left_context=$(($model_left_context + 1))
+egs_right_context=$(($model_right_context + 1))
 frames_per_eg=150,110,90
 frames_per_iter=1500000
 minibatch_size=128
@@ -188,18 +188,19 @@ if [ $stage -le 15 ]; then
     ${dir}/raw_egs ${dir}/processed_egs
 fi
 
+num_workers=4
 if [ $stage -le 16 ]; then
   echo "$0: about to randomize egs"
-  steps/chain2/randomize_egs.sh --frames-per-job 3000000 \
+  steps/chain2/randomize_egs.sh --frames-per-job 3000000 --num-workers $num_workers \
     ${dir}/processed_egs ${dir}/egs
 fi
 
 info_file=$dir/raw_egs/info.txt
-feat_dim=$(cat $info_file | grep 'feat_dim' | awk '{print $NF}')
+feat_dim=$(grep 'feat_dim' $info_file | awk '{print $NF}')
 ivector_dim=0
 ivector_period=0
 if $train_ivector; then
-  ivector_dim=$(cat $info_file | grep 'ivector_dim' | awk '{print $NF}')
+  ivector_dim=$(grep 'ivector_dim' $info_file | awk '{print $NF}')
   ivector_period=$(cat $train_ivector_dir/ivector_period)
 fi
 echo "ivector_dim: $ivector_dim", "ivector_period, $ivector_period"
@@ -216,12 +217,34 @@ if [[ $stage -le 19 ]]; then
     nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:- \
       ark,scp:$dir/$merged_egs_dir/cegs.JOB.ark,$dir/$merged_egs_dir/cegs.JOB.scp || exit 1
 
-  rm $dir/raw_egs/cegs.*.ark
+  rm -f $dir/raw_egs/cegs.*.ark
 fi
 
-output_dim=$(cat $info_file | grep 'num_leaves' | awk '{print $NF}')
-train_dir=train${train_affix}
+training_eg_dir=egs_chain2_for_training
+# we have to make sure each scp file holding the same number of lines,
+# as we will load them with multiple workers in PyTorch and there is an
+# assumption in DDP training that num-mininbatches should be equal
+# across workers.
 if [[ $stage -le 20 ]]; then
+  echo "$0: align eg numbers in each scp file"
+
+  mkdir -p $dir/$training_eg_dir/tmp_scp_dir
+  steps/chain2/align_eg_numbers.sh $dir/$merged_egs_dir $dir/$training_eg_dir/tmp_scp_dir
+
+  # TODO: make this more efficient as for each ark file there are only few arks
+  #       we really need to copy from other ark files.
+  num_egs=$(ls -1 $dir/$training_eg_dir/tmp_scp_dir/*.scp | wc -l)
+  $train_cmd --max-jobs-run $nj JOB=1:$num_egs $dir/$training_eg_dir/log/copy_egs.JOB.log \
+    nnet3-chain-copy-egs scp:$dir/$training_eg_dir/tmp_scp_dir/cegs.JOB.scp \
+      ark,scp:$dir/$training_eg_dir/cegs.JOB.ark,$dir/$training_eg_dir/cegs.JOB.scp || exit 1
+
+  rm -r $dir/$training_eg_dir/tmp_scp_dir
+  rm -f $dir/$merged_egs_dir/cegs.*.ark
+fi
+
+output_dim=$(grep 'num_leaves' $info_file | awk '{print $NF}')
+train_dir=train${train_affix}
+if [[ $stage -le 21 ]]; then
   echo "$0: training..."
 
   mkdir -p $dir/$train_dir/tensorboard
@@ -234,30 +257,28 @@ if [[ $stage -le 20 ]]; then
   rm -f $INIT_FILE # delete old one before starting
   init_method=file://$(readlink -f $INIT_FILE)
   # use '127.0.0.1' for training on a single machine
-  # init_method=tcp://127.0.0.1:7275
+  init_method=tcp://127.0.0.1:7275
   echo "$0: init method is $init_method"
 
   num_epochs=$num_epochs
   lr=1e-3
   
-  # use_ddp = false: training model with one GPU
+  # use_ddp = false & world_size = 1: training model with one GPU
   # use_ddp = true & use_multiple_machine = false: training model with multiple GPUs on a single machine
   # use_ddp = true & use_multiple_machine = true:  training model with GPU on multiple machines
 
   use_ddp=true
-  world_size=4
-  use_multiple_machine=true 
+  world_size=$num_workers
+  use_multiple_machine=false
   # you can assign GPUs with --device-ids "$device_ids"
   # device_ids="4, 5, 6, 7"
   if $use_multiple_machine ; then
     # suppose you are using Sun GridEngine
-    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/$train_dir/logs/job.JOB.log")
+    cuda_train_cmd="$cuda_train_cmd --gpu 1 JOB=1:$world_size $dir/$train_dir/logs/job.JOB.log"
   else
-    # TODO: for running with multiple GPUs on a single machine (SGE), 
-    #       we should tell SGE how many GPUs we will use on that machine
-    cuda_train_cmd=$(echo "$cuda_train_cmd --gpu $world_size $dir/$train_dir/logs/train.log")
+    cuda_train_cmd="$cuda_train_cmd --gpu $world_size $dir/$train_dir/logs/train.log"
   fi
- 
+  
   $cuda_train_cmd python3 ./chain/train.py \
         --bottleneck-dim $bottleneck_dim \
         --checkpoint=${train_checkpoint:-} \
@@ -271,7 +292,7 @@ if [[ $stage -le 20 ]]; then
         --output-dim $output_dim \
         --prefinal-bottleneck-dim $prefinal_bottleneck_dim \
         --subsampling-factor-list "$subsampling_factor_list" \
-        --train.cegs-dir $dir/$merged_egs_dir \
+        --train.cegs-dir $dir/$training_eg_dir \
         --train.ddp.init-method $init_method \
         --train.ddp.multiple-machine $use_multiple_machine \
         --train.ddp.world-size $world_size \
@@ -284,11 +305,11 @@ if [[ $stage -le 20 ]]; then
         --train.lr $lr \
         --train.num-epochs $num_epochs \
         --train.use-ddp $use_ddp \
-        --train.valid-cegs-scp $dir/egs/train_subset.scp \
+        --train.valid-cegs-scp $dir/processed_egs/train_subset.scp \
         --train.xent-regularize 0.1 || exit 1;
 fi
 
-if [[ $stage -le 21 ]]; then
+if [[ $stage -le 22 ]]; then
   echo "inference: computing likelihood"
   for x in test dev; do
     mkdir -p $dir/$train_dir/inference/$x
@@ -307,7 +328,7 @@ if [[ $stage -le 21 ]]; then
         fi
         feat_scp="data/${x}_hires/online_cmvn_feats.scp"
       fi
-      best_epoch=$(cat $dir/$train_dir/best-epoch-info | grep 'best epoch' | awk '{print $NF}')
+      best_epoch=$(grep 'best epoch' $dir/$train_dir/best-epoch-info | awk '{print $NF}')
       inference_checkpoint=$dir/$train_dir/epoch-${best_epoch}.pt
       $cuda_inference_cmd --gpu 1 $dir/$train_dir/inference/logs/${x}.log \
         python3 ./chain/inference.py \
@@ -333,7 +354,7 @@ if [[ $stage -le 21 ]]; then
   done
 fi
 
-if [[ $stage -le 22 ]]; then
+if [[ $stage -le 23 ]]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -343,7 +364,7 @@ if [[ $stage -le 22 ]]; then
 fi
 
 
-if [[ $stage -le 23 ]]; then
+if [[ $stage -le 24 ]]; then
   echo "decoding"
   for x in test dev; do
     if [[ ! -f $dir/$train_dir/inference/$x/nnet_output.scp ]]; then
@@ -362,7 +383,7 @@ if [[ $stage -le 23 ]]; then
   done
 fi
 
-if [[ $stage -le 24 ]]; then
+if [[ $stage -le 25 ]]; then
   echo "scoring"
 
   for x in test dev; do

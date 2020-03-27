@@ -30,63 +30,54 @@ from common import save_checkpoint
 from common import save_training_info
 from common import setup_logger
 from device_utils import allocate_gpu_devices
-from egs_dataset import get_egs_dataloader
+from egs_dataloader import get_egs_dataloader
 from libs.nnet3.train.dropout_schedule import _get_dropout_proportions
 from model import get_chain_model
 from options import get_args
 
 def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None, dropout=0.):
-    total_objf = 0.
-    total_weight = 0.
-    total_frames = 0.  # for display only
-    
-    key_list, feature_list, supervision_list = batch
-    assert len(key_list) == len(feature_list) == len(supervision_list)
-    batch_size = len(key_list)
-    for n in range(batch_size):
-        feats = feature_list[n]
-        assert feats.ndim == 3
+    feature, supervision = batch
+    assert feature.ndim == 3
 
-        # at this point, feats is [N, T, C]
-        feats = feats.to(device)
-        if training:
-            nnet_output, xent_output = model(feats, dropout=dropout)
-        else:
-            with torch.no_grad():
-                nnet_output, xent_output = model(feats)
+    # at this point, feature is [N, T, C]
+    feature = feature.to(device)
+    if training:
+        nnet_output, xent_output = model(feature, dropout=dropout)
+    else:
+        with torch.no_grad():
+            nnet_output, xent_output = model(feature)
 
-        # at this point, nnet_output is: [N, T, C]
-        # refer to kaldi/src/chain/chain-training.h
-        # the output should be organized as
-        # [all sequences for frame 0]
-        # [all sequences for frame 1]
-        # [etc.]
-        nnet_output = nnet_output.permute(1, 0, 2)
-        # at this point, nnet_output is: [T, N, C]
-        nnet_output = nnet_output.contiguous().view(-1,
-	       					nnet_output.shape[-1])
+    # at this point, nnet_output is: [N, T, C]
+    # refer to kaldi/src/chain/chain-training.h
+    # the output should be organized as
+    # [all sequences for frame 0]
+    # [all sequences for frame 1]
+    # [etc.]
+    nnet_output = nnet_output.permute(1, 0, 2)
+    # at this point, nnet_output is: [T, N, C]
+    nnet_output = nnet_output.contiguous().view(-1,
+                                            nnet_output.shape[-1])
 
-        # at this point, xent_output is: [N, T, C]
-        xent_output = xent_output.permute(1, 0, 2)
-        # at this point, xent_output is: [T, N, C]
-        xent_output = xent_output.contiguous().view(-1,
-						xent_output.shape[-1])
-        objf_l2_term_weight = criterion(opts, den_graph,
-				    supervision_list[n], nnet_output,
-				    xent_output)
-        objf = objf_l2_term_weight[0]
-        if training:
-            optimizer.zero_grad()
-            objf.backward()
-            clip_grad_value_(model.parameters(), 5.0)
-            optimizer.step()
+    # at this point, xent_output is: [N, T, C]
+    xent_output = xent_output.permute(1, 0, 2)
+    # at this point, xent_output is: [T, N, C]
+    xent_output = xent_output.contiguous().view(-1,
+                                            xent_output.shape[-1])
+    objf_l2_term_weight = criterion(opts, den_graph,
+                                supervision, nnet_output,
+                                xent_output)
+    objf = objf_l2_term_weight[0]
+    if training:
+        optimizer.zero_grad()
+        objf.backward()
+        clip_grad_value_(model.parameters(), 5.0)
+        optimizer.step()
 
-        objf_l2_term_weight = objf_l2_term_weight.detach().cpu()
+    objf_l2_term_weight = objf_l2_term_weight.detach().cpu()
 
-        total_objf += objf_l2_term_weight[0].item()
-        total_weight += objf_l2_term_weight[2].item()
-        num_frames = nnet_output.shape[0]
-        total_frames += num_frames
+    total_objf = objf_l2_term_weight[0].item()
+    total_weight = objf_l2_term_weight[2].item()
+    total_frames = nnet_output.shape[0]
 
     return total_objf, total_weight, total_frames
 
@@ -98,7 +89,7 @@ def get_validation_objf(dataloader, model, device, criterion, opts, den_graph):
  
     model.eval()
 
-    for batch_idx, batch in enumerate(dataloader):
+    for batch_idx, (pseudo_epoch, batch) in enumerate(dataloader):
         objf, weight, frames = get_objf(
             batch, model, device, criterion, opts, den_graph, False) 
         total_objf += objf
@@ -115,8 +106,13 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer, crit
     total_frames = 0.  # for display only
 
     model.train()
-    for batch_idx, batch in enumerate(dataloader):
-        data_fraction = (batch_idx + current_epoch *
+    # iterates over one training scp file in one `pseudo_epoch`, 
+    # so one `pseudo_epoch` may contain many `batch`.
+    for batch_idx, (pseudo_epoch, batch) in enumerate(dataloader):
+        # `len(dataloader)` returns the number of `pseudo_epoch`
+        # in the current worker, that is the number of scp files
+        # we will process in this worker.
+        data_fraction = (pseudo_epoch + 1 + current_epoch *
                          len(dataloader)) / (len(dataloader) * num_epochs)
         _, dropout = _get_dropout_proportions(
             dropout_schedule, data_fraction)[0]
@@ -129,11 +125,12 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer, crit
 
         if batch_idx % 100 == 0:
             logging.info(
-                'Device ({}) processing {}/{}({:.6f}%) global average objf: {:.6f} over {} '
+                'Device ({}) processing batch {}, current pseudo-epoch is {}/{}({:.6f}%), '
+                'global average objf: {:.6f} over {} '
                 'frames, current batch average objf: {:.6f} over {} frames, epoch {}'
                 .format(
-                    device.index, batch_idx, len(dataloader),
-                    float(batch_idx) / len(dataloader) * 100,
+                    device.index, batch_idx, pseudo_epoch, len(dataloader),
+                    float(pseudo_epoch) / len(dataloader) * 100,
                     total_objf / total_weight, total_frames,
                     curr_batch_objf / curr_batch_weight, 
                     curr_batch_frames, current_epoch))
@@ -154,21 +151,21 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer, crit
             if tf_writer:
                 tf_writer.add_scalar('train/global_valid_average_objf',
                                  total_valid_objf / total_valid_weight,
-                                 batch_idx + current_epoch * len(dataloader))
+                                 pseudo_epoch + current_epoch * len(dataloader))
         # rank == None means we are not using ddp
-        if (rank == None or rank == 0) and batch_idx % 100 == 0 and tf_writer != None:
+        if (rank is None or rank == 0) and batch_idx % 100 == 0 and tf_writer is not None:
             tf_writer.add_scalar('train/global_average_objf',
                                  total_objf / total_weight,
-                                 batch_idx + current_epoch * len(dataloader))
+                                 pseudo_epoch + current_epoch * len(dataloader))
             tf_writer.add_scalar(
                 'train/current_batch_average_objf',
                 curr_batch_objf / curr_batch_weight,
-                batch_idx + current_epoch * len(dataloader))
+                pseudo_epoch + current_epoch * len(dataloader))
             
             tf_writer.add_scalar(
                 'train/current_dropout',
                 dropout,
-                batch_idx + current_epoch * len(dataloader))
+                pseudo_epoch + current_epoch * len(dataloader))
 
             state_dict = model.state_dict()
             for key, value in state_dict.items():
@@ -183,8 +180,7 @@ def train_one_epoch(dataloader, valid_dataloader, model, device, optimizer, crit
 
                 tf_writer.add_scalar(
                     'train/parameters/{}'.format(key), frobenius_norm,
-                    batch_idx + current_epoch * len(dataloader))
-
+                    pseudo_epoch + current_epoch * len(dataloader))
     return total_objf / total_weight
 
 def main():
@@ -198,23 +194,23 @@ def main():
             process_job(learning_rate, local_rank=local_rank)
         else:
             proc = []
-            if args.device_ids != None:
+            if args.device_ids is not None:
                 assert len(args.device_ids) >= args.world_size
             for i in range(args.world_size):
-                device_id = None if args.device_ids == None else args.device_ids[i]
+                device_id = None if args.device_ids is None else args.device_ids[i]
                 p = Process(target=process_job, args=(learning_rate, device_id, i))
                 proc.append(p)
                 p.start()
             for p in proc:
                 p.join()
     else:
-        device_id = None if args.device_ids == None else args.device_ids[0]
+        device_id = None if args.device_ids is None else args.device_ids[0]
         process_job(args.learning_rate, device_id)
 
 
 def process_job(learning_rate, device_id=None, local_rank=None):
     args = get_args()
-    if local_rank != None:    
+    if local_rank is not None:    
         setup_logger('{}/logs/log-train-rank-{}'.format(args.dir, local_rank),
                  args.log_level)
     else:
@@ -222,11 +218,11 @@ def process_job(learning_rate, device_id=None, local_rank=None):
 
     logging.info(' '.join(sys.argv))
 
-    if torch.cuda.is_available() == False:
+    if not torch.cuda.is_available():
         logging.error('No GPU detected!')
         sys.exit(-1)
 
-    if device_id == None:
+    if device_id is None:
         devices = allocate_gpu_devices(1)
         if len(devices) < 1:
             logging.error('Allocate GPU failed!')
@@ -383,7 +379,6 @@ def process_job(learning_rate, device_id=None, local_rank=None):
                             learning_rate=curr_learning_rate,
                             objf=objf,
                             local_rank=local_rank)
-
             epoch_info_filename = os.path.join(args.dir,
                                                'epoch-{}-info'.format(epoch))
             save_training_info(filename=epoch_info_filename,
@@ -394,7 +389,6 @@ def process_job(learning_rate, device_id=None, local_rank=None):
                                best_objf=best_objf,
                                best_epoch=best_epoch,
                                local_rank=local_rank)
-
     except KeyboardInterrupt:
         # save the model when ctrl-c is pressed
         model_path = os.path.join(args.dir,
