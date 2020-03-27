@@ -5,7 +5,7 @@
 
 set -e
 
-stage=22
+stage=21
 
 nj=10
 
@@ -217,7 +217,7 @@ if [[ $stage -le 19 ]]; then
     nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:- \
       ark,scp:$dir/$merged_egs_dir/cegs.JOB.ark,$dir/$merged_egs_dir/cegs.JOB.scp || exit 1
 
-  rm $dir/raw_egs/cegs.*.ark
+  rm -f $dir/raw_egs/cegs.*.ark
 fi
 
 training_eg_dir=egs_chain2_for_training
@@ -239,7 +239,7 @@ if [[ $stage -le 20 ]]; then
       ark,scp:$dir/$training_eg_dir/cegs.JOB.ark,$dir/$training_eg_dir/cegs.JOB.scp || exit 1
 
   rm -r $dir/$training_eg_dir/tmp_scp_dir
-  rm $dir/$merged_egs_dir/cegs.*.ark
+  rm -f $dir/$merged_egs_dir/cegs.*.ark
 fi
 
 output_dim=$(grep 'num_leaves' $info_file | awk '{print $NF}')

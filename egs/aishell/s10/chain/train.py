@@ -36,57 +36,48 @@ from model import get_chain_model
 from options import get_args
 
 def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None, dropout=0.):
-    total_objf = 0.
-    total_weight = 0.
-    total_frames = 0.  # for display only
-    
-    feature_list, supervision_list = batch
-    assert len(feature_list) == len(supervision_list)
-    batch_size = len(feature_list)
-    for n in range(batch_size):
-        feats = feature_list[n]
-        assert feats.ndim == 3
+    feature, supervision = batch
+    assert feature.ndim == 3
 
-        # at this point, feats is [N, T, C]
-        feats = feats.to(device)
-        if training:
-            nnet_output, xent_output = model(feats, dropout=dropout)
-        else:
-            with torch.no_grad():
-                nnet_output, xent_output = model(feats)
+    # at this point, feature is [N, T, C]
+    feature = feature.to(device)
+    if training:
+        nnet_output, xent_output = model(feature, dropout=dropout)
+    else:
+        with torch.no_grad():
+            nnet_output, xent_output = model(feature)
 
-        # at this point, nnet_output is: [N, T, C]
-        # refer to kaldi/src/chain/chain-training.h
-        # the output should be organized as
-        # [all sequences for frame 0]
-        # [all sequences for frame 1]
-        # [etc.]
-        nnet_output = nnet_output.permute(1, 0, 2)
-        # at this point, nnet_output is: [T, N, C]
-        nnet_output = nnet_output.contiguous().view(-1,
-	       					nnet_output.shape[-1])
+    # at this point, nnet_output is: [N, T, C]
+    # refer to kaldi/src/chain/chain-training.h
+    # the output should be organized as
+    # [all sequences for frame 0]
+    # [all sequences for frame 1]
+    # [etc.]
+    nnet_output = nnet_output.permute(1, 0, 2)
+    # at this point, nnet_output is: [T, N, C]
+    nnet_output = nnet_output.contiguous().view(-1,
+                                            nnet_output.shape[-1])
 
-        # at this point, xent_output is: [N, T, C]
-        xent_output = xent_output.permute(1, 0, 2)
-        # at this point, xent_output is: [T, N, C]
-        xent_output = xent_output.contiguous().view(-1,
-						xent_output.shape[-1])
-        objf_l2_term_weight = criterion(opts, den_graph,
-				    supervision_list[n], nnet_output,
-				    xent_output)
-        objf = objf_l2_term_weight[0]
-        if training:
-            optimizer.zero_grad()
-            objf.backward()
-            clip_grad_value_(model.parameters(), 5.0)
-            optimizer.step()
+    # at this point, xent_output is: [N, T, C]
+    xent_output = xent_output.permute(1, 0, 2)
+    # at this point, xent_output is: [T, N, C]
+    xent_output = xent_output.contiguous().view(-1,
+                                            xent_output.shape[-1])
+    objf_l2_term_weight = criterion(opts, den_graph,
+                                supervision, nnet_output,
+                                xent_output)
+    objf = objf_l2_term_weight[0]
+    if training:
+        optimizer.zero_grad()
+        objf.backward()
+        clip_grad_value_(model.parameters(), 5.0)
+        optimizer.step()
 
-        objf_l2_term_weight = objf_l2_term_weight.detach().cpu()
+    objf_l2_term_weight = objf_l2_term_weight.detach().cpu()
 
-        total_objf += objf_l2_term_weight[0].item()
-        total_weight += objf_l2_term_weight[2].item()
-        num_frames = nnet_output.shape[0]
-        total_frames += num_frames
+    total_objf = objf_l2_term_weight[0].item()
+    total_weight = objf_l2_term_weight[2].item()
+    total_frames = nnet_output.shape[0]
 
     return total_objf, total_weight, total_frames
 
@@ -339,7 +330,10 @@ def process_job(learning_rate, device_id=None, local_rank=None):
 
             if tf_writer:
                 tf_writer.add_scalar('learning_rate', curr_learning_rate, epoch)
-           
+            
+            if dataloader.sampler and isinstance(dataloader.sampler, DistributedSampler):
+                dataloader.sampler.set_epoch(epoch)
+
             objf = train_one_epoch(dataloader=dataloader,
                                    valid_dataloader=valid_dataloader,
                                    model=model,

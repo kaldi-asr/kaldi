@@ -38,9 +38,10 @@ def get_egs_dataloader(egs_dir_or_scp,
 
     if local_rank is not None:
         sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, num_replicas=world_size, rank=local_rank, shuffle=False)
+            dataset, num_replicas=world_size, rank=local_rank, shuffle=True)
     else:
-        sampler = torch.utils.data.SequentialSampler(dataset)
+        #sampler = torch.utils.data.SequentialSampler(dataset)
+        sampler = torch.utils.data.RandomSampler(dataset)
     
     dataloader = NnetChainExampleDataLoader(dataset,
                             sampler=sampler,
@@ -133,15 +134,8 @@ class NnetChainExampleCollateFunc:
         assert len(eg.outputs) == 1
         assert eg.outputs[0].name == 'output'
 
-        # the length of below two return values will be 1,
-        # as we have merged egs into one batch
-
-        # TODO(haowen): remove the list wrapping
-        feature_list = []
-        supervision_list = []
 
         supervision = eg.outputs[0].supervision
-        supervision_list.append(supervision)
 
         batch_size = supervision.num_sequences
         frames_per_sequence = (supervision.frames_per_sequence *
@@ -188,13 +182,12 @@ class NnetChainExampleCollateFunc:
             assert batched_feat.shape[2] == feats.shape[-1]
 
         torch_feat = torch.from_numpy(batched_feat).float()
-        feature_list.append(torch_feat)
 
-        return feature_list, supervision_list
+        return torch_feat, supervision
 
 
 def _test_nnet_chain_example_dataloader():
-    scp_dir = 'exp/chain_pybind/tdnn_sp/egs_chain2_for_training'
+    scp_dir = 'exp/chain_pybind/tdnn_sp/egs_chain2'
     _test_dataloader_iter(scp_dir)
 
 def _test_dataloader_iter(scp_dir_or_file):
@@ -214,12 +207,12 @@ def _test_dataloader_iter(scp_dir_or_file):
             print('{}: epoch {}, pseudo_epoch {}, batch_idx {}'.format(
                 datetime.datetime.now(), i, pseudo_epoch, batch_idx))
             batch_idx = batch_idx + 1
-            feature_list, supervision_list = batch
-            assert feature_list[0].shape == (128, 204, 120) \
-                or feature_list[0].shape == (128, 144, 120) \
-                or feature_list[0].shape == (128, 165, 120)
-            assert supervision_list[0].weight == 1
-            assert supervision_list[0].num_sequences == 128  # minibach size is 128
+            feature, supervision = batch
+            assert feature.shape == (128, 204, 120) \
+                or feature.shape == (128, 144, 120) \
+                or feature.shape == (128, 165, 120)
+            assert supervision.weight == 1
+            assert supervision.num_sequences == 128  # minibach size is 128
 
 
 if __name__ == '__main__':
