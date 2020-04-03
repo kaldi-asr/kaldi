@@ -85,6 +85,7 @@ my @propsFiles = (
   "$Bin/openfstwin_release.props",
   "$Bin/openfstwin_debug_win32.props",
   "$Bin/openfstwin_release_win32.props",
+  "$Bin/portaudio.props",
 );
 
 my %optionalProps = (
@@ -570,6 +571,9 @@ sub writeProjectFiles {
 "    <Import Project=\"..\\cuda_7.0.props\" />
 ";
   }
+  print PROJ
+"    <Import Project=\"..\\portaudio.props\" />
+";
   print PROJ
 "    <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_release.props\" />

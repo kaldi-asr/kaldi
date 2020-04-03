@@ -5,10 +5,12 @@
     <!-- Change the following paths so they are correct on your machine -->
     <!-- Do not modify anything before this line -->
     <MKLDIR>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\</MKLDIR>
-    <OPENBLASDIR>C:\Users\Yenda\Downloads\kaldi-svn\tools\OpenBLAS-v0.2.14-Win64-int32</OPENBLASDIR>
-    <OPENFST>C:\Users\jtrmal\Documents\openfst\</OPENFST>
-    <OPENFSTLIB>C:\Users\jtrmal\Documents\openfst\build64</OPENFSTLIB>
+    <OPENBLASDIR>W:\kaldi-build\kaldi\tools\OpenBLAS-v0.2.19-Win64-int32</OPENBLASDIR>
+    <OPENFST>W:\kaldi-build\kaldi\tools\openfst-21a3f8e2e61e15ea3cc1933bcf43ebf9b36bd7f5\</OPENFST>
+    <OPENFSTLIB>W:\kaldi-build\kaldi\tools\openfst-21a3f8e2e61e15ea3cc1933bcf43ebf9b36bd7f5\build64</OPENFSTLIB>
     <CUBDIR>c:\Users\jtrmal\Documents\cub\</CUBDIR>
+    <PORTAUDIO>W:\kaldi-build\portaudio_src_double</PORTAUDIO>
+    <PORTAUDIOLIB>W:\kaldi-build\portaudio_src_double\Debug</PORTAUDIOLIB>
     <NVTOOLSDIR>C:\Program FIles\NVIDIA Corporation\NvToolsExt\</NVTOOLSDIR>
     <!-- Do not modify anything after this line -->
   </PropertyGroup>
@@ -35,9 +37,18 @@
       <Value>$(CUBDIR)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
+    <BuildMacro Include="PORTAUDIO">
+      <Value>$(PORTAUDIO)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+      <BuildMacro Include="PORTAUDIOLIB">
+      <Value>$(PORTAUDIOLIB)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
     <BuildMacro Include="NVTOOLSDIR">
       <Value>$(NVTOOLSDIR)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
   </ItemGroup>
 </Project>
+
