@@ -82,15 +82,13 @@ In the directory `build64`, find the file `openfst.sln` and open it using Visual
  If either of the two won't build, you should stop here and start figuring what's different!
 
 ## Compiling PortAudio
-1. Download PortAudio from http://www.portaudio.com/download.html
-
-2. Extract 
-3. (Optional) Add ASIO Support: http://www.steinberg.net/en/company/developer.html
-4. Open an instance or Powershell or Command Prompt, navigate to the portaudio directory and type:
+1. Download PortAudio from http://www.portaudio.com/download.html and extract the folder
+2. (Optional) Add ASIO Support: http://www.steinberg.net/en/company/developer.html
+3. Open an instance or Powershell or Command Prompt, navigate to the portaudio directory and type:
       $ cmake -G "Visual Studio 15 2017 Win64"
-5. CMake will generate a portaudio.sln in the directory. Open it  
-6. Right click portaudio_static->Properties->C/C++->Code Generation->Runtime Library Change from Multi-Threaded Debug (/MTd) to Multi-threaded Debug DLL (/MDd)
-7. Build portaudio_static
+4. CMake will generate a portaudio.sln in the directory. Open it  
+5. Right click portaudio_static->Properties->C/C++->Code Generation->Runtime Library Change from Multi-Threaded Debug (/MTd) to Multi-threaded Debug DLL (/MDd)
+6. Build
 
 ## Compiling Kaldi
 
