@@ -423,7 +423,8 @@ bool TcpServer::ReadChunk(size_t len) {
 
   ssize_t ret;
   int poll_ret;
-  size_t to_read = len;
+  char *samp_buf_p = reinterpret_cast<char *>(samp_buf_);
+  size_t to_read = len * sizeof(int16);
   has_read_ = 0;
   while (to_read > 0) {
     poll_ret = poll(client_set_, 1, read_timeout_);
@@ -435,14 +436,15 @@ bool TcpServer::ReadChunk(size_t len) {
       KALDI_WARN << "Socket error! Disconnecting...";
       break;
     }
-    ret = read(client_desc_, static_cast<void *>(samp_buf_ + has_read_), to_read * sizeof(int16));
+    ret = read(client_desc_, static_cast<void *>(samp_buf_p + has_read_), to_read);
     if (ret <= 0) {
       KALDI_WARN << "Stream over...";
       break;
     }
-    to_read -= ret / sizeof(int16);
-    has_read_ += ret / sizeof(int16);
+    to_read -= ret;
+    has_read_ += ret;
   }
+  has_read_ /= sizeof(int16);
 
   return has_read_ > 0;
 }
