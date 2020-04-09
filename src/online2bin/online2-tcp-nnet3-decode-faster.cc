@@ -252,6 +252,16 @@ int main(int argc, char *argv[]) {
 
           if (eos) {
             feature_pipeline.InputFinished();
+
+            if (silence_weighting.Active() &&
+                feature_pipeline.IvectorFeature() != NULL) {
+              silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+              silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                                frame_offset * decodable_opts.frame_subsampling_factor,
+                                                &delta_weights);
+              feature_pipeline.UpdateFrameWeights(delta_weights);
+            }
+
             decoder.AdvanceDecoding();
             decoder.FinalizeDecoding();
             frame_offset += decoder.NumFramesDecoded();
@@ -429,7 +439,7 @@ bool TcpServer::ReadChunk(size_t len) {
   while (to_read > 0) {
     poll_ret = poll(client_set_, 1, read_timeout_);
     if (poll_ret == 0) {
-      KALDI_WARN << "Socket timeout! Disconnecting...";
+      KALDI_WARN << "Socket timeout! Disconnecting..." << "(has_read_ = " << has_read_ << ")";
       break;
     }
     if (poll_ret < 0) {
