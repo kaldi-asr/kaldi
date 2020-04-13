@@ -432,9 +432,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
     ConvertLattice(lat, &dlat);
   }
 
-  if (dlat.NumStates() == 0) {
-    KALDI_WARN << "Empty lattice.";
-  } else {
+  if (dlat.NumStates() > 0) {
     if (word_syms_) {
       CompactLattice best_path_clat;
       CompactLatticeShortestPath(dlat, &best_path_clat);
@@ -457,11 +455,11 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
         KALDI_LOG << "OUTPUT: " << oss.str();
       }
     }
+  }
 
-    // if ptr set and if callback func callable
-    if (callback && *callback) {
-      (*callback)(dlat);
-    }
+  // if ptr set and if callback func callable
+  if (callback && *callback) {
+    (*callback)(dlat);
   }
 
   n_lattice_callbacks_not_done_.fetch_sub(1, std::memory_order_release);
