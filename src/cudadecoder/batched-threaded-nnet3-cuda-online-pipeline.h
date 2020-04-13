@@ -133,6 +133,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
         am_nnet_(&am_nnet),
         word_syms_(NULL) {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
+    config_.CheckAndFixConfigs();
     int num_worker_threads = config_.num_worker_threads;
     thread_pool_.reset(new ThreadPoolLight(num_worker_threads));
 
