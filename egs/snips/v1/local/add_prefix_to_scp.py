@@ -1,1 +1,1 @@
-../../../mobvoi/v1/local/add_prefix_to_scp.py
+../../../../scripts/wakeword/add_prefix_to_scp.py

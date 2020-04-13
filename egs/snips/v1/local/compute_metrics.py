@@ -1,1 +1,1 @@
-../../../mobvoi/v1/local/compute_metrics.py
+../../../../scripts/wakeword/compute_metrics.py

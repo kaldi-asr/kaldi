@@ -7,6 +7,7 @@
 # Begin configuration section.
 stage=0
 nj=4
+acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
 cmd=run.pl
 frames_per_chunk=20
 extra_left_context_initial=0
@@ -112,7 +113,7 @@ if [ $stage -le 0 ]; then
        $frame_subsampling_opt \
      --config=$online_config \
      --min-active=$min_active --max-active=$max_active --beam=$beam \
-     --wake-word-id=$wake_word_id \
+     --acoustic-scale=$acwt --wake-word-id=$wake_word_id \
      $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
      $graphdir/words.txt "$silphones" ark,t:$dir/trans.JOB.txt \
      ark,t:$dir/ali.JOB.txt || exit 1;

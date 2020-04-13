@@ -11,7 +11,7 @@ dl_dir=data/download
 
 mkdir -p $dl_dir
 
-src_dir=/export/a07/ywang/snips-wake-word-corpus
+src_dir=/export/fs04/a07/ywang/snips-wake-word-corpus
 
 dataset=hey_snips_kws_4.0.tar.gz
 if [ -d $dl_dir/hey_snips_research_6k_en_train_eval_clean_ter ]; then

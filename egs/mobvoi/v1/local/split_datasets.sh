@@ -12,15 +12,15 @@ set -eu
 if [ $stage -le 1 ]; then
   dir=data/download/ticmini2_dataset_20180607
   trans=$dir/hixiaowen.txt
-  paste -d ' ' <(cat $trans | awk '{print $1}' | awk '{split($1,a,"."); print a[1]}') <(cat $trans | cut -d ' ' -f2-) > $dir/hixiaowen_text || exit 1
+  paste -d ' ' <(cat $trans | awk '{split($1,a,"."); print a[1]}') <(cat $trans | cut -d ' ' -f2-) > $dir/hixiaowen_text || exit 1
   dir=data/download/ticmini2_hixiaowen_adult_20180731
   for folder in patch1 patch2; do
     trans=$dir/$folder/hixiaowen_trans
-    paste -d ' ' <(cat $trans | awk '{print $1}' | awk '{split($1,a,"."); print a[1]}' | awk '{split($1,a,"/"); print a[3]}') <(cat $trans | cut -d ' ' -f2-) || exit 1
+    paste -d ' ' <(cat $trans | awk '{split($1,a,"."); print a[1]}' | awk '{split($1,a,"/"); print a[3]}') <(cat $trans | cut -d ' ' -f2-) || exit 1
   done > $dir/hixiaowen_text || exit 1
   dir=data/download/ticmini2_for_school_20180911
   trans=$dir/hixiaowen/hixiaowen.trans
-  paste -d ' ' <(cat $trans | awk '{print $1}' | awk '{split($1,a,"/"); print a[4]}' | awk '{split($1,a,"."); print a[1]}') <(cat $trans | cut -d ' ' -f2-) > $dir/hixiaowen_text || exit 1
+  paste -d ' ' <(cat $trans | awk '{split($1,a,"/"); print a[4]}' | awk '{split($1,a,"."); print a[1]}') <(cat $trans | cut -d ' ' -f2-) > $dir/hixiaowen_text || exit 1
   for dataset in ticmini2_dataset_20180607 ticmini2_hixiaowen_adult_20180731 ticmini2_for_school_20180911; do
     cat data/download/$dataset/hixiaowen_text || exit 1
   done | sort -u -k1,1 > data/hixiaowen_text || exit 1

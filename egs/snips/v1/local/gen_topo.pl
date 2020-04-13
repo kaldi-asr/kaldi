@@ -1,1 +1,1 @@
-../../../mobvoi/v1/local/gen_topo.pl
+../../../../scripts/wakeword/gen_topo.pl

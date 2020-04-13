@@ -1,1 +1,0 @@
-../../../mobvoi/v1/local/score.sh

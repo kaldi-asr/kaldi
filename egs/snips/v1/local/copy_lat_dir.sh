@@ -1,1 +1,1 @@
-../../../mobvoi/v1/local/copy_lat_dir.sh
+../../../../scripts/wakeword/copy_lat_dir.sh

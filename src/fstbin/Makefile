@@ -16,7 +16,7 @@ BINFILES = fstdeterminizestar  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand \
            fstdeterminizelog fstphicompose fstcopy \
            fstpushspecial fsts-to-transcripts fsts-project fsts-union \
-           fsts-concat make-grammar-fst fsts-clear-labels fsttablecomposelog
+           fsts-concat make-grammar-fst
 
 OBJFILES =
 

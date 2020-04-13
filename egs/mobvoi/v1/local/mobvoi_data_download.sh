@@ -11,10 +11,10 @@ dl_dir=data/download
 
 mkdir -p $dl_dir
 
-src_path=/export/a11/hlyu/wakeup_word_corpra/mobvoi
+src_path=/export/fs04/a11/hlyu/wakeup_word_corpra/mobvoi
 
 dataset=ticmini2_dataset_20180607.zip
-if [ -d $(basename "$dataset" .zip) ]; then
+if [ -d $dl_dir/$(basename "$dataset" .zip) ]; then
   echo "Not extracting $(basename "$dataset" .zip) as it is already there."
 else
   if [ ! -f $dl_dir/$dataset ]; then
@@ -27,7 +27,7 @@ else
 fi
 
 dataset=ticmini2_for_school_20180911.tar.gz
-if [ -d $(basename "$dataset" .tar.gz) ]; then
+if [ -d $dl_dir/$(basename "$dataset" .tar.gz) ]; then
   echo "Not extracting $(basename "$dataset" .tar.gz) as it is already there."
 else
   echo "Extracting $dataset..."
@@ -36,7 +36,7 @@ else
 fi
 
 dataset=ticmini2_hixiaowen_adult_20180731.7z
-if [ -d $(basename "$dataset" .7z) ]; then
+if [ -d $dl_dir/$(basename "$dataset" .7z) ]; then
   echo "Not extracting $(basename "$dataset" .7z) as it is already there."
 else
   echo "Extracting $dataset..."

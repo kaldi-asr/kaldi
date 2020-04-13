@@ -15,6 +15,7 @@ train_stage=-5 # starting from -5 to skip phone-lm estimation
 get_egs_stage=-10
 affix=1a
 remove_egs=false
+online_cmvn=true
 xent_regularize=0.1
 
 # training options
@@ -59,7 +60,6 @@ lores_train_data_dir=data/${train_set}_sp
 
 lang=data/lang_chain
 lang_decode=data/lang_chain_decode
-lang_rescore=data/lang_chain_rescore
 tree_dir=exp/chain/tree  # it's actually just a trivial tree (no tree building)
 dir=exp/chain/tdnn_${affix}
 
@@ -82,7 +82,6 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    rm -rf $lang
     cp -r data/lang $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
@@ -119,7 +118,7 @@ if [ $stage -le 4 ]; then
     --cmd "$train_cmd" ${lores_train_data_dir} \
     $lang $ali_dir $tree_dir
 
-  echo "$0: Estimating a phone language model for the denominator graph..."
+  echo "$0: Creating an unnormalized phone language model for the denominator graph..."
   id_sil=`cat data/lang/phones.txt | grep "SIL" | awk '{print $2}'`
   id_word=`cat data/lang/phones.txt | grep "heysnips" | awk '{print $2}'`
   id_freetext=`cat data/lang/phones.txt | grep "freetext" | awk '{print $2}'`
@@ -195,7 +194,7 @@ if [ $stage -le 6 ]; then
 
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$decode_cmd" \
-    --feat.cmvn-opts="--norm-means=true --norm-vars=false" \
+    --feat.cmvn-opts="--config=conf/online_cmvn.conf" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.0 \
@@ -218,7 +217,7 @@ if [ $stage -le 6 ]; then
     --egs.chunk-left-context-initial=0 \
     --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.opts="--frames-overlap-per-eg 0 --online-cmvn $online_cmvn" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
@@ -229,80 +228,24 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  rm -rf $lang_decode
-  utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
-    --position-dependent-phones false \
-    data/local/dict "<sil>" $lang_decode/temp $lang_decode
+  steps/online/nnet3/prepare_online_decoding.sh \
+    --mfcc-config conf/mfcc_hires.conf \
+    --online-cmvn-config conf/online_cmvn.conf \
+    $lang ${dir} ${dir}_online
 
-  sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
-  freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
-  id=`cat $lang_decode/words.txt | grep $wake_word | awk '{print $2}'`
-  mkdir -p $lang_decode/lm
-  cat <<EOF > $lang_decode/lm/fst.txt
-0 1 $sil_id $sil_id
-0 4 $sil_id $sil_id 7.0
-1 4 $freetext_id $freetext_id 0.0
-4 0 $sil_id $sil_id
-1 2 $id $id 2.09
-2 0 $sil_id $sil_id
-0
-EOF
-  fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
-  set +e
-  fstisstochastic $lang_decode/G.fst
-  set -e
-  utils/validate_lang.pl $lang_decode
-  cp $lang/topo $lang_decode/topo
-fi
-
-if [ $stage -le 8 ]; then
-  # The reason we are using data/lang here, instead of $lang, is just to
-  # emphasize that it's not actually important to give mkgraph.sh the
-  # lang directory with the matched topology (since it gets the
-  # topology file from the model).  So you could give it a different
-  # lang directory, one that contained a wordlist and LM of your choice,
-  # as long as phones.txt was compatible.
-
-  utils/lang/check_phones_compatible.sh \
-    data/lang/phones.txt $lang_decode/phones.txt
-  rm -rf $tree_dir/graph/HCLG.fst
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 $lang_decode \
-    $dir $tree_dir/graph || exit 1;
-fi
-
-if [ $stage -le 9 ]; then
-  frames_per_chunk=150
   rm $dir/.error 2>/dev/null || true
 
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      steps/nnet3/decode.sh \
-        --beam 200 --lattice-beam 100 \
-        --scoring-opts "--wake-word $wake_word" \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --extra-left-context-initial 0 \
-        --extra-right-context-final 0 \
-        --frames-per-chunk $frames_per_chunk \
-        --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-        $tree_dir/graph data/${data}_hires ${dir}/decode_${data} || exit 1
-    ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-fi
+  for wake_word_cost in -2.5 -2.0 -1.5 -1.0 -0.5 0.0 0.5 1.0 1.5 2.0; do
+    rm -rf $lang_decode
+    utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
+      --position-dependent-phones false \
+      data/local/dict "<sil>" $lang_decode/temp $lang_decode
 
-# obtain EER by rescoring with G.fst with varying LM cost
-if [ $stage -le 10 ]; then
-  rm -rf $lang_rescore 2>/dev/null || true
-  cp -r $lang_decode $lang_rescore
-  for wake_word_cost in 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5; do
     sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
     freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
     id=`cat $lang_decode/words.txt | grep $wake_word | awk '{print $2}'`
-    mkdir -p $lang_rescore/lm
-    cat <<EOF > $lang_rescore/lm/fst.txt
+    mkdir -p $lang_decode/lm
+    cat <<EOF > $lang_decode/lm/fst.txt
 0 1 $sil_id $sil_id
 0 4 $sil_id $sil_id 7.0
 1 4 $freetext_id $freetext_id 0.0
@@ -311,30 +254,103 @@ if [ $stage -le 10 ]; then
 2 0 $sil_id $sil_id
 0
 EOF
-    fstcompile $lang_rescore/lm/fst.txt $lang_rescore/G.fst
+    fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
     set +e
-    fstisstochastic $lang_rescore/G.fst
+    fstisstochastic $lang_decode/G.fst
     set -e
-    utils/validate_lang.pl $lang_rescore
+    utils/validate_lang.pl $lang_decode
+    cp $lang/topo $lang_decode/topo
 
+    utils/lang/check_phones_compatible.sh \
+    data/lang/phones.txt $lang_decode/phones.txt
+    rm -rf $tree_dir/graph_online/HCLG.fst
+    utils/mkgraph.sh \
+      --self-loop-scale 1.0 $lang_decode \
+      $dir $tree_dir/graph_online || exit 1;
+
+    frames_per_chunk=150
     for data in $test_sets; do
       (
-        steps/lmrescore.sh --cmd "$decode_cmd" --self-loop-scale 1.0 --mode 1 \
-          --scoring-opts "--wake-word $wake_word" $lang_decode $lang_rescore \
-          data/${data}_hires $dir/decode_${data}{,_rescore${wake_word_cost}} || exit 1
-      )
+        nspk=$(wc -l <data/${data}_hires/spk2utt)
+        steps/online/nnet3/decode_wake_word.sh \
+          --beam 200 --acwt 1.0 \
+          --wake-word $wake_word \
+          --extra-left-context-initial 0 \
+          --frames-per-chunk $frames_per_chunk \
+          --nj $nspk --cmd "$decode_cmd" \
+          $tree_dir/graph_online data/${data}_hires ${dir}_online/decode_${data}_cost$wake_word_cost || exit 1
+      ) || touch $dir/.error &
     done
     wait
+    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
   done
-  cat $dir/decode_${data}{,_rescore*}/scoring_kaldi/all_results
+  for data in $test_sets; do
+    echo "Results on $data set:"
+    cat ${dir}_online/decode_${data}_cost*/scoring_kaldi/all_results
+  done
 fi
 
-# obtain ROC curves by varying thresholds for confidence scores
-if [ $stage -le 11 ]; then
-  for data in $test_sets; do
-    nspk=$(wc -l <data/${data}_hires/spk2utt)
-    local/process_lattice.sh --nj $nspk --wake-word $wake_word ${dir}/decode_${data} data/${data}_hires $lang || exit 1
+
+if [ $stage -le 7 ]; then
+  steps/online/nnet3/prepare_online_decoding.sh \
+    --mfcc-config conf/mfcc_hires.conf \
+    --online-cmvn-config conf/online_cmvn.conf \
+    $lang ${dir} ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+
+  for wake_word_cost in -1.5 -1.0 -0.5 0.0 0.5 1.0 1.5 2.0; do
+    rm -rf $lang_decode
+    utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
+      --position-dependent-phones false \
+      data/local/dict "<sil>" $lang_decode/temp $lang_decode
+
+    sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
+    freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
+    id=`cat $lang_decode/words.txt | grep $wake_word | awk '{print $2}'`
+    mkdir -p $lang_decode/lm
+    cat <<EOF > $lang_decode/lm/fst.txt
+0 1 $sil_id $sil_id
+0 4 $sil_id $sil_id 7.0
+1 4 $freetext_id $freetext_id 0.0
+4 0 $sil_id $sil_id
+1 2 $id $id 2.09
+2 0 $sil_id $sil_id
+0
+EOF
+    fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
+    set +e
+    fstisstochastic $lang_decode/G.fst
+    set -e
+    utils/validate_lang.pl $lang_decode
+    cp $lang/topo $lang_decode/topo
+
+    utils/lang/check_phones_compatible.sh \
+      data/lang/phones.txt $lang_decode/phones.txt
+    rm -rf $tree_dir/graph_online/HCLG.fst
+    utils/mkgraph.sh \
+      --self-loop-scale 1.0 $lang_decode \
+      $dir $tree_dir/graph_online || exit 1;
+
+    frames_per_chunk=150
+    for data in $test_sets; do
+      (
+        nj=30
+        steps/online/nnet3/decode_wake_word.sh \
+          --beam 200 --acwt 1.0 \
+          --wake-word $wake_word \
+          --extra-left-context-initial 0 \
+          --frames-per-chunk $frames_per_chunk \
+          --nj $nj --cmd "$decode_cmd" \
+          $tree_dir/graph_online data/${data}_hires ${dir}_online/decode_${data}_cost$wake_word_cost || exit 1
+      ) || touch $dir/.error &
+    done
+    wait
+    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
   done
-  echo "Done. Date: $(date)."
+  for data in $test_sets; do
+    echo "Results on $data set:"
+    cat ${dir}_online/decode_${data}_cost*/scoring_kaldi/all_results
+  done
 fi
 
