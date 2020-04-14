@@ -83,7 +83,7 @@ sdata=$data/split$nj
 mkdir -p $logdir
 mkdir -p $bnf_data
 mkdir -p $bnfdir
-echo $nj > $nnetdir/num_jobs
+echo $nj > $bnfdir/num_jobs
 
 [ ! -f $data/feats.scp ] && echo >&2 "The file $data/feats.scp does not exist!" && exit 1;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
