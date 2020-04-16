@@ -38,14 +38,17 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
   nvtxRangePushA("GetIvector");
   CuMatrix<BaseFloat> posteriors, X;
   CuVector<BaseFloat> gamma;
+  int rows = feats.NumRows();
+  int cols = feats.NumCols();
+
+  int lda_rows = cu_lda_.NumRows();
+  int lda_cols = cu_lda_.NumCols();
 
   // normalized pipeline
-  CuMatrix<BaseFloat> lda_feats_normalized(feats.NumRows(), feats.NumCols(),
-                                           kUndefined);
+  CuMatrix<BaseFloat> lda_feats_normalized(rows, lda_rows, kUndefined);
   {
     CudaOnlineCmvn cmvn(info_.cmvn_opts, naive_cmvn_state_);
-    CuMatrix<BaseFloat> cmvn_feats(feats.NumRows(), feats.NumCols(),
-                                   kUndefined);
+    CuMatrix<BaseFloat> cmvn_feats(rows, cols, kUndefined);
     CuMatrix<BaseFloat> spliced_feats_normalized;
 
     // Normalize
@@ -55,12 +58,30 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
     SpliceFeats(cmvn_feats, &spliced_feats_normalized);
 
     // Transform by LDA matrix
-    lda_feats_normalized.AddMatMat(1.0, spliced_feats_normalized, kNoTrans,
-                                   cu_lda_, kTrans, 0.0);
+    if (spliced_feats_normalized.NumCols() == lda_cols) {
+      // Linear transformation
+      lda_feats_normalized.AddMatMat(1.0, spliced_feats_normalized, kNoTrans,
+                                     cu_lda_, kTrans, 0.0);
+    } else if (spliced_feats_normalized.NumCols() + 1 == lda_cols) {
+      // Affine transformation
+
+      // create submatrix which removes last column
+      CuSubMatrix<BaseFloat> cu_lda(cu_lda_, 0, lda_rows, 0, lda_cols - 1);
+  
+      // Add offset
+      lda_feats_normalized.CopyRowsFromVec(offset_);
+      lda_feats_normalized.AddMatMat(1.0, spliced_feats_normalized, kNoTrans,
+                                   cu_lda, kTrans, 1.0);
+
+    } else {
+      KALDI_ERR << "Dimension mismatch: source features have dimension "
+                << spliced_feats_normalized.NumCols() << " and LDA #cols is " 
+                << lda_cols;
+    }
   }
 
   // non-normalized pipeline
-  CuMatrix<BaseFloat> lda_feats(feats.NumRows(), feats.NumCols(), kUndefined);
+  CuMatrix<BaseFloat> lda_feats(rows, lda_rows, kUndefined);
   {
     CuMatrix<BaseFloat> spliced_feats;
 
@@ -68,7 +89,24 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
     SpliceFeats(feats, &spliced_feats);
 
     // Transform by LDA matrix
-    lda_feats.AddMatMat(1.0, spliced_feats, kNoTrans, cu_lda_, kTrans, 0.0);
+    if (spliced_feats.NumCols() == lda_cols) {
+      // Linear transformation
+      lda_feats.AddMatMat(1.0, spliced_feats, kNoTrans, cu_lda_, kTrans, 0.0);
+    } else if (spliced_feats.NumCols() + 1 == lda_cols) {
+      // Affine transformation
+
+      // create submatrix which removes last column
+      CuSubMatrix<BaseFloat> cu_lda(cu_lda_, 0, lda_rows, 0, lda_cols - 1);
+      
+      // Add offset
+      lda_feats.CopyRowsFromVec(offset_);
+      lda_feats.AddMatMat(1.0, spliced_feats, kNoTrans, cu_lda, kTrans, 1.0);
+
+    } else {
+      KALDI_ERR << "Dimension mismatch: source features have dimension "
+                << spliced_feats.NumCols() << " and LDA #cols is " 
+                << lda_cols;
+    }
   }
 
   // based on normalized feats
@@ -245,7 +283,7 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
 #if CUDA_VERSION >= 9010
   // Comment this out to use LU decomposistion instead.
   // CHOLESKY's should be faster and more accurate so this is preffered.
-#define CHOLESKY  
+#define CHOLESKY
   int nrhs = 1;
   // Forming new non-SP matrix for cusolver.
   CuMatrix<float> A(quadratic);
@@ -299,7 +337,7 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
   CuDevice::Instantiate().Free(devIpiv);
 #endif
 #else
-  // Cuda version is too old for cu-solver.  
+  // Cuda version is too old for cu-solver.
   // Use Kaldi built-in inversion routine.
   quadratic.Invert();
   CuVector<float> linear_tmp(linear);

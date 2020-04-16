@@ -1045,7 +1045,7 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
     // the learning rate slower to reduce the risk of divergence, since the
     // update may not be stable for starting points far from equilibrium.
     BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
-    KALDI_ASSERT(ratio > 0.999);
+    KALDI_ASSERT(ratio > 0.99);
     if (ratio > 1.02) {
       update_speed *= 0.5;  // Slow down the update speed to reduce the risk of divergence.
       if (ratio > 1.1) update_speed *= 0.5;  // Slow it down even more.

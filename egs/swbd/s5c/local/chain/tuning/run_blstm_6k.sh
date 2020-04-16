@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 6k is same as 6j, but with the fast lstm layers
 

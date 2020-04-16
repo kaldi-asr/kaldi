@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1v is as 1t, but using backstitch training with scale=1.0,interval=4, and
 # num of epochs increased to 7

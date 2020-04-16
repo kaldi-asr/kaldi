@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is the "final" version of the script that runs trains the bottleneck system.
 # It is to be run after run.sh (the new version, that uses the same number of phases

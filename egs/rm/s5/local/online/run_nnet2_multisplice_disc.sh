@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is to be run after run_nnet2_multisplice.sh.
 # It demonstrates discriminative training for the online-nnet2 models

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2019   Phani Sankar Nidadavolu
 # Apache 2.0.
 
@@ -69,6 +69,6 @@ rm $dir/lat_tmp.*
 
 echo $nj > $dir/num_jobs
 
-for f in cmvn_opts splice_opts final.mdl splice_opts tree frame_subsampling_factor; do
+for f in phones.txt cmvn_opts splice_opts final.mdl splice_opts tree frame_subsampling_factor; do
   if [ -f $src_dir/$f ]; then cp $src_dir/$f $dir/$f; fi
 done

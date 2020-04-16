@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 filter_regexp=.
 [ $# -ge 1 ] && filter_regexp=$1

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3i is as _3h but after a script fix in which the --final-layer-normalize-target is
 # applied, in order to control how fast the final layer's affine component learns.

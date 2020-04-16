@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Apache 2.0
 
 # This is based on TDNN_OPGRU_1A, but using the FastNormOPGRU to replace the NormPGRU.

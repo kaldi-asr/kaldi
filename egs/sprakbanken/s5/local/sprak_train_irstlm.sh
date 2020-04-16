@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013-2014  Mirsk Digital Aps (Author: Andreas Kirkedal)
 # Apache 2.0

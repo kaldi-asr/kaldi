@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Based mostly on the TED-LIUM and Switchboard recipe
 #
@@ -28,8 +28,8 @@ json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
 
 # training and test data
-train_set=train_worn_u100k
-test_sets="eval_${enhancement}_ref"
+train_set=train_worn_simu_u400k
+test_sets="eval_${enhancement}_dereverb_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -38,18 +38,27 @@ if [ $stage -le 4 ]; then
   # Beamforming using reference arrays
   # enhanced WAV directory
   enhandir=enhan
+  dereverb_dir=${PWD}/wav/wpe/
   for dset in eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
-      local/run_beamformit.sh --cmd "$train_cmd" \
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 120G" \
 			      ${audio_dir}/${dset} \
+			      ${dereverb_dir}/${dset} \
+			      ${mictype}
+    done
+  done
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u05 u06; do
+      local/run_beamformit.sh --cmd "$train_cmd" \
+			      ${dereverb_dir}/${dset} \
 			      ${enhandir}/${dset}_${enhancement}_${mictype} \
 			      ${mictype}
     done
   done
-  
+
   for dset in eval; do
     local/prepare_data.sh --mictype ref "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
-			  ${json_dir}/${dset} data/${dset}_${enhancement}_ref
+			  ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb_ref
   done
 fi
 
@@ -92,28 +101,13 @@ if [ $stage -le 7 ]; then
   done
 fi
 
-if [ $stage -le 17 ]; then
-  nnet3_affix=_${train_set}_cleaned
-  for datadir in ${test_sets}; do
-    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-  done
-  for datadir in ${test_sets}; do
-    steps/make_mfcc.sh --nj 20 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/${datadir}_hires || exit 1;
-    steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
-    utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
-  done
-  for data in $test_sets; do
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-      data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
-      exp/nnet3${nnet3_affix}/ivectors_${data}_hires
-  done
-fi
+nnet3_affix=_${train_set}_cleaned_rvb
+
+lm_suffix=
 
 if [ $stage -le 18 ]; then
   # First the options that are passed through to run_ivector_common.sh
   # (some of which are also used in this script directly).
-  lm_suffix=
 
   # The rest are configs specific to this script.  Most of the parameters
   # are just hardcoded at this level, in the commands below.
@@ -138,16 +132,14 @@ if [ $stage -le 18 ]; then
 
   for data in $test_sets; do
     (
-      steps/nnet3/decode.sh \
-          --acwt 1.0 --post-decode-acwt 10.0 \
-          --extra-left-context $chunk_left_context \
-          --extra-right-context $chunk_right_context \
-          --extra-left-context-initial 0 \
-          --extra-right-context-final 0 \
-          --frames-per-chunk $frames_per_chunk \
-          --nj 8 --cmd "$decode_cmd"  --num-threads 4 \
-          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph${lm_suffix} data/${data}_hires ${dir}/decode${lm_suffix}_${data} || exit 1
+      local/nnet3/decode.sh --affix 2stage --pass2-decode-opts "--min-active 1000" \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --frames-per-chunk 150 --nj $decode_nj \
+        --ivector-dir exp/nnet3${nnet3_affix} \
+        --graph-affix ${lm_suffix} \
+        data/${data} data/lang${lm_suffix} \
+        $tree_dir/graph${lm_suffix} \
+        exp/chain${nnet3_affix}/tdnn1b_sp 
     ) || touch $dir/.error &
   done
   wait
@@ -159,6 +151,6 @@ if [ $stage -le 20 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
-      --dev exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_dev_${enhancement}_ref \
-      --eval exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_eval_${enhancement}_ref
+      --dev exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_dev_${enhancement}_dereverb_ref_2stage \
+      --eval exp/chain${nnet3_affix}/tdnn1b_sp/decode${lm_suffix}_eval_${enhancement}_dereverb_ref_2stage
 fi

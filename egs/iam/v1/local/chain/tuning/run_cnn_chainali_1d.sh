@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # chainali_1d is as chainali_1c except it uses unconstrained egs
 # local/chain/compare_wer.sh exp/chain/cnn_chainali_1d

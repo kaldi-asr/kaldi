@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # This script, which will generally be called from other neural-net training

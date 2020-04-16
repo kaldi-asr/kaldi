@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # chainali_1b is as chainali_1a except it has 3 more cnn layers and 1 less tdnn layer.
 

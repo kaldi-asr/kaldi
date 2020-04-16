@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script replaces the command readlink -f (which is not portable).
 # It turns a pathname into an absolute pathname, including following soft links.

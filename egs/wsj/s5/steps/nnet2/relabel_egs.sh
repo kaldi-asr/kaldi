@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Vimal Manohar. Apache 2.0.
 # This script, which will generally be called during the neural-net training

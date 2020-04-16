@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # since _6s didn't work that well, in 6t we try something else:
 # modifying 6s to use almost exactly the same splicing indexes as 6r,

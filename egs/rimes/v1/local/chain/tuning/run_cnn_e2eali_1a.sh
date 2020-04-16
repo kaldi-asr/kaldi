@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # e2eali_1a is a 6 cnn layer 3 tdnn layer model with dropout, l2-regularization, batch-normalization
 

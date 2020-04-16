@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
 # trying the change of xent_regularize from 0.025 (which was an

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 6l is same as 6k, but with the per-frame dropout
 # location4 as paper : http://www.danielpovey.com/files/2017_interspeech_dropout.pdf
