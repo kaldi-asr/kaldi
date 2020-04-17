@@ -1,7 +1,7 @@
 // online2/online-nnet3-wake-word-faster-decoder.h
 
-// Copyright 2019  Daniel Povey
-//           2019  Yiming Wang
+// Copyright 2019-2020  Daniel Povey
+//           2019-2020  Yiming Wang
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -41,15 +41,20 @@ struct OnlineWakeWordFasterDecoderOpts : public FasterDecoderOptions {
   }
 };
 
+/** This is code is modified from online/online-faster-decoder.h and
+    online2/online-nnet3-decoding.h for nnet3 online decoding in wake word
+    detection. It uses `immortal tokens` from OnlineFasterDecoder for patial
+    tracing back to obtain partial hypotheses while decoding a recording.
+    Different from OnlineFasterDecoder, tt doesn't have end-point detection,
+    and doesn't use run-time factor to adjust the beam.
+*/
+
 class OnlineWakeWordFasterDecoder : public FasterDecoder {
  public:
-  // "sil_phones" - the IDs of all silence phones
   OnlineWakeWordFasterDecoder(const fst::Fst<fst::StdArc> &fst,
                               const OnlineWakeWordFasterDecoderOpts &opts,
-                              const std::vector<int32> &sil_phones,
                               const TransitionModel &trans_model)
-      : FasterDecoder(fst, opts), opts_(opts),
-        silence_set_(sil_phones), trans_model_(trans_model) {}
+      : FasterDecoder(fst, opts), opts_(opts), trans_model_(trans_model) {}
 
   // Makes a linear graph, by tracing back from the last "immortal" token
   // to the previous one
@@ -79,7 +84,6 @@ class OnlineWakeWordFasterDecoder : public FasterDecoder {
   void UpdateImmortalToken();
 
   const OnlineWakeWordFasterDecoderOpts opts_;
-  const ConstIntegerSet<int32> silence_set_; // silence phones IDs
   const TransitionModel &trans_model_; // needed for trans-id -> phone conversion
   Token *immortal_tok_;      // "immortal" token means it's an ancestor of ...
   Token *prev_immortal_tok_; // ... all currently active tokens

@@ -4,14 +4,8 @@
 #  Apache 2.0.
 
 
-# This script builds a tree for use in the 'chain' systems (although the script
-# itself is pretty generic and doesn't use any 'chain' binaries).  This is just
-# like the first stages of a standard system, like 'train_sat.sh', except it
-# does 'convert-ali' to convert alignments to a monophone topology just created
-# from the 'lang' directory (in case the topology is different from where you
-# got the system's alignments from), and it stops after the tree-building and
-# model-initialization stage, without re-estimating the Gaussians or training
-# the transitions.
+# This script is modified from steps/nnet3/chain/build_tree.sh, but only contains
+# trivial mono phone tree building without any states tying.
 
 
 # Begin configuration section.

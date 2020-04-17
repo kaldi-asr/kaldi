@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright 2018-2020  Yiming Wang
+#           2018-2020  Daniel Povey
+# Apache 2.0
 
 stage=0
 
@@ -59,3 +62,5 @@ if [ $stage -le 5 ]; then
     utils/filter_scp.pl data/download/${folder}_list data/utt2spk > data/$folder/utt2spk || exit 1
   done
 fi
+
+exit 0

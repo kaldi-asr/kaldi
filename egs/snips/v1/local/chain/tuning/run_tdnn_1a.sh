@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Copyright 2019  Johns Hopkins University (Author: Daniel Povey)
-#           2019  Yiming Wang
+# Copyright 2019-2020  Daniel Povey
+#           2019-2020  Yiming Wang
 # Apache 2.0
 
 
@@ -271,70 +271,6 @@ EOF
     frames_per_chunk=150
     for data in $test_sets; do
       (
-        nspk=$(wc -l <data/${data}_hires/spk2utt)
-        steps/online/nnet3/decode_wake_word.sh \
-          --beam 200 --acwt 1.0 \
-          --wake-word $wake_word \
-          --extra-left-context-initial 0 \
-          --frames-per-chunk $frames_per_chunk \
-          --nj $nspk --cmd "$decode_cmd" \
-          $tree_dir/graph_online data/${data}_hires ${dir}_online/decode_${data}_cost$wake_word_cost || exit 1
-      ) || touch $dir/.error &
-    done
-    wait
-    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-  done
-  for data in $test_sets; do
-    echo "Results on $data set:"
-    cat ${dir}_online/decode_${data}_cost*/scoring_kaldi/all_results
-  done
-fi
-
-
-if [ $stage -le 7 ]; then
-  steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf \
-    --online-cmvn-config conf/online_cmvn.conf \
-    $lang ${dir} ${dir}_online
-
-  rm $dir/.error 2>/dev/null || true
-
-  for wake_word_cost in -1.5 -1.0 -0.5 0.0 0.5 1.0 1.5 2.0; do
-    rm -rf $lang_decode
-    utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
-      --position-dependent-phones false \
-      data/local/dict "<sil>" $lang_decode/temp $lang_decode
-
-    sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
-    freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
-    id=`cat $lang_decode/words.txt | grep $wake_word | awk '{print $2}'`
-    mkdir -p $lang_decode/lm
-    cat <<EOF > $lang_decode/lm/fst.txt
-0 1 $sil_id $sil_id
-0 4 $sil_id $sil_id 7.0
-1 4 $freetext_id $freetext_id 0.0
-4 0 $sil_id $sil_id
-1 2 $id $id 2.09
-2 0 $sil_id $sil_id
-0
-EOF
-    fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
-    set +e
-    fstisstochastic $lang_decode/G.fst
-    set -e
-    utils/validate_lang.pl $lang_decode
-    cp $lang/topo $lang_decode/topo
-
-    utils/lang/check_phones_compatible.sh \
-      data/lang/phones.txt $lang_decode/phones.txt
-    rm -rf $tree_dir/graph_online/HCLG.fst
-    utils/mkgraph.sh \
-      --self-loop-scale 1.0 $lang_decode \
-      $dir $tree_dir/graph_online || exit 1;
-
-    frames_per_chunk=150
-    for data in $test_sets; do
-      (
         nj=30
         steps/online/nnet3/decode_wake_word.sh \
           --beam 200 --acwt 1.0 \
@@ -353,4 +289,3 @@ EOF
     cat ${dir}_online/decode_${data}_cost*/scoring_kaldi/all_results
   done
 fi
-

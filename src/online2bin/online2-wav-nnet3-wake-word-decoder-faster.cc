@@ -1,7 +1,7 @@
 // online2bin/online2-wav-nnet3-wake-word-decoder-faster.cc
 
-// Copyright 2019  Daniel Povey
-//           2019  Yiming Wang
+// Copyright 2019-2020  Daniel Povey
+//           2019-2020  Yiming Wang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,6 +31,9 @@
 #include "nnet3/nnet-utils.h"
 #include "online2/online-nnet3-wake-word-faster-decoder.h"
 
+/** This code is modified from online2bin/online2-wav-nnet3-latgen-faster.cc,
+    for wake word detection decoding. There is no lattice generation.
+*/
 
 int main(int argc, char *argv[]) {
   try {
@@ -43,11 +46,13 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Reads in wav file(s) and simulates online decoding for wake word with neural nets\n"
         "(nnet3 setup), with optional iVector-based speaker adaptation.\n"
+        "Once the wake word has been detected, or all the feature frames has been processed,\n"
+        "the decoding terminates and write the decoded outputs to files.\n"
         "Note: some configuration values and inputs are\n"
         "set via config files whose filenames are passed as options\n"
         "\n"
         "Usage: online2-wav-nnet3-wake-word-decoder-faster [options] <nnet3-in> <fst-in> "
-        "<spk2utt-rspecifier> <wav-rspecifier> <word-symbol-table> <silence-phones> "
+        "<spk2utt-rspecifier> <wav-rspecifier> <word-symbol-table>  "
         "<transcript-wspecifier> <alignments-wspecifier>\n"
         "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
         "you want to decode utterance by utterance.\n";
@@ -89,7 +94,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 8) {
+    if (po.NumArgs() != 7) {
       po.PrintUsage();
       return 1;
     }
@@ -99,9 +104,8 @@ int main(int argc, char *argv[]) {
         spk2utt_rspecifier = po.GetArg(3),
         wav_rspecifier = po.GetArg(4),
         word_syms_rxfilename = po.GetArg(5),
-        silence_phones_str = po.GetArg(6),
-        words_wspecifier = po.GetArg(7),
-        alignment_wspecifier = po.GetArg(8);
+        words_wspecifier = po.GetArg(6),
+        alignment_wspecifier = po.GetArg(7);
 
     OnlineNnet2FeaturePipelineInfo feature_info(feature_opts);
     if (!online) {
@@ -142,12 +146,6 @@ int main(int argc, char *argv[]) {
 
     OnlineTimingStats timing_stats;
 
-    std::vector<int32> silence_phones;
-    if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
-      KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
-    if (silence_phones.empty())
-      KALDI_ERR << "No silence phones given!";
-
     Int32VectorWriter words_writer(words_wspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
@@ -186,7 +184,7 @@ int main(int argc, char *argv[]) {
             feature_pipeline.IvectorFeature());
 
         OnlineWakeWordFasterDecoder decoder(*decode_fst, decoder_opts,
-                                            silence_phones, trans_model);
+                                            trans_model);
         OnlineTimer decoding_timer(utt);
 
         BaseFloat samp_freq = wave_data.SampFreq();

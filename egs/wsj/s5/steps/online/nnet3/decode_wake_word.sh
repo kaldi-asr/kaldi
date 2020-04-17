@@ -2,7 +2,10 @@
 
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 #           2016  Api.ai (Author: Ilya Platonov)
+#      2019-2020  Yiming Wang
 # Apache 2.0
+
+# This script is modified from steps/online/nnet3/decode.sh for wake word detection decoding
 
 # Begin configuration section.
 stage=0
@@ -96,7 +99,6 @@ if $do_speex_compressing; then
   wav_rspecifier="$wav_rspecifier compress-uncompress-speex ark:- ark:- |"
 fi
 
-silphones=$(cat $graphdir/phones/silence.csl) || exit 1
 wake_word_id=$(cat $graphdir/words.txt | grep $wake_word | awk '{print $2}')
 
 if [ -f $srcdir/frame_subsampling_factor ]; then
@@ -115,7 +117,7 @@ if [ $stage -le 0 ]; then
      --min-active=$min_active --max-active=$max_active --beam=$beam \
      --acoustic-scale=$acwt --wake-word-id=$wake_word_id \
      $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
-     $graphdir/words.txt "$silphones" ark,t:$dir/trans.JOB.txt \
+     $graphdir/words.txt ark,t:$dir/trans.JOB.txt \
      ark,t:$dir/ali.JOB.txt || exit 1;
 fi
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Copyright  2018  Yiming Wang
-#            2018  Johns Hopkins University (Author: Daniel Povey)
+# Copyright  2018-2020  Yiming Wang
+#            2018-2020  Daniel Povey
 # Apache 2.0
 
 # This script loads the speech commands dataset v0.2.
@@ -48,3 +48,4 @@ for dataset in train dev eval; do
   cp $src_path/${dataset}_list $dl_dir/${dataset}_list
 done
 
+exit 0

@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2018-2020  Daniel Povey
+#           2018-2020  Yiming Wang
 
 utt_prefixes=
 max_jobs_run=30

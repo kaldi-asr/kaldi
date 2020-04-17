@@ -1,9 +1,11 @@
 #!/usr/bin/env perl
 
-# Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+# Copyright 2012-2020  Daniel Povey
+#           2018-2020  Yiming Wang
 
-# Generate a topology file.  This allows control of the number of states in the
-# non-silence HMMs, and in the silence HMMs.
+# This script is modified from utils/gen_topo.pl. It is used for wake word detection
+# chain training, where the transotion probs are even. The topo also contains separate
+# ForwardPdfClass and SelfLoopPdfClass.
 
 if (@ARGV != 4) {
   print STDERR "Usage: utils/gen_topo.pl <num-nonsilence-states> <num-silence-states> <colon-separated-nonsilence-phones> <colon-separated-silence-phones>\n";

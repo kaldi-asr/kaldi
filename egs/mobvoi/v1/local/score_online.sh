@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright 2018-2019  Johns Hopkins University (Author: Daniel Povey, Yiming Wang)
+# Copyright 2018-2019  Daniel Povey
+#           2018-2020  Yiming Wang
 # Apache 2.0
 
 [ -f ./path.sh ] && . ./path.sh

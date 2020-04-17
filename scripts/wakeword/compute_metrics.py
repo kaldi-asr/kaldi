@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2018 Johns Hopkins University (author: Yiming Wang)
+# Copyright 2018-2020  Yiming Wang
 # Apache 2.0
 
 """ This script prepares the speech commands data into kaldi format.
