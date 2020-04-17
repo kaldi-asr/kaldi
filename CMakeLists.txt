@@ -159,7 +159,7 @@ if(${KALDI_USE_PATCH_NUMBER})
 endif()
 
 get_third_party(openfst)
-set(OPENFST_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/openfst)
+set(OPENFST_ROOT_DIR ${CMAKE_BINARY_DIR}/openfst)
 include(third_party/openfst_lib_target)
 link_libraries(fst)
 
