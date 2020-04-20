@@ -2,6 +2,8 @@
 # Copyright 2018-2020  Daniel Povey
 #           2018-2020  Yiming Wang
 
+# Please visit https://github.com/snipsco/keyword-spotting-research-datasets for downloading the dataset.
+
 stage=0
 
 
@@ -135,11 +137,11 @@ if [ $stage -le 6 ]; then
   done
 
   # Augment with musan_noise
-  steps/data/augment_data_dir.py --utt-prefix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train_shorter data/train_shorter_noise
+  steps/data/augment_data_dir.py --utt-prefix "noise" --modify-spk-id true --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train_shorter data/train_shorter_noise
   # Augment with musan_music
-  steps/data/augment_data_dir.py --utt-prefix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train_shorter data/train_shorter_music
+  steps/data/augment_data_dir.py --utt-prefix "music" --modify-spk-id true --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train_shorter data/train_shorter_music
   # Augment with musan_speech
-  steps/data/augment_data_dir.py --utt-prefix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train_shorter data/train_shorter_babble
+  steps/data/augment_data_dir.py --utt-prefix "babble" --modify-spk-id true --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train_shorter data/train_shorter_babble
 fi
 
 if [ $stage -le 7 ]; then
