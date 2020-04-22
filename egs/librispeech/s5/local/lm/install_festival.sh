@@ -35,8 +35,11 @@ fi
 
 if [ "$stage" -le 2 ]; then
   echo "Untarring the downloaded files..."
-  for f in `ls ./*.tar.*`; do
-    tar xf $f;
+  for f in `ls ./*.tar.gz`; do
+    tar -xzf $f;
+  done
+  for f in `ls ./*.tar.bz2`; do
+    tar -xf $f;
   done
 fi
 
