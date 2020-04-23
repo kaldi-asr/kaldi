@@ -4,7 +4,7 @@
 #           2018-2020  Daniel Povey
 # Apache 2.0
 
-""" This script prepares the speech commands data into kaldi format.
+""" This script prepares the SNIPS data into kaldi format.
 """
 
 

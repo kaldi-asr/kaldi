@@ -4,7 +4,7 @@
 #            2018-2020  Daniel Povey
 # Apache 2.0
 
-# This script loads the speech commands dataset v0.2.
+# This script loads the SNIPS dataset.
 [ -f ./path.sh ] && . ./path.sh
 
 dl_dir=data/download
