@@ -5,7 +5,7 @@
 utt_prefixes=
 max_jobs_run=30
 nj=75
-cmd=queue.pl
+cmd=run.pl
 write_compact=true
 
 echo "$0 $@"  # Print the command line for logging 

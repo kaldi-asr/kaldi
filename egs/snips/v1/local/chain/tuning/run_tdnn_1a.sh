@@ -100,7 +100,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  local/copy_lat_dir.sh --nj 75 --utt-prefixes "$aug_prefix" \
+  local/copy_lat_dir.sh --nj 75 --cmd "$train_cmd" --utt-prefixes "$aug_prefix" \
     $combined_train_data_dir $lat_dir $combined_lat_dir
 fi
 
