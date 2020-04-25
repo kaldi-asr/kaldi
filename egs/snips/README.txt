@@ -9,7 +9,7 @@
 
  The recipe is in v1/
 
- The E2E Lf-MMI recipe does not require any prior alignments for training
+ The E2E LF-MMI recipe does not require any prior alignments for training
  LF-MMI, making the alignment more flexible during training. It can be optionally
  followed by a regular LF-MMI training to further improve the performance.
 
