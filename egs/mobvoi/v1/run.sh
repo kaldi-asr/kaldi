@@ -172,11 +172,6 @@ if [ $stage -le 10 ]; then
   (
     utils/mkgraph.sh data/lang \
       exp/mono exp/mono/graph
-    for test in dev eval; do
-      steps/decode.sh --nj 20 --cmd "$decode_cmd" \
-        --scoring-opts "--wake-word 嗨小问" \
-        exp/mono/graph data/$test exp/mono/decode_$test
-    done
   )&
 
   steps/align_si.sh --nj 50 --cmd "$train_cmd" \

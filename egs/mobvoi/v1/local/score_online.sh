@@ -31,6 +31,7 @@ done
 
 
 utils/data/get_utt2dur.sh $data
+rm $data/utt2dur_negative 2>/dev/null || true
 utils/filter_scp.pl <(grep -v $wake_word $data/text) $data/utt2dur > $data/utt2dur_negative && dur=`awk '{a+=$2} END{print a}' $data/utt2dur_negative`
 echo "total duration (in seconds) of negative examples in $data: $dur"
 
