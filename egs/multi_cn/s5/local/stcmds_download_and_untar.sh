@@ -65,14 +65,15 @@ if [ ! -f $data/$part.tar.gz ]; then
     echo "$0: error executing wget $full_url"
     exit 1;
   fi
+  cd -
 fi
 
 cd $data
-
 if ! tar -xvzf $part.tar.gz; then
   echo "$0: error un-tarring archive $data/$part.tar.gz"
   exit 1;
 fi
+cd -
 
 touch $data/.complete
 

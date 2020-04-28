@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Copyright   2014  Johns Hopkins University (author: Daniel Povey)
 #             2017  Xingyu Na
@@ -78,12 +78,12 @@ if [ ! -f $data/$part.tgz ]; then
   fi
 fi
 
-cd $data
-
+cd ./$data
 if ! tar -xvzf $part.tgz; then
   echo "$0: error un-tarring archive $data/$part.tgz"
   exit 1;
 fi
+cd -
 
 touch $data/$part/.complete
 
@@ -92,11 +92,12 @@ test_dir=$data/$part/corpus/test
 train_dir=$data/$part/corpus/train
 if [ $part == "aidatatang_200zh" ]; then
   for set in $dev_dir $test_dir $train_dir;do
-    cd $set
+    cd ./$set
     for wav in ./*.tar.gz; do
       echo "Extracting wav from $wav"
       tar -zxf $wav && rm $wav
     done
+    cd -
   done
 fi
 
