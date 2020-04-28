@@ -20,7 +20,7 @@ if (@ARGV != 4) {
 
 $nonsil_phones =~ s/:/ /g;
 $sil_phones =~ s/:/ /g;
-$nonsil_phones =~ m/^\d[ \d]+$/ || die "$0: bad arguments @ARGV\n";
+$nonsil_phones =~ m/^\d[ \d]*$/ || die "$0: bad arguments @ARGV\n";
 $sil_phones =~ m/^\d[ \d]*$/ || die "$0: bad arguments @ARGV\n";
 
 print "<Topology>\n";
