@@ -1,0 +1,6 @@
+run_kws_kf.sh
+shreld0.5
+accuracy 0.83273214201
+run_kws_chain.sh
+shreld0.5
+accuracy 0.99806252078
