@@ -46,7 +46,7 @@ fi
 if [ $stage -le 2 ];then
     for i in $data_train $data_dev $data_test;do
 		awk '{split($1,array,"_");print $1,array[1]}' $i/wav.scp> $i/utt2spk
-        local/utt2spk_to_spk2utt.pl $i/utt2spk > $i/spk2utt
+        utils/utt2spk_to_spk2utt.pl $i/utt2spk > $i/spk2utt
 		utils/fix_data_dir.sh $i
 	done
 fi
