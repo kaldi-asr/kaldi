@@ -1,6 +1,12 @@
 #!/usr/bin/env python
-# Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University 
-# (Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation(Authors:Bengu WU) 
+#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
+# Apache 2.0
+
+# Generate the fst file from keyword phone file
+
 import sys
 import codecs
 import argparse
@@ -56,9 +62,7 @@ def build_text_graph(keyword_phone_file, text_fst_file):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University \n'+
-        '(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)\n'+
-        'Generate the text fst ')
+        description='Generate the text fst ')
     parser.add_argument('keyword_phone_file', help='keyword phone file')
     parser.add_argument('text_fst_file', help='text fst file')
 

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation(Authors:Bengu WU) 
+#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
+# Apache 2.0
+
 set -e
 
 # configs for 'chain'
@@ -23,7 +28,7 @@ minibatch_size=128
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 frames_per_eg=150,110,90
 remove_egs=true
-common_egs_dir=
+common_egs_dir=exp/chain/tdnn_1b_kws/egs
 xent_regularize=0.1
 
 # End configuration section.
@@ -90,33 +95,17 @@ if [ $stage -le 10 ]; then
   linear-component name=cnnl1 dim=284 $linear_opts
   
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1280
-  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn3l dim=256 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1280
-  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn5l dim=256 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
-  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1280
-  linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
-  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1280
-  linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
-  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1280
-  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn8l,tdnn6l) dim=1280
-  linear-component name=prefinal-l dim=256 $linear_opts
-
-  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280 target-rms=0.5
+  relu-batchnorm-layer name=tdnn1 dim=850
+  relu-batchnorm-layer name=tdnn2 dim=850 input=Append(-1,0,2)
+  relu-batchnorm-layer name=tdnn3 dim=850 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn4 dim=850 input=Append(-7,0,2)
+  relu-batchnorm-layer name=tdnn5 dim=850 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn6 dim=850
+  linear-component name=prefinal-l dim=256 $linear_opts 
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=850 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts max-change=1.5
 
-  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=850 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -170,7 +159,7 @@ if [ $stage -le 13 ]; then
     nj=40
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj $nj --cmd "$decode_cmd" --stage 0 \
-      $graph_dir data/${test_set} $dir/decode_test || exit 1;
+      $graph_dir data/${test_set} $dir/decode_test_new || exit 1;
   done
 fi
 

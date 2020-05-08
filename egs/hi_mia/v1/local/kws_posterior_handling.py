@@ -1,4 +1,12 @@
 #!/usr/bin/env python
+
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation(Authors:Bengu WU) 
+#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
+# Apache 2.0
+
+# Doing posterior process for the output of network including posterior smoothing and confidence canculate
+
 import numpy as np
 import argparse
 
@@ -54,9 +62,7 @@ def writeFile(result, outfilename):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(
-description="Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University 
-(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
-This script is used to handle posterior of kws.")
+description="This script is used to handle posterior of kws.")
     parser.add_argument('bnf_file',help='output of network')
     
     FLAGS = parser.parse_args()

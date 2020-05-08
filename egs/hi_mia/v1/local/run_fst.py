@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 # encoding=utf-8
-# Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University 
-# (Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation(Authors:Bengu WU) 
+#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
+# Apache 2.0
+
 # This script is for keyword filler system to do fst
+
 import numpy as np
 import argparse
 import sys
@@ -194,9 +199,7 @@ class stateMachine:
     
 if __name__=='__main__':
     parser = argparse.ArgumentParser(
-        description="Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University\n"+ 
-        "(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)\n"+
-        "This script is for keyword filler system to do fst\n")
+        description="This script is for keyword filler system to do fst\n")
     parser.add_argument('Fst_file',help='Fst file')
     parser.add_argument('bnf_file',help='output of network')
     

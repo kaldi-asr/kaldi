@@ -1,6 +1,12 @@
 #!/usr/bin/env python
-# Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University 
-# (Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation(Authors:Bengu WU) 
+#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
+# Apache 2.0
+
+# Draw a roc curve from result file
+
 import argparse
 import matplotlib
 matplotlib.use('Agg')
@@ -14,9 +20,7 @@ def readFile(filename):
     return datadict
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University\n"+ 
-        "(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)\n"+
-        "draw roc")
+        description="draw roc")
     parser.add_argument('result_file',help='output of network')
     parser.add_argument('label_file',help='utt label')
 

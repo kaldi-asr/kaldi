@@ -1,12 +1,19 @@
 #!/bin/bash
 
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation(Authors:Bengu WU) 
+#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
+# Apache 2.0
+
+# Download data 
+
 data=$1
 url=$2
 part=$3
 
 if [ $# -ne 3 ];then
 	echo "Usage: $0 <data-base> <url-base> <corpus-part>"
-	echo "e.g.: $0 data/aishell www.openslr.org/33 data_aishell"
+	echo "e.g.: $0 data/aishell www.openslr.org/33 data_aishell.tar.gz"
 fi
 
 if [ ! -d "$data" ]; then
