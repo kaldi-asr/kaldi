@@ -188,11 +188,11 @@ if [ $stage -le 4 ]; then
   rm $dir/.error 2>/dev/null || true
   for wake_word in $wake_word0 $wake_word1; do
     if [[ "$wake_word" == "$wake_word0" ]]; then
-      wake_word0_cost_range="0.0 0.5 1.0 1.5 2.0"
+      wake_word0_cost_range="0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0"
       wake_word1_cost_range="0.0"
     else
       wake_word0_cost_range="0.0"
-      wake_word1_cost_range="0.0 0.5 1.0 1.5 2.0"
+      wake_word1_cost_range="0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0"
     fi
     for wake_word0_cost in $wake_word0_cost_range; do
       for wake_word1_cost in $wake_word1_cost_range; do
