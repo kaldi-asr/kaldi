@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Copyright 2018-2020  Daniel Povey
-#           2018-2020  Yiming Wang
+# Copyright 2019-2020  Daniel Povey
+#           2019-2020  Yiming Wang
 # Apache 2.0
 
 
@@ -10,7 +10,7 @@ set -e
 # configs for 'chain'
 stage=0
 nj=30
-gmm=mono
+e2echain_model_dir=exp/chain/e2e_tdnn_1a
 train_stage=-5 # starting from -5 to skip phone-lm estimation
 get_egs_stage=-10
 affix=1a
@@ -30,13 +30,10 @@ dim=80
 bn_dim=20
 frames_per_iter=3000000
 bs_scale=0.0
-train_set=train_shorter
-combined_train_set=train_shorter_sp_combined
+train_set=train_shorter_sp_combined
 test_sets="dev eval"
-aug_prefix="rev1 noise music babble"
-export LC_ALL=en_US.UTF-8
-wake_word="嗨小问"
-export LC_ALL=C
+wake_word0="HiXiaowen"
+wake_word1="NihaoWenwen"
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -53,20 +50,16 @@ where "nvcc" is installed.
 EOF
 fi
 
-gmm_dir=exp/${gmm}
-ali_dir=exp/${gmm}_ali_${train_set}_sp
-lat_dir=exp/chain/${gmm}_${train_set}_sp_lats
-combined_lat_dir=exp/chain/${gmm}_${combined_train_set}_lats
-combined_train_data_dir=data/${combined_train_set}_hires
-lores_train_data_dir=data/${train_set}_sp
+ali_dir=exp/chain/e2e_ali_${train_set}
+lat_dir=exp/chain/e2e_${train_set}_lats
+train_data_dir=data/${train_set}_hires
 
 lang=data/lang_chain
 lang_decode=data/lang_chain_decode
-tree_dir=exp/chain/tree  # it's actually just a trivial tree (no tree building)
-dir=exp/chain/tdnn_${affix}
+tree_dir=exp/chain/tree_e2e  # it's actually just a trivial tree (no tree building)
+dir=exp/chain/tdnn_e2eali_${affix}
 
-for f in $combined_train_data_dir/feats.scp \
-  $lores_train_data_dir/feats.scp $gmm_dir/final.mdl $ali_dir/ali.1.gz; do
+for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -84,7 +77,6 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    rm -rf $lang
     cp -r data/lang $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
@@ -97,17 +89,14 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom)
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/lang $gmm_dir $lat_dir
-  rm $lat_dir/fsts.*.gz # save space
+  steps/nnet3/align_lats.sh --nj 75 --cmd "$train_cmd" \
+                      --acoustic-scale 1.0 \
+                      --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                      $train_data_dir data/lang $e2echain_model_dir $lat_dir
+  echo "" >$lat_dir/splice_opts
 fi
 
 if [ $stage -le 3 ]; then
-  local/copy_lat_dir.sh --nj 75 --cmd "$train_cmd" --utt-prefixes "$aug_prefix" \
-    $combined_train_data_dir $lat_dir $combined_lat_dir
-fi
-
-if [ $stage -le 4 ]; then
   # Build a tree using our new topology.  We know we have alignments from
   # steps/align_fmllr.sh, so use those.
   # The num-leaves is always somewhat less than the num-leaves from the GMM baseline.
@@ -116,29 +105,33 @@ if [ $stage -le 4 ]; then
     exit 1;
   fi
   local/chain/build_tree.sh \
-    --frame-subsampling-factor 3 \
-    --cmd "$train_cmd" ${lores_train_data_dir} \
-    $lang $ali_dir $tree_dir
+    --frame-subsampling-factor 3 --cmd "$train_cmd" \
+    $train_data_dir $lang $ali_dir $tree_dir
 
   echo "$0: Creating an unnormalized phone language model for the denominator graph..."
   id_sil=`cat data/lang/phones.txt | grep "SIL" | awk '{print $2}'`
-  id_word=`cat data/lang/phones.txt | grep "hixiaowen" | awk '{print $2}'`
+  id_word0=`cat data/lang/phones.txt | grep "hixiaowen" | awk '{print $2}'`
+  id_word1=`cat data/lang/phones.txt | grep "nihaowenwen" | awk '{print $2}'`
   id_freetext=`cat data/lang/phones.txt | grep "freetext" | awk '{print $2}'`
   cat <<EOF > $tree_dir/phone_lm.txt
 0 1 $id_sil $id_sil
-1 2 $id_word $id_word
+0 5 $id_sil $id_sil
+1 2 $id_word0 $id_word0
 2 3 $id_sil $id_sil
-1 4 $id_freetext $id_freetext
+1 4 $id_word1 $id_word1
 4 5 $id_sil $id_sil
-3 1.9
-5 0.7
+1 6 $id_freetext $id_freetext
+6 7 $id_sil $id_sil
+3 2.3
+5 2.3
+7 0.0
 EOF
   fstcompile $tree_dir/phone_lm.txt $tree_dir/phone_lm.fst
   fstdeterminizestar $tree_dir/phone_lm.fst $tree_dir/phone_lm.fst.tmp
   mv $tree_dir/phone_lm.fst.tmp $tree_dir/phone_lm.fst
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(python3 -c "print(0.5/$xent_regularize)")
@@ -201,6 +194,7 @@ if [ $stage -le 6 ]; then
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
+    --chain.alignment-subsampling-factor=1 \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
@@ -223,9 +217,9 @@ if [ $stage -le 6 ]; then
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
-    --feat-dir $combined_train_data_dir \
+    --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
-    --lat-dir=$combined_lat_dir \
+    --lat-dir=$lat_dir \
     --dir=$dir  || exit 1;
 fi
 
@@ -236,57 +230,73 @@ if [ $stage -le 7 ]; then
     $lang ${dir} ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
-  for wake_word_cost in -0.5 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0; do
-    rm -rf $lang_decode
-    utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
-      --position-dependent-phones false \
-      data/local/dict "<sil>" $lang_decode/temp $lang_decode
+  for wake_word in $wake_word0 $wake_word1; do
+    if [[ "$wake_word" == "$wake_word0" ]]; then
+      wake_word0_cost_range="0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0"
+      wake_word1_cost_range="0.0"
+    else
+      wake_word0_cost_range="0.0"
+      wake_word1_cost_range="0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0"
+    fi
+    for wake_word0_cost in $wake_word0_cost_range; do
+      for wake_word1_cost in $wake_word1_cost_range; do
+        rm -rf $lang_decode
+        utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
+          --position-dependent-phones false \
+          data/local/dict "<sil>" $lang_decode/temp $lang_decode
 
-    sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
-    freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
-    id=`cat $lang_decode/words.txt | grep $wake_word | awk '{print $2}'`
-    mkdir -p $lang_decode/lm
-    cat <<EOF > $lang_decode/lm/fst.txt
+        sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
+        freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
+        id0=`cat $lang_decode/words.txt | grep $wake_word0 | awk '{print $2}'`
+        id1=`cat $lang_decode/words.txt | grep $wake_word1 | awk '{print $2}'`
+        mkdir -p $lang_decode/lm
+        cat <<EOF > $lang_decode/lm/fst.txt
 0 1 $sil_id $sil_id
 0 4 $sil_id $sil_id 7.0
-1 4 $freetext_id $freetext_id 0.7
+1 4 $freetext_id $freetext_id 0.0
 4 0 $sil_id $sil_id
-1 2 $id $id $wake_word_cost
+1 2 $id0 $id0 $wake_word0_cost
+1 3 $id1 $id1 $wake_word1_cost
 2 0 $sil_id $sil_id
+3 0 $sil_id $sil_id
 0
 EOF
-    fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
-    set +e
-    fstisstochastic $lang_decode/G.fst
-    set -e
-    utils/validate_lang.pl $lang_decode
-    cp $lang/topo $lang_decode/topo
+        fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
+        set +e
+        fstisstochastic $lang_decode/G.fst
+        set -e
+        utils/validate_lang.pl $lang_decode
+        cp $lang/topo $lang_decode/topo
 
-    utils/lang/check_phones_compatible.sh \
-      data/lang/phones.txt $lang_decode/phones.txt
-    rm -rf $tree_dir/graph_online/HCLG.fst
-    utils/mkgraph.sh \
-      --self-loop-scale 1.0 $lang_decode \
-      $dir $tree_dir/graph_online || exit 1;
+        utils/lang/check_phones_compatible.sh \
+          data/lang/phones.txt $lang_decode/phones.txt
+        rm -rf $tree_dir/graph_online/HCLG.fst
+        utils/mkgraph.sh \
+          --self-loop-scale 1.0 $lang_decode \
+          $dir $tree_dir/graph_online || exit 1;
 
-    frames_per_chunk=150
-    for data in $test_sets; do
-      (
-        nj=30
-        steps/online/nnet3/decode_wake_word.sh \
-          --beam 200 --acwt 1.0 \
-          --wake-word $wake_word \
-          --extra-left-context-initial 0 \
-          --frames-per-chunk $frames_per_chunk \
-          --nj $nj --cmd "$decode_cmd" \
-          $tree_dir/graph_online data/${data}_hires ${dir}_online/decode_${data}_cost$wake_word_cost || exit 1
-      ) || touch $dir/.error &
+        frames_per_chunk=150
+        for data in $test_sets; do
+          (  
+            nj=30
+            steps/online/nnet3/decode_wake_word.sh \
+              --beam 10 --acwt 1.0 \
+              --wake-word $wake_word \
+              --extra-left-context-initial 0 \
+              --frames-per-chunk $frames_per_chunk \
+              --nj $nj --cmd "$decode_cmd" \
+              $tree_dir/graph_online data/${data}_hires ${dir}_online/decode_${data}_${wake_word}_cost${wake_word0_cost}_${wake_word1_cost} || exit 1
+          ) || touch $dir/.error &
+        done
+        wait
+        [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+      done
     done
-    wait
-    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
   done
   for data in $test_sets; do
-    echo "Results on $data set:"
-    cat ${dir}_online/decode_${data}_cost*/scoring_kaldi/all_results
+    for wake_word in $wake_word0 $wake_word1; do
+      echo "Results on $data set with wake word ${wake_word}:"
+      cat ${dir}_online/decode_${data}_${wake_word}_cost*/scoring_kaldi/all_results
+    done
   done
 fi

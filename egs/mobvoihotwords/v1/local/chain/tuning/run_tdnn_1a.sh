@@ -34,9 +34,8 @@ train_set=train_shorter
 combined_train_set=train_shorter_sp_combined
 test_sets="dev eval"
 aug_prefix="rev1 noise music babble"
-export LC_ALL=en_US.UTF-8
-wake_word="嗨小问"
-export LC_ALL=C
+wake_word0="HiXiaowen"
+wake_word1="NihaoWenwen"
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -122,16 +121,21 @@ if [ $stage -le 4 ]; then
 
   echo "$0: Creating an unnormalized phone language model for the denominator graph..."
   id_sil=`cat data/lang/phones.txt | grep "SIL" | awk '{print $2}'`
-  id_word=`cat data/lang/phones.txt | grep "hixiaowen" | awk '{print $2}'`
+  id_word0=`cat data/lang/phones.txt | grep "hixiaowen" | awk '{print $2}'`
+  id_word1=`cat data/lang/phones.txt | grep "nihaowenwen" | awk '{print $2}'`
   id_freetext=`cat data/lang/phones.txt | grep "freetext" | awk '{print $2}'`
   cat <<EOF > $tree_dir/phone_lm.txt
 0 1 $id_sil $id_sil
-1 2 $id_word $id_word
+0 5 $id_sil $id_sil
+1 2 $id_word0 $id_word0
 2 3 $id_sil $id_sil
-1 4 $id_freetext $id_freetext
+1 4 $id_word1 $id_word1
 4 5 $id_sil $id_sil
-3 1.9
-5 0.7
+1 6 $id_freetext $id_freetext
+6 7 $id_sil $id_sil
+3 2.3
+5 2.3
+7 0.0
 EOF
   fstcompile $tree_dir/phone_lm.txt $tree_dir/phone_lm.fst
   fstdeterminizestar $tree_dir/phone_lm.fst $tree_dir/phone_lm.fst.tmp
@@ -236,57 +240,73 @@ if [ $stage -le 7 ]; then
     $lang ${dir} ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
-  for wake_word_cost in -0.5 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0; do
-    rm -rf $lang_decode
-    utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
-      --position-dependent-phones false \
-      data/local/dict "<sil>" $lang_decode/temp $lang_decode
+  for wake_word in $wake_word0 $wake_word1; do
+    if [[ "$wake_word" == "$wake_word0" ]]; then
+      wake_word0_cost_range="0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0"
+      wake_word1_cost_range="0.0"
+    else
+      wake_word0_cost_range="0.0"
+      wake_word1_cost_range="0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0"
+    fi
+    for wake_word0_cost in $wake_word0_cost_range; do
+      for wake_word1_cost in $wake_word1_cost_range; do
+        rm -rf $lang_decode
+        utils/prepare_lang.sh --num-sil-states 1 --num-nonsil-states 4 --sil-prob 0.0 \
+          --position-dependent-phones false \
+          data/local/dict "<sil>" $lang_decode/temp $lang_decode
 
-    sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
-    freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
-    id=`cat $lang_decode/words.txt | grep $wake_word | awk '{print $2}'`
-    mkdir -p $lang_decode/lm
-    cat <<EOF > $lang_decode/lm/fst.txt
+        sil_id=`cat $lang_decode/words.txt | grep "<sil>" | awk '{print $2}'`
+        freetext_id=`cat $lang_decode/words.txt | grep "FREETEXT" | awk '{print $2}'`
+        id0=`cat $lang_decode/words.txt | grep $wake_word0 | awk '{print $2}'`
+        id1=`cat $lang_decode/words.txt | grep $wake_word1 | awk '{print $2}'`
+        mkdir -p $lang_decode/lm
+        cat <<EOF > $lang_decode/lm/fst.txt
 0 1 $sil_id $sil_id
 0 4 $sil_id $sil_id 7.0
-1 4 $freetext_id $freetext_id 0.7
+1 4 $freetext_id $freetext_id 0.0
 4 0 $sil_id $sil_id
-1 2 $id $id $wake_word_cost
+1 2 $id0 $id0 $wake_word0_cost
+1 3 $id1 $id1 $wake_word1_cost
 2 0 $sil_id $sil_id
+3 0 $sil_id $sil_id
 0
 EOF
-    fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
-    set +e
-    fstisstochastic $lang_decode/G.fst
-    set -e
-    utils/validate_lang.pl $lang_decode
-    cp $lang/topo $lang_decode/topo
+        fstcompile $lang_decode/lm/fst.txt $lang_decode/G.fst
+        set +e
+        fstisstochastic $lang_decode/G.fst
+        set -e
+        utils/validate_lang.pl $lang_decode
+        cp $lang/topo $lang_decode/topo
 
-    utils/lang/check_phones_compatible.sh \
-      data/lang/phones.txt $lang_decode/phones.txt
-    rm -rf $tree_dir/graph_online/HCLG.fst
-    utils/mkgraph.sh \
-      --self-loop-scale 1.0 $lang_decode \
-      $dir $tree_dir/graph_online || exit 1;
+        utils/lang/check_phones_compatible.sh \
+          data/lang/phones.txt $lang_decode/phones.txt
+        rm -rf $tree_dir/graph_online/HCLG.fst
+        utils/mkgraph.sh \
+          --self-loop-scale 1.0 $lang_decode \
+          $dir $tree_dir/graph_online || exit 1;
 
-    frames_per_chunk=150
-    for data in $test_sets; do
-      (
-        nj=30
-        steps/online/nnet3/decode_wake_word.sh \
-          --beam 200 --acwt 1.0 \
-          --wake-word $wake_word \
-          --extra-left-context-initial 0 \
-          --frames-per-chunk $frames_per_chunk \
-          --nj $nj --cmd "$decode_cmd" \
-          $tree_dir/graph_online data/${data}_hires ${dir}_online/decode_${data}_cost$wake_word_cost || exit 1
-      ) || touch $dir/.error &
+        frames_per_chunk=150
+        for data in $test_sets; do
+          (  
+            nj=30
+            steps/online/nnet3/decode_wake_word.sh \
+              --beam 10 --acwt 1.0 \
+              --wake-word $wake_word \
+              --extra-left-context-initial 0 \
+              --frames-per-chunk $frames_per_chunk \
+              --nj $nj --cmd "$decode_cmd" \
+              $tree_dir/graph_online data/${data}_hires ${dir}_online/decode_${data}_${wake_word}_cost${wake_word0_cost}_${wake_word1_cost} || exit 1
+          ) || touch $dir/.error &
+        done
+        wait
+        [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+      done
     done
-    wait
-    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
   done
   for data in $test_sets; do
-    echo "Results on $data set:"
-    cat ${dir}_online/decode_${data}_cost*/scoring_kaldi/all_results
+    for wake_word in $wake_word0 $wake_word1; do
+      echo "Results on $data set with wake word ${wake_word}:"
+      cat ${dir}_online/decode_${data}_${wake_word}_cost*/scoring_kaldi/all_results
+    done
   done
 fi
