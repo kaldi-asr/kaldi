@@ -137,11 +137,20 @@ bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > >(
 
 
 template
-bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::GrammarFst> >(
+bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > > >(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
-    const LatticeFasterOnlineDecoderTpl<fst::GrammarFst> &decoder);
+    const LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > > &decoder);
+
+
+template
+bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst > > >(
+    const OnlineEndpointConfig &config,
+    const TransitionModel &tmodel,
+    BaseFloat frame_shift_in_seconds,
+    const LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst > > &decoder);
+
 
 template
 bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > >(
@@ -150,14 +159,20 @@ bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> >
     BaseFloat frame_shift_in_seconds,
     const LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
 
-
 template
-bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::GrammarFst> >(
+bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > > >(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
-    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFst> &decoder);
+    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > > &decoder);
 
+
+template
+bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst > > >(
+    const OnlineEndpointConfig &config,
+    const TransitionModel &tmodel,
+    BaseFloat frame_shift_in_seconds,
+    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst > > &decoder);
 
 
 }  // namespace kaldi

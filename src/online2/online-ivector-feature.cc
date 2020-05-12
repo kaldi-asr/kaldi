@@ -584,14 +584,20 @@ template
 void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
     const LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
 template
-void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFst>(
-    const LatticeFasterOnlineDecoderTpl<fst::GrammarFst> &decoder);
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > >(
+    const LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > > &decoder);
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFstTpl<fst::StdVectorFst > >(
+    const LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst > > &decoder);
 template
 void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
     const LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
 template
-void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFst>(
-    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFst> &decoder);
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > >(
+    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > > &decoder);
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFstTpl<fst::StdVectorFst > >(
+    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst > > &decoder);
 
 
 void OnlineSilenceWeighting::GetDeltaWeights(
