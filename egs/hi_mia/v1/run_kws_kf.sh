@@ -161,7 +161,7 @@ sil 1" > $kws_dict/phones.txt
 	count=2
     awk '{for(i=2;i<=NF;i++){if(!match($i,"sil"))print $i}}' $kws_dict/lexicon.txt | sort | uniq  | while read -r line;do
 		echo "$line $count"
-		count=$(expr $count + 1)
+		count=$(($count+1))
 	done >> $kws_dict/phones.txt
 	cat <<EOF > $kws_dict/words.txt
 <eps> 0
