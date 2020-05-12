@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
-#           2020 AIShell-Foundation(Authors:Bengu WU) 
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University (Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation (Author: Bengu WU) 
 #           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
-# Apache 2.0 
+# Apache 2.0
 
 data_aishell=data
 data_kws=data/kws
@@ -85,8 +85,8 @@ if [ $stage -le 3 ];then
 		utils/fix_data_dir.sh data/merge/$i || exit 1;
 	done
 
-	cat $data_aishell/test/wav.scp | awk '{print $1, 0}' > data/merge/negative
-	cat $data_kws/test/wav.scp | awk '{print $1, 1}' > data/merge/positive
+	awk '{print $1, 0}' $data_aishell/test/wav.scp > data/merge/negative
+	awk '{print $1, 1}' $data_kws/test/wav.scp > data/merge/positive
 
 	cat data/merge/negative data/merge/positive | sort > data/merge/label
 	rm data/merge/negative
@@ -176,9 +176,9 @@ if [ $stage -le 10 ];then
 fi
 
 if [ $stage -le 11 ];then
-	best_result=`cat exp/chain/tdnn_1b_kws/decode_test/scoring_kaldi/best_wer`
-	best_lmwt=`echo ${best_result##*/} | tr '_' ' ' | awk '{print $2}'`
-	best_penalty=`echo ${best_result##*/} | tr '_' ' ' | awk '{print $3}'`
+	best_result=$(cat exp/chain/tdnn_1b_kws/decode_test/scoring_kaldi/best_wer)
+	best_lmwt=$(echo ${best_result##*/} | tr '_' ' ' | awk '{print $2}')
+	best_penalty=$(echo ${best_result##*/} | tr '_' ' ' | awk '{print $3}')
 	local/get_roc.sh $best_lmwt $best_penalty
 	python local/kws_draw_roc.py result data/merge/label
 fi

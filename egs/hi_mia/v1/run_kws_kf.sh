@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University(Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
-#           2020 AIShell-Foundation(Authors:Bengu WU) 
+# Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University (Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
+#           2020 AIShell-Foundation (Author: Bengu WU) 
 #           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
-# Apache 2.0 
+# Apache 2.0
 
 # if do_train_aishell is false we should prepare aishell data and tri3a ourselves
 
@@ -117,7 +117,7 @@ if [ $stage -le 7 ];then
 # use aishell tri3a align kws data
 	for i in train dev test;do
 		echo $kws_word_split
-		awk '{print $1}' $data_kws/$i/wav.scp | while read line; do echo $line" "$kws_word_split;done >$data_kws/$i/text
+		awk '{print $1}' $data_kws/$i/wav.scp | while read -r line; do echo $line" "$kws_word_split;done >$data_kws/$i/text
 		#awk -v word=$kws_word_split '{print $1,word}' $data_kws/$i/wav.scp> $data_kws/$i/text 
 	done
 	for i in utt2spk spk2utt feats.scp cmvn.scp text wav.scp;do
@@ -132,9 +132,8 @@ if [ $stage -le 7 ];then
 		done
 		utils/fix_data_dir.sh data/merge/$i || exit 1;
 	done
-
-	cat $data_aishell/test/wav.scp | awk '{print $1, 0}' > data/merge/negative
-	cat $data_kws/test/wav.scp | awk '{print $1, 1}' > data/merge/positive
+	awk '{print $1, 0}' $data_aishell/test/wav.scp > data/merge/negative
+	awk '{print $1, 1}' $data_kws/test/wav.scp > data/merge/positive
 	test_merge_data=data/merge
 	cat $test_merge_data/negative $test_merge_data/positive | sort > data/merge/label
 	rm data/merge/negative
@@ -160,9 +159,9 @@ EOF
 	echo "<eps> 0
 sil 1" > $kws_dict/phones.txt
 	count=2
-    awk '{for(i=2;i<=NF;i++){if(!match($i,"sil"))print $i}}' $kws_dict/lexicon.txt | sort | uniq  | while read line;do
+    awk '{for(i=2;i<=NF;i++){if(!match($i,"sil"))print $i}}' $kws_dict/lexicon.txt | sort | uniq  | while read -r line;do
 		echo "$line $count"
-		count=`expr $count + 1`
+		count=$(expr $count + 1)
 	done >> $kws_dict/phones.txt
 	cat <<EOF > $kws_dict/words.txt
 <eps> 0
@@ -193,8 +192,8 @@ if [ $stage -le 9 ];then
     }
     ' $data_aishell/lang/phones.txt > data/phone.map
 	mkdir -p exp/kws_ali_test
-	cur=`cat $ali/num_jobs`
-	for x in `seq 1 $cur`;do
+	cur=$(cat $ali/num_jobs)
+	for x in $(seq 1 $cur);do
 		gunzip -c $ali/ali.$x.gz | 
 		ali-to-phones --per-frame=true exp/tri3a/final.mdl ark:- t,ark:- | 
 		utils/apply_map.pl -f 2- data/phone.map |
@@ -231,7 +230,7 @@ if [ $stage -le 11 ];then
 fi
 # train
 if [ $stage -le 12 ];then
-	num_targets=`wc -l $kws_dict/phones.txt`
+	num_targets=$(wc -l $kws_dict/phones.txt)
 	local/nnet3/run_tdnn.sh --num_targets $num_targets
 fi
 

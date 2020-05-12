@@ -19,7 +19,7 @@ dir=$1
 
 
 # prepare silence_phones.txt, nonsilence_phones.txt, optional_silence.txt, extra_questions.txt
-cat $dir/lexicon.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}'| \
+awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' $dir/lexicon.txt | \
   perl -e 'while(<>){ chomp($_); $phone = $_; next if ($phone eq "sil");
     m:^([^\d]+)(\d*)$: || die "Bad phone $_"; $q{$1} .= "$phone "; }
     foreach $l (values %q) {print "$l\n";}
@@ -28,7 +28,7 @@ cat $dir/lexicon.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p 
 echo sil > $dir/silence_phones.txt
 echo sil > $dir/optional_silence.txt
 
-cat $dir/silence_phones.txt | awk '{printf("%s ", $1);} END{printf "\n";}' > $dir/extra_questions.txt || exit 1;
+awk '{printf("%s ", $1);} END{printf "\n";}' $dir/silence_phones.txt > $dir/extra_questions.txt || exit 1;
 cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_)) {
   $p =~ m:^([^\d]+)(\d*)$: || die "Bad phone $_"; if($p eq "\$0"){$q{""} .= "$p ";}else{$q{$2} .= "$p ";} } } foreach $l (values %q) {print "$l\n";}' \
  >> $dir/extra_questions.txt || exit 1;

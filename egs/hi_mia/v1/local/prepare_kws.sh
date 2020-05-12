@@ -36,7 +36,7 @@ fi
 
 if [ $stage -le 1 ];then
     for i in $data_train $data_dev $data_test;do
-        cat $i/wav.scp | while read line;do
+        cat $i/wav.scp | while read -r line;do
             line_p1=${line##*/}
             echo ${line_p1%.*} $line
         done > $i/wav_terminal.scp
