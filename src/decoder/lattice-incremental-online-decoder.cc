@@ -145,6 +145,6 @@ template class LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> >;
 template class LatticeIncrementalOnlineDecoderTpl<fst::VectorFst<fst::StdArc> >;
 template class LatticeIncrementalOnlineDecoderTpl<fst::ConstFst<fst::StdArc> >;
 template class LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > >;
-
+template class LatticeIncrementalOnlineDecoderTpl<fst::GrammarFstTpl<StdVectorFst> >;
 
 } // end namespace kaldi.
