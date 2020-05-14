@@ -1,0 +1,1 @@
+../../../mobvoi/v1/local/score_online.sh

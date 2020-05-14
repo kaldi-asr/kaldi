@@ -4,7 +4,7 @@
 # Copyright 2018-2020  Yiming Wang
 # Apache 2.0
 
-""" This script prepares the speech commands data into kaldi format.
+""" This script computes several metrics for wake word detection.
 """
 
 

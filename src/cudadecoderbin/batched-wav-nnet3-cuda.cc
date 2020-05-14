@@ -36,6 +36,9 @@ using namespace cuda_decoder;
 // Not using a semaphore because it is usually not necessary to wait
 #define KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP ((double)1 / 1e5)
 
+// This pipeline is deprecated and will be removed. Please switch to
+// batched-wav-nnet3-cuda2
+
 void GetDiagnosticsAndPrintOutput(const std::string &utt,
                                   const fst::SymbolTable *word_syms,
                                   const CompactLattice &clat,
@@ -111,13 +114,18 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Reads in wav file(s) and simulates online decoding with neural nets\n"
-        "(nnet3 setup), with optional iVector-based speaker adaptation and\n"
-        "optional endpointing.  Note: some configuration values and inputs "
+        "Reads in wav file(s) and simulates online decoding with "
+        "neural nets\n"
+        "(nnet3 setup), with optional iVector-based speaker "
+        "adaptation and\n"
+        "optional endpointing.  Note: some configuration values "
+        "and inputs "
         "are\n"
-        "set via config files whose filenames are passed as options\n"
+        "set via config files whose filenames are passed as "
+        "options\n"
         "\n"
-        "Usage: batched-wav-nnet3-cuda [options] <nnet3-in> <fst-in> "
+        "Usage: batched-wav-nnet3-cuda [options] <nnet3-in> "
+        "<fst-in> "
         "<wav-rspecifier> <lattice-wspecifier>\n";
 
     std::string word_syms_rxfilename;
@@ -137,8 +145,10 @@ int main(int argc, char *argv[]) {
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("file-limit", &num_todo,
-                "Limits the number of files that are processed by this driver. "
-                "After N files are processed the remaining files are ignored. "
+                "Limits the number of files that are processed by "
+                "this driver. "
+                "After N files are processed the remaining files "
+                "are ignored. "
                 "Useful for profiling");
     po.Register("iterations", &iterations,
                 "Number of times to decode the corpus.");
@@ -226,7 +236,7 @@ int main(int argc, char *argv[]) {
         std::string utt = wav_reader.Key();
         std::string key = utt;
 
-        if (iterations > 0) {
+        if (iter > 0) {
           // make key unique for each iteration
           key = std::to_string(iter) + "-" + key;
         }
@@ -234,42 +244,51 @@ int main(int argc, char *argv[]) {
         const WaveData &wave_data = wav_reader.Value();
 
         if (iter == 0) {
-          // calculating number of utterances per iteration
-          // calculating total audio time per iteration
+          // calculating number of utterances per
+          // iteration calculating total audio
+          // time per iteration
           total_audio += wave_data.Duration();
         }
 
-        // Creating a function alias for the callback function of that utterance
+        // Creating a function alias for the callback
+        // function of that utterance
         auto finish_one_decode_lamba =
             [
-                // Capturing the arguments that will change by copy
-                utt, key, 
-                // Capturing the const/global args by reference
+                // Capturing the arguments that will
+                // change by copy
+                utt, key,
+                // Capturing the const/global args by
+                // reference
                 &word_syms, &cuda_pipeline, &stdout_mutex, &num_frames,
-                &clat_write_mutex, &clat_writer, &write_lattice,
-                &tot_like]
-            // The callback function receive the compact lattice as argument
-            // if determinize_lattice is true, it is a determinized lattice
-            // otherwise, it is a raw lattice converted to compact format
+                &clat_write_mutex, &clat_writer, &write_lattice, &tot_like]
+            // The callback function receive the compact
+            // lattice as argument if
+            // determinize_lattice is true, it is a
+            // determinized lattice otherwise, it is a
+            // raw lattice converted to compact format
             // through ConvertLattice
             (CompactLattice & clat_in) {
-              // Content of our callback function. Calling the general
-              // FinishOneDecode function with the proper arguments
+              // Content of our callback function.
+              // Calling the general
+              // FinishOneDecode function with the
+              // proper arguments
               FinishOneDecode(
-                  // Captured arguments used to specialize FinishOneDecode for
-                  // this task
+                  // Captured arguments used to
+                  // specialize FinishOneDecode
+                  // for this task
                   utt, key, word_syms, &cuda_pipeline, &num_frames, &tot_like,
-                  &clat_writer, &clat_write_mutex, &stdout_mutex, 
-                  write_lattice,
-                  // Generated lattice that will be passed once the task is
+                  &clat_writer, &clat_write_mutex, &stdout_mutex, write_lattice,
+                  // Generated lattice that will
+                  // be passed once the task is
                   // complete
                   clat_in);
             };
-        // Adding a new task. Once the output lattice is ready, it will call
-        // finish_one_decode_lamba
-        // Important : finish_one_decode_lamba is called in the threadpool. We
-        // need it to be threadsafe
-        // (use locks around relevant parts, like writing to I/O)
+        // Adding a new task. Once the output lattice is
+        // ready, it will call finish_one_decode_lamba
+        // Important : finish_one_decode_lamba is called
+        // in the threadpool. We need it to be
+        // threadsafe (use locks around relevant parts,
+        // like writing to I/O)
         cuda_pipeline.OpenDecodeHandle(key, wave_data, task_group,
                                        finish_one_decode_lamba);
         num_task_submitted++;
@@ -277,7 +296,7 @@ int main(int argc, char *argv[]) {
         nvtxRangePop();
         if (num_todo != -1 && num_task_submitted >= num_todo) break;
       }  // end utterance loop
-      
+
       std::string group_done;
       // Non-blocking way to check if a group is done
       // returns false if zero groups are ready
@@ -294,9 +313,11 @@ int main(int argc, char *argv[]) {
     }  // end iterations loop
 
     // We've submitted all tasks. Now waiting for them to complete
-    // We could also have called WaitForAllTasks and CloseAllDecodeHandles
+    // We could also have called WaitForAllTasks and
+    // CloseAllDecodeHandles
     while (num_groups_done < iterations) {
-      // WaitForAnyGroup is blocking. It will hold until one group is ready
+      // WaitForAnyGroup is blocking. It will hold until one
+      // group is ready
       std::string group_done = cuda_pipeline.WaitForAnyGroup();
       cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
       double total_time = timer.Elapsed();
@@ -324,7 +345,7 @@ int main(int argc, char *argv[]) {
 
     cuda_pipeline.Finalize();
     cudaDeviceSynchronize();
-      
+
     delete word_syms;  // will delete if non-NULL.
 
     return 0;
