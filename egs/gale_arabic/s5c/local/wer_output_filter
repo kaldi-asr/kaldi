@@ -1,4 +1,4 @@
-#!/usr/bin/env sed -f
+#!/bin/sed -f
 s/@@ //g
 s/<sil>//g
 s/<UNK>//g
