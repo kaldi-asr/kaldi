@@ -1,2 +1,2 @@
-#!/usr/bin/env sed -f
+#!/bin/sed -f
 s:<UNK>::g
