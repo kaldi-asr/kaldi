@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/usr/bin/env sed -f
 s:<NOISE>::g
 s:<SPOKEN_NOISE>::g
 s:<UNK>::g
