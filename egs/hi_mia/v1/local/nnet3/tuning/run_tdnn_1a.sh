@@ -4,11 +4,7 @@
 #           2020 AIShell-Foundation (Author: Bengu WU) 
 #           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
 # Apache 2.0
-
-
 set -e
-
-
 stage=0
 train_stage=-10
 affix=kws
@@ -24,9 +20,6 @@ nj=30
 remove_egs=true
 num_targets=
 . parse_options.sh || exit 1;
-echo $num_targets
-# feature options
-use_ivectors=false
 
 # End configuration section.
 
@@ -42,16 +35,11 @@ where "nvcc" is installed.
 EOF
 fi
 
-# we use 40-dim high-resolution mfcc features (w/o pitch and ivector) for nn training
-# no utt- and spk- level cmvn
-
 dir=exp/nnet3/tdnn_test${affix:+_$affix}
 gmm_dir=exp/tri3
 test_sets="fbank/dev fbank/test"
 train_set=fbank/train
-ali_dir=/home/work_nfs3/zhyyao/yao_workspace/kws_mia/exp/kws_ali
 graph_dir=$gmm_dir/graph
-
 
 if [ $stage -le 7 ]; then
   echo "$0: creating neural net configs";

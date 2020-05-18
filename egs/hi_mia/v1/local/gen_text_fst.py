@@ -1,11 +1,9 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 # Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University (Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
 #           2020 AIShell-Foundation (Author: Bengu WU) 
 #           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
 # Apache 2.0
-
-
+#
 # Generate the fst file from keyword phone file
 
 import sys

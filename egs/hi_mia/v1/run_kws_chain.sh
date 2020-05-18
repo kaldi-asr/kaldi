@@ -180,7 +180,7 @@ if [ $stage -le 11 ];then
 	best_lmwt=$(echo ${best_result##*/} | tr '_' ' ' | awk '{print $2}')
 	best_penalty=$(echo ${best_result##*/} | tr '_' ' ' | awk '{print $3}')
 	local/get_roc.sh $best_lmwt $best_penalty
-	python local/kws_draw_roc.py result data/merge/label
+	python local/kws_draw_roc.py --roc result data/merge/label data/fbank/test/utt2dur
 fi
 exit 1;
 

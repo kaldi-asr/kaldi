@@ -254,5 +254,5 @@ if [ $stage -le 14 ];then
 	else
 		python local/kws_posterior_handling.py exp/bnf/ark.txt
 	fi
-	python local/kws_draw_roc.py result.txt data/merge/label
+	python local/kws_draw_roc.py --roc result.txt data/merge/label data/fbank/test/utt2dur
 fi
