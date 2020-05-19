@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # example usage:
 # ./local/create_sample.sh /ha/projects/vystadial/data/asr/en/voip/ Results/vystadial-sample/ test 100
 # note that it suppose there are only *.wav and *.wav.trn and the 

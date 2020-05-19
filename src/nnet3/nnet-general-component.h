@@ -331,7 +331,8 @@ class StatisticsExtractionComponentPrecomputedIndexes:
  or whatever, instead of just component-name, because its output is only defined at multiples
  of its input-period.
 
- The output of StatisticsPoolingComponent will only be defined if at least one input was defined.
+ The output of StatisticsPoolingComponent will only be defined if at least one
+ input was defined.
  */
 class StatisticsPoolingComponent: public Component {
  public:
@@ -396,6 +397,11 @@ class StatisticsPoolingComponent: public Component {
       const std::vector<Index> &output_indexes,
       bool need_backprop) const;
 
+  // Used in computing the 'real' context of networks involving this component;
+  // with the default value of false, the left/right context will always appear
+  // to be 0.
+  void SetRequireDirectInput(bool b) { require_direct_input_ = b; }
+
  private:
   // Checks that the parameters are valid.
   void Check() const;
@@ -411,6 +417,13 @@ class StatisticsPoolingComponent: public Component {
   int32 num_log_count_features_;
   bool output_stddevs_;
   BaseFloat variance_floor_;
+  // If require_direct_input_ is set to true, in order for a particular 't'
+  // value to be available at the output of this component, it will require that
+  // 't' value to be computable at the input.  This is used in computing the
+  // "real" left/right context of the network, but this member isn't currently
+  // written to disk and will default to false when read.
+  bool require_direct_input_;
+
 };
 
 class StatisticsPoolingComponentPrecomputedIndexes:

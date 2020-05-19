@@ -38,14 +38,17 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
   nvtxRangePushA("GetIvector");
   CuMatrix<BaseFloat> posteriors, X;
   CuVector<BaseFloat> gamma;
+  int rows = feats.NumRows();
+  int cols = feats.NumCols();
+
+  int lda_rows = cu_lda_.NumRows();
+  int lda_cols = cu_lda_.NumCols();
 
   // normalized pipeline
-  CuMatrix<BaseFloat> lda_feats_normalized(feats.NumRows(), feats.NumCols(),
-                                           kUndefined);
+  CuMatrix<BaseFloat> lda_feats_normalized(rows, lda_rows, kUndefined);
   {
     CudaOnlineCmvn cmvn(info_.cmvn_opts, naive_cmvn_state_);
-    CuMatrix<BaseFloat> cmvn_feats(feats.NumRows(), feats.NumCols(),
-                                   kUndefined);
+    CuMatrix<BaseFloat> cmvn_feats(rows, cols, kUndefined);
     CuMatrix<BaseFloat> spliced_feats_normalized;
 
     // Normalize
@@ -55,12 +58,30 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
     SpliceFeats(cmvn_feats, &spliced_feats_normalized);
 
     // Transform by LDA matrix
-    lda_feats_normalized.AddMatMat(1.0, spliced_feats_normalized, kNoTrans,
-                                   cu_lda_, kTrans, 0.0);
+    if (spliced_feats_normalized.NumCols() == lda_cols) {
+      // Linear transformation
+      lda_feats_normalized.AddMatMat(1.0, spliced_feats_normalized, kNoTrans,
+                                     cu_lda_, kTrans, 0.0);
+    } else if (spliced_feats_normalized.NumCols() + 1 == lda_cols) {
+      // Affine transformation
+
+      // create submatrix which removes last column
+      CuSubMatrix<BaseFloat> cu_lda(cu_lda_, 0, lda_rows, 0, lda_cols - 1);
+  
+      // Add offset
+      lda_feats_normalized.CopyRowsFromVec(offset_);
+      lda_feats_normalized.AddMatMat(1.0, spliced_feats_normalized, kNoTrans,
+                                   cu_lda, kTrans, 1.0);
+
+    } else {
+      KALDI_ERR << "Dimension mismatch: source features have dimension "
+                << spliced_feats_normalized.NumCols() << " and LDA #cols is " 
+                << lda_cols;
+    }
   }
 
   // non-normalized pipeline
-  CuMatrix<BaseFloat> lda_feats(feats.NumRows(), feats.NumCols(), kUndefined);
+  CuMatrix<BaseFloat> lda_feats(rows, lda_rows, kUndefined);
   {
     CuMatrix<BaseFloat> spliced_feats;
 
@@ -68,7 +89,24 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
     SpliceFeats(feats, &spliced_feats);
 
     // Transform by LDA matrix
-    lda_feats.AddMatMat(1.0, spliced_feats, kNoTrans, cu_lda_, kTrans, 0.0);
+    if (spliced_feats.NumCols() == lda_cols) {
+      // Linear transformation
+      lda_feats.AddMatMat(1.0, spliced_feats, kNoTrans, cu_lda_, kTrans, 0.0);
+    } else if (spliced_feats.NumCols() + 1 == lda_cols) {
+      // Affine transformation
+
+      // create submatrix which removes last column
+      CuSubMatrix<BaseFloat> cu_lda(cu_lda_, 0, lda_rows, 0, lda_cols - 1);
+      
+      // Add offset
+      lda_feats.CopyRowsFromVec(offset_);
+      lda_feats.AddMatMat(1.0, spliced_feats, kNoTrans, cu_lda, kTrans, 1.0);
+
+    } else {
+      KALDI_ERR << "Dimension mismatch: source features have dimension "
+                << spliced_feats.NumCols() << " and LDA #cols is " 
+                << lda_cols;
+    }
   }
 
   // based on normalized feats
@@ -216,17 +254,21 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
 
   batched_gemv_reduce(num_gauss_, feat_dim_, ivector_dim_,
                       ie_Sigma_inv_M_f_.Stride(), ie_Sigma_inv_M_f_.Data(),
-                      X.Stride(), X.Data(), gamma.Data(), linear.Data());
+                      X.Stride(), X.Data(), linear.Data());
 
   CuSubVector<float> q_vec(quadratic.Data(),
                            ivector_dim_ * (ivector_dim_ + 1) / 2);
   q_vec.AddMatVec(1.0f, ie_U_, kTrans, gamma, 0.0f);
 
+  // TODO for online this needs to be stored and passed forward
+  // For offline this is always zero.
+  float old_num_frames = 0.0f;
+
   // compute and apply prior offset to linear and quadraditic terms
   // offset tot_post_ by correct buffer
-  update_linear_and_quadratic_terms(quadratic.NumRows(), prior_offset_,
-                                    tot_post_.Data() + b_, info_.max_count,
-                                    quadratic.Data(), linear.Data());
+  update_linear_and_quadratic_terms(
+      quadratic.NumRows(), old_num_frames, prior_offset_, tot_post_.Data() + b_,
+      info_.max_count, quadratic.Data(), linear.Data());
   // advance double buffer
   b_ = (b_ + 1) % 2;
 
@@ -238,38 +280,72 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
   // linear system.  So just use choleskey's to solve for a single ivector
   // Equation being solved: quadratic * ivector = linear
 
+#if CUDA_VERSION >= 9010
+  // Comment this out to use LU decomposistion instead.
+  // CHOLESKY's should be faster and more accurate so this is preffered.
+#define CHOLESKY
   int nrhs = 1;
-
   // Forming new non-SP matrix for cusolver.
   CuMatrix<float> A(quadratic);
 
-#if CUDA_VERSION >= 9010
+#ifdef CHOLESKY
   // query temp buffer size
   int L_work;
   CUSOLVER_SAFE_CALL(
       cusolverDnSpotrf_bufferSize(GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER,
-                                  ivector_dim_, A.Data(), A.Stride(), &L_work));
+                                  A.NumRows(), A.Data(), A.Stride(), &L_work));
 
   // allocate temp buffer
-  float *workspace =
-      static_cast<float *>(CuDevice::Instantiate().Malloc(L_work));
+  float *workspace = static_cast<float *>(
+      CuDevice::Instantiate().Malloc(L_work * sizeof(float)));
 
   // perform factorization
   CUSOLVER_SAFE_CALL(cusolverDnSpotrf(
-      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, A.Data(),
+      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, A.NumRows(), A.Data(),
       A.Stride(), workspace, L_work, d_info_));
 
   // solve for rhs
   CUSOLVER_SAFE_CALL(cusolverDnSpotrs(
-      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, nrhs,
+      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, A.NumRows(), nrhs,
       A.Data(), A.Stride(), ivector->Data(), ivector_dim_, d_info_));
 
   CuDevice::Instantiate().Free(workspace);
 #else
-  KALDI_ERR << "Online Ivectors in CUDA is not supported by your CUDA version. "
-            << "Upgrade to CUDA 9.1 or later";
+  // query temp buffer size
+  int L_work;
+  CUSOLVER_SAFE_CALL(
+      cusolverDnSgetrf_bufferSize(GetCusolverDnHandle(), A.NumRows(),
+                                  A.NumCols(), A.Data(), A.Stride(), &L_work));
+
+  // allocate temp buffer
+  float *workspace = static_cast<float *>(
+      CuDevice::Instantiate().Malloc(L_work * sizeof(float)));
+  int *devIpiv =
+      static_cast<int *>(CuDevice::Instantiate().Malloc(L_work * sizeof(int)));
+
+  // perform factorization
+  CUSOLVER_SAFE_CALL(cusolverDnSgetrf(GetCusolverDnHandle(), A.NumRows(),
+                                      A.NumCols(), A.Data(), A.Stride(),
+                                      workspace, devIpiv, d_info_));
+
+  // solve for rhs
+  CUSOLVER_SAFE_CALL(cusolverDnSgetrs(
+      GetCusolverDnHandle(), CUBLAS_OP_N, A.NumRows(), nrhs, A.Data(),
+      A.Stride(), devIpiv, ivector->Data(), ivector_dim_, d_info_));
+
+  CuDevice::Instantiate().Free(workspace);
+  CuDevice::Instantiate().Free(devIpiv);
 #endif
-  // remove prior
+#else
+  // Cuda version is too old for cu-solver.
+  // Use Kaldi built-in inversion routine.
+  quadratic.Invert();
+  CuVector<float> linear_tmp(linear);
+  ivector->Resize(ivector_dim_, kUndefined);
+  ivector->AddSpVec(1.0, quadratic, linear_tmp, 0.0);
+#endif
+
+  // remove prior from ivector
   CuSubVector<float> ivector0(*ivector, 0, 1);
   ivector0.Add(-prior_offset_);
 }

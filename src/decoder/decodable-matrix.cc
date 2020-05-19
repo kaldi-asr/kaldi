@@ -32,7 +32,7 @@ DecodableMatrixMapped::DecodableMatrixMapped(
 
   if (likes.NumCols() != tm.NumPdfs())
     KALDI_ERR << "Mismatch, matrix has "
-              << likes.NumCols() << " rows but transition-model has "
+              << likes.NumCols() << " cols but transition-model has "
               << tm.NumPdfs() << " pdf-ids.";
 }
 
@@ -45,7 +45,7 @@ DecodableMatrixMapped::DecodableMatrixMapped(
   raw_data_ = likes->Data() - (stride_ * frame_offset_);
   if (likes->NumCols() != tm.NumPdfs())
     KALDI_ERR << "Mismatch, matrix has "
-              << likes->NumCols() << " rows but transition-model has "
+              << likes->NumCols() << " cols but transition-model has "
               << tm.NumPdfs() << " pdf-ids.";
 }
 

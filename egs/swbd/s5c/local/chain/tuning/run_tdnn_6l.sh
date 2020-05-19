@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6l is as _6i, but adding the option --xent-separate-forward-affine=true which
 # I had accidentally omitted, and adding 4 frames more left context and 2 frames

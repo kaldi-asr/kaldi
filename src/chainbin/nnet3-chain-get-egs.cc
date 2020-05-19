@@ -95,7 +95,7 @@ static bool ProcessFile(const TransitionModel *trans_mdl,
                         const VectorBase<BaseFloat> *deriv_weights,
                         int32 supervision_length_tolerance,
                         const std::string &utt_id,
-                        bool compress,
+                        bool compress, bool long_key,
                         UtteranceSplitter *utt_splitter,
                         NnetChainExampleWriter *example_writer) {
   KALDI_ASSERT(supervision.num_sequences == 1);
@@ -228,9 +228,14 @@ static bool ProcessFile(const TransitionModel *trans_mdl,
       nnet_chain_eg.Compress();
 
     std::ostringstream os;
-    os << utt_id << "-" << chunk.first_frame;
+    if (long_key)
+      os << utt_id
+         << "-" << chunk.first_frame << "-" << chunk.left_context
+         << "-" << chunk.num_frames << "-" << chunk.right_context << "-v1";
+    else  // key is <utt_id>-<frame_id>
+      os << utt_id << "-" << chunk.first_frame;
 
-    std::string key = os.str(); // key is <utt_id>-<frame_id>
+    std::string key = os.str(); 
 
     example_writer->Write(key, nnet_chain_eg);
   }
@@ -265,7 +270,7 @@ int main(int argc, char *argv[]) {
         "Note: the --frame-subsampling-factor option must be the same as given to\n"
         "chain-get-supervision.\n";
 
-    bool compress = true;
+    bool compress = true, long_key = false;
     int32 length_tolerance = 100, online_ivector_period = 1,
           supervision_length_tolerance = 1;
 
@@ -283,7 +288,7 @@ int main(int argc, char *argv[]) {
                 "in compressed format (recommended).  Update: this is now "
                 "only relevant if the features being read are un-compressed; "
                 "if already compressed, we keep we same compressed format when "
-                "dumping-egs.");
+                "dumping egs.");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
                 "--online-ivectors option, for back compatibility");
     po.Register("online-ivectors", &online_ivector_rspecifier, "Rspecifier of "
@@ -311,6 +316,8 @@ int main(int argc, char *argv[]) {
                 "Filename of transition model to read; should only be supplied "
                 "if you want 'unconstrained' egs, and if you supplied "
                 "--convert-to-pdfs=false to chain-get-supervision.");
+    po.Register("long-key", &long_key, "If true, a long format will be used "
+                "for the key, which encodes context info, etc.");
 
     eg_config.Register(&po);
 
@@ -426,7 +433,7 @@ int main(int argc, char *argv[]) {
         if (!ProcessFile(trans_mdl_ptr, normalization_fst, feats,
                          online_ivector_feats, online_ivector_period,
                          supervision, deriv_weights, supervision_length_tolerance,
-                         key, compress,
+                         key, compress, long_key,
                          &utt_splitter, &example_writer))
           num_err++;
       }

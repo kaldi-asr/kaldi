@@ -448,6 +448,7 @@ void ConvolutionComponent::Backprop(const std::string &debug_info,
                                     void *memo,
                                     Component *to_update_in,
                                     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("ConvolutionComponent::Backprop");
   ConvolutionComponent *to_update =
       dynamic_cast<ConvolutionComponent*>(to_update_in);
   const int32 num_x_steps = (1 + (input_x_dim_ - filt_x_dim_) / filt_x_step_),
@@ -879,6 +880,7 @@ void MaxpoolingComponent::Backprop(const std::string &debug_info,
                                    void *memo,
                                    Component *, // to_update,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("MaxpoolingComponent::Backprop");
   if (!in_deriv)
     return;
 
@@ -1184,6 +1186,7 @@ void LstmNonlinearityComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("LstmNonlinearityComponent::Backprop");
 
   if (to_update_in == NULL) {
     cu::BackpropLstmNonlinearity(in_value, params_, out_deriv,
@@ -1488,6 +1491,7 @@ void GruNonlinearityComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("GruNonlinearityComponent::Backprop");
   KALDI_ASSERT(SameDim(out_value, out_deriv) &&
                in_value.NumRows() == out_value.NumRows() &&
                in_value.NumCols() == InputDim() &&
@@ -1989,6 +1993,7 @@ void OutputGruNonlinearityComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("OutputGruNonlinearityComponent::Backprop");
   KALDI_ASSERT(SameDim(out_value, out_deriv) &&
                in_value.NumRows() == out_value.NumRows() &&
                in_value.NumCols() == InputDim() &&

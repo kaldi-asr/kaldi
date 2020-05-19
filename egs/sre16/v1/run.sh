@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright      2017   David Snyder
 #                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #                2017   Johns Hopkins University (Author: Daniel Povey)

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # tdnn_blstm_1c is same as tdnn_blstm_1a,
 # but take :  egs/wsj/s5/local/chain/run_tdnn_lstm.sh as reference

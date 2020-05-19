@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2x is as _2w (which has frame subsampling factor of 2 not 3), but with more
 # epochs (6 vs 4), as it looks like the 2w model hadn't completely trained.

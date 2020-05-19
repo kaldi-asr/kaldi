@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2014 IMSL, PKU-HKUST (author: Wei Shi)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

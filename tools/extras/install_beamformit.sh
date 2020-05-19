@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 LIBSNDFILE_VERSION=1.0.25
 

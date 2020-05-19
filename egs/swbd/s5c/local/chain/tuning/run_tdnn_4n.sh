@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4n is as _4f, but adding the [new] option --convert-repeated-to-block-iter=100.
 #  reusing iter 100 of model 4f to avoid some iterations of training [did this by

@@ -30,6 +30,6 @@ for line in infile:
 
 for arrayid in sorted(array_id_error_dict):
     wer = float(array_id_error_dict[arrayid][1])/float(array_id_error_dict[arrayid][0])*100
-    wer_detail = "%WER {0:5.2f} [ {1} / {2}, {3} ins, {4} del, {5} sub ]".format(wer, array_id_error_dict[arrayid][0], array_id_error_dict[arrayid][1], array_id_error_dict[arrayid][2], array_id_error_dict[arrayid][3], array_id_error_dict[arrayid][4])
+    wer_detail = "%WER {0:5.2f} [ {1} / {2}, {3} ins, {4} del, {5} sub ]".format(wer, array_id_error_dict[arrayid][1], array_id_error_dict[arrayid][0], array_id_error_dict[arrayid][2], array_id_error_dict[arrayid][3], array_id_error_dict[arrayid][4])
     output.write(arrayid + ' ' + wer_detail + '\n')
 

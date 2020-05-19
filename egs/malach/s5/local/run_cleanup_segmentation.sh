@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2019  IBM (Michael Picheny) Adapted from AMI recipe for MALACH Corpus
 # Copyright 2016  Vimal Manohar

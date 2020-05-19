@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6f is as _5v, but setting --jesus-hidden-dim to 0 which with a script change
 # means there is no hidden part in the jesus layer (it's just repeated affine and relu).

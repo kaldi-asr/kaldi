@@ -30,6 +30,7 @@
 #include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <cub/block/block_reduce.cuh>
+#include <cuda.h> // for CUDA_VERSION
 
 
 /***********************************************************************
@@ -966,6 +967,168 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA,
 
 }
 
+#if __CUDA_ARCH__ < 600
+template <typename Type>
+inline __device__ void myAtomicAdd(Type *address, Type val) {
+  atomicAdd(address, val);
+}
+// Ref:
+// http://on-demand.gputechconf.com/gtc/2013/presentations/S3101-Atomic-Memory-Operations.pdf
+template <>
+inline __device__ void myAtomicAdd(double *address, double val) {
+  unsigned long long int *address_as_ull = (unsigned long long int *)address;
+  unsigned long long int old = *address_as_ull, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+                    __double_as_longlong(val + __longlong_as_double(assumed)));
+  } while (assumed != old);
+}
+#else
+#define myAtomicAdd(a, b) atomicAdd(a, b)
+#endif  // __CUDA_ARCH__
+
+// Kernel to compute tr(AB^T) and store result in GPU memory.
+// Each block computes a partial sum and adds to result atomicaly.
+// Order of computation is not guaranteed, but this doesn't affect
+// accuracy significantly.
+template <typename Real, int THREADS_X, int THREADS_Y, int unroll_count>
+__global__ void _trace_mat_mat_trans_atomic(Real * result,
+                                            const Real * A, const Real * B,
+                                            MatrixDim dA, int B_stride) {
+  // This kernel assumes result is already set to zero
+  Real thread_data = static_cast<Real>(0);
+  int colStart = blockIdx.x * blockDim.x + threadIdx.x;
+
+  // Thread reduction while reading from global memory
+  // in a grid strided loop
+  if (colStart < dA.cols) {
+    int rowStart = blockIdx.y * blockDim.y + threadIdx.y;
+    int stride = blockDim.y * gridDim.y;
+
+    int unroll_stride = unroll_count * stride;
+    // Closest multiple of unroll_stride less than dA.rows
+    int Nmod = (dA.rows / unroll_stride) * unroll_stride;
+    int j = rowStart;
+    for (; j < Nmod; j += unroll_stride) {
+      Real A_vals[unroll_count];
+      Real B_vals[unroll_count];
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        int idx_A = colStart + (j + u*stride) * dA.stride;
+        int idx_B = colStart + (j + u*stride) * B_stride;
+        A_vals[u] = A[idx_A];
+        B_vals[u] = B[idx_B];
+      }
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        thread_data += A_vals[u] * B_vals[u];
+      }
+    }
+    for (; j < dA.rows; j += stride) {
+      int idx_A = colStart + j * dA.stride;
+      int idx_B = colStart + j * B_stride;
+      Real A_val;
+      Real B_val;
+      A_val = A[idx_A];
+      B_val = B[idx_B];
+      thread_data += A_val * B_val;
+    }
+  }
+
+  // Block reduction
+  typedef cub::BlockReduce<Real, THREADS_X,
+                      cub::BLOCK_REDUCE_WARP_REDUCTIONS, THREADS_Y> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
+  Real aggregate = BlockReduceT(temp_storage).Sum(thread_data);
+
+  // Grid reduction (only thread 0 active per block)
+  if ((threadIdx.x == 0) && (threadIdx.y == 0))
+      myAtomicAdd(result, aggregate);
+}
+
+// Specialization of the above kernel to case when A and B are
+// the same matrices.
+template <typename Real, int THREADS_X, int THREADS_Y, int unroll_count>
+__global__ void _frobenius_norm_atomic(Real * result,
+                                       const Real * A,
+                                       MatrixDim dA) {
+  // This kernel assumes result is already set to zero
+  Real thread_data = static_cast<Real>(0);
+  int colStart = blockIdx.x * blockDim.x + threadIdx.x;
+
+  // Thread reduction while reading from global memory
+  // in a grid strided loop
+  if (colStart < dA.cols) {
+    int rowStart = blockIdx.y * blockDim.y + threadIdx.y;
+    int stride = blockDim.y * gridDim.y;
+
+    int unroll_stride = unroll_count * stride;
+    // Closest multiple of unroll_stride less than dA.rows
+    int Nmod = (dA.rows / unroll_stride) * unroll_stride;
+    int j = rowStart;
+    for (; j < Nmod; j += unroll_stride) {
+      Real A_vals[unroll_count];
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        int idx = colStart + (j + u*stride) * dA.stride;
+        A_vals[u] = A[idx];
+      }
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        thread_data += A_vals[u] * A_vals[u];
+      }
+    }
+    for (; j < dA.rows; j += stride) {
+      int idx = colStart + j * dA.stride;
+      Real A_val;
+      A_val = A[idx];
+      thread_data += A_val * A_val;
+    }
+  }
+
+  // Block reduction
+  typedef cub::BlockReduce<Real, THREADS_X,
+                      cub::BLOCK_REDUCE_WARP_REDUCTIONS, THREADS_Y> BlockReduceT;
+  __shared__ typename BlockReduceT::TempStorage temp_storage;
+  Real aggregate = BlockReduceT(temp_storage).Sum(thread_data);
+
+  // Grid reduction (only thread 0 active per block)
+  if ((threadIdx.x == 0) && (threadIdx.y == 0))
+      myAtomicAdd(result, aggregate);
+}
+
+template <typename Real>
+void trace_mat_mat_trans_atomic(Real *d_result,
+                                const Real *A, const Real *B,
+                                MatrixDim dA, int B_stride,
+                                cudaStream_t stream) {
+  // Assuming *d_result is set to zero already
+
+  constexpr int THREADS_X = 32;
+  constexpr int THREADS_Y = 16;
+
+  dim3 thrds(THREADS_X, THREADS_Y);
+
+  bool isSameAB = (A == B);
+
+  int elemsPerThread = (dA.rows + static_cast<int>(thrds.y) - 1) / static_cast<int>(thrds.y);
+  elemsPerThread = (elemsPerThread > 8) ? 8 : elemsPerThread;
+
+  dim3 nblks((dA.cols + static_cast<int>(thrds.x) - 1) / static_cast<int>(thrds.x),
+             (dA.rows + (static_cast<int>(thrds.y) * elemsPerThread) - 1) / (static_cast<int>(thrds.y) * elemsPerThread));
+
+  if (isSameAB)
+    _frobenius_norm_atomic<Real, THREADS_X, THREADS_Y, 4><<<nblks, thrds, 0, stream>>>(d_result, A, dA);
+  else
+    _trace_mat_mat_trans_atomic<Real, THREADS_X, THREADS_Y, 4><<<nblks, thrds, 0, stream>>>(d_result,
+                                                  A, B, dA, B_stride);
+}
+
 // _trace_mat_mat_trans reduce the partial sum to
 // value[blockIdx.y * gridDim.x + blockIdx.x]
 template<typename Real>
@@ -1639,6 +1802,177 @@ static void _vec_transform_reduce(
   // Output to vector result.
   if (tid == 0)
     result[blockIdx.x] = op.PostReduce(sdata[0], result[blockIdx.x]);
+}
+
+
+template <typename T, typename ReduceLambda>
+inline __device__ void myAtomicReduce(T *address, T val, ReduceLambda op);
+
+template <typename ReduceLambda>
+inline __device__ void myAtomicReduce(double *address, double val, ReduceLambda op) {
+  unsigned long long int *address_as_ull = (unsigned long long int *)address;
+  unsigned long long int old = *address_as_ull, assumed;
+  do {
+    assumed = old;
+    old =
+      atomicCAS(address_as_ull, assumed,
+                __double_as_longlong(op.Reduce(val, __longlong_as_double(assumed))));
+  } while (assumed != old);
+}
+
+template <typename ReduceLambda>
+inline __device__ void myAtomicReduce(float *address, float val, ReduceLambda op) {
+  unsigned int *address_as_uint = (unsigned int *)address;
+  unsigned int old = *address_as_uint, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_uint, assumed,
+                    __float_as_uint(op.Reduce(val, __uint_as_float(assumed))));
+  } while (assumed != old);
+}
+
+template <>
+inline __device__ void myAtomicReduce(double *address, double val, TransReduceOp<SUMAB, double> op) {
+  myAtomicAdd(address, val);
+}
+
+template <>
+inline __device__ void myAtomicReduce(float *address, float val, TransReduceOp<SUMAB, float> op) {
+  myAtomicAdd(address, val);
+}
+
+#if CUDA_VERSION < 9000
+// if not CUDA 9+, no need for syncwarp
+inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
+#endif
+
+// Reduce a matrix 'data' to a row vector 'dots'
+template <EnumTransformReduce TransReduceType, typename Real, int unroll_count>
+__global__ void _strided_reduction_fused_kernel(Real * __restrict__ dots, const Real * __restrict__ data,
+                                                void * __restrict__ scratch, const MatrixDim d,
+                                                const TransReduceOp<TransReduceType, Real> op) {
+  // This kernel assuming blockDim.x == warpSize
+  Real thread_data = op.InitValue();
+  int colStart = blockIdx.x * blockDim.x + threadIdx.x;
+
+  Real* reduce = reinterpret_cast<Real*>(scratch);
+  unsigned int* flag = reinterpret_cast<unsigned int*>(reduce + d.cols);
+
+  Real dots_orig;
+  dots_orig = dots[colStart];
+
+  __shared__ bool isLastBlock;
+
+  // Read in current data and write out initial value to allow for atomics
+  if ((blockIdx.y == 0) && (threadIdx.y == 0) && (colStart < d.cols)) {
+    // Keep original value in registers
+    // Set dots to op.InitValue() in preparation for atomics
+    reduce[colStart] = thread_data;
+
+    // Mark arrived for grid sync later
+    if (threadIdx.x == 0) {
+      volatile unsigned int * vflag = (volatile unsigned int *)flag;
+      vflag[blockIdx.x] = gridDim.y;
+    }
+  }
+  __threadfence();
+
+  // Thread reduction while reading from global memory
+  // in a grid strided loop
+  if (colStart < d.cols) {
+    int rowStart = blockIdx.y * blockDim.y + threadIdx.y;
+    int stride = blockDim.y * gridDim.y;
+
+    int unroll_stride = unroll_count * stride;
+    // Closest multiple of unroll_stride less than d.rows
+    int Nmod = (d.rows / unroll_stride) * unroll_stride;
+    int j = rowStart;
+    for (; j < Nmod; j += unroll_stride) {
+      Real vals[unroll_count];
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        int idx = colStart + (j + u*stride) * d.stride;
+        vals[u] = op.Transform(data[idx]);
+      }
+
+      #pragma unroll
+      for (int u = 0; u < unroll_count; ++u) {
+        thread_data = op.Reduce(thread_data, vals[u]);
+      }
+    }
+    for (; j < d.rows; j += stride) {
+      int idx = colStart + j * d.stride;
+      thread_data = op.Reduce(thread_data, op.Transform(data[idx]));
+    }
+  }
+
+  // Block reduction in shared memory
+  extern __shared__ char tmp[];  // One element per thread in block
+  auto *temp = (Real *)tmp;      // Cast to desired type
+  int myidx = threadIdx.x + (static_cast<int>(blockDim.x) * static_cast<int>(threadIdx.y));
+  temp[myidx] = thread_data;
+  __syncthreads();
+  for (int j = blockDim.y / 2; j > 0; j /= 2) {
+    if (threadIdx.y < j)
+      temp[myidx] = op.Reduce(temp[myidx], temp[myidx + j * blockDim.x]);
+    __syncthreads();
+  }
+
+  // Grid reduction (only 1 warp active per block)
+  if (threadIdx.y == 0) {
+    thread_data = temp[myidx];
+
+    int flagval = 0;
+    volatile unsigned int * vflag = (volatile unsigned int *)flag;
+    // Grid sync to ensure reduce is ready for atomics
+    do {
+      flagval = vflag[blockIdx.x];
+    } while (flagval < gridDim.y);
+    __threadfence();
+
+    if (colStart < d.cols) {
+      myAtomicReduce(reduce + colStart, thread_data, op);
+    }
+
+    if (threadIdx.x == 0) {
+      // Mark arrived
+      // Last block to arrive sets flag to zero as well
+      unsigned int value = atomicInc(&flag[blockIdx.x], 2*gridDim.y-1);
+      isLastBlock = (value == (2*gridDim.y - 1));
+    }
+    __syncwarp(); // For Volta+ independent thread scheduling
+
+    if (isLastBlock) {
+      // Post reduction
+      if (colStart < d.cols)
+        dots[colStart] = op.PostReduce(reduce[colStart], dots_orig);
+    }
+  }
+}
+
+template <typename Real>
+void _strided_reduction_fused(Real *dots, const Real *data, void *scratch,
+                              const MatrixDim d, const Real alpha,
+                              const Real beta) {
+  int device;
+  cudaGetDevice(&device);
+
+  int warpSize;
+  cudaDeviceGetAttribute(&warpSize, cudaDevAttrWarpSize, device);
+
+  dim3 thrds(warpSize, 16);
+  size_t shmemSize = sizeof(Real) * thrds.x * thrds.y;
+
+  int elemsPerThread = (d.rows + thrds.y - 1) / thrds.y;
+  elemsPerThread = (elemsPerThread > 8) ? 8 : elemsPerThread;
+
+  dim3 nblks((d.cols + thrds.x - 1) / thrds.x,
+             (d.rows + thrds.y*elemsPerThread - 1) / (thrds.y * elemsPerThread));
+
+  _strided_reduction_fused_kernel<SUMAB, Real, 4><<<nblks, thrds,
+      shmemSize, cudaStreamPerThread>>>(dots, data, scratch, d,
+      TransReduceOp<SUMAB, Real>(alpha, beta));
 }
 
 // Reduce a matrix 'mat' to a row vector 'result'
@@ -3980,11 +4314,10 @@ void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,float>());
 }
-void cudaF_add_row_sum_mat(int Gr, int Bl, float* result, const float* mat,
+void cudaF_add_row_sum_mat(float* result, const float* mat, void* scratch,
                            const MatrixDim d, const float alpha,
                            const float beta) {
-  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
-      TransReduceOp<SUMAB, float>(alpha, beta));
+  _strided_reduction_fused(result, mat, scratch, d, alpha, beta);
 }
 void cudaF_add_col_sum_mat(int Gr, int Bl, float* result, const float* mat,
                            const MatrixDim d, const float alpha,
@@ -4031,9 +4364,9 @@ void cudaF_vec_max(int Gr, int Bl, const float* v, float* value, int dim,
       TransReduceOp<MAX, float>());
 }
 
-void cudaF_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A, const float* B,
+void cudaF_trace_mat_mat_trans(const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  trace_mat_mat_trans_atomic(value, A, B, dA, B_stride, cudaStreamPerThread);
 }
 
 void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
@@ -4696,11 +5029,10 @@ void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,double>());
 }
-void cudaD_add_row_sum_mat(int Gr, int Bl, double* result, const double* mat,
+void cudaD_add_row_sum_mat(double* result, const double* mat, void* scratch,
                            const MatrixDim d, const double alpha,
                            const double beta) {
-  _transform_reduce_mat_rows<<<Gr, Bl>>>(result, mat, d,
-      TransReduceOp<SUMAB, double>(alpha, beta));
+  _strided_reduction_fused(result, mat, scratch, d, alpha, beta);
 }
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,
@@ -4737,10 +5069,10 @@ void cudaD_vec_max(int Gr, int Bl, const double* v, double* value, int dim,
       TransReduceOp<MAX, double>());
 }
 
-void cudaD_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A,
+void cudaD_trace_mat_mat_trans(const double* A,
                                const double* B, MatrixDim dA, int B_stride,
                                double* value) {
-  _trace_mat_mat_trans<<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  trace_mat_mat_trans_atomic(value, A, B, dA, B_stride, cudaStreamPerThread);
 }
 
 void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B,

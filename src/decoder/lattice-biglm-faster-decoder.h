@@ -740,7 +740,7 @@ class LatticeBiglmFasterDecoder {
                 graph_cost = arc.weight.Value(),
                 cur_cost = tok->tot_cost,
                 tot_cost = cur_cost + ac_cost + graph_cost;
-            if (tot_cost > next_cutoff) continue;
+            if (tot_cost >= next_cutoff) continue;
             else if (tot_cost + config_.beam < next_cutoff)
               next_cutoff = tot_cost + config_.beam; // prune by best current token
             PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
@@ -791,7 +791,7 @@ class LatticeBiglmFasterDecoder {
       Token *tok = e->val;  // would segfault if state not in
                             // toks_ but this can't happen.
       BaseFloat cur_cost = tok->tot_cost;
-      if (cur_cost > cutoff) // Don't bother processing successors.
+      if (cur_cost >= cutoff) // Don't bother processing successors.
         continue;
       StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);

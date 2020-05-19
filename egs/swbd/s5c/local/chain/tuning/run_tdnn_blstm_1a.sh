@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # tdnn_blstm_1a is same as blstm_6k, but with the initial tdnn layers
 # blstm_6k : num-parameters: 41155430

@@ -40,7 +40,7 @@ struct FrameExtractionOptions {
   BaseFloat preemph_coeff;  // Preemphasis coefficient.
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
-  // May be "hamming", "rectangular", "povey", "hanning", "blackman"
+  // May be "hamming", "rectangular", "povey", "hanning", "sine", "blackman"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
   // I just don't think the Hamming window makes sense as a windowing function.
@@ -81,7 +81,7 @@ struct FrameExtractionOptions {
                    "option, e.g. to 1.0 or 0.1");
     opts->Register("window-type", &window_type, "Type of window "
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
-                   "|\"blackmann\")");
+                   "|\"sine\"|\"blackmann\")");
     opts->Register("blackman-coeff", &blackman_coeff,
                    "Constant coefficient for generalized Blackman window.");
     opts->Register("round-to-power-of-two", &round_to_power_of_two,

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Installs pb_chime5
 # miniconda should be installed in $HOME/miniconda3/ 

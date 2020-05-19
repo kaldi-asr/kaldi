@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 stage=0
 train_discriminative=false  # by default, don't do the GMM-based discriminative

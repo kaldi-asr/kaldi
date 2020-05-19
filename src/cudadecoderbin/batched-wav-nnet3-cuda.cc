@@ -28,7 +28,6 @@
 #include "nnet3/am-nnet-simple.h"
 #include "nnet3/nnet-utils.h"
 #include "util/kaldi-thread.h"
-
 using namespace kaldi;
 using namespace cuda_decoder;
 
@@ -36,6 +35,9 @@ using namespace cuda_decoder;
 // KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP
 // Not using a semaphore because it is usually not necessary to wait
 #define KALDI_CUDA_DECODER_BIN_PIPELINE_FULL_SLEEP ((double)1 / 1e5)
+
+// This pipeline is deprecated and will be removed. Please switch to
+// batched-wav-nnet3-cuda2
 
 void GetDiagnosticsAndPrintOutput(const std::string &utt,
                                   const fst::SymbolTable *word_syms,
@@ -60,9 +62,9 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   GetLinearSymbolSequence(best_path_lat, &alignment, &words, &weight);
   num_frames = alignment.size();
   likelihood = -(weight.Value1() + weight.Value2());
-  *tot_num_frames += num_frames;
-  *tot_like += likelihood;
   {
+    *tot_num_frames += num_frames;
+    *tot_like += likelihood;
     std::lock_guard<std::mutex> lk(*stdout_mutex);
     KALDI_VLOG(2) << "Likelihood per frame for utterance " << utt << " is "
                   << (likelihood / num_frames) << " over " << num_frames
@@ -85,20 +87,19 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
 // Called when a task is complete. Will be called by different threads
 // concurrently,
 // so it must be threadsafe
-void FinishOneDecode(
-    const std::string &utt, const std::string &key,
-    const BatchedThreadedNnet3CudaPipelineConfig &batched_decoder_config,
-    const fst::SymbolTable *word_syms, const bool write_lattice,
-    BatchedThreadedNnet3CudaPipeline *cuda_pipeline, int64 *num_frames,
-    double *tot_like, CompactLatticeWriter *clat_writer,
-    std::mutex *clat_writer_mutex, std::mutex *stdout_mutex,
-    CompactLattice &clat) {
+void FinishOneDecode(const std::string &utt, const std::string &key,
+                     const fst::SymbolTable *word_syms,
+                     BatchedThreadedNnet3CudaPipeline *cuda_pipeline,
+                     int64 *num_frames, double *tot_like,
+                     CompactLatticeWriter *clat_writer,
+                     std::mutex *clat_writer_mutex, std::mutex *stdout_mutex,
+                     const bool write_lattice, CompactLattice &clat) {
   nvtxRangePushA("FinishOneDecode");
   GetDiagnosticsAndPrintOutput(utt, word_syms, clat, stdout_mutex, num_frames,
                                tot_like);
   if (write_lattice) {
     std::lock_guard<std::mutex> lk(*clat_writer_mutex);
-    clat_writer->Write(utt, clat);
+    clat_writer->Write(key, clat);
   }
 
   nvtxRangePop();
@@ -113,13 +114,18 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Reads in wav file(s) and simulates online decoding with neural nets\n"
-        "(nnet3 setup), with optional iVector-based speaker adaptation and\n"
-        "optional endpointing.  Note: some configuration values and inputs "
+        "Reads in wav file(s) and simulates online decoding with "
+        "neural nets\n"
+        "(nnet3 setup), with optional iVector-based speaker "
+        "adaptation and\n"
+        "optional endpointing.  Note: some configuration values "
+        "and inputs "
         "are\n"
-        "set via config files whose filenames are passed as options\n"
+        "set via config files whose filenames are passed as "
+        "options\n"
         "\n"
-        "Usage: batched-wav-nnet3-cuda [options] <nnet3-in> <fst-in> "
+        "Usage: batched-wav-nnet3-cuda [options] <nnet3-in> "
+        "<fst-in> "
         "<wav-rspecifier> <lattice-wspecifier>\n";
 
     std::string word_syms_rxfilename;
@@ -128,10 +134,10 @@ int main(int argc, char *argv[]) {
     int num_todo = -1;
     int iterations = 1;
     ParseOptions po(usage);
-    std::mutex stdout_mutex, clat_writer_mutex;
+    std::mutex stdout_mutex;
     int pipeline_length = 4000;  // length of pipeline of outstanding requests,
-                                 // this is independent of queue lengths in
-                                 // decoder
+    // this is independent of queue lengths in
+    // decoder
 
     po.Register("write-lattice", &write_lattice,
                 "Output lattice to a file. Setting to false is useful when "
@@ -139,12 +145,13 @@ int main(int argc, char *argv[]) {
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("file-limit", &num_todo,
-                "Limits the number of files that are processed by this driver. "
-                "After N files are processed the remaining files are ignored. "
+                "Limits the number of files that are processed by "
+                "this driver. "
+                "After N files are processed the remaining files "
+                "are ignored. "
                 "Useful for profiling");
     po.Register("iterations", &iterations,
-                "Number of times to decode the corpus. Output will be written "
-                "only once.");
+                "Number of times to decode the corpus.");
 
     // Multi-threaded CPU and batched GPU decoder
     BatchedThreadedNnet3CudaPipelineConfig batched_decoder_config;
@@ -181,7 +188,8 @@ int main(int argc, char *argv[]) {
     SetDropoutTestMode(true, &(am_nnet.GetNnet()));
     nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet.GetNnet()));
 
-    CompactLatticeWriter clat_writer(clat_wspecifier);
+    CompactLatticeWriter clat_writer;
+    std::mutex clat_write_mutex;
 
     fst::Fst<fst::StdArc> *decode_fst =
         fst::ReadFstKaldiGeneric(fst_rxfilename);
@@ -203,8 +211,9 @@ int main(int argc, char *argv[]) {
 
     nvtxRangePush("Global Timer");
 
-    int num_groups_done=0;
+    int num_groups_done = 0;
 
+    clat_writer.Open(clat_wspecifier);
     // starting timer here so we
     // can measure throughput
     // without allocation
@@ -216,9 +225,7 @@ int main(int argc, char *argv[]) {
       std::string task_group = std::to_string(iter);
       num_task_submitted = 0;
       SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
-      if (iter > 0)
-        write_lattice =
-            false;  // write the lattices only on the first iteration
+
       for (; !wav_reader.Done(); wav_reader.Next()) {
         nvtxRangePushA("Utterance Iteration");
 
@@ -228,48 +235,60 @@ int main(int argc, char *argv[]) {
 
         std::string utt = wav_reader.Key();
         std::string key = utt;
+
         if (iter > 0) {
-          // make key unique for subsequent iterations
-          key = key + "-" + std::to_string(iter);
+          // make key unique for each iteration
+          key = std::to_string(iter) + "-" + key;
         }
+
         const WaveData &wave_data = wav_reader.Value();
 
         if (iter == 0) {
-          // calculating number of utterances per iteration
-          // calculating total audio time per iteration
+          // calculating number of utterances per
+          // iteration calculating total audio
+          // time per iteration
           total_audio += wave_data.Duration();
         }
 
-        // Creating a function alias for the callback function of that utterance
-        auto finish_one_decode_lamba = [
-            // Capturing the arguments that will change by copy
-            utt, key, write_lattice,
-            // Capturing the const/global args by reference
-            &word_syms, &batched_decoder_config, &cuda_pipeline,
-            &clat_writer_mutex, &stdout_mutex, &clat_writer, &num_frames,
-            &tot_like]
-            // The callback function receive the compact lattice as argument
-            // if determinize_lattice is true, it is a determinized lattice
-            // otherwise, it is a raw lattice converted to compact format
+        // Creating a function alias for the callback
+        // function of that utterance
+        auto finish_one_decode_lamba =
+            [
+                // Capturing the arguments that will
+                // change by copy
+                utt, key,
+                // Capturing the const/global args by
+                // reference
+                &word_syms, &cuda_pipeline, &stdout_mutex, &num_frames,
+                &clat_write_mutex, &clat_writer, &write_lattice, &tot_like]
+            // The callback function receive the compact
+            // lattice as argument if
+            // determinize_lattice is true, it is a
+            // determinized lattice otherwise, it is a
+            // raw lattice converted to compact format
             // through ConvertLattice
             (CompactLattice & clat_in) {
-              // Content of our callback function. Calling the general
-              // FinishOneDecode function with the proper arguments
+              // Content of our callback function.
+              // Calling the general
+              // FinishOneDecode function with the
+              // proper arguments
               FinishOneDecode(
-                  // Captured arguments used to specialize FinishOneDecode for
-                  // this task
-                  utt, key, batched_decoder_config, word_syms, write_lattice,
-                  &cuda_pipeline, &num_frames, &tot_like, &clat_writer,
-                  &clat_writer_mutex, &stdout_mutex,
-                  // Generated lattice that will be passed once the task is
+                  // Captured arguments used to
+                  // specialize FinishOneDecode
+                  // for this task
+                  utt, key, word_syms, &cuda_pipeline, &num_frames, &tot_like,
+                  &clat_writer, &clat_write_mutex, &stdout_mutex, write_lattice,
+                  // Generated lattice that will
+                  // be passed once the task is
                   // complete
                   clat_in);
             };
-        // Adding a new task. Once the output lattice is ready, it will call
-        // finish_one_decode_lamba
-        // Important : finish_one_decode_lamba is called in the threadpool. We
-        // need it to be threadsafe
-        // (use locks around relevant parts, like writing to I/O)
+        // Adding a new task. Once the output lattice is
+        // ready, it will call finish_one_decode_lamba
+        // Important : finish_one_decode_lamba is called
+        // in the threadpool. We need it to be
+        // threadsafe (use locks around relevant parts,
+        // like writing to I/O)
         cuda_pipeline.OpenDecodeHandle(key, wave_data, task_group,
                                        finish_one_decode_lamba);
         num_task_submitted++;
@@ -277,7 +296,7 @@ int main(int argc, char *argv[]) {
         nvtxRangePop();
         if (num_todo != -1 && num_task_submitted >= num_todo) break;
       }  // end utterance loop
-        
+
       std::string group_done;
       // Non-blocking way to check if a group is done
       // returns false if zero groups are ready
@@ -291,12 +310,14 @@ int main(int argc, char *argv[]) {
                   << " RealTimeX: " << total_audio * (iter + 1) / total_time;
         num_groups_done++;
       }
-    }    // end iterations loop
+    }  // end iterations loop
 
     // We've submitted all tasks. Now waiting for them to complete
-    // We could also have called WaitForAllTasks and CloseAllDecodeHandles
-    while (num_groups_done<iterations) {
-      // WaitForAnyGroup is blocking. It will hold until one group is ready
+    // We could also have called WaitForAllTasks and
+    // CloseAllDecodeHandles
+    while (num_groups_done < iterations) {
+      // WaitForAnyGroup is blocking. It will hold until one
+      // group is ready
       std::string group_done = cuda_pipeline.WaitForAnyGroup();
       cuda_pipeline.CloseAllDecodeHandlesForGroup(group_done);
       double total_time = timer.Elapsed();
@@ -322,14 +343,13 @@ int main(int argc, char *argv[]) {
               << " Total Audio: " << total_audio * iterations
               << " RealTimeX: " << total_audio * iterations / total_time;
 
-    delete word_syms;  // will delete if non-NULL.
-
-    clat_writer.Close();
-
     cuda_pipeline.Finalize();
     cudaDeviceSynchronize();
 
+    delete word_syms;  // will delete if non-NULL.
+
     return 0;
+
   } catch (const std::exception &e) {
     std::cerr << e.what();
     return -1;

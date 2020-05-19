@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g20 is as 1g but adding the option "--constrained false" to --egs.opts.
 #   This is the new 'unconstrained egs' code where it uses the e2e examples.

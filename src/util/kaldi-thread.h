@@ -23,6 +23,7 @@
 #define KALDI_THREAD_KALDI_THREAD_H_ 1
 
 #include <thread>
+#include <algorithm>
 #include "itf/options-itf.h"
 #include "util/kaldi-semaphore.h"
 

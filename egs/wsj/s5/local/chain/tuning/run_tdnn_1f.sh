@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1f is as 1e but a re-tuned model with fewer parameters and a bottleneck at the
 # end, and no chain l2-regularize

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # cnn_tdnn_lstm_1a is based on tdnn_lstm_1j, but adding the cnn front end, and
 # replacing all renorm in tdnn layers with batchnorm

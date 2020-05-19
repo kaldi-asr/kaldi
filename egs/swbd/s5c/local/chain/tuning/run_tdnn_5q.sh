@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5q is as _5p but reducing jesus-forward-output-dim from 1800 to 1500 to try
 # to compensate for the fact that more of the output dimensions are now being

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2018 Chun-Chieh Chang
 
 # The original format of the dataset given is GEDI and page images.

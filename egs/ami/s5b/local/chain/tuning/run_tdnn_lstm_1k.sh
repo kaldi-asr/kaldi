@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1k is same as 1j but with  smaller delay on the first lstm layer
 # there is a 37% increase in training time 11hrs vs 8hrs and the gains are modest

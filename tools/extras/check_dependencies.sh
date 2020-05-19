@@ -44,7 +44,7 @@ case $compiler_ver_info in
         status=1
     fi
     ;;
-  "clang "* )
+  "clang "* | "Apple clang "* )
     clang_ver=$(echo $compiler_ver_info | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
     clang_ver_num=$(echo $clang_ver | sed 's/\./ /g' | xargs printf "%d%02d")
     if [ $clang_ver_num -lt 303 ]; then

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script computes perplexity of text on the specified RNNLM model. 
 

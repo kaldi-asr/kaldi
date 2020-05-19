@@ -183,7 +183,7 @@ void SimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
         BaseFloat acoustic_cost = -decodable->LogLikelihood(frame, arc.ilabel);
         double total_cost = tok->cost_ + arc.weight.Value() + acoustic_cost;
 
-        if (total_cost > cutoff) continue;
+        if (total_cost >= cutoff) continue;
         if (total_cost + beam_  < cutoff)
           cutoff = total_cost + beam_;
         Token *new_tok = new Token(arc, acoustic_cost, tok);

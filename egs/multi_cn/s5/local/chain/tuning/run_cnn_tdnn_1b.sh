@@ -1,22 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is copied from mini_librispeech/s5
 
 # 1b is as 1a but adding SpecAugment and removing dropout (which, in
 # combination with SpecAugment, no longer seemed to give an improvement).
-
-#  local/chain/compare_wer.sh --online exp/chain/cnn_tdnn1{a,a2,b,b2}_sp
-# System                cnn_tdnn1a_sp cnn_tdnn1a2_sp cnn_tdnn1b_sp cnn_tdnn1b2_sp
-#WER dev_clean_2 (tgsmall)      10.89     10.96     10.04      9.93
-#             [online:]         10.91     10.93      9.99      9.99
-#WER dev_clean_2 (tglarge)       7.50      7.80      6.94      6.89
-#             [online:]          7.58      7.84      6.97      7.04
-# Final train prob        -0.0476   -0.0470   -0.0577   -0.0575
-# Final valid prob        -0.0754   -0.0760   -0.0742   -0.0746
-# Final train prob (xent)   -1.0930   -1.0995   -1.3090   -1.3043
-# Final valid prob (xent)   -1.2916   -1.2904   -1.4242   -1.4225
-# Num-params                 4492816   4492816   4492816   4492816
-
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -26,7 +13,6 @@ set -euo pipefail
 stage=0
 decode_nj=10
 train_set=train_all_cleaned
-test_sets=""
 gmm=tri4a_cleaned
 nnet3_affix=_cleaned
 
@@ -50,6 +36,7 @@ remove_egs=true
 reporting_email=
 
 # decode options
+test_sets=""
 test_online_decoding=true  # if true, it will run the last decoding stage.
 
 
@@ -120,7 +107,7 @@ if [ $stage -le 14 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=43 name=input
+  input dim=40 name=input
 
   # this takes the MFCCs and generates filterbank coefficients.  The MFCCs
   # are more compressible so we prefer to dump the MFCCs to disk rather
@@ -236,7 +223,7 @@ if $test_online_decoding && [ $stage -le 18 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf --add-pitch true \
+    --mfcc-config conf/mfcc_hires.conf \
     $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
 
   rm $dir/.error 2>/dev/null || true

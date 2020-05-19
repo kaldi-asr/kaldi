@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright  2014  Nickolay V. Shmyrev
 #            2014  Brno University of Technology (Author: Karel Vesely)

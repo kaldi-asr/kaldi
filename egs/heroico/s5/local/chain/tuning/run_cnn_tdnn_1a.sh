@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_cnn_tdnn_1a.sh is modified from run_tdnn_1b.sh but taking
 #   the xconfig from mini-librispeech's run_cnn_tdnn_1a54.sh; only

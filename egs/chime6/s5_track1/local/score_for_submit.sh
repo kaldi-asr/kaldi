@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
 # Copyright 2019       Johns Hopkins University (Author: Shinji Watanabe)
 # Apache 2.0

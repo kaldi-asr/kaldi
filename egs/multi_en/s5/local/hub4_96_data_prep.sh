@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ###########################################################################################
 # This script was copied from egs/hub4_english/s5/local/data_prep/prepare_1996_bn_data.sh
@@ -6,7 +6,7 @@
 # Changes in lower level script/dir names were made
 ###########################################################################################
 
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright (c) 2017, Johns Hopkins University (Jan "Yenda" Trmal<jtrmal@gmail.com>)
 #               2017  Vimal Manohar
 # License: Apache 2.0

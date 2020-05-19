@@ -1,34 +1,28 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is copied from librispeech/s5
+# In a previous version, pitch is used with hires mfcc, however,
+# removing pitch does not cause regression, and helps online
+# decoding, so pitch is removed in this recipe.
 
 # This is based on tdnn_1d_sp, but adding cnn as the front-end.
 # The cnn-tdnn-f (tdnn_cnn_1a_sp) outperforms the tdnn-f (tdnn_1d_sp).
 
-# bash local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1d_sp exp/chain_cleaned/tdnn_cnn_1a_sp/
-# System                         tdnn_1d_sp  tdnn_cnn_1a_sp
-# WER on dev(fglarge)               3.29          3.34
-# WER on dev(tglarge)               3.44          3.39
-# WER on dev(tgmed)                 4.22          4.29
-# WER on dev(tgsmall)               4.72          4.77
-# WER on dev_other(fglarge)         8.71          8.62
-# WER on dev_other(tglarge)         9.05          9.00
-# WER on dev_other(tgmed)          11.09         10.93
-# WER on dev_other(tgsmall)        12.13         12.02
-# WER on test(fglarge)              3.80          3.69
-# WER on test(tglarge)              3.89          3.80
-# WER on test(tgmed)                4.72          4.64
-# WER on test(tgsmall)              5.19          5.16
-# WER on test_other(fglarge)        8.76          8.71
-# WER on test_other(tglarge)        9.19          9.11
-# WER on test_other(tgmed)         11.22         11.00
-# WER on test_other(tgsmall)       12.24         12.16
-# Final train prob               -0.0378       -0.0420
-# Final valid prob               -0.0374       -0.0400
-# Final train prob (xent)        -0.6099       -0.6881
-# Final valid prob (xent)        -0.6353       -0.7180
-# Num-parameters                22623456      18100736
-
+# local/chain/compare_cer.sh --online exp/chain_cleaned/tdnn_cnn_1a_pitch_sp exp/chain_nopitch/tdnn_cnn_1a_sp
+# System                      tdnn_cnn_1a_pitch_sp tdnn_cnn_1a_sp
+# CER on aidatatang(tg)            4.99      4.98
+#             [online:]          4.99      4.98
+# CER on aishell(tg)               6.01      5.90
+#             [online:]          6.01      5.90
+# CER on magicdata(tg)             4.21      4.24
+#             [online:]          4.23      4.25
+# CER on thchs30(tg)              13.02     12.96
+#             [online:]         13.00     12.94
+# Final train prob              -0.0436   -0.0438
+# Final valid prob              -0.0553   -0.0544
+# Final train prob (xent)       -0.8083   -0.8157
+# Final valid prob (xent)       -0.8766   -0.8730
+# Num-parameters               19141072  19141072
 
 set -e
 
@@ -53,6 +47,7 @@ common_egs_dir=
 xent_regularize=0.1
 dropout_schedule='0,0@0.20,0.5@0.50,0'
 
+test_sets=""
 test_online_decoding=true  # if true, it will run the last decoding stage.
 
 # End configuration section.
@@ -84,7 +79,7 @@ ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_afqstfix}/tdnn${affix:+_$affix}_sp
+dir=exp/chain${nnet3_affix}/tdnn${affix:+_$affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
@@ -126,7 +121,7 @@ if [ $stage -le 14 ]; then
 
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=43 name=input
+  input dim=40 name=input
 
   # MFCC to filterbank
   idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
@@ -237,7 +232,7 @@ if $test_online_decoding && [ $stage -le 18 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf --add-pitch true \
+    --mfcc-config conf/mfcc_hires.conf \
     $lang exp/nnet3${nnet3_affix}/extractor $dir ${dir}_online
 
   rm $dir/.error 2>/dev/null || true

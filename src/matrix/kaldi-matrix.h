@@ -574,6 +574,11 @@ class MatrixBase {
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real check_thresh = 0.001);
 
+  // There are some weird issue with template friend function in a class
+  // template in Windows version of nvcc. This is simple an ugly walkaround.
+#if defined(__NVCC__) && defined(_MSC_VER)
+  template<typename Real>
+#endif
   friend Real kaldi::TraceMatMat<Real>(const MatrixBase<Real> &A,
       const MatrixBase<Real> &B, MatrixTransposeType trans);  // tr (A B)
 

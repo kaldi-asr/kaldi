@@ -532,7 +532,7 @@ void LatticeSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
             graph_cost = arc.weight.Value(),
             cur_cost = tok->tot_cost,
             tot_cost = cur_cost + ac_cost + graph_cost;
-        if (tot_cost > cutoff) continue;
+        if (tot_cost >= cutoff) continue;
         else if (tot_cost + config_.beam < cutoff)
           cutoff = tot_cost + config_.beam;
         // AddToken adds the next_tok to cur_toks_ (if not already present).

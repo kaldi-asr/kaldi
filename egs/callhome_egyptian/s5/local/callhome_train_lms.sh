@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # To be run from one level above this directory
 # Generate the text for the LM training

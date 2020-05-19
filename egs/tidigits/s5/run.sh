@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Note: this TIDIGITS setup has not been tuned at all and has some obvious
 # deficiencies; this has been created as a starting point for a tutorial.

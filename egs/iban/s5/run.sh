@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2015 Sarah Samson Juan
 # Apache 2.0

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # run_lstm_1e.sh is like run_lstm_1d.sh, but reducing non-recurrent-projection-dim

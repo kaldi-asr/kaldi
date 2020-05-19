@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1j is as 1i but replaces the LDA layer at the input of the
 # network with delta and delta-delta features.

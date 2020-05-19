@@ -154,6 +154,11 @@ class CuDevice {
   ///  "no"       -- Run on CPU.
   void SelectGpuId(std::string use_gpu);
 
+  // Select a specific GPU for computation. Will reuse the existing Cuda Context
+  // for that device. Initialize the necessary handles for GPU use (e.g. cublas
+  // handle)
+  bool SelectAndInitializeGpuIdWithExistingCudaContext(int dev_id);
+
   /// Check if the CUDA GPU is selected for use
   bool Enabled() const {
     return (device_id_ > -1);
@@ -254,6 +259,10 @@ class CuDevice {
   /// SelectGpuId(), if the GPUs are in non-exclusive mode).  Returns true on
   /// success.
   bool SelectGpuIdAuto();
+
+  // Selects GPU given its ID. Called from SelectGpuIdAuto or
+  // SelectGpuIdWithExistingCudaContext
+  bool SelectGpuId(int dev_id);
 
   /// This function, called from SelectGpuId(), is to be called when a
   /// GPU context corresponding to the GPU we want to use exists; it

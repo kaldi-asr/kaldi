@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # script showing use of nnet3_to_dot.py
 # Copyright 2015  Johns Hopkins University (Author: Vijayaditya Peddinti).

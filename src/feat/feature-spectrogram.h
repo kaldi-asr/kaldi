@@ -39,10 +39,14 @@ struct SpectrogramOptions {
   FrameExtractionOptions frame_opts;
   BaseFloat energy_floor;
   bool raw_energy;  // If true, compute energy before preemphasis and windowing
+  bool return_raw_fft; // If true, return the raw FFT spectrum
+                       // Note that in that case the Dim() will return double
+                       // the expected dimension (because of the complex domain of it)
 
   SpectrogramOptions() :
     energy_floor(0.0),
-    raw_energy(true) {}
+    raw_energy(true),
+    return_raw_fft(false) {}
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
@@ -54,6 +58,8 @@ struct SpectrogramOptions {
                    "std::numeric_limits<float>::epsilon().");
     opts->Register("raw-energy", &raw_energy,
                    "If true, compute energy before preemphasis and windowing");
+    opts->Register("return-raw-fft", &return_raw_fft,
+                   "If true, return raw FFT complex numbers instead of log magnitudes");
   }
 };
 
@@ -68,7 +74,13 @@ class SpectrogramComputer {
     return opts_.frame_opts;
   }
 
-  int32 Dim() const { return opts_.frame_opts.PaddedWindowSize() / 2 + 1; }
+  int32 Dim() const {
+    if (opts_.return_raw_fft) {
+      return opts_.frame_opts.PaddedWindowSize();
+    } else {
+      return opts_.frame_opts.PaddedWindowSize() / 2 + 1;
+    }
+  }
 
   bool NeedRawLogEnergy() const { return opts_.raw_energy; }
 

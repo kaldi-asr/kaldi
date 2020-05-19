@@ -45,6 +45,12 @@ class IvectorExtractorFastCuda {
     Read(config);
     cu_lda_.Resize(info_.lda_mat.NumRows(), info_.lda_mat.NumCols());
     cu_lda_.CopyFromMat(info_.lda_mat);
+
+    // The last col in the LDA matrix may be an affine offset
+    // copy that column to offset_ now.  This may or may not be used
+    // when getting the features later
+    offset_.Resize(cu_lda_.NumRows());
+    offset_.CopyColFromMat(cu_lda_, cu_lda_.NumCols() - 1);
     d_info_ = static_cast<int *>(CuDevice::Instantiate().Malloc(sizeof(int)));
   }
   ~IvectorExtractorFastCuda() {
@@ -110,6 +116,7 @@ class IvectorExtractorFastCuda {
   CuMatrix<BaseFloat> ubm_means_inv_vars_;
   CuMatrix<BaseFloat> ubm_inv_vars_;
   CuMatrix<BaseFloat> cu_lda_;
+  CuVector<BaseFloat> offset_;
   // extractor variables
   CuMatrix<BaseFloat> ie_U_;
 

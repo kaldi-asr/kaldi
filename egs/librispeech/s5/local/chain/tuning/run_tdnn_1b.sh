@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # run_tdnn_1b.sh's topo is similiar with run_tdnn_1a.sh but we used the xconfigs. Otherwise "frames_per_eg=150,140,100".

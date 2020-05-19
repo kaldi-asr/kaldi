@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # e2eali_1c is the same as e2eali_1b but has more CNN layers, different filter size
 # smaller lm-opts, minibatch, frams-per-iter, less epochs and more initial/finaljobs.

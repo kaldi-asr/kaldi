@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1i is like 1h, while it introduces 'apply-cmvn-online' that does
 # cmn normalization both for i-extractor and TDNN input.

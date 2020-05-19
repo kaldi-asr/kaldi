@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 # The input is the Fisher Dataset which contains DISC1 and DISC2. (*.sph files)

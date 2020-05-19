@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1i but with batchnorm replacing all renorm in TDNN
 # and using proportional-shrink with value 10, this model uses

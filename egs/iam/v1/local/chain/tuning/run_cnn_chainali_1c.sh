@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # chainali_1c is as chainali_1b except it uses l2-regularize
 # local/chain/compare_wer.sh exp/chain/cnn_chainali_1c

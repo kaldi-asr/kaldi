@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1f is as 1e but with l2-regularize instead of proportional shrink
 

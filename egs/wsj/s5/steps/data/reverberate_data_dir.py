@@ -136,7 +136,10 @@ def pick_item_with_probability(x):
         collection (list or dictionary) where the values contain a field called probability
     """
     if isinstance(x, dict):
-        plist = list(set(x.values()))
+        keylist = list(x.keys())
+        keylist.sort()
+        random.shuffle(keylist)
+        plist = [x[k] for k in keylist]
     else:
         plist = x
     total_p = sum(item.probability for item in plist)
@@ -468,7 +471,7 @@ def smooth_probability_distribution(set_list, smoothing_weight=0.0, target_sum=1
       uniform_probability = 0
       if num_unspecified > 0 and accumulated_prob < 1:
           uniform_probability = (1 - accumulated_prob) / float(num_unspecified)
-      elif num_unspecified > 0 and accumulate_prob >= 1:
+      elif num_unspecified > 0 and accumulated_prob >= 1:
           warnings.warn("The sum of probabilities specified by user is larger than or equal to 1. "
                         "The items without probabilities specified will be given zero to their probabilities.")
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e -o pipefail
 
@@ -75,29 +75,22 @@ if [ $stage -le 3 ]; then
 
   # do volume-perturbation on the training data prior to extracting hires
   # features; this helps make trained nnets more invariant to test data volume.
-  # create MFCC data dir without pitch to extract iVector
   utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires
-  steps/make_mfcc_pitch_online.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
+  steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
     --cmd "$train_cmd" data/${train_set}_sp_hires || exit 1;
   steps/compute_cmvn_stats.sh data/${train_set}_sp_hires || exit 1;
   utils/fix_data_dir.sh data/${train_set}_sp_hires
-  utils/data/limit_feature_dim.sh 0:39 \
-    data/${train_set}_sp_hires data/${train_set}_sp_hires_nopitch || exit 1;
-  steps/compute_cmvn_stats.sh data/${train_set}_sp_hires_nopitch || exit 1;
 
   for datadir in $test_sets; do
-    steps/make_mfcc_pitch_online.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
+    steps/make_mfcc.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/$datadir/test_hires || exit 1;
     steps/compute_cmvn_stats.sh data/$datadir/test_hires || exit 1;
     utils/fix_data_dir.sh data/$datadir/test_hires
-    utils/data/limit_feature_dim.sh 0:39 \
-      data/$datadir/test_hires data/$datadir/test_hires_nopitch || exit 1;
-    steps/compute_cmvn_stats.sh data/$datadir/test_hires_nopitch || exit 1;
   done
 
   # now create a data subset.  60k is 1/5th of the training dataset (around 200 hours).
-  utils/subset_data_dir.sh data/${train_set}_sp_hires_nopitch 60000 \
-    data/${train_set}_sp_hires_nopitch_60k
+  utils/subset_data_dir.sh data/${train_set}_sp_hires 60000 \
+    data/${train_set}_sp_hires_60k
 fi
 
 
@@ -107,16 +100,16 @@ if [ $stage -le 4 ]; then
   mkdir -p exp/nnet3${nnet3_affix}/diag_ubm
   temp_data_root=exp/nnet3${nnet3_affix}/diag_ubm
 
-  num_utts_total=$(wc -l <data/${train_set}_sp_hires_nopitch/utt2spk)
+  num_utts_total=$(wc -l <data/${train_set}_sp_hires/utt2spk)
   num_utts=$[$num_utts_total/100]
-  utils/data/subset_data_dir.sh data/${train_set}_sp_hires_nopitch \
-     $num_utts ${temp_data_root}/${train_set}_sp_hires_nopitch_subset
+  utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
+     $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
 
   echo "$0: computing a PCA transform from the hires data."
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
       --splice-opts "--left-context=3 --right-context=3" \
       --max-utts 10000 --subsample 2 \
-       ${temp_data_root}/${train_set}_sp_hires_nopitch_subset \
+       ${temp_data_root}/${train_set}_sp_hires_subset \
        exp/nnet3${nnet3_affix}/pca_transform
 
   echo "$0: training the diagonal UBM."
@@ -124,7 +117,7 @@ if [ $stage -le 4 ]; then
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
     --num-frames 700000 \
     --num-threads $num_threads_ubm \
-    ${temp_data_root}/${train_set}_sp_hires_nopitch_subset 512 \
+    ${temp_data_root}/${train_set}_sp_hires_subset 512 \
     exp/nnet3${nnet3_affix}/pca_transform exp/nnet3${nnet3_affix}/diag_ubm
 fi
 
@@ -135,7 +128,7 @@ if [ $stage -le 5 ]; then
   # we use just the 60k subset (about one fifth of the data, or 200 hours).
   echo "$0: training the iVector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    --num-processes $num_processes data/${train_set}_sp_hires_nopitch_60k \
+    --num-processes $num_processes data/${train_set}_sp_hires_60k \
     exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
@@ -154,10 +147,10 @@ if [ $stage -le 6 ]; then
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
-    data/${train_set}_sp_hires_nopitch ${ivectordir}/${train_set}_sp_hires_nopitch_max2
+    data/${train_set}_sp_hires ${ivectordir}/${train_set}_sp_hires_max2
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
-    ${ivectordir}/${train_set}_sp_hires_nopitch_max2 exp/nnet3${nnet3_affix}/extractor \
+    ${ivectordir}/${train_set}_sp_hires_max2 exp/nnet3${nnet3_affix}/extractor \
     $ivectordir || exit 1;
 fi
 
@@ -165,7 +158,7 @@ if [ $stage -le 7 ]; then
   echo "$0: extracting iVectors for test data"
   for data in $test_sets; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 10 \
-      data/${data}/test_hires_nopitch exp/nnet3${nnet3_affix}/extractor \
+      data/${data}/test_hires exp/nnet3${nnet3_affix}/extractor \
       exp/nnet3${nnet3_affix}/ivectors_${data}_hires || exit 1;
   done
 fi

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Apache 2.0
 #
 # This script provides CHiME-6 challenge track 2 submission scores.
@@ -56,12 +56,19 @@ if [ $stage -le 2 ]; then
     | utils/best_wer.sh >& $dev_decodedir/scoring_kaldi_multispeaker/best_wer
 
   best_wer_file=$(awk '{print $NF}' $dev_decodedir/scoring_kaldi_multispeaker/best_wer)
+  best_array=$(echo $best_wer_file | awk -F: '{N=NF; print $N}')
   best_lmwt=$(echo $best_wer_file | awk -F/ '{N=NF-2; print $N}')
   best_wip=$(echo $best_wer_file | awk -F_ '{N=NF-3; print $N}' | awk -F/ '{N=NF-2; print $N}')
-fi
 
-echo "best LM weight: $best_lmwt"
-echo "best insertion penalty weight: $best_wip"
+  # printing and storing best lmwt, best_array and wip
+  echo "best array: $best_array"
+  echo "best LM weight: $best_lmwt"
+  echo "best insertion penalty weight: $best_wip"
+
+  echo $best_lmwt > $dev_decodedir/scoring_kaldi_multispeaker/lmwt
+  echo $best_wip >  $dev_decodedir/scoring_kaldi_multispeaker/wip
+  echo $best_array >  $dev_decodedir/scoring_kaldi_multispeaker/best_array
+fi
 
 if [ $stage -le 3 ]; then
   # obtaining per utterance stats for dev
@@ -80,11 +87,16 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  # storing best lmwt and wip and printing best wer for dev and eval
-  echo $best_lmwt > $dev_decodedir/scoring_kaldi_multispeaker/lmwt
-  echo $best_wip >  $dev_decodedir/scoring_kaldi_multispeaker/wip
+  # obtaining eval wer corresponding to best lmwt, best_array and wip of dev
+  best_array="$(cat $dev_decodedir/scoring_kaldi_multispeaker/best_array)"
+  best_lmwt="$(cat $dev_decodedir/scoring_kaldi_multispeaker/lmwt)"
+  best_wip="$(cat $dev_decodedir/scoring_kaldi_multispeaker/wip)"
 
-  echo "$(<$dev_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/per_speaker_wer/array_wer.txt)"
-  echo "$(<$eval_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/per_speaker_wer/array_wer.txt)"
+  grep WER $eval_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/per_speaker_wer/array_wer.txt /dev/null \
+    | grep $best_array | utils/best_wer.sh >& $eval_decodedir/scoring_kaldi_multispeaker/best_wer
+
+  # printing dev and eval wer
+  echo "Dev:  $(<$dev_decodedir/scoring_kaldi_multispeaker/best_wer)" | cut -d " " -f 1-15
+  echo "Eval: $(<$eval_decodedir/scoring_kaldi_multispeaker/best_wer)" | cut -d " " -f 1-14
 fi
 

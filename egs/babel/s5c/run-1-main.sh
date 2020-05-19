@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 tri5_only=false

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # The output of this script (after successfully running ./run.sh) can be found in the RESULTS file.
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
 # To be run from one level above this directory

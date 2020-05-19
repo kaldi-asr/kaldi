@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # _1b is as _1a, but different as follows
 # 1) It uses wsj phone set phones.txt and new lexicon generated using word pronunciation
 #    in swj lexincon.txt. rm words, that are not presented in wsj, are added as oov

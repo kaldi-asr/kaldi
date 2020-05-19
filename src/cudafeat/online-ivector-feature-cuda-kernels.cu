@@ -158,36 +158,49 @@ __global__ void get_matrix_sum_double_buffer_kernel(int32_t b, int32_t num_rows,
   }
 }
 
-// This kernel updates the linear and quadradic terms.
-// It does not support a previous weight coming in and would need to be updated
-// for online decoding.
+// This kernel updates the diagonal of the quadratic terms and
+// element zero of the linear term. Code is meant to match
+// ivector_extractor.cc:
+//   double old_num_frames = num_frames_,
+//          new_num_frames = num_frames_ + tot_weight;
+//   double old_prior_scale = std::max(old_num_frames, max_count_) / max_count_,
+//          new_prior_scale = std::max(new_num_frames, max_count_) / max_count_;
+//   double prior_scale_change = new_prior_scale - old_prior_scale;
+//   if (prior_scale_change != 0.0) {
+//     linear_term_(0) += prior_offset_ * prior_scale_change;
+//     quadratic_term_.AddToDiag(prior_scale_change);
+//   }
+//Extra 1.0f on prior_scale_change is to match ivector_extractor.cc:
+//  linear_term_(0) += prior_offset;
+//  quadratic_term_.AddToDiag(1.0);
 __global__ void update_linear_and_quadratic_terms_kernel(
-    int32_t n, float prior_offset, float* cur_tot_weight, int32_t max_count,
-    float* quadratic, float* linear) {
-  float val = 1.0f;
+    int32_t n, float old_num_frames, float prior_offset, float* cur_tot_weight, 
+    int32_t max_count, float* quadratic, float* linear) {
   float cur_weight = *cur_tot_weight;
 
-  if (max_count > 0.0f) {
-    float new_scale = max((float)cur_weight, (float)max_count) / max_count;
+  float new_num_frames = old_num_frames + cur_weight;
+  float prior_scale_change = 1.0f;
 
-    float prior_scale_change = new_scale - 1.0f;
-    val += prior_scale_change;
+  if(max_count!=0.0f) {
+    float old_prior_scale = max(old_num_frames, (float)max_count) / max_count;
+    float new_prior_scale = max(new_num_frames, (float)max_count) / max_count;
+    prior_scale_change += new_prior_scale - old_prior_scale;
   }
 
   for (int32_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
-       i += blockDim.x * gridDim.x) {
+     i += blockDim.x * gridDim.x) {
     int32_t diag_idx = ((i + 1) * (i + 2) / 2) - 1;
-    quadratic[diag_idx] += val;
+    quadratic[diag_idx] += prior_scale_change;
   }
 
-  if (threadIdx.x == 0) {
-    linear[0] += val * prior_offset;
+  if (threadIdx.x == 0 && blockIdx.x==0) {
+    linear[0] += prior_offset * prior_scale_change;  
   }
 }
 
 void batched_gemv_reduce(int batch_size, int rows, int cols, int A_stride,
                          const float* AT, int B_stride, const float* B,
-                         const float* y, float* C) {
+                         float* C) {
   batched_gemv_reduce_kernel<<<batch_size, dim3(32, 32)>>>(
       rows, cols, AT, A_stride, B, B_stride, C);
   CU_SAFE_CALL(cudaGetLastError());
@@ -204,13 +217,15 @@ void splice_features(int32_t num_frames, int32_t feat_dim, int32_t left,
   CU_SAFE_CALL(cudaGetLastError());
 }
 
-void update_linear_and_quadratic_terms(int32_t n, float prior_offset,
+void update_linear_and_quadratic_terms(int32_t n, float old_num_frames,
+                                       float prior_offset,
                                        float* cur_tot_weight, int32_t max_count,
                                        float* quadratic, float* linear) {
   // Only using 1 CTA here  for now as the updates are tiny and this lets us
   // use syncthreads as a global barrier.
   update_linear_and_quadratic_terms_kernel<<<1, 1024>>>(
-      n, prior_offset, cur_tot_weight, max_count, quadratic, linear);
+      n, old_num_frames, prior_offset, cur_tot_weight, max_count, quadratic, 
+      linear);
   CU_SAFE_CALL(cudaGetLastError());
 }
 

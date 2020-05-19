@@ -152,7 +152,7 @@ void CuMemoryAllocator::RemoveFromFreeBlocks(MemoryBlock *block) {
       largest_free_block_[subregion_index] = 0;
     else
       largest_free_block_[subregion_index] =
-          subregion->free_blocks.begin()->first;
+          subregion->free_blocks.rbegin()->first;
   }
 }
 
@@ -212,7 +212,7 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
       largest_free_block_[subregion_index] = 0;
     else
       largest_free_block_[subregion_index] =
-          subregion->free_blocks.begin()->first;
+          subregion->free_blocks.rbegin()->first;
   }
 
   KALDI_PARANOID_ASSERT(block_size >= size && block->allocated == false);
@@ -605,7 +605,7 @@ void CuMemoryAllocator::SortSubregions() {
     if (subregions_[i]->free_blocks.empty())
       largest_free_block_[i] = 0;
     else
-      largest_free_block_[i] = subregions_[i]->free_blocks.begin()->first;
+      largest_free_block_[i] = subregions_[i]->free_blocks.rbegin()->first;
   }
 }
 

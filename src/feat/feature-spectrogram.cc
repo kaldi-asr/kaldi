@@ -62,6 +62,11 @@ void SpectrogramComputer::Compute(BaseFloat signal_raw_log_energy,
   else  // An alternative algorithm that works for non-powers-of-two
     RealFft(signal_frame, true);
 
+  if (opts_.return_raw_fft) {
+    feature->CopyFromVec(*signal_frame);
+    return;
+  }
+
   // Convert the FFT into a power spectrum.
   ComputePowerSpectrum(signal_frame);
   SubVector<BaseFloat> power_spectrum(*signal_frame,
