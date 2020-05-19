@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
-# Copyright 2019 Microsoft Corporation (authors: Xingyu Na)
+# Copyright 2019-2020 Microsoft Corporation (authors: Xingyu Na)
 # Apache 2.0
 
 . ./cmd.sh
 . ./path.sh
 
 stage=0
-dbase=/mnt/data/openslr
+dbase=/mnt/data/openslr            # it is recommanded practice to provide absolute path here,
+                                   # otherwise some data downloading scripts might break.
 aidatatang_url=www.openslr.org/resources/62
 aishell_url=www.openslr.org/resources/33
 magicdata_url=www.openslr.org/resources/68
