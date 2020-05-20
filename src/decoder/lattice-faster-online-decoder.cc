@@ -270,8 +270,8 @@ bool LatticeFasterOnlineDecoderTpl<FST>::GetRawLatticePruned(
 template class LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> >;
 template class LatticeFasterOnlineDecoderTpl<fst::VectorFst<fst::StdArc> >;
 template class LatticeFasterOnlineDecoderTpl<fst::ConstFst<fst::StdArc> >;
-template class LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > >;
-template class LatticeFasterOnlineDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst> >;
+template class LatticeFasterOnlineDecoderTpl<fst::ConstGrammarFst >;
+template class LatticeFasterOnlineDecoderTpl<fst::VectorGrammarFst >;
 
 
 } // end namespace kaldi.

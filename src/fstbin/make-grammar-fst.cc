@@ -25,7 +25,8 @@
 #include "fstext/kaldi-fst-io.h"
 #include "decoder/grammar-fst.h"
 
-template<typename instance_FST>
+// Note th
+template<typename FST>
 void MakeGrammarFst(kaldi::ParseOptions po,
                     int32 nonterm_phones_offset,
                     bool write_as_grammar){
@@ -37,9 +38,9 @@ void MakeGrammarFst(kaldi::ParseOptions po,
   std::string top_fst_str = po.GetArg(1);
 
   ConstFst<StdArc> *top_tmp_fst = ConstFst<StdArc>::Read(top_fst_str);
-  std::shared_ptr<instance_FST> top_fst(new instance_FST(*top_tmp_fst));
+  std::shared_ptr<FST> top_fst(new FST(*top_tmp_fst));
 
-  std::vector<std::pair<int32, std::shared_ptr<instance_FST> > > pairs;
+  std::vector<std::pair<int32, std::shared_ptr<FST> > > pairs;
 
   int32 num_pairs = (po.NumArgs() - 2) / 2;
   for (int32 i = 1; i <= num_pairs; i++) {
@@ -52,13 +53,13 @@ void MakeGrammarFst(kaldi::ParseOptions po,
     std::string fst_str = po.GetArg(2*i + 1);
 
     ConstFst<StdArc> *tmp_fst = ConstFst<StdArc>::Read(fst_str);
-    std::shared_ptr<instance_FST> this_fst(new instance_FST(*tmp_fst));
+    std::shared_ptr<FST> this_fst(new FST(*tmp_fst));
 
-    pairs.push_back(std::pair<int32, std::shared_ptr<instance_FST> >(
+    pairs.push_back(std::pair<int32, std::shared_ptr<FST> >(
         nonterminal, this_fst));
   };
 
-  GrammarFstTpl<instance_FST> *grammar_fst = new GrammarFstTpl<instance_FST>(nonterm_phones_offset,
+  GrammarFstTpl<FST> *grammar_fst = new GrammarFstTpl<FST>(nonterm_phones_offset,
                                                                              top_fst,
                                                                              pairs);
 
@@ -67,7 +68,7 @@ void MakeGrammarFst(kaldi::ParseOptions po,
     WriteKaldiObject(*grammar_fst, fst_out_str, binary);
   } else {
     VectorFst<StdArc> vfst;
-    CopyToVectorFst<instance_FST>(grammar_fst, &vfst);
+    CopyToVectorFst<FST>(grammar_fst, &vfst);
     ConstFst<StdArc> cfst(vfst);
     // We don't have a wrapper in kaldi-fst-io.h for writing type
     // ConstFst<StdArc>, so do it manually.

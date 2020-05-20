@@ -136,12 +136,12 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
-    fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > fst;
+    fst::ConstGrammarFst fst;
     ReadKaldiObject(grammar_fst_rxfilename, &fst);
     timer.Reset();
 
     {
-      LatticeFasterDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > > decoder(fst, config);
+      LatticeFasterDecoderTpl<fst::ConstGrammarFst > decoder(fst, config);
 
       for (; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();

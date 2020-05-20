@@ -1706,9 +1706,9 @@ template class LatticeIncrementalDecoderTpl<fst::VectorFst<fst::StdArc>,
                                             decoder::StdToken>;
 template class LatticeIncrementalDecoderTpl<fst::ConstFst<fst::StdArc>,
                                             decoder::StdToken>;
-template class LatticeIncrementalDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> > ,
+template class LatticeIncrementalDecoderTpl<fst::ConstGrammarFst ,
                                             decoder::StdToken>;
-template class LatticeIncrementalDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst>,
+template class LatticeIncrementalDecoderTpl<fst::VectorGrammarFst,
                                             decoder::StdToken>;
 
 template class LatticeIncrementalDecoderTpl<fst::Fst<fst::StdArc>,
@@ -1717,9 +1717,9 @@ template class LatticeIncrementalDecoderTpl<fst::VectorFst<fst::StdArc>,
                                             decoder::BackpointerToken>;
 template class LatticeIncrementalDecoderTpl<fst::ConstFst<fst::StdArc>,
                                             decoder::BackpointerToken>;
-template class LatticeIncrementalDecoderTpl<fst::GrammarFstTpl<const fst::ConstFst<fst::StdArc> >,
+template class LatticeIncrementalDecoderTpl<fst::ConstGrammarFst,
                                             decoder::BackpointerToken>;
-template class LatticeIncrementalDecoderTpl<fst::GrammarFstTpl<fst::StdVectorFst>,
+template class LatticeIncrementalDecoderTpl<fst::VectorGrammarFst,
                                             decoder::BackpointerToken>;
 
 } // end namespace kaldi.
