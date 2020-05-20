@@ -643,6 +643,9 @@ void CopyToVectorFst(GrammarFstTpl<FST> *grammar_fst,
 void PrepareForGrammarFst(int32 nonterm_phones_offset,
                           VectorFst<StdArc> *fst);
 
+// Template aliases
+using ConstGrammarFst = GrammarFstTpl<const ConstFst<StdArc> >;
+using VectorGrammarFst =  GrammarFstTpl<StdVectorFst>;
 
 } // end namespace fst
 

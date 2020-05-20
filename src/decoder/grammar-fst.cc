@@ -1050,9 +1050,6 @@ void CopyToVectorFst(GrammarFstTpl<FST> *grammar_fst,
 template class GrammarFstTpl<const ConstFst<StdArc> >;
 template class GrammarFstTpl<StdVectorFst>;
 
-using ConstGrammarFst = GrammarFstTpl<const ConstFst<StdArc> >;
-using VectorGrammarFst =  GrammarFstTpl<StdVectorFst>;
-
 template class ArcIterator<GrammarFstTpl<const ConstFst<StdArc> > >;
 template class ArcIterator<GrammarFstTpl<StdVectorFst> >;
 
