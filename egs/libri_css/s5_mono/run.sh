@@ -32,7 +32,7 @@ librispeech_corpus=/export/corpora/LibriSpeech/
 
 ##########################################################################
 # We first prepare the LibriCSS data (monoaural) in the Kaldi data
-# format. We use sessions () for dev and () for eval.
+# format. We use session 0 for dev and others for eval.
 ##########################################################################
 if [ $stage -le 0 ]; then
   local/data_prep_mono.sh $libricss_corpus
