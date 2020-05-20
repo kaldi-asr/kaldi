@@ -40,7 +40,7 @@ def main(args):
             wav_path = os.path.join(os.path.abspath(meet), 'record', 'raw_recording.wav')
             s, f = sf.read(wav_path)
             for mic in args.mics:
-                reco_id = "LC_{}_CH{}_{}".format(sessid, mic, cond) # LC_Session0_CH1_0L
+                reco_id = "{}_CH{}_{}".format(sessid, mic, cond) # Session0_CH1_0L
                 new_wav_path = os.path.join(wav_dir, reco_id+'.wav')
                 sf.write(new_wav_path, s[:, mic], f)
                 reco2wav[reco_id] = os.path.abspath(new_wav_path)
@@ -52,8 +52,8 @@ def main(args):
                     start,end,spkid,_,text = line.strip().split(maxsplit=4)
                     start = float("{:.2f}".format(float(start)))
                     end = float("{:.2f}".format(float(end)))
-                    utt_id = "{}_{}_{}_{}".format(reco_id,spkid,"{:.0f}".format(100*start).zfill(6),
-                        "{:.0f}".format(100*end).zfill(6)) # LC_Session0_CH1_0L_6930_000853_002463
+                    utt_id = "{}_{}_{}_{}".format(spkid,reco_id,"{:.0f}".format(100*start).zfill(6),
+                        "{:.0f}".format(100*end).zfill(6)) # 6930_Session0_CH1_0L_000853_002463
                     utt2spk[utt_id] = spkid
                     utt2text[utt_id] = text
                     segments.append((utt_id, start, end))
