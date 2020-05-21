@@ -70,7 +70,7 @@ if [ $stage -le 0 ]; then
 fi
 
 ##########################################################################
-# Scoring: here we obtain wer per session and overall WER
+# Scoring: here we obtain wer per condition and overall WER
 ##########################################################################
 
 if [ $stage -le 1 ]; then

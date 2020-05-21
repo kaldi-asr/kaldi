@@ -5,7 +5,6 @@
 
 nj=50
 stage=0
-gmm_only=false
 
 . ./utils/parse_options.sh
 
@@ -181,8 +180,6 @@ if [ $stage -le 14 ]; then
   steps/train_sat.sh  --cmd "$train_cmd" 5000 100000 \
                       data/train_clean_460 data/lang exp/tri4b_ali_clean_460 exp/tri5b
 fi
-
-[ $gmm_only == "true" ] && exit 0
 
 if [ $stage -le 15 ]; then
   steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \

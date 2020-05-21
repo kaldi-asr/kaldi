@@ -32,27 +32,10 @@ test_sets="dev eval"
 $use_oracle_segments && [ $stage -le 6 ] && stage=6
 
 #######################################################################
-# Feature extraction for the dev and eval data
+# Perform SAD on the dev/eval data using py-webrtcvad package
 #######################################################################
+
 if [ $stage -le 1 ]; then
-  # mfccdir should be some place with a largish disk where you
-  # want to store MFCC features.
-  mfccdir=mfcc
-  for x in ${test_sets}; do
-    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
-      --mfcc-config conf/mfcc_hires.conf \
-      data/$x exp/make_mfcc/$x $mfccdir
-  done
-fi
-
-#######################################################################
-# Perform SAD on the dev/eval data
-#######################################################################
-dir=exp/segmentation_1a
-sad_work_dir=exp/sad_1a/
-sad_nnet_dir=$dir/tdnn_sad_1a
-
-if [ $stage -le 2 ]; then
   for datadir in ${test_sets}; do
     test_set=data/${datadir}
     if [ ! -f ${test_set}/wav.scp ]; then
@@ -62,29 +45,39 @@ if [ $stage -le 2 ]; then
 
     sad_nj=$(wc -l < "data/$datadir/wav.scp")
     # Perform segmentation
-    local/segmentation/detect_speech_activity.sh --nj $sad_nj --stage $sad_stage \
-      $test_set $sad_nnet_dir mfcc $sad_work_dir \
-      data/${datadir} || exit 1
+    local/segmentation/apply_webrtcvad.py $test_set
 
-    test_dir=data/${datadir}_seg
-    cp data/${datadir}/{segments.bak,utt2spk.bak,text.bak} ${test_dir}/
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
     # step.
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-      ${test_dir}/utt2spk ${test_dir}/segments ${test_dir}/rttm
+      ${test_set}/utt2spk ${test_set}/segments ${test_dir}/rttm
 
     if [ $score_sad == "true" ]; then
       echo "Scoring $datadir.."
       # We first generate the reference RTTM from the backed up utt2spk and segments
       # files.
-      ref_rttm=${test_dir}/ref_rttm
-      steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_dir}/utt2spk.bak \
-        ${test_dir}/segments.bak ${test_dir}/ref_rttm
+      ref_rttm=${test_set}/ref_rttm
+      steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_set}/utt2spk.bak \
+        ${test_set}/segments.bak ${test_set}/ref_rttm
 
-      md-eval.pl -1 -c 0.25 -r $ref_rttm -s ${test_dir}/rttm |\
+      md-eval.pl -r $ref_rttm -s ${test_set}/rttm |\
         awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
     fi
+  done
+fi
+
+#######################################################################
+# Feature extraction for the dev and eval data
+#######################################################################
+if [ $stage -le 2 ]; then
+  # mfccdir should be some place with a largish disk where you
+  # want to store MFCC features.
+  mfccdir=mfcc
+  for x in ${test_sets}; do
+    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
+      --mfcc-config conf/mfcc_hires.conf \
+      data/$x exp/make_mfcc/$x $mfccdir
   done
 fi
 
@@ -121,16 +114,9 @@ fi
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-if [ $stage -le 5 ]; then
-  # final scoring to get the challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-  local/score_for_submit.sh --stage $score_stage \
-      --dev_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_diarized_2stage \
-      --dev_datadir dev_beamformit_dereverb_diarized_hires \
-      --eval_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized_2stage \
-      --eval_datadir eval_beamformit_dereverb_diarized_hires
-fi
+# if [ $stage -le 5 ]; then
+#   # TODO
+# fi
 
 $use_oracle_segments || exit 0
 
