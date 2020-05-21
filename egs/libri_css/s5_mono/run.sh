@@ -93,7 +93,8 @@ fi
 ##########################################################################
 if [ $stage -le 4 ]; then
   local/decode.sh --stage $decode_stage \
-    --test-sets $test_sets
+    --test-sets "$test_sets" \
+    --use-oracle-segments true
 fi
 
 exit 0;

@@ -182,6 +182,8 @@ if [ $stage -le 14 ]; then
                       data/train_clean_460 data/lang exp/tri4b_ali_clean_460 exp/tri5b
 fi
 
+[ $gmm_only == "true" ] && exit 0
+
 if [ $stage -le 15 ]; then
   steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
                        data/train_960 data/lang exp/tri5b exp/tri5b_ali_960
@@ -191,8 +193,6 @@ if [ $stage -le 15 ]; then
   steps/train_quick.sh --cmd "$train_cmd" \
                        7000 150000 data/train_960 data/lang exp/tri5b_ali_960 exp/tri6b
 fi
-
-[ $gmm_only == "true" ] && exit 0
 
 if [ $stage -le 16 ]; then
   # this does some data-cleaning. The cleaned data should be useful when we add
