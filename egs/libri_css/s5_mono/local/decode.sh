@@ -10,13 +10,11 @@
 # Begin configuration section.
 nj=8
 stage=0
-sad_stage=0
 score_sad=true
-diarizer_stage=0
+diarizer_stage=4
 decode_diarize_stage=0
 decode_oracle_stage=1
 score_stage=0
-affix=1a
 
 # If the following is set to true, we use the oracle speaker and segment
 # information instead of performing SAD and diarization.
@@ -45,7 +43,7 @@ if [ $stage -le 1 ]; then
     fi
 
     # Perform segmentation
-    local/segmentation/apply_webrtcvad.py --mode 0 $test_set > $test_set/segments
+    local/segmentation/apply_webrtcvad.py --mode 0 $test_set | sort > $test_set/segments
     
     # Create dummy utt2spk file from obtained segments
     awk '{print $1, $2}' ${test_set}/segments > ${test_set}/utt2spk
@@ -91,7 +89,7 @@ fi
 #######################################################################
 if [ $stage -le 3 ]; then
   for datadir in ${test_sets}; do
-    ref_rttm=data/${datadir}_seg/ref_rttm
+    ref_rttm=data/${datadir}/ref_rttm
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/${datadir}/utt2spk.bak \
       data/${datadir}/segments.bak $ref_rttm
     diar_nj=$(wc -l < "data/$datadir/wav.scp")
@@ -99,8 +97,8 @@ if [ $stage -le 3 ]; then
     local/diarize.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
-      data/${datadir}_seg \
-      exp/${datadir}_seg_diarization
+      data/${datadir} \
+      exp/${datadir}_diarization
   done
 fi
 
