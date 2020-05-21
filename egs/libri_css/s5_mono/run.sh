@@ -16,6 +16,8 @@ sad_stage=0
 diarizer_stage=0
 decode_stage=0
 
+use_oracle_segments=true
+
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -45,31 +47,14 @@ fi
 # decoding removed. We use the 100h clean subset to train most of the
 # GMM models, except the SAT model, which is trained on the 460h clean
 # subset. The nnet is trained on the full 960h (clean + other).
-# To avoid training the whole ASR from scratch, you can just train the
-# GMM parts (which is required for SAD training) and download the
+# To avoid training the whole ASR from scratch, you can download the
 # chain model using:
 # wget http://kaldi-asr.org/models/13/0013_librispeech_s5.tar.gz
 # Once it is downloaded, extract using: tar -xvzf 0013_librispeech_s5.tar.gz
 # and copy the contents of the exp/ directory to your exp/. 
 #########################################################################
 if [ $stage -le 1 ]; then
-  local/train_asr.sh --stage $asr_stage --nj $nj \
-    --gmm-only true $librispeech_corpus
-fi
-
-#########################################################################
-# SAD MODEL TRAINING 
-# For training SAD, you first need to run stage 1 with `--gmm-only true` 
-# since SAD training targets are obtained using alignments generated 
-# from these GMM models.
-#########################################################################
-if [ $stage -le 2 ]; then
-  local/train_sad.sh --stage $sad_stage --nj $nj \
-    --data-dir data/train_other_500 \
-    --sat-model-dir exp/tri6b \
-    --model-dir exp/tri2b \
-    --lang data/lang_nosp \
-    --lang-test data/lang_test_tgsmall
+  local/train_asr.sh --stage $asr_stage --nj $nj $librispeech_corpus
 fi
 
 ##########################################################################
@@ -79,7 +64,7 @@ fi
 # Once it is downloaded, extract using: tar -xvzf 0012_diarization_v1.tar.gz
 # and copy the contents of the exp/ directory to your exp/
 ##########################################################################
-if [ $stage -le 3 ]; then
+if [ $stage -le 2 ]; then
   local/train_diarizer.sh --stage $diarizer_stage \
     --data-dir data/train_other_500 \
     --model-dir exp/xvector_nnet_1a
@@ -91,9 +76,10 @@ fi
 # the whole pipeline, i.e., SAD -> Diarization -> ASR. This is done in the 
 # local/decode.sh script.
 ##########################################################################
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   local/decode.sh --stage $decode_stage \
-    --test-sets $test_sets
+    --test-sets "$test_sets" \
+    --use-oracle-segments $use_oracle_segments
 fi
 
 exit 0;
