@@ -37,21 +37,25 @@ $use_oracle_segments && [ $stage -le 6 ] && stage=6
 
 if [ $stage -le 1 ]; then
   for datadir in ${test_sets}; do
+    echo "Applying WEBRTC-VAD on ${datadir}"
     test_set=data/${datadir}
     if [ ! -f ${test_set}/wav.scp ]; then
       echo "$0: Not performing SAD on ${test_set}"
       exit 0
     fi
 
-    sad_nj=$(wc -l < "data/$datadir/wav.scp")
     # Perform segmentation
-    local/segmentation/apply_webrtcvad.py $test_set
-
+    local/segmentation/apply_webrtcvad.py --mode 0 $test_set > $test_set/segments
+    
+    # Create dummy utt2spk file from obtained segments
+    awk '{print $1, $2}' ${test_set}/segments > ${test_set}/utt2spk
+    utils/utt2spk_to_spk2utt.pl ${test_set}/utt2spk > ${test_set}/spk2utt
+    
     # Generate RTTM file from segmentation performed by SAD. This can
     # be used to evaluate the performance of the SAD as an intermediate
     # step.
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-      ${test_set}/utt2spk ${test_set}/segments ${test_dir}/rttm
+      ${test_set}/utt2spk ${test_set}/segments ${test_set}/rttm
 
     if [ $score_sad == "true" ]; then
       echo "Scoring $datadir.."
@@ -64,6 +68,7 @@ if [ $stage -le 1 ]; then
       md-eval.pl -r $ref_rttm -s ${test_set}/rttm |\
         awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
     fi
+    
   done
 fi
 

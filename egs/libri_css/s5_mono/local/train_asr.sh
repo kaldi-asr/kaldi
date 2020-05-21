@@ -1,7 +1,5 @@
 # This script is called from run.sh. It downloads the Librispeech
-# data and trains an ASR model on it. Optionally, you can choose
-# to only train the GMM portions, if it is only required for 
-# obtaining targets for SAD training.
+# data and trains an ASR model on it.
 
 nj=50
 stage=0
