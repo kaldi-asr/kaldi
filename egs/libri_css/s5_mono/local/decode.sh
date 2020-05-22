@@ -11,10 +11,11 @@
 nj=8
 stage=0
 score_sad=true
-diarizer_stage=4
-decode_diarize_stage=0
+diarizer_stage=0
+decode_diarize_stage=3
 decode_oracle_stage=1
 score_stage=0
+affix=1d # This should be the affix of the tdnn model you want to decode with 
 
 # If the following is set to true, we use the oracle speaker and segment
 # information instead of performing SAD and diarization.
@@ -107,9 +108,11 @@ fi
 #######################################################################
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
-    local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
-      exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang \
-      exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
+    asr_nj=$(wc -l < "data/$datadir/wav.scp")
+    local/decode_diarized.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
+      --lm-suffix "_tgsmall" \
+      exp/${datadir}_diarization data/$datadir data/lang_nosp_test_tgsmall \
+      exp/chain_cleaned/tdnn_${affix}_sp exp/nnet3_cleaned \
       data/${datadir}_diarized || exit 1
   done
 fi
@@ -148,6 +151,7 @@ fi
 
 if [ $stage -le 7 ]; then
   local/decode_oracle.sh --stage $decode_oracle_stage \
+    --affix $affix \
     --lang-dir data/lang_nosp_test_tgsmall \
     --lm-suffix "_tgsmall" \
     --test_sets "$test_sets"
