@@ -66,7 +66,6 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-    # training and himia data
     for set in train himia/test himia/dev himia/train; do
         steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc.conf \
             data/$set exp/make_mfccs/$set/log exp/make_mfccs/$set || exit 1;
@@ -158,7 +157,7 @@ fi
 
 if [ $stage -le 5 ]; then
     # Now, we need to remove features that are too short after removing silence
-    # frames.  We want atleast 5s (500 frames) per utterance.
+    # frames.  We want atleast 4s (400 frames) per utterance.
     min_len=400
     mv data/train_combined_no_sil/utt2num_frames data/train_combined_no_sil/utt2num_frames.bak
     awk -v min_len=${min_len} '$2 > min_len {print $1, $2}' data/train_combined_no_sil/utt2num_frames.bak > data/train_combined_no_sil/utt2num_frames
@@ -190,7 +189,7 @@ fi
 
 if [ $stage -le 20 ]; then
     # The HIMIA challenge has text-dependent track but in order to provide
-    # a flexible repository, we only implemented 
+    # a flexible repository, we only implemented text-independent part for now
     local/run_text_independent.sh $nnetdir data/himia/test/trials_1m_full \
         data/himia/test/trials_mic_full || exit 1;
 fi
