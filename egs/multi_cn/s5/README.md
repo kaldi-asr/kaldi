@@ -5,6 +5,7 @@ This is a Chinese speech recognition recipe that trains on all Chinese corpora o
 * Primewords (99 hours)
 * ST-CMDS (110 hours)
 * THCHS-30 (26 hours)
+* optional AISHELL2 (~1000 hours) if available
 
 This recipe was developed by Xingyu Na (Microsoft Corporation) and Hui Bu (AISHELL Foundation).
 
