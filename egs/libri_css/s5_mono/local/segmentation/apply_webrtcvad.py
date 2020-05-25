@@ -188,7 +188,7 @@ def get_speech_segments(uttid, wav, vad):
     for segment in segments:
         start = float("{:.2f}".format(segment[0]))
         end = float("{:.2f}".format(segment[1]))
-        segment_id = '{}-{}-{}'.format(uttid,'{:.0f}'.format(100*start).zfill(6), '{:.0f}'.format(100*end).zfill(6))
+        segment_id = '{}_{}_{}'.format(uttid,'{:.0f}'.format(100*start).zfill(6), '{:.0f}'.format(100*end).zfill(6))
         print ("{} {} {} {}".format(segment_id, uttid, start, end))
     return
 
