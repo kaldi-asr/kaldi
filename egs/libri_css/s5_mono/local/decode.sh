@@ -12,7 +12,7 @@ nj=8
 stage=0
 score_sad=true
 diarizer_stage=0
-decode_diarize_stage=3
+decode_diarize_stage=0
 decode_oracle_stage=1
 score_stage=0
 affix=1d # This should be the affix of the tdnn model you want to decode with 
@@ -120,9 +120,16 @@ fi
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-# if [ $stage -le 5 ]; then
-#   # TODO
-# fi
+if [ $stage -le 5 ]; then
+  # final scoring to get the challenge result
+  # please specify both dev and eval set directories so that the search parameters
+  # (insertion penalty and language model weight) will be tuned using the dev set
+  local/score_reco_diarized.sh --stage $score_stage \
+      --dev_decodedir exp/chain_cleaned/tdnn_${affix}_sp/decode_dev_diarized_2stage \
+      --dev_datadir dev_diarized_hires \
+      --eval_decodedir exp/chain_cleaned/tdnn_${affix}_sp/decode_eval_diarized_2stage \
+      --eval_datadir eval_diarized_hires
+fi
 
 $use_oracle_segments || exit 0
 

@@ -13,6 +13,7 @@ stage=0
 test_sets=
 lang_dir=
 lm_suffix=
+affix=1d   # affix for the TDNN directory name
 
 # End configuration section
 . ./utils/parse_options.sh
@@ -20,7 +21,6 @@ lm_suffix=
 . ./cmd.sh
 . ./path.sh
 
-affix=1d   # affix for the TDNN directory name
 dir=exp/chain${nnet3_affix}/tdnn_${affix}_sp
 
 

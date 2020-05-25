@@ -12,11 +12,10 @@ stage=0
 
 # Different stages
 asr_stage=1
-sad_stage=0
 diarizer_stage=0
 decode_stage=0
 
-use_oracle_segments=true
+use_oracle_segments=false
 
 # End configuration section
 . ./utils/parse_options.sh

@@ -40,7 +40,7 @@ done
 if [ $stage -le 0 ]; then
   echo "$0 copying data files in output directory"
   mkdir -p ${out_dir}_hires
-  cp ${data_in}/{wav.scp,utt2spk} ${out_dir}_hires
+  cp ${data_in}/{wav.scp,utt2spk,utt2spk.bak} ${out_dir}_hires
   utils/data/get_reco2dur.sh ${out_dir}_hires
 fi
 
