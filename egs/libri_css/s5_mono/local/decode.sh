@@ -13,7 +13,7 @@ stage=0
 score_sad=true
 diarizer_stage=0
 decode_diarize_stage=0
-decode_oracle_stage=1
+decode_oracle_stage=0
 score_stage=0
 affix=1d # This should be the affix of the tdnn model you want to decode with 
 
@@ -161,6 +161,7 @@ if [ $stage -le 7 ]; then
     --affix $affix \
     --lang-dir data/lang_nosp_test_tgsmall \
     --lm-suffix "_tgsmall" \
+    --rnnlm-rescore true \
     --test_sets "$test_sets"
 fi
 

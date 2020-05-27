@@ -11,11 +11,14 @@ decode_nj=20
 stage=0
 
 # Different stages
+data_prep_stage=0
 asr_stage=1
 diarizer_stage=0
 decode_stage=0
+rnnlm_rescore=true
 
-use_oracle_segments=false
+use_oracle_segments=true
+wpe=false
 
 # End configuration section
 . ./utils/parse_options.sh
@@ -23,7 +26,9 @@ use_oracle_segments=false
 . ./cmd.sh
 . ./path.sh
 
-test_sets="dev eval"
+dereverb=
+$wpe && $dereverb=_dereverb
+test_sets="dev$dereverb eval$dereverb"
 
 set -e # exit on error
 
@@ -36,7 +41,8 @@ librispeech_corpus=/export/corpora/LibriSpeech/
 # format. We use session 0 for dev and others for eval.
 ##########################################################################
 if [ $stage -le 0 ]; then
-  local/data_prep_mono.sh $libricss_corpus
+  local/data_prep_mono.sh --stage $data_prep_stage \
+    --wpe $wpe $libricss_corpus
 fi
 
 #########################################################################
@@ -70,12 +76,21 @@ if [ $stage -le 2 ]; then
 fi
 
 ##########################################################################
+# RNNLM TRAINING
+# We train a TDNN-LSTM based LM that will be used for rescoring the 
+# decoded lattices.
+##########################################################################
+if [ $stage -le 3 ]; then
+  local/rnnlm/train.sh --stage $rnnlm_stage
+fi
+
+##########################################################################
 # DECODING: We assume that we are just given the raw recordings (approx 10
 # mins each), without segments or speaker information, so we have to decode 
 # the whole pipeline, i.e., SAD -> Diarization -> ASR. This is done in the 
 # local/decode.sh script.
 ##########################################################################
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   local/decode.sh --stage $decode_stage \
     --test-sets "$test_sets" \
     --use-oracle-segments $use_oracle_segments

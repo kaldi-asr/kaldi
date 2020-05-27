@@ -14,12 +14,21 @@ test_sets=
 lang_dir=
 lm_suffix=
 affix=1d   # affix for the TDNN directory name
+rnnlm_rescore=false
 
 # End configuration section
 . ./utils/parse_options.sh
 
 . ./cmd.sh
 . ./path.sh
+
+# RNNLM rescore options
+ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
+              # if it's set, it merges histories in the lattice if they share
+              # the same ngram history and this prevents the lattice from 
+              # exploding exponentially
+pruned_rescore=true
+rnnlm_dir=exp/rnnlm_lstm_1a
 
 dir=exp/chain${nnet3_affix}/tdnn_${affix}_sp
 
@@ -69,6 +78,8 @@ if [ $stage -le 0 ]; then
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
+
+
 ##########################################################################
 # Scoring: here we obtain wer per condition and overall WER
 ##########################################################################
@@ -79,4 +90,35 @@ if [ $stage -le 1 ]; then
   local/score_reco_oracle.sh \
       --dev exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_dev_oracle_2stage \
       --eval exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_eval_oracle_2stage
+fi
+
+############################################################################
+# RNNLM rescoring
+############################################################################
+if $rnnlm_rescore; then
+  if [ $stage -le 2 ]; then
+    echo "$0: Perform lattice-rescoring on $ac_model_dir"
+    pruned=
+    ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}_sp
+    if $pruned_rescore; then
+      pruned=_pruned
+    fi
+    for decode_set in dev_oracle eval_oracle; do
+      decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
+      # Lattice rescoring
+      rnnlm/lmrescore$pruned.sh \
+          --cmd "$decode_cmd --mem 8G" \
+          --weight 0.45 --max-ngram-order $ngram_order \
+          data/lang_nosp_test_tgsmall $rnnlm_dir \
+          data/${decode_set}_hires ${decode_dir} \
+          ${ac_model_dir}/decode_${decode_set}_2stage_rescore
+    done
+  fi
+  
+  if [ $stage -le 3 ]; then
+    echo "$0: WERs after rescoring with $rnnlm_dir"
+    local/score_reco_oracle.sh \
+        --dev exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_dev_oracle_2stage_rescore \
+        --eval exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_eval_oracle_2stage_rescore
+  fi
 fi
