@@ -24,11 +24,20 @@ num_data_reps=4
 snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
+
+# pre-trained TS-VAD model
+ts_vad_name=ts-vad_b.tar.gz
+ts_vad_link=https://github.com/yuri-hohlov/ts-vad-data/raw/master/${ts_vad_name}
+ts_vad_dir=exp/ts-vad_b
+ivector_dir=exp/nnet3_b
+
 # End configuration section
 . ./utils/parse_options.sh
 
 . ./cmd.sh
 . ./path.sh
+
+[ ! -f $ts_vad_archive ] && wget 
 
 if [ $decode_only == "true" ]; then
   stage=18
@@ -51,7 +60,7 @@ sad_train_set=train_worn_u400k
 test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
-./local/check_tools.sh || exit 1;
+#./local/check_tools.sh || exit 1;
 
 ###########################################################################
 # We first generate the synchronized audio files across arrays and
@@ -287,11 +296,14 @@ fi
 ##########################################################################
 # DECODING: In track 2, we are given raw utterances without segment
 # or speaker information, so we have to decode the whole pipeline, i.e.,
-# SAD -> Diarization -> ASR. This is done in the local/decode.sh
-# script.
+# SAD -> Diarization (x-vectors clustering) -> TS-VAD Diarization -> ASR.
+# This is done in the local/decode_ts-vad.sh script.
 ##########################################################################
 if [ $stage -le 18 ]; then
-  local/decode.sh --stage $decode_stage \
+  [ ! -f $ts_vad_name ] && wget -O $ts_vad_name $ts_vad_link
+  [ ! -d $ts_vad_dir ] && tar -zxvf $ts_vad_name -C $(dirname $ts_vad_dir)
+  local/decode_ts-vad.sh --stage $decode_stage \
+    --ts-vad-dir $ts_vad_dir --ivector-dir $ivector_dir \
     --enhancement $enhancement \
     --test-sets "$test_sets"
 fi
