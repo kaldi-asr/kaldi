@@ -81,6 +81,10 @@ template <typename instance_FST> class ArcIterator<GrammarFstTpl<instance_FST> >
    support its full interface-- only the parts that are necessary for the
    decoder to work when templated on it.
 
+   The underlying FSTs that are stitched together are templated upon in
+   GrammarFstTpl, thus allowing you to create a GrammarFst out of any
+   type of FST class.
+
    The basic interface is inspired by OpenFst's 'ReplaceFst' (see its
    replace.h), except that this handles left-biphone phonetic context, which
    requires, essentially, having multiple exit-points and entry-points for
@@ -93,7 +97,6 @@ template <typename instance_FST> class ArcIterator<GrammarFstTpl<instance_FST> >
    e.g. `new GrammarFst(this_grammar_fst)`, if you want to decode from multiple
    threads using the same GrammarFst.
 */
-// class GrammarFst {
 template <typename FST>
 class GrammarFstTpl {
  public:
@@ -484,9 +487,6 @@ class GrammarFstTpl {
       return ans;
     }
   }
-
-
-
 };
 
 

@@ -25,7 +25,6 @@
 #include "fstext/kaldi-fst-io.h"
 #include "decoder/grammar-fst.h"
 
-// Note th
 template<typename FST>
 void MakeGrammarFst(kaldi::ParseOptions po,
                     int32 nonterm_phones_offset,
