@@ -48,7 +48,7 @@ perl $dict_dir/cmudict/scripts/make_baseform.pl \
 echo "--- Searching for English OOV words ..."
 awk 'NR==FNR{words[$1]; next;} !($1 in words)' \
   $dict_dir/cmudict/cmudict-plain.txt $dict_dir/lexicon-en/words-en.txt |\
-  egrep -v '<.?s>' > $dict_dir/lexicon-en/words-en-oov-all.txt || exit 1;
+  grep -E -v '<.?s>' > $dict_dir/lexicon-en/words-en-oov-all.txt || exit 1;
 
 awk 'NR==FNR{words[$1]; next;} ($1 in words)' \
   $dict_dir/lexicon-en/words-en.txt $dict_dir/cmudict/cmudict-plain.txt |\
@@ -168,7 +168,6 @@ cat $dict_dir/cedict/cedict_1_0_ts_utf-8_mdbg.txt | grep -v '#' | awk -F '/' '{p
  ' | sort -k1 > $dict_dir/cedict/ch-dict.txt || exit 1;
 
 echo "--- Searching for Chinese OOV words ..."
-
 cat $dict_dir/lexicon-en/words-en-oov-other.txt $dict_dir/lexicon-ch/words-ch.txt | sort -u > $dict_dir/lexicon-ch/words-ch-all.txt || exit 1;
 awk 'NR==FNR{words[$1]; next;} !($1 in words)' \
   $dict_dir/cedict/ch-dict.txt $dict_dir/lexicon-ch/words-ch-all.txt |\
