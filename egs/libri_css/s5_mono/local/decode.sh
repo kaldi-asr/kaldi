@@ -21,7 +21,7 @@ affix=1d   # affix for the TDNN directory name
 # If the following is set to true, we use the oracle speaker and segment
 # information instead of performing SAD and diarization.
 use_oracle_segments=
-rnnlm_rescore=
+rnnlm_rescore=true
 
 # RNNLM rescore options
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
