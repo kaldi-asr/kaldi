@@ -11,13 +11,12 @@ decode_nj=20
 stage=0
 
 # Different stages
-data_prep_stage=0
 asr_stage=1
 diarizer_stage=0
 decode_stage=0
 rnnlm_rescore=true
 
-use_oracle_segments=true
+use_oracle_segments=false
 wpe=false
 
 # End configuration section
@@ -26,9 +25,7 @@ wpe=false
 . ./cmd.sh
 . ./path.sh
 
-dereverb=
-$wpe && $dereverb=_dereverb
-test_sets="dev$dereverb eval$dereverb"
+test_sets="dev eval"
 
 set -e # exit on error
 
@@ -41,8 +38,7 @@ librispeech_corpus=/export/corpora/LibriSpeech/
 # format. We use session 0 for dev and others for eval.
 ##########################################################################
 if [ $stage -le 0 ]; then
-  local/data_prep_mono.sh --stage $data_prep_stage \
-    --wpe $wpe $libricss_corpus
+  local/data_prep_mono.sh $libricss_corpus
 fi
 
 #########################################################################
@@ -93,7 +89,8 @@ fi
 if [ $stage -le 4 ]; then
   local/decode.sh --stage $decode_stage \
     --test-sets "$test_sets" \
-    --use-oracle-segments $use_oracle_segments
+    --use-oracle-segments $use_oracle_segments \
+    --rnnlm-rescore true
 fi
 
 exit 0;
