@@ -236,8 +236,20 @@ class CudaDecoder {
                        std::vector<CudaDecodableInterface *> &decodables,
                        int32 max_num_frames = -1);
 
+  void AllowPartialHypotheses() { generate_partial_hypotheses_ = true; }
+  void GetPartialHypothesis(ChannelId ichannel, PartialHypothesis **out) {
+    KALDI_ASSERT(generate_partial_hypotheses_);
+    // No need to lock, all ops on h_all_channels_partial_hypotheses_out_ are
+    // done before returning InitDecoding or AdvanceDecoding
+    *out = &h_all_channels_partial_hypotheses_out_[ichannel];
+  }
+
   // Returns the number of frames already decoded in a given channel
   int32 NumFramesDecoded(ChannelId ichannel) const;
+
+  void GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
+                          int32 *prev_token_idx_out, int32 *arc_idx_out);
+
   // GetBestPath gets the one-best decoding traceback. If
   // "use_final_probs" is true AND we reached a final state, it limits
   // itself to final states; otherwise it gets the most likely token not
@@ -290,6 +302,9 @@ class CudaDecoder {
   // nworkers of those threads
   void SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
                                        int32 nworkers);
+
+  // Used to generate partial results
+  void SetSymbolTable(fst::SymbolTable *word_syms) { word_syms_ = word_syms; }
 
  private:
   // Data allocation. Called in constructor
@@ -409,6 +424,15 @@ class CudaDecoder {
   // We then have to unpack it and move it inside host memory
   // This is done by ComputeH2HCopies
   void ComputeH2HCopies();
+
+  // Used to generate the partial hypotheses
+  // Called by the worker threads async
+  void BuildPartialHypothesisOutput(ChannelId ichannel);
+  void GeneratePartialPath(LaneId ilane, ChannelId ichannel);
+  // Wait for the async partial hypotheses related tasks to be done
+  // before returning
+  void WaitForPartialHypotheses();
+
   // Takes care of preparing the data for ComputeH2HCopies
   // and check whether we can use the threadpool or we have to do the work
   // on the current thread
@@ -435,6 +459,10 @@ class CudaDecoder {
   //
   // Data members
   //
+
+  CudaDecoderConfig config_;
+  fst::SymbolTable *word_syms_;       // for partial hypotheses
+  bool generate_partial_hypotheses_;  // set by AllowPartialHypotheses
 
   // The CudaFst data structure contains the FST graph
   // in the CSR format, on both the GPU and CPU memory
@@ -689,6 +717,19 @@ class CudaDecoder {
   std::vector<int32> h_main_q_end_lane_offsets_;
   std::vector<int32> h_emitting_main_q_end_lane_offsets_;
   std::vector<int32> h_n_extra_prev_tokens_lane_offsets_;
+  // Index of the best index for the last frame. Used by endpointing/partial
+  // results
+  std::vector<int32> h_argmin_token_cost_;
+  std::vector<InfoToken> h_argmin_token_cost_token_;
+  // Partial path so far on a given channel
+
+  // Partial hypotheses to be used by user
+  // Only valid between API calls (InitDecoding, AdvanceDecoding)
+  std::vector<PartialHypothesis> h_all_channels_partial_hypotheses_out_;
+
+  // Used internally to store the state of the current partial hypotheses
+  std::vector<std::list<PartialPathArc>> h_all_channels_partial_hypotheses_;
+
   // Used when calling GetBestCost
   std::vector<std::pair<int32, CostType>> argmins_;
   std::vector<bool> has_reached_final_;
@@ -767,6 +808,11 @@ class CudaDecoder {
   std::condition_variable h2h_done_;
   std::condition_variable init_decoding_h2h_done_;
   std::atomic<bool> active_wait_;
+
+  // Used for sync on partial hypotheses tasks
+  std::atomic<int> n_partial_hypotheses_format_output_todo_;
+  std::atomic<int> n_partial_hypotheses_threads_not_done_;
+
   bool h2h_threads_running_;
   // Using the output from GetBestPath, we add the best tokens (as
   // selected in GetBestCost) from the final frame to the output lattice.
