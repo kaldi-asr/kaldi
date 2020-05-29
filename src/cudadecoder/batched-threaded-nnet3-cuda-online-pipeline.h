@@ -169,10 +169,16 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // If it contains some last chunks for given utterances, it will call
   // FinalizeDecoding (building the final lattice, determinize it, etc.)
   // asynchronously. The callback for that utterance will then be called
+  //
+  // If partial_hypotheses is not null, generate and set the current partial
+  // hypotheses in partial_hypotheses The pointers in partial_hypotheses are
+  // only valid until the next DecodeBatch call - perform a deep copy if
+  // necessary
   void DecodeBatch(const std::vector<CorrelationID> &corr_ids,
                    const std::vector<SubVector<BaseFloat>> &wave_samples,
                    const std::vector<bool> &is_first_chunk,
-                   const std::vector<bool> &is_last_chunk);
+                   const std::vector<bool> &is_last_chunk,
+                   std::vector<std::string *> *partial_hypotheses = NULL);
 
   // Version providing directly the features. Only runs nnet3 & decoder
   // Used when we want to provide the final ivectors (offline case)
@@ -207,8 +213,12 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Maximum number of seconds per chunk
   BaseFloat GetSecondsPerChunk() { return seconds_per_chunk_; }
 
-  // Used when debugging. Used to Print the text when a decoding is done
-  void SetSymbolTable(fst::SymbolTable *word_syms) { word_syms_ = word_syms; }
+  // Used for partial hypotheses
+  void SetSymbolTable(fst::SymbolTable *word_syms) {
+    word_syms_ = word_syms;
+    KALDI_ASSERT(cuda_decoder_);
+    cuda_decoder_->SetSymbolTable(word_syms);
+  }
 
   // Wait for all lattice callbacks to complete
   // Can be called after DecodeBatch

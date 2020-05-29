@@ -217,7 +217,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
     const std::vector<CorrelationID> &corr_ids,
     const std::vector<SubVector<BaseFloat>> &wave_samples,
     const std::vector<bool> &is_first_chunk,
-    const std::vector<bool> &is_last_chunk) {
+    const std::vector<bool> &is_last_chunk,
+    std::vector<std::string *> *partial_hypotheses) {
   nvtxRangePushA("DecodeBatch");
   KALDI_ASSERT(corr_ids.size() > 0);
   KALDI_ASSERT(corr_ids.size() == wave_samples.size());
@@ -242,9 +243,25 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
     }
   }
   int features_frame_stride = d_all_features_.Stride();
+  if (partial_hypotheses) {
+    // We're going to have to generate the partial hypotheses
+    KALDI_ASSERT(
+        word_syms_ &&
+        "You need to set --word-symbol-table to use partial hypotheses");
+    cuda_decoder_->AllowPartialHypotheses();
+  }
   DecodeBatch(corr_ids, d_features_ptrs_, features_frame_stride,
               n_input_frames_valid_, d_ivectors_ptrs_, is_first_chunk,
               is_last_chunk, &channels_);
+
+  if (partial_hypotheses) {
+    partial_hypotheses->resize(channels_.size());
+    for (size_t i = 0; i < channels_.size(); ++i) {
+      PartialHypothesis *partial_hypothesis;
+      cuda_decoder_->GetPartialHypothesis(channels_[i], &partial_hypothesis);
+      (*partial_hypotheses)[i] = &partial_hypothesis->out_str;
+    }
+  }
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
@@ -433,7 +450,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
   }
 
   if (dlat.NumStates() > 0) {
-    if (word_syms_) {
+    // Used for debugging
+    if (false && word_syms_) {
       CompactLattice best_path_clat;
       CompactLatticeShortestPath(dlat, &best_path_clat);
 

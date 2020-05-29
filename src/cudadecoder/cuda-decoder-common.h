@@ -345,6 +345,46 @@ class DeviceChannelMatrix : public DeviceMatrix<T> {
   }
 };
 
+// InfoToken contains data that needs to be saved for the backtrack
+// in GetBestPath/GetRawLattice
+// We don't need the token.cost or token.next_state.
+struct __align__(8) InfoToken {
+  int32 prev_token;
+  int32 arc_idx;
+  bool IsUniqueTokenForStateAndFrame() {
+    // This is a trick used to save space and PCI-E bandwidth (cf
+    // preprocess_in_place kernel)
+    // This token is associated with a next_state s, created during the
+    // processing of frame f.
+    // If we have multiple tokens associated with the state s in the frame f,
+    // arc_idx < 0 and -arc_idx is the
+    // count of such tokens. We will then have to look at another list to read
+    // the actually arc_idx and prev_token values
+    // If the current token is the only one, prev_token and arc_idx are valid
+    // and can be used directly
+    return (arc_idx >= 0);
+  }
+
+  // Called if this token is linked to others tokens in the same frame (cf
+  // comments for IsUniqueTokenForStateAndFrame)
+  // return the {offset,size} pair necessary to list those tokens in the
+  // extra_prev_tokens list
+  // They are stored at offset "offset", and we have "size" of those
+  std::pair<int32, int32> GetSameFSTStateTokensList() {
+    KALDI_ASSERT(!IsUniqueTokenForStateAndFrame());
+
+    return {prev_token, -arc_idx};
+  }
+};
+
+// Device function, used to set a in an InfoToken the [offset,size] related to
+// InfoToken.GetSameFSTStateTokensList
+__device__ __inline__ void SetSameFSTStateTokensList(int32 offset, int32 size,
+                                                     InfoToken *info_token) {
+  // We always have size > 0
+  *info_token = {offset, -size};
+}
+
 // LaneCounters/ChannelCounters
 // The counters are all the singular values associated to a lane/channel
 // For instance  the main queue size. Or the min_cost of all tokens in that
@@ -431,6 +471,7 @@ struct LaneCounters {
   int32 n_within_lattice_beam;
   int32 has_reached_final;  // if there's at least one final token in the queue
   int32 prev_arg_min_int_cost;
+  InfoToken prev_arg_min_int_cost_token;
 };
 
 // Channel counters
@@ -470,46 +511,6 @@ class CudaDecoderException : public std::exception {
   const std::string buffer;
   const bool recoverable;
 };
-
-// InfoToken contains data that needs to be saved for the backtrack
-// in GetBestPath/GetRawLattice
-// We don't need the token.cost or token.next_state.
-struct __align__(8) InfoToken {
-  int32 prev_token;
-  int32 arc_idx;
-  bool IsUniqueTokenForStateAndFrame() {
-    // This is a trick used to save space and PCI-E bandwidth (cf
-    // preprocess_in_place kernel)
-    // This token is associated with a next_state s, created during the
-    // processing of frame f.
-    // If we have multiple tokens associated with the state s in the frame f,
-    // arc_idx < 0 and -arc_idx is the
-    // count of such tokens. We will then have to look at another list to read
-    // the actually arc_idx and prev_token values
-    // If the current token is the only one, prev_token and arc_idx are valid
-    // and can be used directly
-    return (arc_idx >= 0);
-  }
-
-  // Called if this token is linked to others tokens in the same frame (cf
-  // comments for IsUniqueTokenForStateAndFrame)
-  // return the {offset,size} pair necessary to list those tokens in the
-  // extra_prev_tokens list
-  // They are stored at offset "offset", and we have "size" of those
-  std::pair<int32, int32> GetSameFSTStateTokensList() {
-    KALDI_ASSERT(!IsUniqueTokenForStateAndFrame());
-
-    return {prev_token, -arc_idx};
-  }
-};
-
-// Device function, used to set a in an InfoToken the [offset,size] related to
-// InfoToken.GetSameFSTStateTokensList
-__device__ __inline__ void SetSameFSTStateTokensList(int32 offset, int32 size,
-                                                     InfoToken *info_token) {
-  // We always have size > 0
-  *info_token = {offset, -size};
-}
 
 // Used to store the index in the GPU hashmap of that FST state
 // The hashmap is only generated with the final main queue (post max_active_) of
@@ -557,6 +558,25 @@ enum OVERFLOW_TYPE {
 };
 
 enum QUEUE_ID { MAIN_Q = 0, AUX_Q = 1 };
+
+// Used internally to generate partial paths
+struct PartialPathArc {
+  int32 token_idx;
+  int32 arc_idx;
+};
+
+// Partial hypothesis formatted and meant to be used by user
+struct PartialHypothesis {
+  std::vector<int> arc_idx;
+  std::vector<int> olabel;
+  std::string out_str;
+
+  void clear() {
+    arc_idx.clear();
+    olabel.clear();
+    out_str.clear();
+  }
+};
 
 }  // end namespace cuda_decoder
 }  // end namespace kaldi

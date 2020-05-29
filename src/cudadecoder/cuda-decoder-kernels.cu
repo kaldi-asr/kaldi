@@ -1401,7 +1401,7 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
     const int32 main_q_end = lane_counters->main_q_narcs_and_end.y;
     int32 min_int_cost = lane_counters->min_int_cost;
     CostType min_cost = orderedIntToFloat(min_int_cost);
-    const int32 global_offset = channel_counters->prev_main_q_global_offset;
+    const int32 global_offset = lane_counters->main_q_global_offset;
     KALDI_CUDA_DECODER_1D_KERNEL_LOOP(main_q_idx, main_q_end) {
       // Position of considered token in the main_q
       if (main_q_idx < main_q_end) {
@@ -1415,6 +1415,7 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
           channel_counters->min_int_cost_and_arg_without_final = {
               token_int_cost, global_offset + main_q_idx};
           lane_counters->prev_arg_min_int_cost = main_q_idx;
+          lane_counters->prev_arg_min_int_cost_token = cst_dev_params.d_main_q_info.lane(ilane)[main_q_idx];
         } else {
           // remove offset = min_cost
           CostType token_cost = orderedIntToFloat(token_int_cost) - min_cost;

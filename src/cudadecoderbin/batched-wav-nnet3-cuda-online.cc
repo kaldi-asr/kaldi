@@ -99,11 +99,14 @@ int main(int argc, char *argv[]) {
     int num_todo = -1;
     int niterations = 3;
     int num_streaming_channels = 2000;
+    bool print_partial_hypotheses = false;
     ParseOptions po(usage);
     po.Register("write-lattice", &write_lattice,
                 "Output lattice to a file. Setting to "
                 "false is useful when "
                 "benchmarking");
+    po.Register("print-partial-hypotheses", &print_partial_hypotheses,
+                "Prints the partial hypotheses");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("file-limit", &num_todo,
@@ -170,7 +173,7 @@ int main(int argc, char *argv[]) {
                      "table from file "
                   << word_syms_rxfilename;
       else {
-        //        cuda_pipeline.SetSymbolTable(word_syms);
+        cuda_pipeline.SetSymbolTable(word_syms);
       }
     }
 
@@ -247,6 +250,9 @@ int main(int argc, char *argv[]) {
     std::vector<bool> batch_is_last_chunk;
     // Used when use_online_ivectors_
     std::vector<SubVector<BaseFloat>> batch_wave_samples;
+
+    // Partial hypotheses
+    std::vector<std::string *> partial_hypotheses;
 
     double batch_valid_at = gettime_monotonic();
     bool pipeline_starved_warning_printed = false;
@@ -339,7 +345,16 @@ int main(int argc, char *argv[]) {
           if (wait_for > 0) usleep(wait_for * 1e6);
 
           cuda_pipeline.DecodeBatch(batch_corr_ids, batch_wave_samples,
-                                    batch_is_first_chunk, batch_is_last_chunk);
+                                    batch_is_first_chunk, batch_is_last_chunk,
+                                    &partial_hypotheses);
+          if (print_partial_hypotheses) {
+            KALDI_LOG << "========== BEGIN OF PARTIAL HYPOTHESES ==========";
+            for (size_t i = 0; i < batch_corr_ids.size(); ++i) {
+              KALDI_LOG << "CORR_ID #" << batch_corr_ids[i]
+                        << "\t: " << *partial_hypotheses[i];
+            }
+            KALDI_LOG << "=========== END OF PARTIAL HYPOTHESES ===========";
+          }
           batch_corr_ids.clear();
           batch_is_first_chunk.clear();
           batch_is_last_chunk.clear();

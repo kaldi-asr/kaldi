@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Could not read symbol table from file "
                   << word_syms_rxfilename;
       else {
-        //        cuda_pipeline.SetSymbolTable(word_syms);
+        cuda_pipeline.SetSymbolTable(word_syms);
       }
     }
 
