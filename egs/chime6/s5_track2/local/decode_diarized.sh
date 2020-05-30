@@ -6,6 +6,7 @@
 
 
 stage=0
+rttm_affix=
 nj=8
 cmd=queue.pl
 echo "$0 $@"  # Print the command line for logging
@@ -36,11 +37,26 @@ done
 
 if [ $stage -le 0 ]; then
   echo "$0 copying data files in output directory"
-  cp $rttm_dir/rttm $rttm_dir/rttm_1
-  sed -i 's/'.ENH'/''/g' $rttm_dir/rttm_1
+  cat $rttm_dir/rttm$rttm_affix | awk -F' ' '$5>0.1' | \
+    sed 's/'.ENH'/''/g' > $rttm_dir/rttm${rttm_affix}_1
+
+  # Make speaker ids in RTTM 1,2,3,4
+  num_spk=$( cut -d' ' -f8 $rttm_dir/rttm${rttm_affix}_1 | sort -u | wc -l )
+  if [ $num_spk -gt 4 ]; then
+    echo "Num speakers in RTTM more than 4; not proceeding further."
+    exit 0
+  fi
+  newid=1
+  cp $rttm_dir/rttm${rttm_affix}_1 $rttm_dir/rttm${rttm_affix}_2
+  cut -d' ' -f8 $rttm_dir/rttm${rttm_affix}_1 | sort -u |\
+    while read spkid; do
+      gawk -i inplace -v var1="$spkid" -v var2="$newid" '{gsub(var1,"tmp"var2,$8)}1' $rttm_dir/rttm${rttm_affix}_2
+      newid=$((newid+1));
+    done
+  sed -i "s/tmp//g" $rttm_dir/rttm${rttm_affix}_2
   # removing participant introduction from the hypothesis rttm
   # UEM file contains the scoring durations for each recording
-  local/truncate_rttm.py $rttm_dir/rttm_1 local/uem_file $rttm_dir/rttm_introduction_removed
+  local/truncate_rttm.py $rttm_dir/rttm${rttm_affix}_2 local/uem_file $rttm_dir/rttm${rttm_affix}_introduction_removed
   mkdir -p ${out_dir}_hires
   cp ${data_in}/{wav.scp,utt2spk} ${out_dir}_hires
   utils/data/get_reco2dur.sh ${out_dir}_hires
@@ -48,8 +64,8 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0 creating segments file from rttm and utt2spk, reco2file_and_channel "
-  local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/rttm_introduction_removed \
-    <(awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm_introduction_removed |sort -u) \
+  local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/rttm${rttm_affix}_introduction_removed \
+    <(awk '{print $2".ENH "$2" "$3}' $rttm_dir/rttm${rttm_affix}_introduction_removed |sort -u) \
     ${out_dir}_hires/utt2spk ${out_dir}_hires/segments
 
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt
@@ -61,8 +77,10 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0 extracting mfcc freatures using segments file"
   steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}_hires
+  utils/fix_data_dir.sh ${out_dir}_hires
   steps/compute_cmvn_stats.sh ${out_dir}_hires
   cp $data_in/text.bak ${out_dir}_hires/text
+  
 fi
 
 if [ $stage -le 3 ]; then

@@ -15,7 +15,7 @@ score_sad=true
 diarizer_stage=0
 decode_diarize_stage=0
 score_stage=0
-
+rttm_affix=
 enhancement=beamformit
 
 # option to use the new RTTM reference for sad and diarization
@@ -164,7 +164,7 @@ if [ $stage -le 3 ]; then
       sed 's/_U0[1-6].ENH//g' $ref_rttm > $ref_rttm.scoring
       sed 's/_U0[1-6].ENH//g' $hyp_rttm > $hyp_rttm.scoring
       cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.tmp
-      md-eval.pl -1 -c 0.25 -u ./local/uem_file.tmp -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
+      md-eval.pl -c 0.25 -u ./local/uem_file.tmp -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
         awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
     fi
   done
@@ -195,9 +195,10 @@ fi
 if [ $stage -le 5 ]; then
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
+      --rttm-affix "$rttm_affix" \
       exp/${datadir}_${nnet_type}_seg_diarization data/$datadir data/lang \
       exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
-      data/${datadir}_diarized || exit 1
+      data/${datadir}_diarized${rttm_affix} || exit 1
   done
 fi
 
@@ -209,9 +210,9 @@ if [ $stage -le 6 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh --stage $score_stage \
-      --dev_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_diarized_2stage \
-      --dev_datadir dev_beamformit_dereverb_diarized_hires \
-      --eval_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized_2stage \
-      --eval_datadir eval_beamformit_dereverb_diarized_hires
+      --dev_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_dev_beamformit_dereverb_diarized${rttm_affix}_2stage \
+      --dev_datadir dev_beamformit_dereverb_diarized${rttm_affix}_hires \
+      --eval_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized${rttm_affix}_2stage \
+      --eval_datadir eval_beamformit_dereverb_diarized${rttm_affix}_hires
 fi
 exit 0;

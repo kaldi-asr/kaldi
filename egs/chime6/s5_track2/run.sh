@@ -19,6 +19,7 @@ diarizer_stage=0
 decode_stage=0
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and decode stage
+rttm_affix=
 decode_only=false
 num_data_reps=4
 snrs="20:10:15:5:0"
@@ -292,6 +293,7 @@ fi
 ##########################################################################
 if [ $stage -le 18 ]; then
   local/decode.sh --stage $decode_stage \
+    --rttm-affix "$rttm_affix" \
     --enhancement $enhancement \
     --test-sets "$test_sets"
 fi
