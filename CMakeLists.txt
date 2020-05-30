@@ -68,13 +68,11 @@ elseif(MATHLIB STREQUAL "MKL")
     else()
         message(STATUS "Finding MKL from \"$ENV{MKLROOT}\"")
     endif()
-
-    set(BLA_VENDOR "Intel10_64lp")
-    # find_package(BLAS REQUIRED)
     normalize_env_path(ENV{MKLROOT})
+    set(BLA_VENDOR "Intel10_64lp_seq") # use the single threaded MKL by default
     find_package(LAPACK REQUIRED)
     add_definitions(-DHAVE_MKL=1)
-    include_directories($ENV{MKLROOT}/include) # TODO: maybe not use env, idk, find_package doesnt handle includes...
+    include_directories($ENV{MKLROOT}/include)
     link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 elseif(MATHLIB STREQUAL "Accelerate")
     execute_process(COMMAND sw_vers -productVersion
