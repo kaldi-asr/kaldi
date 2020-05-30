@@ -117,8 +117,6 @@ endif()
 
 find_package(CUDA)
 if(CUDA_FOUND)
-    set(CUB_ROOT_DIR "${PROJECT_SOURCE_DIR}/tools/cub")
-
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
     if(MSVC)
@@ -150,6 +148,8 @@ if(CUDA_FOUND)
     include_directories(${NvToolExt_INCLUDE_DIR})
     link_libraries(${NvToolExt_LIBRARIES})
 
+    get_third_party(cub)
+    set(CUB_ROOT_DIR "${CMAKE_BINARY_DIR}/cub")
     find_package(CUB REQUIRED)
     include_directories(${CUB_INCLUDE_DIR})
 endif()
