@@ -25,16 +25,18 @@ musan_root=/media/hdd3/musan
 
 . ./utils/parse_options.sh
 
-if [ $stage -le -1 ]; then
+if [ $stage -le -10 ]; then
     # prepare DNN training data. Note that here we provide options for users,
     # in case they do not have access to AISHELL2 data.
     # OpenSLR side is basically a pseudo-copy from multi_cn solutions.
     local/prepare_multi_cn.sh --stage 0 corpora/openslr || exit 1;
+fi
 
+if [ $srage -le -1 ]; then
     if $include_aishell2; then
         # check if AISHELL2 corpus exists
         [ -d $aishell2_root/iOS/train ] || (echo $aishell2_root does not exist && exit 1;)
-        # AISHELL2
+        # AISHELL2 preparation
         local/prepare_aishell2.sh $aishell2_root/iOS/train \
             data/aishell2/local/train data/aishell2/train
         utils/fix_data_dir.sh data/aishell2/train || exit 1;
@@ -50,11 +52,11 @@ if [ $stage -le 0 ]; then
     # via single-channel data, we here by dafault perform data processing
     # as 'single channel' as well. (but we do test on multi-channel...as well)
     for set in test_v2 dev train; do
-	local/download_and_untar.sh $himia_root http://www.openslr.org/resources/85/$set.tar.gz $set || exit 1;
-	[[ "$set" == "test_v2" ]] && set=test
-        python local/himia_data_prep.py $himia_root/$set data/himia/$set || exit 1;
-        utils/utt2spk_to_spk2utt.pl data/himia/$set/utt2spk > data/himia/$set/spk2utt
-        utils/fix_data_dir.sh data/himia/$set
+        local/download_and_untar.sh $himia_root http://www.openslr.org/resources/85/$set.tar.gz $set || exit 1;
+        [[ "$set" == "test_v2" ]] && set=test
+            python local/himia_data_prep.py $himia_root/$set data/himia/$set || exit 1;
+            utils/utt2spk_to_spk2utt.pl data/himia/$set/utt2spk > data/himia/$set/spk2utt
+            utils/fix_data_dir.sh data/himia/$set
     done
 
     # This is a simple filtering operation for both trial script, in order

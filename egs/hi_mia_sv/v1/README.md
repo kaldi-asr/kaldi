@@ -4,8 +4,8 @@ This is repository for speaker verification experiments with [HIMIA (openslr-85)
 
 ## Usage
 One can simply run `./run.sh` to download open-sourced part of data. While there are two special cases:
-* If one has the open-sourced part in place, one can run `./run.sh --stage 0` to skip the downloading & preparation part of those data.
-* If one has AISHELL2 data, please run `./run.sh --include-aishell2 true --aishell2-root $your_aishell2_folder`.
+* If one has the open-sourced part in place, one can run `./run.sh --stage 0` to skip the downloading & preparation part of those data. By default the data will be downloaded to/stored in `$pwd/corpora/`. If the data has been downloaded somewhere else or seperately, please combine them together (by calling `utils/combine_data.sh $target_data_path $data_paths` for example) into somewhere and run `./run.sh --stage 0 --corporadir $your_data_path`.
+* If one has AISHELL2 data, please run `./run.sh --stage $stage --include-aishell2 true --aishell2-root $your_aishell2_folder`. Again, `$stage` can be set to -10 (default) if one does not have multi_cn data and -1 otherwise.
 * If one would like to apply for AISHELL2 data, please check `../../aishell2/README.md` on how to do it.
 
 ## RESULTS
