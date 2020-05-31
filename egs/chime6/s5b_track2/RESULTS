@@ -18,6 +18,11 @@ Dev (new RTTM)    63.42     70.83
 Eval (old RTTM)   61.96     71.40
 Eval (new RTTM)   68.20     72.54
 
+# Diarization (3 iterations of TS-VAD) 
+                    DER      JER
+Dev (new RTTM)    45.90     52.45
+Eval (new RTTM)   49.13     55.83
+
 # ASR nnet3 tdnn+chain
-Dev:  %WER 84.25 [ 49610 / 58881, 1937 ins, 34685 del, 12988 sub ]
-Eval: %WER 77.94 [ 42971 / 55132, 1086 ins, 30839 del, 11046 sub ]
+Dev:  %WER 77.34 [ 45538 / 58881, 1099 ins, 24840 del, 19599 sub ]
+Eval: %WER 71.90 [ 39639 / 55132, 1550 ins, 23748 del, 14341 sub ]
