@@ -231,7 +231,7 @@ struct OnlineCmvnOptions {
                  && modulus > 0);
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Number of frames of sliding "
                  "context for cepstral mean normalization.");
     po->Register("global-frames", &global_frames, "Number of frames of "
@@ -447,7 +447,7 @@ struct OnlineSpliceOptions {
   int32 left_context;
   int32 right_context;
   OnlineSpliceOptions(): left_context(4), right_context(4) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("left-context", &left_context, "Left-context for frame "
                  "splicing prior to LDA");
     po->Register("right-context", &right_context, "Right-context for frame "

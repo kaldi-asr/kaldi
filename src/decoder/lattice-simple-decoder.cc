@@ -19,7 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lattice-simple-decoder.h"
+#include "decoder/lattice-simple-decoder.h"
 
 namespace kaldi {
 
