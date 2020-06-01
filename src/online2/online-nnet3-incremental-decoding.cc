@@ -70,6 +70,6 @@ bool SingleUtteranceNnet3IncrementalDecoderTpl<FST>::EndpointDetected(
 
 // Instantiate the template for the types needed.
 template class SingleUtteranceNnet3IncrementalDecoderTpl<fst::Fst<fst::StdArc> >;
-template class SingleUtteranceNnet3IncrementalDecoderTpl<fst::GrammarFst>;
+template class SingleUtteranceNnet3IncrementalDecoderTpl<fst::ConstGrammarFst >;
 
 }  // namespace kaldi

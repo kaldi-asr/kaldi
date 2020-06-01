@@ -585,16 +585,25 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
     const LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder,
     bool use_final_probs);
 template
-void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFst>(
-    const LatticeFasterOnlineDecoderTpl<fst::GrammarFst> &decoder,
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::ConstGrammarFst >(
+    const LatticeFasterOnlineDecoderTpl<fst::ConstGrammarFst > &decoder,
     bool use_final_probs);
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::VectorGrammarFst >(
+    const LatticeFasterOnlineDecoderTpl<fst::VectorGrammarFst > &decoder,
+    bool use_final_probs);
+
 template
 void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
     const LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder,
     bool use_final_probs);
 template
-void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFst>(
-    const LatticeIncrementalOnlineDecoderTpl<fst::GrammarFst> &decoder,
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::ConstGrammarFst >(
+    const LatticeIncrementalOnlineDecoderTpl<fst::ConstGrammarFst > &decoder,
+    bool use_final_probs);
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::VectorGrammarFst >(
+    const LatticeIncrementalOnlineDecoderTpl<fst::VectorGrammarFst > &decoder,
     bool use_final_probs);
 
 
