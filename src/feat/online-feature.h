@@ -386,7 +386,7 @@ class OnlineCmvn: public OnlineFeatureInterface {
   void Freeze(int32 cur_frame);
 
   virtual ~OnlineCmvn();
- private:
+ protected:
 
   /// Smooth the CMVN stats "stats" (which are stored in the normal format as a
   /// 2 x (dim+1) matrix), by possibly adding some stats from "global_stats"
