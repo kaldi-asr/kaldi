@@ -6,12 +6,9 @@ include(GNUInstallDirs)
 include(Utils)
 include(third_party/get_third_party)
 
-# Should update cmake to a more recent version which supports FindPython3.
 find_package(PythonInterp)
-if(NOT PYTHON_EXECUTABLE OR PYTHON_VERSION_MAJOR LESS 3)
-    message(WARNING "Needs python3 to auto-generate most CMake files, but not found. "
-                    "Will try `python3` directly...")
-    set(PYTHON_EXECUTABLE "python3")
+if(NOT PYTHON_EXECUTABLE)
+    message(FATAL_ERROR "Needs python to auto-generate most CMake files, but not found.")
 endif()
 
 message(STATUS "Running gen_cmake_skeleton.py")
