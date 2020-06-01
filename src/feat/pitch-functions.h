@@ -248,7 +248,7 @@ struct ProcessPitchOptions {
       add_raw_log_pitch(false) { }
 
 
-  void Register(ParseOptions *opts) {
+  void Register(OptionsItf *opts) {
     opts->Register("pitch-scale", &pitch_scale,
                    "Scaling factor for the final normalized log-pitch value");
     opts->Register("pov-scale", &pov_scale,

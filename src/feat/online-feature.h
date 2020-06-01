@@ -231,7 +231,7 @@ struct OnlineCmvnOptions {
                  && modulus > 0);
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Number of frames of sliding "
                  "context for cepstral mean normalization.");
     po->Register("global-frames", &global_frames, "Number of frames of "
