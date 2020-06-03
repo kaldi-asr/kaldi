@@ -69,11 +69,9 @@ if [ $stage -le 4 ]; then
   utils/combine_data.sh \
     data/train_clean_460 data/train_clean_100 data/train_clean_360
 
-  if [ $gmm_only == "false" ]; then
-    # And combine all 960h data, which will be used to train the nnet
-    utils/combine_data.sh \
-        data/train_960 data/train_clean_460 data/train_other_500
-  fi
+  # And combine all 960h data, which will be used to train the nnet
+  utils/combine_data.sh \
+      data/train_960 data/train_clean_460 data/train_other_500
 fi
 
 if [ $stage -le 5 ]; then

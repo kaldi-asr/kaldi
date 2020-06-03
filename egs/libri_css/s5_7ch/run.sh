@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# LibriCSS monoaural baseline recipe.
+# LibriCSS multi-channel baseline recipe.
 #
 # Copyright  2020  Johns Hopkins University (Author: Desh Raj)
 # Apache 2.0
@@ -11,13 +11,16 @@ decode_nj=20
 stage=0
 
 # Different stages
+data_prep_stage=0
 asr_stage=1
 diarizer_stage=0
 decode_stage=0
 rnnlm_rescore=true
 
-use_oracle_segments=false
-wpe=false
+enhancement=beamformit
+wpe=true
+
+use_oracle_segments=true
 
 # End configuration section
 . ./utils/parse_options.sh
@@ -25,7 +28,10 @@ wpe=false
 . ./cmd.sh
 . ./path.sh
 
-test_sets="dev eval"
+dereverb=
+$wpe && dereverb=_dereverb
+
+test_sets="dev${dereverb}_${enhancement} eval${dereverb}_${enhancement}"
 
 set -e # exit on error
 
@@ -34,11 +40,14 @@ libricss_corpus=/export/corpora/LibriCSS
 librispeech_corpus=/export/corpora/LibriSpeech/
 
 ##########################################################################
-# We first prepare the LibriCSS data (monoaural) in the Kaldi data
-# format. We use session 0 for dev and others for eval.
+# We first prepare the LibriCSS data (7ch) in the Kaldi data
+# format. We use session 0 for dev and others for eval. We also
+# apply online multichannel WPE for dereverberation and then combine
+# all channels using beamforming.
 ##########################################################################
 if [ $stage -le 0 ]; then
-  local/data_prep_mono.sh $libricss_corpus
+  local/data_prep_7ch.sh --stage $data_prep_stage --wpe $wpe \
+    --enhancement $enhancement $libricss_corpus
 fi
 
 #########################################################################
@@ -89,8 +98,7 @@ fi
 if [ $stage -le 4 ]; then
   local/decode.sh --stage $decode_stage \
     --test-sets "$test_sets" \
-    --use-oracle-segments $use_oracle_segments \
-    --rnnlm-rescore true
+    --use-oracle-segments $use_oracle_segments
 fi
 
 exit 0;
