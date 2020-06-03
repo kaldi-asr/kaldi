@@ -12,6 +12,7 @@ stage=0
 nj=10
 cmd="run.pl"
 ref_rttm=
+score_overlaps_only=true
 
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -81,12 +82,41 @@ hyp_rttm=${out_dir}/rttm
 if [ $stage -le 5 ]; then
   echo "Diarization results for "${name}
   if ! [ -d dscore ]; then
-    git clone https://github.com/nryant/dscore.git || exit 1;
+    git clone https://github.com/desh2608/dscore.git -b libricss --single-branch || exit 1;
     cd dscore
     python -m pip install --user -r requirements.txt
     cd ..
   fi
-  ref_rttm_path=$(readlink -f ${ref_rttm})
-  hyp_rttm_path=$(readlink -f ${hyp_rttm})
-  cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path && cd .. || exit 1;
+
+  # Create per condition ref and hyp RTTM files for scoring per condition
+  mkdir -p tmp
+  conditions="0L 0S OV10 OV20 OV30 OV40"
+  cp $ref_rttm tmp/ref.all
+  cp $hyp_rttm tmp/hyp.all
+  for rttm in ref hyp; do
+    for cond in $conditions; do
+      cat tmp/$rttm.all | grep $cond > tmp/$rttm.$cond
+    done
+  done
+
+  echo "Scoring all regions..."
+  for cond in $conditions 'all'; do
+    echo -n "Condition: $cond: "
+    ref_rttm_path=$(readlink -f tmp/ref.$cond)
+    hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
+    cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only && cd .. || exit 1;
+  done
+
+  # We also score overlapping regions only
+  if [ $score_overlaps_only == "true" ]; then
+    echo "Scoring overlapping regions..."
+    for cond in $conditions 'all'; do
+      echo -n "Condition: $cond: "
+      ref_rttm_path=$(readlink -f tmp/ref.$cond)
+      hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
+      cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only && cd .. || exit 1;
+    done
+  fi
+
+  rm -r tmp
 fi
