@@ -144,7 +144,7 @@ typename LatticeIncrementalOnlineDecoderTpl<FST>::BestPathIterator LatticeIncrem
 template class LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> >;
 template class LatticeIncrementalOnlineDecoderTpl<fst::VectorFst<fst::StdArc> >;
 template class LatticeIncrementalOnlineDecoderTpl<fst::ConstFst<fst::StdArc> >;
-template class LatticeIncrementalOnlineDecoderTpl<fst::GrammarFst>;
-
+template class LatticeIncrementalOnlineDecoderTpl<fst::ConstGrammarFst >;
+template class LatticeIncrementalOnlineDecoderTpl<fst::VectorGrammarFst >;
 
 } // end namespace kaldi.

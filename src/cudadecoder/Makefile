@@ -13,8 +13,12 @@ endif
 
 TESTFILES =
 
-OBJFILES = batched-threaded-nnet3-cuda-pipeline.o decodable-cumatrix.o \
-           cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o
+OBJFILES = cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o \
+	   batched-threaded-nnet3-cuda-online-pipeline.o \
+	   batched-threaded-nnet3-cuda-pipeline.o \
+	   batched-threaded-nnet3-cuda-pipeline2.o \
+	   batched-static-nnet3.o batched-static-nnet3-kernels.o \
+	   decodable-cumatrix.o
 
 LIBNAME = kaldi-cudadecoder
 

@@ -1096,14 +1096,26 @@ void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
 
     cusparseMatDescr_t descr;
     CUSPARSE_SAFE_CALL(cusparseCreateMatDescr(&descr));
-    CU_SAFE_CALL(
-        cusparse_csrmm(
-            GetCusparseHandle(),
-            transB == kNoTrans ?
-                CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE,
-            B.NumRows(), NumRows(), B.NumCols(), B.NumElements(), &alpha, descr,
-            B.CsrVal(), B.CsrRowPtr(), B.CsrColIdx(), A.Data(), A.Stride(),
-            &beta, Data(), Stride()));
+    if (transB == kTrans) {
+      CU_SAFE_CALL(
+        cusparse_csrmm2(
+	    GetCusparseHandle(),
+	    CUSPARSE_OPERATION_NON_TRANSPOSE,
+	    CUSPARSE_OPERATION_NON_TRANSPOSE,
+	    B.NumRows(), NumRows(), B.NumCols(), B.NumElements(), &alpha, descr,
+	    B.CsrVal(), B.CsrRowPtr(), B.CsrColIdx(), A.Data(), A.Stride(),
+	    &beta, Data(), Stride()));
+    } else {
+      CuSparseMatrix<Real> BT(B, kTrans);
+      CU_SAFE_CALL(
+        cusparse_csrmm2(
+	    GetCusparseHandle(),
+	    CUSPARSE_OPERATION_NON_TRANSPOSE,
+	    CUSPARSE_OPERATION_NON_TRANSPOSE,
+	    BT.NumRows(), NumRows(), BT.NumCols(), BT.NumElements(), &alpha, descr,
+	    BT.CsrVal(), BT.CsrRowPtr(), BT.CsrColIdx(), A.Data(), A.Stride(),
+	    &beta, Data(), Stride()));
+    }
     CUSPARSE_SAFE_CALL(cusparseDestroyMatDescr(descr));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim);
