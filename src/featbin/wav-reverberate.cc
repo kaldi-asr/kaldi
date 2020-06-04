@@ -370,7 +370,7 @@ int main(int argc, char *argv[]) {
     }
 
     WaveData out_wave(samp_freq_input, out_matrix);
-    Output ko(output_wave_file, false);
+    Output ko(output_wave_file, true, false);
     out_wave.Write(ko.Stream());
 
     return 0;
