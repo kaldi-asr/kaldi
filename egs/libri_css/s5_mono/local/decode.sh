@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # This script decodes raw utterances through the entire pipeline:
-# Feature extraction -> SAD -> Diarization -> ASR
+# VAD -> Feature extraction -> Diarization -> ASR
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
 #            2019  Desh Raj, David Snyder, Ashish Arora, Zhaoheng Ni
@@ -107,7 +107,9 @@ if [ $stage -le 3 ]; then
     ref_rttm=data/${datadir}/ref_rttm
     steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/${datadir}/utt2spk.bak \
       data/${datadir}/segments.bak $ref_rttm
-    diar_nj=$(wc -l < "data/$datadir/wav.scp")
+    diar_nj=$(wc -l < "data/$datadir/wav.scp") # This is important especially for VB-HMM
+
+    ([ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh) || exit 1
 
     local/diarize.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
