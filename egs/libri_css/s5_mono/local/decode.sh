@@ -109,7 +109,7 @@ if [ $stage -le 3 ]; then
       data/${datadir}/segments.bak $ref_rttm
     diar_nj=$(wc -l < "data/$datadir/wav.scp") # This is important especially for VB-HMM
 
-    ([ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh) || exit 1
+    [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
 
     local/diarize.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
@@ -127,7 +127,7 @@ if [ $stage -le 4 ]; then
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
     local/decode_diarized.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
-      exp/${datadir}_diarization data/$datadir data/lang_nosp_test_tgsmall \
+      exp/${datadir}_diarization/rttm data/$datadir data/lang_nosp_test_tgsmall \
       exp/chain${nnet3_affix}/tdnn_${affix}_sp exp/nnet3${nnet3_affix} \
       data/${datadir}_diarized || exit 1
   done
@@ -137,7 +137,6 @@ fi
 # Score decoded dev/eval sets
 #######################################################################
 if [ $stage -le 5 ]; then
-  # final scoring to get the challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_reco_diarized.sh --stage $score_stage \
