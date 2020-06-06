@@ -308,7 +308,7 @@ int32 main(int argc, char *argv[]) {
         } else {
           std::vector<int32> word_ids;
           if (decoder.PartialTraceback(&out_fst)) {
-            GetLinearSymbolSequence(out_fst, static_cast<vector<int32> *>(0),
+            GetLinearSymbolSequence(out_fst, static_cast<std::vector<int32> *>(0),
                                     &word_ids,
                                     static_cast<LatticeArc::Weight*>(0));
             for (size_t i = 0; i < word_ids.size(); i++) {
