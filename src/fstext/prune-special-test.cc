@@ -38,7 +38,7 @@ static void TestPruneSpecial() {
 
   {
     FstPrinter<Arc> fstprinter(*ifst, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
     std::cout << std::endl;
   }
 
@@ -47,7 +47,7 @@ static void TestPruneSpecial() {
   PruneSpecial<StdArc>(*ifst, &ofst1, beam);
   {
     FstPrinter<Arc> fstprinter(ofst1, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
     std::cout << std::endl;
   }
 
@@ -56,7 +56,7 @@ static void TestPruneSpecial() {
   Prune(*ifst, &ofst2, beam);
   {
     FstPrinter<Arc> fstprinter(ofst2, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
     std::cout << std::endl;
   }
 

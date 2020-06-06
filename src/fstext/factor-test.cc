@@ -79,7 +79,7 @@ template<class Arc> static void TestFactor() {
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(&fst);
@@ -87,7 +87,7 @@ template<class Arc> static void TestFactor() {
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   if (fst.Start() == kNoStateId) return;  // "Connect" made it empty.

@@ -92,12 +92,12 @@ void TestPushCompactLatticeWeights() {
       {
         fst::FstPrinter<CompactLatticeArc> printer(clat2, NULL, NULL,
                                                    NULL, true, true, "\t");
-        printer.Print(&std::cerr, "<unknown>");
+        printer.Print(std::cerr, "<unknown>");
       }
       {
         fst::FstPrinter<CompactLatticeArc> printer(*clat, NULL, NULL,
                                                    NULL, true, true, "\t");
-        printer.Print(&std::cerr, "<unknown>");
+        printer.Print(std::cerr, "<unknown>");
       }
       KALDI_ERR << "Bad lattice being pushed.";
     }

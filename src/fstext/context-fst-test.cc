@@ -196,7 +196,7 @@ static void TestContextFst(bool verbose, bool use_matcher) {
       std::cout << "Sequence FST is:\n";
       {  // Try to print the fst.
         FstPrinter<Arc> fstprinter(*f, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
     }
 
@@ -224,7 +224,7 @@ static void TestContextFst(bool verbose, bool use_matcher) {
       std::cout << "Composed FST is:\n";
       {  // Try to print the fst.
         FstPrinter<Arc> fstprinter(fst_composed, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
     }
 

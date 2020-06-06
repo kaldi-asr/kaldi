@@ -38,7 +38,7 @@ static void TestPushSpecial() {
 
   {
     FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> fst_copy(*fst);
@@ -56,7 +56,7 @@ static void TestPushSpecial() {
 
   {
     FstPrinter<Arc> fstprinter(fst_copy, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   KALDI_LOG << "Min value is " << min.Value() << ", max value is " << max.Value();
 

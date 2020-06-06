@@ -63,7 +63,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
     std::cout << "FST before lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-      fstprinter.Print(&std::cout, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
     VectorFst<Arc> det_fst;
     try {
@@ -76,7 +76,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       std::cout << "FST after lattice-determinizing is:\n";
       {
         FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
       KALDI_ASSERT(det_fst.Properties(kIDeterministic, true) & kIDeterministic);
       // OK, now determinize it a different way and check equivalence.
@@ -93,14 +93,14 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       std::cout << "Compact pruned FST is:\n";
       {
         FstPrinter<CompactArc> fstprinter(compact_pruned_fst, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
       ConvertLattice<Weight, Int>(det_fst, &compact_pruned_det_fst, false);
 
       std::cout << "Compact version of determinized FST is:\n";
       {
         FstPrinter<CompactArc> fstprinter(compact_pruned_det_fst, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
 
       if (ans)
@@ -123,14 +123,14 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
     std::cout << "FST before lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-      fstprinter.Print(&std::cout, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
     DeterminizeLatticePruned<Weight>(*fst, 10.0, &ofst);
     std::cout << "FST after lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
-      fstprinter.Print(&std::cout, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
     delete fst;
   }
