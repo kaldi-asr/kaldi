@@ -571,8 +571,8 @@ void Supervision::Write(std::ostream &os, bool binary) const {
       // Write using StdAcceptorCompactFst, making use of the fact that it's an
       // acceptor.
       fst::FstWriteOptions write_options("<unknown>");
-      fst::StdCompactAcceptorFst::WriteFst(
-          fst, fst::AcceptorCompactor<fst::StdArc>(), os,
+      fst::StdCompactAcceptorFst(
+          fst).Write(os,
           write_options);
     }
   } else {
@@ -586,8 +586,8 @@ void Supervision::Write(std::ostream &os, bool binary) const {
         // Write using StdAcceptorCompactFst, making use of the fact that it's an
         // acceptor.
         fst::FstWriteOptions write_options("<unknown>");
-        fst::StdCompactAcceptorFst::WriteFst(
-            e2e_fsts[i], fst::AcceptorCompactor<fst::StdArc>(), os,
+        fst::StdCompactAcceptorFst(
+            e2e_fsts[i]).Write(os,
             write_options);
       }
     }
