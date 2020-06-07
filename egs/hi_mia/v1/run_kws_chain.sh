@@ -102,7 +102,7 @@ SIL sil
 $kws_word $kws_phone
 EOF
 	local/prepare_dict.sh $data_local_dict
-	utils/prepare_lang.sh $data_local_dict "<GBG>" data/local/lang data/lang
+	utils/prepare_lang.sh --position-dependent-phone false $data_local_dict "<GBG>" data/local/lang data/lang
 	mkdir -p data/local/arpa
 	cat <<EOF > data/local/arpa/arpa
 \data\\
@@ -148,7 +148,7 @@ fi
 
 # alignment lattices
 if [ $stage -le 8 ];then
-	steps/align_fmllr_lats.sh --stage 0 --nj 40 --cmd "queue.pl -q all.q"\
+	steps/align_fmllr_lats.sh --stage 0 --nj 40 --cmd "${train_cmd}"\
        data/merge/train  data/lang exp/mono exp/datakws_mia_lats
 fi
 if [ $stage -le 9 ];then

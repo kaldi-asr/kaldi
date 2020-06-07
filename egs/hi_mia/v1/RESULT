@@ -1,3 +1,204 @@
+run_kws_kf.sh posterior
+shreld0.01
+false alarm per hour: 0.00208797844667, recall: 0.99445684478
+shreld0.02
+false alarm per hour: 0.000624767744333, recall: 0.998332630848
+shreld0.03
+false alarm per hour: 0.000278706800446, recall: 0.999254514845
+shreld0.04
+false alarm per hour: 0.000146321070234, recall: 0.999607867546
+shreld0.05
+false alarm per hour: 7.19992567819e-05, recall: 0.999806663257
+shreld0.06
+false alarm per hour: 4.18060200669e-05, recall: 0.999887498594
+shreld0.07
+false alarm per hour: 2.78706800446e-05, recall: 0.999924805905
+shreld0.08
+false alarm per hour: 1.85804533631e-05, recall: 0.999949733272
+shreld0.09
+false alarm per hour: 9.29022668153e-06, recall: 0.999974793782
+shreld0.1
+false alarm per hour: 2.32255667038e-06, recall: 0.999993680326
+shreld0.11
+false alarm per hour: 2.32255667038e-06, recall: 0.999993659248
+shreld0.12
+false alarm per hour: 2.32255667038e-06, recall: 0.999993639243
+shreld0.13
+false alarm per hour: 2.32255667038e-06, recall: 0.999993619438
+shreld0.14
+false alarm per hour: 0.0, recall: 1.0
+shreld0.15
+false alarm per hour: 0.0, recall: 1.0
+shreld0.16
+false alarm per hour: 0.0, recall: 1.0
+shreld0.17
+false alarm per hour: 0.0, recall: 1.0
+shreld0.18
+false alarm per hour: 0.0, recall: 1.0
+shreld0.19
+false alarm per hour: 0.0, recall: 1.0
+shreld0.2
+false alarm per hour: 0.0, recall: 1.0
+shreld0.21
+false alarm per hour: 0.0, recall: 1.0
+shreld0.22
+false alarm per hour: 0.0, recall: 1.0
+shreld0.23
+false alarm per hour: 0.0, recall: 1.0
+shreld0.24
+false alarm per hour: 0.0, recall: 1.0
+shreld0.25
+false alarm per hour: 0.0, recall: 1.0
+shreld0.26
+false alarm per hour: 0.0, recall: 1.0
+shreld0.27
+false alarm per hour: 0.0, recall: 1.0
+shreld0.28
+false alarm per hour: 0.0, recall: 1.0
+shreld0.29
+false alarm per hour: 0.0, recall: 1.0
+shreld0.3
+false alarm per hour: 0.0, recall: 1.0
+shreld0.31
+false alarm per hour: 0.0, recall: 1.0
+shreld0.32
+false alarm per hour: 0.0, recall: 1.0
+shreld0.33
+false alarm per hour: 0.0, recall: 1.0
+shreld0.34
+false alarm per hour: 0.0, recall: 1.0
+shreld0.35
+false alarm per hour: 0.0, recall: 1.0
+shreld0.36
+false alarm per hour: 0.0, recall: 1.0
+shreld0.37
+false alarm per hour: 0.0, recall: 1.0
+shreld0.38
+false alarm per hour: 0.0, recall: 1.0
+shreld0.39
+false alarm per hour: 0.0, recall: 1.0
+shreld0.4
+false alarm per hour: 0.0, recall: 1.0
+shreld0.41
+false alarm per hour: 0.0, recall: 1.0
+shreld0.42
+false alarm per hour: 0.0, recall: 1.0
+shreld0.43
+false alarm per hour: 0.0, recall: 1.0
+shreld0.44
+false alarm per hour: 0.0, recall: 1.0
+shreld0.45
+false alarm per hour: 0.0, recall: 1.0
+shreld0.46
+false alarm per hour: 0.0, recall: 1.0
+shreld0.47
+false alarm per hour: 0.0, recall: 1.0
+shreld0.48
+false alarm per hour: 0.0, recall: 1.0
+shreld0.49
+false alarm per hour: 0.0, recall: 1.0
+shreld0.5
+false alarm per hour: 0.0, recall: 1.0
+shreld0.51
+false alarm per hour: 0.0, recall: 1.0
+shreld0.52
+false alarm per hour: 0.0, recall: 1.0
+shreld0.53
+false alarm per hour: 0.0, recall: 1.0
+shreld0.54
+false alarm per hour: 0.0, recall: 1.0
+shreld0.55
+false alarm per hour: 0.0, recall: 1.0
+shreld0.56
+false alarm per hour: 0.0, recall: 1.0
+shreld0.57
+false alarm per hour: 0.0, recall: 1.0
+shreld0.58
+false alarm per hour: 0.0, recall: 1.0
+shreld0.59
+false alarm per hour: 0.0, recall: 1.0
+shreld0.6
+false alarm per hour: 0.0, recall: 1.0
+shreld0.61
+false alarm per hour: 0.0, recall: 1.0
+shreld0.62
+false alarm per hour: 0.0, recall: 1.0
+shreld0.63
+false alarm per hour: 0.0, recall: 1.0
+shreld0.64
+false alarm per hour: 0.0, recall: 1.0
+shreld0.65
+false alarm per hour: 0.0, recall: 1.0
+shreld0.66
+false alarm per hour: 0.0, recall: 1.0
+shreld0.67
+false alarm per hour: 0.0, recall: 1.0
+shreld0.68
+false alarm per hour: 0.0, recall: 1.0
+shreld0.69
+false alarm per hour: 0.0, recall: 1.0
+shreld0.7
+false alarm per hour: 0.0, recall: 1.0
+shreld0.71
+false alarm per hour: 0.0, recall: 1.0
+shreld0.72
+false alarm per hour: 0.0, recall: 1.0
+shreld0.73
+false alarm per hour: 0.0, recall: 1.0
+shreld0.74
+false alarm per hour: 0.0, recall: 1.0
+shreld0.75
+false alarm per hour: 0.0, recall: 1.0
+shreld0.76
+false alarm per hour: 0.0, recall: 1.0
+shreld0.77
+false alarm per hour: 0.0, recall: 1.0
+shreld0.78
+false alarm per hour: 0.0, recall: 1.0
+shreld0.79
+false alarm per hour: 0.0, recall: 1.0
+shreld0.8
+false alarm per hour: 0.0, recall: 1.0
+shreld0.81
+false alarm per hour: 0.0, recall: 1.0
+shreld0.82
+false alarm per hour: 0.0, recall: 1.0
+shreld0.83
+false alarm per hour: 0.0, recall: 1.0
+shreld0.84
+false alarm per hour: 0.0, recall: 1.0
+shreld0.85
+false alarm per hour: 0.0, recall: 1.0
+shreld0.86
+false alarm per hour: 0.0, recall: 1.0
+shreld0.87
+false alarm per hour: 0.0, recall: 1.0
+shreld0.88
+false alarm per hour: 0.0, recall: 1.0
+shreld0.89
+false alarm per hour: 0.0, recall: 1.0
+shreld0.9
+false alarm per hour: 0.0, recall: 1.0
+shreld0.91
+false alarm per hour: 0.0, recall: 1.0
+shreld0.92
+false alarm per hour: 0.0, recall: 1.0
+shreld0.93
+false alarm per hour: 0.0, recall: 1.0
+shreld0.94
+false alarm per hour: 0.0, recall: 1.0
+shreld0.95
+false alarm per hour: 0.0, recall: 1.0
+shreld0.96
+false alarm per hour: 0.0, recall: 1.0
+shreld0.97
+false alarm per hour: 0.0, recall: 1.0
+shreld0.98
+false alarm per hour: 0.0, recall: 1.0
+shreld0.99
+false alarm per hour: 0.0, recall: 1.0
+shreld1.0
+false alarm per hour: 0.0, recall: 1.0
 run_kws_chain.sh
 shreld0.01
 false alarm per hour: 0.000601542177629, recall: 0.998398803121
@@ -199,7 +400,7 @@ shreld0.99
 false alarm per hour: 0.0, recall: 1.0
 shreld1.0
 false alarm per hour: 0.0, recall: 1.0
-run_kws_kf.sh
+run_kws_kf.sh fst
 shreld0.01
 false alarm per hour: 0.00208797844667, recall: 0.99445684478
 shreld0.02
