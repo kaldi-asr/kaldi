@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     po.Register("lm-scale", &lm_scale,
                 "Scaling factor for language model scores.");
     po.Register("word-ins-penalty", &word_ins_penalty,
-                "Word insertion penality.");
+                "Word insertion penalty.");
     
     po.Read(argc, argv);
 

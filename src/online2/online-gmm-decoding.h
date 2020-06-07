@@ -146,8 +146,8 @@ struct OnlineGmmDecodingConfig {
     opts->Register("model", &model_rxfilename, "(Extended) filename for model, "
                    "typically the one used for fMLLR computation.  Required option.");
     opts->Register("rescore-model", &rescore_model_rxfilename, "(Extended) filename "
-                   "for model to rescore lattices with, e.g. discriminatively trained"
-                   "model, if it differs from that supplied to --model option.  Must"
+                   "for model to rescore lattices with, e.g. discriminatively trained "
+                   "model, if it differs from that supplied to --model option.  Must "
                    "have the same tree.");
     opts->Register("fmllr-basis", &fmllr_basis_rxfilename, "(Extended) filename "
                    "of fMLLR basis object, as output by gmm-basis-fmllr-training");
