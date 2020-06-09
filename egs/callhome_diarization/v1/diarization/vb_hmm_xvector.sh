@@ -13,6 +13,15 @@ stage=0
 nj=10
 cleanup=true
 rttm_channel=0
+
+# The hyperparameters used here are taken from the DIHARD
+# optimal hyperparameter values reported in:
+# http://www.fit.vutbr.cz/research/groups/speech/publi/2019/diez_IEEE_ACM_2019_08910412.pdf
+# These may require tuning for different datasets.
+loop_prob=0.85
+fa=0.2
+fb=1
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -71,7 +80,7 @@ echo -e "Performing bayesian HMM based x-vector clustering..\n"
 for n in `seq $nj`; do
   cat <<-EOF > $dir/tmp/vb_hmm.$n.sh
   python3 diarization/vb_hmm_xvector.py \
-      --loop-prob 0.85 --fa 0.2 --fb 1 \
+      --loop-prob $loop_prob --fa $fa --fb $fb \
       $xvec_dir/xvector_norm.ark $plda $dir/labels.$n $dir/labels.vb.$n
 EOF
 done
