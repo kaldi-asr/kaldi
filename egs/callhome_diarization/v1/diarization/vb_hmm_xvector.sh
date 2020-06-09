@@ -43,17 +43,19 @@ for f in $dir/labels ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
-# check if kaldi_io and numexpr are installed
+# check if numexpr is installed. Also install
+# a modified version of kaldi_io with extra functions
+# needed to read the PLDA file
 result=`python3 -c "\
 try:
     import kaldi_io, numexpr
-    print('1')
+    print (int(hasattr(kaldi_io, 'read_plda')))
 except ImportError:
     print('0')"`
 
 if [ "$result" == "0" ]; then
     echo "Installing kaldi_io and numexpr"
-    python3 -m pip install kaldi_io
+    python3 -m pip install git+https://github.com/desh2608/kaldi-io-for-python.git@vbx
     python3 -m pip install numexpr
 fi
 
