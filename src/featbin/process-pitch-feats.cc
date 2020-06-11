@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     // Register the options
     po.Register("normalization-window-size",
                 &normalization_window_size, "Size of window used for "
-                "moving window nomalization (must be odd).");
+                "moving window normalization (must be odd).");
     po.Register("average-window-size",
                 &average_window_size,
                 "Size of moving average window (must be odd).");

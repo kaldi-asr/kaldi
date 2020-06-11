@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   
     const char *usage =
         "Do forward-backward and collect frame level MPE posteriors over\n" 
-        "lattices, which can be fed into gmm-acc-stats2 to do MPE traning.\n"
+        "lattices, which can be fed into gmm-acc-stats2 to do MPE training.\n"
         "Caution: this is not really MPE, this is MPFE (minimum phone frame\n"
         "error).  The posteriors may be positive or negative.\n"
         "Usage: lattice-to-mpe-post [options] <model> <num-posteriors-rspecifier>\n"

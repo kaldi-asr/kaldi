@@ -120,7 +120,7 @@ Arguments are as follow:
   - words.txt - word dictionary (mapping word ids to their textual representation)
   - '1:2:3:4:5' - list of silence phoneme ids
   - 5010 - port the server is listening on
-  - word_boundary.int - a list of phoneme boundary information required for word alignemnt
+  - word_boundary.int - a list of phoneme boundary information required for word alignment
   - final.mat - feature LDA matrix
   
  Command line to start the client:

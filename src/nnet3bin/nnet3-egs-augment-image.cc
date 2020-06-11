@@ -344,7 +344,7 @@ int main(int argc, char *argv[]) {
         "  nnet3-egs-augment-image --horizontal-flip-prob=0.5 --horizontal-shift=0.1\\\n"
         "       --vertical-shift=0.1 --srand=103 --num-channels=3 --fill-mode=nearest ark:- ark:-\n"
         "\n"
-        "Requires that each eg contain a NnetIo object 'input', with successive\n"
+        "Requires that each example contain a NnetIo object 'input', with successive\n"
         "'t' values representing different x offsets , and the feature dimension\n"
         "representing the y offset and the channel (color), with the channel\n"
         "varying the fastest.\n"
