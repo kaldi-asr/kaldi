@@ -15,7 +15,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . utils/parse_options.sh || exit 1;
 if [ $# != 6 ]; then
-  echo "Usage: $0 <rttm-dir> <in-data-dir> <lang-dir> <model-dir> <ivector-dir> <out-dir>"
+  echo "Usage: $0 <rttm> <in-data-dir> <lang-dir> <model-dir> <ivector-dir> <out-dir>"
   echo "e.g.: $0 data/rttm data/dev data/lang_chain exp/chain/tdnn_1a \
                  exp/nnet3_cleaned data/dev_diarized"
   echo "Options: "
@@ -24,14 +24,14 @@ if [ $# != 6 ]; then
   exit 1;
 fi
 
-rttm_dir=$1
+rttm=$1
 data_in=$2
 lang_dir=$3
 asr_model_dir=$4
 ivector_extractor=$5
 out_dir=$6
 
-for f in $rttm_dir/rttm $data_in/wav.scp $data_in/text.bak \
+for f in $rttm $data_in/wav.scp $data_in/text.bak \
          $lang_dir/L.fst $asr_model_dir/graph${lm_suffix}/HCLG.fst \
          $asr_model_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
@@ -46,8 +46,8 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0 creating segments file from rttm and utt2spk, reco2file_and_channel "
-  local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/rttm \
-    <(awk '{print $2" "$2" "$3}' $rttm_dir/rttm |sort -u) \
+  local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm \
+    <(awk '{print $2" "$2" "$3}' $rttm |sort -u) \
     ${out_dir}_hires/utt2spk ${out_dir}_hires/segments
 
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt

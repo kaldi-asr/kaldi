@@ -31,7 +31,8 @@ tar -xvzf 0012_diarization_v1.tar.gz
 rm -f 0012_diarization_v1.tar.gz
 
 # Download PLDA model trained on augmented Librispeech data
-wget https://desh2608.github.io/static/files/jsalt/plda 0012_diarization_v1/exp/xvector_nnet_1a/
+rm 0012_diarization_v1/exp/xvector_nnet_1a/plda
+wget https://desh2608.github.io/static/files/jsalt/plda -P 0012_diarization_v1/exp/xvector_nnet_1a/
 cd ../..
 cp -r ${dir}/0012_diarization_v1/exp .
 rm -rf ${dir}

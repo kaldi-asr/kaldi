@@ -111,7 +111,7 @@ if [ $stage -le 3 ]; then
 
     [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
 
-    local/diarize.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
+    local/diarize_bhmm.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir} \
@@ -127,7 +127,7 @@ if [ $stage -le 4 ]; then
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
     local/decode_diarized.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
-      exp/${datadir}_diarization data/$datadir data/lang_nosp_test_tgsmall \
+      exp/${datadir}_diarization/rttm.vb data/$datadir data/lang_test_tgsmall \
       exp/chain${nnet3_affix}/tdnn_${affix}_sp exp/nnet3${nnet3_affix} \
       data/${datadir}_diarized || exit 1
   done
@@ -163,7 +163,7 @@ if $rnnlm_rescore; then
       rnnlm/lmrescore$pruned.sh \
           --cmd "$decode_cmd --mem 8G" \
           --weight 0.45 --max-ngram-order $ngram_order \
-          data/lang_nosp_test_tgsmall $rnnlm_dir \
+          data/lang_test_tgsmall $rnnlm_dir \
           data/${decode_set}_diarized_hires ${decode_dir} \
           ${ac_model_dir}/decode_${decode_set}_diarized_2stage_rescore
     done
@@ -207,7 +207,7 @@ fi
 if [ $stage -le 9 ]; then
   local/decode_oracle.sh --stage $decode_oracle_stage \
     --affix $affix \
-    --lang-dir data/lang_nosp_test_tgsmall \
+    --lang-dir data/lang_test_tgsmall \
     --lm-suffix "_tgsmall" \
     --rnnlm-rescore $rnnlm_rescore \
     --test_sets "$test_sets"
