@@ -91,11 +91,17 @@ def ComputeNMEParameters(A, p, max_num_clusters):
     Ap = (Ap + np.transpose(Ap))/2
     # Laplacian matrix computation
     Lp = Laplacian(Ap)
+    N = Lp.shape[0]
     # EigenValue Decomposition
-    S, eig_vecs = scipy.linalg.eigh(Lp)
+    # Get max_num_clusters+1 lowest eigenvalues sorted in ascending order
+    S, _ = scipy.sparse.linalg.eigsh(-Lp, k=max_num_clusters+1, which='LA')
+    S = -S[::-1]
+    # Get largest eigenvalue
+    Smax, _ = scipy.sparse.linalg.eigsh(Lp, k=1, which='LA')
     # Eigengap computation
     e = Eigengap(S)
-    g = np.max(e[:max_num_clusters])/(np.max(S)+1e-10)
+#    g = np.max(e[:max_num_clusters])/(np.max(S)+1e-10)
+    g = np.max(e[:max_num_clusters])/(Smax[0]+1e-10)
     r = p/g
     k = np.argmax(e[:max_num_clusters])
     return (e, g, k, r)
