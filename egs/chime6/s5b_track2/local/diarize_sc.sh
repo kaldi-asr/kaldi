@@ -70,7 +70,7 @@ fi
 if [ $stage -le 3 ]; then
   # Perform cosine similarity scoring on all pairs of segments for each recording.
   echo "$0: performing cosine similarity scoring between all pairs of x-vectors"
-  local/spectral_clustering/score_cossim.sh --cmd "$cmd" \
+  diarization/score_cossim.sh --cmd "$cmd" \
     --nj $nj $out_dir/xvectors_${name} \
     $out_dir/xvectors_${name}/cossim_scores
 fi
@@ -79,7 +79,7 @@ fi
 if [ $stage -le 4 ]; then
   echo "$0: performing spectral clustering using cosine similarity scores (we assume 4 speakers per recording)"
   awk '{print $1, "4"}' data/$name/wav.scp > data/$name/reco2num_spk
-  local/spectral_clustering/scluster.sh --cmd "$cmd" --nj $nj \
+  diarization/scluster.sh --cmd "$cmd" --nj $nj \
     --reco2num-spk data/$name/reco2num_spk \
     --rttm-channel 1 \
     $out_dir/xvectors_${name}/cossim_scores $out_dir

@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# Copyright  2020  Maxim Korenevsky (STC-innovations Ltd)
+# Apache 2.0.
+
 import argparse
 import os
 import numpy as np
@@ -8,10 +13,8 @@ from sklearn.cluster import SpectralClustering
 
 '''
    Spectral Clustering based on binarization and automatic thresholding
-   Paper: T.Park, K.Han, M.Kumar, and S.Narayanan, “Auto-tuning spectral clustering for speaker diarization using normalized maximumeigengap”, IEEE Signal Processing Letters, vol. 27, pp. 381–385,2019
+   Paper: T.Park, K.Han, M.Kumar, and S.Narayanan, Auto-tuning spectral clustering for speaker diarization using normalized maximumeigengap, IEEE Signal Processing Letters, vol. 27, pp. 381-385,2019
 '''
-
-
 
 #   Input-output routines
 

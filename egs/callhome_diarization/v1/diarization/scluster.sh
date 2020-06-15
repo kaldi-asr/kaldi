@@ -2,9 +2,10 @@
 
 # Copyright       2016  David Snyder
 #            2017-2018  Matthew Maciejewski
+#                 2020  Maxim Korenevsky (STC-innovations Ltd)
 # Apache 2.0.
 
-# This script performs agglomerative clustering using scored
+# This script performs spectral clustering using scored
 # pairs of subsegments and produces a rttm file with speaker
 # labels derived from the clusters.
 
@@ -91,7 +92,7 @@ if [ $stage -le 0 ]; then
     utils/filter_scp.pl $sdata/$j/spk2utt $srcdir/scores.scp > $dir/scores.$j.scp
   done
   $cmd JOB=1:$nj $dir/log/spectral_cluster.JOB.log \
-    python local/spectral_clustering/spec_clust.py \
+    python diarization/spec_clust.py \
       --reco2num_spk $reco2num_spk \
       scp:$dir/scores.JOB.scp ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi

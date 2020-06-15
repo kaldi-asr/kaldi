@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright  2016-2018  David Snyder
 #            2017-2018  Matthew Maciejewski
+#                 2020  Maxim Korenevsky (STC-innovations Ltd)
 # Apache 2.0.
 
 # This script is a modified version of diarization/score_plda.sh
@@ -11,7 +12,7 @@
 # affinity matrices, one for each recording.  Most likely, the x-vectors
 # were computed using diarization/nnet3/xvector/extract_xvectors.sh.
 # The affinity matrices are most likely going to be clustered using
-# diarization/cluster.sh.
+# diarization/scluster.sh.
 
 # Begin configuration section.
 cmd="run.pl"
@@ -67,7 +68,7 @@ feats="scp:$sdata/JOB/feats.scp"
 if [ $stage -le 0 ]; then
   echo "$0: scoring xvectors"
   $cmd JOB=1:$nj $dir/log/cossim_scoring.JOB.log \
-      python local/spectral_clustering/calc_cossim_scores.py \
+      python diarization/calc_cossim_scores.py \
       ark:$sdata/JOB/spk2utt "$feats" ark,scp:$dir/scores.JOB.ark,$dir/scores.JOB.scp || exit 1;
 fi
 

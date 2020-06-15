@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# Copyright  2020  Maxim Korenevsky (STC-innovations Ltd)
+# Apache 2.0.
+
 import argparse
 import numpy as np
 from scipy.spatial.distance import cosine, pdist, squareform
