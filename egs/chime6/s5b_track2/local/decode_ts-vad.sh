@@ -58,7 +58,7 @@ use_sc=true
 
 $use_sc && daffix="_sc"
 # This script also needs the phonetisaurus g2p, srilm, beamformit
-#./local/check_tools.sh || exit 1
+./local/check_tools.sh || exit 1
 
 ###########################################################################
 # We first generate the synchronized audio files across arrays and
