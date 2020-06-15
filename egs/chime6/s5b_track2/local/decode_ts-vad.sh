@@ -44,6 +44,11 @@ test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
 # ts-vad
 ts_vad_dir=exp/ts-vad_b
 ivector_dir=exp/nnet3_b
+ups=18
+
+#spectral clustering
+daffix=
+use_sc=true
 
 . ./utils/parse_options.sh
 
@@ -51,6 +56,7 @@ ivector_dir=exp/nnet3_b
 . ./path.sh
 . ./conf/sad.conf
 
+$use_sc && daffix="_sc"
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 #./local/check_tools.sh || exit 1
 
@@ -159,7 +165,7 @@ if [ $stage -le 3 ]; then
       hyp_rttm=${test_dir}/rttm.U06
       grep 'U06' ${test_dir}/rttm > ${test_dir}/rttm.U06
       echo "Array U06 selected for scoring.."
-      
+
       if $use_new_rttm_reference == "true"; then
         echo "Use the new RTTM reference."
         mode="$(cut -d'_' -f1 <<<"$datadir")"
@@ -186,7 +192,7 @@ if [ $stage -le 4 ]; then
     else
       ref_rttm=data/${datadir}_${nnet_type}_seg/ref_rttm
     fi
-    local/diarize.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
+    local/diarize${daffix}.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir}_${nnet_type}_seg \
@@ -226,6 +232,7 @@ if [ $stage -le 5 ]; then
       ivector_affix=it${it}-init
       it=$((it+1))
       local/ts-vad/diarize_TS-VAD_it2.sh --cmd "$train_cmd" \
+        --ups $ups \
         --ref-rttm $ref_rttm \
         --it $it \
         --ivector-affix $ivector_affix \
@@ -233,7 +240,7 @@ if [ $stage -le 5 ]; then
         --audio_dir $audio_dir \
         $ts_vad_dir $ivector_dir $initdir \
         $ts_vad_dir/it${it}_${ivector_affix} || exit 1
-      initdir=$ts_vad_dir/it${it}_${ivector_affix}/${mode}_20ch-AVG_hires_split10000_18ups
+      initdir=$ts_vad_dir/it${it}_${ivector_affix}/${mode}_20ch-AVG_hires_split10000_${ups}ups
     done
 
     if [ ! -f data/${datadir}_ts-vad-it${ts_vad_num_iters}-diarized_hires/feats.scp ]; then
