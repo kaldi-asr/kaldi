@@ -2,9 +2,9 @@
 # Copyright   2019   Ashish Arora, Vimal Manohar, Desh Raj
 # Apache 2.0.
 # This script is similar to the decode_diarized.sh script, except that is
-# works on CSS separated audio streams. The key difference here is that
-# we don't extract features again, since we already did that after SAD.
-# We just create a new utt2spk and spk2utt file.
+# works on CSS separated audio streams. The key difference here is in how
+# we create segments for feature extraction, since now they will have to
+# come from the respective streams.
 
 stage=0
 nj=8
