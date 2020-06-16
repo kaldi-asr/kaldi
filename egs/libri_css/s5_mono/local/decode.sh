@@ -11,12 +11,12 @@
 nj=8
 stage=0
 score_sad=true
-diarizer_stage=0
+diarizer_stage=1
 decode_diarize_stage=0
 decode_oracle_stage=0
 score_stage=0
 nnet3_affix=_cleaned # affix for the chain directory name
-affix=1d   # affix for the TDNN directory name
+affix=1d_ft   # affix for the TDNN directory name
 
 # If the following is set to true, we use the oracle speaker and segment
 # information instead of performing SAD and diarization.
@@ -111,7 +111,7 @@ if [ $stage -le 3 ]; then
 
     [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
 
-    local/diarize_bhmm.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
+    local/diarize_spectral.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir} \
@@ -127,8 +127,8 @@ if [ $stage -le 4 ]; then
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
     local/decode_diarized.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
-      exp/${datadir}_diarization/rttm.vb data/$datadir data/lang_test_tgsmall \
-      exp/chain${nnet3_affix}/tdnn_${affix}_sp exp/nnet3${nnet3_affix} \
+      exp/${datadir}_diarization/rttm data/$datadir data/lang_test_tgsmall \
+      exp/chain${nnet3_affix}/tdnn_${affix} exp/nnet3${nnet3_affix} \
       data/${datadir}_diarized || exit 1
   done
 fi
@@ -140,9 +140,9 @@ if [ $stage -le 5 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_reco_diarized.sh --stage $score_stage \
-      --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${dev_set}_diarized_2stage \
+      --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_2stage \
       --dev_datadir ${dev_set}_diarized_hires \
-      --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${eval_set}_diarized_2stage \
+      --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${eval_set}_diarized_2stage \
       --eval_datadir ${eval_set}_diarized_hires
 fi
 
@@ -153,7 +153,7 @@ if $rnnlm_rescore; then
   if [ $stage -le 6 ]; then
     echo "$0: Perform RNNLM lattice-rescoring"
     pruned=
-    ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}_sp
+    ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}
     if $pruned_rescore; then
       pruned=_pruned
     fi
@@ -171,10 +171,10 @@ if $rnnlm_rescore; then
   
   if [ $stage -le 7 ]; then
     echo "$0: WERs after rescoring with $rnnlm_dir"
-    local/score_reco_diarized.sh --stage $score_stage \
-        --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${dev_set}_diarized_2stage_rescore \
+    local/score_reco_diarized.sh --stage 4 \
+        --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_2stage_rescore \
         --dev_datadir ${dev_set}_diarized_hires \
-        --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${eval_set}_diarized_2stage_rescore \
+        --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${eval_set}_diarized_2stage_rescore \
         --eval_datadir ${eval_set}_diarized_hires
   fi
 fi
