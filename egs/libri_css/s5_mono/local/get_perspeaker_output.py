@@ -15,6 +15,9 @@ def get_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--affix", type=str,
                         help="Append in front of output file")
+    parser.add_argument("--multi-stream", dest='multi_stream', action='store_true',
+                        default=False,
+                        help="Score with multiple decoding streams e.g. CSS")
     parser.add_argument("input_text", type=str,
                         help="path of text file")
     parser.add_argument("input_utt2spk", type=str,
@@ -32,11 +35,15 @@ class Utterance:
     start_time = 0
     end_time = 0
 
-    def __init__(self, uttid, spkid, text):
+    def __init__(self, uttid, spkid, text, multi_stream):
         parts = uttid.strip().split('_')
         self.reco_id = '_'.join(parts[1:4])
-        self.start_time = float(parts[4])/100
-        self.end_time = float(parts[5])/100
+        if not multi_stream:
+            self.start_time = float(parts[4])/100
+            self.end_time = float(parts[5])/100
+        else:
+            self.start_time = float(parts[5])/100
+            self.end_time = float(parts[6])/100            
         self.spk_id = spkid
         self.text = text
 
@@ -62,7 +69,7 @@ def main():
         parts = line.strip().split(maxsplit=1)
         uttid = parts[0]
         text = "" if len(parts) == 1 else parts[1]
-        utterance = Utterance(uttid, utt2spk[uttid], text)
+        utterance = Utterance(uttid, utt2spk[uttid], text, args.multi_stream)
         utt_list.append(utterance)
 
     # We group the utterance list into a dictionary indexed by (reco_id, spk_id)

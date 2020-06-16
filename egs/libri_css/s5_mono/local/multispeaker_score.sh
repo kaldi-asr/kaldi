@@ -9,6 +9,10 @@ stage=0
 cmd=queue.pl
 datadir=
 get_stats=false # TODO: Implement 'true' (i.e. per utterance alignment of output)
+multistream=false # Set to true if input audio was separated (e.g. CSS)
+
+multistream_opt=
+$multistream && multistream_opt="--multi-stream"
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
@@ -30,7 +34,11 @@ out_dir=$3
 output_dir=$out_dir/per_speaker_output
 wer_dir=$out_dir/per_speaker_wer
 
-recording_ids=( $(awk '{print $1}' data/$datadir/wav.scp) )
+if [ $multistream ]; then
+  recording_ids=( $(awk '{$1=$1;sub(/_[0-9]*$/, "", $1); print $1}' data/$datadir/wav.scp | sort -u) )
+else
+  recording_ids=( $(awk '{print $1}' data/$datadir/wav.scp) )
+fi
 
 for f in $ref_file $hyp_file; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
@@ -42,7 +50,7 @@ if [ $stage -le 0 ]; then
   local/wer_output_filter < $ref_file > $output_dir/ref_filt.txt
   local/wer_output_filter < $hyp_file > $output_dir/hyp_filt.txt
   local/get_perspeaker_output.py --affix "ref" $output_dir/ref_filt.txt data/$datadir/utt2spk.bak $output_dir
-  local/get_perspeaker_output.py --affix "hyp" $output_dir/hyp_filt.txt data/$datadir/utt2spk $output_dir
+  local/get_perspeaker_output.py --affix "hyp" $multistream_opt $output_dir/hyp_filt.txt data/$datadir/utt2spk $output_dir
 fi
 
 if [ $stage -le 1 ]; then

@@ -16,6 +16,7 @@ dev_decodedir=
 eval_decodedir=
 dev_datadir=
 eval_datadir=
+multistream=false # Set to true if input audio was separated (e.g. CSS)
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -45,6 +46,7 @@ if [ $stage -le 1 ]; then
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
     for LMWT in $(seq $min_lmwt $max_lmwt); do
       local/multispeaker_score.sh --cmd "$cmd" \
+      --multistream $multistream \
       --datadir $dev_datadir --get_stats false data/$dev_datadir/text \
       $dev_decodedir/scoring_kaldi/penalty_$wip/$LMWT.txt \
       $dev_decodedir/scoring_kaldi_multispeaker/penalty_$wip/$LMWT
@@ -80,6 +82,16 @@ if [ $stage -le 3 ]; then
     > $dev_decodedir/scoring_kaldi_multispeaker/best_wer
   echo "Cleaning up WER files..."
   find $dev_decodedir/scoring_kaldi_multispeaker/penalty_*/*/per_speaker_wer -maxdepth 1 -name "wer_*" -delete
+
+  # Compute overall WER average
+  cat $dev_decodedir/scoring_kaldi_multispeaker/best_wer | awk '
+    {
+      ERR+=$5; WC+=$7; INS+=$8; DEL+=$10; SUB+=$12;
+    }END{
+      WER=ERR*100/WC;
+      printf("%%WER %.2f [ %d / %d, %d ins, %d del, %d sub ]",WER,ERR,WC,INS,DEL,SUB);
+    }
+    ' > $dev_decodedir/scoring_kaldi_multispeaker/best_wer_average
 fi
 
 # Now scoring the eval set using best LMWT and WIP
@@ -89,6 +101,7 @@ if [ $stage -le 4 ]; then
   best_lmwt="$(cat $dev_decodedir/scoring_kaldi_multispeaker/lmwt)"
   best_wip="$(cat $dev_decodedir/scoring_kaldi_multispeaker/wip)"
   local/multispeaker_score.sh --cmd "$cmd" \
+    --multistream $multistream \
     --datadir $eval_datadir data/$eval_datadir/text \
     $eval_decodedir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
     $eval_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/
@@ -112,8 +125,8 @@ if [ $stage -le 5 ]; then
         WER=ERR*100/WC;
         printf("%s %%WER %.2f [ %d / %d, %d ins, %d del, %d sub ]\n",COND,WER,ERR,WC,INS,DEL,SUB);
       }
-      ' >> $eval_decodedir/scoring_kaldi_multispeaker/best_wer
-  done
+      '
+  done > $eval_decodedir/scoring_kaldi_multispeaker/best_wer
 
   # Compute overall WER average
   cat $wer_dir/best_wer_all | awk '
