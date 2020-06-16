@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright   2020   Ivan Medennikov
+# Copyright   2020   Ivan Medennikov (STC-innovations Ltd)
 
 # Apache 2.0.
 #

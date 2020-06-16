@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 # Copyright   2020   Ivan Medennikov
 
 # Apache 2.0.

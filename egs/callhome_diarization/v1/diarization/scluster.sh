@@ -44,6 +44,11 @@ fi
 srcdir=$1
 dir=$2
 
+reco2num_spk_opts=
+if [ ! $reco2num_spk == "" ]; then
+  reco2num_spk_opts="--reco2num-spk $reco2num_spk"
+fi
+
 mkdir -p $dir/tmp
 
 for f in $srcdir/scores.scp $srcdir/spk2utt $srcdir/utt2spk $srcdir/segments ; do
@@ -72,8 +77,7 @@ if [ $stage -le 0 ]; then
     utils/filter_scp.pl $sdata/$j/spk2utt $srcdir/scores.scp > $dir/scores.$j.scp
   done
   $cmd JOB=1:$nj $dir/log/spectral_cluster.JOB.log \
-    python diarization/spec_clust.py \
-      --reco2num_spk $reco2num_spk \
+    python diarization/spec_clust.py $reco2num_spk_opts \
       scp:$dir/scores.JOB.scp ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 

@@ -294,7 +294,8 @@ fi
 ##########################################################################
 # DECODING: In track 2, we are given raw utterances without segment
 # or speaker information, so we have to decode the whole pipeline, i.e.,
-# SAD -> Diarization (x-vectors + Spectral Clustering) -> TS-VAD Diarization -> ASR.
+# SAD -> Diarization (x-vectors + Spectral Clustering) -> TS-VAD Diarization
+# GSS -> ASR.
 # This is done in the local/decode_ts-vad.sh script.
 ##########################################################################
 if [ $stage -le 18 ]; then

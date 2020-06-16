@@ -1,6 +1,6 @@
 #!/bin/bash
 # Copyright   2019   David Snyder
-#             2020   Maxim Korenevsky, Ivan Medennikov (STC-innovastions Ltd)
+#             2020   Maxim Korenevsky, Ivan Medennikov (STC-innovations Ltd)
 # Apache 2.0.
 #
 # This script takes an input directory that has a segments file (and

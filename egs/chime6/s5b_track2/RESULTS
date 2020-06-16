@@ -11,14 +11,14 @@ Dev (new RTTM)        1.9             0.7           2.6
 Eval (old RTTM)       4.1             1.8           5.9           
 Eval (new RTTM)       4.3             1.5           5.8           
 
-# Diarization
+# Diarization (x-vectors + AHC)
                     DER      JER
 Dev (old RTTM)    61.56     69.75
 Dev (new RTTM)    63.42     70.83
 Eval (old RTTM)   61.96     71.40
 Eval (new RTTM)   68.20     72.54
 
-# Diarization (Spectral Clustering)
+# Diarization (x-vectors + Spectral Clustering)
                     DER      JER
 Dev (new RTTM)    59.03     61.94
 Eval (new RTTM)   64.67     63.36
@@ -28,6 +28,6 @@ Eval (new RTTM)   64.67     63.36
 Dev (new RTTM)    45.29     52.24
 Eval (new RTTM)   41.33     44.83
 
-# ASR nnet3 tdnn+chain
-Dev:  %WER 76.60 [ 45103 / 58881, 1239 ins, 24854 del, 19010 sub 
-Eval: %WER 66.80 [ 36827 / 55132, 1070 ins, 22100 del, 13657 sub ]
+# ASR nnet3 tdnn+chain (GSS on TS-VAD segments)
+Dev:  %WER 67.50 [ 39745 / 58881, 1524 ins, 21250 del, 16971 sub ]
+Eval: %WER 60.23 [ 33204 / 55132, 869 ins, 21582 del, 10753 sub ]

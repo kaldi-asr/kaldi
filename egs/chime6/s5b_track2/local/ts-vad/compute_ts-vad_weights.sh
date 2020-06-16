@@ -4,7 +4,7 @@
 #           2015  Vijayaditya Peddinti
 #           2016  Vimal Manohar
 #           2017  Pegah Ghahremani
-#           2020  Ivan Medennikov
+#           2020  Ivan Medennikov (STC-innovations Ltd)
 # Apache 2.0
 
 # Computes training alignments using nnet3 DNN, with output to lattices.

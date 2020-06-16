@@ -1,9 +1,11 @@
 #!/usr/bin/perl
+# Copyright     2020  Ivan Medennikov (STC-innovations Ltd)
+# Apache 2.0.
 
 ($filein,$utt2spk,$utt2dur,$chunk,$fileout,$fileout2,$fileout3)=@ARGV;
 
 %utt2dur={};
-open(fidin, "<$utt2dur") or die "cant open $utt2dur : $!";
+open(fidin, "<$utt2dur") or die "can't open $utt2dur : $!";
 while ($line=<fidin>)
 {
   $line=~s/\s+$//; 
@@ -13,7 +15,7 @@ while ($line=<fidin>)
 close(fidin);
 
 %utt2spk={};
-open(fidin, "<$utt2spk") or die "cant open $utt2spk : $!";
+open(fidin, "<$utt2spk") or die "can't open $utt2spk : $!";
 while ($line=<fidin>)
 {
   $line=~s/\s+$//;
@@ -23,10 +25,10 @@ while ($line=<fidin>)
 close(fidin);
 
 
-open(fidin, "<$filein") or die "cant open $filein : $!";
-open(fidout, ">$fileout") or die "cant open $fileout : $!";
-open(fidout2, ">$fileout2") or die "cant open $fileout2 : $!";
-open(fidout3, ">$fileout3") or die "cant open $fileout3 : $!";
+open(fidin, "<$filein") or die "can't open $filein : $!";
+open(fidout, ">$fileout") or die "can't open $fileout : $!";
+open(fidout2, ">$fileout2") or die "can't open $fileout2 : $!";
+open(fidout3, ">$fileout3") or die "can't open $fileout3 : $!";
 
 while ($line=<fidin>)
 {

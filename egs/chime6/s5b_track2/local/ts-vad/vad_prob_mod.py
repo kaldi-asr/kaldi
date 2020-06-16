@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright  2020   Ivan Medennikov
+# Copyright  2020   Ivan Medennikov (STC-innovations Ltd)
 # Apache 2.0.
 
 """This script modifies TS-VAD output probabilities applying 

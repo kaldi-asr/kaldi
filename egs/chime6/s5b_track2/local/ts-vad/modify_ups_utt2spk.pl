@@ -1,9 +1,11 @@
 #!/usr/bin/perl
+# Copyright     2020  Ivan Medennikov (STC-innovations Ltd)
+# Apache 2.0.
 
 ($filein,$ups,$fileout)=@ARGV;
 
-open(fidin, "<$filein") or die "cant open $filein : $!";
-open(fidout, ">$fileout") or die "cant open $fileout : $!";
+open(fidin, "<$filein") or die "can't open $filein : $!";
+open(fidout, ">$fileout") or die "can't open $fileout : $!";
 %utt2spk={};
 %spk2utt={};
 while ($line=<fidin>)

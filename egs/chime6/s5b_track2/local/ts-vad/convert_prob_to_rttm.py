@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright  2020  Yuri Khokhlov, Ivan Medennikov
+# Copyright  2020  Yuri Khokhlov, Ivan Medennikov (STC-innovations Ltd)
 # Apache 2.0.
 
 """This script converts TS-VAD output probabilities to a NIST RTTM file.
