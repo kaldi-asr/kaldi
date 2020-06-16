@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Set the priors of the nnet3 neural net to the computed posterios from the net,\n"
+        "Set the priors of the nnet3 neural net to the computed posteriors from the net,\n"
         "on typical data (e.g. training data). This is correct under more general\n"
         "circumstances than using the priors of the class labels in the training data\n"
         "\n"

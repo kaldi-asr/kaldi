@@ -58,7 +58,7 @@ struct RnnlmCoreTrainerOptions {
   void Register(OptionsItf *opts) {
     opts->Register("momentum", &momentum, "Momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
-                   "automatically multiply the learning rate by (1-momenum) "
+                   "automatically multiply the learning rate by (1-momentum) "
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");

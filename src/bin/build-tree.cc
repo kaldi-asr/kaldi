@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     po.Register("central-position", &P, "Central position in context window "
                 "[must match acc-tree-stats]");
     po.Register("max-leaves", &max_leaves, "Maximum number of leaves to be "
-                "used in tree-buliding (if positive)");
+                "used in tree-building (if positive)");
     po.Register("thresh", &thresh, "Log-likelihood change threshold for "
                 "tree-building");
     po.Register("cluster-thresh", &cluster_thresh, "Log-likelihood change "

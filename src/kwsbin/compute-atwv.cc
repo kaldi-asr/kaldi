@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
         "  b) the alignment-csv-filename is an optional parameter. \n"
         "     If present, the alignment i.e. detailed information about what \n"
         "     hypotheses match up with which reference entries will be \n"
-        "     generated. The alignemnt file format is equivalent to \n"
+        "     generated. The alignment file format is equivalent to \n"
         "     the alignment file produced using the F4DE tool. However, we do"
         "     not set some fields and the utterance identifiers are numeric.\n"
         "     You can use the script utils/int2sym.pl and the utterance and \n"
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     ali_opts.Register(&po);
     twv_opts.Register(&po);
     po.Register("frames-per-sec", &frames_per_sec,
-        "Number of feature vector frames per second. This is used only when"
+        "Number of feature vector frames per second. This is used only when "
         "writing the alignment to a file");
 
     po.Read(argc, argv);

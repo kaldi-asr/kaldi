@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     po.Register("spkvec-min-count", &min_count,
         "Minimum count needed to estimate speaker vectors");
     po.Register("rand-prune", &rand_prune, "Randomized pruning parameter for posteriors (more->faster).");
-    po.Register("spk-vecs", &spkvecs_rspecifier, "Speaker vectors to use during aligment (rspecifier)");
+    po.Register("spk-vecs", &spkvecs_rspecifier, "Speaker vectors to use during alignment (rspecifier)");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
