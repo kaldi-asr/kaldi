@@ -196,6 +196,9 @@ fi
 if [ $stage -le 17 ]; then
   # train and test nnet3 tdnn models on the entire data with data-cleaning.
   local/chain/run_tdnn.sh
+
+  # Fine tune with reverberated Librispeech data
+  local/chain/tuning/run_tdnn_1d_ft.sh
 fi
 
 
