@@ -93,6 +93,7 @@
     #include <mkl.h>
   }
 #elif defined(HAVE_OPENBLAS)
+  #include <complex>
   // getting cblas.h and lapacke.h from <openblas-install-dir>/.
   // putting in "" not <> to search -I before system libraries.
   #include "cblas.h"

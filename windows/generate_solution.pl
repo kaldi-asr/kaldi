@@ -85,6 +85,7 @@ my @propsFiles = (
   "$Bin/openfstwin_release.props",
   "$Bin/openfstwin_debug_win32.props",
   "$Bin/openfstwin_release_win32.props",
+  "$Bin/portaudio.props",
 );
 
 my %optionalProps = (
@@ -534,6 +535,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin_win32.props\" />
     <Import Project=\"..\\openfstwin_debug_win32.props\" />
+    <Import Project=\"..\\portaudio.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
@@ -547,6 +549,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_debug.props\" />
+    <Import Project=\"..\\portaudio.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
@@ -560,6 +563,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin_win32.props\" />
     <Import Project=\"..\\openfstwin_release_win32.props\" />
+    <Import Project=\"..\\portaudio.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
@@ -573,6 +577,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_release.props\" />
+    <Import Project=\"..\\portaudio.props\" />
   </ImportGroup>
 ";
 

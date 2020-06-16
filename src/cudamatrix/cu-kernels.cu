@@ -30,6 +30,7 @@
 #include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <cub/block/block_reduce.cuh>
+#include <cuda.h> // for CUDA_VERSION
 
 
 /***********************************************************************
@@ -1839,6 +1840,11 @@ template <>
 inline __device__ void myAtomicReduce(float *address, float val, TransReduceOp<SUMAB, float> op) {
   myAtomicAdd(address, val);
 }
+
+#if CUDA_VERSION < 9000
+// if not CUDA 9+, no need for syncwarp
+inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
+#endif
 
 // Reduce a matrix 'data' to a row vector 'dots'
 template <EnumTransformReduce TransReduceType, typename Real, int unroll_count>

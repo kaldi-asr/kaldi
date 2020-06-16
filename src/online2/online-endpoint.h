@@ -129,7 +129,7 @@ struct OnlineEndpointConfig {
                               /// that we consider as silence for purposes of
                               /// endpointing.
 
-  /// We support four rules.  We terminate decoding if ANY of these rules
+  /// We support five rules.  We terminate decoding if ANY of these rules
   /// evaluates to "true". If you want to add more rules, do it by changing this
   /// code.  If you want to disable a rule, you can set the silence-timeout for
   /// that rule to a very large number.

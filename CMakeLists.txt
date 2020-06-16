@@ -6,12 +6,9 @@ include(GNUInstallDirs)
 include(Utils)
 include(third_party/get_third_party)
 
-# Should update cmake to a more recent version which supports FindPython3.
 find_package(PythonInterp)
-if(NOT PYTHON_EXECUTABLE OR PYTHON_VERSION_MAJOR LESS 3)
-    message(WARNING "Needs python3 to auto-generate most CMake files, but not found. "
-                    "Will try `python3` directly...")
-    set(PYTHON_EXECUTABLE "python3")
+if(NOT PYTHON_EXECUTABLE)
+    message(FATAL_ERROR "Needs python to auto-generate most CMake files, but not found.")
 endif()
 
 message(STATUS "Running gen_cmake_skeleton.py")
@@ -63,12 +60,16 @@ if(MATHLIB STREQUAL "OpenBLAS")
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/CLAPACK)
     link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 elseif(MATHLIB STREQUAL "MKL")
-    set(BLA_VENDOR "Intel10_64lp")
-    # find_package(BLAS REQUIRED)
+    if(NOT DEFINED ENV{MKLROOT} OR "$ENV{MKLROOT}" STREQUAL "")
+        message(FATAL_ERROR "Environment variable MKLROOT is not defined")
+    else()
+        message(STATUS "Finding MKL from \"$ENV{MKLROOT}\"")
+    endif()
     normalize_env_path(ENV{MKLROOT})
+    set(BLA_VENDOR "Intel10_64lp_seq") # use the single threaded MKL by default
     find_package(LAPACK REQUIRED)
     add_definitions(-DHAVE_MKL=1)
-    include_directories($ENV{MKLROOT}/include) # TODO: maybe not use env, idk, find_package doesnt handle includes...
+    include_directories($ENV{MKLROOT}/include)
     link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 elseif(MATHLIB STREQUAL "Accelerate")
     execute_process(COMMAND sw_vers -productVersion
@@ -113,8 +114,6 @@ endif()
 
 find_package(CUDA)
 if(CUDA_FOUND)
-    set(CUB_ROOT_DIR "${PROJECT_SOURCE_DIR}/tools/cub")
-
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
     if(MSVC)
@@ -146,6 +145,8 @@ if(CUDA_FOUND)
     include_directories(${NvToolExt_INCLUDE_DIR})
     link_libraries(${NvToolExt_LIBRARIES})
 
+    get_third_party(cub)
+    set(CUB_ROOT_DIR "${CMAKE_BINARY_DIR}/cub")
     find_package(CUB REQUIRED)
     include_directories(${CUB_INCLUDE_DIR})
 endif()
@@ -159,7 +160,7 @@ if(${KALDI_USE_PATCH_NUMBER})
 endif()
 
 get_third_party(openfst)
-set(OPENFST_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/openfst)
+set(OPENFST_ROOT_DIR ${CMAKE_BINARY_DIR}/openfst)
 include(third_party/openfst_lib_target)
 link_libraries(fst)
 
