@@ -32,10 +32,10 @@ out_dir=$3
 
 name=`basename $data_in`
 
-# for f in $data_in/feats.scp $data_in/segments $model_dir/plda \
-#   $model_dir/final.raw $model_dir/extract.config; do
-#   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
-# done
+for f in $data_in/feats.scp $data_in/segments $model_dir/plda \
+  $model_dir/final.raw $model_dir/extract.config; do
+  [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
+done
 
 if [ $stage -le 1 ]; then
   echo "$0: computing features for x-vector extractor"
