@@ -1,0 +1,165 @@
+#!/bin/bash
+# Copyright   2019   David Snyder
+#             2020   Desh Raj
+
+# Apache 2.0.
+#
+# This script is exactly the same as local/diarize.sh until
+# stage 2 (x-vector extraction), but after that, it is slightly
+# different. The key difference is that since we have multiple
+# streams of audio (and subsequently multiple streams of subsegments)
+# from the same recording, we want to perform PLDA scoring across 
+# all of these streams. 
+
+stage=0
+nj=10
+cmd="run.pl"
+ref_rttm=
+score_overlaps_only=true
+
+echo "$0 $@"  # Print the command line for logging
+if [ -f path.sh ]; then . ./path.sh; fi
+. parse_options.sh || exit 1;
+if [ $# != 3 ]; then
+  echo "Usage: $0 <model-dir> <in-data-dir> <out-dir>"
+  echo "e.g.: $0 exp/xvector_nnet_1a  data/dev exp/dev_diarization"
+  echo "Options: "
+  echo "  --nj <nj>                                        # number of parallel jobs."
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --ref_rttm ./local/dev_rttm                      # the location of the reference RTTM file"
+  exit 1;
+fi
+
+model_dir=$1
+data_in=$2
+out_dir=$3
+
+name=`basename $data_in`
+
+for f in $data_in/feats.scp $data_in/segments $model_dir/plda \
+  $model_dir/final.raw $model_dir/extract.config; do
+  [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
+done
+
+if [ $stage -le 1 ]; then
+  echo "$0: computing features for x-vector extractor"
+  utils/fix_data_dir.sh data/${name}
+  rm -rf data/${name}_cmn
+  local/nnet3/xvector/prepare_feats.sh --nj $nj --cmd "$cmd" \
+    data/$name data/${name}_cmn exp/${name}_cmn
+  cp data/$name/segments exp/${name}_cmn/
+  utils/fix_data_dir.sh data/${name}_cmn
+fi
+
+if [ $stage -le 2 ]; then
+  echo "$0: extracting x-vectors for all segments"
+  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$cmd" \
+    --nj $nj --window 1.5 --period 0.75 --apply-cmn false \
+    --min-segment 0.5 $model_dir \
+    data/${name}_cmn $out_dir/xvectors_${name}
+fi
+
+# Perform PLDA scoring. The following stage is the key difference.
+# We change the segments and utt2spk files in the xvector directory
+# to reflect that the subsegments are from the same recording. 
+# But we also keep the original segments file since that will
+# be required in subsequent stages for ASR decoding.
+if [ $stage -le 3 ]; then
+  # The if condition is just to ensure that we don't accidentally
+  # make this modification more than once (which would mess up the
+  # segments file)
+  if [ ! -f ${out_dir}/xvectors_${name}/segments.bak ]; then
+    mv ${out_dir}/xvectors_${name}/segments ${out_dir}/xvectors_${name}/segments.bak
+    mv ${out_dir}/xvectors_${name}/utt2spk ${out_dir}/xvectors_${name}/utt2spk.bak
+    awk '{$2=$2;sub(/_[0-9]*$/, "", $2); print}' ${out_dir}/xvectors_${name}/segments.bak \
+      > ${out_dir}/xvectors_${name}/segments
+    awk '{$2=$2;sub(/_[0-9]*$/, "", $2); print}' ${out_dir}/xvectors_${name}/utt2spk.bak \
+      > ${out_dir}/xvectors_${name}/utt2spk
+    utils/utt2spk_to_spk2utt.pl ${out_dir}/xvectors_${name}/utt2spk > ${out_dir}/xvectors_${name}/spk2utt
+  fi
+fi
+
+# nj needs to be changes since we now have #wav/#streams number
+# of recordings. Just get it from the segments file
+nj=$(cat ${out_dir}/xvectors_${name}/segments | cut -d' ' -f2 | uniq | wc -l)
+
+if [ $stage -le 4 ]; then
+  # Perform cosine similarity scoring on all pairs of segments for each recording.
+  echo "$0: performing cosine similarity scoring between all pairs of x-vectors"
+  diarization/score_cossim.sh --cmd "$cmd" \
+    --nj $nj $out_dir/xvectors_${name} \
+    $out_dir/xvectors_${name}/cossim_scores
+fi
+
+# check if intervaltree is installed
+result=`python3 -c "\
+try:
+    import intervaltree
+    print('1')
+except ImportError:
+    print('0')"`
+
+if [ "$result" == "0" ]; then
+    echo "intervaltree is not installed. Please install before continuing."
+    exit 1
+fi
+
+if [ $stage -le 5 ]; then
+  echo "$0: performing spectral clustering using cosine similarity scores"
+  local/diarization/scluster.sh --cmd "$cmd" --nj $nj \
+    --rttm-channel 1 \
+    $out_dir/xvectors_${name} $out_dir
+  echo "$0: wrote RTTM to output directory ${out_dir}"
+fi
+
+# The above clustering generates RTTM with reco separated into streams,
+# so we have to remove the stream name for evaluation.
+awk '{$2=$2;sub(/_[0-9]*$/, "", $2); print}' ${out_dir}/rttm \
+  > ${out_dir}/rttm.comb
+
+hyp_rttm=${out_dir}/rttm.comb
+
+# For scoring the diarization system, we use the same tool that was
+# used in the DIHARD II challenge. This is available at:
+# https://github.com/nryant/dscore
+if [ $stage -le 6 ]; then
+  echo "Diarization results for "${name}
+  if ! [ -d dscore ]; then
+    git clone https://github.com/desh2608/dscore.git -b libricss --single-branch || exit 1;
+    cd dscore
+    python -m pip install --user -r requirements.txt
+    cd ..
+  fi
+
+  # Create per condition ref and hyp RTTM files for scoring per condition
+  mkdir -p tmp
+  conditions="0L 0S OV10 OV20 OV30 OV40"
+  cp $ref_rttm tmp/ref.all
+  cp $hyp_rttm tmp/hyp.all
+  for rttm in ref hyp; do
+    for cond in $conditions; do
+      cat tmp/$rttm.all | grep $cond > tmp/$rttm.$cond
+    done
+  done
+
+  echo "Scoring all regions..."
+  for cond in $conditions 'all'; do
+    echo -n "Condition: $cond: "
+    ref_rttm_path=$(readlink -f tmp/ref.$cond)
+    hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
+    cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only && cd .. || exit 1;
+  done
+
+  # We also score overlapping regions only
+  if [ $score_overlaps_only == "true" ]; then
+    echo "Scoring overlapping regions..."
+    for cond in $conditions 'all'; do
+      echo -n "Condition: $cond: "
+      ref_rttm_path=$(readlink -f tmp/ref.$cond)
+      hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
+      cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only && cd .. || exit 1;
+    done
+  fi
+
+  rm -r tmp
+fi
