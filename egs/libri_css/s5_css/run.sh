@@ -14,7 +14,7 @@ decode_nj=20
 stage=0
 
 nnet3_affix=_cleaned
-affix=1d_ft
+affix=1d_sp
 
 # Different stages
 diarizer_stage=1
@@ -156,9 +156,9 @@ if [ $stage -le 4 ]; then
 fi
 
 #######################################################################
-# Score decoded dev/eval sets
+# Score decoded dev/eval sets (only if we are not rescoring)
 #######################################################################
-if [ $stage -le 5 ]; then
+if [ $stage -le 5 ] && [ ! $rnnlm_rescore ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_reco_diarized.sh --stage $score_stage \
