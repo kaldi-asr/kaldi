@@ -72,6 +72,7 @@ function langname() {
 
 if ((stage < 4)); then
   for data_dir in ${train_set}; do
+    lang_name=$(langname $data_dir)
     mkdir -p data/local/$lang_name
     python local/prepare_lexicon_dir.py --phone-tokens $data_dir/lexicon_ipa.txt data/local/$lang_name
     lang_name="$(langname $data_dir)"
@@ -85,6 +86,7 @@ if ((stage < 5)); then
   # Feature extraction
   for data_dir in ${train_set} ${train_set} ${recog_set}; do
     (
+      lang_name=$(langname $data_dir)
       steps/make_mfcc.sh \
         --cmd "$train_cmd" \
         --nj 8 \
@@ -93,7 +95,7 @@ if ((stage < 5)); then
         exp/make_mfcc/$data_dir \
         mfcc
       utils/fix_data_dir.sh data/$data_dir
-      steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$data_dir mfcc
+      steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
     ) &
   done
   wait
