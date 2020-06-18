@@ -75,9 +75,9 @@ function langname() {
 }
 
 for data_dir in ${train_set}; do
-  if [ -f $data_dir/text.bkp ]; then
+  if [ -f data/$data_dir/text.bkp ]; then
     # replace IPA text with normal text
-    cp $data_dir/text.bkp $data_dir/text
+    cp data/$data_dir/text.bkp data/$data_dir/text
   fi
 done
 
