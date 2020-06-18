@@ -58,8 +58,7 @@ def main():
         for p in sorted(items):
             print(p, file=f)
 
-    with open(output_dir / 'extra_questions.txt', 'w') as f:
-        print(file=f)
+    (output_dir / 'extra_questions.txt').touch(exist_ok=True)
 
 
 if __name__ == '__main__':
