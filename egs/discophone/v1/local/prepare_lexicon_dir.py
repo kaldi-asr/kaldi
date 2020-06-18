@@ -48,7 +48,7 @@ def main():
                 print(f'{word} {transcript if transcript else "<unk>"}', file=f)
 
     with open(output_dir / 'silence_phones.txt', 'w') as f:
-        for p in sorted(set(special_word_to_special_phone.values())):
+        for p in sorted(set(special_word_to_special_phone.values()) - {'<unk>'}):
             print(p, file=f)
 
     with open(output_dir / 'optional_silence.txt', 'w') as f:
@@ -57,6 +57,7 @@ def main():
     with open(output_dir / 'nonsilence_phones.txt', 'w') as f:
         for p in sorted(items):
             print(p, file=f)
+        print('<unk>', file=f)
 
     (output_dir / 'extra_questions.txt').touch(exist_ok=True)
 
