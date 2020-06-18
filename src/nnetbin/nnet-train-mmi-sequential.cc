@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-      "Perform one iteration of MMI training using SGD with per-utterance"
+      "Perform one iteration of MMI training using SGD with per-utterance "
       "updates\n"
 
       "Usage:  nnet-train-mmi-sequential [options] "

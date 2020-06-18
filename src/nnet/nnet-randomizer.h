@@ -48,7 +48,7 @@ struct NnetDataRandomizerOptions {
 
   void Register(OptionsItf *opts) {
     opts->Register("randomizer-size", &randomizer_size,
-       "Capacity of randomizer, length of concatenated utterances which, "
+       "Capacity of randomizer, length of concatenated utterances which "
        "are used for frame-level shuffling (in frames, affects memory "
        "consumption, max 8000000).");
     opts->Register("randomizer-seed", &randomizer_seed,

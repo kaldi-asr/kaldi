@@ -52,7 +52,7 @@ struct NnetFixConfig {
   NnetFixConfig(): min_average_deriv(0.1), max_average_deriv(0.75),
                    parameter_factor(2.0), relu_bias_change(1.0) { }
   void Register(OptionsItf *opts) {
-    opts->Register("min-average-deriv", &min_average_deriv, "Miniumum derivative, "
+    opts->Register("min-average-deriv", &min_average_deriv, "Minimum derivative, "
                    "averaged over the training data, that we allow for a nonlinearity,"
                    "expressed relative to the maximum derivative of the nonlinearity,"
                    "i.e. 1.0 for tanh or 0.25 for sigmoid, 1.0 for rectified linear.");
