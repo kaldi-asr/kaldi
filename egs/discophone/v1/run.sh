@@ -74,6 +74,13 @@ function langname() {
   echo "$(basename "$1")"
 }
 
+for data_dir in ${train_set}; do
+  if [ -f $data_dir/text.bkp ]; then
+    # replace IPA text with normal text
+    cp $data_dir/text.bkp $data_dir/text
+  fi
+done
+
 if ((stage < 4)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
