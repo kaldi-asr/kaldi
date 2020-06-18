@@ -25,10 +25,14 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
+    words, transcripts = [], []
     with open(args.lexiconp) as f:
-        lines = zip(*[line.strip().split(maxsplit=3) for line in f])
-    words = [l[0] for l in lines]
-    transcripts = [l[2] if len(l) == 3 else '' for l in lines]
+        for line in (line.strip().split(maxsplit=2) for line in f):
+            words.append(line[0])
+            if len(line) > 2:
+                transcripts.append(line[2])
+            else:
+                transcripts.append('')
 
     unique_phones = set(chain.from_iterable(t.split() for t in transcripts))
     unique_phone_tokens = set(chain.from_iterable(p for p in unique_phones))
