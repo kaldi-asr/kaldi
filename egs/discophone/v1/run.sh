@@ -70,7 +70,7 @@ function langname() {
   echo "$(dirname "$(dirname "$1")")"
 }
 
-if ((stage > 4)); then
+if ((stage < 4)); then
   for data_dir in ${train_set}; do
     mkdir -p data/local/$lang_name
     python local/prepare_lexicon_dir.py --phone-tokens $data_dir/lexicon_ipa.txt data/local/$lang_name
@@ -81,7 +81,7 @@ if ((stage > 4)); then
   done
 fi
 
-if ((stage > 5)); then
+if ((stage < 5)); then
   # Feature extraction
   for data_dir in ${train_set} ${train_set} ${recog_set}; do
     (
@@ -99,7 +99,7 @@ if ((stage > 5)); then
   wait
 fi
 
-if ((stage > 6)); then
+if ((stage < 6)); then
   # Prepare data dir subsets for monolingual training
   for data_dir in ${train_set}; do
     numutt=$(cat data/$data_dir/feats.scp | wc -l)
@@ -117,7 +117,7 @@ if ((stage > 6)); then
   done
 fi
 
-if ((stage > 7)); then
+if ((stage < 7)); then
   # Mono training
   for data_dir in ${train_set}; do
     (
@@ -130,7 +130,7 @@ if ((stage > 7)); then
   wait
 fi
 
-if ((stage > 8)); then
+if ((stage < 8)); then
   # Tri1 training
   for data_dir in ${train_set}; do
     (
@@ -147,7 +147,7 @@ if ((stage > 8)); then
   wait
 fi
 
-if ((stage > 9)); then
+if ((stage < 9)); then
   # Tri2 training
   for data_dir in ${train_set}; do
     (
@@ -168,7 +168,7 @@ if ((stage > 9)); then
   wait
 fi
 
-if ((stage > 10)); then
+if ((stage < 10)); then
   # Tri3 training
   for data_dir in ${train_set}; do
     (
@@ -189,7 +189,7 @@ if ((stage > 10)); then
   wait
 fi
 
-if ((stage > 11)); then
+if ((stage < 11)); then
   # Tri4 training
   for data_dir in ${train_set}; do
     (
@@ -210,7 +210,7 @@ if ((stage > 11)); then
   wait
 fi
 
-if ((stage > 12)); then
+if ((stage < 12)); then
   # Tri5 training
   for data_dir in ${train_set}; do
     (
@@ -231,7 +231,7 @@ if ((stage > 12)); then
   wait
 fi
 
-if ((stage > 13)); then
+if ((stage < 13)); then
   # Tri5 alignments
   for data_dir in ${train_set}; do
     (
