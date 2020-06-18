@@ -71,7 +71,7 @@ full_dev_set=dev
 
 function langname() {
   # Utility
-  echo "$(dirname "$(dirname "$1")")"
+  echo "$(basename "$1")"
 }
 
 if ((stage < 4)); then

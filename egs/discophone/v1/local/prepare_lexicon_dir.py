@@ -26,7 +26,9 @@ def main():
     output_dir.mkdir(exist_ok=True, parents=True)
 
     with open(args.lexiconp) as f:
-        words, scores, transcripts = zip(*[line.strip().split(maxsplit=2) for line in f])
+        lines = zip(*[line.strip().split(maxsplit=3) for line in f])
+    words = [l[0] for l in lines]
+    transcripts = [l[2] if len(l) == 3 else '' for l in lines]
 
     unique_phones = set(chain.from_iterable(t.split() for t in transcripts))
     unique_phone_tokens = set(chain.from_iterable(p for p in unique_phones))
@@ -39,7 +41,7 @@ def main():
             if word.startswith('<'):
                 print(f'{word} {special_word_to_special_phone.get(word, "<unk>")}', file=f)
             else:
-                print(f'{word} {transcript}', file=f)
+                print(f'{word} {transcript if transcript else "<unk>"}', file=f)
 
     with open(output_dir / 'silence_phones.txt', 'w') as f:
         for p in sorted(set(special_word_to_special_phone.values())):
