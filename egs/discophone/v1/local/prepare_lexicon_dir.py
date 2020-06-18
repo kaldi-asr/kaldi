@@ -41,6 +41,8 @@ def main():
     transcripts = [' '.join(t.replace(' ', '')) for t in transcripts] if args.phone_tokens else transcripts
 
     with open(output_dir / 'lexicon.txt', 'w') as f:
+        if '<unk>' not in words:
+            print('<unk> <unk>', file=f)
         for word, transcript in zip(words, transcripts):
             if word.startswith('<'):
                 print(f'{word} {special_word_to_special_phone.get(word, "<unk>")}', file=f)
