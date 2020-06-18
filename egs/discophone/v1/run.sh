@@ -108,6 +108,7 @@ if ((stage < 5)); then
       utils/fix_data_dir.sh data/$data_dir
       steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
     ) &
+    sleep 2
   done
   wait
 fi
@@ -139,6 +140,7 @@ if ((stage < 7)); then
         --nj 8 --cmd "$train_cmd" \
         data/subsets/5k/$data_dir data/lang/$lang_name exp/gmm/$lang_name/mono
     ) &
+    sleep 2
   done
   wait
 fi
@@ -156,6 +158,7 @@ if ((stage < 8)); then
         --cmd "$train_cmd" $numLeavesTri1 $numGaussTri1 \
         data/subsets/10k/$data_dir data/lang/$lang_name exp/gmm/$lang_name/mono_ali_10k exp/gmm/$lang_name/tri1
     ) &
+    sleep 2
   done
   wait
 fi
@@ -177,6 +180,7 @@ if ((stage < 9)); then
         data/subsets/20k/$data_dir data/lang/$lang_name data/local/$lang_name \
         exp/gmm/$lang_name/tri2 data/local/dictp/$lang_name/tri2 data/local/langp/$lang_name/tri2 data/langp/$lang_name/tri2
     ) &
+    sleep 2
   done
   wait
 fi
@@ -198,6 +202,7 @@ if ((stage < 10)); then
         data/$data_dir data/lang/$lang_name data/local/$lang_name \
         exp/gmm/$lang_name/tri3 data/local/dictp/$lang_name/tri3 data/local/langp/$lang_name/tri3 data/langp/$lang_name/tri3
     ) &
+    sleep 2
   done
   wait
 fi
@@ -219,6 +224,7 @@ if ((stage < 11)); then
         data/$data_dir data/lang/$lang_name data/local/$lang_name \
         exp/gmm/$lang_name/tri4 data/local/dictp/$lang_name/tri4 data/local/langp/$lang_name/tri4 data/langp/$lang_name/tri4
     ) &
+    sleep 2
   done
   wait
 fi
@@ -240,6 +246,7 @@ if ((stage < 12)); then
         data/$data_dir data/lang/$lang_name data/local/$lang_name \
         exp/gmm/$lang_name/tri5 data/local/dictp/$lang_name/tri5 data/local/langp/$lang_name/tri5 data/langp/$lang_name/tri5
     ) &
+    sleep 2
   done
   wait
 fi
@@ -257,6 +264,7 @@ if ((stage < 13)); then
         data/$data_dir data/lang/$lang_name data/local/$lang_name \
         exp/gmm/$lang_name/tri5_ali data/local/dictp/$lang_name/tri5_ali data/local/langp/$lang_name/tri5_ali data/langp/$lang_name/tri5_ali
     ) &
+    sleep 2
   done
   wait
 fi
