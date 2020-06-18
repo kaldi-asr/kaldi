@@ -17,6 +17,7 @@ nnet3_affix=_cleaned
 affix=1d_sp
 
 # Different stages
+sad_stage=0
 diarizer_stage=1
 decode_diarize_stage=0
 score_stage=0
@@ -36,7 +37,7 @@ rnnlm_dir=exp/rnnlm_lstm_1a
 . ./cmd.sh
 . ./path.sh
 
-test_sets="dev eval"
+test_sets="eval"
 
 # Get dev and eval set names from the test_sets
 dev_set=$( echo $test_sets | cut -d " " -f1 )
@@ -69,15 +70,17 @@ fi
 
 if [ $stage -le 1 ]; then
   for datadir in ${test_sets}; do
-    echo "Applying WEBRTC-VAD on ${datadir}"
+    echo "Applying TDNN-Stats-SAD on ${datadir}"
     test_set=data/${datadir}
     if [ ! -f ${test_set}/wav.scp ]; then
       echo "$0: Not performing SAD on ${test_set}"
       exit 0
     fi
 
+    nj=$(wc -l < "$test_set/wav.scp")
     # Perform segmentation
     local/segmentation/apply_webrtcvad.py --mode 2 $test_set | sort > $test_set/segments
+    # local/detect_speech_activity.sh --nj $nj $test_set exp/segmentation_1a/tdnn_stats_asr_sad_1a
     
     # Create dummy utt2spk file from obtained segments
     awk '{print $1, $2}' ${test_set}/segments > ${test_set}/utt2spk
