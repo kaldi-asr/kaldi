@@ -133,7 +133,7 @@ typename LatticeFasterOnlineDecoderTpl<FST>::BestPathIterator LatticeFasterOnlin
     BestPathIterator iter, LatticeArc *oarc) const {
   KALDI_ASSERT(!iter.Done() && oarc != NULL);
   Token *tok = static_cast<Token*>(iter.tok);
-  int32 cur_t = iter.frame, ret_t = cur_t;
+  int32 cur_t = iter.frame, step_t = 0;
   if (tok->backpointer != NULL) {
     BaseFloat best_graph_cost = std::numeric_limits<BaseFloat>::infinity();
     ForwardLinkT *link;
@@ -148,7 +148,9 @@ typename LatticeFasterOnlineDecoderTpl<FST>::BestPathIterator LatticeFasterOnlin
           if (link->ilabel != 0) {
             KALDI_ASSERT(static_cast<size_t>(cur_t) < this->cost_offsets_.size());
             acoustic_cost -= this->cost_offsets_[cur_t];
-            ret_t--;
+            step_t = -1;
+          } else {
+            step_t = 0;
           }
           oarc->weight = LatticeWeight(graph_cost, acoustic_cost);
           best_graph_cost = graph_cost;
@@ -165,7 +167,7 @@ typename LatticeFasterOnlineDecoderTpl<FST>::BestPathIterator LatticeFasterOnlin
     oarc->olabel = 0;
     oarc->weight = LatticeWeight::One(); // zero costs.
   }
-  return BestPathIterator(tok->backpointer, ret_t);
+  return BestPathIterator(tok->backpointer, cur_t + step_t);
 }
 
 template <typename FST>
