@@ -21,10 +21,11 @@ use warnings; #sed replacement for -w perl parameter
 # The reason why this is useful is so that we can create a different
 # version of this program that uses a queueing system instead.
 
-# use Data::Dumper;
+#use Data::Dumper;
 
 @ARGV < 2 && die "usage: run.pl log-file command-line arguments...";
 
+#print STDERR "COMMAND-LINE: " .  Dumper(\@ARGV) . "\n";
 
 $max_jobs_run = -1;
 $jobstart = 1;
@@ -45,7 +46,16 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       $ignored_opts .= "-V ";
     } elsif ($switch eq "--max-jobs-run" || $switch eq "-tc") {
       # we do support the option --max-jobs-run n, and its GridEngine form -tc n.
-      $max_jobs_run = shift @ARGV;
+      # if the command appears multiple times uses the smallest option.
+      if ( $max_jobs_run <= 0 ) {
+          $max_jobs_run =  shift @ARGV;
+      } else {
+        my $new_constraint = shift @ARGV;
+        if ( ($new_constraint < $max_jobs_run) ) {
+          $max_jobs_run = $new_constraint;
+        }
+      }
+      
       if (! ($max_jobs_run > 0)) {
         die "run.pl: invalid option --max-jobs-run $max_jobs_run";
       }
