@@ -45,7 +45,8 @@ def main():
             if word.startswith('<'):
                 print(f'{word} {special_word_to_special_phone.get(word, "<unk>")}', file=f)
             else:
-                print(f'{word} {transcript if transcript else "<unk>"}', file=f)
+                if transcript:
+                    print(f'{word} {transcript}', file=f)
 
     with open(output_dir / 'silence_phones.txt', 'w') as f:
         for p in sorted(set(special_word_to_special_phone.values()) - {'<unk>'}):
