@@ -30,7 +30,7 @@ def main():
         for line in (line.strip().split(maxsplit=2) for line in f):
             words.append(line[0])
             if len(line) > 2:
-                transcripts.append(line[2])
+                transcripts.append(line[2].replace('.', '').replace('#', ''))
             else:
                 transcripts.append('')
 
