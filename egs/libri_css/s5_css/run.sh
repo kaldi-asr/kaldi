@@ -37,7 +37,7 @@ rnnlm_dir=exp/rnnlm_lstm_1a
 . ./cmd.sh
 . ./path.sh
 
-test_sets="eval"
+test_sets="dev eval"
 
 # Get dev and eval set names from the test_sets
 dev_set=$( echo $test_sets | cut -d " " -f1 )
@@ -78,10 +78,19 @@ if [ $stage -le 1 ]; then
     fi
 
     nj=$(wc -l < "$test_set/wav.scp")
-    # Perform segmentation
-    local/segmentation/apply_webrtcvad.py --mode 2 $test_set | sort > $test_set/segments
-    # local/detect_speech_activity.sh --nj $nj $test_set exp/segmentation_1a/tdnn_stats_asr_sad_1a
+    # Perform segmentation. We use the pretrained SAD available at:
+    # http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
+    # Download and extract using tar -xvzf
+    if [ ! -d exp/segmentation_1a/tdnn_stats_asr_sad_1a ]; then
+      wget http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
+      tar -xvzf 0004_tdnn_stats_asr_sad_1a.tar.gz
+    fi
+    local/detect_speech_activity.sh --nj $nj $test_set exp/segmentation_1a/tdnn_stats_asr_sad_1a
     
+    # The pretrained SAD used a different MFCC config. We need to
+    # copy back our old config files.
+    cp -r ../s5_mono/conf .
+
     # Create dummy utt2spk file from obtained segments
     awk '{print $1, $2}' ${test_set}/segments > ${test_set}/utt2spk
     utils/utt2spk_to_spk2utt.pl ${test_set}/utt2spk > ${test_set}/spk2utt

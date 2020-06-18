@@ -37,6 +37,7 @@ if [ $# -ne 0 ]; then
     echo "    --eval_datadir <eval-data-dir>        # eval set data directory"
     echo "    --min_lmwt <int>                      # minumum LM-weight for lattice rescoring "
     echo "    --max_lmwt <int>                      # maximum LM-weight for lattice rescoring "
+    echo "    --multistream <true|false>            # set to true if scoring multistream audio"
     
     exit 1;
 fi

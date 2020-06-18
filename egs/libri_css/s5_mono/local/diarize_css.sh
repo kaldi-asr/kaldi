@@ -92,7 +92,7 @@ if [ $stage -le 4 ]; then
 fi
 
 # check if intervaltree is installed
-result=`python3 -c "\
+result=`python -c "\
 try:
     import intervaltree
     print('1')
