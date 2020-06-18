@@ -5,6 +5,18 @@ set -eou pipefail
 stage=0
 train_nj=24
 
+# Acoustic model parameters
+numLeavesTri1=1000
+numGaussTri1=10000
+numLeavesTri2=1000
+numGaussTri2=20000
+numLeavesTri3=6000
+numGaussTri3=75000
+numLeavesMLLT=6000
+numGaussMLLT=75000
+numLeavesSAT=6000
+numGaussSAT=75000
+
 langs_config=conf/experiments/all-ipa.conf
 if [ $langs_config ]; then
   # shellcheck disable=SC1090
@@ -25,9 +37,9 @@ else
   gp_langs="Arabic Czech French Korean Mandarin Spanish Thai"
   gp_recog="${gp_langs}"
   mboshi_train=false
-  mboshi_recog=true
+  mboshi_recog=false
   gp_romanized=false
-  ipa_transcript=false
+  ipa_transcript=true
 fi
 
 . cmd.sh
