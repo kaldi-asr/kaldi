@@ -49,9 +49,13 @@ fi
 
 train_set=""
 dev_set=""
-for l in ${babel_langs} ${gp_langs}; do
+for l in ${babel_langs}; do
   train_set="$l/data/train_${l} ${train_set}"
   dev_set="$l/data/dev_${l} ${dev_set}"
+done
+for l in ${gp_langs}; do
+  train_set="GlobalPhone/gp_${l}_train ${train_set}"
+  dev_set="GlobalPhone/gp_${l}_dev ${dev_set}"
 done
 train_set=${train_set%% }
 dev_set=${dev_set%% }
@@ -74,7 +78,7 @@ if ((stage < 4)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
     mkdir -p data/local/$lang_name
-    python local/prepare_lexicon_dir.py --phone-tokens $data_dir/lexicon_ipa.txt data/local/$lang_name
+    python local/prepare_lexicon_dir.py --phone-tokens data/$data_dir/lexicon_ipa.txt data/local/$lang_name
     lang_name="$(langname $data_dir)"
     utils/prepare_lang.sh \
       --share-silence-phones true \
