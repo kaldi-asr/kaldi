@@ -53,7 +53,7 @@ for x in $SOURCE_DIR/nyt/*/ $SOURCE_DIR/latwp/ $SOURCE_DIR/apws/*/; do
   mkdir -p $d/split$nj
 
   eval utils/split_scp.pl $d/articles.list \
-    $d/split$nj/articles.list.{`seq -s, $nj`}
+    $d/split$nj/articles.list.{`seq -s, $nj | sed 's/,$//'`}
 
   $cmd JOB=1:$nj $d/log/get_processed_text.JOB.log \
     local/data_prep/process_na_news_text.py $d/split$nj/articles.list.JOB \

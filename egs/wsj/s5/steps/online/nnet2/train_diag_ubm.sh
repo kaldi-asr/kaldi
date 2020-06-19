@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2012  Johns Hopkins University (Author: Daniel Povey)
 #             2013  Daniel Povey
@@ -35,7 +35,7 @@ subsample=2 # subsample all features with this periodicity, in the main E-M phas
 cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
-num_threads=32
+num_threads=16
 parallel_opts=  # ignored now.
 online_cmvn_config=conf/online_cmvn.conf
 # End configuration section.
@@ -111,8 +111,8 @@ fi
 
 # Note: there is no point subsampling all_feats, because gmm-global-init-from-feats
 # effectively does subsampling itself (it keeps a random subset of the features).
-all_feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+all_feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
 num_gauss_init=$(perl -e "print int($initial_gauss_proportion * $num_gauss); ");
 ! [ $num_gauss_init -gt 0 ] && echo "Invalid num-gauss-init $num_gauss_init" && exit 1;

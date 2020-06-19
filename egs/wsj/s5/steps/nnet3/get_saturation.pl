@@ -35,7 +35,7 @@ while (<STDIN>) {
     # deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90
     # 95,98,99,100)=(0.0001,0.003,0.004,0.03 0.12,0.18,0.22,0.24,0.25
     # 0.25,0.25,0.25,0.25), mean=0.198, stddev=0.0591]
-    if (m/deriv-avg=.+mean=([^,]+),/) {
+    if (m/deriv-avg=[^m]+mean=([^,]+),/) {
       $num_nonlinearities += 1;
       my $this_saturation = 1.0 - ($1 / 0.25);
       $total_saturation += $this_saturation;
@@ -43,7 +43,7 @@ while (<STDIN>) {
       print STDERR "$0: could not make sense of line (no deriv-avg?): $_";
     }
   } elsif (m/type=TanhComponent/) {
-    if (m/deriv-avg=.+mean=([^,]+),/) {
+    if (m/deriv-avg=[^m]+mean=([^,]+),/) {
       $num_nonlinearities += 1;
       my $this_saturation = 1.0 - ($1 / 1.0);
       $total_saturation += $this_saturation;
@@ -73,6 +73,14 @@ while (<STDIN>) {
     }
     if (! $ok) {
       print STDERR "Could not parse at least one of the avg-deriv values in the following info line: $_";
+    }
+  } elsif (m/type=.*GruNonlinearityComponent/) {
+    if (m/deriv-avg=[^m]+mean=([^,]+),/) {
+      $num_nonlinearities += 1;
+      my $this_saturation = 1.0 - ($1 / 1.0);
+      $total_saturation += $this_saturation;
+    } else {
+      print STDERR "$0: could not make sense of line (no deriv-avg?): $_";
     }
   }
 }

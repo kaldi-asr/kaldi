@@ -39,6 +39,7 @@ open(META, "<$db_base/mx6_speech/docs/mx6_calls.csv") || die "cannot open $db_ba
 if (system("find $db_base/mx6_speech/data/ulaw_sphere/ -name '*.sph' > $tmp_dir/sph.list") != 0) {
   die "Error getting list of sph files";
 }
+
 open(SPHLIST, "<$tmp_dir/sph.list") or die "cannot open wav list";
 
 while(<SPHLIST>) {

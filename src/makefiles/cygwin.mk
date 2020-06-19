@@ -10,7 +10,7 @@ ifndef OPENFSTLIBS
 $(error OPENFSTLIBS not defined.)
 endif
 
-CXXFLAGS = -std=c++11 -U__STRICT_ANSI__ -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=c++11 -U__STRICT_ANSI__ -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \

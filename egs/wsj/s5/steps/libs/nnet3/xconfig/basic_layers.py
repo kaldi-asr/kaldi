@@ -9,6 +9,7 @@ and some basic layer definitions.
 """
 
 from __future__ import print_function
+from __future__ import division
 import math
 import re
 import sys
@@ -500,16 +501,22 @@ class XconfigOutputLayer(XconfigLayerBase):
                        'objective-type': 'linear',
                             # see Nnet::ProcessOutputNodeConfigLine in
                             # nnet-nnet.cc for other options
-                       'learning-rate-factor': 1.0,
-                            # used in DNN (not RNN) training when using
-                            # frame-level objfns,
-                       'max-change': 1.5,
-                       'param-stddev': 0.0,
-                       'bias-stddev': 0.0,
-                       'l2-regularize': 0.0,
                        'output-delay': 0,
                        'ng-affine-options': '',
-                       'ng-linear-options': ''    # only affects bottleneck output layers.
+                       'ng-linear-options': '',    # only affects bottleneck output layers.
+
+                       # The following are just passed through to the affine
+                       # component, and (in the bottleneck case) the linear
+                       # component.
+                       'learning-rate-factor': '',  # effective default: 1.0
+                       'l2-regularize': '',         # effective default: 0.0
+                       'max-change': 1.5,
+
+                       # The following are passed through to the affine component only.
+                       # It tends to be beneficial to initialize the output layer with
+                       # zero values, unlike the hidden layers.
+                       'param-stddev': 0.0,
+                       'bias-stddev': 0.0,
                       }
 
     def check_configs(self):
@@ -524,10 +531,10 @@ class XconfigOutputLayer(XconfigLayerBase):
                                " invalid value {0}"
                                "".format(self.config['objective-type']))
 
-        if self.config['learning-rate-factor'] <= 0.0:
-            raise RuntimeError("In output-layer, learning-rate-factor has"
-                               " invalid value {0}"
-                               "".format(self.config['learning-rate-factor']))
+        if self.config['orthonormal-constraint'] <= 0.0:
+            raise RuntimeError("output-layer does not support negative (floating) "
+                               "orthonormal constraint; use a separate linear-component "
+                               "followed by batchnorm-component.")
 
     def auxiliary_outputs(self):
 
@@ -587,18 +594,14 @@ class XconfigOutputLayer(XconfigLayerBase):
         output_dim = self.config['dim']
         bottleneck_dim = self.config['bottleneck-dim']
         objective_type = self.config['objective-type']
-        learning_rate_factor = self.config['learning-rate-factor']
         include_log_softmax = self.config['include-log-softmax']
-        param_stddev = self.config['param-stddev']
-        bias_stddev = self.config['bias-stddev']
-        l2_regularize = self.config['l2-regularize']
         output_delay = self.config['output-delay']
-        max_change = self.config['max-change']
-        ng_affine_options = self.config['ng-affine-options']
-        learning_rate_option = ('learning-rate-factor={0} '.format(learning_rate_factor) if
-                                learning_rate_factor != 1.0 else '')
-        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
-                                if l2_regularize != 0.0 else '')
+
+        affine_options = self.config['ng-affine-options']
+        for opt in [ 'learning-rate-factor', 'l2-regularize', 'max-change',
+                     'param-stddev', 'bias-stddev' ]:
+            if self.config[opt] != '':
+                affine_options += ' {0}={1}'.format(opt, self.config[opt])
 
         cur_node = descriptor_final_string
         cur_dim = input_dim
@@ -613,6 +616,10 @@ class XconfigOutputLayer(XconfigLayerBase):
             # We don't include the l2-regularize option because it's useless
             # given the orthonormality constraint.
             linear_options = self.config['ng-linear-options']
+            for opt in [ 'learning-rate-factor', 'l2-regularize', 'max-change' ]:
+                if self.config[opt] != '':
+                    linear_options += ' {0}={1}'.format(opt, self.config[opt])
+
 
             # note: by default the LinearComponent uses natural gradient.
             line = ('component name={0}.linear type=LinearComponent '
@@ -631,14 +638,8 @@ class XconfigOutputLayer(XconfigLayerBase):
 
         line = ('component name={0}.affine'
                 ' type=NaturalGradientAffineComponent'
-                ' input-dim={1}'
-                ' output-dim={2}'
-                ' param-stddev={3}'
-                ' bias-stddev={4}'
-                ' max-change={5} {6} {7} {8}'
-                ''.format(self.name, cur_dim, output_dim,
-                          param_stddev, bias_stddev, max_change, ng_affine_options,
-                          learning_rate_option, l2_regularize_option))
+                ' input-dim={1} output-dim={2} {3}'
+                ''.format(self.name, cur_dim, output_dim, affine_options))
         configs.append(line)
         line = ('component-node name={0}.affine'
                 ' component={0}.affine input={1}'
@@ -711,7 +712,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         # the most recent layer.
         self.config = {'input': '[-1]',
                        'dim': -1,
-                       'bottleneck-dim': -1,
+                       'bottleneck-dim': -1,  # Deprecated!  Use tdnnf-layer for
+                                              # factorized TDNNs, or prefinal-layer
+                                              # for bottlenecks just before the output.
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
                        'ng-affine-options': '',
@@ -726,7 +729,8 @@ class XconfigBasicLayer(XconfigLayerBase):
                                                     # continuous-valued (not zero-one) mask.
                        'add-log-stddev': False,
                        # the following are not really inspected by this level of
-                       # code, just passed through (but not if left at '').
+                       # code, just passed through to the affine component if
+                       # their value is not ''.
                        'bias-stddev': '',
                        'l2-regularize': '',
                        'learning-rate-factor': '',
@@ -745,7 +749,8 @@ class XconfigBasicLayer(XconfigLayerBase):
         if self.config['target-rms'] < 0.0:
             raise RuntimeError("target-rms has invalid value {0}"
                                .format(self.config['target-rms']))
-        if self.config['learning-rate-factor'] <= 0.0:
+        if (self.config['learning-rate-factor'] != '' and
+            self.config['learning-rate-factor'] <= 0.0):
             raise RuntimeError("learning-rate-factor has invalid value {0}"
                                .format(self.config['learning-rate-factor']))
 
@@ -821,6 +826,9 @@ class XconfigBasicLayer(XconfigLayerBase):
 
         # First the affine node (or linear then affine, if bottleneck).
         if self.config['bottleneck-dim'] > 0:
+            # The 'bottleneck-dim' option is deprecated and may eventually be
+            # removed.  Best to use tdnnf-layer if you want factorized TDNNs.
+
             # This is the bottleneck case (it doesn't necessarily imply we
             # will be using the features from the bottleneck; it's just a factorization
             # of the matrix into two pieces without a nonlinearity in between).
@@ -1135,6 +1143,9 @@ class XconfigIdctLayer(XconfigLayerBase):
       dim=None                   [Output dimension of layer; defaults to the same as the input dim.]
       cepstral-lifter=22       [Apply liftering co-efficient.]
       affine-transform-file='' [Must be specified.]
+      include-in-init=false     [You should set this to true if this precedes a
+                                `fixed-affine-layer` that is to be initialized
+                                 via LDA]
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
         assert first_token == 'idct-layer'
@@ -1146,7 +1157,8 @@ class XconfigIdctLayer(XconfigLayerBase):
         self.config = {'input': '[-1]',
                        'dim': -1,
                        'cepstral-lifter': 22.0,
-                       'affine-transform-file': ''}
+                       'affine-transform-file': '',
+                       'include-in-init': False}
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
@@ -1167,6 +1179,18 @@ class XconfigIdctLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
+        config_lines = self._generate_config()
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+            if self.config['include-in-init']:
+                ans.append(('init', line))
+        return ans
+
+
+    def _generate_config(self):
 
         # note: each value of self.descriptors is (descriptor, dim,
         # normalized-string, output-string).
@@ -1185,20 +1209,16 @@ class XconfigIdctLayer(XconfigLayerBase):
             idct_mat[n].append(0)
         common_lib.write_kaldi_matrix(transform_file, idct_mat)
 
+        configs = []
+
         # write the 'real' component to final.config
         line = 'component name={0} type=FixedAffineComponent matrix={1}'.format(
             self.name, transform_file)
-        ans.append(('final', line))
-        # write a random version of the component, with the same dims, to ref.config
-        line = 'component name={0} type=FixedAffineComponent input-dim={1} output-dim={2}'.format(
-            self.name, input_dim, output_dim)
-        ans.append(('ref', line))
-        # the component-node gets written to final.config and ref.config.
+        configs.append(line)
         line = 'component-node name={0} component={0} input={1}'.format(
             self.name, descriptor_final_string)
-        ans.append(('final', line))
-        ans.append(('ref', line))
-        return ans
+        configs.append(line)
+        return configs
 
 
 class XconfigExistingLayer(XconfigLayerBase):
@@ -1253,6 +1273,90 @@ class XconfigExistingLayer(XconfigLayerBase):
         ans = []
         return ans
 
+
+class XconfigSpecAugmentLayer(XconfigLayerBase):
+    """This class is for parsing lines like
+     'spec-augment-layer name=spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=10'
+
+    which will produce a component of type GeneralDropoutComponent (to do the
+    frequency-domain part) and then one of type SpecaugmentTimeMaskComponent (to
+    do the time part).
+
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer.]
+      freq-max-proportion=0.5  [The maximum proportion of the frequency space that
+                                might be zeroed out]
+      time-zeroed-proportion=0.2  [The proportion of time frames that will be zeroed
+                                  out]
+      time-mask-max-frames=20   [The maximum length of a zeroed region in the time
+                                axis, in frames.]
+      include-in-init=false     [You should set this to true if this precedes a
+                                `fixed-affine-layer` that is to be initialized
+                                 via LDA]
+    """
+    def __init__(self, first_token, key_to_value, prev_names=None):
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input': '[-1]',
+                       'freq-max-proportion': 0.5,
+                       'time-zeroed-proportion': 0.2,
+                       'time-mask-max-frames': 20,
+                       'include-in-init': False}
+
+
+    def check_configs(self):
+        assert (self.config['freq-max-proportion'] > 0.0 and self.config['freq-max-proportion'] < 1.0
+                and self.config['time-zeroed-proportion'] > 0.0 and self.config['time-zeroed-proportion'] < 1.0
+                and self.config['time-mask-max-frames'] >= 1)
+
+
+    def output_name(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return '{0}.time-mask'.format(self.name)
+
+    def output_dim(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        input_dim = self.descriptors['input']['dim']
+        return input_dim
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+            if self.config['include-in-init']:
+                ans.append(('init', line))
+        return ans
+
+    def _generate_config(self):
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        freq_max_proportion = self.config['freq-max-proportion']
+        time_zeroed_proportion = self.config['time-zeroed-proportion']
+        time_mask_max_frames = self.config['time-mask-max-frames']
+
+        configs = []
+        line = ('component name={0}.freq-mask type=GeneralDropoutComponent dim={1} specaugment-max-proportion={2}'.format(
+            self.name, input_dim, freq_max_proportion))
+        configs.append(line)
+        line = ('component-node name={0}.freq-mask component={0}.freq-mask input={1}'.format(
+            self.name, input_desc))
+        configs.append(line)
+        line = ('component name={0}.time-mask type=SpecAugmentTimeMaskComponent dim={1} '
+                'zeroed-proportion={2} time-mask-max-frames={3}'.format(
+                    self.name, input_dim, time_zeroed_proportion, time_mask_max_frames))
+        configs.append(line)
+        line = ('component-node name={0}.time-mask component={0}.time-mask input={0}.freq-mask'.format(
+            self.name))
+        configs.append(line)
+        return configs
 
 
 def test_layers():

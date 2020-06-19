@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 ## Adapted from swbd for librispeech by David van Leeuwen
@@ -34,7 +34,6 @@ set -e
 # configs for 'chain'
 stage=0
 decode_nj=50
-min_seg_len=1.55
 train_set=train_960_cleaned
 gmm=tri6b_cleaned
 nnet3_affix=_cleaned
@@ -75,21 +74,20 @@ fi
 # run those things.
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
-				  --num-threads-ubm 6 --num-processes 3 \
+                                  --num-threads-ubm 6 --num-processes 3 \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
 dir=exp/chain${nnet3_affix}/tdnn${affix:+_$affix}_sp
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -114,7 +112,7 @@ if [ $stage -le 14 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   opts="l2-regularize=0.002"
   linear_opts="orthonormal-constraint=1.0"
   output_opts="l2-regularize=0.0005 bottleneck-dim=256"
@@ -199,10 +197,6 @@ if [ $stage -le 16 ]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   utils/mkgraph.sh --self-loop-scale 1.0 --remove-oov data/lang_test_tgsmall $dir $graph_dir
-  # remove <UNK> from the graph, and convert back to const-FST.
-  fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst - | \
-    fstconvert --fst_type=const > $graph_dir/temp.fst
-  mv $graph_dir/temp.fst $graph_dir/HCLG.fst
 fi
 
 iter_opts=

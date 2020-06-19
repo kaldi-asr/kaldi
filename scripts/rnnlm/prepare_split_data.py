@@ -8,6 +8,9 @@ import os
 import argparse
 import sys
 
+import re
+
+
 parser = argparse.ArgumentParser(description="This script prepares files containing integerized text, "
                                  "for consumption by nnet3-get-egs.",
                                  epilog="E.g. " + sys.argv[0] + " --vocab-file=data/rnnlm/vocab/words.txt "

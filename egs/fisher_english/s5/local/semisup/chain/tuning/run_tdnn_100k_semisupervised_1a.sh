@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
@@ -209,11 +209,11 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 #   steps/nnet3/chain/build_tree_multiple_sources.sh \
 #     --use-fmllr false --context-opts "--context-width=2 --central-position=1" \
 #     --frame-subsampling-factor $frame_subsampling_factor \
-#     7000 $lang \
+#     7000 $unsup_decode_lang \
 #     data/${supervised_set_perturbed} \
 #     ${sup_tree_dir} \
 #     data/${unsupervised_set_perturbed} \
-#     $chaindir/best_path_${unsupervised_set_perturbed} \
+#     ${sup_chain_dir}/best_path_${unsupervised_set_perturbed} \
 #     $treedir || exit 1
 # fi
 #
@@ -231,7 +231,7 @@ if [ $stage -le 11 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $sup_tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -285,13 +285,9 @@ fi
 
 left_context=$model_left_context
 right_context=$model_right_context
-left_context_initial=$model_left_context
-right_context_final=$model_right_context
 
 egs_left_context=$(perl -e "print int($left_context + $frame_subsampling_factor / 2)")
 egs_right_context=$(perl -e "print int($right_context + $frame_subsampling_factor / 2)")
-egs_left_context_initial=$(perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)")
-egs_right_context_final=$(perl -e "print int($right_context_final + $frame_subsampling_factor / 2)")
 
 if [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set_perturbed}
@@ -308,7 +304,6 @@ if [ -z "$sup_egs_dir" ]; then
     echo "$0: generating egs from the supervised data"
     steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd" \
                --left-context $egs_left_context --right-context $egs_right_context \
-               --left-context-initial $egs_left_context_initial --right-context-final $egs_right_context_final \
                --frame-subsampling-factor $frame_subsampling_factor \
                --alignment-subsampling-factor $frame_subsampling_factor \
                --frames-per-eg $frames_per_eg \
@@ -349,7 +344,6 @@ if [ -z "$unsup_egs_dir" ]; then
       --cmd "$decode_cmd" --alignment-subsampling-factor 1 \
       --left-tolerance $tolerance --right-tolerance $tolerance \
       --left-context $egs_left_context --right-context $egs_right_context \
-      --left-context-initial $egs_left_context_initial --right-context-final $egs_right_context_final \
       --frames-per-eg $unsup_frames_per_eg --frames-per-iter 1500000 \
       --frame-subsampling-factor $frame_subsampling_factor \
       --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -208,7 +208,7 @@ if [ $stage -le 14 ]; then
   extra_right_context=$[$chunk_right_context+10]
   # %WER 26.8 | 2120 27220 | 80.2 11.7 8.1 7.0 26.8 76.5 | -0.804 | exp/chain/blstm_asp_1/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_9/penalty_0.0/
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
+  local/multi_condition/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
    --extra-left-context $extra_left_context \
    --extra-right-context $extra_right_context \
    --frames-per-chunk $chunk_width \

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script operates on a data directory, such as in data/train/,
 # and writes new segments to stdout. The file 'segments' maps from

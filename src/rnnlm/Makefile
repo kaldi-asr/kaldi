@@ -15,7 +15,7 @@ OBJFILES = sampler.o rnnlm-example.o rnnlm-example-utils.o \
 LIBNAME = kaldi-rnnlm
 
 ADDLIBS = ../nnet3/kaldi-nnet3.a ../cudamatrix/kaldi-cudamatrix.a \
-          ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
-          ../lm/kaldi-lm.a ../hmm/kaldi-hmm.a
+          ../lm/kaldi-lm.a ../hmm/kaldi-hmm.a ../util/kaldi-util.a \
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

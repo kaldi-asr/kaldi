@@ -40,7 +40,7 @@ done | sort > $dir/filelist
 mkdir -p $dir/split$nj/
 
 if [ $stage -le 1 ]; then
-  eval utils/split_scp.pl $dir/filelist $dir/split$nj/filelist.{`seq -s, $nj`}
+  eval utils/split_scp.pl $dir/filelist $dir/split$nj/filelist.{`seq -s, $nj | sed 's/,$//'`}
   $cmd JOB=1:$nj $dir/log/process_text.JOB.log \
     local/data_prep/process_1996_csr_hub4_lm_filelist.py \
     $dir/split$nj/filelist.JOB $dir

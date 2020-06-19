@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+
+
 parser = argparse.ArgumentParser(description="This script gets the unigram probabilities of words.",
                                  epilog="E.g. " + sys.argv[0] + " --vocab-file=data/rnnlm/vocab/words.txt "
                                         "--data-weights-file=exp/rnnlm/data_weights.txt data/rnnlm/data "
@@ -24,7 +27,7 @@ parser.add_argument("--data-weights-file", type=str, default='', required=True,
                     help="File that specifies multiplicities and weights for each data source: "
                     "e.g. if <text_dir> contains foo.txt and bar.txt, then should have lines "
                     "like 'foo 1 0.5' and 'bar 5 1.5'.  These "
-                    "don't have to sum to on.")
+                    "don't have to sum to one.")
 parser.add_argument("--smooth-unigram-counts", type=float, default=1.0,
                     help="Specify the constant for smoothing. We will add "
                          "(smooth_unigram_counts * num_words_with_non_zero_counts / vocab_size) "
@@ -131,7 +134,8 @@ def get_counts(data_sources, data_weights, vocab):
         with open(counts_file, 'r', encoding="utf-8") as f:
             for line in f:
                 fields = line.split()
-                assert len(fields) == 2
+                if len(fields) != 2: print("Warning, should be 2 cols:", fields, line, file=sys.stderr);
+                assert(len(fields) == 2)
                 word = fields[0]
                 count = fields[1]
                 if word not in vocab:

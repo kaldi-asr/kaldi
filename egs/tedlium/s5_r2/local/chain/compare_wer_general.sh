@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is used for comparing decoding results between systems.
 # e.g. local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_{c,d}_sp

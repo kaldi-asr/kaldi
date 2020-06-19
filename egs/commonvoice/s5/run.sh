@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Recipe for Mozilla Common Voice corpus v1
 #
@@ -12,6 +12,8 @@ data_url=https://common-voice-data-download.s3.amazonaws.com/cv_corpus_v1.tar.gz
 . ./path.sh
 
 stage=0
+
+. ./utils/parse_options.sh
 
 set -euo pipefail
 
@@ -144,8 +146,8 @@ if [ $stage -le 7 ]; then
     utils/mkgraph.sh data/lang_test exp/tri4b exp/tri4b/graph
     for testset in valid_dev; do
       steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
-        exp/tri4b/graph_nosp_tgsmall data/$testset \
-        exp/tri4b/decode_nosp_tgsmall_$testset
+        exp/tri4b/graph data/$testset \
+        exp/tri4b/decode_$testset
     done
   )&
 fi

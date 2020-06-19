@@ -2,6 +2,7 @@
 
 // Copyright 2016-2018  David Snyder
 //           2017-2018  Matthew Maciejewski
+//                2019  Dogan Can
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -47,8 +48,9 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     std::string reco2num_spk_rspecifier;
-    BaseFloat threshold = 0.0;
+    BaseFloat threshold = 0.0, max_spk_fraction = 1.0;
     bool read_costs = false;
+    int32 first_pass_max_utterances = std::numeric_limits<int16>::max();
 
     po.Register("reco2num-spk-rspecifier", &reco2num_spk_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
@@ -58,6 +60,16 @@ int main(int argc, char *argv[]) {
     po.Register("read-costs", &read_costs, "If true, the first"
       " argument is interpreted as a matrix of costs rather than a"
       " similarity matrix.");
+    po.Register("first-pass-max-utterances", &first_pass_max_utterances,
+      "If the number of utterances is larger than first-pass-max-utterances,"
+      " then clustering is done in two passes. In the first pass, input points"
+      " are divided into contiguous subsets of size first-pass-max-utterances"
+      " and each subset is clustered separately. In the second pass, the first"
+      " pass clusters are merged into the final set of clusters.");
+    po.Register("max-spk-fraction", &max_spk_fraction, "Merge clusters if the"
+      " total fraction of utterances in them is less than this threshold."
+      " This is active only when reco2num-spk-rspecifier is supplied and"
+      " 1.0 / num-spk <= max-spk-fraction <= 1.0.");
 
     po.Read(argc, argv);
 
@@ -90,10 +102,17 @@ int main(int argc, char *argv[]) {
       std::vector<int32> spk_ids;
       if (reco2num_spk_rspecifier.size()) {
         int32 num_speakers = reco2num_spk_reader.Value(reco);
-        AgglomerativeCluster(costs,
-          std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
+        if (1.0 / num_speakers <= max_spk_fraction && max_spk_fraction <= 1.0)
+          AgglomerativeCluster(costs, std::numeric_limits<BaseFloat>::max(),
+                               num_speakers, first_pass_max_utterances,
+                               max_spk_fraction, &spk_ids);
+        else
+          AgglomerativeCluster(costs, std::numeric_limits<BaseFloat>::max(),
+                               num_speakers, first_pass_max_utterances,
+                               1.0, &spk_ids);
       } else {
-        AgglomerativeCluster(costs, threshold, 1, &spk_ids);
+        AgglomerativeCluster(costs, threshold, 1, first_pass_max_utterances,
+                             1.0, &spk_ids);
       }
       for (int32 i = 0; i < spk_ids.size(); i++)
         label_writer.Write(uttlist[i], spk_ids[i]);

@@ -19,7 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lattice-simple-decoder.h"
+#include "decoder/lattice-simple-decoder.h"
 
 namespace kaldi {
 
@@ -532,7 +532,7 @@ void LatticeSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
             graph_cost = arc.weight.Value(),
             cur_cost = tok->tot_cost,
             tot_cost = cur_cost + ac_cost + graph_cost;
-        if (tot_cost > cutoff) continue;
+        if (tot_cost >= cutoff) continue;
         else if (tot_cost + config_.beam < cutoff)
           cutoff = tot_cost + config_.beam;
         // AddToken adds the next_tok to cur_toks_ (if not already present).
@@ -564,7 +564,9 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
   for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
        iter != cur_toks_.end();
        ++iter) {
-    queue.push_back(iter->first);
+    StateId state = iter->first;
+    if (fst_.NumInputEpsilons(state) != 0)
+      queue.push_back(state);
     best_cost = std::min(best_cost, iter->second->tot_cost);
   }
   if (queue.empty()) {
@@ -604,7 +606,7 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
             
           // "changed" tells us whether the new token has a different
           // cost from before, or is new [if so, add into queue].
-          if (changed)
+          if (changed && fst_.NumInputEpsilons(arc.nextstate) != 0)
             queue.push_back(arc.nextstate);
         }
       }

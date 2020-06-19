@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # _3f is as _3e, but modifying the splicing setup to add (left) recurrence:

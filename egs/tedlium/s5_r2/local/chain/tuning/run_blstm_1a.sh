@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_blstm_1a.sh is a first attempt at an BLSTM system, based on xconfigs
 # ./local/chain/compare_wer_general.sh exp/chain_cleaned/blstm_1a_sp_bi
@@ -139,7 +139,7 @@ if [ $stage -le 17 ]; then
   
   lstm_opts="decay-time=20"
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig

@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+
+
 parser = argparse.ArgumentParser(description="Validates features file, produced by rnnlm/choose_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " exp/rnnlm/features.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)

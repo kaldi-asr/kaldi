@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1c but with only right context for the TDNNs i.e., (0,3) in place
 # of (-3,0,3)
@@ -174,7 +174,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig

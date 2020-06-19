@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017   Hainan Xu
 # Apache 2.0
@@ -26,7 +26,7 @@ normalize=false # If true, we add a normalization step to the output of the RNNL
                 # as in our RNNLM setup, a properly trained network would automatically
                 # have its normalization term close to 1. The details of this
                 # could be found at http://www.danielpovey.com/files/2018_icassp_rnnlm.pdf
-lattice_prune_beam=4 # Beam used in pruned lattice composition
+lattice_prune_beam=8 # Beam used in pruned lattice composition
                      # This option affects speed and how large the composed lattice may be
 
 # End configuration section.
@@ -74,6 +74,12 @@ fi
 awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
   print n": Interpolation weight should be in the range of [0, 1]"; exit 1;}}' \
   || exit 1;
+
+if ! head -n -1 $rnnlm_dir/config/words.txt | cmp $oldlang/words.txt -; then
+  # the last word of the RNNLM word list is an added <brk> word
+  echo "$0: Word lists mismatch for lattices and RNNLM."
+  exit 1
+fi
 
 normalize_opt=
 if $normalize; then

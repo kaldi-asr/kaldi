@@ -42,6 +42,12 @@ VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
   return fst;
 }
 
+// Register const fst to load it automatically. Other types like
+// olabel_lookahead or ngram or compact_fst should be registered
+// through OpenFst registration API.
+static fst::FstRegisterer<VectorFst<StdArc>> VectorFst_StdArc_registerer;
+static fst::FstRegisterer<ConstFst<StdArc>> ConstFst_StdArc_registerer;
+
 Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
   if (rxfilename == "") rxfilename = "-"; // interpret "" as stdin,
   // for compatibility with OpenFst conventions.
@@ -54,7 +60,7 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
                 << kaldi::PrintableRxfilename(rxfilename);
     } else {
       KALDI_WARN << "We fail to read FST header from "
-                 << kaldi::PrintableRxfilename(rxfilename) 
+                 << kaldi::PrintableRxfilename(rxfilename)
                  << ". A NULL pointer is returned.";
       return NULL;
     }
@@ -71,15 +77,10 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
   }
   // Read the FST
   FstReadOptions ropts("<unspecified>", &hdr);
-  Fst<StdArc> *fst = NULL;
-  if (hdr.FstType() == "const") {
-    fst = ConstFst<StdArc>::Read(ki.Stream(), ropts);
-  } else if (hdr.FstType() == "vector") {
-    fst = VectorFst<StdArc>::Read(ki.Stream(), ropts);
-  }
+  Fst<StdArc> *fst = Fst<StdArc>::Read(ki.Stream(), ropts);
   if (!fst) {
     if(throw_on_err) {
-     KALDI_ERR << "Could not read fst from "
+      KALDI_ERR << "Could not read fst from "
                << kaldi::PrintableRxfilename(rxfilename);
     } else {
       KALDI_WARN << "Could not read fst from "
@@ -92,16 +93,15 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
 }
 
 VectorFst<StdArc> *CastOrConvertToVectorFst(Fst<StdArc> *fst) {
-  // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>         
+  // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>
   std::string real_type = fst->Type();
   KALDI_ASSERT(real_type == "vector" || real_type == "const");
   if (real_type == "vector") {
     return dynamic_cast<VectorFst<StdArc> *>(fst);
   } else {
-    // As the 'fst' can't cast to VectorFst, I'm creating a new 
-    // VectorFst<StdArc> initialized by 'fst', and deletes 'fst'.
+    // As the 'fst' can't cast to VectorFst, we create a new
+    // VectorFst<StdArc> initialized by 'fst', and delete 'fst'.
     VectorFst<StdArc> *new_fst = new VectorFst<StdArc>(*fst);
-    KALDI_WARN << "The 'fst' is deleted.";
     delete fst;
     return new_fst;
   }

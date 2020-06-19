@@ -3,11 +3,19 @@ SHELL := /bin/bash
 
 ifeq ($(KALDI_FLAVOR), dynamic)
   ifeq ($(shell uname), Darwin)
-    ifdef LIBNAME
-      LIBFILE = lib$(LIBNAME).dylib
+    ifdef ANDROIDINC # cross-compiling enabled on host MacOS
+      ifdef LIBNAME
+        LIBFILE = lib$(LIBNAME).so
+      endif
+      LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
+      EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))$(notdir $(basename $(dep))).a)
+    else
+      ifdef LIBNAME
+        LIBFILE = lib$(LIBNAME).dylib
+      endif
+      LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
+      EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).dylib)
     endif
-    LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
-    EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).dylib)
   else ifeq ($(shell uname), Linux)
     ifdef LIBNAME
       LIBFILE = lib$(LIBNAME).so
@@ -27,10 +35,16 @@ endif
 
 all: $(LIBFILE) $(BINFILES)
 
-$(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBNAME).a $(OBJFILES)
+
+ifdef LIBNAME
+
+$(LIBNAME).a: $(OBJFILES)
+	$(AR) -cr $(LIBNAME).a $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
+
 ifeq ($(KALDI_FLAVOR), dynamic)
+# the LIBFILE is not the same as $(LIBNAME).a
+$(LIBFILE): $(LIBNAME).a
   ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(LDLIBS)
 	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
@@ -41,7 +55,8 @@ ifeq ($(KALDI_FLAVOR), dynamic)
   else  # Platform not supported
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
   endif
-endif
+endif # ifeq ($(KALDI_FLAVOR), dynamic)
+endif # ifdef LIBNAME
 
 # By default (GNU) make uses the C compiler $(CC) for linking object files even
 # if they were compiled from a C++ source. Below redefinition forces make to
@@ -114,8 +129,30 @@ valgrind: .valgrind
 	rm valgrind.out
 	touch .valgrind
 
+
+#buid up dependency commands
+CC_SRCS=$(wildcard *.cc)
+#check if files exist to run dependency commands on
+ifneq ($(CC_SRCS),)
+CC_DEP_COMMAND=$(CXX) -M $(CXXFLAGS) $(CC_SRCS)
+endif
+
+ifeq ($(CUDA), true)
+CUDA_SRCS=$(wildcard *.cu)
+#check if files exist to run dependency commands on
+ifneq ($(CUDA_SRCS),)
+NVCC_DEP_COMMAND = $(CUDATKDIR)/bin/nvcc -M $(CUDA_FLAGS) $(CUDA_INCLUDE) $(CUDA_SRCS)
+endif
+endif
+
 depend:
-	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk
+	rm -f .depend.mk
+ifneq ($(CC_DEP_COMMAND),)
+	$(CC_DEP_COMMAND) >> .depend.mk
+endif
+ifneq ($(NVCC_DEP_COMMAND),)
+	$(NVCC_DEP_COMMAND) >> .depend.mk
+endif
 
 # removing automatic making of "depend" as it's quite slow.
 #.depend.mk: depend

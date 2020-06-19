@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)

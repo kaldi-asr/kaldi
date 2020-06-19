@@ -1,10 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 
 # Copyright 2016   Vimal Manohar
 #           2016   Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
 from __future__ import print_function
+from __future__ import division
 import sys, operator, argparse, os
 from collections import defaultdict
 
@@ -68,7 +70,7 @@ parser.add_argument("--min-split-point-duration", type=float, default=0.1,
                     help="""Minimum duration of silence or non-scored word
                     to be considered a viable split point when
                     truncating based on junk proportion.""")
-parser.add_argument("--max-deleted-words-kept-when-merging", type = str, default = 1,
+parser.add_argument("--max-deleted-words-kept-when-merging", type = int, default = 1,
                     help = "When merging segments that are found to be overlapping or "
                     "adjacent after all other processing, keep in the transcript the "
                     "reference words that were deleted between the segments [if any] "
@@ -171,7 +173,7 @@ def ComputeSegmentCores(split_lines_of_utt):
 
     return segment_ranges
 
-class Segment:
+class Segment(object):
     def __init__(self, split_lines_of_utt, start_index, end_index, debug_str = None):
         self.split_lines_of_utt = split_lines_of_utt
         # start_index is the index of the first line that appears in this
@@ -551,7 +553,7 @@ class Segment:
         if candidate_start_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = candidate_start_time - self.StartTime()
-        if begin_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
+        if float(begin_junk_duration) / candidate_removed_piece_duration < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -593,7 +595,7 @@ class Segment:
         if candidate_end_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = self.EndTime() - candidate_end_time
-        if end_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
+        if float(end_junk_duration) / candidate_removed_piece_duration < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -807,7 +809,7 @@ def TimeToString(time, frame_length):
 
 def WriteSegmentsForUtterance(text_output_handle, segments_output_handle,
                               old_utterance_name, segments):
-    num_digits = len(str(len(segments)))
+    num_digits = len('{}'.format(len(segments)))
     for n in range(len(segments)):
         segment = segments[n]
         # split utterances will be named foo-bar-1 foo-bar-2, etc.
@@ -840,24 +842,24 @@ def PrintDebugInfoForUtterance(ctm_edits_out_handle,
     info_to_print = []
     for n in range(len(segments_for_utterance)):
         segment = segments_for_utterance[n]
-        start_string = 'start-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
+        start_string = 'start-segment-{0}[{1}]'.format(n+1, segment.DebugInfo())
         info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-segment-' + str(n+1)
+        end_string = 'end-segment-{}'.format(n+1)
         info_to_print.append( (segment.EndTime(), end_string) )
     # for segments that were deleted we print info like start-deleted-segment-1, and
     # otherwise similar info to segments that were retained.
     for n in range(len(deleted_segments_for_utterance)):
         segment = deleted_segments_for_utterance[n]
-        start_string = 'start-deleted-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
+        start_string = 'start-deleted-segment-{0}[{1}]'.format(n+1, segment.DebugInfo())
         info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-deleted-segment-' + str(n+1)
+        end_string = 'end-deleted-segment-{}'.format(n+1)
         info_to_print.append( (segment.EndTime(), end_string) )
 
     info_to_print = sorted(info_to_print)
 
     for i in range(len(split_lines_of_cur_utterance)):
         split_line=split_lines_of_cur_utterance[i]
-        split_line[0] += '[' + str(i) + ']'  # add an index like [0], [1], to
+        split_line[0] += '[{}]'.format(i)    # add an index like [0], [1], to
                                              # the utterance-id so we can easily
                                              # look up segment indexes.
         start_time = float(split_line[2])
@@ -893,7 +895,7 @@ def AccWordStatsForUtterance(split_lines_of_utt,
 
 def PrintWordStats(word_stats_out):
     try:
-        f = open(word_stats_out, 'w')
+        f = open(word_stats_out, 'w', encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening word-stats file --word-stats-out={0} "
                  "for writing".format(word_stats_out))
@@ -923,23 +925,23 @@ def PrintWordStats(word_stats_out):
 
 def ProcessData():
     try:
-        f_in = open(args.ctm_edits_in)
+        f_in = open(args.ctm_edits_in, encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening ctm-edits input "
                  "file {0}".format(args.ctm_edits_in))
     try:
-        text_output_handle = open(args.text_out, 'w')
+        text_output_handle = open(args.text_out, 'w', encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening text output "
                  "file {0}".format(args.text_out))
     try:
-        segments_output_handle = open(args.segments_out, 'w')
+        segments_output_handle = open(args.segments_out, 'w', encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening segments output "
                  "file {0}".format(args.text_out))
     if args.ctm_edits_out != None:
         try:
-            ctm_edits_output_handle = open(args.ctm_edits_out, 'w')
+            ctm_edits_output_handle = open(args.ctm_edits_out, 'w', encoding='utf-8')
         except:
             sys.exit("segment_ctm_edits.py: error opening ctm-edits output "
                      "file {0}".format(args.ctm_edits_out))
@@ -993,7 +995,7 @@ def ProcessData():
 def ReadNonScoredWords(non_scored_words_file):
     global non_scored_words
     try:
-        f = open(non_scored_words_file)
+        f = open(non_scored_words_file, encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening file: "
                  "--non-scored-words=" + non_scored_words_file)
@@ -1014,7 +1016,7 @@ ReadNonScoredWords(args.non_scored_words_in)
 oov_symbol = None
 if args.oov_symbol_file != None:
     try:
-        with open(args.oov_symbol_file) as f:
+        with open(args.oov_symbol_file, encoding='utf-8') as f:
             line = f.readline()
             assert len(line.split()) == 1
             oov_symbol = line.split()[0]

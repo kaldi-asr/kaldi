@@ -1,0 +1,43 @@
+#
+# Reference results
+#
+# Experimental settings:
+#
+# training set:	show CS, BG, DA, QG, SR, SY and WK,	in total 18977 utt., 1,088,948 words
+# test set:	show JZ, GJ, KX and YX,			in total  2112 utt.,   135,972 words
+# eval set:     show JX, TD and WJ,                     in total  2222 utt.,   104,648 words
+#
+# lexicon: 274,036 words
+# phones (IPA):  196 (tonal)
+#
+
+# WER: test
+
+%WER 61.32 [ 83373 / 135972, 5458 ins, 19156 del, 58759 sub ] exp/mono/decode_test/wer_11_0.0
+%WER 41.00 [ 55742 / 135972, 6725 ins, 12763 del, 36254 sub ] exp/tri1/decode_test/wer_15_0.0
+%WER 40.41 [ 54948 / 135972, 7366 ins, 11505 del, 36077 sub ] exp/tri2/decode_test/wer_14_0.0
+%WER 38.67 [ 52574 / 135972, 6855 ins, 11250 del, 34469 sub ] exp/tri3a/decode_test/wer_15_0.0
+%WER 35.70 [ 48546 / 135972, 7197 ins,  9717 del, 31632 sub ] exp/tri4a/decode_test/wer_17_0.0
+%WER 32.11 [ 43661 / 135972, 6112 ins, 10185 del, 27364 sub ] exp/tri5a/decode_test/wer_17_0.5
+%WER 31.36 [ 42639 / 135972, 6846 ins, 8860 del, 26933 sub ] exp/tri5a_cleaned/decode_test/wer_17_0.5
+%WER 24.43 [ 33218 / 135972, 5524 ins,  7583 del, 20111 sub ] exp/nnet3/tdnn_sp/decode_test/wer_12_0.0
+%WER 23.95 [ 32568 / 135972, 4457 ins, 10271 del, 17840 sub ] exp/chain/tdnn_1a_sp/decode_test/wer_10_0.0
+%WER 23.54 [ 32006 / 135972, 4717 ins, 8644 del, 18645 sub ] exp/chain/tdnn_1b_sp/decode_test/wer_10_0.0
+%WER 20.64 [ 28067 / 135972, 4434 ins, 7946 del, 15687 sub ] exp/chain/tdnn_1c_sp/decode_test/wer_11_0.0
+%WER 20.98 [ 28527 / 135972, 4706 ins, 7816 del, 16005 sub ] exp/chain/tdnn_1d_sp/decode_test/wer_10_0.0
+
+# CER: test
+
+%WER 54.09 [ 116688 / 215718, 4747 ins, 24510 del, 87431 sub ] exp/mono/decode_test/cer_10_0.0
+%WER 32.61 [  70336 / 215718, 5866 ins, 16282 del, 48188 sub ] exp/tri1/decode_test/cer_13_0.0
+%WER 32.10 [  69238 / 215718, 6186 ins, 15772 del, 47280 sub ] exp/tri2/decode_test/cer_13_0.0
+%WER 30.40 [  65583 / 215718, 6729 ins, 13115 del, 45739 sub ] exp/tri3a/decode_test/cer_12_0.0
+%WER 27.53 [  59389 / 215718, 6311 ins, 13008 del, 40070 sub ] exp/tri4a/decode_test/cer_15_0.0
+%WER 24.21 [  52232 / 215718, 6425 ins, 11543 del, 34264 sub ] exp/tri5a/decode_test/cer_15_0.0
+%WER 23.41 [ 50492 / 215718, 6645 ins, 10997 del, 32850 sub ] exp/tri5a_cleaned/decode_test/cer_17_0.0
+%WER 17.07 [  36829 / 215718, 4734 ins,  9938 del, 22157 sub ] exp/nnet3/tdnn_sp/decode_test/cer_12_0.0
+%WER 16.83 [ 36305 / 215718, 4772 ins, 10810 del, 20723 sub ] exp/chain/tdnn_1a_sp/decode_test/cer_9_0.0
+%WER 16.44 [ 35459 / 215718, 4216 ins, 11278 del, 19965 sub ] exp/chain/tdnn_1b_sp/decode_test/cer_10_0.0
+%WER 13.72 [ 29605 / 215718, 4678 ins, 8066 del, 16861 sub ] exp/chain/tdnn_1c_sp/decode_test/cer_10_0.0
+%WER 14.08 [ 30364 / 215718, 5182 ins, 7588 del, 17594 sub ] exp/chain/tdnn_1d_sp/decode_test/cer_9_0.0
+

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is used for comparing decoding results between systems.
 # e.g. local/chain/compare_wer.sh exp/chain/tdnn_{c,d}_sp
@@ -141,5 +141,12 @@ echo -n "# Final valid prob (xent)    "
 for x in $*; do
   prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
+done
+echo
+
+echo -n "# Num-parameters             "
+for x in $*; do
+  num_params=$(grep num-parameters $x/log/progress.1.log | awk '{print $2}')
+  printf "% 10d" $num_params
 done
 echo

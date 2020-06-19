@@ -66,9 +66,9 @@ namespace chain {
 
   * Forward computation (version 1)
 
-  In the forward computation we're computing alpha(i, t) for 0 <= t <= T):
+  In the forward computation we're computing alpha(t, i) for 0 <= t <= T):
     - For the first frame, set alpha(0, i) = init(i), where init(i) is the
-      initial-probabilitiy from state i.  # in our framework these are obtained
+      initial-probability from state i.  # in our framework these are obtained
       #  by running the HMM for a while and getting an averaged occupation
       # probability, and using this as an initial-prob, since the boundaries of
       # chunks don't really correspond to utterance boundaries in general.]
@@ -161,7 +161,7 @@ namespace chain {
   - total-prob = \sum_i alpha'(T, i)
 
   The corrected log-prob that we return from the algorithm will be
-   (total-prob + \sum_{t=0}^{T-1} \log tot-alpha(t)).
+   (\log(total-prob) + \sum_{t=0}^{T-1} \log tot-alpha(t)).
 
   * Backward computation (version 3)
 
@@ -210,13 +210,16 @@ class DenominatorComputation {
                          int32 num_sequences,
                          const CuMatrixBase<BaseFloat> &nnet_output);
 
-  // Does the forward computation, and returns the total negated log-like summed
-  // over all sequences.  You will have to scale this by any supervision
-  // weighting factor, manually.
+  // Does the forward computation, and returns the total log-like summed over
+  // all sequences.  You will have to scale this by any supervision weighting
+  // factor, manually.  Note: this log-like will be negated before it
+  // is added into the objective function, since this is the denominator
+  // computation.
   BaseFloat Forward();
 
   // this adds deriv_weight times (the derivative of the log-prob w.r.t. the
-  // nnet output), to 'nnet_output_deriv'.
+  // nnet output), to 'nnet_output_deriv'.  Note: normally, deriv_weight
+  // will be -1, or some other negative number if we are doing data weighting.
   // returns true if everything seemed OK, false if a failure was detected.
   bool Backward(BaseFloat deriv_weight,
                 CuMatrixBase<BaseFloat> *nnet_output_deriv);

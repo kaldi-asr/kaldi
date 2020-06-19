@@ -199,6 +199,15 @@ void ContextDependency::EnumeratePairs(
   to_pdf_->MultiMap(vec, &forward_pdfs);
   SortAndUniq(&forward_pdfs);
 
+  if (self_loop_pdf_class < 0) {
+    // Invalid pdf-class because there was no self-loop.  Return pairs
+    // where the self-loop pdf-id is -1.
+    for (int32 forward_pdf: forward_pdfs) {
+      pairs->insert(std::pair<int32,int32>(forward_pdf, -1));
+    }
+    return;
+  }
+
   // get list of possible self-loop pdfs
   vec.clear();
   for (size_t i = 0; i < N_; i++)
@@ -319,8 +328,8 @@ void ContextDependency::GetPdfInfo(
 
 
 ContextDependency*
-MonophoneContextDependency(const std::vector<int32> phones,
-                           const std::vector<int32> phone2num_pdf_classes) {
+MonophoneContextDependency(const std::vector<int32> &phones,
+                           const std::vector<int32> &phone2num_pdf_classes) {
   std::vector<std::vector<int32> > phone_sets(phones.size());
   for (size_t i = 0; i < phones.size(); i++) phone_sets[i].push_back(phones[i]);
   std::vector<bool> share_roots(phones.size(), false);  // don't share roots.
@@ -331,8 +340,8 @@ MonophoneContextDependency(const std::vector<int32> phones,
 }
 
 ContextDependency*
-MonophoneContextDependencyShared(const std::vector<std::vector<int32> > phone_sets,
-                                 const std::vector<int32> phone2num_pdf_classes) {
+MonophoneContextDependencyShared(const std::vector<std::vector<int32> > &phone_sets,
+                                 const std::vector<int32> &phone2num_pdf_classes) {
   std::vector<bool> share_roots(phone_sets.size(), false);  // don't share roots.
   // N is context size, P = position of central phone (must be 0).
   int32 num_leaves = 0, P = 0, N = 1;

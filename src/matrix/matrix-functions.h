@@ -38,7 +38,6 @@ namespace kaldi {
    v is a vector of even dimension, interpreted for both input
    and output as a vector of complex numbers i.e.
    \f[ v = ( re_0, im_0, re_1, im_1, ... )    \f]
-   The dimension of v must be a power of 2.
 
    If "forward == true" this routine does the Discrete Fourier Transform
    (DFT), i.e.:

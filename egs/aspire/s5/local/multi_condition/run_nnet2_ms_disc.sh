@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # this is run_nnet2_ms_disc.sh but with 4 jobs not 2 (and double the learning rate).

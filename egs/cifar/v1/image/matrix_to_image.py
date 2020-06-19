@@ -26,6 +26,7 @@ imgid=0001_010006;
 copy-feats --binary=false $(grep $imgid data/train/feats.scp | cut -d' ' -f2) - | \
            image/matrix_to_image.py --color=1 > $imgid.bmp
 """
+from __future__ import division
 
 import argparse
 import sys
@@ -59,7 +60,7 @@ while True:
         num_cols = len(line)  # initialize
     if len(line) != num_cols:
         raise Exception("All rows should be of the same length")
-    line = map(float, line)  # string to float
+    line = [float(i) for i in line]  # string to float
     if max(line) > 1:
         raise Excetion("Element value in the matrix should be normalized and no larger than 1")
     line = [int(x * 255) for x in line]  # float to integer ranging from 0 to 255
@@ -70,7 +71,7 @@ if args.color == 3:
     if num_cols % 3 != 0:
         raise Exception("Number of columns should be a multiple of 3 in the color mode")
     width = num_rows
-    height = num_cols / 3
+    height = num_cols/3
     # reform the image matrix
     image_array = [[0 for i in range(width * 3)] for j in range(height)]
     for i in range(height):

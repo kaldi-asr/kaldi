@@ -85,6 +85,7 @@ int main(int argc, char *argv[]) {
           num_utt_done++;
         }
       }
+
       if (ivectors.size() == 0) {
         KALDI_WARN << "Not producing output for speaker " << spk
                    << " since no utterances had iVectors";
@@ -100,6 +101,10 @@ int main(int argc, char *argv[]) {
         num_spk_done++;
       }
     }
+
+    if (num_utt_done <= plda_stats.Dim())
+      KALDI_ERR << "Number of training iVectors is not greater than their "
+                << "dimension, unable to estimate PLDA.";
 
     KALDI_LOG << "Accumulated stats from " << num_spk_done << " speakers ("
               << num_spk_err << " with no utterances), consisting of "

@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
         "  or: copy-matrix [options] <matrix-in-rxfilename> <matrix-out-wxfilename>\n"
         " e.g.: copy-matrix --binary=false 1.mat -\n"
         "   copy-matrix ark:2.trans ark,t:-\n"
-        "See also: copy-feats\n";
+        "See also: copy-feats, matrix-sum\n";
 
     bool binary = true;
     bool apply_log = false;
@@ -140,5 +140,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

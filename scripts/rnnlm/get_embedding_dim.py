@@ -101,4 +101,4 @@ if input_dim != output_dim:
              "nnet '{0}': {1} != {2}".format(
             args.nnet, input_dim, output_dim))
 
-print(str(input_dim))
+print('{}'.format(input_dim))

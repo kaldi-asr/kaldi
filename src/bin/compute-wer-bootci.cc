@@ -162,10 +162,10 @@ int main(int argc, char *argv[]) {
 
   try {
     const char *usage =
-      "Compute a bootstrapping of WER to extract the 95\% confidence interval.\n"
+      "Compute a bootstrapping of WER to extract the 95% confidence interval.\n"
       "Take a reference and a transcription file, in integer or text format,\n"
       "and outputs overall WER statistics to standard output along with its\n"
-      "confidence interval using the bootstrap methos of Bisani and Ney.\n"
+      "confidence interval using the bootstrap method of Bisani and Ney.\n"
       "If a second transcription file corresponding to the same reference is\n"
       "provided, a bootstrap comparison of the two transcription is performed\n"
       "to estimate the probability of improvement.\n"
@@ -234,12 +234,12 @@ int main(int argc, char *argv[]) {
     std::cout.precision(2);
     std::cerr.precision(2);
     std::cout << "Set1: %WER " << std::fixed << 100*mean_wer <<
-              " 95\% Conf Interval [ " << 100*mean_wer-100*interval <<
+              " 95% Conf Interval [ " << 100*mean_wer-100*interval <<
               ", " << 100*mean_wer+100*interval << " ]" << '\n';
 
     if(!hyp2_rspecifier.empty()) {
         std::cout << "Set2: %WER " << std::fixed << 100*mean_wer2 <<
-            " 95\% Conf Interval [ " << 100*mean_wer2-100*interval2 <<
+            " 95% Conf Interval [ " << 100*mean_wer2-100*interval2 <<
             ", " << 100*mean_wer2+100*interval2 << " ]" << '\n';
 
         std::cout << "Probability of Set2 improving Set1: " << std::fixed <<

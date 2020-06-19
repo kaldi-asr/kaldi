@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This runs on the 100 hour subset.
 # e.g. of usage:

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # This trains a UBM (i.e. a mixture of Gaussians), by clustering

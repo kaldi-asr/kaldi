@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Switchboard-1 recipe customized for Edinburgh
 # Author:  Arnab Ghoshal (Jan 2013)

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 6y is as 6w, but after fixing the config-generation script to use
 # a higher learning-rate factor for the final xent layer (it was otherwise

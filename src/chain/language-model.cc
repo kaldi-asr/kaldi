@@ -129,7 +129,6 @@ int32 LanguageModelEstimator::FindOrCreateLmStateIndexForHistory(
     int32 backoff_lm_state = FindOrCreateLmStateIndexForHistory(
         backoff_hist);
     lm_states_[ans].backoff_lmstate_index = backoff_lm_state;
-    hist_to_lmstate_index_[backoff_hist] = backoff_lm_state;
   }
   return ans;
 }
@@ -298,7 +297,7 @@ int32 LanguageModelEstimator::AssignFstStates() {
 void LanguageModelEstimator::Estimate(fst::StdVectorFst *fst) {
   KALDI_LOG << "Estimating language model with --no-prune-ngram-order="
             << opts_.no_prune_ngram_order << ", --ngram-order="
-            << opts_.ngram_order << ", --num-extra-lm-state="
+            << opts_.ngram_order << ", --num-extra-lm-states="
             << opts_.num_extra_lm_states;
   SetParentCounts();
   num_basic_lm_states_ = CheckActiveStates();
@@ -408,5 +407,3 @@ void LanguageModelEstimator::OutputToFst(
 
 }  // namespace chain
 }  // namespace kaldi
-
-

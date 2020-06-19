@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2r is as _2q, but further changing the topology to have one rather than
 # two pdf-ids per triphone.

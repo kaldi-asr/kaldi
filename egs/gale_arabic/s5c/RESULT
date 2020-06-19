@@ -1,0 +1,4 @@
+%WER 41.98 [ 29249 / 69668, 2672 ins, 5990 del, 20587 sub ] exp/tri1_subword/decode/wer_15_0.0
+%WER 37.66 [ 26239 / 69668, 2660 ins, 5255 del, 18324 sub ] exp/tri2b_subword/decode/wer_17_0.0
+%WER 35.26 [ 24565 / 69668, 2879 ins, 4892 del, 16794 sub ] exp/tri3b_subword/decode/wer_17_0.5
+%WER 17.29 [ 12049 / 69668, 1244 ins, 2758 del, 8047 sub ] exp/chain/tdnn_1a_sp/decode_test/wer_10_0.5

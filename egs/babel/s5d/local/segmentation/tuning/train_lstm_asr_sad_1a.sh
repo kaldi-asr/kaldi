@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is a script to train a TDNN-LSTM for speech activity detection (SAD) 
 # using LSTM for long-context information.

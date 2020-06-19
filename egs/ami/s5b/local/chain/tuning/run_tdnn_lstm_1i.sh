@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1g but with TDNN output dim 1024 instead of 512
 # (num-params 1g:21309812 1i: 43447156)
@@ -174,7 +174,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig

@@ -83,12 +83,16 @@ while (<STDIN>) {
   my $row_start = $1;
   my $row_end = $2;
   my $col_range = $3;
-
+  
+  if ($row_start >= $utt2max_frames{$utt}) {
+    print STDERR "Removing $utt because row_start $row_start >= file max length $utt2max_frames{$utt}\n";
+    next;
+  }  
   if ($row_end >= $utt2max_frames{$utt}) {
     print STDERR "Fixed row_end for $utt from $row_end to $utt2max_frames{$utt}-1\n";
     $row_end = $utt2max_frames{$utt} - 1;
-  }
-
+  } 
+   
   if ($row_start ne "") {
     $range = "$row_start:$row_end";
   } else {
@@ -98,6 +102,5 @@ while (<STDIN>) {
   if ($col_range ne "") {
     $range .= ",$col_range";
   }
-
   print ("$utt " . join(" ", @F) . "[" . $range . "]\n");
 }

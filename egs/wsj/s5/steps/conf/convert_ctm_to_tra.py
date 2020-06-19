@@ -3,6 +3,7 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
+from __future__ import print_function
 import sys, operator
 
 # This scripts loads a 'ctm' file and converts it into the 'tra' format:
@@ -14,7 +15,7 @@ import sys, operator
 # - confidences
 
 if len(sys.argv) != 3:
-  print 'Usage: %s ctm-in tra-out' % __file__
+  print('Usage: %s ctm-in tra-out' % __file__)
   sys.exit(1)
 dummy, ctm_in, tra_out = sys.argv
 
@@ -31,7 +32,7 @@ with open(ctm_in) as f:
 
 # Store the in 'tra' format,
 with open(tra_out,'w') as f:
-  for utt,tuples in tra.iteritems():
+  for utt,tuples in tra.items():
     tuples.sort(key = operator.itemgetter(0)) # Sort by 'beg' time,
     f.write('%s %s\n' % (utt,' '.join([t[1] for t in tuples])))
 

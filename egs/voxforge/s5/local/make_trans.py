@@ -12,11 +12,12 @@ It checks if the prompts file have transcription for all audio files in the list
 if this is the case produces a transcript line for each file in the format:
 prefix_a0405 IT SEEMED THE ORDAINED ORDER OF THINGS THAT DOGS SHOULD WORK
 """
+from __future__ import print_function
 
 import sys
 
 def err(msg):
-    print >> sys.stderr, msg
+    print(msg, file=sys.stderr)
 
 if len(sys.argv) < 3:
     err("Usage: %s <prompts-file> <id-prefix> <utt-id1> <utt-id2> ... " % sys.argv[0])
@@ -46,5 +47,5 @@ for uid in utt_ids:
     if not uid in utt2trans:
         err("No transcript found for %s_%s" % (id_prefix, uid))
         continue
-    print "%s-%s %s" % (id_prefix, uid, utt2trans[uid])
+    print("%s-%s %s" % (id_prefix, uid, utt2trans[uid]))
 

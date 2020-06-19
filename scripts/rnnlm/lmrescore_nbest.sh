@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is very similar to steps/rnnlmrescore.sh, and it performs n-best
 # LM rescoring with Kaldi-RNNLM.
@@ -29,7 +29,7 @@ if [ $# != 6 ]; then
    echo "This version applies an RNNLM and mixes it with the LM scores"
    echo "previously in the lattices., controlled by the first parameter (rnnlm-weight)"
    echo ""
-   echo "Usage: utils/rnnlmrescore.sh <rnn-weight> <old-lang-dir> <rnn-dir> <data-dir> <input-decode-dir> <output-decode-dir>"
+   echo "Usage: $0 [options] <rnn-weight> <old-lang-dir> <rnn-dir> <data-dir> <input-decode-dir> <output-decode-dir>"
    echo "Main options:"
    echo "  --inv-acwt <inv-acwt>          # default 12.  e.g. --inv-acwt 17.  Equivalent to LM scale to use."
    echo "                                 # for N-best list generation... note, we'll score at different acwt's"
@@ -58,7 +58,7 @@ elif [ ! -f $oldlm ]; then
     exit 1;
 fi
 
-for f in $rnndir/final.raw $data/feats.scp $indir/lat.1.gz; do
+for f in $rnndir/final.raw $indir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
@@ -174,6 +174,7 @@ if [ $stage -le 5 ]; then
       $adir.$n/lmwt.lmonly || exit 1;
   done
 fi
+
 if [ $stage -le 6 ]; then
   echo "$0: invoking rnnlm/compute_sentence_scores.sh which calls rnnlm to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \

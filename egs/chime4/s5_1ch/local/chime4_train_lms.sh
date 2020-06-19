@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Modified from the script for CHiME3 baseline
 # Copyright 2015, Mitsubishi Electric Research Laboratories, MERL (Author: Takaaki Hori)

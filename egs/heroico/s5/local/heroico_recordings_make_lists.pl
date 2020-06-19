@@ -19,75 +19,102 @@ system "mkdir -p $tmpdir/recordings/train";
 system "mkdir -p $tmpdir/recordings/devtest";
 
 # input wav file list
-my $w = "$tmpdir/wav_list.txt";
+my $input_wav_list = "$tmpdir/wav_list.txt";
 
 # output temporary wav.scp files
-my $o_train = "$tmpdir/recordings/train/wav.scp";
-my $o_test = "$tmpdir/recordings/devtest/wav.scp";
+my $train_wav_scp = "$tmpdir/recordings/train/wav.scp";
+my $test_wav_scp = "$tmpdir/recordings/devtest/wav.scp";
 
 # output temporary utt2spk files
-my $u_train = "$tmpdir/recordings/train/utt2spk";
-my $u_test = "$tmpdir/recordings/devtest/utt2spk";
+my $train_uttspk = "$tmpdir/recordings/train/utt2spk";
+my $test_uttspk = "$tmpdir/recordings/devtest/utt2spk";
 
 # output temporary text files
-my $t_train = "$tmpdir/recordings/train/text";
-my $t_test = "$tmpdir/recordings/devtest/text";
+my $train_text = "$tmpdir/recordings/train/text";
+my $test_text = "$tmpdir/recordings/devtest/text";
 
 # initialize hash for prompts
-my %p = ();
+my %prompts = ();
 
 # store prompts in hash
 LINEA: while ( my $line = <> ) {
     chomp $line;
-    my ($s,$sent) = split /\t/, $line, 2;
-    $p{$s} = $sent;
+    my ($prompt_id,$prompt) = split /\t/, $line, 2;
+    # pad the prompt id with zeroes
+    my $pid = "";
+    if ( $prompt_id < 10 ) {
+	$pid = '0000' . $prompt_id;
+    } elsif ( $prompt_id < 100 ) {
+	$pid = '000' . $prompt_id;
+    } elsif ( $prompt_id < 1000 ) {
+	$pid = '00' . $prompt_id;
+    }
+    $prompts{$pid} = $prompt;
 }
 
-open my $W, '<', $w or croak "problem with $w $!";
-open my $OT, '+>', $o_train or croak "problem with $o_train $!";
-open my $OE, '+>', $o_test or croak "problem with $o_test $!";
-open my $UT, '+>', $u_train or croak "problem with $u_train $!";
-open my $UE, '+>', $u_test or croak "problem with $u_test $!";
-open my $TT, '+>', $t_train or croak "problem with $t_train $!";
-open my $TE, '+>', $t_test or croak "problem with $t_test $!";
+open my $WVL, '<', $input_wav_list or croak "problem with $input_wav_list $!";
+open my $TRNWSCP, '+>', $train_wav_scp or croak "problem with $train_wav_scp $!";
+open my $TSTWSCP, '+>', $test_wav_scp or croak "problem with $test_wav_scp $!";
+open my $TRNUTTSPK, '+>', $train_uttspk or croak "problem with $train_uttspk $!";
+open my $TSTUTTSPK, '+>', $test_uttspk or croak "problem with $test_uttspk $!";
+open my $TRNTXT, '+>', $train_text or croak "problem with $train_text $!";
+open my $TSTTXT, '+>', $test_text or croak "problem with $test_text $!";
 
- LINE: while ( my $line = <$W> ) {
+ LINE: while ( my $line = <$WVL> ) {
      chomp $line;
      next LINE if ($line =~ /Answers/ );
      next LINE unless ( $line =~ /Recordings/ );
      my ($volume,$directories,$file) = File::Spec->splitpath( $line );
      my @dirs = split /\//, $directories;
-     my $r = basename $line, ".wav";
-     my $s = $dirs[-1];
-     my $rid = $s . '_r' . '_' . $r;
-     if ( ( $r >= 355 ) and ( $r < 561 ) ) {
-	 if ( exists $p{$r} ) {
-	     print $TE "$rid $p{$r}\n";
-	 } elsif ( defined $rid ) {
-	     warn  "problem\t$rid";
-	     next LINE;
-	 } else {
-	     croak "$line";
-	 }
-	 print $OE "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
-	 print $UE "$rid ${s}_r\n";
-     } elsif ( ( $r < 355 ) or ( $r > 560 ) ) {
-	 if ( exists $p{$r} ) {
-	     print $TT "$rid $p{$r}\n";
-	 } elsif ( defined $rid ) {
-	     warn  "problem\t$rid";
-	     next LINE;
-	 } else {
-	     croak "$line";
-	 }
-	 print $OT "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
-	 print $UT "$rid ${s}_r\n";
-     }
+     my $utt_id = basename $line, ".wav";
+     # pad the utterance id with zeroes
+     my $utt = "";
+     if ( $utt_id < 10 ) {
+     $utt = '0000' . $utt_id;
+} elsif ( $utt_id < 100 ) {
+    $utt = '000' . $utt_id;
+} elsif ( $utt_id < 1000 ) {
+    $utt = '00' . $utt_id;
 }
-close $TT;
-close $OT;
-close $UT;
-close $TE;
-close $OE;
-close $UE;
-close $W;
+     my $spk_id = $dirs[-1];
+     # pad the speaker id with zeroes
+     my $spk = "";
+     if ( $spk_id < 10 ) {
+	 $spk = '000' . $spk_id;
+     } elsif ( $spk_id < 100 ) {
+	 $spk = '00' . $spk_id;
+     } elsif ( $spk_id < 1000 ) {
+	 $spk = '0' . $spk_id;
+     }
+     my $spk_utt_id = $spk . '_' . $utt;
+     if ( ( $utt_id >= 355 ) and ( $utt_id < 561 ) ) {
+if ( exists $prompts{$utt} ) {
+	     print $TSTTXT "$spk_utt_id $prompts{$utt}\n";
+	 } elsif ( defined $spk_utt_id ) {
+	     warn  "problem\t$spk_utt_id";
+	     next LINE;
+	 } else {
+	     croak "$line";
+	 }
+	 print $TSTWSCP "$spk_utt_id sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
+	 print $TSTUTTSPK "$spk_utt_id $spk\n";
+     } elsif ( ( $utt_id < 355 ) or ( $utt_id > 560 ) ) {
+	 if ( exists $prompts{$utt} ) {
+	     print $TRNTXT "$spk_utt_id $prompts{$utt}\n";
+	 } elsif ( defined $spk_utt_id ) {
+	     warn  "problem\t$spk_utt_id";
+	     next LINE;
+	 } else {
+	     croak "$line";
+	 }
+	 print $TRNWSCP "$spk_utt_id sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
+	 print $TRNUTTSPK "$spk_utt_id $spk\n";
+     } 
+}
+close $TRNTXT;
+close $TRNWSCP;
+close $TRNUTTSPK;
+close $TSTTXT;
+close $TSTWSCP;
+close $TSTUTTSPK;
+close $WVL;

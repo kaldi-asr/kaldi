@@ -1,4 +1,9 @@
 #!/usr/bin/env perl
+
+# THIS SCRIPT IS DEPRECATED AND WILL BE REMOVED.  See
+# utils/lang/make_lexicon_fst.py which is the python-based replacement.
+
+
 use warnings; #sed replacement for -w perl parameter
 # Copyright 2010-2011  Microsoft Corporation
 #                2013  Johns Hopkins University (author: Daniel Povey)

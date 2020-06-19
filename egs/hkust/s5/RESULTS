@@ -1,3 +1,5 @@
+## Caution: these WERs are actually CERs.
+
 # for x in exp/*/decode; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done
 %WER 80.67 [ 45198 / 56027, 1607 ins, 10733 del, 32858 sub ] exp/mono0a/decode/cer_9_0.0
 %WER 58.79 [ 32939 / 56027, 2662 ins, 6124 del, 24153 sub ] exp/tri1/decode/cer_13_0.0
@@ -41,3 +43,6 @@ exp/nnet2_convnet/decode/cer_10:%WER 41.19 [ 23129 / 56154, 2599 ins, 3782 del, 
 # nnet3 mfcc results (using speed perturbed data)
 exp/nnet3/tdnn_sp/decode_dev/cer_10:%WER 33.79 [ 18977 / 56154, 2027 ins, 3485 del, 13465 sub ]
 exp/nnet3/lstm_sp_ld5/decode_dev/cer_9:%WER 33.51 [ 18815 / 56154, 1813 ins, 3249 del, 13753 sub ]
+
+
+#  For nnet3+chain results, which are significantly better, see scripts in local/chain/tuning/.

@@ -69,20 +69,37 @@ void GenerateConfigSequenceSimpleContext(
                     opts.output_dim :
                     100 + Rand() % 200);
 
-  os << "component name=affine1 type=AffineComponent input-dim="
-     << spliced_dim << " output-dim=" << output_dim << std::endl;
+  if (RandInt(0,1) == 0) {
+    // do it the traditional way with an AffineComponent and an Append() expression.
+    os << "component name=affine1 type=AffineComponent input-dim="
+       << spliced_dim << " output-dim=" << output_dim << std::endl;
 
-  os << "input-node name=input dim=" << input_dim << std::endl;
+    os << "input-node name=input dim=" << input_dim << std::endl;
 
-  os << "component-node name=affine1_node component=affine1 input=Append(";
-  for (size_t i = 0; i < splice_context.size(); i++) {
-    int32 offset = splice_context[i];
-    os << "Offset(input, " << offset << ")";
-    if (i + 1 < splice_context.size())
-      os << ", ";
+    os << "component-node name=affine1_node component=affine1 input=Append(";
+    for (size_t i = 0; i < splice_context.size(); i++) {
+      int32 offset = splice_context[i];
+      os << "Offset(input, " << offset << ")";
+      if (i + 1 < splice_context.size())
+        os << ", ";
+    }
+    os << ")\n";
+    os << "output-node name=output input=affine1_node\n";
+  } else {
+    os << "component name=tdnn1 type=TdnnComponent input-dim="
+       << input_dim << " output-dim=" << output_dim
+       << " time-offsets=";
+    for (size_t i = 0; i < splice_context.size(); i++) {
+      if (i>0) os << ',';
+      os << splice_context[i];
+    }
+    os << " use-bias=" << (RandInt(0,1) == 0 ? "true":"false")
+       << " use-natural-gradient="  << (RandInt(0,1) == 0 ? "true":"false")
+       << std::endl;
+    os << "input-node name=input dim=" << input_dim << std::endl;
+    os << "component-node name=tdnn1_node component=tdnn1 input=input\n";
+    os << "output-node name=output input=tdnn1_node\n";
   }
-  os << ")\n";
-  os << "output-node name=output input=affine1_node\n";
   configs->push_back(os.str());
 }
 
@@ -1329,7 +1346,7 @@ void ComputeExampleComputationRequestSimple(
 
   int32 num_output_frames = 1 + Rand() % 10,
       output_start_frame = Rand() % 10,
-      num_examples = 1 + Rand() % 10,
+      num_examples = 1 + Rand() % 4,
       output_end_frame = output_start_frame + num_output_frames,
       input_start_frame = output_start_frame - left_context - (Rand() % 3),
       input_end_frame = output_end_frame + right_context + (Rand() % 3),
@@ -1383,7 +1400,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 34);
+  int32 n = RandInt(0, 37);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1729,6 +1746,33 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate;
       break;
     }
+    case 35: {
+      // This is not technically a SimpleComponent, but it behaves as one
+      // if time-offsets=0.
+      *component_type = "TdnnComponent";
+      int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate << " time-offsets=0"
+         << " use-natural-gradient=" << (RandInt(0,1) == 0 ? "true":"false")
+         << " use-bias=" << (RandInt(0,1) == 0 ? "true":"false");
+      break;
+    }
+    case 36: {
+      *component_type = "GruNonlinearityComponent";
+      int32 cell_dim = RandInt(10, 20);
+      int32 recurrent_dim = (RandInt(0, 1) == 0 ?
+                             RandInt(5, cell_dim - 1) : cell_dim);
+      os << "cell-dim=" << cell_dim
+         << " recurrent-dim=" << recurrent_dim;
+      break;
+    }
+    case 37: {
+      *component_type = "OutputGruNonlinearityComponent";
+      os << "cell-dim=" << RandInt(10, 20)
+         << " learning-rate=" << learning_rate;
+
+      break;
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }
@@ -1747,6 +1791,11 @@ Component *GenerateRandomSimpleComponent() {
   if (c == NULL)
     KALDI_ERR << "Invalid component type " << component_type;
   c->InitFromConfig(&config_line);
+  if (config_line.HasUnusedValues()) {
+    KALDI_ERR << "Config line " << config_line.WholeLine()
+              << " has unused values: "
+              << config_line.UnusedValues();
+  }
   return c;
 }
 

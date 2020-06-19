@@ -7,6 +7,7 @@
 # This script normalizes the given "text" (transcript) file. The normalized result
 # is printed to STDOUT. This normalization should be applied to all corpora.
 
+from __future__ import print_function
 import re
 import sys
 
@@ -26,7 +27,7 @@ def normalize(utt):
 
 def main():
     if len(sys.argv) != 2:
-        print 'Usage: local/normalize_transcript.py [text_file]'
+        print('Usage: local/normalize_transcript.py [text_file]')
         sys.exit(1)
     with open(sys.argv[1], 'r') as f:
         for line in f.readlines():

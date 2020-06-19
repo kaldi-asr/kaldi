@@ -62,12 +62,25 @@ int main(int argc, char *argv[]) {
 
     merging_config.ComputeDerived();
     ChainExampleMerger merger(merging_config, &example_writer);
-    for (; !example_reader.Done(); example_reader.Next()) {
-      const NnetChainExample &cur_eg = example_reader.Value();
-      merger.AcceptExample(new NnetChainExample(cur_eg));
+    if(!merging_config.multilingual_eg) {
+        for (; !example_reader.Done(); example_reader.Next()) {
+          const NnetChainExample &cur_eg = example_reader.Value();
+          merger.AcceptExample(new NnetChainExample(cur_eg));
+        }
+        // the merger itself prints the necessary diagnostics.
+        merger.Finish();
+    } else {
+        for (; !example_reader.Done(); example_reader.Next()) {
+          const NnetChainExample &cur_eg = example_reader.Value();
+          const std::string &key = example_reader.Key();
+          std::string lang_name;
+          ParseFromQueryString(key, "lang", &lang_name);
+          // change output name to output-lang
+          auto new_cur_eg = new NnetChainExample(cur_eg);
+          new_cur_eg->outputs[0].name = "output-" + lang_name;
+          merger.AcceptExample(new_cur_eg);
+        }
     }
-    // the merger itself prints the necessary diagnostics.
-    merger.Finish();
     return merger.ExitStatus();
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

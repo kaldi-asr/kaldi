@@ -119,15 +119,15 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: compute-cmvn-stats-two-channel  [options] <reco2file-and-channel> <feats-rspecifier> <stats-wspecifier>\n"
         "e.g.: compute-cmvn-stats-two-channel data/train_unseg/reco2file_and_channel scp:data/train_unseg/feats.scp ark,t:-\n";
-        
-    
+
+
     ParseOptions po(usage);
     BaseFloat quieter_channel_weight = 0.01;
 
     po.Register("quieter-channel-weight", &quieter_channel_weight,
                 "For the quieter channel, apply this weight to the stats, so "
                 "that we still get stats if one channel always dominates.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::vector<std::string> > utt_pairs;
     GetUtterancePairs(reco2file_and_channel_rxfilename, &utt_pairs);
-    
+
     RandomAccessBaseFloatMatrixReader feat_reader(feats_rspecifier);
     DoubleMatrixWriter writer(stats_wspecifier);
 
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
         std::string utt1 = this_pair[0], utt2 = this_pair[1];
         if (!feat_reader.HasKey(utt1)) {
           KALDI_WARN << "No feature data for utterance " << utt1;
-          num_err++;          
+          num_err++;
           this_pair[0] = utt2;
           this_pair.pop_back();
           // and fall through to the singleton code below.

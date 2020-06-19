@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # cnn_tdnn_lstm_1c is based on cnn_tdnn_lstm_1b, but using smaller dropout-schedule
 # and larger decay-time option(40).
@@ -185,7 +185,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   lstm_opts="decay-time=40"
   

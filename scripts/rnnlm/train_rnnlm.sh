@@ -38,6 +38,11 @@ num_egs_threads=10  # number of threads used for sampling, if we're using
 use_gpu=true  # use GPU for training
 use_gpu_for_diagnostics=false  # set true to use GPU for compute_prob_*.log
 
+# optional cleanup options
+cleanup=false  # add option --cleanup true to enable automatic cleanup of old models
+cleanup_strategy="keep_latest"  # determines cleanup strategy, use either "keep_latest" or "keep_best"
+cleanup_keep_iters=3  # number of iterations that will have their models retained
+
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 . utils/parse_options.sh
 
@@ -188,12 +193,16 @@ while [ $x -lt $num_iters ]; do
         else dest_number=$[x+1]; fi
         # in the normal case $repeated data will be just one copy.
         repeated_data=$(for n in $(seq $num_repeats); do echo -n $dir/text/$split.txt ''; done)
-        
+
         rnnlm_l2_factor=$(perl -e "print (1.0/$this_num_jobs);")
         embedding_l2_regularize=$(perl -e "print ($embedding_l2/$this_num_jobs);")
 
+        # allocate queue-slots for threads doing sampling,
+        num_threads_=$[$num_egs_threads*2/3]
+        [ -f $dir/sampling.lm ] && queue_thread_opt="--num-threads $num_threads_" || queue_thread_opt=
+
         # Run the training job or jobs.
-        $cmd $queue_gpu_opt $dir/log/train.$x.$n.log \
+        $cmd $queue_gpu_opt $queue_thread_opt $dir/log/train.$x.$n.log \
            rnnlm-train \
              --rnnlm.max-param-change=$rnnlm_max_change \
              --rnnlm.l2_regularize_factor=$rnnlm_l2_factor \
@@ -204,7 +213,7 @@ while [ $x -lt $num_iters ]; do
              --read-rnnlm="$src_rnnlm" --write-rnnlm=$dir/$dest_number.raw \
              --read-embedding=$dir/${embedding_type}_embedding.$x.mat \
              --write-embedding=$dir/${embedding_type}_embedding.$dest_number.mat \
-             "ark,bg:cat $repeated_data | rnnlm-get-egs --srand=$num_splits_processed $train_egs_args - ark:- |" || touch $dir/.train_error &
+             "ark,bg:cat $repeated_data | rnnlm-get-egs --chunk-length=$chunk_length --srand=$num_splits_processed $train_egs_args - ark:- |" || touch $dir/.train_error &
       done
       wait # wait for just the training jobs.
       [ -f $dir/.train_error ] && \
@@ -218,12 +227,16 @@ while [ $x -lt $num_iters ]; do
           nnet3-average $src_models $dir/$[x+1].raw '&&' \
           matrix-sum --average=true $src_matrices $dir/${embedding_type}_embedding.$[x+1].mat
       fi
+      # optionally, perform cleanup after training
+      if [ "$cleanup" = true ] ; then
+        python3 rnnlm/rnnlm_cleanup.py $dir --$cleanup_strategy --iters_to_keep $cleanup_keep_iters
+      fi
     )
-
     # the error message below is not that informative, but $cmd will
     # have printed a more specific one.
     [ -f $dir/.error ] && echo "$0: error with diagnostics on iteration $x of training" && exit 1;
   fi
+
   x=$[x+1]
   num_splits_processed=$[num_splits_processed+this_num_jobs]
 done
@@ -247,11 +260,11 @@ fi
 # Now get some diagnostics about the evolution of the objective function.
 if [ $stage -le $[num_iters+1] ]; then
   (
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
     # in the non-sampling case the exact objf is printed and we plot that
     # in the sampling case we print the approximated objf for training.
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Train objf: ")} /exact/{printf("%.2f ", $NF);next} {printf("%.2f ", $10)} END{print "";}'
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Dev objf:   ")} {printf("%.2f ", $NF)} END{print "";}'
   ) > $dir/report.txt
   cat $dir/report.txt

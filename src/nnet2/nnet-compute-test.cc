@@ -44,7 +44,6 @@ void UnitTestNnetCompute() {
     return;
   CuMatrix<BaseFloat> output1(num_output_rows, output_dim);
   NnetComputation(*nnet, input, pad_input, &output1);
-
   CuMatrix<BaseFloat> output2(output1.NumRows(), output1.NumCols());
   int32 cur_input_pos = 0, cur_output_pos = 0;
 
@@ -98,11 +97,12 @@ void UnitTestNnetComputeChunked() {
 
   int32 num_output_rows = num_feats;
   CuMatrix<BaseFloat> cu_output1(num_output_rows, output_dim);
-  Matrix<BaseFloat> output2(num_output_rows, output_dim);
+  CuMatrix<BaseFloat> cu_output2(num_output_rows, output_dim);
   NnetComputation(*nnet, input, pad_input, &cu_output1);
-  NnetComputationChunked(*nnet, Matrix<BaseFloat>(input), chunk_size, 
-                         &output2);
+  NnetComputationChunked(*nnet, CuMatrix<BaseFloat>(input), chunk_size, 
+                         &cu_output2);
   Matrix<BaseFloat> output1(cu_output1);
+  Matrix<BaseFloat> output2(cu_output2);
   AssertEqual(output1, output2);
   for (int32 i = 0; i < output1.NumRows(); i++) {
     // just double-check that the frames near the end are right, in case

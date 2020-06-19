@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is the latest version of training that combines RM and WSJ, in a setup where
 # there are no shared phones (so it's like a multilingual setup).

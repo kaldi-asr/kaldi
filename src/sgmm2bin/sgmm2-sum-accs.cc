@@ -59,10 +59,13 @@ int main(int argc, char *argv[]) {
       }
       for (size_t i = 0; i < po.NumArgs() - 1; i++) {
         bool b;
-        kaldi::InitKaldiInputStream(inputs[i]->Stream(), &b);
-        transition_accs.Read(inputs[i]->Stream(), b, true /* add values */);
-        sgmm_accs.Read(inputs[i]->Stream(), b, true /* add values */);
-        delete inputs[i];
+        if (kaldi::InitKaldiInputStream(inputs[i]->Stream(), &b)) {
+          transition_accs.Read(inputs[i]->Stream(), b, true /* add values */);
+          sgmm_accs.Read(inputs[i]->Stream(), b, true /* add values */);
+          delete inputs[i];
+        } else {
+          KALDI_ERR << "Failed to read input stats file " << po.GetArg(i + 2);
+        }
       }      
     } else {
       for (int i = 2, max = po.NumArgs(); i <= max; i++) {

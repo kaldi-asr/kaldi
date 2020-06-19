@@ -9,6 +9,7 @@
 #     --vertical-shift=0.3 --srand=27 --num-channels=3 ark:exp/cifar10_egs/egs.1.ark ark,t:- | \
 #     image/select_image_in_egs.py $id | image/matrix_to_image.py --color 3 > $id.bmp
 
+from __future__ import print_function
 import argparse
 import sys
 

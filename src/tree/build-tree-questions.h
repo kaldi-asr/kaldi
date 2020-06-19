@@ -52,7 +52,7 @@ struct QuestionsForKey {  // Configuration class associated with a particular ke
   std::vector<std::vector<EventValueType> > initial_questions;
   RefineClustersOptions refine_opts;  // if refine_opts.max_iter == 0,
   // we just pick from the initial questions.
-  
+
   QuestionsForKey(int32 num_iters = 5): refine_opts(num_iters, 2) {
     // refine_cfg with 5 iters and top-n = 2 (this is no restriction because
     // RefineClusters called with 2 clusters; would get set to that anyway as
@@ -102,7 +102,9 @@ class Questions {  // careful, this is a class.
     KALDI_ASSERT(keys_out != NULL);
     CopyMapKeysToVector(key_idx_, keys_out);
   }
-  const bool HasQuestionsForKey(EventKeyType key) const { return (key_idx_.count(key) != 0); }
+  bool HasQuestionsForKey(EventKeyType key) const {
+    return (key_idx_.count(key) != 0);
+  }
   ~Questions() { kaldi::DeletePointers(&key_options_); }
 
 

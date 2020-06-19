@@ -1,27 +1,48 @@
-%WER 75.78 [ 6983 / 9215, 1377 ins, 507 del, 5099 sub ] exp/tri3b/decode_nonnative.si/wer_17_1.0
-%WER 74.25 [ 5680 / 7650, 1187 ins, 431 del, 4062 sub ] exp/tri3b/decode_devtest.si/wer_16_1.0
-%WER 73.85 [ 6805 / 9215, 517 ins, 1653 del, 4635 sub ] exp/chain/tdnn1c_sp/decode_nonnative/wer_7_1.0
-%WER 73.76 [ 12328 / 16713, 2541 ins, 804 del, 8983 sub ] exp/tri3b/decode_test.si/wer_17_1.0
-%WER 73.20 [ 6745 / 9215, 518 ins, 1566 del, 4661 sub ] exp/chain/tdnn1c_sp_online/decode_nonnative/wer_7_1.0
-%WER 71.86 [ 5497 / 7650, 530 ins, 959 del, 4008 sub ] exp/mono/decode_devtest/wer_7_1.0
-%WER 71.64 [ 6602 / 9215, 646 ins, 939 del, 5017 sub ] exp/mono/decode_nonnative/wer_7_1.0
-%WER 71.26 [ 5343 / 7498, 1159 ins, 293 del, 3891 sub ] exp/tri3b/decode_native.si/wer_17_1.0
-%WER 69.84 [ 11673 / 16713, 986 ins, 2523 del, 8164 sub ] exp/chain/tdnn1c_sp/decode_test/wer_7_1.0
-%WER 69.59 [ 11630 / 16713, 1153 ins, 1643 del, 8834 sub ] exp/mono/decode_test/wer_7_1.0
-%WER 69.10 [ 11548 / 16713, 976 ins, 2402 del, 8170 sub ] exp/chain/tdnn1c_sp_online/decode_test/wer_7_1.0
-%WER 67.09 [ 6182 / 9215, 907 ins, 626 del, 4649 sub ] exp/tri1/decode_nonnative/wer_14_1.0
-%WER 66.98 [ 5022 / 7498, 503 ins, 700 del, 3819 sub ] exp/mono/decode_native/wer_7_1.0
-%WER 66.78 [ 6154 / 9215, 1048 ins, 537 del, 4569 sub ] exp/tri2b/decode_nonnative/wer_15_1.0
-%WER 66.64 [ 6141 / 9215, 1226 ins, 425 del, 4490 sub ] exp/tri3b/decode_nonnative/wer_16_1.0
-%WER 66.33 [ 5074 / 7650, 921 ins, 481 del, 3672 sub ] exp/tri1/decode_devtest/wer_11_1.0
-%WER 66.30 [ 5072 / 7650, 1198 ins, 328 del, 3546 sub ] exp/tri3b/decode_devtest/wer_11_1.0
-%WER 65.88 [ 5040 / 7650, 985 ins, 450 del, 3605 sub ] exp/tri2b/decode_devtest/wer_13_1.0
-%WER 65.05 [ 10872 / 16713, 1725 ins, 959 del, 8188 sub ] exp/tri1/decode_test/wer_13_1.0
-%WER 64.76 [ 4856 / 7498, 461 ins, 862 del, 3533 sub ] exp/chain/tdnn1c_sp/decode_native/wer_7_1.0
-%WER 64.45 [ 10772 / 16713, 2261 ins, 698 del, 7813 sub ] exp/tri3b/decode_test/wer_16_1.0
-%WER 64.33 [ 10751 / 16713, 1955 ins, 845 del, 7951 sub ] exp/tri2b/decode_test/wer_14_1.0
-%WER 64.03 [ 4801 / 7498, 463 ins, 825 del, 3513 sub ] exp/chain/tdnn1c_sp_online/decode_native/wer_7_1.0
-%WER 62.54 [ 4689 / 7498, 781 ins, 379 del, 3529 sub ] exp/tri1/decode_native/wer_13_1.0
-%WER 61.66 [ 4623 / 7498, 1038 ins, 267 del, 3318 sub ] exp/tri3b/decode_native/wer_15_1.0
-%WER 61.28 [ 4595 / 7498, 899 ins, 309 del, 3387 sub ] exp/tri2b/decode_native/wer_13_1.0
-john@A-TEAM19054:~/work/kaldi/egs/heroico/s5$ 
+# for dir in $(echo exp/tri*/decode* | grep -v 'si/'); do grep WER $dir/wer* | utils/best_wer.sh; done
+
+# old results before adding Movie subtitles text corpus in LM training:
+# %WER 67.01 [ 5126 / 7650, 837 ins, 575 del, 3714 sub ] exp/tri1/decode_devtest/wer_14_1.0
+# %WER 62.39 [ 4678 / 7498, 768 ins, 397 del, 3513 sub ] exp/tri1/decode_native/wer_13_1.0
+# %WER 67.05 [ 6179 / 9215, 895 ins, 606 del, 4678 sub ] exp/tri1/decode_nonnative/wer_13_1.0
+# %WER 64.97 [ 10859 / 16713, 1678 ins, 999 del, 8182 sub ] exp/tri1/decode_test/wer_13_1.0
+# %WER 65.90 [ 5041 / 7650, 1016 ins, 416 del, 3609 sub ] exp/tri2b/decode_devtest/wer_12_1.0
+# %WER 61.26 [ 4593 / 7498, 908 ins, 300 del, 3385 sub ] exp/tri2b/decode_native/wer_14_1.0
+# %WER 67.51 [ 6221 / 9215, 1085 ins, 524 del, 4612 sub ] exp/tri2b/decode_nonnative/wer_14_1.0
+# %WER 64.87 [ 10842 / 16713, 2004 ins, 838 del, 8000 sub ] exp/tri2b/decode_test/wer_14_1.0
+# %WER 66.09 [ 5056 / 7650, 1078 ins, 402 del, 3576 sub ] exp/tri3b/decode_devtest/wer_16_1.0
+# %WER 74.88 [ 5728 / 7650, 1210 ins, 426 del, 4092 sub ] exp/tri3b/decode_devtest.si/wer_15_1.0
+# %WER 61.19 [ 4588 / 7498, 1038 ins, 255 del, 3295 sub ] exp/tri3b/decode_native/wer_14_1.0
+# %WER 70.99 [ 5323 / 7498, 1185 ins, 301 del, 3837 sub ] exp/tri3b/decode_native.si/wer_16_1.0
+# %WER 66.35 [ 6114 / 9215, 1186 ins, 421 del, 4507 sub ] exp/tri3b/decode_nonnative/wer_17_1.0
+# %WER 76.36 [ 7037 / 9215, 1420 ins, 467 del, 5150 sub ] exp/tri3b/decode_nonnative.si/wer_16_1.0
+# %WER 64.06 [ 10706 / 16713, 2245 ins, 657 del, 7804 sub ] exp/tri3b/decode_test/wer_15_1.0
+# %WER 73.97 [ 12362 / 16713, 2608 ins, 766 del, 8988 sub ] exp/tri3b/decode_test.si/wer_16_1.0
+# %WER 53.07 [ 4060 / 7650, 744 ins, 376 del, 2940 sub ] exp/chain/tdnn1e_sp/decode_devtest/wer_7_1.0
+# %WER 54.47 [ 4084 / 7498, 536 ins, 475 del, 3073 sub ] exp/chain/tdnn1e_sp/decode_native/wer_7_1.0
+# %WER 63.01 [ 5806 / 9215, 685 ins, 784 del, 4337 sub ] exp/chain/tdnn1e_sp/decode_nonnative/wer_7_1.0
+# %WER 59.25 [ 9903 / 16713, 1226 ins, 1259 del, 7418 sub ] exp/chain/tdnn1e_sp/decode_test/wer_7_1.0
+
+# new results:
+%WER 18.27 [ 1398 / 7650, 213 ins, 253 del, 932 sub ] exp/tri1/decode_devtest/wer_15_0.5
+%WER 9.95 [ 746 / 7498, 74 ins, 108 del, 564 sub ] exp/tri1/decode_native/wer_13_0.5
+%WER 16.63 [ 1532 / 9215, 197 ins, 183 del, 1152 sub ] exp/tri1/decode_nonnative/wer_17_0.0
+%WER 13.68 [ 2287 / 16713, 207 ins, 360 del, 1720 sub ] exp/tri1/decode_test/wer_17_0.5
+%WER 17.19 [ 1315 / 7650, 227 ins, 231 del, 857 sub ] exp/tri2b/decode_devtest/wer_17_0.5
+%WER 9.23 [ 692 / 7498, 60 ins, 103 del, 529 sub ] exp/tri2b/decode_native/wer_16_0.5
+%WER 17.16 [ 1581 / 9215, 184 ins, 216 del, 1181 sub ] exp/tri2b/decode_nonnative/wer_17_0.5
+%WER 13.64 [ 2279 / 16713, 241 ins, 326 del, 1712 sub ] exp/tri2b/decode_test/wer_17_0.5
+%WER 15.36 [ 1175 / 7650, 212 ins, 210 del, 753 sub ] exp/tri3b/decode_devtest/wer_17_0.5
+%WER 20.27 [ 1551 / 7650, 269 ins, 257 del, 1025 sub ] exp/tri3b/decode_devtest.si/wer_14_1.0
+%WER 6.40 [ 480 / 7498, 50 ins, 58 del, 372 sub ] exp/tri3b/decode_native/wer_16_0.0
+%WER 10.91 [ 818 / 7498, 100 ins, 112 del, 606 sub ] exp/tri3b/decode_native.si/wer_16_1.0
+%WER 14.30 [ 1318 / 9215, 206 ins, 134 del, 978 sub ] exp/tri3b/decode_nonnative/wer_17_0.0
+%WER 21.62 [ 1992 / 9215, 286 ins, 224 del, 1482 sub ] exp/tri3b/decode_nonnative.si/wer_16_1.0
+%WER 10.78 [ 1802 / 16713, 247 ins, 195 del, 1360 sub ] exp/tri3b/decode_test/wer_17_0.0
+%WER 16.81 [ 2809 / 16713, 374 ins, 338 del, 2097 sub ] exp/tri3b/decode_test.si/wer_16_1.0
+
+# chain model results:
+# for dir in $(echo exp/chain/tdnn1b_sp/decode* | grep -v 'si/'); do grep WER $dir/wer* | utils/best_wer.sh; done
+%WER 12.99 [ 994 / 7650, 192 ins, 163 del, 639 sub ] exp/chain/tdnn1b_sp/decode_devtest/wer_10_1.0
+%WER 12.47 [ 1149 / 9215, 119 ins, 174 del, 856 sub ] exp/chain/tdnn1b_sp/decode_nonnative/wer_12_0.0
+%WER 9.64 [ 1611 / 16713, 169 ins, 240 del, 1202 sub ] exp/chain/tdnn1b_sp/decode_test/wer_12_0.0
+%WER 6.13 [ 460 / 7498, 52 ins, 55 del, 353 sub ] exp/chain/tdnn1b_sp/decode_native/wer_10_0.0

@@ -56,7 +56,7 @@ contributors and original source material as well as the full text of the Apache
 License v 2.0 are set forth below.
 
 Individual Contributors (in alphabetical order)
-      
+
       Mohit Agarwal
       Tanel Alumae
       Gilles Boulianne
@@ -123,7 +123,7 @@ Individual Contributors (in alphabetical order)
       Haihua Xu
       Hainan Xu
       Xiaohui Zhang
-      
+
 Other Source Material
 
     This project includes a port and modification of materials from JAMA: A Java
@@ -136,9 +136,9 @@ Other Source Material
   "Signal processing with lapped transforms," Artech House, Inc., 1992.  The
   current copyright holder, Henrique S. Malvar, has given his permission for the
   release of this modified version under the Apache License 2.0.
-  
-  This project includes material from the OpenFST Library v1.2.7 available at 
-  http://www.openfst.org and released under the Apache License v. 2.0.   
+
+  This project includes material from the OpenFST Library v1.2.7 available at
+  http://www.openfst.org and released under the Apache License v. 2.0.
 
   [OpenFst COPYING file begins here]
 
@@ -147,7 +147,7 @@ Other Source Material
     You may obtain a copy of the License at
 
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.

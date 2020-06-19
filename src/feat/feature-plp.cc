@@ -109,7 +109,7 @@ const Vector<BaseFloat> *PlpComputer::GetEqualLoudness(BaseFloat vtln_warp) {
   return ans;
 }
 
-void PlpComputer::Compute(BaseFloat signal_log_energy,
+void PlpComputer::Compute(BaseFloat signal_raw_log_energy,
                           BaseFloat vtln_warp,
                           VectorBase<BaseFloat> *signal_frame,
                           VectorBase<BaseFloat> *feature) {
@@ -124,8 +124,8 @@ void PlpComputer::Compute(BaseFloat signal_log_energy,
 
 
   if (opts_.use_energy && !opts_.raw_energy)
-    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<BaseFloat>::min()));
+    signal_raw_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<float>::min()));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -159,8 +159,8 @@ void PlpComputer::Compute(BaseFloat signal_log_energy,
 
   BaseFloat residual_log_energy = ComputeLpc(autocorr_coeffs_, &lpc_coeffs_);
 
-  residual_log_energy = std::max(residual_log_energy,
-                                 std::numeric_limits<BaseFloat>::min());
+  residual_log_energy = std::max<BaseFloat>(residual_log_energy,
+                                 std::numeric_limits<float>::min());
 
   Lpc2Cepstrum(opts_.lpc_order, lpc_coeffs_.Data(), raw_cepstrum_.Data());
   feature->Range(1, opts_.num_ceps - 1).CopyFromVec(
@@ -174,9 +174,9 @@ void PlpComputer::Compute(BaseFloat signal_log_energy,
     feature->Scale(opts_.cepstral_scale);
 
   if (opts_.use_energy) {
-    if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_)
-      signal_log_energy = log_energy_floor_;
-    (*feature)(0) = signal_log_energy;
+    if (opts_.energy_floor > 0.0 && signal_raw_log_energy < log_energy_floor_)
+      signal_raw_log_energy = log_energy_floor_;
+    (*feature)(0) = signal_raw_log_energy;
   }
 
   if (opts_.htk_compat) {  // reorder the features.

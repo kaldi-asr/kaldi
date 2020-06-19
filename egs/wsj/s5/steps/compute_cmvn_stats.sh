@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -81,7 +81,7 @@ required="$data/feats.scp $data/spk2utt"
 
 for f in $required; do
   if [ ! -f $f ]; then
-    echo "make_cmvn.sh: no such file $f"
+    echo "$0: no such file $f"
     exit 1;
   fi
 done

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2016 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
@@ -51,6 +51,13 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
+online_cmvn=false # Set to 'true' to replace 'apply-cmvn' by 'apply-cmvn-online' in the nnet3 input.
+                  # The configuration is passed externally via '$cmvn_opts' given to train.py,
+                  # typically as: --cmvn-opts="--config conf/online_cmvn.conf".
+                  # The global_cmvn.stats are computed by this script from the features.
+                  # Note: the online cmvn for ivector extractor it is controlled separately in
+                  #       steps/online/nnet2/train_ivector_extractor.sh by --online-cmvn-iextractor
+
 generate_egs_scp=false # If true, it will generate egs.JOB.*.scp per egs archive
 
 echo "$0 $@"  # Print the command line for logging
@@ -117,8 +124,8 @@ if ! [ $num_utts -gt $[$num_utts_subset*4] ]; then
 fi
 
 # Get list of validation utterances.
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
-    > $dir/valid_uttlist || exit 1;
+awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset \
+    > $dir/valid_uttlist
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
   echo "File $data/utt2uniq exists, so augmenting valid_uttlist to"
@@ -132,17 +139,44 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/train_subset_uttlist
 
 echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
 
 ## Set up features.
-echo "$0: feature type is raw"
 
-feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+# get the global_cmvn stats for online-cmvn,
+if $online_cmvn; then
+  # create global_cmvn.stats
+  #
+  # caution: the top-level nnet training script should copy
+  # 'global_cmvn.stats' and 'online_cmvn' to its own dir.
+  if ! matrix-sum --binary=false scp:$data/cmvn.scp - >$dir/global_cmvn.stats 2>/dev/null; then
+    echo "$0: Error summing cmvn stats"
+    exit 1
+  fi
+  touch $dir/online_cmvn
+else
+  [ -f $dir/online_cmvn ] && rm $dir/online_cmvn
+fi
+
+# create the feature pipelines,
+if ! $online_cmvn; then
+  # the original front-end with 'apply-cmvn',
+  echo "$0: feature type is raw, with 'apply-cmvn'"
+  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+else
+  # the alternative front-end with 'apply-cmvn-online',
+  # - the $cmvn_opts can be set to '--config=conf/online_cmvn.conf' which is the setup of ivector-extractor,
+  echo "$0: feature type is raw, with 'apply-cmvn-online'"
+  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$sdata/JOB/spk2utt  $dir/global_cmvn.stats scp:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+fi
 echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
+
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;

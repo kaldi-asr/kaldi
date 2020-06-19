@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     int64 num_done = 0, num_frames = 0;
 
     Vector<BaseFloat> inv_priors(am_nnet.Priors());
-    KALDI_ASSERT(inv_priors.Dim() == am_nnet.NumPdfs() &&
+    KALDI_ASSERT((!divide_by_priors || inv_priors.Dim() == am_nnet.NumPdfs()) &&
                  "Priors in neural network not set up.");
     inv_priors.ApplyPow(-1.0);
 
@@ -115,15 +115,15 @@ int main(int argc, char *argv[]) {
       }
 
       Matrix<BaseFloat> output(output_frames, output_dim);
-      if (chunk_size > 0 && chunk_size < feats.NumRows()) {
-        NnetComputationChunked(nnet, feats, chunk_size, &output);
+      CuMatrix<BaseFloat> cu_feats(feats);
+      CuMatrix<BaseFloat> cu_output(output);
+      if (chunk_size > 0 && chunk_size < feats.NumRows()) {      
+        NnetComputationChunked(nnet, cu_feats, chunk_size, &cu_output);
       } else {
-        CuMatrix<BaseFloat> cu_feats(feats);
-        CuMatrix<BaseFloat> cu_output(output);
         NnetComputation(nnet, cu_feats, pad_input, &cu_output);
-        output.CopyFromMat(cu_output);
       }
-
+      cu_output.Swap(&output);
+      
       if (divide_by_priors) {
         output.MulColsVec(inv_priors); // scales each column by the corresponding element
         // of inv_priors.
@@ -159,5 +159,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

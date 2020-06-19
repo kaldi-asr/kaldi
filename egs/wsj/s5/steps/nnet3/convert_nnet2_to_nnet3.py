@@ -6,6 +6,7 @@
 # It requires knowledge of valid components which
 # can be modified in the configuration section below.
 
+from __future__ import print_function
 import argparse, os, tempfile, logging, sys, shutil, fileinput, re
 from collections import defaultdict, namedtuple
 import numpy as np
@@ -51,7 +52,7 @@ NODE_NAMES = {
 SPLICE_COMPONENTS = [c for c in NODE_NAMES if "Splice" in c]
 AFFINE_COMPONENTS = [c for c in NODE_NAMES if "Affine" in c]
 
-KNOWN_COMPONENTS = NODE_NAMES.keys()
+KNOWN_COMPONENTS = list(NODE_NAMES.keys())
 # End configuration section
 
 logger = logging.getLogger(__name__)
@@ -99,6 +100,7 @@ class Nnet3Model(object):
     def __init__(self):
         self.input_dim = -1
         self.output_dim = -1
+        self.ivector_dim = 0 
         self.counts = defaultdict(int)
         self.num_components = 0
         self.components_read = 0
@@ -117,7 +119,10 @@ class Nnet3Model(object):
         Component = namedtuple("Component", "ident component pairs")
 
         if "<InputDim>" in pairs and self.input_dim == -1:
-            self.input_dim = pairs["<InputDim>"]
+            self.input_dim = int(pairs["<InputDim>"])
+
+        if "<ConstComponentDim>" in pairs and self.ivector_dim == 0:
+            self.ivector_dim = int(pairs["<ConstComponentDim>"])
 
         # remove nnet2 specific tokens and catch descriptors
         if component == "<PnormComponent>" and "<P>" in pairs:
@@ -158,13 +163,18 @@ class Nnet3Model(object):
                                     config_string=config_string))
 
             f.write("\n# Component nodes\n")
-            f.write("input-node name=input dim={0}\n".format(self.input_dim))
+            if self.ivector_dim != 0:
+                f.write("input-node name=input dim={0}\n".format(self.input_dim-self.ivector_dim))
+                f.write("input-node name=ivector dim={0}\n".format(self.ivector_dim))
+            else:
+                f.write("input-node name=input dim={0}\n".format(self.input_dim))
             previous_component = "input"
             for component in self.components:
                 if component.ident == "splice":
                     # Create splice string for the next node
                     previous_component = make_splice_string(previous_component, 
-                                                   component.pairs["<Context>"])
+                                                   component.pairs["<Context>"],
+                                                   component.pairs["<ConstComponentDim>"])
                     continue
                 f.write("component-node name={name} component={name} "
                         "input={inp}\n".format(name=component.ident, 
@@ -263,7 +273,7 @@ def parse_component(line, line_buffer):
     pairs = {}
 
     if component in SPLICE_COMPONENTS:
-        pairs = parse_splice_component(component, line, line_buffer)
+        line, pairs = parse_splice_component(component, line, line_buffer)
     elif component in AFFINE_COMPONENTS:
         pairs = parse_affine_component(component, line, line_buffer)
     elif component == "<FixedScaleComponent>":
@@ -284,7 +294,7 @@ def parse_component(line, line_buffer):
 def parse_standard_component(component, line, line_buffer):
     # Ignores stats such as ValueSum and DerivSum
     line = consume_token(component, line)
-    pairs = re.findall("(<\w+>) ([\w.]+)", line)
+    pairs = re.findall("(<\w+>) ([\w.-]+)", line)
 
     return dict(pairs)
 
@@ -334,7 +344,13 @@ def parse_splice_component(component, line, line_buffer):
     line = consume_token("<Context>", line)
     context = line.strip()[1:-1].split()
 
-    return {"<InputDim>" : input_dim, "<Context>" : context}
+    const_component_dim = 0
+    line = next(line_buffer) # Context vector adds newline
+    line = consume_token("<ConstComponentDim>", line)
+    const_component_dim = int(line.strip().split()[0])
+
+    return line, {"<InputDim>" : input_dim, "<Context>" : context, 
+            "<ConstComponentDim>" : const_component_dim}
 
 def parse_end_of_component(component, line, line_buffer):
     # Keeps reading until it hits the end tag for component
@@ -348,7 +364,7 @@ def parse_end_of_component(component, line, line_buffer):
 def parse_affine_component(component, line, line_buffer):
     assert ("<LinearParams>" in line)
 
-    pairs = dict(re.findall("(<\w+>) ([\w.]+)", line))
+    pairs = dict(re.findall("(<\w+>) ([\w.-]+)", line))
 
     # read the linear params and bias and convert it to a matrix
     weights = parse_weights(line_buffer)
@@ -421,7 +437,7 @@ def consume_token(token, line):
 
     return line.partition(token)[2]
 
-def make_splice_string(nodename, context):
+def make_splice_string(nodename, context, const_component_dim=0):
     """Generates splice string from a list of context.
 
     E.g. make_splice_string("renorm4", [-4, 4])
@@ -429,6 +445,8 @@ def make_splice_string(nodename, context):
     """
     assert type(context) == list, "context argument must be a list"
     string = ["Offset({0}, {1})".format(nodename, i) for i in context]
+    if const_component_dim > 0:
+        string.append("ReplaceIndex(ivector, t, 0)")
     string = "Append(" + ", ".join(string) + ")"
     return string
 

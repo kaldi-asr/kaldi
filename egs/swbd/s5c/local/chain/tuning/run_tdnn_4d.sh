@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4d is as _4a, but with --egs-opts "--frames-overlap-per-eg 10
 # --cut-zero-frames 5" and changing apply-deriv-weights to true... this to

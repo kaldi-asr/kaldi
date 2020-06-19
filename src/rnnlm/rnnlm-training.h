@@ -20,7 +20,6 @@
 #ifndef KALDI_RNNLM_RNNLM_TRAINING_H_
 #define KALDI_RNNLM_RNNLM_TRAINING_H_
 
-#include <thread>
 #include "rnnlm/rnnlm-core-training.h"
 #include "rnnlm/rnnlm-embedding-training.h"
 #include "rnnlm/rnnlm-utils.h"
@@ -79,10 +78,7 @@ class RnnlmTrainer {
 
 
   // Train on one example.  The example is provided as a pointer because we
-  // acquire it destructively, via Swap().  Note: this function doesn't
-  // actually train on this eg; what it does is to train on the previous
-  // example, and provide this eg to the background thread that computes the
-  // derived parameters of the eg.
+  // acquire it destructively, via Swap().
   void Train(RnnlmExample *minibatch);
 
 
@@ -129,16 +125,6 @@ class RnnlmTrainer {
       bool is_backstitch_step1,
       CuMatrixBase<BaseFloat> *word_embedding_deriv);
 
-  /// This is the function-call that's run as the background thread which
-  /// computes the derived parameters for each minibatch.
-  void RunBackgroundThread();
-
-  /// This function is invoked by the newly created background thread.
-  static void run_background_thread(RnnlmTrainer *trainer) {
-    trainer->RunBackgroundThread();
-  }
-
-
   bool train_embedding_;  // true if we are training the embedding.
   const RnnlmCoreTrainerOptions &core_config_;
   const RnnlmEmbeddingTrainerOptions &embedding_config_;
@@ -173,32 +159,14 @@ class RnnlmTrainer {
   // it's needed.
   CuSparseMatrix<BaseFloat> word_feature_mat_transpose_;
 
-
-  // num_minibatches_processed_ starts at zero is incremented each time we
-  // provide an example to the background thread for computing the derived
-  // parameters.
   int32 num_minibatches_processed_;
 
-  // 'current_minibatch' is where the Train() function puts the minibatch that
-  // is provided to Train(), so that the background thread can work on it.
   RnnlmExample current_minibatch_;
-  // View 'end_of_input_' as part of a unit with current_minibatch_, for threading/access
-  // purposes.  It is set by the foreground thread from the destructor, while
-  // incrementing the current_minibatch_ready_ semaphore; and when the background
-  // thread decrements the semaphore and notices that end_of_input_ is true, it will
-  // exit.
-  bool end_of_input_;
 
-
-  // previous_minibatch_ is the previous minibatch that was provided to Train(),
-  // but the minibatch that we're currently trainig on.
-  RnnlmExample previous_minibatch_;
-  // The variables derived_ and active_words_ [and more that I'll add, TODO] are in the same
-  // group as previous_minibatch_ from the point of view
-  // of threading and access control.
-   RnnlmExampleDerived derived_;
+  // The variables derived_ and active_words_ corresponds to group as current_minibatch_.
+  RnnlmExampleDerived derived_;
   // Only if we are doing subsampling (depends on the eg), active_words_
-  // contains the list of active words for the minibatch 'previous_minibatch_';
+  // contains the list of active words for the minibatch 'current_minibatch_';
   // it is a CUDA version of the 'active_words' output by
   // RenumberRnnlmExample().  Otherwise it is empty.
   CuArray<int32> active_words_;
@@ -211,42 +179,6 @@ class RnnlmTrainer {
   // active_word_features_trans_ is the transpose of active_word_features_;
   // This is a derived quantity computed by the background thread.
   CuSparseMatrix<BaseFloat> active_word_features_trans_;
-
-
-  // The 'previous_minibatch_full_' semaphore is incremented by the background
-  // thread once it has written to 'previous_minibatch_' and
-  // 'derived_previous_', to let the Train() function know that they are ready
-  // to be trained on.  The Train() function waits on this semaphore.
-  Semaphore previous_minibatch_full_;
-
-  // The 'previous_minibatch_empty_' semaphore is incremented by the foreground
-  // thread when it has done processing previous_minibatch_ and
-  // derived_ and active_words_ (and hence, it is safe for the background thread to write
-  // to these variables).  The background thread waits on this semaphore once it
-  // has finished computing the derived variables; and when it successfully
-  // decrements it, it will write to those variables (quickly, via Swap()).
-  Semaphore previous_minibatch_empty_;
-
-
-  // The 'current_minibatch_ready_' semaphore is incremented by the foreground
-  // thread from Train(), when it has written the just-provided minibatch to
-  // 'current_minibatch_' (it's also incremented by the destructor, together
-  // with setting end_of_input_.  The background thread waits on this semaphore
-  // before either processing previous_minibatch (if !end_of_input_), or exiting
-  // (if end_of_input_).
-  Semaphore current_minibatch_full_;
-
-  // The 'current_minibatch_empty_' semaphore is incremented by the background
-  // thread when it has done processing current_minibatch_,
-  // so, it is safe for the foreground thread to write
-  // to this variable).  The foreground thread waits on this semaphore before
-  // writing to 'current_minibatch_' (in practice it should get the semaphore
-  // immediately since we expect that the foreground thread will have more to
-  // do than the background thread).
-  Semaphore current_minibatch_empty_;
-
-  std::thread background_thread_;  // Background thread for computing 'derived'
-                                   // parameters of a minibatch.
 
   // This value is used in backstitch training when we need to ensure
   // consistent dropout masks.  It's set to a value derived from rand()

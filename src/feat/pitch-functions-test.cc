@@ -449,7 +449,7 @@ static void UnitTestKeeleNccfBallast() {
       // use pitch code with default configuration..
       PitchExtractionOptions op;
       op.nccf_ballast = 0.05 * k;
-      KALDI_LOG << " nccf_ballast " << op.nccf_ballast << std::endl;
+      KALDI_LOG << " nccf_ballast " << op.nccf_ballast;
       // compute pitch.
       Matrix<BaseFloat> m;
       ComputeKaldiPitch(op, waveform, &m);
@@ -493,7 +493,7 @@ static void UnitTestPitchExtractionSpeed() {
     double tot_time = timer.Elapsed(),
         speech_time = test_num * waveform.Dim() / wave.SampFreq();
     KALDI_LOG << " Pitch extraction time per second of speech is "
-              << (tot_time / speech_time) << " seconds " << std::endl;
+              << (tot_time / speech_time) << " seconds.";
   }
 }
 static void UnitTestPitchExtractorCompareKeele() {

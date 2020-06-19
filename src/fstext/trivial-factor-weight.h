@@ -220,7 +220,7 @@ class TrivialFactorWeightFstImpl
     } else {
       StateId s = elements_.size();
       elements_.push_back(e);
-      element_map_.insert(pair<const Element, StateId>(e, s));
+      element_map_.insert(std::pair<const Element, StateId>(e, s));
       return s;
     }
   }
@@ -238,7 +238,7 @@ class TrivialFactorWeightFstImpl
           PushArc(s, Arc(extra_ilabel_, extra_olabel_, e.weight, dest));
         } // else we're done.  This is a final state.
       } else {  // Can be factored.
-        const pair<Weight, Weight> &p = fit.Value();
+        const std::pair<Weight, Weight> &p = fit.Value();
         StateId dest = FindState(Element(e.state, p.second.Quantize(delta_)));
         PushArc(s, Arc(extra_ilabel_, extra_olabel_, p.first, dest));
       }
@@ -253,7 +253,7 @@ class TrivialFactorWeightFstImpl
           StateId dest = FindState(Element(arc.nextstate, Weight::One()));
           PushArc(s, Arc(arc.ilabel, arc.olabel, arc.weight, dest));
         } else {
-          const pair<Weight, Weight> &p = fit.Value();
+          const std::pair<Weight, Weight> &p = fit.Value();
           StateId dest = FindState(Element(arc.nextstate, p.second.Quantize(delta_)));
           PushArc(s, Arc(arc.ilabel, arc.olabel, p.first, dest));
         }
@@ -263,7 +263,7 @@ class TrivialFactorWeightFstImpl
       if (final_w != Weight::Zero()) {
         FactorIterator fit(final_w);
         if (!fit.Done()) {
-          const pair<Weight, Weight> &p = fit.Value();
+          const std::pair<Weight, Weight> &p = fit.Value();
           StateId dest = FindState(Element(kNoStateId, p.second.Quantize(delta_)));
           PushArc(s, Arc(extra_ilabel_, extra_olabel_, p.first, dest));
         }
@@ -298,7 +298,7 @@ class TrivialFactorWeightFstImpl
   uint32 mode_;               // factoring arc and/or final weights
   Label extra_ilabel_;        // ilabel of arc created when factoring final w's
   Label extra_olabel_;        // olabel of arc created when factoring final w's
-  vector<Element> elements_;  // mapping Fst state to Elements
+  std::vector<Element> elements_;  // mapping Fst state to Elements
   ElementMap element_map_;    // mapping Elements to Fst state
 
 };

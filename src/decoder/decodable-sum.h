@@ -49,7 +49,7 @@ class DecodableSum: public DecodableInterface {
       const std::vector<std::pair<DecodableInterface*, BaseFloat> > &decodables) :
       decodables_(decodables) { CheckSizes(); }
 
-  void CheckSizes() {
+  void CheckSizes() const {
     KALDI_ASSERT(decodables_.size() >= 1
                  && decodables_[0].first != NULL);
     for (size_t i = 1; i < decodables_.size(); i++)
@@ -67,10 +67,6 @@ class DecodableSum: public DecodableInterface {
          iter != decodables_.end();
          ++iter) {
       sum += iter->first->LogLikelihood(frame, state_index) * iter->second;
-      // BaseFloat tmp = iter->first->LogLikelihood(frame, state_index);
-      // KALDI_LOG << "ITEM " << i << " contributed with loglike=" << tmp << " scaled by=" << iter->second;
-      // i+=1;
-      // sum += tmp * iter->second;
      }
     return sum;
   }

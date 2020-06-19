@@ -64,7 +64,7 @@ void SamplingLmTest::ReadHistories(std::istream &is, bool binary,
     BaseFloat hist_weight = 0;
     for (int32 i = 0; i < tokens.size() - 1; ++i) {
       word = sym->Find(tokens[i]);
-      if (word == fst::SymbolTable::kNoSymbol) {
+      if (word == -1) { // fst::kNoSymbol
         KALDI_ERR << "Found history contains word that is not in Arpa LM";
       }
       history.push_back(word);

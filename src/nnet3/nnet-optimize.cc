@@ -21,6 +21,7 @@
 #include <iomanip>
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-optimize-utils.h"
+#include "nnet3/nnet-utils.h"
 #include "base/timer.h"
 
 namespace kaldi {
@@ -638,7 +639,8 @@ CachingOptimizingCompiler::CachingOptimizingCompiler(
     seconds_taken_total_(0.0), seconds_taken_compile_(0.0),
     seconds_taken_optimize_(0.0), seconds_taken_expand_(0.0),
     seconds_taken_check_(0.0), seconds_taken_indexes_(0.0),
-    seconds_taken_io_(0.0), cache_(config.cache_capacity) { }
+    seconds_taken_io_(0.0), cache_(config.cache_capacity),
+    nnet_left_context_(-1), nnet_right_context_(-1) { }
 
 CachingOptimizingCompiler::CachingOptimizingCompiler(
     const Nnet &nnet,
@@ -648,8 +650,18 @@ CachingOptimizingCompiler::CachingOptimizingCompiler(
     seconds_taken_total_(0.0), seconds_taken_compile_(0.0),
     seconds_taken_optimize_(0.0), seconds_taken_expand_(0.0),
     seconds_taken_check_(0.0), seconds_taken_indexes_(0.0),
-    seconds_taken_io_(0.0), cache_(config.cache_capacity) { }
+    seconds_taken_io_(0.0), cache_(config.cache_capacity),
+    nnet_left_context_(-1), nnet_right_context_(-1) { }
 
+void CachingOptimizingCompiler::GetSimpleNnetContext(
+    int32 *nnet_left_context, int32 *nnet_right_context) {
+  if (nnet_left_context_ == -1) {
+    ComputeSimpleNnetContext(nnet_, &nnet_left_context_,
+                             &nnet_right_context_);
+  }
+  *nnet_left_context = nnet_left_context_;
+  *nnet_right_context = nnet_right_context_;
+}
 
 void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
   {

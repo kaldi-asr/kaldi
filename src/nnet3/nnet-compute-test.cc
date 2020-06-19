@@ -284,7 +284,7 @@ int main() {
   using namespace kaldi::nnet3;
   // uncommenting the following activates extra checks during optimization, that
   // can help narrow down the source of problems.
-  SetVerboseLevel(4);
+  //SetVerboseLevel(4);
 
 
   for (kaldi::int32 loop = 0; loop < 2; loop++) {

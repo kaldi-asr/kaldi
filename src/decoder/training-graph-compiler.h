@@ -1,6 +1,7 @@
 // decoder/training-graph-compiler.h
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation
+//                2018  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,6 +24,7 @@
 #include "hmm/transition-model.h"
 #include "fst/fstlib.h"
 #include "fstext/fstext-lib.h"
+#include "tree/context-dep.h"
 
 
 namespace kaldi {
@@ -65,14 +67,14 @@ class TrainingGraphCompiler {
                         const TrainingGraphCompilerOptions &opts);
 
 
-  /// CompileGraph compiles a single training graph its input is a
+  // CompileGraph compiles a single training graph its input is a
   // weighted acceptor (G) at the word level, its output is HCLG.
-  // Note: G could actually be an acceptor, it would also work.
+  // Note: G could actually be a transducer, it would also work.
   // This function is not const for technical reasons involving the cache.
   // if not for "table_compose" we could make it const.
   bool CompileGraph(const fst::VectorFst<fst::StdArc> &word_grammar,
                     fst::VectorFst<fst::StdArc> *out_fst);
-  
+
   // CompileGraphs allows you to compile a number of graphs at the same
   // time.  This consumes more memory but is faster.
   bool CompileGraphs(
@@ -87,8 +89,8 @@ class TrainingGraphCompiler {
   bool CompileGraphsFromText(
       const std::vector<std::vector<int32> >  &word_grammar,
       std::vector<fst::VectorFst<fst::StdArc> *> *out_fsts);
-  
-  
+
+
   ~TrainingGraphCompiler() { delete lex_fst_; }
  private:
   const TransitionModel &trans_model_;
@@ -96,6 +98,7 @@ class TrainingGraphCompiler {
   fst::VectorFst<fst::StdArc> *lex_fst_; // lexicon FST (an input; we take
   // ownership as we need to modify it).
   std::vector<int32> disambig_syms_; // disambig symbols (if any) in the phone
+  int32 subsequential_symbol_;  // search in ../fstext/context-fst.h for more info.
   // symbol table.
   fst::TableComposeCache<fst::Fst<fst::StdArc> > lex_cache_;  // stores matcher..
   // this is one of Dan's extensions.

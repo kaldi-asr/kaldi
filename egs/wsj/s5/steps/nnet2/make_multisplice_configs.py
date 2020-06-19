@@ -4,14 +4,16 @@
 # Creates the nnet.config and hidde_*.config scripts used in train_pnorm_multisplice.sh
 # Parses the splice string to generate relevant variables for get_egs.sh, get_lda.sh and nnet/hidden.config files
 
+from __future__ import division
+from __future__ import print_function
 import re, argparse, sys, math, warnings
 
 # returns the set of frame indices required to perform the convolution
 # between sequences with frame indices in x and y
 def get_convolution_index_set(x, y):
   z = []
-  for i in xrange(len(x)):
-    for j in xrange(len(y)):
+  for i in range(len(x)):
+    for j in range(len(y)):
       z.append(x[i]+y[j])
   z = list(set(z))
   z.sort()
@@ -19,7 +21,7 @@ def get_convolution_index_set(x, y):
 
 def parse_splice_string(splice_string):
   layerwise_splice_indexes = splice_string.split('layer')[1:]
-  print splice_string.split('layer')
+  print(splice_string.split('layer'))
   contexts={}
   first_right_context = 0 # default value
   first_left_context = 0 # default value
@@ -29,14 +31,14 @@ def parse_splice_string(splice_string):
   try:
     for cur_splice_indexes in layerwise_splice_indexes:
       layer_index, frame_indexes  = cur_splice_indexes.split("/")
-      frame_indexes = map(lambda x: int(x), frame_indexes.split(':'))
+      frame_indexes = [int(x) for x in frame_indexes.split(':')]
       layer_index = int(layer_index)
       assert(layer_index >= 0)
       if layer_index == 0:
         first_left_context = min(frame_indexes)
         first_right_context = max(frame_indexes)
         try:
-          assert(frame_indexes == range(first_left_context, first_right_context+1))
+          assert(frame_indexes == list(range(first_left_context, first_right_context+1)))
         except AssertionError:
           raise Exception('Currently the first splice component just accepts contiguous context.')
         try:
@@ -46,11 +48,11 @@ def parse_splice_string(splice_string):
           left context provided is %d and right context provided is %d.""" % (first_left_context, first_right_context))
         # convolve the current splice indices with the splice indices until last layer
       nnet_frame_indexes = get_convolution_index_set(frame_indexes, nnet_frame_indexes)
-      cur_context = ":".join(map(lambda x: str(x), frame_indexes))
+      cur_context = ":".join([str(x) for x in frame_indexes])
       contexts[layer_index] = cur_context
   except ValueError:
     raise Exception('Unknown format in splice_indexes variable: {0}'.format(params.splice_indexes))
-  print nnet_frame_indexes
+  print(nnet_frame_indexes)
   max_left_context = min(nnet_frame_indexes)
   max_right_context = max(nnet_frame_indexes)
   return [contexts, ' nnet_left_context={0};\n nnet_right_context={1}\n first_left_context={2};\n first_right_context={3}\n'.format(abs(max_left_context), abs(max_right_context), abs(first_left_context), abs(first_right_context) )]
@@ -87,10 +89,10 @@ def create_config_files(output_dir, params):
   except KeyError:
     raise Exception('A splice layer is expected to be the first layer. Provide a context for the first layer.')
 
-  for i in xrange(1, params.num_hidden_layers): #just run till num_hidden_layers-1 since we do not add splice before the final affine transform
+  for i in range(1, params.num_hidden_layers): #just run till num_hidden_layers-1 since we do not add splice before the final affine transform
     lines=[]
     context_len = 1
-    if contexts.has_key(i):
+    if i in contexts:
         # Adding the splice component as a context is provided
         lines.append("SpliceComponent input-dim=%d context=%s " % (pnorm_output_dim, contexts[i]))
         context_len = len(contexts[i].split(":"))
@@ -109,7 +111,7 @@ def create_config_files(output_dir, params):
 
 
 if __name__ == "__main__":
-  print " ".join(sys.argv)
+  print(" ".join(sys.argv))
   parser = argparse.ArgumentParser()
   parser.add_argument('--splice-indexes', type=str, help='string specifying the indexes for the splice layers throughout the network')
   parser.add_argument('--total-input-dim', type=int, help='dimension of the input to the network')
@@ -127,7 +129,7 @@ if __name__ == "__main__":
   parser.add_argument("output_dir", type=str, help="output directory to store the files")
   params = parser.parse_args() 
   
-  print params
+  print(params)
   if params.mode == "contexts":
     [context, context_variables] = parse_splice_string(params.splice_indexes)
     var_file = open("{0}/vars".format(params.output_dir), "w")

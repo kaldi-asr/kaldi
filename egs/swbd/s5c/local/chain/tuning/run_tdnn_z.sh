@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _z is as _x but setting  --lm-opts "--num-extra-states=2000".
 # (see also w, which has --num-extra-states=500, and 2a, which has 8000).

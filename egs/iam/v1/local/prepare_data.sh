@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright      2017  Chun Chieh Chang
 #                2017  Ashish Arora
@@ -18,6 +18,8 @@
 
 stage=0
 download_dir=data/download
+process_aachen_split=false
+wellington_dir=
 username=
 password=       # username and password for downloading the IAM database
                 # if you have not already downloaded the database, please
@@ -52,6 +54,8 @@ ascii_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/ascii/ascii.tgz
 brown_corpus_url=http://www.sls.hawaii.edu/bley-vroman/brown.txt
 lob_corpus_url=http://ota.ox.ac.uk/text/0167.zip
 wellington_corpus_loc=/export/corpora5/Wellington/WWC/
+aachen_split_url=http://www.openslr.org/resources/56/splits.zip
+aachen_splits=data/local/aachensplits
 mkdir -p $download_dir data/local
 
 # download and extact images and transcription
@@ -128,34 +132,31 @@ fi
 
 if [ -d $wcorpus ]; then
   echo "$0: Not copying Wellington corpus as it is already there."
-else
+elif [ ! -z $wellington_dir ]; then
   mkdir -p $wcorpus
-  cp -r $wellington_corpus_loc/. $wcorpus
+  cp -r $wellington_dir/. $wcorpus
 
   # Combine Wellington corpora and replace some of their annotations
   cat data/local/wellingtoncorpus/Section{A,B,C,D,E,F,G,H,J,K,L}.txt | \
     cut -d' ' -f3- | sed "s/^[ \t]*//" > data/local/wellingtoncorpus/Wellington_annotated.txt
 
-  cat data/local/wellingtoncorpus/Wellington_annotated.txt | python3 <(
-  cat << EOF
-import sys, io, re;
-from collections import OrderedDict;
-sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf8");
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf8");
-dict=OrderedDict([("^",""), ("|",""), ("_",""), ("*0",""), ("*1",""), ("*2",""), ("*3",""), ("*4",""),
-  ("*5",""), ("*6",""), ("*7",""), ("*8",""), ("*9",""), ("*@","°"), ("**=",""), ("*=",""),
-  ("*+$",""), ("$",""), ("*+","£"), ("*-","-"), ("*/","*"), ("*|",""), ("*{","{"), ("*}","}"),
-  ("**#",""), ("*#",""), ("*?",""), ("**\"","\""), ("*\"","\""), ("**'","'"), ("*'","'"),
-  ("*<",""), ("*>",""), ("**[",""), ("**]",""), ("**;",""), ("*;",""), ("**:",""), ("*:",""),
-  ("\\\0",""), ("\\\15",""), ("\\\1",""), ("\\\2",""), ("\\\3",""), ("\\\6",""), ("\\\"",""),
-  ("{0",""), ("{15",""), ("{1",""), ("{2",""), ("{3",""), ("{6","")]);
-pattern = re.compile("|".join(re.escape(key) for key in dict.keys()) + "|[^\\*]\\}");
-dict["}"]="";
-[sys.stdout.write(pattern.sub(lambda x: dict[x.group()[1:]] if re.match('[^\\*]\\}', x.group()) else dict[x.group()], line)) for line in sys.stdin];
-EOF
-) > data/local/wellingtoncorpus/Wellington_annotation_removed.txt
+  cat data/local/wellingtoncorpus/Wellington_annotated.txt | local/remove_wellington_annotations.py > data/local/wellingtoncorpus/Wellington_annotation_removed.txt
 
   echo "$0: Done copying Wellington corpus"
+else
+  echo "$0: Wellington Corpus not included because wellington_dir not provided"
+fi
+
+if [ -d $aachen_splits ]; then
+  echo "$0: Not downloading the Aachen splits as it is already there."
+else
+  if [ ! -f $aachen_splits/splits.zip ]; then
+    echo "$0: Downloading Aachen splits ..."
+    mkdir -p $aachen_splits
+    wget -P $aachen_splits/ $aachen_split_url || exit 1;
+  fi
+  unzip $aachen_splits/splits.zip -d $aachen_splits || exit 1;
+  echo "$0: Done downloading and extracting Aachen splits"
 fi
 
 mkdir -p data/{train,test,val}
@@ -174,11 +175,17 @@ cat $train_old > $train_new
 cat $test_old > $test_new
 cat $val1_old $val2_old > $val_new
 
-if [ $stage -le 0 ]; then
-  local/process_data.py data/local data/train --dataset train || exit 1
-  local/process_data.py data/local data/test --dataset test || exit 1
-  local/process_data.py data/local data/val --dataset validation || exit 1
-
-  utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
+if $process_aachen_split; then
+    local/process_aachen_splits.py data/local $aachen_splits/splits data/train --dataset train || exit 1
+    local/process_aachen_splits.py data/local $aachen_splits/splits data/test --dataset test || exit 1
+    local/process_aachen_splits.py data/local $aachen_splits/splits data/val --dataset validation || exit 1
+else
+    local/process_data.py data/local data/train --dataset train || exit 1
+    local/process_data.py data/local data/test --dataset test || exit 1
+    local/process_data.py data/local data/val --dataset validation || exit 1
 fi
+
+image/fix_data_dir.sh data/train
+image/fix_data_dir.sh data/test
+image/fix_data_dir.sh data/val
+

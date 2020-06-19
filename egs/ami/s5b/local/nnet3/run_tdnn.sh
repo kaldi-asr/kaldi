@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #    This is the standard "tdnn" system, built in nnet3.
 # Please see RESULTS_* for examples of command lines invoking this script.
@@ -21,7 +21,6 @@
 # alignments.  the --gmm option in this case refers to the IHM gmm that's used
 # to get the alignments.
 # local/nnet3/run_tdnn.sh --mic sdm1 --use-ihm-ali true --affix _cleaned2 --gmm tri4a --train-set train_cleaned2 &
-
 
 
 set -e -o pipefail -u

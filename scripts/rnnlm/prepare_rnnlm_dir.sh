@@ -23,7 +23,7 @@ if [ $# != 3 ]; then
   echo "Usage: $0 [options] <text-dir> <rnnlm-config-dir> <rnnlm-dir>"
   echo "Sets up the directory <rnnlm-dir> for RNNLM training as done by"
   echo "rnnlm/train_rnnlm.sh, and initializes the model."
-  echo " <text-dir> is as validated by rnnlm/validate_data_dir.py"
+  echo " <text-dir> is as validated by rnnlm/validate_text_dir.py"
   echo " <rnnlm-config-dir> is as validated by rnnlm/validate_config_dir.sh."
   exit 1
 fi
@@ -53,9 +53,13 @@ if [ $stage -le 1 ]; then
     echo "$0: copying config directory"
     mkdir -p $dir/config
     # copy expected things from $config_dir to $dir/config.
-    for f in words.txt features.txt data_weights.txt oov.txt xconfig; do
+    for f in words.txt data_weights.txt oov.txt xconfig; do
       cp $config_dir/$f $dir/config
     done
+    # features.txt is optional, check separately
+    if [ -f $config_dir/features.txt ]; then
+      cp $config_dir/features.txt $dir/config
+    fi
   fi
 
   rnnlm/get_special_symbol_opts.py < $dir/config/words.txt > $dir/special_symbol_opts.txt

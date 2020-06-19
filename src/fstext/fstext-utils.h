@@ -56,14 +56,14 @@ typename Arc::StateId NumArcs(const ExpandedFst<Arc> &fst);
 template<class Arc, class I>
 void GetInputSymbols(const Fst<Arc> &fst,
                      bool include_eps,
-                     vector<I> *symbols);
+                     std::vector<I> *symbols);
 
 /// GetOutputSymbols gets the list of symbols on the output of fst
 /// (including epsilon, if include_eps == true)
 template<class Arc, class I>
 void GetOutputSymbols(const Fst<Arc> &fst,
                       bool include_eps,
-                      vector<I> *symbols);
+                      std::vector<I> *symbols);
 
 /// ClearSymbols sets all the symbols on the input and/or
 /// output side of the FST to zero, as specified.
@@ -76,7 +76,7 @@ void ClearSymbols(bool clear_input,
 template<class I>
 void GetSymbols(const SymbolTable &symtab,
                 bool include_eps,
-                vector<I> *syms_out);
+                std::vector<I> *syms_out);
 
 
 
@@ -131,19 +131,19 @@ void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
 /// create that output.
 template<class Arc, class I>
 bool GetLinearSymbolSequence(const Fst<Arc> &fst,
-                             vector<I> *isymbols_out,
-                             vector<I> *osymbols_out,
+                             std::vector<I> *isymbols_out,
+                             std::vector<I> *osymbols_out,
                              typename Arc::Weight *tot_weight_out);
 
 
 /// This function converts an FST with a special structure, which is
 /// output by the OpenFst functions ShortestPath and RandGen, and converts
-/// them into a vector of separate FSTs.  This special structure is that
+/// them into a std::vector of separate FSTs.  This special structure is that
 /// the only state that has more than one (arcs-out or final-prob) is the
 /// start state.  fsts_out is resized to the appropriate size.
 template<class Arc>
 void ConvertNbestToVector(const Fst<Arc> &fst,
-                          vector<VectorFst<Arc> > *fsts_out);
+                          std::vector<VectorFst<Arc> > *fsts_out);
 
 
 /// Takes the n-shortest-paths (using ShortestPath), but outputs
@@ -153,14 +153,14 @@ void ConvertNbestToVector(const Fst<Arc> &fst,
 template<class Arc>
 void NbestAsFsts(const Fst<Arc> &fst,
                  size_t n,
-                 vector<VectorFst<Arc> > *fsts_out);
+                 std::vector<VectorFst<Arc> > *fsts_out);
 
 
 
 
 /// Creates unweighted linear acceptor from symbol sequence.
 template<class Arc, class I>
-void MakeLinearAcceptor(const vector<I> &labels, MutableFst<Arc> *ofst);
+void MakeLinearAcceptor(const std::vector<I> &labels, MutableFst<Arc> *ofst);
 
 
 
@@ -168,7 +168,7 @@ void MakeLinearAcceptor(const vector<I> &labels, MutableFst<Arc> *ofst);
 /// at each position.  Epsilon is treated like a normal symbol here.
 /// Each position in "labels" must have at least one alternative.
 template<class Arc, class I>
-void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
+void MakeLinearAcceptorWithAlternatives(const std::vector<std::vector<I> > &labels,
                                         MutableFst<Arc> *ofst);
 
 
@@ -198,14 +198,14 @@ void SafeDeterminizeMinimizeWrapperInLog(VectorFst<StdArc> *ifst, VectorFst<StdA
 /// RemoveSomeInputSymbols removes any symbol that appears in "to_remove", from
 /// the input side of the FST, replacing them with epsilon.
 template<class Arc, class I>
-void RemoveSomeInputSymbols(const vector<I> &to_remove,
+void RemoveSomeInputSymbols(const std::vector<I> &to_remove,
                             MutableFst<Arc> *fst);
 
 // MapInputSymbols will replace any input symbol i that is between 0 and
 // symbol_map.size()-1, with symbol_map[i].  It removes the input symbol
 // table of the FST.
 template<class Arc, class I>
-void MapInputSymbols(const vector<I> &symbol_map,
+void MapInputSymbols(const std::vector<I> &symbol_map,
                      MutableFst<Arc> *fst);
 
 
@@ -304,7 +304,7 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
 /// less well optimized and would have a lot of final-states.
 
 template<class Arc>
-VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts);
+VectorFst<Arc>* MakeLoopFst(const std::vector<const ExpandedFst<Arc> *> &fsts);
 
 
 /// ApplyProbabilityScale is applicable to FSTs in the log or tropical semiring.
@@ -391,8 +391,6 @@ void RhoCompose(const Fst<Arc> &fst1,
                 const Fst<Arc> &fst2,
                 typename Arc::Label rho_label,
                 MutableFst<Arc> *fst);
-
-
 
 /** This function returns true if, in the semiring of the FST, the sum (within
     the semiring) of all the arcs out of each state in the FST is one, to within

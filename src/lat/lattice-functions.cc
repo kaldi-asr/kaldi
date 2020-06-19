@@ -1107,17 +1107,16 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
   // Now we can assume it's topologically sorted.
   shortest_path->DeleteStates();
   if (clat.Start() == kNoStateId) return;
-  KALDI_ASSERT(clat.Start() == 0); // since top-sorted.
   typedef CompactLatticeArc Arc;
   typedef Arc::StateId StateId;
   typedef CompactLatticeWeight Weight;
   vector<std::pair<double, StateId> > best_cost_and_pred(clat.NumStates() + 1);
   StateId superfinal = clat.NumStates();
   for (StateId s = 0; s <= clat.NumStates(); s++) {
-    best_cost_and_pred[s].first = numeric_limits<double>::infinity();
+    best_cost_and_pred[s].first = std::numeric_limits<double>::infinity();
     best_cost_and_pred[s].second = fst::kNoStateId;
   }
-  best_cost_and_pred[0].first = 0;
+  best_cost_and_pred[clat.Start()].first = 0;
   for (StateId s = 0; s < clat.NumStates(); s++) {
     double my_cost = best_cost_and_pred[s].first;
     for (ArcIterator<CompactLattice> aiter(clat, s);
@@ -1139,8 +1138,8 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
     }
   }
   std::vector<StateId> states; // states on best path.
-  StateId cur_state = superfinal;
-  while (cur_state != 0) {
+  StateId cur_state = superfinal, start_state = clat.Start();
+  while (cur_state != start_state) {
     StateId prev_state = best_cost_and_pred[cur_state].second;
     if (prev_state == kNoStateId) {
       KALDI_WARN << "Failure in best-path algorithm for lattice (infinite costs?)";

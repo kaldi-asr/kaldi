@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
       options.oov_handling = ArpaParseOptions::kSkipNGram;
       if (!disambig_symbol.empty()) {
         disambig_symbol_id = symbols->Find(disambig_symbol);
-        if (disambig_symbol_id == fst::SymbolTable::kNoSymbol)
+        if (disambig_symbol_id == -1) // fst::kNoSymbol
           KALDI_ERR << "Symbol table " << read_syms_filename
                     << " has no symbol for " << disambig_symbol;
       }

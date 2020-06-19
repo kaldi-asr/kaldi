@@ -1,6 +1,7 @@
 // chainbin/nnet3-chain-e2e-get-egs.cc
 
 // Copyright      2015  Johns Hopkins University (author:  Daniel Povey)
+//                2017, 2018  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,6 +32,39 @@
 namespace kaldi {
 namespace nnet3 {
 
+
+/**
+   This function finds the minimum number of arcs required to
+   traverse the input fst from the initial state to a final state.
+*/
+
+static int32 FindMinimumLengthPath(
+    const fst::StdVectorFst &fst) {
+  using fst::VectorFst;
+  using fst::StdArc;
+  using fst::StdVectorFst;
+  StdVectorFst distance_fst(fst);
+  // Modify distance_fst such that all the emitting
+  // arcs have cost 1 and others (and final-probs) a cost of zero
+  int32 num_states = distance_fst.NumStates();
+  for (int32 state = 0; state < num_states; state++) {
+    for (fst::MutableArcIterator<StdVectorFst> aiter(&distance_fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const StdArc &arc = aiter.Value();
+      StdArc arc2(arc);
+      if (arc.olabel == 0)
+        arc2.weight = fst::TropicalWeight::One();
+      else
+        arc2.weight = fst::TropicalWeight(1.0);
+      aiter.SetValue(arc2);
+    }
+    if (distance_fst.Final(state) != fst::TropicalWeight::Zero())
+      distance_fst.Final(state) = fst::TropicalWeight::One();
+  }
+  VectorFst<StdArc> shortest_path;
+  fst::ShortestPath(distance_fst, &shortest_path);
+  return shortest_path.NumStates() - 1;
+}
 
 /**
    This function does all the processing for one utterance, and outputs the
@@ -79,6 +113,16 @@ static bool ProcessFile(const ExampleGenerationConfig &opts,
   if (!TrainingGraphToSupervisionE2e(training_fst, trans_model,
                                      num_output_frames, &supervision))
     return false;
+
+  int32 min_fst_duration = FindMinimumLengthPath(supervision.e2e_fsts[0]);
+  if (min_fst_duration > num_frames_subsampled) {
+    KALDI_WARN << "For utterance " << utt_id
+               << ", there are too many phones for too few frames; "
+               << "Number of subsampled frames: " << num_frames_subsampled
+               << ", Minimum number of frames required by the fst: " << min_fst_duration;
+    return false;
+  }
+
   if (normalization_fst.NumStates() > 0 &&
       !AddWeightToSupervisionFst(normalization_fst,
                                  &supervision)) {

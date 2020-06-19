@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This script generates separate egs directory for each input
 # language in multilingual setup, which contains both egs.*.ark and egs.*.scp.

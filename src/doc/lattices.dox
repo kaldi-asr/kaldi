@@ -476,7 +476,10 @@ programs.
 \verbatim
  lattice-lmrescore --lm-scale=1.0 ark:nolm.lats G_new.fst ark:out.lats
 \endverbatim
-Note that there are other ways to do this; see
+Note: the above examples are slightly simplified; actually you would have
+to "project" the G.fst FST's on the output to remove disambiguation symbols
+using `fstproject` with `--project_output=true`, see steps/lmrescore.sh for examples.
+Also there are other ways to do this; see
 the documentation for lattice-compose below.
 What the program \ref lattice-lmrescore.cc "lattice-lmrescore" does is this...
 actually, we will first first describe the simple version that is not exactly what
@@ -805,7 +808,7 @@ or:
 \verbatim
   lattice-to-nbest --acoustic-scale=0.1 --n=10 ark:1.lats ark:1.nbest
 \endverbatim
- then the archive 1.nbest will contain lattices for uttA-1, uttA-2, ... uttA-2,
+ then the archive 1.nbest will contain lattices for uttA-1, uttA-2, ... uttA-10,
  for uttB-1 ... uttB-10, and so on.  Of course some of the utterances may not
  have that many N-best entries if the lattice did not contain that many distinct
  word sequences.  The program lattice-to-nbest needs the acoustic scale as this

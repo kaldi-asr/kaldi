@@ -104,7 +104,9 @@ int main(int argc, char *argv[]) {
     while (ifile >> key) {
       getline(ifile, line);
       std::vector<int32> v;
-      KALDI_ASSERT(SplitStringToIntegers(line, " ", true, &v));
+      if (!SplitStringToIntegers(line, " ", true, &v)) {
+        KALDI_ERR << "Input file should contain only integers.";
+      }
       RnnlmComputeState rnnlm_compute_state(info, opts.bos_index);
 
       std::cout << key << " ";

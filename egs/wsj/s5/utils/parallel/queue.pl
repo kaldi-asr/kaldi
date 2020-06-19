@@ -94,7 +94,8 @@ sub caught_signal {
   if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
     my $signal = $!;
     system ("qdel $sge_job_id");
-    die "Caught a signal: $signal , deleting SGE task: $sge_job_id and exiting\n";
+    print STDERR "Caught a signal: $signal , deleting SGE task: $sge_job_id and exiting\n";
+    exit(2);
   }
 }
 
@@ -175,7 +176,7 @@ option num_threads=1  # Do not add anything to qsub_opts
 option max_jobs_run=* -tc $0
 default gpu=0
 option gpu=0
-option gpu=* -l gpu=$0 -q g.q
+option gpu=* -l gpu=$0 -q '*.q'
 EOF
 
 # Here the configuration options specified by the user on the command line
@@ -395,6 +396,7 @@ print Q "# $qsub_cmd\n";
 if (!close(Q)) { # close was not successful... || die "Could not close script file $shfile";
   die "Failed to close the script file (full disk?)";
 }
+chmod 0755, $queue_scriptfile;
 
 # This block submits the job to the queue.
 for (my $try = 1; $try < 5; $try++) {

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -12,6 +12,8 @@ stage=0
 train_set=train_clean_5
 test_sets="dev_clean_2"
 gmm=tri3b
+
+online_cmvn_iextractor=false
 
 nnet3_affix=
 
@@ -52,7 +54,7 @@ if [ $stage -le 3 ]; then
   echo "$0: creating high-resolution MFCC features"
   mfccdir=data/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b1{5,6,7,8}/$USER/kaldi-data/mfcc/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/fs0{1,2}/$USER/kaldi-data/mfcc/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in ${train_set}_sp ${test_sets}; do
@@ -103,7 +105,9 @@ if [ $stage -le 5 ]; then
   # can be sensitive to the amount of data.  The script defaults to an iVector dimension of
   # 100.
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 15 \
+     --num-threads 4 --num-processes 2 \
+     --online-cmvn-iextractor $online_cmvn_iextractor \
      data/${train_set}_sp_hires exp/nnet3${nnet3_affix}/diag_ubm \
      exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
@@ -122,7 +126,7 @@ if [ $stage -le 6 ]; then
 
   ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/ivectors/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/fs0{1,2}/$USER/kaldi-data/ivectors/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
 
 

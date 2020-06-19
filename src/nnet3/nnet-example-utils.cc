@@ -81,7 +81,13 @@ static void GetIoSizes(const std::vector<NnetExample> &src,
 }
 
 
-
+static int32 FindMaxNValue(const NnetIo &io) {
+  int32 max_n = 0;
+  for (auto &index: io.indexes)
+    if (index.n > max_n)
+      max_n = index.n;
+  return max_n;
+}
 
 // Do the final merging of NnetIo, once we have obtained the names, dims and
 // sizes for each feature/supervision type.
@@ -98,6 +104,9 @@ static void MergeIo(const std::vector<NnetExample> &src,
   // The features in the different NnetIo in the Indexes across all examples
   std::vector<std::vector<GeneralMatrix const*> > output_lists(num_feats);
 
+  // This is 1 for single examples and larger than 1 for already-merged egs, and
+  // it must be the same for all io's across all examples:
+  int32 example_stride = FindMaxNValue(src[0].io[0]) + 1;
   // Initialize the merged_eg
   merged_eg->io.clear();
   merged_eg->io.resize(num_feats);
@@ -139,9 +148,11 @@ static void MergeIo(const std::vector<NnetExample> &src,
       for (int32 i = this_offset; i < this_offset + this_size; i++) {
         // we could easily support merging already-merged egs, but I don't see a
         // need for it right now.
-        KALDI_ASSERT(output_iter[i].n == 0 &&
-                     "Merging already-merged egs?  Not currentlysupported.");
-        output_iter[i].n = n;
+        /* KALDI_ASSERT(output_iter[i].n == 0 && */
+        /*              "Merging already-merged egs?  Not currentlysupported."); */
+        KALDI_ASSERT(output_iter[i].n < example_stride);
+        output_iter[i].n += n * example_stride;
+        //output_iter[i].n = n;
       }
       this_offset += this_size;  // note: this_offset is a reference.
     }
@@ -214,8 +225,8 @@ void GetComputationRequest(const Nnet &nnet,
     const NnetIo &io = eg.io[i];
     const std::string &name = io.name;
     int32 node_index = nnet.GetNodeIndex(name);
-    if (node_index == -1 &&
-        !nnet.IsInputNode(node_index) && !nnet.IsOutputNode(node_index))
+    if (node_index == -1 ||
+        (!nnet.IsInputNode(node_index) && !nnet.IsOutputNode(node_index)))
       KALDI_ERR << "Nnet example has input or output named '" << name
                 << "', but no such input or output node is in the network.";
 
@@ -300,6 +311,9 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
 }
 
 void ExampleGenerationConfig::ComputeDerived() {
+  if (num_frames_str == "-1") {
+    return;
+  }
   if (!SplitStringToIntegers(num_frames_str, ",", false, &num_frames) ||
       num_frames.empty()) {
     KALDI_ERR << "Invalid option (expected comma-separated list of integers): "
@@ -341,18 +355,25 @@ UtteranceSplitter::UtteranceSplitter(const ExampleGenerationConfig &config):
     total_num_utterances_(0), total_input_frames_(0),
     total_frames_overlap_(0), total_num_chunks_(0),
     total_frames_in_chunks_(0) {
-  if (config.num_frames.empty()) {
-    KALDI_ERR << "You need to call ComputeDerived() on the "
+  if (config.num_frames_str != "-1") {
+    if (config.num_frames.empty()) {
+      KALDI_ERR << "You need to call ComputeDerived() on the "
                  "ExampleGenerationConfig().";
+    }
+   InitSplitForLength();
   }
-  InitSplitForLength();
 }
 
 UtteranceSplitter::~UtteranceSplitter() {
+  /* KALDI_LOG << "Split " << total_num_utterances_ << " utts, with " */
+  /*           << "total length " << total_input_frames_ << " frames (" */
+  /*           << (total_input_frames_ / 360000.0) << " hours assuming " */
+  /*           << "100 frames per second)"; */
   KALDI_LOG << "Split " << total_num_utterances_ << " utts, with "
             << "total length " << total_input_frames_ << " frames ("
             << (total_input_frames_ / 360000.0) << " hours assuming "
-            << "100 frames per second)";
+            << "100 frames per second) into " << total_num_chunks_
+            << " chunks.";
   float average_chunk_length = total_frames_in_chunks_ * 1.0 / total_num_chunks_,
       overlap_percent = total_frames_overlap_ * 100.0 / total_input_frames_,
       output_percent = total_frames_in_chunks_ * 100.0 / total_input_frames_,
@@ -377,6 +398,7 @@ UtteranceSplitter::~UtteranceSplitter() {
     KALDI_LOG << "Output frames are distributed among chunk-sizes as follows: "
               << os.str();
   }
+
 }
 
 float UtteranceSplitter::DefaultDurationOfSplit(
@@ -816,23 +838,35 @@ void UtteranceSplitter::GetGapSizes(int32 utterance_length,
 void UtteranceSplitter::GetChunksForUtterance(
     int32 utterance_length,
     std::vector<ChunkTimeInfo> *chunk_info) {
-  std::vector<int32> chunk_sizes;
-  GetChunkSizesForUtterance(utterance_length, &chunk_sizes);
-  std::vector<int32> gaps(chunk_sizes.size());
-  GetGapSizes(utterance_length, true, chunk_sizes, &gaps);
-  int32 num_chunks = chunk_sizes.size();
-  chunk_info->resize(num_chunks);
   int32 t = 0;
-  for (int32 i = 0; i < num_chunks; i++) {
-    t += gaps[i];
-    ChunkTimeInfo &info = (*chunk_info)[i];
-    info.first_frame = t;
-    info.num_frames = chunk_sizes[i];
-    info.left_context = (i == 0 && config_.left_context_initial >= 0 ?
-                         config_.left_context_initial : config_.left_context);
-    info.right_context = (i == num_chunks - 1 && config_.right_context_final >= 0 ?
-                          config_.right_context_final : config_.right_context);
-    t += chunk_sizes[i];
+  if (config_.num_frames_str == "-1" ) {
+    ChunkTimeInfo *info;
+    info = new ChunkTimeInfo;
+    info->first_frame = 0;
+    info->num_frames = utterance_length;
+    info->left_context = (config_.left_context_initial >= 0 ?
+                          config_.left_context_initial : config_.left_context);
+    info->right_context = (config_.right_context_final >= 0 ?
+                           config_.right_context_final : config_.right_context);
+    (*chunk_info).push_back(*info);
+  } else {
+    std::vector<int32> chunk_sizes;
+    GetChunkSizesForUtterance(utterance_length, &chunk_sizes);
+    std::vector<int32> gaps(chunk_sizes.size());
+    GetGapSizes(utterance_length, true, chunk_sizes, &gaps);
+    int32 num_chunks = chunk_sizes.size();
+    chunk_info->resize(num_chunks);
+    for (int32 i = 0; i < num_chunks; i++) {
+      t += gaps[i];
+      ChunkTimeInfo &info = (*chunk_info)[i];
+      info.first_frame = t;
+      info.num_frames = chunk_sizes[i];
+      info.left_context = (i == 0 && config_.left_context_initial >= 0 ?
+                           config_.left_context_initial : config_.left_context);
+      info.right_context = (i == num_chunks - 1 && config_.right_context_final >= 0 ?
+                            config_.right_context_final : config_.right_context);
+      t += chunk_sizes[i];
+    }
   }
   SetOutputWeights(utterance_length, chunk_info);
   AccStatsForUtterance(utterance_length, *chunk_info);

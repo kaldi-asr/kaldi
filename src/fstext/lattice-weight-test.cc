@@ -20,6 +20,8 @@
 #include "fstext/lattice-weight.h"
 
 namespace fst {
+using std::vector;
+using std::cout;
 // these typedefs are the same as in ../lat/kaldi-lattice.h, but
 // just used here for testing (doesn't matter if they get out of
 // sync).
@@ -82,7 +84,7 @@ void LatticeWeightTest() {
     bool a = nl(l1, l2);
     bool b = (Plus(l1, l2) == l1 && l1 != l2);
     KALDI_ASSERT(a == b);
-    
+
     KALDI_ASSERT(Compare(l1, Plus(l1, l2)) != 1); // so do not have l1 > l1 + l2
     LatticeWeight l5 = RandomLatticeWeight(), l6 = RandomLatticeWeight();
     {
@@ -100,7 +102,7 @@ void LatticeWeightTest() {
     }
     KALDI_ASSERT(l1.Member() && l2.Member() && l3.Member() && l4.Member()
                  && l5.Member() && l6.Member());
-    if (l2 != LatticeWeight::Zero()) 
+    if (l2 != LatticeWeight::Zero())
       KALDI_ASSERT(ApproxEqual(Divide(Times(l1, l2), l2), l1)); // (a*b) / b = a if b != 0
     KALDI_ASSERT(ApproxEqual(l1, l1.Quantize()));
 
@@ -190,6 +192,6 @@ void CompactLatticeWeightTest() {
 
 int main() {
   fst::LatticeWeightTest();
-  fst::CompactLatticeWeightTest();  
+  fst::CompactLatticeWeightTest();
 }
 

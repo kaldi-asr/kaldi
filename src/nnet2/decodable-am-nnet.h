@@ -76,14 +76,14 @@ class DecodableAmNnet: public DecodableInterface {
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id) {
     return log_probs_(frame,
-                      trans_model_.TransitionIdToPdf(transition_id));
+                      trans_model_.TransitionIdToPdfFast(transition_id));
   }
 
   virtual int32 NumFramesReady() const { return log_probs_.NumRows(); }
-  
+
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  
+
   virtual bool IsLastFrame(int32 frame) const {
     KALDI_ASSERT(frame < NumFramesReady());
     return (frame == NumFramesReady() - 1);
@@ -139,7 +139,7 @@ class DecodableAmNnetParallel: public DecodableInterface {
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id) {
     if (feats_) Compute(); // this function sets feats_ to NULL.
     return log_probs_(frame,
-                      trans_model_.TransitionIdToPdf(transition_id));
+                      trans_model_.TransitionIdToPdfFast(transition_id));
   }
 
   int32 NumFramesReady() const {
@@ -155,10 +155,10 @@ class DecodableAmNnetParallel: public DecodableInterface {
       return log_probs_.NumRows();
     }
   }
-  
+
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  
+
   virtual bool IsLastFrame(int32 frame) const {
     KALDI_ASSERT(frame < NumFramesReady());
     return (frame == NumFramesReady() - 1);
@@ -180,7 +180,7 @@ class DecodableAmNnetParallel: public DecodableInterface {
 
 
 
-  
+
 } // namespace nnet2
 } // namespace kaldi
 

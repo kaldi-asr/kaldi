@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012-2015 Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
 # Aligns 'data' to sequences of transition-ids using Neural Network based acoustic model.
 # Optionally produces alignment in lattice format, this is handy to get word alignment.
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=4
 cmd=run.pl
 stage=0
@@ -71,28 +71,29 @@ done
 
 # PREPARE FEATURE EXTRACTION PIPELINE
 # import config,
+online_cmvn_opts=
 cmvn_opts=
 delta_opts=
 D=$srcdir
-[ -e $D/norm_vars ] && cmvn_opts="--norm-means=true --norm-vars=$(cat $D/norm_vars)" # Bwd-compatibility,
+[ -e $D/online_cmvn_opts ] && online_cmvn_opts=$(cat $D/online_cmvn_opts)
 [ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
-[ -e $D/delta_order ] && delta_opts="--delta-order=$(cat $D/delta_order)" # Bwd-compatibility,
 [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
 #
 # Create the feature stream,
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
+# apply-cmvn-online (optional),
+[ -n "$online_cmvn_opts" -a ! -f $D/global_cmvn_stats.mat ] && echo "$0: Missing $D/global_cmvn_stats.mat" && exit 1
+[ -n "$online_cmvn_opts" ] && feats="$feats apply-cmvn-online $online_cmvn_opts --spk2utt=ark:$srcdata/spk2utt $D/global_cmvn_stats.mat ark:- ark:- |"
 # apply-cmvn (optional),
-[ ! -z "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
-[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
+[ -n "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
+[ -n "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
-[ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
-# add-pytel transform (optional),
-[ -e $D/pytel_transform.py ] && feats="$feats /bin/env python $D/pytel_transform.py |"
+[ -n "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
 
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
   [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
-  # Get the tool, 
+  # Get the tool,
   ivector_append_tool=append-vector-to-feats # default,
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   # Check dims,
@@ -113,7 +114,7 @@ feats="$feats nnet-forward $nnet_forward_opts --feature-transform=$feature_trans
 
 echo "$0: aligning data '$data' using nnet/model '$srcdir', putting alignments in '$dir'"
 
-# Map oovs in reference transcription, 
+# Map oovs in reference transcription,
 oov=`cat $lang/oov.int` || exit 1;
 [ -z "$text" ] && text=$sdata/JOB/text
 tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $text |";

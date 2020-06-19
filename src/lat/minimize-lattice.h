@@ -28,7 +28,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 
 namespace fst {

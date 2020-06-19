@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ###########################################################################################
 # This script was copied from egs/ami/s5/local/ami_xml2text.sh

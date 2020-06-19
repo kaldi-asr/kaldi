@@ -154,7 +154,7 @@ namespace nnet3 {
                       num-rows of the parameter matrix.  [note: I'm considering
                       decreasing this default to e.g. 40 or 20].
       num-minibatches-history
-                      This is used setting the 'num_samples_history_in'
+                      This is used setting the 'num_samples_history'
                       configuration value of the natural gradient object.
                       There is no concept of samples (frames) in the
                       application of natural gradient to the convnet, because
@@ -300,6 +300,8 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   };
 
   void ScaleLinearParams(BaseFloat alpha) { linear_params_.Scale(alpha); }
+
+  void ConsolidateMemory();
  private:
 
   void Check() const;
@@ -369,6 +371,265 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   // linear_params_.NumRows().
   OnlineNaturalGradient preconditioner_out_;
 };
+
+
+
+/**
+   TdnnComponent is a more memory-efficient alternative to manually splicing
+   several frames of input and then using a NaturalGradientAffineComponent or
+   a LinearComponent.  It does the splicing of the input itself, using
+   mechanisms similar to what TimeHeightConvolutionComponent uses.  The
+   implementation is in nnet-tdnn-component.cc
+
+   Parameters inherited from UpdatableComponent (see comment above declaration of
+   UpdadableComponent in nnet-component-itf.h for details):
+       learning-rate, learning-rate-factor, max-change
+
+   Important parameters:
+
+     input-dim         The input feature dimension (before splicing).
+
+     output-dim        The output feature dimension
+
+     time-offsets     E.g. time-offsets=-1,0,1 or time-offsets=-3,0,3.
+                      The time offsets that we require at the input to produce a given output.
+                      comparable to the offsets used in TDNNs.  They
+                      must be unique (no repeats).
+     use-bias         Defaults to true, but set to false if you want this to
+                      be linear rather than affine in its input.
+
+
+  Extra parameters:
+    orthonormal-constraint=0.0 If you set this to 1.0, then the linear_params_
+                      matrix will be (approximately) constrained during training
+                      to have orthonormal rows (or columns, whichever is
+                      fewer).. it turns out the real name for this is a
+                      "semi-orthogonal" matrix.  You can choose a positive
+                      nonzero value different than 1.0 to have a scaled
+                      semi-orthgonal matrix, i.e. with singular values at the
+                      selected value (e.g. 0.5, or 2.0).  This is not enforced
+                      inside the component itself; you have to call
+                      ConstrainOrthonormal() from the training code to do this.
+                      All this component does is return the
+                      OrthonormalConstraint() value.  If you set this to a
+                      negative value, it's like saying "for any value", i.e. it
+                      will constrain the parameter matrix to be closer to "any
+                      alpha" times a semi-orthogonal matrix, without changing
+                      its overall norm.
+
+
+   Initialization parameters:
+      param-stddev    Standard deviation of the linear parameters of the
+                      convolution.  Defaults to
+                      sqrt(1.0 / (input-dim * the number of time-offsets))
+      bias-stddev     Standard deviation of bias terms.  default=0.0.
+                      You should not set this if you set use-bias=false.
+
+
+   Natural-gradient related options are below; you won't normally have to
+   set these as the defaults are reasonable.
+
+      use-natural-gradient e.g. use-natural-gradient=false (defaults to true).
+                       You can set this to false to disable the natural gradient
+                       updates (you won't normally want to do this).
+      rank-out         Rank used in low-rank-plus-unit estimate of the Fisher-matrix
+                       factor that has the dimension (num-rows of linear_params_),
+                       which equals output_dim.  It
+                       defaults to the minimum of 80, or half of the output dim.
+      rank-in          Rank used in low-rank-plus-unit estimate of the Fisher
+                       matrix factor which has the dimension (num-cols of the
+                       parameter matrix), which is input-dim times the number of
+                       time offsets.  It defaults to the minimum of 20, or half the
+                       num-rows of the parameter matrix.
+      num-samples-history
+                      This becomes the 'num_samples_history'
+                      configuration value of the natural gradient objects.  The
+                      default value is 2000.0.
+
+ */
+class TdnnComponent: public UpdatableComponent {
+ public:
+
+  // The use of this constructor should only precede InitFromConfig()
+  TdnnComponent();
+
+  // Copy constructor
+  TdnnComponent(const TdnnComponent &other);
+
+  virtual int32 InputDim() const {
+    return linear_params_.NumCols() / static_cast<int32>(time_offsets_.size());
+  }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Type() const { return "TdnnComponent"; }
+  virtual int32 Properties() const {
+    return kUpdatableComponent|kReordersIndexes|kBackpropAdds|
+        (bias_params_.Dim() == 0 ? kPropagateAdds : 0)|
+        kBackpropNeedsInput;
+  }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual Component* Copy() const {
+    return new TdnnComponent(*this);
+  }
+
+
+  // Some functions that are only to be reimplemented for GeneralComponents.
+
+  // This ReorderIndexes function may insert 'blank' indexes (indexes with
+  // t == kNoTime) as well as reordering the indexes.  This is allowed
+  // behavior of ReorderIndexes functions.
+  virtual void ReorderIndexes(std::vector<Index> *input_indexes,
+                              std::vector<Index> *output_indexes) const;
+
+  virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
+                               const Index &output_index,
+                               std::vector<Index> *desired_indexes) const;
+
+  // This function returns true if at least one of the input indexes used to
+  // compute this output index is computable.
+  virtual bool IsComputable(const MiscComputationInfo &misc_info,
+                            const Index &output_index,
+                            const IndexSet &input_index_set,
+                            std::vector<Index> *used_inputs) const;
+
+  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void FreezeNaturalGradient(bool freeze);
+
+
+  class PrecomputedIndexes: public ComponentPrecomputedIndexes {
+   public:
+    PrecomputedIndexes() { }
+    PrecomputedIndexes(const PrecomputedIndexes &other):
+        row_stride(other.row_stride), row_offsets(other.row_offsets) { }
+    virtual PrecomputedIndexes *Copy() const;
+    virtual void Write(std::ostream &os, bool binary) const;
+    virtual void Read(std::istream &os, bool binary);
+    virtual std::string Type() const {
+      return "TdnnComponentPrecomputedIndexes";
+    }
+    virtual ~PrecomputedIndexes() { }
+
+
+    // input_row_stride is the stride (in number of rows) we have to take in the
+    // input matrix each time we form a sub-matrix that will be part of the
+    // input to the tdnn operation.  Normally this will be 1, but it may be,
+    // for example, 3 in layers where we do subsampling.
+    int32 row_stride;
+
+    // 'row_offsets' is of the same dimension as time_offsets_.  Each element
+    // describes the row offset (in the input matrix) of a sub-matrix, and each.
+    // We will append together these sub-matrices (row-wise) to be the input to
+    // the affine or linear transform.
+    std::vector<int32> row_offsets;
+  };
+
+  CuMatrixBase<BaseFloat> &LinearParams() { return linear_params_; }
+
+  // This allows you to resize the vector in order to add a bias where
+  // there previously was none-- obviously this should be done carefully.
+  CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+
+  BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
+
+  void ConsolidateMemory();
+ private:
+
+  // This static function is a utility function that extracts a CuSubMatrix
+  // representing a subset of rows of 'input_matrix'.
+  // The numpy syntax would be:
+  //   return input_matrix[row_offset:row_stride:num_output_rows*row_stride,:]
+  static CuSubMatrix<BaseFloat> GetInputPart(
+      const CuMatrixBase<BaseFloat> &input_matrix,
+      int32 num_output_rows,
+      int32 row_stride,
+      int32 row_offset);
+
+  // see the definition for more explanation.
+  static void ModifyComputationIo(time_height_convolution::ConvolutionComputationIo *io);
+
+  void Check() const;
+
+  // Function that updates linear_params_, and bias_params_ if present, which
+  // uses the natural gradient code.
+  void UpdateNaturalGradient(
+      const PrecomputedIndexes &indexes,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  // Function that updates linear_params_, and bias_params_ if present, which
+  // does not use the natural gradient code.
+  void UpdateSimple(
+      const PrecomputedIndexes &indexes,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+
+
+
+  // time_offsets_ is the list of time-offsets of the input that
+  // we append together; it will typically be (-1,0,1) or (-3,0,3).
+  std::vector<int32> time_offsets_;
+
+  // the linear parameters of the network; its NumRows() is the output
+  // dim, and its NumCols() equals the input dim times time_offsets_.size().
+  CuMatrix<BaseFloat> linear_params_;
+
+  // the bias parameters if this is an affine transform, or the empty vector if
+  // this is a linear operation (i.e. use-bias == false in the config).
+  CuVector<BaseFloat> bias_params_;
+
+  // If nonzero, this controls how we apply an orthonormal constraint to the
+  // parameter matrix; see docs for ConstrainOrthonormal() in nnet-utils.h.
+  // This class just returns the value via the OrthonormalConstraint() function;
+  // it doesn't actually do anything with it directly.
+  BaseFloat orthonormal_constraint_;
+
+  // Controls whether or not the natural-gradient is used.  Note: even if this
+  // is true, if is_gradient_ (from the UpdatableComponent base class) is true,
+  // we'll do the 'simple' update that doesn't include natural gradient.
+  bool use_natural_gradient_;
+
+  // Preconditioner for the input space, of dimension linear_params_.NumCols() +
+  // 1 (the 1 is for the bias).  As with other natural-gradient objects, it's
+  // not stored with the model on disk but is reinitialized each time we start
+  // up.
+  OnlineNaturalGradient preconditioner_in_;
+
+  // Preconditioner for the output space, of dimension
+  // linear_params_.NumRows().
+  OnlineNaturalGradient preconditioner_out_;
+};
+
+
+
 
 
 

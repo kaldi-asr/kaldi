@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 Vassil Panayotov
 # Apache 2.0
@@ -47,10 +47,10 @@ split_prefix=$tmp_dir/split
 if [ "$stage" -le 1 ]; then
   mkdir -p $tmp_dir
   echo "Splitting into $normjobs parts, to allow for parallel processing ..."
-  split_files=$(eval "echo $split_prefix-{$(seq -s',' $normjobs)}")
+  split_files=$(eval "echo $split_prefix-{$(seq -s',' $normjobs | sed 's/,$//')}")
   find $corpus_dir -mindepth 1 -maxdepth 1 -type d |\
     tee $tmp_dir/all_texts.txt |\
-    utils/split_scp.pl - $split_files
+    utils/split_scp.pl /dev/stdin $split_files
   echo "Checking the splits ..."
   total_count=$(wc -l <$tmp_dir/all_texts.txt)
   split_count=$(cat $split_files | wc -l | awk 'BEGIN{c=0} {c+=$1;} END{print c}')

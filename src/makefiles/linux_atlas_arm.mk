@@ -16,7 +16,7 @@ ifndef ATLASLIBS
 $(error ATLASLIBS not defined.)
 endif
 
-CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=c++11 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \

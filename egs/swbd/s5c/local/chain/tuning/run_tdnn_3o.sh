@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3o is as _3n but filling in the first splice-indexes from -1,2 to -1,0,1,2.
 # [ seemed helpful based on likelihoods on first iterations]: on iter 42,

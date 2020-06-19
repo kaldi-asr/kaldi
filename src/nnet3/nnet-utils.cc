@@ -83,10 +83,13 @@ void EvaluateComputationRequest(
   }
 }
 
-// this non-exported function is used in ComputeSimpleNnetContext
+// This non-exported function is used in ComputeSimpleNnetContext
 // to compute the left and right context of the nnet for a particular
 // window size and shift-length.
-static void ComputeSimpleNnetContextForShift(
+// It returns false if no outputs were computable, meaning the left and
+// right context could not be computed.  (Normally this means the window
+// size is too small).
+static bool ComputeSimpleNnetContextForShift(
     const Nnet &nnet,
     int32 input_start,
     int32 window_size,
@@ -118,7 +121,6 @@ static void ComputeSimpleNnetContextForShift(
     ivector.indexes.push_back(Index(n, t));
   }
 
-
   ComputationRequest request;
   request.inputs.push_back(input);
   request.outputs.push_back(output);
@@ -135,9 +137,10 @@ static void ComputeSimpleNnetContextForShift(
   int32 first_not_ok = std::find(iter, output_ok.end(), false) -
       output_ok.begin();
   if (first_ok == window_size || first_not_ok <= first_ok)
-    KALDI_ERR << "No outputs were computable (perhaps not a simple nnet?)";
+    return false;
   *left_context = first_ok;
   *right_context = window_size - first_not_ok;
+  return true;
 }
 
 void ComputeSimpleNnetContext(const Nnet &nnet,
@@ -154,24 +157,43 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
   std::vector<int32> left_contexts(modulus + 1);
   std::vector<int32> right_contexts(modulus + 1);
 
-  // This will crash if the total context (left + right) is greater
-  // than window_size.
-  int32 window_size = 200;
+  // window_size is a number which needs to be greater than the total context
+  // of the nnet, else we won't be able to work out the context.  Large window
+  // size will make this code slow, so we start off with small window size, and
+  // if it isn't enough, we keep doubling it up to a maximum.
+  int32 window_size = 40, max_window_size = 800;
 
-  // by going "<= modulus" instead of "< modulus" we do one more computation
-  // than we really need; it becomes a sanity check.
-  for (int32 input_start = 0; input_start <= modulus; input_start++)
-    ComputeSimpleNnetContextForShift(nnet, input_start, window_size,
-                                     &(left_contexts[input_start]),
-                                     &(right_contexts[input_start]));
-  KALDI_ASSERT(left_contexts[0] == left_contexts[modulus] &&
-               "nnet does not have the properties we expect.");
-  KALDI_ASSERT(right_contexts[0] == right_contexts[modulus] &&
-               "nnet does not have the properties we expect.");
-  *left_context =
-      *std::max_element(left_contexts.begin(), left_contexts.end());
-  *right_context =
-      *std::max_element(right_contexts.begin(), right_contexts.end());
+  while (window_size < max_window_size) {
+
+    // by going "<= modulus" instead of "< modulus" we do one more computation
+    // than we really need; it becomes a sanity check.
+    int32 input_start;
+    for (input_start = 0; input_start <= modulus; input_start++) {
+      if (!ComputeSimpleNnetContextForShift(nnet, input_start, window_size,
+                                            &(left_contexts[input_start]),
+                                            &(right_contexts[input_start])))
+        break;
+    }
+    if (input_start <= modulus) {
+      // We broke from the loop over 'input_start', which means there was
+      // a failure in ComputeSimpleNnextContextForShift-- we assume at
+      // this point that it was because window_size was too small.
+      window_size *= 2;
+      continue;
+    }
+
+    KALDI_ASSERT(left_contexts[0] == left_contexts[modulus] &&
+                 "nnet does not have the properties we expect.");
+    KALDI_ASSERT(right_contexts[0] == right_contexts[modulus] &&
+                 "nnet does not have the properties we expect.");
+    *left_context =
+        *std::max_element(left_contexts.begin(), left_contexts.end());
+    *right_context =
+        *std::max_element(right_contexts.begin(), right_contexts.end());
+    // Success.
+    return;
+  }
+  KALDI_ERR << "Failure in ComputeSimpleNnetContext (perhaps not a simple nnet?)";
 }
 
 void PerturbParams(BaseFloat stddev,
@@ -277,6 +299,15 @@ void SetNnetAsGradient(Nnet *nnet) {
     }
   }
 }
+
+void SetRequireDirectInput(bool b, Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (dynamic_cast<StatisticsPoolingComponent*>(comp) != NULL)
+      dynamic_cast<StatisticsPoolingComponent*>(comp)->SetRequireDirectInput(b);
+  }
+}
+
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   if (scale == 1.0) return;
@@ -608,13 +639,37 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes) {
 }
 
 
+// Parameters used in applying SVD:
+// 1. Energy threshold : For each Affine weights layer in the original baseline nnet3 model,
+//  we perform SVD based factoring of the weights matrix of the layer,
+//  into a singular values (left diagonal) matrix, and two Eigen matrices.
+//
+// SVD : Wx = UEV, U,V are Eigen matrices, and E is the singularity matrix)
+//
+// We take the center matrix E, and consider only the Singular values which contribute
+//  to (Energy-threshold) times the total Energy of Singularity parameters.
+//   These Singularity parameters are actually sorted in descending order and lower
+//    values are pruned out until the Total energy (Sum of squares) of the pruned set
+//     of parameters is just above (Energy-threshold * Total init energy). The values which
+//      are pruned away are replaced with 0 in the Singularity matrix
+//      and the Weights matrix after SVD is derived with shrinked dimensions.
+//
+// 2. Shrinkage-threshold : If the Shrinkage ratio of the SVD refactored Weights matrix
+//       is higher than Shrinkage-threshold for any of the Tdnn layers,
+//        the SVD process is aborted for that particular Affine weights layer.
+//
+
 // this class implements the internals of the edit directive 'apply-svd'.
 class SvdApplier {
  public:
   SvdApplier(const std::string component_name_pattern,
              int32 bottleneck_dim,
+             BaseFloat energy_threshold,
+             BaseFloat shrinkage_threshold,
              Nnet *nnet): nnet_(nnet),
                           bottleneck_dim_(bottleneck_dim),
+        		  energy_threshold_(energy_threshold),
+          		  shrinkage_threshold_(shrinkage_threshold),
                           component_name_pattern_(component_name_pattern) { }
   void ApplySvd() {
     DecomposeComponents();
@@ -651,43 +706,70 @@ class SvdApplier {
                      << " -> " << output_dim;
           continue;
         }
-        size_t n = modified_component_info_.size();
-        modification_index_[c] = n;
-        modified_component_info_.resize(n + 1);
-        ModifiedComponentInfo &info = modified_component_info_[n];
-        info.component_index = c;
-        info.component_name = component_name;
         Component *component_a = NULL, *component_b = NULL;
-        info.component_name_a = component_name + "_a";
-        info.component_name_b = component_name + "_b";
-        if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_a;
-        if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_b;
-        DecomposeComponent(component_name, *affine, &component_a, &component_b);
-        info.component_a_index = nnet_->AddComponent(info.component_name_a,
-                                                     component_a);
-        info.component_b_index = nnet_->AddComponent(info.component_name_b,
-                                                     component_b);
+	if (DecomposeComponent(component_name, *affine, &component_a, &component_b)) {
+	  size_t n = modified_component_info_.size();
+	  modification_index_[c] = n;
+	  modified_component_info_.resize(n + 1);
+	  ModifiedComponentInfo &info = modified_component_info_[n];
+	  info.component_index = c;
+	  info.component_name = component_name;
+	  info.component_name_a = component_name + "_a";
+	  info.component_name_b = component_name + "_b";
+	  if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_a;
+	  if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_b;
+	  info.component_a_index = nnet_->AddComponent(info.component_name_a,
+						       component_a);
+	  info.component_b_index = nnet_->AddComponent(info.component_name_b,
+						       component_b);
+	}
       }
     }
     KALDI_LOG << "Converted " << modified_component_info_.size()
               << " components to FixedAffineComponent.";
   }
 
-  void DecomposeComponent(const std::string &component_name,
+  // This function finds the minimum index of
+  // the Descending order sorted [input_vector],
+  // over a range of indices from [lower] to [upper] index,
+  // for which the sum of elements upto the found min. index is greater
+  // than [min_val].
+  // We add one to this index to return the reduced dimension value.
+
+  int32 GetReducedDimension(const Vector<BaseFloat> &input_vector,
+			     int32 lower,
+			     int32 upper,
+			     BaseFloat min_val) {
+    BaseFloat sum = 0;
+    int32 i = 0;
+    for (i = lower; i <= upper; i++) {
+	sum = sum + input_vector(i);
+	if (sum >= min_val) break;
+    }
+    return (i+1);
+  }
+
+// Here we perform SVD based refactorig of an input Affine component.
+// After applying SVD , we sort the Singularity values in descending order,
+// and take the subset of values which contribute to energy_threshold times
+// total original sum of squared singular values, and then refactor the Affine
+// component using only these selected singular values, thus making the bottleneck
+// dim of the refactored Affine layer equal to the no. of Singular values selected.
+// This function returs false if the shrinkage ratio of the total no. of parameters,
+// after the above SVD based refactoring, is greater than shrinkage threshold.
+//
+  bool DecomposeComponent(const std::string &component_name,
                           const AffineComponent &affine,
                           Component **component_a_out,
                           Component **component_b_out) {
     int32 input_dim = affine.InputDim(), output_dim = affine.OutputDim();
     Matrix<BaseFloat> linear_params(affine.LinearParams());
     Vector<BaseFloat> bias_params(affine.BiasParams());
-
-    int32 bottleneck_dim = bottleneck_dim_,
-        middle_dim = std::min<int32>(input_dim, output_dim);
-    KALDI_ASSERT(bottleneck_dim < middle_dim);
+    int32 middle_dim = std::min<int32>(input_dim, output_dim);
 
     // note: 'linear_params' is of dimension output_dim by input_dim.
     Vector<BaseFloat> s(middle_dim);
@@ -696,15 +778,40 @@ class SvdApplier {
     linear_params.Svd(&s, &B, &A);
     // make sure the singular values are sorted from greatest to least value.
     SortSvd(&s, &B, &A);
-    BaseFloat s_sum_orig = s.Sum();
-    s.Resize(bottleneck_dim, kCopyData);
-    A.Resize(bottleneck_dim, input_dim, kCopyData);
-    B.Resize(output_dim, bottleneck_dim, kCopyData);
-    BaseFloat s_sum_reduced = s.Sum();
+    Vector<BaseFloat> s2(s.Dim());
+    s2.AddVec2(1.0, s);
+    BaseFloat s2_sum_orig = s2.Sum();
+    KALDI_ASSERT(energy_threshold_ < 1);
+    KALDI_ASSERT(shrinkage_threshold_ < 1);
+    if (energy_threshold_ > 0) {
+      BaseFloat min_singular_sum = energy_threshold_ * s2_sum_orig;
+      bottleneck_dim_ = GetReducedDimension(s2, 0, s2.Dim()-1, min_singular_sum);
+    }
+    SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
+    BaseFloat s2_sum_reduced = this_part.Sum();
+    BaseFloat shrinkage_ratio =
+      static_cast<BaseFloat>(bottleneck_dim_ * (input_dim+output_dim))
+      / static_cast<BaseFloat>(input_dim * output_dim);
+    if (shrinkage_ratio > shrinkage_threshold_) {
+      KALDI_LOG << "Shrinkage ratio " << shrinkage_ratio
+		<< " greater than threshold : " << shrinkage_threshold_
+		<< " Skipping SVD for this layer.";
+      return false;
+    }
+
+    s.Resize(bottleneck_dim_, kCopyData);
+    A.Resize(bottleneck_dim_, input_dim, kCopyData);
+    B.Resize(output_dim, bottleneck_dim_, kCopyData);
     KALDI_LOG << "For component " << component_name
-              << " singular value sum changed by "
-              << (s_sum_orig - s_sum_reduced)
-              << " (from " << s_sum_orig << " to " << s_sum_reduced << ")";
+              << " singular value squared sum changed by "
+              << (s2_sum_orig - s2_sum_reduced)
+              << " (from " << s2_sum_orig << " to " << s2_sum_reduced << ")";
+    KALDI_LOG << "For component " << component_name
+	      << " dimension reduced from "
+              << " (" << input_dim << "," << output_dim << ")"
+	      << " to [(" << input_dim << "," << bottleneck_dim_
+	      << "), (" << bottleneck_dim_ << "," << output_dim <<")]";
+    KALDI_LOG << "shrinkage ratio : " << shrinkage_ratio;
 
     // we'll divide the singular values equally between the two
     // parameter matrices.
@@ -723,23 +830,22 @@ class SvdApplier {
     component_b->SetUpdatableConfigs(affine);
     *component_a_out = component_a;
     *component_b_out = component_b;
+    return true;
   }
 
   // This function modifies the topology of the neural network, splitting
   // up the components we're modifying into two parts.
   // Suppose we have something like:
   //  component-node name=some_node component=some_component input=
+  // nodes_to_modify will be a list of component-node indexes that we
+  // need to split into two.  These will be nodes like
+  // component-node name=component_node_name component=component_name input=xxx
+  // where 'component_name' is one of the components that we're splitting.
+  // node_names_modified is nnet_->node_names_ except with, for the nodes that
+  // we are splitting in two, "some_node_name" replaced with
+  // "some_node_name_b" (the second of the two split nodes).
   void ModifyTopology() {
-    // nodes_to_split will be a list of component-node indexes that we
-    // need to split into two.  These will be nodes like
-    // component-node name=component_node_name component=component_name input=xxx
-    // where 'component_name' is one of the components that we're splitting.
     std::set<int32> nodes_to_modify;
-
-
-    // node_names_modified is nnet_->node_names_ except with, for the nodes that
-    // we are splitting in two, "some_node_name" replaced with
-    // "some_node_name_b" (the second of the two split nodes).
     std::vector<std::string> node_names_orig = nnet_->GetNodeNames(),
         node_names_modified = node_names_orig;
 
@@ -859,6 +965,8 @@ class SvdApplier {
 
   Nnet *nnet_;
   int32 bottleneck_dim_;
+  BaseFloat energy_threshold_;
+  BaseFloat shrinkage_threshold_;
   std::string component_name_pattern_;
 };
 
@@ -895,10 +1003,11 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   // See  http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
   // for more details.
   BaseFloat update_speed = 0.125;
+  bool floating_scale = (scale < 0.0);
 
-  if (scale < 0.0) {
-    // If scale < 0.0 then it's like letting the scale "float",
-    // as in Sec. 2.3 of
+
+  if (floating_scale) {
+    // This (letting the scale "float") is described in Sec. 2.3 of
     // http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf,
     // where 'scale' here is written 'alpha' in the paper.
     //
@@ -936,10 +1045,39 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
     // the learning rate slower to reduce the risk of divergence, since the
     // update may not be stable for starting points far from equilibrium.
     BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
-    KALDI_ASSERT(ratio > 0.999);
+    KALDI_ASSERT(ratio > 0.99);
     if (ratio > 1.02) {
       update_speed *= 0.5;  // Slow down the update speed to reduce the risk of divergence.
+      if (ratio > 1.1) update_speed *= 0.5;  // Slow it down even more.
     }
+  }
+
+  P.AddToDiag(-1.0 * scale * scale);
+
+  // We may want to un-comment the following code block later on if we have a
+  // problem with instability in setups with a non-floating orthonormal
+  // constraint.
+  /*
+  if (!floating_scale) {
+    // This is analogous to the stuff with 'ratio' above, but when we don't have
+    // a floating scale.  It reduces the chances of divergence when we have
+    // a bad initialization.
+    BaseFloat error = P.FrobeniusNorm(),
+        error_proportion = error * error / P.NumRows();
+    // 'error_proportion' is the sumsq of elements in (P - I) divided by the
+    // sumsq of elements of I.  It should be much less than one (i.e. close to
+    // zero) if the error is small.
+    if (error_proportion > 0.02) {
+      update_speed *= 0.5;
+      if (error_proportion > 0.1)
+        update_speed *= 0.5;
+    }
+  }
+  */
+
+  if (GetVerboseLevel() >= 1) {
+    BaseFloat error = P.FrobeniusNorm();
+    KALDI_VLOG(2) << "Error in orthogonality is " << error;
   }
 
   // see Sec. 2.2 of http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
@@ -947,13 +1085,6 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   // notation; 'scale' here corresponds to 'alpha' in the paper, and
   // 'update_speed' corresponds to 'nu' in the paper.
   BaseFloat alpha = update_speed / (scale * scale);
-
-  P.AddToDiag(-1.0 * scale * scale);
-
-  if (GetVerboseLevel() >= 1) {
-    BaseFloat error = P.FrobeniusNorm();
-    KALDI_VLOG(2) << "Error in orthogonality is " << error;
-  }
 
   // At this point, the matrix P contains what, in the math, would be Q =
   // P-scale^2*I.  The derivative of the objective function w.r.t. an element q(i,j)
@@ -978,42 +1109,61 @@ void ConstrainOrthonormal(Nnet *nnet) {
 
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *component = nnet->GetComponent(c);
+    CuMatrixBase<BaseFloat> *params = NULL;
+    BaseFloat orthonormal_constraint = 0.0;
+
     LinearComponent *lc = dynamic_cast<LinearComponent*>(component);
     if (lc != NULL && lc->OrthonormalConstraint() != 0.0) {
-      if (RandInt(0, 3) != 0)
-        continue;  // For efficiency, only do this every 4 minibatches-- it won't
-                   // stray far.
-      BaseFloat scale = lc->OrthonormalConstraint();
-
-      CuMatrixBase<BaseFloat> &params = lc->Params();
-      int32 rows = params.NumRows(), cols = params.NumCols();
-      if (rows <= cols) {
-        ConstrainOrthonormalInternal(scale, &params);
-      } else {
-        CuMatrix<BaseFloat> params_trans(params, kTrans);
-        ConstrainOrthonormalInternal(scale, &params_trans);
-        params.CopyFromMat(params_trans, kTrans);
-      }
+      orthonormal_constraint = lc->OrthonormalConstraint();
+      params = &(lc->Params());
     }
-
     AffineComponent *ac = dynamic_cast<AffineComponent*>(component);
     if (ac != NULL && ac->OrthonormalConstraint() != 0.0) {
-      if (RandInt(0, 3) != 0)
-        continue;  // For efficiency, only do this every 4 minibatches-- it won't
-                   // stray far.
-      BaseFloat scale = ac->OrthonormalConstraint();
-      CuMatrixBase<BaseFloat> &params = ac->LinearParams();
-      int32 rows = params.NumRows(), cols = params.NumCols();
-      if (rows <= cols) {
-        ConstrainOrthonormalInternal(scale, &params);
-      } else {
-        CuMatrix<BaseFloat> params_trans(params, kTrans);
-        ConstrainOrthonormalInternal(scale, &params_trans);
-        params.CopyFromMat(params_trans, kTrans);
-      }
+      orthonormal_constraint = ac->OrthonormalConstraint();
+      params = &(ac->LinearParams());
+    }
+    TdnnComponent *tc = dynamic_cast<TdnnComponent*>(component);
+    if (tc != NULL && tc->OrthonormalConstraint() != 0.0) {
+      orthonormal_constraint = tc->OrthonormalConstraint();
+      params = &(tc->LinearParams());
+    }
+    if (orthonormal_constraint == 0.0 || RandInt(0, 3) != 0) {
+      // For efficiency, only do this every 4 or so minibatches-- it won't have
+      // time stray far from the constraint in between.
+      continue;
+    }
+
+    int32 rows = params->NumRows(), cols = params->NumCols();
+    if (rows <= cols) {
+      ConstrainOrthonormalInternal(orthonormal_constraint, params);
+    } else {
+      CuMatrix<BaseFloat> params_trans(*params, kTrans);
+      ConstrainOrthonormalInternal(orthonormal_constraint, &params_trans);
+      params->CopyFromMat(params_trans, kTrans);
     }
   }
 }
+
+void ConsolidateMemory(Nnet *nnet) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    bool print_memory_info = (GetVerboseLevel() >= 1);
+    if (print_memory_info) {
+      KALDI_VLOG(1) << "Consolidating memory; will print memory usage before "
+          "and after consolidating:";
+      g_cuda_allocator.PrintMemoryUsage();
+    }
+    for (int32 c = 0; c < nnet->NumComponents(); c++) {
+      Component *comp = nnet->GetComponent(c);
+      comp->ConsolidateMemory();
+    }
+    if (print_memory_info) {
+      g_cuda_allocator.PrintMemoryUsage();
+    }
+  }
+#endif
+}
+
 
 
 // This code has been broken out of ReadEditConfig as it's quite long.
@@ -1249,13 +1399,21 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
     } else if (directive == "apply-svd") {
       std::string name_pattern;
       int32 bottleneck_dim = -1;
-      if (!config_line.GetValue("name", &name_pattern) ||
-          !config_line.GetValue("bottleneck-dim", &bottleneck_dim))
-        KALDI_ERR << "Edit directive apply-svd requires 'name' and "
-            "'bottleneck-dim' to be specified.";
-      if (bottleneck_dim <= 0)
-        KALDI_ERR << "Bottleneck-dim must be positive in apply-svd command.";
-      SvdApplier applier(name_pattern, bottleneck_dim, nnet);
+      BaseFloat energy_threshold = -1;
+      BaseFloat shrinkage_threshold = 1.0;
+      config_line.GetValue("bottleneck-dim", &bottleneck_dim);
+      config_line.GetValue("energy-threshold", &energy_threshold);
+      config_line.GetValue("shrinkage-threshold", &shrinkage_threshold);
+      if (!config_line.GetValue("name", &name_pattern))
+        KALDI_ERR << "Edit directive apply-svd requires 'name' to be specified.";
+      if (bottleneck_dim <= 0 && energy_threshold <=0)
+        KALDI_ERR << "Either Bottleneck-dim or energy-threshold "
+	  "must be set in apply-svd command. "
+	  "Range of possible values is (0 1]";
+      SvdApplier applier(name_pattern, bottleneck_dim,
+			 energy_threshold,
+			 shrinkage_threshold,
+			 nnet);
       applier.ApplySvd();
     } else if (directive == "reduce-rank") {
       std::string name_pattern;
@@ -1526,8 +1684,8 @@ class ModelCollapser {
      'component_index2' with input given by 'component_index1'.  This handles
      the case where 'component_index1' is of type DropoutComponent or
      GeneralDropoutComponent, and where 'component_index2' is of type
-     AffineComponent, NaturalGradientAffineComponent or
-     TimeHeightConvolutionComponent.
+     AffineComponent, NaturalGradientAffineComponent, LinearComponent,
+     TdnnComponent or TimeHeightConvolutionComponent.
 
      Returns -1 if this code can't produce a combined component (normally
      because the components have the wrong types).
@@ -1590,7 +1748,6 @@ class ModelCollapser {
                                                   batchnorm_component_name,
                                                   component_index2);
   }
-
 
   /**
      Tries to produce a component that's equivalent to running the component
@@ -1762,13 +1919,12 @@ class ModelCollapser {
                           and 'scale'.  In practice it will be the component-index
                           from where 'offset' and 'scale' were taken.
 
-     @param [in] component_index  The component to be modified (not in-place, but
-                 as a copy).  The component described in 'component_index' must
-                 be AffineComponent or NaturalGradientAffineComponent, and
-                 case the dimension of 'offset'/'scale' should divide the
-                 component input dimension, otherwise it's an error.
-                      of 'offset' and 'scale' should equal 'scale_input'
-                      (else it's an error).
+     @param [in] component_index  The component to be modified (not in-place,
+                 but as a copy).  The component described in 'component_index'
+                 must be AffineComponent, NaturalGradientAffineComponent,
+                 LinearComponent or TdnnComponent, and the dimension of
+                 'offset'/'scale' should divide the component input dimension,
+                 otherwise it's an error.
      @return  Returns the component-index of a suitably modified component.
               If one like this already exists, the existing one will be returned.
               If the component in 'component_index' was not of a type that can
@@ -1780,7 +1936,6 @@ class ModelCollapser {
       const CuVectorBase<BaseFloat> &scale,
       const std::string &src_identifier,
       int32 component_index) {
-    int32 transform_dim = offset.Dim();
     KALDI_ASSERT(offset.Dim() > 0 && offset.Dim() == scale.Dim());
     if (offset.Max() == 0.0 && offset.Min() == 0.0 &&
         scale.Max() == 1.0 && scale.Min() == 1.0)
@@ -1793,17 +1948,72 @@ class ModelCollapser {
     int32 new_component_index = nnet_->GetComponentIndex(new_component_name);
     if (new_component_index >= 0)
       return new_component_index;  // we previously created this.
+
     const Component *component = nnet_->GetComponent(component_index);
     const AffineComponent *affine_component =
         dynamic_cast<const AffineComponent*>(component);
-    if (affine_component == NULL)
-      return -1;  // we can't do this.
+    const LinearComponent *linear_component =
+        dynamic_cast<const LinearComponent*>(component);
+    const TdnnComponent *tdnn_component =
+        dynamic_cast<const TdnnComponent*>(component);
 
+    Component *new_component = NULL;
+    if (affine_component != NULL) {
+      new_component = component->Copy();
+      AffineComponent *new_affine_component =
+          dynamic_cast<AffineComponent*>(new_component);
+      PreMultiplyAffineParameters(offset, scale,
+                                  &(new_affine_component->BiasParams()),
+                                  &(new_affine_component->LinearParams()));
+    } else if (linear_component != NULL) {
+      CuVector<BaseFloat> bias_params(linear_component->OutputDim());
+      AffineComponent *new_affine_component =
+          new AffineComponent(linear_component->Params(),
+                              bias_params,
+                              linear_component->LearningRate());
+      PreMultiplyAffineParameters(offset, scale,
+                                  &(new_affine_component->BiasParams()),
+                                  &(new_affine_component->LinearParams()));
+      new_component = new_affine_component;
+    } else if (tdnn_component != NULL) {
+      new_component = tdnn_component->Copy();
+      TdnnComponent *new_tdnn_component =
+          dynamic_cast<TdnnComponent*>(new_component);
+      if (new_tdnn_component->BiasParams().Dim() == 0) {
+        // make sure it has a bias even if it had none before.
+        new_tdnn_component->BiasParams().Resize(
+            new_tdnn_component->OutputDim());
+      }
+      PreMultiplyAffineParameters(offset, scale,
+                                  &(new_tdnn_component->BiasParams()),
+                                  &(new_tdnn_component->LinearParams()));
 
-    int32 input_dim = affine_component->InputDim();
-    if (input_dim % transform_dim != 0) {
-      KALDI_ERR << "Dimension mismatch when modifying affine component.";
+    } else {
+      return -1;  // we can't do this: this component isn't of the right type.
     }
+    return nnet_->AddComponent(new_component_name, new_component);
+  }
+
+  /**
+     This helper function, used GetDiagonallyPreModifiedComponentIndex,
+     modifies the linear and bias parameters of an affine transform to
+     capture the effect of preceding that affine transform by a
+     diagonal affine transform with parameters 'offset' and 'scale'.
+     The dimension of 'offset' and 'scale' must be the same and must
+     divide the input dim of the affine transform, i.e. must divide
+     linear_params->NumCols().
+   */
+  static void PreMultiplyAffineParameters(
+      const CuVectorBase<BaseFloat> &offset,
+      const CuVectorBase<BaseFloat> &scale,
+      CuVectorBase<BaseFloat> *bias_params,
+      CuMatrixBase<BaseFloat> *linear_params) {
+    int32 input_dim = linear_params->NumCols(),
+        transform_dim = offset.Dim();
+    KALDI_ASSERT(bias_params->Dim() == linear_params->NumRows() &&
+                 offset.Dim() == scale.Dim() &&
+                 input_dim % transform_dim == 0);
+    // we may have to repeat 'offset' and scale' several times.
     // 'full_offset' and 'full_scale' may be repeated versions of
     // 'offset' and 'scale' in case input_dim > transform_dim.
     CuVector<BaseFloat> full_offset(input_dim),
@@ -1812,20 +2022,17 @@ class ModelCollapser {
       full_offset.Range(d, transform_dim).CopyFromVec(offset);
       full_scale.Range(d, transform_dim).CopyFromVec(scale);
     }
-    CuVector<BaseFloat> bias_params(affine_component->BiasParams());
-    CuMatrix<BaseFloat> linear_params(affine_component->LinearParams());
+
     // Image the affine component does y = a x + b, and by applying
     // the pre-transform we are replacing x with s x + o
     // s for scale and o for offset), so we have:
     //  y = a s x + (b + a o).
     // do: b += a o.
-    bias_params.AddMatVec(1.0, linear_params, kNoTrans, full_offset, 1.0);
+    bias_params->AddMatVec(1.0, *linear_params, kNoTrans, full_offset, 1.0);
     // do: a = a * s.
-    linear_params.MulColsVec(full_scale);
-    AffineComponent *new_affine_component =
-        dynamic_cast<AffineComponent*>(affine_component->Copy());
-    new_affine_component->SetParams(bias_params, linear_params);
-    return nnet_->AddComponent(new_component_name, new_affine_component);
+    linear_params->MulColsVec(full_scale);
+
+
   }
 
 
@@ -1834,7 +2041,7 @@ class ModelCollapser {
       will give the same output as the current component gives when its input
       is scaled by 'scale'.   This will generally mean applying
       the scale to the linear parameters in the component, if it is
-      an affine or convolutional component.
+      an affine, linear or convolutional component.
 
       If the component referred to in 'component_index' is not an
       affine or convolutional component, and therefore cannot
@@ -1856,26 +2063,33 @@ class ModelCollapser {
         dynamic_cast<const AffineComponent*>(current_component);
     const TimeHeightConvolutionComponent *conv_component =
         dynamic_cast<const TimeHeightConvolutionComponent*>(current_component);
-    if (affine_component != NULL) {
-      // AffineComponent or NaturalGradientAffineComponent.
-      CuVector<BaseFloat> bias_params(affine_component->BiasParams());
-      CuMatrix<BaseFloat> linear_params(affine_component->LinearParams());
-      linear_params.Scale(scale);
-      AffineComponent *new_affine_component =
-          dynamic_cast<AffineComponent*>(current_component->Copy());
-      new_affine_component->SetParams(bias_params, linear_params);
-      return nnet_->AddComponent(new_component_name, new_affine_component);
-    } else if (conv_component != NULL) {
-      TimeHeightConvolutionComponent *new_conv_component =
-          dynamic_cast<TimeHeightConvolutionComponent*>(
-              current_component->Copy());
-      // scale the linear but not the bias parameters.
-      new_conv_component->ScaleLinearParams(scale);
-      return nnet_->AddComponent(new_component_name, new_conv_component);
-    } else {
+    const LinearComponent *linear_component =
+        dynamic_cast<const LinearComponent*>(current_component);
+    const TdnnComponent *tdnn_component =
+        dynamic_cast<const TdnnComponent*>(current_component);
+
+    if (affine_component == NULL && conv_component == NULL &&
+        linear_component == NULL && tdnn_component == NULL) {
       // We can't scale this component (at least, not using this code).
       return -1;
     }
+
+    Component *new_component = current_component->Copy();
+
+    if (affine_component != NULL) {
+      // AffineComponent or NaturalGradientAffineComponent.
+      dynamic_cast<AffineComponent*>(new_component)->
+          LinearParams().Scale(scale);
+    } else if (conv_component != NULL) {
+      dynamic_cast<TimeHeightConvolutionComponent*>(new_component)->
+          ScaleLinearParams(scale);
+    } else if (linear_component != NULL) {
+      dynamic_cast<LinearComponent*>(new_component)->Params().Scale(scale);
+    } else {
+      KALDI_ASSERT(tdnn_component != NULL);
+      dynamic_cast<TdnnComponent*>(new_component)->LinearParams().Scale(scale);
+    }
+    return nnet_->AddComponent(new_component_name, new_component);
   }
 
   const CollapseModelConfig &config_;
@@ -1965,7 +2179,7 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
       ostr << "Per-component max-change active on "
            << num_max_change_per_component_applied_per_minibatch
            << " / " << num_updatable << " Updatable Components."
-           << "(smallest factor=" << min_scale << " on "
+           << " (Smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
            << " with max-change=" << max_change_with_min_scale <<"). ";
     if (param_delta > max_param_change * max_change_scale)
@@ -2049,6 +2263,48 @@ void ApplyL2Regularization(const Nnet &nnet,
         dest_component->Add(scale, *src_component);
     }
   }
+}
+
+
+bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
+                             BaseFloat max_param_change,
+                             BaseFloat max_change_scale,
+                             BaseFloat scale, Nnet *nnet,
+                             MaxChangeStats *stats) {
+  bool ans = UpdateNnetWithMaxChange(
+      delta_nnet, max_param_change, max_change_scale,
+      scale, nnet,
+      &(stats->num_max_change_per_component_applied),
+      &(stats->num_max_change_global_applied));
+  stats->num_minibatches_processed++;
+  return ans;
+}
+
+
+void MaxChangeStats::Print(const Nnet &nnet) const {
+  int32 i = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(
+          comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_change_per_component_applied[i] > 0)
+        KALDI_LOG << "For " << nnet.GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << ((100.0 * num_max_change_per_component_applied[i]) /
+                      num_minibatches_processed)
+                  << " \% of the time.";
+      i++;
+    }
+  }
+  if (num_max_change_global_applied > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << ((100.0 * num_max_change_global_applied) /
+                  num_minibatches_processed)
+              << " \% of the time.";
 }
 
 

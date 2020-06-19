@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Unlike 1a this setup interleaves the TDNN and LSTM layers.
 
@@ -29,7 +29,6 @@ chunk_width=150
 chunk_left_context=40
 chunk_right_context=0
 xent_regularize=0.025
-self_repair_scale=0.00001
 label_delay=5
 # decode options
 extra_left_context=50
@@ -115,7 +114,7 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2k is as _2i, but doing the same change as in _s -> _2e, in which we
 #  set --apply-deriv-weights false and --frames-overlap-per-eg 0.

@@ -35,15 +35,15 @@ int main(int argc, char *argv[]) {
         "e.g. of mixing up:\n"
         " gmm-mixup --mix-up=4000 1.mdl 1.occs 2.mdl\n"
         "e.g. of merging:\n"
-        " gmm-mixup --merge=2000 1.mdl 1.occs 2.mdl\n";
-        
+        " gmm-mixup --mix-down=2000 1.mdl 1.occs 2.mdl\n";
+
     bool binary_write = true;
     int32 mixup = 0;
     int32 mixdown = 0;
     BaseFloat perturb_factor = 0.01;
     BaseFloat power = 0.2;
     BaseFloat min_count = 20.0;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("mix-up", &mixup, "Increase number of mixture components to "

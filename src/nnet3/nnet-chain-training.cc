@@ -33,6 +33,7 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     compiler_(*nnet, opts_.nnet_config.optimize_config,
               opts_.nnet_config.compiler_config),
     num_minibatches_processed_(0),
+    max_change_stats_(*nnet),
     srand_seed_(RandInt(0, 100000)) {
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
@@ -41,9 +42,6 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
                opts.nnet_config.backstitch_training_interval > 0);
   delta_nnet_ = nnet_->Copy();
   ScaleNnet(0.0, delta_nnet_);
-  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  num_max_change_per_component_applied_.resize(num_updatable, 0);
-  num_max_change_global_applied_ = 0;
 
   if (opts.nnet_config.read_cache != "") {
     bool binary;
@@ -60,6 +58,7 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
 
 
 void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
+  NVTX_RANGE(__func__);
   bool need_model_derivative = true;
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
@@ -88,84 +87,16 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   } else { // conventional training
     TrainInternal(chain_eg, *computation);
   }
-
-  num_minibatches_processed_++;
-}
-
-// This object exists to help avoid memory fragmentation: it allocates,
-// but does not use, the exact sizes of memory that are going to be needed
-// in ComputeChainObjfAndDeriv().
-class ChainTrainerMemoryHolder {
- public:
-  ChainTrainerMemoryHolder(const Nnet &nnet,
-                           int32 num_den_graph_states,
-                           const NnetChainExample &eg);
- private:
-  CuMatrix<BaseFloat> nnet_output_deriv_;
-  CuMatrix<BaseFloat> xent_output_deriv_;
-  CuMatrix<BaseFloat> beta_;
-  CuMatrix<BaseFloat> alpha_;
-
-};
-
-ChainTrainerMemoryHolder::ChainTrainerMemoryHolder(const Nnet &nnet,
-                                                   int32 den_graph_states,
-                                                   const NnetChainExample &eg) {
-
-  std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
-      end = eg.outputs.end();
-
-  int32 max_rows = 0,
-      max_cols = 0;
-
-  size_t max_frames_per_sequence = 0,
-         max_sequence_size = 0,
-         max_alpha_matrix_size = 0;
-
-  for (; iter != end; ++iter) {
-    // there will normally be just one of these things; we'll normally loop once.
-    const NnetChainSupervision &sup = *iter;
-
-    int32 output_rows = sup.supervision.num_sequences * sup.supervision.frames_per_sequence;
-    int32 output_cols = nnet.OutputDim("output");
-
-    size_t curr_frames_per_sequence = output_rows / sup.supervision.num_sequences + 1;
-    size_t den_graph_size = den_graph_states + 1;
-    size_t curr_sequence_size = den_graph_size * sup.supervision.num_sequences;
-    size_t curr_alpha_matrix_size = curr_frames_per_sequence * curr_sequence_size;
-
-    if (curr_alpha_matrix_size > max_alpha_matrix_size) {
-      max_alpha_matrix_size = curr_alpha_matrix_size;
-      max_frames_per_sequence = curr_frames_per_sequence;
-      max_sequence_size = curr_sequence_size;
-    }
-
-    size_t matrix_size = output_rows * output_cols;
-    if (matrix_size > (max_rows * max_cols)) {
-      max_rows = output_rows;
-      max_cols = output_cols;
-    }
+  if (num_minibatches_processed_ == 0) {
+    ConsolidateMemory(nnet_);
+    ConsolidateMemory(delta_nnet_);
   }
-
-  // the sequence of resizes is in a specific order (bigger to smaller)
-  // so that the cudaMalloc won't trash the memory it has already
-  // alloc'd in the previous iterations
-  alpha_.Resize(max_frames_per_sequence,
-                max_sequence_size,
-                kUndefined);
-
-
-  nnet_output_deriv_.Resize(max_rows, max_cols, kUndefined);
-  // note: the same block of memory can be used for xent_output_deriv_ as is
-  // used for exp_nnet_output_transposed_ in chain-training.cc.
-  xent_output_deriv_.Resize(max_rows, max_cols,
-                            kUndefined, kStrideEqualNumCols);
-
-  beta_.Resize(2, max_sequence_size, kUndefined);
+  num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
                                      const NnetComputation &computation) {
+  NVTX_RANGE(__func__);
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   // note: because we give the 1st arg (nnet_) as a pointer to the
   // constructor of 'computer', it will use that copy of the nnet to
@@ -173,34 +104,26 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   NnetComputer computer(nnet_config.compute_config, computation,
                         nnet_, delta_nnet_);
 
-  // reserve the memory needed in ProcessOutputs (before memory gets fragmented
-  // by the call to computer.Run().
-  ChainTrainerMemoryHolder *memory_holder =
-      new ChainTrainerMemoryHolder(*nnet_, den_graph_.NumStates(), eg);
-
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.inputs);
   computer.Run();
 
-  // 'this->ProcessOutputs()' is going to need the same sizes as are stored in
-  // 'memory_holder'.
-  delete memory_holder;
-
-  // Probably could be merged in a single call PreallocateChainTrainerMemory(*nnet_, eg) ?
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
-  // If relevant, add in the part of the gradient that comes from L2
-  // regularization.
+  // If relevant, add in the part of the gradient that comes from
+  // parameter-level L2 regularization.
   ApplyL2Regularization(*nnet_,
                         GetNumNvalues(eg.inputs, false) *
                         nnet_config.l2_regularize_factor,
                         delta_nnet_);
 
   // Updates the parameters of nnet
-  bool success = UpdateNnetWithMaxChange(*delta_nnet_,
-      nnet_config.max_param_change, 1.0, 1.0 - nnet_config.momentum, nnet_,
-      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+  bool success = UpdateNnetWithMaxChange(
+      *delta_nnet_,
+      nnet_config.max_param_change,
+      1.0, 1.0 - nnet_config.momentum, nnet_,
+      &max_change_stats_);
 
   // Scale down the batchnorm stats (keeps them fresh... this affects what
   // happens when we use the model with batchnorm test-mode set).
@@ -245,21 +168,20 @@ void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
     // delta_nnet is scaled by 1 + backstitch_training_scale when added to nnet;
     max_change_scale = 1.0 + nnet_config.backstitch_training_scale;
     scale_adding = 1.0 + nnet_config.backstitch_training_scale;
+    // If relevant, add in the part of the gradient that comes from L2
+    // regularization.  It may not be optimally inefficient to do it on both
+    // passes of the backstitch, like we do here, but it probably minimizes
+    // any harmful interactions with the max-change.
+    ApplyL2Regularization(*nnet_,
+        1.0 / scale_adding * GetNumNvalues(eg.inputs, false) *
+        nnet_config.l2_regularize_factor, delta_nnet_);
   }
 
-  // If relevant, add in the part of the gradient that comes from L2
-  // regularization.  It may not be optimally inefficient to do it on both
-  // passes of the backstitch, like we do here, but it probably minimizes
-  // any harmful interactions with the max-change.
-  ApplyL2Regularization(*nnet_,
-                        scale_adding * GetNumNvalues(eg.inputs, false) *
-                        nnet_config.l2_regularize_factor,
-                        delta_nnet_);
-
   // Updates the parameters of nnet
-  UpdateNnetWithMaxChange(*delta_nnet_,
-      nnet_config.max_param_change, max_change_scale, scale_adding, nnet_,
-      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+  UpdateNnetWithMaxChange(
+      *delta_nnet_, nnet_config.max_param_change,
+      max_change_scale, scale_adding, nnet_,
+      &max_change_stats_);
 
   if (is_backstitch_step1) {
     // The following will only do something if we have a LinearComponent or
@@ -282,6 +204,7 @@ void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
 void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                       const NnetChainExample &eg,
                                       NnetComputer *computer) {
+  NVTX_RANGE(__func__);
   // normally the eg will have just one output named 'output', but
   // we don't assume this.
   // In backstitch training, the output-name with the "_backstitch" suffix is
@@ -357,39 +280,8 @@ bool NnetChainTrainer::PrintTotalStats() const {
     const ObjectiveFunctionInfo &info = iter->second;
     ans = info.PrintTotalStats(name) || ans;
   }
-  PrintMaxChangeStats();
+  max_change_stats_.Print(*nnet_);
   return ans;
-}
-
-void NnetChainTrainer::PrintMaxChangeStats() const {
-  KALDI_ASSERT(delta_nnet_ != NULL);
-  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
-  int32 i = 0;
-  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
-    Component *comp = delta_nnet_->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-                  << "UpdatableComponent; change this code.";
-      if (num_max_change_per_component_applied_[i] > 0)
-        KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
-                  << ", per-component max-change was enforced "
-                  << (100.0 * num_max_change_per_component_applied_[i]) /
-                     (num_minibatches_processed_ *
-                     (nnet_config.backstitch_training_scale == 0.0 ? 1.0 :
-                     1.0 + 1.0 / nnet_config.backstitch_training_interval))
-                  << " \% of the time.";
-      i++;
-    }
-  }
-  if (num_max_change_global_applied_ > 0)
-    KALDI_LOG << "The global max-change was enforced "
-              << (100.0 * num_max_change_global_applied_) /
-                 (num_minibatches_processed_ *
-                 (nnet_config.backstitch_training_scale == 0.0 ? 1.0 :
-                 1.0 + 1.0 / nnet_config.backstitch_training_interval))
-              << " \% of the time.";
 }
 
 NnetChainTrainer::~NnetChainTrainer() {

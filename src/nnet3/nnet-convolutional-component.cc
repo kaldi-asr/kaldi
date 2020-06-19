@@ -79,8 +79,7 @@ std::string TimeHeightConvolutionComponent::Info() const {
            << preconditioner_in_.GetNumMinibatchesHistory()
            << ", rank-in=" << preconditioner_in_.GetRank()
            << ", rank-out=" << preconditioner_out_.GetRank()
-           << ", alpha-in=" << preconditioner_in_.GetAlpha()
-           << ", alpha-out=" << preconditioner_out_.GetAlpha();
+           << ", alpha=" << preconditioner_in_.GetAlpha();
   }
   return stream.str();
 }
@@ -308,6 +307,7 @@ void TimeHeightConvolutionComponent::Backprop(
     void*, // memo
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("TimeHeightConvolutionComponent::Backprop");
   const PrecomputedIndexes *indexes =
       dynamic_cast<const PrecomputedIndexes*>(indexes_in);
   KALDI_ASSERT(indexes != NULL);
@@ -666,6 +666,12 @@ void TimeHeightConvolutionComponent::PrecomputedIndexes::Read(
   ExpectToken(is, binary, "</TimeHeightConvolutionComponentPrecomputedIndexes>");
 }
 
+void TimeHeightConvolutionComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp_in(preconditioner_in_);
+  preconditioner_in_.Swap(&temp_in);
+  OnlineNaturalGradient temp_out(preconditioner_out_);
+  preconditioner_out_.Swap(&temp_out);
+}
 
 } // namespace nnet3
 } // namespace kaldi

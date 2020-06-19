@@ -115,7 +115,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
           '# See also ./xconfig.expanded.2\n', file=xconfig_file_out)
 
     for layer in all_layers:
-        print(str(layer), file=xconfig_file_out)
+        print('{}'.format(layer), file=xconfig_file_out)
     xconfig_file_out.close()
 
     try:
@@ -135,7 +135,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
 
     for layer in all_layers:
         layer.normalize_descriptors()
-        print(str(layer), file=xconfig_file_out)
+        print('{}'.format(layer), file=xconfig_file_out)
     xconfig_file_out.close()
 
 
@@ -243,15 +243,15 @@ def add_nnet_context_info(config_dir, nnet_edits=None,
     if nnet_edits is not None:
         model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
                                                           model)
-    out = common_lib.get_command_stdout('nnet3-info "{0}" | head -n 4 '
-                                        .format(model))
+    out = common_lib.get_command_stdout('nnet3-info "{0}"'.format(model))
     # out looks like this
     # left-context: 7
     # right-context: 0
     # num-parameters: 90543902
     # modulus: 1
+    # ...
     info = {}
-    for line in out.split("\n"):
+    for line in out.split("\n")[:4]: # take 4 initial lines,
         parts = line.split(":")
         if len(parts) != 2:
             continue
@@ -277,17 +277,17 @@ def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
                                                  None else '',
                                                  config_dir, file_name))
             model = "{0}/{1}.raw".format(config_dir, file_name)
-            if nnet_edits is not None:
+            if nnet_edits is not None and file_name != 'init':
                 model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
                                                                   model)
-            out = common_lib.get_command_stdout('nnet3-info "{0}" | head -n 4 '
-                                                .format(model))
+            out = common_lib.get_command_stdout('nnet3-info "{0}"'.format(model))
             # out looks like this
             # left-context: 7
             # right-context: 0
             # num-parameters: 90543902
             # modulus: 1
-            for line in out.split("\n"):
+            # ...
+            for line in out.split("\n")[:4]: # take 4 initial lines,
                 parts = line.split(":")
                 if len(parts) != 2:
                     continue
@@ -296,10 +296,10 @@ def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
                 if key in ['left-context', 'right-context']:
                     contexts[file_name][key] = value
 
-    if contexts.has_key('init'):
-        assert(contexts.has_key('ref'))
-        if (contexts['init'].has_key('left-context') and
-            contexts['ref'].has_key('left-context')):
+    if 'init' in contexts:
+        assert('ref' in contexts)
+        if ('left-context' in contexts['init'] and
+            'left-context' in contexts['ref']):
             if ((contexts['init']['left-context']
                  > contexts['ref']['left-context'])
                 or (contexts['init']['right-context']

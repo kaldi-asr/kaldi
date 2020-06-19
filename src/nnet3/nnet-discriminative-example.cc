@@ -23,7 +23,7 @@
 
 namespace kaldi {
 namespace nnet3 {
-
+using std::string;
 
 void NnetDiscriminativeSupervision::Write(std::ostream &os, bool binary) const {
   CheckDim();
@@ -197,7 +197,7 @@ void MergeSupervision(
   for (int32 n = 0; n < num_inputs; n++)
     input_supervision.push_back(&(inputs[n]->supervision));
   discriminative::DiscriminativeSupervision output_supervision;
-  discriminative::AppendSupervision(input_supervision,
+  discriminative::MergeSupervision(input_supervision,
                          &output_supervision);
   output->supervision.Swap(&(output_supervision));
 

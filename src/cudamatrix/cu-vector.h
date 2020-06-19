@@ -6,6 +6,7 @@
 //           2013       Xiaohui Zhang
 //           2015       Guoguo Chen
 //           2017       Daniel Galvez
+//           2019       Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -131,12 +132,26 @@ class CuVectorBase {
                     const MatrixTransposeType trans,
                     const CuArrayBase<int32> &elements);
 
+  void Floor(const CuVectorBase<Real> &src, Real floor_val, MatrixIndexT *floored_count = NULL);
+  void Ceiling(const CuVectorBase<Real> &src, Real ceiling_val, MatrixIndexT *ceiled_count = NULL);
+  void Pow(const CuVectorBase<Real> &src, Real power);
+
+  inline void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = NULL) {
+    this -> Floor(*this, floor_val, floored_count);
+  };
+
+  inline void ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count = NULL) {
+    this -> Ceiling(*this, ceiling_val, ceiled_count);
+  };
+
+  inline void ApplyPow(Real power) {
+    this -> Pow(*this, power);
+  };
+
   void ApplySoftMax();
+  void ApplyLogSoftMax();
   void ApplyExp();
   void ApplyLog();
-  void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = NULL);
-  void ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count = NULL);
-  void ApplyPow(Real power);
   Real Sum() const;
 
   void SetRandn();
@@ -314,27 +329,27 @@ class CuSubVector: public CuVectorBase<Real> {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(origin)+
                  static_cast<UnsignedMatrixIndexT>(length) <=
                  static_cast<UnsignedMatrixIndexT>(t.Dim()));
-    CuVectorBase<Real>::data_ = const_cast<Real*>(t.Data()+origin);
-    CuVectorBase<Real>::dim_ = length;
+    this->data_ = const_cast<Real*>(t.Data()+origin);
+    this->dim_ = length;
   }
   /// Copy constructor
   /// this constructor needed for Range() to work in base class.
   CuSubVector(const CuSubVector &other) : CuVectorBase<Real> () {
-    CuVectorBase<Real>::data_ = other.data_;
-    CuVectorBase<Real>::dim_ = other.dim_;
+    this->data_ = other.data_;
+    this->dim_ = other.dim_;
   }
 
   CuSubVector(const Real* data, MatrixIndexT length) : CuVectorBase<Real> () {
     // Yes, we're evading C's restrictions on const here, and yes, it can be used
     // to do wrong stuff; unfortunately the workaround would be very difficult.
-    CuVectorBase<Real>::data_ = const_cast<Real*>(data);
-    CuVectorBase<Real>::dim_ = length;
+    this->data_ = const_cast<Real*>(data);
+    this->dim_ = length;
   }
 
   /// This operation does not preserve const-ness, so be careful.
   CuSubVector(const CuMatrixBase<Real> &matrix, MatrixIndexT row) {
-    CuVectorBase<Real>::data_ = const_cast<Real*>(matrix.RowData(row));
-    CuVectorBase<Real>::dim_ = matrix.NumCols();
+    this->data_ = const_cast<Real*>(matrix.RowData(row));
+    this->dim_ = matrix.NumCols();
   }
 
 

@@ -34,11 +34,6 @@ ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
     EXTRA_LDLIBS += -lasound
 endif
 
-# MKL libs required when linked via shared library
-ifdef MKLROOT
-	EXTRA_LDLIBS+=-lmkl_p4n -lmkl_def
-endif
-
 # Library so name and rpath
 CXX_VERSION=$(shell $(CXX) --version 2>/dev/null)
 ifneq (,$(findstring clang, $(CXX_VERSION)))

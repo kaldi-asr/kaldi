@@ -1,9 +1,9 @@
 // nnet3/nnet-simple-component.h
 
 // Copyright 2011-2013  Karel Vesely
-//           2012-2015  Johns Hopkins University (author: Daniel Povey)
+//           2012-2017  Johns Hopkins University (author: Daniel Povey)
 //                2013  Xiaohui Zhang
-//           2014-2015  Vijayaditya Peddinti
+//           2014-2016  Vijayaditya Peddinti
 //           2014-2015  Guoguo Chen
 //                2015  Daniel Galvez
 //                2015  Tom Ko
@@ -42,7 +42,7 @@ namespace nnet3 {
 ///   nnet-general-component.h there are components that don't fit this pattern.
 ///
 ///   Some components that do provide the kSimpleComponent flag are not declared
-///   here: see also nnet-normalize-component.h.
+///   here: see also nnet-normalize-component.h and nnet-combined-component.h
 
 // This "nnet3" version of the p-norm component only supports the 2-norm.
 class PnormComponent: public Component {
@@ -381,16 +381,35 @@ class FixedScaleComponent;
 class PerElementScaleComponent;
 class PerElementOffsetComponent;
 
-// Affine means a linear function plus an offset.
-// Note: although this class can be instantiated, it also
-// functions as a base-class for more specialized versions of
-// AffineComponent.
+/*
+  Affine means a linear function plus an offset.
+  Note: although this class can be instantiated, it also
+  functions as a base-class for more specialized versions of
+  AffineComponent.
+
+  Parameters accepted on the config line, with default if applicable:
+
+     matrix   If specified, a filename containing the parameters of the class as
+              a single matrix containing the linear_params, plus the bias_params
+              as the last column
+
+     input-dim  The input dimension of the component
+     output-dim  The output dimension of the component
+     param-stddev=1/sqrt(input-dim)  The standard deviation of the elements of the linear parameters
+                      (they will have a Gaussian distribution with this standard deviation).
+     bias-stddev=1.0   The standard deviation of the elements of the bias parameters
+
+     orthonormal-constraint=0.0   Can be used to constrain the linear parameter matrix
+                       to be semi-orthogonal, see ConstraintOrhonormal() in nnet-utils.h,
+                       and http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf.
+*/
 class AffineComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
   BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
+
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
@@ -434,6 +453,7 @@ class AffineComponent: public UpdatableComponent {
   virtual void SetParams(const CuVectorBase<BaseFloat> &bias,
                          const CuMatrixBase<BaseFloat> &linear);
   const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
+  CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit AffineComponent(const AffineComponent &other);
@@ -468,6 +488,8 @@ class AffineComponent: public UpdatableComponent {
   const AffineComponent &operator = (const AffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
+  // see documentation at the top of this class for more information on the
+  // following.
   BaseFloat orthonormal_constraint_;
 };
 
@@ -628,6 +650,9 @@ class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
   // Copy constructor
   explicit NaturalGradientRepeatedAffineComponent(
       const NaturalGradientRepeatedAffineComponent &other);
+
+  virtual void ConsolidateMemory();
+
  private:
   virtual void Update(
       const CuMatrixBase<BaseFloat> &in_value,
@@ -731,7 +756,7 @@ class LogSoftmaxComponent: public NonlinearComponent {
   Configuration values accepted by this component:
 
   Values inherited from UpdatableComponent (see its declaration in
-  nnet-component-itf for details):
+  nnet-component-itf.h for details):
      learning-rate
      learning-rate-factor
      max-change
@@ -792,8 +817,8 @@ class LogSoftmaxComponent: public NonlinearComponent {
                             matrix in the input space.  default=20.
       rank-out              Rank used in low-rank-plus-unit estimate of Fisher
                             matrix in the output-derivative space.  default=80.
-      update-period         Determines after with what frequency (in
-                            minibatches) we update the Fisher-matrix estimates;
+      update-period         Determines the period (in minibatches) with which
+                            we update the Fisher-matrix estimates;
                             making this > 1 saves a little time in training.
                             default=4.
 */
@@ -810,6 +835,9 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   virtual void FreezeNaturalGradient(bool freeze);
+
+  virtual void ConsolidateMemory();
+
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
@@ -933,6 +961,8 @@ class LinearComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
   virtual void FreezeNaturalGradient(bool freeze);
+  virtual void ConsolidateMemory();
+
   // copy constructor
   explicit LinearComponent(const LinearComponent &other);
 
@@ -1145,18 +1175,30 @@ class FixedBiasComponent: public Component {
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
 };
 
-/** NoOpComponent just duplicates its input.  We don't anticipate this being used
-    very often, but it may sometimes make your life easier
-    The only config parameter it accepts is 'dim', e.g. 'dim=400'.
+/**
+   NoOpComponent just duplicates its input.  We don't anticipate this being used
+    very often, but it may sometimes make your life easier.  Config parameters:
+
+      dim               E.g. dim=1024.  Required.
+      backprop-scale    Defaults to 1.0.  May be set to a different value to scale
+                        the derivatives being backpropagated.
 */
-class NoOpComponent: public NonlinearComponent {
+class NoOpComponent: public Component {
  public:
-  explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }
+  explicit NoOpComponent(const NoOpComponent &other):
+      dim_(other.dim_), backprop_scale_(other.backprop_scale_) { }
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kPropagateInPlace;
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace;
   }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual Component *Copy() { return new NoOpComponent(*this); }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
   virtual Component* Copy() const { return new NoOpComponent(*this); }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                           const CuMatrixBase<BaseFloat> &in,
@@ -1170,6 +1212,9 @@ class NoOpComponent: public NonlinearComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
  private:
+  int32 dim_;
+  BaseFloat backprop_scale_;
+
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
 
@@ -1386,6 +1431,11 @@ class ClipGradientComponent: public Component {
         for each feature/activation dimension i:
           output(row, i) = input(row, column_map_[i]).
 
+    The only config value it accepts is 'column-map', e.g.:
+            column-map=0,10,1,11,...,9,19
+    ... which should be a permutation of a contiguous block of integers
+    starting with 0 (i.e. something like '3,2,1,0' but not '0,4' or '0,0,2').
+    See the equation above for how it is used.
 */
 class PermuteComponent: public Component {
  public:
@@ -1555,6 +1605,12 @@ class PerElementScaleComponent: public UpdatableComponent {
                       which does not support natural gradient directly-- in that
                       case you have to use NaturalGradientPerElementScaleComponent
                       if you want to use natural gradient update.
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
 */
 class PerElementOffsetComponent: public UpdatableComponent {
  public:
@@ -1667,6 +1723,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void ConsolidateMemory();
  private:
   int32 input_dim_;
   // the output value-- a vector.
@@ -1735,6 +1792,8 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
             int32 rank, int32 update_period, BaseFloat num_samples_history,
             BaseFloat alpha);
 
+  void ConsolidateMemory();
+
  private:
   // unlike the NaturalGradientAffineComponent, there is only one dimension to
   // consider as the parameters are a vector not a matrix, so we only need one
@@ -1754,7 +1813,6 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   const NaturalGradientPerElementScaleComponent &operator
       = (const NaturalGradientPerElementScaleComponent &other); // Disallow.
 };
-
 
 
 /*
@@ -1840,6 +1898,7 @@ class ScaleAndOffsetComponent: public UpdatableComponent {
   virtual int32 NumParameters() const { return 2 * scales_.Dim(); }
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void ConsolidateMemory();
 
 
   // copy constructor
@@ -1884,521 +1943,6 @@ class ScaleAndOffsetComponent: public UpdatableComponent {
   bool use_natural_gradient_;
   OnlineNaturalGradient scale_preconditioner_;
   OnlineNaturalGradient offset_preconditioner_;
-};
-
-
-
-/**
- * WARNING, this component is deprecated in favor of
- *  TimeHeightConvolutionComponent, and will be deleted.
- * ConvolutionalComponent implements 2d-convolution.
- * It uses 3D filters on 3D inputs, but the 3D filters hop only over
- * 2 dimensions as it has same size as the input along the 3rd dimension.
- * Input : A matrix where each row is a  vectorized 3D-tensor.
- *        The 3D tensor has dimensions
- *        x: (e.g. time)
- *        y: (e.g. frequency)
- *        z: (e.g. channels like features/delta/delta-delta)
- *
- *        The component supports input vectorizations of type zyx and yzx.
- *        The default vectorization type is zyx.
- *        e.g. for input vectorization of type zyx the input is vectorized by
- *        spanning axes z, y and x of the tensor in that order.
- *        Given 3d tensor A with sizes (2, 2, 2) along the three dimensions
- *        the zyx vectorized input looks like
- *  A(0,0,0) A(0,0,1) A(0,1,0) A(0,1,1) A(1,0,0) A(1,0,1) A(1,1,0) A(1,1,1)
- *
- *
- * Output : The output is also a 3D tensor vectorized in the zyx format.
- *          The channel axis (z) in the output corresponds to the output of
- *          different filters. The first channel corresponds to the first filter
- *          i.e., first row of the filter_params_ matrix.
- *
- * Note: The component has to support yzx input vectorization as the binaries
- * like add-deltas generate yz vectorized output. These input vectors are
- * concatenated using the Append descriptor across time steps to form a yzx
- * vectorized 3D tensor input.
- * e.g. Append(Offset(input, -1), input, Offset(input, 1))
- *
- *
- * For information on the hyperparameters and parameters of this component see
- * the variable declarations.
- *
- * Propagation:
- * ------------
- * Convolution operation consists of a dot-products between the filter tensor
- * and input tensor patch, for various shifts of filter tensor along the x and y
- * axes input tensor. (Note: there is no shift along z-axis as the filter and
- * input tensor have same size along this axis).
- *
- * For a particular shift (i,j) of the filter tensor
- * along input tensor dimensions x and y, the elements of the input tensor which
- * overlap with the filter form the input tensor patch. This patch is vectorized
- * in zyx format. All the patches corresponding to various samples in the
- * mini-batch are stacked into a matrix, where each row corresponds to one
- * patch. Let this matrix be represented by X_{i,j}. The dot products with
- * various filters are computed simultaneously by computing the matrix product
- * with the filter_params_ matrix (W)
- * Y_{i,j} = X_{i,j}*W^T.
- * Each row of W corresponds to one filter 3D tensor vectorized in zyx format.
- *
- * All the matrix products corresponding to various shifts (i,j) of the
- * filter tensor are computed simultaneously using the AddMatMatBatched
- * call of CuMatrixBase class.
- *
- * BackPropagation:
- * ----------------
- *  Backpropagation to compute the input derivative (\nabla X_{i,j})
- *  consists of the a series of matrix products.
- *  \nablaX_{i,j} = \nablaY_{i,j}*W where \nablaY_{i,j} corresponds to the
- *   output derivative for a particular shift of the filter.
- *
- *   Once again these matrix products are computed simultaneously.
- *
- * Update:
- * -------
- *  The weight gradient is computed as
- *  \nablaW = \Sum_{i,j} (X_{i,j}^T *\nablaY_{i,j})
- *
- */
-class ConvolutionComponent: public UpdatableComponent {
- public:
-  enum TensorVectorizationType  {
-    kYzx = 0,
-    kZyx = 1
-  };
-
-  ConvolutionComponent();
-  // constructor using another component
-  ConvolutionComponent(const ConvolutionComponent &component);
-  // constructor using parameters
-  ConvolutionComponent(
-    const CuMatrixBase<BaseFloat> &filter_params,
-    const CuVectorBase<BaseFloat> &bias_params,
-    int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-    int32 filt_x_dim, int32 filt_y_dim,
-    int32 filt_x_step, int32 filt_y_step,
-    TensorVectorizationType input_vectorization,
-    BaseFloat learning_rate);
-
-  virtual int32 InputDim() const;
-  virtual int32 OutputDim() const;
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-  virtual std::string Type() const { return "ConvolutionComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
-           kBackpropAdds|kPropagateAdds;
-  }
-
-  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &, // out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        void *memo,
-                        Component *to_update_in,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-  void Update(const std::string &debug_info,
-              const CuMatrixBase<BaseFloat> &in_value,
-              const CuMatrixBase<BaseFloat> &out_deriv,
-              const std::vector<CuSubMatrix<BaseFloat> *>& out_deriv_batch);
-
-
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual Component* Copy() const;
-
-  // Some functions from base-class UpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-
-  // Some functions that are specific to this class.
-  void SetParams(const VectorBase<BaseFloat> &bias,
-                 const MatrixBase<BaseFloat> &filter);
-  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() const { return filter_params_; }
-  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-            int32 filt_x_dim, int32 filt_y_dim,
-            int32 filt_x_step, int32 filt_y_step, int32 num_filters,
-            TensorVectorizationType input_vectorization,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
-  // there is no filt_z_dim parameter as the length of the filter along
-  // z-dimension is same as the input
-  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-            int32 filt_x_dim, int32 filt_y_dim,
-            int32 filt_x_step, int32 filt_y_step,
-            TensorVectorizationType input_vectorization,
-            std::string matrix_filename);
-
-  // resize the component, setting the parameters to zero, while
-  // leaving any other configuration values the same
-  void Resize(int32 input_dim, int32 output_dim);
-
-  void Update(const std::string &debug_info,
-              const CuMatrixBase<BaseFloat> &in_value,
-              const CuMatrixBase<BaseFloat> &out_deriv);
-
-
- private:
-  int32 input_x_dim_;   // size of the input along x-axis
-                        // (e.g. number of time steps)
-
-  int32 input_y_dim_;   // size of input along y-axis
-                        // (e.g. number of mel-frequency bins)
-
-  int32 input_z_dim_;   // size of input along z-axis
-                        // (e.g. number of channels is 3 if the input has
-                        // features + delta + delta-delta features
-
-  int32 filt_x_dim_;    // size of the filter along x-axis
-
-  int32 filt_y_dim_;    // size of the filter along y-axis
-
-  // there is no filt_z_dim_ as it is always assumed to be
-  // the same as input_z_dim_
-
-  int32 filt_x_step_;   // the number of steps taken along x-axis of input
-                        //  before computing the next dot-product
-                        //  of filter and input
-
-  int32 filt_y_step_;   // the number of steps taken along y-axis of input
-                        // before computing the next dot-product of the filter
-                        // and input
-
-  // there is no filt_z_step_ as only dot product is possible along this axis
-
-  TensorVectorizationType input_vectorization_; // type of vectorization of the
-  // input 3D tensor. Accepts zyx and yzx formats
-
-  CuMatrix<BaseFloat> filter_params_;
-  // the filter (or kernel) matrix is a matrix of vectorized 3D filters
-  // where each row in the matrix corresponds to one filter.
-  // The 3D filter tensor is vectorizedin zyx format.
-  // The first row of the matrix corresponds to the first filter and so on.
-  // Keep in mind the vectorization type and order of filters when using file
-  // based initialization.
-
-  CuVector<BaseFloat> bias_params_;
-  // the filter-specific bias vector (i.e., there is a seperate bias added
-  // to the output of each filter).
-
-  void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
-                           CuMatrix<BaseFloat> *patches) const;
-  void InderivPatchesToInderiv(const CuMatrix<BaseFloat>& in_deriv_patches,
-                               CuMatrixBase<BaseFloat> *in_deriv) const;
-  const ConvolutionComponent &operator = (const ConvolutionComponent &other); // Disallow.
-};
-
-
-/*
-  LstmNonlinearityComponent is a component that implements part of an LSTM, by
-  combining together the sigmoids and tanh's, plus some diagonal terms, into
-  a single block.
-  We will refer to the LSTM formulation used in
-
-  Long Short-Term Memory Recurrent Neural Network Architectures for Large Scale Acoustic Modeling"
-  by H. Sak et al,
-  http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43905.pdf.
-
-  Suppose the cell dimension is C.  Then outside this component, we compute
-  the 4 * C-dimensional quantity consisting of 4 blocks as follows, by a single
-  matrix multiplication:
-
-  i_part = W_{ix} x_t + W_{im} m_{t-1} + b_i
-  f_part = W_{fx} x_t + W_{fm} m_{t-1} + b_f
-  c_part = W_{cx} x_t + W_{cm} m_{t-1} + b_c
-  o_part = W_{cx} x_t + W_{om} m_{t-1} + b_o
-
-  The part of the computation that takes place in this component is as follows.
-  Its input is of dimension 5C [however, search for 'dropout' below],
-  consisting of 5 blocks: (i_part, f_part, c_part, o_part, and c_{t-1}).  Its
-  output is of dimension 2C, consisting of 2 blocks: c_t and m_t.
-
-  To recap: the input is (i_part, f_part, c_part, o_part, c_{t-1}); the output is (c_t, m_t).
-
-  This component has parameters, 3C of them in total: the diagonal matrices w_i, w_f
-  and w_o.
-
-
-  In the forward pass (Propagate), this component computes the following:
-
-     i_t = Sigmoid(i_part + w_{ic}*c_{t-1})   (1)
-     f_t = Sigmoid(f_part + w_{fc}*c_{t-1})   (2)
-     c_t = f_t*c_{t-1} + i_t * Tanh(c_part)   (3)
-     o_t = Sigmoid(o_part + w_{oc}*c_t)       (4)
-     m_t = o_t * Tanh(c_t)                    (5)
-    # note: the outputs are just c_t and m_t.
-
-  [Note regarding dropout: optionally the input-dimension may be 5C + 3 instead
-  of 5C in this case, the last three input dimensions will be interpreted as
-  per-frame dropout masks on i_t, f_t and o_t respectively, so that on the RHS of
-  (3), i_t is replaced by i_t * i_t_scale, and likewise for f_t and o_t.]
-
-  The backprop is as you would think, but for the "self-repair" we need to pass
-  in additional vectors (of the same dim as the parameters of the layer) that
-  dictate whether or not we add an additional term to the backpropagated
-  derivatives.  (This term helps force the input to the nonlinearities into the
-  range where the derivatives are not too small).
-
-  This component stores stats of the same form as are normally stored by the
-  StoreStats() functions for the sigmoid and tanh units, i.e. averages of the
-  activations and derivatives, but this is done inside the Backprop() functions.
-  [the StoreStats() functions don't take the input data as an argument, so
-  storing this data that way is impossible, and anyway it's more efficient to
-  do it as part of backprop.]
-
-  Configuration values accepted:
-         cell-dim          e.g. cell-dim=1024  Cell dimension.  The input
-                          dimension of this component is cell-dim * 5, and the
-                          output dimension is cell-dim * 2.  Note: this
-                          component implements only part of the LSTM layer,
-                          see comments above.
-         param-stddev     Standard deviation for random initialization of
-                          the diagonal matrices (AKA peephole connections).
-                          default=1.0, which is probably too high but
-                          we couldn't see any reliable gain from decreasing it.
-         tanh-self-repair-threshold   Equivalent to the self-repair-lower-threshold
-                          in a TanhComponent; applies to both the tanh nonlinearities.
-                          default=0.2, you probably won't want to changethis.
-         sigmoid-self-repair-threshold   Equivalent to self-repair-lower-threshold
-                          in a SigmoidComponent; applies to all three of the sigmoid
-                          nonlinearities.  default=0.05, you probably won't want to
-                          change this.
-         self-repair-scale Equivalent to the self-repair-scale in a SigmoidComponent
-                          or TanhComponent; applies to both the sigmoid and tanh
-                          nonlinearities.  default=1.0e-05, which you probably won't
-                          want to change unless dealing with an objective function
-                          that has smaller or larger dynamic range than normal, in
-                          which case you might want to make it smaller or larger.
-*/
-class LstmNonlinearityComponent: public UpdatableComponent {
- public:
-
-  virtual int32 InputDim() const;
-  virtual int32 OutputDim() const;
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-  LstmNonlinearityComponent(): use_dropout_(false) { }
-  virtual std::string Type() const { return "LstmNonlinearityComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput;
-  }
-
-  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &, // out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        void *memo,
-                        Component *to_update_in,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual Component* Copy() const;
-
-  // Some functions from base-class UpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-  virtual void ZeroStats();
-  virtual void FreezeNaturalGradient(bool freeze);
-
-  // Some functions that are specific to this class:
-  explicit LstmNonlinearityComponent(
-      const LstmNonlinearityComponent &other);
-
-  void Init(int32 cell_dim, bool use_dropout,
-            BaseFloat param_stddev,
-            BaseFloat tanh_self_repair_threshold,
-            BaseFloat sigmoid_self_repair_threshold,
-            BaseFloat self_repair_scale);
-
- private:
-
-  // Initializes the natural-gradient object with the configuration we
-  // use for this object, which for now is hardcoded at the C++ level.
-  void InitNaturalGradient();
-
-  // Notation: C is the cell dimension; it equals params_.NumCols().
-
-  // The dimension of the parameter matrix is (3 x C);
-  // it contains the 3 diagonal parameter matrices w_i, w_f and w_o.
-  CuMatrix<BaseFloat> params_;
-
-  // If true, we expect an extra 3 dimensions on the input, for dropout masks
-  // for i_t and f_t.
-  bool use_dropout_;
-
-  // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
-  // equations (1) through (5), this is the sum of the values of the nonliearities
-  // (used for diagnostics only).  It is comparable to value_sum_ vector
-  // in base-class NonlinearComponent.
-  CuMatrix<double> value_sum_;
-
-  // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
-  // equations (1) through (5), this is the sum of the derivatives of the
-  // nonliearities (used for diagnostics and to control self-repair).  It is
-  // comparable to the deriv_sum_ vector in base-class
-  // NonlinearComponent.
-  CuMatrix<double> deriv_sum_;
-
-  // This matrix has dimension 10.  The contents are a block of 5 self-repair
-  // thresholds (typically "0.05 0.05 0.2 0.05 0.2"), then a block of 5
-  // self-repair scales (typically all 0.00001).  These are for each of the 5
-  // nonlinearities in the LSTM component in turn (see comments in cu-math.h for
-  // more info).
-  CuVector<BaseFloat> self_repair_config_;
-
-  // This matrix has dimension 5.  For each of the 5 nonlinearities in the LSTM
-  // component (see comments in cu-math.h for more info), it contains the total,
-  // over all frames represented in count_, of the number of dimensions that
-  // were subject to self_repair.  To get the self-repair proportion you should
-  // divide by (count_ times cell_dim_).
-  CuVector<double> self_repair_total_;
-
-  // The total count (number of frames) corresponding to the stats in value_sum_
-  // and deriv_sum_.
-  double count_;
-
-  // Preconditioner for the parameters of this component [operates in the space
-  // of dimension C].
-  // The preconditioner stores its own configuration values; we write and read
-  // these, but not the preconditioner object itself.
-  OnlineNaturalGradient preconditioner_;
-
-  const LstmNonlinearityComponent &operator
-      = (const LstmNonlinearityComponent &other); // Disallow.
-};
-
-
-
-
-/*
- * WARNING, this component is deprecated as it's not compatible with
- *   TimeHeightConvolutionComponent, and it will eventually be deleted.
- * MaxPoolingComponent :
- * Maxpooling component was firstly used in ConvNet for selecting an
- * representative activation in an area. It inspired Maxout nonlinearity.
- * Each output element of this component is the maximum of a block of
- * input elements where the block has a 3D dimension (pool_x_size_,
- * pool_y_size_, pool_z_size_).
- * Blocks could overlap if the shift value on any axis is smaller
- * than its corresponding pool size (e.g. pool_x_step_ < pool_x_size_).
- * If the shift values are euqal to their pool size, there is no
- * overlap; while if they all equal 1, the blocks overlap to
- * the greatest possible extent.
- *
- * This component is designed to be used after a ConvolutionComponent
- * so that the input matrix is propagated from a 2d-convolutional layer.
- * This component implements 3d-maxpooling which performs
- * max pooling along the three axes.
- * Input : A matrix where each row is a vectorized 3D-tensor.
- *        The 3D tensor has dimensions
- *        x: (e.g. time)
- *        y: (e.g. frequency)
- *        z: (e.g. channels like number of filters in the ConvolutionComponent)
- *
- *        The component assumes input vectorizations of type zyx
- *        which is the default output vectorization type of a ConvolutionComponent.
- *        e.g. for input vectorization of type zyx the input is vectorized by
- *        spanning axes z, y and x of the tensor in that order.
- *        Given 3d tensor A with sizes (2, 2, 2) along the three dimensions
- *        the zyx vectorized input looks like
- *  A(0,0,0) A(0,0,1) A(0,1,0) A(0,1,1) A(1,0,0) A(1,0,1) A(1,1,0) A(1,1,1)
- *
- * Output : The output is also a 3D tensor vectorized in the zyx format.
- *
- * For information on the hyperparameters and parameters of this component see
- * the variable declarations.
- *
- *
- */
-class MaxpoolingComponent: public Component {
- public:
-
-  MaxpoolingComponent(): input_x_dim_(0), input_y_dim_(0), input_z_dim_(0),
-                           pool_x_size_(0), pool_y_size_(0), pool_z_size_(0),
-                           pool_x_step_(0), pool_y_step_(0), pool_z_step_(0) { }
-  // constructor using another component
-  MaxpoolingComponent(const MaxpoolingComponent &component);
-
-  virtual int32 InputDim() const;
-  virtual int32 OutputDim() const;
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-  virtual std::string Type() const { return "MaxpoolingComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput|
-           kBackpropAdds;
-  }
-
-  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        void *memo,
-                        Component *, // to_update,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary); // This Read function
-  // requires that the Component has the correct type.
-
-  /// Write component to stream
-  virtual void Write(std::ostream &os, bool binary) const;
-  virtual Component* Copy() const { return new MaxpoolingComponent(*this); }
-
-
- protected:
-  void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
-                           CuMatrix<BaseFloat> *patches) const;
-  void InderivPatchesToInderiv(const CuMatrix<BaseFloat>& in_deriv_patches,
-                               CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void Check() const;
-
-
-  int32 input_x_dim_;   // size of the input along x-axis
-  // (e.g. number of time steps)
-  int32 input_y_dim_;   // size of input along y-axis
-  // (e.g. number of mel-frequency bins)
-  int32 input_z_dim_;   // size of input along z-axis
-  // (e.g. number of filters in the ConvolutionComponent)
-
-  int32 pool_x_size_;    // size of the pooling window along x-axis
-  int32 pool_y_size_;    // size of the pooling window along y-axis
-  int32 pool_z_size_;    // size of the pooling window along z-axis
-
-  int32 pool_x_step_;   // the number of steps taken along x-axis of input
-  //  before computing the next pool
-  int32 pool_y_step_;   // the number of steps taken along y-axis of input
-  // before computing the next pool
-  int32 pool_z_step_;   // the number of steps taken along z-axis of input
-  // before computing the next pool
-
 };
 
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2014  Johns Hopkins University (author: Daniel Povey)
 #             2017  Xingyu Na
@@ -57,7 +57,7 @@ if [ -f $data/$part.tgz ]; then
   if ! $size_ok; then
     echo "$0: removing existing file $data/$part.tgz because its size in bytes $size"
     echo "does not equal the size of one of the archives."
-    rm $data/$part.gz
+    rm $data/$part.tgz
   else
     echo "$data/$part.tgz exists and appears to be complete."
   fi

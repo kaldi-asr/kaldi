@@ -30,6 +30,10 @@
 
 namespace fst {
 
+using std::vector;
+using std::pair;
+using std::greater;
+
 // class LatticeDeterminizerPruned is templated on the same types that
 // CompactLatticeWeight is templated on: the base weight (Weight), typically
 // LatticeWeightTpl<float> etc. but could also be e.g. TropicalWeight, and the
@@ -665,8 +669,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
         continue;
       if (opts_.max_loop > 0 && counter++ > opts_.max_loop) {
         KALDI_ERR << "Lattice determinization aborted since looped more than "
-                  << opts_.max_loop << " times during epsilon closure.\n";
-        throw std::runtime_error("looped more than max-arcs times in lattice determinization");
+                  << opts_.max_loop << " times during epsilon closure.";
       }
       for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -1031,7 +1034,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // an empty FST.
 
     double best_cost = backward_costs_[ifst_->Start()];
-    if (best_cost == numeric_limits<double>::infinity())
+    if (best_cost == std::numeric_limits<double>::infinity())
       KALDI_WARN << "Total weight of input lattice is zero.";
     cutoff_ = best_cost + beam_;
   }
@@ -1437,7 +1440,7 @@ bool DeterminizeLatticePhonePruned(
   // If --phone-determinize is true, do the determinization on phone + word
   // lattices.
   if (opts.phone_determinize) {
-    KALDI_VLOG(1) << "Doing first pass of determinization on phone + word "
+    KALDI_VLOG(3) << "Doing first pass of determinization on phone + word "
                   << "lattices.";
     ans = DeterminizeLatticePhonePrunedFirstPass<Weight, IntType>(
         trans_model, beam, ifst, det_opts) && ans;
@@ -1452,14 +1455,14 @@ bool DeterminizeLatticePhonePruned(
 
   // If --word-determinize is true, do the determinization on word lattices.
   if (opts.word_determinize) {
-    KALDI_VLOG(1) << "Doing second pass of determinization on word lattices.";
+    KALDI_VLOG(3) << "Doing second pass of determinization on word lattices.";
     ans = DeterminizeLatticePruned<Weight, IntType>(
         *ifst, beam, ofst, det_opts) && ans;
   }
 
   // If --minimize is true, push and minimize after determinization.
   if (opts.minimize) {
-    KALDI_VLOG(1) << "Pushing and minimizing on word lattices.";
+    KALDI_VLOG(3) << "Pushing and minimizing on word lattices.";
     ans = PushCompactLatticeStrings<Weight, IntType>(ofst) && ans;
     ans = PushCompactLatticeWeights<Weight, IntType>(ofst) && ans;
     ans = MinimizeCompactLattice<Weight, IntType>(ofst) && ans;

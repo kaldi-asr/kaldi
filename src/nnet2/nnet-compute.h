@@ -56,9 +56,9 @@ void NnetComputation(const Nnet &nnet,
   input.NumRows().
 */
 void NnetComputationChunked(const Nnet &nnet,
-                     const Matrix<BaseFloat> &input,  // features
+                     const CuMatrixBase<BaseFloat> &input,  // features
                      int32 chunk_size,
-                     Matrix<BaseFloat> *output); // posteriors.
+                     CuMatrixBase<BaseFloat> *output); // posteriors.
 
 /** Does the neural net computation and backprop, given input and labels.
     Note: if pad_input==true the number of rows of input should be the

@@ -103,6 +103,79 @@ int32 TypeOneUsage(const ParseOptions &po,
   return (n_success != 0 && n_missing < (n_success - n_missing)) ? 0 : 1;
 }
 
+int32 TypeOneUsageAverage(const ParseOptions &po) {
+  int32 num_args = po.NumArgs();
+  std::string matrix_in_fn1 = po.GetArg(1),
+      matrix_out_fn = po.GetArg(num_args);
+  BaseFloat scale = 1.0 / (num_args - 1);
+
+  // Output matrix
+  BaseFloatMatrixWriter matrix_writer(matrix_out_fn);
+
+  // Input matrices
+  SequentialBaseFloatMatrixReader matrix_reader1(matrix_in_fn1);
+  std::vector<RandomAccessBaseFloatMatrixReader*>
+      matrix_readers(num_args-2,
+                     static_cast<RandomAccessBaseFloatMatrixReader*>(NULL));
+  std::vector<std::string> matrix_in_fns(num_args-2);
+  for (int32 i = 2; i < num_args; ++i) {
+    matrix_readers[i-2] = new RandomAccessBaseFloatMatrixReader(po.GetArg(i));
+    matrix_in_fns[i-2] = po.GetArg(i);
+  }
+
+  int32 n_utts = 0, n_total_matrices = 0,
+      n_success = 0, n_missing = 0, n_other_errors = 0;
+
+  for (; !matrix_reader1.Done(); matrix_reader1.Next()) {
+    std::string key = matrix_reader1.Key();
+    Matrix<BaseFloat> matrix1 = matrix_reader1.Value();
+    matrix_reader1.FreeCurrent();
+    n_utts++;
+    n_total_matrices++;
+
+    matrix1.Scale(scale);
+
+    Matrix<BaseFloat> matrix_out(matrix1);
+
+    for (int32 i = 0; i < num_args-2; ++i) {
+      if (matrix_readers[i]->HasKey(key)) {
+        Matrix<BaseFloat> matrix2 = matrix_readers[i]->Value(key);
+        n_total_matrices++;
+        if (SameDim(matrix2, matrix_out)) {
+          matrix_out.AddMat(scale, matrix2, kNoTrans);
+        } else {
+          KALDI_WARN << "Dimension mismatch for utterance " << key
+                     << " : " << matrix2.NumRows() << " by "
+                     << matrix2.NumCols() << " for "
+                     << "system " << (i + 2) << ", rspecifier: "
+                     << matrix_in_fns[i] << " vs " << matrix_out.NumRows()
+                     << " by " << matrix_out.NumCols()
+                     << " primary matrix, rspecifier:" << matrix_in_fn1;
+          n_other_errors++;
+        }
+      } else {
+        KALDI_WARN << "No matrix found for utterance " << key << " for "
+                   << "system " << (i + 2) << ", rspecifier: "
+                   << matrix_in_fns[i];
+        n_missing++;
+      }
+    }
+
+    matrix_writer.Write(key, matrix_out);
+    n_success++;
+  }
+
+  KALDI_LOG << "Processed " << n_utts << " utterances: with a total of "
+            << n_total_matrices << " matrices across " << (num_args-1)
+            << " different systems";
+  KALDI_LOG << "Produced output for " << n_success << " utterances; "
+            << n_missing << " total missing matrices";
+
+  DeletePointers(&matrix_readers);
+
+  return (n_success != 0 && n_missing < (n_success - n_missing)) ? 0 : 1;
+}
+
 int32 TypeTwoUsage(const ParseOptions &po,
                    bool binary) {
   KALDI_ASSERT(po.NumArgs() == 2);
@@ -165,17 +238,20 @@ int32 TypeThreeUsage(const ParseOptions &po,
               << "tables, the intermediate arguments must not be tables.";
   }
 
-  bool add = true;
-  Matrix<BaseFloat> mat;
+  Matrix<BaseFloat> sum;
   for (int32 i = 1; i < po.NumArgs(); i++) {
-    bool binary_in;
-    Input ki(po.GetArg(i), &binary_in);
-    // this Read function will throw if there is a size mismatch.
-    mat.Read(ki.Stream(), binary_in, add);
+    Matrix<BaseFloat> this_mat;
+    ReadKaldiObject(po.GetArg(i), &this_mat);
+    if (sum.NumRows() < this_mat.NumRows() ||
+        sum.NumCols() < this_mat.NumCols())
+      sum.Resize(std::max(sum.NumRows(), this_mat.NumRows()),
+                 std::max(sum.NumCols(), this_mat.NumCols()),
+                 kCopyData);
+    sum.AddMat(1.0, this_mat);
   }
   if (average)
-    mat.Scale(1.0 / (po.NumArgs() - 1));
-  WriteKaldiObject(mat, po.GetArg(po.NumArgs()), binary);
+    sum.Scale(1.0 / (po.NumArgs() - 1));
+  WriteKaldiObject(sum, po.GetArg(po.NumArgs()), binary);
   KALDI_LOG << "Summed " << (po.NumArgs() - 1) << " matrices; "
             << "wrote sum to " << PrintableWxfilename(po.GetArg(po.NumArgs()));
   return 0;
@@ -207,7 +283,7 @@ int main(int argc, char *argv[]) {
         " matrix-sum [options] <matrix-in-rxfilename1> <matrix-in-rxfilename2> ..."
         " <matrix-out-wxfilename>\n"
         " e.g.: matrix-sum --binary=false 1.mat 2.mat 3.mat sum.mat\n"
-        "See also: matrix-sum-rows\n";
+        "See also: matrix-sum-rows, copy-matrix\n";
 
 
     BaseFloat scale1 = 1.0, scale2 = 1.0;
@@ -223,7 +299,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "If true, write output as binary (only "
                 "relevant for usage types two or three");
     po.Register("average", &average, "If true, compute average instead of "
-                "sum; only currently compatible with type 3 usage.");
+                "sum; currently compatible with type 3 or type 1 usage.");
 
     po.Read(argc, argv);
 
@@ -232,9 +308,11 @@ int main(int argc, char *argv[]) {
     if (po.NumArgs() >= 2 &&
         ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) != kNoWspecifier) {
       if (average)
-        KALDI_ERR << "--average option not compatible with type one usage.";
-      // output to table.
-      exit_status = TypeOneUsage(po, scale1, scale2);
+        // average option with type one usage.";
+	    exit_status = TypeOneUsageAverage(po);
+	  else
+        // output to table.
+        exit_status = TypeOneUsage(po, scale1, scale2);
     } else if (po.NumArgs() == 2 &&
                ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier &&
                ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) ==

@@ -29,9 +29,9 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
-    
+
     const char *usage =
-        "Simulates the online neural net computation for each file of input\n" 
+        "Simulates the online neural net computation for each file of input\n"
         "features, and outputs as a matrix the result, with optional\n"
         "iVector-based speaker adaptation. Note: some configuration values\n"
         "and inputs are set via config files whose filenames are passed as\n"
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         "<spk2utt-rspecifier> <wav-rspecifier> <feature-or-loglikes-wspecifier>\n"
         "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
         "you want to compute utterance by utterance.\n";
-    
+
     BaseFloat chunk_length_secs = 0.05;
     bool apply_log = false;
     bool pad_input = true;
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
     // feature_config includes configuration for the iVector adaptation,
     // as well as the basic features.
-    OnlineNnet2FeaturePipelineConfig feature_config;  
+    OnlineNnet2FeaturePipelineConfig feature_config;
     ParseOptions po(usage);
     po.Register("apply-log", &apply_log, "Apply a log to the result of the computation "
                 "before outputting.");
@@ -69,25 +69,30 @@ int main(int argc, char *argv[]) {
                 "--use-most-recent-ivector=true and --greedy-ivector-extractor=true "
                 "in the file given to --ivector-extraction-config, and "
                 "--chunk-length=-1.");
-    
+
     feature_config.Register(&po);
     po.Read(argc, argv);
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       return 1;
     }
-    
+
     std::string nnet2_rxfilename = po.GetArg(1),
         spk2utt_rspecifier = po.GetArg(2),
         wav_rspecifier = po.GetArg(3),
         features_or_loglikes_wspecifier = po.GetArg(4);
-    
+
     OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
     if (!online) {
       feature_info.ivector_extractor_info.use_most_recent_ivector = true;
       feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
       chunk_length_secs = -1.0;
     }
+
+    Matrix<double> global_cmvn_stats;
+    if (feature_info.global_cmvn_stats_rxfilename != "")
+      ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
+                      &global_cmvn_stats);
 
     TransitionModel trans_model;
     AmNnet am_nnet;
@@ -98,17 +103,20 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
     }
     Nnet &nnet = am_nnet.GetNnet();
-    
+
     int64 num_done = 0, num_frames = 0;
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
     BaseFloatCuMatrixWriter writer(features_or_loglikes_wspecifier);
-    
+
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
+
       OnlineIvectorExtractorAdaptationState adaptation_state(
           feature_info.ivector_extractor_info);
+      OnlineCmvnState cmvn_state(global_cmvn_stats);
+
       for (size_t i = 0; i < uttlist.size(); i++) {
         std::string utt = uttlist[i];
         if (!wav_reader.HasKey(utt)) {
@@ -122,7 +130,8 @@ int main(int argc, char *argv[]) {
 
         OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
         feature_pipeline.SetAdaptationState(adaptation_state);
-        
+        feature_pipeline.SetCmvnState(cmvn_state);
+
         BaseFloat samp_freq = wave_data.SampFreq();
         int32 chunk_length;
         if (chunk_length_secs > 0) {
@@ -131,23 +140,23 @@ int main(int argc, char *argv[]) {
         } else {
           chunk_length = std::numeric_limits<int32>::max();
         }
-        
+
         int32 samp_offset = 0;
         while (samp_offset < data.Dim()) {
           int32 samp_remaining = data.Dim() - samp_offset;
           int32 num_samp = chunk_length < samp_remaining ? chunk_length
                                                          : samp_remaining;
-          
+
           SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
           feature_pipeline.AcceptWaveform(samp_freq, wave_part);
-          
+
           samp_offset += num_samp;
           if (samp_offset == data.Dim()) {
             // no more input. flush out last frames
             feature_pipeline.InputFinished();
           }
         }
-        
+
         int32 feats_num_frames = feature_pipeline.NumFramesReady(),
               feats_dim = feature_pipeline.Dim();
         Matrix<BaseFloat> feats(feats_num_frames, feats_dim);
@@ -160,8 +169,9 @@ int main(int argc, char *argv[]) {
         // In an application you might avoid updating the adaptation state if
         // you felt the utterance had low confidence.  See lat/confidence.h
         feature_pipeline.GetAdaptationState(&adaptation_state);
+        feature_pipeline.GetCmvnState(&cmvn_state);
 
-        int32 output_frames = feats.NumRows(), 
+        int32 output_frames = feats.NumRows(),
               output_dim = nnet.OutputDim();
         CuMatrix<BaseFloat> output(output_frames, output_dim),
                             feats_cu(feats);
@@ -173,7 +183,7 @@ int main(int argc, char *argv[]) {
                      << "would be empty.";
           continue;
         }
-        
+
         NnetComputation(nnet, feats_cu, pad_input, &output);
 
         if (apply_log) {

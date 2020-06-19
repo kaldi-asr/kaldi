@@ -25,6 +25,9 @@
 
 namespace fst
 {
+using std::vector;
+using std::cout;
+
 template<class Arc, class I>
 void TestMakeLinearAcceptor() {
   typedef typename Arc::Label Label;

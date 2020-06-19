@@ -48,14 +48,15 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (dim <= 0) {
-      KALDI_ERR << "The --dim option must be specified.";
-    }
-
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
+
+    if (dim <= 0) {
+      KALDI_ERR << "The --dim option must be specified.";
+    }
+
 
     std::string  posteriors_rspecifier = po.GetArg(1),
         sparse_matrix_wspecifier = po.GetArg(2);
