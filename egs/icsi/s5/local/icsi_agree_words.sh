@@ -28,7 +28,7 @@ mkdir -p $wdir
   comm -23 $wdir/training_words $wdir/dict_words > $wdir/missing_words
 #fi
 
-mw_cnt=`wc -l $wdir/missing_words`
+mw_cnt=$(wc -l $wdir/missing_words)
 echo "Missing words $mw_cnt"
 
 rm -f $wdir/words_to_replace
@@ -41,7 +41,7 @@ touch $wdir/words_to_remove
 touch $wdir/words_to_add
 touch $wdir/words_to_split
 
-while read line; do
+while read -r line; do
   if [[ $line =~ [A-Z\']+\-[A-Z\'\-]+$ ]]; then
      #echo "1: Words to split $line"
      word=`echo $line | sed -r "s!([A-Z']+)\-([A-Z']+)\-*!\1\2!"`

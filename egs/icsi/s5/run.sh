@@ -26,16 +26,11 @@ nmics=$(echo $mic | sed 's/[a-z]//g') # e.g. 8 for mdm8.
 set -euo pipefail
 
 # Path where ICSI gets downloaded (or where locally available):
-# Note: provde the path to a subdirectory with meeting folders (i.e. B* ones)
-ICSI_DIR=/media/drive3/corpora/meeting_speech/speech # Default
-case $(hostname -d) in
-  fit.vutbr.cz) ICSI_DIR= ;; # BUT,
-  clsp.jhu.edu) ICSI_DIR= ;; # JHU,
-  cstr.ed.ac.uk) ICSI_DIR= ;; # Edinburgh,
-esac
+# Note: provide the path to a subdirectory with meeting folders (i.e. B* ones)
+ICSI_DIR=/disks/data1/corpora/meeting_speech/speech # Default
 
 [ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
-final_lm=`cat data/local/lm/final_lm`
+final_lm=$(cat data/local/lm/final_lm)
 LM=$final_lm.pr1-7
 
 # This recipe assumes (so far) you obtained the corpus already (can do so from LDC or http://groups.inf.ed.ac.uk/ami/icsi/)

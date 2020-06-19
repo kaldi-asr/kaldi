@@ -101,7 +101,7 @@ if [ ! -z "$swbd" ]; then
   mix_ppl="$mix_ppl $dir/swbd/ppl2"
   mix_tag="${mix_tag}_swbd"
   mix_lms=("${mix_lms[@]}" "$dir/swbd/swbd.o${order}g.kn.gz")
-  num_lms=$[ num_lms + 1 ]
+  num_lms=$(( num_lms + 1 ))
 fi
 
 if [ ! -z "$fisher" ]; then
@@ -125,7 +125,7 @@ if [ ! -z "$fisher" ]; then
   mix_ppl="$mix_ppl $dir/fisher/ppl2"
   mix_tag="${mix_tag}_fsh"
   mix_lms=("${mix_lms[@]}" "$dir/fisher/fisher.o${order}g.kn.gz")
-  num_lms=$[ num_lms + 1 ]
+  num_lms=$(( num_lms + 1 ))
 fi
 
 ## The University of Washington conversational web data can be obtained as:

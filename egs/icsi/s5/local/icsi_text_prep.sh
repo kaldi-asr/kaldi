@@ -17,7 +17,7 @@ ext=orig
 [ -f local/split_train.final ] && ext=final
 cat local/split_*.$ext | sort > $outdir/meetlist
 
-meet=`head -n1 $outdir/meetlist`
+meet=$(head -n1 $outdir/meetlist)
 [ ! -f "$icsi_trans_dir/transcripts/$meet.mrt" ] \
   && echo "$0. $meet.mrt expected to exists, make sure $icsi_trans_dir/transcripts/$meet.mrt is available. " \
   && exit 1;
@@ -32,7 +32,7 @@ echo "Extracting meetings...."
 #extract easily parsable stuff out of mrt files
 rm -f $outdir/all.txt
 touch $outdir/all.txt
-while read line; do
+while read -r line; do
   echo "Parsing meeting $line"
   local/icsi_parse_transcripts.pl $icsi_trans_dir/transcripts/$line.mrt $outdir/$line.mrt.txt
   cat $outdir/$line.mrt.txt >> $outdir/all.txt

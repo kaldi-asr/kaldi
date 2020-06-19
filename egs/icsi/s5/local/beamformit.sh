@@ -19,7 +19,7 @@ set -u
 
 utils/split_scp.pl -j $nj $((job-1)) $meetings $meetings.$job
 
-while read line; do
+while read -r line; do
 
   mkdir -p $odir/$line
 

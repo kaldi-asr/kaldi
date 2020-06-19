@@ -80,7 +80,7 @@ if [ $stage -le 4 ]; then
   temp_data_root=exp/$mic/nnet3${nnet3_affix}/diag_ubm
 
   num_utts_total=$(wc -l <data/$mic/${train_set}_sp_hires/utt2spk)
-  num_utts=$[$num_utts_total/4]
+  num_utts=$(($num_utts_total/4))
   utils/data/subset_data_dir.sh data/$mic/${train_set}_sp_hires \
      $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
 

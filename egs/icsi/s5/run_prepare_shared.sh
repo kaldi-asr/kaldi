@@ -3,8 +3,8 @@
 . ./cmd.sh
 . ./path.sh
 
-ICSI_TRANS=/media/drive3/corpora/icsi_mr_transcr #where to find ICSI transcriptions [required]
-FISHER_TRANS=/media/drive3/corpora/LDC2004T19/fe_03_p1_tran #where to find FISHER transcriptions [optional, for LM esimation]
+ICSI_TRANS=/disks/data1/corpora/icsi_mr_transcr #where to find ICSI transcriptions [required]
+FISHER_TRANS=/disks/data1/corpora/LDC2004T19/fe_03_p1_tran #where to find FISHER transcriptions [optional, for LM esimation]
 
 . utils/parse_options.sh
 
@@ -28,9 +28,10 @@ local/icsi_text_prep.sh $ICSI_TRANS data/local/annotations
 
 local/icsi_train_lms.sh --fisher $FISHER_TRANS data/local/annotations/train.txt data/local/annotations/dev.txt data/local/dict/lexicon.txt data/local/lm
 
-final_lm=`cat data/local/lm/final_lm`
+final_lm=$(cat data/local/lm/final_lm)
 LM=$final_lm.pr1-7
-prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | gzip -c > data/local/lm/$LM.gz
+#prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | gzip -c > data/local/lm/$LM.gz
+ngram -prune-lowprobs -unk -lm data/local/lm/$final_lm.gz -write-lm data/local/lm/$LM.gz
 utils/format_lm.sh data/lang data/local/lm/$LM.gz data/local/dict/lexicon.txt data/lang_$LM
 
 echo "Done"
