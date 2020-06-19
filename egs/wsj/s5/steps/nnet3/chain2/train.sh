@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # Copyright   2019  Idiap Research Institute (Author: Srikanth Madikeri).  Apache 2.0.
@@ -194,6 +194,13 @@ while [ $x -lt $num_iters ]; do
     done
   fi
 
+  if [ $x -gt 0 ]; then
+    # This doesn't use the egs, it only shows the relative change in model parameters.
+    $cmd $dir/log/progress.$x.log \
+      nnet3-show-progress --use-gpu=no $dir/$(($x-1)).raw $dir/${x}.raw '&&' \
+        nnet3-info $dir/${x}.raw &
+  fi
+
   cache_io_opt="--write-cache=$dir/cache.$next_x"
   if [ $x -gt 0 -a -f $dir/cache.$x ]; then
       cache_io_opt="$cache_io_opt --read-cache=$dir/cache.$x"
@@ -210,7 +217,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
          nnet3-chain-train2  \
              $parallel_train_opts $verbose_opt \
-            --out-of-range-regularize=$out_of_range_regularize \
+             --out-of-range-regularize=$out_of_range_regularize \
              $cache_io_opt \
              --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
              --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
@@ -278,7 +285,43 @@ if [ $stage -le $num_iters ]; then
           nnet3-am-init $dir/0_trans.mdl - $dir/final.mdl
    fi
 
+   # Compute the probability of the final, combined model with
+   # the same subset we used for the previous diagnostic processes, as the
+   # different subsets will lead to different probs.
+   [ -f $dir/.error_diagnostic ] && rm $dir/.error_diagnostic
+   for name in train heldout; do
+     egs_opts=
+     if $multilingual_eg; then
+       weight_rspecifier=$egs_dir/diagnostic_${name}.weight.ark
+       [[ -f $weight_rspecifier ]] && egs_opts="--weights=ark:$weight_rspecifier"
+     fi
+     $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.final.log \
+       nnet3-chain-train2 --use-gpu=$use_gpu \
+         --leaky-hmm-coefficient=$leaky_hmm_coefficient \
+         --xent-regularize=$xent_regularize \
+         --out-of-range-regularize=$out_of_range_regularize \
+         $l2_regularize_opt \
+         --print-interval=10  \
+         $dir/final.raw  $den_fst_dir \
+         "ark:nnet3-chain-copy-egs $egs_opts scp:$egs_dir/${name}_subset.scp ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=1:64 ark:- ark:-|" \
+         $dir/final_${name}.mdl || touch $dir/.error_diagnostic &
+   done
+
+   if [ -f $dir/final_train.mdl ]; then
+     rm $dir/final_{train,heldout}.mdl
+   fi
 fi
 
+if [ ! -f $dir/final.mdl ]; then
+  echo "$0: $dir/final.mdl does not exist."
+  # we don't want to clean up if the training didn't succeed.
+  exit 1;
+fi
+
+sleep 2
+
 echo "$0: done"
+
+steps/info/chain_dir_info.pl $dir
+
 exit 0
