@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
-# Copyright 2019 Microsoft Corporation (authors: Xingyu Na)
+# Copyright 2019-2020 Microsoft Corporation (authors: Xingyu Na)
 # Apache 2.0
 
 . ./cmd.sh
 . ./path.sh
 
 stage=0
-dbase=/mnt/data/openslr
+dbase=/mnt/data/openslr            # it is recommanded practice to provide absolute path here,
+                                   # otherwise some data downloading scripts might break.
 aidatatang_url=www.openslr.org/resources/62
 aishell_url=www.openslr.org/resources/33
 magicdata_url=www.openslr.org/resources/68
@@ -17,6 +18,9 @@ thchs_url=www.openslr.org/resources/18
 
 test_sets="aishell aidatatang magicdata thchs"
 corpus_lm=false   # interpolate with corpus lm
+
+has_aishell2=false  # AISHELL2 train set is not publically downloadable
+                    # with this option true, the script assumes you have it in $dbase
 
 . utils/parse_options.sh
 
@@ -42,12 +46,21 @@ if [ $stage -le 1 ]; then
   local/magicdata_data_prep.sh $dbase/magicdata data/magicdata || exit 1;
   local/primewords_data_prep.sh $dbase/primewords data/primewords || exit 1;
   local/stcmds_data_prep.sh $dbase/stcmds data/stcmds || exit 1;
+  if $has_aishell2; then
+    local/aishell2_data_prep.sh $dbase/aishell2/iOS/data data/aishell2 || exit 1;
+  fi
 fi
 
 if [ $stage -le 2 ]; then
   # normalize transcripts
   utils/combine_data.sh data/train_combined \
     data/{aidatatang,aishell,magicdata,primewords,stcmds,thchs}/train || exit 1;
+  if $has_aishell2; then
+    mv data/train_combined data/train_combined_tmp
+    utils/combine_data.sh data/train_combined \
+      data/train_combined_tmp data/aishell2/train || exit 1;
+    rm -rf data/train_combined_tmp
+  fi
   utils/combine_data.sh data/test_combined \
     data/{aidatatang,aishell,magicdata,thchs}/{dev,test} || exit 1;
   local/prepare_dict.sh || exit 1;
@@ -89,6 +102,12 @@ if [ $stage -le 5 ]; then
     ) &
   done
   wait
+  if $has_aishell2; then
+    steps/make_mfcc_pitch_online.sh --cmd "$train_cmd" --nj 20 \
+      data/aishell2/train exp/make_mfcc/aishell2/train $mfccdir/aishell2 || exit 1;
+    steps/compute_cmvn_stats.sh data/aishell2/train \
+      exp/make_mfcc/aishell2/train $mfccdir/aishell2 || exit 1;
+  fi
 fi
 
 if [ $stage -le 6 ]; then
@@ -205,6 +224,12 @@ if [ $stage -le 14 ]; then
   # train tri4a using all
   utils/combine_data.sh data/train_all \
     data/{aidatatang,aishell,magicdata,primewords,stcmds,thchs}/train || exit 1;
+  if $has_aishell2; then
+    mv data/train_all data/train_all_tmp
+    utils/combine_data.sh data/train_all \
+      data/train_all_tmp data/aishell2/train || exit 1;
+    rm -rf data/train_all_tmp
+  fi
 
   steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
     data/train_all data/lang exp/tri3a exp/tri3a_ali || exit 1;

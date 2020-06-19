@@ -37,8 +37,16 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
   ivector_ = NULL;
 
   // Temporary to get frame extraction options
-  MfccComputer computer(info_.mfcc_opts);
-  frame_opts_ = computer.GetFrameOptions();
+  if (info_.feature_type == "mfcc") {
+    MfccComputer computer(info_.mfcc_opts);
+    frame_opts_ = computer.GetFrameOptions();
+  } else if (info_.feature_type == "fbank") {
+    FbankComputer computer(info_.fbank_opts);
+    frame_opts_ = computer.GetFrameOptions();
+  } else {
+    // Which ever base feature was requested is not currently supported
+    KALDI_ASSERT(false);
+  }
 
   // compute maximum chunk size for a given number of samples
   // round up because there may be additional context provided

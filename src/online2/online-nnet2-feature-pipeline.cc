@@ -241,5 +241,17 @@ BaseFloat OnlineNnet2FeaturePipelineInfo::FrameShiftInSeconds() const {
   }
 }
 
+BaseFloat OnlineNnet2FeaturePipelineInfo::GetSamplingFrequency() {
+  if (feature_type == "mfcc") {
+    return mfcc_opts.frame_opts.samp_freq;
+  } else if (feature_type == "plp") {
+    return plp_opts.frame_opts.samp_freq;
+  } else if (feature_type == "fbank") {
+    return fbank_opts.frame_opts.samp_freq;
+  } else {
+    KALDI_ERR << "Unknown feature type " << feature_type;
+  }
+  return 0.0f; // avoiding a possible "return missing" warning
+}
 
 }  // namespace kaldi

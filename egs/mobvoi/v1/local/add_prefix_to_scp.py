@@ -1,0 +1,1 @@
+../../../../scripts/wakeword/add_prefix_to_scp.py

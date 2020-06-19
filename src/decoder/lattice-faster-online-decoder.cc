@@ -135,24 +135,28 @@ typename LatticeFasterOnlineDecoderTpl<FST>::BestPathIterator LatticeFasterOnlin
   Token *tok = static_cast<Token*>(iter.tok);
   int32 cur_t = iter.frame, ret_t = cur_t;
   if (tok->backpointer != NULL) {
+    BaseFloat best_graph_cost = std::numeric_limits<BaseFloat>::infinity();
     ForwardLinkT *link;
     for (link = tok->backpointer->links;
          link != NULL; link = link->next) {
       if (link->next_tok == tok) { // this is the link to "tok"
-        oarc->ilabel = link->ilabel;
-        oarc->olabel = link->olabel;
-        BaseFloat graph_cost = link->graph_cost,
-            acoustic_cost = link->acoustic_cost;
-        if (link->ilabel != 0) {
-          KALDI_ASSERT(static_cast<size_t>(cur_t) < this->cost_offsets_.size());
-          acoustic_cost -= this->cost_offsets_[cur_t];
-          ret_t--;
+        BaseFloat graph_cost = link->graph_cost;
+        if (graph_cost < best_graph_cost) {
+          oarc->ilabel = link->ilabel;
+          oarc->olabel = link->olabel;
+          BaseFloat acoustic_cost = link->acoustic_cost;
+          if (link->ilabel != 0) {
+            KALDI_ASSERT(static_cast<size_t>(cur_t) < this->cost_offsets_.size());
+            acoustic_cost -= this->cost_offsets_[cur_t];
+            ret_t--;
+          }
+          oarc->weight = LatticeWeight(graph_cost, acoustic_cost);
+          best_graph_cost = graph_cost;
         }
-        oarc->weight = LatticeWeight(graph_cost, acoustic_cost);
-        break;
       }
     }
-    if (link == NULL) { // Did not find correct link.
+    if (link == NULL &&
+        best_graph_cost == std::numeric_limits<BaseFloat>::infinity()) { // Did not find correct link.
       KALDI_ERR << "Error tracing best-path back (likely "
                 << "bug in token-pruning algorithm)";
     }
@@ -270,7 +274,8 @@ bool LatticeFasterOnlineDecoderTpl<FST>::GetRawLatticePruned(
 template class LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> >;
 template class LatticeFasterOnlineDecoderTpl<fst::VectorFst<fst::StdArc> >;
 template class LatticeFasterOnlineDecoderTpl<fst::ConstFst<fst::StdArc> >;
-template class LatticeFasterOnlineDecoderTpl<fst::GrammarFst>;
+template class LatticeFasterOnlineDecoderTpl<fst::ConstGrammarFst >;
+template class LatticeFasterOnlineDecoderTpl<fst::VectorGrammarFst >;
 
 
 } // end namespace kaldi.

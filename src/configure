@@ -250,6 +250,8 @@ function linux_configure_mkllibdir {
     echo $mklroot/lib/em64t
   elif [ -d $mklroot/lib/intel64 ]; then
     echo $mklroot/lib/intel64
+  elif [ -d $mklroot/lib ]; then
+    echo $mklroot/lib
   else
     return 1;
   fi
