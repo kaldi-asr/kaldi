@@ -6,23 +6,7 @@
 ICSI_TRANS=/media/drive3/corpora/icsi_mr_transcr #where to find ICSI transcriptions [required]
 FISHER_TRANS=/media/drive3/corpora/LDC2004T19/fe_03_p1_tran #where to find FISHER transcriptions [optional, for LM esimation]
 
-# Path to Fisher transcripts LM interpolation (if not defined only ICSI transcript LM is built),
-case $(hostname -d) in
-  fit.vutbr.cz) FISHER_TRANS=;; # BUT,
-  clsp.jhu.edu) FISHER_TRANS=;; # JHU,
-  cstr.ed.ac.uk) FISHER_TRANS=;; # Edinburgh,
-esac
-
 . utils/parse_options.sh
-
-if ! command -v prune-lm >/dev/null 2>&1 ; then
-  echo "$0: Error: the IRSTLM is not available or compiled" >&2
-  echo "$0: Error: We used to install it by default, but." >&2
-  echo "$0: Error: this is no longer the case." >&2
-  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
-  echo "$0: Error: and run extras/install_irstlm.sh" >&2
-  exit 1
-fi
 
 if ! command -v ngram-count >/dev/null 2>&1 ; then
   echo "$0: Error: the SRILM is not available or compiled" >&2
