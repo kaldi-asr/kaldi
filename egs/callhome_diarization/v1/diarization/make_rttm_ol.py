@@ -29,7 +29,6 @@ where:
 
 import argparse
 import sys
-import codecs
 import itertools
 
 from intervaltree import Interval, IntervalTree
@@ -81,14 +80,14 @@ def main():
 
   # File containing speaker labels per segment
   seg2label = {}
-  with codecs.open(args.labels, 'r', 'utf-8') as labels_file:
+  with open(args.labels, 'r') as labels_file:
     for line in labels_file:
       seg, label = line.strip().split()
       seg2label[seg] = label
 
   # Segments file
   reco2segs = {}
-  with codecs.open(args.segments, 'r', 'utf-8') as segments_file:
+  with open(args.segments, 'r') as segments_file:
     for line in segments_file:
       seg, reco, start, end = line.strip().split()
       try:
@@ -105,13 +104,13 @@ def main():
     merged_segs = merge_segments(reco2segs[reco])
     reco2merged_segs[reco] = merged_segs
 
-  with codecs.open(args.rttm_file, 'w', 'utf-8') as rttm_writer:
+  with open(args.rttm_file, 'w') as rttm_writer:
     for reco in reco2merged_segs:
       segs = reco2merged_segs[reco]
       for seg in sorted(segs, key=lambda x: x[0]):
         start, end, label = seg
-        print("SPEAKER {0} {1} {2:7.3f} {3:7.3f} <NA> <NA> {4} <NA> <NA>".format(
-          reco, args.rttm_channel, start, end-start, label), file=rttm_writer)
+        rttm_writer.write("SPEAKER {0} {1} {2:7.3f} {3:7.3f} <NA> <NA> {4} <NA> <NA>\n".format(
+          reco, args.rttm_channel, start, end-start, label))
 
 if __name__ == '__main__':
   main()

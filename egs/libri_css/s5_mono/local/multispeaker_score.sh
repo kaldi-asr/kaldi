@@ -12,7 +12,9 @@ get_stats=false # TODO: Implement 'true' (i.e. per utterance alignment of output
 multistream=false # Set to true if input audio was separated (e.g. CSS)
 
 multistream_opt=
-$multistream && multistream_opt="--multi-stream"
+if [ $multistream ]; then
+  multistream_opt="--multi-stream"
+fi
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;

@@ -15,6 +15,7 @@ stage=0
 
 nnet3_affix=_cleaned
 affix=1d_sp
+sad_type=webrtc # Set this to webrtc or tdnn
 
 # Different stages
 sad_stage=0
@@ -70,26 +71,31 @@ fi
 
 if [ $stage -le 1 ]; then
   for datadir in ${test_sets}; do
-    echo "Applying TDNN-Stats-SAD on ${datadir}"
     test_set=data/${datadir}
-    if [ ! -f ${test_set}/wav.scp ]; then
-      echo "$0: Not performing SAD on ${test_set}"
-      exit 0
-    fi
+    if [ $sad_type == "webrtc" ]; then
+      echo "Applying WebRTC-VAD on ${datadir}"
+      local/segmentation/apply_webrtcvad.py --mode 2 $test_set | sort > $test_set/segments
+    else
+      echo "Applying TDNN-Stats-SAD on ${datadir}"
+      if [ ! -f ${test_set}/wav.scp ]; then
+        echo "$0: Not performing SAD on ${test_set}"
+        exit 0
+      fi
 
-    nj=$(wc -l < "$test_set/wav.scp")
-    # Perform segmentation. We use the pretrained SAD available at:
-    # http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
-    # Download and extract using tar -xvzf
-    if [ ! -d exp/segmentation_1a/tdnn_stats_asr_sad_1a ]; then
-      wget http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
-      tar -xvzf 0004_tdnn_stats_asr_sad_1a.tar.gz
+      nj=$(wc -l < "$test_set/wav.scp")
+      # Perform segmentation. We use the pretrained SAD available at:
+      # http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
+      # Download and extract using tar -xvzf
+      if [ ! -d exp/segmentation_1a/tdnn_stats_asr_sad_1a ]; then
+        wget http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
+        tar -xvzf 0004_tdnn_stats_asr_sad_1a.tar.gz
+      fi
+      local/detect_speech_activity.sh --nj $nj $test_set exp/segmentation_1a/tdnn_stats_asr_sad_1a
+      
+      # The pretrained SAD used a different MFCC config. We need to
+      # copy back our old config files.
+      cp -r ../s5_mono/conf .
     fi
-    local/detect_speech_activity.sh --nj $nj $test_set exp/segmentation_1a/tdnn_stats_asr_sad_1a
-    
-    # The pretrained SAD used a different MFCC config. We need to
-    # copy back our old config files.
-    cp -r ../s5_mono/conf .
 
     # Create dummy utt2spk file from obtained segments
     awk '{print $1, $2}' ${test_set}/segments > ${test_set}/utt2spk

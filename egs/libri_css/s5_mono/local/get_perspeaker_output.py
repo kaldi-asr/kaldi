@@ -85,8 +85,8 @@ def main():
         utterances = reco_spk_to_utts[uid]
 
         # We sort all utterances by start time and concatenate.
-        utterances.sort(key=lambda x: x.start_time)
-        combined_text = ' '.join([utt.text for utt in utterances])
+        sorted_utterances = sorted(utterances, key=lambda x: x.start_time)
+        combined_text = ' '.join([utt.text for utt in sorted_utterances])
 
         output_writer.write("{} {}".format(reco_id, combined_text))
         output_writer.close()
