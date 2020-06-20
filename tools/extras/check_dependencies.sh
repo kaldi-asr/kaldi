@@ -26,8 +26,7 @@ case $compiler_ver_info in
     add_packages gcc-c++ g++
     status=1
     ;;
-  *"c++ "* ) ;&
-  "g++ "* )
+  *"c++ "* | "g++ "* )
     gcc_ver=$($CXX -dumpversion)
     gcc_ver_num=$(echo $gcc_ver | sed 's/\./ /g' | xargs printf "%d%02d%02d")
     if [ $gcc_ver_num -lt 40803 ]; then
