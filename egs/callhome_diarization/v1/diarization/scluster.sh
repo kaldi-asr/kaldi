@@ -53,7 +53,7 @@ for f in $srcdir/scores.scp $srcdir/spk2utt $srcdir/utt2spk $srcdir/segments ; d
 done
 
 overlap_rttm_opt=
-if [ ! $overlap_rttm == "" ]
+if ! [ $overlap_rttm == "" ]; then
   overlap_rttm_opt="--overlap_rttm $overlap_rttm"
   # We use a different Python version in which the local
   # scikit-learn is installed.
@@ -63,7 +63,10 @@ if [ ! $overlap_rttm == "" ]
       exit 1
   fi
   # Install a modified version of scikit-learn using:
-  $miniconda_dir/bin/python -m pip install git+https://github.com/desh2608/scikit-learn.git@overlap
+  echo "The overlap-aware spectral clustering requires installing a modified version\n"
+  echo "of scitkit-learn. You can download it using:\n"
+  echo "$miniconda_dir/bin/python -m pip install git+https://github.com/desh2608/scikit-learn.git@overlap \n"
+  echo "if the process fails while clustering."
 fi
 
 cp $srcdir/spk2utt $dir/tmp/
