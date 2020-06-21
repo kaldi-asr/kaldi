@@ -14,12 +14,9 @@ cmd="run.pl"
 stage=0
 nj=10
 cleanup=true
-threshold=0.5
-max_spk_fraction=1.0
-first_pass_max_utterances=32767
 rttm_channel=0
-read_costs=false
 reco2num_spk=
+overlap_rttm=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -36,27 +33,12 @@ if [ $# != 2 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
   echo "  --stage <stage|0>                                # To control partial reruns"
-  echo "  --threshold <threshold|0>                        # Cluster stopping criterion. Clusters with scores greater"
-  echo "                                                   # than this value will be merged until all clusters"
-  echo "                                                   # exceed this value."
-  echo "  --max-spk-fraction <max-spk-fraction|1.0>        # Clusters with total fraction of utterances greater than"
-  echo "                                                   # this value will not be merged. This is active only when"
-  echo "                                                   # reco2num-spk is supplied and"
-  echo "                                                   # 1.0 / num-spk <= max-spk-fraction <= 1.0."
-  echo "  --first-pass-max-utterances <max-utts|32767>     # If the number of utterances is larger than first-pass-max-utterances,"
-  echo "                                                   # then clustering is done in two passes. In the first pass, input points"
-  echo "                                                   # are divided into contiguous subsets of size first-pass-max-utterances"
-  echo "                                                   # and each subset is clustered separately. In the second pass, the first"
-  echo "                                                   # pass clusters are merged into the final set of clusters."
   echo "  --rttm-channel <rttm-channel|0>                  # The value passed into the RTTM channel field. Only affects"
   echo "                                                   # the format of the RTTM file."
-  echo "  --read-costs <read-costs|false>                  # If true, interpret input scores as costs, i.e. similarity"
-  echo "                                                   # is indicated by smaller values. If enabled, clusters will"
-  echo "                                                   # be merged until all cluster scores are less than the"
-  echo "                                                   # threshold value."
   echo "  --reco2num-spk <reco2num-spk-file>               # File containing mapping of recording ID"
   echo "                                                   # to number of speakers. Used instead of threshold"
   echo "                                                   # as stopping criterion if supplied."
+  echo "  --overlap-rttm <overlap-rttm-file>               # File containing overlap segments"
   echo "  --cleanup <bool|false>                           # If true, remove temporary files"
   exit 1;
 fi
@@ -69,6 +51,20 @@ mkdir -p $dir/tmp
 for f in $srcdir/scores.scp $srcdir/spk2utt $srcdir/utt2spk $srcdir/segments ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
+
+overlap_rttm_opt=
+if [ ! $overlap_rttm == "" ]
+  overlap_rttm_opt="--overlap_rttm $overlap_rttm"
+  # We use a different Python version in which the local
+  # scikit-learn is installed.
+  miniconda_dir=$HOME/miniconda3/
+  if [ ! -d $miniconda_dir ]; then
+      echo "$miniconda_dir does not exist. Please run '$KALDI_ROOT/tools/extras/install_miniconda.sh'."
+      exit 1
+  fi
+  # Install a modified version of scikit-learn using:
+  $miniconda_dir/bin/python -m pip install git+https://github.com/desh2608/scikit-learn.git@overlap
+fi
 
 cp $srcdir/spk2utt $dir/tmp/
 cp $srcdir/utt2spk $dir/tmp/
@@ -89,7 +85,7 @@ feats="utils/filter_scp.pl $sdata/JOB/spk2utt $srcdir/scores.scp |"
 
 reco2num_spk_opt=
 if [ ! $reco2num_spk == "" ]; then
-  reco2num_spk_opt="--reco2num-spk $reco2num_spk"
+  reco2num_spk_opt="--reco2num_spk $reco2num_spk"
 fi
 
 if [ $stage -le 0 ]; then
@@ -98,7 +94,7 @@ if [ $stage -le 0 ]; then
     utils/filter_scp.pl $sdata/$j/spk2utt $srcdir/scores.scp > $dir/scores.$j.scp
   done
   $cmd JOB=1:$nj $dir/log/spectral_cluster.JOB.log \
-    diarization/spec_clust.py $reco2num_spk_opt \
+    $miniconda_dir/bin/python diarization/spec_clust_overlap.py $reco2num_spk_opt $overlap_rttm_opt \
       scp:$dir/scores.JOB.scp ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 
@@ -109,7 +105,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: computing RTTM"
-  diarization/make_rttm.py --rttm-channel $rttm_channel $srcdir/segments $dir/labels $dir/rttm || exit 1;
+  diarization/make_rttm_ol.py --rttm-channel $rttm_channel $srcdir/segments $dir/labels $dir/rttm || exit 1;
 fi
 
 if $cleanup ; then
