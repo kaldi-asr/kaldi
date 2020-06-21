@@ -111,16 +111,18 @@ typename LatticeIncrementalOnlineDecoderTpl<FST>::BestPathIterator LatticeIncrem
   Token *tok = static_cast<Token*>(iter.tok);
   int32 cur_t = iter.frame, step_t = 0;
   if (tok->backpointer != NULL) {
-    BaseFloat best_graph_cost = std::numeric_limits<BaseFloat>::infinity();
+    // retrieve the correct forward link(with the best link cost)
+    BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
     ForwardLinkT *link;
     for (link = tok->backpointer->links;
          link != NULL; link = link->next) {
-      if (link->next_tok == tok) { // this is the link to "tok"
-        BaseFloat graph_cost = link->graph_cost;
-        if (graph_cost < best_graph_cost) {
+      if (link->next_tok == tok) { // this is the a to "tok"
+        BaseFloat graph_cost = link->graph_cost, 
+                  acoustic_cost = link->acoustic_cost;
+        BaseFloat cost = graph_cost + acoustic_cost;
+        if (cost < best_cost) {
           oarc->ilabel = link->ilabel;
           oarc->olabel = link->olabel;
-          BaseFloat acoustic_cost = link->acoustic_cost;
           if (link->ilabel != 0) {
             KALDI_ASSERT(static_cast<size_t>(cur_t) < this->cost_offsets_.size());
             acoustic_cost -= this->cost_offsets_[cur_t];
@@ -129,12 +131,12 @@ typename LatticeIncrementalOnlineDecoderTpl<FST>::BestPathIterator LatticeIncrem
             step_t = 0;
           }
           oarc->weight = LatticeWeight(graph_cost, acoustic_cost);
-          best_graph_cost = graph_cost;
+          best_cost = cost;
         }
       }
     }
     if (link == NULL &&
-        best_graph_cost == std::numeric_limits<BaseFloat>::infinity()) { // Did not find correct link.
+        best_cost == std::numeric_limits<BaseFloat>::infinity()) { // Did not find correct link.
       KALDI_ERR << "Error tracing best-path back (likely "
                 << "bug in token-pruning algorithm)";
     }
