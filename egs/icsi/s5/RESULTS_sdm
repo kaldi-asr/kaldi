@@ -28,11 +28,10 @@
 %WER 52.4 | 4912 30659 | 52.9 30.5 16.7 5.2 52.4 59.9 | 0.648 | exp/sdm3/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
 
 #for d in exp/sdm4/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
-%WER 56.4 | 4835 23304 | 49.3 33.2 17.5 5.7 56.4 54.0 | 0.465 | exp/sdm4/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
-%WER 50.1 | 3829 30651 | 55.7 28.9 15.4 5.8 50.1 77.7 | 0.554 | exp/sdm4/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
-%WER 56.3 | 4454 23302 | 51.1 35.9 13.0 7.4 56.3 58.6 | 0.603 | exp/sdm4/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
-%WER 50.0 | 5709 30663 | 55.6 29.1 15.4 5.6 50.0 51.1 | 0.663 | exp/sdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
-
+%WER 56.9 | 3182 23296 | 48.6 33.4 18.0 5.5 56.9 82.3 | 0.477 | exp/sdm4/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 50.3 | 4428 30790 | 55.4 29.0 15.6 5.7 50.3 67.9 | 0.560 | exp/sdm4/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 57.1 | 4835 23303 | 49.9 35.6 14.5 7.0 57.1 54.2 | 0.605 | exp/sdm4/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 50.4 | 5213 30660 | 55.7 29.8 14.5 6.0 50.4 56.6 | 0.681 | exp/sdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
 
 #Nnet3 systems
 
@@ -50,3 +49,6 @@
 %WER 30.4 | 4454 23317 | 73.6 17.7 8.8 3.9 30.4 49.0 | 0.629 | exp/sdm4/chain_1a/tdnn_b_sp_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
 %WER 27.4 | 5141 30796 | 75.6 15.1 9.3 3.0 27.4 47.9 | 0.642 | exp/sdm4/chain_1a/tdnn_b_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
+#local/chain/tuning/run_tdnn_1c.sh --use-ihm-ali true --mic sdm4
+%WER 26.1 | 3566 23312 | 77.3 14.8 7.9 3.4 26.1 57.9 | 0.671 | exp/sdm4/chain_1a/tdnn_c_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 23.8 | 4628 30651 | 79.2 12.6 8.2 3.0 23.8 50.7 | 0.706 | exp/sdm4/chain_1a/tdnn_c_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
