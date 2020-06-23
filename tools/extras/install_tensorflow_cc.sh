@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BAZEL_VERSION=0.15.0
+BAZEL_VERSION=0.26.1
 
 GIT=${GIT:-git}
 WGET=${WGET:-wget}
@@ -47,7 +47,7 @@ cd ../
 [ ! -d tensorflow ] && $GIT clone https://github.com/tensorflow/tensorflow
 cd tensorflow
 $GIT fetch --tags
-$GIT checkout r1.12
+$GIT checkout r2.0
 ./configure
 
 if $GIT --version >&/dev/null && $WGET --version >&/dev/null
@@ -59,13 +59,13 @@ else
   exit 1
 fi
 
-bazel build -c opt //tensorflow:libtensorflow.so
-bazel build -c opt //tensorflow:libtensorflow_cc.so
+bazel build --config=opt //tensorflow:libtensorflow.so
+bazel build --config=opt //tensorflow:libtensorflow_cc.so
 
 echo Building tensorflow completed. You will need to go to kaldi/src/ and do
 echo \"make\" under tfrnnlm/ and tfrnnlmbin/ to generate the binaries
 exit
 # the following would utilize the highest optimization but might not work in a
 # grid where each machine might have different configurations
-bazel build --config=opt //tensorflow:libtensorflow.so
-bazel build --config=opt //tensorflow:libtensorflow_cc.so
+#bazel build --config=opt //tensorflow:libtensorflow.so
+#bazel build --config=opt //tensorflow:libtensorflow_cc.so
