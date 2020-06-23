@@ -135,7 +135,7 @@ class SamplingLm;  // Forward declaration.
    (1) dataset-weighting, where the distributions don't get an equal weight--
    this can be corrected for by just making the factor difference in probability
    that we "care about" close to 1; and (2) the beginning of the minibatch (t=0),
-   where all histories are the BOS history '<s>'.  We'll deal with (2) by
+   where all histories are the BOS history "<s>".  We'll deal with (2) by
    reducing the factor that controls how many words we keep for the BOS history,
    so that we'll get more predicted words in that history-state.
 
@@ -146,7 +146,7 @@ class SamplingLm;  // Forward declaration.
    smoothing; instead if we were planning to repeat the data k times during
    training, we'll just multiply its scaling factor by k when estimating the
    LM).  The sentences will be integerized by the time we get them, and we'll be
-   aware of the integer values of certain 'special' symbols <s> and </s>, as
+   aware of the integer values of certain 'special' symbols "<s>" and "</s>", as
    well as the vocabulary size.
 
    Now for characteristics of the actual smoothing and interpolation algorithm.
@@ -187,7 +187,7 @@ class SamplingLm;  // Forward declaration.
   affect the probabilities very much since we already keep only those words that
   are considerably more probable than they would be given the backoff state.
 
-  For the BOS ('<s>') history-state, which, as mentioned, presents a problem
+  For the BOS ("<s>") history-state, which, as mentioned, presents a problem
   because it doesn't occur independently but will occur for all members of
   the minibatch on t=0, we have a different factor which we call bos_factor
   (e.g. bos_factor=5.0), which controls how many words we keep for the BOS

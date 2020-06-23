@@ -123,8 +123,8 @@ class ForwardingDescriptor {
 
   /// This function returns the scale on the node-index 'node_index' when it
   /// appears in expressions inside this descriptor, or +infinity if it does not
-  /// appear.  E.g. if the descriptor is just `Scale(tdnn2, 2.0)` and the node
-  /// index for `tdnn2` is 4, then GetScaleForNode(4) would return 2.0.  If a
+  /// appear.  E.g. if the descriptor is just "Scale(tdnn2, 2.0)" and the node
+  /// index for "tdnn2" is 4, then GetScaleForNode(4) would return 2.0.  If a
   /// particular node_index > 0 appears in different sub-expressions of the
   /// descriptor with different scales it is an error (it's not supported) and
   /// this function would crash.
@@ -139,8 +139,8 @@ class ForwardingDescriptor {
 /// SimpleForwardingDescriptor is the base-case of ForwardingDescriptor,
 /// consisting of a source node in the graph with a given scalar weight (which
 /// will in the normal case be 1.0).  The string representation in the
-/// normal (scale=1.0) case is just the node-name, like `tdnn2`; if
-/// the weight is not 1.0 it's something like `Scale(2.0, tdnn2)`
+/// normal (scale=1.0) case is just the node-name, like "tdnn2"; if
+/// the weight is not 1.0 it's something like "Scale(2.0, tdnn2)"
 class SimpleForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &index) const;
@@ -170,8 +170,8 @@ class SimpleForwardingDescriptor: public ForwardingDescriptor {
 
 /// Offsets in 't' and 'x' values of other ForwardingDescriptors.
 /// Written form is:
-///   `Offset(<descriptor>, <t-offset> [, <x-offset> ] )`
-/// e.g. `Offset(tdnn2, -2)`
+///   "Offset(<descriptor>, <t-offset> [, <x-offset> ] )"
+/// e.g. "Offset(tdnn2, -2)"
 class OffsetForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &ind) const;
@@ -205,8 +205,8 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
 /// Chooses from different inputs based on the the time index modulo
 /// (the number of ForwardingDescriptors given as inputs).  This is rarely
 /// if ever used.  Written form is:
-///  `Switch(<descriptor>, <descriptor> [, <descriptor> ...])`
-/// e.g. `Switch(tdnn2a, tdnn2b, tdnn2c)`
+///  "Switch(<descriptor>, <descriptor> [, <descriptor> ...])"
+/// e.g. "Switch(tdnn2a, tdnn2b, tdnn2c)"
 class SwitchingForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &ind) const;
@@ -237,8 +237,8 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
 /// For use in clockwork RNNs and the like, this forwarding-descriptor
 /// rounds the time-index t down to the the closest t' <= t that is
 /// an exact multiple of t_modulus_.
-/// Written form is: `Round(<descriptor>, <t-modulus>)`
-/// e.g.: `Round(tdnn2, 3)`
+/// Written form is: "Round(<descriptor>, <t-modulus>)"
+/// e.g.: "Round(tdnn2, 3)"
 class RoundingForwardingDescriptor: public ForwardingDescriptor {
  public:
   virtual Cindex MapToInput(const Index &ind) const;
@@ -268,8 +268,8 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
 
 /// This ForwardingDescriptor modifies the indexes (n, t, x) by replacing one
 /// of them (normally t) with a constant value and keeping the rest.
-/// Written form is: `ReplaceIndex(<descriptor>, <variable-name>, <value>)`
-/// e.g. `ReplaceIndex(ivector, t, 0)`
+/// Written form is: "ReplaceIndex(<descriptor>, <variable-name>, <value>)"
+/// e.g. "ReplaceIndex(ivector, t, 0)"
 class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
  public:
   enum VariableName { kN = 0, kT = 1, kX = 2};
@@ -311,7 +311,7 @@ class CindexSet;
 /// sum: for example, not just expressions like A + B but also A + (B if
 /// present), or (A if present; if not, B).  It also handles
 /// expressions involving adding a constant, e.g.
-/// `Sum(Scale(tdnn2, -1.0), Const(1.0, 512))` (see ConstantSumDescriptor).
+/// "Sum(Scale(tdnn2, -1.0), Const(1.0, 512))" (see ConstantSumDescriptor).
 class SumDescriptor {
  public:
   /// Given an Index at the output of this Descriptor, append to "dependencies"
@@ -356,11 +356,11 @@ class SumDescriptor {
 
   /// This function returns the scale on the node-index 'node_index' when it
   /// appears in expressions inside this descriptor.  E.g. if the descriptor is
-  /// just `Scale(tdnn2, 2.0)` and the node index for `tdnn2` is 4, then
+  /// just "Scale(tdnn2, 2.0)" and the node index for "tdnn2" is 4, then
   /// GetScaleForNode(4) would return 2.0.  It will return +infinity if the node
   /// is >= 0 and does not appear in this descriptor.  If node_index < 0, it
   /// returns the constant offset value from this descriptor, which will equal
-  /// 0.0 if there is no expression like `Const(1.0, 512)` in this node.  If a
+  /// 0.0 if there is no expression like "Const(1.0, 512)" in this node.  If a
   /// particular node_index > 0 appears in different sub-expressions of the
   /// descriptor with different scales it is an error (it's not supported) and
   /// this function would crash.
@@ -378,8 +378,8 @@ class SumDescriptor {
 /// This is the case of class SumDescriptor, in which we contain just one term,
 /// and that term is optional (an IfDefined() expression).  That term is a
 /// general SumDescriptor.
-///  The written form is: `IfDefined(<descriptor>)`, e.g.
-///   `IfDefined(Offset(lstm2.s, -3))`
+///  The written form is: "IfDefined(<descriptor>)", e.g.
+///   "IfDefined(Offset(lstm2.s, -3))"
 class OptionalSumDescriptor: public SumDescriptor {
  public:
   virtual void GetDependencies(const Index &ind,
@@ -411,7 +411,7 @@ class OptionalSumDescriptor: public SumDescriptor {
 
 /// This is the normal base-case of SumDescriptor which just wraps a
 /// ForwardingDescriptor.  The written form is any valid ForwardingDescriptor,
-/// e.g. in the simplest case just `tdnn3`.
+/// e.g. in the simplest case just "tdnn3".
 /// See also ConstantSumDescriptor().
 class SimpleSumDescriptor: public SumDescriptor {
  public:
@@ -446,12 +446,12 @@ class SimpleSumDescriptor: public SumDescriptor {
 
 
 /// This is an alternative base-case of SumDescriptor (an alternative to
-/// SimpleSumDescriptor) which represents a constant term, e.g. `Const(1.0,
-/// 512)`.  Note that this is not allowed to appear inside conditionals
+/// SimpleSumDescriptor) which represents a constant term, e.g. "Const(1.0,
+/// 512)".  Note that this is not allowed to appear inside conditionals
 /// such as IfDefined() or Failover(); this is enforced in the parsing
 /// code involving class GeneralDescriptor.
-/// The written form is: `Const(<value>, <dimension>)`, e.g.
-/// `Const(-1.0, 512)`
+/// The written form is: "Const(<value>, <dimension>)", e.g.
+/// "Const(-1.0, 512)"
 class ConstantSumDescriptor: public SumDescriptor {
  public:
   virtual void GetDependencies(const Index &ind,
@@ -466,8 +466,8 @@ class ConstantSumDescriptor: public SumDescriptor {
 
   virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const { }
   virtual int32 Modulus() const { return 1; }
-  /// The written form is: `Const(<value>, <dimension>)`, e.g.
-  /// `Const(-1.0, 512)`
+  /// The written form is: "Const(<value>, <dimension>)", e.g.
+  /// "Const(-1.0, 512)"
   virtual void WriteConfig(std::ostream &os,
                            const std::vector<std::string> &node_names) const;
   virtual SumDescriptor *Copy() const;
@@ -552,16 +552,12 @@ class Descriptor {
   /// expression will include.  Otherwise it will return false and set
   /// used_inputs to the empty vector.
   ///
-  ///  @param [in] ind  The index that we want to compute at the output of the
+  ///  @param [in] index  The index that we want to compute at the output of the
   ///                   Descriptor.
-  ///  @param [in] cindex_set  The set of Cindexes that are available at the
-  ///                   input of the Descriptor.
   ///  @param [out] used_inputs If non-NULL, if this function returns true then
   ///                  to this vector will be *appended* the inputs that will
   ///                  actually participate in the computation.  Else (if non-NULL) it
   ///                  will be left unchanged.
-  ///  @return Returns true if this output is computable given the provided
-  ///          inputs.
   void GetDependencies(const Index &index,
                        std::vector<Cindex> *used_inputs) const;
 

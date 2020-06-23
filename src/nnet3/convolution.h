@@ -440,8 +440,11 @@ void CheckModelAndIo(const ConvolutionModel &model,
                       each Index (n,t,x) in 'output_indexes', the Index
                       (n,t+time_offset,x) must be present in 'input_indexes'
                       for each time_offset in model.required_time_offsets.
+   @param [in] opts
    @param [out] computation  If non-NULL, the compiled computation will be
                       written to this location.
+   @param [out] input_indexes_modified
+   @param [out] output_indexes_modified
 
  */
 void CompileConvolutionComputation(

@@ -247,6 +247,6 @@ namespace kaldi {
 
 /**
   \defgroup tree_group Modules involved in tree building
-  See \page tree_internals for documentation.
+  See \ref tree_internals for documentation.
 */
 }

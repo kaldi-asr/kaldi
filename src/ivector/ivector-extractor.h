@@ -208,7 +208,7 @@ class IvectorExtractor {
   /// Gets the linear and quadratic terms in the distribution over iVectors, but
   /// only the terms arising from the Gaussian means (i.e. not the weights
   /// or the priors).
-  /// Setup is log p(x) \propto x^T linear -0.5 x^T quadratic x.
+  /// Setup is \f$log p(x) \propto x^T\f$ linear -0.5 \f$x^T\f$ quadratic x.
   /// This function *adds to* the output rather than setting it.
   void GetIvectorDistMean(
       const IvectorExtractorUtteranceStats &utt_stats,
@@ -290,7 +290,7 @@ class IvectorExtractor {
   /// counting any weight).
   Vector<double> gconsts_;
 
-  /// U_i = M_i^T \Sigma_i^{-1} M_i is a quantity that comes up
+  /// \f$U_i = M_i^T \Sigma_i^{-1}\f$ \f$M_i\f$ is a quantity that comes up
   /// in ivector estimation.  This is conceptually a
   /// std::vector<SpMatrix<double> >, but we store the packed-data
   /// in the rows of a matrix, which gives us an efficiency

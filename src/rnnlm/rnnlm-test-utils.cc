@@ -93,7 +93,7 @@ void ConvertToInteger(
     we accumulate the number of context occurrences directly during we pass
     through the training text. We translate the perl code in the appendix of
     the paper and extend it to arbitrary ngram order. Also, as in SRILM,
-    we use the original(unmodified) count for the ngrams starting with <s>.
+    we use the original(unmodified) count for the ngrams starting with "<s>".
     We don't do any min-count prune for ngrams;
 */
 class InterpolatedKneserNeyLM {

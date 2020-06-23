@@ -1,6 +1,6 @@
 // rnnlm/rnnlm-lattice-rescoring.cc
 
-// Copyright 2017 Johns Hopkins University (author: Daniel Povey) 
+// Copyright 2017 Johns Hopkins University (author: Daniel Povey)
 //           2017 Yiming Wang
 //           2017 Hainan Xu
 //
@@ -32,7 +32,7 @@ KaldiRnnlmDeterministicFst::~KaldiRnnlmDeterministicFst() {
   int32 size = state_to_rnnlm_state_.size();
   for (int32 i = 0; i < size; i++)
     delete state_to_rnnlm_state_[i];
-  
+
   state_to_rnnlm_state_.resize(0);
   state_to_wseq_.resize(0);
   wseq_to_state_.clear();
@@ -44,7 +44,7 @@ void KaldiRnnlmDeterministicFst::Clear() {
   int32 size = state_to_rnnlm_state_.size();
   for (int32 i = 1; i < size; i++)
     delete state_to_rnnlm_state_[i];
-  
+
   state_to_rnnlm_state_.resize(1);
   state_to_wseq_.resize(1);
   wseq_to_state_.clear();
@@ -88,7 +88,7 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   word_seq.push_back(ilabel);
   if (max_ngram_order_ > 0) {
     while (word_seq.size() >= max_ngram_order_) {
-      /// History state has at most <max_ngram_order_> - 1 words in the state.
+      /// History state has at most "<max_ngram_order_>" - 1 words in the state.
       word_seq.erase(word_seq.begin(), word_seq.begin() + 1);
     }
   }
@@ -96,7 +96,7 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   std::pair<const std::vector<Label>, StateId> wseq_state_pair(
       word_seq, static_cast<Label>(state_to_wseq_.size()));
 
-  // Attemps to insert the current <wseq_state_pair>. If the pair already exists
+  // Attemps to insert the current "<wseq_state_pair>". If the pair already exists
   // then it returns false.
   typedef MapType::iterator IterType;
   std::pair<IterType, bool> result = wseq_to_state_.insert(wseq_state_pair);

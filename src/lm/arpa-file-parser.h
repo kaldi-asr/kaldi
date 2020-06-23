@@ -38,7 +38,7 @@ struct ArpaParseOptions {
   enum OovHandling {
     kRaiseError,     ///< Abort on OOV words
     kAddToSymbols,   ///< Add novel words to the symbol table.
-    kReplaceWithUnk,  ///< Replace OOV words with <unk>.
+    kReplaceWithUnk,  ///< Replace OOV words with "<unk>".
     kSkipNGram       ///< Skip n-gram with OOV word and continue.
   };
 
@@ -55,9 +55,9 @@ struct ArpaParseOptions {
                    "0 to disable, -1 to show all");
   }
 
-  int32 bos_symbol;  ///< Symbol for <s>, Required non-epsilon.
-  int32 eos_symbol;  ///< Symbol for </s>, Required non-epsilon.
-  int32 unk_symbol;  ///< Symbol for <unk>, Required for kReplaceWithUnk.
+  int32 bos_symbol;  ///< Symbol for "<s>", Required non-epsilon.
+  int32 eos_symbol;  ///< Symbol for "</s>", Required non-epsilon.
+  int32 unk_symbol;  ///< Symbol for "<unk>", Required for kReplaceWithUnk.
   OovHandling oov_handling;  ///< How to handle OOV words in the file.
   int32 max_warnings;  ///< Maximum warnings to report, <0 unlimited.
 };

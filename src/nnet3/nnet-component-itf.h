@@ -267,8 +267,8 @@ class Component {
   ///  can work correctly
   ///
   ///
-  ///  \param [in,out]  Indexes at the input of the Component.
-  ///  \param [in,out]  Indexes at the output of the Component
+  ///  \param [in,out] input_indexes Indexes at the input of the Component.
+  ///  \param [in,out] output_indexes Indexes at the output of the Component
   virtual void ReorderIndexes(std::vector<Index> *input_indexes,
                               std::vector<Index> *output_indexes) const {}
 

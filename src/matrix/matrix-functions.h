@@ -92,8 +92,8 @@ template<typename Real> void RealFftInefficient (VectorBase<Real> *v, bool forwa
 /// M * v equals the DCT of vector v.  M must be square at input.
 /// This is the type = III DCT with normalization, corresponding to the
 /// following equations, where x is the signal and X is the DCT:
-/// X_0 = 1/sqrt(2*N) \sum_{n = 0}^{N-1} x_n
-/// X_k = 1/sqrt(N) \sum_{n = 0}^{N-1} x_n cos( \pi/N (n + 1/2) k )
+/// \f$X_0 = 1/sqrt(2*N) \sum_{n = 0}^{N-1} x_n\f$
+/// \f$X_k = 1/sqrt(N) \sum_{n = 0}^{N-1} x_n cos( \pi/N (n + 1/2) k )\f$
 /// This matrix's transpose is its own inverse, so transposing this
 /// matrix will give the inverse DCT.
 /// Caution: the type III DCT is generally known as the "inverse DCT" (with the

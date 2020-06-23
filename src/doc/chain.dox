@@ -48,7 +48,7 @@ namespace kaldi {
      DNN-HMMs (about 5\% relative better), but the system is about 3 times
      faster to decode; training time is probably a bit faster too, but
      we haven't compared it exactly.
-
+   .
   \section chain_scripts  Where to find scripts for the 'chain' models
 
   The current best scripts for the 'chain' models can be found in the
@@ -343,7 +343,6 @@ on the paths.
       no special action by the user, as the graph-building script anyway takes the
       topology from the 'final.mdl' produced by the 'chain' training script, which
       contains the correct topology.
-
     - By default when we compile the graph, we use a 'self-loop-scale' of 0.1.
       This affects how the transition probabilities on self-loops are treated
       (it generally works better).  However, for the 'chain' models, because of
@@ -351,16 +350,13 @@ on the paths.
       transition-probability scaling we trained with, which for simplicity we
       have set to 1.0.  So we supply the option <code>--self-loop-scale
       1.0</code> to the <code>utils/mkgraph.sh</code> script.
-
     - There is no 'division by the prior' necessary in these models.  So we simply
       don't set the vector of priors in the <code>.mdl</code> files; we made sure
       that the decoder just omits the division by the prior if the priors are not set.
-
     - The default acoustic scale we typically use in decoding (0.1) is not
       suitable-- for 'chain' models the optimal acoustic scale is very close to 1.
       So we supply the option <code>--acwt 1.0</code> to the script
       <code>steps/nnet3/decode.sh</code>.
-
     - The scoring scripts can only search the language-model scale in increments
       of 1, which works well in typical setups where the optimal language model scale
       is between 10 and 15, but not when the optimal language-model scale is close
@@ -373,25 +369,23 @@ on the paths.
       After this, the optimal language-model scale will be around 10, which might
       be a little confusing if you are not aware of this issue, but is convenient
       for the way the scoring scripts are set up.
-
-   - The default decoding and lattice beams are suitable without modification
-     for the 'chain' models, once you use the <code>--acwt 1.0</code> option.
-     However, they won't show the full possible speedup and you can get faster
-     decoding by using slightly tighter beams.  By tightening the beam in the
-     Switchboard setup we were able to get decoding time down from around 1.5
-     times real time to around 0.5 times real time, with only around 0.2\%
-     degradation in accuracy (this was with neural net evaluation on the CPU; on
-     the GPU it would have been even faster).  Note from Dan: this is all to the best
-     of my recollection as I write this; actually the degradation may have been more than
-     that.  And bear in mind that this was on high-powered modern server machines
-    (single-threaded).
+    - The default decoding and lattice beams are suitable without modification
+      for the 'chain' models, once you use the <code>--acwt 1.0</code> option.
+      However, they won't show the full possible speedup and you can get faster
+      decoding by using slightly tighter beams.  By tightening the beam in the
+      Switchboard setup we were able to get decoding time down from around 1.5
+      times real time to around 0.5 times real time, with only around 0.2\%
+      degradation in accuracy (this was with neural net evaluation on the CPU; on
+      the GPU it would have been even faster).  Note from Dan: this is all to the best
+      of my recollection as I write this; actually the degradation may have been more than
+      that.  And bear in mind that this was on high-powered modern server machines
+      (single-threaded).
+    .
 
  You might notice in the current example scripts that we use iVectors.  We do so
  just because they generally help a bit, and because the baseline setup we were
  comparing with, uses them.  There is no inherent connection with 'chain'
  models, and no fundamental requirement to use them.
-
-
-*/
+**/
 
 }

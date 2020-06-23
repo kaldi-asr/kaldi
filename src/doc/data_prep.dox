@@ -116,7 +116,7 @@ This is because it has a lower ASCII value; if the speaker-ids vary in length,
 in certain cases the speaker-ids and their corresponding utterance ids can end
 up being sorted in different orders when using the standard "C"-style ordering
 on strings, which will lead to a crash.
-\endverbatim
+
 Another important file is <DFN>wav.scp</DFN>.  In the Switchboard example,
 \verbatim
 s5# head -3 data/train/wav.scp

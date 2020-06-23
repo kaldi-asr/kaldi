@@ -123,7 +123,7 @@ Recursively replaces FST arcs with other FST(s).
  special symbols that we introduce.  The differences are explained below.
 
 
-  \subsection  grammar_overview  Where to find example script
+  \subsection  grammar_overview_2  Where to find example script
 
  The top-level example scripts for this setup are in egs/mini_librispeech/s5;
  see the scripts local/grammar/simple_demo.sh and local/grammar/extend_vocab_demo.sh.
@@ -302,7 +302,7 @@ Z_S  243
  Users should bear all this in mind if they are going to construct these sub-graphs
  manually at the LG.fst level rather than using the provided scripts.
 
- \subsection grammar_special_l   Interaction with 'silprobs'
+ \subsection grammar_special_l_silprobs   Interaction with 'silprobs'
 
  In the versions of the lexicons that have word-specific silence probabilities
 (see <a href=http://www.danielpovey.com/files/2015_interspeech_silprob.pdf> this paper</a> for explanation)
@@ -342,7 +342,7 @@ Z_S  243
 
   The special symbols we add to the input of CLG.fst to support the grammar-decoding framework
   always correspond to pairs of symbols,
-  specifically pairs (</code>\#nontermXXX</code>, <em>left-context phone</em>), where <code>\#nontermXXX</code> is any
+  specifically pairs (<code>\#nontermXXX</code>, <em>left-context phone</em>), where <code>\#nontermXXX</code> is any
   of the symbols <code>\#nonterm_begin</code>, <code>\#nonterm_end</code>, <code>\#nonterm_reenter</code>, or user-defined
   nonterminals like <code>\#nonterm:foo</code>.  The ilabel-info for these special symbols will be
   pairs like <code>{-104, 21}</code> where the first element is the negative of the <code>\#nontermXXX</code> symbol
@@ -353,15 +353,15 @@ Z_S  243
 
   The following special symbols may appear in any CLG graph, top-level or not:
    - When any graph invokes a sub-graph, there will be an arc with an ilabel
-     (</code>\#nonterm:foo</code>, <em>left-context-phone</em>) representing the
+     (<code>\#nonterm:foo</code>, <em>left-context-phone</em>) representing the
      user-specified nonterminal and the actual left-context, which will be
-     followed by arcs with ilabels of the form (</code>\#nonterm_reenter</code>,
+     followed by arcs with ilabels of the form (<code>\#nonterm_reenter</code>,
      <em>left-context-phone</em>), for all left-context phones.
 
   For non-top-level CLG graphs only:
-   - These graphs will begin with ilabels representing pairs (</code>\#nonterm_begin</code>, <em>left-context-phone</em>),
+   - These graphs will begin with ilabels representing pairs (<code>\#nonterm_begin</code>, <em>left-context-phone</em>),
      representing all potential left-contexts.
-   - They will end with ilabels (</code>\#nonterm_end</code>, <em>left-context-phone</em>), representing
+   - They will end with ilabels (<code>\#nonterm_end</code>, <em>left-context-phone</em>), representing
      actual left-contexts.
 
 
@@ -376,14 +376,14 @@ Z_S  243
  (describing how it needs to change sequences in LG.fst to sequences in CLG.fst):
 
    - It needs to change the sequence <code>\#nonterm_begin</code> p1 (where p1 is a <em>left-context-phone</em>)
-     to a single symbol representing the pair (</code>\#nonterm_begin</code>, p1).
+     to a single symbol representing the pair (<code>\#nonterm_begin</code>, p1).
    - It needs to change the symbol <code>\#nonterm_end</code> to a single symbol representing
-     the pair (</code>\#nonterm_end</code> <em>left-context-phone</em>), where <em>left-context-phone</em>
+     the pair (<code>\#nonterm_end</code> <em>left-context-phone</em>), where <em>left-context-phone</em>
      represents the current phonetic left-context.
    - For each user-defined nonterminal e.g. <code>\#nonterm:foo</code>, it needs to change
      the sequence <code>\#nonterm:foo</code> p1 (where p1 is a <em>left-context-phone</em>)
-     to a sequence of two symbols representing the pairs (</code>\#nonterm:foo</code>, p0) and
-     (</code>\#nonterm_renter</code> p1) respectively.  Here, p0 represents the phone that was
+     to a sequence of two symbols representing the pairs (<code>\#nonterm:foo</code>, p0) and
+     (<code>\#nonterm_renter</code> p1) respectively.  Here, p0 represents the phone that was
      previous to the symbol <code>\#nonterm:foo</code>.
 
  In order to implement the above, we augment the state-space of C.fst by adding
@@ -417,7 +417,7 @@ Z_S  243
   We choose a representation of the special symbols in HCLG.fst that avoids
   clashing with the transition-ids and which makes it relatively painless to
   decode the symbols to find what they represent.  The representation  of
-  a pair (</code>\#nonterm:XXX</code>, <em>left-context-phone</em>) is,
+  a pair (<code>\#nonterm:XXX</code>, <em>left-context-phone</em>) is,
   in the typical case:
 \verbatim
   hclg_ilabel = 1000000 + 1000 * nonterm_xxx + left_context_phone

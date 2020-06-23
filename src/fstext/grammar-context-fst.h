@@ -66,11 +66,11 @@ namespace fst {
  */
 
 enum NonterminalValues {
-  kNontermBos = 0,  // #nonterm_bos
-  kNontermBegin = 1,  // #nonterm_begin
-  kNontermEnd = 2,  // #nonterm_end
-  kNontermReenter = 3,  // #nonterm_reenter
-  kNontermUserDefined = 4,   // the lowest-numbered user-defined nonterminal, e.g. #nonterm:foo
+  kNontermBos = 0,  // \#nonterm_bos
+  kNontermBegin = 1,  // \#nonterm_begin
+  kNontermEnd = 2,  // \#nonterm_end
+  kNontermReenter = 3,  // \#nonterm_reenter
+  kNontermUserDefined = 4,   // the lowest-numbered user-defined nonterminal, e.g. \#nonterm:foo
   // kNontermMediumNumber and kNontermBigNumber come into the encoding of
   // nonterminal-related symbols in HCLG.fst.  The only hard constraint on them
   // is that kNontermBigNumber must be bigger than the biggest transition-id in
@@ -104,7 +104,7 @@ inline int32 GetEncodingMultiple(int32 nonterm_phones_offset) {
    to make "ofst".
 
     @param [in] nonterm_phones_offset  The integer id of the symbol
-                  #nonterm_bos in the phones.txt file.  You can just set this
+                  \#nonterm_bos in the phones.txt file.  You can just set this
                   to a large value (like 1 million) if you are not actually using
                   nonterminals (e.g. for testing purposes).
     @param [in] disambig_syms  List of disambiguation symbols, e.g. the integer
@@ -157,7 +157,7 @@ public:
      symbol because it is not needed in systems without right context.
 
         @param [in] nonterm_phones_offset  The integer id of the symbol
-                  #nonterm_bos in the phones.txt file. You can just set this to
+                  \#nonterm_bos in the phones.txt file. You can just set this to
                   a large value (like 1 million) if you are not actually using
                   nonterminals (e.g. for testing purposes).
         @param [in] phones      List of integer ids of phones, as you would see in phones.txt
@@ -188,22 +188,22 @@ public:
        to when we see that symbol starting from left-context==0 (no context).  The
        transition to this special state will have epsilon on the output.  (talking
        here about inv(C), not C, so input/output are reversed).
-       The state is nonfinal and when we see a regular phone p1 or #nonterm_bos, instead of
-       outputting that phone in context, we output the pair (#nonterm_begin,p1) or
-       (#nonterm_begin,#nonterm_bos).  This state is not final.
+       The state is nonfinal and when we see a regular phone p1 or \#nonterm_bos, instead of
+       outputting that phone in context, we output the pair (\#nonterm_begin,p1) or
+       (\#nonterm_begin,\#nonterm_bos).  This state is not final.
 
        If p is equal to nonterm_phones_offset_ + kNontermUserDefined, then this
        is the state we transition to when we see any user-defined nonterminal.
-       Transitions to this special state have olabels of the form (#nonterm:foo,p1)
-       where p1 is the preceding context (with #nonterm_begin if that context was
-       0); transitions out of it have olabels of the form (#nonterm_reenter,p2), where
+       Transitions to this special state have olabels of the form (\#nonterm:foo,p1)
+       where p1 is the preceding context (with \#nonterm_begin if that context was
+       0); transitions out of it have olabels of the form (\#nonterm_reenter,p2), where
        p2 is the phone on the ilabel of that transition.  Again: talking about inv(C).
        This state is not final.
 
        If p is equal to nonterm_phones_offset_ + kNontermEnd, then this is
-       the state we transition to when we see the ilabel #nonterm_end.  The olabels
+       the state we transition to when we see the ilabel \#nonterm_end.  The olabels
        on the transitions to it (talking here about inv(C), so ilabels and olabels
-       are reversed) are of the form (#nonterm_end, p1) where p1 corresponds to the
+       are reversed) are of the form (\#nonterm_end, p1) where p1 corresponds to the
        context we were in.  This state is final.
    */
 

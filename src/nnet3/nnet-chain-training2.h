@@ -55,9 +55,9 @@ class NnetChainModel2 {
   /**
      Constructor to which you pass the model directory and the den-fst
      directory.  There is no requirement that all these directories be distinct.
-     
+
      For each language called "lang" the following files should exist:
-       <den_fst_dir>/lang.den.fst <den_fst_dir>/lang.normalization.fst 
+       "<den_fst_dir>/lang.den.fst" "<den_fst_dir>/lang.normalization.fst"
 
      In practice, the language name will be either "default", in the
      typical (monolingual) setup, or it might be arbitrary strings
@@ -74,7 +74,7 @@ class NnetChainModel2 {
   NnetChainModel2(const NnetChainTraining2Options &opts,
                    Nnet *nnet,
                    const std::string &den_fst_dir);
-  
+
   /* fst::StdVectorFst *GetDenFstForLang(const std::string &language_name); */
   chain::DenominatorGraph *GetDenGraphForLang(const std::string &language_name);
 
@@ -98,7 +98,7 @@ class NnetChainModel2 {
                    int32 job_id,
                    const std::string &suffix,
                    std::string *pathname);
-  
+
   // struct LanguageInfo contains the data that is stored per language.
   struct LanguageInfo {
     // name of the language

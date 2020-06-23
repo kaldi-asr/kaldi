@@ -79,6 +79,7 @@ namespace nnet3 {
                                       and input frames.
      @param [in]  utt_id              Utterance-id
      @param [in]  compress            If true, compresses the feature matrices.
+     @param [in]  long_key
      @param [out]  utt_splitter       Pointer to UtteranceSplitter object,
                                       which helps to split an utterance into
                                       chunks. This also stores some stats.
@@ -235,7 +236,7 @@ static bool ProcessFile(const TransitionModel *trans_mdl,
     else  // key is <utt_id>-<frame_id>
       os << utt_id << "-" << chunk.first_frame;
 
-    std::string key = os.str(); 
+    std::string key = os.str();
 
     example_writer->Write(key, nnet_chain_eg);
   }

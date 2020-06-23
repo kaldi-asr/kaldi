@@ -353,7 +353,8 @@ class IndexSet {
    belong to the same node [for that, see the notion of steps].
 
    @param [in] nnet  The neural network this computation is for
-   @param [in] graph  The computation graph that we're computing phases for.
+   @param [in] computation_graph
+                The computation graph that we're computing phases for.
    @param [out] phases_per_segment  The phases, listed separately for each
                 segment of the computation [there will be just one segment in
                 the normal case, more in the online-recognition case].  Consider

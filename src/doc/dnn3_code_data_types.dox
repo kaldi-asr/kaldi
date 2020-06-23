@@ -209,8 +209,8 @@ output-node name=output input=output_nonlin
   \subsection dnn3_dt_data_struct_computation NnetComputation (brief)
 
   A NnetComputation represents a specific computation that has been compiled
-  from an Nnet and a ComputationRequest.  It contains a sequence of \ref
-  NnetComputation::Command "Commands", each of which could be a Propagate
+  from an Nnet and a ComputationRequest.  It contains a sequence of 
+  \ref Command "Commands", each of which could be a Propagate
   operation, a matrix copy or add operation, various other simple matrix
   commands such as copying particular rows from one matrix to another; a
   Backprop operation, matrix sizing commands, and so on.  The variables that the
@@ -642,7 +642,7 @@ such as CopyRows, AddRows and so on, that need vectors of indexes as input
 (we will copy these to the GPU card before executing the computation).
 
 More information about the individual commands and the meaning of their
-arguments can be found \ref NnetComputation::CommandType "here".
+arguments can be found \ref CommandType "here".
 
 
  - Up: \ref dnn3

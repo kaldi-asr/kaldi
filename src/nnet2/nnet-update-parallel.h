@@ -35,16 +35,16 @@ namespace nnet2 {
 /// This function computes the objective function and either updates the model
 /// or computes parameter gradients.  It returns the cross-entropy objective
 /// function summed over all samples, weighted, and the total weight of
-/// the samples (typically the same as the #frames) into total_weight.
+/// the samples (typically the same as the \#frames) into total_weight.
 /// It is mostly a wrapper for
 /// a class NnetUpdater that's defined in nnet-update.cc, but we
 /// don't want to expose that complexity at this level.
-/// Note: this function 
+/// Note: this function
 /// If &nnet == nnet_to_update, it assumes we're doing SGD and does
 /// something like Hogwild; otherwise it assumes we're computing a
 /// gradient and it sums up the gradients.
-/// The return value is the total log-prob summed over the #frames. It also
-/// outputs the #frames into "num_frames".
+/// The return value is the total log-prob summed over the \#frames. It also
+/// outputs the \#frames into "num_frames".
 double DoBackpropParallel(const Nnet &nnet,
                           int32 minibatch_size,
                           SequentialNnetExampleReader *example_reader,
@@ -53,7 +53,7 @@ double DoBackpropParallel(const Nnet &nnet,
 
 
 /// This version of DoBackpropParallel takes a vector of examples, and will
-/// typically be used to compute the exact gradient. 
+/// typically be used to compute the exact gradient.
 double DoBackpropParallel(const Nnet &nnet,
                           int32 minibatch_size,
                           int32 num_threads,

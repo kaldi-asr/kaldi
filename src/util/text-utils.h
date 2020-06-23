@@ -54,7 +54,8 @@ void JoinVectorToString(const std::vector<std::string> &vec_in,
 /**
   \brief Split a string (e.g. 1:2:3) into a vector of integers.
 
-  \param [in]  delim  String containing a list of characters, any of which
+  \param [in] full  Original string.
+  \param [in] delim  String containing a list of characters, any of which
                       is allowed as a delimiter.
   \param [in] omit_empty_strings If true, empty strings between delimiters are
                       allowed and will not produce an output integer; if false,

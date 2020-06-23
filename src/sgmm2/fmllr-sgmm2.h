@@ -105,7 +105,7 @@ class Sgmm2FmllrGlobalParams {
   Matrix<BaseFloat> inv_xform_;
   /// Diagonal of mean-scatter matrix. Dim is [D]
   Vector<BaseFloat> mean_scatter_;
-  /// \tilde{W}_b.  [b][d][d], dim is [B][D][D+1].
+  /// \f$\tilde{W}_b\f$.  [b][d][d], dim is [B][D][D+1].
   std::vector< Matrix<BaseFloat> > fmllr_bases_;
 };
 
@@ -135,7 +135,7 @@ class FmllrSgmm2Accs {
   /// The 'data' argument is not FMLLR-transformed and is needed in addition
   /// to the the 'frame_vars' since the latter only contains a copy of the
   /// transformed feature vector.
-  BaseFloat Accumulate(const AmSgmm2 &sgmm,                       
+  BaseFloat Accumulate(const AmSgmm2 &sgmm,
                        const VectorBase<BaseFloat> &data,
                        const Sgmm2PerFrameDerivedVars &frame_vars,
                        int32 state_index,

@@ -29,7 +29,7 @@
 #include "itf/options-itf.h"
 
 namespace kaldi {
-/// @defgroup DiagGmm DiagGmm
+/// \defgroup DiagGmm DiagGmm
 /// @{
 /// kaldi Diagonal Gaussian Mixture Models
 
@@ -72,7 +72,7 @@ class AmDiagGmm {
 
   BaseFloat LogLikelihood(const int32 pdf_index,
                           const VectorBase<BaseFloat> &data) const;
-  
+
   void Read(std::istream &in_stream, bool binary);
   void Write(std::ostream &out_stream, bool binary) const;
 
@@ -212,8 +212,8 @@ void ClusterGaussiansToUbm(const AmDiagGmm &am,
 
 
 
+/// @} DiagGmm
 
 }  // namespace kaldi
 
-/// @} DiagGmm
 #endif  // KALDI_GMM_AM_DIAG_GMM_H_

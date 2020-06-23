@@ -188,15 +188,15 @@ class MleAmSgmm2Accs {
   std::vector< SpMatrix<double> > S_;
 
   /// The SGMM state specific stats.
-  /// Statistics y_{jm} for state vectors v_{jm}. dimension is [J1][#mix][S].
+  /// Statistics y_{jm} for state vectors v_{jm}. dimension is [J1][\#mix][S].
   std::vector< Matrix<double> > y_;
   /// Gaussian occupancies gamma_{jmi} for each substate and Gaussian index,
-  /// pooled over groups. Dim is [J1][#mix][I].
+  /// pooled over groups. Dim is [J1][\#mix][I].
   std::vector< Matrix<double> > gamma_;
 
   /// [SSGMM] These a_{jmi} quantities are dimensionally the same
   /// as the gamma quantities.  They're needed to estimate the v_{jm}
-  /// and w_i quantities in the symmetric SGMM.  Dimension is [J1][#mix][S]
+  /// and w_i quantities in the symmetric SGMM.  Dimension is [J1][\#mix][S]
   std::vector< Matrix<double> > a_;
 
   /// [SSGMM] each row is one of the t_i quantities in the less-exact
@@ -407,17 +407,17 @@ class MleSgmm2SpeakerAccs {
 
   /// The following variable does not change per speaker, it just
   /// relates to the speaker subspace.
-  /// Eq. (82): H_{i}^{spk} = N_{i}^T \Sigma_{i}^{-1} N_{i}
+  /// Eq. (82): \f$H_{i}^{spk} = N_{i}^T \Sigma_{i}^{-1} N_{i}\f$
   std::vector< SpMatrix<double> > H_spk_;
 
-  /// N_i^T \Sigma_{i}^{-1}. Needed for y^{(s)}
+  /// \f$N_i^T \Sigma_{i}^{-1}\f$. Needed for \f$y^{(s)}\f$
   std::vector< Matrix<double> > NtransSigmaInv_;
 
   /// small constant to randomly prune tiny posteriors
   BaseFloat rand_prune_;
 };
 
-// This class, used in multi-core implementation of the updates of the "w_i"
+// This class, used in multi-core implementation of the updates of the \f$w_i\f$
 // quantities, was previously in estimate-am-sgmm.cc, but is being moved to the
 // header so it can be used in estimate-am-sgmm-ebw.cc.  It is responsible for
 // computing, in parallel, the F_i and g_i quantities used in the updates of

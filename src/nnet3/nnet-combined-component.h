@@ -582,8 +582,8 @@ class MaxpoolingComponent: public Component {
 
    z_t = \sigmoid ( U^z x_t + W^z y_{t-1} )   # update gate, dim == cell_dim
    r_t = \sigmoid ( U^r x_t + W^r y_{t-1} )   # reset gate, dim == cell_dim
-   h_t = \tanh ( U^h x_t + W^h ( y_{t-1} \dot r_t ) )   # dim == cell_dim
-   y_t = ( 1 - z_t ) \dot h_t  +  z_t \dot y_{t-1}  # dim == cell_dim
+   h_t = \tanh ( U^h x_t + W^h ( y_{t-1} \cdot r_t ) )   # dim == cell_dim
+   y_t = ( 1 - z_t ) \cdot h_t  +  z_t \cdot y_{t-1}  # dim == cell_dim
 
  For the "projected GRU", the 'cell_dim x cell_dim' full-matrix expressions W^z
  W^r and W^h that participate in the expressions for z_t, r_t and h_t are
@@ -604,8 +604,8 @@ class MaxpoolingComponent: public Component {
 
    z_t = \sigmoid ( U^z x_t + W^z s_{t-1} )   # update gate, dim(z_t) == cell_dim
    r_t = \sigmoid ( U^r x_t + W^r s_{t-1} )   # reset gate, dim(r_t) == recurrent_dim
-   h_t = \tanh ( U^h x_t + W^h ( s_{t-1} \dot r_t ) )   # dim(h_t) == cell_dim
-   c_t = ( 1 - z_t ) \dot h_t  +  z_t \dot c_{t-1}  # dim(c_t) == cell_dim
+   h_t = \tanh ( U^h x_t + W^h ( s_{t-1} \cdot r_t ) )   # dim(h_t) == cell_dim
+   c_t = ( 1 - z_t ) \cdot h_t  +  z_t \cdot c_{t-1}  # dim(c_t) == cell_dim
    y_t = W^y c_t      # dim(y_t) = recurrent_dim + non_recurrent_dim.  This is
                       # the output of the GRU.
    s_t = y_t[0:recurrent_dim-1]  # dimension range of y_t, dim(s_t) = recurrent_dim.
@@ -623,8 +623,8 @@ class MaxpoolingComponent: public Component {
    RHS appended together.  The dimensions are:
     (cell_dim, recurrent_dim, cell_dim, cell_dim, recurrent_dim) -> (cell_dim, cell_dim).
    The component computes the functions:
-     h_t = \tanh( hpart_t + W^h (s_{t-1} \dot r_t))
-     c_t = (1 - z_t) \dot h_t + z_t \dot c_{t-1}.
+     h_t = \tanh( hpart_t + W^h (s_{t-1} \cdot r_t))
+     c_t = (1 - z_t) \cdot h_t + z_t \cdot c_{t-1}.
 
    Notice that 'W^h' is the only parameter that lives inside the component.
 
@@ -699,16 +699,16 @@ class MaxpoolingComponent: public Component {
      of dims:
    (cell_dim, recurrent_dim, cell_dim, cell_dim, recurrent_dim) -> (cell_dim, cell_dim).
     where:
-         h_t = \tanh( hpart_t + W^h (s_{t-1} \dot r_t))
-         c_t = (1 - z_t) \dot h_t + z_t \dot c_{t-1}.
+         h_t = \tanh( hpart_t + W^h (s_{t-1} \cdot r_t))
+         c_t = (1 - z_t) \cdot h_t + z_t \cdot c_{t-1}.
      If recurrent-dim is not specified, this component implements
      the function
         (z_t, r_t, hpart_t, y_{t-1}) -> (h_t, y_t)
    of dimensions
        (cell_dim, cell_dim, cell_dim, cell_dim) -> (cell_dim, cell_dim),
     where:
-         h_t = \tanh( hpart_t + W^h (y_{t-1} \dot r_t))
-         y_t = (1 - z_t) \dot h_t + z_t \dot y_{t-1}.
+         h_t = \tanh( hpart_t + W^h (y_{t-1} \cdot r_t))
+         y_t = (1 - z_t) \cdot h_t + z_t \cdot y_{t-1}.
 */
 class GruNonlinearityComponent: public UpdatableComponent {
  public:
@@ -778,11 +778,11 @@ class GruNonlinearityComponent: public UpdatableComponent {
 
   /*  This function is responsible for updating the w_h_ matrix
       (taking into account the learning rate).
-        @param [in] sdotr  The value of the expression (s_{t-1} \dot r_t).
+        @param [in] sdotr  The value of the expression (s_{t-1} \cdot r_t).
         @param [in] h_t_deriv  The derivative of the objective
                         function w.r.t. the argument of the tanh
                         function, i.e. w.r.t. the expression
-                        "hpart_t + W^h (s_{t-1} \dot r_t)".
+                        "hpart_t + W^h (s_{t-1} \cdot r_t)".
                         This function is concerned with the second
                         term as it affects the derivative w.r.t. W^h.
    */
@@ -848,7 +848,7 @@ class GruNonlinearityComponent: public UpdatableComponent {
 /**
   OutputGruNonlinearityComponent is a component that implements part of a
   Output Gated Recurrent Unit (OGRU).  Compare with the traditional GRU, it uses
-  output gate instead reset gate, and the formula of h_t will be different. 
+  output gate instead reset gate, and the formula of h_t will be different.
   You can regard it as a variant of GRU.
   This code is more efficient in time and memory than stitching it together
   using more basic components.
@@ -867,9 +867,9 @@ class GruNonlinearityComponent: public UpdatableComponent {
 
    z_t = \sigmoid ( U^z x_t + W^z y_{t-1} )   # update gate, dim == cell_dim
    o_t = \sigmoid ( U^o x_t + W^o y_{t-1} )   # output gate, dim == cell_dim
-   h_t = \tanh ( U^h x_t + W^h \dot c_{t-1} )   # dim == cell_dim
-   c_t = ( 1 - z_t ) \dot h_t  +  z_t \dot c_{t-1}  # dim == cell_dim
-   y_t = ( c_t \dot o_t )
+   h_t = \tanh ( U^h x_t + W^h \cdot c_{t-1} )   # dim == cell_dim
+   c_t = ( 1 - z_t ) \cdot h_t  +  z_t \cdot c_{t-1}  # dim == cell_dim
+   y_t = ( c_t \cdot o_t )
 
  For the "projected OGRU", the 'cell_dim x cell_dim' full-matrix expressions W^z
  W^o that participate in the expressions for z_t, o_t are
@@ -889,9 +889,9 @@ class GruNonlinearityComponent: public UpdatableComponent {
 
    z_t = \sigmoid ( U^z x_t + W^z s_{t-1} )   # update gate, dim(z_t) == cell_dim
    o_t = \sigmoid ( U^o x_t + W^o s_{t-1} )   # output gate, dim(o_t) == cell_dim
-   h_t = \tanh ( U^h x_t + W^h \dot c_{t-1} )   # dim(h_t) == cell_dim
-   c_t = ( 1 - z_t ) \dot h_t  +  z_t \dot c_{t-1}  # dim(c_t) == cell_dim
-   y_t = ( c_t \dot o_t) W^y  # dim(y_t) = recurrent_dim + non_recurrent_dim.
+   h_t = \tanh ( U^h x_t + W^h \cdot c_{t-1} )   # dim(h_t) == cell_dim
+   c_t = ( 1 - z_t ) \cdot h_t  +  z_t \cdot c_{t-1}  # dim(c_t) == cell_dim
+   y_t = ( c_t \cdot o_t) W^y  # dim(y_t) = recurrent_dim + non_recurrent_dim.
                               # This is the output of the OGRU.
    s_t = y_t[0:recurrent_dim-1]  # dimension range of y_t, dim(s_t) = recurrent_dim.
 
@@ -908,8 +908,8 @@ class GruNonlinearityComponent: public UpdatableComponent {
    RHS appended together.  The dimensions are:
     (cell_dim, cell_dim, cell_dim) -> (cell_dim, cell_dim).
    The component computes the functions:
-     h_t = \tanh ( U^h x_t + W^h \dot c_{t-1} )
-     c_t = ( 1 - z_t ) \dot h_t  +  z_t \dot c_{t-1}
+     h_t = \tanh ( U^h x_t + W^h \cdot c_{t-1} )
+     c_t = ( 1 - z_t ) \cdot h_t  +  z_t \cdot c_{t-1}
 
    Notice that 'W^h' is the only parameter that lives inside the component.
 
@@ -973,8 +973,8 @@ class GruNonlinearityComponent: public UpdatableComponent {
      of dimensions
         (cell_dim, cell_dim, cell_dim) -> (cell_dim, cell_dim),
     where:
-         h_t = \tanh( hpart_t + W^h \dot c_{t-1} )
-         c_t = (1 - z_t) \dot h_t + z_t \dot c_{t-1}.
+         h_t = \tanh( hpart_t + W^h \cdot c_{t-1} )
+         c_t = (1 - z_t) \cdot h_t + z_t \cdot c_{t-1}.
 */
 class OutputGruNonlinearityComponent: public UpdatableComponent {
  public:
@@ -1048,7 +1048,7 @@ class OutputGruNonlinearityComponent: public UpdatableComponent {
         @param [in] h_t_deriv  The derivative of the objective
                         function w.r.t. the argument of the tanh
                         function, i.e. w.r.t. the expression
-                        "hpart_t + W^h \dot c_t1".
+                        "hpart_t + W^h \cdot c_t1".
                         This function is concerned with the second
                         term as it affects the derivative w.r.t. W^h.
    */

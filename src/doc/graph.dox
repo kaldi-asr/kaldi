@@ -114,7 +114,7 @@ namespace fst {
 
   \section graph_context The ContextFst object
 
- The \ref ContextFst object (C) is a dynamically created
+ The \ref fst::ContextFst object (C) is a dynamically created
  FST object that represents a transducer from context-dependent phones to
  context-independent phones.  The purpose of this object is to avoid us having
  to enumerate all possible phones in context, which could be difficult when

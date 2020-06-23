@@ -60,8 +60,8 @@ class Nnet {
 
   /// Returns the number of 'Components' which form the NN.
   /// Typically a NN layer is composed of 2 components:
-  /// the <AffineTransform> with trainable parameters
-  /// and a non-linearity like <Sigmoid> or <Softmax>.
+  /// the "<AffineTransform>" with trainable parameters
+  /// and a non-linearity like "<Sigmoid>" or "<Softmax>".
   /// Usually there are 2x more Components than the NN layers.
   int32 NumComponents() const {
     return components_.size();

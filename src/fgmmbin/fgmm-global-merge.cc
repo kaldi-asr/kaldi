@@ -24,7 +24,7 @@
 namespace kaldi {
 
 /// merges GMMs by appending Gaussians in "src" to "dst".
-/// Renormalizes weights by allocating weight proportional to #Gauss.
+/// Renormalizes weights by allocating weight proportional to \#Gauss.
 void MergeFullGmm(const FullGmm &src, FullGmm *dst) {
   FullGmm dst_copy;
   dst_copy.CopyFromFullGmm(*dst);
@@ -49,8 +49,8 @@ void MergeFullGmm(const FullGmm &src, FullGmm *dst) {
   dst->SetInvCovarsAndMeansInvCovars(invcovars, means_invcovars);
 
   Vector<BaseFloat> weights(num_mix); // initialized to zero.
-  // weight proportional to #Gaussians, so that if we combine a number of
-  // models with same #Gaussians, they all get the same weight.
+  // weight proportional to \#Gaussians, so that if we combine a number of
+  // models with same \#Gaussians, they all get the same weight.
   BaseFloat src_weight = src_num_mix / static_cast<BaseFloat>(num_mix),
       dst_weight = dst_num_mix / static_cast<BaseFloat>(num_mix);
   weights.Range(0, dst_num_mix).AddVec(dst_weight, dst_copy.weights());
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 
     FullGmm fgmm;
     Output sizes_ko(sizes_out_filename, false); // false == not binary.
-    
+
     for (int i = 3, max = po.NumArgs(); i <= max; i++) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
       }
     }
     sizes_ko.Stream() << "\n";
-    
+
     // Write out the model
     WriteKaldiObject(fgmm, fgmm_out_filename, binary);
     KALDI_LOG << "Written merged GMM to " << fgmm_out_filename;

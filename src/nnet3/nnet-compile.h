@@ -313,6 +313,8 @@ class Compiler {
                the submatrix referred to by 'value_submatrix_index', each element is
                a list of sources over which we must sum to obtain
                that row.  Each source is a pair (submatrix-index, row-index).
+       @param [in,out] computation  The computation which we are adding
+               commands to.
   */
   void CompileForwardFromSubmatLocationsList(
       int32 value_submatrix_index,

@@ -23,8 +23,13 @@ for d in *bin; do
       $msg =~ s/\\n/\n/g; # Turn escaped newlines into newlines.
       $msg =~ s/\\\t/\t/g; # Turn escaped tabs into tabs.
       $msg =~ s/\n\s*$//g; # Remove the final newline.
+      $msg =~ s/</&lt;/g;
+      $msg =~ s/>/&gt;/g;
+      $msg =~ s/ \#/ \\#/g;
+      $msg =~ s/\\t/&nbsp;&nbsp;&nbsp;&nbsp;/g;
       $basef = basename($f);
       $basef =~ s/.cc$//;
+
       $output = "<tr> <td> \\ref $f \"$basef\" </td><td> <pre> $msg </pre> </td> </tr>";
       # $output =~ s|\n|<br/>|g; # make it so newlines are marked up.
       print "$output\n";

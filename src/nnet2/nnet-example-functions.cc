@@ -44,7 +44,7 @@ bool LatticeToDiscriminativeExample(
     return false;
   }
   std::vector<int32> times;
-  int32 num_frames_clat = CompactLatticeStateTimes(clat, &times);  
+  int32 num_frames_clat = CompactLatticeStateTimes(clat, &times);
   if (num_frames_clat != num_frames) {
     KALDI_WARN << "Numerator/frames versus denlat frames mismatch: "
                << num_frames << " versus " << num_frames_clat;
@@ -89,8 +89,8 @@ bool LatticeToDiscriminativeExample(
    No penalty for processing frames we don't need to process (already implicit in
    segment-processing time above.)
 
-   Penalty for splitting where we should not split.  [Make it propto log(#paths).]
-   
+   Penalty for splitting where we should not split.  [Make it propto log(\#paths).]
+
  */
 
 
@@ -117,13 +117,13 @@ class DiscriminativeExampleSplitter {
       DoExcise(stats);
     }
   }
-  
+
   void Split(SplitExampleStats *stats) {
     if (!config_.split) {
       egs_out_->resize(1);
       (*egs_out_)[0] = eg_;
     } else {
-      eg_.Check();    
+      eg_.Check();
       PrepareLattice(true);
       ComputeFrameInfo();
       DoSplit(stats);
@@ -139,27 +139,27 @@ class DiscriminativeExampleSplitter {
   // this is being called from DoSplit, but false if being called from DoExcise
   // (this saves some time, since we avoid some preparation steps that we know
   // are unnecessary because they were done before
-  void PrepareLattice(bool first_time); 
+  void PrepareLattice(bool first_time);
 
   void CollapseTransitionIds(); // Modifies the transition-ids on lat_ so that
                                 // on each frame, there is just one with any
                                 // given pdf-id.  This allows us to determinize
                                 // and minimize more completely.
-  
+
   bool ComputeFrameInfo();
 
   static void RemoveAllOutputSymbols (Lattice *lat);
 
   void OutputOneSplit(int32 seg_begin, int32 seg_end);
-  
+
   void DoSplit(SplitExampleStats *stats);
 
   void DoExcise(SplitExampleStats *stats);
-  
+
   int32 NumFrames() const { return static_cast<int32>(eg_.num_ali.size()); }
 
   int32 RightContext() { return eg_.input_frames.NumRows() - NumFrames() - eg_.left_context; }
-  
+
 
   // Put in lat_out, a slice of "clat" with first frame at time "seg_begin" and
   // with last frame at time "seg_end - 1".
@@ -170,7 +170,7 @@ class DiscriminativeExampleSplitter {
   // new state if needed).
   StateId GetOutputStateId(StateId s,
                            unordered_map<StateId, StateId> *state_map,
-                           Lattice *lat_out);           
+                           Lattice *lat_out);
 
   struct FrameInfo {
     int32 den_state_count;
@@ -200,28 +200,28 @@ class DiscriminativeExampleSplitter {
     // "segment end" is time t+1), what is the latest state in lat_ that we have
     // to consider including in the split lattice?  This relates to a kind of
     // optimization for efficiency.
-    StateId end_state;  
+    StateId end_state;
     FrameInfo(): den_state_count(0), den_pdf_count(0),
                  multiple_transition_ids(false),
                  num_den_overlap(false), nonzero_derivative(false),
                  can_excise_frame(false),
                  start_state(std::numeric_limits<int32>::max()), end_state(0) { }
   };
-  
-  
+
+
   // The following variables are set in the initializer:
   const SplitDiscriminativeExampleConfig &config_;
   const TransitionModel &tmodel_;
   const DiscriminativeNnetExample &eg_;
   std::vector<DiscriminativeNnetExample> *egs_out_;
-  
+
   Lattice lat_; // lattice generated from eg_.den_lat, with epsilons removed etc.
 
 
   // The other variables are computed by Split() or functions called from it.
 
   std::vector<FrameInfo> frame_info_;
-  
+
   // state_times_ says, for each state in lat_, what its start time is.
   std::vector<int32> state_times_;
 
@@ -237,7 +237,7 @@ void DiscriminativeExampleSplitter::CollapseTransitionIds() {
   std::vector<int32> times;
   TopSort(&lat_); // Topologically sort the lattice (required by
                   // LatticeStateTimes)
-  int32 num_frames = LatticeStateTimes(lat_, &times);  
+  int32 num_frames = LatticeStateTimes(lat_, &times);
   StateId num_states = lat_.NumStates();
 
   std::vector<std::map<int32, int32> > pdf_to_tid(num_frames);
@@ -256,7 +256,7 @@ void DiscriminativeExampleSplitter::CollapseTransitionIds() {
         pdf_to_tid[t][pdf] = arc.ilabel;
       }
     }
-  }    
+  }
 }
 
 
@@ -265,14 +265,14 @@ void DiscriminativeExampleSplitter::PrepareLattice(bool first_time) {
 
   Project(&lat_, fst::PROJECT_INPUT); // Get rid of the word labels and put the
                                       // transition-ids on both sides.
-  
+
   RmEpsilon(&lat_); // Remove epsilons.. this simplifies
                     // certain things.
 
   if (first_time) {
     if (config_.collapse_transition_ids && config_.criterion != "mpfe")
       CollapseTransitionIds();
-  
+
     if (config_.determinize) {
       if (!config_.minimize) {
         Lattice det_lat;
@@ -297,19 +297,19 @@ void DiscriminativeExampleSplitter::PrepareLattice(bool first_time) {
 // this function computes various arrays that say something about
 // this frame of the lattice.
 bool DiscriminativeExampleSplitter::ComputeFrameInfo() {
-  
+
   int32 num_frames = NumFrames();
 
   frame_info_.clear();
   frame_info_.resize(num_frames + 1);
-  
+
   LatticeStateTimes(lat_, &state_times_);
 
   std::vector<std::set<int32> > pdfs_per_frame(num_frames),
       tids_per_frame(num_frames);
-  
+
   int32 num_states = lat_.NumStates();
-  
+
   for (int32 state = 0; state < num_states; state++) {
     int32 t = state_times_[state];
     KALDI_ASSERT(t >= 0 && t <= num_frames);
@@ -317,7 +317,7 @@ bool DiscriminativeExampleSplitter::ComputeFrameInfo() {
     for (fst::ArcIterator<Lattice> aiter(lat_, state); !aiter.Done();
          aiter.Next()) {
       const LatticeArc &arc = aiter.Value();
-      KALDI_ASSERT(arc.ilabel != 0 && arc.ilabel == arc.olabel); 
+      KALDI_ASSERT(arc.ilabel != 0 && arc.ilabel == arc.olabel);
       int32 transition_id = arc.ilabel,
           pdf_id = tmodel_.TransitionIdToPdf(transition_id);
       tids_per_frame[t].insert(transition_id);
@@ -336,7 +336,7 @@ bool DiscriminativeExampleSplitter::ComputeFrameInfo() {
   for (int32 i = NumFrames() - 1; i >= 0; i--)
     frame_info_[i].start_state = std::min(frame_info_[i+1].start_state,
                                           frame_info_[i].start_state);
-  
+
   for (int32 t = 0; t < num_frames; t++) {
     FrameInfo &frame_info = frame_info_[t];
     int32 transition_id = eg_.num_ali[t],
@@ -374,7 +374,7 @@ bool DiscriminativeExampleSplitter::ComputeFrameInfo() {
       // frame there may be multiple phones on a frame, which could
       // contribute to the objective function even if they share pdf-ids.
       // (this was an issue that came up during testing).
-    } else {      
+    } else {
       frame_info.can_excise_frame =
           !frame_info.nonzero_derivative && frame_info.den_pdf_count == 1;
     }
@@ -400,9 +400,9 @@ void DiscriminativeExampleSplitter::DoExcise(SplitExampleStats *stats) {
       right_context = RightContext(),
       num_frames = NumFrames();
   // Compute, for each frame, whether we can excise it.
-  // 
+  //
   std::vector<bool> can_excise(num_frames, false);
-  
+
   bool need_some_frame = false;
   for (int32 t = 0; t < num_frames; t++) {
     can_excise[t] = frame_info_[t].can_excise_frame;
@@ -469,7 +469,7 @@ void DiscriminativeExampleSplitter::DoExcise(SplitExampleStats *stats) {
   stats->num_frames_kept_after_excise += num_frames_kept;
   stats->longest_segment_after_excise = std::max(stats->longest_segment_after_excise,
                                                  num_frames_kept);
-  
+
   int32 num_frames_kept_plus = num_frames_kept + left_context + right_context;
   eg_out.input_frames.Resize(num_frames_kept_plus,
                              eg_.input_frames.NumCols());
@@ -555,7 +555,7 @@ void DiscriminativeExampleSplitter::DoSplit(SplitExampleStats *stats) {
   for (int32 t = 0; t < num_frames; t++)
     if (frame_info_[t].nonzero_derivative)
       stats->num_frames_must_keep++;
-  
+
   for (size_t s = 0; s < is_kept.size(); s++) {
     if (is_kept[s]) {
       stats->num_kept_segments++;
@@ -574,14 +574,14 @@ void SplitExampleStats::Print() {
   KALDI_LOG << "Split " << num_lattices << " lattices.  Stats:";
   double kept_segs_per_lat = num_kept_segments * 1.0 / num_lattices,
       segs_per_lat = num_segments * 1.0 / num_lattices;
-      
+
   KALDI_LOG << "Made on average " << segs_per_lat << " segments per lattice, "
             << "of which " << kept_segs_per_lat << " were kept.";
 
   double percent_needed = num_frames_must_keep * 100.0 / num_frames_orig,
     percent_after_split = num_frames_kept_after_split * 100.0 / num_frames_orig,
    percent_after_excise = num_frames_kept_after_excise * 100.0 / num_frames_orig;
-      
+
   KALDI_LOG << "Needed to keep " << percent_needed << "% of frames, after split "
             << "kept " << percent_after_split << "%, after excising frames kept "
             << percent_after_excise << "%.";
@@ -607,7 +607,7 @@ void DiscriminativeExampleSplitter::OutputOneSplit(int32 seg_begin,
                         eg_.num_ali.begin() + seg_end);
 
   CreateOutputLattice(seg_begin, seg_end, &(eg_out.den_lat));
-  
+
   eg_out.input_frames = eg_.input_frames.Range(seg_begin, seg_end - seg_begin +
                                                tot_context,
                                                0, eg_.input_frames.NumCols());
@@ -615,8 +615,8 @@ void DiscriminativeExampleSplitter::OutputOneSplit(int32 seg_begin,
   eg_out.left_context = eg_.left_context;
 
   eg_out.spk_info = eg_.spk_info;
-  
-  eg_out.Check();  
+
+  eg_out.Check();
 }
 
 // static
@@ -628,7 +628,7 @@ void DiscriminativeExampleSplitter::RemoveAllOutputSymbols(Lattice *lat) {
       arc.olabel = 0;
       aiter.SetValue(arc);
     }
-  }  
+  }
 }
 
 DiscriminativeExampleSplitter::StateId
@@ -652,7 +652,7 @@ void DiscriminativeExampleSplitter::CreateOutputLattice(
 
   // The range of the loop over s could be made over the
   // entire lattice, but we limit it for efficiency.
-  
+
   for (StateId s = frame_info_[seg_begin].start_state;
        s <= frame_info_[seg_end].end_state; s++) {
     int32 t = state_times_[s];
@@ -664,7 +664,7 @@ void DiscriminativeExampleSplitter::CreateOutputLattice(
 
     if (t == seg_begin) // note: we only split on frames with just one
       lat_out.SetStart(this_state); // state, so we reach this only once.
-    
+
     if (t == seg_end) { // Make it final and don't process its arcs out.
       if (seg_end == NumFrames()) {
         lat_out.SetFinal(this_state, lat_.Final(s));
@@ -673,7 +673,7 @@ void DiscriminativeExampleSplitter::CreateOutputLattice(
       }
       continue; // don't process arcs out of this state.
     }
-    
+
     for (fst::ArcIterator<Lattice> aiter(lat_, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
       StateId next_state = GetOutputStateId(arc.nextstate,
@@ -699,7 +699,7 @@ void DiscriminativeExampleSplitter::SelfTest() {
   // we can't do any of this excising frames if we want to
   // preserve equivalence.
   std::fill(can_excise_.begin(), can_excise_.end(), false);
-  
+
   std::vector<Lattice*> split_lats;
 
   int32 cur_t = NumFrames();
@@ -726,12 +726,12 @@ void DiscriminativeExampleSplitter::SelfTest() {
   }
   Connect(split_lats[0]);
   KALDI_ASSERT(split_lats[0]->NumStates() > 0);
-  
+
 
   if (!splits_ok) {
     KALDI_LOG << "Not self-testing because we split where there were "
               << "multiple paths.";
-    
+
   } else {
     if (!(RandEquivalent(*(split_lats[0]), lat_, 5, 0.01,
          Rand(), 100))) {
@@ -776,7 +776,7 @@ void ExciseDiscriminativeExample(
     const SplitDiscriminativeExampleConfig &config,
     const TransitionModel &tmodel,
     const DiscriminativeNnetExample &eg,
-    std::vector<DiscriminativeNnetExample> *egs_out,    
+    std::vector<DiscriminativeNnetExample> *egs_out,
     SplitExampleStats *stats_out) {
   DiscriminativeExampleSplitter splitter(config, tmodel, eg, egs_out);
   splitter.Excise(stats_out);
@@ -816,7 +816,7 @@ void UpdateHash(
                    one_silence_class, eg, &post);
 
   Vector<BaseFloat> avg_feat(feat_dim);
-  
+
   for (int32 t = 0; t < num_frames; t++) {
     SubMatrix<BaseFloat> context_window(eg.input_frames,
                                         t, context_width,
@@ -837,14 +837,14 @@ void UpdateHash(
 
 void ExampleToPdfPost(
     const TransitionModel &tmodel,
-    const std::vector<int32> &silence_phones,    
+    const std::vector<int32> &silence_phones,
     std::string criterion,
     bool drop_frames,
     bool one_silence_class,
     const DiscriminativeNnetExample &eg,
     Posterior *post) {
   KALDI_ASSERT(criterion == "mpfe" || criterion == "smbr" || criterion == "mmi");
-  
+
   Lattice lat;
   ConvertLattice(eg.den_lat, &lat);
   TopSort(&lat);
@@ -852,7 +852,7 @@ void ExampleToPdfPost(
     Posterior tid_post;
     LatticeForwardBackwardMpeVariants(tmodel, silence_phones, lat, eg.num_ali,
                                       criterion, one_silence_class, &tid_post);
-    
+
     ConvertPosteriorToPdfs(tmodel, tid_post, post);
   } else {
     bool convert_to_pdf_ids = true, cancel = true;
@@ -893,7 +893,7 @@ void AppendDiscriminativeExamples(
     DiscriminativeNnetExample *output) {
   KALDI_ASSERT(!input.empty());
   const DiscriminativeNnetExample &eg0 = *(input[0]);
-  
+
   int32 dim = eg0.input_frames.NumCols() + eg0.spk_info.Dim(),
       left_context = eg0.left_context,
       num_frames = eg0.num_ali.size(),
@@ -909,7 +909,7 @@ void AppendDiscriminativeExamples(
                             // (since they're both the same, and the den-lat in
                             // those parts is linear, they contribute no
                             // derivative to the training).
-  
+
   output->den_lat = eg0.den_lat;
   output->num_ali = eg0.num_ali;
   output->input_frames.Resize(tot_frames, dim, kUndefined);
@@ -920,7 +920,7 @@ void AppendDiscriminativeExamples(
                                eg0.input_frames.NumCols(), eg0.spk_info.Dim()).
         CopyRowsFromVec(eg0.spk_info);
   }
-  
+
   output->num_ali.reserve(tot_frames - left_context - right_context);
   output->weight = eg0.weight;
   output->left_context = eg0.left_context;
@@ -929,19 +929,19 @@ void AppendDiscriminativeExamples(
   CompactLattice inter_segment_clat;
   int32 initial = inter_segment_clat.AddState(); // state 0.
   inter_segment_clat.SetStart(initial);
-  
+
   std::vector<int32> inter_segment_ali(left_context + right_context);
   std::fill(inter_segment_ali.begin(), inter_segment_ali.end(), arbitrary_tid);
 
   CompactLatticeWeight final_weight = CompactLatticeWeight::One();
   final_weight.SetString(inter_segment_ali);
   inter_segment_clat.SetFinal(initial, final_weight);
-  
+
   int32 feat_offset = eg0.input_frames.NumRows();
-  
+
   for (size_t i = 1; i < input.size(); i++) {
     const DiscriminativeNnetExample &eg_i = *(input[i]);
-        
+
     output->input_frames.Range(feat_offset, eg_i.input_frames.NumRows(),
                                0, eg_i.input_frames.NumCols()).CopyFromMat(
                                    eg_i.input_frames);
@@ -953,7 +953,7 @@ void AppendDiscriminativeExamples(
       KALDI_ASSERT(eg_i.input_frames.NumCols() +
                    eg_i.spk_info.Dim() == dim);
     }
-    
+
     output->num_ali.insert(output->num_ali.end(),
                            inter_segment_ali.begin(), inter_segment_ali.end());
     output->num_ali.insert(output->num_ali.end(),
@@ -966,12 +966,12 @@ void AppendDiscriminativeExamples(
   }
   KALDI_ASSERT(feat_offset == tot_frames);
 }
-  
+
 void CombineDiscriminativeExamples(
     int32 max_length,
     const std::vector<DiscriminativeNnetExample> &input,
     std::vector<DiscriminativeNnetExample> *output) {
-  
+
   std::vector<BaseFloat> costs(input.size());
   for (size_t i = 0; i < input.size(); i++)
     costs[i] = static_cast<BaseFloat>(input[i].input_frames.NumRows());

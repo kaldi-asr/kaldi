@@ -44,7 +44,7 @@ namespace kaldi {
   We will refer to these as "the paper" [or "the CSL paper"] and "the techreport".
 
   (1) SSGMM
-  
+
   We'll use the acronym SSGMM to refer to the Symmetric SGMM, and we'll mark in
   the code with "[SSGMM]" things that relate to it.  The technical report
   describes an extention to the originally described model where we have
@@ -62,15 +62,15 @@ namespace kaldi {
   We build a first
   tree, at which level the phonetic sub-state vectors are defined, and then a
   "more detailed" tree, at which level we share the sub-state mixture weights.
-  In this class, NumPdfs() returns the real number of pdf's (i.e. the #leaves
+  In this class, NumPdfs() returns the real number of pdf's (i.e. the \#leaves
   of the more detailed tree), and NumPdfGroups() returns the number of groups of
   pdf's that share the sub-state vectors.
   We use the index j2 for indexing 0...NumPdfs()-1 [as it's the "2nd level" of the tree],
   and j1 for indexing 0...NumPdfGroups()-1 [as it's the "1st level" of the tree].
   The weights are stored as c[j2][m].  There is a mapping Pdf2Group(j2) which returns
   the corresponding j1 for a given j2, and Group2PdfList(j1) which returns a vector<int32>
-  consisting of the list of j2 indices for that j1. 
-  
+  consisting of the list of j2 indices for that j1.
+
   The count quantities we store during the accumulation phase could most simply
   be stored as gamma[j2][m][i] (where m is the sub-state index), but this is
   inefficient.  Instead we store them separately as gamma1[j1][m][i] and gamma2[j2][m],
@@ -84,7 +84,7 @@ namespace kaldi {
   "pseudo-posteriors".  Then to take into account the contribution of the
   weights in a state j2, we take the dot product of the weight-vector c[j2][...]
   with this vector of pseudo-posteriors.  The log of this dot-product gets added to the
-  original log-sum.  
+  original log-sum.
 */
 
 
@@ -147,7 +147,7 @@ struct Sgmm2PerFrameDerivedVars {
   Vector<BaseFloat> nti;  ///< n_{i}(t), dim = [I], eq.(36) in CSL paper, but
                           ///< [SSGMM] with extra term log b_i^{(s)}, see eq. (24) of
                           ///< techreport.
-  
+
   void Resize(int32 ngauss, int32 feat_dim, int32 phn_dim) { // resizes but does
     // not necessarily zero things.
     if (xt.Dim() != feat_dim) xt.Resize(feat_dim);
@@ -164,7 +164,7 @@ class AmSgmm2;
 
 class Sgmm2PerSpkDerivedVars {
   // To set this up, call ComputePerSpkDerivedVars from the sgmm object.
- public:  
+ public:
   void Clear() {
     v_s.Resize(0);
     o_s.Resize(0, 0);
@@ -176,17 +176,17 @@ class Sgmm2PerSpkDerivedVars {
   // caution: after SetSpeakerVector you typically want to
   // use the function AmSgmm::ComputePerSpkDerivedVars
   const Vector<BaseFloat> &GetSpeakerVector() { return v_s; }
-  
+
   void SetSpeakerVector(const Vector<BaseFloat> &v_s_in) {
     v_s.Resize(v_s_in.Dim());
     v_s.CopyFromVec(v_s_in);
-  }    
+  }
  protected:
   friend class AmSgmm2;
   friend class MleAmSgmm2Accs;
-  Vector<BaseFloat> v_s;  ///< Speaker adaptation vector v_^{(s)}. Dim is [T]
+  Vector<BaseFloat> v_s;  ///< Speaker adaptation vector \f$v_^{(s)}\f$. Dim is [T]
   Matrix<BaseFloat> o_s;  ///< Per-speaker offsets o_{i}. Dimension is [I][D]
-  Vector<BaseFloat> b_is; /// < [SSGMM]: Eq. (22) in techreport, b_i^{(s)} = \exp(\u_i^T \v^{(s)})
+  Vector<BaseFloat> b_is; /// < [SSGMM]: Eq. (22) in techreport, \f$b_i^{(s)} = \exp(\u_i^T \v^{(s)})\f$
   Vector<BaseFloat> log_b_is; /// < [SSGMM] log of the above (more efficient to store both).
   std::vector<Vector<BaseFloat> > log_d_jms; ///< [SSGMM] normalizers per-speaker and per-substate;
                                              ///< indexed [j1][m].
@@ -201,17 +201,17 @@ struct Sgmm2LikelihoodCache {
   // you'll typically initialize with (sgmm.NumGroups(), sgmm.NumPdfs()).
   Sgmm2LikelihoodCache(int32 num_groups, int32 num_pdfs):
       substate_cache(num_groups), pdf_cache(num_pdfs), t(1) { }
-  
+
   struct SubstateCacheElement { // indexed by j1.
     SubstateCacheElement(): t(0) { }
     // The "likes" and "remaining_log_like" quantities store the
     // log-like of the data given each substate vector, in a redundant
     // way, so the likelihood is likes(i) * exp(remaining_log_like).
     // This is to get around problems with numerical range.
-    Vector<BaseFloat> likes; 
+    Vector<BaseFloat> likes;
     BaseFloat remaining_log_like;
     int32 t; // used in detecting "freshness."
-  };  
+  };
   struct PdfCacheElement { // indexed by j2.
     PdfCacheElement(): t(0) { }
     BaseFloat log_like;
@@ -234,7 +234,7 @@ class AmSgmm2 {
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &os, bool binary,
              SgmmWriteFlagsType write_params) const;
-  
+
   /// Checks the various components for correct sizes. With wrong sizes,
   /// assertion failure occurs. When the argument is set to true, dimensions of
   /// the various components are printed.
@@ -253,26 +253,26 @@ class AmSgmm2 {
   // initialization of the weights.  if self_weight == 1.0 it means we
   // just have 1 sub-state per group, otherwise we have one per pdf,
   // and each pdf has "self_weight" as its "own" weight.
-  
+
   /// Copies the global parameters from the supplied model, but sets
-  /// the state vectors to zero. 
+  /// the state vectors to zero.
   void CopyGlobalsInitVecs(const AmSgmm2 &other,
                            const std::vector<int32> &pdf2group,
                            BaseFloat self_weight);
-  
+
   /// Used to copy models (useful in update)
   void CopyFromSgmm2(const AmSgmm2 &other,
                     bool copy_normalizers,
                     bool copy_weights);  // copy_weights is to copy w_{jmi} [which are
    // stored, in the symmetric SSGMM.]
-  
+
   /// Computes the top-scoring Gaussian indices (used for pruning of later
   /// stages of computation). Returns frame log-likelihood given selected
   /// Gaussians from full UBM.
   BaseFloat GaussianSelection(const Sgmm2GselectConfig &config,
                               const VectorBase<BaseFloat> &data,
                               std::vector<int32> *gselect) const;
-  
+
   /// This needs to be called with each new frame of data, prior to accumulation
   /// or likelihood evaluation: it computes various pre-computed quantities.
   void ComputePerFrameVars(const VectorBase<BaseFloat> &data,
@@ -284,7 +284,7 @@ class AmSgmm2 {
   /// Computes the per-speaker derived vars; assumes vars->v_s is already
   /// set up.
   void ComputePerSpkDerivedVars(Sgmm2PerSpkDerivedVars *vars) const;
-  
+
   /// This does a likelihood computation for a given state using the
   /// pre-selected Gaussian components (in per_frame_vars).  If the
   /// log_prune parameter is nonzero (e.g. 5.0), the LogSumExp() stage is
@@ -296,7 +296,7 @@ class AmSgmm2 {
                           Sgmm2LikelihoodCache *cache, // be careful to call NextFrame() when needed!
                           Sgmm2PerSpkDerivedVars *spk_vars,
                           BaseFloat log_prune = 0.0) const;
-  
+
   /// Similar to LogLikelihood() function above, but also computes the posterior
   /// probabilities for the pre-selected Gaussian components and all substates.
   /// This one doesn't use caching to share computation for the groups of
@@ -334,7 +334,7 @@ class AmSgmm2 {
   /// Computes the data-independent terms in the log-likelihood computation
   /// for each Gaussian component and all substates. Eq. (31)
   void ComputeNormalizers();
-  
+
   /// Computes the weights w_jmi_, which is needed for likelihood evaluation
   /// with SSGMMs.
   void ComputeWeights();
@@ -345,10 +345,10 @@ class AmSgmm2 {
                             Matrix<BaseFloat> *xform,
                             Matrix<BaseFloat> *inv_xform,
                             Vector<BaseFloat> *diag_mean_scatter) const;
-  
+
   /// Various model dimensions.
   int32 NumPdfs() const { return pdf2group_.size(); }
-  int32 NumGroups() const { return group2pdf_.size(); } // relates to SCTM.  # pdf groups,
+  int32 NumGroups() const { return group2pdf_.size(); } // relates to SCTM.  \#pdf groups,
   // <= NumPdfs().
   int32 Pdf2Group(int32 j2) const; // relates to SCTM.
   int32 NumSubstatesForPdf(int32 j2) const {
@@ -366,19 +366,19 @@ class AmSgmm2 {
   bool HasSpeakerDependentWeights() const { return (u_.NumRows() != 0); }
 
   bool HasSpeakerSpace() const { return (!N_.empty()); }
-  
+
   void RemoveSpeakerSpace() { N_.clear(); u_.Resize(0, 0); w_jmi_.clear(); }
-  
+
   // [SSGMM] get the quantity d_{jm}^{(s)} and cache it with
   // spk vars if necessary.  Called in accumulation code.
   BaseFloat GetDjms(int32 j1, int32 m,
                     Sgmm2PerSpkDerivedVars *spk_vars) const;
-  
+
   /// Accessors
   const FullGmm & full_ubm() const { return full_ubm_; }
   const DiagGmm & diag_ubm() const { return diag_ubm_; }
-  
-  
+
+
   /// Templated accessors (used to accumulate in different precision)
   template<typename Real>
   void GetInvCovars(int32 gauss_index, SpMatrix<Real> *out) const;
@@ -386,7 +386,7 @@ class AmSgmm2 {
   template<typename Real>
   void GetSubstateMean(int32 j1, int32 m, int32 i,
                        VectorBase<Real> *mean_out) const;
-    
+
   template<typename Real>
   void GetNtransSigmaInv(std::vector< Matrix<Real> > *out) const;
 
@@ -394,7 +394,7 @@ class AmSgmm2 {
   void GetSubstateSpeakerMean(int32 j1, int32 substate, int32 gauss,
                               const Sgmm2PerSpkDerivedVars &spk,
                               VectorBase<Real> *mean_out) const;
-  
+
   template<typename Real>
   void GetVarScaledSubstateSpeakerMean(int32 j1, int32 substate,
                                        int32 gauss,
@@ -404,11 +404,11 @@ class AmSgmm2 {
   /// Computes quantities H = M_i Sigma_i^{-1} M_i^T.
   template<class Real>
   void ComputeH(std::vector< SpMatrix<Real> > *H_i) const;
-  
+
  protected:
   std::vector<int32> pdf2group_;
   std::vector<std::vector<int32> > group2pdf_; // the reverse map.
-  
+
   /// These contain the "background" model associated with the subspace GMM.
   DiagGmm diag_ubm_;
   FullGmm full_ubm_;
@@ -416,7 +416,7 @@ class AmSgmm2 {
   /// Globally shared parameters of the subspace GMM.  The various quantities
   /// are: I = number of Gaussians, D = data dimension, S = phonetic subspace
   /// dimension, T = speaker subspace dimension, J2 = number of pdfs, J1 =
-  /// number of groups of pdfs (for SCTM), #mix = number of substates [of state
+  /// number of groups of pdfs (for SCTM), \#mix = number of substates [of state
   /// j2 or state-group j1, depending on context].
 
   /// Inverse within-class (full) covariances; dim is [I][D][D].
@@ -429,16 +429,16 @@ class AmSgmm2 {
   Matrix<BaseFloat> w_;
   /// [SSGMM] Speaker-subspace weight projection vectors. Dimension is [I][T]
   Matrix<BaseFloat> u_;
-  
+
   /// The parameters in a particular SGMM state.
 
-  /// v_{jm}, per-state phonetic-subspace vectors. Dimension is [J1][#mix][S].
+  /// v_{jm}, per-state phonetic-subspace vectors. Dimension is [J1][\#mix][S].
   std::vector< Matrix<BaseFloat> > v_;
-  /// c_{jm}, mixture weights. Dimension is [J2][#mix]
+  /// c_{jm}, mixture weights. Dimension is [J2][\#mix]
   std::vector< Vector<BaseFloat> > c_;
-  /// n_{jim}, per-Gaussian normalizer. Dimension is [J1][I][#mix]
+  /// n_{jim}, per-Gaussian normalizer. Dimension is [J1][I][\#mix]
   std::vector< Matrix<BaseFloat> > n_;
-  /// [SSGMM] w_{jmi}, dimension is [J1][#mix][I].  Computed from w_ and v_.
+  /// [SSGMM] w_{jmi}, dimension is [J1][\#mix][I].  Computed from w_ and v_.
   std::vector< Matrix<BaseFloat> > w_jmi_;
 
   // Priors for MAP adaptation of M -- keeping them here for now but they may
@@ -455,17 +455,17 @@ class AmSgmm2 {
   /// assuming model correctness.
   void ComputeGammaI(const Vector<BaseFloat> &state_occupancies,
                      Vector<BaseFloat> *gamma_i) const;
-  
+
   /// Called inside SplitSubstates(); splits substates of one group.
   void SplitSubstatesInGroup(const Vector<BaseFloat> &pdf_occupancies,
                              const Sgmm2SplitSubstatesConfig &opts,
                              const SpMatrix<BaseFloat> &sqrt_H_sm,
                              int32 j1, int32 M);
-      
+
   /// Compute a subset of normalizers; used in multi-threaded implementation.
   void ComputeNormalizersInternal(int32 num_threads, int32 thread,
                                   int32 *entropy_count, double *entropy_sum);
-  
+
   /// The code below is called internally from LogLikelihood() and
   /// ComponentPosteriors().  It computes the per-Gaussian log-likelihods
   /// given each sub-state of the state.  Note: the mixture weights
@@ -475,12 +475,12 @@ class AmSgmm2 {
                                 Sgmm2PerSpkDerivedVars *spk_vars,
                                 Matrix<BaseFloat> *loglikes) const;
 
-  
+
   /// Initializes the matrices M_ and w_.
   void InitializeMw(int32 phn_subspace_dim,
                      const Matrix<BaseFloat> &norm_xform);
-  /// Initializes the matrices N_ and [if speaker_dependent_weights==true] u_ 
-  void InitializeNu(int32 spk_subspace_dim,                    
+  /// Initializes the matrices N_ and [if speaker_dependent_weights==true] u_
+  void InitializeNu(int32 spk_subspace_dim,
                     const Matrix<BaseFloat> &norm_xform,
                     bool speaker_dependent_weights);
   void InitializeVecsAndSubstateWeights(BaseFloat self_weight);
@@ -495,7 +495,7 @@ class AmSgmm2 {
   void ComputePdfMappings(); // sets up group2pdf_ from pdf2group_.
   /// maps from each pdf (index j2) to the corresponding group of
   /// pdfs (index j1) for SCTM.
-  
+
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmSgmm2);
   friend class ComputeNormalizersClass;
   friend class Sgmm2Project;

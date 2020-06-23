@@ -88,6 +88,7 @@ class RnnlmCoreComputer {
    @param [in] derived  Derived quantities from the minibatch.
    @param [in] word_embedding  The word embedding, with the same numbering as
                       used in the minibatch (may be subsampled at this point).
+   @param [in] computer
    @param [out] word_embedding_deriv  If non-NULL, the part of the derivative
                       w.r.t. the word-embedding that arises from the output
                       computation will be *added* to here.

@@ -92,7 +92,7 @@ class WordAlignLatticeLexiconInfo {
                         VectorHasher<int32> > LexiconMap;
 
   /// This is a map from the word-id (as present in the original lattice)
-  /// to the minimum and maximum #phones of lexicon entries for that word.
+  /// to the minimum and maximum # phones of lexicon entries for that word.
   /// It helps improve efficiency.
   typedef unordered_map<int32, std::pair<int32, int32> > NumPhonesMap;
 

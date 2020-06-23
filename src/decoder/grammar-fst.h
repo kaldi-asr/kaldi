@@ -128,8 +128,8 @@ class GrammarFst {
               allowed, although if it is with zero cost, it may blow up when you
               decode.  When an FST invokes another, the invocation point will
               have sequences of two special symbols which would be decoded as:
-                  (#nonterm:foo,p1) (#nonterm_reenter,p2)
-              where p1 and p2 (which may be real phones or #nonterm_bos)
+                  (\#nonterm:foo,p1) (\#nonterm_reenter,p2)
+              where p1 and p2 (which may be real phones or \#nonterm_bos)
               represent the phonetic left-context that we enter, and leave, the
               sub-graph with respectively.
      @param [in] ifsts   ifsts is a list of pairs (nonterminal-symbol,
@@ -234,7 +234,7 @@ class GrammarFst {
 
   /*
     This utility function sets up a map from "left-context phone", meaning
-    either a phone index or the index of the symbol #nonterm_bos, to
+    either a phone index or the index of the symbol \#nonterm_bos, to
     an arc-index leaving a particular state in an FST (i.e. an index
     that we could use to Seek() to the matching arc).
 
@@ -244,13 +244,13 @@ class GrammarFst {
                  entered.  It must have arcs with ilabels decodable as
                  (nonterminal_symbol, left_context_phone).  Will either be the
                  start state (if 'nonterminal_symbol' corresponds to
-                 #nonterm_begin), or an internal state (if 'nonterminal_symbol'
-                 corresponds to #nonterm_reenter).  The arc-indexes of those
+                 \#nonterm_begin), or an internal state (if 'nonterminal_symbol'
+                 corresponds to \#nonterm_reenter).  The arc-indexes of those
                  arcs will be the values we set in 'phone_to_arc'
       @param [in]  nonterminal_symbol  The index in phones.txt of the
                  nonterminal symbol we expect to be encoded in the ilabels
                  of the arcs leaving 'entry_state'.  Will either correspond
-                 to #nonterm_begin or #nonterm_reenter.
+                 to \#nonterm_begin or \#nonterm_reenter.
       @param [out] phone_to_arc  We output the map from left_context_phone
                  to the arc-index (i.e. the index we'd have to Seek() to
                  in an arc-iterator set up for the state 'entry_state).
@@ -270,12 +270,15 @@ class GrammarFst {
      if something went wrong or ilabel did not represent that (e.g. was less
      than kNontermBigNumber).
 
-       @param [in] the ilabel to be decoded.  Note: the type 'Label' will in practice be int.
-       @param [out] The nonterminal part of the ilabel after decoding.
+       @param [in] label the ilabel to be decoded.
+                Note: the type 'Label' will in practice be int.
+       @param [out] nonterminal_symbol
+                The nonterminal part of the ilabel after decoding.
                    Will be a value greater than nonterm_phones_offset_.
-       @param [out] The left-context-phone part of the ilabel after decoding.
+       @param [out] left_context_phone
+                The left-context-phone part of the ilabel after decoding.
                     Will either be a phone index, or the symbol corresponding
-                    to #nonterm_bos (meaning no left-context as we are at
+                    to \#nonterm_bos (meaning no left-context as we are at
                     the beginning of the sequence).
    */
   void DecodeSymbol(Label label,
@@ -291,7 +294,7 @@ class GrammarFst {
   ExpandedState *ExpandState(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is
-  // #nonterm_end, this implements ExpandState() for that case.
+  // \#nonterm_end, this implements ExpandState() for that case.
   ExpandedState *ExpandStateEnd(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is a
@@ -313,11 +316,11 @@ class GrammarFst {
 
       @param [in] leaving_arc  The arc leaving the first FST; must have
                      zero olabel.  The ilabel will have a nonterminal symbol
-                     like #nonterm:foo or #nonterm_end on it, encoded with a
+                     like \#nonterm:foo or \#nonterm_end on it, encoded with a
                      phonetic context, but we ignore the ilabel.
       @param [in] arriving_arc  The arc arriving in the second FST.
-                    It will have an ilabel consisted of either #nonterm_begin
-                    or #nonterm_enter combined with a left-context phone,
+                    It will have an ilabel consisted of either \#nonterm_begin
+                    or \#nonterm_enter combined with a left-context phone,
                     but we ignore the ilabel.
       @param [in] cost_correction  A correction term that we add to the
                     cost of the arcs.  This basically cancels out the
@@ -441,18 +444,18 @@ class GrammarFst {
     int32 parent_state;
 
     // 'parent_reentry_arcs' is a map from left-context-phone (i.e. either a
-    // phone index or #nonterm_bos), to an arc-index, which we could use to
+    // phone index or \#nonterm_bos), to an arc-index, which we could use to
     // Seek() in an arc-iterator for state parent_state in the FST-instance
     // 'parent_instance'.  It's set up when we create this FST instance.  (The
     // arcs used to enter this instance are not located here, they can be
     // located in entry_arcs_[instance_id]).  We make use of reentry_arcs when
-    // we expand states in this FST that have #nonterm_end on their arcs,
+    // we expand states in this FST that have \#nonterm_end on their arcs,
     // leading to final-states, which signal a return to the parent
     // FST-instance.
     std::unordered_map<int32, int32> parent_reentry_arcs;
   };
 
-  // The integer id of the symbol #nonterm_bos in phones.txt.
+  // The integer id of the symbol \#nonterm_bos in phones.txt.
   int32 nonterm_phones_offset_;
 
   // The top-level FST passed in by the user; contains the start state and
@@ -461,17 +464,17 @@ class GrammarFst {
   std::shared_ptr<const ConstFst<StdArc> > top_fst_;
 
   // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
-  // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
+  // nonterminal symbol as numbered in phones.txt (e.g. \#nonterm:foo), and
   // 'fst' is the corresponding FST.
   std::vector<std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > > > ifsts_;
 
-  // Maps from the user-defined nonterminals like #nonterm:foo as numbered
+  // Maps from the user-defined nonterminals like \#nonterm:foo as numbered
   // in phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
   std::unordered_map<int32, int32> nonterminal_map_;
 
   // entry_arcs_ will have the same dimension as ifsts_.  Each entry_arcs_[i]
   // is a map from left-context phone (i.e. either a phone-index or
-  // #nonterm_bos) to the corresponding arc-index leaving the start-state in
+  // \#nonterm_bos) to the corresponding arc-index leaving the start-state in
   // the FST 'ifsts_[i].second'.
   // We populate this only on demand as each one is needed (except for the
   // first one, which we populate immediately as a kind of sanity check).
@@ -625,14 +628,14 @@ void CopyToVectorFst(GrammarFst *grammar_fst,
        transitions as needed, that the state did not previously have a
        final-prob.
      - For arcs that are final arcs in an FST that represents a nonterminal
-       (these arcs would have #nonterm_exit on them), we ensure that the
+       (these arcs would have \#nonterm_exit on them), we ensure that the
        states that they transition to have unit final-prob (i.e. final-prob
        equal to One()), by incorporating any final-prob into the arc itself.
        This avoids the GrammarFst code having to inspect those final-probs
        when expanding states.
 
      @param [in] nonterm_phones_offset   The integer id of
-                the symbols #nonterm_bos in the phones.txt file.
+                the symbols \#nonterm_bos in the phones.txt file.
      @param [in,out] fst  The FST to be (slightly) modified.
  */
 void PrepareForGrammarFst(int32 nonterm_phones_offset,

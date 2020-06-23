@@ -172,8 +172,6 @@ class DecodableNnetSimpleLooped {
      @param [in] feats  The input feature matrix.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
-     @param [in] ivector If you are using iVectors estimated in batch mode,
-                         a pointer to the iVector, else NULL.
      @param [in] online_ivectors
                         If you are using iVectors estimated 'online'
                         a pointer to the iVectors, else NULL.
@@ -282,9 +280,6 @@ class DecodableAmNnetSimpleLooped: public DecodableInterface {
                         mapping from transition-id (which is an arg to
                         LogLikelihood()) to pdf-id (which is used internally).
      @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
-                         We
-     @param [in] ivector If you are using iVectors estimated in batch mode,
-                         a pointer to the iVector, else NULL.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
      @param [in] online_ivectors

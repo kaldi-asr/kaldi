@@ -35,10 +35,10 @@ namespace nnet2 {
 /**
   Does the basic neural net computation, on a sequence of data (e.g.
   an utterance).  If pad_input==true we'll pad the input with enough
-  frames of context, and the output will be a matrix of #frames by
+  frames of context, and the output will be a matrix of \#frames by
   the output-dim of the network, typically representing state-level
   posteriors.   If pad_input==false we won't do this and the
-  output will have a lower #frames than the input; we lose
+  output will have a lower \#frames than the input; we lose
   nnet.LeftContext() at the left and nnet.RightContext() at the
   output.
 */
@@ -49,10 +49,10 @@ void NnetComputation(const Nnet &nnet,
 /**
   Does the basic neural net computation, on a sequence of data (e.g.
   an utterance).  This variant of NnetComputation chunks the input
-  according to chunk_size and does the posterior computation chunk 
+  according to chunk_size and does the posterior computation chunk
   by chunk.  This allows the computation to be performed on the GPU
   when the input matrix is very large.  Input is padded with enough
-  frames of context so that the output will be a matrix with 
+  frames of context so that the output will be a matrix with
   input.NumRows().
 */
 void NnetComputationChunked(const Nnet &nnet,

@@ -75,7 +75,7 @@ namespace kaldi {
 \verbatim
  transform-feats <transform> <input-feats> <output-feats>
 \endverbatim
-  where <input-feats> is an rspecifier, <output-feats> is an wspecifier, and <transform>
+  where \<input-feats\> is an rspecifier, \<output-feats\> is an wspecifier, and \<transform\>
   may be an rxfilename or an rspecifier (see \ref io_sec_specifiers and \ref io_sec_xfilename).
   The program will work out whether the transform
   is linear or affine based on whether or not the matrix's number of columns equals the

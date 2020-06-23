@@ -45,7 +45,7 @@ static void CombineNnets(const Vector<BaseFloat> &scale_params,
 
 /// Returns an integer saying which model to use:
 /// either 0 ... num-models - 1 for the best individual model,
-/// or (#models) for the average of all of them.
+/// or (\#models) for the average of all of them.
 static int32 GetInitialModel(
     const std::vector<NnetExample> &validation_set,
     const std::vector<Nnet> &nnets) {
