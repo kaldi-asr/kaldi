@@ -127,7 +127,7 @@ if [ $stage -le 4 ]; then
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
     local/decode_diarized.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
-      exp/${datadir}_diarization/rttm.vb data/$datadir data/lang_test_tgsmall \
+      exp/${datadir}_diarization/rttm data/$datadir data/lang_test_tgsmall \
       exp/chain${nnet3_affix}/tdnn_${affix}_sp exp/nnet3${nnet3_affix} \
       data/${datadir}_diarized || exit 1
   done
