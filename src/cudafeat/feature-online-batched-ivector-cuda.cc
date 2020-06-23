@@ -252,8 +252,12 @@ void BatchedIvectorExtractorCuda::LDATransform(const CuMatrix<BaseFloat> &feats,
     lda_feats->AddMatMat(1.0, feats, kNoTrans, cu_lda_, kTrans, 0.0);
   } else {
     // affine transformation
+    int lda_rows = cu_lda_.NumRows();
+    int lda_cols = cu_lda_.NumCols();
+    // create submatrix which removes last column
+    CuSubMatrix<BaseFloat> cu_lda(cu_lda_, 0, lda_rows, 0, lda_cols - 1);
     lda_feats->CopyRowsFromVec(offset_);
-    lda_feats->AddMatMat(1.0, feats, kNoTrans, cu_lda_, kTrans, 1.0);
+    lda_feats->AddMatMat(1.0, feats, kNoTrans, cu_lda, kTrans, 1.0);
   }
 }
 
