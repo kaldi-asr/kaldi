@@ -124,10 +124,10 @@ if [ ! -f $data/text ] && ! $no_text; then
 fi
 
 num_utts=`cat $tmpdir/utts | wc -l`
-if [ -f $data/text ]; then
+if ! $no_text; then
   if ! $non_print; then
     # compatible with bin/align-text
-    n_non_print=$(grep -c '[^[:print:][:space:]]' $data/text) && \
+    n_non_print=$(LC_ALL="C.UTF-8" grep -c '[^[:print:][:space:]]' $data/text) && \
     echo "$0: text contains $n_non_print lines with non-printable characters" &&\
     exit 1;
   fi
