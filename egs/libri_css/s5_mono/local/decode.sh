@@ -111,7 +111,7 @@ if [ $stage -le 3 ]; then
 
     [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
 
-    local/diarize_bhmm.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
+    local/diarize_spectral.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir} \
