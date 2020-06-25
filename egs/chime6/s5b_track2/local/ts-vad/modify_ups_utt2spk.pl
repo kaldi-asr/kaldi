@@ -2,6 +2,9 @@
 # Copyright     2020  Ivan Medennikov (STC-innovations Ltd)
 # Apache 2.0.
 
+# This script splits speakers in utt2spk file, 
+# leaving $ups utterances for each sub-speaker.
+
 ($filein,$ups,$fileout)=@ARGV;
 
 open(fidin, "<$filein") or die "can't open $filein : $!";

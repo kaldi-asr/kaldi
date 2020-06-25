@@ -17,6 +17,7 @@ nnet_stage=-10
 sad_stage=0
 diarizer_stage=0
 decode_stage=0
+ts_vad_stage=0
 enhancement=beamformit # for a new enhancement method,
                        # change this variable and decode stage
 decode_only=false
@@ -25,12 +26,6 @@ snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
 
-# pre-trained TS-VAD model
-ts_vad_name=ts-vad_b.tar.gz
-ts_vad_link=https://github.com/yuri-hohlov/ts-vad-data/raw/master/${ts_vad_name}
-ts_vad_dir=exp/ts-vad_b
-ivector_dir=exp/nnet3_b
-
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -38,7 +33,7 @@ ivector_dir=exp/nnet3_b
 . ./path.sh
 
 if [ $decode_only == "true" ]; then
-  stage=18
+  stage=19
 fi
 
 set -e # exit on error
@@ -56,6 +51,10 @@ audio_dir=${chime6_corpus}/audio
 train_set=train_worn_simu_u400k
 sad_train_set=train_worn_u400k
 test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
+
+# TS-VAD options
+ts_vad_dir=exp/ts-vad_1a
+ivector_dir=exp/nnet3_${train_set}_cleaned_rvb
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1;
@@ -292,15 +291,27 @@ if [ $stage -le 17 ]; then
 fi
 
 ##########################################################################
-# DECODING: In track 2, we are given raw utterances without segment
-# or speaker information, so we have to decode the whole pipeline, i.e.,
-# SAD -> Diarization (x-vectors + Spectral Clustering) -> TS-VAD Diarization
-# GSS -> ASR.
-# This is done in the local/decode_ts-vad.sh script.
+# TS-VAD MODEL TRAINING
+# You can also download a pretrained diarization model using:
+# ts_vad_name=ts-vad_1a.tar.gz
+# ts_vad_link=https://github.com/yuri-hohlov/ts-vad-data/raw/master/${ts_vad_name}
+# [ ! -f $ts_vad_name ] && wget -O $ts_vad_name $ts_vad_link
+# [ ! -d $ts_vad_dir ] && tar -zxvf $ts_vad_name -C $(dirname $ts_vad_dir)
 ##########################################################################
 if [ $stage -le 18 ]; then
-  [ ! -f $ts_vad_name ] && wget -O $ts_vad_name $ts_vad_link
-  [ ! -d $ts_vad_dir ] && tar -zxvf $ts_vad_name -C $(dirname $ts_vad_dir)
+  local/train_ts-vad.sh --stage $ts_vad_stage \
+    --nnet3-affix _${train_set}_cleaned_rvb \
+    --basedata ${train_set}_cleaned_sp
+fi
+
+##########################################################################
+# DECODING: In track 2, we are given raw utterances without segment
+# or speaker information, so we have to decode the whole pipeline, i.e.,
+# SAD -> Diarization (x-vectors + Spectral Clustering) ->
+# 3 iterations of TS-VAD Diarization -> GSS -> ASR.
+# This is done in the local/decode_ts-vad.sh script.
+##########################################################################
+if [ $stage -le 19 ]; then
   local/decode_ts-vad.sh --stage $decode_stage \
     --ts-vad-dir $ts_vad_dir --ivector-dir $ivector_dir \
     --enhancement $enhancement \

@@ -237,6 +237,7 @@ if [ $stage -le 5 ]; then
     local/ts-vad/diarize_TS-VAD_it1.sh --cmd "$train_cmd" \
       --ref-rttm $ref_rttm \
       --ivector-affix $ivector_affix \
+      --thr 0.4 \
       $ts_vad_dir $ivector_dir ${datadir}_diarized \
       $ts_vad_dir/it${it}_${ivector_affix} || exit 1
 
@@ -245,6 +246,9 @@ if [ $stage -le 5 ]; then
     while [ $it -lt $ts_vad_num_iters ]; do
       ivector_affix=it${it}-init
       it=$((it+1))
+      mt=0.5
+      t=0.5
+      [ $it == "2" ] && mt=0 && t=0.5
       local/ts-vad/diarize_TS-VAD_it2.sh --cmd "$train_cmd" \
         --ups $ups \
         --ref-rttm $ref_rttm \
@@ -252,6 +256,9 @@ if [ $stage -le 5 ]; then
         --ivector-affix $ivector_affix \
         --channels "CH1 CH2 CH3 CH4" \
         --audio_dir $audio_dir \
+        --mt $mt \
+        --t $t \
+        --thr 0.4 \
         $ts_vad_dir $ivector_dir $initdir \
         $ts_vad_dir/it${it}_${ivector_affix} || exit 1
       initdir=$ts_vad_dir/it${it}_${ivector_affix}/${mode}_20ch-AVG_hires_split10000_${ups}ups
@@ -290,14 +297,14 @@ if [ $stage -le 6 ]; then
     for dset in ${test_sets}; do
       datadir=data/${dset}_ts-vad-it${ts_vad_num_iters}-diarized
       dset_type=`echo $dset | awk -F "_" '{print $1;}'`
-      [ ! -f ${datadir}_hires/chime6.json ] && local/get_cache_chime6.sh ${datadir}_hires/segments $dset_type $audio_dir/$dset_type ${datadir}_hires/chime6.json
+      [ ! -f ${datadir}_hires/chime6.json ] && python3 local/get_cache_chime6.py ${datadir}_hires/segments $dset_type $audio_dir/$dset_type ${datadir}_hires/chime6.json
       [ ! -d pb_chime5/cache ] && mkdir pb_chime5/cache
       cp -f ${datadir}_hires/chime6.json pb_chime5/cache/chime6.json
 
       enhanced_dir=data/gss_${gss_type}${pref_enhan}_ts-vad-it${ts_vad_num_iters}-diarized
       if [ ! -f ${enhanced_dir}/.${dset_type}.done ]; then
         local/run_gss.sh \
-          --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 160 \
+          --cmd "$train_cmd --max-jobs-run $gss_nj" --nj 512 \
           --bss_iterations $bss_iterations \
           --context_samples $context_samples \
           --multiarray $multiarray \

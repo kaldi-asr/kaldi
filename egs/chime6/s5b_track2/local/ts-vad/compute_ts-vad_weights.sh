@@ -7,7 +7,7 @@
 #           2020  Ivan Medennikov (STC-innovations Ltd)
 # Apache 2.0
 
-# Computes training alignments using nnet3 DNN, with output to lattices.
+# Computes TS-VAD weights using raw nnet3 network.
 
 # Begin configuration section.
 nj=4
