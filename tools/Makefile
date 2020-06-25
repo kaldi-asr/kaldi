@@ -86,12 +86,6 @@ else
 endif
 
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs
-	# modify src/extensions/far/Makefile.am to make it work with gcc >= 5, while keep its timestamp to avoid autoreconf
-	$(eval make_file=openfst-$(OPENFST_VERSION)/src/extensions/far/Makefile.in)
-	$(eval STAMP="$(shell LC_ALL=C date -r $(make_file))")
-	sed -i -r 's~am__DEPENDENCIES_1 =$$~& libfstfar.la~' $(make_file)
-	sed -i -E 's~(@LDADD = libfstfarscript.la) \.\.~\1 libfstfar.la ..~' $(make_file)
-	touch -d $(STAMP) $(make_file)
 	cd openfst-$(OPENFST_VERSION)/ && \
 	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS) $(openfst_add_CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
