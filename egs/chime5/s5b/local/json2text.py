@@ -3,36 +3,32 @@
 # Copyright 2017 Johns Hopkins University (Shinji Watanabe)
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import argparse
 import json
+import argparse
 import logging
 import sys
-from builtins import str
 
 
 def hms_to_seconds(hms):
-    hour = hms.split(":")[0]
-    minute = hms.split(":")[1]
-    second = hms.split(":")[2].split(".")[0]
+    hour = hms.split(':')[0]
+    minute = hms.split(':')[1]
+    second = hms.split(':')[2].split('.')[0]
 
     # .xx (10 ms order)
-    ms10 = hms.split(":")[2].split(".")[1]
+    ms10 = hms.split(':')[2].split('.')[1]
 
     # total seconds
     seconds = int(hour) * 3600 + int(minute) * 60 + int(second)
 
-    return "{:07d}".format(int(str(seconds) + ms10))
+    return '{:07d}'.format(int(str(seconds) + ms10))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("json", type=str, help="JSON transcription file")
-    parser.add_argument(
-        "--mictype",
-        type=str,
-        choices=["ref", "worn", "u01", "u02", "u03", "u04", "u05", "u06"],
-        help="Type of microphones",
-    )
+    parser.add_argument('json', type=str, help='JSON transcription file')
+    parser.add_argument('--mictype', type=str,
+                        choices=['ref', 'worn', 'u01', 'u02', 'u03', 'u04', 'u05', 'u06'],
+                        help='Type of microphones')
     args = parser.parse_args()
 
     # logging info
@@ -40,41 +36,37 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format=log_format)
 
     logging.debug("reading %s", args.json)
-    with open(args.json, "rt", encoding="utf-8") as f:
+    with open(args.json, 'rt', encoding="utf-8") as f:
         j = json.load(f)
 
     for x in j:
-        if "[redacted]" not in x["words"]:
-            session_id = x["session_id"]
-            speaker_id = x["speaker"]
-            if args.mictype == "ref":
-                mictype = x["ref"]
-            elif args.mictype == "worn":
-                mictype = "original"
+        if '[redacted]' not in x['words']:
+            session_id = x['session_id']
+            speaker_id = x['speaker']
+            if args.mictype == 'ref':
+                mictype = x['ref']
+            elif args.mictype == 'worn':
+                mictype = 'original'
             else:
-                mictype = args.mictype.upper()  # convert from u01 to U01
+                mictype = args.mictype.upper() # convert from u01 to U01
 
             # add location tag for scoring (only for dev and eval sets)
-            if "location" in list(x.keys()):
-                location = x["location"].upper()
+            if 'location' in x.keys():
+                location = x['location'].upper()
             else:
-                location = "NOLOCATION"
+                location = 'NOLOCATION'
 
-            start_time = x["start_time"][mictype]
-            end_time = x["end_time"][mictype]
-
+            start_time = x['start_time'][mictype]
+            end_time = x['end_time'][mictype]
+        
             # remove meta chars and convert to lower
-            words = (
-                x["words"]
-                .replace('"', "")
-                .replace(".", "")
-                .replace("?", "")
-                .replace(",", "")
-                .replace(":", "")
-                .replace(";", "")
-                .replace("!", "")
-                .lower()
-            )
+            words = x['words'].replace('"', '')\
+                              .replace('.', '')\
+                              .replace('?', '')\
+                              .replace(',', '')\
+                              .replace(':', '')\
+                              .replace(';', '')\
+                              .replace('!', '').lower()
 
             # remove multiple spaces
             words = " ".join(words.split())
@@ -83,10 +75,10 @@ if __name__ == "__main__":
             start_time = hms_to_seconds(start_time)
             end_time = hms_to_seconds(end_time)
 
-            uttid = speaker_id + "_" + session_id
-            if not args.mictype == "worn":
-                uttid += "_" + mictype
-            uttid += "_" + location + "-" + start_time + "-" + end_time
+            uttid = speaker_id + '_' + session_id
+            if not args.mictype == 'worn':
+                uttid += '_' + mictype
+            uttid += '_' + location + '-' + start_time + '-' + end_time
 
             if end_time > start_time:
-                sys.stdout.buffer.write((uttid + " " + words + "\n").encode("utf-8"))
+                sys.stdout.buffer.write((uttid + ' ' + words + '\n').encode("utf-8"))

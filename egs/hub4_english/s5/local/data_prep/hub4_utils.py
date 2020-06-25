@@ -33,7 +33,8 @@ def parse_uem_line(reco, line):
     start_time = float(parts[2])
     end_time = float(parts[3])
 
-    utt = "{0}-{1:06d}-{2:06d}".format(reco, int(start_time * 100), int(end_time * 100))
+    utt = "{0}-{1:06d}-{2:06d}".format(reco, int(start_time * 100),
+                                       int(end_time * 100))
     return "{0} {1} {2} {3}".format(utt, reco, start_time, end_time)
 
 
@@ -66,18 +67,16 @@ def parse_cmu_seg_line(line, prepend_reco_to_spk=False):
     end_time = float(parts[4])
 
     if prepend_reco_to_spk:
-        spk = reco + "-" + spk
-        utt = "{spk}-{0:06d}-{1:06d}".format(
-            int(start_time * 100), int(end_time * 100), spk=spk
-        )
+        spk = reco + '-' + spk
+        utt = "{spk}-{0:06d}-{1:06d}".format(int(start_time * 100),
+                                             int(end_time * 100), spk=spk)
     else:
-        utt = "{spk}-{reco}-{0:06d}-{1:06d}".format(
-            int(start_time * 100), int(end_time * 100), reco=reco, spk=spk
-        )
+        utt = "{spk}-{reco}-{0:06d}-{1:06d}".format(int(start_time * 100),
+                                                    int(end_time * 100),
+                                                    reco=reco, spk=spk)
 
     segment_line = "{0} {1} {st:.3f} {end:.3f}".format(
-        utt, reco, st=start_time, end=end_time
-    )
+        utt, reco, st=start_time, end=end_time)
     utt2spk_line = "{0} {1}".format(utt, spk)
 
     return (segment_line, utt2spk_line)
@@ -100,13 +99,12 @@ def normalize_csr_transcript(text, noise_word, spoken_noise_word):
 
     # Remove unclear speech markings
     text = re.sub(r"\(\(([^)]*)\)\)", r"\1", text)
-    text = re.sub(r"#", "", text)  # Remove overlapped speech markings
+    text = re.sub(r"#", "", text)   # Remove overlapped speech markings
     # Remove invented word markings
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     # Replace speaker-made noises with <SPOKEN_NOISE>
-    text = re.sub(
-        r"\[INHALING\]|\[COUGH\]|\[THROAT_CLEARING\]|\[SIGN\]", spoken_noise_word, text
-    )
+    text = re.sub(r"\[INHALING\]|\[COUGH\]|\[THROAT_CLEARING\]|\[SIGN\]",
+                  spoken_noise_word, text)
     # Replace noise with <NOISE>
     text = re.sub(r"\[[^]]+\]", noise_word, text)
     text = re.sub(r"\+([^+]+)\+", r"\1", text)

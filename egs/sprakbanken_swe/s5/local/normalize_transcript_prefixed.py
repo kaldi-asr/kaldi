@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""
+'''
 # Copyright 2013-2014 Mirsk Digital Aps  (Author: Andreas Kirkedal)
 # Copyright 2016 KTH Royal Institute of Technology (Author: Emelie Kullmann)
 
@@ -15,31 +15,29 @@
 # MERCHANTABLITY OR NON-INFRINGEMENT.
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
-"""
+'''
 
 
 import codecs
-import re
 import sys
+import re
 
 ## Global vars
 
-normdict = {
-    ",": " ",
-    ":": " ",
-    ";": " ",
-    "?": " ",
-    "!": " ",
-    "\\": " ",
-    "\t": " ",
-    ".": "",
-}
+normdict = {",": " ",
+            ":": " ",
+            ";": " ",
+            "?": " ",
+            "!": " ",
+            "\\": " ",
+            "\t": " ",
+            ".": ""
+            }
 
 t_table = str.maketrans(normdict)
 
 
 ## Utility function
-
 
 def getuttid_text(line):
     return line.split(" ", 1)
@@ -52,11 +50,11 @@ fid = codecs.open(sys.argv[2], "w", "utf8")
 outtext = codecs.open(sys.argv[3], "w", "utf8")
 
 for line in textin:
-    utt_id, text = getuttid_text(line)
-    normtext1 = text.translate(t_table)
-    normtext2 = re.sub(r"  +", " ", normtext1.strip())
-    fid.write(utt_id + "\n")
-    outtext.write(normtext2.upper() + "\n")
+        utt_id, text = getuttid_text(line)
+        normtext1 = text.translate(t_table)
+        normtext2 = re.sub(r'  +', ' ', normtext1.strip())
+        fid.write(utt_id + "\n")
+        outtext.write(normtext2.upper() + "\n")
 
 textin.close()
 outtext.close()

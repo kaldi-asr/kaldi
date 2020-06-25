@@ -1,3 +1,5 @@
+
+
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
 #           2017 Johns Hopkins University (author: Daniel Povey)
@@ -7,8 +9,8 @@
 commonly used in many kaldi python scripts.
 """
 
-from __future__ import division, print_function
-
+from __future__ import print_function
+from __future__ import division
 import argparse
 import logging
 import math
@@ -16,14 +18,9 @@ import os
 import subprocess
 import sys
 import threading
-from builtins import object, range, str
-
-from future import standard_library
-
-standard_library.install_aliases()
 
 try:
-    import _thread as thread_module
+    import thread as thread_module
 except:
     import _thread as thread_module
 
@@ -35,12 +32,12 @@ def send_mail(message, subject, email_id):
     try:
         subprocess.Popen(
             'echo "{message}" | mail -s "{subject}" {email}'.format(
-                message=message, subject=subject, email=email_id
-            ),
-            shell=True,
-        )
+                message=message,
+                subject=subject,
+                email=email_id), shell=True)
     except Exception as e:
-        logger.info("Unable to send mail due to error:\n {error}".format(error=str(e)))
+        logger.info("Unable to send mail due to error:\n {error}".format(
+                        error=str(e)))
         pass
 
 
@@ -61,7 +58,8 @@ class StrToBoolAction(argparse.Action):
         try:
             setattr(namespace, self.dest, str_to_bool(values))
         except ValueError:
-            raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
+            raise Exception(
+                "Unknown value {0} for --{1}".format(values, self.dest))
 
 
 class NullstrToNoneAction(argparse.Action):
@@ -86,7 +84,6 @@ class smart_open(object):
     e.g.: with smart_open(filename, 'w') as fh:
             print ("foo", file=fh)
     """
-
     def __init__(self, filename, mode="r"):
         self.filename = filename
         self.mode = mode
@@ -116,7 +113,6 @@ class smart_open(object):
     e.g.: with smart_open(filename, 'w') as fh:
             print ("foo", file=fh)
     """
-
     def __init__(self, filename, mode="r"):
         self.filename = filename
         self.mode = mode
@@ -158,12 +154,11 @@ def execute_command(command):
     p = subprocess.Popen(command, shell=True)
     p.communicate()
     if p.returncode is not 0:
-        raise Exception(
-            "Command exited with status {0}: {1}".format(p.returncode, command)
-        )
+        raise Exception("Command exited with status {0}: {1}".format(
+                p.returncode, command))
 
 
-def get_command_stdout(command, require_zero_status=True):
+def get_command_stdout(command, require_zero_status = True):
     """ Executes a command and returns its stdout output as a string.  The
         command is executed with shell=True, so it may contain pipes and
         other shell constructs.
@@ -174,16 +169,20 @@ def get_command_stdout(command, require_zero_status=True):
 
         See also: execute_command, background_command
     """
-    p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+    p = subprocess.Popen(command, shell=True,
+                         stdout=subprocess.PIPE)
 
     stdout = p.communicate()[0]
     if p.returncode is not 0:
-        output = "Command exited with status {0}: {1}".format(p.returncode, command)
+        output = "Command exited with status {0}: {1}".format(
+            p.returncode, command)
         if require_zero_status:
             raise Exception(output)
         else:
             logger.warning(output)
     return stdout if type(stdout) is str else stdout.decode()
+
+
 
 
 def wait_for_background_commands():
@@ -195,8 +194,7 @@ def wait_for_background_commands():
         if not t == threading.current_thread():
             t.join()
 
-
-def background_command(command, require_zero_status=False):
+def background_command(command, require_zero_status = False):
     """Executes a command in a separate thread, like running with '&' in the shell.
        If you want the program to die if the command eventually returns with
        nonzero status, then set require_zero_status to True.  'command' will be
@@ -218,11 +216,10 @@ def background_command(command, require_zero_status=False):
     """
 
     p = subprocess.Popen(command, shell=True)
-    thread = threading.Thread(
-        target=background_command_waiter, args=(command, p, require_zero_status)
-    )
-    thread.daemon = True  # make sure it exits if main thread is terminated
-    # abnormally.
+    thread = threading.Thread(target=background_command_waiter,
+                              args=(command, p, require_zero_status))
+    thread.daemon=True  # make sure it exits if main thread is terminated
+                        # abnormally.
     thread.start()
     return thread
 
@@ -234,8 +231,7 @@ def background_command_waiter(command, popen_object, require_zero_status):
     popen_object.communicate()
     if popen_object.returncode is not 0:
         str = "Command exited with status {0}: {1}".format(
-            popen_object.returncode, command
-        )
+            popen_object.returncode, command)
         if require_zero_status:
             logger.error(str)
             # thread.interrupt_main() sends a KeyboardInterrupt to the main
@@ -247,10 +243,9 @@ def background_command_waiter(command, popen_object, require_zero_status):
 
 def get_number_of_leaves_from_tree(alidir):
     stdout = get_command_stdout(
-        "tree-info {0}/tree 2>/dev/null | grep num-pdfs".format(alidir)
-    )
+        "tree-info {0}/tree 2>/dev/null | grep num-pdfs".format(alidir))
     parts = stdout.split()
-    assert parts[0] == "num-pdfs"
+    assert(parts[0] == "num-pdfs")
     num_leaves = int(parts[1])
     if num_leaves == 0:
         raise Exception("Number of leaves is 0")
@@ -259,11 +254,10 @@ def get_number_of_leaves_from_tree(alidir):
 
 def get_number_of_leaves_from_model(dir):
     stdout = get_command_stdout(
-        "am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir)
-    )
+        "am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
     parts = stdout.split()
     # number of pdfs 7115
-    assert " ".join(parts[0:3]) == "number of pdfs"
+    assert(' '.join(parts[0:3]) == "number of pdfs")
     num_leaves = int(parts[3])
     if num_leaves == 0:
         raise Exception("Number of leaves is 0")
@@ -272,11 +266,10 @@ def get_number_of_leaves_from_model(dir):
 
 def get_number_of_jobs(alidir):
     try:
-        num_jobs = int(open("{0}/num_jobs".format(alidir)).readline().strip())
+        num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
     except (IOError, ValueError) as e:
-        logger.error(
-            "Exception while reading the " "number of alignment jobs: ", exc_info=True
-        )
+        logger.error("Exception while reading the "
+                     "number of alignment jobs: ", exc_info=True)
         raise SystemExit(1)
     return num_jobs
 
@@ -286,39 +279,35 @@ def get_ivector_dim(ivector_dir=None):
         return 0
     stdout_val = get_command_stdout(
         "feat-to-dim --print-args=false "
-        "scp:{dir}/ivector_online.scp -".format(dir=ivector_dir)
-    )
+        "scp:{dir}/ivector_online.scp -".format(dir=ivector_dir))
     ivector_dim = int(stdout_val)
     return ivector_dim
-
 
 def get_ivector_extractor_id(ivector_dir=None):
     if ivector_dir is None:
         return None
     stdout_val = get_command_stdout(
-        "steps/nnet2/get_ivector_id.sh {dir}".format(dir=ivector_dir)
-    )
+        "steps/nnet2/get_ivector_id.sh {dir}".format(dir=ivector_dir))
 
     if (stdout_val.strip() == "") or (stdout_val is None):
         return None
 
     return stdout_val.strip()
 
-
 def get_feat_dim(feat_dir):
     if feat_dir is None:
         return 0
     stdout_val = get_command_stdout(
-        "feat-to-dim --print-args=false " "scp:{data}/feats.scp -".format(data=feat_dir)
-    )
+        "feat-to-dim --print-args=false "
+        "scp:{data}/feats.scp -".format(data=feat_dir))
     feat_dim = int(stdout_val)
     return feat_dim
 
 
 def get_feat_dim_from_scp(feat_scp):
     stdout_val = get_command_stdout(
-        "feat-to-dim --print-args=false " "scp:{feat_scp} -".format(feat_scp=feat_scp)
-    )
+        "feat-to-dim --print-args=false "
+        "scp:{feat_scp} -".format(feat_scp=feat_scp))
     feat_dim = int(stdout_val)
     return feat_dim
 
@@ -336,22 +325,20 @@ def read_kaldi_matrix(matrix_file):
         if not (first_field == "[" and last_field == "]"):
             raise Exception(
                 "Kaldi matrix file has incorrect format, "
-                "only text format matrix files can be read by this script"
-            )
+                "only text format matrix files can be read by this script")
         for i in range(len(lines)):
             lines[i] = [int(float(x)) for x in lines[i]]
         return lines
     except IOError:
-        raise Exception(
-            "Error while reading the kaldi matrix file " "{0}".format(matrix_file)
-        )
+        raise Exception("Error while reading the kaldi matrix file "
+                        "{0}".format(matrix_file))
 
 
 def write_kaldi_matrix(output_file, matrix):
     """This function writes the matrix stored as a list of lists
     into 'output_file' in kaldi matrix text format.
     """
-    with open(output_file, "w") as f:
+    with open(output_file, 'w') as f:
         f.write("[ ")
         num_rows = len(matrix)
         if num_rows == 0:
@@ -360,9 +347,8 @@ def write_kaldi_matrix(output_file, matrix):
 
         for row_index in range(len(matrix)):
             if num_cols != len(matrix[row_index]):
-                raise Exception(
-                    "All the rows of a matrix are expected to " "have the same length"
-                )
+                raise Exception("All the rows of a matrix are expected to "
+                                "have the same length")
             f.write(" ".join([str(x) for x in matrix[row_index]]))
             if row_index != num_rows - 1:
                 f.write("\n")
@@ -377,33 +363,32 @@ def write_matrix_ascii(file_or_fd, mat, key=None):
     as the index field.
     """
     try:
-        fd = open(file_or_fd, "w")
+        fd = open(file_or_fd, 'w')
     except TypeError:
         # 'file_or_fd' is opened file descriptor,
         fd = file_or_fd
 
     try:
         if key is not None:
-            print("{0} [".format(key), file=fd)  # ark-files have keys (utterance-id)
+            print ("{0} [".format(key),
+                   file=fd)  # ark-files have keys (utterance-id)
         else:
-            print(" [", file=fd)
+            print (" [", file=fd)
 
         num_cols = 0
         for i, row in enumerate(mat):
-            line = " ".join(["{0:f}".format(x) for x in row])
+            line = ' '.join(["{0:f}".format(x) for x in row])
             if i == 0:
                 num_cols = len(row)
             elif len(row) != num_cols:
-                raise Exception(
-                    "All the rows of a matrix are expected to " "have the same length"
-                )
+                raise Exception("All the rows of a matrix are expected to "
+                                "have the same length")
 
             if i == len(mat) - 1:
                 line += " ]"
-            print(line, file=fd)
+            print (line, file=fd)
     finally:
-        if fd is not file_or_fd:
-            fd.close()
+        if fd is not file_or_fd : fd.close()
 
 
 def read_matrix_ascii(file_or_fd):
@@ -412,7 +397,7 @@ def read_matrix_ascii(file_or_fd):
     The input can be a file or an opened file descriptor.
     """
     try:
-        fd = open(file_or_fd, "r")
+        fd = open(file_or_fd, 'r')
         fname = file_or_fd
     except TypeError:
         # 'file_or_fd' is opened file descriptor,
@@ -420,27 +405,22 @@ def read_matrix_ascii(file_or_fd):
         fname = file_or_fd.name
 
     first = fd.read(2)
-    if first != " [":
+    if first != ' [':
         logger.error(
             "Kaldi matrix file %s has incorrect format, "
             "only text format matrix files can be read by this script",
-            fname,
-        )
+            fname)
         raise RuntimeError
 
     rows = []
     while True:
         line = fd.readline()
         if len(line) == 0:
-            logger.error(
-                "Kaldi matrix file %s has incorrect format; "
-                "got EOF before end of matrix",
-                fname,
-            )
-        if len(line.strip()) == 0:
-            continue  # skip empty line
+            logger.error("Kaldi matrix file %s has incorrect format; "
+                         "got EOF before end of matrix", fname)
+        if len(line.strip()) == 0 : continue # skip empty line
         arr = line.strip().split()
-        if arr[-1] != "]":
+        if arr[-1] != ']':
             rows.append([float(x) for x in arr])  # not last line
         else:
             rows.append([float(x) for x in arr[:-1]])  # lastline
@@ -450,21 +430,21 @@ def read_matrix_ascii(file_or_fd):
 
 
 def read_key(fd):
-    """ [str] = read_key(fd)
+  """ [str] = read_key(fd)
    Read the utterance-key from the opened ark/stream descriptor 'fd'.
   """
-    str_ = ""
-    while True:
-        char = fd.read(1)
-        if char == "":
-            break
-        if char == " ":
-            break
-        str_ += char
-    str_ = str_.strip()
-    if str_ == "":
-        return None  # end of file,
-    return str_
+  str_ = ''
+  while True:
+    char = fd.read(1)
+    if char == '':
+        break
+    if char == ' ':
+        break
+    str_ += char
+  str_ = str_.strip()
+  if str_ == '':
+      return None   # end of file,
+  return str_
 
 
 def read_mat_ark(file_or_fd):
@@ -476,7 +456,7 @@ def read_mat_ark(file_or_fd):
     mat_dict = { key: mat for key, mat in read_mat_ark(file) }
     """
     try:
-        fd = open(file_or_fd, "r")
+        fd = open(file_or_fd, 'r')
         fname = file_or_fd
     except TypeError:
         # 'file_or_fd' is opened file descriptor,
@@ -486,9 +466,9 @@ def read_mat_ark(file_or_fd):
     try:
         key = read_key(fd)
         while key:
-            mat = read_matrix_ascii(fd)
-            yield key, mat
-            key = read_key(fd)
+          mat = read_matrix_ascii(fd)
+          yield key, mat
+          key = read_key(fd)
     finally:
         if fd is not file_or_fd:
             fd.close()
@@ -496,7 +476,6 @@ def read_mat_ark(file_or_fd):
 
 def force_symlink(file1, file2):
     import errno
-
     try:
         os.symlink(file1, file2)
     except OSError as e:
@@ -523,7 +502,8 @@ def compute_idct_matrix(K, N, cepstral_lifter=0):
     normalizer = math.sqrt(2.0 / float(N))
     for k in range(1, K):
         for n in range(0, N):
-            matrix[n][k] = normalizer * math.cos(math.pi / float(N) * (n + 0.5) * k)
+            matrix[n][
+                k] = normalizer * math.cos(math.pi / float(N) * (n + 0.5) * k)
 
     if cepstral_lifter != 0:
         lifter_coeffs = compute_lifter_coeffs(cepstral_lifter, K)

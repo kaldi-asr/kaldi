@@ -8,11 +8,10 @@
 # the non-silence HMMs. The number of states for punctuations is different than
 # the number of states for other characters.
 
-from __future__ import absolute_import, division, print_function
+from __future__ import division
+from __future__ import print_function
 
 import argparse
-from builtins import range, str
-
 
 parser = argparse.ArgumentParser(
     description="Usage: steps/nnet3/chain/gen_topo.py "

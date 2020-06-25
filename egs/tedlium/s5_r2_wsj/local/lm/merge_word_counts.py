@@ -22,10 +22,10 @@ def main():
         parts = line.strip().split()
         words[parts[1]] = words.get(parts[1], 0) + int(parts[0])
 
-    for word, count in list(words.items()):
+    for word, count in words.items():
         if count >= int(sys.argv[1]):
-            print("{0} {1}".format(count, word))
+            print ("{0} {1}".format(count, word))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

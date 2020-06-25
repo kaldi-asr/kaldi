@@ -78,23 +78,20 @@ foo1-2 doc1,0,0.2 doc2,1,1 doc3,0.2,0
 """
 
 from __future__ import print_function
-
 import argparse
 import logging
-from builtins import range
 
 import tf_idf
 
-logger = logging.getLogger("__name__")
+
+logger = logging.getLogger('__name__')
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter(
-    "%(asctime)s [%(filename)s:%(lineno)s - "
-    "%(funcName)s - %(levelname)s ] %(message)s"
-)
+formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+                              "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 
-for l in [logger, logging.getLogger("tf_idf"), logging.getLogger("libs")]:
+for l in [logger, logging.getLogger('tf_idf'), logging.getLogger('libs')]:
     l.setLevel(logging.DEBUG)
     l.addHandler(handler)
 
@@ -105,87 +102,55 @@ def get_args():
         query documents using a similarity score based on the total TFIDF for
         all the terms in the query document.
         See the beginning of the script for more details about the
-        arguments to the script."""
-    )
+        arguments to the script.""")
 
-    parser.add_argument(
-        "--verbose",
-        type=int,
-        default=0,
-        choices=[0, 1, 2, 3],
-        help="Higher for more logging statements",
-    )
+    parser.add_argument("--verbose", type=int, default=0, choices=[0, 1, 2, 3],
+                        help="Higher for more logging statements")
 
-    parser.add_argument(
-        "--num-neighbors-to-search",
-        type=int,
-        default=0,
-        help="""Number of neighboring documents to search
+    parser.add_argument("--num-neighbors-to-search", type=int, default=0,
+                        help="""Number of neighboring documents to search
                         around the one retrieved based on maximum tf-idf
                         similarity. A value of 0 means only the document
                         with the maximum tf-idf similarity is retrieved,
-                        and none of the documents adjacent to it.""",
-    )
-    parser.add_argument(
-        "--neighbor-tfidf-threshold",
-        type=float,
-        default=0.9,
-        help="""Ignore neighbors that have tf-idf similarity
+                        and none of the documents adjacent to it.""")
+    parser.add_argument("--neighbor-tfidf-threshold", type=float, default=0.9,
+                        help="""Ignore neighbors that have tf-idf similarity
                         with the query document less than this threshold
-                        factor lower than the best score.""",
-    )
-    parser.add_argument(
-        "--partial-doc-fraction",
-        default=0.2,
-        help="""The fraction of neighboring document that will
+                        factor lower than the best score.""")
+    parser.add_argument("--partial-doc-fraction", default=0.2,
+                        help="""The fraction of neighboring document that will
                         be part of the retrieved document set.
                         If this is greater than 0, then a fraction of words
                         from the neighboring documents is added to the
-                        retrieved document.""",
-    )
+                        retrieved document.""")
 
-    parser.add_argument(
-        "--source-text-id2doc-ids",
-        type=argparse.FileType("r"),
-        required=True,
-        help="""A mapping from the source text to a list of
+    parser.add_argument("--source-text-id2doc-ids",
+                        type=argparse.FileType('r'), required=True,
+                        help="""A mapping from the source text to a list of
                         documents that it is broken into
                         <text-utterance-id> <document-id-1> ...
-                        <document-id-N>""",
-    )
-    parser.add_argument(
-        "--query-id2source-text-id",
-        type=argparse.FileType("r"),
-        required=True,
-        help="""A mapping from the query document-id to a
+                        <document-id-N>""")
+    parser.add_argument("--query-id2source-text-id",
+                        type=argparse.FileType('r'), required=True,
+                        help="""A mapping from the query document-id to a
                         source text from which a document needs to be
-                        retrieved.""",
-    )
-    parser.add_argument(
-        "--source-text-id2tfidf",
-        type=argparse.FileType("r"),
-        required=True,
-        help="""An SCP file for the TF-IDF for source
-                        documents indexed by the source-text-id.""",
-    )
-    parser.add_argument(
-        "--query-tfidf",
-        type=argparse.FileType("r"),
-        required=True,
-        help="""Archive of TF-IDF objects for query documents
+                        retrieved.""")
+    parser.add_argument("--source-text-id2tfidf", type=argparse.FileType('r'),
+                        required=True,
+                        help="""An SCP file for the TF-IDF for source
+                        documents indexed by the source-text-id.""")
+    parser.add_argument("--query-tfidf", type=argparse.FileType('r'),
+                        required=True,
+                        help="""Archive of TF-IDF objects for query documents
                         indexed by the query-id.
                         The format is
                         query-id <TFIDF> ... </TFIDF>
-                        """,
-    )
-    parser.add_argument(
-        "--relevant-docs",
-        type=argparse.FileType("w"),
-        required=True,
-        help="""Output archive of a list of source documents
+                        """)
+    parser.add_argument("--relevant-docs", type=argparse.FileType('w'),
+                        required=True,
+                        help="""Output archive of a list of source documents
                         similar to a query document, indexed by the
-                        query document id.""",
-    )
+                        query document id.""")
 
     args = parser.parse_args()
 
@@ -196,12 +161,8 @@ def get_args():
     return args
 
 
-def read_map(
-    file_handle,
-    num_values_per_key=None,
-    min_num_values_per_key=None,
-    must_contain_unique_key=True,
-):
+def read_map(file_handle, num_values_per_key=None,
+             min_num_values_per_key=None, must_contain_unique_key=True):
     """Reads a map from a file into a dictionary and returns it.
     Expects the map is stored in the file in the following format:
     <key> <value-1> <value-2> ... <value-N>
@@ -230,23 +191,18 @@ def read_map(
             parts = line.strip().split()
             key = parts[0]
 
-            if num_values_per_key is not None and len(parts) - 1 != num_values_per_key:
+            if (num_values_per_key is not None
+                    and len(parts) - 1 != num_values_per_key):
                 logger.error(
                     "Expecting {0} columns; Got {1}.".format(
-                        num_values_per_key + 1, len(parts)
-                    )
-                )
+                        num_values_per_key + 1, len(parts)))
                 raise TypeError
 
-            if (
-                min_num_values_per_key is not None
-                and len(parts) - 1 < min_num_values_per_key
-            ):
+            if (min_num_values_per_key is not None
+                    and len(parts) - 1 < min_num_values_per_key):
                 logger.error(
                     "Expecting at least {0} columns; Got {1}.".format(
-                        min_num_values_per_key + 1, len(parts)
-                    )
-                )
+                        min_num_values_per_key + 1, len(parts)))
                 raise TypeError
 
             if must_contain_unique_key and key in dict_map:
@@ -258,7 +214,8 @@ def read_map(
             else:
                 dict_map[key] = parts[1:]
         except Exception:
-            logger.error("Failed reading line %s in file %s", line, file_handle.name)
+            logger.error("Failed reading line %s in file %s",
+                         line, file_handle.name)
             raise
     file_handle.close()
     return dict_map
@@ -266,9 +223,8 @@ def read_map(
 
 def get_document_ids(source_docs, indexes):
     indexes = sorted(
-        [(key, value[0], value[1]) for key, value in list(indexes.items())],
-        key=lambda x: x[0],
-    )
+        [(key, value[0], value[1]) for key, value in indexes.items()],
+        key=lambda x: x[0])
 
     doc_ids = []
     for i, partial_start, partial_end in indexes:
@@ -283,14 +239,13 @@ def run(args):
     """The main function that does all the processing.
     Takes as argument the Namespace object obtained from _get_args().
     """
-    query_id2source_text_id = read_map(
-        args.query_id2source_text_id, num_values_per_key=1
-    )
-    source_text_id2doc_ids = read_map(
-        args.source_text_id2doc_ids, min_num_values_per_key=1
-    )
+    query_id2source_text_id = read_map(args.query_id2source_text_id,
+                                       num_values_per_key=1)
+    source_text_id2doc_ids = read_map(args.source_text_id2doc_ids,
+                                      min_num_values_per_key=1)
 
-    source_text_id2tfidf = read_map(args.source_text_id2tfidf, num_values_per_key=1)
+    source_text_id2tfidf = read_map(args.source_text_id2tfidf,
+                                    num_values_per_key=1)
 
     num_queries = 0
     prev_source_text_id = ""
@@ -303,7 +258,8 @@ def run(args):
 
         if prev_source_text_id != source_text_id:
             source_tfidf = tf_idf.TFIDF()
-            source_tfidf.read(open(source_text_id2tfidf[source_text_id]))
+            source_tfidf.read(
+                open(source_text_id2tfidf[source_text_id]))
             prev_source_text_id = source_text_id
 
         # The source documents corresponding to the source text.
@@ -311,26 +267,23 @@ def run(args):
         source_doc_ids = source_text_id2doc_ids[source_text_id]
 
         scores = query_tfidf.compute_similarity_scores(
-            source_tfidf, source_docs=source_doc_ids, query_id=query_id
-        )
+            source_tfidf, source_docs=source_doc_ids, query_id=query_id)
 
-        assert len(scores) > 0, "Did not get scores for query {0}".format(query_id)
+        assert len(scores) > 0, (
+            "Did not get scores for query {0}".format(query_id))
 
         if args.verbose > 2:
-            for tup, score in list(scores.items()):
-                logger.debug(
-                    "Score, {num}: {0} {1} {2}".format(
-                        tup[0], tup[1], score, num=num_queries
-                    )
-                )
+            for tup, score in scores.items():
+                logger.debug("Score, {num}: {0} {1} {2}".format(
+                    tup[0], tup[1], score, num=num_queries))
 
         best_index, best_doc_id = max(
-            enumerate(source_doc_ids), key=lambda x: scores[(query_id, x[1])]
-        )
+            enumerate(source_doc_ids), key=lambda x: scores[(query_id, x[1])])
         best_score = scores[(query_id, best_doc_id)]
 
         assert source_doc_ids[best_index] == best_doc_id
-        assert best_score == max([scores[(query_id, x)] for x in source_doc_ids])
+        assert best_score == max([scores[(query_id, x)]
+                                  for x in source_doc_ids])
 
         best_indexes = {}
 
@@ -343,26 +296,23 @@ def run(args):
         else:
             excluded_indexes = set()
             for index in range(
-                max(best_index - args.num_neighbors_to_search, 0),
-                min(best_index + args.num_neighbors_to_search + 1, len(source_doc_ids)),
-            ):
-                if (
-                    scores[(query_id, source_doc_ids[index])]
-                    >= args.neighbor_tfidf_threshold * best_score
-                ):
-                    best_indexes[index] = (1, 1)  # Type 2
+                    max(best_index - args.num_neighbors_to_search, 0),
+                    min(best_index + args.num_neighbors_to_search + 1,
+                        len(source_doc_ids))):
+                if (scores[(query_id, source_doc_ids[index])]
+                        >= args.neighbor_tfidf_threshold * best_score):
+                    best_indexes[index] = (1, 1)    # Type 2
                     if index > 0 and index - 1 in excluded_indexes:
                         try:
                             # Type 1 and 3
                             start_frac, end_frac = best_indexes[index - 1]
                             assert end_frac == 0
                             best_indexes[index - 1] = (
-                                start_frac,
-                                args.partial_doc_fraction,
-                            )
+                                start_frac, args.partial_doc_fraction)
                         except KeyError:
                             # Type 1
-                            best_indexes[index - 1] = (0, args.partial_doc_fraction)
+                            best_indexes[index - 1] = (
+                                0, args.partial_doc_fraction)
                 else:
                     excluded_indexes.add(index)
                     if index > 0 and index - 1 not in excluded_indexes:
@@ -376,26 +326,19 @@ def run(args):
             "Scores: {1}\n"
             "Source docs: {2}\n"
             "Best index: {best_index}, score: {best_score}\n".format(
-                query_id,
-                scores,
-                source_doc_ids,
-                best_index=best_index,
-                best_score=best_score,
-            )
-        )
+                query_id, scores, source_doc_ids,
+                best_index=best_index, best_score=best_score))
         assert (best_doc_id, 1.0, 1.0) in best_docs
 
-        print(
-            "{0} {1}".format(
-                query_id, " ".join(["%s,%.2f,%.2f" % x for x in best_docs])
-            ),
-            file=args.relevant_docs,
-        )
+        print ("{0} {1}".format(query_id, " ".join(
+            ["%s,%.2f,%.2f" % x for x in best_docs])),
+               file=args.relevant_docs)
 
     if num_queries == 0:
         raise RuntimeError("Failed to retrieve any document.")
 
-    logger.info("Retrieved similar documents for " "%d queries", num_queries)
+    logger.info("Retrieved similar documents for "
+                "%d queries", num_queries)
 
 
 def main():
@@ -406,15 +349,10 @@ def main():
     try:
         run(args)
     finally:
-        for f in [
-            args.query_id2source_text_id,
-            args.source_text_id2doc_ids,
-            args.relevant_docs,
-            args.query_tfidf,
-            args.source_text_id2tfidf,
-        ]:
+        for f in [args.query_id2source_text_id, args.source_text_id2doc_ids,
+                  args.relevant_docs, args.query_tfidf, args.source_text_id2tfidf]:
             f.close()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

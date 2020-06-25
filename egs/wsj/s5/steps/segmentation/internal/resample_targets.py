@@ -13,28 +13,21 @@ taking every n'th element.
 Thus, this script is similar to the binary 'subsample-feats' except that
 it subsamples by averaging.
 """
-from __future__ import division
 
 import argparse
 import logging
-import sys
-from builtins import range
-
 import numpy as np
-from past.utils import old_div
+import sys
 
+sys.path.insert(0, 'steps')
 import libs.common as common_lib
-
-sys.path.insert(0, "steps")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter(
-    "%(asctime)s [%(pathname)s:%(lineno)s - "
-    "%(funcName)s - %(levelname)s ] %(message)s"
-)
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
+                              "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -49,32 +42,23 @@ This form of 'subsampling' is similar to taking every n'th frame (specifically:
 every n'th row), except that we average over blocks of size 'n' instead of
 taking every n'th element.
 Thus, this script is similar to the binary 'subsample-feats' except that
-it subsamples by averaging."""
-    )
+it subsamples by averaging.""")
 
-    parser.add_argument(
-        "--subsampling-factor",
-        type=int,
-        default=1,
-        help="The sampling rate is scaled by this factor",
-    )
-    parser.add_argument(
-        "--verbose", type=int, default=0, choices=[0, 1, 2], help="Verbose level"
-    )
+    parser.add_argument("--subsampling-factor", type=int, default=1,
+                        help="The sampling rate is scaled by this factor")
+    parser.add_argument("--verbose", type=int, default=0, choices=[0,1,2],
+                        help="Verbose level")
 
-    parser.add_argument(
-        "targets_in_ark", type=argparse.FileType("r"), help="Input targets archive"
-    )
-    parser.add_argument(
-        "targets_out_ark", type=argparse.FileType("w"), help="Output targets archive"
-    )
+    parser.add_argument("targets_in_ark", type=argparse.FileType('r'),
+                        help="Input targets archive")
+    parser.add_argument("targets_out_ark", type=argparse.FileType('w'),
+                        help="Output targets archive")
 
     args = parser.parse_args()
 
     if args.subsampling_factor < 1:
-        raise ValueError(
-            "Invalid --subsampling-factor value {0}".format(args.subsampling_factor)
-        )
+        raise ValueError("Invalid --subsampling-factor value {0}".format(
+                            args.subsampling_factor))
 
     if args.verbose >= 2:
         logger.setLevel(logging.DEBUG)
@@ -88,15 +72,13 @@ def run(args):
     for key, mat in common_lib.read_mat_ark(args.targets_in_ark):
         mat = np.matrix(mat)
         if args.subsampling_factor > 0:
-            num_indexes = old_div(
-                (mat.shape[0] + args.subsampling_factor - 1), args.subsampling_factor
-            )
+            num_indexes = ((mat.shape[0] + args.subsampling_factor - 1)
+                            / args.subsampling_factor)
 
         out_mat = np.zeros([num_indexes, mat.shape[1]])
         i = 0
-        for k in range(
-            int(args.subsampling_factor / 2.0), mat.shape[0], args.subsampling_factor
-        ):
+        for k in range(int(args.subsampling_factor / 2.0),
+                       mat.shape[0], args.subsampling_factor):
             st = int(k - float(args.subsampling_factor) / 2.0)
             end = int(k + float(args.subsampling_factor) / 2.0)
 
@@ -108,11 +90,10 @@ def run(args):
             try:
                 out_mat[i, :] = np.sum(mat[st:end, :], axis=0) / float(end - st)
             except IndexError:
-                logger.error(
-                    "mat.shape = {0}, st = {1}, end = {2}" "".format(mat.shape, st, end)
-                )
+                logger.error("mat.shape = {0}, st = {1}, end = {2}"
+                             "".format(mat.shape, st, end))
                 raise
-            assert i == old_div(k, args.subsampling_factor)
+            assert i == k / args.subsampling_factor
             i += 1
 
         common_lib.write_matrix_ascii(args.targets_out_ark, out_mat, key=key)
@@ -120,7 +101,8 @@ def run(args):
     args.targets_in_ark.close()
     args.targets_out_ark.close()
 
-    logger.info("Sub-sampled {num_utts} target matrices" "".format(num_utts=num_utts))
+    logger.info("Sub-sampled {num_utts} target matrices"
+                "".format(num_utts=num_utts))
 
 
 def main():

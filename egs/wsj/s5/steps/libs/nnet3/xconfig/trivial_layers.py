@@ -8,9 +8,9 @@
 """
 
 from __future__ import print_function
-
-from builtins import range, str
-
+import math
+import re
+import sys
 from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 
 
@@ -23,15 +23,15 @@ class XconfigRenormComponent(XconfigLayerBase):
       input='[-1]'             [Descriptor giving the input of the layer.]
       target-rms=1.0           [The target RMS of the NormalizeComponent]
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {"input": "[-1]", "target-rms": 1.0}
+        self.config = {'input': '[-1]',
+                       'target-rms': 1.0 }
 
     def check_configs(self):
-        assert self.config["target-rms"] > 0.0
+        assert self.config['target-rms'] > 0.0
 
     def output_name(self, auxiliary_output=None):
         assert auxiliary_output is None
@@ -39,7 +39,7 @@ class XconfigRenormComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        input_dim = self.descriptors["input"]["dim"]
+        input_dim = self.descriptors['input']['dim']
         return input_dim
 
     def get_full_config(self):
@@ -47,7 +47,7 @@ class XconfigRenormComponent(XconfigLayerBase):
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -56,20 +56,19 @@ class XconfigRenormComponent(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        input_dim = self.descriptors["input"]["dim"]
-        target_rms = self.config["target-rms"]
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        target_rms = self.config['target-rms']
 
         configs = []
-        line = "component name={0} type=NormalizeComponent dim={1} target-rms={2}".format(
-            self.name, input_dim, target_rms
-        )
+        line = ('component name={0} type=NormalizeComponent dim={1} target-rms={2}'.format(
+            self.name, input_dim, target_rms))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
+
 
 
 class XconfigBatchnormComponent(XconfigLayerBase):
@@ -84,15 +83,16 @@ class XconfigBatchnormComponent(XconfigLayerBase):
                                 `fixed-affine-layer` that is to be initialized
                                  via LDA]
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {"input": "[-1]", "target-rms": 1.0, "include-in-init": False}
+        self.config = {'input': '[-1]',
+                       'target-rms': 1.0,
+                       'include-in-init': False}
 
     def check_configs(self):
-        assert self.config["target-rms"] > 0.0
+        assert self.config['target-rms'] > 0.0
 
     def output_name(self, auxiliary_output=None):
         assert auxiliary_output is None
@@ -100,7 +100,7 @@ class XconfigBatchnormComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        input_dim = self.descriptors["input"]["dim"]
+        input_dim = self.descriptors['input']['dim']
         return input_dim
 
     def get_full_config(self):
@@ -108,29 +108,27 @@ class XconfigBatchnormComponent(XconfigLayerBase):
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
-            if self.config["include-in-init"]:
-                ans.append(("init", line))
+            if self.config['include-in-init']:
+                ans.append(('init', line))
         return ans
 
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        input_dim = self.descriptors["input"]["dim"]
-        target_rms = self.config["target-rms"]
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        target_rms = self.config['target-rms']
 
         configs = []
-        line = "component name={0} type=BatchNormComponent dim={1} target-rms={2}".format(
-            self.name, input_dim, target_rms
-        )
+        line = ('component name={0} type=BatchNormComponent dim={1} target-rms={2}'.format(
+            self.name, input_dim, target_rms))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
 
@@ -143,12 +141,11 @@ class XconfigNoOpComponent(XconfigLayerBase):
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer.]
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {"input": "[-1]"}
+        self.config = {'input': '[-1]' }
 
     def check_configs(self):
         pass
@@ -159,7 +156,7 @@ class XconfigNoOpComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        input_dim = self.descriptors["input"]["dim"]
+        input_dim = self.descriptors['input']['dim']
         return input_dim
 
     def get_full_config(self):
@@ -167,7 +164,7 @@ class XconfigNoOpComponent(XconfigLayerBase):
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -176,17 +173,15 @@ class XconfigNoOpComponent(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        input_dim = self.descriptors["input"]["dim"]
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
 
         configs = []
-        line = "component name={0} type=NoOpComponent dim={1}".format(
-            self.name, input_dim
-        )
+        line = ('component name={0} type=NoOpComponent dim={1}'.format(
+            self.name, input_dim))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
 
@@ -201,12 +196,11 @@ class XconfigDeltaLayer(XconfigLayerBase):
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer]
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {"input": "[-1]"}
+        self.config = {'input': '[-1]'}
 
     def check_configs(self):
         pass
@@ -217,15 +211,15 @@ class XconfigDeltaLayer(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        input_dim = self.descriptors["input"]["dim"]
-        return 3 * input_dim
+        input_dim = self.descriptors['input']['dim']
+        return (3*input_dim)
 
     def get_full_config(self):
         ans = []
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -234,38 +228,31 @@ class XconfigDeltaLayer(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        input_dim = self.descriptors["input"]["dim"]
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
         output_dim = self.output_dim()
 
         configs = []
-        line = "dim-range-node name={0}_copy1 input-node={0} dim={1} dim-offset=0".format(
-            input_desc, input_dim
-        )
+        line = ('dim-range-node name={0}_copy1 input-node={0} dim={1} dim-offset=0'.format(
+            input_desc, input_dim))
         configs.append(line)
-        line = "dim-range-node name={0}_copy2 input-node={0} dim={1} dim-offset=0".format(
-            input_desc, input_dim
-        )
+        line = ('dim-range-node name={0}_copy2 input-node={0} dim={1} dim-offset=0'.format(
+            input_desc, input_dim))
         configs.append(line)
 
-        line = "component name={0}_2 type=NoOpComponent dim={1}".format(
-            input_desc, output_dim
-        )
+        line = ('component name={0}_2 type=NoOpComponent dim={1}'.format(
+            input_desc, output_dim))
         configs.append(line)
-        line = (
-            "component-node name={0}_2 component={0}_2 input=Append(Offset({0},0),"
-            " Sum(Offset(Scale(-1.0,{0}_copy1),-1), Offset({0},1)), Sum(Offset({0},-2), Offset({0},2),"
-            " Offset(Scale(-2.0,{0}_copy2),0)))".format(input_desc)
-        )
+        line = ('component-node name={0}_2 component={0}_2 input=Append(Offset({0},0),'
+            ' Sum(Offset(Scale(-1.0,{0}_copy1),-1), Offset({0},1)), Sum(Offset({0},-2), Offset({0},2),' 
+            ' Offset(Scale(-2.0,{0}_copy2),0)))'.format(input_desc))
         configs.append(line)
-
-        line = "component name={0} type=BatchNormComponent dim={1}".format(
-            self.name, output_dim
-        )
+        
+        line = ('component name={0} type=BatchNormComponent dim={1}'.format(
+            self.name, output_dim))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}_2".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}_2'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
 
@@ -289,23 +276,20 @@ class XconfigLinearComponent(XconfigLayerBase):
       l2-regularize=0.0
 
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {
-            "input": "[-1]",
-            "dim": -1,
-            "orthonormal-constraint": "",
-            "max-change": 0.75,
-            "l2-regularize": "",
-            "param-stddev": "",
-            "learning-rate-factor": "",
-        }
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'orthonormal-constraint': '',
+                       'max-change': 0.75,
+                       'l2-regularize': '',
+                       'param-stddev': '',
+                       'learning-rate-factor': '' }
 
     def check_configs(self):
-        if self.config["dim"] <= 0:
+        if self.config['dim'] <= 0:
             raise RuntimeError("'dim' must be specified and > 0.")
 
     def output_name(self, auxiliary_output=None):
@@ -314,15 +298,15 @@ class XconfigLinearComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        assert self.config["dim"] > 0
-        return self.config["dim"]
+        assert self.config['dim'] > 0
+        return self.config['dim']
 
     def get_full_config(self):
         ans = []
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -331,31 +315,23 @@ class XconfigLinearComponent(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        input_dim = self.descriptors["input"]["dim"]
-        output_dim = self.config["dim"]
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        output_dim = self.config['dim']
 
-        opts = ""
-        for opt_name in [
-            "orthonormal-constraint",
-            "max-change",
-            "l2-regularize",
-            "param-stddev",
-            "learning-rate-factor",
-        ]:
+        opts = ''
+        for opt_name in ['orthonormal-constraint', 'max-change', 'l2-regularize',
+                         'param-stddev', 'learning-rate-factor' ]:
             value = self.config[opt_name]
-            if value != "":
-                opts += " {0}={1}".format(opt_name, value)
+            if value != '':
+                opts += ' {0}={1}'.format(opt_name, value)
 
         configs = []
-        line = (
-            "component name={0} type=LinearComponent input-dim={1} output-dim={2} "
-            "{3}".format(self.name, input_dim, output_dim, opts)
-        )
+        line = ('component name={0} type=LinearComponent input-dim={1} output-dim={2} '
+                '{3}'.format(self.name, input_dim, output_dim, opts))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
 
@@ -381,36 +357,27 @@ class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {
-            "input": "[-1]",
-            "num-filters1": -1,
-            "num-filters2": -1,
-            "num-filters3": 0,
-            "height": -1,
-        }
+        self.config = { 'input': '[-1]',
+                        'num-filters1': -1,
+                        'num-filters2': -1,
+                        'num-filters3': 0,
+                        'height': -1 }
 
     def check_configs(self):
-        input_dim = self.descriptors["input"]["dim"]
-        if (
-            self.config["num-filters1"] <= 0
-            or self.config["num-filters2"] <= 0
-            or self.config["num-filters3"] < 0
-            or self.config["height"] <= 0
-        ):
-            raise RuntimeError(
-                "invalid values of num-filters1, num-filters2 and/or height"
-            )
-        f1 = self.config["num-filters1"]
-        f2 = self.config["num-filters2"]
-        f3 = self.config["num-filters3"]
-        h = self.config["height"]
+        input_dim = self.descriptors['input']['dim']
+        if (self.config['num-filters1'] <= 0 or
+            self.config['num-filters2'] <= 0 or
+            self.config['num-filters3'] < 0 or
+            self.config['height'] <= 0):
+            raise RuntimeError("invalid values of num-filters1, num-filters2 and/or height")
+        f1 = self.config['num-filters1']
+        f2 = self.config['num-filters2']
+        f3 = self.config['num-filters3']
+        h = self.config['height']
         if input_dim != (f1 + f2 + f3) * h:
-            raise RuntimeError(
-                "Expected input-dim={0} based on num-filters1={1}, num-filters2={2}, "
-                "num-filters3={3} and height={4}, but got input-dim={5}".format(
-                    (f1 + f2 + f3) * h, f1, f2, f3, h, input_dim
-                )
-            )
+            raise RuntimeError("Expected input-dim={0} based on num-filters1={1}, num-filters2={2}, "
+                               "num-filters3={3} and height={4}, but got input-dim={5}".format(
+                                   (f1 + f2 + f3) * h, f1, f2, f3, h, input_dim))
 
     def output_name(self, auxiliary_output=None):
         assert auxiliary_output is None
@@ -418,7 +385,7 @@ class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        input_dim = self.descriptors["input"]["dim"]
+        input_dim = self.descriptors['input']['dim']
         return input_dim
 
     def get_full_config(self):
@@ -426,7 +393,7 @@ class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -435,12 +402,12 @@ class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        dim = self.descriptors["input"]["dim"]
-        num_filters1 = self.config["num-filters1"]
-        num_filters2 = self.config["num-filters2"]
-        num_filters3 = self.config["num-filters3"]  # normally 0.
-        height = self.config["height"]
+        input_desc = self.descriptors['input']['final-string']
+        dim = self.descriptors['input']['dim']
+        num_filters1 = self.config['num-filters1']
+        num_filters2 = self.config['num-filters2']
+        num_filters3 = self.config['num-filters3']  # normally 0.
+        height = self.config['height']
         assert dim == (num_filters1 + num_filters2 + num_filters3) * height
 
         column_map = []
@@ -450,21 +417,19 @@ class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
             for f in range(num_filters2):
                 column_map.append(height * num_filters1 + h * num_filters2 + f)
             for f in range(num_filters3):
-                column_map.append(
-                    height * (num_filters1 + num_filters2) + h * num_filters3 + f
-                )
+                column_map.append(height * (num_filters1 + num_filters2) + h * num_filters3 + f)
 
         configs = []
-        line = "component name={0} type=PermuteComponent column-map={1} ".format(
-            self.name, ",".join([str(x) for x in column_map])
-        )
+        line = ('component name={0} type=PermuteComponent column-map={1} '.format(
+            self.name, ','.join([str(x) for x in column_map])))
         configs.append(line)
 
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
+
+
 
 
 class XconfigAffineComponent(XconfigLayerBase):
@@ -486,23 +451,20 @@ class XconfigAffineComponent(XconfigLayerBase):
       l2-regularize=0.0
 
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {
-            "input": "[-1]",
-            "dim": -1,
-            "orthonormal-constraint": "",
-            "max-change": 0.75,
-            "param-stddev": "",
-            "bias-stddev": "",
-            "l2-regularize": "",
-        }
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'orthonormal-constraint': '',
+                       'max-change': 0.75,
+                       'param-stddev': '',
+                       'bias-stddev': '',
+                       'l2-regularize': '' }
 
     def check_configs(self):
-        if self.config["dim"] <= 0:
+        if self.config['dim'] <= 0:
             raise RuntimeError("'dim' must be specified and > 0.")
 
     def output_name(self, auxiliary_output=None):
@@ -511,15 +473,15 @@ class XconfigAffineComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        assert self.config["dim"] > 0
-        return self.config["dim"]
+        assert self.config['dim'] > 0
+        return self.config['dim']
 
     def get_full_config(self):
         ans = []
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -528,31 +490,23 @@ class XconfigAffineComponent(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        input_dim = self.descriptors["input"]["dim"]
-        output_dim = self.config["dim"]
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        output_dim = self.config['dim']
 
-        opts = ""
-        for opt_name in [
-            "orthonormal-constraint",
-            "max-change",
-            "l2-regularize",
-            "param-stddev",
-            "bias-stddev",
-        ]:
+        opts = ''
+        for opt_name in ['orthonormal-constraint', 'max-change', 'l2-regularize',
+                         'param-stddev', 'bias-stddev']:
             value = self.config[opt_name]
-            if value != "":
-                opts += " {0}={1}".format(opt_name, value)
+            if value != '':
+                opts += ' {0}={1}'.format(opt_name, value)
 
         configs = []
-        line = (
-            "component name={0} type=NaturalGradientAffineComponent input-dim={1} output-dim={2} "
-            "{3}".format(self.name, input_dim, output_dim, opts)
-        )
+        line = ('component name={0} type=NaturalGradientAffineComponent input-dim={1} output-dim={2} '
+                '{3}'.format(self.name, input_dim, output_dim, opts))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
 
@@ -576,19 +530,16 @@ class XconfigPerElementScaleComponent(XconfigLayerBase):
       param-stddev=0.0  # affects initialization
       learning-rate-factor=1.0
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {
-            "input": "[-1]",
-            "l2-regularize": "",
-            "max-change": 0.75,
-            "param-mean": "",
-            "param-stddev": "",
-            "learning-rate-factor": "",
-        }
+        self.config = {'input': '[-1]',
+                       'l2-regularize': '',
+                       'max-change': 0.75,
+                       'param-mean': '',
+                       'param-stddev': '',
+                       'learning-rate-factor': '' }
 
     def check_configs(self):
         pass
@@ -599,14 +550,14 @@ class XconfigPerElementScaleComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        return self.descriptors["input"]["dim"]
+        return self.descriptors['input']['dim']
 
     def get_full_config(self):
         ans = []
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -615,33 +566,24 @@ class XconfigPerElementScaleComponent(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        dim = self.descriptors["input"]["dim"]
+        input_desc = self.descriptors['input']['final-string']
+        dim = self.descriptors['input']['dim']
 
-        opts = ""
-        for opt_name in [
-            "learning-rate-factor",
-            "max-change",
-            "l2-regularize",
-            "param-mean",
-            "param-stddev",
-        ]:
+        opts = ''
+        for opt_name in ['learning-rate-factor', 'max-change', 'l2-regularize', 'param-mean',
+                         'param-stddev' ]:
             value = self.config[opt_name]
-            if value != "":
-                opts += " {0}={1}".format(opt_name, value)
+            if value != '':
+                opts += ' {0}={1}'.format(opt_name, value)
 
         configs = []
-        line = (
-            "component name={0} type=NaturalGradientPerElementScaleComponent dim={1} {2} "
-            "".format(self.name, dim, opts)
-        )
+        line = ('component name={0} type=NaturalGradientPerElementScaleComponent dim={1} {2} '
+                ''.format(self.name, dim, opts))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
-
 
 class XconfigPerElementOffsetComponent(XconfigLayerBase):
     """This class is for parsing lines like
@@ -662,19 +604,16 @@ class XconfigPerElementOffsetComponent(XconfigLayerBase):
       param-stddev=0.0  # affects initialization
       learning-rate-factor=1.0
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {
-            "input": "[-1]",
-            "l2-regularize": "",
-            "max-change": 0.75,
-            "param-mean": "",
-            "param-stddev": "",
-            "learning-rate-factor": "",
-        }
+        self.config = {'input': '[-1]',
+                       'l2-regularize': '',
+                       'max-change': 0.75,
+                       'param-mean': '',
+                       'param-stddev': '',
+                       'learning-rate-factor': '' }
 
     def check_configs(self):
         pass
@@ -685,14 +624,14 @@ class XconfigPerElementOffsetComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        return self.descriptors["input"]["dim"]
+        return self.descriptors['input']['dim']
 
     def get_full_config(self):
         ans = []
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -701,30 +640,22 @@ class XconfigPerElementOffsetComponent(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_desc = self.descriptors["input"]["final-string"]
-        dim = self.descriptors["input"]["dim"]
+        input_desc = self.descriptors['input']['final-string']
+        dim = self.descriptors['input']['dim']
 
-        opts = ""
-        for opt_name in [
-            "learning-rate-factor",
-            "max-change",
-            "l2-regularize",
-            "param-mean",
-            "param-stddev",
-        ]:
+        opts = ''
+        for opt_name in ['learning-rate-factor', 'max-change', 'l2-regularize', 'param-mean',
+                         'param-stddev' ]:
             value = self.config[opt_name]
-            if value != "":
-                opts += " {0}={1}".format(opt_name, value)
+            if value != '':
+                opts += ' {0}={1}'.format(opt_name, value)
 
         configs = []
-        line = (
-            "component name={0} type=PerElementOffsetComponent dim={1} {2} "
-            "".format(self.name, dim, opts)
-        )
+        line = ('component name={0} type=PerElementOffsetComponent dim={1} {2} '
+                ''.format(self.name, dim, opts))
         configs.append(line)
-        line = "component-node name={0} component={0} input={1}".format(
-            self.name, input_desc
-        )
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
         configs.append(line)
         return configs
 
@@ -738,25 +669,24 @@ class XconfigDimRangeComponent(XconfigLayerBase):
       dim=-1                   [Dimension of the output.]
       dim-offset=0             [Dimension offset of the input.]
     """
-
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {"input": "[-1]", "dim": -1, "dim-offset": 0}
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'dim-offset': 0 }
 
     def check_configs(self):
-        input_dim = self.descriptors["input"]["dim"]
-        if self.config["dim"] <= 0:
+        input_dim = self.descriptors['input']['dim']
+        if self.config['dim'] <= 0:
             raise RuntimeError("'dim' must be specified and > 0.")
-        elif self.config["dim"] > input_dim:
+        elif self.config['dim'] > input_dim:
             raise RuntimeError("'dim' must be specified and lower than the input dim.")
-        if self.config["dim-offset"] < 0:
+        if self.config['dim-offset'] < 0 :
             raise RuntimeError("'dim-offset' must be specified and >= 0.")
-        elif self.config["dim-offset"] + self.config["dim"] > input_dim:
-            raise RuntimeError(
-                "'dim-offset' plus output dim must be lower than the input dim."
-            )
+        elif self.config['dim-offset'] + self.config['dim'] > input_dim:
+            raise RuntimeError("'dim-offset' plus output dim must be lower than the input dim.")
 
     def output_name(self, auxiliary_output=None):
         assert auxiliary_output is None
@@ -764,9 +694,9 @@ class XconfigDimRangeComponent(XconfigLayerBase):
 
     def output_dim(self, auxiliary_output=None):
         assert auxiliary_output is None
-        output_dim = self.config["dim"]
+        output_dim = self.config['dim']
         if output_dim <= 0:
-            self.config["dim"] = self.descriptors["input"]["dim"]
+            self.config['dim'] = self.descriptors['input']['dim']
         return output_dim
 
     def get_full_config(self):
@@ -774,7 +704,7 @@ class XconfigDimRangeComponent(XconfigLayerBase):
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ["ref", "final"]:
+            for config_name in ['ref', 'final']:
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
@@ -783,13 +713,12 @@ class XconfigDimRangeComponent(XconfigLayerBase):
     def _generate_config(self):
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        input_node = self.descriptors["input"]["final-string"]
-        output_dim = self.config["dim"]
-        dim_offset = self.config["dim-offset"]
+        input_node = self.descriptors['input']['final-string']
+        output_dim = self.config['dim']
+        dim_offset = self.config['dim-offset']
 
         configs = []
-        line = "dim-range-node name={0} input-node={1} dim={2} dim-offset={3}".format(
-            self.name, input_node, output_dim, dim_offset
-        )
+        line = ('dim-range-node name={0} input-node={1} dim={2} dim-offset={3}'.format(
+            self.name, input_node, output_dim, dim_offset))
         configs.append(line)
         return configs

@@ -6,10 +6,7 @@
 # This script loads diagonal UBM and ivector extractor from text file.
 
 import os
-from builtins import range
-
 import numpy as np
-
 
 def load_dubm(dubm_text):
     assert os.path.exists(dubm_text)
@@ -18,24 +15,20 @@ def load_dubm(dubm_text):
     state = 0
     data_array = []
 
-    with open(dubm_text, "r") as fh:
+    with open(dubm_text, 'r') as fh:
         content = fh.readlines()
 
     for line in content:
-        line = line.strip("\n")
+        line = line.strip('\n')
         line_split = line.split()
         if state == 0:
             if len(line_split) == 1:
                 continue
-            elif (
-                len(line_split) == 2 and line_split[1] == "["
-            ):  # Start of a multi-line matrix like <MEANS_INVVARS> and <INV_VARS>
+            elif len(line_split) == 2 and line_split[1] == "[": # Start of a multi-line matrix like <MEANS_INVVARS> and <INV_VARS> 
                 para_name = line_split[0]
                 state = 1
                 data_array = []
-            elif (
-                len(line_split) >= 3 and line_split[1] == "[" and line_split[-1] == "]"
-            ):  # Single line vector like <WEIGHTS>
+            elif len(line_split) >= 3 and line_split[1] == "[" and line_split[-1] == "]": # Single line vector like <WEIGHTS>
                 para_name = line_split[0]
                 data_list = []
                 for i in range(2, len(line_split) - 1):
@@ -45,9 +38,7 @@ def load_dubm(dubm_text):
             else:
                 raise ValueError("Condition not defined.")
         elif state == 1:
-            if (
-                line_split[-1] == "]"
-            ):  # End of a multi-line matrix like <MEANS_INVVARS> and <INV_VARS>
+            if line_split[-1] == "]": # End of a multi-line matrix like <MEANS_INVVARS> and <INV_VARS>
                 data_list = []
                 for i in range(len(line_split) - 1):
                     data_list.append(float(line_split[i]))
@@ -64,8 +55,7 @@ def load_dubm(dubm_text):
                 data_array.append(data_list)
         else:
             raise ValueError("Condition not defined.")
-    return para_dict  # the diagonal ubm parameter includes <GCONSTS>, <WEIGHTS>, <MEANS_INVVARS>, <INV_VARS>
-
+    return para_dict # the diagonal ubm parameter includes <GCONSTS>, <WEIGHTS>, <MEANS_INVVARS>, <INV_VARS> 
 
 def load_ivector_extractor(ie_text):
     assert os.path.exists(ie_text)
@@ -74,11 +64,11 @@ def load_ivector_extractor(ie_text):
     state = 0
     data_3dmatrix = []
 
-    with open(ie_text, "r") as fh:
+    with open(ie_text, 'r') as fh:
         content = fh.readlines()
 
     for line in content:
-        line = line.strip("\n")
+        line = line.strip('\n')
         if line == "<SigmaInv> [":
             break
         if state == 0:
@@ -94,7 +84,7 @@ def load_ivector_extractor(ie_text):
                 continue
             elif line_split[-1] == "]":
                 data_array = []
-                for i in range(len(line_split) - 1):
+                for i in range(len(line_split)-1):
                     data_array.append(float(line_split[i]))
                 data_matrix.append(data_array)
                 data_3dmatrix.append(data_matrix)
@@ -105,5 +95,5 @@ def load_ivector_extractor(ie_text):
                 data_matrix.append(data_array)
         else:
             raise ValueError("Condition not defined.")
-    para_dict["M"] = np.array(data_3dmatrix)
-    return para_dict  # the ivector extractor parameter is a 3d matrix of shape [num-gaussian, feat-dim, ivec-dim]
+    para_dict['M'] = np.array(data_3dmatrix)
+    return para_dict # the ivector extractor parameter is a 3d matrix of shape [num-gaussian, feat-dim, ivec-dim] 

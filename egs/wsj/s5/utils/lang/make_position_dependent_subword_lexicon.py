@@ -15,48 +15,31 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import argparse
-from builtins import range, zip
-
 from make_lexicon_fst import read_lexiconp
-
+import argparse
+import math
 
 def get_args():
-    parser = argparse.ArgumentParser(
-        description="""This script creates a
+    parser = argparse.ArgumentParser(description="""This script creates a
         position-dependent subword lexicon from a position-independent subword lexicon
         by adding suffixes ("_B", "_I", "_E", "_S") to the related phones.
-        It assumes that the input lexicon does not contain disambiguation symbols."""
-    )
-    parser.add_argument(
-        "--separator",
-        type=str,
-        default="@@",
-        help="""Separator
+        It assumes that the input lexicon does not contain disambiguation symbols.""")
+    parser.add_argument("--separator", type=str, default="@@", help="""Separator
         indicates the position of a subword in a word. 
         Subword ends with separator can only appear at the beginning or middle of a word. 
         Subword without separator can only appear at the end of a word or is a word itself.
         E.g. "international -> inter@@ nation@@ al";
              "nation        -> nation"
-        The separator should match the separator used in the input lexicon.""",
-    )
-    parser.add_argument(
-        "lexiconp",
-        type=str,
-        help="""Filename of subword position-independent 
-        lexicon with pronunciation probabilities, with lines of the form 'subword prob p1 p2 ...'""",
-    )
+        The separator should match the separator used in the input lexicon.""")
+    parser.add_argument("lexiconp", type=str, help="""Filename of subword position-independent 
+        lexicon with pronunciation probabilities, with lines of the form 'subword prob p1 p2 ...'""")
     args = parser.parse_args()
     return args
-
 
 def is_end(subword, separator):
     """Return true if the subword can appear at the end of a word (i.e., the subword 
     does not end with separator). Return false otherwise."""
     return not subword.endswith(separator)
-
 
 def write_position_dependent_lexicon(lexiconp, separator):
     """Print a position-dependent lexicon for each subword from the input lexiconp by adding
@@ -91,46 +74,34 @@ def write_position_dependent_lexicon(lexiconp, separator):
         if is_end(word, separator):
             # print end subword lexicon by replacing the last phone suffix by "_E"
             suffix_list[-1] = "_E"
-            phones_list = [
-                phone + suffix for (phone, suffix) in zip(phones, suffix_list)
-            ]
-            print("{} {} {}".format(word, prob, " ".join(phones_list)))
+            phones_list = [phone + suffix for (phone, suffix) in zip(phones, suffix_list)]
+            print("{} {} {}".format(word, prob, ' '.join(phones_list)))
 
             # print singleton subword lexicon
             # the phone suffix is "_S" if the there is only 1 phone.
             if phones_length == 1:
                 suffix_list[0] = "_S"
-                phones_list = [
-                    phone + suffix for (phone, suffix) in zip(phones, suffix_list)
-                ]
-                print("{} {} {}".format(word, prob, " ".join(phones_list)))
+                phones_list = [phone + suffix for (phone, suffix) in zip(phones, suffix_list)]
+                print("{} {} {}".format(word, prob, ' '.join(phones_list)))
             # the first phone suffix is "_B" is there is more than 1 phones.
             else:
                 suffix_list[0] = "_B"
-                phones_list = [
-                    phone + suffix for (phone, suffix) in zip(phones, suffix_list)
-                ]
-                print("{} {} {}".format(word, prob, " ".join(phones_list)))
+                phones_list = [phone + suffix for (phone, suffix) in zip(phones, suffix_list)]
+                print("{} {} {}".format(word, prob, ' '.join(phones_list)))
         else:
             # print middle subword lexicon
-            phones_list = [
-                phone + suffix for (phone, suffix) in zip(phones, suffix_list)
-            ]
-            print("{} {} {}".format(word, prob, " ".join(phones_list)))
+            phones_list = [phone + suffix for (phone, suffix) in zip(phones, suffix_list)]
+            print("{} {} {}".format(word, prob, ' '.join(phones_list)))
 
             # print beginning subword lexicon by replacing the first phone suffix by "_B"
             suffix_list[0] = "_B"
-            phones_list = [
-                phone + suffix for (phone, suffix) in zip(phones, suffix_list)
-            ]
-            print("{} {} {}".format(word, prob, " ".join(phones_list)))
-
+            phones_list = [phone + suffix for (phone, suffix) in zip(phones, suffix_list)]
+            print("{} {} {}".format(word, prob, ' '.join(phones_list)))
 
 def main():
     args = get_args()
     lexiconp = read_lexiconp(args.lexiconp)
     write_position_dependent_lexicon(lexiconp, args.separator)
-
 
 if __name__ == "__main__":
     main()

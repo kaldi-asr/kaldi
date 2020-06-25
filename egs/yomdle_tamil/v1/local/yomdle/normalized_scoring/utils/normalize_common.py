@@ -5,10 +5,7 @@
     width left/right-paren to regular left/right paren.
     Eg. normalize_common.py <input-file> <output-file>
 """
-from __future__ import print_function
-
 import sys
-
 from snor import SnorIter
 
 if len(sys.argv) != 3:
@@ -18,25 +15,15 @@ if len(sys.argv) != 3:
 input_file = sys.argv[1]
 output_file = sys.argv[2]
 
-
 def main():
 
-    with open(input_file, "r", encoding="utf-8") as fh, open(
-        output_file, "w", encoding="utf-8"
-    ) as fh_out:
+    with open(input_file, 'r', encoding='utf-8') as fh, open(output_file, 'w', encoding='utf-8') as fh_out:
         for utt, uttid in SnorIter(fh):
             for char in utt:
                 if char == "\u25cf" or char == "\u2022" or char == "\u2219":
                     # Convert "dots"/"filled-circles" to periods
                     fh_out.write("\u002e")
-                elif (
-                    char == "\u2010"
-                    or char == "\u2011"
-                    or char == "\u2012"
-                    or char == "\u2013"
-                    or char == "\u2014"
-                    or char == "\u2015"
-                ):
+                elif char == "\u2010" or char == "\u2011" or char == "\u2012" or char == "\u2013" or char == "\u2014" or char == "\u2015":
                     # Change variuos Unicode dashes to Reular hyphen
                     fh_out.write("\u002d")
                 elif char == "\uff09":

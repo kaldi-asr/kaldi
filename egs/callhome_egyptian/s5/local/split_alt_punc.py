@@ -15,3 +15,5 @@ for line in lexicon:
 
 lexicon.close()
 lexicon_ext.close()
+    
+

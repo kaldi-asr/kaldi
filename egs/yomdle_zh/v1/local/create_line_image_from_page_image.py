@@ -3,8 +3,8 @@
 # Copyright   2018 Ashish Arora
 # Apache 2.0
 # minimum bounding box part in this script is originally from
-# https://github.com/BebeSparkelSparkel/MinimumBoundingBox
-# https://startupnextdoor.com/computing-convex-hull-in-python/
+#https://github.com/BebeSparkelSparkel/MinimumBoundingBox
+#https://startupnextdoor.com/computing-convex-hull-in-python/
 """ This module will be used for extracting line images from page image.
  Given the word segmentation (bounding box around a word) for every word, it will
  extract line segmentation. To extract line segmentation, it will take word bounding
@@ -13,39 +13,27 @@
  be vertically or horizontally aligned). Hence to extract line image from line bounding box,
  page image is rotated and line image is cropped and saved.
 """
-from __future__ import division, print_function
 
 import argparse
 import csv
 import itertools
-import os
 import sys
-from builtins import range
-from collections import namedtuple
-from math import atan2, cos, degrees, pi, sin, sqrt
-
+import os
 import numpy as np
-from past.utils import old_div
+from math import atan2, cos, sin, pi, degrees, sqrt
+from collections import namedtuple
+
+from scipy.spatial import ConvexHull
 from PIL import Image
 from scipy.misc import toimage
-from scipy.spatial import ConvexHull
 
 parser = argparse.ArgumentParser(description="Creates line images from page image")
-parser.add_argument("image_dir", type=str, help="Path to full page images")
-parser.add_argument("csv_dir", type=str, help="Path to csv files")
-parser.add_argument("out_dir", type=str, help="Path to output directory")
-parser.add_argument(
-    "--im-format", type=str, default="png", help="What file format are the images"
-)
-parser.add_argument(
-    "--padding",
-    type=int,
-    default=100,
-    help="Padding so BBox does not exceed image area",
-)
-parser.add_argument(
-    "--head", type=int, default=-1, help="Number of csv files to process"
-)
+parser.add_argument('image_dir', type=str, help='Path to full page images')
+parser.add_argument('csv_dir', type=str, help='Path to csv files')
+parser.add_argument('out_dir', type=str, help='Path to output directory')
+parser.add_argument('--im-format', type=str, default='png', help='What file format are the images')
+parser.add_argument('--padding', type=int, default=100, help='Padding so BBox does not exceed image area')
+parser.add_argument('--head', type=int, default=-1, help='Number of csv files to process')
 args = parser.parse_args()
 
 """
@@ -61,16 +49,14 @@ bounding_box is a named tuple which contains:
              corner_points [(float, float)]: set that contains the corners of the rectangle
 """
 
-bounding_box_tuple = namedtuple(
-    "bounding_box_tuple",
-    "area "
-    "length_parallel "
-    "length_orthogonal "
-    "rectangle_center "
-    "unit_vector "
-    "unit_vector_angle "
-    "corner_points",
-)
+bounding_box_tuple = namedtuple('bounding_box_tuple', 'area '
+                                        'length_parallel '
+                                        'length_orthogonal '
+                                        'rectangle_center '
+                                        'unit_vector '
+                                        'unit_vector_angle '
+                                        'corner_points'
+                         )
 
 
 def unit_vector(pt0, pt1):
@@ -80,11 +66,9 @@ def unit_vector(pt0, pt1):
     -------
     (float, float): unit vector
     """
-    dis_0_to_1 = sqrt((pt0[0] - pt1[0]) ** 2 + (pt0[1] - pt1[1]) ** 2)
-    return (
-        old_div((pt1[0] - pt0[0]), dis_0_to_1),
-        old_div((pt1[1] - pt0[1]), dis_0_to_1),
-    )
+    dis_0_to_1 = sqrt((pt0[0] - pt1[0])**2 + (pt0[1] - pt1[1])**2)
+    return (pt1[0] - pt0[0]) / dis_0_to_1, \
+           (pt1[1] - pt0[1]) / dis_0_to_1
 
 
 def orthogonal_vector(vector):
@@ -112,7 +96,7 @@ def bounding_area(index, hull):
     unit_vector: direction of the length_parallel side.
     (it's orthogonal vector can be found with the orthogonal_vector function)
     """
-    unit_vector_p = unit_vector(hull[index], hull[index + 1])
+    unit_vector_p = unit_vector(hull[index], hull[index+1])
     unit_vector_o = orthogonal_vector(unit_vector_p)
 
     dis_p = tuple(np.dot(unit_vector_p, pt) for pt in hull)
@@ -123,13 +107,12 @@ def bounding_area(index, hull):
     len_p = max(dis_p) - min_p
     len_o = max(dis_o) - min_o
 
-    return {
-        "area": len_p * len_o,
-        "length_parallel": len_p,
-        "length_orthogonal": len_o,
-        "rectangle_center": (min_p + float(len_p) / 2, min_o + float(len_o) / 2),
-        "unit_vector": unit_vector_p,
-    }
+    return {'area': len_p * len_o,
+            'length_parallel': len_p,
+            'length_orthogonal': len_o,
+            'rectangle_center': (min_p + float(len_p) / 2, min_o + float(len_o) / 2),
+            'unit_vector': unit_vector_p,
+            }
 
 
 def to_xy_coordinates(unit_vector_angle, point):
@@ -140,11 +123,9 @@ def to_xy_coordinates(unit_vector_angle, point):
     ------
     (float, float): converted x,y coordinate of the unit vector.
     """
-    angle_orthogonal = unit_vector_angle + old_div(pi, 2)
-    return (
-        point[0] * cos(unit_vector_angle) + point[1] * cos(angle_orthogonal),
-        point[0] * sin(unit_vector_angle) + point[1] * sin(angle_orthogonal),
-    )
+    angle_orthogonal = unit_vector_angle + pi / 2
+    return point[0] * cos(unit_vector_angle) + point[1] * cos(angle_orthogonal), \
+           point[0] * sin(unit_vector_angle) + point[1] * sin(angle_orthogonal)
 
 
 def rotate_points(center_of_rotation, angle, points):
@@ -164,13 +145,9 @@ def rotate_points(center_of_rotation, angle, points):
         diff = tuple([pt[d] - center_of_rotation[d] for d in range(2)])
         diff_angle = atan2(diff[1], diff[0]) + angle
         ang.append(diff_angle)
-        diff_length = sqrt(sum([d ** 2 for d in diff]))
-        rot_points.append(
-            (
-                center_of_rotation[0] + diff_length * cos(diff_angle),
-                center_of_rotation[1] + diff_length * sin(diff_angle),
-            )
-        )
+        diff_length = sqrt(sum([d**2 for d in diff]))
+        rot_points.append((center_of_rotation[0] + diff_length * cos(diff_angle),
+                           center_of_rotation[1] + diff_length * sin(diff_angle)))
 
     return rot_points
 
@@ -183,20 +160,12 @@ def rectangle_corners(rectangle):
     [(float, float)]: 4 corner points of rectangle.
     """
     corner_points = []
-    for i1 in (0.5, -0.5):
+    for i1 in (.5, -.5):
         for i2 in (i1, -1 * i1):
-            corner_points.append(
-                (
-                    rectangle["rectangle_center"][0]
-                    + i1 * rectangle["length_parallel"],
-                    rectangle["rectangle_center"][1]
-                    + i2 * rectangle["length_orthogonal"],
-                )
-            )
+            corner_points.append((rectangle['rectangle_center'][0] + i1 * rectangle['length_parallel'],
+                            rectangle['rectangle_center'][1] + i2 * rectangle['length_orthogonal']))
 
-    return rotate_points(
-        rectangle["rectangle_center"], rectangle["unit_vector_angle"], corner_points
-    )
+    return rotate_points(rectangle['rectangle_center'], rectangle['unit_vector_angle'], corner_points)
 
 
 def get_orientation(origin, p1, p2):
@@ -207,8 +176,9 @@ def get_orientation(origin, p1, p2):
     -------
     integer: Negative if p1 is clockwise of p2.
     """
-    difference = ((p2[0] - origin[0]) * (p1[1] - origin[1])) - (
-        (p1[0] - origin[0]) * (p2[1] - origin[1])
+    difference = (
+        ((p2[0] - origin[0]) * (p1[1] - origin[1]))
+        - ((p1[0] - origin[0]) * (p2[1] - origin[1]))
     )
     return difference
 
@@ -272,35 +242,30 @@ def minimum_bounding_box(points):
     corner_points: set that contains the corners of the rectangle
     """
 
-    if len(points) <= 2:
-        raise ValueError("More than two points required.")
+    if len(points) <= 2: raise ValueError('More than two points required.')
 
     hull_ordered = [points[index] for index in ConvexHull(points).vertices]
     hull_ordered.append(hull_ordered[0])
-    # hull_ordered = compute_hull(points)
+    #hull_ordered = compute_hull(points)
     hull_ordered = tuple(hull_ordered)
 
     min_rectangle = bounding_area(0, hull_ordered)
-    for i in range(1, len(hull_ordered) - 1):
+    for i in range(1, len(hull_ordered)-1):
         rectangle = bounding_area(i, hull_ordered)
-        if rectangle["area"] < min_rectangle["area"]:
+        if rectangle['area'] < min_rectangle['area']:
             min_rectangle = rectangle
 
-    min_rectangle["unit_vector_angle"] = atan2(
-        min_rectangle["unit_vector"][1], min_rectangle["unit_vector"][0]
-    )
-    min_rectangle["rectangle_center"] = to_xy_coordinates(
-        min_rectangle["unit_vector_angle"], min_rectangle["rectangle_center"]
-    )
+    min_rectangle['unit_vector_angle'] = atan2(min_rectangle['unit_vector'][1], min_rectangle['unit_vector'][0])
+    min_rectangle['rectangle_center'] = to_xy_coordinates(min_rectangle['unit_vector_angle'], min_rectangle['rectangle_center'])
 
     return bounding_box_tuple(
-        area=min_rectangle["area"],
-        length_parallel=min_rectangle["length_parallel"],
-        length_orthogonal=min_rectangle["length_orthogonal"],
-        rectangle_center=min_rectangle["rectangle_center"],
-        unit_vector=min_rectangle["unit_vector"],
-        unit_vector_angle=min_rectangle["unit_vector_angle"],
-        corner_points=set(rectangle_corners(min_rectangle)),
+        area = min_rectangle['area'],
+        length_parallel = min_rectangle['length_parallel'],
+        length_orthogonal = min_rectangle['length_orthogonal'],
+        rectangle_center = min_rectangle['rectangle_center'],
+        unit_vector = min_rectangle['unit_vector'],
+        unit_vector_angle = min_rectangle['unit_vector_angle'],
+        corner_points = set(rectangle_corners(min_rectangle))
     )
 
 
@@ -323,9 +288,9 @@ def get_horizontal_angle(unit_vector_angle):
     (float): updated angle of the unit vector to be in radians.
              It is only in first or fourth quadrant.
     """
-    if unit_vector_angle > old_div(pi, 2) and unit_vector_angle <= pi:
+    if unit_vector_angle > pi / 2 and unit_vector_angle <= pi:
         unit_vector_angle = unit_vector_angle - pi
-    elif unit_vector_angle > -pi and unit_vector_angle < old_div(-pi, 2):
+    elif unit_vector_angle > -pi and unit_vector_angle < -pi / 2:
         unit_vector_angle = unit_vector_angle + pi
 
     return unit_vector_angle
@@ -365,57 +330,16 @@ def rotated_points(bounding_box, center):
     x4, y4 = p4
     center_x, center_y = center
     rotation_angle_in_rad = -get_smaller_angle(bounding_box)
-    x_dash_1 = (
-        (x1 - center_x) * cos(rotation_angle_in_rad)
-        - (y1 - center_y) * sin(rotation_angle_in_rad)
-        + center_x
-    )
-    x_dash_2 = (
-        (x2 - center_x) * cos(rotation_angle_in_rad)
-        - (y2 - center_y) * sin(rotation_angle_in_rad)
-        + center_x
-    )
-    x_dash_3 = (
-        (x3 - center_x) * cos(rotation_angle_in_rad)
-        - (y3 - center_y) * sin(rotation_angle_in_rad)
-        + center_x
-    )
-    x_dash_4 = (
-        (x4 - center_x) * cos(rotation_angle_in_rad)
-        - (y4 - center_y) * sin(rotation_angle_in_rad)
-        + center_x
-    )
+    x_dash_1 = (x1 - center_x) * cos(rotation_angle_in_rad) - (y1 - center_y) * sin(rotation_angle_in_rad) + center_x
+    x_dash_2 = (x2 - center_x) * cos(rotation_angle_in_rad) - (y2 - center_y) * sin(rotation_angle_in_rad) + center_x
+    x_dash_3 = (x3 - center_x) * cos(rotation_angle_in_rad) - (y3 - center_y) * sin(rotation_angle_in_rad) + center_x
+    x_dash_4 = (x4 - center_x) * cos(rotation_angle_in_rad) - (y4 - center_y) * sin(rotation_angle_in_rad) + center_x
 
-    y_dash_1 = (
-        (y1 - center_y) * cos(rotation_angle_in_rad)
-        + (x1 - center_x) * sin(rotation_angle_in_rad)
-        + center_y
-    )
-    y_dash_2 = (
-        (y2 - center_y) * cos(rotation_angle_in_rad)
-        + (x2 - center_x) * sin(rotation_angle_in_rad)
-        + center_y
-    )
-    y_dash_3 = (
-        (y3 - center_y) * cos(rotation_angle_in_rad)
-        + (x3 - center_x) * sin(rotation_angle_in_rad)
-        + center_y
-    )
-    y_dash_4 = (
-        (y4 - center_y) * cos(rotation_angle_in_rad)
-        + (x4 - center_x) * sin(rotation_angle_in_rad)
-        + center_y
-    )
-    return (
-        x_dash_1,
-        y_dash_1,
-        x_dash_2,
-        y_dash_2,
-        x_dash_3,
-        y_dash_3,
-        x_dash_4,
-        y_dash_4,
-    )
+    y_dash_1 = (y1 - center_y) * cos(rotation_angle_in_rad) + (x1 - center_x) * sin(rotation_angle_in_rad) + center_y
+    y_dash_2 = (y2 - center_y) * cos(rotation_angle_in_rad) + (x2 - center_x) * sin(rotation_angle_in_rad) + center_y
+    y_dash_3 = (y3 - center_y) * cos(rotation_angle_in_rad) + (x3 - center_x) * sin(rotation_angle_in_rad) + center_y
+    y_dash_4 = (y4 - center_y) * cos(rotation_angle_in_rad) + (x4 - center_x) * sin(rotation_angle_in_rad) + center_y
+    return x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4
 
 
 def pad_image(image):
@@ -427,14 +351,9 @@ def pad_image(image):
     image: page image
     """
     offset = int(args.padding // 2)
-    padded_image = Image.new(
-        "RGB",
-        (image.size[0] + int(args.padding), image.size[1] + int(args.padding)),
-        "white",
-    )
-    padded_image.paste(im=image, box=(offset, offset))
+    padded_image = Image.new('RGB', (image.size[0] + int(args.padding), image.size[1] + int(args.padding)), "white")
+    padded_image.paste(im = image, box = (offset, offset))
     return padded_image
-
 
 def update_minimum_bounding_box_input(bounding_box_input):
     """ Given list of 2D points, returns list of 2D points shifted by an offset.
@@ -457,16 +376,14 @@ def update_minimum_bounding_box_input(bounding_box_input):
 ### main ###
 csv_count = 0
 for filename in sorted(os.listdir(args.csv_dir)):
-    if filename.endswith(".csv") and (csv_count < args.head or args.head < 0):
+    if filename.endswith('.csv') and (csv_count < args.head or args.head < 0):
         csv_count = csv_count + 1
-        with open(os.path.join(args.csv_dir, filename), "r", encoding="utf-8") as f:
-            image_file = os.path.join(
-                args.image_dir, os.path.splitext(filename)[0] + "." + args.im_format
-            )
+        with open(os.path.join(args.csv_dir, filename), 'r', encoding='utf-8') as f:
+            image_file = os.path.join(args.image_dir, os.path.splitext(filename)[0] + '.' + args.im_format)
             if not os.path.isfile(image_file):
                 continue
-            csv_out_file = os.path.join(args.out_dir, "truth_csv", filename)
-            csv_out_fh = open(csv_out_file, "w", encoding="utf-8")
+            csv_out_file = os.path.join(args.out_dir, 'truth_csv', filename)
+            csv_out_fh = open(csv_out_file, 'w', encoding='utf-8')
             csv_out_writer = csv.writer(csv_out_fh)
             im = Image.open(image_file)
             im = pad_image(im)
@@ -475,27 +392,27 @@ for filename in sorted(os.listdir(args.csv_dir)):
                 if count == 1:
                     count = 0
                     continue
-
+    
                 points = []
                 points.append((int(row[2]), int(row[3])))
                 points.append((int(row[4]), int(row[5])))
                 points.append((int(row[6]), int(row[7])))
                 points.append((int(row[8]), int(row[9])))
-
+    
                 x = [int(row[2]), int(row[4]), int(row[6]), int(row[8])]
                 y = [int(row[3]), int(row[5]), int(row[7]), int(row[9])]
                 min_x, min_y = min(x), min(y)
                 max_x, max_y = max(x), max(y)
                 if min_x == max_x or min_y == max_y:
                     continue
-
+    
                 try:
                     updated_mbb_input = update_minimum_bounding_box_input(points)
                     bounding_box = minimum_bounding_box(updated_mbb_input)
                 except Exception as e:
                     print("Error: Skipping Image " + row[1])
                     continue
-
+    
                 p1, p2, p3, p4 = bounding_box.corner_points
                 x1, y1 = p1
                 x2, y2 = p2
@@ -516,32 +433,20 @@ for filename in sorted(os.listdir(args.csv_dir)):
                 rot_points.append(p2_new)
                 rot_points.append(p3_new)
                 rot_points.append(p4_new)
-
-                cropped_bounding_box = bounding_box_tuple(
-                    bounding_box.area,
-                    bounding_box.length_parallel,
-                    bounding_box.length_orthogonal,
-                    bounding_box.length_orthogonal,
-                    bounding_box.unit_vector,
-                    bounding_box.unit_vector_angle,
-                    set(rot_points),
-                )
-
+    
+                cropped_bounding_box = bounding_box_tuple(bounding_box.area,
+                        bounding_box.length_parallel,
+                        bounding_box.length_orthogonal,
+                        bounding_box.length_orthogonal,
+                        bounding_box.unit_vector,
+                        bounding_box.unit_vector_angle,
+                        set(rot_points))
+    
                 rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
-                img2 = region_initial.rotate(
-                    degrees(rotation_angle_in_rad), resample=Image.BICUBIC
-                )
-                (
-                    x_dash_1,
-                    y_dash_1,
-                    x_dash_2,
-                    y_dash_2,
-                    x_dash_3,
-                    y_dash_3,
-                    x_dash_4,
-                    y_dash_4,
-                ) = rotated_points(cropped_bounding_box, get_center(region_initial))
-
+                img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample = Image.BICUBIC)
+                x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
+                    cropped_bounding_box, get_center(region_initial))
+    
                 min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
                 min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
                 max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
@@ -549,5 +454,5 @@ for filename in sorted(os.listdir(args.csv_dir)):
                 box = (min_x, min_y, max_x, max_y)
                 region_final = img2.crop(box)
                 csv_out_writer.writerow(row)
-                image_out_file = os.path.join(args.out_dir, "truth_line_image", row[1])
+                image_out_file = os.path.join(args.out_dir, 'truth_line_image', row[1])
                 region_final.save(image_out_file)

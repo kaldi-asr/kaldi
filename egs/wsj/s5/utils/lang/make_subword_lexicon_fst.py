@@ -3,78 +3,47 @@
 # 2019 Dongji Gao
 # Apache 2.0.
 
+from make_lexicon_fst import read_lexiconp
 import argparse
 import math
 import sys
 
-from make_lexicon_fst import read_lexiconp
-
-
 # see get_args() below for usage mesage
 def get_args():
-    parser = argparse.ArgumentParser(
-        description="""This script creates the
+    parser = argparse.ArgumentParser(description="""This script creates the
         text form of a subword lexicon FST to be compiled by fstcompile using
         the appropriate symbol tables (phones.txt and words.txt). It will mostly
         be invoked indirectly via utils/prepare_lang_subword.sh. The output
         goes to the stdout. This script is the subword version of make_lexicon_fst.py.
         It only allows optional silence to appear after end-subword or singleton-subword,
         (i.e., subwords without separator). In this version we do not support
-        pronunciation probability. (i.e., pron-prob = 1.0)"""
-    )
+        pronunciation probability. (i.e., pron-prob = 1.0)""")
 
-    parser.add_argument(
-        "--sil-phone",
-        type=str,
-        help="""Text form of
-        optional-silence phone, e.g. 'SIL'. See also the --sil-prob option.""",
-    )
-    parser.add_argument(
-        "--sil-prob",
-        type=float,
-        default=0.0,
-        help="""Probability
+    parser.add_argument('--sil-phone', type=str, help="""Text form of
+        optional-silence phone, e.g. 'SIL'. See also the --sil-prob option.""")
+    parser.add_argument('--sil-prob', type=float, default=0.0, help="""Probability
         of silence between words (including the beginning and end of word sequence).
         Must be in range [0.0, 1.0). This refer to the optional silence inserted by
-        the lexicon; see the --sil-phone option.""",
-    )
-    parser.add_argument(
-        "--sil-disambig",
-        type=str,
-        help="""Disambiguation symbol
+        the lexicon; see the --sil-phone option.""")
+    parser.add_argument('--sil-disambig', type=str, help="""Disambiguation symbol
         to disambiguate silence, e.g. #5. Will only be supplied if you are creating 
         the version of L.fst with disambiguation symbols, intended for use with cyclic 
         G.fst. This symbol was introduced to fix a rather obscure source of nondeterminism 
-        of CLG.fst, that has to do with reordering of disambiguation symbols and phone symbols.""",
-    )
-    parser.add_argument(
-        "--position-dependent",
-        action="store_true",
-        help="""Whether 
-        the input lexicon is position-dependent.""",
-    )
-    parser.add_argument(
-        "--separator",
-        type=str,
-        default="@@",
-        help="""Separator
+        of CLG.fst, that has to do with reordering of disambiguation symbols and phone symbols.""")
+    parser.add_argument('--position-dependent', action="store_true", help="""Whether 
+        the input lexicon is position-dependent.""")
+    parser.add_argument("--separator", type=str, default="@@", help="""Separator
         indicates the position of a subword in a word.
         Subword followed by separator can only appear at the beginning or middle of a word.
         Subword without separator can only appear at the end of a word or is a word itself.
         E.g. "international -> inter@@ nation@@ al";
              "nation        -> nation"
-    The separator should match the separator used in the input lexicon.""",
-    )
-    parser.add_argument(
-        "lexiconp",
-        type=str,
-        help="""Filename of lexicon with
+    The separator should match the separator used in the input lexicon.""")
+    parser.add_argument('lexiconp', type=str, help="""Filename of lexicon with
         pronunciation probabilities (normally lexiconp.txt), with lines of the
-        form 'subword prob p1 p2...', e.g. 'a, 1.0 ay'""",
-    )
+        form 'subword prob p1 p2...', e.g. 'a, 1.0 ay'""")
     args = parser.parse_args()
     return args
-
 
 def contain_disambig_symbol(phones):
     """Return true if the phone sequence contains disambiguation symbol.
@@ -83,29 +52,21 @@ def contain_disambig_symbol(phones):
     symbol for each phone sequence"""
     return True if phones[-1].startswith("#") else False
 
-
 def print_arc(src, dest, phone, word, cost):
-    print("{}\t{}\t{}\t{}\t{}".format(src, dest, phone, word, cost))
-
+    print('{}\t{}\t{}\t{}\t{}'.format(src, dest, phone, word, cost))
 
 def is_end(word, separator):
     """Return true if the subword can appear at the end of a word (i.e., the subword
     does not end with separator). Return false otherwise."""
     return not word.endswith(separator)
 
-
 def get_suffix(phone):
     """Return the suffix of a phone. The suffix is in the form of '_B', '_I'..."""
     if len(phone) < 3:
-        print(
-            "{}: invalid phone {} (please check if the phone is position-dependent)".format(
-                sys.argv[0], phone
-            ),
-            file=sys.stderr,
-        )
+        print("{}: invalid phone {} (please check if the phone is position-dependent)".format(
+              sys.argv[0], phone), file=sys.stderr)
         sys.exit(1)
     return phone[-2:]
-
 
 def write_fst_no_silence(lexicon, position_dependent, separator):
     """Writes the text format of L.fst to the standard output.  This version is for
@@ -153,7 +114,7 @@ def write_fst_no_silence(lexicon, position_dependent, separator):
         next_state += 1
 
     for (word, pron_prob, phones) in lexicon:
-        pron_cost = 0.0  # do not support pron_prob
+        pron_cost = 0.0                # do not support pron_prob
         phones_len = len(phones)
 
         # set start and end state for different cases
@@ -190,7 +151,7 @@ def write_fst_no_silence(lexicon, position_dependent, separator):
 
         # print the last arc
         i = phones_len - 1
-        phone = phones[i] if i >= 0 else "<eps>"
+        phone = phones[i] if i >=0 else "<eps>"
         word = word if i <= 0 else "<eps>"
         cost = pron_cost if i <= 0 else 0.0
         print_arc(current_state, end_state, phone, word, cost)
@@ -198,10 +159,7 @@ def write_fst_no_silence(lexicon, position_dependent, separator):
     # set the final state
     print("{state}\t{final_cost}".format(state=loop_state, final_cost=0.0))
 
-
-def write_fst_with_silence(
-    lexicon, sil_phone, sil_prob, sil_disambig, position_dependent, separator
-):
+def write_fst_with_silence(lexicon, sil_phone, sil_prob, sil_disambig, position_dependent, separator):
     """Writes the text format of L.fst to the standard output.  This version is for
     when --sil-prob=0.0, meaning there is no optional silence allowed.
     loop_state here is the start and final state of the fst. It goes to word_start_state
@@ -247,11 +205,11 @@ def write_fst_with_silence(
 
     # regular setting
     start_state = 0
-    loop_state = 1  # also the final state
-    sil_state = 2  # words terminate here when followed by silence; this state
-    # has a licence transition to loop_state
-    word_start_state = 3  # subword leave from here
-    next_state = 4  # the next un-allocated state, will be incremented as we go
+    loop_state = 1         # also the final state
+    sil_state = 2          # words terminate here when followed by silence; this state
+                           # has a licence transition to loop_state
+    word_start_state = 3   # subword leave from here
+    next_state = 4         # the next un-allocated state, will be incremented as we go
 
     print_arc(start_state, loop_state, "<eps>", "<eps>", no_sil_cost)
     print_arc(start_state, sil_state, "<eps>", "<eps>", sil_cost)
@@ -272,9 +230,9 @@ def write_fst_with_silence(
         next_state += 1
 
     for (word, pron_prob, phones) in lexicon:
-        pron_cost = 0.0  # do not support pron_prob
+        pron_cost = 0.0           # do not support pron_prob
         phones_len = len(phones)
-
+        
         # set start and end state for different cases
         if position_dependent:
             first_phone_suffix = get_suffix(phones[0])
@@ -326,30 +284,18 @@ def write_fst_with_silence(
     # set the final state
     print("{state}\t{final_cost}".format(state=loop_state, final_cost=0.0))
 
-
 def main():
     args = get_args()
     if args.sil_prob < 0.0 or args.sil_prob >= 1.0:
-        print(
-            "{}: invalid value specified --sil-prob={}".format(
-                sys.argv[0], args.sil_prob
-            ),
-            file=sys.stderr,
-        )
+        print("{}: invalid value specified --sil-prob={}".format(
+              sys.argv[0], args.sil_prob), file=sys.stderr)
         sys.exit(1)
     lexicon = read_lexiconp(args.lexiconp)
     if args.sil_prob == 0.0:
         write_fst_no_silence(lexicon, args.position_dependent, args.separator)
     else:
-        write_fst_with_silence(
-            lexicon,
-            args.sil_phone,
-            args.sil_prob,
-            args.sil_disambig,
-            args.position_dependent,
-            args.separator,
-        )
-
+        write_fst_with_silence(lexicon, args.sil_phone, args.sil_prob, 
+            args.sil_disambig, args.position_dependent, args.separator)
 
 if __name__ == "__main__":
     main()

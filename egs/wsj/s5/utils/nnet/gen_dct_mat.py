@@ -20,53 +20,53 @@
 # and takes into account that data-layout is along frequency axis,
 # while DCT is done along temporal axis.
 
-from __future__ import division, print_function
-
-import sys
-from builtins import range, str
+from __future__ import division
+from __future__ import print_function
 from math import *
+import sys
+
+
 from optparse import OptionParser
 
-
 def print_on_same_line(text):
-    print(text, end=" ")
-
+    print(text, end=' ')
 
 parser = OptionParser()
-parser.add_option("--fea-dim", dest="dim", help="feature dimension")
-parser.add_option("--splice", dest="splice", help="applied splice value")
-parser.add_option("--dct-basis", dest="dct_basis", help="number of DCT basis")
+parser.add_option('--fea-dim', dest='dim', help='feature dimension')
+parser.add_option('--splice', dest='splice', help='applied splice value')
+parser.add_option('--dct-basis', dest='dct_basis', help='number of DCT basis')
 (options, args) = parser.parse_args()
 
-if options.dim == None:
+if(options.dim == None):
     parser.print_help()
     sys.exit(1)
 
-dim = int(options.dim)
-splice = int(options.splice)
-dct_basis = int(options.dct_basis)
+dim=int(options.dim)
+splice=int(options.splice)
+dct_basis=int(options.dct_basis)
 
-timeContext = 2 * splice + 1
+timeContext=2*splice+1
 
-# generate the DCT matrix
+
+#generate the DCT matrix
 M_PI = 3.1415926535897932384626433832795
 M_SQRT2 = 1.4142135623730950488016887
 
-# generate sparse DCT matrix
-print("[")
+
+#generate sparse DCT matrix
+print('[')
 for k in range(dct_basis):
     for m in range(dim):
         for n in range(timeContext):
-            if n == 0:
-                print_on_same_line(m * "0 ")
-            else:
-                print_on_same_line((dim - 1) * "0 ")
-            print_on_same_line(
-                str(sqrt(2.0 / timeContext) * cos(M_PI / timeContext * k * (n + 0.5)))
-            )
-            if n == timeContext - 1:
-                print_on_same_line((dim - m - 1) * "0 ")
+          if(n==0):
+              print_on_same_line(m*'0 ')
+          else:
+              print_on_same_line((dim-1)*'0 ')
+          print_on_same_line(str(sqrt(2.0/timeContext)*cos(M_PI/timeContext*k*(n+0.5))))
+          if(n==timeContext-1):
+              print_on_same_line((dim-m-1)*'0 ')
         print()
     print()
 
-print("]")
+print(']')
+

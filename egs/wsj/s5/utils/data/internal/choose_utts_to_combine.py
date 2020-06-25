@@ -5,15 +5,14 @@
 # Apache 2.0
 
 from __future__ import print_function
-
 import argparse
-import sys
-from builtins import range, str
-from collections import defaultdict
 from random import randint
+import sys
+import os
+from collections import defaultdict
 
-parser = argparse.ArgumentParser(
-    description="""
+
+parser = argparse.ArgumentParser(description="""
 This script, called from data/utils/combine_short_segments.sh, chooses consecutive
 utterances to concatenate that will satisfy the minimum segment length.  It uses the
 --spk2utt file to ensure that utterances from the same speaker are preferentially
@@ -33,59 +32,35 @@ The utt2spk output of this program assigns utterances to the speakers of the inp
 in the (hopefully rare) case where utterances were combined across speakers, it
 will assign the utterance to whichever of the original speakers contributed the most
 to the grouped utterance.
-"""
-)
+""")
 
-parser.add_argument(
-    "--min-duration", type=float, default=1.55, help="Minimum utterance duration"
-)
-parser.add_argument(
-    "--merge-within-speakers-only",
-    type=str,
-    default="false",
-    choices=["true", "false"],
-    help="If true, utterances are only combined from the same speaker."
-    "It may be useful for the speaker recognition task."
-    "If false, utterances are preferentially combined from the same speaker,"
-    "and then combined across different speakers.",
-)
-parser.add_argument(
-    "spk2utt_in",
-    type=str,
-    metavar="<spk2utt-in>",
-    help="Filename of [input] speaker to utterance map needed "
-    "because this script tries to merge utterances from the "
-    "same speaker as much as possible, and also needs to produce"
-    "an output utt2spk map.",
-)
-parser.add_argument(
-    "utt2dur_in",
-    type=str,
-    metavar="<utt2dur-in>",
-    help="Filename of [input] utterance-to-duration map, with lines like 'utt1 1.23'.",
-)
-parser.add_argument(
-    "utt2utts_out",
-    type=str,
-    metavar="<utt2utts-out>",
-    help="Filename of [output] new-utterance-to-old-utterances map, with lines "
-    "like 'utt1 utt1' or 'utt2-comb2 utt2 utt3'",
-)
-parser.add_argument(
-    "utt2spk_out",
-    type=str,
-    metavar="<utt2spk-out>",
-    help="Filename of [output] utt2spk map, which maps new utterances to original "
-    "speakers.  If utterances were combined across speakers, we map the new "
-    "utterance to the speaker that contributed the most to them.",
-)
-parser.add_argument(
-    "utt2dur_out",
-    type=str,
-    metavar="<utt2spk-out>",
-    help="Filename of [output] utt2dur map, which is just the summations of "
-    "the durations of the source utterances.",
-)
+
+parser.add_argument("--min-duration", type = float, default = 1.55,
+                    help="Minimum utterance duration")
+parser.add_argument("--merge-within-speakers-only", type = str, default = 'false',
+                    choices = ['true', 'false'],
+                    help="If true, utterances are only combined from the same speaker."
+                    "It may be useful for the speaker recognition task."
+                    "If false, utterances are preferentially combined from the same speaker,"
+                    "and then combined across different speakers.")
+parser.add_argument("spk2utt_in", type = str, metavar = "<spk2utt-in>",
+                    help="Filename of [input] speaker to utterance map needed "
+                    "because this script tries to merge utterances from the "
+                    "same speaker as much as possible, and also needs to produce"
+                    "an output utt2spk map.")
+parser.add_argument("utt2dur_in", type = str, metavar = "<utt2dur-in>",
+                    help="Filename of [input] utterance-to-duration map, with lines like 'utt1 1.23'.")
+parser.add_argument("utt2utts_out", type = str, metavar = "<utt2utts-out>",
+                    help="Filename of [output] new-utterance-to-old-utterances map, with lines "
+                    "like 'utt1 utt1' or 'utt2-comb2 utt2 utt3'")
+parser.add_argument("utt2spk_out", type = str, metavar = "<utt2spk-out>",
+                    help="Filename of [output] utt2spk map, which maps new utterances to original "
+                    "speakers.  If utterances were combined across speakers, we map the new "
+                    "utterance to the speaker that contributed the most to them.")
+parser.add_argument("utt2dur_out", type = str, metavar = "<utt2spk-out>",
+                    help="Filename of [output] utt2dur map, which is just the summations of "
+                    "the durations of the source utterances.")
+
 
 args = parser.parse_args()
 
@@ -128,9 +103,9 @@ def CombineList(min_duration, durations):
     # if utterance-index i currently corresponds to the start of a group
     # of utterances, then group_end[i] is the end-index (i.e. last index plus one
     # of that utterance-group, otherwise undefined.
-    group_end = [x + 1 for x in range(num_utts)]
+    group_end = [ x + 1 for x in range(num_utts) ]
 
-    queue = [i for i in range(num_utts) if LessThan(group_durations[i], min_duration)]
+    queue = [ i for i in range(num_utts) if LessThan(group_durations[i], min_duration) ]
 
     while len(queue) > 0:
         i = queue.pop()
@@ -140,10 +115,11 @@ def CombineList(min_duration, durations):
         this_dur = group_durations[i]
         # left_dur is the duration of the group to the left of this group,
         # or 0.0 if there is no such group.
-        left_dur = group_durations[group_start[i - 1]] if i > 0 else 0.0
+        left_dur = group_durations[group_start[i-1]] if i > 0 else 0.0
         # right_dur is the duration of the group to the right of this group,
         # or 0.0 if there is no such group.
         right_dur = group_durations[group_end[i]] if group_end[i] < num_utts else 0.0
+
 
         if left_dur == 0.0 and right_dur == 0.0:
             # there is only one group.  Nothing more to merge; break
@@ -179,7 +155,7 @@ def CombineList(min_duration, durations):
 
         if combine_left:
             assert left_dur != 0.0
-            new_group_start = group_start[i - 1]
+            new_group_start = group_start[i-1]
             group_end[new_group_start] = group_end[i]
             for j in range(group_start[i], group_end[i]):
                 group_start[j] = new_group_start
@@ -205,23 +181,22 @@ def CombineList(min_duration, durations):
     ans = []
     cur_group_start = 0
     while cur_group_start < num_utts:
-        ans.append((cur_group_start, group_end[cur_group_start]))
+        ans.append( (cur_group_start, group_end[cur_group_start]) )
         cur_group_start = group_end[cur_group_start]
     return ans
 
-
 def SelfTest():
-    assert CombineList(0.1, [5.0, 6.0, 7.0]) == [(0, 1), (1, 2), (2, 3)]
-    assert CombineList(0.5, [0.1, 6.0, 7.0]) == [(0, 2), (2, 3)]
-    assert CombineList(0.5, [6.0, 7.0, 0.1]) == [(0, 1), (1, 3)]
+    assert CombineList(0.1, [5.0, 6.0, 7.0]) == [ (0,1), (1,2), (2,3) ]
+    assert CombineList(0.5, [0.1, 6.0, 7.0]) == [ (0,2), (2,3) ]
+    assert CombineList(0.5, [6.0, 7.0, 0.1]) == [ (0,1), (1,3) ]
     # in the two examples below, it combines with the shorter one if both would
     # be above min-dur.
-    assert CombineList(0.5, [6.0, 0.1, 7.0]) == [(0, 2), (2, 3)]
-    assert CombineList(0.5, [7.0, 0.1, 6.0]) == [(0, 1), (1, 3)]
+    assert CombineList(0.5, [6.0, 0.1, 7.0]) == [ (0,2), (2,3) ]
+    assert CombineList(0.5, [7.0, 0.1, 6.0]) == [ (0,1), (1,3) ]
     # in the example below, it combines with whichever one would
     # take it above the min-dur, if there is only one such.
     # note, it tests the 0.1 first as the queue is popped from the end.
-    assert CombineList(1.0, [1.0, 0.5, 0.1, 6.0]) == [(0, 2), (2, 4)]
+    assert CombineList(1.0, [1.0, 0.5, 0.1, 6.0]) == [ (0,2), (2,4) ]
 
     for x in range(100):
         min_duration = 0.05
@@ -233,7 +208,7 @@ def SelfTest():
         if len(ranges) > 1:  # check that each range's duration is >= min_duration
             for j in range(len(ranges)):
                 (start, end) = ranges[j]
-                this_dur = sum([durations[k] for k in range(start, end)])
+                this_dur = sum([ durations[k] for k in range(start, end) ])
                 assert not LessThan(this_dur, min_duration)
 
         # check that the list returned is not affected by very tiny differences
@@ -243,7 +218,6 @@ def SelfTest():
             durations2[i] += 1.0e-07 * randint(-5, 5)
         ranges2 = CombineList(min_duration, durations2)
         assert ranges2 == ranges
-
 
 # This function figures out the grouping of utterances.
 # The input is:
@@ -267,61 +241,54 @@ def GetUtteranceGroups(min_duration, merge_within_speakers_only, spk2utt, utt2du
     # separately, in the 'first pass' of combination.
     for i in range(len(spk2utt)):
         (spk, utts) = spk2utt[i]
-        durations = []  # durations for this group of utts.
+        durations = [] # durations for this group of utts.
         for utt in utts:
             try:
                 durations.append(utt2dur[utt])
             except:
-                sys.exit(
-                    "choose_utts_to_combine.py: no duration available "
-                    "in utt2dur file {0} for utterance {1}".format(args.utt2dur_in, utt)
-                )
+                sys.exit("choose_utts_to_combine.py: no duration available "
+                         "in utt2dur file {0} for utterance {1}".format(
+                        args.utt2dur_in, utt))
         ranges = CombineList(min_duration, durations)
         for start, end in ranges:  # each element of 'ranges' is a 2-tuple (start, end)
-            utt_groups.append([utts[i] for i in range(start, end)])
-            group_durations.append(sum([durations[i] for i in range(start, end)]))
+            utt_groups.append( [ utts[i] for i in range(start, end) ])
+            group_durations.append(sum([ durations[i] for i in range(start, end) ]))
 
     old_dur_sum = sum(utt2dur.values())
     new_dur_sum = sum(group_durations)
     if abs(old_dur_sum - new_dur_sum) > 0.0001 * old_dur_sum:
-        print(
-            "choose_utts_to_combine.py: large difference in total "
-            "durations: {0} vs {1} ".format(old_dur_sum, new_dur_sum),
-            file=sys.stderr,
-        )
+        print("choose_utts_to_combine.py: large difference in total "
+              "durations: {0} vs {1} ".format(old_dur_sum, new_dur_sum),
+              file = sys.stderr)
 
     # Now we combine the groups obtained above, in case we had situations where
     # the combination of all the utterances of one speaker were still below
     # the minimum duration.
-    if merge_within_speakers_only == "true":
-        return utt_groups
+    if merge_within_speakers_only == 'true':
+      return utt_groups
     else:
-        new_utt_groups = []
-        ranges = CombineList(min_duration, group_durations)
-        for start, end in ranges:
-            # the following code is destructive of 'utt_groups' but it doesn't
-            # matter.
-            this_group = utt_groups[start]
-            for i in range(start + 1, end):
-                this_group += utt_groups[i]
-            new_utt_groups.append(this_group)
-        print(
-            "choose_utts_to_combine.py: combined {0} utterances to {1} utterances "
+      new_utt_groups = []
+      ranges = CombineList(min_duration, group_durations)
+      for start, end in ranges:
+          # the following code is destructive of 'utt_groups' but it doesn't
+          # matter.
+          this_group = utt_groups[start]
+          for i in range(start + 1, end):
+              this_group += utt_groups[i]
+          new_utt_groups.append(this_group)
+      print("choose_utts_to_combine.py: combined {0} utterances to {1} utterances "
             "while respecting speaker boundaries, and then to {2} utterances "
             "with merging across speaker boundaries.".format(
-                len(utt2dur), len(utt_groups), len(new_utt_groups)
-            ),
-            file=sys.stderr,
-        )
-        return new_utt_groups
+              len(utt2dur), len(utt_groups), len(new_utt_groups)),
+            file = sys.stderr)
+      return new_utt_groups
 
 
 SelfTest()
 
 if args.min_duration < 0.0:
-    print(
-        "choose_utts_to_combine.py: bad minium duration {0}".format(args.min_duration)
-    )
+    print("choose_utts_to_combine.py: bad minium duration {0}".format(
+            args.min_duration))
 
 # spk2utt is a list of 2-tuples (speaker-id, [list-of-utterances])
 spk2utt = []
@@ -330,12 +297,10 @@ utt2spk = dict()
 try:
     f = open(args.spk2utt_in)
 except:
-    sys.exit(
-        "choose_utts_to_combine.py: error opening --spk2utt={0}".format(args.spk2utt_in)
-    )
+    sys.exit("choose_utts_to_combine.py: error opening --spk2utt={0}".format(args.spk2utt_in))
 while True:
     line = f.readline()
-    if line == "":
+    if line == '':
         break
     a = line.split()
     if len(a) < 2:
@@ -345,10 +310,8 @@ while True:
     spk2utt.append((spk, utts))
     for utt in utts:
         if utt in utt2spk:
-            sys.exit(
-                "choose_utts_to_combine.py: utterance {0} is listed more than once"
-                "in the spk2utt file {1}".format(utt, args.spk2utt_in)
-            )
+            sys.exit("choose_utts_to_combine.py: utterance {0} is listed more than once"
+                     "in the spk2utt file {1}".format(utt, args.spk2utt_in))
         utt2spk[utt] = spk
 f.close()
 
@@ -357,54 +320,43 @@ utt2dur = dict()
 try:
     f = open(args.utt2dur_in)
 except:
-    sys.exit(
-        "choose_utts_to_combine.py: error opening utt2dur file {0}".format(
-            args.utt2dur_in
-        )
-    )
+    sys.exit("choose_utts_to_combine.py: error opening utt2dur file {0}".format(args.utt2dur_in))
 while True:
     line = f.readline()
-    if line == "":
+    if line == '':
         break
     try:
-        [utt, dur] = line.split()
+        [ utt, dur ] = line.split()
         dur = float(dur)
         utt2dur[utt] = dur
     except:
-        sys.exit(
-            "choose_utts_to_combine.py: bad line in utt2dur file {0}: {1}".format(
-                args.utt2dur_in, line
-            )
-        )
+        sys.exit("choose_utts_to_combine.py: bad line in utt2dur file {0}: {1}".format(
+                args.utt2dur_in, line))
 
-utt_groups = GetUtteranceGroups(
-    args.min_duration, args.merge_within_speakers_only, spk2utt, utt2dur
-)
+
+utt_groups = GetUtteranceGroups(args.min_duration, args.merge_within_speakers_only, spk2utt, utt2dur)
 
 # set utt_group names to an array like [ 'utt1', 'utt2-comb2', 'utt4', ... ]
-utt_group_names = [
-    group[0] if len(group) == 1 else "{0}-comb{1}".format(group[0], len(group))
-    for group in utt_groups
-]
+utt_group_names = [ group[0] if len(group)==1 else "{0}-comb{1}".format(group[0], len(group))
+                    for group in utt_groups ]
+
 
 # write the utt2utts file.
 try:
-    with open(args.utt2utts_out, "w") as f:
+    with open(args.utt2utts_out, 'w') as f:
         for i in range(len(utt_groups)):
-            print(utt_group_names[i], " ".join(utt_groups[i]), file=f)
+            print(utt_group_names[i], ' '.join(utt_groups[i]), file = f)
 except Exception as e:
-    sys.exit(
-        "choose_utts_to_combine.py: exception writing to "
-        "<utt2utts-out>={0}: {1}".format(args.utt2utts_out, str(e))
-    )
+    sys.exit("choose_utts_to_combine.py: exception writing to "
+             "<utt2utts-out>={0}: {1}".format(args.utt2utts_out, str(e)))
 
 # write the utt2spk file.
 try:
-    with open(args.utt2spk_out, "w") as f:
+    with open(args.utt2spk_out, 'w') as f:
         for i in range(len(utt_groups)):
             utt_group = utt_groups[i]
-            spk_list = [utt2spk[utt] for utt in utt_group]
-            if spk_list == [spk_list[0]] * len(utt_group):
+            spk_list = [ utt2spk[utt] for utt in utt_group ]
+            if spk_list == [ spk_list[0] ] * len(utt_group):
                 spk = spk_list[0]
             else:
                 spk2dur = defaultdict(float)
@@ -424,22 +376,19 @@ try:
                         spk = this_spk
                 assert spk != None
             new_utt = utt_group_names[i]
-            print(new_utt, spk, file=f)
+            print(new_utt, spk, file = f)
 except Exception as e:
-    sys.exit(
-        "choose_utts_to_combine.py: exception writing to "
-        "<utt2spk-out>={0}: {1}".format(args.utt2spk_out, str(e))
-    )
+    sys.exit("choose_utts_to_combine.py: exception writing to "
+             "<utt2spk-out>={0}: {1}".format(args.utt2spk_out, str(e)))
 
 # write the utt2dur file.
 try:
-    with open(args.utt2dur_out, "w") as f:
+    with open(args.utt2dur_out, 'w') as f:
         for i in range(len(utt_groups)):
             utt_name = utt_group_names[i]
-            duration = sum([utt2dur[utt] for utt in utt_groups[i]])
-            print(utt_name, duration, file=f)
+            duration = sum([ utt2dur[utt] for utt in utt_groups[i]])
+            print(utt_name, duration, file = f)
 except Exception as e:
-    sys.exit(
-        "choose_utts_to_combine.py: exception writing to "
-        "<utt2dur-out>={0}: {1}".format(args.utt2dur_out, str(e))
-    )
+    sys.exit("choose_utts_to_combine.py: exception writing to "
+             "<utt2dur-out>={0}: {1}".format(args.utt2dur_out, str(e)))
+

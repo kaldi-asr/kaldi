@@ -11,32 +11,23 @@
 # if you experiment with it.
 
 from __future__ import print_function
-
 import argparse
-from builtins import str
 
-parser = argparse.ArgumentParser(
-    description="Usage: steps/nnet3/chain/gen_topo.py "
-    "<colon-separated-nonsilence-phones> <colon-separated-silence-phones>"
-    "e.g.:  steps/nnet3/chain/gen_topo.pl 4:5:6:7:8:9:10 1:2:3\n",
-    epilog="See egs/swbd/s5c/local/chain/train_tdnn_a.sh for example of usage.",
-)
-parser.add_argument(
-    "nonsilence_phones",
-    type=str,
-    help="List of non-silence phones as integers, separated by colons, e.g. 4:5:6:7:8:9",
-)
-parser.add_argument(
-    "silence_phones",
-    type=str,
-    help="List of silence phones as integers, separated by colons, e.g. 1:2:3",
-)
+
+parser = argparse.ArgumentParser(description="Usage: steps/nnet3/chain/gen_topo.py "
+                                             "<colon-separated-nonsilence-phones> <colon-separated-silence-phones>"
+                                             "e.g.:  steps/nnet3/chain/gen_topo.pl 4:5:6:7:8:9:10 1:2:3\n",
+                                 epilog="See egs/swbd/s5c/local/chain/train_tdnn_a.sh for example of usage.");
+parser.add_argument("nonsilence_phones", type=str,
+                    help="List of non-silence phones as integers, separated by colons, e.g. 4:5:6:7:8:9");
+parser.add_argument("silence_phones", type=str,
+                    help="List of silence phones as integers, separated by colons, e.g. 1:2:3");
 
 args = parser.parse_args()
 
-silence_phones = [int(x) for x in args.silence_phones.split(":")]
-nonsilence_phones = [int(x) for x in args.nonsilence_phones.split(":")]
-all_phones = silence_phones + nonsilence_phones
+silence_phones = [ int(x) for x in args.silence_phones.split(":") ]
+nonsilence_phones = [ int(x) for x in args.nonsilence_phones.split(":") ]
+all_phones = silence_phones +  nonsilence_phones
 
 print("<Topology>")
 print("<TopologyEntry>")
@@ -52,18 +43,13 @@ print("</ForPhones>")
 #  pdf-class 3 is the final-state in a sequence with >= 2 frames.
 # state 0 is nonemitting in this topology.
 
-print(
-    "<State> 0 <Transition> 1 0.5 <Transition> 2 0.5 </State>"
-)  # initial nonemitting state.
+print("<State> 0 <Transition> 1 0.5 <Transition> 2 0.5 </State>")  # initial nonemitting state.
 print("<State> 1 <PdfClass> 0 <Transition> 5 1.0 </State>")  # 1-frame sequence.
-print(
-    "<State> 2 <PdfClass> 2 <Transition> 3 0.5 <Transition> 4 0.5 </State>"
-)  # 2 or more frames
-print(
-    "<State> 3 <PdfClass> 1 <Transition> 3 0.5 <Transition> 4 0.5 </State>"
-)  # 3 or more frames
-print("<State> 4 <PdfClass> 3 <Transition> 5 1.0 </State>")  # 2 or more frames.
+print("<State> 2 <PdfClass> 2 <Transition> 3 0.5 <Transition> 4 0.5 </State>")  # 2 or more frames
+print("<State> 3 <PdfClass> 1 <Transition> 3 0.5 <Transition> 4 0.5 </State>")  # 3 or more frames
+print("<State> 4 <PdfClass> 3 <Transition> 5 1.0 </State>") # 2 or more frames.
 print("<State> 5 </State>")  # final nonemitting state
 
 print("</TopologyEntry>")
 print("</Topology>")
+

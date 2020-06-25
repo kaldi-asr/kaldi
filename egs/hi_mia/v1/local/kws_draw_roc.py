@@ -1,51 +1,39 @@
 #!/usr/bin/env python3
 # Copyright 2020 Audio, Speech and Language Processing Group (ASLP@NPU), Northwestern Polytechnical University (Authors: Zhuoyuan Yao, Xiong Wang, Jingyong Hou, Lei Xie)
-#           2020 AIShell-Foundation (Author: Bengu WU)
-#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU)
-# Apache 2.0
+#           2020 AIShell-Foundation (Author: Bengu WU) 
+#           2020 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU) 
+# Apache 2.0                                                                                                        
 #
 # draw roc curve or get fa per hour and recall
 
-from __future__ import print_function
-
 import argparse
-from builtins import range, str
-
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-matplotlib.use("Agg")
-
-
 def readFile(filename):
-    f = open(filename, "r")
+    f = open(filename,"r")
     datadict = dict()
     for line in f.readlines():
         datadict[line.split()[0]] = line.split()[1]
     return datadict
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="draw roc")
-    parser.add_argument("result_file", help="output of network")
-    parser.add_argument("label_file", help="utt label")
-    parser.add_argument("utt2dur_file", help="every utt durition")
-    parser.add_argument(
-        "--roc",
-        action="store_true",
-        default=False,
-        help="True to draw roc, false to get fa per hour and recall",
-    )
+    parser = argparse.ArgumentParser(description = "draw roc")
+    parser.add_argument('result_file',help = 'output of network')
+    parser.add_argument('label_file',help = 'utt label')
+    parser.add_argument('utt2dur_file',help = 'every utt durition')
+    parser.add_argument('--roc', action = 'store_true', default = False, help='True to draw roc, false to get fa per hour and recall')
 
     FLAGS = parser.parse_args()
-
+    
     resultDic = readFile(FLAGS.result_file)
     labelDic = readFile(FLAGS.label_file)
     duritionDic = readFile(FLAGS.utt2dur_file)
 
     x = list()
     y = list()
-    for i in range(1, 101):
+    for i in range(1,101):
         false_reject = 0
         false_alarm = 0
         positive = 0
@@ -75,25 +63,19 @@ if __name__ == "__main__":
                     true_reject = true_reject + 1
         if FLAGS.roc == True:
 
-            false_alarm_rate = float(false_alarm) / negative
-            false_reject_rate = float(false_reject) / positive
-            print()
-            float(true_reject + true_alarm) / float(positive + negative)
+            false_alarm_rate=float(false_alarm)/negative
+            false_reject_rate=float(false_reject)/positive
+            print float(true_reject+true_alarm)/float(positive+negative)
 
             x.append(false_alarm_rate)
             y.append(false_reject_rate)
         else:
             false_alarm_per_hour = float(false_alarm) / (negative * 60)
-            recall = float(true_alarm + 1e-5) / (true_alarm + false_alarm + 1e-5)
-            print(
-                "false alarm per hour: "
-                + str(false_alarm_per_hour)
-                + ", recall: "
-                + str(recall)
-            )
+            recall = float(true_alarm + 1e-5) / (true_alarm + false_alarm + 1e-5) 
+            print("false alarm per hour: "+str(false_alarm_per_hour)+", recall: "+str(recall))
             x.append(false_alarm_per_hour)
             y.append(recall)
-    plt.plot(x, y, linewidth=4)
+    plt.plot(x,y,linewidth = 4)
     plt.title("roc")
     plt.xlabel("false alarm")
     plt.ylabel("false reject")

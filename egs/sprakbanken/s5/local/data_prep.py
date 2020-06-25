@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""
+'''
 # Copyright 2013-2014 Mirsk Digital Aps  (Author: Andreas Kirkedal)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,13 @@
 
 This script outputs text1, wav.scp and utt2spk in the directory specified
 
-"""
+'''
 
 
+import sys
+import os
 import codecs
 import locale
-import os
-import sys
 
 # set locale for sorting purposes
 
@@ -46,8 +46,8 @@ def unique(items):
 
 
 def list2string(wordlist, lim=" ", newline=False):
-    """Converts a list to a string with a delimiter $lim and the possible
-    addition of newline characters."""
+    '''Converts a list to a string with a delimiter $lim and the possible
+    addition of newline characters.'''
     strout = ""
     for w in wordlist:
         strout += w + lim
@@ -58,13 +58,13 @@ def list2string(wordlist, lim=" ", newline=False):
 
 
 def get_sprak_info(abspath):
-    """Returns the Sprakbank session id, utterance id and speaker id from the
-    filename."""
+    '''Returns the Sprakbank session id, utterance id and speaker id from the
+    filename.'''
     return os.path.split(abspath)[-1].strip().split(".")[:-1]
 
 
 def kaldi_utt_id(abspath, string=True):
-    """Creates the kaldi utterance id from the filename."""
+    '''Creates the kaldi utterance id from the filename.'''
     fname = get_sprak_info(abspath)
     spkutt_id = [fname[1].strip(), fname[0].strip(), fname[2].strip()]
     if string:
@@ -74,14 +74,14 @@ def kaldi_utt_id(abspath, string=True):
 
 
 def make_kaldi_text(line):
-    """Creates each line in the kaldi "text" file. """
+    '''Creates each line in the kaldi "text" file. '''
     txtfile = codecs.open(line.strip(), "r", "utf8").read()
     utt_id = kaldi_utt_id(line)
     return utt_id + " " + txtfile
 
 
 def txt2wav(fstring):
-    """Changes the extension from .txt to .wav. """
+    '''Changes the extension from .txt to .wav. '''
     return os.path.splitext(fstring)[0] + ".wav"
 
 
@@ -101,8 +101,8 @@ def make_utt2spk(line):
 
 
 def create_parallel_kaldi(filelist, sphpipe, snd=False):
-    """Creates the "text" file that maps a transcript to an utterance id and
-    the corresponding wav.scp file. """
+    '''Creates the "text" file that maps a transcript to an utterance id and
+    the corresponding wav.scp file. '''
     transcripts = []
     waves = []
     utt2spk = []
@@ -116,10 +116,13 @@ def create_parallel_kaldi(filelist, sphpipe, snd=False):
         waves.append(scpline)
         utt2spkline = make_utt2spk(line)
         utt2spk.append(utt2spkline)
-    return (sorted(unique(transcripts)), sorted(unique(waves)), sorted(unique(utt2spk)))
+    return (sorted(unique(transcripts)),
+            sorted(unique(waves)),
+            sorted(unique(utt2spk))
+            )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     flist = codecs.open(sys.argv[1], "r").readlines()
     outpath = sys.argv[2]
     if len(sys.argv) == 5:
