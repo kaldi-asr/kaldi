@@ -3,48 +3,56 @@
 # Copyright 2018 Tilde
 # License: Apache 2.0
 
-import sys
-
 import argparse
+import glob
 import os
 import re
-import glob
+import sys
 
 script_name = sys.argv[0]
 
-parser = argparse.ArgumentParser(description="Removes models from past training iterations of "
-                                             "RNNLM. Can use either 'keep_latest' (default) or "
-                                             "'keep_best' cleanup strategy, where former keeps "
-                                             "the models that are freshest, while latter keeps "
-                                             "the models with best training objective score on "
-                                             "dev set.",
-                                 epilog="E.g. " + script_name + " exp/rnnlm_a --keep_best",
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(
+    description="Removes models from past training iterations of "
+    "RNNLM. Can use either 'keep_latest' (default) or "
+    "'keep_best' cleanup strategy, where former keeps "
+    "the models that are freshest, while latter keeps "
+    "the models with best training objective score on "
+    "dev set.",
+    epilog="E.g. " + script_name + " exp/rnnlm_a --keep_best",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
 
-parser.add_argument("rnnlm_dir",
-                    help="Directory where the RNNLM has been trained")
-parser.add_argument("--iters_to_keep",
-                    help="Max number of iterations to keep",
-                    type=int,
-                    default=3)
-parser.add_argument("--keep_latest",
-                    help="Keeps the training iterations that are latest by age",
-                    action="store_const",
-                    const=True,
-                    default=False)
-parser.add_argument("--keep_best",
-                    help="Keeps the training iterations that have the best objf",
-                    action="store_const",
-                    const=True,
-                    default=False)
+parser.add_argument("rnnlm_dir", help="Directory where the RNNLM has been trained")
+parser.add_argument(
+    "--iters_to_keep", help="Max number of iterations to keep", type=int, default=3
+)
+parser.add_argument(
+    "--keep_latest",
+    help="Keeps the training iterations that are latest by age",
+    action="store_const",
+    const=True,
+    default=False,
+)
+parser.add_argument(
+    "--keep_best",
+    help="Keeps the training iterations that have the best objf",
+    action="store_const",
+    const=True,
+    default=False,
+)
 
 args = parser.parse_args()
 
 # validate arguments
 if args.keep_latest and args.keep_best:
-    sys.exit(script_name + ": can only use one of 'keep_latest' or 'keep_best', but not both")
+    sys.exit(
+        script_name + ": can only use one of 'keep_latest' or 'keep_best', but not both"
+    )
 elif not args.keep_latest and not args.keep_best:
-    sys.exit(script_name + ": no cleanup strategy specified: use 'keep_latest' or 'keep_best'")
+    sys.exit(
+        script_name
+        + ": no cleanup strategy specified: use 'keep_latest' or 'keep_best'"
+    )
 
 
 class IterationInfo:
@@ -54,9 +62,11 @@ class IterationInfo:
         self.compute_prob_done = compute_prob_done
 
     def __str__(self):
-        return "{model_files: %s, compute_prob: %s, objf: %2.3f}" % (self.model_files,
-                                                                     self.compute_prob_done,
-                                                                     self.objf)
+        return "{model_files: %s, compute_prob: %s, objf: %2.3f}" % (
+            self.model_files,
+            self.compute_prob_done,
+            self.objf,
+        )
 
     def __repr__(self):
         return self.__str__()
@@ -71,22 +81,35 @@ def get_compute_prob_info(log_file):
     try:
         f = open(log_file, "r", encoding="utf-8")
     except:
-        print(script_name + ": warning: compute_prob log not found for iteration " +
-              str(iter) + ". Skipping",
-              file=sys.stderr)
+        print(
+            script_name
+            + ": warning: compute_prob log not found for iteration "
+            + str(iter)
+            + ". Skipping",
+            file=sys.stderr,
+        )
         return iteration, objf, compute_prob_done
     for line in f:
-        objf_m = re.search('Overall objf .* (\S+)$', str(line))
+        objf_m = re.search("Overall objf .* (\S+)$", str(line))
         if objf_m is not None:
             try:
                 objf = float(objf_m.group(1))
             except Exception as e:
-                sys.exit(script_name + ": line in file {0} could not be parsed: {1}, error is: {2}".format(
-                    log_file, line, str(e)))
+                sys.exit(
+                    script_name
+                    + ": line in file {0} could not be parsed: {1}, error is: {2}".format(
+                        log_file, line, str(e)
+                    )
+                )
         if "# Ended" in line:
             compute_prob_done = True
     if objf == -2000:
-        print(script_name + ": warning: could not parse objective function from " + log_file, file=sys.stderr)
+        print(
+            script_name
+            + ": warning: could not parse objective function from "
+            + log_file,
+            file=sys.stderr,
+        )
     return iteration, objf, compute_prob_done
 
 
@@ -104,15 +127,31 @@ def get_iteration_files(exp_dir):
             model_files = []
             # when there are multiple jobs per iteration, there can be several model files
             # we need to potentially clean them all up without mixing them up
-            model_files.extend(glob.glob("{0}/word_embedding.{1}.mat".format(exp_dir, iteration)))
-            model_files.extend(glob.glob("{0}/word_embedding.{1}.[0-9]*.mat".format(exp_dir, iteration)))
-            model_files.extend(glob.glob("{0}/feat_embedding.{1}.mat".format(exp_dir, iteration)))
-            model_files.extend(glob.glob("{0}/feat_embedding.{1}.[0-9]*.mat".format(exp_dir, iteration)))
+            model_files.extend(
+                glob.glob("{0}/word_embedding.{1}.mat".format(exp_dir, iteration))
+            )
+            model_files.extend(
+                glob.glob(
+                    "{0}/word_embedding.{1}.[0-9]*.mat".format(exp_dir, iteration)
+                )
+            )
+            model_files.extend(
+                glob.glob("{0}/feat_embedding.{1}.mat".format(exp_dir, iteration))
+            )
+            model_files.extend(
+                glob.glob(
+                    "{0}/feat_embedding.{1}.[0-9]*.mat".format(exp_dir, iteration)
+                )
+            )
             model_files.extend(glob.glob("{0}/{1}.raw".format(exp_dir, iteration)))
-            model_files.extend(glob.glob("{0}/{1}.[0-9]*.raw".format(exp_dir, iteration)))
+            model_files.extend(
+                glob.glob("{0}/{1}.[0-9]*.raw".format(exp_dir, iteration))
+            )
             # compute_prob logs outlive model files, only consider iterations that do still have model files
             if len(model_files) > 0:
-                iterations[iteration] = IterationInfo(model_files, objf, compute_prob_done)
+                iterations[iteration] = IterationInfo(
+                    model_files, objf, compute_prob_done
+                )
     return iterations
 
 
@@ -138,7 +177,10 @@ def keep_best(iteration_dict):
     for iter, iter_info in iteration_dict.items():
         objf = iter_info.objf
         if objf == -2000:
-            print(script_name + ": warning: objf unavailable for iter " + str(iter), file=sys.stderr)
+            print(
+                script_name + ": warning: objf unavailable for iter " + str(iter),
+                file=sys.stderr,
+            )
             continue
         # add potential best, sort by objf, trim to iters_to_keep size
         best.append((iter, objf))

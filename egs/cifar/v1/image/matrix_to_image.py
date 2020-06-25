@@ -30,16 +30,23 @@ from __future__ import division
 
 import argparse
 import sys
+from builtins import range
+
 from bmp_encoder import *
 
-
-parser = argparse.ArgumentParser(description="""Converts Kaldi-format text matrix
+parser = argparse.ArgumentParser(
+    description="""Converts Kaldi-format text matrix
            representing an image on stdin into bmp image on stdout.  See
-           comments at top of script for more details.""")
+           comments at top of script for more details."""
+)
 
-parser.add_argument('--color', type=int, choices=(1, 3), default=3,
-                    help='3 if the image is in RGB, 1 if the image is in grayscale.')
-
+parser.add_argument(
+    "--color",
+    type=int,
+    choices=(1, 3),
+    default=3,
+    help="3 if the image is in RGB, 1 if the image is in grayscale.",
+)
 
 args = parser.parse_args()
 
@@ -47,14 +54,14 @@ matrix = []
 num_rows = 0
 num_cols = 0
 while True:
-    line = sys.stdin.readline().strip('\n').split()
+    line = sys.stdin.readline().strip("\n").split()
     if line == []:
         break
-    if line == ['[']:  # deal with the case that the first row only contains "["
+    if line == ["["]:  # deal with the case that the first row only contains "["
         continue
-    if line[0] == '[':  # drop the "[" in the first row
+    if line[0] == "[":  # drop the "[" in the first row
         line = line[1:]
-    if line[-1] == ']':  # drop the "]" in the last row
+    if line[-1] == "]":  # drop the "]" in the last row
         line = line[:-1]
     if num_cols == 0:
         num_cols = len(line)  # initialize
@@ -62,7 +69,9 @@ while True:
         raise Exception("All rows should be of the same length")
     line = [float(i) for i in line]  # string to float
     if max(line) > 1:
-        raise Excetion("Element value in the matrix should be normalized and no larger than 1")
+        raise Excetion(
+            "Element value in the matrix should be normalized and no larger than 1"
+        )
     line = [int(x * 255) for x in line]  # float to integer ranging from 0 to 255
     matrix.append(line)
     num_rows += 1
@@ -71,7 +80,7 @@ if args.color == 3:
     if num_cols % 3 != 0:
         raise Exception("Number of columns should be a multiple of 3 in the color mode")
     width = num_rows
-    height = num_cols/3
+    height = num_cols / 3
     # reform the image matrix
     image_array = [[0 for i in range(width * 3)] for j in range(height)]
     for i in range(height):

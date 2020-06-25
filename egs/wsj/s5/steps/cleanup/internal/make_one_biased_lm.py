@@ -3,54 +3,75 @@
 # Copyright 2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 
-from __future__ import print_function
-from __future__ import division
-import sys
+from __future__ import division, print_function
+
 import argparse
+import io
 import math
+import sys
+from builtins import object, range, str
 from collections import defaultdict
 
-import io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding="utf8")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer,encoding="utf8")
-sys.stdin = io.TextIOWrapper(sys.stdin.buffer,encoding="utf8")
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf8")
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf8")
 
-parser = argparse.ArgumentParser(description="""
+parser = argparse.ArgumentParser(
+    description="""
 This script creates a biased language model suitable for alignment and
 data-cleanup purposes.   It reads (possibly multiple) lines of integerized text
 from the input and writes a text-form FST of a backoff language model to
-the standard output, to be piped into fstcompile.""")
+the standard output, to be piped into fstcompile."""
+)
 
-parser.add_argument("--word-disambig-symbol", type = int, required = True,
-                    help = "Integer corresponding to the disambiguation "
-                    "symbol (normally #0) for backoff arcs")
-parser.add_argument("--ngram-order", type = int, default = 4,
-                    choices = [2,3,4,5,6,7],
-                    help = "Maximum order of n-gram to use (but see also "
-                    "--min-lm-state-count; the effective order may be less.")
-parser.add_argument("--min-lm-state-count", type = int, default = 10,
-                    help = "Minimum count below which we will completely "
-                    "discount an LM-state (if it is of order > 2, i.e. "
-                    "history-length > 1).")
-parser.add_argument("--top-words", type = str,
-                    help = "File containing frequent words and probabilities to be added into "
-                    "the language model, with lines in the format '<integer-id-of-word> <prob>'. "
-                    "These probabilities will be added to the probabilities in the unigram "
-                    "backoff state and then renormalized; this option allows you to introduce "
-                    "common words to the LM with specified probabilities.")
-parser.add_argument("--discounting-constant", type = float, default = 0.3,
-                    help = "Discounting constant D for standard (unmodified) Kneser-Ney; "
-                    "must be strictly between 0 and 1.  A value closer to 0 will give "
-                    "you a more-strongly-biased LM.")
-parser.add_argument("--verbose", type = int, default = 0,
-                    choices=[0,1,2,3,4,5], help = "Verbose level")
+parser.add_argument(
+    "--word-disambig-symbol",
+    type=int,
+    required=True,
+    help="Integer corresponding to the disambiguation "
+    "symbol (normally #0) for backoff arcs",
+)
+parser.add_argument(
+    "--ngram-order",
+    type=int,
+    default=4,
+    choices=[2, 3, 4, 5, 6, 7],
+    help="Maximum order of n-gram to use (but see also "
+    "--min-lm-state-count; the effective order may be less.",
+)
+parser.add_argument(
+    "--min-lm-state-count",
+    type=int,
+    default=10,
+    help="Minimum count below which we will completely "
+    "discount an LM-state (if it is of order > 2, i.e. "
+    "history-length > 1).",
+)
+parser.add_argument(
+    "--top-words",
+    type=str,
+    help="File containing frequent words and probabilities to be added into "
+    "the language model, with lines in the format '<integer-id-of-word> <prob>'. "
+    "These probabilities will be added to the probabilities in the unigram "
+    "backoff state and then renormalized; this option allows you to introduce "
+    "common words to the LM with specified probabilities.",
+)
+parser.add_argument(
+    "--discounting-constant",
+    type=float,
+    default=0.3,
+    help="Discounting constant D for standard (unmodified) Kneser-Ney; "
+    "must be strictly between 0 and 1.  A value closer to 0 will give "
+    "you a more-strongly-biased LM.",
+)
+parser.add_argument(
+    "--verbose", type=int, default=0, choices=[0, 1, 2, 3, 4, 5], help="Verbose level"
+)
 
 args = parser.parse_args()
 
 if args.verbose >= 1:
-    print(' '.join(sys.argv), file = sys.stderr)
-
-
+    print(" ".join(sys.argv), file=sys.stderr)
 
 
 class NgramCounts(object):
@@ -100,10 +121,14 @@ class NgramCounts(object):
     # This function adds the un-smoothed counts from this line of text.
     def AddRawCountsFromLine(self, line):
         try:
-            words = [self.bos_symbol] + [ int(x) for x in line.split() ] + [self.eos_symbol]
+            words = (
+                [self.bos_symbol] + [int(x) for x in line.split()] + [self.eos_symbol]
+            )
         except:
-            sys.exit("make_one_biased_lm.py: bad input line {0} (expected a sequence "
-                     "of integers)".format(line))
+            sys.exit(
+                "make_one_biased_lm.py: bad input line {0} (expected a sequence "
+                "of integers)".format(line)
+            )
 
         for n in range(1, len(words)):
             predicted_word = words[n]
@@ -115,14 +140,17 @@ class NgramCounts(object):
         lines_processed = 0
         while True:
             line = sys.stdin.readline()
-            if line == '':
+            if line == "":
                 break
             self.AddRawCountsFromLine(line)
             lines_processed += 1
         if lines_processed == 0 or args.verbose > 0:
-            print("make_one_biased_lm.py: processed {0} lines of input".format(
-                    lines_processed), file = sys.stderr)
-
+            print(
+                "make_one_biased_lm.py: processed {0} lines of input".format(
+                    lines_processed
+                ),
+                file=sys.stderr,
+            )
 
     # This function returns a dict from history (as a tuple of integers of
     # length > 1, ignoring lower-order histories), to the total count of this
@@ -131,13 +159,12 @@ class NgramCounts(object):
     def GetHistToTotalCount(self):
         ans = defaultdict(float)
         for n in range(2, self.ngram_order):
-            for hist, word_to_count in self.counts[n].items():
+            for hist, word_to_count in list(self.counts[n].items()):
                 total_count = sum(word_to_count.values())
                 while len(hist) >= 2:
                     ans[hist] += total_count
                     hist = hist[1:]
         return ans
-
 
     # This function will completely discount the counts in any LM-states of
     # order > 2 (i.e. history-length > 1) that have total count below
@@ -148,14 +175,14 @@ class NgramCounts(object):
         for n in reversed(list(range(2, self.ngram_order))):
             this_order_counts = self.counts[n]
             to_delete = []
-            for hist in this_order_counts.keys():
+            for hist in list(this_order_counts.keys()):
                 if hist_to_total_count[hist] < min_count:
                     # we need to completely back off this count.
                     word_to_count = this_order_counts[hist]
                     # mark this key for deleting
                     to_delete.append(hist)
                     backoff_hist = hist[1:]  # this will be a tuple not a list.
-                    for word, count in word_to_count.items():
+                    for word, count in list(word_to_count.items()):
                         self.AddCount(backoff_hist, word, count)
             for hist in to_delete:
                 del this_order_counts[hist]
@@ -166,9 +193,9 @@ class NgramCounts(object):
         assert D > 0.0 and D < 1.0
         for n in reversed(list(range(1, self.ngram_order))):
             this_order_counts = self.counts[n]
-            for hist, word_to_count in this_order_counts.items():
+            for hist, word_to_count in list(this_order_counts.items()):
                 backoff_hist = hist[1:]
-                backoff_word_to_count = self.counts[n-1][backoff_hist]
+                backoff_word_to_count = self.counts[n - 1][backoff_hist]
                 this_discount_total = 0.0
                 for word in word_to_count:
                     assert word_to_count[word] >= 1.0
@@ -179,7 +206,6 @@ class NgramCounts(object):
                     backoff_word_to_count[word] += 1.0
                 word_to_count[self.backoff_symbol] += this_discount_total
 
-
     # This function prints out to stderr the n-gram counts stored in this
     # object; it's used for debugging.
     def Print(self, info_string):
@@ -188,51 +214,67 @@ class NgramCounts(object):
         total = 0.0
         total_excluding_backoff = 0.0
         for this_order_counts in self.counts:
-            for hist, word_to_count in this_order_counts.items():
+            for hist, word_to_count in list(this_order_counts.items()):
                 this_total_count = sum(word_to_count.values())
-                print('{0}: total={1} '.format(hist, this_total_count),
-                      end='', file=sys.stderr)
-                print(' '.join(['{0} -> {1} '.format(word, count)
-                                for word, count in word_to_count.items() ]),
-                      file = sys.stderr)
+                print(
+                    "{0}: total={1} ".format(hist, this_total_count),
+                    end="",
+                    file=sys.stderr,
+                )
+                print(
+                    " ".join(
+                        [
+                            "{0} -> {1} ".format(word, count)
+                            for word, count in list(word_to_count.items())
+                        ]
+                    ),
+                    file=sys.stderr,
+                )
                 total += this_total_count
                 total_excluding_backoff += this_total_count
                 if self.backoff_symbol in word_to_count:
                     total_excluding_backoff -= word_to_count[self.backoff_symbol]
-        print('total count = {0}, excluding discount = {1}'.format(
-                total, total_excluding_backoff), file = sys.stderr)
+        print(
+            "total count = {0}, excluding discount = {1}".format(
+                total, total_excluding_backoff
+            ),
+            file=sys.stderr,
+        )
 
     def AddTopWords(self, top_words_file):
         empty_history = ()
         word_to_count = self.counts[0][empty_history]
         total = sum(word_to_count.values())
         try:
-            f = open(top_words_file, mode='r', encoding='utf-8')
+            f = open(top_words_file, mode="r", encoding="utf-8")
         except:
-            sys.exit("make_one_biased_lm.py: error opening top-words file: "
-                     "--top-words=" + top_words_file)
+            sys.exit(
+                "make_one_biased_lm.py: error opening top-words file: "
+                "--top-words=" + top_words_file
+            )
         while True:
             line = f.readline()
-            if line == '':
+            if line == "":
                 break
             try:
-                [ word_index, prob ] = line.split()
+                [word_index, prob] = line.split()
                 word_index = int(word_index)
                 prob = float(prob)
                 assert word_index > 0 and prob > 0.0
                 word_to_count[word_index] += prob * total
             except Exception as e:
-                sys.exit("make_one_biased_lm.py: could not make sense of the "
-                         "line '{0}' in op-words file: {1} ".format(line, str(e)))
+                sys.exit(
+                    "make_one_biased_lm.py: could not make sense of the "
+                    "line '{0}' in op-words file: {1} ".format(line, str(e))
+                )
         f.close()
-
 
     def GetTotalCountMap(self):
         # This function, called from PrintAsFst, returns a map from
         # history to the total-count for that state.
         total_count_map = dict()
         for n in range(0, self.ngram_order):
-            for hist, word_to_count in self.counts[n].items():
+            for hist, word_to_count in list(self.counts[n].items()):
                 total_count_map[hist] = sum(word_to_count.values())
         return total_count_map
 
@@ -242,7 +284,7 @@ class NgramCounts(object):
         hist_to_state = dict()
         fst_state_counter = 0
         for n in range(0, self.ngram_order):
-            for hist in self.counts[n].keys():
+            for hist in list(self.counts[n].keys()):
                 hist_to_state[hist] = fst_state_counter
                 fst_state_counter += 1
         return hist_to_state
@@ -270,33 +312,41 @@ class NgramCounts(object):
         hist_to_state = self.GetHistToStateMap()
         total_count_map = self.GetTotalCountMap()
 
-        for n in [ 1, 0 ] + list(range(2, self.ngram_order)):
+        for n in [1, 0] + list(range(2, self.ngram_order)):
             this_order_counts = self.counts[n]
             # For order 1, make sure the keys are sorted.
-            keys = this_order_counts.keys() if n != 1 else sorted(this_order_counts.keys())
+            keys = (
+                list(this_order_counts.keys())
+                if n != 1
+                else sorted(this_order_counts.keys())
+            )
             for hist in keys:
                 word_to_count = this_order_counts[hist]
                 this_fst_state = hist_to_state[hist]
 
-                for word in word_to_count.keys():
+                for word in list(word_to_count.keys()):
                     # work out this_cost.  Costs in OpenFst are negative logs.
                     this_cost = -math.log(self.GetProb(hist, word, total_count_map))
 
-                    if word > 0: # a real word.
+                    if word > 0:  # a real word.
                         next_hist = hist + (word,)  # appending tuples
                         while not next_hist in hist_to_state:
                             next_hist = next_hist[1:]
                         next_fst_state = hist_to_state[next_hist]
-                        print(this_fst_state, next_fst_state, word, word,
-                              this_cost)
+                        print(this_fst_state, next_fst_state, word, word, this_cost)
                     elif word == self.eos_symbol:
                         # print final-prob for this state.
                         print(this_fst_state, this_cost)
                     else:
                         assert word == self.backoff_symbol
-                        backoff_fst_state = hist_to_state[hist[1:len(hist)]]
-                        print(this_fst_state, backoff_fst_state,
-                              word_disambig_symbol, 0, this_cost)
+                        backoff_fst_state = hist_to_state[hist[1 : len(hist)]]
+                        print(
+                            this_fst_state,
+                            backoff_fst_state,
+                            word_disambig_symbol,
+                            0,
+                            this_cost,
+                        )
 
 
 ngram_counts = NgramCounts(args.ngram_order)
@@ -315,7 +365,6 @@ if args.top_words != None:
     if args.verbose >= 3:
         ngram_counts.Print("Counts after applying top-n-words")
 ngram_counts.PrintAsFst(args.word_disambig_symbol)
-
 
 # test comand:
 # (echo 6 7 8 4; echo 7 8 9; echo 7 8) | ./make_one_biased_lm.py --word-disambig-symbol=1000 --min-lm-state-count=2 --verbose=3 --top-words=<(echo 1 0.5; echo 2 0.25)

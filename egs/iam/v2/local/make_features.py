@@ -17,36 +17,55 @@
     to end2end chain training.
     eg. local/make_features.py data/train --feat-dim 40
 """
-import random
 import argparse
+import math
 import os
+import random
 import sys
-import scipy.io as sio
+from signal import SIG_DFL, SIGPIPE, signal
+
 import numpy as np
 from scipy import misc
 from scipy.ndimage.interpolation import affine_transform
-import math
-from signal import signal, SIGPIPE, SIG_DFL
+
 signal(SIGPIPE, SIG_DFL)
 
-parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
-                                                writes them to standard output in text format.""")
-parser.add_argument('images_scp_path', type=str,
-                    help='Path of images.scp file')
-parser.add_argument('--allowed_len_file_path', type=str, default=None,
-                    help='If supplied, each images will be padded to reach the '
-                    'target length (this overrides --padding).')
-parser.add_argument('--out-ark', type=str, default='-',
-                    help='Where to write the output feature file')
-parser.add_argument('--feat-dim', type=int, default=40,
-                    help='Size to scale the height of all images')
-parser.add_argument('--padding', type=int, default=5,
-                    help='Number of white pixels to pad on the left'
-                    'and right side of the image.')
-parser.add_argument('--fliplr', type=lambda x: (str(x).lower()=='true'), default=False,
-                   help="Flip the image left-right for right to left languages")
-parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
-                   help="performs image augmentation")
+parser = argparse.ArgumentParser(
+    description="""Converts images (in 'dir'/images.scp) to features and
+                                                writes them to standard output in text format."""
+)
+parser.add_argument("images_scp_path", type=str, help="Path of images.scp file")
+parser.add_argument(
+    "--allowed_len_file_path",
+    type=str,
+    default=None,
+    help="If supplied, each images will be padded to reach the "
+    "target length (this overrides --padding).",
+)
+parser.add_argument(
+    "--out-ark", type=str, default="-", help="Where to write the output feature file"
+)
+parser.add_argument(
+    "--feat-dim", type=int, default=40, help="Size to scale the height of all images"
+)
+parser.add_argument(
+    "--padding",
+    type=int,
+    default=5,
+    help="Number of white pixels to pad on the left" "and right side of the image.",
+)
+parser.add_argument(
+    "--fliplr",
+    type=lambda x: (str(x).lower() == "true"),
+    default=False,
+    help="Flip the image left-right for right to left languages",
+)
+parser.add_argument(
+    "--augment",
+    type=lambda x: (str(x).lower() == "true"),
+    default=False,
+    help="performs image augmentation",
+)
 args = parser.parse_args()
 
 
@@ -59,19 +78,20 @@ def write_kaldi_matrix(file_handle, matrix, key):
 
     for row_index in range(len(matrix)):
         if num_cols != len(matrix[row_index]):
-            raise Exception("All the rows of a matrix are expected to "
-                            "have the same length")
+            raise Exception(
+                "All the rows of a matrix are expected to " "have the same length"
+            )
         file_handle.write(" ".join(map(lambda x: str(x), matrix[row_index])))
         if row_index != num_rows - 1:
             file_handle.write("\n")
     file_handle.write(" ]\n")
 
 
-def horizontal_pad(im, allowed_lengths = None):
+def horizontal_pad(im, allowed_lengths=None):
     if allowed_lengths is None:
         left_padding = right_padding = args.padding
     else:  # Find an allowed length for the image
-        imlen = im.shape[1] # width
+        imlen = im.shape[1]  # width
         allowed_len = 0
         for l in allowed_lengths:
             if l > imlen:
@@ -83,25 +103,28 @@ def horizontal_pad(im, allowed_lengths = None):
         padding = allowed_len - imlen
         left_padding = int(padding // 2)
         right_padding = padding - left_padding
-    dim_y = im.shape[0] # height
-    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding),
-                                           dtype=int), im), axis=1)
-    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding),
-                                                    dtype=int)), axis=1)
+    dim_y = im.shape[0]  # height
+    im_pad = np.concatenate(
+        (255 * np.ones((dim_y, left_padding), dtype=int), im), axis=1
+    )
+    im_pad1 = np.concatenate(
+        (im_pad, 255 * np.ones((dim_y, right_padding), dtype=int)), axis=1
+    )
     return im_pad1
 
-def get_scaled_image_aug(im, mode='normal'):
+
+def get_scaled_image_aug(im, mode="normal"):
     scale_size = args.feat_dim
     sx = im.shape[1]
     sy = im.shape[0]
     scale = (1.0 * scale_size) / sy
     nx = int(scale_size)
-    ny = int(scale * sx) 
+    ny = int(scale * sx)
     scale_size = random.randint(10, 30)
     scale = (1.0 * scale_size) / sy
     down_nx = int(scale_size)
     down_ny = int(scale * sx)
-    if mode == 'normal':
+    if mode == "normal":
         im = misc.imresize(im, (nx, ny))
         return im
     else:
@@ -109,6 +132,7 @@ def get_scaled_image_aug(im, mode='normal'):
         im_scaled_up = misc.imresize(im_scaled_down, (nx, ny))
         return im_scaled_up
     return im
+
 
 def contrast_normalization(im, low_pct, high_pct):
     element_number = im.size
@@ -128,8 +152,9 @@ def contrast_normalization(im, low_pct, high_pct):
                 im_contrast[i, j] = 0  # darkest to black
             else:
                 # linear normalization
-                im_contrast[i, j] = (im[i, j] - low_thred) * \
-                    255 / (high_thred - low_thred)
+                im_contrast[i, j] = (
+                    (im[i, j] - low_thred) * 255 / (high_thred - low_thred)
+                )
     return im_contrast
 
 
@@ -143,27 +168,25 @@ def geometric_moment(frame, p, q):
 
 def central_moment(frame, p, q):
     u = 0
-    x_bar = geometric_moment(frame, 1, 0) / \
-        geometric_moment(frame, 0, 0)  # m10/m00
-    y_bar = geometric_moment(frame, 0, 1) / \
-        geometric_moment(frame, 0, 0)  # m01/m00
+    x_bar = geometric_moment(frame, 1, 0) / geometric_moment(frame, 0, 0)  # m10/m00
+    y_bar = geometric_moment(frame, 0, 1) / geometric_moment(frame, 0, 0)  # m01/m00
     for i in range(frame.shape[1]):
         for j in range(frame.shape[0]):
-            u += ((i - x_bar)**p) * ((j - y_bar)**q) * frame[i][j]
+            u += ((i - x_bar) ** p) * ((j - y_bar) ** q) * frame[i][j]
     return u
 
 
 def height_normalization(frame, w, h):
     frame_normalized = np.zeros(shape=(h, w))
     alpha = 4
-    x_bar = geometric_moment(frame, 1, 0) / \
-        geometric_moment(frame, 0, 0)  # m10/m00
-    y_bar = geometric_moment(frame, 0, 1) / \
-        geometric_moment(frame, 0, 0)  # m01/m00
-    sigma_x = (alpha * ((central_moment(frame, 2, 0) /
-                         geometric_moment(frame, 0, 0)) ** .5))  # alpha * sqrt(u20/m00)
-    sigma_y = (alpha * ((central_moment(frame, 0, 2) /
-                         geometric_moment(frame, 0, 0)) ** .5))  # alpha * sqrt(u02/m00)
+    x_bar = geometric_moment(frame, 1, 0) / geometric_moment(frame, 0, 0)  # m10/m00
+    y_bar = geometric_moment(frame, 0, 1) / geometric_moment(frame, 0, 0)  # m01/m00
+    sigma_x = alpha * (
+        (central_moment(frame, 2, 0) / geometric_moment(frame, 0, 0)) ** 0.5
+    )  # alpha * sqrt(u20/m00)
+    sigma_y = alpha * (
+        (central_moment(frame, 0, 2) / geometric_moment(frame, 0, 0)) ** 0.5
+    )  # alpha * sqrt(u02/m00)
     for x in range(w):
         for y in range(h):
             i = int((x / w - 0.5) * sigma_x + x_bar)
@@ -202,14 +225,15 @@ def horizontal_shear(im, degree):
     padding_y = im.shape[0]
     if rad > 0:
         im_pad = np.concatenate(
-            (255 * np.ones((padding_y, padding_x), dtype=int), im), axis=1)
+            (255 * np.ones((padding_y, padding_x), dtype=int), im), axis=1
+        )
     elif rad < 0:
         im_pad = np.concatenate(
-            (im, 255 * np.ones((padding_y, padding_x), dtype=int)), axis=1)
+            (im, 255 * np.ones((padding_y, padding_x), dtype=int)), axis=1
+        )
     else:
         im_pad = im
-    shear_matrix = np.array([[1, 0],
-                             [np.tan(rad), 1]])
+    shear_matrix = np.array([[1, 0], [np.tan(rad), 1]])
     sheared_im = affine_transform(im_pad, shear_matrix, cval=255.0)
     return sheared_im
 
@@ -217,10 +241,10 @@ def horizontal_shear(im, degree):
 ### main ###
 random.seed(1)
 data_list_path = args.images_scp_path
-if args.out_ark == '-':
+if args.out_ark == "-":
     out_fh = sys.stdout
 else:
-    out_fh = open(args.out_ark,'w')
+    out_fh = open(args.out_ark, "w")
 
 allowed_lengths = None
 allowed_len_handle = args.allowed_len_file_path
@@ -230,16 +254,19 @@ if os.path.isfile(allowed_len_handle):
     with open(allowed_len_handle) as f:
         for line in f:
             allowed_lengths.append(int(line.strip()))
-    print("Read {} allowed lengths and will apply them to the "
-          "features.".format(len(allowed_lengths)), file=sys.stderr)
+    print(
+        "Read {} allowed lengths and will apply them to the "
+        "features.".format(len(allowed_lengths)),
+        file=sys.stderr,
+    )
 
 num_fail = 0
 num_ok = 0
-aug_setting = ['normal', 'scaled']
+aug_setting = ["normal", "scaled"]
 with open(data_list_path) as f:
     for line in f:
         line = line.strip()
-        line_vect = line.split(' ')
+        line_vect = line.split(" ")
         image_id = line_vect[0]
         image_path = line_vect[1]
         im = misc.imread(image_path)
@@ -262,5 +289,8 @@ with open(data_list_path) as f:
         num_ok += 1
         write_kaldi_matrix(out_fh, data, image_id)
 
-print('Generated features for {} images. Failed for {} (image too '
-      'long).'.format(num_ok, num_fail), file=sys.stderr)
+print(
+    "Generated features for {} images. Failed for {} (image too "
+    "long).".format(num_ok, num_fail),
+    file=sys.stderr,
+)

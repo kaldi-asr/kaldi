@@ -9,29 +9,31 @@
 # input: test utt2spk
 # output: enroll utt2spk, eval utt2spk
 
-import sys,random
+import random
+import sys
+from builtins import range
 
 dictutt = {}
 
 for line in open(sys.argv[1]):
-  line = line.rstrip('\r\t\n ')
-  utt, spk = line.split(' ')
-  if spk not in dictutt:
-    dictutt[spk] = []
-  dictutt[spk].append(utt)
+    line = line.rstrip("\r\t\n ")
+    utt, spk = line.split(" ")
+    if spk not in dictutt:
+        dictutt[spk] = []
+    dictutt[spk].append(utt)
 
-fenroll = open(sys.argv[2], 'w')
-feval = open(sys.argv[3], 'w')
+fenroll = open(sys.argv[2], "w")
+feval = open(sys.argv[3], "w")
 
 for key in dictutt:
-  utts = dictutt[key]
-  random.shuffle(utts)
-  for i in range(0, len(utts)):
-    line = utts[i] + ' ' + key
-    if(i < 3):
-      fenroll.write(line + '\n')
-    else:
-      feval.write(line + '\n')
+    utts = dictutt[key]
+    random.shuffle(utts)
+    for i in range(0, len(utts)):
+        line = utts[i] + " " + key
+        if i < 3:
+            fenroll.write(line + "\n")
+        else:
+            feval.write(line + "\n")
 
 fenroll.close()
 feval.close()

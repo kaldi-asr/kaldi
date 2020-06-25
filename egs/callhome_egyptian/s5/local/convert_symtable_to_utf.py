@@ -1,21 +1,27 @@
 from __future__ import print_function
+
+import codecs
+import sys
+
 #!/usr/bin/env py
 
 # Converts a romanized ECA word list (symbol table) to
 # a version in the arabic script
 
-import sys
-import codecs
 
 if len(sys.argv) < 3:
     print("USAGE: local/convert_symtable_to_utf.py [SYMTABLE] [ECA-LEXICON]")
-    print("E.g., local/convert_symtable_to_utf.py data/lang/words.txt \
-                /export/corpora/LDC/LDC99L22")
+    print(
+        "E.g., local/convert_symtable_to_utf.py data/lang/words.txt \
+                /export/corpora/LDC/LDC99L22"
+    )
     sys.exit(1)
 
 # Note that the ECA lexicon's default encoding is ISO-8859-6, not UTF8
 symtable = codecs.open(sys.argv[1], encoding="utf8")
-lexicon = codecs.open(sys.argv[2] + "/callhome_arabic_lexicon_991012/ar_lex.v07", encoding="iso-8859-6")
+lexicon = codecs.open(
+    sys.argv[2] + "/callhome_arabic_lexicon_991012/ar_lex.v07", encoding="iso-8859-6"
+)
 
 dict_cache = {}
 # First read off the dictionary and store stuff in a cache

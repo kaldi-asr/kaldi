@@ -15,8 +15,8 @@
 # Sample BPE-based output:
 # |He |ro se |from |his |b re ak f as t - s ch oo l |b en ch
 
-import sys
 import re
+import sys
 
 punctuations = "!(),.?;:'-\""
 escaped_punctuations = re.escape(punctuations)

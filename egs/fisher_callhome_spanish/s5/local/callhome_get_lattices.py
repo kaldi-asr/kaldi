@@ -6,21 +6,37 @@
 # words.txt
 
 from __future__ import print_function
+
 import os
-import sys
 import subprocess
+import sys
 
-latticeLocation = 'latjosh-2-callhome/lattices-pushed/'
+latticeLocation = "latjosh-2-callhome/lattices-pushed/"
 
-tmpdir = 'data/local/data/tmp/ch-d/lattmp'
-invalidplfdir = 'data/local/data/tmp/ch-d/invalidplf'
-symtable = '/export/a04/gkumar/kaldi-trunk/egs/fishcall_es/j-matt/data/lang/words.clean.txt'
+tmpdir = "data/local/data/tmp/ch-d/lattmp"
+invalidplfdir = "data/local/data/tmp/ch-d/invalidplf"
+symtable = (
+    "/export/a04/gkumar/kaldi-trunk/egs/fishcall_es/j-matt/data/lang/words.clean.txt"
+)
 
-conversationList = open('/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/dev')
-provFile = open('/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/asr.test.plf', 'w+')
-invalidPLF = open('/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/invalidPLF', 'w+')
-blankPLF = open('/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/blankPLF', 'w+')
-rmLines = open('/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/removeLines', 'w+')
+conversationList = open(
+    "/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/dev"
+)
+provFile = open(
+    "/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/asr.test.plf",
+    "w+",
+)
+invalidPLF = open(
+    "/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/invalidPLF",
+    "w+",
+)
+blankPLF = open(
+    "/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/blankPLF", "w+"
+)
+rmLines = open(
+    "/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome/ch-d/removeLines",
+    "w+",
+)
 
 if not os.path.exists(tmpdir):
     os.makedirs(tmpdir)
@@ -29,25 +45,26 @@ if not os.path.exists(invalidplfdir):
 else:
     os.system("rm " + invalidplfdir + "/*")
 
+
 def latticeConcatenate(lat1, lat2):
-    '''
+    """
     Concatenates lattices, writes temporary results to tmpdir
-    '''
+    """
     if lat1 == "":
-        os.system('rm ' + tmpdir + '/tmp.lat')
+        os.system("rm " + tmpdir + "/tmp.lat")
         return lat2
     else:
-        proc = subprocess.Popen(['fstconcat', lat1, lat2, (tmpdir + '/tmp.lat')])
+        proc = subprocess.Popen(["fstconcat", lat1, lat2, (tmpdir + "/tmp.lat")])
         proc.wait()
-        return tmpdir + '/tmp.lat'
+        return tmpdir + "/tmp.lat"
 
 
 def findLattice(timeDetail):
-    '''
+    """
     Finds the lattice corresponding to a time segment
-    '''
-    if os.path.isfile(latticeLocation + timeDetail + '.lat'):
-        return latticeLocation + timeDetail + '.lat'
+    """
+    if os.path.isfile(latticeLocation + timeDetail + ".lat"):
+        return latticeLocation + timeDetail + ".lat"
     else:
         return -1
 
@@ -64,7 +81,9 @@ for line in conversationList:
 
 lineNo = 1
 for item in fileList:
-    timingFile = open('/export/a04/gkumar/corpora/fishcall/callhome/tim/' + item + '.es')
+    timingFile = open(
+        "/export/a04/gkumar/corpora/fishcall/callhome/tim/" + item + ".es"
+    )
     for line in timingFile:
         timeInfo = line.split()
 
@@ -82,10 +101,19 @@ for item in fileList:
 
             # Sanjeev's Recipe : Remove epsilons and topo sort
             finalFST = tmpdir + "/final.fst"
-            os.system("fstrmepsilon " + mergedTranslation + " | fsttopsort - " + finalFST)
+            os.system(
+                "fstrmepsilon " + mergedTranslation + " | fsttopsort - " + finalFST
+            )
 
             # Now convert to PLF
-            proc = subprocess.Popen('/export/a04/gkumar/corpora/fishcall/bin/fsm2plf.sh ' + symtable +  ' ' + finalFST, stdout=subprocess.PIPE, shell=True)
+            proc = subprocess.Popen(
+                "/export/a04/gkumar/corpora/fishcall/bin/fsm2plf.sh "
+                + symtable
+                + " "
+                + finalFST,
+                stdout=subprocess.PIPE,
+                shell=True,
+            )
             PLFline = proc.stdout.readline()
             finalPLFFile = tmpdir + "/final.plf"
             finalPLF = open(finalPLFFile, "w+")
@@ -94,7 +122,13 @@ for item in fileList:
 
             # now check if this is a valid PLF, if not write it's ID in a
             # file so it can be checked later
-            proc = subprocess.Popen("/export/a04/gkumar/moses/mosesdecoder/checkplf < " + finalPLFFile + " 2>&1 | awk 'FNR == 2 {print}'", stdout=subprocess.PIPE, shell=True)
+            proc = subprocess.Popen(
+                "/export/a04/gkumar/moses/mosesdecoder/checkplf < "
+                + finalPLFFile
+                + " 2>&1 | awk 'FNR == 2 {print}'",
+                stdout=subprocess.PIPE,
+                shell=True,
+            )
             line = proc.stdout.readline()
             print("{} {}".format(line, lineNo))
             if line.strip() != "PLF format appears to be correct.":

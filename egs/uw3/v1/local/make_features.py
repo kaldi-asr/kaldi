@@ -11,24 +11,40 @@
 
     eg. local/make_features.py data/train --feat-dim 40
 """
+from __future__ import division
 
 import argparse
 import os
 import sys
+from builtins import range, str
+from signal import SIG_DFL, SIGPIPE, signal
+
 import numpy as np
+from past.utils import old_div
 from scipy import misc
-from scipy import ndimage
 
-from signal import signal, SIGPIPE, SIG_DFL
-signal(SIGPIPE,SIG_DFL)
+signal(SIGPIPE, SIG_DFL)
 
-parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
-                                                writes them to standard output in text format.""")
-parser.add_argument('dir', help='data directory (should contain images.scp)')
-parser.add_argument('--out-ark', default='-', help='where to write the output feature file.')
-parser.add_argument('--feat-dim', type=int, default=40,
-                    help='size to scale the height of all images (i.e. the dimension of the resulting features)')
-parser.add_argument('--pad', type=bool, default=False, help='pad the left and right of the images with 10 white pixels.')
+parser = argparse.ArgumentParser(
+    description="""Converts images (in 'dir'/images.scp) to features and
+                                                writes them to standard output in text format."""
+)
+parser.add_argument("dir", help="data directory (should contain images.scp)")
+parser.add_argument(
+    "--out-ark", default="-", help="where to write the output feature file."
+)
+parser.add_argument(
+    "--feat-dim",
+    type=int,
+    default=40,
+    help="size to scale the height of all images (i.e. the dimension of the resulting features)",
+)
+parser.add_argument(
+    "--pad",
+    type=bool,
+    default=False,
+    help="pad the left and right of the images with 10 white pixels.",
+)
 
 args = parser.parse_args()
 
@@ -41,12 +57,14 @@ def write_kaldi_matrix(file_handle, matrix, key):
     num_cols = len(matrix[0])
     for row_index in range(len(matrix)):
         if num_cols != len(matrix[row_index]):
-            raise Exception("All the rows of a matrix are expected to "
-                            "have the same length")
+            raise Exception(
+                "All the rows of a matrix are expected to " "have the same length"
+            )
         file_handle.write(" ".join([str(x) for x in matrix[row_index]]))
         if row_index != num_rows - 1:
             file_handle.write("\n")
     file_handle.write(" ]\n")
+
 
 def get_scaled_image(im):
     scale_size = args.feat_dim
@@ -54,36 +72,37 @@ def get_scaled_image(im):
     sy = im.shape[0]
     # Some Images are rotated
     if sy > sx:
-        im = np.rot90(im, k = -1)
+        im = np.rot90(im, k=-1)
         sx = im.shape[1]
         sy = im.shape[0]
 
-    scale = (1.0 * scale_size) / sy
+    scale = old_div((1.0 * scale_size), sy)
     nx = int(scale_size)
     ny = int(scale * sx)
     im = misc.imresize(im, (nx, ny))
 
-    noise = np.random.normal(2, 1,(nx, ny))
+    noise = np.random.normal(2, 1, (nx, ny))
     im = im - noise
 
     return im
 
-### main ###
-data_list_path = os.path.join(args.dir,'images.scp')
 
-if args.out_ark == '-':
+### main ###
+data_list_path = os.path.join(args.dir, "images.scp")
+
+if args.out_ark == "-":
     out_fh = sys.stdout
 else:
-    out_fh = open(args.out_ark,'wb')
+    out_fh = open(args.out_ark, "wb")
 
 with open(data_list_path) as f:
     for line in f:
         line = line.strip()
-        line_vect = line.split(' ')
+        line_vect = line.split(" ")
         image_id = line_vect[0]
         image_path = line_vect[1]
 
-        im = misc.imread(image_path, flatten = True)
+        im = misc.imread(image_path, flatten=True)
         im_scale = get_scaled_image(im)
 
         if args.pad:

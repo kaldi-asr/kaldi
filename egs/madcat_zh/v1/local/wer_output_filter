@@ -12,9 +12,9 @@
 # " They have come ! " he said reverently , gripping his
 # hands . " Isn ' t it a glorious thing ! Long awaited . "
 
-import sys
 import io
 import re
+import sys
 from collections import OrderedDict
 
 sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf8");

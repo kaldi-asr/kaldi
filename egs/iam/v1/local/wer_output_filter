@@ -12,8 +12,8 @@
 # " They have come ! " he said reverently , gripping his
 # hands . " Isn ' t it a glorious thing ! Long awaited . "
 
-import sys
 import re
+import sys
 
 punctuations = "!(),.?;:'-\""
 escaped_punctuations = re.escape(punctuations)

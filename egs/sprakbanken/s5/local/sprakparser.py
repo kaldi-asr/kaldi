@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 # Copyright 2013-2014 Mirsk Digital ApS  (Author: Andreas Kirkedal)
 
 # Licensed under the Apache License, Version 2.0 (the "License");                                                    
@@ -21,28 +21,30 @@ Created on Jan 18, 2013
 @author: andreas
 
 
-'''
+"""
 from __future__ import print_function
 
 import codecs
 import os
+from builtins import object
+
 
 class Session(object):
-    
+
     delimit = ">-<"
-        
+
     def __init__(self, topfolder, splfile):
         self.filestem = splfile.split(".")[0]
-        self.source = topfolder+ "/" +splfile
+        self.source = topfolder + "/" + splfile
         splhandle = codecs.open(self.source, "r", "latin-1")
-        
+
         self.set_system_vars(splhandle)
         self.set_channel_vars(splhandle)
 
         self.speaker_id = None
         self.set_speaker_vars(splhandle)
 
-        self. wavdir = False
+        self.wavdir = False
         self.set_path_vars(topfolder, splhandle)
         if self.wavdir:
             self.extract_record_states(splhandle)
@@ -56,8 +58,7 @@ class Session(object):
             line = input.split(">-<")
             if len(line) < 4:
                 continue
-            self.record_states.append((line[2],line[5].lower()))
-            
+            self.record_states.append((line[2], line[5].lower()))
 
     def extract_validation_states(self, handle):
         self.validation_states = []
@@ -75,11 +76,11 @@ class Session(object):
             utt = line[7]
             dst = line[8]
             self.validation_states.append((text, qua, noi, snd, spc, utt, dst))
-                    
+
     def set_system_vars(self, handle):
         for input in handle:
             line = input.strip()
-            #print("sys")
+            # print("sys")
             if "Coding" in line:
                 self.coding = self.get_vars(line)
             elif "Frequency" in line:
@@ -90,13 +91,13 @@ class Session(object):
                 return
             else:
                 pass
-                
+
     def set_speaker_vars(self, handle):
         for input in handle:
             line = input.strip()
-            #print("speaker")
-            
-            if "Speaker" in line:         
+            # print("speaker")
+
+            if "Speaker" in line:
                 self.speaker_id = self.get_speaker_vars(line).strip()
             elif "Name" in line:
                 self.name = self.get_speaker_vars(line)
@@ -109,40 +110,41 @@ class Session(object):
             elif "Dialect" in line:
                 self.dialect = self.get_speaker_vars(line)
             elif line == "":
-                return 
+                return
             else:
                 pass
 
     def print_speaker_info(self, path):
-        filename = self.filestem+ ".speaker_info"
+        filename = self.filestem + ".speaker_info"
         dest = os.path.join(path, filename)
         fout = codecs.open(dest, "w", "utf8")
-        fout.write("Original .spl file:\t" +self.source)
-        fout.write("\nID:\t" +self.speaker_id)
-        fout.write("\nName:\t" +self.name)
-        fout.write("\nAge:\t" +self.age)
-        fout.write("\nGender:\t" +self.gender)
-        fout.write("\nDialect:\t" +self.dialect)
-        fout.write("\nOrigin:\t" +self.youth)
+        fout.write("Original .spl file:\t" + self.source)
+        fout.write("\nID:\t" + self.speaker_id)
+        fout.write("\nName:\t" + self.name)
+        fout.write("\nAge:\t" + self.age)
+        fout.write("\nGender:\t" + self.gender)
+        fout.write("\nDialect:\t" + self.dialect)
+        fout.write("\nOrigin:\t" + self.youth)
         fout.close()
 
-            
     def set_path_vars(self, topfolder, handle):
         for input in handle:
-            #print("path")
-            
+            # print("path")
+
             line = input.strip()
             if "recordings" in line:
                 self.recordings = self.get_vars(line)
             elif "Directory" in line:
-                self.splpath = self.get_vars(line)[3:].replace("\\", "/") # removes "c:\"
-                
+                self.splpath = self.get_vars(line)[3:].replace(
+                    "\\", "/"
+                )  # removes "c:\"
+
                 self.wavdir = self.wavpath(topfolder)
             elif line == "":
-                return 
+                return
             else:
                 pass
-            
+
     def set_channel_vars(self, handle):
         for input in handle:
             line = input.strip()
@@ -150,36 +152,35 @@ class Session(object):
                 return
             else:
                 pass
-            
+
     def create_filename(self, uid, file_ending):
         return "{}.{}.{}.{}".format(self.filestem, self.speaker_id, uid, file_ending)
-        
+
     def wavpath(self, topfolder):
-        prefix, suffix = topfolder.rsplit('/data/', 1)
-        testpath = os.path.join(prefix, 'speech', suffix)
-        #testpath = topfolder.replace("data", "speech")
+        prefix, suffix = topfolder.rsplit("/data/", 1)
+        testpath = os.path.join(prefix, "speech", suffix)
+        # testpath = topfolder.replace("data", "speech")
         if os.path.exists(testpath):
             return os.path.join(testpath, self.filestem)
         else:
-            testpath = os.path.join(prefix, 'Speech', suffix)
+            testpath = os.path.join(prefix, "Speech", suffix)
             return os.path.join(testpath, self.filestem)
-            
+
     def get_vars(self, line):
         return line.split("=")[-1]
-    
-    def get_speaker_vars(self, line) :
+
+    def get_speaker_vars(self, line):
         vals = self.get_vars(line).split(self.delimit)
         return vals[-2]
 
-        
 
+if __name__ == "__main__":
 
+    s = Session(
+        "/home/andreas/Desktop/aligned_corpus/da.16kHz.0565-2",
+        "adb_0565/data/scr0565/06/05650606/r5650555.spl",
+    )
 
-if __name__ == '__main__':
-    
-    s = Session("/home/andreas/Desktop/aligned_corpus/da.16kHz.0565-2", 
-                "adb_0565/data/scr0565/06/05650606/r5650555.spl")
-    
     print(s)
     print(os.getcwd())
     print(s.name)

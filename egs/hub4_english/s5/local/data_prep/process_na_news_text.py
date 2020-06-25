@@ -7,27 +7,32 @@
 or NA New Text Supplement Corpus (LDC98T30)."""
 
 from __future__ import print_function
+
 import argparse
 import gzip
 import logging
 import re
 import subprocess
 import sys
+from builtins import str
 
 from bs4 import BeautifulSoup
 
-sys.path.insert(0, 'local/data_prep')
 import hub4_utils
-
-sys.path.insert(0, 'steps')
 import libs.common as common_lib
+
+sys.path.insert(0, "local/data_prep")
+
+sys.path.insert(0, "steps")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
-                              "%(funcName)s - %(levelname)s ] %(message)s")
+formatter = logging.Formatter(
+    "%(asctime)s [%(pathname)s:%(lineno)s - "
+    "%(funcName)s - %(levelname)s ] %(message)s"
+)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -36,13 +41,19 @@ def get_args():
     """Parses command-line arguments."""
 
     parser = argparse.ArgumentParser("Prepare NA News Text corpus (LDC95T21).")
-    parser.add_argument("--verbose", type=int, choices=[0, 1, 2, 3], default=0,
-                        help="Use larger verbosity for more verbose logging.")
-    parser.add_argument("file_list",
-                        help="List of compressed source files for NA News Text. "
-                        "e.g: /export/corpora/LDC/LDC95T21/na_news_1/latwp/1994")
-    parser.add_argument("out_file",
-                        help="Output file to write to.")
+    parser.add_argument(
+        "--verbose",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=0,
+        help="Use larger verbosity for more verbose logging.",
+    )
+    parser.add_argument(
+        "file_list",
+        help="List of compressed source files for NA News Text. "
+        "e.g: /export/corpora/LDC/LDC95T21/na_news_1/latwp/1994",
+    )
+    parser.add_argument("out_file", help="Output file to write to.")
 
     args = parser.parse_args()
 
@@ -66,16 +77,16 @@ def normalize_text(text):
 def process_file_lines(lines, out_file_handle):
     """Processes input lines from a file by removing SGML tags and
     writes normalized plain text to output stream."""
-    doc = ''
+    doc = ""
     for line in lines:
         line = re.sub(r"<artID>([^</])+</DOCID>", "", line)
         line = re.sub(r"<p>", "<p></p>", line)
         doc += line
 
-    if doc == '':
+    if doc == "":
         return False
 
-    soup = BeautifulSoup(doc, 'lxml')
+    soup = BeautifulSoup(doc, "lxml")
 
     num_written = 0
 
@@ -83,12 +94,11 @@ def process_file_lines(lines, out_file_handle):
         try:
             if art.name != "art":
                 continue
-            for para in art.find_all('p'):
-                assert para.name == 'p'
-                text = ' '.join([str(x).strip() for x in para.contents])
+            for para in art.find_all("p"):
+                assert para.name == "p"
+                text = " ".join([str(x).strip() for x in para.contents])
                 normalized_text = normalize_text(text)
-                out_file_handle.write("{0}\n".format(
-                    normalized_text.encode('ascii')))
+                out_file_handle.write("{0}\n".format(normalized_text.encode("ascii")))
                 num_written += 1
         except:
             logger.error("Failed to process document %s", doc)
@@ -101,7 +111,7 @@ def process_file_lines(lines, out_file_handle):
 def _run(args):
     """The one that does it all."""
 
-    with gzip.open(args.out_file, 'w') as writer:
+    with gzip.open(args.out_file, "w") as writer:
         for line in open(args.file_list).readlines():
             try:
                 file_ = line.strip()
@@ -115,22 +125,23 @@ def _run(args):
                     "perl tools/csr4_utils/abbrproc.perl "
                     "  tools/csr4_utils/abbrlist | "
                     "perl tools/csr4_utils/puncproc.perl -np"
-                    "".format(file_))
+                    "".format(file_)
+                )
                 logger.debug("Running command '%s'", command)
 
-                p = subprocess.Popen(command,
-                                     stdout=subprocess.PIPE, shell=True)
+                p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
 
                 stdout = p.communicate()[0]
                 if p.returncode is not 0:
                     logger.error(
                         "Command '%s' failed with return status %d",
-                        command, p.returncode)
+                        command,
+                        p.returncode,
+                    )
                     raise RuntimeError
 
                 if not process_file_lines(stdout, writer):
-                    logger.warn("File %s empty or could not be processed.",
-                                file_)
+                    logger.warn("File %s empty or could not be processed.", file_)
             except Exception:
                 logger.error("Failed processing file %s", file_)
                 raise
@@ -147,5 +158,5 @@ def main():
     sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

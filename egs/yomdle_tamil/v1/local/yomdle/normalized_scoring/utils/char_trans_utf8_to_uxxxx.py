@@ -4,8 +4,11 @@
     hexadecimal format (uxxxx).
     Eg. char_trans_utf8_to_uxxxx.py <input-file> <output-file>
 """
+from __future__ import print_function
 
 import sys
+from builtins import hex
+
 from snor import SnorIter
 
 if len(sys.argv) != 3:
@@ -18,7 +21,9 @@ output_file = sys.argv[2]
 
 def main():
 
-    with open(input_file, 'r', encoding='utf-8') as fh, open(output_file, 'w', encoding='utf-8') as fh_out:
+    with open(input_file, "r", encoding="utf-8") as fh, open(
+        output_file, "w", encoding="utf-8"
+    ) as fh_out:
         for utt, uttid in SnorIter(fh):
             for char in utt.split():
                 if char == "<sp>":
@@ -35,6 +40,7 @@ def utf8_char_to_uxxxx(char):
     raw_hex = hex(ord(char))[2:].zfill(4).lower()
     uxxxx_char = "u%s" % raw_hex
     return uxxxx_char
+
 
 if __name__ == "__main__":
     main()

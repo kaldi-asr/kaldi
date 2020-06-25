@@ -5,6 +5,7 @@
 #Used to prepare character-based transcriptions and compute CER.
 
 from __future__ import print_function
+
 import sys
 
 for l in sys.stdin:

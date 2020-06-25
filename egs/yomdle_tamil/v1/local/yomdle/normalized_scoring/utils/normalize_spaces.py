@@ -5,7 +5,10 @@
     and end of the word.
     Eg. normalize_spaces.py <input-file> <output-file>
 """
+from __future__ import print_function
+
 import sys
+
 from snor import SnorIter
 
 if len(sys.argv) != 3:
@@ -15,9 +18,12 @@ if len(sys.argv) != 3:
 input_file = sys.argv[1]
 output_file = sys.argv[2]
 
+
 def main():
 
-    with open(input_file, 'r', encoding='utf-8') as fh, open(output_file, 'w', encoding='utf-8') as fh_out:
+    with open(input_file, "r", encoding="utf-8") as fh, open(
+        output_file, "w", encoding="utf-8"
+    ) as fh_out:
         for utt, uttid in SnorIter(fh):
             # Only output one space at a time
             space_chars = set([" ", "\t", "\u00a0"])
@@ -25,7 +31,7 @@ def main():
             last_char_was_space = False
 
             # Strip spaces at beginning and end of utterance
-            utt = utt.strip(' ')
+            utt = utt.strip(" ")
             for char in utt:
                 if char in space_chars:
                     if not last_char_was_space:
@@ -37,6 +43,7 @@ def main():
 
             # Finally, print out uttid and newline
             fh_out.write(" (%s)\n" % uttid)
+
 
 if __name__ == "__main__":
     main()

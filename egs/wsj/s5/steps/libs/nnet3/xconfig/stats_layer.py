@@ -6,7 +6,9 @@
 """
 
 from __future__ import print_function
+
 import re
+
 from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 
 
@@ -34,112 +36,137 @@ class XconfigStatsLayer(XconfigLayerBase):
                      dimension computed from input]
         config=''   [Required. Defines what stats must be computed.]
     """
+
     def __init__(self, first_token, key_to_value, prev_names=None):
-        assert first_token in ['stats-layer']
+        assert first_token in ["stats-layer"]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {'input': '[-1]',
-                       'dim': -1,
-                       'config': ''}
+        self.config = {"input": "[-1]", "dim": -1, "config": ""}
 
     def set_derived_configs(self):
-        config_string = self.config['config']
-        if config_string == '':
-            raise RuntimeError("config has to be non-empty",
-                                self.str())
-        m = re.search("(mean|mean\+stddev|mean\+count|mean\+stddev\+count)"
-                      "\((-?\d+):(-?\d+):(-?\d+):(-?\d+)\)",
-                      config_string)
+        config_string = self.config["config"]
+        if config_string == "":
+            raise RuntimeError("config has to be non-empty", self.str())
+        m = re.search(
+            "(mean|mean\+stddev|mean\+count|mean\+stddev\+count)"
+            "\((-?\d+):(-?\d+):(-?\d+):(-?\d+)\)",
+            config_string,
+        )
         if m is None:
-            raise RuntimeError("Invalid statistic-config string: {0}".format(
-                config_string), self)
+            raise RuntimeError(
+                "Invalid statistic-config string: {0}".format(config_string), self
+            )
 
-        self._output_stddev = (m.group(1) in ['mean+stddev',
-                                              'mean+stddev+count'])
-        self._output_log_counts = (m.group(1) in ['mean+count',
-                                                  'mean+stddev+count'])
+        self._output_stddev = m.group(1) in ["mean+stddev", "mean+stddev+count"]
+        self._output_log_counts = m.group(1) in ["mean+count", "mean+stddev+count"]
         self._left_context = -int(m.group(2))
         self._input_period = int(m.group(3))
         self._stats_period = int(m.group(4))
         self._right_context = int(m.group(5))
 
         if self._output_stddev:
-          output_dim = 2 * self.descriptors['input']['dim']
+            output_dim = 2 * self.descriptors["input"]["dim"]
         else:
-          output_dim = self.descriptors['input']['dim']
+            output_dim = self.descriptors["input"]["dim"]
         if self._output_log_counts:
-          output_dim = output_dim + 1
+            output_dim = output_dim + 1
 
-        if self.config['dim'] > 0 and self.config['dim'] != output_dim:
+        if self.config["dim"] > 0 and self.config["dim"] != output_dim:
             raise RuntimeError(
                 "Invalid dim supplied {0:d} != "
-                "actual output dim {1:d}".format(
-                    self.config['dim'], output_dim))
-        self.config['dim'] = output_dim
+                "actual output dim {1:d}".format(self.config["dim"], output_dim)
+            )
+        self.config["dim"] = output_dim
 
     def check_configs(self):
-        if not (self._left_context >= 0 and self._right_context >= 0
-                and self._input_period > 0 and self._stats_period > 0
-                and self._left_context % self._stats_period == 0
-                and self._right_context % self._stats_period == 0
-                and self._stats_period % self._input_period == 0):
+        if not (
+            self._left_context >= 0
+            and self._right_context >= 0
+            and self._input_period > 0
+            and self._stats_period > 0
+            and self._left_context % self._stats_period == 0
+            and self._right_context % self._stats_period == 0
+            and self._stats_period % self._input_period == 0
+        ):
             raise RuntimeError(
                 "Invalid configuration of statistics-extraction: {0}".format(
-                    self.config['config']), self)
+                    self.config["config"]
+                ),
+                self,
+            )
         super(XconfigStatsLayer, self).check_configs()
 
     def _generate_config(self):
-        input_desc = self.descriptors['input']['final-string']
-        input_dim = self.descriptors['input']['dim']
+        input_desc = self.descriptors["input"]["final-string"]
+        input_dim = self.descriptors["input"]["dim"]
 
         configs = []
         configs.append(
-            'component name={name}-extraction-{lc}-{rc} '
-            'type=StatisticsExtractionComponent input-dim={dim} '
-            'input-period={input_period} output-period={output_period} '
-            'include-variance={var} '.format(
-                name=self.name, lc=self._left_context, rc=self._right_context,
-                dim=input_dim, input_period=self._input_period,
+            "component name={name}-extraction-{lc}-{rc} "
+            "type=StatisticsExtractionComponent input-dim={dim} "
+            "input-period={input_period} output-period={output_period} "
+            "include-variance={var} ".format(
+                name=self.name,
+                lc=self._left_context,
+                rc=self._right_context,
+                dim=input_dim,
+                input_period=self._input_period,
                 output_period=self._stats_period,
-                var='true' if self._output_stddev else 'false'))
+                var="true" if self._output_stddev else "false",
+            )
+        )
         configs.append(
-            'component-node name={name}-extraction-{lc}-{rc} '
-            'component={name}-extraction-{lc}-{rc} input={input} '.format(
-                name=self.name, lc=self._left_context, rc=self._right_context,
-                input=input_desc))
+            "component-node name={name}-extraction-{lc}-{rc} "
+            "component={name}-extraction-{lc}-{rc} input={input} ".format(
+                name=self.name,
+                lc=self._left_context,
+                rc=self._right_context,
+                input=input_desc,
+            )
+        )
 
         stats_dim = 1 + input_dim * (2 if self._output_stddev else 1)
         configs.append(
-            'component name={name}-pooling-{lc}-{rc} '
-            'type=StatisticsPoolingComponent input-dim={dim} '
-            'input-period={input_period} left-context={lc} right-context={rc} '
-            'num-log-count-features={count} output-stddevs={var} '.format(
-                name=self.name, lc=self._left_context, rc=self._right_context,
-                dim=stats_dim, input_period=self._stats_period,
+            "component name={name}-pooling-{lc}-{rc} "
+            "type=StatisticsPoolingComponent input-dim={dim} "
+            "input-period={input_period} left-context={lc} right-context={rc} "
+            "num-log-count-features={count} output-stddevs={var} ".format(
+                name=self.name,
+                lc=self._left_context,
+                rc=self._right_context,
+                dim=stats_dim,
+                input_period=self._stats_period,
                 count=1 if self._output_log_counts else 0,
-                var='true' if self._output_stddev else 'false'))
+                var="true" if self._output_stddev else "false",
+            )
+        )
         configs.append(
-            'component-node name={name}-pooling-{lc}-{rc} '
-            'component={name}-pooling-{lc}-{rc} '
-            'input={name}-extraction-{lc}-{rc} '.format(
-                name=self.name, lc=self._left_context, rc=self._right_context))
+            "component-node name={name}-pooling-{lc}-{rc} "
+            "component={name}-pooling-{lc}-{rc} "
+            "input={name}-extraction-{lc}-{rc} ".format(
+                name=self.name, lc=self._left_context, rc=self._right_context
+            )
+        )
         return configs
 
     def output_name(self, auxiliary_output=None):
-        return 'Round({name}-pooling-{lc}-{rc}, {period})'.format(
-            name=self.name, lc=self._left_context,
-            rc=self._right_context, period=self._stats_period)
+        return "Round({name}-pooling-{lc}-{rc}, {period})".format(
+            name=self.name,
+            lc=self._left_context,
+            rc=self._right_context,
+            period=self._stats_period,
+        )
 
     def output_dim(self, auxiliary_outputs=None):
-        return self.config['dim']
+        return self.config["dim"]
 
     def get_full_config(self):
         ans = []
         config_lines = self._generate_config()
 
         for line in config_lines:
-            for config_name in ['ref', 'final']:
+            for config_name in ["ref", "final"]:
                 ans.append((config_name, line))
 
         return ans

@@ -27,9 +27,11 @@ def main():
         parts = line.strip().split()
 
         if len(parts) < 3:
-            raise RuntimeError("Could not parse line {0} in "
-                               "{1}/phones/align_lexicon.int"
-                               "".format(line, lang))
+            raise RuntimeError(
+                "Could not parse line {0} in "
+                "{1}/phones/align_lexicon.int"
+                "".format(line, lang)
+            )
 
         w = int(parts[0])
         if w != oov_int:
@@ -41,16 +43,19 @@ def main():
             continue
 
         p = int(parts[2])
-        print ("{0}".format(p))
+        print("{0}".format(p))
 
         raise SystemExit(0)
 
     if oov_mapped_to_multiple_phones:
-        raise RuntimeError("OOV word found, but is mapped to multiples phones. "
-                           "This is an unusual case.")
+        raise RuntimeError(
+            "OOV word found, but is mapped to multiples phones. "
+            "This is an unusual case."
+        )
 
-    raise RuntimeError("Could not find OOV word in "
-                       "{0}/phones/align_lexicon.int".format(lang))
+    raise RuntimeError(
+        "Could not find OOV word in " "{0}/phones/align_lexicon.int".format(lang)
+    )
 
 
 if __name__ != "__main__":

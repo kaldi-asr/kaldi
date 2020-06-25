@@ -16,26 +16,32 @@ from __future__ import print_function
 
 import sys
 
+
 def err(msg):
     print(msg, file=sys.stderr)
+
 
 if len(sys.argv) < 3:
     err("Usage: %s <prompts-file> <id-prefix> <utt-id1> <utt-id2> ... " % sys.argv[0])
     sys.exit(1)
 
-#err(str(sys.argv))
+# err(str(sys.argv))
 id_prefix = sys.argv[2]
 utt_ids = sys.argv[3:]
 utt2trans = dict()
-unnorm_utt = set() 
+unnorm_utt = set()
 for l in file(sys.argv[1]):
     u, trans = l.split(None, 1)
-    u = u.strip().split('/')[-1]
+    u = u.strip().split("/")[-1]
     trans = trans.strip().replace("-", " ")
-    if not trans.isupper() or \
-       not trans.strip().replace(' ', '').replace("'", "").isalpha():
-        err("The transcript for '%s'(user '%s') is not properly normalized - skipped!"
-            % (u, id_prefix))
+    if (
+        not trans.isupper()
+        or not trans.strip().replace(" ", "").replace("'", "").isalpha()
+    ):
+        err(
+            "The transcript for '%s'(user '%s') is not properly normalized - skipped!"
+            % (u, id_prefix)
+        )
         err(trans)
         unnorm_utt.add(u)
         continue
@@ -43,9 +49,8 @@ for l in file(sys.argv[1]):
 
 for uid in utt_ids:
     if uid in unnorm_utt:
-        continue # avoid double reporting the same problem
+        continue  # avoid double reporting the same problem
     if not uid in utt2trans:
         err("No transcript found for %s_%s" % (id_prefix, uid))
         continue
     print("%s-%s %s" % (id_prefix, uid, utt2trans[uid]))
-
