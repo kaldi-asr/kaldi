@@ -179,7 +179,12 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: generating segments file from CTM"
-  # TODO: Zhuo
+  ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}
+  for decode_set in $test_sets; do
+    decode_dir=${ac_model_dir}/decode_${decode_set}_segmented_rescore
+    local/convert_ctm_to_segments_and_text.py $decode_dir/score_${lmwt}/${decode_set}_segmented.ctm \
+      data/${decode_set}_segmented/segments.decode $decode_dir/hyp_text
+  done
 fi
 
 #######################################################################
