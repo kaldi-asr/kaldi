@@ -37,7 +37,7 @@ lmwt=5
 . ./cmd.sh
 . ./path.sh
 
-test_sets="eval${data_affix}"
+test_sets="dev${data_affix} eval${data_affix}"
 
 # Get dev and eval set names from the test_sets
 dev_set=$( echo $test_sets | cut -d " " -f1 )
