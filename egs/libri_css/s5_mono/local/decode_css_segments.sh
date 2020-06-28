@@ -54,15 +54,16 @@ if [ $stage -le 0 ]; then
   echo "$0 copying data files in output directory"
   mkdir -p ${out_dir}
   cp ${data_in}/{wav.scp,utt2spk.bak,segments,utt2spk,spk2utt} ${out_dir}/
-  utils/data/get_reco2dur.sh ${out_dir}
+  cp -r $out_dir ${out_dir}_hires
+  utils/data/get_reco2dur.sh ${out_dir}_hires
 fi
 
 if [ $stage -le 1 ]; then
   # Now we extract features
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}
-  steps/compute_cmvn_stats.sh ${out_dir}
-  cp $data_in/text.bak ${out_dir}/text
-fi
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}_hires
+  steps/compute_cmvn_stats.sh ${out_dir}_hires
+  cp $data_in/text.bak ${out_dir}_hires/text
+fi 
 
 if [ $stage -le 2 ]; then
   utils/mkgraph.sh \
@@ -83,7 +84,7 @@ if [ $stage -le 3 ]; then
     --extra-right-context-final $extra_right_context_final \
     --frames-per-chunk "$frames_per_chunk" \
     --skip-scoring true ${iter:+--iter $iter} \
-    $asr_model_dir/graph${lm_suffix} ${out_dir} ${decode_dir};
+    $asr_model_dir/graph${lm_suffix} ${out_dir}_hires ${decode_dir};
 fi
 
 exit 0

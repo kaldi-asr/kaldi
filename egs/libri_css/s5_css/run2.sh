@@ -20,8 +20,8 @@ sad_type=tdnn # Set this to webrtc or tdnn. This is used for initial segmentatio
 # Different stages
 sad_stage=0
 decode_stage=0
-score_stage=0
 diarizer_stage=1
+score_stage=0
 
 # RNNLM rescore options
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
@@ -37,7 +37,7 @@ lmwt=5
 . ./cmd.sh
 . ./path.sh
 
-test_sets="dev${data_affix} eval${data_affix}"
+test_sets="eval${data_affix}"
 
 # Get dev and eval set names from the test_sets
 dev_set=$( echo $test_sets | cut -d " " -f1 )
@@ -160,7 +160,7 @@ if [ $stage -le 4 ]; then
         --weight 0.45 --max-ngram-order $ngram_order \
         --skip-scoring true \
         data/lang_test_tgsmall $rnnlm_dir \
-        data/${decode_set}_segmented ${decode_dir} \
+        data/${decode_set}_segmented_hires ${decode_dir} \
         ${ac_model_dir}/decode_${decode_set}_segmented_rescore
   done
 fi
@@ -173,7 +173,7 @@ if [ $stage -le 5 ]; then
     steps/get_ctm_conf.sh --cmd "$decode_cmd" \
       --min-lmwt $lmwt --max-lmwt $lmwt \
       --use-segments false \
-      data/${decode_set}_segmented data/lang_test_tgsmall $decode_dir
+      data/${decode_set}_segmented_hires data/lang_test_tgsmall $decode_dir
   done
 fi
 
@@ -182,8 +182,9 @@ if [ $stage -le 6 ]; then
   ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}
   for decode_set in $test_sets; do
     decode_dir=${ac_model_dir}/decode_${decode_set}_segmented_rescore
-    local/convert_ctm_to_segments_and_text.py $decode_dir/score_${lmwt}/${decode_set}_segmented.ctm \
-      data/${decode_set}_segmented/segments.decode $decode_dir/hyp_text
+    local/convert_ctm_to_segments_and_text.py --max-pause 0.5 \
+      $decode_dir/score_${lmwt}/${decode_set}_segmented_hires.ctm \
+      data/${decode_set}_segmented/segments $decode_dir/hyp_text
   done
 fi
 
@@ -191,30 +192,48 @@ fi
 # Perform diarization on the dev/eval data
 #######################################################################
 if [ $stage -le 7 ]; then
+  # Extract features for diarization using new segments
   for datadir in ${test_sets}; do
-    ref_rttm=data/${datadir}/ref_rttm
-    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/${datadir}/utt2spk.bak \
-      data/${datadir}/segments.bak $ref_rttm
+    awk '{print $1, $2}' data/${datadir}_segmented/segments > data/${datadir}_segmented/utt2spk
+    utils/utt2spk_to_spk2utt.pl data/${datadir}_segmented/utt2spk > data/${datadir}_segmented/spk2utt
     diar_nj=$(wc -l < "data/$datadir/wav.scp")
-
-    [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
-
-    local/diarize_css.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --ref-rttm $ref_rttm \
-      exp/xvector_nnet_1a \
-      data/${datadir} \
-      exp/${datadir}_diarization
+    steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $diar_nj \
+      --cmd queue.pl data/${datadir}_segmented
+    steps/compute_cmvn_stats.sh data/${datadir}_segmented
   done
 fi
 
-if [ $stage -le 5 ]; then
-  echo "$0: WERs after rescoring with $rnnlm_dir"
-  local/score_reco_diarized.sh --stage $score_stage \
-      --multistream true \
-      --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_2stage_rescore \
-      --dev_datadir ${dev_set}_diarized_hires \
-      --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${eval_set}_diarized_2stage_rescore \
-      --eval_datadir ${eval_set}_diarized_hires
+if [ $stage -le 8 ]; then
+  for datadir in ${test_sets}; do
+    diar_nj=$(wc -l < "data/$datadir/wav.scp")
+    [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
+
+    # We don't want to subsegment the segments further. So we set both
+    # window and period to be size of the maximum segment.
+    max_seg_dur=$( awk -v max=0 '
+      {
+        if($4-$3>max){max=$4-$3}
+      }
+      END{print max}' data/${datadir}_segmented/segments )
+    
+
+    local/diarize_css.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
+      --window $max_seg_dur --period $max_seg_dur \
+      --ref-rttm data/${datadir}/ref_rttm \
+      --post-process-rttm false \
+      exp/xvector_nnet_1a \
+      data/${datadir}_segmented \
+      exp/${datadir}_segmented_diarization
+  done
+fi
+
+if [ $stage -le 9 ]; then
+  echo "$0: Computing cpWERs .."
+  for datadir in ${test_sets}; do
+    decode_dir=exp/chain${nnet3_affix}/tdnn_${affix}/decode_${datadir}_segmented_rescore
+    local/score_reco_segmented.sh --stage $score_stage data/${datadir} $decode_dir/hyp_text \
+      exp/${datadir}_segmented_diarization/labels $decode_dir/score_multispeaker
+  done
 fi
 
 exit 0;

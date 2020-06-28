@@ -15,6 +15,10 @@ stage=0
 nj=10
 cmd="run.pl"
 ref_rttm=
+window=1.5
+period=0.75
+post_process_rttm=true # set to true to remove same speaker segments in different
+                       # streams at the same time
 score_overlaps_only=true
 
 echo "$0 $@"  # Print the command line for logging
@@ -36,7 +40,7 @@ out_dir=$3
 
 name=`basename $data_in`
 
-for f in $data_in/feats.scp $data_in/segments $model_dir/plda \
+for f in $data_in/feats.scp $data_in/segments \
   $model_dir/final.raw $model_dir/extract.config; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
@@ -54,7 +58,7 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: extracting x-vectors for all segments"
   diarization/nnet3/xvector/extract_xvectors.sh --cmd "$cmd" \
-    --nj $nj --window 1.5 --period 0.75 --apply-cmn false \
+    --nj $nj --window $window --period $period --apply-cmn false \
     --min-segment 0.5 $model_dir \
     data/${name}_cmn $out_dir/xvectors_${name}
 fi
@@ -91,38 +95,33 @@ if [ $stage -le 4 ]; then
     $out_dir/xvectors_${name}/cossim_scores
 fi
 
-# check if intervaltree is installed
-result=`python -c "\
-try:
-    import intervaltree
-    print('1')
-except ImportError:
-    print('0')"`
-
-if [ "$result" == "0" ]; then
-    echo "intervaltree is not installed. Please install before continuing."
-    exit 1
-fi
-
 if [ $stage -le 5 ]; then
   echo "$0: performing spectral clustering using cosine similarity scores"
   local/diarization/scluster.sh --cmd "$cmd" --nj $nj \
     --rttm-channel 1 \
     $out_dir/xvectors_${name} $out_dir
   echo "$0: wrote RTTM to output directory ${out_dir}"
+
+  # The above clustering generates RTTM with reco separated into streams,
+  # so we have to remove the stream name for evaluation.
+  awk '{$2=$2;sub(/_[0-9]*$/, "", $2); print}' ${out_dir}/rttm \
+    > ${out_dir}/rttm.comb
 fi
 
-# The above clustering generates RTTM with reco separated into streams,
-# so we have to remove the stream name for evaluation.
-awk '{$2=$2;sub(/_[0-9]*$/, "", $2); print}' ${out_dir}/rttm \
-  > ${out_dir}/rttm.comb
+if [ $stage -le 6 ] && [ $post_process_rttm == "true" ]; then
+  echo "$0: applying post-processing to remove simultaneous same-speaker segments"
+  local/post_process_css_rttm.py ${out_dir}/rttm ${out_dir}/rttm.post
+
+  awk '{$2=$2;sub(/_[0-9]*$/, "", $2); print}' ${out_dir}/rttm.post \
+    > ${out_dir}/rttm.comb
+fi
 
 hyp_rttm=${out_dir}/rttm.comb
 
 # For scoring the diarization system, we use the same tool that was
 # used in the DIHARD II challenge. This is available at:
 # https://github.com/nryant/dscore
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   echo "Diarization results for "${name}
   if ! [ -d dscore ]; then
     git clone https://github.com/desh2608/dscore.git -b libricss --single-branch || exit 1;

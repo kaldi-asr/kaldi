@@ -32,7 +32,7 @@ out_dir=$3
 
 name=`basename $data_in`
 
-for f in $data_in/feats.scp $data_in/segments $model_dir/plda \
+for f in $data_in/feats.scp $data_in/segments \
   $model_dir/final.raw $model_dir/extract.config; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
