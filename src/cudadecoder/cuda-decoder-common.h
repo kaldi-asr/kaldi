@@ -442,6 +442,7 @@ struct LaneCounters {
   int32 main_q_extra_prev_tokens_global_offset;
   // Minimum token for that frame
   IntegerCostType min_int_cost;
+  IntegerCostType int_relative_cost;
   // Current beam. Can be different from default_beam,
   // because of the AdaptiveBeam process, or because of
   // ApplyMaxActiveAndReduceBeam

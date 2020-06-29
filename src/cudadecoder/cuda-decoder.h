@@ -23,11 +23,14 @@
 #include "cudadecoder/cuda-fst.h"
 #include "cudadecoder/thread-pool-light.h"
 #include "nnet3/decodable-online-looped.h"
+#include "online2/online-endpoint.h"
 
 #include <cuda_runtime_api.h>
+#include <cfloat>
 #include <mutex>
 #include <tuple>
 #include <vector>
+
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -37,6 +40,7 @@ struct CudaDecoderConfig {
   int32 ntokens_pre_allocated;
   int32 main_q_capacity, aux_q_capacity;
   int32 max_active;
+  OnlineEndpointConfig endpointing_config;
 
   CudaDecoderConfig()
       : default_beam(15.0),
@@ -119,6 +123,7 @@ struct CudaDecoderConfig {
         << "*main-q-capacity).";
     opts->Register("aux-q-capacity", &aux_q_capacity,
                    aux_q_capacity_desc.str());
+    endpointing_config.Register(opts);
   }
 
   void Check() const {
@@ -236,12 +241,28 @@ class CudaDecoder {
                        std::vector<CudaDecodableInterface *> &decodables,
                        int32 max_num_frames = -1);
 
-  void AllowPartialHypotheses() { generate_partial_hypotheses_ = true; }
+  void AllowPartialHypotheses() {
+    partial_traceback_ = generate_partial_hypotheses_ = true;
+  }
+
+  void AllowEndPointing() {
+    KALDI_ASSERT(
+        "You must call SetOutputFrameShiftInSeconds() to use endpointing" &&
+        frame_shift_seconds_ != FLT_MAX);
+    partial_traceback_ = endpointing_ = true;
+  }
+
+  void SetOutputFrameShiftInSeconds(BaseFloat f) { frame_shift_seconds_ = f; }
+
   void GetPartialHypothesis(ChannelId ichannel, PartialHypothesis **out) {
     KALDI_ASSERT(generate_partial_hypotheses_);
     // No need to lock, all ops on h_all_channels_partial_hypotheses_out_ are
     // done before returning InitDecoding or AdvanceDecoding
     *out = &h_all_channels_partial_hypotheses_out_[ichannel];
+  }
+
+  bool EndpointDetected(ChannelId ichannel) {
+    return h_all_channels_endpoint_detected_[ichannel];
   }
 
   // Returns the number of frames already decoded in a given channel
@@ -432,6 +453,8 @@ class CudaDecoder {
   // Called by the worker threads async
   void BuildPartialHypothesisOutput(ChannelId ichannel);
   void GeneratePartialPath(LaneId ilane, ChannelId ichannel);
+
+  void EndpointDetected(LaneId ilane, ChannelId ichannel);
   // Wait for the async partial hypotheses related tasks to be done
   // before returning
   void WaitForPartialHypotheses();
@@ -466,10 +489,16 @@ class CudaDecoder {
   CudaDecoderConfig config_;
   const fst::SymbolTable *word_syms_;  // for partial hypotheses
   bool generate_partial_hypotheses_;   // set by AllowPartialHypotheses
+  bool endpointing_;
+  bool partial_traceback_;
+  BaseFloat frame_shift_seconds_;
+
+  std::set<int> silence_phones_;
 
   // The CudaFst data structure contains the FST graph
   // in the CSR format, on both the GPU and CPU memory
   const CudaFst fst_;
+
   // Counters used by a decoder lane
   // Contains all the single values generated during computation,
   // such as the current size of the main_q, the number of arcs currently
@@ -692,10 +721,10 @@ class CudaDecoder {
   std::vector<std::vector<InfoToken>> h_all_tokens_extra_prev_tokens_;
   std::vector<std::vector<float2>>
       h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_;
-  std::vector<std::mutex> channel_lock_;  // at some point we should switch to a
-                                          // shared_lock (to be able to compute
-                                          // partial lattices while still
-                                          // streaming new data for this
+  std::vector<std::mutex> channel_lock_;  // at some point we should switch to
+                                          // a shared_lock (to be able to
+                                          // compute partial lattices while
+                                          // still streaming new data for this
                                           // channel)
   bool worker_threads_running_;
   // For each channel, set by PrepareForGetRawLattice
@@ -724,11 +753,15 @@ class CudaDecoder {
   // results
   std::vector<int32> h_argmin_token_cost_;
   std::vector<InfoToken> h_argmin_token_cost_token_;
+  std::vector<CostType> h_relative_cost_;
   // Partial path so far on a given channel
 
   // Partial hypotheses to be used by user
   // Only valid between API calls (InitDecoding, AdvanceDecoding)
   std::vector<PartialHypothesis> h_all_channels_partial_hypotheses_out_;
+  std::vector<char>
+      h_all_channels_endpoint_detected_;  // not using a bool, we need it to be
+                                          // threadsafe
 
   // Used internally to store the state of the current partial hypotheses
   std::vector<std::list<PartialPathArc>> h_all_channels_partial_hypotheses_;
@@ -813,8 +846,8 @@ class CudaDecoder {
   std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
-  std::atomic_int32_t n_partial_hypotheses_format_output_todo_;
-  std::atomic_int32_t n_partial_hypotheses_threads_not_done_;
+  std::atomic_int32_t n_partial_traceback_threads_todo_;
+  std::atomic_int32_t n_partial_traceback_threads_not_done_;
 
   bool h2h_threads_running_;
   // Using the output from GetBestPath, we add the best tokens (as
@@ -884,6 +917,6 @@ class CudaDecoder {
 };
 
 }  // end namespace cuda_decoder
-}  // end namespace kaldi
+}  // namespace kaldi
 
 #endif  // KALDI_CUDA_DECODER_CUDA_DECODER_H_

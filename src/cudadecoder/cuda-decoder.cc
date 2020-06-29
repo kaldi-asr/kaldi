@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #include <sstream>
+#include "online2/online-endpoint.h"
 #if HAVE_CUDA == 1
 
 #include "cuda-decoder-kernels.h"
@@ -23,8 +24,8 @@
 
 #include <cuda_runtime_api.h>
 #include <nvToolsExt.h>
+#include <util/text-utils.h>
 #include <algorithm>
-#include <cfloat>
 #include <map>
 #include <tuple>
 
@@ -34,6 +35,7 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
     : word_syms_(NULL),
       generate_partial_hypotheses_(false),
+      frame_shift_seconds_(FLT_MAX),
       fst_(fst),
       nlanes_(nlanes),
       nchannels_(nchannels),
@@ -107,6 +109,14 @@ void CudaDecoder::ReadConfig(const CudaDecoderConfig &cst_config) {
   KALDI_ASSERT(max_active_ > 0);
   KALDI_ASSERT(main_q_capacity_ > 0);
   KALDI_ASSERT(aux_q_capacity_ >= main_q_capacity_);
+
+  // Filling silence phones set with input config
+  std::vector<int32> silence_phones_vec;
+  if (!SplitStringToIntegers(config_.endpointing_config.silence_phones, ":",
+                             false, &silence_phones_vec))
+    KALDI_ERR << "Bad --endpoint.silence-phones option in endpointing config: "
+              << config_.endpointing_config.silence_phones;
+  for (int32 phone : silence_phones_vec) silence_phones_.insert(phone);
 }
 
 void CudaDecoder::AllocateDeviceData() {
@@ -189,6 +199,7 @@ void CudaDecoder::AllocateHostData() {
   h_all_tokens_info_.resize(nchannels_);
   h_all_channels_partial_hypotheses_.resize(nchannels_);
   h_all_channels_partial_hypotheses_out_.resize(nchannels_);
+  h_all_channels_endpoint_detected_.resize(nchannels_);
   for (int32 ichannel = 0; ichannel < nchannels_; ++ichannel) {
     h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel].reserve(
         ntokens_pre_allocated_);
@@ -200,6 +211,7 @@ void CudaDecoder::AllocateHostData() {
   h_n_extra_prev_tokens_lane_offsets_.resize(nlanes_ + 1);
   h_argmin_token_cost_.resize(nlanes_);
   h_argmin_token_cost_token_.resize(nlanes_);
+  h_relative_cost_.resize(nlanes_);
   frame_offsets_.resize(nchannels_);
   num_frames_decoded_.resize(nchannels_, -1);
   lanes2channels_todo_.reserve(nlanes_);
@@ -299,6 +311,7 @@ void CudaDecoder::InitDeviceParams() {
   // Those cannot be used at the same time
   h_device_params_->h_list_final_tokens_in_main_q =
       h_list_final_tokens_in_main_q_.GetView();
+  h_device_params_->fst_zero = StdWeight::Zero().Value();
 }
 
 CudaDecoder::~CudaDecoder() {
@@ -429,6 +442,7 @@ void CudaDecoder::InitDecoding(const std::vector<ChannelId> &channels) {
     frame_offsets_[ichannel].push_back(n_initial_tokens);
     h_all_channels_partial_hypotheses_[ichannel].clear();
     h_all_channels_partial_hypotheses_out_[ichannel].clear();
+    h_all_channels_endpoint_detected_[ichannel] = false;
     // TODO put it back
     // if (thread_pool_) {
     //  thread_pool_->post([ichannel, this] {
@@ -672,6 +686,9 @@ void CudaDecoder::CopyMainQueueDataToHost() {
           global_offset + h_lanes_counters_.lane(ilane)->prev_arg_min_int_cost;
       h_argmin_token_cost_token_[ilane] =
           h_lanes_counters_.lane(ilane)->prev_arg_min_int_cost_token;
+      float relative_cost = orderedIntToFloatHost(
+          h_lanes_counters_.lane(ilane)->int_relative_cost);
+      h_relative_cost_[ilane] = relative_cost;
       const ChannelId ichannel = channel_to_compute_[ilane];
       ++num_frames_decoded_[ichannel];
     }
@@ -882,8 +899,8 @@ void CudaDecoder::AdvanceDecoding(
 
 void CudaDecoder::WaitForPartialHypotheses() {
   if (!generate_partial_hypotheses_) return;
-  while (n_partial_hypotheses_threads_not_done_.load(
-             std::memory_order_acquire) > 0)
+  while (n_partial_traceback_threads_not_done_.load(std::memory_order_acquire) >
+         0)
     usleep(200);
 }
 
@@ -961,7 +978,7 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
   GetBestCostStep1Kernel(
       KaldiCudaDecoderNumBlocks(max_main_q_end, nlanes_used_),
       KALDI_CUDA_DECODER_1D_BLOCK, compute_st_, *h_device_params_,
-      *h_kernel_params_, use_final_costs, StdWeight::Zero().Value());
+      *h_kernel_params_, use_final_costs);
 
   // Step2: Now that we now what the minimum cost is, we list all tokens
   // within
@@ -971,7 +988,7 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
   GetBestCostStep2Kernel(
       KaldiCudaDecoderNumBlocks(max_main_q_end, nlanes_used_),
       KALDI_CUDA_DECODER_1D_BLOCK, compute_st_, *h_device_params_,
-      *h_kernel_params_, use_final_costs, StdWeight::Zero().Value());
+      *h_kernel_params_, use_final_costs);
 
   // Step3 : Moves some data to host. We are moving the data that couldn't
   // be moved directly in step 2, e.g. results of atomics (we don't know
@@ -1042,7 +1059,7 @@ void CudaDecoder::GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
       KALDI_ASSERT(
           (offset + i) <
           h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
-              .size());  // TODO IF paranoid
+              .size());
       CostType arc_extra_cost =
           h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
                                                                  [offset + i]
@@ -1766,10 +1783,10 @@ void CudaDecoder::LaunchH2HCopies() {
   n_acoustic_h2h_copies_todo_.store(nlanes_used_ - 1);
   n_infotoken_h2h_copies_todo_.store(nlanes_used_ - 1);
   n_extra_prev_tokens_h2h_copies_todo_.store(nlanes_used_ - 1);
-  if (generate_partial_hypotheses_) {
-    n_partial_hypotheses_format_output_todo_.store(nlanes_used_ - 1);
-    n_partial_hypotheses_threads_not_done_.store(thread_pool_ ? n_threads_used_
-                                                              : 1);
+  if (partial_traceback_) {
+    n_partial_traceback_threads_todo_.store(nlanes_used_ - 1);
+    n_partial_traceback_threads_not_done_.store(thread_pool_ ? n_threads_used_
+                                                             : 1);
   }
   {
     std::lock_guard<std::mutex> n_h2h_not_done_lk(n_h2h_task_not_done_mutex_);
@@ -1810,6 +1827,9 @@ void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
     partial_hypotheses.push_back({curr_token_idx, arc_idx});
     // Backtracking until we reconnect with our stored partial path
     if (partial_hypotheses.size() > 1) {
+      // using prev(2):
+      // 1. last valid element, the one we've just added
+      // 2. the one before that, the one we need to check
       auto it = std::prev(partial_hypotheses.end(), 2);
 
       int32 stored_prev_token_idx = it->token_idx;
@@ -1847,6 +1867,38 @@ void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
       }
     }
   }
+}
+
+void CudaDecoder::EndpointDetected(LaneId ilane, ChannelId ichannel) {
+  CostType relative_cost = h_relative_cost_[ilane];
+  int num_frames_decoded = num_frames_decoded_[ichannel];
+
+  // Count silence frames
+  std::list<PartialPathArc> &partial_hypotheses_internal =
+      h_all_channels_partial_hypotheses_[ichannel];
+  int num_silence_frames = 0;
+  for (auto it = partial_hypotheses_internal.rbegin();
+       it != partial_hypotheses_internal.rend(); ++it) {
+    int arc_idx = it->arc_idx;
+    int ilabel = fst_.h_arc_id_ilabels_[arc_idx];
+    // If not a silence phone, exit
+    if (silence_phones_.find(ilabel) == silence_phones_.end()) break;
+    ++num_silence_frames;
+  }
+  bool end_point = kaldi::EndpointDetected(
+      config_.endpointing_config, num_frames_decoded, num_silence_frames,
+      frame_shift_seconds_, relative_cost);
+
+  h_all_channels_endpoint_detected_[ichannel] = end_point;
+
+  /*
+  // Kept for debugging
+  if (false) {
+    KALDI_LOG << "Channel " << ichannel << " tot_frames=" << num_frames_decoded
+              << " silence frames=" << num_silence_frames
+              << " relative_cost=" << relative_cost;
+  }
+  */
 }
 
 void CudaDecoder::BuildPartialHypothesisOutput(ChannelId ichannel) {
@@ -1890,15 +1942,15 @@ void CudaDecoder::ComputeH2HCopies() {
   if (!h2h_threads_running_) return;
 
   int32 ilane;
-  if (generate_partial_hypotheses_) {
-    while ((ilane = n_partial_hypotheses_format_output_todo_.fetch_sub(1)) >=
-           0) {
+  if (partial_traceback_) {
+    while ((ilane = n_partial_traceback_threads_todo_.fetch_sub(1)) >= 0) {
       int32 ichannel = lanes2channels_todo_[ilane];
       GeneratePartialPath(ilane, ichannel);
-      BuildPartialHypothesisOutput(ichannel);
+      if (generate_partial_hypotheses_) BuildPartialHypothesisOutput(ichannel);
+      if (endpointing_) EndpointDetected(ilane, ichannel);
     }
-    n_partial_hypotheses_threads_not_done_.fetch_sub(1,
-                                                     std::memory_order_release);
+    n_partial_traceback_threads_not_done_.fetch_sub(1,
+                                                    std::memory_order_release);
   }
   // Waiting for the D2H copies. This is threadsafe
   // Step 1: acoustic costs
