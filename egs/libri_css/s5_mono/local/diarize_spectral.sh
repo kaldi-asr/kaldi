@@ -8,6 +8,7 @@
 # of AHC.
 
 stage=0
+overlap_stage=0
 nj=10
 cmd="run.pl"
 ref_rttm=
@@ -64,9 +65,17 @@ if [ $stage -le 3 ]; then
     $out_dir/xvectors_${name}/cossim_scores
 fi
 
+# Compute overlaps
 if [ $stage -le 4 ]; then
-  echo "$0: performing spectral clustering using cosine similarity scores"
+  echo "$0: perform overlap detection"
+  local/detect_overlaps.sh --stage $overlap_stage \
+    data/$name exp/overlap_1a/tdnn_stats_1a exp/overlap_1a/$name
+fi
+
+if [ $stage -le 5 ]; then
+  echo "$0: performing overlap-aware spectral clustering using cosine similarity scores"
   diarization/scluster.sh --cmd "$cmd" --nj $nj \
+    --overlap-rttm $out_dir/overlap_rttm \
     --rttm-channel 1 \
     $out_dir/xvectors_${name}/cossim_scores $out_dir
   echo "$0: wrote RTTM to output directory ${out_dir}"
@@ -77,7 +86,7 @@ hyp_rttm=${out_dir}/rttm
 # For scoring the diarization system, we use the same tool that was
 # used in the DIHARD II challenge. This is available at:
 # https://github.com/nryant/dscore
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   echo "Diarization results for "${name}
   if ! [ -d dscore ]; then
     git clone https://github.com/desh2608/dscore.git -b libricss --single-branch || exit 1;

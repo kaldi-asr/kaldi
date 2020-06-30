@@ -80,35 +80,40 @@ def GetOverlapDecision(overlap_segs, subsegment, frac = 0.5):
 
 
 def ComputeOverlapVector(IDs, overlap_rttm):
-    overlap_segs = []
-    with open(overlap_rttm, 'r') as f:
-        for line in f.readlines():
-            parts = line.strip().split()
-            overlap_segs.append((parts[1], float(parts[3]), float(parts[3]) + float(parts[4])))
     overlap_vectors = {}
-    for id in IDs:
-        ol_vec = np.zeros(len(IDs[id]))
-        ol_segs = []
-        for seg in overlap_segs:
-            if (id == seg[0]):
-                ol_segs.append((seg[1], seg[2]))
-        ol_segs.sort(key=lambda x: x[0])
-        if ol_segs is None:
+    if overlap_rttm is not None:
+        overlap_segs = []
+        with open(overlap_rttm, 'r') as f:
+            for line in f.readlines():
+                parts = line.strip().split()
+                overlap_segs.append((parts[1], float(parts[3]), float(parts[3]) + float(parts[4])))
+        overlap_vectors = {}
+        for id in IDs:
+            ol_vec = np.zeros(len(IDs[id]))
+            ol_segs = []
+            for seg in overlap_segs:
+                if (id == seg[0]):
+                    ol_segs.append((seg[1], seg[2]))
+            ol_segs.sort(key=lambda x: x[0])
+            if ol_segs is None:
+                overlap_vectors[id] = ol_vec
+                continue
+            for i, segment in enumerate(IDs[id]):
+                parts = re.split('_|-',segment)
+                start_time = (float(parts[3]) + float(parts[5]))/100
+                end_time = (float(parts[3]) + float(parts[6]))/100
+
+                is_overlap = GetOverlapDecision(ol_segs, (start_time, end_time))
+                if is_overlap:
+                    ol_vec[i] = 1
+            print ("{}: {} fraction of segments are overlapping".format(id, ol_vec.sum()/len(ol_vec)), end='')
             overlap_vectors[id] = ol_vec
-            continue
-        for i, segment in enumerate(IDs[id]):
-            parts = re.split('_|-',segment)
-            start_time = (float(parts[3]) + float(parts[5]))/100
-            end_time = (float(parts[3]) + float(parts[6]))/100
-
-            is_overlap = GetOverlapDecision(ol_segs, (start_time, end_time))
-            if is_overlap:
-                ol_vec[i] = 1
-        print ("{}: {} fraction of segments are overlapping".format(id, ol_vec.sum()/len(ol_vec)), end='')
-        overlap_vectors[id] = ol_vec
+    else:
+        for id in IDs:
+            ol_vec = -1*np.ones(len(IDs[id]))
+            overlap_vectors[id] = ol_vec
+            print ("No external overlap detector used. Greedy algorithm will be used to assign overlaps.\n")
     return overlap_vectors
-
-
 
 #   NME low-level operations
 
@@ -206,7 +211,6 @@ def NME_SpectralClustering_sklearn(A, OLVec, num_clusters, pbest):
     model = SpectralClustering(n_clusters = num_clusters, affinity='precomputed', random_state=0, 
         assign_labels='discretize_ol', overlap_vector=OLVec)
     labels = model.fit_predict(Ap)
-    print (labels)
     return labels
 
 
