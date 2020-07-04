@@ -14,6 +14,12 @@ from sklearn.cluster import SpectralClustering
 '''
    Spectral Clustering based on binarization and automatic thresholding
    Paper: T.Park, K.Han, M.Kumar, and S.Narayanan, Auto-tuning spectral clustering for speaker diarization using normalized maximumeigengap, IEEE Signal Processing Letters, vol. 27, pp. 381-385,2019
+
+ This version has a few differences from the original algorithm (thanks Naoyuki Kanda for pointing this out):
+ 1. The original paper performs clustering on a binarized affinity matrix. Here, a thresholded (but not
+ binarized) matrix is used.
+ 2. The original paper uses an unnormalized Laplacian for the clustering. Here, scikit-learn's version is used
+ which performs normalization of the Laplacian.
 '''
 
 #   Input-output routines
