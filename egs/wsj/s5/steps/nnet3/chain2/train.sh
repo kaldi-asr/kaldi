@@ -248,7 +248,7 @@ while [ $x -lt $num_iters ]; do
   fi
   [ -f $dir/$x/.error_diagnostic ] && echo "$0: error getting diagnostics on iter $x" && exit 1;
 
-  if [ -f $dir/caqche.$x ]; then
+  if [ -f $dir/cache.$x ]; then
       rm $dir/cache.$x
   fi
   delete_iter=$[x-2]
