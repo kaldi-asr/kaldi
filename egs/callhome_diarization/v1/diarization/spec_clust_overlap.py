@@ -66,7 +66,7 @@ def GetOverlapDecision(overlap_segs, subsegment, frac = 0.5):
     dur = end_time - start_time
     total_ovl = 0
     
-    for seg in enumerate(overlap_segs):
+    for seg in overlap_segs:
         cur_start, cur_end = seg
         if (cur_start >= end_time):
             break

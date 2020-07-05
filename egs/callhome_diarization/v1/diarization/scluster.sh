@@ -17,6 +17,7 @@ cleanup=true
 rttm_channel=0
 reco2num_spk=
 overlap_rttm=  # Path to an RTTM output of an external overlap detector
+rttm_affix=
 
 # End configuration section.
 
@@ -115,7 +116,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: computing RTTM"
-  diarization/$rttm_bin --rttm-channel $rttm_channel $srcdir/segments $dir/labels $dir/rttm || exit 1;
+  diarization/$rttm_bin --rttm-channel $rttm_channel $srcdir/segments $dir/labels $dir/rttm${rttm_affix} || exit 1;
 fi
 
 if $cleanup ; then

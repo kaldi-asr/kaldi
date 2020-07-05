@@ -14,9 +14,12 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 nj=32
 cmd=queue.pl
-stage=-1
+stage=3
+region_type=overlap
+convert_data_dir_to_whole=false
 
 output_name=output   # The output node in the network
+output_scale= # provide scaling factors for "silence single overlap" (tune on dev set)
 
 # Network config
 iter=final  # Model iteration to use
@@ -34,11 +37,11 @@ graph_opts="--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-d
 acwt=0.5
 
 # Postprocessing options
-segment_padding=0.1   # Duration (in seconds) of padding added to overlap segments
+segment_padding=0   # Duration (in seconds) of padding added to overlap segments
 min_segment_dur=0   # Minimum duration (in seconds) required for a segment to be included
                     # This is before any padding. Segments shorter than this duration will be removed.
-                    # This is an alternative to --min-speech-duration above.
-merge_consecutive_max_dur=0   # Merge consecutive segments as long as the merged segment is no longer than this many
+                    # This is an alternative to --min-overlap-duration above.
+merge_consecutive_max_dur=inf   # Merge consecutive segments as long as the merged segment is no longer than this many
                               # seconds. The segments are only merged if their boundaries are touching.
                               # This is after padding by --segment-padding seconds.
                               # 0 means do not merge. Use 'inf' to not limit the duration.
@@ -70,21 +73,23 @@ out_dir=$3    # The output data directory
 
 data_id=`basename $data_dir`
 overlap_dir=${out_dir}/overlap # working directory
-test_data_dir=${data_dir}_whole
 
 num_wavs=$(wc -l < "$data_dir"/wav.scp)
 if [ $nj -gt $num_wavs ]; then
   nj=$num_wavs
 fi
 
-if ! [ -f ${test_data_dir}/feats.scp ]; then
-  rm -r ${test_data_dir}
-  utils/data/convert_data_dir_to_whole.sh $data_dir $test_data_dir
-  utils/fix_data_dir.sh $test_data_dir
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$cmd" \
-    --write-utt2num-frames true ${test_data_dir}
-  steps/compute_cmvn_stats.sh ${test_data_dir}
-  utils/fix_data_dir.sh ${test_data_dir}
+test_data_dir=${data_dir}
+if [ $convert_data_dir_to_whole == "true" ]; then
+  test_data_dir=${data_dir}_whole
+  if ! [ -d $test_data_dir ]; then
+    utils/data/convert_data_dir_to_whole.sh $data_dir $test_data_dir
+    utils/fix_data_dir.sh $test_data_dir
+    steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$cmd" \
+      --write-utt2num-frames true ${test_data_dir}
+    steps/compute_cmvn_stats.sh ${test_data_dir}
+    utils/fix_data_dir.sh ${test_data_dir}
+  fi
 fi
 
 ###############################################################################
@@ -158,9 +163,24 @@ fi
 ## Do Viterbi decoding to create per-frame alignments.
 ###############################################################################
 
+transform_opt=
+if ! [ -z "$output_scale" ]; then
+  # Transformation matrix for output scaling computed from provided
+  # `output_scale` values
+  echo $output_scale | python -c "import sys
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
+
+line = sys.stdin.read()
+sil_prior, single_prior, ovl_prior = line.strip().split()
+transform_mat = [[float(sil_prior),0,0], [0,float(single_prior),0], [0,0,float(ovl_prior)]]
+common_lib.write_matrix_ascii(sys.stdout, transform_mat)" > $overlap_dir/transform_probs.mat
+  transform_opt="--transform $overlap_dir/transform_probs.mat"
+fi
+
 if [ $stage -le 3 ]; then
   steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" --nj $nj \
-    $graph_dir $out_dir $overlap_dir
+    $transform_opt $graph_dir $out_dir $overlap_dir
 fi
 
 ###############################################################################
@@ -172,9 +192,9 @@ if [ $stage -le 4 ]; then
     --segment-padding $segment_padding --min-segment-dur $min_segment_dur \
     --merge-consecutive-max-dur $merge_consecutive_max_dur \
     --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \
-    --region-type overlap \
+    --region-type $region_type \
     ${test_data_dir} ${overlap_dir} ${out_dir}
 fi
 
-echo "$0: Created output overlap RTTM at ${out_dir}"
+echo "$0: Created output overlap RTTM at ${out_dir}/rttm_${region_type}"
 exit 0

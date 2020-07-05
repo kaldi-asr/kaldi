@@ -5,7 +5,7 @@
 # The output directory contains a text file which can be used for scoring.
 
 
-stage=0
+stage=3
 nj=8
 cmd=queue.pl
 lm_suffix=
@@ -64,7 +64,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0 performing decoding on the extracted features"
   local/nnet3/decode.sh --affix 2stage --acwt 1.0 --post-decode-acwt 10.0 \
-    --frames-per-chunk 150 --nj $nj --ivector-dir $ivector_extractor \
+    --frames-per-chunk 150 --nj $nj --ivector-dir $ivector_extractor --affix conf \
     $out_dir $lang_dir $asr_model_dir/graph${lm_suffix} $asr_model_dir/
 fi
 

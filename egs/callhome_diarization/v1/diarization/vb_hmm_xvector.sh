@@ -13,6 +13,7 @@ stage=0
 nj=10
 cleanup=true
 rttm_channel=0
+overlap_rttm=  # Path to an RTTM output of an external overlap detector
 
 # The hyperparameters used here are taken from the DIHARD
 # optimal hyperparameter values reported in:
@@ -68,6 +69,14 @@ if [ "$result" == "0" ]; then
     python3 -m pip install numexpr
 fi
 
+overlap_rttm_opt=
+if ! [ -z "$overlap_rttm" ]; then
+  overlap_rttm_opt="--overlap-rttm $overlap_rttm"
+  rttm_bin="make_rttm_ol.py"
+else
+  rttm_bin="make_rttm.py"
+fi
+
 if [ $stage -le 0 ]; then
   # Mean subtraction (If original x-vectors are high-dim, e.g. 512, you should
   # consider also applying LDA to reduce dimensionality to, say, 200) 
@@ -79,7 +88,7 @@ echo -e "Performing bayesian HMM based x-vector clustering..\n"
 # making a shell script for each job
 for n in `seq $nj`; do
   cat <<-EOF > $dir/tmp/vb_hmm.$n.sh
-  python3 diarization/vb_hmm_xvector.py \
+  python3 diarization/vb_hmm_xvector.py $overlap_rttm_opt \
       --loop-prob $loop_prob --fa $fa --fb $fb \
       $xvec_dir/xvector_norm.ark $plda $dir/labels.$n $dir/labels.vb.$n
 EOF

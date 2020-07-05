@@ -11,12 +11,12 @@
 nj=8
 stage=0
 score_sad=true
-diarizer_stage=0
-decode_diarize_stage=0
+diarizer_stage=1
+decode_diarize_stage=1
 decode_oracle_stage=0
 score_stage=0
 nnet3_affix=_cleaned # affix for the chain directory name
-affix=1d   # affix for the TDNN directory name
+affix=1d2_ft   # affix for the TDNN directory name
 
 # If the following is set to true, we use the oracle speaker and segment
 # information instead of performing SAD and diarization.
@@ -118,32 +118,38 @@ if [ $stage -le 3 ]; then
       exp/${datadir}_diarization
   done
 fi
-
+exit 1
 #######################################################################
 # Decode diarized output using trained chain model
 #######################################################################
 if [ $stage -le 4 ]; then
+  if ! [ -d exp/chain${nnet3_affix}/tdnn_${affix}/graph_tgsmall ]; then
+    graph_dir=exp/chain${nnet3_affix}/tdnn_${affix}/graph_tgsmall
+    utils/mkgraph.sh --self-loop-scale 1.0 --remove-oov data/lang_test_tgsmall \
+      exp/chain${nnet3_affix}/tdnn_${affix}/ $graph_dir
+  fi
+
   for datadir in ${test_sets}; do
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
-    local/decode_diarized.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
+    local/decode_diarized_1pass.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
       exp/${datadir}_diarization/rttm data/$datadir data/lang_test_tgsmall \
-      exp/chain${nnet3_affix}/tdnn_${affix}_sp exp/nnet3${nnet3_affix} \
-      data/${datadir}_diarized || exit 1
+      exp/chain${nnet3_affix}/tdnn_${affix} exp/nnet3${nnet3_affix} \
+      data/${datadir}_diarized_nol || exit 1
   done
 fi
 
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-if [ $stage -le 5 ]; then
+if [ $stage -le 5 ] && [ $rnnlm_rescore != "true" ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_reco_diarized.sh --stage $score_stage \
-      --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${dev_set}_diarized_2stage \
-      --dev_datadir ${dev_set}_diarized_hires \
-      --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${eval_set}_diarized_2stage \
-      --eval_datadir ${eval_set}_diarized_hires
+      --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_pseudo_olwt \
+      --dev_datadir ${dev_set}_diarized_nol_hires \
+      --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${eval_set}_diarized_pseudo_olwt \
+      --eval_datadir ${eval_set}_diarized_nol_hires
 fi
 
 ############################################################################
@@ -153,29 +159,29 @@ if $rnnlm_rescore; then
   if [ $stage -le 6 ]; then
     echo "$0: Perform RNNLM lattice-rescoring"
     pruned=
-    ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}_sp
+    ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}
     if $pruned_rescore; then
       pruned=_pruned
     fi
     for decode_set in $test_sets; do
-      decode_dir=${ac_model_dir}/decode_${decode_set}_diarized_2stage
+      decode_dir=${ac_model_dir}/decode_${decode_set}_diarized_nol
       # Lattice rescoring
       rnnlm/lmrescore$pruned.sh \
           --cmd "$decode_cmd --mem 8G" \
           --weight 0.45 --max-ngram-order $ngram_order \
           data/lang_test_tgsmall $rnnlm_dir \
-          data/${decode_set}_diarized_hires ${decode_dir} \
-          ${ac_model_dir}/decode_${decode_set}_diarized_2stage_rescore
+          data/${decode_set}_diarized_nol_hires ${decode_dir} \
+          ${ac_model_dir}/decode_${decode_set}_diarized_nol_rescore
     done
   fi
   
   if [ $stage -le 7 ]; then
     echo "$0: WERs after rescoring with $rnnlm_dir"
     local/score_reco_diarized.sh --stage $score_stage \
-        --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${dev_set}_diarized_2stage_rescore \
-        --dev_datadir ${dev_set}_diarized_hires \
-        --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${eval_set}_diarized_2stage_rescore \
-        --eval_datadir ${eval_set}_diarized_hires
+        --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_nol_rescore \
+        --dev_datadir ${dev_set}_diarized_nol_hires \
+        --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${eval_set}_diarized_nol_rescore \
+        --eval_datadir ${eval_set}_diarized_nol_hires
   fi
 fi
 

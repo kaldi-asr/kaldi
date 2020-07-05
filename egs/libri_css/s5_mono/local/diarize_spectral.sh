@@ -13,6 +13,8 @@ nj=10
 cmd="run.pl"
 ref_rttm=
 score_overlaps_only=true
+overlap_aware_sc=false # If true, perform spectral clustering with overlaps
+rttm_affix=
 
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -33,7 +35,7 @@ out_dir=$3
 
 name=`basename $data_in`
 
-for f in $data_in/feats.scp $data_in/segments $model_dir/plda \
+for f in $data_in/feats.scp $data_in/segments \
   $model_dir/final.raw $model_dir/extract.config; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
@@ -66,22 +68,34 @@ if [ $stage -le 3 ]; then
 fi
 
 # Compute overlaps
-if [ $stage -le 4 ]; then
+overlap_rttm_opt=
+if [ $stage -le 4 ] && [ $overlap_aware_sc == "true" ]; then
   echo "$0: perform overlap detection"
-  local/detect_overlaps.sh --stage $overlap_stage \
+  # oracle overlaps for evaluating
+  local/overlap/get_overlap_segments.py data/$name/ref_rttm |\
+    grep "overlap" > data/${name}/overlap_rttm_ref
+  
+  local/detect_overlaps.sh --convert-data-dir-to-whole true \
+    --output-scale "1 1 10" \
     data/$name exp/overlap_1a/tdnn_stats_1a exp/overlap_1a/$name
+
+  echo "$0: evaluating output.."
+  md-eval.pl -r data/${name}/overlap_rttm_ref -s exp/overlap_1a/$name/rttm_overlap |\
+    awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
+
+  overlap_rttm_opt="--overlap-rttm exp/overlap_1a/$name/rttm_overlap"
+  rttm_affix="_ol"
 fi
 
 if [ $stage -le 5 ]; then
   echo "$0: performing overlap-aware spectral clustering using cosine similarity scores"
   diarization/scluster.sh --cmd "$cmd" --nj $nj \
-    --overlap-rttm $out_dir/overlap_rttm \
-    --rttm-channel 1 \
+    --rttm-channel 1 --rttm-affix "$rttm_affix" $overlap_rttm_opt \
     $out_dir/xvectors_${name}/cossim_scores $out_dir
   echo "$0: wrote RTTM to output directory ${out_dir}"
 fi
 
-hyp_rttm=${out_dir}/rttm
+hyp_rttm=${out_dir}/rttm${rttm_affix}
 
 # For scoring the diarization system, we use the same tool that was
 # used in the DIHARD II challenge. This is available at:
@@ -96,21 +110,21 @@ if [ $stage -le 6 ]; then
   fi
 
   # Create per condition ref and hyp RTTM files for scoring per condition
-  mkdir -p tmp
+  tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
   conditions="0L 0S OV10 OV20 OV30 OV40"
-  cp $ref_rttm tmp/ref.all
-  cp $hyp_rttm tmp/hyp.all
+  cp $ref_rttm ${tmp_dir}/ref.all
+  cp $hyp_rttm ${tmp_dir}/hyp.all
   for rttm in ref hyp; do
     for cond in $conditions; do
-      cat tmp/$rttm.all | grep $cond > tmp/$rttm.$cond
+      cat ${tmp_dir}/$rttm.all | grep $cond > ${tmp_dir}/$rttm.$cond
     done
   done
 
   echo "Scoring all regions..."
   for cond in $conditions 'all'; do
     echo -n "Condition: $cond: "
-    ref_rttm_path=$(readlink -f tmp/ref.$cond)
-    hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
+    ref_rttm_path=$(readlink -f ${tmp_dir}/ref.$cond)
+    hyp_rttm_path=$(readlink -f ${tmp_dir}/hyp.$cond)
     cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only && cd .. || exit 1;
   done
 
@@ -119,11 +133,11 @@ if [ $stage -le 6 ]; then
     echo "Scoring overlapping regions..."
     for cond in $conditions 'all'; do
       echo -n "Condition: $cond: "
-      ref_rttm_path=$(readlink -f tmp/ref.$cond)
-      hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
+      ref_rttm_path=$(readlink -f ${tmp_dir}/ref.$cond)
+      hyp_rttm_path=$(readlink -f ${tmp_dir}/hyp.$cond)
       cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only && cd .. || exit 1;
     done
   fi
 
-  rm -r tmp
+  rm -rf $tmp_dir
 fi

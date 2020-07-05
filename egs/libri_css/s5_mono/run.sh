@@ -13,6 +13,7 @@ stage=0
 # Different stages
 asr_stage=1
 diarizer_stage=0
+overlap_stage=0
 decode_stage=0
 rnnlm_rescore=true
 
@@ -30,8 +31,9 @@ test_sets="dev eval"
 set -e # exit on error
 
 # please change the path accordingly
-libricss_corpus=/export/corpora/LibriCSS
-librispeech_corpus=/export/corpora/LibriSpeech/
+libricss_corpus=/export/fs01/LibriCSS
+librispeech_corpus=/export/corpora5/LibriSpeech/
+simlibricss_corpus=/export/fs01/sim-LibriCSS # Used to train the overlap detector
 
 ##########################################################################
 # We first prepare the LibriCSS data (monoaural) in the Kaldi data
@@ -72,11 +74,22 @@ if [ $stage -le 2 ]; then
 fi
 
 ##########################################################################
+# OVERLAP DETECTOR TRAINING
+# This stage trains an overlap detector which will be used for overlap-
+# aware spectral clustering based speaker diarization
+##########################################################################
+if [ $stage -le 3 ]; then
+  local/train_overlap_detector.sh --stage $overlap_stage \
+    --forced-alignments-file "/export/c03/draj/librispeech_ctm.tar.gz" \
+    $simlibricss_corpus $librispeech_corpus
+fi
+
+##########################################################################
 # RNNLM TRAINING
 # We train a TDNN-LSTM based LM that will be used for rescoring the 
 # decoded lattices.
 ##########################################################################
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   local/rnnlm/train.sh --stage $rnnlm_stage
 fi
 
@@ -86,7 +99,7 @@ fi
 # the whole pipeline, i.e., SAD -> Diarization -> ASR. This is done in the 
 # local/decode.sh script.
 ##########################################################################
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   local/decode.sh --stage $decode_stage \
     --test-sets "$test_sets" \
     --use-oracle-segments $use_oracle_segments \

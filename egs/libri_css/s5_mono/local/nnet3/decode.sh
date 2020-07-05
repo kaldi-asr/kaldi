@@ -17,7 +17,7 @@ affix=  # affix for decode directory
 
 # ivector opts
 max_count=75  # parameter for extract_ivectors.sh
-sub_speaker_frames=6000
+sub_speaker_frames=0
 ivector_scale=0.75
 get_weights_from_ctm=true
 weights_file=   # use weights from this archive (must be compressed using gunzip)
@@ -73,7 +73,7 @@ fi
 data_set=$(basename $data)
 if [ $stage -le 2 ]; then
   echo "Extracting i-vectors, stage 1"
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
+  steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj $nj \
     --max-count $max_count \
     ${data}_hires $ivector_dir/extractor \
     $ivector_dir/ivectors_${data_set}${ivector_affix}_stage1;

@@ -7,7 +7,7 @@
 # This is a script to train a TDNN for overlap detections 
 # using statistics pooling for long-context information.
 
-stage=0
+stage=1
 train_stage=-10
 get_egs_stage=-10
 egs_opts=
@@ -19,14 +19,14 @@ chunk_width=20
 extra_left_context=79
 extra_right_context=21
 
-relu_dim=256
+relu_dim=512
 
 # training options
-num_epochs=20
+num_epochs=1
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-num_jobs_initial=3
-num_jobs_final=8
+num_jobs_initial=6
+num_jobs_final=12
 remove_egs=true
 max_param_change=0.2  # Small max-param change for small network
 
