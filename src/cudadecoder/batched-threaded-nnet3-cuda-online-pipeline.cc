@@ -257,7 +257,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
     }
     cuda_decoder_->AllowPartialHypotheses();
   }
-  if (end_points) cuda_decoder_->AllowEndPointing();
+  if (end_points) cuda_decoder_->AllowEndpointing();
 
   DecodeBatch(corr_ids, d_features_ptrs_, features_frame_stride,
               n_input_frames_valid_, d_ivectors_ptrs_, is_first_chunk,

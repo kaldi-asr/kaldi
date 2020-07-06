@@ -245,10 +245,11 @@ class CudaDecoder {
     partial_traceback_ = generate_partial_hypotheses_ = true;
   }
 
-  void AllowEndPointing() {
-    KALDI_ASSERT(
-        "You must call SetOutputFrameShiftInSeconds() to use endpointing" &&
-        frame_shift_seconds_ != FLT_MAX);
+  void AllowEndpointing() {
+    if (frame_shift_seconds_ == FLT_MAX) {
+      KALDI_ERR << "You must call SetOutputFrameShiftInSeconds() "
+                << "to use endpointing";
+    }
     partial_traceback_ = endpointing_ = true;
   }
 
@@ -493,7 +494,7 @@ class CudaDecoder {
   bool partial_traceback_;
   BaseFloat frame_shift_seconds_;
 
-  std::set<int> silence_phones_;
+  std::set<int32> silence_phones_;
 
   // The CudaFst data structure contains the FST graph
   // in the CSR format, on both the GPU and CPU memory
