@@ -8,7 +8,7 @@
 # stage 2 (x-vector extraction), but after that, it is slightly
 # different. The key difference is that since we have multiple
 # streams of audio (and subsequently multiple streams of subsegments)
-# from the same recording, we want to perform PLDA scoring across 
+# from the same recording, we want to perform cosine scoring across 
 # all of these streams. 
 
 stage=0
@@ -63,7 +63,7 @@ if [ $stage -le 2 ]; then
     data/${name}_cmn $out_dir/xvectors_${name}
 fi
 
-# Perform PLDA scoring. The following stage is the key difference.
+# Perform cosine scoring. The following stage is the key difference.
 # We change the segments and utt2spk files in the xvector directory
 # to reflect that the subsegments are from the same recording. 
 # But we also keep the original segments file since that will

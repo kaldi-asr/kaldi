@@ -36,6 +36,8 @@ def main(args):
                 cond = "0L"
         wav_name = "{}_CH0_{}_{}".format(sessid, cond, stream) # session0_CH0_0L_1
         reco2wav[wav_name] = path
+        if (args.volume != 1):
+            reco2wav[wav_name] = "sox -v {} -t wav {} -t wav - |".format(args.volume, path) 
 
     
     # Now we get other info from the original LibriCSS corpus dir
@@ -84,6 +86,7 @@ if __name__ == '__main__':
                         help='Path to directory containing separated wavs.')
     parser.add_argument('--tgtpath', metavar='<path>', required=True, 
                         help='Destination path.')
+    parser.add_argument('--volume', default=1, type=float, help='sox -v option')
 
     args = parser.parse_args()
     main(args)

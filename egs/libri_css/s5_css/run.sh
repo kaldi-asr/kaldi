@@ -15,7 +15,8 @@ stage=0
 
 nnet3_affix=_cleaned
 affix=1d_sp
-sad_type=webrtc # Set this to webrtc or tdnn
+data_affix=_css  # This can be used to distinguish between different data sources
+sad_type=tdnn # Set this to webrtc or tdnn
 
 # Different stages
 sad_stage=0
@@ -38,7 +39,7 @@ rnnlm_dir=exp/rnnlm_lstm_1a
 . ./cmd.sh
 . ./path.sh
 
-test_sets="dev eval"
+test_sets="dev${data_affix} eval${data_affix}"
 
 # Get dev and eval set names from the test_sets
 dev_set=$( echo $test_sets | cut -d " " -f1 )
@@ -50,7 +51,11 @@ set -e # exit on error
 # corpus to get the oracle segments (for evaluation purpose), and
 # also the path to the separated wav files
 libricss_corpus=/export/fs01/LibriCSS/
+
+# Zhuo's CSS wav files
 wav_files_dir=/export/c03/zhuc/css/connected_continuous_separation
+# Hakan's separated wav files
+# wav_files_dir=/export/c03/draj/libricss_separated_3stream/
 
 ##########################################################################
 # We first prepare the CSS data in the Kaldi data format. We use session 0 
@@ -62,7 +67,8 @@ wav_files_dir=/export/c03/zhuc/css/connected_continuous_separation
 # wav files.
 ##########################################################################
 if [ $stage -le 0 ]; then
-  local/data_prep_css.sh $libricss_corpus $wav_files_dir
+  local/data_prep_css.sh --data-affix "$data_affix" \
+    $libricss_corpus $wav_files_dir
 fi
 
 #######################################################################
@@ -167,7 +173,7 @@ if [ $stage -le 4 ]; then
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
     local/decode_diarized_css.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
-      exp/${datadir}_diarization/rttm data/$datadir data/lang_test_tgsmall \
+      exp/${datadir}_diarization/rttm.post data/$datadir data/lang_test_tgsmall \
       exp/chain${nnet3_affix}/tdnn_${affix} exp/nnet3${nnet3_affix} \
       data/${datadir}_diarized || exit 1
   done
