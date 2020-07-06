@@ -14,7 +14,7 @@ if [ ! -d liblbfgs-1.10 ]; then
 fi
 
 # http://www.speech.sri.com/projects/srilm/download.html
-if [ ! -f srilm.tar.gz ]; then  # Changed format type from tgz to tar.gz as the srilm v1.7.3 downloads as tar.gz
+if [ ! -f srilm.tgz ] && [ ! -f srilm.tar.gz ]; then  # Changed format type from tgz to tar.gz as the srilm v1.7.3 downloads as tar.gz
   echo This script cannot install SRILM in a completely automatic
   echo way because you need to put your address in a download form.
   echo Please download SRILM from http://www.speech.sri.com/projects/srilm/download.html
@@ -28,7 +28,13 @@ fi
 
 mkdir -p srilm
 cd srilm
-tar -xvzf ../srilm.tar.gz # Changed format type from tgz to tar.gz
+
+
+if [ -f ../srilm.tgz ]; then
+    tar -xvzf ../srilm.tgz # Old SRILM format
+elif [  -f ../srilm.tar.gz ]; then
+    tar -xvzf ../srilm.tar.gz # Changed format type from tgz to tar.gz
+fi
 
 major=`awk -F. '{ print $1 }' RELEASE`
 minor=`awk -F. '{ print $2 }' RELEASE`
