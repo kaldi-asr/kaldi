@@ -1810,9 +1810,7 @@ void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
     partial_hypotheses.push_back({curr_token_idx, arc_idx});
     // Backtracking until we reconnect with our stored partial path
     if (partial_hypotheses.size() > 1) {
-      auto it = partial_hypotheses.end();
-      it--;
-      it--;
+      auto it = std::prev(partial_hypotheses.end(), 2);
 
       int32 stored_prev_token_idx = it->token_idx;
       if (stored_prev_token_idx != prev_token_idx) {
@@ -1839,7 +1837,7 @@ void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
             partial_hypotheses.push_front(
                 {-1, -1});  // it will be set on next iteration
           }
-          it--;
+          --it;
         }
 
         if (prev_token_idx == 0) {

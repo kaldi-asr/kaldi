@@ -247,9 +247,6 @@ class CudaDecoder {
   // Returns the number of frames already decoded in a given channel
   int32 NumFramesDecoded(ChannelId ichannel) const;
 
-  void GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
-                          int32 *prev_token_idx_out, int32 *arc_idx_out);
-
   // GetBestPath gets the one-best decoding traceback. If
   // "use_final_probs" is true AND we reached a final state, it limits
   // itself to final states; otherwise it gets the most likely token not
@@ -304,7 +301,9 @@ class CudaDecoder {
                                        int32 nworkers);
 
   // Used to generate partial results
-  void SetSymbolTable(fst::SymbolTable *word_syms) { word_syms_ = word_syms; }
+  void SetSymbolTable(const fst::SymbolTable &word_syms) {
+    word_syms_ = &word_syms;
+  }
 
  private:
   // Data allocation. Called in constructor
@@ -329,6 +328,10 @@ class CudaDecoder {
   // software threads into the registers of a CPU)
   void LoadChannelsStateToLanes(const std::vector<ChannelId> &channels);
   void SaveChannelsStateFromLanes();
+  // Given a token, get its best predecessor (lower cost predecessor)
+  // Used by GetBestPath or best path traceback
+  void GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
+                          int32 *prev_token_idx_out, int32 *arc_idx_out);
   // Expand the arcs, emitting stage. Must be called after
   // a preprocess_in_place, which happens in PostProcessingMainQueue.
   // ExpandArcsEmitting is called first when decoding a frame,
@@ -461,8 +464,8 @@ class CudaDecoder {
   //
 
   CudaDecoderConfig config_;
-  fst::SymbolTable *word_syms_;       // for partial hypotheses
-  bool generate_partial_hypotheses_;  // set by AllowPartialHypotheses
+  const fst::SymbolTable *word_syms_;  // for partial hypotheses
+  bool generate_partial_hypotheses_;   // set by AllowPartialHypotheses
 
   // The CudaFst data structure contains the FST graph
   // in the CSR format, on both the GPU and CPU memory
@@ -810,8 +813,8 @@ class CudaDecoder {
   std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
-  std::atomic<int> n_partial_hypotheses_format_output_todo_;
-  std::atomic<int> n_partial_hypotheses_threads_not_done_;
+  std::atomic_int32_t n_partial_hypotheses_format_output_todo_;
+  std::atomic_int32_t n_partial_hypotheses_threads_not_done_;
 
   bool h2h_threads_running_;
   // Using the output from GetBestPath, we add the best tokens (as
