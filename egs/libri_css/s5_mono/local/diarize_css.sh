@@ -85,7 +85,8 @@ fi
 
 # nj needs to be changes since we now have #wav/#streams number
 # of recordings. Just get it from the segments file
-nj=$(cat ${out_dir}/xvectors_${name}/segments | cut -d' ' -f2 | uniq | wc -l)
+new_nj=$(cat ${out_dir}/xvectors_${name}/segments | cut -d' ' -f2 | uniq | wc -l)
+nj=echo $((nj>new_nj ? new_nj : nj))
 
 if [ $stage -le 4 ]; then
   # Perform cosine similarity scoring on all pairs of segments for each recording.

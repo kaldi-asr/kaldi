@@ -88,7 +88,8 @@ if [ $stage -le 1 ]; then
         exit 0
       fi
 
-      nj=$(wc -l < "$test_set/wav.scp")
+      sad_nj=$(wc -l < "$test_set/wav.scp")
+      nj=echo $((decode_nj>sad_nj ? sad_nj : decode_nj))
       # Perform segmentation. We use the pretrained SAD available at:
       # http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
       # Download and extract using tar -xvzf
@@ -139,7 +140,7 @@ if [ $stage -le 2 ]; then
   mfccdir=mfcc
   for x in ${test_sets}; do
     nj=$(wc -l < "data/$x/wav.scp")
-    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
+    steps/make_mfcc.sh --nj $decode_nj --cmd "$train_cmd" \
       --mfcc-config conf/mfcc_hires.conf \
       data/$x exp/make_mfcc/$x $mfccdir
   done
@@ -157,7 +158,8 @@ if [ $stage -le 3 ]; then
 
     [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
 
-    local/diarize_css.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
+    nj=echo $((decode_nj>diar_nj ? diar_nj : decode_nj))
+    local/diarize_css.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir} \
@@ -171,6 +173,7 @@ fi
 if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
+    nj=echo $((decode_nj>asr_nj ? asr_nj : decode_nj))
     local/decode_diarized_css.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
       exp/${datadir}_diarization/rttm.post data/$datadir data/lang_test_tgsmall \
