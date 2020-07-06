@@ -174,11 +174,12 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // hypotheses in partial_hypotheses The pointers in partial_hypotheses are
   // only valid until the next DecodeBatch call - perform a deep copy if
   // necessary
-  void DecodeBatch(const std::vector<CorrelationID> &corr_ids,
-                   const std::vector<SubVector<BaseFloat>> &wave_samples,
-                   const std::vector<bool> &is_first_chunk,
-                   const std::vector<bool> &is_last_chunk,
-                   std::vector<std::string *> *partial_hypotheses = NULL);
+  void DecodeBatch(
+      const std::vector<CorrelationID> &corr_ids,
+      const std::vector<SubVector<BaseFloat>> &wave_samples,
+      const std::vector<bool> &is_first_chunk,
+      const std::vector<bool> &is_last_chunk,
+      std::vector<const std::string *> *partial_hypotheses = nullptr);
 
   // Version providing directly the features. Only runs nnet3 & decoder
   // Used when we want to provide the final ivectors (offline case)
@@ -214,8 +215,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   BaseFloat GetSecondsPerChunk() { return seconds_per_chunk_; }
 
   // Used for partial hypotheses
-  void SetSymbolTable(fst::SymbolTable *word_syms) {
-    word_syms_ = word_syms;
+  void SetSymbolTable(const fst::SymbolTable &word_syms) {
+    word_syms_ = &word_syms;
     KALDI_ASSERT(cuda_decoder_);
     cuda_decoder_->SetSymbolTable(word_syms);
   }
@@ -365,7 +366,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   std::unique_ptr<ThreadPoolLight> thread_pool_;
 
   // Used for debugging
-  fst::SymbolTable *word_syms_;
+  const fst::SymbolTable *word_syms_;
   // Used when printing to stdout for debugging purposes
   std::mutex stdout_m_;
 };

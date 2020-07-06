@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
                      "table from file "
                   << word_syms_rxfilename;
       else {
-        cuda_pipeline.SetSymbolTable(word_syms);
+        cuda_pipeline.SetSymbolTable(*word_syms);
       }
     }
 
@@ -252,7 +252,7 @@ int main(int argc, char *argv[]) {
     std::vector<SubVector<BaseFloat>> batch_wave_samples;
 
     // Partial hypotheses
-    std::vector<std::string *> partial_hypotheses;
+    std::vector<const std::string *> partial_hypotheses;
 
     double batch_valid_at = gettime_monotonic();
     bool pipeline_starved_warning_printed = false;
