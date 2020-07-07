@@ -127,7 +127,7 @@ if [ $stage -le 7 ]; then
   if ! [ -d dscore ]; then
     git clone https://github.com/desh2608/dscore.git -b libricss --single-branch || exit 1;
     cd dscore
-    python -m pip install --user -r requirements.txt
+    pip install --user -r requirements.txt
     cd ..
   fi
 
@@ -147,7 +147,7 @@ if [ $stage -le 7 ]; then
     echo -n "Condition: $cond: "
     ref_rttm_path=$(readlink -f tmp/ref.$cond)
     hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
-    cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only && cd .. || exit 1;
+    cd dscore && ./score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only && cd .. || exit 1;
   done
 
   # We also score overlapping regions only
