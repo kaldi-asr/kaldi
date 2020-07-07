@@ -73,7 +73,7 @@ for f in $required; do
   fi
 done
 
-utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
+utils/validate_data_dir.sh --non-print --no-text --no-feats $data || exit 1;
 
 if [ -f $data/spk2warp ]; then
   echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
