@@ -55,13 +55,13 @@ if [ $stage -le 1 ]; then
     > ${out_dir}_hires/utt2spk
 
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt
-  # utils/fix_data_dir.sh ${out_dir}_hires || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
   # Now we extract features
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}_hires
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$cmd" ${out_dir}_hires
   steps/compute_cmvn_stats.sh ${out_dir}_hires
+  utils/fix_data_dir.sh ${out_dir}_hires || exit 1;
   cp $data_in/text.bak ${out_dir}_hires/text
 fi
 

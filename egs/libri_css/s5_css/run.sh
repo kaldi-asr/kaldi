@@ -175,7 +175,7 @@ if [ $stage -le 4 ]; then
   for datadir in ${test_sets}; do
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
     nj=$(echo $((decode_nj>asr_nj ? asr_nj : decode_nj)))
-    local/decode_diarized_css.sh --nj $asr_nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
+    local/decode_diarized_css.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --lm-suffix "_tgsmall" \
       exp/${datadir}_diarization/rttm.post data/$datadir data/lang_test_tgsmall \
       exp/chain${nnet3_affix}/tdnn_${affix} exp/nnet3${nnet3_affix} \

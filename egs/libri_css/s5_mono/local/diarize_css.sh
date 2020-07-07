@@ -157,7 +157,7 @@ if [ $stage -le 7 ]; then
       echo -n "Condition: $cond: "
       ref_rttm_path=$(readlink -f tmp/ref.$cond)
       hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
-      cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only && cd .. || exit 1;
+      cd dscore && ./score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only && cd .. || exit 1;
     done
   fi
 
