@@ -131,19 +131,19 @@ if ((stage < 6)); then
       utils/subset_data_dir.sh data/$data_dir 5000 data/subsets/5k/$data_dir
     else
       mkdir -p "$(dirname data/subsets/5k/$data_dir)"
-      ln -s data/$data_dir data/subsets/5k/$data_dir
+      ln -s "$(pwd)/data/$data_dir" "data/subsets/5k/$data_dir"
     fi
     if [ $numutt -gt 10000 ]; then
       utils/subset_data_dir.sh data/$data_dir 10000 data/subsets/10k/$data_dir
     else
       mkdir -p "$(dirname data/subsets/10k/$data_dir)"
-      ln -s data/$data_dir data/subsets/10k/$data_dir
+      ln -s "$(pwd)/data/$data_dir" "data/subsets/10k/$data_dir"
     fi
     if [ $numutt -gt 20000 ]; then
       utils/subset_data_dir.sh data/$data_dir 20000 data/subsets/20k/$data_dir
     else
       mkdir -p "$(dirname data/subsets/20k/$data_dir)"
-      ln -s data/$data_dir data/subsets/20k/$data_dir
+      ln -s "$(pwd)/data/$data_dir" "data/subsets/20k/$data_dir"
     fi
   done
 fi
