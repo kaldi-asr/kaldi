@@ -17,7 +17,7 @@ numGaussMLLT=75000
 numLeavesSAT=6000
 numGaussSAT=75000
 
-langs_config=conf/experiments/all-ipa.conf
+langs_config=""  # conf/experiments/all-ipa.conf
 if [ $langs_config ]; then
   # shellcheck disable=SC1090
   source $langs_config
@@ -36,7 +36,7 @@ else
   #babel_recog="${babel_langs} 404 203"
   babel_langs=""
   babel_recog=""
-  gp_langs="Arabic Czech French Korean Mandarin Spanish Thai"
+  gp_langs="Czech French Mandarin Spanish Thai"
   gp_recog="${gp_langs}"
   mboshi_train=false
   mboshi_recog=false
