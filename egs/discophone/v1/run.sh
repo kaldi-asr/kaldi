@@ -127,10 +127,16 @@ if ((stage < 6)); then
   # Prepare data dir subsets for monolingual training
   for data_dir in ${train_set}; do
     numutt=$(cat data/$data_dir/feats.scp | wc -l)
-    utils/subset_data_dir.sh data/$data_dir 5000 data/subsets/5k/$data_dir
+    if [ $numutt -gt 5000 ]; then
+      utils/subset_data_dir.sh data/$data_dir 5000 data/subsets/5k/$data_dir
+    else
+      mkdir -p "$(dirname data/subsets/5k/$data_dir)"
+      ln -s data/$data_dir data/subsets/5k/$data_dir
+    fi
     if [ $numutt -gt 10000 ]; then
       utils/subset_data_dir.sh data/$data_dir 10000 data/subsets/10k/$data_dir
     else
+      mkdir -p "$(dirname data/subsets/10k/$data_dir)"
       ln -s data/$data_dir data/subsets/10k/$data_dir
     fi
     if [ $numutt -gt 20000 ]; then
