@@ -136,6 +136,7 @@ if ((stage < 6)); then
     if [ $numutt -gt 20000 ]; then
       utils/subset_data_dir.sh data/$data_dir 20000 data/subsets/20k/$data_dir
     else
+      mkdir -p "$(dirname data/subsets/20k/$data_dir)"
       ln -s data/$data_dir data/subsets/20k/$data_dir
     fi
   done
