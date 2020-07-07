@@ -90,7 +90,7 @@ for data_dir in ${train_set}; do
   fi
 done
 
-if ((stage < 4)); then
+if ((stage <= 4)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
     mkdir -p data/local/$lang_name
@@ -102,9 +102,8 @@ if ((stage < 4)); then
   done
 fi
 
-if ((stage < 5)); then
+if ((stage <= 5)); then
   # Feature extraction
-#  for data_dir in ${train_set} ${dev_set} ${recog_set}; do
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
@@ -123,7 +122,7 @@ if ((stage < 5)); then
   wait
 fi
 
-if ((stage < 6)); then
+if ((stage <= 6)); then
   # Prepare data dir subsets for monolingual training
   for data_dir in ${train_set}; do
     numutt=$(cat data/$data_dir/feats.scp | wc -l)
@@ -148,138 +147,207 @@ if ((stage < 6)); then
   done
 fi
 
-if ((stage < 7)); then
+if ((stage <= 7)); then
   # Mono training
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
+      expdir=exp/gmm/$lang_name/mono
       steps/train_mono.sh \
         --nj 8 --cmd "$train_cmd" \
-        data/subsets/5k/$data_dir data/lang/$lang_name exp/gmm/$lang_name/mono
+        data/subsets/5k/$data_dir \
+        data/lang/$lang_name $expdir \
+        >$expdir/stdout.txt \
+        2>$expdir/stderr.txt
     ) &
     sleep 2
   done
   wait
 fi
 
-if ((stage < 8)); then
+if ((stage <= 8)); then
   # Tri1 training
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj 12 --cmd "$train_cmd" \
-        data/subsets/10k/$data_dir data/lang/$lang_name exp/gmm/$lang_name/mono_ali_10k
+        data/subsets/10k/$data_dir \
+        data/lang/$lang_name \
+        exp/gmm/$lang_name/mono \
+        exp/gmm/$lang_name/mono_ali_10k
 
       steps/train_deltas.sh \
-        --cmd "$train_cmd" $numLeavesTri1 $numGaussTri1 \
-        data/subsets/10k/$data_dir data/lang/$lang_name exp/gmm/$lang_name/mono_ali_10k exp/gmm/$lang_name/tri1
+        --cmd "$train_cmd" \
+        $numLeavesTri1 \
+        $numGaussTri1 \
+        data/subsets/10k/$data_dir \
+        data/lang/$lang_name \
+        exp/gmm/$lang_name/mono_ali_10k \
+        exp/gmm/$lang_name/tri1
     ) &
     sleep 2
   done
   wait
 fi
 
-if ((stage < 9)); then
+if ((stage <= 9)); then
   # Tri2 training
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj 24 --cmd "$train_cmd" \
-        data/subsets/20k/$data_dir data/lang/$lang_name exp/gmm/$lang_name/tri1_ali_20k
+        data/subsets/20k/$data_dir \
+        data/lang/$lang_name \
+        exp/gmm/$lang_name/tri1 \
+        exp/gmm/$lang_name/tri1_ali_20k \
+
 
       steps/train_deltas.sh \
         --cmd "$train_cmd" $numLeavesTri2 $numGaussTri2 \
-        data/subsets/20k/$data_dir data/lang/$lang_name exp/gmm/$lang_name/tri1_ali_20k exp/gmm/$lang_name/tri2
+        data/subsets/20k/$data_dir \
+        data/lang/$lang_name \
+        exp/gmm/$lang_name/tri1_ali_20k \
+        exp/gmm/$lang_name/tri2
 
       local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/subsets/20k/$data_dir data/lang/$lang_name data/local/$lang_name \
-        exp/gmm/$lang_name/tri2 data/local/dictp/$lang_name/tri2 data/local/langp/$lang_name/tri2 data/langp/$lang_name/tri2
+        data/subsets/20k/$data_dir \
+        data/lang/$lang_name \
+        data/local/$lang_name \
+        exp/gmm/$lang_name/tri2 \
+        data/local/dictp/$lang_name/tri2 \
+        data/local/langp/$lang_name/tri2 \
+        data/langp/$lang_name/tri2
     ) &
     sleep 2
   done
   wait
 fi
 
-if ((stage < 10)); then
+if ((stage <= 10)); then
   # Tri3 training
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir data/langp/$lang_name/tri2 exp/gmm/$lang_name/tri2_ali
+        data/$data_dir \
+        data/langp/$lang_name/tri2 \
+        exp/gmm/$lang_name/tri2 \
+        exp/gmm/$lang_name/tri2_ali
 
       steps/train_deltas.sh \
         --cmd "$train_cmd" $numLeavesTri3 $numGaussTri3 \
-        data/$data_dir data/langp/$lang_name/tri2 exp/gmm/$lang_name/tri2_ali exp/gmm/$lang_name/tri3
+        data/$data_dir \
+        data/langp/$lang_name/tri2 \
+        exp/gmm/$lang_name/tri2_ali \
+        exp/gmm/$lang_name/tri3
 
       local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir data/lang/$lang_name data/local/$lang_name \
-        exp/gmm/$lang_name/tri3 data/local/dictp/$lang_name/tri3 data/local/langp/$lang_name/tri3 data/langp/$lang_name/tri3
+        data/$data_dir \
+        data/lang/$lang_name \
+        data/local/$lang_name \
+        exp/gmm/$lang_name/tri3 \
+        data/local/dictp/$lang_name/tri3 \
+        data/local/langp/$lang_name/tri3 \
+        data/langp/$lang_name/tri3
     ) &
     sleep 2
   done
   wait
 fi
 
-if ((stage < 11)); then
+if ((stage <= 11)); then
   # Tri4 training
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir data/langp/$lang_name/tri3 exp/gmm/$lang_name/tri3_ali
+        data/$data_dir \
+        data/langp/$lang_name/tri3 \
+        exp/gmm/$lang_name/tri3 \
+        exp/gmm/$lang_name/tri3_ali \
 
       steps/train_lda_mllt.sh \
-        --cmd "$train_cmd" $numLeavesMLLT $numGaussMLLT \
-        data/$data_dir data/langp/$lang_name/tri3 exp/gmm/$lang_name/tri3_ali exp/gmm/$lang_name/tri4
+        --cmd "$train_cmd" \
+        $numLeavesMLLT \
+        $numGaussMLLT \
+        data/$data_dir \
+        data/langp/$lang_name/tri3 \
+        exp/gmm/$lang_name/tri3_ali \
+        exp/gmm/$lang_name/tri4
 
       local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir data/lang/$lang_name data/local/$lang_name \
-        exp/gmm/$lang_name/tri4 data/local/dictp/$lang_name/tri4 data/local/langp/$lang_name/tri4 data/langp/$lang_name/tri4
+        data/$data_dir \
+        data/lang/$lang_name \
+        data/local/$lang_name \
+        exp/gmm/$lang_name/tri4 \
+        data/local/dictp/$lang_name/tri4 \
+        data/local/langp/$lang_name/tri4 \
+        data/langp/$lang_name/tri4
     ) &
     sleep 2
   done
   wait
 fi
 
-if ((stage < 12)); then
+if ((stage <= 12)); then
   # Tri5 training
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir data/langp/$lang_name/tri4 exp/gmm/$lang_name/tri4_ali
+        data/$data_dir \
+        data/langp/$lang_name/tri4 \
+        exp/gmm/$lang_name/tri4 \
+        exp/gmm/$lang_name/tri4_ali
 
       steps/train_sat.sh \
-        --cmd "$train_cmd" $numLeavesSAT $numGaussSAT \
-        data/$data_dir data/langp/$lang_name/tri4 exp/gmm/$lang_name/tri4_ali exp/gmm/$lang_name/tri5
+        --cmd "$train_cmd" \
+        $numLeavesSAT \
+        $numGaussSAT \
+        data/$data_dir \
+        data/langp/$lang_name/tri4 \
+        exp/gmm/$lang_name/tri4_ali \
+        exp/gmm/$lang_name/tri5
 
       local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir data/lang/$lang_name data/local/$lang_name \
-        exp/gmm/$lang_name/tri5 data/local/dictp/$lang_name/tri5 data/local/langp/$lang_name/tri5 data/langp/$lang_name/tri5
+        data/$data_dir \
+        data/lang/$lang_name \
+        data/local/$lang_name \
+        exp/gmm/$lang_name/tri5 \
+        data/local/dictp/$lang_name/tri5 \
+        data/local/langp/$lang_name/tri5 \
+        data/langp/$lang_name/tri5
     ) &
     sleep 2
   done
   wait
 fi
 
-if ((stage < 13)); then
+if ((stage <= 13)); then
   # Tri5 alignments
   for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
       steps/align_fmllr.sh \
         --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir data/langp/$lang_name/tri5 exp/gmm/$lang_name/tri5 exp/gmm/$lang_name/tri5_ali
+        data/$data_dir \
+        data/langp/$lang_name/tri5 \
+        exp/gmm/$lang_name/tri5 \
+        exp/gmm/$lang_name/tri5_ali
 
       local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir data/lang/$lang_name data/local/$lang_name \
-        exp/gmm/$lang_name/tri5_ali data/local/dictp/$lang_name/tri5_ali data/local/langp/$lang_name/tri5_ali data/langp/$lang_name/tri5_ali
+        data/$data_dir \
+        data/lang/$lang_name \
+        data/local/$lang_name \
+        exp/gmm/$lang_name/tri5_ali \
+        data/local/dictp/$lang_name/tri5_ali \
+        data/local/langp/$lang_name/tri5_ali \
+        data/langp/$lang_name/tri5_ali
     ) &
     sleep 2
   done
