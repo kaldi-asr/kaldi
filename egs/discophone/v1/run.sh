@@ -71,6 +71,10 @@ for l in ${babel_recog} ${gp_recog}; do
 done
 recog_set=${recog_set%% }
 
+echo "Training data directories: ${train_set[*]}"
+echo "Dev data directories: ${dev_set[*]}"
+echo "Eval data directories: ${recog_set[*]}"
+
 full_train_set=train
 full_dev_set=dev
 
@@ -100,7 +104,8 @@ fi
 
 if ((stage < 5)); then
   # Feature extraction
-  for data_dir in ${train_set} ${train_set} ${recog_set}; do
+#  for data_dir in ${train_set} ${dev_set} ${recog_set}; do
+  for data_dir in ${train_set}; do
     (
       lang_name=$(langname $data_dir)
       steps/make_mfcc.sh \
