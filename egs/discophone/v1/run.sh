@@ -32,8 +32,10 @@ else
   # BABEL TEST:
   # Georgian - 404
   # Lao - 203
-  babel_langs="307 103 101 402 107 206"
-  babel_recog="${babel_langs} 404 203"
+  #babel_langs="307 103 101 402 107 206"
+  #babel_recog="${babel_langs} 404 203"
+  babel_langs=""
+  babel_recog=""
   gp_langs="Arabic Czech French Korean Mandarin Spanish Thai"
   gp_recog="${gp_langs}"
   mboshi_train=false
@@ -43,7 +45,10 @@ else
 fi
 
 . cmd.sh
-. utils/parse_options.sh || exit 1
+. utils/parse_options.sh
+. path.sh
+
+local/install_shorten.sh
 
 # TODO: copy data dir creation from ESPnet discophone
 
