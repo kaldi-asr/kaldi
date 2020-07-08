@@ -17,7 +17,7 @@ numGaussMLLT=75000
 numLeavesSAT=6000
 numGaussSAT=75000
 
-langs_config=""  # conf/experiments/all-ipa.conf
+langs_config="" # conf/experiments/all-ipa.conf
 if [ $langs_config ]; then
   # shellcheck disable=SC1090
   source $langs_config
@@ -82,6 +82,23 @@ function langname() {
   # Utility
   echo "$(basename "$1")"
 }
+
+if ((stage <= 0)); then
+  echo "stage 0: Setting up individual languages"
+
+  local/setup_languages.sh \
+    --langs "${babel_langs}" \
+    --recog "${babel_recog}" \
+    --gp-langs "${gp_langs}" \
+    --gp-recog "${gp_recog}" \
+    --mboshi-train "${mboshi_train}" \
+    --mboshi-recog "${mboshi_recog}" \
+    --gp-romanized "${gp_romanized}" \
+    --ipa-transcript "${ipa_transcript}"
+  for x in ${train_set} ${dev_set} ${recog_set}; do
+    sed -i.bak -e "s/$/ sox -R -t wav - -t wav - rate 16000 dither | /" data/${x}/wav.scp
+  done
+fi
 
 for data_dir in ${train_set}; do
   if [ -f data/$data_dir/text.bkp ]; then
@@ -201,8 +218,7 @@ if ((stage <= 9)); then
         data/subsets/20k/$data_dir \
         data/lang/$lang_name \
         exp/gmm/$lang_name/tri1 \
-        exp/gmm/$lang_name/tri1_ali_20k \
-
+        exp/gmm/$lang_name/tri1_ali_20k
 
       steps/train_deltas.sh \
         --cmd "$train_cmd" $numLeavesTri2 $numGaussTri2 \
@@ -268,7 +284,7 @@ if ((stage <= 11)); then
         data/$data_dir \
         data/langp/$lang_name/tri3 \
         exp/gmm/$lang_name/tri3 \
-        exp/gmm/$lang_name/tri3_ali \
+        exp/gmm/$lang_name/tri3_ali
 
       steps/train_lda_mllt.sh \
         --cmd "$train_cmd" \
