@@ -32,8 +32,8 @@ else
   # BABEL TEST:
   # Georgian - 404
   # Lao - 203
-  babel_langs="307 103 101 402 107 206"
-  babel_recog="${babel_langs} 404 203"
+  babel_langs="307 103 101 402 107 206 404 203"
+  babel_recog="${babel_langs}"
   #babel_langs=""
   #babel_recog=""
   gp_langs=""
