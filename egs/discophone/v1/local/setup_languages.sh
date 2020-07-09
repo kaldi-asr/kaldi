@@ -178,7 +178,7 @@ if [ "$langs" ] || [ "$recog" ]; then
             $ipa_transcript_opt
           utils/fix_data_dir.sh $data_dir
         done
-      ) &
+      )
     else
       (
         cd data/${l}
@@ -194,7 +194,7 @@ if [ "$langs" ] || [ "$recog" ]; then
             $ipa_transcript_opt
           utils/fix_data_dir.sh $data_dir
         done
-      ) &
+      )
     fi
   done
   wait
