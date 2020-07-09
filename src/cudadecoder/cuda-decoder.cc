@@ -209,9 +209,8 @@ void CudaDecoder::AllocateHostData() {
   h_main_q_end_lane_offsets_.resize(nlanes_ + 1);
   h_emitting_main_q_end_lane_offsets_.resize(nlanes_ + 1);
   h_n_extra_prev_tokens_lane_offsets_.resize(nlanes_ + 1);
-  h_argmin_token_cost_.resize(nlanes_);
-  h_argmin_token_cost_token_.resize(nlanes_);
-  h_relative_cost_.resize(nlanes_);
+  h_best_path_traceback_head_.resize(nlanes_);
+  h_all_channels_prev_best_path_traceback_head_.resize(nchannels_);
   frame_offsets_.resize(nchannels_);
   num_frames_decoded_.resize(nchannels_, -1);
   lanes2channels_todo_.reserve(nlanes_);
@@ -443,6 +442,7 @@ void CudaDecoder::InitDecoding(const std::vector<ChannelId> &channels) {
     h_all_channels_partial_hypotheses_[ichannel].clear();
     h_all_channels_partial_hypotheses_out_[ichannel].clear();
     h_all_channels_endpoint_detected_[ichannel] = false;
+    h_all_channels_prev_best_path_traceback_head_[ichannel].Reset();
     // TODO put it back
     // if (thread_pool_) {
     //  thread_pool_->post([ichannel, this] {
@@ -682,13 +682,11 @@ void CudaDecoder::CopyMainQueueDataToHost() {
     if (ilane < nlanes_used_) {
       lanes2channels_todo_.push_back(channel_to_compute_[ilane]);
       int32 global_offset = h_lanes_counters_.lane(ilane)->main_q_global_offset;
-      h_argmin_token_cost_[ilane] =
+      h_best_path_traceback_head_[ilane].index =
           global_offset + h_lanes_counters_.lane(ilane)->prev_arg_min_int_cost;
-      h_argmin_token_cost_token_[ilane] =
-          h_lanes_counters_.lane(ilane)->prev_arg_min_int_cost_token;
       float relative_cost = orderedIntToFloatHost(
           h_lanes_counters_.lane(ilane)->int_relative_cost);
-      h_relative_cost_[ilane] = relative_cost;
+      h_best_path_traceback_head_[ilane].relative_cost = relative_cost;
       const ChannelId ichannel = channel_to_compute_[ilane];
       ++num_frames_decoded_[ichannel];
     }
@@ -1814,64 +1812,73 @@ void CudaDecoder::ComputeH2HCopiesCPUWorker() {
 
 void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
   // Partial hypothesis
-  int curr_token_idx = h_argmin_token_cost_[ilane];
+  // We use the (n-1) frame head
+  auto prev_best_path_traceback_head =
+      h_all_channels_prev_best_path_traceback_head_[ichannel];
+  if (!prev_best_path_traceback_head.IsSet()) return;  // nothing to do
+  int curr_token_idx = prev_best_path_traceback_head.index;
   if (curr_token_idx > 0) {
-    // Finding out what is that token's predecessor
-    InfoToken token = h_argmin_token_cost_token_[ilane];
-    int prev_token_idx = token.prev_token;
-    int arc_idx = token.arc_idx;
+    // Locking, we need the host channel data to use GetBestPredecessor
+    std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
+
+    int prev_token_idx;
+    int arc_idx;
+    GetBestPredecessor(ichannel, curr_token_idx, &prev_token_idx, &arc_idx);
+
     std::list<PartialPathArc> &partial_hypotheses =
         h_all_channels_partial_hypotheses_[ichannel];
 
     // Adding that link at the end of the partial path
     partial_hypotheses.push_back({curr_token_idx, arc_idx});
+    // If this is the first link, we don't have to check that we're still on the
+    // same best path than before
+    if (partial_hypotheses.size() == 1) return;
+
     // Backtracking until we reconnect with our stored partial path
-    if (partial_hypotheses.size() > 1) {
-      // using prev(2):
-      // 1. last valid element, the one we've just added
-      // 2. the one before that, the one we need to check
-      auto it = std::prev(partial_hypotheses.end(), 2);
+    // using prev(2):
+    // 1. last valid element, the one we've just added
+    // 2. the one before that, the one we need to check
+    auto it = std::prev(partial_hypotheses.end(), 2);
 
+    // The new partial best path is not directly to the previous partial
+    // best path We need to backtrack until we reconnect with the previous
+    // partial best path (or until we reach the root node)
+
+    while (true) {
       int32 stored_prev_token_idx = it->token_idx;
-      if (stored_prev_token_idx != prev_token_idx) {
-        // The new partial best path is not directly to the previous partial
-        // best path We need to backtrack until we reconnect with the previous
-        // partial best path (or until we reach the root node)
+      if (stored_prev_token_idx == prev_token_idx)
+        break;  // no need to rewrite existing partial path
+      curr_token_idx = prev_token_idx;
+      GetBestPredecessor(ichannel, curr_token_idx, &prev_token_idx, &arc_idx);
+      *it = {curr_token_idx, arc_idx};
 
-        // Locking, we need the host channel data to backtrack
-        std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
-
-        while (true) {
-          stored_prev_token_idx = it->token_idx;
-          if (stored_prev_token_idx == prev_token_idx)
-            break;  // no need to rewrite existing partial path
-          curr_token_idx = prev_token_idx;
-          GetBestPredecessor(ichannel, curr_token_idx, &prev_token_idx,
-                             &arc_idx);
-          *it = {curr_token_idx, arc_idx};
-
-          if (prev_token_idx == 0) break;
-          if (it == partial_hypotheses.begin()) {
-            // Our new path is longer than the previous one
-            // Adding some elts
-            partial_hypotheses.push_front(
-                {-1, -1});  // it will be set on next iteration
-          }
-          --it;
-        }
-
-        if (prev_token_idx == 0) {
-          // We've reached the beginning, we need to purge any elts
-          partial_hypotheses.erase(partial_hypotheses.begin(), it);
-        }
+      if (prev_token_idx == 0) break;
+      if (it == partial_hypotheses.begin()) {
+        // Our new path is longer than the previous one
+        // Adding some elts
+        partial_hypotheses.push_front(
+            {-1, -1});  // it will be set on next iteration
       }
+      --it;
+    }
+
+    if (prev_token_idx == 0) {
+      // We've reached the beginning, we need to purge any elts
+      partial_hypotheses.erase(partial_hypotheses.begin(), it);
     }
   }
 }
 
 void CudaDecoder::EndpointDetected(LaneId ilane, ChannelId ichannel) {
-  CostType relative_cost = h_relative_cost_[ilane];
-  int num_frames_decoded = num_frames_decoded_[ichannel];
+  // We use the (n-1) frame head
+  auto prev_best_path_traceback_head =
+      h_all_channels_prev_best_path_traceback_head_[ichannel];
+  if (!prev_best_path_traceback_head.IsSet()) return;  // nothing to do
+
+  CostType relative_cost = prev_best_path_traceback_head.relative_cost;
+
+  int num_frames_decoded =
+      num_frames_decoded_[ichannel] - 1;  // we use the n-1 frame head
 
   // Count silence frames
   std::list<PartialPathArc> &partial_hypotheses_internal =
@@ -1948,6 +1955,8 @@ void CudaDecoder::ComputeH2HCopies() {
       GeneratePartialPath(ilane, ichannel);
       if (generate_partial_hypotheses_) BuildPartialHypothesisOutput(ichannel);
       if (endpointing_) EndpointDetected(ilane, ichannel);
+      h_all_channels_prev_best_path_traceback_head_[ichannel] =
+          h_best_path_traceback_head_[ilane];
     }
     n_partial_traceback_threads_not_done_.fetch_sub(1,
                                                     std::memory_order_release);

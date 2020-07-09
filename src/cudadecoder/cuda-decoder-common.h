@@ -385,6 +385,16 @@ __device__ __inline__ void SetSameFSTStateTokensList(int32 offset, int32 size,
   *info_token = {offset, -size};
 }
 
+// Information about the best path head
+// Used by partial hypotheses and endpoiting
+struct BestPathTracebackHead {
+  int index;
+  CostType relative_cost;
+
+  void Reset() { index = -1; }
+  bool IsSet() { return (index != -1); }
+};
+
 // LaneCounters/ChannelCounters
 // The counters are all the singular values associated to a lane/channel
 // For instance  the main queue size. Or the min_cost of all tokens in that
@@ -472,7 +482,6 @@ struct LaneCounters {
   int32 n_within_lattice_beam;
   int32 has_reached_final;  // if there's at least one final token in the queue
   int32 prev_arg_min_int_cost;
-  InfoToken prev_arg_min_int_cost_token;
 };
 
 // Channel counters

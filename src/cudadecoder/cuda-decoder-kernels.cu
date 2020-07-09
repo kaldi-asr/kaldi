@@ -1414,7 +1414,6 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
           channel_counters->min_int_cost_and_arg_without_final = {
               token_int_cost, global_offset + main_q_idx};
           lane_counters->prev_arg_min_int_cost = main_q_idx;
-          lane_counters->prev_arg_min_int_cost_token = cst_dev_params.d_main_q_info.lane(ilane)[main_q_idx];
         } else {
           // remove offset = min_cost
           CostType token_cost = orderedIntToFloat(token_int_cost) - min_cost;

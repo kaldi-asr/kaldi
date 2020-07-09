@@ -752,9 +752,10 @@ class CudaDecoder {
   std::vector<int32> h_n_extra_prev_tokens_lane_offsets_;
   // Index of the best index for the last frame. Used by endpointing/partial
   // results
-  std::vector<int32> h_argmin_token_cost_;
-  std::vector<InfoToken> h_argmin_token_cost_token_;
-  std::vector<CostType> h_relative_cost_;
+
+  std::vector<BestPathTracebackHead> h_best_path_traceback_head_;
+  std::vector<BestPathTracebackHead>
+      h_all_channels_prev_best_path_traceback_head_;
   // Partial path so far on a given channel
 
   // Partial hypotheses to be used by user
