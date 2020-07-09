@@ -22,7 +22,7 @@ gp_path="/export/corpora5/GlobalPhone"
 gp_langs="Arabic Czech French Korean Mandarin Spanish Thai"
 gp_recog="Arabic Czech French Korean Mandarin Spanish Thai"
 mboshi_train=false
-mboshi_recog=true
+mboshi_recog=false
 gp_romanized=false
 ipa_transcript=false
 
@@ -101,7 +101,7 @@ fi
 
 # MBOSHI
 
-if [ $mboshi_train ] || [ $mboshi_recog ]; then
+if $mboshi_train || $mboshi_recog; then
   if [ ! -d ../mboshi-french-parallel-corpus ]; then
     git clone https://github.com/besacier/mboshi-french-parallel-corpus ../mboshi-french-parallel-corpus
   fi
