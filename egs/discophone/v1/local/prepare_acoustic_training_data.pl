@@ -1,275 +1,126 @@
-#!/usr/bin/
-env perl
+#!/usr/bin/env perl
 use Getopt::Long;
 
 ########################################################################
 #
-
 # Script to prepare the Babel acoustic training data for Kaldi.
 #
-
-#  -
-Place transcripts
-in a
-file named
-"text"
+#  -  Place transcripts in a file named "text"
 #     Each line contains: utteranceID word1 word2 ...
 #
-
-#  -
-Place the
-utterance-to-
-speaker map
-in a
-file named
-"utt2spk"
+#  -  Place the utterance-to-speaker map in a file named "utt2spk"
 #     Each line contains: utteranceID speakerID
 #     speakerID MUST BE be a prefix of the utteranceID
 #     Kaldi code does not require it, but some training scripts do.
 #
-
-#   -
-Place the
-utterance-to-
-segment map
-in a
-file named
-"segments"
+#   -  Place the utterance-to-segment map in a file named "segments"
 #      Each line contains: utteranceID recordingID startTime endTime
 #
-
-#   -
-Place the
-recordingID-to-
-waveformFile map
-in "wav.scp"
+#   -  Place the recordingID-to-waveformFile map in "wav.scp"
 #      Each line contains: recordingIB Input_pipe_for_reading_waveform|
 #
-
-#  -
-Place the
-speaker-
-utterance map
-in a
-file named
-"spk2utt"
+#  -  Place the speaker-utterance map in a file named "spk2utt"
 #     Each line contains: speakerID utteranceID_1 utteranceID_2 ...
 #     This is the inverse of the utt2spk mapping
 #
-
 # Note 1: the utteranceIDs in the first 3 files must match exactly, and
 #         the recordingIDSs in the last 2 files must match exactly.
 #
-
 # Note 2: Babel data formats and file-naming conventions are assumed.
 #
-
-#   -
-The transcriptions
-and
-waveforms are
-in subdirectories
-named
+#   -  The transcriptions and waveforms are in subdirectories named
 #        audio/<filename>.sph
 #        transcription/<filename>.txt
 #      There is 1 pair of files per recording, with extensions as above
 #
-#   -
-The audio
-is in
-NIST sphere
-format,
-so shp2pipe
-may be
-used, e.g.
+#   -  The audio is in NIST sphere format, so shp2pipe may be used, e.g.
 #        BABEL_BP_101_11694_20111204_205320_inLine \
 #        /export/babel/sanjeev/kaldi-trunk/tools/sph2pipe_v2.5/sph2pipe \
 #        -f wav -p -c 1 \
 #        BABEL_BP_101_11694_20111204_205320_inLine.sph|
 #
-
-#   -
-The filename
-contains speaker
-information, e.g.
+#   -  The filename contains speaker information, e.g.
 #        BABEL_BP_101_37210_20111102_170037_O1_scripted.sph -> 37210_A
 #        BABEL_BP_101_37210_20111102_172955_inLine.sph      -> 37210_A
 #        BABEL_BP_101_37210_20111102_172955_outLine.sph     -> 37210_B
 #      Specifically, the inLine speaker is the same as scripted
 #
-
-#   -
-The transcription
-file has
-time marks
-in square
-brackets, e.g.
+#   -  The transcription file has time marks in square brackets, e.g.
 #        [0.0]
-#        <no-speech> 喂<no - speech>
+#        <no-speech> 喂 <no-speech>
 #        [7.05]
 #        啊 听 听唔听到 啊 <no-speech> 你 而家 仲未 上课 系 嘛 <no-speech>
 #        [14.07]
 #
-
-#  -
-If a
-vocabulary is
-provided,
-map all
-OOV tokens
-to an
-OOV symbol,
+#  -  If a vocabulary is provided, map all OOV tokens to an OOV symbol,
 #     and write out an OOV list with counts to a file named "oovCounts"
 #
-
 #     If one or more word-fragment markers are provided, this script
 #     checks if an OOV token can be made in-vocabulary by stripping off
 #     the markers one  by one from either end of the token.
 #
-
 #     The default settings are
 #
-
-  $vocabFile = "";
+      $vocabFile = "";       # No vocab file; nothing is mapped to OOV
+      $OOV_symbol = "<unk>"; # Default OOV symbol
+      $fragMarkers = "";     # No characters are word-fragment markers
 #
-No vocab
-file;
-nothing is
-mapped to
-OOV $OOV_symbol = "<unk>";
+#  -  Babel transcriptions contain 4 kinds of untranscribed words
 #
-Default OOV
-symbol $fragMarkers = "";
+#         (())         designates unintelligible words
+#         <foreign>    designates a word in another language
+#         <prompt>     designates a sequence of pre-recorded words
+#         <overlap>    designates two simultaneous foreground speakers
 #
-No characters
-are word
--
-fragment markers
-#
-
-#  -
-Babel transcriptions
-contain 4
-kinds of
-untranscribed words
-#
-
-#         (())
-designates unintelligible
-words
-#
-<foreign> designates
-a word
-in another
-language
-#
-<prompt> designates
-a sequence
-of pre
--
-recorded words
-#
-<overlap> designates
-two simultaneous
-foreground speakers
-#
-
 #     This script maps them to OOV.  They are not included in oovCounts
 #
-
-#  -
-Babel transcriptions
-also contain
-a few
-non-
-linguistics tokens
+#  -  Babel transcriptions also contain a few non-linguistics tokens
 #
-
+#         <limspack>   map to a vocal noise symbol
+#         <breath>     map to a vocal noise symbol
+#         <cough>      map to a vocal noise symbol
+#         <laugh>      map to a vocal noise symbol
 #
-<limspack> map
-to a
-vocal noise
-symbol
+#         <click>      map to a nonvocal noise symbol
+#         <ring>       map to a nonvocal noise symbol
+#         <dtmf>       map to a nonvocal noise symbol
+#         <int>        map to a nonvocal noise symbol
 #
-<breath> map
-to a
-vocal noise
-symbol
+#         <no-speech>  designates silence > 1 sec.
 #
-<cough> map
-to a
-vocal noise
-symbol
+      $vocalNoise = "<v-noise>";
+      $nVoclNoise = "<noise>";
+      $silence    = "<silence>";
+      $icu_transform="";
+      $get_whole_transcripts = "false";
 #
-<laugh> map
-to a
-vocal noise
-symbol
-#
-#
-<click> map
-to a
-nonvocal noise
-symbol
-#
-<ring> map
-to a
-nonvocal noise
-symbol
-#
-<dtmf> map
-to a
-nonvocal noise
-symbol
-#
-<int> map
-to a
-nonvocal noise
-symbol
-#
-#         <no-speech>
-designates silence
-> 1 sec.
-#
-
-$vocalNoise = "<v-noise>";
-$nVoclNoise = "<noise>";
-$silence = "<silence>";
-$icu_transform = "";
-$get_whole_transcripts = "false";
-#
-
 ########################################################################
 
-print STDERR
-"$0 " . join(" ", @ARGV) . "\n";
+print STDERR "$0 " . join(" ", @ARGV) . "\n";
 GetOptions("fragmentMarkers=s" => \$fragMarkers,
-"oov=s" => \$OOV_symbol,
-"vocab=s" => \$vocabFile,
-"icu-transform=s" => \$icu_transform,
-"get-whole-transcripts=s" => \$get_whole_transcripts
-);
+           "oov=s" => \$OOV_symbol,
+           "vocab=s" => \$vocabFile,
+           "icu-transform=s" => \$icu_transform,
+           "get-whole-transcripts=s" => \$get_whole_transcripts
+           );
 
 if ($#ARGV == 1) {
-$inDir = $ARGV[0];
-$outDir = $ARGV[1];
-print STDERR("$0: $inDir $outDir\n");
-if($vocabFile) {
-print STDERR("\tLimiting transcriptions to words in $vocabFile\n");
-print STDERR("\tMapping OOV tokens to \"$OOV_symbol\"\n");
-print STDERR("\tif they remain OOV even after removing [$fragMarkers] from either end\n")
-if ($fragMarkers);
-}
-print STDERR("$0 ADVICE: Use full path for the Input Directory\n")
-unless ($inDir = ~m
-:^/:);
+    $inDir  = $ARGV[0];
+    $outDir = $ARGV[1];
+    print STDERR ("$0: $inDir $outDir\n");
+    if($vocabFile) {
+	print STDERR ("\tLimiting transcriptions to words in $vocabFile\n");
+	print STDERR ("\tMapping OOV tokens to \"$OOV_symbol\"\n");
+	print STDERR ("\tif they remain OOV even after removing [$fragMarkers] from either end\n") if ($fragMarkers);
+    }
+    print STDERR ("$0 ADVICE: Use full path for the Input Directory\n") unless ($inDir=~m:^/:);
 } else {
-print STDERR("Usage: $0 [--options] InputDir OutputDir\n");
-print STDERR("\t--vocab <file>             File containing the permitted vocabulary\n");
-print STDERR("\t--oov <symbol>             Use this symbol for OOV words (default <unk>)\n");
-print STDERR("\t--fragmentMarkers <chars>  Remove these from ends of words to minimize OOVs (default none)\n");
-print STDERR("\t--get-whole-transcripts (true|false) Do not remove utterances containing no speech\n");
-exit(1);
+    print STDERR ("Usage: $0 [--options] InputDir OutputDir\n");
+    print STDERR ("\t--vocab <file>             File containing the permitted vocabulary\n");
+    print STDERR ("\t--oov <symbol>             Use this symbol for OOV words (default <unk>)\n");
+    print STDERR ("\t--fragmentMarkers <chars>  Remove these from ends of words to minimize OOVs (default none)\n");
+    print STDERR ("\t--get-whole-transcripts (true|false) Do not remove utterances containing no speech\n");
+    exit(1);
 }
 
 ########################################################################
@@ -277,24 +128,16 @@ exit(1);
 ########################################################################
 
 if ($vocabFile) {
-open (VOCAB, $vocabFile
-)
-|| die "Unable to open vocabulary file $vocabFile";
-$numWords = 0;
-while (<VOCAB>) {
-next unless(m
-:^([^\s]+):);
-$numWords++
-unless (exists
-$inVocab{
-$1}); # Don't count word repetitions
-$inVocab{
-$1} = 1;                         #
-commonly found
-in lexicons
-}
-close(VOCAB);
-print STDERR("Read $numWords unique words from $vocabFile\n");
+    open (VOCAB, $vocabFile)
+        || die "Unable to open vocabulary file $vocabFile";
+    $numWords = 0;
+    while (<VOCAB>) {
+        next unless (m:^([^\s]+):);
+        $numWords++ unless (exists $inVocab{$1}); # Don't count word repetitions
+        $inVocab{$1} = 1;                         # commonly found in lexicons
+    }
+    close(VOCAB);
+    print STDERR ("Read $numWords unique words from $vocabFile\n");
 }
 
 ########################################################################
@@ -302,13 +145,8 @@ print STDERR("Read $numWords unique words from $vocabFile\n");
 ########################################################################
 
 $TranscriptionDir = "$inDir/transcription";
-if (-
-d $TranscriptionDir
-) {
-@
-TranscriptionFiles =
-`
-ls ${TranscriptionDir}/*.txt`;
+if (-d $TranscriptionDir) {
+    @TranscriptionFiles = `ls ${TranscriptionDir}/*.txt`;
     if ($#TranscriptionFiles >= 0) {
         printf STDERR ("$0: Found %d .txt files in $TranscriptionDir\n", ($#TranscriptionFiles +1));
         $numFiles = $numUtterances = $numWords = $numOOV = $numSilence = 0;

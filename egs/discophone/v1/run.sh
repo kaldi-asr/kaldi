@@ -98,14 +98,14 @@ if ((stage <= 0)); then
   for x in ${train_set} ${dev_set} ${recog_set}; do
     sed -i.bak -e "s/$/ sox -R -t wav - -t wav - rate 16000 dither | /" data/${x}/wav.scp
   done
-fi
 
-for data_dir in ${train_set}; do
-  if [ -f data/$data_dir/text.bkp ]; then
-    # replace IPA text with normal text
-    cp data/$data_dir/text.bkp data/$data_dir/text
-  fi
-done
+  for data_dir in ${train_set}; do
+    if [ -f data/$data_dir/text.bkp ]; then
+      # replace IPA text with normal text
+      cp data/$data_dir/text.bkp data/$data_dir/text
+    fi
+  done
+fi
 
 if ((stage <= 4)); then
   for data_dir in ${train_set}; do
