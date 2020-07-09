@@ -64,7 +64,7 @@ def main():
 
     data_dir = Path(args.data_dir)
     g2p_models_dir = Path(args.g2p_models_dir)
-    lang = BABELCODE2LANG.get(args.lang, args.lang).lower()
+    lang = BABELCODE2LANG.get(args.lang.lower(), args.lang.lower()).lower()
     lang2fst = G2PModelProvider(g2p_models_dir)
     model = lang2fst.get(lang)
     if not model:
@@ -128,6 +128,8 @@ class G2PModelProvider:
     def get(self, lang: str) -> str:
         if lang == "arabic":
             lang = "gulf-arabic"  # TODO: confirm that GlobalPhone has Gulf Arabic
+        if lang == 'cantonese':
+            lang = 'yue'
         return self.lang2fst[lang]
 
 

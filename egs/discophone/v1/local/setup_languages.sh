@@ -214,7 +214,7 @@ done
 
 # Now Mboshi
 
-if [ $mboshi_train ]; then
+if $mboshi_train; then
   train_dirs="data/Mboshi/Mboshi_train ${train_dirs}"
   dev_dirs="data/Mboshi/Mboshi_dev ${dev_dirs}"
 fi
@@ -238,7 +238,7 @@ for l in ${recog}; do
   fi
 done
 
-if [ $mboshi_recog ]; then
+if $mboshi_recog; then
   target_link="data/Mboshi/Mboshi_eval"
   if [ ! -L $target_link ]; then
     ln -s ${cwd}/data/Mboshi/Mboshi_eval $target_link

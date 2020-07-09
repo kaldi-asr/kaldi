@@ -5,5 +5,7 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH
 . $KALDI_ROOT/tools/config/common_path.sh
 export LC_ALL=C
 
+export PATH="$PATH:$KALDI_ROOT/tools/sph2pipe_v2.5"
+
 SHORTEN_BIN_PATH="$PWD/shorten-3.6.1/src"
 export PATH="$SHORTEN_BIN_PATH:$PATH"
