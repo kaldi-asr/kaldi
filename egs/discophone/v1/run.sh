@@ -175,9 +175,7 @@ if ((stage <= 7)); then
       steps/train_mono.sh \
         --nj 8 --cmd "$train_cmd" \
         data/subsets/5k/$data_dir \
-        data/lang/$lang_name $expdir \
-        >$expdir/stdout.txt \
-        2>$expdir/stderr.txt
+        data/lang/$lang_name $expdir
     ) &
     sleep 2
   done
