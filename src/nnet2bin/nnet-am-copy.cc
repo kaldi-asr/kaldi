@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
                 "Before copying, multiply all the learning rates in the "
                 "model by this factor.");
     po.Register("learning-rate", &learning_rate,
-                "If supplied, all the learning rates of \"updatable\" layers"
+                "If supplied, all the learning rates of \"updatable\" layers "
                 "are set to this value.");
     po.Register("learning-rates", &learning_rates,
                 "If supplied (a colon-separated list of learning rates), sets "

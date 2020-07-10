@@ -135,7 +135,7 @@ struct ExampleGenerationConfig {
                 "closest multiple of --frame-subsampling-factor.  As a special case, "
                 "--num-frames=-1 means 'don't do any splitting'.");
     po->Register("num-frames-overlap", &num_frames_overlap, "Number of frames of "
-                 "overlap between adjacent eamples (applies to chunks of size "
+                 "overlap between adjacent samples (applies to chunks of size "
                  "equal to the primary [first-listed] --num-frames value... "
                  "will be adjusted for different-sized chunks).  Advisory; "
                  "will not be exactly enforced.");

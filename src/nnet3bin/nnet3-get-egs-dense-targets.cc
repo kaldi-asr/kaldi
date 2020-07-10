@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
     po.Register("compress", &compress, "If true, write egs with input features "
                 "in compressed format (recommended).  This is "
                 "only relevant if the features being read are un-compressed; "
-                "if already compressed, we keep we same compressed format when "
+                "if already compressed, we keep the same compressed format when "
                 "dumping egs.");
     po.Register("num-targets", &num_targets, "Output dimension in egs, "
                 "only used to check targets have correct dim if supplied.");

@@ -73,14 +73,14 @@ if(args.num_sil_states > 1):
     
     state_str = "<State> 0 <PdfClass> 0 "
     for x in range(0, (args.num_sil_states - 1)):
-        state_str = "{}<Transition> {} {} ".format(state_str, x, transp))
+        state_str = "{}<Transition> {} {} ".format(state_str, x, transp)
     state_str = state_str + "</State>"
     print(state_str)
 
     for x in range(1, (args.num_sil_states - 1)):
-        state_str = "<State> {0} <PdfClass {0} ".format(x))
+        state_str = "<State> {0} <PdfClass {0} ".format(x)
         for y in range(1, args.num_sil_states):
-            state_str = "{}<Transition> {} {} ".format(state_str, y, transp))
+            state_str = "{}<Transition> {} {} ".format(state_str, y, transp)
         state_str = state_str + "</State>"
         print(state_str)
     second_last = args.num_sil_states - 1

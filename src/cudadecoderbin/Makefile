@@ -12,6 +12,7 @@ endif
 
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
+EXTRA_LDLIBS += -lrt
 
 BINFILES = batched-wav-nnet3-cuda batched-wav-nnet3-cuda2 batched-wav-nnet3-cuda-online
 

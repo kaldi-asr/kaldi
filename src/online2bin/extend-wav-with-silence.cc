@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
                 "to be extracted from the waveform, which must be smaller than silence-"
                 "search-length, in seconds.");
     po.Register("silence-extract-shift", &sil_extract_shift, "the shift length when searching "
-                "for segments of silences, typically samller than silence-extract-length, "
+                "for segments of silences, typically smaller than silence-extract-length, "
                 "in seconds.");
 
     po.Read(argc, argv);

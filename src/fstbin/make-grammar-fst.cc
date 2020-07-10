@@ -25,22 +25,62 @@
 #include "fstext/kaldi-fst-io.h"
 #include "decoder/grammar-fst.h"
 
-namespace fst {
+template<typename FST>
+void MakeGrammarFst(kaldi::ParseOptions po,
+                    int32 nonterm_phones_offset,
+                    bool write_as_grammar){
+  using namespace kaldi;
+  using namespace fst;
+  using kaldi::int32;
 
-// Reads an FST from disk using Kaldi I/O mechanisms, and if it is not of type
-// ConstFst, copies it to that stype.
-ConstFst<StdArc>* ReadAsConstFst(std::string rxfilename) {
-  // the following call will throw if there is an error.
-  Fst<StdArc> *fst = ReadFstKaldiGeneric(rxfilename);
-  ConstFst<StdArc> *const_fst = dynamic_cast<ConstFst<StdArc>* >(fst);
-  if (!const_fst) {
-    const_fst = new ConstFst<StdArc>(*fst);
-    delete fst;
+  std::string fst_out_str = po.GetArg(po.NumArgs());
+  std::string top_fst_str = po.GetArg(1);
+
+  ConstFst<StdArc> *top_tmp_fst = ConstFst<StdArc>::Read(top_fst_str);
+  std::shared_ptr<FST> top_fst(new FST(*top_tmp_fst));
+
+  std::vector<std::pair<int32, std::shared_ptr<FST> > > pairs;
+
+  int32 num_pairs = (po.NumArgs() - 2) / 2;
+  for (int32 i = 1; i <= num_pairs; i++) {
+    int32 nonterminal;
+    std::string nonterm_str = po.GetArg(2*i);
+    if (!ConvertStringToInteger(nonterm_str, &nonterminal) ||
+        nonterminal <= 0)
+      KALDI_ERR << "Expected positive integer as nonterminal, got: "
+                << nonterm_str;
+    std::string fst_str = po.GetArg(2*i + 1);
+
+    ConstFst<StdArc> *tmp_fst = ConstFst<StdArc>::Read(fst_str);
+    std::shared_ptr<FST> this_fst(new FST(*tmp_fst));
+
+    pairs.push_back(std::pair<int32, std::shared_ptr<FST> >(
+        nonterminal, this_fst));
+  };
+
+  GrammarFstTpl<FST> *grammar_fst = new GrammarFstTpl<FST>(nonterm_phones_offset,
+                                                                             top_fst,
+                                                                             pairs);
+
+  if (write_as_grammar) {
+    bool binary = true;  // GrammarFst does not support non-binary write.
+    WriteKaldiObject(*grammar_fst, fst_out_str, binary);
+  } else {
+    VectorFst<StdArc> vfst;
+    CopyToVectorFst<FST>(grammar_fst, &vfst);
+    ConstFst<StdArc> cfst(vfst);
+    // We don't have a wrapper in kaldi-fst-io.h for writing type
+    // ConstFst<StdArc>, so do it manually.
+    bool binary = true, write_binary_header = false;  // suppress the ^@B
+    Output ko(fst_out_str, binary, write_binary_header);
+    FstWriteOptions wopts(kaldi::PrintableWxfilename(fst_out_str));
+    cfst.Write(ko.Stream(), wopts);
   }
-  return const_fst;
+
+  KALDI_LOG << "Created grammar FST and wrote it to "
+            << fst_out_str;
 }
 
-}
 
 int main(int argc, char *argv[]) {
   try {
@@ -80,6 +120,7 @@ int main(int argc, char *argv[]) {
 
     int32 nonterm_phones_offset = -1;
     bool write_as_grammar = true;
+    bool make_mutable = false;
 
     po.Register("nonterm-phones-offset", &nonterm_phones_offset,
                 "Integer id of #nonterm_bos in phones.txt");
@@ -87,9 +128,12 @@ int main(int argc, char *argv[]) {
                 "write as GrammarFst object; if false, convert to "
                 "ConstFst<StdArc> (readable by standard decoders) "
                 "and write that.");
+    po.Register("make-mutable", &make_mutable, "If true, "
+                "Make a GrammarFst using StdVectorFst as the "
+                "underlying FST instance type."
+                "Use const ConstFst<StdArc> otherwise.");
 
     po.Read(argc, argv);
-
 
     if (po.NumArgs() < 2 || po.NumArgs() % 2 != 0) {
       po.PrintUsage();
@@ -111,50 +155,11 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 
-    std::string top_fst_str = po.GetArg(1),
-        fst_out_str = po.GetArg(po.NumArgs());
-
-    std::shared_ptr<const ConstFst<StdArc> > top_fst(
-        ReadAsConstFst(top_fst_str));
-    std::vector<std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > > > pairs;
-
-    int32 num_pairs = (po.NumArgs() - 2) / 2;
-    for (int32 i = 1; i <= num_pairs; i++) {
-      int32 nonterminal;
-      std::string nonterm_str = po.GetArg(2*i);
-      if (!ConvertStringToInteger(nonterm_str, &nonterminal) ||
-          nonterminal <= 0)
-        KALDI_ERR << "Expected positive integer as nonterminal, got: "
-                  << nonterm_str;
-      std::string fst_str = po.GetArg(2*i + 1);
-      std::shared_ptr<const ConstFst<StdArc> > this_fst(ReadAsConstFst(fst_str));
-      pairs.push_back(std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > >(
-          nonterminal, this_fst));
-    }
-
-    GrammarFst *grammar_fst = new GrammarFst(nonterm_phones_offset,
-                                             top_fst,
-                                             pairs);
-
-    if (write_as_grammar) {
-      bool binary = true;  // GrammarFst does not support non-binary write.
-      WriteKaldiObject(*grammar_fst, fst_out_str, binary);
-      delete grammar_fst;
+    if (make_mutable) {
+      MakeGrammarFst<StdVectorFst>(po, nonterm_phones_offset, write_as_grammar);
     } else {
-      VectorFst<StdArc> vfst;
-      CopyToVectorFst(grammar_fst, &vfst);
-      delete grammar_fst;
-      ConstFst<StdArc> cfst(vfst);
-      // We don't have a wrapper in kaldi-fst-io.h for writing type
-      // ConstFst<StdArc>, so do it manually.
-      bool binary = true, write_binary_header = false;  // suppress the ^@B
-      Output ko(fst_out_str, binary, write_binary_header);
-      FstWriteOptions wopts(kaldi::PrintableWxfilename(fst_out_str));
-      cfst.Write(ko.Stream(), wopts);
+      MakeGrammarFst<const ConstFst<StdArc> >(po, nonterm_phones_offset, write_as_grammar);
     }
-
-    KALDI_LOG << "Created grammar FST and wrote it to "
-              << fst_out_str;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
