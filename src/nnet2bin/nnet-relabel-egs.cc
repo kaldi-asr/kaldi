@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Relabel neural network egs with the read pdf-id alignments, "
         "zero-based..\n"
-        "Usage: nnet-relabel-egs [options] <pdf-aligment-rspecifier> "
+        "Usage: nnet-relabel-egs [options] <pdf-alignment-rspecifier> "
         "<egs_rspecifier1> ... <egs_rspecifierN> "
         "<egs_wspecifier1> ... <egs_wspecifierN>\n"
         "e.g.: \n"

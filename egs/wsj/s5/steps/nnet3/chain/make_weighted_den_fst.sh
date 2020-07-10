@@ -18,6 +18,8 @@
 # This script creates denominator FST (den.fst) and normalization.fst for
 # chain training. It additionally copies the transition model and tree from the
 # first alignment directory to the chain directory.
+# Alternatively, if the --am-dir option is used, the transition model and tree
+# are taken from there instead of the first alignment directory.
 # This script can accept multiple sources of alignments with same phone sets
 # that can be weighted to estimate phone LM.
 # You can use the --num-repeats option to repeat some source data more than
@@ -34,6 +36,7 @@ num_repeats= # Comma-separated list of positive integer multiplicities, one
              # training the LM.
              # If not specified, weight '1' is used for all data sources.
 
+am_dir=
 lm_opts='--num-extra-lm-states=2000'
 #end configuration section.
 
@@ -54,6 +57,12 @@ if [ $# -lt 2 ]; then
   echo "                                 # the corresponding value when training"
   echo "                                 # the LM.  If not specified, weight '1'"
   echo "                                 # is used for all data sources."
+  echo "--am-dir                         # Path to the base AM directory. Set this"
+  echo "                                 # when the AM you will be training from"
+  echo "                                 # isn't necessarily the one which created"
+  echo "                                 # the alignments. If this is not set, the"
+  echo "                                 # tree and transition model from the first"
+  echo "                                 # ali-dir will be copied to out-dir."
   exit 1;
 fi
 
@@ -62,17 +71,28 @@ ali_dirs=( $@ )  # read the remaining arguments into an array
 unset ali_dirs[${#ali_dirs[@]}-1]  # 'pop' the last argument which is $dir
 num_alignments=${#ali_dirs[@]}    # number of alignment dirs to combine
 
+if [ -z "$am_dir" ]; then
+  am_dir=${ali_dirs[0]}
+fi
+
 mkdir -p $dir/log
+
+# Go through each alignment directory and make sure the phones match.
 for n in `seq 0 $[$num_alignments-1]`;do
   ali_dir=${ali_dirs[$n]}
   for f in $ali_dir/ali.1.gz $ali_dir/final.mdl $ali_dir/tree; do
     [ ! -f $f ] && echo "$0: Expected file $f to exist" && exit 1;
   done
-  utils/lang/check_phones_compatible.sh ${ali_dirs[0]}/phones.txt \
+  utils/lang/check_phones_compatible.sh ${am_dir}/phones.txt \
     ${ali_dirs[$n]}/phones.txt || exit 1;
 done
 
-cp ${ali_dirs[0]}/tree $dir/ || exit 1
+# Make sure we have the AM and tree in the am_dir.
+for f in $am_dir/final.mdl $am_dir/tree; do
+  [ ! -f $f ] && echo "$0: Expected file $f to exist" && exit 1;
+done
+
+cp $am_dir/tree $dir || exit 1
 
 if [ -z "$num_repeats" ]; then
   # If 'num_repeats' is not specified, set num_repeats_array to e.g. (1 1 1).
@@ -120,7 +140,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  copy-transition-model ${ali_dirs[0]}/final.mdl $dir/0.trans_mdl || exit 1;
+  copy-transition-model $am_dir/final.mdl $dir/0.trans_mdl || exit 1;
 fi
 
 if [ $stage -le 4 ]; then

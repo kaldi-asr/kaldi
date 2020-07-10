@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic "
                 "probabilities (e.g. 0.1 for non-chain systems); important because "
                 "of its effect on pruning.");
-    po.Register("add-const-arpa", &add_const_arpa, "If true, <lm-to-add> is expected"
+    po.Register("add-const-arpa", &add_const_arpa, "If true, <lm-to-add> is expected "
                 "to be in const-arpa format; if false it's expected to be in FST"
                 "format.");
 

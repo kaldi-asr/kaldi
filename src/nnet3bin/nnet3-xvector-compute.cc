@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     po.Register("use-gpu", &use_gpu,
       "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("chunk-size", &chunk_size,
-      "If set, extracts xectors from specified chunk-size, and averages.  "
+      "If set, extracts xvectors from specified chunk-size, and averages.  "
       "If not set, extracts an xvector from all available features.");
     po.Register("min-chunk-size", &min_chunk_size,
       "Minimum chunk-size allowed when extracting xvectors.");

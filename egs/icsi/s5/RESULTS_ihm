@@ -1,0 +1,22 @@
+
+#GMM systems
+# for d in exp/ihm/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 35.8 | 3331 23774 | 69.3 21.9 8.8 5.1 35.8 67.2 | -0.125 | exp/ihm/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev.ctm.filt.sys
+%WER 26.3 | 4176 32035 | 77.4 15.1 7.5 3.7 26.3 57.0 | -0.076 | exp/ihm/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_13/eval.ctm.filt.sys
+%WER 34.9 | 3331 23770 | 71.0 22.2 6.8 6.0 34.9 66.3 | -0.524 | exp/ihm/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev.ctm.filt.sys
+%WER 25.2 | 4176 32033 | 78.6 14.5 7.0 3.8 25.2 55.2 | -0.373 | exp/ihm/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_15/eval.ctm.filt.sys
+
+#chain models
+
+#for d in exp/ihm/chain*/tdnn*/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+#local/chain/tuning/run_tdnn_1a.sh --mic ihm
+%WER 19.7 | 3331 23773 | 82.9 11.5 5.6 2.7 19.7 54.6 | 0.091 | exp/ihm/chain_1a/tdnn_sp/decode_dev/ascore_12/dev_hires.ctm.filt.sys
+%WER 12.7 | 4176 32040 | 89.0 6.9 4.1 1.8 12.7 42.3 | 0.143 | exp/ihm/chain_1a/tdnn_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1b.sh --mic ihm
+%WER 19.6 | 3331 23779 | 83.1 11.6 5.3 2.7 19.6 53.0 | 0.057 | exp/ihm/chain_1a/tdnn_b_sp/decode_dev/ascore_11/dev_hires.ctm.filt.sys
+%WER 12.6 | 4176 32041 | 89.2 6.8 4.1 1.8 12.6 41.9 | 0.110 | exp/ihm/chain_1a/tdnn_b_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1c.sh --mic ihm
+%WER 16.5 | 3331 23774 | 85.7 9.5 4.7 2.2 16.5 48.8 | 0.032 | exp/ihm/chain_1a/tdnn_c_sp/decode_dev/ascore_12/dev_hires.ctm.filt.sys
+%WER 10.8 | 4176 32027 | 90.9 5.8 3.4 1.7 10.8 38.6 | 0.060 | exp/ihm/chain_1a/tdnn_c_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys

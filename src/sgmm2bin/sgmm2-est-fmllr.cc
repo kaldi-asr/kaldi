@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     po.Register("spkvec-min-count", &min_count,
                 "Minimum count needed to estimate speaker vectors");
     po.Register("spk-vecs", &spkvecs_rspecifier,
-                "Speaker vectors to use during aligment (rspecifier)");
+                "Speaker vectors to use during alignment (rspecifier)");
     po.Register("input-fmllr", &fmllr_rspecifier,
                 "Initial FMLLR transform per speaker (rspecifier)");
     po.Register("gselect", &gselect_rspecifier,

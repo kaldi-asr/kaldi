@@ -194,7 +194,7 @@ function check_compiler {
              You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
   else
     COMPILER_VER_INFO=$($COMPILER --version 2>/dev/null)
-    if [[ $COMPILER_VER_INFO == *"g++"* ]]; then
+    if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
       GCC_VER=$($COMPILER -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       if [ $GCC_VER_NUM -lt 40700 ]; then
@@ -430,7 +430,7 @@ function configure_cuda {
     fi
 
     COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
-    if [[ $COMPILER_VER_INFO == *"g++"* ]]; then
+    if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
       GCC_VER=$($COMPILER -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
