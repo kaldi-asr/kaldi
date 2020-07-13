@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         "Add transition probabilities into graph part of lattice scores,\n"
         "controlled by options --transition-scale and --self-loop-scale, which\n"
         "for compatibility with the original graph, would normally be set to the same\n"
-        "values used in graph compilatoin\n"
+        "values used in graph compilation\n"
         "\n"
         "Usage: lattice-add-trans-probs [options] model lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=0.1 1.mdl ark:in.lats ark:out.lats\n";

@@ -225,7 +225,6 @@ if [ $stage -le 9 ]; then
       steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
         $langdir $gmm_dir $lat_dir
       rm $lat_dir/fsts.*.gz # save space
-      exit
   done
 fi 
 

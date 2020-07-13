@@ -27,7 +27,7 @@ if [ $stage -le 7 ]; then
   # train the system on.
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/$lang/${train_set} data/$lang/${train_set}_max2
+  utils/data/modify_speaker_info.sh --utts-per-spk-max 2 data/$lang/${train_set} data/$lang/${train_set}_max2
   if [ ! -f exp/$lang/nnet3${nnet3_affix}/ivectors_${train_set}${ivector_suffix}/ivector_online.scp ]; then
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 200 \
       data/$lang/${train_set}_max2 $global_extractor exp/$lang/nnet3${nnet3_affix}/ivectors_${train_set}${ivector_suffix} || exit 1;

@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     
     const char *usage =
         "Compute sentence-level lattice confidence measures for each lattice.\n"
-        "The output is simly the difference between the total costs of the best and\n"
+        "The output is simply the difference between the total costs of the best and\n"
         "second-best paths in the lattice (or a very large value if the lattice\n"
         "had only one path).  Caution: this is not necessarily a very good confidence\n"
         "measure.  You almost certainly want to specify the acoustic scale.\n"

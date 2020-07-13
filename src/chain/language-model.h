@@ -59,7 +59,7 @@ struct LanguageModelOptions {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "
                    "language model used for the 'denominator model'");
     opts->Register("num-extra-lm-states", &num_extra_lm_states, "Number of LM "
-                   "states desired on top of the nubmer determined by the "
+                   "states desired on top of the number determined by the "
                    "--no-prune-ngram-order option.");
     opts->Register("no-prune-ngram-order", &no_prune_ngram_order, "n-gram order "
                    "below which the language model is not pruned (should "
