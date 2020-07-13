@@ -1,0 +1,1 @@
+../../../s5_track1/local/nnet3/compare_wer.sh
