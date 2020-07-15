@@ -19,6 +19,10 @@ def get_args():
                         help="Maximum pause between words in a segment")
     parser.add_argument("--extend-time", type=float, default=0,
                         help="Extend segments by this duration on each end")
+    parser.add_argument("--min-segment-length", type=float, default=0.025,
+                        help="minimum length for a segment")
+    parser.add_argument("--max-segment-length", type=float, default=10,
+                        help="maximum length for a segment")
     parser.add_argument("--min-cf", type=float, default=0.5,
                         help="minimum confidence of word to include in text")
 
@@ -38,9 +42,10 @@ def get_args():
 
 class Word:
     def __init__(self, parts):
-        self.reco_id, seg_start, _ = parts[0].split('-')
-        self.channel_id = parts[1]
-        self.start_time = float(seg_start)/100 + float(parts[2])
+        subparts = parts[0].split('_')
+        self.reco_id = '_'.join(subparts[:-2])
+        seg_start = float(subparts[-2])/100
+        self.start_time = seg_start + float(parts[2])
         self.duration = float(parts[3])
         self.end_time = self.start_time + self.duration
         self.text = parts[4]
@@ -74,14 +79,16 @@ def main():
         cur_end = words[0].end_time
         cur_text = [words[0].text] if words[0].conf >= args.min_cf else []
         for word in words[1:]:
-            if (word.start_time > cur_end + args.max_pause):
+            if (word.start_time > cur_end + args.max_pause) \
+                or (word.end_time > cur_start + args.max_segment_length):
                 # flush current segment and text
                 cur_start = max(0, cur_start - args.extend_time)
                 cur_end = cur_end + args.extend_time
-                utt_id = "{}-{}-{}".format(reco_id, "{:.0f}".format(100*cur_start).zfill(6),
+                utt_id = "{}_{}_{}".format(reco_id, "{:.0f}".format(100*cur_start).zfill(6),
                     "{:.0f}".format(100*cur_end).zfill(6))
-                segments.append((reco_id, utt_id, cur_start, cur_end))
-                text.append((utt_id, " ".join(cur_text)))
+                if (cur_end - cur_start >= args.min_segment_length):
+                    segments.append((reco_id, utt_id, cur_start, cur_end))
+                    text.append((utt_id, " ".join(cur_text)))
 
                 # start new segment and text
                 cur_start = word.start_time
@@ -97,10 +104,11 @@ def main():
         # flush last remaining segment and text
         cur_start = max(0, cur_start - args.extend_time)
         cur_end = cur_end + args.extend_time
-        utt_id = "{}-{}-{}".format(reco_id, "{:.0f}".format(100*cur_start).zfill(6),
+        utt_id = "{}_{}_{}".format(reco_id, "{:.0f}".format(100*cur_start).zfill(6),
             "{:.0f}".format(100*cur_end).zfill(6))
-        segments.append((reco_id, utt_id, cur_start, cur_end))
-        text.append((utt_id, " ".join(cur_text)))        
+        if (cur_end - cur_start >= args.min_segment_length):
+            segments.append((reco_id, utt_id, cur_start, cur_end))
+            text.append((utt_id, " ".join(cur_text)))        
 
     text_writer = open(args.text, 'w')
     segments_writer = open(args.segments, 'w')

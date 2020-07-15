@@ -67,7 +67,7 @@ fi
 
 if [ $stage -le 2 ]; then
   utils/mkgraph.sh \
-      --self-loop-scale 1.0 $lang_dir \
+      --self-loop-scale 1.0 --remove-oov $lang_dir \
       $asr_model_dir $asr_model_dir/graph${lm_suffix}
 fi
 

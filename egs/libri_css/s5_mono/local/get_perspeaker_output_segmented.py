@@ -63,7 +63,7 @@ def get_hypothesis_list(hyp_text, labels):
     with open(labels, 'r') as f:
         for line in f.readlines():
             parts = line.strip().split()
-            utt_id = '-'.join(parts[0].split('-')[:-2])
+            utt_id = parts[0].split('-')[0]
             label_dict[utt_id] = int(parts[1])
     
     utts = []
@@ -72,10 +72,10 @@ def get_hypothesis_list(hyp_text, labels):
             parts = line.strip().split(maxsplit=1)
             if (len(parts) == 1):
                 parts.append("")
-            subparts = parts[0].split('-')
-            reco_id = '_'.join(subparts[0].split('_')[:-1])
-            start_time = float(subparts[1])/100
-            end_time = float(subparts[2])/100
+            subparts = parts[0].split('_')
+            reco_id = '_'.join(subparts[:3])
+            start_time = float(subparts[-2])/100
+            end_time = float(subparts[-1])/100
             if parts[0] in label_dict: # Segments smaller than 0.5s were not included in diarization
                 utt = Utterance(reco_id, label_dict[parts[0]], start_time, end_time, parts[1])
             utts.append(utt)

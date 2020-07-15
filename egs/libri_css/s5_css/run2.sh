@@ -12,9 +12,9 @@ decode_nj=20
 stage=0
 
 nnet3_affix=_cleaned
-affix=1d2_sp
-data_affix=  # This can be used to distinguish between different data sources
-sad_type=tdnn # Set this to webrtc or tdnn. This is used for initial segmentation
+affix=1d2_ft
+data_affix=_css  # This can be used to distinguish between different data sources
+sad_type=webrtc # Set this to webrtc or tdnn. This is used for initial segmentation
               # before ASR.
 
 # Different stages
@@ -30,7 +30,8 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # exploding exponentially
 pruned_rescore=true
 rnnlm_dir=exp/rnnlm_lstm_1a
-lmwt=5
+lmwt=7  # Tuned on the dev set
+
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -182,7 +183,8 @@ if [ $stage -le 6 ]; then
   ac_model_dir=exp/chain${nnet3_affix}/tdnn_${affix}
   for decode_set in $test_sets; do
     decode_dir=${ac_model_dir}/decode_${decode_set}_segmented_rescore
-    local/convert_ctm_to_segments_and_text.py --max-pause 0.5 \
+    local/convert_ctm_to_segments_and_text.py --max-pause 0.5 --min-cf 0 \
+      --max-segment-length 10.0 \
       $decode_dir/score_${lmwt}/${decode_set}_segmented_hires.ctm \
       data/${decode_set}_segmented/segments $decode_dir/hyp_text
   done
@@ -208,17 +210,10 @@ if [ $stage -le 8 ]; then
     diar_nj=$(wc -l < "data/$datadir/wav.scp")
     [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
 
-    # We don't want to subsegment the segments further. So we set both
-    # window and period to be size of the maximum segment.
-    max_seg_dur=$( awk -v max=0 '
-      {
-        if($4-$3>max){max=$4-$3}
-      }
-      END{print max}' data/${datadir}_segmented/segments )
-    
-
+    # IMPORTANT: The window and period here should be the same as the max_segment_length
+    # used in creating the segments from the CTM in stage 6.
     local/diarize_css.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --window $max_seg_dur --period $max_seg_dur \
+      --window 10 --period 10 --min-segment 0 \
       --ref-rttm data/${datadir}/ref_rttm \
       --post-process-rttm false \
       exp/xvector_nnet_1a \

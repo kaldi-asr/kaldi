@@ -143,7 +143,7 @@ if [ $stage -le 1 ]; then
     --beam=$beam --lattice-beam=$beam \
     --allow-partial=false --word-determinize=false \
     $srcdir/${iter}.mdl "ark:gunzip -c $dir/fsts.JOB.gz |" \
-    "$feats" "ark:|lattice-copy --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz" || exit 1;
+    "$feats" "ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
 
 echo "$0: done generating lattices from training transcripts."

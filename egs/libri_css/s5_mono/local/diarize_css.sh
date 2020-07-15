@@ -17,6 +17,7 @@ cmd="run.pl"
 ref_rttm=
 window=1.5
 period=0.75
+min_segment=0.5
 post_process_rttm=true # set to true to remove same speaker segments in different
                        # streams at the same time
 score_overlaps_only=true
@@ -59,7 +60,7 @@ if [ $stage -le 2 ]; then
   echo "$0: extracting x-vectors for all segments"
   diarization/nnet3/xvector/extract_xvectors.sh --cmd "$cmd" \
     --nj $nj --window $window --period $period --apply-cmn false \
-    --min-segment 0.5 $model_dir \
+    --min-segment $min_segment $model_dir \
     data/${name}_cmn $out_dir/xvectors_${name}
 fi
 
