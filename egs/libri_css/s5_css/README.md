@@ -198,6 +198,10 @@ wav_files_dir=/mnt/jsalt2020/example_user/libricss_separated_3stream
 Also reduce the number of jobs since we are running on a single machine. In **line 13**,
 change `decode_nj` to 10.
 
+**Note: Optionally, you can also change line 17 to `affix=1d_ft` to use the fine-tuned
+acoustic model (fine-tuned on reverberated data). This has been found to perform slightly
+better than `1d_sp` especially when the separated audio is not very clean.** 
+
 Now save and exit. Activate the `conda` environment for CSS which contains some
 required python packages, and then run.
 
