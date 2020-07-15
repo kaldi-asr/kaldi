@@ -38,9 +38,7 @@ num_jobs_initial=1
 num_jobs_final=1
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-groups_per_minibatch=32  # This is how you set the minibatch size.  Note: if
-                         # chunks_per_group=4, this would mean 128 chunks per
-                         # minibatch.
+minibatch_size=32  # This is how you set the minibatch size. 
 
 max_iters_combine=80
 max_models_combine=20
@@ -68,7 +66,12 @@ if [ $# != 2 ]; then
   echo "Usage: $0  [options] <egs-dir>  <model-dir>"
   echo " e.g.: $0 exp/chain/tdnn1a_sp/egs  exp/chain/tdnn1a_sp"
   echo ""
-  echo " TODO: more documentation"
+  echo "This is the default script to train acoustic models for chain2 recipes."
+  echo "The script requires two arguments:"
+  echo "<egs-dir>: directory where egs files are stored"
+  echo "<model-dir>: directory where the final model will be stored"
+  echo ""
+  echo "See the top of the script to check possible options to pass to it."
   exit 1
 fi
 
@@ -123,10 +126,7 @@ num_langs=$(echo $langs | wc -w)
 mkdir -p $dir/log
 
 # Copy models with initial learning rate and dropout options from $dir/init to $dir/0
-#for lang in $langs; do
 if [ $stage -le -1 ]; then
-  # run.pl $dir/log/init_model_default.log \
-  #     nnet3-am-copy  --learning-rate=$lrate $dropout_opt $dir/init/default.mdl $dir/0.mdl
   echo "$0: Copying transition model"
   if [ $num_langs -eq 1 ]; then
       echo "$0: Num langs is 1"
@@ -227,7 +227,7 @@ while [ $x -lt $num_iters ]; do
              $l2_regularize_opt \
              --srand=$srand \
              "nnet3-copy --learning-rate=$lrate $dir/${x}.raw - |" $den_fst_dir \
-             "ark:nnet3-chain-copy-egs $egs_opts --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
+             "ark:nnet3-chain-copy-egs $egs_opts --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$minibatch_size ark:- ark:-|" \
              ${model_out_prefix}.$j.raw || touch $dir/.error &
   done
   wait
@@ -248,7 +248,6 @@ while [ $x -lt $num_iters ]; do
   fi
   [ -f $dir/$x/.error_diagnostic ] && echo "$0: error getting diagnostics on iter $x" && exit 1;
 
-  # TODO: cleanup
   if [ -f $dir/cache.$x ]; then
       rm $dir/cache.$x
   fi
