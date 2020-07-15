@@ -1,10 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# This script is very similar to rnnlm/lmrescore_nbest.sh, and it performs n-best
+# This script is very similar to rnnlm/lmrescore_nbest.sh, and it performs N-best
 # LM rescoring with Pytorch trained neural LMs.
 
 # Begin configuration section.
 N=10
+model_type=LSTM # LSTM, GRU or Transformer
+embedding_dim=650
+hidden_dim=650
+nlayers=2
+nhead=6
 inv_acwt=10
 cmd=run.pl
 use_phi=false  # This is kind of an obscure option.  If true, we'll remove the old
@@ -24,12 +29,12 @@ echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh
 . utils/parse_options.sh
 
-if [ $# != 8 ]; then
+if [ $# != 7 ]; then
    echo "Do language model rescoring of lattices (partially remove old LM, add new LM)"
    echo "This version applies an neural LM and mixes it with the n-gram LM scores"
-   echo "previously in the lattices, controlled by the first parameter (rnnlm-weight)"
+   echo "previously in the lattices, controlled by the first parameter (nnlm-weight)"
    echo ""
-   echo "Usage: $0 [options] <rnn-weight> <old-lang-dir> <nn-dir> model-type vocab <data-dir> <input-decode-dir> <output-decode-dir>"
+   echo "Usage: $0 [options] <nn-weight> <old-lang-dir> <nn-model-dir> vocab <data-dir> <input-decode-dir> <output-decode-dir>"
    echo "Main options:"
    echo "  --inv-acwt <inv-acwt>          # default 12.  e.g. --inv-acwt 17.  Equivalent to LM scale to use."
    echo "                                 # for N-best list generation... note, we'll score at different acwt's"
@@ -40,14 +45,13 @@ if [ $# != 8 ]; then
    exit 1;
 fi
 
-rnnweight=$1
+nnweight=$1 # weight of a neural network LM
 oldlang=$2
 nn_model=$3
-model_type=$4
-vocabulary=$5
-data=$6
-indir=$7
-dir=$8
+vocabulary=$4
+data=$5
+indir=$6
+dir=$7
 
 acwt=`perl -e "print (1.0/$inv_acwt);"`
 
@@ -178,25 +182,27 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-  echo "$0: invoking rnnlm/compute_sentence_scores_pytorch.py which computes sentence scores from a PyTorch trained neural LM."
-  # load necessary modules or models from the path where the PyTorch models are.
-  path=`dirname $nn_model`
-  $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores_pytorch.JOB.log \
-  PYTHONPATH=$path python rnnlm/compute_sentence_scores_pytorch.py \
+  echo "$0: invoking steps/pytorchnn/compute_sentence_scores.py which computes sentence scores with a PyTorch trained neural LM."
+  $cmd JOB=1:$nj $dir/log/compute_sentence_scores_pytorchnn.JOB.log \
+    PYTHONPATH=steps/pytorchnn python steps/pytorchnn/compute_sentence_scores.py \
         --nbest-list $adir.JOB/words_text \
-        --outfile $adir.JOB/lmwt.rnn \
+        --outfile $adir.JOB/lmwt.nn \
         --vocabulary $vocabulary \
-        --model $nn_model \
-        --type $model_type
+        --model-path $nn_model \
+        --model $model_type \
+        --emsize $embedding_dim \
+        --nhid $hidden_dim \
+        --nlayers $nlayers \
+        --nhead $nhead
 fi
 
 if [ $stage -le 7 ]; then
-  echo "$0: reconstructing total LM+graph scores including interpolation of RNNLM and old LM scores."
+  echo "$0: reconstructing total LM+graph scores including interpolation of neural LM and old LM scores."
   for n in `seq $nj`; do
-    paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.rnn | awk -v rnnweight=$rnnweight \
-      '{ key=$1; graphscore=$2; lmscore=$4; rnnscore=$6;
-     score = graphscore+(rnnweight*rnnscore)+((1-rnnweight)*lmscore);
-     print $1,score; } ' > $adir.$n/lmwt.interp.$rnnweight || exit 1;
+    paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.nn | awk -v nnweight=$nnweight \
+      '{ key=$1; graphscore=$2; lmscore=$4; nnscore=$6;
+     score = graphscore+(nnweight*nnscore)+((1-nnweight)*lmscore);
+     print $1,score; } ' > $adir.$n/lmwt.interp.$nnweight || exit 1;
   done
 fi
 
@@ -204,7 +210,7 @@ if [ $stage -le 8 ]; then
   echo "$0: reconstructing archives back into lattices."
   $cmd JOB=1:$nj $dir/log/reconstruct_lattice.JOB.log \
     linear-to-nbest "ark:$adir.JOB/ali" "ark:$adir.JOB/words" \
-    "ark:$adir.JOB/lmwt.interp.$rnnweight" "ark:$adir.JOB/acwt" ark:- \| \
+    "ark:$adir.JOB/lmwt.interp.$nnweight" "ark:$adir.JOB/acwt" ark:- \| \
     nbest-to-lattice ark:- "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
 
@@ -213,7 +219,6 @@ if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $dir ||
-  # local/score.sh $data $oldlang $dir ||
     { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
