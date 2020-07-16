@@ -40,11 +40,10 @@ check_required_programs:
 clean: openfst_cleaned sclite_cleaned
 
 openfst_cleaned:
-	$(MAKE) -C openfst-$(OPENFST_VERSION) clean
-
+	-$(MAKE) -C openfst-$(OPENFST_VERSION) clean
 
 sclite_cleaned:
-	$(MAKE) -C sctk clean
+	-$(MAKE) -C sctk clean
 
 distclean:
 	rm -rf openfst-$(OPENFST_VERSION)/
