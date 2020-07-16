@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is to train a small, pruned n-gram backoff LM to be used for sampling
 # purposes during RNNLM training.  We ue pocolm for this because it's good at pruning,

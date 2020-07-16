@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # search for VERSION below to see how to change this when
 # Kaldi's version number increases.

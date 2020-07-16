@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 3k2 is as 3k, but dumping the egs with --extra-left-context 20.
 # Also there will have been some script changes in the meantime,

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5d is as _5b, but increasing jesus-forward-input-dim from 500 to 600 and
 # jesus-forward-output-dim from 1800 to 2000.

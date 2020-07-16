@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # prepare dictionary for HKUST
 # it is done for English and Chinese separately,
 # For English, we use CMU dictionary, and Sequitur G2P

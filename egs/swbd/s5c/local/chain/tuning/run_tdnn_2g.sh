@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2g is as _2f but reducing the --num-lm-states from 10k to 7k
 # see table in run_tdnn_2a.sh for results.

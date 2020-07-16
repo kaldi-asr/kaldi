@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # 7g is same as 7f but using the xconfig format of network specification.

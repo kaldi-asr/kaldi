@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017  Hossein Hadian
 # Apache 2.0
 

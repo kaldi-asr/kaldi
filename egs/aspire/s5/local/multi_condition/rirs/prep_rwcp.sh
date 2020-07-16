@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015  Johns Hopkins University (author: Vijayaditya Peddinti)
 # Apache 2.0
 # This script downloads the RWCP impulse responses and ambient noise

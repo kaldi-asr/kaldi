@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ###########################################################################################
 # This script was copied from egs/fisher_swbd/s5/local/nnet3/run_tdnn.sh

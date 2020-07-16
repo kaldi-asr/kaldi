@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script removes non-speech, long musics or long silence from the original
 # speech recordings.

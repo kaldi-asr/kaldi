@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
       if (!alignment_reader.HasKey(key)) {
         KALDI_WARN << "No alignment for utterance " << key;
         continue;
-      }       
+      }
       auto alignment = alignment_reader.Value(key);
       Matrix<BaseFloat> &probs = prob_reader.Value();
       if (log_applied) probs.ApplyExp();

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2i is as _2d but with a new set of code for estimating the LM, in which we compute
 # the log-like change when deciding which states to back off.  The code is not the same

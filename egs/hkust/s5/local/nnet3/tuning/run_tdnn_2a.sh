@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is based on run_tdnn_7h.sh in swbd chain recipe.
 # exp 2a: change the step of making configs, using xconfig with

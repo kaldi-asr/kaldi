@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013 MERL (author: Felix Weninger)
 # Contains some code by Microsoft Corporation, Johns Hopkins University (author: Daniel Povey)

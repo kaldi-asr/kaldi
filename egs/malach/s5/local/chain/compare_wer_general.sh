@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 echo -n "System               "
 for x in $*; do   printf " % 10s" $x;   done

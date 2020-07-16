@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2v is as _2u, but adding the --scale-stats-for-pdf-classes="1=0.5" option to
 # the tree building, to scale down the stats for the self-loop to have fewer pdf-ids

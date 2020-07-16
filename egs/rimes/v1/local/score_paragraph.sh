@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 min_lmwt=7
 max_lmwt=17

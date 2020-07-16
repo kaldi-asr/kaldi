@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # TDNN+LSTM architecture similar to swbd/tdnn_lstm_1b
 # results on sdm1 with ihm ali

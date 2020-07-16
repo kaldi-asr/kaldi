@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This recipe uses WSJ models and TED-LIUM audio with un-aligned transcripts.
 #

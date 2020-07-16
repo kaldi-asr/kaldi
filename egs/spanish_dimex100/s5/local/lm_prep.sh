@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ## Install SRILM in the `tools` directory (install_srilm.sh)
 

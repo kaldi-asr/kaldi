@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This (1m.sh) is the same as 1j but with per-frame dropout on LSTM layer
 # It is a fast LSTM with per-frame dropout on [i, f, o] gates of the LSTM,

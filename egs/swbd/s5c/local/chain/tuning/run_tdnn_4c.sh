@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4c is as _4a, but using half the --jesus-hidden-dim: 7500 versus 15000.
 # Yay-- WER is slightly better or the same.  Final train-prob is worse

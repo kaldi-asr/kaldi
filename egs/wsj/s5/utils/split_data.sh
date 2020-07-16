@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2010-2013 Microsoft Corporation
 #                     Johns Hopkins University (Author: Daniel Povey)
 

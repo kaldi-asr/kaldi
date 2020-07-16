@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is based on swbd 7q TDNN-F recipe 
 # with resnet-style skip connections, more layers,

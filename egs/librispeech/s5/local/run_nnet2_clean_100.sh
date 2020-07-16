@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 . utils/parse_options.sh
 . ./cmd.sh

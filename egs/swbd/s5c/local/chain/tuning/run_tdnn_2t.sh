@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2t is as _2o and _2s, but another topology: with 3 pdf-ids like 2s, but
 # differently arranged.

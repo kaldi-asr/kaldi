@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This runs on the 100 hour subset, similar as run_5a_gpu.sh, but it's using steps/nnet2/train_pnorm.sh.
 # e.g. of usage:

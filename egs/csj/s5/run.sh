@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright  2015 Tokyo Institute of Technology
 #                 (Authors: Takafumi Moriya, Tomohiro Tanaka and Takahiro Shinozaki)

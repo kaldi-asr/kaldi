@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # 7o is as 7n but with a bunch of tuning changes affecting both the structure

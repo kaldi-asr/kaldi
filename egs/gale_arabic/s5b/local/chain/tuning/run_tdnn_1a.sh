@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ./local/chain/compare_wer.sh exp/chain/tdnn_1a_sp
 # System                      tdnn_1a_sp

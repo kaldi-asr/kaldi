@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1c is as 1b but taking the first layers from the cnn_tdnn_1a setup in mini_librispeech.
 # A little better than the baseline and overfits more.

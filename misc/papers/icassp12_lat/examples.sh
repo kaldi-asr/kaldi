@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This file contains commands to create the FST examples.
 export PATH=$PATH:~/kaldi/trunk/tools/openfst/bin/

@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
         "This version of the program retains the original "
         "acoustic scores of arcs in the determinized lattice and writes it "
         "as a normal (non-compact) lattice. \n"
-        " note: this program is tyically only useful if you generated state-level\n"
+        " note: this program is typically only useful if you generated state-level\n"
         " lattices, e.g. called gmm-latgen-simple with --determinize=false\n"
         "\n"
         "Usage: lattice-determinize-non-compact [options] lattice-rspecifier lattice-wspecifier\n"

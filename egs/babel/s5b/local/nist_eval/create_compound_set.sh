@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #Simple script to create compound set info that will allow for more automatized
 #work with the shadow set.

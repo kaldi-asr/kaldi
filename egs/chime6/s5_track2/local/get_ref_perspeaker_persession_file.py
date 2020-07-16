@@ -55,14 +55,21 @@ def main():
             spkrid_mapping[sessionid_speakerid.split('_')[1]]) + '_comb'
         combined_ref_writer = open(combined_ref_file, 'w')
         utterances = sessionid_speakerid_dict[sessionid_speakerid]
-        text = ''
-        uttid_wc = 'utt'
+        sessionid_speakerid_utterances = {}
+        # sorting utterances by start and end time
         for line in utterances:
             parts = line.strip().split()
+            utt_parts = parts[0].strip().split('-')
+            time ='-'.join(utt_parts[1:])
+            sessionid_speakerid_utterances[time] = line
+        text = ''
+        uttid_wc = 'utt'
+        for time_key in sorted(sessionid_speakerid_utterances):
+            parts = sessionid_speakerid_utterances[time_key].strip().split()
             uttid_id = parts[0]
             utt_text = ' '.join(parts[1:])
             text = text + ' ' + ' '.join(parts[1:])
-            ref_writer.write(line)
+            ref_writer.write(sessionid_speakerid_utterances[time_key])
             length = str(len(utt_text.split()))
             uttid_id_len = uttid_id + ":" + length
             uttid_wc = uttid_wc + ' ' + uttid_id_len

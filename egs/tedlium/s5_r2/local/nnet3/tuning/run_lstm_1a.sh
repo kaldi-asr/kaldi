@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #    This is the standard "lstm" system, built in nnet3; this script
 # is the version that's meant to run with data-cleanup, that doesn't

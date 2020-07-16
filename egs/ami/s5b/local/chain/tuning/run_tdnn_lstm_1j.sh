@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1j is same as 1i but with changes related to fast-lstmp layer
 # changed num-chunk-per-minibatch to be variable

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1f is as 1d, but increasing decay-time from 40 to 80.  [see also 1e, at 20.]
 # see 1e for summary of results.

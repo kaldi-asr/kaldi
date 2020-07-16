@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Based mostly on the WSJ/Librispeech recipe. 
 # The training/testing database is described in http://www.openslr.org/40/

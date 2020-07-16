@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as tdnn_lstm_1o but use backstitch training.
 # Also num-epochs and l2-regularize are tuned for best performance.

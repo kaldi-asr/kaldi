@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 src=$1
 dst=$2

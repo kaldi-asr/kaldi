@@ -176,6 +176,9 @@ struct OnlineNnet2FeaturePipelineInfo {
   /// on the command line instead of inside sub-config-files.
   OnlineSilenceWeightingConfig silence_weighting_config;
 
+  /// Returns the frequency expected by the model
+  BaseFloat GetSamplingFrequency();
+
   int32 IvectorDim() { return ivector_extractor_info.extractor.IvectorDim(); }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineNnet2FeaturePipelineInfo);

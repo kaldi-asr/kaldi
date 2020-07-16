@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 [ -f ./path.sh ] && . ./path.sh

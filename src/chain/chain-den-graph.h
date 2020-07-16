@@ -63,7 +63,7 @@ class DenominatorGraph {
   DenominatorGraph();
 
   // Initialize from epsilon-free acceptor FST with pdf-ids plus one as the
-  // labels.  'num_pdfs' is only needeed for checking.
+  // labels.  'num_pdfs' is only needed for checking.
   DenominatorGraph(const fst::StdVectorFst &fst,
                    int32 num_pdfs);
 
@@ -88,7 +88,7 @@ class DenominatorGraph {
   // Note: we renormalize each HMM-state to sum to one before doing this.
   const CuVector<BaseFloat> &InitialProbs() const;
 
-  // This function outputs a modifified version of the FST that was used to
+  // This function outputs a modified version of the FST that was used to
   // build this object, that has an initial-state with epsilon transitions to
   // each state, with weight determined by initial_probs_; and has each original
   // state being final with probability one (note: we remove epsilons).  This is
@@ -124,7 +124,7 @@ class DenominatorGraph {
   CuArray<Int32Pair> forward_transitions_;
   // backward_transitions_ is an array, indexed by hmm-state index,
   // of start and end indexes into the transition_ array, which
-  // give us the set of transitions out of this state.
+  // give us the set of transitions into this state.
   CuArray<Int32Pair> backward_transitions_;
   // This stores the actual transitions.
   CuArray<DenominatorGraphTransition> transitions_;
@@ -153,7 +153,7 @@ void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
                            fst::StdVectorFst *fst);
 
 // Starting from an acceptor on phones that represents some kind of compiled
-// language model (with no disambiguation symbols), this funtion creates the
+// language model (with no disambiguation symbols), this function creates the
 // denominator-graph.  Note: there is similar code in chain-supervision.cc, when
 // creating the supervision graph.
 void CreateDenominatorFst(const ContextDependency &ctx_dep,

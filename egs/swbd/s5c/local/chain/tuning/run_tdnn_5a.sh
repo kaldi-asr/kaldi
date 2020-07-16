@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5a is as _4w, but increasing jesus-forward-output-dim from 1400 to 1800, and
 # jesus-forward-input-dim from 400 to 500.  Hoping that the cross-entropy regularization

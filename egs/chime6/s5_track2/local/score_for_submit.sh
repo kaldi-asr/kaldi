@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Apache 2.0
 #
 # This script provides CHiME-6 challenge track 2 submission scores.

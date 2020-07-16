@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1i is as 1e, but adding boundary-offset.  No clear effect.
 #

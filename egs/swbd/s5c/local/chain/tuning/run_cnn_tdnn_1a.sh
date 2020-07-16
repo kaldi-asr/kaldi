@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is based on tdnn_7q, but adding cnn as the front-end.
 # The cnn-tdnn-f (cnn_tdnn_1a) outperforms the tdnn-f (tdnn_7q).

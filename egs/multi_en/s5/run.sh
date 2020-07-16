@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2016  Allen Guo
 #           2017  Xiaohui Zhang

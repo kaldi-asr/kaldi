@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1c is as 1b, but uses more modern TDNN configuration.
 

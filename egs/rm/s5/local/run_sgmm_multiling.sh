@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Multilingual setup for SGMMs.
 # Caution: this is just a stub, intended to show some others what to do, it

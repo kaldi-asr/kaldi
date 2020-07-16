@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_1c.sh is like run_tdnn_1b.sh but changing chunk-width from 150 to
 # '140,110,160', and

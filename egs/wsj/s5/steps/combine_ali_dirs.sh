@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016  Xiaohui Zhang  Apache 2.0.
 # Copyright 2019  SmartAction (kkm)
 

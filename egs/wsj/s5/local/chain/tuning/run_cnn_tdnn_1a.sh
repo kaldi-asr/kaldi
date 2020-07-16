@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # This was modified from run_tdnn_1a.sh; it's the

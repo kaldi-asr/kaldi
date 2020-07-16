@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is as run_tdnn_lstm_1a.sh, but changing
 # frames_per_chunk  150 to  140,100,160

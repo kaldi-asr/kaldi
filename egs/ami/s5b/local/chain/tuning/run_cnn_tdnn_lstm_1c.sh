@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # cnn_tdnn_lstm_1c is based on cnn_tdnn_lstm_1b, but using smaller dropout-schedule
 # and larger decay-time option(40).

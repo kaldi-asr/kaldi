@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
 # This is as run_sgmm2.sh but excluding the "speaker-dependent weights",

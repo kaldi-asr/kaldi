@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4b is as _4a, but even narrower splice-indexes in 1st layer (no splicing)
 #  stopped early after train and valid likelihoods were not promising.

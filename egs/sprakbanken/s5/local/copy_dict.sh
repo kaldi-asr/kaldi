@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 # Copyright 2014-15 Mirsk Digital ApS  (Author: Andreas Kirkedal)

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 #           2018 Xiaohui Zhang
 #           2018 Vimal Manohar

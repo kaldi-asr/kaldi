@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # e2eali_1b is the same as e2eali_1a but uses unconstrained egs
 

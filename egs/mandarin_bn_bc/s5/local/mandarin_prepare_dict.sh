@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # prepare dictionary for Mandarin-ASR
 # it is done for English and Chinese separately,

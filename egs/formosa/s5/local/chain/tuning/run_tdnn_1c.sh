@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # CER:
 # %WER 16.44 [ 35459 / 215718, 4216 ins, 11278 del, 19965 sub ] exp/chain/tdnn_1b_sp/decode_test/cer_10_0.0

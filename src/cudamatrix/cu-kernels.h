@@ -39,15 +39,15 @@
 
 namespace kaldi {
 
-inline void cuda_add_row_sum_mat(int Gr, int Bl, double* result,
-                                 const double* mat, const MatrixDim d,
+inline void cuda_add_row_sum_mat(double* result, const double* mat,
+                                 void* scratch, const MatrixDim d,
                                  const double alpha, const double beta) {
-  cudaD_add_row_sum_mat(Gr, Bl, result, mat, d, alpha, beta);
+  cudaD_add_row_sum_mat(result, mat, scratch, d, alpha, beta);
 }
-inline void cuda_add_row_sum_mat(int Gr, int Bl, float* result,
-                                 const float* mat, const MatrixDim d,
+inline void cuda_add_row_sum_mat(float* result, const float* mat,
+                                 void* scratch, const MatrixDim d,
                                  const float alpha, const float beta) {
-  cudaF_add_row_sum_mat(Gr, Bl, result, mat, d, alpha, beta);
+  cudaF_add_row_sum_mat(result, mat, scratch, d, alpha, beta);
 }
 inline void cuda_add_col_sum_mat(int Gr, int Bl, double* result,
                                  const double* mat, const MatrixDim d,
@@ -1373,15 +1373,15 @@ inline void cuda_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value) {
   cudaF_trace_mat_mat(Gr, Bl, A, B, dA, B_stride, value);
 }
-inline void cuda_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A,
+inline void cuda_trace_mat_mat_trans(const double* A,
                                      const double* B, MatrixDim dA,
                                      int B_stride, double* value) {
-  cudaD_trace_mat_mat_trans(Gr, Bl, A, B, dA, B_stride, value);
+  cudaD_trace_mat_mat_trans(A, B, dA, B_stride, value);
 }
-inline void cuda_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A,
+inline void cuda_trace_mat_mat_trans(const float* A,
                                      const float* B, MatrixDim dA, int B_stride,
                                      float* value) {
-  cudaF_trace_mat_mat_trans(Gr, Bl, A, B, dA, B_stride, value);
+  cudaF_trace_mat_mat_trans(A, B, dA, B_stride, value);
 }
 inline void cuda_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat,
                                 MatrixDim mat_dim, const int* smat_row_ptr,
