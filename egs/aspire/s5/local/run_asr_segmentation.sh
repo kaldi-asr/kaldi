@@ -136,7 +136,7 @@ if [ $stage -le 4 ]; then
   background_snrs="20:10:15:5:0"
   # corrupt the data to generate multi-condition data
   # for data_dir in train dev test; do
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --prefix "rev" \
     --foreground-snrs $foreground_snrs \
