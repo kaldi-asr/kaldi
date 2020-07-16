@@ -8,9 +8,9 @@ use_gpu=no
 . utils/parse_options.sh
 
 if [ $# != 2 ]; then
-  echo "Usage: $0 <rnn-dir> <input-text>"
+  echo "Usage: $0 [options] <rnn-dir> <input-text>"
   echo "Options: "
-  echo "  --use_gpu (yes|no|optional|wait)  # whether to use gpu."
+  echo "  --use_gpu (yes|no|optional|wait)  # whether to use gpu [no]."
   exit 1
 fi
 
@@ -51,4 +51,3 @@ ppl=$(rnnlm-sentence-probs ${opt} \
        awk '{for(i=2;i<=NF;i++) a+=$i; b+=NF-1}END{print exp(-a / b)}')
 
 echo "$0: perplexity is $ppl"
-
