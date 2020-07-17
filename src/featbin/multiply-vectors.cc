@@ -1,9 +1,7 @@
 // featbin/multiply-vectors.cc
 
-// Copyright 2012 Korbinian Riedhammer
-//           2013 Brno University of Technology (Author: Karel Vesely)
-//           2013 Johns Hopkins University (Author: Daniel Povey)
-//           2020 Ivan Medennikov (STC-innovations Ltd)
+// Copyright 2020 Ivan Medennikov (STC-innovations Ltd)
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,20 +20,22 @@
 
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
+
 #include "matrix/kaldi-matrix.h"
+#include "util/common-utils.h"
+
 
 namespace kaldi {
 
 // returns true if successfully multiplied.
 bool MultiplyVectors(const std::vector<Vector<BaseFloat> > &in,
-                 std::string utt,
-                 int32 tolerance,
-                 Vector<BaseFloat> *out) {
+                     std::string utt,
+                     int32 tolerance,
+                     Vector<BaseFloat> *out) {
   // Check the lengths
   int32 min_len = in[0].Dim(),
       max_len = in[0].Dim();
-  for (int32 i = 1; i < in.size(); i++) {
+  for (int32 i = 1; i < in.size(); ++i) {
     int32 len = in[i].Dim();
     if(len < min_len) min_len = len;
     if(len > max_len) max_len = len;
@@ -54,14 +54,14 @@ bool MultiplyVectors(const std::vector<Vector<BaseFloat> > &in,
   }
   out->Resize(min_len);
   out->Set(1.0);
-  for (int32 i = 0; i < in.size(); i++) {
+  for (int32 i = 0; i < in.size(); ++i) {
     out->MulElements(in[i].Range(0, min_len));
   }
   return true;
 }
 
 
-}
+}  // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
@@ -102,52 +102,52 @@ int main(int argc, char *argv[]) {
       BaseFloatVectorWriter vector_writer(wspecifier);
 
       // First input is sequential
-      string rspecifier1 = po.GetArg(1);
-      SequentialBaseFloatVectorReader input1(rspecifier1);
+      string first_rspecifier = po.GetArg(1);
+      SequentialBaseFloatVectorReader first_input(first_rspecifier);
 
       // Assemble vector of other input readers (with random-access)
-      vector<RandomAccessBaseFloatVectorReader *> input;
-      for (int32 i = 2; i < po.NumArgs(); i++) {
+      vector<RandomAccessBaseFloatVectorReader *> rest_inputs;
+      for (int32 i = 2; i < po.NumArgs(); ++i) {
         string rspecifier = po.GetArg(i);
         RandomAccessBaseFloatVectorReader *rd = new RandomAccessBaseFloatVectorReader(rspecifier);
-        input.push_back(rd);
+        rest_inputs.push_back(rd);
       }
 
       int32 num_done = 0, num_err = 0;
 
       // Main loop
-      for (; !input1.Done(); input1.Next()) {
-        string utt = input1.Key();
+      for (; !first_input.Done(); first_input.Next()) {
+        string utt = first_input.Key();
         KALDI_VLOG(2) << "Multiplying vectors for utterance " << utt;
 
         // Collect features from streams to vector 'vectors'
         vector<Vector<BaseFloat> > vectors(po.NumArgs() - 1);
-        vectors[0] = input1.Value();
-        int32 i;
-        for (i = 0; i < static_cast<int32>(input.size()); i++) {
-          if (input[i]->HasKey(utt)) {
-            vectors[i + 1] = input[i]->Value(utt);
+        vectors[0] = first_input.Value();
+        size_t i;
+        for (i = 0; i < rest_inputs.size(); ++i) {
+          if (rest_inputs[i]->HasKey(utt)) {
+            vectors[i + 1] = rest_inputs[i]->Value(utt);
           } else {
             KALDI_WARN << "Missing utt " << utt << " from input "
-                       << po.GetArg(i+2);
-            num_err++;
+                       << po.GetArg(i + 2);
+            ++num_err;
             break;
           }
         }
-        if (i != static_cast<int32>(input.size()))
+        if (i != rest_inputs.size())
           continue;
         Vector<BaseFloat> output;
         if (!MultiplyVectors(vectors, utt, length_tolerance, &output)) {
-          num_err++;
+          ++num_err;
           continue; // it will have printed a warning.
         }
         vector_writer.Write(utt, output);
-        num_done++;
+        ++num_done;
       }
 
-      for (int32 i=0; i < input.size(); i++)
-        delete input[i];
-      input.clear();
+      for (int32 i = 0; i < rest_inputs.size(); ++i)
+        delete rest_inputs[i];
+      rest_inputs.clear();
 
       KALDI_LOG << "Done " << num_done << " utts, errors on "
                 << num_err;
@@ -156,8 +156,8 @@ int main(int argc, char *argv[]) {
     } else {
       // We're operating on rxfilenames|wxfilenames, most likely files.
       std::vector<Vector<BaseFloat> > vectors(po.NumArgs() - 1);
-      for (int32 i = 1; i < po.NumArgs(); i++)
-        ReadKaldiObject(po.GetArg(i), &(vectors[i-1]));
+      for (int32 i = 1; i < po.NumArgs(); ++i)
+        ReadKaldiObject(po.GetArg(i), &(vectors[i - 1]));
       Vector<BaseFloat> output;
       if (!MultiplyVectors(vectors, "", length_tolerance, &output))
         return 1; // it will have printed a warning.
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Wrote multiplied vector to " << output_wxfilename;
       return 0;
     }
-  } catch(const std::exception &e) {
+  } catch (const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

@@ -66,6 +66,8 @@ struct DeviceParams {
   int32 max_active;
   int32 adaptive_beam_static_segment;
   int32 adaptive_beam_bin_width;
+
+  CostType fst_zero;
 };
 
 // KernelParams contains all the kernels arguments that change between kernel
@@ -184,14 +186,12 @@ void FinalizeProcessNonEmittingKernel(const dim3 &grid, const dim3 &block,
 void GetBestCostStep1Kernel(const dim3 &grid, const dim3 &block,
                             const cudaStream_t &st,
                             const DeviceParams &cst_dev_params,
-                            const KernelParams &kernel_params, bool isfinal,
-                            CostType fst_zero);
+                            const KernelParams &kernel_params, bool isfinal);
 
 void GetBestCostStep2Kernel(const dim3 &grid, const dim3 &block,
                             const cudaStream_t &st,
                             const DeviceParams &cst_dev_params,
-                            const KernelParams &kernel_params, bool isfinal,
-                            CostType fst_zero);
+                            const KernelParams &kernel_params, bool isfinal);
 
 void GetBestCostStep3Kernel(const dim3 &grid, const dim3 &block,
                             const cudaStream_t &st,
@@ -200,7 +200,7 @@ void GetBestCostStep3Kernel(const dim3 &grid, const dim3 &block,
 
 typedef unsigned char BinId;
 
-}  // namespace kaldi
 }  // namespace cuda_decoder
+}  // namespace kaldi
 
 #endif  // KALDI_CUDA_DECODER_CUDA_DECODER_KERNELS_H_

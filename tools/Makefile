@@ -40,11 +40,10 @@ check_required_programs:
 clean: openfst_cleaned sclite_cleaned
 
 openfst_cleaned:
-	$(MAKE) -C openfst-$(OPENFST_VERSION) clean
-
+	-$(MAKE) -C openfst-$(OPENFST_VERSION) clean
 
 sclite_cleaned:
-	$(MAKE) -C sctk clean
+	-$(MAKE) -C sctk clean
 
 distclean:
 	rm -rf openfst-$(OPENFST_VERSION)/
@@ -86,11 +85,6 @@ else
 endif
 
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs
-	# modify src/extensions/far/Makefile.am to make it work with gcc >= 5, while keep its timestamp to avoid autoreconf
-	$(eval make_file=openfst-$(OPENFST_VERSION)/src/extensions/far/Makefile.in)
-	sed -i.orig 's~am__DEPENDENCIES_1 =$$~& libfstfar.la~' $(make_file)
-	sed -i.orig2 's~\(@LDADD = libfstfarscript.la\) \.\.~\1 libfstfar.la ..~' $(make_file)
-	touch -r $(make_file).orig $(make_file)
 	cd openfst-$(OPENFST_VERSION)/ && \
 	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS) $(openfst_add_CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
