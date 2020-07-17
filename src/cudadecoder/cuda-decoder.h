@@ -848,8 +848,8 @@ class CudaDecoder {
   std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
-  std::atomic_int32_t n_partial_traceback_threads_todo_;
-  std::atomic_int32_t n_partial_traceback_threads_not_done_;
+  std::atomic<std::uint32_t> n_partial_traceback_threads_todo_;
+  std::atomic<std::uint32_t> n_partial_traceback_threads_not_done_;
 
   bool h2h_threads_running_;
   // Using the output from GetBestPath, we add the best tokens (as
