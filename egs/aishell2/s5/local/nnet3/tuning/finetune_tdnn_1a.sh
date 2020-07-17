@@ -45,6 +45,7 @@ fi
 if [ $stage -le 2 ]; then
   $train_cmd $dir/log/generate_input_model.log \
     nnet3-am-copy --raw=true $src_dir/final.mdl $dir/input.raw
+fi
 
 if [ $stage -le 3 ]; then
   steps/nnet3/train_dnn.py --stage=$train_stage \
