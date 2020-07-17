@@ -2,6 +2,7 @@
 
 // Copyright 2020 Ivan Medennikov (STC-innovations Ltd)
 
+
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +20,10 @@
 
 
 #include "base/kaldi-common.h"
+
 #include "matrix/kaldi-matrix.h"
 #include "util/common-utils.h"
+
 
 namespace kaldi {
 
