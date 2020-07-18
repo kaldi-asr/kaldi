@@ -192,7 +192,7 @@ class GrammarFstTpl {
   // This is called in LatticeFasterDecoder.  As an implementation shortcut, if
   // the state is an expanded state, we return 1, meaning 'yes, there are input
   // epsilons'; the calling code doesn't actually care about the exact number.
-  inline size_t NumInputEpsilons(StateId s) const {
+  size_t NumInputEpsilons(StateId s) const {
     // Compare with the constructor of ArcIterator.
     int32 instance_id = s >> 32;
     BaseStateId base_state = static_cast<int32>(s);
@@ -205,7 +205,7 @@ class GrammarFstTpl {
     }
   }
 
-  inline std::string Type() const { return "grammar"; }
+  std::string Type() const { return "grammar"; }
 
   ~GrammarFstTpl();
 
@@ -258,12 +258,13 @@ class GrammarFstTpl {
     // return_state) to instance_id.  When we encounter an arc in our FST with a
     // user-defined nonterminal indexed 'nonterminal_index' on its ilabel, and
     // with 'return_state' as its nextstate, we look up that pair
-    // (nonterminal_index, return_state) in this map to see whether there already
-    // exists an FST instance for that.  If it exists then the transition goes to
-    // that FST instance; if not, then we create a new one.  The 'return_state'
-    // that's part of the key in this map would be the same as the 'parent_state'
-    // in that child FST instance, and of course the 'parent_instance' in
-    // that child FST instance would be the instance_id of this instance.
+    // (nonterminal_index, return_state) in this map to see whether there
+    // already exists an FST instance for that.  If it exists then the
+    // transition goes to that FST instance; if not, then we create a new one.
+    // The 'return_state' that's part of the key in this map would be the same
+    // as the 'parent_state' in that child FST instance, and of course the
+    // 'parent_instance' in that child FST instance would be the instance_id of
+    // this instance.
     //
     // In most cases each return_state would only have a single
     // nonterminal_index, making the 'nonterminal_index' in the key *usually*
@@ -298,21 +299,21 @@ class GrammarFstTpl {
   // demand.  An instance_id refers to an index into this vector.
   std::vector<FstInstance> instances_;
 
+  // The integer id of the symbol #nonterm_bos in phones.txt.
+  int32 nonterm_phones_offset_;
+
   // The top-level FST passed in by the user; contains the start state and
   // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
   // each other recursively).
   std::shared_ptr<FST > top_fst_;
-
-  // The integer id of the symbol #nonterm_bos in phones.txt.
-  int32 nonterm_phones_offset_;
 
   // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
   // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
   // 'fst' is the corresponding FST.
   std::vector<std::pair<int32, std::shared_ptr<FST > > > ifsts_;
 
-  // Maps from the user-defined nonterminals like #nonterm:foo as numbered
-  // in phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
+  // Maps from the user-defined nonterminals like #nonterm:foo as numbered in
+  // phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
   std::unordered_map<int32, int32> nonterminal_map_;
 
   // entry_arcs_ will have the same dimension as ifsts_.  Each entry_arcs_[i]
@@ -326,8 +327,6 @@ class GrammarFstTpl {
   std::vector<std::unordered_map<int32, int32> > entry_arcs_;
 
  private:
-
-
   friend class ArcIterator<GrammarFstTpl<FST> >;
 
   // sets up nonterminal_map_.
@@ -391,9 +390,10 @@ class GrammarFstTpl {
      if something went wrong or ilabel did not represent that (e.g. was less
      than kNontermBigNumber).
 
-       @param [in] the ilabel to be decoded.  Note: the type 'Label' will in practice be int.
+       @param [in]  The ilabel to be decoded.  Note: the type 'Label' will
+                    in practice be int.
        @param [out] The nonterminal part of the ilabel after decoding.
-                   Will be a value greater than nonterm_phones_offset_.
+                    Will be a value greater than nonterm_phones_offset_.
        @param [out] The left-context-phone part of the ilabel after decoding.
                     Will either be a phone index, or the symbol corresponding
                     to #nonterm_bos (meaning no left-context as we are at
