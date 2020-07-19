@@ -6,7 +6,7 @@
 # This script resamples the targets matrix by the specified <subsampling-factor>.
 # If <subsampling-factor> is negative, then the targets will be upsampled 
 # by -<subsampling-factor>.
-# This script is a wrapper to steps/segmentation/interal/resample_targets.py,
+# This script is a wrapper to steps/segmentation/internal/resample_targets.py,
 # which works very similar to the binary subsample-feats. See that script
 # for details about how the resampling is done.
 
