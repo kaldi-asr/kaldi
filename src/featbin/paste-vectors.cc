@@ -51,7 +51,11 @@ int main(int argc, char *argv[]) {
     using namespace std;
 
     const char *usage =
-        "Concatenate vector files \n"
+        "Concatenate vector files.\n"
+        "Append to vectors the first archive the vectors under the same key\n"
+        "from the second and following archives, and output the result.\n"
+        "NOTE: Keys absent from the first archive will not be present in output,\n"
+        "even if they occur in the additional input archives.\n"
         "Usage: paste-vectors <in-rspecifier1> <in-rspecifier2> [<in-rspecifier3> ...] <out-wspecifier>\n"
         "See also: paste-feats, copy-feats, copy-matrix, append-vector-to-feats, concat-feats\n";
 
@@ -64,64 +68,63 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    if (ClassifyRspecifier(po.GetArg(1), NULL, NULL)
-        != kNoRspecifier) {
-      // We're operating on tables, e.g. archives.
+    if (ClassifyRspecifier(po.GetArg(1), NULL, NULL) == kNoRspecifier) {
+      KALDI_ERR << "This program can operate only on tables, not on rxfiles";
+    }
 
-      // Last argument is output
-      string wspecifier = po.GetArg(po.NumArgs());
-      BaseFloatVectorWriter vec_writer(wspecifier);
+    // Last argument is output
+    string wspecifier = po.GetArg(po.NumArgs());
+    BaseFloatVectorWriter vec_writer(wspecifier);
 
-      // First input is sequential
-      string first_rspecifier = po.GetArg(1);
-      SequentialBaseFloatVectorReader first_input(first_rspecifier);
+    // First input is sequential
+    string first_rspecifier = po.GetArg(1);
+    SequentialBaseFloatVectorReader first_input(first_rspecifier);
 
-      // Assemble vector of other input readers (with random-access)
-      vector<RandomAccessBaseFloatVectorReader *> rest_inputs;
-      for (int32 i = 2; i < po.NumArgs(); ++i) {
-        string rspecifier = po.GetArg(i);
-        RandomAccessBaseFloatVectorReader *rd = new RandomAccessBaseFloatVectorReader(rspecifier);
-        rest_inputs.push_back(rd);
-      }
+    // Assemble vector of other input readers (with random-access)
+    vector<RandomAccessBaseFloatVectorReader *> rest_inputs;
+    for (int32 i = 2; i < po.NumArgs(); ++i) {
+      string rspecifier = po.GetArg(i);
+      RandomAccessBaseFloatVectorReader *rd = new RandomAccessBaseFloatVectorReader(rspecifier);
+      rest_inputs.push_back(rd);
+    }
 
-      int32 num_done = 0, num_err = 0;
+    int32 num_done = 0, num_err = 0;
 
-      // Main loop
-      for (; !first_input.Done(); first_input.Next()) {
-        string utt = first_input.Key();
-        KALDI_VLOG(2) << "Merging vectors for utterance " << utt;
+    // Main loop
+    for (; !first_input.Done(); first_input.Next()) {
+      string utt = first_input.Key();
+      KALDI_VLOG(2) << "Merging vectors for utterance " << utt;
 
-        // Collect vectors from streams to vector 'vectors'
-        vector<Vector<BaseFloat> > vectors(po.NumArgs() - 1);
-        vectors[0] = first_input.Value();
-        size_t i;
-        for (i = 0; i < rest_inputs.size(); ++i) {
-          if (rest_inputs[i]->HasKey(utt)) {
-            vectors[i + 1] = rest_inputs[i]->Value(utt);
-          } else {
-            KALDI_WARN << "Missing utt " << utt << " from input "
-                       << po.GetArg(i + 2);
-            ++num_err;
-            break;
-          }
+      // Collect vectors from streams to vector 'vectors'
+      vector<Vector<BaseFloat> > vectors(po.NumArgs() - 1);
+      vectors[0] = first_input.Value();
+      size_t i;
+      for (i = 0; i < rest_inputs.size(); ++i) {
+        if (rest_inputs[i]->HasKey(utt)) {
+          vectors[i + 1] = rest_inputs[i]->Value(utt);
+        } else {
+          KALDI_WARN << "Missing utt " << utt << " from input "
+                     << po.GetArg(i + 2);
+          ++num_err;
+          break;
         }
-        if (i != rest_inputs.size())
-          continue;
-        Vector<BaseFloat> output;
-        AppendVectors(vectors, &output);
-        vec_writer.Write(utt, output);
-        ++num_done;
       }
+      if (i != rest_inputs.size())
+        continue;
+      Vector<BaseFloat> output;
+      AppendVectors(vectors, &output);
+      vec_writer.Write(utt, output);
+      ++num_done;
+    }
 
-      for (int32 i = 0; i < rest_inputs.size(); ++i)
-        delete rest_inputs[i];
-      rest_inputs.clear();
+    for (int32 i = 0; i < rest_inputs.size(); ++i)
+      delete rest_inputs[i];
+    rest_inputs.clear();
 
-      KALDI_LOG << "Done " << num_done << " utts, errors on "
-                << num_err;
+    KALDI_LOG << "Done " << num_done << " utts, errors on "
+              << num_err;
 
-      return (num_done == 0 ? -1 : 0);
-    } 
+    return (num_done == 0 ? -1 : 0);
   } catch (const std::exception &e) {
     std::cerr << e.what();
     return -1;
