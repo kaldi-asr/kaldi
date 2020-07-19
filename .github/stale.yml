@@ -2,7 +2,7 @@
 daysUntilStale: 60
 # Number of days of inactivity before a stale issue is closed.
 # TODO(kkm): Re-enable auto-closing when done with the current heap of old PRs.
-# daysUntilClose: 30
+daysUntilClose: false
 # Issues with these labels will never be considered stale.
 exemptLabels:
   - discussion
