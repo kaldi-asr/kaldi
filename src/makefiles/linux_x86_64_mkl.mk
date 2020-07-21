@@ -53,25 +53,5 @@ ifeq ($(findstring clang,$(COMPILER)),clang)
 CXXFLAGS += -Wno-mismatched-tags
 endif
 
-## Use the following for STATIC LINKING of the SEQUENTIAL version of MKL
-MKL_STA_SEQ = $(MKLLIB)/libmkl_solver_lp64_sequential.a -Wl,--start-group \
-	$(MKLLIB)/libmkl_intel_lp64.a $(MKLLIB)/libmkl_sequential.a \
-	$(MKLLIB)/libmkl_core.a -Wl,--end-group -lpthread
-
-## Use the following for STATIC LINKING of the MULTI-THREADED version of MKL
-MKL_STA_MUL = $(MKLLIB)/libmkl_solver_lp64.a -Wl,--start-group \
-	$(MKLLIB)/libmkl_intel_lp64.a $(MKLLIB)/libmkl_intel_thread.a \
-	$(MKLLIB)/libmkl_core.a -Wl,--end-group $(MKLLIB)/libiomp5.a -lpthread
-
-## Use the following for DYNAMIC LINKING of the SEQUENTIAL version of MKL
-MKL_DYN_SEQ = -L$(MKLLIB) -lmkl_solver_lp64_sequential -Wl,--start-group \
-	-lmkl_intel_lp64 -lmkl_sequential -lmkl_core -Wl,--end-group -lpthread
-
-## Use the following for DYNAMIC LINKING of the MULTI-THREADED version of MKL
-MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
-	-lmkl_intel_thread -lmkl_core -Wl,--end-group -liomp5 -lpthread
-
-# MKLFLAGS = $(MKL_DYN_MUL)
-
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(MKLFLAGS) -lm -lpthread -ldl

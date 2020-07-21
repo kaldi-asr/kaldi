@@ -99,11 +99,17 @@ int main(int argc, char *argv[]) {
     int num_todo = -1;
     int niterations = 3;
     int num_streaming_channels = 2000;
+    bool print_partial_hypotheses = false;
+    bool print_endpoints = false;
     ParseOptions po(usage);
     po.Register("write-lattice", &write_lattice,
                 "Output lattice to a file. Setting to "
                 "false is useful when "
                 "benchmarking");
+    po.Register("print-partial-hypotheses", &print_partial_hypotheses,
+                "Prints the partial hypotheses");
+    po.Register("print-endpoints", &print_endpoints,
+                "Prints the detected endpoints");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("file-limit", &num_todo,
@@ -170,7 +176,7 @@ int main(int argc, char *argv[]) {
                      "table from file "
                   << word_syms_rxfilename;
       else {
-        //        cuda_pipeline.SetSymbolTable(word_syms);
+        cuda_pipeline.SetSymbolTable(*word_syms);
       }
     }
 
@@ -247,6 +253,15 @@ int main(int argc, char *argv[]) {
     std::vector<bool> batch_is_last_chunk;
     // Used when use_online_ivectors_
     std::vector<SubVector<BaseFloat>> batch_wave_samples;
+
+    // Partial hypotheses
+    std::vector<const std::string *> partial_hypotheses;
+    std::vector<const std::string *> *partial_hypotheses_ptr =
+        print_partial_hypotheses ? &partial_hypotheses : NULL;
+
+    // Endpointing
+    std::vector<bool> end_points;
+    std::vector<bool> *end_points_ptr = print_endpoints ? &end_points : NULL;
 
     double batch_valid_at = gettime_monotonic();
     bool pipeline_starved_warning_printed = false;
@@ -339,7 +354,26 @@ int main(int argc, char *argv[]) {
           if (wait_for > 0) usleep(wait_for * 1e6);
 
           cuda_pipeline.DecodeBatch(batch_corr_ids, batch_wave_samples,
-                                    batch_is_first_chunk, batch_is_last_chunk);
+                                    batch_is_first_chunk, batch_is_last_chunk,
+                                    partial_hypotheses_ptr, end_points_ptr);
+          if (print_partial_hypotheses || print_endpoints) {
+            KALDI_LOG << "========== BEGIN CHUNK ==========";
+            for (size_t i = 0; i < batch_corr_ids.size(); ++i) {
+              std::ostringstream oss;
+              bool something_to_print = (print_partial_hypotheses ||
+                                         (print_endpoints && end_points[i]));
+              if (!something_to_print) continue;
+
+              oss << "CORR_ID #" << batch_corr_ids[i];
+              if (print_endpoints) {
+                oss << (end_points[i] ? " [ENDPOINT]" : "\t\t");
+              }
+              if (print_partial_hypotheses)
+                oss << "\t: " << *partial_hypotheses[i];
+              KALDI_LOG << oss.str();
+            }
+            KALDI_LOG << "=========== END CHUNK ===========";
+          }
           batch_corr_ids.clear();
           batch_is_first_chunk.clear();
           batch_is_last_chunk.clear();

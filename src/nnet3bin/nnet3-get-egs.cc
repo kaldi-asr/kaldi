@@ -105,21 +105,21 @@ static bool ProcessFile(const GeneralMatrix &feats,
 
     Posterior labels(num_frames_subsampled);
 
-    // TODO: it may be that using these weights is not actually helpful (with
-    // chain training, it was not), and that setting them all to 1 is better.
-    // We could add a boolean option to this program to control that; but I
-    // don't want to add such an option if experiments show that it is not
-    // helpful.
-    for (int32 i = 0; i < num_frames_subsampled; i++) {
-      int32 t = i + start_frame_subsampled;
+    // TODO(danpovey): it may be that using these weights is not actually
+    // helpful (with chain training, it was not), and that setting them all to 1
+    // is better.  We could add a boolean option to this program to control
+    // that; but I don't want to add such an option if experiments show that it
+    // is not helpful.
+    for (int32 i = 0; i < num_frames_subsampled; ++i) {
+      int32 t = (i + start_frame_subsampled) * frame_subsampling_factor;
       if (t < pdf_post.size())
         labels[i] = pdf_post[t];
-      for (std::vector<std::pair<int32, BaseFloat> >::iterator
-               iter = labels[i].begin(); iter != labels[i].end(); ++iter)
-        iter->second *= chunk.output_weights[i];
+      for (auto& label_post : labels[i])
+        label_post.second *= chunk.output_weights[i * frame_subsampling_factor];
     }
 
-    eg.io.push_back(NnetIo("output", num_pdfs, 0, labels, frame_subsampling_factor));
+    eg.io.push_back(NnetIo("output", num_pdfs, 0, labels,
+                           frame_subsampling_factor));
 
     if (compress)
       eg.Compress();
