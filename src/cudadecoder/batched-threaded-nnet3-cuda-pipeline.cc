@@ -172,7 +172,7 @@ bool BatchedThreadedNnet3CudaPipeline::IsGroupCompleted(
 std::string BatchedThreadedNnet3CudaPipeline::WaitForAnyGroup() {
   std::unique_lock<std::mutex> lk(group_tasks_mutex_);
   // Waiting for any group to be done.
-  const string *group_done;
+  const std::string *group_done;
   auto predicate = [this, &group_done] {
     for (auto it : group_tasks_not_done_) {
       if (it.second == 0) {

@@ -140,7 +140,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(fst);
@@ -148,7 +148,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> *fst_copy_orig = new VectorFst<Arc>(*fst);
@@ -362,7 +362,7 @@ void TestEqualAlign() {
 template<class Arc> void Print(const Fst<Arc> &fst, std::string message) {
   std::cout << message << "\n";
   FstPrinter<Arc> fstprinter(fst, NULL, NULL, NULL, false, true, "\t");
-  fstprinter.Print(&std::cout, "standard output");
+  fstprinter.Print(std::cout, "standard output");
 }
 
 

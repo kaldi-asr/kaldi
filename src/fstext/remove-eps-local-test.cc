@@ -83,7 +83,7 @@ template<class Arc> static void TestRemoveEpsLocal() {
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> fst_copy1(fst);
@@ -96,7 +96,7 @@ template<class Arc> static void TestRemoveEpsLocal() {
   {
     std::cout << "copy1 = \n";
     FstPrinter<Arc> fstprinter(fst_copy1, sptr, sptr, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -141,7 +141,7 @@ static void TestRemoveEpsLocalSpecial() {
   {
     std::cout << "logfst = \n";
     FstPrinter<LogArc> fstprinter(*logfst, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<StdArc> fst;
@@ -156,7 +156,7 @@ static void TestRemoveEpsLocalSpecial() {
   {
     std::cout << "logfst2 = \n";
     FstPrinter<LogArc> fstprinter(logfst2, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   if (ApproxEqual(ShortestDistance(*logfst), ShortestDistance(logfst2))) {
     // make sure we preserved stochasticity in cases where doing so was

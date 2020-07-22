@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
       if (dstate & (decoder.kEndFeats | decoder.kEndUtt)) {
         decoder.FinishTraceBack(&out_fst);
         fst::GetLinearSymbolSequence(out_fst,
-                                     static_cast<vector<int32> *>(0),
+                                     static_cast<std::vector<int32> *>(0),
                                      &word_ids,
                                      static_cast<LatticeArc::Weight*>(0));
         SendPartialResult(word_ids, word_syms, partial_res || word_ids.size(),
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
       } else {
         if (decoder.PartialTraceback(&out_fst)) {
           fst::GetLinearSymbolSequence(out_fst,
-                                       static_cast<vector<int32> *>(0),
+                                       static_cast<std::vector<int32> *>(0),
                                        &word_ids,
                                        static_cast<LatticeArc::Weight*>(0));
           SendPartialResult(word_ids, word_syms, false,
