@@ -11,23 +11,22 @@ import os, sys
 wav_dir = sys.argv[1]
 out_dir = sys.argv[2]
 
-utts = open(os.path.join(out_dir, "utt_list"), 'r').readlines()
-utts = set(x.rstrip() for x in utts)
-wav = ""
-with open(os.path.join(out_dir, "utt2spk"), 'w') as utt2spk_fi , open(os.path.join(out_dir, "segments"), 'w') as segments_fi: 
-    for subdir, dirs, files in os.walk(wav_dir):
-      for file in files:
-        utt = str(file).replace(".sph", "")
-        if file.endswith(".sph") and utt in utts:
-          wav = "{0}{1} sox {2}/{1}.sph -c 1 -r 16000 -t wav - |\n".format(wav, utt, subdir)
-    wav_fi = open(os.path.join(out_dir, "wav.scp"), 'w')
-    wav_fi.write(wav)
+with open(os.path.join(out_dir, "utt2spk"), 'w') as utt2spk_fi, \
+    open(os.path.join(out_dir, "segments"), 'w') as segments_fi, \
+    open(os.path.join(out_dir, "wav.scp"), 'w') as wav_fi, \
+    open(os.path.join(out_dir, "utt_list"), 'r') as utt_fi:
+  utts = set(utt.rstrip() for utt in utt_fi.readlines())
+  for subdir, dirs, files in os.walk(wav_dir):
+    for f in files:
+      utt = str(f).replace(".sph", "")
+      if f.endswith(".sph") and utt in utts:
+        wav_fi.write("{0} sox {1}/{0}.sph -c 1 -r 16000 -t wav - |\n".format(utt, subdir))
 
     for utt in utts:
       music_filename = utt + "_music.key.refined"
       speech_filename = utt + "_speech.key.refined"
-      music_fi = open(os.path.join(out_dir, music_filename), 'r').readlines()
-      speech_fi = open(os.path.join(out_dir, speech_filename), 'r').readlines()
+      with open(os.path.join(out_dir, music_filename), 'r') as music_fi, \
+          open(os.path.join(out_dir, speech_filename), 'r') as speech_fi:
       for count, line in enumerate(music_fi, 1):
         left, right = line.rstrip().split(" ")
         segments_fi.write("{0}-music-{1} {0} {2} {3}\n".format(utt, count, left, right))
