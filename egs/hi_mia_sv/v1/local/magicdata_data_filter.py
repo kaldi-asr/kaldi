@@ -25,6 +25,7 @@ def main(argv):
     if '.wav' not in line:
       continue
     (wavid, spkid, text) = line.strip('\r\n').split('\t')
+    spkid = spkid.replace('_','-')
     if len(bad) > 0 and wavid in bad:
       continue
     if wavid in files.keys():

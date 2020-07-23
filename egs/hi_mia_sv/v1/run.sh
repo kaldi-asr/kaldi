@@ -11,7 +11,7 @@ set -e
 mfccdir=`pwd`/exp/mfcc
 vaddir=`pwd`/exp/mfcc
 
-nj=20
+nj=40
 stage=-10
 include_aishell2=false # by default we do not have AISHELL data involved since
                        # it is not available immediately for everybody
@@ -32,12 +32,12 @@ if [ $stage -le -10 ]; then
     local/prepare_multi_cn.sh --stage 0 corpora/openslr || exit 1;
 fi
 
-if [ $srage -le -1 ]; then
+if [ $stage -le -1 ]; then
     if $include_aishell2; then
         # check if AISHELL2 corpus exists
-        [ -d $aishell2_root/iOS/train ] || (echo $aishell2_root does not exist && exit 1;)
+        [ -d $aishell2_root/iOS/data ] || (echo $aishell2_root does not exist && exit 1;)
         # AISHELL2 preparation
-        local/prepare_aishell2.sh $aishell2_root/iOS/train \
+        local/prepare_aishell2.sh $aishell2_root/iOS/data \
             data/aishell2/local/train data/aishell2/train
         utils/fix_data_dir.sh data/aishell2/train || exit 1;
         utils/combine_data.sh data/train \
@@ -69,16 +69,15 @@ fi
 
 if [ $stage -le 1 ]; then
     for set in train himia/test himia/dev himia/train; do
-        steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc.conf \
+        steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" --mfcc-config conf/mfcc.conf \
             data/$set exp/make_mfccs/$set/log exp/make_mfccs/$set || exit 1;
         utils/fix_data_dir.sh data/$set
-        sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
+        sid/compute_vad_decision.sh --nj $nj --cmd "$train_cmd" \
             data/$set exp/make_vad/$set/log exp/make_vad/$set
         steps/compute_cmvn_stats.sh data/$set || exit 1;
         utils/fix_data_dir.sh data/$set
     done
 fi
-
 # data augmentation
 if [ $stage -le 2 ]; then
     frame_shift=0.01
@@ -120,7 +119,6 @@ if [ $stage -le 2 ]; then
         utils/data/get_utt2dur.sh data/musan_${name}
         mv data/musan_${name}/utt2dur data/musan_${name}/reco2dur
     done
-
     # Augment with musan_noise
     steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
     # Augment with musan_music
@@ -140,7 +138,7 @@ if [ $stage -le 3 ]; then
     # Make MFCCs for the augmented data.  Note that we do not compute a new
     # vad.scp file here.  Instead, we use the vad.scp from the clean version of
     # the list.
-    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj $nj --cmd "$train_cmd" \
         data/train_aug_1m exp/make_mfccs/train_aug_1m/log exp/make_mfccs/train_aug_1m
 
     # Combine the clean and augmented VoxCeleb2 list.  This is now roughly
@@ -152,7 +150,7 @@ if [ $stage -le 4 ]; then
     # This script applies CMVN and removes nonspeech frames.  Note that this is somewhat
     # wasteful, as it roughly doubles the amount of training data on disk.  After
     # creating training examples, this can be removed.
-    local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd "$train_cmd" \
+    local/nnet3/xvector/prepare_feats_for_egs.sh --nj $nj --cmd "$train_cmd" \
         data/train_combined data/train_combined_no_sil exp/train_combined_no_sil
     utils/fix_data_dir.sh data/train_combined_no_sil
 fi
