@@ -285,13 +285,14 @@ EOF
 
   if [ ! -z "$online_ivector_dir" ]; then
       ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
-      echo $ivector_dim > $dir/info/ivector_dim
       echo ivector_dim $ivector_dim >> $dir/info.txt
+      steps/nnet2/get_ivector_id.sh $online_ivector_dir || exit 1
       echo final.ie.id `cat $online_ivector_dir/final.ie.id` >> $dir/info.txt
-      ivector_id=`steps/nnet2/get_ivector_id.sh $online_ivector_dir || exit 1`
-      echo ivector_id $ivector_id
-      ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-      echo ivector_period $ivector_period
+      if [ ! -f $online_ivector_dir/ivector_period ]; then
+        echo "$0: $online_ivector_dir/ivector_period does not exist"
+        exit 1
+      fi
+      ivector_period=$(cat $online_ivector_dir/ivector_period)
       ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
   else
       ivector_opts=""

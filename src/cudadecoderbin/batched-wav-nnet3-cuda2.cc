@@ -123,9 +123,7 @@ int main(int argc, char *argv[]) {
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
         KALDI_ERR << "Could not read symbol table from file "
                   << word_syms_rxfilename;
-      else {
-        //        cuda_pipeline.SetSymbolTable(word_syms);
-      }
+      cuda_pipeline.SetSymbolTable(*word_syms);
     }
 
     int32 num_task_submitted = 0, num_err = 0;
