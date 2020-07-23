@@ -9,7 +9,7 @@ One can simply run `./run.sh` to download open-sourced part of data. While there
 * If one would like to apply for AISHELL2 data, please check `../../aishell2/README.md` on how to do it.
 
 ## RESULTS
-Please check `local/run_text_independent.sh` for results, which shall be able to be replicated without AISHELL2 data involved.
+Please check `local/run_text_independent.sh` for results, which shall be able to be replicated with or without AISHELL2 data involved.
 
 ## References
 There is [a paper](https://arxiv.org/abs/1912.01231) on a more detailed description about HIMIA with some preliminary numbers (different from ones here since they were generated using different framework). If one would like to use HIMIA in experiments, please cite the paper as below:
@@ -24,3 +24,6 @@ There is [a paper](https://arxiv.org/abs/1912.01231) on a more detailed descript
   pages={7609-7613}
 }
 ```
+
+## Contact
+If having any problem, please open pull request and cite @underdogliu
