@@ -14,10 +14,6 @@
 from __future__ import print_function
 import sys
 with open(sys.argv[1], 'r') as u2s_fi:
-  for line in enumerate(u2s_fi):
+  for line in u2s_fi:
     utt, score = line.rstrip().split()
-    if "music" in utt:
-      type = "target"
-    else:
-      type = "nontarget"
-    print(score, type)
+    print(score, "target" if "music" in utt else "nontarget")

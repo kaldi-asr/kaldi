@@ -27,12 +27,12 @@ with open(os.path.join(out_dir, "utt2spk"), 'w') as utt2spk_fi, \
       speech_filename = utt + "_speech.key.refined"
       with open(os.path.join(out_dir, music_filename), 'r') as music_fi, \
           open(os.path.join(out_dir, speech_filename), 'r') as speech_fi:
-      for count, line in enumerate(music_fi, 1):
-        left, right = line.rstrip().split(" ")
-        segments_fi.write("{0}-music-{1} {0} {2} {3}\n".format(utt, count, left, right))
-        utt2spk_fi.write("{0}-music-{1} {0}-music-{1}\n".format(utt,count))
-      for count, line in enumerate(speech_fi, 1):
-        left, right = line.rstrip().split(" ")
-        segments_fi.write("{0}-speech-{1} {0} {2} {3}\n".format(utt, count, left, right))
-        utt2spk_fi.write("{0}-speech-{1} {0}-speech-{1}\n".format(utt,count))
+        for count, line in enumerate(music_fi, 1):
+          left, right = line.rstrip().split(" ")
+          segments_fi.write("{0}-music-{1} {0} {2} {3}\n".format(utt, count, left, right))
+          utt2spk_fi.write("{0}-music-{1} {0}-music-{1}\n".format(utt,count))
+        for count, line in enumerate(speech_fi, 1):
+          left, right = line.rstrip().split(" ")
+          segments_fi.write("{0}-speech-{1} {0} {2} {3}\n".format(utt, count, left, right))
+          utt2spk_fi.write("{0}-speech-{1} {0}-speech-{1}\n".format(utt,count))
 
