@@ -57,6 +57,10 @@ if [ $stage -le 11 ]; then
   # EER: 8.086%                                                                                                                                                                                          
   # minDCF(p-target=0.01): 0.6328                                                                                                                                                                        
   # minDCF(p-target=0.001): 0.8407                                                                                                                                                                       
+  # HIMIA far-field microphone array single-channel result (with AISHELL2 for xvector training):
+  # EER: 7.748%
+  # minDCF(p-target=0.01): 0.6171
+  # minDCF(p-target=0.001): 0.7132
   echo -e "\nHIMIA far-field microphone array single-channel result:";
   eer=$(paste $sc_trial $nnetdir/scores/test_sc_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   mindcf1=`sid/compute_min_dcf.py --p-target 0.01 $nnetdir/scores/test_sc_scores $sc_trial 2> /dev/null`
@@ -79,6 +83,10 @@ if [ $stage -le 12 ]; then
   # EER: 9.742%                                                                                                                                                                                          
   # minDCF(p-target=0.01): 0.7512                                                                                                                                                                        
   # minDCF(p-target=0.001): 0.8388 
+  # HIMIA far-field microphone array multi-channel result (with AISHELL2 for xvector training):
+  # EER: 9.458%
+  # minDCF(p-target=0.01): 0.7483
+  # minDCF(p-target=0.001): 0.9190
   echo -e "\nHIMIA far-field microphone array multi-channel result:";
   eer=$(paste $mc_trial $nnetdir/scores/test_mc_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   mindcf1=`sid/compute_min_dcf.py --p-target 0.01 $nnetdir/scores/test_mc_scores $mc_trial 2> /dev/null`
