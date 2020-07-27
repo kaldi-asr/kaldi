@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017 Beijing Shell Shell Tech. Co. Ltd. (Authors: Hui Bu)
 #           2017 Jiayu Du
 #           2017 Chao Li

@@ -13,5 +13,10 @@ CUDA_FLAGS = --machine 64 -DHAVE_CUDA \
              -std=c++11 -DCUDA_API_PER_THREAD_DEFAULT_STREAM  -lineinfo \
              --verbose -Xcompiler "$(CXXFLAGS)"
 
+ifeq ($(shell test -e $(CUDATKDIR)/lib64/libcudart_static.a && echo -n yes),yes)
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
+else
+CUDA_LDFLAGS += -L$(CUDATKDIR)/lib -Wl,-rpath,$(CUDATKDIR)/lib
+endif
+
 CUDA_LDLIBS += -lcublas -lcusparse -lcudart -lcurand -lcufft -lnvToolsExt #LDLIBS : The .so libs are loaded later than static libs in implicit rule

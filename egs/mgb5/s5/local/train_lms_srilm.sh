@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #      2019 QCRI (Ahmed Ali)
 

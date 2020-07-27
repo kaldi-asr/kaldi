@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_cnn_tdnn_1a.sh is modified from run_tdnn_1h.sh, but adding CNN layers
 #  near the beginning.

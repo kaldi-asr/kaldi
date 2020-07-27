@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5w is as _5k (which is a fairly good-performing ivector-free model), but
 # making the same changes as 5e -> 5t, which makes the model more lightweight

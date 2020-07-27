@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 echo "This script has not yet been tested, you would have to comment this statement if you want to run it. Please let us know if you see any issues" && exit 1;
 

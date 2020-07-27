@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Note: In order to run BNF, run run_bnf.sh
 . ./path.sh

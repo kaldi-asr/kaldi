@@ -177,12 +177,14 @@ bool OnlineVectorSource::Read(Vector<BaseFloat> *data) {
     if (data->Dim() == subsrc.Dim()) {
       data->CopyFromVec(subsrc);
     } else {
+      data->Resize(n_elem);
       for (int32 i = 0; i < subsrc.Dim(); ++i)
         (*data)(i) = subsrc(i);
     }
     pos_ += n_elem;
+    return true;
   }
-  return (pos_ < src_.Dim());
+  return false;
 }
 
 }  // namespace kaldi

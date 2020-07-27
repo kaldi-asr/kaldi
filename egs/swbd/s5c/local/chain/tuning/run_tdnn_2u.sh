@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2u is as _2o, but using 'not-shared' in the roots files, to ensure that
 # the initial and non-initial states will never be shared.  I don't expect this

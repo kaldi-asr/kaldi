@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is as run_sgmm2.sh but excluding the "speaker-dependent weights",
 # so not doing the symmetric SGMM.

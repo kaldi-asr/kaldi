@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Intel MKL is now freely available even for commercial use. This script
 # attempts to install the MKL package automatically from Intel's repository.
@@ -31,7 +31,7 @@ to install MKL into this directory; run this script using the sudo command.
 
 Options:
   -s  - Skip check for MKL being already present.
-  -p <suse|redhat|debian|fedora> -- Force type of package management. Use only
+  -p <suse|redhat|debian|fedora|arch> -- Force type of package management. Use only
                                     if automatic detection fails, as instructed.
   -h  - Show this message.
 
@@ -54,9 +54,9 @@ while getopts ":hksp:" opt; do
     h) Usage ;;
     s) skip_cc=yes ;;
     p) case $OPTARG in
-         suse|redhat|debian|fedora) distro=$OPTARG ;;
+         suse|redhat|debian|fedora|arch) distro=$OPTARG ;;
          *) Fatal "invalid value -p '${OPTARG}'. " \
-                  "Allowed: 'suse', 'redhat', 'debian' or 'fedora'."
+                  "Allowed: 'suse', 'redhat', 'debian', 'fedora', or 'arch'."
        esac ;;
     \?) echo >&2 "$0: invalid option -${OPTARG}."; Usage ;;
   esac
@@ -112,7 +112,7 @@ if [[ ! $distro ]]; then
     case "$rune" in
       cpe:/o:fedoraproject:fedora:2[01]) distro=redhat; break;;  # Use yum.
       rhel|centos) distro=redhat; break;;
-      redhat|suse|fedora|debian) distro=$rune; break;;
+      redhat|suse|fedora|debian|arch) distro=$rune; break;;
     esac
   done
 
@@ -123,6 +123,7 @@ if [[ ! $distro ]]; then
   [[ ! $distro && -f /etc/redhat-release ]] && distro=redhat
   [[ ! $distro && -f /etc/SuSE-release ]]   && distro=suse
   [[ ! $distro && -f /etc/debian_release ]] && distro=debian
+  [[ ! $distro && -f /etc/arch-release ]] && distro=arch
 
   [[ ! $distro ]] && Fatal "\
 Unable to determine package management style.
@@ -132,6 +133,7 @@ Invoke this script with the option '-p <style>', where <style> can be:
   fedora -- Fedora 22+, also RedHat-like, but uses dnf instead of yum.
   suse   -- SUSE-like, uses zypper and rpm.
   debian -- Debian-like, uses apt and dpkg.
+  arch   -- Archlinux, uses pacman.
 
 We do not currently support other package management systems. Check the Intel's
 documentation at https://software.intel.com/mkl/choose-download for other
@@ -243,6 +245,13 @@ a higher version of apt, removing this link will help make it more secure.
 This is not considered a severe security issue, but separating keyrings is the
 current recommended security practice."
   fi
+}
+
+Install_arch () {
+  ( set -x
+    echo y | pacman -Syu intel-mkl && # In pacman we don't specify the version
+    pacman -Q --info intel-mkl | grep -v None
+  )
 }
 
 # Register MKL .so libraries with the ld.so.

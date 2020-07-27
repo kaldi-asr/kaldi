@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
 # uses egs from 1b, remember to remove that before I commit.

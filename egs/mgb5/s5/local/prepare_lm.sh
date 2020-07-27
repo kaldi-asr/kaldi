@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2019  QCRI (Author: Ahmed Ali)
 # Apache 2.0
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe, Yenda Trmal)
 # Apache 2.0
@@ -22,7 +22,7 @@ fi
 
 set -e -o pipefail
 
-adir=$(utils/make_absolute.sh $1)
+adir=$(utils/make_absolute.sh "$1")
 jdir=$2
 dir=$3
 

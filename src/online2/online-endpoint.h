@@ -102,7 +102,7 @@ struct OnlineEndpointRule {
 
   void Register(OptionsItf *opts) {
     opts->Register("must-contain-nonsilence", &must_contain_nonsilence,
-                   "If true, for this endpointing rule to apply there must"
+                   "If true, for this endpointing rule to apply there must "
                    "be nonsilence in the best-path traceback.");
     opts->Register("min-trailing-silence", &min_trailing_silence,
                    "This endpointing rule requires duration of trailing silence"
@@ -129,7 +129,7 @@ struct OnlineEndpointConfig {
                               /// that we consider as silence for purposes of
                               /// endpointing.
 
-  /// We support four rules.  We terminate decoding if ANY of these rules
+  /// We support five rules.  We terminate decoding if ANY of these rules
   /// evaluates to "true". If you want to add more rules, do it by changing this
   /// code.  If you want to disable a rule, you can set the silence-timeout for
   /// that rule to a very large number.
@@ -188,7 +188,7 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
 /// integer id's of phones that we consider silence.  We use the the
 /// BestPathEnd() and TraceBackOneLink() functions of LatticeFasterOnlineDecoder
 /// to do this efficiently.
-template <typename FST, typename DEC>
+template <typename DEC>
 int32 TrailingSilenceLength(const TransitionModel &tmodel,
                             const std::string &silence_phones,
                             const DEC &decoder);
@@ -196,22 +196,12 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
 
 /// This is a higher-level convenience function that works out the
 /// arguments to the EndpointDetected function above, from the decoder.
-template <typename FST>
+template <typename DEC>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
     const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
-    const LatticeFasterOnlineDecoderTpl<FST> &decoder);
-
-/// This is a higher-level convenience function that works out the
-/// arguments to the EndpointDetected function above, from the decoder.
-template <typename FST>
-bool EndpointDetected(
-    const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
-    BaseFloat frame_shift_in_seconds,
-    const LatticeIncrementalOnlineDecoderTpl<FST> &decoder);
-
+    const DEC &decoder);
 
 
 

@@ -1,18 +1,23 @@
 # Results for Chime-6 track 2 for dev and eval, using pretrained models
 # available at http://kaldi-asr.org/models/m12.
 
-# Speech Activity Detection (SAD)
-          Missed speech   False alarm   Total error
-Dev         4.3             2.1           6.4                                                
-Eval        5.6             5.9           11.5
+# These results are reported only for array U06, which is the default
+# array selection method in the baseline system.
 
-# The results for the remaining pipeline are only for array U06.
+# Speech Activity Detection (SAD)
+                  Missed speech   False alarm   Total error
+Dev (old RTTM)        2.5             0.8           3.3                                                
+Dev (new RTTM)        1.9             0.7           2.6                                                
+Eval (old RTTM)       4.1             1.8           5.9           
+Eval (new RTTM)       4.3             1.5           5.8           
 
 # Diarization
-        DER       JER
-Dev     57.15     83.96
-Eval    54.12     80.33
+                    DER      JER
+Dev (old RTTM)    61.56     69.75
+Dev (new RTTM)    63.42     70.83
+Eval (old RTTM)   61.96     71.40
+Eval (new RTTM)   68.20     72.54
 
 # ASR nnet3 tdnn+chain
-Dev:  U06 %WER 81.18 [ 58881 / 47798, 1638 ins, 30528 del, 15632 sub ]
-Eval: U06 %WER 85.39 [ 55132 / 47076, 1107 ins, 27768 del, 18201 sub ]
+Dev:  %WER 84.25 [ 49610 / 58881, 1937 ins, 34685 del, 12988 sub ]
+Eval: %WER 77.94 [ 42971 / 55132, 1086 ins, 30839 del, 11046 sub ]

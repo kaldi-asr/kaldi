@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Guoguo Chen, 2015 GoVivace Inc. (Nagendra Goel)
 #           2017  Vimal Manohar

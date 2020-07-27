@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This recipe does multi-style training of TDNN model
 
@@ -128,7 +128,7 @@ if [ $stage -le 14 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print(0.5/$xent_regularize)" | python3)
   affine_opts="l2-regularize=0.01 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
   tdnnf_opts="l2-regularize=0.01 dropout-proportion=0.0 bypass-scale=0.66"
   linear_opts="l2-regularize=0.01 orthonormal-constraint=-1.0"

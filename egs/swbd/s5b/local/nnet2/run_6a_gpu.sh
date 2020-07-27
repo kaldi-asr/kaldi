@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This runs on the 100 hour subset; it's another neural-net training 
 # after the nnet5a setup, but after realignment.   We're just seeing

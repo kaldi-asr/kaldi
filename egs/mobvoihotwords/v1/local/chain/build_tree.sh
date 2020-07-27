@@ -1,0 +1,1 @@
+../../../../mobvoi/v1/local/chain/build_tree.sh

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # steps/info/nnet3_dir_info.pl exp/cnn1a
 # exp/cnn1a: num-iters=108 nj=2..4 num-params=0.5M dim=96->10 combine=-0.09->-0.09 loglike:train/valid[71,107,final]=(-0.101,-0.074,-0.067/-0.189,-0.144,-0.136) accuracy:train/valid[71,107,final]=(0.973,0.9834,0.9850/0.949,0.963,0.966)

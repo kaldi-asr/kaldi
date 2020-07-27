@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script extracts mfcc features using mfcc_config and trains ubm model and
 # ivector extractor and extracts ivector for train and test.
 . ./cmd.sh

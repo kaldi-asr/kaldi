@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Recipe for Mozilla Common Voice corpus v1
 #

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # cnn_tdnn_lstm_1b is based on cnn_tdnn_lstm_1a, but adding dropout and
 # proportional-shrink with value 5

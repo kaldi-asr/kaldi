@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #System                  tdnn_7g   tdnn_7h
 #WER on train_dev(tg)      13.98     13.84

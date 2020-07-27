@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2018 Xiaohui Zhang
 # Apache 2.0
 
@@ -35,4 +35,4 @@ cp -r $graphdir_in/{disambig_tid.int,num_pdfs,phones,phones.txt,words.txt} $grap
 oov_id=`echo $oov_word | utils/sym2int.pl $graphdir_in/words.txt`
 [ -z $oov_id ] && echo "adjust_unk_graph.sh: the specified oov symbol $oov_word is out of the vocabulary." && exit 1;
 fstprint $graphdir_in/HCLG.fst | awk -v oov=$oov_id -v unk_scale=$unk_scale '{if($4==oov) $5=$5-log(unk_scale);print $0}' | \
-  fstcompile > $graphdir_out/HCLG.fst || exit 1;
+  fstcompile | fstconvert --fst_type=const  > $graphdir_out/HCLG.fst || exit 1;

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ###########################################################################################
 # This script was copied from egs/ami/s5/local/ami_sdm_data_prep.sh

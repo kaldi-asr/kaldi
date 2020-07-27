@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # 1m is as 1l, but having the dropout end at 0.1

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 7q is as 7p but a modified topology with resnet-style skip connections, more layers,
 #  skinnier bottlenecks, removing the 3-way splicing and skip-layer splicing,

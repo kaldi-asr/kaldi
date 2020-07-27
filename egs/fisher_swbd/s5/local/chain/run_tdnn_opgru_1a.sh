@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 

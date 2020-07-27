@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ngram_order=4
 oov_sym="<UNK>"

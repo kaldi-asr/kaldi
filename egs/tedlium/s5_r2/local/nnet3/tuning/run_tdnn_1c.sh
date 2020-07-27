@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1c is as 1b but using more 'chain-like' splicing and slightly
 # smaller dim.  Not better; maybe slightly worse.

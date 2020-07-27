@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 data_dir=/export/corpora/LDC/LDC2011T11/
 arabic_giga_dir=Arabic_giga/

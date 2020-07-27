@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # [note: this uses BlockAffineComponent not RepeatedAffineComponent]
 # _3m is as _3l, but changing --jesus-stddev-scale from 0.2 to 0.1, as the Jesus layers

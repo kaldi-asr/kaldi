@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2016  Vimal Manohar
 #           2016  Johns Hopkins University (author: Daniel Povey)
@@ -132,7 +132,7 @@ if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
 
 
-  steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
+  steps/cleanup/make_biased_lm_graphs.sh $graph_opts --scale-opts "$scale_opts" \
     --nj $nj --cmd "$cmd" \
      $data $lang $dir $dir/graphs
 fi

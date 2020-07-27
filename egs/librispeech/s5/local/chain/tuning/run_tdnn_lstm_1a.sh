@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # this is the tdnn-lstmp based on the run_tdnn_lstm_1n.sh under Switchboard.
 
 # training acoustic model and decoding:

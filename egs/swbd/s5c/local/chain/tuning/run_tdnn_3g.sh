@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3g is as _3f but using 100 blocks instead of 200, as in d->e 200 groups was found
 # to be worse.

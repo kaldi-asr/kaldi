@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn_lstm1a_sp_bi/
 # exp/chain/tdnn_lstm1a_sp_bi/: num-iters=384 nj=2..12 num-params=9.5M dim=40+100->3557 combine=-0.05->-0.05 xent:train/valid[255,383,final]=(-0.579,-0.518,-0.523/-0.651,-0.616,-0.619) logprob:train/valid[255,383,final]=(-0.046,-0.038,-0.038/-0.063,-0.060,-0.059)

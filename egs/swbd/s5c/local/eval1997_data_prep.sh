@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Hub-5 Eval 1997 data preparation
 # Author:  Arnab Ghoshal (Jan 2013)

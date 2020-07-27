@@ -180,7 +180,7 @@ def get_trivial_allowed_durations(utt2dur, args):
                      + args.frame_length + args.frame_shift / 2) / 1000.0
             allowed_durations.append(d)
             durs_fp.write("{}\n".format(d))
-            lengths_fp.write("{}\n".format(length))
+            lengths_fp.write("{}\n".format(int(length)))
 
     assert len(allowed_durations) > 0
     start_dur = allowed_durations[0]

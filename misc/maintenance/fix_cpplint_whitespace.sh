@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 [ $# == 0 ] && echo "Usage: $0 src/[some-dir]/*.{h,cc}" && exit 1
 
 # Let's run a set of in-place modifications by sed-commands,

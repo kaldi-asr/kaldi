@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 source_sys=shadow.seg
 master_sys=dev10h.seg
