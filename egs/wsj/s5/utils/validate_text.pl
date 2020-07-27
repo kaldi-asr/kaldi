@@ -25,18 +25,13 @@ use warnings;
 use utf8;
 use Fcntl qw< SEEK_SET >;
 
-# this function reads the opened file (supplied as a first
-# parameter) into an array of lines. For each
-# line, it tests whether it's a valid utf-8 compatible
-# line. If all lines are valid utf-8, it returns the lines
-# decoded as utf-8, otherwise it assumes the file's encoding
-# is one of those 1-byte encodings, such as ISO-8859-x
-# or Windows CP-X.
-# Please recall we do not really care about
-# the actually encoding, we just need to
-# make sure the length of the (decoded) string
-# is correct (to make the output formatting looking right).
-sub get_utf8_or_bytestream {
+# we made a decision a few months back that we only support ASCII or UTF-8.
+# By definition, every ASCII (7-bit) is a valid UTF-8.
+# I.e. we no longer assume we should be able to process ISO-Latin-1 and other
+# 8-bit "ASCII" encodings -- that would make validation impossible, as 
+# we do not maintain an internal concept of encoding and broken UTF-8 would
+# be seen as a  valid 8-bit ASCII
+sub get_unicode_stream {
   use Encode qw(decode encode);
   my $is_utf_compatible = 1;
   my @unicode_lines;
@@ -53,18 +48,13 @@ sub get_utf8_or_bytestream {
       $is_utf_compatible = $is_utf_compatible && defined($decoded_text);
       push @unicode_lines, $decoded_text;
     } else {
-      #print STDERR "WARNING: the line $raw_text cannot be interpreted as UTF-8: $decoded_text\n";
-      ;
+      print STDERR "ERROR: the line number $lineno (containing $raw_text) cannot be interpreted as a valid UTF-8 or (7-bit) ASCII\n";
+      return (0, $unicode_lines)
     }
-    push @raw_lines, $raw_text;
     $lineno += 1;
   }
 
-  if (!$is_utf_compatible) {
-    return (0, @raw_lines);
-  } else {
-    return (1, @unicode_lines);
-  }
+  return (1, @unicode_lines);
 }
 
 # check if the given unicode string contain unicode whitespaces
@@ -83,12 +73,12 @@ sub validate_utf8_whitespaces {
     # we replace TAB, LF, CR, and SPACE
     # this is to simplify the test
     if ($current_line =~ /\x{000d}/) {
-      print STDERR "$0: The line for utterance $utt_id contains CR (0x0D) character\n";
+      print STDERR "$0: The line number $i (key $utt_id) contains CR (0x0D) character (we do not support Windows/DOS-style end-of-line characters)\n";
       return 1;
     }
-    $current_line =~ s/[\x{0009}\x{000a}\x{0020}]/./g;
+    $current_line =~ s/[\x{0009}\x{000a}\x{0020}\x{007f}\x{00ff}]/./g;
     if ($current_line =~/\s/) {
-      print STDERR "$0: The line for utterance $utt_id contains disallowed Unicode whitespaces\n";
+      print STDERR "$0: The line number $i (key $utt_id) contains disallowed Unicode whitespaces\n";
       return 1;
     }
   }
@@ -103,7 +93,7 @@ sub check_allowed_whitespace {
   my $file = shift;
   my $filename = shift;
   my $pos = tell($file);
-  (my $is_utf, my @lines) = get_utf8_or_bytestream($file);
+  (my $is_utf, my @lines) = get_unicode_stream($file);
   seek($file, $pos, SEEK_SET);
   if ($is_utf) {
     my $has_invalid_whitespaces = validate_utf8_whitespaces(\@lines);
@@ -111,8 +101,9 @@ sub check_allowed_whitespace {
       print STDERR "$0: ERROR: text file '$filename' contains disallowed UTF-8 whitespace character(s)\n";
       return 0;
     }
+    return 1;
   }
-  return 1;
+  return 0;
 }
 
 if(@ARGV != 1) {
