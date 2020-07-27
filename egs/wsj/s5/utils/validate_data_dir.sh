@@ -6,17 +6,15 @@ no_feats=false
 no_wav=false
 no_text=false
 no_spk_sort=false
-non_print=false
 
 
 function show_help
 {
-      echo "Usage: $0 [--no-feats] [--no-text] [--non-print] [--no-wav] [--no-spk-sort] <data-dir>"
+      echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] [--no-spk-sort] <data-dir>"
       echo "The --no-xxx options mean that the script does not require "
       echo "xxx.scp to be present, but it will check it if it is present."
       echo "--no-spk-sort means that the script does not require the utt2spk to be "
       echo "sorted by the speaker-id in addition to being sorted by utterance-id."
-      echo "--non-print ignore the presence of non-printable characters."
       echo "By default, utt2spk is expected to be sorted by both, which can be "
       echo "achieved by making the speaker-id prefixes of the utterance-ids"
       echo "e.g.: $0 data/train"
@@ -29,9 +27,6 @@ while [ $# -ne 0 ] ; do
       ;;
     "--no-text")
       no_text=true;
-      ;;
-    "--non-print")
-      non_print=true;
       ;;
     "--no-wav")
       no_wav=true;
