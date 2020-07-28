@@ -815,7 +815,11 @@ float ConstArpaLm::GetNgramLogprobRecurse(
   }
   std::vector<int32> new_hist(hist);
   new_hist.erase(new_hist.begin(), new_hist.begin() + 1);
-  return backoff_logprob + GetNgramLogprobRecurse(word, new_hist);
+  float tmp = GetNgramLogprobRecurse(word, new_hist);
+  if (tmp == std::numeric_limits<float>::min())
+    return tmp;
+  else
+    return backoff_logprob + tmp;
 }
 
 int32* ConstArpaLm::GetLmState(const std::vector<int32>& seq) const {
