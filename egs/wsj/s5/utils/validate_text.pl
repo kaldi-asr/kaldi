@@ -49,7 +49,7 @@ sub get_unicode_stream {
       push @unicode_lines, $decoded_text;
     } else {
       print STDERR "ERROR: the line number $lineno (containing $raw_text) cannot be interpreted as a valid UTF-8 or (7-bit) ASCII\n";
-      return (0, $unicode_lines)
+      return (0, @unicode_lines)
     }
     $lineno += 1;
   }
