@@ -442,6 +442,7 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchNnet(
     std::vector<TaskState *> &tasks) {
   nvtxRangePushA("ComputeBatchNnet");
 
+  bool allow_partial_minibatch = true;
   bool output_to_cpu = false;
   int32 online_ivector_period = 0;
   int max_pending_minibatches =
@@ -483,12 +484,15 @@ void BatchedThreadedNnet3CudaPipeline::ComputeBatchNnet(
     // Add tasks to computer
     for (size_t j = 0; j < ntasks.size(); j++) {
       computer.AcceptTask(&ntasks[j], max_pending_minibatches);
+      // In case of nnet3::NnetBatchComputerOptions::ensure_exact_final_context == true
+      // Ensure that the is_edge and is_irregular value are the same for the entire minibatch
+      if (ntasks.size() == 1)
+          while (computer.Compute(allow_partial_minibatch));
     }
   }
 
   // process all minibatches, we allow partial minibatches but this should
   // only occur on the last iteration
-  bool allow_partial_minibatch = true;
   while (computer.Compute(allow_partial_minibatch))
     ;
 
