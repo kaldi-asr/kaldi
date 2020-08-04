@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     po.Register("use-gpu", &use_gpu,
       "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("chunk-size", &chunk_size,
-      "If set, extracts xectors from specified chunk-size, and averages.  "
+      "If set, extracts xvectors from specified chunk-size, and averages.  "
       "If not set, extracts an xvector from all available features.");
     po.Register("min-chunk-size", &min_chunk_size,
       "Minimum chunk-size allowed when extracting xvectors.");
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
     CollapseModel(CollapseModelConfig(), &nnet);
 
     CachingOptimizingCompiler compiler(nnet, opts.optimize_config, compiler_config);
-    
+
     if (!cached_compiler_in.empty()) {
         KALDI_LOG << "Reading cache from " << cached_compiler_in;
         bool cache_binary_in;
@@ -240,11 +240,11 @@ int main(int argc, char *argv[]) {
               << (elapsed*100.0/frame_count);
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
-    
+
     if (!cached_compiler_out.empty()) {
         KALDI_LOG << "Writing cache to " << cached_compiler_out;
-        bool binary_write = true;
-        Output ko(cached_compiler_out, &binary_write);
+        const bool binary_write = true;
+        Output ko(cached_compiler_out, binary_write);
         compiler.WriteCache(ko.Stream(), binary_write);
     }
 

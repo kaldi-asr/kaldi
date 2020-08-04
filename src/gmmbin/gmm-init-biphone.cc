@@ -281,10 +281,10 @@ int main(int argc, char *argv[]) {
                 "rxfilename containing, on each line, a biphone/phone and "
                 "its count in the training data.");
     po.Register("min-biphone-count", &min_biphone_count, "Minimum number of "
-                "occurences of a biphone in training data to reserve pdfs "
+                "occurrences of a biphone in training data to reserve pdfs "
                 "for it.");
     po.Register("min-monophone-count", &min_mono_count, "Minimum number of "
-                "occurences of a monophone in training data to reserve pdfs "
+                "occurrences of a monophone in training data to reserve pdfs "
                 "for it.");
     po.Read(argc, argv);
 

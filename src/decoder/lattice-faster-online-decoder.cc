@@ -133,26 +133,34 @@ typename LatticeFasterOnlineDecoderTpl<FST>::BestPathIterator LatticeFasterOnlin
     BestPathIterator iter, LatticeArc *oarc) const {
   KALDI_ASSERT(!iter.Done() && oarc != NULL);
   Token *tok = static_cast<Token*>(iter.tok);
-  int32 cur_t = iter.frame, ret_t = cur_t;
+  int32 cur_t = iter.frame, step_t = 0;
   if (tok->backpointer != NULL) {
+    // retrieve the correct forward link(with the best link cost)
+    BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
     ForwardLinkT *link;
     for (link = tok->backpointer->links;
          link != NULL; link = link->next) {
-      if (link->next_tok == tok) { // this is the link to "tok"
-        oarc->ilabel = link->ilabel;
-        oarc->olabel = link->olabel;
-        BaseFloat graph_cost = link->graph_cost,
-            acoustic_cost = link->acoustic_cost;
-        if (link->ilabel != 0) {
-          KALDI_ASSERT(static_cast<size_t>(cur_t) < this->cost_offsets_.size());
-          acoustic_cost -= this->cost_offsets_[cur_t];
-          ret_t--;
+      if (link->next_tok == tok) { // this is a link to "tok"
+        BaseFloat graph_cost = link->graph_cost, 
+                  acoustic_cost = link->acoustic_cost;
+        BaseFloat cost = graph_cost + acoustic_cost;
+        if (cost < best_cost) {
+          oarc->ilabel = link->ilabel;
+          oarc->olabel = link->olabel;
+          if (link->ilabel != 0) {
+            KALDI_ASSERT(static_cast<size_t>(cur_t) < this->cost_offsets_.size());
+            acoustic_cost -= this->cost_offsets_[cur_t];
+            step_t = -1;
+          } else {
+            step_t = 0;
+          }
+          oarc->weight = LatticeWeight(graph_cost, acoustic_cost);
+          best_cost = cost;
         }
-        oarc->weight = LatticeWeight(graph_cost, acoustic_cost);
-        break;
       }
     }
-    if (link == NULL) { // Did not find correct link.
+    if (link == NULL &&
+        best_cost == std::numeric_limits<BaseFloat>::infinity()) { // Did not find correct link.
       KALDI_ERR << "Error tracing best-path back (likely "
                 << "bug in token-pruning algorithm)";
     }
@@ -161,7 +169,7 @@ typename LatticeFasterOnlineDecoderTpl<FST>::BestPathIterator LatticeFasterOnlin
     oarc->olabel = 0;
     oarc->weight = LatticeWeight::One(); // zero costs.
   }
-  return BestPathIterator(tok->backpointer, ret_t);
+  return BestPathIterator(tok->backpointer, cur_t + step_t);
 }
 
 template <typename FST>
@@ -270,7 +278,8 @@ bool LatticeFasterOnlineDecoderTpl<FST>::GetRawLatticePruned(
 template class LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> >;
 template class LatticeFasterOnlineDecoderTpl<fst::VectorFst<fst::StdArc> >;
 template class LatticeFasterOnlineDecoderTpl<fst::ConstFst<fst::StdArc> >;
-template class LatticeFasterOnlineDecoderTpl<fst::GrammarFst>;
+template class LatticeFasterOnlineDecoderTpl<fst::ConstGrammarFst >;
+template class LatticeFasterOnlineDecoderTpl<fst::VectorGrammarFst >;
 
 
 } // end namespace kaldi.

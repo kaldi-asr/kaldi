@@ -54,13 +54,13 @@ int main(int argc, char *argv[]) {
     po.Register("increase-spk-dim", &increase_spk_dim, "Increase speaker-space "
                 "dimension as far as allowed towards this target.");
     po.Register("spk-dep-weights", &spk_dep_weights, "If true, have speaker-"
-                "dependent weights (symmetric SGMM)-- this option only makes"
+                "dependent weights (symmetric SGMM)-- this option only makes "
                 "a difference if you use the --increase-spk-dim option and "
                 "are increasing the speaker dimension from zero.");
     po.Register("remove-speaker-space", &remove_speaker_space, "Remove speaker-specific "
                 "projections N");
     po.Register("write-occs", &occs_out_filename, "File to write pdf "
-                "occupantion counts to.");
+                "occupation counts to.");
     po.Register("update-flags", &update_flags_str, "Which SGMM parameters to "
                 "update: subset of vMNwcSt.");
     po.Register("write-flags", &write_flags_str, "Which SGMM parameters to "

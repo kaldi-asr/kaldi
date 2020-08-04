@@ -9,6 +9,8 @@
     <OPENFST>C:\Users\jtrmal\Documents\openfst\</OPENFST>
     <OPENFSTLIB>C:\Users\jtrmal\Documents\openfst\build64</OPENFSTLIB>
     <CUBDIR>c:\Users\jtrmal\Documents\cub\</CUBDIR>
+    <PORTAUDIO>W:\kaldi-build\portaudio_src_double</PORTAUDIO>
+    <PORTAUDIOLIB>W:\kaldi-build\portaudio_src_double</PORTAUDIOLIB>
     <NVTOOLSDIR>C:\Program FIles\NVIDIA Corporation\NvToolsExt\</NVTOOLSDIR>
     <!-- Do not modify anything after this line -->
   </PropertyGroup>
@@ -35,9 +37,18 @@
       <Value>$(CUBDIR)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
+    <BuildMacro Include="PORTAUDIO">
+      <Value>$(PORTAUDIO)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+      <BuildMacro Include="PORTAUDIOLIB">
+      <Value>$(PORTAUDIOLIB)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
     <BuildMacro Include="NVTOOLSDIR">
       <Value>$(NVTOOLSDIR)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
   </ItemGroup>
 </Project>
+

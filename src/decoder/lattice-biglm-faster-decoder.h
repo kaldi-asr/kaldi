@@ -741,8 +741,8 @@ class LatticeBiglmFasterDecoder {
                 cur_cost = tok->tot_cost,
                 tot_cost = cur_cost + ac_cost + graph_cost;
             if (tot_cost >= next_cutoff) continue;
-            else if (tot_cost + config_.beam < next_cutoff)
-              next_cutoff = tot_cost + config_.beam; // prune by best current token
+            else if (tot_cost + adaptive_beam < next_cutoff)
+              next_cutoff = tot_cost + adaptive_beam; // prune by best current token
             PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
             Elem *e_next = FindOrAddToken(next_pair, frame, tot_cost, true, NULL);
             // true: emitting, NULL: no change indicator needed
@@ -776,7 +776,7 @@ class LatticeBiglmFasterDecoder {
     }
     if (queue_.empty()) {
       if (!warned_) {
-        KALDI_ERR << "Error in ProcessEmitting: no surviving tokens: frame is "
+        KALDI_ERR << "Error in ProcessNonemitting: no surviving tokens: frame is "
                   << frame;
         warned_ = true;
       }

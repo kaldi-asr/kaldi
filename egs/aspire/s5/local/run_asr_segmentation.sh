@@ -136,7 +136,7 @@ if [ $stage -le 4 ]; then
   background_snrs="20:10:15:5:0"
   # corrupt the data to generate multi-condition data
   # for data_dir in train dev test; do
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --prefix "rev" \
     --foreground-snrs $foreground_snrs \
@@ -160,7 +160,7 @@ fi
 if [ $stage -le 6 ]; then
   rvb_targets_dirs=()
   for i in `seq 1 $num_data_reps`; do
-    steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
+    steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}-" \
       $targets_dir ${targets_dir}_temp_$i || exit 1
     rvb_targets_dirs+=(${targets_dir}_temp_$i)
   done

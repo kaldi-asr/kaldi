@@ -71,8 +71,9 @@ static bool ProcessFile(const GeneralMatrix &feats,
   for (size_t c = 0; c < chunks.size(); c++) {
     const ChunkTimeInfo &chunk = chunks[c];
 
-    int32 tot_input_frames = chunk.left_context + chunk.num_frames +
-        chunk.right_context;
+    int32 tot_input_frames = (chunk.left_context +
+                              chunk.num_frames +
+                              chunk.right_context);
 
     int32 start_frame = chunk.first_frame - chunk.left_context;
 
@@ -81,9 +82,9 @@ static bool ProcessFile(const GeneralMatrix &feats,
                                &input_frames);
 
     // 'input_frames' now stores the relevant rows (maybe with padding) from the
-    // original Matrix or (more likely) CompressedMatrix.  If a CompressedMatrix,
-    // it does this without un-compressing and re-compressing, so there is no loss
-    // of accuracy.
+    // original Matrix or (more likely) CompressedMatrix. If a CompressedMatrix,
+    // it does this without un-compressing and re-compressing, so there is no
+    // loss of accuracy.
 
     NnetExample eg;
     // call the regular input "input".
@@ -113,11 +114,11 @@ static bool ProcessFile(const GeneralMatrix &feats,
                  targets.NumRows());
 
 
-    // add the labels.
+    // Add the labels.
     Matrix<BaseFloat> targets_part(num_frames_subsampled, targets.NumCols());
-    for (int32 i = 0; i < num_frames_subsampled; i++) {
+    for (int32 i = 0; i < num_frames_subsampled; ++i) {
       // Copy the i^th row of the target matrix from the (t+i)^th row of the
-      // input targets matrix
+      // input targets matrix.
       int32 t = i + start_frame_subsampled;
       if (t >= targets.NumRows())
         t = targets.NumRows() - 1;
@@ -126,8 +127,9 @@ static bool ProcessFile(const GeneralMatrix &feats,
       this_target_dest.CopyFromVec(this_target_src);
     }
 
-    // push this created targets matrix into the eg
-    eg.io.push_back(NnetIo("output", 0, targets_part, frame_subsampling_factor));
+    // Push this created targets matrix into the eg.
+    eg.io.push_back(NnetIo("output", 0, targets_part,
+                           frame_subsampling_factor));
 
     if (compress)
       eg.Compress();
@@ -171,7 +173,7 @@ int main(int argc, char *argv[]) {
 
     bool compress = true;
     int32 num_targets = -1, length_tolerance = 100,
-        targets_length_tolerance = 2,  
+        targets_length_tolerance = 2,
         online_ivector_period = 1;
 
     ExampleGenerationConfig eg_config;  // controls num-frames,
@@ -184,7 +186,7 @@ int main(int argc, char *argv[]) {
     po.Register("compress", &compress, "If true, write egs with input features "
                 "in compressed format (recommended).  This is "
                 "only relevant if the features being read are un-compressed; "
-                "if already compressed, we keep we same compressed format when "
+                "if already compressed, we keep the same compressed format when "
                 "dumping egs.");
     po.Register("num-targets", &num_targets, "Output dimension in egs, "
                 "only used to check targets have correct dim if supplied.");
@@ -197,7 +199,7 @@ int main(int argc, char *argv[]) {
                 "--online-ivectors option");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    po.Register("targets-length-tolerance", &targets_length_tolerance, 
+    po.Register("targets-length-tolerance", &targets_length_tolerance,
                 "Tolerance for "
                 "difference in num-frames (after subsampling) between "
                 "feature and target matrices");
@@ -262,7 +264,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                         target_matrix, key, compress, num_targets, 
+                         target_matrix, key, compress, num_targets,
                          targets_length_tolerance,
                          &utt_splitter, &example_writer))
           num_err++;
