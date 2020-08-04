@@ -40,11 +40,10 @@ check_required_programs:
 clean: openfst_cleaned sclite_cleaned
 
 openfst_cleaned:
-	$(MAKE) -C openfst-$(OPENFST_VERSION) clean
-
+	-$(MAKE) -C openfst-$(OPENFST_VERSION) clean
 
 sclite_cleaned:
-	$(MAKE) -C sctk clean
+	-$(MAKE) -C sctk clean
 
 distclean:
 	rm -rf openfst-$(OPENFST_VERSION)/
@@ -108,7 +107,11 @@ sclite_compiled: sctk sctk_configured
 	cd sctk; \
 	$(MAKE) CC="$(CC)" CXX="$(CXX)" all && $(MAKE) install && $(MAKE) doc
 
-sctk_configured: sctk sctk/.configured
+sctk_configured: sctk sctk/.configured sctk/.patched
+
+sctk/.patched: sctk
+	cd sctk; patch -p1 < ../extras/sctk.patch
+	touch sctk/.patched
 
 sctk/.configured: sctk
 	cd sctk; $(MAKE) config

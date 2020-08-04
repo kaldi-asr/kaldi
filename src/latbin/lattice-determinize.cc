@@ -96,10 +96,10 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "This program is deprecated, please used lattice-determinize-pruned.\n"
+        "This program is deprecated, please use lattice-determinize-pruned.\n"
         "lattice-determinize lattices (and apply a pruning beam)\n"
         " (see http://kaldi-asr.org/doc/lattices.html for more explanation)\n"
-        " note: this program is tyically only useful if you generated state-level\n"
+        " note: this program is typically only useful if you generated state-level\n"
         " lattices, e.g. called gmm-latgen-simple with --determinize=false\n"
         "\n"
         "Usage: lattice-determinize [options] lattice-rspecifier lattice-wspecifier\n"

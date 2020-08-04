@@ -1,0 +1,54 @@
+
+# In ICSI data distant mics are in large distance from each other, thus also large differences in accuracy using various mics (D1,...D4)
+# The mapping between the recipe ids and the actual layout is something like this (look also at ../README.txt):
+# sdm3: D1 - chanE                                                                      
+# sdm4: D2 - chanF                                                                      
+# sdm1: D3 - chan6                                                                      
+# sdm2: D4 - chan7 
+
+# Results for each distant PZM microphone are as follows:
+
+# GMM systems
+#for d in exp/sdm1/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 55.5 | 4836 23314 | 50.8 33.7 15.5 6.3 55.5 53.6 | 0.473 | exp/sdm1/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 52.6 | 4629 30660 | 53.0 30.3 16.7 5.6 52.6 65.5 | 0.532 | exp/sdm1/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 55.8 | 3183 23305 | 51.0 35.4 13.6 6.8 55.8 80.8 | 0.591 | exp/sdm1/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 52.5 | 5217 30664 | 53.2 30.4 16.4 5.7 52.5 57.5 | 0.653 | exp/sdm1/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+
+# for d in exp/sdm2/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 59.5 | 4838 23313 | 46.4 36.9 16.7 5.9 59.5 54.8 | 0.426 | exp/sdm2/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 57.1 | 5228 30808 | 48.4 32.8 18.8 5.4 57.1 59.3 | 0.481 | exp/sdm2/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 60.3 | 4838 23315 | 46.2 38.7 15.1 6.4 60.3 55.0 | 0.572 | exp/sdm2/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 57.3 | 4632 30665 | 48.0 33.1 18.9 5.3 57.3 65.9 | 0.613 | exp/sdm2/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+
+#for d in exp/sdm3/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 57.4 | 3566 23304 | 48.9 35.2 15.9 6.2 57.4 74.1 | 0.455 | exp/sdm3/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 52.9 | 5714 30648 | 52.7 30.6 16.7 5.6 52.9 52.4 | 0.537 | exp/sdm3/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 56.7 | 3565 23308 | 50.0 36.2 13.8 6.7 56.7 72.7 | 0.591 | exp/sdm3/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 52.4 | 4912 30659 | 52.9 30.5 16.7 5.2 52.4 59.9 | 0.648 | exp/sdm3/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+
+#for d in exp/sdm4/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 56.9 | 3182 23296 | 48.6 33.4 18.0 5.5 56.9 82.3 | 0.477 | exp/sdm4/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 50.3 | 4428 30790 | 55.4 29.0 15.6 5.7 50.3 67.9 | 0.560 | exp/sdm4/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 57.1 | 4835 23303 | 49.9 35.6 14.5 7.0 57.1 54.2 | 0.605 | exp/sdm4/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 50.4 | 5213 30660 | 55.7 29.8 14.5 6.0 50.4 56.6 | 0.681 | exp/sdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+
+#Nnet3 systems
+
+# for d in exp/sdm4/chain*/tdnn*/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali false --mic sdm4
+%WER 31.3 | 3566 23324 | 72.7 17.2 10.2 4.0 31.3 62.2 | 0.639 | exp/sdm4/chain_1a/tdnn_sp/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 28.4 | 4338 30795 | 74.8 14.5 10.7 3.1 28.4 58.3 | 0.675 | exp/sdm4/chain_1a/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali true --mic sdm4
+%WER 30.2 | 4835 23317 | 73.2 16.7 10.1 3.4 30.2 45.1 | 0.601 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 27.9 | 4341 30798 | 75.2 14.8 10.0 3.1 27.9 57.8 | 0.643 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1b.sh --use-ihm-ali true --mic sdm4
+%WER 30.4 | 4454 23317 | 73.6 17.7 8.8 3.9 30.4 49.0 | 0.629 | exp/sdm4/chain_1a/tdnn_b_sp_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 27.4 | 5141 30796 | 75.6 15.1 9.3 3.0 27.4 47.9 | 0.642 | exp/sdm4/chain_1a/tdnn_b_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1c.sh --use-ihm-ali true --mic sdm4
+%WER 26.1 | 3566 23312 | 77.3 14.8 7.9 3.4 26.1 57.9 | 0.671 | exp/sdm4/chain_1a/tdnn_c_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 23.8 | 4628 30651 | 79.2 12.6 8.2 3.0 23.8 50.7 | 0.706 | exp/sdm4/chain_1a/tdnn_c_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys

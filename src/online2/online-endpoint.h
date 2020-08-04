@@ -102,7 +102,7 @@ struct OnlineEndpointRule {
 
   void Register(OptionsItf *opts) {
     opts->Register("must-contain-nonsilence", &must_contain_nonsilence,
-                   "If true, for this endpointing rule to apply there must"
+                   "If true, for this endpointing rule to apply there must "
                    "be nonsilence in the best-path traceback.");
     opts->Register("min-trailing-silence", &min_trailing_silence,
                    "This endpointing rule requires duration of trailing silence"

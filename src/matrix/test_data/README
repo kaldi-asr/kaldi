@@ -1,0 +1,9 @@
+
+
+# NumpyArray
+
+- `float_vector.npy` contains a 1-D float (single precision) vector
+- `float_matrix.npy` contains a 2-D float (single precision) matrix
+
+- `double_vector.npy` contains a 1-D double (double precision) vector
+- `double_matrix.npy` contains a 2-D double (double precision) matrix

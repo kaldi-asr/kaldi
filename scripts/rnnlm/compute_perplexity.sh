@@ -3,10 +3,14 @@
 # This script computes perplexity of text on the specified RNNLM model. 
 
 [ -f ./path.sh ] && . ./path.sh
+
+use_gpu=no
 . utils/parse_options.sh
 
 if [ $# != 2 ]; then
-  echo "Usage: $0 <rnn-dir> <input-text>"
+  echo "Usage: $0 [options] <rnn-dir> <input-text>"
+  echo "Options: "
+  echo "  --use_gpu (yes|no|optional|wait)  # whether to use gpu [no]."
   exit 1
 fi
 
@@ -39,10 +43,11 @@ done
 
 special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
 
-ppl=$(rnnlm-sentence-probs --normalize-probs=true \
+opt="--normalize-probs=true --use-gpu=${use_gpu}"
+
+ppl=$(rnnlm-sentence-probs ${opt} \
        $special_symbol_opts $dir/final.raw "$word_embedding" \
        <(cat $text_in | sym2int.pl $dir/config/words.txt | awk '{print "utt_id ", $0}') | \
        awk '{for(i=2;i<=NF;i++) a+=$i; b+=NF-1}END{print exp(-a / b)}')
 
 echo "$0: perplexity is $ppl"
-

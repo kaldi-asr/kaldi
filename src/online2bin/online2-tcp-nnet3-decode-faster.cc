@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     po.Register("num-threads-startup", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.");
     po.Register("read-timeout", &read_timeout,
-                "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
+                "Number of seconds of timeout for TCP audio data to appear on the stream. Use -1 for blocking.");
     po.Register("port-num", &port_num,
                 "Port number the server will listen on.");
     po.Register("produce-time", &produce_time,
@@ -252,6 +252,16 @@ int main(int argc, char *argv[]) {
 
           if (eos) {
             feature_pipeline.InputFinished();
+
+            if (silence_weighting.Active() &&
+                feature_pipeline.IvectorFeature() != NULL) {
+              silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+              silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                                frame_offset * decodable_opts.frame_subsampling_factor,
+                                                &delta_weights);
+              feature_pipeline.UpdateFrameWeights(delta_weights);
+            }
+
             decoder.AdvanceDecoding();
             decoder.FinalizeDecoding();
             frame_offset += decoder.NumFramesDecoded();
@@ -423,26 +433,28 @@ bool TcpServer::ReadChunk(size_t len) {
 
   ssize_t ret;
   int poll_ret;
-  size_t to_read = len;
+  char *samp_buf_p = reinterpret_cast<char *>(samp_buf_);
+  size_t to_read = len * sizeof(int16);
   has_read_ = 0;
   while (to_read > 0) {
     poll_ret = poll(client_set_, 1, read_timeout_);
     if (poll_ret == 0) {
-      KALDI_WARN << "Socket timeout! Disconnecting...";
+      KALDI_WARN << "Socket timeout! Disconnecting..." << "(has_read_ = " << has_read_ << ")";
       break;
     }
     if (poll_ret < 0) {
       KALDI_WARN << "Socket error! Disconnecting...";
       break;
     }
-    ret = read(client_desc_, static_cast<void *>(samp_buf_ + has_read_), to_read * sizeof(int16));
+    ret = read(client_desc_, static_cast<void *>(samp_buf_p + has_read_), to_read);
     if (ret <= 0) {
       KALDI_WARN << "Stream over...";
       break;
     }
-    to_read -= ret / sizeof(int16);
-    has_read_ += ret / sizeof(int16);
+    to_read -= ret;
+    has_read_ += ret;
   }
+  has_read_ /= sizeof(int16);
 
   return has_read_ > 0;
 }

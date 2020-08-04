@@ -505,6 +505,7 @@ __global__ void reset_for_frame_and_estimate_cutoff_kernel(
       lane_counters->int_cutoff = INT_MAX;
       lane_counters->min_int_cost = INT_MAX;
       lane_counters->q_overflow = OVERFLOW_NONE;
+      lane_counters->int_relative_cost = INT_MAX;
       lane_counters->aux_q_requested = 0;
       lane_counters->main_q_requested = 0;
       lane_counters->main_q_local_offset = 0;
@@ -1122,8 +1123,7 @@ __launch_bounds__(KALDI_CUDA_DECODER_LARGEST_1D_BLOCK, 1) __global__
 // One add the final_cost[token.state] before looking for the min
 __global__ void get_best_cost_step1_kernel(DeviceParams cst_dev_params,
                                            KernelParams params,
-                                           bool use_final_probs,
-                                           CostType fst_zero) {
+                                           bool use_final_probs) {
   const int nlanes = params.nlanes_used;
   KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
     LaneCounters *lane_counters = cst_dev_params.d_lanes_counters.lane(ilane);
@@ -1151,7 +1151,7 @@ __global__ void get_best_cost_step1_kernel(DeviceParams cst_dev_params,
             cst_dev_params.d_fst_final_costs[token_state];
         IntegerCostType int_cost_with_final =
             floatToOrderedInt(cost + final_cost);
-        if (final_cost != fst_zero) {
+        if (final_cost != cst_dev_params.fst_zero) {
           int2 min_and_arg = {int_cost_with_final,
                               global_idx};  // sort by cost, put it first
           atomicMinI2(&channel_counters->min_int_cost_and_arg_with_final,
@@ -1169,8 +1169,7 @@ __global__ void get_best_cost_step1_kernel(DeviceParams cst_dev_params,
 // and list them into d_list_final_tokens_in_main_q
 __global__ void get_best_cost_step2_kernel(DeviceParams cst_dev_params,
                                            KernelParams params,
-                                           bool use_final_probs,
-                                           CostType fst_zero) {
+                                           bool use_final_probs) {
   const int nlanes = params.nlanes_used;
   KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
     LaneCounters *lane_counters = cst_dev_params.d_lanes_counters.lane(ilane);
@@ -1218,7 +1217,7 @@ __global__ void get_best_cost_step2_kernel(DeviceParams cst_dev_params,
             cst_dev_params.d_fst_final_costs[token_state];
         const CostType token_cost = orderedIntToFloat(token_int_cost);
         // final_cost == fst_zero -> this state is not final
-        token_int_cost = (final_cost != fst_zero)
+        token_int_cost = (final_cost != cst_dev_params.fst_zero)
                              ? floatToOrderedInt(token_cost + final_cost)
                              : INT_MAX;
       }
@@ -1401,7 +1400,7 @@ __global__ void fill_hashmap_with_main_q_kernel(DeviceParams cst_dev_params,
     const int32 main_q_end = lane_counters->main_q_narcs_and_end.y;
     int32 min_int_cost = lane_counters->min_int_cost;
     CostType min_cost = orderedIntToFloat(min_int_cost);
-    const int32 global_offset = channel_counters->prev_main_q_global_offset;
+    const int32 global_offset = lane_counters->main_q_global_offset;
     KALDI_CUDA_DECODER_1D_KERNEL_LOOP(main_q_idx, main_q_end) {
       // Position of considered token in the main_q
       if (main_q_idx < main_q_end) {
@@ -1490,7 +1489,7 @@ __global__ void emitting_preprocess_and_list_extra_prev_tokens_step1_kernel(
   __shared__ typename BlockScan::TempStorage sh_temp_storage;
   const int nlanes = params.nlanes_used;
   KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(ilane, nlanes) {
-    const LaneCounters *lane_counters =
+    LaneCounters *lane_counters =
         cst_dev_params.d_lanes_counters.lane(ilane);
     const int32 main_q_end = lane_counters->main_q_narcs_and_end.y;
     // Final cutoff from last ExpandArc execution
@@ -1561,6 +1560,17 @@ __global__ void emitting_preprocess_and_list_extra_prev_tokens_step1_kernel(
             // avoid a new random memory access
             cst_dev_params.d_main_q_arc_offsets.channel(ichannel)[main_q_idx] =
                 start;
+
+	    // Saving best cost with final cost, to compute the final_extra_cost
+	    // It seems like ~5% of all states are final, so the following atomic may be fine
+	    // if necessary, we could first reduce locally at the CTA level
+	    const CostType final_cost =
+		    cst_dev_params.d_fst_final_costs[token_state];
+	    if(final_cost != cst_dev_params.fst_zero) {
+		    IntegerCostType token_int_cost_with_final = floatToOrderedInt(orderedIntToFloat(token_int_cost) + final_cost);
+		    IntegerCostType int_relative_cost = token_int_cost_with_final; // - 0.0f, the min_cost was reset to 0.0f
+		    atomicMin(&lane_counters->int_relative_cost, int_relative_cost);
+	    }
           }
           // If that FST state has only one token associated to it, we store
           // that token directly in
@@ -2023,20 +2033,18 @@ void FinalizeProcessNonEmittingKernel(const dim3 &grid, const dim3 &block,
 void GetBestCostStep1Kernel(const dim3 &grid, const dim3 &block,
                             const cudaStream_t &st,
                             const DeviceParams &cst_dev_params,
-                            const KernelParams &kernel_params, bool isfinal,
-                            CostType fst_zero) {
+                            const KernelParams &kernel_params, bool isfinal) {
   get_best_cost_step1_kernel<<<grid, block, 0, st>>>(
-      cst_dev_params, kernel_params, isfinal, fst_zero);
+      cst_dev_params, kernel_params, isfinal);
   KALDI_DECODER_CUDA_CHECK_ERROR();
 }
 
 void GetBestCostStep2Kernel(const dim3 &grid, const dim3 &block,
                             const cudaStream_t &st,
                             const DeviceParams &cst_dev_params,
-                            const KernelParams &kernel_params, bool isfinal,
-                            CostType fst_zero) {
+                            const KernelParams &kernel_params, bool isfinal) {
   get_best_cost_step2_kernel<<<grid, block, 0, st>>>(
-      cst_dev_params, kernel_params, isfinal, fst_zero);
+      cst_dev_params, kernel_params, isfinal);
   KALDI_DECODER_CUDA_CHECK_ERROR();
 }
 

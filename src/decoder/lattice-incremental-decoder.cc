@@ -1706,7 +1706,10 @@ template class LatticeIncrementalDecoderTpl<fst::VectorFst<fst::StdArc>,
                                             decoder::StdToken>;
 template class LatticeIncrementalDecoderTpl<fst::ConstFst<fst::StdArc>,
                                             decoder::StdToken>;
-template class LatticeIncrementalDecoderTpl<fst::GrammarFst, decoder::StdToken>;
+template class LatticeIncrementalDecoderTpl<fst::ConstGrammarFst ,
+                                            decoder::StdToken>;
+template class LatticeIncrementalDecoderTpl<fst::VectorGrammarFst,
+                                            decoder::StdToken>;
 
 template class LatticeIncrementalDecoderTpl<fst::Fst<fst::StdArc>,
                                             decoder::BackpointerToken>;
@@ -1714,7 +1717,9 @@ template class LatticeIncrementalDecoderTpl<fst::VectorFst<fst::StdArc>,
                                             decoder::BackpointerToken>;
 template class LatticeIncrementalDecoderTpl<fst::ConstFst<fst::StdArc>,
                                             decoder::BackpointerToken>;
-template class LatticeIncrementalDecoderTpl<fst::GrammarFst,
+template class LatticeIncrementalDecoderTpl<fst::ConstGrammarFst,
+                                            decoder::BackpointerToken>;
+template class LatticeIncrementalDecoderTpl<fst::VectorGrammarFst,
                                             decoder::BackpointerToken>;
 
 } // end namespace kaldi.

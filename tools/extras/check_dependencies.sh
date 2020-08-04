@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 CXX=${CXX:-g++}
+CXXFLAGS=${CXXFLAGS}
 status=0
 
 # at some point we could try to add packages for Cywgin or macports(?) to this
@@ -25,12 +26,12 @@ case $compiler_ver_info in
     add_packages gcc-c++ g++
     status=1
     ;;
-  "g++ "* )
+  *"c++ "* | "g++ "* )
     gcc_ver=$($CXX -dumpversion)
     gcc_ver_num=$(echo $gcc_ver | sed 's/\./ /g' | xargs printf "%d%02d%02d")
     if [ $gcc_ver_num -lt 40803 ]; then
         echo "$0: Compiler '$CXX' (g++-$gcc_ver) is not supported."
-        echo "$0: You need g++ >= 4.8.3, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        echo "$0: You need g++ >= 4.9.1, Apple clang >= 5.0 or LLVM clang >= 3.3."
         status=1
     fi
     ;;
@@ -59,17 +60,22 @@ case $compiler_ver_info in
 esac
 
 # Cannot check this without a compiler.
-if have "$CXX" && ! echo "#include <zlib.h>" | $CXX -E - >&/dev/null; then
+if have "$CXX" && ! echo "#include <zlib.h>" | $CXX $CXXFLAGS -E - &>/dev/null; then
   echo "$0: zlib is not installed."
   add_packages zlib-devel zlib1g-dev
 fi
 
-for f in make automake autoconf patch grep bzip2 gzip unzip wget git sox gfortran; do
+for f in make automake autoconf patch grep bzip2 gzip unzip wget git sox; do
   if ! have $f; then
     echo "$0: $f is not installed."
     add_packages $f
   fi
 done
+
+if ! have gfortran; then
+  echo "$0: gfortran is not installed"
+  add_packages gcc-gfortran gfortran
+fi
 
 if ! have libtoolize && ! have glibtoolize; then
   echo "$0: neither libtoolize nor glibtoolize is installed"
@@ -89,7 +95,7 @@ fi
 pythonok=true
 if ! have python2.7; then
   echo "$0: python2.7 is not installed"
-  add_packages python2.7
+  add_packages python27 python2.7
   pythonok=false
 fi
 
@@ -136,7 +142,7 @@ case $(uname -m) in
     # installed in an alternative location (this is unlikely).
     MKL_ROOT="${MKL_ROOT:-/opt/intel/mkl}"
     if [ ! -f "${MKL_ROOT}/include/mkl.h" ] &&
-         ! echo '#include <mkl.h>' | $CXX -I /opt/intel/mkl/include -E - >&/dev/null; then
+         ! echo '#include <mkl.h>' | $CXX -I /opt/intel/mkl/include -E - &>/dev/null; then
       if [[ $(uname) == Linux ]]; then
         echo "$0: Intel MKL is not installed. Run extras/install_mkl.sh to install it."
       else
@@ -149,7 +155,7 @@ case $(uname -m) in
   *)  # Suggest OpenBLAS on other hardware.
     if [ ! -f $(pwd)/OpenBLAS/install/include/openblas_config.h ] &&
          ! echo '#include <openblas_config.h>' |
-            $CXX -I $(pwd)/OpenBLAS/install/include -E - >&/dev/null; then
+            $CXX -I $(pwd)/OpenBLAS/install/include -E - &>/dev/null; then
       echo "$0: OpenBLAS not detected. Run extras/install_openblas.sh
  ... to compile it for your platform, or configure with --openblas-root= if you
  ... have it installed in a location we could not guess. Note that packaged

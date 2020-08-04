@@ -83,7 +83,7 @@ sdata=$data/split$nj
 mkdir -p $logdir
 mkdir -p $bnf_data
 mkdir -p $bnfdir
-echo $nj > $nnetdir/num_jobs
+echo $nj > $bnfdir/num_jobs
 
 [ ! -f $data/feats.scp ] && echo >&2 "The file $data/feats.scp does not exist!" && exit 1;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -94,7 +94,17 @@ if [ ! -z "$ivector_dir" ];then
   steps/nnet2/check_ivectors_compatible.sh $nnetdir $ivector_dir || exit 1;
 fi
 
-feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+## Set up features.
+if [ -f $nnetdir/online_cmvn ]; then online_cmvn=true
+else online_cmvn=false; fi
+
+if ! $online_cmvn; then
+  echo "$0: feature type is raw"
+  feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+else
+  echo "$0: feature type is raw (apply-cmvn-online)"
+  feats="ark,s,cs:apply-cmvn-online $cmvn_opts --spk2utt=ark:$sdata/JOB/spk2utt $nnetdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- |"
+fi
 ivector_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |"
 
 if [ $stage -le 1 ]; then

@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
         "a script to combine the final search results. Note that the index\n"
         "archive has a single key \"global\".\n\n"
         "Search has one or two outputs. The first one is mandatory and will\n"
-        "contain the seach output, i.e. list of all found keyword instances\n"
+        "contain the search output, i.e. list of all found keyword instances\n"
         "The file is in the following format:\n"
         "kw_id utt_id beg_frame end_frame neg_logprob\n"
         " e.g.: \n"
