@@ -785,8 +785,6 @@ void BatchedThreadedNnet3CudaPipeline::CompleteTask(CudaDecoder *cuda_decoder,
   if (task->callback)  // if callable
     task->callback(task->dlat);
 
-  task->finished = true;
-
   {
     std::lock_guard<std::mutex> lk(group_tasks_mutex_);
     --all_group_tasks_not_done_;
@@ -796,6 +794,8 @@ void BatchedThreadedNnet3CudaPipeline::CompleteTask(CudaDecoder *cuda_decoder,
     //    << std::endl;
     if (left_in_group == 0) group_done_cv_.notify_all();
   }
+
+  task->finished = true;
 }
 
 void BatchedThreadedNnet3CudaPipeline::DeterminizeOneLattice(TaskState *task) {
