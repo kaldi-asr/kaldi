@@ -5,4 +5,4 @@ http://www.openslr.org/33/
 http://www.openslr.org/85/
 
 This folder contains two subfolders:
-v1: a keyword spotting recipe
+w1: a keyword spotting recipe

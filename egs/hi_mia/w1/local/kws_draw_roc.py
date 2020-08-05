@@ -70,7 +70,7 @@ if __name__ == "__main__":
             x.append(false_alarm_rate)
             y.append(false_reject_rate)
         else:
-            false_alarm_per_hour = float(false_alarm) / (negative * 60)
+            false_alarm_per_hour = float(false_alarm) / (negative_dur * 60)
             recall = float(true_alarm + 1e-5) / (true_alarm + false_alarm + 1e-5) 
             print("false alarm per hour: "+str(false_alarm_per_hour)+", recall: "+str(recall))
             x.append(false_alarm_per_hour)

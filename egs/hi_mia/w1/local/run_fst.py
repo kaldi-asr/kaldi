@@ -60,8 +60,8 @@ class Token:
             self.score = prev.score + score
             if(is_filler == False):
                 t = prev.num_keyword_frames
-                average_keyword_score = (score + prev.average_keyword_score * t) / (t + 1); 
-                num_keyword_frames = t + 1
+                self.average_keyword_score = (score + prev.average_keyword_score * t) / (t + 1); 
+                self.num_keyword_frames = t + 1
                 if is_self_arc:
                     self.num_frames_of_current_state = prev.num_frames_of_current_state + 1
                     self.num_keyword_states = prev.num_keyword_states
