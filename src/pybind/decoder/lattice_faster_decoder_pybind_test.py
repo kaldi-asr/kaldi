@@ -20,7 +20,7 @@ class TestLatticeFasterDecoder(unittest.TestCase):
         print(opts)
 
     def test_lattice_faster_decoder_config_parse_options(self):
-        usage = 'testing'
+        usage = kaldi.StringArg('testing')
         parse_options = kaldi.ParseOptions(usage)
         argv = [
             'a.out', '--print-args=false', '--beam=20', '--max-active=7000',

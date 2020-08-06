@@ -41,7 +41,8 @@ class TestParseOptions(unittest.TestCase):
         d = kaldi.DoubleArg()
         s = kaldi.StringArg()
 
-        parse_options = kaldi.ParseOptions(usage='test args')
+        usage = kaldi.StringArg('test args')
+        parse_options = kaldi.ParseOptions(usage=usage)
         parse_options.Register(name='b', arg=b, doc='bool args')
         parse_options.Register('i', i, 'int32 args')
         parse_options.Register('u', u, 'uint32 args')
