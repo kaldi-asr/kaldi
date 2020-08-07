@@ -3,7 +3,7 @@
 set -eou pipefail
 
 stage=0
-stop_stage=100
+stop_stage=1
 train_nj=24
 extract_feat_nj=8
 train_mono_nj=1
@@ -36,15 +36,27 @@ else
   # BABEL TEST:
   # Georgian - 404
   # Lao - 203
-  babel_langs="307 103 101 402 107 206 404 203"
-  babel_recog="${babel_langs}"
-  gp_langs="Czech French Mandarin Spanish Thai"
-  gp_recog="${gp_langs}"
+#  babel_langs="307 103 101 402 107 206 404 203"
+#  babel_recog="${babel_langs}"
+  #babel_langs=""
+  #babel_recog=""
+  #gp_langs="Czech French Mandarin Spanish Thai"
+  #gp_recog="${gp_langs}"
   mboshi_train=false
   mboshi_recog=false
   gp_romanized=false
   ipa_transcript=true
 fi
+###Globalphone####
+#Czech       S0196
+#French      S0197
+#Spanish     S0203
+#mandarin    S0193
+#Thai        S0321
+gp_langs="Czech French Mandarin Spanish Thai"
+gp_recog="${gp_langs}"
+babel_langs=""
+babel_recog=""
 
 . cmd.sh
 . utils/parse_options.sh
@@ -85,7 +97,7 @@ function langname() {
   echo "$(basename "$1")"
 }
 
-if (($stage <= 0)) && (($stop_stage > 0))  ; then
+if (($stage <= 0)) && (($stop_stage > 0 ))  ; then
   echo "stage 0: Setting up individual languages"
 
   local/setup_languages.sh \
@@ -96,7 +108,8 @@ if (($stage <= 0)) && (($stop_stage > 0))  ; then
     --mboshi-train "${mboshi_train}" \
     --mboshi-recog "${mboshi_recog}" \
     --gp-romanized "${gp_romanized}" \
-    --ipa-transcript "${ipa_transcript}"
+    --ipa-transcript "${ipa_transcript}" \
+    --gp-path "/tudelft.net/staff-bulk/ewi/insy/SpeechLab/corpora/GlobalPhone/"
   for x in ${train_set} ${dev_set} ${recog_set}; do
     sed -i.bak -e "s/$/ sox -R -t wav - -t wav - rate 16000 dither | /" data/${x}/wav.scp
   done
@@ -124,7 +137,7 @@ fi
 if (($stage <= 5)) && (($stop_stage > 5 )) ; then
   # Feature extraction
   for data_dir in ${train_set}; do
-    (
+    #(
       lang_name=$(langname $data_dir)
       steps/make_mfcc.sh \
         --cmd "$train_cmd" \
@@ -135,8 +148,8 @@ if (($stage <= 5)) && (($stop_stage > 5 )) ; then
         mfcc
       utils/fix_data_dir.sh data/$data_dir
       steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
-    ) &
-    sleep 2
+   # ) &
+   # sleep 2
   done
   wait
 fi
@@ -169,15 +182,15 @@ fi
 if (($stage <= 7))  && (($stop_stage > 7 )) ; then
   # Mono training
   for data_dir in ${train_set}; do
-    (
+#    (
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/mono
       steps/train_mono.sh \
         --nj $train_mono_nj --cmd "$train_cmd" \
         data/subsets/5k/$data_dir \
         data/lang/$lang_name $expdir
-    ) &
-    sleep 2
+#    ) &
+#    sleep 2
   done
   wait
 fi
@@ -185,7 +198,7 @@ fi
 if (($stage <= 8))  && (($stop_stage > 8 )) ; then
   # Tri1 training
   for data_dir in ${train_set}; do
-    (
+    #(
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_mono_nj --cmd "$train_cmd" \
@@ -202,8 +215,8 @@ if (($stage <= 8))  && (($stop_stage > 8 )) ; then
         data/lang/$lang_name \
         exp/gmm/$lang_name/mono_ali_10k \
         exp/gmm/$lang_name/tri1
-    ) &
-    sleep 2
+    #) &
+    #sleep 2
   done
   wait
 fi
@@ -211,7 +224,7 @@ fi
 if (($stage <= 9)) && (($stop_stage > 9 )) ; then
   # Tri2 training
   for data_dir in ${train_set}; do
-    (
+#    (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_tri2_nj --cmd "$train_cmd" \
@@ -235,8 +248,8 @@ if (($stage <= 9)) && (($stop_stage > 9 )) ; then
         data/local/dictp/$lang_name/tri2 \
         data/local/langp/$lang_name/tri2 \
         data/langp/$lang_name/tri2
-    ) &
-    sleep 2
+#    ) &
+#    sleep 2
   done
   wait
 fi
@@ -244,7 +257,7 @@ fi
 if (($stage <= 10)) && (($stop_stage > 10 )) ; then
   # Tri3 training
   for data_dir in ${train_set}; do
-    (
+#    (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
@@ -268,8 +281,8 @@ if (($stage <= 10)) && (($stop_stage > 10 )) ; then
         data/local/dictp/$lang_name/tri3 \
         data/local/langp/$lang_name/tri3 \
         data/langp/$lang_name/tri3
-    ) &
-    sleep 2
+#    ) &
+#    sleep 2
   done
   wait
 fi
@@ -277,7 +290,7 @@ fi
 if (($stage <= 11)) && (($stop_stage > 11 )) ; then
   # Tri4 training
   for data_dir in ${train_set}; do
-    (
+#    (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
@@ -303,8 +316,8 @@ if (($stage <= 11)) && (($stop_stage > 11 )) ; then
         data/local/dictp/$lang_name/tri4 \
         data/local/langp/$lang_name/tri4 \
         data/langp/$lang_name/tri4
-    ) &
-    sleep 2
+#    ) &
+#    sleep 2
   done
   wait
 fi
@@ -312,7 +325,7 @@ fi
 if (($stage <= 12)) && (($stop_stage > 12 )) ; then
   # Tri5 training
   for data_dir in ${train_set}; do
-    (
+#    (
       lang_name=$(langname $data_dir)
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
@@ -338,8 +351,8 @@ if (($stage <= 12)) && (($stop_stage > 12 )) ; then
         data/local/dictp/$lang_name/tri5 \
         data/local/langp/$lang_name/tri5 \
         data/langp/$lang_name/tri5
-    ) &
-    sleep 2
+#    ) &
+#    sleep 2
   done
   wait
 fi
@@ -347,7 +360,7 @@ fi
 if (($stage <= 13)) && (($stop_stage > 13 )) ; then
   # Tri5 alignments
   for data_dir in ${train_set}; do
-    (
+#    (
       lang_name=$(langname $data_dir)
       steps/align_fmllr.sh \
         --nj $train_nj --cmd "$train_cmd" \
@@ -364,8 +377,8 @@ if (($stage <= 13)) && (($stop_stage > 13 )) ; then
         data/local/dictp/$lang_name/tri5_ali \
         data/local/langp/$lang_name/tri5_ali \
         data/langp/$lang_name/tri5_ali
-    ) &
-    sleep 2
+#    ) &
+#    sleep 2
   done
   wait
 fi
