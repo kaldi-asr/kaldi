@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Siyuan Feng: based on aishell2/s5/local/chain/tuning/run_tdnn_1b.sh
+# Siyuan Feng: based on babel/s5d/local/chain/tuning/run_tdnn.sh
 
 set -e -o pipefail
 
@@ -34,8 +34,6 @@ gp_recog="${gp_langs}"
 # (some of which are also used in this script directly).
 stage=0
 stop_stage=1
-num_epochs=4
-get_egs_stage=0
 nj=30
 nj_align_fmllr_lats=1
 num_jobs_initial=1
@@ -44,22 +42,15 @@ num_jobs_final=1
 gmm=tri5  # the gmm for the target data
 num_threads_ubm=12
 nnet3_affix=  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
-dropout_schedule='0,0@0.20,0.3@0.50,0'
-minibatch_size=128
-remove_egs=false
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 train_exit_stage=10000
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1b  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1a  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 #common_egs_dir=  # you can set this to use previously dumped egs.
-frames_per_eg=150,120,90,75
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
-max_param_change=2.0
-
+chunk_width=150,120,90,75
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -139,7 +130,7 @@ for data_dir in ${train_set}; do
     train_ivector_dir=exp/nnet3${nnet3_affix}/$lang_name/ivectors${data_aug_suffix}_hires
     
     
-    common_egs_dir= #exp/chain${nnet3_affix}/$lang_name/tdnn1b${data_aug_suffix}/egs  # you can set this to use previously dumped egs.
+    common_egs_dir=exp/chain${nnet3_affix}/$lang_name/tdnn1a${data_aug_suffix}/egs  # you can set this to use previously dumped egs.
     for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
         $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
       [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
@@ -192,63 +183,58 @@ for data_dir in ${train_set}; do
     fi
     
     xent_regularize=0.1
-
-
     if [ $stage -le 17 ] && [ $stop_stage -gt 17 ] ; then
+      mkdir -p $dir
+    
       echo "$0: creating neural net configs using the xconfig parser";
-      feat_dim=$(feat-to-dim scp:${train_data_dir}/feats.scp -)
-      num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
+    
+      num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+      [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
       learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
-      opts="l2-regularize=0.002"
-      linear_opts="orthonormal-constraint=1.0"
-      output_opts="l2-regularize=0.0005 bottleneck-dim=256"
     
       mkdir -p $dir/configs
       cat <<EOF > $dir/configs/network.xconfig
       input dim=100 name=ivector
-      input dim=$feat_dim name=input
+      input dim=43 name=input
       # please note that it is important to have input layer with the name=input
       # as the layer immediately preceding the fixed-affine-layer to enable
       # the use of short notation for the descriptor
       fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
       # the first splicing is moved before the lda layer, so no splicing here
-      relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1280
-      linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
-      relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1280
-      linear-component name=tdnn3l dim=256 $linear_opts
-      relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1280
-      linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
-      relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1280
-      linear-component name=tdnn5l dim=256 $linear_opts
-      relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
-      linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-      relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1280
-      linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
-      relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
-      linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
-      relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1280
-      linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-      relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
-      linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
-      relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1280
-      linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
-      relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn8l,tdnn6l) dim=1280
-      linear-component name=prefinal-l dim=256 $linear_opts
-      relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
-      output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
-      relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
-      output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
+      relu-batchnorm-layer name=tdnn1 dim=450
+      relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=450
+      relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=450
+      relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
+      relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=450
+      relu-batchnorm-layer name=tdnn7 input=Append(-6,-3,0) dim=450
+      ## adding the layers for chain branch
+      relu-batchnorm-layer name=prefinal-chain input=tdnn7 dim=450 target-rms=0.5
+      output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+      # adding the layers for xent branch
+      # This block prints the configs for a separate output that will be
+      # trained with a cross-entropy objective in the 'chain' models... this
+      # has the effect of regularizing the hidden parts of the model.  we use
+      # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+      # 0.5 / args.xent_regularize is suitable as it means the xent
+      # final-layer learns at a rate independent of the regularization
+      # constant; and the 0.5 was tuned so as to make the relative progress
+      # similar in the xent and regular final layers.
+      relu-batchnorm-layer name=prefinal-xent input=tdnn7 dim=450 target-rms=0.5
+      output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
       steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+    
     fi
     
-    if [ $stage -le 18 ]  && [ $stop_stage -gt 18 ] ; then
-      #if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-      #  utils/create_split_dir.pl \
-      #   /export/b0{5,6,7,8}/$USER/kaldi-data/egs/aishell-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
-      #fi
-      echo "exit stage is $train_exit_stage" 
-      steps/nnet3/chain/train.py --stage $train_stage --exit-stage $train_exit_stage  \
+    if [ $stage -le 18 ] && [ $stop_stage -gt 18 ] ; then
+      if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+        utils/create_split_dir.pl \
+         /export/b0{5,6,7,8}/$USER/kaldi-data/egs/babel-$(date +'%m_%d_%H_%M')/s5d/$RANDOM/$dir/egs/storage $dir/egs/storage
+      fi
+      [ ! -d $dir/egs ] && mkdir -p $dir/egs/
+      touch $dir/egs/.nodelete # keep egs around when that run dies.
+    
+     steps/nnet3/chain/train.py --stage $train_stage --exit-stage $train_exit_stage \
         --cmd "$decode_cmd" \
         --feat.online-ivector-dir $train_ivector_dir \
         --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -258,22 +244,32 @@ EOF
         --chain.apply-deriv-weights false \
         --chain.lm-opts="--num-extra-lm-states=2000" \
         --egs.dir "$common_egs_dir" \
-        --egs.stage $get_egs_stage \
         --egs.opts "--frames-overlap-per-eg 0" \
-        --egs.chunk-width $frames_per_eg \
-        --trainer.dropout-schedule $dropout_schedule \
-        --trainer.num-chunk-per-minibatch $minibatch_size \
+        --egs.chunk-width $chunk_width \
+        --trainer.num-chunk-per-minibatch 128 \
         --trainer.frames-per-iter 1500000 \
-        --trainer.num-epochs $num_epochs \
+        --trainer.num-epochs 4 \
         --trainer.optimization.num-jobs-initial $num_jobs_initial \
         --trainer.optimization.num-jobs-final $num_jobs_final \
-        --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-        --trainer.optimization.final-effective-lrate $final_effective_lrate \
-        --trainer.max-param-change $max_param_change \
-        --cleanup.remove-egs $remove_egs \
-        --feat-dir ${train_data_dir} \
+        --trainer.optimization.initial-effective-lrate 0.001 \
+        --trainer.optimization.final-effective-lrate 0.0001 \
+        --trainer.max-param-change 2.0 \
+        --cleanup.remove-egs false \
+        --feat-dir $train_data_dir \
         --tree-dir $tree_dir \
         --lat-dir $lat_dir \
-        --dir $dir  || exit 1;
+        --dir $dir
     fi
+    
+    
+    
+#    if [ $stage -le 19 ] && [ $stop_stage -gt 19 ] ; then
+#      # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
+#      # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
+#      # the lang directory.
+#      utils/mkgraph.sh --self-loop-scale 1.0 data/langp_test $dir $dir/graph
+#    fi
 done
+
+exit 0
+
