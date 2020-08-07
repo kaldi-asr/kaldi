@@ -44,6 +44,7 @@ extract_ivec_nj=30
                           # of the type you're training the system on;
                           # it should contain alignments for 'train_set'.
 #langdir=data/langp/tri5_ali
+
 num_threads_ubm=12
 nnet3_affix= #_cleaned
 
@@ -78,6 +79,9 @@ for l in ${gp_langs}; do
   train_set="GlobalPhone/gp_${l}_train ${train_set}"
   dev_set="GlobalPhone/gp_${l}_dev ${dev_set}"
 done
+
+
+
 train_set=${train_set%% }
 #train_set_hires=${train_set_hires%% }
 
@@ -160,9 +164,11 @@ if [ $stage -le 4 ] && [ $stop_stage -gt 4  ]; then
   echo "$0: computing a subset of data to train the diagonal UBM."
 
  for data_dir in ${train_set}${data_aug_suffix};do
-    lang_name=$(langname $data_dir)    mkdir -p exp/nnet3${nnet3_affix}/$lang_name/diag_ubm
-    temp_data_root=exp/nnet3${nnet3_affix}/$lang_name/diag_ubm
+    lang_name=$(langname $data_dir)
 
+    mkdir -p exp/nnet3${nnet3_affix}/$lang_name/diag_ubm
+    temp_data_root=exp/nnet3${nnet3_affix}/$lang_name/diag_ubm
+  
     # train a diagonal UBM using a subset of about a quarter of the data
     # we don't use the _comb data for this as there is no need for compatibility with
     # the alignments, and using the non-combined data is more efficient for I/O
@@ -175,14 +181,14 @@ if [ $stage -le 4 ] && [ $stop_stage -gt 4  ]; then
     fi
     utils/data/subset_data_dir.sh data/${data_dir}${data_aug_suffix}_hires_nopitch \
       $num_utts ${temp_data_root}/${data_dir}${data_aug_suffix}_hires_nopitch_subset
-
+ 
     echo "$0: computing a PCA transform from the hires data."
     steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
         --splice-opts "--left-context=3 --right-context=3" \
         --max-utts 10000 --subsample 2 \
          ${temp_data_root}/${data_dir}${data_aug_suffix}_hires_nopitch_subset \
          exp/nnet3${nnet3_affix}/$lang_name/pca_transform
-
+  
     echo "$0: training the diagonal UBM."
     # Use 512 Gaussians in the UBM.
     steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj $diag_ubm_train_nj \
@@ -199,7 +205,8 @@ if [ $stage -le 5 ] && [ $stop_stage -gt 5  ]; then
   # 100.
   for data_dir in ${train_set}${data_aug_suffix} ; do
     echo "$0: training the iVector extractor"
-    lang_name=$(langname $data_dir)    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj $ivec_train_nj \
+    lang_name=$(langname $data_dir)
+    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj $ivec_train_nj \
       data/${data_dir}${data_aug_suffix}_hires_nopitch exp/nnet3${nnet3_affix}/$lang_name/diag_ubm \
       exp/nnet3${nnet3_affix}/$lang_name/extractor || exit 1;
   done
@@ -222,21 +229,20 @@ if [ $stage -le 6 ] && [ $stop_stage -gt 6  ]; then
     # --utts-per-spk-max 2, the script pairs the utterances into twos, and treats
     # each of these pairs as one speaker; this gives more diversity in iVectors..
     # Note that these are extracted 'online'.
-
+  
     # having a larger number of speakers is helpful for generalization, and to
     # handle per-utterance decoding well (iVector starts at zero).
     temp_data_root=${ivectordir}
     utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
       data/${data_dir}${data_aug_suffix}_hires_nopitch \
       ${temp_data_root}/${data_dir}${data_aug_suffix}_hires_nopitch_max2
-
+  
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $extract_ivec_nj \
       ${temp_data_root}/${data_dir}${data_aug_suffix}_hires_nopitch_max2 \
       exp/nnet3${nnet3_affix}/$lang_name/extractor $ivectordir
-  done
+  done  
 fi
 
 echo "iVector preparation done."
 exit 0
-    
-    
+
