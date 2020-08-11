@@ -24,7 +24,7 @@ skip_scoring=false
 keep_ali=true
 # End configuration section.
 
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $*"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh
 . utils/parse_options.sh
@@ -53,7 +53,7 @@ data=$5
 indir=$6
 dir=$7
 
-acwt=`perl -e "print (1.0/$inv_acwt);"`
+acwt=$(perl -e "print (1.0/$inv_acwt);")
 
 # Figures out if the old LM is G.fst or G.carpa
 oldlm=$oldlang/G.fst
@@ -68,13 +68,13 @@ for f in $nn_model $vocabulary $indir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
-nj=`cat $indir/num_jobs` || exit 1;
+nj=$(cat $indir/num_jobs) || exit 1;
 mkdir -p $dir;
 cp $indir/num_jobs $dir/num_jobs
 
 adir=$dir/archives
 
-phi=`grep -w '#0' $oldlang/words.txt | awk '{print $2}'`
+phi=$(grep -w '#0' $oldlang/words.txt | awk '{print $2}')
 
 rm $dir/.error 2>/dev/null
 mkdir -p $dir/log
@@ -173,7 +173,7 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: Creating archives with text-form of words, and LM scores without graph scores."
     # Do some small tasks; for these we don't use the queue, it will only slow us down.
-  for n in `seq $nj`; do
+  for n in $(seq $nj); do
     utils/int2sym.pl -f 2- $oldlang/words.txt < $adir.$n/words > $adir.$n/words_text || exit 1;
     mkdir -p $adir.$n/temp
     paste $adir.$n/lmwt.nolm $adir.$n/lmwt.withlm | awk '{print $1, ($4-$2);}' > \
@@ -198,7 +198,7 @@ fi
 
 if [ $stage -le 7 ]; then
   echo "$0: reconstructing total LM+graph scores including interpolation of neural LM and old LM scores."
-  for n in `seq $nj`; do
+  for n in $(seq $nj); do
     paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.nn | awk -v nnweight=$nnweight \
       '{ key=$1; graphscore=$2; lmscore=$4; nnscore=$6;
      score = graphscore+(nnweight*nnscore)+((1-nnweight)*lmscore);

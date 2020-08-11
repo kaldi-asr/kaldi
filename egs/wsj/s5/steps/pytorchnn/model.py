@@ -9,7 +9,8 @@ import torch.nn as nn
 
 class RNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
-    def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers, dropout=0.5, tie_weights=False):
+    def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers, dropout=0.5,
+                 tie_weights=False):
         super(RNNModel, self).__init__()
 
         self.rnn_type = rnn_type
@@ -24,13 +25,15 @@ class RNNModel(nn.Module):
                 nonlinearity = {'RNN_TANH': 'tanh', 'RNN_RELU': 'relu'}[rnn_type]
             except KeyError:
                 raise ValueError("""An invalid option for `--model` was supplied,
-                               options are ['LSTM', 'GRU', 'RNN_TANH' or 'RNN_RELU']""")
-            self.rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity, dropout=dropout)
+                      options are ['LSTM', 'GRU', 'RNN_TANH' or 'RNN_RELU']""")
+            self.rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity,
+                              dropout=dropout)
         self.decoder = nn.Linear(nhid, ntoken)
 
         if tie_weights:
             if nhid != ninp:
-                raise ValueError('When using the tied flag, nhid must be equal to emsize.')
+                raise ValueError('When using the tied flag, nhid must be equal '
+                                 'to emsize.')
             self.decoder.weight = self.encoder.weight
 
         self.init_weights()
@@ -41,8 +44,8 @@ class RNNModel(nn.Module):
         nn.init.zeros_(self.decoder.bias)
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
 
-    def forward(self, input, hidden):
-        emb = self.drop(self.encoder(input))
+    def forward(self, x, hidden):
+        emb = self.drop(self.encoder(x))
         output, hidden = self.rnn(emb, hidden)
         output = self.drop(output)
         decoded = self.decoder(output)
@@ -53,15 +56,14 @@ class RNNModel(nn.Module):
         if self.rnn_type == 'LSTM':
             return (weight.new_zeros(self.nlayers, bsz, self.nhid),
                     weight.new_zeros(self.nlayers, bsz, self.nhid))
-        else:
-            return weight.new_zeros(self.nlayers, bsz, self.nhid)
+        return weight.new_zeros(self.nlayers, bsz, self.nhid)
 
 
 class PositionalEncoding(nn.Module):
-    r"""Inject some information about the relative or absolute position of the tokens
-        in the sequence. The positional encodings have the same dimension as
-        the embeddings, so that the two can be summed. Here, we use sine and cosine
-        functions of different frequencies.
+    r"""Inject some information about the relative or absolute position of the
+        tokens in the sequence. The positional encodings have the same dimension
+        as the embeddings, so that the two can be summed. Here, we use sine and
+        cosine functions of different frequencies.
     .. math::
         \text{PosEncoder}(pos, 2i) = sin(pos/10000^(2i/d_model))
         \text{PosEncoder}(pos, 2i+1) = cos(pos/10000^(2i/d_model))
@@ -102,31 +104,36 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerModel(nn.Module):
-    """Container module with an encoder, a recurrent or transformer module, and a decoder."""
+    """Container module with an encoder, a transformer module, and a decoder."""
 
-    def __init__(self, ntoken, ninp, nhead, nhid, nlayers, dropout=0.5, activation="relu", tie_weights=False):
+    def __init__(self, ntoken, ninp, nhead, nhid, nlayers, dropout=0.5,
+                 activation="relu", tie_weights=False):
         super(TransformerModel, self).__init__()
         try:
             from torch.nn import TransformerEncoder, TransformerEncoderLayer
-        except:
-            raise ImportError('TransformerEncoder module does not exist in PyTorch 1.1 or lower.')
+        except ImportError:
+            raise ImportError('TransformerEncoder module does not exist in '
+                              'PyTorch 1.1 or lower.')
         self.model_type = 'Transformer'
         self.src_mask = None
         self.pos_encoder = PositionalEncoding(ninp, dropout)
-        encoder_layers = TransformerEncoderLayer(ninp, nhead, nhid, dropout, activation)
+        encoder_layers = TransformerEncoderLayer(ninp, nhead, nhid, dropout,
+                                                 activation)
         self.transformer_encoder = TransformerEncoder(encoder_layers, nlayers)
         self.encoder = nn.Embedding(ntoken, ninp)
         self.ninp = ninp
         self.decoder = nn.Linear(ninp, ntoken)
         if tie_weights:
             if nhid != ninp:
-                raise ValueError('When using the tied flag, nhid must be equal to emsize.')
+                raise ValueError('When using the tied flag, nhid must be equal '
+                                 'to emsize.')
             self.decoder.weight = self.encoder.weight
         self.init_weights()
 
     def _generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(
+                mask == 1, float(0.0))
         return mask
 
     def init_weights(self):

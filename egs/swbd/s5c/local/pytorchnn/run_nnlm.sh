@@ -4,11 +4,11 @@
 
 # This script trains an RNN (including LSTM and GRU) or Transformer-based language model with PyTorch and performs N-best rescoring
 
-# Dev/eval2000 perplexity of a 2-layer LSTM model is: 46.9/42.3. WERs with N-best rescoring (with hidden states carried over sentences):
-# %WER 11.0 | 4459 42989 | 90.5 6.5 3.1 1.5 11.0 43.0 | exp/chain/tdnn7q_sp/decode_eval2000_sw1_fsh_fg_pytorch_lstm_nbest//score_10_0.0/eval2000_hires.ctm.filt.sys
-# %WER 7.2 | 1831 21395 | 93.7 4.2 2.1 0.9 7.2 37.4 | exp/chain/tdnn7q_sp/decode_eval2000_sw1_fsh_fg_pytorch_lstm_nbest//score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-# %WER 14.7 | 2628 21594 | 87.2 8.7 4.1 2.0 14.7 47.0 | exp/chain/tdnn7q_sp/decode_eval2000_sw1_fsh_fg_pytorch_lstm_nbest//score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
-# Without hidden-state-carry-over, the WER on eval2000 from N-best rescoring with the LSTM model is 11.3
+# Dev/eval2000 perplexity of a 2-layer LSTM model is: 47.1/41.9. WERs with N-best rescoring (with hidden states carried over sentences):
+# %WER 10.9 | 4459 42989 | 90.5 6.4 3.1 1.4 10.9 42.7 | exp/chain/tdnn7q_sp/decode_eval2000_sw1_fsh_fg_pytorch_lstm_nbest//score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 7.1 | 1831 21395 | 93.8 4.1 2.1 0.9 7.1 36.4 | exp/chain/tdnn7q_sp/decode_eval2000_sw1_fsh_fg_pytorch_lstm_nbest//score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 14.6 | 2628 21594 | 87.3 8.5 4.1 1.9 14.6 46.7 | exp/chain/tdnn7q_sp/decode_eval2000_sw1_fsh_fg_pytorch_lstm_nbest//score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+# Without hidden-state-carry-over, the WER on eval2000 from N-best rescoring with the LSTM model is 11.2
 
 # Dev/eval2000 perplexity of a Transformer LM is: 47.0/41.6. WERs with N-best rescoring:
 # %WER 10.8 | 4459 42989 | 90.6 6.3 3.1 1.5 10.8 42.1 | exp/chain/tdnn7q_sp/decode_eval2000_sw1_fsh_fg_pytorch_transformer_nbest//score_10_0.0/eval2000_hires.ctm.filt.sys

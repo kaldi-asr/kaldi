@@ -1,5 +1,3 @@
-# Copyright 2020    Ke Li
-
 """ This script is modified based on the word language model example in PyTorch:
     https://github.com/pytorch/examples/tree/master/word_language_model
     An example of model training and N-best rescoring can be found here:
@@ -13,7 +11,6 @@ from __future__ import print_function
 import argparse
 import time
 import math
-import os
 import random
 import torch
 import torch.nn as nn
@@ -22,12 +19,14 @@ import torch.optim as optim
 import data
 import model
 
-parser = argparse.ArgumentParser(description="Train and evaluate a neural language model with PyTorch.")
+parser = argparse.ArgumentParser(description="Train and evaluate a neural "
+                                 "language model with PyTorch.")
 # Model options
 parser.add_argument('--data', type=str, default='./data/pytorchnn',
                     help='location of the data corpus')
 parser.add_argument('--model', type=str, default='LSTM',
-                    help='type of model architecture. can be RNN_TANH, RNN_RELU, LSTM, GRU or Transformer.')
+                    help='type of model architecture. can be RNN_TANH, '
+                    'RNN_RELU, LSTM, GRU or Transformer.')
 parser.add_argument('--emsize', type=int, default=200,
                     help='size of word embeddings')
 parser.add_argument('--nhid', type=int, default=200,
@@ -35,7 +34,8 @@ parser.add_argument('--nhid', type=int, default=200,
 parser.add_argument('--nlayers', type=int, default=2,
                     help='number of layers')
 parser.add_argument('--nhead', type=int, default=2,
-                    help='the number of heads in the encoder/decoder of the transformer model')
+                    help='the number of heads in the encoder/decoder of the '
+                    'transformer model')
 
 # Training options
 parser.add_argument('--lr', type=float, default=0.1,
@@ -72,13 +72,14 @@ random.seed(args.seed)
 torch.manual_seed(args.seed)
 if torch.cuda.is_available():
     if not args.cuda:
-        print('WARNING: You have a CUDA device, so you should probably run with --cuda')
+        print('WARNING: You have a CUDA device, so you should probably run '
+              'with --cuda')
     else:
         torch.cuda.manual_seed_all(args.seed)
 
 print('Configurations')
 for arg, p in params.items():
-  print(arg, p)
+    print(arg, p)
 
 device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -86,6 +87,7 @@ device = torch.device("cuda" if args.cuda else "cpu")
 # Load data
 #############################
 corpus = data.Corpus(args.data)
+
 
 def batchify(data, bsz, random_start_idx=False):
     # Work out how cleanly we can divide the dataset into bsz parts.
@@ -101,6 +103,7 @@ def batchify(data, bsz, random_start_idx=False):
     data = data.view(bsz, -1).t().contiguous()
     return data.to(device)
 
+
 eval_batch_size = 20
 train_data = batchify(corpus.train, args.batch_size)
 val_data = batchify(corpus.valid, eval_batch_size)
@@ -113,10 +116,10 @@ ntokens = len(corpus.dictionary)
 if args.model == 'Transformer':
     # The activation function can be 'relu' (default) or 'gelu'
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid,
-            args.nlayers, args.dropout, "gelu", args.tied).to(device)
+                      args.nlayers, args.dropout, "gelu", args.tied).to(device)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid,
-            args.nlayers, args.dropout, args.tied).to(device)
+                           args.nlayers, args.dropout, args.tied).to(device)
 
 total_params = sum(x.data.nelement() for x in model.parameters())
 print('Args: {}'.format(args))
@@ -128,12 +131,12 @@ criterion = nn.CrossEntropyLoss()
 # Training part
 #############################
 
+
 def repackage_hidden(h):
     """Wraps hidden states in new Tensors, to detach them from their history."""
     if isinstance(h, torch.Tensor):
         return h.detach()
-    else:
-        return tuple(repackage_hidden(v) for v in h)
+    return tuple(repackage_hidden(v) for v in h)
 
 
 # Divide the source data into chunks of length args.seq_len.
@@ -158,15 +161,15 @@ def train():
             output = model(data)
         else:
             # Starting each batch, the hidden state is detached from how it was
-            # previously produced. Otherwise, the model would try backpropagating
-            # all the way to start of the dataset.
+            # previously produced. Otherwise, the model would try
+            # backpropagating all the way to start of the dataset.
             hidden = repackage_hidden(hidden)
             output, hidden = model(data, hidden)
 
         loss = criterion(output.view(-1, ntokens), targets)
         loss.backward()
 
-        # 'clip_grad_norm' helps prevent the exploding gradient problem in RNN/LSTM models.
+        # 'clip_grad_norm' helps prevent the exploding gradient problem.
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         optimizer.step()
 
@@ -174,10 +177,11 @@ def train():
         if batch % args.log_interval == 0 and batch > 0:
             cur_loss = total_loss / args.log_interval
             elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.3f} | ms/batch {:5.2f} | '
-                  'loss {:5.2f} | ppl {:8.2f}'.format(
-                epoch, batch, len(train_data) // args.seq_len, lr,
-                              elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
+            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.3f} | '
+                  'ms/batch {:5.2f} | loss {:5.2f} | ppl {:8.2f}'.format(
+                      epoch, batch, len(train_data) // args.seq_len, lr,
+                      elapsed * 1000 / args.log_interval, cur_loss,
+                      math.exp(cur_loss)))
             total_loss = 0.
             start_time = time.time()
 
@@ -207,7 +211,8 @@ def evaluate(source):
 #############################
 lr = args.lr
 best_val_loss = None
-optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-5)
+optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9,
+                      weight_decay=1e-5)
 counter = 0
 print("Start training")
 try:
@@ -217,8 +222,8 @@ try:
         val_loss = evaluate(val_data)
         print('-' * 89)
         print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
-                                           val_loss, math.exp(val_loss)))
+              'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
+                                         val_loss, math.exp(val_loss)))
         print('-' * 89)
 
         # Save the model if validation loss is the best we've seen so far.
@@ -229,7 +234,8 @@ try:
             best_val_loss = val_loss
         else:
             lr /= 2.
-            optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-5)
+            optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9,
+                                  weight_decay=1e-5)
             counter += 1
 
         # Early stopping
@@ -249,5 +255,5 @@ with open(args.save, 'rb') as f:
 test_loss = evaluate(test_data)
 print('=' * 89)
 print('| End of training | test loss {:5.2f} | test ppl {:8.2f}'.format(
-test_loss, math.exp(test_loss)))
+      test_loss, math.exp(test_loss)))
 print('=' * 89)
