@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
 use warnings; #sed replacement for -w perl parameter
-
 # In general, doing
 #  run.pl some.log a b c is like running the command a b c in
 # the bash shell, and putting the standard error and output into some.log.
@@ -26,7 +25,7 @@ use warnings; #sed replacement for -w perl parameter
 @ARGV < 2 && die "usage: run.pl log-file command-line arguments...";
 
 #print STDERR "COMMAND-LINE: " .  Dumper(\@ARGV) . "\n";
-
+$job_pick = 'all';
 $max_jobs_run = -1;
 $jobstart = 1;
 $jobend = 1;
@@ -72,6 +71,12 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
         $ignored_opts .= "$switch $argument $argument2 ";
       } elsif ($switch eq "--gpu") {
         $using_gpu = $argument;
+      } elsif ($switch eq "--pick") {
+        if($argument =~ m/^(all|none|failed|incomplete)$/) {
+          $job_pick = $argument;
+        } else {
+          print STDERR "run.pl: ERROR: --pick argument must be one of 'all', 'none', 'failed' or 'incomplete'"
+        }
       } else {
         # Ignore option.
         $ignored_opts .= "$switch $argument ";
@@ -153,6 +158,34 @@ if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
   }
 }
 
+sub pick_or_exit {
+  if($job_pick eq 'all'){
+    return; # no need to bother with the previous log
+  }
+  open my $fh, "<", $_[0] or return; # job not executed yet
+  my $log_line;
+  my $cur_line;
+  while ($cur_line = <$fh>) {
+    if( $cur_line =~ m/# Ended \(code .*/ ) {
+      $log_line = $cur_line;
+    }
+  }
+  close $fh;
+  if (! defined($log_line)){
+    return; # incomplete
+  }
+  if ( $log_line =~ m/# Ended \(code 0\).*/ ) {
+    exit(0); # complete
+  } elsif ( $log_line =~ m/# Ended \(code \d+(; signal \d+)?\).*/ ){
+    if ($job_pick !~ m/^(failed|all)$/) {
+      exit(1); # failed but not going to run
+    } else {
+      return; # failed
+    }
+  } elsif ( $log_line =~ m/.*\S.*/ ) {
+    return; # incomplete jobs are always run
+  }
+}
 $logfile = shift @ARGV;
 
 if (defined $jobname && $logfile !~ m/$jobname/ &&
@@ -207,6 +240,9 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
       $cmd =~ s/$jobname/$jobid/g;
       $logfile =~ s/$jobname/$jobid/g;
     }
+    # exit if the job does not need to be executed
+    pick_or_exit( $logfile );
+
     system("mkdir -p `dirname $logfile` 2>/dev/null");
     open(F, ">$logfile") || die "run.pl: Error opening log file $logfile";
     print F "# " . $cmd . "\n";
