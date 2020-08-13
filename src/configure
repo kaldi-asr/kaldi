@@ -292,7 +292,11 @@ configure_mkl_libraries() {
   for file in $mkl_libs; do
     local libfile=$mkllibdir/lib$file.$suffix
     check_exists $libfile
-    linkline+=" -l$file"
+    if ! $static; then
+      linkline+=" -l$file"
+    else
+      linkline+=" $libfile"
+    fi
   done
   linkline+=$link_post
 
