@@ -158,3 +158,13 @@ GSYMS
 # They are added here to avoid accidently checkin.
 /src/**/CMakeLists.txt
 /build*
+
+.vscode/
+
+#yesno
+/egs/yesno/s5/waves_yesno.tar.gz
+/egs/yesno/s5/waves_yesno/
+
+/src/base/valgrind.out
+/src/cudamatrix/valgrind.out
+/tools/extras/pa_stable_v19_20111121.tgz
