@@ -160,11 +160,13 @@ GSYMS
 /build*
 
 .vscode/
+/src/base/valgrind.out
+/src/cudamatrix/valgrind.out
+/tools/extras/pa_stable_v19_20111121.tgz
 
 #yesno
 /egs/yesno/s5/waves_yesno.tar.gz
 /egs/yesno/s5/waves_yesno/
 
-/src/base/valgrind.out
-/src/cudamatrix/valgrind.out
-/tools/extras/pa_stable_v19_20111121.tgz
+#online_demo
+/egs/librispeech/online_demo/online-data/
