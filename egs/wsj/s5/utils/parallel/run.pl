@@ -72,10 +72,10 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       } elsif ($switch eq "--gpu") {
         $using_gpu = $argument;
       } elsif ($switch eq "--pick") {
-        if($argument =~ m/^(all|none|failed|incomplete)$/) {
+        if($argument =~ m/^(all|failed|incomplete)$/) {
           $job_pick = $argument;
         } else {
-          print STDERR "run.pl: ERROR: --pick argument must be one of 'all', 'none', 'failed' or 'incomplete'"
+          print STDERR "run.pl: ERROR: --pick argument must be one of 'all', 'failed' or 'incomplete'"
         }
       } else {
         # Ignore option.
@@ -159,6 +159,32 @@ if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
 }
 
 sub pick_or_exit {
+  # pick_or_exit ( $logfile ) 
+  # Invoked before each job is started helps to run jobs selectively.
+  #
+  # Given the name of the output logfile decides whether the job must be 
+  # executed (by returning from the subroutine) or not (by terminating the
+  # process calling exit)
+  # 
+  # PRE: $job_pick is a global variable set by command line switch --pick
+  #      and indicates which class of jobs must be executed.
+  #
+  # 1) If a failed job is not executed the process exit code will indicate 
+  #    failure, just as if the task was just executed  and failed.
+  #
+  # 2) If a task is incomplete it will be executed. Incomplete may be either
+  #    a job whose log file does not contain the accounting notes in the end,
+  #    or a job whose log file does not exist.
+  #
+  # 3) If the $job_pick is set to 'all' (default behavior) a task will be
+  #    executed regardless of the result of previous attempts.
+  #
+  # This logic could have been implemented in the main execution loop
+  # but a subroutine to preserve the current level of readability of
+  # that part of the code.
+  #
+  # Alexandre Felipe, (o.alexandre.felipe@gmail.com) 14th of August of 2020
+  #
   if($job_pick eq 'all'){
     return; # no need to bother with the previous log
   }
@@ -186,6 +212,8 @@ sub pick_or_exit {
     return; # incomplete jobs are always run
   }
 }
+
+
 $logfile = shift @ARGV;
 
 if (defined $jobname && $logfile !~ m/$jobname/ &&
