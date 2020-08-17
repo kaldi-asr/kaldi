@@ -62,3 +62,6 @@ RUN git clone --depth 1 https://github.com/parrot-com/kaldi.git /kaldi && \
        -not -name util \
        -not -name matrix \
        -exec rm -rf {} \;
+
+RUN rm -f /kaldi/utils && ln -s /kaldi/egs/wsj/s5/utils /kaldi && \
+    rm -f /kaldi/steps && ln -s /kaldi/egs/wsj/s5/steps/ /kaldi
