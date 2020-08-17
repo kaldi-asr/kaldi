@@ -34,6 +34,7 @@ from egs_dataloader import get_egs_dataloader
 from libs.nnet3.train.dropout_schedule import _get_dropout_proportions
 from model import get_chain_model
 from options import get_args
+#from sgd_max_change import SgdMaxChange
 
 def get_objf(batch, model, device, criterion, opts, den_graph, training, optimizer=None, dropout=0.):
     feature, supervision = batch
@@ -301,6 +302,7 @@ def process_job(learning_rate, device_id=None, local_rank=None):
     else:
         valid_dataloader = None
 
+    #optimizer = SgdMaxChange(model.parameters(),
     optimizer = optim.Adam(model.parameters(),
                            lr=learning_rate,
                            weight_decay=5e-4)
