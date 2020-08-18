@@ -24,9 +24,9 @@ RUN apt-get update && \
         bc && \
     rm -rf /var/lib/apt/lists/*
 
+COPY . /kaldi
 
-RUN git clone --depth 1 https://github.com/parrot-com/kaldi.git /kaldi && \
-    cd /kaldi && \
+RUN cd /kaldi && \
     cd /kaldi/tools && \
     ./extras/install_mkl.sh && \
     make -j $(nproc) && \
@@ -34,7 +34,6 @@ RUN git clone --depth 1 https://github.com/parrot-com/kaldi.git /kaldi && \
     ./configure --shared --use-cuda=no && \
     make depend -j $(nproc) && \
     make -j $(nproc) && \
-    ls /kaldi/src && \
     find /kaldi/src/* -depth -type d \
        -not -name gmm \
        -not -name transform \
@@ -61,7 +60,24 @@ RUN git clone --depth 1 https://github.com/parrot-com/kaldi.git /kaldi && \
        -not -name tree \
        -not -name util \
        -not -name matrix \
-       -exec rm -rf {} \;
+       -exec rm -rf {} \; && \
+    find /kaldi -type f -name "*.cc" -o -name "*.o" -delete && \
+    find /kaldi -type f -name "*train*" -delete && \
+    rm -f /kaldi/src/online2bin/online2-tcp-nnet3-decode-faster && \
+    rm -f /kaldi/src/online2bin/online2-wav-nnet3-wake-word-decoder-faster && \
+    rm -f /kaldi/src/online2bin/online2-wav-nnet3-latgen-grammar && \
+    rm -f /kaldi/src/online2bin/online2-wav-nnet3-latgen-incremental && \
+    rm -f /kaldi/src/online2bin/online2-wav-nnet3-latgen-grammar && \
+    rm -f /kaldi/src/online2bin/online2-wav-nnet2-latgen-threaded && \
+    rm -f /kaldi/src/online2bin/online2-wav-gmm-latgen-faster && \
+    rm -rf /kaldi/.git && \
+    rm -rf kaldi/tools/srilm
 
-RUN rm -f /kaldi/utils && ln -s /kaldi/egs/wsj/s5/utils /kaldi && \
-    rm -f /kaldi/steps && ln -s /kaldi/egs/wsj/s5/steps/ /kaldi
+RUN rm -f /kaldi/utils && ln -s /kaldi/egs/wsj/s5/utils /kaldi/utils && \
+    rm -f /kaldi/steps && ln -s /kaldi/egs/wsj/s5/steps/ /kaldi/steps
+
+FROM python:3.8-buster
+
+COPY --from=0 /kaldi/ /kaldi/
+COPY --from=0 /opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin/ \
+              /opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin/
