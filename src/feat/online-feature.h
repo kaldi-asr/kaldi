@@ -162,7 +162,13 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   
   // ADD(YuanHuan)
   // appended_wave_ and waveform_remainder_ should have the same size
-  MatrixIndexT wave_form_size_;
+  MatrixIndexT waveform_vector_size_;
+
+  // ADD(YuanHuan)
+  // wave windows, Resize will increase the time consumption. Therefore, the 
+  // intermediate variable result will be changed into member variable to reduce the use of operation
+  Vector<BaseFloat> wav_window_;
+  MatrixIndexT wav_window_size_;
 };
 
 typedef OnlineGenericBaseFeature<MfccComputer> OnlineMfcc;

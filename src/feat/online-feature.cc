@@ -36,7 +36,7 @@ extern unsigned long long dither_time;
 extern unsigned long long remove_dc_offset_time;
 extern unsigned long long preempha_size_time;
 extern unsigned long long window_time;
-unsigned long long AcceptWaveform_Resize_time_before_compute = 0;
+unsigned long long AcceptWaveform_ComputeFeatures_ExtractWindow_resize = 0;
 
 namespace kaldi {
 
@@ -88,7 +88,7 @@ OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     computer_(opts), window_function_(computer_.GetFrameOptions()),
     features_(opts.frame_opts.max_feature_vectors),
     input_finished_(false), waveform_offset_(0),
-    wave_form_size_(0) {
+    waveform_vector_size_(0), wav_window_size_(0) {
   // RE the following assert: search for ONLINE_IVECTOR_LIMIT in
   // online-ivector-feature.cc.
   // Casting to uint32, an unsigned type, means that -1 would be treated
@@ -177,11 +177,11 @@ void OnlineGenericBaseFeature<C>::AcceptWaveform(
   // waveform_remainder_.Swap(&appended_wave);
 
   // Change(YuanHuan)
-  if(waveform_remainder_.Dim() + waveform->Dim() > wave_form_size_) {
-    wave_form_size_ = waveform_remainder_.Dim() + waveform->Dim();
+  if(waveform_remainder_.Dim() + waveform->Dim() > waveform_vector_size_) {
+    waveform_vector_size_ = waveform_remainder_.Dim() + waveform->Dim();
     MatrixIndexT waveform_remainder_dim = waveform_remainder_.Dim();
-    appended_wave_.Resize(wave_form_size_);
-    waveform_remainder_.Resize(wave_form_size_);
+    appended_wave_.Resize(waveform_vector_size_);
+    waveform_remainder_.Resize(waveform_vector_size_);
     waveform_remainder_.SetDim(waveform_remainder_dim);
   }
   appended_wave_.SetDim(waveform_remainder_.Dim() + waveform->Dim());
@@ -197,7 +197,6 @@ void OnlineGenericBaseFeature<C>::AcceptWaveform(
 
   TEST_TIME(resize_time);
   std::cout <<"\033[0;35mAcceptWaveform: Resize time before compute feture " << resize_time - start_time << " ms. \033[0;39m" << std::endl;
-  AcceptWaveform_Resize_time_before_compute = resize_time - start_time;
 
   ComputeFeatures();
   TEST_TIME(end_time);
@@ -213,7 +212,15 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
                                  input_finished_);
   KALDI_ASSERT(num_frames_new >= num_frames_old);
 
-  Vector<BaseFloat> window;
+  // Vector<BaseFloat> window;
+  // Change(YuanHuan)
+  int32 frame_length_padded = frame_opts.PaddedWindowSize();
+  if(frame_length_padded > wav_window_size_) {
+    wav_window_size_ = frame_length_padded;
+    wav_window_.Resize(wav_window_size_);
+  }
+  wav_window_.SetDim(frame_length_padded);
+
   bool need_raw_log_energy = computer_.NeedRawLogEnergy();
   unsigned long long start_time = 0, extract_window_time = 0, compute_time = 0;
   unsigned long long total_extract_window_time = 0, total_compute_time = 0;
@@ -221,8 +228,12 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   for (int32 frame = num_frames_old; frame < num_frames_new; frame++) {
     BaseFloat raw_log_energy = 0.0;
     TEST_TIME(start_time);
+    // ExtractWindow(waveform_offset_, waveform_remainder_, frame,
+    //               frame_opts, window_function_, &window,
+    //               need_raw_log_energy ? &raw_log_energy : NULL);
+    // Change(YuanHuan)
     ExtractWindow(waveform_offset_, waveform_remainder_, frame,
-                  frame_opts, window_function_, &window,
+                  frame_opts, window_function_, &wav_window_,
                   need_raw_log_energy ? &raw_log_energy : NULL);
     Vector<BaseFloat> *this_feature = new Vector<BaseFloat>(computer_.Dim(),
                                                             kUndefined);
@@ -231,7 +242,9 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
 
     // note: this online feature-extraction code does not support VTLN.
     BaseFloat vtln_warp = 1.0;
-    computer_.Compute(raw_log_energy, vtln_warp, &window, this_feature);
+    // computer_.Compute(raw_log_energy, vtln_warp, &window, this_feature);
+    // Change(YuanHuan)
+    computer_.Compute(raw_log_energy, vtln_warp, &wav_window_, this_feature);
 
     TEST_TIME(compute_time);
     total_compute_time += compute_time - extract_window_time;
@@ -246,6 +259,7 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   std::cout <<"\033[0;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow: ProcessWindow time " << process_window_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;35m AcceptWaveform -> ComputeFeatures: ExtractWindow time " << total_extract_window_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;35m AcceptWaveform -> ComputeFeatures: ComputeFeatures time " << total_compute_time << " ms. \033[0;39m" << std::endl;
+  AcceptWaveform_ComputeFeatures_ExtractWindow_resize = extract_window_resize_time;
   process_window_time = 0;
   extract_window_resize_time = 0;
   dither_time = 0;
