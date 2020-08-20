@@ -153,6 +153,16 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // after extracting all the whole frames we can (whatever length of feature
   // will be required for the next phase of computation).
   Vector<BaseFloat> waveform_remainder_;
+  
+  // ADD(YuanHuan)
+  // The intermediate variable of the waveform_remainder_, if the intermediate variable 
+  // is used frequently, Resize will increase the time consumption. Therefore, the 
+  // intermediate variable result will be changed into member variable to reduce the use of operation
+  Vector<BaseFloat> appended_wave_;
+  
+  // ADD(YuanHuan)
+  // appended_wave_ and waveform_remainder_ should have the same size
+  MatrixIndexT wave_form_size_;
 };
 
 typedef OnlineGenericBaseFeature<MfccComputer> OnlineMfcc;

@@ -22,6 +22,22 @@
 #include "feat/online-feature.h"
 #include "transform/cmvn.h"
 
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+extern unsigned long long process_window_time;
+extern unsigned long long extract_window_resize_time;
+extern unsigned long long dither_time;
+extern unsigned long long remove_dc_offset_time;
+extern unsigned long long preempha_size_time;
+extern unsigned long long window_time;
+unsigned long long appended_wave_resize_time = 0;
+
 namespace kaldi {
 
 RecyclingVector::RecyclingVector(int items_to_hold):
@@ -71,7 +87,8 @@ OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
     computer_(opts), window_function_(computer_.GetFrameOptions()),
     features_(opts.frame_opts.max_feature_vectors),
-    input_finished_(false), waveform_offset_(0) {
+    input_finished_(false), waveform_offset_(0),
+    wave_form_size_(0) {
   // RE the following assert: search for ONLINE_IVECTOR_LIMIT in
   // online-ivector-feature.cc.
   // Casting to uint32, an unsigned type, means that -1 would be treated
@@ -135,7 +152,6 @@ void OnlineGenericBaseFeature<C>::AcceptWaveform(
   if (input_finished_)
     KALDI_ERR << "AcceptWaveform called after InputFinished() was called.";
 
-  Vector<BaseFloat> appended_wave;
   Vector<BaseFloat> resampled_wave;
 
   const VectorBase<BaseFloat> *waveform;
@@ -148,14 +164,44 @@ void OnlineGenericBaseFeature<C>::AcceptWaveform(
     waveform = &resampled_wave;
   }
 
-  appended_wave.Resize(waveform_remainder_.Dim() + waveform->Dim());
+  unsigned long long start_time = 0, resize_time = 0, end_time = 0;
+  TEST_TIME(start_time);
+
+  // Vector<BaseFloat> appended_wave;
+  // appended_wave.Resize(waveform_remainder_.Dim() + waveform->Dim());
+  // if (waveform_remainder_.Dim() != 0)
+  //   appended_wave.Range(0, waveform_remainder_.Dim())
+  //       .CopyFromVec(waveform_remainder_);
+  // appended_wave.Range(waveform_remainder_.Dim(), waveform->Dim())
+  //     .CopyFromVec(*waveform);
+  // waveform_remainder_.Swap(&appended_wave);
+
+  // Change(YuanHuan)
+  if(waveform_remainder_.Dim() + waveform->Dim() > wave_form_size_) {
+    wave_form_size_ = waveform_remainder_.Dim() + waveform->Dim();
+    MatrixIndexT waveform_remainder_dim = waveform_remainder_.Dim();
+    appended_wave_.Resize(wave_form_size_);
+    waveform_remainder_.Resize(wave_form_size_);
+    waveform_remainder_.SetDim(waveform_remainder_dim);
+  }
+  appended_wave_.SetDim(waveform_remainder_.Dim() + waveform->Dim());
   if (waveform_remainder_.Dim() != 0)
-    appended_wave.Range(0, waveform_remainder_.Dim())
+    appended_wave_.Range(0, waveform_remainder_.Dim())
         .CopyFromVec(waveform_remainder_);
-  appended_wave.Range(waveform_remainder_.Dim(), waveform->Dim())
+  appended_wave_.Range(waveform_remainder_.Dim(), waveform->Dim())
       .CopyFromVec(*waveform);
-  waveform_remainder_.Swap(&appended_wave);
+  // waveform_remainder_.Swap(&appended_wave_);
+  waveform_remainder_.SetDim(appended_wave_.Dim());
+  waveform_remainder_.Range(0, appended_wave_.Dim())
+      .CopyFromVec(appended_wave_);
+
+  TEST_TIME(resize_time);
+  std::cout <<"\033[0;35mResize_time time " << resize_time - start_time << " ms. \033[0;39m" << std::endl;
+   appended_wave_resize_time += resize_time - start_time;
+
   ComputeFeatures();
+  TEST_TIME(end_time);
+  std::cout <<"\033[0;35mCompute_features time " << end_time - resize_time << " ms. \033[0;39m" << std::endl;
 }
 
 template <class C>
@@ -169,18 +215,42 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
 
   Vector<BaseFloat> window;
   bool need_raw_log_energy = computer_.NeedRawLogEnergy();
+  unsigned long long start_time = 0, extract_window_time = 0, compute_time = 0;
+  unsigned long long total_extract_window_time = 0, total_compute_time = 0;
+
   for (int32 frame = num_frames_old; frame < num_frames_new; frame++) {
     BaseFloat raw_log_energy = 0.0;
+    TEST_TIME(start_time);
     ExtractWindow(waveform_offset_, waveform_remainder_, frame,
                   frame_opts, window_function_, &window,
                   need_raw_log_energy ? &raw_log_energy : NULL);
     Vector<BaseFloat> *this_feature = new Vector<BaseFloat>(computer_.Dim(),
                                                             kUndefined);
+    TEST_TIME(extract_window_time);
+    total_extract_window_time += extract_window_time - start_time;
+
     // note: this online feature-extraction code does not support VTLN.
     BaseFloat vtln_warp = 1.0;
     computer_.Compute(raw_log_energy, vtln_warp, &window, this_feature);
+
+    TEST_TIME(compute_time);
+    total_compute_time += compute_time - extract_window_time;
     features_.PushBack(this_feature);
   }
+  std::cout <<"\033[0;35mTotal extract window time " << total_extract_window_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36mprocess window time " << process_window_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36mextract window resize time " << extract_window_resize_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[40;36mdither time " << dither_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[40;36mremove dc offset time " << remove_dc_offset_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[40;36mpreempha size time " << preempha_size_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[40;36mwindow time " << window_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;35mTotal compute time " << total_compute_time << " ms. \033[0;39m" << std::endl;
+  process_window_time = 0;
+  extract_window_resize_time = 0;
+  dither_time = 0;
+  remove_dc_offset_time = 0;
+  preempha_size_time = 0;
+  window_time = 0;
   // OK, we will now discard any portion of the signal that will not be
   // necessary to compute frames in the future.
   int64 first_sample_of_next_frame = FirstSampleOfFrame(num_frames_new,
@@ -189,16 +259,31 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   if (samples_to_discard > 0) {
     // discard the leftmost part of the waveform that we no longer need.
     int32 new_num_samples = waveform_remainder_.Dim() - samples_to_discard;
+    // if (new_num_samples <= 0) {
+    //   // odd, but we'll try to handle it.
+    //   waveform_offset_ += waveform_remainder_.Dim();
+    //   waveform_remainder_.Resize(0);
+    // } else {
+    //   Vector<BaseFloat> new_remainder(new_num_samples);
+    //   new_remainder.CopyFromVec(waveform_remainder_.Range(samples_to_discard,
+    //                                                       new_num_samples));
+    //   waveform_offset_ += samples_to_discard;
+    //   waveform_remainder_.Swap(&new_remainder);
+    // }
+
+    // Change(YuanHuan)
     if (new_num_samples <= 0) {
       // odd, but we'll try to handle it.
       waveform_offset_ += waveform_remainder_.Dim();
-      waveform_remainder_.Resize(0);
+      waveform_remainder_.SetDim(0);
     } else {
-      Vector<BaseFloat> new_remainder(new_num_samples);
-      new_remainder.CopyFromVec(waveform_remainder_.Range(samples_to_discard,
+      appended_wave_.SetDim(new_num_samples);
+      appended_wave_.CopyFromVec(waveform_remainder_.Range(samples_to_discard,
                                                           new_num_samples));
       waveform_offset_ += samples_to_discard;
-      waveform_remainder_.Swap(&new_remainder);
+      waveform_remainder_.SetDim(appended_wave_.Dim());
+      waveform_remainder_.Range(0, appended_wave_.Dim())
+        .CopyFromVec(appended_wave_);
     }
   }
 }

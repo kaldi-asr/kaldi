@@ -20,6 +20,16 @@
 #include "nnet3/decodable-online-looped.h"
 #include "nnet3/nnet-utils.h"
 
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+extern int LogLikelihood_time;
+unsigned long long advance_chunk_time = 0;
 namespace kaldi {
 namespace nnet3 {
 
@@ -248,8 +258,19 @@ BaseFloat DecodableNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
 
 BaseFloat DecodableAmNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
                                                     int32 index) {
+  unsigned long long start_log_like_lihood = 0, end_log_like_lihood = 0;
+  TEST_TIME(start_log_like_lihood);
+
   subsampled_frame += frame_offset_;
   EnsureFrameIsComputed(subsampled_frame);
+
+  TEST_TIME(end_log_like_lihood);
+  // if(LogLikelihood_time == 1) {
+    // std::cout <<"\033[0;34mAdvance_chunk time: " << end_log_like_lihood - start_log_like_lihood << " ms. \033[0;39m" << std::endl;
+    advance_chunk_time += end_log_like_lihood - start_log_like_lihood;
+    // LogLikelihood_time = 0;
+  // }
+
   return current_log_post_(
       subsampled_frame - current_log_post_subsampled_offset_,
       trans_model_.TransitionIdToPdfFast(index));
