@@ -63,6 +63,10 @@ class VectorBase {
   /// Returns the  dimension of the vector.
   inline MatrixIndexT Dim() const { return dim_; }
 
+  // Add(YuanHuan)
+  // Set the dimension of the vector.
+  inline void SetDim(MatrixIndexT dim) { dim_ = dim; }
+
   /// Returns the size in memory of the vector, in bytes.
   inline MatrixIndexT SizeInBytes() const { return (dim_*sizeof(Real)); }
 

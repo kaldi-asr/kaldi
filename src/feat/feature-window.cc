@@ -23,7 +23,20 @@
 #include "feat/feature-window.h"
 #include "matrix/matrix-functions.h"
 
-
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+unsigned long long process_window_time = 0;
+unsigned long long extract_window_resize_time = 0;
+unsigned long long dither_time = 0;
+unsigned long long remove_dc_offset_time = 0;
+unsigned long long preempha_size_time = 0;
+unsigned long long window_time = 0;
 namespace kaldi {
 
 
@@ -141,11 +154,20 @@ void ProcessWindow(const FrameExtractionOptions &opts,
   int32 frame_length = opts.WindowSize();
   KALDI_ASSERT(window->Dim() == frame_length);
 
+  unsigned long long start_time = 0, end_time = 0;
+  unsigned long long dither_each_loop_time = 0,  remove_dc_offset_each_loop_time= 0;
+  unsigned long long preempha_size_each_loop_time = 0, window_each_loop_time = 0;
+  TEST_TIME(start_time);
   if (opts.dither != 0.0)
     Dither(window, opts.dither);
+  TEST_TIME(dither_each_loop_time);
+  dither_time += dither_each_loop_time - start_time;
 
   if (opts.remove_dc_offset)
     window->Add(-window->Sum() / frame_length);
+
+  TEST_TIME(remove_dc_offset_each_loop_time);
+  remove_dc_offset_time += remove_dc_offset_each_loop_time - dither_each_loop_time;
 
   if (log_energy_pre_window != NULL) {
     BaseFloat energy = std::max<BaseFloat>(VecVec(*window, *window),
@@ -156,7 +178,13 @@ void ProcessWindow(const FrameExtractionOptions &opts,
   if (opts.preemph_coeff != 0.0)
     Preemphasize(window, opts.preemph_coeff);
 
+  TEST_TIME(preempha_size_each_loop_time);
+  preempha_size_time += preempha_size_each_loop_time - remove_dc_offset_each_loop_time;
+
   window->MulElements(window_function.window);
+
+  TEST_TIME(window_each_loop_time);
+  window_time += window_each_loop_time - preempha_size_each_loop_time;
 }
 
 
@@ -183,6 +211,9 @@ void ExtractWindow(int64 sample_offset,
   } else {
     KALDI_ASSERT(sample_offset == 0 || start_sample >= sample_offset);
   }
+
+  unsigned long long start_time = 0, end_time = 0, resize_time = 0;
+  TEST_TIME(start_time);
 
   if (window->Dim() != frame_length_padded)
     window->Resize(frame_length_padded, kUndefined);
@@ -220,7 +251,13 @@ void ExtractWindow(int64 sample_offset,
 
   SubVector<BaseFloat> frame(*window, 0, frame_length);
 
+  TEST_TIME(resize_time);
+  extract_window_resize_time += resize_time - start_time;
+
   ProcessWindow(opts, window_function, &frame, log_energy_pre_window);
+  TEST_TIME(end_time);
+  process_window_time += end_time - resize_time;
+  // std::cout <<"\033[0;36mprocess window each loop time " << end_time - start_time << " ms. \033[0;39m" << std::endl;
 }
 
 }  // namespace kaldi

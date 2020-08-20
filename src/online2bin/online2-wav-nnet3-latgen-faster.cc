@@ -29,6 +29,18 @@
 #include "util/kaldi-thread.h"
 #include "nnet3/nnet-utils.h"
 
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+
+extern unsigned long long advance_chunk_time;
+extern unsigned long long AcceptWaveform_Resize_time_before_compute;
+
 namespace kaldi {
 
 void GetDiagnosticsAndPrintOutput(const std::string &utt,
@@ -80,6 +92,19 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     using namespace fst;
 
+    unsigned long long start_time = 0, end_time = 0;
+    unsigned long long load_params_time = 0, load_trans_model_nnet_time = 0;
+    unsigned long long precomputed_stuff_time = 0, read_fst_time = 0;
+    unsigned long long read_spk2utt_wav_time = 0;
+    unsigned long long get_wave_data_before_time = 0, get_wave_data_after_time = 0;
+    unsigned long long get_frame_wave_data_before_time = 0, get_frame_wave_data_after_time = 0;
+    unsigned long long get_frame_feature_time = 0, total_frame_feature_time = 0,get_frame_decoding_time = 0, total_frame_decoding_time = 0;
+    unsigned long long get_final_decode_after_time = 0, get_final_decode_before_time = 0;
+    unsigned long long after_decode_time = 0;
+    unsigned long long total_AcceptWaveform_Resize_time_before_compute = 0;
+    uint32 loop_time = 0;
+    TEST_TIME(start_time);
+
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 
@@ -106,6 +131,7 @@ int main(int argc, char *argv[]) {
     OnlineEndpointConfig endpoint_opts;
 
     BaseFloat chunk_length_secs = 0.18;
+    // BaseFloat chunk_length_secs = 4;
     bool do_endpointing = false;
     bool online = true;
 
@@ -159,6 +185,9 @@ int main(int argc, char *argv[]) {
       ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
                       &global_cmvn_stats);
 
+    TEST_TIME(load_params_time);
+    std::cout <<"\033[0;31mLoad params time: " << load_params_time - start_time << " ms. \033[0;39m" << std::endl;
+
     TransitionModel trans_model;
     nnet3::AmNnetSimple am_nnet;
     {
@@ -171,14 +200,22 @@ int main(int argc, char *argv[]) {
       nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet.GetNnet()));
     }
 
+    TEST_TIME(load_trans_model_nnet_time);
+    std::cout <<"\033[0;31mLoad trans model and nnet time " << load_trans_model_nnet_time - load_params_time << " ms. \033[0;39m" << std::endl;
+
     // this object contains precomputed stuff that is used by all decodable
     // objects.  It takes a pointer to am_nnet because if it has iVectors it has
     // to modify the nnet to accept iVectors at intervals.
     nnet3::DecodableNnetSimpleLoopedInfo decodable_info(decodable_opts,
                                                         &am_nnet);
 
+    TEST_TIME(precomputed_stuff_time);
+    std::cout <<"\033[0;31mPrecomputed stuff time " << precomputed_stuff_time - load_trans_model_nnet_time << " ms. \033[0;39m" << std::endl;
 
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
+
+    TEST_TIME(read_fst_time);
+    std::cout <<"\033[0;31mLoad fst time " << read_fst_time - precomputed_stuff_time << " ms. \033[0;39m" << std::endl;
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_rxfilename != "")
@@ -193,6 +230,10 @@ int main(int argc, char *argv[]) {
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
     CompactLatticeWriter clat_writer(clat_wspecifier);
+
+    TEST_TIME(read_spk2utt_wav_time); 
+    std::cout <<"\033[0;31mLoad spk2utt wav time " << read_spk2utt_wav_time - read_fst_time << " ms. \033[0;39m\n" << std::endl;
+    std::cout <<"\033[0;31mTotal init time " << read_spk2utt_wav_time - start_time << " ms. \033[0;39m\n" << std::endl;
 
     OnlineTimingStats timing_stats;
 
@@ -211,10 +252,16 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
+
+        TEST_TIME(get_wave_data_before_time);
+
         const WaveData &wave_data = wav_reader.Value(utt);
         // get the data for channel zero (if the signal is not mono, we only
         // take the first channel).
         SubVector<BaseFloat> data(wave_data.Data(), 0);
+
+        TEST_TIME(get_wave_data_after_time);     
+        std::cout <<"\033[0;31mLoad wave date time " << get_wave_data_after_time - get_wave_data_before_time << " ms. \033[0;39m" << std::endl;
 
         OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
         feature_pipeline.SetAdaptationState(adaptation_state);
@@ -247,10 +294,21 @@ int main(int argc, char *argv[]) {
           int32 num_samp = chunk_length < samp_remaining ? chunk_length
                                                          : samp_remaining;
 
+          TEST_TIME(get_frame_wave_data_before_time);
           SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
+
+          TEST_TIME(get_frame_wave_data_after_time);
+          std::cout <<"\033[0;31mLoad wave date per frame time " << get_frame_wave_data_after_time - get_frame_wave_data_before_time << " ms. \033[0;39m" << std::endl;
+
           feature_pipeline.AcceptWaveform(samp_freq, wave_part);
+          TEST_TIME(get_frame_feature_time);
+          std::cout <<"\033[0;31mAcceptWaveform -> Resize time before compute feture " << AcceptWaveform_Resize_time_before_compute << " ms. \033[0;39m" << std::endl;
+          std::cout <<"\033[0;31mAcceptWaveform per frame time " << get_frame_feature_time - get_frame_wave_data_after_time << " ms. \033[0;39m" << std::endl;
+          total_AcceptWaveform_Resize_time_before_compute += AcceptWaveform_Resize_time_before_compute;
+          total_frame_feature_time +=  get_frame_feature_time - get_frame_wave_data_after_time;
 
           samp_offset += num_samp;
+          loop_time += 1;
           decoding_timer.WaitUntil(samp_offset / samp_freq);
           if (samp_offset == data.Dim()) {
             // no more input. flush out last frames
@@ -266,12 +324,24 @@ int main(int argc, char *argv[]) {
           }
 
           decoder.AdvanceDecoding();
+          TEST_TIME(get_frame_decoding_time);
+          std::cout <<"\033[0;31mAccept decode per frame time " << get_frame_decoding_time - get_frame_feature_time << " ms. \033[0;39m\n" << std::endl;
+          total_frame_decoding_time += get_frame_decoding_time - get_frame_feature_time;
 
           if (do_endpointing && decoder.EndpointDetected(endpoint_opts)) {
             break;
           }
         }
+
+        std::cout <<"\n\033[0;34mDo AdvanceChunk: " << advance_chunk_time << " ms. \033[0;39m" << std::endl;
+        std::cout <<"\033[0;31mAcceptWaveform -> [Total]Resize time before compute feture " << total_AcceptWaveform_Resize_time_before_compute << " ms. \033[0;39m" << std::endl;
+        std::cout <<"\033[0;31mTotal feature frames time " << total_frame_feature_time << " ms. \033[0;39m" << std::endl;
+        std::cout <<"\033[0;31mTotal decode frames time " << total_frame_decoding_time << " ms. \033[0;39m" << std::endl;
+        std::cout <<"\033[0;31mTotal loop time " << loop_time << "\033[0;39m\n" << std::endl;
+        TEST_TIME(get_final_decode_before_time);
         decoder.FinalizeDecoding();
+        TEST_TIME(get_final_decode_after_time);
+        std::cout <<"\033[0;31mFinal Decode time " <<  get_final_decode_after_time - get_final_decode_before_time << " ms. \033[0;39m" << std::endl;
 
         CompactLattice clat;
         bool end_of_utterance = true;
@@ -295,6 +365,9 @@ int main(int argc, char *argv[]) {
         clat_writer.Write(utt, clat);
         KALDI_LOG << "Decoded utterance " << utt;
         num_done++;
+
+        TEST_TIME(after_decode_time);
+        std::cout <<"\033[0;31mAfter decode time " << after_decode_time - get_final_decode_after_time << " ms. \033[0;39m" << std::endl;
       }
     }
     timing_stats.Print(online);
@@ -305,6 +378,11 @@ int main(int argc, char *argv[]) {
               << " per frame over " << num_frames << " frames.";
     delete decode_fst;
     delete word_syms; // will delete if non-NULL.
+
+    TEST_TIME(end_time);
+    std::cout <<"\033[0;31mTotal decode time: " << end_time - read_spk2utt_wav_time << " ms. \033[0;39m" << std::endl;
+    std::cout <<"\033[0;31mTotal time: " << end_time - start_time << " ms. \033[0;39m" << std::endl;
+    
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

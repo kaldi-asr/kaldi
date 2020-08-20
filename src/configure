@@ -993,15 +993,15 @@ shopt -u nocasematch
 # If more than one library specified, or a conflict has been recorded above
 # already, then add all deduced libraries as conflicting options (not all may
 # be conflicting sensu stricto, but let the user deal with it).
-if [[ ${#mathlibs[@]} -gt 1 || $incompat ]]; then
-  for libpfx in "${mathlibs[@]}"; do
-    # Handle --mkl-libdir out of common pattern.
-    [[ $libpfx == mkl && $MKLLIBDIR ]] && incompat+=(--mkl-libdir=)
-    # All other switches follow the pattern --$libpfx-root.
-    incompat+=(--$(lcase $libpfx)-root=)
-  done
-  failure "Incompatible configuration switches: ${incompat[@]}"
-fi
+# if [[ ${#mathlibs[@]} -gt 1 || $incompat ]]; then
+#   for libpfx in "${mathlibs[@]}"; do
+#     # Handle --mkl-libdir out of common pattern.
+#     [[ $libpfx == mkl && $MKLLIBDIR ]] && incompat+=(--mkl-libdir=)
+#     # All other switches follow the pattern --$libpfx-root.
+#     incompat+=(--$(lcase $libpfx)-root=)
+#   done
+#   failure "Incompatible configuration switches: ${incompat[@]}"
+# fi
 
 # When no library roots were provided, so that auto_lib is not deduced, and
 # MATHLIB is also not explicitly provided by the user, then default to MKL.
