@@ -39,7 +39,7 @@
 #endif
 
 extern unsigned long long advance_chunk_time;
-extern unsigned long long AcceptWaveform_ComputeFeatures_ExtractWindow_resize;
+extern unsigned long long AcceptWaveform_ComputeFeatures_PushBack_time;
 
 namespace kaldi {
 
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     unsigned long long get_frame_feature_time = 0, total_frame_feature_time = 0,get_frame_decoding_time = 0, total_frame_decoding_time = 0;
     unsigned long long get_final_decode_after_time = 0, get_final_decode_before_time = 0;
     unsigned long long after_decode_time = 0;
-    unsigned long long total_AcceptWaveform_ComputeFeatures_ExtractWindow_resize = 0;
+    unsigned long long total_AcceptWaveform_ComputeFeatures_PushBack_time = 0;
     uint32 loop_time = 0;
     TEST_TIME(start_time);
 
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
     LatticeFasterDecoderConfig decoder_opts;
     OnlineEndpointConfig endpoint_opts;
 
-    BaseFloat chunk_length_secs = 0.18;
+    BaseFloat chunk_length_secs = 0.185;
     // BaseFloat chunk_length_secs = 4;
     bool do_endpointing = false;
     bool online = true;
@@ -302,9 +302,9 @@ int main(int argc, char *argv[]) {
 
           feature_pipeline.AcceptWaveform(samp_freq, wave_part);
           TEST_TIME(get_frame_feature_time);
-          std::cout <<"\033[0;31mAcceptWaveform -> ComputeFeatures -> ExtractWindow: resize time " << AcceptWaveform_ComputeFeatures_ExtractWindow_resize << " ms. \033[0;39m" << std::endl;
+          std::cout <<"\033[0;31mAcceptWaveform -> ComputeFeatures -> PushBack: pushback time " << AcceptWaveform_ComputeFeatures_PushBack_time << " ms. \033[0;39m" << std::endl;
           std::cout <<"\033[0;31mAcceptWaveform per frame time " << get_frame_feature_time - get_frame_wave_data_after_time << " ms. \033[0;39m" << std::endl;
-          total_AcceptWaveform_ComputeFeatures_ExtractWindow_resize += AcceptWaveform_ComputeFeatures_ExtractWindow_resize;
+          total_AcceptWaveform_ComputeFeatures_PushBack_time += AcceptWaveform_ComputeFeatures_PushBack_time;
           total_frame_feature_time +=  get_frame_feature_time - get_frame_wave_data_after_time;
 
           samp_offset += num_samp;
@@ -334,7 +334,7 @@ int main(int argc, char *argv[]) {
         }
 
         std::cout <<"\n\033[0;34mDo AdvanceChunk: " << advance_chunk_time << " ms. \033[0;39m" << std::endl;
-        std::cout <<"\033[0;31mAcceptWaveform -> ComputeFeatures -> ExtractWindow: [Total]resize time " << total_AcceptWaveform_ComputeFeatures_ExtractWindow_resize << " ms. \033[0;39m" << std::endl;
+        std::cout <<"\033[0;31mAcceptWaveform -> ComputeFeatures -> PushBack: [Total]push back time " << total_AcceptWaveform_ComputeFeatures_PushBack_time << " ms. \033[0;39m" << std::endl;
         std::cout <<"\033[0;31mTotal feature frames time " << total_frame_feature_time << " ms. \033[0;39m" << std::endl;
         std::cout <<"\033[0;31mTotal decode frames time " << total_frame_decoding_time << " ms. \033[0;39m" << std::endl;
         std::cout <<"\033[0;31mTotal loop time " << loop_time << "\033[0;39m\n" << std::endl;
