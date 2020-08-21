@@ -36,7 +36,7 @@ extern unsigned long long dither_time;
 extern unsigned long long remove_dc_offset_time;
 extern unsigned long long preempha_size_time;
 extern unsigned long long window_time;
-unsigned long long AcceptWaveform_ComputeFeatures_ExtractWindow_resize = 0;
+unsigned long long AcceptWaveform_ComputeFeatures_PushBack_time = 0;
 
 namespace kaldi {
 
@@ -76,6 +76,46 @@ int RecyclingVector::Size() const {
   return first_available_index_ + items_.size();
 }
 
+// ADD(YuanHuan)
+FeatureVector::FeatureVector(int items_capacity):
+  items_capacity_(items_capacity), 
+  items_size_(0) {
+    items_ = new Vector<BaseFloat>*[items_capacity_];
+}
+
+FeatureVector::~FeatureVector() {
+  for(int i = 0; i < items_size_; i++) {
+    delete items_[i];
+  }
+  delete [] items_;
+}
+
+Vector<BaseFloat> *FeatureVector::At(int index) const {
+  if (index >= Size()) {
+    KALDI_ERR << "Attempted to retrieve feature vector that was "
+                 "already exceeded the size of the container (index = "
+              << index << "; "
+              << "size = " << Size() << ")";
+  }
+  // 'at' does size checking.
+  return items_[index];
+}
+
+void FeatureVector::PushBack(Vector<BaseFloat> *item) {
+  if (items_size_ >= items_capacity_) {
+    KALDI_ERR << "Attempted to push back feature vector that was "
+                 "already exceeded the capacity of the container (size = "
+              << items_size_ << "; "
+              << "capacity = " << items_capacity_ << ")";
+  }
+  items_[items_size_] = item;
+  items_size_ ++;
+}
+
+int FeatureVector::Size() const {
+  return items_size_;
+}
+
 template <class C>
 void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
                                            VectorBase<BaseFloat> *feat) {
@@ -86,7 +126,9 @@ template <class C>
 OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
     computer_(opts), window_function_(computer_.GetFrameOptions()),
-    features_(opts.frame_opts.max_feature_vectors),
+    // features_(opts.frame_opts.max_feature_vectors),
+    // Change(YuanHuan)
+    features_(NumFrames(32000, computer_.GetFrameOptions(), input_finished_)),
     input_finished_(false), waveform_offset_(0),
     waveform_vector_size_(0), wav_window_size_(0) {
   // RE the following assert: search for ONLINE_IVECTOR_LIMIT in
@@ -222,8 +264,8 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   wav_window_.SetDim(frame_length_padded);
 
   bool need_raw_log_energy = computer_.NeedRawLogEnergy();
-  unsigned long long start_time = 0, extract_window_time = 0, compute_time = 0;
-  unsigned long long total_extract_window_time = 0, total_compute_time = 0;
+  unsigned long long start_time = 0, extract_window_time = 0, compute_time = 0, feature_push_back_time = 0;
+  unsigned long long total_extract_window_time = 0, total_compute_time = 0, total_feature_push_back_time = 0;
 
   for (int32 frame = num_frames_old; frame < num_frames_new; frame++) {
     BaseFloat raw_log_energy = 0.0;
@@ -248,7 +290,11 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
 
     TEST_TIME(compute_time);
     total_compute_time += compute_time - extract_window_time;
+
     features_.PushBack(this_feature);
+
+    TEST_TIME(feature_push_back_time);
+    total_feature_push_back_time += feature_push_back_time - compute_time;
   }
 
   std::cout <<"\033[0;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow: resize time " << extract_window_resize_time << " ms. \033[0;39m" << std::endl;
@@ -259,7 +305,8 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures() {
   std::cout <<"\033[0;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow: ProcessWindow time " << process_window_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;35m AcceptWaveform -> ComputeFeatures: ExtractWindow time " << total_extract_window_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;35m AcceptWaveform -> ComputeFeatures: ComputeFeatures time " << total_compute_time << " ms. \033[0;39m" << std::endl;
-  AcceptWaveform_ComputeFeatures_ExtractWindow_resize = extract_window_resize_time;
+  std::cout <<"\033[0;35m AcceptWaveform -> ComputeFeatures: PushBack time " << total_feature_push_back_time << " ms. \033[0;39m" << std::endl;
+  AcceptWaveform_ComputeFeatures_PushBack_time = total_feature_push_back_time;
   process_window_time = 0;
   extract_window_resize_time = 0;
   dither_time = 0;

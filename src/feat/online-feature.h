@@ -70,6 +70,25 @@ private:
   int first_available_index_;
 };
 
+// ADD(YuanHuan)
+// RecyclingVector uses two-way deque, push_back takes a long time, uses pointer to optimize
+class FeatureVector {
+public:
+  FeatureVector(int items_capacity);
+
+  Vector<BaseFloat> *At(int index) const;
+
+  void PushBack(Vector<BaseFloat> *item);
+
+  int Size() const;
+
+  ~FeatureVector();
+
+private:
+  Vector<BaseFloat>** items_;
+  int items_capacity_;
+  int items_size_;
+};
 
 /// This is a templated class for online feature extraction;
 /// it's templated on a class like MfccComputer or PlpComputer
@@ -136,7 +155,9 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
 
-  RecyclingVector features_;
+  // RecyclingVector features_;
+  // Change(YuanHuan)
+  FeatureVector features_;
 
   // True if the user has called "InputFinished()"
   bool input_finished_;
