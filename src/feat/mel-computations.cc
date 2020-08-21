@@ -230,8 +230,11 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
 
   for (int32 i = 0; i < num_bins; i++) {
     int32 offset = bins_[i].first;
-    const Vector<BaseFloat> &v(bins_[i].second);
-    BaseFloat energy = VecVec(v, power_spectrum.Range(offset, v.Dim()));
+    // const Vector<BaseFloat> &v(bins_[i].second);
+    // BaseFloat energy = VecVec(v, power_spectrum.Range(offset, v.Dim()));
+    // Change(YuanHuan) no use
+    BaseFloat energy = VecVec(bins_[i].second, power_spectrum.Range(offset, bins_[i].second.Dim()));
+    
     // HTK-like flooring- for testing purposes (we prefer dither)
     if (htk_mode_ && energy < 1.0) energy = 1.0;
     (*mel_energies_out)(i) = energy;

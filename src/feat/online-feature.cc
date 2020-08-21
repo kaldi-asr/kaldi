@@ -301,7 +301,6 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures()
     wav_window_size_ = frame_length_padded;
     wav_window_.Resize(wav_window_size_);
   }
-  wav_window_.SetDim(frame_length_padded);
 
   bool need_raw_log_energy = computer_.NeedRawLogEnergy();
   unsigned long long start_time = 0, extract_window_time = 0, compute_time = 0, feature_push_back_time = 0;
@@ -315,6 +314,7 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures()
     //               frame_opts, window_function_, &window,
     //               need_raw_log_energy ? &raw_log_energy : NULL);
     // Change(YuanHuan)
+    wav_window_.SetDim(frame_length_padded);
     ExtractWindow(waveform_offset_, waveform_remainder_, frame,
                   frame_opts, window_function_, &wav_window_,
                   need_raw_log_energy ? &raw_log_energy : NULL);

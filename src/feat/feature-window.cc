@@ -154,7 +154,7 @@ void ProcessWindow(const FrameExtractionOptions &opts,
   int32 frame_length = opts.WindowSize();
   KALDI_ASSERT(window->Dim() == frame_length);
 
-  unsigned long long start_time = 0, end_time = 0;
+  unsigned long long start_time = 0;
   unsigned long long dither_each_loop_time = 0,  remove_dc_offset_each_loop_time= 0;
   unsigned long long preempha_size_each_loop_time = 0, window_each_loop_time = 0;
   TEST_TIME(start_time);
@@ -249,12 +249,18 @@ void ExtractWindow(int64 sample_offset,
   if (frame_length_padded > frame_length)
     window->Range(frame_length, frame_length_padded - frame_length).SetZero();
 
-  SubVector<BaseFloat> frame(*window, 0, frame_length);
+  // SubVector<BaseFloat> frame(*window, 0, frame_length);
+  // Change(YuanHaun)
+  window->SetDim(frame_length);
 
   TEST_TIME(resize_time);
   extract_window_resize_time += resize_time - start_time;
 
-  ProcessWindow(opts, window_function, &frame, log_energy_pre_window);
+  // ProcessWindow(opts, window_function, &frame, log_energy_pre_window);
+  // Change(YuanHaun)
+  ProcessWindow(opts, window_function, window, log_energy_pre_window);
+  window->SetDim(frame_length_padded);
+  
   TEST_TIME(end_time);
   process_window_time += end_time - resize_time;
   // std::cout <<"\033[0;36mprocess window each loop time " << end_time - start_time << " ms. \033[0;39m" << std::endl;

@@ -65,13 +65,18 @@ void MfccComputer::Compute(BaseFloat signal_raw_log_energy,
   
   // Convert the FFT into a power spectrum.
   ComputePowerSpectrum(signal_frame);
-  SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
-                                      signal_frame->Dim() / 2 + 1);
+  // SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
+  //                                     signal_frame->Dim() / 2 + 1);
+  // Change(YuanHuan)
+  MatrixIndexT signal_frame_dim = signal_frame->Dim();
+  signal_frame->SetDim(signal_frame_dim / 2 + 1);
 
   TEST_TIME(power_spectrum_time);
   power_spectrum_compute_time +=  power_spectrum_time - srfft_time;
 
-  mel_banks.Compute(power_spectrum, &mel_energies_);
+  // mel_banks.Compute(power_spectrum, &mel_energies_);
+  // Change(YuanHuan)
+  mel_banks.Compute(*signal_frame, &mel_energies_);
 
   TEST_TIME(mel_banks_time);
   mel_banks_compute_time +=  mel_banks_time - power_spectrum_time;
