@@ -21,6 +21,17 @@
 
 #include "feat/feature-mfcc.h"
 
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+unsigned long long srfft_compute_time = 0,  power_spectrum_compute_time= 0;
+unsigned long long mel_banks_compute_time = 0, mel_engergies_log_time = 0;
+unsigned long long dct_addmatvev_time = 0;
 
 namespace kaldi {
 
@@ -38,25 +49,46 @@ void MfccComputer::Compute(BaseFloat signal_raw_log_energy,
     signal_raw_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
                                      std::numeric_limits<float>::epsilon()));
 
+  unsigned long long start_time = 0;
+  unsigned long long srfft_time = 0,  power_spectrum_time= 0;
+  unsigned long long mel_banks_time = 0, mel_engergies_time = 0;
+  unsigned long long dct_time = 0;
+  TEST_TIME(start_time);
+
   if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
   else  // An alternative algorithm that works for non-powers-of-two.
     RealFft(signal_frame, true);
 
+  TEST_TIME(srfft_time);
+  srfft_compute_time += srfft_time - start_time;
+  
   // Convert the FFT into a power spectrum.
   ComputePowerSpectrum(signal_frame);
   SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
                                       signal_frame->Dim() / 2 + 1);
 
+  TEST_TIME(power_spectrum_time);
+  power_spectrum_compute_time +=  power_spectrum_time - srfft_time;
+
   mel_banks.Compute(power_spectrum, &mel_energies_);
+
+  TEST_TIME(mel_banks_time);
+  mel_banks_compute_time +=  mel_banks_time - power_spectrum_time;
 
   // avoid log of zero (which should be prevented anyway by dithering).
   mel_energies_.ApplyFloor(std::numeric_limits<float>::epsilon());
   mel_energies_.ApplyLog();  // take the log.
 
+  TEST_TIME(mel_engergies_time);
+  mel_engergies_log_time +=  mel_engergies_time - mel_banks_time;
+
   feature->SetZero();  // in case there were NaNs.
   // feature = dct_matrix_ * mel_energies [which now have log]
   feature->AddMatVec(1.0, dct_matrix_, kNoTrans, mel_energies_, 0.0);
+
+  TEST_TIME(dct_time);
+  dct_addmatvev_time +=  dct_time - mel_engergies_time;
 
   if (opts_.cepstral_lifter != 0.0)
     feature->MulElements(lifter_coeffs_);
