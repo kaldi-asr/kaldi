@@ -498,7 +498,7 @@ def ctm_line_to_string(ctm_line):
 
 
 def test_alignment(align_full_hyp):
-    hyp = "CGCCAT"
+    hyp = "GCCAT"
     ref = "AGCACACA"
 
     verbose = 3
