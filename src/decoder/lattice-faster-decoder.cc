@@ -769,24 +769,24 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
     Token *tok = best_elem->val;
     cost_offset = - tok->tot_cost;
 
-    unsigned long long start_for_loop_time = 0, end_for_loop_time = 0;
-    int loop_time = 0, loop_ilabel_time = 0;
-    TEST_TIME(start_for_loop_time);
+    // unsigned long long start_for_loop_time = 0, end_for_loop_time = 0;
+    // int loop_time = 0, loop_ilabel_time = 0;
+    // TEST_TIME(start_for_loop_time);
 
     for (fst::ArcIterator<FST> aiter(*fst_, state);
          !aiter.Done();
          aiter.Next()) {
-      loop_time++;
+      // loop_time++;
       const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
-        loop_ilabel_time++;
+        // loop_ilabel_time++;
         BaseFloat new_weight = arc.weight.Value() + cost_offset -
             decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
       }
     }
-    TEST_TIME(end_for_loop_time); 
+    // TEST_TIME(end_for_loop_time); 
     // std::cout <<"\033[0;33mFor_loop_LogLikelihood time: " << end_for_loop_time - start_for_loop_time << " ms. \033[0;39m" << std::endl;
     // std::cout <<"\033[0;33mLoop time: " << loop_time << " \033[0;39m" << std::endl;
     // std::cout <<"\033[0;33mLoop ilable time: " << loop_ilabel_time << " \033[0;39m" << std::endl;

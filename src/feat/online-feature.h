@@ -88,6 +88,7 @@ private:
   Vector<BaseFloat>** items_;
   int items_capacity_;
   int items_size_;
+  int first_available_index_;
 };
 
 /// This is a templated class for online feature extraction;

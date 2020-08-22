@@ -95,14 +95,16 @@ int RecyclingVector::Size() const
 
 // ADD(YuanHuan)
 FeatureVector::FeatureVector(int items_capacity) : items_capacity_(items_capacity),
-                                                   items_size_(0)
-{
+                                                   items_size_(0),
+                                                   first_available_index_(0) {
+  if(items_capacity_ < 0) 
+    items_capacity_ = 200;
   items_ = new Vector<BaseFloat> *[items_capacity_];
 }
 
 FeatureVector::~FeatureVector()
 {
-  for (int i = 0; i < items_size_; i++)
+  for (int i = 0; i < items_capacity_; i++)
   {
     delete items_[i];
   }
@@ -119,19 +121,20 @@ Vector<BaseFloat> *FeatureVector::At(int index) const
               << "size = " << Size() << ")";
   }
   // 'at' does size checking.
-  return items_[index];
+  return items_[index - first_available_index_];
 }
 
 void FeatureVector::PushBack(Vector<BaseFloat> *item)
 {
   if (items_size_ >= items_capacity_)
   {
-    KALDI_ERR << "Attempted to push back feature vector that was "
-                 "already exceeded the capacity of the container (size = "
-              << items_size_ << "; "
-              << "capacity = " << items_capacity_ << ")";
+    delete items_[0];
+    for(int i = 0; i < items_capacity_ - 1; i++){
+      items_[i] = items_[i + 1];
+    }
+    ++first_available_index_;
   }
-  items_[items_size_] = item;
+  items_[items_size_ - first_available_index_] = item;
   items_size_++;
 }
 
@@ -150,9 +153,9 @@ void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
 template <class C>
 OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts) : computer_(opts), window_function_(computer_.GetFrameOptions()),
-                                       // features_(opts.frame_opts.max_feature_vectors),
+                                       //  features_(opts.frame_opts.max_feature_vectors),
                                        // Change(YuanHuan)
-                                       features_(NumFrames(32000, computer_.GetFrameOptions(), input_finished_)),
+                                       features_(opts.frame_opts.max_feature_vectors),
                                        input_finished_(false), waveform_offset_(0),
                                        waveform_vector_size_(0), wav_window_size_(0)
 {
@@ -293,23 +296,27 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures()
                                    input_finished_);
   KALDI_ASSERT(num_frames_new >= num_frames_old);
 
+  bool need_raw_log_energy = computer_.NeedRawLogEnergy();
+  unsigned long long start_time = 0, wav_window_resize_time = 0;
+  unsigned long long extract_window_begin_time = 0, extract_window_time = 0, compute_time = 0, feature_push_back_time = 0;
+  unsigned long long waveform_remainder_range_begin_time = 0, waveform_remainder_range_end_time = 0;
+  unsigned long long total_extract_window_time = 0, total_compute_time = 0, total_feature_push_back_time = 0;
+
   // Vector<BaseFloat> window;
   // Change(YuanHuan)
+  TEST_TIME(start_time);
   int32 frame_length_padded = frame_opts.PaddedWindowSize();
   if (frame_length_padded > wav_window_size_)
   {
     wav_window_size_ = frame_length_padded;
     wav_window_.Resize(wav_window_size_);
   }
-
-  bool need_raw_log_energy = computer_.NeedRawLogEnergy();
-  unsigned long long start_time = 0, extract_window_time = 0, compute_time = 0, feature_push_back_time = 0;
-  unsigned long long total_extract_window_time = 0, total_compute_time = 0, total_feature_push_back_time = 0;
+  TEST_TIME(wav_window_resize_time);
 
   for (int32 frame = num_frames_old; frame < num_frames_new; frame++)
   {
     BaseFloat raw_log_energy = 0.0;
-    TEST_TIME(start_time);
+    TEST_TIME(extract_window_begin_time);
     // ExtractWindow(waveform_offset_, waveform_remainder_, frame,
     //               frame_opts, window_function_, &window,
     //               need_raw_log_energy ? &raw_log_energy : NULL);
@@ -321,7 +328,7 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures()
     Vector<BaseFloat> *this_feature = new Vector<BaseFloat>(computer_.Dim(),
                                                             kUndefined);
     TEST_TIME(extract_window_time);
-    total_extract_window_time += extract_window_time - start_time;
+    total_extract_window_time += extract_window_time - extract_window_begin_time;
 
     // note: this online feature-extraction code does not support VTLN.
     BaseFloat vtln_warp = 1.0;
@@ -338,36 +345,7 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures()
     total_feature_push_back_time += feature_push_back_time - compute_time;
   }
 
-  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow: resize time " << extract_window_resize_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: dither time " << dither_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: remove dc offset time " << remove_dc_offset_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: preempha size time " << preempha_size_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: window time " << window_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow: ProcessWindow time " << process_window_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: ExtractWindow time " << total_extract_window_time << " ms. \033[0;39m" << std::endl;
-
-  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: srfft_->Compute time " << srfft_compute_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: ComputePowerSpectrum time " << power_spectrum_compute_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: mel_banks.Compute time " << mel_banks_compute_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: mel_energies_.ApplyLog time " << mel_engergies_log_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: dec feature->AddMatVec time " << dct_addmatvev_time << " ms. \033[0;39m" << std::endl;
-
-  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: ComputeFeatures time " << total_compute_time << " ms. \033[0;39m" << std::endl;
-  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: PushBack time " << total_feature_push_back_time << " ms. \033[0;39m" << std::endl;
-  AcceptWaveform_ComputeFeatures_PushBack_time = total_feature_push_back_time;
-  extract_window_resize_time = 0;
-  dither_time = 0;
-  remove_dc_offset_time = 0;
-  preempha_size_time = 0;
-  window_time = 0;
-  process_window_time = 0;
-
-  srfft_compute_time = 0;
-  power_spectrum_compute_time = 0;
-  mel_banks_compute_time = 0;
-  mel_engergies_log_time = 0;
-  dct_addmatvev_time = 0;
-
+  TEST_TIME(waveform_remainder_range_begin_time);
   // OK, we will now discard any portion of the signal that will not be
   // necessary to compute frames in the future.
   int64 first_sample_of_next_frame = FirstSampleOfFrame(num_frames_new,
@@ -407,6 +385,39 @@ void OnlineGenericBaseFeature<C>::ComputeFeatures()
           .CopyFromVec(appended_wave_);
     }
   }
+  TEST_TIME(waveform_remainder_range_end_time);
+
+  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: Resize wav window time " << wav_window_resize_time - start_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow: resize time " << extract_window_resize_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: dither time " << dither_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: remove dc offset time " << remove_dc_offset_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: preempha size time " << preempha_size_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[40;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow -> ProcessWindow: window time " << window_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ExtractWindow: ProcessWindow time " << process_window_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: ExtractWindow time " << total_extract_window_time << " ms. \033[0;39m" << std::endl;
+
+  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: srfft_->Compute time " << srfft_compute_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: ComputePowerSpectrum time " << power_spectrum_compute_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: mel_banks.Compute time " << mel_banks_compute_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: mel_energies_.ApplyLog time " << mel_engergies_log_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;36m  AcceptWaveform -> ComputeFeatures -> ComputeFeatures: dec feature->AddMatVec time " << dct_addmatvev_time << " ms. \033[0;39m" << std::endl;
+
+  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: ComputeFeatures time " << total_compute_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: PushBack time " << total_feature_push_back_time << " ms. \033[0;39m" << std::endl;
+  std::cout << "\033[0;35m AcceptWaveform -> ComputeFeatures: Range waveform remainder time " << waveform_remainder_range_end_time - waveform_remainder_range_begin_time << " ms. \033[0;39m" << std::endl;
+  AcceptWaveform_ComputeFeatures_PushBack_time = total_feature_push_back_time;
+  extract_window_resize_time = 0;
+  dither_time = 0;
+  remove_dc_offset_time = 0;
+  preempha_size_time = 0;
+  window_time = 0;
+  process_window_time = 0;
+
+  srfft_compute_time = 0;
+  power_spectrum_compute_time = 0;
+  mel_banks_compute_time = 0;
+  mel_engergies_log_time = 0;
+  dct_addmatvev_time = 0;
 }
 
 // instantiate the templates defined here for MFCC, PLP and filterbank classes.
