@@ -288,9 +288,8 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
                     or (prev_ref_index, prev_hyp_index) == (0, 0)):
                 score = H[ref_index][hyp_index]
                 if score != 0:
-                    ref_word = ref[ref_index-1]
-                    hyp_word = hyp[hyp_index-1]
-                    assert ref_word != eps_symbol and hyp_word != eps_symbol
+                    ref_word = ref[ref_index-1] if ref_index > 0 else eps_symbol
+                    hyp_word = hyp[hyp_index-1] if hyp_index > 0 else eps_symbol
                     output.append((ref_word, hyp_word, prev_ref_index,
                         prev_hyp_index, ref_index, hyp_index))
 
