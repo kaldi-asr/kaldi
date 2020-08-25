@@ -104,7 +104,7 @@ FeatureVector::FeatureVector(int items_capacity) : items_capacity_(items_capacit
 
 FeatureVector::~FeatureVector()
 {
-  for (int i = 0; i < items_capacity_; i++)
+  for (int i = 0; i < std::min(items_capacity_, items_size_); i++)
   {
     delete items_[i];
   }
