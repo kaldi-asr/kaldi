@@ -44,7 +44,9 @@ text10=/export/corpora3/LDC/LDC2018T14/         # checked
 
 galeData=GALE
 mgb2_dir=""
-giga_dir="GIGA"
+giga_dir=""
+
+if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then giga_dir="GIGA"; fi
 
 LM="gale_giga.o4g.kn.gz"
 [ -z $giga_dir ] && LM="gale.o4g.kn.gz"
