@@ -14,37 +14,40 @@ stage=0
 overwrite=true
 
 # GALE Arabic phase 2 Conversation Speech
-dir1=/export/corpora/LDC/LDC2013S02/          # checked
-dir2=/export/corpora/LDC/LDC2013S07/          # checked (16k)
-text1=/export/corpora/LDC/LDC2013T04/         # checked
-text2=/export/corpora/LDC/LDC2013T17/         # checked
+dir1=/export/corpora5/LDC/LDC2013S02/          # checked
+dir2=/export/corpora5/LDC/LDC2013S07/          # checked (16k)
+text1=/export/corpora5/LDC/LDC2013T04/         # checked
+text2=/export/corpora5/LDC/LDC2013T17/         # checked
 # GALE Arabic phase 2 News Speech
-dir3=/export/corpora/LDC/LDC2014S07/          # checked (16k)
-dir4=/export/corpora/LDC/LDC2015S01/          # checked (16k)
-text3=/export/corpora/LDC/LDC2014T17/         # checked
-text4=/export/corpora/LDC/LDC2015T01/         # checked
+dir3=/export/corpora5/LDC/LDC2014S07/          # checked (16k)
+dir4=/export/corpora5/LDC/LDC2015S01/          # checked (16k)
+text3=/export/corpora5/LDC/LDC2014T17/         # checked
+text4=/export/corpora5/LDC/LDC2015T01/         # checked
 # GALE Arabic phase 3 Conversation Speech
-dir5=/export/corpora/LDC/LDC2015S11/          # checked (16k)
-dir6=/export/corpora/LDC/LDC2016S01/          # checked (16k)
-text5=/export/corpora/LDC/LDC2015T16/         # checked
-text6=/export/corpora/LDC/LDC2016T06/         # checked
+dir5=/export/corpora5/LDC/LDC2015S11/          # checked (16k)
+dir6=/export/corpora5/LDC/LDC2016S01/          # checked (16k)
+text5=/export/corpora5/LDC/LDC2015T16/         # checked
+text6=/export/corpora5/LDC/LDC2016T06/         # checked
 # GALE Arabic phase 3 News Speech
-dir7=/export/corpora/LDC/LDC2016S07/          # checked (16k)
-dir8=/export/corpora/LDC/LDC2017S02/          # checked (16k)
-text7=/export/corpora/LDC/LDC2016T17/         # checked
-text8=/export/corpora/LDC/LDC2017T04/         # checked
+dir7=/export/corpora5/LDC/LDC2016S07/          # checked (16k)
+dir8=/export/corpora3/LDC/LDC2017S02/          # checked (16k)
+text7=/export/corpora5/LDC/LDC2016T17/         # checked
+text8=/export/corpora3/LDC/LDC2017T04/         # checked
 # GALE Arabic phase 4 Conversation Speech
-dir9=/export/corpora/LDC/LDC2017S15/          # checked (16k)
-text9=/export/corpora/LDC/LDC2017T12/         # checked
+dir9=/export/corpora3/LDC/LDC2017S15/          # checked (16k)
+text9=/export/corpora3/LDC/LDC2017T12/         # checked
 # GALE Arabic phase 4 News Speech
-dir10=/export/corpora/LDC/LDC2018S05/          # checked (16k)
-text10=/export/corpora/LDC/LDC2018T14/         # checked
+dir10=/export/corpora3/LDC/LDC2018S05/          # checked (16k)
+text10=/export/corpora3/LDC/LDC2018T14/         # checked
 
 # Training: 941h Testing: 10.4h
 
 galeData=GALE
 mgb2_dir=""
-giga_dir=""
+giga_dir="GIGA"
+
+LM="gale_giga.o4g.kn.gz"
+[ -z $giga_dir ] && LM="gale.o4g.kn.gz"
 
 # preference on how to process xml file (use xml binary or python)
 process_xml=""
@@ -68,16 +71,16 @@ if [ $stage -le 0 ]; then
 
   options=""
   [ ! -z $mgb2_dir ] && options="--process-xml python --mgb2-dir $mgb2_dir"
-  local/prepare_data.sh $options
-
-  echo "$0: Preparing lexicon and LM..." 
-  local/prepare_dict.sh
-
-  utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
-
+#  local/prepare_data.sh $options
+#
+#  echo "$0: Preparing lexicon and LM..." 
+#  local/prepare_dict.sh
+#
+#  utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
+#
   local/gale_train_lms.sh data/train/text data/local/dict/lexicon.txt data/local/lm $giga_dir  # giga is Arabic Gigawords
 
-  utils/format_lm.sh data/lang data/local/lm/gale_giga.o4g.kn.gz \
+  utils/format_lm.sh data/lang data/local/lm/$LM \
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
