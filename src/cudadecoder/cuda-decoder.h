@@ -206,7 +206,7 @@ class CudaDecoder {
   CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
               int32 nchannels)
       : CudaDecoder(fst, config, nchannels, nchannels) {}
-  virtual ~CudaDecoder();
+  virtual ~CudaDecoder() noexcept(false);
 
   // InitDecoding initializes the decoding, and should only be used if you
   // intend to call AdvanceDecoding() on the channels listed in channels

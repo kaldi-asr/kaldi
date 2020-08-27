@@ -313,7 +313,7 @@ void CudaDecoder::InitDeviceParams() {
   h_device_params_->fst_zero = StdWeight::Zero().Value();
 }
 
-CudaDecoder::~CudaDecoder() {
+CudaDecoder::~CudaDecoder() noexcept(false) {
   // Stopping h2h tasks
   h2h_threads_running_ = false;
   n_h2h_main_task_todo_cv_.notify_all();
