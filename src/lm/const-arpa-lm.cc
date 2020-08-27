@@ -791,7 +791,7 @@ float ConstArpaLm::GetNgramLogprobRecurse(
       // If <unk> is defined, then the word sequence should have already been
       // mapped to <unk> is necessary; this is for the case where <unk> is not
       // defined.
-      return std::numeric_limits<float>::min();
+      return -std::numeric_limits<float>::infinity();
     } else {
       Int32AndFloat logprob_i(*unigram_states_[word]);
       return logprob_i.f;
@@ -1034,7 +1034,7 @@ bool ConstArpaLmDeterministicFst::GetArc(StateId s,
   std::vector<Label> wseq = state_to_wseq_[s];
 
   float logprob = lm_.GetNgramLogprob(ilabel, wseq);
-  if (logprob == std::numeric_limits<float>::min()) {
+  if (logprob == -std::numeric_limits<float>::infinity()) {
     return false;
   }
 

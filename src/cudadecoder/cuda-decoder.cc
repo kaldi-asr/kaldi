@@ -15,15 +15,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
+#include "online2/online-endpoint.h"
 #if HAVE_CUDA == 1
 
-#include "cuda-decoder.h"
 #include "cuda-decoder-kernels.h"
+#include "cuda-decoder.h"
 
 #include <cuda_runtime_api.h>
 #include <nvToolsExt.h>
+#include <util/text-utils.h>
 #include <algorithm>
-#include <cfloat>
 #include <map>
 #include <tuple>
 
@@ -31,7 +33,10 @@ namespace kaldi {
 namespace cuda_decoder {
 CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
-    : fst_(fst),
+    : word_syms_(NULL),
+      generate_partial_hypotheses_(false),
+      frame_shift_seconds_(FLT_MAX),
+      fst_(fst),
       nlanes_(nlanes),
       nchannels_(nchannels),
       channel_lock_(nchannels + 1),
@@ -88,15 +93,15 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
 }
 
 void CudaDecoder::ReadConfig(const CudaDecoderConfig &cst_config) {
-  CudaDecoderConfig config = cst_config;  // deep copy
+  config_ = cst_config;  // deep copy
   // Sets the missing values using other values
-  config.ComputeConfig();
-  default_beam_ = config.default_beam;
-  lattice_beam_ = config.lattice_beam;
-  ntokens_pre_allocated_ = config.ntokens_pre_allocated;
-  max_active_ = config.max_active;
-  aux_q_capacity_ = config.aux_q_capacity;
-  main_q_capacity_ = config.main_q_capacity;
+  config_.ComputeConfig();
+  default_beam_ = config_.default_beam;
+  lattice_beam_ = config_.lattice_beam;
+  ntokens_pre_allocated_ = config_.ntokens_pre_allocated;
+  max_active_ = config_.max_active;
+  aux_q_capacity_ = config_.aux_q_capacity;
+  main_q_capacity_ = config_.main_q_capacity;
 
   KALDI_ASSERT(default_beam_ >= 0.0f);
   KALDI_ASSERT(lattice_beam_ >= 0.0f);
@@ -104,6 +109,14 @@ void CudaDecoder::ReadConfig(const CudaDecoderConfig &cst_config) {
   KALDI_ASSERT(max_active_ > 0);
   KALDI_ASSERT(main_q_capacity_ > 0);
   KALDI_ASSERT(aux_q_capacity_ >= main_q_capacity_);
+
+  // Filling silence phones set with input config
+  std::vector<int32> silence_phones_vec;
+  if (!SplitStringToIntegers(config_.endpointing_config.silence_phones, ":",
+                             false, &silence_phones_vec))
+    KALDI_ERR << "Bad --endpoint.silence-phones option in endpointing config: "
+              << config_.endpointing_config.silence_phones;
+  for (int32 phone : silence_phones_vec) silence_phones_.insert(phone);
 }
 
 void CudaDecoder::AllocateDeviceData() {
@@ -184,6 +197,9 @@ void CudaDecoder::AllocateHostData() {
   h_all_tokens_acoustic_cost_.resize(nchannels_);
   h_all_tokens_extra_prev_tokens_.resize(nchannels_);
   h_all_tokens_info_.resize(nchannels_);
+  h_all_channels_partial_hypotheses_.resize(nchannels_);
+  h_all_channels_partial_hypotheses_out_.resize(nchannels_);
+  h_all_channels_endpoint_detected_.resize(nchannels_);
   for (int32 ichannel = 0; ichannel < nchannels_; ++ichannel) {
     h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel].reserve(
         ntokens_pre_allocated_);
@@ -193,6 +209,8 @@ void CudaDecoder::AllocateHostData() {
   h_main_q_end_lane_offsets_.resize(nlanes_ + 1);
   h_emitting_main_q_end_lane_offsets_.resize(nlanes_ + 1);
   h_n_extra_prev_tokens_lane_offsets_.resize(nlanes_ + 1);
+  h_best_path_traceback_head_.resize(nlanes_);
+  h_all_channels_prev_best_path_traceback_head_.resize(nchannels_);
   frame_offsets_.resize(nchannels_);
   num_frames_decoded_.resize(nchannels_, -1);
   lanes2channels_todo_.reserve(nlanes_);
@@ -292,9 +310,10 @@ void CudaDecoder::InitDeviceParams() {
   // Those cannot be used at the same time
   h_device_params_->h_list_final_tokens_in_main_q =
       h_list_final_tokens_in_main_q_.GetView();
+  h_device_params_->fst_zero = StdWeight::Zero().Value();
 }
 
-CudaDecoder::~CudaDecoder() {
+CudaDecoder::~CudaDecoder() noexcept(false) {
   // Stopping h2h tasks
   h2h_threads_running_ = false;
   n_h2h_main_task_todo_cv_.notify_all();
@@ -334,6 +353,7 @@ void CudaDecoder::ComputeInitialChannel() {
   KALDI_ASSERT(ilane == 0);
   // Following kernels working channel_id
   std::vector<ChannelId> channels = {init_channel_id_};
+  num_frames_decoded_[init_channel_id_] = 0;
   SetChannelsInKernelParams(channels);  // not calling LoadChannelsStateToLanes,
                                         // init_channel_id_ is a special case
   h_lanes_counters_.lane(ilane)->channel_to_compute = init_channel_id_;
@@ -419,6 +439,10 @@ void CudaDecoder::InitDecoding(const std::vector<ChannelId> &channels) {
     h_all_argmin_cost_[ichannel] = {-1, 0.0f};
     frame_offsets_[ichannel].clear();
     frame_offsets_[ichannel].push_back(n_initial_tokens);
+    h_all_channels_partial_hypotheses_[ichannel].clear();
+    h_all_channels_partial_hypotheses_out_[ichannel].clear();
+    h_all_channels_endpoint_detected_[ichannel] = false;
+    h_all_channels_prev_best_path_traceback_head_[ichannel].Reset();
     // TODO put it back
     // if (thread_pool_) {
     //  thread_pool_->post([ichannel, this] {
@@ -655,7 +679,17 @@ void CudaDecoder::CopyMainQueueDataToHost() {
         h_lanes_counters_.lane(ilane)->main_q_end_lane_offset;
     h_n_extra_prev_tokens_lane_offsets_[ilane] =
         h_lanes_counters_.lane(ilane)->main_q_n_extra_prev_tokens_lane_offset;
-    lanes2channels_todo_.push_back(channel_to_compute_[ilane]);
+    if (ilane < nlanes_used_) {
+      lanes2channels_todo_.push_back(channel_to_compute_[ilane]);
+      int32 global_offset = h_lanes_counters_.lane(ilane)->main_q_global_offset;
+      h_best_path_traceback_head_[ilane].index =
+          global_offset + h_lanes_counters_.lane(ilane)->prev_arg_min_int_cost;
+      float relative_cost = orderedIntToFloatHost(
+          h_lanes_counters_.lane(ilane)->int_relative_cost);
+      h_best_path_traceback_head_[ilane].relative_cost = relative_cost;
+      const ChannelId ichannel = channel_to_compute_[ilane];
+      ++num_frames_decoded_[ichannel];
+    }
   }
 
   LaunchH2HCopies();
@@ -848,8 +882,6 @@ void CudaDecoder::AdvanceDecoding(
 
   for (LaneId ilane = 0; ilane < nlanes_used_; ++ilane) {
     const ChannelId ichannel = channel_to_compute_[ilane];
-    // We're done processing that frame
-    ++num_frames_decoded_[ichannel];
     const int32 main_q_end =
         h_lanes_counters_.lane(ilane)->main_q_narcs_and_end.y;
     // Saving frame offsets for GetRawLattice
@@ -857,6 +889,17 @@ void CudaDecoder::AdvanceDecoding(
                                        main_q_end);
   }
   SaveChannelsStateFromLanes();
+
+  // Waiting for partial path to be ready (if set)
+  // They are computed async
+  WaitForPartialHypotheses();
+}
+
+void CudaDecoder::WaitForPartialHypotheses() {
+  if (!generate_partial_hypotheses_) return;
+  while (n_partial_traceback_threads_not_done_.load(std::memory_order_acquire) >
+         0)
+    usleep(200);
 }
 
 void CudaDecoder::CheckOverflow() {
@@ -933,7 +976,7 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
   GetBestCostStep1Kernel(
       KaldiCudaDecoderNumBlocks(max_main_q_end, nlanes_used_),
       KALDI_CUDA_DECODER_1D_BLOCK, compute_st_, *h_device_params_,
-      *h_kernel_params_, use_final_costs, StdWeight::Zero().Value());
+      *h_kernel_params_, use_final_costs);
 
   // Step2: Now that we now what the minimum cost is, we list all tokens
   // within
@@ -943,7 +986,7 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
   GetBestCostStep2Kernel(
       KaldiCudaDecoderNumBlocks(max_main_q_end, nlanes_used_),
       KALDI_CUDA_DECODER_1D_BLOCK, compute_st_, *h_device_params_,
-      *h_kernel_params_, use_final_costs, StdWeight::Zero().Value());
+      *h_kernel_params_, use_final_costs);
 
   // Step3 : Moves some data to host. We are moving the data that couldn't
   // be moved directly in step 2, e.g. results of atomics (we don't know
@@ -964,6 +1007,8 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
   // Waiting for the copy
   cudaStreamSynchronize(compute_st_);
   for (int32 ilane = 0; ilane < nlanes_used_; ++ilane) {
+    int ichannel = channels[ilane];
+    KALDI_ASSERT(NumFramesDecoded(ichannel) > 0);
     int2 minarg = h_lanes_counters_.lane(ilane)->min_int_cost_and_arg;
     // Min cost in that channel last token queue
     CostType min_cost = orderedIntToFloatHost(minarg.x);
@@ -989,6 +1034,66 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
       (*list_finals_token_idx_and_cost)[ilane][i].second = cost_with_final;
     }
   }
+
+  for (LaneId ilane = 0; ilane < channels.size(); ++ilane) {
+    ChannelId ichannel = channels[ilane];
+    std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
+    h_all_argmin_cost_[ichannel] = (*argmins)[ilane];
+    h_all_final_tokens_list_[ichannel].swap(
+        (*list_finals_token_idx_and_cost)[ilane]);
+    h_all_has_reached_final_[ichannel] = (*has_reached_final)[ilane];
+  }
+}
+
+void CudaDecoder::GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
+                                     int32 *prev_token_idx_out,
+                                     int32 *arc_idx_out) {
+  KALDI_ASSERT(curr_token_idx > 0);
+  KALDI_ASSERT(curr_token_idx < h_all_tokens_info_[ichannel].size());
+  InfoToken token = h_all_tokens_info_[ichannel][curr_token_idx];
+  // We want an arc with extra_cost == 0
+  int32 arc_idx;
+  TokenId prev_token_idx;
+  if (token.IsUniqueTokenForStateAndFrame()) {
+    // If we have only one, it is an arc with
+    // extra_cost == 0
+    arc_idx = token.arc_idx;
+    prev_token_idx = token.prev_token;
+  } else {
+    // Using the first arc with extra_cost == 0
+    int32 offset, size;
+    std::tie(offset, size) = token.GetSameFSTStateTokensList();
+    bool found_best = false;
+    for (auto i = 0; i < size; ++i) {
+      KALDI_ASSERT(
+          (offset + i) <
+          h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
+              .size());
+      CostType arc_extra_cost =
+          h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
+                                                                 [offset + i]
+                                                                     .x;
+      // Picking one arc on the best path
+      // (extra_cost == 0)
+      if (arc_extra_cost == 0.0f) {
+        KALDI_ASSERT(
+            h_all_tokens_extra_prev_tokens_[ichannel].size() ==
+            h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
+                .size());
+        KALDI_ASSERT((offset + i) <
+                     h_all_tokens_extra_prev_tokens_[ichannel].size());
+        InfoToken list_token =
+            h_all_tokens_extra_prev_tokens_[ichannel][offset + i];
+        arc_idx = list_token.arc_idx;
+        prev_token_idx = list_token.prev_token;
+        found_best = true;
+        break;
+      }
+    }
+    KALDI_ASSERT(found_best);
+  }
+  *prev_token_idx_out = prev_token_idx;
+  *arc_idx_out = arc_idx;
 }
 
 void CudaDecoder::GetBestPath(const std::vector<ChannelId> &channels,
@@ -1001,7 +1106,11 @@ void CudaDecoder::GetBestPath(const std::vector<ChannelId> &channels,
 
   std::vector<int32> reversed_path;
   for (int32 ilane = 0; ilane < channels.size(); ++ilane) {
+    Lattice *fst_out = fst_out_vec[ilane];
+    fst_out->DeleteStates();
     const ChannelId ichannel = channels[ilane];
+    if (NumFramesDecoded(ichannel) == 0) continue;  // nothing to do
+
     const int32 token_with_best_cost = argmins_[ilane].first;
     std::unique_lock<std::mutex> channel_lk(channel_lock_[ichannel]);
     // If that token in that frame f is available, then all tokens
@@ -1019,45 +1128,12 @@ void CudaDecoder::GetBestPath(const std::vector<ChannelId> &channels,
     // it always has index 0
     // We backtrack until that first token
     while (token_idx != 0) {
-      InfoToken token = h_all_tokens_info_[ichannel][token_idx];
-      // We want an arc with extra_cost == 0
-      int32 arc_idx;
-      TokenId prev_token_idx;
-      if (token.IsUniqueTokenForStateAndFrame()) {
-        // If we have only one, it is an arc with
-        // extra_cost == 0
-        arc_idx = token.arc_idx;
-        prev_token_idx = token.prev_token;
-      } else {
-        // Using the first arc with extra_cost == 0
-        int32 offset, size;
-        std::tie(offset, size) = token.GetSameFSTStateTokensList();
-        bool found_best = false;
-        for (auto i = 0; i < size; ++i) {
-          CostType arc_extra_cost =
-              h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
-                                                                     [offset +
-                                                                      i]
-                                                                         .x;
-          // Picking one arc on the best path
-          // (extra_cost == 0)
-          if (arc_extra_cost == 0.0f) {
-            InfoToken list_token =
-                h_all_tokens_extra_prev_tokens_[ichannel][offset + i];
-            arc_idx = list_token.arc_idx;
-            prev_token_idx = list_token.prev_token;
-            found_best = true;
-            break;
-          }
-        }
-        KALDI_ASSERT(found_best);
-      }
+      int32 prev_token_idx, arc_idx;
+      GetBestPredecessor(ichannel, token_idx, &prev_token_idx, &arc_idx);
       reversed_path.push_back(arc_idx);
       token_idx = prev_token_idx;
     }
 
-    Lattice *fst_out = fst_out_vec[ilane];
-    fst_out->DeleteStates();
     // Building the output Lattice
     OutputLatticeState curr_state = fst_out->AddState();
     fst_out->SetStart(curr_state);
@@ -1455,6 +1531,7 @@ void CudaDecoder::SwapPrevAndCurrLatticeMap(
 }
 
 void CudaDecoder::WaitForH2HCopies() {
+  Timer timer;
   std::unique_lock<std::mutex> lk(n_h2h_task_not_done_mutex_);
   h2h_done_.wait(lk, [this] { return (n_h2h_task_not_done_ == 0); });
 }
@@ -1465,18 +1542,21 @@ void CudaDecoder::WaitForInitDecodingH2HCopies() {
       lk, [this] { return (n_init_decoding_h2h_task_not_done_ == 0); });
 }
 
-void CudaDecoder::PrepareForGetRawLattice(
-    const std::vector<ChannelId> &channels, bool use_final_probs) {
-  GetBestCost(channels, use_final_probs, &argmins_,
-              &list_finals_token_idx_and_cost_, &has_reached_final_);
-  for (LaneId ilane = 0; ilane < channels.size(); ++ilane) {
-    ChannelId ichannel = channels[ilane];
-    std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
-    h_all_argmin_cost_[ichannel] = argmins_[ilane];
-    h_all_final_tokens_list_[ichannel].swap(
-        list_finals_token_idx_and_cost_[ilane]);
-    h_all_has_reached_final_[ichannel] = has_reached_final_[ilane];
+void CudaDecoder::FillWithNonEmptyChannels(
+    const std::vector<ChannelId> &channels,
+    std::vector<ChannelId> *out_nonempty_channels) {
+  out_nonempty_channels->clear();
+  for (ChannelId ichannel : channels) {
+    if (NumFramesDecoded(ichannel) > 0)
+      out_nonempty_channels->push_back(ichannel);
   }
+}
+
+void CudaDecoder::PrepareForGetRawLattice(
+    const std::vector<ChannelId> &raw_channels, bool use_final_probs) {
+  FillWithNonEmptyChannels(raw_channels, &nonempty_channels_);
+  GetBestCost(nonempty_channels_, use_final_probs, &argmins_,
+              &list_finals_token_idx_and_cost_, &has_reached_final_);
 }
 
 void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
@@ -1517,11 +1597,16 @@ void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
         .shrink_to_fit();
     best_cost_idx = h_all_argmin_cost_[ichannel].first;
   }
+  fst_out->DeleteStates();  // reset out lattice
+  const int32 nframes = NumFramesDecoded(ichannel);
+  // If no frames were decoded, leaving the lattice empty and return
+  if (nframes == 0) return;
+
   KALDI_ASSERT(
       "You need to call PrepareForGetRawLattice before "
       "ConcurrentGetRawLatticeSingleChannel" &&
       best_cost_idx >= 0);
-  const int32 nframes = NumFramesDecoded(ichannel);
+
   // Making sure that this token is available for this channel.
   // We're going to read storage data from this channel. Locking it
   // If that token in that frame f is available, then all tokens in that
@@ -1535,7 +1620,6 @@ void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
   // Preparing output lattice
   // The start state has to be 0 (cf some asserts somewhere else in Kaldi)
   // Adding it now
-  fst_out->DeleteStates();
   OutputLatticeState fst_lattice_start = fst_out->AddState();
   fst_out->SetStart(fst_lattice_start);
 
@@ -1717,7 +1801,11 @@ void CudaDecoder::LaunchH2HCopies() {
   n_acoustic_h2h_copies_todo_.store(nlanes_used_ - 1);
   n_infotoken_h2h_copies_todo_.store(nlanes_used_ - 1);
   n_extra_prev_tokens_h2h_copies_todo_.store(nlanes_used_ - 1);
-
+  if (partial_traceback_) {
+    n_partial_traceback_threads_todo_.store(nlanes_used_ - 1);
+    n_partial_traceback_threads_not_done_.store(thread_pool_ ? n_threads_used_
+                                                             : 1);
+  }
   {
     std::lock_guard<std::mutex> n_h2h_not_done_lk(n_h2h_task_not_done_mutex_);
     n_h2h_task_not_done_ += thread_pool_ ? n_threads_used_ : 1;
@@ -1742,6 +1830,130 @@ void CudaDecoder::ComputeH2HCopiesCPUWorker() {
   }
 }
 
+void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
+  // Partial hypothesis
+  // We use the (n-1) frame head
+  auto prev_best_path_traceback_head =
+      h_all_channels_prev_best_path_traceback_head_[ichannel];
+  if (!prev_best_path_traceback_head.IsSet()) return;  // nothing to do
+  int curr_token_idx = prev_best_path_traceback_head.index;
+  if (curr_token_idx > 0) {
+    // Locking, we need the host channel data to use GetBestPredecessor
+    std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
+
+    int prev_token_idx;
+    int arc_idx;
+    GetBestPredecessor(ichannel, curr_token_idx, &prev_token_idx, &arc_idx);
+
+    std::list<PartialPathArc> &partial_hypotheses =
+        h_all_channels_partial_hypotheses_[ichannel];
+
+    // Adding that link at the end of the partial path
+    partial_hypotheses.push_back({curr_token_idx, arc_idx});
+    // If this is the first link, we don't have to check that we're still on the
+    // same best path than before
+    if (partial_hypotheses.size() == 1) return;
+
+    // Backtracking until we reconnect with our stored partial path
+    // using prev(2):
+    // 1. last valid element, the one we've just added
+    // 2. the one before that, the one we need to check
+    auto it = std::prev(partial_hypotheses.end(), 2);
+
+    // The new partial best path is not directly to the previous partial
+    // best path We need to backtrack until we reconnect with the previous
+    // partial best path (or until we reach the root node)
+
+    while (true) {
+      int32 stored_prev_token_idx = it->token_idx;
+      if (stored_prev_token_idx == prev_token_idx)
+        break;  // no need to rewrite existing partial path
+      curr_token_idx = prev_token_idx;
+      GetBestPredecessor(ichannel, curr_token_idx, &prev_token_idx, &arc_idx);
+      *it = {curr_token_idx, arc_idx};
+
+      if (prev_token_idx == 0) break;
+      if (it == partial_hypotheses.begin()) {
+        // Our new path is longer than the previous one
+        // Adding some elts
+        partial_hypotheses.push_front(
+            {-1, -1});  // it will be set on next iteration
+      }
+      --it;
+    }
+
+    if (prev_token_idx == 0) {
+      // We've reached the beginning, we need to purge any elts
+      partial_hypotheses.erase(partial_hypotheses.begin(), it);
+    }
+  }
+}
+
+void CudaDecoder::EndpointDetected(LaneId ilane, ChannelId ichannel) {
+  // We use the (n-1) frame head
+  auto prev_best_path_traceback_head =
+      h_all_channels_prev_best_path_traceback_head_[ichannel];
+  if (!prev_best_path_traceback_head.IsSet()) return;  // nothing to do
+
+  CostType relative_cost = prev_best_path_traceback_head.relative_cost;
+
+  int num_frames_decoded =
+      num_frames_decoded_[ichannel] - 1;  // we use the n-1 frame head
+
+  // Count silence frames
+  std::list<PartialPathArc> &partial_hypotheses_internal =
+      h_all_channels_partial_hypotheses_[ichannel];
+  int num_silence_frames = 0;
+  for (auto it = partial_hypotheses_internal.rbegin();
+       it != partial_hypotheses_internal.rend(); ++it) {
+    int arc_idx = it->arc_idx;
+    int ilabel = fst_.h_arc_id_ilabels_[arc_idx];
+    // If not a silence phone, exit
+    if (silence_phones_.find(ilabel) == silence_phones_.end()) break;
+    ++num_silence_frames;
+  }
+  bool end_point = kaldi::EndpointDetected(
+      config_.endpointing_config, num_frames_decoded, num_silence_frames,
+      frame_shift_seconds_, relative_cost);
+
+  h_all_channels_endpoint_detected_[ichannel] = end_point;
+
+  /*
+  // Kept for debugging
+  if (false) {
+    KALDI_LOG << "Channel " << ichannel << " tot_frames=" << num_frames_decoded
+              << " silence frames=" << num_silence_frames
+              << " relative_cost=" << relative_cost;
+  }
+  */
+}
+
+void CudaDecoder::BuildPartialHypothesisOutput(ChannelId ichannel) {
+  // We assume that we own the channel lock
+  std::list<PartialPathArc> &partial_hypotheses_internal =
+      h_all_channels_partial_hypotheses_[ichannel];
+  PartialHypothesis &out = h_all_channels_partial_hypotheses_out_[ichannel];
+  out.olabel.clear();
+  out.arc_idx.clear();
+  std::ostringstream oss;
+  bool empty = true;
+  // We should only append one word when not backtrack was done in
+  // GeneratePartialPath
+  for (PartialPathArc &link : partial_hypotheses_internal) {
+    int arc_idx = link.arc_idx;
+    int olabel = fst_.h_arc_olabels_[arc_idx];
+    if (olabel == 0) continue;
+    out.olabel.push_back(olabel);
+    out.arc_idx.push_back(arc_idx);
+    if (word_syms_) {
+      if (!empty) oss << ' ';
+      oss << word_syms_->Find(olabel);
+      empty = false;
+    }
+  }
+  out.out_str = oss.str();
+}
+
 void CudaDecoder::ComputeH2HCopies() {
   // Waiting for either something to do or the instruction to stop the
   // threads
@@ -1755,10 +1967,23 @@ void CudaDecoder::ComputeH2HCopies() {
   // If we are done, stop the wait and return now.
   // ComputeH2HCopiesCPUWorker will also return, stopping the thread
   if (!h2h_threads_running_) return;
+
+  int32 ilane;
+  if (partial_traceback_) {
+    while ((ilane = n_partial_traceback_threads_todo_.fetch_sub(1)) >= 0) {
+      int32 ichannel = lanes2channels_todo_[ilane];
+      GeneratePartialPath(ilane, ichannel);
+      if (generate_partial_hypotheses_) BuildPartialHypothesisOutput(ichannel);
+      if (endpointing_) EndpointDetected(ilane, ichannel);
+      h_all_channels_prev_best_path_traceback_head_[ichannel] =
+          h_best_path_traceback_head_[ilane];
+    }
+    n_partial_traceback_threads_not_done_.fetch_sub(1,
+                                                    std::memory_order_release);
+  }
   // Waiting for the D2H copies. This is threadsafe
   // Step 1: acoustic costs
   cudaEventSynchronize(d2h_copy_acoustic_evt_);
-  int32 ilane;
   while ((ilane = n_acoustic_h2h_copies_todo_.fetch_sub(1)) >= 0) {
     int32 ichannel = lanes2channels_todo_[ilane];
     // Lock Channel
@@ -1786,7 +2011,9 @@ void CudaDecoder::ComputeH2HCopies() {
                                  h_infotoken_concat_, &h_all_tokens_info_);
   }
 
-  // Step 3: extra prev tokens
+  // Step 3:
+  // - extra prev tokens
+  // - partial path and endpointing
   cudaEventSynchronize(d2h_copy_extra_prev_tokens_evt_);
   while ((ilane = n_extra_prev_tokens_h2h_copies_todo_.fetch_sub(1)) >= 0) {
     int32 ichannel = lanes2channels_todo_[ilane];
@@ -1824,6 +2051,6 @@ void CudaDecoder::SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
 }
 
 }  // namespace cuda_decoder
-}  // end namespace kaldi
+}  // namespace kaldi
 
 #endif  // HAVE_CUDA == 1

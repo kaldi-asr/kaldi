@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) try {
         "exit-code: 0 = success, 1 = compiled without GPU support, -1 = error\n"
         "\n"
         "Usage:  cuda-gpu-available\n";
+  (void)usage;  // Make compiler happy.
 
   char hostname[100] = "UNKNOWN-HOSTNAME";
 #if !defined(_MSC_VER) && !defined(__CYGWIN__)

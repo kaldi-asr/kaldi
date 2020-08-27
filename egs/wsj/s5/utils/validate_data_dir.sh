@@ -36,8 +36,8 @@ while [ $# -ne 0 ] ; do
     "--no-wav")
       no_wav=true;
       ;;
-    "--no-spk-short")
-      no_spk_short=true;
+    "--no-spk-sort")
+      no_spk_sort=true;
       ;;
     *)
       if ! [ -z "$data" ] ; then
@@ -126,7 +126,6 @@ fi
 num_utts=`cat $tmpdir/utts | wc -l`
 if ! $no_text; then
   if ! $non_print; then
-    # compatible with bin/align-text
     n_non_print=$(LC_ALL="C.UTF-8" grep -c '[^[:print:][:space:]]' $data/text) && \
     echo "$0: text contains $n_non_print lines with non-printable characters" &&\
     exit 1;
