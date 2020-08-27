@@ -341,7 +341,7 @@ def train(args, run_opts):
                     --frames-per-iter {frames_per_iter} \
                     --srand {srand} \
                     {data} {dir} {fst_dir} {egs_dir}""".format(
-                        command=run_opts.command,
+                        command=run_opts.egs_command,
                         cmvn_opts=args.cmvn_opts if args.cmvn_opts is not None else '',
                         ivector_dir=(args.online_ivector_dir
                                      if args.online_ivector_dir is not None
