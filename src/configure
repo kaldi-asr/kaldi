@@ -397,7 +397,7 @@ Either your CUDA is too new or too old."
           case $CUDA_VERSION in
             7_*)     CUDA_ARCH="-gencode arch=compute_53,code=sm_53" ;;
             8_*|9_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62" ;;
-            10_*)    CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72" ;;
+            10_*|11_*)    CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72" ;;
             *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
           esac
         ;;
