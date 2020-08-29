@@ -25,6 +25,8 @@
 #include "lm/const-arpa-lm.h"
 #include "util/common-utils.h"
 
+#include "lm/kenlm.h"
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -45,9 +47,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     BaseFloat lm_scale = 1.0;
+    bool use_kenlm = false;
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "costs; frequently 1.0 or -1.0");
+    po.Register("use-kenlm", &use_kenlm, "instead of carpa, use kenlm to rescore");
 
     po.Read(argc, argv);
 
@@ -60,9 +64,14 @@ int main(int argc, char *argv[]) {
         lm_rxfilename = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
 
-    // Reads the language model in ConstArpaLm format.
+    KenLm kenlm;
     ConstArpaLm const_arpa;
-    ReadKaldiObject(lm_rxfilename, &const_arpa);
+    if (use_kenlm) {
+      kenlm.load(lm_rxfilename, "words.txt" /* TODO: feed kaldi's words.txt filename here, via command option? argument?*/);
+    } else {
+      // Reads the language model in ConstArpaLm format.
+      ReadKaldiObject(lm_rxfilename, &const_arpa);
+    }
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
@@ -83,14 +92,19 @@ int main(int argc, char *argv[]) {
         fst::ScaleLattice(fst::GraphLatticeScale(1.0/lm_scale), &clat);
         ArcSort(&clat, fst::OLabelCompare<CompactLatticeArc>());
 
-        // Wraps the ConstArpaLm format language model into FST. We re-create it
-        // for each lattice to prevent memory usage increasing with time.
-        ConstArpaLmDeterministicFst const_arpa_fst(const_arpa);
+        DeterministicOnDemandFst *rescore_lm_fst = NULL;
+        if (use_kenlm) {
+          rescore_lm_fst = new KenLmDeterministicOnDemandFst(kenlm);  // TODO: fix leaking here, properly destroy the object in the end
+        } else {
+          // Wraps the ConstArpaLm format language model into FST. We re-create it
+          // for each lattice to prevent memory usage increasing with time.
+          rescore_lm_fst = new ConstArpaLmDeterministicFst(const_arpa);  // TODO: fix leaking here, properly destroy the object in the end
+        }
 
         // Composes lattice with language model.
         CompactLattice composed_clat;
         ComposeCompactLatticeDeterministic(clat,
-                                           &const_arpa_fst, &composed_clat);
+                                           rescore_lm_fst, &composed_clat);
 
         // Determinizes the composed lattice.
         Lattice composed_lat;
