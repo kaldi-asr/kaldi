@@ -6,9 +6,7 @@ namespace kaldi {
 
 void UnitTestKenLm() {
   KenLm lm;
-  lm.Load("test_data/lm.kenlm", "test_data/words.txt");
-  lm.WriteReindex("test_data/reindex.txt");
-
+  lm.Load("test_data/lm.kenlm", "test_data/words.txt"); // words.txt is Kaldi's output symbol table
   std::ifstream is("test_data/sentences.txt");
   std::string sentence;
   while(std::getline(is, sentence)) {
@@ -19,13 +17,16 @@ void UnitTestKenLm() {
     KenLm::State* istate = &state[0];
     KenLm::State* ostate = &state[1];
 
-    lm.SetStateToBos(istate);
+    lm.SetStateToBeginOfSentence(istate);
     
     std::string sentence_log;
     for (int i = 0; i < words.size(); i++) {
-      std::string word = words[i];
-      BaseFloat word_score = lm.Score(istate, lm.GetWordIndex(word), ostate);
-      sentence_log += " " + word + ":" + std::to_string(lm.GetWordIndex(word)) + ":" + std::to_string(word_score);
+      std::string w = words[i];
+      // note here KenLM gives log10 score, not natural log
+      BaseFloat score = lm.Score(istate, lm.GetWordIndex(w), ostate);
+      sentence_log += " " + w +
+        ":" + std::to_string(lm.GetWordIndex(w)) +
+        ":" + std::to_string(score);
       std::swap(istate, ostate);
     }
     KALDI_LOG << sentence_log;

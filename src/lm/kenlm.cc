@@ -34,23 +34,32 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
   }
 
   // compute the word reindex from Kaldi symbol id to KenLm word id
-  reindex_.clear();
-  reindex_.resize(num_syms, 0); // 0 always means <unk> in KenLm
+  symid_to_wid_.clear();
+  symid_to_wid_.resize(num_syms, 0); // 0 always means <unk> in KenLm
 
   std::ifstream is(symbol_table_filename);
   while (std::getline(is, line)) {
     std::vector<std::string> fields;
     SplitStringToVector(line, " ", true, &fields);
     if (fields.size() == 2) {
-      std::string symbol = fields[0];
-      uint32 symbol_id = 0;
-      ConvertStringToInteger(fields[1], &symbol_id);
-      reindex_[symbol_id] = vocab_->Index(symbol.c_str());
-      symbol_to_symbol_id_[symbol] = symbol_id;
+      std::string sym = fields[0];
+      int32 symid = 0;  ConvertStringToInteger(fields[1], &symid);
+      // TO DISCUSS: should we force the kenlm have exactly the same vocab with kaldi?
+      // it is ill-defined problem if we allow mismatch between kaldi and kenlm vocab.
+      symid_to_wid_[symid] = vocab_->Index(sym.c_str());
+
+      // register if it is special lm symbols
+      if (sym == "<s>") {
+        bos_symid_ = symid;
+      } else if (sym == "</s>") {
+        eos_symid_ = symid;
+      } else if (sym == "<unk>" || sym == "<UNK>") {
+        unk_symid_ = symid;
+      }
     }
   }
 
-  KALDI_LOG << "Kaldi word symble table size: " << reindex_.size();
+  KALDI_LOG << "Kaldi word symble table size: " << symid_to_wid_.size();
 
   return 0;
 }
