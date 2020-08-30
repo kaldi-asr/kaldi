@@ -18,9 +18,9 @@ if [ $# != 2 ]; then
   echo "e.g.:"
   echo "  $0 data/local/lm/4gram.arpa data/lang_test/G.trie"
   echo "Options:"
-  echo "  model_type can be either trie or probing"
-  echo "  if want 8bits quantization, feed \"-q 8 -b 8\" to kenlm_opts, "
-  echo "  remember this option string need to be double quoted"
+  echo "  --model-type can be either \"trie\" or \"probing\""
+  echo "  --kenlm-opts directly pass through to kenlm"
+  echo "    e.g. for 8bits quantization, feed \"-q 8 -b 8\""
   exit 1;
 fi
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script uses kenlm to estimate an arpa model out of training text
 # it is a resort when you hit memory limit dealing with large scale training corpus

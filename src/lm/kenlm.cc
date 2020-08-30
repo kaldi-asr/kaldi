@@ -55,12 +55,13 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
         unk_sym_ = sym;
         unk_symid_ = symid;
       }
-      // now we try to find (symbol id -> word id) mapping for this symbol
+      // get & check word id for this symbol
       WordIndex wid = vocab_->Index(sym.c_str());
-      if ((wid == vocab_->Index("<unk>") || wid == vocab_->Index("<UNK>")) &&
-          sym != "<unk>" && sym != "<UNK>" &&
-          sym != "<eps>" && sym != "#0") {
-        KALDI_ERR << "Found unknown sym: " << sym
+      if ((wid == vocab_->Index("<unk>") || wid == vocab_->Index("<UNK>")) 
+          && sym != "<unk>" && sym != "<UNK>"
+          && sym != "<eps>"
+          && sym != "#0") {
+        KALDI_ERR << "found mismatched symbol: " << sym
                   << ", this symbol is in Kaldi, but is unseen in KenLM"
                   << ", they should have strictly consistent vocabulary.";
       } else {

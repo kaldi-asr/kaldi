@@ -32,7 +32,9 @@ class KenLm {
   { }
 
   ~KenLm() {
-    delete model_;
+    if (model_ != NULL) {
+      delete model_;
+    }
     model_ = NULL;
     vocab_ = NULL;
     symid_to_wid_.clear();
@@ -153,7 +155,7 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
     oarc->ilabel = label;
     oarc->olabel = oarc->ilabel;
     oarc->nextstate = result.first->second;
-    oarc->weight = Weight(-log_10_prob * M_LN10); // KenLM's log10() -> Kaldi's ln()
+    oarc->weight = Weight(-log_10_prob * M_LN10); //KenLM log10() -> Kaldi ln()
 
     return true;
   }
