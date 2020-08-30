@@ -10,7 +10,7 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
   vocab_ = NULL;
 
   // load KenLm model
-  // LAZY mode allows on-demands read instead of load the entired model into memory
+  // LAZY mode allows on-demands read instead of entired loading into memory
   // this is especially useful when we are dealing with very large LM
   lm::ngram::Config config;
   config.load_method = util::LoadMethod::LAZY;
@@ -19,7 +19,7 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
     KALDI_ERR << "Failed loading KenLm model";
   }
 
-  // load vocabulary, this member ponter has no ownership of the actual vocabulary
+  // load vocabulary pointer from kenlm model internal
   vocab_ = &model_->BaseVocabulary();
   if (!vocab_) {
     KALDI_ERR << "Failed loading KenLm vocabulary";
@@ -35,7 +35,7 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
 
   // compute the word reindex from Kaldi symbol id to KenLm word id
   symid_to_wid_.clear();
-  symid_to_wid_.resize(num_syms, 0); // 0 always means <unk> in KenLm
+  symid_to_wid_.resize(num_syms, 0);
 
   std::ifstream is(symbol_table_filename);
   while (std::getline(is, line)) {
@@ -44,23 +44,32 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
     if (fields.size() == 2) {
       std::string sym = fields[0];
       int32 symid = 0;  ConvertStringToInteger(fields[1], &symid);
-      // TO DISCUSS: should we force the kenlm have exactly the same vocab with kaldi?
-      // it is ill-defined problem if we allow mismatch between kaldi and kenlm vocab.
-      symid_to_wid_[symid] = vocab_->Index(sym.c_str());
-
-      // register if it is special lm symbols
+      // update class info if this is a special LM word
       if (sym == "<s>") {
+        bos_sym_ = sym;
         bos_symid_ = symid;
       } else if (sym == "</s>") {
+        eos_sym_ = sym;
         eos_symid_ = symid;
       } else if (sym == "<unk>" || sym == "<UNK>") {
+        unk_sym_ = sym;
         unk_symid_ = symid;
+      }
+      // now we try to find (symbol id -> word id) mapping for this symbol
+      WordIndex wid = vocab_->Index(sym.c_str());
+      if ((wid == vocab_->Index("<unk>") || wid == vocab_->Index("<UNK>")) &&
+          sym != "<unk>" && sym != "<UNK>" &&
+          sym != "<eps>" && sym != "#0") {
+        KALDI_ERR << "Found unknown sym: " << sym
+                  << ", this symbol is in Kaldi, but is unseen in KenLM"
+                  << ", they should have strictly consistent vocabulary.";
+      } else {
+        symid_to_wid_[symid] = wid;
       }
     }
   }
-
-  KALDI_LOG << "Kaldi word symble table size: " << symid_to_wid_.size();
-
+  KALDI_LOG << "Successfully mapped " << symid_to_wid_.size() 
+            << " Kaldi symbols to KenLM words";
   return 0;
 }
 

@@ -14,10 +14,11 @@ namespace kaldi {
 // This class is a thin wrapper of KenLM model,
 // the underlying model structure can be either "trie" or "probing".
 // Its primary jobs are:
-//   1. loads & holds kenlm model resources with ownership
-//   2. handles the index mapping between kaldi fst symbol and kenlm word
-//   3. provides ngram query method to upper level fst wrapper(i.e. KenLmDeterministicOnDemandFst)
-// Kaldi algorithms should interact with the fst wrapper instead of KenLm class.
+//  1. loads & holds kenlm model resources with ownership
+//  2. handles the index mapping between kaldi fst symbol and kenlm word
+//  3. provides ngram query method to upper level fst wrapper
+// Kaldi algorithms should interact with the fst wrapper class
+// i.e. KenLmDeterministicOnDemandFst, instead of KenLm class.
 class KenLm {
  public:
   typedef lm::WordIndex WordIndex;
@@ -26,6 +27,7 @@ class KenLm {
  public:
   KenLm() : 
     model_(NULL), vocab_(NULL),
+    bos_sym_(), eos_sym_(), unk_sym_(),
     bos_symid_(0), eos_symid_(0), unk_symid_(0)
   { }
 
@@ -90,6 +92,10 @@ class KenLm {
   std::vector<WordIndex> symid_to_wid_;
 
   // special lm symbols
+  std::string bos_sym_;
+  std::string eos_sym_;
+  std::string unk_sym_;
+
   int32 bos_symid_;
   int32 eos_symid_;
   int32 unk_symid_;
@@ -98,10 +104,10 @@ class KenLm {
 
 // This class wraps KenLm into Kaldi's DeterministicOnDemandFst class,
 // so that Kaldi's fst framework can utilize KenLM as a simple FST.
-// objects of this class have internal states(so not thread-safe),
+// objects of this class have internal states(so it's not thread-safe),
 // different threads should create their own objects, they are lightweight.
-// Globally, all KenLmDeterministicOnDemandFst objects should share 
-// a single KenLm object (which is stateless and heavy)
+// Globally, KenLmDeterministicOnDemandFst objects should share 
+// the same KenLm object (which is stateless and heavy)
 template<class Arc>
 class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> {
  public:
