@@ -29,14 +29,14 @@ export LC_ALL=C
 arpa_lm=$1
 kenlm=$2
 
-# first we should check if kenlm is correctly installed
+# TODO: first we should check if kenlm is correctly installed
 if [ ! "kenlm is correctly installed && successfully found compilation tool *build_binary*" ]; then
   echo "cannot find build_binary tool, please check your kenlm installation."
   exit 1
 fi
 
 mkdir -p `dirname $kenlm`
-build_binary $kenlm_opts $arpa_lm $model_type $new_lang/G.kenlm
+build_binary $kenlm_opts $arpa_lm $model_type $kenlm
 
-echo "$0: arpa built into kenlm $new_lang/G.kenlm"
+echo "$0: Successfully built arpa into kenlm format: $kenlm"
 exit 0;
