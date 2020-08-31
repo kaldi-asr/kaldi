@@ -133,7 +133,7 @@ for data_dir in ${train_set}; do
     train_ivector_dir=exp/nnet3${nnet3_affix}/$lang_name/ivectors${data_aug_suffix}_hires
     
     
-    common_egs_dir=exp/chain${nnet3_affix}/$lang_name/tdnn1a${data_aug_suffix}/egs  # you can set this to use previously dumped egs.
+    common_egs_dir= #exp/chain${nnet3_affix}/$lang_name/tdnn1a${data_aug_suffix}/egs  # you can set this to use previously dumped egs.
     for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
         $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
       [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
