@@ -28,7 +28,11 @@
 	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
 	}while(0)
 #endif
-unsigned long long advance_chunk_time = 0;
+extern unsigned long long get_feats_chunk_time;
+extern unsigned long long computer_accept_input_time;
+extern unsigned long long computer_run_time;
+extern unsigned long long computer_get_output_time;
+
 namespace kaldi {
 namespace nnet3 {
 
@@ -158,7 +162,8 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
     KALDI_ERR << "Attempt to access frame past the end of the available input";
   }
 
-
+  unsigned long long start_time = 0, end_time = 0;
+  TEST_TIME(start_time);
   CuMatrix<BaseFloat> feats_chunk;
   { // this block sets 'feats_chunk'.
     Matrix<BaseFloat> this_feats(end_input_frame - begin_input_frame,
@@ -173,7 +178,12 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
     }
     feats_chunk.Swap(&this_feats);
   }
+  TEST_TIME(end_time);
+  get_feats_chunk_time += end_time - start_time;
+  TEST_TIME(start_time);
   computer_.AcceptInput("input", &feats_chunk);
+  TEST_TIME(end_time);
+  computer_accept_input_time += end_time - start_time;
 
   if (info_.has_ivectors) {
     KALDI_ASSERT(ivector_features_ != NULL);
@@ -213,8 +223,12 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
     cu_ivectors.Swap(&ivectors);
     computer_.AcceptInput("ivector", &cu_ivectors);
   }
-  computer_.Run();
+  TEST_TIME(start_time);
+  computer_.Run();  
+  TEST_TIME(end_time);
+  computer_run_time += end_time - start_time;
 
+  TEST_TIME(start_time);
   {
     // Note: it's possible in theory that if you had weird recurrence that went
     // directly from the output, the call to GetOutputDestructive() would cause
@@ -236,6 +250,8 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
   KALDI_ASSERT(current_log_post_.NumRows() == info_.frames_per_chunk /
                info_.opts.frame_subsampling_factor &&
                current_log_post_.NumCols() == info_.output_dim);
+  TEST_TIME(end_time);
+  computer_get_output_time += end_time - start_time;
 
   num_chunks_computed_++;
 
@@ -257,15 +273,8 @@ BaseFloat DecodableNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
 
 BaseFloat DecodableAmNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
                                                     int32 index) {
-  unsigned long long start_log_like_lihood = 0, end_log_like_lihood = 0;
-  TEST_TIME(start_log_like_lihood);
-
   subsampled_frame += frame_offset_;
   EnsureFrameIsComputed(subsampled_frame);
-
-  TEST_TIME(end_log_like_lihood);
-  // std::cout <<"\033[0;34mAdvance_chunk time: " << end_log_like_lihood - start_log_like_lihood << " ms. \033[0;39m" << std::endl;
-  advance_chunk_time += end_log_like_lihood - start_log_like_lihood;
 
   return current_log_post_(
       subsampled_frame - current_log_post_subsampled_offset_,

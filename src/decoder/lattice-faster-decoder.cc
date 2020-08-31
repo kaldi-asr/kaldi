@@ -31,6 +31,27 @@
 	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
 	}while(0)
 #endif
+unsigned long long active_toks_resize_time = 0;
+unsigned long long get_cutoff_time = 0;
+unsigned long long toks_clear_time = 0;
+unsigned long long get_cut_off_value_time = 0;
+unsigned long long resize_hash_time = 0;
+unsigned long long get_next_cutoff_time = 0;
+unsigned long long cost_offsets_resize_time = 0;
+unsigned long long add_token_time = 0;
+unsigned long long next_cutoff_decode_loglikelihood_time = 0;
+unsigned long long add_token_decode_loglikelihood_time = 0;
+unsigned long long add_token_find_or_add_token_time = 0;
+unsigned long long add_token_forward_link_time = 0;
+
+unsigned long long next_cutoff_get_feats_chunk_time = 0;
+unsigned long long next_cutoff_computer_accept_input_time = 0;
+unsigned long long next_cutoff_computer_run_time = 0;
+unsigned long long next_cutoff_computer_get_output_time = 0;
+unsigned long long get_feats_chunk_time = 0;
+unsigned long long computer_accept_input_time = 0;
+unsigned long long computer_run_time = 0;
+unsigned long long computer_get_output_time = 0;
 
 namespace kaldi {
 
@@ -620,26 +641,61 @@ void LatticeFasterDecoderTpl<FST, Token>::AdvanceDecoding(DecodableInterface *de
                                      NumFramesDecoded() + max_num_frames);
 
   unsigned long long start_decode_time = 0, end_decode_time = 0;
-  unsigned long long start_process_emitting_time = 0, end_process_emitting_time = 0;
+  unsigned long long start_prune_tokens_time = 0, start_process_emitting_time = 0, end_process_emitting_time = 0;
   unsigned long long end_process_nonemitting_time = 0;
+  unsigned long long prune_tokens_time = 0, process_emitting_time = 0, process_nonemitting_time = 0;
   TEST_TIME(start_decode_time);
   while (NumFramesDecoded() < target_frames_decoded) {
+    TEST_TIME(start_prune_tokens_time);
     if (NumFramesDecoded() % config_.prune_interval == 0) {
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
     TEST_TIME(start_process_emitting_time);
+    prune_tokens_time += start_process_emitting_time - start_prune_tokens_time;
 
     BaseFloat cost_cutoff = ProcessEmitting(decodable);
     TEST_TIME(end_process_emitting_time);
-    std::cout <<"\033[0;32mProcess_emitting time: " << end_process_emitting_time - start_process_emitting_time << " ms. \033[0;39m" << std::endl;
+    process_emitting_time += end_process_emitting_time - start_process_emitting_time;
 
     ProcessNonemitting(cost_cutoff);
     TEST_TIME(end_process_nonemitting_time);
-    std::cout <<"\033[0;32mProcess_nonemitting time: " << end_process_nonemitting_time - end_process_emitting_time << " ms. \033[0;39m" << std::endl;
+    process_nonemitting_time = end_process_nonemitting_time - end_process_emitting_time;
   }
   TEST_TIME(end_decode_time);
-  std::cout <<"\033[0;32mTarget_frames_decoded: " << target_frames_decoded << "\033[0;39m" << std::endl;
+  std::cout <<"\033[0;32m PruneActiveTokens time: " << prune_tokens_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36m   active_toks_resize time: " << active_toks_resize_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36m   toks_clear time: " << toks_clear_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36m   GetCutoff time: " << get_cut_off_value_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36m   PossiblyResizeHash time: " << resize_hash_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;34m       get_feats_chunk time: " << next_cutoff_get_feats_chunk_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;34m       computer_.AcceptInput time: " << next_cutoff_computer_accept_input_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;34m       computer_.Run time: " << next_cutoff_computer_run_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;34m       computer_.GetOutputDestructive time: " << next_cutoff_computer_get_output_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;33m     decodable->LogLikelihood time: " << next_cutoff_decode_loglikelihood_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36m   get_next_cutoff time: " << get_next_cutoff_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36m   cost_offsets_resize time: " << cost_offsets_resize_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;34m       decodable->LogLikelihood time: " << add_token_decode_loglikelihood_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;34m       FindOrAddToken time: " << add_token_find_or_add_token_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;34m       ForwardLinkT time: " << add_token_forward_link_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;36m   add_token time: " << add_token_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;32m Process_emitting time: " << process_emitting_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;32m Process_nonemitting time: " << process_nonemitting_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;32mDecode time: " << end_decode_time - start_decode_time << " ms. \033[0;39m" << std::endl;
+  active_toks_resize_time = 0;
+  toks_clear_time = 0;
+  get_cut_off_value_time = 0;
+  resize_hash_time = 0;
+  get_next_cutoff_time = 0;
+  cost_offsets_resize_time = 0;
+  add_token_time = 0;
+  next_cutoff_decode_loglikelihood_time = 0;
+  add_token_decode_loglikelihood_time = 0;
+  add_token_find_or_add_token_time = 0;
+  add_token_forward_link_time = 0;
+  next_cutoff_get_feats_chunk_time = 0;
+  next_cutoff_computer_accept_input_time = 0;
+  next_cutoff_computer_run_time = 0;
+  next_cutoff_computer_get_output_time = 0;
 }
 
 // FinalizeDecoding() is a version of PruneActiveTokens that we call
@@ -741,19 +797,41 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
   int32 frame = active_toks_.size() - 1; // frame is the frame-index
                                          // (zero-based) used to get likelihoods
                                          // from the decodable object.
+  unsigned long long start_time = 0, end_time = 0;
+  unsigned long long loop_start_time = 0, loop_end_time = 0;
+  TEST_TIME(start_time);
+
   active_toks_.resize(active_toks_.size() + 1);
+  TEST_TIME(end_time);
+  active_toks_resize_time += end_time - start_time;
+  TEST_TIME(start_time);
 
   Elem *final_toks = toks_.Clear(); // analogous to swapping prev_toks_ / cur_toks_
                                    // in simple-decoder.h.   Removes the Elems from
                                    // being indexed in the hash in toks_.
+  TEST_TIME(end_time);
+  toks_clear_time += end_time - start_time;
+  TEST_TIME(start_time);
+
   Elem *best_elem = NULL;
   BaseFloat adaptive_beam;
   size_t tok_cnt;
   BaseFloat cur_cutoff = GetCutoff(final_toks, &tok_cnt, &adaptive_beam, &best_elem);
   KALDI_VLOG(6) << "Adaptive beam on frame " << NumFramesDecoded() << " is "
                 << adaptive_beam;
+  TEST_TIME(end_time);
+  get_cut_off_value_time += end_time - start_time;
+  TEST_TIME(start_time);
 
   PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.
+
+  TEST_TIME(end_time);
+  resize_hash_time += end_time - start_time;
+  TEST_TIME(start_time);
+  get_feats_chunk_time = 0;
+  computer_accept_input_time = 0;
+  computer_run_time = 0;
+  computer_get_output_time = 0;
 
   BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
   // pruning "online" before having seen all tokens
@@ -769,34 +847,39 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
     Token *tok = best_elem->val;
     cost_offset = - tok->tot_cost;
 
-    // unsigned long long start_for_loop_time = 0, end_for_loop_time = 0;
-    // int loop_time = 0, loop_ilabel_time = 0;
-    // TEST_TIME(start_for_loop_time);
-
     for (fst::ArcIterator<FST> aiter(*fst_, state);
          !aiter.Done();
          aiter.Next()) {
-      // loop_time++;
       const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
-        // loop_ilabel_time++;
+        TEST_TIME(loop_start_time);
         BaseFloat new_weight = arc.weight.Value() + cost_offset -
             decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
+        TEST_TIME(loop_end_time);
+        next_cutoff_decode_loglikelihood_time += loop_end_time - loop_start_time;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
       }
     }
-    // TEST_TIME(end_for_loop_time); 
-    // std::cout <<"\033[0;33mFor_loop_LogLikelihood time: " << end_for_loop_time - start_for_loop_time << " ms. \033[0;39m" << std::endl;
-    // std::cout <<"\033[0;33mLoop time: " << loop_time << " \033[0;39m" << std::endl;
-    // std::cout <<"\033[0;33mLoop ilable time: " << loop_ilabel_time << " \033[0;39m" << std::endl;
   }
+
+  next_cutoff_get_feats_chunk_time += get_feats_chunk_time;
+  next_cutoff_computer_accept_input_time += computer_accept_input_time;
+  next_cutoff_computer_run_time += computer_run_time;
+  next_cutoff_computer_get_output_time += computer_get_output_time;
+  TEST_TIME(end_time);
+  get_next_cutoff_time += end_time - start_time;
+  TEST_TIME(start_time);
 
   // Store the offset on the acoustic likelihoods that we're applying.
   // Could just do cost_offsets_.push_back(cost_offset), but we
   // do it this way as it's more robust to future code changes.
   cost_offsets_.resize(frame + 1, 0.0);
   cost_offsets_[frame] = cost_offset;
+
+  TEST_TIME(end_time);
+  cost_offsets_resize_time += end_time - start_time;
+  TEST_TIME(start_time);
 
   // the tokens are now owned here, in final_toks, and the hash is empty.
   // 'owned' is a complex thing here; the point is we need to call DeleteElem
@@ -811,29 +894,44 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
            aiter.Next()) {
         const Arc &arc = aiter.Value();
         if (arc.ilabel != 0) {  // propagate..
+          TEST_TIME(loop_start_time);
+
           BaseFloat ac_cost = cost_offset -
               decodable->LogLikelihood(frame, arc.ilabel),
               graph_cost = arc.weight.Value(),
               cur_cost = tok->tot_cost,
               tot_cost = cur_cost + ac_cost + graph_cost;
+          TEST_TIME(loop_end_time);
+          add_token_decode_loglikelihood_time += loop_end_time - loop_start_time;
+          
           if (tot_cost >= next_cutoff) continue;
           else if (tot_cost + adaptive_beam < next_cutoff)
             next_cutoff = tot_cost + adaptive_beam; // prune by best current token
           // Note: the frame indexes into active_toks_ are one-based,
           // hence the + 1.
+
+          TEST_TIME(loop_start_time);
           Elem *e_next = FindOrAddToken(arc.nextstate,
                                         frame + 1, tot_cost, tok, NULL);
           // NULL: no change indicator needed
+          TEST_TIME(loop_end_time);
+          add_token_find_or_add_token_time += loop_end_time - loop_start_time;
+          TEST_TIME(loop_start_time);
 
           // Add ForwardLink from tok to next_tok (put on head of list tok->links)
           tok->links = new ForwardLinkT(e_next->val, arc.ilabel, arc.olabel,
                                         graph_cost, ac_cost, tok->links);
+          TEST_TIME(loop_end_time);
+          add_token_forward_link_time += loop_end_time - loop_start_time;
         }
       } // for all arcs
     }
     e_tail = e->tail;
     toks_.Delete(e); // delete Elem
   }
+  
+  TEST_TIME(end_time);
+  add_token_time += end_time - start_time;
   return next_cutoff;
 }
 
