@@ -118,13 +118,15 @@ where "nvcc" is installed.
 EOF
 fi
 
-#local/chain/run_ivector_common.sh --stage $stage \
-#                                  --nj $nj \
-#                                  --train-set $train_set \
-#                                  --gmm $gmm \
-#                                  --num-threads-ubm $num_threads_ubm \
-#                                  --nnet3-affix "$nnet3_affix"
-#
+local/chain/run_ivector_common.sh --stage $stage --stop-stage $stop_stage \
+                                  --nj $nj \
+                                  --babel-langs $babel_langs \
+                                  --babel-recog $babel_recog \
+                                  --gp-langs $gp_langs \
+                                  --gp-recog $gp_recog \
+                                  --gmm $gmm \
+                                  --num-threads-ubm $num_threads_ubm \
+                                  --nnet3-affix "$nnet3_affix"
 for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
 
