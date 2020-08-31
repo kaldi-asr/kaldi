@@ -28,4 +28,3 @@ if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
   export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"
   export cuda_cmd="queue.pl --config $queue_conf --gpu 1 --mem 10G --tmp 40G"
 fi
-
