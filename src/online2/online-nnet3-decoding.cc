@@ -78,6 +78,18 @@ void SingleUtteranceNnet3DecoderTpl<FST>::GetLattice(bool end_of_utterance,
       trans_model_, &raw_lat, lat_beam, clat, decoder_opts_.det_opts);
 }
 
+/// ADD(YuanHuan)
+template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::GetLattice(bool end_of_utterance,
+                Lattice *clat) const {
+  if (NumFramesDecoded() == 0)
+    KALDI_ERR << "You cannot get a lattice if you decoded no frames.";
+  decoder_.GetRawLattice(clat, end_of_utterance);
+
+  if (!decoder_opts_.determinize_lattice)
+    KALDI_ERR << "--determinize-lattice=false option is not supported at the moment";
+}
+
 template <typename FST>
 void SingleUtteranceNnet3DecoderTpl<FST>::GetBestPath(bool end_of_utterance,
                                               Lattice *best_path) const {
