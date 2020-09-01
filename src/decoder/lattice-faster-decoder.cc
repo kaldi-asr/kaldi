@@ -894,16 +894,16 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
            aiter.Next()) {
         const Arc &arc = aiter.Value();
         if (arc.ilabel != 0) {  // propagate..
-          TEST_TIME(loop_start_time);
 
-          BaseFloat ac_cost = cost_offset -
-              decodable->LogLikelihood(frame, arc.ilabel),
-              graph_cost = arc.weight.Value(),
-              cur_cost = tok->tot_cost,
-              tot_cost = cur_cost + ac_cost + graph_cost;
+          TEST_TIME(loop_start_time);
+          const BaseFloat ac_cost = cost_offset -
+              decodable->LogLikelihood(frame, arc.ilabel);
+          const BaseFloat &graph_cost = arc.weight.Value();
+          const BaseFloat &cur_cost = tok->tot_cost;
+          const BaseFloat tot_cost = cur_cost + ac_cost + graph_cost;
           TEST_TIME(loop_end_time);
           add_token_decode_loglikelihood_time += loop_end_time - loop_start_time;
-          
+
           if (tot_cost >= next_cutoff) continue;
           else if (tot_cost + adaptive_beam < next_cutoff)
             next_cutoff = tot_cost + adaptive_beam; // prune by best current token
