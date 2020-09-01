@@ -40,6 +40,8 @@
 
 // extern unsigned long long advance_chunk_time;
 // extern unsigned long long AcceptWaveform_ComputeFeatures_PushBack_time;
+extern unsigned long long get_next_cutoff_time;
+extern unsigned long long total_get_next_cutoff_time;
 
 namespace kaldi {
 
@@ -132,7 +134,7 @@ int main(int argc, char *argv[]) {
     unsigned long long get_frame_feature_time = 0, total_frame_feature_time = 0,get_frame_decoding_time = 0, total_frame_decoding_time = 0;
     unsigned long long get_final_decode_after_time = 0, get_final_decode_before_time = 0;
     unsigned long long after_decode_time = 0;
-    unsigned long long total_AcceptWaveform_ComputeFeatures_PushBack_time = 0;
+    // unsigned long long total_AcceptWaveform_ComputeFeatures_PushBack_time = 0;
     uint32 loop_time = 0;
     TEST_TIME(start_time);
 
@@ -367,7 +369,8 @@ int main(int argc, char *argv[]) {
         }
 
         // std::cout <<"\n\033[0;34mDo AdvanceChunk: " << advance_chunk_time << " ms. \033[0;39m" << std::endl;
-        std::cout <<"\033[0;31mAcceptWaveform -> ComputeFeatures -> PushBack: [Total]push back time " << total_AcceptWaveform_ComputeFeatures_PushBack_time << " ms. \033[0;39m" << std::endl;
+        // std::cout <<"\033[0;31mAcceptWaveform -> ComputeFeatures -> PushBack: [Total]push back time " << total_AcceptWaveform_ComputeFeatures_PushBack_time << " ms. \033[0;39m" << std::endl;
+        std::cout <<"\033[0;31mdecoder.AdvanceDecoding(): [Total]next_cutoff time " << total_get_next_cutoff_time << " ms. \033[0;39m" << std::endl;
         std::cout <<"\033[0;31mTotal feature frames time " << total_frame_feature_time << " ms. \033[0;39m" << std::endl;
         std::cout <<"\033[0;31mTotal decode frames time " << total_frame_decoding_time << " ms. \033[0;39m" << std::endl;
         std::cout <<"\033[0;31mTotal loop time " << loop_time << "\033[0;39m\n" << std::endl;

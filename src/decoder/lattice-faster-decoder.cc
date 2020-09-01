@@ -37,6 +37,7 @@ unsigned long long toks_clear_time = 0;
 unsigned long long get_cut_off_value_time = 0;
 unsigned long long resize_hash_time = 0;
 unsigned long long get_next_cutoff_time = 0;
+unsigned long long total_get_next_cutoff_time = 0;
 unsigned long long cost_offsets_resize_time = 0;
 unsigned long long add_token_time = 0;
 unsigned long long next_cutoff_decode_loglikelihood_time = 0;
@@ -685,6 +686,7 @@ void LatticeFasterDecoderTpl<FST, Token>::AdvanceDecoding(DecodableInterface *de
   toks_clear_time = 0;
   get_cut_off_value_time = 0;
   resize_hash_time = 0;
+  total_get_next_cutoff_time += get_next_cutoff_time;
   get_next_cutoff_time = 0;
   cost_offsets_resize_time = 0;
   add_token_time = 0;
