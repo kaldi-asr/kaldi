@@ -29,6 +29,17 @@
 #include "nnet3/nnet-parse.h"
 #include "cudamatrix/cu-math.h"
 
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+unsigned long long  affine_component_propagate_CopyRowsFromVec_time = 0;
+unsigned long long  affine_component_propagate_AddMatMat_time = 0;
+
 namespace kaldi {
 namespace nnet3 {
 
@@ -1244,9 +1255,17 @@ void* AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                  CuMatrixBase<BaseFloat> *out) const {
 
   // No need for asserts as they'll happen within the matrix operations.
+  unsigned long long start_time = 0, end_time = 0;
+  TEST_TIME(start_time);
   out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
+  TEST_TIME(end_time);
+  affine_component_propagate_CopyRowsFromVec_time += end_time - start_time;
+  
+  TEST_TIME(start_time);
   // of *out.
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+  TEST_TIME(end_time);
+  affine_component_propagate_AddMatMat_time += end_time - start_time;
   return NULL;
 }
 

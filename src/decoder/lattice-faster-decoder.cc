@@ -54,6 +54,9 @@ unsigned long long computer_accept_input_time = 0;
 unsigned long long computer_run_time = 0;
 unsigned long long computer_get_output_time = 0;
 
+unsigned long long total_component_propagate_time = 0;
+unsigned long long total_affine_component_propagate_CopyRowsFromVec_time = 0;
+unsigned long long total_affine_component_propagate_AddMatMat_time = 0;
 namespace kaldi {
 
 // instantiate this class once for each thing you have to decode.
@@ -670,6 +673,9 @@ void LatticeFasterDecoderTpl<FST, Token>::AdvanceDecoding(DecodableInterface *de
   std::cout <<"\033[0;36m   PossiblyResizeHash time: " << resize_hash_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;34m       get_feats_chunk time: " << next_cutoff_get_feats_chunk_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;34m       computer_.AcceptInput time: " << next_cutoff_computer_accept_input_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;35m             computer_.Run -> component->Propagate -> AffineComponent::Propagate -> CopyRowsFromVec time: " << total_affine_component_propagate_CopyRowsFromVec_time << " ms. \033[0;39m" << std::endl; 
+  std::cout <<"\033[0;35m             computer_.Run -> component->Propagate -> AffineComponent::Propagate -> AddMatMat time: " << total_affine_component_propagate_AddMatMat_time << " ms. \033[0;39m" << std::endl;
+  std::cout <<"\033[0;35m          computer_.Run -> component->Propagate time: " << total_component_propagate_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;34m       computer_.Run time: " << next_cutoff_computer_run_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;34m       computer_.GetOutputDestructive time: " << next_cutoff_computer_get_output_time << " ms. \033[0;39m" << std::endl;
   std::cout <<"\033[0;33m     decodable->LogLikelihood time: " << next_cutoff_decode_loglikelihood_time << " ms. \033[0;39m" << std::endl;
@@ -698,6 +704,9 @@ void LatticeFasterDecoderTpl<FST, Token>::AdvanceDecoding(DecodableInterface *de
   next_cutoff_computer_accept_input_time = 0;
   next_cutoff_computer_run_time = 0;
   next_cutoff_computer_get_output_time = 0;
+  total_component_propagate_time = 0;
+  total_affine_component_propagate_CopyRowsFromVec_time = 0;
+  total_affine_component_propagate_AddMatMat_time = 0;
 }
 
 // FinalizeDecoding() is a version of PruneActiveTokens that we call

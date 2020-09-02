@@ -20,6 +20,17 @@
 #include <iterator>
 #include <sstream>
 #include "nnet3/nnet-compute.h"
+#include "decoder/lattice-faster-decoder.h"
+
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+unsigned long long  component_propagate_time = 0;
 
 namespace kaldi {
 namespace nnet3 {
@@ -241,7 +252,13 @@ void NnetComputer::ExecuteCommand() {
             computation_.component_precomputed_indexes[c.arg2].data;
         const CuSubMatrix<BaseFloat> input(GetSubMatrix(c.arg3));
         CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg4));
+
+        unsigned long long start_time = 0, end_time = 0;
+        TEST_TIME(start_time);
         void *memo = component->Propagate(indexes, input, &output);
+        TEST_TIME(end_time);
+        component_propagate_time += end_time - start_time;
+
         if (c.arg6) {  // need to store stats.
           KALDI_ASSERT(nnet_to_store_stats_ != NULL);
           Component *stats_component = nnet_to_store_stats_->GetComponent(c.arg1);

@@ -33,6 +33,14 @@ extern unsigned long long computer_accept_input_time;
 extern unsigned long long computer_run_time;
 extern unsigned long long computer_get_output_time;
 
+extern unsigned long long component_propagate_time;
+extern unsigned long long total_component_propagate_time;
+
+extern unsigned long long affine_component_propagate_CopyRowsFromVec_time;
+extern unsigned long long affine_component_propagate_AddMatMat_time;
+extern unsigned long long total_affine_component_propagate_CopyRowsFromVec_time;
+extern unsigned long long total_affine_component_propagate_AddMatMat_time;
+
 namespace kaldi {
 namespace nnet3 {
 
@@ -227,7 +235,12 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
   computer_.Run();  
   TEST_TIME(end_time);
   computer_run_time += end_time - start_time;
-
+  total_component_propagate_time += component_propagate_time;
+  component_propagate_time = 0;
+  total_affine_component_propagate_CopyRowsFromVec_time += affine_component_propagate_CopyRowsFromVec_time;
+  affine_component_propagate_CopyRowsFromVec_time = 0;
+  total_affine_component_propagate_AddMatMat_time += affine_component_propagate_AddMatMat_time;
+  affine_component_propagate_AddMatMat_time = 0;
   TEST_TIME(start_time);
   {
     // Note: it's possible in theory that if you had weird recurrence that went
