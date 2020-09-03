@@ -1,28 +1,36 @@
 all:
 
-EXTRA_CXXFLAGS += -Wno-sign-compare -I ../../tools/portaudio/install/include
+#EXTRA_CXXFLAGS += -Wno-sign-compare -I ../../tools/portaudio/install/include
+EXTRA_CXXFLAGS += -Wno-sign-compare -I/home/huanyuan/code/kaldi/hisi/portaudio/install/include/
 EXTRA_LDLIBS =
 
 include ../kaldi.mk
 
 UNAME=$(shell uname)
 ifeq ($(UNAME), Darwin)
-    EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+    #EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+    EXTRA_LDLIBS = /home/huanyuan/code/kaldi/hisi/portaudio/install/lib/libportaudio.a
     EXTRA_LDLIBS += -framework CoreAudio -framework AudioToolbox -framework AudioUnit -framework CoreServices
 endif
 
 ifeq ($(UNAME), Linux)
-  ifneq "$(wildcard ../../tools/portaudio/install/lib/libportaudio.a)" ""
-    EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+  #ifneq "$(wildcard ../../tools/portaudio/install/lib/libportaudio.a)" ""
+  ifneq "$(wildcard  /home/huanyuan/code/kaldi/hisi/portaudio/install/lib/libportaudio.a)" ""
+    #EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+    EXTRA_LDLIBS = /home/huanyuan/code/kaldi/hisi/portaudio/install/lib/libportaudio.a
   else
-    EXTRA_LDLIBS = ../../tools/portaudio/install/lib64/libportaudio.a
+    #EXTRA_LDLIBS = ../../tools/portaudio/install/lib64/libportaudio.a
+    EXTRA_LDLIBS = /home/huanyuan/code/kaldi/hisi/portaudio/install/lib/libportaudio.a
   endif
-  ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
-    EXTRA_LDLIBS += -lasound -lrt
+  #ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
+  ifneq ($(wildcard /home/huanyuan/code/kaldi/hisi/portaudio/install/include/pa_linux_alsa.h),)
+    #EXTRA_LDLIBS += -lasound -lrt
+    EXTRA_LDLIBS += /home/huanyuan/code/kaldi/hisi/alsa-lib-1.1.7/install/lib/libasound.so -lrt
   else
     EXTRA_LDLIBS += -lrt
   endif
-  ifneq ($(wildcard ../../tools/portaudio/install/include/pa_jack.h),)
+  #ifneq ($(wildcard ../../tools/portaudio/install/include/pa_jack.h),)
+  ifneq ($(wildcard /home/huanyuan/code/kaldi/hisi/portaudio/install/include/pa_jack.h),)
     EXTRA_LDLIBS += -ljack
   endif
 endif

@@ -23,6 +23,16 @@
 
 #include "online-feat-input.h"
 
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+unsigned long long get_next_features_time = 0;
+
 namespace kaldi {
 
 
@@ -522,7 +532,11 @@ bool OnlineFeatureMatrix::IsValidFrame (int32 frame) {
   if (frame < feat_offset_ + feat_matrix_.NumRows())
     return true;
   else {
+    unsigned long long start_time = 0, end_time = 0;
+    TEST_TIME(start_time);
     GetNextFeatures();
+    TEST_TIME(end_time);
+    get_next_features_time += end_time - start_time;
     if (frame < feat_offset_ + feat_matrix_.NumRows())
       return true;
     else {

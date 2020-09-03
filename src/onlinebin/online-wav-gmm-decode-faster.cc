@@ -28,10 +28,26 @@
 #include "online/online-faster-decoder.h"
 #include "online/onlinebin-util.h"
 
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+extern unsigned long long get_next_features_time;
+extern unsigned long long decodable_LogLikelihood_time;
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;
+
+    unsigned long long start_time = 0, end_time = 0;
+    unsigned long long init_time = 0;
+
+    TEST_TIME(start_time);
 
     typedef kaldi::int32 int32;
     typedef OnlineFeInput<Mfcc> FeInput;
@@ -140,6 +156,10 @@ int main(int argc, char *argv[]) {
                                 silence_phones, trans_model);
     SequentialTableReader<WaveHolder> reader(wav_rspecifier);
     VectorFst<LatticeArc> out_fst;
+
+    TEST_TIME(init_time); 
+    std::cout <<"\033[0;31mTotal init time " << init_time - start_time << " ms. \033[0;39m\n" << std::endl;
+
     for (; !reader.Done(); reader.Next()) {
       std::string wav_key = reader.Key();
       std::cerr << "File: " << wav_key << std::endl;
@@ -233,6 +253,13 @@ int main(int argc, char *argv[]) {
     }
     delete word_syms;
     delete decode_fst;
+
+    TEST_TIME(end_time);
+    std::cout <<"\033[0;31m[Total] feature frames time " << get_next_features_time << " ms. \033[0;39m" << std::endl;
+    std::cout <<"\033[0;31mdecoder.AdvanceDecoding(): [Total]decodable->LogLikelihood time " << decodable_LogLikelihood_time << " ms. \033[0;39m" << std::endl;
+    std::cout <<"\033[0;31mTotal decode frames time " << end_time - init_time << " ms. \033[0;39m" << std::endl;
+    std::cout <<"\033[0;31mTotal time: " << end_time - start_time << " ms. \033[0;39m" << std::endl;
+
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

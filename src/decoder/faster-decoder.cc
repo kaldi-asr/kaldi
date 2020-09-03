@@ -20,8 +20,17 @@
 
 #include "decoder/faster-decoder.h"
 
-namespace kaldi {
+#ifndef TEST_TIME
+#include <sys/time.h>
+#define TEST_TIME(times) do{\
+        struct timeval cur_time;\
+	    gettimeofday(&cur_time, NULL);\
+	    times = (cur_time.tv_sec * 1000000llu + cur_time.tv_usec) / 1000llu;\
+	}while(0)
+#endif
+unsigned long long decodable_LogLikelihood_time = 0;
 
+namespace kaldi {
 
 FasterDecoder::FasterDecoder(const fst::Fst<fst::StdArc> &fst,
                              const FasterDecoderOptions &opts):
@@ -236,6 +245,8 @@ double FasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.
+  unsigned long long start_time = 0, end_time = 0;
+  
   if (best_elem) {
     StateId state = best_elem->key;
     Token *tok = best_elem->val;
@@ -244,7 +255,10 @@ double FasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
          aiter.Next()) {
       const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // we'd propagate..
+        TEST_TIME(start_time);
         BaseFloat ac_cost = - decodable->LogLikelihood(frame, arc.ilabel);
+        TEST_TIME(end_time);
+        decodable_LogLikelihood_time += end_time - start_time;
         double new_weight = arc.weight.Value() + tok->cost_ + ac_cost;
         if (new_weight + adaptive_beam < next_weight_cutoff)
           next_weight_cutoff = new_weight + adaptive_beam;
@@ -270,7 +284,10 @@ double FasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
            aiter.Next()) {
         Arc arc = aiter.Value();
         if (arc.ilabel != 0) {  // propagate..
+          TEST_TIME(start_time);
           BaseFloat ac_cost =  - decodable->LogLikelihood(frame, arc.ilabel);
+          TEST_TIME(end_time);
+          decodable_LogLikelihood_time += end_time - start_time;
           double new_weight = arc.weight.Value() + tok->cost_ + ac_cost;
           if (new_weight < next_weight_cutoff) {  // not pruned..
             Token *new_tok = new Token(arc, ac_cost, tok);
