@@ -226,6 +226,8 @@ while [ $x -lt $num_iters ]; do
         run.pl $dir/log/average.$[x+1].log \
           nnet3-average $src_models $dir/$[x+1].raw '&&' \
           matrix-sum --average=true $src_matrices $dir/${embedding_type}_embedding.$[x+1].mat
+        rm $src_models
+        rm $src_matrices
       fi
       # optionally, perform cleanup after training
       if [ "$cleanup" = true ] ; then
