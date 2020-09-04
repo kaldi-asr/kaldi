@@ -322,7 +322,7 @@ cat $dict_dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ",
 
 # Add to the lexicon the silences, noises etc.
 (echo '!SIL SIL'; echo '[SPK] SPN'; echo '[FIL] NSN'; echo '<UNK> SPN' ) | \
- cat - $dict_dir/lexicon1.txt | sed '/^HH$/d' > $dict_dir/lexicon.txt || exit 1;
+ cat - $dict_dir/lexicon1.txt | awk '(NF>1)' > $dict_dir/lexicon.txt || exit 1;
 
 echo "$0: dict preparation succeeded"
 exit 0;

@@ -129,25 +129,27 @@ def process_file(annos):
 def main():
   in_dir = sys.argv[1]
   out_dir = sys.argv[2]
-  utts = ""
-  for root, dirs, files in os.walk(in_dir):
-    for file in files:
-      if file.endswith(".txt"):
-        anno_in = open(os.path.join(root, file), 'r').readlines()
+  with open(os.path.join(out_dir, "utt_list"), 'w') as utts_fi:
+    for root, dirs, files in os.walk(in_dir):
+      for f in [f for f in files if f.endswith(".txt")]:
+        anno_in_fi = open(os.path.join(root, f), 'r')
+        anno_in = anno_in_fi.readlines()
+        anno_in_fi.close()
         speech, music, other = process_file(anno_in)
-        utt = file.replace(".txt", "")
-        utts = utts + utt + "\n"
+        utt = f.replace(".txt", "")
+        utts_fi.write(utt + '\n')
         speech_fi_str = utt + "_speech.key"
         music_fi_str = utt +  "_music.key"
         other_fi_str = utt +  "_other.key"
         speech_fi = open(os.path.join(out_dir, speech_fi_str), 'w')
         speech_fi.write(speech)
+        speech_fi.close()
         music_fi = open(os.path.join(out_dir, music_fi_str), 'w')
         music_fi.write(music)
+        music_fi.close()
         other_fi = open(os.path.join(out_dir, other_fi_str), 'w')
         other_fi.write(other)
-  utts_fi = open(os.path.join(out_dir, "utt_list"), 'w')
-  utts_fi.write(utts)
+        other_fi.close()
 
 if __name__=="__main__":
   main()
