@@ -320,7 +320,7 @@ void GetChainComputationRequest(const Nnet &nnet,
     const NnetChainSupervision &sup = eg.outputs[i];
     const std::string &name = sup.name;
     int32 node_index = nnet.GetNodeIndex(name);
-    if (node_index == -1 &&
+    if (node_index == -1 ||
         !nnet.IsOutputNode(node_index))
       KALDI_ERR << "Nnet example has output named '" << name
                 << "', but no such output node is in the network.";
