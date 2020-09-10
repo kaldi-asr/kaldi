@@ -62,17 +62,17 @@ valid_diagnostic_scp_list=
 combine_scp_list=
 
 # we don't copy lang because there wont be a single lang
-check_params="feat_dim left_context right_context left_context_initial right_context_final ivector_dim" 
+check_params="feat_dim left_context right_context left_context_initial right_context_final" 
 ivec_dim=`fgrep ivector_dim ${args[0]}/info.txt | awk '{print $2}'`
-# if [ $ivec_dim -ne 0 ];then check_params="$check_params final.ie.id"; fi
+if [ $ivec_dim -ne 0 ];then check_params="$check_params ivector_dim final.ie.id"; fi
 
 echo "dir_type randomized_chain_egs" > $megs_dir/info.txt
+# frames_per_chunk is not included in check_params because we allow different
+# values for different languages
 for param in $check_params frames_per_chunk; do
     awk "/^$param/" ${args[0]}/info.txt
     
 done >> $megs_dir/info.txt
-# the arguments to grep make sure we only grep the line that starts with excatly the word lang and we take the first such line
-#lang_list=$(for i in `seq 0 $num_langs`; do awk '/^lang/' ${args[0]}/info.txt | awk '{print $2}'; done)
 echo "langs ${lang_list[@]}" >> $megs_dir/info.txt
 
 tot_num_archives=0
@@ -81,7 +81,7 @@ for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
   for f in $required; do
     if [ ! -f ${multi_egs_dir[$lang]}/$f ]; then
-      echo "$0: no such file ${multi_egs_dir[$lang]}/$f." && exit 1;
+      echo "$0: no such file ${multi_egs_dir[$lang]}/$f" && exit 1;
     fi
   done
   num_chunks=$(fgrep num_chunks ${multi_egs_dir[$lang]}/info.txt | awk '{print $2}')

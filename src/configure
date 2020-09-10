@@ -83,15 +83,11 @@ Configuration options:
   --mathlib=LIB         Math library [default=MKL|OPENBLAS, based on platform]
                         Supported libraries: ATLAS, MKL, CLAPACK, OPENBLAS.
   --static-math         Build with static math libraries [default=no]
-  --threaded-math       Build with multi-threaded math libraries [default=no]
-  --threaded-atlas      Build with multi-threaded ATLAS libraries [default=no]
   --atlas-root=DIR      ATLAS root directory [default=../tools/ATLAS/]
   --openblas-root=DIR   OpenBLAS root directory
   --clapack-root=DIR    CLAPACK root directory
   --mkl-root=DIR        MKL root directory
   --mkl-libdir=DIR      MKL library directory
-  --mkl-threading=LIB   MKL threading layer [default=sequential]
-                        Supported layers: sequential, iomp, tbb, gomp.
   --omp-libdir=DIR      OpenMP directory
   --speex-root=DIR      SPEEX root directory
   --speex-libdir=DIR    SPEEX library directory
@@ -169,12 +165,12 @@ ucase () { awk '{print toupper($0)}' <<<"$1" ; }
 
 function failure {
   echo "***configure failed: $* ***" >&2
-  if [ -f kaldi.mk ]; then rm kaldi.mk; fi
+  rm -f kaldi.mk
   exit 1;
 }
 
 function check_exists {
-  if [[ ! -f $1 ]]; then failure "$1 not found."; fi
+  [[ -f $1 ]] || failure "$1 not found."
 }
 
 function check_library {
@@ -188,39 +184,42 @@ function check_library {
 }
 
 function check_compiler {
+
+  # Part of error message.
+  local supported_compiler="GNU g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3"
+
   COMPILER=$1
   if ! which $COMPILER >&/dev/null; then
     failure "$COMPILER is not installed.
-             You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+You need $supported_compiler."
   else
     COMPILER_VER_INFO=$($COMPILER --version 2>/dev/null)
-    if [[ $COMPILER_VER_INFO == *"g++"* ]]; then
+    if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
       GCC_VER=$($COMPILER -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       if [ $GCC_VER_NUM -lt 40700 ]; then
         failure "$COMPILER (g++-$GCC_VER) is not supported.
-                 You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+You need $supported_compiler."
       elif [ $GCC_VER_NUM  == 40801 ] || [ $GCC_VER_NUM == 40802 ]; then
         failure "$COMPILER (g++-$GCC_VER) is not supported.
-                 GCC 4.8.1 and 4.8.2 have a bug in the implementation of
-                 the nth_element algorithm provided by the standard library.
-                 This will cause Kaldi to crash (make test would fail).
-                 Please use another C++ compiler with C++11 support.
-                 You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+GCC 4.8.1 and 4.8.2 have a bug in the implementation of the nth_element
+algorithm provided by the standard library. This will cause Kaldi to crash
+(make test would fail). Please use another C++ compiler with C++11 support:
+$supported_compiler."
       fi
     elif [[ $COMPILER_VER_INFO == *"Apple"* ]]; then
       CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
       CLANG_VER_NUM=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
       if [ $CLANG_VER_NUM -lt 500 ]; then
         failure "$COMPILER (Apple clang-$CLANG_VER) is not supported.
-                 You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+You need $supported_compiler."
       fi
     elif [[ $COMPILER_VER_INFO == *"LLVM"* ]]; then
       CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
       CLANG_VER_NUM=$(echo $CLANG_VER | sed 's/\./ /g' | xargs printf "%d%02d")
       if [ $CLANG_VER_NUM -lt 303 ]; then
         failure "$COMPILER (LLVM clang-$CLANG_VER) is not supported.
-                You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+You need $supported_compiler."
       fi
     fi
   fi
@@ -229,175 +228,80 @@ function check_compiler {
 function check_for_slow_expf {
   # We cannot run this test if we are cross compiling.
   if [[ "$TARGET_ARCH" == "`uname -m`" ]] ; then
-    cd probe
-    rm -f exp-test
-    make -f Makefile.slow_expf 1>/dev/null
-    ./exp-test
-    if [ $? -eq 1 ]; then
-        echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
-        echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
+    ( cd probe
+      rm -f exp-test
+      make -f Makefile.slow_expf 1>/dev/null
+      if ! ./exp-test; then
+        echo "\
+*** WARNING: expf() seems to be slower than exp() on your machine. This is
+***          a known bug in old versions of glibc. Please consider updating it.
+***          Kaldi will be configured to use exp() instead of expf() in
+***          base/kaldi-math.h Exp() routine for single-precision floats."
         echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
-    fi
-    cd ..
+      fi
+    )
   fi
 }
 
-# MKL functions
-function linux_configure_mkllibdir {
+#
+# Locate MKL libraries and includes.
+#
+function configure_mkllibdir {
   local mklroot=$1
 
-  if [ -d $mklroot/lib/em64t ]; then
-    echo $mklroot/lib/em64t
-  elif [ -d $mklroot/lib/intel64 ]; then
+  if [[ -d $mklroot/lib/intel64 ]]; then
     echo $mklroot/lib/intel64
-  elif [ -d $mklroot/lib ]; then
+  elif [[ -d $mklroot/lib ]]; then
     echo $mklroot/lib
+  elif [[ -d $mklroot/lib/em64t ]]; then
+    echo $mklroot/lib/em64t
   else
-    return 1;
+    failure "Could not find the MKL library directory.
+Please use the switch --mkl-root and/or --mkl-libdir if you have MKL installed,
+or try another math library, e.g. --mathlib=OPENBLAS (would be slower)"
   fi
 }
 
-function linux_configure_mkl_includes {
-  test -d $1/include && echo "$1/include" && return;
-  test -d $2/../../include && echo "$2/../../include" && return;
-  failure "Could not find the MKL include directory"
+configure_mkl_includes() {
+  local mklroot=$1 mkllibdir=$2
+  if [[ -d $mklroot/include ]]; then
+    echo "-I$1/include"
+  elif [[ -d $mkllibdir/../../include ]]; then
+    echo "-I$mkllibdir/../../include"
+  else
+    failure "Could not find the MKL include directory"
+  fi
 }
 
-function linux_configure_mkl_libraries {
-  local mkllibdir=$1
-  local static=$2
-  local threaded=$3
-  local mplib=$4
+configure_mkl_libraries() {
+  local mkllibdir=$1 static=$2
 
-  declare -A mkl_libs
-  mkl_libs=(
-    [sequential]="mkl_intel_lp64 mkl_core mkl_sequential"
-    [gomp]="mkl_intel_lp64 mkl_core mkl_gnu_thread"
-    [iomp]="mkl_intel_lp64 mkl_core mkl_intel_thread "
-    [tbb]="mkl_intel_lp64 mkl_core mkl_tbb_thread "
-  )
+  local mkl_libs="mkl_intel_lp64 mkl_core mkl_sequential"
 
-  if [ -z "${mkl_libs[$threaded]}" ]; then
-    echo >&2 "Unknown threading mode: $threaded"
-    return 1;
+  local linkline="" link_pre="" link_post="" suffix=
+  if ! $static ; then
+    link_pre="-L$mkllibdir -Wl,-rpath=$mkllibdir"
+    suffix=so
+  else
+    link_pre="-Wl,--start-group"
+    link_post=" -Wl,--end-group"
+    suffix=a
   fi
 
-  local linkline=""
-  if  ! $static ; then
-    linkline="-L$mkllibdir -Wl,-rpath=$mkllibdir"
-    for file in ${mkl_libs[$threaded]}; do
-      local libfile=$mkllibdir/lib$file.so
-      check_exists $libfile
-      linkline+=" -l$file "
-    done
-  else
-    if [ $threaded == "sequential" ] ; then
-      test -f "$mkllibdir/libmkl_solver_lp64.a" && \
-        linkline="$linkline $mkllibdir/libmkl_solver_lp64.a"
+  linkline+=$link_pre
+  for file in $mkl_libs; do
+    local libfile=$mkllibdir/lib$file.$suffix
+    check_exists $libfile
+    if ! $static; then
+      linkline+=" -l$file"
     else
-      test -f "$mkllibdir/libmkl_solver_lp64_sequential.a" && \
-        linkline="$linkline $mkllibdir/libmkl_solver_lp64_sequential.a"
+      linkline+=" $libfile"
     fi
-    linkline="$linkline -Wl,--start-group"
-    for file in ${mkl_libs[$threaded]}; do
-      local libfile=$mkllibdir/lib${file}.a
-      check_exists $libfile
-      linkline="$linkline $libfile"
-    done
-    linkline="$linkline -Wl,--end-group "
-  fi
-  echo "$linkline"
-}
-
-function linux_configure_mkl_extra {
-  local static=$1
-  local threaded=$2
-
-  declare -A extra_libs
-  extra_libs=(
-    [sequential]="-ldl -lpthread -lm"
-    [gomp]="-lgomp -ldl -lpthread -lm"
-    [iomp]="-ldl -lpthread -lm"
-    [tbb]=" -ldl -lpthread -lm "
-  )
-  echo "$linkline ${extra_libs[$threaded]}"
-}
-
-function linux_configure_mkl_threadinglibdir {
-  local library=$1
-  local mklroot=$2
-  local mkllibdir=$3
-  local libexts=$4
-
-  ##First we try to use the library in the same directory
-  ##where the mkl libraries reside
-  ##Afterwards, just try some possibilities for different MKL layouts
-  for libext in $libexts; do
-    check_library $mkllibdir "lib$library" $libext \
-    && echo `readlink -f $mkllibdir` && return 0
-
-    local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
-    local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
-
-    local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
-    local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
   done
+  linkline+=$link_post
 
-  #failure "Could not find the library iomp5, use the configure switch --omp-libdir"
-  return 1
+  echo "$linkline -ldl -lpthread -lm"
 }
-
-function linux_configure_mkl_threading {
-  local mklroot=$1
-  local mkllibdir=$2
-  local static=$3
-  local threading=$4
-
-  declare -A libs
-  libs=(
-    [sequential]=""
-    [gomp]=""
-    [iomp]="iomp5"
-    [tbb]="tbb"
-  )
-
-  echo >&2 "Configuring MKL threading as $threading"
-  library=${libs[$threading]}
-  if [ -z "$library" ]; then
-    return 0
-  fi
-
-  if ! is_set $OMPLIBDIR ; then
-    if  $static ; then
-      OMPLIBDIR=`linux_configure_mkl_threadinglibdir $library "$MKLROOT" "$MKLLIBDIR" "a"`
-    else
-      OMPLIBDIR=`linux_configure_mkl_threadinglibdir $library "$MKLROOT" "$MKLLIBDIR" "so"`
-    fi
-  fi
-
-  check_library $OMPLIBDIR "lib$library" "a" || \
-  check_library $OMPLIBDIR "lib$library" "so" || \
-  failure "Could not find the $library library, have your tried the --omp-libdir switch?"
-
-  OMP_LINK_LINE=''
-  # TODO(arnab): in the following conditional, the $static_math test is
-  # needed since the OpenMP library is assumed to be dynamic.
-  if [ "$OMPLIBDIR" != "$MKLLIBDIR" ] ; then
-    OMP_LINK_LINE="-L${OMPLIBDIR}"
-  fi
-  #if the libiomp5 library is dynamic, we add the rpath attribute
-  if ! $static_math ; then
-    OMP_LINK_LINE="$OMP_LINK_LINE -Wl,-rpath=$OMPLIBDIR -l$library"
-  else
-    OMP_LINK_LINE="$OMP_LINK_LINE -Wl,-Bstatic -l$library -Wl,-Bdynamic"
-  fi
-  echo "$OMP_LINK_LINE"
-}
-
 
 # CUDA is used only in selected directories including src/cudamatrix, src/nnet*
 # and src/chain*. It is used to accelerate the neural network training.
@@ -405,7 +309,7 @@ function linux_configure_mkl_threading {
 
 function configure_cuda {
   # Check for CUDA toolkit in the system
-  if [ ! -d  "$CUDATKDIR" ]; then
+  if [ ! -d "$CUDATKDIR" ]; then
     for base in /usr/local/share/cuda /usr/local/cuda /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
@@ -423,27 +327,32 @@ function configure_cuda {
     fi
 
     # Determine 'CUDA_ARCH',
-    CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
-    if [ -z "$CUDA_VERSION" ] ; then
-      echo "Cannot figure out CUDA_VERSION from the nvcc output. Either your CUDA is too new or too old."
-      exit 1
+    CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' |
+                     awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
+    if [[ ! $CUDA_VERSION ]] ; then
+      failure "Cannot figure out CUDA_VERSION from the nvcc output.
+Either your CUDA is too new or too old."
     fi
 
     COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
-    if [[ $COMPILER_VER_INFO == *"g++"* ]]; then
+    if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
       GCC_VER=$($COMPILER -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
-        7_*)
-          MIN_UNSUPPORTED_GCC_VER="5.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-          CUSOLVER=false
-        ;;
-        8_*)
-          MIN_UNSUPPORTED_GCC_VER="6.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=60000;
-          CUSOLVER=false
-        ;;
+        # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA code
+        # It is still possible to use those cuda versions by switching back to C++11
+        # in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0 (see tools/)
+        # https://github.com/kaldi-asr/kaldi/pull/4242
+        #7_*)
+        #  MIN_UNSUPPORTED_GCC_VER="5.0"
+        #  MIN_UNSUPPORTED_GCC_VER_NUM=50000;
+        #  CUSOLVER=false
+        #;;
+        #8_*)
+        #  MIN_UNSUPPORTED_GCC_VER="6.0"
+        #  MIN_UNSUPPORTED_GCC_VER_NUM=60000;
+        #  CUSOLVER=false
+        #;;
         9_0)
           MIN_UNSUPPORTED_GCC_VER="7.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=70000;
@@ -459,7 +368,7 @@ function configure_cuda {
           MIN_UNSUPPORTED_GCC_VER_NUM=80000;
           CUSOLVER=true
         ;;
-        10_1 | 10_*)
+        10_1 | 10_* | 11_*)
           MIN_UNSUPPORTED_GCC_VER="9.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=90000;
           CUSOLVER=true
@@ -478,24 +387,27 @@ function configure_cuda {
       case `uname -m` in
         x86_64|ppc64le)
           case $CUDA_VERSION in
-            5_5) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
-            6_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
-            7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52" ;;
-            8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61" ;;
+            # Disabling CUDA 7 and 8. See a few lines above for details.		   
+            #7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52" ;;
+            #8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61" ;;
             9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70" ;;
             10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
+            11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
             *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
           esac
         ;;
         aarch64)
           case $CUDA_VERSION in
-            7_*)     CUDA_ARCH="-gencode arch=compute_53,code=sm_53" ;;
-            8_*|9_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62" ;;
-            10_*)    CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72" ;;
+            #7_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53" ;;
+            #8_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62" ;;
+            9_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62" ;;
+            10_*|11_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72" ;;
             *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
           esac
         ;;
-        *) echo "Unsupported architecture for use of Kaldi with CUDA.  Please report it to Kaldi mailing list."; exit 1 ;;
+        *) echo "Unsupported architecture for use of Kaldi with CUDA. Please let us know by opening a bug at:
+    https://github.com/kaldi-asr/kaldi/issues/new?template=bug_report.md&title=Unsupported+CUDA+platform+[FILLPLATFORMNAME]"
+           exit 1
       esac
     fi
 
@@ -585,21 +497,23 @@ function linux_configure_atlas_failure {
   echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
   echo >> kaldi.mk
 
-  echo "** $* ***"
-  echo "**  ERROR   **"
-  echo "** Configure cannot proceed automatically."
-  echo "**  If you know that you have ATLAS installed somewhere on your machine, you"
-  echo "** may be able to proceed by replacing [somewhere] in kaldi.mk with a directory."
-  echo "**  If you have sudo (root) access you could install the ATLAS package on your"
-  echo "** machine, e.g. 'sudo apt-get install libatlas-dev libatlas-base-dev' or"
-  echo "** 'sudo yum install atlas.x86_64' or 'sudo zypper install libatlas3-devel',"
-  echo "** or on cygwin, install atlas from the installer GUI; and then run ./configure"
-  echo "** again."
-  echo "**"
-  echo "**  Otherwise (or if you prefer OpenBLAS for speed), you could go the OpenBLAS"
-  echo "** route: cd to ../tools, type 'extras/install_openblas.sh', cd back to here,"
-  echo "** and type './configure  --mathlib=OPENBLAS'"
-  exit 1;
+  failure "*** $*
+***
+*** Configure cannot proceed automatically.
+***
+*** If you know that you have ATLAS installed somewhere on your machine, you may
+*** be able to proceed by replacing [somewhere] in kaldi.mk with a directory.
+***
+*** If you have sudo (root) access you could install the ATLAS package on your
+*** machine, e.g. 'sudo apt-get install libatlas-dev libatlas-base-dev' or
+*** 'sudo yum install atlas.x86_64' or 'sudo zypper install libatlas3-devel'
+***
+*** On cygwin, install atlas from the installer GUI; and then run
+*** ./configure again.
+***
+*** Otherwise (or if you prefer OpenBLAS for speed), you could go the OpenBLAS
+*** route: cd to ../tools, type 'extras/install_openblas.sh', cd back to here,
+*** and type './configure --mathlib=OPENBLAS'."
 }
 
 function linux_atlas_check_static {
@@ -663,8 +577,6 @@ function linux_configure_atlas_redhat_fat {
 }
 
 function linux_configure_atlas_static {
-  if $threaded_atlas; then pt=pt; else pt=""; fi
-
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
        /usr/local/atlas/lib{,64} `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
@@ -696,14 +608,13 @@ function linux_configure_atlas_static {
     return 1;
   fi
 
-  for x in lib${pt}cblas.a libatlas.a lib${pt}f77blas.a; do
+  for x in libcblas.a libatlas.a libf77blas.a; do
     if [ ! -f $ATLASLIBDIR/$x ]; then
       echo "Configuring static ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
     ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
   done
-  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
@@ -749,8 +660,6 @@ use_cuda=true
 with_cudadecoder=1
 static_fst=false
 static_math=false
-threaded_atlas=false
-mkl_threading=sequential
 android=false
 
 FSTROOT=`rel2abs ../tools/openfst`
@@ -791,27 +700,6 @@ do
   --atlas-root=*)
     GetSwitchExistingPathOrDie ATLASROOT "$1"
     shift ;;
-  --threaded-atlas)
-    threaded_atlas=true;
-    shift ;;
-  --threaded-atlas=yes)
-    threaded_atlas=true;
-    shift ;;
-  --threaded-atlas=no)
-    threaded_atlas=false;
-    shift ;;
-  --threaded-math)
-    threaded_atlas=true;
-    mkl_threading=iomp
-    shift ;;
-  --threaded-math=yes)
-    threaded_atlas=true;
-    mkl_threading=iomp
-    shift ;;
-  --threaded-math=no)
-    threaded_atlas=false;
-    mkl_threading=sequential
-    shift ;;
   --use-cuda)
     use_cuda=true;
     shift ;;
@@ -847,14 +735,6 @@ do
     shift ;;
   --static-fst=no)
     static_fst=false;
-    shift ;;
-  --mkl-threading=sequential)
-    threaded_atlas=false;
-    mkl_threading=sequential;
-    shift ;;
-  --mkl-threading=*)
-    GetSwitchValueOrDie mkl_threading "$1"
-    threaded_atlas=true;
     shift ;;
   --fst-root=*)
     GetSwitchExistingPathOrDie FSTROOT "$1"
@@ -895,10 +775,10 @@ do
     shift ;;
   --cuda-arch=*)
     GetSwitchValueOrDie CUDA_ARCH "$1"
-    shift;;
+    shift ;;
   --fst-version=*)
     GetSwitchValueOrDie OPENFST_VER "$1"
-    shift;;
+    shift ;;
   --host=*)
     # The type of system where built programs and libraries will run.
     # It should be in the format cpu-vendor-os. If specified, this script
@@ -906,14 +786,13 @@ do
     GetSwitchValueOrDie HOST "$1"
     shift ;;
   --android-incdir=*)
-    android=true;
-    threaded_math=false;
-    static_math=true;
-    static_fst=true;
-    dynamic_kaldi=false;
-    MATHLIB='OPENBLAS';
+    android=true
+    static_math=true
+    static_fst=true
+    dynamic_kaldi=false
+    MATHLIB='OPENBLAS'
     GetSwitchExistingPathOrDie ANDROIDINC "$1"
-    shift;;
+    shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -1011,8 +890,6 @@ fi
     *) auto_lib=OPENBLAS ;;
   esac
 : ${MATHLIB:=$auto_lib}
-export MATHLIB  #TODO(kkm): Likely not needed. Briefly tested without,
-                #    but left in the hotfix. Remove when doing the #3192.
 
 # Define default library roots where known (others may be found by probing).
 case $MATHLIB in
@@ -1106,7 +983,7 @@ echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 echo >> kaldi.mk
 
 # OS-specific steps given below append to kaldi.mk
-echo "Doing OS specific configurations ..."
+echo "Performing OS specific configuration ..."
 
 if $android ; then
   if [ -z $ANDROIDINC ] ;  then
@@ -1223,44 +1100,29 @@ elif [ "`uname`" == "Linux" ]; then
 
     if  ( is_set "$MKLROOT" && ! is_set "$MKLLIBDIR" ); then
       echo -n "Configuring MKL library directory: "
-      MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
-      if [ $? -ne 0 ]; then
-        failure "MKL libraries could not be found. Please use the switch --mkl-libdir or try another math library, e.g. --mathlib=ATLAS (would be slower)"
-      else
-        echo "Found: $MKLLIBDIR"
-      fi
+      MKLLIBDIR=$(configure_mkllibdir $MKLROOT) || exit 1
+      echo "Found: $MKLLIBDIR"
     fi
 
-    MKL_LINK_LINE=`linux_configure_mkl_libraries "$MKLLIBDIR" $static_math $mkl_threading` || exit 1
-    echo "MKL configured with threading: $mkl_threading, libs: $MKL_LINK_LINE"
-
-    MKL_COMPILE_LINE=`linux_configure_mkl_includes "$MKLROOT" "$MKLLIBDIR"` || exit 1
-    echo "MKL include directory configured as: $MKL_COMPILE_LINE"
-    MKL_COMPILE_LINE=" -I${MKL_COMPILE_LINE} "
-
-    THREADING_LINE=`linux_configure_mkl_threading $MKLROOT $MKLLIBDIR $static_math $mkl_threading` || exit 1
-    EXTRA_LIBS=`linux_configure_mkl_extra $static_math $mkl_threading` || exit 1
-    if [ ! -z "$THREADING_LINE" ] || [ ! -z "$EXTRA_LIBS" ]; then
-      echo "MKL threading libraries configured as $THREADING_LINE $EXTRA_LIBS"
-    fi
+    MKL_LINK_LINE=$(configure_mkl_libraries "$MKLLIBDIR" $static_math) || exit 1
+    echo "MKL configured libs: $MKL_LINK_LINE"
+    MKL_COMPILE_LINE=$(configure_mkl_includes "$MKLROOT" "$MKLLIBDIR") || exit 1
+    echo "MKL include directory: $MKL_COMPILE_LINE"
 
     echo "Using Intel MKL as the linear algebra library."
     (
-      cd probe; rm -f mkl-test;
-      g++ mkl-test.cc -o mkl-test $MKL_COMPILE_LINE $MKL_LINK_LINE $THREADING_LINE $EXTRA_LIBS || exit 1
-      test -f ./mkl-test || exit 1
-      ./mkl-test || exit 1
-      cd ..
+      cd probe
+      rm -f mkl-test
+      g++ mkl-test.cc -o mkl-test $MKL_COMPILE_LINE $MKL_LINK_LINE &&
+        ./mkl-test
     ) || failure "Cannot validate the MKL switches"
 
-    echo MKLROOT = $MKLROOT >> kaldi.mk
-    if [ ! -z $MKLLIBDIR ]; then
-      echo MKLLIB = $MKLLIBDIR >> kaldi.mk
-    fi
+    echo "MKLROOT = $MKLROOT" >> kaldi.mk
+    [[ $MKLLIBDIR ]] && echo "MKLLIB = $MKLLIBDIR" >> kaldi.mk
     echo >> kaldi.mk
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
-    echo "MKLFLAGS = ${MKL_LINK_LINE} ${THREADING_LINE} $EXTRA_LIBS " >> kaldi.mk
+    echo "MKLFLAGS = ${MKL_LINK_LINE}" >> kaldi.mk
     echo "Successfully configured for Linux with MKL libs from $MKLROOT"
 
   elif [ "$MATHLIB" == "CLAPACK" ]; then

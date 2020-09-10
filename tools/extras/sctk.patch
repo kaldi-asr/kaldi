@@ -1,0 +1,34 @@
+diff --git a/src/sclite/align.c b/src/sclite/align.c
+index b80dcd3..52bcbf0 100644
+--- a/src/sclite/align.c
++++ b/src/sclite/align.c
+@@ -1,3 +1,4 @@
++#include <unistd.h>
+ #include "sctk.h"
+ 
+ 
+diff --git a/src/sclite/sclite.c b/src/sclite/sclite.c
+index 93b77ed..58c894a 100644
+--- a/src/sclite/sclite.c
++++ b/src/sclite/sclite.c
+@@ -6,6 +6,7 @@
+ 
+ void do_exit(char *desc, char *prog, int ret);
+ void proc_args(int argc, char **argv, char *prog, char **rname, char **rfmt, char **hname, char **hfmt, int *nhyps,  enum id_types *id_type, int *case_sens, int *outputs, char **title, int *feedback, int *linewidth, int *use_diff, char **out_dir, char **out_name,int *char_align, int *pipeout, int *pipein, int *infered_wordseg, char **lexicon, int *frag_correct, int *opt_del, int *inf_flags, int *stm2ctm_reduce, int *time_align, int *conf_outputs, int *left_to_right, char **wwl_file, char **lm_file);
++int TEXT_set_lang_prof(char *lprof);
+ 
+ #define OUT_SUM            0x0001
+ #define OUT_RSUM           0x0002
+diff --git a/src/sclite/sctkUnit.c b/src/sclite/sctkUnit.c
+index 0b44fc1..4660391 100644
+--- a/src/sclite/sctkUnit.c
++++ b/src/sclite/sctkUnit.c
+@@ -4,6 +4,8 @@
+ static int v = 1;
+ static int exitOnError = 1;
+ 
++int TEXT_set_lang_prof(char *lprof);
++
+ int test_separate_chars(TEXT *from, TEXT *exp, int flag){
+   TEXT *buff;
+   int size = 10;
