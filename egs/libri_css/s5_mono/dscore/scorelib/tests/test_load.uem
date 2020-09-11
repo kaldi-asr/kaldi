@@ -1,0 +1,4 @@
+FILE1 1 0 15
+FILE1 1 25 30.4
+; A comment.
+FILE2 1 4.5 13.24

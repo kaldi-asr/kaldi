@@ -1,0 +1,4 @@
+intervaltree>=3.0.0
+numpy>=1.16.2
+scipy>=0.17.0
+tabulate>=0.5.0
