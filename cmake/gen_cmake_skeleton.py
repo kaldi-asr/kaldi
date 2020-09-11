@@ -1,8 +1,13 @@
+from __future__ import print_function
+
 import os
 import sys
 import re
 import fnmatch
 import argparse
+
+# avoid Python>3 rewrite newline on different platforms
+os.linesep = "\n"
 
 # earily parse, will refernece args globally
 parser = argparse.ArgumentParser()
@@ -308,7 +313,7 @@ class CMakeListsFile(object):
         self.sections.append(section)
 
     def write_file(self):
-        with open(self.path, "w", newline='\n') as f: # good luck for python2
+        with open(self.path, "w") as f:
             f.write(CMakeListsFile.GEN_CMAKE_HEADER)
             for s in self.sections:
                 code = s.gen_code()

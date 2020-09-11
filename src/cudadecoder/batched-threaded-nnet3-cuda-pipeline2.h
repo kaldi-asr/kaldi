@@ -245,7 +245,7 @@ class BatchedThreadedNnet3CudaPipeline2 {
   void WaitForAllTasks();
 
   // Used for debug
-  void SetSymbolTable(fst::SymbolTable *word_syms) {
+  void SetSymbolTable(const fst::SymbolTable &word_syms) {
     cuda_online_pipeline_.SetSymbolTable(word_syms);
   }
 

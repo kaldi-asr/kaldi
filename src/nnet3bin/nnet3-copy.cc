@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("learning-rate", &learning_rate,
-                "If supplied, all the learning rates of updatable components"
+                "If supplied, all the learning rates of updatable components "
                 "are set to this value.");
     po.Register("nnet-config", &nnet_config,
                 "Name of nnet3 config file that can be used to add or replace "

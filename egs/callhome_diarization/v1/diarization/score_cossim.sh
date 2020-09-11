@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright  2016-2018  David Snyder
 #            2017-2018  Matthew Maciejewski
+#                 2020  Maxim Korenevsky (STC-innovations Ltd)
 # Apache 2.0.
 
 # This script is a modified version of diarization/score_plda.sh
@@ -11,7 +12,7 @@
 # affinity matrices, one for each recording.  Most likely, the x-vectors
 # were computed using diarization/nnet3/xvector/extract_xvectors.sh.
 # The affinity matrices are most likely going to be clustered using
-# diarization/cluster.sh.
+# diarization/scluster.sh.
 
 # Begin configuration section.
 cmd="run.pl"

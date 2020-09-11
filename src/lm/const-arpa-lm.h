@@ -219,6 +219,7 @@ class ConstArpaLm {
     overflow_buffer_ = NULL;
     memory_assigned_ = false;
     initialized_ = false;
+    ngram_order_ = 0;
   }
 
   // Special constructor, will be used when you initialize ConstArpaLm from
@@ -277,6 +278,7 @@ class ConstArpaLm {
   int32 EosSymbol() const { return eos_symbol_; }
   int32 UnkSymbol() const { return unk_symbol_; }
   int32 NgramOrder() const { return ngram_order_; }
+  bool Initialized() const { return initialized_; }
 
  private:
   // Function that loads data from stream to the class.

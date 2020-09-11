@@ -22,7 +22,7 @@ fi
 
 set -e -o pipefail
 
-adir=$(utils/make_absolute.sh $1)
+adir=$(utils/make_absolute.sh "$1")
 jdir=$2
 dir=$3
 

@@ -55,47 +55,46 @@ def convert(word, unicode_dict):
 
     return "".join(word_list)
 
-def process_arabic_text(arabic_text, unicode_dict):
-    with open(arabic_text, 'r') as file:
-        sentence_list = []
-        is_sentence = False
-        for line in file.readlines():
-#print(line.split()[0], is_sentence, line.split()[0] == "</P>")
-            if len(line.split()) > 0:
-                if line.split()[0] == "<P>":
-                    is_sentence = True
+def process_arabic_text(text_in_handle, unicode_dict):
+    sentence_list = []
+    is_sentence = False
+    for line in text_in_handle.readlines():
+        if len(line.split()) > 0:
+            if line.split()[0] == "<P>":
+                is_sentence = True
 
-                elif (is_sentence and line.split()[0] != "</P>"):
-                    for word in line.split():
-                        if word == '.':
-                            # when meet period ".", sentence_list should not be empty (do find sentence ending with two period)
-                            if (len(sentence_list) > 0):                
-                                sentence = " ".join(sentence_list)
-                                print(sentence)
-                            sentence_list = []
-                        elif word[-1] == ".":
-                            word = word[:-1]
-                            sentence_list.append(word)
+            elif (is_sentence and line.split()[0] != "</P>"):
+                for word in line.split():
+                    if word == '.':
+                        # when meet period ".", sentence_list should not be empty (do find sentence ending with two period)
+                        if (len(sentence_list) > 0):                
                             sentence = " ".join(sentence_list)
                             print(sentence)
-                            sentence_list = []
-                        else:
-                            word = word
-                            if word != '':
-                                sentence_list.append(word)
-    
-                if line.split()[0] == "</P>":
-                    is_sentence = False
-                    if (len(sentence_list) > 0):
-                        print(" ".join(sentence_list)) 
                         sentence_list = []
-                
-                
+                    elif word[-1] == ".":
+                        word = word[:-1]
+                        sentence_list.append(word)
+                        sentence = " ".join(sentence_list)
+                        print(sentence)
+                        sentence_list = []
+                    else:
+                        word = word
+                        if word != '':
+                            sentence_list.append(word)
+
+            if line.split()[0] == "</P>":
+                is_sentence = False
+                if (len(sentence_list) > 0):
+                    print(" ".join(sentence_list)) 
+                    sentence_list = []
+
+    text_in_handle.close()   
 
 def main():
     arabic_text = sys.argv[1]
+    text_in_handle = sys.stdin if arabic_text == "-" else open(arabic_text, "r")
     unicode_dict = get_unicode_dict()
-    process_arabic_text(arabic_text, unicode_dict)
+    process_arabic_text(text_in_handle, unicode_dict)
 
 if __name__ == "__main__":
     main()
