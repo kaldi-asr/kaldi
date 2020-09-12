@@ -4,8 +4,9 @@
 
 # Apache 2.0.
 #
-# This is similar to local/diarize.sh but uses spectral clustering instead
-# of AHC.
+# This script takes an input directory that has a segments file (and
+# a feats.scp file), and performs diarization on it using spectral
+# clustering.
 
 stage=0
 overlap_stage=0

@@ -5,8 +5,9 @@
 # Apache 2.0.
 #
 # This script takes an input directory that has a segments file (and
-# a feats.scp file), and performs diarization on it.  The output directory
-# contains an RTTM file which can be used to resegment the input data.
+# a feats.scp file), and performs diarization on it, using agglomerative
+# hierarchical clustering.  The output directory contains an RTTM file 
+# which can be used to resegment the input data.
 
 stage=0
 nj=10
