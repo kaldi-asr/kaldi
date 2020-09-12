@@ -27,11 +27,9 @@ nj=50
 decode_nj=15
 
 model_dir=exp/xvector_nnet_1a
-split_file=local/data_split
-lists_dir=local/lists_MixHeadset
 
 train_set=train
-test_sets="dev test"
+test_sets="dev eval"
 
 diarizer_type=spectral  # must be one of (ahc, spectral, vbx)
 
@@ -61,11 +59,13 @@ fi
 
 # Prepare data directories.
 if [ $stage -le 2 ]; then
+  local/ami_text_prep.sh data/local/downloads
+
   for dataset in train $test_sets; do
     echo "$0: preparing $dataset set.."
     mkdir -p data/$dataset
-    local/prepare_data.py --rttm-path $lists_dir/$dataset.rttm --uem-path $lists_dir/$dataset.uem \
-      $AMI_DIR data/$dataset $dataset $split_file
+    local/prepare_data.py data/local/annotations/${dataset}.txt \
+      $AMI_DIR data/$dataset
     local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true data/$dataset/rttm.annotation \
       <(awk '{print $2" "$2" "$3}' data/$dataset/rttm.annotation |sort -u) \
       data/$dataset/utt2spk data/$dataset/segments
