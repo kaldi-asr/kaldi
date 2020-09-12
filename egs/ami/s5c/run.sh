@@ -59,7 +59,9 @@ fi
 
 # Prepare data directories.
 if [ $stage -le 2 ]; then
-  local/ami_text_prep.sh data/local/downloads
+  if ! [ -d data/local/annotations ]; then
+    local/ami_text_prep.sh data/local/downloads
+  fi
 
   for dataset in train $test_sets; do
     echo "$0: preparing $dataset set.."

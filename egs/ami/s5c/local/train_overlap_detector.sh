@@ -58,22 +58,13 @@ mfccdir=mfcc
 mkdir -p $dir
 
 ref_rttm=$train_data_dir/rttm.annotation
+if [ $stage -le 0 ]; then
+  utils/copy_data_dir.sh data/train $train_data_dir
+  cp data/train/rttm.annotation $ref_rttm 
+fi
+
 if [ $target_type == "forced" ]; then
-  ###############################################################################
   # Prepare forced alignments for the training data
-  ###############################################################################
-  if ! [ -d data/local/annotations ]; then
-    local/ami_text_prep.sh data/local/downloads
-  fi
-
-  if [ $stage -le 0 ]; then
-    echo "$0: preparing $train_set .."
-    mkdir -p $train_data_dir
-    local/prepare_force_aligned_data.py $AMI_DIR $train_data_dir data/local/annotations/train.txt
-    utils/utt2spk_to_spk2utt.pl $train_data_dir/utt2spk > $train_data_dir/spk2utt
-    utils/fix_data_dir.sh $train_data_dir
-  fi
-
   if [ $stage -le 1 ]; then
     steps/make_mfcc.sh --nj $nj --cmd "$train_cmd"  --write-utt2num-frames true \
       --mfcc-config conf/mfcc.conf $train_data_dir
