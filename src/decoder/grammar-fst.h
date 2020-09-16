@@ -409,15 +409,15 @@ class GrammarFstTpl {
   // when we have determined that an ExpandedState needs to be created and that
   // it is not currently present.  It creates and returns it; the calling code
   // needs to add it to the expanded_states map for its FST instance.
-  ExpandedState *ExpandState(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandState(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is
   // #nonterm_end, this implements ExpandState() for that case.
-  ExpandedState *ExpandStateEnd(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandStateEnd(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is a
   // user-defined nonterminal, this implements ExpandState() for that case.
-  ExpandedState *ExpandStateUserDefined(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandStateUserDefined(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandStateUserDefined(), this function attempts to look up the
   // pair (nonterminal, state) in the map
@@ -470,7 +470,7 @@ class GrammarFstTpl {
       if already present; otherwise it populates the 'expanded_states' map with
       something for this state_id and returns the value.
   */
-  inline ExpandedState *GetExpandedState(int32 instance_id,
+  inline std::shared_ptr<ExpandedState> GetExpandedState(int32 instance_id,
                                          BaseStateId state_id) {
     std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> > &expanded_states =
         instances_[instance_id].expanded_states;
@@ -478,12 +478,12 @@ class GrammarFstTpl {
     typename std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> >::iterator iter =
         expanded_states.find(state_id);
     if (iter != expanded_states.end()) {
-      return iter->second.get();
+      return iter->second;
     } else {
-      ExpandedState *ans = ExpandState(instance_id, state_id);
+      std::shared_ptr<ExpandedState> ans = ExpandState(instance_id, state_id);
       // Don't use the reference 'expanded_states'; it could have been
       // invalidated.
-      instances_[instance_id].expanded_states[state_id] = ans->shared_from_this();
+      instances_[instance_id].expanded_states[state_id] = ans;
       return ans;
     }
   }
@@ -524,7 +524,7 @@ class ArcIterator<GrammarFstTpl<instance_FST > > {
       i_ = 0;
     } else {
       // A special state
-      ExpandedState *expanded_state = fst.GetExpandedState(instance_id,
+      std::shared_ptr<ExpandedState> expanded_state = fst.GetExpandedState(instance_id,
                                                            base_state);
       dest_instance_ = expanded_state->dest_fst_instance;
       // it's ok to leave the other members of data_ uninitialized, as they will

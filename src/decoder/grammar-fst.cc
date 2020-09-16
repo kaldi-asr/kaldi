@@ -166,7 +166,7 @@ void GrammarFstTpl<FST>::InitEntryOrReentryArcs(
 }
 
 template <typename FST>
-typename GrammarFstTpl<FST>::ExpandedState *GrammarFstTpl<FST>::ExpandState(
+std::shared_ptr<typename GrammarFstTpl<FST>::ExpandedState> GrammarFstTpl<FST>::ExpandState(
     int32 instance_id, BaseStateId state_id) {
   int32 big_number = kNontermBigNumber;
   FST &fst = *(instances_[instance_id].fst);
@@ -217,7 +217,7 @@ void GrammarFstTpl<FST>::CombineArcs(const StdArc &leaving_arc,
 }
 
 template <typename FST>
-typename GrammarFstTpl<FST>::ExpandedState *GrammarFstTpl<FST>::ExpandStateEnd(
+std::shared_ptr<typename GrammarFstTpl<FST>::ExpandedState> GrammarFstTpl<FST>::ExpandStateEnd(
     int32 instance_id, BaseStateId state_id) {
   if (instance_id == 0)
     KALDI_ERR << "Did not expect #nonterm_end symbol in FST-instance 0.";
@@ -227,7 +227,7 @@ typename GrammarFstTpl<FST>::ExpandedState *GrammarFstTpl<FST>::ExpandStateEnd(
   const FstInstance &parent_instance = instances_[parent_instance_id];
   FST &parent_fst = *(parent_instance.fst);
 
-  ExpandedState *ans = new ExpandedState;
+  std::shared_ptr<ExpandedState> ans = std::make_shared<ExpandedState>();
   ans->dest_fst_instance = parent_instance_id;
 
   // parent_aiter is the arc-iterator in the state we return to.  We'll Seek()
@@ -323,12 +323,12 @@ int32 GrammarFstTpl<FST>::GetChildInstanceId(int32 instance_id, int32 nontermina
 }
 
 template <typename FST>
-typename GrammarFstTpl<FST>::ExpandedState *GrammarFstTpl<FST>::ExpandStateUserDefined(
+std::shared_ptr<typename GrammarFstTpl<FST>::ExpandedState> GrammarFstTpl<FST>::ExpandStateUserDefined(
     int32 instance_id, BaseStateId state_id) {
   FST &fst = *(instances_[instance_id].fst);
   ArcIterator<FST > aiter(fst, state_id);
 
-  ExpandedState *ans = new ExpandedState;
+  std::shared_ptr<ExpandedState> ans = std::make_shared<ExpandedState>();
   int32 dest_fst_instance = -1;  // We'll set it in the loop.
                                  // and->dest_fst_instance will be set to this.
 
