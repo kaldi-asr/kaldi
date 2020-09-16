@@ -215,7 +215,7 @@ class GrammarFstTpl {
      KALDI_GRAMMAR_FST_SPECIAL_WEIGHT (4096.0).  The function
      PrepareGrammarFst() makes sure to add this special final-cost on states
      that have special arcs leaving them. */
-  struct ExpandedState {
+  struct ExpandedState: public std::enable_shared_from_this<ExpandedState> {
     // The final-prob for expanded states is always zero; to avoid
     // corner cases, we ensure this via adding epsilon arcs where
     // needed.
@@ -251,7 +251,7 @@ class GrammarFstTpl {
     // FST that the final-prob's value equal to
     // KALDI_GRAMMAR_FST_SPECIAL_WEIGHT.  (That final-prob value is used as a
     // kind of signal to this code that the state needs expansion).
-    std::unordered_map<BaseStateId, ExpandedState*> expanded_states;
+    std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> > expanded_states;
 
     // 'child_instances', which is populated on demand as states in this FST
     // instance are accessed, is logically a map from pair (nonterminal_index,
@@ -472,18 +472,18 @@ class GrammarFstTpl {
   */
   inline ExpandedState *GetExpandedState(int32 instance_id,
                                          BaseStateId state_id) {
-    std::unordered_map<BaseStateId, ExpandedState*> &expanded_states =
+    std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> > &expanded_states =
         instances_[instance_id].expanded_states;
 
-    typename std::unordered_map<BaseStateId, ExpandedState*>::iterator iter =
+    typename std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> >::iterator iter =
         expanded_states.find(state_id);
     if (iter != expanded_states.end()) {
-      return iter->second;
+      return iter->second.get();
     } else {
       ExpandedState *ans = ExpandState(instance_id, state_id);
       // Don't use the reference 'expanded_states'; it could have been
       // invalidated.
-      instances_[instance_id].expanded_states[state_id] = ans;
+      instances_[instance_id].expanded_states[state_id] = ans->shared_from_this();
       return ans;
     }
   }

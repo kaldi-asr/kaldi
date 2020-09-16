@@ -22,6 +22,7 @@
 
 namespace fst {
 
+
 template <typename FST>
 GrammarFstTpl<FST>::GrammarFstTpl(
     int32 nonterm_phones_offset,
@@ -57,16 +58,6 @@ GrammarFstTpl<FST>::~GrammarFstTpl() {
 
 template <typename FST>
 void GrammarFstTpl<FST>::Destroy() {
-  for (size_t i = 0; i < instances_.size(); i++) {
-    FstInstance &instance = instances_[i];
-    typename std::unordered_map<BaseStateId, ExpandedState*>::const_iterator
-        iter = instance.expanded_states.begin(),
-        end = instance.expanded_states.end();
-    for (; iter != end; ++iter) {
-      ExpandedState *e = iter->second;
-      delete e;
-    }
-  }
   top_fst_ = NULL;
   ifsts_.clear();
   nonterminal_map_.clear();
