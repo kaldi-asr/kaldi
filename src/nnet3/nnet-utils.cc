@@ -1034,6 +1034,10 @@ void ConstrainOrthonormalInternal(BaseFloat scale,
 
     BaseFloat trace_P = P.Trace(), trace_P_P = TraceMatMat(P, P, kTrans);
 
+    if (trace_P < 1.0e-30)
+      return;   // This matrix has almost zero value.  It can happen when
+                // components are unused.
+
     scale = std::sqrt(trace_P_P / trace_P);
 
     // The following is a tweak to avoid divergence when the eigenvalues aren't
@@ -1048,8 +1052,6 @@ void ConstrainOrthonormalInternal(BaseFloat scale,
     // update may not be stable for starting points far from equilibrium.
     BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
     if (!(ratio > 0.99)) {
-      if (ratio == 0.0)
-        return;  // This matrix has zero value.  It can happen when components are unused.
       KALDI_WARN << "Ratio is " << ratio << " (should be >= 1.0); component is "
                  << component_name;
       KALDI_ASSERT(ratio > 0.9);
