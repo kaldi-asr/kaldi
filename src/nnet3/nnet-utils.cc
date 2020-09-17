@@ -1048,6 +1048,8 @@ void ConstrainOrthonormalInternal(BaseFloat scale,
     // update may not be stable for starting points far from equilibrium.
     BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
     if (!(ratio > 0.99)) {
+      if (ratio == 0.0)
+        return;  // This matrix has zero value.  It can happen when components are unused.
       KALDI_WARN << "Ratio is " << ratio << " (should be >= 1.0); component is "
                  << component_name;
       KALDI_ASSERT(ratio > 0.9);
