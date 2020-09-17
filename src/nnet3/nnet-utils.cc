@@ -1034,7 +1034,7 @@ void ConstrainOrthonormalInternal(BaseFloat scale,
 
     BaseFloat trace_P = P.Trace(), trace_P_P = TraceMatMat(P, P, kTrans);
 
-    if (trace_P < 1.0e-30)
+    if (trace_P < 1.0e-15)
       return;   // This matrix has almost zero value.  It can happen when
                 // components are unused.
 
