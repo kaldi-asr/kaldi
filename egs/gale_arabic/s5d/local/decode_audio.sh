@@ -61,6 +61,7 @@ if [ ${stage} -le 0 ]; then
     echo "$0: Doing segmentation on test data"
     local/preprocess_test.sh ${data_dir}
     data_dir=${data_dir}_segmented
+    utils/fix_data_dir.sh ${data_dir}
   fi
 fi
 
