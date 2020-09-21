@@ -30,7 +30,7 @@ def main():
         for line in (line.strip().split(maxsplit=2) for line in f):
             words.append(line[0])
             if len(line) > 2:
-                transcripts.append(line[2].replace('.', '').replace('#', ''))
+                transcripts.append(' '.join(tok for tok in line[2].replace('.', '').replace('#', '').split() if tok))
             else:
                 transcripts.append('')
 
@@ -38,7 +38,7 @@ def main():
     unique_phone_tokens = set(chain.from_iterable(p for p in unique_phones))
 
     items = unique_phone_tokens if args.phone_tokens else unique_phones
-    transcripts = [' '.join(t.replace(' ', '')) for t in transcripts] if args.phone_tokens else transcripts
+    transcripts = [' '.join(t.replace(' ', '')) for t in transcripts] if args.phone_tokens else [t.strip() for t in transcripts]
 
     with open(output_dir / 'lexicon.txt', 'w') as f:
         if '<unk>' not in words:

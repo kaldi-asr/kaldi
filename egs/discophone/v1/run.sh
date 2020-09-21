@@ -4,6 +4,7 @@ set -eou pipefail
 
 stage=0
 train_nj=24
+phone_tokens=false
 
 # Acoustic model parameters
 numLeavesTri1=1000
@@ -50,9 +51,9 @@ fi
 . utils/parse_options.sh
 . path.sh
 
+
 local/install_shorten.sh
 
-# TODO: copy data dir creation from ESPnet discophone
 
 train_set=""
 dev_set=""
@@ -109,11 +110,16 @@ if ((stage <= 0)); then
   done
 fi
 
+phone_token_opt=
+if [ $phone_tokens = true ]; then
+  phone_token_opt='--phone-tokens'
+fi
+
 if ((stage <= 4)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
     mkdir -p data/local/$lang_name
-    python local/prepare_lexicon_dir.py --phone-tokens data/$data_dir/lexicon_ipa.txt data/local/$lang_name
+    python local/prepare_lexicon_dir.py $phone_token_opt data/$data_dir/lexicon_ipa.txt data/local/$lang_name
     lang_name="$(langname $data_dir)"
     utils/prepare_lang.sh \
       --share-silence-phones true \
