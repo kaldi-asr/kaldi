@@ -54,7 +54,8 @@ if [ ${stage} -le 0 ]; then
     echo "$0: Audio list file ${audio_list} does not exit" && exit 1;
   fi
 
-  local/get_wavscp.py ${relative_path} ${audio_list} ${data_dir}/wav.scp
+  echo $KALDI_ROOT
+  local/get_wavscp.py ${relative_path} ${audio_list} ${data_dir}/wav.scp $KALDI_ROOT
   awk '{print $1" "$1}' ${data_dir}/wav.scp > ${data_dir}/utt2spk
 
   if ${prepocess} ; then

@@ -5,6 +5,7 @@ import sys
 relative = sys.argv[1]
 audio_list = sys.argv[2]
 wavscp_file = sys.argv[3]
+kaldi_root = sys.argv[4]
 
 def main():
     allowed_audio_type = ["wav", "flac", "sph"]
@@ -27,7 +28,7 @@ def main():
                             wf.write("{} sox {}{} -r 16000 -t wav - |\n".format(utt_id, prefix, line))
                         # sph
                         elif audio_type == "sph":
-                            wf.write("{} ../../../tools/sph2pipe_v2.5/sph2pipe -f wav -c 1 {}{} | sox - -r 16000 -t wav - |\n".format(utt_id, prefix, line))
+                            wf.write("{} {}/tools/sph2pipe_v2.5/sph2pipe -f wav -c 1 {}{} | sox - -r 16000 -t wav - |\n".format(utt_id, kaldi_root, prefix, line))
 
 if __name__ == "__main__":
     main()
