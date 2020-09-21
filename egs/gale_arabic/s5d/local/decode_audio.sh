@@ -51,7 +51,7 @@ if [ ${stage} -le 0 ]; then
   relative_path=false
 
   if [ ! -f ${audio_list} ]; then
-    echo "$0: Audio list file ${audio} does not exit" && exit 1;
+    echo "$0: Audio list file ${audio_list} does not exit" && exit 1;
   fi
 
   local/get_wavscp.py ${relative_path} ${audio_list} ${data_dir}/wav.scp
