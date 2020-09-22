@@ -8,7 +8,7 @@ max_lmwt=17
 weight=0.5
 # end configuration section.
 
-echo "$0 $@" # Printing the command line for logging
+echo "$0 $*" # Printing the command line for logging
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
