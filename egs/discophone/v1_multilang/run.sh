@@ -91,6 +91,8 @@ train_set=${train_set%% }
 dev_set=${dev_set%% }
 train_set_data=${train_set_data%% }
 dev_set_data=${dev_set_data%% }
+
+
 recog_set=""
 for l in ${babel_recog} ${gp_recog}; do
   recog_set="eval_${l} ${recog_set}"
@@ -172,10 +174,11 @@ if (($stage <= 5)) && (($stop_stage > 5 )) ; then
 #  wait
   echo "combine data dirs to a universal data dir in data/universal"
   echo "train_set_data: $train_set_data"
-  utils/combine_data.sh data/universal/train $train_set_data
+  utils/combine_data.sh data/universal/train $train_set_data 
   utils/validate_data_dir.sh data/universal/train || exit 1;
-  echo "$train_set" > data/universal/train/original_data_dirs.txt
-  #  We don't merge dev or eval data from multiple languages here
+  echo "$train_set" > data/universal/train/original_data_dirs.txt   
+
+#  We don't merge dev or eval data from multiple languages here
 #  echo "dev_set_data: $dev_set_data" 
 #  utils/combine_data.sh data/universal/dev $dev_set_data
 #  echo "$dev_set" > data/universal/dev/original_data_dirs.txt 
@@ -209,7 +212,7 @@ fi
 
 #######Replace below with 1-thread
 # From now on,  all data/lang/$lang_name is replaced by data/lang_universal
-data_dir=universal/train
+data_dir=universal/train 
 if (($stage <= 7))  && (($stop_stage > 7 )) ; then
   # Mono training
       expdir=exp/gmm/mono
@@ -222,7 +225,7 @@ fi
 if (($stage <= 8))  && (($stop_stage > 8 )) ; then
   # Tri1 training
       steps/align_si.sh \
-              --nj $train_mono_nj --cmd "$train_cmd" \
+        --nj $train_mono_nj --cmd "$train_cmd" \
         data/subsets/100k/$data_dir \
         data/lang_universal \
         exp/gmm/mono \
@@ -310,7 +313,7 @@ if (($stage <= 11)) && (($stop_stage > 11 )) ; then
         exp/gmm/tri4
 
       local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-              data/$data_dir \
+        data/$data_dir \
         data/lang_universal \
         data/local/lang_universal \
         exp/gmm/tri4 \
@@ -354,7 +357,7 @@ if (($stage <= 13)) && (($stop_stage > 13 )) ; then
         --nj $train_nj --cmd "$train_cmd" \
         data/$data_dir \
         data/langp/lang_universal/tri5 \
-                exp/gmm/tri5 \
+        exp/gmm/tri5 \
         exp/gmm/tri5_ali
 
       local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
@@ -366,3 +369,5 @@ if (($stage <= 13)) && (($stop_stage > 13 )) ; then
         data/local/langp/lang_universal/tri5_ali \
         data/langp/lang_universal/tri5_ali
 fi
+
+
