@@ -20,7 +20,7 @@ if [ $sph_flag ]; then
 fi
 
 if [ ! -d $datadir ]; then
-  mkdir -p $datadir || {echo "mkdir $datadir failed"  exit 1};
+  mkdir -p $datadir || { echo "mkdir $datadir failed";  exit 1; }
 fi
 
 [ ! -f $datadir/wav.scp ] || rm $datadir/wav.scp || exit 1

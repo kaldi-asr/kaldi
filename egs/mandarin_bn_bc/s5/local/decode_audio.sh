@@ -53,13 +53,13 @@ set -e -o pipefail
 
 if [ $stage -le 0 ]; then
   relative_path=false
-  echo "`date -u`: Creating $datadir: wav.scp, utt2spk"
+  echo "$(date -u): Creating $datadir: wav.scp, utt2spk"
   [ ! -f $audio_list ] && echo "$audio_list does not exist " && exit 1;
   bash local/get_wavscp.sh $audio_list $datadir
   awk '{print $1" "$1}' ${datadir}/wav.scp > $datadir/utt2spk
 
   if $preprocess; then
-    echo "`date -u`: Performing uniform segmentation for the test data"
+    echo "$(date -u): Performing uniform segmentation for the test data"
     local/preprocess_test.sh --nj $nj $datadir ${datadir}_segmented
   fi
 fi
@@ -71,7 +71,7 @@ if [ $nj -gt $num_segs ]; then
   nj=$num_segs
 fi
 if [ $stage -le 1 ]; then
-  echo "`date -u`: Getting high-resolution MFCC features for test data"
+  echo "$(date -u): Getting high-resolution MFCC features for test data"
   mfccdir=mfcc_hires
   utils/copy_data_dir.sh $datadir ${datadir}_hires
 
@@ -93,14 +93,14 @@ if [ $nj -gt $num_spks ]; then
   nj=$num_spks
 fi
 if [ $stage -le 2 ]; then
-  echo "`date -u`: Getting i-vector for test data"
+  echo "$(date -u): Getting i-vector for test data"
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
     ${datadir}_hires_nopitch $ivec_extractor $ivector_dir
 fi
 
 decode_dir=${ac_model_dir}/decode_test
 if [ $stage -le 3 ]; then
-  echo "`date -u`: Decoding test dataset, results in $decode_dir"
+  echo "$(date -u): Decoding test dataset, results in $decode_dir"
   steps/nnet3/decode.sh --skip-scoring true --skip-diagnostics true \
     --acwt 1.0 --post-decode-acwt 10.0 \
     --nj $nj --cmd "$decode_cmd" \
@@ -110,7 +110,7 @@ fi
 
 decode_dir_rnnlm=${ac_model_dir}/decode_test_rnnlm_${rnn_weight}
 if [ $stage -le 4 ]; then
-  echo "`date -u`: Perform lattice-rescoring on test data, results in $decode_dir_rnnlm"
+  echo "$(date -u): Perform lattice-rescoring on test data, results in $decode_dir_rnnlm"
   pruned=_pruned
   rnnlm/lmrescore$pruned.sh --skip-scoring true \
     --cmd "$decode_cmd --mem 8G" \
@@ -123,6 +123,6 @@ if [ $stage -le 4 ]; then
   cp -r $output_dir/scoring_kaldi/penalty_${wip}/$fixed_lmwt.txt $output_file
 fi
 
-echo "`date -u` $0: Successfully finish all steps. ASR output is in $output_file"
+echo "$(date -u) $0: Successfully finish all steps. ASR output is in $output_file"
 
 exit 0;
