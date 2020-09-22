@@ -25,11 +25,11 @@ fi
 
 [ ! -f $datadir/wav.scp ] || rm $datadir/wav.scp || exit 1
 
-while read line; do
+while read -r line; do
   filename=$(basename "$line")
   fname="${filename%.*}"
   ext="${filename##*.}"
-  ext=`echo $ext | tr '[:upper:]' '[:lower:]'`
+  ext=$(echo $ext | tr '[:upper:]' '[:lower:]')
   if [ $ext == "wav" ] || [ $ext == "flac" ]; then
     scp_line="$fname sox $line -r 16000 -t wav - | "
 	elif [ $ext == "sph" ]; then
