@@ -40,7 +40,7 @@ else
 #  babel_recog="${babel_langs}"
   #babel_langs=""
   #babel_recog=""
-  gp_langs=""
+  gp_langs="Czech French Spanish Mandarin Thai"
   gp_recog=""
   gp_path="/export/corpora5/GlobalPhone"
   #gp_langs="Czech French Mandarin Spanish Thai"
