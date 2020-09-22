@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
 
     unsigned long long start_time = 0, end_time = 0;
     unsigned long long init_time = 0;
+    unsigned long long start_read_time = 0, end_read_time = 0;
 
     TEST_TIME(start_time);
 
@@ -125,6 +126,7 @@ int main(int argc, char *argv[]) {
       lda_transform.Read(ki.Stream(), binary_in);
     }
 
+    TEST_TIME(start_read_time); 
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
     {
@@ -133,13 +135,19 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_gmm.Read(ki.Stream(), binary);
     }
+    TEST_TIME(end_read_time); 
+    std::cout <<"\033[0;31mLoad trans model time " << end_read_time - start_read_time << " ms. \033[0;39m" << std::endl;
 
+    TEST_TIME(start_read_time); 
     fst::SymbolTable *word_syms = NULL;
     if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                     << word_syms_filename;
 
     fst::Fst<fst::StdArc> *decode_fst = ReadDecodeGraph(fst_rspecifier);
+    
+    TEST_TIME(end_read_time); 
+    std::cout <<"\033[0;31mLoad fst time " << end_read_time - start_read_time << " ms. \033[0;39m" << std::endl;
 
     // We are not properly registering/exposing MFCC and frame extraction options,
     // because there are parts of the online decoding code, where some of these
