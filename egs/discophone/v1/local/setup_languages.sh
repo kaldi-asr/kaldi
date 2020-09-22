@@ -24,7 +24,7 @@ gp_recog="Arabic Czech French Korean Mandarin Spanish Thai"
 mboshi_train=false
 mboshi_recog=false
 gp_romanized=false
-ipa_transcript=false
+phone_token_opt="--phones"
 
 . ./utils/parse_options.sh
 
@@ -58,11 +58,6 @@ if [ ! -d g2ps ]; then
   git clone https://github.com/uiuc-sst/g2ps
 fi
 
-ipa_transcript_opt=
-if $ipa_transcript; then
-  ipa_transcript_opt="--substitute-text"
-fi
-
 # GLOBALPHONE
 
 if [ "$gp_langs" ] || [ "$gp_recog" ]; then
@@ -83,7 +78,7 @@ if [ "$gp_langs" ] || [ "$gp_recog" ]; then
       python3 local/normalize_or_remove_text.py --strip-punctuation --remove-digit-utts $data_dir/text
       utils/fix_data_dir.sh $data_dir
       utils/utt2spk_to_spk2utt.pl $data_dir/utt2spk >$data_dir/spk2utt
-      local/get_utt2dur.sh --read-entire-file true $data_dir
+      local/get_utt2dur.sh --nj 8 --read-entire-file true $data_dir
       python3 -c "for line in open('$data_dir/utt2dur'):
       utt, dur = line.strip().split()
       print(f'{utt} {utt} 0.00 {float(dur):.2f}')
@@ -92,7 +87,7 @@ if [ "$gp_langs" ] || [ "$gp_recog" ]; then
         --lang $l \
         --data-dir $data_dir \
         --g2p-models-dir g2ps/models \
-        $ipa_transcript_opt
+        $phone_token_opt
       utils/fix_data_dir.sh $data_dir
       utils/validate_data_dir.sh --no-feats $data_dir
     done
@@ -121,7 +116,7 @@ if $mboshi_train || $mboshi_recog; then
       --lang Mboshi \
       --data-dir $data_dir \
       --g2p-models-dir g2ps/models \
-      $ipa_transcript_opt
+      $phone_token_opt
     utils/fix_data_dir.sh $data_dir
     utils/validate_data_dir.sh --no-feats $data_dir
   done
@@ -175,7 +170,7 @@ if [ "$langs" ] || [ "$recog" ]; then
             --lang $l \
             --data-dir $data_dir \
             --g2p-models-dir g2ps/models \
-            $ipa_transcript_opt
+            $phone_token_opt
           utils/fix_data_dir.sh $data_dir
         done
       )
@@ -191,7 +186,7 @@ if [ "$langs" ] || [ "$recog" ]; then
             --lang $l \
             --data-dir $data_dir \
             --g2p-models-dir g2ps/models \
-            $ipa_transcript_opt
+            $phone_token_opt
           utils/fix_data_dir.sh $data_dir
         done
       )

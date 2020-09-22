@@ -40,7 +40,6 @@ else
   mboshi_train=false
   mboshi_recog=false
   gp_romanized=false
-  ipa_transcript=true
 fi
 
 . cmd.sh
@@ -80,9 +79,21 @@ function langname() {
   echo "$(basename "$1")"
 }
 
+phone_token_opt=
+if [ $phone_tokens = true ]; then
+  phone_token_opt='--phone-tokens'
+fi
+
+
+# This step will create the data directories for GlobalPhone and Babel languages.
+# It's also going to use LanguageNet G2P models to convert text into phonetic transcripts.
+# Depending on the settings, it will either transcribe into phones, e.g. ([m], [i:], [t]), or
+# phonetic tokens, e.g. (/m/, /i/, /:/, /t/).
+# The Kaldi "text" file will consist of these phonetic sequences, as we're trying to build
+# a universal IPA recognizer.
+# The lexicons are created separately for each split as an artifact from the ESPnet setup.
 if ((stage <= 0)); then
   echo "stage 0: Setting up individual languages"
-
   local/setup_languages.sh \
     --langs "${babel_langs}" \
     --recog "${babel_recog}" \
@@ -91,24 +102,13 @@ if ((stage <= 0)); then
     --mboshi-train "${mboshi_train}" \
     --mboshi-recog "${mboshi_recog}" \
     --gp-romanized "${gp_romanized}" \
-    --ipa-transcript "${ipa_transcript}"
+    --phone_token_opt "${phone_token_opt}"
   for x in ${train_set} ${dev_set} ${recog_set}; do
     sed -i.bak -e "s/$/ sox -R -t wav - -t wav - rate 16000 dither | /" data/${x}/wav.scp
   done
-
-  for data_dir in ${train_set}; do
-    if [ -f data/$data_dir/text.bkp ]; then
-      # replace IPA text with normal text
-      cp data/$data_dir/text.bkp data/$data_dir/text
-    fi
-  done
 fi
 
-phone_token_opt=
-if [ $phone_tokens = true ]; then
-  phone_token_opt='--phone-tokens'
-fi
-
+# Here we will combine the lexicons for train/dev/test splits into a single lexicon for each language.
 if ((stage <= 2)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
@@ -126,6 +126,14 @@ if ((stage <= 2)); then
   done
 fi
 
+# We use the per-language lexicons to find the set of phones/phonetic tokens in every language and combine
+# them again to obtain a multilingual "dummy" lexicon of the form:
+# a a
+# b b
+# c c
+# ...
+# When that is ready, we train a multilingual phone-level language model (i.e. phonotactic model),
+# that will be used to compile the decoding graph and to score each ASR system.
 if ((stage <= 3)); then
   local/prepare_ipa_lm.sh --train-set "$train_set" --dev-set "$dev_set" --phone_token_opt "$phone_token_opt"
   lexicon_list=$(find data/ipa_lm/train -name lexiconp.txt)
@@ -134,12 +142,14 @@ if ((stage <= 3)); then
   python3 local/prepare_lexicon_dir.py data/local/dict_combined/local/lexiconp.txt data/local/dict_combined
   utils/prepare_lang.sh \
     --position-dependent-phones false \
+    --share-silence-phones true \
     data/local/dict_combined \
     "<unk>" data/local/dict_combined data/lang_combined
   LM=data/ipa_lm/train_all/srilm.o3g.kn.gz
   utils/format_lm.sh data/lang_combined "$LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
 fi
 
+# MFCC extraction for GMM training
 if ((stage <= 5)); then
   # Feature extraction
   for data_dir in ${train_set}; do
@@ -154,13 +164,11 @@ if ((stage <= 5)); then
         mfcc
       utils/fix_data_dir.sh data/$data_dir
       steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
-    ) #&
-    #sleep 2
+    ) &
+    sleep 2
   done
-  #wait
+  wait
 fi
-
-exit 0
 
 if ((stage <= 6)); then
   # Prepare data dir subsets for monolingual training
