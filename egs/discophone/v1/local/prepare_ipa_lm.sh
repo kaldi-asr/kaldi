@@ -36,7 +36,7 @@ done
 
 # Concatenate all languages IPA train texts and train the LM
 mkdir -p data/ipa_lm/train_all
-find data/ipa_lm/train -name phones_text -print0 | xargs -0 cat > data/ipa_lm/train_all/text
+find data/ipa_lm/train -name phones_text -print0 | xargs -0 cat >data/ipa_lm/train_all/text
 ngram-count \
   -text data/ipa_lm/train_all/text \
   -order $order \

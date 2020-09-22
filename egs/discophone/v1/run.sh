@@ -47,9 +47,7 @@ fi
 . utils/parse_options.sh
 . path.sh
 
-
 local/install_shorten.sh
-
 
 train_set=""
 dev_set=""
@@ -119,7 +117,7 @@ if ((stage <= 2)); then
       data/$data_dir/lexicon_ipa.txt \
       data/${data_dir//train/dev}/lexicon_ipa.txt \
       data/${data_dir//train/eval}/lexicon_ipa.txt \
-      > data/$data_dir/lexicon_ipa_all.txt
+      >data/$data_dir/lexicon_ipa_all.txt
     python3 local/prepare_lexicon_dir.py $phone_token_opt data/$data_dir/lexicon_ipa_all.txt data/local/$lang_name
     lang_name="$(langname $data_dir)"
     utils/prepare_lang.sh \
@@ -132,7 +130,7 @@ if ((stage <= 3)); then
   local/prepare_ipa_lm.sh --train-set "$train_set" --dev-set "$dev_set" --phone_token_opt "$phone_token_opt"
   lexicon_list=$(find data/ipa_lm/train -name lexiconp.txt)
   mkdir -p data/local/dict_combined/local
-  python3 local/combine_lexicons.py $lexicon_list > data/local/dict_combined/local/lexiconp.txt
+  python3 local/combine_lexicons.py $lexicon_list >data/local/dict_combined/local/lexiconp.txt
   python3 local/prepare_lexicon_dir.py data/local/dict_combined/local/lexiconp.txt data/local/dict_combined
   utils/prepare_lang.sh \
     --position-dependent-phones false \
