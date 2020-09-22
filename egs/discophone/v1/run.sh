@@ -111,16 +111,35 @@ if [ $phone_tokens = true ]; then
   phone_token_opt='--phone-tokens'
 fi
 
-if ((stage <= 4)); then
+if ((stage <= 2)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
     mkdir -p data/local/$lang_name
-    python local/prepare_lexicon_dir.py $phone_token_opt data/$data_dir/lexicon_ipa.txt data/local/$lang_name
+    python3 local/combine_lexicons.py \
+      data/$data_dir/lexicon_ipa.txt \
+      data/${data_dir//train/dev}/lexicon_ipa.txt \
+      data/${data_dir//train/eval}/lexicon_ipa.txt \
+      > data/$data_dir/lexicon_ipa_all.txt
+    python3 local/prepare_lexicon_dir.py $phone_token_opt data/$data_dir/lexicon_ipa_all.txt data/local/$lang_name
     lang_name="$(langname $data_dir)"
     utils/prepare_lang.sh \
       --share-silence-phones true \
       data/local/$lang_name '<unk>' data/local/tmp.lang/$lang_name data/lang/$lang_name
   done
+fi
+
+if ((stage <= 3)); then
+  local/prepare_ipa_lm.sh --train-set "$train_set" --dev-set "$dev_set" --phone_token_opt "$phone_token_opt"
+  lexicon_list=$(find data/ipa_lm/train -name lexiconp.txt)
+  mkdir -p data/local/dict_combined/local
+  python3 local/combine_lexicons.py $lexicon_list > data/local/dict_combined/local/lexiconp.txt
+  python3 local/prepare_lexicon_dir.py data/local/dict_combined/local/lexiconp.txt data/local/dict_combined
+  utils/prepare_lang.sh \
+    --position-dependent-phones false \
+    data/local/dict_combined \
+    "<unk>" data/local/dict_combined data/lang_combined
+  LM=data/ipa_lm/train_all/srilm.o3g.kn.gz
+  utils/format_lm.sh data/lang_combined "$LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
 fi
 
 if ((stage <= 5)); then
@@ -130,18 +149,20 @@ if ((stage <= 5)); then
       lang_name=$(langname $data_dir)
       steps/make_mfcc.sh \
         --cmd "$train_cmd" \
-        --nj 8 \
+        --nj 16 \
         --write_utt2num_frames true \
-        data/$data_dir \
-        exp/make_mfcc/$data_dir \
+        "data/$data_dir" \
+        "exp/make_mfcc/$data_dir" \
         mfcc
       utils/fix_data_dir.sh data/$data_dir
       steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
-    ) &
-    sleep 2
+    ) #&
+    #sleep 2
   done
-  wait
+  #wait
 fi
+
+exit 0
 
 if ((stage <= 6)); then
   # Prepare data dir subsets for monolingual training
@@ -151,19 +172,25 @@ if ((stage <= 6)); then
       utils/subset_data_dir.sh data/$data_dir 5000 data/subsets/5k/$data_dir
     else
       mkdir -p "$(dirname data/subsets/5k/$data_dir)"
-      ln -s "$(pwd)/data/$data_dir" "data/subsets/5k/$data_dir"
+      if [ ! -L "data/subsets/5k/$data_dir" ]; then
+        ln -s "$(pwd)/data/$data_dir" "data/subsets/5k/$data_dir"
+      fi
     fi
     if [ $numutt -gt 10000 ]; then
       utils/subset_data_dir.sh data/$data_dir 10000 data/subsets/10k/$data_dir
     else
       mkdir -p "$(dirname data/subsets/10k/$data_dir)"
-      ln -s "$(pwd)/data/$data_dir" "data/subsets/10k/$data_dir"
+      if [ ! -L "data/subsets/10k/$data_dir" ]; then
+        ln -s "$(pwd)/data/$data_dir" "data/subsets/10k/$data_dir"
+      fi
     fi
     if [ $numutt -gt 20000 ]; then
       utils/subset_data_dir.sh data/$data_dir 20000 data/subsets/20k/$data_dir
     else
       mkdir -p "$(dirname data/subsets/20k/$data_dir)"
-      ln -s "$(pwd)/data/$data_dir" "data/subsets/20k/$data_dir"
+      if [ ! -L "data/subsets/20k/$data_dir" ]; then
+        ln -s "$(pwd)/data/$data_dir" "data/subsets/20k/$data_dir"
+      fi
     fi
   done
 fi

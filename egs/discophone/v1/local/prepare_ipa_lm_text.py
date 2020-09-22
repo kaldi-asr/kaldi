@@ -3,7 +3,7 @@
 import argparse
 from itertools import chain
 from pathlib import Path
-
+from typing import Dict
 
 special_word_to_special_phone = {
     '<hes>': '<unk>',
@@ -17,6 +17,7 @@ special_word_to_special_phone = {
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('lexiconp')
+    parser.add_argument('text')
     parser.add_argument('output_dir')
     parser.add_argument('--phone-tokens', action='store_true',
                         help='Will output phone tokens instead of phones.')
@@ -41,19 +42,27 @@ def main():
     transcripts = [' '.join(t.replace(' ', '')) for t in transcripts] if args.phone_tokens else [t.strip() for t in
                                                                                                  transcripts]
 
+    # Maps each word to a single pronunciation variant; ignores pronunciation alternatives,
+    # becuase it's not obvious how to select them for LM training text generation;
+    # random sampling weighted by pron prob likely won't improve that much...
+    word_lexicon: Dict[str, str] = {}
+    for word, phone_trs in zip(words, transcripts):
+        if word in word_lexicon:
+            continue
+        word_lexicon[word] = phone_trs
+
+    with open(output_dir / 'phones_text', 'w') as fout, open(args.text) as fin:
+        for line in fin:
+            utt_id, *words = line.strip().split()
+            # A heuristic - if the dev word is not in the lexicon,
+            # generate as many <unk> phones as the number of characters.
+            print(' '.join(word_lexicon.get(w, ' '.join(['<unk>'] * len(w))) for w in words), file=fout)
+
     with open(output_dir / 'lexicon.txt', 'w') as f_lex, \
             open(output_dir / 'lexiconp.txt', 'w') as f_lexp:
-        if '<unk>' not in words:
-            print('<unk> <unk>', file=f_lex)
-            print('<unk> 1 <unk>', file=f_lexp)
-        for word, transcript in zip(words, transcripts):
-            if word.startswith('<'):
-                print(f'{word} {special_word_to_special_phone.get(word, "<unk>")}', file=f_lex)
-                print(f'{word} 1 {special_word_to_special_phone.get(word, "<unk>")}', file=f_lexp)
-            else:
-                if transcript:
-                    print(f'{word} {transcript}', file=f_lex)
-                    print(f'{word} 1 {transcript}', file=f_lexp)
+        for phone_unit in items:
+            print(f'{phone_unit} {phone_unit}', file=f_lex)
+            print(f'{phone_unit} 1 {phone_unit}', file=f_lexp)
 
     with open(output_dir / 'silence_phones.txt', 'w') as f:
         for p in sorted(set(special_word_to_special_phone.values()) - {'<unk>'}):
@@ -63,9 +72,9 @@ def main():
         print('<silence>', file=f)
 
     with open(output_dir / 'nonsilence_phones.txt', 'w') as f:
-        print('<unk>', file=f)
         for p in sorted(items):
             print(p, file=f)
+        print('<unk>', file=f)
 
     (output_dir / 'extra_questions.txt').touch(exist_ok=True)
 
