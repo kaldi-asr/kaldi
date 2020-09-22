@@ -19,6 +19,15 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <poll.h>
+#include <signal.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <string>
+
 #include "feat/wave-reader.h"
 #include "online2/online-nnet3-decoding.h"
 #include "online2/online-nnet2-feature-pipeline.h"
@@ -30,15 +39,6 @@
 #include "util/kaldi-thread.h"
 #include "nnet3/nnet-utils.h"
 
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <poll.h>
-#include <signal.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <string>
-
 namespace kaldi {
 
 class TcpServer {
@@ -49,12 +49,14 @@ class TcpServer {
   bool Listen(int32 port);  // start listening on a given port
   int32 Accept();  // accept a client and return its descriptor
 
-  bool ReadChunk(size_t len); // get more data and return false if end-of-stream
+  // get more data and return false if end-of-stream
+  bool ReadChunk(size_t len);
 
-  Vector<BaseFloat> GetChunk(); // get the data read by above method
+  Vector<BaseFloat> GetChunk();  // get the data read by above method
 
-  bool Write(const std::string &msg); // write to accepted client
-  bool WriteLn(const std::string &msg, const std::string &eol = "\n"); // write line to accepted client
+  // write to accepted client
+  bool Write(const std::string &msg);
+  bool WriteLn(const std::string &msg, const std::string &eol = "\n");
 
   void Disconnect();
 
@@ -67,7 +69,10 @@ class TcpServer {
   int read_timeout_;
 };
 
-std::string LatticeToString(const Lattice &lat, const fst::SymbolTable &word_syms) {
+std::string LatticeToString(
+    const Lattice &lat,
+    const fst::SymbolTable &word_syms
+) {
   LatticeWeight weight;
   std::vector<int32> alignment;
   std::vector<int32> words;
@@ -79,17 +84,19 @@ std::string LatticeToString(const Lattice &lat, const fst::SymbolTable &word_sym
     if (s.empty()) {
       KALDI_WARN << "Word-id " << words[i] << " not in symbol table.";
       msg << "<#" << std::to_string(i) << "> ";
-    } else
-      msg << s << " ";
+    } else {
+        msg << s << " ";
+    }
   }
   return msg.str();
 }
 
 std::string GetTimeString(int32 t_beg, int32 t_end, BaseFloat time_unit) {
-  char buffer[100];
+  constexpr size_t kBufferLen { 100 };
+  char buffer[kBufferLen];
   double t_beg2 = t_beg * time_unit;
   double t_end2 = t_end * time_unit;
-  snprintf(buffer, 100, "%.2f %.2f", t_beg2, t_end2);
+  snprintf(buffer, kBufferLen, "%.2f %.2f", t_beg2, t_end2);
   return std::string(buffer);
 }
 
@@ -99,7 +106,10 @@ int32 GetLatticeTimeSpan(const Lattice& lat) {
   return times.back();
 }
 
-std::string LatticeToString(const CompactLattice &clat, const fst::SymbolTable &word_syms) {
+std::string LatticeToString(
+  const CompactLattice &clat,
+  const fst::SymbolTable &word_syms
+) {
   if (clat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice.";
     return "";
@@ -294,7 +304,6 @@ bool TcpServer::Listen(int32 port) {
   KALDI_LOG << "TcpServer: Listening on port: " << port;
 
   return true;
-
 }
 
 TcpServer::~TcpServer() {
@@ -344,14 +353,16 @@ bool TcpServer::ReadChunk(size_t len) {
   while (to_read > 0) {
     poll_ret = poll(client_set_, 1, read_timeout_);
     if (poll_ret == 0) {
-      KALDI_WARN << "Socket timeout! Disconnecting..." << "(has_read_ = " << has_read_ << ")";
+      KALDI_WARN << "Socket timeout! Disconnecting..." << "(has_read_ = "
+                 << has_read_ << ")";
       break;
     }
     if (poll_ret < 0) {
       KALDI_WARN << "Socket error! Disconnecting...";
       break;
     }
-    ret = read(client_desc_, static_cast<void *>(samp_buf_p + has_read_), to_read);
+    ret = read(client_desc_, static_cast<void *>(samp_buf_p + has_read_),
+               to_read);
     if (ret <= 0) {
       KALDI_WARN << "Stream over...";
       break;
@@ -376,12 +387,12 @@ Vector<BaseFloat> TcpServer::GetChunk() {
 }
 
 bool TcpServer::Write(const std::string &msg) {
-
   const char *p = msg.c_str();
   size_t to_write = msg.size();
   size_t wrote = 0;
   while (to_write > 0) {
-    ssize_t ret = write(client_desc_, static_cast<const void *>(p + wrote), to_write);
+    ssize_t ret = write(client_desc_, static_cast<const void *>(p + wrote),
+                        to_write);
     if (ret <= 0)
       return false;
 
@@ -395,7 +406,8 @@ bool TcpServer::Write(const std::string &msg) {
 bool TcpServer::WriteLn(const std::string &msg, const std::string &eol) {
   if (Write(msg))
     return Write(eol);
-  else return false;
+  else
+    return false;
 }
 
 void TcpServer::Disconnect() {
