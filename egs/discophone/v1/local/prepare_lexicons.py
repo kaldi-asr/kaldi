@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright 2020  Johns Hopkins University (Author: Piotr Żelasko)
+# Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import re
 import shutil
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter

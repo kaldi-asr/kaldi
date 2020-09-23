@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+# Copyright 2020  Johns Hopkins University (Author: Piotr Żelasko)
+# Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 import argparse
 from itertools import chain
 from pathlib import Path
-
 
 special_word_to_special_phone = {
     '<hes>': '<unk>',
