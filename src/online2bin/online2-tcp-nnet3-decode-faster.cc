@@ -192,7 +192,6 @@ class OnlineASR {
 };
 }  // namespace kaldi
 
-#ifndef __EMSCRIPTEN__
 
 int main(int argc, const char* const* argv) {
   using kaldi::int32;
@@ -252,50 +251,7 @@ int main(int argc, const char* const* argv) {
     return -1;
   }
 }
-#else
 
-#include <emscripten/bind.h>
-#include <emscripten/val.h>
-#include <iterator>
-
-using std::vector;
-using kaldi::int16;
-using emscripten::val;
-using emscripten::class_;
-using emscripten::optional_override;
-using emscripten::register_vector;
-
-/* Convert JS Int16Array to C++ std::vector<kaldi::int16> without copy of data
-*/
-vector<int16> typed_array_to_vector(const val &int16_array) {
-  unsigned int length = int16_array["length"].as<unsigned int>();
-  vector<int16> vec(length);
-
-  val memory = val::module_property("HEAP16")["buffer"];
-  val memoryView = val::global("Int16Array").new_(memory,
-      reinterpret_cast<std::uintptr_t>(vec.data()), length);
-
-  memoryView.call<void>("set", int16_array);
-
-  return vec;
-}
-
-EMSCRIPTEN_BINDINGS(asr) {
-  class_<kaldi::OnlineASR>("OnlineASR")
-    .constructor<const std::vector<std::string>& >()
-    // Inject lambda before class method call to adapt I/O types
-    .function("processBuffer", optional_override(
-      [](kaldi::OnlineASR& self, const val& int16_array) {
-        vector<int16> vect_array = typed_array_to_vector(int16_array);
-        return self.ProcessSTLVector(vect_array);
-      })
-    )
-    .function("reset", &kaldi::OnlineASR::Reset);
-  // Define JS class StringList to be understood as vector<string> in C++
-  register_vector<std::string>("StringList");
-}
-
-#endif
 
 namespace kaldi {
 TcpServer::TcpServer(int read_timeout) {
