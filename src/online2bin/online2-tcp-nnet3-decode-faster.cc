@@ -111,146 +111,241 @@ std::string LatticeToString(const CompactLattice &clat, const fst::SymbolTable &
   ConvertLattice(best_path_clat, &best_path_lat);
   return LatticeToString(best_path_lat, word_syms);
 }
+}
 
-struct OnlineASROptionParser: public ParseOptions {
-  OnlineASROptionParser();
-  explicit OnlineASROptionParser(int argc, const char* const* argv);
-  int Read(int, const char* const*);
-
-  // Members
-  static constexpr const char *usage =
-    "Reads in audio from a network socket and performs online\n"
-    "decoding with neural nets (nnet3 setup), with iVector-based\n"
-    "speaker adaptation and endpointing.\n"
-    "Note: some configuration values and inputs are set via config\n"
-    "files whose filenames are passed as options\n"
-    "\n"
-    "Usage: online2-tcp-nnet3-decode-faster [options] <nnet3-in> "
-    "<fst-in> <word-symbol-table>\n";
-  // ASR stuff
-  BaseFloat output_period = 1;
-  bool produce_time = false;
-  BaseFloat samp_freq = 16000.0;
-  OnlineEndpointConfig endpoint_opts;
-  OnlineNnet2FeaturePipelineConfig feature_opts;
-  nnet3::NnetSimpleLoopedComputationOptions decodable_opts;
-  LatticeFasterDecoderConfig decoder_opts;
-  std::string nnet3_rxfilename;
-  std::string fst_rxfilename;
-  std::string word_syms_filename;
-  // TCP stuff
-  BaseFloat chunk_length_secs = 0.18;
-  int port_num = 5050;
-  int read_timeout = 3;
-};
-
-class OnlineASR {
- public:
-  static constexpr const char eou {'\n'};
-  static constexpr const char tmp_eou {'\r'};
-
-  explicit OnlineASR(int argc, const char *const argv[]);
-  explicit OnlineASR(const std::vector<std::string> &args);
-  explicit OnlineASR(const OnlineASROptionParser& po);
-  std::string ProcessBuffer(int16 *, size_t);
-  std::string ProcessSTLVector(const std::vector<int16>&);
-  std::string ProcessVector(const Vector<BaseFloat>&);
-  std::string Reset();
-  ~OnlineASR();
-
- private:
-  BaseFloat samp_freq;
-  int32 frame_offset {0};
-  int32 check_period;
-  int32 samp_count {0};
-  bool produce_time {false};
-  // Model related members
-  nnet3::DecodableNnetSimpleLoopedInfo *decodable_info = nullptr;
-  OnlineNnet2FeaturePipelineInfo *feature_info = nullptr;
-  LatticeFasterDecoderConfig decoder_opts;
-  nnet3::NnetSimpleLoopedComputationOptions decodable_opts;
-  fst::Fst<fst::StdArc> *decode_fst = nullptr;
-  TransitionModel trans_model;
-  nnet3::AmNnetSimple am_nnet;
-  fst::SymbolTable *word_syms = nullptr;
-  OnlineEndpointConfig endpoint_opts;
-  // Stream parameters
-  OnlineNnet2FeaturePipeline *feature_pipeline = nullptr;
-  SingleUtteranceNnet3Decoder *decoder = nullptr;
-  // Utterance parameters
-  OnlineSilenceWeighting *silence_weighting = nullptr;
-  std::vector<std::pair<int32, BaseFloat> > delta_weights;
-
-  // private methods
-  void InitClass(const OnlineASROptionParser& parser);
-  void InitWords(const std::string& filename);
-  void UpdateDecoder(const Vector<BaseFloat>&);
-  std::string CheckDecoderOutput();
-  std::string PrependTimestamps(const std::string&);
-  void ResetStreamDecoder();
-  void ResetUtteranceDecoder();
-};
-}  // namespace kaldi
-
-
-int main(int argc, const char* const* argv) {
-  using kaldi::int32;
-  using kaldi::int64;
-  using kaldi::OnlineASR;
-  using kaldi::OnlineASROptionParser;
-  using kaldi::Vector;
-  using kaldi::BaseFloat;
-  using kaldi::TcpServer;
-
-  OnlineASROptionParser po;
-
+int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
+    using namespace fst;
+
+    typedef kaldi::int32 int32;
+    typedef kaldi::int64 int64;
+
+    const char *usage =
+        "Reads in audio from a network socket and performs online\n"
+        "decoding with neural nets (nnet3 setup), with iVector-based\n"
+        "speaker adaptation and endpointing.\n"
+        "Note: some configuration values and inputs are set via config\n"
+        "files whose filenames are passed as options\n"
+        "\n"
+        "Usage: online2-tcp-nnet3-decode-faster [options] <nnet3-in> "
+        "<fst-in> <word-symbol-table>\n";
+
+    ParseOptions po(usage);
+
+
+    // feature_opts includes configuration for the iVector adaptation,
+    // as well as the basic features.
+    OnlineNnet2FeaturePipelineConfig feature_opts;
+    nnet3::NnetSimpleLoopedComputationOptions decodable_opts;
+    LatticeFasterDecoderConfig decoder_opts;
+    OnlineEndpointConfig endpoint_opts;
+
+    BaseFloat chunk_length_secs = 0.18;
+    BaseFloat output_period = 1;
+    BaseFloat samp_freq = 16000.0;
+    int port_num = 5050;
+    int read_timeout = 3;
+    bool produce_time = false;
+
+    po.Register("samp-freq", &samp_freq,
+                "Sampling frequency of the input signal (coded as 16-bit slinear).");
+    po.Register("chunk-length", &chunk_length_secs,
+                "Length of chunk size in seconds, that we process.");
+    po.Register("output-period", &output_period,
+                "How often in seconds, do we check for changes in output.");
+    po.Register("num-threads-startup", &g_num_threads,
+                "Number of threads used when initializing iVector extractor.");
+    po.Register("read-timeout", &read_timeout,
+                "Number of seconds of timeout for TCP audio data to appear on the stream. Use -1 for blocking.");
+    po.Register("port-num", &port_num,
+                "Port number the server will listen on.");
+    po.Register("produce-time", &produce_time,
+                "Prepend begin/end times between endpoints (e.g. '5.46 6.81 <text_output>', in seconds)");
+
+    feature_opts.Register(&po);
+    decodable_opts.Register(&po);
+    decoder_opts.Register(&po);
+    endpoint_opts.Register(&po);
+
     po.Read(argc, argv);
-    OnlineASR onlineASR(po);
 
-    // ignore SIGPIPE to avoid crashing when socket forcefully disconnected
-    signal(SIGPIPE, SIG_IGN);
+    if (po.NumArgs() != 3) {
+      po.PrintUsage();
+      return 1;
+    }
 
-    size_t chunk_len = static_cast<size_t>(po.chunk_length_secs * po.samp_freq);
-    TcpServer server(po.read_timeout);
-    server.Listen(po.port_num);
+    std::string nnet3_rxfilename = po.GetArg(1),
+        fst_rxfilename = po.GetArg(2),
+        word_syms_filename = po.GetArg(3);
+
+    OnlineNnet2FeaturePipelineInfo feature_info(feature_opts);
+
+    BaseFloat frame_shift = feature_info.FrameShiftInSeconds();
+    int32 frame_subsampling = decodable_opts.frame_subsampling_factor;
+
+    KALDI_VLOG(1) << "Loading AM...";
+
+    TransitionModel trans_model;
+    nnet3::AmNnetSimple am_nnet;
+    {
+      bool binary;
+      Input ki(nnet3_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
+      nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet.GetNnet()));
+    }
+
+    // this object contains precomputed stuff that is used by all decodable
+    // objects.  It takes a pointer to am_nnet because if it has iVectors it has
+    // to modify the nnet to accept iVectors at intervals.
+    nnet3::DecodableNnetSimpleLoopedInfo decodable_info(decodable_opts,
+                                                        &am_nnet);
+
+    KALDI_VLOG(1) << "Loading FST...";
+
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
+
+    fst::SymbolTable *word_syms = NULL;
+    if (!word_syms_filename.empty())
+      if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
+        KALDI_ERR << "Could not read symbol table from file "
+                  << word_syms_filename;
+
+    signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE to avoid crashing when socket forcefully disconnected
+
+    TcpServer server(read_timeout);
+
+    server.Listen(port_num);
 
     while (true) {
+
       server.Accept();
-      bool eos {false};
+
+      int32 samp_count = 0;// this is used for output refresh rate
+      size_t chunk_len = static_cast<size_t>(chunk_length_secs * samp_freq);
+      int32 check_period = static_cast<int32>(samp_freq * output_period);
+      int32 check_count = check_period;
+
+      int32 frame_offset = 0;
+
+      bool eos = false;
+
+      OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
+      SingleUtteranceNnet3Decoder decoder(decoder_opts, trans_model,
+                                          decodable_info,
+                                          *decode_fst, &feature_pipeline);
 
       while (!eos) {
+
+        decoder.InitDecoding(frame_offset);
+        OnlineSilenceWeighting silence_weighting(
+            trans_model,
+            feature_info.silence_weighting_config,
+            decodable_opts.frame_subsampling_factor);
+        std::vector<std::pair<int32, BaseFloat>> delta_weights;
+
         while (true) {
           eos = !server.ReadChunk(chunk_len);
+
           if (eos) {
-            std::string msg { onlineASR.Reset() };
-            KALDI_VLOG(1) << "EndOfAudio, sending message: " << msg;
-            server.Write(msg);
+            feature_pipeline.InputFinished();
+
+            if (silence_weighting.Active() &&
+                feature_pipeline.IvectorFeature() != NULL) {
+              silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+              silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                                frame_offset * decodable_opts.frame_subsampling_factor,
+                                                &delta_weights);
+              feature_pipeline.UpdateFrameWeights(delta_weights);
+            }
+
+            decoder.AdvanceDecoding();
+            decoder.FinalizeDecoding();
+            frame_offset += decoder.NumFramesDecoded();
+            if (decoder.NumFramesDecoded() > 0) {
+              CompactLattice lat;
+              decoder.GetLattice(true, &lat);
+              std::string msg = LatticeToString(lat, *word_syms);
+
+              // get time-span from previous endpoint to end of audio,
+              if (produce_time) {
+                int32 t_beg = frame_offset - decoder.NumFramesDecoded();
+                int32 t_end = frame_offset;
+                msg = GetTimeString(t_beg, t_end, frame_shift * frame_subsampling) + " " + msg;
+              }
+
+              KALDI_VLOG(1) << "EndOfAudio, sending message: " << msg;
+              server.WriteLn(msg);
+            } else
+              server.Write("\n");
             server.Disconnect();
             break;
           }
+
           Vector<BaseFloat> wave_part = server.GetChunk();
-          std::string msg { onlineASR.ProcessVector(wave_part) };
-          if (msg != "") {
-            server.Write(msg);
-            if (msg[msg.length() - 1] == onlineASR.tmp_eou) {
+          feature_pipeline.AcceptWaveform(samp_freq, wave_part);
+          samp_count += chunk_len;
+
+          if (silence_weighting.Active() &&
+              feature_pipeline.IvectorFeature() != NULL) {
+            silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
+            silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
+                                              frame_offset * decodable_opts.frame_subsampling_factor,
+                                              &delta_weights);
+            feature_pipeline.UpdateFrameWeights(delta_weights);
+          }
+
+          decoder.AdvanceDecoding();
+
+          if (samp_count > check_count) {
+            if (decoder.NumFramesDecoded() > 0) {
+              Lattice lat;
+              decoder.GetBestPath(false, &lat);
+              TopSort(&lat); // for LatticeStateTimes(),
+              std::string msg = LatticeToString(lat, *word_syms);
+
+              // get time-span after previous endpoint,
+              if (produce_time) {
+                int32 t_beg = frame_offset;
+                int32 t_end = frame_offset + GetLatticeTimeSpan(lat);
+                msg = GetTimeString(t_beg, t_end, frame_shift * frame_subsampling) + " " + msg;
+              }
+
               KALDI_VLOG(1) << "Temporary transcript: " << msg;
-            } else {
-              KALDI_VLOG(1) << "Endpoint, sending message: " << msg;
-              break;
+              server.WriteLn(msg, "\r");
             }
+            check_count += check_period;
+          }
+
+          if (decoder.EndpointDetected(endpoint_opts)) {
+            decoder.FinalizeDecoding();
+            frame_offset += decoder.NumFramesDecoded();
+            CompactLattice lat;
+            decoder.GetLattice(true, &lat);
+            std::string msg = LatticeToString(lat, *word_syms);
+
+            // get time-span between endpoints,
+            if (produce_time) {
+              int32 t_beg = frame_offset - decoder.NumFramesDecoded();
+              int32 t_end = frame_offset;
+              msg = GetTimeString(t_beg, t_end, frame_shift * frame_subsampling) + " " + msg;
+            }
+
+            KALDI_VLOG(1) << "Endpoint, sending message: " << msg;
+            server.WriteLn(msg);
+            break; // while (true)
           }
         }
       }
     }
-  } catch (const std::invalid_argument& e) {
-    po.PrintUsage();
-    return 1;
   } catch (const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
-}
+} // main()
 
 
 namespace kaldi {
@@ -403,258 +498,5 @@ void TcpServer::Disconnect() {
     close(client_desc_);
     client_desc_ = -1;
   }
-}
-
-OnlineASROptionParser::OnlineASROptionParser(): ParseOptions{usage} {
-  g_num_threads = 0;
-
-  Register("samp-freq", &samp_freq,
-           "Sampling frequency of the input signal (coded as 16-bit slinear).");
-  Register("chunk-length", &chunk_length_secs,
-           "Length of chunk size in seconds, that we process.");
-  Register("output-period", &output_period,
-           "How often in seconds, do we check for changes in output.");
-  Register("num-threads-startup", &g_num_threads,
-           "Number of threads used when initializing iVector extractor.");
-  Register("read-timeout", &read_timeout,
-           "Number of seconds of timeout for TCP audio data to appear on the "
-           "stream. Use -1 for blocking.");
-  Register("port-num", &port_num,
-           "Portnumber the server will listen on.");
-  Register("produce-time", &produce_time,
-           "Prepend begin/end times between endpoints (e.g. '5.46 6.81"
-           " <text_output>', in seconds)");
-
-  endpoint_opts.Register(this);
-  feature_opts.Register(this);
-  decodable_opts.Register(this);
-  decoder_opts.Register(this);
-}
-
-OnlineASROptionParser::OnlineASROptionParser(int argc,
-                                             const char* const * argv):
-  OnlineASROptionParser() {
-    Read(argc, argv);
-  }
-
-int OnlineASROptionParser::Read(int argc, const char* const* argv) {
-  int read_value = ParseOptions::Read(argc, argv);
-  if (NumArgs() != 3)
-    throw std::invalid_argument("Wrong number of arguments\n");
-
-  nnet3_rxfilename = GetArg(1);
-  fst_rxfilename = GetArg(2);
-  word_syms_filename = GetArg(3);
-
-  return read_value;
-}
-
-OnlineASR::OnlineASR(int argc, const char *const argv[]):
-  OnlineASR(OnlineASROptionParser(argc, argv)) {
-  }
-
-OnlineASR::OnlineASR(const std::vector<std::string> &args) {
-  // Convert args to const char* const *
-  std::vector<const char*> char_array;
-  char_array.reserve(args.size());
-  for (int i = 0; i < args.size(); ++i)
-    char_array.push_back(const_cast<char*>(args[i].c_str()));
-
-  int argc { static_cast<int>(char_array.size()) };
-  OnlineASROptionParser parser {argc, &char_array[0]};
-  InitClass(parser);
-}
-
-OnlineASR::OnlineASR(const OnlineASROptionParser& parser) {
-  InitClass(parser);
-}
-
-void OnlineASR::InitClass(const OnlineASROptionParser& parser) {
-  decodable_opts = parser.decodable_opts;
-  decoder_opts = parser.decoder_opts;
-  endpoint_opts = parser.endpoint_opts;
-  samp_freq = parser.samp_freq;
-  check_period = static_cast<int32>(samp_freq * parser.output_period);
-  produce_time = parser.produce_time;
-
-  feature_info = new OnlineNnet2FeaturePipelineInfo(parser.feature_opts);
-  InitWords(parser.word_syms_filename);
-
-  KALDI_VLOG(1) << "Loading AM...";
-  {
-    bool binary;
-    Input ki(parser.nnet3_rxfilename, &binary);
-    trans_model.Read(ki.Stream(), binary);
-    am_nnet.Read(ki.Stream(), binary);
-    SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
-    SetDropoutTestMode(true, &(am_nnet.GetNnet()));
-    nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet.GetNnet()));
-  }
-
-  KALDI_VLOG(1) << "Loading FST...";
-  decode_fst = fst::ReadFstKaldiGeneric(parser.fst_rxfilename);
-  // this object contains precomputed stuff that is used by all decodable
-  // objects.  It takes a pointer to am_nnet because if it has iVectors it has
-  // to modify the nnet to accept iVectors at intervals.
-  decodable_info = new nnet3::DecodableNnetSimpleLoopedInfo(decodable_opts,
-      &am_nnet);
-
-  ResetStreamDecoder();
-}
-
-void OnlineASR::ResetStreamDecoder() {
-  frame_offset = 0;
-
-  delete feature_pipeline;
-  feature_pipeline = new OnlineNnet2FeaturePipeline(*feature_info);
-
-  delete decoder;
-  decoder = new SingleUtteranceNnet3Decoder(decoder_opts, trans_model,
-                                            *decodable_info, *decode_fst,
-                                            feature_pipeline);
-  ResetUtteranceDecoder();
-}
-
-void OnlineASR::InitWords(const std::string &filename) {
-  if (!filename.empty())
-    if (!(word_syms = fst::SymbolTable::ReadText(filename)))
-      KALDI_ERR << "Could not read symbol table from file "
-                << filename;
-}
-
-void OnlineASR::ResetUtteranceDecoder() {
-  decoder->InitDecoding(frame_offset);
-  delete silence_weighting;
-  silence_weighting = new OnlineSilenceWeighting(
-      trans_model,
-      feature_info->silence_weighting_config,
-      decodable_opts.frame_subsampling_factor);
-  delta_weights = std::vector<std::pair<int32, BaseFloat> >();
-}
-
-std::string OnlineASR::ProcessBuffer(int16 *samp_buf, size_t buf_len) {
-  Vector<BaseFloat> buf;
-  buf.Resize(static_cast<MatrixIndexT>(buf_len));
-  for (int i = 0; i < buf_len; ++i)
-    buf(i) = static_cast<BaseFloat>(samp_buf[i]);
-
-  return ProcessVector(buf);
-}
-
-std::string OnlineASR::ProcessVector(const Vector<BaseFloat>& buf) {
-  UpdateDecoder(buf);
-  return CheckDecoderOutput();
-}
-
-void OnlineASR::UpdateDecoder(const Vector<BaseFloat>& buf) {
-  feature_pipeline->AcceptWaveform(samp_freq, buf);
-  samp_count += buf.Dim();
-
-  if (silence_weighting->Active() &&
-      feature_pipeline->IvectorFeature() != NULL) {
-    silence_weighting->ComputeCurrentTraceback(decoder->Decoder());
-    silence_weighting->GetDeltaWeights(feature_pipeline->NumFramesReady(),
-                                       frame_offset * decodable_opts.frame_subsampling_factor,
-                                       &delta_weights);
-    feature_pipeline->UpdateFrameWeights(delta_weights);
-  }
-
-  decoder->AdvanceDecoding();
-}
-
-std::string OnlineASR::CheckDecoderOutput() {
-  if (decoder->EndpointDetected(endpoint_opts)) {
-    samp_count %= check_period;
-    decoder->FinalizeDecoding();
-    frame_offset += decoder->NumFramesDecoded();
-    CompactLattice lat;
-    decoder->GetLattice(true, &lat);
-    std::string msg = LatticeToString(lat, *word_syms);
-    if (produce_time) msg = PrependTimestamps(msg);
-
-    ResetUtteranceDecoder();
-    return msg + eou;
-  }
-
-  // Force temporary result
-  if (samp_count > check_period) {
-    samp_count %= check_period;
-    if (decoder->NumFramesDecoded() > 0) {
-      Lattice lat;
-      decoder->GetBestPath(false, &lat);
-      TopSort(&lat);  // for LatticeStateTimes(),
-      std::string msg = LatticeToString(lat, *word_syms);
-
-      if (produce_time) {
-        int32 frame_subsampling { decodable_opts.frame_subsampling_factor };
-        BaseFloat frame_shift { feature_info->FrameShiftInSeconds() };
-        int32 t_beg = frame_offset;
-        int32 t_end = frame_offset + GetLatticeTimeSpan(lat);
-        msg = GetTimeString(t_beg, t_end, frame_shift * frame_subsampling) + " "
-              + msg;
-      }
-      return msg + tmp_eou;
-    }
-  }
-
-  return "";
-}
-
-std::string OnlineASR::PrependTimestamps(const std::string& msg) {
-  int32 frame_subsampling { decodable_opts.frame_subsampling_factor };
-  BaseFloat frame_shift { feature_info->FrameShiftInSeconds() };
-  int32 t_beg = frame_offset - decoder->NumFramesDecoded();
-  int32 t_end = frame_offset;
-  return GetTimeString(t_beg, t_end, frame_shift * frame_subsampling) + " "
-         + msg;
-}
-
-std::string OnlineASR::ProcessSTLVector(const std::vector<int16>& samp_buf) {
-  // cast input to float
-  Vector<BaseFloat> buf;
-  size_t buf_len = samp_buf.size();
-  buf.Resize(static_cast<MatrixIndexT>(buf_len));
-  for (int i = 0; i < buf_len; ++i)
-    buf(i) = static_cast<BaseFloat>(samp_buf[i]);
-
-  return ProcessVector(buf);
-}
-
-std::string OnlineASR::Reset() {
-  feature_pipeline->InputFinished();
-
-  if (silence_weighting->Active() &&
-      feature_pipeline->IvectorFeature() != NULL) {
-    silence_weighting->ComputeCurrentTraceback(decoder->Decoder());
-    silence_weighting->GetDeltaWeights(feature_pipeline->NumFramesReady(),
-                                       frame_offset * decodable_opts.frame_subsampling_factor,
-                                       &delta_weights);
-    feature_pipeline->UpdateFrameWeights(delta_weights);
-  }
-
-  decoder->AdvanceDecoding();
-  decoder->FinalizeDecoding();
-
-  std::string msg {""};
-  frame_offset += decoder->NumFramesDecoded();
-  if (decoder->NumFramesDecoded() > 0) {
-    CompactLattice lat;
-    decoder->GetLattice(true, &lat);
-    msg = LatticeToString(lat, *word_syms);
-    if (produce_time) msg = PrependTimestamps(msg);
-  }
-
-  ResetStreamDecoder();
-  return msg + eou;
-}
-
-OnlineASR::~OnlineASR() {
-  delete feature_info;
-  delete feature_pipeline;
-  delete decoder;
-  delete decodable_info;
-  delete word_syms;
-  delete silence_weighting;
-  delete decode_fst;
 }
 }  // namespace kaldi
