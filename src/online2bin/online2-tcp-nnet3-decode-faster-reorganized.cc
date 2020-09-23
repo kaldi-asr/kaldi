@@ -1,4 +1,7 @@
-// online2bin/online2-tcp-nnet3-decode-faster.cc
+// online2bin/online2-tcp-nnet3-decode-faster-reorganized.cc
+// This a copy of online2bin/online2-tcp-nnet3-decode-faster, where the online
+// decoder has been extracted from the main function and put in a class for
+// build to Web Assembly with the emscripten toolchain.
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 //           2016  Api.ai (Author: Ilya Platonov)
