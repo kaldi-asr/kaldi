@@ -5,6 +5,7 @@ set -eou pipefail
 stage=0
 train_nj=24
 phone_tokens=false
+phone_ngram_order=2
 
 # Acoustic model parameters
 numLeavesTri1=1000
@@ -118,10 +119,10 @@ if ((stage <= 2)); then
       data/${data_dir//train/eval}/lexicon_ipa.txt \
       >data/$data_dir/lexicon_ipa_all.txt
     python3 local/prepare_lexicon_dir.py $phone_token_opt data/$data_dir/lexicon_ipa_all.txt data/local/$lang_name
-#    lang_name="$(langname $data_dir)"
-#    utils/prepare_lang.sh \
-#      --position-dependent-phones false \
-#      data/local/$lang_name '<unk>' data/local/tmp.lang/$lang_name data/lang/$lang_name
+    #    lang_name="$(langname $data_dir)"
+    #    utils/prepare_lang.sh \
+    #      --position-dependent-phones false \
+    #      data/local/$lang_name '<unk>' data/local/tmp.lang/$lang_name data/lang/$lang_name
   done
 fi
 
@@ -134,7 +135,10 @@ fi
 # When that is ready, we train a multilingual phone-level language model (i.e. phonotactic model),
 # that will be used to compile the decoding graph and to score each ASR system.
 if ((stage <= 3)); then
-  local/prepare_ipa_lm.sh --train-set "$train_set" --dev-set "$dev_set" --phone_token_opt "$phone_token_opt"
+  local/prepare_ipa_lm.sh \
+    --train-set "$train_set" \
+    --phone_token_opt "$phone_token_opt" \
+    --order "$phone_ngram_order"
   lexicon_list=$(find data/ipa_lm/train -name lexiconp.txt)
   mkdir -p data/local/dict_combined/local
   python3 local/combine_lexicons.py $lexicon_list >data/local/dict_combined/local/lexiconp.txt
@@ -260,14 +264,14 @@ if ((stage <= 9)); then
         exp/gmm/$lang_name/tri1_ali_20k \
         exp/gmm/$lang_name/tri2
 
-#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-#        data/subsets/20k/$data_dir \
-#        data/lang/$lang_name \
-#        data/local/$lang_name \
-#        exp/gmm/$lang_name/tri2 \
-#        data/local/dictp/$lang_name/tri2 \
-#        data/local/langp/$lang_name/tri2 \
-#        data/langp/$lang_name/tri2
+      #      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+      #        data/subsets/20k/$data_dir \
+      #        data/lang/$lang_name \
+      #        data/local/$lang_name \
+      #        exp/gmm/$lang_name/tri2 \
+      #        data/local/dictp/$lang_name/tri2 \
+      #        data/local/langp/$lang_name/tri2 \
+      #        data/langp/$lang_name/tri2
     ) &
     sleep 2
   done
@@ -293,14 +297,14 @@ if ((stage <= 10)); then
         exp/gmm/$lang_name/tri2_ali \
         exp/gmm/$lang_name/tri3
 
-#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-#        data/$data_dir \
-#        data/lang/$lang_name \
-#        data/local/$lang_name \
-#        exp/gmm/$lang_name/tri3 \
-#        data/local/dictp/$lang_name/tri3 \
-#        data/local/langp/$lang_name/tri3 \
-#        data/langp/$lang_name/tri3
+      #      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+      #        data/$data_dir \
+      #        data/lang/$lang_name \
+      #        data/local/$lang_name \
+      #        exp/gmm/$lang_name/tri3 \
+      #        data/local/dictp/$lang_name/tri3 \
+      #        data/local/langp/$lang_name/tri3 \
+      #        data/langp/$lang_name/tri3
     ) &
     sleep 2
   done
@@ -328,14 +332,14 @@ if ((stage <= 11)); then
         exp/gmm/$lang_name/tri3_ali \
         exp/gmm/$lang_name/tri4
 
-#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-#        data/$data_dir \
-#        data/lang/$lang_name \
-#        data/local/$lang_name \
-#        exp/gmm/$lang_name/tri4 \
-#        data/local/dictp/$lang_name/tri4 \
-#        data/local/langp/$lang_name/tri4 \
-#        data/langp/$lang_name/tri4
+      #      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+      #        data/$data_dir \
+      #        data/lang/$lang_name \
+      #        data/local/$lang_name \
+      #        exp/gmm/$lang_name/tri4 \
+      #        data/local/dictp/$lang_name/tri4 \
+      #        data/local/langp/$lang_name/tri4 \
+      #        data/langp/$lang_name/tri4
     ) &
     sleep 2
   done
@@ -363,14 +367,14 @@ if ((stage <= 12)); then
         exp/gmm/$lang_name/tri4_ali \
         exp/gmm/$lang_name/tri5
 
-#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-#        data/$data_dir \
-#        data/lang/$lang_name \
-#        data/local/$lang_name \
-#        exp/gmm/$lang_name/tri5 \
-#        data/local/dictp/$lang_name/tri5 \
-#        data/local/langp/$lang_name/tri5 \
-#        data/langp/$lang_name/tri5
+      #      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+      #        data/$data_dir \
+      #        data/lang/$lang_name \
+      #        data/local/$lang_name \
+      #        exp/gmm/$lang_name/tri5 \
+      #        data/local/dictp/$lang_name/tri5 \
+      #        data/local/langp/$lang_name/tri5 \
+      #        data/langp/$lang_name/tri5
     ) &
     sleep 2
   done
@@ -389,14 +393,14 @@ if ((stage <= 13)); then
         exp/gmm/$lang_name/tri5 \
         exp/gmm/$lang_name/tri5_ali
 
-#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-#        data/$data_dir \
-#        data/lang/$lang_name \
-#        data/local/$lang_name \
-#        exp/gmm/$lang_name/tri5_ali \
-#        data/local/dictp/$lang_name/tri5_ali \
-#        data/local/langp/$lang_name/tri5_ali \
-#        data/langp/$lang_name/tri5_ali
+      #      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+      #        data/$data_dir \
+      #        data/lang/$lang_name \
+      #        data/local/$lang_name \
+      #        exp/gmm/$lang_name/tri5_ali \
+      #        data/local/dictp/$lang_name/tri5_ali \
+      #        data/local/langp/$lang_name/tri5_ali \
+      #        data/langp/$lang_name/tri5_ali
     ) &
     sleep 2
   done
