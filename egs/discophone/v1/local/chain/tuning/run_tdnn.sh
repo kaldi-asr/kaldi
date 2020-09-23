@@ -128,7 +128,7 @@ for data_dir in ${train_set}; do
     tree_dir=exp/chain${nnet3_affix}/$lang_name/tree${tree_affix}
     lat_dir=exp/chain${nnet3_affix}/$lang_name/${gmm}${data_aug_suffix}_lats
     dir=exp/chain${nnet3_affix}/$lang_name/tdnn${tdnn_affix}${data_aug_suffix}
-    train_data_dir=data/${data_dir}${data_aug_suffix}${data_aug_suffix}_hires
+    train_data_dir=data/${data_dir}${data_aug_suffix}_hires
     lores_train_data_dir=data/${data_dir}
     train_ivector_dir=exp/nnet3${nnet3_affix}/$lang_name/ivectors${data_aug_suffix}_hires
     
