@@ -32,6 +32,7 @@
 #include "nnet3/nnet-utils.h"
 #include <sys/time.h>
 #include <iostream>
+#include <chrono>
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -246,6 +247,8 @@ int main(int argc, char *argv[]) {
       int block = 0;
       double last_timestamp = 0.0;
       std::string current_hypothesis = "";
+      std::string global_message = "";
+      auto transcription_start = high_resolution_clock::now();
 
       OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
       SingleUtteranceNnet3Decoder decoder(decoder_opts, trans_model,
@@ -318,7 +321,14 @@ int main(int argc, char *argv[]) {
               long int timestamp = tp.tv_sec * 1000 + tp.tv_usec / 1000;
               std::string current_block = std::to_string(block);
               std::string current_timestamp = std::to_string(timestamp);
-              current_hypothesis = "{\"block\":" + current_block + ", " + "\"timestamp\": " + current_timestamp + ", " + "\"words\":[" + current_hypothesis + "]}";
+              current_hypothesis = "\"block\":" + current_block + ", " + "\"timestamp\": " + current_timestamp + ", " + "\"words\":[" + current_hypothesis + "]}";
+              global_message = current_hypothesis;
+
+              auto transcript_time = high_resolution_clock::now();
+              auto duration = duration_cast<milliseconds>( transcript_time - transcription_start ).count();
+              std::string current_duration = std::to_string(duration);
+
+              current_hypothesis = "{\"blockend\": true, \"time_from_beginning\": " + current_duration + ", " + current_hypothesis;
 
               server.WriteLn(current_hypothesis + "\n", "\r");
               KALDI_VLOG(1) << "EndOfAudio, sending message: " << msg;
@@ -390,7 +400,15 @@ int main(int argc, char *argv[]) {
               long int timestamp = tp.tv_sec * 1000 + tp.tv_usec / 1000;
               std::string current_block = std::to_string(block);
               std::string current_timestamp = std::to_string(timestamp);
-              message = "{\"block\":" + current_block + ", " + "\"timestamp\": " + current_timestamp + ", " + "\"words\":[" + message + "]}";
+
+              message = "\"block\":" + current_block + ", "  + "\"timestamp\": " + current_timestamp + ", " + "\"words\":[" + message + "]}";
+              global_message = message;
+
+              auto transcript_time = high_resolution_clock::now();
+              auto duration = duration_cast<milliseconds>( transcript_time - transcription_start ).count();
+              std::string current_duration = std::to_string(duration);
+
+              message = "{\"blockend\": false, \"time_from_beginning\": " + current_duration + ", " + message;
               server.WriteLn(message + "\n", "\r");
               KALDI_VLOG(1) << "Temporary transcript: " << msg;
             }
@@ -404,6 +422,13 @@ int main(int argc, char *argv[]) {
             CompactLattice lat;
             decoder.GetLattice(true, &lat);
             std::string msg = LatticeToString(lat, *word_syms);
+
+            auto transcript_time = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>( transcript_time - transcription_start ).count();
+            std::string current_duration = std::to_string(duration);
+
+            global_message = "{\"blockend\": true, \"time_from_beginning\": " + current_duration + ", " + global_message;
+            server.WriteLn(global_message + "\n", "\r");
             /* current_hypothesis = "{end: true, words:[" + current_hypothesis + "]}"; */
             /* server.WriteLn(current_hypothesis + "\n", "\r"); */
             KALDI_VLOG(1) << "Endpoint, sending message: " << msg;
