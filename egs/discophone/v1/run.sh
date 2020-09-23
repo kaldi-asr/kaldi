@@ -79,11 +79,10 @@ function langname() {
   echo "$(basename "$1")"
 }
 
-phone_token_opt=
+phone_token_opt='--phones'
 if [ $phone_tokens = true ]; then
   phone_token_opt='--phone-tokens'
 fi
-
 
 # This step will create the data directories for GlobalPhone and Babel languages.
 # It's also going to use LanguageNet G2P models to convert text into phonetic transcripts.
@@ -119,10 +118,10 @@ if ((stage <= 2)); then
       data/${data_dir//train/eval}/lexicon_ipa.txt \
       >data/$data_dir/lexicon_ipa_all.txt
     python3 local/prepare_lexicon_dir.py $phone_token_opt data/$data_dir/lexicon_ipa_all.txt data/local/$lang_name
-    lang_name="$(langname $data_dir)"
-    utils/prepare_lang.sh \
-      --share-silence-phones true \
-      data/local/$lang_name '<unk>' data/local/tmp.lang/$lang_name data/lang/$lang_name
+#    lang_name="$(langname $data_dir)"
+#    utils/prepare_lang.sh \
+#      --position-dependent-phones false \
+#      data/local/$lang_name '<unk>' data/local/tmp.lang/$lang_name data/lang/$lang_name
   done
 fi
 
@@ -142,7 +141,6 @@ if ((stage <= 3)); then
   python3 local/prepare_lexicon_dir.py data/local/dict_combined/local/lexiconp.txt data/local/dict_combined
   utils/prepare_lang.sh \
     --position-dependent-phones false \
-    --share-silence-phones true \
     data/local/dict_combined \
     "<unk>" data/local/dict_combined data/lang_combined
   LM=data/ipa_lm/train_all/srilm.o3g.kn.gz
@@ -210,7 +208,7 @@ if ((stage <= 7)); then
       steps/train_mono.sh \
         --nj 8 --cmd "$train_cmd" \
         data/subsets/5k/$data_dir \
-        data/lang/$lang_name $expdir
+        data/lang_combined_test $expdir
     ) &
     sleep 2
   done
@@ -225,7 +223,7 @@ if ((stage <= 8)); then
       steps/align_si.sh \
         --nj 12 --cmd "$train_cmd" \
         data/subsets/10k/$data_dir \
-        data/lang/$lang_name \
+        data/lang_combined_test \
         exp/gmm/$lang_name/mono \
         exp/gmm/$lang_name/mono_ali_10k
 
@@ -234,7 +232,7 @@ if ((stage <= 8)); then
         $numLeavesTri1 \
         $numGaussTri1 \
         data/subsets/10k/$data_dir \
-        data/lang/$lang_name \
+        data/lang_combined_test \
         exp/gmm/$lang_name/mono_ali_10k \
         exp/gmm/$lang_name/tri1
     ) &
@@ -251,25 +249,25 @@ if ((stage <= 9)); then
       steps/align_si.sh \
         --nj 24 --cmd "$train_cmd" \
         data/subsets/20k/$data_dir \
-        data/lang/$lang_name \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri1 \
         exp/gmm/$lang_name/tri1_ali_20k
 
       steps/train_deltas.sh \
         --cmd "$train_cmd" $numLeavesTri2 $numGaussTri2 \
         data/subsets/20k/$data_dir \
-        data/lang/$lang_name \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri1_ali_20k \
         exp/gmm/$lang_name/tri2
 
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/subsets/20k/$data_dir \
-        data/lang/$lang_name \
-        data/local/$lang_name \
-        exp/gmm/$lang_name/tri2 \
-        data/local/dictp/$lang_name/tri2 \
-        data/local/langp/$lang_name/tri2 \
-        data/langp/$lang_name/tri2
+#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+#        data/subsets/20k/$data_dir \
+#        data/lang/$lang_name \
+#        data/local/$lang_name \
+#        exp/gmm/$lang_name/tri2 \
+#        data/local/dictp/$lang_name/tri2 \
+#        data/local/langp/$lang_name/tri2 \
+#        data/langp/$lang_name/tri2
     ) &
     sleep 2
   done
@@ -284,25 +282,25 @@ if ((stage <= 10)); then
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
         data/$data_dir \
-        data/langp/$lang_name/tri2 \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri2 \
         exp/gmm/$lang_name/tri2_ali
 
       steps/train_deltas.sh \
         --cmd "$train_cmd" $numLeavesTri3 $numGaussTri3 \
         data/$data_dir \
-        data/langp/$lang_name/tri2 \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri2_ali \
         exp/gmm/$lang_name/tri3
 
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang/$lang_name \
-        data/local/$lang_name \
-        exp/gmm/$lang_name/tri3 \
-        data/local/dictp/$lang_name/tri3 \
-        data/local/langp/$lang_name/tri3 \
-        data/langp/$lang_name/tri3
+#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+#        data/$data_dir \
+#        data/lang/$lang_name \
+#        data/local/$lang_name \
+#        exp/gmm/$lang_name/tri3 \
+#        data/local/dictp/$lang_name/tri3 \
+#        data/local/langp/$lang_name/tri3 \
+#        data/langp/$lang_name/tri3
     ) &
     sleep 2
   done
@@ -317,7 +315,7 @@ if ((stage <= 11)); then
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
         data/$data_dir \
-        data/langp/$lang_name/tri3 \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri3 \
         exp/gmm/$lang_name/tri3_ali
 
@@ -326,18 +324,18 @@ if ((stage <= 11)); then
         $numLeavesMLLT \
         $numGaussMLLT \
         data/$data_dir \
-        data/langp/$lang_name/tri3 \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri3_ali \
         exp/gmm/$lang_name/tri4
 
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang/$lang_name \
-        data/local/$lang_name \
-        exp/gmm/$lang_name/tri4 \
-        data/local/dictp/$lang_name/tri4 \
-        data/local/langp/$lang_name/tri4 \
-        data/langp/$lang_name/tri4
+#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+#        data/$data_dir \
+#        data/lang/$lang_name \
+#        data/local/$lang_name \
+#        exp/gmm/$lang_name/tri4 \
+#        data/local/dictp/$lang_name/tri4 \
+#        data/local/langp/$lang_name/tri4 \
+#        data/langp/$lang_name/tri4
     ) &
     sleep 2
   done
@@ -352,7 +350,7 @@ if ((stage <= 12)); then
       steps/align_si.sh \
         --nj $train_nj --cmd "$train_cmd" \
         data/$data_dir \
-        data/langp/$lang_name/tri4 \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri4 \
         exp/gmm/$lang_name/tri4_ali
 
@@ -361,18 +359,18 @@ if ((stage <= 12)); then
         $numLeavesSAT \
         $numGaussSAT \
         data/$data_dir \
-        data/langp/$lang_name/tri4 \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri4_ali \
         exp/gmm/$lang_name/tri5
 
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang/$lang_name \
-        data/local/$lang_name \
-        exp/gmm/$lang_name/tri5 \
-        data/local/dictp/$lang_name/tri5 \
-        data/local/langp/$lang_name/tri5 \
-        data/langp/$lang_name/tri5
+#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+#        data/$data_dir \
+#        data/lang/$lang_name \
+#        data/local/$lang_name \
+#        exp/gmm/$lang_name/tri5 \
+#        data/local/dictp/$lang_name/tri5 \
+#        data/local/langp/$lang_name/tri5 \
+#        data/langp/$lang_name/tri5
     ) &
     sleep 2
   done
@@ -387,18 +385,18 @@ if ((stage <= 13)); then
       steps/align_fmllr.sh \
         --nj $train_nj --cmd "$train_cmd" \
         data/$data_dir \
-        data/langp/$lang_name/tri5 \
+        data/lang_combined_test \
         exp/gmm/$lang_name/tri5 \
         exp/gmm/$lang_name/tri5_ali
 
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang/$lang_name \
-        data/local/$lang_name \
-        exp/gmm/$lang_name/tri5_ali \
-        data/local/dictp/$lang_name/tri5_ali \
-        data/local/langp/$lang_name/tri5_ali \
-        data/langp/$lang_name/tri5_ali
+#      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
+#        data/$data_dir \
+#        data/lang/$lang_name \
+#        data/local/$lang_name \
+#        exp/gmm/$lang_name/tri5_ali \
+#        data/local/dictp/$lang_name/tri5_ali \
+#        data/local/langp/$lang_name/tri5_ali \
+#        data/langp/$lang_name/tri5_ali
     ) &
     sleep 2
   done

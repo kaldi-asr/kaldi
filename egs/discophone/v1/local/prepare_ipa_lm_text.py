@@ -19,9 +19,11 @@ def main():
     parser.add_argument('lexiconp')
     parser.add_argument('text')
     parser.add_argument('output_dir')
+    parser.add_argument('--phones', action='store_true', help='Will output phones (default).')
     parser.add_argument('--phone-tokens', action='store_true',
                         help='Will output phone tokens instead of phones.')
     args = parser.parse_args()
+    assert not (args.phones and args.phone_tokens), "--phones and --phone-tokens options are exclusive!"
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)

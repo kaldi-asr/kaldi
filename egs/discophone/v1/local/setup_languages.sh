@@ -87,7 +87,7 @@ if [ "$gp_langs" ] || [ "$gp_recog" ]; then
         --lang $l \
         --data-dir $data_dir \
         --g2p-models-dir g2ps/models \
-        $phone_token_opt
+        $phone_token_opt -s
       utils/fix_data_dir.sh $data_dir
       utils/validate_data_dir.sh --no-feats $data_dir
     done
@@ -116,7 +116,7 @@ if $mboshi_train || $mboshi_recog; then
       --lang Mboshi \
       --data-dir $data_dir \
       --g2p-models-dir g2ps/models \
-      $phone_token_opt
+      $phone_token_opt -s
     utils/fix_data_dir.sh $data_dir
     utils/validate_data_dir.sh --no-feats $data_dir
   done
@@ -170,7 +170,7 @@ if [ "$langs" ] || [ "$recog" ]; then
             --lang $l \
             --data-dir $data_dir \
             --g2p-models-dir g2ps/models \
-            $phone_token_opt
+            $phone_token_opt -s
           utils/fix_data_dir.sh $data_dir
         done
       )
@@ -186,7 +186,7 @@ if [ "$langs" ] || [ "$recog" ]; then
             --lang $l \
             --data-dir $data_dir \
             --g2p-models-dir g2ps/models \
-            $phone_token_opt
+            $phone_token_opt -s
           utils/fix_data_dir.sh $data_dir
         done
       )

@@ -4,7 +4,7 @@ set -eou pipefail
 
 train_set=
 dev_set=
-phone_token_opt=
+phone_token_opt='--phones'
 order=3
 
 . path.sh
@@ -48,7 +48,7 @@ ngram-count \
 #  -kndiscount
 
 # Evaluate the multilingual LM perplexity on the dev sets
-for data_dir in $train_set; do
+for data_dir in $dev_set; do
   lang_name=$(langname $data_dir)
   dev_lm_dir=data/ipa_lm/dev/$lang_name
   ngram \
