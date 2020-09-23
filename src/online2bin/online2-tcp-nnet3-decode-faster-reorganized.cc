@@ -341,7 +341,6 @@ bool TcpServer::Listen(int32 port) {
   KALDI_LOG << "TcpServer: Listening on port: " << port;
 
   return true;
-
 }
 
 TcpServer::~TcpServer() {
@@ -423,7 +422,6 @@ Vector<BaseFloat> TcpServer::GetChunk() {
 }
 
 bool TcpServer::Write(const std::string &msg) {
-
   const char *p = msg.c_str();
   size_t to_write = msg.size();
   size_t wrote = 0;
