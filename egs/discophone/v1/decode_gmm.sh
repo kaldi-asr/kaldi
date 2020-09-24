@@ -26,9 +26,6 @@ else
   babel_recog="${babel_langs}"
   gp_langs="Czech French Mandarin Spanish Thai"
   gp_recog="${gp_langs}"
-  mboshi_train=false
-  mboshi_recog=false
-  gp_romanized=false
 fi
 
 . cmd.sh
@@ -37,13 +34,16 @@ fi
 
 local/install_shorten.sh
 
+declare -A recog_to_train
 train_set=""
 dev_set=""
 for l in ${babel_langs}; do
+  recog_to_train["eval_${l}"]="$l/data/train_${l}"
   train_set="$l/data/train_${l} ${train_set}"
   dev_set="$l/data/dev_${l} ${dev_set}"
 done
 for l in ${gp_langs}; do
+  recog_to_train["eval_${l}"]="GlobalPhone/gp_${l}_train"
   train_set="GlobalPhone/gp_${l}_train ${train_set}"
   dev_set="GlobalPhone/gp_${l}_dev ${dev_set}"
 done
@@ -65,10 +65,8 @@ function langname() {
   echo "$(basename "$1")"
 }
 
-
 # By default use the multilingual phone LM
 lmdir=data/lang_combined_test
-
 
 if ((stage <= 0)); then
   # Feature extraction
@@ -90,13 +88,12 @@ if ((stage <= 0)); then
   wait
 fi
 
-
 if ((stage <= 7)); then
   # Mono decoding
   for recog_data_dir in ${recog_set}; do
     (
       # `data_dir` points to the train set directory
-      data_dir=${recog_data_dir//eval/train/}
+      data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/mono
       utils/mkgraph.sh $lmdir $expdir $expdir/graph
@@ -113,7 +110,7 @@ if ((stage <= 8)); then
   for recog_data_dir in ${recog_set}; do
     (
       # `data_dir` points to the train set directory
-      data_dir=${recog_data_dir//eval/train/}
+      data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/tri1
       utils/mkgraph.sh $lmdir $expdir $expdir/graph
@@ -130,7 +127,7 @@ if ((stage <= 9)); then
   for recog_data_dir in ${recog_set}; do
     (
       # `data_dir` points to the train set directory
-      data_dir=${recog_data_dir//eval/train/}
+      data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/tri2
       utils/mkgraph.sh $lmdir $expdir $expdir/graph
@@ -147,7 +144,7 @@ if ((stage <= 10)); then
   for recog_data_dir in ${recog_set}; do
     (
       # `data_dir` points to the train set directory
-      data_dir=${recog_data_dir//eval/train/}
+      data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/tri3
       utils/mkgraph.sh $lmdir $expdir $expdir/graph
@@ -164,7 +161,7 @@ if ((stage <= 11)); then
   for recog_data_dir in ${recog_set}; do
     (
       # `data_dir` points to the train set directory
-      data_dir=${recog_data_dir//eval/train/}
+      data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/tri4
       utils/mkgraph.sh $lmdir $expdir $expdir/graph
@@ -181,7 +178,7 @@ if ((stage <= 12)); then
   for recog_data_dir in ${recog_set}; do
     (
       # `data_dir` points to the train set directory
-      data_dir=${recog_data_dir//eval/train/}
+      data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/tri5
       utils/mkgraph.sh $lmdir $expdir $expdir/graph
