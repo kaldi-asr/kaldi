@@ -145,7 +145,7 @@ if ((stage <= 3)); then
     --position-dependent-phones false \
     data/local/dict_combined \
     "<unk>" data/local/dict_combined data/lang_combined
-  LM=data/ipa_lm/train_all/srilm.o3g.kn.gz
+  LM=data/ipa_lm/train_all/srilm.o${phone_ngram_order}g.kn.gz
   utils/format_lm.sh data/lang_combined "$LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
 fi
 
