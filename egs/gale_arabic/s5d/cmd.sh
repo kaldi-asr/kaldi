@@ -10,6 +10,12 @@
 # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-export train_cmd="retry.pl queue.pl"
-export decode_cmd="retry.pl queue.pl"
-export mkgraph_cmd="retry.pl queue.pl --mem 8G"
+export train_cmd="run.pl"
+export decode_cmd="run.pl"
+export mkgraph_cmd="run.pl"
+
+if [ $(hostname -d) == "clsp.jhu.edu" ]; then
+  export train_cmd="retry.pl queue.pl"
+  export decode_cmd="retry.pl queue.pl"
+  export mkgraph_cmd="retry.pl queue.pl --mem 8G"
+fi
