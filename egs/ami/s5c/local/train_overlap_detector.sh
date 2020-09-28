@@ -122,7 +122,7 @@ fi
 ###############################################################################
 if [ $stage -le 8 ]; then
   # Train a STATS-pooling network for SAD
-  steps/overlap/train_tdnn_1a.sh \
+  steps/overlap/train_tdnn_lstm_1a.sh \
     --targets-dir $dir --dir exp/overlap_$affix/tdnn_lstm_1a \
     --data-dir ${whole_data_dir} --affix "1a" || exit 1
 fi
