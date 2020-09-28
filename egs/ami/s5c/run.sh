@@ -47,7 +47,7 @@ esac
 if [ $stage -le 1 ]; then
   if [ -d $AMI_DIR ] && ! touch $AMI_DIR/.foo 2>/dev/null; then
     echo "$0: directory $AMI_DIR seems to exist and not be owned by you."
-    echo " ... Assuming the data does not need to be downloaded.  Please use --stage 1 or more."
+    echo " ... Assuming the data does not need to be downloaded.  Please use --stage 2 or more."
     exit 1
   fi
   if [ -e data/local/downloads/wget_$mic.sh ]; then

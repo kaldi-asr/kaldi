@@ -157,7 +157,7 @@ overlap 3
 EOF
 
   $cmd $graph_dir/log/make_graph.log \
-    local/overlap/prepare_overlap_graph.py $graph_opts \
+    steps/overlap/prepare_overlap_graph.py $graph_opts \
       --frame-shift=$(perl -e "print $frame_shift * $frame_subsampling_factor") - \| \
     fstcompile --isymbols=$graph_dir/words.txt --osymbols=$graph_dir/words.txt '>' \
       $graph_dir/HCLG.fst
@@ -193,7 +193,7 @@ fi
 ###############################################################################
 
 if [ $stage -le 4 ]; then
-  local/overlap/post_process_output.sh \
+  steps/overlap/post_process_output.sh \
     --segment-padding $segment_padding --min-segment-dur $min_segment_dur \
     --merge-consecutive-max-dur $merge_consecutive_max_dur \
     --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \

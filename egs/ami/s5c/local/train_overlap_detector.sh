@@ -121,8 +121,8 @@ fi
 # Train neural network for overlap detector
 ###############################################################################
 if [ $stage -le 8 ]; then
-  # Train a STATS-pooling network for SAD
-  steps/overlap/train_tdnn_lstm_1a.sh \
+  # Train a TDNN-LSTM network for SAD
+  local/overlap/run_tdnn_lstm.sh \
     --targets-dir $dir --dir exp/overlap_$affix/tdnn_lstm_1a \
     --data-dir ${whole_data_dir} --affix "1a" || exit 1
 fi
