@@ -1,4 +1,4 @@
-# CLAPACK specific Linux configuration
+# Darwin (macOS) configuration
 
 ifndef DEBUG_LEVEL
 $(error DEBUG_LEVEL not defined.)
@@ -17,7 +17,7 @@ CLAPACKLIBS = $(CLAPACKROOT)/CLAPACK-3.2.1/lapack.a $(CLAPACKROOT)/CLAPACK-3.2.1
 	      $(CLAPACKROOT)/CBLAS/lib/cblas.a \
 	      $(CLAPACKROOT)/f2c_BLAS-3.8.0/blas.a $(CLAPACKROOT)/libf2c/libf2c.a
 
-CXXFLAGS = -std=c++11 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
@@ -41,7 +41,10 @@ COMPILER = $(shell $(CXX) -v 2>&1)
 ifeq ($(findstring clang,$(COMPILER)),clang)
 # Suppress annoying clang warnings that are perfectly valid per spec.
 CXXFLAGS += -Wno-mismatched-tags
+else ifeq ($(findstring GCC,$(COMPILER)),GCC)
+# Allow implicit conversions between vectors.
+CXXFLAGS += -flax-vector-conversions
 endif
 
-LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
+LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(CLAPACKLIBS) -lm -lpthread -ldl
