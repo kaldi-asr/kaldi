@@ -11,7 +11,6 @@ import sys, os
 from collections import defaultdict
 from io import open
 import codecs
-import gzip
 
 # reference: http://www.macfreek.nl/memory/Encoding_of_Python_stdout
 if sys.version_info.major == 2:
@@ -33,9 +32,6 @@ parser.add_argument("--frequency-cutoff-percentage", type = float,
 
 parser.add_argument("lang",
                     help="Language directory, e.g. data/lang.")
-
-parser.add_argument("ali_per_frame",
-                    help="Gzipped alignment per frame, e.g. ali_frame_tmp.gz")
 
 args = parser.parse_args()
 
@@ -87,28 +83,30 @@ for p in [ -1 ] + list(phone_int2text.keys()):
 
 total_frames = 0
 
-ali_per_frame = {}
-for line in gzip.open(args.ali_per_frame):
-   uttid, ali = line.split(" ", 1)
-   ali_per_frame[uttid] = ali
+while True:
+    line = sys.stdin.readline()
+    if line == '':
+        break
+    a = line.split()
+    if len(a) != 3:
+        sys.exit(u"analyze_lattice_depth_stats.py: reading stdin, could not interpret line: " + line)
+    try:
+        phone, depth, count = [ int(x) for x in a ]
 
-for line in sys.stdin:
-    uttid, depth = line.split(" ", 1)
-    if uttid in ali_per_frame:
-        apf = ali_per_frame[uttid].split()
-        dpf = depth.split()
-        for p, d in zip(apf, dpf):
-              p, d = int(p), int(d)
-              phone_depth_counts[p][d] += 1
-              total_frames += 1
-              if p in nonsilence:
-                  nonsilence_phone = 0
-                  phone_depth_counts[nonsilence_phone][d] += 1
-              universal_phone = -1
-              phone_depth_counts[universal_phone][d] += 1
+        phone_depth_counts[phone][depth] += count
+        total_frames += count
+        if phone in nonsilence:
+            nonsilence_phone = 0
+            phone_depth_counts[nonsilence_phone][depth] += count
+        universal_phone = -1
+        phone_depth_counts[universal_phone][depth] += count
+    except Exception as e:
+        sys.exit(u"analyze_lattice_depth_stats.py: unexpected phone {0} "
+                 u"seen (lang directory mismatch?): line is {1}, error is {2}".format(phone, line, str(e)))
 
 if total_frames == 0:
     sys.exit(u"analyze_lattice_depth_stats.py: read no input")
+
 
 # If depth_to_count is a map from depth-in-frames to count,
 # return the depth-in-frames that equals the (fraction * 100)'th

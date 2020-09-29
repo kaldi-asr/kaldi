@@ -123,7 +123,7 @@ if (@ARGV != 1) {
   print "Usage: $0 [options] <lang_directory>\n";
   print "e.g.:  $0 data/lang\n";
   print "Options:\n";
-  print " --skip-generate-words-check              (this flag causes it to skip a check of generated word sequences).\n";
+  print " --skip-det-check                         (this flag causes it to skip a deterministic fst check).\n";
   print " --skip-determinization-check             (this flag causes it to skip a time consuming check).\n";
   print " --skip-disambig-check                    (this flag causes it to skip a disambig check in phone bigram models).\n";
   exit(1);

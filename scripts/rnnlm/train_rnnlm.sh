@@ -187,12 +187,8 @@ while [ $x -lt $num_iters ]; do
         else
           sparse_opt=''; embedding_type=word
         fi
-        gpu_opt="--use-gpu=$use_gpu"
-        if [ $use_gpu == "yes" ] || [ $use_gpu == "true" ] || [ $use_gpu == "wait" ]; then
-          queue_gpu_opt="--gpu 1";
-        else
-          queue_gpu_opt="";
-        fi
+        if $use_gpu; then gpu_opt="--use-gpu=yes"; queue_gpu_opt="--gpu 1";
+        else gpu_opt="--use-gpu=no"; queue_gpu_opt=""; fi
         if [ $this_num_jobs -gt 1 ]; then dest_number=$[x+1].$n
         else dest_number=$[x+1]; fi
         # in the normal case $repeated data will be just one copy.

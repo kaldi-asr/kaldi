@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/bin/usr/env perl
 
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0

@@ -155,8 +155,8 @@ int main(int argc, char *argv[]) {
     }
 
     Matrix<double> global_cmvn_stats;
-    if (feature_opts.global_cmvn_stats_rxfilename != "")
-      ReadKaldiObject(feature_opts.global_cmvn_stats_rxfilename,
+    if (feature_info.global_cmvn_stats_rxfilename != "")
+      ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
                       &global_cmvn_stats);
 
     TransitionModel trans_model;

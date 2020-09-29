@@ -10,12 +10,9 @@
 # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-export train_cmd="run.pl"
-export decode_cmd="run.pl"
-export mkgraph_cmd="run.pl"
-
-if [ $(hostname -d) == "clsp.jhu.edu" ]; then
-  export train_cmd="retry.pl queue.pl -l hostname=c[01][12345]*"
-  export decode_cmd="retry.pl queue.pl -l hostname=c[01][12345]*"
-  export mkgraph_cmd="retry.pl queue.pl --mem 8G"
-fi
+export train_cmd="queue.pl --mem 2G --config conf/queue.conf --allow-a09 false"
+export decode_cmd="queue.pl --mem 4G --config conf/queue.conf --allow-a09 false"
+export mkgraph_cmd="queue.pl --mem 8G --config conf/queue.conf --allow-a09 false"
+# the use of cuda_cmd is deprecated, but it's still used in this example
+# directory.
+export cuda_cmd="queue.pl --gpu 1 --config conf/queue.conf"

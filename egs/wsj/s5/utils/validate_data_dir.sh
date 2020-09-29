@@ -6,7 +6,7 @@ no_feats=false
 no_wav=false
 no_text=false
 no_spk_sort=false
-non_print=false
+non_print=true
 
 
 function show_help

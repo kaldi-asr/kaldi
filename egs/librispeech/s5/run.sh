@@ -107,6 +107,16 @@ if [ $stage -le 8 ]; then
   # train a monophone system
   steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
                       data/train_2kshort data/lang_nosp exp/mono
+
+  # decode using the monophone model
+  (
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall \
+                     exp/mono exp/mono/graph_nosp_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
+      steps/decode.sh --nj 20 --cmd "$decode_cmd" exp/mono/graph_nosp_tgsmall \
+                      data/$test exp/mono/decode_nosp_tgsmall_$test
+    done
+  )&
 fi
 
 if [ $stage -le 9 ]; then
@@ -116,6 +126,21 @@ if [ $stage -le 9 ]; then
   # train a first delta + delta-delta triphone system on a subset of 5000 utterances
   steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
                         2000 10000 data/train_5k data/lang_nosp exp/mono_ali_5k exp/tri1
+
+  # decode using the tri1 model
+  (
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall \
+                     exp/tri1 exp/tri1/graph_nosp_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
+      steps/decode.sh --nj 20 --cmd "$decode_cmd" exp/tri1/graph_nosp_tgsmall \
+                      data/$test exp/tri1/decode_nosp_tgsmall_$test
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tgmed} \
+                         data/$test exp/tri1/decode_nosp_{tgsmall,tgmed}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test exp/tri1/decode_nosp_{tgsmall,tglarge}_$test
+    done
+  )&
 fi
 
 if [ $stage -le 10 ]; then
@@ -127,6 +152,21 @@ if [ $stage -le 10 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
                           --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
                           data/train_10k data/lang_nosp exp/tri1_ali_10k exp/tri2b
+
+  # decode using the LDA+MLLT model
+  (
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall \
+                     exp/tri2b exp/tri2b/graph_nosp_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
+      steps/decode.sh --nj 20 --cmd "$decode_cmd" exp/tri2b/graph_nosp_tgsmall \
+                      data/$test exp/tri2b/decode_nosp_tgsmall_$test
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tgmed} \
+                         data/$test exp/tri2b/decode_nosp_{tgsmall,tgmed}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test exp/tri2b/decode_nosp_{tgsmall,tglarge}_$test
+    done
+  )&
 fi
 
 if [ $stage -le 11 ]; then
@@ -138,6 +178,21 @@ if [ $stage -le 11 ]; then
   steps/train_sat.sh --cmd "$train_cmd" 2500 15000 \
                      data/train_10k data/lang_nosp exp/tri2b_ali_10k exp/tri3b
 
+  # decode using the tri3b model
+  (
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall \
+                     exp/tri3b exp/tri3b/graph_nosp_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
+      steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+                            exp/tri3b/graph_nosp_tgsmall data/$test \
+                            exp/tri3b/decode_nosp_tgsmall_$test
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tgmed} \
+                         data/$test exp/tri3b/decode_nosp_{tgsmall,tgmed}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test exp/tri3b/decode_nosp_{tgsmall,tglarge}_$test
+    done
+  )&
 fi
 
 if [ $stage -le 12 ]; then
@@ -150,6 +205,25 @@ if [ $stage -le 12 ]; then
   steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
                       data/train_clean_100 data/lang_nosp \
                       exp/tri3b_ali_clean_100 exp/tri4b
+
+  # decode using the tri4b model
+  (
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall \
+                     exp/tri4b exp/tri4b/graph_nosp_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
+      steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+                            exp/tri4b/graph_nosp_tgsmall data/$test \
+                            exp/tri4b/decode_nosp_tgsmall_$test
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tgmed} \
+                         data/$test exp/tri4b/decode_nosp_{tgsmall,tgmed}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test exp/tri4b/decode_nosp_{tgsmall,tglarge}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,fglarge} \
+        data/$test exp/tri4b/decode_nosp_{tgsmall,fglarge}_$test
+    done
+  )&
 fi
 
 if [ $stage -le 13 ]; then
@@ -170,6 +244,25 @@ if [ $stage -le 13 ]; then
     data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge
   utils/build_const_arpa_lm.sh \
     data/local/lm/lm_fglarge.arpa.gz data/lang data/lang_test_fglarge
+
+  # decode using the tri4b model with pronunciation and silence probabilities
+  (
+    utils/mkgraph.sh \
+      data/lang_test_tgsmall exp/tri4b exp/tri4b/graph_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
+      steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+                            exp/tri4b/graph_tgsmall data/$test \
+                            exp/tri4b/decode_tgsmall_$test
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
+                         data/$test exp/tri4b/decode_{tgsmall,tgmed}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+        data/$test exp/tri4b/decode_{tgsmall,tglarge}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+        data/$test exp/tri4b/decode_{tgsmall,fglarge}_$test
+    done
+  )&
 fi
 
 if [ $stage -le 14 ] && false; then
@@ -207,6 +300,25 @@ if [ $stage -le 16 ]; then
   # create a larger SAT model, trained on the 460 hours of data.
   steps/train_sat.sh  --cmd "$train_cmd" 5000 100000 \
                       data/train_clean_460 data/lang exp/tri4b_ali_clean_460 exp/tri5b
+
+  # decode using the tri5b model
+  (
+    utils/mkgraph.sh data/lang_test_tgsmall \
+                     exp/tri5b exp/tri5b/graph_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
+      steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+                            exp/tri5b/graph_tgsmall data/$test \
+                            exp/tri5b/decode_tgsmall_$test
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
+                         data/$test exp/tri5b/decode_{tgsmall,tgmed}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+        data/$test exp/tri5b/decode_{tgsmall,tglarge}_$test
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+        data/$test exp/tri5b/decode_{tgsmall,fglarge}_$test
+    done
+  )&
 fi
 
 
@@ -242,9 +354,10 @@ if [ $stage -le 18 ]; then
                        7000 150000 data/train_960 data/lang exp/tri5b_ali_960 exp/tri6b
 
   # decode using the tri6b model
-  utils/mkgraph.sh data/lang_test_tgsmall \
-                   exp/tri6b exp/tri6b/graph_tgsmall
-  for test in test_clean test_other dev_clean dev_other; do
+  (
+    utils/mkgraph.sh data/lang_test_tgsmall \
+                     exp/tri6b exp/tri6b/graph_tgsmall
+    for test in test_clean test_other dev_clean dev_other; do
       steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
                             exp/tri6b/graph_tgsmall data/$test exp/tri6b/decode_tgsmall_$test
       steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -255,7 +368,8 @@ if [ $stage -le 18 ]; then
       steps/lmrescore_const_arpa.sh \
         --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
         data/$test exp/tri6b/decode_{tgsmall,fglarge}_$test
-  done
+    done
+  )&
 fi
 
 
@@ -307,3 +421,6 @@ fi
 # ## The following is an older version of the online-nnet2 recipe, without "multi-splice".  It's faster
 # ## to train but slightly worse.
 # # local/online/run_nnet2.sh
+
+# Wait for decodings in the background
+wait

@@ -49,9 +49,9 @@ int main(int argc, char *argv[]) {
     bool pad_input = true;
     bool online = true;
 
-    // feature_opts includes configuration for the iVector adaptation,
+    // feature_config includes configuration for the iVector adaptation,
     // as well as the basic features.
-    OnlineNnet2FeaturePipelineConfig feature_opts;
+    OnlineNnet2FeaturePipelineConfig feature_config;
     ParseOptions po(usage);
     po.Register("apply-log", &apply_log, "Apply a log to the result of the computation "
                 "before outputting.");
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
                 "in the file given to --ivector-extraction-config, and "
                 "--chunk-length=-1.");
 
-    feature_opts.Register(&po);
+    feature_config.Register(&po);
     po.Read(argc, argv);
     if (po.NumArgs() != 4) {
       po.PrintUsage();
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         wav_rspecifier = po.GetArg(3),
         features_or_loglikes_wspecifier = po.GetArg(4);
 
-    OnlineNnet2FeaturePipelineInfo feature_info(feature_opts);
+    OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
     if (!online) {
       feature_info.ivector_extractor_info.use_most_recent_ivector = true;
       feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
@@ -90,8 +90,8 @@ int main(int argc, char *argv[]) {
     }
 
     Matrix<double> global_cmvn_stats;
-    if (feature_opts.global_cmvn_stats_rxfilename != "")
-      ReadKaldiObject(feature_opts.global_cmvn_stats_rxfilename,
+    if (feature_info.global_cmvn_stats_rxfilename != "")
+      ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
                       &global_cmvn_stats);
 
     TransitionModel trans_model;

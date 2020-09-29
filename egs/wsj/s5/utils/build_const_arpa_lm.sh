@@ -33,15 +33,11 @@ mkdir -p $new_lang
 mkdir -p $new_lang
 cp -r $old_lang/* $new_lang
 
-unk=`cat $old_lang/oov.int`
-bos=`grep "^<s>\s" $old_lang/words.txt | awk '{print $2}'`
-eos=`grep "^</s>\s" $old_lang/words.txt | awk '{print $2}'`
+unk=`cat $new_lang/oov.int`
+bos=`grep "^<s>\s" $new_lang/words.txt | awk '{print $2}'`
+eos=`grep "^</s>\s" $new_lang/words.txt | awk '{print $2}'`
 if [[ -z $bos || -z $eos ]]; then
-  echo "$0: <s> and </s> symbols are not in $old_lang/words.txt"
-  exit 1
-fi
-if [[ -z $unk ]]; then
-  echo "$0: can't find oov symbol id in $old_lang/oov.int"
+  echo "$0: <s> and </s> symbols are not in $new_lang/words.txt"
   exit 1
 fi
 

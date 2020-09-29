@@ -134,7 +134,6 @@ if [ $stage -le 2 ]; then
   sed 's:<foreign langengullís>::g' | \
   sed 's:foreign>::g' | \
   sed 's:>::g' | \
-  sed 's/\[noise\]/[noise] /g' | \
   #How do you handle numbers?
   grep -v '()' | \
   #Now go after the non-printable characters and multiple spaces

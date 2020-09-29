@@ -100,9 +100,9 @@ int main(int argc, char *argv[]) {
 
     OnlineEndpointConfig endpoint_config;
 
-    // feature_opts includes configuration for the iVector adaptation,
+    // feature_config includes configuration for the iVector adaptation,
     // as well as the basic features.
-    OnlineNnet2FeaturePipelineConfig feature_opts;
+    OnlineNnet2FeaturePipelineConfig feature_config;
     OnlineNnet2DecodingThreadedConfig nnet2_decoding_config;
 
     BaseFloat chunk_length_secs = 0.05;
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
     po.Register("num-threads-startup", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.  ");
 
-    feature_opts.Register(&po);
+    feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);
     endpoint_config.Register(&po);
 
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
         wav_rspecifier = po.GetArg(4),
         clat_wspecifier = po.GetArg(5);
 
-    OnlineNnet2FeaturePipelineInfo feature_info(feature_opts);
+    OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
 
     if (modify_ivector_config) {
       feature_info.ivector_extractor_info.use_most_recent_ivector = true;
@@ -156,8 +156,8 @@ int main(int argc, char *argv[]) {
     }
 
     Matrix<double> global_cmvn_stats;
-    if (feature_opts.global_cmvn_stats_rxfilename != "")
-      ReadKaldiObject(feature_opts.global_cmvn_stats_rxfilename,
+    if (feature_info.global_cmvn_stats_rxfilename != "")
+      ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
                       &global_cmvn_stats);
 
     TransitionModel trans_model;

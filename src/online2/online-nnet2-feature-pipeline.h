@@ -160,7 +160,8 @@ struct OnlineNnet2FeaturePipelineInfo {
   /// and the OnlineCmvn is added to the feature preparation pipeline.
   bool use_cmvn;
   OnlineCmvnOptions cmvn_opts; /// Options for online cmvn, read from config file.
-  Matrix<double> global_cmvn_stats;  /// Matrix with global cmvn stats in OnlineCmvn.
+  std::string global_cmvn_stats_rxfilename;  /// Filename used for reading global
+                                             /// cmvn stats in OnlineCmvn.
 
   /// If the user specified --ivector-extraction-config, we assume we're using
   /// iVectors as an extra input to the neural net.  Actually, we don't
@@ -299,6 +300,7 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
 
   OnlineCmvn *cmvn_feature_;
   Matrix<BaseFloat> lda_mat_;          /// LDA matrix, if supplied
+  Matrix<double> global_cmvn_stats_;   /// Global CMVN stats.
 
   /// feature_plus_optional_pitch_ is the base_feature_ appended (OnlineAppendFeature)
   /// with pitch_feature_, if used; otherwise, points to the same address as

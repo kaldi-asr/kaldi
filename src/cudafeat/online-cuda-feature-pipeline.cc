@@ -35,13 +35,12 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
   }
 
   if (info_.use_cmvn) {
-    if (info_.global_cmvn_stats.NumCols() == 0) {
-      KALDI_ERR << "global_cmvn_stats for OnlineCmvn must be non-empty.";
-    }
-    OnlineCmvnState cmvn_state(info_.global_cmvn_stats);
+    KALDI_ASSERT(info_.global_cmvn_stats_rxfilename != "");
+    ReadKaldiObject(info_.global_cmvn_stats_rxfilename, &global_cmvn_stats);
+    OnlineCmvnState cmvn_state(global_cmvn_stats);
     CudaOnlineCmvnState cu_cmvn_state(cmvn_state);
     cmvn = new CudaOnlineCmvn(info_.cmvn_opts, cu_cmvn_state);
-  }
+  } 
 
   if (info_.use_ivectors) {
     OnlineIvectorExtractionConfig ivector_extraction_opts;
@@ -54,7 +53,7 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
     ivector_extraction_opts.greedy_ivector_extractor = true;
 
     ivector = new IvectorExtractorFastCuda(ivector_extraction_opts);
-  }
+  } 
 }
 
 OnlineCudaFeaturePipeline::~OnlineCudaFeaturePipeline() {

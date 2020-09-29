@@ -15,7 +15,7 @@ if (system("mkdir -p $out_dir")) {
   die "Error making directory $out_dir";
 }
 
-open(CS, "<$db_base/docs/swb_callstats.tbl") || die  "Could not open $db_base/doc/swb_callstats.tbl";
+open(CS, "<$db_base/doc/swb_callstats.tbl") || die  "Could not open $db_base/doc/swb_callstats.tbl";
 open(GNDR, ">$out_dir/spk2gender") || die "Could not open the output file $out_dir/spk2gender";
 open(SPKR, ">$out_dir/utt2spk") || die "Could not open the output file $out_dir/utt2spk";
 open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/wav.scp";
@@ -47,13 +47,13 @@ while (<CS>) {
     } else {
       die "Unknown Gender in $line";
     }
-    if (-e "$db_base/data/$wav.sph") {
+    if (-e "$db_base/$wav.sph") {
       $uttId = $spkr1 . "-swbdc_" . $wav ."_1";
       if (!$spk2gender{$spkr1}) {
         $spk2gender{$spkr1} = $gender1;
         print GNDR "$spkr1"," $gender1\n";
       }
-      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $db_base/data/$wav.sph |\n";
+      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $db_base/$wav.sph |\n";
       print SPKR "$uttId"," $spkr1","\n";
 
       $uttId = $spkr2 . "-swbdc_" . $wav ."_2";
@@ -61,10 +61,10 @@ while (<CS>) {
         $spk2gender{$spkr2} = $gender2;
         print GNDR "$spkr2"," $gender2\n";
       }
-      print WAV "$uttId"," sph2pipe -f wav -p -c 2 $db_base/data/$wav.sph |\n";
+      print WAV "$uttId"," sph2pipe -f wav -p -c 2 $db_base/$wav.sph |\n";
       print SPKR "$uttId"," $spkr2","\n";
     } else {
-      print STDERR "Missing $db_base/data/$wav.sph\n";
+      print STDERR "Missing $db_base/$wav.sph\n";
     }
   }
 }

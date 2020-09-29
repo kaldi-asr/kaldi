@@ -15,7 +15,7 @@ if (system("mkdir -p $out_dir")) {
   die "Error making directory $out_dir";
 }
 
-open(CS, "<$db_base/docs/callstat.tbl") || die  "Could not open $db_base/docs/callstat.tbl";
+open(CS, "<$db_base/DISC1/docs/callstat.tbl") || die  "Could not open $db_base/DISC1/docs/callstat.tbl";
 open(GNDR, ">$out_dir/spk2gender") || die "Could not open the output file $out_dir/spk2gender";
 open(SPKR, ">$out_dir/utt2spk") || die "Could not open the output file $out_dir/utt2spk";
 open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/wav.scp";
