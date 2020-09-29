@@ -48,7 +48,7 @@ set -o pipefail
 set -u
 
 if [ -z "$dir" ]; then
-  dir=exp/overlap_1a/tdnn_stats
+  dir=exp/overlap_1a/tdnn_lstm
 fi
 dir=$dir${affix:+_$affix}
 

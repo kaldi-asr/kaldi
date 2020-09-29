@@ -123,8 +123,8 @@ fi
 if [ $stage -le 8 ]; then
   # Train a TDNN-LSTM network for SAD
   local/overlap/run_tdnn_lstm.sh \
-    --targets-dir $dir --dir exp/overlap_$affix/tdnn_lstm_1a \
-    --data-dir ${whole_data_dir} --affix "1a" || exit 1
+    --targets-dir $dir --dir exp/overlap_$affix/tdnn_lstm \
+    --data-dir ${whole_data_dir} || exit 1
 fi
 
 exit 0;

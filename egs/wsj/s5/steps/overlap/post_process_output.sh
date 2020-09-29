@@ -56,7 +56,7 @@ utils/data/get_utt2dur.sh $data_dir
 if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/segmentation.JOB.log \
     copy-int-vector "ark:gunzip -c $output_dir/ali.JOB.gz |" ark,t:- \| \
-    local/overlap/output_to_rttm.py \
+    steps/overlap/output_to_rttm.py \
       --region-type=$region_type \
       --frame-shift=$frame_shift --segment-padding=$segment_padding \
       --min-segment-dur=$min_segment_dur --merge-consecutive-max-dur=$merge_consecutive_max_dur \
