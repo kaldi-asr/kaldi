@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright 2020  Delft University of Technology (Siyuan Feng)
 # Copyright 2020  Johns Hopkins University (Author: Piotr Żelasko)
 # Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
