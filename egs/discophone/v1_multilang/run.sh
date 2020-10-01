@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2020  Johns Hopkins University (Author: Piotr Żelasko)
+# Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 set -eou pipefail
 
@@ -8,6 +10,8 @@ train_nj=24
 extract_feat_nj=8
 train_mono_nj=1
 train_tri2_nj=1
+phone_tokens=false
+phone_ngram_order=2
 
 # Acoustic model parameters
 numLeavesTri1=1000
@@ -36,19 +40,14 @@ else
   # BABEL TEST:
   # Georgian - 404
   # Lao - 203
-#  babel_langs="307 103 101 402 107 206 404 203"
-#  babel_recog="${babel_langs}"
-  #babel_langs=""
-  #babel_recog=""
-  gp_langs="Czech French Spanish Mandarin Thai"
-  gp_recog=""
+  babel_langs="307 103 101 402 107 206 404 203"
+  babel_recog="${babel_langs}"
+  gp_langs="Czech French Mandarin Spanish Thai"
+  gp_recog="${gp_langs}"
   gp_path="/export/corpora5/GlobalPhone"
-  #gp_langs="Czech French Mandarin Spanish Thai"
-  #gp_recog="${gp_langs}"
   mboshi_train=false
   mboshi_recog=false
   gp_romanized=false
-  ipa_transcript=true
 fi
 ###Globalphone####
 #Czech       S0196
@@ -57,15 +56,11 @@ fi
 #Mandarin    S0193
 #Thai        S0321
 
-babel_langs="307 103 101 402 107 206 404 203"
-babel_recog="${babel_langs}"
 . cmd.sh
 . utils/parse_options.sh
 . path.sh
 
 local/install_shorten.sh
-
-# TODO: copy data dir creation from ESPnet discophone
 
 train_set=""
 dev_set=""
@@ -111,11 +106,23 @@ function langname() {
   echo "$(basename "$1")"
 }
 
+phone_token_opt='--phones'
+if [ $phone_tokens = true ]; then
+  phone_token_opt='--phone-tokens'
+fi
+
+# This step will create the data directories for GlobalPhone and Babel languages.
+# It's also going to use LanguageNet G2P models to convert text into phonetic transcripts.
+# Depending on the settings, it will either transcribe into phones, e.g. ([m], [i:], [t]), or
+# phonetic tokens, e.g. (/m/, /i/, /:/, /t/).
+# The Kaldi "text" file will consist of these phonetic sequences, as we're trying to build
+# a universal IPA recognizer.
+# The lexicons are created separately for each split as an artifact from the ESPnet setup.
 if (($stage <= 0)) && (($stop_stage > 0 ))  ; then
   echo "stage 0: Setting up individual languages"
   echo "babel_langs: $babel_langs"
   echo "gp_langs: $gp_langs"
-  local/setup_languages_multilang.sh \
+  local/setup_languages.sh \
     --langs "${babel_langs}" \
     --recog "${babel_recog}" \
     --gp-langs "${gp_langs}" \
@@ -123,8 +130,9 @@ if (($stage <= 0)) && (($stop_stage > 0 ))  ; then
     --mboshi-train "${mboshi_train}" \
     --mboshi-recog "${mboshi_recog}" \
     --gp-romanized "${gp_romanized}" \
-    --ipa-transcript "${ipa_transcript}" \
-    --gp-path "${gp_path}"
+    --gp-path "${gp_path}" \
+    --phone_token_opt "${phone_token_opt}" \
+    --multilang true
   for x in ${train_set} ${dev_set} ${recog_set}; do
     sed -i.bak -e "s/$/ sox -R -t wav - -t wav - rate 16000 dither | /" data/${x}/wav.scp
   done
@@ -138,50 +146,85 @@ if (($stage <= 0)) && (($stop_stage > 0 ))  ; then
   done
 fi
 
-if (($stage <= 4)) && (($stop_stage > 4 )) ; then
-#  We will generate a universal lexicon dir: data/local/lang_universal and 
-#                      a universal lang dir: data/lang_universal; 
-#  data/lang_universal/words.txt come from multiple languages and each with a language suffix like _101. Pronunciations in data/lang_universal/phones/align_lexicon.txt use IPA phone symbols, same as in monolingual recipe 
-  mkdir -p data/local/lang_universal
+# Here we will combine the lexicons for train/dev/test splits into a single lexicon for each language.
+if ((stage <= 2)); then
   for data_dir in ${train_set}; do
-    lang_name="$(langname $data_dir)"
-    cp data/$data_dir/lexicon_ipa_suffix.txt data/local/lang_universal/lexicon_ipa_suffix_${lang_name}.txt
+    lang_name=$(langname $data_dir)
+    mkdir -p data/local/$lang_name
+    python3 local/combine_lexicons.py \
+      data/$data_dir/lexicon_ipa.txt \
+      data/${data_dir//train/dev}/lexicon_ipa.txt \
+      data/${data_dir//train/eval}/lexicon_ipa.txt \
+      >data/$data_dir/lexicon_ipa_all.txt
+    python3 local/prepare_lexicon_dir.py $phone_token_opt data/$data_dir/lexicon_ipa_all.txt data/local/$lang_name
   done
-  cat data/local/lang_universal/lexicon_ipa_suffix*.txt > data/local/lang_universal/lexicon_ipa_suffix_universal.txt
-  python local/prepare_lexicon_dir.py --phone-tokens data/local/lang_universal/lexicon_ipa_suffix_universal.txt data/local/lang_universal
-  utils/prepare_lang.sh \
-    --share-silence-phones true \
-    data/local/lang_universal '<unk>' data/local/tmp.lang_universal data/lang_universal
 fi
+
+# We use the per-language lexicons to find the set of phones/phonetic tokens in every language and combine
+# them again to obtain a multilingual "dummy" lexicon of the form:
+# a a
+# b b
+# c c
+# ...
+# When that is ready, we train a multilingual phone-level language model (i.e. phonotactic model),
+# that will be used to compile the decoding graph and to score each ASR system.
+if ((stage <= 3)); then
+  local/prepare_ipa_lm.sh \
+    --train-set "$train_set" \
+    --phone_token_opt "$phone_token_opt" \
+    --order "$phone_ngram_order"
+  lexicon_list=$(find data/ipa_lm/train -name lexiconp.txt)
+  mkdir -p data/local/dict_combined/local
+  python3 local/combine_lexicons.py $lexicon_list >data/local/dict_combined/local/lexiconp.txt
+  python3 local/prepare_lexicon_dir.py data/local/dict_combined/local/lexiconp.txt data/local/dict_combined
+  utils/prepare_lang.sh \
+    --position-dependent-phones false \
+    data/local/dict_combined \
+    "<unk>" data/local/dict_combined data/lang_combined
+  LM=data/ipa_lm/train_all/srilm.o${phone_ngram_order}g.kn.gz
+  utils/format_lm.sh data/lang_combined "$LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
+fi
+
+# TODO: figure out how to merge these changes
+#if (($stage <= 4)) && (($stop_stage > 4 )) ; then
+##  We will generate a universal lexicon dir: data/local/lang_universal and
+##                      a universal lang dir: data/lang_universal;
+##  data/lang_universal/words.txt come from multiple languages and each with a language suffix like _101. Pronunciations in data/lang_universal/phones/align_lexicon.txt use IPA phone symbols, same as in monolingual recipe
+#  mkdir -p data/local/lang_universal
+#  for data_dir in ${train_set}; do
+#    lang_name="$(langname $data_dir)"
+#    cp data/$data_dir/lexicon_ipa_suffix.txt data/local/lang_universal/lexicon_ipa_suffix_${lang_name}.txt
+#  done
+#  cat data/local/lang_universal/lexicon_ipa_suffix*.txt > data/local/lang_universal/lexicon_ipa_suffix_universal.txt
+#  python local/prepare_lexicon_dir.py --phone-tokens data/local/lang_universal/lexicon_ipa_suffix_universal.txt data/local/lang_universal
+#  utils/prepare_lang.sh \
+#    --share-silence-phones true \
+#    data/local/lang_universal '<unk>' data/local/tmp.lang_universal data/lang_universal
+#fi
 
 if (($stage <= 5)) && (($stop_stage > 5 )) ; then
   # Feature extraction
-#  for data_dir in ${train_set}; do
-#    #(
-#      lang_name=$(langname $data_dir)
-#      steps/make_mfcc.sh \
-#        --cmd "$train_cmd" \
-#        --nj $extract_feat_nj \
-#        --write_utt2num_frames true \
-#        data/$data_dir \
-#        exp/make_mfcc/$data_dir \
-#        mfcc
-#      utils/fix_data_dir.sh data/$data_dir
-#      steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
-#   # ) &
-#   # sleep 2
-#  done
-#  wait
+  for data_dir in ${train_set}; do
+    (
+      lang_name=$(langname $data_dir)
+      steps/make_mfcc.sh \
+        --cmd "$train_cmd" \
+        --nj $extract_feat_nj \
+        --write_utt2num_frames true \
+        "data/$data_dir" \
+        "exp/make_mfcc/$data_dir" \
+        mfcc
+      utils/fix_data_dir.sh data/$data_dir
+      steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
+    ) &
+    sleep 2
+  done
+  wait
   echo "combine data dirs to a universal data dir in data/universal"
   echo "train_set_data: $train_set_data"
   utils/combine_data.sh data/universal/train $train_set_data 
   utils/validate_data_dir.sh data/universal/train || exit 1;
   echo "$train_set" > data/universal/train/original_data_dirs.txt   
-
-#  We don't merge dev or eval data from multiple languages here
-#  echo "dev_set_data: $dev_set_data" 
-#  utils/combine_data.sh data/universal/dev $dev_set_data
-#  echo "$dev_set" > data/universal/dev/original_data_dirs.txt 
 fi
 
 if (($stage <= 6)) && (($stop_stage > 6 )) ; then
@@ -207,12 +250,7 @@ if (($stage <= 6)) && (($stop_stage > 6 )) ; then
     fi
 fi
 
-
-
-
-#######Replace below with 1-thread
-# From now on,  all data/lang/$lang_name is replaced by data/lang_universal
-data_dir=universal/train 
+data_dir=universal/train
 if (($stage <= 7))  && (($stop_stage > 7 )) ; then
   # Mono training
       expdir=exp/gmm/mono
@@ -256,16 +294,6 @@ if (($stage <= 9)) && (($stop_stage > 9 )) ; then
         data/lang_universal \
         exp/gmm/tri1_ali_200k \
         exp/gmm/tri2
-
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/subsets/200k/$data_dir \
-        data/lang_universal \
-        data/local/lang_universal \
-        exp/gmm/tri2 \
-        data/local/dictp/lang_universal/tri2 \
-        data/local/langp/lang_universal/tri2 \
-        data/langp/lang_universal/tri2
-  wait
 fi
 
 if (($stage <= 10)) && (($stop_stage > 10 )) ; then
@@ -283,15 +311,6 @@ if (($stage <= 10)) && (($stop_stage > 10 )) ; then
         data/langp/lang_universal/tri2 \
         exp/gmm/tri2_ali \
         exp/gmm/tri3
-
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang_universal \
-        data/local/lang_universal \
-        exp/gmm/tri3 \
-        data/local/dictp/lang_universal/tri3 \
-        data/local/langp/lang_universal/tri3 \
-        data/langp/lang_universal/tri3
 fi
 
 if (($stage <= 11)) && (($stop_stage > 11 )) ; then
@@ -311,15 +330,6 @@ if (($stage <= 11)) && (($stop_stage > 11 )) ; then
         data/langp/lang_universal/tri3 \
         exp/gmm/tri3_ali \
         exp/gmm/tri4
-
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang_universal \
-        data/local/lang_universal \
-        exp/gmm/tri4 \
-        data/local/dictp/lang_universal/tri4 \
-        data/local/langp/lang_universal/tri4 \
-        data/langp/lang_universal/tri4
 fi
 
 if (($stage <= 12)) && (($stop_stage > 12 )) ; then
@@ -339,16 +349,6 @@ if (($stage <= 12)) && (($stop_stage > 12 )) ; then
         data/langp/lang_universal/tri4 \
         exp/gmm/tri4_ali \
         exp/gmm/tri5
-
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang_universal \
-        data/local/lang_universal \
-        exp/gmm/tri5 \
-        data/local/dictp/lang_universal/tri5 \
-        data/local/langp/lang_universal/tri5 \
-        data/langp/lang_universal/tri5
-  wait
 fi
 
 if (($stage <= 13)) && (($stop_stage > 13 )) ; then
@@ -359,15 +359,6 @@ if (($stage <= 13)) && (($stop_stage > 13 )) ; then
         data/langp/lang_universal/tri5 \
         exp/gmm/tri5 \
         exp/gmm/tri5_ali
-
-      local/reestimate_langp.sh --cmd "$train_cmd" --unk "<unk>" \
-        data/$data_dir \
-        data/lang_universal \
-        data/local/lang_universal \
-        exp/gmm/tri5_ali \
-        data/local/dictp/lang_universal/tri5_ali \
-        data/local/langp/lang_universal/tri5_ali \
-        data/langp/lang_universal/tri5_ali
 fi
 
 #Uncomment this if you intend to train Chain TDNNF AM in next steps

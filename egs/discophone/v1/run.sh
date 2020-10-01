@@ -104,6 +104,7 @@ if ((stage <= 0)); then
     --mboshi-train "${mboshi_train}" \
     --mboshi-recog "${mboshi_recog}" \
     --gp-romanized "${gp_romanized}" \
+    --gp-path "${gp_path}" \
     --phone_token_opt "${phone_token_opt}"
   for x in ${train_set} ${dev_set} ${recog_set}; do
     sed -i.bak -e "s/$/ sox -R -t wav - -t wav - rate 16000 dither | /" data/${x}/wav.scp
