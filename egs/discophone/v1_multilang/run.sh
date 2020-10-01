@@ -70,7 +70,7 @@ for l in ${babel_langs}; do
 done
 train_set_data=""
 dev_set_data=""
-for l in ${babel_langs} ;do
+for l in ${babel_langs}; do
   train_set_data="data/$l/data/train_${l} ${train_set_data}"
   dev_set_data="data/$l/data/dev_${l} ${dev_set_data}"
 done
@@ -86,7 +86,6 @@ train_set=${train_set%% }
 dev_set=${dev_set%% }
 train_set_data=${train_set_data%% }
 dev_set_data=${dev_set_data%% }
-
 
 recog_set=""
 for l in ${babel_recog} ${gp_recog}; do
@@ -118,7 +117,7 @@ fi
 # The Kaldi "text" file will consist of these phonetic sequences, as we're trying to build
 # a universal IPA recognizer.
 # The lexicons are created separately for each split as an artifact from the ESPnet setup.
-if (($stage <= 0)) && (($stop_stage > 0 ))  ; then
+if (($stage <= 0)) && (($stop_stage > 0)); then
   echo "stage 0: Setting up individual languages"
   echo "babel_langs: $babel_langs"
   echo "gp_langs: $gp_langs"
@@ -202,7 +201,7 @@ fi
 #    data/local/lang_universal '<unk>' data/local/tmp.lang_universal data/lang_universal
 #fi
 
-if (($stage <= 5)) && (($stop_stage > 5 )) ; then
+if (($stage <= 5)) && (($stop_stage > 5)); then
   # Feature extraction
   for data_dir in ${train_set}; do
     (
@@ -222,143 +221,143 @@ if (($stage <= 5)) && (($stop_stage > 5 )) ; then
   wait
   echo "combine data dirs to a universal data dir in data/universal"
   echo "train_set_data: $train_set_data"
-  utils/combine_data.sh data/universal/train $train_set_data 
-  utils/validate_data_dir.sh data/universal/train || exit 1;
-  echo "$train_set" > data/universal/train/original_data_dirs.txt   
+  utils/combine_data.sh data/universal/train $train_set_data
+  utils/validate_data_dir.sh data/universal/train || exit 1
+  echo "$train_set" >data/universal/train/original_data_dirs.txt
 fi
 
-if (($stage <= 6)) && (($stop_stage > 6 )) ; then
+if (($stage <= 6)) && (($stop_stage > 6)); then
   # Prepare data dir subsets for monolingual training
-    numutt=$(cat data/universal/train/feats.scp | wc -l)
-    if [ $numutt -gt 50000 ]; then
-      utils/subset_data_dir.sh data/universal/train 50000 data/subsets/50k/universal/train
-    else
-      mkdir -p "$(dirname data/subsets/50k/universal/train)"
-      ln -s "$(pwd)/data/universal/train" "data/subsets/50k/universal/train"
-    fi
-    if [ $numutt -gt 100000 ]; then
-      utils/subset_data_dir.sh data/universal/train 100000 data/subsets/100k/universal/train
-    else
-      mkdir -p "$(dirname data/subsets/100k/universal/train)"
-      ln -s "$(pwd)/data/universal/train" "data/subsets/100k/universal/train"
-    fi
-    if [ $numutt -gt 200000 ]; then
-      utils/subset_data_dir.sh data/universal/train 200000 data/subsets/200k/universal/train
-    else
-      mkdir -p "$(dirname data/subsets/200k/universal/train)"
-      ln -s "$(pwd)/data/universal/train" "data/subsets/200k/universal/train"
-    fi
+  numutt=$(cat data/universal/train/feats.scp | wc -l)
+  if [ $numutt -gt 50000 ]; then
+    utils/subset_data_dir.sh data/universal/train 50000 data/subsets/50k/universal/train
+  else
+    mkdir -p "$(dirname data/subsets/50k/universal/train)"
+    ln -s "$(pwd)/data/universal/train" "data/subsets/50k/universal/train"
+  fi
+  if [ $numutt -gt 100000 ]; then
+    utils/subset_data_dir.sh data/universal/train 100000 data/subsets/100k/universal/train
+  else
+    mkdir -p "$(dirname data/subsets/100k/universal/train)"
+    ln -s "$(pwd)/data/universal/train" "data/subsets/100k/universal/train"
+  fi
+  if [ $numutt -gt 200000 ]; then
+    utils/subset_data_dir.sh data/universal/train 200000 data/subsets/200k/universal/train
+  else
+    mkdir -p "$(dirname data/subsets/200k/universal/train)"
+    ln -s "$(pwd)/data/universal/train" "data/subsets/200k/universal/train"
+  fi
 fi
 
 data_dir=universal/train
-if (($stage <= 7))  && (($stop_stage > 7 )) ; then
+if (($stage <= 7)) && (($stop_stage > 7)); then
   # Mono training
-      expdir=exp/gmm/mono
-      steps/train_mono.sh \
-        --nj $train_mono_nj --cmd "$train_cmd" \
-        data/subsets/50k/$data_dir \
-        data/lang_universal $expdir
+  expdir=exp/gmm/mono
+  steps/train_mono.sh \
+    --nj $train_mono_nj --cmd "$train_cmd" \
+    data/subsets/50k/$data_dir \
+    data/lang_universal $expdir
 fi
 
-if (($stage <= 8))  && (($stop_stage > 8 )) ; then
+if (($stage <= 8)) && (($stop_stage > 8)); then
   # Tri1 training
-      steps/align_si.sh \
-        --nj $train_mono_nj --cmd "$train_cmd" \
-        data/subsets/100k/$data_dir \
-        data/lang_universal \
-        exp/gmm/mono \
-        exp/gmm/mono_ali_100k
+  steps/align_si.sh \
+    --nj $train_mono_nj --cmd "$train_cmd" \
+    data/subsets/100k/$data_dir \
+    data/lang_universal \
+    exp/gmm/mono \
+    exp/gmm/mono_ali_100k
 
-      steps/train_deltas.sh \
-        --cmd "$train_cmd" \
-        $numLeavesTri1 \
-        $numGaussTri1 \
-        data/subsets/100k/$data_dir \
-        data/lang_universal \
-        exp/gmm/mono_ali_100k \
-        exp/gmm/tri1
+  steps/train_deltas.sh \
+    --cmd "$train_cmd" \
+    $numLeavesTri1 \
+    $numGaussTri1 \
+    data/subsets/100k/$data_dir \
+    data/lang_universal \
+    exp/gmm/mono_ali_100k \
+    exp/gmm/tri1
 fi
 
-if (($stage <= 9)) && (($stop_stage > 9 )) ; then
+if (($stage <= 9)) && (($stop_stage > 9)); then
   # Tri2 training
-      steps/align_si.sh \
-        --nj $train_tri2_nj --cmd "$train_cmd" \
-        data/subsets/200k/$data_dir \
-        data/lang_universal \
-        exp/gmm/tri1 \
-        exp/gmm/tri1_ali_200k
+  steps/align_si.sh \
+    --nj $train_tri2_nj --cmd "$train_cmd" \
+    data/subsets/200k/$data_dir \
+    data/lang_universal \
+    exp/gmm/tri1 \
+    exp/gmm/tri1_ali_200k
 
-      steps/train_deltas.sh \
-        --cmd "$train_cmd" $numLeavesTri2 $numGaussTri2 \
-        data/subsets/200k/$data_dir \
-        data/lang_universal \
-        exp/gmm/tri1_ali_200k \
-        exp/gmm/tri2
+  steps/train_deltas.sh \
+    --cmd "$train_cmd" $numLeavesTri2 $numGaussTri2 \
+    data/subsets/200k/$data_dir \
+    data/lang_universal \
+    exp/gmm/tri1_ali_200k \
+    exp/gmm/tri2
 fi
 
-if (($stage <= 10)) && (($stop_stage > 10 )) ; then
+if (($stage <= 10)) && (($stop_stage > 10)); then
   # Tri3 training
-      steps/align_si.sh \
-        --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir \
-        data/langp/lang_universal/tri2 \
-        exp/gmm/tri2 \
-        exp/gmm/tri2_ali
+  steps/align_si.sh \
+    --nj $train_nj --cmd "$train_cmd" \
+    data/$data_dir \
+    data/langp/lang_universal/tri2 \
+    exp/gmm/tri2 \
+    exp/gmm/tri2_ali
 
-      steps/train_deltas.sh \
-        --cmd "$train_cmd" $numLeavesTri3 $numGaussTri3 \
-        data/$data_dir \
-        data/langp/lang_universal/tri2 \
-        exp/gmm/tri2_ali \
-        exp/gmm/tri3
+  steps/train_deltas.sh \
+    --cmd "$train_cmd" $numLeavesTri3 $numGaussTri3 \
+    data/$data_dir \
+    data/langp/lang_universal/tri2 \
+    exp/gmm/tri2_ali \
+    exp/gmm/tri3
 fi
 
-if (($stage <= 11)) && (($stop_stage > 11 )) ; then
+if (($stage <= 11)) && (($stop_stage > 11)); then
   # Tri4 training
-      steps/align_si.sh \
-        --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir \
-        data/langp/lang_universal/tri3 \
-        exp/gmm/tri3 \
-        exp/gmm/tri3_ali
+  steps/align_si.sh \
+    --nj $train_nj --cmd "$train_cmd" \
+    data/$data_dir \
+    data/langp/lang_universal/tri3 \
+    exp/gmm/tri3 \
+    exp/gmm/tri3_ali
 
-      steps/train_lda_mllt.sh \
-        --cmd "$train_cmd" \
-        $numLeavesMLLT \
-        $numGaussMLLT \
-        data/$data_dir \
-        data/langp/lang_universal/tri3 \
-        exp/gmm/tri3_ali \
-        exp/gmm/tri4
+  steps/train_lda_mllt.sh \
+    --cmd "$train_cmd" \
+    $numLeavesMLLT \
+    $numGaussMLLT \
+    data/$data_dir \
+    data/langp/lang_universal/tri3 \
+    exp/gmm/tri3_ali \
+    exp/gmm/tri4
 fi
 
-if (($stage <= 12)) && (($stop_stage > 12 )) ; then
+if (($stage <= 12)) && (($stop_stage > 12)); then
   # Tri5 training
-      steps/align_si.sh \
-        --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir \
-        data/langp/lang_universal/tri4 \
-        exp/gmm/tri4 \
-        exp/gmm/tri4_ali
+  steps/align_si.sh \
+    --nj $train_nj --cmd "$train_cmd" \
+    data/$data_dir \
+    data/langp/lang_universal/tri4 \
+    exp/gmm/tri4 \
+    exp/gmm/tri4_ali
 
-      steps/train_sat.sh \
-        --cmd "$train_cmd" \
-        $numLeavesSAT \
-        $numGaussSAT \
-        data/$data_dir \
-        data/langp/lang_universal/tri4 \
-        exp/gmm/tri4_ali \
-        exp/gmm/tri5
+  steps/train_sat.sh \
+    --cmd "$train_cmd" \
+    $numLeavesSAT \
+    $numGaussSAT \
+    data/$data_dir \
+    data/langp/lang_universal/tri4 \
+    exp/gmm/tri4_ali \
+    exp/gmm/tri5
 fi
 
-if (($stage <= 13)) && (($stop_stage > 13 )) ; then
+if (($stage <= 13)) && (($stop_stage > 13)); then
   # Tri5 alignments
-      steps/align_fmllr.sh \
-        --nj $train_nj --cmd "$train_cmd" \
-        data/$data_dir \
-        data/langp/lang_universal/tri5 \
-        exp/gmm/tri5 \
-        exp/gmm/tri5_ali
+  steps/align_fmllr.sh \
+    --nj $train_nj --cmd "$train_cmd" \
+    data/$data_dir \
+    data/langp/lang_universal/tri5 \
+    exp/gmm/tri5 \
+    exp/gmm/tri5_ali
 fi
 
 #Uncomment this if you intend to train Chain TDNNF AM in next steps
