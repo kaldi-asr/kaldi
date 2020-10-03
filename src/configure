@@ -1025,7 +1025,28 @@ elif [ "`uname`" == "Darwin" ]; then
   OSX_VER_NUM=$(echo $OSX_VER | sed 's/\./ /g' | xargs printf "%d%02d")
   echo "Configuring for OS X version $OSX_VER ..."
   if [ $OSX_VER_NUM -ge 1005 ]; then
-    cat makefiles/darwin.mk >> kaldi.mk
+    if [ "$MATHLIB" == "CLAPACK" ]; then
+      if [ -z "$CLAPACKROOT" ]; then
+          failure "Must specify the location of CLAPACK with --clapack-root option (and it must exist)"
+      fi
+      if [ ! -f ../tools/CLAPACK/clapack.h ]; then
+          failure "could not find file ../tools/CLAPACK/clapack.h"
+      fi
+      if [ ! -d "$CLAPACKROOT" ]; then
+          failure "The directory $CLAPACKROOT does not exist"
+      fi
+      # Also check for cblas.h and f2c.h
+      echo "Using CLAPACK libs from $CLAPACKROOT as the linear algebra library."
+      echo "CLAPACKROOT = $CLAPACKROOT" >> kaldi.mk
+      if [ ! -f makefiles/darwin_clapack.mk ]; then
+          failure "makefiles/darwin_clapack.mk not found."
+      fi
+      cat makefiles/darwin_clapack.mk >> kaldi.mk
+      echo "Warning (CLAPACK): this part of the configure process is not properly tested and may not work."
+      echo "Successfully configured for Darwin with CLAPACK libs from $CLAPACKROOT"
+    else
+      cat makefiles/darwin.mk >> kaldi.mk
+    fi
   else
     failure "Mac OS X version '$OSX_VER' is not supported."
   fi
@@ -1143,6 +1164,7 @@ elif [ "`uname`" == "Linux" ]; then
     if [[ "$TARGET_ARCH" == arm* ]]; then
       cat makefiles/linux_clapack_arm.mk >> kaldi.mk
     else
+      echo "CLAPACKROOT = $CLAPACKROOT" >> kaldi.mk
       cat makefiles/linux_clapack.mk >> kaldi.mk
     fi
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and may not work."

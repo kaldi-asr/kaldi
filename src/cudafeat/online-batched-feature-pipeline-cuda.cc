@@ -65,12 +65,10 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
   }
 
   if (info_.use_cmvn) {
-    KALDI_ASSERT(info_.global_cmvn_stats_rxfilename != "");
-
-    Matrix<double> global_cmvn_stats;
-    ReadKaldiObject(info_.global_cmvn_stats_rxfilename, &global_cmvn_stats);
-
-    OnlineCmvnState cmvn_state(global_cmvn_stats);
+    if (info_.global_cmvn_stats.NumCols() == 0) {
+      KALDI_ERR << "global_cmvn_stats for OnlineCmvn must be non-empty.";
+    }
+    OnlineCmvnState cmvn_state(info_.global_cmvn_stats);
     CudaOnlineCmvnState cu_cmvn_state(cmvn_state);
 
     // TODO do we want to parameterize stats coarsening factor?
