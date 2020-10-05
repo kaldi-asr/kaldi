@@ -4,6 +4,10 @@
 # neural network layers are resnet-style TDNN-F model.
 set -e -o pipefail
 
+# Note: to run this with models trained on language-suffix-word-level supervisions,
+# use data/lang_universal_test instead
+langdir=data/lang_combined_test
+
 # BABEL TRAIN:
 # Amharic - 307
 # Bengali - 103
@@ -132,7 +136,6 @@ data_dir=$train_set
 lang_name=universal
 
 gmm_dir=exp/gmm/$gmm
-langdir=data/langp/lang_${lang_name}/tri5_ali
 ali_dir=exp/gmm/${gmm}_ali
 tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}${data_aug_suffix}_lats

@@ -17,14 +17,14 @@ function langname() {
 }
 
 # Prepare phone lexicons and training texts for each language
+mkdir -p data/ipa_lm
 for data_dir in $train_set; do
   lang_name=$(langname $data_dir)
-  mkdir -p data/ipa_lm
   # Create a lexicon directory with LM training IPA texts
   python3 local/prepare_ipa_lm_text.py \
     $phone_token_opt \
     data/$data_dir/lexicon_ipa_all.txt \
-    data/$data_dir/text \
+    data/$data_dir/text.bkp \
     data/ipa_lm/train/$lang_name
   # Create a lexicon directory with LM dev IPA texts - we will ignore the lexicons here and just use the texts
   dev_data_dir=${data_dir//train/dev}

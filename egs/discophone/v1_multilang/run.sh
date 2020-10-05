@@ -6,13 +6,21 @@
 set -eou pipefail
 
 stage=0
-stop_stage=1
+stop_stage=500
 train_nj=24
 extract_feat_nj=8
-train_mono_nj=1
-train_tri2_nj=1
-phone_tokens=false
+train_mono_nj=8
 phone_ngram_order=2
+word_ngram_order=3
+# When phone_tokens is false, we will use regular phones (e.g. /ae/) as our basic phonetic unit.
+# Otherwise, we will split them up to characters (e.g. /ae/ -> /a/, /e/).
+phone_tokens=false
+# When use_word_supervisions is true, we will add a language suffix to each word
+# (e.g. "cat" -> "cat_English") and use these transcripts to train a word-level
+# language model and the lang directory for model training.
+# Otherwise, we will use phones themselves as "fake words"
+# (e.g. text will be "k ae t" instead of "cat_English")
+use_word_supervisions=false
 
 # Acoustic model parameters
 numLeavesTri1=1000
@@ -136,7 +144,11 @@ if (($stage <= 0)) && (($stop_stage > 0)); then
   for x in ${train_set} ${dev_set} ${recog_set}; do
     sed -i.bak -e "s/$/ sox -R -t wav - -t wav - rate 16000 dither | /" data/${x}/wav.scp
   done
+fi
 
+# Repair step if you changed your mind regarding word supervisions after running a few steps...
+
+if $use_word_supervisions; then
   for data_dir in ${train_set}; do
     if [ -f data/$data_dir/text.bkp_suffix ]; then
       # replace IPA text with normal text (word having language suffix e.g. _Czech
@@ -144,10 +156,18 @@ if (($stage <= 0)) && (($stop_stage > 0)); then
       cp data/$data_dir/text.bkp_suffix data/$data_dir/text
     fi
   done
+else
+  for data_dir in ${train_set}; do
+    if [ -f data/$data_dir/text.bkp_suffix ]; then
+      # replace IPA text with normal text (word having language suffix e.g. _Czech
+      #cp data/$data_dir/text.bkp data/$data_dir/text
+      cp data/$data_dir/text.ipa data/$data_dir/text
+    fi
+  done
 fi
 
 # Here we will combine the lexicons for train/dev/test splits into a single lexicon for each language.
-if ((stage <= 2)); then
+if ((stage <= 2)) && ((stop_stage > 2)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
     mkdir -p data/local/$lang_name
@@ -168,7 +188,7 @@ fi
 # ...
 # When that is ready, we train a multilingual phone-level language model (i.e. phonotactic model),
 # that will be used to compile the decoding graph and to score each ASR system.
-if ((stage <= 3)); then
+if ((stage <= 3)) && ((stop_stage > 3)); then
   local/prepare_ipa_lm.sh \
     --train-set "$train_set" \
     --phone_token_opt "$phone_token_opt" \
@@ -179,28 +199,43 @@ if ((stage <= 3)); then
   python3 local/prepare_lexicon_dir.py data/local/dict_combined/local/lexiconp.txt data/local/dict_combined
   utils/prepare_lang.sh \
     --position-dependent-phones false \
-    data/local/dict_combined \
-    "<unk>" data/local/dict_combined data/lang_combined
-  LM=data/ipa_lm/train_all/srilm.o${phone_ngram_order}g.kn.gz
-  utils/format_lm.sh data/lang_combined "$LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
+    data/local/dict_combined "<unk>" data/local/dict_combined data/lang_combined
+  PHONE_LM=data/ipa_lm/train_all/srilm.o${phone_ngram_order}g.kn.gz
+  utils/format_lm.sh data/lang_combined "$PHONE_LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
 fi
 
-# TODO: figure out how to merge these changes
-#if (($stage <= 4)) && (($stop_stage > 4 )) ; then
-##  We will generate a universal lexicon dir: data/local/lang_universal and
-##                      a universal lang dir: data/lang_universal;
-##  data/lang_universal/words.txt come from multiple languages and each with a language suffix like _101. Pronunciations in data/lang_universal/phones/align_lexicon.txt use IPA phone symbols, same as in monolingual recipe
-#  mkdir -p data/local/lang_universal
-#  for data_dir in ${train_set}; do
-#    lang_name="$(langname $data_dir)"
-#    cp data/$data_dir/lexicon_ipa_suffix.txt data/local/lang_universal/lexicon_ipa_suffix_${lang_name}.txt
-#  done
-#  cat data/local/lang_universal/lexicon_ipa_suffix*.txt > data/local/lang_universal/lexicon_ipa_suffix_universal.txt
-#  python local/prepare_lexicon_dir.py --phone-tokens data/local/lang_universal/lexicon_ipa_suffix_universal.txt data/local/lang_universal
-#  utils/prepare_lang.sh \
-#    --share-silence-phones true \
-#    data/local/lang_universal '<unk>' data/local/tmp.lang_universal data/lang_universal
-#fi
+if (($stage <= 4)) && (($stop_stage > 4)) ; then
+#  We will generate a universal lexicon dir: data/local/lang_universal and
+#                      a universal lang dir: data/lang_universal;
+#  data/lang_universal/words.txt come from multiple languages and each with a language suffix like _101.
+#  Pronunciations in data/lang_universal/phones/align_lexicon.txt use IPA phone symbols, same as in monolingual recipe
+  mkdir -p data/local/lang_universal
+  for data_dir in ${train_set}; do
+    lang_name="$(langname $data_dir)"
+    cp data/$data_dir/lexicon_ipa_suffix.txt data/local/lang_universal/lexicon_ipa_suffix_${lang_name}.txt
+  done
+  # Create a language-universal lexicon; each word has a language-suffix like "word_English word_Czech";
+  # Because of that we can just concatenate and sort the lexicons.
+  cat data/local/lang_universal/lexicon_ipa_suffix*.txt \
+    | sort \
+    > data/local/lang_universal/lexicon_ipa_suffix_universal.txt
+  # Create a regular Kaldi dict dir using the combined lexicon.
+  python3 local/prepare_lexicon_dir.py \
+    $phone_token_opt \
+    data/local/lang_universal/lexicon_ipa_suffix_universal.txt \
+    data/local/lang_universal
+  # Create a regular Kaldi lang dir using the combined lexicon.
+  utils/prepare_lang.sh \
+    --position-dependent-phones false \
+    --share-silence-phones true \
+    data/local/lang_universal '<unk>' data/local/tmp.lang_universal data/lang_universal
+  # Train the LM and evaluate on the dev set transcripts
+  local/prepare_word_lm.sh \
+    --train-set "$train_set" \
+    --order "$word_ngram_order"
+  WORD_LM=data/word_lm/train_all/srilm.o${word_ngram_order}g.kn.gz
+  utils/format_lm.sh data/lang_universal "$WORD_LM" data/local/lang_universal/lexicon_ipa_suffix_universal.txt data/lang_universal_test
+fi
 
 if (($stage <= 5)) && (($stop_stage > 5)); then
   # Feature extraction
@@ -250,6 +285,11 @@ if (($stage <= 6)) && (($stop_stage > 6)); then
   fi
 fi
 
+lang=data/lang_combined_test
+if $use_word_supervisions; then
+  lang=data/lang_universal_test
+fi
+
 data_dir=universal/train
 if (($stage <= 7)) && (($stop_stage > 7)); then
   # Mono training
@@ -257,15 +297,15 @@ if (($stage <= 7)) && (($stop_stage > 7)); then
   steps/train_mono.sh \
     --nj $train_mono_nj --cmd "$train_cmd" \
     data/subsets/50k/$data_dir \
-    data/lang_universal $expdir
+    $lang $expdir
 fi
 
 if (($stage <= 8)) && (($stop_stage > 8)); then
   # Tri1 training
   steps/align_si.sh \
-    --nj $train_mono_nj --cmd "$train_cmd" \
+    --nj $train_nj --cmd "$train_cmd" \
     data/subsets/100k/$data_dir \
-    data/lang_universal \
+    $lang \
     exp/gmm/mono \
     exp/gmm/mono_ali_100k
 
@@ -274,7 +314,7 @@ if (($stage <= 8)) && (($stop_stage > 8)); then
     $numLeavesTri1 \
     $numGaussTri1 \
     data/subsets/100k/$data_dir \
-    data/lang_universal \
+    $lang \
     exp/gmm/mono_ali_100k \
     exp/gmm/tri1
 fi
@@ -282,16 +322,16 @@ fi
 if (($stage <= 9)) && (($stop_stage > 9)); then
   # Tri2 training
   steps/align_si.sh \
-    --nj $train_tri2_nj --cmd "$train_cmd" \
+    --nj $train_nj --cmd "$train_cmd" \
     data/subsets/200k/$data_dir \
-    data/lang_universal \
+    $lang \
     exp/gmm/tri1 \
     exp/gmm/tri1_ali_200k
 
   steps/train_deltas.sh \
     --cmd "$train_cmd" $numLeavesTri2 $numGaussTri2 \
     data/subsets/200k/$data_dir \
-    data/lang_universal \
+    $lang \
     exp/gmm/tri1_ali_200k \
     exp/gmm/tri2
 fi
@@ -308,7 +348,7 @@ if (($stage <= 10)) && (($stop_stage > 10)); then
   steps/train_deltas.sh \
     --cmd "$train_cmd" $numLeavesTri3 $numGaussTri3 \
     data/$data_dir \
-    data/langp/lang_universal/tri2 \
+    $lang \
     exp/gmm/tri2_ali \
     exp/gmm/tri3
 fi
@@ -318,7 +358,7 @@ if (($stage <= 11)) && (($stop_stage > 11)); then
   steps/align_si.sh \
     --nj $train_nj --cmd "$train_cmd" \
     data/$data_dir \
-    data/langp/lang_universal/tri3 \
+    $lang \
     exp/gmm/tri3 \
     exp/gmm/tri3_ali
 
@@ -327,7 +367,7 @@ if (($stage <= 11)) && (($stop_stage > 11)); then
     $numLeavesMLLT \
     $numGaussMLLT \
     data/$data_dir \
-    data/langp/lang_universal/tri3 \
+    $lang \
     exp/gmm/tri3_ali \
     exp/gmm/tri4
 fi
@@ -337,7 +377,7 @@ if (($stage <= 12)) && (($stop_stage > 12)); then
   steps/align_si.sh \
     --nj $train_nj --cmd "$train_cmd" \
     data/$data_dir \
-    data/langp/lang_universal/tri4 \
+    $lang \
     exp/gmm/tri4 \
     exp/gmm/tri4_ali
 
@@ -346,7 +386,7 @@ if (($stage <= 12)) && (($stop_stage > 12)); then
     $numLeavesSAT \
     $numGaussSAT \
     data/$data_dir \
-    data/langp/lang_universal/tri4 \
+    $lang \
     exp/gmm/tri4_ali \
     exp/gmm/tri5
 fi
@@ -356,10 +396,10 @@ if (($stage <= 13)) && (($stop_stage > 13)); then
   steps/align_fmllr.sh \
     --nj $train_nj --cmd "$train_cmd" \
     data/$data_dir \
-    data/langp/lang_universal/tri5 \
+    $lang \
     exp/gmm/tri5 \
     exp/gmm/tri5_ali
 fi
 
-#Uncomment this if you intend to train Chain TDNNF AM in next steps
-#bash local/chain_multilang/tuning/run_tdnn_1g.sh
+# Uncomment this if you intend to train Chain TDNNF AM in next steps
+# bash local/chain_multilang/tuning/run_tdnn_1g.sh --langdir $lang
