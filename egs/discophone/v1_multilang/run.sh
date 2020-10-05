@@ -167,7 +167,7 @@ else
 fi
 
 # Here we will combine the lexicons for train/dev/test splits into a single lexicon for each language.
-if ((stage <= 2)) && ((stop_stage > 2)); then
+if ((stage <= 1)) && ((stop_stage > 1)); then
   for data_dir in ${train_set}; do
     lang_name=$(langname $data_dir)
     mkdir -p data/local/$lang_name
@@ -188,7 +188,7 @@ fi
 # ...
 # When that is ready, we train a multilingual phone-level language model (i.e. phonotactic model),
 # that will be used to compile the decoding graph and to score each ASR system.
-if ((stage <= 3)) && ((stop_stage > 3)); then
+if ((stage <= 2)) && ((stop_stage > 2)); then
   local/prepare_ipa_lm.sh \
     --train-set "$train_set" \
     --phone_token_opt "$phone_token_opt" \
@@ -204,7 +204,7 @@ if ((stage <= 3)) && ((stop_stage > 3)); then
   utils/format_lm.sh data/lang_combined "$PHONE_LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
 fi
 
-if (($stage <= 4)) && (($stop_stage > 4)); then
+if (($stage <= 3)) && (($stop_stage > 3)); then
   #  We will generate a universal lexicon dir: data/local/lang_universal and
   #                      a universal lang dir: data/lang_universal;
   #  data/lang_universal/words.txt come from multiple languages and each with a language suffix like _101.
@@ -237,7 +237,7 @@ if (($stage <= 4)) && (($stop_stage > 4)); then
   utils/format_lm.sh data/lang_universal "$WORD_LM" data/local/lang_universal/lexicon_ipa_suffix_universal.txt data/lang_universal_test
 fi
 
-if (($stage <= 5)) && (($stop_stage > 5)); then
+if (($stage <= 4)) && (($stop_stage > 4)); then
   # Feature extraction
   for data_dir in ${train_set}; do
     (
@@ -255,6 +255,9 @@ if (($stage <= 5)) && (($stop_stage > 5)); then
     sleep 2
   done
   wait
+fi
+
+if (($stage <= 5)) && (($stop_stage > 5)); then
   echo "combine data dirs to a universal data dir in data/universal"
   echo "train_set_data: $train_set_data"
   utils/combine_data.sh data/universal/train $train_set_data
