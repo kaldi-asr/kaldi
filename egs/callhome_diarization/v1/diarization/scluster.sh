@@ -16,6 +16,8 @@ nj=10
 cleanup=true
 rttm_channel=0
 reco2num_spk=
+rttm_affix=
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -88,7 +90,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: computing RTTM"
-  diarization/make_rttm.py --rttm-channel $rttm_channel $srcdir/segments $dir/labels $dir/rttm || exit 1;
+  diarization/make_rttm.py --rttm-channel $rttm_channel $srcdir/segments $dir/labels $dir/rttm${rttm_affix} || exit 1;
 fi
 
 if $cleanup ; then
