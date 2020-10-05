@@ -21,11 +21,11 @@ for data_dir in $train_set; do
   # Create a directory with LM training language-suffix-words texts
   # Train set
   mkdir -p data/word_lm/train/$lang_name
-  cat data/$data_dir/text.bkp_suffix | cut -f2- -d' ' > data/word_lm/train/$lang_name/word_suffix_text
+  cat data/$data_dir/text.bkp_suffix | cut -f2- -d' ' >data/word_lm/train/$lang_name/word_suffix_text
   # Dev set
   dev_data_dir=${data_dir//train/dev}
   mkdir -p data/word_lm/dev/$lang_name
-  cat data/$dev_data_dir/text.bkp_suffix | cut -f2- -d' ' > data/word_lm/dev/$lang_name/word_suffix_text
+  cat data/$dev_data_dir/text.bkp_suffix | cut -f2- -d' ' >data/word_lm/dev/$lang_name/word_suffix_text
 done
 
 # Concatenate all languages train texts and train the LM.

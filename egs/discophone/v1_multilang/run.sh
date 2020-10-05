@@ -7,9 +7,9 @@ set -eou pipefail
 
 stage=0
 stop_stage=500
-train_nj=24
 extract_feat_nj=8
-train_mono_nj=8
+early_train_nj=24
+train_nj=60
 phone_ngram_order=2
 word_ngram_order=3
 # When phone_tokens is false, we will use regular phones (e.g. /ae/) as our basic phonetic unit.
@@ -204,11 +204,11 @@ if ((stage <= 3)) && ((stop_stage > 3)); then
   utils/format_lm.sh data/lang_combined "$PHONE_LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
 fi
 
-if (($stage <= 4)) && (($stop_stage > 4)) ; then
-#  We will generate a universal lexicon dir: data/local/lang_universal and
-#                      a universal lang dir: data/lang_universal;
-#  data/lang_universal/words.txt come from multiple languages and each with a language suffix like _101.
-#  Pronunciations in data/lang_universal/phones/align_lexicon.txt use IPA phone symbols, same as in monolingual recipe
+if (($stage <= 4)) && (($stop_stage > 4)); then
+  #  We will generate a universal lexicon dir: data/local/lang_universal and
+  #                      a universal lang dir: data/lang_universal;
+  #  data/lang_universal/words.txt come from multiple languages and each with a language suffix like _101.
+  #  Pronunciations in data/lang_universal/phones/align_lexicon.txt use IPA phone symbols, same as in monolingual recipe
   mkdir -p data/local/lang_universal
   for data_dir in ${train_set}; do
     lang_name="$(langname $data_dir)"
@@ -216,9 +216,9 @@ if (($stage <= 4)) && (($stop_stage > 4)) ; then
   done
   # Create a language-universal lexicon; each word has a language-suffix like "word_English word_Czech";
   # Because of that we can just concatenate and sort the lexicons.
-  cat data/local/lang_universal/lexicon_ipa_suffix*.txt \
-    | sort \
-    > data/local/lang_universal/lexicon_ipa_suffix_universal.txt
+  cat data/local/lang_universal/lexicon_ipa_suffix*.txt |
+    sort \
+      >data/local/lang_universal/lexicon_ipa_suffix_universal.txt
   # Create a regular Kaldi dict dir using the combined lexicon.
   python3 local/prepare_lexicon_dir.py \
     $phone_token_opt \
@@ -295,7 +295,7 @@ if (($stage <= 7)) && (($stop_stage > 7)); then
   # Mono training
   expdir=exp/gmm/mono
   steps/train_mono.sh \
-    --nj $train_mono_nj --cmd "$train_cmd" \
+    --nj $early_train_nj --cmd "$train_cmd" \
     data/subsets/50k/$data_dir \
     $lang $expdir
 fi
@@ -303,7 +303,7 @@ fi
 if (($stage <= 8)) && (($stop_stage > 8)); then
   # Tri1 training
   steps/align_si.sh \
-    --nj $train_nj --cmd "$train_cmd" \
+    --nj $early_train_nj --cmd "$train_cmd" \
     data/subsets/100k/$data_dir \
     $lang \
     exp/gmm/mono \
@@ -322,7 +322,7 @@ fi
 if (($stage <= 9)) && (($stop_stage > 9)); then
   # Tri2 training
   steps/align_si.sh \
-    --nj $train_nj --cmd "$train_cmd" \
+    --nj $early_train_nj --cmd "$train_cmd" \
     data/subsets/200k/$data_dir \
     $lang \
     exp/gmm/tri1 \
