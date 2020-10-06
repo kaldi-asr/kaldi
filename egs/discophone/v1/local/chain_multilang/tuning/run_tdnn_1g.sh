@@ -35,13 +35,13 @@ gp_recog="${gp_langs}"
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0
-stop_stage=1
+stop_stage=500
 num_epochs=4
 get_egs_stage=0
 nj=30
-nj_align_fmllr_lats=1
-num_jobs_initial=1
-num_jobs_final=1
+nj_align_fmllr_lats=100
+num_jobs_initial=4
+num_jobs_final=4
 #train_set=train
 gmm=tri5 # the gmm for the target data
 num_threads_ubm=12

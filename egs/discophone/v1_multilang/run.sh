@@ -344,7 +344,7 @@ if (($stage <= 10)) && (($stop_stage > 10)); then
   steps/align_si.sh \
     --nj $train_nj --cmd "$train_cmd" \
     data/$data_dir \
-    data/langp/lang_universal/tri2 \
+    $lang \
     exp/gmm/tri2 \
     exp/gmm/tri2_ali
 

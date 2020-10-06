@@ -129,6 +129,7 @@ done
 #
 if [ $stage -le 3 ] && [ $stop_stage -gt 3  ]   ; then
   echo "$0: creating high-resolution MFCC features"
+  mfccdir=mfcc${data_aug_suffix}_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     utils/create_split_dir.pl \
       /export/b0{5,6,7,8}/$USER/kaldi-data/mfcc/babel-$(date +'%m_%d_%H_%M')/s5d/$RANDOM/$mfccdir/storage $mfccdir/storage
@@ -139,7 +140,6 @@ if [ $stage -le 3 ] && [ $stop_stage -gt 3  ]   ; then
 #  for datadir in ${train_set}${data_aug_suffix} ; do
   datadir=$train_set
   utils/copy_data_dir.sh data/$datadir data/${datadir}${data_aug_suffix}_hires
-  mfccdir=mfcc${data_aug_suffix}_hires
   steps/make_mfcc_pitch.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
     --cmd "$train_cmd" \
     data/${datadir}${data_aug_suffix}_hires exp/make_mfcc_hires/${datadir} $mfccdir
