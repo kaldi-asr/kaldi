@@ -3,7 +3,6 @@
 
 set -eu -o pipefail
 
-
 # This script is called from local/nnet3/run_tdnn.sh and local/chain/run_tdnn.sh (and may eventually
 # be called by more scripts).  It contains the common feature preparation and iVector-related parts
 # of the script.  See those scripts for examples of usage.
@@ -38,10 +37,10 @@ diag_ubm_train_nj=30
 ivec_train_nj=10
 extract_ivec_nj=30
 
-train_set=universal/train   # i.e. exists ./data/universal/train which contains all 13 multilangs
-gmm=tri5          # This specifies a GMM-dir from the features
-                          # of the type you're training the system on;
-                          # it should contain alignments for 'train_set'.
+train_set=universal/train # i.e. exists ./data/universal/train which contains all 13 multilangs
+gmm=tri5                  # This specifies a GMM-dir from the features
+# of the type you're training the system on;
+# it should contain alignments for 'train_set'.
 #langdir=data/langp/tri5_ali
 
 num_threads_ubm=12
@@ -62,20 +61,17 @@ nnet3_affix= #_cleaned
 
 . ./utils/parse_options.sh
 
-
 #train_set_hires=""
 dev_set=""
 #dev_set_hires=""
-for l in  ${babel_langs}; do
+for l in ${babel_langs}; do
 
   dev_set="$l/data/dev_${l} ${dev_set}"
-#  dev_set_hires="$l/data_mfcc_hires/dev_${l} ${dev_set_hires}"
+  #  dev_set_hires="$l/data_mfcc_hires/dev_${l} ${dev_set_hires}"
 done
 for l in ${gp_langs}; do
   dev_set="GlobalPhone/gp_${l}_dev ${dev_set}"
 done
-
-
 
 #train_set_hires=${train_set_hires%% }
 
@@ -127,19 +123,19 @@ done
 #    data/${train_set}_sp data/lang $gmm_dir $ali_dir || exit 1
 #fi
 #
-if [ $stage -le 3 ] && [ $stop_stage -gt 3  ]   ; then
+if [ $stage -le 3 ] && [ $stop_stage -gt 3 ]; then
   echo "$0: creating high-resolution MFCC features"
+  mfccdir=mfcc${data_aug_suffix}_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     utils/create_split_dir.pl \
       /export/b0{5,6,7,8}/$USER/kaldi-data/mfcc/babel-$(date +'%m_%d_%H_%M')/s5d/$RANDOM/$mfccdir/storage $mfccdir/storage
   fi
 
-#  utils/data/perturb_data_dir_volume.sh data/${train_set}${data_aug_suffix}_hires
+  #  utils/data/perturb_data_dir_volume.sh data/${train_set}${data_aug_suffix}_hires
 
-#  for datadir in ${train_set}${data_aug_suffix} ; do
+  #  for datadir in ${train_set}${data_aug_suffix} ; do
   datadir=$train_set
   utils/copy_data_dir.sh data/$datadir data/${datadir}${data_aug_suffix}_hires
-  mfccdir=mfcc${data_aug_suffix}_hires
   steps/make_mfcc_pitch.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
     --cmd "$train_cmd" \
     data/${datadir}${data_aug_suffix}_hires exp/make_mfcc_hires/${datadir} $mfccdir
@@ -147,18 +143,18 @@ if [ $stage -le 3 ] && [ $stop_stage -gt 3  ]   ; then
   utils/fix_data_dir.sh data/${datadir}${data_aug_suffix}_hires
 
   utils/data/limit_feature_dim.sh 0:39 \
-    data/${datadir}${data_aug_suffix}_hires data/${datadir}${data_aug_suffix}_hires_nopitch || exit 1;
+    data/${datadir}${data_aug_suffix}_hires data/${datadir}${data_aug_suffix}_hires_nopitch || exit 1
   steps/compute_cmvn_stats.sh \
-    data/${datadir}${data_aug_suffix}_hires_nopitch exp/make_mfcc_hires/${datadir}_nopitch $mfccdir || exit 1;
+    data/${datadir}${data_aug_suffix}_hires_nopitch exp/make_mfcc_hires/${datadir}_nopitch $mfccdir || exit 1
   utils/fix_data_dir.sh data/${datadir}${data_aug_suffix}_hires_nopitch
 
 #  done
 fi
 
-if [ $stage -le 4 ] && [ $stop_stage -gt 4  ]; then
+if [ $stage -le 4 ] && [ $stop_stage -gt 4 ]; then
   echo "$0: computing a subset of data to train the diagonal UBM."
 
-# for data_dir in ${train_set}${data_aug_suffix};do
+  # for data_dir in ${train_set}${data_aug_suffix};do
   data_dir=$train_set
   lang_name=universal
 
@@ -170,7 +166,7 @@ if [ $stage -le 4 ] && [ $stop_stage -gt 4  ]; then
   # the alignments, and using the non-combined data is more efficient for I/O
   # (no messing about with piped commands).
   num_utts_total=$(wc -l <data/${data_dir}${data_aug_suffix}_hires/utt2spk)
-  if [ $num_utts_total -gt 140000 ] ; then
+  if [ $num_utts_total -gt 140000 ]; then
     num_utts=140000
   else
     num_utts=$num_utts_total
@@ -180,10 +176,10 @@ if [ $stage -le 4 ] && [ $stop_stage -gt 4  ]; then
 
   echo "$0: computing a PCA transform from the hires data."
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
-      --splice-opts "--left-context=3 --right-context=3" \
-      --max-utts 10000 --subsample 2 \
-       ${temp_data_root}/${data_dir}${data_aug_suffix}_hires_nopitch_subset \
-       exp/nnet3${nnet3_affix}/$lang_name/pca_transform
+    --splice-opts "--left-context=3 --right-context=3" \
+    --max-utts 10000 --subsample 2 \
+    ${temp_data_root}/${data_dir}${data_aug_suffix}_hires_nopitch_subset \
+    exp/nnet3${nnet3_affix}/$lang_name/pca_transform
 
   echo "$0: training the diagonal UBM."
   # Use 512 Gaussians in the UBM.
@@ -195,26 +191,26 @@ if [ $stage -le 4 ] && [ $stop_stage -gt 4  ]; then
 #  done
 fi
 
-if [ $stage -le 5 ] && [ $stop_stage -gt 5  ]; then
+if [ $stage -le 5 ] && [ $stop_stage -gt 5 ]; then
   # Train the iVector extractor.  Use all of the speed-perturbed data since iVector extractors
   # can be sensitive to the amount of data.  The script defaults to an iVector dimension of
   # 100.
-#  for data_dir in ${train_set}${data_aug_suffix} ; do
+  #  for data_dir in ${train_set}${data_aug_suffix} ; do
   echo "$0: training the iVector extractor"
   data_dir=$train_set
   lang_name=universal #$(langname $data_dir)
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj $ivec_train_nj \
     data/${data_dir}${data_aug_suffix}_hires_nopitch exp/nnet3${nnet3_affix}/$lang_name/diag_ubm \
-    exp/nnet3${nnet3_affix}/$lang_name/extractor || exit 1;
+    exp/nnet3${nnet3_affix}/$lang_name/extractor || exit 1
 #  done
 fi
 
-if [ $stage -le 6 ] && [ $stop_stage -gt 6  ]; then
+if [ $stage -le 6 ] && [ $stop_stage -gt 6 ]; then
   # note, we don't encode the 'max2' in the name of the ivectordir even though
   # that's the data we extract the ivectors from, as it's still going to be
   # valid for the non-'max2' data, the utterance list is the same.
 
-#  for data_dir in ${train_set}${data_aug_suffix} ; do
+  #  for data_dir in ${train_set}${data_aug_suffix} ; do
   data_dir=$train_set
   lang_name=universal #$(langname $data_dir)
   ivectordir=exp/nnet3${nnet3_affix}/$lang_name/ivectors${data_aug_suffix}_hires
@@ -238,9 +234,8 @@ if [ $stage -le 6 ] && [ $stop_stage -gt 6  ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $extract_ivec_nj \
     ${temp_data_root}/${data_dir}${data_aug_suffix}_hires_nopitch_max2 \
     exp/nnet3${nnet3_affix}/$lang_name/extractor $ivectordir
-#  done  
+#  done
 fi
 
 echo "High-resolution MFCC+pitch extraction and ivector preparation done."
 exit 0
-

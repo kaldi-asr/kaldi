@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+# Copyright 2020  Johns Hopkins University (Author: Piotr Żelasko)
+# Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import re
 import shutil
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from itertools import chain
 from pathlib import Path
 from subprocess import run, PIPE, DEVNULL
 from tempfile import NamedTemporaryFile
@@ -60,7 +63,24 @@ def main():
         action="store_true",
         help="Will save original text in text.bkp and save the IPA transcript to text.",
     )
+    parser.add_argument(
+        "-p",
+        "--phones",
+        action="store_true",
+        help="Instead of concatenating phones to form 'phonetic words', "
+             "will create text with whitespace-separated phone sequences",
+    )
+    parser.add_argument(
+        "-t",
+        "--phone-tokens",
+        action="store_true",
+        help="Instead of concatenating phones to form 'phonetic words', "
+             "will create text with whitespace-separated phone token sequences. "
+             "The difference from --phones is that [a:] will get split to /a/ and /:/.",
+    )
     args = parser.parse_args()
+
+    assert not (args.phones and args.phone_tokens), "Can only use one of: [--phones, --phone-tokens]"
 
     data_dir = Path(args.data_dir)
     g2p_models_dir = Path(args.g2p_models_dir)
@@ -107,7 +127,13 @@ def main():
         with text_bkp.open() as fin, text_ipa.open("w") as fout:
             for line in fin:
                 utt_id, *words = line.strip().split()
-                phonetic = ["".join(lexicon.transcribe(w)).strip() for w in words]
+                phonetic = chain.from_iterable((p.strip() for p in lexicon.transcribe(w)) for w in words)
+                if args.phones:
+                    phonetic = list(phonetic)
+                elif args.phone_tokens:
+                    phonetic = list("".join(phonetic))
+                else:
+                    phonetic = ["".join(lexicon.transcribe(w)).strip() for w in words]
                 if not phonetic:
                     continue  # skip empty utterances
                 print(utt_id, *[w for w in phonetic if w], file=fout)
