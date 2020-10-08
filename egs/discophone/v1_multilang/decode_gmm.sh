@@ -5,7 +5,6 @@
 set -eou pipefail
 
 stage=0
-decode_nj=20
 
 # When use_word_supervisions is true, we will add a language suffix to each word
 # (e.g. "cat" -> "cat_English") and use these transcripts to train a word-level
@@ -107,6 +106,7 @@ if ((stage <= 7)); then
       # `data_dir` points to the train set directory
       data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
+      decode_nj=$(wc -l <data/${recog_data_dir}/spk2utt)
       steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         $expdir/graph data/$recog_data_dir $expdir/decode_${lang_name}
     ) &
@@ -124,6 +124,7 @@ if ((stage <= 8)); then
       # `data_dir` points to the train set directory
       data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
+      decode_nj=$(wc -l <data/${recog_data_dir}/spk2utt)
       steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         $expdir/graph data/$recog_data_dir $expdir/decode_${lang_name}
     ) &
@@ -141,6 +142,7 @@ if ((stage <= 9)); then
       # `data_dir` points to the train set directory
       data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
+      decode_nj=$(wc -l <data/${recog_data_dir}/spk2utt)
       steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         $expdir/graph data/$recog_data_dir $expdir/decode_${lang_name}
     ) &
@@ -158,6 +160,7 @@ if ((stage <= 10)); then
       # `data_dir` points to the train set directory
       data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
+      decode_nj=$(wc -l <data/${recog_data_dir}/spk2utt)
       steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         $expdir/graph data/$recog_data_dir $expdir/decode_${lang_name}
     ) &
@@ -175,6 +178,7 @@ if ((stage <= 11)); then
       # `data_dir` points to the train set directory
       data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
+      decode_nj=$(wc -l <data/${recog_data_dir}/spk2utt)
       steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         $expdir/graph data/$recog_data_dir $expdir/decode_${lang_name}
     ) &
@@ -192,6 +196,7 @@ if ((stage <= 12)); then
       # `data_dir` points to the train set directory
       data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
+      decode_nj=$(wc -l <data/${recog_data_dir}/spk2utt)
       steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
         $expdir/graph data/$recog_data_dir $expdir/decode_${lang_name}
     ) &
