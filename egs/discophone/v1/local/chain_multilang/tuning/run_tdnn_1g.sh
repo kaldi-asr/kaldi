@@ -276,4 +276,48 @@ if [ $stage -le 18 ] && [ $stop_stage -gt 18 ]; then
     --lat-dir $lat_dir \
     --dir $dir || exit 1
 fi
+
+LMTYPE=phn_bg_multi
+
+if [ $stage -le 19 ]; then
+  # The reason we are using data/lang here, instead of $lang, is just to
+  # emphasize that it's not actually important to give mkgraph.sh the
+  # lang directory with the matched topology (since it gets the
+  # topology file from the model).  So you could give it a different
+  # lang directory, one that contained a wordlist and LM of your choice,
+  # as long as phones.txt was compatible.
+
+  utils/lang/check_phones_compatible.sh \
+    data/lang_chain/lang_${lang_name}/phones.txt $langdir/phones.txt
+  utils/mkgraph.sh \
+    --self-loop-scale 1.0 $langdir \
+    $tree_dir $tree_dir/graph_${LMTYPE} || exit 1
+fi
+
+if [ $stage -le 20 ]; then
+  frames_per_chunk=$(echo $frames_per_eg | cut -d, -f1)
+  rm $dir/.error 2>/dev/null || true
+
+  for data in $recog_set; do
+    (
+      data_affix=$(echo $data | sed s/eval_//)
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      # (pzelasko): Eventually we'll have more LM types here, for now it's just one
+      for lmtype in $LMTYPE; do
+        steps/nnet3/decode.sh \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context 0 --extra-right-context 0 \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
+          --frames-per-chunk $frames_per_chunk \
+          --nj $nspk --cmd "$decode_cmd" --num-threads 4 \
+          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
+          $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
+      done
+    ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
 echo "$0: succeeded"
