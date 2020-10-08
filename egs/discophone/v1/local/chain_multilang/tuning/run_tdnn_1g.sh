@@ -61,7 +61,7 @@ frames_per_eg=150,120,90,75
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 max_param_change=2.0
-gpu_decode=true
+gpu_decode=false
 
 # End configuration section.
 echo "$0 $@" # Print the command line for logging
@@ -339,10 +339,12 @@ if [ $stage -le 22 ]; then
 
       if $gpu_decode; then
         nj_decode=1
-        nt_decode=20
+        nt_decode=16
+        cmd_decode="$cuda_cmd"
       else
         nj_decode=$nspk
-        nt_decode=4
+        nt_decode=1
+        cmd_decode="$decode_cmd"
       fi
 
       # (pzelasko): Eventually we'll have more LM types here, for now it's just one
@@ -354,7 +356,7 @@ if [ $stage -le 22 ]; then
           --extra-left-context-initial 0 \
           --extra-right-context-final 0 \
           --frames-per-chunk $frames_per_chunk \
-          --nj $nj_decode --cmd "$decode_cmd" --num-threads $nt_decode \
+          --nj $nj_decode --cmd "$cmd_decode" --num-threads $nt_decode \
           --online-ivector-dir exp/nnet3/universal/ivectors_${data}_hires \
           $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
       done
