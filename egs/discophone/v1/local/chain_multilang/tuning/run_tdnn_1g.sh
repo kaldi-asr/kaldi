@@ -61,6 +61,7 @@ frames_per_eg=150,120,90,75
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 max_param_change=2.0
+gpu_decode=false
 
 # End configuration section.
 echo "$0 $@" # Print the command line for logging
@@ -276,4 +277,93 @@ if [ $stage -le 18 ] && [ $stop_stage -gt 18 ]; then
     --lat-dir $lat_dir \
     --dir $dir || exit 1
 fi
+
+if [ $stage -le 19 ]; then
+  echo "$0: creating high-resolution MFCC features for the test data"
+  mfccdir=mfcc${data_aug_suffix}_hires
+
+  # Feature extraction
+  for data_dir in ${recog_set}; do
+    (
+      lang_name=$(langname $data_dir)
+      utils/copy_data_dir.sh data/$data_dir data/${data_dir}_hires
+      steps/make_mfcc_pitch.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+        --cmd "$train_cmd" \
+        data/${data_dir}_hires exp/make_mfcc_hires/${data_dir} $mfccdir
+      steps/compute_cmvn_stats.sh data/${data_dir}_hires
+      utils/fix_data_dir.sh data/${data_dir}_hires
+
+      utils/fix_data_dir.sh data/$data_dir
+      steps/compute_cmvn_stats.sh data/$data_dir exp/make_mfcc/$lang_name mfcc/$lang_name
+    ) &
+    sleep 2
+  done
+  wait
+fi
+
+if [ $stage -le 20 ]; then
+  echo "$0: creating high-resolution MFCC features for the test data"
+  for data_dir in ${recog_set}; do
+    nspk=$(wc -l <data/${data_dir}_hires/spk2utt)
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj "${nspk}" \
+      data/${data_dir}_hires exp/nnet3/universal/extractor \
+      exp/nnet3/universal/ivectors_${data_dir}_hires
+  done
+fi
+
+LMTYPE=phn_bg_multi
+
+if [ $stage -le 21 ]; then
+  # The reason we are using data/lang here, instead of $lang, is just to
+  # emphasize that it's not actually important to give mkgraph.sh the
+  # lang directory with the matched topology (since it gets the
+  # topology file from the model).  So you could give it a different
+  # lang directory, one that contained a wordlist and LM of your choice,
+  # as long as phones.txt was compatible.
+
+  utils/lang/check_phones_compatible.sh \
+    data/lang_chain/lang_${lang_name}/phones.txt $langdir/phones.txt
+  utils/mkgraph.sh \
+    --self-loop-scale 1.0 $langdir \
+    $tree_dir $tree_dir/graph_${LMTYPE} || exit 1
+fi
+
+if [ $stage -le 22 ]; then
+  frames_per_chunk=$(echo $frames_per_eg | cut -d, -f1)
+  rm $dir/.error 2>/dev/null || true
+
+  for data in $recog_set; do
+    (
+      data_affix=$(echo $data | sed s/eval_//)
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+
+      if $gpu_decode; then
+        nj_decode=1
+        nt_decode=16
+        cmd_decode="$cuda_cmd"
+      else
+        nj_decode=$nspk
+        nt_decode=1
+        cmd_decode="$decode_cmd"
+      fi
+
+      # (pzelasko): Eventually we'll have more LM types here, for now it's just one
+      for lmtype in $LMTYPE; do
+        steps/nnet3/decode.sh \
+          --use-gpu $gpu_decode \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context 0 --extra-right-context 0 \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
+          --frames-per-chunk $frames_per_chunk \
+          --nj $nj_decode --cmd "$cmd_decode" --num-threads $nt_decode \
+          --online-ivector-dir exp/nnet3/universal/ivectors_${data}_hires \
+          $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
+      done
+    ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
 echo "$0: succeeded"
