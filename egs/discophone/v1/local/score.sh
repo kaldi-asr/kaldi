@@ -9,8 +9,8 @@
 # begin configuration section.
 cmd=run.pl
 word_ins_penalty=0.0,0.5,1.0
-min_lmwt=7
-max_lmwt=17
+min_lmwt=2
+max_lmwt=12
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
