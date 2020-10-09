@@ -190,7 +190,7 @@ while [ $x -lt $num_iters ]; do
             --print-interval=10  \
            "nnet3-copy --learning-rate=$lrate $dir/${x}.raw - |" $den_fst_dir \
            "ark:nnet3-chain-copy-egs $egs_opts scp:$egs_dir/${name}_subset.scp ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=1:64 ark:- ark:-|" \
-           $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic &
+           $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic
     done
   fi
 
