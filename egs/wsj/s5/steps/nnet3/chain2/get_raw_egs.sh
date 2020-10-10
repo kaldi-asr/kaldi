@@ -130,8 +130,7 @@ latdir=$3
 dir=$4
 
 tree=$chaindir/${lang}.tree
-trans_mdl=$chaindir/init/${lang}_trans.mdl  # contains the transition model and a nnet, but
-                                            # we won't be making use of the nnet part.
+trans_mdl=$chaindir/init/${lang}_trans.mdl
 normalization_fst=$chaindir/den_fsts/${lang}.normalization.fst
 den_fst=$chaindir/den_fsts/${lang}.den.fst
 
