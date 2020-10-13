@@ -185,10 +185,16 @@ if ((stage <= 12)); then
       data_dir=${recog_to_train[$recog_data_dir]}
       lang_name=$(langname $data_dir)
       expdir=exp/gmm/$lang_name/tri5
-      utils/mkgraph.sh $lmdir $expdir $expdir/graph
+      if $use_monolm; then
+        utils/mkgraph.sh ${lmdir}_monolm_${lang_name} $expdir $expdir/graph_monolm
+        graph_name=graph_monolm
+      else
+        utils/mkgraph.sh $lmdir $expdir $expdir/graph
+        graph_name=graph
+      fi
       decode_nj=$(wc -l <data/${recog_data_dir}/spk2utt)
       steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
-        $expdir/graph data/$recog_data_dir $expdir/decode
+        $expdir/$graph_name data/$recog_data_dir $expdir/decode
     ) &
     sleep 2
   done
