@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright 2020  Delft University of Technology (Author: Siyuan Feng)
 # Copyright 2020  Johns Hopkins University (Author: Piotr Żelasko)
 # Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
@@ -7,7 +8,7 @@ set -eou pipefail
 train_set=
 phone_token_opt='--phones'
 order=2
-
+output_dir_suffix= # e.g. set to _Czech, then output will be data/ipa_lm_Czech/{train_all,train,dev}, showing we are using data from Czech to train LM (phonotactic model) 
 . path.sh
 . cmd.sh
 . utils/parse_options.sh
@@ -17,7 +18,7 @@ function langname() {
 }
 
 # Prepare phone lexicons and training texts for each language
-mkdir -p data/ipa_lm
+mkdir -p data/ipa_lm${output_dir_suffix}
 for data_dir in $train_set; do
   lang_name=$(langname $data_dir)
   # Create a lexicon directory with LM training IPA texts
@@ -25,36 +26,36 @@ for data_dir in $train_set; do
     $phone_token_opt \
     data/$data_dir/lexicon_ipa_all.txt \
     data/$data_dir/text.bkp \
-    data/ipa_lm/train/$lang_name
+    data/ipa_lm${output_dir_suffix}/train/$lang_name
   # Create a lexicon directory with LM dev IPA texts - we will ignore the lexicons here and just use the texts
   dev_data_dir=${data_dir//train/dev}
   python3 local/prepare_ipa_lm_text.py \
     $phone_token_opt \
     data/$data_dir/lexicon_ipa_all.txt \
     data/$dev_data_dir/text.bkp \
-    data/ipa_lm/dev/$lang_name
+    data/ipa_lm${output_dir_suffix}/dev/$lang_name
 done
 
 # Concatenate all languages IPA train texts and train the LM
-mkdir -p data/ipa_lm/train_all
-find data/ipa_lm/train -name phones_text -print0 | xargs -0 cat >data/ipa_lm/train_all/text
+mkdir -p data/ipa_lm${output_dir_suffix}/train_all
+find data/ipa_lm${output_dir_suffix}/train -name phones_text -print0 | xargs -0 cat >data/ipa_lm${output_dir_suffix}/train_all/text
 ngram-count \
-  -text data/ipa_lm/train_all/text \
+  -text data/ipa_lm${output_dir_suffix}/train_all/text \
   -order $order \
   -unk \
   -map-unk "<unk>" \
   -interpolate \
-  -lm data/ipa_lm/train_all/srilm.o${order}g.kn.gz
+  -lm data/ipa_lm${output_dir_suffix}/train_all/srilm.o${order}g.kn.gz
 # We don't use KN discounting because of an issue with the backoff estimation...
 #  -kndiscount
 
 # Evaluate the multilingual LM perplexity on the dev sets
 for data_dir in $train_set; do
   lang_name=$(langname $data_dir)
-  dev_lm_dir=data/ipa_lm/dev/$lang_name
+  dev_lm_dir=data/ipa_lm${output_dir_suffix}/dev/$lang_name
   ngram \
-    -lm data/ipa_lm/train_all/srilm.o${order}g.kn.gz \
+    -lm data/ipa_lm${output_dir_suffix}/train_all/srilm.o${order}g.kn.gz \
     -unk \
     -ppl $dev_lm_dir/phones_text \
-    2>&1 | tee data/ipa_lm/train_all/dev_ppl${order}_${lang_name}
+    2>&1 | tee data/ipa_lm${output_dir_suffix}/train_all/dev_ppl${order}_${lang_name}
 done
