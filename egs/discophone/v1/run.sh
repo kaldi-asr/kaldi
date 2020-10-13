@@ -132,12 +132,22 @@ fi
 # c c
 # ...
 # When that is ready, we train a multilingual phone-level language model (i.e. phonotactic model),
+# and several monolingual phone LM
 # that will be used to compile the decoding graph and to score each ASR system.
 if ((stage <= 3)); then
   local/prepare_ipa_lm.sh \
     --train-set "$train_set" \
     --phone_token_opt "$phone_token_opt" \
     --order "$phone_ngram_order"
+  # next: monolingual LMs, output would be data/ipa_lm_${langname}/train_all/*.kn.gz
+  for data_dir in ${train_set}; do
+    lang_name=$(langname $data_dir)
+    local/prepare_ipa_lm.sh \
+      --output-dir-suffix "_${lang_name}" \
+      --train-set "$data_dir" \
+      --phone_token_opt "$phone_token_opt" \
+      --order "$phone_ngram_order"
+  done
   lexicon_list=$(find data/ipa_lm/train -name lexiconp.txt)
   mkdir -p data/local/dict_combined/local
   python3 local/combine_lexicons.py $lexicon_list >data/local/dict_combined/local/lexiconp.txt
@@ -148,6 +158,12 @@ if ((stage <= 3)); then
     "<unk>" data/local/dict_combined data/lang_combined
   LM=data/ipa_lm/train_all/srilm.o${phone_ngram_order}g.kn.gz
   utils/format_lm.sh data/lang_combined "$LM" data/local/dict_combined/lexicon.txt data/lang_combined_test
+  # Below is monolingually-trained LM, output is data/lang_combined_test_monolm_${lang_name}
+  for data_dir in ${train_set}; do
+    lang_name=$(langname $data_dir)
+    LM_mono=data/ipa_lm_${lang_name}/train_all/srilm.o${phone_ngram_order}g.kn.gz
+    utils/format_lm.sh data/lang_combined "$LM_mono" data/local/dict_combined/lexicon.txt data/lang_combined_test_monolm_${lang_name}
+  done
 fi
 
 # MFCC extraction for GMM training
