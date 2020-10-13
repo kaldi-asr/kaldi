@@ -5,7 +5,7 @@
 set -eou pipefail
 
 stage=0
-
+use_monolm=true # if false, use multilingual phonotactic model
 langs_config="" # conf/experiments/all-ipa.conf
 if [ $langs_config ]; then
   # shellcheck disable=SC1090
