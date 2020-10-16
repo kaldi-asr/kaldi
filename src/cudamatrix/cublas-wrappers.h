@@ -265,13 +265,13 @@ inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
 
   size_t buffer_size;
   status = cusparseSpMM_bufferSize(handle, transA, transB, alpha, matA, matB,
-                                   beta, matC, valType, CUSPARSE_MM_ALG_DEFAULT,
+                                   beta, matC, valType, CUSPARSE_SPMM_CSR_ALG2,
                                    &buffer_size);
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
 
   void *buffer = (buffer_size > 0) ? CuDevice::Instantiate().Malloc(buffer_size) : NULL; 
   status = cusparseSpMM(handle, transA, transB, alpha, matA, matB, beta, matC,
-                        valType, CUSPARSE_MM_ALG_DEFAULT, buffer);
+                        valType, CUSPARSE_SPMM_CSR_ALG2, buffer);
 
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
   if(buffer)
