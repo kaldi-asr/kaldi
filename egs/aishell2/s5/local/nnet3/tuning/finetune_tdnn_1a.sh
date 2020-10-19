@@ -24,8 +24,8 @@ nj=4
 
 if [ $stage -le 1 ]; then
   # align new data(finetune set) with GMM, we probably replace GMM with NN later
-  steps/make_mfcc.sh \
-    --cmd "$train_cmd" --nj $nj --mfcc-config conf/mfcc.conf \
+  steps/make_mfcc_pitch.sh \
+    --pitch-config conf/pitch.conf --cmd "$train_cmd" --nj $nj \
     ${data_dir} exp/make_mfcc/${data_set} mfcc
   steps/compute_cmvn_stats.sh ${data_dir} exp/make_mfcc/${data_set} mfcc || exit 1;
 
