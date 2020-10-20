@@ -6,7 +6,7 @@ no_feats=false
 no_wav=false
 no_text=false
 no_spk_sort=false
-non_print=false
+non_print=true
 
 
 function show_help
@@ -126,7 +126,6 @@ fi
 num_utts=`cat $tmpdir/utts | wc -l`
 if ! $no_text; then
   if ! $non_print; then
-    # compatible with bin/align-text
     n_non_print=$(LC_ALL="C.UTF-8" grep -c '[^[:print:][:space:]]' $data/text) && \
     echo "$0: text contains $n_non_print lines with non-printable characters" &&\
     exit 1;

@@ -206,7 +206,7 @@ class CudaDecoder {
   CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
               int32 nchannels)
       : CudaDecoder(fst, config, nchannels, nchannels) {}
-  virtual ~CudaDecoder();
+  virtual ~CudaDecoder() noexcept(false);
 
   // InitDecoding initializes the decoding, and should only be used if you
   // intend to call AdvanceDecoding() on the channels listed in channels
@@ -273,6 +273,8 @@ class CudaDecoder {
   // "use_final_probs" is true AND we reached a final state, it limits
   // itself to final states; otherwise it gets the most likely token not
   // taking into account final-probs.
+  // GetBestPath is deprecated and will be removed in a future release
+  // For best path, use partial hypotheses
   void GetBestPath(const std::vector<ChannelId> &channels,
                    std::vector<Lattice *> &fst_out_vec,
                    bool use_final_probs = true);
@@ -300,19 +302,6 @@ class CudaDecoder {
   // final-probs.
   void GetRawLattice(const std::vector<ChannelId> &channels,
                      std::vector<Lattice *> &fst_out_vec, bool use_final_probs);
-  // GetBestCost finds the best cost in the last tokens queue
-  // for each channel in channels. If isfinal is true,
-  // we also add the final cost to the token costs before
-  // finding the minimum cost
-  // We list all tokens that have a cost within [best; best+lattice_beam]
-  // in list_lattice_tokens.
-  // We alsos set has_reached_final[ichannel] to true if token associated
-  // to a final state exists in the last token queue of that channel
-  void GetBestCost(
-      const std::vector<ChannelId> &channels, bool isfinal,
-      std::vector<std::pair<int32, CostType>> *argmins,
-      std::vector<std::vector<std::pair<int, float>>> *list_lattice_tokens,
-      std::vector<bool> *has_reached_final);
 
   // (optional) Giving the decoder access to the cpu thread pool
   // We will use it to compute specific CPU work, such as
@@ -350,6 +339,25 @@ class CudaDecoder {
   // software threads into the registers of a CPU)
   void LoadChannelsStateToLanes(const std::vector<ChannelId> &channels);
   void SaveChannelsStateFromLanes();
+  // GetBestCost finds the best cost in the last tokens queue
+  // for each channel in channels. If isfinal is true,
+  // we also add the final cost to the token costs before
+  // finding the minimum cost
+  // We list all tokens that have a cost within [best; best+lattice_beam]
+  // in list_lattice_tokens.
+  // We alsos set has_reached_final[ichannel] to true if token associated
+  // to a final state exists in the last token queue of that channel
+  void GetBestCost(
+      const std::vector<ChannelId> &channels, bool isfinal,
+      std::vector<std::pair<int32, CostType>> *argmins,
+      std::vector<std::vector<std::pair<int, float>>> *list_lattice_tokens,
+      std::vector<bool> *has_reached_final);
+
+  // Fills *out_nonempty_channels with channels with NumFramesDecoded(ichannel)
+  // > 0
+  void FillWithNonEmptyChannels(const std::vector<ChannelId> &channels,
+                                std::vector<ChannelId> *out_nonempty_channels);
+
   // Given a token, get its best predecessor (lower cost predecessor)
   // Used by GetBestPath or best path traceback
   void GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
@@ -735,6 +743,8 @@ class CudaDecoder {
   std::vector<std::pair<int32, CostType>> h_all_argmin_cost_;
   std::vector<std::vector<std::pair<int, float>>> h_all_final_tokens_list_;
   std::vector<bool> h_all_has_reached_final_;
+  std::vector<ChannelId>
+      nonempty_channels_;  // used as buffer to store channels with nframes>0
 
   // Pinned memory arrays. Used for the DeviceToHost copies
   float2 *h_extra_and_acoustic_cost_concat_, *d_extra_and_acoustic_cost_concat_;

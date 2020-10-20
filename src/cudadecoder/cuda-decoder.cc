@@ -313,7 +313,7 @@ void CudaDecoder::InitDeviceParams() {
   h_device_params_->fst_zero = StdWeight::Zero().Value();
 }
 
-CudaDecoder::~CudaDecoder() {
+CudaDecoder::~CudaDecoder() noexcept(false) {
   // Stopping h2h tasks
   h2h_threads_running_ = false;
   n_h2h_main_task_todo_cv_.notify_all();
@@ -1007,6 +1007,8 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
   // Waiting for the copy
   cudaStreamSynchronize(compute_st_);
   for (int32 ilane = 0; ilane < nlanes_used_; ++ilane) {
+    int ichannel = channels[ilane];
+    KALDI_ASSERT(NumFramesDecoded(ichannel) > 0);
     int2 minarg = h_lanes_counters_.lane(ilane)->min_int_cost_and_arg;
     // Min cost in that channel last token queue
     CostType min_cost = orderedIntToFloatHost(minarg.x);
@@ -1031,6 +1033,15 @@ void CudaDecoder::GetBestCost(const std::vector<ChannelId> &channels,
       (*list_finals_token_idx_and_cost)[ilane][i].first = global_idx;
       (*list_finals_token_idx_and_cost)[ilane][i].second = cost_with_final;
     }
+  }
+
+  for (LaneId ilane = 0; ilane < channels.size(); ++ilane) {
+    ChannelId ichannel = channels[ilane];
+    std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
+    h_all_argmin_cost_[ichannel] = (*argmins)[ilane];
+    h_all_final_tokens_list_[ichannel].swap(
+        (*list_finals_token_idx_and_cost)[ilane]);
+    h_all_has_reached_final_[ichannel] = (*has_reached_final)[ilane];
   }
 }
 
@@ -1095,7 +1106,11 @@ void CudaDecoder::GetBestPath(const std::vector<ChannelId> &channels,
 
   std::vector<int32> reversed_path;
   for (int32 ilane = 0; ilane < channels.size(); ++ilane) {
+    Lattice *fst_out = fst_out_vec[ilane];
+    fst_out->DeleteStates();
     const ChannelId ichannel = channels[ilane];
+    if (NumFramesDecoded(ichannel) == 0) continue;  // nothing to do
+
     const int32 token_with_best_cost = argmins_[ilane].first;
     std::unique_lock<std::mutex> channel_lk(channel_lock_[ichannel]);
     // If that token in that frame f is available, then all tokens
@@ -1119,8 +1134,6 @@ void CudaDecoder::GetBestPath(const std::vector<ChannelId> &channels,
       token_idx = prev_token_idx;
     }
 
-    Lattice *fst_out = fst_out_vec[ilane];
-    fst_out->DeleteStates();
     // Building the output Lattice
     OutputLatticeState curr_state = fst_out->AddState();
     fst_out->SetStart(curr_state);
@@ -1529,18 +1542,21 @@ void CudaDecoder::WaitForInitDecodingH2HCopies() {
       lk, [this] { return (n_init_decoding_h2h_task_not_done_ == 0); });
 }
 
-void CudaDecoder::PrepareForGetRawLattice(
-    const std::vector<ChannelId> &channels, bool use_final_probs) {
-  GetBestCost(channels, use_final_probs, &argmins_,
-              &list_finals_token_idx_and_cost_, &has_reached_final_);
-  for (LaneId ilane = 0; ilane < channels.size(); ++ilane) {
-    ChannelId ichannel = channels[ilane];
-    std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
-    h_all_argmin_cost_[ichannel] = argmins_[ilane];
-    h_all_final_tokens_list_[ichannel].swap(
-        list_finals_token_idx_and_cost_[ilane]);
-    h_all_has_reached_final_[ichannel] = has_reached_final_[ilane];
+void CudaDecoder::FillWithNonEmptyChannels(
+    const std::vector<ChannelId> &channels,
+    std::vector<ChannelId> *out_nonempty_channels) {
+  out_nonempty_channels->clear();
+  for (ChannelId ichannel : channels) {
+    if (NumFramesDecoded(ichannel) > 0)
+      out_nonempty_channels->push_back(ichannel);
   }
+}
+
+void CudaDecoder::PrepareForGetRawLattice(
+    const std::vector<ChannelId> &raw_channels, bool use_final_probs) {
+  FillWithNonEmptyChannels(raw_channels, &nonempty_channels_);
+  GetBestCost(nonempty_channels_, use_final_probs, &argmins_,
+              &list_finals_token_idx_and_cost_, &has_reached_final_);
 }
 
 void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
@@ -1581,11 +1597,16 @@ void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
         .shrink_to_fit();
     best_cost_idx = h_all_argmin_cost_[ichannel].first;
   }
+  fst_out->DeleteStates();  // reset out lattice
+  const int32 nframes = NumFramesDecoded(ichannel);
+  // If no frames were decoded, leaving the lattice empty and return
+  if (nframes == 0) return;
+
   KALDI_ASSERT(
       "You need to call PrepareForGetRawLattice before "
       "ConcurrentGetRawLatticeSingleChannel" &&
       best_cost_idx >= 0);
-  const int32 nframes = NumFramesDecoded(ichannel);
+
   // Making sure that this token is available for this channel.
   // We're going to read storage data from this channel. Locking it
   // If that token in that frame f is available, then all tokens in that
@@ -1599,7 +1620,6 @@ void CudaDecoder::ConcurrentGetRawLatticeSingleChannel(const ChannelId ichannel,
   // Preparing output lattice
   // The start state has to be 0 (cf some asserts somewhere else in Kaldi)
   // Adding it now
-  fst_out->DeleteStates();
   OutputLatticeState fst_lattice_start = fst_out->AddState();
   fst_out->SetStart(fst_lattice_start);
 
