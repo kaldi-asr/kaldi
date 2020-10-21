@@ -264,14 +264,25 @@ inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
 
   size_t buffer_size;
+#if CUDA_VERSION >= 11000
   status = cusparseSpMM_bufferSize(handle, transA, transB, alpha, matA, matB,
                                    beta, matC, valType, CUSPARSE_SPMM_CSR_ALG2,
                                    &buffer_size);
+#else
+  status = cusparseSpMM_bufferSize(handle, transA, transB, alpha, matA, matB,
+                                   beta, matC, valType, CUSPARSE_MM_ALG_DEFAULT,
+                                   &buffer_size);
+#endif
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
 
-  void *buffer = (buffer_size > 0) ? CuDevice::Instantiate().Malloc(buffer_size) : NULL; 
+  void *buffer = (buffer_size > 0) ? CuDevice::Instantiate().Malloc(buffer_size) : NULL;
+#if CUDA_VERSION >= 11000
   status = cusparseSpMM(handle, transA, transB, alpha, matA, matB, beta, matC,
                         valType, CUSPARSE_SPMM_CSR_ALG2, buffer);
+#else
+  status = cusparseSpMM(handle, transA, transB, alpha, matA, matB, beta, matC,
+                        valType, CUSPARSE_MM_ALG_DEFAULT, buffer);
+#endif
 
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
   if(buffer)
