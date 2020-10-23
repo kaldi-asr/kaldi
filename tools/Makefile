@@ -132,11 +132,17 @@ sctk-$(SCTK_VERSION).tar.bz2:
 
 sph2pipe: sph2pipe_compiled
 
-sph2pipe_compiled: sph2pipe_$(SPH2PIPE_VERSION)/sph2pipe
+sph2pipe_compiled: sph2pipe_patched sph2pipe_$(SPH2PIPE_VERSION)/sph2pipe
 
-sph2pipe_$(SPH2PIPE_VERSION)/sph2pipe: | sph2pipe_$(SPH2PIPE_VERSION)
+sph2pipe_patched: sph2pipe_$(SPH2PIPE_VERSION)/.patched
+
+sph2pipe_$(SPH2PIPE_VERSION)/sph2pipe: sph2pipe_$(SPH2PIPE_VERSION)/.patched | sph2pipe_$(SPH2PIPE_VERSION)
 	cd sph2pipe_$(SPH2PIPE_VERSION)/ && \
 	$(CC) -o sph2pipe  *.c -lm
+
+sph2pipe_$(SPH2PIPE_VERSION)/.patched: sph2pipe_$(SPH2PIPE_VERSION)
+	cd sph2pipe_$(SPH2PIPE_VERSION); patch -p1 < ../extras/sph2pipe.patch
+	touch  sph2pipe_$(SPH2PIPE_VERSION)/.patched
 
 sph2pipe_$(SPH2PIPE_VERSION): sph2pipe_$(SPH2PIPE_VERSION).tar.gz
 	tar --no-same-owner -xzf sph2pipe_$(SPH2PIPE_VERSION).tar.gz

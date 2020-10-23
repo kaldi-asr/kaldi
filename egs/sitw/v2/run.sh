@@ -37,8 +37,8 @@ if [ $stage -le 0 ]; then
   # http://www.openslr.org/resources/49/voxceleb1_sitw_overlap.txt that
   # contains the speakers that overlap between VoxCeleb1 and our evaluation
   # set SITW.  The script removes these overlapping speakers from VoxCeleb1.
-  local/make_voxceleb1.pl $voxceleb1_root data
-
+  #local/make_voxceleb1.pl $voxceleb1_root data
+  local/make_voxceleb1_v2.pl $voxceleb1_root data
   # Prepare the dev portion of the VoxCeleb2 dataset.
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
 

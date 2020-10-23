@@ -23,7 +23,7 @@ for l in sys.stdin:
   for c in w:
     if c not in "!~@#$%^&*()+=/\",;:?_{}-":
       r += " " + c
-  print r
+  print(r)
 ' > $dir/lexicon2_raw_nosil.txt || exit 1;
 
 (echo SIL; echo SPN; echo NSN) > $dir/silence_phones.txt
