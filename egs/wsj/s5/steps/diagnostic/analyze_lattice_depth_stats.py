@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 # Copyright 2016 Johns Hopkins University (author: Daniel Povey)
@@ -88,7 +88,7 @@ for p in [ -1 ] + list(phone_int2text.keys()):
 total_frames = 0
 
 ali_per_frame = {}
-for line in gzip.open(args.ali_per_frame):
+for line in gzip.open(args.ali_per_frame, mode='rt', encoding='utf-8'):
    uttid, ali = line.split(" ", 1)
    ali_per_frame[uttid] = ali
 
