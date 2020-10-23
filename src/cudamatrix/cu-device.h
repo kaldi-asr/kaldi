@@ -101,6 +101,13 @@ class CuDevice {
     return cusolverdn_handle_; 
   }
 
+#if CUDA_VERSION >= 11000
+  inline cublasComputeType_t GetCublasComputeType() { return cublas_compute_type_; }
+#else
+  inline cudaDataType_t GetCublasComputeType() { return cublas_compute_type_; }
+#endif
+  inline cublasGemmAlgo_t GetCublasGemmAlgo() { return cublas_gemm_algo_; }
+
   inline void SeedGpu() {
     if (CuDevice::Instantiate().Enabled()) {
       // To get same random sequence, call srand() before the method is invoked,
@@ -331,6 +338,13 @@ class CuDevice {
   cusparseHandle_t cusparse_handle_;
   curandGenerator_t curand_handle_;
   cusolverDnHandle_t cusolverdn_handle_;
+
+#if CUDA_VERSION >= 11000
+  cublasComputeType_t cublas_compute_type_;
+#else
+  cudaDataType_t cublas_compute_type_;
+#endif
+  cublasGemmAlgo_t cublas_gemm_algo_;
 }; // class CuDevice
 
 
