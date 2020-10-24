@@ -13,7 +13,7 @@ set -u
 if [ -f ./path.sh ]; then . ./path.sh; fi
 
 nj=32
-cmd=queue.pl
+cmd=run.pl
 stage=0
 region_type=overlap
 convert_data_dir_to_whole=false
@@ -107,7 +107,7 @@ fi
 
 mkdir -p $overlap_dir
 if [ $stage -le 1 ]; then
-  if [ "$(readlink -f $nnet_dir)" != "$(readlink -f $overlap_dir)" ]; then
+  if [ "$(utils/make_absolute.sh $nnet_dir)" != "$(utils/make_absolute.sh $overlap_dir)" ]; then
     cp $nnet_dir/cmvn_opts $overlap_dir || exit 1
   fi
 
