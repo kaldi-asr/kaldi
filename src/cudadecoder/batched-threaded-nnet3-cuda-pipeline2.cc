@@ -205,23 +205,26 @@ void BatchedThreadedNnet3CudaPipeline2::ComputeOfflineFeatures() {
 
     cudaEventSynchronize(wave_buffer_->evt);
     if (nsamp > wave_buffer_->size) {
-      wave_buffer_->Reallocate(nsamp);
+	wave_buffer_->Reallocate(nsamp);
     }
-    std::memcpy(wave_buffer_->h_data, h_wave.Data(),
-                h_wave.Dim() * sizeof(BaseFloat));
-    cudaMemcpyAsync(wave_buffer_->d_data, wave_buffer_->h_data,
-                    sizeof(BaseFloat) * nsamp, cudaMemcpyHostToDevice,
-                    cudaStreamPerThread);
+
+    std::memcpy(wave_buffer_->h_data, h_wave.Data(), nsamp * sizeof(BaseFloat));
+    cudaMemcpyAsync(wave_buffer_->d_data, wave_buffer_->h_data, nsamp * sizeof(BaseFloat), cudaMemcpyHostToDevice, cudaStreamPerThread);
 
     task.d_features.reset(new CuMatrix<BaseFloat>());
     task.d_ivectors.reset(new CuVector<BaseFloat>());
+
     CuSubVector<BaseFloat> wrapper(wave_buffer_->d_data, nsamp);
-    cuda_features_->ComputeFeatures(
-        wrapper, cuda_online_pipeline_.GetModelFrequency(),
-        task.d_features.get(), task.d_ivectors.get());
+
+    cuda_features_->ComputeFeatures(wrapper, cuda_online_pipeline_.GetModelFrequency(), task.d_features.get(), task.d_ivectors.get());
+
     cudaEventRecord(wave_buffer_->evt, cudaStreamPerThread);
+
     std::swap(wave_buffer_, next_wave_buffer_);
-    if (task.wave_data) task.wave_data.reset();  // delete wave samples on host
+
+    if (task.wave_data)
+	task.wave_data.reset();  // delete wave samples on host
+
     {
       std::lock_guard<std::mutex> lk(outstanding_utt_m_);
       outstanding_utt_.push(std::move(task));
