@@ -18,7 +18,7 @@ ref_rttm=
 window=1.5
 period=0.75
 min_segment=0.5
-post_process_rttm=true # set to true to remove same speaker segments in different
+post_process_rttm=false # set to true to remove same speaker segments in different
                        # streams at the same time
 score_overlaps_only=true
 
@@ -84,7 +84,7 @@ if [ $stage -le 3 ]; then
   fi
 fi
 
-# nj needs to be changes since we now have #wav/#streams number
+# nj needs to be changed since we now have #wav/#streams number
 # of recordings. Just get it from the segments file
 new_nj=$(cat ${out_dir}/xvectors_${name}/segments | cut -d' ' -f2 | uniq | wc -l)
 nj=$(echo $((nj>new_nj ? new_nj : nj)))

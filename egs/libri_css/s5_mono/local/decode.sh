@@ -124,7 +124,7 @@ if [ $stage -le 3 ]; then
 
     [ ! -d exp/xvector_nnet_1a ] && ./local/download_diarizer.sh
 
-    local/diarize.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
+    local/diarize_spectral.sh --nj $diar_nj --cmd "$train_cmd" --stage $diarizer_stage \
       --ref-rttm $ref_rttm \
       exp/xvector_nnet_1a \
       data/${datadir} \
@@ -149,15 +149,15 @@ fi
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-# if [ $stage -le 5 ]; then
-#   # please specify both dev and eval set directories so that the search parameters
-#   # (insertion penalty and language model weight) will be tuned using the dev set
-#   local/score_reco_diarized.sh --stage $score_stage \
-#       --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${dev_set}_diarized_2stage \
-#       --dev_datadir ${dev_set}_diarized_hires \
-#       --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${eval_set}_diarized_2stage \
-#       --eval_datadir ${eval_set}_diarized_hires
-# fi
+if [ $stage -le 5 ]; then
+  # please specify both dev and eval set directories so that the search parameters
+  # (insertion penalty and language model weight) will be tuned using the dev set
+  local/score_reco_diarized.sh --stage $score_stage \
+      --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${dev_set}_diarized_2stage \
+      --dev_datadir ${dev_set}_diarized_hires \
+      --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${eval_set}_diarized_2stage \
+      --eval_datadir ${eval_set}_diarized_hires
+fi
 
 ############################################################################
 # RNNLM rescoring

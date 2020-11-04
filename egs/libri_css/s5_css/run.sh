@@ -3,7 +3,16 @@
 # LibriCSS pipeline containing speech separation. We don't provide
 # any training stages for diarization or ASR here, since they are 
 # the same as those in s5_mono. As such, this run script is
-# actually a decoding script.
+# actually a decoding script. Before running this script, you
+# need to have run your separation module (or use the separated
+# audio streams we have provided), and the output streams must
+# be named in the following naming convention:
+# overlap_ratio_10.0_sil0.1_1.0_session7_actual10.1_channel_1.wav
+# Here, "channel" denotes the stream number, for example, if your
+# method separates the audio into 3 streams, they should be named
+# channel_0, channel_1, and channel_2. The wav files can be organized
+# in any hierarchy within the directory, but this naming
+# convention must be followed.
 # 
 # Copyright  2020  Johns Hopkins University (Author: Desh Raj)
 # Apache 2.0
@@ -14,8 +23,8 @@ decode_nj=20
 stage=0
 
 nnet3_affix=_cleaned
-affix=1d_sp
-data_affix=_css  # This can be used to distinguish between different data sources
+affix=1d_ft
+data_affix= # This can be used to distinguish between different data sources
 sad_type=tdnn # Set this to webrtc or tdnn
 
 # Different stages
@@ -52,10 +61,8 @@ set -e # exit on error
 # also the path to the separated wav files
 libricss_corpus=/export/fs01/LibriCSS/
 
-# Zhuo's CSS wav files
+# Separated wav files
 wav_files_dir=/export/c03/zhuc/css/connected_continuous_separation
-# Hakan's separated wav files
-# wav_files_dir=/export/c03/draj/libricss_separated_3stream/
 
 ##########################################################################
 # We first prepare the CSS data in the Kaldi data format. We use session 0 
@@ -140,6 +147,7 @@ if [ $stage -le 2 ]; then
   # want to store MFCC features.
   mfccdir=mfcc
   for x in ${test_sets}; do
+    utils/fix_data_dir.sh data/$x
     nj=$(wc -l < "data/$x/wav.scp")
     steps/make_mfcc.sh --nj $decode_nj --cmd "$train_cmd" \
       --mfcc-config conf/mfcc_hires.conf \
@@ -161,7 +169,7 @@ if [ $stage -le 3 ]; then
 
     nj=$(echo $((decode_nj>diar_nj ? diar_nj : decode_nj)))
     local/diarize_css.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
-      --ref-rttm $ref_rttm \
+      --ref-rttm $ref_rttm --post-process-rttm true \
       exp/xvector_nnet_1a \
       data/${datadir} \
       exp/${datadir}_diarization
@@ -176,7 +184,7 @@ if [ $stage -le 4 ]; then
     asr_nj=$(wc -l < "data/$datadir/wav.scp")
     nj=$(echo $((decode_nj>asr_nj ? asr_nj : decode_nj)))
     local/decode_diarized_css.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
-      --lm-suffix "_tgsmall" \
+      --lm-suffix "_tgsmall" --acwt 1.0 --post-decode-acwt 10.0 \
       exp/${datadir}_diarization/rttm.post data/$datadir data/lang_test_tgsmall \
       exp/chain${nnet3_affix}/tdnn_${affix} exp/nnet3${nnet3_affix} \
       data/${datadir}_diarized || exit 1

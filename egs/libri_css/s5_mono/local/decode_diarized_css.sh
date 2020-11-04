@@ -10,6 +10,8 @@ stage=0
 nj=8
 cmd=queue.pl
 lm_suffix=
+acwt=1.0
+post_decode_acwt=10.0
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -55,6 +57,7 @@ if [ $stage -le 1 ]; then
     > ${out_dir}_hires/utt2spk
 
   utils/utt2spk_to_spk2utt.pl ${out_dir}_hires/utt2spk > ${out_dir}_hires/spk2utt
+  utils/fix_data_dir.sh ${out_dir}_hires
 fi
 
 if [ $stage -le 2 ]; then
@@ -73,7 +76,7 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0 performing decoding on the extracted features"
-  local/nnet3/decode.sh --affix 2stage --acwt 1.0 --post-decode-acwt 10.0 \
+  local/nnet3/decode.sh --affix 2stage --acwt $acwt --post-decode-acwt $post_decode_acwt \
     --frames-per-chunk 150 --nj $nj --ivector-dir $ivector_extractor \
     ${out_dir} $lang_dir $asr_model_dir/graph${lm_suffix} $asr_model_dir/
 fi
