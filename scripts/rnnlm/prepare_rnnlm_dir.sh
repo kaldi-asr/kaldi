@@ -46,6 +46,10 @@ if [ $stage -le 0 ]; then
   if ! mkdir -p $dir; then
     echo "$0: could not create RNNLM dir $dir"
   fi
+  if [[ "$text_dir" == "$dir/text" ]]; then
+    echo "$text_dir equals $dir/text, dev.txt will be corrupted"
+    exit 1
+  fi
 fi
 
 if [ $stage -le 1 ]; then

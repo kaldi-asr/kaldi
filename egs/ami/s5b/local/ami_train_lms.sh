@@ -76,8 +76,8 @@ sort -u $dir/wordlist.lex $dir/wordlist.train > $dir/wordlist
 ngram-count -text $dir/train.gz -order $order -limit-vocab -vocab $dir/wordlist \
   -unk -map-unk "<unk>" -kndiscount -interpolate -lm $dir/ami.o${order}g.kn.gz
 echo "PPL for AMI LM:"
-ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz
-ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 >& $dir/ppl2
+ngram -order ${order} -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz
+ngram -order ${order} -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 >& $dir/ppl2
 mix_ppl="$dir/ppl2"
 mix_tag="ami"
 mix_lms=( "$dir/ami.o${order}g.kn.gz" )
@@ -94,8 +94,8 @@ if [ ! -z "$swbd" ]; then
     -vocab $dir/wordlist -unk -map-unk "<unk>" -kndiscount -interpolate \
     -lm $dir/swbd/swbd.o${order}g.kn.gz
   echo "PPL for SWBD LM:"
-  ngram -unk -lm $dir/swbd/swbd.o${order}g.kn.gz -ppl $dir/dev.gz
-  ngram -unk -lm $dir/swbd/swbd.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 \
+  ngram -order ${order} -unk -lm $dir/swbd/swbd.o${order}g.kn.gz -ppl $dir/dev.gz
+  ngram -order ${order} -unk -lm $dir/swbd/swbd.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 \
     >& $dir/swbd/ppl2
 
   mix_ppl="$mix_ppl $dir/swbd/ppl2"
@@ -118,8 +118,8 @@ if [ ! -z "$fisher" ]; then
     -vocab $dir/wordlist -unk -map-unk "<unk>" -kndiscount -interpolate \
     -lm $dir/fisher/fisher.o${order}g.kn.gz
   echo "PPL for Fisher LM:"
-  ngram -unk -lm $dir/fisher/fisher.o${order}g.kn.gz -ppl $dir/dev.gz
-  ngram -unk -lm $dir/fisher/fisher.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 \
+  ngram -order ${order} -unk -lm $dir/fisher/fisher.o${order}g.kn.gz -ppl $dir/dev.gz
+  ngram -order ${order} -unk -lm $dir/fisher/fisher.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 \
    >& $dir/fisher/ppl2
 
   mix_ppl="$mix_ppl $dir/fisher/ppl2"
@@ -133,7 +133,7 @@ if [ ! -z "$google1B" ]; then
   wget -O $dir/google/cantab.lm3.bz2 http://vm.cantabresearch.com:6080/demo/cantab.lm3.bz2
   wget -O $dir/google/150000.lex http://vm.cantabresearch.com:6080/demo/150000.lex
 
-  ngram -unk -limit-vocab -vocab $dir/wordlist -lm $dir/google.cantab.lm3.bz3 \
+  ngram -order ${order} -unk -limit-vocab -vocab $dir/wordlist -lm $dir/google.cantab.lm3.bz3 \
      -write-lm $dir/google/google.o${order}g.kn.gz
 
   mix_ppl="$mix_ppl $dir/goog1e/ppl2"
@@ -167,7 +167,7 @@ if [ $num_lms -gt 1  ]; then
     | perl -e '$_=<>; s/.*\(//; s/\).*//; @A = split; for $i (@A) {print "$i\n";}' \
     > $dir/mix.weights
   weights=( `cat $dir/mix.weights` )
-  cmd="ngram -lm ${mix_lms[0]} -lambda 0.715759 -mix-lm ${mix_lms[1]}"
+  cmd="ngram -order ${order} -lm ${mix_lms[0]} -lambda ${weights[0]} -mix-lm ${mix_lms[1]}"
   for i in `seq 2 $((num_lms-1))`; do
     cmd="$cmd -mix-lm${i} ${mix_lms[$i]} -mix-lambda${i} ${weights[$i]}"
   done
@@ -175,7 +175,7 @@ if [ $num_lms -gt 1  ]; then
   echo "Interpolating LMs with command: \"$cmd\""
   $cmd
   echo "PPL for the interolated LM:"
-  ngram -unk -lm $dir/${mix_tag}.o${order}g.kn.gz -ppl $dir/dev.gz
+  ngram -order ${order} -unk -lm $dir/${mix_tag}.o${order}g.kn.gz -ppl $dir/dev.gz
 fi
 
 #save the lm name for further use

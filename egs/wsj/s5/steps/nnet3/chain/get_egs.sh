@@ -222,8 +222,10 @@ else
   # - the $cmvn_opts can be set to '--config=conf/online_cmvn.conf' which is the setup of ivector-extractor,
   echo "$0: feature type is raw, with 'apply-cmvn-online'"
   feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
-  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
-  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:- ark:- |"
+  valid_spk2utt="ark:utils/filter_scp.pl $dir/valid_uttlist $data/utt2spk | utils/utt2spk_to_spk2utt.pl |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=\"$valid_spk2utt\" $dir/global_cmvn.stats scp:- ark:- |"
+  train_subset_spk2utt="ark:utils/filter_scp.pl $dir/train_subset_uttlist $data/utt2spk | utils/utt2spk_to_spk2utt.pl |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn-online $cmvn_opts --spk2utt=\"$train_subset_spk2utt\" $dir/global_cmvn.stats scp:- ark:- |"
 fi
 echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
 use warnings; #sed replacement for -w perl parameter
-
 # In general, doing
 #  run.pl some.log a b c is like running the command a b c in
 # the bash shell, and putting the standard error and output into some.log.
@@ -21,11 +20,12 @@ use warnings; #sed replacement for -w perl parameter
 # The reason why this is useful is so that we can create a different
 # version of this program that uses a queueing system instead.
 
-# use Data::Dumper;
+#use Data::Dumper;
 
 @ARGV < 2 && die "usage: run.pl log-file command-line arguments...";
 
-
+#print STDERR "COMMAND-LINE: " .  Dumper(\@ARGV) . "\n";
+$job_pick = 'all';
 $max_jobs_run = -1;
 $jobstart = 1;
 $jobend = 1;
@@ -45,7 +45,16 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       $ignored_opts .= "-V ";
     } elsif ($switch eq "--max-jobs-run" || $switch eq "-tc") {
       # we do support the option --max-jobs-run n, and its GridEngine form -tc n.
-      $max_jobs_run = shift @ARGV;
+      # if the command appears multiple times uses the smallest option.
+      if ( $max_jobs_run <= 0 ) {
+          $max_jobs_run =  shift @ARGV;
+      } else {
+        my $new_constraint = shift @ARGV;
+        if ( ($new_constraint < $max_jobs_run) ) {
+          $max_jobs_run = $new_constraint;
+        }
+      }
+      
       if (! ($max_jobs_run > 0)) {
         die "run.pl: invalid option --max-jobs-run $max_jobs_run";
       }
@@ -62,6 +71,12 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
         $ignored_opts .= "$switch $argument $argument2 ";
       } elsif ($switch eq "--gpu") {
         $using_gpu = $argument;
+      } elsif ($switch eq "--pick") {
+        if($argument =~ m/^(all|failed|incomplete)$/) {
+          $job_pick = $argument;
+        } else {
+          print STDERR "run.pl: ERROR: --pick argument must be one of 'all', 'failed' or 'incomplete'"
+        }
       } else {
         # Ignore option.
         $ignored_opts .= "$switch $argument ";
@@ -143,6 +158,62 @@ if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
   }
 }
 
+sub pick_or_exit {
+  # pick_or_exit ( $logfile ) 
+  # Invoked before each job is started helps to run jobs selectively.
+  #
+  # Given the name of the output logfile decides whether the job must be 
+  # executed (by returning from the subroutine) or not (by terminating the
+  # process calling exit)
+  # 
+  # PRE: $job_pick is a global variable set by command line switch --pick
+  #      and indicates which class of jobs must be executed.
+  #
+  # 1) If a failed job is not executed the process exit code will indicate 
+  #    failure, just as if the task was just executed  and failed.
+  #
+  # 2) If a task is incomplete it will be executed. Incomplete may be either
+  #    a job whose log file does not contain the accounting notes in the end,
+  #    or a job whose log file does not exist.
+  #
+  # 3) If the $job_pick is set to 'all' (default behavior) a task will be
+  #    executed regardless of the result of previous attempts.
+  #
+  # This logic could have been implemented in the main execution loop
+  # but a subroutine to preserve the current level of readability of
+  # that part of the code.
+  #
+  # Alexandre Felipe, (o.alexandre.felipe@gmail.com) 14th of August of 2020
+  #
+  if($job_pick eq 'all'){
+    return; # no need to bother with the previous log
+  }
+  open my $fh, "<", $_[0] or return; # job not executed yet
+  my $log_line;
+  my $cur_line;
+  while ($cur_line = <$fh>) {
+    if( $cur_line =~ m/# Ended \(code .*/ ) {
+      $log_line = $cur_line;
+    }
+  }
+  close $fh;
+  if (! defined($log_line)){
+    return; # incomplete
+  }
+  if ( $log_line =~ m/# Ended \(code 0\).*/ ) {
+    exit(0); # complete
+  } elsif ( $log_line =~ m/# Ended \(code \d+(; signal \d+)?\).*/ ){
+    if ($job_pick !~ m/^(failed|all)$/) {
+      exit(1); # failed but not going to run
+    } else {
+      return; # failed
+    }
+  } elsif ( $log_line =~ m/.*\S.*/ ) {
+    return; # incomplete jobs are always run
+  }
+}
+
+
 $logfile = shift @ARGV;
 
 if (defined $jobname && $logfile !~ m/$jobname/ &&
@@ -197,6 +268,9 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
       $cmd =~ s/$jobname/$jobid/g;
       $logfile =~ s/$jobname/$jobid/g;
     }
+    # exit if the job does not need to be executed
+    pick_or_exit( $logfile );
+
     system("mkdir -p `dirname $logfile` 2>/dev/null");
     open(F, ">$logfile") || die "run.pl: Error opening log file $logfile";
     print F "# " . $cmd . "\n";

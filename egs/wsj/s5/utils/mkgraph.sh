@@ -6,8 +6,8 @@
 # This script creates a fully expanded decoding graph (HCLG) that represents
 # all the language-model, pronunciation dictionary (lexicon), context-dependency,
 # and HMM structure in our model.  The output is a Finite State Transducer
-# that has word-ids on the output, and pdf-ids on the input (these are indexes
-# that resolve to Gaussian Mixture Models).
+# that has word-ids on the output, and transition-ids on the input (these are indexes
+# that resolve to pdf-ids).
 # See
 #  http://kaldi-asr.org/doc/graph_recipe_test.html
 # (this is compiled from this repository using Doxygen,
@@ -54,7 +54,7 @@ mkdir -p $dir
 # (note: the [[ ]] brackets make the || type operators work (inside [ ], we
 # would have to use -o instead),  -f means file exists, and -ot means older than).
 
-required="$lang/L.fst $lang/G.fst $lang/phones.txt $lang/words.txt $lang/phones/silence.csl $lang/phones/disambig.int $model $tree"
+required="$lang/L_disambig.fst $lang/G.fst $lang/phones.txt $lang/words.txt $lang/phones/silence.csl $lang/phones/disambig.int $model $tree"
 for f in $required; do
   [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done

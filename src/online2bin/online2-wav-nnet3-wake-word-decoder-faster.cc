@@ -115,8 +115,8 @@ int main(int argc, char *argv[]) {
     }
 
     Matrix<double> global_cmvn_stats;
-    if (feature_info.global_cmvn_stats_rxfilename != "")
-      ReadKaldiObject(feature_info.global_cmvn_stats_rxfilename,
+    if (feature_opts.global_cmvn_stats_rxfilename != "")
+      ReadKaldiObject(feature_opts.global_cmvn_stats_rxfilename,
                       &global_cmvn_stats);
 
     TransitionModel trans_model;
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
             std::vector<int32> word_ids;
             decoder.FinishTraceBack(&out_fst);
             fst::GetLinearSymbolSequence(out_fst,
-                                         static_cast<vector<int32> *>(0),
+                                         static_cast<std::vector<int32> *>(0),
                                          &word_ids,
                                          static_cast<LatticeArc::Weight*>(0));
             PrintPartialResult(word_ids, word_syms, partial_res || word_ids.size());
@@ -239,7 +239,7 @@ int main(int argc, char *argv[]) {
             std::vector<int32> word_ids;
             if (decoder.PartialTraceback(&out_fst)) {
               fst::GetLinearSymbolSequence(out_fst,
-                                           static_cast<vector<int32> *>(0),
+                                           static_cast<std::vector<int32> *>(0),
                                            &word_ids,
                                            static_cast<LatticeArc::Weight*>(0));
               PrintPartialResult(word_ids, word_syms, false);

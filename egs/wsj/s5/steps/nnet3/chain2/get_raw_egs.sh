@@ -130,8 +130,7 @@ latdir=$3
 dir=$4
 
 tree=$chaindir/${lang}.tree
-trans_mdl=$chaindir/init/${lang}.mdl  # contains the transition model and a nnet, but
-                                   # we won't be making use of the nnet part.
+trans_mdl=$chaindir/init/${lang}_trans.mdl
 normalization_fst=$chaindir/den_fsts/${lang}.normalization.fst
 den_fst=$chaindir/den_fsts/${lang}.den.fst
 
@@ -142,13 +141,6 @@ for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
          $tree $normalization_fst $den_fst $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
-if [ ! -f $trans_mdl ]; then
-    trans_mdl=$chaindir/init/${lang}_trans.mdl
-    if [ ! -f $trans_mdl ]; then
-        echo "$0: cannot find transition model in $chaindir/init/${lang}_trans.mdl or $trans_mdl"
-        exit 1
-    fi
-fi
 
 nj=$(cat $latdir/num_jobs) || exit 1
 if [ -f $latdir/per_utt ]; then
@@ -227,7 +219,7 @@ else
 fi
 
 feats="scp:$sdata/JOB/feats.scp"
-if [ ! -z $cmvn_opts ]; then
+if [ ! -z "$cmvn_opts" ]; then
     if [ ! -f $data/cmvn.scp ]; then
         echo "Cannot find $data/cmvn.scp. But cmvn_opts=$cmvn_opts"
         exit 1
@@ -285,13 +277,14 @@ EOF
 
   if [ ! -z "$online_ivector_dir" ]; then
       ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
-      echo $ivector_dim > $dir/info/ivector_dim
       echo ivector_dim $ivector_dim >> $dir/info.txt
+      steps/nnet2/get_ivector_id.sh $online_ivector_dir || exit 1
       echo final.ie.id `cat $online_ivector_dir/final.ie.id` >> $dir/info.txt
-      ivector_id=`steps/nnet2/get_ivector_id.sh $online_ivector_dir || exit 1`
-      echo ivector_id $ivector_id
-      ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-      echo ivector_period $ivector_period
+      if [ ! -f $online_ivector_dir/ivector_period ]; then
+        echo "$0: $online_ivector_dir/ivector_period does not exist"
+        exit 1
+      fi
+      ivector_period=$(cat $online_ivector_dir/ivector_period)
       ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
   else
       ivector_opts=""

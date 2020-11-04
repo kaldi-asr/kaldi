@@ -6,39 +6,51 @@ no_feats=false
 no_wav=false
 no_text=false
 no_spk_sort=false
+non_print=false
 
-for x in `seq 4`; do
-  if [ "$1" == "--no-feats" ]; then
-    no_feats=true
-    shift;
-  fi
-  if [ "$1" == "--no-text" ]; then
-    no_text=true
-    shift;
-  fi
-  if [ "$1" == "--no-wav" ]; then
-    no_wav=true
-    shift;
-  fi
-  if [ "$1" == "--no-spk-sort" ]; then
-    no_spk_sort=true
-    shift;
-  fi
+
+function show_help
+{
+      echo "Usage: $0 [--no-feats] [--no-text] [--non-print] [--no-wav] [--no-spk-sort] <data-dir>"
+      echo "The --no-xxx options mean that the script does not require "
+      echo "xxx.scp to be present, but it will check it if it is present."
+      echo "--no-spk-sort means that the script does not require the utt2spk to be "
+      echo "sorted by the speaker-id in addition to being sorted by utterance-id."
+      echo "--non-print ignore the presence of non-printable characters."
+      echo "By default, utt2spk is expected to be sorted by both, which can be "
+      echo "achieved by making the speaker-id prefixes of the utterance-ids"
+      echo "e.g.: $0 data/train"
+}      
+
+while [ $# -ne 0 ] ; do
+  case "$1" in
+    "--no-feats")
+      no_feats=true;
+      ;;
+    "--no-text")
+      no_text=true;
+      ;;
+    "--non-print")
+      non_print=true;
+      ;;
+    "--no-wav")
+      no_wav=true;
+      ;;
+    "--no-spk-sort")
+      no_spk_sort=true;
+      ;;
+    *)
+      if ! [ -z "$data" ] ; then
+        show_help;
+        exit 1
+      fi
+      data=$1
+      ;;
+  esac
+  shift
 done
 
-if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] [--no-spk-sort] <data-dir>"
-  echo "The --no-xxx options mean that the script does not require "
-  echo "xxx.scp to be present, but it will check it if it is present."
-  echo "--no-spk-sort means that the script does not require the utt2spk to be "
-  echo "sorted by the speaker-id in addition to being sorted by utterance-id."
-  echo "By default, utt2spk is expected to be sorted by both, which can be "
-  echo "achieved by making the speaker-id prefixes of the utterance-ids"
-  echo "e.g.: $0 data/train"
-  exit 1;
-fi
 
-data=$1
 
 if [ ! -d $data ]; then
   echo "$0: no such directory $data"
@@ -80,8 +92,7 @@ export LC_ALL=C
 
 function check_sorted_and_uniq {
   ! perl -ne '((substr $_,-1) eq "\n") or die "file $ARGV has invalid newline";' $1 && exit 1;
-  ! awk '{print $1}' $1 | sort | uniq | cmp -s - <(awk '{print $1}' $1) && \
-    echo "$0: file $1 is not in sorted order or has duplicates" && exit 1;
+  ! awk '{print $1}' < $1 | sort -uC && echo "$0: file $1 is not sorted or has duplicates" && exit 1;
 }
 
 function partial_diff {
@@ -94,7 +105,7 @@ function partial_diff {
 check_sorted_and_uniq $data/utt2spk
 
 if ! $no_spk_sort; then
-  ! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
+  ! sort -k2 -C $data/utt2spk && \
      echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
      echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
 fi
@@ -113,7 +124,12 @@ if [ ! -f $data/text ] && ! $no_text; then
 fi
 
 num_utts=`cat $tmpdir/utts | wc -l`
-if [ -f $data/text ]; then
+if ! $no_text; then
+  if ! $non_print; then
+    n_non_print=$(LC_ALL="C.UTF-8" grep -c '[^[:print:][:space:]]' $data/text) && \
+    echo "$0: text contains $n_non_print lines with non-printable characters" &&\
+    exit 1;
+  fi
   utils/validate_text.pl $data/text || exit 1;
   check_sorted_and_uniq $data/text
   text_len=`cat $data/text | wc -l`

@@ -60,7 +60,8 @@ def read_labels_file(label_file):
 def write_labels_file(seg2label, out_file):
     f = open(out_file, 'w')
     for seg in sorted(seg2label.keys()):
-        f.write("{} {}\n".format(seg, seg2label[seg]))
+        label = seg2label[seg]
+        f.write("{} {}\n".format(seg, label))
     f.close()
     return
 

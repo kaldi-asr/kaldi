@@ -979,7 +979,9 @@ class SvdApplier {
   will be set internally to the value that ensures the change in M is orthogonal to
   M (viewed as a vector).
 */
-void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
+void ConstrainOrthonormalInternal(BaseFloat scale,
+                                  const std::string &component_name,
+                                  CuMatrixBase<BaseFloat> *M) {
   KALDI_ASSERT(scale != 0.0);
 
   // We'd like to enforce the rows of M to be orthonormal.
@@ -1032,6 +1034,10 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
 
     BaseFloat trace_P = P.Trace(), trace_P_P = TraceMatMat(P, P, kTrans);
 
+    if (trace_P < 1.0e-15)
+      return;   // This matrix has almost zero value.  It can happen when
+                // components are unused.
+
     scale = std::sqrt(trace_P_P / trace_P);
 
     // The following is a tweak to avoid divergence when the eigenvalues aren't
@@ -1045,8 +1051,15 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
     // the learning rate slower to reduce the risk of divergence, since the
     // update may not be stable for starting points far from equilibrium.
     BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
-    KALDI_ASSERT(ratio > 0.99);
+    if (!(ratio > 0.99)) {
+      KALDI_WARN << "Ratio is " << ratio << " (should be >= 1.0); component is "
+                 << component_name;
+      KALDI_ASSERT(ratio > 0.9);
+    }
     if (ratio > 1.02) {
+      KALDI_WARN << "Ratio is " << ratio << ", multiplying update speed "
+                 << "(currently " << update_speed << ") by 0.5; component is "
+                 << component_name;
       update_speed *= 0.5;  // Slow down the update speed to reduce the risk of divergence.
       if (ratio > 1.1) update_speed *= 0.5;  // Slow it down even more.
     }
@@ -1132,13 +1145,16 @@ void ConstrainOrthonormal(Nnet *nnet) {
       // time stray far from the constraint in between.
       continue;
     }
+    std::string component_name = nnet->GetComponentName(c);
 
     int32 rows = params->NumRows(), cols = params->NumCols();
     if (rows <= cols) {
-      ConstrainOrthonormalInternal(orthonormal_constraint, params);
+      ConstrainOrthonormalInternal(orthonormal_constraint, component_name,
+                                   params);
     } else {
       CuMatrix<BaseFloat> params_trans(*params, kTrans);
-      ConstrainOrthonormalInternal(orthonormal_constraint, &params_trans);
+      ConstrainOrthonormalInternal(orthonormal_constraint, component_name,
+                                   &params_trans);
       params->CopyFromMat(params_trans, kTrans);
     }
   }

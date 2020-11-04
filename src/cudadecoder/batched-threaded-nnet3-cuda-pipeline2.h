@@ -138,12 +138,12 @@ class BatchedThreadedNnet3CudaPipeline2 {
     BaseFloat *d_data;
     size_t size;
 
-    HostDeviceVector()
+    HostDeviceVector(const size_t new_size = KALDI_CUDA_DECODER_AUDIO_HOST_DEVICE_BUFFER_SIZE)
         : h_data(NULL),
           d_data(NULL),
-          size(KALDI_CUDA_DECODER_AUDIO_HOST_DEVICE_BUFFER_SIZE) {
+          size(new_size) {
       cudaEventCreate(&evt);
-      Reallocate(size);
+      Reallocate(new_size);
     }
 
     virtual ~HostDeviceVector() {
@@ -151,16 +151,28 @@ class BatchedThreadedNnet3CudaPipeline2 {
       cudaEventDestroy(evt);
     }
 
-    void Reallocate(size_t new_size) {
-      KALDI_ASSERT(new_size > 0);
-      Deallocate();
-      cudaMalloc(&d_data, new_size * sizeof(*d_data));
-      cudaMallocHost(&h_data, new_size * sizeof(*d_data));
-      new_size = size;
+    void Reallocate(const size_t new_size) {
+	KALDI_ASSERT(new_size > 0);
+	Deallocate();
+
+	cudaError_t cuResult = cudaSuccess;
+	cuResult = cudaMalloc(&d_data, new_size * sizeof(BaseFloat));
+	if (cuResult != cudaSuccess) {
+	    KALDI_ERR << "cudaMalloc() failed with error: " << cudaGetErrorString(cuResult);
+	}
+	KALDI_ASSERT(d_data != NULL);
+
+	cuResult = cudaMallocHost(&h_data, new_size * sizeof(BaseFloat));
+	if (cuResult != cudaSuccess) {
+	    KALDI_ERR << "cudaMallocHost() failed with error: " << cudaGetErrorString(cuResult);
+	}
+	KALDI_ASSERT(h_data != NULL);
+
+	size = new_size;
     }
     void Deallocate() {
-      if (d_data) cudaFree(d_data);
-      if (h_data) cudaFreeHost(h_data);
+      if (d_data) {cudaFree(d_data); d_data = NULL; }
+      if (h_data) {cudaFreeHost(h_data); h_data = NULL; }
     }
   };
 
@@ -245,7 +257,7 @@ class BatchedThreadedNnet3CudaPipeline2 {
   void WaitForAllTasks();
 
   // Used for debug
-  void SetSymbolTable(fst::SymbolTable *word_syms) {
+  void SetSymbolTable(const fst::SymbolTable &word_syms) {
     cuda_online_pipeline_.SetSymbolTable(word_syms);
   }
 

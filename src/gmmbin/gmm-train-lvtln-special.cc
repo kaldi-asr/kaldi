@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("warp", &warp, "If supplied, can be used to set warp factor"
+    po.Register("warp", &warp, "If supplied, can be used to set warp factor "
                 "for this transform");
     po.Register("normalize-var", &normalize_var, "Normalize diagonal of variance "
                 "to be the same before and after transform.");

@@ -66,12 +66,12 @@ struct GrammarFstArc {
 
 #define KALDI_GRAMMAR_FST_SPECIAL_WEIGHT 4096.0
 
-class GrammarFst;
+template <typename FST> class GrammarFstTpl;
 
 // Declare that we'll be overriding class ArcIterator for class GrammarFst.
 // This wouldn't work if we were fully using the OpenFst framework,
 // e.g. if we had GrammarFst inherit from class Fst.
-template<> class ArcIterator<GrammarFst>;
+template <typename instance_FST> class ArcIterator<GrammarFstTpl<instance_FST> >;
 
 
 /**
@@ -80,6 +80,10 @@ template<> class ArcIterator<GrammarFst>;
    phonetic context). This class does not inherit from fst::Fst and does not
    support its full interface-- only the parts that are necessary for the
    decoder to work when templated on it.
+
+   The underlying FSTs that are stitched together are templated upon in
+   GrammarFstTpl, thus allowing you to create a GrammarFst out of any
+   type of FST class.
 
    The basic interface is inspired by OpenFst's 'ReplaceFst' (see its
    replace.h), except that this handles left-biphone phonetic context, which
@@ -93,7 +97,8 @@ template<> class ArcIterator<GrammarFst>;
    e.g. `new GrammarFst(this_grammar_fst)`, if you want to decode from multiple
    threads using the same GrammarFst.
 */
-class GrammarFst {
+template <typename FST>
+class GrammarFstTpl {
  public:
   typedef GrammarFstArc Arc;
   typedef TropicalWeight Weight;
@@ -140,18 +145,18 @@ class GrammarFst {
               than once in 'fsts'.  ifsts may be empty, even though that doesn't
               make much sense.
     */
-  GrammarFst(
+  GrammarFstTpl(
       int32 nonterm_phones_offset,
-      std::shared_ptr<const ConstFst<StdArc> > top_fst,
-      const std::vector<std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > > > &ifsts);
+      std::shared_ptr<FST> top_fst,
+      const std::vector<std::pair<int32, std::shared_ptr<FST> > > &ifsts);
 
   /// Copy constructor.  Useful because this object is not thread safe so cannot
   /// be used by multiple parallel decoder threads, but it is lightweight and
   /// can copy it without causing the stored FSTs to be copied.
-  GrammarFst(const GrammarFst &other) = default;
+  GrammarFstTpl(const GrammarFstTpl<FST> &other) = default;
 
   ///  This constructor should only be used prior to calling Read().
-  GrammarFst() { }
+  GrammarFstTpl() { }
 
   // This Write function allows you to dump a GrammarFst to disk as a single
   // object.  It only supports binary mode, but the option is allowed for
@@ -187,12 +192,12 @@ class GrammarFst {
   // This is called in LatticeFasterDecoder.  As an implementation shortcut, if
   // the state is an expanded state, we return 1, meaning 'yes, there are input
   // epsilons'; the calling code doesn't actually care about the exact number.
-  inline size_t NumInputEpsilons(StateId s) const {
+  size_t NumInputEpsilons(StateId s) const {
     // Compare with the constructor of ArcIterator.
     int32 instance_id = s >> 32;
     BaseStateId base_state = static_cast<int32>(s);
-    const GrammarFst::FstInstance &instance = instances_[instance_id];
-    const ConstFst<StdArc> *base_fst = instance.fst;
+    const GrammarFstTpl::FstInstance &instance = instances_[instance_id];
+    FST *base_fst = instance.fst;
     if (base_fst->Final(base_state).Value() != KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
       return base_fst->NumInputEpsilons(base_state);
     } else {
@@ -200,14 +205,129 @@ class GrammarFst {
     }
   }
 
-  inline std::string Type() const { return "grammar"; }
+  std::string Type() const { return "grammar"; }
 
-  ~GrammarFst();
+  ~GrammarFstTpl();
+
+  /**
+     Represents an expanded state in an FstInstance.  We expand states whenever
+     we encounter states with a final-cost equal to
+     KALDI_GRAMMAR_FST_SPECIAL_WEIGHT (4096.0).  The function
+     PrepareGrammarFst() makes sure to add this special final-cost on states
+     that have special arcs leaving them. */
+  struct ExpandedState: public std::enable_shared_from_this<ExpandedState> {
+    // The final-prob for expanded states is always zero; to avoid
+    // corner cases, we ensure this via adding epsilon arcs where
+    // needed.
+
+    // fst-instance index of destination state (we will have ensured previously
+    // that this is the same for all outgoing arcs).
+    int32 dest_fst_instance;
+
+    // List of arcs out of this state, where the 'nextstate' element will be the
+    // lower-order 32 bits of the destination state and the higher order bits
+    // will be given by 'dest_fst_instance'.  We do it this way, instead of
+    // constructing a vector<Arc>, in order to simplify the ArcIterator code and
+    // avoid unnecessary branches in loops over arcs.
+    // We guarantee that this 'arcs' array will always be nonempty; this
+    // is to avoid certain hassles on Windows with automated bounds-checking.
+    std::vector<StdArc> arcs;
+  };
+
+  // An FstInstance is a copy of an FST.  The instance numbered zero is for
+  // top_fst_, and (to state it approximately) whenever any FST instance invokes
+  // another FST a new instance will be generated on demand.
+  struct FstInstance {
+    // ifst_index is the index into the ifsts_ vector that corresponds to this
+    // FST instance, or -1 if this is the top-level instance.
+    int32 ifst_index;
+
+    // Pointer to the FST corresponding to this instance: it will equal top_fst_
+    // if ifst_index == -1, or ifsts_[ifst_index].second otherwise.
+    FST *fst;
+
+    // 'expanded_states', which will be populated on demand as states in this
+    // FST instance are accessed, will only contain entries for states in this
+    // FST that the final-prob's value equal to
+    // KALDI_GRAMMAR_FST_SPECIAL_WEIGHT.  (That final-prob value is used as a
+    // kind of signal to this code that the state needs expansion).
+    std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> > expanded_states;
+
+    // 'child_instances', which is populated on demand as states in this FST
+    // instance are accessed, is logically a map from pair (nonterminal_index,
+    // return_state) to instance_id.  When we encounter an arc in our FST with a
+    // user-defined nonterminal indexed 'nonterminal_index' on its ilabel, and
+    // with 'return_state' as its nextstate, we look up that pair
+    // (nonterminal_index, return_state) in this map to see whether there
+    // already exists an FST instance for that.  If it exists then the
+    // transition goes to that FST instance; if not, then we create a new one.
+    // The 'return_state' that's part of the key in this map would be the same
+    // as the 'parent_state' in that child FST instance, and of course the
+    // 'parent_instance' in that child FST instance would be the instance_id of
+    // this instance.
+    //
+    // In most cases each return_state would only have a single
+    // nonterminal_index, making the 'nonterminal_index' in the key *usually*
+    // redundant, but in principle it could happen that two user-defined
+    // nonterminals might share the same return-state.
+    std::unordered_map<int64, int32> child_instances;
+
+    // The instance-id of the FST we return to when we are done with this one
+    // (or -1 if this is the top-level FstInstance so there is nowhere to
+    // return).
+    int32 parent_instance;
+
+    // The state in the FST of 'parent_instance' at which we expanded this FST
+    // instance, and to which we return (actually we return to the next-states
+    // of arcs out of 'parent_state').
+    int32 parent_state;
+
+    // 'parent_reentry_arcs' is a map from left-context-phone (i.e. either a
+    // phone index or #nonterm_bos), to an arc-index, which we could use to
+    // Seek() in an arc-iterator for state parent_state in the FST-instance
+    // 'parent_instance'.  It's set up when we create this FST instance.  (The
+    // arcs used to enter this instance are not located here, they can be
+    // located in entry_arcs_[instance_id]).  We make use of reentry_arcs when
+    // we expand states in this FST that have #nonterm_end on their arcs,
+    // leading to final-states, which signal a return to the parent
+    // FST-instance.
+    std::unordered_map<int32, int32> parent_reentry_arcs;
+  };
+
+  // The FST instances.  Initially it is a vector with just one element
+  // representing top_fst_, and it will be populated with more elements on
+  // demand.  An instance_id refers to an index into this vector.
+  std::vector<FstInstance> instances_;
+
+  // The integer id of the symbol #nonterm_bos in phones.txt.
+  int32 nonterm_phones_offset_;
+
+  // The top-level FST passed in by the user; contains the start state and
+  // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
+  // each other recursively).
+  std::shared_ptr<FST > top_fst_;
+
+  // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
+  // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
+  // 'fst' is the corresponding FST.
+  std::vector<std::pair<int32, std::shared_ptr<FST > > > ifsts_;
+
+  // Maps from the user-defined nonterminals like #nonterm:foo as numbered in
+  // phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
+  std::unordered_map<int32, int32> nonterminal_map_;
+
+  // entry_arcs_ will have the same dimension as ifsts_.  Each entry_arcs_[i]
+  // is a map from left-context phone (i.e. either a phone-index or
+  // #nonterm_bos) to the corresponding arc-index leaving the start-state in
+  // the FST 'ifsts_[i].second'.
+  // We populate this only on demand as each one is needed (except for the
+  // first one, which we populate immediately as a kind of sanity check).
+  // Doing it on-demand prevents this object's initialization from being
+  // nontrivial in the case where there are a lot of nonterminals.
+  std::vector<std::unordered_map<int32, int32> > entry_arcs_;
+
  private:
-
-  struct ExpandedState;
-
-  friend class ArcIterator<GrammarFst>;
+  friend class ArcIterator<GrammarFstTpl<FST> >;
 
   // sets up nonterminal_map_.
   void InitNonterminalMap();
@@ -256,7 +376,7 @@ class GrammarFst {
                  in an arc-iterator set up for the state 'entry_state).
    */
   void InitEntryOrReentryArcs(
-      const ConstFst<StdArc> &fst,
+      FST &fst,
       int32 entry_state,
       int32 nonterminal_symbol,
       std::unordered_map<int32, int32> *phone_to_arc);
@@ -270,9 +390,10 @@ class GrammarFst {
      if something went wrong or ilabel did not represent that (e.g. was less
      than kNontermBigNumber).
 
-       @param [in] the ilabel to be decoded.  Note: the type 'Label' will in practice be int.
+       @param [in]  The ilabel to be decoded.  Note: the type 'Label' will
+                    in practice be int.
        @param [out] The nonterminal part of the ilabel after decoding.
-                   Will be a value greater than nonterm_phones_offset_.
+                    Will be a value greater than nonterm_phones_offset_.
        @param [out] The left-context-phone part of the ilabel after decoding.
                     Will either be a phone index, or the symbol corresponding
                     to #nonterm_bos (meaning no left-context as we are at
@@ -288,15 +409,15 @@ class GrammarFst {
   // when we have determined that an ExpandedState needs to be created and that
   // it is not currently present.  It creates and returns it; the calling code
   // needs to add it to the expanded_states map for its FST instance.
-  ExpandedState *ExpandState(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandState(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is
   // #nonterm_end, this implements ExpandState() for that case.
-  ExpandedState *ExpandStateEnd(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandStateEnd(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is a
   // user-defined nonterminal, this implements ExpandState() for that case.
-  ExpandedState *ExpandStateUserDefined(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandStateUserDefined(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandStateUserDefined(), this function attempts to look up the
   // pair (nonterminal, state) in the map
@@ -349,140 +470,23 @@ class GrammarFst {
       if already present; otherwise it populates the 'expanded_states' map with
       something for this state_id and returns the value.
   */
-  inline ExpandedState *GetExpandedState(int32 instance_id,
+  inline std::shared_ptr<ExpandedState> GetExpandedState(int32 instance_id,
                                          BaseStateId state_id) {
-    std::unordered_map<BaseStateId, ExpandedState*> &expanded_states =
+    std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> > &expanded_states =
         instances_[instance_id].expanded_states;
 
-    std::unordered_map<BaseStateId, ExpandedState*>::iterator iter =
+    typename std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> >::iterator iter =
         expanded_states.find(state_id);
     if (iter != expanded_states.end()) {
       return iter->second;
     } else {
-      ExpandedState *ans = ExpandState(instance_id, state_id);
+      std::shared_ptr<ExpandedState> ans = ExpandState(instance_id, state_id);
       // Don't use the reference 'expanded_states'; it could have been
       // invalidated.
       instances_[instance_id].expanded_states[state_id] = ans;
       return ans;
     }
   }
-
-  /**
-     Represents an expanded state in an FstInstance.  We expand states whenever
-     we encounter states with a final-cost equal to
-     KALDI_GRAMMAR_FST_SPECIAL_WEIGHT (4096.0).  The function
-     PrepareGrammarFst() makes sure to add this special final-cost on states
-     that have special arcs leaving them. */
-  struct ExpandedState {
-    // The final-prob for expanded states is always zero; to avoid
-    // corner cases, we ensure this via adding epsilon arcs where
-    // needed.
-
-    // fst-instance index of destination state (we will have ensured previously
-    // that this is the same for all outgoing arcs).
-    int32 dest_fst_instance;
-
-    // List of arcs out of this state, where the 'nextstate' element will be the
-    // lower-order 32 bits of the destination state and the higher order bits
-    // will be given by 'dest_fst_instance'.  We do it this way, instead of
-    // constructing a vector<Arc>, in order to simplify the ArcIterator code and
-    // avoid unnecessary branches in loops over arcs.
-    // We guarantee that this 'arcs' array will always be nonempty; this
-    // is to avoid certain hassles on Windows with automated bounds-checking.
-    std::vector<StdArc> arcs;
-  };
-
-
-  // An FstInstance is a copy of an FST.  The instance numbered zero is for
-  // top_fst_, and (to state it approximately) whenever any FST instance invokes
-  // another FST a new instance will be generated on demand.
-  struct FstInstance {
-    // ifst_index is the index into the ifsts_ vector that corresponds to this
-    // FST instance, or -1 if this is the top-level instance.
-    int32 ifst_index;
-
-    // Pointer to the FST corresponding to this instance: it will equal top_fst_
-    // if ifst_index == -1, or ifsts_[ifst_index].second otherwise.
-    const ConstFst<StdArc> *fst;
-
-    // 'expanded_states', which will be populated on demand as states in this
-    // FST instance are accessed, will only contain entries for states in this
-    // FST that the final-prob's value equal to
-    // KALDI_GRAMMAR_FST_SPECIAL_WEIGHT.  (That final-prob value is used as a
-    // kind of signal to this code that the state needs expansion).
-    std::unordered_map<BaseStateId, ExpandedState*> expanded_states;
-
-    // 'child_instances', which is populated on demand as states in this FST
-    // instance are accessed, is logically a map from pair (nonterminal_index,
-    // return_state) to instance_id.  When we encounter an arc in our FST with a
-    // user-defined nonterminal indexed 'nonterminal_index' on its ilabel, and
-    // with 'return_state' as its nextstate, we look up that pair
-    // (nonterminal_index, return_state) in this map to see whether there already
-    // exists an FST instance for that.  If it exists then the transition goes to
-    // that FST instance; if not, then we create a new one.  The 'return_state'
-    // that's part of the key in this map would be the same as the 'parent_state'
-    // in that child FST instance, and of course the 'parent_instance' in
-    // that child FST instance would be the instance_id of this instance.
-    //
-    // In most cases each return_state would only have a single
-    // nonterminal_index, making the 'nonterminal_index' in the key *usually*
-    // redundant, but in principle it could happen that two user-defined
-    // nonterminals might share the same return-state.
-    std::unordered_map<int64, int32> child_instances;
-
-    // The instance-id of the FST we return to when we are done with this one
-    // (or -1 if this is the top-level FstInstance so there is nowhere to
-    // return).
-    int32 parent_instance;
-
-    // The state in the FST of 'parent_instance' at which we expanded this FST
-    // instance, and to which we return (actually we return to the next-states
-    // of arcs out of 'parent_state').
-    int32 parent_state;
-
-    // 'parent_reentry_arcs' is a map from left-context-phone (i.e. either a
-    // phone index or #nonterm_bos), to an arc-index, which we could use to
-    // Seek() in an arc-iterator for state parent_state in the FST-instance
-    // 'parent_instance'.  It's set up when we create this FST instance.  (The
-    // arcs used to enter this instance are not located here, they can be
-    // located in entry_arcs_[instance_id]).  We make use of reentry_arcs when
-    // we expand states in this FST that have #nonterm_end on their arcs,
-    // leading to final-states, which signal a return to the parent
-    // FST-instance.
-    std::unordered_map<int32, int32> parent_reentry_arcs;
-  };
-
-  // The integer id of the symbol #nonterm_bos in phones.txt.
-  int32 nonterm_phones_offset_;
-
-  // The top-level FST passed in by the user; contains the start state and
-  // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
-  // each other recursively).
-  std::shared_ptr<const ConstFst<StdArc> > top_fst_;
-
-  // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
-  // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
-  // 'fst' is the corresponding FST.
-  std::vector<std::pair<int32, std::shared_ptr<const ConstFst<StdArc> > > > ifsts_;
-
-  // Maps from the user-defined nonterminals like #nonterm:foo as numbered
-  // in phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
-  std::unordered_map<int32, int32> nonterminal_map_;
-
-  // entry_arcs_ will have the same dimension as ifsts_.  Each entry_arcs_[i]
-  // is a map from left-context phone (i.e. either a phone-index or
-  // #nonterm_bos) to the corresponding arc-index leaving the start-state in
-  // the FST 'ifsts_[i].second'.
-  // We populate this only on demand as each one is needed (except for the
-  // first one, which we populate immediately as a kind of sanity check).
-  // Doing it on-demand prevents this object's initialization from being
-  // nontrivial in the case where there are a lot of nonterminals.
-  std::vector<std::unordered_map<int32, int32> > entry_arcs_;
-
-  // The FST instances.  Initially it is a vector with just one element
-  // representing top_fst_, and it will be populated with more elements on
-  // demand.  An instance_id refers to an index into this vector.
-  std::vector<FstInstance> instances_;
 };
 
 
@@ -492,27 +496,27 @@ class GrammarFst {
    has a very similar-looking interface), so we don't need to implement all the
    functionality that the regular ArcIterator has.
  */
-template <>
-class ArcIterator<GrammarFst> {
+template <typename instance_FST>
+class ArcIterator<GrammarFstTpl<instance_FST > > {
  public:
-  using Arc = typename GrammarFst::Arc;
+  using Arc = typename GrammarFstTpl<instance_FST >::Arc;
   using BaseArc = StdArc;
   using StateId = typename Arc::StateId;  // int64
   using BaseStateId = typename StdArc::StateId;  // int
-  using ExpandedState = GrammarFst::ExpandedState;
+  using ExpandedState = typename GrammarFstTpl<instance_FST >::ExpandedState;
 
   // Caution: uses const_cast to evade const rules on GrammarFst.  This is for
   // compatibility with how things work in OpenFst.
-  inline ArcIterator(const GrammarFst &fst_in, StateId s) {
-    GrammarFst &fst = const_cast<GrammarFst&>(fst_in);
+  inline ArcIterator(const GrammarFstTpl<instance_FST > &fst_in, StateId s) {
+    GrammarFstTpl<instance_FST > &fst = const_cast<GrammarFstTpl<instance_FST >&>(fst_in);
     // 'instance_id' is the high order bits of the state.
     int32 instance_id = s >> 32;
     // 'base_state' is low order bits of the state.  It's important to
     // explicitly say int32 below, not BaseStateId == int, which might on some
     // compilers be a 64-bit type.
     BaseStateId base_state = static_cast<int32>(s);
-    const GrammarFst::FstInstance &instance = fst.instances_[instance_id];
-    const ConstFst<StdArc> *base_fst = instance.fst;
+    const typename GrammarFstTpl<instance_FST >::FstInstance &instance = fst.instances_[instance_id];
+    instance_FST *base_fst = instance.fst;
     if (base_fst->Final(base_state).Value() != KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
       // A normal state
       dest_instance_ = instance_id;
@@ -520,7 +524,7 @@ class ArcIterator<GrammarFst> {
       i_ = 0;
     } else {
       // A special state
-      ExpandedState *expanded_state = fst.GetExpandedState(instance_id,
+      std::shared_ptr<ExpandedState> expanded_state = fst.GetExpandedState(instance_id,
                                                            base_state);
       dest_instance_ = expanded_state->dest_fst_instance;
       // it's ok to leave the other members of data_ uninitialized, as they will
@@ -560,7 +564,6 @@ class ArcIterator<GrammarFst> {
   inline const Arc &Value() const { return arc_; }
 
  private:
-
   inline void CopyArcToTemp() {
     const StdArc &src = data_.arcs[i_];
     arc_.ilabel = src.ilabel;
@@ -588,6 +591,7 @@ class ArcIterator<GrammarFst> {
              // compiler to optimize out any unnecessary moves of data.
 };
 
+
 /**
    This function copies a GrammarFst to a VectorFst (intended mostly for testing
    and comparison purposes).  GrammarFst doesn't actually inherit from class
@@ -597,7 +601,8 @@ class ArcIterator<GrammarFst> {
    reference (because the ArcIterator does actually use const_cast), we make it
    a non-const pointer to emphasize that this call does change grammar_fst.
  */
-void CopyToVectorFst(GrammarFst *grammar_fst,
+template<typename FST>
+void CopyToVectorFst(GrammarFstTpl<FST> *grammar_fst,
                      VectorFst<StdArc> *vector_fst);
 
 /**
@@ -638,6 +643,9 @@ void CopyToVectorFst(GrammarFst *grammar_fst,
 void PrepareForGrammarFst(int32 nonterm_phones_offset,
                           VectorFst<StdArc> *fst);
 
+// Template aliases
+using ConstGrammarFst = GrammarFstTpl<const ConstFst<StdArc> >;
+using VectorGrammarFst =  GrammarFstTpl<StdVectorFst>;
 
 } // end namespace fst
 

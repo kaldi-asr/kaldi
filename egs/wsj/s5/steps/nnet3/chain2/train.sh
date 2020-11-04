@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2019  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # Copyright   2019  Idiap Research Institute (Author: Srikanth Madikeri).  Apache 2.0.
@@ -38,9 +38,7 @@ num_jobs_initial=1
 num_jobs_final=1
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-groups_per_minibatch=32  # This is how you set the minibatch size.  Note: if
-                         # chunks_per_group=4, this would mean 128 chunks per
-                         # minibatch.
+minibatch_size=32  # This is how you set the minibatch size. 
 
 max_iters_combine=80
 max_models_combine=20
@@ -68,7 +66,12 @@ if [ $# != 2 ]; then
   echo "Usage: $0  [options] <egs-dir>  <model-dir>"
   echo " e.g.: $0 exp/chain/tdnn1a_sp/egs  exp/chain/tdnn1a_sp"
   echo ""
-  echo " TODO: more documentation"
+  echo "This is the default script to train acoustic models for chain2 recipes."
+  echo "The script requires two arguments:"
+  echo "<egs-dir>: directory where egs files are stored"
+  echo "<model-dir>: directory where the final model will be stored"
+  echo ""
+  echo "See the top of the script to check possible options to pass to it."
   exit 1
 fi
 
@@ -123,10 +126,7 @@ num_langs=$(echo $langs | wc -w)
 mkdir -p $dir/log
 
 # Copy models with initial learning rate and dropout options from $dir/init to $dir/0
-#for lang in $langs; do
 if [ $stage -le -1 ]; then
-  # run.pl $dir/log/init_model_default.log \
-  #     nnet3-am-copy  --learning-rate=$lrate $dropout_opt $dir/init/default.mdl $dir/0.mdl
   echo "$0: Copying transition model"
   if [ $num_langs -eq 1 ]; then
       echo "$0: Num langs is 1"
@@ -191,7 +191,19 @@ while [ $x -lt $num_iters ]; do
            "nnet3-copy --learning-rate=$lrate $dir/${x}.raw - |" $den_fst_dir \
            "ark:nnet3-chain-copy-egs $egs_opts scp:$egs_dir/${name}_subset.scp ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=1:64 ark:- ark:-|" \
            $dir/${next_x}_${name}.mdl || touch $dir/.error_diagnostic &
+
+       # Make sure we do not run more than $num_jobs_final at once
+       [ $num_jobs_final -eq 1 ] && wait
+
     done
+    wait
+  fi
+
+  if [ $x -gt 0 ]; then
+    # This doesn't use the egs, it only shows the relative change in model parameters.
+    $cmd $dir/log/progress.$x.log \
+      nnet3-show-progress --use-gpu=no $dir/$(($x-1)).raw $dir/${x}.raw '&&' \
+        nnet3-info $dir/${x}.raw &
   fi
 
   cache_io_opt="--write-cache=$dir/cache.$next_x"
@@ -210,7 +222,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $gpu_cmd_opt $dir/log/train.$x.$j.log \
          nnet3-chain-train2  \
              $parallel_train_opts $verbose_opt \
-            --out-of-range-regularize=$out_of_range_regularize \
+             --out-of-range-regularize=$out_of_range_regularize \
              $cache_io_opt \
              --use-gpu=$use_gpu --apply-deriv-weights=$apply_deriv_weights \
              --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
@@ -220,7 +232,7 @@ while [ $x -lt $num_iters ]; do
              $l2_regularize_opt \
              --srand=$srand \
              "nnet3-copy --learning-rate=$lrate $dir/${x}.raw - |" $den_fst_dir \
-             "ark:nnet3-chain-copy-egs $egs_opts --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
+             "ark:nnet3-chain-copy-egs $egs_opts --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$minibatch_size ark:- ark:-|" \
              ${model_out_prefix}.$j.raw || touch $dir/.error &
   done
   wait
@@ -241,7 +253,6 @@ while [ $x -lt $num_iters ]; do
   fi
   [ -f $dir/$x/.error_diagnostic ] && echo "$0: error getting diagnostics on iter $x" && exit 1;
 
-  # TODO: cleanup
   if [ -f $dir/cache.$x ]; then
       rm $dir/cache.$x
   fi
@@ -278,7 +289,43 @@ if [ $stage -le $num_iters ]; then
           nnet3-am-init $dir/0_trans.mdl - $dir/final.mdl
    fi
 
+   # Compute the probability of the final, combined model with
+   # the same subset we used for the previous diagnostic processes, as the
+   # different subsets will lead to different probs.
+   [ -f $dir/.error_diagnostic ] && rm $dir/.error_diagnostic
+   for name in train heldout; do
+     egs_opts=
+     if $multilingual_eg; then
+       weight_rspecifier=$egs_dir/diagnostic_${name}.weight.ark
+       [[ -f $weight_rspecifier ]] && egs_opts="--weights=ark:$weight_rspecifier"
+     fi
+     $cmd $gpu_cmd_opt $dir/log/diagnostic_${name}.final.log \
+       nnet3-chain-train2 --use-gpu=$use_gpu \
+         --leaky-hmm-coefficient=$leaky_hmm_coefficient \
+         --xent-regularize=$xent_regularize \
+         --out-of-range-regularize=$out_of_range_regularize \
+         $l2_regularize_opt \
+         --print-interval=10  \
+         $dir/final.raw  $den_fst_dir \
+         "ark:nnet3-chain-copy-egs $egs_opts scp:$egs_dir/${name}_subset.scp ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=1:64 ark:- ark:-|" \
+         $dir/final_${name}.mdl || touch $dir/.error_diagnostic &
+   done
+
+   if [ -f $dir/final_train.mdl ]; then
+     rm $dir/final_{train,heldout}.mdl
+   fi
 fi
 
+if [ ! -f $dir/final.mdl ]; then
+  echo "$0: $dir/final.mdl does not exist."
+  # we don't want to clean up if the training didn't succeed.
+  exit 1;
+fi
+
+sleep 2
+
 echo "$0: done"
+
+steps/info/chain_dir_info.pl $dir
+
 exit 0

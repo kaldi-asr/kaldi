@@ -1,0 +1,23 @@
+diff --git a/sph2pipe.c b/sph2pipe.c
+index d0d502b..928739c 100644
+--- a/sph2pipe.c
++++ b/sph2pipe.c
+@@ -103,6 +103,7 @@
+ 
+ #define _SPH_CONVERT_MAIN_
+ 
++#include <unistd.h>
+ #include "sph_convert.h"
+ #include "ulaw.h"
+ 
+diff --git a/ulaw.h b/ulaw.h
+index 990c833..62ff96e 100644
+--- a/ulaw.h
++++ b/ulaw.h
+@@ -82,3 +82,6 @@ GLOBAL short int alaw2pcm[256]
+ }
+ #endif
+ ;
++
++uchar pcm2ulaw( short int sample );
++uchar pcm2alaw( short int pcmval );
