@@ -14,7 +14,7 @@ gmm=tri6b_cleaned
 nnet3_affix=_cleaned
 
 # Pretrained models for AM and i-vector extractor
-src_model_dir=exp/chain$nnet3_affix/tdnn_1d_sp
+src_model_dir=../s5_css/exp/chain$nnet3_affix/tdnn_1d2_sp
 ivector_extractor=exp/nnet3$nnet3_affix/extractor
 primary_lr_factor=0.1 # The learning-rate factor for transferred layers from source
                        # model. e.g. if 0, the paramters transferred from source model
@@ -23,7 +23,7 @@ primary_lr_factor=0.1 # The learning-rate factor for transferred layers from sou
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1d_ft
+affix=1d2_ft
 tree_affix=reverb
 train_stage=-10
 get_egs_stage=-10
@@ -209,8 +209,7 @@ if [ $stage -le 8 ]; then
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --trainer.input-model $dir/input.raw \
-    --feat.online-ivector-dir $train_ivector_dir \
-    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts "--norm-means=true --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.0 \

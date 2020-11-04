@@ -12,7 +12,7 @@ get_stats=false # TODO: Implement 'true' (i.e. per utterance alignment of output
 multistream=false # Set to true if input audio was separated (e.g. CSS)
 
 multistream_opt=
-if [ $multistream ]; then
+if [ $multistream == "true" ]; then
   multistream_opt="--multi-stream"
 fi
 

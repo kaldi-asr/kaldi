@@ -5,6 +5,7 @@
 # Apache 2.0
 
 import argparse, os, glob, tqdm, zipfile
+import subprocess
 import soundfile as sf
 
 def write_dict_to_file(utt2data, file_path):
@@ -23,6 +24,12 @@ def main(args):
     reco2segments = {} # for segments
     utt2spk = {} # for utt2spk
     utt2text = {} # for text
+    if (args.cleanpath):
+        utt2clean = {} # path to clean utt wav file
+        command = 'find %s -name "*.flac"' % (args.cleanpath)
+        wavs = subprocess.check_output(command, shell=True).decode('utf-8').splitlines()
+        keys = [ os.path.splitext(os.path.basename(wav))[0] for wav in wavs ]
+        clean_paths = {key:wav for key,wav in zip(keys,wavs)}
 
     # Create a directory to store channel-separated wav files
     wav_dir = os.path.join(args.tgtpath,'wavs')
@@ -49,7 +56,7 @@ def main(args):
             with open(os.path.join(os.path.abspath(meet), 'transcription', 'meeting_info.txt'), 'r') as f:
                 next(f)
                 for line in f:
-                    start,end,spkid,_,text = line.strip().split(maxsplit=4)
+                    start,end,spkid,clean_uttid,text = line.strip().split(maxsplit=4)
                     start = float("{:.2f}".format(float(start)))
                     end = float("{:.2f}".format(float(end)))
                     utt_id = "{}_{}_{}_{}".format(spkid,reco_id,"{:.0f}".format(100*start).zfill(6),
@@ -57,6 +64,8 @@ def main(args):
                     utt2spk[utt_id] = spkid
                     utt2text[utt_id] = text
                     segments.append((utt_id, start, end))
+                    if args.cleanpath:
+                        utt2clean[utt_id] = "flac -c -d -s {} |".format(clean_paths[clean_uttid])
             
             reco2segments[reco_id] = segments
     
@@ -64,6 +73,7 @@ def main(args):
     write_dict_to_file(reco2wav, os.path.join(args.tgtpath, 'wav.scp'))
     write_dict_to_file(utt2spk, os.path.join(args.tgtpath, 'utt2spk'))
     write_dict_to_file(utt2text, os.path.join(args.tgtpath, 'text'))
+    write_dict_to_file(utt2clean, os.path.join(args.tgtpath, "wav_clean.scp"))
 
     f = open(os.path.join(args.tgtpath, 'segments'), 'w')
     for reco in reco2segments.keys():
@@ -84,6 +94,8 @@ def make_argparse():
                         help='Destination path.')
     parser.add_argument('--mics', type=int, metavar='<#mics>', nargs='+', default=[0, 1, 2, 3, 4, 5, 6], 
                         help='Microphone indices.')
+    parser.add_argument('--cleanpath', metavar='<path>', required=False,
+                        help='Path to clean Librispeech data (required for wav_clean.scp)')
 
     return parser
 

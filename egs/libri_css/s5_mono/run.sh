@@ -16,6 +16,8 @@ diarizer_stage=0
 decode_stage=0
 rnnlm_rescore=true
 
+data_affix=  # This can be used to distinguish between different data sources
+
 use_oracle_segments=false
 wpe=false
 
@@ -25,20 +27,20 @@ wpe=false
 . ./cmd.sh
 . ./path.sh
 
-test_sets="dev eval"
+test_sets="dev${data_affix} eval${data_affix}"
 
 set -e # exit on error
 
 # please change the path accordingly
-libricss_corpus=/export/corpora/LibriCSS
-librispeech_corpus=/export/corpora/LibriSpeech/
+libricss_corpus=/export/fs01/LibriCSS
+librispeech_corpus=/export/corpora5/LibriSpeech/
 
 ##########################################################################
 # We first prepare the LibriCSS data (monoaural) in the Kaldi data
 # format. We use session 0 for dev and others for eval.
 ##########################################################################
 if [ $stage -le 0 ]; then
-  local/data_prep_mono.sh $libricss_corpus
+  local/data_prep_mono.sh --data-affix "$data_affix" $libricss_corpus $librispeech_corpus
 fi
 
 #########################################################################
@@ -90,7 +92,7 @@ if [ $stage -le 4 ]; then
   local/decode.sh --stage $decode_stage \
     --test-sets "$test_sets" \
     --use-oracle-segments $use_oracle_segments \
-    --rnnlm-rescore true
+    --rnnlm-rescore $rnnlm_rescore
 fi
 
 exit 0;

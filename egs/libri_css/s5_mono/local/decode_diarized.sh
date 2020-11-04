@@ -58,10 +58,17 @@ if [ $stage -le 2 ]; then
   echo "$0 extracting mfcc freatures using segments file"
   steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd queue.pl ${out_dir}_hires
   steps/compute_cmvn_stats.sh ${out_dir}_hires
+  utils/fix_data_dir.sh ${out_dir}_hires || exit 1;
   cp $data_in/text.bak ${out_dir}_hires/text
 fi
 
 if [ $stage -le 3 ]; then
+  utils/mkgraph.sh \
+      --self-loop-scale 1.0 --remove-oov $lang_dir \
+      $asr_model_dir $asr_model_dir/graph${lm_suffix}
+fi
+
+if [ $stage -le 4 ]; then
   echo "$0 performing decoding on the extracted features"
   local/nnet3/decode.sh --affix 2stage --acwt 1.0 --post-decode-acwt 10.0 \
     --frames-per-chunk 150 --nj $nj --ivector-dir $ivector_extractor \
