@@ -112,7 +112,7 @@ fi
 
 if [ $stage -le 6 ] && [ $post_process_rttm == "true" ]; then
   echo "$0: applying post-processing to remove simultaneous same-speaker segments"
-  local/post_process_css_rttm.py ${out_dir}/rttm ${out_dir}/rttm.post
+  local/diarization/post_process_css_rttm.py ${out_dir}/rttm ${out_dir}/rttm.post
 
   awk '{$2=$2;sub(/_[0-9]*$/, "", $2); print}' ${out_dir}/rttm.post \
     > ${out_dir}/rttm.comb
