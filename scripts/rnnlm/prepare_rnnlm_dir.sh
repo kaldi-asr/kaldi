@@ -72,7 +72,7 @@ fi
 if [ $stage -le 2 ]; then
   if [ ! -f $text_dir/dev.counts ] || [ $text_dir/dev.counts -ot $text_dir/dev.txt ]; then
     echo "$0: preparing unigram counts in $text_dir"
-    rnnlm/get_unigram_counts.sh $text_dir
+    rnnlm/ensure_counts_present.sh $text_dir
   fi
 fi
 
