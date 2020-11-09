@@ -140,7 +140,7 @@ if [ $stage -le 6 ]; then
     feat_dim=$(tail -n 1 $dir/config/features.txt | awk '{print $1 + 1;}')
 
     first_element_opt=
-    if grep -q '0\tconstant' $dir/config/features.txt; then
+    if grep -q '0'$'\t''constant' $dir/config/features.txt; then
       first_element_opt="--first-element 1.0"
     fi
     # we'll probably make the stddev configurable soon, or maybe just remove it.
