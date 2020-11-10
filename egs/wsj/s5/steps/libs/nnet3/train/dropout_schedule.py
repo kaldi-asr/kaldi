@@ -240,6 +240,9 @@ def get_dropout_edit_option(dropout_schedule, data_fraction, iter_):
     set-dropout-proportion directive works.
     """
 
+    if data_fraction > 1.0:
+        data_fraction = 1.0
+
     if dropout_schedule is None:
         return ""
 
