@@ -368,9 +368,14 @@ Either your CUDA is too new or too old."
           MIN_UNSUPPORTED_GCC_VER_NUM=80000;
           CUSOLVER=true
         ;;
-        10_1 | 10_* | 11_*)
+        10_1 | 10_*)
           MIN_UNSUPPORTED_GCC_VER="9.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=90000;
+          CUSOLVER=true
+        ;;
+        11_*)
+          MIN_UNSUPPORTED_GCC_VER="10.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=100000;
           CUSOLVER=true
         ;;
         *)
@@ -392,7 +397,8 @@ Either your CUDA is too new or too old."
             #8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61" ;;
             9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70" ;;
             10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
-            11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
+            11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
+			11_1 | 11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
             *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
           esac
         ;;
@@ -1025,7 +1031,28 @@ elif [ "`uname`" == "Darwin" ]; then
   OSX_VER_NUM=$(echo $OSX_VER | sed 's/\./ /g' | xargs printf "%d%02d")
   echo "Configuring for OS X version $OSX_VER ..."
   if [ $OSX_VER_NUM -ge 1005 ]; then
-    cat makefiles/darwin.mk >> kaldi.mk
+    if [ "$MATHLIB" == "CLAPACK" ]; then
+      if [ -z "$CLAPACKROOT" ]; then
+          failure "Must specify the location of CLAPACK with --clapack-root option (and it must exist)"
+      fi
+      if [ ! -f ../tools/CLAPACK/clapack.h ]; then
+          failure "could not find file ../tools/CLAPACK/clapack.h"
+      fi
+      if [ ! -d "$CLAPACKROOT" ]; then
+          failure "The directory $CLAPACKROOT does not exist"
+      fi
+      # Also check for cblas.h and f2c.h
+      echo "Using CLAPACK libs from $CLAPACKROOT as the linear algebra library."
+      echo "CLAPACKROOT = $CLAPACKROOT" >> kaldi.mk
+      if [ ! -f makefiles/darwin_clapack.mk ]; then
+          failure "makefiles/darwin_clapack.mk not found."
+      fi
+      cat makefiles/darwin_clapack.mk >> kaldi.mk
+      echo "Warning (CLAPACK): this part of the configure process is not properly tested and may not work."
+      echo "Successfully configured for Darwin with CLAPACK libs from $CLAPACKROOT"
+    else
+      cat makefiles/darwin.mk >> kaldi.mk
+    fi
   else
     failure "Mac OS X version '$OSX_VER' is not supported."
   fi
@@ -1143,6 +1170,7 @@ elif [ "`uname`" == "Linux" ]; then
     if [[ "$TARGET_ARCH" == arm* ]]; then
       cat makefiles/linux_clapack_arm.mk >> kaldi.mk
     else
+      echo "CLAPACKROOT = $CLAPACKROOT" >> kaldi.mk
       cat makefiles/linux_clapack.mk >> kaldi.mk
     fi
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and may not work."
