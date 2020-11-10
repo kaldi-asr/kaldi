@@ -25,5 +25,8 @@ There is [a paper](https://arxiv.org/abs/1912.01231) on a more detailed descript
 }
 ```
 
+## TODO
+[ ] [Text-dependent setting]
+
 ## Contact
 If having any problem, please open pull request and cite @underdogliu

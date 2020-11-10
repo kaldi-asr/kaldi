@@ -5,4 +5,5 @@ http://www.openslr.org/33/
 http://www.openslr.org/85/
 
 This folder contains two subfolders:
-v1: a keyword spotting recipe
+w1: a keyword spotting recipe
+v1: a speaker verification recipe. More can be found in v1/README.md
