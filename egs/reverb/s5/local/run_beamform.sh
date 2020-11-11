@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2015, Mitsubishi Electric Research Laboratories, MERL (Author: Shinji Watanabe)
 # Copyright 2018, Johns Hopkins University (Author: Aswin Shanmugam Subramanian)

@@ -37,10 +37,10 @@ template<class FloatType>
 class LatticeWeightTpl;
 
 template <class FloatType>
-inline ostream &operator <<(ostream &strm, const LatticeWeightTpl<FloatType> &w);
+inline std::ostream &operator <<(std::ostream &strm, const LatticeWeightTpl<FloatType> &w);
 
 template <class FloatType>
-inline istream &operator >>(istream &strm, LatticeWeightTpl<FloatType> &w);
+inline std::istream &operator >>(std::istream &strm, LatticeWeightTpl<FloatType> &w);
 
 
 template<class FloatType>
@@ -74,22 +74,22 @@ class LatticeWeightTpl {
   }
 
   static const LatticeWeightTpl Zero() {
-    return LatticeWeightTpl(numeric_limits<T>::infinity(),
-                            numeric_limits<T>::infinity());
+    return LatticeWeightTpl(std::numeric_limits<T>::infinity(),
+                            std::numeric_limits<T>::infinity());
   }
 
   static const LatticeWeightTpl One() {
     return LatticeWeightTpl(0.0, 0.0);
   }
 
-  static const string &Type() {
-    static const string type = (sizeof(T) == 4 ? "lattice4" : "lattice8") ;
+  static const std::string &Type() {
+    static const std::string type = (sizeof(T) == 4 ? "lattice4" : "lattice8") ;
     return type;
   }
 
   static const LatticeWeightTpl NoWeight() {
-    return LatticeWeightTpl(numeric_limits<FloatType>::quiet_NaN(),
-                            numeric_limits<FloatType>::quiet_NaN());
+    return LatticeWeightTpl(std::numeric_limits<FloatType>::quiet_NaN(),
+                            std::numeric_limits<FloatType>::quiet_NaN());
   }
 
   bool Member() const {
@@ -97,24 +97,24 @@ class LatticeWeightTpl {
     // also test for no -inf, and either both or neither
     // must be +inf, and
     if (value1_ != value1_ || value2_ != value2_) return false; // NaN
-    if (value1_ == -numeric_limits<T>::infinity()  ||
-       value2_ == -numeric_limits<T>::infinity()) return false; // -infty not allowed
-    if (value1_ == numeric_limits<T>::infinity() ||
-        value2_ == numeric_limits<T>::infinity()) {
-      if (value1_ != numeric_limits<T>::infinity() ||
-          value2_ != numeric_limits<T>::infinity()) return false; // both must be +infty;
+    if (value1_ == -std::numeric_limits<T>::infinity()  ||
+       value2_ == -std::numeric_limits<T>::infinity()) return false; // -infty not allowed
+    if (value1_ == std::numeric_limits<T>::infinity() ||
+        value2_ == std::numeric_limits<T>::infinity()) {
+      if (value1_ != std::numeric_limits<T>::infinity() ||
+          value2_ != std::numeric_limits<T>::infinity()) return false; // both must be +infty;
       // this is necessary so that the semiring has only one zero.
     }
     return true;
   }
 
   LatticeWeightTpl Quantize(float delta = kDelta) const {
-    if (value1_+value2_ == -numeric_limits<T>::infinity()) {
-      return LatticeWeightTpl(-numeric_limits<T>::infinity(), -numeric_limits<T>::infinity());
-    } else if (value1_+value2_ == numeric_limits<T>::infinity()) {
-      return LatticeWeightTpl(numeric_limits<T>::infinity(), numeric_limits<T>::infinity());
-    } else if (value1_+value2_ != value1_+value2_) { // NaN
-      return LatticeWeightTpl(value1_+value2_, value1_+value2_);
+    if (value1_ + value2_ == -std::numeric_limits<T>::infinity()) {
+      return LatticeWeightTpl(-std::numeric_limits<T>::infinity(), -std::numeric_limits<T>::infinity());
+    } else if (value1_ + value2_ == std::numeric_limits<T>::infinity()) {
+      return LatticeWeightTpl(std::numeric_limits<T>::infinity(), std::numeric_limits<T>::infinity());
+    } else if (value1_ + value2_ != value1_ + value2_) { // NaN
+      return LatticeWeightTpl(value1_ + value2_, value1_ + value2_);
     } else {
       return LatticeWeightTpl(floor(value1_/delta + 0.5F)*delta, floor(value2_/delta + 0.5F) * delta);
     }
@@ -126,7 +126,7 @@ class LatticeWeightTpl {
 
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
-  istream &Read(istream &strm) {
+  std::istream &Read(std::istream &strm) {
     // Always read/write as float, even if T is double,
     // so we can use OpenFst-style read/write and still maintain
     // compatibility when compiling with different FloatTypes
@@ -138,7 +138,7 @@ class LatticeWeightTpl {
 
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
-  ostream &Write(ostream &strm) const {
+  std::ostream &Write(std::ostream &strm) const {
     WriteType(strm, value1_);
     WriteType(strm, value2_);
     return strm;
@@ -159,10 +159,10 @@ class LatticeWeightTpl {
   }
 
  protected:
-  inline static void WriteFloatType(ostream &strm, const T &f) {
-    if (f == numeric_limits<T>::infinity())
+  inline static void WriteFloatType(std::ostream &strm, const T &f) {
+    if (f == std::numeric_limits<T>::infinity())
       strm << "Infinity";
-    else if (f == -numeric_limits<T>::infinity())
+    else if (f == -std::numeric_limits<T>::infinity())
       strm << "-Infinity";
     else if (f != f)
       strm << "BadNumber";
@@ -171,15 +171,15 @@ class LatticeWeightTpl {
   }
 
   // Internal helper function, used in ReadNoParen.
-  inline static void ReadFloatType(istream &strm, T &f) {
-    string s;
+  inline static void ReadFloatType(std::istream &strm, T &f) {
+    std::string s;
     strm >> s;
     if (s == "Infinity") {
-      f = numeric_limits<T>::infinity();
+      f = std::numeric_limits<T>::infinity();
     } else if (s == "-Infinity") {
-      f = -numeric_limits<T>::infinity();
+      f = -std::numeric_limits<T>::infinity();
     } else if (s == "BadNumber") {
-      f = numeric_limits<T>::quiet_NaN();
+      f = std::numeric_limits<T>::quiet_NaN();
     } else {
       char *p;
       f = strtod(s.c_str(), &p);
@@ -190,14 +190,14 @@ class LatticeWeightTpl {
 
   // Reads LatticeWeight when there are no parentheses around pair terms...
   // currently the only form supported.
-  inline istream &ReadNoParen(
-      istream &strm, char separator) {
+  inline std::istream &ReadNoParen(
+      std::istream &strm, char separator) {
     int c;
     do {
       c = strm.get();
     } while (isspace(c));
 
-    string s1;
+    std::string s1;
     while (c != separator) {
       if (c == EOF) {
         strm.clear(std::ios::badbit);
@@ -206,15 +206,15 @@ class LatticeWeightTpl {
       s1 += c;
       c = strm.get();
     }
-    istringstream strm1(s1);
+    std::istringstream strm1(s1);
     ReadFloatType(strm1, value1_); // ReadFloatType is class member function
     // read second element
     ReadFloatType(strm, value2_);
     return strm;
   }
 
-  friend istream &operator>> <FloatType>(istream&, LatticeWeightTpl<FloatType>&);
-  friend ostream &operator<< <FloatType>(ostream&, const LatticeWeightTpl<FloatType>&);
+  friend std::istream &operator>> <FloatType>(std::istream&, LatticeWeightTpl<FloatType>&);
+  friend std::ostream &operator<< <FloatType>(std::ostream&, const LatticeWeightTpl<FloatType>&);
 
  private:
   T value1_;
@@ -231,9 +231,9 @@ class LatticeWeightTpl {
 template<class FloatType, class ScaleFloatType>
 inline LatticeWeightTpl<FloatType> ScaleTupleWeight(
     const LatticeWeightTpl<FloatType> &w,
-    const vector<vector<ScaleFloatType> > &scale) {
+    const std::vector<std::vector<ScaleFloatType> > &scale) {
   // Without the next special case we'd get NaNs from infinity * 0
-  if (w.Value1() == numeric_limits<FloatType>::infinity())
+  if (w.Value1() == std::numeric_limits<FloatType>::infinity())
     return LatticeWeightTpl<FloatType>::Zero();
   return LatticeWeightTpl<FloatType>(scale[0][0] * w.Value1() + scale[0][1] * w.Value2(),
                                      scale[1][0] * w.Value1() + scale[1][1] * w.Value2());
@@ -249,7 +249,7 @@ inline PairWeight<TropicalWeightTpl<FloatType>,
                   TropicalWeightTpl<FloatType> > ScaleTupleWeight(
                       const PairWeight<TropicalWeightTpl<FloatType>,
                                        TropicalWeightTpl<FloatType> > &w,
-                      const vector<vector<ScaleFloatType> > &scale) {
+                      const std::vector<std::vector<ScaleFloatType> > &scale) {
   typedef TropicalWeightTpl<FloatType> BaseType;
   typedef PairWeight<BaseType, BaseType> PairType;
   const BaseType zero = BaseType::Zero();
@@ -372,14 +372,14 @@ inline LatticeWeightTpl<FloatType> Divide(const LatticeWeightTpl<FloatType> &w1,
                                           DivideType typ = DIVIDE_ANY) {
   typedef FloatType T;
   T a = w1.Value1() - w2.Value1(), b = w1.Value2() - w2.Value2();
-  if (a != a || b != b || a == -numeric_limits<T>::infinity()
-     || b == -numeric_limits<T>::infinity()) {
+  if (a != a || b != b || a == -std::numeric_limits<T>::infinity()
+     || b == -std::numeric_limits<T>::infinity()) {
     KALDI_WARN << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
                << "[dividing by zero?]  Returning zero";
     return LatticeWeightTpl<T>::Zero();
   }
-  if (a == numeric_limits<T>::infinity() ||
-     b == numeric_limits<T>::infinity())
+  if (a == std::numeric_limits<T>::infinity() ||
+     b == std::numeric_limits<T>::infinity())
     return LatticeWeightTpl<T>::Zero(); // not a valid number if only one is infinite.
   return LatticeWeightTpl<T>(a, b);
 }
@@ -394,7 +394,7 @@ inline bool ApproxEqual(const LatticeWeightTpl<FloatType> &w1,
 }
 
 template <class FloatType>
-inline ostream &operator <<(ostream &strm, const LatticeWeightTpl<FloatType> &w) {
+inline std::ostream &operator <<(std::ostream &strm, const LatticeWeightTpl<FloatType> &w) {
   LatticeWeightTpl<FloatType>::WriteFloatType(strm, w.Value1());
   CHECK(FLAGS_fst_weight_separator.size() == 1);
   strm << FLAGS_fst_weight_separator[0]; // comma by default;
@@ -404,7 +404,7 @@ inline ostream &operator <<(ostream &strm, const LatticeWeightTpl<FloatType> &w)
 }
 
 template <class FloatType>
-inline istream &operator >>(istream &strm, LatticeWeightTpl<FloatType> &w1) {
+inline std::istream &operator >>(std::istream &strm, LatticeWeightTpl<FloatType> &w1) {
   CHECK(FLAGS_fst_weight_separator.size() == 1);
   // separator defaults to ','
   return w1.ReadNoParen(strm, FLAGS_fst_weight_separator[0]);
@@ -435,7 +435,7 @@ class CompactLatticeWeightTpl {
 
   CompactLatticeWeightTpl() { }
 
-  CompactLatticeWeightTpl(const WeightType &w, const vector<IntType> &s):
+  CompactLatticeWeightTpl(const WeightType &w, const std::vector<IntType> &s):
       weight_(w), string_(s) { }
 
   CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType, IntType> &w) {
@@ -446,30 +446,30 @@ class CompactLatticeWeightTpl {
 
   const W &Weight() const { return weight_; }
 
-  const vector<IntType> &String() const { return string_; }
+  const std::vector<IntType> &String() const { return string_; }
 
   void SetWeight(const W &w) { weight_ = w; }
 
-  void SetString(const vector<IntType> &s) { string_ = s; }
+  void SetString(const std::vector<IntType> &s) { string_ = s; }
 
   static const CompactLatticeWeightTpl<WeightType, IntType> Zero() {
     return CompactLatticeWeightTpl<WeightType, IntType>(
-        WeightType::Zero(), vector<IntType>());
+        WeightType::Zero(), std::vector<IntType>());
   }
 
   static const CompactLatticeWeightTpl<WeightType, IntType> One() {
     return CompactLatticeWeightTpl<WeightType, IntType>(
-        WeightType::One(), vector<IntType>());
+        WeightType::One(), std::vector<IntType>());
   }
 
-  inline static string GetIntSizeString() {
+  inline static std::string GetIntSizeString() {
     char buf[2];
     buf[0] = '0' + sizeof(IntType);
     buf[1] = '\0';
     return buf;
   }
-  static const string &Type() {
-    static const string type = "compact" + WeightType::Type()
+  static const std::string &Type() {
+    static const std::string type = "compact" + WeightType::Type()
         + GetIntSizeString();
     return type;
   }
@@ -482,7 +482,7 @@ class CompactLatticeWeightTpl {
 
   CompactLatticeWeightTpl<WeightType, IntType> Reverse() const {
     size_t s = string_.size();
-    vector<IntType> v(s);
+    std::vector<IntType> v(s);
     for(size_t i = 0; i < s; i++)
       v[i] = string_[s-i-1];
     return CompactLatticeWeightTpl<WeightType, IntType>(weight_, v);
@@ -509,7 +509,7 @@ class CompactLatticeWeightTpl {
 
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
-  istream &Read(istream &strm) {
+  std::istream &Read(std::istream &strm) {
     weight_.Read(strm);
     if (strm.fail()){ return strm; }
     int32 sz;
@@ -529,7 +529,7 @@ class CompactLatticeWeightTpl {
 
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
-  ostream &Write(ostream &strm) const {
+  std::ostream &Write(std::ostream &strm) const {
     weight_.Write(strm);
     if (strm.fail()){ return strm; }
     int32 sz = static_cast<int32>(string_.size());
@@ -550,7 +550,7 @@ class CompactLatticeWeightTpl {
   }
  private:
   W weight_;
-  vector<IntType> string_;
+  std::vector<IntType> string_;
 
 };
 
@@ -588,8 +588,8 @@ inline bool ApproxEqual(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
 // break.
 
 template<class WeightType, class IntType>
-inline int Compare (const CompactLatticeWeightTpl<WeightType, IntType> &w1,
-                    const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
+inline int Compare(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+                   const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
   int c1 = Compare(w1.Weight(), w2.Weight());
   if (c1 != 0) return c1;
   int l1 = w1.String().size(), l2 = w2.String().size();
@@ -676,9 +676,9 @@ inline CompactLatticeWeightTpl<WeightType, IntType> Times(
     return CompactLatticeWeightTpl<WeightType, IntType>::Zero();
     // special case to ensure zero is unique
   } else {
-    vector<IntType> v;
+    std::vector<IntType> v;
     v.resize(w1.String().size() + w2.String().size());
-    typename vector<IntType>::iterator iter = v.begin();
+    typename std::vector<IntType>::iterator iter = v.begin();
     iter = std::copy(w1.String().begin(), w1.String().end(), iter); // returns end of first range.
     std::copy(w2.String().begin(), w2.String().end(), iter);
     return CompactLatticeWeightTpl<WeightType, IntType>(w, v);
@@ -700,24 +700,24 @@ inline CompactLatticeWeightTpl<WeightType, IntType> Divide(const CompactLatticeW
   }
   WeightType w = Divide(w1.Weight(), w2.Weight());
 
-  const vector<IntType> v1 = w1.String(), v2 = w2.String();
+  const std::vector<IntType> v1 = w1.String(), v2 = w2.String();
   if (v2.size() > v1.size()) {
     KALDI_ERR << "Cannot divide, length mismatch";
   }
-  typename vector<IntType>::const_iterator v1b = v1.begin(),
+  typename std::vector<IntType>::const_iterator v1b = v1.begin(),
       v1e = v1.end(), v2b = v2.begin(), v2e = v2.end();
   if (div == DIVIDE_LEFT) {
     if (!std::equal(v2b, v2e, v1b)) { // v2 must be identical to first part of v1.
       KALDI_ERR << "Cannot divide, data mismatch";
     }
     return CompactLatticeWeightTpl<WeightType, IntType>(
-        w, vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
+        w, std::vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
   } else if (div == DIVIDE_RIGHT) {
     if (!std::equal(v2b, v2e, v1e-(v2e-v2b))) { // v2 must be identical to last part of v1.
       KALDI_ERR << "Cannot divide, data mismatch";
     }
     return CompactLatticeWeightTpl<WeightType, IntType>(
-        w, vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
+        w, std::vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
 
   } else {
     KALDI_ERR << "Cannot divide CompactLatticeWeightTpl with DIVIDE_ANY";
@@ -726,7 +726,7 @@ inline CompactLatticeWeightTpl<WeightType, IntType> Divide(const CompactLatticeW
 }
 
 template <class WeightType, class IntType>
-inline ostream &operator <<(ostream &strm, const CompactLatticeWeightTpl<WeightType, IntType> &w) {
+inline std::ostream &operator <<(std::ostream &strm, const CompactLatticeWeightTpl<WeightType, IntType> &w) {
   strm << w.Weight();
   CHECK(FLAGS_fst_weight_separator.size() == 1);
   strm << FLAGS_fst_weight_separator[0]; // comma by default.
@@ -739,7 +739,7 @@ inline ostream &operator <<(ostream &strm, const CompactLatticeWeightTpl<WeightT
 }
 
 template <class WeightType, class IntType>
-inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, IntType> &w) {
+inline std::istream &operator >>(std::istream &strm, CompactLatticeWeightTpl<WeightType, IntType> &w) {
   std::string s;
   strm >> s;
   if (strm.fail()) {
@@ -762,7 +762,7 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
     return strm;
   }
   // read string part.
-  vector<IntType> string;
+  std::vector<IntType> string;
   const char *c = s2.c_str();
   while(*c != '\0') {
     if (*c == kStringSeparator) // '_'
@@ -787,13 +787,13 @@ class CompactLatticeWeightCommonDivisorTpl {
 
   Weight operator()(const Weight &w1, const Weight &w2) const {
     // First find longest common prefix of the strings.
-    typename vector<IntType>::const_iterator s1b = w1.String().begin(),
+    typename std::vector<IntType>::const_iterator s1b = w1.String().begin(),
         s1e = w1.String().end(), s2b = w2.String().begin(), s2e = w2.String().end();
     while (s1b < s1e && s2b < s2e && *s1b == *s2b) {
       s1b++;
       s2b++;
     }
-    return Weight(Plus(w1.Weight(), w2.Weight()), vector<IntType>(w1.String().begin(), s1b));
+    return Weight(Plus(w1.Weight(), w2.Weight()), std::vector<IntType>(w1.String().begin(), s1b));
   }
 };
 
@@ -807,7 +807,7 @@ class CompactLatticeWeightCommonDivisorTpl {
 template<class Weight, class IntType, class ScaleFloatType>
 inline CompactLatticeWeightTpl<Weight, IntType> ScaleTupleWeight(
     const CompactLatticeWeightTpl<Weight, IntType> &w,
-    const vector<vector<ScaleFloatType> > &scale) {
+    const std::vector<std::vector<ScaleFloatType> > &scale) {
   return CompactLatticeWeightTpl<Weight, IntType>(
       Weight(ScaleTupleWeight(w.Weight(), scale)), w.String());
 }

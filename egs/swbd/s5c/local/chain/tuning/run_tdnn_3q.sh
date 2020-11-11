@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3q is as _3p, but now trying out the 'block' training script, where in addition to
 # the affine connections we have block-matrix connections between the layers.

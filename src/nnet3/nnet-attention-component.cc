@@ -298,6 +298,7 @@ void RestrictedAttentionComponent::Backprop(
     void *memo_in,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("RestrictedAttentionComponent::Backprop");
   const PrecomputedIndexes *indexes =
       dynamic_cast<const PrecomputedIndexes*>(indexes_in);
   KALDI_ASSERT(indexes != NULL);
@@ -545,7 +546,7 @@ bool RestrictedAttentionComponent::IsComputable(
       } else {
         // This input index is not available.
         int32 offset = (t - output_index.t) / time_stride_;
-        if (offset >= num_left_inputs_required_ &&
+        if (offset >= -num_left_inputs_required_ &&
             offset <= num_right_inputs_required_) {
           used_inputs->clear();
           return false;

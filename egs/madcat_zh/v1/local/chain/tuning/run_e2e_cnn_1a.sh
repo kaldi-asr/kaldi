@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright    2017  Hossein Hadian
 
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1a

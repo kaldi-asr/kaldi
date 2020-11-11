@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # tdnn_lstm_1l is same as tdnn_lstm_1b, but with the per-frame dropout
 # added with location 4 in LSTM layer, see paper:

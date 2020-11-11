@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ## This is taken from mini_librispeech, but the proportional-shrink value was
 # tuned for this corpus (hub4-spanish)

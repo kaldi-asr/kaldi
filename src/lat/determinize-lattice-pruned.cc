@@ -30,6 +30,10 @@
 
 namespace fst {
 
+using std::vector;
+using std::pair;
+using std::greater;
+
 // class LatticeDeterminizerPruned is templated on the same types that
 // CompactLatticeWeight is templated on: the base weight (Weight), typically
 // LatticeWeightTpl<float> etc. but could also be e.g. TropicalWeight, and the
@@ -1030,7 +1034,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // an empty FST.
 
     double best_cost = backward_costs_[ifst_->Start()];
-    if (best_cost == numeric_limits<double>::infinity())
+    if (best_cost == std::numeric_limits<double>::infinity())
       KALDI_WARN << "Total weight of input lattice is zero.";
     cutoff_ = best_cost + beam_;
   }

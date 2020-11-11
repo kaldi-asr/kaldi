@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+
+while (<>) {
+  if ($_ !~ m/<(noise|unk|spnoise|sil)>/i) {
+    print $_;
+  }
+}

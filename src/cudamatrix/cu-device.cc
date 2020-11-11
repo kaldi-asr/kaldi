@@ -110,15 +110,21 @@ void CuDevice::Initialize() {
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
+
+#if CUDA_VERSION >= 9010
+    CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
+    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_, 
+            cudaStreamPerThread));
+#endif
     
-    #if CUDA_VERSION >= 9000 
+#if CUDA_VERSION >= 9000 
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
       CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
             CUBLAS_TENSOR_OP_MATH));
     }
-    #endif
+#endif
 
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
@@ -130,6 +136,7 @@ void CuDevice::Initialize() {
     // To get same random sequence, call srand() before the constructor is invoked,
     CURAND_SAFE_CALL(curandSetGeneratorOrdering(
           curand_handle_, CURAND_ORDERING_PSEUDO_DEFAULT));
+    CURAND_SAFE_CALL(curandSetStream(curand_handle_, cudaStreamPerThread));
     SeedGpu();
   }
 }
@@ -263,6 +270,23 @@ void CuDevice::FinalizeActiveGpu() {
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
+    
+#if CUDA_VERSION >= 9010 
+    CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
+    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
+            cudaStreamPerThread));
+#endif
+
+#if CUDA_VERSION >= 9000 
+    if (device_options_.use_tensor_cores) {
+      // Enable tensor cores in CUBLAS
+      // Note if the device does not support tensor cores this will fall back to normal math mode
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
+            CUBLAS_TENSOR_OP_MATH));
+    }
+#endif
+
+    
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
@@ -324,8 +348,43 @@ bool CuDevice::IsComputeExclusive() {
   }
 }
 
-template<typename TA, typename TB>
-bool greater_pair(const std::pair<TA, TB> &left, const std::pair<TA, TB>& right) {
+bool CuDevice::SelectGpuId(int dev_id) {
+  KALDI_LOG << "Trying to select device: " << dev_id;
+  cudaError_t e = cudaSetDevice(dev_id);
+  if (e != cudaSuccess) {
+    KALDI_WARN << "Cannot select this device: return code " << e
+               << ", Error message: \"" << cudaGetErrorString(e) << "\"";
+    return false;
+  } else {
+    e = cudaDeviceSynchronize();
+    if (e != cudaSuccess) {
+      KALDI_WARN << "Cannot select this device: return code " << e
+                 << ", Error message: \"" << cudaGetErrorString(e) << "\"";
+      return false;
+    }
+  }
+
+  std::string debug_str;
+  int num_gpus = dev_id + 1;  // used for debugging purposes
+  bool got_context = GetCudaContext(num_gpus, &debug_str);
+  if (!got_context) {
+    KALDI_WARN << "Cannot get Cuda Context, Error message: \"" << debug_str
+               << "\"";
+  }
+
+  return true;
+}
+
+bool CuDevice::SelectAndInitializeGpuIdWithExistingCudaContext(int dev_id) {
+  // Make sure the global allocator object has the up-to-date options.
+  g_cuda_allocator.SetOptions(g_allocator_options);
+  if (!CuDevice::SelectGpuId(dev_id)) return false;
+  FinalizeActiveGpu();
+  return true;
+}
+
+template <typename TA, typename TB>
+bool greater_pair(const std::pair<TA, TB> &left, const std::pair<TA, TB> &right) {
   return left.second > right.second;
 }
 
@@ -400,6 +459,7 @@ bool CuDevice::SelectGpuIdAuto() {
 
   int dev_id;
   float mem_ratio;
+  bool success;
   do {
     // try to select the GPU in the best to worst order
     // Note we have to check the return codes manually, as the CU_SAFE_CALL
@@ -408,20 +468,11 @@ bool CuDevice::SelectGpuIdAuto() {
     dev_id = free_mem_ratio[max_id].first;
     mem_ratio = free_mem_ratio[max_id].second;
 
-    KALDI_LOG << "Trying to select device: " << dev_id << " (automatically), mem_ratio: " << mem_ratio;
-    e = cudaSetDevice(dev_id);
-    if (e != cudaSuccess) {
-      KALDI_WARN << "Cannot select this device: return code " << e
-                 << ", Error message: \"" << cudaGetErrorString(e) << "\"";
-    } else {
-      e = cudaDeviceSynchronize();
-      if (e != cudaSuccess) {
-        KALDI_WARN << "Cannot select this device: return code " << e
-                   << ", Error message: \"" << cudaGetErrorString(e) << "\"";
-      }
-    }
+    KALDI_LOG << "Device: " << dev_id << ", mem_ratio: " << mem_ratio;
+    success = SelectGpuId(dev_id);
+
     max_id++;
-  } while ((e != cudaSuccess) && (max_id < free_mem_ratio.size()));
+  } while (!success && (max_id < free_mem_ratio.size()));
 
   if (e != cudaSuccess) {
     KALDI_WARN << "Failed to (automatically) select any device";
@@ -537,7 +588,8 @@ CuDevice::CuDevice():
     initialized_(false),
     device_id_copy_(-1),
     cublas_handle_(NULL),
-    cusparse_handle_(NULL) {
+    cusparse_handle_(NULL),
+    cusolverdn_handle_(NULL) {
 }
 
 CuDevice::~CuDevice() {
@@ -548,6 +600,11 @@ CuDevice::~CuDevice() {
   if (curand_handle_) {
     CURAND_SAFE_CALL(curandDestroyGenerator(curand_handle_));
   }
+#if CUDA_VERSION >= 9010
+  if (cusolverdn_handle_) {
+    CUSOLVER_SAFE_CALL(cusolverDnDestroy(cusolverdn_handle_));
+  }
+#endif
 }
 
 

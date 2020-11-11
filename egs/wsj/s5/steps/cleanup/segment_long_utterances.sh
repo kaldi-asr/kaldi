@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Guoguo Chen
 #           2016  Vimal Manohar
@@ -226,7 +226,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  steps/get_ctm_fast.sh --lmwt $lmwt --cmd "$cmd --mem 4G" \
+  steps/get_ctm_fast.sh --frame_shift $frame_shift --lmwt $lmwt --cmd "$cmd --mem 4G" \
     --print-silence true \
     $data_uniform_seg $lang $decode_dir $decode_dir/ctm_$lmwt
 fi

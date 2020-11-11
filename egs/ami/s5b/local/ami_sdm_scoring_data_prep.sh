@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 #           2016  Johns Hopkins University (Author: Daniel Povey)
@@ -107,11 +107,11 @@ awk '{print $1}' $tmpdir/segments | \
 
 #check and correct the case when segment timings for given speaker overlap themself
 #(important for simulatenous asclite scoring to proceed).
-#There is actually only one such case for devset and automatic segmentetions
+#There is actually only one such case for devset and automatic segmentations
 join $tmpdir/utt2spk_stm $tmpdir/segments | \
   awk '{ utt=$1; spk=$2; wav=$3; t_beg=$4; t_end=$5;
          if(spk_prev == spk && t_end_prev > t_beg) {
-           print "s/^"utt, wav, t_beg, t_end"$/"utt, wav, t_end_prev, t_end"/;";
+           print "s:[^\\S\\n]+$::;s:^"utt, wav, t_beg, t_end"$:"utt, wav, t_end_prev, t_end":;";
          }
          spk_prev=spk; t_end_prev=t_end;
        }' > $tmpdir/segments_to_fix

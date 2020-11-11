@@ -505,7 +505,7 @@ template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
   Timer tim;
   int32 iter = 0;
   for (;tim.Elapsed() < time_in_secs; iter++) {
-    N.ApplySoftMaxPerRow(M);
+    N.SoftMaxPerRow(M);
   }
 
   BaseFloat fdim = dim;
@@ -523,7 +523,7 @@ template<typename Real> void TestCuMatrixLogSoftmax(int32 dim) {
   Timer tim;
   int32 iter = 0;
   for (;tim.Elapsed() < time_in_secs; iter++) {
-    N.ApplyLogSoftMaxPerRow(M);
+    N.LogSoftMaxPerRow(M);
   }
 
   BaseFloat fdim = dim;

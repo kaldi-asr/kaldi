@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6j is another baseline for _6i, in which we use regular features (10 ms frame
 # shift) with the 4-fold subsampling of 6i.  I don't expect this will be as

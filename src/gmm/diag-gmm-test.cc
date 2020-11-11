@@ -43,7 +43,7 @@ void InitRandomGmm(DiagGmm *gmm_in) {
   gmm.SetWeights(weights);
   gmm.SetInvVarsAndMeans(inv_vars, means);
   gmm.Perturb(0.5 * RandUniform());
-  gmm.ComputeGconsts();  // this is unnecassary; computed in Perturb
+  gmm.ComputeGconsts();  // this is unnecessary; computed in Perturb
 }
 
 

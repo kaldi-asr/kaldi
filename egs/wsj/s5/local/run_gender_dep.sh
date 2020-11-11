@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is not really finished, all it does is train a model with its
 # means adapted to the female data, to demonstrate MAP adaptation.  To have real

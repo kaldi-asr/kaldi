@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3r is as _3p but reducing the number of parameters as it seemed to be
 # overtraining (despite already being quite a small model): [600,1800 ->

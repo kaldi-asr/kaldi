@@ -71,7 +71,13 @@ OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
     const typename C::Options &opts):
     computer_(opts), window_function_(computer_.GetFrameOptions()),
     features_(opts.frame_opts.max_feature_vectors),
-    input_finished_(false), waveform_offset_(0) { }
+    input_finished_(false), waveform_offset_(0) {
+  // RE the following assert: search for ONLINE_IVECTOR_LIMIT in
+  // online-ivector-feature.cc.
+  // Casting to uint32, an unsigned type, means that -1 would be treated
+  // as `very large`.
+  KALDI_ASSERT(static_cast<uint32>(opts.frame_opts.max_feature_vectors) > 200);
+}
 
 
 template <class C>
@@ -83,9 +89,9 @@ void OnlineGenericBaseFeature<C>::MaybeCreateResampler(
     KALDI_ASSERT(resampler_->GetInputSamplingRate() == sampling_rate);
     KALDI_ASSERT(resampler_->GetOutputSamplingRate() == expected_sampling_rate);
   } else if (((sampling_rate > expected_sampling_rate) &&
-              !computer_.GetFrameOptions().allow_downsample) ||
-             ((sampling_rate > expected_sampling_rate) &&
-              !computer_.GetFrameOptions().allow_upsample)) {
+              computer_.GetFrameOptions().allow_downsample) ||
+             ((sampling_rate < expected_sampling_rate) &&
+              computer_.GetFrameOptions().allow_upsample)) {
     resampler_.reset(new LinearResample(
         sampling_rate, expected_sampling_rate,
         std::min(sampling_rate / 2, expected_sampling_rate / 2), 6));
@@ -100,16 +106,22 @@ void OnlineGenericBaseFeature<C>::MaybeCreateResampler(
 template <class C>
 void OnlineGenericBaseFeature<C>::InputFinished() {
   if (resampler_ != nullptr) {
+    // There may be a few samples left once we flush the resampler_ object, telling it
+    // that the file has finished.  This should rarely make any difference.
     Vector<BaseFloat> appended_wave;
     Vector<BaseFloat> resampled_wave;
     resampler_->Resample(appended_wave, true, &resampled_wave);
 
-    if (waveform_remainder_.Dim() != 0)
-      appended_wave.Range(0, waveform_remainder_.Dim())
-          .CopyFromVec(waveform_remainder_);
-    appended_wave.Range(waveform_remainder_.Dim(), resampled_wave.Dim())
-        .CopyFromVec(resampled_wave);
-    waveform_remainder_.Swap(&appended_wave);
+    if (resampled_wave.Dim() != 0) {
+      appended_wave.Resize(waveform_remainder_.Dim() +
+                           resampled_wave.Dim());
+      if (waveform_remainder_.Dim() != 0)
+        appended_wave.Range(0, waveform_remainder_.Dim())
+            .CopyFromVec(waveform_remainder_);
+      appended_wave.Range(waveform_remainder_.Dim(), resampled_wave.Dim())
+          .CopyFromVec(resampled_wave);
+      waveform_remainder_.Swap(&appended_wave);
+    }
   }
   input_finished_ = true;
   ComputeFeatures();

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1r is as 1e, but changing update-period of natural gradient from 4 to 1,
 # Not helpful.

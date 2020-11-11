@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Based mostly on the TED-LIUM and Switchboard recipe
 #

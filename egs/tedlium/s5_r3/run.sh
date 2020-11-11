@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Based mostly on the Switchboard recipe. The training database is TED-LIUM,
 # it consists of TED talks with cleaned automatic transcripts:
@@ -25,7 +25,7 @@
 set -e -o pipefail -u
 
 nj=35
-decode_nj=30   # note: should not be >38 which is the number of speakers in the dev set
+decode_nj=38   # note: should not be >38 which is the number of speakers in the dev set
                # after applying --seconds-per-spk-max 180.  We decode with 4 threads, so
                # this will be too many jobs if you're using run.pl.
 stage=0
@@ -186,7 +186,7 @@ fi
 if [ $stage -le 17 ]; then
   # This will only work if you have GPUs on your system (and note that it requires
   # you to have the queue set up the right way... see kaldi-asr.org/doc/queue.html)
-  local/chain/run_tdnnf.sh
+  local/chain/run_tdnn.sh
 fi
 
 if [ $stage -le 18 ]; then
@@ -219,6 +219,7 @@ if [ $stage -le 19 ]; then
       $output_dir
   done
 fi
+
 
 echo "$0: success."
 exit 0

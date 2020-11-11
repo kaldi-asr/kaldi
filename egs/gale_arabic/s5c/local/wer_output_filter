@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+sed '
+s/@@ //g
+s/<sil>//g
+s/<UNK>//g
+'

@@ -37,7 +37,7 @@ void ComputePowerSpectrum(VectorBase<BaseFloat> *waveform) {
   // as we just want power spectrum.
 
   // now we have in waveform, first half of complex spectrum
-  // it's stored as [real0, realN/2-1, real1, im1, real2, im2, ...]
+  // it's stored as [real0, realN/2, real1, im1, real2, im2, ...]
   int32 half_dim = dim/2;
   BaseFloat first_energy = (*waveform)(0) * (*waveform)(0),
       last_energy = (*waveform)(1) * (*waveform)(1);  // handle this special case

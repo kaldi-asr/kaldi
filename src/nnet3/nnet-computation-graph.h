@@ -58,7 +58,7 @@ struct ComputationGraph {
   /// particular cindex_id directly depends on to compute it.  No repeats will
   /// be present.  Note, some of these dependencies may be optional
   /// dependencies; in early stages of compilation this will contain all
-  /// "desired" inputs and later we will prune the dependencies contain just
+  /// "desired" inputs and later we will prune the dependencies to contain just
   /// those that are used (which will vary depending on availability).
   std::vector<std::vector<int32> > dependencies;
 
@@ -157,7 +157,7 @@ class ComputationGraphBuilder {
   // dependencies of a particular cindex_id we realize that we won't be able to
   // use this cindex_id (i.e. it may be computable but it's not used) because
   // its usable_count is zero, and in those cases we change the status to
-  // kWillNotCompute even though the cindex-id may be computable- for most
+  // kWillNotCompute even though the cindex-id may be computable.  For most
   // purposes this status is treated the same as kNotComputable.
   enum ComputableInfo {
     kUnknown = 0,
@@ -165,6 +165,30 @@ class ComputationGraphBuilder {
     kNotComputable = 2,
     kWillNotCompute = 3
   };
+
+  struct CindexInfo {
+    ComputableInfo computable;  // kUnknown, kComputable, kNotComputable
+    int32 usable_count;   // usable_count_[i] for a cindex_id i is defined as 1 if i is a requested
+    // output, and otherwise as the number of other cindex_ids j such that
+    // computable_info_[j] is not kNotComputable AND usable_count_[j] > 0 AND i is
+    // a member of graph->dependencies[j].  A cindex_id is termed "usable"
+    // (meaning it could potentially participate in the computation of the output)
+    // if its usable_count_ is > 0.  This quantity is designed to be easy to keep
+    // updated as we add cindex_ids.
+
+    // True if in current_queue_ or next_queue_.
+    bool queued;
+
+    // True if we have created the cindexes that this cindex depends on.
+    bool dependencies_computed;
+
+    CindexInfo(const CindexInfo &other) = default;
+    CindexInfo(): computable(kUnknown),
+                  usable_count(0),
+                  queued(false),
+                  dependencies_computed(false) { }
+  };
+
  private:
   // This function, called from ExplainWhyNotComputable(), prints to "os"
   // a human-readable form of a given cindex_id, that looks like
@@ -189,12 +213,9 @@ class ComputationGraphBuilder {
   // the output.
   void BuildGraphOneIter();
 
-  // make sure the "computable_info_" array is up to date.
-  void UpdateAllComputableInfo();
-
-  // (called from UpdateAllComputableInfo); make sure the computable_info for
-  // cindex_id is up to date.  As a side effect this may also update the
-  // usable_count_ array.
+  // (called from BuildGraphOneIter()); make sure the computable_info for
+  // cindex_id is up to date.  Has side effects: may update usable_count
+  // values and add things to next_queue_.
   void UpdateComputableInfo(int32 cindex_id);
 
   // (called from BuildGraphOneIter()), this function sets the cindex_id to
@@ -207,11 +228,8 @@ class ComputationGraphBuilder {
   ComputableInfo ComputeComputableInfo(int32 cindex_id) const;
 
   // To be called when this cindex_id has just been newly added to graph_, this
-  // function adds various initial variables associated with it, to *this.
-  // is_input should be set to true if this cindex-id is being added as an input
-  // (from request_.inputs), and is_output should be set to true if this
-  // cindex-id is being added as an output (from request_.outputs).
-  inline void AddCindexId(int32 cindex_id, bool is_input, bool is_output);
+  // function adds a couple default variables associated with it, to *this.
+  inline void AddCindexId(int32 cindex_id);
 
   // Add cindex_ids that this cindex_id depends on.
   void AddDependencies(int32 cindex_id);
@@ -256,36 +274,18 @@ class ComputationGraphBuilder {
   // for each cindex_id, which other cindex_ids depend on it.
   std::vector<std::vector<int32> > depend_on_this_;
 
-  // this vector, indexed by cindex_id, contains our information about whether
-  // each cindex_id is computable; it's ComputableInfo, cast to char.
-  std::vector<char> computable_info_;
 
-  // this is a queue of cindex_ids that we need to re-compute whether they are
-  // computable or not (because either they are new and haven't had dependencies
-  // added, or their dependencies' computable status has changed since we last
-  // computed their computable_ value).
-  std::deque<int32> computable_queue_;
-  // this vector tells us whether a cindex_id is in computable_queued_; it
-  // stops us from adding things twice.
-  std::vector<bool> computable_queued_;
-
-  // usable_count_[i] for a cindex_id i is defined as 1 if i is a requested
-  // output, and otherwise as the number of other cindex_ids j such that
-  // computable_info_[j] is not kNotComputable AND usable_count_[j] > 0 AND i is
-  // a member of graph->dependencies[j].  A cindex_id is termed "usable"
-  // (meaning it could potentially participate in the computation of the output)
-  // if its usable_count_ is > 0.  This quantity is designed to be easy to keep
-  // updated as we add cindex_ids.
-  std::vector<int32> usable_count_;
+  // this vector is  indexed by cindex_id
+  std::vector<CindexInfo> cindex_info_;
 
   // current_distance_ >= 0 is the distance to the output, of the cindex_ids in
   // current_queue_.
   int32 current_distance_;
-  // the cindex_ids in current_queue_ are at distance "current_distance" to the
-  // output and have not yet had their dependencies processed.
+  // the cindex_ids in current_queue_ are at no more than distance
+  // "current_distance" to the output
   std::vector<int32> current_queue_;
-  // the cindex_ids in next_queue_ are at distance current_distance + 1 to the
-  // output and have not yet had their dependencies processed.
+  // the cindex_ids in next_queue_ are at no more than distance current_distance
+  // + 1 to the output
   std::vector<int32> next_queue_;
 };
 
@@ -305,14 +305,15 @@ class CindexSet {
 
   /// with this constructor, represents the set of all Cindexes that exist in
   /// the graph and which are computable.  If treat_unknown_as_computable is
-  /// true then we consider kComputable and kUnknown to be computable, else we
-  /// consider just nodes that are kComputable to be computable.
+  /// true then we consider kComputable, kUnknown and kWillNotCompute to be
+  /// computable; else we consider just nodes that are kComputable to be
+  /// computable.
   CindexSet(const ComputationGraph &graph,
-            const std::vector<char> &is_computable,
+            const std::vector<ComputationGraphBuilder::CindexInfo> &info,
             bool treat_unknown_as_computable);
  private:
   const ComputationGraph &graph_;
-  const std::vector<char> *is_computable_;
+  const std::vector<ComputationGraphBuilder::CindexInfo> *info_;
   bool treat_unknown_as_computable_;
 };
 
@@ -327,14 +328,14 @@ class IndexSet {
   /// (node_id, x) which is computable exists in this graph.  If
   /// treat_unknown_as_computable is true then we consider kComputable and kUnknown
   /// to be computable, else we consider just nodes that are kComputable to be
-  /// computable.
+  /// computable.  The `info` input is only needed for its `computable` member.
   IndexSet(const ComputationGraph &graph,
-           const std::vector<char> &computable_info,
+           const std::vector<ComputationGraphBuilder::CindexInfo> &info,
            int32 node_id,
            bool treat_unknown_as_computable);
  private:
   const ComputationGraph &graph_;
-  const std::vector<char> &is_computable_;
+  const std::vector<ComputationGraphBuilder::CindexInfo> &info_;
   int32 node_id_;
   bool treat_unknown_as_computable_;
 };

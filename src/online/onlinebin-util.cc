@@ -24,7 +24,7 @@
 
 namespace kaldi {
 
-fst::Fst<fst::StdArc> *ReadDecodeGraph(std::string filename) {
+fst::Fst<fst::StdArc> *ReadDecodeGraph(const std::string& filename) {
   // read decoding network FST
   Input ki(filename); // use ki.Stream() instead of is.
   if (!ki.Stream().good()) KALDI_ERR << "Could not open decoding-graph FST "

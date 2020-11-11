@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g is as 1f but adding dropout (well, something like dropout-- the mask
 #   is shared across time and it's continuous rather than zero-one), increasing

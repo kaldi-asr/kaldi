@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright     2013  Daniel Povey
 # Apache 2.0.
@@ -111,6 +111,7 @@ echo "--min-post=$min_post" >>$ieconf
 echo "--posterior-scale=$posterior_scale" >>$ieconf
 echo "--max-remembered-frames=1000" >>$ieconf # the default
 echo "--max-count=$max_count" >>$ieconf
+[ -f $srcdir/online_cmvn_iextractor ] && echo "--online-cmvn-iextractor=true" >>$ieconf
 
 
 absdir=$(utils/make_absolute.sh $dir)

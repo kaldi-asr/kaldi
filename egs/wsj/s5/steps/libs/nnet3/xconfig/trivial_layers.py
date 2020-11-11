@@ -70,6 +70,7 @@ class XconfigRenormComponent(XconfigLayerBase):
         return configs
 
 
+
 class XconfigBatchnormComponent(XconfigLayerBase):
     """This class is for parsing lines like
      'batchnorm-component name=batchnorm input=Append(-3,0,3)'
@@ -78,13 +79,17 @@ class XconfigBatchnormComponent(XconfigLayerBase):
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer.]
       target-rms=1.0           [The target RMS of the BatchNormComponent]
+      include-in-init=false     [You should set this to true if this precedes a
+                                `fixed-affine-layer` that is to be initialized
+                                 via LDA]
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
         self.config = {'input': '[-1]',
-                       'target-rms': 1.0 }
+                       'target-rms': 1.0,
+                       'include-in-init': False}
 
     def check_configs(self):
         assert self.config['target-rms'] > 0.0
@@ -107,6 +112,8 @@ class XconfigBatchnormComponent(XconfigLayerBase):
                 # we do not support user specified matrices in this layer
                 # so 'ref' and 'final' configs are the same.
                 ans.append((config_name, line))
+            if self.config['include-in-init']:
+                ans.append(('init', line))
         return ans
 
     def _generate_config(self):
@@ -174,6 +181,77 @@ class XconfigNoOpComponent(XconfigLayerBase):
             self.name, input_dim))
         configs.append(line)
         line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
+        configs.append(line)
+        return configs
+
+
+class XconfigDeltaLayer(XconfigLayerBase):
+    """This class is for parsing lines like
+     'delta-layer name=delta input=idct'
+    which appends the central frame with the delta features
+    (i.e. -1,0,1 since scale equals 1) and delta-delta features 
+    (i.e. 1,0,-2,0,1), and then applies batchnorm to it.
+
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer]
+    """
+    def __init__(self, first_token, key_to_value, prev_names=None):
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input': '[-1]'}
+
+    def check_configs(self):
+        pass
+
+    def output_name(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return self.name
+
+    def output_dim(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        input_dim = self.descriptors['input']['dim']
+        return (3*input_dim)
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    def _generate_config(self):
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        output_dim = self.output_dim()
+
+        configs = []
+        line = ('dim-range-node name={0}_copy1 input-node={0} dim={1} dim-offset=0'.format(
+            input_desc, input_dim))
+        configs.append(line)
+        line = ('dim-range-node name={0}_copy2 input-node={0} dim={1} dim-offset=0'.format(
+            input_desc, input_dim))
+        configs.append(line)
+
+        line = ('component name={0}_2 type=NoOpComponent dim={1}'.format(
+            input_desc, output_dim))
+        configs.append(line)
+        line = ('component-node name={0}_2 component={0}_2 input=Append(Offset({0},0),'
+            ' Sum(Offset(Scale(-1.0,{0}_copy1),-1), Offset({0},1)), Sum(Offset({0},-2), Offset({0},2),' 
+            ' Offset(Scale(-2.0,{0}_copy2),0)))'.format(input_desc))
+        configs.append(line)
+        
+        line = ('component name={0} type=BatchNormComponent dim={1}'.format(
+            self.name, output_dim))
+        configs.append(line)
+        line = ('component-node name={0} component={0} input={1}_2'.format(
             self.name, input_desc))
         configs.append(line)
         return configs

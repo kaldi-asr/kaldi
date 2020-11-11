@@ -232,7 +232,7 @@ template<class Weight, class Int> void TestConvertPair(bool invert) {
 // use TestConvertPair when the Weight can be constructed from
 // a pair of floats.
 template<class Weight, class Int> void TestScalePair(bool invert) {
-  vector<vector<double> > scale1 = DefaultLatticeScale(),
+  std::vector<std::vector<double> > scale1 = DefaultLatticeScale(),
       scale2 = DefaultLatticeScale();
   // important that all these numbers exactly representable as floats..
   // exact floating-point comparisons are used in LatticeWeight, and

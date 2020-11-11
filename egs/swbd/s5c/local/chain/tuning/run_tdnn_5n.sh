@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5n is as _5j (also omitting the iVectors), but using double the input frame
 # rate from 10 to 5 ms (and reducing frame width from 25 to 20), and modifying

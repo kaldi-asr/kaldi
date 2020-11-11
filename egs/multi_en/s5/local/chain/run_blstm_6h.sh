@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ###########################################################################################
 # This script was copied from egs/fisher_swbd/s5/local/chain/run_blstm_6h.sh.

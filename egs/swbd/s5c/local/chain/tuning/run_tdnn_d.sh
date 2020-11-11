@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _d is as _c but with a modified topology (with 4 distinct states per phone
 # instead of 2), and a slightly larger num-states (8000) to compensate for the

@@ -21,6 +21,7 @@
 #include "base/kaldi-error.h"
 
 namespace fst {
+using std::vector;
 
 
 InverseContextFst::InverseContextFst(

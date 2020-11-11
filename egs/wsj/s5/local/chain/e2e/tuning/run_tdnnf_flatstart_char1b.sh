@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright    2019  Hossein Hadian
 
 # 1b is the same as 1a except it uses a better tree (which is

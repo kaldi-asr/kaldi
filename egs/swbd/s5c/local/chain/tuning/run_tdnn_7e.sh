@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 7e is as 7d, but using a different splice indexes which gives slightly better results.
 

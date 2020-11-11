@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright     2018    Ashish Arora (Johns Hopkins University)
 #               2018    Desh Raj (Johns Hopkins University)
 

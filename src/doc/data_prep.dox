@@ -356,7 +356,7 @@ fstprint.
 The file <DFN>L.fst</DFN> is the Finite State Transducer form of the lexicon (L,
 see  <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
 with Weighted Finite-State Transducers" </a> by Mohri, Pereira and
-Riley, in Springer Handbook on SpeechProcessing and Speech Communication, 2008).
+Riley, in Springer Handbook on Speech Processing and Speech Communication, 2008).
 with phone symbols on the input and word symbols on the output.  The file
 <DFN>L_disambig.fst</DFN> is the lexicon, as above but including the disambiguation
 symbols \#1, \#2, and so on, as well as the self-loop with \#0 on it to "pass through"
@@ -373,7 +373,7 @@ training.  There is nothing special about "<UNK>" here, and it does not have
 to be this particular word; what is important is that this word should have a pronunciation
 containing just a phone that we designate as a "garbage phone"; this phone will
 align with various kinds of spoken noise.  In our particular setup, this phone
-is called <DFN>\<SPN\></DFN> (short for "spoken noise"):
+is called <DFN>SPN</DFN> (short for "spoken noise"):
 \verbatim
 s5# grep -w UNK data/local/dict/lexicon.txt
 <UNK> SPN
@@ -577,7 +577,7 @@ we don't like to hardcode this in the text form of the phones-- for one thing, K
 never see the text form of the phones, but only an integerized form.  So it is specified
 by this file <DFN>word_boundary.txt</DFN>.  The main reason we need this information is
 in order to recover the word boundaries within lattices (for example, the program
-lattice-align-words reads the integer versin of this file, <DFN>word_boundaray.int</DFN>).
+lattice-align-words reads the integer version of this file, <DFN>word_boundaray.int</DFN>).
 Finding the word boundaries is useful for reasons including NIST sclite scoring, which requires
 the time markings for words, and for other downstream processing.
 
@@ -829,7 +829,7 @@ into a Weight Finite State Transducer (actually, an acceptor).
 A popular toolkit for building language models is SRILM.  Various language
 modeling toolkits are used in the Kaldi example scripts.  SRILM is the best
 documented and most fully featured, and we generally recommend it (its only
-drawback is that it don't have the most free licence). Here is the usage
+drawback is that it don't have the most free license). Here is the usage
 messages of <DFN>utils/format_lm_sri.sh</DFN>
 
 \verbatim

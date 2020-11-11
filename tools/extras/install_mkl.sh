@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Intel MKL is now freely available even for commercial use. This script
 # attempts to install the MKL package automatically from Intel's repository.
@@ -12,7 +12,7 @@
 
 set -o pipefail
 
-default_package=intel-mkl-64bit-2019.2-057
+default_package=intel-mkl-64bit-2020.0-088
 
 yum_repo='https://yum.repos.intel.com/mkl/setup/intel-mkl.repo'
 apt_repo='https://apt.repos.intel.com/mkl'
@@ -31,7 +31,7 @@ to install MKL into this directory; run this script using the sudo command.
 
 Options:
   -s  - Skip check for MKL being already present.
-  -p <suse|redhat|debian|fedora> -- Force type of package management. Use only
+  -p <suse|redhat|debian|fedora|arch> -- Force type of package management. Use only
                                     if automatic detection fails, as instructed.
   -h  - Show this message.
 
@@ -54,9 +54,9 @@ while getopts ":hksp:" opt; do
     h) Usage ;;
     s) skip_cc=yes ;;
     p) case $OPTARG in
-         suse|redhat|debian|fedora) distro=$OPTARG ;;
+         suse|redhat|debian|fedora|arch) distro=$OPTARG ;;
          *) Fatal "invalid value -p '${OPTARG}'. " \
-                  "Allowed: 'suse', 'redhat', 'debian' or 'fedora'."
+                  "Allowed: 'suse', 'redhat', 'debian', 'fedora', or 'arch'."
        esac ;;
     \?) echo >&2 "$0: invalid option -${OPTARG}."; Usage ;;
   esac
@@ -112,7 +112,7 @@ if [[ ! $distro ]]; then
     case "$rune" in
       cpe:/o:fedoraproject:fedora:2[01]) distro=redhat; break;;  # Use yum.
       rhel|centos) distro=redhat; break;;
-      redhat|suse|fedora|debian) distro=$rune; break;;
+      redhat|suse|fedora|debian|arch) distro=$rune; break;;
     esac
   done
 
@@ -123,6 +123,7 @@ if [[ ! $distro ]]; then
   [[ ! $distro && -f /etc/redhat-release ]] && distro=redhat
   [[ ! $distro && -f /etc/SuSE-release ]]   && distro=suse
   [[ ! $distro && -f /etc/debian_release ]] && distro=debian
+  [[ ! $distro && -f /etc/arch-release ]] && distro=arch
 
   [[ ! $distro ]] && Fatal "\
 Unable to determine package management style.
@@ -132,6 +133,7 @@ Invoke this script with the option '-p <style>', where <style> can be:
   fedora -- Fedora 22+, also RedHat-like, but uses dnf instead of yum.
   suse   -- SUSE-like, uses zypper and rpm.
   debian -- Debian-like, uses apt and dpkg.
+  arch   -- Archlinux, uses pacman.
 
 We do not currently support other package management systems. Check the Intel's
 documentation at https://software.intel.com/mkl/choose-download for other
@@ -163,13 +165,14 @@ variable, sudo might not allow it to propagate to the command that it invokes."
   exit 0
 fi
 
-# The install variants, each in a finction to simplify error reporting.
+# The install variants, each in a function to simplify error reporting.
 # Each one invokes a subshell with a 'set -x' to to show system-modifying
 # commands it runs. The subshells simply limit the scope of this diagnostics
 # and avoid creating noise (if we were using 'set +x', it would be printed).
 Install_redhat () {
   # yum-utils contains yum-config-manager, in case the user does not have it.
   ( set -x
+    rpm --import $intel_key_url
     yum -y install yum-utils &&
     yum-config-manager --add-repo "$yum_repo" &&
     yum -y install "$package" )
@@ -177,6 +180,7 @@ Install_redhat () {
 
 Install_fedora () {
   ( set -x
+    rpm --import $intel_key_url
     dnf -y install 'dnf-command(config-manager)' &&
     dnf config-manager --add-repo "$yum_repo" &&
     dnf -y install "$package" )
@@ -188,6 +192,7 @@ Install_suse () {
   # We must disable gpg checks with '--no-gpg-checks'. I won't bend backwards
   # as far as check the installed .so version...
   ( set -x
+    rpm --import $intel_key_url
     zypper addrepo "$yum_repo" &&
     zypper --gpg-auto-import-keys --no-gpg-checks \
            --non-interactive install "$package" )
@@ -240,6 +245,13 @@ a higher version of apt, removing this link will help make it more secure.
 This is not considered a severe security issue, but separating keyrings is the
 current recommended security practice."
   fi
+}
+
+Install_arch () {
+  ( set -x
+    echo y | pacman -Syu intel-mkl && # In pacman we don't specify the version
+    pacman -Q --info intel-mkl | grep -v None
+  )
 }
 
 # Register MKL .so libraries with the ld.so.

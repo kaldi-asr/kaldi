@@ -40,7 +40,7 @@ void ConvertLattice(
   typedef ArcTpl<CompactWeight> CompactArc;
 
   VectorFst<ArcTpl<Weight> > ffst;
-  vector<vector<Int> > labels;
+  std::vector<std::vector<Int> > labels;
   if (invert) // normal case: want the ilabels as sequences on the arcs of
     Factor(ifst, &ffst, &labels);  // the output... Factor makes seqs of
                                    // ilabels.
@@ -67,7 +67,7 @@ void ConvertLattice(
   for (StateId s = 0; s < num_states; s++) {
     Weight final_weight = ffst.Final(s);
     if (final_weight != Weight::Zero()) {
-      CompactWeight final_compact_weight(final_weight, vector<Int>());
+      CompactWeight final_compact_weight(final_weight, std::vector<Int>());
       ofst->SetFinal(s, final_compact_weight);
     }
     for (ArcIterator<ExpandedFst<Arc> > iter(ffst, s);
@@ -195,7 +195,7 @@ void ConvertLattice(
 
 template<class Weight, class ScaleFloat>
 void ScaleLattice(
-    const vector<vector<ScaleFloat> > &scale,
+    const std::vector<std::vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst) {
   assert(scale.size() == 2 && scale[0].size() == 2 && scale[1].size() == 2);
   if (scale == DefaultLatticeScale()) // nothing to do.

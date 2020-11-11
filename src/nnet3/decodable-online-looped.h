@@ -148,7 +148,7 @@ class DecodableNnetLoopedOnlineBase: public DecodableInterface {
 // It fully implements DecodableInterface.
 // Note: whether or not division by the prior takes place depends on
 // whether you supplied class AmNnetSimple (or just Nnet), to the constructor
-// of the DecodableNnetSimpleLoopedInfo that you initailized this
+// of the DecodableNnetSimpleLoopedInfo that you initialized this
 // with.
 class DecodableNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
  public:
@@ -178,7 +178,7 @@ class DecodableNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
 // pdf-ids.
 // Note: whether or not division by the prior takes place depends on
 // whether you supplied class AmNnetSimple (or just Nnet), to the constructor
-// of the DecodableNnetSimpleLoopedInfo that you initailized this
+// of the DecodableNnetSimpleLoopedInfo that you initialized this
 // with.
 class DecodableAmNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
  public:

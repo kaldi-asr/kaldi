@@ -61,45 +61,61 @@ def rnnlm_raw_data(data_path, vocab_path):
   return train_data, valid_data, vocabulary, word_to_id
 
 
-def rnnlm_producer(raw_data, batch_size, num_steps, name=None):
-  """Iterate on the raw RNNLM data.
+def rnnlm_gen_data(*files):
+  """Generates data and vocab from files.
 
-  This chunks up raw_data into batches of examples and returns Tensors that
-  are drawn from these batches.
-
-  Args:
-    raw_data: one of the raw data outputs from rnnlm_raw_data.
-    batch_size: int, the batch size.
-    num_steps: int, the number of unrolls.
-    name: the name of this operation (optional).
-
-  Returns:
-    A pair of Tensors, each shaped [batch_size, num_steps]. The second element
-    of the tuple is the same data time-shifted to the right by one.
-
-  Raises:
-    tf.errors.InvalidArgumentError: if batch_size or num_steps are too high.
+  This function is used solely for testing.
   """
-  with tf.name_scope(name, "RNNLMProducer", [raw_data, batch_size, num_steps]):
-    raw_data = tf.convert_to_tensor(raw_data, name="raw_data", dtype=tf.int32)
+  import collections
+  import re
 
-    data_len = tf.size(raw_data)
-    batch_len = data_len // batch_size
-    data = tf.reshape(raw_data[0 : batch_size * batch_len],
-                      [batch_size, batch_len])
+  all_words = collections.Counter()
+  all_word_lists = []
+  for f in files:
+    with open(f, mode="r") as fp:
+      text = fp.read()
 
-    epoch_size = (batch_len - 1) // num_steps
-    assertion = tf.assert_positive(
-        epoch_size,
-        message="epoch_size == 0, decrease batch_size or num_steps")
-    with tf.control_dependencies([assertion]):
-      epoch_size = tf.identity(epoch_size, name="epoch_size")
+    word_list = re.split("[^A-Za-z]", text)
+    word_list = list(filter(None, word_list))
+    all_words.update(word_list)
+    all_word_lists.append(word_list)
 
-    i = tf.train.range_input_producer(epoch_size, shuffle=False).dequeue()
-    x = tf.strided_slice(data, [0, i * num_steps],
-                         [batch_size, (i + 1) * num_steps])
-    x.set_shape([batch_size, num_steps])
-    y = tf.strided_slice(data, [0, i * num_steps + 1],
-                         [batch_size, (i + 1) * num_steps + 1])
-    y.set_shape([batch_size, num_steps])
-    return x, y
+  word_to_id = {word: i for i, (word, _) in enumerate(all_words.most_common())}
+
+  def convert(word_list):
+    return [word_to_id[word] for word in word_list]
+
+  all_word_ids = [convert(word_list) for word_list in all_word_lists]
+  return all_word_ids, word_to_id
+
+
+class RNNLMProducer(tf.Module):
+  """This is the data feeder."""
+
+  def __init__(self, raw_data, batch_size, num_steps, name=None):
+    super().__init__(name)
+    self.batch_size = batch_size
+    self.num_steps = num_steps
+    self.epoch_size = (len(raw_data) - 1) // num_steps // batch_size
+
+    # load data into a variable so that it will be separated from graph
+    self._raw_data = tf.Variable(raw_data, dtype=tf.int32, trainable=False)
+
+    ds_x = tf.data.Dataset.from_tensor_slices(self._raw_data)
+    ds_y = ds_x.skip(1)
+    ds = tf.data.Dataset.zip((ds_x, ds_y))
+    # form samples
+    ds = ds.batch(num_steps, drop_remainder=True)
+    # form batches
+    self._ds = ds.batch(batch_size, drop_remainder=True)
+
+  def iterate(self):
+    return self._ds
+
+
+if __name__ == "__main__":
+  samples = list(range(100))
+  ds = RNNLMProducer(samples, 4, 8)
+  print(ds.epoch_size)
+  for data in ds.iterate():
+    print(data)

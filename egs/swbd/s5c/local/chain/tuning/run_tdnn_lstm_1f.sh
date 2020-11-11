@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_lstm_1f.sh is like run_tdnn_lstm_1e.sh but
 # reducing the frames-per-iter from 1.5 million to 1 million,

@@ -69,7 +69,7 @@ const MelBanks* FbankComputer::GetMelBanks(BaseFloat vtln_warp) {
   return this_mel_banks;
 }
 
-void FbankComputer::Compute(BaseFloat signal_log_energy,
+void FbankComputer::Compute(BaseFloat signal_raw_log_energy,
                             BaseFloat vtln_warp,
                             VectorBase<BaseFloat> *signal_frame,
                             VectorBase<BaseFloat> *feature) {
@@ -82,8 +82,8 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
 
   // Compute energy after window function (not the raw one).
   if (opts_.use_energy && !opts_.raw_energy)
-    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<float>::min()));
+    signal_raw_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<float>::epsilon()));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -114,11 +114,11 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
 
   // Copy energy as first value (or the last, if htk_compat == true).
   if (opts_.use_energy) {
-    if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_) {
-      signal_log_energy = log_energy_floor_;
+    if (opts_.energy_floor > 0.0 && signal_raw_log_energy < log_energy_floor_) {
+      signal_raw_log_energy = log_energy_floor_;
     }
     int32 energy_index = opts_.htk_compat ? opts_.mel_opts.num_bins : 0;
-    (*feature)(energy_index) = signal_log_energy;
+    (*feature)(energy_index) = signal_raw_log_energy;
   }
 }
 

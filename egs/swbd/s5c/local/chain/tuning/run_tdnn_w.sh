@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _w is as _s (with --pdf-boundary-penalty 0.0) but setting
 #   --lm-opts "--num-extra-states=500" (like the opposite of

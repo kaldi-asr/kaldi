@@ -58,7 +58,7 @@ typedef basic_pipebuf<char> PipebufType;
 
 namespace kaldi {
 
-std::string PrintableRxfilename(std::string rxfilename) {
+std::string PrintableRxfilename(const std::string &rxfilename) {
   if (rxfilename == "" || rxfilename == "-") {
     return "standard input";
   } else {
@@ -70,12 +70,12 @@ std::string PrintableRxfilename(std::string rxfilename) {
 }
 
 
-std::string PrintableWxfilename(std::string wxfilename) {
+std::string PrintableWxfilename(const std::string &wxfilename) {
   if (wxfilename == "" || wxfilename == "-") {
     return "standard output";
   } else {
     // If this call to Escape later causes compilation issues,
-    // just replace it with "return rxfilename"; it's only a
+    // just replace it with "return wxfilename"; it's only a
     // pretty-printing issue.
     return ParseOptions::Escape(wxfilename);
   }

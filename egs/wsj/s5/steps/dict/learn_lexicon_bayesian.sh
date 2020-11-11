@@ -329,7 +329,7 @@ if [ $stage -le 5 ]; then
   # Prune away pronunciations which have low acoustic evidence from the first pass of lattice alignment.
   $cmd $dir/lats_iter1/log/prune_pron_candidates.log steps/dict/internal/prune_pron_candidates.py \
     --variant-counts-ratio $variant_counts_ratio \
-    $dir/lats_iter1/pron_stats.txt $dir/lexicon_phonetic_decoding_pruned.txt $dir/lexiconp_g2p.txt $dir/ref_lexicon.txt \
+    $dir/lats_iter1/pron_stats.txt $dir/lexicon_phonetic_decoding.txt $dir/lexiconp_g2p.txt $dir/ref_lexicon.txt \
     $dir/lexicon_phonetic_decoding_pruned.txt $dir/lexicon_g2p_pruned.txt
 
   # Filter out words which don't appear in the acoustic training data

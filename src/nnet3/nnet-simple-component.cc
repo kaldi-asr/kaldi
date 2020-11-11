@@ -67,6 +67,7 @@ void PnormComponent::Backprop(const std::string &debug_info,
                               void *memo,
                               Component *to_update,
                               CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("PnormComponent::Backprop");
   if (!in_deriv)
     return;
   BaseFloat p = 2.0;
@@ -183,6 +184,7 @@ void DropoutComponent::Backprop(const std::string &debug_info,
                                 void *memo,
                                 Component *to_update,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("DropoutComponent::Backprop");
   KALDI_ASSERT(in_value.NumRows() == out_value.NumRows() &&
                in_value.NumCols() == out_value.NumCols());
 
@@ -278,6 +280,7 @@ void ElementwiseProductComponent::Backprop(const std::string &debug_info,
                               void *memo,
                               Component *to_update,
                               CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("ElementwiseProductComponent::Backprop");
   if (!in_deriv)  return;
   int32 num_inputs = input_dim_ / output_dim_;
   for (int32 i = 0; i < num_inputs; i++)  {
@@ -330,6 +333,7 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 void *memo,
                                 Component *to_update_in,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("SigmoidComponent::Backprop");
   if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
     SigmoidComponent *to_update = dynamic_cast<SigmoidComponent*>(to_update_in);
@@ -449,6 +453,7 @@ void NoOpComponent::Backprop(const std::string &debug_info,
                              Component *to_update, // may be NULL; may be identical
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("NoOpComponent::Backprop");
   in_deriv->CopyFromMat(out_deriv);
   if (backprop_scale_ != 1.0)
     in_deriv->Scale(backprop_scale_);
@@ -681,6 +686,7 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
                              Component *to_update_in, // may be NULL; may be identical
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("ClipGradientComponent::Backprop");
   // the following statement will do nothing if in_deriv and out_deriv have same
   // memory.
   in_deriv->CopyFromMat(out_deriv);
@@ -921,6 +927,7 @@ void TanhComponent::Backprop(const std::string &debug_info,
                              Component *to_update_in, // may be NULL; may be identical
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("TanhComponent::Backprop");
   if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
     TanhComponent *to_update = dynamic_cast<TanhComponent*>(to_update_in);
@@ -973,6 +980,7 @@ void RectifiedLinearComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("RectifiedLinearComponent::Backprop");
   if (in_deriv != NULL) {
     in_deriv->Heaviside(out_value);
     in_deriv->MulElements(out_deriv);
@@ -1257,6 +1265,7 @@ void AffineComponent::Backprop(const std::string &debug_info,
                                void *memo,
                                Component *to_update_in,
                                CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("AffineComponent::Backprop");
   AffineComponent *to_update = dynamic_cast<AffineComponent*>(to_update_in);
 
   // Propagate the derivative back to the input.
@@ -1459,6 +1468,7 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
                                        void *memo,
                                        Component *to_update_in,
                                        CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("RepeatedAffineComponent::Backprop");
   KALDI_ASSERT(out_deriv.NumCols() == out_deriv.Stride() &&
        (in_value.NumCols() == 0 || in_value.NumCols() == in_value.Stride()) &&
                (!in_deriv || in_deriv->NumCols() == in_deriv->Stride()));
@@ -1771,6 +1781,7 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
                                     void *memo,
                                     Component *to_update_in,
                                     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("BlockAffineComponent::Backprop");
   BlockAffineComponent *to_update = dynamic_cast<BlockAffineComponent*>(to_update_in);
 
   const int32 num_rows_in_block = linear_params_.NumRows() / num_blocks_;
@@ -2043,6 +2054,7 @@ void PerElementScaleComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("PerElementScaleComponent::Backprop");
   PerElementScaleComponent *to_update =
       dynamic_cast<PerElementScaleComponent*>(to_update_in);
 
@@ -2216,6 +2228,7 @@ void PerElementOffsetComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("PerElementOffsetComponent::Backprop");
   PerElementOffsetComponent *to_update =
       dynamic_cast<PerElementOffsetComponent*>(to_update_in);
 
@@ -2480,6 +2493,7 @@ void ScaleAndOffsetComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("ScaleAndOffsetComponent::Backprop");
   ScaleAndOffsetComponent *to_update =
       dynamic_cast<ScaleAndOffsetComponent*>(to_update_in);
 
@@ -2615,6 +2629,7 @@ void ConstantFunctionComponent::Backprop(
     void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("ConstantFunctionComponent::Backprop");
   // we don't update in_deriv, since we set the flag
   // kBackpropAdds, and the output doesn't depend on the
   // input, so the input-derivative is zero.
@@ -3221,6 +3236,7 @@ void LinearComponent::Backprop(const std::string &debug_info,
                                void *memo,
                                Component *to_update_in,
                                CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("LinearComponent::Backprop");
   LinearComponent *to_update = dynamic_cast<LinearComponent*>(to_update_in);
 
   // Propagate the derivative back to the input.  add with coefficient 1.0 since
@@ -3389,6 +3405,7 @@ void FixedAffineComponent::Backprop(const std::string &debug_info,
                                     void *memo,
                                     Component *, //to_update
                                     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("FixedAffineComponent::Backprop");
   // kBackpropAdds is true. It's the user's responsibility to zero out
   // <in_deriv> if they need it to be so.
   if (in_deriv)
@@ -3539,6 +3556,7 @@ void SumGroupComponent::Backprop(const std::string &debug_info,
                                  void *memo,
                                  Component *to_update_in,
                                  CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("SumGroupComponent::Backprop");
   in_deriv->CopyCols(out_deriv, reverse_indexes_);
 }
 
@@ -3548,7 +3566,7 @@ void* SoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   // Apply softmax function to each row of the output...
   // for that row, we do
   // x_i = exp(x_i) / sum_j exp(x_j).
-  out->ApplySoftMaxPerRow(in);
+  out->SoftMaxPerRow(in);
 
   // This floor on the output helps us deal with
   // almost-zeros in a way that doesn't lead to overflow.
@@ -3565,6 +3583,7 @@ void SoftmaxComponent::Backprop(const std::string &debug_info,
                                 void *memo,
                                 Component *to_update_in,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("SoftmaxComponent::Backprop");
 
   if (to_update_in) {
     SoftmaxComponent *to_update =
@@ -3601,7 +3620,7 @@ void* LogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     CuMatrixBase<BaseFloat> *out) const {
   // Applies log softmax function to each row of the output. For each row, we do
   // x_i = x_i - log(sum_j exp(x_j))
-  out->ApplyLogSoftMaxPerRow(in);
+  out->LogSoftMaxPerRow(in);
   return NULL;
 }
 
@@ -3613,6 +3632,7 @@ void LogSoftmaxComponent::Backprop(const std::string &debug_info,
                                    void *memo,
                                    Component *to_update_in,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("LogSoftmaxComponent::Backprop");
   if (to_update_in) {
     LogSoftmaxComponent *to_update =
         dynamic_cast<LogSoftmaxComponent*>(to_update_in);
@@ -3682,6 +3702,7 @@ void FixedScaleComponent::Backprop(const std::string &debug_info,
                                    void *memo,
                                    Component *, // to_update
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("FixedScaleComponent::Backprop");
   in_deriv->CopyFromMat(out_deriv);  // does nothing if same memory.
   in_deriv->MulColsVec(scales_);
 }
@@ -3756,6 +3777,7 @@ void FixedBiasComponent::Backprop(const std::string &debug_info,
                                   void *memo,
                                   Component *, // to_update
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("FixedBiasComponent::Backprop");
   // the following statement will do nothing if in_deriv and out_deriv have same
   // memory.
   in_deriv->CopyFromMat(out_deriv);
@@ -3979,6 +4001,7 @@ void PermuteComponent::Backprop(const std::string &debug_info,
                                 void *memo,
                                 Component *to_update,
                                 CuMatrixBase<BaseFloat> *in_deriv) const  {
+  NVTX_RANGE("PermuteComponent::Backprop");
   in_deriv->CopyCols(out_deriv, reverse_column_map_);
 }
 
@@ -4259,6 +4282,7 @@ void CompositeComponent::Backprop(const std::string &debug_info,
                                   void *memo,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("CompositeComponent::Backprop");
   KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
                in_value.NumCols() == InputDim() &&
                out_deriv.NumCols() == OutputDim());
@@ -4685,6 +4709,7 @@ void SumBlockComponent::Backprop(
     void *memo,
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
+  NVTX_RANGE("SumBlockComponent::Backprop");
   if (in_deriv) {
     in_deriv->AddMatBlocks(scale_, out_deriv, kNoTrans);
   }

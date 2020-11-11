@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
 # of Qatar Computing Research Institute (http://qcri.qa/)

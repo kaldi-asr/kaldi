@@ -118,6 +118,14 @@ void ScaleNnet(BaseFloat scale, Nnet *nnet);
 /// learning_rate_ to 1 for each UpdatableComponent in nnet
 void SetNnetAsGradient(Nnet *nnet);
 
+
+/// Calls the corresponding function in any component of type
+/// StatisticsPoolingComponent; used as a way to compute the 'real' left-right
+/// context of networks including SatisticsPoolingComponent, which will give you
+/// the minimum chunk size they can consume.
+void SetRequireDirectInput(bool b, Nnet *nnet);
+
+
 /// Does *dest += alpha * src (affects nnet parameters and
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
@@ -234,8 +242,8 @@ struct CollapseModelConfig {
   bool collapse_batchnorm;  // batchnorm then affine.
   bool collapse_affine;  // affine or fixed-affine then affine.
   bool collapse_scale;  // affine then fixed-scale.
-  CollapseModelConfig(): collapse_dropout(true),
-                         collapse_batchnorm(true),
+  CollapseModelConfig(): collapse_dropout(false),
+                         collapse_batchnorm(false),
                          collapse_affine(true),
                          collapse_scale(true) { }
 };
@@ -300,13 +308,18 @@ void CollapseModel(const CollapseModelConfig &config,
        DropoutMaskComponent or GeneralDropoutComponent whose
        names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
 
-    apply-svd name=<name-pattern> bottleneck-dim=<dim>
+    apply-svd name=<name-pattern> bottleneck-dim=<dim> energy-threshold=<threshold> shrinkage-threshold=<s>
        Locates all components with names matching <name-pattern>, which are
        type AffineComponent or child classes thereof.  If <dim> is
        less than the minimum of the (input or output) dimension of the component,
-       it does SVD on the components' parameters, retaining only the alrgest
+       it does SVD on the components' parameters, retaining only the largest
        <dim> singular values, replacing these components with sequences of two
        components, of types LinearComponent and NaturalGradientAffineComponent.
+       Instead we can set the filtering criterion for the Singular values as energy-threshold,
+       and retain those values which contribute to energy-threshold times the total energy of
+       the original singular values. A particular SVD factored component is left unshrinked,
+       if the shrinkage ratio of the total no. of its parameters,
+       after the SVD based refactoring, is greater than shrinkage threshold.
        See also 'reduce-rank'.
 
     reduce-rank name=<name-pattern> rank=<dim>

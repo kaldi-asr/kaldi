@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         "This will normally be piped into nnet3-chain-get-egs, where it\n"
         "will be split up into pieces and combined with the features.\n"
         "Input can come in two formats: from alignments\n"
-        "(from ali-to-phones --write-lenghts=true), or from lattices\n"
+        "(from ali-to-phones --write-lengths=true), or from lattices\n"
         "(e.g. derived from aligning the data, see steps/align_fmllr_lats.sh)\n"
         "that have been converged to phone-level lattices with\n"
         "lattice-align-phones --replace-output-symbols=true.\n"

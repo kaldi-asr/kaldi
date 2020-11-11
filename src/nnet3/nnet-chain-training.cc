@@ -58,6 +58,7 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
 
 
 void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
+  NVTX_RANGE(__func__);
   bool need_model_derivative = true;
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
@@ -95,6 +96,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
                                      const NnetComputation &computation) {
+  NVTX_RANGE(__func__);
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   // note: because we give the 1st arg (nnet_) as a pointer to the
   // constructor of 'computer', it will use that copy of the nnet to
@@ -202,6 +204,7 @@ void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
 void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                       const NnetChainExample &eg,
                                       NnetComputer *computer) {
+  NVTX_RANGE(__func__);
   // normally the eg will have just one output named 'output', but
   // we don't assume this.
   // In backstitch training, the output-name with the "_backstitch" suffix is

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 # Copyright 2013-2014  Mirsk Digital Aps (Author: Andreas Kirkedal)
@@ -45,7 +45,7 @@ if [ ! -f $dir/download/sve.16khz.0467-3.tar.gz ]; then
     ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0467-3.tar.gz --directory-prefix=$dir/download )
 fi
 
-if [ ! -f $dir/download/sve.16khz.0467-1.tar.gz ]; then 
+if [ ! -f $dir/download/sve.16khz.0468.tar.gz ]; then 
     ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0468.tar.gz --directory-prefix=$dir/download )
 fi    
 

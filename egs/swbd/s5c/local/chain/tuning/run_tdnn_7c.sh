@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 7c is as 6z, but reducing the left and right tolerance from 5 to 4.
 

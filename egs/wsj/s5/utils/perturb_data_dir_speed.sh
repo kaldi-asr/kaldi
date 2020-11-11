@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 #           2014  Tom Ko
@@ -73,7 +73,7 @@ if [ -f $srcdir/segments ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/segments | \
     utils/apply_map.pl -f 2 $destdir/reco_map | \
       awk -v factor=$factor \
-        '{printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);}' >$destdir/segments
+        '{s=$3/factor; e=$4/factor; if (e > s + 0.01) { printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);} }' >$destdir/segments
 
   utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
     # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 

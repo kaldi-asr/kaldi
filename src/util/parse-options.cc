@@ -497,7 +497,7 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
 
 
 
-void ParseOptions::SplitLongArg(std::string in,
+void ParseOptions::SplitLongArg(const std::string &in,
                                 std::string *key,
                                 std::string *value,
                                 bool *has_equal_sign) {

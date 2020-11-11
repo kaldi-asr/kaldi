@@ -119,10 +119,10 @@ inline int32 GetEncodingMultiple(int32 nonterm_phones_offset) {
   */
 void ComposeContextLeftBiphone(
     int32 nonterm_phones_offset,
-    const vector<int32> &disambig_syms,
+    const std::vector<int32> &disambig_syms,
     const VectorFst<StdArc> &ifst,
     VectorFst<StdArc> *ofst,
-    vector<vector<int32> > *ilabels);
+    std::vector<std::vector<int32> > *ilabels);
 
 
 
@@ -167,8 +167,8 @@ public:
      See \ref graph_context for more details.
   */
   InverseLeftBiphoneContextFst(Label nonterm_phones_offset,
-                               const vector<int32>& phones,
-                               const vector<int32>& disambig_syms);
+                               const std::vector<int32>& phones,
+                               const std::vector<int32>& disambig_syms);
 
   /**
      Here is a note on the state space of InverseLeftBiphoneContextFst;
@@ -221,13 +221,13 @@ public:
   // the input symbols of C (i.e. all the output symbols of this
   // InverseContextFst).  See
   // "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
-  const vector<vector<int32> > &IlabelInfo() const {
+  const std::vector<std::vector<int32> > &IlabelInfo() const {
     return ilabel_info_;
   }
 
   // A way to destructively obtain the ilabel-info.  Only do this if you
   // are just about to destroy this object.
-  void SwapIlabelInfo(vector<vector<int32> > *vec) { ilabel_info_.swap(*vec); }
+  void SwapIlabelInfo(std::vector<std::vector<int32> > *vec) { ilabel_info_.swap(*vec); }
 
 private:
 
@@ -238,13 +238,13 @@ private:
   /// Finds the label index corresponding to this context-window of phones
   /// (likely of width context_width_).  Inserts it into the
   /// ilabel_info_/ilabel_map_ tables if necessary.
-  Label FindLabel(const vector<int32> &label_info);
+  Label FindLabel(const std::vector<int32> &label_info);
 
 
   // Map type to map from vectors of int32 (representing ilabel-info,
   // see http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel) to
   // Label (the output label in this FST).
-  typedef unordered_map<vector<int32>, Label,
+  typedef unordered_map<std::vector<int32>, Label,
                         kaldi::VectorHasher<int32> > VectorToLabelMap;
 
 
@@ -277,7 +277,7 @@ private:
   // information about the meaning of each symbol on the input of C
   // aka the output of inv(C).
   // See "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
-  vector<vector<int32> > ilabel_info_;
+  std::vector<std::vector<int32> > ilabel_info_;
 
 };
 

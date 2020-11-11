@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1d is as 1c but adding batch-norm to all convolutional layers.
 # batch-norm helps (0.78 -> 0.8).

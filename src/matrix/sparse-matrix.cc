@@ -808,6 +808,7 @@ void GeneralMatrix::Compress() {
 
 void GeneralMatrix::Uncompress() {
   if (cmat_.NumRows() != 0) {
+    mat_.Resize(cmat_.NumRows(), cmat_.NumCols(), kUndefined);
     cmat_.CopyToMat(&mat_);
     cmat_.Clear();
   }

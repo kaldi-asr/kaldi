@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script creates traing and validations splits, downloads text corpus for language modeling,
 #  prepares the training, validation and test data for rimes dataset 

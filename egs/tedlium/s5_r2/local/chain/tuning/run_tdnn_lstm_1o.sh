@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1o is as 1k, but putting the dropout on (c,m), i.e. the output
 # of the LstmNonlinearityComponent, which I believe is the same as

@@ -15,7 +15,7 @@ TENSORFLOW = $(shell pwd)/../../tools/tensorflow
 all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare \
-                 -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf_archive/src
+                 -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf_archive/src \
                  -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/nsync/public \

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Vassil Panayotov
 #           2014  Johns Hopkins University (author: Daniel Povey)
@@ -31,7 +31,6 @@ wav_scp=$dst/wav.scp; [[ -f "$wav_scp" ]] && rm $wav_scp
 trans=$dst/text; [[ -f "$trans" ]] && rm $trans
 utt2spk=$dst/utt2spk; [[ -f "$utt2spk" ]] && rm $utt2spk
 spk2gender=$dst/spk2gender; [[ -f $spk2gender ]] && rm $spk2gender
-utt2dur=$dst/utt2dur; [[ -f "$utt2dur" ]] && rm $utt2dur
 
 for reader_dir in $(find -L $src -mindepth 1 -maxdepth 1 -type d | sort); do
   reader=$(basename $reader_dir)
@@ -78,8 +77,6 @@ ntrans=$(wc -l <$trans)
 nutt2spk=$(wc -l <$utt2spk)
 ! [ "$ntrans" -eq "$nutt2spk" ] && \
   echo "Inconsistent #transcripts($ntrans) and #utt2spk($nutt2spk)" && exit 1;
-
-utils/data/get_utt2dur.sh $dst 1>&2 || exit 1
 
 utils/validate_data_dir.sh --no-feats $dst || exit 1;
 

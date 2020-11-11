@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is our online-nnet2 build.  it's a "multi-splice" system (i.e. we have
 # splicing at various layers), with p-norm nonlinearities.  We use the "accel2"

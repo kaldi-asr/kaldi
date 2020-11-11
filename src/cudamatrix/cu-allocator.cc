@@ -152,7 +152,7 @@ void CuMemoryAllocator::RemoveFromFreeBlocks(MemoryBlock *block) {
       largest_free_block_[subregion_index] = 0;
     else
       largest_free_block_[subregion_index] =
-          subregion->free_blocks.begin()->first;
+          subregion->free_blocks.rbegin()->first;
   }
 }
 
@@ -212,7 +212,7 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
       largest_free_block_[subregion_index] = 0;
     else
       largest_free_block_[subregion_index] =
-          subregion->free_blocks.begin()->first;
+          subregion->free_blocks.rbegin()->first;
   }
 
   KALDI_PARANOID_ASSERT(block_size >= size && block->allocated == false);
@@ -521,11 +521,13 @@ void CuMemoryAllocator::AllocateNewRegion(size_t size) {
                 << "switching the GPUs to exclusive mode (nvidia-smi -c 3) and using "
                 << "the option --use-gpu=wait to scripts like "
                 << "steps/nnet3/chain/train.py.  Memory info: "
-                << mem_info;
+                << mem_info
+                << " CUDA error: '" << cudaGetErrorString(e) << "'";
     } else {
       KALDI_ERR << "Failed to allocate a memory region of " << region_size
                 << " bytes.  Possibly smaller minibatch size would help.  "
-                << "Memory info: " << mem_info;
+                << "Memory info: " << mem_info
+                << " CUDA error: '" << cudaGetErrorString(e) << "'";
     }
   }
   // this_num_subregions would be approximately 'opts_.num_subregions' if
@@ -603,7 +605,7 @@ void CuMemoryAllocator::SortSubregions() {
     if (subregions_[i]->free_blocks.empty())
       largest_free_block_[i] = 0;
     else
-      largest_free_block_[i] = subregions_[i]->free_blocks.begin()->first;
+      largest_free_block_[i] = subregions_[i]->free_blocks.rbegin()->first;
   }
 }
 

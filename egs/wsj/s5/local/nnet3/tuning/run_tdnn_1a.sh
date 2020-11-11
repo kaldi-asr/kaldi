@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #    This is the standard "tdnn" system, built in nnet3 with xconfigs.
 

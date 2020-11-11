@@ -34,6 +34,7 @@
 #include "hmm/transition-model.h"
 #include "chain/chain-den-graph.h"
 #include "chain/chain-supervision.h"
+#include "chain/chain-generic-numerator.h"
 
 namespace kaldi {
 namespace chain {
@@ -44,6 +45,14 @@ struct ChainTrainingOptions {
   // the objf will be -0.5 times this constant times the squared l2 norm.
   // (squared so it's additive across the dimensions).  e.g. try 0.0005.
   BaseFloat l2_regularize;
+
+
+  // This is similar to an l2 regularization constant (like l2-regularize) but
+  // applied on the part of the nnet output matrix that exceeds the range
+  // [-30,30]... this is necessary to avoid things regularly going out of the
+  // range that we can do exp() on, since the denominator computation is not in
+  // log space and to avoid NaNs we limit the outputs to the range [-30,30].
+  BaseFloat out_of_range_regularize;
 
   // Coefficient for 'leaky hmm'.  This means we have an epsilon-transition from
   // each state to a special state with probability one, and then another
@@ -62,13 +71,19 @@ struct ChainTrainingOptions {
   // should have a softmax as its final nonlinearity.
   BaseFloat xent_regularize;
 
-  ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
+  ChainTrainingOptions(): l2_regularize(0.0), out_of_range_regularize(0.01),
+                          leaky_hmm_coefficient(1.0e-05),
                           xent_regularize(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
                    "constant for 'chain' training, applied to the output "
                    "of the neural net.");
+    opts->Register("out-of-range-regularize", &out_of_range_regularize,
+                   "Constant that controls how much we penalize the nnet output "
+                   "being outside the range [-30,30].  This is needed because we "
+                   "limit it to that range in the denominator computation (which "
+                   "is to avoid NaNs because it is not done in log space.");
     opts->Register("leaky-hmm-coefficient", &leaky_hmm_coefficient, "Coefficient "
                    "that allows transitions from each HMM state to each other "
                    "HMM state, to ensure gradual forgetting of context (can "
@@ -79,7 +94,12 @@ struct ChainTrainingOptions {
                    "nonzero, the network is expected to have an output "
                    "named 'output-xent', which should have a softmax as "
                    "its final nonlinearity.");
+
+    numerator_opts.Register(opts);
   }
+  
+  // Config for numerator graph object
+  GenericNumeratorComputationOptions numerator_opts;
 };
 
 

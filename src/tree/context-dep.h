@@ -37,7 +37,7 @@
 namespace kaldi {
 
 static const EventKeyType kPdfClass = -1;  // The "name" to which we assign the
-// pdf-class (generally corresponds ot position in the HMM, zero-based);
+// pdf-class (generally corresponds to position in the HMM, zero-based);
 // must not be used for any other event.  I.e. the value corresponding to
 // this key is the pdf-class (see hmm-topology.h for explanation of what this is).
 
@@ -126,6 +126,8 @@ class ContextDependency: public ContextDependencyInterface {
   /// list of possible (forward-transition-pdf-id, self-loop-pdf-id) that
   /// we can have.
   /// This is less efficient than the other version of GetPdfInfo().
+  /// Note: if there is no self-loop, the corresponding entry (.second) in
+  /// pdf_class_pairs and the output pdf_info would be -1.
   virtual void GetPdfInfo(
       const std::vector<int32> &phones,
       const std::vector<std::vector<std::pair<int32, int32> > > &pdf_class_pairs,
@@ -138,11 +140,11 @@ class ContextDependency: public ContextDependencyInterface {
   EventMap *to_pdf_;  // owned here.
 
   // 'context' is the context-window of phones, of
-  // length N, with -1 for those positions where phones 
-  // that are currently unknown, treated as wildcards; at least 
-  // the central phone [position P] must be a real phone, i.e. 
-  // not -1. 
-  // This function inserts any allowed pairs (forward_pdf, self_loop_pdf) 
+  // length N, with -1 for those positions where phones
+  // that are currently unknown, treated as wildcards; at least
+  // the central phone [position P] must be a real phone, i.e.
+  // not -1.
+  // This function inserts any allowed pairs (forward_pdf, self_loop_pdf)
   // to the set "pairs".
   void EnumeratePairs(
       const std::vector<int32> &phones,

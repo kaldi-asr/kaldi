@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _u is as _t but also setting --truncate-deriv-weights 3.
 #  This doesn't seem to be helpful, or at least inconsistent: 18.2->18.6 on all of eval2000

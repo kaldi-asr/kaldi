@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6o is as _6h but halving the --l2-regularize option, because since the
 # time we last tuned this, other regularization methods have been added.

@@ -146,7 +146,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   BaseFloat sampling_frequency_;
 
   // waveform_offset_ is the number of samples of waveform that we have
-  // already discarded, i.e. thatn were prior to 'waveform_remainder_'.
+  // already discarded, i.e. that were prior to 'waveform_remainder_'.
   int64 waveform_offset_;
 
   // waveform_remainder_ is a short piece of waveform that we may need to keep
@@ -226,12 +226,12 @@ struct OnlineCmvnOptions {
       ring_buffer_size(20),
       skip_dims("") { }
 
-  void Check() {
+  void Check() const {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
                  && modulus > 0);
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Number of frames of sliding "
                  "context for cepstral mean normalization.");
     po->Register("global-frames", &global_frames, "Number of frames of "
@@ -270,7 +270,7 @@ struct OnlineCmvnState {
 
   // The following is the global CMVN stats, in the usual
   // format, of dimension 2 x (dim+1), as [  sum-stats          count
-  //                                       sum-sqared-stats   0    ]
+  //                                       sum-squared-stats   0    ]
   Matrix<double> global_cmvn_stats;
 
   // If nonempty, contains CMVN stats representing the "frozen" state
@@ -386,7 +386,7 @@ class OnlineCmvn: public OnlineFeatureInterface {
   void Freeze(int32 cur_frame);
 
   virtual ~OnlineCmvn();
- private:
+ protected:
 
   /// Smooth the CMVN stats "stats" (which are stored in the normal format as a
   /// 2 x (dim+1) matrix), by possibly adding some stats from "global_stats"
@@ -447,7 +447,7 @@ struct OnlineSpliceOptions {
   int32 left_context;
   int32 right_context;
   OnlineSpliceOptions(): left_context(4), right_context(4) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("left-context", &left_context, "Left-context for frame "
                  "splicing prior to LDA");
     po->Register("right-context", &right_context, "Right-context for frame "

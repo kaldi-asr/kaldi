@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # tdnn_blstm_1b is same as tdnn_blstm_1a, but with the per-frame dropout
 # added with location 4, see paper:

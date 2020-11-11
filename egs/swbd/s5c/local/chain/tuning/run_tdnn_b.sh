@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _b is as as _a except for configuration changes: using 12k num-leaves instead of
 # 5k; using 5 times larger learning rate, and --final-layer-normalize-target=0.5,

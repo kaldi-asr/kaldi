@@ -31,11 +31,11 @@ namespace fst {
 
 /* PreDeterminize inserts extra symbols on the input side of an FST as necessary to
    ensure that, after epsilon removal, it will be compactly determinizable by the
-   determinize* algorithm.  By compactly determinizable we mean that 
+   determinize* algorithm.  By compactly determinizable we mean that
    no original FST state is represented in more than one determinized state).
 
    Caution: this code is now only used in testing.
-   
+
    The new symbols start from the value "first_new_symbol", which should be
    higher than the largest-numbered symbol currently in the FST.  The new
    symbols added are put in the array syms_out, which should be empty at start.
@@ -44,7 +44,7 @@ namespace fst {
 template<class Arc, class Int>
 void PreDeterminize(MutableFst<Arc> *fst,
                     typename Arc::Label first_new_symbol,
-                    vector<Int> *syms_out);
+                    std::vector<Int> *syms_out);
 
 
 /* CreateNewSymbols is a helper function used inside PreDeterminize, and is also useful
@@ -53,7 +53,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
 
 template<class Label>
 void CreateNewSymbols(SymbolTable *inputSymTable, int nSym,
-                      std::string prefix, vector<Label> *syms_out);
+                      std::string prefix, std::vector<Label> *syms_out);
 
 /** AddSelfLoops is a function you will probably want to use alongside PreDeterminize,
     to add self-loops to any FSTs that you compose on the left hand side of the one
@@ -72,15 +72,15 @@ void CreateNewSymbols(SymbolTable *inputSymTable, int nSym,
     of symbols on its input and output.
 */
 template<class Arc>
-void AddSelfLoops(MutableFst<Arc> *fst, vector<typename Arc::Label> &isyms,
-                     vector<typename Arc::Label> &osyms);
+void AddSelfLoops(MutableFst<Arc> *fst, std::vector<typename Arc::Label> &isyms,
+                     std::vector<typename Arc::Label> &osyms);
 
 
 /* DeleteSymbols replaces any instances of symbols in the vector symsIn, appearing
    on the input side, with epsilon. */
 /* It returns the number of instances of symbols deleted. */
 template<class Arc>
-int64 DeleteISymbols(MutableFst<Arc> *fst, vector<typename Arc::Label> symsIn);
+int64 DeleteISymbols(MutableFst<Arc> *fst, std::vector<typename Arc::Label> symsIn);
 
 /* CreateSuperFinal takes an FST, and creates an equivalent FST with a single final
    state with no transitions out and unit final weight, by inserting epsilon transitions

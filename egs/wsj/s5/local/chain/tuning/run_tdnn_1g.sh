@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g is like 1f but upgrading to a "resnet-style TDNN-F model", i.e.
 #   with bypass resnet connections, and re-tuned.
@@ -32,7 +32,14 @@ train_set=train_si284
 test_sets="test_dev93 test_eval92"
 gmm=tri4b        # this is the source gmm-dir that we'll use for alignments; it
                  # should have alignments for the specified training data.
-num_threads_ubm=32
+
+num_threads_ubm=8
+
+nj_extractor=10
+# It runs a JOB with '-pe smp N', where N=$[threads*processes]
+num_threads_extractor=4
+num_processes_extractor=2
+
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
@@ -79,6 +86,9 @@ local/nnet3/run_ivector_common.sh \
   --stage $stage --nj $nj \
   --train-set $train_set --gmm $gmm \
   --num-threads-ubm $num_threads_ubm \
+  --nj-extractor $nj_extractor \
+  --num-processes-extractor $num_processes_extractor \
+  --num-threads-extractor $num_threads_extractor \
   --nnet3-affix "$nnet3_affix"
 
 

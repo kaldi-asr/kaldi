@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 . ./path.sh
 
 final_sil_prob=0.5

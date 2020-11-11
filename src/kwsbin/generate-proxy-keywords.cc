@@ -25,6 +25,7 @@
 #include "fstext/prune-special.h"
 
 namespace fst {
+using std::vector;
 
 bool PrintProxyFstPath(const VectorFst<StdArc> &proxy,
                        vector<vector<StdArc::Label> > *path,
@@ -58,6 +59,8 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;
+    using std::vector;
+    using std::string;
     typedef kaldi::int32 int32;
     typedef kaldi::uint64 uint64;
     typedef StdArc::StateId StateId;

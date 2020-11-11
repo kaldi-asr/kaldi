@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _o is as _n, but reducing the number of parameters to try to reduce
 # over-training: reducing relu-dim from 1024 to 850 and target num-states

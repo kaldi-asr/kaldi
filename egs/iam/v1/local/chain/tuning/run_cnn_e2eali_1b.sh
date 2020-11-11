@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # e2eali_1b is the same as e2eali_1a but uses unconstrained egs
 # local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b

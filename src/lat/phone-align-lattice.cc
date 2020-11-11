@@ -176,6 +176,8 @@ class LatticePhoneAligner {
       // have returned false or we wouldn't have been called, so we have to
       // force it out.
       CompactLatticeArc lat_arc;
+      // Note: the next call will change the computation-state of the tuple,
+      // so it becomes a different tuple.
       tuple.comp_state.OutputArcForce(tmodel_, opts_, &lat_arc, &error_);
       lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue.
       // The final-prob stuff will get called again from ProcessQueueElement().
@@ -201,12 +203,13 @@ class LatticePhoneAligner {
     // epsilon-sequencing rules encoded by the filters in
     // composition.
     CompactLatticeArc lat_arc;
-    Tuple tuple2(tuple); // temp
     if (tuple.comp_state.OutputPhoneArc(tmodel_, opts_, &lat_arc, &error_) ||
         tuple.comp_state.OutputWordArc(tmodel_, opts_, &lat_arc, &error_)) {
-      // note: this function changes the tuple (when it returns true).
-      lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue,
-      // if not already present.
+      // note: the functions OutputPhoneArc() and OutputWordArc() change the
+      // tuple (when they return true).
+      lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to
+                                                         // queue, if not
+                                                         // already present.
       KALDI_ASSERT(output_state != lat_arc.nextstate);
       lat_out_->AddArc(output_state, lat_arc);
     } else {
@@ -220,7 +223,7 @@ class LatticePhoneAligner {
         // ... since we did CreateSuperFinal.
         ProcessFinal(tuple, output_state);
       }
-      // Now process the arcs.  Note: final-state shouldn't have any arcs.
+      // Now process the arcs.  Note: final-states shouldn't have any arcs.
       for(fst::ArcIterator<CompactLattice> aiter(lat_, tuple.input_state);
           !aiter.Done(); aiter.Next()) {
         const CompactLatticeArc &arc = aiter.Value();
@@ -369,7 +372,7 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
   // although it might not be obvious from superficially checking
   // the code.  IsEmpty() would be true if we had transition_ids_.empty()
   // and opts.replace_output_symbols, so we would already die by assertion;
-  // in fact, this function would neve be called.
+  // in fact, this function would never be called.
 
   if (!transition_ids_.empty()) { // Do some checking here.
     int32 tid = transition_ids_[0];

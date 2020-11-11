@@ -1,15 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # e2eali_1b is the same as chainali_1a but uses the e2e chain model to get the
 # lattice alignments and to build a tree
 
 # ./local/chain/compare_wer.sh exp_yomdle_chinese/chain/e2e_cnn_1a exp_yomdle_chinese/chain/cnn_e2eali_1b
 # System                      e2e_cnn_1a cnn_e2eali_1b
-# CER                             15.44     13.57
-# Final train prob               0.0616   -0.0512
-# Final valid prob               0.0390   -0.0718
-# Final train prob (xent)                 -0.6199
-# Final valid prob (xent)                 -0.7448
+# WER                             63.19     53.67
+# CER                             19.01     12.86
+# Final train prob               0.2908   -0.0455
+# Final valid prob               0.2397   -0.0531
+# Final train prob (xent)                 -0.9753
+# Final valid prob (xent)                 -1.0559
 
 set -e -o pipefail
 
@@ -31,7 +32,7 @@ xent_regularize=0.1
 frame_subsampling_factor=4
 # training chunk-options
 chunk_width=340,300,200,100
-num_leaves=1000
+num_leaves=2000
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
@@ -75,25 +76,12 @@ done
 
 if [ $stage -le 1 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
-  # Create a version of the lang/ directory that has one state per phone in the
-  # topo file. [note, it really has two states.. the first one is only repeated
-  # once, the second one has zero or more repeats.]
-  if [ -d $lang ]; then
-    if [ $lang/L.fst -nt $data_dir/lang/L.fst ]; then
-      echo "$0: $lang already exists, not overwriting it; continuing"
-    else
-      echo "$0: $lang already exists and seems to be older than data/lang..."
-      echo " ... not sure what to do.  Exiting."
-      exit 1;
-    fi
-  else
-    cp -r $data_dir/lang $lang
-    silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
-    # Use our special topology... note that later on may have to tune this
-    # topology.
-    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
-  fi
+  cp -r $data_dir/lang $lang
+  silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
+  nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
+  # Use our special topology... note that later on may have to tune this
+  # topology.
+  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
 if [ $stage -le 2 ]; then
@@ -114,13 +102,12 @@ if [ $stage -le 3 ]; then
   # the GMM baseline.
   if [ -f $tree_dir/final.mdl ]; then
     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-    exit 1;
   fi
 
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
     --alignment-subsampling-factor 1 \
-    --context-opts "--context-width=3 --central-position=1" \
+    --context-opts "--context-width=2 --central-position=1" \
     --cmd "$cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
@@ -187,7 +174,7 @@ if [ $stage -le 5 ]; then
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=false \
-    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=500" \
+    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1500" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
     --chain.left-tolerance 3 \
@@ -211,7 +198,7 @@ if [ $stage -le 5 ]; then
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs=$remove_egs \
-    --use-gpu=true \
+    --use-gpu=wait \
     --reporting.email="$reporting_email" \
     --feat-dir=$train_data_dir \
     --tree-dir=$tree_dir \

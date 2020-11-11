@@ -204,6 +204,99 @@ inline cublasStatus_t cublas_spr(cublasHandle_t handle, cublasFillMode_t uplo,
 //
 // cuSPARSE wrappers
 //
+#if CUDA_VERSION >= 10020
+inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
+                                         int nnz, const void *csrVal,
+                                         const int *csrRowPtr,
+                                         const int *csrColInd, void *cscVal,
+                                         int *cscRowInd, int *cscColPtr,
+					 cudaDataType valType,
+                                         cusparseAction_t copyValues,
+                                         cusparseIndexBase_t idxBase) {
+  cusparseStatus_t status;
+  size_t buffer_size;
+  status = cusparseCsr2cscEx2_bufferSize(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscColPtr, cscRowInd, valType, copyValues, idxBase, 
+			  CUSPARSE_CSR2CSC_ALG1, &buffer_size);
+  if(status != CUSPARSE_STATUS_SUCCESS) return status;
+
+  void *buffer = (buffer_size > 0) ? CuDevice::Instantiate().Malloc(buffer_size) : NULL; 
+  status = cusparseCsr2cscEx2(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscColPtr, cscRowInd, valType, copyValues, idxBase, 
+			  CUSPARSE_CSR2CSC_ALG1, buffer);
+  if(buffer)
+ 	 CuDevice::Instantiate().Free(buffer); // allocator will take care of syncing if necessary 
+
+  return status;
+}
+
+inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
+                                       cusparseOperation_t transA, 
+				       cusparseOperation_t transB, int m, int n,
+                                       int k, int nnz, const void *alpha,
+                                       const cusparseMatDescr_t descrA,
+                                       const void *csrValA,
+                                       const int *csrRowPtrA,
+                                       const int *csrColIndA, const void *B,
+                                       int ldb, const void *beta, void *C,
+                                       int ldc, cudaDataType valType) {
+  cusparseStatus_t status;
+  cusparseSpMatDescr_t matA;
+  cusparseIndexBase_t idxBase = cusparseGetMatIndexBase(descrA);
+  KALDI_ASSERT(transA == CUSPARSE_OPERATION_NON_TRANSPOSE);
+  // Casting away the const-ness. We won't write to those pointers, but that's
+  // needed to create the matrix descriptor
+  status =
+      cusparseCreateCsr(&matA, m, k, nnz, const_cast<int *>(csrRowPtrA),
+                        const_cast<int *>(csrColIndA),
+                        const_cast<void *>(csrValA), CUSPARSE_INDEX_32I,
+                        CUSPARSE_INDEX_32I, idxBase, valType);
+  if (status != CUSPARSE_STATUS_SUCCESS) return status;
+  cusparseDnMatDescr_t matB;
+  int nrowsB=k, ncolsB=n;
+  if(transB == CUSPARSE_OPERATION_TRANSPOSE) std::swap(nrowsB, ncolsB);
+  status = cusparseCreateDnMat(&matB, nrowsB, ncolsB, ldb, const_cast<void *>(B), valType,
+                               CUSPARSE_ORDER_COL);
+  if (status != CUSPARSE_STATUS_SUCCESS) return status;
+  cusparseDnMatDescr_t matC;
+  status =
+      cusparseCreateDnMat(&matC, m, n, ldc, C, valType, CUSPARSE_ORDER_COL);
+  if (status != CUSPARSE_STATUS_SUCCESS) return status;
+
+  size_t buffer_size;
+#if CUDA_VERSION >= 11000
+  status = cusparseSpMM_bufferSize(handle, transA, transB, alpha, matA, matB,
+                                   beta, matC, valType, CUSPARSE_SPMM_CSR_ALG2,
+                                   &buffer_size);
+#else
+  status = cusparseSpMM_bufferSize(handle, transA, transB, alpha, matA, matB,
+                                   beta, matC, valType, CUSPARSE_MM_ALG_DEFAULT,
+                                   &buffer_size);
+#endif
+  if (status != CUSPARSE_STATUS_SUCCESS) return status;
+
+  void *buffer = (buffer_size > 0) ? CuDevice::Instantiate().Malloc(buffer_size) : NULL;
+#if CUDA_VERSION >= 11000
+  status = cusparseSpMM(handle, transA, transB, alpha, matA, matB, beta, matC,
+                        valType, CUSPARSE_SPMM_CSR_ALG2, buffer);
+#else
+  status = cusparseSpMM(handle, transA, transB, alpha, matA, matB, beta, matC,
+                        valType, CUSPARSE_MM_ALG_DEFAULT, buffer);
+#endif
+
+  if (status != CUSPARSE_STATUS_SUCCESS) return status;
+  if(buffer)
+  	CuDevice::Instantiate().Free(buffer); 
+
+  status = cusparseDestroySpMat(matA);
+  if (status != CUSPARSE_STATUS_SUCCESS) return status;
+  status = cusparseDestroyDnMat(matB);
+  if (status != CUSPARSE_STATUS_SUCCESS) return status;
+  status = cusparseDestroyDnMat(matC);
+
+  return status;
+}
+#endif
 
 inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
                                          int nnz, const float *csrVal,
@@ -212,9 +305,16 @@ inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
                                          int *cscRowInd, int *cscColPtr,
                                          cusparseAction_t copyValues,
                                          cusparseIndexBase_t idxBase) {
+#if CUDA_VERSION >= 10020
+  return cusparse_csr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscRowInd, cscColPtr, CUDA_R_32F, copyValues,
+			  idxBase);
+#else
   return cusparseScsr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
                           cscVal, cscRowInd, cscColPtr, copyValues, idxBase);
+#endif
 }
+
 inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
                                          int nnz, const double *csrVal,
                                          const int *csrRowPtr,
@@ -222,33 +322,14 @@ inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
                                          int *cscRowInd, int *cscColPtr,
                                          cusparseAction_t copyValues,
                                          cusparseIndexBase_t idxBase) {
+#if CUDA_VERSION >= 10020
+  return cusparse_csr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscRowInd, cscColPtr, CUDA_R_64F, copyValues,
+                          idxBase);
+#else
   return cusparseDcsr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
                           cscVal, cscRowInd, cscColPtr, copyValues, idxBase);
-}
-
-inline cusparseStatus_t cusparse_csrmm(cusparseHandle_t handle,
-                                       cusparseOperation_t transA, int m, int n,
-                                       int k, int nnz, const float *alpha,
-                                       const cusparseMatDescr_t descrA,
-                                       const float *csrValA,
-                                       const int *csrRowPtrA,
-                                       const int *csrColIndA, const float *B,
-                                       int ldb, const float *beta, float *C,
-                                       int ldc) {
-  return cusparseScsrmm(handle, transA, m, n, k, nnz, alpha, descrA, csrValA,
-                        csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
-}
-inline cusparseStatus_t cusparse_csrmm(cusparseHandle_t handle,
-                                       cusparseOperation_t transA, int m, int n,
-                                       int k, int nnz, const double *alpha,
-                                       const cusparseMatDescr_t descrA,
-                                       const double *csrValA,
-                                       const int *csrRowPtrA,
-                                       const int *csrColIndA, const double *B,
-                                       int ldb, const double *beta, double *C,
-                                       int ldc) {
-  return cusparseDcsrmm(handle, transA, m, n, k, nnz, alpha, descrA, csrValA,
-                        csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
+#endif
 }
 
 inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
@@ -262,8 +343,14 @@ inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
                                         const int *csrColIndA, const float *B,
                                         int ldb, const float *beta, float *C,
                                         int ldc) {
+#if CUDA_VERSION >= 10020
+  return cusparse_csrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA,
+                        csrValA, csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc,
+                        CUDA_R_32F); // overloaded with valtype (CUDA_R_32F)
+#else
   return cusparseScsrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA,
                          csrValA, csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
+#endif
 }
 inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
                                         cusparseOperation_t transA,
@@ -276,12 +363,18 @@ inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
                                         const int *csrColIndA, const double *B,
                                         int ldb, const double *beta, double *C,
                                         int ldc) {
+#if CUDA_VERSION >= 10020
+  return cusparse_csrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA,
+                        csrValA, csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc,
+                        CUDA_R_64F); // overloaded with valtype (CUDA_R_64F)
+#else
   return cusparseDcsrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA,
                          csrValA, csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
+#endif
 }
 
 
-#endif
+#endif // HAVE_CUDA
 }
 // namespace kaldi
 

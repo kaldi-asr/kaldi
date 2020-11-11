@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_tdnn_1f.sh is like run_tdnn_1e.sh but it use 2 to 6 jobs and add proportional-shrink 20.
 

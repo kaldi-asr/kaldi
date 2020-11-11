@@ -67,6 +67,7 @@ class CuValue {
   }
 
   inline Real operator += (Real r) { return (*this = r + Real(*this)); }
+  inline Real operator -= (Real r) { return (*this = Real(*this) - r); }
     
 
   inline operator Real () const { // assignment to Real

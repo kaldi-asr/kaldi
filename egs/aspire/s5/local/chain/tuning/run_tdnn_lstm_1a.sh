@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -26,7 +26,6 @@ cell_dim=1024
 projection_dim=256
 
 # training options
-num_epochs=2
 minibatch_size=64,32
 chunk_left_context=40
 chunk_right_context=0
@@ -95,7 +94,7 @@ if [ $stage -le 8 ]; then
 
   for n in `seq $nj`; do
     awk '{print $1}' data/${train_set}/split$nj/$n/utt2spk | \
-      perl -ane 's/rev[1-3]_//g' > $lat_dir/uttlist.$n.$nj
+      perl -ane 's/rev[1-3]-//g' > $lat_dir/uttlist.$n.$nj
   done
 
   rm -f $lat_dir/lat_tmp.*.{ark,scp} 2>/dev/null
@@ -106,7 +105,7 @@ if [ $stage -le 8 ]; then
     ark,scp:$lat_dir/lat_tmp.JOB.ark,$lat_dir/lat_tmp.JOB.scp || exit 1
 
   for n in `seq 3`; do
-    cat $lat_dir/lat_tmp.*.scp | awk -v n=$n '{print "rev"n"_"$1" "$2}'
+    cat $lat_dir/lat_tmp.*.scp | awk -v n=$n '{print "rev"n"-"$1" "$2}'
   done > $lat_dir/lat_rvb.scp
 
   $train_cmd JOB=1:$nj $lat_dir/log/copy_rvb_lattices.JOB.log \
@@ -309,4 +308,3 @@ if [ $stage -le 17 ]; then
 fi
 
 exit 0;
-

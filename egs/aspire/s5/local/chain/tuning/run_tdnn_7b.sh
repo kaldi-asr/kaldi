@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -44,7 +44,7 @@ lang=data/lang_chain
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh --stage $stage --num-data-reps 3|| exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage --num-data-reps ${num_data_reps} || exit 1;
 
 if [ $stage -le 7 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
@@ -92,8 +92,8 @@ if [ $stage -le 9 ]; then
 
  # combine the non-hires features for alignments/lattices
  rm -rf data/${latgen_train_set}_min${min_seg_len}
-  utt_prefix="THISISUNIQUESTRING_"
-  spk_prefix="THISISUNIQUESTRING_"
+  utt_prefix="THISISUNIQUESTRING-"
+  spk_prefix="THISISUNIQUESTRING-"
   utils/copy_data_dir.sh --spk-prefix "$spk_prefix" --utt-prefix "$utt_prefix" \
     data/train data/train_temp_for_lats
   utils/data/combine_short_segments.sh \
@@ -182,6 +182,7 @@ if [ $stage -le 12 ]; then
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
+  mkdir -p $dir/egs
   touch $dir/egs/.nodelete # keep egs around when that run dies.
 
   steps/nnet3/chain/train.py --stage $train_stage \

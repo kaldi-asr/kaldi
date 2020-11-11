@@ -121,15 +121,24 @@ HashList<I, T>::~HashList() {
   }
 }
 
-
 template<class I, class T>
-void HashList<I, T>::Insert(I key, T val) {
+inline typename HashList<I, T>::Elem* HashList<I, T>::Insert(I key, T val) {
   size_t index = (static_cast<size_t>(key) % hash_size_);
   HashBucket &bucket = buckets_[index];
+  // Check the element is existing or not.
+  if (bucket.last_elem != NULL) {
+    Elem *head = (bucket.prev_bucket == static_cast<size_t>(-1) ?
+                  list_head_ :
+                  buckets_[bucket.prev_bucket].last_elem->tail),
+         *tail = bucket.last_elem->tail;
+    for (Elem *e = head; e != tail; e = e->tail)
+      if (e->key == key) return e;
+  }
+
+  // This is a new element. Insert it.
   Elem *elem = New();
   elem->key = key;
   elem->val = val;
-
   if (bucket.last_elem == NULL) {  // Unoccupied bucket.  Insert at
     // head of bucket list (which is tail of regular list, they go in
     // opposite directions).
@@ -152,6 +161,7 @@ void HashList<I, T>::Insert(I key, T val) {
     bucket.last_elem->tail = elem;
     bucket.last_elem = elem;
   }
+  return elem;
 }
 
 template<class I, class T>

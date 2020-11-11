@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # resnet1c is as resnet1b but adding "num-minibatches-history=40.0" to
 # all layers to increase the history size of natural gradient
