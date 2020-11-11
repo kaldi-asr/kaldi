@@ -1,0 +1,5 @@
+The splits in this directory follow the official AMI Corpus Full-ASR split
+on train, dev and eval sets. 
+
+If for some reason ones need to use different split the way to do so is
+to create split_*.final versions in this directory and run the recipe.
