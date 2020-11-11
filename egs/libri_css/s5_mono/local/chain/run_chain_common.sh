@@ -49,8 +49,8 @@ if [ $stage -le 11 ]; then
     fi
   else
     cp -r data/lang $lang
-    silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
+    silphonelist=$(cat $lang/phones/silence.csl)
+    nonsilphonelist=$(cat $lang/phones/nonsilence.csl)
     # Use our special topology... note that later on may have to tune this
     # topology.
     steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
@@ -60,7 +60,7 @@ fi
 if [ $stage -le 12 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat ${ali_dir}/num_jobs) || exit 1;
+  nj=$(cat ${ali_dir}/num_jobs)
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
     $lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
@@ -78,5 +78,3 @@ if [ $stage -le 13 ]; then
       --context-opts "--context-width=2 --central-position=1" \
       --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} $lang $ali_dir $tree_dir
 fi
-
-exit 0;

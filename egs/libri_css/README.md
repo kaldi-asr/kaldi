@@ -21,8 +21,8 @@ scenario, where multiple overlapping speakers may be present, and the
 number of speakers is not known beforehand. 
 
 We provide recipes for 2 scenarios:
-1. `s5_mono`: This is a single channel diarization + ASR recipe which takes as
-input a single-channel long recording containing mixed audio. It then performs SAD,
+1. `s5_mono`: This is a single channel diarization + ASR recipe which takes as the
+input a long single-channel recording containing mixed audio. It then performs SAD,
 diarization, and ASR on it and outputs speaker-attributed transcriptions, 
 which are then evaluated with cpWER (similar to CHiME6 Track 2).
 2. `s5_css`: This pipeline uses a speech separation module at the beginning,
@@ -32,16 +32,16 @@ different windows, thus making diarization necessary.
 
 #### Pretrained models for diarization and ASR
 For ease of reproduction, we include the training for both modules in the
-recipe. However, we also provide pretrained models for both diarization and ASR 
+recipe. We also provide pretrained models for both diarization and ASR 
 systems.
 
 * SAD: CHiME-6 baseline TDNN-Stats SAD available [here](http://kaldi-asr.org/models/m12).
 * Speaker diarization: CHiME-6 baseline x-vector + AHC diarizer, trained on VoxCeleb 
 with simulated RIRs available [here](http://kaldi-asr.org/models/m12).
-* ASR: We used the chain model trained on 960h clean Librispeech training data available
-[here](http://kaldi-asr.org/models/m13). This was then additionally fine-tuned for 1
-epoch on Librispeech + simulated RIRs. For LM, we trained a TDNN-LSTM language model
-for rescoring. All of these models are available on this 
+* ASR: We used the chain model trained on 960h clean LibriSpeech training data available
+[here](http://kaldi-asr.org/models/m13). It was then additionally fine-tuned for 1
+epoch on LibriSpeech + simulated RIRs. For LM, we trained a TDNN-LSTM language model
+for rescoring. All of these models are available at this 
 [Google Drive link](https://drive.google.com/file/d/13ceXdK6oAUuUyxn7kjQVVqpe8r6Sc7ds/view?usp=sharing).
 
 #### Speech separation
@@ -50,6 +50,8 @@ The speech separation module has not been provided. If you want to use the
 instructions on how to plug in your component into the pipeline.
 
 If you found this recipe useful for your experiments, consider citing:
+
+```
 @article{Raj2021Integration,
   title={Integration of speech separation, diarization, and recognition for multi-speaker meetings:
 System description, Comparison, and Analysis},
@@ -58,3 +60,4 @@ System description, Comparison, and Analysis},
   journal={IEEE Spoken Language Technology Workshop 2021},
   year={2021}
 }
+```

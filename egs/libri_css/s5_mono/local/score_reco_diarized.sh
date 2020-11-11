@@ -20,7 +20,7 @@ multistream=false # Set to true if input audio was separated (e.g. CSS)
 
 echo "$0 $@"  # Print the command line for logging
 
-[ -f ./path.sh ] && . ./path.sh
+. ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
 
@@ -42,12 +42,14 @@ if [ $# -ne 0 ]; then
     exit 1;
 fi
 
+mkdir -p $dev_decodedir/scoring_kaldi_multispeaker
+
 if [ $stage -le 1 ]; then
   # obtaining multi speaker WER for all lmwt and wip
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
-    for LMWT in $(seq $min_lmwt $max_lmwt); do
-      local/multispeaker_score.sh --cmd "$cmd" \
-      --multistream $multistream \
+    $cmd LMWT=$min_lmwt:$max_lmwt \
+      $dev_decodedir/scoring_kaldi_multispeaker/multispeaker_score.LMWT.log \
+      local/multispeaker_score.sh --multistream $multistream \
       --datadir $dev_datadir --get_stats false data/$dev_datadir/text \
       $dev_decodedir/scoring_kaldi/penalty_$wip/$LMWT.txt \
       $dev_decodedir/scoring_kaldi_multispeaker/penalty_$wip/$LMWT
@@ -57,9 +59,7 @@ fi
 
 if [ $stage -le 2 ]; then
   # obtaining best lmwt, wip and wer
-  # adding /dev/null to the command list below forces grep to output the filename
   echo "Selecting best LM weight and WIP for condition $cond"
-  mkdir -p $dev_decodedir/scoring_kaldi_multispeaker
   grep WER $dev_decodedir/scoring_kaldi_multispeaker/penalty_*/*/per_speaker_wer/best_wer_average | \
       utils/best_wer.sh >& $dev_decodedir/scoring_kaldi_multispeaker/best_wer_average
 
@@ -101,7 +101,7 @@ if [ $stage -le 4 ]; then
   # obtaining per recording stats for eval
   best_lmwt="$(cat $dev_decodedir/scoring_kaldi_multispeaker/lmwt)"
   best_wip="$(cat $dev_decodedir/scoring_kaldi_multispeaker/wip)"
-  local/multispeaker_score.sh --cmd "$cmd" \
+  local/multispeaker_score.sh \
     --multistream $multistream \
     --datadir $eval_datadir data/$eval_datadir/text \
     $eval_decodedir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
@@ -117,7 +117,6 @@ if [ $stage -le 5 ]; then
 
   # Compute the average WER stats for all conditions individually.
   wer_dir=$eval_decodedir/scoring_kaldi_multispeaker/penalty_$best_wip/$best_lmwt/per_speaker_wer
-  >$eval_decodedir/scoring_kaldi_multispeaker/best_wer
   for cond in $conditions; do
     grep $cond $wer_dir/best_wer_all | awk -v COND="$cond" '
       {

@@ -76,18 +76,10 @@ if [ $stage -le 0 ]; then
 fi
 
 echo -e "Performing bayesian HMM based x-vector clustering..\n"
-# making a shell script for each job
-for n in `seq $nj`; do
-  cat <<-EOF > $dir/tmp/vb_hmm.$n.sh
-  python3 diarization/vb_hmm_xvector.py \
-      --loop-prob $loop_prob --fa $fa --fb $fb \
-      $xvec_dir/xvector_norm.ark $plda $dir/labels.$n $dir/labels.vb.$n
-EOF
-done
-
-chmod a+x $dir/tmp/vb_hmm.*.sh
 $cmd JOB=1:$nj $dir/log/vb_hmm.JOB.log \
-  $dir/tmp/vb_hmm.JOB.sh
+  diarization/vb_hmm_xvector.py \
+    --loop-prob $loop_prob --fa $fa --fb $fb \
+    $xvec_dir/xvector_norm.ark $plda $dir/labels.JOB $dir/labels.vb.JOB
 
 if [ $stage -le 1 ]; then
   echo "$0: combining labels"

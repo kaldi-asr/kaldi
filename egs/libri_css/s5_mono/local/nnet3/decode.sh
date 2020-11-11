@@ -66,7 +66,6 @@ if [ $stage -le 1 ]; then
     utils/copy_data_dir.sh $data ${data}_hires
     steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$train_cmd" ${data}_hires
     steps/compute_cmvn_stats.sh ${data}_hires
-    # utils/fix_data_dir.sh ${data}_hires
   fi
 fi
 

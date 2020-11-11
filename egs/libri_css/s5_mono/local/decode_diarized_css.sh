@@ -8,15 +8,16 @@
 
 stage=0
 nj=8
-cmd=queue.pl
+cmd=run.pl
 lm_suffix=
 acwt=1.0
 post_decode_acwt=10.0
 
 echo "$0 $@"  # Print the command line for logging
 
-if [ -f path.sh ]; then . ./path.sh; fi
+. ./path.sh
 . utils/parse_options.sh || exit 1;
+
 if [ $# != 6 ]; then
   echo "Usage: $0 <rttm> <in-data-dir> <lang-dir> <model-dir> <ivector-dir> <out-dir>"
   echo "e.g.: $0 data/rttm data/dev data/lang_chain exp/chain/tdnn_1a \
@@ -49,7 +50,7 @@ fi
 if [ $stage -le 1 ]; then
   echo "$0 creating segments file from rttm and utt2spk, reco2file_and_channel "
   local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm \
-    <(awk '{print $2" "$2" "$3}' $rttm |sort -u) \
+    <(awk '{print $2" "$2" "$3}' $rttm | sort -u) \
     ${out_dir}_hires/utt2spk.reco ${out_dir}_hires/segments
 
   # We remove the stream id from the spk id (for speaker-level CMN)

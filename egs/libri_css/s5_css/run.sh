@@ -42,6 +42,8 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 pruned_rescore=true
 rnnlm_dir=exp/rnnlm_lstm_1a
 
+set -e # exit on error
+
 # End configuration section
 . ./utils/parse_options.sh
 
@@ -53,8 +55,6 @@ test_sets="dev${data_affix} eval${data_affix}"
 # Get dev and eval set names from the test_sets
 dev_set=$( echo $test_sets | cut -d " " -f1 )
 eval_set=$( echo $test_sets | cut -d " " -f2 )
-
-set -e # exit on error
 
 # please change the path accordingly. We need the original LibriCSS
 # corpus to get the oracle segments (for evaluation purpose), and
@@ -197,7 +197,7 @@ fi
 if [ $stage -le 5 ] && [ ! $rnnlm_rescore ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
-  local/score_reco_diarized.sh --stage $score_stage \
+  local/score_reco_diarized.sh --cmd "$train_cmd" --stage $score_stage \
       --multistream true \
       --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_2stage \
       --dev_datadir ${dev_set}_diarized_hires \
@@ -230,7 +230,7 @@ if $rnnlm_rescore; then
   
   if [ $stage -le 7 ]; then
     echo "$0: WERs after rescoring with $rnnlm_dir"
-    local/score_reco_diarized.sh --stage $score_stage \
+    local/score_reco_diarized.sh --cmd "$train_cmd" --stage $score_stage \
         --multistream true \
         --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_2stage_rescore \
         --dev_datadir ${dev_set}_diarized_hires \

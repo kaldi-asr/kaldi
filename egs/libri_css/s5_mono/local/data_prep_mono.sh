@@ -63,16 +63,16 @@ fi
 # session9) of approximately 1 hour each. In the below strings, separate each session by
 # '\|' to perform grep at once.
 dev_sessions="session0"
-eval_sessions="session1\|session2\|session3\|session4\|session5\|session6\|session7\|session8\|session9"
+eval_sessions="session[1-9]"
 
 mkdir -p data/dev${data_affix}
 for file in wav.scp utt2spk text segments wav_clean.scp; do
-  grep $dev_sessions data/local/data${data_affix}/"$file" | sort > data/dev${data_affix}/"$file" 
+  grep $dev_sessions data/local/data${data_affix}/$file | sort > data/dev${data_affix}/$file 
 done
 
 mkdir -p data/eval${data_affix}
 for file in wav.scp utt2spk text segments wav_clean.scp; do
-  grep $eval_sessions data/local/data${data_affix}/"$file" | sort > data/eval${data_affix}/"$file" 
+  grep $eval_sessions data/local/data${data_affix}/$file | sort > data/eval${data_affix}/$file 
 done
 
 # Move the utt2spk, segments, and text file to .bak so that they are only used

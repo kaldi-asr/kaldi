@@ -6,7 +6,6 @@
 # multispeaker scoring.
 
 stage=0
-cmd=queue.pl
 datadir=
 get_stats=false # TODO: Implement 'true' (i.e. per utterance alignment of output)
 multistream=false # Set to true if input audio was separated (e.g. CSS)
@@ -24,8 +23,6 @@ if [ $# != 3 ]; then
   echo "e.g.: $0 data/diarized/text data/dev \
     exp/chain_cleaned/tdnn_1d_sp/decode_dev_diarized/scoring_kaldi/penalty_1.0/10.txt \
     exp/chain_cleaned/tdnn_1d_sp/decode_dev_diarized/scoring_kaldi_multispeaker"
-  echo "Options: "
-  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   exit 1;
 fi
 

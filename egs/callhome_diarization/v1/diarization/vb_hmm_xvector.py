@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2020 Johns Hopkins University (Author: Desh Raj)
 # Apache 2.0
 
@@ -58,11 +58,10 @@ def read_labels_file(label_file):
     return segments, labels
 
 def write_labels_file(seg2label, out_file):
-    f = open(out_file, 'w')
-    for seg in sorted(seg2label.keys()):
-        label = seg2label[seg]
-        f.write("{} {}\n".format(seg, label))
-    f.close()
+    with open(out_file, 'w') as f:
+        for seg in sorted(seg2label.keys()):
+            label = seg2label[seg]
+            f.write(f"{seg} {label}\n")
     return
 
 def read_args(args):

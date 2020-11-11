@@ -47,12 +47,6 @@ class Utterance:
         self.spk_id = spkid
         self.text = text
 
-def groupby(iterable, keyfunc):
-    """Wrapper around ``itertools.groupby`` which sorts data first."""
-    iterable = sorted(iterable, key=keyfunc)
-    for key, group in itertools.groupby(iterable, keyfunc):
-        yield key, group
-
 def main():
     args = get_args()
     utt2spk = {}
@@ -72,9 +66,10 @@ def main():
         utterance = Utterance(uttid, utt2spk[uttid], text, args.multi_stream)
         utt_list.append(utterance)
 
+    sort(utt_list, key=lambda x: (x.reco_id, x.spk_id))
     # We group the utterance list into a dictionary indexed by (reco_id, spk_id)
     reco_spk_to_utts = defaultdict(list,
-        {uid : list(g) for uid, g in groupby(utt_list, lambda x: (x.reco_id, x.spk_id))})
+        {uid : list(g) for uid, g in itertools.groupby(utt_list)})
     
     # Now for each (reco_id, spk_id) pair, we write the concatenated text to an
     # output  (we assign speaker ids 1,2,3,..)

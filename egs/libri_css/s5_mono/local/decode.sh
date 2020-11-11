@@ -57,25 +57,23 @@ if [ $stage -le 1 ]; then
     else
       echo "Applying TDNN-Stats-SAD on ${datadir}"
       if [ ! -f ${test_set}/wav.scp ]; then
-        echo "$0: Not performing SAD on ${test_set}"
+        echo "$0: Not performing SAD on ${test_set}, since wav.scp does not exist. Exiting!"
         exit 0
       fi
 
       sad_nj=$(wc -l < "$test_set/wav.scp")
-      nj=$(echo $((decode_nj>sad_nj ? sad_nj : decode_nj)))
-      # Perform segmentation. We use the pretrained SAD available at:
-      # http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
+      nj=$((decode_nj>sad_nj ? sad_nj : decode_nj))
+      # Perform segmentation. We use the pretrained CHiME-6 SAD available at:
+      # http://kaldi-asr.org/models/12/0012_sad_v1.tar.gz
       # Download and extract using tar -xvzf
-      if [ ! -d exp/segmentation_1a/tdnn_stats_asr_sad_1a ]; then
-        wget http://kaldi-asr.org/models/4/0004_tdnn_stats_asr_sad_1a.tar.gz
-        tar -xvzf 0004_tdnn_stats_asr_sad_1a.tar.gz
+      if [ ! -d exp/segmentation_1a/tdnn_stats_sad_1a ]; then
+        wget http://kaldi-asr.org/models/12/0012_sad_v1.tar.gz || exit
+        tar -xvzf 0012_sad_v1.tar.gz
+        cp -r 0012_sad_v1/conf/* conf/
+        cp -r 0012_sad_v1/exp/segmentation_1a exp/
       fi
       local/detect_speech_activity.sh --cmd "$decode_cmd" --nj $sad_nj $test_set \
-        exp/segmentation_1a/tdnn_stats_asr_sad_1a
-      
-      # The pretrained SAD used a different MFCC config. We need to
-      # copy back our old config files.
-      # cp -r ../s5_mono/conf .
+        exp/segmentation_1a/tdnn_stats_sad_1a
     fi
 
     # Create dummy utt2spk file from obtained segments
@@ -93,7 +91,7 @@ if [ $stage -le 1 ]; then
       ${test_set}/segments.bak ${test_set}/ref_rttm
 
     md-eval.pl -r $ref_rttm -s ${test_set}/rttm |\
-      awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
+      awk '/(MISSED|FALARM) SPEECH/'
     
   done
 fi
@@ -152,7 +150,7 @@ fi
 if [ $stage -le 5 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
-  local/score_reco_diarized.sh --stage $score_stage \
+  local/score_reco_diarized.sh --cmd "$train_cmd" --stage $score_stage \
       --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${dev_set}_diarized_2stage \
       --dev_datadir ${dev_set}_diarized_hires \
       --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}_sp/decode_${eval_set}_diarized_2stage \
@@ -173,7 +171,7 @@ if $rnnlm_rescore; then
     for decode_set in $test_sets; do
       decode_dir=${ac_model_dir}/decode_${decode_set}_diarized_2stage
       # Lattice rescoring
-      rnnlm/lmrescore$pruned.sh \
+      rnnlm/lmrescore${pruned}.sh \
           --cmd "$decode_cmd --mem 8G" \
           --weight 0.45 --max-ngram-order $ngram_order \
           data/lang_test_tgsmall $rnnlm_dir \
@@ -184,7 +182,7 @@ if $rnnlm_rescore; then
 
   if [ $stage -le 7 ]; then
     echo "$0: WERs after rescoring with $rnnlm_dir"
-    local/score_reco_diarized.sh --stage $score_stage \
+    local/score_reco_diarized.sh --cmd "$train_cmd" --stage $score_stage \
         --dev_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${dev_set}_diarized_2stage_rescore \
         --dev_datadir ${dev_set}_diarized_hires \
         --eval_decodedir exp/chain${nnet3_affix}/tdnn_${affix}/decode_${eval_set}_diarized_2stage_rescore \

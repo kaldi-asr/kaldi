@@ -41,7 +41,7 @@ frames_per_chunk=150
 
 # Decoding options
 graph_opts="--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-duration=10.0"
-acwt=0.3
+acwt=1.0
 
 # These <from>_in_<to>_weight represent the fraction of <from> probability 
 # to transfer to <to> class.
@@ -57,7 +57,7 @@ merge_consecutive_max_dur=0   # Merge consecutive segments as long as the merged
                               # seconds. The segments are only merged if their boundaries are touching.
                               # This is after padding by --segment-padding seconds.
                               # 0 means do not merge. Use 'inf' to not limit the duration.
-cleanup=true  # If true, remove files created during feature extraction
+cleanup=false  # If true, remove files created during feature extraction
 
 echo $* 
 
@@ -215,7 +215,7 @@ if [ $stage -le 5 ]; then
     ${src_data_dir} ${seg_dir} ${seg_dir}
 fi
 
-cp ${seg_dir}/segments $src_data_dir/
+sed 's:-:_:g' ${seg_dir}/segments > $src_data_dir/segments # to be consistent for scoring
 
 if [ $cleanup ]; then
   rm $src_data_dir/{feats.scp,frame_shift,utt2dur,utt2num_frames} 2> /dev/null

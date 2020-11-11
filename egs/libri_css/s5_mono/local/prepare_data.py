@@ -26,8 +26,7 @@ def main(args):
     utt2text = {} # for text
     if (args.cleanpath):
         utt2clean = {} # path to clean utt wav file
-        command = 'find %s -name "*.flac"' % (args.cleanpath)
-        wavs = subprocess.check_output(command, shell=True).decode('utf-8').splitlines()
+        wavs = glob.glob(args.cleanpath + '/**/*.flac', recursive=True)
         keys = [ os.path.splitext(os.path.basename(wav))[0] for wav in wavs ]
         clean_paths = {key:wav for key,wav in zip(keys,wavs)}
 
@@ -65,7 +64,7 @@ def main(args):
                     utt2text[utt_id] = text
                     segments.append((utt_id, start, end))
                     if args.cleanpath:
-                        utt2clean[utt_id] = "flac -c -d -s {} |".format(clean_paths[clean_uttid])
+                        utt2clean[utt_id] = "sox {} -t wav - |".format(clean_paths[clean_uttid])
             
             reco2segments[reco_id] = segments
     

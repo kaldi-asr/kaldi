@@ -37,12 +37,6 @@ class Segment:
         self.end_time = self.start_time + self.duration
         self.label = int(parts[7])
 
-def groupby(iterable, keyfunc):
-    """Wrapper around ``itertools.groupby`` which sorts data first."""
-    iterable = sorted(iterable, key=keyfunc)
-    for key, group in itertools.groupby(iterable, keyfunc):
-        yield key, group
-
 
 def main():
     args = get_args()
@@ -54,9 +48,10 @@ def main():
             parts = line.strip().split()
             segments.append(Segment(parts))
 
+    sort(segments, key=lambda x: (x.reco_id,x.label))
     # We group the segment list into a dictionary indexed by (reco_id, spk_id)
     reco_and_spk_to_segs = defaultdict(list,
-        {uid : list(g) for uid, g in groupby(segments, lambda x: (x.reco_id, x.label))})
+        {uid : list(g) for uid, g in itertools.groupby(segments)})
 
     reco_and_spk_to_final_segs = {}
     for uid in reco_and_spk_to_segs.keys():

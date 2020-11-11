@@ -30,7 +30,7 @@ model_dir=$1
 data_in=$2
 out_dir=$3
 
-name=`basename $data_in`
+name=$(basename "$data_in")
 
 for f in $data_in/feats.scp $data_in/segments \
   $model_dir/final.raw $model_dir/extract.config; do
@@ -74,47 +74,8 @@ fi
 
 hyp_rttm=${out_dir}/rttm
 
-# For scoring the diarization system, we use the same tool that was
-# used in the DIHARD II challenge. This is available at:
-# https://github.com/nryant/dscore
 if [ $stage -le 5 ]; then
   echo "Diarization results for "${name}
-  if ! [ -d dscore ]; then
-    git clone https://github.com/desh2608/dscore.git -b libricss --single-branch || exit 1;
-    cd dscore
-    python -m pip install --user -r requirements.txt
-    cd ..
-  fi
-
-  # Create per condition ref and hyp RTTM files for scoring per condition
-  mkdir -p tmp
-  conditions="0L 0S OV10 OV20 OV30 OV40"
-  cp $ref_rttm tmp/ref.all
-  cp $hyp_rttm tmp/hyp.all
-  for rttm in ref hyp; do
-    for cond in $conditions; do
-      cat tmp/$rttm.all | grep $cond > tmp/$rttm.$cond
-    done
-  done
-
-  echo "Scoring all regions..."
-  for cond in $conditions 'all'; do
-    echo -n "Condition: $cond: "
-    ref_rttm_path=$(readlink -f tmp/ref.$cond)
-    hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
-    cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only && cd .. || exit 1;
-  done
-
-  # We also score overlapping regions only
-  if [ $score_overlaps_only == "true" ]; then
-    echo "Scoring overlapping regions..."
-    for cond in $conditions 'all'; do
-      echo -n "Condition: $cond: "
-      ref_rttm_path=$(readlink -f tmp/ref.$cond)
-      hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
-      cd dscore && python score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only && cd .. || exit 1;
-    done
-  fi
-
-  rm -r tmp
+  local/dscore.sh --score-overlaps-only $score_overlaps_only \
+    $ref_rttm $hyp_rttm
 fi
