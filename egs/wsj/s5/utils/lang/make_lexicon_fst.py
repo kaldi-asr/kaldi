@@ -347,7 +347,7 @@ def read_left_context_phones(filename):
             raise RuntimeError("The file {0} contains an invalid line '{1}'".format(filename, s)   )
 
     if len(set(ans)) != len(ans):
-        raise RuntimeError("Duplicate nonterminal symbols are present in file {0}".format(filename))
+        raise RuntimeError("Duplicate left-context phones are present in file {0}".format(filename))
     return ans
 
 
