@@ -45,6 +45,9 @@ GRTAGS
 GPATH
 GSYMS
 
+# Cmake files
+CMakeLists.txt
+
 # python compiled sources
 *.pyc
 
