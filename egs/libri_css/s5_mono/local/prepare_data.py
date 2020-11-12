@@ -6,7 +6,6 @@
 
 import argparse, os, glob, tqdm, zipfile
 import subprocess
-import soundfile as sf
 
 def write_dict_to_file(utt2data, file_path):
     f = open(file_path, 'w')
@@ -24,9 +23,11 @@ def main(args):
     reco2segments = {} # for segments
     utt2spk = {} # for utt2spk
     utt2text = {} # for text
+    print ("Creating dictionary of all clean LibriSpeech utterances")
     if (args.cleanpath):
         utt2clean = {} # path to clean utt wav file
-        wavs = glob.glob(args.cleanpath + '/**/*.flac', recursive=True)
+        command = 'find %s -name "*.flac"' % (args.cleanpath)
+        wavs = subprocess.check_output(command, shell=True).decode('utf-8').splitlines()
         keys = [ os.path.splitext(os.path.basename(wav))[0] for wav in wavs ]
         clean_paths = {key:wav for key,wav in zip(keys,wavs)}
 
@@ -35,7 +36,6 @@ def main(args):
     os.makedirs(wav_dir, exist_ok=True)
 
     conditions = ('0L','0S','OV10','OV20','OV30','OV40')
-    all_lines=[]
     for cond in tqdm.tqdm(conditions):
         meeting = glob.glob(os.path.join(args.srcpath, cond, 'overlap*'))
         for meet in meeting:
@@ -44,12 +44,10 @@ def main(args):
             _,_,_,_,_,sessid,olr = meeting_name.split('_')
 
             wav_path = os.path.join(os.path.abspath(meet), 'record', 'raw_recording.wav')
-            s, f = sf.read(wav_path)
             for mic in args.mics:
                 reco_id = "{}_CH{}_{}".format(sessid, mic, cond) # Session0_CH1_0L
-                new_wav_path = os.path.join(wav_dir, reco_id+'.wav')
-                sf.write(new_wav_path, s[:, mic], f)
-                reco2wav[reco_id] = os.path.abspath(new_wav_path)
+                new_wav_path = "sox {} -t wav - remix {} |".format(wav_path, mic+1) # channel will be extracted on the fly
+                reco2wav[reco_id] = new_wav_path
             
             segments = []
             with open(os.path.join(os.path.abspath(meet), 'transcription', 'meeting_info.txt'), 'r') as f:
