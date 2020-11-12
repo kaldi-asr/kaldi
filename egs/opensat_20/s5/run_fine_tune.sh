@@ -51,16 +51,6 @@ if [ $stage -le 3 ]; then
   local/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
 fi
 
-#if [ $stage -le 4 ]; then
-#  local/spine_data_prep.sh /export/corpora5/LDC/LDC2000S96  /export/corpora5/LDC/LDC2000T54 data/spine_eval
-#  local/spine_data_prep.sh /export/corpora5/LDC/LDC2000S87  /export/corpora5/LDC/LDC2000T49 data/spine_train
-#
-#  local/spine_data_prep.sh /export/corpora5/LDC/LDC2001S04  /export/corpora5/LDC/LDC2001T05 data/spine2_train1
-#  local/spine_data_prep.sh /export/corpora5/LDC/LDC2001S06  /export/corpora5/LDC/LDC2001T07 data/spine2_train2
-#  local/spine_data_prep.sh /export/corpora5/LDC/LDC2001S08  /export/corpora5/LDC/LDC2001T09 data/spine2_train3
-#
-#fi
-
 if [ $stage -le 4 ]; then
   for dset in train dev eval; do
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 30 \
@@ -91,27 +81,13 @@ if [ $stage -le 6 ]; then
   (
     local/safet_cleanup_transcripts.py data/local/lexicon.txt data/safe_t_r11/transcripts data/safe_t_r11/transcripts.clean
     local/safet_cleanup_transcripts.py data/local/lexicon.txt data/safe_t_r20/transcripts data/safe_t_r20/transcripts.clean
-
-#    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/spine2_train1/transcripts data/spine2_train1/transcripts.clean
-#    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/spine2_train2/transcripts data/spine2_train2/transcripts.clean
-#    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/spine2_train3/transcripts data/spine2_train3/transcripts.clean
-#    local/safet_cleanup_transcripts.py data/local/lexicon.txt data/spine_train/transcripts   data/spine_train//transcripts.clean
   ) | sort > exp/cleanup_stage_1/oovs
 
   local/safet_cleanup_transcripts.py --no-unk-replace  data/local/lexicon.txt \
     data/safe_t_dev1/transcripts data/safe_t_dev1/transcripts.clean > exp/cleanup_stage_1/oovs.dev1
-#  local/safet_cleanup_transcripts.py  --no-unk-replace  data/local/lexicon.txt \
-#    data/spine_eval/transcripts data/spine_eval/transcripts.clean > exp/cleanup_stage_1/oovs.spine_eval
-
   local/safet_build_data_dir.sh data/safe_t_r11/ data/safe_t_r11/transcripts.clean
   local/safet_build_data_dir.sh data/safe_t_r20/ data/safe_t_r20/transcripts.clean
   local/safet_build_data_dir.sh data/safe_t_dev1/ data/safe_t_dev1/transcripts
-
-#  local/safet_build_data_dir.sh data/spine2_train1/ data/spine2_train1/transcripts.clean
-#  local/safet_build_data_dir.sh data/spine2_train2/ data/spine2_train2/transcripts.clean
-#  local/safet_build_data_dir.sh data/spine2_train3/ data/spine2_train3/transcripts.clean
-#  local/safet_build_data_dir.sh data/spine_train/ data/spine_train/transcripts.clean
-#  local/safet_build_data_dir.sh data/spine_eval/ data/spine_eval/transcripts.clean
 
   utils/data/combine_data.sh data/train_safet data/safe_t_r20 data/safe_t_r11
 fi
