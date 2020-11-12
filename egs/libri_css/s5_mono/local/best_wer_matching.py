@@ -45,7 +45,7 @@ for line in infile:
 # Now we create a matrix of costs (WER) which we will use to solve
 # a linear sum assignment problem
 sort(wer_objects, key=lambda x: x.ref_id)
-wer_object_matrix = [list(g) for ref_id, g in itertools.groupby(wer_objects)]
+wer_object_matrix = [list(g) for ref_id, g in itertools.groupby(wer_objects, lambda x: x.ref_id)]
 if len(wer_object_matrix) > len(wer_object_matrix[0]):
     # More references than hypothesis; take transpose
     wer_object_matrix = [*zip(*wer_object_matrix)]

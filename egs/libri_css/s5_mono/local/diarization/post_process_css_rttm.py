@@ -48,10 +48,11 @@ def main():
             parts = line.strip().split()
             segments.append(Segment(parts))
 
-    sort(segments, key=lambda x: (x.reco_id,x.label))
+    groupfn = lambda x: (x.reco_id,x.label)
+    sort(segments, key=groupfn)
     # We group the segment list into a dictionary indexed by (reco_id, spk_id)
     reco_and_spk_to_segs = defaultdict(list,
-        {uid : list(g) for uid, g in itertools.groupby(segments)})
+        {uid : list(g) for uid, g in itertools.groupby(segments, groupfn)})
 
     reco_and_spk_to_final_segs = {}
     for uid in reco_and_spk_to_segs.keys():

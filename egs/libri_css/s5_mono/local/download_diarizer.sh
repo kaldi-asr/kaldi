@@ -22,6 +22,7 @@ set -e -o pipefail
 
 mkdir -p downloads
 dir=$(mktemp -d ./downloads/lcss.XXXXXXXXX)
+trap "rm -rf ${dir}" EXIT
 
 cd ${dir}
 
@@ -35,4 +36,3 @@ rm 0012_diarization_v1/exp/xvector_nnet_1a/plda
 wget https://desh2608.github.io/static/files/jsalt/plda -P 0012_diarization_v1/exp/xvector_nnet_1a/
 cd ../..
 cp -r ${dir}/0012_diarization_v1/exp .
-trap "rm -rf ${dir}" EXIT

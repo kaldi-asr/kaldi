@@ -35,6 +35,8 @@ fi
 
 # Create per condition ref and hyp RTTM files for scoring per condition
 mkdir -p tmp
+trap "rm -r tmp" EXIT
+
 conditions="0L 0S OV10 OV20 OV30 OV40"
 cp $ref_rttm tmp/ref.all
 cp $hyp_rttm tmp/hyp.all
@@ -49,7 +51,9 @@ for cond in $conditions 'all'; do
   echo -n "Condition: $cond: "
   ref_rttm_path=$(readlink -f tmp/ref.$cond)
   hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
-  cd dscore && python3 score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only && cd ..
+  cd dscore
+  python3 score.py -r $ref_rttm_path -s $hyp_rttm_path --global_only
+  cd ..
 done
 
 # We also score overlapping regions only
@@ -59,8 +63,8 @@ if [ $score_overlaps_only == "true" ]; then
     echo -n "Condition: $cond: "
     ref_rttm_path=$(readlink -f tmp/ref.$cond)
     hyp_rttm_path=$(readlink -f tmp/hyp.$cond)
-    cd dscore && python3 score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only && cd ..
+    cd dscore
+    python3 score.py -r $ref_rttm_path -s $hyp_rttm_path --overlap_only --global_only
+    cd ..
   done
 fi
-
-trap "rm -r tmp" EXIT

@@ -66,10 +66,11 @@ def main():
         utterance = Utterance(uttid, utt2spk[uttid], text, args.multi_stream)
         utt_list.append(utterance)
 
-    sort(utt_list, key=lambda x: (x.reco_id, x.spk_id))
+    groupfn = lambda x: (x.reco_id, x.spk_id)
+    sort(utt_list, key=groupfn)
     # We group the utterance list into a dictionary indexed by (reco_id, spk_id)
     reco_spk_to_utts = defaultdict(list,
-        {uid : list(g) for uid, g in itertools.groupby(utt_list)})
+        {uid : list(g) for uid, g in itertools.groupby(utt_list, groupfn)})
     
     # Now for each (reco_id, spk_id) pair, we write the concatenated text to an
     # output  (we assign speaker ids 1,2,3,..)
