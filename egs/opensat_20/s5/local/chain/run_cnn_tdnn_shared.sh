@@ -28,7 +28,7 @@ dropout_schedule='0,0@0.20,0.5@0.50,0'
 remove_egs=true
 chunk_width=140,100,160
 # End configuration section.
-echo "$0 $@"
+echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
 . ./path.sh
@@ -124,7 +124,7 @@ if [ $stage -le 15 ]; then
   # are more compressible so we prefer to dump the MFCCs to disk rather
   # than filterbanks.
   idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
-  linear-component name=ivector-linear $ivector_affine_opts dim=400 input=ReplaceIndex(ivector, t, 0)
+  linear-component name=ivector-linear $ivector_affine_opts dim=200 input=ReplaceIndex(ivector, t, 0)
   batchnorm-component name=ivector-batchnorm target-rms=0.025
   batchnorm-component name=idct-batchnorm input=idct
   spec-augment-layer name=idct-spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=20
@@ -172,9 +172,9 @@ steps/nnet3/chain/train.py --stage $train_stage \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
-    --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.0 \
-    --chain.apply-deriv-weights false \
+    --chain.leaky-hmm-coefficient=0.1 \
+    --chain.l2-regularize=0.0 \
+    --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.add-option="--optimization.memory-compression-level=2" \
