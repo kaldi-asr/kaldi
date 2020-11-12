@@ -9,6 +9,12 @@ TESTFILES = arpa-file-parser-test arpa-lm-compiler-test
 OBJFILES = arpa-file-parser.o arpa-lm-compiler.o const-arpa-lm.o \
 	   kaldi-rnnlm.o mikolov-rnnlm-lib.o
 
+ifdef KENLMROOT
+OBJFILES += kenlm.o
+CXXFLAGS += $(KENLM_CXXFLAGS)
+LDFLAGS += $(KENLM_LDFLAGS)
+endif
+
 LIBNAME = kaldi-lm
 
 ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a \

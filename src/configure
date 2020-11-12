@@ -95,6 +95,8 @@ Configuration options:
   --host=HOST           Host triple in the format 'cpu-vendor-os'
                         If provided, it is prepended to all toolchain programs.
   --android-incdir=DIR  Android include directory
+  --kenlm-root          set it to "../tools/kenlm" to switch on kenlm runtime module 
+                        installed via extras/install_kenlm_query_only.sh
 
 Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
@@ -789,6 +791,9 @@ do
     MATHLIB='OPENBLAS'
     GetSwitchExistingPathOrDie ANDROIDINC "$1"
     shift ;;
+  --kenlm-root=*)
+    GetSwitchExistingPathOrDie KENLMROOT "$1"
+    shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -977,6 +982,12 @@ fi
 
 echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 echo >> kaldi.mk
+
+if [ ! -z $KENLMROOT ]; then
+  echo "KENLMROOT = $KENLMROOT" >> kaldi.mk
+  echo "KENLM_CXXFLAGS = -DHAVE_KENLM  -DKENLM_MAX_ORDER=6  -I$KENLMROOT" >> kaldi.mk
+  echo "KENLM_LDFLAGS = -Wl,-rpath,$KENLMROOT  -L$KENLMROOT  -lkenlm" >> kaldi.mk
+fi
 
 # OS-specific steps given below append to kaldi.mk
 echo "Performing OS specific configuration ..."
