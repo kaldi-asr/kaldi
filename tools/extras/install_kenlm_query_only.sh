@@ -3,7 +3,7 @@
 # 2020 author Jiayu DU
 #
 # this script downloads latest kenlm and compile it in "query only" mode
-# "query only" mode means you can only use this kenlm lib for runtime lm score query.
+# "query only" mode means you can only use this it for runtime lm scoring.
 #
 # NOTES:
 # we don't want a full-build of kenlm inside kaldi repo because:
@@ -37,8 +37,8 @@ if [ ! -d kenlm ]; then
 fi
 
 
-# now compile query-only kenlm library, to be linked with Kaldi
-# the following code are based on compile_query_only.sh in kenlm source code
+# now compile query-only kenlm library (to be linked with Kaldi)
+# the following code are based on kenlm/compile_query_only.sh
 cd kenlm
 rm {lm,util}/*.o 2>/dev/null
 set -e

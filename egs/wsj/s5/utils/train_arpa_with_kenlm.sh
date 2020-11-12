@@ -2,7 +2,7 @@
 
 # This script uses kenlm to estimate an arpa model out of training text
 # it is a resort when you hit memory limit dealing with large scale training corpus
-# kenlm estimate arpa using on-disk structure,
+# kenlm estimates arpa using on-disk structure,
 # as long as you have big enough hard disk, memory shouldn't be a problem.
 # by default, kenlm use up to 50% of your local memory, you can control this through -S option
 
