@@ -42,22 +42,22 @@ class KenLm {
 
   int Load(std::string kenlm_filename, std::string symbol_table_filename);
 
-  inline WordIndex GetWordIndex(std::string word) {
+  inline WordIndex GetWordIndex(std::string word) const {
     return vocab_->Index(word.c_str());
   }
 
-  inline WordIndex GetWordIndex(int32 symbol_id) {
+  inline WordIndex GetWordIndex(int32 symbol_id) const {
     return symid_to_wid_[symbol_id];
   }
 
-  void SetStateToBeginOfSentence(State *s) { model_->BeginSentenceWrite(s); }
-  void SetStateToNull(State *s) { model_->NullContextWrite(s); }
+  void SetStateToBeginOfSentence(State *s) const { model_->BeginSentenceWrite(s); }
+  void SetStateToNull(State *s) const { model_->NullContextWrite(s); }
 
-  int32 BosSymbolIndex() { return bos_symid_; }
-  int32 EosSymbolIndex() { return eos_symid_; }
-  int32 UnkSymbolIndex() { return unk_symid_; }
+  int32 BosSymbolIndex() const { return bos_symid_; }
+  int32 EosSymbolIndex() const { return eos_symid_; }
+  int32 UnkSymbolIndex() const { return unk_symid_; }
 
-  inline BaseFloat Score(const State *istate, WordIndex word, State *ostate) {
+  inline BaseFloat Score(const State *istate, WordIndex word, State *ostate) const {
     return model_->BaseScore(istate, word, ostate);
   }
 
@@ -68,6 +68,9 @@ class KenLm {
       return util::MurmurHashNative(s.words, sizeof(WordIndex) * s.Length());
     }
   };
+
+ private:
+  void ComputeSymbolToWordIndexMapping(std::string symbol_table);
   
  private:
   lm::base::Model *model_; // has ownership
@@ -167,9 +170,7 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
   }
 
  private:
-  KenLm *lm_; // no ownership
-
- private:
+  const KenLm *lm_; // no ownership
   typedef std::pair<State, StateId> MapElem;
   typedef unordered_map<State, StateId, KenLm::StateHasher> MapType;
   typedef typename MapType::iterator IterType;

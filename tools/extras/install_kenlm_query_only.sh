@@ -77,6 +77,10 @@ KENLM_ROOT=$(pwd)/kenlm
 echo "export KENLM_ROOT=$KENLM_ROOT" >> env.sh
 echo "export PATH=\${PATH}:\${KENLM_ROOT}/bin" >> env.sh
 
-echo "KenLM (QUERY ONLY) successfully compile into $KALDI_ROOT/tools/kenlm/libkenlm.so"
-echo "To link it, add following flags to your compiler-linker toolchain:"
-echo "  -I$KALDI_ROOT/tools/kenlm/  -DKENLM_MAX_ORDER=6  -Wl,-rpath,$KALDI_ROOT/tools/kenlm/  -L$KALDI_ROOT/tools/kenlm/  -lkenlm"
+echo "KenLM (QUERY ONLY) successfully install in $KALDI_ROOT/tools/kenlm/{bin/,libkenlm.so}"
+
+# MEMO: KenLM compiling & linking flags:
+#   -I$KALDI_ROOT/tools/kenlm/  -DKENLM_MAX_ORDER=6  -Wl,-rpath,$KALDI_ROOT/tools/kenlm/  -L$KALDI_ROOT/tools/kenlm/  -lkenlm
+echo "to use kenlm runtime in kaldi, pass --enable-kenlm option to configure,"
+echo "it will generate KENLM_CXXFLAGS & KENLM_LDFLAGS in kaldi.mk,"
+echo "use these varibles in Kaldi sub-module-dir's Makefile to link with kenlm runtime library."

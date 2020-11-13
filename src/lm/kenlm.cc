@@ -2,29 +2,7 @@
 
 namespace kaldi {
 
-int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
-  if (model_ != NULL) {
-    delete model_;
-  }
-  model_ = NULL;
-  vocab_ = NULL;
-
-  // load KenLm model
-  // LAZY mode allows on-demands read instead of entired loading into memory
-  // this is especially useful when we are dealing with very large LM
-  lm::ngram::Config config;
-  config.load_method = util::LoadMethod::LAZY;
-  model_ = lm::ngram::LoadVirtual(kenlm_filename.c_str(), config);
-  if (!model_) {
-    KALDI_ERR << "Failed loading KenLm model";
-  }
-
-  // load vocabulary pointer from kenlm model internal
-  vocab_ = &model_->BaseVocabulary();
-  if (!vocab_) {
-    KALDI_ERR << "Failed loading KenLm vocabulary";
-  }
-
+void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
   // count symbol table size
   int num_syms = 0;
   std::string line;
@@ -33,7 +11,6 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
     while(std::getline(is, line)) { if (!line.empty()) num_syms++; }
   }
 
-  // compute the word reindex from Kaldi symbol id to KenLm word id
   symid_to_wid_.clear();
   symid_to_wid_.resize(num_syms, 0);
 
@@ -71,6 +48,33 @@ int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
   }
   KALDI_LOG << "Successfully mapped " << symid_to_wid_.size() 
             << " Kaldi symbols to KenLM words";
+}
+
+int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
+  if (model_ != NULL) {
+    delete model_;
+  }
+  model_ = NULL;
+  vocab_ = NULL;
+
+  // load KenLm model
+  // LAZY mode allows on-demands read instead of entired loading into memory
+  // this is especially useful when we are dealing with very large LM
+  lm::ngram::Config config;
+  config.load_method = util::LoadMethod::LAZY;
+  model_ = lm::ngram::LoadVirtual(kenlm_filename.c_str(), config);
+  if (!model_) {
+    KALDI_ERR << "Failed loading KenLm model";
+  }
+
+  // load vocabulary pointer from kenlm model internal
+  vocab_ = &model_->BaseVocabulary();
+  if (!vocab_) {
+    KALDI_ERR << "Failed loading KenLm vocabulary";
+  }
+
+  // compute the index mapping from Kaldi symbol to KenLm word
+  ComputeSymbolToWordIndexMapping(symbol_table_filename);
   return 0;
 }
 
