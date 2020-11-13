@@ -11,14 +11,14 @@
 
 namespace kaldi {
 
-// This class is a thin wrapper of KenLM model,
+// Kaldi wrapper class for KenLM model, 
 // the underlying model structure can be either "trie" or "probing".
-// Its primary jobs are:
-//  1. loads & holds kenlm model resources with ownership
-//  2. handles the index mapping between kaldi fst symbol and kenlm word
+// Its main purposes:
+//  1. loads & holds kenlm model resources(with ownership)
+//  2. handles the index mapping between kaldi symbol index & kenlm word index
 //  3. provides ngram query method to upper level fst wrapper
-// Kaldi algorithms should interact with the fst wrapper class
-// i.e. KenLmDeterministicOnDemandFst, instead of KenLm class.
+// This class is stateless and thread-safe, so it can be shared by its FST wrapper class
+// (i.e. KenLmDeterministicOnDemandFst class)
 class KenLm {
  public:
   typedef lm::WordIndex WordIndex;
@@ -105,11 +105,11 @@ class KenLm {
 
 
 // This class wraps KenLm into Kaldi's DeterministicOnDemandFst class,
-// so that Kaldi's fst framework can utilize KenLM as a simple FST.
+// so that Kaldi's fst framework can utilize KenLM as a deterministic FST.
 // objects of this class have internal states(so it's not thread-safe),
-// different threads should create their own objects, they are lightweight.
+// different threads should create their own instances, they are lightweight.
 // Globally, KenLmDeterministicOnDemandFst objects should share 
-// the same KenLm object (which is stateless and heavy)
+// the same KenLm object (which is heavy, stateless and thread-safe)
 template<class Arc>
 class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> {
  public:
