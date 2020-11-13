@@ -33,7 +33,7 @@ fi
 # the text should be properly pre-processed(cleand, normalized and possibly word-segmented in some language)
 
 # get rid off irrelavent symbols, the rest of symbols are used as LM training vocabulary. 
-cat $symbol_table | grep -v '<eps>' | grep -v '#0' | grep -v '<unk>' | grep -v '<UNK>' | grep -v '<s>' | grep -v '</s>' | awk '{print $1}' > $dir/ngram.vocab
+grep -v '<eps>' $symbol_table | grep -v '#0' | grep -v '<unk>' | grep -v '<UNK>' | grep -v '<s>' | grep -v '</s>' | awk '{print $1}' > $dir/ngram.vocab
 
 # KenLM's vocabulary control is tricky
 # the behavior of option --limit_vocab_file is not the same as SRILM's -limit-vocab.
