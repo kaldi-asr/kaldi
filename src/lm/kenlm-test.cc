@@ -5,6 +5,9 @@
 namespace kaldi {
 
 void UnitTestKenLm() {
+  // this unit test code is for validation purpose only, not a usage demo
+  // you should never use KenLm class this way in Kaldi,
+  // instead, use its fst wrapper class i.e. KenLmDeterministicOnDemondFst
   KenLm lm;
   lm.Load("test_data/lm.kenlm", "test_data/words.txt"); // words.txt is Kaldi's output symbol table
   std::ifstream is("test_data/sentences.txt");

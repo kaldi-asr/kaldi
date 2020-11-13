@@ -122,7 +122,7 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
   typedef typename KenLm::State State;
   typedef typename KenLm::WordIndex WordIndex;
  
-  explicit KenLmDeterministicOnDemandFst(KenLm *lm)
+  explicit KenLmDeterministicOnDemandFst(const KenLm *lm)
    : lm_(lm), num_states_(0), bos_state_id_(0)
   {
     MapElem elem;
