@@ -173,16 +173,11 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
   typedef std::pair<State, StateId> MapElem;
   typedef unordered_map<State, StateId, KenLm::StateHasher> MapType;
   typedef typename MapType::iterator IterType;
-
   MapType state_map_;
   std::vector<const State*> state_vec_;
   StateId num_states_; // state vector index range, [0, num_states_)
-
   StateId bos_state_id_;  // fst start state id
   WordIndex eos_symbol_id_;
-
 }; // class KenLmDeterministicOnDemandFst
-
 } // namespace kaldi
-
 #endif

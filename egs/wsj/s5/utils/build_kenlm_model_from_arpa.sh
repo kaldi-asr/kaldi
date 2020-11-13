@@ -36,7 +36,7 @@ if ! which build_binary >& /dev/null ; then
   exit 1
 fi
 
-mkdir -p `dirname $kenlm`
+mkdir -p $(dirname $kenlm)
 build_binary  $kenlm_opts  $model_type  $arpa_lm  $kenlm
 
 echo "$0: Successfully built arpa into kenlm format: $kenlm"

@@ -73,7 +73,7 @@ $CXX lm/query_main.cc $objects -o bin/query $CXXFLAGS $LDFLAGS
 $CXX $objects -shared -o libkenlm.so
 cd ..
 
-KENLM_ROOT=`pwd`/kenlm
+KENLM_ROOT=$(pwd)/kenlm
 echo "export KENLM_ROOT=$KENLM_ROOT" >> env.sh
 echo "export PATH=\${PATH}:\${KENLM_ROOT}/bin" >> env.sh
 
