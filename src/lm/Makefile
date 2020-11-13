@@ -9,10 +9,10 @@ TESTFILES = arpa-file-parser-test arpa-lm-compiler-test
 OBJFILES = arpa-file-parser.o arpa-lm-compiler.o const-arpa-lm.o \
 	   kaldi-rnnlm.o mikolov-rnnlm-lib.o
 
-ifdef KENLMROOT
+ifdef KENLM_ROOT
 OBJFILES += kenlm.o
-CXXFLAGS += $(KENLM_CXXFLAGS)
-LDFLAGS += $(KENLM_LDFLAGS)
+EXTRA_CXXFLAGS += $(KENLM_CXXFLAGS)
+EXTRA_LDFLAGS += $(KENLM_LDFLAGS)
 endif
 
 LIBNAME = kaldi-lm
