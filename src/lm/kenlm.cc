@@ -6,15 +6,15 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
   // count symbol table size
   int num_syms = 0;
   std::string line;
-  {
-    std::ifstream is(symbol_table_filename);
-    while(std::getline(is, line)) { if (!line.empty()) num_syms++; }
+  std::ifstream is(symbol_table_filename);
+  while(std::getline(is, line)) {
+    if (!line.empty()) num_syms++;
   }
 
   symid_to_wid_.clear();
   symid_to_wid_.resize(num_syms, 0);
 
-  std::ifstream is(symbol_table_filename);
+  is.seekg(0, is.beg);
   while (std::getline(is, line)) {
     std::vector<std::string> fields;
     SplitStringToVector(line, " ", true, &fields);
