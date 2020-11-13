@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
+# 2020 author Jiayu DU
 
 # This script reads in an Arpa format language model, and converts it into the
 # KenLM format language model.
+
+[ -f path.sh ] && . ./path.sh;
 
 # begin configuration section
 kenlm_opts="" # e.g. "-q 8 -b 8" for 8bits quantization
 model_type="trie" # eithor "trie" or "probing". trie is smaller, probing is faster.
 # end configuration section
-
-[ -f path.sh ] && . ./path.sh;
 
 . utils/parse_options.sh
 
@@ -29,14 +30,14 @@ export LC_ALL=C
 arpa_lm=$1
 kenlm=$2
 
-# TODO: first we should check if kenlm is correctly installed
-if [ ! "kenlm is correctly installed && successfully found compilation tool *build_binary*" ]; then
-  echo "cannot find build_binary tool, please check your kenlm installation."
+if ! which build_binary >& /dev/null ; then
+  echo "$0: cannot find KenLM's build_binary tool,"
+  echo "please check your kenlm installation (tools/extras/install_kenlm_query_only.sh)."
   exit 1
 fi
 
 mkdir -p `dirname $kenlm`
-build_binary $kenlm_opts $arpa_lm $model_type $kenlm
+build_binary  $kenlm_opts  $model_type  $arpa_lm  $kenlm
 
 echo "$0: Successfully built arpa into kenlm format: $kenlm"
-exit 0;
+exit 0

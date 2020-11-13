@@ -75,6 +75,7 @@ cd ..
 
 KENLM_ROOT=`pwd`/kenlm
 echo "export KENLM_ROOT=$KENLM_ROOT" >> env.sh
+echo "export PATH=\${PATH}:\${KENLM_ROOT}/bin" >> env.sh
 
 echo "KenLM (QUERY ONLY) successfully compile into $KALDI_ROOT/tools/kenlm/libkenlm.so"
 echo "To link it, add following flags to your compiler-linker toolchain:"

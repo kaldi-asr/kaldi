@@ -1,21 +1,34 @@
 #!/usr/bin/env bash
+# 2020 author Jiayu DU
 
-# This script uses kenlm to estimate an arpa model out of training text
+# This script uses kenlm to estimate an arpa model from plain text,
 # it is a resort when you hit memory limit dealing with large scale training corpus
 # kenlm estimates arpa using on-disk structure,
 # as long as you have big enough hard disk, memory shouldn't be a problem.
 # by default, kenlm use up to 50% of your local memory, you can control this through -S option
 
+[ -f path.sh ] && . ./path.sh;
+
 kenlm_opts="" # e.g. "-o 4 -S 50% --prune 0 5 7 7"
 
-# TODO: arg parsing refinement and check
+if [ $# != 4 ]; then
+  echo "$0 <text> <kaldi_symbol_table> <working_dir> <arpa_name>"
+  echo "e.g. $0 train.txt words.txt wdir 4gram"
+  exit 1
+fi
+
 text=$1
 symbol_table=$2
 dir=$3
 arpa_name=$4
 
-# TODO: KenLM installation check
-if [ ! "kenlm is properly installed && can find the training binary: lmplz "] && echo "cannot find training tool *lmplz*, please check your kenlm installation and try again"
+if ! which lmplz >& /dev/null ; then
+  echo "$0: cannot find training tool *lmplz*, please check your kenlm installation."
+  echo "The KenLM module installed in Kaldi via tools/extras/install_kenlm_query_only.sh, is not complete (containing only kenlm runtime),"
+  echo "to *train* an arpa using KenLM, you need a complete KenLM installation(which depends on EIGEN and BOOST),"
+  echo "you should follow KenLM's cmake building instruction (https://github.com/kpu/kenlm)"
+  exit 1
+fi
 
 # the text should be properly pre-processed(cleand, normalized and possibly word-segmented in some language)
 
