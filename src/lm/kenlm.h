@@ -107,9 +107,9 @@ class KenLm {
 }; // class KenLm
 
 
-// This class wraps KenLm into Kaldi's DeterministicOnDemandFst class,
+// This class wraps KenLm into DeterministicOnDemandFst interface,
 // so that Kaldi's fst framework can utilize KenLM as a deterministic FST.
-// objects of this class have internal states(so it's not thread-safe),
+// objects of this class have states(so it's not thread-safe),
 // different threads should create their own instances, they are lightweight.
 // Globally, KenLmDeterministicOnDemandFst objects should share 
 // the same KenLm object (which is heavy, stateless and thread-safe)

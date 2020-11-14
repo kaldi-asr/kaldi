@@ -994,13 +994,15 @@ if $enable_kenlm ; then
         echo "KENLM_CXXFLAGS = -DHAVE_KENLM  -DKENLM_MAX_ORDER=6  -I$KENLM_ROOT" >> kaldi.mk
         echo "KENLM_LDFLAGS = -Wl,-rpath,$KENLM_ROOT  -L$KENLM_ROOT  -lkenlm" >> kaldi.mk
       else
-        failure "Sorry, for now --enable-kenlm option is only supported in Linux or MacOS"
+        failure "Sorry, for now --enable-kenlm option is only supported in Linux and MacOS"
       fi
     else
-      failure "It seems kenlm is not installed properly,
-      can't find libkenlm.so in ../tools/kenlm/,
-      refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
+      failure "can't find libkenlm.so in ../tools/kenlm/,
+              refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
     fi
+  else
+    failure "--enable-kenlm switched on, but can't find kenlm repo in ../tools/kenlm,
+            refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
   fi
 fi
 
