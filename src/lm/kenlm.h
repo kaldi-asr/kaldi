@@ -57,8 +57,8 @@ class KenLm {
   int32 EosSymbolIndex() const { return eos_symid_; }
   int32 UnkSymbolIndex() const { return unk_symid_; }
 
-  inline BaseFloat Score(const State *istate, WordIndex word, State *ostate) const {
-    return model_->BaseScore(istate, word, ostate);
+  inline BaseFloat Score(const State *in_state, WordIndex word, State *out_state) const {
+    return model_->BaseScore(in_state, word, out_state);
   }
 
   // this provides a fast hash function to upper level fst wrapper class,
@@ -170,15 +170,16 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
   }
 
  private:
-  const KenLm *lm_; // no ownership
   typedef std::pair<State, StateId> MapElem;
   typedef unordered_map<State, StateId, KenLm::StateHasher> MapType;
   typedef typename MapType::iterator IterType;
+
+  const KenLm *lm_; // no ownership
   MapType state_map_;
   std::vector<const State*> state_vec_;
   StateId num_states_; // state vector index range, [0, num_states_)
   StateId bos_state_id_;  // fst start state id
-  WordIndex eos_symbol_id_;
+  Label eos_symbol_id_;
 }; // class KenLmDeterministicOnDemandFst
 } // namespace kaldi
 #endif
