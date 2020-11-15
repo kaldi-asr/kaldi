@@ -133,13 +133,13 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
   explicit KenLmDeterministicOnDemandFst(const KenLm *lm)
    : lm_(lm), num_states_(0), bos_state_id_(0)
   {
-    MapElem elem;
-    lm->SetStateToBeginOfSentence(&elem.first);
-    elem.second = num_states_;
-
-    std::pair<IterType, bool> ins_result = state_map_.insert(elem);
-    KALDI_ASSERT(ins_result.second == true);
-    state_vec_.push_back(&ins_result.first->first);
+    // create bos to be FST start state
+    MapElem e;
+    lm->SetStateToBeginOfSentence(&e.first);
+    e.second = bos_state_id_;
+    std::pair<IterType, bool> r = state_map_.insert(e);
+    KALDI_ASSERT(r.second == true); // bos successfully inserted into state map
+    state_vec_.push_back(&r.first->first);
     num_states_++;
 
     eos_symbol_id_ = lm_->EosSymbolIndex();
@@ -157,15 +157,15 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
     WordIndex word = lm_->GetWordIndex(label);
     BaseFloat log_10_prob = lm_->Score(istate, word, &e.first);
     e.second = num_states_;
-    std::pair<IterType, bool> result = state_map_.insert(e);
-    if (result.second == true) {
-      state_vec_.push_back(&(result.first->first));
+    std::pair<IterType, bool> r = state_map_.insert(e);
+    if (r.second == true) { // new state
+      state_vec_.push_back(&(r.first->first));
       num_states_++;
     }
 
     oarc->ilabel = label;
     oarc->olabel = oarc->ilabel;
-    oarc->nextstate = result.first->second;
+    oarc->nextstate = r.first->second;
     oarc->weight = Weight(-log_10_prob * M_LN10); // KenLm log10() -> Kaldi ln()
 
     return true;
