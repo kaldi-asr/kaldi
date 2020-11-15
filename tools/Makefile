@@ -11,13 +11,15 @@ WGET ?= wget
 # e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
 OPENFST_VERSION ?= 1.6.7
 CUB_VERSION ?= 1.8.0
-OPENBLAS_VERSION ?= 0.3.5
-SCTK_VERSION_PARTIAL ?= 2.4.10
-SCTK_VERSION ?= $(SCTK_VERSION_PARTIAL)-20151007-1312Z
-SPH2PIPE_VERSION = v2.5
+# No '?=', since there exists only one version of sph2pipe.
+SPH2PIPE_VERSION = 2.5
+# SCTK official repo does not have version tags. Here's the mapping:
+# 2.4.9 = 659bc36; 2.4.10 = d914e1b; 2.4.11 = 20159b5.
+SCTK_GITHASH = 20159b5
 
 # Default features configured for OpenFST; can be overridden in the make command line.
-OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts --enable-lookahead-fsts --with-pic
+OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far \
+                     --enable-ngram-fsts --enable-lookahead-fsts --with-pic
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
@@ -25,52 +27,47 @@ ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
             Supported versions: >= 1.6.0)
 endif
 
-all: check_required_programs sph2pipe sclite openfst cub
+.PHONY: all clean distclean
+all: check_required_programs cub openfst sctk_made sph2pipe
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
 	@echo "All done OK."
 
 # make sure check_required_programs runs before anything else:
-sph2pipe sclite openfst sctk: | check_required_programs
+all cub openfst sctk_made sph2pipe: | check_required_programs
 
 check_required_programs:
 	extras/check_dependencies.sh
 
-clean: openfst_cleaned sclite_cleaned
+clean: openfst_cleaned sctk_cleaned
 
-openfst_cleaned:
-	-$(MAKE) -C openfst-$(OPENFST_VERSION) clean
+distclean: clean
+	rm -rf openfst openfst-$(OPENFST_VERSION) \
+	       openfst-$(OPENFST_VERSION).tar.gz
+	rm -rf sctk sctk-$(SCTK_GITHASH) \
+	       sctk-$(SCTK_GITHASH).tar.gz
+	rm -rf sph2pipe sph2pipe-$(SPH2PIPE_VERSION) \
+	       sph2pipe-$(SPH2PIPE_VERSION).tar.gz
+	rm -rf libsndfile-1.0.25 libsndfile-1.0.25.tar.gz \
+	       BeamformIt-3.51 BeamformIt-3.51.tgz
+	rm -rf cub cub-$(CUB_VERSION) \
+	       cub-$(CUB_VERSION).zip cub-$(CUB_VERSION).tar.gz
 
-sclite_cleaned:
-	-$(MAKE) -C sctk clean
+#=== OpenFST ===================================================================
 
-distclean:
-	rm -rf openfst-$(OPENFST_VERSION)/
-	rm -rf sctk-$(SCTK_VERSION_PARTIAL)/
-	rm -rf sctk
-	rm -rf sph2pipe_$(SPH2PIPE_VERSION)/
-	rm -rf sph2pipe_$(SPH2PIPE_VERSION).tar.gz
-	rm -rf sctk-$(SCTK_VERSION).tar.bz2
-	rm -rf openfst-$(OPENFST_VERSION).tar.gz
-	rm -f openfst
-	rm -rf libsndfile-1.0.25{,.tar.gz} BeamformIt-3.51{,.tgz}
-	rm -f cub-$(CUB_VERSION).zip
-	rm -rf cub-$(CUB_VERSION)
-	rm -f cub
+.PHONY: openfst openfst_compiled openfst_cleaned
 
-
-.PHONY: openfst # so target will be made even though "openfst" exists.
 openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
-	-rm -f openfst
-	-ln -s openfst-$(OPENFST_VERSION) openfst
+	rm -f openfst
+	ln -s openfst-$(OPENFST_VERSION) openfst
 
-.PHONY: openfst_compiled
 openfst_compiled: openfst-$(OPENFST_VERSION)/Makefile
 	$(MAKE) -C openfst-$(OPENFST_VERSION) install MAKEOVERRIDES=
 
 openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
-	-cd openfst-$(OPENFST_VERSION) && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
+	- cd openfst-$(OPENFST_VERSION) && \
+	  [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
 
 # Add the -O flag to CXXFLAGS on cygwin as it can fix the compilation error
 # "file too big".
@@ -84,91 +81,120 @@ else
   openfst_add_CXXFLAGS = -g -O2
 endif
 
-openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs
+openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)
 	cd openfst-$(OPENFST_VERSION)/ && \
-	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS) $(openfst_add_CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
-
+	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" \
+		CXXFLAGS="$(CXXFLAGS) $(openfst_add_CXXFLAGS)" \
+		LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 	tar xozf openfst-$(OPENFST_VERSION).tar.gz
 
 openfst-$(OPENFST_VERSION).tar.gz:
 	if [ -d "$(DOWNLOAD_DIR)" ]; then \
-		cp -p "$(DOWNLOAD_DIR)/openfst-$(OPENFST_VERSION).tar.gz" .; \
+	  cp -p "$(DOWNLOAD_DIR)/openfst-$(OPENFST_VERSION).tar.gz" .; \
 	else \
-		$(WGET) -T 10 -t 1 http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
-		$(WGET) -T 10 -t 3 -c https://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz; \
+	  $(WGET) -nv -T 10 -t 1 http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
+	  $(WGET) -nv -T 10 -t 3 -c https://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz; \
 	fi
 
-sclite: sclite_compiled
+openfst_cleaned:
+	-for d in openfst/ openfst-*/; do \
+	   [ ! -f $$d/Makefile ] || $(MAKE) -C $$d clean; \
+	done
 
-.PHONY: sclite_compiled
-sclite_compiled: sctk sctk_configured
-	cd sctk; \
-	$(MAKE) CC="$(CC)" CXX="$(CXX)" all && $(MAKE) install && $(MAKE) doc
+#== SCTK =======================================================================
 
-sctk_configured: sctk sctk/.configured sctk/.patched
+SCTK_CXFLAGS = -w -march=native
+SCTK_MKENV = CFLAGS="$(CFLAGS) $(SCTK_CXFLAGS)" \
+             CXXFLAGS="$(CXXFLAGS) $(SCTK_CXFLAGS)" \
 
-sctk/.patched: sctk
-	cd sctk; patch -p1 < ../extras/sctk.patch
-	touch sctk/.patched
+# Keep the existing target 'sclite' to avoid breaking the users who might have
+# scripted it in.
+.PHONY: sclite sctk_cleaned sctk_made
 
-sctk/.configured: sctk
-	cd sctk; $(MAKE) config
-	touch sctk/.configured
+sclite sctk_made: sctk/.compiled
 
-.PHONY: sctk
-sctk: sctk-$(SCTK_VERSION).tar.bz2
-	tar xojf sctk-$(SCTK_VERSION).tar.bz2 || \
-	tar --exclude '*NONE*html' -xvojf sctk-$(SCTK_VERSION).tar.bz2
-	rm -rf sctk && ln -s sctk-$(SCTK_VERSION_PARTIAL) sctk
+sctk/.compiled: sctk
+	rm -f sctk/.compiled
+	$(SCTK_MKENV) $(MAKE) -C sctk config
+	$(SCTK_MKENV) $(MAKE) -C sctk all doc
+	$(MAKE) -C sctk install
+	touch sctk/.compiled
 
-sctk-$(SCTK_VERSION).tar.bz2:
+# The GitHub archive unpacks into SCTK-{40-character-long-hash}/
+sctk: sctk-$(SCTK_GITHASH).tar.gz
+	tar --exclude '*NONE*html' -xmaf sctk-$(SCTK_GITHASH).tar.gz
+	rm -rf sctk-$(SCTK_GITHASH) sctk
+	mv SCTK-$(SCTK_GITHASH)* sctk-$(SCTK_GITHASH)
+	ln -s sctk-$(SCTK_GITHASH) sctk
+	touch sctk-$(SCTK_GITHASH).tar.gz
+
+sctk-$(SCTK_GITHASH).tar.gz:
+	if [ -d '$(DOWNLOAD_DIR)' ]; then \
+	  cp -p '$(DOWNLOAD_DIR)/sctk-$(SCTK_GITHASH).tar.gz' .; \
+	else \
+	  $(WGET) -nv -T 10 -t 3 -O sctk-$(SCTK_GITHASH).tar.gz \
+	    https://github.com/usnistgov/SCTK/archive/$(SCTK_GITHASH).tar.gz; \
+	fi
+
+sctk_cleaned:
+	-for d in sctk/ sctk-*/; do \
+	   [ ! -f $$d/.compiled ] || $(MAKE) -C $$d clean; \
+	   rm -f $$d/.compiled; \
+	done
+
+#== sph2pipe ===================================================================
+
+# Note the naming subtlety: the tarball extracts into a subdirectory
+# 'sph2pipe-2.5', but over 9000 scripts call for 'sph2pipe_v2.5'.
+
+sph2pipe: sph2pipe_v$(SPH2PIPE_VERSION)/sph2pipe
+	rm -f sph2pipe
+	ln -s sph2pipe_v$(SPH2PIPE_VERSION) sph2pipe
+	touch -r $@ -c $^
+
+sph2pipe_v$(SPH2PIPE_VERSION)/sph2pipe: sph2pipe_v$(SPH2PIPE_VERSION)/Makefile
+	$(MAKE) -C sph2pipe_v$(SPH2PIPE_VERSION)
+
+sph2pipe_v$(SPH2PIPE_VERSION)/Makefile: sph2pipe-$(SPH2PIPE_VERSION).tar.gz
+	rm -rf sph2pipe_v*
+	tar -xmzf sph2pipe-$(SPH2PIPE_VERSION).tar.gz
+	mv sph2pipe-$(SPH2PIPE_VERSION) sph2pipe_v$(SPH2PIPE_VERSION)
+
+sph2pipe-$(SPH2PIPE_VERSION).tar.gz:
 	if [ -d "$(DOWNLOAD_DIR)" ]; then \
-		cp -p "$(DOWNLOAD_DIR)/sctk-$(SCTK_VERSION).tar.bz2" .; \
+	  cp -p "$(DOWNLOAD_DIR)/sph2pipe-v$(SPH2PIPE_VERSION).tar.gz" \
+	        sph2pipe-$(SPH2PIPE_VERSION).tar.gz; \
 	else \
-		$(WGET) -T 10 https://www.openslr.org/resources/4/sctk-$(SCTK_VERSION).tar.bz2; \
+	  $(WGET) -nv -T 10 -t 3 -O sph2pipe-$(SPH2PIPE_VERSION).tar.gz \
+	    https://github.com/burrmill/sph2pipe/archive/$(SPH2PIPE_VERSION).tar.gz; \
 	fi
 
-sph2pipe: sph2pipe_compiled
-
-sph2pipe_compiled: sph2pipe_patched sph2pipe_$(SPH2PIPE_VERSION)/sph2pipe
-
-sph2pipe_patched: sph2pipe_$(SPH2PIPE_VERSION)/.patched
-
-sph2pipe_$(SPH2PIPE_VERSION)/sph2pipe: sph2pipe_$(SPH2PIPE_VERSION)/.patched | sph2pipe_$(SPH2PIPE_VERSION)
-	cd sph2pipe_$(SPH2PIPE_VERSION)/ && \
-	$(CC) -o sph2pipe  *.c -lm
-
-sph2pipe_$(SPH2PIPE_VERSION)/.patched: sph2pipe_$(SPH2PIPE_VERSION)
-	cd sph2pipe_$(SPH2PIPE_VERSION); patch -p1 < ../extras/sph2pipe.patch
-	touch  sph2pipe_$(SPH2PIPE_VERSION)/.patched
-
-sph2pipe_$(SPH2PIPE_VERSION): sph2pipe_$(SPH2PIPE_VERSION).tar.gz
-	tar --no-same-owner -xzf sph2pipe_$(SPH2PIPE_VERSION).tar.gz
-
-sph2pipe_$(SPH2PIPE_VERSION).tar.gz:
-	if [ -d "$(DOWNLOAD_DIR)" ]; then \
-		cp -p "$(DOWNLOAD_DIR)/sph2pipe_$(SPH2PIPE_VERSION).tar.gz" .; \
-	else \
-		$(WGET) -T 10 -t 3 https://www.openslr.org/resources/3/sph2pipe_$(SPH2PIPE_VERSION).tar.gz || \
-		$(WGET) -T 10 -c https://sourceforge.net/projects/kaldi/files/sph2pipe_$(SPH2PIPE_VERSION).tar.gz; \
-	fi
+#== CUB ========================================================================
 
 .PHONY: cub
-cub:
-	if [ -d "$(DOWNLOAD_DIR)" ]; then \
-		cp -p "$(DOWNLOAD_DIR)/cub-$(CUB_VERSION).zip" .; \
-	else \
-		$(WGET) -T 10 -t 3 -O cub-$(CUB_VERSION).zip https://github.com/NVlabs/cub/archive/$(CUB_VERSION).zip; \
-	fi
-	unzip -oq cub-$(CUB_VERSION).zip
+cub: cub/common.mk
+
+cub/common.mk: cub-$(CUB_VERSION).tar.gz
 	rm -f cub
+	tar -xmzf cub-$(CUB_VERSION).tar.gz
 	ln -s cub-$(CUB_VERSION) cub
 
-# OpenBLAS is not compiled by default; you can run `make openblas` to build it,
-# but you should probably just call extras/install_openblas.sh; this is
-# here for legacy reasons.
+cub-$(CUB_VERSION).tar.gz:
+	if [ -d "$(DOWNLOAD_DIR)" ]; then \
+	  cp -p "$(DOWNLOAD_DIR)/cub-$(CUB_VERSION).tar.gz" .; \
+	else \
+	  $(WGET) -nv -T 10 -t 3 -O cub-$(CUB_VERSION).tar.gz \
+	    https://github.com/NVlabs/cub/archive/$(CUB_VERSION).tar.gz; \
+	fi
+
+#== No OpenBLAS ================================================================
+
 .PHONY: openblas
 openblas:
-	extras/install_openblas.sh
+	@echo "##===============================================##"
+	@echo "##  WARNING: The 'openblas' target is obsolete.  ##"
+	@echo "##  Run 'extras/install_openblas.sh' instead.    ##"
+	@echo "##===============================================##"
+	@false
