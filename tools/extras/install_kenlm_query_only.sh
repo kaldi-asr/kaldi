@@ -2,7 +2,7 @@
 #
 # 2020 author Jiayu DU
 #
-# this script downloads latest code from official kenlm repo (https://github.com/kpu/kenlm)
+# this script downloads latest code from official repo (https://github.com/kpu/kenlm)
 # and compile it partially, as a runtime library for lm scoring in Kaldi (*query only* mode),
 # to be specific, "query only" mode generates:
 # 
@@ -13,31 +13,31 @@
 #
 # 2. library: $KALDI_ROOT/tools/kenlm/libkenlm.so
 #    along with this script, run $KALDI_ROOT/src/configure with "--enable-kenlm" option,
-#    configure will generate KenLM related compiler flags into "kaldi.mk", which are:
+#    configure will generate kenlm related compiler flags into "kaldi.mk", which are:
 #    * KENLM_ROOT =  $KALDI_ROOT/tools/kenlm/
 #    * KENLM_CXXFLAGS = -DHAVE_KENLM  -I$KALDI_ROOT/tools/kenlm/  -DKENLM_MAX_ORDER=6
 #    * KENLM_LDFLAGS = -Wl,-rpath,$KALDI_ROOT/tools/kenlm/  -L$KALDI_ROOT/tools/kenlm/  -lkenlm
 #    use these variables in any Kaldi submodule's Makefile as you like.
-#    In Kaldi, instead of interacting with KenLM's public interfaces,
-#    you should use KenLM's FST wrapper class in $KALDI_ROOT/src/lm/kenlm.{h,cc}
+#    In Kaldi, instead of interacting with kenlm's public interfaces,
+#    you should use kenlm's FST wrapper class in $KALDI_ROOT/src/lm/kenlm.{h,cc}
 #
-# Note that we currently don't have a full-build of KenLM inside Kaldi,
-# because a full-build of KenLM (with arpa counting/smoothing/interpolation supports) depends 
+# Note that this script doesn't install a full-build of kenlm inside Kaldi,
+# because a full-build of kenlm (with arpa counting/smoothing/interpolation supports) depends 
 # on EIGEN and BOOST, too heavy to integrate.
 #
-# If you DO want to use KenLM to "train" an arpa from scratch,
-# you need to setup these dependencies yourself via system package manager / contact your admin,
-# and compile with the self-contained CMAKE system in KenLM.
-# After that, you can refer to the kenlm training demo script at: egs/wsj/s5/utils/train_arpa_with_kenlm.sh
+# If you DO want to use kenlm to "train" an arpa from scratch,
+# you need to setup above dependencies yourself(via system package manager or contact your admin),
+# then follow the self-contained CMAKE building system in kenlm.
 # if you come across any problems installing full-build kenlm, 
 # the first place to ask is (https://github.com/kpu/kenlm), not kaldi.
+# After that, we provide a demo training script at: egs/wsj/s5/utils/train_arpa_with_kenlm.sh
 # 
 # LEGAL STUFF:
-# KenLM codes are intactly cloned into tools/kenlm dir, together with its LGPL LICENSE, 
+# kenlm codes are intactly cloned into tools/kenlm dir, together with its LGPL LICENSE, 
 # it's not as free as Kaldi's Apache-2.0, Kaldi users should be aware of this,
 # and it is the users responsibility to comply with these open-source licenses.
 
-echo "****() Installing KenLM (QUERY ONLY mode)"
+echo "****() Installing kenlm (QUERY ONLY mode)"
 
 if [ ! -d kenlm ]; then
     echo "No exisiting kenlm, try to clone the latest repo from https://github.com/kpu/kenlm"
@@ -90,6 +90,6 @@ KENLM_ROOT=$(pwd)/kenlm
 echo "export KENLM_ROOT=$KENLM_ROOT" >> env.sh
 echo "export PATH=\${PATH}:\${KENLM_ROOT}/bin" >> env.sh
 
-echo "KenLM (QUERY ONLY mode) successfully installed in tools/kenlm/"
+echo "kenlm (QUERY ONLY mode) successfully installed in tools/kenlm/"
 echo "to use kenlm runtime in kaldi, pass --enable-kenlm  option to configure,"
 echo "and read usage notes at the beginning of $0"
