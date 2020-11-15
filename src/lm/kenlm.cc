@@ -21,7 +21,7 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
     if (fields.size() == 2) {
       std::string sym = fields[0];
       int32 symid = 0;  ConvertStringToInteger(fields[1], &symid);
-      // update class info if this is a special LM word
+      // mark special LM word
       if (sym == "<s>") {
         bos_sym_ = sym;
         bos_symid_ = symid;
@@ -32,7 +32,7 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
         unk_sym_ = sym;
         unk_symid_ = symid;
       }
-      // get & check word id for this symbol
+      // check vocabulary consistency between kaldi and kenlm
       WordIndex wid = vocab_->Index(sym.c_str());
       if ((wid == vocab_->Index("<unk>") || wid == vocab_->Index("<UNK>")) 
           && sym != "<unk>" && sym != "<UNK>"

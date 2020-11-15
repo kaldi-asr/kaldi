@@ -2,27 +2,40 @@
 #
 # 2020 author Jiayu DU
 #
-# this script downloads latest kenlm and compile it in "query only" mode
-# "query only" mode means you can only use this it for runtime lm scoring.
+# this script downloads latest code from official kenlm repo (https://github.com/kpu/kenlm)
+# and compile it partially, as a runtime library for lm scoring in Kaldi (*query only* mode),
+# to be specific, "query only" mode generates:
+# 
+# 1. executables: $KALDI_ROOT/tools/kenlm/bin/{build_binary,query}
+#    * "build_binary" is used to compile ngram apra files into kenlm model files
+#      (demo script: $KALDI_ROOT/egs/wsj/s5/utils/build_kenlm_model_from_arpa.sh)
+#    * "query" is used to score plain text(one line per sentence) with kenlm models
 #
-# NOTES:
-# we don't want a full-build of kenlm inside kaldi repo because:
-# kenlm's full-build (with arpa counting/smoothing/interpolation supports) requires EIGEN and BOOST, 
-# it's impractical to incorperate such heavy libraries into Kaldi repo.
-# the purpose of this script is to provide just enough support,
-# to use kenlm as a runtime lm scorer in Kaldi, without arpa training stuff.
+# 2. library: $KALDI_ROOT/tools/kenlm/libkenlm.so
+#    along with this script, run $KALDI_ROOT/src/configure with "--enable-kenlm" option,
+#    configure will generate KenLM related compiler flags into "kaldi.mk", which are:
+#    * KENLM_ROOT =  $KALDI_ROOT/tools/kenlm/
+#    * KENLM_CXXFLAGS = -DHAVE_KENLM  -I$KALDI_ROOT/tools/kenlm/  -DKENLM_MAX_ORDER=6
+#    * KENLM_LDFLAGS = -Wl,-rpath,$KALDI_ROOT/tools/kenlm/  -L$KALDI_ROOT/tools/kenlm/  -lkenlm
+#    use these variables in any Kaldi submodule's Makefile as you like.
+#    In Kaldi, instead of interacting with KenLM's public interfaces,
+#    you should use KenLM's FST wrapper class in $KALDI_ROOT/src/lm/kenlm.{h,cc}
 #
-# If you DO want to use kenlm to "train" an arpa from scratch,
-# you need to setup these dependencies yourself via system package manager / your admin,
-# or compile from source code, following kenlm's self-contained CMAKE building system.
-# after that, we provide a demo kenlm training script at: egs/wsj/s5/utils/train_arpa_with_kenlm.sh
-# if you come across any problems in installing full-build kenlm, 
+# Note that we currently don't have a full-build of KenLM inside Kaldi,
+# because a full-build of KenLM (with arpa counting/smoothing/interpolation supports) depends 
+# on EIGEN and BOOST, too heavy to integrate.
+#
+# If you DO want to use KenLM to "train" an arpa from scratch,
+# you need to setup these dependencies yourself via system package manager / contact your admin,
+# and compile with the self-contained CMAKE system in KenLM.
+# After that, you can refer to the kenlm training demo script at: egs/wsj/s5/utils/train_arpa_with_kenlm.sh
+# if you come across any problems installing full-build kenlm, 
 # the first place to ask is (https://github.com/kpu/kenlm), not kaldi.
 # 
 # LEGAL STUFF:
-# KENLM codes are intactly downladed into tools/kenlm dir, together with its LGPL LICENSE, 
-# it's not as free as Kaldi's APACHE2.0, KALDI users should be aware of this,
-# and it is the users responsibility to follow these open-source software licenses.
+# KenLM codes are intactly cloned into tools/kenlm dir, together with its LGPL LICENSE, 
+# it's not as free as Kaldi's Apache-2.0, Kaldi users should be aware of this,
+# and it is the users responsibility to comply with these open-source licenses.
 
 echo "****() Installing KenLM (QUERY ONLY mode)"
 
@@ -35,7 +48,6 @@ if [ ! -d kenlm ]; then
         exit 1;
     fi
 fi
-
 
 # now compile query-only kenlm library (to be linked with Kaldi)
 # the following code are based on kenlm/compile_query_only.sh
@@ -73,14 +85,11 @@ $CXX lm/query_main.cc $objects -o bin/query $CXXFLAGS $LDFLAGS
 $CXX $objects -shared -o libkenlm.so
 cd ..
 
+# register kenlm binary path to env.sh
 KENLM_ROOT=$(pwd)/kenlm
 echo "export KENLM_ROOT=$KENLM_ROOT" >> env.sh
 echo "export PATH=\${PATH}:\${KENLM_ROOT}/bin" >> env.sh
 
-echo "KenLM (QUERY ONLY) successfully install in $KALDI_ROOT/tools/kenlm/{bin/,libkenlm.so}"
-
-# MEMO: KenLM compiling & linking flags:
-#   -I$KALDI_ROOT/tools/kenlm/  -DKENLM_MAX_ORDER=6  -Wl,-rpath,$KALDI_ROOT/tools/kenlm/  -L$KALDI_ROOT/tools/kenlm/  -lkenlm
-echo "to use kenlm runtime in kaldi, pass --enable-kenlm option to configure,"
-echo "it will generate KENLM_CXXFLAGS & KENLM_LDFLAGS in kaldi.mk,"
-echo "use these varibles in Kaldi sub-module-dir's Makefile to link with kenlm runtime library."
+echo "KenLM (QUERY ONLY mode) successfully installed in tools/kenlm/"
+echo "to use kenlm runtime in kaldi, pass --enable-kenlm  option to configure,"
+echo "and read usage notes at the beginning of $0"
