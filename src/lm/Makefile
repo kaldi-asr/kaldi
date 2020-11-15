@@ -10,6 +10,7 @@ OBJFILES = arpa-file-parser.o arpa-lm-compiler.o const-arpa-lm.o \
 	   kaldi-rnnlm.o mikolov-rnnlm-lib.o
 
 ifdef KENLM_ROOT
+TESTFILES += kenlm-test
 OBJFILES += kenlm.o
 EXTRA_CXXFLAGS += $(KENLM_CXXFLAGS)
 EXTRA_LDFLAGS += $(KENLM_LDFLAGS)

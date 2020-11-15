@@ -14,7 +14,8 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
   symid_to_wid_.clear();
   symid_to_wid_.resize(num_syms, 0);
 
-  is.seekg(0, is.beg);
+  is.clear();
+  is.seekg(0);
   while (std::getline(is, line)) {
     std::vector<std::string> fields;
     SplitStringToVector(line, " ", true, &fields);
