@@ -11,7 +11,7 @@
 
 namespace kaldi {
 
-// Kaldi wrapper class for KenLM model, 
+// Kaldi wrapper class for KenLm model, 
 // the underlying model structure can be either "trie" or "probing".
 // Its main purposes:
 //  1. loads & holds kenlm model resources(with ownership)
@@ -26,21 +26,27 @@ class KenLm {
 
  public:
   KenLm() : 
-    model_(NULL), vocab_(NULL),
+    model_(nullptr), vocab_(nullptr),
     bos_sym_(), eos_sym_(), unk_sym_(),
     bos_symid_(0), eos_symid_(0), unk_symid_(0)
   { }
 
   ~KenLm() {
-    if (model_ != NULL) {
+    if (model_ != nullptr) {
       delete model_;
     }
-    model_ = NULL;
-    vocab_ = NULL;
+    model_ = nullptr;
+    vocab_ = nullptr;
     symid_to_wid_.clear();
   }
 
-  int Load(std::string kenlm_filename, std::string symbol_table_filename);
+  // with giant LM on SSD hard drive,
+  // you can set load method to util::LoadMethod::LAZY,
+  // which enables on-demand model loading via POSIX mmap(),
+  // refer to kenlm/util/mmap.hh for more load methods.
+  int Load(std::string kenlm_filename, 
+           std::string kaldi_symbol_table_filename,
+           util::LoadMethod load_method = util::LoadMethod::POPULATE_OR_READ);
 
   inline WordIndex GetWordIndex(std::string word) const {
     return vocab_->Index(word.c_str());
@@ -57,7 +63,9 @@ class KenLm {
   int32 EosSymbolIndex() const { return eos_symid_; }
   int32 UnkSymbolIndex() const { return unk_symid_; }
 
-  inline BaseFloat Score(const State *in_state, WordIndex word, State *out_state) const {
+  inline BaseFloat Score(const State *in_state,
+                         WordIndex word,
+                         State *out_state) const {
     return model_->BaseScore(in_state, word, out_state);
   }
 
@@ -80,18 +88,18 @@ class KenLm {
 
   // There are really two indexing systems here:
   // Kaldi's fst output symbol id(defined in words.txt),
-  // and KenLM's word index(obtained by hashing the word string).
-  // in order to incorperate KenLM into Kaldi during runtime, 
+  // and KenLm's word index(obtained by hashing the word string).
+  // in order to incorperate KenLm into Kaldi during runtime, 
   // we need to know the mapping between the two indexing systems.
   // by keeping this mapping explicity in this class,
-  // we avoid modifing any kaldi & kenlm runtime resources,
-  // (e.g. HCLG.fst/lattices & kenlm model file)
+  // we avoid modifing any Kaldi & KenLm runtime resources,
+  // (e.g. HCLG.fst/lattices & KenLm model file)
   // notes:
   // <eps> and #0 symbols are special,
-  // they do not correspond to any word in KenLM,
-  // Normally, these two symbols shouldn't consume any KenLM word,
+  // they do not correspond to any word in KenLm,
+  // Normally, these two symbols shouldn't consume any KenLm word,
   // so the mapping of these two symbols are logically undefined,
-  // we just map them to KenLM's <unk>(which is always indexed as 0),
+  // we just map them to KenLm's <unk>(which is always indexed as 0),
   // to avoid random invalid mapping.
   // usage: symid_to_wid_[kaldi_symbol_index] -> kenlm word index
   std::vector<WordIndex> symid_to_wid_;
@@ -108,7 +116,7 @@ class KenLm {
 
 
 // This class wraps KenLm into DeterministicOnDemandFst interface,
-// so that Kaldi's fst framework can utilize KenLM as a deterministic FST.
+// so that Kaldi's fst framework can utilize KenLm as a deterministic FST.
 // objects of this class have states(so it's not thread-safe),
 // different threads should create their own instances, they are lightweight.
 // Globally, KenLmDeterministicOnDemandFst objects should share 
@@ -158,7 +166,7 @@ class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> 
     oarc->ilabel = label;
     oarc->olabel = oarc->ilabel;
     oarc->nextstate = result.first->second;
-    oarc->weight = Weight(-log_10_prob * M_LN10); //KenLM log10() -> Kaldi ln()
+    oarc->weight = Weight(-log_10_prob * M_LN10); // KenLm log10() -> Kaldi ln()
 
     return true;
   }

@@ -32,14 +32,16 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
         unk_sym_ = sym;
         unk_symid_ = symid;
       }
-      // check vocabulary consistency between kaldi and kenlm
+      // check vocabulary consistency between kaldi and KenLm.
+      // note here we add seemingly verbose check about unknown word
+      // so we don't need to worry about mismatch error between <unk> & <UNK>
       WordIndex wid = vocab_->Index(sym.c_str());
       if ((wid == vocab_->Index("<unk>") || wid == vocab_->Index("<UNK>")) 
           && sym != "<unk>" && sym != "<UNK>"
           && sym != "<eps>"
           && sym != "#0") {
         KALDI_ERR << "found mismatched symbol: " << sym
-                  << ", this symbol is in Kaldi, but is unseen in KenLM"
+                  << ", this symbol is in Kaldi, but is unseen in KenLm"
                   << ", they should have strictly consistent vocabulary.";
       } else {
         symid_to_wid_[symid] = wid;
@@ -47,31 +49,26 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
     }
   }
   KALDI_LOG << "Successfully mapped " << symid_to_wid_.size() 
-            << " Kaldi symbols to KenLM words";
+            << " Kaldi symbols to KenLm words";
 }
 
-int KenLm::Load(std::string kenlm_filename, std::string symbol_table_filename) {
-  if (model_ != NULL) {
-    delete model_;
-  }
-  model_ = NULL;
-  vocab_ = NULL;
+int KenLm::Load(std::string kenlm_filename,
+                std::string symbol_table_filename,
+                util::LoadMethod load_method) {
+  if (model_ != nullptr) { delete model_; }
+  model_ = nullptr;
+  vocab_ = nullptr;
 
   // load KenLm model
-  // LAZY mode allows on-demands read instead of entired loading into memory
-  // this is especially useful when we are dealing with very large LM
   lm::ngram::Config config;
-  config.load_method = util::LoadMethod::LAZY;
+  config.load_method = load_method;
   model_ = lm::ngram::LoadVirtual(kenlm_filename.c_str(), config);
-  if (!model_) {
-    KALDI_ERR << "Failed loading KenLm model";
-  }
+  if (model_ == nullptr) { KALDI_ERR << "Failed to load KenLm model"; }
 
-  // load vocabulary pointer from kenlm model internal
+  // KenLm holds vocabulary internally with ownership,
+  // vocab_ here is just for convenient reference
   vocab_ = &model_->BaseVocabulary();
-  if (!vocab_) {
-    KALDI_ERR << "Failed loading KenLm vocabulary";
-  }
+  if (vocab_ == nullptr) { KALDI_ERR << "Failed to get vocabulary from KenLm model"; }
 
   // compute the index mapping from Kaldi symbol to KenLm word
   ComputeSymbolToWordIndexMapping(symbol_table_filename);
