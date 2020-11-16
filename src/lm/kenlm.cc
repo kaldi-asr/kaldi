@@ -16,6 +16,7 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
 
   is.clear();
   is.seekg(0);
+  int num_mapped = 0;
   while (std::getline(is, line)) {
     std::vector<std::string> fields;
     SplitStringToVector(line, " ", true, &fields);
@@ -34,8 +35,8 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
         unk_symid_ = symid;
       }
       // check vocabulary consistency between kaldi and KenLm.
-      // note here we add seemingly verbose check about unknown word
-      // so we don't need to worry about mismatch error between <unk> & <UNK>
+      // note here we handled <unk> & <UNK> identically,
+      // so we don't need to worry about their literal mismatch
       WordIndex wid = vocab_->Index(sym.c_str());
       if ((wid == vocab_->Index("<unk>") || wid == vocab_->Index("<UNK>")) 
           && sym != "<unk>" && sym != "<UNK>"
@@ -46,10 +47,12 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
                   << ", they should have strictly consistent vocabulary.";
       } else {
         symid_to_wid_[symid] = wid;
+        num_mapped += 1;
       }
     }
   }
-  KALDI_LOG << "Successfully mapped " << symid_to_wid_.size() 
+  KALDI_ASSERT(num_mapped == symid_to_wid_.size());
+  KALDI_LOG << "Successfully mapped " << num_mapped 
             << " Kaldi symbols to KenLm words";
 }
 

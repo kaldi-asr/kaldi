@@ -46,15 +46,15 @@ void UnitTestKenLm() {
 
     for (int i = 0; i < words.size(); i++) {
       std::string word = words[i];
-      BaseFloat word_score = lm.Score(istate, lm.GetWordIndex(word), ostate);
+      BaseFloat log10_word_score = lm.Score(istate, lm.GetWordIndex(word), ostate);
       sentence_log += " " + word + 
                       "[" + std::to_string(lm.GetWordIndex(word)) + "]=" + 
-                      std::to_string(word_score);
+                      std::to_string(-log10_word_score * M_LN10); //convert to -ln()
       std::swap(istate, ostate);
     }
     KALDI_LOG << sentence_log;
 
-    // 2. exactly the same as above but using Fst wrapper interface,
+    // 2. test Fst wrapper interface (KenLmDeterministicFst),
     //    this is the recommanded way to interact with Kaldi's Fst framework.
     sentence_log = "(KALDI)";
     KenLmDeterministicOnDemandFst<fst::StdArc>::StateId s = lm_fst.Start();
@@ -66,8 +66,8 @@ void UnitTestKenLm() {
       } else {
         fst::StdArc arc;
         lm_fst.GetArc(s, symbol_id, &arc);
-        sentence_log += std::to_string(arc.weight.Value());
         s = arc.nextstate;
+        sentence_log += std::to_string(arc.weight.Value());
       }
     }
     KALDI_LOG << sentence_log;
