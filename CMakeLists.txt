@@ -243,3 +243,11 @@ install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/c
     DESTINATION lib/cmake/kaldi
 )
 install(EXPORT kaldi-targets DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/egs/wsj/s5/utils/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/kaldi/egs/wsj/s5/utils/
+)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/egs/wsj/s5/steps/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/kaldi/egs/wsj/s5/steps/
+)
