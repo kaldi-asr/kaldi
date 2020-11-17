@@ -246,10 +246,12 @@ install(EXPORT kaldi-targets DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/egs/wsj/s5/utils/
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/kaldi/egs/wsj/s5/utils/
+    USE_SOURCE_PERMISSIONS
 )
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/egs/wsj/s5/steps/
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/kaldi/egs/wsj/s5/steps/
+    USE_SOURCE_PERMISSIONS
 )
 
 install(
