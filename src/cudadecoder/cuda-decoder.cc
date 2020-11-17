@@ -35,6 +35,7 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
     : word_syms_(NULL),
       generate_partial_hypotheses_(false),
+      partial_traceback_(false),
       frame_shift_seconds_(FLT_MAX),
       fst_(fst),
       nlanes_(nlanes),
@@ -1849,7 +1850,7 @@ void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
         h_all_channels_partial_hypotheses_[ichannel];
 
     // Adding that link at the end of the partial path
-    partial_hypotheses.push_back({curr_token_idx, arc_idx});
+    partial_hypotheses.emplace_back(curr_token_idx, arc_idx);
     // If this is the first link, we don't have to check that we're still on the
     // same best path than before
     if (partial_hypotheses.size() == 1) return;
@@ -1870,14 +1871,17 @@ void CudaDecoder::GeneratePartialPath(LaneId ilane, ChannelId ichannel) {
         break;  // no need to rewrite existing partial path
       curr_token_idx = prev_token_idx;
       GetBestPredecessor(ichannel, curr_token_idx, &prev_token_idx, &arc_idx);
-      *it = {curr_token_idx, arc_idx};
+      it->token_idx = curr_token_idx;
+      it->arc_idx = arc_idx;
+      it->olabel = -1;
+      it->substring_end = -1;
 
       if (prev_token_idx == 0) break;
       if (it == partial_hypotheses.begin()) {
         // Our new path is longer than the previous one
         // Adding some elts
-        partial_hypotheses.push_front(
-            {-1, -1});  // it will be set on next iteration
+        partial_hypotheses.emplace_front();  // default for now, it will be set
+                                             // on next iteration
       }
       --it;
     }
@@ -1909,6 +1913,7 @@ void CudaDecoder::EndpointDetected(LaneId ilane, ChannelId ichannel) {
     int arc_idx = it->arc_idx;
     int ilabel = fst_.h_arc_id_ilabels_[arc_idx];
     // If not a silence phone, exit
+    // we could cache this boolean
     if (silence_phones_.find(ilabel) == silence_phones_.end()) break;
     ++num_silence_frames;
   }
@@ -1917,41 +1922,53 @@ void CudaDecoder::EndpointDetected(LaneId ilane, ChannelId ichannel) {
       frame_shift_seconds_, relative_cost);
 
   h_all_channels_endpoint_detected_[ichannel] = end_point;
-
-  /*
-  // Kept for debugging
-  if (false) {
-    KALDI_LOG << "Channel " << ichannel << " tot_frames=" << num_frames_decoded
-              << " silence frames=" << num_silence_frames
-              << " relative_cost=" << relative_cost;
-  }
-  */
 }
 
-void CudaDecoder::BuildPartialHypothesisOutput(ChannelId ichannel) {
+void CudaDecoder::BuildPartialHypothesisOutput(
+    ChannelId ichannel,
+    std::stack<std::pair<int, PartialPathArc *>> *traceback_buffer_) {
   // We assume that we own the channel lock
   std::list<PartialPathArc> &partial_hypotheses_internal =
       h_all_channels_partial_hypotheses_[ichannel];
   PartialHypothesis &out = h_all_channels_partial_hypotheses_out_[ichannel];
-  out.olabel.clear();
-  out.arc_idx.clear();
-  std::ostringstream oss;
-  bool empty = true;
   // We should only append one word when not backtrack was done in
   // GeneratePartialPath
-  for (PartialPathArc &link : partial_hypotheses_internal) {
-    int arc_idx = link.arc_idx;
-    int olabel = fst_.h_arc_olabels_[arc_idx];
+
+  KALDI_ASSERT(traceback_buffer_->empty());
+  int cut_str_at = 0;
+  for (auto link = partial_hypotheses_internal.rbegin();
+       link != partial_hypotheses_internal.rend(); ++link) {
+    int arc_idx = link->arc_idx;
+    // First time we use this kink, find out the olabel
+    if (link->olabel == -1) link->olabel = fst_.h_arc_olabels_[arc_idx];
+    int olabel = link->olabel;
     if (olabel == 0) continue;
-    out.olabel.push_back(olabel);
-    out.arc_idx.push_back(arc_idx);
-    if (word_syms_) {
-      if (!empty) oss << ' ';
-      oss << word_syms_->Find(olabel);
-      empty = false;
+
+    int substring_end = link->substring_end;
+    if (substring_end != -1) {
+      // We've reconnected to a valid previous substring
+      cut_str_at = substring_end;
+      break;
+    }
+    traceback_buffer_->push({olabel, &(*link)});
+  }
+
+  std::string &str = out.out_str;
+  // Cutting the previous string if necessary
+  str.resize(cut_str_at);
+
+  if (word_syms_) {
+    while (!traceback_buffer_->empty()) {
+      int olabel;
+      PartialPathArc *link;
+      std::tie(olabel, link) = traceback_buffer_->top();
+      traceback_buffer_->pop();
+
+      if (!str.empty()) str.append(" ");
+      str.append(word_syms_->Find(olabel));
+      link->substring_end = str.size();
     }
   }
-  out.out_str = oss.str();
 }
 
 void CudaDecoder::ComputeH2HCopies() {
@@ -1970,10 +1987,12 @@ void CudaDecoder::ComputeH2HCopies() {
 
   int32 ilane;
   if (partial_traceback_) {
+    std::stack<std::pair<int, PartialPathArc *>> traceback_buffer_;
     while ((ilane = n_partial_traceback_threads_todo_.fetch_sub(1)) >= 0) {
       int32 ichannel = lanes2channels_todo_[ilane];
       GeneratePartialPath(ilane, ichannel);
-      if (generate_partial_hypotheses_) BuildPartialHypothesisOutput(ichannel);
+      if (generate_partial_hypotheses_)
+        BuildPartialHypothesisOutput(ichannel, &traceback_buffer_);
       if (endpointing_) EndpointDetected(ilane, ichannel);
       h_all_channels_prev_best_path_traceback_head_[ichannel] =
           h_best_path_traceback_head_[ilane];

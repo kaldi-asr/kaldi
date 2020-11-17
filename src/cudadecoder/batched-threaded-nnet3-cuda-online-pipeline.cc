@@ -61,7 +61,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
   d_all_log_posteriors_.Resize(max_batch_size_ * output_frames_per_chunk_,
                                trans_model_->NumPdfs(), kUndefined);
   available_channels_.resize(config_.num_channels);
-  channels_callbacks_.resize(config_.num_channels);
+  lattice_callbacks_.reserve(config_.num_channels);
+  best_path_callbacks_.reserve(config_.num_channels);
   std::iota(available_channels_.begin(), available_channels_.end(),
             0);  // 0,1,2,3..
   corr_id2channel_.reserve(config_.num_channels);
@@ -96,13 +97,15 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
-    CorrelationID corr_id,
-    const std::function<void(CompactLattice &)> &callback) {
-  auto it = corr_id2channel_.find(corr_id);
-  KALDI_ASSERT(it != corr_id2channel_.end());
-  ChannelId ichannel = it->second;
-  channels_callbacks_[ichannel].reset(
-      new std::function<void(CompactLattice &)>(callback));
+    CorrelationID corr_id, const LatticeCallback &callback) {
+  std::lock_guard<std::mutex> lk(map_callbacks_m_);
+  lattice_callbacks_.insert({corr_id, callback});
+}
+
+void BatchedThreadedNnet3CudaOnlinePipeline::SetBestPathCallback(
+    CorrelationID corr_id, const BestPathCallback &callback) {
+  std::lock_guard<std::mutex> lk(map_callbacks_m_);
+  best_path_callbacks_.insert({corr_id, callback});
 }
 
 bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
@@ -144,7 +147,6 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
     KALDI_WARN << "This corr_id was already in use";
     ichannel = it->second;
   }
-  channels_callbacks_[ichannel].reset();
 
   if (!config_.use_gpu_feature_extraction) {
     KALDI_ASSERT(!feature_pipelines_[ichannel]);
@@ -223,12 +225,23 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
     const std::vector<SubVector<BaseFloat>> &wave_samples,
     const std::vector<bool> &is_first_chunk,
     const std::vector<bool> &is_last_chunk,
-    std::vector<const std::string *> *partial_hypotheses,
-    std::vector<bool> *end_points) {
+    std::vector<const std::string *> *in_partial_hypotheses,
+    std::vector<bool> *in_end_points) {
   nvtxRangePushA("DecodeBatch");
   KALDI_ASSERT(corr_ids.size() > 0);
   KALDI_ASSERT(corr_ids.size() == wave_samples.size());
   KALDI_ASSERT(corr_ids.size() == is_last_chunk.size());
+
+  partial_hypotheses_ = in_partial_hypotheses;
+  end_points_ = in_end_points;
+  {
+    std::lock_guard<std::mutex> lk(map_callbacks_m_);
+    if (!best_path_callbacks_.empty()) {
+      // If best path callbacks are in use, always activate partial hyp and endp
+      if (!partial_hypotheses_) partial_hypotheses_ = &partial_hypotheses_buf_;
+      if (!end_points_) end_points_ = &end_points_buf_;
+    }
+  }
 
   ListIChannelsInBatch(corr_ids, &channels_);
 
@@ -249,37 +262,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
     }
   }
   int features_frame_stride = d_all_features_.Stride();
-  if (partial_hypotheses) {
-    // We're going to have to generate the partial hypotheses
-    if (word_syms_ == nullptr) {
-      KALDI_ERR << "You need to set --word-symbol-table to use "
-                << "partial hypotheses";
-    }
-    cuda_decoder_->AllowPartialHypotheses();
-  }
-  if (end_points) cuda_decoder_->AllowEndpointing();
-
   DecodeBatch(corr_ids, d_features_ptrs_, features_frame_stride,
               n_input_frames_valid_, d_ivectors_ptrs_, is_first_chunk,
               is_last_chunk, &channels_);
-
-  if (partial_hypotheses) {
-    partial_hypotheses->resize(channels_.size());
-    for (size_t i = 0; i < channels_.size(); ++i) {
-      PartialHypothesis *partial_hypothesis;
-      ChannelId ichannel = channels_[i];
-      cuda_decoder_->GetPartialHypothesis(ichannel, &partial_hypothesis);
-      (*partial_hypotheses)[i] = &partial_hypothesis->out_str;
-    }
-  }
-
-  if (end_points) {
-    end_points->resize(channels_.size());
-    for (size_t i = 0; i < channels_.size(); ++i) {
-      ChannelId ichannel = channels_[i];
-      (*end_points)[i] = cuda_decoder_->EndpointDetected(ichannel);
-    }
-  }
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
@@ -304,9 +289,36 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
 
   RunNnet3(*channels, d_features, features_frame_stride, n_input_frames_valid,
            is_first_chunk, is_last_chunk, d_ivectors);
+  if (partial_hypotheses_) {
+    // We're going to have to generate the partial hypotheses
+    if (word_syms_ == nullptr) {
+      KALDI_ERR << "You need to set --word-symbol-table to use "
+                << "partial hypotheses";
+    }
+    cuda_decoder_->AllowPartialHypotheses();
+  }
+  if (end_points_) cuda_decoder_->AllowEndpointing();
+
   RunDecoder(*channels);
 
-  BuildLatticesAndRunCallbacks(corr_ids, *channels, is_last_chunk);
+  if (partial_hypotheses_) {
+    partial_hypotheses_->resize(channels_.size());
+    for (size_t i = 0; i < channels_.size(); ++i) {
+      PartialHypothesis *partial_hypothesis;
+      ChannelId ichannel = channels_[i];
+      cuda_decoder_->GetPartialHypothesis(ichannel, &partial_hypothesis);
+      (*partial_hypotheses_)[i] = &partial_hypothesis->out_str;
+    }
+  }
+
+  if (end_points_) {
+    end_points_->resize(channels_.size());
+    for (size_t i = 0; i < channels_.size(); ++i) {
+      ChannelId ichannel = channels_[i];
+      (*end_points_)[i] = cuda_decoder_->EndpointDetected(ichannel);
+    }
+  }
+  RunCallbacksAndFinalize(corr_ids, *channels, is_last_chunk);
   nvtxRangePop();
 }
 
@@ -349,17 +361,74 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature(int element) {
   n_compute_features_not_done_.fetch_sub(1, std::memory_order_release);
 }
 
-void BatchedThreadedNnet3CudaOnlinePipeline::BuildLatticesAndRunCallbacks(
+void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
     const std::vector<CorrelationID> &corr_ids,
     const std::vector<int> &channels, const std::vector<bool> &is_last_chunk) {
-  list_channels_last_chunk_.clear();
-  list_corr_id_last_chunk_.clear();
-  for (int i = 0; i < is_last_chunk.size(); ++i) {
-    if (is_last_chunk[i]) {
-      list_channels_last_chunk_.push_back(channels[i]);
-      list_corr_id_last_chunk_.push_back(corr_ids[i]);
+  // Best path callbacks
+  {
+    std::lock_guard<std::mutex> lk(map_callbacks_m_);
+    if (!best_path_callbacks_.empty() && partial_hypotheses_ && end_points_) {
+      for (int i = 0; i < corr_ids.size(); ++i) {
+        CorrelationID corr_id = corr_ids[i];
+        auto it_callback = best_path_callbacks_.find(corr_id);
+        if (it_callback != best_path_callbacks_.end()) {
+          // We have a best path callback for this corr_id
+          const std::string &best_path = *((*partial_hypotheses_)[i]);
+          bool partial = !is_last_chunk[i];
+          bool endpoint_detected = (*end_points_)[i];
+          // Run them on main thread - We could move the best path callbacks on
+          // the threadpool
+          it_callback->second(best_path, partial, endpoint_detected);
+          if (is_last_chunk[i]) best_path_callbacks_.erase(it_callback);
+        }
+      }
     }
   }
+
+  list_channels_last_chunk_.clear();
+  list_corr_id_last_chunk_.clear();
+  list_lattice_callbacks_last_chunk_.clear();
+  {
+    std::lock_guard<std::mutex> lk_callbacks(map_callbacks_m_);
+    std::lock_guard<std::mutex> lk_channels(available_channels_m_);
+    for (int i = 0; i < is_last_chunk.size(); ++i) {
+      if (is_last_chunk[i]) {
+        ChannelId ichannel = channels[i];
+        CorrelationID corr_id = corr_ids[i];
+
+        bool has_lattice_callback = false;
+        decltype(lattice_callbacks_.end()) it_lattice_callback;
+        if (!lattice_callbacks_.empty()) {
+          it_lattice_callback = lattice_callbacks_.find(corr_id);
+          has_lattice_callback =
+              (it_lattice_callback != lattice_callbacks_.end());
+        }
+        if (has_lattice_callback) {
+          LatticeCallback *lattice_callback =
+              new LatticeCallback(std::move(it_lattice_callback->second));
+          lattice_callbacks_.erase(it_lattice_callback);
+          list_channels_last_chunk_.push_back(ichannel);
+          list_corr_id_last_chunk_.push_back(corr_id);
+          list_lattice_callbacks_last_chunk_.push_back(lattice_callback);
+        } else {
+          // All done with this corr_ids. Cleaning up
+          available_channels_.push_back(ichannel);
+          int32 ndeleted = corr_id2channel_.erase(corr_id);
+          KALDI_ASSERT(ndeleted == 1);
+        }
+
+        if (!config_.use_gpu_feature_extraction) {
+          // Done with this CPU FE pipeline
+          KALDI_ASSERT(feature_pipelines_[ichannel]);
+          feature_pipelines_[ichannel].reset();
+        }
+      }
+    }
+  }
+
+  // If zero channels require lattice gen, skip it
+  if (list_channels_last_chunk_.empty()) return;
+
   cuda_decoder_->PrepareForGetRawLattice(list_channels_last_chunk_, true);
   // Storing number of callbacks not done. Used if
   // WaitForLatticeCallbacks() is called
@@ -369,21 +438,12 @@ void BatchedThreadedNnet3CudaOnlinePipeline::BuildLatticesAndRunCallbacks(
   // delete data used for decoding that corr_id
   for (int32 i = 0; i < list_channels_last_chunk_.size(); ++i) {
     uint64_t ichannel = list_channels_last_chunk_[i];
-    CorrelationID corr_id = list_corr_id_last_chunk_[i];
-    int32 ndeleted = corr_id2channel_.erase(corr_id);
-    KALDI_ASSERT(ndeleted == 1);
+    LatticeCallback *lattice_callback = list_lattice_callbacks_last_chunk_[i];
     thread_pool_->Push(
         {&BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecodingWrapper, this,
-         ichannel, corr_id});
-    if (!config_.use_gpu_feature_extraction) {
-      // Done with this CPU FE pipeline
-      KALDI_ASSERT(feature_pipelines_[ichannel]);
-      feature_pipelines_[ichannel].reset();
-    }
+         ichannel, static_cast<void *>(lattice_callback)});
   }
-  list_channels_last_chunk_.clear();
-  list_corr_id_last_chunk_.clear();
-}
+}  // namespace cuda_decoder
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ListIChannelsInBatch(
     const std::vector<CorrelationID> &corr_ids, std::vector<int> *channels) {
@@ -445,13 +505,11 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ReadParametersFromModel() {
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
-    int32 ichannel, CorrelationID corr_id) {
+    int32 ichannel, const LatticeCallback *callback) {
   Lattice lat;
   cuda_decoder_->ConcurrentGetRawLatticeSingleChannel(ichannel, &lat);
 
   // Getting the channel callback now, we're going to free that channel
-  std::unique_ptr<std::function<void(CompactLattice &)>> callback;
-  callback = std::move(channels_callbacks_[ichannel]);
   // Done with this channel. Making it available again
   {
     std::lock_guard<std::mutex> lk(available_channels_m_);
@@ -497,6 +555,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
   // if ptr set and if callback func callable
   if (callback && *callback) {
     (*callback)(dlat);
+    delete callback;
   }
 
   n_lattice_callbacks_not_done_.fetch_sub(1, std::memory_order_release);
@@ -506,7 +565,6 @@ void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks() {
   while (n_lattice_callbacks_not_done_.load() != 0)
     usleep(KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US);
 }
-
 }  // namespace cuda_decoder
 }  // namespace kaldi
 

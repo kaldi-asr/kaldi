@@ -460,7 +460,9 @@ class CudaDecoder {
 
   // Used to generate the partial hypotheses
   // Called by the worker threads async
-  void BuildPartialHypothesisOutput(ChannelId ichannel);
+  void BuildPartialHypothesisOutput(
+      ChannelId ichannel,
+      std::stack<std::pair<int, PartialPathArc *>> *traceback_buffer_);
   void GeneratePartialPath(LaneId ilane, ChannelId ichannel);
 
   void EndpointDetected(LaneId ilane, ChannelId ichannel);
