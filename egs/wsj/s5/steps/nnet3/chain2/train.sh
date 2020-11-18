@@ -38,7 +38,7 @@ num_jobs_initial=1
 num_jobs_final=1
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-minibatch_size=32  # This is how you set the minibatch size. 
+groups_per_minibatch=32  # This is how you set the minibatch size. 
 
 max_iters_combine=80
 max_models_combine=20
@@ -232,7 +232,7 @@ while [ $x -lt $num_iters ]; do
              $l2_regularize_opt \
              --srand=$srand \
              "nnet3-copy --learning-rate=$lrate $dir/${x}.raw - |" $den_fst_dir \
-             "ark:nnet3-chain-copy-egs $egs_opts --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$minibatch_size ark:- ark:-|" \
+             "ark:nnet3-chain-copy-egs $egs_opts --frame-shift=$frame_shift scp:$egs_dir/train.$scp_index.scp ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-chain-merge-egs $multilingual_eg_opts --minibatch-size=$groups_per_minibatch ark:- ark:-|" \
              ${model_out_prefix}.$j.raw || touch $dir/.error &
   done
   wait
