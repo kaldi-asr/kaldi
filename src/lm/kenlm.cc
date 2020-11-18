@@ -51,10 +51,10 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
         unk_sym_ = sym;
         unk_symid_ = symid;
       }
-      // check vocabulary consistency between kaldi and KenLm.
-      // note here we always cover and handle <unk> & <UNK> as identical entities,
-      // so that there is no need to modify any resources from Kaldi or KenLm
-      // when you have mimatched UNKNOWN representations(unk vs UNK).
+      // check vocabulary consistency between kaldi and kenlm.
+      // note we always handle <unk> & <UNK> as a pair, 
+      // so don't worry about the literal mismatch
+      // between Kaldi and kenlm arpa (<UNK> vs <unk>)
       WordIndex wid = vocab_->Index(sym.c_str());
       if ((wid == vocab_->Index("<unk>") || wid == vocab_->Index("<UNK>")) 
           && sym != "<unk>" && sym != "<UNK>"
@@ -88,7 +88,7 @@ int KenLm::Load(std::string kenlm_filename,
   if (model_ == nullptr) { KALDI_ERR << "Failed to load KenLm model"; }
 
   // KenLm holds vocabulary internally with ownership,
-  // vocab_ here is just for convenient reference
+  // vocab_ here is just for concise reference
   vocab_ = &model_->BaseVocabulary();
   if (vocab_ == nullptr) { KALDI_ERR << "Failed to get vocabulary from KenLm model"; }
 

@@ -28,14 +28,12 @@
 
 namespace kaldi {
 
-// Kaldi wrapper class for KenLm model, 
-// the underlying model structure can be either "trie" or "probing".
-// Its main purposes:
-//  1. loads & holds kenlm model resources(with ownership)
-//  2. handles the index mapping between kaldi symbol index & kenlm word index
-//  3. provides ngram query method to upper level fst wrapper
-// This class is stateless and thread-safe, so it can be shared by its FST wrapper class
-// (i.e. KenLmDeterministicOnDemandFst class)
+// KenLm class wraps kenlm model(supporting both "trie" or "probing" models):
+//  1. provides interface for loading binary LM, and holds it with ownership
+//  2. provides interface for ngram score query at runtime
+//  3. handles the index mapping between kaldi's symbols & kenlm's words
+// KenLm object is heavy, stateless and thread-safe, 
+// can be shared by Fst wrapper class(i.e. KenLmDeterministicOnDemandFst)
 class KenLm {
  public:
   typedef lm::WordIndex WordIndex;
@@ -57,10 +55,10 @@ class KenLm {
     symid_to_wid_.clear();
   }
 
-  // with giant LM on SSD hard drive,
-  // you can set load method to util::LoadMethod::LAZY,
-  // which enables on-demand model loading via POSIX mmap(),
-  // refer to kenlm/util/mmap.hh for more load methods.
+  // If you have big LM on SSD hard-drive,
+  // you can set load_method to util::LoadMethod::LAZY,
+  // which enables "on-demand" model reading(via POSIX mmap) at runtime.
+  // Refer to tools/kenlm/util/mmap.hh for more load methods.
   int Load(std::string kenlm_filename, 
            std::string kaldi_symbol_table_filename,
            util::LoadMethod load_method = util::LoadMethod::POPULATE_OR_READ);
@@ -86,8 +84,8 @@ class KenLm {
     return model_->BaseScore(in_state, word, out_state);
   }
 
-  // this provides a fast hash function to upper level fst wrapper class,
-  // to maintain the mapping between underlying lm states and fst state indexes
+  // This provides a fast state hashing, 
+  // KenLmDeterministicOnDemandFst needs this for Fst states managing.
   struct StateHasher {
     inline size_t operator()(const State &s) const noexcept {
       return util::MurmurHashNative(s.words, sizeof(WordIndex) * s.Length());
@@ -98,27 +96,27 @@ class KenLm {
   void ComputeSymbolToWordIndexMapping(std::string symbol_table);
   
  private:
-  lm::base::Model *model_; // has ownership
+  lm::base::Model *model_; // with ownership
 
-  // no ownership, points to models_'s internal vocabulary
+  // without ownership, points to internal vocabulary of model_
   const lm::base::Vocabulary* vocab_;
 
-  // There are really two indexing systems here:
-  // Kaldi's fst output symbol id(defined in words.txt),
-  // and KenLm's word index(obtained by hashing the word string).
-  // in order to incorperate KenLm into Kaldi during runtime, 
-  // we need to know the mapping between the two indexing systems.
-  // by keeping this mapping explicity in this class,
-  // we avoid modifing any Kaldi & KenLm runtime resources,
-  // (e.g. HCLG.fst/lattices & KenLm model file)
-  // notes:
-  // <eps> and #0 symbols are special,
-  // they do not correspond to any word in KenLm,
-  // Normally, these two symbols shouldn't consume any KenLm word,
+  // There are two integerized indexing systems here:
+  // 1. Kaldi's fst output *symbol index*(defined in words.txt),
+  // 2. KenLm's *word index*(defined by word string hashing).
+  // In order to rescore kaldi hypotheses with kenlm ngrams, 
+  // we need to know the index mapping from symbol to word.
+  // KenLm class precomputes (during model loading) and stores this mapping,
+  // and apply the mapping at runtime.
+  // This is slower, but at least we don't need
+  // to modify/convert runtime resources.(e.g. HCLG/lattices or kenlm models)
+  //
+  // In the mapping, <eps> and #0 symbols are special:
+  // They do not correspond to any word in KenLm,
   // so the mapping of these two symbols are logically undefined,
-  // we just map them to KenLm's <unk>(which is always indexed as 0),
-  // to avoid random invalid mapping.
-  // usage: symid_to_wid_[kaldi_symbol_index] -> kenlm word index
+  // we just map them to KenLm's <unk> to avoid random invalid mapping.
+
+  // symid_to_wid_[kaldi_symbol_index] -> kenlm word index
   std::vector<WordIndex> symid_to_wid_;
 
   // special lm symbols
@@ -132,12 +130,10 @@ class KenLm {
 }; // class KenLm
 
 
-// This class wraps KenLm into DeterministicOnDemandFst interface,
-// so that Kaldi's fst framework can utilize KenLm as a deterministic FST.
-// objects of this class have states(so it's not thread-safe),
-// different threads should create their own instances, they are lightweight.
-// Globally, KenLmDeterministicOnDemandFst objects should share 
-// the same KenLm object (which is heavy, stateless and thread-safe)
+// DeterministicOnDemandFst wraps a KenLm object as a deteministic Fst.
+// Internally, it manages dynamically expanded Fst states(so not thread-safe),
+// different threads should create their own instances of this class.
+// They are lightweight and can share the same KenLm object.
 template<class Arc>
 class KenLmDeterministicOnDemandFst : public fst::DeterministicOnDemandFst<Arc> {
  public:
