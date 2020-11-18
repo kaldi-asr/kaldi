@@ -35,7 +35,7 @@ num_egs_threads=10  # number of threads used for sampling, if we're using
                     # time, will be however many is needed to balance the
                     # sampling and the actual training, this is just the maximum
                     # possible number that are allowed to run
-use_gpu=true  # use GPU for training
+use_gpu=yes  # use GPU for training
 use_gpu_for_diagnostics=false  # set true to use GPU for compute_prob_*.log
 
 # optional cleanup options
