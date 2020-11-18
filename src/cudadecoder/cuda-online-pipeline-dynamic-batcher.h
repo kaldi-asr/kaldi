@@ -61,7 +61,7 @@ class CudaOnlinePipelineDynamicBatcher {
   std::unordered_set<CorrelationID> is_corr_id_in_batch_;
   std::unordered_set<CorrelationID> is_corr_id_in_use_;
   std::mutex chunks_m_;
-  std::atomic_int32_t n_chunks_in_queue_;  // equals to chunks.size(), lock free
+  std::atomic<std::uint32_t> n_chunks_in_queue_;  // equals to chunks.size(), lock free
   bool run_batcher_thread_;
   std::unique_ptr<std::thread> batcher_thread_;
   BatchedThreadedNnet3CudaOnlinePipeline &cuda_pipeline_;
