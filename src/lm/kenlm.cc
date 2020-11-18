@@ -41,11 +41,9 @@ void KenLm::ComputeSymbolToWordIndexMapping(std::string symbol_table_filename) {
       std::string sym = fields[0];
       int32 symid = 0;  ConvertStringToInteger(fields[1], &symid);
       // mark special LM word
-      if (sym == "<s>") {
-        bos_sym_ = sym;
+      if (sym == bos_sym_) {
         bos_symid_ = symid;
-      } else if (sym == "</s>") {
-        eos_sym_ = sym;
+      } else if (sym == eos_sym_) {
         eos_symid_ = symid;
       } else if (sym == "<unk>" || sym == "<UNK>") {
         unk_sym_ = sym;

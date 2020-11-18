@@ -42,7 +42,7 @@ class KenLm {
  public:
   KenLm() : 
     model_(nullptr), vocab_(nullptr),
-    bos_sym_(), eos_sym_(), unk_sym_(),
+    bos_sym_("<s>"), eos_sym_("</s>"), unk_sym_("<unk>"),
     bos_symid_(0), eos_symid_(0), unk_symid_(0)
   { }
 
