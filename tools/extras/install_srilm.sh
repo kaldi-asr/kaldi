@@ -49,7 +49,8 @@ fi
 cp Makefile tmpf
 
 cat tmpf | awk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
-  > Makefile || exit 1;
+  > Makefile || exit 1
+rm tmpf
 
 mtype=`sbin/machine-type`
 
@@ -62,9 +63,7 @@ grep ADDITIONAL_LDFLAGS common/Makefile.machine.$mtype | \
     sed 's|$| -L$(SRILM)/../liblbfgs-1.10/lib/ -Wl,-rpath -Wl,$(SRILM)/../liblbfgs-1.10/lib/|' \
     >> common/Makefile.machine.$mtype
 
-
-
-make || exit 1
+make || exit
 
 cd ..
 (
@@ -90,4 +89,3 @@ cd ..
 
 echo >&2 "Installation of SRILM finished successfully"
 echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
-

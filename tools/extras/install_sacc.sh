@@ -24,7 +24,7 @@ fi
 
 if [ -d SAcC_GLNXA64 ]; then
   echo "*It looks like SAcC_GLNXA64.zip has already been unzipped, not unzipping it."
-else 
+else
   ! unzip SAcC_GLNXA64.zip && echo "Error unzipping SAcC_GLNXA64.zip [e.g. unzip not installed?]" \
    && exit 1;
 fi
