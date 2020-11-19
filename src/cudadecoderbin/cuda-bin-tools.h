@@ -19,12 +19,16 @@
 #include <iostream>
 #include <vector>
 #include "cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h"
+#include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
+#include "cudadecoder/cuda-pipeline-common.h"
 #include "fstext/fstext-lib.h"
 #include "nnet3/am-nnet-simple.h"
 #include "nnet3/nnet-utils.h"
 
 #ifndef KALDI_CUDA_DECODER_BIN_CUDA_BIN_TOOLS_H_
 #define KALDI_CUDA_DECODER_BIN_CUDA_BIN_TOOLS_H_
+
+#define KALDI_CUDA_DECODER_BIN_FLOAT_PRINT_PRECISION 2
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -180,6 +184,142 @@ void ReadDataset(const CudaOnlineBinaryOptions &opts,
     }
     std::cout << "done" << std::endl;
   }
+}
+
+// Reads all CTM outputs in results and merge them together
+// into a single output. That output is then written as a CTM text format to
+// ostream
+void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
+                              const std::string &key, std::ostream &ostream,
+                              fst::SymbolTable *word_syms = NULL) {
+  size_t nresults = results.size();
+
+  if (nresults == 0) {
+    KALDI_WARN << "Utterance " << key << " has no results. Skipping";
+    return;
+  }
+
+  bool all_results_valid = true;
+
+  for (size_t iresult = 0; iresult < nresults; ++iresult)
+    all_results_valid &= results[iresult].HasValidResult();
+
+  if (!all_results_valid) {
+    KALDI_WARN << "Utterance " << key
+               << " has at least one segment with an error. Skipping";
+    return;
+  }
+
+  ostream << std::fixed;
+  ostream.precision(KALDI_CUDA_DECODER_BIN_FLOAT_PRINT_PRECISION);
+
+  // opt: combine results into one here
+  BaseFloat previous_segment_word_end = 0;
+  for (size_t iresult = 0; iresult < nresults; ++iresult) {
+    bool this_segment_first_word = true;
+    bool is_last_segment = ((iresult + 1) == nresults);
+    BaseFloat next_offset_seconds = FLT_MAX;
+    if (!is_last_segment) {
+      next_offset_seconds = results[iresult + 1].GetTimeOffsetSeconds();
+    }
+
+    auto &result = results[iresult];
+    BaseFloat offset_seconds = result.GetTimeOffsetSeconds();
+    auto &ctm = result.GetCTMResult();
+    for (size_t iword = 0; iword < ctm.times_seconds.size(); ++iword) {
+      BaseFloat word_from = offset_seconds + ctm.times_seconds[iword].first;
+      BaseFloat word_to = offset_seconds + ctm.times_seconds[iword].second;
+
+      // If beginning of this segment, only keep "new" words
+      // i.e. the ones that were not already in previous segment
+      if (this_segment_first_word) {
+        if (word_from >= previous_segment_word_end) {
+          // Found the first "new" word for this segment
+          this_segment_first_word = false;
+        } else
+          continue;  // skipping this word
+      }
+
+      // If end of this segment, skip the words which are
+      // overlapping two segments
+      if (!is_last_segment) {
+        if (word_from >= next_offset_seconds) break;  // done with this segment
+      }
+
+      previous_segment_word_end = word_to;
+
+      ostream << key << " 1 " << word_from << ' ' << (word_to - word_from)
+              << ' ';
+
+      int32 word_id = ctm.words[iword];
+      if (word_syms)
+        ostream << word_syms->Find(word_id);
+      else
+        ostream << word_id;
+
+      ostream << ' ' << ctm.conf[iword] << '\n';
+    }
+  }
+}
+
+void OpenOutputHandles(const std::string &output_wspecifier,
+                       std::unique_ptr<CompactLatticeWriter> *clat_writer,
+                       std::unique_ptr<Output> *ctm_writer) {
+  WspecifierType ctm_wx_type;
+  ctm_wx_type = ClassifyWspecifier(output_wspecifier, NULL, NULL, NULL);
+
+  if (ctm_wx_type == kNoWspecifier) {
+    // No Wspecifier, assume this is a .ctm file
+    ctm_writer->reset(new Output(output_wspecifier,
+                                 false));  // false == non-binary writing mode.
+  } else {
+    // Lattice output
+    clat_writer->reset(new CompactLatticeWriter(output_wspecifier));
+  }
+}
+
+// Write all lattices in results using clat_writer
+// If print_offsets is true, will write each lattice
+// under the key=[utterance_key]-[offset in seconds]
+// prints_offsets should be true if results.size() > 1
+void WriteLattices(std::vector<CudaPipelineResult> &results,
+                   const std::string &key, bool print_offsets,
+                   CompactLatticeWriter &clat_writer) {
+  for (const CudaPipelineResult &result : results) {
+    double offset = result.GetTimeOffsetSeconds();
+    if (!result.HasValidResult()) {
+      KALDI_WARN << "Utterance " << key << ": "
+                 << " Segment with offset " << offset
+                 << " is not valid. Skipping";
+    }
+
+    std::ostringstream key_with_offset;
+    key_with_offset << key;
+    if (print_offsets) key_with_offset << "-" << offset;
+    clat_writer.Write(key_with_offset.str(), result.GetLatticeResult());
+    if (!print_offsets) {
+      if (results.size() > 1) {
+        KALDI_WARN << "Utterance " << key
+                   << " has multiple segments but only one is written to "
+                      "output. Use print_offsets=true";
+      }
+      break;  // printing only one result if offsets are not used
+    }
+  }
+}
+
+// Read lattice postprocessor config, apply it,
+// and assign it to the pipeline
+void LoadAndSetLatticePostprocessor(
+    const std::string &config_filename,
+    BatchedThreadedNnet3CudaPipeline2 *cuda_pipeline) {
+  ParseOptions po("");  // No usage, reading from a file
+  LatticePostprocessorConfig pp_config;
+  pp_config.Register(&po);
+  po.ReadConfigFile(config_filename);
+  auto lattice_postprocessor =
+      std::make_shared<LatticePostprocessor>(pp_config);
+  cuda_pipeline->SetLatticePostprocessor(lattice_postprocessor);
 }
 
 }  // namespace cuda_decoder
