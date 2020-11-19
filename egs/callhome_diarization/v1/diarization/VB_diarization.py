@@ -226,11 +226,14 @@ def precalculate_VtinvSigmaV(V, invSigma):
     return VtinvSigmaV
 
 
-# Initialize gamma (per-frame speaker posteriors) from a reference
+# Initialize q (per-frame speaker posteriors) from a reference
 # (vector of per-frame zero based integer speaker IDs)
-def frame_labels2posterior_mx(labels):
-    # initialize from reference
-    pmx = np.zeros((len(labels), labels.max()+1))
+def frame_labels2posterior_mx(labels, maxSpeakers=None):
+    #initialize from reference
+    if maxSpeakers:
+      pmx = np.zeros((len(labels), maxSpeakers))
+    else:
+      pmx = np.zeros((len(labels), labels.max()+1))
     pmx[np.arange(len(labels)), labels] = 1
     return pmx
 
