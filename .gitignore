@@ -160,3 +160,5 @@ GSYMS
 /src/**/CMakeLists.txt
 /build*
 .vscode
+
+/cmake_tool/build
