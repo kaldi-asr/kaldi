@@ -35,21 +35,20 @@ fi
 # get rid off irrelavent symbols, the rest of symbols are used as LM training vocabulary. 
 grep -v '<eps>' $symbol_table | grep -v '#0' | grep -v '<unk>' | grep -v '<UNK>' | grep -v '<s>' | grep -v '</s>' | awk '{print $1}' > $dir/ngram.vocab
 
-# To keep kenlm & kaldi have strictly the same vocabulary,
-# here we need to:
+# To make sure that kenlm & kaldi have strictly the same vocabulary:
 # 1. feed vocabulary into kenlm via --limit_vocab_file
 # 2. cat vocabulary to training text, so each word at least appear once
 # 
 # TL;DR reason:
-# KenLM's vocabulary control is tricky
-# the behavior of option --limit_vocab_file is not the same as SRILM's -limit-vocab.
-# --limit_vocab_file actually spcified a *valid* set of vocabulary,
-# whereas *valid but unseen* word will be discarded in final arpa.
-# this may bring inconsistency between kenlm and kaldi system
-# so the trick is, exploiting the fact that kenlm will never prune unigram,
-# we explicitly append kaldi's vocab to kenlm's training text, and feed kaldi vocab to --limit_vocab_file
-# so we will always get an arpa that has exactly the same vocabulary as kaldi.
-# the effect of this trick is just as add-one smoothing, shouldn't have significant impacts in practice.
+# Unlike SRILM's -limit-vocab, kenlm's --limit_vocab_file option 
+# spcifies a *valid* set of vocabulary, whereas *valid but unseen* 
+# words are discarded in final arpa.
+# So the trick is, 
+# we explicitly add kaldi's vocab(one word per line) to training text, 
+# making each word appear at least once.
+# kenlm never prunes unigram, so this always generates consistent kenlm vocabuary as kaldi has.
+# The effect of this is like add-one smoothing to unigram counts,
+# shouldn't have significant impacts in practice.
 cat $dir/ngram.vocab $text | lmplz $kenlm_opts --limit_vocab_file $dir/ngram.vocab > $dir/${arpa_name}.arpa
 
 echo "$0: Done training arpa to: $dir/${arpa_name}.arpa"
