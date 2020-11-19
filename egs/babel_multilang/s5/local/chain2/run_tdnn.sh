@@ -420,7 +420,7 @@ if [ $stage -le 18 ]; then
     --initial-effective-lrate $initial_effective_lrate \
     --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
-    --groups-per-minibatch 128 \
+    --minibatch-size 128 \
     --srand 1 \
     --shuffle-buffer-size 5000 \
     --l2-regularize 5e-5 \
