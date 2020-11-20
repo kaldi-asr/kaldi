@@ -102,23 +102,24 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 13 ]; then
+  echo "skipped"
   # Now we compute the pronunciation and silence probabilities from training data,
   # and re-create the lang directory.
-  steps/get_prons.sh --cmd "$train_cmd" \
-                     data/train_30k data/lang exp/tri4b
-  utils/dict_dir_add_pronprobs.sh --max-normalize true \
-                                  data/local/dict_nosp \
-                                  exp/tri4b/pron_counts_nowb.txt exp/tri4b/sil_counts_nowb.txt \
-                                  exp/tri4b/pron_bigram_counts_nowb.txt data/local/dict
+  #steps/get_prons.sh --cmd "$train_cmd" \
+  #                   data/train_30k data/lang exp/tri4b
+  #utils/dict_dir_add_pronprobs.sh --max-normalize true \
+  #                                data/local/dict \
+  #                                exp/tri4b/pron_counts_nowb.txt exp/tri4b/sil_counts_nowb.txt \
+  #                                exp/tri4b/pron_bigram_counts_nowb.txt data/local/dict
 
-  utils/prepare_lang.sh data/local/dict \
-                        "<UNK>" data/local/lang_tmp data/lang
-  local/format_lms.sh --src-dir data/lang data/local/lm
+  #utils/prepare_lang.sh data/local/dict \
+  #                      "<UNK>" data/local/lang_tmp data/lang
+  #local/format_lms.sh --src-dir data/lang data/local/lm
 
-  utils/build_const_arpa_lm.sh \
-    data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge
-  utils/build_const_arpa_lm.sh \
-    data/local/lm/lm_fglarge.arpa.gz data/lang data/lang_test_fglarge
+  #utils/build_const_arpa_lm.sh \
+  #  data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge
+  #utils/build_const_arpa_lm.sh \
+  #  data/local/lm/lm_fglarge.arpa.gz data/lang data/lang_test_fglarge
 fi
 
 if [ $stage -le 16 ]; then
