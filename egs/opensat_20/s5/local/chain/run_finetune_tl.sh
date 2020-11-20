@@ -6,6 +6,10 @@
 # %WER 45.91 [ 8956 / 19507, 445 ins, 6660 del, 1851 sub ] exp/chain_train_icsiami/tdnn_train_icsiami/decode_safe_t_dev1_train_tl/wer_8_0.0
 # %WER 14.19 [ 2768 / 19507, 281 ins, 1183 del, 1304 sub ] exp/chain_finetune/tdnn_finetune_40_100/decode_safe_t_dev1_finetune_tl/wer_8_0.0
 # %WER 13.94 [ 2720 / 19507, 289 ins, 1108 del, 1323 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep2/decode_safe_t_dev1_finetune_tl/wer_8_0.0
+
+# %WER 38.17 [ 7445 / 19507, 512 ins, 5278 del, 1655 sub ] exp/chain_train_icsiami/tdnn_train_icsiami_renorm/decode_safe_t_dev1_train_tl/wer_7_0.0
+# %WER 12.34 [ 2408 / 19507, 295 ins, 934 del, 1179 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep1.5/decode_safe_t_dev1_finetune_tl/wer_8_0.0
+# %WER 12.01 [ 2343 / 19507, 260 ins, 918 del, 1165 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep2_2.5/decode_safe_t_dev1_finetune_tl/wer_8_0.0
 set -e
 
 dir=exp/chain_finetune/tdnn_finetune
@@ -26,7 +30,7 @@ src_tree_dir=exp/chain_all/tree_bi_all # chain tree-dir for src data;
                                          # the alignment in target domain is
                                          # converted using src-tree
 
-primary_lr_factor=0.70 # The learning-rate factor for transferred layers from source
+primary_lr_factor=0.25 # The learning-rate factor for transferred layers from source
                        # model. e.g. if 0, the paramters transferred from source model
                        # are fixed.
                        # The learning-rate factor for new added layers is 1.0.
@@ -40,17 +44,17 @@ stage=0
 nj=100
 train_set=train_safet
 gmm=tri3
-num_epochs=1
+num_epochs=2
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
-tdnn_affix=_finetune_70_100  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=_finetune_25_100_ep2  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 nnet3_affix=_finetune
 common_egs_dir=
 dropout_schedule='0,0@0.20,0.5@0.50,0'
 remove_egs=true
-xent_regularize=0.1
+xent_regularize=0.25
 get_egs_stage=-10
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
