@@ -1,3 +1,4 @@
+#ifdef HAVE_KENLM
 #include "util/text-utils.h"
 #include "util/kaldi-io.h"
 #include "lm/kenlm.h"
@@ -80,3 +81,4 @@ int main(int argc, char *argv[]) {
   UnitTestKenLm();
   return 0;
 }
+#endif
