@@ -23,7 +23,7 @@ set -u
 
 stage=0
 cleanup_stage=0
-data=data/train_960
+data=data/train
 cleanup_affix=cleaned
 srcdir=exp/tri6b
 nj=100
@@ -57,21 +57,16 @@ fi
 
 if [ $stage -le 4 ]; then
   # Test with the models trained on cleaned-up data.
-  utils/mkgraph.sh data/lang_test_tgsmall ${cleaned_dir} ${cleaned_dir}/graph_tgsmall
+  utils/mkgraph.sh data/lang_test_tg ${cleaned_dir} ${cleaned_dir}/graph_tg
 
-  for dset in test_clean test_other dev_clean dev_other; do
+  for dset in test; do
     (
     steps/decode_fmllr.sh --nj $decode_nj --num-threads $decode_num_threads \
        --cmd "$decode_cmd" \
-       ${cleaned_dir}/graph_tgsmall data/${dset} ${cleaned_dir}/decode_${dset}_tgsmall
-    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-      data/${dset} ${cleaned_dir}/decode_${dset}_{tgsmall,tgmed}
+       ${cleaned_dir}/graph_tg data/${dset} ${cleaned_dir}/decode_${dset}_tg
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-      data/${dset} ${cleaned_dir}/decode_${dset}_{tgsmall,tglarge}
-    steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-      data/${dset} ${cleaned_dir}/decode_${dset}_{tgsmall,fglarge}
+      --cmd "$decode_cmd" data/lang_test_{tg,fg} \
+      data/${dset} ${cleaned_dir}/decode_${dset}_{tg,fg}
    ) &
   done
 fi

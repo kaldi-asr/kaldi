@@ -146,29 +146,27 @@ if [ $stage -le 18 ]; then
   # as it is faster.
   steps/train_quick.sh --cmd "$train_cmd" \
                        7000 150000 data/train data/lang exp/tri5b_ali exp/tri6b
+fi
 
+if [ $stage -le 19 ]; then
   # decode using the tri6b model
-  utils/mkgraph.sh data/lang_test_tgsmall \
-                   exp/tri6b exp/tri6b/graph_tgsmall
-  for test in test_clean test_other dev_clean dev_other; do
-      steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
-                            exp/tri6b/graph_tgsmall data/$test exp/tri6b/decode_tgsmall_$test
-      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-                         data/$test exp/tri6b/decode_{tgsmall,tgmed}_$test
+  utils/mkgraph.sh data/lang_test_tg \
+                   exp/tri6b exp/tri6b/graph_tg
+  for test in test; do
+      steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+                            exp/tri6b/graph_tg data/$test exp/tri6b/decode_tg_$test
       steps/lmrescore_const_arpa.sh \
-        --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-        data/$test exp/tri6b/decode_{tgsmall,tglarge}_$test
-      steps/lmrescore_const_arpa.sh \
-        --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-        data/$test exp/tri6b/decode_{tgsmall,fglarge}_$test
+        --cmd "$decode_cmd" data/lang_test_{tg,fg} \
+        data/$test exp/tri6b/decode_{tg,fg}_$test
   done
 fi
 
 
-if [ $stage -le 19 ]; then
+if [ $stage -le 20 ]; then
   # this does some data-cleaning. The cleaned data should be useful when we add
   # the neural net and chain systems.  (although actually it was pretty clean already.)
-  local/run_cleanup_segmentation.sh
+  echo "Cleanup segmentation skipped for now due to encoding/non-ascii characters issues"
+  #local/run_cleanup_segmentation.sh
 fi
 
 # steps/cleanup/debug_lexicon.sh --remove-stress true  --nj 200 --cmd "$train_cmd" data/train_clean_100 \
@@ -192,7 +190,7 @@ fi
 #     --rnnlm-tag "h150-me3-400-nce20" $data data/local/lm
 
 
-if [ $stage -le 20 ]; then
+if [ $stage -le 21 ]; then
   # train and test nnet3 tdnn models on the entire data with data-cleaning.
   local/chain/run_tdnn.sh # set "--stage 11" if you have already run local/nnet3/run_tdnn.sh
 fi
