@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # This script sorts the utterance based in the error
-
+# Ashish Arora
+# License: Apache 2.0
 from collections import OrderedDict
 import sys, io
 import string
