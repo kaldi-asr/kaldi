@@ -32,7 +32,7 @@ fi
 
 
 # extract text from AMI XML annotations,
-local/ami_xml2text.sh $dir
+local/AMI/ami_xml2text.sh $dir
 
 wdir=data/local/AMI_annotations
 [ ! -f $wdir/transcripts1 ] && echo "$0: File $wdir/transcripts1 not found." && exit 1;
