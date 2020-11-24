@@ -5,9 +5,8 @@
 # exp/chain_all/tdnn_all_cnn: num-iters=502 nj=3..5 num-params=15.1M dim=80+100->4520 combine=-0.065->-0.063 (over 7) xent:train/valid[333,501,final]=(-1.40,-1.16,-1.14/-1.41,-1.23,-1.21) logprob:train/valid[333,501,final]=(-0.076,-0.057,-0.056/-0.090,-0.075,-0.074)
 
 # 40 dim results
-# 40 dim good data: %WER 12.00 [ 2340 / 19507, 289 ins, 830 del, 1221 sub ] exp/chain_all/tdnn_all/decode_safe_t_dev1/wer_8_0.0
-# 40 dim new data: %WER 12.85 [ 2507 / 19507, 254 ins, 1107 del, 1146 sub ] exp/chain_all/tdnn_all/decode_safe_t_dev1/wer_8_1.0
-# 40 dim new data: %WER 12.61 [ 2460 / 19507, 245 ins, 1119 del, 1096 sub ] exp/chain_all/tdnn_all_2/decode_safe_t_dev1/wer_9_0.5
+# 40 dim: %WER 12.85 [ 2507 / 19507, 254 ins, 1107 del, 1146 sub ] exp/chain_all/tdnn_all/decode_safe_t_dev1/wer_8_1.0
+# 40 dim: %WER 12.61 [ 2460 / 19507, 245 ins, 1119 del, 1096 sub ] exp/chain_all/tdnn_all_2/decode_safe_t_dev1/wer_9_0.5
 set -e -o pipefail
 stage=0
 nj=90

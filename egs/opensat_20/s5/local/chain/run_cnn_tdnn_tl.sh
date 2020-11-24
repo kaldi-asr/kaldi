@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 # %WER 45.91 [ 8956 / 19507, 445 ins, 6660 del, 1851 sub ] exp/chain_train_icsiami/tdnn_train_icsiami/decode_safe_t_dev1_train_tl/wer_8_0.0
+# %WER 38.17 [ 7445 / 19507, 512 ins, 5278 del, 1655 sub ] exp/chain_train_icsiami/cnn_tdnn_train_icsiami/decode_safe_t_dev1_train_tl/wer_7_0.0
+
 set -e -o pipefail
 stage=0
 nj=100

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# %WER 14.74 [ 2875 / 19507, 217 ins, 1237 del, 1421 sub ] exp/chain_a/tdnn_a/decode_safe_t_dev1/wer_8_0.0
-# %WER 13.36 [ 2606 / 19507, 217 ins, 1110 del, 1279 sub ] exp/chain_a/tdnn_a_spec_wsj/decode_safe_t_dev1/wer_8_0.0
+# %WER 14.74 [ 2875 / 19507, 217 ins, 1237 del, 1421 sub ] exp/chain_a/cnn_tdnn_1a/decode_safe_t_dev1/wer_8_0.0
+# %WER 13.36 [ 2606 / 19507, 217 ins, 1110 del, 1279 sub ] exp/chain_a/cnn_tdnn_1a_spec/decode_safe_t_dev1/wer_8_0.0
 set -e -o pipefail
 stage=0
 nj=60
@@ -14,9 +14,9 @@ num_epochs=10
 train_stage=-10
 xent_regularize=0.1
 get_egs_stage=-10
-tree_affix=_a  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=_a  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-nnet3_affix=_a
+tree_affix=_1a  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=_1a  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+nnet3_affix=_1a
 common_egs_dir= 
 dropout_schedule='0,0@0.20,0.5@0.50,0'
 remove_egs=true

@@ -117,32 +117,32 @@ suffix=_all
 if [ $stage -le 10 ]; then
   utils/subset_data_dir.sh data/train_all 15000 data/train_15k
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
-    data/train_15k data/lang_nosp_test exp/mono_train_${suffix}
+    data/train_15k data/lang_nosp_test exp/mono_train${suffix}
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/train_all data/lang_nosp_test exp/mono_train_${suffix} exp/mono_train_${suffix}_ali
+    data/train_all data/lang_nosp_test exp/mono_train${suffix} exp/mono_train${suffix}_ali
 fi
 
 # context-dep. training with delta features.
 if [ $stage -le 11 ]; then
   steps/train_deltas.sh --cmd "$train_cmd" \
-    5000 80000 data/train_all data/lang_nosp_test exp/mono_train_${suffix}_ali exp/tri1_train_${suffix}
+    5000 80000 data/train_all data/lang_nosp_test exp/mono_train${suffix}_ali exp/tri1_train${suffix}
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/train_all data/lang_nosp_test exp/tri1_train_${suffix} exp/tri1_train_${suffix}_ali
+    data/train_all data/lang_nosp_test exp/tri1_train${suffix} exp/tri1_train${suffix}_ali
 fi
 
 if [ $stage -le 12 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
-    5000 80000 data/train_all data/lang_nosp_test exp/tri1_train_${suffix}_ali exp/tri2_train_${suffix}
+    5000 80000 data/train_all data/lang_nosp_test exp/tri1_train${suffix}_ali exp/tri2_train${suffix}
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/train_all data/lang_nosp_test exp/tri2_train_${suffix} exp/tri2_train_${suffix}_ali
+    data/train_all data/lang_nosp_test exp/tri2_train${suffix} exp/tri2_train${suffix}_ali
 fi
 
 if [ $stage -le 13 ]; then
   steps/train_sat.sh --cmd "$train_cmd" \
     5000 80000 data/train_all data/lang_nosp_test exp/tri2_train_${suffix}_ali exp/tri3_train_${suffix}
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/train_all data/lang_nosp_test exp/tri3_train_${suffix} exp/tri3_train_${suffix}_ali
+    data/train_all data/lang_nosp_test exp/tri3_train${suffix} exp/tri3_train${suffix}_ali
 fi
 
 if [ $stage -le 14 ]; then

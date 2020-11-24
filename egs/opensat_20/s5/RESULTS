@@ -1,0 +1,16 @@
+CNN-TDNNF setup result for safet development set with only safet data
+# %WER 13.36 [ 2606 / 19507, 217 ins, 1110 del, 1279 sub ] exp/chain_a/cnn_tdnn_1a_spec/decode_safe_t_dev1/wer_8_0.0
+
+CNN-TDNNF setup result for safet development set with shared data (AMI+ICSI+safet)
+(run1)
+# %WER 12.61 [ 2460 / 19507, 245 ins, 1119 del, 1096 sub ] exp/chain_all/cnn_tdnn_all/decode_safe_t_dev1/wer_9_0.5
+# %WER 11.70 [ 2283 / 19507, 228 ins, 964 del, 1091 sub ] exp/chain_finetune/cnn_tdnn_finetune_shared_ep2/decode_safe_t_dev1_finetune_tl/wer_8_0.5
+
+(run2)
+# %WER 12.85 [ 2507 / 19507, 254 ins, 1107 del, 1146 sub ] exp/chain_all/cnn_tdnn_all/decode_safe_t_dev1/wer_8_1.0
+# %WER 11.86 [ 2313 / 19507, 298 ins, 895 del, 1120 sub ] exp/chain_finetune/cnn_tdnn_finetune_shared_ep2/decode_safe_t_dev1_finetune_tl/wer_8_0.0
+
+CNN-TDNNF setup result for safet development set with only out-of-domain data (AMI+ICSI) and fine-tuning with safet data
+# %WER 38.17 [ 7445 / 19507, 512 ins, 5278 del, 1655 sub ] exp/chain_train_icsiami/cnn_tdnn_train_icsiami/decode_safe_t_dev1_train_tl/wer_7_0.0
+# %WER 12.20 [ 2379 / 19507, 248 ins, 1000 del, 1131 sub ] exp/chain_finetune/cnn_tdnn_finetune_ep2/decode_safe_t_dev1_finetune_tl/wer_9_0.0
+# %WER 11.83 [ 2308 / 19507, 225 ins, 977 del, 1106 sub ] exp/chain_finetune/cnn_tdnn_finetune_ep3/decode_safe_t_dev1_finetune_tl/wer_8_0.5
