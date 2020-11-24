@@ -136,18 +136,21 @@ fi
 
 mathlib_missing=false
 case $(uname -m) in
-  x86_64)  # Suggest MKL on an Intel64 system (configure does not like i?86 hosts).
-    # We do not know if compiler exists at this point, so double-check the
-    # well-known mkl.h file location. The compiler test would still find it if
-    # installed in an alternative location (this is unlikely).
+  x86_64)  # Suggest MKL on an Intel64 system (not supported on i?86 hosts).
+    # Respect user-supplied MKL_ROOT environment variable.
     MKL_ROOT="${MKL_ROOT:-/opt/intel/mkl}"
-    if [ ! -f "${MKL_ROOT}/include/mkl.h" ] &&
-         ! echo '#include <mkl.h>' | $CXX -I /opt/intel/mkl/include -E - &>/dev/null; then
-      if [[ $(uname) == Linux ]]; then
-        echo "$0: Intel MKL is not installed. Run extras/install_mkl.sh to install it."
+       # Check the well-known mkl.h file location.
+    if ! [[ -f "${MKL_ROOT}/include/mkl.h" ]] &&
+       # Ubuntu 20+ has an MKL package
+       ! pkg-config mkl-dynamic-lp64-seq --exists &>/dev/null; then
+      echo "$0: Intel MKL does not seem to be installed."
+      if [[ $(uname) = Linux ]]; then
+        echo $' ... Run extras/install_mkl.sh to install it. Some distros' \
+             $'(e.g., Ubuntu 20.04) provide\n ... a version of MKL via'    \
+             $'the package manager, but verify that it is up-to-date.'
       else
-        echo "$0: Intel MKL is not installed. Download the installer package for your
- ... system from: https://software.intel.com/mkl/choose-download."
+        echo $' ... Download the installer package for your system from:'  \
+             $'\n ...   https://software.intel.com/mkl/choose-download'
       fi
       mathlib_missing=true
     fi
