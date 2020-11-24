@@ -38,11 +38,11 @@ wdir=data/local/AMI_annotations
 [ ! -f $wdir/transcripts1 ] && echo "$0: File $wdir/transcripts1 not found." && exit 1;
 
 echo "Preprocessing transcripts..."
-local/ami_split_segments.pl $wdir/transcripts1 $wdir/transcripts2 &> $wdir/log/split_segments.log
+local/AMI/ami_split_segments.pl $wdir/transcripts1 $wdir/transcripts2 &> $wdir/log/split_segments.log
 
 # make final train/dev/eval splits
 for dset in train eval dev; do
-  grep -f local/ami_split_$dset.orig $wdir/transcripts2 > $wdir/$dset.txt
+  grep -f local/AMI/ami_split_$dset.orig $wdir/transcripts2 > $wdir/$dset.txt
 done
 
 
