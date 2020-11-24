@@ -36,7 +36,7 @@ fi
 
 # And transcripts check
 if [ ! -f $SEGS ]; then
-  echo "Error: File $SEGS no found (run local/icsi_text_prep.sh)."
+  echo "Error: File $SEGS no found (run local/ICSI/icsi_text_prep.sh)."
   exit 1;
 fi
 
@@ -125,8 +125,7 @@ for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
 done
 
 #Produce STMs for sclite scoring
-local/convert2stm.pl $dir | sort +0 -1 +1 -2 +3nb -4 > $odir/stm
-cp local/english.glm $odir/glm
+local/ICSI/convert2stm.pl $dir | sort +0 -1 +1 -2 +3nb -4 > $odir/stm
 
 utils/validate_data_dir.sh --no-feats $odir || exit 1;
 
