@@ -55,7 +55,7 @@ train_data_dir=data/${train_set}_sp_hires
 lang_dir=data/lang_nosp_test
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/tri3_${train_set}_lats_sp
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}
+dir=exp/chain${nnet3_affix}/cnn_tdnn${tdnn_affix}
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 for f in $gmm_dir/final.mdl $lores_train_data_dir/feats.scp \

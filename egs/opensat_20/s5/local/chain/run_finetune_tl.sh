@@ -10,11 +10,14 @@
 # %WER 38.17 [ 7445 / 19507, 512 ins, 5278 del, 1655 sub ] exp/chain_train_icsiami/tdnn_train_icsiami_renorm/decode_safe_t_dev1_train_tl/wer_7_0.0
 # %WER 12.34 [ 2408 / 19507, 295 ins, 934 del, 1179 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep1.5/decode_safe_t_dev1_finetune_tl/wer_8_0.0
 # %WER 12.01 [ 2343 / 19507, 260 ins, 918 del, 1165 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep2_2.5/decode_safe_t_dev1_finetune_tl/wer_8_0.0
+
+# %WER 12.61 [ 2460 / 19507, 245 ins, 1119 del, 1096 sub ] exp/chain_all/tdnn_all/decode_safe_t_dev1/wer_9_0.5
+# %WER 11.70 [ 2283 / 19507, 228 ins, 964 del, 1091 sub ] exp/chain_finetune/tdnn_finetune_shared_25_100_ep2/decode_safe_t_dev1_finetune_tl/wer_8_0.5
 set -e
 
-dir=exp/chain_finetune/tdnn_finetune
+dir=exp/chain_finetune/cnn_tdnn_finetune
 
-src_mdl=exp/chain_all/tdnn_all//final.mdl # Input chain model
+src_mdl=exp/chain_all/cnn_tdnn_all//final.mdl # Input chain model
                                                    # trained on source dataset (icsi and ami).
                                                    # This model is transfered to the target domain.
 
