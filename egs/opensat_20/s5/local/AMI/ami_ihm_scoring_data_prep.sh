@@ -111,7 +111,7 @@ for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
 done
 
 #Produce STMs for sclite scoring
-local/convert2stm.pl $dir > $odir/stm
+local/AMI/convert2stm.pl $dir > $odir/stm
 cp local/english.glm $odir/glm
 
 utils/validate_data_dir.sh --no-feats $odir || exit 1;
