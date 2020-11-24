@@ -1,0 +1,1 @@
+../../../../ami/s5b/local/ami_ihm_scoring_data_prep.sh

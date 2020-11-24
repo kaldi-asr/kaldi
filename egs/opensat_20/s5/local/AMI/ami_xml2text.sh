@@ -1,0 +1,1 @@
+../../../../ami/s5b/local/ami_xml2text.sh

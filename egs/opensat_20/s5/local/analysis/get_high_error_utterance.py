@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from collections import OrderedDict
+# This script sorts the utterance based in the error
 
-text_path = '/Users/ashisharora/safet/per_utt'
+from collections import OrderedDict
 import sys, io
 import string
 infile = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
@@ -48,5 +48,5 @@ print(total_deletion)
 print(total_substitution)
 print("{:.2f}".format(wer))
 
-#for w in sorted(csid_dict, key=csid_dict.get, reverse=True):
-#    print(w, csid_dict[w])
+for w in sorted(csid_dict, key=csid_dict.get, reverse=True):
+    print(w, csid_dict[w])
