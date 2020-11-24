@@ -307,8 +307,9 @@ if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in test; do
       (
+      nspk=$(wc -l <data/${decode_set}_hires/spk2utt)
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
+          --nj $nspk --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_tg || exit 1
       steps/lmrescore_const_arpa.sh \
