@@ -31,6 +31,6 @@ fi
 tar -xovzf ngram-1.3.7.tar.gz|| exit 1
 
 cd ngram-1.3.7
-OPENFSTPREFIX=`pwd`/../openfst
+OPENFSTPREFIX=`pwd`/../../openfst
 LDFLAGS="-L${OPENFSTPREFIX}/lib" CXXFLAGS="-I${OPENFSTPREFIX}/include" ./configure --prefix ${OPENFSTPREFIX}
 make; make install
