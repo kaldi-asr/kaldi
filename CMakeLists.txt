@@ -159,9 +159,12 @@ if(${KALDI_USE_PATCH_NUMBER})
     set(KALDI_VERSION "${KALDI_VERSION}.${KALDI_PATCH_NUMBER}")
 endif()
 
-get_third_party(openfst)
-set(OPENFST_ROOT_DIR ${CMAKE_BINARY_DIR}/openfst)
-include(third_party/openfst_lib_target)
+# get_third_party(openfst)
+# set(OPENFST_ROOT_DIR ${CMAKE_BINARY_DIR}/openfst)
+# include(third_party/openfst_lib_target)
+include_directories(${CMAKE_INSTALL_PREFIX}/include)
+link_directories(${CMAKE_INSTALL_PREFIX}/lib)
+find_library(<VAR> fst REQUIRED)
 link_libraries(fst)
 
 # add all native libraries

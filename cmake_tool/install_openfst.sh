@@ -23,9 +23,11 @@ fi
 
 (
     cd build/
+
+    if [ ! -d  openfst-${OPENFST_VERSION} ]; then
+        tar -xvf openfst-${OPENFST_VERSION}.tar.gz
+    fi
     
-    rm -R openfst-${OPENFST_VERSION}
-    tar -xvf openfst-${OPENFST_VERSION}.tar.gz
     (
         openfst_add_CXXFLAGS="-g -O2"
 
@@ -35,7 +37,7 @@ fi
             mkdir -p ${INSTALL_PREFIX}
         fi
 
-        ./configure --prefix=`pwd` ${OPENFST_CONFIGURE} CXX="${CXX}" --prefix=${INSTALL_PREFIX}\
+        ./configure ${OPENFST_CONFIGURE} CXX="${CXX}" --prefix=${INSTALL_PREFIX}\
             CXXFLAGS="${CXXFLAGS} ${openfst_add_CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="-ldl"
         make -j ${NUM_JOB}
         make install
