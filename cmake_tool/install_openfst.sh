@@ -1,4 +1,5 @@
 #! /bin/bash
+# Need to install gcc/g++/make in Ubuntu
 
 WGET=wget
 NUM_JOB=4
@@ -13,6 +14,10 @@ INSTALL_PREFIX=$1
 if [ ! $# == 1 ]; then
     echo "[ERROR] Usage: $0 <install-prefix>"
     exit -1
+fi
+
+if [ ! -d ${BUILD_FOLDER} ]; then
+    mkdir -p ${BUILD_FOLDER}
 fi
 
 if [ ! -f ${BUILD_FOLDER}/openfst-${OPENFST_VERSION}.tar.gz ]; then
