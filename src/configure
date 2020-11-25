@@ -932,6 +932,10 @@ echo >> kaldi.mk
 echo "Checking compiler $CXX ..."
 check_compiler $CXX
 
+echo "# Target achitecture" >> kaldi.mk
+echo "ARCH = $TARGET_ARCH" >> kaldi.mk
+echo >> kaldi.mk
+
 echo "# Base configuration" >> kaldi.mk
 echo >> kaldi.mk
 if $dynamic_kaldi ; then
