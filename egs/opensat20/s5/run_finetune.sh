@@ -184,7 +184,8 @@ if [ $stage -le 18 ]; then
 fi
 
 if [ $stage -le 19 ]; then
-  local/chain/run_tdnn_wsj_rm_1a.sh
+  local/chain/run_cnn_tdnn_tl.sh
+  local/chain/run_finetune_tl.sh
 fi
 
 exit 0

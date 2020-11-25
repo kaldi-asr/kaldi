@@ -28,15 +28,14 @@ for f in ${gmm_dir}/final.mdl; do
   fi
 done
 
-if [ $stage -le 1 ]; then
-  # Although the nnet will be trained by high resolution data, we still have to
-  # perturb the normal data to get the alignment _sp stands for speed-perturbed
-  echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
-  utils/data/perturb_data_dir_speed_3way.sh data/${train_set} data/${train_set}_sp
-  echo "$0: making MFCC features for low-resolution speed-perturbed data"
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj data/${train_set}_sp || exit 1;
-  steps/compute_cmvn_stats.sh data/${train_set}_sp || exit 1;
-  utils/fix_data_dir.sh data/${train_set}_sp
+if [ $stage -le 1 ] ; then
+  for dset in train_icsiami train_safet; do
+    utils/data/perturb_data_dir_speed_3way.sh data/${dset} data/${dset}_sp
+    steps/make_mfcc.sh --nj 75 --cmd "$train_cmd" data/${dset}_sp
+    steps/compute_cmvn_stats.sh data/${dset}_sp
+    utils/fix_data_dir.sh data/${dset}_sp
+  done
+  utils/data/combine_data.sh data/${train_set}_sp data/train_safet_sp data/train_icsiami_sp
 fi
 
 if [ $stage -le 2 ]; then
@@ -46,28 +45,16 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  # Create high-resolution MFCC features (with 40 cepstra instead of 13).
-  # this shows how you can split across multiple file-systems.
   echo "$0: creating high-resolution MFCC features"
-  mfccdir=data/${train_set}_sp_hires/data
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b1{5,6,8,9}/$USER/kaldi-data/mfcc/opensat-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
-  fi
-
-  for datadir in ${train_set}_sp; do
+  for datadir in train_icsiami_sp train_safet_sp; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-  done
-
-  # do volume-perturbation on the training data prior to extracting hires
-  # features; this helps make trained nnets more invariant to test data volume.
-  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires || exit 1;
-
-  for datadir in ${train_set}_sp; do
+    utils/data/perturb_data_dir_volume.sh data/${datadir}_hires
     steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/${datadir}_hires || exit 1;
     steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
     utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
   done
+  utils/data/combine_data.sh data/${train_set}_sp_hires data/train_safet_sp_hires data/train_icsiami_sp_hires
 fi
 
 if [ $stage -le 4 ]; then
@@ -75,7 +62,6 @@ if [ $stage -le 4 ]; then
   # We'll use about a quarter of the data.
   mkdir -p exp/nnet3${nnet3_affix}/diag_ubm
   temp_data_root=exp/nnet3${nnet3_affix}/diag_ubm
-
   num_utts_total=$(wc -l <data/${train_set}_sp_hires/utt2spk)
   num_utts=$[$num_utts_total/4]
   utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
