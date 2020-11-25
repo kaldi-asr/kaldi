@@ -22,7 +22,7 @@ CXXFLAGS = -std=c++11 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_CLAPACK -I../../tools/CLAPACK \
-           -msse -msse2 -pthread \
+           -msse -msse2 \
            -g
 
 ifeq ($(KALDI_FLAVOR), dynamic)
@@ -44,4 +44,9 @@ CXXFLAGS += -Wno-mismatched-tags
 endif
 
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(CLAPACKLIBS) -lm -lpthread -ldl
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(CLAPACKLIBS) -lm -ldl
+
+ifneq ($(ARCH), WASM)
+    CXXFLAGS += -pthread
+    LDLIBS += -lpthread
+endif
