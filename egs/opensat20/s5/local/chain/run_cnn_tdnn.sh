@@ -2,6 +2,14 @@
 
 # %WER 14.74 [ 2875 / 19507, 217 ins, 1237 del, 1421 sub ] exp/chain_a/cnn_tdnn_1a/decode_safe_t_dev1/wer_8_0.0
 # %WER 13.36 [ 2606 / 19507, 217 ins, 1110 del, 1279 sub ] exp/chain_a/cnn_tdnn_1a_spec/decode_safe_t_dev1/wer_8_0.0
+# System                      tdnn_1a_spec
+# WER                             13.36
+# Final train prob              -0.0706
+# Final valid prob              -0.0965
+# Final train prob (xent)       -1.1137
+# Final valid prob (xent)       -1.2559
+# Parameters                      6.95M
+
 set -e -o pipefail
 stage=0
 nj=60

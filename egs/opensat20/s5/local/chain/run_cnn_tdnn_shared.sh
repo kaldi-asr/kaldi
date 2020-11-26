@@ -7,6 +7,16 @@
 # 40 dim results
 # 40 dim: %WER 12.85 [ 2507 / 19507, 254 ins, 1107 del, 1146 sub ] exp/chain_all/tdnn_all/decode_safe_t_dev1/wer_8_1.0
 # 40 dim: %WER 12.61 [ 2460 / 19507, 245 ins, 1119 del, 1096 sub ] exp/chain_all/tdnn_all_2/decode_safe_t_dev1/wer_9_0.5
+
+# ./local/chain/compare_wer.sh exp/chain_all/tdnn_all_2/
+# System                       tdnn_all_2
+# WER                             12.61
+# Final train prob              -0.0573
+# Final valid prob              -0.0744
+# Final train prob (xent)       -1.1640
+# Final valid prob (xent)       -1.2260
+# Parameters                     14.39M
+
 set -e -o pipefail
 stage=0
 nj=90
