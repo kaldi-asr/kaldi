@@ -124,7 +124,7 @@ fi
 # context-dep. training with delta features.
 if [ $stage -le 10 ]; then
   steps/train_deltas.sh --cmd "$train_cmd" \
-    5000 80000 data/train_$suffix data/lang_nosp_test exp/mono_ali exp/tri1_train_${suffix}
+    5000 80000 data/train_$suffix data/lang_nosp_test exp/mono_train_${suffix}_ali exp/tri1_train_${suffix}
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
     data/train_${suffix} data/lang_nosp_test exp/tri1_train_${suffix} exp/tri1_train_${suffix}_ali
 fi
