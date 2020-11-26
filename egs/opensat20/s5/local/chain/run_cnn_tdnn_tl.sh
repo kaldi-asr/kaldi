@@ -2,7 +2,14 @@
 
 # %WER 45.91 [ 8956 / 19507, 445 ins, 6660 del, 1851 sub ] exp/chain_train_icsiami/tdnn_train_icsiami/decode_safe_t_dev1_train_tl/wer_8_0.0
 # %WER 38.17 [ 7445 / 19507, 512 ins, 5278 del, 1655 sub ] exp/chain_train_icsiami/cnn_tdnn_train_icsiami/decode_safe_t_dev1_train_tl/wer_7_0.0
-
+# ./local/chain/compare_wer.sh exp/chain_train_icsiami/tdnn_train_icsiami/
+# System                      tdnn_train_icsiami
+# WER                             38.17
+# Final train prob              -0.0589
+# Final valid prob              -0.0967
+# Final train prob (xent)       -1.0764
+# Final valid prob (xent)       -1.3363
+# Parameters                     14.37M
 set -e -o pipefail
 stage=0
 nj=100

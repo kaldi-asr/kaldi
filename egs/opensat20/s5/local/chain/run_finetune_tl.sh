@@ -8,11 +8,20 @@
 # %WER 13.94 [ 2720 / 19507, 289 ins, 1108 del, 1323 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep2/decode_safe_t_dev1_finetune_tl/wer_8_0.0
 
 # %WER 38.17 [ 7445 / 19507, 512 ins, 5278 del, 1655 sub ] exp/chain_train_icsiami/tdnn_train_icsiami_renorm/decode_safe_t_dev1_train_tl/wer_7_0.0
-# %WER 12.34 [ 2408 / 19507, 295 ins, 934 del, 1179 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep1.5/decode_safe_t_dev1_finetune_tl/wer_8_0.0
-# %WER 12.01 [ 2343 / 19507, 260 ins, 918 del, 1165 sub ] exp/chain_finetune/tdnn_finetune_40_100_ep2_2.5/decode_safe_t_dev1_finetune_tl/wer_8_0.0
+# %WER 12.20 [ 2379 / 19507, 248 ins, 1000 del, 1131 sub ] exp/chain_finetune/tdnn_finetune_25_100_ep2/decode_safe_t_dev1_finetune_tl/wer_9_0.0
+# %WER 11.83 [ 2308 / 19507, 225 ins, 977 del, 1106 sub ] exp/chain_finetune/tdnn_finetune_25_100_ep3/decode_safe_t_dev1_finetune_tl/wer_8_0.5
 
 # %WER 12.61 [ 2460 / 19507, 245 ins, 1119 del, 1096 sub ] exp/chain_all/tdnn_all/decode_safe_t_dev1/wer_9_0.5
 # %WER 11.70 [ 2283 / 19507, 228 ins, 964 del, 1091 sub ] exp/chain_finetune/tdnn_finetune_shared_25_100_ep2/decode_safe_t_dev1_finetune_tl/wer_8_0.5
+
+# ./local/chain/compare_wer.sh exp/chain_finetune/tdnn_finetune_25_100_ep3/
+# System                      tdnn_finetune_25_100_ep3
+# WER                             11.83
+# Final train prob              -0.0412
+# Final valid prob              -0.0654
+# Final train prob (xent)       -0.9444
+# Final valid prob (xent)       -1.1019
+# Parameters                     14.37M
 set -e
 
 dir=exp/chain_finetune/cnn_tdnn_finetune
