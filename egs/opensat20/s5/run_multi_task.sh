@@ -24,6 +24,10 @@ ICSI_DIR=/export/corpora5/LDC/LDC2004S02/meeting_speech/speech
 AMI_DIR=/export/corpora5/amicorpus/
 
 if [ $stage -le 0 ]; then
+  echo ============================================================================
+  echo "              Prepare SAFE-T data"
+  echo ============================================================================
+
   local/safet_data_prep.sh ${SAFE_T_AUDIO_R11} ${SAFE_T_TEXTS_R11} data/safe_t_r11
   local/safet_data_prep.sh ${SAFE_T_AUDIO_R20} ${SAFE_T_TEXTS_R20} data/safe_t_r20
   local/safet_data_prep.sh ${SAFE_T_AUDIO_DEV1} ${SAFE_T_TEXTS_DEV1} data/safe_t_dev1
@@ -32,6 +36,9 @@ fi
 
 if [ $stage -le 1 ]; then
   #prepare annotations, note: dict is assumed to exist when this is called
+  echo ============================================================================
+  echo "              Prepare ICSI data"
+  echo ============================================================================
   local/icsi_run_prepare_shared.sh
   local/icsi_ihm_data_prep.sh $ICSI_DIR
   local/icsi_ihm_scoring_data_prep.sh $ICSI_DIR dev
@@ -39,6 +46,9 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
+  echo ============================================================================
+  echo "              Prepare AMI data"
+  echo ============================================================================
   local/ami_text_prep.sh data/local/download
   local/ami_ihm_data_prep.sh $AMI_DIR
   local/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
@@ -94,6 +104,9 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ] ; then
+  echo ============================================================================
+  echo "              Obtain LM from SAFE-T train text"
+  echo ============================================================================
   local/safet_train_lms_srilm.sh \
     --train_text data/train_safet/text --dev_text data/safe_t_dev1/text  \
     data/ data/local/srilm
@@ -115,6 +128,9 @@ for dataset in icsiami safet; do
 
   # Feature extraction,
   if [ $stage -le 9 ]; then
+    echo ============================================================================
+    echo "              Extract features"
+    echo ============================================================================
     steps/make_mfcc.sh --nj 75 --cmd "$train_cmd" $comb_data_dir/train
     steps/compute_cmvn_stats.sh $comb_data_dir/train
     utils/fix_data_dir.sh $comb_data_dir/train
@@ -122,6 +138,9 @@ for dataset in icsiami safet; do
   
   # monophone training
   if [ $stage -le 10 ]; then
+    echo ============================================================================
+    echo "        GMM-HMM training : mono, delta, LDA + MLLT + SAT"
+    echo ============================================================================
     utils/subset_data_dir.sh $comb_data_dir/train 15000 $comb_data_dir/train_15k
     steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
       $comb_data_dir/train_15k data/lang_nosp_test $comb_exp_dir/mono
@@ -154,7 +173,13 @@ for dataset in icsiami safet; do
 done
 
 if [ $stage -le 14 ]; then
+  echo ============================================================================
+  echo "              augmentation, i-vector extraction, and chain model training"
+  echo ============================================================================
   local/chain2/run_tdnn_conf.sh
 fi
 
+echo ===========================================================================
+echo "Finished Successfully"
+echo ===========================================================================
 exit 0
