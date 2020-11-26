@@ -115,7 +115,7 @@ if [ $stage -le 7 ] ; then
 fi
 
 if [ $stage -le 8 ] ; then
-   echo ============================================================================
+  echo ============================================================================
   echo "              Extract features"
   echo ============================================================================
   utils/data/combine_data.sh data/train_icsiami data/ICSI/train data/AMI/train
