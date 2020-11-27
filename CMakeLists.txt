@@ -12,11 +12,17 @@ if(NOT PYTHON_EXECUTABLE)
 endif()
 
 message(STATUS "Running gen_cmake_skeleton.py")
+set(IS_LIB_SHARE "")
+if(BUILD_SHARED_LIBS)
+    set(IS_LIB_SHARE "--shared")
+endif()
 execute_process(COMMAND ${PYTHON_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_cmake_skeleton.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "--quiet"
+    ${IS_LIB_SHARE}
 )
+unset(IS_LIB_SHARE)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
