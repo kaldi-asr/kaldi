@@ -67,11 +67,15 @@ if __name__ == "__main__":
     OPENFST_BUILD_FOLDER = path.join(
         BUILD_DIR, "openfst-%s" % (OPENFST_VERSION))
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='This is a python script to download/configure/make/install \
+        OpenFST library and related binaries. This is needed by Kaldi during compilation.')
     parser.add_argument(
-        '--target', type=str, choices=['download', 'configure', 'make', 'install', 'all'], default='all')
-    parser.add_argument('--local_path', default='', type=str)
-    parser.add_argument('--nj', default=4, type=int)
+        '--target', type=str, choices=['download', 'configure', 'make', 'install', 'all'], default='all',
+        help='Action to perform to compile/install OpenFST. Default target is "all".')
+    parser.add_argument('--local_path', default='', type=str,
+                        help='If this is set, local file is used as source tarball, instead of downloading from internet.')
+    parser.add_argument('--nj', default=4, type=int,
+                        help='Designate how many parallel job to run. Default is 4.')
     parser.add_argument('install_prefix', type=str, nargs=1)
 
     args = parser.parse_args()
@@ -83,7 +87,7 @@ if __name__ == "__main__":
 
     # Either download OpenFST tarball, or use local file
     if (args.target in ['all', 'download']) or not path.exists(OPENFST_TARBALL_PATH):
-        if args.local_path is True:
+        if args.local_path:
             if not path.exists(args.local_path):
                 print('[ERROR] local tarball %s not exist, exit!' %
                       args.local_path)
