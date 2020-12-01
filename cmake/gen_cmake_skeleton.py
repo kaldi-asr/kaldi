@@ -13,6 +13,7 @@ os.linesep = "\n"
 parser = argparse.ArgumentParser()
 parser.add_argument("working_dir")
 parser.add_argument("--quiet", default=False, action="store_true")
+parser.add_argument("--shared", default=False, action="store_true")
 args = parser.parse_args()
 
 def print_wrapper(*args_, **kwargs):
@@ -185,7 +186,9 @@ install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir})
 
 class CMakeListsLibrary(object):
 
-    def __init__(self, dir_name):
+    def __init__(self, dir_name, is_shared):
+        assert(type(is_shared) is bool)
+
         self.dir_name = dir_name
         self.target_name = lib_dir_name_to_lib_target(self.dir_name)
         self.header_list = []
@@ -193,6 +196,7 @@ class CMakeListsLibrary(object):
         self.cuda_source_list = []
         self.test_source_list = []
         self.depends = []
+        self.is_shared = is_shared
 
     def add_header(self, filename):
         self.header_list.append(filename)
@@ -236,7 +240,10 @@ class CMakeListsLibrary(object):
             ret.append("    )")
             ret.append("endif()\n")
 
-        ret.append("add_library(" + self.target_name)
+        add_lib_line = "add_library(" + self.target_name
+        if self.is_shared:
+            add_lib_line += " SHARED"
+        ret.append(add_lib_line)
         for f in self.source_list:
             ret.append("    " + f)
         ret.append(")\n")
@@ -345,7 +352,7 @@ if __name__ == "__main__":
             if not os.path.exists(makefile):
                 lib = CMakeListsHeaderLibrary(dir_name)
             else:
-                lib = CMakeListsLibrary(dir_name)
+                lib = CMakeListsLibrary(dir_name, args.shared)
                 lib.load_dependency_from_makefile(makefile)
             cmakelists.add_section(lib)
             for f in sorted(get_files(d)):
