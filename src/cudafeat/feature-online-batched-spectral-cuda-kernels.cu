@@ -98,7 +98,7 @@ __global__ void batched_apply_lifter_and_floor_energy_kernel(
   int lane = blockIdx.y;
 
   LaneDesc desc = lanes[lane];
-  if (frame > desc.num_chunk_frames) return;
+  if (frame >= desc.num_chunk_frames) return;
 
   float *feats = features + frame * ldf + lane * max_chunk_frames * ldf;
 
@@ -296,7 +296,7 @@ __global__ void batched_extract_window_kernel(
 
   int32_t num_chunk_samples = desc.num_chunk_samples;
 
-  if (fidx > desc.num_chunk_frames) return;
+  if (fidx >= desc.num_chunk_frames) return;
 
   // offset input/output by channels or lanes
   stash = stash + channel * lds;
