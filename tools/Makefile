@@ -124,7 +124,7 @@ sctk/.compiled: sctk
 
 # The GitHub archive unpacks into SCTK-{40-character-long-hash}/
 sctk: sctk-$(SCTK_GITHASH).tar.gz
-	tar --exclude '*NONE*html' -xmaf sctk-$(SCTK_GITHASH).tar.gz
+	tar zxvf sctk-$(SCTK_GITHASH).tar.gz
 	rm -rf sctk-$(SCTK_GITHASH) sctk
 	mv SCTK-$(SCTK_GITHASH)* sctk-$(SCTK_GITHASH)
 	ln -s sctk-$(SCTK_GITHASH) sctk
