@@ -33,7 +33,6 @@ inline cublasStatus_t cublas_gemm(
     cublasOperation_t transb, int m, int n,int k, float alpha,
     const float *A, int lda, const float *B, int ldb, float beta,
     float *C, int ldc) {
-  // return cublasSgemm_v2(handle,transa,transb,m,n,k,&alpha,A,lda,B,ldb,&beta,C,ldc);
   return cublasGemmEx(handle,transa,transb,m,n,k,&alpha,A,CUDA_R_32F,lda,B,CUDA_R_32F,ldb,&beta,
                       C,CUDA_R_32F,ldc,CuDevice::Instantiate().GetCublasComputeType(),
                       CuDevice::Instantiate().GetCublasGemmAlgo());

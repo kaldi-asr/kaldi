@@ -119,6 +119,8 @@ void CuDevice::Initialize() {
     
 #if CUDA_VERSION >= 9000 
 #if CUDA_VERSION >= 11000
+    cublas_compute_type_ = CUBLAS_COMPUTE_32F; 
+    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
     // Enable tensor cores in CUBLAS
     // Note if the device does not support tensor cores this will fall back to normal math mode
     if (device_options_.use_tf32_compute) {
@@ -132,6 +134,8 @@ void CuDevice::Initialize() {
         cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
 #else
+    cublas_compute_type_ = CUDA_R_32F; 
+    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
@@ -297,19 +301,23 @@ void CuDevice::FinalizeActiveGpu() {
 
 #if CUDA_VERSION >= 9000 
 #if CUDA_VERSION >= 11000
+    cublas_compute_type_ = CUBLAS_COMPUTE_32F; 
+    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
     // Enable tensor cores in CUBLAS
     // Note if the device does not support tensor cores this will fall back to normal math mode
     if ((properties_.major >= 8) && (device_options_.use_tf32_compute)) {
-        // Use TF32 compute for Ampere Tensor Cores
-        cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_TF32; 
-        cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      // Use TF32 compute for Ampere Tensor Cores
+      cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_TF32; 
+      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
     if (device_options_.use_tensor_cores) {
-        // Use FP16 compute for pre-Ampere Tensor Cores
-        cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_16F; 
-        cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      // Use FP16 compute for pre-Ampere Tensor Cores
+      cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_16F; 
+      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
 #else
+    cublas_compute_type_ = CUDA_R_32F; 
+    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
