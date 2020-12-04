@@ -39,20 +39,20 @@ if [ $stage -le 1 ]; then
   echo ============================================================================
   echo "              Prepare ICSI data"
   echo ============================================================================
-  local/icsi_run_prepare_shared.sh
-  local/icsi_ihm_data_prep.sh $ICSI_DIR
-  local/icsi_ihm_scoring_data_prep.sh $ICSI_DIR dev
-  local/icsi_ihm_scoring_data_prep.sh $ICSI_DIR eval
+  local/ICSI/icsi_run_prepare_shared.sh
+  local/ICSI/icsi_ihm_data_prep.sh $ICSI_DIR
+  local/ICSI/icsi_ihm_scoring_data_prep.sh $ICSI_DIR dev
+  local/ICSI/icsi_ihm_scoring_data_prep.sh $ICSI_DIR eval
 fi
 
 if [ $stage -le 2 ]; then
   echo ============================================================================
   echo "              Prepare AMI data"
   echo ============================================================================
-  local/ami_text_prep.sh data/local/download
-  local/ami_ihm_data_prep.sh $AMI_DIR
-  local/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
-  local/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
+  local/AMI/ami_text_prep.sh data/local/download
+  local/AMI/ami_ihm_data_prep.sh $AMI_DIR
+  local/AMI/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
+  local/AMI/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
 fi
 
 if [ $stage -le 4 ]; then
@@ -176,7 +176,7 @@ if [ $stage -le 14 ]; then
   echo ============================================================================
   echo "              augmentation, i-vector extraction, and chain model training"
   echo ============================================================================
-  local/chain2/run_tdnn_conf.sh
+  local/chain2/run_tdnn_mt.sh
 fi
 
 echo ===========================================================================

@@ -72,9 +72,9 @@ fi
 
 if [ $stage -le 5 ]; then
   utils/data/get_reco2dur.sh data/AMI/train
-  utils/data/get_reco2dur.sh data/AMI/train
+  utils/data/get_reco2dur.sh data/ICSI/train
 
-  utils/data/get_utt2dur.sh data/ICSI/train
+  utils/data/get_utt2dur.sh data/AMI/train
   utils/data/get_utt2dur.sh data/ICSI/train
 
   for dataset in AMI ICSI; do
