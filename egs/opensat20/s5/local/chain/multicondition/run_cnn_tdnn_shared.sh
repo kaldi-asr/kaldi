@@ -17,6 +17,7 @@ chunk_width=140,100,160
 echo "$0 $@"
 
 aug_list="reverb babble music noise clean" # Original train dir is referred to as `clean`
+aug_list="reverb noiselow noisehigh clean"
 gmm=tri3
 train_set=train_all
 gmm_dir=exp/${gmm}_${train_set}_aug
@@ -26,19 +27,22 @@ tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lang_dir=data/lang_nosp_test
 lores_train_data_dir=data/${train_set}_aug
 train_data_dir=data/${train_set}_aug_hires
-clean_lat=exp/${gmm}_${train_set}_lats
+clean_lat=exp/${gmm}_${train_set}_clean_lats
 lat_dir=exp/${gmm}_${train_set}_lats_aug
 dir=exp/chain${nnet3_affix}/cnn_tdnn${tdnn_affix}
 train_ivector_dir=exp/nnet3/ivectors_${train_set}_aug_hires
 clean_set_aug=train_icsiami
 clean_set_sp=train_safet
 
+. ./cmd.sh
+. ./path.sh
+. utils/parse_options.sh
 
 # First creates augmented data and then extracts features for it data
 # The script also creates alignments for aug data by copying clean alignments
-local/nnet3/multi_condition/run_aug_common.sh --stage $stage \
+local/nnet3/multi_condition/run_aug_common_noise.sh --stage $stage \
   --aug-list "$aug_list" --clean-set-aug $clean_set_aug --clean-set-sp $clean_set_sp \
-  --train-set $train_set --clean-ali $clean_ali || exit 1;
+  --train-set $train_set || exit 1;
 
 if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
@@ -58,8 +62,9 @@ if [ $stage -le 11 ]; then
       include_original=true
     fi
   done
-  nj=$(cat exp/tri3_${train_set}_ali_aug/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/${train_set} \
+  nj=$(cat ${ali_dir}/num_jobs) || exit 1;
+  utils/data/combine_data.sh data/${train_set}_clean data/${clean_set_sp}_sp data/${clean_set_aug}
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/${train_set}_clean \
     $lang_dir exp/${gmm}_${train_set} $clean_lat
   rm $clean_lat/fsts.*.gz # save space
   steps/copy_lat_dir.sh --nj $nj --cmd "$train_cmd" \
@@ -120,7 +125,7 @@ if [ $stage -le 15 ]; then
   # are more compressible so we prefer to dump the MFCCs to disk rather
   # than filterbanks.
   idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
-  linear-component name=ivector-linear $ivector_affine_opts dim=400 input=ReplaceIndex(ivector, t, 0)
+  linear-component name=ivector-linear $ivector_affine_opts dim=200 input=ReplaceIndex(ivector, t, 0)
   batchnorm-component name=ivector-batchnorm target-rms=0.025
   batchnorm-component name=idct-batchnorm input=idct
   spec-augment-layer name=idct-spec-augment freq-max-proportion=0.5 time-zeroed-proportion=0.2 time-mask-max-frames=20
@@ -157,7 +162,7 @@ EOF
 
 fi
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/opensat-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
@@ -193,7 +198,7 @@ steps/nnet3/chain/train.py --stage $train_stage \
 fi
 
 
-if [ $stage -le 19 ]; then
+if [ $stage -le 17 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
     data/safe_t_dev1_hires exp/nnet3${nnet3_affix}/extractor \
     exp/nnet3${nnet3_affix}/ivectors_safe_t_dev1_hires
@@ -201,7 +206,7 @@ if [ $stage -le 19 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_nosp_test $dir $dir/graph
 fi
 
-if [ $stage -le 20 ]; then
+if [ $stage -le 18 ]; then
     steps/nnet3/decode.sh --num-threads 4 --nj 20 --cmd "$decode_cmd" \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_safe_t_dev1_hires \

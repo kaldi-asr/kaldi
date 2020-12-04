@@ -11,7 +11,7 @@ stage=0
 
 if [ $# != 1 ]; then
    echo "Wrong #arguments ($#, expected 1)"
-   echo "Usage: local/safet_extract_noises.sh [options] <indir>"
+   echo "Usage: local/safet_extract_noises.sh [options] data/train_safet"
    echo "This script extract noises and use it for augmentation"
    exit 1;
 fi
@@ -46,6 +46,7 @@ fi
 
 ## it reads a $indir/wav.scp file and creates audio_list
 if [ $stage -le 2 ]; then
+  rm data/local/audio_list
   while read -r line;
     do
       wav_id=$(echo "$line" | cut -d" " -f 1)
@@ -67,7 +68,7 @@ fi
 
 # it will give to 10050 noise wav files, its total duration is 55hrs
 # utt2spk: <utterance-id> <speaker-id>: noise1 noise1
-# wav.scp <recording-id> <wav-path> : noise1 data/safet_noise_wavfiles/noise1.wav
+# wav.scp <recording-id> <wav-path> : noise1 data/safe_t_noise_wavfiles/noise1.wav
 # segments:  <utterance-id> <recording-id> <segment-begin> <segment-end> segments: noise1 noise1 0 20
 if [ $stage -le 5 ]; then
   mkdir -p data/safe_t_noise
