@@ -1,12 +1,16 @@
 #!/bin/bash
 
-# This script generates a large lexicon for an ASR system.
+# This script generates a large lexicon (241k words) from
+# Saft-T and OpenSubtitles datasets. It reproduces the lexicon
+# or vocabulary that we used for the OpenSAT20 competition.
 # First, it gets the wordlist with Pocolm from text corpus. 
-# Or, you can specify your own wordlist.
+# (Or, you can specify your own wordlist)
 # Next, it combine the wordlist with the words in CMU_Dict, 
 # and find out the words that does not have pronunciations.
-# Then, it uses G2P to get pronunciation for those words.
-# Finally, the CMU_Dict and the generated lexicon are merged.
+# Then, it uses G2P to get pronunciation for those new words.
+# Finally, the CMU_Dict and the generated lexicon are merged,
+# resulting in a vocabulary of size 241181 (and lexicon of size
+# 397453).
 
 # Begin configuration section.
 word_list=

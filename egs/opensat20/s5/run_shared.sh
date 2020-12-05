@@ -35,7 +35,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  local/safet_get_cmu_dict.sh
+  local/safet_get_large_dict.sh
   utils/prepare_lang.sh data/local/dict_nosp '<UNK>' data/local/lang_nosp data/lang_nosp
   utils/validate_lang.pl data/lang_nosp
 fi
