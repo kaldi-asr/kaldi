@@ -21,7 +21,7 @@ def configure(source_path, install_prefix: str):
         os.sys.exit(BASIC_ERROR-1)
 
     openfst_add_CXXFLAGS = "-g -O2"
-    OPENFST_CONFIGURE = "--enable-static --enable-shared --enable-far --enable-ngram-fsts --enable-lookahead-fsts --with-pic"
+    OPENFST_CONFIGURE = "--enable-shared --enable-far --enable-ngram-fsts --enable-lookahead-fsts --with-pic"
     command = './configure %s CXX="${CXX}" --prefix=%s\
             CXXFLAGS="${CXXFLAGS} %s" LDFLAGS="${LDFLAGS}" LIBS="-ldl"' % (OPENFST_CONFIGURE, install_prefix, openfst_add_CXXFLAGS)
     result = subprocess.run(command, shell=True, cwd=source_path)
@@ -29,6 +29,8 @@ def configure(source_path, install_prefix: str):
         print('[ERROR] Configure return code is %d, abort!' %
               (result.returncode))
         os.sys.exit(BASIC_ERROR-1)
+    result = subprocess.run('make clean', shell=True, cwd=source_path)
+    assert result.returncode == 0
 
 
 def make(source_path, nj=4):
