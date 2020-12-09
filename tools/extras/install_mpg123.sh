@@ -14,7 +14,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 #
-# This script attempts to install mpg123, which can be used for decoding 
+# This script attempts to install mpg123, which can be used for decoding
 # mp2 and mp3 file formats.
 
 VERSION=1.21.0

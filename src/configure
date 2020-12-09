@@ -243,66 +243,6 @@ function check_for_slow_expf {
   fi
 }
 
-#
-# Locate MKL libraries and includes.
-#
-function configure_mkllibdir {
-  local mklroot=$1
-
-  if [[ -d $mklroot/lib/intel64 ]]; then
-    echo $mklroot/lib/intel64
-  elif [[ -d $mklroot/lib ]]; then
-    echo $mklroot/lib
-  elif [[ -d $mklroot/lib/em64t ]]; then
-    echo $mklroot/lib/em64t
-  else
-    failure "Could not find the MKL library directory.
-Please use the switch --mkl-root and/or --mkl-libdir if you have MKL installed,
-or try another math library, e.g. --mathlib=OPENBLAS (would be slower)"
-  fi
-}
-
-configure_mkl_includes() {
-  local mklroot=$1 mkllibdir=$2
-  if [[ -d $mklroot/include ]]; then
-    echo "-I$1/include"
-  elif [[ -d $mkllibdir/../../include ]]; then
-    echo "-I$mkllibdir/../../include"
-  else
-    failure "Could not find the MKL include directory"
-  fi
-}
-
-configure_mkl_libraries() {
-  local mkllibdir=$1 static=$2
-
-  local mkl_libs="mkl_intel_lp64 mkl_core mkl_sequential"
-
-  local linkline="" link_pre="" link_post="" suffix=
-  if ! $static ; then
-    link_pre="-L$mkllibdir -Wl,-rpath=$mkllibdir"
-    suffix=so
-  else
-    link_pre="-Wl,--start-group"
-    link_post=" -Wl,--end-group"
-    suffix=a
-  fi
-
-  linkline+=$link_pre
-  for file in $mkl_libs; do
-    local libfile=$mkllibdir/lib$file.$suffix
-    check_exists $libfile
-    if ! $static; then
-      linkline+=" -l$file"
-    else
-      linkline+=" $libfile"
-    fi
-  done
-  linkline+=$link_post
-
-  echo "$linkline -ldl -lpthread -lm"
-}
-
 # CUDA is used only in selected directories including src/cudamatrix, src/nnet*
 # and src/chain*. It is used to accelerate the neural network training.
 # The rest of Kaldi runs on CPUs.
@@ -392,7 +332,7 @@ Either your CUDA is too new or too old."
       case `uname -m` in
         x86_64|ppc64le)
           case $CUDA_VERSION in
-            # Disabling CUDA 7 and 8. See a few lines above for details.		   
+            # Disabling CUDA 7 and 8. See a few lines above for details.
             #7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52" ;;
             #8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61" ;;
             9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70" ;;
@@ -1119,38 +1059,89 @@ elif [ "`uname`" == "Linux" ]; then
       *)       cat makefiles/linux_atlas.mk ;;
     esac >> kaldi.mk
 
-  elif [ "$MATHLIB" == "MKL" ]; then
-    if [ "$TARGET_ARCH" != "x86_64" ]; then
-      failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64).
-      See makefiles/linux_64_mkl.mk to manually configure for other platforms."
+  elif [[ $MATHLIB = MKL ]]; then
+    if [[ $TARGET_ARCH != x86_64 ]]; then
+      failure "MKL on Linux is only supported for Intel 64-bit (x86_64) arch.
+ ... See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
 
-    if  ( is_set "$MKLROOT" && ! is_set "$MKLLIBDIR" ); then
+    # Ubuntu 20+ supplies these packages.
+    if $static_math; then
+      mkl_sys_package=mkl-static-lp64-seq
+    else
+      mkl_sys_package=mkl-dynamic-lp64-seq
+    fi
+
+    if [[ ! $MKLLIBDIR ]]; then
       echo -n "Configuring MKL library directory: "
-      MKLLIBDIR=$(configure_mkllibdir $MKLROOT) || exit 1
-      echo "Found: $MKLLIBDIR"
+      MKLLIBDIR=$(
+        if [[ -d $MKLROOT/lib/intel64 ]]; then
+          echo "$MKLROOT/lib/intel64"
+        elif [[ -d $MKLROOT/lib ]]; then
+          echo "$MKLROOT/lib"
+        elif pkg-config $mkl_sys_package --exists &>/dev/null; then
+          MKLROOT=
+          # Return empty path to indicate a system package.
+        else
+          failure "Could not find the MKL library directory.
+Please use the switch --mkl-root and/or --mkl-libdir if you have MKL installed,
+or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
+        fi) || exit
+      echo "Found ${MKLLIBDIR:-system package $mkl_sys_package}"
     fi
 
-    MKL_LINK_LINE=$(configure_mkl_libraries "$MKLLIBDIR" $static_math) || exit 1
-    echo "MKL configured libs: $MKL_LINK_LINE"
-    MKL_COMPILE_LINE=$(configure_mkl_includes "$MKLROOT" "$MKLLIBDIR") || exit 1
-    echo "MKL include directory: $MKL_COMPILE_LINE"
+    # MKL libraries.
+    MKL_LDLIBS=$(
+      # If $MKLLIBDIR is empty, we found the package through pkg-config.
+      [[ $MKLLIBDIR ]] || { pkg-config $mkl_sys_package --libs; exit; }
 
-    echo "Using Intel MKL as the linear algebra library."
-    (
-      cd probe
+      readonly mkl_libs=(mkl_intel_lp64 mkl_core mkl_sequential)
+
+      if $static_math ; then
+        suffix=a link_pre="-Wl,--start-group" link_post=" -Wl,--end-group"
+      else
+        suffix=so link_pre="-Wl,-rpath=$MKLLIBDIR" link_post=
+      fi
+
+      linkline="-L$MKLLIBDIR $link_pre"
+      for file in ${mkl_libs[@]}; do
+        file=lib$file.$suffix
+        check_exists $MKLLIBDIR/$file
+        linkline+=" -l:$file"
+      done
+      linkline+=$link_post
+
+      echo "$linkline -ldl -lpthread -lm") || exit
+    echo "MKL libs MKL_LDLIBS = $MKL_LDLIBS."
+
+    # MKL includes.
+    MKL_CXXFLAGS=$(
+      # If $MKLLIBDIR is empty, we found the package through pkg-config.
+      if [[ ! $MKLLIBDIR ]]; then
+        pkg-config $mkl_sys_package --cflags
+      elif [[ -d $MKLROOT/include ]]; then
+        echo "-I$MKLROOT/include"
+      elif [[ -d $MKLLIBDIR/../../include ]]; then
+        echo "-I$MKLLIBDIR/../../include"
+      else
+        failure "Could not guess the MKL include directory."
+      fi) || exit
+    echo "MKL compile flags MKL_CXXFLAGS = $MKL_CXXFLAGS."
+
+    echo "*** MKL self-reported version:"
+    ( cd probe
       rm -f mkl-test
-      g++ mkl-test.cc -o mkl-test $MKL_COMPILE_LINE $MKL_LINK_LINE &&
+      g++ mkl-test.cc -o mkl-test $MKL_CXXFLAGS $MKL_LDLIBS &&
         ./mkl-test
-    ) || failure "Cannot validate the MKL switches"
+    ) || failure "MKL did not pass a simple compile test."
 
-    echo "MKLROOT = $MKLROOT" >> kaldi.mk
-    [[ $MKLLIBDIR ]] && echo "MKLLIB = $MKLLIBDIR" >> kaldi.mk
+    echo "MKL_CXXFLAGS = $MKL_CXXFLAGS" >> kaldi.mk
+    echo "MKL_LDLIBS = $MKL_LDLIBS" >> kaldi.mk
     echo >> kaldi.mk
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
-    echo "MKLFLAGS = ${MKL_LINK_LINE}" >> kaldi.mk
-    echo "Successfully configured for Linux with MKL libs from $MKLROOT"
+    echo "Successfully configured for Linux with MKL libraries found in" \
+         "${MKLROOT:-distro package}"
 
   elif [ "$MATHLIB" == "CLAPACK" ]; then
     if [ -z "$CLAPACKROOT" ]; then

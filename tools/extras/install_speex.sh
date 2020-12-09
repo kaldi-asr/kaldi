@@ -17,8 +17,8 @@
 # This script attempts to install Speex, which is needed by someone who wants
 # to enable audio compression when doing online decoding.
 #
-# Note: This script installs Speex in a non-standard position and leads the test 
-# procedure of Speex give out errors. Those errors will not influence the 
+# Note: This script installs Speex in a non-standard position and leads the test
+# procedure of Speex give out errors. Those errors will not influence the
 # installation acutally. So you can ignore them and call Speex's library correctly.
 # I just let it be like this at this moment, and may add a patch to resolve this
 # later.
@@ -32,7 +32,7 @@ echo "****() Installing Speex"
 if [ ! -e speex-$VERSION.tar.gz ]; then
     echo "Could not find Speex tarball speex-$VERSION.tar.gz"
     echo "Trying to download it via wget!"
-    
+
     if ! which wget >&/dev/null; then
         echo "This script requires you to first install wget"
         echo "You can also just download speex-$VERSION.tar.gz from"

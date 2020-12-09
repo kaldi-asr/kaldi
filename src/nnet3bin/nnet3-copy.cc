@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
     std::string nnet_config, edits_config, edits_str;
     BaseFloat scale = 1.0;
     bool prepare_for_test = false;
+    bool batchnorm_test_mode = false;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -70,6 +71,11 @@ int main(int argc, char *argv[]) {
                 "slightly.  Involves setting test mode in dropout and batch-norm "
                 "components, and calling CollapseModel() which may remove some "
                 "components.");
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
+                "Batch-norm components' test mode is set to this value. "
+                "The deafult is false, but is overriden when --prepare-for-test is "
+                "used");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -109,6 +115,9 @@ int main(int argc, char *argv[]) {
       SetBatchnormTestMode(true, &nnet);
       SetDropoutTestMode(true, &nnet);
       CollapseModel(CollapseModelConfig(), &nnet);
+    }
+    else {
+      SetBatchnormTestMode(batchnorm_test_mode, &nnet);
     }
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename
