@@ -1139,7 +1139,7 @@ void CudaDecoder::GetBestPath(const std::vector<ChannelId> &channels,
     OutputLatticeState curr_state = fst_out->AddState();
     fst_out->SetStart(curr_state);
 
-    for (int32 i = reversed_path.size() - 1; i >= 1; i--) {
+    for (int32 i = reversed_path.size() - 1; i >= 0; i--) {
       int32 arc_idx = reversed_path[i];
 
       LatticeArc arc(fst_.h_arc_id_ilabels_[arc_idx],
