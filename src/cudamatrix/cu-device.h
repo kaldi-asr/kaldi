@@ -101,6 +101,13 @@ class CuDevice {
     return cusolverdn_handle_; 
   }
 
+#if CUDA_VERSION >= 11000
+  inline cublasComputeType_t GetCublasComputeType() { return cublas_compute_type_; }
+#else
+  inline cudaDataType_t GetCublasComputeType() { return cublas_compute_type_; }
+#endif
+  inline cublasGemmAlgo_t GetCublasGemmAlgo() { return cublas_gemm_algo_; }
+
   inline void SeedGpu() {
     if (CuDevice::Instantiate().Enabled()) {
       // To get same random sequence, call srand() before the method is invoked,
@@ -231,12 +238,20 @@ class CuDevice {
 
   struct CuDeviceOptions {
     bool use_tensor_cores; // Enable tensor cores
-    CuDeviceOptions () : use_tensor_cores(false) {};
+    bool use_tf32_compute; // Switch to TF32 compute mode
+    CuDeviceOptions () : use_tensor_cores(false), use_tf32_compute(false) {};
     void Register(OptionsItf *po) {
       po->Register("cuda-use-tensor-cores", &use_tensor_cores, 
           "Enable FP16 tensor math. "
           "This is higher performance but less accuracy. "
           "This is only recommended for inference.");
+#if CUDA_VERSION >= 11000
+      po->Register("cuda-use-tf32-compute", &use_tf32_compute, 
+          "Enable TF32 tensor math. "
+          "This is higher performance and keeps the same "
+          "dynamic range as FP32 with slightly lower precision."
+          "This is recommended for training over FP16.");
+#endif
     }
   };
 
@@ -331,6 +346,13 @@ class CuDevice {
   cusparseHandle_t cusparse_handle_;
   curandGenerator_t curand_handle_;
   cusolverDnHandle_t cusolverdn_handle_;
+
+#if CUDA_VERSION >= 11000
+  cublasComputeType_t cublas_compute_type_;
+#else
+  cudaDataType_t cublas_compute_type_;
+#endif
+  cublasGemmAlgo_t cublas_gemm_algo_;
 }; // class CuDevice
 
 
