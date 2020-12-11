@@ -110,8 +110,7 @@ if [ $stage -le -2 ]; then
 fi
 
 
-# won't work at Idiap
-#if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
+if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
 
 num_iters=$(wc -l <$dir/schedule.txt)
 
