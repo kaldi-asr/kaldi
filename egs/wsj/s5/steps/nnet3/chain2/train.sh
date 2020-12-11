@@ -315,7 +315,7 @@ if [ $stage -le $num_iters ]; then
    fi
 fi
 
-if ! $multilingual_eg -a [ ! -f $dir/final.mdl ]; then
+if [[ ! $multilingual_eg ]] && [[ ! -f $dir/final.mdl ]]; then
   echo "$0: $dir/final.mdl does not exist."
   # we don't want to clean up if the training didn't succeed.
   exit 1;
