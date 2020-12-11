@@ -35,6 +35,7 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
     : word_syms_(NULL),
       generate_partial_hypotheses_(false),
+      endpointing_(false),
       partial_traceback_(false),
       frame_shift_seconds_(FLT_MAX),
       fst_(fst),
