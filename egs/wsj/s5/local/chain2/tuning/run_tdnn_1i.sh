@@ -363,7 +363,7 @@ if [ $stage -le 22 ]; then
     --initial-effective-lrate 0.0005 \
     --final-effective-lrate 0.00005 \
     --num-epochs 10 \
-    --groups-per-minibatch 128,64 \
+    --minibatch-size 128,64 \
      $dir/egs $dir || exit 1;
 fi
 

@@ -35,6 +35,7 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
     : word_syms_(NULL),
       generate_partial_hypotheses_(false),
+      endpointing_(false),
       partial_traceback_(false),
       frame_shift_seconds_(FLT_MAX),
       fst_(fst),
@@ -1139,7 +1140,7 @@ void CudaDecoder::GetBestPath(const std::vector<ChannelId> &channels,
     OutputLatticeState curr_state = fst_out->AddState();
     fst_out->SetStart(curr_state);
 
-    for (int32 i = reversed_path.size() - 1; i >= 1; i--) {
+    for (int32 i = reversed_path.size() - 1; i >= 0; i--) {
       int32 arc_idx = reversed_path[i];
 
       LatticeArc arc(fst_.h_arc_id_ilabels_[arc_idx],
