@@ -113,15 +113,15 @@ void CuDevice::Initialize() {
 
 #if CUDA_VERSION >= 9010
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
-    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_, 
+    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
             cudaStreamPerThread));
 #endif
-    
-#if CUDA_VERSION >= 9000 
+
+#if CUDA_VERSION >= 9000
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
-      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
             CUBLAS_TENSOR_OP_MATH));
     }
 #endif
@@ -270,27 +270,27 @@ void CuDevice::FinalizeActiveGpu() {
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
-    
-#if CUDA_VERSION >= 9010 
+
+#if CUDA_VERSION >= 9010
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
     CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
             cudaStreamPerThread));
 #endif
 
-#if CUDA_VERSION >= 9000 
+#if CUDA_VERSION >= 9000
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
-      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
             CUBLAS_TENSOR_OP_MATH));
     }
 #endif
 
-    
+
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
-    
+
     // Initialize the generator,
     CURAND_SAFE_CALL(curandCreateGenerator(
           &curand_handle_, CURAND_RNG_PSEUDO_DEFAULT));
@@ -539,28 +539,7 @@ void CuDevice::PrintProfile() {
 void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
   // prefill with something reasonable
   strncpy(name,"Unknown GPU",len);
-#ifdef _MSC_VER
   cuDeviceGetName(name, len, dev);
-#else
-  // open libcuda.so
-  void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
-  if (NULL == libcuda) {
-    KALDI_WARN << "cannot open libcuda.so";
-  } else {
-    // define the function signature type
-    typedef CUresult (*cu_fun_ptr)(char*,int,CUdevice);
-    // get the symbol
-    cu_fun_ptr cuDeviceGetName_ptr = (cu_fun_ptr)dlsym(libcuda,"cuDeviceGetName");
-    if (NULL == cuDeviceGetName_ptr) {
-      KALDI_WARN << "cannot load cuDeviceGetName from libcuda.so";
-    } else {
-      // call the function
-      cuDeviceGetName_ptr(name, len, dev);
-    }
-    // close the library
-    dlclose(libcuda);
-  }
-#endif
 }
 
 
@@ -611,7 +590,7 @@ CuDevice::~CuDevice() {
 // Each thread has its own copy of the CuDevice object.
 // Note: this was declared "static".
 thread_local CuDevice CuDevice::this_thread_device_;
-  
+
 CuDevice::CuDeviceOptions CuDevice::device_options_;
 
 // define and initialize the static members of the CuDevice object.
