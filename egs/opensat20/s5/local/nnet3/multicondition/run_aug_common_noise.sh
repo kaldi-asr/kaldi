@@ -15,6 +15,7 @@ nj=65
 gmm=tri3
 gmm_dir=exp/${gmm}_${train_set}
 clean_ali_dir=exp/${gmm}_${train_set}_clean_ali
+ali_dir=exp/${gmm}_${train_set}_ali_aug
 
 for f in data/${clean_set_sp}/feats.scp data/${clean_set_aug}/feats.scp \
          ${gmm_dir}/final.mdl; do
@@ -53,15 +54,16 @@ fi
 
 if [ $stage -le 1 ]; then
   aug_list="noise_low noise_high clean"
+  local/safet_extract_noises.sh data/train_safet
   steps/data/augment_data_dir.py --utt-prefix "noiselow" --modify-spk-id "true" \
-    --bg-snrs "5:6:7:8" --num-bg-noises "1" --bg-noise-dir "data/safet_noise_filtered" \
+    --bg-snrs "5:6:7:8" --num-bg-noises "1" --bg-noise-dir "data/safe_t_noise_filtered" \
     data/${clean_set_aug} data/${clean_set_aug}_noiselow
 
   steps/data/augment_data_dir.py --utt-prefix "noisehigh" --modify-spk-id "true" \
-    --bg-snrs "0:1:2:3:4" --num-bg-noises "1" --bg-noise-dir "data/safet_noise_filtered" \
+    --bg-snrs "0:1:2:3:4" --num-bg-noises "1" --bg-noise-dir "data/safe_t_noise_filtered" \
     data/${clean_set_aug} data/${clean_set_aug}_noisehigh
 
-  utils/combine_data.sh data/${clean_set_aug}_aug data/${clean_set_aug}_noiselow data/${clean_set_aug}_noisehigh data/${clean_set_aug}_reverb
+  utils/combine_data.sh data/${clean_set_aug}_aug data/${clean_set_aug} data/${clean_set_aug}_noiselow data/${clean_set_aug}_noisehigh data/${clean_set_aug}_reverb
 fi
 
 if [ $stage -le 2 ]; then
@@ -101,6 +103,7 @@ if [ $stage -le 5 ]; then
     data/${train_set}_clean data/lang_nosp_test exp/${gmm}_${train_set} $clean_ali_dir
 
   echo "$0: aligning augmented data with clean data"
+  aug_list="reverb noiselow noisehigh clean"
   utils/data/combine_data.sh data/${train_set}_aug data/${clean_set_sp}_sp data/${clean_set_aug}_aug
   include_original=false
   prefixes=""
@@ -116,7 +119,7 @@ if [ $stage -le 5 ]; then
   echo "$0: Creating alignments of aug data by copying alignments of clean data"
   steps/copy_ali_dir.sh --nj $nj --cmd "$train_cmd" \
     --include-original "$include_original" --prefixes "$prefixes" \
-    data/${train_set}_aug $clean_ali_dir ${clean_ali_dir}_aug
+    data/${train_set}_aug $clean_ali_dir $ali_dir
 
   utils/data/combine_data.sh data/${train_set}_aug_hires data/${clean_set_sp}_sp_hires data/${clean_set_aug}_aug_hires
 fi

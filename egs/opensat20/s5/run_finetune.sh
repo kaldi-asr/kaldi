@@ -44,20 +44,20 @@ if [ $stage -le 2 ]; then
   echo "              Prepare ICSI data"
   echo ============================================================================
   #prepare annotations, note: dict is assumed to exist when this is called
-  local/icsi_run_prepare_shared.sh
-  local/icsi_ihm_data_prep.sh $ICSI_DIR
-  local/icsi_ihm_scoring_data_prep.sh $ICSI_DIR dev
-  local/icsi_ihm_scoring_data_prep.sh $ICSI_DIR eval
+  local/ICSI/icsi_run_prepare_shared.sh
+  local/ICSI/icsi_ihm_data_prep.sh $ICSI_DIR
+  local/ICSI/icsi_ihm_scoring_data_prep.sh $ICSI_DIR dev
+  local/ICSI/icsi_ihm_scoring_data_prep.sh $ICSI_DIR eval
 fi
 
 if [ $stage -le 3 ]; then
   echo ============================================================================
   echo "              Prepare AMI data"
   echo ============================================================================
-  local/ami_text_prep.sh data/local/download
-  local/ami_ihm_data_prep.sh $AMI_DIR
-  local/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
-  local/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
+  local/AMI/ami_text_prep.sh data/local/download
+  local/AMI/ami_ihm_data_prep.sh $AMI_DIR
+  local/AMI/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
+  local/AMI/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
 fi
 
 if [ $stage -le 4 ]; then

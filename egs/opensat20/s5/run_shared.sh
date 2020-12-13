@@ -35,7 +35,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  local/safet_get_large_dict.sh
+  local/safet_get_cmu_dict.sh
   utils/prepare_lang.sh data/local/dict_nosp '<UNK>' data/local/lang_nosp data/lang_nosp
   utils/validate_lang.pl data/lang_nosp
 fi
@@ -72,9 +72,9 @@ fi
 
 if [ $stage -le 5 ]; then
   utils/data/get_reco2dur.sh data/AMI/train
-  utils/data/get_reco2dur.sh data/AMI/train
+  utils/data/get_reco2dur.sh data/ICSI/train
 
-  utils/data/get_utt2dur.sh data/ICSI/train
+  utils/data/get_utt2dur.sh data/AMI/train
   utils/data/get_utt2dur.sh data/ICSI/train
 
   for dataset in AMI ICSI; do
