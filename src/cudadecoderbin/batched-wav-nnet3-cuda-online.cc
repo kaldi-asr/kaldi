@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
           // lattice
           int iter = all_wav_i / all_wav.size();
           std::string key = all_wav_keys[all_wav_i_modulo];
-          if (opts.niterations > 1) key += std::to_string(iter);
+          if (iter > 0) key += std::to_string(iter);
           cuda_pipeline.SetLatticeCallback(
               corr_id, [&opts, &clat_writer, &clat_writer_m, key, latency_ptr,
                         &timer](CompactLattice &clat) {

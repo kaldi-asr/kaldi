@@ -23,6 +23,8 @@
 // Do not include this file directly.  It is to be included
 // by .cc files in this directory.
 
+#include "cudamatrix/cu-device.h"
+
 namespace kaldi {
 #if HAVE_CUDA == 1
 
@@ -31,7 +33,9 @@ inline cublasStatus_t cublas_gemm(
     cublasOperation_t transb, int m, int n,int k, float alpha,
     const float *A, int lda, const float *B, int ldb, float beta,
     float *C, int ldc) {
-  return cublasSgemm_v2(handle,transa,transb,m,n,k,&alpha,A,lda,B,ldb,&beta,C,ldc);
+  return cublasGemmEx(handle,transa,transb,m,n,k,&alpha,A,CUDA_R_32F,lda,B,CUDA_R_32F,ldb,&beta,
+                      C,CUDA_R_32F,ldc,CuDevice::Instantiate().GetCublasComputeType(),
+                      CuDevice::Instantiate().GetCublasGemmAlgo());
 }
 inline cublasStatus_t cublas_gemm(
     cublasHandle_t handle, cublasOperation_t transa,
@@ -54,7 +58,10 @@ inline cublasStatus_t cublas_gemmBatched(
     cublasOperation_t transb, int m, int n, int k, float alpha,
     const float *A[], int lda, const float *B[], int ldb, float beta,
     float *C[], int ldc, int batchCount) {
-  return cublasSgemmBatched(handle, transa, transb, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc, batchCount);
+  // return cublasSgemmBatched(handle, transa, transb, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc, batchCount);
+  return cublasGemmBatchedEx(handle, transa, transb, m, n, k, &alpha, (void* const*)A, CUDA_R_32F,  lda,
+                             (void* const*)B, CUDA_R_32F, ldb, &beta, (void* const*)C, CUDA_R_32F, ldc, batchCount,
+                             CuDevice::Instantiate().GetCublasComputeType(), CuDevice::Instantiate().GetCublasGemmAlgo());
 }
 inline cublasStatus_t cublas_gemmBatched(
     cublasHandle_t handle, cublasOperation_t transa,
