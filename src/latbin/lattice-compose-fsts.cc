@@ -88,8 +88,10 @@ int main(int argc, char *argv[]) {
         fst::ILabelCompare<StdArc> ilabel_comp;
         ArcSort(fst2, ilabel_comp);
       }
+      /* // THIS MAKES ALL STATES FINAL STATES! WHY?
       if (phi_label > 0)
         PropagateFinal(phi_label, fst2);
+      */
 
       fst::CacheOptions cache_opts(true, num_states_cache);
       fst::MapFstOptions mapfst_opts(cache_opts);
@@ -144,8 +146,10 @@ int main(int argc, char *argv[]) {
           fst::ILabelCompare<StdArc> ilabel_comp;
           fst::ArcSort(&fst2, ilabel_comp);
         }
+        /* // THIS MAKES ALL STATES FINAL STATES! WHY?
         if (phi_label > 0)
           PropagateFinal(phi_label, &fst2);
+        */
 
         // mapped_fst2 is fst2 interpreted using the LatticeWeight semiring,
         // with all the cost on the first member of the pair (since we're

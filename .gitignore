@@ -37,6 +37,9 @@ core
 .[#]*
 *~
 
+# vim autosave and backup files.
+*.sw?
+
 # [ecg]tag files.
 TAGS
 tags
