@@ -237,7 +237,7 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
   block->t = t_;
   allocated_block_map_[block->begin] = block;
   allocated_memory_ += (block->end - block->begin);
-  if (allocated_memory_ > max_allocated_memory_)
+  if (allocated_memory_ > max_allocated_memory_) 
     max_allocated_memory_ = allocated_memory_;
   return block->begin;
 }
@@ -283,8 +283,36 @@ static inline size_t IntegerLog2(size_t i) {
 }
 
 std::string GetFreeGpuMemory(int64* free, int64* total) {
+#ifdef _MSC_VER
   size_t mem_free, mem_total;
   cuMemGetInfo_v2(&mem_free, &mem_total);
+#else
+  // define the function signature type
+  size_t mem_free, mem_total;
+  {
+    // we will load cuMemGetInfo_v2 dynamically from libcuda.so
+    // pre-fill ``safe'' values that will not cause problems
+    mem_free = 1; mem_total = 1;
+    // open libcuda.so
+    void* libcuda = dlopen("libcuda.so", RTLD_LAZY);
+    if (NULL == libcuda) {
+      KALDI_WARN << "cannot open libcuda.so";
+    } else {
+      // define the function signature type
+      // and get the symbol
+      typedef CUresult (*cu_fun_ptr)(size_t*, size_t*);
+      cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo_v2");
+      if (NULL == dl_cuMemGetInfo) {
+        KALDI_WARN << "cannot load cuMemGetInfo from libcuda.so";
+      } else {
+        // call the function
+        dl_cuMemGetInfo(&mem_free, &mem_total);
+      }
+      // close the library
+      dlclose(libcuda);
+    }
+  }
+#endif
   // copy the output values outside
   if (NULL != free) *free = mem_free;
   if (NULL != total) *total = mem_total;
@@ -348,8 +376,8 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
             << ", synchronized the GPU " << num_synchronizations_
             << " times out of " << (t_/2) << " frees; "
             << "device memory info: " << GetFreeGpuMemory(NULL, NULL)
-            << "maximum allocated: " << max_allocated_memory_
-            << "current allocated: " << allocated_memory_;
+            << "maximum allocated: " << max_allocated_memory_  
+            << "current allocated: " << allocated_memory_; 
 }
 
 // Note: we just initialize with the default options, but we can change it later
