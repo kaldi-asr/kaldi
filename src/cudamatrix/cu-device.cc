@@ -118,31 +118,12 @@ void CuDevice::Initialize() {
 #endif
     
 #if CUDA_VERSION >= 9000 
-#if CUDA_VERSION >= 11000
-    cublas_compute_type_ = CUBLAS_COMPUTE_32F; 
-    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
-    // Enable tensor cores in CUBLAS
-    // Note if the device does not support tensor cores this will fall back to normal math mode
-    if (device_options_.use_tf32_compute) {
-        // Use TF32 compute for Ampere Tensor Cores
-        cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_TF32; 
-        cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
-    }
-    if (device_options_.use_tensor_cores) {
-        // Use FP16 compute for pre-Ampere Tensor Cores
-        cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_16F; 
-        cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
-    }
-#else
-    cublas_compute_type_ = CUDA_R_32F; 
-    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
-      cublas_compute_type_ = CUDA_R_32F; 
-      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
+            CUBLAS_TENSOR_OP_MATH));
     }
-#endif
 #endif
 
     // Initialize the cuSPARSE library
@@ -286,9 +267,6 @@ void CuDevice::FinalizeActiveGpu() {
     device_id_copy_ = device_id;
     initialized_ = true;  // Prevent Initialize() from being called on this,
                           // the main thread.
-
-    CU_SAFE_CALL(cudaGetDeviceProperties(&properties_, device_id));
-
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
@@ -300,32 +278,14 @@ void CuDevice::FinalizeActiveGpu() {
 #endif
 
 #if CUDA_VERSION >= 9000 
-#if CUDA_VERSION >= 11000
-    cublas_compute_type_ = CUBLAS_COMPUTE_32F; 
-    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
-    // Enable tensor cores in CUBLAS
-    // Note if the device does not support tensor cores this will fall back to normal math mode
-    if ((properties_.major >= 8) && (device_options_.use_tf32_compute)) {
-      // Use TF32 compute for Ampere Tensor Cores
-      cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_TF32; 
-      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
-    }
-    if (device_options_.use_tensor_cores) {
-      // Use FP16 compute for pre-Ampere Tensor Cores
-      cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_16F; 
-      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
-    }
-#else
-    cublas_compute_type_ = CUDA_R_32F; 
-    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
     if (device_options_.use_tensor_cores) {
       // Enable tensor cores in CUBLAS
       // Note if the device does not support tensor cores this will fall back to normal math mode
-      cublas_compute_type_ = CUDA_R_32F; 
-      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
+            CUBLAS_TENSOR_OP_MATH));
     }
 #endif
-#endif
+
     
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
@@ -342,6 +302,8 @@ void CuDevice::FinalizeActiveGpu() {
     // Notify the user which GPU is being userd.
     char name[128];
     DeviceGetName(name,128, device_id);
+
+    CU_SAFE_CALL(cudaGetDeviceProperties(&properties_, device_id));
 
     KALDI_LOG << "The active GPU is [" << device_id << "]: " << name << "\t"
               << GetFreeGpuMemory(&free_memory_at_startup_, NULL) << " version "
