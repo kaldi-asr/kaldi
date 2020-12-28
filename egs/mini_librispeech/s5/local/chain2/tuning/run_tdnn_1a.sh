@@ -325,11 +325,11 @@ fi
 if [ $stage -le 22 ]; then
   echo "$0: about to train model"
   steps/chain2/train.sh \
-    --stage $train_stage --cmd "$cuda_cmd" \
+    --stage $train_stage --cmd "$train_cmd" \
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
     --max-param-change 2.0 \
     --num-jobs-initial 2 --num-jobs-final 5 \
-    --groups-per-minibatch 256,128,64 \
+    --minibatch-size 256,128,64 \
      $dir/egs $dir || exit 1;
 fi
 

@@ -29,10 +29,10 @@ namespace kaldi {
 namespace cuda_decoder {
 
 struct ThreadPoolLightTask {
-  void (*func_ptr)(void *, uint64_t, uint64_t);
+  void (*func_ptr)(void *, uint64_t, void *);
   void *obj_ptr;
   uint64_t arg1;
-  uint64_t arg2;
+  void *arg2;
 };
 
 template <int QUEUE_SIZE>
