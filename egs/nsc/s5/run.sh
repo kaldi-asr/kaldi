@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Copyright 2020  Johns Hopkins University (author: Piotr Żelasko)
+# Apache 2.0
 
 # Set this to somewhere where you want to put your data, or where
 # someone else has already put it.  You'll want to change this
