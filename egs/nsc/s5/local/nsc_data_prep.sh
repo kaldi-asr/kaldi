@@ -5,12 +5,15 @@ stage=0
 . path.sh
 . utils/parse_options.sh
 
+# Pre-requisites
+pip install lhotse
+pip install git+https://github.com/pzelasko/Praat-textgrids
+
 # Use Lhotse to prepare the data dir
 if [ $stage -le 0 ]; then
-    #pip install git+https://github.com/pzelasko/Praat-textgrids
-    #lhotse prepare nsc /export/corpora5/nsc data/nsc
-    #lhotse kaldi export data/nsc/recordings_PART3_SameCloseMic.json data/nsc/supervisions_PART3_SameCloseMic.json data/nsc
-    #utils/fix_data_dir.sh data/nsc
+    lhotse prepare nsc /export/corpora5/nsc data/nsc
+    lhotse kaldi export data/nsc/recordings_PART3_SameCloseMic.json data/nsc/supervisions_PART3_SameCloseMic.json data/nsc
+    utils/fix_data_dir.sh data/nsc
     utils/utt2spk_to_spk2utt.pl data/nsc/utt2spk > data/nsc/spk2utt
     # "Poor man's text normalization"
     mv data/nsc/text data/nsc/text.bak
@@ -36,6 +39,8 @@ if [ $stage -le 1 ]; then
     # Lexicon
     echo "<SIL> <SIL>" > data/local/dict/lexicon.txt
     echo "<UNK> <UNK>" >> data/local/dict/lexicon.txt
+    # We are removing a couple of broken entries from the NSC lexicon
+    # (I found them with trial-and-error)
     cut '-f-2' $lexicon_path | sort | uniq \
         | grep -v '^s ai l O n' \
         | grep -v '^M OW HH AA NN' \
