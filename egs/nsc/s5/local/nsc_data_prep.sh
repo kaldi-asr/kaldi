@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Copyright 2020  Johns Hopkins University (author: Piotr Żelasko)
+# Apache 2.0
+
 stage=0
 
 . path.sh
