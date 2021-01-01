@@ -131,25 +131,26 @@ Parameters:
    pbest: best count for matrix binarization (if 0, determined automatically)
 Returns: cluster assignments for every speaker embedding   
 '''
-def NME_SpectralClustering(A, num_clusters = None, max_num_clusters = 10, pbest = 0, pmax = 20):
+def NME_SpectralClustering(A, num_clusters = None, max_num_clusters = 10, pbest = 0, pmin = 2, pmax = 20):
+    # First estimate number of clusters by scanning different thresholds for
+    # affinity matrix
     if pbest==0:
         print('Selecting best number of neighbors for affinity matrix thresolding:')
         rbest = None
         kbest = None
-        for p in range(2, pmax+1):
-            e, g, k, r = ComputeNMEParameters(A, p, max_num_clusters)
+        for p in range(pmin, pmax+1):
+            _, _, k, r = ComputeNMEParameters(A, p, max_num_clusters)
             print('p={}, r={}'.format(p,r))
             if rbest is None or rbest > r:
                 rbest = r
                 pbest = p
                 kbest = k
         print('Best number of neighbors is {}'.format(pbest))
-        return NME_SpectralClustering_sklearn(A, num_clusters if num_clusters is not None else (kbest+1), pbest)
-    if num_clusters is None:
-        print('Compute number of clusters to generate:')
-        e, g, r, k = ComputeNMEParameters(A, p)
-        print('Number of clusters to generate is {}'.format(k+1))
-        return NME_SpectralClustering_sklearn(A, k+1, pbest)
+    else:
+        _, _, kbest, _ = ComputeNMEParameters(A, pbest, max_num_clusters)
+    
+    num_clusters = num_clusters if num_clusters is not None else kbest+1
+    print('Number of clusters: {}'.format(num_clusters))
     return NME_SpectralClustering_sklearn(A, num_clusters, pbest)
 
 '''
@@ -175,6 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('simmat_rspec', type=str, help='Kaldi-style rspecifier of similarity scores matrices to read')
     parser.add_argument('reco2utt_rspec', type=str, help='Kaldi-style rspecifier of recording-to-utterances correspondence')
     parser.add_argument('labels_wspec', type=str, help='Kaldi-style wspecifier to save xvector cluster labels')
+    parser.add_argument('--min_neighbors', type=int, default=2, help='Minimum number of neighbors to threshold similarity matrix')
     parser.add_argument('--max_neighbors', type=int, default=20, help='Maximum number of neighbors to threshold similarity matrix')
     parser.add_argument('--reco2num_spk', type=str, default='', help='Kaldi-style rspecifier of recording-to-numofspeakers correspondence')
     parser.add_argument('--num_clusters', type=int, default=None, help='Number of clusters to generate. Ignored if --reco2num_spk is given')
@@ -188,7 +190,7 @@ if __name__ == '__main__':
     print('Reco2Utt rspecifier: {}'.format(args.reco2utt_rspec))
     print('Labels wspecifier: {}'.format(args.labels_wspec))
     print('Number of clusters to generate: {}'.format(args.num_clusters))
-    print('Maximum number of nighbors to threshold similarity matrix: {}\n'.format(args.max_neighbors))
+    print('Number of neighbors to threshold similarity matrix: {}-{}\n'.format(args.min_neighbors, args.max_neighbors))
     print('Reco2NumSpk rspecifier: {}'.format(args.reco2num_spk))
 
     print('Loading affinity matrices...', end='')
@@ -210,7 +212,7 @@ if __name__ == '__main__':
         assert num_clusters is None or num_clusters > 0, 'Positive number of clusters expected for {}, {} found\n'.format(id, num_clusters)
 
         print('Start clustering for recording {}...'.format(id))
-        Labels[id] = NME_SpectralClustering(A, num_clusters = num_clusters, pmax = args.max_neighbors)
+        Labels[id] = NME_SpectralClustering(A, num_clusters = num_clusters, pmin = args.min_neighbors, pmax = args.max_neighbors)
         print('Clustering done')
     print( 'Saving labels...')
     SaveLabels(IDs, Labels, args.labels_wspec)
