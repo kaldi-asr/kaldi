@@ -3,7 +3,12 @@
  Copyright 2020 Johns Hopkins University  (Author: Desh Raj)
   Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)  
 
- Prepare AMI mix-headset data with RTTM downloaded from openslr.org
+ Prepare AMI mix-headset data. We use the RTTMs and SAD labels from the
+ "only_words" category of BUT's AMI setup:
+ https://github.com/BUTSpeechFIT/AMI-diarization-setup
+ 
+ For more details about AMI splits and references used in other literature,
+ please refer to Section 4 of this paper: https://arxiv.org/abs/2012.14952
 """
 
 import sys
