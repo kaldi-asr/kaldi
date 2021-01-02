@@ -9,16 +9,17 @@
 # vb_hmm_xvector.sh which can divide all labels into per recording
 # labels.
 
-import sys, argparse, struct
-import numpy as np
+import sys
+import argparse
+import struct
 import itertools
+
+import numpy as np
 import kaldi_io
+from scipy.special import softmax
 
 sys.path.insert(0, 'steps')
 import libs.common as common_lib
-
-from scipy.special import softmax
-
 import VB_diarization
 
 ########### HELPER FUNCTIONS #####################################
@@ -73,7 +74,6 @@ def write_labels_file(seg2label, out_file):
         for seg in sorted(seg2label.keys()):
             label = seg2label[seg]
             f.write("{0} {1}\n".format(seg, label))
-    return
 
 def read_args(args):
     seg2label = read_labels_file(args.input_label_file)
@@ -129,4 +129,3 @@ def main():
 
 if __name__=="__main__":
     main()
-

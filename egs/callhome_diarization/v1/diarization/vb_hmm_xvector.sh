@@ -87,7 +87,7 @@ utils/fix_data_dir.sh $dir/tmp > /dev/null
 sdata=$dir/tmp/split$nj;
 utils/split_data.sh $dir/tmp $nj || exit 1;
 
-for n in `seq 1 $nj`; do
+for n in $(seq 1 $nj); do
   utils/filter_scp.pl $sdata/$n/utt2spk $xvec_dir/xvector_norm.scp > $sdata/$n/xvector.scp
   utils/filter_scp.pl $sdata/$n/utt2spk $dir/labels > $sdata/$n/labels.old
 done
