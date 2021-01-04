@@ -225,6 +225,14 @@ int main(int argc, char *argv[]) {
           //        not sure it decoding would be faster if
           //        decode_fst was sorted by isymbols)
 
+          // Check that composed graph is non-empty,
+          if (decode_fst.Start() == fst::kNoStateId) {
+            KALDI_WARN << "Empty 'decode_fst' HCLG for utterance "
+                       << utt << " (bad boosting graph?)";
+            num_fail++;
+            continue;
+          }
+
           elapsed_compose += timer_compose.Elapsed();
 
           DecodableAmNnetSimple nnet_decodable(
