@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Copyright      2017  Ignacio Viñals
-#           2017-2018  David Snyder
-#                2019  Jiawen Kang
+# Copyright 2019  Jiawen Kang
+# Apache 2.0.
 #
-# This script prepares the CN-Celeb dataset. It creates separate directories
-# for train, eval enroll and eval test. It also prepares a trials files, in the eval test directory.
+# This script prepares the CN-Celeb1 dataset. 
+# It creates separate directories for train, eval enroll and eval test. 
+# It also prepares a trials files, in the eval test directory.
 
 if [  $# != 2 ]; then
-    echo "Usage: make_cnceleb.sh <CN-Celeb_PATH> <out_dir>"
-    echo "E.g.: make_cnceleb.sh /export/corpora/CN-Celeb data"
+    echo "Usage: make_cnceleb1.sh <CN-Celeb1_PATH> <out_dir>"
+    echo "E.g.: make_cnceleb1.sh /export/corpora/CN-Celeb1 data"
     exit 1
 fi
 
 in_dir=$1
 out_dir=$2
 
-# Prepare the development data
-this_out_dir=${out_dir}/train
+# Prepare the cnceleb1 training data
+this_out_dir=${out_dir}/cnceleb1_train
 mkdir -p $this_out_dir 2>/dev/null
 WAVFILE=$this_out_dir/wav.scp
 SPKFILE=$this_out_dir/utt2spk
