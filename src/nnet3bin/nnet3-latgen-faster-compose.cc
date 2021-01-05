@@ -31,6 +31,7 @@
 #include "base/timer.h"
 
 #include <fst/compose.h>
+#include <fst/rmepsilon.h>
 #include <memory>
 
 
@@ -154,106 +155,119 @@ int main(int argc, char *argv[]) {
 
       RandomAccessTableReader<fst::VectorFstHolder> boosting_fst_reader(boosting_fst_rspecifier);
 
-      // HCLG FST is just one FST, not a table of FSTs.
-      auto hclg_fst = std::unique_ptr<VectorFst<StdArc>>(fst::ReadFstKaldi(hclg_fst_rxfilename));
+      // 'hclg_fst' is a single FST.
+      VectorFst<StdArc> hclg_fst;
+      {
+        auto hclg_fst_tmp = std::unique_ptr<Fst<StdArc>>(fst::ReadFstKaldiGeneric(hclg_fst_rxfilename));
+        hclg_fst = VectorFst<StdArc>(*hclg_fst_tmp); // Fst -> VectorFst, as it has to be MutableFst...
+        // 'hclg_fst_tmp' is deleted by 'going out of scope' ...
+      }
 
       // make sure hclg is sorted on olabel
-      if (hclg_fst->Properties(fst::kOLabelSorted, true) == 0) {
+      if (hclg_fst.Properties(fst::kOLabelSorted, true) == 0) {
         fst::OLabelCompare<StdArc> olabel_comp;
-        fst::ArcSort(hclg_fst.get(), olabel_comp);
+        fst::ArcSort(&hclg_fst, olabel_comp);
       }
 
       timer.Reset();
 
-      {
-
-        for (; !feature_reader.Done(); feature_reader.Next()) {
-          std::string utt = feature_reader.Key();
-          const Matrix<BaseFloat> &features (feature_reader.Value());
-          if (features.NumRows() == 0) {
-            KALDI_WARN << "Zero-length utterance: " << utt;
-            num_fail++;
-            continue;
-          }
-          const Matrix<BaseFloat> *online_ivectors = NULL;
-          const Vector<BaseFloat> *ivector = NULL;
-          if (!ivector_rspecifier.empty()) {
-            if (!ivector_reader.HasKey(utt)) {
-              KALDI_WARN << "No iVector available for utterance " << utt;
-              num_fail++;
-              continue;
-            } else {
-              ivector = &ivector_reader.Value(utt);
-            }
-          }
-          if (!online_ivector_rspecifier.empty()) {
-            if (!online_ivector_reader.HasKey(utt)) {
-              KALDI_WARN << "No online iVector available for utterance " << utt;
-              num_fail++;
-              continue;
-            } else {
-              online_ivectors = &online_ivector_reader.Value(utt);
-            }
-          }
-
-          // get the boosting graph,
-          VectorFst<StdArc> boosting_fst;
-          if (!boosting_fst_reader.HasKey(utt)) {
-            KALDI_WARN << "No boosting fst for utterance " << utt;
+      //// MAIN LOOP ////
+      for (; !feature_reader.Done(); feature_reader.Next()) {
+        std::string utt = feature_reader.Key();
+        const Matrix<BaseFloat> &features (feature_reader.Value());
+        if (features.NumRows() == 0) {
+          KALDI_WARN << "Zero-length utterance: " << utt;
+          num_fail++;
+          continue;
+        }
+        const Matrix<BaseFloat> *online_ivectors = NULL;
+        const Vector<BaseFloat> *ivector = NULL;
+        if (!ivector_rspecifier.empty()) {
+          if (!ivector_reader.HasKey(utt)) {
+            KALDI_WARN << "No iVector available for utterance " << utt;
             num_fail++;
             continue;
           } else {
-            boosting_fst = boosting_fst_reader.Value(utt); // copy,
+            ivector = &ivector_reader.Value(utt);
           }
-
-          timer_compose.Reset();
-
-          // make sure boosting graph is sorted on ilabel,
-          if (boosting_fst.Properties(fst::kILabelSorted, true) == 0) {
-            fst::ILabelCompare<StdArc> ilabel_comp;
-            fst::ArcSort(&boosting_fst, ilabel_comp);
-          }
-
-          // TODO: should we call rmepsilon on boosting_fst ?
-
-          // run composition (measure time),
-          VectorFst<StdArc> decode_fst;
-          fst::Compose(*hclg_fst, boosting_fst, &decode_fst);
-
-          // TODO: should we sort the 'decode_fst' by isymbols ?
-          //       (we don't do it, as it would take time.
-          //        not sure it decoding would be faster if
-          //        decode_fst was sorted by isymbols)
-
-          // Check that composed graph is non-empty,
-          if (decode_fst.Start() == fst::kNoStateId) {
-            KALDI_WARN << "Empty 'decode_fst' HCLG for utterance "
-                       << utt << " (bad boosting graph?)";
+        }
+        if (!online_ivector_rspecifier.empty()) {
+          if (!online_ivector_reader.HasKey(utt)) {
+            KALDI_WARN << "No online iVector available for utterance " << utt;
             num_fail++;
             continue;
+          } else {
+            online_ivectors = &online_ivector_reader.Value(utt);
           }
-
-          elapsed_compose += timer_compose.Elapsed();
-
-          DecodableAmNnetSimple nnet_decodable(
-              decodable_opts, trans_model, am_nnet,
-              features, ivector, online_ivectors,
-              online_ivector_period, &compiler);
-
-          LatticeFasterDecoder decoder(decode_fst, config);
-
-          double like;
-          if (DecodeUtteranceLatticeFaster(
-                  decoder, nnet_decodable, trans_model, word_syms.get(), utt,
-                  decodable_opts.acoustic_scale, determinize, allow_partial,
-                  &alignment_writer, &words_writer, &compact_lattice_writer,
-                  &lattice_writer,
-                  &like)) {
-            tot_like += like;
-            frame_count += nnet_decodable.NumFramesReady();
-            num_success++;
-          } else num_fail++;
         }
+
+        // get the boosting graph,
+        VectorFst<StdArc> boosting_fst;
+        if (!boosting_fst_reader.HasKey(utt)) {
+          KALDI_WARN << "No boosting fst for utterance " << utt;
+          num_fail++;
+          continue;
+        } else {
+          boosting_fst = boosting_fst_reader.Value(utt); // copy,
+        }
+
+        timer_compose.Reset();
+
+        // RmEpsilon saved 30% of composition runtime...
+        // - Note: we are loading 2-state graphs with eps back-link to the initial state.
+        if (boosting_fst.Properties(fst::kIEpsilons, true) != 0) {
+          fst::RmEpsilon(&boosting_fst);
+        }
+
+        // make sure boosting graph is sorted on ilabel,
+        if (boosting_fst.Properties(fst::kILabelSorted, true) == 0) {
+          fst::ILabelCompare<StdArc> ilabel_comp;
+          fst::ArcSort(&boosting_fst, ilabel_comp);
+        }
+
+        // run composition,
+        VectorFst<StdArc> decode_fst;
+        fst::Compose(hclg_fst, boosting_fst, &decode_fst);
+
+        // check that composed graph is non-empty,
+        if (decode_fst.Start() == fst::kNoStateId) {
+          KALDI_WARN << "Empty 'decode_fst' HCLG for utterance "
+                     << utt << " (bad boosting graph?)";
+          num_fail++;
+          continue;
+        }
+
+        elapsed_compose += timer_compose.Elapsed();
+
+        DecodableAmNnetSimple nnet_decodable(
+            decodable_opts, trans_model, am_nnet,
+            features, ivector, online_ivectors,
+            online_ivector_period, &compiler);
+
+        // Note: decode_fst is VectorFst, not ConstFst.
+        //
+        //       OpenFst docs say that more specific iterators
+        //       are faster than generic iterators. And in HCLG
+        //       is usually loaded for decoding as ConstFst.
+        //
+        //       auto decode_fst_ = ConstFst<StdArc>(decode_fst);
+        //
+        //       In this way, I tried to cast VectorFst to ConstFst,
+        //       but this made the decoding 20% slower.
+        //
+        LatticeFasterDecoder decoder(decode_fst, config);
+
+        double like;
+        if (DecodeUtteranceLatticeFaster(
+                decoder, nnet_decodable, trans_model, word_syms.get(), utt,
+                decodable_opts.acoustic_scale, determinize, allow_partial,
+                &alignment_writer, &words_writer, &compact_lattice_writer,
+                &lattice_writer,
+                &like)) {
+          tot_like += like;
+          frame_count += nnet_decodable.NumFramesReady();
+          num_success++;
+        } else num_fail++;
       }
     }
 
