@@ -1,0 +1,121 @@
+command line (run on 2020 Nov 9 at 14:27:18) Version: 22  /home/john/kaldi_jjm/egs/sad_rats/s5/../../../tools/sctk/bin/md-eval.pl -1 -c 0.25 -r data/dev-1/rttm.annotation -s exp/sad_1a/dev-1/sad.rttm
+
+Time-based metadata alignment
+
+Metadata evaluation parameters:
+    time-optimized metadata mapping
+        max gap between matching metadata events = 1 sec
+        max extent to match for SU's = 0.5 sec
+
+Speaker Diarization evaluation parameters:
+    The max time to extend no-score zones for NON-LEX exclusions is 0.5 sec
+    The no-score collar at SPEAKER boundaries is 0.25 sec
+
+Exclusion zones for evaluation and scoring are:
+                             -----MetaData-----        -----SpkrData-----
+     exclusion set name:     DEFAULT    DEFAULT        DEFAULT    DEFAULT
+     token type/subtype      no-eval   no-score        no-eval   no-score
+             (UEM)              X                         X
+         LEXEME/un-lex                    X                          
+        NON-LEX/breath                                              X
+        NON-LEX/cough                                               X
+        NON-LEX/laugh                                               X
+        NON-LEX/lipsmack                                            X
+        NON-LEX/other                                               X
+        NON-LEX/sneeze                                              X
+        NOSCORE/<na>            X         X               X         X
+ NO_RT_METADATA/<na>            X                                    
+             SU/unannotated               X                          
+
+*** Performance analysis for Speaker Diarization for ALL ***
+
+    EVAL TIME = 933867.28 secs
+  EVAL SPEECH = 432374.49 secs ( 46.3 percent of evaluated time)
+  SCORED TIME = 751492.90 secs ( 80.5 percent of evaluated time)
+SCORED SPEECH = 336931.56 secs ( 44.8 percent of scored time)
+   EVAL WORDS =      0        
+ SCORED WORDS =      0         (100.0 percent of evaluated words)
+---------------------------------------------
+MISSED SPEECH =   4931.73 secs (  0.7 percent of scored time)
+FALARM SPEECH =  12194.65 secs (  1.6 percent of scored time)
+ MISSED WORDS =      0         (100.0 percent of scored words)
+---------------------------------------------
+SCORED SPEAKER TIME = 336931.56 secs (100.0 percent of scored speech)
+MISSED SPEAKER TIME =   4931.73 secs (  1.5 percent of scored speaker time)
+FALARM SPEAKER TIME =  12194.65 secs (  3.6 percent of scored speaker time)
+ SPEAKER ERROR TIME =      0.00 secs (  0.0 percent of scored speaker time)
+SPEAKER ERROR WORDS =      0         (100.0 percent of scored speaker words)
+---------------------------------------------
+ OVERALL SPEAKER DIARIZATION ERROR = 5.08 percent of scored speaker time  `(ALL)
+---------------------------------------------
+ Speaker type confusion matrix -- speaker weighted
+  REF\SYS (count)      unknown               MISS              
+unknown                1547 / 100.0%          0 /   0.0%
+  FALSE ALARM             0 /   0.0%
+---------------------------------------------
+ Speaker type confusion matrix -- time weighted
+  REF\SYS (seconds)    unknown               MISS              
+unknown           331999.83 /  98.5%    4931.73 /   1.5%
+  FALSE ALARM      12194.65 /   3.6%
+---------------------------------------------
+
+command line (run on 2020 Nov 9 at 14:27:39) Version: 22  /home/john/kaldi_jjm/egs/sad_rats/s5/../../../tools/sctk/bin/md-eval.pl -1 -c 0.25 -r data/dev-2/rttm.annotation -s exp/sad_1a/dev-2/sad.rttm
+
+Time-based metadata alignment
+
+Metadata evaluation parameters:
+    time-optimized metadata mapping
+        max gap between matching metadata events = 1 sec
+        max extent to match for SU's = 0.5 sec
+
+Speaker Diarization evaluation parameters:
+    The max time to extend no-score zones for NON-LEX exclusions is 0.5 sec
+    The no-score collar at SPEAKER boundaries is 0.25 sec
+
+Exclusion zones for evaluation and scoring are:
+                             -----MetaData-----        -----SpkrData-----
+     exclusion set name:     DEFAULT    DEFAULT        DEFAULT    DEFAULT
+     token type/subtype      no-eval   no-score        no-eval   no-score
+             (UEM)              X                         X
+         LEXEME/un-lex                    X                          
+        NON-LEX/breath                                              X
+        NON-LEX/cough                                               X
+        NON-LEX/laugh                                               X
+        NON-LEX/lipsmack                                            X
+        NON-LEX/other                                               X
+        NON-LEX/sneeze                                              X
+        NOSCORE/<na>            X         X               X         X
+ NO_RT_METADATA/<na>            X                                    
+             SU/unannotated               X                          
+
+*** Performance analysis for Speaker Diarization for ALL ***
+
+    EVAL TIME = 865041.77 secs
+  EVAL SPEECH = 311633.49 secs ( 36.0 percent of evaluated time)
+  SCORED TIME = 687824.32 secs ( 79.5 percent of evaluated time)
+SCORED SPEECH = 221166.14 secs ( 32.2 percent of scored time)
+   EVAL WORDS =      0        
+ SCORED WORDS =      0         (100.0 percent of evaluated words)
+---------------------------------------------
+MISSED SPEECH =   2731.59 secs (  0.4 percent of scored time)
+FALARM SPEECH =  12748.75 secs (  1.9 percent of scored time)
+ MISSED WORDS =      0         (100.0 percent of scored words)
+---------------------------------------------
+SCORED SPEAKER TIME = 221166.14 secs (100.0 percent of scored speech)
+MISSED SPEAKER TIME =   2731.59 secs (  1.2 percent of scored speaker time)
+FALARM SPEAKER TIME =  12748.75 secs (  5.8 percent of scored speaker time)
+ SPEAKER ERROR TIME =      0.00 secs (  0.0 percent of scored speaker time)
+SPEAKER ERROR WORDS =      0         (100.0 percent of scored speaker words)
+---------------------------------------------
+ OVERALL SPEAKER DIARIZATION ERROR = 7.00 percent of scored speaker time  `(ALL)
+---------------------------------------------
+ Speaker type confusion matrix -- speaker weighted
+  REF\SYS (count)      unknown               MISS              
+unknown                 968 / 100.0%          0 /   0.0%
+  FALSE ALARM             0 /   0.0%
+---------------------------------------------
+ Speaker type confusion matrix -- time weighted
+  REF\SYS (seconds)    unknown               MISS              
+unknown           218434.54 /  98.8%    2731.59 /   1.2%
+  FALSE ALARM      12748.75 /   5.8%
+---------------------------------------------
