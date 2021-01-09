@@ -134,14 +134,6 @@ void CuDevice::Initialize() {
         cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
 #else
-    // cublas_compute_type_ = CUDA_R_32F; 
-    // cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
-    // if (device_options_.use_tensor_cores) {
-    //   // Enable tensor cores in CUBLAS
-    //   // Note if the device does not support tensor cores this will fall back to normal math mode
-    //   cublas_compute_type_ = CUDA_R_32F; 
-    //   cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
-    // }
     CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
             CUBLAS_TENSOR_OP_MATH));
 #endif
@@ -318,14 +310,6 @@ void CuDevice::FinalizeActiveGpu() {
       cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
 #else
-    // cublas_compute_type_ = CUDA_R_32F; 
-    // cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
-    // if (device_options_.use_tensor_cores) {
-    //   // Enable tensor cores in CUBLAS
-    //   // Note if the device does not support tensor cores this will fall back to normal math mode
-    //   cublas_compute_type_ = CUDA_R_32F; 
-    //   cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
-    // }
     CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
             CUBLAS_TENSOR_OP_MATH));
 #endif
