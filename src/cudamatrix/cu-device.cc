@@ -134,8 +134,10 @@ void CuDevice::Initialize() {
         cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
 #else
-    CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
-            CUBLAS_TENSOR_OP_MATH));
+    if (device_options_.use_tensor_cores) {
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
+              CUBLAS_TENSOR_OP_MATH));
+    }
 #endif
 #endif
 
@@ -310,8 +312,10 @@ void CuDevice::FinalizeActiveGpu() {
       cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
 #else
-    CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
-            CUBLAS_TENSOR_OP_MATH));
+    if (device_options_.use_tensor_cores) {
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
+              CUBLAS_TENSOR_OP_MATH));
+    }
 #endif
 #endif
     
