@@ -1328,6 +1328,9 @@ void MatrixBase<Real>::MulColsVec(const VectorBase<Real> &scale) {
 
 template<typename Real>
 void MatrixBase<Real>::SetZero() {
+  // Avoid calling memset on NULL, that's undefined behaviour.
+  if(data_ == NULL) return;
+
   if (num_cols_ == stride_)
     memset(data_, 0, sizeof(Real)*num_rows_*num_cols_);
   else
