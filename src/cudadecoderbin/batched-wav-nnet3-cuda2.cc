@@ -128,8 +128,6 @@ int main(int argc, char *argv[]) {
     }
 
     int32 num_task_submitted = 0, num_err = 0;
-    double tot_like = 0.0;
-    int64 num_frames = 0;
     double total_audio = 0;
 
     nvtxRangePush("Global Timer");
@@ -178,8 +176,6 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Decoded " << num_task_submitted << " utterances, " << num_err
               << " with errors.";
-    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
-              << " per frame over " << num_frames << " frames.";
 
     KALDI_LOG << "Overall: "
               << " Aggregate Total Time: " << total_time
