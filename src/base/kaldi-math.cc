@@ -66,7 +66,7 @@ RandomState::RandomState() {
   // without calling rand() in between, they would give you the same sequence
   // offset by one (if we didn't have the "+ 27437" in the code).  27437 is just
   // a randomly chosen prime number.
-  seed = Rand() + 27437;
+  seed = unsigned(Rand()) + 27437;
 }
 
 bool WithProb(BaseFloat prob, struct RandomState* state) {

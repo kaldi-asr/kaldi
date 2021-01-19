@@ -1,1 +1,0 @@
-../../s5b/local/ami_text_prep.sh

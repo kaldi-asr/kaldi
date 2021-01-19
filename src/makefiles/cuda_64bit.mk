@@ -13,7 +13,7 @@ CUDA_FLAGS = --compiler-options -fPIC --machine 64 -DHAVE_CUDA \
              -std=c++14 -DCUDA_API_PER_THREAD_DEFAULT_STREAM -lineinfo \
              --verbose -Wno-deprecated-gpu-targets
 
-CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
-CUDA_LDFLAGS += -L$(CUDATKDIR)/lib -Wl,-rpath,$(CUDATKDIR)/lib
+CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64/stubs -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
+CUDA_LDFLAGS += -L$(CUDATKDIR)/lib/stubs -L$(CUDATKDIR)/lib -Wl,-rpath,$(CUDATKDIR)/lib
 
-CUDA_LDLIBS += -lcublas -lcusparse -lcudart -lcurand -lcufft -lnvToolsExt #LDLIBS : The .so libs are loaded later than static libs in implicit rule
+CUDA_LDLIBS += -lcuda -lcublas -lcusparse -lcudart -lcurand -lcufft -lnvToolsExt #LDLIBS : The .so libs are loaded later than static libs in implicit rule

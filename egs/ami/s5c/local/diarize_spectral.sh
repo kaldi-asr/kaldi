@@ -9,7 +9,6 @@
 # clustering.
 
 stage=0
-overlap_stage=0
 nj=10
 cmd="run.pl"
 rttm_affix=
