@@ -22,7 +22,7 @@ This directory is symlinked to:
 It also contains scripts that have been optimized over many years.
 3. local
 This directory contains scripts that were taken from other Kaldi recipes and modified to work for the rats_sad corpus.
-- s5/local/rconvert_rttm_to_utt2spk_and_segments.py
+- s5/local/convert_rttm_to_utt2spk_and_segments.py
 - s5/local/prepare_data.py
 - s5/local/rats_sad_tab_prep.sh
 These 3 scripts prepare rats_sad data that is given in text format.
@@ -39,8 +39,8 @@ This file is symlinked to:
 - s5/local/segmentation/run_lstm.sh
 
 According to the pattern set in other Kaldi recipes a new experiment with different parameter settings would be written in a file named something lie:
-s5/local/segmentation/tuning/tdnn_lstm_sad._1b.sh
+s5/local/segmentation/tuning/tdnn_lstm_sad_1b.sh
 and symlinked to
-s5/local/segmentation/run_lsmt.sh
+s5/local/segmentation/run_lstm.sh
 - path.sh
 This file sets path variables to make Kaldi accessible to the other scripts.
