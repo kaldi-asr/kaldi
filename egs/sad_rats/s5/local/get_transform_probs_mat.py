@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright 2017  Vimal Manohar
-# Copyright 2017  John Morgan (ARL)
+# Copyright 2021  John Morgan (ARL)
 # Apache 2.0
 
 import argparse
@@ -29,14 +29,6 @@ def get_args():
     parser.add_argument("--speech-in-sil-weight", type=float,
                         default=0.0,
                         help="The fraction of speech probability "
-                        "to add to silence")
-    parser.add_argument("--garbage-in-speech-weight", type=float,
-                        default=0.0,
-                        help="The fraction of garbage probability "
-                        "to add to speech")
-    parser.add_argument("--garbage-in-sil-weight", type=float,
-                        default=0.0,
-                        help="The fraction of garbage probability "
                         "to add to silence")
     parser.add_argument("--sil-scale", type=float,
                         default=1.0, help="""Scale on the silence probability
