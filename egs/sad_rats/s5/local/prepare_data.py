@@ -88,8 +88,7 @@ def read_annotations(file_path):
 
 def find_audios(wav_path, file_list):
     # Get all .flac file names from audio directory
-    command = 'find %s -name "*.flac"' % (wav_path)
-    wavs = subprocess.check_output(command, shell=True).decode('utf-8').splitlines()
+    wavs = wav_path.rglob('*.flac')
     keys = [ os.path.splitext(os.path.basename(wav))[0] for wav in wavs ]
     data = {'key': keys, 'file_path': wavs}
     df_wav = pd.DataFrame(data)
