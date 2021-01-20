@@ -1414,6 +1414,7 @@ DropoutMaskComponent::DropoutMaskComponent():
 
 DropoutMaskComponent::DropoutMaskComponent(
     const DropoutMaskComponent &other):
+    RandomComponent(other),
     output_dim_(other.output_dim_),
     dropout_proportion_(other.dropout_proportion_),
     continuous_(other.continuous_) { }
@@ -1551,6 +1552,7 @@ GeneralDropoutComponent::GeneralDropoutComponent():
 
 GeneralDropoutComponent::GeneralDropoutComponent(
     const GeneralDropoutComponent &other):
+	RandomComponent(other),
     dim_(other.dim_),
     block_dim_(other.block_dim_),
     time_period_(other.time_period_),
@@ -1901,6 +1903,7 @@ SpecAugmentTimeMaskComponent::SpecAugmentTimeMaskComponent():
 
 SpecAugmentTimeMaskComponent::SpecAugmentTimeMaskComponent(
     const SpecAugmentTimeMaskComponent &other):
+	RandomComponent(other),
     dim_(other.dim_),
     zeroed_proportion_(other.zeroed_proportion_),
     time_mask_max_frames_(other.time_mask_max_frames_) { }
