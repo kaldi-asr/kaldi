@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
 # Copyright 2012-2016  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2021 ARL (John Morgan)
 # Apache 2.0
+# This  is a modification of wsj/s5/steps/make_mfcc.sh
+# This script does not exit if all the features are not generated.
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
 
@@ -186,7 +189,8 @@ fi
 
 if (( nf < nu - nu/20 )); then
   echo "$0: Less than 95% the features were successfully generated."\
-       "Probably a serious error."
+       "Probably a serious error.\
+       However, we are not exiting."
   #exit 1
 fi
 
