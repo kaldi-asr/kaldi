@@ -3,7 +3,7 @@
 # Apache 2.0.
 
 # This recipe builds a Speech Activity Detection system on the rats_sad corpus.
-# The LDC identifyer for the rats_sad corpus is LDC2015S02.
+# The LDC catalog ID for the rats_sad corpus is LDC2015S02.
 . ./cmd.sh
 . ./path.sh
 set -euo pipefail
@@ -116,8 +116,8 @@ if [ $stage -le 10 ]; then
   # Evaluate SAD output
   for fld in $test_sets; do
     echo "$0: evaluating $fld output."
-    md-eval.pl -1 -c 0.25 -r data/$fld/rttm.annotation \
-      -s $dir/$fld/sad.rttm > \
+    md-eval.pl -c 0 -r data/$fld/rttm.annotation \
+      -s $dir/$fld/sad.rttm | awk '/(MISSED|FALARM) SPEECH/' > \
       $dir/$fld/results.txt
   done
 fi
