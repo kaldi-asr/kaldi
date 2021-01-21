@@ -20,7 +20,7 @@ import numpy as np
 import subprocess
 import sys
 import itertools
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 sys.path.insert(0, 'steps')
 import libs.common as common_lib
@@ -60,31 +60,7 @@ def get_args():
                          "".format(args.frame_shift))
     return args
 
-class Segment:
-    """Stores all information about a segment"""
-    reco_id = ''
-    spk_id = ''
-    start_time = 0
-    dur = 0
-    end_time = 0
-
-    def __init__(self, reco_id, start_time, dur = None, end_time = None, label = None):
-        self.reco_id = reco_id
-        self.start_time = start_time
-        if (dur is None):
-            self.end_time = end_time
-            self.dur = end_time - start_time
-        else:
-            self.dur = dur
-            self.end_time = start_time + dur
-        self.label = label
-
-def groupby(iterable, keyfunc):
-    """Wrapper around ``itertools.groupby`` which sorts data first."""
-    iterable = sorted(iterable, key=keyfunc)
-    for key, group in itertools.groupby(iterable, keyfunc):
-        yield key, group
-
+Segment = namedtuple('Segment', 'reco spk start dur end')
 
 def run(args):
     # Get all reco to num_frames, which will be used to decide the number of
@@ -101,18 +77,21 @@ def run(args):
     segments = []
     with common_lib.smart_open(args.rttm) as f:
         for line in f.readlines():
+            start = float(3)
+            duration = float(4)
+            end = start + duration
             fields = line.strip().split()
-            segments.append(Segment(fields[1], float(fields[3]), dur=float(fields[4]), label=fields[7]))
+            segments.append(Segment(fields[1], fields[7], start, duration, end))
 
     # We group the segment list into a dictionary indexed by reco_id
     reco2segs = defaultdict(list,
-        {reco_id : list(g) for reco_id, g in groupby(segments, lambda x: x.reco_id)})
+        {reco : list(g) for reco, g in itertools.groupby(sorted(segments, key=lambda x: x.reco))})
 
     # Now, for each reco, create a matrix of shape num_frames x 3 and fill in using
     # the segments information for that reco
     reco2targets = {}
     for reco_id in reco2num_frames:
-        segs = sorted(reco2segs[reco_id], key=lambda x: x.start_time)
+        segs = sorted(reco2segs[reco_id], key=lambda x: x.start)
 
         target_val = 1 - args.label_smoothing
         other_val = args.label_smoothing / 2
@@ -125,8 +104,8 @@ def run(args):
 
         # Now iterate over all segments of the recording and assign targets
         for seg in segs:
-            start_frame = int(seg.start_time / args.frame_shift)
-            end_frame = min(int(seg.end_time / args.frame_shift), reco2num_frames[reco_id])
+            start_frame = int(seg.start / args.frame_shift)
+            end_frame = min(int(seg.end / args.frame_shift), reco2num_frames[reco_id])
             num_frames = end_frame - start_frame
             if (num_frames <= 0):
                 continue
