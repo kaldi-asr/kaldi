@@ -39,7 +39,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=11
+CONFIGURE_VERSION=12
 
 # We support bash version 3.2 (Macs still ship with this version as of 2019)
 # and above.

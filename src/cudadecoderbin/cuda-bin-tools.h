@@ -78,7 +78,7 @@ int SetUpAndReadCmdLineOptions(int argc, char *argv[],
       "as "
       "options\n"
       "\n"
-      "Usage: batched-wav-nnet3-cuda [options] "
+      "Usage: batched-wav-nnet3-cuda-online [options] "
       "<nnet3-in> "
       "<fst-in> "
       "<wav-rspecifier> <lattice-wspecifier>\n";
@@ -108,15 +108,21 @@ int SetUpAndReadCmdLineOptions(int argc, char *argv[],
               "Generate full lattices");
   po.Register("write-lattice", &opts.write_lattice, "Output lattice to a file");
 
+  CuDevice::RegisterDeviceOptions(&po);
+  RegisterCuAllocatorOptions(&po);
+  opts.batched_decoder_config.Register(&po);
+ 
+  po.Read(argc, argv);
+
+  if (po.NumArgs() != 4) {
+    po.PrintUsage();
+    return 1;
+  }
+
   g_cuda_allocator.SetOptions(g_allocator_options);
   CuDevice::Instantiate().SelectGpuId("yes");
   CuDevice::Instantiate().AllowMultithreading();
 
-  CuDevice::RegisterDeviceOptions(&po);
-  RegisterCuAllocatorOptions(&po);
-  opts.batched_decoder_config.Register(&po);
-
-  po.Read(argc, argv);
   opts.batched_decoder_config.num_channels =
       std::max(opts.batched_decoder_config.num_channels,
                2 * opts.num_streaming_channels);
@@ -127,10 +133,7 @@ int SetUpAndReadCmdLineOptions(int argc, char *argv[],
   opts.clat_wspecifier = po.GetArg(4);
 
   if (opts.write_lattice) opts.generate_lattice = true;
-  if (po.NumArgs() != 4) {
-    po.PrintUsage();
-    return 1;
-  }
+  
   return 0;
 }
 
