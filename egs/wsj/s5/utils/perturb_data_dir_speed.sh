@@ -16,6 +16,8 @@
 #
 # It generates the files which are used for perturbing the speed of the original data.
 
+include_spk_prefix=true
+
 . utils/parse_options.sh
 
 if [ $# != 3 ]; then
@@ -31,8 +33,12 @@ factor=$1
 srcdir=$2
 destdir=$3
 label="sp"
-spk_prefix=$label$factor"-"
 utt_prefix=$label$factor"-"
+if $include_spk_prefix; then
+  spk_prefix=$label$factor"-"
+else
+  spk_prefix=""
+fi
 
 #check is sox on the path
 which sox &>/dev/null
