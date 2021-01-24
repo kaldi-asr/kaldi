@@ -77,17 +77,18 @@ def run(args):
     segments = []
     with common_lib.smart_open(args.rttm) as f:
         for line in f.readlines():
-            start = float(3)
-            duration = float(4)
-            end = start + duration
             fields = line.strip().split()
+            start = float(fields[3])
+            duration = float(fields[4])
+            end = start + duration
             segments.append(Segment(fields[1], fields[7], start, duration, end))
 
     # We group the segment list into a dictionary indexed by reco_id
     reco2segs = defaultdict(list,
         {reco : list(g) for reco, g in itertools.groupby(sorted(segments, key=lambda x: x.reco))})
 
-    # Now, for each reco, create a matrix of shape num_frames x 3 and fill in using
+
+    # Now, for each reco, create a matrix of shape num_frames x 2 and fill in using
     # the segments information for that reco
     reco2targets = {}
     for reco_id in reco2num_frames:
@@ -97,7 +98,7 @@ def run(args):
         other_val = args.label_smoothing / 2
         silence_vec = np.array([target_val,other_val], dtype=np.float)
         speech_vec = np.array([other_val,target_val], dtype=np.float)
-        num_targets = [0,0,0]
+        num_targets = [0,0]
 
         # The default target (if not  speech) is silence
         targets_mat = np.tile(silence_vec, (reco2num_frames[reco_id],1))
