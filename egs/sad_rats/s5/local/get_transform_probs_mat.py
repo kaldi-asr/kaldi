@@ -14,7 +14,7 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="""This script writes to stdout a transformation matrix
     to convert a 2x1 probability vector to a
-    2x1 pseudo-likelihood vector by first dividing by 3x1 priors vector.""")
+    2x1 pseudo-likelihood vector by first dividing by 2x1 priors vector.""")
 
     parser.add_argument("--priors", type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
