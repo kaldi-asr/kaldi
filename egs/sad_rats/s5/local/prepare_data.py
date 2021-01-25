@@ -15,6 +15,7 @@ import argparse
 import subprocess
 import itertools
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -88,8 +89,10 @@ def read_annotations(file_path):
 
 def find_audios(wav_path, file_list):
     # Get all .flac file names from audio directory
-    wavs = wav_path.rglob('*.flac')
-    keys = [ os.path.splitext(os.path.basename(wav))[0] for wav in wavs ]
+    wav_path = Path(wav_path)
+    wavs_glob = wav_path.rglob('*.flac')
+    wavs = [ w for w in wavs_glob ]
+    keys = [ Path(wf).stem for wf in wavs ]
     data = {'key': keys, 'file_path': wavs}
     df_wav = pd.DataFrame(data)
 
