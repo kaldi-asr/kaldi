@@ -88,8 +88,8 @@ def read_annotations(file_path):
 
 
 def find_audios(wav_path, file_list):
-    wav_path = Path(wav_path)
     # Get all .flac file names from audio directory
+    wav_path = Path(wav_path)
     wavs_glob = wav_path.rglob('*.flac')
     wavs = [ w for w in wavs_glob ]
     keys = [ Path(wf).stem for wf in wavs ]
