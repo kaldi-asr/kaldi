@@ -33,11 +33,22 @@ factor=$1
 srcdir=$2
 destdir=$3
 label="sp"
+<<<<<<< HEAD
 utt_prefix=$label$factor"-"
 if $include_spk_prefix; then
   spk_prefix=$label$factor"-"
 else
   spk_prefix=""
+=======
+if $include_spk_prefix; then
+  spk_prefix=$label$factor"-"
+  utt_prefix=$label$factor"-"
+  utt_postfix=""
+else
+  spk_prefix=""
+  utt_prefix=""
+  utt_postfix="-"$label$factor
+>>>>>>> dbff09ed7995d70a4da0805e5b24863f52f7f4f3
 fi
 
 #check is sox on the path
@@ -59,15 +70,27 @@ set -o pipefail
 
 mkdir -p $destdir
 
-cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/utt_map
 cat $srcdir/spk2utt | awk -v p=$spk_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/spk_map
-cat $srcdir/wav.scp | awk -v p=$spk_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/reco_map
-if [ ! -f $srcdir/utt2uniq ]; then
-  cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $destdir/utt2uniq
-else
-  cat $srcdir/utt2uniq | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $2);}' > $destdir/utt2uniq
-fi
 
+# for utterance-level mapping files (utts and recos), if we do not perform
+# speaker augmentation, we put utterance affix as postfix
+if $include_spk_prefix; then
+  cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/utt_map
+  cat $srcdir/wav.scp | awk -v p=$spk_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/reco_map
+  if [ ! -f $srcdir/utt2uniq ]; then
+    cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $destdir/utt2uniq
+  else
+    cat $srcdir/utt2uniq | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $2);}' > $destdir/utt2uniq
+  fi
+else
+  cat $srcdir/utt2spk | awk -v p=$utt_postfix '{printf("%s %s%s\n", $1, $1, p);}' > $destdir/utt_map
+  cat $srcdir/wav.scp | awk -v p=$utt_postfix '{printf("%s %s%s\n", $1, $1, p);}' > $destdir/reco_map
+  if [ ! -f $srcdir/utt2uniq ]; then
+    cat $srcdir/utt2spk | awk -v p=$utt_postfix '{printf("%s%s %s\n", $1, p, $1);}' > $destdir/utt2uniq
+  else
+    cat $srcdir/utt2uniq | awk -v p=$utt_postfix '{printf("%s%s %s\n", $1, p, $2);}' > $destdir/utt2uniq
+  fi
+fi
 
 cat $srcdir/utt2spk | utils/apply_map.pl -f 1 $destdir/utt_map  | \
   utils/apply_map.pl -f 2 $destdir/spk_map >$destdir/utt2spk

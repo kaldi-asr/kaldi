@@ -53,6 +53,9 @@ if [ -f $destdir/feats.scp ]; then
   exit 1
 fi
 
+# we need to make sure all files in source directory are in sorted order
+utils/fix_data_dir.sh ${srcdir} || exit 1;
+
 echo "$0: making sure the utt2dur and the reco2dur files are present"
 echo "... in ${srcdir}, because obtaining it after speed-perturbing"
 echo "... would be very slow, and you might need them."
