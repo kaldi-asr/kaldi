@@ -10,7 +10,12 @@ set -euo pipefail
 stage=0
 
 # Path where RATS_SAD gets downloaded (or where locally available):
-rats_sad_data_dir=/export/corpora5/LDC/LDC2015S02/data
+if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
+  rats_sad_data_dir=/export/corpora5/LDC/LDC2015S02/data
+else
+  rats_sad_data_dir=/mnt/corpora/LDC2015S02/RATS_SAD/data
+fi
+
 nj=50
 test_sets="dev-1 dev-2 "
 affix=1a
@@ -33,6 +38,7 @@ if [ $stage -le 1 ]; then
       $rats_sad_data_dir/$fld/audio/ data/$fld
   done
 fi
+exit
 
 if [ $stage -le 2 ]; then
   # Write utt2spk and segments files
