@@ -15,7 +15,6 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
 else
   rats_sad_data_dir=/mnt/corpora/LDC2015S02/RATS_SAD/data
 fi
-
 nj=50
 test_sets="dev-1 dev-2 "
 affix=1a
