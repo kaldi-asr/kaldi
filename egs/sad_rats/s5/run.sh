@@ -37,6 +37,7 @@ if [ $stage -le 1 ]; then
       $rats_sad_data_dir/$fld/audio/ data/$fld
   done
 fi
+exit
 
 if [ $stage -le 2 ]; then
   # Write utt2spk and segments files
