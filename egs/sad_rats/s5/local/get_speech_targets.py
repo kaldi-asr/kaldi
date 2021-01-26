@@ -81,7 +81,6 @@ def run(args):
             reco2num_frames[fields[0]] = int(fields[1])
 
     # We read all segments and store as a list of objects
-    print('Storing segments')
     segments = []
     with common_lib.smart_open(args.rttm) as f:
         for line in f.readlines():
@@ -96,8 +95,6 @@ def run(args):
                 dur = duration,
                 end = end
             ))
-
-    print('Stored {} segments'.format(len(segments)))
 
     reco2segs = defaultdict(list,
         {reco : list(g) for reco, g in groupby(segments, lambda x: x.reco)})
