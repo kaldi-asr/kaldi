@@ -26,6 +26,13 @@ sys.path.insert(0, 'steps')
 import libs.common as common_lib
 
 
+def groupby(iterable, keyfunc):
+    """Wrapper around ``itertools.groupby`` which sorts data first."""
+    iterable = sorted(iterable, key=keyfunc)
+    for key, group in itertools.groupby(iterable, keyfunc):
+        yield key, group
+
+
 def get_args():
     parser = argparse.ArgumentParser(
         description="""This script prepares targets for whole recordings for training
@@ -68,26 +75,32 @@ def run(args):
     reco2num_frames = {}
     with common_lib.smart_open(args.reco2num_frames) as f:
         for line in f:
-            parts = line.strip().split()
-            if len(parts) != 2:
+            fields = line.strip().split()
+            if len(fields) != 2:
                 raise ValueError("Could not parse line {0}".format(line))
-            reco2num_frames[parts[0]] = int(parts[1])
+            reco2num_frames[fields[0]] = int(fields[1])
 
     # We read all segments and store as a list of objects
+    print('Storing segments')
     segments = []
     with common_lib.smart_open(args.rttm) as f:
         for line in f.readlines():
-            fields = line.strip().split()
-            start = float(fields[3])
-            duration = float(fields[4])
+            segment_fields = line.strip().split()
+            start = float(segment_fields[3])
+            duration = float(segment_fields[4])
             end = start + duration
-            segments.append(Segment(fields[1], fields[7], start, duration, end))
+            segments.append(Segment(
+                reco = segment_fields[1],
+                spk = segment_fields[7],
+                start = start,
+                dur = duration,
+                end = end
+            ))
 
-    # We group the segment list into a dictionary indexed by reco_id
+    print('Stored {} segments'.format(len(segments)))
+
     reco2segs = defaultdict(list,
-        {reco : list(g) for reco, g in itertools.groupby(sorted(segments, key=lambda x: x.reco))})
-
-
+        {reco : list(g) for reco, g in groupby(segments, lambda x: x.reco)})
     # Now, for each reco, create a matrix of shape num_frames x 2 and fill in using
     # the segments information for that reco
     reco2targets = {}
@@ -99,10 +112,8 @@ def run(args):
         silence_vec = np.array([target_val,other_val], dtype=np.float)
         speech_vec = np.array([other_val,target_val], dtype=np.float)
         num_targets = [0,0]
-
         # The default target (if not  speech) is silence
         targets_mat = np.tile(silence_vec, (reco2num_frames[reco_id],1))
-
         # Now iterate over all segments of the recording and assign targets
         for seg in segs:
             start_frame = int(seg.start / args.frame_shift)
@@ -114,8 +125,8 @@ def run(args):
             targets_mat[start_frame:end_frame] = np.tile(speech_vec, (num_frames,1))
             num_targets[1] += end_frame - start_frame
 
+
         num_targets[0] = reco2num_frames[reco_id] - sum(num_targets)
-        # print ("{}: {}".format(reco_id, num_targets))
         reco2targets[reco_id] = targets_mat
 
     with common_lib.smart_open(args.out_targets_ark, 'w') as f:
