@@ -53,15 +53,6 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  # Extract MFCCs for training data set
-  echo "$0: Extract features for train data directory."
-  local/make_mfcc.sh --nj $nj --cmd "$train_cmd"  --write-utt2num-frames true \
-    --mfcc-config conf/mfcc_hires.conf data/train
-  steps/compute_cmvn_stats.sh data/train
-  utils/fix_data_dir.sh data/train
-fi
-
-if [ $stage -le 4 ]; then
   # Get supervision for whole recordings from segments supervision
   echo "$0: Prepare a 'whole' training data (not segmented) for training the SAD."
   utils/copy_data_dir.sh data/train data/train_sad
@@ -69,7 +60,7 @@ if [ $stage -le 4 ]; then
   utils/data/convert_data_dir_to_whole.sh data/train_sad data/train_sad_whole
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # extract MFCCs for whole recordings
   echo "$0: Extract features for the 'whole' data directory."
   steps/make_mfcc.sh --nj $nj --cmd "$train_cmd"  --write-utt2num-frames true \
@@ -78,7 +69,7 @@ if [ $stage -le 5 ]; then
   utils/fix_data_dir.sh data/train_sad_whole
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   # Associate silence or speech labels to frames
   echo "$0: Get targets for training data set."
   mkdir -p $dir
@@ -88,7 +79,7 @@ if [ $stage -le 6 ]; then
     copy-feats ark:- ark,scp:$dir/targets.ark,$dir/targets.scp
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   # Train the SAD neural network model
   echo "$0: Train a TDNN+LSTM network for SAD."
   local/segmentation/run_lstm.sh \
@@ -97,7 +88,7 @@ if [ $stage -le 7 ]; then
     --data-dir data/train_sad_whole --affix $affix || exit 1
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   # Run SAD on test sets
   for fld in $test_sets; do
     echo "$0: Run SAD detection on $fld."
@@ -105,7 +96,7 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   # Write rttm files
   for fld in $test_sets; do
     echo "$0: Writing rttm file for $fld."
@@ -116,7 +107,7 @@ if [ $stage -le 9 ]; then
   done
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   # Evaluate SAD output
   for fld in $test_sets; do
     echo "$0: evaluating $fld output."
