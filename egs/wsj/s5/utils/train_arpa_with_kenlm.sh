@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# 2020 author Jiayu DU
+
+# 2020 Author Jiayu DU
+# Apache 2.0
 
 # This script uses kenlm to estimate an arpa model from plain text,
-# it is a resort when you hit memory limit dealing with large scale training corpus
+# it is a resort when you hit memory limit dealing with large corpus
 # kenlm estimates arpa using on-disk structure,
 # as long as you have big enough hard disk, memory shouldn't be a problem.
-# by default, kenlm use up to 50% of your local memory, you can control this through -S option
+# by default, kenlm use up to 50% of your local memory,
+# you can control this through -S option
 
 [ -f path.sh ] && . ./path.sh;
 
@@ -24,16 +27,23 @@ arpa_name=$4
 
 if ! which lmplz >& /dev/null ; then
   echo "$0: cannot find training tool *lmplz*."
-  echo "The KenLM module installed in Kaldi(via tools/extras/install_kenlm_query_only.sh), only supports runtime query,"
-  echo "to *train* an arpa using KenLM, you need a complete KenLM installation(which depends on EIGEN and BOOST),"
-  echo "you should follow KenLM's cmake building instructions at (https://github.com/kpu/kenlm)"
+  echo "tools/extras/install_kenlm_query_only.sh installs kenlm at tools/kenlm"
+  echo "it only supports runtime mode, to actually train an arpa using KenLM,"
+  echo "you need a complete KenLM installation(depends on EIGEN and BOOST),"
+  echo "follow KenLM's building instructions at (https://github.com/kpu/kenlm)"
   exit 1
 fi
 
-# the text should be properly pre-processed(cleand, normalized and possibly word-segmented in some languages)
+# the text should be properly pre-processed, e.g:
+#   cleand, normalized and possibly word-segmented
 
-# get rid off irrelavent symbols, the rest of symbols are used as LM training vocabulary. 
-grep -v '<eps>' $symbol_table | grep -v '#0' | grep -v '<unk>' | grep -v '<UNK>' | grep -v '<s>' | grep -v '</s>' | awk '{print $1}' > $dir/ngram.vocab
+# get rid off irrelavent symbols
+grep -v '<eps>' $symbol_table \
+  | grep -v '#0' \
+  | grep -v '<unk>' | grep -v '<UNK>' \
+  | grep -v '<s>' | grep -v '</s>' \
+  | awk '{print $1}' \
+  > $dir/ngram.vocab
 
 # To make sure that kenlm & kaldi have strictly the same vocabulary:
 # 1. feed vocabulary into kenlm via --limit_vocab_file
@@ -46,9 +56,12 @@ grep -v '<eps>' $symbol_table | grep -v '#0' | grep -v '<unk>' | grep -v '<UNK>'
 # So the trick is, 
 # we explicitly add kaldi's vocab(one word per line) to training text, 
 # making each word appear at least once.
-# kenlm never prunes unigram, so this always generates consistent kenlm vocabuary as kaldi has.
+# kenlm never prunes unigram, 
+# so this always generates consistent kenlm vocabuary as kaldi has.
 # The effect of this is like add-one smoothing to unigram counts,
 # shouldn't have significant impacts in practice.
-cat $dir/ngram.vocab $text | lmplz $kenlm_opts --limit_vocab_file $dir/ngram.vocab > $dir/${arpa_name}.arpa
+cat $dir/ngram.vocab $text \
+  | lmplz $kenlm_opts --limit_vocab_file $dir/ngram.vocab \
+  > $dir/${arpa_name}.arpa
 
 echo "$0: Done training arpa to: $dir/${arpa_name}.arpa"

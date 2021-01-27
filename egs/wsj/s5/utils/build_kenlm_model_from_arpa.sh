@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 2020 author Jiayu DU
+# Apache 2.0
 
 # This script reads in an Arpa format language model, and converts it into the
 # KenLM format language model.
@@ -8,7 +9,7 @@
 
 # begin configuration section
 kenlm_opts="" # e.g. "-q 8 -b 8" for 8bits quantization
-model_type="trie" # eithor "trie" or "probing". trie is smaller, probing is faster.
+model_type="trie" # "trie" or "probing". trie is smaller, probing is faster.
 # end configuration section
 
 . utils/parse_options.sh
@@ -32,7 +33,7 @@ kenlm=$2
 
 if ! which build_binary >& /dev/null ; then
   echo "$0: cannot find KenLM's build_binary tool,"
-  echo "please check your kenlm installation (tools/extras/install_kenlm_query_only.sh)."
+  echo "check kenlm installation (tools/extras/install_kenlm_query_only.sh)."
   exit 1
 fi
 
