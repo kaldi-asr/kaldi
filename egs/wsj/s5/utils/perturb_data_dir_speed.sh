@@ -33,13 +33,6 @@ factor=$1
 srcdir=$2
 destdir=$3
 label="sp"
-<<<<<<< HEAD
-utt_prefix=$label$factor"-"
-if $include_spk_prefix; then
-  spk_prefix=$label$factor"-"
-else
-  spk_prefix=""
-=======
 if $include_spk_prefix; then
   spk_prefix=$label$factor"-"
   utt_prefix=$label$factor"-"
@@ -48,7 +41,6 @@ else
   spk_prefix=""
   utt_prefix=""
   utt_postfix="-"$label$factor
->>>>>>> dbff09ed7995d70a4da0805e5b24863f52f7f4f3
 fi
 
 #check is sox on the path
