@@ -17,20 +17,12 @@ from __future__ import division
 import argparse
 import logging
 import numpy as np
-import subprocess
 import sys
 import itertools
 from collections import defaultdict, namedtuple
 
 sys.path.insert(0, 'steps')
 import libs.common as common_lib
-
-
-def groupby(iterable, keyfunc):
-    """Wrapper around ``itertools.groupby`` which sorts data first."""
-    iterable = sorted(iterable, key=keyfunc)
-    for key, group in itertools.groupby(iterable, keyfunc):
-        yield key, group
 
 
 def get_args():
@@ -96,8 +88,11 @@ def run(args):
                 end = end
             ))
 
+    keyfunc = lambda x: x.reco
+    segments_iterable = sorted(segments, key=keyfunc)
     reco2segs = defaultdict(list,
-        {reco : list(g) for reco, g in groupby(segments, lambda x: x.reco)})
+        {reco : list(g) for reco, g in itertools.groupby(segments_iterable, keyfunc)})
+
     # Now, for each reco, create a matrix of shape num_frames x 2 and fill in using
     # the segments information for that reco
     reco2targets = {}
