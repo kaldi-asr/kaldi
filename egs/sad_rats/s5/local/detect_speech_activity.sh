@@ -85,7 +85,7 @@ fi
 if [ $stage -le 1 ]; then
   echo "$0 Stage 1: Extract input features in data/${fld}_whole."
   utils/fix_data_dir.sh data/${fld}_whole
-  local/make_mfcc.sh --mfcc-config $mfcc_config --nj $nj --cmd "$cmd" \
+  steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $nj --cmd "$cmd" \
     --write-utt2num-frames true \
     data/${fld}_whole 
   steps/compute_cmvn_stats.sh data/${fld}_whole
