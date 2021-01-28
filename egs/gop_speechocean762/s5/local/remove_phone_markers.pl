@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
-# Copyright 2019 Junbo Zhang
+# Copyright 2019  Junbo Zhang
+# Copyright 2020  Xiaomi Corporation (Author: Junbo Zhang)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

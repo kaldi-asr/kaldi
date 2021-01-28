@@ -1,0 +1,12 @@
+MSE: 0.15
+Corr: 0.42
+
+              precision    recall  f1-score   support
+
+           0       0.46      0.17      0.25      1339
+           1       0.16      0.37      0.22      1828
+           2       0.96      0.93      0.95     44079
+
+    accuracy                           0.89     47246
+   macro avg       0.53      0.49      0.47     47246
+weighted avg       0.92      0.89      0.90     47246
