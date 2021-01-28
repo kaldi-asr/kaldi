@@ -55,7 +55,7 @@ dir=$2
 
 reco2num_spk_opts=
 if [ ! $reco2num_spk == "" ]; then
-  reco2num_spk_opts="--reco2num-spk $reco2num_spk"
+  reco2num_spk_opts="--reco2num_spk $reco2num_spk"
 fi
 
 mkdir -p $dir/tmp
