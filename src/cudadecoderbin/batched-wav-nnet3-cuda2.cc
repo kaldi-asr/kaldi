@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         "set via config files whose filenames are passed as "
         "options\n"
         "\n"
-        "Usage: batched-wav-nnet3-cuda [options] <nnet3-in> "
+        "Usage: batched-wav-nnet3-cuda2 [options] <nnet3-in> "
         "<fst-in> "
         "<wav-rspecifier> <lattice-wspecifier>\n";
 
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
                 "Number of times to decode the corpus. Output will "
                 "be written "
                 "only once.");
-
+    
     // Multi-threaded CPU and batched GPU decoder
     BatchedThreadedNnet3CudaPipeline2Config batched_decoder_config;
     CuDevice::RegisterDeviceOptions(&po);
@@ -95,6 +95,7 @@ int main(int argc, char *argv[]) {
 
     std::string nnet3_rxfilename = po.GetArg(1), fst_rxfilename = po.GetArg(2),
                 wav_rspecifier = po.GetArg(3), clat_wspecifier = po.GetArg(4);
+
     TransitionModel trans_model;
     nnet3::AmNnetSimple am_nnet;
 
@@ -127,8 +128,6 @@ int main(int argc, char *argv[]) {
     }
 
     int32 num_task_submitted = 0, num_err = 0;
-    double tot_like = 0.0;
-    int64 num_frames = 0;
     double total_audio = 0;
 
     nvtxRangePush("Global Timer");
@@ -177,8 +176,6 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Decoded " << num_task_submitted << " utterances, " << num_err
               << " with errors.";
-    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
-              << " per frame over " << num_frames << " frames.";
 
     KALDI_LOG << "Overall: "
               << " Aggregate Total Time: " << total_time

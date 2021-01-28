@@ -16,6 +16,7 @@
 # being a subset of the perturbed data's utterance-ids.
 
 always_include_prefix=false
+include_spk_prefix=true
 
 . utils/parse_options.sh
 
@@ -31,6 +32,11 @@ if [ $# != 2 ]; then
   echo "                                           # utterance and speaker-ids for data at"
   echo "                                           # the original speed.  Can resolve"
   echo "                                           # issues RE data sorting."
+  echo "    --include-spk-prefix [true|false]      # default: true. If set to true,"
+  echo "                                           # it will add the prefix 'sp-' to"
+  echo "                                           # speaker-ids, making number of speakers"
+  echo "                                           # 3 times more. This is useful for speaker"
+  echo "                                           # adaptation part of ASR."
   exit 1
 fi
 
@@ -47,14 +53,17 @@ if [ -f $destdir/feats.scp ]; then
   exit 1
 fi
 
+# we need to make sure all files in source directory are in sorted order
+utils/fix_data_dir.sh ${srcdir} || exit 1;
+
 echo "$0: making sure the utt2dur and the reco2dur files are present"
 echo "... in ${srcdir}, because obtaining it after speed-perturbing"
 echo "... would be very slow, and you might need them."
 utils/data/get_utt2dur.sh ${srcdir}
 utils/data/get_reco2dur.sh ${srcdir}
 
-utils/data/perturb_data_dir_speed.sh 0.9 ${srcdir} ${destdir}_speed0.9 || exit 1
-utils/data/perturb_data_dir_speed.sh 1.1 ${srcdir} ${destdir}_speed1.1 || exit 1
+utils/data/perturb_data_dir_speed.sh --include-spk-prefix $include_spk_prefix 0.9 ${srcdir} ${destdir}_speed0.9 || exit 1
+utils/data/perturb_data_dir_speed.sh --include-spk-prefix $include_spk_prefix 1.1 ${srcdir} ${destdir}_speed1.1 || exit 1
 
 if $always_include_prefix; then
   utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- ${srcdir} ${destdir}_speed1.0
