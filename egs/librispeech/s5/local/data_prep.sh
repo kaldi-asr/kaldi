@@ -5,7 +5,7 @@
 #           2021  Xuechen LIU
 # Apache 2.0
 
-no_text=false
+prepare_text=true
 
 . ./utils/parse_options.sh
 
@@ -64,7 +64,7 @@ for reader_dir in $(find -L $src -mindepth 1 -maxdepth 1 -type d | sort); do
       awk -v "dir=$chapter_dir" '{printf "lbi-%s flac -c -d -s %s/%s.flac |\n", $0, dir, $0}' >>$wav_scp || exit 1;
 
     chapter_trans=$chapter_dir/${reader}-${chapter}.trans.txt
-    if ! $no_text; then
+    if $prepare_text; then
       [ ! -f  $chapter_trans ] && echo "$0: expected file $chapter_trans to exist" && exit 1
       sed -e 's/^/lbi\-/' $chapter_trans >> $trans
     fi
@@ -83,14 +83,14 @@ done
 spk2utt=$dst/spk2utt
 utils/utt2spk_to_spk2utt.pl <$utt2spk >$spk2utt || exit 1
 
-if ! $no_text; then
+if $prepare_text; then
   ntrans=$(wc -l <$trans)
   nutt2spk=$(wc -l <$utt2spk)
   ! [ "$ntrans" -eq "$nutt2spk" ] && \
     echo "Inconsistent #transcripts($ntrans) and #utt2spk($nutt2spk)" && exit 1;
 fi
 
-utils/validate_data_dir.sh --no-feats ${no_text:+"--no-text"} $dst || exit 1;
+utils/validate_data_dir.sh --no-feats $($prepare_text || echo "--no-text") $dst || exit 1;
 
 echo "$0: successfully prepared data in $dst"
 
