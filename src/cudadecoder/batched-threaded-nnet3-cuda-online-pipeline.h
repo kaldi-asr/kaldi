@@ -123,7 +123,7 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
 class BatchedThreadedNnet3CudaOnlinePipeline {
  public:
   using CorrelationID = uint64_t;
-  typedef std::function<void(const string &, bool, bool)> BestPathCallback;
+  typedef std::function<void(const std::string &, bool, bool)> BestPathCallback;
   typedef std::function<void(CompactLattice &)> LatticeCallback;
 
   BatchedThreadedNnet3CudaOnlinePipeline(
