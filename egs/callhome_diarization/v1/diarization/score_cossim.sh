@@ -69,7 +69,8 @@ if [ $stage -le 0 ]; then
   echo "$0: scoring xvectors"
   $cmd JOB=1:$nj $dir/log/cossim_scoring.JOB.log \
       python diarization/calc_cossim_scores.py \
-      ark:$sdata/JOB/spk2utt "$feats" ark,scp:$dir/scores.JOB.ark,$dir/scores.JOB.scp || exit 1;
+      ark:$sdata/JOB/spk2utt "$feats" - \|\
+      copy-feats ark,t:- ark,scp:$dir/scores.JOB.ark,$dir/scores.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
