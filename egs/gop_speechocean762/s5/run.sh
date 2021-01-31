@@ -166,7 +166,7 @@ if [ $stage -le 12 ]; then
   #                   -8.584108 -7.629755 -13.04877 ...
   #                   ...
   #                   ... ]
-  # The row number is the phone number of the utterance. In this case, it is 17.
+  # The number of rows is the number of phones of the utterance. In this case, it is 17.
   # The column number is 2 * (pure-phone set size), as the feature is consist of LLR + LPR.
   # The gop-base features can be used to train a classifier with human labels. See Hu's
   # paper for detail.
