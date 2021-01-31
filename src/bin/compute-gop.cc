@@ -66,8 +66,8 @@ namespace kaldi {
 int32 PhoneNum(const std::vector<std::set<int32> > &pdf2phones) {
   int32 phone_num = 0;
   for (auto &pdf: pdf2phones) {
-    for (auto &phone: pdf) {
-      if (phone_num < phone + 1) phone_num = phone + 1;
+    if(!pdf.empty()) {
+      phone_num = std::max(phone_num, 1 + *pdf.rbegin());
     }
   }
   return phone_num;
