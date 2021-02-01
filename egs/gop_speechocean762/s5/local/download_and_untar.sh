@@ -36,7 +36,7 @@ if [ -f $data/$corpus_name/.complete ]; then
 fi
 
 # Check the archive file in bytes
-ref_size=520789300
+ref_size=520810923
 if [ -f $data/$corpus_name.tar.gz ]; then
   size=$(/bin/ls -l $data/$corpus_name.tar.gz | awk '{print $5}')
   if [ $ref_size != $size ]; then
