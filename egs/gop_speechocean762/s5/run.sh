@@ -19,7 +19,7 @@
 data=/home/storage07/zhangjunbo/data
 
 # base url for downloads.
-data_url=www.openslr.org/resources/93
+data_url=www.openslr.org/resources/100
 stage=1
 nj=25
 
