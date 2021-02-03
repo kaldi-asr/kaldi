@@ -14,7 +14,7 @@ fi
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 [--remove-archive] <url-base> <data-base>"
-  echo "e.g.: $0 www.openslr.org/resources/93 /home/tj-storage06/wangyongqing/data"
+  echo "e.g.: $0 www.openslr.org/resources/101 /home/storage07/zhangjunbo/data"
   echo "With --remove-archive it will remove the archive after successfully un-tarring it."
   exit 1
 fi
@@ -50,7 +50,7 @@ fi
 
 # If you have permission to access Xiaomi's server, you would not need to
 # download it from OpenSLR
-path_on_mi_server=/home/storage07/zhangjunbo/share/data/$corpus_name.tar.gz
+path_on_mi_server=/home/storage06/wangyongqing/share/data/$corpus_name.tar.gz
 if [ -f $path_on_mi_server ]; then
   cp $path_on_mi_server $data/$corpus_name.tar.gz
 fi
@@ -60,10 +60,10 @@ if [ ! -f $data/$corpus_name.tar.gz ]; then
     echo "$0: wget is not installed."
     exit 1;
   fi
-  full_url=$url/speechocean762.tar.gz
+  full_url=$url/$corpus_name.tar.gz
 
   echo "$0: downloading data from $full_url.  This may take some time, please be patient."
-  if ! wget --no-check-certificate $full_url -o ; then
+  if ! wget -c --no-check-certificate $full_url -O $data/$corpus_name.tar.gz; then
     echo "$0: error executing wget $full_url"
     exit 1;
   fi
@@ -75,7 +75,7 @@ if ! tar -xvzf $corpus_name.tar.gz; then
   exit 1;
 fi
 
-touch $data/$corpus_name/.complete
+touch $corpus_name/.complete
 cd -
 
 echo "$0: Successfully downloaded and un-tarred $data/$corpus_name.tar.gz"
