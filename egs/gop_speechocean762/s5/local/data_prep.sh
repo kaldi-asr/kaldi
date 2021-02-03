@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 
-# Copyright 2020  Xiaomi Corporation (Author: Junbo Zhang)
+# Copyright 2020-2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
 # Apache 2.0
 
 if [ "$#" -ne 2 ]; then
   echo "Usage: $0 <src-dir> <dst-dir>"
-  echo "e.g.: $0 /home/storage07/zhangjunbo/data/speechocean726/dev data/dev 25"
+  echo "e.g.: $0 /home/storage07/zhangjunbo/data/speechocean762/test data/test"
   exit 1
 fi
 
 src=$1
 dst=$2
-split_num=$3
 
 [ ! -d $src ] && echo "$0: no such directory $src" && exit 1;
 [ ! -d $src/../WAVE ] && echo "$0: no wav directory" && exit 1;

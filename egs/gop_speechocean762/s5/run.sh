@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright      2019  Junbo Zhang
-# Copyright 2020-2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
+#           2020-2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
 # Apache 2.0
 
 # This script shows how to calculate Goodness of Pronunciation (GOP) and
@@ -18,7 +18,7 @@
 # the Xiaomi's grid.
 data=/home/storage07/zhangjunbo/data
 
-# base url for downloads.
+# Base url for downloads.
 data_url=www.openslr.org/resources/101
 stage=1
 nj=25
@@ -132,7 +132,7 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-  # make a map which converts phones to "pure-phones"
+  # Make a map which converts phones to "pure-phones"
   # "pure-phone" means the phone whose stress and pos-in-word markers are ignored
   # eg. AE1_B --> AE, EH2_S --> EH, SIL --> SIL
   local/remove_phone_markers.pl $lang/phones.txt \

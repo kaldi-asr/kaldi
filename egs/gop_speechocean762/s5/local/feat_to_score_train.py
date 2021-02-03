@@ -2,7 +2,7 @@
 # Apache 2.0
 
 # This script trains a random forest regression model to convert GOP-based
-# feature into human expert score.
+# feature into human expert scores.
 
 import sys
 import argparse

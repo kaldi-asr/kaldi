@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Copyright 2014 Vassil Panayotov
-# Copyright 2020 Xiaomi Corporation (Author: Junbo Zhang)
+# Copyright      2014  Vassil Panayotov
+#           2020-2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
 # Apache 2.0
 
 # Prepares input directory of `utils/prepare_lang.sh`
@@ -13,7 +13,7 @@
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 [options] <lexicion> <dst-dir>"
-  echo "e.g.: /data/speechocean762/resource/lexicon.txt data/local/dict_nosp"
+  echo "e.g.: data/local/lexicon.txt data/local/dict_nosp"
   exit 1
 fi
 
@@ -44,7 +44,7 @@ awk '{for (i=2; i<=NF; ++i) { print $i; gsub(/[0-9]/, "", $i); print $i}}' $lexi
     foreach $list (values %phones_of) {print $list . "\n"; } ' | sort \
     > $nonsil_phones || exit 1;
 # A few extra questions that will be added to those obtained by automatically clustering
-# the "real" phones.  These ask about stress; there's also one for silence.
+# the "real" phones. These ask about stress; there's also one for silence.
 cat $silence_phones| awk '{printf("%s ", $1);} END{printf "\n";}' > $extra_questions || exit 1;
 cat $nonsil_phones | perl -e 'while(<>){ foreach $p (split(" ", $_)) {
   $p =~ m:^([^\d]+)(\d*)$: || die "Bad phone $_"; $q{$2} .= "$p "; } } foreach $l (values %q) {print "$l\n";}' \

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2015  Johns Hopkins University (Author: Jan Trmal <jtrmal@gmail.com>)
-# Copyright 2021  Xiaomi Corporation (Author: Junbo Zhang)
+#           2021  Xiaomi Corporation (Author: Junbo Zhang)
 # Apache 2.0
 
 [ -f ./path.sh ] && . ./path.sh
@@ -16,6 +16,5 @@ for package in kaldi_io sklearn imblearn; do
     exit 1
   fi
 done
-
 
 exit  0

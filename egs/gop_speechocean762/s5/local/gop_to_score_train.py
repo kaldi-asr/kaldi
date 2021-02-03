@@ -1,8 +1,8 @@
-# Copyright 2021  Xiaomi Corporation (Author: Junbo Zhang)
+# Copyright 2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
 # Apache 2.0
 
 # This script trains a simple polynomial regression model to convert GOP into
-# human expert score.
+# human expert scores.
 
 
 import sys
@@ -58,7 +58,7 @@ def main():
                 train_data_of[ph] = []
             train_data_of[ph].append((score, gop))
 
-    # Train polynomial regressions
+    # Train polynomial regression
     poly = PolynomialFeatures(2)
     model_of = {}
     for ph, pairs in train_data_of.items():

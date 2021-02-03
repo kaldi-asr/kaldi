@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Copyright 2014  Johns Hopkins University (author: Daniel Povey)
-# Copyright 2020  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
+# Copyright      2014  Johns Hopkins University (author: Daniel Povey)
+#           2020-2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
 # Apache 2.0
 
 set -e
