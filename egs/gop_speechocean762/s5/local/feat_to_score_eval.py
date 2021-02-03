@@ -1,7 +1,7 @@
-# Copyright 2021  Xiaomi Corporation (Author: Junbo Zhang)
+# Copyright 2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
 # Apache 2.0
 
-# This script do phone-level pronunciation scoring by GOP-based features.
+# This script does phone-level pronunciation scoring by GOP-based features.
 
 import sys
 import argparse
