@@ -7,7 +7,7 @@ import argparse
 import os
 import numpy as np
 from sklearn.cluster import k_means
-from kaldiio import ReadHelper, WriteHelper
+import kaldi_io
 import scipy
 from sklearn.cluster import SpectralClustering
 
@@ -26,9 +26,8 @@ from sklearn.cluster import SpectralClustering
 
 def LoadAffinityMatrix(file):
     Matrices=dict()
-    with ReadHelper(file) as reader:
-        for key, np_arr in reader:
-            Matrices[key] = np_arr
+    for key, np_arr in kaldi_io.read_mat_scp(file):
+        Matrices[key] = np_arr
     return Matrices
 
 def LoadReco2Utt(file):

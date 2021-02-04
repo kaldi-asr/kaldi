@@ -94,5 +94,20 @@ We guess the HMM topo of chain model may not fit for GOP.
 
 The nnet3's TDNN (no chain) model performs well in GOP computing, so this recipe uses it.
 
+## The `speechocean762` corpus
+
+This corpus aims to provide a free public dataset for the pronunciation scoring task.
+
+This corpus consists 5000 English sentences.
+All the speakers are non-native and their mother tongue is Mandarin.
+Half of the speakers are Children and the others are adults.
+The information of age and gender are provided.
+
+The scores was made by five experts. To avoid subjectively bias, each experts scores independently under the same metric.
+The experts score at three levels: phoneme-level, word-level and sentence-level.
+
+In this recipe, the automatic phoneme-level scoring is illustrated.
+
 ## Acknowledgement
-The author of this recipe would like to thank Xingyu Na for his works of model tuning and his helpful suggestions.
+The author of this recipe would like to thank Speechocean for providing the corpus,
+and Xingyu Na for his works of model tuning and his helpful suggestions.
