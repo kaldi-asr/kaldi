@@ -4,7 +4,7 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH
 . $KALDI_ROOT/tools/config/common_path.sh
 export LC_ALL=C
 
-# we use this both in the (optional) LM training and the G2P-related scripts
+# We use this both in the (optional) LM training and the G2P-related scripts
 PYTHON='python2.7'
 
 ### Below are the paths used by the optional parts of the recipe
