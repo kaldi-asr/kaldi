@@ -48,11 +48,15 @@ GSYMS
 # Python compiled bytecode files.
 *.pyc
 
+# Python virtual environment
+venv/
+
 # Make dependencies.
 .depend.mk
 
 # Some weird thing that macOS creates.
 *.dSYM
+.DS_Store
 
 # Windows executable, symbol and some weird files.
 *.exe
@@ -61,6 +65,7 @@ GSYMS
 *.manifest
 /kaldiwin_vs*
 .vscode
+.idea
 
 # /src/
 /src/.short_version
