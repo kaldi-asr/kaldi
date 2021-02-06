@@ -26,7 +26,7 @@ def is_bin_dir(d):
     return d.endswith("bin")
 
 def get_files(d):
-    return [name for name in os.listdir(d) if os.path.isfile(os.path.join(d, name))]
+    return [name for name in os.listdir(d) if os.path.isfile(os.path.join(d, name)) and ('kenlm' not in name)]
 
 def is_header(f):
     return f.endswith(".h")
