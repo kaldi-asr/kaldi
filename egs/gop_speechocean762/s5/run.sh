@@ -191,6 +191,7 @@ if [ $stage -le 13 ]; then
   for input in gop feat; do
     python3 local/${input}_to_score_train.py \
               --phone-symbol-table data/lang_nosp/phones-pure.txt \
+              --nj $nj \
               exp/gop_train/${input}.scp \
               data/local/scores.json \
               exp/gop_train/model_${input}

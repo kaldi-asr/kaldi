@@ -9,6 +9,7 @@ import argparse
 import pickle
 import kaldi_io
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 from sklearn.ensemble import RandomForestRegressor
 from utils import load_phone_symbol_table, load_human_scores, balanced_sampling
 
@@ -21,6 +22,7 @@ def get_args():
     parser.add_argument('--phone-symbol-table', type=str, default='',
                         help='Phone symbol table, used for detect unmatch '
                              'feature and labels.')
+    parser.add_argument('--nj', type=int, default=1, help='Job number')
     parser.add_argument('feature_scp',
                         help='Input gop-based feature file, in Kaldi scp')
     parser.add_argument('human_scoring_json',
@@ -29,6 +31,21 @@ def get_args():
     sys.stderr.write(' '.join(sys.argv) + "\n")
     args = parser.parse_args()
     return args
+
+
+def train_model_for_phone(label_feat_pairs):
+    model = RandomForestRegressor()
+    labels = []
+    feats = []
+    for label, feat in label_feat_pairs:
+        labels.append(label)
+        feats.append(feat[1:])
+    labels = np.array(labels).reshape(-1, 1)
+    feats = np.array(feats).reshape(-1, len(feats[0]))
+    feats, labels = balanced_sampling(feats, labels)
+    labels = labels.ravel()
+    model.fit(feats, labels)
+    return model
 
 
 def main():
@@ -58,21 +75,10 @@ def main():
         train_data_of[ph].append((score, feat))
 
     # Train models
-    model_of = {}
-    for ph, pairs in train_data_of.items():
-        model = RandomForestRegressor()
-        labels = []
-        feats = []
-        for label, feat in pairs:
-            labels.append(label)
-            feats.append(feat[1:])
-        labels = np.array(labels).reshape(-1, 1)
-        feats = np.array(feats).reshape(-1, len(feats[0]))
-        feats, labels = balanced_sampling(feats, labels)
-        labels = labels.ravel()
-        model.fit(feats, labels)
-        model_of[ph] = model
-        print(f'Model of phone {ph} trained.')
+    with ProcessPoolExecutor(args.nj) as ex:
+        future_to_model = [(ph, ex.submit(train_model_for_phone, pairs))
+                           for ph, pairs in train_data_of.items()]
+        model_of = {ph: future.result() for ph, future in future_to_model}
 
     # Write to file
     with open(args.model, 'wb') as f:

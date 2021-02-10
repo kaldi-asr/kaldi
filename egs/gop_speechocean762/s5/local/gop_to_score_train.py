@@ -10,6 +10,7 @@ import argparse
 import pickle
 import kaldi_io
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from utils import load_phone_symbol_table, load_human_scores, balanced_sampling
@@ -23,6 +24,7 @@ def get_args():
     parser.add_argument('--phone-symbol-table', type=str, default='',
                         help='Phone symbol table, used for detect unmatch '
                              'feature and labels.')
+    parser.add_argument('--nj', type=int, default=1, help='Job number')
     parser.add_argument('gop_scp', help='Input gop file, in Kaldi scp')
     parser.add_argument('human_scoring_json',
                         help='Input human scores file, in JSON format')
@@ -30,6 +32,21 @@ def get_args():
     sys.stderr.write(' '.join(sys.argv) + "\n")
     args = parser.parse_args()
     return args
+
+
+def train_model_for_phone(label_feat_pairs):
+    model = LinearRegression()
+    labels = []
+    gops = []
+    for label, gop in label_feat_pairs:
+        labels.append(label)
+        gops.append(gop)
+    labels = np.array(labels).reshape(-1, 1)
+    gops = np.array(gops).reshape(-1, 1)
+    gops = PolynomialFeatures(2).fit_transform(gops)
+    gops, labels = balanced_sampling(gops, labels)
+    model.fit(gops, labels)
+    return model.coef_, model.intercept_
 
 
 def main():
@@ -59,21 +76,10 @@ def main():
             train_data_of[ph].append((score, gop))
 
     # Train polynomial regression
-    poly = PolynomialFeatures(2)
-    model_of = {}
-    for ph, pairs in train_data_of.items():
-        model = LinearRegression()
-        labels = []
-        gops = []
-        for label, gop in pairs:
-            labels.append(label)
-            gops.append(gop)
-        labels = np.array(labels).reshape(-1, 1)
-        gops = np.array(gops).reshape(-1, 1)
-        gops = poly.fit_transform(gops)
-        gops, labels = balanced_sampling(gops, labels)
-        model.fit(gops, labels)
-        model_of[ph] = (model.coef_, model.intercept_)
+    with ProcessPoolExecutor(args.nj) as ex:
+        future_to_model = [(ph, ex.submit(train_model_for_phone, pairs))
+                           for ph, pairs in train_data_of.items()]
+        model_of = {ph: future.result() for ph, future in future_to_model}
 
     # Write to file
     with open(args.model, 'wb') as f:

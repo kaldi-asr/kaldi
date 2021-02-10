@@ -7,6 +7,7 @@ import sys
 import argparse
 import pickle
 import kaldi_io
+import numpy as np
 from utils import round_score
 
 
@@ -29,13 +30,23 @@ def main():
     with open(args.model, 'rb') as f:
         model_of = pickle.load(f)
 
+    feats_for_phone = {}
+    idxs_for_phone = {}
+    for ph_key, feat in kaldi_io.read_vec_flt_scp(args.feature_scp):
+        ph = int(feat[0])
+        if ph not in feats_for_phone:
+            feats_for_phone[ph] = []
+            idxs_for_phone[ph] = []
+        feats_for_phone[ph].append(feat[1:])
+        idxs_for_phone[ph].append(ph_key)
+
     with open(args.output, 'wt') as f:
-        for ph_key, feat in kaldi_io.read_vec_flt_scp(args.feature_scp):
-            ph = int(feat[0])
-            feat = feat[1:].reshape(1, -1)
-            score = model_of[ph].predict(feat).reshape(1)[0]
-            score = round_score(score, 1)
-            f.write(f'{ph_key}\t{score:.1f}\t{ph}\n')
+        for ph in feats_for_phone:
+            feats = np.array(feats_for_phone[ph])
+            scores = model_of[ph].predict(feats)
+            for ph_key, score in zip(idxs_for_phone[ph], list(scores)):
+                score = round_score(score, 1)
+                f.write(f'{ph_key}\t{score:.1f}\t{ph}\n')
 
 
 if __name__ == "__main__":
