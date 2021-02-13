@@ -11,7 +11,7 @@ import kaldi_io
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 from sklearn.ensemble import RandomForestRegressor
-from utils import load_phone_symbol_table, load_human_scores, balanced_sampling
+from utils import load_phone_symbol_table, load_human_scores, add_more_negative_data
 
 
 def get_args():
@@ -35,14 +35,9 @@ def get_args():
 
 def train_model_for_phone(label_feat_pairs):
     model = RandomForestRegressor()
-    labels = []
-    feats = []
-    for label, feat in label_feat_pairs:
-        labels.append(label)
-        feats.append(feat[1:])
+    labels, feats = list(zip(*label_feat_pairs))
     labels = np.array(labels).reshape(-1, 1)
     feats = np.array(feats).reshape(-1, len(feats[0]))
-    feats, labels = balanced_sampling(feats, labels)
     labels = labels.ravel()
     model.fit(feats, labels)
     return model
@@ -69,7 +64,10 @@ def main():
                 print(f'Unmatch: {phone_int2sym[ph]} <--> {phone_of[ph_key]} ')
                 continue
         score = score_of[ph_key]
-        train_data_of.setdefault(ph, []).append((score, feat))
+        train_data_of.setdefault(ph, []).append((score, feat[1:]))
+
+    # Make the dataset more blance
+    train_data_of = add_more_negative_data(train_data_of)
 
     # Train models
     with ProcessPoolExecutor(args.nj) as ex:

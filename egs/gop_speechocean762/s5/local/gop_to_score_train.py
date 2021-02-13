@@ -36,11 +36,7 @@ def get_args():
 
 def train_model_for_phone(label_feat_pairs):
     model = LinearRegression()
-    labels = []
-    gops = []
-    for label, gop in label_feat_pairs:
-        labels.append(label)
-        gops.append(gop)
+    labels, gops = list(zip(*label_feat_pairs))
     labels = np.array(labels).reshape(-1, 1)
     gops = np.array(gops).reshape(-1, 1)
     gops = PolynomialFeatures(2).fit_transform(gops)
