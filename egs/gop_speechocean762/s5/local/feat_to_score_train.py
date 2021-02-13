@@ -63,16 +63,13 @@ def main():
         if ph_key not in score_of:
             print(f'Warning: no human score for {ph_key}')
             continue
+        ph = int(feat[0])
         if phone_int2sym is not None:
-            ph = int(feat[0])
             if phone_int2sym[ph] != phone_of[ph_key]:
                 print(f'Unmatch: {phone_int2sym[ph]} <--> {phone_of[ph_key]} ')
                 continue
         score = score_of[ph_key]
-
-        if ph not in train_data_of:
-            train_data_of[ph] = []
-        train_data_of[ph].append((score, feat))
+        train_data_of.setdefault(ph, []).append((score, feat))
 
     # Train models
     with ProcessPoolExecutor(args.nj) as ex:

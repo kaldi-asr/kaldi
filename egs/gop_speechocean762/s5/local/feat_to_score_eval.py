@@ -34,11 +34,8 @@ def main():
     idxs_for_phone = {}
     for ph_key, feat in kaldi_io.read_vec_flt_scp(args.feature_scp):
         ph = int(feat[0])
-        if ph not in feats_for_phone:
-            feats_for_phone[ph] = []
-            idxs_for_phone[ph] = []
-        feats_for_phone[ph].append(feat[1:])
-        idxs_for_phone[ph].append(ph_key)
+        feats_for_phone.setdefault(ph, []).append(feat[1:])
+        idxs_for_phone.setdefault(ph, []).append(ph_key)
 
     with open(args.output, 'wt') as f:
         for ph in feats_for_phone:

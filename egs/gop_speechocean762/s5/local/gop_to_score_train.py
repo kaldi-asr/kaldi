@@ -70,10 +70,7 @@ def main():
                 print(f'Unmatch: {phone_int2sym[ph]} <--> {phone_of[ph_key]} ')
                 continue
             score = score_of[ph_key]
-
-            if ph not in train_data_of:
-                train_data_of[ph] = []
-            train_data_of[ph].append((score, gop))
+            train_data_of.setdefault(ph, []).append((score, gop))
 
     # Train polynomial regression
     with ProcessPoolExecutor(args.nj) as ex:
