@@ -173,7 +173,8 @@ int main(int argc, char *argv[]) {
         const std::vector<int32> &word_transcript = word_transcript_reader.Value();
 
         VectorFst<StdArc> *phone2word_fst = new VectorFst<StdArc>;
-        MakeLinearLG(word_transcript, key, linear_lexicon, 1, 353, phone2word_fst);
+        int32 disambig_id = disambig_syms.back() + 1;
+        MakeLinearLG(word_transcript, key, linear_lexicon, 1, disambig_id, phone2word_fst);
 
         VectorFst<StdArc> decode_fst;
         if (!gc.CompileGraphFromLG(*phone2word_fst, &decode_fst)) {
