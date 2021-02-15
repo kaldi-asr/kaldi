@@ -23,4 +23,4 @@ and printed by `sklearn.metrics.classification_report`:
 
     accuracy                           0.88     47246
    macro avg       0.52      0.53      0.50     47246
-weighted avg       0.92      0.88      0.90     47246246
+weighted avg       0.92      0.88      0.90     47246
