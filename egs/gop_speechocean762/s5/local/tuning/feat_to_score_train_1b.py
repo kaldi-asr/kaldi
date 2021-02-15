@@ -38,7 +38,7 @@ def get_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--phone-symbol-table', type=str, default='',
                         help='Phone symbol table, used for detect unmatch '
-                             'feature and labels.')
+                             'feature and labels')
     parser.add_argument('--nj', type=int, default=1, help='Job number')
     parser.add_argument('feature_scp',
                         help='Input gop-based feature file, in Kaldi scp')

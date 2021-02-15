@@ -184,9 +184,18 @@ if [ $stage -le 12 ]; then
   done
 fi
 
-if [ $stage -le 13 ]; then
-  local/check_dependencies.sh   || exit 1;
+local/check_dependencies.sh   || exit 1;
 
+if [ $stage -le 13 ]; then
+  # Visualize the GOP-based features for the training set
+  python3 local/visualize_feats.py \
+            --phone-symbol-table data/lang_nosp/phones-pure.txt \
+            exp/gop_train/feat.scp data/local/scores.json \
+            exp/gop_train/feats.png
+  echo The features are visualized and saved in exp/gop_train/feats.png
+fi
+
+if [ $stage -le 14 ]; then
   # Phone-level scoring
   for input in gop feat; do
     python3 local/${input}_to_score_train.py \
