@@ -33,15 +33,16 @@ if [ $# != 1 ]; then
 fi
 
 dir=$1 # data/pytorchnn/
+mkdir -p $dir
 
 for f in $train $valid $test $fisher; do
     [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1
 done
 
 # Sort and preprocess SWBD dataset
-local/pytorchnn/sort_by_start_time.py --infile $train --outfile $dir/swbd.train.sorted.txt
-local/pytorchnn/sort_by_start_time.py --infile $valid --outfile $dir/swbd.valid.sorted.txt
-local/pytorchnn/sort_by_start_time.py --infile $test --outfile $dir/swbd.test.sorted.txt
+python3 local/pytorchnn/sort_by_start_time.py --infile $train --outfile $dir/swbd.train.sorted.txt
+python3 local/pytorchnn/sort_by_start_time.py --infile $valid --outfile $dir/swbd.valid.sorted.txt
+python3 local/pytorchnn/sort_by_start_time.py --infile $test --outfile $dir/swbd.test.sorted.txt
 for data in train valid test; do
   cat $dir/swbd.${data}.sorted.txt | cut -d ' ' -f2- | tr 'A-Z' 'a-z' > $dir/$data.txt
   rm $dir/swbd.${data}.sorted.txt
@@ -73,4 +74,4 @@ if ! grep -w '<unk>' $dir/words.txt >/dev/null; then
   echo "<unk> $n" >> $dir/words.txt
 fi
 
-echo "Data preparation finished"
+echo "Data preparation done."

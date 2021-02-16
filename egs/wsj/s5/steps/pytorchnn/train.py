@@ -56,6 +56,8 @@ parser.add_argument('--optimizer', type=str, default='SGD',
                     help='type of optimizer')
 parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                     help='report interval')
+parser.add_argument('--oov', type=str, default="<unk>",
+                    help='Out of vocabulary word')
 
 # Device options
 parser.add_argument('--cuda', action='store_true', help='use CUDA')
@@ -86,7 +88,7 @@ device = torch.device("cuda" if args.cuda else "cpu")
 #############################
 # Load data
 #############################
-corpus = data.Corpus(args.data)
+corpus = data.Corpus(args.data, args.oov)
 
 
 def batchify(data, bsz, random_start_idx=False):
