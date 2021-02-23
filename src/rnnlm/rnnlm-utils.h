@@ -20,8 +20,11 @@
 #ifndef KALDI_RNNLM_RNNLM_UTILS_H_
 #define KALDI_RNNLM_RNNLM_UTILS_H_
 
-#include "base/kaldi-common.h"
+#include "util/common-utils.h"
 #include "matrix/sparse-matrix.h"
+
+using std::ifstream;
+using std::map;
 
 // This file is for miscellaneous function declarations needed for the RNNLM
 // code.
@@ -54,7 +57,22 @@ void ReadSparseWordFeatures(std::istream &is,
                             int32 feature_dim,
                             SparseMatrix<BaseFloat> *word_feature_matrix);
 
+/**
+  Reads a utt2spk file which maps utterance to speaker or conversation id.
+    @param [in] filename   The utt2spk file.
+    @param [out] utt_to_conv  A map between utterances and conversation ids.
+ */
+void ReadUttToConvo(std::string filename,
+                    std::map<std::string, std::string> *utt_to_conv);
 
+/**
+  Reads a text file which is the unigram counts on training data.
+    @param [in] filename  The unigram counts file.
+    @param [out] unigram  A vector containing the unigram distribution in the
+                          file we read.
+ */
+void ReadUnigram(std::string filename,
+                 std::vector<double> *unigram);
 
 } // namespace rnnlm
 } // namespace kaldi

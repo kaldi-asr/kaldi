@@ -64,6 +64,32 @@ void ReadSparseWordFeatures(std::istream &is,
       SparseMatrix<BaseFloat>(feature_dim, sparse_rows));
 }
 
+void ReadUttToConvo(std::string filename,
+                    std::map<std::string, std::string> *utt_to_conv) {
+  std::map<std::string, std::string> &m = *utt_to_conv;
+  KALDI_ASSERT(m.size() == 0);
+  ifstream ifile(filename.c_str());
+  std::string utt, convo;
+  while (ifile >> utt >> convo) {
+    m[utt] = convo;
+  }
+}
+
+void ReadUnigram(std::string filename,
+                 std::vector<double> *unigram) {
+  std::vector<double> &m = *unigram;
+  ifstream ifile(filename.c_str());
+  int32 word;
+  double count;
+  double sum = 0.0;
+  while (ifile >> word >> count) {
+    m[word] = count;
+    sum += count;
+  }
+  for (int32 i = 0; i < m.size(); i++) {
+    m[i] /= sum;
+  }
+}
 
 }  // namespace rnnlm
 }  // namespace kaldi

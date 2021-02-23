@@ -25,7 +25,10 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-determinize-phone-pruned-parallel lattice-expand-ngram \
            lattice-lmrescore-const-arpa lattice-lmrescore-rnnlm nbest-to-prons \
            lattice-arc-post lattice-determinize-non-compact lattice-lmrescore-kaldi-rnnlm \
-           lattice-lmrescore-pruned lattice-lmrescore-kaldi-rnnlm-pruned lattice-reverse
+           lattice-lmrescore-pruned lattice-lmrescore-kaldi-rnnlm-pruned lattice-reverse \
+		   lattice-lmrescore-kaldi-rnnlm-adaptation \
+		   lattice-lmrescore-kaldi-rnnlm-pruned-cache-adapt \
+		   lattice-lmrescore-kaldi-rnnlm-pruned-cache-adapt-onlyhistory
 
 OBJFILES =
 

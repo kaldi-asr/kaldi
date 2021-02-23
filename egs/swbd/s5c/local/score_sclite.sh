@@ -45,7 +45,6 @@ if [ -f $dir/../frame_subsampling_factor ]; then
 fi
 
 name=`basename $data`; # e.g. eval2000
-
 mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
@@ -92,7 +91,7 @@ if [ $stage -le 2 ]; then
   done
 fi
 
-# For eval2000 score the subsets
+# For eval2000 and rt03 score the subsets
 case "$name" in
   eval2000*)
     # Score only the, swbd part...
@@ -114,8 +113,7 @@ case "$name" in
       done
     fi
     ;;
-rt03* )
-
+  rt03*)
   # Score only the swbd part...
   if [ $stage -le 3 ]; then
     for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do

@@ -128,7 +128,7 @@ void RnnlmComputeState::GetLogProbOfWords(CuMatrixBase<BaseFloat> *output) const
   const CuMatrix<BaseFloat> &word_embedding_mat = info_.word_embedding_mat;
 
   KALDI_ASSERT(output->NumRows() == 1
-                && output->NumCols() == word_embedding_mat.NumCols());
+                && output->NumCols() == word_embedding_mat.NumRows());
   output->Row(0).AddMatVec(1.0, word_embedding_mat, kNoTrans,
                    predicted_word_embedding_->Row(0), 0.0);
 
