@@ -210,7 +210,7 @@ class TaskSequencer {
     // than waiting for the destructor.  It waits for all tasks to finish.
     if (thread_list_ != NULL) {
       while (!thread_list_->thread.joinable()) {
-        sleep(1);
+        Sleep(1);
       }
       thread_list_->thread.join();
       KALDI_ASSERT(thread_list_->tail == NULL); // thread would not
@@ -248,9 +248,9 @@ class TaskSequencer {
     //     is finished.
     if (args->tail != NULL) {
       while (!args->tail->thread.joinable()){
-        sleep(1);
+        Sleep(1);
       }
-	args->tail->thread.join();
+	    args->tail->thread.join();
     }
     delete args->c; // delete the object "c".  This may cause some output,
     // e.g. to a stream.  We don't need to worry about concurrent access to
