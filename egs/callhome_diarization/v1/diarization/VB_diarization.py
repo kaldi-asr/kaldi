@@ -129,7 +129,7 @@ def VB_diarization(X, m, invSigma, w, V, pi=None, gamma=None,
   # Calculate per-frame first order statistics projected into the R-dim. subspace
   # V^T \Sigma^{-1} F_m
   F_s =coo_matrix((((X[zeta.row]-m[zeta.col])*zeta.data[:,np.newaxis]).flat,
-                   (zeta.row.repeat(D), zeta.col.repeat(D)*D+np.tile(range(D), len(zeta.col)))))
+                   (zeta.row.repeat(D), zeta.col.repeat(D)*D+np.tile(range(D), len(zeta.col)))), shape=(nframes, D*C))
   rho = F_s.tocsr().dot((invSigma.flat * V).T) ; del F_s
   ## The code above is only efficient implementation of the following comented code
   #rho = 0;
