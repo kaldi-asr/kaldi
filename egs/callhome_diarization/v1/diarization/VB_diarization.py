@@ -130,7 +130,8 @@ def VB_diarization(X, m, invSigma, w, V, pi=None, gamma=None,
   # V^T \Sigma^{-1} F_m
   F_s =coo_matrix((((X[zeta.row]-m[zeta.col])*zeta.data[:,np.newaxis]).flat,
                    (zeta.row.repeat(D), zeta.col.repeat(D)*D+np.tile(range(D), len(zeta.col)))), shape=(nframes, D*C))
-  rho = F_s.tocsr().dot((invSigma.flat * V).T) ; del F_s
+  rho = F_s.tocsr().dot((invSigma.flat * V).T)
+  del F_s
   ## The code above is only efficient implementation of the following comented code
   #rho = 0;
   #for ii in range(C):
@@ -199,7 +200,8 @@ def VB_diarization(X, m, invSigma, w, V, pi=None, gamma=None,
 
       if plot:
         import matplotlib.pyplot
-        if ii == 0: matplotlib.pyplot.clf()
+        if ii == 0: 
+          matplotlib.pyplot.clf()
         matplotlib.pyplot.subplot(maxIters, 1, ii+1)
         matplotlib.pyplot.plot(downsampler.T.dot(gamma), lw=2)
         matplotlib.pyplot.imshow(np.atleast_2d(ref), interpolation='none', aspect='auto',
@@ -208,7 +210,8 @@ def VB_diarization(X, m, invSigma, w, V, pi=None, gamma=None,
 
 
     if ii > 0 and ELBO - Li[-2][0] < epsilon:
-      if ELBO - Li[-1][0] < 0: print('WARNING: Value of auxiliary function has decreased!')
+      if ELBO - Li[-1][0] < 0: 
+        print('WARNING: Value of auxiliary function has decreased!')
       break
 
   if downsample is not None:
@@ -266,8 +269,7 @@ def DER(gamma, ref, expected=True, xentropy=False):
               for perm in permutations(range(err_mx.shape[0]))]
     if xentropy:
        return min(acc)/float(len(ref))
-    else:
-       return (len(ref) - max(acc))/float(len(ref))
+    return (len(ref) - max(acc))/float(len(ref))
 
 
 ###############################################################################
