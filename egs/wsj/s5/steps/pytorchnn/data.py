@@ -7,9 +7,10 @@ import torch
 
 
 class Dictionary(object):
-    def __init__(self):
+    def __init__(self, oov):
         self.word2idx = {}
         self.idx2word = []
+        self.oov = oov
 
     def read_vocab(self, path):
         with open(path, 'r', encoding='utf-8') as f:
@@ -26,8 +27,8 @@ class Dictionary(object):
 
 
 class Corpus(object):
-    def __init__(self, path):
-        self.dictionary = Dictionary()
+    def __init__(self, path, oov):
+        self.dictionary = Dictionary(oov)
         self.dictionary.read_vocab(os.path.join(path, 'words.txt'))
         self.train = self.tokenize(os.path.join(path, 'train.txt'))
         self.valid = self.tokenize(os.path.join(path, 'valid.txt'))
@@ -45,7 +46,7 @@ class Corpus(object):
                     if word in self.dictionary.word2idx:
                         ids.append(self.dictionary.word2idx[word])
                     else:
-                        ids.append(self.dictionary.word2idx['<unk>'])
+                        ids.append(self.dictionary.word2idx[self.dictionary.oov])
                 all_ids.append(torch.tensor(ids).type(torch.int64))
             data = torch.cat(all_ids)
 

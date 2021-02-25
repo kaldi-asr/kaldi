@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
 # This script is very similar to rnnlm/lmrescore_nbest.sh, and it performs N-best
-# LM rescoring with Pytorch trained neural LMs.
+# LM rescoring with a Pytorch-trained neural LM.
 
 # Begin configuration section.
 N=10
-model_type=LSTM # LSTM, GRU or Transformer
-embedding_dim=650
-hidden_dim=650
-nlayers=2
-nhead=6
+model_type=Transformer # LSTM, GRU or Transformer
+embedding_dim=768
+hidden_dim=768
+nlayers=6
+nhead=8
+
 inv_acwt=10
+weight=0.8 # interpolation weight of a neural network LM with a N-gram LM
+oov_symbol="'<unk>'"
+
 cmd=run.pl
 use_phi=false  # This is kind of an obscure option.  If true, we'll remove the old
   # LM weights (times 1-RNN_scale) using a phi (failure) matcher, which is
@@ -29,12 +33,11 @@ echo "$0 $*"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh
 . utils/parse_options.sh
 
-if [ $# != 7 ]; then
-   echo "Do language model rescoring of lattices (partially remove old LM, add new LM)"
-   echo "This version applies an neural LM and mixes it with the n-gram LM scores"
-   echo "previously in the lattices, controlled by the first parameter (nnlm-weight)"
+if [ $# != 6 ]; then
+   echo "Perform N-best rescoring with a PyTorch-trained neural language model."
+   echo "The neural LM is interpolated with an N-gram LM during rescoring."
    echo ""
-   echo "Usage: $0 [options] <nn-weight> <old-lang-dir> <nn-model-dir> vocab <data-dir> <input-decode-dir> <output-decode-dir>"
+   echo "Usage: $0 [options] <old-lang-dir> <nn-model-dir> vocab <data-dir> <input-decode-dir> <output-decode-dir>"
    echo "Main options:"
    echo "  --inv-acwt <inv-acwt>          # default 12.  e.g. --inv-acwt 17.  Equivalent to LM scale to use."
    echo "                                 # for N-best list generation... note, we'll score at different acwt's"
@@ -45,13 +48,13 @@ if [ $# != 7 ]; then
    exit 1;
 fi
 
-nnweight=$1 # weight of a neural network LM
-oldlang=$2
-nn_model=$3
-vocabulary=$4
-data=$5
-indir=$6
-dir=$7
+oldlang=$1
+nn_model=$2
+vocab=$3 # Vocabulary used for training the neural language model. This is
+         # usually the same as $oldlang/words.txt.
+data=$4
+indir=$5
+dir=$6
 
 acwt=$(perl -e "print (1.0/$inv_acwt);")
 
@@ -64,7 +67,7 @@ elif [ ! -f $oldlm ]; then
     exit 1;
 fi
 
-for f in $nn_model $vocabulary $indir/lat.1.gz; do
+for f in $nn_model $vocab $indir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
@@ -182,24 +185,26 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-  echo "$0: invoking steps/pytorchnn/compute_sentence_scores.py which computes sentence scores with a PyTorch trained neural LM."
-  $cmd JOB=1:$nj $dir/log/compute_sentence_scores_pytorchnn.JOB.log \
-    PYTHONPATH=steps/pytorchnn python steps/pytorchnn/compute_sentence_scores.py \
-        --nbest-list $adir.JOB/words_text \
+  echo "$0: computing neural LM scores of the N-best list in parallel for each lattice."
+  $cmd JOB=1:$nj $dir/log/compute_sentence_scores.JOB.log \
+    PYTHONPATH=steps/pytorchnn python3 steps/pytorchnn/compute_sentence_scores.py \
+        --infile $adir.JOB/words_text \
         --outfile $adir.JOB/lmwt.nn \
-        --vocabulary $vocabulary \
+        --vocabulary $vocab \
         --model-path $nn_model \
         --model $model_type \
         --emsize $embedding_dim \
         --nhid $hidden_dim \
         --nlayers $nlayers \
-        --nhead $nhead
+        --nhead $nhead \
+        --oov "$oov_symbol"
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: reconstructing total LM+graph scores including interpolation of neural LM and old LM scores."
   for n in $(seq $nj); do
-    paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.nn | awk -v nnweight=$nnweight \
+    < $adir.$n/lmwt.nn awk '{sum=0;for(i=2;i<=NF;i++)sum+=$i; print $1,sum}' > $adir.$n/lmwt.nn.sum
+    paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.nn.sum | awk -v nnweight=$weight \
       '{ key=$1; graphscore=$2; lmscore=$4; nnscore=$6;
      score = graphscore+(nnweight*nnscore)+((1-nnweight)*lmscore);
      print $1,score; } ' > $adir.$n/lmwt.interp.$nnweight || exit 1;
