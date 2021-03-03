@@ -4,10 +4,14 @@
 # Apache 2.0.
 
 import argparse
+import logging
+import sys
 import numpy as np
+import kaldi_io
 from scipy.spatial.distance import cosine, pdist, squareform
-from kaldiio import ReadHelper, WriteHelper
 
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 def LoadReco2Utt(file):
     if ':' in file:
@@ -21,10 +25,8 @@ def LoadReco2Utt(file):
 
 def ReadXvecs(rspec):
     xvecs=dict()
-    with ReadHelper(rspec) as reader:
-        for utid, xvec in reader:
-            xvecs[utid] = xvec
-    reader.close()
+    for uttid, xvec in kaldi_io.read_vec_flt_scp(rspec):
+        xvecs[uttid] = xvec
     return xvecs
 
 def Normalize(xvecs_in):
@@ -42,24 +44,23 @@ def Normalize(xvecs_in):
 def CalcCosSim(vecs):
     return 1 - squareform(pdist(np.asarray(vecs), 'cosine'))
 
-def WriteDistMatrices(D, wspec):
-    with WriteHelper(wspec) as writer:
-        for id in D:
-            writer(id, D[id])
+def WriteDistMatrices(D, wark):
+    with common_lib.smart_open(wark, 'w') as f:
+        for id in sorted(D.keys()):
+            common_lib.write_matrix_ascii(f, D[id].tolist(), key=id)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Usage: calc_cossim_scores.py <reco2utt-rspec> <xvec-rspec> <simmat-wspec>\nComputes matrices of the cosine similarity scores between normalized x-vectors for each recording')
     parser.add_argument('reco2utt', type=str, help='Kaldi-style rspecifier of recording to segments correspondence')
     parser.add_argument('xvec_rspec', type=str, help='Kaldi-style rspecifier of segment xvectors to read')
-    parser.add_argument('simmat_wspec', type=str, help='Kaldi-style wspecifier of similarity matrices to write')
+    parser.add_argument('simmat_wark', type=str, help='Kaldi-style archive of similarity matrices to write')
     args = parser.parse_args()
 
 
-    print('Computing cosine similarity matrix between ivectors')
-    print('Parameters:')
-    print('Reco2Utt rspecifier: {}'.format(args.reco2utt))
-    print('Xvectors rspecifier: {}'.format(args.xvec_rspec))
-    print('Similarity matrices wspecifier: {}'.format(args.simmat_wspec))
+    logging.info('Computing cosine similarity matrix between ivectors')
+    logging.info('Parameters:')
+    logging.info('Reco2Utt rspecifier: {}'.format(args.reco2utt))
+    logging.info('Xvectors rspecifier: {}'.format(args.xvec_rspec))
 
     IDs = LoadReco2Utt(args.reco2utt)
     xvecs_all = ReadXvecs(args.xvec_rspec)
@@ -68,4 +69,4 @@ if __name__ == '__main__':
         xvecs = [ xvecs_all[id] for id in IDs[reco_id] ]
         xvecs = Normalize(xvecs)                              # !!!! Normalize per recording (session) !!!!
         D[reco_id] = CalcCosSim(xvecs)
-    WriteDistMatrices(D, args.simmat_wspec)
+    WriteDistMatrices(D, args.simmat_wark)

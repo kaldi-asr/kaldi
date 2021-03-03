@@ -22,7 +22,7 @@
 #define KALDI_CUDA_DECODER_HASHMAP_NO_KEY -1
 #define KALDI_CUDA_DECODER_HASHMAP_NO_VAL                 \
   {                                                       \
-    KALDI_CUDA_DECODER_HASHMAP_NO_KEY, 0, ULONG_MAX \
+    KALDI_CUDA_DECODER_HASHMAP_NO_KEY, 0, ULLONG_MAX \
   }
 
 #include "util/stl-utils.h"

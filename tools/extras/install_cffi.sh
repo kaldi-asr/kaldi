@@ -23,9 +23,9 @@
 # Also dependencies are installed. Namely:
 # * pycparser >= 2.06: https://github.com/eliben/pycparser/releases
 # * py.test
-# 
+#
 # NOT INSTALLED DEPENDENCIES (We are letting you to install it!):
-# * Cpython 2.6, 2.7 or PyPy(not tested for Kaldi setup) 
+# * Cpython 2.6, 2.7 or PyPy(not tested for Kaldi setup)
 # * python-dev (Python headers) and libffi-dev (ffi C library)
 # * a C compiler is required to use CFFI during development, but not to run correctly-installed programs that use CFF
 
@@ -35,7 +35,7 @@ echo "**** Installing Cffi and dependencies"
 
 echo "Checking for Python-Dev"
 # copied from https://stackoverflow.com/questions/4848566/check-for-existence-of-python-dev-files-from-bash-script
-if [ ! -e $(python -c 'from distutils.sysconfig import get_makefile_filename as m; print m()') ]; then 
+if [ ! -e $(python -c 'from distutils.sysconfig import get_makefile_filename as m; print m()') ]; then
     echo "On Debian/Ubuntu like system install by 'sudo apt-get python-dev' package."
     echo "On Fedora by 'yum install python-devel'"
     echo "On Mac OS X by 'brew install python'"
@@ -69,13 +69,13 @@ return 0;
 }
 CCODE
 rm -f $exe_ffi  # clean previous attempts
-gcc -o $exe_ffi $src_ffi -lffi  # build 
+gcc -o $exe_ffi $src_ffi -lffi  # build
 chmod u+x $exe_ffi  # make it executable (gcc usually does it too)
 
 # checking the exit status = ffi installed?
-./$exe_ffi  
-if [ $? -ne 0 ] ; then 
-    echo "You have not ffi installed!" 
+./$exe_ffi
+if [ $? -ne 0 ] ; then
+    echo "You have not ffi installed!"
     echo "On Debian/Ubuntu: sudo apt-get install libffi-dev"
     echo "Fedora: sudo yum libffi-devel"
     echo "Mac OS: brew install libffi"
@@ -88,18 +88,18 @@ cffiname=cffi-0.6
 pycparsername=pycparser-release_v2.09.1
 pytestname=pytest-2.3.5
 
-# helper function  
+# helper function
 function downloader {
     file=$1; url=$2;
     if [ ! -e "$file" ]; then
-        echo "Could not find $file" 
+        echo "Could not find $file"
 
         if [ -d "$DOWNLOAD_DIR" ]; then
           echo "Copying it from $DOWNLOAD_DIR !"
           cp -p "$DOWNLOAD_DIR/$file" .
         else
           echo "Trying to download it via wget!"
-        
+
           $WGET --version  >/dev/null 2>&1 || \
               { echo "This script requires you to first install wget"
               echo "You can also just download $file from $url"
@@ -165,13 +165,13 @@ popd
 
 echo "*******Installing $cffiname"
 pushd $cffiname
-# FIXME check the depencies 
+# FIXME check the depencies
 python setup.py install --prefix="$prefix" || exit 1
 popd
 
 
 echo "****** Last check "
-if [ ! -e $(python -c 'import cffi') ]; then 
+if [ ! -e $(python -c 'import cffi') ]; then
     echo "Installation failed. Please download and install $file manually!"
 fi
 

@@ -1,0 +1,29 @@
+dev-1 collar 0.25:
+md-eval.pl -c 0.25 -r data/dev-1/rttm.annotation -s exp/sad_1a/dev-1/sad.rttm | awk '/(MISSED|FALARM) SPEECH/'
+MISSED SPEECH =   4931.73 secs (  0.7 percent of scored time)
+FALARM SPEECH =  12194.65 secs (  1.6 percent of scored time)
+
+dev-1 collar 0.1:
+md-eval.pl -c 0.1 -r data/dev-1/rttm.annotation -s exp/sad_1a/dev-1/sad.rttm | awk '/(MISSED|FALARM) SPEECH/'
+MISSED SPEECH =   7328.57 secs (  0.9 percent of scored time)
+FALARM SPEECH =  44831.42 secs (  5.2 percent of scored time)
+
+dev-1 collar 0
+md-eval.pl -c 0 -r data/dev-1/rttm.annotation -s exp/sad_1a/dev-1/sad.rttm | awk '/(MISSED|FALARM) SPEECH/'
+MISSED SPEECH =   9406.70 secs (  1.0 percent of scored time)
+FALARM SPEECH =  79887.28 secs (  8.6 percent of scored time)
+
+dev-2 collar 0.25
+md-eval.pl -c 0.25 -r data/dev-2/rttm.annotation -s exp/sad_1a/dev-2/sad.rttm | awk '/(MISSED|FALARM) SPEECH/'
+MISSED SPEECH =   2731.59 secs (  0.4 percent of scored time)
+FALARM SPEECH =  12748.75 secs (  1.9 percent of scored time)
+
+dev-2 collar 0.1
+md-eval.pl -c 0.1 -r data/dev-2/rttm.annotation -s exp/sad_1a/dev-2/sad.rttm | awk '/(MISSED|FALARM) SPEECH/'
+MISSED SPEECH =   4180.69 secs (  0.5 percent of scored time)
+FALARM SPEECH =  48457.12 secs (  6.1 percent of scored time)
+
+dev-2 collar 0
+md-eval.pl -c 0 -r data/dev-2/rttm.annotation -s exp/sad_1a/dev-2/sad.rttm | awk '/(MISSED|FALARM) SPEECH/'
+MISSED SPEECH =   5529.95 secs (  0.6 percent of scored time)
+FALARM SPEECH =  82836.85 secs (  9.6 percent of scored time)

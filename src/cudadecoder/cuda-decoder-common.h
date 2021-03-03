@@ -573,19 +573,22 @@ enum QUEUE_ID { MAIN_Q = 0, AUX_Q = 1 };
 struct PartialPathArc {
   int32 token_idx;
   int32 arc_idx;
+  int32 substring_end;
+  int32 olabel;
+
+  PartialPathArc(int32 _token_idx = -1, int32 _arc_idx = -1,
+                 int32 _substring_end = -1)
+      : token_idx(_token_idx),
+        arc_idx(_arc_idx),
+        substring_end(_substring_end),
+        olabel(-1) {}
 };
 
 // Partial hypothesis formatted and meant to be used by user
 struct PartialHypothesis {
-  std::vector<int> arc_idx;
-  std::vector<int> olabel;
   std::string out_str;
 
-  void clear() {
-    arc_idx.clear();
-    olabel.clear();
-    out_str.clear();
-  }
+  void clear() { out_str.clear(); }
 };
 
 }  // end namespace cuda_decoder

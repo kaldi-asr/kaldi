@@ -110,8 +110,7 @@ if [ $stage -le -2 ]; then
 fi
 
 
-# won't work at Idiap
-#if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
+if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
 
 num_iters=$(wc -l <$dir/schedule.txt)
 
@@ -316,7 +315,7 @@ if [ $stage -le $num_iters ]; then
    fi
 fi
 
-if [ ! -f $dir/final.mdl ]; then
+if [[ ! $multilingual_eg ]] && [[ ! -f $dir/final.mdl ]]; then
   echo "$0: $dir/final.mdl does not exist."
   # we don't want to clean up if the training didn't succeed.
   exit 1;

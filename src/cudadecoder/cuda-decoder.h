@@ -460,7 +460,9 @@ class CudaDecoder {
 
   // Used to generate the partial hypotheses
   // Called by the worker threads async
-  void BuildPartialHypothesisOutput(ChannelId ichannel);
+  void BuildPartialHypothesisOutput(
+      ChannelId ichannel,
+      std::stack<std::pair<int, PartialPathArc *>> *traceback_buffer_);
   void GeneratePartialPath(LaneId ilane, ChannelId ichannel);
 
   void EndpointDetected(LaneId ilane, ChannelId ichannel);
@@ -858,8 +860,8 @@ class CudaDecoder {
   std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
-  std::atomic<std::uint32_t> n_partial_traceback_threads_todo_;
-  std::atomic<std::uint32_t> n_partial_traceback_threads_not_done_;
+  std::atomic<std::int32_t> n_partial_traceback_threads_todo_;
+  std::atomic<std::int32_t> n_partial_traceback_threads_not_done_;
 
   bool h2h_threads_running_;
   // Using the output from GetBestPath, we add the best tokens (as

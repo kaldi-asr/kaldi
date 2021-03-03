@@ -43,11 +43,11 @@
    GOP is extracted from LPP:
      GOP(p) = \log \frac{LPP(p)}{\max_{q\in Q} LPP(q)}
 
-   An array of a phone-level feature for each phone is extracted as well, which
+   An array of a GOP-based feature for each phone is extracted as well, which
    could be used to train a classifier to detect mispronunciations. Normally the
    classifier-based approach archives better performance than the GOP-based approach.
 
-   The phone-level feature is defined as:
+   The GOP-based feature is defined as:
      {[LPP(p_1),\cdots,LPP(p_M), LPR(p_1|p_i), \cdots, LPR(p_j|p_i),\cdots]}^T
 
    where the Log Posterior Ratio (LPR) between phone p_j and p_i is defined as:
@@ -63,7 +63,17 @@
 
 namespace kaldi {
 
-/** FrameLevelLpp compute a log posterior for pure-phones by sum the posterior
+int32 PhoneNum(const std::vector<std::set<int32> > &pdf2phones) {
+  int32 phone_num = 0;
+  for (auto &pdf: pdf2phones) {
+    if(!pdf.empty()) {
+      phone_num = std::max(phone_num, 1 + *pdf.rbegin());
+    }
+  }
+  return phone_num;
+}
+
+/** ComputeLpps compute log posteriors for pure-phones by sum the posterior
     of the states belonging to those triphones whose current phone is the canonical
     phone:
 
@@ -73,22 +83,19 @@ namespace kaldi {
     riphones whose current phone is the canonical phone p.
 
  */
-void FrameLevelLpp(const SubVector<BaseFloat> &prob_row,
-                   const std::vector<std::set<int32> > &pdf2phones,
-                   const std::vector<int32> *phone_map,
-                   Vector<BaseFloat> *out_frame_level_lpp) {
-  for (int32 i = 0; i < prob_row.Dim(); i++) {
-    std::set<int32> dest_idxs;
+void ComputeLpps(const Matrix<BaseFloat> &prob,
+                 const std::vector<std::set<int32> > &pdf2phones,
+                 Matrix<BaseFloat> *lpps) {
+  int32 mono_num = PhoneNum(pdf2phones);
+  lpps->Resize(prob.NumRows(), mono_num, kSetZero);
+  for (int32 i = 0; i < prob.NumCols(); i++) {
+    SubMatrix<float> src(prob, 0, prob.NumRows(), i, 1);
     for (int32 ph : pdf2phones.at(i)) {
-      dest_idxs.insert((phone_map != NULL) ? (*phone_map)[ph] - 1 : ph - 1);
-    }
-
-    for (int32 idx : dest_idxs) {
-      KALDI_ASSERT(idx < out_frame_level_lpp->Dim());
-      (*out_frame_level_lpp)(idx) += prob_row(i);
+      SubMatrix<float> dst(*lpps, 0, prob.NumRows(), ph, 1);
+      dst.AddMat(1, src);
     }
   }
-  out_frame_level_lpp->ApplyLog();
+  lpps->ApplyLog();
 }
 
 }  // namespace kaldi
@@ -111,12 +118,15 @@ int main(int argc, char *argv[]) {
 
     bool log_applied = true;
     std::string phone_map_rxfilename;
+    std::string skip_phones_string = "0";
 
     po.Register("log-applied", &log_applied,
         "If true, assume the input probabilities have been applied log.");
     po.Register("phone-map", &phone_map_rxfilename,
                 "File name containing old->new phone mapping (each line is: "
                 "old-integer-id new-integer-id)");
+    po.Register("skip_phones_string", &skip_phones_string,
+                "Do not write features and gops for those phones");
 
     po.Read(argc, argv);
 
@@ -143,14 +153,31 @@ int main(int argc, char *argv[]) {
 
     std::vector<int32> phone_map;
     if (phone_map_rxfilename != "") {
+      // Map phone IDs
       ReadPhoneMap(phone_map_rxfilename, &phone_map);
-      phone_num = phone_map[phone_map.size() - 1];
+      std::vector<std::set<int32> > pdf2phones_old(pdf2phones);
+      for (int32 i = 0; i < pdf2phones_old.size(); i++) {
+        pdf2phones[i].clear();
+        for (int32 ph : pdf2phones_old.at(i)) {
+          pdf2phones[i].insert(phone_map[ph]);
+        }
+      }
+      phone_num = PhoneNum(pdf2phones);
+    }
+
+    std::set<int32> skip_phones;
+    if (skip_phones_string != "") {
+      std::vector<int32> skip_phones_vec;
+      SplitStringToIntegers(skip_phones_string, ":", false, &skip_phones_vec);
+      for (int32 ph: skip_phones_vec) {
+        skip_phones.insert(ph);
+      }
     }
 
     RandomAccessInt32VectorReader alignment_reader(alignments_rspecifier);
     SequentialBaseFloatMatrixReader prob_reader(prob_rspecifier);
     PosteriorWriter gop_writer(gop_wspecifier);
-    BaseFloatMatrixWriter feat_writer(feat_wspecifier);
+    BaseFloatVectorWriter feat_writer(feat_wspecifier);
 
     int32 num_done = 0;
     for (; !prob_reader.Done(); prob_reader.Next()) {
@@ -163,6 +190,9 @@ int main(int argc, char *argv[]) {
       Matrix<BaseFloat> &probs = prob_reader.Value();
       if (log_applied) probs.ApplyExp();
 
+      Matrix<BaseFloat> lpps;
+      ComputeLpps(probs, pdf2phones, &lpps);
+
       int32 frame_num = alignment.size();
       if (alignment.size() != probs.NumRows()) {
         KALDI_WARN << "The frame numbers of alignment and prob are not equal.";
@@ -170,39 +200,48 @@ int main(int argc, char *argv[]) {
       }
 
       KALDI_ASSERT(frame_num > 0);
-      int32 cur_phone_id = alignment[0] - 1;  // start by 0, skipping <eps>
+      int32 cur_phone_id = alignment[0];
       int32 duration = 0;
-      Vector<BaseFloat> phone_level_feat(phone_num * 2);  // LPPs and LPRs
-      SubVector<BaseFloat> lpp_part(phone_level_feat, 0, phone_num);
+      Vector<BaseFloat> phone_level_feat(1 + phone_num * 2);  // [phone LPPs LPRs]
+      SubVector<BaseFloat> lpp_part(phone_level_feat, 1, phone_num);
       std::vector<Vector<BaseFloat> > phone_level_feat_stdvector;
       Posterior posterior_gop;
       for (int32 i = 0; i < frame_num; i++) {
         // Calculate LPP and LPR for each pure-phone
         Vector<BaseFloat> frame_level_lpp(phone_num);
-        FrameLevelLpp(probs.Row(i), pdf2phones,
-                      (phone_map_rxfilename != "") ? &phone_map : NULL,
-                      &frame_level_lpp);
+        frame_level_lpp.CopyRowFromMat(lpps, i);
+
+        // Ignore the phones in skip_phones
+        for (auto &skip_ph: skip_phones) {
+          frame_level_lpp(skip_ph) = -10;
+        }
 
         // LPP(p)=\frac{1}{t_e-t_s+1} \sum_{t=t_s}^{t_e}\log p(p|o_t)
         lpp_part.AddVec(1, frame_level_lpp);
         duration++;
 
-        int32 next_phone_id = (i < frame_num - 1) ? alignment[i + 1] - 1: -1;
+        int32 next_phone_id = (i < frame_num - 1) ? alignment[i + 1]: -1;
         if (next_phone_id != cur_phone_id) {
+          int32 phone_id = phone_map.empty() ? cur_phone_id : phone_map[cur_phone_id];
+
           // The current phone's feature have been ready
           lpp_part.Scale(1.0 / duration);
 
           // LPR(p_j|p_i)=\log p(p_j|\mathbf o; t_s, t_e)-\log p(p_i|\mathbf o; t_s, t_e)
           for (int k = 0; k < phone_num; k++)
-            phone_level_feat(phone_num + k) = lpp_part(cur_phone_id) - lpp_part(k);
-          phone_level_feat_stdvector.push_back(phone_level_feat);
+            phone_level_feat(1 + phone_num + k) = lpp_part(phone_id) - lpp_part(k);
 
           // Compute GOP from LPP
           // GOP(p)=\log \frac{LPP(p)}{\max_{q\in Q} LPP(q)}
-          BaseFloat gop = lpp_part(cur_phone_id) - lpp_part.Max();
-          std::vector<std::pair<int32, BaseFloat> > posterior_item;
-          posterior_item.push_back(std::make_pair(cur_phone_id + 1, gop));
-          posterior_gop.push_back(posterior_item);
+          BaseFloat gop = lpp_part(phone_id) - lpp_part.Max();
+
+          if (skip_phones.find(phone_id) == skip_phones.end()) {
+            phone_level_feat(0) = phone_id;
+            phone_level_feat_stdvector.push_back(phone_level_feat);
+            std::vector<std::pair<int32, BaseFloat> > posterior_item;
+            posterior_item.push_back(std::make_pair(phone_id, gop));
+            posterior_gop.push_back(posterior_item);
+          }
 
           // Reset
           phone_level_feat.Set(0);
@@ -211,13 +250,13 @@ int main(int argc, char *argv[]) {
         cur_phone_id = next_phone_id;
       }
 
-      // Write GOPs and the phone-level features
-      Matrix<BaseFloat> feats(phone_level_feat_stdvector.size(), phone_num * 2);
-      for (int32 i = 0; i < phone_level_feat_stdvector.size(); i++) {
-        SubVector<BaseFloat> row(feats, i);
-        row.AddVec(1.0, phone_level_feat_stdvector[i]);
+      // Write GOPs and the GOP-based features
+      int32 example_id = 0;
+      for (auto &feat: phone_level_feat_stdvector) {
+        std::string cur_key = key + "." + std::to_string(example_id);
+        feat_writer.Write(cur_key, feat);
+        example_id++;
       }
-      feat_writer.Write(key, feats);
       gop_writer.Write(key, posterior_gop);
       num_done++;
     }

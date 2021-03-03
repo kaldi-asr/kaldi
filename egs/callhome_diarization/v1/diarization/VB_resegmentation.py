@@ -206,9 +206,10 @@ def main():
         #      probabilities of the redundant speaker should converge to zero.
         # Li - values of auxiliary function (and DER and frame cross-entropy between q
         #      and reference if 'ref' is provided) over iterations.
-        q_out, sp_out, L_out = VB_diarization.VB_diarization(X_voiced, m, iE, w, V, sp=None, q=q, maxSpeakers=args.max_speakers, maxIters=args.max_iters, VtiEV=None,
-                                  downsample=args.downsample, alphaQInit=args.alphaQInit, sparsityThr=args.sparsityThr, epsilon=args.epsilon, minDur=args.minDur,
-                                  loopProb=args.loopProb, statScale=args.statScale, llScale=args.llScale, ref=None, plot=False)
+        q_out, sp_out, L_out = VB_diarization.VB_diarization(X_voiced, m, iE, w, V, pi=None, gamma=q, maxSpeakers=args.max_speakers, 
+                                maxIters=args.max_iters, VtinvSigmaV=None, downsample=args.downsample, alphaQInit=args.alphaQInit, 
+                                sparsityThr=args.sparsityThr, epsilon=args.epsilon, minDur=args.minDur, loopProb=args.loopProb, 
+                                statScale=args.statScale, llScale=args.llScale, ref=None, plot=False)
         predicted_label_voiced = np.argmax(q_out, 1) + 2
         predicted_label = (np.zeros(len(mask))).astype(int)
         predicted_label[mask] = predicted_label_voiced

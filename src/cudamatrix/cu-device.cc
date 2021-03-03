@@ -113,17 +113,32 @@ void CuDevice::Initialize() {
 
 #if CUDA_VERSION >= 9010
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
-    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_, 
+    CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
             cudaStreamPerThread));
 #endif
-    
-#if CUDA_VERSION >= 9000 
-    if (device_options_.use_tensor_cores) {
-      // Enable tensor cores in CUBLAS
-      // Note if the device does not support tensor cores this will fall back to normal math mode
-      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
-            CUBLAS_TENSOR_OP_MATH));
+
+#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 11000
+    cublas_compute_type_ = CUBLAS_COMPUTE_32F;
+    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
+    // Enable tensor cores in CUBLAS
+    // Note if the device does not support tensor cores this will fall back to normal math mode
+    if (device_options_.use_tf32_compute) {
+        // Use TF32 compute for Ampere Tensor Cores
+        cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_TF32;
+        cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
     }
+    if (device_options_.use_tensor_cores) {
+        // Use FP16 compute for pre-Ampere Tensor Cores
+        cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_16F;
+        cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+    }
+#else
+    if (device_options_.use_tensor_cores) {
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
+              CUBLAS_TENSOR_OP_MATH));
+    }
+#endif
 #endif
 
     // Initialize the cuSPARSE library
@@ -267,30 +282,47 @@ void CuDevice::FinalizeActiveGpu() {
     device_id_copy_ = device_id;
     initialized_ = true;  // Prevent Initialize() from being called on this,
                           // the main thread.
+
+    CU_SAFE_CALL(cudaGetDeviceProperties(&properties_, device_id));
+
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
-    
-#if CUDA_VERSION >= 9010 
+
+#if CUDA_VERSION >= 9010
     CUSOLVER_SAFE_CALL(cusolverDnCreate(&cusolverdn_handle_));
     CUSOLVER_SAFE_CALL(cusolverDnSetStream(cusolverdn_handle_,
             cudaStreamPerThread));
 #endif
 
-#if CUDA_VERSION >= 9000 
+#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 11000
+    cublas_compute_type_ = CUBLAS_COMPUTE_32F;
+    cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT;
+    // Enable tensor cores in CUBLAS
+    // Note if the device does not support tensor cores this will fall back to normal math mode
+    if ((properties_.major >= 8) && (device_options_.use_tf32_compute)) {
+      // Use TF32 compute for Ampere Tensor Cores
+      cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_TF32;
+      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+    }
     if (device_options_.use_tensor_cores) {
-      // Enable tensor cores in CUBLAS
-      // Note if the device does not support tensor cores this will fall back to normal math mode
-      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_, 
-            CUBLAS_TENSOR_OP_MATH));
+      // Use FP16 compute for pre-Ampere Tensor Cores
+      cublas_compute_type_ = CUBLAS_COMPUTE_32F_FAST_16F;
+      cublas_gemm_algo_ = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+    }
+#else
+    if (device_options_.use_tensor_cores) {
+      CUBLAS_SAFE_CALL(cublasSetMathMode(cublas_handle_,
+              CUBLAS_TENSOR_OP_MATH));
     }
 #endif
+#endif
 
-    
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
-    
+
     // Initialize the generator,
     CURAND_SAFE_CALL(curandCreateGenerator(
           &curand_handle_, CURAND_RNG_PSEUDO_DEFAULT));
@@ -302,8 +334,6 @@ void CuDevice::FinalizeActiveGpu() {
     // Notify the user which GPU is being userd.
     char name[128];
     DeviceGetName(name,128, device_id);
-
-    CU_SAFE_CALL(cudaGetDeviceProperties(&properties_, device_id));
 
     KALDI_LOG << "The active GPU is [" << device_id << "]: " << name << "\t"
               << GetFreeGpuMemory(&free_memory_at_startup_, NULL) << " version "
@@ -539,28 +569,7 @@ void CuDevice::PrintProfile() {
 void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
   // prefill with something reasonable
   strncpy(name,"Unknown GPU",len);
-#ifdef _MSC_VER
   cuDeviceGetName(name, len, dev);
-#else
-  // open libcuda.so
-  void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
-  if (NULL == libcuda) {
-    KALDI_WARN << "cannot open libcuda.so";
-  } else {
-    // define the function signature type
-    typedef CUresult (*cu_fun_ptr)(char*,int,CUdevice);
-    // get the symbol
-    cu_fun_ptr cuDeviceGetName_ptr = (cu_fun_ptr)dlsym(libcuda,"cuDeviceGetName");
-    if (NULL == cuDeviceGetName_ptr) {
-      KALDI_WARN << "cannot load cuDeviceGetName from libcuda.so";
-    } else {
-      // call the function
-      cuDeviceGetName_ptr(name, len, dev);
-    }
-    // close the library
-    dlclose(libcuda);
-  }
-#endif
 }
 
 
@@ -611,7 +620,7 @@ CuDevice::~CuDevice() {
 // Each thread has its own copy of the CuDevice object.
 // Note: this was declared "static".
 thread_local CuDevice CuDevice::this_thread_device_;
-  
+
 CuDevice::CuDeviceOptions CuDevice::device_options_;
 
 // define and initialize the static members of the CuDevice object.

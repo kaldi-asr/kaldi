@@ -123,6 +123,9 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
 class BatchedThreadedNnet3CudaOnlinePipeline {
  public:
   using CorrelationID = uint64_t;
+  typedef std::function<void(const std::string &, bool, bool)> BestPathCallback;
+  typedef std::function<void(CompactLattice &)> LatticeCallback;
+
   BatchedThreadedNnet3CudaOnlinePipeline(
       const BatchedThreadedNnet3CudaOnlinePipelineConfig &config,
       const fst::Fst<fst::StdArc> &decode_fst,
@@ -131,6 +134,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
         max_batch_size_(config.max_batch_size),
         trans_model_(&trans_model),
         am_nnet_(&am_nnet),
+        partial_hypotheses_(NULL),
+        end_points_(NULL),
         word_syms_(NULL) {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
@@ -138,6 +143,10 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
     thread_pool_.reset(new ThreadPoolLight(num_worker_threads));
 
     Initialize(decode_fst);
+  }
+
+  const BatchedThreadedNnet3CudaOnlinePipelineConfig &GetConfig() {
+    return config_;
   }
 
   // Called when a new utterance will be decoded w/ correlation id corr_id
@@ -148,11 +157,13 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // up to wait_for seconds)
   bool TryInitCorrID(CorrelationID corr_id, int wait_for = 0);
 
+  void SetBestPathCallback(CorrelationID corr_id,
+                           const BestPathCallback &callback);
+
   // Set the callback function to call with the final lattice for a given
   // corr_id
-  void SetLatticeCallback(
-      CorrelationID corr_id,
-      const std::function<void(CompactLattice &)> &callback);
+  void SetLatticeCallback(CorrelationID corr_id,
+                          const LatticeCallback &callback);
 
   // Chunk of one utterance. We receive batches of those chunks through
   // DecodeBatch
@@ -250,7 +261,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // CPU function
   void ComputeOneFeature(int element);
   static void ComputeOneFeatureWrapper(void *obj, uint64_t element,
-                                       uint64_t ignored) {
+                                       void *ignored) {
     static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
         ->ComputeOneFeature(element);
   }
@@ -264,20 +275,22 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
   void RunDecoder(const std::vector<int> &channels);
 
-  void BuildLatticesAndRunCallbacks(const std::vector<CorrelationID> &corr_ids,
-                                    const std::vector<int> &channels,
-                                    const std::vector<bool> &is_last_chunk);
+  void RunCallbacksAndFinalize(const std::vector<CorrelationID> &corr_ids,
+                               const std::vector<int> &channels,
+                               const std::vector<bool> &is_last_chunk);
 
   // If an utterance is done, we call FinalizeDecoding async on
   // the threadpool
   // it will call the utterance's callback when done
-  void FinalizeDecoding(int32 ichannel, CorrelationID corr_id);
+  void FinalizeDecoding(int32 ichannel, const LatticeCallback *callback);
   // static wrapper for thread pool
   static void FinalizeDecodingWrapper(void *obj, uint64_t ichannel64,
-                                      uint64_t corr_id) {
+                                      void *callback_ptr) {
     int32 ichannel = static_cast<int32>(ichannel64);
+    const LatticeCallback *callback =
+        static_cast<const LatticeCallback *>(callback_ptr);
     static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
-        ->FinalizeDecoding(ichannel, corr_id);
+        ->FinalizeDecoding(ichannel, callback);
   }
   // Data members
 
@@ -295,10 +308,22 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // corr_id -> decoder channel map
   std::unordered_map<CorrelationID, int32> corr_id2channel_;
 
-  // channels -> callbacks
-  // the callback is called once the final lattice is ready
-  std::vector<std::unique_ptr<std::function<void(CompactLattice &)>>>
-      channels_callbacks_;
+  // Where to store partial_hypotheses_ and end_points_ if available
+  std::vector<const std::string *> *partial_hypotheses_;
+  std::vector<bool> *end_points_;
+
+  // Used when none were provided by the API but we still need to generate
+  // partial hyp and endp
+  std::vector<const std::string *> partial_hypotheses_buf_;
+  std::vector<bool> end_points_buf_;
+
+  // The callback is called once the final lattice is ready
+  std::unordered_map<CorrelationID, const LatticeCallback> lattice_callbacks_;
+  // Used for both final and partial best paths
+  std::unordered_map<CorrelationID, const BestPathCallback>
+      best_path_callbacks_;
+  // Lock for callbacks
+  std::mutex map_callbacks_m_;
 
   // New channels in the current batch. We've just received
   // their first batch
@@ -313,6 +338,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // their last chunk
   std::vector<int> list_channels_last_chunk_;
   std::vector<CorrelationID> list_corr_id_last_chunk_;
+  std::vector<LatticeCallback *> list_lattice_callbacks_last_chunk_;
 
   // Number of frames already computed in channel (before
   // curr_batch_)

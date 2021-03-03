@@ -10,4 +10,4 @@ has_gpu=true
 #  tf_source=https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.2.0-cp27-none-linux_x86_64.whl
 #fi
 
-pip install --user tensorflow-gpu=2.0.0 
+pip install --user tensorflow-gpu=2.0.0

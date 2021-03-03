@@ -103,35 +103,6 @@ class smart_open(object):
             self.file_handle.close()
 
 
-class smart_open(object):
-    """
-    This class is designed to be used with the "with" construct in python
-    to open files. It is similar to the python open() function, but
-    treats the input "-" specially to return either sys.stdout or sys.stdin
-    depending on whether the mode is "w" or "r".
-
-    e.g.: with smart_open(filename, 'w') as fh:
-            print ("foo", file=fh)
-    """
-    def __init__(self, filename, mode="r"):
-        self.filename = filename
-        self.mode = mode
-        assert self.mode == "w" or self.mode == "r"
-
-    def __enter__(self):
-        if self.filename == "-" and self.mode == "w":
-            self.file_handle = sys.stdout
-        elif self.filename == "-" and self.mode == "r":
-            self.file_handle = sys.stdin
-        else:
-            self.file_handle = open(self.filename, self.mode)
-        return self.file_handle
-
-    def __exit__(self, *args):
-        if self.filename != "-":
-            self.file_handle.close()
-
-
 def check_if_cuda_compiled():
     p = subprocess.Popen("cuda-compiled")
     p.communicate()

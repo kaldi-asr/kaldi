@@ -239,7 +239,7 @@ if [ $stage -le 15 ]; then
   output-layer name=output-default-xent input=prefinal-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-  if [ -f $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
+  if [ ! -f $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
       copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
   else
       echo "Keeping the old $dir/init/default_trans.mdl as it already exists."
@@ -363,7 +363,7 @@ if [ $stage -le 22 ]; then
     --initial-effective-lrate 0.0005 \
     --final-effective-lrate 0.00005 \
     --num-epochs 10 \
-    --groups-per-minibatch 128,64 \
+    --minibatch-size 128,64 \
      $dir/egs $dir || exit 1;
 fi
 

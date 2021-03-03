@@ -28,7 +28,7 @@ fi
 
 if [ -d ffv-$VERSION ]; then
   echo "*It looks like ffv-$VERSION.tar.gz has already been unpacked, not unpacking it."
-else 
+else
   ! tar -zxvf ffv-$VERSION.tar.gz && \
   echo "Error unpacking  ffv-$VERSION.tar.gz [e.g. unpack not installed?]" && exit 1;
 fi
@@ -40,7 +40,7 @@ else
   echo "Makefile does not exist, creating it."
   cat<<'EOF' > ./Makefile
   CC     = gcc
-  # CFLAGS = -c -O3 -Wall -pedantic -std=c99 
+  # CFLAGS = -c -O3 -Wall -pedantic -std=c99
   CFLAGS = -c -g -Wall -pedantic -std=c99
   LIBS   = -lm
 
@@ -53,7 +53,7 @@ else
 	mutils.o \
 	sutils.o
 
-  all : ffv 
+  all : ffv
 
   ffv : ffv_main.o ${LIBOBJECTS}
 	${CC} -o $@ $^ ${LIBS}
@@ -64,13 +64,7 @@ else
   clean :
     rm -f *.o ffv
 EOF
-chmod +x Makefile 
 fi
-make; 
-cd ..
+make
 
 echo "Installing ffv package is done."
-exit 0;
-
-
-
