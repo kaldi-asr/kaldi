@@ -8,6 +8,7 @@ import argparse
 
 # avoid Python>3 rewrite newline on different platforms
 os.linesep = "\n"
+EXCLUDE_FILES = ['kenlm.h', 'kenlm.cc', 'kenlm-test.cc']
 
 # earily parse, will refernece args globally
 parser = argparse.ArgumentParser()
@@ -26,7 +27,7 @@ def is_bin_dir(d):
     return d.endswith("bin")
 
 def get_files(d):
-    return [name for name in os.listdir(d) if os.path.isfile(os.path.join(d, name))]
+    return [name for name in os.listdir(d) if os.path.isfile(os.path.join(d, name)) and (name not in EXCLUDE_FILES)]
 
 def is_header(f):
     return f.endswith(".h")

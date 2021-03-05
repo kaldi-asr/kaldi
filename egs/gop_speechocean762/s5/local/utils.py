@@ -4,14 +4,14 @@
 import os
 import re
 import json
+import random
+from itertools import chain
+from collections import Counter
 from imblearn.over_sampling import RandomOverSampler
 
 
 def round_score(score, floor=0.1, min_val=0, max_val=2):
-    if score < min_val:
-        score = min_val
-    if score > max_val:
-        score = max_val
+    score = max(min(max_val, score), min_val)
     return round(score / floor) * floor
 
 
@@ -49,3 +49,24 @@ def load_human_scores(filename, floor=0.1):
 def balanced_sampling(x, y):
     sampler = RandomOverSampler()
     return sampler.fit_resample(x, y)
+
+
+def add_more_negative_data(data):
+    # Put all examples together
+    whole_data = []
+    for ph in data:
+        for examples in data[ph]:
+            whole_data.append(list(chain(*([ph], examples))))
+
+    # Take the 2-score examples of other phones as the negative examples
+    for cur_ph in data:
+        labels, feats = list(zip(*data[cur_ph]))
+        count_of_label = Counter(labels)
+        example_number_needed = 2 * count_of_label[2] - len(labels)
+        if example_number_needed > 0:
+            features = random.sample([feat for ph, score, feat in whole_data
+                                      if ph != cur_ph and score == 2],
+                                     example_number_needed)
+            examples = list(zip([0] * example_number_needed, features))
+            data[cur_ph] = data[cur_ph] + examples
+    return data
