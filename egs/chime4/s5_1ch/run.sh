@@ -28,6 +28,7 @@ gmm_decode_only=false
 tdnn_decode_only=false
 # make it true when you want to add enhanced data into training set. But please note that when changing enhancement method,
 # you may need to retrain from run_gmm.sh and avoid using decode-only options above
+# Also, don't set it true if you use "isolated_1ch_track" as enhancement method
 add_enhanced_data=true
 
 . utils/parse_options.sh || exit 1;
@@ -69,6 +70,8 @@ fi
 
 if [[ "$enhancement" == *isolated_1ch_track* ]]; then
   enhancement_data=$chime4_data/data/audio/16kHz/isolated_1ch_track
+  # we will skip enhancement for this option
+  stage=3
 else
   enhancement_data=`pwd`/enhan/$enhancement
 fi
