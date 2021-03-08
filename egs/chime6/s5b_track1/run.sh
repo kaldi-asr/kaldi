@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 #
 # Based mostly on the TED-LIUM and Switchboard recipe
+# This recipe is for chime6 track1 (ASR only), it recognise
+# a given evaluation utterance given ground truth 
+# diarization information
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
+#            2020  Ke Li, Ashish Arora
 # Apache 2.0
 #
 
