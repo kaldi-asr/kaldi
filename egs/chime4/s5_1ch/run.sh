@@ -22,7 +22,7 @@
 
 # Config:
 stage=0 # resume training with --stage N
-enhancement=single_blstmmask #### or your method
+enhancement=single_blstmmask #### or your method. Note if it's isolated_1ch_track, we'll skip stage 1 & 2
 # if the following options are true, they wouldn't train a model again and will only do decoding
 gmm_decode_only=false
 tdnn_decode_only=false
@@ -70,18 +70,16 @@ fi
 
 if [[ "$enhancement" == *isolated_1ch_track* ]]; then
   enhancement_data=$chime4_data/data/audio/16kHz/isolated_1ch_track
-  # we will skip enhancement for this option
-  stage=3
 else
   enhancement_data=`pwd`/enhan/$enhancement
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le 1 ] && [[ "$enhancement" != *isolated_1ch_track* ]]; then
   local/run_blstm_gev.sh --cmd "$train_cmd" --nj 20 --track 1 $chime4_data $chime3_data $enhancement_data 0 
 fi
 
 # Compute PESQ, STOI, eSTOI, and SDR scores
-if [ $stage -le 2 ]; then
+if [ $stage -le 2 ] && [[ "$enhancement" != *isolated_1ch_track* ]]; then
   if [ ! -f local/bss_eval_sources.m ] || [ ! -f local/stoi.m ] || [ ! -f local/estoi.m ] || [ ! -f local/PESQ ]; then
     # download and install speech enhancement evaluation tools
     local/download_se_eval_tool.sh
