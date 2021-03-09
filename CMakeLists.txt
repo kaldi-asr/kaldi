@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(kaldi)
 
+IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  SET(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/src CACHE PATH <comment> FORCE)
+ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(GNUInstallDirs)
 include(Utils)
@@ -168,8 +171,8 @@ endif()
 # get_third_party(openfst)
 # set(OPENFST_ROOT_DIR ${CMAKE_BINARY_DIR}/openfst)
 # include(third_party/openfst_lib_target)
-include_directories(${CMAKE_INSTALL_PREFIX}/include)
-link_directories(${CMAKE_INSTALL_PREFIX}/lib)
+include_directories(${CMAKE_SOURCE_DIR}/tools/openfst/include)
+link_directories(${CMAKE_SOURCE_DIR}/tools/openfst/lib)
 find_library(<VAR> fst REQUIRED)
 link_libraries(fst)
 
@@ -252,13 +255,3 @@ install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/c
     DESTINATION lib/cmake/kaldi
 )
 install(EXPORT kaldi-targets DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)
-
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/egs/wsj/s5/utils/
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/kaldi/egs/wsj/s5/utils/
-    USE_SOURCE_PERMISSIONS
-)
-
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/egs/wsj/s5/steps/
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/kaldi/egs/wsj/s5/steps/
-    USE_SOURCE_PERMISSIONS
-)
