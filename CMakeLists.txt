@@ -262,7 +262,3 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/egs/wsj/s5/steps/
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/kaldi/egs/wsj/s5/steps/
     USE_SOURCE_PERMISSIONS
 )
-
-install(
-    CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/cmake/bashrc_config.py ${CMAKE_INSTALL_PREFIX} )"
-)
