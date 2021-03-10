@@ -24,3 +24,5 @@ ${KALDI_ROOT}/src/sgmmbin:\
 ${KALDI_ROOT}/src/tfrnnlmbin:\
 ${KALDI_ROOT}/src/cudadecoderbin:\
 $PATH
+
+export LD_LIBRARY_PATH=${KALDI_ROOT}/tools/openfst/lib/:${LD_LIBRARY_PATH}
