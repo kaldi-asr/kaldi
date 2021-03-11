@@ -171,9 +171,12 @@ endif()
 # get_third_party(openfst)
 # set(OPENFST_ROOT_DIR ${CMAKE_BINARY_DIR}/openfst)
 # include(third_party/openfst_lib_target)
+find_library(OpenFST
+            NAMES fst 
+            PATHS ${CMAKE_SOURCE_DIR}/tools/openfst/lib 
+            REQUIRED)
 include_directories(${CMAKE_SOURCE_DIR}/tools/openfst/include)
 link_directories(${CMAKE_SOURCE_DIR}/tools/openfst/lib)
-find_library(<VAR> fst REQUIRED)
 link_libraries(fst)
 
 # add all native libraries
