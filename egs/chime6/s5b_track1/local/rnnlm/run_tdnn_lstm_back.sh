@@ -11,7 +11,12 @@
 # Note: local/score_for_submit_track2.sh is copied from ../s5_track2/local/score_for_submit.sh
 # Begin configuration section.
 
-dir=exp/rnnlm_lstm_1b
+#rnnlm/train_rnnlm.sh: best iteration (out of 6) was 2, linking it to final iteration.
+#rnnlm/train_rnnlm.sh: train/dev perplexity was 62.4 / 142.0.
+#Train objf: -4.40 -4.12 -3.88 -3.64 -3.40
+#Dev objf:   -5.05 -4.96 -5.02 -5.20 -5.43
+
+dir=exp/rnnlm_lstm_1b_backward
 embedding_dim=512
 lstm_rpd=128
 lstm_nrpd=128
@@ -27,25 +32,11 @@ run_lat_rescore=true
 run_nbest_rescore=true
 run_backward_rnnlm=false
 
-#Track 2 Ashish' model that gives dev 78.24 and eval 73.55 in the google sheet (ASR)
-# dir = ${ac_model_dir}/{dev,eval}_beamformit_dereverb_diarized_U06_2stage
+ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
 
-#Track 2 same acoustic model (I assume), gss preprocess;
-ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_l2_03_4500_ep6_sp_track2
-# ac_model_dir=/export/c11/asubraman/kaldi_chime6/challenge/kaldi_chime6_jhu/egs/chime6/s5_track2/exp/combine/
-# dev_lattice_combination_gss-MA_U06_U04_overlap_best_dev_0.0
-
-decode_dir_suffix=rnnlm_1b
-# enhancement=beamformit
-# Track2 dev/eval WERs are 69.28/68.78 decode_{dev, eval}_gss_MA_cs320000_rttm_overlap_dereverb_diarized_2stage
-# With rescoring, I get 68.69/67.94
-# enhancement=gss_MA_cs320000_rttm_overlap
-# Track 2 dev/eval WERs are 70.97/68.75, this corresponds to line34 in GSS-track2 of the google sheet
-# enhancement=gss_MA_cs320000_rttm
-# system 12
-# enhancement=gss_cs480000_it5_rttm_overlap_min200ms_U04
-enhancement=lattice_combination_gss-MA_U06_U04_overlap_best_dev_0.0
-
+decode_dir_suffix_forward=rnnlm_1b
+decode_dir_suffix_backward=rnnlm_1b_back
+enhancement=gss_multiarray
 chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
@@ -70,8 +61,8 @@ done
 
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cat $train_text | cut -d ' ' -f2- > $text_dir/train.txt
-  cat $dev_text | cut -d ' ' -f2- > $text_dir/dev.txt
+  cat $train_text | cut -d ' ' -f2- | awk '{for(i=NF;i>0;i--) printf("%s ", $i); print""}' > $text_dir/train.txt
+  cat $dev_text | cut -d ' ' -f2- | awk '{for(i=NF;i>0;i--) printf("%s ", $i); print""}' > $text_dir/dev.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -127,69 +118,16 @@ fi
 # old 3-gram LM is data/lang/G.fst 
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  pruned=
-  if $pruned_rescore; then
-    pruned=_pruned
-  fi
-  # for decode_set in dev_${enhancement}_dereverb_diarized eval_${enhancement}_dereverb_diarized; do
+
   for decode_set in dev_${enhancement} eval_${enhancement}; do
-    # decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
-    decode_dir=${ac_model_dir}/decode_${decode_set}
-
-    # Lattice rescoring
-    rnnlm/lmrescore$pruned.sh \
-      --cmd "$decode_cmd --mem 4G" \
-      --acwt 0.1 \
-      --weight 0.4 --max-ngram-order $ngram_order \
-      data/lang $dir \
-      data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}_0.4
-  done
-fi
-
-if [ $stage -le 5 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-      #--dev_datadir dev_${enhancement}_dereverb_diarized_U06_hires \
-      #--eval_datadir eval_${enhancement}_dereverb_diarized_U06_hires
-  local/score_for_submit_track2.sh --stage $score_stage \
-      --dev_decodedir ${ac_model_dir}/decode_dev_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix}_0.4 \
-      --dev_datadir dev_${enhancement}_dereverb_diarized_hires \
-      --eval_decodedir ${ac_model_dir}/decode_eval_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix}_0.4 \
-      --eval_datadir eval_${enhancement}_dereverb_diarized_hires
-fi
-enhancement=gss_MA_cs320000_rttm_overlap
-#enhancement=gss_cs480000_it5_rttm_overlap_min200ms
-# old 3-gram LM is data/lang/G.fst 
-if [ $stage -le 6 ] && $run_lat_rescore; then
-  echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  pruned=
-  if $pruned_rescore; then
-    pruned=_pruned
-  fi
-  for decode_set in dev_${enhancement}_dereverb_diarized eval_${enhancement}_dereverb_diarized; do
     decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
-
     # Lattice rescoring
-    rnnlm/lmrescore$pruned.sh \
+    rnnlm/lmrescore_back.sh \
       --cmd "$decode_cmd --mem 4G" \
-      --acwt 0.1 \
-      --weight 0.4 --max-ngram-order $ngram_order \
+      --weight 0.2 --max-ngram-order $ngram_order \
       data/lang $dir \
-      data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}_0.4
+      data/${decode_set}_hires ${decode_dir}_${decode_dir_suffix_forward}_0.4 \
+      ${decode_dir}_${decode_dir_suffix_backward}_0.2
   done
-fi
-
-if [ $stage -le 7 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-  local/score_for_submit_track2.sh --stage $score_stage \
-      --dev_decodedir ${ac_model_dir}/decode_dev_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix}_0.4 \
-      --dev_datadir dev_${enhancement}_dereverb_diarized_hires \
-      --eval_decodedir ${ac_model_dir}/decode_eval_${enhancement}_dereverb_diarized_2stage_${decode_dir_suffix}_0.4 \
-      --eval_datadir eval_${enhancement}_dereverb_diarized_hires
 fi
 exit 0
