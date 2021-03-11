@@ -7,8 +7,7 @@
 #           2020  Ke Li
 
 # This script trains LSTM based LMs on transcription and perform lattice rescoring
-# on 1st pass decoding results. The score submission script in stage 5 is for Track 2.
-# Note: local/score_for_submit_track2.sh is copied from ../s5_track2/local/score_for_submit.sh
+# on 1st pass decoding results.
 # Begin configuration section.
 
 #rnnlm/train_rnnlm.sh: best iteration (out of 6) was 2, linking it to final iteration.
