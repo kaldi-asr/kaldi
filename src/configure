@@ -367,6 +367,7 @@ Either your CUDA is too new or too old."
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    echo "HOST_ARCH = `uname -m`" >> kaldi.mk
     echo >> kaldi.mk
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct
