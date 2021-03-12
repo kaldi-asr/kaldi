@@ -38,7 +38,7 @@ if(BUILD_SHARED_LIBS)
     elseif(APPLE)
         set(CMAKE_INSTALL_RPATH "@loader_path")
     else()
-        set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib")
+        set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib;$ORIGIN/../../tools/openfst/lib")
     endif()
 endif()
 
