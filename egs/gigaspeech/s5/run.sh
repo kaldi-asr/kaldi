@@ -30,9 +30,9 @@ if [ $stage -le 0 ]; then
   # Download and analyze GigaSpeech datasets
   # cd GigaSpeech to run toolkits/kaldi/dowload_analyze.sh to download and analyze meta
   git clone https://github.com/SpeechColab/GigaSpeech.git
-  cd GigaSpeech
+  pushd GigaSpeech
   gigaspeech_download.sh $gigaspeech_root
-  cd -
+  popd
   echo -e "======Download GigaSpeech END|current time : `date +%Y-%m-%d-%T`======"
 fi
 
@@ -49,7 +49,7 @@ if [ $stage -le 2 ]; then
   # Prepare dict 
   # If the lexicon is downloaded from GigaSpeech, you can skip the G2P steps with "--stage 4" option
   # Otherwise, you should start from "--stage 0" option to use G2P
-  [ -f $g2p_model_dir/g2p.model.4 ] && echo "$0: Cannot find $g2p_model_dir/g2p.model.4" && exit 1
+  [ ! -f $g2p_model_dir/g2p.model.4 ] && echo "$0: Cannot find $g2p_model_dir/g2p.model.4" && exit 1
   if [ -f $dict_dict/lexicon_raw_nosil.txt ]; then
     # If GigaSpeech has been dowloaded, skip G2P steps with "--stage 4"
     local/prepare_dict.sh --stage 4 $g2p_model_dir/g2p.model.4 data/local/dict
@@ -71,9 +71,9 @@ fi
 if [ $stage -le 4 ]; then
   echo -e "======Prepare lang START|current time : `date +%Y-%m-%d-%T`======"
   utils/prepare_lang.sh data/local/dict \
-   "<UNK>" data/local/lang_tmp_nosp data/lang_nosp
+   "<UNK>" data/local/lang_tmp_nosp data/lang
   
-  utils/format_lm.sh data/lang_nosp $lm_dir/lm_tgram.arpa.gz \
+  utils/format_lm.sh data/lang $lm_dir/lm_tgram.arpa.gz \
     data/local/dict/lexicon.txt data/lang_test || exit 1;
   echo -e "======Prepare lang START|current time : `date +%Y-%m-%d-%T`======"
 
@@ -129,7 +129,7 @@ if [ $stage -le 7 ]; then
   echo -e "======Train mono START|current time : `date +%Y-%m-%d-%T`======"
   # train a monophone system
   steps/train_mono.sh --boost-silence 1.25 --nj $train_nj --cmd "$train_cmd" \
-                      data/train_100k data/lang_nosp exp/mono
+                      data/train_100k data/lang exp/mono
   {
     utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1
     for part in $test_sets; do
@@ -145,11 +145,11 @@ fi
 if [ $stage -le 8 ]; then
   echo -e "======Train tri1b START|current time : `date +%Y-%m-%d-%T`======"
   steps/align_si.sh --boost-silence 1.25 --nj $train_nj --cmd "$train_cmd" \
-                    data/train_1d32 data/lang_nosp exp/mono exp/mono_ali_train_1d32
+                    data/train_1d32 data/lang exp/mono exp/mono_ali_train_1d32
 
   # train a first delta + delta-delta triphone system on a subset of 5000 utterances
   steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-                        2000 10000 data/train_1d32 data/lang_nosp exp/mono_ali_train_1d32 exp/tri1b
+                        2000 10000 data/train_1d32 data/lang exp/mono_ali_train_1d32 exp/tri1b
   echo -e "======Train tri1b END|current time : `date +%Y-%m-%d-%T`======"
   {
     utils/mkgraph.sh data/lang_test exp/tri1b exp/tri1b/graph || exit 1
@@ -165,11 +165,11 @@ fi
 if [ $stage -le 9 ]; then
   echo -e "======Train tri2b START|current time : `date +%Y-%m-%d-%T`======"
   steps/align_si.sh --nj $train_nj --cmd "$train_cmd" \
-                    data/train_1d16 data/lang_nosp exp/tri1b exp/tri1_ali_train_1d16
+                    data/train_1d16 data/lang exp/tri1b exp/tri1_ali_train_1d16
   # train an LDA+MLLT system.
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
                           --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
-                          data/train_1d16 data/lang_nosp exp/tri1_ali_train_1d16 exp/tri2b
+                          data/train_1d16 data/lang exp/tri1_ali_train_1d16 exp/tri2b
   {
     utils/mkgraph.sh data/lang_test exp/tri2b exp/tri2b/graph || exit 1
     for part in $test_sets; do
@@ -185,10 +185,10 @@ if [ $stage -le 10 ]; then
   echo -e "======Train tri3b START|current time : `date +%Y-%m-%d-%T`======"
   # Align a 10k utts subset using the tri2b model
   steps/align_si.sh  --nj $train_nj --cmd "$train_cmd" --use-graphs true \
-                     data/train_1d16 data/lang_nosp exp/tri2b exp/tri2_ali_train_1d16
+                     data/train_1d16 data/lang exp/tri2b exp/tri2_ali_train_1d16
   # Train tri3b, which is LDA+MLLT+SAT on 10k utts
   steps/train_sat.sh --cmd "$train_cmd" 2500 15000 \
-                     data/train_1d16 data/lang_nosp exp/tri2_ali_train_1d16 exp/tri3b
+                     data/train_1d16 data/lang exp/tri2_ali_train_1d16 exp/tri3b
   {
     utils/mkgraph.sh data/lang_test exp/tri3b exp/tri3b/graph || exit 1
     for part in $test_sets; do
@@ -205,11 +205,11 @@ if [ $stage -le 11 ]; then
   echo -e "======Train tri4b START|current time : `date +%Y-%m-%d-%T`======"
   # align the entire train_clean_100 subset using the tri3b model
   steps/align_fmllr.sh --nj $train_nj --cmd "$train_cmd" \
-    data/train_1d8 data/lang_nosp exp/tri3b exp/tri3_ali_train_1d8
+    data/train_1d8 data/lang exp/tri3b exp/tri3_ali_train_1d8
 
   # train another LDA+MLLT+SAT system on the entire 100 hour subset
   steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
-                      data/train_1d8 data/lang_nosp exp/tri3_ali_train_1d8 exp/tri4b
+                      data/train_1d8 data/lang exp/tri3_ali_train_1d8 exp/tri4b
   {
     utils/mkgraph.sh data/lang_test exp/tri4b exp/tri4b/graph || exit 1
     for part in $test_sets; do
@@ -241,15 +241,15 @@ if [ $stage -le 13 ]; then
       --get-egs-stage -10 \
       --train_set train \
       --gmm tri4b \
-      --test-sets $test_sets
+      --test-sets "$test_sets"
   else
     local/chain/run_tdnn.sh \
-      --stage 3 \
+      --stage 0 \
       --train-stage -10 \
       --get-egs-stage -10 \
       --train_set train \
       --gmm tri4b \
-      --test-sets $test_sets
+      --test-sets "$test_sets"
   fi
   echo -e "======Train chain END|current time : `date +%Y-%m-%d-%T`======"
 fi

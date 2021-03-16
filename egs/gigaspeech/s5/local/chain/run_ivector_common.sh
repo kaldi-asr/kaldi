@@ -54,7 +54,7 @@ if [ $stage -le 2 ]; then
   fi
   echo "$0: aligning with the perturbed low-resolution data"
   steps/align_fmllr.sh --stage 2 --nj $train_nj --cmd "$train_cmd" \
-    data/${train_set}_sp data/lang_nosp $gmm_dir $ali_dir || exit 1
+    data/${train_set}_sp data/lang $gmm_dir $ali_dir || exit 1
   echo -e "======Align all data END|current time : `date +%Y-%m-%d-%T`======"
 fi
 

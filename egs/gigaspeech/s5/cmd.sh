@@ -10,11 +10,9 @@
 # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-export train_cmd="queue.pl -q cpu_cloudml.q,w1v6.q,cpu.q --mem 2G --max-jobs-run 300"
-export decode_cmd="queue.pl -q cpu_cloudml.q,w1v6.q,cpu.q --mem 1G --max-jobs-run 300"
-export mkgraph_cmd="queue.pl -q graph.q --mem 11G"
-export egs_cmd="queue.pl -q cpu_cloudml.q,w1v6.q,cpu.q --mem 4G --max-jobs-run 300"
-export cuda_cmd="queue.pl -q gpu_cloudml_p4_8g.q,v100.q,v100_2.q --mem 5G"
+export train_cmd="queue.pl --mem 2G"
+export decode_cmd="queue.pl --mem 4G"
+export mkgraph_cmd="queue.pl --mem 8G"
 
-export train_nj=300
-export decode_nj=300
+export train_nj=30
+export decode_nj=30

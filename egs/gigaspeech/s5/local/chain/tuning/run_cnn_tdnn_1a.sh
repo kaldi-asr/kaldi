@@ -5,22 +5,8 @@
 
 # bash local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1d_sp exp/chain_cleaned/tdnn_cnn_1a_sp/
 # System                         tdnn_1d_sp  tdnn_cnn_1a_sp
-# WER on dev(fglarge)               3.29          3.34
-# WER on dev(tglarge)               3.44          3.39
-# WER on dev(tgmed)                 4.22          4.29
-# WER on dev(tgsmall)               4.72          4.77
-# WER on dev_other(fglarge)         8.71          8.62
-# WER on dev_other(tglarge)         9.05          9.00
-# WER on dev_other(tgmed)          11.09         10.93
-# WER on dev_other(tgsmall)        12.13         12.02
-# WER on test(fglarge)              3.80          3.69
-# WER on test(tglarge)              3.89          3.80
-# WER on test(tgmed)                4.72          4.64
-# WER on test(tgsmall)              5.19          5.16      
-# WER on test_other(fglarge)        8.76          8.71
-# WER on test_other(tglarge)        9.19          9.11
-# WER on test_other(tgmed)         11.22         11.00
-# WER on test_other(tgsmall)       12.24         12.16
+# WER on dev                      3.29          3.34
+# WER on test                     3.44          3.39
 # Final train prob               -0.0378       -0.0420
 # Final valid prob               -0.0374       -0.0400
 # Final train prob (xent)        -0.6099       -0.6881
@@ -34,6 +20,7 @@ set -e
 stage=0
 decode_nj=50
 train_set=train_960_cleaned
+test_sets=
 gmm=tri6b_cleaned
 nnet3_affix=_cleaned
 
@@ -75,6 +62,7 @@ fi
 
 local/chain/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
+                                  --test-sets "$test_sets" \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
@@ -175,7 +163,8 @@ if [ $stage -le 15 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$decode_cmd" \
+    --use-gpu "wait" \
+    --cmd "$train_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -190,10 +179,10 @@ if [ $stage -le 15 ]; then
     --egs.chunk-width $frames_per_eg \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.add-option="--optimization.memory-compression-level=2" \
-    --trainer.num-chunk-per-minibatch 128,64 \
+    --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 3000000 \
     --trainer.num-epochs 4 \
-    --trainer.optimization.num-jobs-initial 16 \
+    --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.00015 \
     --trainer.optimization.final-effective-lrate 0.000015 \

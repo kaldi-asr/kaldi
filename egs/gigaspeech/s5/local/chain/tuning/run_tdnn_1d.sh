@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+# 1d is a tdnnf system different from cnn1a
+
 # configs for 'chain'
 stage=0
 decode_nj=50
@@ -47,7 +49,7 @@ fi
 
 local/chain/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
-                                  --test-sets $test_sets \
+                                  --test-sets "$test_sets" \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
@@ -139,7 +141,8 @@ if [ $stage -le 15 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$cuda_cmd" \
+    --use-gpu "wait" \
+    --cmd "$train_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -154,10 +157,10 @@ if [ $stage -le 15 ]; then
     --egs.chunk-width $frames_per_eg \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.add-option="--optimization.memory-compression-level=2" \
-    --trainer.num-chunk-per-minibatch 128 \
+    --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 3000000 \
     --trainer.num-epochs 4 \
-    --trainer.optimization.num-jobs-initial 16 \
+    --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.00015 \
     --trainer.optimization.final-effective-lrate 0.000015 \
