@@ -39,7 +39,6 @@ fi
 if [ $stage -le 1 ]; then
   echo -e "======Prepare Data START|current time : `date +%Y-%m-%d-%T`======"
   # Prepare GigaSpeech data
-  . GigaSpeech/env_vars.sh
   GigaSpeech/toolkits/kaldi/gigaspeech_data_prep.sh $gigaspeech_root data true
   echo -e "======Prepare Data END|current time : `date +%Y-%m-%d-%T`======"
 fi
