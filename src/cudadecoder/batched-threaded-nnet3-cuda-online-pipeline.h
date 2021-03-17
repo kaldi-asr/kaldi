@@ -217,14 +217,18 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
       const std::vector<bool> &is_last_chunk);
 
   // Maximum number of samples per chunk
-  int32 GetNSampsPerChunk() { return samples_per_chunk_; }
-  int32 GetNInputFramesPerChunk() { return input_frames_per_chunk_; }
-  float GetModelFrequency() { return model_frequency_; }
-  int GetTotalNnet3RightContext() {
+  int32 GetNSampsPerChunk() const { return samples_per_chunk_; }
+  int32 GetNInputFramesPerChunk() const { return input_frames_per_chunk_; }
+  BaseFloat GetDecoderFrameShiftSeconds() const {
+    return decoder_frame_shift_seconds_;
+  }
+  BaseFloat GetModelFrequency() const { return model_frequency_; }
+  TransitionModel const &GetTransitionModel() const { return *trans_model_; }
+  int GetTotalNnet3RightContext() const {
     return cuda_nnet3_->GetTotalNnet3RightContext();
   }
   // Maximum number of seconds per chunk
-  BaseFloat GetSecondsPerChunk() { return seconds_per_chunk_; }
+  BaseFloat GetSecondsPerChunk() const { return seconds_per_chunk_; }
 
   // Used for partial hypotheses
   void SetSymbolTable(const fst::SymbolTable &word_syms) {
@@ -348,6 +352,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   int input_frames_per_chunk_;
   int output_frames_per_chunk_;
   BaseFloat seconds_per_chunk_;
+  BaseFloat decoder_frame_shift_seconds_;
   BaseFloat samples_per_chunk_;
   BaseFloat model_frequency_;
   int32 ivector_dim_, input_dim_;

@@ -87,9 +87,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
         thread_pool_.get(), config_.num_decoder_copy_threads);
   }
 
-  cuda_decoder_->SetOutputFrameShiftInSeconds(
-      feature_info_->FrameShiftInSeconds() *
-      config_.compute_opts.frame_subsampling_factor);
+  decoder_frame_shift_seconds_ = feature_info_->FrameShiftInSeconds() *
+                                 config_.compute_opts.frame_subsampling_factor;
+  cuda_decoder_->SetOutputFrameShiftInSeconds(decoder_frame_shift_seconds_);
 
   n_samples_valid_.resize(max_batch_size_);
   n_input_frames_valid_.resize(max_batch_size_);
