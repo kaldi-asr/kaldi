@@ -28,14 +28,17 @@ g2p_model_dir=$gigaspeech_root/dict/g2p
 if [ $stage -le 0 ]; then
   echo -e "======Download GigaSpeech START|current time : `date +%Y-%m-%d-%T`======"
   # Download and analyze GigaSpeech datasets
-  # cd GigaSpeech to run toolkits/kaldi/dowload_analyze.sh to download and analyze meta
+  # cd GigaSpeech to run utils/gigaspeech_download.sh to download data
   git clone https://github.com/SpeechColab/GigaSpeech.git
   pushd GigaSpeech
-  gigaspeech_download.sh $gigaspeech_root
+  utils/gigaspeech_download.sh $gigaspeech_root
   popd
   echo -e "======Download GigaSpeech END|current time : `date +%Y-%m-%d-%T`======"
 fi
 
+# This stage maybe lead to errors,
+# because stage1 in gigaspeech_data_prep.sh should be run in path of gigaspeech
+# stage 3 in gigaspeech_data_prep.sh should be run here
 if [ $stage -le 1 ]; then
   echo -e "======Prepare Data START|current time : `date +%Y-%m-%d-%T`======"
   # Prepare GigaSpeech data
