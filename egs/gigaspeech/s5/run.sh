@@ -52,7 +52,7 @@ if [ $stage -le 2 ]; then
   # If the lexicon is downloaded from GigaSpeech, you can skip the G2P steps with "--stage 4" option
   # Otherwise, you should start from "--stage 0" option to use G2P
   [ ! -f $g2p_model_dir/g2p.model.4 ] && echo "$0: Cannot find $g2p_model_dir/g2p.model.4" && exit 1
-  if [ -f $dict_dict/lexicon_raw_nosil.txt ]; then
+  if [ -f $dict_dir/lexicon_raw_nosil.txt ]; then
     # If GigaSpeech has been dowloaded, skip G2P steps with "--stage 4"
     local/prepare_dict.sh --stage 4 $g2p_model_dir/g2p.model.4 data/local/dict
   else
