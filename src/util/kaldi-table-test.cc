@@ -1065,7 +1065,7 @@ void UnitTestTableNumpyArray() {
   writer.Write(key1, NumpyArray<BaseFloat>(v));
   writer.Write(key2, NumpyArray<BaseFloat>(m));
   writer.Close();
-  usleep(200);
+  std::this_thread::sleep_for(std::chrono::microseconds(200));
 
   const char* rspecifier = "scp:numpy_array.scp";
   {

@@ -99,7 +99,7 @@ class ThreadPoolLightWorker {
         (curr_task_.func_ptr)(curr_task_.obj_ptr, curr_task_.arg1,
                               curr_task_.arg2);
       } else {
-        usleep(1000);  // TODO
+          std::this_thread::sleep_for(std::chrono::microseconds(1000));  // TODO
       }
     }
   }
@@ -159,7 +159,7 @@ class ThreadPoolLight {
   void Push(const ThreadPoolLightTask &task) {
     // Could try another curr_iworker_
     while (!TryPush(task))
-      usleep(KALDI_CUDA_DECODER_THREAD_POOL_QUEUE_FULL_WAIT_FOR_US);
+      std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_THREAD_POOL_QUEUE_FULL_WAIT_FOR_US));
   }
 };
 

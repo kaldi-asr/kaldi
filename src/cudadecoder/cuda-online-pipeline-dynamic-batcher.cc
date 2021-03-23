@@ -16,8 +16,9 @@
 // limitations under the License.
 
 #include "cudadecoder/cuda-online-pipeline-dynamic-batcher.h"
+#ifndef WIN32
 #include <unistd.h>
-
+#endif
 // Tries to generate a batch every n us
 #define KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US 100
 
@@ -116,7 +117,7 @@ void CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop() {
 
       // process callbacks here
     } else {
-      usleep(KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US);
+        std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US));
     }
   }
 }
@@ -124,7 +125,7 @@ void CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop() {
 void CudaOnlinePipelineDynamicBatcher::WaitForCompletion() {
   // Waiting for the batcher to be done sending work to pipeline
   while (n_chunks_not_done_.load() > 0) {
-    usleep(KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US);
+    std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US));
   }
   // Waiting for pipeline to complete
   cuda_pipeline_.WaitForLatticeCallbacks();

@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <iostream>
 #include <vector>
+#include <numeric>
 #include "cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h"
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
 #include "cudadecoder/cuda-pipeline-common.h"

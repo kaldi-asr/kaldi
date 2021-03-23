@@ -26,6 +26,7 @@
 #include "feat/feature-window.h"
 #include "lat/lattice-functions.h"
 #include "nnet3/nnet-utils.h"
+#include <numeric>
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -123,7 +124,7 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
       int waited_for = 0;
       while (waited_for < wait_for) {
         lk.unlock();
-        usleep(KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US);
+        std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US));
         waited_for += KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US;
         lk.lock();
         channel_available = (available_channels_.size() > 0);
@@ -204,7 +205,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
   }
 
   while (n_compute_features_not_done_.load(std::memory_order_acquire))
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_CPU_FEATURES_THREADS_US);
+      std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_WAIT_FOR_CPU_FEATURES_THREADS_US));
 
   KALDI_ASSERT(d_all_features_.NumRows() == h_all_features_.NumRows() &&
                d_all_features_.NumCols() == h_all_features_.NumCols());
@@ -563,7 +564,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
 
 void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks() {
   while (n_lattice_callbacks_not_done_.load() != 0)
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US);
+    std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US));
+
 }
 }  // namespace cuda_decoder
 }  // namespace kaldi

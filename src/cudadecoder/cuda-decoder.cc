@@ -901,7 +901,7 @@ void CudaDecoder::WaitForPartialHypotheses() {
   if (!generate_partial_hypotheses_) return;
   while (n_partial_traceback_threads_not_done_.load(std::memory_order_acquire) >
          0)
-    usleep(200);
+    std::this_thread::sleep_for(std::chrono::microseconds(200));
 }
 
 void CudaDecoder::CheckOverflow() {

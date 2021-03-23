@@ -146,7 +146,7 @@ void BatchedThreadedNnet3CudaPipeline2::BuildBatchFromCurrentTasks() {
 
 void BatchedThreadedNnet3CudaPipeline2::WaitForAllTasks() {
   while (n_tasks_not_done_.load() != 0) {
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_TASKS_US);
+    std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_WAIT_FOR_TASKS_US));
   }
 }
 
@@ -179,7 +179,7 @@ void BatchedThreadedNnet3CudaPipeline2::WaitForGroup(const std::string &group) {
   }
 
   while (n_not_done->load(std::memory_order_consume) != 0)
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_TASKS_US);
+    std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_WAIT_FOR_TASKS_US));
 }
 
 void BatchedThreadedNnet3CudaPipeline2::CreateTask(
@@ -445,7 +445,7 @@ void BatchedThreadedNnet3CudaPipeline2::ComputeTasks() {
     if (current_tasks_.size() < max_batch_size_) AcquireTasks();
     if (current_tasks_.empty()) {
       // If we still have nothing to do, let's sleep a bit
-      usleep(KALDI_CUDA_DECODER_WAIT_FOR_NEW_TASKS_US);
+      std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_WAIT_FOR_NEW_TASKS_US));
       continue;
     }
     BuildBatchFromCurrentTasks();

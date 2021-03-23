@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #include <queue>
+#include <chrono>
 #if HAVE_CUDA == 1
 
 #include <cuda.h>
@@ -214,7 +215,9 @@ int main(int argc, char *argv[]) {
       auto chunk = streams.top();
       streams.pop();
       double wait_for = chunk.send_next_chunk_at - timer.Elapsed();
-      if (wait_for > 0) usleep(wait_for * 1e6);
+      if (wait_for > 0) 
+          std::this_thread::sleep_for(std::chrono::microseconds(int64(wait_for * 1e6)));
+          
 
       SubVector<BaseFloat> data(chunk.wav->Data(), 0);
 
