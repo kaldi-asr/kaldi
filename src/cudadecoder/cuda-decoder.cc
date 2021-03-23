@@ -907,7 +907,7 @@ void CudaDecoder::WaitForPartialHypotheses() {
 void CudaDecoder::CheckOverflow() {
   for (LaneId ilane = 0; ilane < nlanes_used_; ++ilane) {
     LaneCounters *lane_counters = h_lanes_counters_.lane(ilane);
-    bool q_overflow = lane_counters->q_overflow;
+    int q_overflow = lane_counters->q_overflow;
     if (q_overflow != OVERFLOW_NONE) {
       // An overflow was prevented in a kernel
       // The algorithm can still go on but quality of the
