@@ -565,7 +565,6 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
 void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks() {
   while (n_lattice_callbacks_not_done_.load() != 0)
     std::this_thread::sleep_for(std::chrono::microseconds(KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US));
-
 }
 }  // namespace cuda_decoder
 }  // namespace kaldi
