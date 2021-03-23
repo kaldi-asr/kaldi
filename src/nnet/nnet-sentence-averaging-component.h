@@ -89,7 +89,7 @@ class SimpleSentenceAveragingComponent : public Component {
           // from now 'only_summing_' is 'bool':
           try {
             ReadBasicType(is, binary, &only_summing_);
-          } catch(const std::exception &e) {
+          } catch(const std::exception &) {
             KALDI_WARN << "ERROR was handled by exception!";
             BaseFloat dummy_float;
             ReadBasicType(is, binary, &dummy_float);

@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
               << (n_arcs_in/den) << " to " << (n_arcs_out/den) << " arcs, over "
               << n_done << " utterances.";
     KALDI_LOG << "Overall, " << static_cast<BaseFloat>(n_expanded)/n_done * 100
-              << "\% percentage of lattices get expanded.";
+              << "% percentage of lattices get expanded.";
     KALDI_LOG << "Processed " << n_done << " lattices with " << n_err
               << " failures.";
     return (n_done != 0 ? 0 : 1);

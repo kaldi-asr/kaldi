@@ -144,8 +144,8 @@ struct CudaDecoderConfig {
 // Forward declaration.
 // Those contains CUDA code. We don't want to include their definition
 // in this header
-class DeviceParams;
-class KernelParams;
+struct DeviceParams;
+struct KernelParams;
 
 class CudaDecoder {
  public:
