@@ -49,8 +49,8 @@ if [ $stage -le 11 ]; then
   $train_cmd $nnetdir/scores/log/himia_sc_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     "ivector-copy-plda --smoothing=0.0 $nnetdir/xvectors_himia_train/plda - |" \
-    "ark:ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "ark:ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:$datadir/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:$datadir/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$sc_trial' | cut -d\  --fields=1,2 |" $nnetdir/scores/test_sc_scores || exit 1;
 
   # HIMIA far-field microphone array single-channel result (no AISHELL2 for xvector training):                                                                                                                                              
@@ -75,8 +75,8 @@ if [ $stage -le 12 ]; then
   $train_cmd $nnetdir/scores/log/himia_mc_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     "ivector-copy-plda --smoothing=0.0 $nnetdir/xvectors_himia_train/plda - |" \
-    "ark:ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "ark:ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:$datadir/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:$datadir/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$mc_trial' | cut -d\  --fields=1,2 |" $nnetdir/scores/test_mc_scores || exit 1;
 
   # HIMIA far-field microphone array multi-channel result (no AISHELL2 for xvector training):                                                                                                                                               
