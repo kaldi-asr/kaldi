@@ -51,10 +51,9 @@ foreach (@spkr_dirs) {
     foreach (@files) {
       my $name = $_;
       my $wav = "ffmpeg -v 8 -i $data_base/$dataset/aac/$spkr_id/$rec_id/$name.m4a -f wav -acodec pcm_s16le -|";
-      my $up_spkr_id = uc $spkr_id;
-      my $utt_id = "$up_spkr_id-$rec_id-$name";
+      my $utt_id = "$spkr_id-$rec_id-$name";
       print WAV "$utt_id", " $wav", "\n";
-      print SPKR "$utt_id", " $up_spkr_id", "\n";
+      print SPKR "$utt_id", " $spkr_id", "\n";
     }
   }
 }
