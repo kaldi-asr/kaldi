@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2014 Vassil Panayotov
+#           2021 Xiaomi Corporation Yongqing Wang
 # Apache 2.0
 
 . ./cmd.sh || exit 1
@@ -27,10 +28,11 @@ fi
 stage=0
 corpus=$1
 lm_dir=$2
+order=$3
 word_counts=$lm_dir/word_counts.txt
-vocab=$lm_dir/gigaspeech-vocab.txt
+vocab=$lm_dir/vocab.txt
 full_corpus=$lm_dir/lm-norm.txt.gz
-
+gram_lm=$lm_dir/lm_${order}gram.arpa.gz
 if [ "$stage" -le 1 ]; then
   echo "Selecting the vocabulary ($vocab_size words) ..."
   mkdir -p $lm_dir
@@ -49,46 +51,14 @@ if [ "$stage" -le 1 ]; then
   echo "There are $(wc -w < <(zcat $full_corpus)) tokens in the corpus"
 fi
 
-trigram_lm=$lm_dir/lm_tgram.arpa.gz
-
 if [ "$stage" -le 2 ]; then
-  echo "Training a 3-gram LM ..."
+  echo "Training a 4-gram LM ..."
   command -v ngram-count 1>/dev/null 2>&1 || { echo "Please install SRILM and set path.sh accordingly"; exit 1; }
   echo "This implementation assumes that you have a lot of free RAM(> 12GB) on your machine"
   echo "If that's not the case, consider something like: http://joshua-decoder.org/4.0/large-lms.html"
-  ngram-count -order 3  -interpolate \
-    -unk -map-unk "<UNK>" -limit-vocab -vocab $vocab -text $full_corpus -lm $trigram_lm || exit 1
-  du -h $trigram_lm
+  ngram-count -order $order  -interpolate \
+    -unk -map-unk "<UNK>" -limit-vocab -vocab $vocab -text $full_corpus -lm $gram_lm || exit 1
+  du -h $gram_lm
 fi
 
-exit 0
-
-trigram_pruned_small=$lm_dir/lm_tgsmall.arpa.gz
-
-if [ "$stage" -le 5 ]; then
-  echo "Creating a 'small' pruned 3-gram LM (threshold: $prune_thresh_small) ..."
-  command -v ngram 1>/dev/null 2>&1 || { echo "Please install SRILM and set path.sh accordingly"; exit 1; }
-  ngram -prune $prune_thresh_small -lm $trigram_lm -write-lm $trigram_pruned_small || exit 1
-  du -h $trigram_pruned_small
-fi
-
-trigram_pruned_medium=$lm_dir/lm_tgmed.arpa.gz
-
-if [ "$stage" -le 5 ]; then
-  echo "Creating a 'medium' pruned 3-gram LM (threshold: $prune_thresh_medium) ..."
-  command -v ngram 1>/dev/null 2>&1 || { echo "Please install SRILM and set path.sh accordingly"; exit 1; }
-  ngram -prune $prune_thresh_medium -lm $trigram_lm -write-lm $trigram_pruned_medium || exit 1
-  du -h $trigram_pruned_medium
-fi
-
-fourgram_lm=$lm_dir/lm_fglarge.arpa.gz
-
-if [ "$stage" -le 4 ]; then
-  # This requires even more RAM than the 3-gram
-  echo "Training a 4-gram LM ..."
-  command -v ngram-count 1>/dev/null 2>&1 || { echo "Please install SRILM and set path.sh accordingly"; exit 1; }
-  ngram-count -order 4  -kndiscount -interpolate \
-    -unk -map-unk "<UNK>" -limit-vocab -vocab $vocab -text $full_corpus -lm $fourgram_lm || exit 1
-  du -h $fourgram_lm
-fi
 exit 0

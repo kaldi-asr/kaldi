@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
+# Copyright 2021 Xiaomi Corporation (Author: Yongqing Wang)
+# Apache 2.0
 
-# This script is copied from mini_librispeech/s5
+# This script is copied from egs/multi_cn/s5/local/chain/tuning/run_cnn_tdnn_1b.sh
 
-# 1b is as 1a but adding SpecAugment and removing dropout (which, in
-# combination with SpecAugment, no longer seemed to give an improvement).
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -179,7 +179,7 @@ if [ $stage -le 15 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=4 \
+    --trainer.optimization.num-jobs-initial=16 \
     --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.00015 \
     --trainer.optimization.final-effective-lrate=0.000015 \

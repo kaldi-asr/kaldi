@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright 2021 Xiaomi Corporation (Author: Yongqing Wang)
+# Apache 2.0
+
+# This script is copied from egs/multi_cn/s5/local/chain/run_ivector_common.sh
 
 set -e -o pipefail
 
@@ -9,9 +13,9 @@ set -e -o pipefail
 
 
 stage=0
-train_set=train_960_cleaned    # you might set this to e.g. train_960
+train_set=train    # you might set this to e.g. train
 test_sets=""
-gmm=tri6b_cleaned         # This specifies a GMM-dir from the features of the type you're training the system on;
+gmm=tri4b_cleaned         # This specifies a GMM-dir from the features of the type you're training the system on;
                          # it should contain alignments for 'train_set'.
 num_threads_ubm=16
 num_processes=4
@@ -53,7 +57,7 @@ if [ $stage -le 2 ]; then
     exit 1
   fi
   echo "$0: aligning with the perturbed low-resolution data"
-  steps/align_fmllr.sh --stage 2 --nj $train_nj --cmd "$train_cmd" \
+  steps/align_fmllr.sh --stage 0 --nj $train_nj --cmd "$train_cmd" \
     data/${train_set}_sp data/lang $gmm_dir $ali_dir || exit 1
   echo -e "======Align all data END|current time : `date +%Y-%m-%d-%T`======"
 fi
@@ -88,10 +92,16 @@ if [ $stage -le 3 ]; then
     utils/fix_data_dir.sh data/${part}_hires
   done
 
-  # now create a data subset.  60k is 1/5th of the training dataset (around 200 hours).
-  total_num=`wc -l <data/${train_set}_sp_hires/utt2spk`
+  # now create a data subset.  1/50th of the training dataset.
+  total_num=$(wc -l <data/${train_set}_sp_hires/utt2spk)
   subset_num=$((total_num/50))
-  utils/subset_data_dir.sh data/${train_set}_sp_hires $subset_num data/${train_set}_sp_hires_60k
+  if  [ $total_num -lt 60000 ]; then
+    subset_num=$total_num
+  else
+    [ $subset_num -gt 500000 ] && subset_num=500000
+    [ $subset_num -lt 60000 ] && subset_num=60000
+  fi
+  utils/subset_data_dir.sh data/${train_set}_sp_hires $subset_num data/${train_set}_sp_hires_1d50
   echo -e "======High-mfcc END|current time : `date +%Y-%m-%d-%T`======"
 fi
 
@@ -102,8 +112,15 @@ if [ $stage -le 4 ]; then
   mkdir -p exp/nnet3${nnet3_affix}/diag_ubm
   temp_data_root=exp/nnet3${nnet3_affix}/diag_ubm
 
-  num_utts_total=$(wc -l <data/${train_set}_sp_hires/utt2spk)
-  num_utts=$[$num_utts_total/500]
+  total_num=$(wc -l <data/${train_set}_sp_hires/utt2spk)
+  subset_num=$((num_utts_total/500))
+  if  [ $total_num -lt 3000 ]; then
+    subset_num=$total_num
+  else
+    [ $subset_num -gt 50000 ] && subset_num=50000
+    [ $subset_num -lt 3000 ] && subset_num=3000
+  fi
+
   utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
      $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
 
@@ -128,10 +145,10 @@ if [ $stage -le 5 ]; then
   echo -e "======Ivector extractor START|current time : `date +%Y-%m-%d-%T`======"
   # iVector extractors can in general be sensitive to the amount of data, but
   # this one has a fairly small dim (defaults to 100) so we don't use all of it,
-  # we use just the 60k subset (about one fifth of the data, or 200 hours).
+  # we use just the 1d50 subset (about one fifth of the data, or 200 hours).
   echo "$0: training the iVector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 70 --num-processes $num_processes \
-    data/${train_set}_sp_hires_60k exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
+    data/${train_set}_sp_hires_1d50 exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
   echo -e "======Ivector extractor END|current time : `date +%Y-%m-%d-%T`======"
 fi
 

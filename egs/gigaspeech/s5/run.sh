@@ -24,6 +24,8 @@ for f in $lm_dir $dict_dir; do
   [ ! -d $f ] && mkdir -p $f
 done
 g2p_model_dir=$gigaspeech_root/dict/g2p
+lexicon_gigaspeech=$gigaspeech_root/dict/lexicon_gigaspeech.txt
+order=4
 
 if [ $stage -le 0 ]; then
   echo -e "======Download GigaSpeech START|current time : `date +%Y-%m-%d-%T`======"
@@ -51,12 +53,13 @@ if [ $stage -le 2 ]; then
   # Prepare dict 
   # If the lexicon is downloaded from GigaSpeech, you can skip the G2P steps with "--stage 4" option
   # Otherwise, you should start from "--stage 0" option to use G2P
-  [ ! -f $g2p_model_dir/g2p.model.4 ] && echo "$0: Cannot find $g2p_model_dir/g2p.model.4" && exit 1
+  [ -f $lexicon_gigaspeech ] && cp $lexicon_gigaspeech $dict_dir/lexicon_raw_nosil.txt
   if [ -f $dict_dir/lexicon_raw_nosil.txt ]; then
     # If GigaSpeech has been dowloaded, skip G2P steps with "--stage 4"
     local/prepare_dict.sh --stage 4 $g2p_model_dir/g2p.model.4 data/local/dict
   else
-    local/prepare_dict.sh --stage 0 --cmd "$train_cmd" --nj 300 --train-set train --test-sets "$test_sets" $g2p_model_dir/g2p.model.4 data/local/dict
+    [ ! -f $g2p_model_dir/g2p.model.4 ] && echo "$0: Cannot find $g2p_model_dir/g2p.model.4" && exit 1
+    local/prepare_dict.sh --stage 0 --cmd "$train_cmd" --nj 300 --train-set train $g2p_model_dir/g2p.model.4 data/local/dict
   fi
   echo -e "======Prepare dict END|current time : `date +%Y-%m-%d-%T`======"
 fi
@@ -65,17 +68,17 @@ if [ $stage -le 3 ]; then
   echo -e "======Train lm START|current time : `date +%Y-%m-%d-%T`======"
   # train lm
   sed 's|\t| |' data/train/text | cut -d " " -f 2- >$lm_dir/text_for_lm.txt
-  # The default ngram order is 3
-  local/lm/train_lm.sh $lm_dir/text_for_lm.txt $lm_dir
+  # The default ngram order is 4
+  local/lm/train_lm.sh $lm_dir/text_for_lm.txt $lm_dir $order
   echo -e "======Train lm END|current time : `date +%Y-%m-%d-%T`======"
 fi
 
 if [ $stage -le 4 ]; then
   echo -e "======Prepare lang START|current time : `date +%Y-%m-%d-%T`======"
   utils/prepare_lang.sh data/local/dict \
-   "<UNK>" data/local/lang_tmp_nosp data/lang
+   "<UNK>" data/local/lang_tmp data/lang
   
-  utils/format_lm.sh data/lang $lm_dir/lm_tgram.arpa.gz \
+  utils/format_lm.sh data/lang $lm_dir/lm_${order}gram.arpa.gz \
     data/local/dict/lexicon.txt data/lang_test || exit 1;
   echo -e "======Prepare lang START|current time : `date +%Y-%m-%d-%T`======"
 
@@ -107,21 +110,42 @@ if [ $stage -le 6 ]; then
   # easier to align the data from a flat start.
   total_num=`wc -l <data/train/utt2spk`
   
-  subset_num=100000
-  [ $total_num -lt $subset_num ] && subset_num=$total_num
-  utils/subset_data_dir.sh --shortest data/train $subset_num data/train_100k
+  subset_num=$((total_num/64))
+  if [ $total_num -lt 20000 ]; then
+    subset_num=$total_num
+  else
+    [ $subset_num -gt 100000 ] && subset_num=100000
+    [ $subset_num -lt 20000 ] && subset_num=20000
 
-  
+  fi
+  utils/subset_data_dir.sh --shortest data/train $subset_num data/train_1d64
+
   subset_num=$((total_num/32))
-  [ 250000 -lt $subset_num ] && subset_num=250000
+  if [ $total_num -lt 60000 ]; then
+    subset_num=$total_num
+  else
+    [ $subset_num -gt 250000 ] && subset_num=250000
+    [ $subset_num -lt 60000 ] && subset_num=60000
+
+  fi
   utils/subset_data_dir.sh data/train $subset_num data/train_1d32
   
   subset_num=$((total_num/16))
-  [ 500000 -lt $subset_num ] && subset_num=500000
+  if [ $total_num -lt 125000 ]; then
+    subset_num=$total_num
+  else
+    [ $subset_num -gt 500000 ] && subset_num=500000
+    [ $subset_num -lt 125000 ] && subset_num=125000
+  fi
   utils/subset_data_dir.sh data/train $subset_num data/train_1d16
 
   subset_num=$((total_num/8))
-  [ 1000000 -lt $subset_num ] && subset_num=1000000
+  if [ $total_num -lt 250000 ]; then
+    subset_num=$total_num
+  else
+    [ $subset_num -gt 1000000 ] && subset_num=1000000
+    [ $subset_num -lt 250000 ] && subset_num=250000
+  fi
   utils/subset_data_dir.sh data/train $subset_num data/train_1d8
 
   echo -e "======Subset train data END|current time : `date +%Y-%m-%d-%T`======"
@@ -131,7 +155,7 @@ if [ $stage -le 7 ]; then
   echo -e "======Train mono START|current time : `date +%Y-%m-%d-%T`======"
   # train a monophone system
   steps/train_mono.sh --boost-silence 1.25 --nj $train_nj --cmd "$train_cmd" \
-                      data/train_100k data/lang exp/mono
+                      data/train_1d64 data/lang exp/mono
   {
     utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1
     for part in $test_sets; do
@@ -232,7 +256,7 @@ if [ $stage -le -12 ]; then
   echo -e "======Clean up END|current time : `date +%Y-%m-%d-%T`======"
 fi
 
-nnet='tdnnf'
+nnet='cnntdnnf'
 
 if [ $stage -le 13 ]; then
   echo -e "======Train chain START|current time : `date +%Y-%m-%d-%T`======"

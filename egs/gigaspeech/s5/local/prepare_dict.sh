@@ -12,7 +12,6 @@ stage=0
 nj=4 # number of parallel Sequitur G2P jobs, we would like to use
 cmd=run.pl
 train_set=
-test_sets=
 
 . ./path.sh || exit 1
 . parse_options.sh || exit 1;
@@ -71,9 +70,6 @@ if [ $stage -le 2 ]; then
   vocab=$dst_dir/words.txt
   [ -s "$train_set" ] && echo "$train_set is empty" && exit 1
   [ -f $dst_dir/words-raw.txt ] && rm $dst_dir/words-raw.txt
-  for dataset in $train_set $test_sets; do
-    cat data/$dataset/text | sed 's|\t| |g' | cut -d " " -f 2- | sed 's| |\n|g' >>$dst_dir/words-raw.txt
-  done
   sort -u $dst_dir/words-raw.txt | sed '/^$/d' > $vocab
 
   mkdir -p $g2p_dir/log
