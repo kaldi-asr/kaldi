@@ -10,6 +10,7 @@ set -e
 stage=8
 lda_dim=200
 nj=10
+use_gpu=false
 . ./utils/parse_options.sh
 
 nnetdir=$1
@@ -20,16 +21,16 @@ mc_trial=$3
 if [ $stage -le 8 ]; then
     for set in test dev train; do
         sid/nnet3/xvector/extract_xvectors.sh \
-            --cmd "$train_cmd --mem 4G" --nj $nj \
+            --cmd "$train_cmd --mem 4G" --nj $nj --use-gpu $use_gpu \
             $nnetdir data/himia/$set $nnetdir/xvectors_himia_$set
     done
 fi
 
 if [ $stage -le 9 ]; then
-    # Compute the mean.vec used for centering.
-    $train_cmd $nnetdir/xvectors_himia_train/log/compute_mean.log \
-        ivector-mean scp:$nnetdir/xvectors_himia_train/xvector.scp \
-        $nnetdir/xvectors_himia_train/mean.vec || exit 1;
+  # Compute the mean.vec used for centering.
+  $train_cmd $nnetdir/xvectors_himia_train/log/compute_mean.log \
+      ivector-mean scp:$nnetdir/xvectors_himia_train/xvector.scp \
+      $nnetdir/xvectors_himia_train/mean.vec || exit 1;
 
   # Use LDA to decrease the dimensionality prior to PLDA.
   $train_cmd $nnetdir/xvectors_himia_train/log/lda.log \
@@ -49,8 +50,8 @@ if [ $stage -le 11 ]; then
   $train_cmd $nnetdir/scores/log/himia_sc_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     "ivector-copy-plda --smoothing=0.0 $nnetdir/xvectors_himia_train/plda - |" \
-    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec ark:- ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec ark:- ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$sc_trial' | cut -d\  --fields=1,2 |" $nnetdir/scores/test_sc_scores || exit 1;
 
   # HIMIA far-field microphone array single-channel result (no AISHELL2 for xvector training):                                                                                                                                              
@@ -58,9 +59,9 @@ if [ $stage -le 11 ]; then
   # minDCF(p-target=0.01): 0.6328                                                                                                                                                                        
   # minDCF(p-target=0.001): 0.8407                                                                                                                                                                       
   # HIMIA far-field microphone array single-channel result (with AISHELL2 for xvector training):
-  # EER: 7.748%
-  # minDCF(p-target=0.01): 0.6171
-  # minDCF(p-target=0.001): 0.7132
+  # EER: 6.691%
+  # minDCF(p-target=0.01): 0.5161
+  # minDCF(p-target=0.001): 0.6339
   echo -e "\nHIMIA far-field microphone array single-channel result:";
   eer=$(paste $sc_trial $nnetdir/scores/test_sc_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   mindcf1=`sid/compute_min_dcf.py --p-target 0.01 $nnetdir/scores/test_sc_scores $sc_trial 2> /dev/null`
@@ -75,8 +76,8 @@ if [ $stage -le 12 ]; then
   $train_cmd $nnetdir/scores/log/himia_mc_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     "ivector-copy-plda --smoothing=0.0 $nnetdir/xvectors_himia_train/plda - |" \
-    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$expdir/test/xvector.scp ark:- | ivector-subtract-global-mean $expdir/train/mean.vec ark:- ark:- | transform-vec $expdir/train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec ark:- ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:data/himia/test/spk2utt scp:$nnetdir/xvectors_himia_test/xvector.scp ark:- | ivector-subtract-global-mean $nnetdir/xvectors_himia_train/mean.vec ark:- ark:- | transform-vec $nnetdir/xvectors_himia_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$mc_trial' | cut -d\  --fields=1,2 |" $nnetdir/scores/test_mc_scores || exit 1;
 
   # HIMIA far-field microphone array multi-channel result (no AISHELL2 for xvector training):                                                                                                                                               
@@ -84,9 +85,9 @@ if [ $stage -le 12 ]; then
   # minDCF(p-target=0.01): 0.7512                                                                                                                                                                        
   # minDCF(p-target=0.001): 0.8388 
   # HIMIA far-field microphone array multi-channel result (with AISHELL2 for xvector training):
-  # EER: 9.458%
-  # minDCF(p-target=0.01): 0.7483
-  # minDCF(p-target=0.001): 0.9190
+  # EER: 8.573%
+  # minDCF(p-target=0.01): 0.6963
+  # minDCF(p-target=0.001): 0.8732
   echo -e "\nHIMIA far-field microphone array multi-channel result:";
   eer=$(paste $mc_trial $nnetdir/scores/test_mc_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   mindcf1=`sid/compute_min_dcf.py --p-target 0.01 $nnetdir/scores/test_mc_scores $mc_trial 2> /dev/null`
