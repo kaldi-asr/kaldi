@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Copyright 2021 Xiaomi Corporation (Author: Yongqing Wang)
-# Apache 2.0
 
-# This script is copied from egs/multi_cn/s5/local/chain/tuning/run_cnn_tdnn_1b.sh
+# This script is copied from mini_librispeech/s5
 
+# 1b is as 1a but adding SpecAugment and removing dropout (which, in
+# combination with SpecAugment, no longer seemed to give an improvement).
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -25,15 +25,17 @@ get_egs_stage=-10
 decode_iter=
 
 # training options
-# training chunk-options
 chunk_width=150,110,100
-common_egs_dir=
-xent_regularize=0.1
-
-# training options
 srand=0
 remove_egs=false
+common_egs_dir=
 reporting_email=
+num_epochs=6
+initial_effective_lrate=0.00015
+final_effective_lrate=0.000015
+num_jobs_initial=16
+num_jobs_final=16
+xent_regularize=0.1
 
 # decode options
 test_sets=""
@@ -177,12 +179,12 @@ if [ $stage -le 15 ]; then
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=4 \
+    --trainer.num-epochs=$num_epochs \
     --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=16 \
-    --trainer.optimization.num-jobs-final=16 \
-    --trainer.optimization.initial-effective-lrate=0.00015 \
-    --trainer.optimization.final-effective-lrate=0.000015 \
+    --trainer.optimization.num-jobs-initial=$num_jobs_initial \
+    --trainer.optimization.num-jobs-final=$num_jobs_final \
+    --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
+    --trainer.optimization.final-effective-lrate=$final_effective_lrate \
     --trainer.num-chunk-per-minibatch=128,64 \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \

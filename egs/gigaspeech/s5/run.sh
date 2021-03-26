@@ -1,124 +1,110 @@
 #!/usr/bin/env bash
-# Copyright 2021 Xiaomi Corporation (Author: Yongqing Wang)
-# Apache 2.0
+
+set -e
+set -o pipefail
 
 . ./cmd.sh
 . ./path.sh
 
 stage=0
 
-gigaspeech_root=~/GigaSpeech_data/
-train_sets=train
-test_sets="dev test"
+# GigaSpeech configurations.
+gigaspeech_root=/seasalt02/guoguo/GigaSpeech_Data/
+gigaspeech_train_subset=XL
+gigaspeech_test_sets="gigaspeech_dev gigaspeech_test"
+gigaspeech_train_sets="gigaspeech_train_${gigaspeech_train_subset,,}"
+
+# Train/Dev/Test sets.
+test_sets="$gigaspeech_test_sets"
+train_sets="$gigaspeech_train_sets"
+train_combined="$gigaspeech_train_sets"
+
+# G2P models.
+g2p_model=$gigaspeech_root/dict/g2p/g2p.model.4
+
+# Experiment configurations.
+train_nj=100
+decode_nj=100
+lm_order=4
 lm_dir=data/local/lm
 dict_dir=data/local/dict
 
-. ./cmd.sh
-. ./path.sh
-. parse_options.sh
-
-# you might not want to do this for interactive shells.
-set -e
-
-for f in $lm_dir $dict_dir; do
-  [ ! -d $f ] && mkdir -p $f
-done
-g2p_model_dir=$gigaspeech_root/dict/g2p
-lexicon_gigaspeech=$gigaspeech_root/dict/lexicon_gigaspeech.txt
-order=4
-
 if [ $stage -le 0 ]; then
-  echo -e "======Download GigaSpeech START|current time : `date +%Y-%m-%d-%T`======"
-  # Download and analyze GigaSpeech datasets
-  # cd GigaSpeech to run utils/gigaspeech_download.sh to download data
-  git clone https://github.com/SpeechColab/GigaSpeech.git
-  pushd GigaSpeech
-  utils/gigaspeech_download.sh $gigaspeech_root
-  popd
-  echo -e "======Download GigaSpeech END|current time : `date +%Y-%m-%d-%T`======"
+  echo "======Prepare GigaSpeech START | current time : `date +%Y-%m-%d-%T`===="
+  local/gigaspeech_data_prep.sh \
+    --stage 1 \
+    --train-subset $gigaspeech_train_subset \
+    $gigaspeech_root data/ || exit 1;
+  echo "======Prepare GigaSpeech END | current time : `date +%Y-%m-%d-%T`======"
 fi
 
-# This stage maybe lead to errors,
-# because stage1 in gigaspeech_data_prep.sh should be run in path of gigaspeech
-# stage 3 in gigaspeech_data_prep.sh should be run here
 if [ $stage -le 1 ]; then
-  echo -e "======Prepare Data START|current time : `date +%Y-%m-%d-%T`======"
-  # Prepare GigaSpeech data
-  GigaSpeech/toolkits/kaldi/gigaspeech_data_prep.sh $gigaspeech_root data true
-  echo -e "======Prepare Data END|current time : `date +%Y-%m-%d-%T`======"
+  echo "======Prepare Dictionary START | current time : `date +%Y-%m-%d-%T`===="
+  [ ! -f $g2p_model ] && echo "$0: Cannot find G2P model $g2p_model" && exit 1
+  local/prepare_dict.sh \
+    --cmd "$train_cmd" --nj $train_nj \
+    $g2p_model data/$train_combined $dict_dir || exit 1;
+  echo "======Prepare Dictionary END | current time : `date +%Y-%m-%d-%T`======"
 fi
 
 if [ $stage -le 2 ]; then
-  echo -e "======Prepare Dict START|current time : `date +%Y-%m-%d-%T`======"
-  # Prepare dict 
-  # If the lexicon is downloaded from GigaSpeech, you can skip the G2P steps with "--stage 4" option
-  # Otherwise, you should start from "--stage 0" option to use G2P
-  [ -f $lexicon_gigaspeech ] && cp $lexicon_gigaspeech $dict_dir/lexicon_raw_nosil.txt
-  if [ -f $dict_dir/lexicon_raw_nosil.txt ]; then
-    # If GigaSpeech has been dowloaded, skip G2P steps with "--stage 4"
-    local/prepare_dict.sh --stage 4 $g2p_model_dir/g2p.model.4 data/local/dict
-  else
-    [ ! -f $g2p_model_dir/g2p.model.4 ] && echo "$0: Cannot find $g2p_model_dir/g2p.model.4" && exit 1
-    local/prepare_dict.sh --stage 0 --cmd "$train_cmd" --nj 300 --train-set train $g2p_model_dir/g2p.model.4 data/local/dict
-  fi
-  echo -e "======Prepare dict END|current time : `date +%Y-%m-%d-%T`======"
+  echo "======Train lm START | current time : `date +%Y-%m-%d-%T`=============="
+  mkdir -p $lm_dir || exit 1;
+  sed 's|\t| |' data/$train_combined/text |\
+    cut -d " " -f 2- > $lm_dir/corpus.txt || exit 1;
+  local/lm/train_lm.sh \
+    --cmd "$train_cmd" --mem 10GB --lm-order $lm_order \
+    $lm_dir/corpus.txt $lm_dir || exit 1;
+  echo "======Train lm END | current time : `date +%Y-%m-%d-%T`================"
 fi
 
 if [ $stage -le 3 ]; then
-  echo -e "======Train lm START|current time : `date +%Y-%m-%d-%T`======"
-  # train lm
-  sed 's|\t| |' data/train/text | cut -d " " -f 2- >$lm_dir/text_for_lm.txt
-  # The default ngram order is 4
-  local/lm/train_lm.sh $lm_dir/text_for_lm.txt $lm_dir $order
-  echo -e "======Train lm END|current time : `date +%Y-%m-%d-%T`======"
+  echo "======Prepare lang START | current time : `date +%Y-%m-%d-%T`=========="
+  utils/prepare_lang.sh $dict_dir \
+    "<UNK>" data/local/lang_tmp data/lang || exit 1;
+
+  utils/format_lm.sh data/lang $lm_dir/lm_${lm_order}gram.arpa.gz \
+    $dict_dir/lexicon.txt data/lang_test || exit 1;
+  echo "======Prepare lang END | current time : `date +%Y-%m-%d-%T`============"
 fi
 
 if [ $stage -le 4 ]; then
-  echo -e "======Prepare lang START|current time : `date +%Y-%m-%d-%T`======"
-  utils/prepare_lang.sh data/local/dict \
-   "<UNK>" data/local/lang_tmp data/lang
-  
-  utils/format_lm.sh data/lang $lm_dir/lm_${order}gram.arpa.gz \
-    data/local/dict/lexicon.txt data/lang_test || exit 1;
-  echo -e "======Prepare lang START|current time : `date +%Y-%m-%d-%T`======"
+  echo "======Extract feat START | current time : `date +%Y-%m-%d-%T`=========="
+  mfccdir=mfcc
+  if [[  $(hostname -f) == tj1-asr-train-dev* ]]; then
+    prefix1=data-tmp-TTL20/$(date +%Y%m%d)/$USER/kaldi-data
+    prefix2=$(basename $(pwd))/$(hostname -f)_$(date +%Y%m%d_%H%M%S)_$$
+    utils/create_split_dir.pl \
+      /home/storage{{30..36},{40..49}}/$prefix1/$prefix2/storage/ \
+      $mfccdir/storage || exit 1;
+  fi
 
+  for part in $test_sets $train_combined; do
+    steps/make_mfcc.sh --cmd "$train_cmd" \
+      --nj $train_nj data/$part exp/make_mfcc/$part $mfccdir || exit 1;
+    steps/compute_cmvn_stats.sh \
+      data/$part exp/make_mfcc/$part $mfccdir || exit 1;
+  done
+  echo "======Extract feat END | current time : `date +%Y-%m-%d-%T`============"
 fi
 
 if [ $stage -le 5 ]; then
-  echo -e "======Extract feat START|current time : `date +%Y-%m-%d-%T`======"
-  mfccdir=mfcc
-  # spread the mfccs over various machines, as this data-set is quite large.
-  if [[  $(hostname -f) ==  tj1-asr-train-dev* ]]; then
-    mfcc=$(basename mfccdir) # in case was absolute pathname (unlikely), get basename.
-    utils/create_split_dir.pl \
-      /home/storage{{30..36},{40..49}}/data-tmp-TTL20/$(date +%Y%m%d)/$USER/kaldi-data/$(basename $(pwd))/$(hostname -f)_$(date +%Y%m%d_%H%M%S)_$$/storage/ \
-      $mfccdir/storage
-  fi
-
-  for part in $test_sets train; do
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj $train_nj data/$part exp/make_mfcc/$part $mfccdir
-    steps/compute_cmvn_stats.sh data/$part exp/make_mfcc/$part $mfccdir
-  done
-  echo -e "======Extract feat END|current time : `date +%Y-%m-%d-%T`======"
-fi
-
-if [ $stage -le 6 ]; then
-  echo -e "======Subset train data START|current time : `date +%Y-%m-%d-%T`======"
-  # Make some small data subsets for early system-build stages.  Note, there are 8283k
-  # utterances in the train directory which has 10000 hours of data.
-  # For the monophone stages we select the shortest utterances, which should make it
+  echo "======Subset train data START | current time : `date +%Y-%m-%d-%T`====="
+  # Make some small data subsets for early system-build stages.  Note, there are
+  # 8283k utterances in the train directory which has 10000 hours of data. For
+  # the monophone stages we select the shortest utterances, which should make it
   # easier to align the data from a flat start.
-  total_num=`wc -l <data/train/utt2spk`
-  
+  total_num=`wc -l <data/$train_combined/utt2spk`
+
   subset_num=$((total_num/64))
   if [ $total_num -lt 20000 ]; then
     subset_num=$total_num
   else
     [ $subset_num -gt 100000 ] && subset_num=100000
     [ $subset_num -lt 20000 ] && subset_num=20000
-
   fi
-  utils/subset_data_dir.sh --shortest data/train $subset_num data/train_1d64
+  utils/subset_data_dir.sh --shortest \
+    data/$train_combined $subset_num data/${train_combined}_1d64 || exit 1;
 
   subset_num=$((total_num/32))
   if [ $total_num -lt 60000 ]; then
@@ -126,10 +112,10 @@ if [ $stage -le 6 ]; then
   else
     [ $subset_num -gt 250000 ] && subset_num=250000
     [ $subset_num -lt 60000 ] && subset_num=60000
-
   fi
-  utils/subset_data_dir.sh data/train $subset_num data/train_1d32
-  
+  utils/subset_data_dir.sh \
+    data/$train_combined $subset_num data/${train_combined}_1d32 || exit 1;
+
   subset_num=$((total_num/16))
   if [ $total_num -lt 125000 ]; then
     subset_num=$total_num
@@ -137,7 +123,8 @@ if [ $stage -le 6 ]; then
     [ $subset_num -gt 500000 ] && subset_num=500000
     [ $subset_num -lt 125000 ] && subset_num=125000
   fi
-  utils/subset_data_dir.sh data/train $subset_num data/train_1d16
+  utils/subset_data_dir.sh \
+    data/$train_combined $subset_num data/${train_combined}_1d16 || exit 1;
 
   subset_num=$((total_num/8))
   if [ $total_num -lt 250000 ]; then
@@ -146,138 +133,145 @@ if [ $stage -le 6 ]; then
     [ $subset_num -gt 1000000 ] && subset_num=1000000
     [ $subset_num -lt 250000 ] && subset_num=250000
   fi
-  utils/subset_data_dir.sh data/train $subset_num data/train_1d8
+  utils/subset_data_dir.sh \
+    data/$train_combined $subset_num data/${train_combined}_1d8 || exit 1;
+  echo "======Subset train data END | current time : `date +%Y-%m-%d-%T`======="
+fi
 
-  echo -e "======Subset train data END|current time : `date +%Y-%m-%d-%T`======"
+if [ $stage -le 6 ]; then
+  echo "======Train mono START | current time : `date +%Y-%m-%d-%T`============"
+  steps/train_mono.sh \
+    --boost-silence 1.25 --nj $train_nj --cmd "$train_cmd" \
+    data/${train_combined}_1d64 data/lang exp/mono || exit 1;
+  echo "======Train mono END | current time : `date +%Y-%m-%d-%T`=============="
+  {
+    utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1;
+    for part in $test_sets; do
+      [ ! -d data/$part ] &&\
+        echo "$0: Decoder mono Error: no such dir data/$part" && exit 1;
+      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+        exp/mono/graph data/${part} exp/mono/decode_${part} || exit 1;
+      cat exp/mono/decode_${part}/wer_* | utils/best_wer.sh |\
+        sed "s/^/mono\t/" > exp/mono/decode_${part}/wer.txt || exit 1;
+    done
+  } &
 fi
 
 if [ $stage -le 7 ]; then
-  echo -e "======Train mono START|current time : `date +%Y-%m-%d-%T`======"
-  # train a monophone system
-  steps/train_mono.sh --boost-silence 1.25 --nj $train_nj --cmd "$train_cmd" \
-                      data/train_1d64 data/lang exp/mono
+  echo "======Train tri1b START | current time : `date +%Y-%m-%d-%T`==========="
+  steps/align_si.sh \
+    --boost-silence 1.25 --nj $train_nj --cmd "$train_cmd" \
+    data/${train_combined}_1d32 data/lang \
+    exp/mono exp/mono_ali_train_1d32 || exit 1;
+
+  steps/train_deltas.sh \
+    --boost-silence 1.25 --cmd "$train_cmd" 2000 10000 \
+    data/${train_combined}_1d32 data/lang \
+    exp/mono_ali_train_1d32 exp/tri1b || exit 1;
+  echo "======Train tri1b END | current time : `date +%Y-%m-%d-%T`============="
   {
-    utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1
+    utils/mkgraph.sh data/lang_test exp/tri1b exp/tri1b/graph || exit 1;
     for part in $test_sets; do
-      [ ! -d data/$part ] && echo "Decoder mono Error: no such dir data/$part"
-      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" exp/mono/graph data/${part} exp/mono/decode_${part}
-      cat exp/mono/decode_${part}/wer_* | utils/best_wer.sh | sed "s/^/mono\t/" > exp/mono/decode_${part}/wer.txt
+      [ ! -d data/$part ] &&\
+        echo "$0: Decoder tri1b Error: no such dir data/$part" && exit 1;
+      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+        exp/tri1b/graph data/${part} exp/tri1b/decode_${part} || exit 1;
+      cat exp/tri1b/decode_${part}/wer_* | utils/best_wer.sh |\
+        sed "s/^/tri1b\t/" > exp/tri1b/decode_${part}/wer.txt || exit 1;
     done
   } &
-
-  echo -e "======Train mono END|current time : `date +%Y-%m-%d-%T`======"
 fi
 
 if [ $stage -le 8 ]; then
-  echo -e "======Train tri1b START|current time : `date +%Y-%m-%d-%T`======"
-  steps/align_si.sh --boost-silence 1.25 --nj $train_nj --cmd "$train_cmd" \
-                    data/train_1d32 data/lang exp/mono exp/mono_ali_train_1d32
+  echo "======Train tri2b START | current time : `date +%Y-%m-%d-%T`==========="
+  steps/align_si.sh \
+    --nj $train_nj --cmd "$train_cmd" \
+    data/${train_combined}_1d16 data/lang \
+    exp/tri1b exp/tri1_ali_train_1d16 || exit 1;
 
-  # train a first delta + delta-delta triphone system on a subset of 5000 utterances
-  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-                        2000 10000 data/train_1d32 data/lang exp/mono_ali_train_1d32 exp/tri1b
-  echo -e "======Train tri1b END|current time : `date +%Y-%m-%d-%T`======"
-  {
-    utils/mkgraph.sh data/lang_test exp/tri1b exp/tri1b/graph || exit 1
-    for part in $test_sets; do
-      [ ! -d data/$part ] && echo "Decoder tri1b Error: no such dir data/$part"
-      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" exp/tri1b/graph data/${part} exp/tri1b/decode_${part}
-      cat exp/tri1b/decode_${part}/wer_* | utils/best_wer.sh | sed "s/^/tri1b\t/" > exp/tri1b/decode_${part}/wer.txt
-    done
-  } &
-
-fi
-
-if [ $stage -le 9 ]; then
-  echo -e "======Train tri2b START|current time : `date +%Y-%m-%d-%T`======"
-  steps/align_si.sh --nj $train_nj --cmd "$train_cmd" \
-                    data/train_1d16 data/lang exp/tri1b exp/tri1_ali_train_1d16
-  # train an LDA+MLLT system.
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
-                          --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
-                          data/train_1d16 data/lang exp/tri1_ali_train_1d16 exp/tri2b
+    --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
+    data/${train_combined}_1d16 data/lang \
+    exp/tri1_ali_train_1d16 exp/tri2b || exit 1;
+  echo "======Train tri2b END | current time : `date +%Y-%m-%d-%T`============="
   {
     utils/mkgraph.sh data/lang_test exp/tri2b exp/tri2b/graph || exit 1
     for part in $test_sets; do
-      [ ! -d data/$part ] && echo "Decoder tri2b Error: no such dir data/$part"
-      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" exp/tri2b/graph data/${part} exp/tri2b/decode_${part}
-      cat exp/tri2b/decode_${part}/wer_* | utils/best_wer.sh | sed "s/^/tri2b\t/" > exp/tri2b/decode_${part}/wer.txt
+      [ ! -d data/$part ] &&\
+        echo "$0: Decoder tri2b Error: no such dir data/$part" || exit 1;
+      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+        exp/tri2b/graph data/${part} exp/tri2b/decode_${part} || exit 1;
+      cat exp/tri2b/decode_${part}/wer_* | utils/best_wer.sh |\
+        sed "s/^/tri2b\t/" > exp/tri2b/decode_${part}/wer.txt || exit 1;
     done
   } &
-  echo -e "======Train tri2b END|current time : `date +%Y-%m-%d-%T`======"
+fi
+
+if [ $stage -le 9 ]; then
+  echo "======Train tri3b START | current time : `date +%Y-%m-%d-%T`==========="
+  steps/align_si.sh \
+    --nj $train_nj --cmd "$train_cmd" --use-graphs true \
+    data/${train_combined}_1d16 data/lang \
+    exp/tri2b exp/tri2_ali_train_1d16 || exit 1;
+
+  steps/train_sat.sh \
+    --cmd "$train_cmd" 2500 15000 \
+    data/${train_combined}_1d16 data/lang \
+    exp/tri2_ali_train_1d16 exp/tri3b || exit 1;
+  echo "======Train tri3b END | current time : `date +%Y-%m-%d-%T`============="
+  {
+    utils/mkgraph.sh data/lang_test exp/tri3b exp/tri3b/graph || exit 1;
+    for part in $test_sets; do
+      [ ! -d data/$part ] &&\
+        echo "$0: Decoder tri3b Error: no such dir data/$part" || exit 1;
+      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+        exp/tri3b/graph data/$part exp/tri3b/decode_${part} || exit 1;
+      cat exp/tri3b/decode_${part}/wer_* | utils/best_wer.sh |\
+        sed "s/^/tri3b\t/" > exp/tri3b/decode_${part}/wer.txt || exit 1;
+    done
+  } &
 fi
 
 if [ $stage -le 10 ]; then
-  echo -e "======Train tri3b START|current time : `date +%Y-%m-%d-%T`======"
-  # Align a 10k utts subset using the tri2b model
-  steps/align_si.sh  --nj $train_nj --cmd "$train_cmd" --use-graphs true \
-                     data/train_1d16 data/lang exp/tri2b exp/tri2_ali_train_1d16
-  # Train tri3b, which is LDA+MLLT+SAT on 10k utts
-  steps/train_sat.sh --cmd "$train_cmd" 2500 15000 \
-                     data/train_1d16 data/lang exp/tri2_ali_train_1d16 exp/tri3b
-  {
-    utils/mkgraph.sh data/lang_test exp/tri3b exp/tri3b/graph || exit 1
-    for part in $test_sets; do
-      [ ! -d data/$part ] && echo "Decoder tri3b Error: no such dir data/$part"
-      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" exp/tri3b/graph data/$part exp/tri3b/decode_${part}
-      cat exp/tri3b/decode_${part}/wer_* | utils/best_wer.sh | sed "s/^/tri3b\t/" > exp/tri3b/decode_${part}/wer.txt
-    done
-  } &
-  echo -e "======Train tri3b END|current time : `date +%Y-%m-%d-%T`======"
+  echo "======Train tri4b START | current time : `date +%Y-%m-%d-%T`==========="
+  steps/align_fmllr.sh \
+    --nj $train_nj --cmd "$train_cmd" \
+    data/${train_combined}_1d8 data/lang \
+    exp/tri3b exp/tri3_ali_train_1d8 || exit 1;
 
-fi
-
-if [ $stage -le 11 ]; then
-  echo -e "======Train tri4b START|current time : `date +%Y-%m-%d-%T`======"
-  # align the entire train_clean_100 subset using the tri3b model
-  steps/align_fmllr.sh --nj $train_nj --cmd "$train_cmd" \
-    data/train_1d8 data/lang exp/tri3b exp/tri3_ali_train_1d8
-
-  # train another LDA+MLLT+SAT system on the entire 100 hour subset
-  steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
-                      data/train_1d8 data/lang exp/tri3_ali_train_1d8 exp/tri4b
+  steps/train_sat.sh \
+    --cmd "$train_cmd" 4200 40000 \
+    data/${train_combined}_1d8 data/lang \
+    exp/tri3_ali_train_1d8 exp/tri4b || exit 1;
+  echo "======Train tri4b END | current time : `date +%Y-%m-%d-%T`============="
   {
     utils/mkgraph.sh data/lang_test exp/tri4b exp/tri4b/graph || exit 1
     for part in $test_sets; do
-      [ ! -d data/$part ] && echo "Decoder tri4b Error: no such dir data/$part"
-      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" exp/tri4b/graph data/${part} exp/tri4b/decode_${part}
-      cat exp/tri4b/decode_${part}/wer_* | utils/best_wer.sh | sed "s/^/tri4b\t/" > exp/tri4b/decode_${part}/wer.txt
+      [ ! -d data/$part ] &&\
+        echo "$0: Decoder tri4b Error: no such dir data/$part" && exit 1;
+      steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+        exp/tri4b/graph data/${part} exp/tri4b/decode_${part} || exit 1;
+      cat exp/tri4b/decode_${part}/wer_* | utils/best_wer.sh |\
+        sed "s/^/tri4b\t/" > exp/tri4b/decode_${part}/wer.txt || exit 1;
     done
   } &
-  echo -e "======Train tri4b END|current time : `date +%Y-%m-%d-%T`======"
 fi
 
-if [ $stage -le -12 ]; then
-  echo -e "======Clean up START|current time : `date +%Y-%m-%d-%T`======"
-  # this does some data-cleaning. The cleaned data should be useful when we add
-  # the neural net and chain systems.  (although actually it was pretty clean already.)
-  echo "run cleanup!"
-  #local/run_cleanup_segmentation.sh
-  echo -e "======Clean up END|current time : `date +%Y-%m-%d-%T`======"
+if [ $stage -le 11 ]; then
+  echo "======Train chain START | current time : `date +%Y-%m-%d-%T`==========="
+  local/chain/run_cnn_tdnn.sh \
+    --stage 0 \
+    --train-stage -10 \
+    --get-egs-stage -10 \
+    --train_set data/${train_combined} \
+    --gmm tri4b \
+    --test-sets "$test_sets" \
+    --num-jobs-initial 16 \
+    --num-jobs-final 16 \
+    --initial-effective-lrate 0.00015 \
+    --final-effective-lrate 0.000015 || exit 1;
+  echo "======Train chain END | current time : `date +%Y-%m-%d-%T`============="
 fi
 
-nnet='cnntdnnf'
-
-if [ $stage -le 13 ]; then
-  echo -e "======Train chain START|current time : `date +%Y-%m-%d-%T`======"
-  if [ $nnet == 'cnntdnnf' ]; then
-    local/chain/run_cnn_tdnn.sh \
-      --stage 0 \
-      --train-stage -10 \
-      --get-egs-stage -10 \
-      --train_set train \
-      --gmm tri4b \
-      --test-sets "$test_sets"
-  else
-    local/chain/run_tdnn.sh \
-      --stage 0 \
-      --train-stage -10 \
-      --get-egs-stage -10 \
-      --train_set train \
-      --gmm tri4b \
-      --test-sets "$test_sets"
-  fi
-  echo -e "======Train chain END|current time : `date +%Y-%m-%d-%T`======"
-fi
-
+wait;
 echo "$0: Done"
