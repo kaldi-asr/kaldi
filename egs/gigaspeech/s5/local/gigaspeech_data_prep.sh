@@ -50,6 +50,10 @@ if [ $stage -le 1 ]; then
   toolkits/kaldi/gigaspeech_data_prep.sh \
     --train-subset $train_subset $gigaspeech_root $data_dir || exit 1
   popd
+  utils/fix_data_dir.sh data/gigaspeech_dev || exit 1;
+  utils/fix_data_dir.sh data/gigaspeech_test || exit 1;
+  utils/fix_data_dir.sh \
+    data/gigaspeech_train_${gigaspeech_train_subset,,} || exit 1;
   echo "======GigaSpeech Preparation END | current time : `date +%Y-%m-%d-%T`=="
 fi
 

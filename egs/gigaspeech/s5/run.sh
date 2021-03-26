@@ -9,7 +9,7 @@ set -o pipefail
 stage=0
 
 # GigaSpeech configurations.
-gigaspeech_root=/seasalt02/guoguo/GigaSpeech_Data/
+gigaspeech_root=/data/GigaSpeech_Data/
 gigaspeech_train_subset=XL
 gigaspeech_test_sets="gigaspeech_dev gigaspeech_test"
 gigaspeech_train_sets="gigaspeech_train_${gigaspeech_train_subset,,}"
@@ -32,7 +32,7 @@ dict_dir=data/local/dict
 if [ $stage -le 0 ]; then
   echo "======Prepare GigaSpeech START | current time : `date +%Y-%m-%d-%T`===="
   local/gigaspeech_data_prep.sh \
-    --stage 1 \
+    --stage 0 \
     --train-subset $gigaspeech_train_subset \
     $gigaspeech_root data/ || exit 1;
   echo "======Prepare GigaSpeech END | current time : `date +%Y-%m-%d-%T`======"
