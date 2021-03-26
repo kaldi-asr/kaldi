@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright 2021  Xiaomi Corporation (Author: Yongqing Wang)
+#                 Seasalt AI, Inc (Author: Guoguo Chen)
+# Apache 2.0
 
 # This script is copied from mini_librispeech/s5
 
