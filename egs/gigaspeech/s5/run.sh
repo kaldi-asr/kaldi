@@ -187,12 +187,12 @@ if [ $stage -le 8 ]; then
   steps/align_si.sh \
     --nj $train_nj --cmd "$train_cmd" \
     data/${train_combined}_1d16 data/lang \
-    exp/tri1b exp/tri1_ali_train_1d16 || exit 1;
+    exp/tri1b exp/tri1b_ali_train_1d16 || exit 1;
 
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
     data/${train_combined}_1d16 data/lang \
-    exp/tri1_ali_train_1d16 exp/tri2b || exit 1;
+    exp/tri1b_ali_train_1d16 exp/tri2b || exit 1;
   echo "======Train tri2b END | current time : `date +%Y-%m-%d-%T`============="
   {
     utils/mkgraph.sh data/lang_test exp/tri2b exp/tri2b/graph || exit 1
@@ -212,12 +212,12 @@ if [ $stage -le 9 ]; then
   steps/align_si.sh \
     --nj $train_nj --cmd "$train_cmd" --use-graphs true \
     data/${train_combined}_1d16 data/lang \
-    exp/tri2b exp/tri2_ali_train_1d16 || exit 1;
+    exp/tri2b exp/tri2b_ali_train_1d16 || exit 1;
 
   steps/train_sat.sh \
     --cmd "$train_cmd" 2500 15000 \
     data/${train_combined}_1d16 data/lang \
-    exp/tri2_ali_train_1d16 exp/tri3b || exit 1;
+    exp/tri2b_ali_train_1d16 exp/tri3b || exit 1;
   echo "======Train tri3b END | current time : `date +%Y-%m-%d-%T`============="
   {
     utils/mkgraph.sh data/lang_test exp/tri3b exp/tri3b/graph || exit 1;
@@ -237,12 +237,12 @@ if [ $stage -le 10 ]; then
   steps/align_fmllr.sh \
     --nj $train_nj --cmd "$train_cmd" \
     data/${train_combined}_1d8 data/lang \
-    exp/tri3b exp/tri3_ali_train_1d8 || exit 1;
+    exp/tri3b exp/tri3b_ali_train_1d8 || exit 1;
 
   steps/train_sat.sh \
     --cmd "$train_cmd" 4200 40000 \
     data/${train_combined}_1d8 data/lang \
-    exp/tri3_ali_train_1d8 exp/tri4b || exit 1;
+    exp/tri3b_ali_train_1d8 exp/tri4b || exit 1;
   echo "======Train tri4b END | current time : `date +%Y-%m-%d-%T`============="
   {
     utils/mkgraph.sh data/lang_test exp/tri4b exp/tri4b/graph || exit 1
