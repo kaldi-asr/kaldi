@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script replaces the command readlink -f (which is not portable).
 # It turns a pathname into an absolute pathname, including following soft links.
 target_file=$1
 
 cd $(dirname $target_file)
-target_file=$(basename $target_file)
+target_file=$(basename "$target_file")
 
 # Iterate down a (possible) chain of symlinks
 while [ -L "$target_file" ]; do

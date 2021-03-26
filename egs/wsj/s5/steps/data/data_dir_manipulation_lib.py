@@ -11,8 +11,7 @@ def RunKaldiCommand(command, wait = True):
     if wait:
         [stdout, stderr] = p.communicate()
         if p.returncode is not 0:
-            raise Exception("There was an error while running the command {0}\n".format(command)+"-"*10+"\n"+stderr)
+            raise Exception("There was an error while running the command {0}\n------------\n{1}".format(command, stderr))
         return stdout, stderr
     else:
         return p
-

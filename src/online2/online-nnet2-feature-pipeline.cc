@@ -30,7 +30,7 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
     feature_type = config.feature_type;
   } else {
     KALDI_ERR << "Invalid feature type: " << config.feature_type << ". "
-              << "Supported feature types: mfcc, plp.";
+              << "Supported feature types: mfcc, plp, fbank.";
   }
 
   if (config.mfcc_config != "") {
@@ -65,6 +65,15 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 
+  use_cmvn = (config.cmvn_config != "");
+  if (use_cmvn) {
+    ReadConfigFromFile(config.cmvn_config, &cmvn_opts);
+    if (config.global_cmvn_stats_rxfilename == "")
+      KALDI_ERR << "--global-cmvn-stats option is required "
+                << " when --cmvn-config is specified.";
+    ReadKaldiObject(config.global_cmvn_stats_rxfilename, &global_cmvn_stats);
+  }
+
   if (config.ivector_extraction_config != "") {
     use_ivectors = true;
     OnlineIvectorExtractionConfig ivector_extraction_opts;
@@ -76,9 +85,19 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
   }
 }
 
+
+/// The main feature extraction pipeline is constructed in this constructor.
 OnlineNnet2FeaturePipeline::OnlineNnet2FeaturePipeline(
     const OnlineNnet2FeaturePipelineInfo &info):
-    info_(info) {
+    info_(info), base_feature_(NULL),
+    pitch_(NULL), pitch_feature_(NULL),
+    cmvn_feature_(NULL),
+    feature_plus_optional_pitch_(NULL),
+    feature_plus_optional_cmvn_(NULL),
+    ivector_feature_(NULL),
+    nnet3_feature_(NULL),
+    final_feature_(NULL) {
+
   if (info_.feature_type == "mfcc") {
     base_feature_ = new OnlineMfcc(info_.mfcc_opts);
   } else if (info_.feature_type == "plp") {
@@ -96,22 +115,38 @@ OnlineNnet2FeaturePipeline::OnlineNnet2FeaturePipeline(
     feature_plus_optional_pitch_ = new OnlineAppendFeature(base_feature_,
                                                            pitch_feature_);
   } else {
-    pitch_ = NULL;
-    pitch_feature_ = NULL;
     feature_plus_optional_pitch_ = base_feature_;
   }
 
+  if (info_.use_cmvn) {
+    if (info_.global_cmvn_stats.NumCols() == 0) {
+      KALDI_ERR << "global_cmvn_stats for OnlineCmvn must be non-empty, "
+                << "please assign it to OnlineNnet2FeaturePipelineInfo.";
+    }
+    OnlineCmvnState initial_state(info_.global_cmvn_stats);
+    cmvn_feature_ = new OnlineCmvn(info_.cmvn_opts, initial_state,
+        feature_plus_optional_pitch_);
+    feature_plus_optional_cmvn_ = cmvn_feature_;
+  } else {
+    feature_plus_optional_cmvn_ = feature_plus_optional_pitch_;
+  }
+
   if (info_.use_ivectors) {
+    nnet3_feature_ = feature_plus_optional_cmvn_;
+    // Note: the i-vector extractor OnlineIvectorFeature gets 'base_feautre_'
+    // without cmvn (the online cmvn is applied inside the class)
     ivector_feature_ = new OnlineIvectorFeature(info_.ivector_extractor_info,
                                                 base_feature_);
-    final_feature_ = new OnlineAppendFeature(feature_plus_optional_pitch_,
+    final_feature_ = new OnlineAppendFeature(feature_plus_optional_cmvn_,
                                              ivector_feature_);
   } else {
-    ivector_feature_ = NULL;
-    final_feature_ = feature_plus_optional_pitch_;
+    nnet3_feature_ = feature_plus_optional_cmvn_;
+    final_feature_ = feature_plus_optional_cmvn_;
   }
   dim_ = final_feature_->Dim();
 }
+/// ^-^
+
 
 int32 OnlineNnet2FeaturePipeline::Dim() const { return dim_; }
 
@@ -126,6 +161,11 @@ int32 OnlineNnet2FeaturePipeline::NumFramesReady() const {
 void OnlineNnet2FeaturePipeline::GetFrame(int32 frame,
                                           VectorBase<BaseFloat> *feat) {
   return final_feature_->GetFrame(frame, feat);
+}
+
+void OnlineNnet2FeaturePipeline::UpdateFrameWeights(
+    const std::vector<std::pair<int32, BaseFloat> > &delta_weights) {
+    IvectorFeature()->UpdateFrameWeights(delta_weights);
 }
 
 void OnlineNnet2FeaturePipeline::SetAdaptationState(
@@ -144,15 +184,31 @@ void OnlineNnet2FeaturePipeline::GetAdaptationState(
   // else silently do nothing, as there is nothing to do.
 }
 
+void OnlineNnet2FeaturePipeline::SetCmvnState(
+    const OnlineCmvnState &cmvn_state) {
+  if (NULL != cmvn_feature_)
+    cmvn_feature_->SetState(cmvn_state);
+}
+
+void OnlineNnet2FeaturePipeline::GetCmvnState(
+    OnlineCmvnState *cmvn_state) {
+  if (NULL != cmvn_feature_) {
+    int32 frame = cmvn_feature_->NumFramesReady() - 1;
+    // the following call will crash if no frames are ready.
+    cmvn_feature_->GetState(frame, cmvn_state);
+  }
+}
+
 
 OnlineNnet2FeaturePipeline::~OnlineNnet2FeaturePipeline() {
   // Note: the delete command only deletes pointers that are non-NULL.  Not all
   // of the pointers below will be non-NULL.
   // Some of the online-feature pointers are just copies of other pointers,
   // and we do have to avoid deleting them in those cases.
-  if (final_feature_ != feature_plus_optional_pitch_)
+  if (final_feature_ != feature_plus_optional_cmvn_)
     delete final_feature_;
   delete ivector_feature_;
+  delete cmvn_feature_;
   if (feature_plus_optional_pitch_ != base_feature_)
     delete feature_plus_optional_pitch_;
   delete pitch_feature_;
@@ -187,5 +243,17 @@ BaseFloat OnlineNnet2FeaturePipelineInfo::FrameShiftInSeconds() const {
   }
 }
 
+BaseFloat OnlineNnet2FeaturePipelineInfo::GetSamplingFrequency() {
+  if (feature_type == "mfcc") {
+    return mfcc_opts.frame_opts.samp_freq;
+  } else if (feature_type == "plp") {
+    return plp_opts.frame_opts.samp_freq;
+  } else if (feature_type == "fbank") {
+    return fbank_opts.frame_opts.samp_freq;
+  } else {
+    KALDI_ERR << "Unknown feature type " << feature_type;
+  }
+  return 0.0f; // avoiding a possible "return missing" warning
+}
 
 }  // namespace kaldi

@@ -48,7 +48,7 @@ template<class Holder> class SequentialTableReaderImplBase {
   // called on a just-allocated object.
   virtual bool Open(const std::string &rxfilename) = 0;
   // Done() should be called on a successfully opened, not-closed object.
-  // only throws if called a the wrong time (i.e. code error).
+  // only throws if called at the wrong time (i.e. code error).
   virtual bool Done() const = 0;
   // Returns true if the reader is open [i.e. Open() succeeded and
   // the user has not called Close()]
@@ -1152,7 +1152,7 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
                                            &script_rxfilename_,
                                            &opts_);
     KALDI_ASSERT(ws == kScriptWspecifier);  // or wrongly called.
-    KALDI_ASSERT(script_.empty());  // no way it could be nonempty at this poin.
+    KALDI_ASSERT(script_.empty());  // no way it could be nonempty at this point.
 
     if (!ReadScriptFile(script_rxfilename_,
                          true,  // print any warnings

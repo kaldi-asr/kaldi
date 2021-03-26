@@ -69,7 +69,7 @@ def get_compute_prob_info(log_file):
     compute_prob_done = False
     # roughly based on code in get_best_model.py
     try:
-        f = open(log_file, "r", encoding="latin-1")
+        f = open(log_file, "r", encoding="utf-8")
     except:
         print(script_name + ": warning: compute_prob log not found for iteration " +
               str(iter) + ". Skipping",

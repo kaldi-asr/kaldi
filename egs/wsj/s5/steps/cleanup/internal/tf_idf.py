@@ -401,7 +401,6 @@ def read_key(fd):
     str += char
   str = str.strip()
   if str == '': return None # end of file,
-  assert(re.match('^[\.a-zA-Z0-9_:-]+$',str) != None) # check format,
   return str
 
 

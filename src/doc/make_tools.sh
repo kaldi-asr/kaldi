@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Daniel Povey.  Apache 2.0.
 # Creates the file tools.dox from tools.dox.input

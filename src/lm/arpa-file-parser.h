@@ -89,7 +89,7 @@ class ArpaFileParser {
   /// If symbol table is a null pointer, the file should contain integer
   /// symbol values, and oov_handling has no effect. bos_symbol and eos_symbol
   /// must be valid symbols still.
-  ArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols);
+  ArpaFileParser(const ArpaParseOptions& options, fst::SymbolTable* symbols);
   virtual ~ArpaFileParser();
 
   /// Read ARPA LM file from a stream.

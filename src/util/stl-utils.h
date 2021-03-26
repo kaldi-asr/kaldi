@@ -97,8 +97,6 @@ void CopySetToVector(const std::set<T> &s, std::vector<T> *v) {
 
 template<class T>
 void CopySetToVector(const unordered_set<T> &s, std::vector<T> *v) {
-  // adds members of s to v, in sorted order from lowest to highest
-  // (because the set was in sorted order).
   KALDI_ASSERT(v != NULL);
   v->resize(s.size());
   typename unordered_set<T>::const_iterator siter = s.begin(), send = s.end();

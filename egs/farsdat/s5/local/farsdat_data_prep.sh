@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #
 # Copyright 2014 Univercity of Tehran (Author: Bagher BabaAli)

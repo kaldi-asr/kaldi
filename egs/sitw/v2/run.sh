@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright    2017   Johns Hopkins University (Author: Daniel Povey)
 #              2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #              2018   Ewald Enzinger
@@ -37,8 +37,8 @@ if [ $stage -le 0 ]; then
   # http://www.openslr.org/resources/49/voxceleb1_sitw_overlap.txt that
   # contains the speakers that overlap between VoxCeleb1 and our evaluation
   # set SITW.  The script removes these overlapping speakers from VoxCeleb1.
-  local/make_voxceleb1.pl $voxceleb1_root data
-
+  #local/make_voxceleb1.pl $voxceleb1_root data
+  local/make_voxceleb1_v2.pl $voxceleb1_root data
   # Prepare the dev portion of the VoxCeleb2 dataset.
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
 
@@ -103,7 +103,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh $musan_root data
+  steps/data/make_musan.sh --sampling-rate 16000 $musan_root data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.

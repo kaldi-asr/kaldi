@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ###########################################################################################
 # This script was copied from egs/fisher_swbd/s5/local/swbd1_data_download.sh
@@ -44,7 +44,7 @@ if [ ! -d $SWBD_DIR/transcriptions/swb_ms98_transcriptions ]; then
     if [ ! -d swb_ms98_transcriptions ]; then
       echo " *** Downloading trascriptions and dictionary ***" 
       wget http://www.openslr.org/resources/5/switchboard_word_alignments.tar.gz ||
-      wget http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
+      wget -c http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
       tar -xf switchboard_word_alignments.tar.gz
     fi
   )

@@ -39,7 +39,7 @@ void TransitionModel::ComputeTuplesIsHmm(const ContextDependencyInterface &ctx_d
   const std::vector<int32> &phones = topo_.GetPhones();
   KALDI_ASSERT(!phones.empty());
 
-  // this is the case for normal models. but not fot chain models
+  // this is the case for normal models. but not for chain models
   std::vector<std::vector<std::pair<int32, int32> > > pdf_info;
   std::vector<int32> num_pdf_classes( 1 + *std::max_element(phones.begin(), phones.end()), -1);
   for (size_t i = 0; i < phones.size(); i++)
@@ -85,7 +85,7 @@ void TransitionModel::ComputeTuplesNotHmm(const ContextDependencyInterface &ctx_
 
   // pdf_info is a set of lists indexed by phone. Each list is indexed by
   // (pdf-class, self-loop pdf-class) of each state of that phone, and the element
-  // is a list of possible (pdf, self-loop pdf) pairs that that (pdf-class, self-loop pdf-class)
+  // is a list of possible (pdf, self-loop pdf) pairs that (pdf-class, self-loop pdf-class)
   // pair generates.
   std::vector<std::vector<std::vector<std::pair<int32, int32> > > > pdf_info;
   // pdf_class_pairs is a set of lists indexed by phone. Each list stores
@@ -177,7 +177,7 @@ void TransitionModel::ComputeDerived() {
   }
 
   // The following statements put copies a large number in the region of memory
-  // past the end of the id2pdf_id_ array, while leaving the aray as it was
+  // past the end of the id2pdf_id_ array, while leaving the array as it was
   // before.  The goal of this is to speed up decoding by disabling a check
   // inside TransitionIdToPdf() that the transition-id was within the correct
   // range.

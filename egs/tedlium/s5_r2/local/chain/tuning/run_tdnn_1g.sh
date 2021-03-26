@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g is as 1f but moving to a factorized TDNN (TDNN-F) model, re-tuning it, and
 #  switching to unconstrained egs (the last of which gives around 0.1%
@@ -142,7 +142,7 @@ if [ $stage -le 17 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   affine_opts="l2-regularize=0.008 dropout-proportion=0.0 dropout-per-dim-continuous=true"
   tdnnf_opts="l2-regularize=0.008 dropout-proportion=0.0 bypass-scale=0.66"
   linear_opts="l2-regularize=0.008 orthonormal-constraint=-1.0"

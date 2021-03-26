@@ -75,14 +75,14 @@ def ReadEntries(file_handle):
 # Each entry in the list represents the pronounciation candidate(s) of a word.
 # For each non-<eps> word, the entry is a list: [utt_id, word, set(pronunciation_candidates)]. e.g:
 # [911Mothers_2010W-0010916-0012901-1, other, set('AH DH ER', 'AH DH ER K AH N')]
-# For each <eps>, we split the phones it aligns to into two parts: "nonsil_left", 
+# For each <eps>, we split the phones it aligns to into two parts: "nonsil_left",
 # which includes phones before the first silphone, and "nonsil_right", which includes
-# phones after the last silphone. For example, for <eps> : 'V SIL B AH SIL', 
+# phones after the last silphone. For example, for <eps> : 'V SIL B AH SIL',
 # nonsil_left is 'V' and nonsil_right is empty ''. After processing an <eps> entry
 # in ctm_prons, we put it in "info" as an entry:  [utt_id, word, nonsil_right]
 # only if it's nonsil_right segment is not empty, which may be used when processing
 # the next word.
-# 
+#
 # Normally, one non-<eps> word is only aligned to one pronounciation candidate. However
 # when there is a preceding/following <eps>, like in the following example, we
 # assume the phones aligned to <eps> should be statistically distributed
@@ -90,7 +90,7 @@ def ReadEntries(file_handle):
 # Thus we append the "nonsil_left" segment of these phones to the pronounciation
 # of the preceding word, if the last phone of this pronounciation is not a silence phone,
 # Similarly we can add a pron candidate to the following word.
-# 
+#
 # For example, for the following part of a ctm_prons file:
 # 911Mothers_2010W-0010916-0012901-1 other AH DH ER
 # 911Mothers_2010W-0010916-0012901-1 <eps> K AH N SIL B
@@ -99,11 +99,11 @@ def ReadEntries(file_handle):
 # 911Mothers_2010W-0010916-0012901-1 when W EH N
 # 911Mothers_2010W-0010916-0012901-1 people P IY P AH L
 # 911Mothers_2010W-0010916-0012901-1 <eps> SIL
-# 911Mothers_2010W-0010916-0012901-1 heard HH ER 
+# 911Mothers_2010W-0010916-0012901-1 heard HH ER
 # 911Mothers_2010W-0010916-0012901-1 <eps> D
 # 911Mothers_2010W-0010916-0012901-1 that SIL DH AH T
 # 911Mothers_2010W-0010916-0012901-1 my M AY
-# 
+#
 # The corresponding segment in the "info" list is:
 # [911Mothers_2010W-0010916-0012901-1, other, set('AH DH ER', 'AH DH ER K AH N')]
 # [911Mothers_2010W-0010916-0012901-1, <eps>, 'B'
@@ -113,7 +113,7 @@ def ReadEntries(file_handle):
 # [911Mothers_2010W-0010916-0012901-1, <eps>, 'D']
 # [911Mothers_2010W-0010916-0012901-1, that, set('SIL DH AH T')]
 # [911Mothers_2010W-0010916-0012901-1, my, set('M AY')]
-# 
+#
 # Then we accumulate pronouciation stats from "info". Basically, for each occurence
 # of a word, each pronounciation candidate gets equal soft counts. e.g. In the above
 # example, each pron candidate of "because" gets a count of 1/4. The stats is stored
@@ -139,20 +139,20 @@ def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_pron
         # So we apply the same merging method in these cases.
         if word == '<eps>' or (word in non_scored_words and word != '<unk>' and word != '<UNK>'):
             nonsil_left = []
-            nonsil_right = [] 
+            nonsil_right = []
             for phone in phones:
                 if phone in silphones:
                     break
                 nonsil_left.append(phone)
-            
+
             for phone in reversed(phones):
                 if phone in silphones:
                     break
                 nonsil_right.insert(0, phone)
-            
+
             # info[-1][0] is the utt_id of the last entry
-            if len(nonsil_left) > 0 and len(info) > 0 and utt == info[-1][0]: 
-                # pron_ext is a set of extended pron candidates. 
+            if len(nonsil_left) > 0 and len(info) > 0 and utt == info[-1][0]:
+                # pron_ext is a set of extended pron candidates.
                 pron_ext = set()
                 # info[-1][2] is the set of pron candidates of the last entry.
                 for pron in info[-1][2]:
@@ -211,7 +211,7 @@ def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_pron
                 stats[(word, phones)] = stats.get((word, phones), 0) + count
     return stats
 
-def WriteStats(stats, file_handle):            
+def WriteStats(stats, file_handle):
     for word_pron, count in stats.items():
         print('{0} {1} {2}'.format(count, word_pron[0], word_pron[1]), file=file_handle)
     file_handle.close()
@@ -222,7 +222,7 @@ def Main():
     non_scored_words = ReadEntries(args.non_scored_words_file_handle)
     optional_silence = ReadEntries(args.optional_silence_file_handle)
     stats = GetStatsFromCtmProns(silphones, optional_silence.pop(), non_scored_words, args.ctm_prons_file_handle)
-    WriteStats(stats, args.stats_file_handle)            
+    WriteStats(stats, args.stats_file_handle)
 
 if __name__ == "__main__":
     Main()

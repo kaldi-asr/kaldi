@@ -1,4 +1,9 @@
+#!/bin/bash
 # This RESULTS file was obtained by running ./run.sh and then ./result.sh
+
+bash ./results.sh
+
+exit 0
 
 %WER 28.32 [ 5037 / 17783, 615 ins, 1171 del, 3251 sub ] exp/tri1/decode_nosp_dev/wer_10
 %WER 26.99 [ 4799 / 17783, 603 ins, 1169 del, 3027 sub ] exp/tri1/decode_nosp_dev_rescore/wer_10
@@ -30,3 +35,16 @@
 %WER 8.16 [ 2245 / 27500, 288 ins, 605 del, 1352 sub ] exp/chain_cleaned/tdnnf_1a/decode_test/wer_9
 %WER 7.75 [ 2131 / 27500, 264 ins, 643 del, 1224 sub ] exp/chain_cleaned/tdnnf_1a/decode_test_rescore/wer_10
 %WER 6.84 [ 1880 / 27500, 283 ins, 533 del, 1064 sub ] exp/chain_cleaned/tdnnf_1a/decode_test_rnnlm_lstm_tdnn_a_averaged/wer_8
+
+# See what online-cmn does,
+# no cmvn (only i-vector UBM with online cmn),
+%WER 8.32 [ 1480 / 17783, 253 ins, 292 del, 935 sub ] exp/chain_cleaned/tdnn1c_sp/decode_dev/wer_9
+%WER 7.63 [ 1357 / 17783, 240 ins, 303 del, 814 sub ] exp/chain_cleaned/tdnn1c_sp/decode_dev_rescore/wer_10
+%WER 8.44 [ 2321 / 27500, 351 ins, 553 del, 1417 sub ] exp/chain_cleaned/tdnn1c_sp/decode_test/wer_9
+%WER 7.84 [ 2155 / 27500, 311 ins, 577 del, 1267 sub ] exp/chain_cleaned/tdnn1c_sp/decode_test_rescore/wer_10
+# online-cmn,
+%WER 8.22 [ 1461 / 17783, 236 ins, 296 del, 929 sub ] exp/chain_cleaned_1d/tdnn1d_sp/decode_dev/wer_10
+%WER 7.60 [ 1352 / 17783, 257 ins, 252 del, 843 sub ] exp/chain_cleaned_1d/tdnn1d_sp/decode_dev_rescore/wer_9
+%WER 8.45 [ 2324 / 27500, 347 ins, 549 del, 1428 sub ] exp/chain_cleaned_1d/tdnn1d_sp/decode_test/wer_9
+%WER 7.73 [ 2127 / 27500, 285 ins, 623 del, 1219 sub ] exp/chain_cleaned_1d/tdnn1d_sp/decode_test_rescore/wer_11
+

@@ -30,7 +30,7 @@ namespace kaldi {
    OnlineFeatureInterface is an interface for online feature processing (it is
    also usable in the offline setting, but currently we're not using it for
    that).  This is for use in the online2/ directory, and it supersedes the
-   interface in ../online/online-feat-input.h.  We have a slighty different
+   interface in ../online/online-feat-input.h.  We have a slightly different
    model that puts more control in the hands of the calling thread, and won't
    involve waiting on semaphores in the decoding thread.
 

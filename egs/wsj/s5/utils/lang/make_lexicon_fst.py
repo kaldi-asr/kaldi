@@ -92,7 +92,7 @@ def read_lexiconp(filename):
                 sys.exit(1)
             prons = a[2:]
             if pron_prob <= 0.0:
-                print("{0}: error: invalid pron-prob in line '{1}' of lexicon file {1} ".format(
+                print("{0}: error: invalid pron-prob in line '{1}' of lexicon file {2} ".format(
                     sys.argv[0], line.strip(" \t\r\n"), filename), file=sys.stderr)
                 sys.exit(1)
             if len(prons) == 0:
@@ -209,7 +209,7 @@ def write_fst_no_silence(lexicon, nonterminals=None, left_context_phones=None):
 
     if nonterminals is not None:
         next_state = write_nonterminal_arcs(
-            start_state, loop_state, next_state,
+            loop_state, loop_state, next_state,
             nonterminals, left_context_phones)
 
     print("{state}\t{final_cost}".format(
@@ -347,7 +347,7 @@ def read_left_context_phones(filename):
             raise RuntimeError("The file {0} contains an invalid line '{1}'".format(filename, s)   )
 
     if len(set(ans)) != len(ans):
-        raise RuntimeError("Duplicate nonterminal symbols are present in file {0}".format(filename))
+        raise RuntimeError("Duplicate left-context phones are present in file {0}".format(filename))
     return ans
 
 

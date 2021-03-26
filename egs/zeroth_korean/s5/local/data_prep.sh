@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright  2018  Atlas Guide (Author : Lucas Jo)
 #            2018  Gridspace Inc. (Author: Wonkyum Lee)

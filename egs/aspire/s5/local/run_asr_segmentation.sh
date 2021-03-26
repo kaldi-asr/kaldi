@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright  2017  Nagendra Kumar Goel
 #            2017  Vimal Manohar
@@ -136,7 +136,7 @@ if [ $stage -le 4 ]; then
   background_snrs="20:10:15:5:0"
   # corrupt the data to generate multi-condition data
   # for data_dir in train dev test; do
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --prefix "rev" \
     --foreground-snrs $foreground_snrs \
@@ -160,7 +160,7 @@ fi
 if [ $stage -le 6 ]; then
   rvb_targets_dirs=()
   for i in `seq 1 $num_data_reps`; do
-    steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
+    steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}-" \
       $targets_dir ${targets_dir}_temp_$i || exit 1
     rvb_targets_dirs+=(${targets_dir}_temp_$i)
   done
@@ -213,7 +213,7 @@ if [ $stage -le 9 ]; then
   # Use left and right context options that were used when training
   # the chain nnet
   # Increase sil-scale to predict more silence
-  local/nnet3/prep_test_aspire_segmentation.sh --stage $test_stage \
+  local/nnet3/segment_and_decode.sh --stage $test_stage \
     --decode-num-jobs $test_nj --affix "${test_affix}" \
     --sad-opts "$sad_opts" \
     --sad-graph-opts "--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-duration=10.0" --sad-priors-opts "--sil-scale=0.1" \

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # chainali_1c is as chainali_1b except it uses l2-regularize
 # local/chain/compare_wer.sh exp/chain/cnn_chainali_1c
@@ -122,7 +122,7 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   cnn_opts="l2-regularize=0.075"
   tdnn_opts="l2-regularize=0.075"
   output_opts="l2-regularize=0.1"

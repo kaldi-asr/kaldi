@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+GIT=${GIT:-git}
+
 set -u
 set -e
 
@@ -49,12 +52,12 @@ if [ -d ./g2p ] || [ -d sequitur ] ; then
 fi
 
 if [ ! -d ./sequitur-g2p ] ; then
-  git clone https://github.com/sequitur-g2p/sequitur-g2p.git sequitur-g2p ||
+  $GIT clone https://github.com/sequitur-g2p/sequitur-g2p.git sequitur-g2p ||
   {
     echo  >&2 "$0: Warning: git clone operation ended unsuccessfully"
     echo  >&2 "  I will assume this is because you don't have https support"
     echo  >&2 "  compiled into your git "
-    git clone git@github.com:sequitur-g2p/sequitur-g2p.git sequitur-g2p
+    $GIT clone git@github.com:sequitur-g2p/sequitur-g2p.git sequitur-g2p
 
     if [ $? -ne 0 ]; then
       echo  >&2 "$0: Error git clone operation ended unsuccessfully"
@@ -66,10 +69,10 @@ else
   echo >&2 "$0: Updating the repository -- we will try to merge with local changes (if you have any)"
   (
     cd sequitur-g2p/
-    git pull
+    $GIT pull
     # this would work also, but would drop all local modifications
-    #git fetch
-    #git reset --hard origin/master
+    #$GIT fetch
+    #$GIT reset --hard origin/master
   ) || {
     echo >&2 "Failed to do git pull, delete the sequitur dir and run again";
     exit 1
@@ -102,7 +105,7 @@ echo >&2 "SEQUITUR_PACKAGE: ${site_packages_dir:-}"
 echo >&2 "SEQUITUR: $SEQUITUR"
 echo >&2 "PYTHONPATH: ${PYTHONPATH:-}"
 mkdir -p $SEQUITUR
-PYTHONPATH=${PYTHONPATH:-}:$SEQUITUR python setup.py install --prefix `pwd`
+PYTHONPATH=${PYTHONPATH:-}:$SEQUITUR PYTHONUSERBASE=$(pwd) python setup.py install --user --prefix=
 ) || {
   echo >&2 "Problem installing sequitur!"
   exit 1

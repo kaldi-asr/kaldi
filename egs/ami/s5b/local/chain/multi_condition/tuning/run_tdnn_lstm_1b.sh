@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is a chain-training script with TDNN+LSTM neural networks.
 # This script is similar to local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh,
@@ -235,7 +235,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   tdnn_opts="l2-regularize=0.006"
   lstm_opts="l2-regularize=0.0025 decay-time=20 dropout-proportion=0.0"
   output_opts="l2-regularize=0.001"

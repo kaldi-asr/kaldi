@@ -18,7 +18,7 @@ mkdir -p $dir
 
 local/prepare_lexicon.py --data-dir $data_dir $dir
 
-sed -i '/^\s*$/d' $dir/lexicon.txt
+perl -i -ne 'print if /\S/' $dir/lexicon.txt
 cut -d' ' -f2- $dir/lexicon.txt | sed 's/SIL//g' | tr ' ' '\n' | sort -u | sed '/^$/d' >$dir/nonsilence_phones.txt || exit 1;
 
 echo '<sil> SIL' >> $dir/lexicon.txt

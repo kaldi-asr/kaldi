@@ -53,12 +53,12 @@ class ExampleFeatureComputer {
   }
 
   /// Returns the feature dimension
-  int32 Dim();
+  int32 Dim() const;
 
   /// Returns true if this function may inspect the raw log-energy of the signal
   /// (before windowing and pre-emphasis); it's safe to always return true, but
   /// setting it to false enables an optimization.
-  bool NeedRawLogEnergy() { return true; }
+  bool NeedRawLogEnergy() const { return true; }
 
   /// constructor from options class; it should not store a reference or pointer
   /// to the options class but should copy it.
@@ -89,7 +89,7 @@ class ExampleFeatureComputer {
      @param [out] feature  Pointer to a vector of size this->Dim(), to which
          the computed feature will be written.
   */
-  void Compute(BaseFloat signal_log_energy,
+  void Compute(BaseFloat signal_raw_log_energy,
                BaseFloat vtln_warp,
                VectorBase<BaseFloat> *signal_frame,
                VectorBase<BaseFloat> *feature);

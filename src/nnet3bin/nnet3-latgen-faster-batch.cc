@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Generate lattices using nnet3 neural net model.  This version is optimized\n"
         "for GPU-based inference.\n"
-        "Usage: nnet3-latgen-faster-parallel [options] <nnet-in> <fst-in> <features-rspecifier>"
+        "Usage: nnet3-latgen-faster-batch [options] <nnet-in> <fst-in> <features-rspecifier>"
         " <lattice-wspecifier>\n";
     ParseOptions po(usage);
 
@@ -107,6 +107,10 @@ int main(int argc, char *argv[]) {
                 "is always 1; this is optimized for use with the GPU.");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
+
+#if HAVE_CUDA==1
+    CuDevice::RegisterDeviceOptions(&po);
+#endif
 
     po.Read(argc, argv);
 

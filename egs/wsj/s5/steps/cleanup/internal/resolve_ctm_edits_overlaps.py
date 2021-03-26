@@ -136,7 +136,7 @@ def wer(ctm_edit_lines):
         return float('inf')
     if num_words == 0 and num_incorrect_words == 0:
         return 0
-    return (float(num_incorrect_words) / num_words, -num_words)
+    return float(num_incorrect_words) / num_words
 
 
 def choose_best_ctm_lines(first_lines, second_lines,
@@ -144,9 +144,9 @@ def choose_best_ctm_lines(first_lines, second_lines,
     """Returns ctm lines that have lower WER. If the WER is the lines with
     the higher number of words is returned.
     """
-    i, best_lines = min((0, first_lines), (1, second_lines),
+    i, best_lines = min((0, first_lines),
+                        (1, second_lines),
                         key=lambda x: wer(x[1]))
-
     return i
 
 
@@ -308,7 +308,7 @@ def run(args):
         try:
             if len(ctm_edits_for_reco) == 0:
                 logger.warn('CTMs for recording %s is empty.',
-                             reco)
+                            reco)
                 continue   # Go to the next recording
 
             # Process CTMs in the recordings

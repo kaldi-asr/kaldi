@@ -59,7 +59,7 @@ typedef std::vector<std::pair<EventKeyType, EventValueType> > EventType;
 // It is required to be sorted and have unique keys-- i.e. functions assume this when called
 // with this type.
 
-inline std::pair<EventKeyType, EventValueType> MakeEventPair (EventKeyType k, EventValueType v) {  
+inline std::pair<EventKeyType, EventValueType> MakeEventPair (EventKeyType k, EventValueType v) {
   return std::pair<EventKeyType, EventValueType>(k, v);
 }
 
@@ -113,7 +113,7 @@ class EventMap {
   // Copy() does not take ownership of the pointers in new_leaves (it uses the Copy() function of those
   // EventMaps).
   virtual EventMap *Copy(const std::vector<EventMap*> &new_leaves) const = 0;
-  
+
   EventMap *Copy() const { std::vector<EventMap*> new_leaves; return Copy(new_leaves); }
 
   // The function MapValues() is intended to be used to map phone-sets between
@@ -138,7 +138,7 @@ class EventMap {
   // want, you'd put a ConstantEventMap with -1; you'd then call
   // Prune() on the result.  This function is not currently used.
   virtual EventMap *Prune() const = 0;
-  
+
   virtual EventAnswerType MaxResult() const {  // child classes may override this for efficiency; here is basic version.
     // returns -1 if nothing found.
     std::vector<EventAnswerType> tmp; EventType empty_event;
@@ -193,9 +193,9 @@ class ConstantEventMap: public EventMap {
   virtual EventMap *Prune() const {
     return (answer_ == -1 ? NULL : new ConstantEventMap(answer_));
   }
-  
+
   explicit ConstantEventMap(EventAnswerType answer): answer_(answer) { }
-  
+
   virtual void Write(std::ostream &os, bool binary);
   static ConstantEventMap *Read(std::istream &is, bool binary);
  private:
@@ -234,11 +234,11 @@ class TableEventMap: public EventMap {
   }
 
   virtual EventMap *Prune() const;
-  
+
   virtual EventMap *MapValues(
       const unordered_set<EventKeyType> &keys_to_map,
       const unordered_map<EventValueType,EventValueType> &value_map) const;
-  
+
   /// Takes ownership of pointers.
   explicit TableEventMap(EventKeyType key, const std::vector<EventMap*> &table): key_(key), table_(table) {}
   /// Takes ownership of pointers.
@@ -308,11 +308,11 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
   static SplitEventMap *Read(std::istream &is, bool binary);
 
   virtual EventMap *Prune() const;
-  
+
   virtual EventMap *MapValues(
       const unordered_set<EventKeyType> &keys_to_map,
       const unordered_map<EventValueType,EventValueType> &value_map) const;
-  
+
   virtual ~SplitEventMap() { Destroy(); }
 
   /// This constructor takes ownership of the "yes" and "no" arguments.

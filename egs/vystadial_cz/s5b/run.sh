@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Change this location to somewhere where you want to put the data.
 data=$HOME/vystadial_cz

@@ -46,6 +46,7 @@ overlap_duration=2.5
 max_remaining_duration=5  # If the last remaining piece when splitting uniformly
                           # is smaller than this duration, then the last piece 
                           # is  merged with the previous.
+remove_mismatch_frames=true
 
 # List of weights on labels obtained from alignment, 
 # labels obtained from decoding and default labels in out-of-segment regions
@@ -108,7 +109,7 @@ for f in $in_whole_data_dir/feats.scp $in_data_dir/segments \
   fi
 done
 
-utils/validate_data_dir.sh $in_data_dir || exit 1
+utils/validate_data_dir.sh --no-feats $in_data_dir || exit 1
 utils/validate_data_dir.sh --no-text $in_whole_data_dir || exit 1
 
 if ! cat $garbage_phones_list $silence_phones_list | \
@@ -159,7 +160,7 @@ whole_data_dir=$dir/$whole_data_id
 # Obtain supervision-constrained lattices
 ###############################################################################
 sup_lats_dir=$dir/`basename ${ali_model_dir}`_sup_lats_${data_id}
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" \
     ${data_dir} ${lang} ${ali_model_dir} $sup_lats_dir || exit 1
 fi
@@ -170,7 +171,7 @@ fi
 uniform_seg_data_dir=$dir/${whole_data_id}_uniformseg_${max_segment_duration}sec
 uniform_seg_data_id=`basename $uniform_seg_data_dir`
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   utils/data/get_segments_for_data.sh ${whole_data_dir} > \
     ${whole_data_dir}/segments
 
@@ -193,7 +194,7 @@ model_id=$(basename $model_dir)
 ###############################################################################
 if [ -z "$graph_dir" ]; then
   graph_dir=$dir/$model_id/graph
-  if [ $stage -le 4 ]; then
+  if [ $stage -le 5 ]; then
     if [ ! -f $graph_dir/HCLG.fst ]; then
       rm -r $dir/lang_test 2>/dev/null || true
       cp -r $lang_test/ $dir/lang_test
@@ -207,7 +208,7 @@ fi
 ###############################################################################
 model_id=$(basename $model_dir)
 decode_dir=$dir/${model_id}/decode_${uniform_seg_data_id}
-if [ $stage -le 5 ]; then 
+if [ $stage -le 6 ]; then 
   mkdir -p $decode_dir
   
   cp $model_dir/{final.mdl,final.mat,*_opts,tree} $dir/${model_id}
@@ -228,7 +229,7 @@ ali_model_id=`basename $ali_model_dir`
 # The target values are obtained by summing up posterior probabilites of 
 # arcs from lattice-arc-post over silence, speech and garbage phones.
 ###############################################################################
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   steps/segmentation/lats_to_targets.sh --cmd "$train_cmd" \
     --silence-phones "$silence_phones_list" \
     --garbage-phones "$garbage_phones_list" \
@@ -237,7 +238,7 @@ if [ $stage -le 6 ]; then
     $dir/${ali_model_id}_${data_id}_sup_targets
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   steps/segmentation/lats_to_targets.sh --cmd "$train_cmd" \
     --silence-phones "$silence_phones_list" \
     --garbage-phones "$garbage_phones_list" \
@@ -253,7 +254,7 @@ fi
 # for the manual segments, these are converted to whole recording-levels 
 # by inserting [ 0 0 0 ] for the out-of-manual segment regions.
 ###############################################################################
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   steps/segmentation/convert_targets_dir_to_whole_recording.sh --cmd "$train_cmd" --nj $reco_nj \
     $data_dir $whole_data_dir \
     $dir/${ali_model_id}_${data_id}_sup_targets \
@@ -268,7 +269,7 @@ fi
 ###############################################################################
 # Convert the targets from decoding to whole recording. 
 ###############################################################################
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   steps/segmentation/convert_targets_dir_to_whole_recording.sh --cmd "$train_cmd" --nj $reco_nj \
     $dir/${uniform_seg_data_id} $whole_data_dir \
     $dir/${model_id}_${uniform_seg_data_id}_targets \
@@ -285,7 +286,7 @@ fi
 # We assume in this setup that this is silence i.e. [ 1 0 0 ].
 ###############################################################################
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   echo " [ 1 0 0 ]" > $dir/default_targets.vec
   steps/segmentation/get_targets_for_out_of_segments.sh --cmd "$train_cmd" \
     --nj $reco_nj --frame-subsampling-factor 3 \
@@ -301,9 +302,9 @@ fi
 # disagree (more than 0.5 probability on different classes), then those frames
 # are removed by setting targets to [ 0 0 0 ]. 
 ###############################################################################
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   steps/segmentation/merge_targets_dirs.sh --cmd "$train_cmd" --nj $reco_nj \
-    --weights $merge_weights --remove-mismatch-frames true \
+    --weights $merge_weights --remove-mismatch-frames $remove_mismatch_frames \
     $whole_data_dir \
     $dir/${ali_model_id}_${whole_data_id}_sup_targets_sub3 \
     $dir/${model_id}_${whole_data_id}_targets_sub3 \

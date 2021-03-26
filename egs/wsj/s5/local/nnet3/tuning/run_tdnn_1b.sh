@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1b is like 1a, but using a different splicing setup; the difference
 # is like the difference from

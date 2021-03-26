@@ -33,26 +33,26 @@ void OfflineFeatureTpl<F>::ComputeFeatures(
     Matrix<BaseFloat> *output) {
   KALDI_ASSERT(output != NULL);
   BaseFloat new_sample_freq = computer_.GetFrameOptions().samp_freq;
-  if (sample_freq == new_sample_freq)
+  if (sample_freq == new_sample_freq) {
     Compute(wave, vtln_warp, output);
-  else {
-    if (new_sample_freq < sample_freq) {
-      if (! computer_.GetFrameOptions().allow_downsample)
+  } else {
+    if (new_sample_freq < sample_freq &&
+        ! computer_.GetFrameOptions().allow_downsample)
         KALDI_ERR << "Waveform and config sample Frequency mismatch: "
                   << sample_freq << " .vs " << new_sample_freq
-                  << " ( use --allow_downsample=true option to allow "
+                  << " (use --allow-downsample=true to allow "
                   << " downsampling the waveform).";
-
-      // Downsample the waveform.
-      Vector<BaseFloat> downsampled_wave(wave);
-      DownsampleWaveForm(sample_freq, wave,
-                         new_sample_freq, &downsampled_wave);
-      Compute(downsampled_wave, vtln_warp, output);
-    } else
-      KALDI_ERR << "New sample Frequency " << new_sample_freq
-                << " is larger than waveform original sampling frequency "
-                << sample_freq;
-
+    else if (new_sample_freq > sample_freq &&
+             ! computer_.GetFrameOptions().allow_upsample)
+      KALDI_ERR << "Waveform and config sample Frequency mismatch: "
+                  << sample_freq << " .vs " << new_sample_freq
+                << " (use --allow-upsample=true option to allow "
+                << " upsampling the waveform).";
+    // Resample the waveform.
+    Vector<BaseFloat> resampled_wave(wave);
+    ResampleWaveform(sample_freq, wave,
+                     new_sample_freq, &resampled_wave);
+    Compute(resampled_wave, vtln_warp, output);
   }
 }
 

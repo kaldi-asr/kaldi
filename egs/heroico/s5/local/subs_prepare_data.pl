@@ -19,7 +19,7 @@ my $up_bound = 16;
 
 # input and output files
 
-my $corpus = "OpenSubtitles2018.en-es.es";
+my $corpus = "OpenSubtitles.en-es.es";
 my $symbol_table = "data/lang/words.txt";
 my $filtered = "data/local/tmp/subs/lm/es.txt";
 my $oovs = "data/local/tmp/subs/lm/oovs.txt";

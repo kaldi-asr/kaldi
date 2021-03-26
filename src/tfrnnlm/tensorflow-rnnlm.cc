@@ -27,6 +27,8 @@
 
 // Tensorflow includes were moved after tfrnnlm/tensorflow-rnnlm.h include to
 // avoid macro redefinitions. See also the note in tfrnnlm/tensorflow-rnnlm.h.
+#include "tensorflow/cc/saved_model/loader.h"
+#include "tensorflow/cc/saved_model/tag_constants.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
@@ -64,42 +66,75 @@ void SetUnkPenalties(const string &filename,
 // Read tensorflow checkpoint files
 void KaldiTfRnnlmWrapper::ReadTfModel(const std::string &tf_model_path,
                                       int32 num_threads) {
-  string graph_path = tf_model_path + ".meta";
-
   tensorflow::SessionOptions session_options;
+  tensorflow::RunOptions run_options;
 
   session_options.config.set_intra_op_parallelism_threads(num_threads);
   session_options.config.set_inter_op_parallelism_threads(num_threads);
 
-  Status status = tensorflow::NewSession(session_options,
-                                         &session_);
+  Status status = tensorflow::LoadSavedModel(
+      session_options, run_options, tf_model_path,
+      {tensorflow::kSavedModelTagServe},
+      &bundle_);
   if (!status.ok()) {
     KALDI_ERR << status.ToString();
   }
 
-  tensorflow::MetaGraphDef graph_def;
-  status = tensorflow::ReadBinaryProto(tensorflow::Env::Default(), graph_path,
-                                       &graph_def);
-  if (!status.ok()) {
-    KALDI_ERR << status.ToString();
+  // SavedModel maintains a list of "exported function signature" in its metadata.
+  // We are going to read it and get actual tensor name.
+  auto&& signature_map = bundle_.meta_graph_def.signature_def();
+  auto signature_it = signature_map.find("single_step");
+  if (signature_it == signature_map.end()) {
+    KALDI_ERR << "Cannot find signature `single_step' in SavedModel.";
   }
 
-  // Add the graph to the session
-  status = session_->Create(graph_def.graph_def());
-  if (!status.ok()) {
-    KALDI_ERR << status.ToString();
+  auto&& signature = signature_it->second;
+
+  const std::vector<std::pair<const char*, std::string&>> input_params = {
+    {"context", context_tensor_name_},
+    {"word_id", word_id_tensor_name_},
+  };
+
+  for (auto&& pair : input_params) {
+    auto&& map = signature.inputs();
+    auto param_it = map.find(pair.first);
+    if (param_it == map.end()) {
+      KALDI_ERR << "Cannot find input param `" << pair.first << "' in signature, abort.";
+    }
+    pair.second = param_it->second.name();
+    // printf("%s: %s\n", pair.first, pair.second.c_str());
   }
 
-  Tensor checkpointPathTensor(tensorflow::DT_STRING, tensorflow::TensorShape());
-  checkpointPathTensor.scalar<std::string>()() = tf_model_path;
+  const std::vector<std::pair<const char*, std::string&>> output_params = {
+    {"log_prob", log_prob_tensor_name_},
+    {"rnn_out", rnn_out_tensor_name_},
+    {"rnn_states", rnn_states_tensor_name_},
+  };
 
-  status = session_->Run(
-      {{graph_def.saver_def().filename_tensor_name(), checkpointPathTensor} },
-      {},
-      {graph_def.saver_def().restore_op_name()},
-      nullptr);
-  if (!status.ok()) {
-    KALDI_ERR << status.ToString();
+  for (auto&& pair : output_params) {
+    auto&& map = signature.outputs();
+    auto param_it = map.find(pair.first);
+    if (param_it == map.end()) {
+      KALDI_ERR << "Cannot find output param `" << pair.first << "' in signature, abort.";
+    }
+    pair.second = param_it->second.name();
+    // printf("%s: %s\n", pair.first, pair.second.c_str());
+  }
+
+  // We have another function which only emit initial RNN state
+  signature_it = signature_map.find("get_initial_state");
+  if (signature_it == signature_map.end()) {
+    KALDI_ERR << "Cannot find signature `get_initial_state' in SavedModel.";
+  }
+
+  {
+    auto&& signature = signature_it->second;
+    auto&& map = signature.outputs();
+    auto param_it = map.find("initial_state");
+    if (param_it == map.end()) {
+      KALDI_ERR << "Cannot find output param `initial_state' in signature, abort.";
+    }
+    initial_state_tensor_name_ = param_it->second.name();
   }
 }
 
@@ -177,13 +212,16 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
   delete fst_word_symbols;
 }
 
+KaldiTfRnnlmWrapper::~KaldiTfRnnlmWrapper() {
+}
+
 void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
   Status status;
   // get the initial context; this is basically the all-0 tensor
   {
     std::vector<Tensor> state;
-    status = session_->Run(std::vector<std::pair<string, Tensor> >(),
-                           {"Train/Model/test_initial_state"}, {}, &state);
+    status = bundle_.session->Run(std::vector<std::pair<string, Tensor> >(),
+                           {initial_state_tensor_name_}, {}, &state);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
     }
@@ -197,11 +235,11 @@ void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
     bosword.scalar<int32>()() = eos_;  // eos_ is more like a sentence boundary
 
     std::vector<std::pair<string, Tensor> > inputs = {
-      {"Train/Model/test_word_in", bosword},
-      {"Train/Model/test_state_in", initial_context_},
+      {word_id_tensor_name_, bosword},
+      {context_tensor_name_, initial_context_},
     };
 
-    status = session_->Run(inputs, {"Train/Model/test_cell_out"}, {}, &state);
+    status = bundle_.session->Run(inputs, {rnn_out_tensor_name_}, {}, &state);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
     }
@@ -215,27 +253,23 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
                                           const Tensor &cell_in,
                                           Tensor *context_out,
                                           Tensor *new_cell) {
-  std::vector<std::pair<string, Tensor> > inputs;
-
   Tensor thisword(tensorflow::DT_INT32, {1, 1});
-
   thisword.scalar<int32>()() = word;
+
   std::vector<Tensor> outputs;
 
-  if (context_out != NULL) {
-    inputs = {
-      {"Train/Model/test_word_in", thisword},
-      {"Train/Model/test_word_out", thisword},
-      {"Train/Model/test_state_in", context_in},
-      {"Train/Model/test_cell_in", cell_in},
-    };
+  std::vector<std::pair<string, Tensor> > inputs = {
+    {word_id_tensor_name_, thisword},
+    {context_tensor_name_, context_in},
+  };
 
+  if (context_out != NULL) {
     // The session will initialize the outputs
     // Run the session, evaluating our "c" operation from the graph
-    Status status = session_->Run(inputs,
-        {"Train/Model/test_out",
-         "Train/Model/test_state_out",
-         "Train/Model/test_cell_out"}, {}, &outputs);
+    Status status = bundle_.session->Run(inputs,
+        {log_prob_tensor_name_,
+         rnn_out_tensor_name_,
+         rnn_states_tensor_name_}, {}, &outputs);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
     }
@@ -243,14 +277,9 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
     *context_out = outputs[1];
     *new_cell = outputs[2];
   } else {
-    inputs = {
-      {"Train/Model/test_word_out", thisword},
-      {"Train/Model/test_cell_in", cell_in},
-    };
-
     // Run the session, evaluating our "c" operation from the graph
-    Status status = session_->Run(inputs,
-        {"Train/Model/test_out"}, {}, &outputs);
+    Status status = bundle_.session->Run(inputs,
+        {log_prob_tensor_name_}, {}, &outputs);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
     }

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5o is as _5n but adding an extra splicing layer and increasing the
 # splice-width slightly on the 1st layer, to get closer to the context in 5n;

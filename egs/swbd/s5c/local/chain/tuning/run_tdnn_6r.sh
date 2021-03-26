@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6r is as _6q, but adding --self-repair-scale-nonlinearity 0.00001
 # --xent-separate-forward-affine=true.  the appropriate normal-frame-rate

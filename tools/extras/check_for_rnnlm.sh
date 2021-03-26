@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -25,4 +25,3 @@ else
     fi
     exit 1
 fi
-

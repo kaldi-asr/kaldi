@@ -26,6 +26,7 @@
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
 #include <cusparse.h>
+#include <curand.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -34,6 +35,17 @@
 #include "base/kaldi-common.h"
 #include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
+#include "cudamatrix/cu-common.h"
+
+#if CUDA_VERSION >= 9010
+#include <cusolverDn.h>
+#else
+// cusolver not supported.  
+// Setting a few types to minimize compiler guards.
+// If a user tries to use cusovler it will throw an error.
+typedef void* cusolverDnHandle_t;
+typedef int cusolverStatus_t;
+#endif
 
 namespace kaldi {
 
@@ -80,7 +92,30 @@ class CuDevice {
 
   inline cublasHandle_t GetCublasHandle() { return cublas_handle_; }
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
+  inline curandGenerator_t GetCurandHandle() { return curand_handle_; }
+  inline cusolverDnHandle_t GetCusolverDnHandle() { 
+#if CUDA_VERSION < 9010
+    KALDI_ERR << "CUDA VERSION '" << CUDA_VERSION << "' not new enough to support "
+      << "cusolver. Upgrade to at least 9.1";
+#endif
+    return cusolverdn_handle_; 
+  }
 
+#if CUDA_VERSION >= 11000
+  inline cublasComputeType_t GetCublasComputeType() { return cublas_compute_type_; }
+#else
+  inline cudaDataType_t GetCublasComputeType() { return cublas_compute_type_; }
+#endif
+  inline cublasGemmAlgo_t GetCublasGemmAlgo() { return cublas_gemm_algo_; }
+
+  inline void SeedGpu() {
+    if (CuDevice::Instantiate().Enabled()) {
+      // To get same random sequence, call srand() before the method is invoked,
+      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(
+            curand_handle_, RandInt(128, RAND_MAX)));
+      CURAND_SAFE_CALL(curandSetGeneratorOffset(curand_handle_, 0));
+    }
+  }
   // We provide functions Malloc(), MallocPitch() and Free() which replace
   // cudaMalloc(), cudaMallocPitch() and cudaFree().  Their function is to cache
   // the results of previous allocations to avoid the very large overhead that
@@ -125,6 +160,11 @@ class CuDevice {
   ///  "optional" -- Do as above, but if it fails, back off to CPU.
   ///  "no"       -- Run on CPU.
   void SelectGpuId(std::string use_gpu);
+
+  // Select a specific GPU for computation. Will reuse the existing Cuda Context
+  // for that device. Initialize the necessary handles for GPU use (e.g. cublas
+  // handle)
+  bool SelectAndInitializeGpuIdWithExistingCudaContext(int dev_id);
 
   /// Check if the CUDA GPU is selected for use
   bool Enabled() const {
@@ -184,8 +224,39 @@ class CuDevice {
   /// (i.e. from outside the class), call this only if Enabled() returns true.
   bool IsComputeExclusive();
 
+  // Register command line options for CUDA device.  
+  // This must be done before calling CuDevice::Initialize()
+  // Example:
+  //  CuDevice::RegisterDeviceOptions(&po);
+  //  po.Read(argc, argv);
+  //  CuDevice::Initialize();
+  static void RegisterDeviceOptions(OptionsItf *po) {
+    CuDevice::device_options_.Register(po);  
+  }
   ~CuDevice();
  private:
+
+  struct CuDeviceOptions {
+    bool use_tensor_cores; // Enable tensor cores
+    bool use_tf32_compute; // Switch to TF32 compute mode
+    CuDeviceOptions () : use_tensor_cores(false), use_tf32_compute(false) {};
+    void Register(OptionsItf *po) {
+      po->Register("cuda-use-tensor-cores", &use_tensor_cores, 
+          "Enable FP16 tensor math. "
+          "This is higher performance but less accuracy. "
+          "This is only recommended for inference.");
+#if CUDA_VERSION >= 11000
+      po->Register("cuda-use-tf32-compute", &use_tf32_compute, 
+          "Enable TF32 tensor math. "
+          "This is higher performance and keeps the same "
+          "dynamic range as FP32 with slightly lower precision."
+          "This is recommended for training over FP16.");
+#endif
+    }
+  };
+
+  static CuDeviceOptions device_options_;
+
   // Default constructor used to initialize this_thread_device_
   CuDevice();
   CuDevice(CuDevice&); // Disallow.
@@ -203,6 +274,10 @@ class CuDevice {
   /// SelectGpuId(), if the GPUs are in non-exclusive mode).  Returns true on
   /// success.
   bool SelectGpuIdAuto();
+
+  // Selects GPU given its ID. Called from SelectGpuIdAuto or
+  // SelectGpuIdWithExistingCudaContext
+  bool SelectGpuId(int dev_id);
 
   /// This function, called from SelectGpuId(), is to be called when a
   /// GPU context corresponding to the GPU we want to use exists; it
@@ -268,9 +343,16 @@ class CuDevice {
   int32 device_id_copy_;
 
   cublasHandle_t cublas_handle_;
-
   cusparseHandle_t cusparse_handle_;
+  curandGenerator_t curand_handle_;
+  cusolverDnHandle_t cusolverdn_handle_;
 
+#if CUDA_VERSION >= 11000
+  cublasComputeType_t cublas_compute_type_;
+#else
+  cudaDataType_t cublas_compute_type_;
+#endif
+  cublasGemmAlgo_t cublas_gemm_algo_;
 }; // class CuDevice
 
 
@@ -285,9 +367,22 @@ class CuTimer: public Timer {
 
 // This function is declared as a more convenient way to get the CUDA device handle for use
 // in the CUBLAS v2 API, since we so frequently need to access it.
-inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetCublasHandle(); }
+inline cublasHandle_t GetCublasHandle() { 
+  return CuDevice::Instantiate().GetCublasHandle(); 
+}
+
+inline cusolverDnHandle_t GetCusolverDnHandle() { 
+  return CuDevice::Instantiate().GetCusolverDnHandle(); 
+}
+
 // A more convenient way to get the handle to use cuSPARSE APIs.
-inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
+inline cusparseHandle_t GetCusparseHandle() { 
+  return CuDevice::Instantiate().GetCusparseHandle(); 
+}
+
+inline curandGenerator_t GetCurandHandle() { 
+  return CuDevice::Instantiate().GetCurandHandle(); 
+}
 
 
 }  // namespace kaldi

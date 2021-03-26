@@ -46,6 +46,10 @@ if [ $stage -le 0 ]; then
   if ! mkdir -p $dir; then
     echo "$0: could not create RNNLM dir $dir"
   fi
+  if [[ "$text_dir" == "$dir/text" ]]; then
+    echo "$text_dir equals $dir/text, dev.txt will be corrupted"
+    exit 1
+  fi
 fi
 
 if [ $stage -le 1 ]; then
@@ -68,7 +72,7 @@ fi
 if [ $stage -le 2 ]; then
   if [ ! -f $text_dir/dev.counts ] || [ $text_dir/dev.counts -ot $text_dir/dev.txt ]; then
     echo "$0: preparing unigram counts in $text_dir"
-    rnnlm/get_unigram_counts.sh $text_dir
+    rnnlm/ensure_counts_present.sh $text_dir
   fi
 fi
 
@@ -136,7 +140,7 @@ if [ $stage -le 6 ]; then
     feat_dim=$(tail -n 1 $dir/config/features.txt | awk '{print $1 + 1;}')
 
     first_element_opt=
-    if grep -q '0\tconstant' $dir/config/features.txt; then
+    if grep -q '0'$'\t''constant' $dir/config/features.txt; then
       first_element_opt="--first-element 1.0"
     fi
     # we'll probably make the stddev configurable soon, or maybe just remove it.

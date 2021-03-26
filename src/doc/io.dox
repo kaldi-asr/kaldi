@@ -383,7 +383,7 @@ namespace kaldi {
   std::string rspecifier2 = "ark:-"; // archive read from stdin.
   // write to a gzipped text archive.
   std::string wspecifier1 = "ark,t:| gzip -c > /some/dir/foo.ark.gz";
-  std::string wspecifier2 = "ark,scp:data/my.ark,data/my.ark";
+  std::string wspecifier2 = "ark,scp:data/my.ark,data/my.scp";
  \endcode
 
  Usually, an rspecifier or wspecifier consists of a comma-separated, unordered
@@ -401,7 +401,7 @@ namespace kaldi {
  \endverbatim
  This will write an archive, and a
  script file with lines like "utt_id /somedir/foo.ark:1234" that specify offsets into the
- archive for more efficient random access.  You can then do what you like which
+ archive for more efficient random access.  You can then do whatever you like with
  the script file, including breaking it up into segments, and it will behave like
  any other script file.  Note that although the order of options before the colon
  doesn't generally matter, in this particular case the "ark" must come before

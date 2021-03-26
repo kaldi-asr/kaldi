@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2016-17  Vimal Manohar
 #              2017  Nagendra Kumar Goel
@@ -17,7 +17,7 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 affix=  # Affix for the segmentation
 nj=32
-cmd=queue.pl
+cmd=run.pl
 stage=-1
 
 # Feature options (Must match training)

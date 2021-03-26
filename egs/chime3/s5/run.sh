@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Kaldi ASR baseline for the 3rd CHiME Challenge
 #

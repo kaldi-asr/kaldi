@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4x is as _4u, but with --leaky-hmm-coefficient 0.2.   Note: the
 # ultimate baseline is 4f.  It seems a little bit worse than 4u on average: (+0.2, +0.2, 0.0, -0.1).

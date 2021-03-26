@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/ exp/chain/cnn_e2eali_1a
 # System                      e2e_cnn_1a cnn_e2eali_1a
@@ -139,7 +139,7 @@ if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   cnn_opts="l2-regularize=0.03 dropout-proportion=0.0"
   tdnn_opts="l2-regularize=0.03"
   output_opts="l2-regularize=0.04"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013-2014 MERL (author: Felix Weninger and Shinji Watanabe)
 #                     Johns Hopkins University (author: Szu-Jui Chen)

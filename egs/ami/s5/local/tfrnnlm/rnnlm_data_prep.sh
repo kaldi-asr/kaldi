@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script prepares the data directory used for TensorFlow based RNNLM traiing
 # it prepares the following files in the output-directory

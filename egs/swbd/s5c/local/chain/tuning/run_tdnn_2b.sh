@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2b is as _y but --frames-overlap-per-eg 75 (was 30 before).  This is not very
 # efficient in terms of disk space but I want to see the effect on results.

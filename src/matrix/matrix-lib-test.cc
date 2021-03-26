@@ -2695,14 +2695,14 @@ template<typename Real> static void UnitTestRange() {  // Testing SubMatrix clas
 
     SubVector<Real> sub(V, lenStart, lenEnd-lenStart);
 
-    KALDI_ASSERT(sub.Sum() == V.Range(lenStart, lenEnd-lenStart).Sum());
+    KALDI_ASSERT(ApproxEqual(sub.Sum(), V.Range(lenStart, lenEnd-lenStart).Sum()));
 
     for (MatrixIndexT i = lenStart;i < lenEnd;i++)
       KALDI_ASSERT(V(i) == sub(i-lenStart));
 
     sub.SetRandn();
 
-    KALDI_ASSERT(sub.Sum() == V.Range(lenStart, lenEnd-lenStart).Sum());
+    KALDI_ASSERT(ApproxEqual(sub.Sum(), V.Range(lenStart, lenEnd-lenStart).Sum()));
 
     for (MatrixIndexT i = lenStart;i < lenEnd;i++)
       KALDI_ASSERT(V(i) == sub(i-lenStart));

@@ -81,6 +81,17 @@ class DecodableNnetLoopedOnlineBase: public DecodableInterface {
     return info_.opts.frame_subsampling_factor;
   }
 
+  /// Sets the frame offset value. Frame offset is initialized to 0 when the
+  /// decodable object is constructed and stays as 0 unless this method is
+  /// called. This method is useful when we want to reset the decoder state,
+  /// i.e. call decoder.InitDecoding(), but we want to keep using the same
+  /// decodable object, e.g. in case of an endpoint. The frame offset affects
+  /// the behavior of IsLastFrame(), NumFramesReady() and LogLikelihood()
+  /// methods.
+  void SetFrameOffset(int32 frame_offset);
+
+  /// Returns the frame offset value.
+  int32 GetFrameOffset() const { return frame_offset_; }
 
  protected:
 
@@ -111,6 +122,11 @@ class DecodableNnetLoopedOnlineBase: public DecodableInterface {
 
   const DecodableNnetSimpleLoopedInfo &info_;
 
+  // IsLastFrame(), NumFramesReady() and LogLikelihood() methods take into
+  // account this offset value. We initialize frame_offset_ as 0 and it stays as
+  // 0 unless SetFrameOffset() method is called.
+  int32 frame_offset_;
+
  private:
 
   // This function does the computation for the next chunk.  It will change
@@ -132,7 +148,7 @@ class DecodableNnetLoopedOnlineBase: public DecodableInterface {
 // It fully implements DecodableInterface.
 // Note: whether or not division by the prior takes place depends on
 // whether you supplied class AmNnetSimple (or just Nnet), to the constructor
-// of the DecodableNnetSimpleLoopedInfo that you initailized this
+// of the DecodableNnetSimpleLoopedInfo that you initialized this
 // with.
 class DecodableNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
  public:
@@ -162,7 +178,7 @@ class DecodableNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
 // pdf-ids.
 // Note: whether or not division by the prior takes place depends on
 // whether you supplied class AmNnetSimple (or just Nnet), to the constructor
-// of the DecodableNnetSimpleLoopedInfo that you initailized this
+// of the DecodableNnetSimpleLoopedInfo that you initialized this
 // with.
 class DecodableAmNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
  public:

@@ -880,7 +880,7 @@ void ComputationChecker::CheckComputationIndexes() const {
           KALDI_ERR << "Backprop input needed but not supplied.";
         if ((properties & kBackpropNeedsOutput) && c.arg4 == 0)
           KALDI_ERR << "Backprop output needed but not supplied.";
-        if (c.arg6 == 0 && !(properties && kUpdatableComponent)) {
+        if (c.arg6 == 0 && !(properties & kUpdatableComponent)) {
           // note: we could perhaps make this just a warning,
           // or optimize it away somehow.
           KALDI_ERR << "Backprop is done but has no effect.";

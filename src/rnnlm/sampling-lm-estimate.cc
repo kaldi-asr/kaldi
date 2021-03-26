@@ -539,7 +539,7 @@ BaseFloat SamplingLmEstimator::GetProbForWord(
   // compute the probability from lowest to highest order.
   KALDI_ASSERT(word > 0 && word < static_cast<int32>(unigram_probs_.size()));
   BaseFloat ans = unigram_probs_[word];
-  for (size_t i = 0; i < states.size(); i++) {
+  for (int32 i = states.size() - 1; i >= 0; --i) {
     const HistoryState *state = states[i];
     ans *= state->backoff_count / state->total_count;
     Count c;

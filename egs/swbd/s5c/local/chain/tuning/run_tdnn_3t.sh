@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3t is as _3s but using slightly wider context.  Dumping our own egs.
 #  The final train prob is better -0.0851->-0.0815, but valid prob is worse -0.1231->-0.1243.

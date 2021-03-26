@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2d is as _2c but with different LM options:
 # --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000"

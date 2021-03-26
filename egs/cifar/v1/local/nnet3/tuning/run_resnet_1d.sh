@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1d is as 1c but adding rotation in image augmentation.
 

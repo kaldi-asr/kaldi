@@ -68,15 +68,15 @@ namespace fst {
 
 /// Utility function for writing ilabel-info vectors to disk.
 void WriteILabelInfo(std::ostream &os, bool binary,
-                     const vector<vector<int32> > &ilabel_info);
+                     const std::vector<std::vector<int32> > &ilabel_info);
 
 /// Utility function for reading ilabel-info vectors from disk.
 void ReadILabelInfo(std::istream &is, bool binary,
-                    vector<vector<int32> > *ilabel_info);
+                    std::vector<std::vector<int32> > *ilabel_info);
 
 
 /// The following function is mainly of use for printing and debugging.
-SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<int32> > &ilabel_info,
+SymbolTable *CreateILabelInfoSymbolTable(const std::vector<std::vector<int32> > &ilabel_info,
                                          const SymbolTable &phones_symtab,
                                          std::string separator,
                                          std::string disambig_prefix);  // e.g. separator = "/", disambig_prefix = "#"
@@ -106,11 +106,11 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<int32> > &ilabel_in
                   to 'ifst', which allows us to reconstruct the context
                   fst C.fst.
  */
-void ComposeContext(const vector<int32> &disambig_syms,
+void ComposeContext(const std::vector<int32> &disambig_syms,
                     int32 context_width, int32 central_position,
                     VectorFst<StdArc> *ifst,
                     VectorFst<StdArc> *ofst,
-                    vector<vector<int32> > *ilabels_out,
+                    std::vector<std::vector<int32> > *ilabels_out,
                     bool project_ifst = false);
 
 
@@ -172,8 +172,8 @@ public:
      See \ref graph_context for more details.
   */
   InverseContextFst(Label subsequential_symbol,
-                    const vector<int32>& phones,
-                    const vector<int32>& disambig_syms,
+                    const std::vector<int32>& phones,
+                    const std::vector<int32>& disambig_syms,
                     int32 context_width,
                     int32 central_position);
 
@@ -191,24 +191,24 @@ public:
   // the input symbols of C (i.e. all the output symbols of this
   // InverseContextFst).  See
   // "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
-  const vector<vector<int32> > &IlabelInfo() const {
+  const std::vector<std::vector<int32> > &IlabelInfo() const {
     return ilabel_info_;
   }
 
   // A way to destructively obtain the ilabel-info.  Only do this if you
   // are just about to destroy this object.
-  void SwapIlabelInfo(vector<vector<int32> > *vec) { ilabel_info_.swap(*vec); }
+  void SwapIlabelInfo(std::vector<std::vector<int32> > *vec) { ilabel_info_.swap(*vec); }
 
 private:
 
   /// Returns the state-id corresponding to this vector of phones; creates the
   /// state it if necessary.  Requires seq.size() == context_width_ - 1.
-  StateId FindState(const vector<int32> &seq);
+  StateId FindState(const std::vector<int32> &seq);
 
   /// Finds the label index corresponding to this context-window of phones
   /// (likely of width context_width_).  Inserts it into the
   /// ilabel_info_/ilabel_map_ tables if necessary.
-  Label FindLabel(const vector<int32> &label_info);
+  Label FindLabel(const std::vector<int32> &label_info);
 
   inline bool IsDisambigSymbol(Label lab) { return (disambig_syms_.count(lab) != 0); }
 
@@ -223,7 +223,7 @@ private:
   /// epsilon, instead of a phone-in-context, if the system has right context
   /// and we are very near the beginning of the phone sequence.
   inline void CreatePhoneOrEpsArc(StateId src, StateId dst, Label ilabel,
-                                  const vector<int32> &phone_seq, Arc *arc);
+                                  const std::vector<int32> &phone_seq, Arc *arc);
 
 
   /// If phone_seq is nonempty then this function it left by one and appends
@@ -246,13 +246,13 @@ private:
   // Map type to map from vectors of int32 (representing phonetic contexts,
   // which will be of dimension context_width - 1) to StateId (corresponding to
   // the state index in this FST).
-  typedef unordered_map<vector<int32>, StateId,
+  typedef unordered_map<std::vector<int32>, StateId,
                         kaldi::VectorHasher<int32> > VectorToStateMap;
 
   // Map type to map from vectors of int32 (representing ilabel-info,
   // see http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel) to
   // Label (the output label in this FST).
-  typedef unordered_map<vector<int32>, Label,
+  typedef unordered_map<std::vector<int32>, Label,
                         kaldi::VectorHasher<int32> > VectorToLabelMap;
 
 
@@ -315,7 +315,7 @@ private:
 
   // The inverse of 'state_map_': gives us the phonetic context corresponding to
   // each state-id.
-  vector<vector<int32> > state_seqs_;
+  std::vector<std::vector<int32> > state_seqs_;
 
   // maps from vector<int32>, representing phonetic contexts of length
   // context_width_ - 1, to Label.  These are actually the output labels of this
@@ -330,7 +330,7 @@ private:
   // information about the meaning of each symbol on the input of C
   // aka the output of inv(C).
   // See "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
-  vector<vector<int32> > ilabel_info_;
+  std::vector<std::vector<int32> > ilabel_info_;
 
 };
 

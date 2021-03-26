@@ -1,0 +1,10 @@
+%uh <hes> 
+%um <hes>
+%er <hes>
+%ah <hes>
+%eh <hes>
+{breath} <noise>
+{lipsmack} <noise>
+{laugh} <noise>
+{cough} <noise>
+<noise> <noise>

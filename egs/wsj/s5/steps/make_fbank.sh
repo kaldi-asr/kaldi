@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Copyright 2012-2016  Karel Vesely  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2012-2016  Karel Vesely
+# Copyright 2012-2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
@@ -10,23 +11,28 @@ nj=4
 cmd=run.pl
 fbank_config=conf/fbank.conf
 compress=true
-write_utt2num_frames=false  # if true writes utt2num_frames
+write_utt2num_frames=true  # If true writes utt2num_frames.
+write_utt2dur=true
 # End configuration section.
 
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $@"  # Print the command line for logging.
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# -lt 1 ] || [ $# -gt 3 ]; then
-   echo "Usage: $0 [options] <data-dir> [<log-dir> [<fbank-dir>] ]";
-   echo "e.g.: $0 data/train exp/make_fbank/train mfcc"
-   echo "Note: <log-dir> defaults to <data-dir>/log, and <fbank-dir> defaults to <data-dir>/data"
-   echo "Options: "
-   echo "  --fbank-config <config-file>                     # config passed to compute-fbank-feats "
-   echo "  --nj <nj>                                        # number of parallel jobs"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --write-utt2num-frames <true|false>     # If true, write utt2num_frames file."
+  cat >&2 <<EOF
+Usage: $0 [options] <data-dir> [<log-dir> [<fbank-dir>] ]
+ e.g.: $0 data/train
+Note: <log-dir> defaults to <data-dir>/log, and
+      <fbank-dir> defaults to <data-dir>/data
+Options:
+  --fbank-config <config-file>         # config passed to compute-fbank-feats.
+  --nj <nj>                            # number of parallel jobs.
+  --cmd <run.pl|queue.pl <queue opts>> # how to run jobs.
+  --write-utt2num-frames <true|false>  # If true, write utt2num_frames file.
+  --write-utt2dur <true|false>         # If true, write utt2dur file.
+EOF
    exit 1;
 fi
 
@@ -64,7 +70,7 @@ required="$scp $fbank_config"
 
 for f in $required; do
   if [ ! -f $f ]; then
-    echo "make_fbank.sh: no such file $f"
+    echo "$0: no such file $f"
     exit 1;
   fi
 done
@@ -91,9 +97,15 @@ else
   write_num_frames_opt=
 fi
 
+if $write_utt2dur; then
+  write_utt2dur_opt="--write-utt2dur=ark,t:$logdir/utt2dur.JOB"
+else
+  write_utt2dur_opt=
+fi
+
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
-  split_segments=""
+  split_segments=
   for n in $(seq $nj); do
     split_segments="$split_segments $logdir/segments.$n"
   done
@@ -103,11 +115,11 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_fbank_${name}.JOB.log \
     extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
-    compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config ark:- ark:- \| \
+    compute-fbank-feats $vtln_opts $write_utt2dur_opt --verbose=2 \
+      --config=$fbank_config ark:- ark:- \| \
     copy-feats --compress=$compress $write_num_frames_opt ark:- \
      ark,scp:$fbankdir/raw_fbank_$name.JOB.ark,$fbankdir/raw_fbank_$name.JOB.scp \
      || exit 1;
-
 else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
   split_scps=""
@@ -118,39 +130,57 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
 
   $cmd JOB=1:$nj $logdir/make_fbank_${name}.JOB.log \
-    compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config scp,p:$logdir/wav.JOB.scp ark:- \| \
+    compute-fbank-feats $vtln_opts $write_utt2dur_opt --verbose=2 \
+     --config=$fbank_config scp,p:$logdir/wav.JOB.scp ark:- \| \
     copy-feats --compress=$compress $write_num_frames_opt ark:- \
      ark,scp:$fbankdir/raw_fbank_$name.JOB.ark,$fbankdir/raw_fbank_$name.JOB.scp \
      || exit 1;
-
 fi
 
 
 if [ -f $logdir/.error.$name ]; then
-  echo "Error producing fbank features for $name:"
+  echo "$0: Error producing filterbank features for $name:"
   tail $logdir/make_fbank_${name}.1.log
   exit 1;
 fi
 
 # concatenate the .scp files together.
 for n in $(seq $nj); do
-  cat $fbankdir/raw_fbank_$name.$n.scp || exit 1;
-done > $data/feats.scp
+  cat $fbankdir/raw_fbank_$name.$n.scp || exit 1
+done > $data/feats.scp || exit 1
 
 if $write_utt2num_frames; then
   for n in $(seq $nj); do
-    cat $logdir/utt2num_frames.$n || exit 1;
+    cat $logdir/utt2num_frames.$n || exit 1
   done > $data/utt2num_frames || exit 1
-  rm $logdir/utt2num_frames.*
 fi
 
-rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
+if $write_utt2dur; then
+  for n in $(seq $nj); do
+    cat $logdir/utt2dur.$n || exit 1
+  done > $data/utt2dur || exit 1
+fi
 
-nf=`cat $data/feats.scp | wc -l`
-nu=`cat $data/utt2spk | wc -l`
+# Store frame_shift and fbank_config along with features.
+frame_shift=$(perl -ne 'if (/^--frame-shift=(\d+)/) {
+                          printf "%.3f", 0.001 * $1; exit; }' $fbank_config)
+echo ${frame_shift:-'0.01'} > $data/frame_shift
+mkdir -p $data/conf && cp $fbank_config $data/conf/fbank.conf || exit 1
+
+rm $logdir/wav_${name}.*.scp  $logdir/segments.* \
+   $logdir/utt2num_frames.* $logdir/utt2dur.* 2>/dev/null
+
+nf=$(wc -l < $data/feats.scp)
+nu=$(wc -l < $data/utt2spk)
 if [ $nf -ne $nu ]; then
-  echo "It seems not all of the feature files were successfully ($nf != $nu);"
-  echo "consider using utils/fix_data_dir.sh $data"
+  echo "$0: It seems not all of the feature files were successfully procesed" \
+       "($nf != $nu); consider using utils/fix_data_dir.sh $data"
 fi
 
-echo "Succeeded creating filterbank features for $name"
+if (( nf < nu - nu/20 )); then
+  echo "$0: Less than 95% the features were successfully generated."\
+       "Probably a serious error."
+  exit 1
+fi
+
+echo "$0: Succeeded creating filterbank features for $name"

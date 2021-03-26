@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
@@ -118,7 +118,7 @@ if [ $stage -le 1 ]; then
      $line1 =~ m/# (.+)\.sph/ || die "Bad first line $line1 in file $file";
      $call_id eq $1 || die "Mismatch call-id $call_id vs $1\n";
      while (<I>) {
-       if (m/([0-9.]+)\s+([0-9.]+) ([AB]):\s*(\S.+\S|\S)\s*$/) {
+       if (m/([0-9.]+)\s+([0-9.]+) ([AB]):\s*(\S.*\S|\S)\s*$/) {
          $start = sprintf("%06d", $1 * 100.0);
          $end = sprintf("%06d", $2 * 100.0);
          length($end) > 6 && die "Time too long $end in file $file";

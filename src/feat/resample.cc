@@ -302,7 +302,7 @@ void ArbitraryResample::Resample(const VectorBase<BaseFloat> &input,
                                  VectorBase<BaseFloat> *output) const {
   KALDI_ASSERT(input.Dim() == num_samples_in_ &&
                output->Dim() == weights_.size());
-  
+
   int32 output_dim = output->Dim();
   for (int32 i = 0; i < output_dim; i++) {
     SubVector<BaseFloat> input_part(input, first_index_[i], weights_[i].Dim());
@@ -365,13 +365,13 @@ BaseFloat ArbitraryResample::FilterFunc(BaseFloat t) const {
   return filter * window;
 }
 
-void DownsampleWaveForm(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
-                        BaseFloat new_freq, Vector<BaseFloat> *new_wave) {
-  KALDI_ASSERT(new_freq < orig_freq);
-  BaseFloat lowpass_cutoff = 0.99 * 0.5 * new_freq;
+void ResampleWaveform(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
+                      BaseFloat new_freq, Vector<BaseFloat> *new_wave) {
+  BaseFloat min_freq = std::min(orig_freq, new_freq);
+  BaseFloat lowpass_cutoff = 0.99 * 0.5 * min_freq;
   int32 lowpass_filter_width = 6;
-  LinearResample signal_downsampler(orig_freq, new_freq,
-                                    lowpass_cutoff, lowpass_filter_width);
-  signal_downsampler.Resample(wave, true, new_wave);
+  LinearResample resampler(orig_freq, new_freq,
+                           lowpass_cutoff, lowpass_filter_width);
+  resampler.Resample(wave, true, new_wave);
 }
 }  // namespace kaldi

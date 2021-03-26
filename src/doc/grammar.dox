@@ -352,7 +352,7 @@ Z_S  243
   The special symbols in CLG.fst will be as follows.
 
   The following special symbols may appear in any CLG graph, top-level or not:
-   - When any graph invokes a sub-graph, there will be n arc with an ilabel
+   - When any graph invokes a sub-graph, there will be an arc with an ilabel
      (</code>\#nonterm:foo</code>, <em>left-context-phone</em>) representing the
      user-specified nonterminal and the actual left-context, which will be
      followed by arcs with ilabels of the form (</code>\#nonterm_reenter</code>,

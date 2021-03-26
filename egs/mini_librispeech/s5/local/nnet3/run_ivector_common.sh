@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -12,6 +12,8 @@ stage=0
 train_set=train_clean_5
 test_sets="dev_clean_2"
 gmm=tri3b
+
+online_cmvn_iextractor=false
 
 nnet3_affix=
 
@@ -103,7 +105,9 @@ if [ $stage -le 5 ]; then
   # can be sensitive to the amount of data.  The script defaults to an iVector dimension of
   # 100.
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 15 \
+     --num-threads 4 --num-processes 2 \
+     --online-cmvn-iextractor $online_cmvn_iextractor \
      data/${train_set}_sp_hires exp/nnet3${nnet3_affix}/diag_ubm \
      exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi

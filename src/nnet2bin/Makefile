@@ -1,5 +1,10 @@
 
+# cuda-compiled was moved to nnet3bin/; remove it in case an outdated
+# version persists.
 all:
+	-rm -f cuda-compiled
+
+
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
@@ -23,13 +28,10 @@ BINFILES = nnet-am-info nnet-init \
    nnet-train-discriminative-simple nnet-train-discriminative-parallel \
    nnet-modify-learning-rates nnet-normalize-stddev  \
    nnet-get-weighted-egs nnet-adjust-priors \
-   cuda-compiled nnet-replace-last-layers nnet-am-switch-preconditioning \
+   nnet-replace-last-layers nnet-am-switch-preconditioning \
    nnet1-to-raw-nnet raw-nnet-copy nnet-relabel-egs nnet-am-reinitialize
 
 OBJFILES =
-
-# Add this dependency to force cuda-compiled.o to be rebuilt when we reconfigure.
-cuda-compiled.o: ../kaldi.mk
 
 
 TESTFILES =
@@ -39,6 +41,6 @@ ADDLIBS = ../nnet2/kaldi-nnet2.a ../nnet/kaldi-nnet.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

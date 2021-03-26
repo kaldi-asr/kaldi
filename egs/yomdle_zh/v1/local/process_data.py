@@ -15,6 +15,7 @@
 
 import argparse
 import os
+import re
 import sys
 import csv
 import itertools
@@ -50,6 +51,7 @@ for filename in sorted(os.listdir(os.path.join(args.database_path, 'truth_csv'))
             image_id = os.path.splitext(row[1])[0]
             image_filepath = os.path.join(args.database_path, 'truth_line_image', row[1])
             text = unicodedata.normalize('NFC', row[11]).replace('\n', '')
+            text = re.sub(r'\s', ' ', text)
             if os.path.isfile(image_filepath) and os.stat(image_filepath).st_size != 0 and text:
                 text_fh.write(image_id + ' ' + text + '\n')
                 utt2spk_fh.write(image_id + ' ' + '_'.join(image_id.split('_')[:-1]) + '\n')

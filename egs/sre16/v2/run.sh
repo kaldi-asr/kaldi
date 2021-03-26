@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright      2017   David Snyder
 #                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #                2017   Johns Hopkins University (Author: Daniel Povey)
@@ -135,7 +135,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh /export/corpora/JHU/musan data
+  steps/data/make_musan.sh --sampling-rate 8000 /export/corpora/JHU/musan data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
@@ -174,6 +174,7 @@ if [ $stage -le 2 ]; then
   utils/copy_data_dir.sh data/swbd_sre_combined data/sre_combined
   utils/filter_scp.pl data/sre/spk2utt data/swbd_sre_combined/spk2utt | utils/spk2utt_to_utt2spk.pl > data/sre_combined/utt2spk
   utils/fix_data_dir.sh data/sre_combined
+
 fi
 
 # Now we prepare the features to generate examples for xvector training.

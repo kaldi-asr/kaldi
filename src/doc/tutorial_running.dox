@@ -115,14 +115,14 @@ Now go back to the data directory and change directory to /train. Then execute t
 
 \verbatim
 head text
-head spk2gender.map
+head spk2gender
 head spk2utt
 head utt2spk
 head wav.scp
 \endverbatim
 
 - text - This file contains mappings between utterances and utterance ids which will be used by Kaldi. This file will be turned into an integer format-- still a text file, but with the words replaced with integers.
-- spk2gender.map - This file contains mappings between speakers and their gender. This also acts as a list of unique users involved in training. 
+- spk2gender - This file contains mappings between speakers and their gender. This also acts as a list of unique users involved in training. 
 - spk2utt - This is a mapping between the speaker identifiers and all the utterance identifiers associated with the speaker. 
 - utt2spk - This is a one-to-one mapping between utterance ids and the corresponding speaker identifiers. 
 - wav.scp - This file is actually read directly by Kaldi programs when doing feature extraction. Look at the file again. It is parsed as a set of key-value pairs, where the key is the first string on each line. The value is a kind of "extended filename", and you can guess how it works. Since it is for reading we will refer to this type of string as an "rxfilename" (for writing we use the term wxfilename). See \ref io_sec_xfilename if you are curious. Note that although we use the extension .scp, this is not a script file in the HTK sense (i.e. it is not viewed as an extension to the command-line arguments).
@@ -383,7 +383,7 @@ do
 copy-tree --binary=false exp/mono/tree - | less
 \endverbatim
 Note that this is a monophone "tree" so it is very trivial-- it
-does not have any "splits".  Although this tree format was not indended to be
+does not have any "splits".  Although this tree format was not intended to be
 very human-readable, we have received a number of queries about the tree format so we
 will explain it.  The rest of this paragraph can be skipped over by the casual reader.
 After "ToPdf", the tree file contains an object of the
@@ -442,7 +442,7 @@ Type
 \verbatim
 grep Overall exp/mono/log/acc.{?,??}.{?,??}.log
 \endverbatim
-You can see the acoustic likelihods on each iteration.  Next look at one of the files
+You can see the acoustic likelihoods on each iteration.  Next look at one of the files
 exp/mono/log/update.*.log to see what kind of information is in the update log.
 
 When the monophone training is finished, we can test the monophone decoding. Before decoding, we have to create the decode graph. Type:
@@ -505,7 +505,7 @@ gmm-decode-faster
 \endverbatim
 to see the usage message, and match up the arguments with what you see in the log file.
 Recall that "rspecifier" is one of those strings that specifies how to read a table,
-and "wspecifier" specifies how to write one.  Look carefuly at these arguments and try
+and "wspecifier" specifies how to write one.  Look carefully at these arguments and try
 to figure out what they mean.  Look at the rspecifier that corresponds to the features, and
 try to understand it (this one has spaces inside, so Kaldi prints it out with single quotes
 around it so that you could paste it into the shell and the program would run as intended).

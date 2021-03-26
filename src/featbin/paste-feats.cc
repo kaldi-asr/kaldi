@@ -28,7 +28,7 @@ namespace kaldi {
 
 // returns true if successfully appended.
 bool AppendFeats(const std::vector<Matrix<BaseFloat> > &in,
-                 std::string utt,
+                 const std::string &utt,
                  int32 tolerance,
                  Matrix<BaseFloat> *out) {
   // Check the lengths

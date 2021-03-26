@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is based on tdnn_7q, but adding cnn as the front-end.
 # The cnn-tdnn-f (cnn_tdnn_1a) outperforms the tdnn-f (tdnn_7q).
@@ -112,7 +112,7 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   cnn_opts="l2-regularize=0.01"
   ivector_affine_opts="l2-regularize=0.01"

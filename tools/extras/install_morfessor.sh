@@ -1,14 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright  2017  Atlas Guide (Author : Lucas Jo)
 #
 # Apache 2.0
 #
 
+GIT=${GIT:-git}
+
 echo "#### installing morfessor"
 dirname=morfessor
 if [ ! -d ./$dirname ]; then
   mkdir -p ./$dirname
-  git clone https://github.com/aalto-speech/morfessor.git morfessor ||
+  $GIT clone https://github.com/aalto-speech/morfessor.git morfessor ||
     {
       echo  >&2 "$0: Error git clone operation "
       echo  >&2 "  Failed in cloning the github repository (https://github.com/aalto-speech/morfessor.git)"

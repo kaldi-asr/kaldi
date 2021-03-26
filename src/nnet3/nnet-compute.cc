@@ -235,6 +235,7 @@ void NnetComputer::ExecuteCommand() {
         break;
       }
       case kPropagate: {
+        NVTX_RANGE("NnetComputer::ExecuteCommand::kPropagate");
         const Component *component = nnet_.GetComponent(c.arg1);
         ComponentPrecomputedIndexes *indexes =
             computation_.component_precomputed_indexes[c.arg2].data;
@@ -256,6 +257,7 @@ void NnetComputer::ExecuteCommand() {
       }
       case kBackprop:
       case kBackpropNoModelUpdate:  {
+        NVTX_RANGE("NnetComputer::ExecuteCommand::kBackpropNoModelUpdate");
         std::ostringstream debug_str;
         KALDI_ASSERT(nnet_to_update_ != NULL);
         debug_str << nnet_.GetComponentName(c.arg1);
@@ -491,8 +493,10 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
   for (int32 i = 0; i < size; i += 30 + RandInt(0, 9)) {
     // Do a pseudo-random spot check that the row-indexes are not out of range.
     int32 submatrix_index = pairs[i].first, row = pairs[i].second;
-    CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
-    KALDI_ASSERT(row >= 0 && row < m.NumRows() && num_cols == m.NumCols());
+    if (submatrix_index != -1) {
+      CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
+      KALDI_ASSERT(row >= 0 && row < m.NumRows() && num_cols == m.NumCols());
+    }
   }
 #endif
   pointers->CopyFromVec(vec);
@@ -506,6 +510,7 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
 }
 
 void NnetComputer::Run() {
+  NVTX_RANGE(__func__);
   const std::vector<NnetComputation::Command> &c = computation_.commands;
   int32 num_commands = c.size();
 

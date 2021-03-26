@@ -40,7 +40,7 @@ namespace kaldi {
 
 /**
    \file[resample.h]
-   
+
    This header contains declarations of classes for resampling signals.  The
    normal cases of resampling a signal are upsampling and downsampling
    (increasing and decreasing the sample rate of a signal, respectively),
@@ -51,7 +51,7 @@ namespace kaldi {
    The input signal is always evenly spaced, say sampled with frequency S, and
    we assume the original signal was band-limited to S/2 or lower.  The n'th
    input sample x_n (with n = 0, 1, ...) is interpreted as the original
-   signal's value at time n/S.  
+   signal's value at time n/S.
 
    For resampling, it is convenient to view the input signal as a
    continuous function x(t) of t, where each sample x_n becomes a delta function
@@ -73,14 +73,14 @@ namespace kaldi {
    means we window the sinc function out to its first zero on the left and right,
    w = 2 means the second zero, and so on; we normally choose w to be at least two.
    We call this num_zeros, not w, in the code.
-   
+
    Convolving the signal x(t) with this windowed filter h(t) = f(t)g(t) and evaluating the resulting
    signal s(t) at an arbitrary time t is easy: we have
     \f[          s(t) = 1/S \sum_n x_n h(t - n/S)        \f].
    (note: the sign of t - n/S might be wrong, but it doesn't matter as the filter
    and window are symmetric).
    This is true for arbitrary values of t.  What the class ArbitraryResample does
-   is to allow you to evaluate the signal for specified values of t.  
+   is to allow you to evaluate the signal for specified values of t.
 */
 
 
@@ -90,7 +90,7 @@ namespace kaldi {
    don't have to be linearly spaced.  The low-pass filter cutoff
    "filter_cutoff_hz" should be less than half the sample rate;
    "num_zeros" should probably be at least two preferably more; higher numbers give
-   sharper filters but will be less efficient. 
+   sharper filters but will be less efficient.
 */
 class ArbitraryResample {
  public:
@@ -115,7 +115,7 @@ class ArbitraryResample {
   /// This version of the Resample function processes just
   /// one vector.
   void Resample(const VectorBase<BaseFloat> &input,
-                VectorBase<BaseFloat> *output) const;  
+                VectorBase<BaseFloat> *output) const;
  private:
   void SetIndexes(const Vector<BaseFloat> &sample_points);
 
@@ -185,6 +185,10 @@ class LinearResample {
   /// Resample(x, y, true) for the last piece.  Call it unnecessarily between
   /// signals will not do any harm.
   void Reset();
+
+  //// Return the input and output sampling rates (for checks, for example)
+  inline int32 GetInputSamplingRate() { return samp_rate_in_; }
+  inline int32 GetOutputSamplingRate() { return samp_rate_out_; }
  private:
   /// This function outputs the number of output samples we will output
   /// for a signal with "input_num_samp" input samples.  If flush == true,
@@ -248,20 +252,35 @@ class LinearResample {
                                        ///< previously seen input signal.
 };
 
-/// Downsample a waveform. This is a convenience wrapper for the
-/// class 'LinearResample'.
-/// The low-pass filter cutoff used in 'LinearResample' is 0.99 of half of the
-/// new_freq and num_zeros is 6.
-/// The downsampling results is also checked wit sox resampling toolkit.
-/// Sox design is inspired by Laurent De Soras' paper,
-/// https://ccrma.stanford.edu/~jos/resample/Implementation.html
-/// It designs low pass filter using pass-band, stop-band, Nyquist freq
-/// and stop-band attenuation.
-/// e.g. The mainlob for Hanning window is 4pi/M, where the main-lobe width is
-/// equal to (pass-band-freq - stop-band-freq).
-/// Also the cutoff frequency is equal to (pass-band-freq - stop-band-freq).
-void DownsampleWaveForm(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
-                        BaseFloat new_freq, Vector<BaseFloat> *new_wave);
+/**
+   Downsample or upsample a waveform. This is a convenience wrapper for the
+   class 'LinearResample'.
+   The low-pass filter cutoff used in 'LinearResample' is 0.99 of the Nyquist,
+   where the Nyquist is half of the minimum of (orig_freq, new_freq).  The
+   resampling is done with a symmetric FIR filter with N_z (number of zeros)
+   as 6.
+
+   We compared the downsampling results with those from the sox resampling
+   toolkit.
+   Sox's design is inspired by Laurent De Soras' paper,
+   https://ccrma.stanford.edu/~jos/resample/Implementation.html
+
+   Note: we expect that while orig_freq and new_freq are of type BaseFloat, they
+   are actually required to have exact integer values (like 16000 or 8000) with
+   a ratio between them that can be expressed as a rational number with
+   reasonably small integer factors.
+*/
+void ResampleWaveform(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
+                      BaseFloat new_freq, Vector<BaseFloat> *new_wave);
+
+
+/// This function is deprecated.  It is provided for backward compatibility, to avoid
+/// breaking older code.
+inline void DownsampleWaveForm(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
+                               BaseFloat new_freq, Vector<BaseFloat> *new_wave) {
+  ResampleWaveform(orig_freq, wave, new_freq, new_wave);
+}
+
 
 /// @} End of "addtogroup feat"
 }  // namespace kaldi

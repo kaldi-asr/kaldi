@@ -30,6 +30,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     nnet_(nnet),
     compiler_(*nnet, config_.optimize_config, config_.compiler_config),
     num_minibatches_processed_(0),
+    max_change_stats_(*nnet),
     srand_seed_(RandInt(0, 100000)) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
@@ -38,9 +39,6 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                config.backstitch_training_interval > 0);
   delta_nnet_ = nnet_->Copy();
   ScaleNnet(0.0, delta_nnet_);
-  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  num_max_change_per_component_applied_.resize(num_updatable, 0);
-  num_max_change_global_applied_ = 0;
 
   if (config_.read_cache != "") {
     bool binary;
@@ -111,9 +109,9 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
                         delta_nnet_);
 
   // Update the parameters of nnet
-  bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
-      1.0, 1.0 - config_.momentum, nnet_,
-      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+  bool success = UpdateNnetWithMaxChange(
+      *delta_nnet_, config_.max_param_change,
+      1.0, 1.0 - config_.momentum, nnet_, &max_change_stats_);
 
   // Scale down the batchnorm stats (keeps them fresh... this affects what
   // happens when we use the model with batchnorm test-mode set).
@@ -167,9 +165,10 @@ void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
   }
 
   // Updates the parameters of nnet
-  UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
+  UpdateNnetWithMaxChange(
+      *delta_nnet_, config_.max_param_change,
       max_change_scale, scale_adding, nnet_,
-      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+      &max_change_stats_);
 
   if (is_backstitch_step1) {
     // The following will only do something if we have a LinearComponent or
@@ -236,38 +235,8 @@ bool NnetTrainer::PrintTotalStats() const {
     bool ok = info.PrintTotalStats(name);
     ans = ans || ok;
   }
-  PrintMaxChangeStats();
+  max_change_stats_.Print(*nnet_);
   return ans;
-}
-
-void NnetTrainer::PrintMaxChangeStats() const {
-  KALDI_ASSERT(delta_nnet_ != NULL);
-  int32 i = 0;
-  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
-    Component *comp = delta_nnet_->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-                  << "UpdatableComponent; change this code.";
-      if (num_max_change_per_component_applied_[i] > 0)
-        KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
-                  << ", per-component max-change was enforced "
-                  << (100.0 * num_max_change_per_component_applied_[i]) /
-                     (num_minibatches_processed_ *
-                     (config_.backstitch_training_scale == 0.0 ? 1.0 :
-                     1.0 + 1.0 / config_.backstitch_training_interval))
-                  << " \% of the time.";
-      i++;
-    }
-  }
-  if (num_max_change_global_applied_ > 0)
-    KALDI_LOG << "The global max-change was enforced "
-              << (100.0 * num_max_change_global_applied_) /
-                 (num_minibatches_processed_ *
-                 (config_.backstitch_training_scale == 0.0 ? 1.0 :
-                 1.0 + 1.0 / config_.backstitch_training_interval))
-              << " \% of the time.";
 }
 
 void ObjectiveFunctionInfo::UpdateStats(

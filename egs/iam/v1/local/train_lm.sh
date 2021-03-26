@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2016  Vincent Nguyen
 #           2016  Johns Hopkins University (author: Daniel Povey)
@@ -60,7 +60,7 @@ if [ $stage -le 0 ]; then
   # Using LOB and brown corpus.
   if [ ! -f data/local/lob-train-only.txt ]; then
     cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt | \
-      local/remove_test_utterances_from_lob.py data/test/text.old data/val/text.old \
+      local/remove_test_utterances_from_lob.py data/test/text data/val/text \
                                                > data/local/lob-train-only.txt
   fi
   cat data/local/lob-train-only.txt > ${dir}/data/text/lob.txt

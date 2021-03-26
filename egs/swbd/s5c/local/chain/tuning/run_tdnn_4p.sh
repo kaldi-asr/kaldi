@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4p is as _4f, but one fewer layer, and making the final-layer context wider to
 # compensate; also increasing the jesus-layer input and output dims 400->500 and 1500->1600 to

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 #           2018 Xiaohui Zhang
 #           2018 Vimal Manohar
@@ -107,7 +107,7 @@ lang=data/${multi}/lang_${gmm}_chain
 lang_dir=data/lang_${multi}_${gmm}_fsh_sw1_tg
 rescore_lang_dir=data/lang_${multi}_${gmm}_fsh_sw1_fg
 
-local/nnet3/run_ivector_common.sh --stage $stage --nnet3-affix "$nnet3_affix" \
+local/nnet3/run_ivector_common.sh --stage $stage \
   --multi $multi \
   --gmm $gmm \
   --speed-perturb $speed_perturb || exit 1
@@ -155,7 +155,7 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   lstm_opts="dropout-proportion=0.0 decay-time=40"
 
   relu_dim=1024

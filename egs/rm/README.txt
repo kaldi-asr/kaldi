@@ -9,7 +9,7 @@ About the Resource Management corpus:
 
 Each subdirectory of this directory contains the
 scripts for a sequence of experiments. 
-s5 is the currently recommmended setup.
+s5 is the currently recommended setup.
 
   s5: This is the "new-new-style" recipe.  It is now finished.
       All further work will be on top of this style of recipe.  Note: 

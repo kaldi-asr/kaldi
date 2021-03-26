@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2015  University of Sheffield (Author: Ning Ma)
 # Apache 2.0.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _6m is as _6j (which subsamples by 4 frames not 3 at the output), changing just the
 # --left-tolerance and --right-tolerance to be the same total width but more

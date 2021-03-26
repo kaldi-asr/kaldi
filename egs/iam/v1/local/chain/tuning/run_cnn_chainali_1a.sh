@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # chainali_1a is as 1a except it uses chain alignments (using 1a system) instead of gmm alignments
 # local/chain/compare_wer.sh exp/chain/cnn_chainali_1a
@@ -125,7 +125,7 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="height-offsets=-2,-1,0,1,2 num-filters-out=70"
   common3="height-offsets=-1,0,1 num-filters-out=70"

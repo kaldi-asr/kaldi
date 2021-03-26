@@ -1,0 +1,34 @@
+This recipe contains the following corpora from LDC:
+
+Audio:
+  Gale phase 2/3/4
+  LDC2013S08
+  LDC2013S04
+  LDC2014S09
+  LDC2015S06
+  LDC2015S13
+  LDC2016S03
+  LDC2017S25
+
+  TDT 2/3/4
+  LDC2001S93
+  LDC2001S95
+  LDC2005S11
+
+Text:
+  Gale phase 2/3/4
+  LDC2013T20
+  LDC2013T08
+  LDC2014T28
+  LDC2015T09
+  LDC2015T25
+  LDC2016T12
+  LDC2017T18
+
+  TDT 2/3/4
+  LDC2001T57
+  LDC2001T58
+  LDC2005T16
+  Besides, it uses Gigga word, simplified Mandarin for LM training and expanding dictionary:
+  Gigga word (xin:simplified, cna:traditional. Use only xin)
+  LDC2003T09

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 locdata=$1
 locdict=$2

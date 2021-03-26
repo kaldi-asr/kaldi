@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2l is as _2k, but using 100 frames per eg instead of 150.
 #  Previously we had found 150 better than 75, but this may have changed as we

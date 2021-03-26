@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright   2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #             2017   Johns Hopkins University (Author: Daniel Povey)
 #        2017-2018   David Snyder
@@ -15,7 +15,7 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
 
-# The trials file is downloaded by local/make_voxceleb1.pl.
+# The trials file is downloaded by local/make_voxceleb1_v2.pl.
 voxceleb1_trials=data/voxceleb1_test/trials
 voxceleb1_root=/export/corpora/VoxCeleb1
 voxceleb2_root=/export/corpora/VoxCeleb2
@@ -27,11 +27,14 @@ stage=0
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
   local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
-  # This script creates data/voxceleb1_test and data/voxceleb1_train.
+  # This script creates data/voxceleb1_test and data/voxceleb1_train for latest version of VoxCeleb1.
   # Our evaluation set is the test portion of VoxCeleb1.
-  local/make_voxceleb1.pl $voxceleb1_root data
+  local/make_voxceleb1_v2.pl $voxceleb1_root dev data/voxceleb1_train
+  local/make_voxceleb1_v2.pl $voxceleb1_root test data/voxceleb1_test
+  # if you downloaded the dataset soon after it was released, you will want to use the make_voxceleb1.pl script instead.
+  # local/make_voxceleb1.pl $voxceleb1_root data
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
-  # This should give 7,351 speakers and 1,277,503 utterances.
+  # This should give 7,323 speakers and 1,276,888 utterances.
   utils/combine_data.sh data/train data/voxceleb2_train data/voxceleb2_test data/voxceleb1_train
 fi
 
@@ -81,7 +84,7 @@ if [ $stage -le 2 ]; then
 
   # Prepare the MUSAN corpus, which consists of music, speech, and noise
   # suitable for augmentation.
-  local/make_musan.sh $musan_root data
+  steps/data/make_musan.sh --sampling-rate 16000 $musan_root data
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.

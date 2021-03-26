@@ -25,18 +25,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
-
-import inspect
-import time
-
-import numpy as np
+import absl
+import absl.flags as flags
 import tensorflow as tf
 
 import reader
-
-flags = tf.flags
-logging = tf.logging
 
 flags.DEFINE_integer("hidden_size", 200, "hidden dim of RNN")
 
@@ -44,12 +37,13 @@ flags.DEFINE_string("data_path", None,
                     "Where the training/test data is stored.")
 flags.DEFINE_string("vocab_path", None,
                     "Where the wordlist file is stored.")
-flags.DEFINE_string("save_path", None,
+flags.DEFINE_string("save_path", "export",
                     "Model output directory.")
 flags.DEFINE_bool("use_fp16", False,
                   "Train using 16-bit floats instead of 32bit floats")
 
 FLAGS = flags.FLAGS
+
 
 class Config(object):
   init_scale = 0.1
@@ -64,265 +58,183 @@ class Config(object):
   lr_decay = 0.5
   batch_size = 64
 
+
 def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
 
 
-class RnnlmInput(object):
-  """The input data."""
+class RNNLMModel(tf.Module):
+  """The RNN model itself."""
 
-  def __init__(self, config, data, name=None):
-    self.batch_size = batch_size = config.batch_size
-    self.num_steps = num_steps = config.num_steps
-    self.epoch_size = ((len(data) // batch_size) - 1) // num_steps
-    self.input_data, self.targets = reader.rnnlm_producer(
-        data, batch_size, num_steps, name=name)
+  def __init__(self, config, logits_bias_initializer=None):
+    super().__init__()
+    self._config = config
 
-
-class RnnlmModel(object):
-  """The RNNLM model."""
-
-  def __init__(self, is_training, config, input_):
-    self._input = input_
-
-    batch_size = input_.batch_size
-    num_steps = input_.num_steps
     size = config.hidden_size
     vocab_size = config.vocab_size
+    dt = data_type()
 
     def lstm_cell():
-      # With the latest TensorFlow source code (as of Mar 27, 2017),
-      # the BasicLSTMCell will need a reuse parameter which is unfortunately not
-      # defined in TensorFlow 1.0. To maintain backwards compatibility, we add
-      # an argument check here:
-      if 'reuse' in inspect.getargspec(
-          tf.contrib.rnn.BasicLSTMCell.__init__).args:
-        return tf.contrib.rnn.BasicLSTMCell(
-            size, forget_bias=0.0, state_is_tuple=True,
-            reuse=tf.get_variable_scope().reuse)
-      else:
-        return tf.contrib.rnn.BasicLSTMCell(
-            size, forget_bias=0.0, state_is_tuple=True)
-    attn_cell = lstm_cell
-    if is_training and config.keep_prob < 1:
-      def attn_cell():
-        return tf.contrib.rnn.DropoutWrapper(
-            lstm_cell(), output_keep_prob=config.keep_prob)
-    self.cell = tf.contrib.rnn.MultiRNNCell(
-        [attn_cell() for _ in range(config.num_layers)], state_is_tuple=True)
+      return tf.keras.layers.LSTMCell(size, dtype=dt, unit_forget_bias=False)
 
-    self._initial_state = self.cell.zero_state(batch_size, data_type())
-    self._initial_state_single = self.cell.zero_state(1, data_type())
+    def add_dropout(cell):
+      if config.keep_prob < 1:
+        cell = tf.nn.RNNCellDropoutWrapper(cell=cell, output_keep_prob=config.keep_prob)
+      return cell
 
-    self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 2, 1, size], name="test_initial_state")
+    self.embedding = tf.keras.layers.Embedding(vocab_size, size, dtype=dt)
+    self.cells = [lstm_cell() for _ in range(config.num_layers)]
+    self.rnn = tf.keras.layers.RNN(self.cells, return_sequences=True)
+
+    if logits_bias_initializer is None:
+      logits_bias_initializer = 'zeros'
+    self.fc = tf.keras.layers.Dense(vocab_size, bias_initializer=logits_bias_initializer)
+
+    # only used in training
+    self.training_cells = [add_dropout(cell) for cell in self.cells]
+    self.training_rnn = tf.keras.layers.RNN(self.training_cells, return_sequences=True)
+
+  def get_logits(self, word_ids, is_training=False):
+    rnn = self.training_rnn if is_training else self.rnn
+    inputs = self.embedding(word_ids)
+    if is_training and self._config.keep_prob < 1:
+      inputs = tf.nn.dropout(inputs, 1 - self._config.keep_prob)
+    rnn_out = rnn(inputs)
+    logits = self.fc(rnn_out)
+    return logits
+
+  def get_loss(self, word_ids, labels, is_training=False):
+    logits = self.get_logits(word_ids, is_training)
+    loss_obj = tf.losses.SparseCategoricalCrossentropy(from_logits=True)
+    return loss_obj(labels, logits)
+
+  def get_score(self, logits):
+    """Take logits as input, output a score."""
+    return tf.nn.log_softmax(logits)
+
+  @tf.function
+  def get_initial_state(self):
+    """Exported function which emits zeroed RNN context vector."""
+    # This seems a bug in TensorFlow, but passing tf.int32 makes the state tensor also int32.
+    fake_input = tf.constant(0, dtype=tf.float32, shape=[1, 1])
+    initial_state = tf.stack(self.rnn.get_initial_state(fake_input))
+    return {"initial_state": initial_state}
+
+  @tf.function
+  def single_step(self, context, word_id):
+    """Exported function which perform one step of the RNN model."""
+    rnn = tf.keras.layers.RNN(self.cells, return_state=True)
+    context = tf.unstack(context)
+    context = [tf.unstack(c) for c in context]
+
+    inputs = self.embedding(word_id)
+    rnn_out_and_states = rnn(inputs, initial_state=context)
+
+    rnn_out = rnn_out_and_states[0]
+    rnn_states = tf.stack(rnn_out_and_states[1:])
+
+    logits = self.fc(rnn_out)
+    output = self.get_score(logits)
+    log_prob = output[0, word_id[0, 0]]
+    return {"log_prob": log_prob, "rnn_states": rnn_states, "rnn_out": rnn_out}
 
 
-    # first implement the less efficient version
-    test_word_in = tf.placeholder(tf.int32, [1, 1], name="test_word_in")
+class RNNLMModelTrainer(tf.Module):
+  """This class contains training code."""
 
-    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 2, 1, size], name="test_state_in")
-    # unpacking the input state context 
-    l = tf.unstack(state_placeholder, axis=0)
-    test_input_state = tuple(
-               [tf.contrib.rnn.LSTMStateTuple(l[idx][0],l[idx][1])
-                 for idx in range(config.num_layers)]
-    )
+  def __init__(self, model: RNNLMModel, config):
+    super().__init__()
+    self.model = model
+    self.learning_rate = tf.Variable(1e-3, dtype=tf.float32, trainable=False)
+    self.optimizer = tf.optimizers.SGD(learning_rate=self.learning_rate)
+    self.max_grad_norm = config.max_grad_norm
 
-    with tf.device("/cpu:0"):
-      self.embedding = tf.get_variable(
-          "embedding", [vocab_size, size], dtype=data_type())
+    self.eval_mean_loss = tf.metrics.Mean()
 
-      inputs = tf.nn.embedding_lookup(self.embedding, input_.input_data)
-      test_inputs = tf.nn.embedding_lookup(self.embedding, test_word_in)
+  def train_one_epoch(self, data_producer, learning_rate, verbose=True):
+    print("start epoch with learning rate {}".format(learning_rate))
+    self.learning_rate.assign(learning_rate)
 
-    # test time
-    with tf.variable_scope("RNN"):
-      (test_cell_output, test_output_state) = self.cell(test_inputs[:, 0, :], test_input_state)
+    for i, (inputs, labels) in enumerate(data_producer.iterate()):
+      loss = self._train_step(inputs, labels)
+      if verbose and i % (data_producer.epoch_size // 10) == 1:
+        print("{}/{}: loss={}".format(i, data_producer.epoch_size, loss))
 
-    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 2, 1, size], name="test_state_out")
-    test_cell_out = tf.reshape(test_cell_output, [1, size], name="test_cell_out")
-    # above is the first part of the graph for test
-    # test-word-in
-    #               > ---- > test-state-out
-    # test-state-in        > test-cell-out
+  @tf.function
+  def evaluate(self, data_producer):
+    self.eval_mean_loss.reset_states()
+    for i, (inputs, labels) in enumerate(data_producer.iterate()):
+      loss = self.model.get_loss(inputs, labels)
+      self.eval_mean_loss.update_state(loss)
 
+    return self.eval_mean_loss.result()
 
-    # below is the 2nd part of the graph for test
-    # test-word-out
-    #               > prob(word | test-word-out)
-    # test-cell-in
+  @tf.function
+  def _train_step(self, inputs, labels):
+    with tf.GradientTape() as tape:
+      loss = self.model.get_loss(inputs, labels, is_training=True)
 
-    test_word_out = tf.placeholder(tf.int32, [1, 1], name="test_word_out")
-    cellout_placeholder = tf.placeholder(tf.float32, [1, size], name="test_cell_in")
-
-    softmax_w = tf.get_variable(
-        "softmax_w", [size, vocab_size], dtype=data_type())
-    softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
-
-    test_logits = tf.matmul(cellout_placeholder, softmax_w) + softmax_b
-    test_softmaxed = tf.nn.log_softmax(test_logits)
-
-    p_word = test_softmaxed[0, test_word_out[0,0]]
-    test_out = tf.identity(p_word, name="test_out")
-
-    if is_training and config.keep_prob < 1:
-      inputs = tf.nn.dropout(inputs, config.keep_prob)
-
-    # Simplified version of models/tutorials/rnn/rnn.py's rnn().
-    # This builds an unrolled LSTM for tutorial purposes only.
-    # In general, use the rnn() or state_saving_rnn() from rnn.py.
-    #
-    # The alternative version of the code below is:
-    #
-    # inputs = tf.unstack(inputs, num=num_steps, axis=1)
-    # outputs, state = tf.contrib.rnn.static_rnn(
-    #     cell, inputs, initial_state=self._initial_state)
-    outputs = []
-    state = self._initial_state
-    with tf.variable_scope("RNN"):
-      for time_step in range(num_steps):
-        if time_step > -1: tf.get_variable_scope().reuse_variables()
-        (cell_output, state) = self.cell(inputs[:, time_step, :], state)
-        outputs.append(cell_output)
-
-    output = tf.reshape(tf.stack(axis=1, values=outputs), [-1, size])
-    logits = tf.matmul(output, softmax_w) + softmax_b
-    loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
-        [logits],
-        [tf.reshape(input_.targets, [-1])],
-        [tf.ones([batch_size * num_steps], dtype=data_type())])
-    self._cost = cost = tf.reduce_sum(loss) / batch_size
-    self._final_state = state
-
-    if not is_training:
-      return
-
-    self._lr = tf.Variable(0.0, trainable=False)
-    tvars = tf.trainable_variables()
-    grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
-                                      config.max_grad_norm)
-    optimizer = tf.train.GradientDescentOptimizer(self._lr)
-    self._train_op = optimizer.apply_gradients(
-        list(zip(grads, tvars)),
-        global_step=tf.contrib.framework.get_or_create_global_step())
-
-    self._new_lr = tf.placeholder(
-        tf.float32, shape=[], name="new_learning_rate")
-    self._lr_update = tf.assign(self._lr, self._new_lr)
-
-  def assign_lr(self, session, lr_value):
-    session.run(self._lr_update, feed_dict={self._new_lr: lr_value})
-
-  @property
-  def input(self):
-    return self._input
-
-  @property
-  def initial_state(self):
-    return self._initial_state
-
-  @property
-  def cost(self):
-    return self._cost
-
-  @property
-  def final_state(self):
-    return self._final_state
-
-  @property
-  def lr(self):
-    return self._lr
-
-  @property
-  def train_op(self):
-    return self._train_op
-
-def run_epoch(session, model, eval_op=None, verbose=False):
-  """Runs the model on the given data."""
-  start_time = time.time()
-  costs = 0.0
-  iters = 0
-  state = session.run(model.initial_state)
-
-  fetches = {
-      "cost": model.cost,
-      "final_state": model.final_state,
-  }
-  if eval_op is not None:
-    fetches["eval_op"] = eval_op
-
-  for step in range(model.input.epoch_size):
-    feed_dict = {}
-    for i, (c, h) in enumerate(model.initial_state):
-      feed_dict[c] = state[i].c
-      feed_dict[h] = state[i].h
-
-    vals = session.run(fetches, feed_dict)
-    cost = vals["cost"]
-    state = vals["final_state"]
-
-    costs += cost
-    iters += model.input.num_steps
-
-    if verbose and step % (model.input.epoch_size // 10) == 10:
-      print("%.3f perplexity: %.3f speed: %.0f wps" %
-            (step * 1.0 / model.input.epoch_size, np.exp(costs / iters),
-             iters * model.input.batch_size / (time.time() - start_time)))
-
-  return np.exp(costs / iters)
+    tvars = self.model.trainable_variables
+    grads = tape.gradient(loss, tvars)
+    clipped_grads, _ = tf.clip_by_global_norm(grads, self.max_grad_norm)
+    self.optimizer.apply_gradients(zip(clipped_grads, tvars))
+    return loss
 
 
 def get_config():
   return Config()
 
-def main(_):
-  if not FLAGS.data_path:
-    raise ValueError("Must set --data_path to RNNLM data directory")
 
-  raw_data = reader.rnnlm_raw_data(FLAGS.data_path, FLAGS.vocab_path)
-  train_data, valid_data, _, word_map = raw_data
+def main(_):
+  # Turn this on to try the model code with this source file itself!
+  __TESTING = False
+
+  if __TESTING:
+    (train_data, valid_data), word_map = reader.rnnlm_gen_data(__file__, reader.__file__)
+  else:
+    if not FLAGS.data_path:
+      raise ValueError("Must set --data_path to RNNLM data directory")
+
+    raw_data = reader.rnnlm_raw_data(FLAGS.data_path, FLAGS.vocab_path)
+    train_data, valid_data, _, word_map = raw_data
 
   config = get_config()
   config.hidden_size = FLAGS.hidden_size
   config.vocab_size = len(word_map)
-  eval_config = get_config()
-  eval_config.batch_size = 1
-  eval_config.num_steps = 1
 
-  with tf.Graph().as_default():
-    initializer = tf.random_uniform_initializer(-config.init_scale,
-                                                config.init_scale)
+  if __TESTING:
+    # use a much smaller scale on our tiny test data
+    config.num_steps = 8
+    config.batch_size = 4
 
-    with tf.name_scope("Train"):
-      train_input = RnnlmInput(config=config, data=train_data, name="TrainInput")
-      with tf.variable_scope("Model", reuse=None, initializer=initializer):
-        m = RnnlmModel(is_training=True, config=config, input_=train_input)
-      tf.summary.scalar("Training Loss", m.cost)
-      tf.summary.scalar("Learning Rate", m.lr)
+  model = RNNLMModel(config)
+  train_producer = reader.RNNLMProducer(train_data, config.batch_size, config.num_steps)
+  trainer = RNNLMModelTrainer(model, config)
 
-    with tf.name_scope("Valid"):
-      valid_input = RnnlmInput(config=config, data=valid_data, name="ValidInput")
-      with tf.variable_scope("Model", reuse=True, initializer=initializer):
-        mvalid = RnnlmModel(is_training=False, config=config, input_=valid_input)
-      tf.summary.scalar("Validation Loss", mvalid.cost)
+  valid_producer = reader.RNNLMProducer(valid_data, config.batch_size, config.num_steps)
 
-    sv = tf.train.Supervisor(logdir=FLAGS.save_path)
-    with sv.managed_session() as session:
-      for i in range(config.max_max_epoch):
-        lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
-        m.assign_lr(session, config.learning_rate * lr_decay)
+  # Save variables to disk if you want to prevent crash...
+  # Data producer can also be saved to preverse feeding progress.
+  checkpoint = tf.train.Checkpoint(trainer=trainer, data_feeder=train_producer)
+  manager = tf.train.CheckpointManager(checkpoint, "checkpoints/", 5)
 
-        print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))
-        train_perplexity = run_epoch(session, m, eval_op=m.train_op,
-                                     verbose=True)
+  for i in range(config.max_max_epoch):
+    lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
+    lr = config.learning_rate * lr_decay
+    trainer.train_one_epoch(train_producer, lr)
+    manager.save()
 
-        print("Epoch: %d Train Perplexity: %.3f" % (i + 1, train_perplexity))
-        valid_perplexity = run_epoch(session, mvalid)
-        print("Epoch: %d Valid Perplexity: %.3f" % (i + 1, valid_perplexity))
+    eval_loss = trainer.evaluate(valid_producer)
+    print("validating: loss={}".format(eval_loss))
 
-      if FLAGS.save_path:
-        print("Saving model to %s." % FLAGS.save_path)
-        sv.saver.save(session, FLAGS.save_path)
+  # Export
+  print("Saving model to %s." % FLAGS.save_path)
+  spec = [tf.TensorSpec(shape=[config.num_layers, 2, 1, config.hidden_size], dtype=data_type(), name="context"),
+          tf.TensorSpec(shape=[1, 1], dtype=tf.int32, name="word_id")]
+  cfunc = model.single_step.get_concrete_function(*spec)
+  cfunc2 = model.get_initial_state.get_concrete_function()
+  tf.saved_model.save(model, FLAGS.save_path, signatures={"single_step": cfunc, "get_initial_state": cfunc2})
+
 
 if __name__ == "__main__":
-  tf.app.run()
+  absl.app.run(main)

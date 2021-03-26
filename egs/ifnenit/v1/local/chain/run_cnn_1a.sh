@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # steps/info/chain_dir_info.pl exp/chainfsf4/cnn1a_1/
 # exp/chainfsf4/cnn1a_1/: num-iters=21 nj=2..4 num-params=4.4M dim=40->380 combine=-0.033->-0.025 xent:train/valid[13,20,final]=(-1.07,-1.31,-0.560/-1.30,-1.70,-0.978) logprob:train/valid[13,20,final]=(-0.064,-0.119,-0.011/-0.115,-0.208,-0.096)
@@ -123,7 +123,7 @@ if [ $stage -le 4 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   common1="required-time-offsets=0 height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="required-time-offsets=0 height-offsets=-2,-1,0,1,2 num-filters-out=70"
   mkdir -p $dir/configs

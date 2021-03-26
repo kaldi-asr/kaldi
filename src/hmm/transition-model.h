@@ -47,7 +47,7 @@ namespace kaldi {
 // this depends on the number of transitions/final-probs in the topology for
 // that (phone, HMM-state).  Each probability has an associated transition-index.
 // We associate with each (transition-state, transition-index) a unique transition-id.
-// Each individual probability estimated by the transition-model is asociated with a
+// Each individual probability estimated by the transition-model is associated with a
 // transition-id.
 //
 // List of the various types of quantity referred to here and what they mean:
@@ -335,7 +335,7 @@ inline int32 TransitionModel::TransitionIdToPdfFast(int32 trans_id) const {
   // Note: it's a little dangerous to assert this only in paranoid mode.
   // However, this function is called in the inner loop of decoders and
   // the assertion likely takes a significant amount of time.  We make
-  // sure that past the end of thd id2pdf_id_ array there are big
+  // sure that past the end of the id2pdf_id_ array there are big
   // numbers, which will make the calling code more likely to segfault
   // (rather than silently die) if this is called for out-of-range values.
   KALDI_PARANOID_ASSERT(

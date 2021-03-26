@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 
 # Copyright 2016   Vimal Manohar
 #           2016   Johns Hopkins University (author: Daniel Povey)
@@ -69,7 +70,7 @@ parser.add_argument("--min-split-point-duration", type=float, default=0.1,
                     help="""Minimum duration of silence or non-scored word
                     to be considered a viable split point when
                     truncating based on junk proportion.""")
-parser.add_argument("--max-deleted-words-kept-when-merging", type = str, default = 1,
+parser.add_argument("--max-deleted-words-kept-when-merging", type = int, default = 1,
                     help = "When merging segments that are found to be overlapping or "
                     "adjacent after all other processing, keep in the transcript the "
                     "reference words that were deleted between the segments [if any] "
@@ -894,7 +895,7 @@ def AccWordStatsForUtterance(split_lines_of_utt,
 
 def PrintWordStats(word_stats_out):
     try:
-        f = open(word_stats_out, 'w')
+        f = open(word_stats_out, 'w', encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening word-stats file --word-stats-out={0} "
                  "for writing".format(word_stats_out))
@@ -924,23 +925,23 @@ def PrintWordStats(word_stats_out):
 
 def ProcessData():
     try:
-        f_in = open(args.ctm_edits_in)
+        f_in = open(args.ctm_edits_in, encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening ctm-edits input "
                  "file {0}".format(args.ctm_edits_in))
     try:
-        text_output_handle = open(args.text_out, 'w')
+        text_output_handle = open(args.text_out, 'w', encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening text output "
                  "file {0}".format(args.text_out))
     try:
-        segments_output_handle = open(args.segments_out, 'w')
+        segments_output_handle = open(args.segments_out, 'w', encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening segments output "
                  "file {0}".format(args.text_out))
     if args.ctm_edits_out != None:
         try:
-            ctm_edits_output_handle = open(args.ctm_edits_out, 'w')
+            ctm_edits_output_handle = open(args.ctm_edits_out, 'w', encoding='utf-8')
         except:
             sys.exit("segment_ctm_edits.py: error opening ctm-edits output "
                      "file {0}".format(args.ctm_edits_out))
@@ -994,7 +995,7 @@ def ProcessData():
 def ReadNonScoredWords(non_scored_words_file):
     global non_scored_words
     try:
-        f = open(non_scored_words_file)
+        f = open(non_scored_words_file, encoding='utf-8')
     except:
         sys.exit("segment_ctm_edits.py: error opening file: "
                  "--non-scored-words=" + non_scored_words_file)
@@ -1015,7 +1016,7 @@ ReadNonScoredWords(args.non_scored_words_in)
 oov_symbol = None
 if args.oov_symbol_file != None:
     try:
-        with open(args.oov_symbol_file) as f:
+        with open(args.oov_symbol_file, encoding='utf-8') as f:
             line = f.readline()
             assert len(line.split()) == 1
             oov_symbol = line.split()[0]

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # This is neural net training on top of adapted 40-dimensional features.

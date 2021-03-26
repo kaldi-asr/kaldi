@@ -75,7 +75,7 @@ typename Arc::StateId NumArcs(const ExpandedFst<Arc> &fst) {
 template<class Arc, class I>
 void GetOutputSymbols(const Fst<Arc> &fst,
                       bool include_eps,
-                      vector<I> *symbols) {
+                      std::vector<I> *symbols) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   std::set<I> all_syms;
   for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
@@ -96,7 +96,7 @@ void GetOutputSymbols(const Fst<Arc> &fst,
 template<class Arc, class I>
 void GetInputSymbols(const Fst<Arc> &fst,
                      bool include_eps,
-                     vector<I> *symbols) {
+                     std::vector<I> *symbols) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   unordered_set<I> all_syms;
   for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
@@ -114,9 +114,52 @@ void GetInputSymbols(const Fst<Arc> &fst,
   std::sort(symbols->begin(), symbols->end());
 }
 
+template<class Arc, class I>
+class RemoveSomeInputSymbolsMapper {
+public:
+  Arc operator ()(const Arc &arc_in) {
+    Arc ans = arc_in;
+    if (to_remove_set_.count(ans.ilabel) != 0) ans.ilabel = 0;  // remove this symbol
+    return ans;
+  }
+  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
+  MapSymbolsAction InputSymbolsAction() { return MAP_CLEAR_SYMBOLS; }
+  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+  uint64 Properties(uint64 props) const {
+    // remove the following as we don't know now if any of them are true.
+    uint64 to_remove = kAcceptor|kNotAcceptor|kIDeterministic|kNonIDeterministic|
+        kNoEpsilons|kNoIEpsilons|kILabelSorted|kNotILabelSorted;
+    return props & ~to_remove;
+  }
+  RemoveSomeInputSymbolsMapper(const std::vector<I> &to_remove):
+      to_remove_set_(to_remove) {
+    KALDI_ASSERT_IS_INTEGER_TYPE(I);
+         assert(to_remove_set_.count(0) == 0);  // makes no sense to remove epsilon.
+       }
+private:
+  kaldi::ConstIntegerSet<I> to_remove_set_;
+};
 
 template<class Arc, class I>
-void RemoveSomeInputSymbols(const vector<I> &to_remove,
+using LookaheadFst = ArcMapFst<Arc, Arc, RemoveSomeInputSymbolsMapper<Arc, I> >;
+
+// Lookahead composition is used for optimized online
+// composition of FSTs during decoding. See
+// nnet3/nnet3-latgen-faster-lookahead.cc. For details of compose filters
+// see DefaultLookAhead in fst/compose.h
+template<class Arc, class I>
+LookaheadFst<Arc, I> *LookaheadComposeFst(const Fst<Arc> &ifst1,
+                                          const Fst<Arc> &ifst2,
+                                          const std::vector<I> &to_remove) {
+  fst::CacheOptions cache_opts(true, 1 << 25LL);
+  fst::CacheOptions cache_opts_map(true, 0);
+  fst::ArcMapFstOptions arcmap_opts(cache_opts);
+  RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
+  return new LookaheadFst<Arc, I>(ComposeFst<Arc>(ifst1, ifst2, cache_opts), mapper, arcmap_opts);
+}
+
+template<class Arc, class I>
+void RemoveSomeInputSymbols(const std::vector<I> &to_remove,
                             MutableFst<Arc> *fst) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
@@ -133,9 +176,9 @@ class MapInputSymbolsMapper {
       ans.ilabel = (*symbol_mapping_)[ans.ilabel];
     return ans;
   }
-  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
-  MapSymbolsAction InputSymbolsAction() { return MAP_CLEAR_SYMBOLS; }
-  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+  MapFinalAction FinalAction() const { return MAP_NO_SUPERFINAL; }
+  MapSymbolsAction InputSymbolsAction() const { return MAP_CLEAR_SYMBOLS; }
+  MapSymbolsAction OutputSymbolsAction() const { return MAP_COPY_SYMBOLS; }
   uint64 Properties(uint64 props) const {  // Not tested.
     bool remove_epsilons = (symbol_mapping_->size() > 0 && (*symbol_mapping_)[0] != 0);
     bool add_epsilons = (symbol_mapping_->size() > 1 &&
@@ -152,20 +195,20 @@ class MapInputSymbolsMapper {
   }
   // initialize with copy = false only if the "to_remove" argument will not be deleted
   // in the lifetime of this object.
-  MapInputSymbolsMapper(const vector<I> &to_remove, bool copy) {
+  MapInputSymbolsMapper(const std::vector<I> &to_remove, bool copy) {
     KALDI_ASSERT_IS_INTEGER_TYPE(I);
-    if (copy) symbol_mapping_ = new vector<I> (to_remove);
+    if (copy) symbol_mapping_ = new std::vector<I> (to_remove);
     else symbol_mapping_ = &to_remove;
     owned = copy;
   }
   ~MapInputSymbolsMapper() { if (owned && symbol_mapping_ != NULL) delete symbol_mapping_; }
  private:
   bool owned;
-  const vector<I> *symbol_mapping_;
+  const std::vector<I> *symbol_mapping_;
 };
 
 template<class Arc, class I>
-void MapInputSymbols(const vector<I> &symbol_mapping,
+void MapInputSymbols(const std::vector<I> &symbol_mapping,
                      MutableFst<Arc> *fst) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   // false == don't copy the "symbol_mapping", retain pointer--
@@ -176,15 +219,15 @@ void MapInputSymbols(const vector<I> &symbol_mapping,
 
 template<class Arc, class I>
 bool GetLinearSymbolSequence(const Fst<Arc> &fst,
-                             vector<I> *isymbols_out,
-                             vector<I> *osymbols_out,
+                             std::vector<I> *isymbols_out,
+                             std::vector<I> *osymbols_out,
                              typename Arc::Weight *tot_weight_out) {
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
   Weight tot_weight = Weight::One();
-  vector<I> ilabel_seq;
-  vector<I> olabel_seq;
+  std::vector<I> ilabel_seq;
+  std::vector<I> olabel_seq;
 
   StateId cur_state = fst.Start();
   if (cur_state == kNoStateId) {  // empty sequence.
@@ -219,7 +262,7 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
 // see fstext-utils.h for comment.
 template<class Arc>
 void ConvertNbestToVector(const Fst<Arc> &fst,
-                          vector<VectorFst<Arc> > *fsts_out) {
+                          std::vector<VectorFst<Arc> > *fsts_out) {
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
   fsts_out->clear();
@@ -278,7 +321,7 @@ void ConvertNbestToVector(const Fst<Arc> &fst,
 template<class Arc>
 void NbestAsFsts(const Fst<Arc> &fst,
                  size_t n,
-                 vector<VectorFst<Arc> > *fsts_out) {
+                 std::vector<VectorFst<Arc> > *fsts_out) {
   KALDI_ASSERT(n > 0);
   KALDI_ASSERT(fsts_out != NULL);
   VectorFst<Arc> nbest_fst;
@@ -287,7 +330,7 @@ void NbestAsFsts(const Fst<Arc> &fst,
 }
 
 template<class Arc, class I>
-void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
+void MakeLinearAcceptorWithAlternatives(const std::vector<std::vector<I> > &labels,
                                         MutableFst<Arc> *ofst) {
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
@@ -308,7 +351,7 @@ void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
 }
 
 template<class Arc, class I>
-void MakeLinearAcceptor(const vector<I> &labels, MutableFst<Arc> *ofst) {
+void MakeLinearAcceptor(const std::vector<I> &labels, MutableFst<Arc> *ofst) {
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -328,7 +371,7 @@ void MakeLinearAcceptor(const vector<I> &labels, MutableFst<Arc> *ofst) {
 template<class I>
 void GetSymbols(const SymbolTable &symtab,
                 bool include_eps,
-                vector<I> *syms_out) {
+                std::vector<I> *syms_out) {
   KALDI_ASSERT(syms_out != NULL);
   syms_out->clear();
   for (SymbolTableIterator iter(symtab);
@@ -344,7 +387,7 @@ void GetSymbols(const SymbolTable &symtab,
 template<class Arc>
 void SafeDeterminizeWrapper(MutableFst<Arc> *ifst, MutableFst<Arc> *ofst, float delta) {
   typename Arc::Label highest_sym = HighestNumberedInputSymbol(*ifst);
-  vector<typename Arc::Label> extra_syms;
+  std::vector<typename Arc::Label> extra_syms;
   PreDeterminize(ifst,
                  (typename Arc::Label)(highest_sym+1),
                  &extra_syms);
@@ -356,7 +399,7 @@ void SafeDeterminizeWrapper(MutableFst<Arc> *ifst, MutableFst<Arc> *ofst, float 
 template<class Arc>
 void SafeDeterminizeMinimizeWrapper(MutableFst<Arc> *ifst, VectorFst<Arc> *ofst, float delta) {
   typename Arc::Label highest_sym = HighestNumberedInputSymbol(*ifst);
-  vector<typename Arc::Label> extra_syms;
+  std::vector<typename Arc::Label> extra_syms;
   PreDeterminize(ifst,
                  (typename Arc::Label)(highest_sym+1),
                  &extra_syms);
@@ -466,7 +509,7 @@ template<class Arc, class F> // F is functor type from labels to classes.
 bool PrecedingInputSymbolsAreSameClass(bool start_is_epsilon, const Fst<Arc> &fst, const F &f) {
   typedef typename F::Result ClassType;
   typedef typename Arc::StateId StateId;
-  vector<ClassType> classes;
+  std::vector<ClassType> classes;
   ClassType noClass = f(kNoLabel);
 
   if (start_is_epsilon) {
@@ -535,7 +578,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
   typedef typename F::Result ClassType;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
-  vector<ClassType> classes;
+  std::vector<ClassType> classes;
   ClassType noClass = f(kNoLabel);
   ClassType epsClass = f(0);
   if (start_is_epsilon) {  // treat having-start-state as epsilon in-transition.
@@ -567,7 +610,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
   // Work out list of arcs we have to change as (state, arc-offset).
   // Can't do the actual changes in this pass, since we have to add new
   // states which invalidates the iterators.
-  vector<pair<StateId, size_t> > arcs_to_change;
+  std::vector<std::pair<StateId, size_t> > arcs_to_change;
   for (StateIterator<Fst<Arc> > siter(*fst); !siter.Done(); siter.Next()) {
     StateId s = siter.Value();
     for (ArcIterator<Fst<Arc> > aiter(*fst, s); !aiter.Done(); aiter.Next()) {
@@ -579,7 +622,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
   }
   KALDI_ASSERT(!arcs_to_change.empty());  // since !bad_states.empty().
 
-  std::map<pair<StateId, ClassType>, StateId> state_map;
+  std::map<std::pair<StateId, ClassType>, StateId> state_map;
   // state_map is a map from (bad-state, input-symbol-class) to dummy-state.
 
   for (size_t i = 0; i < arcs_to_change.size(); i++) {
@@ -590,7 +633,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
 
     // Transition is non-eps transition to "bad" state.  Introduce new state (or find
     // existing one).
-    pair<StateId, ClassType> p(arc.nextstate, f(arc.ilabel));
+    std::pair<StateId, ClassType> p(arc.nextstate, f(arc.ilabel));
     if (state_map.count(p) == 0) {
       StateId newstate = state_map[p] = fst->AddState();
       fst->AddArc(newstate, Arc(0, 0, Weight::One(), arc.nextstate));
@@ -617,7 +660,7 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   typedef typename F::Result ClassType;
-  vector<StateId> bad_states;
+  std::vector<StateId> bad_states;
   ClassType noClass = f(kNoLabel);
   ClassType epsClass = f(0);
   for (StateIterator<Fst<Arc> > siter(*fst); !siter.Done(); siter.Next()) {
@@ -640,7 +683,7 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
     if (bad)
       bad_states.push_back(s);
   }
-  vector<Arc> my_arcs;
+  std::vector<Arc> my_arcs;
   for (size_t i = 0; i < bad_states.size(); i++) {
     StateId s = bad_states[i];
     my_arcs.clear();
@@ -666,7 +709,7 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
 
 
 template<class Arc>
-VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
+VectorFst<Arc>* MakeLoopFst(const std::vector<const ExpandedFst<Arc> *> &fsts) {
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
@@ -708,7 +751,7 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
         && fst->NumArcs(fst_start_state) == 1
         && fst->Final(fst_start_state) == Weight::Zero();
 
-    vector<StateId> state_map(fst_num_states);  // fst state -> ans state
+    std::vector<StateId> state_map(fst_num_states);  // fst state -> ans state
     for (StateId s = 0; s < fst_num_states; s++) {
       if (s == fst_start_state && share_start_state) state_map[s] = loop_state;
       else state_map[s] = ans->AddState();
@@ -819,9 +862,9 @@ bool EqualAlign(const Fst<Arc> &ifst,
     return false;
   }
   // First select path through ifst.
-  vector<StateId> path;
-  vector<size_t> arc_offsets;  // arc taken out of each state.
-  vector<int> nof_ilabels;
+  std::vector<StateId> path;
+  std::vector<size_t> arc_offsets;  // arc taken out of each state.
+  std::vector<int> nof_ilabels;
 
   StateId num_ilabels = 0;
   int retry_no = 0;
@@ -880,7 +923,7 @@ bool EqualAlign(const Fst<Arc> &ifst,
   }
 
   StateId num_self_loops = 0;
-  vector<ssize_t> self_loop_offsets(path.size());
+  std::vector<ssize_t> self_loop_offsets(path.size());
   for (size_t i = 0; i < path.size(); i++)
     if ( (self_loop_offsets[i] = FindSelfLoopWithILabel(ifst, path[i]))
          != static_cast<ssize_t>(-1) )
@@ -957,10 +1000,10 @@ void RemoveUselessArcs(MutableFst<Arc> *fst) {
   for (StateIterator<MutableFst<Arc> > siter(*fst);
       !siter.Done();
       siter.Next()) {
-    vector<size_t> arcs_to_delete;
-    vector<Arc> arcs;
+    std::vector<size_t> arcs_to_delete;
+    std::vector<Arc> arcs;
     // pair2arclist lets us look up the arcs
-    std::map<pair<Label, StateId>, vector<size_t> > pair2arclist;
+    std::map<std::pair<Label, StateId>, std::vector<size_t> > pair2arclist;
     StateId state = siter.Value();
     for (ArcIterator<MutableFst<Arc> > aiter(*fst, state);
         !aiter.Done();
@@ -970,10 +1013,10 @@ void RemoveUselessArcs(MutableFst<Arc> *fst) {
       arcs.push_back(arc);
       pair2arclist[std::make_pair(arc.ilabel, arc.nextstate)].push_back(pos);
     }
-    typename std::map<pair<Label, StateId>, vector<size_t> >::iterator
+    typename std::map<std::pair<Label, StateId>, std::vector<size_t> >::iterator
         iter = pair2arclist.begin(), end = pair2arclist.end();
     for (; iter!= end; ++iter) {
-      const vector<size_t> &poslist = iter->second;
+      const std::vector<size_t> &poslist = iter->second;
       if (poslist.size() > 1) {  // >1 arc with same ilabel, dest-state
         size_t best_pos = poslist[0];
         Weight best_weight = arcs[best_pos].weight;

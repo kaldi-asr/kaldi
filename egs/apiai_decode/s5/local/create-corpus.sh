@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Checking arguments
 if [ $# -le 1 ]; then

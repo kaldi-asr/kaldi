@@ -52,7 +52,6 @@ DecodableNnetSimpleLoopedInfo::DecodableNnetSimpleLoopedInfo(
   Init(opts, &(am_nnet->GetNnet()));
 }
 
-
 void DecodableNnetSimpleLoopedInfo::Init(
     const NnetSimpleLoopedComputationOptions &opts,
     Nnet *nnet) {
@@ -86,10 +85,8 @@ void DecodableNnetSimpleLoopedInfo::Init(
   CompileLooped(*nnet, opts.optimize_config, request1, request2, request3,
                 &computation);
   computation.ComputeCudaIndexes();
-  if (GetVerboseLevel() >= 3) {
-    KALDI_VLOG(3) << "Computation is:";
-    computation.Print(std::cerr, *nnet);
-  }
+  KALDI_VLOG(3) << "Computation is:\n"
+                << NnetComputationPrintInserter{computation, *nnet};
 }
 
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # cat exp/nnet3/tdnn_1a/decode_dev/scoring_kaldi/best_wer
 # %WER 17.34 [ 1908 / 11006, 257 ins, 303 del, 1348 sub ] exp/nnet3/tdnn_1a/decode_dev/wer_12_0.0

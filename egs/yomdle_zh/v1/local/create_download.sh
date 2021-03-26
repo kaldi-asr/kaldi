@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2018 Chun-Chieh Chang
 
 # The original format of the dataset given is GEDI and page images.
@@ -43,4 +43,4 @@ local/create_line_image_from_page_image.py \
 
 echo "Downloading table for CangJie."
 wget -P $download_dir/ $cangjie_url || exit 1;
-sed -ie '1,8d' $download_dir/cj5-cc.txt
+perl -n -i -e 'print if $. > 8' $download_dir/cj5-cc.txt

@@ -60,7 +60,7 @@ struct NnetInferenceTask {
   // the lowest t value was originally nonzero in the 'natural' numbering, this
   // just means we conceptually shift the 't' values; the only real constraint
   // is that the 't' values are contiguous.
-  Matrix<BaseFloat> input;
+  CuMatrix<BaseFloat> input;
 
   // The index of the first output frame (in the shifted numbering where the
   // first output frame is numbered zero.  This will typically be less than one,
@@ -113,7 +113,7 @@ struct NnetInferenceTask {
   bool is_irregular;
 
   // The i-vector for this chunk, if this network accepts i-vector inputs.
-  Vector<BaseFloat> ivector;
+  CuVector<BaseFloat> ivector;
 
   // A priority (higher is more urgent); may be either sign.  May be updated
   // after this object is provided to class NnetBatchComputer.
@@ -193,6 +193,9 @@ struct NnetBatchComputerOptions: public NnetSimpleComputationOptions {
 void MergeTaskOutput(
     const std::vector<NnetInferenceTask> &tasks,
     Matrix<BaseFloat> *output);
+void MergeTaskOutput(
+    const std::vector<NnetInferenceTask> &tasks,
+    CuMatrix<BaseFloat> *output);
 
 /**
    This class does neural net inference in a way that is optimized for GPU use:
@@ -264,6 +267,13 @@ class NnetBatchComputer {
       const Matrix<BaseFloat> &input,
       const Vector<BaseFloat> *ivector,
       const Matrix<BaseFloat> *online_ivectors,
+      int32 online_ivector_period,
+      std::vector<NnetInferenceTask> *tasks);
+  void SplitUtteranceIntoTasks(
+      bool output_to_cpu,
+      const CuMatrix<BaseFloat> &input,
+      const CuVector<BaseFloat> *ivector,
+      const CuMatrix<BaseFloat> *online_ivectors,
       int32 online_ivector_period,
       std::vector<NnetInferenceTask> *tasks);
 

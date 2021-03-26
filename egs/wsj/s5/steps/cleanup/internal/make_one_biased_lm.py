@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
@@ -9,6 +9,11 @@ import sys
 import argparse
 import math
 from collections import defaultdict
+
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding="utf8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer,encoding="utf8")
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer,encoding="utf8")
 
 parser = argparse.ArgumentParser(description="""
 This script creates a biased language model suitable for alignment and
@@ -142,16 +147,18 @@ class NgramCounts(object):
         hist_to_total_count = self.GetHistToTotalCount()
         for n in reversed(list(range(2, self.ngram_order))):
             this_order_counts = self.counts[n]
+            to_delete = []
             for hist in this_order_counts.keys():
                 if hist_to_total_count[hist] < min_count:
                     # we need to completely back off this count.
                     word_to_count = this_order_counts[hist]
-                    del this_order_counts[hist] # delete the key from the dict.
+                    # mark this key for deleting
+                    to_delete.append(hist)
                     backoff_hist = hist[1:]  # this will be a tuple not a list.
                     for word, count in word_to_count.items():
                         self.AddCount(backoff_hist, word, count)
-
-
+            for hist in to_delete:
+                del this_order_counts[hist]
 
     # This backs off the counts according to Kneser-Ney (unmodified,
     # with interpolation).
@@ -200,7 +207,7 @@ class NgramCounts(object):
         word_to_count = self.counts[0][empty_history]
         total = sum(word_to_count.values())
         try:
-            f = open(top_words_file)
+            f = open(top_words_file, mode='r', encoding='utf-8')
         except:
             sys.exit("make_one_biased_lm.py: error opening top-words file: "
                      "--top-words=" + top_words_file)

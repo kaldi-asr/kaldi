@@ -2,6 +2,7 @@
 
 // Copyright  2017-2018  Matthew Maciejewski
 //                 2018  David Snyder
+//                 2019  Dogan Can
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -55,65 +56,108 @@ class AgglomerativeClusterer {
  public:
   AgglomerativeClusterer(
       const Matrix<BaseFloat> &costs,
-      BaseFloat thresh,
-      int32 min_clust,
+      BaseFloat threshold,
+      int32 min_clusters,
+      int32 first_pass_max_points,
+      BaseFloat max_cluster_fraction,
       std::vector<int32> *assignments_out)
-      : count_(0), costs_(costs), thresh_(thresh), min_clust_(min_clust),
+      : costs_(costs), threshold_(threshold), min_clusters_(min_clusters),
+        first_pass_max_points_(first_pass_max_points),
         assignments_(assignments_out) {
-    num_clusters_ = costs.NumRows();
     num_points_ = costs.NumRows();
+
+    // The max_cluster_size_ is a hard limit on the number points in a cluster.
+    // This is useful for handling degenerate cases where some outlier points
+    // form their own clusters and force everything else to be clustered
+    // together, e.g. when min-clusters is provided instead of a threshold.
+    max_cluster_size_ = ceil(num_points_ * max_cluster_fraction);
+
+    // The count_, which is used for identifying clusters, is initialized to
+    // num_points_ because cluster IDs 1..num_points_ are reserved for input
+    // points, which are the initial set of clusters.
+    count_ = num_points_;
+
+    // The second_pass_count_, which is used for identifying the initial set of
+    // second pass clusters and initializing count_ before the second pass, is
+    // initialized to 0 and incremented whenever a new cluster is added to the
+    // initial set of second pass clusters.
+    second_pass_count_ = 0;
   }
 
-  // Performs the clustering
+  // Clusters points. Chooses single pass or two pass algorithm.
   void Cluster();
+
+  // Clusters points using single pass algorithm.
+  void ClusterSinglePass();
+
+  // Clusters points using two pass algorithm.
+  void ClusterTwoPass();
+
  private:
-  // Returns the cost between clusters with IDs i and j
-  BaseFloat GetCost(int32 i, int32 j);
+  // Encodes cluster pair into a 32bit unsigned integer.
+  uint32 EncodePair(int32 i, int32 j);
+  // Decodes cluster pair from a 32bit unsigned integer.
+  std::pair<int32, int32> DecodePair(uint32 key);
   // Initializes the clustering queue with singleton clusters
-  void Initialize();
+  void InitializeClusters(int32 first, int32 last);
+  // Does hierarchical agglomerative clustering
+  void ComputeClusters(int32 min_clusters);
+  // Adds clusters created in first pass to second pass clusters
+  void AddClustersToSecondPass();
+  // Assigns points to clusters
+  void AssignClusters();
   // Merges clusters with IDs i and j and updates cost map and queue
   void MergeClusters(int32 i, int32 j);
 
-
-  int32 count_;  // Count of clusters that have been created. Also used to give
-                 // clusters unique IDs.
   const Matrix<BaseFloat> &costs_;  // cost matrix
-  BaseFloat thresh_;  // stopping criterion threshold
-  int32 min_clust_;  // minimum number of clusters
+  BaseFloat threshold_;  // stopping criterion threshold
+  int32 min_clusters_;  // minimum number of clusters
+  int32 first_pass_max_points_;  // maximum number of points in each subset
   std::vector<int32> *assignments_;  // assignments out
+
+  int32 num_points_;  // total number of points to cluster
+  int32 max_cluster_size_;  // maximum number of points in a cluster
+  int32 count_;  // count of first pass clusters, used for identifying clusters
+  int32 second_pass_count_;  // count of second pass clusters
 
   // Priority queue using greater (lowest costs are highest priority).
   // Elements contain pairs of cluster IDs and their cost.
-  typedef std::pair<BaseFloat, std::pair<uint16,
-    uint16> > QueueElement;
+  typedef std::pair<BaseFloat, uint32> QueueElement;
   typedef std::priority_queue<QueueElement, std::vector<QueueElement>,
     std::greater<QueueElement>  > QueueType;
-  QueueType queue_;
+  QueueType queue_, second_pass_queue_;
 
   // Map from cluster IDs to cost between them
-  std::unordered_map<std::pair<int32, int32>, BaseFloat,
-                     PairHasher<int32, int32>> cluster_cost_map_;
+  std::unordered_map<uint32, BaseFloat> cluster_cost_map_;
   // Map from cluster ID to cluster object address
   std::unordered_map<int32, AhcCluster*> clusters_map_;
-  std::set<int32> active_clusters_;  // IDs of unmerged clusters
-  int32 num_clusters_;  // number of active clusters
-  int32 num_points_;  // total number of points to cluster
+  // Set of unmerged cluster IDs
+  std::set<int32> active_clusters_;
+
+  // Map from second pass cluster IDs to cost between them
+  std::unordered_map<uint32, BaseFloat> second_pass_cluster_cost_map_;
+  // Map from second pass cluster ID to cluster object address
+  std::unordered_map<int32, AhcCluster*> second_pass_clusters_map_;
+  // Set of unmerged second pass cluster IDs
+  std::set<int32> second_pass_active_clusters_;
 };
 
 /** This is the function that is called to perform the agglomerative
  *  clustering. It takes the following arguments:
  *   - A matrix of all pairwise costs, with each row/column corresponding
  *      to an utterance ID, and the elements of the matrix containing the
-        cost for pairing the utterances for its row and column
+ *      cost for pairing the utterances for its row and column
  *   - A threshold which is used as the stopping criterion for the clusters
  *   - A minimum number of clusters that will not be merged past
+ *   - A maximum fraction of points that can be in a cluster
  *   - A vector which will be filled with integer IDs corresponding to each
  *      of the rows/columns of the score matrix.
  *
  *  The basic algorithm is as follows:
  *  \code
- *      while (num-clusters > min_clust && smallest-merge-cost <= thresh)
- *          merge the two clusters with lowest cost.
+ *      while (num-clusters > min-clusters && smallest-merge-cost <= threshold)
+ *          if (size-of-new-cluster <= max-cluster-size)
+ *              merge the two clusters with lowest cost
  *  \endcode
  *
  *  The cost between two clusters is the average cost of all pairwise
@@ -126,11 +170,19 @@ class AgglomerativeClusterer {
  *  costs between clusters I and M and clusters I and N, where
  *  cluster J was formed by merging clusters M and N.
  *
+ *  If the number of points to cluster is larger than first-pass-max-points,
+ *  then clustering is done in two passes. In the first pass, input points are
+ *  divided into contiguous subsets of size at most first-pass-max-points and
+ *  each subset is clustered separately. In the second pass, the first pass
+ *  clusters are merged into the final set of clusters.
+ *
  */
 void AgglomerativeCluster(
     const Matrix<BaseFloat> &costs,
-    BaseFloat thresh,
-    int32 min_clust,
+    BaseFloat threshold,
+    int32 min_clusters,
+    int32 first_pass_max_points,
+    BaseFloat max_cluster_fraction,
     std::vector<int32> *assignments_out);
 
 }  // end namespace kaldi.

@@ -19,9 +19,9 @@ fi
 steps/get_ctm.sh $data_dir $lang_dir $decode_dir
 
 # Make sure that channel markers match
-#sed -i "s:\s.*_fsp-([AB]): \1:g" data/dev/stm
-#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} sed -i -r 's:fsp\s1\s:fsp A :g' {}
-#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} sed -i -r 's:fsp\s2\s:fsp B :g' {}
+#perl -i -pe "s:\s.*_fsp-([AB]): \1:g" data/dev/stm
+#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} perl -i -pe 's:fsp\s1\s:fsp A :g' {}
+#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} perl -i -pe 's:fsp\s2\s:fsp B :g' {}
 
 # Get the environment variables
 . /export/babel/data/software/env.sh

@@ -25,7 +25,7 @@
 namespace kaldi {
 
 
-void MfccComputer::Compute(BaseFloat signal_log_energy,
+void MfccComputer::Compute(BaseFloat signal_raw_log_energy,
                            BaseFloat vtln_warp,
                            VectorBase<BaseFloat> *signal_frame,
                            VectorBase<BaseFloat> *feature) {
@@ -35,8 +35,8 @@ void MfccComputer::Compute(BaseFloat signal_log_energy,
   const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
 
   if (opts_.use_energy && !opts_.raw_energy)
-    signal_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<float>::min()));
+    signal_raw_log_energy = Log(std::max<BaseFloat>(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<float>::epsilon()));
 
   if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);
@@ -62,9 +62,9 @@ void MfccComputer::Compute(BaseFloat signal_log_energy,
     feature->MulElements(lifter_coeffs_);
 
   if (opts_.use_energy) {
-    if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_)
-      signal_log_energy = log_energy_floor_;
-    (*feature)(0) = signal_log_energy;
+    if (opts_.energy_floor > 0.0 && signal_raw_log_energy < log_energy_floor_)
+      signal_raw_log_energy = log_energy_floor_;
+    (*feature)(0) = signal_raw_log_energy;
   }
 
   if (opts_.htk_compat) {
