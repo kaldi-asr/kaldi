@@ -52,8 +52,7 @@ if [ $stage -le 1 ]; then
   popd
   utils/fix_data_dir.sh data/gigaspeech_dev || exit 1;
   utils/fix_data_dir.sh data/gigaspeech_test || exit 1;
-  utils/fix_data_dir.sh \
-    data/gigaspeech_train_${gigaspeech_train_subset,,} || exit 1;
+  utils/fix_data_dir.sh data/gigaspeech_train_${train_subset,,} || exit 1;
   echo "======GigaSpeech Preparation END | current time : `date +%Y-%m-%d-%T`=="
 fi
 
