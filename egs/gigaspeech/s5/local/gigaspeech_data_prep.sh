@@ -15,10 +15,9 @@ train_subset=XL
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 [options] <gigaspeech-root> <data-dir>"
-  echo " e.g.: $0 ~/GigaSpeech_data/dict/g2p/g2p.model.4 data/local/dict"
+  echo " e.g.: $0 /data/GigaSpeech_Data/ data/"
   echo "Options:"
-  echo "  --cmd '<command>'    # script to launch jobs with, default: run.pl"
-  echo "  --nj <nj>            # number of jobs to run, default: 4."
+  echo "  --train-subset <XL|L|M|S|XS>    # Train subset to be created."
   exit 1
 fi
 
