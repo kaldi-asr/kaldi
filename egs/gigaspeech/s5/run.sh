@@ -6,10 +6,6 @@
 set -e
 set -o pipefail
 
-. ./cmd.sh || exit 1;
-. ./path.sh || exit 1;
-. ./utils/parse_options.sh || exit 1;
-
 stage=0
 
 # GigaSpeech configurations.
@@ -32,6 +28,10 @@ decode_nj=100
 lm_order=4
 lm_dir=data/local/lm
 dict_dir=data/local/dict
+
+. ./cmd.sh || exit 1;
+. ./path.sh || exit 1;
+. ./utils/parse_options.sh || exit 1;
 
 if [ $stage -le 0 ]; then
   echo "======Prepare GigaSpeech START | current time : `date +%Y-%m-%d-%T`===="
