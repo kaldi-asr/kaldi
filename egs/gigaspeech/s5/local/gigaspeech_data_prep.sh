@@ -30,9 +30,6 @@ echo "$0: Cloning the GigaSpeech repo."
 [ -d "$gigaspeech_repo" ] && (rm -rf $gigaspeech_repo || exit 1)
 git clone \
   https://github.com/SpeechColab/GigaSpeech.git $gigaspeech_repo || exit 1;
-pushd $gigaspeech_repo
-git checkout fix_kaldi || exit 1;
-popd
 
 if [ $stage -le 0 ]; then
   echo "======GigaSpeech Download START | current time : `date +%Y-%m-%d-%T`==="

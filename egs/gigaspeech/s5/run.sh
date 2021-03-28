@@ -6,8 +6,9 @@
 set -e
 set -o pipefail
 
-. ./cmd.sh
-. ./path.sh
+. ./cmd.sh || exit 1;
+. ./path.sh || exit 1;
+. ./utils/parse_options.sh || exit 1;
 
 stage=0
 
