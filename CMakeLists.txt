@@ -112,88 +112,91 @@ if(MSVC)
     endif()
 endif()
 
-find_package(CUDA)
-if(CUDA_FOUND)
-    execute_process (
-        COMMAND bash -c "nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,\"\"); print $1;}'"
-        OUTPUT_VARIABLE CUDA_VERSION
-    )
-
-    if(NOT CUDA_VERSION)
-        message(FATAL_ERROR "Cannot figure out CUDA_VERSION from the nvcc output.
-        Either your CUDA is too new or too old.")
-    endif()
-
-    if(NOT CUDA_ARCH)
+option(Kaldi_WITH_CUDA "Build Kaldi with CUDA support" ON)
+if(${Kaldi_WITH_CUDA})
+    find_package(CUDA)
+    if(CUDA_FOUND)
+        # First, based on current CUDA version, designate all possible CUDA capability.
         execute_process (
-            COMMAND bash -c "uname -m | tr -d '\n'"
-            OUTPUT_VARIABLE LINUX_ARCH
+            COMMAND bash -c "nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,\"\"); print $1;}'"
+            OUTPUT_VARIABLE CUDA_VERSION
         )
 
-        if(${LINUX_ARCH} STREQUAL "x86_64" OR ${LINUX_ARCH} STREQUAL "ppc64le")
-            if(${CUDA_VERSION} MATCHES "9_.*")
-                set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70")
-            elseif(${CUDA_VERSION} MATCHES "10_.*")
-                set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75")
-            elseif(${CUDA_VERSION} STREQUAL "11_0")
-                set(CUDA_ARCH "-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80")
-            elseif(${CUDA_VERSION} MATCHES "11_.*")
-                set(CUDA_ARCH "-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86")
+        if(NOT CUDA_VERSION)
+            message(FATAL_ERROR "Cannot figure out CUDA_VERSION from the nvcc output.
+            Either your CUDA is too new or too old.")
+        endif()
+
+        if(NOT CUDA_ARCH)
+            execute_process (
+                COMMAND bash -c "uname -m | tr -d '\n'"
+                OUTPUT_VARIABLE LINUX_ARCH
+            )
+
+            if(${LINUX_ARCH} STREQUAL "x86_64" OR ${LINUX_ARCH} STREQUAL "ppc64le")
+                if(${CUDA_VERSION} MATCHES "9_.*")
+                    set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70")
+                elseif(${CUDA_VERSION} MATCHES "10_.*")
+                    set(CUDA_ARCH "-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75")
+                elseif(${CUDA_VERSION} STREQUAL "11_0")
+                    set(CUDA_ARCH "-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80")
+                elseif(${CUDA_VERSION} MATCHES "11_.*")
+                    set(CUDA_ARCH "-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86")
+                else()
+                    message(FATAL_ERROR "Unsupported CUDA_VERSION (CUDA_VERSION=${CUDA_VERSION}), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values...")
+                endif()
+            elseif(${LINUX_ARCH} STREQUAL "aarch64")
+                if(${CUDA_VERSION} MATCHES "9_.*")
+                    set(CUDA_ARCH "-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62")
+                elseif(${CUDA_VERSION} MATCHES "10_.*" OR ${CUDA_VERSION} MATCHES "11_.*")
+                    set(CUDA_ARCH "-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72")
+                else()
+                    message(FATAL_ERROR "Unsupported CUDA_VERSION (CUDA_VERSION=${CUDA_VERSION}), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values...")
+                endif()
             else()
-                message(FATAL_ERROR "Unsupported CUDA_VERSION (CUDA_VERSION=${CUDA_VERSION}), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values...")
+                message(FATAL_ERROR "Unsupported architecture for use of Kaldi with CUDA. Please let us know by opening a bug at:
+                    https://github.com/kaldi-asr/kaldi/issues/new?template=bug_report.md&title=Unsupported+CUDA+platform+[FILLPLATFORMNAME]")
             endif()
-        elseif(${LINUX_ARCH} STREQUAL "aarch64")
-            if(${CUDA_VERSION} MATCHES "9_.*")
-                set(CUDA_ARCH "-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62")
-            elseif(${CUDA_VERSION} MATCHES "10_.*" OR ${CUDA_VERSION} MATCHES "11_.*")
-                set(CUDA_ARCH "-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72")
-            else()
-                message(FATAL_ERROR "Unsupported CUDA_VERSION (CUDA_VERSION=${CUDA_VERSION}), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values...")
+        endif()
+
+        # Other CUDA settings
+        set(CUDA_PROPAGATE_HOST_FLAGS ON)
+        set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
+        list(APPEND KALDI_CUDA_NVCC_FLAGS "${CUDA_ARCH}")#-gencode arch=compute_35,code=sm_35
+        if(MSVC)
+            list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /permissive-,/FS,/wd4819,/EHsc,/bigobj")
+            list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /wd4018,/wd4244,/wd4267,/wd4291,/wd4305")
+            if(BUILD_SHARED_LIBS)
+                list(APPEND CUDA_NVCC_FLAGS_RELEASE -Xcompiler /MD)
+                list(APPEND CUDA_NVCC_FLAGS_DEBUG -Xcompiler /MDd)
             endif()
         else()
-            message(FATAL_ERROR "Unsupported architecture for use of Kaldi with CUDA. Please let us know by opening a bug at:
-                https://github.com/kaldi-asr/kaldi/issues/new?template=bug_report.md&title=Unsupported+CUDA+platform+[FILLPLATFORMNAME]")
+        #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
+            list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
         endif()
+        set(CUDA_NVCC_FLAGS ${KALDI_CUDA_NVCC_FLAGS} ${CUDA_NVCC_FLAGS})
+
+        add_definitions(-DHAVE_CUDA=1)
+        add_definitions(-DCUDA_API_PER_THREAD_DEFAULT_STREAM=1)
+        include_directories(${CUDA_INCLUDE_DIRS})
+        link_libraries(
+            ${CUDA_LIBRARIES}
+            ${CUDA_CUDA_LIBRARY}
+            ${CUDA_CUBLAS_LIBRARIES}
+            ${CUDA_CUFFT_LIBRARIES}
+            ${CUDA_curand_LIBRARY}
+            ${CUDA_cusolver_LIBRARY}
+            ${CUDA_cusparse_LIBRARY})
+
+        find_package(NvToolExt REQUIRED)
+        include_directories(${NvToolExt_INCLUDE_DIR})
+        link_libraries(${NvToolExt_LIBRARIES})
+
+        get_third_party(cub)
+        set(CUB_ROOT_DIR "${CMAKE_BINARY_DIR}/cub")
+        find_package(CUB REQUIRED)
+        include_directories(${CUB_INCLUDE_DIR})
     endif()
-
-    message(${CUDA_ARCH})
-
-    set(CUDA_PROPAGATE_HOST_FLAGS ON)
-    set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
-    list(APPEND KALDI_CUDA_NVCC_FLAGS "${CUDA_ARCH}")#-gencode arch=compute_35,code=sm_35
-    if(MSVC)
-        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /permissive-,/FS,/wd4819,/EHsc,/bigobj")
-        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /wd4018,/wd4244,/wd4267,/wd4291,/wd4305")
-        if(BUILD_SHARED_LIBS)
-            list(APPEND CUDA_NVCC_FLAGS_RELEASE -Xcompiler /MD)
-            list(APPEND CUDA_NVCC_FLAGS_DEBUG -Xcompiler /MDd)
-        endif()
-    else()
-    #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
-        list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
-    endif()
-    set(CUDA_NVCC_FLAGS ${KALDI_CUDA_NVCC_FLAGS} ${CUDA_NVCC_FLAGS})
-
-    add_definitions(-DHAVE_CUDA=1)
-    add_definitions(-DCUDA_API_PER_THREAD_DEFAULT_STREAM=1)
-    include_directories(${CUDA_INCLUDE_DIRS})
-    link_libraries(
-        ${CUDA_LIBRARIES}
-        ${CUDA_CUDA_LIBRARY}
-        ${CUDA_CUBLAS_LIBRARIES}
-        ${CUDA_CUFFT_LIBRARIES}
-        ${CUDA_curand_LIBRARY}
-        ${CUDA_cusolver_LIBRARY}
-        ${CUDA_cusparse_LIBRARY})
-
-    find_package(NvToolExt REQUIRED)
-    include_directories(${NvToolExt_INCLUDE_DIR})
-    link_libraries(${NvToolExt_LIBRARIES})
-
-    get_third_party(cub)
-    set(CUB_ROOT_DIR "${CMAKE_BINARY_DIR}/cub")
-    find_package(CUB REQUIRED)
-    include_directories(${CUB_INCLUDE_DIR})
 endif()
 
 add_definitions(-DKALDI_NO_PORTAUDIO=1)
