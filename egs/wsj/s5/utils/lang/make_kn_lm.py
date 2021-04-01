@@ -130,8 +130,6 @@ class NgramCounts:
         infile = io.TextIOWrapper(sys.stdin.buffer, encoding=default_encoding)  # byte stream as input
         for line in infile:
             line = line.strip(strip_chars)
-            if line == '':
-                break
             self.add_raw_counts_from_line(line)
             lines_processed += 1
         if lines_processed == 0 or args.verbose > 0:
